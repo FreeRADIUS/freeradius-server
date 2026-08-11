@@ -54,7 +54,7 @@ GO
 ALTER TABLE [radacct] WITH NOCHECK ADD
 	CONSTRAINT [DF_radacct_groupname] DEFAULT ('') FOR [groupname],
 	CONSTRAINT [DF_radacct_acctsessionid] DEFAULT ('') FOR [acctsessionid],
-	CONSTRAINT [DF_radacct_acctuniqueid] DEFAULT ('') FOR [acctnniqueid],
+	CONSTRAINT [DF_radacct_acctuniqueid] DEFAULT ('') FOR [acctuniqueid],
 	CONSTRAINT [DF_radacct_username] DEFAULT ('') FOR [username],
 	CONSTRAINT [DF_radacct_realm] DEFAULT ('') FOR [realm],
 	CONSTRAINT [DF_radacct_nasipaddress] DEFAULT ('') FOR [nasipaddress],
