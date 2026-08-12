@@ -27,6 +27,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/server/connection.h>
+#include <freeradius-devel/unlang/load_balance_priv.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/rb_expire.h>
 
@@ -2194,6 +2195,17 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_packet_type));
 				vp->vp_uint32 = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 				fr_pair_append(&request->reply_pairs, vp);
+			}
+
+			/*
+			 *	If the Access-Request got a challenge, AND the request doesn't have State, AND
+			 *	the challenge does have State, THEN try to load-balance future packets to the
+			 *	same destination.
+			 */
+			if (h->ctx.inst->track_load_balance &&
+			    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_state) &&
+			    fr_pair_find_by_da(&request->reply_pairs, NULL, attr_state)) {
+				(void) unlang_load_balance_persist(request);
 			}
 		}
 

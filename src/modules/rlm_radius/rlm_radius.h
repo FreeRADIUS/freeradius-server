@@ -74,6 +74,7 @@ struct rlm_radius_s {
 
 	fr_radius_require_ma_t	require_message_authenticator;	//!< Require Message-Authenticator in responses.
 	bool			*received_message_authenticator;	//!< Received Message-Authenticator in responses.
+	bool			track_load_balance;	//!< do we track load-balance state
 
 	uint32_t		*types;			//!< array of allowed packet types
 	uint32_t		status_check;  		//!< code of status-check type
