@@ -236,6 +236,8 @@ static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 		return;
 	}
 
+	RDEBUG2("Forcefully cancelling query %s", query_ctx->query_str);
+
 	/*
 	 *	The query_ctx needs to be parented by the treq so that it still exists
 	 *	when the cancel_mux callback is run.
