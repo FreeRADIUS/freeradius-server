@@ -1034,27 +1034,23 @@ _fr_dbuff_set(\
  *
  * @param[out] dbuff		dbuff to use for constraints checks.
  * @param[in] p			Position to set.
- * @return
- *	- 0	not advanced (p before dbuff start) or after dbuff end.
- *	- >0	the number of bytes the dbuff was trimmed by.
  */
-static inline ssize_t _fr_dbuff_set_end(fr_dbuff_t *dbuff, uint8_t const *p)
+static inline void _fr_dbuff_set_end(fr_dbuff_t *dbuff, uint8_t const *p)
 {
-	if (unlikely(p > dbuff->end)) return -(p - dbuff->end);
-	if (unlikely(p < dbuff->start)) return 0;
+#ifndef NDEBUG
+	fr_assert(p >= dbuff->start);
+	fr_assert(p <= dbuff->end);
+#else
+	if (!((p >= dbuff->start) && (p <= dbuff->end))) return;
+#endif
 
 	dbuff->end = UNCONST(uint8_t *, p);
-
-	return dbuff->end - p;
 }
 
 /** Set a new 'end' position in a dbuff or marker
  *
  * @param[out] _dst		dbuff to use for constraints checks.
  * @param[in] _end		Position to set.
- * @return
- *	- 0	not advanced (p before dbuff start) or after dbuff end.
- *	- >0	the number of bytes the dbuff was trimmed by.
  */
 #define fr_dbuff_set_end(_dst, _end) \
 _fr_dbuff_set_end(\
