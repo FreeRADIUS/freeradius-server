@@ -18,6 +18,12 @@ Directory, Apache Cassandra, Redis, OpenLDAP, and many more.  It is
 used daily to authenticate the Internet access for hundreds of millions
 of people, in sites ranging from 10 to 10 million+ users.
 
+## WARNING
+
+VERSION 4 IS IN DEVELOPMENT AND HAS NOT BEEN OFFICIALLY RELEASED. USE AT YOUR OWN RISK.
+
+Please wait for an official release before using version 4 (v4).
+
 ## Documentation
 
 Please see the [documentation](doc/) directory, which has full
