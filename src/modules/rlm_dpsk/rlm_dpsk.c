@@ -916,11 +916,6 @@ make_digest:
 	}
 
 update_attributes:
-	if (have_vlan) {
-		RDEBUG("Creating VLAN reply attributes for VLAN %u", vlan_id);
-		if (dpsk_add_reply_vlan(request, vlan_id) < 0) return RLM_MODULE_FAIL;
-	}
-
 	/*
 	 *	Always add the various attributes to the reply.
 	 */
