@@ -193,7 +193,7 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
  */
 void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
-	char			buffer[1024];
+	char			buffer[1024] = "";
 	fr_log_fd_event_ctx_t	*log_info = uctx;
 	fr_sbuff_t		sbuff;
 	fr_sbuff_marker_t	m_start, m_end;
