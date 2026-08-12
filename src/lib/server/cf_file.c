@@ -2030,13 +2030,15 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 		if (len > 16) {
 			ERROR("%s[%d]: Invalid syntax for 'catch' - unknown rcode '%s'",
 			      frame->filename, frame->lineno, p);
+		error:
+			talloc_free(name2);
 			return NULL;
 		}
 
 		if ((*ptr != '{') && !isspace((uint8_t) *ptr)) {
 			ERROR("%s[%d]: Invalid syntax for 'catch' - unexpected text at '%s'",
 			      frame->filename, frame->lineno, ptr);
-			return NULL;
+			goto error;
 		}
 
 		if (!name2) {
@@ -2047,8 +2049,7 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 		if (argc >= RLM_MODULE_NUMCODES) {
 			ERROR("%s[%d]: Invalid syntax for 'catch' - too many arguments at'%s'",
 			      frame->filename, frame->lineno, ptr);
-			talloc_free(name2);
-			return NULL;
+			goto error;
 		}
 
 		argv[argc++] = talloc_strndup(name2, p, len);
@@ -2056,10 +2057,9 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 
 	css = cf_section_alloc(parent, parent, "catch", name2);
 	if (!css) {
-		talloc_free(name2);
 		ERROR("%s[%d]: Failed allocating memory for section",
 		      frame->filename, frame->lineno);
-		return NULL;
+		goto error;
 	}
 	cf_filename_set(css, frame->filename);
 	cf_lineno_set(css, frame->lineno);
