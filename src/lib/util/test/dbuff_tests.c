@@ -505,6 +505,435 @@ static void test_dbuff_out(void)
 	TEST_CHECK(fr_dbuff_current(&marker1) - fr_dbuff_start(&dbuff1) == 4);
 }
 
+/** Test the child-dbuff macros: FR_DBUFF, FR_DBUFF_ABS, FR_DBUFF_BIND_CURRENT,
+ *  FR_DBUFF_BIND_CURRENT_ABS, FR_DBUFF_BIND_END_ABS and FR_DBUFF_MAX.
+ *
+ *  These differ only in where the child's 'start' pointer is set (parent
+ *  'current' vs parent 'start') and whether writing to the child advances the
+ *  parent's 'current' pointer, 'end' pointer, or neither.
+ */
+static void test_dbuff_child(void)
+{
+	fr_dbuff_t	dbuff;
+	fr_dbuff_t	child;
+	uint8_t		buff[16] = "";
+
+	TEST_CASE("FR_DBUFF: start bound to parent 'current', parent not advanced");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_advance(&dbuff, 4);
+	child = FR_DBUFF(&dbuff);
+	TEST_CHECK(fr_dbuff_start(&child) == fr_dbuff_current(&dbuff));
+	TEST_CHECK(fr_dbuff_current(&child) == fr_dbuff_current(&dbuff));
+	TEST_CHECK(fr_dbuff_used(&child) == 0);
+	TEST_CHECK(fr_dbuff_remaining(&child) == sizeof(buff) - 4);
+	TEST_CHECK(fr_dbuff_in_bytes(&child, 0xaa, 0xbb) == 2);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 4);			/* parent NOT advanced */
+
+	TEST_CASE("FR_DBUFF_ABS: start bound to parent 'start', parent not advanced");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_advance(&dbuff, 4);
+	child = FR_DBUFF_ABS(&dbuff);
+	TEST_CHECK(fr_dbuff_start(&child) == fr_dbuff_start(&dbuff));
+	TEST_CHECK(fr_dbuff_current(&child) == fr_dbuff_current(&dbuff));
+	TEST_CHECK(fr_dbuff_used(&child) == 4);			/* current - start */
+	TEST_CHECK(fr_dbuff_in_bytes(&child, 0xaa) == 1);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 4);			/* parent NOT advanced */
+
+	TEST_CASE("FR_DBUFF_BIND_CURRENT: writes advance parent 'current'");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_advance(&dbuff, 4);
+	child = FR_DBUFF_BIND_CURRENT(&dbuff);
+	TEST_CHECK(fr_dbuff_start(&child) == fr_dbuff_current(&dbuff));
+	TEST_CHECK(fr_dbuff_in_bytes(&child, 0xaa, 0xbb, 0xcc) == 3);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 7);			/* 4 + 3 */
+
+	TEST_CASE("FR_DBUFF_BIND_CURRENT_ABS: start bound to parent 'start', writes advance parent 'current'");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_advance(&dbuff, 4);
+	child = FR_DBUFF_BIND_CURRENT_ABS(&dbuff);
+	TEST_CHECK(fr_dbuff_start(&child) == fr_dbuff_start(&dbuff));
+	TEST_CHECK(fr_dbuff_used(&child) == 4);
+	TEST_CHECK(fr_dbuff_in_bytes(&child, 0xaa, 0xbb) == 2);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 6);			/* 4 + 2 */
+	TEST_CHECK(fr_dbuff_used(&child) == 6);			/* child start == parent start */
+
+	TEST_CASE("FR_DBUFF_BIND_END_ABS: writes advance parent 'end' (producer side)");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	child = FR_DBUFF_BIND_END_ABS(&dbuff);
+	TEST_CHECK(fr_dbuff_end(&dbuff) == buff + sizeof(buff));
+	TEST_CHECK(fr_dbuff_in_bytes(&child, 0x01, 0x02, 0x03, 0x04, 0x05) == 5);
+	TEST_CHECK(fr_dbuff_end(&dbuff) == buff + 5);		/* parent 'end' pulled back to producer position */
+	TEST_CHECK(fr_dbuff_remaining(&dbuff) == 5);		/* consumer can now read what was produced */
+
+	TEST_CASE("FR_DBUFF_MAX: caps available space, non-bind variant leaves parent alone");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	child = FR_DBUFF_MAX(&dbuff, 4);
+	TEST_CHECK(fr_dbuff_remaining(&child) == 4);
+	TEST_CHECK(fr_dbuff_in_bytes(&child, 0x01, 0x02, 0x03, 0x04) == 4);
+	TEST_CHECK(fr_dbuff_in_bytes(&child, 0x05) == -1);	/* capped: 1 byte short */
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 0);			/* parent NOT advanced */
+
+	TEST_CASE("FR_DBUFF_MAX: _max larger than remaining is clamped to remaining");
+	child = FR_DBUFF_MAX(&dbuff, 2 * sizeof(buff));
+	TEST_CHECK(fr_dbuff_remaining(&child) == sizeof(buff));
+}
+
+/** Test the measurement / accessor macros against both a dbuff and a marker.
+ *
+ *  Covers fr_dbuff_len, fr_dbuff_buff, fr_dbuff_end, fr_dbuff_ptr,
+ *  fr_dbuff_behind and fr_dbuff_ahead, which the existing tests never touch.
+ */
+static void test_dbuff_measure(void)
+{
+	fr_dbuff_t		dbuff;
+	fr_dbuff_marker_t	m;
+	uint8_t			buff[10] = "";
+
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+
+	TEST_CASE("dbuff accessors");
+	TEST_CHECK(fr_dbuff_len(&dbuff) == sizeof(buff));
+	TEST_CHECK(fr_dbuff_buff(&dbuff) == buff);
+	TEST_CHECK(fr_dbuff_start(&dbuff) == buff);
+	TEST_CHECK(fr_dbuff_current(&dbuff) == buff);
+	TEST_CHECK(fr_dbuff_end(&dbuff) == buff + sizeof(buff));
+	TEST_CHECK(fr_dbuff_ptr(&dbuff) == &dbuff);
+
+	TEST_CASE("marker behind then ahead of parent");
+	fr_dbuff_marker(&m, &dbuff);
+	fr_dbuff_advance(&dbuff, 6);
+	TEST_CHECK(fr_dbuff_behind(&m) == 6);			/* marker 6 bytes behind parent */
+	TEST_CHECK(fr_dbuff_ahead(&m) == 0);
+	fr_dbuff_advance(&m, 8);
+	TEST_CHECK(fr_dbuff_ahead(&m) == 2);			/* marker now 2 bytes ahead */
+	TEST_CHECK(fr_dbuff_behind(&m) == 0);
+
+	TEST_CASE("marker accessors resolve through parent");
+	TEST_CHECK(fr_dbuff_buff(&m) == buff);
+	TEST_CHECK(fr_dbuff_start(&m) == buff);
+	TEST_CHECK(fr_dbuff_end(&m) == buff + sizeof(buff));
+	TEST_CHECK(fr_dbuff_len(&m) == sizeof(buff));
+	TEST_CHECK(fr_dbuff_ptr(&m) == &dbuff);
+	TEST_CHECK(fr_dbuff_current(&m) == buff + 8);
+	TEST_CHECK(fr_dbuff_used(&m) == 8);
+	TEST_CHECK(fr_dbuff_remaining(&m) == 2);
+}
+
+/** Test fr_dbuff_set (by size_t, pointer, marker) and fr_dbuff_set_end.
+ *
+ *  The backing array is deliberately larger than the dbuff window so that we
+ *  can form a pointer past the dbuff 'end' without forming a pointer outside
+ *  the real allocation (which would be undefined behaviour).
+ */
+static void test_dbuff_set(void)
+{
+	uint8_t			backing[32];
+	fr_dbuff_t		dbuff;
+	fr_dbuff_marker_t	m;
+
+	TEST_CASE("fr_dbuff_set by size_t offset, pointer, and out-of-range");
+	fr_dbuff_init(&dbuff, backing, 10);
+	TEST_CHECK(fr_dbuff_set(&dbuff, (size_t)5) == 5);
+	TEST_CHECK(fr_dbuff_current(&dbuff) == backing + 5);
+	TEST_CHECK(fr_dbuff_set(&dbuff, backing + 2) == -3);	/* moving backwards returns the signed diff */
+	TEST_CHECK(fr_dbuff_current(&dbuff) == backing + 2);
+	TEST_CHECK(fr_dbuff_set(&dbuff, backing + 20) == -10);	/* past 'end': bytes over, no move */
+	TEST_CHECK(fr_dbuff_current(&dbuff) == backing + 2);
+
+	TEST_CASE("fr_dbuff_set from a marker");
+	fr_dbuff_set_to_start(&dbuff);
+	fr_dbuff_marker(&m, &dbuff);
+	fr_dbuff_advance(&m, 7);
+	TEST_CHECK(fr_dbuff_set(&dbuff, &m) == 7);
+	TEST_CHECK(fr_dbuff_current(&dbuff) == fr_dbuff_current(&m));
+
+	TEST_CASE("fr_dbuff_set_end trims the 'end' pointer");
+	fr_dbuff_init(&dbuff, backing, 10);
+	fr_dbuff_advance(&dbuff, 3);
+	fr_dbuff_set_end(&dbuff, backing + 6);
+	TEST_CHECK(fr_dbuff_end(&dbuff) == backing + 6);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff) == 3);
+#ifdef NDEBUG
+	fr_dbuff_set_end(&dbuff, backing + 8);		/* beyond current 'end': asserts in debug builds */
+#endif
+	TEST_CHECK(fr_dbuff_end(&dbuff) == backing + 6);
+}
+
+/** Test fr_dbuff_advance_extend against a talloc-backed (extensible) dbuff. */
+static void test_dbuff_advance_extend(void)
+{
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_talloc_t	tctx;
+
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 16) == &dbuff);
+
+	TEST_CASE("advance within the initial allocation");
+	TEST_CHECK(fr_dbuff_advance_extend(&dbuff, 2) == 2);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 2);
+
+	TEST_CASE("advance past the current size triggers an extend");
+	TEST_CHECK(fr_dbuff_advance_extend(&dbuff, 10) == 10);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 12);
+
+	TEST_CASE("advance past max fails and does not advance");
+	TEST_CHECK(fr_dbuff_advance_extend(&dbuff, 10) < 0);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 12);
+
+	fr_dbuff_free_talloc(&dbuff);
+}
+
+/** Test fr_dbuff_memset. */
+static void test_dbuff_memset(void)
+{
+	fr_dbuff_t	dbuff;
+	uint8_t		buff[8] = "";
+
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+
+	TEST_CASE("memset writes and advances");
+	TEST_CHECK(fr_dbuff_memset(&dbuff, 0xa5, 5) == 5);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 5);
+	for (size_t i = 0; i < 5; i++) TEST_CHECK(buff[i] == 0xa5);
+
+	TEST_CASE("memset that does not fit returns bytes needed and does not advance");
+	TEST_CHECK(fr_dbuff_memset(&dbuff, 0x00, 5) == -2);	/* only 3 left, need 5 */
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 5);
+}
+
+/** Test fr_dbuff_in_memcpy, fr_dbuff_in_memcpy_partial and fr_dbuff_in_bytes_partial. */
+static void test_dbuff_in_memcpy(void)
+{
+	uint8_t			buff[8] = "";
+	uint8_t const		src[] = { 0x11, 0x22, 0x33, 0x44 };
+	uint8_t			sbuf[4] = { 0x0a, 0x0b, 0x0c, 0x0d };
+	char const		*str = "abc";
+	fr_dbuff_t		dbuff;
+	fr_dbuff_t		src_dbuff;
+
+	TEST_CASE("exact copy from a byte buffer");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+
+	/*
+	 *	Note _fr_dbuff_in_memcpy(), to avoid false positive complaints with -Werror=stringop-overread 
+	 *
+	 *	We could suppress the warn
+	 */
+	TEST_CHECK(_fr_dbuff_in_memcpy(_fr_dbuff_current_ptr(&dbuff), &dbuff, src, sizeof(src)) == 4);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 4);
+	TEST_CHECK(memcmp(buff, src, 4) == 0);
+
+	TEST_CASE("copy from a C string with SIZE_MAX uses strlen");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	TEST_CHECK(fr_dbuff_in_memcpy(&dbuff, str, SIZE_MAX) == 3);
+	TEST_CHECK(memcmp(buff, str, 3) == 0);
+
+	TEST_CASE("copy that does not fit fails entirely and does not advance");
+	fr_dbuff_init(&dbuff, buff, 2);
+	TEST_CHECK(_fr_dbuff_in_memcpy(_fr_dbuff_current_ptr(&dbuff), &dbuff, src, sizeof(src)) == -2);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 0);
+
+	TEST_CASE("copy from another dbuff, source is not advanced");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_init(&src_dbuff, sbuf, sizeof(sbuf));
+	TEST_CHECK(fr_dbuff_in_memcpy(&dbuff, &src_dbuff, 3) == 3);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 3);
+	TEST_CHECK(fr_dbuff_used(&src_dbuff) == 0);
+	TEST_CHECK(memcmp(buff, sbuf, 3) == 0);
+
+	TEST_CASE("SIZE_MAX with a dbuff source copies the source's remaining bytes");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_init(&src_dbuff, sbuf, sizeof(sbuf));
+	TEST_CHECK(_fr_dbuff_in_memcpy_dbuff(_fr_dbuff_current_ptr(&dbuff), &dbuff, &src_dbuff.p, &src_dbuff,  SIZE_MAX) == 4);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 4);
+
+	TEST_CASE("partial copy writes as much as fits and reports it");
+	fr_dbuff_init(&dbuff, buff, 2);
+	TEST_CHECK(_fr_dbuff_in_memcpy_partial(_fr_dbuff_current_ptr(&dbuff), &dbuff, src, sizeof(src)) == 2);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 2);
+	TEST_CHECK(memcmp(buff, src, 2) == 0);
+
+	TEST_CASE("in_bytes_partial truncates to the available space");
+	fr_dbuff_init(&dbuff, buff, 3);
+	TEST_CHECK(fr_dbuff_in_bytes_partial(&dbuff, 0xde, 0xad, 0xbe, 0xef) == 3);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 3);
+}
+
+/** Test fr_dbuff_marker_release, fr_dbuff_marker_release_behind and _ahead. */
+static void test_dbuff_marker_release(void)
+{
+	uint8_t			buff[16];
+	fr_dbuff_t		dbuff;
+	fr_dbuff_marker_t	m1, m2;
+
+	TEST_CASE("plain release trims the marker list back to the previous marker");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_marker(&m1, &dbuff);
+	fr_dbuff_marker(&m2, &dbuff);
+	TEST_CHECK(dbuff.m == &m2);				/* newest marker at the head */
+	fr_dbuff_marker_release(&m2);
+	TEST_CHECK(dbuff.m == &m1);
+	fr_dbuff_marker_release(&m1);
+	TEST_CHECK(dbuff.m == NULL);
+
+	TEST_CASE("release_behind returns how far the marker trailed the parent");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_marker(&m1, &dbuff);
+	fr_dbuff_advance(&dbuff, 4);
+	fr_dbuff_marker(&m2, &dbuff);
+	fr_dbuff_advance(&dbuff, 3);				/* parent at 7, m2 at 4 */
+	TEST_CHECK(fr_dbuff_marker_release_behind(&m2) == 3);
+	TEST_CHECK(dbuff.m == &m1);
+
+	TEST_CASE("release_ahead returns how far the marker led the parent");
+	fr_dbuff_set(&m1, (size_t)10);				/* m1 at 10, parent at 7 */
+	TEST_CHECK(fr_dbuff_marker_release_ahead(&m1) == 3);
+	TEST_CHECK(dbuff.m == NULL);
+}
+
+/** Test fr_dbuff_out_int64v, which sign-extends based on the most significant bit. */
+static void test_dbuff_out_int64v(void)
+{
+	uint8_t const	pos[] = { 0x7f, 0xff };			/* MSB clear -> positive */
+	uint8_t const	neg[] = { 0xff, 0x00 };			/* MSB set   -> negative */
+	fr_dbuff_t	dbuff;
+	int64_t		val;
+
+	TEST_CASE("positive two-byte value");
+	fr_dbuff_init(&dbuff, pos, sizeof(pos));
+	TEST_CHECK(fr_dbuff_out_int64v(&val, &dbuff, 2) == 2);
+	TEST_CHECK(val == 0x7fff);
+
+	TEST_CASE("negative two-byte value is sign extended");
+	fr_dbuff_init(&dbuff, neg, sizeof(neg));
+	TEST_CHECK(fr_dbuff_out_int64v(&val, &dbuff, 2) == 2);
+	TEST_CHECK(val == -256);
+
+	TEST_CASE("single positive byte");
+	fr_dbuff_init(&dbuff, pos, sizeof(pos));
+	TEST_CHECK(fr_dbuff_out_int64v(&val, &dbuff, 1) == 1);
+	TEST_CHECK(val == 0x7f);
+
+	TEST_CASE("not enough data returns bytes needed");
+	fr_dbuff_init(&dbuff, pos, 1);
+	TEST_CHECK(fr_dbuff_out_int64v(&val, &dbuff, 2) == -1);
+}
+
+/** Test fr_dbuff_shift moves unconsumed content to the front of the buffer. */
+static void test_dbuff_shift(void)
+{
+	uint8_t		buff[8] = "";
+	fr_dbuff_t	dbuff;
+
+	memcpy(buff, "ABCDEFGH", sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_advance(&dbuff, 3);				/* consume "ABC" */
+
+	TEST_CASE("shift discards consumed bytes and moves the rest down");
+	TEST_CHECK(fr_dbuff_shift(&dbuff, 3) == 3);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 0);
+	TEST_CHECK(memcmp(buff, "DEFGH", 5) == 0);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff) == 5);		/* 'end' pulled down by the shift */
+}
+
+/** Test fr_dbuff_update repoints the dbuff and its markers after a buffer move. */
+static void test_dbuff_update(void)
+{
+	uint8_t			buff[8] = "";
+	uint8_t			newbuff[8] = "";
+	fr_dbuff_t		dbuff;
+	fr_dbuff_marker_t	m;
+
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_advance(&dbuff, 4);
+	fr_dbuff_marker(&m, &dbuff);				/* marker at offset 4 */
+	fr_dbuff_set_to_start(&dbuff);
+	fr_dbuff_advance(&dbuff, 2);				/* dbuff 'current' at offset 2 */
+
+	TEST_CASE("relative offsets are preserved against the new buffer");
+	fr_dbuff_update(&dbuff, newbuff, sizeof(newbuff));
+	TEST_CHECK(fr_dbuff_buff(&dbuff) == newbuff);
+	TEST_CHECK(fr_dbuff_start(&dbuff) == newbuff);
+	TEST_CHECK(fr_dbuff_current(&dbuff) == newbuff + 2);
+	TEST_CHECK(fr_dbuff_end(&dbuff) == newbuff + sizeof(newbuff));
+	TEST_CHECK(fr_dbuff_current(&m) == newbuff + 4);	/* marker offset preserved */
+}
+
+/** Test fr_dbuff_trim_talloc, fr_dbuff_reset_talloc and fr_dbuff_free_talloc. */
+static void test_dbuff_trim_reset_talloc(void)
+{
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_talloc_t	tctx;
+
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 32, 128) == &dbuff);
+	TEST_CHECK(talloc_array_length(dbuff.buff) == 32);
+	TEST_CHECK(fr_dbuff_in_bytes(&dbuff, 0x01, 0x02, 0x03, 0x04) == 4);
+
+	TEST_CASE("trim to content length (SIZE_MAX)");
+	TEST_CHECK(fr_dbuff_trim_talloc(&dbuff, SIZE_MAX) == 0);
+	TEST_CHECK(talloc_array_length(dbuff.buff) == 4);
+	TEST_CHECK(fr_dbuff_len(&dbuff) == 4);
+
+	TEST_CASE("trim to an explicit length");
+	TEST_CHECK(fr_dbuff_trim_talloc(&dbuff, 2) == 0);
+	TEST_CHECK(talloc_array_length(dbuff.buff) == 2);
+
+	TEST_CASE("reset restores the initial length and clears the position");
+	TEST_CHECK(fr_dbuff_reset_talloc(&dbuff) == 0);
+	TEST_CHECK(talloc_array_length(dbuff.buff) == 32);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 0);
+
+	TEST_CASE("free_talloc releases the buffer");
+	fr_dbuff_free_talloc(&dbuff);
+	TEST_CHECK(dbuff.buff == NULL);
+}
+
+/** Test FR_DBUFF_TMP, the compound-literal dbuff. */
+static void test_dbuff_tmp(void)
+{
+	uint8_t		buff[8] = "";
+	fr_dbuff_t	tmp = FR_DBUFF_TMP(buff, sizeof(buff));
+
+	TEST_CASE("compound literal points at the supplied buffer and is writable");
+	TEST_CHECK(fr_dbuff_start(&tmp) == buff);
+	TEST_CHECK(fr_dbuff_current(&tmp) == buff);
+	TEST_CHECK(fr_dbuff_end(&tmp) == buff + sizeof(buff));
+	TEST_CHECK(fr_dbuff_in_bytes(&tmp, 0x01, 0x02) == 2);
+	TEST_CHECK(buff[0] == 0x01);
+	TEST_CHECK(buff[1] == 0x02);
+}
+
+/** Test the extension-request API: fr_dbuff_extend, fr_dbuff_extend_lowat,
+ *  fr_dbuff_is_extendable and fr_dbuff_was_extended.
+ */
+static void test_dbuff_extend(void)
+{
+	uint8_t				buff[8];
+	fr_dbuff_t			dbuff;
+	fr_dbuff_uctx_talloc_t		tctx;
+	fr_dbuff_extend_status_t	status;
+
+	TEST_CASE("fixed buffer: extend returns remaining and never grows");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	TEST_CHECK(fr_dbuff_extend(&dbuff) == sizeof(buff));
+
+	TEST_CASE("fixed buffer at end: cannot satisfy lowat");
+	status = FR_DBUFF_EXTENDABLE;
+	fr_dbuff_advance(&dbuff, sizeof(buff));
+	TEST_CHECK(fr_dbuff_extend_lowat(&status, &dbuff, 4) == 0);
+	TEST_CHECK(fr_dbuff_is_extendable(status) == 0);
+	TEST_CHECK(fr_dbuff_was_extended(status) == 0);
+
+	TEST_CASE("talloc buffer: extend grows and flags report it");
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 64) == &dbuff);
+	status = FR_DBUFF_EXTENDABLE;
+	fr_dbuff_advance(&dbuff, 4);				/* remaining now 0 */
+	TEST_CHECK(fr_dbuff_extend_lowat(&status, &dbuff, 8) >= 8);
+	TEST_CHECK(fr_dbuff_is_extendable(status));
+	TEST_CHECK(fr_dbuff_was_extended(status));
+
+	fr_dbuff_free_talloc(&dbuff);
+}
+
 TEST_LIST = {
 	/*
 	 *	Basic tests
@@ -521,6 +950,22 @@ TEST_LIST = {
 	{ "fr_dbuff_fd_max",				test_dbuff_fd_max },
 	{ "fr_dbuff_out",				test_dbuff_out },
 
+	/*
+	 *	Child dbuffs, accessors, positioning and lifecycle
+	 */
+	{ "fr_dbuff_child",				test_dbuff_child },
+	{ "fr_dbuff_measure",				test_dbuff_measure },
+	{ "fr_dbuff_set",				test_dbuff_set },
+	{ "fr_dbuff_advance_extend",			test_dbuff_advance_extend },
+	{ "fr_dbuff_memset",				test_dbuff_memset },
+	{ "fr_dbuff_in_memcpy",				test_dbuff_in_memcpy },
+	{ "fr_dbuff_marker_release",			test_dbuff_marker_release },
+	{ "fr_dbuff_out_int64v",			test_dbuff_out_int64v },
+	{ "fr_dbuff_shift",				test_dbuff_shift },
+	{ "fr_dbuff_update",				test_dbuff_update },
+	{ "fr_dbuff_trim_reset_talloc",			test_dbuff_trim_reset_talloc },
+	{ "fr_dbuff_tmp",				test_dbuff_tmp },
+	{ "fr_dbuff_extend",				test_dbuff_extend },
 
 	TEST_TERMINATOR
 };
