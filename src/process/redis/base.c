@@ -726,6 +726,23 @@ free:
 	talloc_free(local);
 }
 
+/** Send a Cluster-Failed message to a worker
+ */
+static unlang_action_t process_redis_return_failed(request_t *request, process_redis_cluster_t *cluster,
+						   uint32_t worker_id)
+{
+	fr_pair_t	*vp;
+
+	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_cluster_id);
+	vp->vp_uint16 = cluster->cluster_id;
+
+	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_packet_type);
+	vp->vp_uint32 = FR_REDIS_CLUSTER_MAP_FAIL;
+
+	fr_coord_to_worker_reply_send(request, worker_id);
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
 static unlang_action_t redis_cluster_map_get_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	process_redis_rctx_t	*rctx = talloc_get_type_abort(uctx, process_redis_rctx_t);
@@ -810,7 +827,7 @@ static unlang_action_t redis_cluster_map_get_resume(unlang_result_t *p_result, r
 				false, redis_cluster_map_get_retry, cluster) < 0) {
 			RERROR("Failed setting up retry event");
 		};
-		RETURN_UNLANG_FAIL;
+		return process_redis_return_failed(request, cluster, rctx->worker_id);
 	}
 
 	/*
@@ -1018,6 +1035,14 @@ RECV(cluster_map_bootstrap)
 
 			return UNLANG_ACTION_YIELD;
 		}
+
+		/*
+		 *	Cluster map fetching failed, and the retry timer is armed.
+		 *	Tell the caller that the map has failed.
+		 */
+		if (fr_timer_armed(cluster->ev)) {
+			return process_redis_return_failed(request, cluster, rctx->worker_id);
+		}
 	}
 
 	MEM(cluster = talloc_zero(thread, process_redis_cluster_t));
@@ -1091,6 +1116,14 @@ RECV(cluster_map_get)
 	rctx->cluster = fr_rb_find(&rctx->thread->cluster_by_id, &find);
 	if (!rctx->cluster) {
 		return UNLANG_ACTION_FAIL;
+	}
+
+	/*
+	 *	Cluster map fetching failed, and the retry timer is armed.
+	 *	Tell the caller that the map has failed.
+	 */
+	if (fr_timer_armed(rctx->cluster->ev)) {
+		return process_redis_return_failed(request, rctx->cluster, rctx->worker_id);
 	}
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_force_update);
