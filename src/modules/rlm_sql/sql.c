@@ -219,7 +219,7 @@ static unlang_action_t sql_trunk_query_start(UNUSED unlang_result_t *p_result,
 
 /** Cancel an SQL query submitted on a trunk
  */
-static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+static void sql_trunk_query_cancel(request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	trunk_request_t	*treq;
