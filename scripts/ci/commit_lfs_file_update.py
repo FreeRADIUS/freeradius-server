@@ -25,8 +25,8 @@ repo = gh.get_repo(repo_env)
 
 try:
 	fc = repo.get_contents(filename, branch_env)
-	repo.update_file(fc.path, "Scheduled fuzzing: Update " + fc.path, contents, fc.sha, branch=branch_env)
+	repo.update_file(fc.path, "Scheduled fuzzing: Update " + fc.path + " [skip ci]", contents, fc.sha, branch=branch_env)
 except UnknownObjectException:
-	repo.create_file(filename, "Scheduled fuzzing: Add " + filename, contents, branch=branch_env)
+	repo.create_file(filename, "Scheduled fuzzing: Add " + filename + " [skip ci]", contents, branch=branch_env)
 
 print("Committed")
