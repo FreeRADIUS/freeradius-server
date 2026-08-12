@@ -1255,6 +1255,7 @@ void connection_signal_reconnect(connection_t *conn, connection_reason_t reason)
 		 		break;
 		 	}
 		 	connection_state_enter_closed(conn);
+			connection_signal_halt(conn);
 		 	break;
 		}
 		FALL_THROUGH;
