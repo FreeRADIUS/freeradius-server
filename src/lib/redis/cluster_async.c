@@ -510,6 +510,7 @@ fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *reque
 		 *	The coordinator reported a failed cluster.
 		 */
 		*rcode = REDIS_ASYNC_RCODE_FAIL;
+		fr_strerror_const("Cluster failed");
 		talloc_free(cmd);
 		return NULL;
 
@@ -983,6 +984,7 @@ do { \
  */
 int fr_redis_ct_map_fail(fr_redis_ct_t *rtcluster, UNUSED fr_pair_list_t const *list)
 {
+	DEBUG3("Cluster %d failed", rtcluster->cluster_id);
 	rtcluster->state = CLUSTER_FAIL;
 	return 0;
 }
@@ -1078,6 +1080,8 @@ fr_redis_async_rcode_t fr_redis_ct_map_get(fr_redis_ct_t *rtcluster, fr_coord_wo
 	 *	If the cluster was updated less than 1 sec ago, don't ask.
 	 */
 	if (((fr_time_to_sec(fr_time()) == fr_time_to_sec(rtcluster->map_updated))) && !force) return REDIS_ASYNC_RCODE_SUCCESS;
+
+	DEBUG3("Requesting updated map for cluster %d", rtcluster->cluster_id);
 
 	local = talloc_new(NULL);
 	fr_pair_list_init(&list);
