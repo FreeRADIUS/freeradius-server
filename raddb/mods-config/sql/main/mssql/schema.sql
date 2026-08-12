@@ -127,6 +127,9 @@ CREATE INDEX [Class] ON [radacct]([Class]) ON [PRIMARY]
 GO
 
 /* For use by onoff */
+SET QUOTED_IDENTIFIER ON
+GO
+
 CREATE INDEX [RadacctBulkClose] ON [radacct]([NASIPAddress],[AcctStartTime]) WHERE [AcctStopTime] IS NULL ON [PRIMARY]
 GO
 
