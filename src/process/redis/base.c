@@ -683,11 +683,14 @@ static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, r
 			node->trunk = fr_redis_trunk_alloc(cluster->rtcluster, &node->io_conf, &node->trigger_args,
 							   NULL, NULL, false);
 			if (fr_redis_command_literal_add(nrctx->cmds, "INFO SERVER", redis_cluster_info_server_results,
-							 node) != FR_REDIS_PIPELINE_OK) return UNLANG_ACTION_FAIL;
+							 node) != FR_REDIS_PIPELINE_OK) {
+			fail:
+				fr_fatal_assert_fail("Failed adding command to Redis command set");
+			}
 		}
 
 		if (fr_redis_command_literal_add(nrctx->cmds, "CLUSTER INFO", redis_cluster_info_results,
-						 nrctx) != FR_REDIS_PIPELINE_OK) return UNLANG_ACTION_FAIL;
+						 nrctx) != FR_REDIS_PIPELINE_OK) goto fail;
 
 		if (redis_command_set_enqueue(node->trunk, nrctx->cmds) != FR_REDIS_PIPELINE_OK) {
 			RERROR("Unable to enqueue request on node %s:%d", node->io_conf.hostname,
@@ -998,29 +1001,33 @@ RECV(cluster_map_bootstrap)
 	rctx->worker_id = vp ? vp->vp_int32 : 0;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_bootstrap_node);
-	if (!vp) return UNLANG_ACTION_FAIL;
+	fr_fatal_assert_msg(vp, "Missing %s", attr_redis_bootstrap_node->name);
 
 	port_vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_bootstrap_port);
 
 	if (fr_inet_pton_port(&find.addr, &find.port, vp->vp_strvalue, vp->vp_length,
-			      AF_UNSPEC, true, true) < 0) return UNLANG_ACTION_FAIL;
+			      AF_UNSPEC, true, true) < 0) {
+		fr_fatal_assert_fail("Unable to parse bootstrap node");
+	}
 
 	if (find.port == 0) {
-		if (!port_vp) return UNLANG_ACTION_FAIL;
+		fr_fatal_assert_msg(port_vp, "Missing %s", attr_redis_bootstrap_port->name);
 		find.port = port_vp->vp_uint16;
 	}
 
 	cluster = fr_rb_find(&thread->cluster_by_server, &find);
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_max_nodes);
-	if (!vp) return UNLANG_ACTION_FAIL;
+	fr_fatal_assert_msg(vp, "Missing %s", attr_redis_max_nodes->name);
 
 	if (cluster) {
 		/*
 		 *	If this is a bootstrap call using nodes matching an existing
 		 *	cluster, check the max_nodes match or array sizes will get messy.
 		 */
-		if (vp->vp_uint8 != cluster->conf->max_nodes) return UNLANG_ACTION_FAIL;
+		fr_fatal_assert_msg(vp->vp_uint8 == cluster->conf->max_nodes,
+				    "Max nodes (%d) mis-match with existing cluster configured with %d",
+				    vp->vp_uint8, cluster->conf->max_nodes);
 
 		/*
 		 *	We already have data for this cluster, just return it.
@@ -1056,7 +1063,7 @@ RECV(cluster_map_bootstrap)
 		 *	Cluster map fetching failed, and the retry timer is armed.
 		 *	Tell the caller that the map has failed.
 		 */
-		if (fr_timer_armed(cluster->ev)) {
+		if (cluster->failed) {
 			return process_redis_return_failed(request, cluster, rctx->worker_id);
 		}
 	}
@@ -1091,7 +1098,7 @@ RECV(cluster_map_bootstrap)
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_use_tls);
 	if (vp) {
 		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_tls_conf);
-		if (!vp) return UNLANG_ACTION_FAIL;
+		fr_fatal_assert_msg(vp, "Missing %s when TLS is enabled", attr_redis_tls_conf->name);
 		conf->use_tls = true;
 		tls_conf = (CONF_SECTION *)(uintptr_t)vp->vp_uint64;
 	}
@@ -1105,7 +1112,7 @@ RECV(cluster_map_bootstrap)
 	while ((vp = fr_pair_find_by_da(&request->request_pairs, vp, attr_redis_bootstrap_node))) {
 		if (process_redis_cluster_node_add(cluster, cluster, inst, conf, vp, port_vp) < 0) {
 			talloc_free(cluster);
-			return UNLANG_ACTION_FAIL;
+			fr_fatal_assert_fail("Failed adding cluster node to list");
 		}
 	}
 	fr_rb_insert(&thread->cluster_by_server, cluster);
@@ -1126,13 +1133,12 @@ RECV(cluster_map_get)
 	rctx->worker_id = vp ? vp->vp_int32 : 0;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_cluster_id);
-	if (!vp) return UNLANG_ACTION_FAIL;
+	fr_fatal_assert_msg(vp, "Missing %s", attr_redis_cluster_id->name);
 
 	find.cluster_id = vp->vp_uint16;
 	rctx->cluster = fr_rb_find(&rctx->thread->cluster_by_id, &find);
-	if (!rctx->cluster) {
-		return UNLANG_ACTION_FAIL;
-	}
+	fr_fatal_assert_msg(rctx->cluster, "Update requested for cluster %d which has not been bootstrapped",
+			    vp->vp_uint16);
 
 	/*
 	 *	Cluster map fetching failed, and the retry timer is armed.
