@@ -1279,6 +1279,7 @@ static const size_t cf_file_extensions_len = NUM_ELEMENTS(cf_file_extensions);
 
 static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *ptr, bool required, bool relative)
 {
+	bool do_glob = false;
 	char const *value;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 
@@ -1307,6 +1308,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			ERROR("%s[%d]: Invalid character in filename for $INCLUDE", frame->filename, frame->lineno);
 			return -1;
 		}
+
+		do_glob |= (*ptr == '*');
 
 		ptr++;
 	}
@@ -1353,7 +1356,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		}
 	}
 
-	if (strchr(value, '*') != 0) {
+	if (do_glob) {
 #ifndef HAVE_GLOB_H
 		ERROR("%s[%d]: Filename globbing is not supported.", frame->filename, frame->lineno);
 		return -1;
