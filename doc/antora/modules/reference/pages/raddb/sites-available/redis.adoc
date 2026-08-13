@@ -34,6 +34,16 @@ retry_interval:: Time between retrying a failed map fetch
 
 ----
 
+refresh_interval:: Time between refreshing a cluster map
+
+Defaults to not set.  When not set, cluster maps will only
+be refreshed following a request from a worker.
+
+----
+#		refresh_interval = 600s
+
+----
+
 pool:: Connection pool settings
 
 The `redis` virtual server uses pool configuration

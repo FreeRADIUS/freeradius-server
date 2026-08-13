@@ -34,6 +34,14 @@ server redis {
 #		retry_interval = 30s
 
 		#
+		#  refresh_interval:: Time between refreshing the cluster map
+		#
+		#  Defaults to not set.  When not set, cluster maps will only
+		#  be refreshed following a request from a worker.
+		#
+#		refresh_interval = 600s
+
+		#
 		#  pool:: Connection pool settings
 		#
 		#  The `redis` virtual server uses pool configuration

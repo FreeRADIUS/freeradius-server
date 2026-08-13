@@ -86,7 +86,8 @@ typedef struct {
 	fr_time_t			last_update;		//!< When was the map last updated.
 	fr_rb_tree_t			pending;		//!< Requests waiting for custer map update.
 	fr_coord_pair_t			*coord_pair;		//!< The coord_pair which requested this cluster map.
-	fr_timer_t			*ev;			//!< Timer event for retry.
+	bool				failed;			//!< Has the cluster failed.
+	fr_timer_t			*ev;			//!< Timer event for retry / refresh.
 } process_redis_cluster_t;
 
 typedef struct {
@@ -128,6 +129,7 @@ typedef struct {
 	trunk_conf_t			trunk_conf;
 	fr_time_delta_t			timeout;
 	fr_time_delta_t			retry_interval;
+	fr_time_delta_t			refresh_interval;
 	char const			*inst_name;
 } process_redis_t;
 
@@ -141,6 +143,7 @@ static const conf_parser_t config[] = {
 	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, process_redis_t, trunk_conf, trunk_config) },
 	{ FR_CONF_OFFSET("timeout", process_redis_t, timeout), .dflt = "5s" },
 	{ FR_CONF_OFFSET("retry_interval", process_redis_t, retry_interval), .dflt = "30s" },
+	{ FR_CONF_OFFSET("refresh_interval", process_redis_t, refresh_interval) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -704,14 +707,18 @@ static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, r
 	return UNLANG_ACTION_FAIL;
 }
 
-static void redis_cluster_map_get_retry(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
+static void redis_cluster_map_get_refetch(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	process_redis_cluster_t	*cluster = talloc_get_type_abort(uctx, process_redis_cluster_t);
 	fr_pair_list_t		list;
 	fr_pair_t		*vp;
 	TALLOC_CTX		*local = talloc_new(NULL);
 
-	DEBUG2("Retrying fetch of cluster map");
+	if (cluster->failed) {
+		DEBUG2("Retrying fetch of cluster map");
+	} else {
+		DEBUG2("Refreshing cluster map");
+	}
 
 	fr_pair_list_init(&list);
 	fr_pair_list_append_by_da(local, vp, &list, attr_redis_packet_type, (uint32_t)FR_REDIS_CLUSTER_MAP_GET, false);
@@ -824,8 +831,9 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 	if (fr_dlist_num_elements(&rctx->rctx_list) < 1) {
 		RERROR("No node returned a valid cluster map");
 	fail:
+		cluster->failed = true;
 		if (fr_timer_in(cluster, rctx->thread->el->tl, &cluster->ev, rctx->inst->retry_interval,
-				false, redis_cluster_map_get_retry, cluster) < 0) {
+				false, redis_cluster_map_get_refetch, cluster) < 0) {
 			RERROR("Failed setting up retry event");
 		};
 		return process_redis_return_failed(request, cluster, rctx->worker_id);
@@ -894,6 +902,7 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_cluster_id);
 	vp->vp_uint16 = cluster->cluster_id;
 	cluster->fetching = false;
+	cluster->failed = false;
 	cluster->last_update = fr_time();
 
 	fr_pair_list_copy(request->reply_ctx, &request->reply_pairs, list);
@@ -902,6 +911,12 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 	vp->vp_uint32 = FR_REDIS_CLUSTER_MAP_UPDATE;
 
 	fr_coord_to_worker_reply_broadcast(request);
+
+	if ((fr_time_delta_ispos(rctx->inst->refresh_interval)) &&
+	    (fr_timer_in(cluster, rctx->thread->el->tl, &cluster->ev, rctx->inst->refresh_interval,
+			false, redis_cluster_map_get_refetch, cluster) < 0)) {
+		RERROR("Failed setting up refresh event");
+	}
 
 	if (fr_rb_num_elements(&cluster->pending) == 0) return UNLANG_ACTION_CALCULATE_RESULT;
 
