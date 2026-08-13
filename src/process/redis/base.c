@@ -661,6 +661,49 @@ static void redis_cluster_map_get_timeout(UNUSED fr_timer_list_t *el, UNUSED fr_
 	fr_redis_command_set_cancel(nrctx->cmds);
 }
 
+static void redis_cluster_map_get_refetch(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
+{
+	process_redis_cluster_t	*cluster = talloc_get_type_abort(uctx, process_redis_cluster_t);
+	fr_pair_list_t		list;
+	fr_pair_t		*vp;
+	TALLOC_CTX		*local = talloc_new(NULL);
+
+	if (cluster->failed) {
+		DEBUG2("Retrying fetch of cluster map");
+	} else {
+		DEBUG2("Refreshing cluster map");
+	}
+
+	fr_pair_list_init(&list);
+	fr_pair_list_append_by_da(local, vp, &list, attr_redis_packet_type, (uint32_t)FR_REDIS_CLUSTER_MAP_GET, false);
+	if (!vp) goto free;
+
+	fr_pair_list_append_by_da(local, vp, &list, attr_redis_cluster_id, cluster->cluster_id, false);
+	if (!vp) goto free;
+
+	fr_coord_pair_coord_request_start(cluster->coord_pair, &list, now);
+
+free:
+	talloc_free(local);
+}
+
+/** Send a Cluster-Failed message to a worker
+ */
+static unlang_action_t process_redis_return_failed(request_t *request, process_redis_cluster_t *cluster,
+						   uint32_t worker_id)
+{
+	fr_pair_t	*vp;
+
+	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_cluster_id);
+	vp->vp_uint16 = cluster->cluster_id;
+
+	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_packet_type);
+	vp->vp_uint32 = FR_REDIS_CLUSTER_MAP_FAIL;
+
+	fr_coord_to_worker_reply_send(request, worker_id);
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
 static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	process_redis_rctx_t	*rctx = talloc_get_type_abort(uctx, process_redis_rctx_t);
@@ -707,50 +750,13 @@ static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, r
 	if (fr_dlist_num_elements(&rctx->rctx_list) > 0) return UNLANG_ACTION_YIELD;
 
 	RERROR("Unable to query any cluster node");
-	return UNLANG_ACTION_FAIL;
-}
 
-static void redis_cluster_map_get_refetch(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
-{
-	process_redis_cluster_t	*cluster = talloc_get_type_abort(uctx, process_redis_cluster_t);
-	fr_pair_list_t		list;
-	fr_pair_t		*vp;
-	TALLOC_CTX		*local = talloc_new(NULL);
-
-	if (cluster->failed) {
-		DEBUG2("Retrying fetch of cluster map");
-	} else {
-		DEBUG2("Refreshing cluster map");
-	}
-
-	fr_pair_list_init(&list);
-	fr_pair_list_append_by_da(local, vp, &list, attr_redis_packet_type, (uint32_t)FR_REDIS_CLUSTER_MAP_GET, false);
-	if (!vp) goto free;
-
-	fr_pair_list_append_by_da(local, vp, &list, attr_redis_cluster_id, cluster->cluster_id, false);
-	if (!vp) goto free;
-
-	fr_coord_pair_coord_request_start(cluster->coord_pair, &list, now);
-
-free:
-	talloc_free(local);
-}
-
-/** Send a Cluster-Failed message to a worker
- */
-static unlang_action_t process_redis_return_failed(request_t *request, process_redis_cluster_t *cluster,
-						   uint32_t worker_id)
-{
-	fr_pair_t	*vp;
-
-	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_cluster_id);
-	vp->vp_uint16 = cluster->cluster_id;
-
-	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_packet_type);
-	vp->vp_uint32 = FR_REDIS_CLUSTER_MAP_FAIL;
-
-	fr_coord_to_worker_reply_send(request, worker_id);
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	cluster->failed = true;
+	if (fr_timer_in(cluster, rctx->thread->el->tl, &cluster->ev, rctx->inst->retry_interval,
+			false, redis_cluster_map_get_refetch, cluster) < 0) {
+		RERROR("Failed setting up retry event");
+	};
+	return process_redis_return_failed(request, cluster, rctx->worker_id);
 }
 
 static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
