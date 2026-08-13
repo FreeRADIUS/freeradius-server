@@ -1214,6 +1214,24 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			RINDENT();
 		}
 
+		if (t->mctx && node->flags.use_module_status) {
+			module_thread_instance_t *thread = module_thread(t->mctx->mi);
+			if (thread->force) {
+				/*
+				 *	If the module forced rcode is one of the reject ones
+				 *	fail the XLAT early.
+				 */
+				switch (thread->rcode) {
+				default:
+					break;
+
+				case RLM_MODULE_USER_SECTION_REJECT:
+					RDEBUG2("Failing due to failed module thread instance");
+					return XLAT_ACTION_FAIL;
+				}
+			}
+		}
+
 		xa = xlat_process_args(ctx, result, request, node);
 		if (xa == XLAT_ACTION_FAIL) {
 			return xa;
