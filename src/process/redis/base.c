@@ -743,7 +743,7 @@ static unlang_action_t process_redis_return_failed(request_t *request, process_r
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t redis_cluster_map_get_resume(unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	process_redis_rctx_t	*rctx = talloc_get_type_abort(uctx, process_redis_rctx_t);
 	process_redis_cluster_t	*cluster = rctx->cluster;
@@ -817,12 +817,13 @@ static unlang_action_t redis_cluster_map_get_resume(unlang_result_t *p_result, r
 	 *	If there are still nodes with outstanding rctx then yield.
 	 */
 	if (completed < fr_dlist_num_elements(&rctx->rctx_list)) {
-		if (unlang_function_repeat_set(request, redis_cluster_map_get_resume) < 0) RETURN_UNLANG_FAIL;
+		if (unlang_function_repeat_set(request, redis_cluster_map_get_resume) < 0) goto fail;
 		return UNLANG_ACTION_YIELD;
 	}
 
 	if (fr_dlist_num_elements(&rctx->rctx_list) < 1) {
 		RERROR("No node returned a valid cluster map");
+	fail:
 		if (fr_timer_in(cluster, rctx->thread->el->tl, &cluster->ev, rctx->inst->retry_interval,
 				false, redis_cluster_map_get_retry, cluster) < 0) {
 			RERROR("Failed setting up retry event");
@@ -840,7 +841,7 @@ static unlang_action_t redis_cluster_map_get_resume(unlang_result_t *p_result, r
 			break;
 		}
 	}
-	if (unlikely(!list)) RETURN_UNLANG_FAIL;
+	if (unlikely(!list)) goto fail;
 
 	/*
 	 *	Verify the list of nodes, checking the cluster map matches
