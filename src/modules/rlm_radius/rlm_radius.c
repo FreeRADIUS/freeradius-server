@@ -395,11 +395,6 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
 
 	memcpy(out, &code, sizeof(code));
 
-	/*
-	 *	Nothing more to do here, so we stop.
-	 */
-	if (code == FR_RADIUS_CODE_STATUS_SERVER) return 0;
-
 	cf_section_rule_push(cs, status_check_update_config);
 
 	return 0;

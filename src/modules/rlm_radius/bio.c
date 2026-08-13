@@ -251,8 +251,8 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 {
 	bio_request_t		*u;
 	request_t		*request;
+	fr_pair_t		*vp;
 	rlm_radius_t const	*inst = h->ctx.inst;
-	map_t			*map = NULL;
 
 	fr_assert(!h->status_u && !h->status_request);
 
@@ -287,32 +287,38 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 	request->reply = fr_packet_alloc(request, false);
 
 	/*
-	 *	Create the VPs, and ignore any errors
-	 *	creating them.
+	 *	Create the VPs, and ignore any errors creating them.
 	 */
-	while ((map = map_list_next(&inst->status_check_map, map))) {
-		(void) map_to_request(request, map, map_to_vp, NULL);
+	if (map_list_num_elements(&inst->status_check_map) > 0) {
+		map_t *map = NULL;
+
+		while ((map = map_list_next(&inst->status_check_map, map))) {
+			(void) map_to_request(request, map, map_to_vp, NULL);
+		}
+	} else {
+		/*
+		 *	Ensure that there's a NAS-Identifier with a value.
+		 *
+		 *	Arguably if there's no status-check map, then the request_pairs are empty.  But
+		 *	whatever...
+		 */
+		if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_nas_identifier)) {
+			MEM(pair_append_request(&vp, attr_nas_identifier) >= 0);
+			fr_pair_value_strdup(vp, "status check - are you alive?", false);
+		}
 	}
 
 	/*
-	 *	Ensure that there's a NAS-Identifier, if one wasn't
-	 *	already added.
+	 *	Always add an Event-Timestamp, and update its value every time we send a packet.
+	 *
+	 *	The retry code will later update the timestamp, too, but updating it here means that the debug
+	 *	output doesn't show a zero-value Event-Timstamp.
 	 */
-	if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_nas_identifier)) {
-		fr_pair_t *vp;
-
-		MEM(pair_append_request(&vp, attr_nas_identifier) >= 0);
-		fr_pair_value_strdup(vp, "status check - are you alive?", false);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
+	if (!vp) {
+		MEM(pair_append_request(&vp, attr_event_timestamp) >= 0);
 	}
-
-	/*
-	 *	Always add an Event-Timestamp, which will be the time
-	 *	at which the first packet is sent.  Or for
-	 *	Status-Server, the time of the current packet.
-	 */
-	if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp)) {
-		MEM(pair_append_request(NULL, attr_event_timestamp) >= 0);
-	}
+	vp->vp_date = fr_time_to_unix_time(fr_time());
 
 	/*
 	 *	Initialize the request IO ctx.  Note that we don't set
