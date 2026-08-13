@@ -113,6 +113,7 @@ typedef struct {
 
 	unsigned int		constant : 1;		//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
 	unsigned int		xlat : 1;		//!< it's an xlat wrapper
+	unsigned int		use_module_status : 1;	//!< use the module thread status to force early failure.
 } xlat_flags_t;
 
 #define XLAT_FLAGS_INIT ((xlat_flags_t) { .pure = true, .can_purify = true, .constant = true, })

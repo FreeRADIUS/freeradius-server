@@ -1055,12 +1055,13 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth, bool print_flags
 #endif
 
 	if (print_flags) {
-		INFO_INDENT("flags = %s %s %s %s %s",
+		INFO_INDENT("flags = %s %s %s %s %s %s",
 			    node->flags.needs_resolving ? "need_resolving" : "",
 			    node->flags.pure ? "pure" : "",
 			    node->flags.can_purify ? "can_purify" : "",
 			    node->flags.constant ? "constant" : "",
-			    node->flags.xlat ? "xlat" : "");
+			    node->flags.xlat ? "xlat" : "",
+			    node->flags.use_module_status ? "use_module_status" : "");
 	}
 
 	depth++;
@@ -1175,22 +1176,24 @@ static void _xlat_debug_head(xlat_exp_head_t const *head, int depth)
 
 	fr_assert(head != NULL);
 
-	INFO_INDENT("head flags = %s %s %s %s %s",
+	INFO_INDENT("head flags = %s %s %s %s %s %s",
 		    head->flags.needs_resolving ? "need_resolving," : "",
 		    head->flags.pure ? "pure" : "",
 		    head->flags.can_purify ? "can_purify" : "",
 		    head->flags.constant ? "constant" : "",
-		    head->flags.xlat ? "xlat" : "");
+		    head->flags.xlat ? "xlat" : "",
+		    head->flags.use_module_status ? "use_module_status" : "");
 
 	depth++;
 
 	xlat_exp_foreach(head, node) {
-		INFO_INDENT("[%d] flags = %s %s %s %s %s", i++,
+		INFO_INDENT("[%d] flags = %s %s %s %s %s %s", i++,
 			    node->flags.needs_resolving ? "need_resolving" : "",
 			    node->flags.pure ? "pure" : "",
 			    node->flags.can_purify ? "can_purify" : "",
 			    node->flags.constant ? "constant" : "",
-			    node->flags.xlat ? "xlat" : "");
+			    node->flags.xlat ? "xlat" : "",
+			    node->flags.use_module_status ? "use_module_status" : "");
 
 		_xlat_debug_node(node, depth, false);
 	}
