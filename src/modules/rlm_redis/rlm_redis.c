@@ -988,6 +988,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, redis_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, redis_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	/*
 	 *	%redis.node(<key>[, idx])
@@ -1005,6 +1006,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, func->name, redis_lua_func_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 		xlat_func_args_set(xlat, redis_lua_func_args);
 		xlat_func_instantiate_set(xlat, redis_lua_func_instantiate, redis_lua_func_inst_t, NULL, func);
+		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 	}
 
 	return 0;

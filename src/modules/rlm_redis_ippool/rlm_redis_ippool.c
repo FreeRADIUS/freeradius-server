@@ -3305,45 +3305,56 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "subnet.add", redis_ippool_subnet_add_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_subnet_add_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "addresses.add", redis_ippool_addresses_add_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_addresses_add_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "subnet.remove", redis_ippool_subnet_remove_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_subnet_remove_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "addresses.remove", redis_ippool_addresses_remove_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_addresses_remove_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "subnet.release", redis_ippool_subnet_release_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_subnet_release_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "addresses.release", redis_ippool_addresses_release_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_addresses_release_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "subnet.modify", redis_ippool_subnet_modify_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_subnet_modify_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "addresses.modify", redis_ippool_addresses_modify_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_addresses_modify_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "address.assign", redis_ippool_assign_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_assign_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "address.unassign", redis_ippool_unassign_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_unassign_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "pools.list", redis_ippool_list_xlat,
 						      FR_TYPE_STRING)) == NULL)) return -1;
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_MODULE_STATUS);
 
 	return 0;
 }
