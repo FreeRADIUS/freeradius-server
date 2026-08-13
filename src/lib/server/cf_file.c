@@ -1297,7 +1297,29 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	 *	Grab all of the non-whitespace text.
 	 */
 	value = ptr;
-	while (*ptr && !isspace((uint8_t) *ptr)) ptr++;
+	while (*ptr && !isspace((uint8_t) *ptr)) {
+		/*
+		 *	Disallow control codes as filenames.  There's no reason to allow weird filenames.
+		 *
+		 *	This check is mainly for the fuzzers, which do weird things.
+		 */
+		if (*ptr < ' ') {
+			ERROR("%s[%d]: Invalid character in filename for $INCLUDE", frame->filename, frame->lineno);
+			return -1;
+		}
+
+		ptr++;
+	}
+
+	/*
+	 *	Disallow long filenames.
+	 *
+	 *	This check is mainly for the fuzzers, which do weird things.
+	 */
+	if ((size_t) (ptr - value) > 1024) {
+		ERROR("%s[%d]: Filename too long for $INCLUDE", frame->filename, frame->lineno);
+		return -1;
+	}
 
 	/*
 	 *	We're OK with whitespace after the filename.
