@@ -76,10 +76,11 @@ into the `instantiate` section of `radiusd.conf.  This configuration
 is no longer used, and the `sql_all` definition can just be placed as
 a module definition into the `mods-enabled/` directory.
 
-== Load-Balance Expansions
+== Modules and Load-Balance Expansions
 
-When the `sql_all` module is defined as above, it can also be used as
-in a xref:xlat/index.adoc[dynamic expansion]:
+When the `sql_all` module is defined as above, the server also
+registers an sql xref:xlat/index.adoc[dynamic expansion].  The
+expansion performs load-balancing for the SQL expansion.
 
 .Example of Load-Balance SQL module
 [source,unlang]
@@ -90,6 +91,29 @@ Reply-Message := %sql_all("SELECT message FROM table WHERE name='%{User-Name}'")
 
 The expansion works exactly like a `load-balance` block.  One of the
 modules is chosen to run the expansion, in load-balance fashion.
+
+== Related Functions
+
+The server also defines two related functions:
+
+=== `%interpreter.load-balance.persist()`
+
+This function persists the current load-balance choice across
+multiple packets/ It is mainly useful for RADIUS proxying, when EAP
+is used.
+
+If the function is called from outside of a `load-balance` or
+`redundant-load-balance` section, then it does nothing.
+
+The function takes no arguments, and returns no value.
+
+=== `%interpreter.load-balance.child()`
+
+This function returns a `uint8` from `0..N`, which indicates which
+child is currently running.
+
+If the function is called from outside of a `load-balance` or
+`redundant-load-balance` section, then it does nothing.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

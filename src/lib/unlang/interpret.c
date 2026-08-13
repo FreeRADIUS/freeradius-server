@@ -2349,6 +2349,39 @@ finish:
 	return XLAT_ACTION_DONE;
 }
 
+/** Tell the load-balance keyword to persist this child selection
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t unlang_interpret_lb_persist_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						      UNUSED xlat_ctx_t const *xctx,
+						      request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	if (unlang_load_balance_persist(request) < 0) return XLAT_ACTION_FAIL;
+
+	return XLAT_ACTION_DONE;
+}
+
+
+/** Tell the load-balance keyword to persist this child selection
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t unlang_interpret_lb_child_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+						    UNUSED xlat_ctx_t const *xctx,
+						    request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_value_box_t		*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
+
+	vb->vb_uint8 = unlang_load_balance_child(request);
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
+}
+
+
 /** Return the current virtual server for this request
  *
  * @param[in] request	To return virtual server for.
@@ -2496,6 +2529,9 @@ int unlang_interpret_init_global(TALLOC_CTX *ctx)
 	 */
 	if (unlikely((xlat = xlat_func_register(ctx, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_interpret_xlat_args);
+
+	if (unlikely((xlat = xlat_func_register(ctx, "interpreter.load-balance.persist", unlang_interpret_lb_persist_xlat, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "interpreter.load-balance.child", unlang_interpret_lb_child_xlat, FR_TYPE_UINT8)) == NULL)) return -1;
 
 	if (unlikely((xlat = xlat_func_register(ctx, "cancel", unlang_cancel_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_cancel_xlat_args);

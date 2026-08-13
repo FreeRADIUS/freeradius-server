@@ -57,6 +57,29 @@ int unlang_load_balance_persist(request_t *request)
 	return request_data_add_const(request, frame->instruction, 0, child, true);
 }
 
+/**  Returns the current child of the load balance section
+ *
+ *  If the frame is UNLANG_TYPE_LOAD_BALANCE or
+ *  UNLANG_TYPE_REDUNDANT_LOAD_BALANCE, then return the child number.
+ */
+uint8_t unlang_load_balance_child(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_frame_state_redundant_t	*redundant;
+
+	if (!frame->prev.frame_load_balance) return 0;
+
+	fr_assert(frame->prev.frame_load_balance < stack->depth);
+
+	frame = &stack->frame[frame->prev.frame_load_balance];
+	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
+
+	fr_assert(redundant->num <= UINT8_MAX);
+
+	return redundant->num;
+}
+
 #define unlang_redundant_load_balance unlang_load_balance
 
 static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, request_t *request,
@@ -98,7 +121,12 @@ static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, reque
 	 *	end, loop around to the next one.
 	 */
 	redundant->child = unlang_list_next(&g->children, redundant->child);
-	if (!redundant->child) redundant->child = unlang_list_head(&g->children);
+	if (!redundant->child) {
+		redundant->child = unlang_list_head(&g->children);
+		redundant->num = 0;
+	} else {
+		redundant->num++;
+	}
 
 	/*
 	 *	We looped back to the start.  Return whatever results we had from the last child.
@@ -161,7 +189,24 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 
 	redundant->start = request_data_get(request, frame->instruction, 0);
-	if (redundant->start) goto selected_child;
+	if (redundant->start) {
+		uint32_t i;
+
+		/*
+		 *	This loop should be small, typically less than 16 items.
+		 */
+		for (i = 0; i < unlang_list_num_elements(&g->children); i++) {
+			if (gext->children[i] != redundant->start) continue;
+
+			redundant->num = i;
+			RDEBUG3("load-balance starting at child %u", redundant->num);
+			goto selected_child;
+		}
+
+		fr_assert(0);
+
+		goto selected_child;
+	}
 
 	if (gext->vpt) {
 		uint32_t start;
@@ -205,9 +250,10 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 		}
 		talloc_free(to_free);
 
-		RDEBUG3("load-balance starting at child %d", (int) start);
+		RDEBUG3("load-balance starting at child %u", start);
 
 		redundant->start = gext->children[start];
+		redundant->num = start;
 
 	} else {
 		uint32_t start, one, two;
@@ -231,8 +277,9 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 			start = two;
 		}
 
-		RDEBUG3("load-balance starting at child %d", (int) start);
+		RDEBUG3("load-balance starting at child %u", start);
 		redundant->start = gext->children[start];
+		redundant->num = start;
 	}
 
 selected_child:
@@ -281,6 +328,17 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
+
+	/*
+	 *	The various State mangling functions need to limit the number of load-balance sections.
+	 *
+	 *	Plus, it doesn't make a lot of sense to have 256 children of a load-balance section.  Just
+	 *	what the heck are they doing?
+	 */
+	if (unlang_list_num_elements(&g->children) > UINT8_MAX) {
+		cf_log_err(cs, "Too many children for %s section", c->name);
+		return NULL;
+	}
 
 	/*
 	 *	Inside of the "modules" section, it's a virtual module.  The key is the third argument, and

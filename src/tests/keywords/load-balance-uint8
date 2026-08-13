@@ -15,7 +15,13 @@ uint8 key
 foreach i (%range(50)) {
 key := 0
 load-balance %{key} {
-	ok
+	group {
+		if (%interpreter.load-balance.child() != key) {
+			test_fail
+			return
+		}
+		ok
+	}
 	test_fail
 	test_fail
 	test_fail
@@ -27,7 +33,14 @@ if (!ok) {
 key := 1
 load-balance %{key} {
 	test_fail
-	ok
+	group {
+		if (%interpreter.load-balance.child() != key) {
+			test_fail
+			return
+		}
+		ok
+	}
+
 	test_fail
 	test_fail
 }
@@ -39,7 +52,14 @@ key := 2
 load-balance %{key} {
 	test_fail
 	test_fail
-	ok
+	group {
+		if (%interpreter.load-balance.child() != key) {
+			test_fail
+			return
+		}
+		ok
+	}
+
 	test_fail
 }
 if (!ok) {
@@ -51,7 +71,14 @@ load-balance %{key} {
 	test_fail
 	test_fail
 	test_fail
-	ok
+	group {
+		if (%interpreter.load-balance.child() != key) {
+			test_fail
+			return
+		}
+		ok
+	}
+
 }
 if (!ok) {
 	return

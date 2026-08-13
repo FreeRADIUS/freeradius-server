@@ -41,6 +41,7 @@ typedef struct {
 typedef struct {
 	unlang_t 		*child;		//!< the current child we're processing
 	unlang_t		*start;		//!< the starting child
+	uint32_t		num;		//!< the current child number
 	unlang_result_t		result;		//!< for intermediate child results
 } unlang_frame_state_redundant_t;
 
@@ -61,6 +62,7 @@ static inline unlang_group_t *unlang_load_balance_to_group(unlang_load_balance_t
 }
 
 int	unlang_load_balance_persist(request_t *request) CC_HINT(nonnull);
+uint8_t	unlang_load_balance_child(request_t *request) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
