@@ -518,7 +518,13 @@ static int radius_fixups(rlm_radius_t const *inst, request_t *request)
 {
 	fr_pair_t *vp;
 
-	if (request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) {
+	/*
+	 *	If we received a Status-Server packet from the network, then don't proxy it.
+	 *
+	 *	But we do sneakily allow virtual servers to originate and then send Status-Server packets.
+	 */
+	if ((request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) &&
+	    ((request->packet->socket.af == AF_INET) || (request->packet->socket.af == AF_INET6))) {
 		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
 		return 0;
 	}
