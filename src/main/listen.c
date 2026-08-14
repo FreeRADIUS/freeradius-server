@@ -1268,7 +1268,9 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	this->data = sock;	/* fix it back */
 	this->listen = false;
 
+#ifdef WITH_TLS
 	sock->mutex = NULL;	/* we're not using our parents mutex */
+#endif
 	sock->parent = listener->data;
 	sock->other_ipaddr = src_ipaddr;
 	sock->other_port = src_port;
@@ -1404,7 +1406,9 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		if (fr_nonblock(this->fd) < 0) {
 			ERROR("Failed setting non-blocking on socket: %s",
 			      fr_syserror(errno));
+#ifdef WITH_TLS
 		tree_error:
+#endif
 			rbtree_deletebydata(listener->children, this);
 			goto error;
 		}
