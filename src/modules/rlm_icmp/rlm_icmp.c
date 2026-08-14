@@ -199,7 +199,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	This insert will never fail, because of the unique
 	 *	counter above.
 	 */
-	if (!fr_rb_insert(t->tree, echo)) {
+	if (fr_rb_insert(t->tree, echo) != 0) {
 		RPEDEBUG("Failed inserting IP into tracking table");
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
@@ -260,7 +260,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, ~FR_SIGNAL_CANCEL, echo);
 }
 
-static int8_t echo_cmp(void const *one, void const *two)
+static fr_cmp_ret_t echo_cmp(void const *one, void const *two)
 {
 	rlm_icmp_echo_t const *a = one;
 	rlm_icmp_echo_t const *b = two;
@@ -341,7 +341,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	 *	Look up the packet by the fields which determine *our* ICMP packets.
 	 */
 	my_echo.counter = icmp->counter;
-	echo = fr_rb_find(t->tree, &my_echo);
+	fr_rb_find((void **)&echo, t->tree, &my_echo);
 	if (!echo) {
 		DEBUG("%s - Can't find packet counter=%d in tree", mctx->mi->name, icmp->counter);
 		return;

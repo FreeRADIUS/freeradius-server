@@ -52,7 +52,7 @@ typedef	int (*xlat_resolve_t)(xlat_exp_t *xlat, void *inst, xlat_res_rules_t con
  */
 typedef int (*xlat_purify_t)(xlat_exp_t *xlat, void *inst, request_t *request);
 
-int8_t		xlat_func_cmp(void const *one, void const *two);
+fr_cmp_ret_t	xlat_func_cmp(void const *one, void const *two);
 
 xlat_t		*xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name);
 

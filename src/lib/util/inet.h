@@ -26,6 +26,7 @@ RCSIDH(inet_h, "$Id$")
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <arpa/inet.h>
@@ -166,7 +167,7 @@ int	fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet);
 /*
  *	Comparison
  */
-int8_t	fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
+fr_cmp_ret_t	fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
 int8_t	fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage const *b);
 

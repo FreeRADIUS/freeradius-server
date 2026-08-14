@@ -183,7 +183,7 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 
 static int _bio_request_free(bio_request_t *u);
 
-static int8_t home_server_cmp(void const *one, void const *two);
+static fr_cmp_ret_t home_server_cmp(void const *one, void const *two);
 
 #ifndef NDEBUG
 /** Log additional information about a tracking entry
@@ -1157,7 +1157,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
  *  We want the value with the lowest timestamp to be prioritized at
  *  the top of the heap.
  */
-static int8_t request_prioritise(void const *one, void const *two)
+static fr_cmp_ret_t request_prioritise(void const *one, void const *two)
 {
 	bio_request_t const *a = one;
 	bio_request_t const *b = two;
@@ -2921,11 +2921,11 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
  *
  */
 
-static int8_t home_server_cmp(void const *one, void const *two)
+static fr_cmp_ret_t home_server_cmp(void const *one, void const *two)
 {
 	home_server_t const *a = one;
 	home_server_t const *b = two;
-	int8_t rcode;
+	fr_cmp_ret_t rcode;
 
 	rcode = fr_ipaddr_cmp(&a->ctx.fd_config.dst_ipaddr, &b->ctx.fd_config.dst_ipaddr);
 	if (rcode != 0) return rcode;
@@ -2994,7 +2994,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		return XLAT_ACTION_DONE;
 	}
 
-	home = fr_rb_find(&thread->bio.expires.tree, &(home_server_t) {
+	fr_rb_find((void **)&home, &thread->bio.expires.tree, &(home_server_t) {
 			.ctx = {
 				.fd_config = (fr_bio_fd_config_t) {
 					.dst_ipaddr = ipaddr->vb_ip,

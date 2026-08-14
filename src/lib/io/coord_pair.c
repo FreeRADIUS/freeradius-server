@@ -542,7 +542,7 @@ static void _coord_pair_request_prioritise(request_t *request, void *uctx)
 
 /** Compare two requests by priority and sequence
  */
-static int8_t coord_pair_runnable_cmp(void const *one, void const *two)
+static fr_cmp_ret_t coord_pair_runnable_cmp(void const *one, void const *two)
 {
 	request_t const	*a = one, *b = two;
 	int ret;
@@ -635,7 +635,7 @@ static inline CC_HINT(always_inline) void coord_run_request(fr_coord_pair_t *coo
 	now = start;
 
 	while (fr_time_delta_lt(fr_time_sub(now, start), fr_time_delta_from_msec(1)) &&
-	((request = fr_heap_pop(&coord_pair->runnable)) != NULL)) {
+	(fr_heap_pop((void **)&request, &coord_pair->runnable) == 0) && request) {
 		REQUEST_VERIFY(request);
 		fr_assert(!fr_heap_entry_inserted(request->runnable));
 

@@ -20,7 +20,7 @@ static bool minmax_heap_contains(fr_minmax_heap_t *hp, void *data)
 	return false;
 }
 
-static int8_t minmax_heap_cmp(void const *one, void const *two)
+static fr_cmp_ret_t minmax_heap_cmp(void const *one, void const *two)
 {
 	minmax_heap_thing const *a = one, *b = two;
 
@@ -95,8 +95,9 @@ static void minmax_heap_test_basic(void)
 	}
 
 	for (i = 0; i < NVALUES; i++) {
-		minmax_heap_thing	*value = fr_minmax_heap_min_pop(hp);
+		minmax_heap_thing	*value;
 
+		fr_minmax_heap_min_pop((void **)&value, hp);
 		TEST_CHECK(value != NULL);
 		TEST_CHECK(!fr_minmax_heap_entry_inserted(value->idx));
 		TEST_CHECK(value->data == i);
@@ -112,8 +113,9 @@ static void minmax_heap_test_basic(void)
 	}
 
 	for (i = NVALUES; i-- > 0; ) {
-		minmax_heap_thing	*value = fr_minmax_heap_max_pop(hp);
+		minmax_heap_thing	*value;
 
+		fr_minmax_heap_max_pop((void **)&value, hp);
 		TEST_CHECK(value != NULL);
 		TEST_CHECK(!fr_minmax_heap_entry_inserted(value->idx));
 		TEST_CHECK(value->data == i);
@@ -249,7 +251,7 @@ static void minmax_heap_burn_in(void)
 				goto insert;
 
 			case 1: /* min pop */
-				ret_thing = fr_minmax_heap_min_pop(hp);
+				fr_minmax_heap_min_pop((void **)&ret_thing, hp);
 				TEST_CHECK(ret_thing != NULL);
 				break;
 			case 2: /* min peek */
@@ -257,11 +259,11 @@ static void minmax_heap_burn_in(void)
 				TEST_CHECK(ret_thing != NULL);
 				break;
 			case 3: /* max pop */
-				ret_thing = fr_minmax_heap_max_pop(hp);
+				fr_minmax_heap_max_pop((void **)&ret_thing, hp);
 				TEST_CHECK(ret_thing != NULL);
 				break;
 			case 4: /* max peek */
-				ret_thing = fr_minmax_heap_max_peek(hp);
+				fr_minmax_heap_max_peek((void **)&ret_thing, hp);
 				TEST_CHECK(ret_thing != NULL);
 				break;
 			}
@@ -312,7 +314,7 @@ static void minmax_heap_test_order(void)
 	count = 0;
 	data = 0;
 	prev = NULL;
-	while ((thing = fr_minmax_heap_min_pop(hp))) {
+	while ((fr_minmax_heap_min_pop((void **)&thing, hp) == 0) && thing) {
 		TEST_CHECK(thing->data >= data);
 		TEST_MSG("Expected data >= %u, got %u", data, thing->data);
 		if (thing->data >= data) data = thing->data;
@@ -337,7 +339,7 @@ static void minmax_heap_test_order(void)
 	count = 0;
 	data = UINT_MAX;
 	prev = NULL;
-	while ((thing = fr_minmax_heap_max_pop(hp))) {
+	while ((fr_minmax_heap_max_pop((void **)&thing, hp) == 0) && thing) {
 		TEST_CHECK(thing->data <= data);
 		TEST_MSG("Expected data >= %u, got %u", data, thing->data);
 		if (thing->data <= data) data = thing->data;
@@ -402,7 +404,10 @@ static void queue_cmp(unsigned int count)
 
 		start_pop = fr_time();
 		for (i = 0; i < count; i++) {
-			TEST_CHECK(fr_minmax_heap_min_pop(minmax) != NULL);
+			void *popped;
+
+			fr_minmax_heap_min_pop(&popped, minmax);
+			TEST_CHECK(popped != NULL);
 			if (i == 0) end_pop_first = fr_time();
 
 			TEST_MSG("expected %u elements remaining in the minmax heap", count - i);
@@ -437,7 +442,10 @@ static void queue_cmp(unsigned int count)
 
 		start_pop = fr_time();
 		for (i = 0; i < count; i++) {
-			TEST_CHECK(fr_heap_pop(&hp) != NULL);
+			void *popped;
+
+			fr_heap_pop(&popped, &hp);
+			TEST_CHECK(popped != NULL);
 			if (i == 0) end_pop_first = fr_time();
 
 			TEST_MSG("expected %u elements remaining in the heap", count - i);
@@ -632,11 +640,72 @@ static void minmax_heap_iter(void)
 	talloc_free(hp);
 }
 
+static bool poisoned;
+
+static fr_cmp_ret_t minmax_heap_poison_cmp(void const *one, void const *two)
+{
+	if (poisoned) {
+		fr_strerror_const("Poisoned comparator");
+		return CMP_ERR;
+	}
+
+	return minmax_heap_cmp(one, two);
+}
+
+/*
+ *	A comparator returning CMP_ERR must complete the operation
+ *	structurally (no lost or duplicated elements), report the error
+ *	through the int return, and leave the ordering undefined
+ *	until the offending element is removed.
+ */
+static void minmax_heap_test_cmp_err(void)
+{
+	fr_minmax_heap_t	*hp;
+	minmax_heap_thing	values[8] = {};
+	void			*found;
+	size_t			i;
+	unsigned int		popped;
+
+	TEST_CASE("comparator error reported, heap structurally intact");
+	hp = fr_minmax_heap_alloc(NULL, minmax_heap_poison_cmp, minmax_heap_thing, idx, 0);
+	TEST_ASSERT(hp != NULL);
+
+	poisoned = false;
+	for (i = 0; i < NUM_ELEMENTS(values); i++) {
+		values[i].data = NUM_ELEMENTS(values) - i;
+		TEST_CHECK(fr_minmax_heap_insert(hp, &values[i]) == 0);
+	}
+
+	poisoned = true;
+
+	TEST_CHECK(fr_minmax_heap_min_pop(&found, hp) == -1);
+	TEST_CHECK(found == NULL);
+	TEST_CHECK(fr_minmax_heap_num_elements(hp) == NUM_ELEMENTS(values) - 1);
+
+	TEST_CHECK(fr_minmax_heap_max_peek(&found, hp) == -1);
+	TEST_CHECK(found == NULL);
+
+	/*
+	 *	Once the comparator recovers, every remaining element pops
+	 *	back out exactly once.
+	 */
+	poisoned = false;
+	popped = 0;
+	while ((fr_minmax_heap_min_pop(&found, hp) == 0) && found) {
+		popped++;
+	}
+	TEST_CHECK(popped == NUM_ELEMENTS(values) - 1);
+	TEST_CHECK(fr_minmax_heap_num_elements(hp) == 0);
+
+	talloc_free(hp);
+}
+
 TEST_LIST = {
 	/*
 	 *	Basic tests
 	 */
 	{ "minmax_heap_test_basic",	minmax_heap_test_basic	},
+	{ "minmax_heap_test_cmp_err",	minmax_heap_test_cmp_err },
 	{ "minmax_heap_test_skip_0",	minmax_heap_test_skip_0 },
 	{ "minmax_heap_test_skip_2",	minmax_heap_test_skip_2 },
 	{ "minmax_heap_test_skip_10",	minmax_heap_test_skip_10 },

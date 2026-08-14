@@ -160,7 +160,7 @@ static bool buf2entry(rlm_csv_t *inst, char *buf, char **out)
 }
 
 
-static int8_t csv_cmp(void const *one, void const *two)
+static fr_cmp_ret_t csv_cmp(void const *one, void const *two)
 {
 	rlm_csv_entry_t const *a = (rlm_csv_entry_t const *) one; /* may not be talloc'd! */
 	rlm_csv_entry_t const *b = (rlm_csv_entry_t const *) two; /* may not be talloc'd! */
@@ -190,7 +190,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 
 	fr_assert(e != NULL);
 
-	old = fr_htrie_find(inst->trie, e);
+	fr_htrie_find((void **)&old, inst->trie, e);
 	if (old) {
 		if (!inst->allow_multiple_keys && !inst->multiple_index_fields) {
 			cf_log_err(conf, "%s[%d]: Multiple entries are disallowed", inst->filename, lineno);
@@ -206,7 +206,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 		return true;
 	}
 
-	if (!fr_htrie_insert(inst->trie, e)) {
+	if (fr_htrie_insert(inst->trie, e) != 0) {
 		cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 			   inst->filename, lineno, fr_strerror());
 fail:
@@ -901,7 +901,7 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
 	rlm_csv_entry_t		*e;
 	map_t const		*map = NULL;
 
-	e = fr_htrie_find(inst->trie, &(rlm_csv_entry_t) { .key = UNCONST(fr_value_box_t *, key) } );
+	fr_htrie_find((void **)&e, inst->trie, &(rlm_csv_entry_t) { .key = UNCONST(fr_value_box_t *, key) } );
 	if (!e) {
 		rcode = RLM_MODULE_NOOP;
 		goto finish;

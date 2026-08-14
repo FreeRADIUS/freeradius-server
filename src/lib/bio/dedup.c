@@ -913,7 +913,7 @@ static ssize_t fr_bio_dedup_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	return rcode;
 }
 
-static int8_t _entry_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _entry_cmp(void const *one, void const *two)
 {
 	fr_bio_dedup_entry_t const *a = one;
 	fr_bio_dedup_entry_t const *b = two;

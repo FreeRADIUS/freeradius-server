@@ -30,7 +30,7 @@ typedef struct {
  *
  *  ./heap
  */
-static int8_t heap_cmp(void const *one, void const *two)
+static fr_cmp_ret_t heap_cmp(void const *one, void const *two)
 {
 	heap_thing const *a = one, *b = two;
 
@@ -171,7 +171,7 @@ static void heap_test_order(void)
 
 	TEST_CASE("ordering");
 
-	while ((thing = fr_heap_pop(&hp))) {
+	while ((fr_heap_pop((void **)&thing, &hp) == 0) && thing) {
 		TEST_CHECK(thing->data >= data);
 		TEST_MSG("Expected data >= %i, got %i", data, thing->data);
 		if (thing->data >= data) data = thing->data;
@@ -302,6 +302,63 @@ static void heap_cycle(void)
 	free(array);
 }
 
+static bool poisoned;
+
+static fr_cmp_ret_t heap_poison_cmp(void const *one, void const *two)
+{
+	if (poisoned) {
+		fr_strerror_const("Poisoned comparator");
+		return CMP_ERR;
+	}
+
+	return heap_cmp(one, two);
+}
+
+/*
+ *	A comparator returning CMP_ERR must complete the operation
+ *	structurally (no lost or duplicated elements), report the error
+ *	through the int return, and leave the ordering undefined
+ *	until the offending element is removed.
+ */
+static void heap_test_cmp_err(void)
+{
+	fr_heap_t	*hp;
+	heap_thing	values[8] = {};
+	void		*found;
+	size_t		i;
+	unsigned int	popped;
+
+	TEST_CASE("comparator error reported, heap structurally intact");
+	hp = fr_heap_alloc(NULL, heap_poison_cmp, heap_thing, heap, 0);
+	TEST_ASSERT(hp != NULL);
+
+	poisoned = false;
+	for (i = 0; i < NUM_ELEMENTS(values); i++) {
+		values[i].data = (int)(NUM_ELEMENTS(values) - i);
+		TEST_CHECK(fr_heap_insert(&hp, &values[i]) == 0);
+	}
+
+	poisoned = true;
+
+	TEST_CHECK(fr_heap_pop(&found, &hp) == -1);
+	TEST_CHECK(found == NULL);
+	TEST_CHECK(fr_heap_num_elements(hp) == NUM_ELEMENTS(values) - 1);
+
+	/*
+	 *	Once the comparator recovers, every remaining element pops
+	 *	back out exactly once.
+	 */
+	poisoned = false;
+	popped = 0;
+	while ((fr_heap_pop(&found, &hp) == 0) && found) {
+		popped++;
+	}
+	TEST_CHECK(popped == NUM_ELEMENTS(values) - 1);
+	TEST_CHECK(fr_heap_num_elements(hp) == 0);
+
+	talloc_free(hp);
+}
+
 TEST_LIST = {
 	/*
 	 *	Basic tests
@@ -312,6 +369,7 @@ TEST_LIST = {
 	{ "heap_test_order",		heap_test_order		},
 	{ "heap_iter",			heap_iter		},
 	{ "heap_cycle",			heap_cycle		},
+	{ "heap_test_cmp_err",		heap_test_cmp_err	},
 	TEST_TERMINATOR
 };
 

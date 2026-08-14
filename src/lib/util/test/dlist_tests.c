@@ -185,6 +185,79 @@ static void test_dlist_foreach_safe(void)
 	TEST_CHECK_RET((int)count, (int)3);
 }
 
+static bool poisoned;
+
+static fr_cmp_ret_t _dlist_id_cmp(void const *one, void const *two)
+{
+	dlist_test_item_t const *a = one, *b = two;
+
+	if (poisoned) {
+		fr_strerror_const("Poisoned comparator");
+		return CMP_ERR;
+	}
+
+	return CMP(strcmp(a->id, b->id), 0);
+}
+
+/*
+ *	A comparator returning CMP_ERR must leave the list intact and
+ *	walkable (order undefined), and report the error through the
+ *	int return.
+ */
+static void test_dlist_sort_cmp_err(void)
+{
+	dlist_test_item_t	a1 = { .id = "a1" };
+	dlist_test_item_t	a2 = { .id = "a2" };
+	dlist_test_item_t	a3 = { .id = "a3" };
+	dlist_test_item_t	a4 = { .id = "a4" };
+
+	fr_dlist_head_t		head;
+	unsigned int		count;
+	dlist_test_item_t	*p;
+
+	TEST_CASE("comparator error leaves the list intact");
+	fr_dlist_init(&head, dlist_test_item_t, entry);
+
+	fr_dlist_insert_tail(&head, &a3);
+	fr_dlist_insert_tail(&head, &a1);
+	fr_dlist_insert_tail(&head, &a4);
+	fr_dlist_insert_tail(&head, &a2);
+
+	poisoned = true;
+	TEST_CHECK(fr_dlist_sort(&head, _dlist_id_cmp) == -1);
+
+	/*
+	 *	Every element must still be linked in, forwards
+	 *	and backwards.
+	 */
+	TEST_CHECK_LEN(fr_dlist_num_elements(&head), 4);
+	count = 0;
+	for (p = fr_dlist_head(&head); p; p = fr_dlist_next(&head, p)) {
+		count++;
+	}
+	TEST_CHECK_RET((int)count, (int)4);
+	count = 0;
+	for (p = fr_dlist_tail(&head); p; p = fr_dlist_prev(&head, p)) {
+		count++;
+	}
+	TEST_CHECK_RET((int)count, (int)4);
+
+	/*
+	 *	Once the comparator recovers the sort orders the list.
+	 */
+	poisoned = false;
+	TEST_CHECK(fr_dlist_sort(&head, _dlist_id_cmp) == 0);
+
+	p = fr_dlist_head(&head);
+	TEST_CHECK(p == &a1);
+	p = fr_dlist_next(&head, p);
+	TEST_CHECK(p == &a2);
+	p = fr_dlist_next(&head, p);
+	TEST_CHECK(p == &a3);
+	p = fr_dlist_next(&head, p);
+	TEST_CHECK(p == &a4);
+}
+
 TEST_LIST = {
 	/*
 	 *	Allocation and management
@@ -192,6 +265,7 @@ TEST_LIST = {
 	{ "fr_dlist_move",		test_dlist_move		},
 	{ "fr_dlist_entry_move",	test_dlist_entry_move	},
 	{ "fr_dlist_foreach_safe",	test_dlist_foreach_safe	},
+	{ "fr_dlist_sort_cmp_err",	test_dlist_sort_cmp_err	},
 
 	TEST_TERMINATOR
 };

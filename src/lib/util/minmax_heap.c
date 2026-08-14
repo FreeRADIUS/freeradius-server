@@ -234,16 +234,23 @@ static inline bool has_grandchildren(minmax_heap_t *h, fr_minmax_heap_index_t i)
  * 	In the case where the desired item must be a child, there are at most two,
  *	so we just do it inlne; no loop needed.
  */
-static CC_HINT(nonnull) fr_minmax_heap_index_t min_child_or_grandchild(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static CC_HINT(nonnull) int min_child_or_grandchild(fr_minmax_heap_index_t *out, minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	lwb, upb, min;
+	fr_cmp_ret_t		c;
+	int			ret = 0;
 
 	if (is_max_level_index(idx) || !has_grandchildren(h, idx)) {
 		/* minimum must be a chld */
 		min = HEAP_LEFT(idx);
 		upb = HEAP_RIGHT(idx);
-		if (upb <= h->num_elements && h->cmp(h->p[upb], h->p[min]) < 0) min = upb;
-		return min;
+		if (upb <= h->num_elements) {
+			c = h->cmp(h->p[upb], h->p[min]);
+			if (unlikely(c == CMP_ERR)) ret = -1;
+			if (c == CMP_LT) min = upb;
+		}
+		*out = min;
+		return ret;
 	}
 
 	/* minimum must be a grandchild, unless the right child is childless */
@@ -260,21 +267,31 @@ static CC_HINT(nonnull) fr_minmax_heap_index_t min_child_or_grandchild(minmax_he
 	if (upb > h->num_elements) upb = h->num_elements;
 
 	for (fr_minmax_heap_index_t i = lwb; i <= upb; i++) {
-		if (h->cmp(h->p[i], h->p[min]) < 0) min = i;
+		c = h->cmp(h->p[i], h->p[min]);
+		if (unlikely(c == CMP_ERR)) ret = -1;
+		if (c == CMP_LT) min = i;
 	}
-	return min;
+	*out = min;
+	return ret;
 }
 
-static CC_HINT(nonnull) fr_minmax_heap_index_t max_child_or_grandchild(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static CC_HINT(nonnull) int max_child_or_grandchild(fr_minmax_heap_index_t *out, minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	lwb, upb, max;
+	fr_cmp_ret_t		c;
+	int			ret = 0;
 
 	if (is_min_level_index(idx) || !has_grandchildren(h, idx)) {
 		/* maximum must be a chld */
 		max = HEAP_LEFT(idx);
 		upb = HEAP_RIGHT(idx);
-		if (upb <= h->num_elements && h->cmp(h->p[upb], h->p[max]) > 0) max = upb;
-		return max;
+		if (upb <= h->num_elements) {
+			c = h->cmp(h->p[upb], h->p[max]);
+			if (unlikely(c == CMP_ERR)) ret = -1;
+			if (c == CMP_GT) max = upb;
+		}
+		*out = max;
+		return ret;
 	}
 
 	/* minimum must be a grandchild, unless the right child is childless */
@@ -291,23 +308,44 @@ static CC_HINT(nonnull) fr_minmax_heap_index_t max_child_or_grandchild(minmax_he
 	if (upb > h->num_elements) upb = h->num_elements;
 
 	for (fr_minmax_heap_index_t i = lwb; i <= upb; i++) {
-		if (h->cmp(h->p[i], h->p[max]) > 0) max = i;
+		c = h->cmp(h->p[i], h->p[max]);
+		if (unlikely(c == CMP_ERR)) ret = -1;
+		if (c == CMP_GT) max = i;
 	}
-	return max;
+	*out = max;
+	return ret;
 }
 
 /**
  * precondition: idx is the index of an existing entry on a min level
  */
-static inline CC_HINT(always_inline, nonnull) void push_down_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static inline CC_HINT(always_inline, nonnull) int push_down_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
+	int ret = 0;
+
 	while (has_children(h, idx)) {
-		fr_minmax_heap_index_t	m =  min_child_or_grandchild(h, idx);
+		fr_minmax_heap_index_t	m;
+		fr_cmp_ret_t		c;
+
+		/*
+		 *	Stop sifting on error.  The element stays where the
+		 *	walk stopped: the heap remains structurally valid,
+		 *	only its ordering is undefined.
+		 */
+		if (unlikely(min_child_or_grandchild(&m, h, idx) < 0)) {
+			ret = -1;
+			break;
+		}
+		c = h->cmp(h->p[m], h->p[idx]);
+		if (unlikely(c == CMP_ERR)) {
+			ret = -1;
+			break;
+		}
 
 		/*
 		 *	If p[m] doesn't precede p[idx], we're done.
 		 */
-		if (h->cmp(h->p[m], h->p[idx]) >= 0) break;
+		if (c != CMP_LT) break;
 
 		HEAP_SWAP(h->p[idx], h->p[m]);
 		OFFSET_SET(h, idx);
@@ -315,13 +353,22 @@ static inline CC_HINT(always_inline, nonnull) void push_down_min(minmax_heap_t *
 		/*
 		 *	The entry now at m may belong where the parent is.
 		 */
-		if (HEAP_GRANDPARENT(m) == idx && h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) > 0) {
-			HEAP_SWAP(h->p[HEAP_PARENT(m)], h->p[m]);
-			OFFSET_SET(h, HEAP_PARENT(m));
+		if (HEAP_GRANDPARENT(m) == idx) {
+			c = h->cmp(h->p[m], h->p[HEAP_PARENT(m)]);
+			if (unlikely(c == CMP_ERR)) {
+				ret = -1;
+				break;
+			}
+			if (c == CMP_GT) {
+				HEAP_SWAP(h->p[HEAP_PARENT(m)], h->p[m]);
+				OFFSET_SET(h, HEAP_PARENT(m));
+			}
 		}
 		idx = m;
 	}
 	OFFSET_SET(h, idx);
+
+	return ret;
 }
 
 /**
@@ -329,69 +376,113 @@ static inline CC_HINT(always_inline, nonnull) void push_down_min(minmax_heap_t *
  * (Just like push_down_min() save for reversal of ordering, so comments there apply,
  * mutatis mutandis.)
  */
-static CC_HINT(nonnull) void push_down_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static CC_HINT(nonnull) int push_down_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
-	while (has_children(h, idx)) {
-		fr_minmax_heap_index_t	m = max_child_or_grandchild(h, idx);
+	int ret = 0;
 
-		if (h->cmp(h->p[m], h->p[idx]) <= 0) break;
+	while (has_children(h, idx)) {
+		fr_minmax_heap_index_t	m;
+		fr_cmp_ret_t		c;
+
+		if (unlikely(max_child_or_grandchild(&m, h, idx) < 0)) {
+			ret = -1;
+			break;
+		}
+		c = h->cmp(h->p[m], h->p[idx]);
+		if (unlikely(c == CMP_ERR)) {
+			ret = -1;
+			break;
+		}
+
+		if (c != CMP_GT) break;
 
 		HEAP_SWAP(h->p[idx], h->p[m]);
 		OFFSET_SET(h, idx);
 
-		if (HEAP_GRANDPARENT(m) == idx && h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) < 0) {
-			HEAP_SWAP(h->p[HEAP_PARENT(m)], h->p[m]);
-			OFFSET_SET(h, HEAP_PARENT(m));
+		if (HEAP_GRANDPARENT(m) == idx) {
+			c = h->cmp(h->p[m], h->p[HEAP_PARENT(m)]);
+			if (unlikely(c == CMP_ERR)) {
+				ret = -1;
+				break;
+			}
+			if (c == CMP_LT) {
+				HEAP_SWAP(h->p[HEAP_PARENT(m)], h->p[m]);
+				OFFSET_SET(h, HEAP_PARENT(m));
+			}
 		}
 		idx = m;
 	}
 	OFFSET_SET(h, idx);
+
+	return ret;
 }
 
-static void push_down(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static int push_down(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	if (is_min_level_index(idx)) {
-		push_down_min(h, idx);
+		return push_down_min(h, idx);
 	} else {
-		push_down_max(h, idx);
+		return push_down_max(h, idx);
 	}
 }
 
-static void push_up_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static int push_up_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	grandparent;
+	int			ret = 0;
 
-	while ((grandparent = HEAP_GRANDPARENT(idx)) > 0 && h->cmp(h->p[idx], h->p[grandparent]) < 0) {
+	while ((grandparent = HEAP_GRANDPARENT(idx)) > 0) {
+		fr_cmp_ret_t c = h->cmp(h->p[idx], h->p[grandparent]);
+
+		if (unlikely(c == CMP_ERR)) {
+			ret = -1;
+			break;
+		}
+		if (c != CMP_LT) break;
+
 		HEAP_SWAP(h->p[idx], h->p[grandparent]);
 		OFFSET_SET(h, idx);
 		idx = grandparent;
 	}
 	OFFSET_SET(h, idx);
+
+	return ret;
 }
 
-static void push_up_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static int push_up_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	grandparent;
+	int			ret = 0;
 
-	while ((grandparent = HEAP_GRANDPARENT(idx)) > 0 && h->cmp(h->p[idx], h->p[grandparent]) > 0) {
+	while ((grandparent = HEAP_GRANDPARENT(idx)) > 0) {
+		fr_cmp_ret_t c = h->cmp(h->p[idx], h->p[grandparent]);
+
+		if (unlikely(c == CMP_ERR)) {
+			ret = -1;
+			break;
+		}
+		if (c != CMP_GT) break;
+
 		HEAP_SWAP(h->p[idx], h->p[grandparent]);
 		OFFSET_SET(h, idx);
 		idx = grandparent;
 	}
 	OFFSET_SET(h, idx);
+
+	return ret;
 }
 
-static void push_up(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static int push_up(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	parent;
-	int8_t			order;
+	fr_cmp_ret_t		order;
 
 	/*
 	 *	First entry? No need to move; set its index and be done with it.
 	 */
 	if (idx == 1) {
 		OFFSET_SET(h, idx);
-		return;
+		return 0;
 	}
 
 	/*
@@ -402,21 +493,26 @@ static void push_up(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 	parent = HEAP_PARENT(idx);
 	order = h->cmp(h->p[idx], h->p[parent]);
 
+	if (unlikely(order == CMP_ERR)) {
+		OFFSET_SET(h, idx);
+		return -1;
+	}
+
 	if (is_min_level_index(idx)) {
-		if (order > 0) {
+		if (order == CMP_GT) {
 			HEAP_SWAP(h->p[idx], h->p[parent]);
 			OFFSET_SET(h, idx);
-			push_up_max(h, parent);
+			return push_up_max(h, parent);
 		} else {
-			push_up_min(h, idx);
+			return push_up_min(h, idx);
 		}
 	} else {
-		if (order < 0) {
+		if (order == CMP_LT) {
 			HEAP_SWAP(h->p[idx], h->p[parent]);
 			OFFSET_SET(h, idx);
-			push_up_min(h, parent);
+			return push_up_min(h, parent);
 		} else {
-			push_up_max(h, idx);
+			return push_up_max(h, idx);
 		}
 	}
 }
@@ -442,8 +538,7 @@ int fr_minmax_heap_insert(fr_minmax_heap_t *hp, void *data)
 	 */
 	h->p[child] = data;
 	h->num_elements++;
-	push_up(h, child);
-	return 0;
+	return push_up(h, child);
 }
 
 void *fr_minmax_heap_min_peek(fr_minmax_heap_t *hp)
@@ -454,39 +549,54 @@ void *fr_minmax_heap_min_peek(fr_minmax_heap_t *hp)
 	return h->p[1];
 }
 
-void *fr_minmax_heap_min_pop(fr_minmax_heap_t *hp)
+int fr_minmax_heap_min_pop(void **out, fr_minmax_heap_t *hp)
 {
 	void	*data = fr_minmax_heap_min_peek(hp);
 
-	if (unlikely(!data)) return NULL;
-	if (unlikely(fr_minmax_heap_extract(hp, data) < 0)) return NULL;
-	return data;
+	*out = NULL;
+	if (unlikely(!data)) return 0;
+	if (unlikely(fr_minmax_heap_extract(hp, data) < 0)) return -1;
+	*out = data;
+	return 0;
 }
 
-void *fr_minmax_heap_max_peek(fr_minmax_heap_t *hp)
+int fr_minmax_heap_max_peek(void **out, fr_minmax_heap_t *hp)
 {
 	minmax_heap_t		*h = *hp;
+	fr_cmp_ret_t		c;
 
-	if (unlikely(h->num_elements == 0)) return NULL;
+	*out = NULL;
+	if (unlikely(h->num_elements == 0)) return 0;
 
-	if (h->num_elements < 3) return h->p[h->num_elements];
+	if (h->num_elements < 3) {
+		*out = h->p[h->num_elements];
+		return 0;
+	}
 
-	return h->p[2 + (h->cmp(h->p[2], h->p[3]) < 0)];
+	c = h->cmp(h->p[2], h->p[3]);
+	if (unlikely(c == CMP_ERR)) return -1;
+
+	*out = h->p[2 + (c == CMP_LT)];
+	return 0;
 }
 
-void *fr_minmax_heap_max_pop(fr_minmax_heap_t *hp)
+int fr_minmax_heap_max_pop(void **out, fr_minmax_heap_t *hp)
 {
-	void	*data = fr_minmax_heap_max_peek(hp);
+	void	*data;
 
-	if (unlikely(!data)) return NULL;
-	if (unlikely(fr_minmax_heap_extract(hp, data) < 0)) return NULL;
-	return data;
+	*out = NULL;
+	if (unlikely(fr_minmax_heap_max_peek(&data, hp) < 0)) return -1;
+	if (unlikely(!data)) return 0;
+	if (unlikely(fr_minmax_heap_extract(hp, data) < 0)) return -1;
+	*out = data;
+	return 0;
 }
 
 int fr_minmax_heap_extract(fr_minmax_heap_t *hp, void *data)
 {
 	minmax_heap_t		*h = *hp;
 	fr_minmax_heap_index_t	idx = index_get(h, data);
+	int			ret = 0;
 
 	if (unlikely(h->num_elements < idx)) {
 		fr_strerror_printf("data (index %u) exceeds heap size %u", idx, h->num_elements);
@@ -521,9 +631,9 @@ int fr_minmax_heap_extract(fr_minmax_heap_t *hp, void *data)
 	 * parent, and hence by minmax heap property is in the proper
 	 * relation to the parent and doesn't need to move up.
 	 */
-	if (idx > 1 && !is_descendant(h->num_elements, idx)) push_up(h, idx);
-	push_down(h, idx);
-	return 0;
+	if (idx > 1 && !is_descendant(h->num_elements, idx)) ret = push_up(h, idx);
+	if (likely(ret == 0)) ret = push_down(h, idx);
+	return ret;
 }
 
 /** Return the number of elements in the minmax heap
@@ -649,9 +759,12 @@ void fr_minmax_heap_verify(char const *file, int line, fr_minmax_heap_t const *h
 		};
 
 		for (size_t j = 0; j < NUM_ELEMENTS(others) && others[j] <= h->num_elements; j++) {
-			int8_t	cmp_result = h->cmp(h->p[i], h->p[others[j]]);
+			fr_cmp_ret_t	cmp_result = h->cmp(h->p[i], h->p[others[j]]);
 
-			fr_fatal_assert_msg(on_min_level ? (cmp_result <= 0) : (cmp_result >= 0),
+			fr_fatal_assert_msg(cmp_result != CMP_ERR,
+					"CONSISTENCY CHECK FAILED %s[%i]: comparator error: %s",
+					file, line, fr_strerror());
+			fr_fatal_assert_msg(on_min_level ? (cmp_result != CMP_GT) : (cmp_result != CMP_LT),
 					"CONSISTENCY CHECK FAILED %s[%i]: node %u violates %s level condition",
 					file, line, i, on_min_level ? "min" : "max");
 		}

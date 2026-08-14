@@ -1467,7 +1467,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 						 *	If this came from compile_single, then it will already
 						 *	have a number and be in the tree.
 						 */
-						if (single->number) fr_rb_remove(unlang_instruction_tree, single);
+						if (single->number) fr_rb_remove(NULL, unlang_instruction_tree, single);
 
 						/*
 						 *	The condition never
@@ -1888,7 +1888,14 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 
 extern int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
-#define name_to_op(name)  fr_hash_table_find(unlang_op_table, &(unlang_op_t) { .name = name })
+static unlang_op_t *name_to_op(char const *name)
+{
+	unlang_op_t *op;
+
+	fr_hash_table_find((void **)&op, unlang_op_table, &(unlang_op_t) { .name = name });
+
+	return op;
+}
 
 int unlang_define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name,
 				 fr_dict_attr_t const *ref)
@@ -2167,7 +2174,7 @@ allocate_number:
 	c->number = unlang_number++;
 	compile_set_default_actions(c, unlang_ctx);
 
-	if (!fr_rb_insert(unlang_instruction_tree, c)) {
+	if (fr_rb_insert(unlang_instruction_tree, c) != 0) {
 		cf_log_err(ci, "Instruction \"%s\" number %u has conflict with previous one.",
 			   c->debug_name, c->number);
 		talloc_free(c);
@@ -2338,7 +2345,7 @@ bool unlang_compile_is_keyword(const char *name)
 /*
  *	These are really unlang_foo_t, but that's fine...
  */
-static int8_t instruction_cmp(void const *one, void const *two)
+static fr_cmp_ret_t instruction_cmp(void const *one, void const *two)
 {
 	unlang_t const *a = one;
 	unlang_t const *b = two;

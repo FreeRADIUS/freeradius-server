@@ -149,7 +149,7 @@ fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
 };
 
 #ifdef HAVE_LIBPCAP
-static int8_t dhcpv4_pcap_cmp(void const *a, void const *b)
+static fr_cmp_ret_t dhcpv4_pcap_cmp(void const *a, void const *b)
 {
 	proto_dhcpv4_pcap_t const *one = a, *two = b;
 	return CMP(strcmp(one->interface, two->interface), 0);
@@ -163,7 +163,7 @@ static proto_dhcpv4_pcap_t *dhcpv4_pcap_find(proto_dhcpv4_udp_thread_t *thread, 
 		.interface = interface
 	};
 
-	pcap = fr_rb_find(&thread->pcaps, &find);
+	fr_rb_find((void **)&pcap, &thread->pcaps, &find);
 	if (pcap) return pcap;
 
 	MEM(pcap = talloc_zero(thread, proto_dhcpv4_pcap_t));
@@ -198,7 +198,7 @@ static proto_dhcpv4_pcap_t *dhcpv4_pcap_find(proto_dhcpv4_udp_thread_t *thread, 
 
 static void dhcpv4_pcap_free(proto_dhcpv4_udp_thread_t *thread, proto_dhcpv4_pcap_t *pcap)
 {
-	fr_rb_remove(&thread->pcaps, pcap);
+	fr_rb_remove(NULL, &thread->pcaps, pcap);
 	talloc_free(pcap);
 }
 #endif

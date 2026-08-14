@@ -1133,7 +1133,7 @@ fr_log_t *log_dst_by_name(char const *name)
 	memset(&find, 0, sizeof(find));
 	find.name = name;
 
-	found = fr_rb_find(dst_tree, &find);
+	fr_rb_find((void **)&found, dst_tree, &find);
 	return (found) ? found->log : NULL;
 }
 
@@ -1194,7 +1194,7 @@ int log_parse_section(CONF_SECTION *cs)
 	name = cf_section_name2(cs);
 	if (!name) name = "DEFAULT";
 
-	dst = fr_rb_find(dst_tree, &(fr_log_track_t) {
+	fr_rb_find((void **)&dst, dst_tree, &(fr_log_track_t) {
 			.name = name,
 		});
 	if (dst) {
@@ -1252,7 +1252,7 @@ int log_parse_section(CONF_SECTION *cs)
 			goto error;
 		}
 
-		dst = fr_rb_find(filename_tree, &(fr_log_track_t) {
+		fr_rb_find((void **)&dst, filename_tree, &(fr_log_track_t) {
 				.log = log,
 			});
 		if (dst) {
@@ -1288,7 +1288,7 @@ int log_parse_section(CONF_SECTION *cs)
 	return 0;
 }
 
-static int8_t _log_track_name_cmp(void const *two, void const *one)
+static fr_cmp_ret_t _log_track_name_cmp(void const *two, void const *one)
 {
 	fr_log_track_t const *a = one;
 	fr_log_track_t const *b = two;
@@ -1296,7 +1296,7 @@ static int8_t _log_track_name_cmp(void const *two, void const *one)
 	return CMP(strcmp(a->name, b->name), 0);
 }
 
-static int8_t _log_track_filename_cmp(void const *two, void const *one)
+static fr_cmp_ret_t _log_track_filename_cmp(void const *two, void const *one)
 {
 	fr_log_track_t const *a = one;
 	fr_log_track_t const *b = two;

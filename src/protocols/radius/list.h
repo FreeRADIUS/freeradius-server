@@ -27,7 +27,7 @@ RCSIDH(list_h, "$Id$")
 
 #include <freeradius-devel/util/packet.h>
 
-int8_t fr_packet_cmp(void const *a, void const *b);
+fr_cmp_ret_t fr_packet_cmp(void const *a, void const *b);
 void fr_request_from_reply(fr_packet_t *request,
 			     fr_packet_t const *reply);
 

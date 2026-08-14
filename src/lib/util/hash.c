@@ -182,24 +182,29 @@ static uint32_t parent_of(uint32_t key)
 
 
 static CC_NO_UBSAN(undefined)
-fr_hash_entry_t *list_find(fr_hash_table_t *ht,
-			   fr_hash_entry_t *head, uint32_t reversed, void const *data)
+int list_find(fr_hash_entry_t **found, fr_hash_table_t *ht,
+	      fr_hash_entry_t *head, uint32_t reversed, void const *data)
 {
 	fr_hash_entry_t *cur;
+
+	*found = NULL;
 
 	for (cur = head; cur != &ht->null; cur = cur->next) {
 		if (cur->reversed == reversed) {
 			if (ht->cmp) {
-				int cmp = ht->cmp(data, cur->data);
-				if (cmp > 0) break;
-				if (cmp < 0) continue;
+				fr_cmp_ret_t cmp = ht->cmp(data, cur->data);
+
+				if (unlikely(cmp == CMP_ERR)) return -1;
+				if (cmp == CMP_GT) break;
+				if (cmp == CMP_LT) continue;
 			}
-			return cur;
+			*found = cur;
+			return 0;
 		}
 		if (cur->reversed > reversed) break;
 	}
 
-	return NULL;
+	return 0;
 }
 
 
@@ -207,8 +212,8 @@ fr_hash_entry_t *list_find(fr_hash_table_t *ht,
  *	Inserts a new entry into the list, in order.
  */
 static CC_NO_UBSAN(undefined)
-bool list_insert(fr_hash_table_t *ht,
-		        fr_hash_entry_t **head, fr_hash_entry_t *node)
+int list_insert(fr_hash_table_t *ht,
+	        fr_hash_entry_t **head, fr_hash_entry_t *node)
 {
 	fr_hash_entry_t **last, *cur;
 
@@ -219,18 +224,20 @@ bool list_insert(fr_hash_table_t *ht,
 
 		if (cur->reversed == node->reversed) {
 			if (ht->cmp) {
-				int8_t cmp = ht->cmp(node->data, cur->data);
-				if (cmp > 0) break;
-				if (cmp < 0) continue;
+				fr_cmp_ret_t cmp = ht->cmp(node->data, cur->data);
+
+				if (unlikely(cmp == CMP_ERR)) return -1;
+				if (cmp == CMP_GT) break;
+				if (cmp == CMP_LT) continue;
 			}
-			return false;
+			return 1;
 		}
 	}
 
 	node->next = *last;
 	*last = node;
 
-	return true;
+	return 0;
 }
 
 
@@ -423,8 +430,8 @@ static void fr_hash_table_grow(fr_hash_table_t *ht)
 /*
  *	Internal find a node routine.
  */
-static inline CC_HINT(always_inline) fr_hash_entry_t *hash_table_find(fr_hash_table_t *ht,
-									 uint32_t key, void const *data)
+static inline CC_HINT(always_inline) int hash_table_find(fr_hash_entry_t **found, fr_hash_table_t *ht,
+							  uint32_t key, void const *data)
 {
 	uint32_t entry;
 	uint32_t reversed;
@@ -434,46 +441,50 @@ static inline CC_HINT(always_inline) fr_hash_entry_t *hash_table_find(fr_hash_ta
 
 	if (!ht->buckets[entry]) fr_hash_table_fixup(ht, entry);
 
-	return list_find(ht, ht->buckets[entry], reversed, data);
+	return list_find(found, ht, ht->buckets[entry], reversed, data);
 }
 
 /** Find data in a hash table
  *
+ * @param[out] found	the matching element, or NULL if no element matched.
  * @param[in] ht	to find data in.
  * @param[in] data 	to find.  Will be passed to the
  *      		hashing function.
  * @return
- *      - The user data we found.
- *	- NULL if we couldn't find any matching data.
+ *      - 0 the comparison sequence succeeded, check found for the result.
+ *	- -1 the comparator errored, retrieve the error with fr_strerror.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-void *fr_hash_table_find(fr_hash_table_t *ht, void const *data)
+int fr_hash_table_find(void **found, fr_hash_table_t *ht, void const *data)
 {
-	fr_hash_entry_t *node;
+	fr_hash_entry_t	*node;
 
-	node = hash_table_find(ht, ht->hash(data), data);
-	if (!node) return NULL;
+	*found = NULL;
+	if (unlikely(hash_table_find(&node, ht, ht->hash(data), data) < 0)) return -1;
+	if (node) *found = UNCONST(void *, node->data);
 
-	return UNCONST(void *, node->data);
+	return 0;
 }
 
 /** Hash table lookup with pre-computed key
  *
+ * @param[out] found	the matching element, or NULL if no element matched.
  * @param[in] ht	to find data in.
  * @param[in] key	the precomputed key.
  * @param[in] data	for list matching.
  * @return
- *      - The user data we found.
- *	- NULL if we couldn't find any matching data.
+ *      - 0 the comparison sequence succeeded, check found for the result.
+ *	- -1 the comparator errored, retrieve the error with fr_strerror.
  */
-void *fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *data)
+int fr_hash_table_find_by_key(void **found, fr_hash_table_t *ht, uint32_t key, void const *data)
 {
-	fr_hash_entry_t *node;
+	fr_hash_entry_t	*node;
 
-	node = hash_table_find(ht, key, data);
-	if (!node) return NULL;
+	*found = NULL;
+	if (unlikely(hash_table_find(&node, ht, key, data) < 0)) return -1;
+	if (node) *found = UNCONST(void *, node->data);
 
-	return UNCONST(void *, node->data);
+	return 0;
 }
 
 /** Insert data into a hash table
@@ -482,22 +493,24 @@ void *fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *d
  * @param[in] data 	to insert.  Will be passed to the
  *      		hashing function.
  * @return
- *	- true if data was inserted.
- *	- false if data already existed and was not inserted.
+ *	- 0 if data was inserted.
+ *	- 1 if data already existed and was not inserted.
+ *	- -1 on comparator or allocation error, retrieve the error with fr_strerror.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
+int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 {
 	uint32_t		key;
 	uint32_t		entry;
 	uint32_t		reversed;
 	fr_hash_entry_t		*node;
+	int			ret;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (ht->type) (void)_talloc_get_type_abort(data, ht->type, __location__);
 #endif
 
-	if (ht->num_elements >= TABLE_MAX) return false;
+	if (ht->num_elements >= TABLE_MAX) return -1;
 
 	key = ht->hash(data);
 	entry = key & ht->mask;
@@ -510,7 +523,7 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	 *	speedup is only ~15% or so, which isn't worth it.
 	 */
 	node = talloc_zero(ht, fr_hash_entry_t);
-	if (unlikely(!node)) return false;
+	if (unlikely(!node)) return -1;
 
 	node->next = &ht->null;
 	node->reversed = reversed;
@@ -518,9 +531,10 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	node->data = UNCONST(void *, data);
 
 	/* already in the table, can't insert it */
-	if (!list_insert(ht, &ht->buckets[entry], node)) {
+	ret = list_insert(ht, &ht->buckets[entry], node);
+	if (ret != 0) {
 		talloc_free(node);
-		return false;
+		return ret;
 	}
 
 	/*
@@ -530,7 +544,7 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	ht->num_elements++;
 	if (ht->num_elements >= ht->next_grow) fr_hash_table_grow(ht);
 
-	return true;
+	return 0;
 }
 
 /** Replace old data with new data, OR insert if there is no old
@@ -543,19 +557,19 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
  * @param[in] data 	to replace.  Will be passed to the
  *      		hashing function.
  * @return
- *	- 1 if data was inserted (hash table grows)
- *      - 0 if data was replaced (hash table doesn't grow)
- *      - -1 if we failed to replace data
+ *      - 1 if data was replaced.
+ *	- 0 if data was inserted.
+ *      - -1 if we failed to replace data, retrieve the error with fr_strerror.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 int fr_hash_table_replace(void **old, fr_hash_table_t *ht, void const *data)
 {
-	fr_hash_entry_t *node;
+	fr_hash_entry_t	*node;
 
-	node = hash_table_find(ht, ht->hash(data), data);
+	if (unlikely(hash_table_find(&node, ht, ht->hash(data), data) < 0)) return -1;
 	if (!node) {
 		if (old) *old = NULL;
-		return fr_hash_table_insert(ht, data) ? 1 : -1;
+		return (fr_hash_table_insert(ht, data) == 0) ? 0 : -1;
 	}
 
 	if (old) {
@@ -566,26 +580,29 @@ int fr_hash_table_replace(void **old, fr_hash_table_t *ht, void const *data)
 
 	node->data = UNCONST(void *, data);
 
-	return 0;
+	return 1;
 }
 
 /** Remove an entry from the hash table, without freeing the data
  *
+ * @param[out] removed	the data we removed, if any.  May be NULL.
  * @param[in] ht	to remove data from.
  * @param[in] data 	to remove.  Will be passed to the
  *      		hashing function.
  * @return
- *      - The user data we removed.
- *	- NULL if we couldn't find any matching data.
+ *      - 0 if we removed data, removed is populated.
+ *	- 1 if we couldn't find any matching data.
+ *      - -1 if the comparator errored, retrieve the error with fr_strerror.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-void *fr_hash_table_remove(fr_hash_table_t *ht, void const *data)
+int fr_hash_table_remove(void **removed, fr_hash_table_t *ht, void const *data)
 {
 	uint32_t		key;
 	uint32_t		entry;
 	uint32_t		reversed;
-	void			*old;
 	fr_hash_entry_t		*node;
+
+	if (removed) *removed = NULL;
 
 	key = ht->hash(data);
 	entry = key & ht->mask;
@@ -593,16 +610,16 @@ void *fr_hash_table_remove(fr_hash_table_t *ht, void const *data)
 
 	if (!ht->buckets[entry]) fr_hash_table_fixup(ht, entry);
 
-	node = list_find(ht, ht->buckets[entry], reversed, data);
-	if (!node) return NULL;
+	if (unlikely(list_find(&node, ht, ht->buckets[entry], reversed, data) < 0)) return -1;
+	if (!node) return 1;
 
 	list_delete(ht, &ht->buckets[entry], node);
 	ht->num_elements--;
 
-	old = node->data;
+	if (removed) *removed = node->data;
 	talloc_free(node);
 
-	return old;
+	return 0;
 }
 
 /** Remove and free data (if a free function was specified)
@@ -610,20 +627,22 @@ void *fr_hash_table_remove(fr_hash_table_t *ht, void const *data)
  * @param[in] ht	to remove data from.
  * @param[in] data 	to remove/free.
  * @return
- *	- true if we removed data.
- *      - false if we couldn't find any matching data.
+ *	- 0 if we removed data.
+ *	- 1 if we couldn't find any matching data.
+ *      - -1 if the comparator errored, retrieve the error with fr_strerror.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-bool fr_hash_table_delete(fr_hash_table_t *ht, void const *data)
+int fr_hash_table_delete(fr_hash_table_t *ht, void const *data)
 {
-	void *old;
+	void	*old;
+	int	ret;
 
-	old = fr_hash_table_remove(ht, data);
-	if (!old) return false;
+	ret = fr_hash_table_remove(&old, ht, data);
+	if (ret != 0) return ret;
 
 	if (ht->free) ht->free(old);
 
-	return true;
+	return 0;
 }
 
 /*
@@ -1037,12 +1056,12 @@ int main(int argc, char **argv)
 		p = array + i;
 		*p = i;
 
-		if (!fr_hash_table_insert(ht, p)) {
+		if (fr_hash_table_insert(ht, p) != 0) {
 			fprintf(stderr, "Failed insert %08x\n", i);
 			fr_exit(1);
 		}
 #ifdef TEST_INSERT
-		q = fr_hash_table_find(ht, p);
+		(void) fr_hash_table_find((void **)&q, ht, p);
 		if (q != p) {
 			fprintf(stderr, "Bad data %d\n", i);
 			fr_exit(1);
@@ -1058,18 +1077,18 @@ int main(int argc, char **argv)
 	 */
 	if (1) {
 		for (i = 0; i < MAX ; i++) {
-			q = fr_hash_table_find(ht, &i);
+			(void) fr_hash_table_find((void **)&q, ht, &i);
 			if (!q || *q != i) {
 				fprintf(stderr, "Failed finding %d\n", i);
 				fr_exit(1);
 			}
 
 #if 0
-			if (!fr_hash_table_delete(ht, &i)) {
+			if (fr_hash_table_delete(ht, &i) != 0) {
 				fprintf(stderr, "Failed deleting %d\n", i);
 				fr_exit(1);
 			}
-			q = fr_hash_table_find(ht, &i);
+			(void) fr_hash_table_find((void **)&q, ht, &i);
 			if (q) {
 				fprintf(stderr, "Failed to delete %08x\n", i);
 				fr_exit(1);

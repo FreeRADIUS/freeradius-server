@@ -37,13 +37,13 @@ static bool radius_server_dedup_receive(fr_bio_t *bio, fr_bio_dedup_entry_t *ded
 	/*
 	 *	Find any previous entry.
 	 */
-	prev = fr_rb_find(&my->rb, dedup_ctx);
+	fr_rb_find((void **)&prev, &my->rb, dedup_ctx);
 	if (prev) {
 		// @todo - signal duplicate packet
 		return false;
 	}
 	
-	if (!fr_rb_insert(&my->rb, dedup_ctx)) {
+	if (fr_rb_insert(&my->rb, dedup_ctx) != 0) {
 		// @todo - signal an error
 		return false;
 	}

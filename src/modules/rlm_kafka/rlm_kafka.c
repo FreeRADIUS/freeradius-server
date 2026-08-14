@@ -192,7 +192,7 @@ static conf_parser_t const module_config[] = {
 /** @param[in] a  rlm_kafka_topic_t
  *  @param[in] b  same.
  *  @return `strcmp` ordering of `a->name` and `b->name`. */
-static int8_t topic_name_cmp(void const *a, void const *b)
+static fr_cmp_ret_t topic_name_cmp(void const *a, void const *b)
 {
 	rlm_kafka_topic_t const *ta = a;
 	rlm_kafka_topic_t const *tb = b;
@@ -213,7 +213,7 @@ rd_kafka_topic_t *kafka_find_topic(rlm_kafka_t const *inst, char const *name)
 
 	if (!inst->topics) return NULL;
 
-	h = fr_rb_find(inst->topics, &key);
+	fr_rb_find((void **)&h, inst->topics, &key);
 	return h ? h->kt : NULL;
 }
 
@@ -914,7 +914,7 @@ static int kafka_topics_alloc(rlm_kafka_t *inst)
 		}
 		talloc_set_destructor(topic_t, _topic_free);
 
-		if (!fr_cond_assert_msg(fr_rb_insert(inst->topics, topic_t), "duplicate topic handle")) {
+		if (!fr_cond_assert_msg(fr_rb_insert(inst->topics, topic_t) == 0, "duplicate topic handle")) {
 			talloc_free(topic_t);
 			return -1;
 		}

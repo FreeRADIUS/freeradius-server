@@ -153,7 +153,7 @@ static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s);
 static int network_socket_close(fr_network_socket_t *s);
 static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx);
 
-static int8_t reply_cmp(void const *one, void const *two)
+static fr_cmp_ret_t reply_cmp(void const *one, void const *two)
 {
 	fr_channel_data_t const *a = one, *b = two;
 	int ret;
@@ -164,7 +164,7 @@ static int8_t reply_cmp(void const *one, void const *two)
 	return fr_time_cmp(a->m.when, b->m.when);
 }
 
-static int8_t waiting_cmp(void const *one, void const *two)
+static fr_cmp_ret_t waiting_cmp(void const *one, void const *two)
 {
 	fr_channel_data_t const *a = one, *b = two;
 	int ret;
@@ -175,14 +175,14 @@ static int8_t waiting_cmp(void const *one, void const *two)
 	return fr_time_cmp(a->reply.request_time, b->reply.request_time);
 }
 
-static int8_t socket_listen_cmp(void const *one, void const *two)
+static fr_cmp_ret_t socket_listen_cmp(void const *one, void const *two)
 {
 	fr_network_socket_t const *a = one, *b = two;
 
 	return CMP(a->listen, b->listen);
 }
 
-static int8_t socket_num_cmp(void const *one, void const *two)
+static fr_cmp_ret_t socket_num_cmp(void const *one, void const *two)
 {
 	fr_network_socket_t const *a = one, *b = two;
 
@@ -273,7 +273,7 @@ int fr_network_listen_delete(fr_network_t *nr, fr_listen_t *li)
 
 	fr_assert(is_network_thread(nr));
 
-	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	fr_rb_find((void **)&s, nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return -1;
 
 	fr_network_socket_dead(nr, s);
@@ -339,7 +339,7 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t *li)
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort_const(li, fr_listen_t);
 
-	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	fr_rb_find((void **)&s, nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return;
 
 	/*
@@ -426,7 +426,7 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 	if (is_network_thread(nr)) {
 		fr_network_socket_t *s;
 
-		s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+		fr_rb_find((void **)&s, nr->sockets, &(fr_network_socket_t){ .listen = li });
 		if (!s) {
 			fr_strerror_const("Listener was not found for injected packet");
 			return -1;
@@ -821,7 +821,7 @@ int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_list
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort_const(li, fr_listen_t);
 
-	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	fr_rb_find((void **)&s, nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return -1;
 
 	cd = (fr_channel_data_t *) fr_message_and_data_alloc(s->ms, buflen);
@@ -860,7 +860,7 @@ ssize_t fr_network_listen_outstanding(fr_network_t *nr, fr_listen_t *li) {
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort_const(li, fr_listen_t);
 
-	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	fr_rb_find((void **)&s, nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return -1;
 
 	return s->outstanding;
@@ -1111,7 +1111,7 @@ int fr_network_sendto_worker(fr_network_t *nr, fr_listen_t *li, void *packet_ctx
 	fr_channel_data_t *cd;
 	fr_network_socket_t *s;
 
-	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	fr_rb_find((void **)&s, nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return -1;
 
 	cd = (fr_channel_data_t *) fr_message_and_data_alloc(s->ms, data_len);
@@ -1220,7 +1220,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		s->pending = NULL;
 
 	} else {
-		cd = fr_heap_pop(&s->waiting);
+		fr_heap_pop((void **)&cd, &s->waiting);
 	}
 
 	while (cd != NULL) {
@@ -1334,7 +1334,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		/*
 		 *	Grab the net entry.
 		 */
-		cd = fr_heap_pop(&s->waiting);
+		fr_heap_pop((void **)&cd, &s->waiting);
 	}
 
 	/*
@@ -1413,7 +1413,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	/*
 	 *	Clean up any queued entries.
 	 */
-	while ((cd = fr_heap_pop(&s->waiting)) != NULL) {
+	while ((fr_heap_pop((void **)&cd, &s->waiting) == 0) && cd) {
 		fr_message_done(&cd->m);
 	}
 
@@ -1697,7 +1697,7 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
 	fr_assert(data_size == sizeof(my_inject));
 
 	memcpy(&my_inject, data, data_size);
-	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = my_inject.listen });
+	fr_rb_find((void **)&s, nr->sockets, &(fr_network_socket_t){ .listen = my_inject.listen });
 	if (!s) {
 		talloc_free(my_inject.packet); /* MUST be it's own TALLOC_CTX */
 		return;
@@ -1748,7 +1748,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 	 *	Pull the replies off of our global heap, and try to
 	 *	push them to the individual sockets.
 	 */
-	while ((cd = fr_heap_pop(&nr->replies)) != NULL) {
+	while ((fr_heap_pop((void **)&cd, &nr->replies) == 0) && cd) {
 		fr_listen_t *li;
 		fr_network_socket_t *s;
 
@@ -1758,7 +1758,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 		 *	@todo - cache this somewhere so we don't need
 		 *	to do an rbtree lookup for every packet.
 		 */
-		s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+		fr_rb_find((void **)&s, nr->sockets, &(fr_network_socket_t){ .listen = li });
 
 		/*
 		 *	This shouldn't happen, but be safe...
@@ -1865,7 +1865,7 @@ int fr_network_destroy(fr_network_t *nr)
 	 *	@todo - call transport "done" for the reply, so that
 	 *	it knows the replies are done, too.
 	 */
-	while ((cd = fr_heap_pop(&nr->replies)) != NULL) {
+	while ((fr_heap_pop((void **)&cd, &nr->replies) == 0) && cd) {
 		fr_message_done(&cd->m);
 	}
 
@@ -2246,7 +2246,7 @@ static int cmd_stats_socket(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t con
 	fr_network_t const *nr = ctx;
 	fr_network_socket_t *s;
 
-	s = fr_rb_find(nr->sockets_by_num, &(fr_network_socket_t){ .number = info->box[0]->vb_uint32 });
+	fr_rb_find((void **)&s, nr->sockets_by_num, &(fr_network_socket_t){ .number = info->box[0]->vb_uint32 });
 	if (!s) {
 		fprintf(fp_err, "No such socket number '%s'.\n", info->argv[0]);
 		return -1;

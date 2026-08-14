@@ -252,7 +252,7 @@ static rlm_dpsk_cache_t *dpsk_cache_find(request_t *request, rlm_dpsk_t const *i
 	memcpy(&my_entry.ssid, &ssid->vb_octets, sizeof(my_entry.ssid)); /* const issues */
 	my_entry.ssid_len = ssid->vb_length;
 
-	entry = fr_rb_find(&inst->mutable->cache, &my_entry);
+	fr_rb_find((void **)&entry, &inst->mutable->cache, &my_entry);
 	if (entry) {
 		if fr_time_gt(entry->expires, fr_time()) {
 			RDEBUG3("Cache entry found");
@@ -722,7 +722,7 @@ make_digest:
 		memcpy(&my_entry.ssid, env->ssid.vb_octets, sizeof(my_entry.ssid)); /* const ptr issues */
 		my_entry.ssid_len = env->ssid.vb_length;
 
-		entry = fr_rb_find(&inst->mutable->cache, &my_entry);
+		fr_rb_find((void **)&entry, &inst->mutable->cache, &my_entry);
 		if (!entry) {
 			/*
 			 *	Maybe there are oo many entries in the
@@ -758,7 +758,7 @@ make_digest:
 			/*
 			 *	Cache it.
 			 */
-			if (!fr_rb_insert(&inst->mutable->cache, entry)) {
+			if (fr_rb_insert(&inst->mutable->cache, entry) != 0) {
 				TALLOC_FREE(entry);
 				goto update_attributes;
 			}
@@ -873,14 +873,14 @@ static void mod_unload(void)
 	xlat_func_unregister("dpsk.pmk");
 }
 
-static int8_t cache_entry_cmp(void const *one, void const *two)
+static fr_cmp_ret_t cache_entry_cmp(void const *one, void const *two)
 {
 	rlm_dpsk_cache_t const *a = (rlm_dpsk_cache_t const *) one;
 	rlm_dpsk_cache_t const *b = (rlm_dpsk_cache_t const *) two;
 	int rcode;
 
 	rcode = memcmp(a->mac, b->mac, sizeof(a->mac));
-	if (rcode != 0) return rcode;
+	if (rcode != 0) return CMP(rcode, 0);
 
 	if (a->ssid_len < b->ssid_len) return -1;
 	if (a->ssid_len > b->ssid_len) return +1;

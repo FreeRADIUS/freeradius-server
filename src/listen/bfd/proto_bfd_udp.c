@@ -150,7 +150,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Try to find the client before looking at any packet data.
 	 */
-	client =  fr_rb_find(inst->peers, &(fr_client_t) { .ipaddr = address->socket.inet.src_ipaddr, .proto = IPPROTO_UDP });
+	fr_rb_find((void **)&client, inst->peers, &(fr_client_t) { .ipaddr = address->socket.inet.src_ipaddr, .proto = IPPROTO_UDP });
 	if (!client) {
 		DEBUG2("BFD %s - Received invalid packet on %s - unknown client %pV:%u", inst->server_name, thread->name,
 		       fr_box_ipaddr(address->socket.inet.src_ipaddr), address->socket.inet.src_port);
@@ -475,10 +475,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	proto_bfd_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
+	fr_client_t		*client;
 
 	if (ipproto != IPPROTO_UDP) return NULL;
 
-	return fr_rb_find(inst->peers, &(fr_client_t) { .ipaddr = *ipaddr, .proto = IPPROTO_UDP });
+	fr_rb_find((void **)&client, inst->peers, &(fr_client_t) { .ipaddr = *ipaddr, .proto = IPPROTO_UDP });
+
+	return client;
 }
 
 /** Set the event list for a new socket

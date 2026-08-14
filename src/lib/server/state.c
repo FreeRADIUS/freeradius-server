@@ -175,7 +175,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry);
 /** Compare two fr_state_entry_t based on their state value i.e. the value of the attribute
  *
  */
-static int8_t state_entry_cmp(void const *one, void const *two)
+static fr_cmp_ret_t state_entry_cmp(void const *one, void const *two)
 {
 	fr_state_entry_t const *a = one, *b = two;
 	int ret;
@@ -187,7 +187,7 @@ static int8_t state_entry_cmp(void const *one, void const *two)
 /** Compare two fr_state_entry_t based on their dedup key
  *
  */
-static int8_t state_dedup_cmp(void const *one, void const *two)
+static fr_cmp_ret_t state_dedup_cmp(void const *one, void const *two)
 {
 	fr_state_entry_t const *a = one, *b = two;
 
@@ -482,8 +482,16 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		if (dedup_key) {
 			fr_state_entry_t *unfinished;
 
-			unfinished = fr_rb_find(state->dedup_tree, &(fr_state_entry_t) { .dedup_key = dedup_key });
-			if (unfinished) {
+			/*
+			 *	A comparator error means we can't tell whether a
+			 *	previous session exists.  The insert into the dedup
+			 *	tree below fails for the same reason, refusing the
+			 *	new entry, so here we only report.
+			 */
+			if (unlikely(fr_rb_find((void **)&unfinished, state->dedup_tree,
+						&(fr_state_entry_t) { .dedup_key = dedup_key }) < 0)) {
+				RPEDEBUG("Failed checking for an existing session with the same dedup_key");
+			} else if (unfinished) {
 				state_entry_unlink(state, unfinished);
 				fr_dlist_insert_tail(&to_free, unfinished);
 			}
@@ -622,7 +630,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
-	if (!fr_rb_insert(state->tree, entry)) {
+	if (fr_rb_insert(state->tree, entry) != 0) {
 	fail_unlock:
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RERROR("Failed inserting state entry - Insertion into state tree failed");
@@ -636,8 +644,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	Ensure that we can de-duplicate things if the supplicant is misbehaving.
 	 */
 	if (state->dedup_tree && !old) {
-		if (!fr_rb_insert(state->dedup_tree, entry)) {
-			(void) fr_rb_remove(state->tree, entry);
+		if (fr_rb_insert(state->dedup_tree, entry) != 0) {
+			(void) fr_rb_remove(NULL, state->tree, entry);
 			goto fail_unlock;
 		}
 	}
@@ -667,7 +675,7 @@ static fr_state_entry_t *state_entry_find_and_unlink(fr_state_tree_t *state, fr_
 	 */
 	my_entry.state_comp.context_id ^= state->config.context_id;
 
-	entry = fr_rb_remove(state->tree, &my_entry);
+	fr_rb_remove((void **)&entry, state->tree, &my_entry);
 	if (entry) {
 		(void) talloc_get_type_abort(entry, fr_state_entry_t);
 		fr_dlist_remove(&state->to_expire, entry);

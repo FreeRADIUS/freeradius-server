@@ -635,7 +635,7 @@ static pthread_mutex_t detail_file_mutex = PTHREAD_MUTEX_INITIALIZER;
  * @param[in] two	Second thread specific xlat expansion instance.
  * @return CMP(one, two)
  */
-static int8_t _detail_file_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _detail_file_cmp(void const *one, void const *two)
 {
 	proto_detail_file_t const *a = one, *b = two;
 
@@ -727,10 +727,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 	}
 
-	if (!fr_rb_insert(detail_file_tree, inst)) {
-		proto_detail_file_t const *old;
+	if (fr_rb_insert(detail_file_tree, inst) != 0) {
+		proto_detail_file_t *old;
 
-		old = fr_rb_find(detail_file_tree, inst);
+		fr_rb_find((void **)&old, detail_file_tree, inst);
 		fr_assert(old);
 
 		pthread_mutex_unlock(&detail_file_mutex);

@@ -345,7 +345,7 @@ static connection_t *test_setup_socket_pair_connection_alloc(trunk_connection_t 
 				   log_prefix, tconn);
 }
 
-static int8_t test_preq_cmp(void const *a, void const *b)
+static fr_cmp_ret_t test_preq_cmp(void const *a, void const *b)
 {
 	test_proto_request_t const	*preq_a = a;
 	test_proto_request_t const	*preq_b = b;

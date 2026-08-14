@@ -32,7 +32,7 @@ typedef struct {
 	fr_rb_node_t	node;
 } fr_rb_tree_test_node_t;
 
-static int8_t fr_rb_tree_test_cmp(void const *one, void const *two)
+static fr_cmp_ret_t fr_rb_tree_test_cmp(void const *one, void const *two)
 {
 	fr_rb_tree_test_node_t const *a = one, *b = two;
 	return CMP(a->num, b->num);
@@ -210,11 +210,82 @@ static void test_fr_rb_iter_delete(void)
 	talloc_free(t);
 }
 
+static bool poisoned;
+
+static fr_cmp_ret_t fr_rb_tree_test_poison_cmp(void const *one, void const *two)
+{
+	if (poisoned) {
+		fr_strerror_const("Poisoned comparator");
+		return CMP_ERR;
+	}
+
+	return fr_rb_tree_test_cmp(one, two);
+}
+
+/*
+ *	A comparator returning CMP_ERR must fail the operation closed,
+ *	report the error through the int return, and leave the
+ *	tree structurally intact.
+ */
+static void test_fr_rb_cmp_err(void)
+{
+	fr_rb_tree_t		*t;
+	fr_rb_tree_test_node_t	nodes[8];
+	fr_rb_tree_test_node_t	needle;
+	size_t			i;
+	void			*found;
+
+	TEST_CASE("comparator error fails closed");
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_poison_cmp, NULL);
+	TEST_CHECK(t != NULL);
+
+	poisoned = false;
+	for (i = 0; i < NUM_ELEMENTS(nodes); i++) {
+		nodes[i].num = i * 16;
+		TEST_CHECK(fr_rb_insert(t, &nodes[i]) == 0);
+	}
+
+	poisoned = true;
+	needle.num = 3 * 16;
+
+	TEST_CHECK(fr_rb_find(&found, t, &needle) == -1);
+	TEST_CHECK(found == NULL);
+
+	needle.num = 9 * 16;
+	TEST_CHECK(fr_rb_insert(t, &needle) == -1);
+	TEST_CHECK(fr_rb_num_elements(t) == NUM_ELEMENTS(nodes));
+
+	found = &needle;
+	TEST_CHECK(fr_rb_find_or_insert(&found, t, &needle) == -1);
+	TEST_CHECK(found == NULL);
+
+	needle.num = 3 * 16;
+	TEST_CHECK(fr_rb_remove(&found, t, &needle) == -1);
+	TEST_CHECK(found == NULL);
+
+	TEST_CHECK(fr_rb_delete(t, &needle) == -1);
+	TEST_CHECK(fr_rb_num_elements(t) == NUM_ELEMENTS(nodes));
+
+	/*
+	 *	Once the comparator recovers every element is still
+	 *	present and findable.
+	 */
+	poisoned = false;
+	for (i = 0; i < NUM_ELEMENTS(nodes); i++) {
+		needle.num = i * 16;
+		TEST_CHECK(fr_rb_find(&found, t, &needle) == 0);
+		TEST_CHECK(found == &nodes[i]);
+	}
+
+	talloc_free(t);
+}
+
 TEST_LIST = {
 	{ "fr_rb_iter_inorder",            test_fr_rb_iter_inorder },
 	{ "fr_rb_iter_preorder",           test_fr_rb_iter_preorder },
 	{ "fr_rb_iter_postorder",          test_fr_rb_iter_postorder },
 	{ "fr_rb_iter_delete",             test_fr_rb_iter_delete },
+	{ "fr_rb_cmp_err",                 test_fr_rb_cmp_err },
 
 	TEST_TERMINATOR
 };

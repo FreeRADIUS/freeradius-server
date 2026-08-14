@@ -253,7 +253,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		 *	request, THEN we're guaranteed that there is
 		 *	still a timer event left.
 		 */
-		sub_request = fr_heap_pop(&intps->runnable);
+		fr_heap_pop((void **)&sub_request, &intps->runnable);
 		if (!sub_request) {
 			DEBUG4("No pending requests (%d yielded)", intps->yielded);
 			continue;

@@ -104,7 +104,7 @@ static unlang_action_t unlang_switch(UNUSED unlang_result_t *p_result, request_t
 	 *	create a reference.
 	 */
 	fr_value_box_copy_shallow(NULL, &case_vpt.data.literal, box);
-	found = fr_htrie_find(switch_gext->ht, &my_case);
+	fr_htrie_find((void **)&found, switch_gext->ht, &my_case);
 	if (!found) {
 	find_null_case:
 		found = switch_gext->default_case;
@@ -267,7 +267,7 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 	return c;
 }
 
-static int8_t case_cmp(void const *one, void const *two)
+static fr_cmp_ret_t case_cmp(void const *one, void const *two)
 {
 	unlang_case_t const *a = (unlang_case_t const *) one; /* may not be talloc'd! See switch.c */
 	unlang_case_t const *b = (unlang_case_t const *) two; /* may not be talloc'd! */
@@ -516,17 +516,23 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 		if (!case_gext->vpt) {
 			gext->default_case = single;
 
-		} else if (!fr_htrie_insert(gext->ht, single)) {
-			single = fr_htrie_find(gext->ht, single);
+		} else {
+			int insert_ret;
 
-			/*
-			 *	@todo - look up the key and get the previous one?
-			 */
-			cf_log_err(subci, "Failed inserting 'case' statement.  Is there a duplicate?");
+			insert_ret = fr_htrie_insert(gext->ht, single);
+			if (unlikely(insert_ret < 0)) {
+				cf_log_err(subci, "Failed inserting 'case' statement - %s", fr_strerror());
+				goto error;
+			}
+			if (insert_ret > 0) {
+				fr_htrie_find((void **)&single, gext->ht, single);
 
-			if (single) cf_log_err(unlang_generic_to_group(single)->cs, "Duplicate may be here.");
+				cf_log_err(subci, "Failed inserting 'case' statement.  Is there a duplicate?");
 
-			goto error;
+				if (single) cf_log_err(unlang_generic_to_group(single)->cs, "Duplicate may be here.");
+
+				goto error;
+			}
 		}
 
 		unlang_list_insert_tail(&g->children, single);

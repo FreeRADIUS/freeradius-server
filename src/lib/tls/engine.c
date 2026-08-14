@@ -65,7 +65,7 @@ static fr_rb_tree_t	*tls_engines;
 /** Compares two engines
  *
  */
-static int8_t tls_engine_cmp(void const *one, void const *two)
+static fr_cmp_ret_t tls_engine_cmp(void const *one, void const *two)
 {
 	tls_engine_t const *a = talloc_get_type_abort_const(one, tls_engine_t);
 	tls_engine_t const *b = talloc_get_type_abort_const(two, tls_engine_t);
@@ -198,7 +198,7 @@ static inline CC_HINT(always_inline) fr_tls_engine_ctrl_t *tls_engine_ctrl_dup(T
  */
 static int _tls_engine_free(tls_engine_t *our_e)
 {
-	(void) fr_rb_remove(tls_engines, our_e);
+	(void) fr_rb_remove(NULL, tls_engines, our_e);
 
 	/*
 	 *	Make memory leaks very explicit
@@ -258,7 +258,7 @@ int fr_tls_engine_init(ENGINE **e_out,
 	} else {
 		tls_engine_t *found = NULL;
 
-		found = fr_rb_find(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
+		fr_rb_find((void **)&found, tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
 		if (found) {
 			fr_strerror_printf("engine %s%s%s%salready initialised", id,
 					   instance ? " (" : "",
@@ -386,7 +386,7 @@ int fr_tls_engine_init(ENGINE **e_out,
 		}
 	}
 
-	if (!fr_rb_insert(tls_engines, our_e)) {
+	if (fr_rb_insert(tls_engines, our_e) != 0) {
 		talloc_free(our_e);
 		return -1;
 	}
@@ -439,7 +439,7 @@ int fr_tls_engine(ENGINE **e_out, char const *id, char const *instance, bool aut
 	}
 
 
-	found = fr_rb_find(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
+	fr_rb_find((void **)&found, tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
 	if (!found) {
 		if (!auto_init) goto not_init;
 		goto do_init;
@@ -454,12 +454,15 @@ int fr_tls_engine(ENGINE **e_out, char const *id, char const *instance, bool aut
  */
 void fr_tls_engine_load_builtin(void)
 {
+	tls_engine_t *found = NULL;
+
 	ENGINE_load_builtin_engines();	/* Needed to load AES-NI engine (also loads rdrand, boo) */
 
 	/*
 	 *	Mitigate against CrossTalk (CVE-2020-0543)
 	 */
-	if (!tls_engines || !fr_rb_find(tls_engines, &(tls_engine_t){ .id = "rdrand" })) {
+	if (tls_engines) fr_rb_find((void **)&found, tls_engines, &(tls_engine_t){ .id = "rdrand" });
+	if (!found) {
 		ENGINE *rand_engine;
 
 		ENGINE_register_all_RAND();	/* Give rand engines a chance to register */

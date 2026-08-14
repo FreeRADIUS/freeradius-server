@@ -68,18 +68,22 @@ int		fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback) CC_HINT(non
 
 /*
  *	Data oriented API.
+ *
+ *	The int return exists so the signatures match the other htrie
+ *	backends (rb, hash); tries never call an fr_cmp_t comparator so
+ *	find/match/remove/delete never report a comparator error.
  */
-void		*fr_trie_match(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
+int		fr_trie_match(void **found, fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 
-void		*fr_trie_find(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
+int		fr_trie_find(void **found, fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 
-bool		fr_trie_insert(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
+int		fr_trie_insert(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 
 int		fr_trie_replace(void **old, fr_trie_t *ft, void const *data) CC_HINT(nonnull(2, 3));
 
-void		*fr_trie_remove(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
+int		fr_trie_remove(void **removed, fr_trie_t *ft, void const *data) CC_HINT(nonnull(2,3));
 
-bool		fr_trie_delete(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
+int		fr_trie_delete(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 
 unsigned int	fr_trie_num_elements(fr_trie_t *ft) CC_HINT(nonnull); /* always returns 0 */
 

@@ -407,7 +407,7 @@ static PyModuleDef py_freeradius_def = {
 /** How to compare two Python calls
  *
  */
-static int8_t python_func_def_cmp(void const *one, void const *two)
+static fr_cmp_ret_t python_func_def_cmp(void const *one, void const *two)
 {
 	python_func_def_t const *a = one, *b = two;
 	int ret;

@@ -164,7 +164,7 @@ static inline fr_dhcpv4_attr_flags_t const *fr_dhcpv4_attr_flags(fr_dict_attr_t 
 /*
  *	base.c
  */
-int8_t		fr_dhcpv4_attr_cmp(void const *a, void const *b);
+fr_cmp_ret_t	fr_dhcpv4_attr_cmp(void const *a, void const *b);
 
 bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, uint32_t *xid);
 fr_packet_t	*fr_dhcpv4_packet_alloc(uint8_t const *data, size_t data_len);

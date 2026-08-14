@@ -40,10 +40,10 @@ RCSID("$Id$")
  *	That's because if the authentication vector is different,
  *	it means that the NAS has given up on the earlier request.
  */
-int8_t fr_packet_cmp(void const *a_v, void const *b_v)
+fr_cmp_ret_t fr_packet_cmp(void const *a_v, void const *b_v)
 {
 	fr_packet_t const *a = a_v, *b = b_v;
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	/*
 	 *	256-way fanout for RADIUS IDs, then by FD.  And then
@@ -320,14 +320,18 @@ bool fr_packet_list_insert(fr_packet_list_t *pl,
 {
 	if (!pl || !request) return 0;
 
-	return fr_rb_insert(pl->tree, request);
+	return fr_rb_insert(pl->tree, request) == 0;
 }
 
 fr_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_packet_t *request)
 {
+	fr_packet_t *found;
+
 	if (!pl || !request) return 0;
 
-	return fr_rb_find(pl->tree, request);
+	fr_rb_find((void **)&found, pl->tree, request);
+
+	return found;
 }
 
 
@@ -367,9 +371,10 @@ fr_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_packet_t *repl
 	 */
 	my_request.socket.fd = reply->socket.fd;
 	my_request.id = reply->id;
-	request = &my_request;
 
-	return fr_rb_find(pl->tree, request);
+	fr_rb_find((void **)&request, pl->tree, &my_request);
+
+	return request;
 }
 
 
@@ -377,7 +382,7 @@ bool fr_packet_list_yank(fr_packet_list_t *pl, fr_packet_t *request)
 {
 	if (!pl || !request) return false;
 
-	return fr_rb_delete(pl->tree, request);
+	return fr_rb_delete(pl->tree, request) == 0;
 }
 
 uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)

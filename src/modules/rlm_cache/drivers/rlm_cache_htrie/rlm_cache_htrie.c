@@ -164,7 +164,7 @@ finish:
  *
  * There may be multiple entries with the same expiry time.
  */
-static int8_t cache_heap_cmp(void const *one, void const *two)
+static fr_cmp_ret_t cache_heap_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
 
@@ -223,8 +223,16 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 	/*
 	 *	Is there an entry for this key?
+	 *
+	 *	A comparator error must not read as a miss: a miss
+	 *	triggers "insert as new", which would shadow the
+	 *	existing entry.
 	 */
-	c = fr_htrie_find(mutable->cache, &find);
+	if (unlikely(fr_htrie_find((void **)&c, mutable->cache, &find) < 0)) {
+		RPEDEBUG("Cache lookup failed");
+		*out = NULL;
+		return CACHE_ERROR;
+	}
 	if (!c) {
 		*out = NULL;
 		return CACHE_MISS;
@@ -253,7 +261,10 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 
 	fr_value_box_copy_shallow(NULL, &find.key, key);
 
-	c = fr_htrie_find(mutable->cache, &find);
+	if (unlikely(fr_htrie_find((void **)&c, mutable->cache, &find) < 0)) {
+		RPEDEBUG("Cache lookup failed");
+		return CACHE_ERROR;
+	}
 	if (!c) return CACHE_MISS;
 
 	fr_heap_extract(&mutable->heap, c);
@@ -285,11 +296,11 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	/*
 	 *	Allow overwriting
 	 */
-	if (!fr_htrie_insert(mutable->cache, c)) {
+	if (fr_htrie_insert(mutable->cache, c) != 0) {
 		status = cache_entry_expire(config, instance, request, handle, &c->key);
 		if ((status != CACHE_OK) && !fr_cond_assert(0)) return CACHE_ERROR;
 
-		if (!fr_htrie_insert(mutable->cache, c)) {
+		if (fr_htrie_insert(mutable->cache, c) != 0) {
 			RERROR("Failed adding entry");
 
 			return CACHE_ERROR;
@@ -414,7 +425,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return 0;
 }
 
-static int8_t _value_cmp(void const *a, void const *b) {
+static fr_cmp_ret_t _value_cmp(void const *a, void const *b) {
 	fr_value_box_t	const *one = a;
 	fr_value_box_t	const *two = b;
 	return fr_value_box_cmp(one, two);

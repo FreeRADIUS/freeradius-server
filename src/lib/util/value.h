@@ -1009,7 +1009,7 @@ _Generic((_var), \
 /*
  *	Comparison
  */
-int8_t		fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
+fr_cmp_ret_t	fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		CC_HINT(nonnull);
 
 int		fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)

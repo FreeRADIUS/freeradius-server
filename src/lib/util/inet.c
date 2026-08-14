@@ -1347,10 +1347,10 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex)
  * @return
  *	- 1 if a > b
  *	- 0 if a == b
- *	- -1 if a < b
- *	- -2 on error.
+ *	- CMP_LT if a < b
+ *	- CMP_ERR on invalid address family, retrieve the error with fr_strerror.
  */
-int8_t fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
+fr_cmp_ret_t fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 {
 	int ret;
 	size_t len;
@@ -1379,7 +1379,7 @@ int8_t fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 
 	default:
 		fr_strerror_printf("Invalid address family %d", a->af);
-		return -2;
+		return CMP_ERR;
 	}
 }
 

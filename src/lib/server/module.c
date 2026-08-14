@@ -359,7 +359,7 @@ typedef struct {
  * of its position in the thread-specific heap, which allows for
  * O(1) lookups.
  */
-static int8_t _mlg_module_instance_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _mlg_module_instance_cmp(void const *one, void const *two)
 {
 	module_instance_t const *a = talloc_get_type_abort_const(one, module_instance_t);
 	module_instance_t const *b = talloc_get_type_abort_const(two, module_instance_t);
@@ -786,7 +786,7 @@ int module_instance_conf_parse(module_instance_t *mi, CONF_SECTION *conf)
  * The reason why we need parent, is because we could have submodules with names
  * that conflict with their parent.
  */
-static int8_t module_instance_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t module_instance_name_cmp(void const *one, void const *two)
 {
 	module_instance_t const *a = one;
 	module_instance_t const *b = two;
@@ -820,7 +820,7 @@ static int8_t module_instance_name_cmp(void const *one, void const *two)
 /** Compare module's by their private instance data
  *
  */
-static int8_t module_instance_data_cmp(void const *one, void const *two)
+static fr_cmp_ret_t module_instance_data_cmp(void const *one, void const *two)
 {
 	void const *a = ((module_instance_t const *)one)->data;
 	void const *b = ((module_instance_t const *)two)->data;
@@ -914,11 +914,11 @@ module_instance_t *module_instance_by_name(module_list_t const *ml, module_insta
 	inst_name = asked_name;
 	if (inst_name[0] == '-') inst_name++;
 
-	inst = fr_rb_find(ml->name_tree,
-			  &(module_instance_t){
-				.parent = UNCONST(module_instance_t *, parent),
-				.name = inst_name
-			  });
+	fr_rb_find(&inst, ml->name_tree,
+		   &(module_instance_t){
+			.parent = UNCONST(module_instance_t *, parent),
+			.name = inst_name
+		   });
 	if (!inst) return NULL;
 
 	return talloc_get_type_abort(inst, module_instance_t);
@@ -957,10 +957,10 @@ module_instance_t *module_instance_by_data(module_list_t const *ml, void const *
 {
 	module_instance_t *mi;
 
-	mi = fr_rb_find(ml->data_tree,
-			&(module_instance_t){
-				.data = UNCONST(void *, data)
-			});
+	fr_rb_find((void **)&mi, ml->data_tree,
+		   &(module_instance_t){
+			.data = UNCONST(void *, data)
+		   });
 	if (!mi) return NULL;
 
 	return talloc_get_type_abort(mi, module_instance_t);
@@ -1512,11 +1512,11 @@ static int _module_instance_free(module_instance_t *mi)
 	 *	freed.
 	 */
 	if (!ml->name_tree->being_freed) {
-		if (fr_rb_node_inline_in_tree(&mi->name_node) && !fr_cond_assert(fr_rb_delete(ml->name_tree, mi))) return -1;
+		if (fr_rb_node_inline_in_tree(&mi->name_node) && !fr_cond_assert(fr_rb_delete(ml->name_tree, mi) == 0)) return -1;
 	}
 
 	if (!ml->data_tree->being_freed) {
-		if (fr_rb_node_inline_in_tree(&mi->data_node) && !fr_cond_assert(fr_rb_delete(ml->data_tree, mi))) return -1;
+		if (fr_rb_node_inline_in_tree(&mi->data_node) && !fr_cond_assert(fr_rb_delete(ml->data_tree, mi) == 0)) return -1;
 	}
 	if (ml->type->data_del) ml->type->data_del(mi);
 
@@ -1799,8 +1799,8 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 	/*
 	 *	Remember the module for later.
 	 */
-	if (!fr_cond_assert(fr_rb_insert(ml->name_tree, mi))) goto error;
-	if (!fr_cond_assert(fr_rb_insert(ml->data_tree, mi))) goto error;
+	if (!fr_cond_assert(fr_rb_insert(ml->name_tree, mi) == 0)) goto error;
+	if (!fr_cond_assert(fr_rb_insert(ml->data_tree, mi) == 0)) goto error;
 	if (ml->type->data_add && unlikely(ml->type->data_add(mi) < 0)) goto error;
 
 	return mi;

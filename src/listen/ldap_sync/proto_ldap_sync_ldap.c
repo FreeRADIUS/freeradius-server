@@ -135,7 +135,7 @@ typedef struct {
  * @param[in] two second sync to compare.
  * @return CMP(one, two)
  */
-int8_t sync_state_cmp(void const *one, void const *two)
+fr_cmp_ret_t sync_state_cmp(void const *one, void const *two)
 {
 	sync_state_t const *a = one, *b = two;
 
@@ -683,7 +683,7 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
 		return ret;
 	}
 
-	sync = fr_rb_find(tree, &(sync_state_t){.msgid = msgid});
+	fr_rb_find((void **)&sync, tree, &(sync_state_t){.msgid = msgid});
 	if (!sync) {
 		WARN("Ignoring msgid %i, doesn't match any outstanding syncs", msgid);
 		goto free_msg;

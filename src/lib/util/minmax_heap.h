@@ -29,6 +29,7 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <stdint.h>
@@ -43,11 +44,12 @@ typedef unsigned int fr_minmax_heap_iter_t;
 
 /** Comparator to order elements
  *
- *  Return a negative number if 'a' precedes 'b'.
- *  Return zero if the ordering of 'a' and 'b' doesn't matter.
- *  Return a positive number if 'b' precedes 'a'.
+ *  Return CMP_LT if 'a' precedes 'b'.
+ *  Return CMP_EQ if the ordering of 'a' and 'b' doesn't matter.
+ *  Return CMP_GT if 'b' precedes 'a'.
+ *  Return CMP_ERR if the comparison itself failed.
  */
-typedef int8_t (*fr_minmax_heap_cmp_t)(void const *a, void const *b);
+typedef fr_cmp_ret_t (*fr_minmax_heap_cmp_t)(void const *a, void const *b);
 
 /** The main minmax heap structure
  * Note that fr_minmax_heap_t is a pointer to fr_minmax_heap_s. This added level of indirection
@@ -97,10 +99,10 @@ static inline bool fr_minmax_heap_entry_inserted(fr_minmax_heap_index_t heap_idx
 
 int		fr_minmax_heap_insert(fr_minmax_heap_t *hp, void *data) CC_HINT(nonnull);
 int		fr_minmax_heap_extract(fr_minmax_heap_t *hp, void *data) CC_HINT(nonnull);
-void		*fr_minmax_heap_min_pop(fr_minmax_heap_t *hp) CC_HINT(nonnull);
+int		fr_minmax_heap_min_pop(void **out, fr_minmax_heap_t *hp) CC_HINT(nonnull);
 void		*fr_minmax_heap_min_peek(fr_minmax_heap_t *hp) CC_HINT(nonnull);
-void		*fr_minmax_heap_max_pop(fr_minmax_heap_t *hp) CC_HINT(nonnull);
-void		*fr_minmax_heap_max_peek(fr_minmax_heap_t *hp) CC_HINT(nonnull);
+int		fr_minmax_heap_max_pop(void **out, fr_minmax_heap_t *hp) CC_HINT(nonnull);
+int		fr_minmax_heap_max_peek(void **out, fr_minmax_heap_t *hp) CC_HINT(nonnull);
 
 uint32_t	fr_minmax_heap_num_elements(fr_minmax_heap_t *hp) CC_HINT(nonnull);
 

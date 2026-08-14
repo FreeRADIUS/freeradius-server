@@ -10,7 +10,7 @@ typedef struct {
 	fr_rb_node_t	node;
 } fr_rb_tree_test_node_t;
 
-static int8_t comp(void const *a, void const *b)
+static fr_cmp_ret_t comp(void const *a, void const *b)
 {
 	fr_rb_tree_test_node_t const *our_a = a, *our_b = b;
 

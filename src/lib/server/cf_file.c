@@ -701,7 +701,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 /*
  *	Functions for tracking files by inode
  */
-static int8_t _inode_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _inode_cmp(void const *one, void const *two)
 {
 	cf_file_t const *a = one, *b = two;
 
@@ -748,7 +748,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 			goto error;
 		}
 
-		file = fr_rb_find(tree, &my_file);
+		fr_rb_find((void **)&file, tree, &my_file);
 
 		/*
 		 *	The file was previously read by including it
@@ -805,7 +805,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	 *
 	 *	Though the admin should really use templates for that.
 	 */
-	if (!fr_rb_insert(tree, file)) talloc_free(file);
+	if (fr_rb_insert(tree, file) != 0) talloc_free(file);
 
 	*fp_p = fp;
 	return 0;
@@ -1117,7 +1117,7 @@ cf_file_check_err_t cf_file_check(CONF_PAIR *cp, bool check_perms)
 	/*
 	 *	It's OK to include the same file twice...
 	 */
-	if (!fr_rb_insert(tree, file)) talloc_free(file);
+	if (fr_rb_insert(tree, file) != 0) talloc_free(file);
 
 	return CF_FILE_OK;
 }
@@ -1250,7 +1250,7 @@ typedef struct cf_file_heap_t {
 	fr_heap_index_t		heap_id;
 } cf_file_heap_t;
 
-static int8_t filename_cmp(void const *one, void const *two)
+static fr_cmp_ret_t filename_cmp(void const *one, void const *two)
 {
 	int ret;
 	cf_file_heap_t const *a = one;
@@ -3525,7 +3525,7 @@ static int frame_readdir(cf_stack_t *stack)
 	CONF_SECTION *parent = frame->current;
 	cf_file_heap_t *h;
 
-	h = fr_heap_pop(&frame->heap);
+	fr_heap_pop((void **)&h, &frame->heap);
 	if (!h) {
 		/*
 		 *	Done reading the directory entry.  Close it, and go

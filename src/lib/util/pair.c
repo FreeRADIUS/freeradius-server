@@ -1848,7 +1848,7 @@ int fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp)
  *	- 0 if a == b
  *	- -1 if a < b
  */
-int8_t fr_pair_cmp_by_da(void const *a, void const *b)
+fr_cmp_ret_t fr_pair_cmp_by_da(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
@@ -1868,7 +1868,7 @@ int8_t fr_pair_cmp_by_da(void const *a, void const *b)
  *	- 0 if a == b
  *	- -1 if a < b
  */
-static inline int8_t pair_cmp_by_num(void const *a, void const *b)
+static inline fr_cmp_ret_t pair_cmp_by_num(void const *a, void const *b)
 {
 	int8_t ret;
 	unsigned int i, min;
@@ -1925,7 +1925,7 @@ static inline int8_t pair_cmp_by_num(void const *a, void const *b)
  *	- 0 if a == b
  *	- -1 if a < b
  */
-int8_t fr_pair_cmp_by_parent_num(void const *a, void const *b)
+fr_cmp_ret_t fr_pair_cmp_by_parent_num(void const *a, void const *b)
 {
 	fr_pair_t const	*vp_a = a;
 	fr_pair_t const	*vp_b = b;
@@ -2046,19 +2046,19 @@ int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
  * @param a head list of #fr_pair_t.
  * @param b second list of #fr_pair_t.
  * @return
- *	- -1 if a < b.
- *	- 0 if the two lists are equal.
- *	- 1 if a > b.
- *	- -2 on error.
+ *	- CMP_LT if a < b.
+ *	- CMP_EQ if the two lists are equal.
+ *	- CMP_GT if a > b.
+ *	- CMP_ERR if the lists are not comparable, retrieve the error with fr_strerror.
  */
-int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
+fr_cmp_ret_t fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 {
 	fr_pair_t *a_p, *b_p;
 
 	for (a_p = fr_pair_list_head(a), b_p = fr_pair_list_head(b);
 	     a_p && b_p;
 	     a_p = fr_pair_list_next(a, a_p), b_p = fr_pair_list_next(b, b_p)) {
-		int ret;
+		fr_cmp_ret_t ret;
 
 		/* Same VP, no point doing expensive checks */
 		if (a_p == b_p) continue;

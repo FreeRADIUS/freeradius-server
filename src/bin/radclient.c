@@ -466,7 +466,7 @@ static int coa_init(rc_request_t *parent,
 	 *	Ensure that the packet is also tracked in the CoA tree.
 	 */
 	fr_assert(coa_tree);
-	if (!fr_rb_insert(coa_tree, parent)) {
+	if (fr_rb_insert(coa_tree, parent) != 0) {
 		ERROR("Failed inserting packet from %s into CoA tree", request->name);
 		fr_exit_now(1);
 	}
@@ -915,7 +915,7 @@ static int radclient_sane(rc_request_t *request)
 }
 
 
-static int8_t request_cmp(void const *one, void const *two)
+static fr_cmp_ret_t request_cmp(void const *one, void const *two)
 {
 	rc_request_t const *a = one, *b = two;
 	fr_pair_t *vp1, *vp2;
@@ -1250,7 +1250,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	my.name = "receive CoA request";
 	my.packet = packet;
 
-	parent = fr_rb_find(coa_tree, &my);
+	fr_rb_find((void **)&parent, coa_tree, &my);
 	if (!parent) {
 		DEBUG("No matching request packet for CoA packet %u %u", packet->data[0], packet->data[1]);
 		talloc_free(packet);
@@ -1333,7 +1333,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		return 0;
 	}
 
-	fr_rb_remove(coa_tree, parent);
+	fr_rb_remove(NULL, coa_tree, parent);
 
 	/*
 	 *	No longer waiting for a CoA packet for this request.

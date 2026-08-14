@@ -179,7 +179,7 @@ static int max_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_t
 
 /** Order connections by reserved most recently
  */
-static int8_t last_reserved_cmp(void const *one, void const *two)
+static fr_cmp_ret_t last_reserved_cmp(void const *one, void const *two)
 {
 	fr_pool_connection_t const *a = one, *b = two;
 
@@ -188,7 +188,7 @@ static int8_t last_reserved_cmp(void const *one, void const *two)
 
 /** Order connections by released longest ago
  */
-static int8_t last_released_cmp(void const *one, void const *two)
+static fr_cmp_ret_t last_released_cmp(void const *one, void const *two)
 {
 	fr_pool_connection_t const *a = one, *b = two;
 

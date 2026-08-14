@@ -90,12 +90,9 @@ static uint32_t pairlist_hash(void const *a)
 	return fr_value_box_hash(((PAIR_LIST_LIST const *)a)->box);
 }
 
-static int8_t pairlist_cmp(void const *a, void const *b)
+static fr_cmp_ret_t pairlist_cmp(void const *a, void const *b)
 {
-	int ret;
-
-	ret = fr_value_box_cmp(((PAIR_LIST_LIST const *)a)->box, ((PAIR_LIST_LIST const *)b)->box);
-	return CMP(ret, 0);
+	return fr_value_box_cmp(((PAIR_LIST_LIST const *)a)->box, ((PAIR_LIST_LIST const *)b)->box);
 }
 
 static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
@@ -364,7 +361,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, rlm_files_t const *inst, fr_htrie_t
 		/*
 		 *	Find an exact match, especially for patricia tries.
 		 */
-		user_list = fr_htrie_match(tree, &search_list);
+		fr_htrie_match((void **)&user_list, tree, &search_list);
 		if (!user_list) {
 			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
 			pairlist_list_init(user_list);
@@ -379,7 +376,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, rlm_files_t const *inst, fr_htrie_t
 			/*
 			 *	Insert the new list header.
 			 */
-			if (!fr_htrie_insert(tree, user_list)) {
+			if (fr_htrie_insert(tree, user_list) != 0) {
 				PERROR("%s[%d] Failed inserting key %s",
 				       entry->filename, entry->lineno, entry->name);
 				goto error;
@@ -437,7 +434,7 @@ static unlang_action_t CC_HINT(nonnull) mod_files_resume(unlang_result_t *p_resu
 	if (tree) {
 		my_list.name = NULL;
 		my_list.box = key_vb;
-		user_list = fr_htrie_find(tree, &my_list);
+		fr_htrie_find(UNCONST(void **, &user_list), tree, &my_list);
 
 		trie = (tree->type == FR_HTRIE_TRIE);
 

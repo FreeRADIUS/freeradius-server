@@ -53,7 +53,7 @@ static const conf_parser_t module_config[] = {
 /** How to compare two Ruby function calls
  *
  */
-static int8_t mruby_func_def_cmp(void const *one, void const *two)
+static fr_cmp_ret_t mruby_func_def_cmp(void const *one, void const *two)
 {
 	mruby_func_def_t const *a = one, *b = two;
 	int ret;

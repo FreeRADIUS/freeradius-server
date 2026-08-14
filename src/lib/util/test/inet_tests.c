@@ -229,6 +229,26 @@ static void test_ipaddr_cmp(void)
 }
 
 /*
+ *	Test fr_ipaddr_cmp with an invalid address family.
+ */
+static void test_ipaddr_cmp_invalid_af(void)
+{
+	fr_ipaddr_t	a, b;
+
+	TEST_CASE("AF_UNSPEC address family returns CMP_ERR");
+	memset(&a, 0, sizeof(a));
+	memset(&b, 0, sizeof(b));
+	a.af = AF_UNSPEC;
+	b.af = AF_UNSPEC;
+	TEST_CHECK(fr_ipaddr_cmp(&a, &b) == CMP_ERR);
+
+	TEST_CASE("Unknown address family (255) returns CMP_ERR");
+	a.af = 255;
+	b.af = 255;
+	TEST_CHECK(fr_ipaddr_cmp(&a, &b) == CMP_ERR);
+}
+
+/*
  *	Test fr_ipaddr_mask.
  */
 static void test_ipaddr_mask(void)
@@ -361,6 +381,7 @@ TEST_LIST = {
 	{ "inet_ntop",			test_inet_ntop },
 	{ "inet_ntop_prefix",		test_inet_ntop_prefix },
 	{ "ipaddr_cmp",			test_ipaddr_cmp },
+	{ "ipaddr_cmp_invalid_af",	test_ipaddr_cmp_invalid_af },
 	{ "ipaddr_mask",		test_ipaddr_mask },
 	{ "ipaddr_is_inaddr_any",	test_ipaddr_is_inaddr_any },
 	{ "ipaddr_is_prefix",		test_ipaddr_is_prefix },

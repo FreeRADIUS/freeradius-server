@@ -29,13 +29,32 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/time.h>
 
 #include <signal.h>
 
-typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
+/** Result of an ordering comparison
+ *
+ * CMP_ERR means the comparison itself failed (corrupt or invalid operand),
+ * not that the operands were unequal.  A comparator returning CMP_ERR also
+ * pushes a fr_strerror describing the operand problem.
+ *
+ * CMP_ERR is negative, so sign-test idioms (ret < 0) misread an error as
+ * "less than".  Any consumer which can receive CMP_ERR must check for the
+ * value explicitly before interpreting the sign.
+ */
+typedef enum : int8_t {
+	CMP_ERR	= INT8_MIN,		//!< comparison failed
+	CMP_LT	= -1,			//!< a < b
+	CMP_EQ	= 0,			//!< a == b
+	CMP_GT	= 1			//!< a > b
+} fr_cmp_ret_t;
+
+typedef		fr_cmp_ret_t (*fr_cmp_t)(void const *a, void const *b);
 typedef		void (*fr_free_t)(void *);
 
 /*
@@ -150,8 +169,8 @@ int		fr_cloexec(int fd);
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
 
-int8_t		fr_pointer_cmp(void const *a, void const *b);
-void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
+fr_cmp_ret_t	fr_pointer_cmp(void const *a, void const *b);
+int		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
 int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length) CC_HINT(nonnull);
 
 /*

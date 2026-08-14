@@ -773,7 +773,7 @@ static uint32_t host_ether_hash(void const *data)
 	return fr_hash(self->ether, sizeof(self->ether));
 }
 
-static int8_t host_ether_cmp(void const *one, void const *two)
+static fr_cmp_ret_t host_ether_cmp(void const *one, void const *two)
 {
 	isc_host_ether_t const *a = one;
 	isc_host_ether_t const *b = two;
@@ -795,7 +795,7 @@ static uint32_t host_uid_hash(void const *data)
 	return fr_hash(self->client->vb_octets, self->client->vb_length);
 }
 
-static int8_t host_uid_cmp(void const *one, void const *two)
+static fr_cmp_ret_t host_uid_cmp(void const *one, void const *two)
 {
 	isc_host_uid_t const *a = one;
 	isc_host_uid_t const *b = two;
@@ -1415,7 +1415,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	/*
 	 *	We can't have duplicate ethernet addresses for hosts.
 	 */
-	old_ether = fr_hash_table_find(state->inst->hosts_by_ether, my_ether);
+	fr_hash_table_find((void **)&old_ether, state->inst->hosts_by_ether, my_ether);
 	if (old_ether) {
 		fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'hardware ethernet' fields",
 				   info->argv[0]->vb_strvalue, old_ether->host->argv[0]->vb_strvalue);
@@ -1426,7 +1426,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	/*
 	 *	Insert into the ether hashes.
 	 */
-	if (!fr_hash_table_insert(state->inst->hosts_by_ether, my_ether)) {
+	if (fr_hash_table_insert(state->inst->hosts_by_ether, my_ether) != 0) {
 		fr_strerror_printf("Failed inserting 'host %s' into hash table",
 				   info->argv[0]->vb_strvalue);
 		talloc_free(my_ether);
@@ -1442,7 +1442,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 		my_uid->client = &vp->data;
 		my_uid->host = info;
 
-		old_uid = fr_hash_table_find(state->inst->hosts_by_uid, my_uid);
+		fr_hash_table_find((void **)&old_uid, state->inst->hosts_by_uid, my_uid);
 		if (old_uid) {
 			fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'option client-identifier' fields",
 					   info->argv[0]->vb_strvalue, old_uid->host->argv[0]->vb_strvalue);
@@ -1452,7 +1452,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 			return -1;
 		}
 
-		if (!fr_hash_table_insert(state->inst->hosts_by_uid, my_uid)) {
+		if (fr_hash_table_insert(state->inst->hosts_by_uid, my_uid) != 0) {
 			fr_strerror_printf("Failed inserting 'host %s' into hash table",
 					   info->argv[0]->vb_strvalue);
 			goto fail;
@@ -1481,7 +1481,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 		}
 	}
 
-	if (!fr_hash_table_insert(parent->hosts_by_ether, my_ether)) {
+	if (fr_hash_table_insert(parent->hosts_by_ether, my_ether) != 0) {
 		fr_strerror_printf("Failed inserting 'host %s' into hash table",
 				   info->argv[0]->vb_strvalue);
 		return -1;
@@ -1498,8 +1498,8 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 			}
 		}
 
-		if (!fr_hash_table_insert(parent->hosts_by_uid, my_uid)) {
-			(void) fr_hash_table_remove(parent->hosts_by_ether, my_ether); /* remove and don't free */
+		if (fr_hash_table_insert(parent->hosts_by_uid, my_uid) != 0) {
+			(void) fr_hash_table_remove(NULL, parent->hosts_by_ether, my_ether); /* remove and don't free */
 			fr_strerror_printf("Failed inserting 'host %s' into hash table",
 					   info->argv[0]->vb_strvalue);
 			return -1;
@@ -1616,7 +1616,7 @@ static rlm_isc_dhcp_info_t *get_host(request_t *request, fr_hash_table_t *hosts_
 
 			my_client.client = &(vp->data);
 
-			client = fr_hash_table_find(hosts_by_uid, &my_client);
+			fr_hash_table_find((void **)&client, hosts_by_uid, &my_client);
 			if (client) {
 				host = client->host;
 				goto done;
@@ -1629,7 +1629,7 @@ static rlm_isc_dhcp_info_t *get_host(request_t *request, fr_hash_table_t *hosts_
 
 	memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
 
-	ether = fr_hash_table_find(hosts_by_ether, &my_ether);
+	fr_hash_table_find((void **)&ether, hosts_by_ether, &my_ether);
 	if (!ether) return NULL;
 
 	host = ether->host;

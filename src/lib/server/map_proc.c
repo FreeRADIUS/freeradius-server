@@ -36,7 +36,7 @@ static fr_rb_tree_t *map_proc_root = NULL;
  * @param[in] two Second map struct.
  * @return Integer specifying order of map func instances.
  */
-static int8_t map_proc_cmp(void const *one, void const *two)
+static fr_cmp_ret_t map_proc_cmp(void const *one, void const *two)
 {
 	map_proc_t const *a = one, *b = two;
 
@@ -57,7 +57,7 @@ static int _map_proc_talloc_free(map_proc_t *proc)
 	strlcpy(find.name, proc->name, sizeof(find.name));
 	find.length = strlen(find.name);
 
-	found = fr_rb_find(map_proc_root, &find);
+	fr_rb_find((void **)&found, map_proc_root, &find);
 	if (!found) return 0;
 
 	fr_rb_delete(map_proc_root, found);
@@ -80,13 +80,16 @@ fr_value_box_safe_for_t map_proc_literals_safe_for(map_proc_t const *proc)
 map_proc_t *map_proc_find(char const *name)
 {
 	map_proc_t find;
+	map_proc_t *found;
 
 	if (!map_proc_root) return NULL;
 
 	strlcpy(find.name, name, sizeof(find.name));
 	find.length = strlen(find.name);
 
-	return fr_rb_find(map_proc_root, &find);
+	fr_rb_find((void **)&found, map_proc_root, &find);
+
+	return found;
 }
 
 static int _map_proc_tree_init(UNUSED void *uctx)

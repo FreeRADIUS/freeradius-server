@@ -676,13 +676,13 @@ fr_value_box_t	*fr_pair_dcursor_nested_init(fr_dcursor_t *cursor, fr_dcursor_t *
  */
 #define		fr_pair_cmp_op(_op, _a, _b)	fr_value_box_cmp_op(_op, &_a->data, &_b->data)
 
-int8_t		fr_pair_cmp_by_da(void const *a, void const *b);
+fr_cmp_ret_t	fr_pair_cmp_by_da(void const *a, void const *b);
 
-int8_t		fr_pair_cmp_by_parent_num(void const *a, void const *b);
+fr_cmp_ret_t	fr_pair_cmp_by_parent_num(void const *a, void const *b);
 
 int		fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b);
 
-int		fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b) CC_HINT(nonnull);
+fr_cmp_ret_t	fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b) CC_HINT(nonnull);
 
 /* Filtering */
 void		fr_pair_validate_debug(fr_pair_t const *failed[2]) CC_HINT(nonnull);
@@ -742,7 +742,7 @@ fr_dlist_head_t *fr_pair_list_to_dlist(fr_pair_list_t const *list) CC_HINT(nonnu
 
 fr_pair_list_t	*fr_pair_list_from_dlist(fr_dlist_head_t const *list) CC_HINT(nonnull);
 
-void		fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp) CC_HINT(nonnull);
+int		fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp) CC_HINT(nonnull);
 
 void		fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src) CC_HINT(nonnull);
 

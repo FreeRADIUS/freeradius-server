@@ -43,7 +43,7 @@ static _Thread_local fr_heap_t *xlat_thread_inst_tree;
  * @param[in] two	Second xlat expansion instance.
  * @return CMP(one, two)
  */
-static int8_t _xlat_inst_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _xlat_inst_cmp(void const *one, void const *two)
 {
 	xlat_inst_t const *a = one, *b = two;
 
@@ -56,7 +56,7 @@ static int8_t _xlat_inst_cmp(void const *one, void const *two)
  * @param[in] two	Second thread specific xlat expansion instance.
  * @return CMP(one, two)
  */
-static int8_t _xlat_thread_inst_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _xlat_thread_inst_cmp(void const *one, void const *two)
 {
 	xlat_thread_inst_t const *a = one, *b = two;
 
@@ -712,5 +712,5 @@ void xlat_instances_free(void)
 	 *	is freed, so we need to check there's
 	 *	still a heap to pass to fr_heap_pop.
 	 */
-	while (xlat_inst_tree && (xi = fr_heap_pop(&xlat_inst_tree))) talloc_free(xi);
+	while (xlat_inst_tree && (fr_heap_pop((void **)&xi, &xlat_inst_tree) == 0) && xi) talloc_free(xi);
 }

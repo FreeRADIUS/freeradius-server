@@ -511,7 +511,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	return 0;
 }
 
-static int8_t virtual_server_compile_name_cmp(void const *a, void const *b)
+static fr_cmp_ret_t virtual_server_compile_name_cmp(void const *a, void const *b)
 {
 	virtual_server_compile_t const *sa = a;
 	virtual_server_compile_t const *sb = b;
@@ -832,7 +832,7 @@ static fr_cmd_table_t cmd_table[] = {
  *
  *  Only works for IP addresses, and will blow up on file names
  */
-static int8_t listen_addr_cmp(void const *one, void const *two)
+static fr_cmp_ret_t listen_addr_cmp(void const *one, void const *two)
 {
 	fr_listen_t const *a = one;
 	fr_listen_t const *b = two;
@@ -906,9 +906,13 @@ static int8_t listen_addr_cmp(void const *one, void const *two)
  */
 fr_listen_t *listen_find_any(fr_listen_t *li)
 {
+	fr_listen_t *found;
+
 	if (!listen_addr_root) return NULL;
 
-	return fr_rb_find(listen_addr_root, li);
+	fr_rb_find((void **)&found, listen_addr_root, li);
+
+	return found;
 }
 
 
@@ -923,7 +927,7 @@ bool listen_record(fr_listen_t *li)
 
 	if (listen_find_any(li) != NULL) return false;
 
-	return fr_rb_insert(listen_addr_root, li);
+	return fr_rb_insert(listen_addr_root, li) == 0;
 }
 
 /** Return the configuration section for a virtual server
@@ -1479,7 +1483,7 @@ int virtual_server_section_register(virtual_server_t *vs, virtual_server_compile
 {
 	virtual_server_compile_t *old;
 
-	old = fr_rb_find(vs->sections, entry);
+	fr_rb_find((void **)&old, vs->sections, entry);
 	if (old) return 0;
 
 #ifndef NDEBUG
@@ -1509,7 +1513,7 @@ int virtual_server_section_register(virtual_server_t *vs, virtual_server_compile
 	}
 #endif
 
-	if (!fr_rb_insert(vs->sections, entry)) {
+	if (fr_rb_insert(vs->sections, entry) != 0) {
 		fr_strerror_const("Failed inserting entry into internal tree");
 		return -1;
 	}
@@ -1529,20 +1533,20 @@ section_name_t const **virtual_server_section_methods(virtual_server_t const *vs
 	 *	define both "accounting on", and "accounting *".
 	 */
 	if (section->name2 != CF_IDENT_ANY) {
-		entry = fr_rb_find(vs->sections,
-				   &(virtual_server_compile_t) {
-					.section = section
-				   });
+		fr_rb_find((void **)&entry, vs->sections,
+			   &(virtual_server_compile_t) {
+				.section = section
+			   });
 		if (entry) return entry->methods;
 	}
 
 	/*
 	 *	Then look up the wildcard, if we didn't find any matching name2.
 	 */
-	entry = fr_rb_find(vs->sections,
-			   &(virtual_server_compile_t) {
-				.section = SECTION_NAME(section->name1, CF_IDENT_ANY)
-			   });
+	fr_rb_find((void **)&entry, vs->sections,
+		   &(virtual_server_compile_t) {
+			.section = SECTION_NAME(section->name1, CF_IDENT_ANY)
+		   });
 	if (!entry) return NULL;
 
 	return entry->methods;

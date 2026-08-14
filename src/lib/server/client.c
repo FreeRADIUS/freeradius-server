@@ -62,9 +62,9 @@ struct fr_client_list_s {
 static fr_client_list_t	*root_clients = NULL;	//!< Global client list.
 
 #ifndef WITH_TRIE
-static int8_t client_cmp(void const *one, void const *two)
+static fr_cmp_ret_t client_cmp(void const *one, void const *two)
 {
-	int ret;
+	fr_cmp_ret_t ret;
 	fr_client_t const *a = one;
 	fr_client_t const *b = two;
 
@@ -288,7 +288,7 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 		}
 	}
 
-	old = fr_rb_find(clients->tree[client->ipaddr.prefix], client);
+	fr_rb_find((void **)&old, clients->tree[client->ipaddr.prefix], client);
 #endif
 	if (old) {
 		/*
@@ -317,7 +317,7 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 		return false;
 	}
 #else
-	if (!fr_rb_insert(clients->tree[client->ipaddr.prefix], client)) {
+	if (fr_rb_insert(clients->tree[client->ipaddr.prefix], client) != 0) {
 		return false;
 	}
 #endif
@@ -400,7 +400,7 @@ fr_client_t *client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipa
 
 		my_client.ipaddr = *ipaddr;
 		fr_ipaddr_mask(&my_client.ipaddr, i);
-		client = fr_rb_find(clients->tree[i], &my_client);
+		fr_rb_find((void **)&client, clients->tree[i], &my_client);
 		if (client) {
 			return client;
 		}

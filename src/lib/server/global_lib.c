@@ -102,7 +102,7 @@ static int lib_auto_instantiate(global_lib_autoinst_t * const *to_init)
 	for (p = to_init; *p != &global_lib_terminator; p++) {
 		global_lib_inst_t	*lib = NULL;
 
-		lib = fr_rb_find(&lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
+		fr_rb_find((void **)&lib, &lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
 
 		/*
 		 *  If the library is already initialised, just increase the reference count
@@ -152,7 +152,7 @@ static void lib_autofree(global_lib_autoinst_t * const *to_free)
 	for (p = to_free; *p != &global_lib_terminator; p++) {
 		global_lib_inst_t	*lib = NULL;
 
-		lib = fr_rb_find(&lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
+		fr_rb_find((void **)&lib, &lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
 
 		if (!lib) continue;
 
@@ -163,7 +163,7 @@ static void lib_autofree(global_lib_autoinst_t * const *to_free)
 		 */
 		if (lib->initialised && ((*p)->free)) (*p)->free();
 
-		fr_rb_remove(&lib_list->libs, lib);
+		fr_rb_remove(NULL, &lib_list->libs, lib);
 		talloc_free(lib);
 	}
 }
@@ -179,7 +179,7 @@ void global_lib_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *u
 /** Compare two fr_lib_t
  *
  */
-static int8_t _lib_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _lib_cmp(void const *one, void const *two)
 {
 	global_lib_inst_t const	*a = one;
 	global_lib_inst_t const	*b = two;

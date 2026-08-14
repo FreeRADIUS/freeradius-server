@@ -533,7 +533,7 @@ static inline CC_HINT(always_inline) fr_event_fd_cb_t event_fd_func(fr_event_fd_
  * @param[in] two the second file descriptor handle.
  * @return CMP(one, two)
  */
-static int8_t fr_event_fd_cmp(void const *one, void const *two)
+static fr_cmp_ret_t fr_event_fd_cmp(void const *one, void const *two)
 {
 	fr_event_fd_t const	*a = one, *b = two;
 
@@ -903,7 +903,7 @@ int _fr_event_fd_move(NDEBUG_LOCATION_ARGS
 	/*
 	 *	Ensure this exists
 	 */
-	ef = fr_rb_find(src->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, src->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -949,7 +949,7 @@ int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
 	struct kevent		evset[10];
 	int			count = 0;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -1045,7 +1045,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	}
 
 	if (!ef_out || !*ef_out) {
-		ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+		fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	} else {
 		ef = *ef_out;
 		fr_assert((fd < 0) || (ef->fd == fd));
@@ -1204,7 +1204,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
 	fr_event_fd_t	*ef;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %d, filter %u", fd, filter);
 		return -1;
@@ -1257,7 +1257,7 @@ fr_event_fd_t *fr_event_fd_handle(fr_event_list_t *el, int fd, fr_event_filter_t
 {
 	fr_event_fd_t *ef;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return NULL;
@@ -1303,7 +1303,7 @@ int fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t filter, ui
 {
 	fr_event_fd_t	*ef;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -1333,7 +1333,7 @@ int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, 
 {
 	fr_event_fd_t	*ef;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;

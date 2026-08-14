@@ -695,7 +695,7 @@ static inline int fr_ldap_berval_strncasecmp(struct berval *value, char const *s
  * @param[in] two	second connection to compare.
  * @return CMP(one, two)
  */
-static inline int8_t fr_ldap_trunk_cmp(void const *one, void const *two)
+static inline fr_cmp_ret_t fr_ldap_trunk_cmp(void const *one, void const *two)
 {
 	fr_ldap_thread_trunk_t const	*a = one, *b = two;
 	int8_t uricmp = CMP(strcmp(a->uri, b->uri), 0);
@@ -711,7 +711,7 @@ static inline int8_t fr_ldap_trunk_cmp(void const *one, void const *two)
  * @param[in] two	second query to compare.
  * @return CMP(one,two)
  */
-static inline int8_t fr_ldap_query_cmp(void const *one, void const *two)
+static inline fr_cmp_ret_t fr_ldap_query_cmp(void const *one, void const *two)
 {
 	fr_ldap_query_t const	*a = one, *b = two;
 
@@ -724,7 +724,7 @@ static inline int8_t fr_ldap_query_cmp(void const *one, void const *two)
  * @param[in] two	second bind request to compare.
  * @return CMP(one,two)
  */
-static inline int8_t fr_ldap_bind_auth_cmp(void const *one, void const *two)
+static inline fr_cmp_ret_t fr_ldap_bind_auth_cmp(void const *one, void const *two)
 {
 	fr_ldap_bind_auth_ctx_t const	*a = one, *b = two;
 

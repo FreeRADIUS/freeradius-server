@@ -1036,12 +1036,12 @@ static int _request_free(rs_request_t *request)
 	 */
 	if (request->in_request_tree) {
 		ret = fr_rb_delete(request_tree, request);
-		RS_ASSERT(ret);
+		RS_ASSERT(ret == 0);
 	}
 
 	if (request->in_link_tree) {
 		ret = fr_rb_delete(link_tree, request);
-		RS_ASSERT(ret);
+		RS_ASSERT(ret == 0);
 	}
 
 	if (fr_timer_armed(request->event)) {
@@ -1136,7 +1136,7 @@ static void _rs_event(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ct
 /** Wrapper around fr_packet_cmp to strip off the outer request struct
  *
  */
-static int8_t rs_packet_cmp(void const *one, void const *two)
+static fr_cmp_ret_t rs_packet_cmp(void const *one, void const *two)
 {
 	rs_request_t const *a = one;
 	rs_request_t const *b = two;
@@ -1454,7 +1454,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	{
 		/* look for a matching request and use it for decoding */
 		search.expect = packet;
-		original = fr_rb_find(request_tree, &search);
+		fr_rb_find((void **)&original, request_tree, &search);
 
 		/*
 		 *	Verify this code is allowed
@@ -1688,8 +1688,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (!fr_pair_list_empty(&search.link_vps)) {
 			rs_request_t *tuple;
 
-			original = fr_rb_find(link_tree, &search);
-			tuple = fr_rb_find(request_tree, &search);
+			fr_rb_find((void **)&original, link_tree, &search);
+			fr_rb_find((void **)&tuple, request_tree, &search);
 
 			/*
 			 *	If the packet we matched using attributes is not the same
@@ -1703,7 +1703,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	Detect duplicates using the normal 5-tuple of src/dst ips/ports id
 		 */
 		} else {
-			original = fr_rb_find(request_tree, &search);
+			fr_rb_find((void **)&original, request_tree, &search);
 			if (original && (memcmp(original->expect->vector, packet->vector,
 			    			sizeof(original->expect->vector)) != 0)) {
 				/*
@@ -1794,7 +1794,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				fr_pair_list_append(&original->link_vps, &search.link_vps);
 
 				/* We should never have conflicts */
-				ret = fr_rb_insert(link_tree, original);
+				ret = (fr_rb_insert(link_tree, original) == 0);
 				RS_ASSERT(ret);
 				original->in_link_tree = true;
 			}
@@ -1814,7 +1814,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			bool ret;
 
 			/* We should never have conflicts */
-			ret = fr_rb_insert(request_tree, original);
+			ret = (fr_rb_insert(request_tree, original) == 0);
 			RS_ASSERT(ret);
 			original->in_request_tree = true;
 		}
@@ -2048,11 +2048,11 @@ static int  _rs_event_status(UNUSED fr_time_t now, fr_time_delta_t wake_t, UNUSE
 /** Compare requests using packet info and lists of attributes
  *
  */
-static int8_t rs_rtx_cmp(void const *one, void const *two)
+static fr_cmp_ret_t rs_rtx_cmp(void const *one, void const *two)
 {
 	rs_request_t const *a = one;
 	rs_request_t const *b = two;
-	int ret;
+	fr_cmp_ret_t ret;
 
 	RS_ASSERT(!fr_pair_list_empty(&a->link_vps));
 	RS_ASSERT(!fr_pair_list_empty(&b->link_vps));
@@ -2066,8 +2066,7 @@ static int8_t rs_rtx_cmp(void const *one, void const *two)
 	ret = fr_ipaddr_cmp(&a->expect->socket.inet.dst_ipaddr, &b->expect->socket.inet.dst_ipaddr);
 	if (ret != 0) return ret;
 
-	ret = fr_pair_list_cmp(&a->link_vps, &b->link_vps);
-	return CMP(ret, 0);
+	return fr_pair_list_cmp(&a->link_vps, &b->link_vps);
 }
 
 static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list)

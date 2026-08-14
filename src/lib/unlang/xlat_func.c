@@ -39,7 +39,7 @@ static fr_rb_tree_t *xlat_root = NULL;
  *	- 0 if one == two
  *	- 1 if one > two
  */
-static int8_t xlat_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t xlat_name_cmp(void const *one, void const *two)
 {
 	xlat_t const *a = one, *b = two;
 	size_t a_len, b_len;
@@ -64,7 +64,7 @@ static int8_t xlat_name_cmp(void const *one, void const *two)
  *	- 0 if one == two
  *	- 1 if one > two
  */
-int8_t xlat_func_cmp(void const *one, void const *two)
+fr_cmp_ret_t xlat_func_cmp(void const *one, void const *two)
 {
 	xlat_t const *a = one, *b = two;
 
@@ -77,17 +77,23 @@ int8_t xlat_func_cmp(void const *one, void const *two)
 xlat_t *xlat_func_find(char const *in, ssize_t inlen)
 {
 	char buffer[256];
+	xlat_t *found;
 
 	if (!xlat_root) return NULL;
 
-	if (inlen < 0) return fr_rb_find(xlat_root, &(xlat_t){ .name = in });
+	if (inlen < 0) {
+		fr_rb_find((void **)&found, xlat_root, &(xlat_t){ .name = in });
+		return found;
+	}
 
 	if ((size_t) inlen >= sizeof(buffer)) return NULL;
 
 	memcpy(buffer, in, inlen);
 	buffer[inlen] = '\0';
 
-	return fr_rb_find(xlat_root, &(xlat_t){ .name = buffer });
+	fr_rb_find((void **)&found, xlat_root, &(xlat_t){ .name = buffer });
+
+	return found;
 }
 
 /** Remove an xlat function from the function tree
@@ -180,6 +186,7 @@ static int xlat_arg_cmp_list_no_escape(xlat_arg_parser_t const a[], xlat_arg_par
 xlat_t *xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name)
 {
 	char inst_name[256];
+	xlat_t *found;
 
 	fr_assert(xlat_root);
 
@@ -200,7 +207,9 @@ xlat_t *xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name)
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	return fr_rb_find(xlat_root, &(xlat_t){ .name = name });
+	fr_rb_find((void **)&found, xlat_root, &(xlat_t){ .name = name });
+
+	return found;
 }
 
 /** Register an xlat function
@@ -242,7 +251,7 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	c = fr_rb_find(xlat_root, &(xlat_t){ .name = name });
+	fr_rb_find((void **)&c, xlat_root, &(xlat_t){ .name = name });
 	if (c) {
 		if (c->internal) {
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
@@ -512,7 +521,7 @@ void xlat_func_unregister(char const *name)
 
 	if (!name || !xlat_root) return;
 
-	c = fr_rb_find(xlat_root, &(xlat_t){ .name = name });
+	fr_rb_find((void **)&c, xlat_root, &(xlat_t){ .name = name });
 	if (!c) return;
 
 	(void) talloc_get_type_abort(c, xlat_t);

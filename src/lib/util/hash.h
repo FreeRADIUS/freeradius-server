@@ -70,17 +70,17 @@ fr_hash_table_t *_fr_hash_table_alloc(TALLOC_CTX *ctx,
 				      fr_cmp_t cmp_node,
 				      fr_free_t free_node) CC_HINT(nonnull(3,4));
 
-void		*fr_hash_table_find(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
+int		fr_hash_table_find(void **found, fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
-void		*fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *data) CC_HINT(nonnull);
+int		fr_hash_table_find_by_key(void **found, fr_hash_table_t *ht, uint32_t key, void const *data) CC_HINT(nonnull);
 
-bool		fr_hash_table_insert(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
+int		fr_hash_table_insert(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
 int		fr_hash_table_replace(void **old, fr_hash_table_t *ht, void const *data) CC_HINT(nonnull(2,3));
 
-void		*fr_hash_table_remove(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
+int		fr_hash_table_remove(void **removed, fr_hash_table_t *ht, void const *data) CC_HINT(nonnull(2,3));
 
-bool		fr_hash_table_delete(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
+int		fr_hash_table_delete(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
 uint32_t	fr_hash_table_num_elements(fr_hash_table_t *ht) CC_HINT(nonnull);
 

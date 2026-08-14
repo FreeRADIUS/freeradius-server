@@ -118,7 +118,7 @@ typedef struct {
 
 /** Compare coordinators by registration
  */
-static int8_t coord_cmp(void const *one, void const *two)
+static fr_cmp_ret_t coord_cmp(void const *one, void const *two)
 {
 	fr_coord_t const *a = one, *b = two;
 
@@ -670,7 +670,7 @@ fr_coord_worker_t *fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	find = (fr_coord_t) {
 		.coord_reg = coord_reg
 	};
-	cw->coord = fr_rb_find(&coords, &find);
+	fr_rb_find((void **)&cw->coord, &coords, &find);
 	if (!cw->coord) {
 	fail:
 		talloc_free(cw);

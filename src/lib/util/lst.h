@@ -94,9 +94,9 @@ static inline bool fr_lst_entry_inserted(fr_lst_index_t lst_id)
 	return (lst_id > 0);
 }
 
-void 	*fr_lst_peek(fr_lst_t *lst) CC_HINT(nonnull);
+int 	fr_lst_peek(void **out, fr_lst_t *lst) CC_HINT(nonnull);
 
-void 	*fr_lst_pop(fr_lst_t *lst) CC_HINT(nonnull);
+int 	fr_lst_pop(void **out, fr_lst_t *lst) CC_HINT(nonnull);
 
 int 	fr_lst_insert(fr_lst_t *lst, void *data) CC_HINT(nonnull);
 

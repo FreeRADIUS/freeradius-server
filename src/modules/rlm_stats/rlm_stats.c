@@ -123,7 +123,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 	 *	Bootstrap with my statistics, where we don't need a
 	 *	lock.
 	 */
-	stats = fr_rb_find(*tree, mydata);
+	fr_rb_find((void **)&stats, *tree, mydata);
 	if (!stats) {
 		memset(final_stats, 0, sizeof(uint64_t) * FR_RADIUS_CODE_MAX);
 	} else {
@@ -144,7 +144,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 
 		tree = (fr_rb_tree_t **) (((uint8_t *) other) + tree_offset);
 		pthread_mutex_lock(&other->mutex);
-		stats = fr_rb_find(*tree, mydata);
+		fr_rb_find((void **)&stats, *tree, mydata);
 
 		if (!stats) {
 			pthread_mutex_unlock(&other->mutex);
@@ -189,7 +189,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_inc(unlang_result_t *p_result,
 	 *	Update source statistics
 	 */
 	mydata.ipaddr = request->packet->socket.inet.src_ipaddr;
-	stats = fr_rb_find(t->src, &mydata);
+	fr_rb_find((void **)&stats, t->src, &mydata);
 	if (!stats) {
 		MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
@@ -206,7 +206,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_inc(unlang_result_t *p_result,
 	 *	Update destination statistics
 	 */
 	mydata.ipaddr = request->packet->socket.inet.dst_ipaddr;
-	stats = fr_rb_find(t->dst, &mydata);
+	fr_rb_find((void **)&stats, t->dst, &mydata);
 	if (!stats) {
 		MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
@@ -344,7 +344,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(unlang_result_t *p_result
 }
 
 
-static int8_t data_cmp(const void *one, const void *two)
+static fr_cmp_ret_t data_cmp(const void *one, const void *two)
 {
 	rlm_stats_data_t const *a = one;
 	rlm_stats_data_t const *b = two;

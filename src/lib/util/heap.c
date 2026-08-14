@@ -40,7 +40,7 @@ RCSID("$Id$")
 #define HEAP_RIGHT(_x) (2 * (_x) + 1 )
 #define	HEAP_SWAP(_a, _b) do { void *_tmp = _a; _a = _b; _b = _tmp; } while (0)
 
-static void fr_heap_bubble(fr_heap_t *h, fr_heap_index_t child);
+static int fr_heap_bubble(fr_heap_t *h, fr_heap_index_t child);
 
 /** Return how many bytes need to be allocated to hold a heap of a given size
  *
@@ -141,7 +141,10 @@ int realloc_heap(fr_heap_t **hp, unsigned int n_size)
  * @param[in] data	Data to insert into the heap.
  * @return
  *	- 0 on success.
- *	- -1 on failure (heap full or malloc error).
+ *	- -1 on failure (heap full, malloc error, or comparator error,
+ *	  retrieve the error with fr_strerror).  On comparator error the element
+ *	  is in the heap but its position, and therefore the heap's
+ *	  ordering, is undefined.
  */
 int fr_heap_insert(fr_heap_t **hp, void *data)
 {
@@ -196,25 +199,38 @@ int fr_heap_insert(fr_heap_t **hp, void *data)
 	h->p[child] = data;
 	h->num_elements++;
 
- 	fr_heap_bubble(h, child);
+ 	if (unlikely(fr_heap_bubble(h, child) < 0)) return -1;
 
 	return 0;
 }
 
-static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *h, fr_heap_index_t child)
+static inline CC_HINT(always_inline) int fr_heap_bubble(fr_heap_t *h, fr_heap_index_t child)
 {
-	if (!fr_cond_assert(child != FR_HEAP_INDEX_INVALID)) return;
+	int ret = 0;
+
+	if (!fr_cond_assert(child != FR_HEAP_INDEX_INVALID)) return 0;
 
 	/*
 	 *	Bubble up the element.
 	 */
 	while (child > 1) {
 		fr_heap_index_t parent = HEAP_PARENT(child);
+		fr_cmp_ret_t	c = h->cmp(h->p[parent], h->p[child]);
+
+		/*
+		 *	Stop sifting on error.  The element stays where the
+		 *	walk stopped: the heap remains structurally valid,
+		 *	only its ordering is undefined.
+		 */
+		if (unlikely(c == CMP_ERR)) {
+			ret = -1;
+			break;
+		}
 
 		/*
 		 *	Parent is smaller than the child.  We're done.
 		 */
-		if (h->cmp(h->p[parent], h->p[child]) < 0) break;
+		if (c == CMP_LT) break;
 
 		/*
 		 *	Child is smaller than the parent, repeat.
@@ -224,6 +240,8 @@ static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *h, fr_heap_i
 		child = parent;
 	}
 	OFFSET_SET(h, child);
+
+	return ret;
 }
 
 /** Remove a node from the heap
@@ -234,12 +252,15 @@ static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *h, fr_heap_i
  * @param[in] data	Data to extract from the heap.
  * @return
  *	- 0 on success.
- *	- -1 on failure (no elements or data not found).
+ *	- -1 on failure (no elements, data not found, or comparator error,
+ *	  retrieve the error with fr_strerror).  On comparator error the element
+ *	  has still been extracted, but the heap's ordering is undefined.
  */
 int fr_heap_extract(fr_heap_t **hp, void *data)
 {
 	fr_heap_t *h = *hp;
 	fr_heap_index_t parent, child, max;
+	int ret = 0;
 
 	if (unlikely(h == NULL)) {
 		fr_strerror_const("Heap pointer was NULL");
@@ -271,10 +292,19 @@ int fr_heap_extract(fr_heap_t **hp, void *data)
 	while (child <= max) {
 		/*
 		 *	Maybe take the right child.
+		 *
+		 *	On comparator error keep taking the left child so the
+		 *	hole still walks to the bottom: extraction completes
+		 *	structurally, only the ordering is undefined.
 		 */
-		if ((child != max) &&
-		    (h->cmp(h->p[child + 1], h->p[child]) < 0)) {
-			child = child + 1;
+		if (child != max) {
+			fr_cmp_ret_t c = h->cmp(h->p[child + 1], h->p[child]);
+
+			if (unlikely(c == CMP_ERR)) {
+				ret = -1;
+			} else if (c == CMP_LT) {
+				child = child + 1;
+			}
 		}
 		h->p[parent] = h->p[child];
 		OFFSET_SET(h, parent);
@@ -294,8 +324,9 @@ int fr_heap_extract(fr_heap_t **hp, void *data)
 		 */
 		h->p[parent] = h->p[max];
 
-		fr_heap_bubble(h, parent);
+		if (unlikely(fr_heap_bubble(h, parent) < 0)) ret = -1;
 	}
+	if (unlikely(ret < 0)) return -1;
 
 	/*
 	 *	After re-building the heap, check the new size.  If
@@ -315,29 +346,35 @@ int fr_heap_extract(fr_heap_t **hp, void *data)
 
 /** Remove a node from the heap
  *
+ * @param[out] out	the head element, or NULL if the heap is empty.
  * @param[in,out] hp	The heap to pop an element from.
  *			A new pointer value will be written to hp
  *			if the heap is resized.
  * @return
- *      - The item that was popped.
- *	- NULL on error.
+ *      - 0 on success, check out for the popped element.
+ *	- -1 on comparator error, retrieve the error with fr_strerror.  The head
+ *	  element has still been popped, but the heap's ordering is
+ *	  undefined.
  */
-void *fr_heap_pop(fr_heap_t **hp)
+int fr_heap_pop(void **out, fr_heap_t **hp)
 {
 	fr_heap_t *h = *hp;
 	void *data;
 
+	*out = NULL;
+
 	if (unlikely(h == NULL)) {
 		fr_strerror_const("Heap pointer was NULL");
-		return NULL;
+		return -1;
 	}
 
-	if (h->num_elements == 0) return NULL;
+	if (h->num_elements == 0) return 0;
 
 	data = h->p[1];
-	if (unlikely(fr_heap_extract(hp, data) < 0)) return NULL;
+	if (unlikely(fr_heap_extract(hp, data) < 0)) return -1;
 
-	return data;
+	*out = data;
+	return 0;
 }
 
 /** Iterate over entries in heap
@@ -409,11 +446,19 @@ void fr_heap_verify(char const *file, int line, fr_heap_t *h)
 				    "CONSISTENCY CHECK FAILED %s[%i]: node %u index != %u", file, line, i, i);
 	}
 	for (unsigned int i = 1; ; i++) {
+		fr_cmp_ret_t c;
+
 		if (HEAP_LEFT(i) > h->num_elements) break;
-		fr_fatal_assert_msg(h->cmp(h->p[i], h->p[HEAP_LEFT(i)]) <= 0,
+		c = h->cmp(h->p[i], h->p[HEAP_LEFT(i)]);
+		fr_fatal_assert_msg(c != CMP_ERR,
+				    "CONSISTENCY_CHECK_FAILED %s[%i]: comparator error: %s", file, line, fr_strerror());
+		fr_fatal_assert_msg(c != CMP_GT,
 				    "CONSISTENCY_CHECK_FAILED %s[%i]: node %u > left child", file, line, i);
 		if (HEAP_RIGHT(i) > h->num_elements) break;
-		fr_fatal_assert_msg(h->cmp(h->p[i], h->p[HEAP_RIGHT(i)]) <= 0,
+		c = h->cmp(h->p[i], h->p[HEAP_RIGHT(i)]);
+		fr_fatal_assert_msg(c != CMP_ERR,
+				    "CONSISTENCY_CHECK_FAILED %s[%i]: comparator error: %s", file, line, fr_strerror());
+		fr_fatal_assert_msg(c != CMP_GT,
 				    "CONSISTENCY_CHECK_FAILED %s[%i]: node %u > right child", file, line, i);
 	}
 }

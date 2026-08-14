@@ -485,7 +485,7 @@ static void ldap_request_cancel(UNUSED connection_t *conn, void *preq, UNUSED tr
 	fr_ldap_query_t	*query = talloc_get_type_abort(preq, fr_ldap_query_t);
 
 	if (query->ldap_conn) {
-		fr_rb_remove(query->ldap_conn->queries, query);
+		fr_rb_remove(NULL, query->ldap_conn->queries, query);
 		query->ldap_conn = NULL;
 	}
 }
@@ -764,7 +764,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 		}
 
 		find.msgid = ldap_msgid(result);
-		query = fr_rb_find(ldap_conn->queries, &find);
+		fr_rb_find((void **)&query, ldap_conn->queries, &find);
 
 		if (!query) {
 			WARN("Ignoring msgid %i - doesn't match any outstanding queries (it may have been cancelled)",
@@ -776,7 +776,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 		/*
 		 *	Remove the query from the tree of outstanding queries
 		 */
-		fr_rb_remove(ldap_conn->queries, query);
+		fr_rb_remove(NULL, ldap_conn->queries, query);
 
 		/*
 		 *	Add the query to the list of queries referencing this connection.
@@ -918,7 +918,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 
 static int _thread_ldap_trunk_free(fr_ldap_thread_trunk_t *ttrunk)
 {
-	if (ttrunk->t && fr_rb_node_inline_in_tree(&ttrunk->node)) fr_rb_remove(ttrunk->t->trunks, ttrunk);
+	if (ttrunk->t && fr_rb_node_inline_in_tree(&ttrunk->node)) fr_rb_remove(NULL, ttrunk->t->trunks, ttrunk);
 
 	return 0;
 }
@@ -947,7 +947,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Looking for LDAP connection to \"%s\" bound as \"%s\"", uri,
 		 bind_dn ? bind_dn : "(anonymous)");
-	found = fr_rb_find(thread->trunks, &find);
+	fr_rb_find((void **)&found, thread->trunks, &find);
 
 	if (found) return found;
 
@@ -1033,7 +1033,7 @@ trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *u
 {
 	fr_ldap_thread_trunk_t	*found, find = {.uri = uri, .bind_dn = bind_dn};
 
-	found = fr_rb_find(thread->trunks, &find);
+	fr_rb_find((void **)&found, thread->trunks, &find);
 
 	return (found) ? found->trunk->state : TRUNK_STATE_MAX;
 }
@@ -1184,7 +1184,7 @@ static void ldap_trunk_bind_auth_demux(UNUSED fr_event_list_t *el, UNUSED trunk_
 
 		really_no_result = true;
 		find.msgid = ldap_msgid(result);
-		bind = fr_rb_find(thread->binds, &find);
+		fr_rb_find((void **)&bind, thread->binds, &find);
 
 		if (!bind) {
 			WARN("Ignoring bind result msgid %i - doesn't match any outstanding binds", find.msgid);
@@ -1199,7 +1199,7 @@ static void ldap_trunk_bind_auth_demux(UNUSED fr_event_list_t *el, UNUSED trunk_
 	 *	connection - so having got a result, no need to loop.
 	 */
 
-	fr_rb_remove(thread->binds, bind);
+	fr_rb_remove(NULL, thread->binds, bind);
 	request = bind->request;
 	bind->ret = ret;
 

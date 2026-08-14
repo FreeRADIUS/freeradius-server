@@ -248,7 +248,7 @@ static timer_list_funcs_t const timer_funcs[] = {
  *	- -1 if a should occur earlier than b.
  *	- 0 if both events occur at the same time.
  */
-static int8_t timer_cmp(void const *a, void const *b)
+static fr_cmp_ret_t timer_cmp(void const *a, void const *b)
 {
 	fr_timer_t const *ev_a = a, *ev_b = b;
 
@@ -759,11 +759,13 @@ static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
 {
 	fr_timer_cb_t	callback;
 	void		*uctx;
+	void		*item;
 	fr_timer_t	*ev;
 	int		fired = 0;
 
 	while (fr_lst_num_elements(tl->lst) > 0) {
-		ev = talloc_get_type_abort(fr_lst_peek(tl->lst), fr_timer_t);
+		fr_lst_peek(&item, tl->lst);
+		ev = talloc_get_type_abort(item, fr_timer_t);
 
 		/*
 		 *	See if it's time to do this one.
@@ -892,7 +894,7 @@ static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when)
 			return fired;
 		}
 
-		fr_rb_remove(tl->shared.rb, uctx);
+		fr_rb_remove(NULL, tl->shared.rb, uctx);
 
 		tl->shared.callback(tl, *when, uctx);
 
@@ -977,7 +979,11 @@ int fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when)
  */
 static fr_timer_t *timer_list_lst_head(fr_timer_list_t *tl)
 {
-	return fr_lst_peek(tl->lst);
+	fr_timer_t *ev;
+
+	fr_lst_peek((void **)&ev, tl->lst);
+
+	return ev;
 }
 
 /** Return the head of the ordered list
@@ -1349,12 +1355,12 @@ int fr_timer_uctx_insert(fr_timer_list_t *tl, void *uctx)
 	fr_assert(tl->type == TIMER_LIST_TYPE_SHARED);
 
 	if (tl->in_handler) {
-		if (!fr_rb_insert(tl->shared.deferred, uctx)) return -1;
+		if (fr_rb_insert(tl->shared.deferred, uctx) != 0) return -1;
 
 		return 0;
 	}
 
-	if (!fr_rb_insert(tl->shared.rb, uctx)) return -1;
+	if (fr_rb_insert(tl->shared.rb, uctx) != 0) return -1;
 
 	return timer_list_parent_update(tl);
 }
@@ -1411,7 +1417,7 @@ typedef struct {
 	uint32_t	count;
 } fr_event_counter_t;
 
-static int8_t timer_location_cmp(void const *one, void const *two)
+static fr_cmp_ret_t timer_location_cmp(void const *one, void const *two)
 {
 	fr_event_counter_t const	*a = one;
 	fr_event_counter_t const	*b = two;
@@ -1431,7 +1437,7 @@ static int _event_report_process(fr_rb_tree_t **locations, size_t array[], fr_ti
 			fr_event_counter_t find = { .file = ev->file, .line = ev->line };
 			fr_event_counter_t *counter;
 
-			counter = fr_rb_find(locations[i], &find);
+			fr_rb_find((void **)&counter, locations[i], &find);
 			if (!counter) {
 				counter = talloc(locations[i], fr_event_counter_t);
 				if (!counter) {

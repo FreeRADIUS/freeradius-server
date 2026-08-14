@@ -31,9 +31,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/atexit.h>
 
-static inline int8_t cf_ident2_cmp(void const *a, void const *b);
-static int8_t _cf_ident1_cmp(void const *a, void const *b);
-static int8_t _cf_ident2_cmp(void const *a, void const *b);
+static inline fr_cmp_ret_t cf_ident2_cmp(void const *a, void const *b);
+static fr_cmp_ret_t _cf_ident1_cmp(void const *a, void const *b);
+static fr_cmp_ret_t _cf_ident2_cmp(void const *a, void const *b);
 
 /** Return the next child that's of the specified type
  *
@@ -91,6 +91,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	CONF_PAIR	cp_find;
 	CONF_DATA	cd_find;
 	CONF_ITEM	*find;
+	CONF_ITEM	*found;
 
 	if (!parent) return NULL;
 	if (cf_item_has_no_children(parent)) return NULL;
@@ -151,7 +152,8 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	 */
 	if (IS_WILDCARD(ident2)) {
 		if (!parent->ident1) return NULL;
-		return fr_rb_find(parent->ident1, find);
+		fr_rb_find((void **)&found, parent->ident1, find);
+		return found;
 	}
 
 	/*
@@ -164,7 +166,8 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	 *	the tree may be NULL when only non-indexed children exist.
 	 */
 	if (!parent->ident2) return NULL;
-	return fr_rb_find(parent->ident2, find);
+	fr_rb_find((void **)&found, parent->ident2, find);
+	return found;
 }
 
 /** Return the next child that's of the specified type with the specified identifiers
@@ -265,7 +268,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
  * @param[in] two	Second CONF_ITEM to compare.
  * @return CMP(one, two)
  */
-static inline int8_t _cf_ident1_cmp(void const *one, void const *two)
+static inline fr_cmp_ret_t _cf_ident1_cmp(void const *one, void const *two)
 {
 	int ret;
 
@@ -322,7 +325,7 @@ static inline int8_t _cf_ident1_cmp(void const *one, void const *two)
  * @param[in] two	Second CONF_ITEM to compare.
  * @return CMP(one,two)
  */
-static inline int8_t cf_ident2_cmp(void const *one, void const *two)
+static inline fr_cmp_ret_t cf_ident2_cmp(void const *one, void const *two)
 {
 	CONF_ITEM const *ci = one;
 	int ret;
@@ -372,7 +375,7 @@ static inline int8_t cf_ident2_cmp(void const *one, void const *two)
  * @param[in] b Second CONF_ITEM to compare.
  * @return CMP(a, b)
  */
-static int8_t _cf_ident2_cmp(void const *a, void const *b)
+static fr_cmp_ret_t _cf_ident2_cmp(void const *a, void const *b)
 {
 	int ret;
 
@@ -2497,13 +2500,16 @@ void _cf_item_debug(CONF_ITEM const *ci)
 
 	cf_item_foreach(ci, child) {
 	     	char const *in_ident1, *in_ident2;
+		CONF_ITEM *found;
 
-		in_ident1 = fr_rb_find(ci->ident1, child) == child? "in ident1 " : "";
+		fr_rb_find((void **)&found, ci->ident1, child);
+		in_ident1 = found == child? "in ident1 " : "";
 
 		if (ci->type != CONF_ITEM_SECTION) {
 			in_ident2 = NULL;
 		} else {
-			in_ident2 = fr_rb_find(ci->ident2, child) == child? "in ident2 " : "";
+			fr_rb_find((void **)&found, ci->ident2, child);
+			in_ident2 = found == child? "in ident2 " : "";
 		}
 
 		switch (child->type) {

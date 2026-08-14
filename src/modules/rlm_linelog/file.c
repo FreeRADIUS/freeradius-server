@@ -35,7 +35,7 @@ static uint32_t filename_hash(void const *data)
 	return fr_hash_string(file->filename);
 }
 
-static int8_t filename_cmp(void const *one, void const *two)
+static fr_cmp_ret_t filename_cmp(void const *one, void const *two)
 {
 	rlm_linelog_file_t const *a = one;
 	rlm_linelog_file_t const *b = two;
@@ -283,8 +283,8 @@ linelog_buffer_action_t file_enqueue_write(rlm_linelog_file_entry_t **entry_p, m
 
 	path = call_env->filename->vb_strvalue;
 
-	file = fr_hash_table_find_by_key(thread->file_table, fr_hash_string(path),
-					 &(rlm_linelog_file_t){ .filename = path });
+	fr_hash_table_find_by_key((void **)&file, thread->file_table, fr_hash_string(path),
+				  &(rlm_linelog_file_t){ .filename = path });
 
 	if (!file) {
 		MEM(file = talloc_size(mctx->thread, sizeof(rlm_linelog_file_t) + (sizeof(rlm_linelog_file_entry_t) * inst->file.buffer_count)));
@@ -308,7 +308,7 @@ linelog_buffer_action_t file_enqueue_write(rlm_linelog_file_entry_t **entry_p, m
 		file->expiry = NULL;
 		fr_dbuff_init_talloc(file, &file->dbuff, &file->tctx, 1024, SIZE_MAX);
 
-		if (!fr_hash_table_insert(thread->file_table, file)) {
+		if (fr_hash_table_insert(thread->file_table, file) != 0) {
 			RPERROR("Failed tracking buffered log file %pV", call_env->filename);
 			goto error;
 		}

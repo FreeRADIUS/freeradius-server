@@ -163,7 +163,7 @@ typedef struct {
 
 /** Compare two CRLs in the list of entries by URL
  */
-static int8_t crl_cmp(void const *a, void const *b)
+static fr_cmp_ret_t crl_cmp(void const *a, void const *b)
 {
 	crl_entry_t	const	*crl_a = (crl_entry_t const *)a;
 	crl_entry_t	const	*crl_b = (crl_entry_t const *)b;
@@ -226,7 +226,7 @@ static unlang_action_t fetch_setup_common(unlang_result_t *p_result, module_ctx_
 	if (vp) {
 		crl_entry_t		find;
 		find.cdp_url = vp->vp_strvalue;
-		rctx->base_crl = fr_rb_find(&inst->mutable->crls, &find);
+		fr_rb_find((void **)&rctx->base_crl, &inst->mutable->crls, &find);
 	}
 
 	/*
@@ -301,7 +301,8 @@ RECV(crl_fetch)
 	if (!vp) return UNLANG_ACTION_FAIL;
 
 	find.cdp_url = vp->vp_strvalue;
-	rctx->crl_entry = crl_entry = fr_rb_find(&inst->mutable->crls, &find);
+	fr_rb_find((void **)&crl_entry, &inst->mutable->crls, &find);
+	rctx->crl_entry = crl_entry;
 
 	/*
 	 *	If we found the data, send it back without running the process section as long as it's not expired.
@@ -336,7 +337,7 @@ RECV(crl_refresh) {
 	if (!vp) return UNLANG_ACTION_FAIL;
 
 	find.cdp_url = vp->vp_strvalue;
-	rctx->crl_entry = fr_rb_find(&inst->mutable->crls, &find);
+	fr_rb_find((void **)&rctx->crl_entry, &inst->mutable->crls, &find);
 	if (rctx->crl_entry) rctx->refresh = true;
 
 	return fetch_setup_common(p_result, mctx, request, vp, rctx);
@@ -351,7 +352,7 @@ static int _crl_entry_free(crl_entry_t *to_free)
 	/*
 	 *	Ensure the entry is no-longer in the tree.
 	 */
-	if (fr_rb_node_inline_in_tree(&to_free->node)) fr_rb_remove(&to_free->inst->mutable->crls, to_free);
+	if (fr_rb_node_inline_in_tree(&to_free->node)) fr_rb_remove(NULL, &to_free->inst->mutable->crls, to_free);
 
 	/*
 	 *	If the entry referenced deltas, those must be removed as well.
@@ -361,10 +362,10 @@ static int _crl_entry_free(crl_entry_t *to_free)
 			crl_entry_t	find, *delta_crl;
 
 			find.cdp_url = delta->vb_strvalue;
-			delta_crl = fr_rb_find(&to_free->inst->mutable->crls, &find);
+			fr_rb_find((void **)&delta_crl, &to_free->inst->mutable->crls, &find);
 			if (!delta_crl) continue;
 
-			fr_rb_remove(&to_free->inst->mutable->crls, delta_crl);
+			fr_rb_remove(NULL, &to_free->inst->mutable->crls, delta_crl);
 			talloc_free(delta_crl);
 		}
 	}
@@ -686,7 +687,7 @@ RESUME(crl_fetch)
 		}
 	}
 
-	if (!fr_rb_insert(&inst->mutable->crls, crl_entry)) {
+	if (fr_rb_insert(&inst->mutable->crls, crl_entry) != 0) {
 		RERROR("Failed storing CRL");
 		goto error;
 	}

@@ -527,7 +527,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
  *  We want the value with the lowest timestamp to be prioritized at
  *  the top of the heap.
  */
-static int8_t request_prioritise(void const *one, void const *two)
+static fr_cmp_ret_t request_prioritise(void const *one, void const *two)
 {
 	tcp_request_t const *a = one;
 	tcp_request_t const *b = two;

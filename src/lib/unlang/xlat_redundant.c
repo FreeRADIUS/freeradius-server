@@ -381,7 +381,7 @@ void xlat_redundant_add_xlat(xlat_redundant_t *xr, xlat_t const *x)
  * @note If the two xlats both have the same name as the module that registered them,
  *       then they are considered equal.
  */
-static int8_t module_xlat_cmp(void const *a, void const *b)
+static fr_cmp_ret_t module_xlat_cmp(void const *a, void const *b)
 {
 	module_rlm_xlat_t const *mrx_a = talloc_get_type_abort_const(a, module_rlm_xlat_t);
 	module_rlm_xlat_t const *mrx_b = talloc_get_type_abort_const(b, module_rlm_xlat_t);
@@ -404,7 +404,7 @@ static int8_t module_xlat_cmp(void const *a, void const *b)
 	return CMP(strcmp(a_p, b_p), 0);
 }
 
-static int8_t module_qualified_xlat_cmp(void const *a, void const *b)
+static fr_cmp_ret_t module_qualified_xlat_cmp(void const *a, void const *b)
 {
 	int8_t ret;
 
@@ -519,7 +519,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 		mri = talloc_get_type_abort(mi->uctx, module_rlm_instance_t);
 		fr_dlist_foreach(&mri->xlats, module_rlm_xlat_t const, mrx) {
-			if (!fr_rb_insert(mrx_tree, mrx)) {
+			if (fr_rb_insert(mrx_tree, mrx) != 0) {
 				cf_log_err(cs, "Module '%s' referenced multiple times in %s %s { ... } section",
 					   mrx->mi->name, cf_section_name1(cs), cf_section_name2(cs));
 				goto error;

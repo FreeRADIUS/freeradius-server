@@ -982,7 +982,7 @@ static void trunk_backlog_drain(trunk_t *trunk);
  *	- 0 if a == b.
  *	- -1 if a < b.
  */
-static int8_t _trunk_request_prioritise(void const *a, void const *b)
+static fr_cmp_ret_t _trunk_request_prioritise(void const *a, void const *b)
 {
 	trunk_request_t const *treq_a = talloc_get_type_abort_const(a, trunk_request_t);
 	trunk_request_t const *treq_b = talloc_get_type_abort_const(b, trunk_request_t);
@@ -4176,14 +4176,16 @@ static void trunk_connection_close_if_empty(trunk_t *trunk, fr_dlist_head_t *hea
 static void trunk_rebalance(trunk_t *trunk)
 {
 	trunk_connection_t	*head;
+	trunk_connection_t	*tail;
 
 	head = fr_minmax_heap_min_peek(trunk->active);
+	fr_minmax_heap_max_peek((void **)&tail, trunk->active);
 
 	/*
 	 *	Only rebalance if the top and bottom of
 	 *	the heap are not equal.
 	 */
-	if (trunk->funcs.connection_prioritise(fr_minmax_heap_max_peek(trunk->active), head) == 0) return;
+	if (trunk->funcs.connection_prioritise(tail, head) == 0) return;
 
 	DEBUG3("Rebalancing requests");
 
@@ -4193,9 +4195,10 @@ static void trunk_rebalance(trunk_t *trunk)
 	 *	connection at the top is shifted from that
 	 *	position.
 	 */
-	while ((fr_minmax_heap_min_peek(trunk->active) == head) &&
-	       trunk_connection_requests_requeue_priv(fr_minmax_heap_max_peek(trunk->active),
-	       					      TRUNK_REQUEST_STATE_PENDING, 1, false));
+	while (fr_minmax_heap_min_peek(trunk->active) == head) {
+		fr_minmax_heap_max_peek((void **)&tail, trunk->active);
+		if (!trunk_connection_requests_requeue_priv(tail, TRUNK_REQUEST_STATE_PENDING, 1, false)) break;
+	}
 }
 
 /** Recalculate the trunk's aggregate state from its connection counts
@@ -4608,7 +4611,7 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 		 *	connections, start draining "active"
 		 *	connections.
 		 */
-		} else if ((tconn = fr_minmax_heap_max_peek(trunk->active))) {
+		} else if ((fr_minmax_heap_max_peek((void **)&tconn, trunk->active) == 0) && tconn) {
 			/*
 			 *	If the connection has no requests associated
 			 *	with it then immediately free.
@@ -4986,7 +4989,7 @@ int trunk_connection_manage_schedule(trunk_t *trunk)
 /** Order connections by queue depth
  *
  */
-static int8_t _trunk_connection_order_by_shortest_queue(void const *one, void const *two)
+static fr_cmp_ret_t _trunk_connection_order_by_shortest_queue(void const *one, void const *two)
 {
 	trunk_connection_t const	*a = talloc_get_type_abort_const(one, trunk_connection_t);
 	trunk_connection_t const	*b = talloc_get_type_abort_const(two, trunk_connection_t);

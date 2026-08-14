@@ -43,7 +43,7 @@ bool fr_rb_expire_insert(fr_rb_expire_t *expire, void *data, fr_time_t now)
 
 	fr_assert(!fr_rb_node_inline_in_tree(&re->node));
 
-	if (!fr_rb_insert(&expire->tree, data)) {
+	if (fr_rb_insert(&expire->tree, data) != 0) {
 		return false;
 	}
 

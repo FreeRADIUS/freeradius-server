@@ -113,7 +113,7 @@ static xlat_arg_parser_t const interval_xlat_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-static int8_t interval_entry_cmp(void const *one, void const *two)
+static fr_cmp_ret_t interval_entry_cmp(void const *one, void const *two)
 {
 	rlm_interval_entry_t const *a = one;
 	rlm_interval_entry_t const *b = two;
@@ -173,7 +173,7 @@ static int interval_check(fr_rb_tree_t *tree, rlm_interval_thread_t *thread,
 {
 	rlm_interval_entry_t *entry;
 
-	entry = fr_rb_find(tree, find);
+	fr_rb_find((void **)&entry, tree, find);
 	if (!entry) {
 		entry = interval_slab_reserve(thread->slab);
 		if (!entry) return -1;
@@ -182,7 +182,7 @@ static int interval_check(fr_rb_tree_t *tree, rlm_interval_thread_t *thread,
 
 		entry->owner = owner;
 
-		if (unlikely(fr_rb_insert(tree, entry) == false)) {
+		if (unlikely(fr_rb_insert(tree, entry) != 0)) {
 			fr_strerror_const("Insertion failed - duplicate key?");
 		error:
 			interval_slab_release(entry);

@@ -136,7 +136,7 @@ static uint32_t dict_protocol_name_hash(void const *data)
 /** Compare two protocol names
  *
  */
-static int8_t dict_protocol_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dict_protocol_name_cmp(void const *one, void const *two)
 {
 	fr_dict_t const *a = one;
 	fr_dict_t const *b = two;
@@ -157,7 +157,7 @@ static uint32_t dict_protocol_num_hash(void const *data)
 /** Compare two protocol numbers
  *
  */
-static int8_t dict_protocol_num_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dict_protocol_num_cmp(void const *one, void const *two)
 {
 	fr_dict_t const *a = one;
 	fr_dict_t const *b = two;
@@ -182,7 +182,7 @@ static uint32_t dict_attr_name_hash(void const *data)
 /** Compare two attribute names
  *
  */
-static int8_t dict_attr_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dict_attr_name_cmp(void const *one, void const *two)
 {
 	fr_dict_attr_t const *a = one, *b = two;
 	int ret;
@@ -270,7 +270,7 @@ static uint32_t dict_vendor_name_hash(void const *data)
 /** Compare two attribute names
  *
  */
-static int8_t dict_vendor_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dict_vendor_name_cmp(void const *one, void const *two)
 {
 	fr_dict_vendor_t const *a = one;
 	fr_dict_vendor_t const *b = two;
@@ -292,7 +292,7 @@ static uint32_t dict_vendor_pen_hash(void const *data)
 /** Compare two vendor numbers
  *
  */
-static int8_t dict_vendor_pen_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dict_vendor_pen_cmp(void const *one, void const *two)
 {
 	fr_dict_vendor_t const *a = one;
 	fr_dict_vendor_t const *b = two;
@@ -313,7 +313,7 @@ static uint32_t dict_enum_name_hash(void const *data)
 /** Compare two dictionary attribute enum values
  *
  */
-static int8_t dict_enum_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dict_enum_name_cmp(void const *one, void const *two)
 {
 	fr_dict_enum_value_t const *a = one;
 	fr_dict_enum_value_t const *b = two;
@@ -339,14 +339,12 @@ static uint32_t dict_enum_value_hash(void const *data)
 /** Compare two dictionary enum values
  *
  */
-static int8_t dict_enum_value_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dict_enum_value_cmp(void const *one, void const *two)
 {
 	fr_dict_enum_value_t const *a = one;
 	fr_dict_enum_value_t const *b = two;
-	int ret;
 
-	ret = fr_value_box_cmp(a->value, b->value); /* not yet int8_t! */
-	return CMP(ret, 0);
+	return fr_value_box_cmp(a->value, b->value);
 }
 
 /** Resolve an alias attribute to the concrete attribute it points to
@@ -1466,7 +1464,7 @@ int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict
 		return -1;
 	}
 
-	if (!fr_hash_table_insert(namespace, self)) {
+	if (fr_hash_table_insert(namespace, self) != 0) {
 		fr_strerror_const("Internal error storing attribute");
 		goto error;
 	}
@@ -1488,10 +1486,10 @@ int dict_protocol_add(fr_dict_t *dict)
 {
 	if (!dict->root) return -1;	/* Should always have root */
 
-	if (!fr_hash_table_insert(dict_gctx->protocol_by_name, dict)) {
+	if (fr_hash_table_insert(dict_gctx->protocol_by_name, dict) != 0) {
 		fr_dict_t *old_proto;
 
-		old_proto = fr_hash_table_find(dict_gctx->protocol_by_name, dict);
+		fr_hash_table_find((void **)&old_proto, dict_gctx->protocol_by_name, dict);
 		if (!old_proto) {
 			fr_strerror_printf("%s: Failed inserting protocol name %s", __FUNCTION__, dict->root->name);
 			return -1;
@@ -1507,7 +1505,7 @@ int dict_protocol_add(fr_dict_t *dict)
 	}
 	dict->in_protocol_by_name = true;
 
-	if (!fr_hash_table_insert(dict_gctx->protocol_by_num, dict)) {
+	if (fr_hash_table_insert(dict_gctx->protocol_by_num, dict) != 0) {
 		fr_strerror_printf("%s: Duplicate protocol number %u", __FUNCTION__, dict->root->attr);
 		return -1;
 	}
@@ -1585,10 +1583,10 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	vendor->pen = num;
 	vendor->type = vendor->length = 1; /* defaults */
 
-	if (!fr_hash_table_insert(dict->vendors_by_name, vendor)) {
-		fr_dict_vendor_t const *old_vendor;
+	if (fr_hash_table_insert(dict->vendors_by_name, vendor) != 0) {
+		fr_dict_vendor_t *old_vendor;
 
-		old_vendor = fr_hash_table_find(dict->vendors_by_name, vendor);
+		fr_hash_table_find((void **)&old_vendor, dict->vendors_by_name, vendor);
 		if (!old_vendor) {
 			fr_strerror_printf("%s: Failed inserting vendor name %s", __FUNCTION__, name);
 			return -1;
@@ -1778,7 +1776,7 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	if (!fr_hash_table_insert(namespace, da)) {
+	if (fr_hash_table_insert(namespace, da) != 0) {
 		fr_dict_attr_t *a;
 
 		/*
@@ -1786,7 +1784,7 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 		 *	but the parent, or number, or type are
 		 *	different, that's an error.
 		 */
-		a = fr_hash_table_find(namespace, da);
+		fr_hash_table_find((void **)&a, namespace, da);
 		if (a && (strcasecmp(a->name, da->name) == 0)) {
 			if ((a->attr != da->attr) || (a->type != da->type) || (a->parent != da->parent)) {
 				fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  "
@@ -2118,7 +2116,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 		fr_dict_attr_t *tmp;
 		memcpy(&tmp, &enumv, sizeof(tmp));
 
-		if (!fr_hash_table_insert(ext->value_by_name, tmp)) {
+		if (fr_hash_table_insert(ext->value_by_name, tmp) != 0) {
 			fr_dict_enum_value_t const *old;
 
 			/*
@@ -2706,7 +2704,7 @@ fr_slen_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	}
 
 	root.name = buffer;
-	dict = fr_hash_table_find(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
+	fr_hash_table_find((void **)&dict, dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
 
 	if (!dict) {
 		if (strcasecmp(root.name, "internal") != 0) {
@@ -2749,10 +2747,14 @@ fr_slen_t fr_dict_by_protocol_substr(fr_dict_attr_err_t *err, fr_dict_t const **
  */
 fr_dict_t *dict_by_protocol_name(char const *name)
 {
+	fr_dict_t *dict;
+
 	if (!dict_gctx || !name) return NULL;
 
-	return fr_hash_table_find(dict_gctx->protocol_by_name,
-				  &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
+	fr_hash_table_find((void **)&dict, dict_gctx->protocol_by_name,
+			   &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
+
+	return dict;
 }
 
 /** Internal version of #fr_dict_by_protocol_num
@@ -2763,10 +2765,14 @@ fr_dict_t *dict_by_protocol_name(char const *name)
  */
 fr_dict_t *dict_by_protocol_num(unsigned int num)
 {
+	fr_dict_t *dict;
+
 	if (!dict_gctx) return NULL;
 
-	return fr_hash_table_find(dict_gctx->protocol_by_num,
-				  &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
+	fr_hash_table_find((void **)&dict, dict_gctx->protocol_by_num,
+			   &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
+
+	return dict;
 }
 
 /** Internal version of #fr_dict_by_da
@@ -2878,13 +2884,16 @@ fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
 {
 	fr_dict_t 		*dict;
 	fr_dict_vendor_t	dv;
+	fr_dict_vendor_t	*found;
 
 	dv.pen = fr_dict_vendor_num_by_da(da);
 	if (!dv.pen) return NULL;
 
 	dict = dict_by_da(da);
 
-	return fr_hash_table_find(dict->vendors_by_num, &dv);
+	fr_hash_table_find((void **)&found, dict->vendors_by_num, &dv);
+
+	return found;
 }
 
 /** Look up a vendor by its name
@@ -2904,7 +2913,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
 
 	if (!name) return NULL;
 
-	found = fr_hash_table_find(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
+	fr_hash_table_find((void **)&found, dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
 	if (!found) return NULL;
 
 	return found;
@@ -2921,9 +2930,13 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
  */
 fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t vendor_pen)
 {
+	fr_dict_vendor_t *found;
+
 	INTERNAL_IF_NULL(dict, NULL);
 
-	return fr_hash_table_find(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
+	fr_hash_table_find((void **)&found, dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
+
+	return found;
 }
 
 /** Return vendor attribute for the specified dictionary and pen
@@ -3427,7 +3440,7 @@ redo:
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
-	da = fr_hash_table_find(namespace, &(fr_dict_attr_t){ .name = buffer });
+	fr_hash_table_find(UNCONST(void **, &da), namespace, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (parent->flags.is_root) {
 			fr_dict_t const *dict = fr_dict_by_da(parent);
@@ -3471,7 +3484,7 @@ redo:
 		return NULL;
 	}
 
-	da = fr_hash_table_find(namespace, &(fr_dict_attr_t) { .name = name });
+	fr_hash_table_find((void **)&da, namespace, &(fr_dict_attr_t) { .name = name });
 	if (!da) {
 		if (parent->flags.is_root) {
 			fr_dict_t const *dict = fr_dict_by_da(parent);
@@ -3634,6 +3647,7 @@ fr_dict_enum_value_t const *fr_dict_enum_iter_next(fr_dict_attr_t const *da, fr_
 fr_dict_enum_value_t const *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
 	fr_dict_attr_ext_enumv_t	*ext;
+	fr_dict_enum_value_t		*found;
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext) {
@@ -3653,7 +3667,9 @@ fr_dict_enum_value_t const *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_v
 	 */
 	if (value->type != da->type) return NULL;
 
-	return fr_hash_table_find(ext->name_by_value, &(fr_dict_enum_value_t){ .value = value });
+	fr_hash_table_find((void **)&found, ext->name_by_value, &(fr_dict_enum_value_t){ .value = value });
+
+	return found;
 }
 
 /** Lookup the name of an enum value in a #fr_dict_attr_t
@@ -3680,6 +3696,7 @@ char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t 
 fr_dict_enum_value_t const *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len)
 {
 	fr_dict_attr_ext_enumv_t	*ext;
+	fr_dict_enum_value_t		*found;
 
 	if (!name) return NULL;
 
@@ -3697,7 +3714,9 @@ fr_dict_enum_value_t const *fr_dict_enum_by_name(fr_dict_attr_t const *da, char 
 
 	if (len < 0) len = strlen(name);
 
-	return fr_hash_table_find(ext->value_by_name, &(fr_dict_enum_value_t){ .name = name, .name_len = len});
+	fr_hash_table_find((void **)&found, ext->value_by_name, &(fr_dict_enum_value_t){ .name = name, .name_len = len});
+
+	return found;
 }
 
 /*
@@ -3731,8 +3750,8 @@ fr_slen_t fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t
 		}
 		fr_sbuff_next(&our_in);
 
-		enumv = fr_hash_table_find(ext->value_by_name, &(fr_dict_enum_value_t){ .name = (char const *) name,
-											.name_len = len});
+		fr_hash_table_find((void **)&enumv, ext->value_by_name, &(fr_dict_enum_value_t){ .name = (char const *) name,
+												  .name_len = len});
 
 		/*
 		 *	Return the LONGEST match, as there may be
@@ -3908,7 +3927,7 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 /** Find a dependent in the tree of dependents
  *
  */
-static int8_t _dict_dependent_cmp(void const *a, void const *b)
+static fr_cmp_ret_t _dict_dependent_cmp(void const *a, void const *b)
 {
 	fr_dict_dependent_t const *dep_a = a;
 	fr_dict_dependent_t const *dep_b = b;
@@ -3932,7 +3951,7 @@ int dict_dependent_add(fr_dict_t *dict, char const *dependent)
 {
 	fr_dict_dependent_t *found;
 
-	found = fr_rb_find(dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
+	fr_rb_find((void **)&found, dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
 	if (!found) {
 		fr_dict_dependent_t *new;
 
@@ -3991,7 +4010,7 @@ int dict_dependent_remove(fr_dict_t *dict, char const *dependent)
 {
 	fr_dict_dependent_t *found;
 
-	found = fr_rb_find(dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
+	fr_rb_find((void **)&found, dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
 	if (!found) {
 		fr_strerror_printf("Dependent \"%s\" not found in dictionary \"%s\"", dependent, dict->root->name);
 		return -1;
@@ -4099,13 +4118,13 @@ static int _dict_free(fr_dict_t *dict)
 		dict->proto->free();
 	}
 
-	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict->gctx->protocol_by_name, dict))) {
+	if (!fr_cond_assert(!dict->in_protocol_by_name || (fr_hash_table_delete(dict->gctx->protocol_by_name, dict) == 0))) {
 		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
 		return -1;
 	}
 	dict->in_protocol_by_name = false;
 
-	if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(dict->gctx->protocol_by_num, dict))) {
+	if (!fr_cond_assert(!dict->in_protocol_by_num || (fr_hash_table_delete(dict->gctx->protocol_by_num, dict) == 0))) {
 		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
 		return -1;
 	}

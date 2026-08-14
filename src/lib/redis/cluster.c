@@ -319,11 +319,11 @@ static uint16_t cluster_key_hash(uint8_t const *key, size_t key_len)
  * @param[in] two second node.
  * @return CMP(one, two)
  */
-static int8_t _cluster_node_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _cluster_node_cmp(void const *one, void const *two)
 {
 	fr_redis_cluster_node_t const *a = one;
 	fr_redis_cluster_node_t const *b = two;
-	int ret;
+	fr_cmp_ret_t ret;
 
 	ret = fr_ipaddr_cmp(&a->addr.inet.dst_ipaddr, &b->addr.inet.dst_ipaddr);
 	if (ret != 0) return ret;
@@ -612,7 +612,7 @@ do { \
 		memset(&tmpl_slot, 0, sizeof(tmpl_slot));
 
 		SET_ADDR(find.addr, map->element[2]);
-		found = fr_rb_find(cluster->used_nodes, &find);
+		fr_rb_find((void **)&found, cluster->used_nodes, &find);
 		if (found) {
 			active[found->id] = true;
 			goto reuse_master_node;
@@ -664,7 +664,7 @@ do { \
 		 */
 		for (j = 3; (j < map->elements); j++) {
 			SET_ADDR(find.addr, map->element[j]);
-			found = fr_rb_find(cluster->used_nodes, &find);
+			fr_rb_find((void **)&found, cluster->used_nodes, &find);
 			if (found) {
 				active[found->id] = true;
 				goto next;
@@ -739,7 +739,7 @@ do { \
 
 		if (cluster->node[i].is_active) {
 			/* Sanity check for duplicates that are active */
-			found = fr_rb_find(cluster->used_nodes, &cluster->node[i]);
+			fr_rb_find((void **)&found, cluster->used_nodes, &cluster->node[i]);
 			fr_assert(found);
 			fr_assert(found->is_active);
 			fr_assert(found->id == i);
@@ -1133,7 +1133,7 @@ static fr_redis_cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, 
 	 *	If we have already have a pool for the
 	 *	host we were redirected to, use that.
 	 */
-	found = fr_rb_find(cluster->used_nodes, &find);
+	fr_rb_find((void **)&found, cluster->used_nodes, &find);
 	if (found) {
 		/* We have the new pool, don't need to hold the lock */
 		pthread_mutex_unlock(&cluster->mutex);
@@ -2079,7 +2079,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 	};
 
 	pthread_mutex_lock(&cluster->mutex);
-	found = fr_rb_find(cluster->used_nodes, &find);
+	fr_rb_find((void **)&found, cluster->used_nodes, &find);
 	if (!found) {
 		fr_redis_cluster_node_t *spare;
 		char buffer[INET6_ADDRSTRLEN];
@@ -2442,7 +2442,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 			continue;
 		}
 
-		if (!fr_rb_insert(cluster->used_nodes, node)) {
+		if (fr_rb_insert(cluster->used_nodes, node) != 0) {
 			WARN("%s - Skipping duplicate bootstrap server \"%s\"", cluster->log_prefix, server);
 			continue;
 		}

@@ -162,8 +162,9 @@ static void test_cmp_different_types(void)
 	fr_value_box(&a, (uint32_t) 42, false);
 	fr_value_box(&b, (uint64_t) 42, false);
 
-	/* Different types should return < -1 (error) */
-	TEST_CHECK(fr_value_box_cmp(&a, &b) < -1);
+	/* Different types are incomparable, both directions return CMP_ERR exactly */
+	TEST_CHECK(fr_value_box_cmp(&a, &b) == CMP_ERR);
+	TEST_CHECK(fr_value_box_cmp(&b, &a) == CMP_ERR);
 }
 
 /*

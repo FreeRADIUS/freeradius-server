@@ -60,7 +60,7 @@ static uint32_t _naming_context_hash(void const *data)
 /** Compare two naming contexts, case insensitively
  *
  */
-static int8_t _naming_context_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _naming_context_cmp(void const *one, void const *two)
 {
 	return CMP(strcasecmp(one, two), 0);
 }
@@ -309,7 +309,7 @@ char const *fr_ldap_directory_common_base_find(fr_ldap_directory_t const *direct
 		 *	starting after each RDN separator.
 		 */
 		while (p) {
-			context = fr_hash_table_find(directory->naming_contexts_ht, p);
+			fr_hash_table_find(UNCONST(void **, &context), directory->naming_contexts_ht, p);
 			if (context) break;
 
 			p = strchr(p, ',');

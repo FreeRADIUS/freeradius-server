@@ -64,7 +64,7 @@ typedef struct {
 /** How to compare two Lua function calls
  *
  */
-static int8_t lua_func_def_cmp(void const *one, void const *two)
+static fr_cmp_ret_t lua_func_def_cmp(void const *one, void const *two)
 {
 	lua_func_def_t const *a = one, *b = two;
 	int ret;

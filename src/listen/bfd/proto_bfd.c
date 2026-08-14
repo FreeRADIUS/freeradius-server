@@ -102,7 +102,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 /*
  *	They all have to be UDP.
  */
-static int8_t client_cmp(void const *one, void const *two)
+static fr_cmp_ret_t client_cmp(void const *one, void const *two)
 {
 	fr_client_t const *a = one;
 	fr_client_t const *b = two;
@@ -442,7 +442,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 			c->active = true;
 
-			if (!fr_rb_insert(inst->peers, c)) {
+			if (fr_rb_insert(inst->peers, c) != 0) {
 				cf_log_err(cs, "Failed to add peer %s", cf_section_name2(cs));
 				goto error;
 			}

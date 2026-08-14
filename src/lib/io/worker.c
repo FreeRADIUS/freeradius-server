@@ -146,7 +146,7 @@ typedef struct {
 } fr_worker_listen_t;
 
 
-static int8_t worker_listener_cmp(void const *one, void const *two)
+static fr_cmp_ret_t worker_listener_cmp(void const *one, void const *two)
 {
 	fr_worker_listen_t const *a = one, *b = two;
 
@@ -375,7 +375,7 @@ static int fr_worker_listen_cancel_self(fr_worker_t *worker, fr_listen_t const *
 	fr_worker_listen_t *wl;
 	request_t *request;
 
-	wl = fr_rb_find(worker->listeners, &(fr_worker_listen_t) { .listener = li });
+	fr_rb_find((void **)&wl, worker->listeners, &(fr_worker_listen_t) { .listener = li });
 	if (!wl) return -1;
 
 	while ((request = fr_dlist_pop_head(&wl->dlist)) != NULL) {
@@ -880,7 +880,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	if (request->async->listen->track_duplicates) {
 		request_t *old;
 
-		old = fr_rb_find(worker->dedup, request);
+		fr_rb_find((void **)&old, worker->dedup, request);
 		if (!old) {
 			goto insert_new;
 		}
@@ -937,14 +937,14 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 
 		worker_stop_request(old);
 		worker->stats.dropped++;
-		(void) fr_rb_remove(worker->dedup, old); /* remove, but do NOT free it */
+		(void) fr_rb_remove(NULL, worker->dedup, old); /* remove, but do NOT free it */
 
 	insert_new:
 		(void) fr_rb_insert(worker->dedup, request);
 	}
 
 	if (worker_request_time_tracking_start(worker, request, now) < 0) {
-		if (request->async->listen->track_duplicates) (void) fr_rb_remove(worker->dedup, request);
+		if (request->async->listen->track_duplicates) (void) fr_rb_remove(NULL, worker->dedup, request);
 		goto fail;
 	}
 
@@ -956,7 +956,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	{
 		fr_worker_listen_t *wl;
 
-		wl = fr_rb_find(worker->listeners, &(fr_worker_listen_t) { .listener = listen });
+		fr_rb_find((void **)&wl, worker->listeners, &(fr_worker_listen_t) { .listener = listen });
 		if (!wl) {
 			MEM(wl = talloc_zero(worker, fr_worker_listen_t));
 			fr_dlist_init(&wl->dlist, request_t, listen_entry);
@@ -973,7 +973,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
  *  Track a request_t in the "runnable" heap.
  *  Higher priorities take precedence, followed by lower sequence numbers
  */
-static int8_t worker_runnable_cmp(void const *one, void const *two)
+static fr_cmp_ret_t worker_runnable_cmp(void const *one, void const *two)
 {
 	request_t const *a = one, *b = two;
 	int ret;
@@ -999,7 +999,7 @@ static int8_t worker_runnable_cmp(void const *one, void const *two)
 /**
  *  Track a request_t in the "dedup" tree
  */
-static int8_t worker_dedup_cmp(void const *one, void const *two)
+static fr_cmp_ret_t worker_dedup_cmp(void const *one, void const *two)
 {
 	int ret;
 	request_t const *a = one, *b = two;
@@ -1330,7 +1330,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 	 *	new ones.
 	 */
 	while (fr_time_delta_lt(fr_time_sub(now, start), fr_time_delta_from_msec(1)) &&
-	       ((request = fr_heap_pop(&worker->runnable)) != NULL)) {
+	       (fr_heap_pop((void **)&request, &worker->runnable) == 0) && request) {
 
 		REQUEST_VERIFY(request);
 		fr_assert(!fr_heap_entry_inserted(request->runnable));

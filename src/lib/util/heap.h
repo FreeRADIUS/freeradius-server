@@ -29,6 +29,7 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <stdint.h>
@@ -48,10 +49,11 @@ extern "C" {
 
 /** Comparator to order heap elements
  *
- *  Return negative numbers to put 'a' at the top of the heap.
- *  Return positive numbers to put 'b' at the top of the heap.
+ *  Return CMP_LT to put 'a' at the top of the heap.
+ *  Return CMP_GT to put 'b' at the top of the heap.
+ *  Return CMP_ERR when the comparison itself failed.
  */
-typedef int8_t (*fr_heap_cmp_t)(void const *a, void const *b);
+typedef fr_cmp_ret_t (*fr_heap_cmp_t)(void const *a, void const *b);
 
 /** The main heap structure
  *
@@ -183,7 +185,7 @@ static inline unsigned int fr_heap_num_elements(fr_heap_t *h)
 
 int		fr_heap_insert(fr_heap_t **hp, void *data) CC_HINT(nonnull);
 int		fr_heap_extract(fr_heap_t **hp, void *data) CC_HINT(nonnull);
-void		*fr_heap_pop(fr_heap_t **hp) CC_HINT(nonnull);
+int		fr_heap_pop(void **out, fr_heap_t **hp) CC_HINT(nonnull);
 
 void		*fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter) CC_HINT(nonnull);
 void		*fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter) CC_HINT(nonnull);

@@ -58,7 +58,7 @@ typedef struct {
 
 /** Compare virtual modules by name
  */
-static int8_t module_rlm_virtual_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t module_rlm_virtual_name_cmp(void const *one, void const *two)
 {
 	module_rlm_virtual_t const *a = one;
 	module_rlm_virtual_t const *b = two;
@@ -800,10 +800,10 @@ CONF_SECTION *module_rlm_virtual_by_name(char const *asked_name)
 {
 	module_rlm_virtual_t *inst;
 
-	inst = fr_rb_find(module_rlm_virtual_name_tree,
-			  &(module_rlm_virtual_t){
-				.name = asked_name,
-			  });
+	fr_rb_find((void **)&inst, module_rlm_virtual_name_tree,
+		   &(module_rlm_virtual_t){
+			.name = asked_name,
+		   });
 	if (!inst) return NULL;
 
 	return inst->cs;
@@ -930,7 +930,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	MEM(inst->name = talloc_strdup(inst, name));
 	inst->xlat_redundant = xlat_redundant;
 
-	old = fr_rb_find(module_rlm_virtual_name_tree, inst);
+	fr_rb_find((void **)&old, module_rlm_virtual_name_tree, inst);
 	if (old) {
 		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
 		      name,
@@ -942,7 +942,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 		return -1;
 	}
 
-	if (!fr_rb_insert(module_rlm_virtual_name_tree, inst)) {
+	if (fr_rb_insert(module_rlm_virtual_name_tree, inst) != 0) {
 		cf_log_perr(cs, "Failed inserting module into internal tracking table");
 		talloc_free(inst);
 		return -1;
@@ -1010,7 +1010,7 @@ int modules_rlm_instantiate(void)
 
 /** Compare the section names of two module_method_binding_t structures
  */
-static int8_t binding_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t binding_name_cmp(void const *one, void const *two)
 {
 	module_method_binding_t const *a = one;
 	module_method_binding_t const *b = two;

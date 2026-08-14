@@ -275,19 +275,19 @@ fr_rb_tree_t	*_fr_rb_alloc(TALLOC_CTX *ctx, ssize_t offset, char const *type,
 			      fr_cmp_t data_cmp, fr_free_t data_free) CC_HINT(warn_unused_result);
 
 /** @hidecallergraph */
-void		*fr_rb_find(fr_rb_tree_t const *tree, void const *data) CC_HINT(nonnull);
+int		fr_rb_find(void **found, fr_rb_tree_t const *tree, void const *data) CC_HINT(nonnull);
 
 int		fr_rb_find_or_insert(void **found, fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull(2,3));
 
-bool		fr_rb_insert(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+int		fr_rb_insert(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
 int		fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull(2,3));
 
-void		*fr_rb_remove(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+int		fr_rb_remove(void **removed, fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull(2,3));
 
 void		*fr_rb_remove_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node) CC_HINT(nonnull);
 
-bool		fr_rb_delete(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+int		fr_rb_delete(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
 bool 		fr_rb_delete_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node) CC_HINT(nonnull);
 

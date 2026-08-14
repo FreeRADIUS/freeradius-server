@@ -186,6 +186,8 @@ static int track_free(fr_io_track_t *track)
 
 static int track_dedup_free(fr_io_track_t *track)
 {
+	void *found;
+
 	fr_assert(track->client->table != NULL);
 
 	/*
@@ -197,9 +199,10 @@ static int track_dedup_free(fr_io_track_t *track)
 	 */
 	if (track->client->table->being_freed) return 0;
 
-	fr_assert(fr_rb_find(track->client->table, track) != NULL);
+	fr_rb_find(&found, track->client->table, track);
+	fr_assert(found != NULL);
 
-	if (!fr_rb_delete(track->client->table, track)) {
+	if (fr_rb_delete(track->client->table, track) != 0) {
 		fr_assert(0);
 	}
 
@@ -210,7 +213,7 @@ static int track_dedup_free(fr_io_track_t *track)
  *  Return negative numbers to put 'one' at the top of the heap.
  *  Return positive numbers to put 'two' at the top of the heap.
  */
-static int8_t pending_packet_cmp(void const *one, void const *two)
+static fr_cmp_ret_t pending_packet_cmp(void const *one, void const *two)
 {
 	fr_io_pending_packet_t const *a = talloc_get_type_abort_const(one, fr_io_pending_packet_t);
 	fr_io_pending_packet_t const *b = talloc_get_type_abort_const(two, fr_io_pending_packet_t);
@@ -240,7 +243,7 @@ static int8_t pending_packet_cmp(void const *one, void const *two)
  *	Order clients in the pending_clients heap, based on the
  *	packets that they contain.
  */
-static int8_t pending_client_cmp(void const *one, void const *two)
+static fr_cmp_ret_t pending_client_cmp(void const *one, void const *two)
 {
 	fr_io_pending_packet_t const *a;
 	fr_io_pending_packet_t const *b;
@@ -258,11 +261,11 @@ static int8_t pending_client_cmp(void const *one, void const *two)
 }
 
 
-static int8_t address_cmp(void const *one, void const *two)
+static fr_cmp_ret_t address_cmp(void const *one, void const *two)
 {
 	fr_io_address_t const *a = talloc_get_type_abort_const(one, fr_io_address_t);
 	fr_io_address_t const *b = talloc_get_type_abort_const(two, fr_io_address_t);
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	CMP_RETURN(a, b, socket.inet.src_port);
 	CMP_RETURN(a, b, socket.inet.dst_port);
@@ -288,7 +291,7 @@ static uint32_t connection_hash(void const *ctx)
 	return fr_hash_update(&c->address->socket.inet.dst_port, sizeof(c->address->socket.inet.dst_port), hash);
 }
 
-static int8_t connection_cmp(void const *one, void const *two)
+static fr_cmp_ret_t connection_cmp(void const *one, void const *two)
 {
 	fr_io_connection_t const *a = talloc_get_type_abort_const(one, fr_io_connection_t);
 	fr_io_connection_t const *b = talloc_get_type_abort_const(two, fr_io_connection_t);
@@ -297,7 +300,7 @@ static int8_t connection_cmp(void const *one, void const *two)
 }
 
 
-static int8_t track_cmp(void const *one, void const *two)
+static fr_cmp_ret_t track_cmp(void const *one, void const *two)
 {
 	fr_io_track_t const *a = talloc_get_type_abort_const(one, fr_io_track_t);
 	fr_io_track_t const *b = talloc_get_type_abort_const(two, fr_io_track_t);
@@ -327,7 +330,7 @@ static int8_t track_cmp(void const *one, void const *two)
 }
 
 
-static int8_t track_connected_cmp(void const *one, void const *two)
+static fr_cmp_ret_t track_connected_cmp(void const *one, void const *two)
 {
 	fr_io_track_t const *a = talloc_get_type_abort_const(one, fr_io_track_t);
 	fr_io_track_t const *b = talloc_get_type_abort_const(two, fr_io_track_t);
@@ -358,7 +361,7 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 	fr_io_client_t *client;
 	fr_io_pending_packet_t *pending;
 
-	client = fr_heap_pop(&thread->pending_clients);
+	fr_heap_pop((void **)&client, &thread->pending_clients);
 	if (!client) {
 		fr_assert(thread->num_pending_packets == 0);
 
@@ -372,7 +375,7 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 		return NULL;
 	}
 
-	pending = fr_heap_pop(&client->pending);
+	fr_heap_pop((void **)&pending, &client->pending);
 	fr_assert(pending != NULL);
 
 	/*
@@ -897,7 +900,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		client->ready_to_delete = false;
 		connection->in_parent_hash = true;
 
-		if (!ret) {
+		if (ret != 0) {
 			pthread_mutex_unlock(&client->mutex);
 			ERROR("proto_%s - Failed inserting connection into tracking table.  "
 			      "Closing it, and discarding all packets for connection %s.",
@@ -1217,7 +1220,7 @@ static fr_io_track_t *fr_io_track_add(fr_listen_t const *li, fr_io_client_t *cli
 	/*
 	 *	No existing duplicate.  Return the new tracking entry.
 	 */
-	old = fr_rb_find(client->table, track);
+	fr_rb_find((void **)&old, client->table, track);
 	if (!old) goto do_insert;
 
 	fr_assert(old->client == client);
@@ -1287,7 +1290,7 @@ static fr_io_track_t *fr_io_track_add(fr_listen_t const *li, fr_io_client_t *cli
 	} else {
 		fr_assert(client == old->client);
 
-		if (!fr_rb_delete(client->table, old)) {
+		if (fr_rb_delete(client->table, old) != 0) {
 			fr_assert(0);
 		}
 		FR_TIMER_DELETE(&old->ev);
@@ -1298,7 +1301,7 @@ static fr_io_track_t *fr_io_track_add(fr_listen_t const *li, fr_io_client_t *cli
 	}
 
 do_insert:
-	if (!fr_rb_insert(client->table, track)) {
+	if (fr_rb_insert(client->table, track) != 0) {
 		fr_assert(0);
 	}
 
@@ -1377,7 +1380,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_connection_t *connectio
  *	This function is only used for the "main" socket.  Clients
  *	from connections do not use it.
  */
-static int8_t alive_client_cmp(void const *one, void const *two)
+static fr_cmp_ret_t alive_client_cmp(void const *one, void const *two)
 {
 	fr_io_client_t const *a = talloc_get_type_abort_const(one, fr_io_client_t);
 	fr_io_client_t const *b = talloc_get_type_abort_const(two, fr_io_client_t);
@@ -1438,7 +1441,7 @@ redo:
 			return -1;
 		}
 
-		pending = fr_heap_pop(&connection->client->pending);
+		fr_heap_pop((void **)&pending, &connection->client->pending);
 
 	} else if (thread->pending_clients) {
 		pending = pending_packet_pop(thread);
@@ -1972,7 +1975,7 @@ have_client:
 		my_connection.address = &address;
 
 		pthread_mutex_lock(&client->mutex);
-		connection = fr_hash_table_find(client->ht, &my_connection);
+		fr_hash_table_find((void **)&connection, client->ht, &my_connection);
 		if (connection) nak = (connection->client->state == PR_CLIENT_NAK);
 		pthread_mutex_unlock(&client->mutex);
 

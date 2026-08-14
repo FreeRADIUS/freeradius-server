@@ -58,7 +58,7 @@ static uint32_t	txn_tree_inst = 0;
 /** Compare rounds of a transaction
  *
  */
-static int sigtran_txn_cmp(void const *one, void const *two)
+static fr_cmp_ret_t sigtran_txn_cmp(void const *one, void const *two)
 {
 	sigtran_transaction_t const *a = one;	/* May be stack allocated */
 	sigtran_transaction_t const *b = two;	/* May be stack allocated */
@@ -77,7 +77,7 @@ static void sigtran_tcap_timeout(void *data)
 	/*
 	 *	Remove the outstanding transaction
 	 */
-	if (!fr_rb_delete(txn_tree, txn)) ERROR("Transaction removed before timeout");
+	if (fr_rb_delete(txn_tree, txn) != 0) ERROR("Transaction removed before timeout");
 
 	txn->response.type = SIGTRAN_RESPONSE_FAIL;
 
@@ -182,7 +182,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 	txn->ctx.invoke_id &= 0x7f;					/* Invoke ID is 7bits */
 	DEBUG2("Sending request with OTID %u Invoke ID %u", txn->ctx.otid, txn->ctx.invoke_id);
 
-	if (!fr_rb_insert(txn_tree, txn)) {
+	if (fr_rb_insert(txn_tree, txn) != 0) {
 		ERROR("Failed inserting transaction, maybe at txn limit?");
 
 		msgb_free(msg);
@@ -244,7 +244,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 	/*
 	 *	Lookup the transaction in our tree of outstanding transactions
 	 */
-	found = fr_rb_find(txn_tree, &find);
+	fr_rb_find((void **)&found, txn_tree, &find);
 	if (!found) {
 		/*
 		 *	Not an error, could be a retransmission
@@ -252,7 +252,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 		ERROR("No outstanding transaction with DTID %u Invoke ID %u", find.ctx.otid, find.ctx.invoke_id);
 		return 0;
 	}
-	if (!fr_rb_delete(txn_tree, found)) {		/* Remove the outstanding transaction */
+	if (fr_rb_delete(txn_tree, found) != 0) {	/* Remove the outstanding transaction */
 		ERROR("Failed removing transaction");
 		fr_assert(0);
 	}

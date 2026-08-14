@@ -740,16 +740,16 @@ DIAG_ON(float-equal)
  * @param[in] a Value to compare.
  * @param[in] b Value to compare.
  * @return
- *	- -1 if a is less than b.
- *	- 0 if both are equal.
- *	- 1 if a is more than b.
- *	- < -1 on failure.
+ *	- CMP_LT if a is less than b.
+ *	- CMP_EQ if both are equal.
+ *	- CMP_GT if a is more than b.
+ *	- CMP_ERR if the values are not comparable, retrieve the error with fr_strerror.
  */
-int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
+fr_cmp_ret_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 {
 	if (a->type != b->type) {
 		fr_strerror_printf("%s: Can't compare values of different types", __FUNCTION__);
-		return -2;
+		return CMP_ERR;
 	}
 
 	/*
@@ -828,7 +828,8 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		COMPARE(ifid);
 
 	case FR_TYPE_NULL:	/* NULLs are not comparable */
-		return -2;
+		fr_strerror_const("NULL values are not comparable");
+		return CMP_ERR;
 
 	case FR_TYPE_ATTR:
 		/*
@@ -858,7 +859,8 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	}
 
 	(void)fr_cond_assert(0);	/* invalud type for leaf comparison */
-	return -2;
+	fr_strerror_printf("Invalid type %s for leaf comparison", fr_type_to_str(a->type));
+	return CMP_ERR;
 }
 
 /*
@@ -1115,9 +1117,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 	case FR_TYPE_NULL:
 	cmp:
 		compare = fr_value_box_cmp(a, b);
-		if (compare < -1) {	/* comparison error */
-			return -2;
-		}
+		if (unlikely(compare == CMP_ERR)) return -1;
 		break;
 
 	case FR_TYPE_GROUP:
@@ -1128,7 +1128,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 	case FR_TYPE_UNION:
 	case FR_TYPE_INTERNAL:
 		fr_assert(0);
-		return -2;
+		return -1;
 	}
 
 	/*

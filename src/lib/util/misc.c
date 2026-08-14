@@ -446,24 +446,17 @@ size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
  *	- +1 if b > a.
  *	- 0 if both equal.
  */
-int8_t fr_pointer_cmp(void const *a, void const *b)
+fr_cmp_ret_t fr_pointer_cmp(void const *a, void const *b)
 {
 	return CMP(a, b);
 }
 
-/** Quick sort an array of pointers using a comparator
- *
- * @param to_sort array of pointers to sort.
- * @param start the lowest index (usually 0).
- * @param end the length of the array.
- * @param cmp the comparison function to use to sort the array elements.
- */
-void fr_quick_sort(void const *to_sort[], int start, int end, fr_cmp_t cmp)
+static int _fr_quick_sort(void const *to_sort[], int start, int end, fr_cmp_t cmp)
 {
 	int		i, pi;
 	void const	*pivot;
 
-	if (start >= end) return;
+	if (start >= end) return 0;
 
 #define SWAP(_a, _b) \
 	do { \
@@ -474,15 +467,34 @@ void fr_quick_sort(void const *to_sort[], int start, int end, fr_cmp_t cmp)
 
 	pivot = to_sort[end];
 	for (pi = start, i = start; i < end; i++) {
-		if (cmp(to_sort[i], pivot) < 0) {
+		fr_cmp_ret_t c = cmp(to_sort[i], pivot);
+
+		if (unlikely(c == CMP_ERR)) return -1;
+		if (c == CMP_LT) {
 			SWAP(i , pi);
 			pi++;
 		}
 	}
 	SWAP(end, pi);
 
-	fr_quick_sort(to_sort, start, pi - 1, cmp);
-	fr_quick_sort(to_sort, pi + 1, end, cmp);
+	if (unlikely(_fr_quick_sort(to_sort, start, pi - 1, cmp) < 0)) return -1;
+	return _fr_quick_sort(to_sort, pi + 1, end, cmp);
+}
+
+/** Quick sort an array of pointers using a comparator
+ *
+ * @param to_sort array of pointers to sort.
+ * @param start the lowest index (usually 0).
+ * @param end the length of the array.
+ * @param cmp the comparison function to use to sort the array elements.
+ * @return
+ *	- 0 on success.
+ *	- -1 on comparator error, retrieve the error with fr_strerror.  The array is
+ *	  a permutation of its input but its order is undefined.
+ */
+int fr_quick_sort(void const *to_sort[], int start, int end, fr_cmp_t cmp)
+{
+	return _fr_quick_sort(to_sort, start, end, cmp);
 }
 
 #ifdef TALLOC_DEBUG

@@ -924,7 +924,7 @@ static int driver_unassign_lease(void *out, void *instance, ippool_tool_operatio
 /** Compare two pool names
  *
  */
-static int8_t pool_cmp(void const *a, void const *b)
+static fr_cmp_ret_t pool_cmp(void const *a, void const *b)
 {
 	size_t len_a;
 	size_t len_b;

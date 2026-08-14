@@ -38,7 +38,7 @@ static uint32_t hash_test_hash(void const *data)
 	return fr_hash(&n->num, sizeof(n->num));
 }
 
-static int8_t hash_test_cmp(void const *one, void const *two)
+static fr_cmp_ret_t hash_test_cmp(void const *one, void const *two)
 {
 	hash_test_node_t const *a = one, *b = two;
 
@@ -124,19 +124,19 @@ static void test_hash_table_basic(void)
 	TEST_CASE("Insert an element");
 	node.num = 42;
 	snprintf(node.name, sizeof(node.name), "node-%u", node.num);
-	TEST_CHECK(fr_hash_table_insert(ht, &node));
+	TEST_CHECK(fr_hash_table_insert(ht, &node) == 0);
 
 	TEST_CHECK(fr_hash_table_num_elements(ht) == 1);
 
 	TEST_CASE("Find the element");
-	found = fr_hash_table_find(ht, &node);
+	fr_hash_table_find((void **)&found, ht, &node);
 	TEST_CHECK(found != NULL);
 	if (found) {
 		TEST_CHECK(found->num == 42);
 	}
 
 	TEST_CASE("Find non-existent element returns NULL");
-	found = fr_hash_table_find(ht, &(hash_test_node_t) { .num = 999 });				
+	fr_hash_table_find((void **)&found, ht, &(hash_test_node_t) { .num = 999 });
 	TEST_CHECK(found == NULL);
 
 	talloc_free(ht);
@@ -162,7 +162,7 @@ static void test_hash_table_many(void)
 	for (i = 0; i < HASH_TEST_SIZE; i++) {
 		nodes[i].num = i;
 		snprintf(nodes[i].name, sizeof(nodes[i].name), "node-%d", i);
-		TEST_CHECK(fr_hash_table_insert(ht, &nodes[i]));
+		TEST_CHECK(fr_hash_table_insert(ht, &nodes[i]) == 0);
 		TEST_MSG("insert %d failed", i);
 	}
 	TEST_CHECK(fr_hash_table_num_elements(ht) == HASH_TEST_SIZE);
@@ -171,7 +171,7 @@ static void test_hash_table_many(void)
 	for (i = 0; i < HASH_TEST_SIZE; i++) {
 		hash_test_node_t	*found;
 
-		found = fr_hash_table_find(ht, &(hash_test_node_t) { .num = i });
+		fr_hash_table_find((void **)&found, ht, &(hash_test_node_t) { .num = i });
 		TEST_CHECK(found != NULL);
 		TEST_MSG("find %d failed", i);
 
@@ -184,7 +184,7 @@ static void test_hash_table_many(void)
 	for (i = 0; i < HASH_TEST_SIZE; i += 2) {
 		void			*removed;
 
-		removed = fr_hash_table_remove(ht, &(hash_test_node_t) { .num = i });
+		fr_hash_table_remove(&removed, ht, &(hash_test_node_t) { .num = i });
 		TEST_CHECK(removed != NULL);
 		TEST_MSG("remove %d failed", i);
 	}
@@ -194,7 +194,7 @@ static void test_hash_table_many(void)
 	for (i = 0; i < HASH_TEST_SIZE; i++) {
 		hash_test_node_t	*found;
 
-		found = fr_hash_table_find(ht, &(hash_test_node_t) { .num = i });
+		fr_hash_table_find((void **)&found, ht, &(hash_test_node_t) { .num = i });
 		if (i % 2 == 0) {
 			TEST_CHECK(found == NULL);
 			TEST_MSG("element %d should have been removed", i);
@@ -221,10 +221,10 @@ static void test_hash_table_duplicate(void)
 
 	node.num = 1;
 	TEST_CASE("First insert succeeds");
-	TEST_CHECK(fr_hash_table_insert(ht, &node));
+	TEST_CHECK(fr_hash_table_insert(ht, &node) == 0);
 
 	TEST_CASE("Duplicate insert fails");
-	TEST_CHECK(!fr_hash_table_insert(ht, &node));
+	TEST_CHECK(fr_hash_table_insert(ht, &node) != 0);
 
 	TEST_CHECK(fr_hash_table_num_elements(ht) == 1);
 
@@ -252,18 +252,18 @@ static void test_hash_table_replace(void)
 
 	TEST_CASE("Replace on empty table inserts");
 	ret = fr_hash_table_replace(&old, ht, &node1);
-	TEST_CHECK(ret == 1);
+	TEST_CHECK(ret == 0);
 	TEST_CHECK(old == NULL);
 	TEST_CHECK(fr_hash_table_num_elements(ht) == 1);
 
 	TEST_CASE("Replace existing element");
 	ret = fr_hash_table_replace(&old, ht, &node2);
-	TEST_CHECK(ret == 0);
+	TEST_CHECK(ret == 1);
 	TEST_CHECK(old == &node1);
 	TEST_CHECK(fr_hash_table_num_elements(ht) == 1);
 
 	TEST_CASE("Find returns the replacement");
-	found = fr_hash_table_find(ht, &node2);
+	fr_hash_table_find((void **)&found, ht, &node2);
 	TEST_CHECK(found == &node2);
 
 	talloc_free(ht);
@@ -283,17 +283,17 @@ static void test_hash_table_delete(void)
 	node = talloc(NULL, hash_test_node_t);
 	node->num = 42;
 
-	TEST_CHECK(fr_hash_table_insert(ht, node));
+	TEST_CHECK(fr_hash_table_insert(ht, node) == 0);
 	TEST_CHECK(fr_hash_table_num_elements(ht) == 1);
 
 	TEST_CASE("Delete removes and frees element");
-	TEST_CHECK(fr_hash_table_delete(ht, node));
+	TEST_CHECK(fr_hash_table_delete(ht, node) == 0);
 	TEST_CHECK(fr_hash_table_num_elements(ht) == 0);
 
 	TEST_CASE("Delete non-existent element returns false");
 	{
 		hash_test_node_t missing = { .num = 999 };
-		TEST_CHECK(!fr_hash_table_delete(ht, &missing));
+		TEST_CHECK(fr_hash_table_delete(ht, &missing) != 0);
 	}
 
 	talloc_free(ht);
@@ -378,6 +378,79 @@ static void test_hash_table_flatten(void)
 	talloc_free(ht);
 }
 
+static bool poisoned;
+
+/*
+ *	Constant hash forces every entry into the same bucket chain,
+ *	so lookups and inserts must run the comparator.
+ */
+static uint32_t hash_test_constant_hash(UNUSED void const *data)
+{
+	return 0;
+}
+
+static fr_cmp_ret_t hash_test_poison_cmp(void const *one, void const *two)
+{
+	if (poisoned) {
+		fr_strerror_const("Poisoned comparator");
+		return CMP_ERR;
+	}
+
+	return hash_test_cmp(one, two);
+}
+
+/*
+ *	A comparator returning CMP_ERR must fail the operation closed,
+ *	report the error through the int return, and leave the
+ *	table intact.
+ */
+static void test_hash_table_cmp_err(void)
+{
+	fr_hash_table_t		*ht;
+	hash_test_node_t	nodes[4];
+	hash_test_node_t	needle;
+	void			*found;
+	size_t			i;
+
+	TEST_CASE("comparator error fails closed");
+	ht = fr_hash_table_alloc(NULL, hash_test_constant_hash, hash_test_poison_cmp, NULL);
+	TEST_ASSERT(ht != NULL);
+
+	poisoned = false;
+	for (i = 0; i < NUM_ELEMENTS(nodes); i++) {
+		nodes[i].num = i;
+		TEST_CHECK(fr_hash_table_insert(ht, &nodes[i]) == 0);
+	}
+
+	poisoned = true;
+	needle.num = 2;
+
+	TEST_CHECK(fr_hash_table_find(&found, ht, &needle) == -1);
+	TEST_CHECK(found == NULL);
+
+	needle.num = NUM_ELEMENTS(nodes);
+	TEST_CHECK(fr_hash_table_insert(ht, &needle) == -1);
+	TEST_CHECK(fr_hash_table_num_elements(ht) == NUM_ELEMENTS(nodes));
+
+	needle.num = 2;
+	TEST_CHECK(fr_hash_table_remove(&found, ht, &needle) == -1);
+	TEST_CHECK(found == NULL);
+	TEST_CHECK(fr_hash_table_num_elements(ht) == NUM_ELEMENTS(nodes));
+
+	/*
+	 *	Once the comparator recovers every element is still
+	 *	present and findable.
+	 */
+	poisoned = false;
+	for (i = 0; i < NUM_ELEMENTS(nodes); i++) {
+		needle.num = i;
+		TEST_CHECK(fr_hash_table_find(&found, ht, &needle) == 0);
+		TEST_CHECK(found == &nodes[i]);
+	}
+
+	talloc_free(ht);
+}
+
 TEST_LIST = {
 	{ "hash_functions",		test_hash_functions },
 	{ "hash64_functions",		test_hash64_functions },
@@ -388,5 +461,6 @@ TEST_LIST = {
 	{ "hash_table_delete",		test_hash_table_delete },
 	{ "hash_table_iter",		test_hash_table_iter },
 	{ "hash_table_flatten",		test_hash_table_flatten },
+	{ "hash_table_cmp_err",		test_hash_table_cmp_err },
 	TEST_TERMINATOR
 };

@@ -613,7 +613,7 @@ int kafka_topic_config_raw_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, void 
 }
 
 /** Order-by-name comparator for the `fr_kafka_conf_t.topics` tree. */
-static int8_t _kafka_topic_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _kafka_topic_cmp(void const *one, void const *two)
 {
 	fr_kafka_topic_t const	*a = one;
 	fr_kafka_topic_t const	*b = two;
@@ -623,10 +623,12 @@ static int8_t _kafka_topic_cmp(void const *one, void const *two)
 fr_kafka_topic_t *kafka_topic_conf_find(fr_kafka_conf_t const *kc, char const *name)
 {
 	fr_kafka_topic_t	key;
+	fr_kafka_topic_t	*found = NULL;
 
 	if (!kc || !kc->topics || !name) return NULL;
 	key.name = name;
-	return fr_rb_find(kc->topics, &key);
+	fr_rb_find((void **)&found, kc->topics, &key);
+	return found;
 }
 
 /** Per-topic subsection hook.  Runs the inner rules against the topic's
@@ -671,7 +673,7 @@ int kafka_topic_subsection_parse(TALLOC_CTX *ctx, void *out, void *base,
 		return -1;
 	}
 
-	if (!fr_rb_insert(kc->topics, topic)) {
+	if (fr_rb_insert(kc->topics, topic) != 0) {
 		cf_log_err(ci, "Duplicate kafka topic '%s'", name);
 		talloc_free(topic);
 		return -1;

@@ -195,7 +195,7 @@ int fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const
 				return -1;
 			}
 
-			if (!fr_hash_table_insert((rel->dict)->autoref, dict)) {
+			if (fr_hash_table_insert((rel->dict)->autoref, dict) != 0) {
 				fr_strerror_const("Failed inserting into internal autoref table");
 				return -1;
 			}

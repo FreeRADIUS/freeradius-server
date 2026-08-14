@@ -116,7 +116,7 @@ struct dl_loader_s {
  */
 static char *dl_global_libdir = NULL;
 
-static int8_t dl_symbol_init_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dl_symbol_init_cmp(void const *one, void const *two)
 {
 	dl_symbol_init_t const *a = one, *b = two;
 	int ret;
@@ -139,7 +139,7 @@ static int8_t dl_symbol_init_cmp(void const *one, void const *two)
 	return CMP(ret, 0);
 }
 
-static int8_t dl_symbol_free_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dl_symbol_free_cmp(void const *one, void const *two)
 {
 	dl_symbol_free_t const *a = one, *b = two;
 	int ret;
@@ -165,7 +165,7 @@ static int8_t dl_symbol_free_cmp(void const *one, void const *two)
 /** Compare the name of two dl_t
  *
  */
-static int8_t dl_handle_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dl_handle_cmp(void const *one, void const *two)
 {
 	int ret;
 
@@ -478,7 +478,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 *	There's already something in the tree,
 	 *	just return that instead.
 	 */
-	dl = fr_rb_find(dl_loader->tree, &(dl_t){ .name = name });
+	fr_rb_find((void **)&dl, dl_loader->tree, &(dl_t){ .name = name });
 	if (dl) {
 		talloc_increase_ref_count(dl);
 		return dl;
@@ -675,7 +675,7 @@ do_symbol_check:
 	};
 	talloc_set_destructor(dl, _dl_free);
 
-	dl->in_tree = fr_rb_insert(dl_loader->tree, dl);
+	dl->in_tree = (fr_rb_insert(dl_loader->tree, dl) == 0);
 	if (!dl->in_tree) {
 		talloc_free(dl);
 		return NULL;

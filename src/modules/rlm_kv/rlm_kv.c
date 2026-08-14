@@ -156,7 +156,7 @@ static xlat_action_t kv_write_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *
 	} else if (rlm_kv_list_num_elements(&inst->list) >= in->max_entries) {
 		old = rlm_kv_list_pop_tail(&inst->list);
 		fr_assert(old != NULL);
-		fr_htrie_remove(inst->tree, old);
+		fr_htrie_remove(NULL, inst->tree, old);
 
 		talloc_free(old);
 	}
@@ -189,7 +189,11 @@ static xlat_action_t kv_read_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	pthread_mutex_lock(&inst->mutex);
-	data = fr_htrie_find(inst->tree, key);
+	if (unlikely(fr_htrie_find((void **)&data, inst->tree, key) < 0)) {
+		pthread_mutex_unlock(&inst->mutex);
+		RPEDEBUG("Lookup failed for key %pV", key);
+		return XLAT_ACTION_FAIL;
+	}
 	if (!data) {
 		pthread_mutex_unlock(&inst->mutex);
 		RDEBUG("Failed to find entry for key %pV", key);
@@ -244,7 +248,7 @@ static xlat_action_t kv_delete_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 
 	pthread_mutex_lock(&inst->mutex);
-	data = fr_htrie_remove(inst->tree, key);
+	fr_htrie_remove((void **)&data, inst->tree, key);
 	if (!data) {
 		pthread_mutex_unlock(&inst->mutex);
 		return XLAT_ACTION_DONE;
@@ -275,6 +279,11 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return talloc_free(inst->mutable);
 }
 
+static fr_cmp_ret_t _value_box_cmp(void const *one, void const *two)
+{
+	return fr_value_box_cmp(one, two);
+}
+
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_kv_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_kv_t);
@@ -298,7 +307,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->mutable->tree = fr_htrie_alloc(inst->mutable, inst->htype,
 					     (fr_hash_t) fr_value_box_hash,
-					     (fr_cmp_t) fr_value_box_cmp,
+					     _value_box_cmp,
 					     (fr_trie_key_t) fr_value_box_to_key, NULL);
 	if (!inst->mutable->tree) return -1;
 

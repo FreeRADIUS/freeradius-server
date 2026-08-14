@@ -30,7 +30,7 @@ static bool fr_lst_contains(fr_lst_t *lst, void *data)
 	return false;
 }
 
-static int8_t lst_cmp(void const *one, void const *two)
+static fr_cmp_ret_t lst_cmp(void const *one, void const *two)
 {
 	lst_thing const	*item1 = one, *item2 = two;
 
@@ -78,8 +78,9 @@ static void lst_test_basic(void)
 	}
 
 	for (unsigned int i = 0; i < NUM_ELEMENTS(values); i++) {
-		lst_thing	*value = fr_lst_pop(lst);
+		lst_thing	*value;
 
+		fr_lst_pop((void **)&value, lst);
 		TEST_CHECK(value != NULL);
 		TEST_CHECK(!fr_lst_entry_inserted(value->idx));
 		TEST_CHECK(value->data == i);
@@ -136,8 +137,11 @@ static void lst_test(int skip)
 
 	left = fr_lst_num_elements(lst);
 	for (i = 0; i < left; i++) {
+		void *popped;
+
 		FR_LST_VERIFY(lst);
-		TEST_CHECK(fr_lst_pop(lst) != NULL);
+		fr_lst_pop(&popped, lst);
+		TEST_CHECK(popped != NULL);
 		TEST_MSG("expected %i elements remaining in the lst", left - i);
 		TEST_MSG("failed extracting %i", i);
 	}
@@ -204,8 +208,10 @@ static void lst_stress_realloc(void)
 	/* Pop INITIAL_CAPACITY / 2 values from each (they should all be equal) */
 	TEST_CASE("partial pop");
 	for (unsigned int i = 0; i < INITIAL_CAPACITY / 2; i++) {
-		TEST_CHECK((from_lst = fr_lst_pop(lst)) != NULL);
-		TEST_CHECK((from_hp = fr_heap_pop(&hp)) != NULL);
+		fr_lst_pop((void **)&from_lst, lst);
+		TEST_CHECK(from_lst != NULL);
+		fr_heap_pop((void **)&from_hp, &hp);
+		TEST_CHECK(from_hp != NULL);
 		TEST_CHECK(lst_cmp(from_lst, from_hp) == 0);
 	}
 
@@ -225,8 +231,10 @@ static void lst_stress_realloc(void)
 	/* pop the remaining 3 * INITIAL_CAPACITY / 2 values from each (they should all be equal) */
 	TEST_CASE("complete pop");
 	for (unsigned int i = 0; i < 3 * INITIAL_CAPACITY / 2; i++) {
-		TEST_CHECK((from_lst = fr_lst_pop(lst)) != NULL);
-		TEST_CHECK((from_hp = fr_heap_pop(&hp)) != NULL);
+		fr_lst_pop((void **)&from_lst, lst);
+		TEST_CHECK(from_lst != NULL);
+		fr_heap_pop((void **)&from_hp, &hp);
+		TEST_CHECK(from_hp != NULL);
 		TEST_CHECK(lst_cmp(from_lst, from_hp) == 0);
 	}
 
@@ -271,11 +279,11 @@ static void lst_burn_in(void)
 				goto insert;
 
 			case 1: /* pop */
-				ret_thing = fr_lst_pop(lst);
+				fr_lst_pop((void **)&ret_thing, lst);
 				TEST_CHECK(ret_thing != NULL);
 				break;
 			case 2: /* peek */
-				ret_thing = fr_lst_peek(lst);
+				fr_lst_peek((void **)&ret_thing, lst);
 				TEST_CHECK(ret_thing != NULL);
 				break;
 			}
@@ -324,7 +332,10 @@ static void lst_cycle(void)
 	to_remove = fr_lst_num_elements(lst) / 2;
 	start_remove = fr_time();
 	for (i = 0; i < to_remove; i++) {
-		TEST_CHECK(fr_lst_pop(lst) != NULL);
+		void *popped;
+
+		fr_lst_pop(&popped, lst);
+		TEST_CHECK(popped != NULL);
 		TEST_MSG("failed extracting %i", i);
 		TEST_MSG("expected %i elements remaining in the LST", to_remove - i);
 	}
@@ -453,7 +464,10 @@ static void queue_cmp(unsigned int count)
 
 		start_pop = fr_time();
 		for (i = 0; i < count; i++) {
-			TEST_CHECK(fr_lst_pop(lst) != NULL);
+			void *popped;
+
+			fr_lst_pop(&popped, lst);
+			TEST_CHECK(popped != NULL);
 			if (i == 0) end_pop_first = fr_time();
 
 			TEST_MSG("expected %u elements remaining in the lst", count - i);
@@ -489,7 +503,10 @@ static void queue_cmp(unsigned int count)
 
 		start_pop = fr_time();
 		for (i = 0; i < count; i++) {
-			TEST_CHECK(fr_heap_pop(&hp) != NULL);
+			void *popped;
+
+			fr_heap_pop(&popped, &hp);
+			TEST_CHECK(popped != NULL);
 			if (i == 0) end_pop_first = fr_time();
 
 			TEST_MSG("expected %u elements remaining in the heap", count - i);
@@ -563,11 +580,80 @@ static void queue_cmp_1000(void)
 	queue_cmp(1000);
 }
 
+static bool poisoned;
+
+static fr_cmp_ret_t _lst_poison_cmp(void const *one, void const *two)
+{
+	if (poisoned) {
+		fr_strerror_const("Poisoned comparator");
+		return CMP_ERR;
+	}
+
+	return lst_cmp(one, two);
+}
+
+/*
+ *	A comparator returning CMP_ERR must fail the operation closed,
+ *	report the error through the int return, and leave the
+ *	LST structurally intact.
+ */
+static void lst_test_cmp_err(void)
+{
+	fr_lst_t	*lst;
+	lst_thing	values[NVALUES];
+	void		*found;
+	unsigned int	i, remaining;
+
+	TEST_CASE("comparator error fails closed");
+	lst = fr_lst_alloc(NULL, _lst_poison_cmp, lst_thing, idx, NVALUES);
+	TEST_ASSERT(lst != NULL);
+
+	populate_values(values, NUM_ELEMENTS(values));
+
+	/*
+	 *	Insertion into a single bucket never compares,
+	 *	the first peek partitions and does.
+	 */
+	poisoned = false;
+	for (i = 0; i < NUM_ELEMENTS(values); i++) {
+		TEST_CHECK(fr_lst_insert(lst, &values[i]) >= 0);
+	}
+
+	poisoned = true;
+
+	TEST_CHECK(fr_lst_peek(&found, lst) == -1);
+	TEST_CHECK(found == NULL);
+
+	TEST_CHECK(fr_lst_pop(&found, lst) == -1);
+	TEST_CHECK(found == NULL);
+	TEST_CHECK(fr_lst_num_elements(lst) == NUM_ELEMENTS(values));
+
+	/*
+	 *	Once the comparator recovers, every element pops back
+	 *	out in order.
+	 */
+	poisoned = false;
+	remaining = NUM_ELEMENTS(values);
+	for (i = 0; i < NUM_ELEMENTS(values); i++) {
+		lst_thing *value;
+
+		fr_lst_pop((void **)&value, lst);
+		TEST_CHECK(value != NULL);
+		TEST_CHECK(value->data == i);
+		remaining--;
+	}
+	TEST_CHECK(remaining == 0);
+	TEST_CHECK(fr_lst_num_elements(lst) == 0);
+
+	talloc_free(lst);
+}
+
 TEST_LIST = {
 	/*
 	 *	Basic tests
 	 */
 	{ "lst_test_basic",	lst_test_basic	},
+	{ "lst_test_cmp_err",	lst_test_cmp_err },
 	{ "lst_test_skip_1",	lst_test_skip_1	},
 	{ "lst_test_skip_2",	lst_test_skip_2	},
 	{ "lst_test_skip_10",	lst_test_skip_10	},

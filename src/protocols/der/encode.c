@@ -79,7 +79,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
  * @param[in] b	Second pair.
  * @return		-1 if a < b, 0 if a == b, 1 if a > b.
  */
-static inline CC_HINT(always_inline) int8_t fr_der_pair_cmp_by_da_tag(void const *a, void const *b)
+static inline CC_HINT(always_inline) fr_cmp_ret_t fr_der_pair_cmp_by_da_tag(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;

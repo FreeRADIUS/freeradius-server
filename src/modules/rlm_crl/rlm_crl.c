@@ -150,7 +150,7 @@ static const call_env_method_t crl_env = {
 	},
 };
 
-static int8_t crl_cmp(void const *a, void const *b)
+static fr_cmp_ret_t crl_cmp(void const *a, void const *b)
 {
 	crl_entry_t	const	*crl_a = (crl_entry_t const *)a;
 	crl_entry_t	const	*crl_b = (crl_entry_t const *)b;
@@ -158,7 +158,7 @@ static int8_t crl_cmp(void const *a, void const *b)
 	return CMP(strcmp(crl_a->cdp_url,  crl_b->cdp_url), 0);
 }
 
-static int8_t crl_pending_cmp(void const *a, void const *b)
+static fr_cmp_ret_t crl_pending_cmp(void const *a, void const *b)
 {
 	crl_pending_t	const *pending_a = (crl_pending_t const *)a;
 	crl_pending_t	const *pending_b = (crl_pending_t const *)b;
@@ -166,7 +166,7 @@ static int8_t crl_pending_cmp(void const *a, void const *b)
 	return CMP(pending_a->request, pending_b->request);
 }
 
-static int8_t crl_fail_cmp(void const *a, void const *b)
+static fr_cmp_ret_t crl_fail_cmp(void const *a, void const *b)
 {
 	crl_fail_t	const *fail_a = (crl_fail_t const *)a;
 	crl_fail_t	const *fail_b = (crl_fail_t const *)b;
@@ -227,9 +227,9 @@ static xlat_action_t crl_refresh_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_c
 	find = (crl_entry_t) {
 		.cdp_url = url->vb_strvalue
 	};
-	found = fr_rb_find(&t->crls, &find);
+	fr_rb_find((void **)&found, &t->crls, &find);
 	if (found) {
-		fr_rb_remove(&t->crls, found);
+		fr_rb_remove(NULL, &t->crls, found);
 		talloc_free(found);
 	}
 
@@ -280,7 +280,7 @@ static crl_ret_t crl_check_serial(fr_rb_tree_t *crls, request_t *request, char c
 	fr_value_box_t	*vb = NULL;
 	crl_ret_t	ret = CRL_NOT_FOUND;
 
-	*found = fr_rb_find(crls, &find);
+	fr_rb_find((void **)found, crls, &find);
 	if (*found == NULL) return CRL_NOT_FOUND;
 
 	/*
@@ -288,7 +288,7 @@ static crl_ret_t crl_check_serial(fr_rb_tree_t *crls, request_t *request, char c
 	 */
 	while ((vb = fr_value_box_list_next(&(*found)->delta_urls, vb))) {
 		find.cdp_url = vb->vb_strvalue;
-		delta = fr_rb_find(crls, &find);
+		fr_rb_find((void **)&delta, crls, &find);
 		if (delta) {
 			ret = crl_check_entry(delta, request, serial);
 
@@ -363,10 +363,10 @@ static void crl_by_url_cancel(module_ctx_t const *mctx, request_t *request, UNUS
 		.request = request
 	};
 
-	found = fr_rb_find(&t->pending, &find);
+	fr_rb_find((void **)&found, &t->pending, &find);
 	if (!found) return;
 
-	fr_rb_remove(&t->pending, found);
+	fr_rb_remove(NULL, &t->pending, found);
 	talloc_free(found);
 }
 
@@ -427,7 +427,7 @@ static unlang_action_t CC_HINT(nonnull) mod_crl_by_url(unlang_result_t *p_result
 	 *	recently.  If it has, within the retry delay time, then
 	 *	fail this request.
 	 */
-	fail = fr_rb_find(&t->fails, &find);
+	fr_rb_find((void **)&fail, &t->fails, &find);
 	if (fail) {
 		if (fr_time_gt(fr_time_add(fail->fail_time, inst->retry_delay), fr_time())) {
 			fr_value_box_list_talloc_free(&missing);
@@ -449,7 +449,7 @@ static unlang_action_t CC_HINT(nonnull) mod_crl_by_url(unlang_result_t *p_result
 	MEM(pending = talloc_zero(t, crl_pending_t));
 	pending->request = request;
 
-	if (!fr_rb_insert(&t->pending, pending)) {
+	if (fr_rb_insert(&t->pending, pending) != 0) {
 		talloc_free(pending);
 		RETURN_UNLANG_FAIL;
 	}
@@ -496,7 +496,7 @@ static void recv_crl_ok(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t
 		.cdp_url = url->vp_strvalue
 	};
 
-	crl_entry = fr_rb_find(&thread->crls, &find);
+	fr_rb_find((void **)&crl_entry, &thread->crls, &find);
 
 	crl = fr_pair_find_by_da(list, NULL, attr_crl_data);
 	if (!crl) {
@@ -511,7 +511,7 @@ static void recv_crl_ok(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t
 		MEM(crl_entry = talloc_zero(thread, crl_entry_t));
 		crl_entry->cdp_url = talloc_strdup(crl_entry, url->vp_strvalue);
 		fr_value_box_list_init(&crl_entry->delta_urls);
-		if (!fr_rb_insert(&thread->crls, crl_entry)) {
+		if (fr_rb_insert(&thread->crls, crl_entry) != 0) {
 			talloc_free(crl_entry);
 			return;
 		}
@@ -526,7 +526,7 @@ static void recv_crl_ok(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t
 	if (unlikely(!crl_entry->crl)) {
 		ERROR("Failed to parse CRL");
 	error:
-		fr_rb_remove(&thread->crls, crl_entry);
+		fr_rb_remove(NULL, &thread->crls, crl_entry);
 		talloc_free(crl_entry);
 	}
 
@@ -561,7 +561,7 @@ static void recv_crl_fail(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg
 		fail->cdp_url = talloc_strdup(fail, vp->vp_strvalue);
 		fail->fail_time = now;
 
-		if (unlikely(!fr_rb_insert(&thread->fails, fail))) {
+		if (unlikely(fr_rb_insert(&thread->fails, fail) != 0)) {
 			talloc_free(fail);
 		}
 	}
@@ -585,7 +585,7 @@ static void recv_crl_expire(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_r
 		.cdp_url = vp->vp_strvalue
 	};
 
-	crl_entry = fr_rb_find(&thread->crls, &find);
+	fr_rb_find((void **)&crl_entry, &thread->crls, &find);
 
 	if (!crl_entry) return;
 
@@ -596,16 +596,16 @@ static void recv_crl_expire(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_r
 		crl_entry_t	*delta_entry;
 
 		find.cdp_url = delta->vb_strvalue;
-		delta_entry = fr_rb_find(&thread->crls, &find);
+		fr_rb_find((void **)&delta_entry, &thread->crls, &find);
 		if (!delta_entry) continue;
 
 		WARN("Delta CRL %s expired", delta_entry->cdp_url);
-		fr_rb_remove(&thread->crls, delta_entry);
+		fr_rb_remove(NULL, &thread->crls, delta_entry);
 		talloc_free(delta_entry);
 	}
 
 	WARN("CRL %s expired", crl_entry->cdp_url);
-	fr_rb_remove(&thread->crls, crl_entry);
+	fr_rb_remove(NULL, &thread->crls, crl_entry);
 	talloc_free(crl_entry);
 }
 

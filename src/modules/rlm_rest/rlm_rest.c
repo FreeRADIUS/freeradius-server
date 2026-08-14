@@ -290,7 +290,7 @@ global_lib_autoinst_t const * const rlm_rest_lib[] = {
 	GLOBAL_LIB_TERMINATOR
 };
 
-static int8_t rest_section_cmp(void const *one, void const *two)
+static fr_cmp_ret_t rest_section_cmp(void const *one, void const *two)
 {
 	rlm_rest_section_conf_t const *a = one, *b = two;
 	return CMP(a->cs, b->cs);

@@ -122,7 +122,7 @@ int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, proto
 		goto error;
 	}
 
-	if (!fr_rb_insert(tree, sync)) {
+	if (fr_rb_insert(tree, sync) != 0) {
 		ERROR("Duplicate sync (msgid %i)", sync->msgid);
 		goto error;
 	}

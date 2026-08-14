@@ -769,7 +769,7 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
  *	Note that "retry.next" here is capped at "retry.end".  So if we need to expire an entry, it will
  *	happen at the "next" retry.
  */
-static int8_t _next_retry_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _next_retry_cmp(void const *one, void const *two)
 {
 	fr_bio_retry_entry_t const *a = one;
 	fr_bio_retry_entry_t const *b = two;
@@ -785,7 +785,7 @@ static int8_t _next_retry_cmp(void const *one, void const *two)
  *
  *	i.e. the socket is blocked, so all retries are paused.
  */
-static int8_t _expiry_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _expiry_cmp(void const *one, void const *two)
 {
 	fr_bio_retry_entry_t const *a = one;
 	fr_bio_retry_entry_t const *b = two;

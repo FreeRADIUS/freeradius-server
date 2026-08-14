@@ -130,7 +130,7 @@ static const conf_parser_t module_config[] = {
 /** How to compare two Perl function calls
  *
  */
-static int8_t perl_func_def_cmp(void const *one, void const *two)
+static fr_cmp_ret_t perl_func_def_cmp(void const *one, void const *two)
 {
 	perl_func_def_t const *a = one, *b = two;
 	int ret;

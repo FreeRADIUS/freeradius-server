@@ -155,7 +155,7 @@ typedef struct sync_packet_ctx_s sync_packet_ctx_t;
 extern fr_table_num_sorted_t const sync_op_table[];
 extern size_t sync_op_table_len;
 
-int8_t sync_state_cmp(void const *one, void const *two);
+fr_cmp_ret_t sync_state_cmp(void const *one, void const *two);
 
 sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, proto_ldap_sync_t const *inst,
 			       size_t sync_no, sync_config_t const *config);
