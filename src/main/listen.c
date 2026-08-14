@@ -407,7 +407,7 @@ int rad_status_server(REQUEST *request)
 	if (request->listener->tls) {
 		listen_socket_t *sock = request->listener->data;
 
-		PTHREAD_MUTEX_LOCK(&sock->mutex);
+		PTHREAD_MUTEX_LOCK(sock->mutex);
 		if (sock->state == LISTEN_TLS_CHECKING) {
 			int autz_type = PW_AUTZ_TYPE;
 			char const *name = "Autz-Type";
@@ -445,11 +445,11 @@ int rad_status_server(REQUEST *request)
 				tls_socket_close(listener);
 			}
 
-			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+			PTHREAD_MUTEX_UNLOCK(sock->mutex);
 			radius_update_listener(listener);
 			return 0;
 		}
-		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+		PTHREAD_MUTEX_UNLOCK(sock->mutex);
 	}
 #endif
 
@@ -1267,6 +1267,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	this->data = sock;	/* fix it back */
 	this->listen = false;
 
+	sock->mutex = NULL;	/* we're not using our parents mutex */
 	sock->parent = listener->data;
 	sock->other_ipaddr = src_ipaddr;
 	sock->other_port = src_port;
@@ -1317,6 +1318,17 @@ static int dual_tcp_accept(rad_listen_t *listener)
 			this->recv = dual_tls_recv;
 			this->send = dual_tls_send;
 			this->nonblock = true;
+
+#ifdef HAVE_PTHREAD_H
+			sock->mutex = talloc_zero(sock, pthread_mutex_t);
+			if (!sock->mutex) return -1;
+
+			if (pthread_mutex_init(sock->mutex, NULL) < 0) {
+				rad_assert(0 == 1);
+				listen_free(&this);
+				return 0;
+			}
+#endif
 
 			/*
 			 *	Set up SNI callback.  We don't do it
@@ -1777,14 +1789,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 
 			this->tls->name = "RADIUS/TLS";
-
-#ifdef HAVE_PTHREAD_H
-			if (pthread_mutex_init(&sock->mutex, NULL) < 0) {
-				rad_assert(0 == 1);
-				listen_free(&this);
-				return 0;
-			}
-#endif
 
 			rcode = cf_item_parse(cs, "check_client_connections", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->check_client_connections), "no");
 			if (rcode < 0) return -1;
@@ -3578,6 +3582,11 @@ static int _listener_free(rad_listen_t *this)
 #endif
 		) {
 
+#ifdef WITH_TLS
+		listen_socket_t *sock = this->data;
+#endif
+
+
 		/*
 		 *	Remove the child from the parent tree.
 		 */
@@ -3602,8 +3611,6 @@ static int _listener_free(rad_listen_t *this)
 		 *	may be used by multiple listeners.
 		 */
 		if (this->tls) {
-			listen_socket_t *sock = this->data;
-
 			rad_assert(talloc_parent(sock) == this);
 			rad_assert(sock->ev == NULL);
 
@@ -3611,12 +3618,24 @@ static int _listener_free(rad_listen_t *this)
 			rad_assert(!sock->request || (talloc_parent(sock->request) == sock));
 
 			if (sock->home && sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
+		}
 
 #ifdef HAVE_PTHREAD_H
-			pthread_mutex_destroy(&(sock->mutex));
+		/*
+		 *	The mutex is only ever allocated for TLS (incoming)
+		 *	or proxy sockets; both keep it in a listen_socket_t.
+		 *	Guard on the type so a command socket (whose "data"
+		 *	is NOT a listen_socket_t) is never treated as one.
+		 */
+		if ((this->tls
+#ifdef WITH_PROXY
+		     || (this->type == RAD_LISTEN_PROXY)
+#endif
+			    ) && sock->mutex) {
+			pthread_mutex_destroy(sock->mutex);
+		}
 #endif
 
-		}
 #endif	/* WITH_TLS */
 	}
 #endif				/* WITH_TCP */
@@ -3844,11 +3863,10 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		this->proxy_send = proxy_tls_send;
 
 #ifdef HAVE_PTHREAD_H
-		if (pthread_mutex_init(&sock->mutex, NULL) < 0) {
-			rad_assert(0 == 1);
-			listen_free(&this);
-			return 0;
-		}
+		sock->mutex = talloc_zero(sock, pthread_mutex_t);
+		if (!sock->mutex) goto error;
+
+		if (pthread_mutex_init(sock->mutex, NULL) < 0) goto error;
 #endif
 
 		/*
