@@ -1145,8 +1145,9 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	}
 
 	if (!fr_sockaddr2ipaddr(&src, salen, &src_ipaddr, &src_port)) {
-		close(newfd);
 		DEBUG2(" ... unknown address family");
+	close_return:
+		close(newfd);
 		return 0;
 	}
 
@@ -1156,9 +1157,8 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	 */
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr, src_port)) == NULL) {
-		close(newfd);
 		FR_STATS_INC(auth, total_invalid_requests);
-		return 0;
+		goto close_return;
 	}
 
 	if (radius_event_fd_full()
@@ -1167,8 +1167,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 #endif
 		) {
 		RATE_LIMIT(INFO("Ignoring new connection from client %s too many connections are open", client->shortname));
-		close(newfd);
-		return 0;
+		goto close_return;
 	}
 
 #ifdef WITH_TLS
@@ -1183,8 +1182,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	 */
 	if (client->tls_required && !listener->tls) {
 		INFO("Ignoring connection to TLS socket from non-TLS client");
-		close(newfd);
-		return 0;
+		goto close_return;
 	}
 
 #ifdef WITH_RADIUSV11
@@ -1193,8 +1191,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		case FR_RADIUSV11_FORBID:
 			if (client->radiusv11 == FR_RADIUSV11_REQUIRE) {
 				RATE_LIMIT(INFO("Ignoring new connection from client %s it is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'", client->shortname));
-				close(newfd);
-				return 0;
+				goto close_return;
 			}
 			break;
 
@@ -1207,8 +1204,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		case FR_RADIUSV11_REQUIRE:
 			if (client->radiusv11 == FR_RADIUSV11_FORBID) {
 				RATE_LIMIT(INFO("Ignoring new connection from client %s as it is marked as 'radiusv11 = forbid', and this socket has 'radiusv11 = require'", client->shortname));
-				close(newfd);
-				return 0;
+				goto close_return;
 			}
 			break;
 		}
@@ -1226,8 +1222,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
 		RATE_LIMIT(INFO("Ignoring new connection from client %s due to client max_connections (%d)", client->shortname, client->limit.max_connections));
-		close(newfd);
-		return 0;
+		goto close_return;
 	}
 
 	sock = listener->data;
@@ -1237,8 +1232,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
 		RATE_LIMIT(INFO("Ignoring new connection from client %s due to socket max_connections (%d)", client->shortname, sock->limit.num_connections));
-		close(newfd);
-		return 0;
+		goto close_return;
 	}
 
 	/*
@@ -1247,7 +1241,10 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	 *	child listener will be done in a child thread.
 	 */
 	this = listen_alloc(NULL, listener->type);
-	if (!this) return -1;
+	if (!this) {
+		close(newfd);
+		return -1;
+	}
 
 	/*
 	 *	Now that we've opened a connection, increment the reference count.
@@ -1262,6 +1259,10 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	sock = this->data;
 	memcpy(this->data, listener->data, sizeof(*sock));
 	memcpy(this, listener, sizeof(*this));
+
+	this->fd = newfd;
+	this->status = RAD_LISTEN_STATUS_INIT;
+	this->parent = listener;
 	this->next = NULL;
 	this->children = NULL;
 	this->data = sock;	/* fix it back */
@@ -1293,12 +1294,11 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		sock->limit.lifetime = client->limit.lifetime;
 	}
 
-	this->fd = newfd;
-	this->status = RAD_LISTEN_STATUS_INIT;
-
-	this->parent = listener;
 	if (!rbtree_insert(listener->children, this)) {
 		ERROR("Failed inserting TCP socket into parent list.");
+	error:
+		talloc_free(this);
+		return -1;
 	}
 
 #ifdef WITH_COMMAND_SOCKET
@@ -1321,13 +1321,9 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 #ifdef HAVE_PTHREAD_H
 			sock->mutex = talloc_zero(sock, pthread_mutex_t);
-			if (!sock->mutex) return -1;
+			if (!sock->mutex) goto tree_error;
 
-			if (pthread_mutex_init(sock->mutex, NULL) < 0) {
-				rad_assert(0 == 1);
-				listen_free(&this);
-				return 0;
-			}
+			if (pthread_mutex_init(sock->mutex, NULL) < 0) goto tree_error;
 #endif
 
 			/*
@@ -1401,7 +1397,6 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	}
 #endif
 
-#ifdef WITH_TCP
 	/*
 	 *	Configure non-blocking sockets if requested.
 	 */
@@ -1409,8 +1404,9 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		if (fr_nonblock(this->fd) < 0) {
 			ERROR("Failed setting non-blocking on socket: %s",
 			      fr_syserror(errno));
-			close(this->fd);
-			return 0; /* do NOT close the parent socket! */
+		tree_error:
+			rbtree_deletebydata(listener->children, this);
+			goto error;
 		}
 	}
 
@@ -1423,11 +1419,9 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 		if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
 			ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
-			close(this->fd);
-			return 0; /* do NOT close the parent socket! */
+			goto tree_error;
 		}
 	}
-#endif
 #endif
 
 	/*
