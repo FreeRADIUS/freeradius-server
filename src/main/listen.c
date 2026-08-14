@@ -1266,9 +1266,6 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	this->children = NULL;
 	this->data = sock;	/* fix it back */
 	this->listen = false;
-#ifdef WITH_TCP
-	this->nonblock = listener->nonblock;
-#endif
 
 	sock->parent = listener->data;
 	sock->other_ipaddr = src_ipaddr;
