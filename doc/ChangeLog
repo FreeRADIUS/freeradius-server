@@ -27,6 +27,9 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Skip TLS PSK checks when OpenSSL does not support PSK.
 	  Fixes #5874.
 	* Updated to help build with OpenSSL 4.0 alpha.
+	* Improve performance of State handling when tracking many EAP packets.
+	* Fix overflow on relayed DHCP packets.  Issue found by A. Ramos.
+	* Fix more corner cases in RadSec when sockets have errors.
 
 FreeRADIUS 3.2.10 Wed 03 Jun 2026 12:00:00 UTC urgency=high
 	Configuration changes
