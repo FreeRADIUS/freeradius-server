@@ -1,5 +1,5 @@
 #
-#  Run the "redis" xlat
+#  Test the renew method of rlm_redis_ippool
 #
 $INCLUDE cluster_reset.inc
 

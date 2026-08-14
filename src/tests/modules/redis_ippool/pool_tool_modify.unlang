@@ -1,5 +1,5 @@
 #
-#  Run the "redis" xlat
+#  Test modification of address using rlm_redis_ippool_tool
 #
 $INCLUDE cluster_reset.inc
 

@@ -1,5 +1,5 @@
 #
-#  Run the "redis" xlat
+#  Test basic address allocation using redis_ippool.
 #
 $INCLUDE cluster_reset.inc
 
