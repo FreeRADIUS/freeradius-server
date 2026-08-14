@@ -22,6 +22,14 @@ SOURCES			:= fuzzer_$(PROTOCOL).c common.c
 
 TGT_PREREQS		:= libfreeradius-$(PROTOCOL)$(L)
 
+#
+#  fuzzer_radius needs the dhcpv{4,6} protocol libraries because they are
+#  referred to by dictionary.rfc9445
+#
+ifeq "$(PROTOCOL)" "radius"
+TGT_PREREQS		+= libfreeradius-dhcpv4$(L) libfreeradius-dhcpv6$(L)
+endif
+
 SRC_CFLAGS		:= -fsanitize=fuzzer
 TGT_LDFLAGS		:= -fsanitize=fuzzer
 TGT_LDLIBS		:= $(LIBS)
