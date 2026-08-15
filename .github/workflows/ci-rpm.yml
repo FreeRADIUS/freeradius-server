@@ -96,9 +96,20 @@ jobs:
         dnf builddep -y freeradius.spec && dnf builddep -y freeradius.spec
       working-directory: freeradius/redhat
 
+    #
+    #  The system gcc on rocky 9 is too old for the C23 fixed underlying
+    #  enum types the source relies on.  AppStream ships newer compilers
+    #  as gcc-toolset packages, which install to /opt/rh and leave the
+    #  system gcc untouched.
+    #
+    - name: Install gcc-toolset-14
+      if: ${{ matrix.env.VERSION == 9 }}
+      run: |
+        dnf install -y gcc-toolset-14-gcc gcc-toolset-14-annobin-plugin-gcc
+
     - name: Build RPMs
       run: |
-        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
+        [ -r /opt/rh/gcc-toolset-14/enable ] && source /opt/rh/gcc-toolset-14/enable || :
         make rpm
       working-directory: freeradius
 
@@ -118,7 +129,7 @@ jobs:
     # Build eapol_test using a minimal make environment to avoid configuring
     - name: Build eapol_test
       run: |
-        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
+        [ -r /opt/rh/gcc-toolset-14/enable ] && source /opt/rh/gcc-toolset-14/enable || :
         scripts/ci/eapol_test-build.sh
         mv scripts/ci/eapol_test/eapol_test ../rpms
       working-directory: freeradius
