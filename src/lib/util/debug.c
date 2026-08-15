@@ -1153,7 +1153,7 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 #endif
 #ifdef SIGALRM
 			/*
-			 *  This is used be jlibtool to terminate
+			 *  This is used by jlibtool to terminate
 			 *  processes which have been running too
 			 *  long.
 			 */

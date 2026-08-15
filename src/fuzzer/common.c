@@ -79,6 +79,13 @@ int fuzzer_common_init(int *argc, char ***argv, bool load_proto)
 	}
 
 	/*
+	 *	Undo the SIGALRM handler that fr_fault_setup() installs
+	 *	(for jlibtool's --timeout option) as it clashes with libFuzzer
+	 *	which also uses SIGALRM internally for its own -timeout option.
+	 */
+	fr_unset_signal(SIGALRM);
+
+	/*
 	 *	Setup atexit handlers to free any thread local
 	 *	memory on exit
 	 */
