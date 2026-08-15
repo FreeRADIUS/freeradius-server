@@ -141,7 +141,6 @@ jobs:
     #
     - name: Run crossbuild tests
       env:
-        CB_FROM_debian12:  docker.internal.networkradius.com/self-hosted-ci-debian12
         CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-ci-debian13
         CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-ci-debiansid
         CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-ci-ubuntu22

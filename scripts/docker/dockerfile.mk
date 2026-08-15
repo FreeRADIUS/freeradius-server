@@ -40,7 +40,7 @@ endif
 #
 #  Per-image Dockerfile target rule.
 #
-#  $(1) image name (e.g. debian12, ubuntu24)
+#  $(1) image name (e.g. debian13, ubuntu24)
 #  $(2) type (service / ci / crossbuild / profiling)
 #  $(3) type-specific m4 prerequisites (the .deb.m4 / .rpm.m4 files)
 #

@@ -21,7 +21,6 @@ define([p_SET], [
 ])
 dnl		D_NAME		PKG_TYPE      OS_NAME	OS_VER	OS_CODENAME	DOCKER_IMAGE
 ifelse(
-	D_NAME, [debian12],	[p_SET([deb], [debian],	[12],	[bookworm],	[debian:bookworm])],
 	D_NAME, [debian13],     [p_SET([deb], [debian], [13],   [trixie],       [debian:trixie])],
 	D_NAME, [debiansid],	[p_SET([deb], [debian],	[99],	[sid],		[debian:sid])],
 	D_NAME, [ubuntu22],	[p_SET([deb], [ubuntu],	[22],	[jammy],	[ubuntu:22.04])],

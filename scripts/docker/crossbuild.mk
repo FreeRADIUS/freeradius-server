@@ -11,7 +11,7 @@ CROSSBUILD_MK_INCLUDED := 1
 include scripts/docker/docker.mk
 
 # Short list of common-case crossbuild images used by `make crossbuild`.
-CB_COMMON := rocky9 debian12 ubuntu24
+CB_COMMON := rocky9 ubuntu24
 
 #
 #  Per-image alias macro. .clean and .distclean keep their old
