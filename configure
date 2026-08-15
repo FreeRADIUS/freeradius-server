@@ -5233,7 +5233,7 @@ printf '%s\n' "$ax_cv_cc_std_c23_flag" >&6; }
 if test "x$ax_cv_cc_std_c23_flag" != x; then
   CFLAGS="$CFLAGS $ax_cv_cc_std_c23_flag"
 else
-  as_fn_error $? "FreeRADIUS requires a compiler with C23 fixed underlying enum types (gcc >= 13 or clang >= 17), they are used throughout the codebase" "$LINENO" 5
+  as_fn_error $? "FreeRADIUS requires a C23 compiler (gcc >= 13 or clang >= 17)" "$LINENO" 5
 fi
 
 if test "x$GCC" = "xyes"; then
