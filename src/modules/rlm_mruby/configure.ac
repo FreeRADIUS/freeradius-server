@@ -1,4 +1,4 @@
-AC_PREREQ([2.71])
+AC_PREREQ([2.73])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_mruby.c])
 AC_REVISION($Revision$)
