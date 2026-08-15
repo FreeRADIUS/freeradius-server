@@ -343,7 +343,7 @@ AX_CC_STD_C23
 if test "x$ax_cv_cc_std_c23_flag" != x; then
   CFLAGS="$CFLAGS $ax_cv_cc_std_c23_flag"
 else
-  AC_MSG_ERROR([FreeRADIUS requires a C23 compiler (gcc >= 14 or clang >= 18), fixed underlying enum types are used throughout the codebase])
+  AC_MSG_ERROR([FreeRADIUS requires a compiler with C23 fixed underlying enum types (gcc >= 13 or clang >= 17), they are used throughout the codebase])
 fi
 
 dnl #

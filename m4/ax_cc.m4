@@ -15,6 +15,13 @@ AC_DEFUN([AX_CC_IS_CLANG],[
   ])
 ])
 
+dnl #
+dnl # gcc >= 14 and clang >= 18 accept -std=c23.  gcc 13 and clang 17 only
+dnl # accept the draft spelling -std=c2x, so fall back to that.  Both test
+dnl # programs use a fixed underlying enum type: the codebase relies on the
+dnl # feature, and older compilers (e.g. gcc 12) accept -std=c2x without
+dnl # implementing it, so the flag alone proves nothing.
+dnl #
 AC_DEFUN([AX_CC_STD_C23],[
   AC_CACHE_CHECK([for the compiler flag to enable C23 support], [ax_cv_cc_std_c23_flag],[
     ax_cv_cc_std_c23_flag=
@@ -26,14 +33,39 @@ AC_DEFUN([AX_CC_STD_C23],[
     AC_TRY_COMPILE(
       [],
       [
-        struct foo {
+        enum : signed char {
+          FOO_A = -128,
+          FOO_B = 1
+        } foo;
+
+        struct bar {
           union {
             int a;
             int b;
           };
-        } bar;
+        } baz;
       ],
       [ax_cv_cc_std_c23_flag="-std=c23"])
+
+    if test "x$ax_cv_cc_std_c23_flag" = x; then
+      CFLAGS="$CFLAGS_SAVED -Werror -std=c2x"
+      AC_TRY_COMPILE(
+        [],
+        [
+          enum : signed char {
+            FOO_A = -128,
+            FOO_B = 1
+          } foo;
+
+          struct bar {
+            union {
+              int a;
+              int b;
+            };
+          } baz;
+        ],
+        [ax_cv_cc_std_c23_flag="-std=c2x"])
+    fi
 
     AC_LANG_POP
     CFLAGS="$CFLAGS_SAVED"

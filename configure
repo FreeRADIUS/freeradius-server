@@ -4975,12 +4975,17 @@ int
 main (void)
 {
 
-        struct foo {
+        enum : signed char {
+          FOO_A = -128,
+          FOO_B = 1
+        } foo;
+
+        struct bar {
           union {
             int a;
             int b;
           };
-        } bar;
+        } baz;
 
   ;
   return 0;
@@ -4991,6 +4996,38 @@ then :
   ax_cv_cc_std_c23_flag="-std=c23"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+    if test "x$ax_cv_cc_std_c23_flag" = x; then
+      CFLAGS="$CFLAGS_SAVED -Werror -std=c2x"
+      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+
+          enum : signed char {
+            FOO_A = -128,
+            FOO_B = 1
+          } foo;
+
+          struct bar {
+            union {
+              int a;
+              int b;
+            };
+          } baz;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  ax_cv_cc_std_c23_flag="-std=c2x"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+    fi
 
     ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -5008,7 +5045,7 @@ printf "%s\n" "$ax_cv_cc_std_c23_flag" >&6; }
 if test "x$ax_cv_cc_std_c23_flag" != x; then
   CFLAGS="$CFLAGS $ax_cv_cc_std_c23_flag"
 else
-  as_fn_error $? "FreeRADIUS requires a C23 compiler (gcc >= 14 or clang >= 18), fixed underlying enum types are used throughout the codebase" "$LINENO" 5
+  as_fn_error $? "FreeRADIUS requires a compiler with C23 fixed underlying enum types (gcc >= 13 or clang >= 17), they are used throughout the codebase" "$LINENO" 5
 fi
 
 if test "x$GCC" = "xyes"; then
