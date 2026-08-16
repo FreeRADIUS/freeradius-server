@@ -5166,7 +5166,7 @@ main (void)
         enum : signed char {
           FOO_A = -128,
           FOO_B = 1
-        } foo;
+        } foo = FOO_A;
 
         struct bar {
           union {
@@ -5174,6 +5174,9 @@ main (void)
             int b;
           };
         } baz;
+
+        baz.a = (int)foo;
+        return baz.a;
 
   ;
   return 0;
@@ -5197,7 +5200,7 @@ main (void)
           enum : signed char {
             FOO_A = -128,
             FOO_B = 1
-          } foo;
+          } foo = FOO_A;
 
           struct bar {
             union {
@@ -5205,6 +5208,9 @@ main (void)
               int b;
             };
           } baz;
+
+          baz.a = (int)foo;
+          return baz.a;
 
   ;
   return 0;

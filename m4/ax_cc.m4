@@ -22,6 +22,10 @@ dnl # programs use a fixed underlying enum type: the codebase relies on the
 dnl # feature, and older compilers (e.g. gcc 12) accept -std=c2x without
 dnl # implementing it, so the flag alone proves nothing.
 dnl #
+dnl # The probe adds -Werror, and rpm builds inject -Wall through CFLAGS,
+dnl # so every variable in the test programs must be used or the probe
+dnl # fails on unused-variable warnings.
+dnl #
 AC_DEFUN([AX_CC_STD_C23],[
   AC_CACHE_CHECK([for the compiler flag to enable C23 support], [ax_cv_cc_std_c23_flag],[
     ax_cv_cc_std_c23_flag=
@@ -36,7 +40,7 @@ AC_DEFUN([AX_CC_STD_C23],[
         enum : signed char {
           FOO_A = -128,
           FOO_B = 1
-        } foo;
+        } foo = FOO_A;
 
         struct bar {
           union {
@@ -44,6 +48,9 @@ AC_DEFUN([AX_CC_STD_C23],[
             int b;
           };
         } baz;
+
+        baz.a = (int)foo;
+        return baz.a;
       ],
       [ax_cv_cc_std_c23_flag="-std=c23"])
 
@@ -55,7 +62,7 @@ AC_DEFUN([AX_CC_STD_C23],[
           enum : signed char {
             FOO_A = -128,
             FOO_B = 1
-          } foo;
+          } foo = FOO_A;
 
           struct bar {
             union {
@@ -63,6 +70,9 @@ AC_DEFUN([AX_CC_STD_C23],[
               int b;
             };
           } baz;
+
+          baz.a = (int)foo;
+          return baz.a;
         ],
         [ax_cv_cc_std_c23_flag="-std=c2x"])
     fi
