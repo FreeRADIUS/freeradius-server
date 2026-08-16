@@ -449,7 +449,7 @@ fr_slen_t fr_time_delta_to_str(fr_sbuff_t *out, fr_time_delta_t delta, fr_time_r
  *	The % operator can return a _signed_ value.  This macro is
  *	correct for both positive and negative inputs.
  */
-#define MOD(a,b) (((a<0) ? (-a) : (a))%(b))
+#define MOD(a,b) ((((a) < 0) ? -(uint64_t)(a) : (uint64_t)(a)) % (b))
 
 	lhs = fr_time_delta_to_integer(delta, res);
 	rhs = MOD(fr_time_delta_unwrap(delta), fr_time_multiplier_by_res[res]);
