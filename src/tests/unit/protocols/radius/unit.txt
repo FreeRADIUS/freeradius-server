@@ -75,8 +75,13 @@ encode-pair -
 match 37 06 00 0d 2f 00
 
 # Can we parse RFC 3339 dates correctly?
+# A negative offset is added to reach UTC (-04:00 -> +4h).
 pair Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
-match Unit-TLV = { Milliseconds = "2019-08-21T03:40:31.123Z" }
+match Unit-TLV = { Milliseconds = "2019-08-21T11:40:31.123Z" }
+
+# A positive offset with non-zero minutes is subtracted to reach UTC (+05:30 -> -5h30m).
+pair Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123+05:30"
+match Unit-TLV = { Milliseconds = "2019-08-21T02:10:31.123Z" }
 
 count
-match 36
+match 38

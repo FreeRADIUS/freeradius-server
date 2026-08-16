@@ -328,6 +328,15 @@ do_timestamp:
 	res = hint;
 
 	/*
+	 *	We allow 2^15 hours, but much less than that in seconds/
+	 */
+	if (integer < 0) {
+		if (integer < INT16_MIN) goto fail_overflow;
+	} else {
+		if (integer > INT16_MAX) goto fail_overflow;
+	}
+
+	/*
 	 *	It's a timestamp format
 	 *
 	 *	[hours:]minutes:seconds
@@ -345,41 +354,32 @@ do_timestamp:
 		 */
 		if (!fr_sbuff_next_if_char(&our_in, ':')) {
 			hours = 0;
-			minutes = negative ? -(integer) : integer;
-
-			if (minutes >= 60) {
-				fr_strerror_printf("minutes component of time_delta is too large");
-				fr_sbuff_set_to_start(&our_in);
-				FR_SBUFF_ERROR_RETURN(&our_in);
-			}
+			minutes = negative ? -integer : integer;
 
 		} else {
 			/*
 			 *	hours:minutes:seconds
+			 *
+			 *	The second number we read is the minutes,
+			 *	and the seconds are the third number, read
+			 *	below.  For the mm:ss form the second number
+			 *	is already the seconds, so it must NOT be
+			 *	re-read here.
 			 */
-			hours = negative ? -(integer) : integer;
+			hours = negative ? -integer : integer;
 			minutes = seconds;
 
 			if (fr_sbuff_out(&sberr, &seconds, &our_in) < 0) goto num_error;
+		}
 
-			/*
-			 *	We allow >24 hours.  What the heck.
-			 */
-			if (hours > UINT16_MAX) {
-				fr_strerror_printf("hours component of time_delta is too large");
-				fr_sbuff_set_to_start(&our_in);
-				FR_SBUFF_ERROR_RETURN(&our_in);
-			}
+		if (minutes >= 60) {
+			fr_strerror_printf("minutes component of time_delta is too large");
+			FR_SBUFF_ERROR_RETURN(&m1);
+		}
 
-			if (minutes >= 60) {
-				fr_strerror_printf("minutes component of time_delta is too large");
-				FR_SBUFF_ERROR_RETURN(&m1);
-			}
-
-			if (seconds >= 60) {
-				fr_strerror_printf("seconds component of time_delta is too large");
-				FR_SBUFF_ERROR_RETURN(&m1);
-			}
+		if (seconds >= 60) {
+			fr_strerror_printf("seconds component of time_delta is too large");
+			FR_SBUFF_ERROR_RETURN(&m1);
 		}
 
 		if (no_trailing && !fr_sbuff_is_terminal(&our_in, tt)) goto fail_trailing_data;
@@ -388,6 +388,13 @@ do_timestamp:
 		 *	Add all the components together...
 		 */
 		if (!fr_add(&integer, ((hours * 60) * 60) + (minutes * 60), seconds)) goto fail_overflow;
+
+		/*
+		 *	We can't have more than 64K hours plus a bit,
+		 *	which limits the size of the integer that we
+		 *	return.
+		 */
+		fr_assert(integer < ((int64_t) UINT16_MAX) * 3600 + 3600 + 60);
 
 		/*
 		 *	Flip the sign back to negative
@@ -927,14 +934,16 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		 *	So insyead of using stupid C library
 		 *	functions, we just roll our own.
 		 */
-		tz = tz_hour * 3600 + tz_min;
+		tz = tz_hour * 3600 + tz_min * 60;
 		if (*tail == '-') tz *= -1;
 
 	done:
 		/*
-		 *	We REMOVE the time zone offset in order to get internal unix times in UTC.
+		 *	Set the gmt offset correctly, as
+		 *	fr_unix_time_from_tm() will do the correction
+		 *	to remove the time zone.
 		 */
-		tm->tm_gmtoff = -tz;
+		tm->tm_gmtoff = tz;
 		*date = fr_unix_time_add(fr_unix_time_from_tm(tm), fr_time_delta_wrap(subseconds));
 		return 0;
 	}
