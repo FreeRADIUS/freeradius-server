@@ -678,6 +678,12 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 		break;
 	}
 
+#ifndef NDEBUG
+	dst->magic = FR_VALUE_BOX_MAGIC;
+	dst->file = src->file;
+	dst->line = src->line;
+#endif
+
 	dst->enumv = src->enumv;
 	dst->type = src->type;
 	dst->tainted = src->tainted;
@@ -5419,6 +5425,7 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (!rules) rules = &default_rules;
 
 	fr_strerror_clear();
+	fr_value_box_init(dst, dst_type, NULL, false);
 
 	/*
 	 *	Lookup any names before continuing
