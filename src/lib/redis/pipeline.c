@@ -840,6 +840,12 @@ static void _redis_pipeline_command_set_cancel(connection_t *conn, void *preq,
 	{
 		fr_redis_command_t	*cmd;
 
+		/*
+		 *	Only connected connections will get replies that
+		 *	need to be ignored.
+		 */
+		if (conn->state != CONNECTION_STATE_CONNECTED) return;
+
 		for (cmd = fr_dlist_head(&cmds->sent);
 		     cmd;
 		     cmd = fr_dlist_next(&cmds->sent, cmd)) {
