@@ -512,6 +512,7 @@ static char lua_alloc_cmd[] =
 	"    end" EOL											/* 25 */
 	"    return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 26 */
 	"  end" EOL											/* 27 */
+	"  ip = nil" EOL										/* 28 */
 	"end" EOL											/* 28 */
 
 	/*
