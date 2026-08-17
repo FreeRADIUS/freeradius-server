@@ -507,7 +507,7 @@ static char lua_alloc_cmd[] =
 	/*
 	 *	Ensure gateway is set correctly
 	 */
-	"    if ARGV[5] ~= ip[5] then" EOL								/* 23 */
+	"    if ARGV[5] ~= ip[4] then" EOL								/* 23 */
 	"      redis.call('HSET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":', 'gateway', ARGV[5])" EOL	/* 24 */
 	"    end" EOL											/* 25 */
 	"    return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 26 */
