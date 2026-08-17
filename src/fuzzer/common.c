@@ -73,17 +73,16 @@ int fuzzer_common_init(int *argc, char ***argv, bool load_proto)
 	}
 
 	autofree = talloc_autofree_context();
-	if (fr_fault_setup(autofree, panic_action, (*argv)[0]) < 0) {
+	/*
+	 *	libFuzzer installs its own SIGALRM handler for its
+	 *	-timeout option, so we skip that signal here rather
+	 *	than let fr_fault_setup() overwrite it.
+	 */
+	if (fr_fault_setup(autofree, panic_action, (*argv)[0],
+			   PANIC_ACTION_SIGNALS & ~(1UL << SIGALRM)) < 0) {
 		fr_perror("fuzzer: Failed to register fault handler: %s", fr_syserror(errno));
 		return -1;
 	}
-
-	/*
-	 *	Undo the SIGALRM handler that fr_fault_setup() installs
-	 *	(for jlibtool's --timeout option) as it clashes with libFuzzer
-	 *	which also uses SIGALRM internally for its own -timeout option.
-	 */
-	fr_unset_signal(SIGALRM);
 
 	/*
 	 *	Setup atexit handlers to free any thread local

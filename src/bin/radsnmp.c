@@ -921,7 +921,7 @@ int main(int argc, char **argv)
 	conf->retries = 5;
 
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("radsnmp");
 		fr_exit_now(EXIT_FAILURE);
 	}

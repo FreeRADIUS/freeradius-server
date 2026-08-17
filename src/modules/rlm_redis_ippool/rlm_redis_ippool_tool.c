@@ -782,7 +782,7 @@ int main(int argc, char *argv[])
 	fr_talloc_fault_setup();
 
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), name) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), name, PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("%s", config->name);
 		fr_exit_now(EXIT_FAILURE);
 	}

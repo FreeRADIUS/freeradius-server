@@ -1057,16 +1057,21 @@ void fr_talloc_fault_setup(void)
  *
  * May be called multiple time to change the panic_action/program.
  *
- * @param[in] ctx	to allocate autofreeable resources in.
- * @param[in] cmd	to execute on fault. If present %p will be substituted
- *      		for the parent PID before the command is executed, and %e
- *      		will be substituted for the currently running program.
- * @param program Name of program currently executing (argv[0]).
+ * @param[in] ctx		to allocate autofreeable resources in.
+ * @param[in] cmd		to execute on fault. If present %p will be substituted
+ *      			for the parent PID before the command is executed, and %e
+ *      			will be substituted for the currently running program.
+ * @param[in] program		Name of program currently executing (argv[0]).
+ * @param[in] fault_signals	Bitmask (bit N = signal N) of signals to install the
+ *				panic-action handler on. Callers pass
+ *				#PANIC_ACTION_SIGNALS unless they need to leave a
+ *				specific signal's handler alone (e.g. the fuzzer
+ *				shares SIGALRM with libFuzzer's own timeout).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
+int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program, unsigned long fault_signals)
 {
 	static bool setup = false;
 
@@ -1134,30 +1139,37 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 		default:
 		case DEBUGGER_STATE_NOT_ATTACHED:
 #ifdef SIGABRT
-			if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
+			if (fault_signals & (1UL << SIGABRT)) {
+				if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
 
-			/*
-			 *  Use this instead of abort so we get a
-			 *  full backtrace with broken versions of LLDB
-			 */
-			talloc_set_abort_fn(_fr_talloc_fault);
+				/*
+				 *  Use this instead of abort so we get a
+				 *  full backtrace with broken versions of LLDB
+				 */
+				talloc_set_abort_fn(_fr_talloc_fault);
+			}
 #endif
 #ifdef SIGILL
-			if (fr_set_signal(SIGILL, fr_fault) < 0) return -1;
+			if ((fault_signals & (1UL << SIGILL)) &&
+			    (fr_set_signal(SIGILL, fr_fault) < 0)) return -1;
 #endif
 #ifdef SIGFPE
-			if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
+			if ((fault_signals & (1UL << SIGFPE)) &&
+			    (fr_set_signal(SIGFPE, fr_fault) < 0)) return -1;
 #endif
 #ifdef SIGSEGV
-			if (fr_set_signal(SIGSEGV, fr_fault) < 0) return -1;
+			if ((fault_signals & (1UL << SIGSEGV)) &&
+			    (fr_set_signal(SIGSEGV, fr_fault) < 0)) return -1;
 #endif
 #ifdef SIGALRM
 			/*
-			 *  This is used by jlibtool to terminate
-			 *  processes which have been running too
-			 *  long.
+			 *  Used by jlibtool to terminate processes
+			 *  that have been running too long. The fuzzer
+			 *  clears this bit so libFuzzer's own SIGALRM
+			 *  timeout handler stays in place.
 			 */
-			if (fr_set_signal(SIGALRM, fr_fault) < 0) return -1;
+			if ((fault_signals & (1UL << SIGALRM)) &&
+			    (fr_set_signal(SIGALRM, fr_fault) < 0)) return -1;
 #endif
 			break;
 

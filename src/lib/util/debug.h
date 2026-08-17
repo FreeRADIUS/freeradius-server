@@ -29,6 +29,8 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/talloc.h>
 
+#include <signal.h>
+
 #ifdef NO_ASSERT
 # define MEM(x) error "Use of MEM() not allowed in this source file.  Deal with memory allocation failure gracefully"
 #else
@@ -89,7 +91,46 @@ void			fr_talloc_fault_setup(void);
 
 void			fr_disable_null_tracking_on_free(TALLOC_CTX *ctx);
 
-int			fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program);
+/** Bitmask of signal numbers to install the panic-action handler on.
+ *
+ * PANIC_ACTION_SIGNALS is the default set installed by every FreeRADIUS
+ * program. Callers that share a signal with another library (e.g. libFuzzer
+ * also uses SIGALRM for its own timeout) pass PANIC_ACTION_SIGNALS with the
+ * offending bit cleared so the FR handler is not registered for that signal
+ * and the other library's handler stays in place.
+ */
+#ifdef SIGABRT
+#  define _PANIC_ACTION_SIGABRT	(1UL << SIGABRT)
+#else
+#  define _PANIC_ACTION_SIGABRT	0
+#endif
+#ifdef SIGILL
+#  define _PANIC_ACTION_SIGILL	(1UL << SIGILL)
+#else
+#  define _PANIC_ACTION_SIGILL	0
+#endif
+#ifdef SIGFPE
+#  define _PANIC_ACTION_SIGFPE	(1UL << SIGFPE)
+#else
+#  define _PANIC_ACTION_SIGFPE	0
+#endif
+#ifdef SIGSEGV
+#  define _PANIC_ACTION_SIGSEGV	(1UL << SIGSEGV)
+#else
+#  define _PANIC_ACTION_SIGSEGV	0
+#endif
+#ifdef SIGALRM
+#  define _PANIC_ACTION_SIGALRM	(1UL << SIGALRM)
+#else
+#  define _PANIC_ACTION_SIGALRM	0
+#endif
+
+#define PANIC_ACTION_SIGNALS	(_PANIC_ACTION_SIGABRT | _PANIC_ACTION_SIGILL | \
+				 _PANIC_ACTION_SIGFPE | _PANIC_ACTION_SIGSEGV | \
+				 _PANIC_ACTION_SIGALRM)
+
+int			fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program,
+				       unsigned long fault_signals);
 
 void			fr_fault_set_cb(fr_fault_cb_t func);
 

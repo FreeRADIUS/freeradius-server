@@ -331,7 +331,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Set the panic action and enable other debugging facilities
 	 */
-	if (fr_fault_setup(global_ctx, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(global_ctx, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("%s: Failed installing fault handlers... continuing", program);
 	}
 
@@ -623,7 +623,7 @@ do { \
 	 *  environment.
 	 */
 	if (config->panic_action && !getenv("PANIC_ACTION") &&
-	    (fr_fault_setup(global_ctx, config->panic_action, argv[0]) < 0)) {
+	    (fr_fault_setup(global_ctx, config->panic_action, argv[0], PANIC_ACTION_SIGNALS) < 0)) {
 		fr_perror("%s: Failed configuring panic action", program);
 		EXIT_WITH_FAILURE;
 	}
