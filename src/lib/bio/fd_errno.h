@@ -112,6 +112,10 @@ static inline CC_HINT(always_inline) bool fr_bio_fd_errno_retry(fr_bio_fd_t *my,
 		*rcode_p = fr_bio_error(IO);
 		return false;
 
+		/*
+		 *	The underlying network has gone away.  This is a fatal error for connected sockets,
+		 *	but a recoverable one for unconnected sockets.
+		 */
 	case ENETDOWN:
 	case ENETUNREACH:
 		*rcode_p = fr_bio_error(IO);
@@ -132,3 +136,14 @@ static inline CC_HINT(always_inline) bool fr_bio_fd_errno_retry(fr_bio_fd_t *my,
 	*rcode_p = fr_bio_error(IO);
 	return false;
 }
+
+/*
+ *	Common code to suppress network failures on sendto / sendfromto for unconnected UDP sockets.
+ *
+ *	If the destination network is down or is unreachable, we want to simply discard the packet.  The error
+ *	isn't fatal, so we don't close the socket.
+ */
+#define FD_ENET_SUPPRESS \
+	do { \
+		if ((rcode == fr_bio_error(IO)) && ((errno == ENETDOWN) || (errno == ENETUNREACH))) return 0; \
+	} while (0)

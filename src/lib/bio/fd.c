@@ -296,6 +296,8 @@ static ssize_t fr_bio_fd_sendto(fr_bio_t *bio, void *packet_ctx, const void *buf
 		rcode = sendto(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, salen);
 	} while (fr_bio_fd_write_retry(my, &rcode, &tries, size));
 
+	FD_ENET_SUPPRESS;
+
 	return rcode;
 }
 
@@ -487,6 +489,8 @@ static ssize_t fr_bio_fd_sendfromto4(fr_bio_t *bio, void *packet_ctx, const void
 		rcode = sendmsg(my->info.socket.fd, &my->msgh, 0);
 	} while (fr_bio_fd_write_retry(my, &rcode, &tries, size));
 
+	FD_ENET_SUPPRESS;
+
 	return rcode;
 }
 
@@ -619,6 +623,8 @@ static ssize_t fr_bio_fd_sendfromto6(fr_bio_t *bio, void *packet_ctx, const void
 	do {
 		rcode = sendmsg(my->info.socket.fd, &my->msgh, 0);
 	} while (fr_bio_fd_write_retry(my, &rcode, &tries, size));
+
+	FD_ENET_SUPPRESS;
 
 	return rcode;
 }
