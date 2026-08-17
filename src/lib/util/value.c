@@ -690,6 +690,11 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	dst->safe_for = src->safe_for;
 	dst->secret = src->secret;
 	fr_value_box_list_entry_init(dst);
+
+	/*
+	 *	We have no idea if this is true, but we can't _guarantee_ it.  So we clear the flag.
+	 */
+	dst->talloced = false;
 }
 
 /** Compare two floating point numbers for equality.
