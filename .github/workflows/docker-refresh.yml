@@ -8,6 +8,9 @@ on:
       - .github/workflows/docker-refresh.yml
       - scripts/ci/docker/Dockerfile*
       - scripts/docker/build/*/Dockerfile.ci
+      - scripts/docker/build/*/Dockerfile.crossbuild
+      - scripts/docker/build/*/Dockerfile.profiling-deps
+      - scripts/docker/build/*/Dockerfile.service
       - debian/control
       - redhat/freeradius.spec
   workflow_dispatch:
