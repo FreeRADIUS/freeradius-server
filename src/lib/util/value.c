@@ -1009,6 +1009,9 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 	if (unlikely((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) return fr_regex_cmp_op(op, a, b);
 
+	VALUE_BOX_VERIFY(a);
+	VALUE_BOX_VERIFY(b);
+
 	switch (a->type) {
 	case FR_TYPE_IPV4_ADDR:
 		switch (b->type) {
@@ -4570,6 +4573,8 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
  */
 int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
 {
+	VALUE_BOX_VERIFY(src);
+
 	switch (src->type) {
 	default:
 		return fr_value_box_copy(ctx, dst, src);
@@ -6081,6 +6086,7 @@ finish:
 	 */
 	dst->enumv = dst_enumv;
 	fr_value_box_list_entry_init(dst);
+	VALUE_BOX_VERIFY(dst);
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
