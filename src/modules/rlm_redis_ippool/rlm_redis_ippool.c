@@ -513,32 +513,32 @@ static char lua_alloc_cmd[] =
 	"    return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 26 */
 	"  end" EOL											/* 27 */
 	"  ip = nil" EOL										/* 28 */
-	"end" EOL											/* 28 */
+	"end" EOL											/* 29 */
 
 	/*
 	 *	If there's a requested address, check if that is available i.e. not statically
 	 *	assigned, nor already allocated.
 	 */
-	"if ARGV[6] and ARGV[6] ~= '' then" EOL								/* 29 */
-	"  local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[6]))" EOL			/* 30 */
-	"  if expires and tonumber(expires) < wall_time then" EOL					/* 31 */
-	"    ip = { ARGV[6] }" EOL									/* 32 */
-	"  end" EOL											/* 33 */
-	"end" EOL											/* 34 */
+	"if ARGV[6] and ARGV[6] ~= '' then" EOL								/* 30 */
+	"  local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[6]))" EOL			/* 31 */
+	"  if expires and tonumber(expires) < wall_time then" EOL					/* 32 */
+	"    ip = { ARGV[6] }" EOL									/* 33 */
+	"  end" EOL											/* 34 */
+	"end" EOL											/* 35 */
 
 	/*
 	 *	Else, get the IP address which expired the longest time ago.
 	 */
-	"if not ip then" EOL										/* 35 */
-	"  ip = redis.call('ZREVRANGE', pool_key, -1, -1, 'WITHSCORES')" EOL				/* 36 */
-	"  if not ip or not ip[1] then" EOL								/* 37 */
-	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 38 */
-	"  end" EOL											/* 39 */
-	"  if tonumber(ip[2]) >= wall_time then" EOL							/* 40 */
-	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 41 */
-	"  end" EOL											/* 42 */
-	"end" EOL											/* 43 */
-	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL				/* 44 */
+	"if not ip then" EOL										/* 36 */
+	"  ip = redis.call('ZREVRANGE', pool_key, -1, -1, 'WITHSCORES')" EOL				/* 37 */
+	"  if not ip or not ip[1] then" EOL								/* 38 */
+	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 39 */
+	"  end" EOL											/* 40 */
+	"  if tonumber(ip[2]) >= wall_time then" EOL							/* 41 */
+	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 42 */
+	"  end" EOL											/* 43 */
+	"end" EOL											/* 44 */
+	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL				/* 45 */
 
 	/*
 	 *	Set the device/gateway keys
