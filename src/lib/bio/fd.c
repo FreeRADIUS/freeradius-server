@@ -23,6 +23,8 @@
  */
 
 #include <freeradius-devel/bio/fd_priv.h>
+#include <freeradius-devel/bio/fd_read.h>
+#include <freeradius-devel/bio/fd_write.h>
 #include <freeradius-devel/bio/null.h>
 
 /*
@@ -141,28 +143,27 @@ static ssize_t fr_bio_fd_read_stream(fr_bio_t *bio, UNUSED void *packet_ctx, voi
 	ssize_t rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
-retry:
-	rcode = read(my->info.socket.fd, buffer, size);
-	if (rcode == 0) {
-		fr_bio_t *head;
+	do {
+		rcode = read(my->info.socket.fd, buffer, size);
+		if (rcode == 0) {
+			fr_bio_t *head;
 
-		/*
-		 *	Flush any pending writes, shut down the BIO, and then mark it as EOF.
-		 */
-		head = fr_bio_head(bio);
+			/*
+			 *	Flush any pending writes, shut down the BIO, and then mark it as EOF.
+			 */
+			head = fr_bio_head(bio);
 
-		(void) fr_bio_write(head, NULL, NULL, SIZE_MAX);
+			(void) fr_bio_write(head, NULL, NULL, SIZE_MAX);
 
-		rcode = fr_bio_shutdown(head);
-		if (rcode < 0) return rcode;
+			rcode = fr_bio_shutdown(head);
+			if (rcode < 0) return rcode;
 
-		fr_bio_eof(bio);
-		return 0;
-	}
+			fr_bio_eof(bio);
+			return 0;
+		}
+	} while (fr_bio_fd_read_retry(my, &rcode, &tries));
 
-#include "fd_read.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 
 /** Connected datagram read.
@@ -184,24 +185,23 @@ static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, UNUSED void *pac
 	sockaddr = (struct sockaddr_storage) {};
 #endif
 
-retry:
-	salen = sizeof(sockaddr);
+	do {
+		salen = sizeof(sockaddr);
 
-	rcode = recvfrom(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, &salen);
-	if (rcode > 0) {
-		fr_assert(salen == my->remote_sockaddr_len);
-		fr_assert(sockaddr.ss_family == my->remote_sockaddr.ss_family);
-		fr_assert((sockaddr.ss_family == AF_INET) || (sockaddr.ss_family == AF_INET6)); /* datagram unix is not supported */
-	}
+		rcode = recvfrom(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, &salen);
+		if (rcode > 0) {
+			fr_assert(salen == my->remote_sockaddr_len);
+			fr_assert(sockaddr.ss_family == my->remote_sockaddr.ss_family);
+			fr_assert((sockaddr.ss_family == AF_INET) || (sockaddr.ss_family == AF_INET6)); /* datagram unix is not supported */
+		}
 
-	/*
-	 *	We do NOT call fr_bio_eof(), as 0 just means "no more data".
-	 */
-	if (rcode == 0) return rcode;
+		/*
+		 *	We do NOT call fr_bio_eof(), as 0 just means "no more data".
+		 */
+		if (rcode == 0) return rcode;
+	} while (fr_bio_fd_read_retry(my, &rcode, &tries));
 
-#include "fd_read.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 
 /** Read from a UDP socket where we know our IP
@@ -214,27 +214,26 @@ static ssize_t fr_bio_fd_recvfrom(fr_bio_t *bio, void *packet_ctx, void *buffer,
 	socklen_t salen;
 	struct sockaddr_storage sockaddr;
 
-retry:
-	salen = sizeof(sockaddr);
+	do {
+		salen = sizeof(sockaddr);
 
-	rcode = recvfrom(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, &salen);
-	if (rcode > 0) {
-		fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
+		rcode = recvfrom(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, &salen);
+		if (rcode > 0) {
+			fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
 
-		ADDR_INIT;
+			ADDR_INIT;
 
-		addr->socket.inet.dst_ipaddr = my->info.socket.inet.src_ipaddr;
-		addr->socket.inet.dst_port = my->info.socket.inet.src_port;
+			addr->socket.inet.dst_ipaddr = my->info.socket.inet.src_ipaddr;
+			addr->socket.inet.dst_port = my->info.socket.inet.src_port;
 
-		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
-					       &sockaddr, salen);
-	}
+			(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
+						       &sockaddr, salen);
+		}
 
-	if (rcode == 0) return rcode;
+		if (rcode == 0) return rcode;
+	} while (fr_bio_fd_read_retry(my, &rcode, &tries));
 
-#include "fd_read.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 
 /** Write to fd.
@@ -252,26 +251,25 @@ static ssize_t fr_bio_fd_write(fr_bio_t *bio, UNUSED void *packet_ctx, const voi
 	 */
 	if (!buffer) return 0;
 
-retry:
-	/*
-	 *	We could call send() instead of write()!  Posix says:
-	 *
-	 *	"A write was attempted on a socket that is shut down for writing, or is no longer
-	 *	connected. In the latter case, if the socket is of type SOCK_STREAM, a SIGPIPE signal shall
-	 *	also be sent to the thread."
-	 *
-	 *	We can override this behavior by calling send(), and passing the special flag which says
-	 *	"don't do that!".  The system call will then return EPIPE, which indicates that the socket is
-	 *	no longer usable.
-	 *
-	 *	However, we also set the SO_NOSIGPIPE socket option, which means that we can just call write()
-	 *	here.
-	 */
-	rcode = write(my->info.socket.fd, buffer, size);
+	do {
+		/*
+		 *	We could call send() instead of write()!  Posix says:
+		 *
+		 *	"A write was attempted on a socket that is shut down for writing, or is no longer
+		 *	connected. In the latter case, if the socket is of type SOCK_STREAM, a SIGPIPE signal shall
+		 *	also be sent to the thread."
+		 *
+		 *	We can override this behavior by calling send(), and passing the special flag which says
+		 *	"don't do that!".  The system call will then return EPIPE, which indicates that the socket is
+		 *	no longer usable.
+		 *
+		 *	However, we also set the SO_NOSIGPIPE socket option, which means that we can just call write()
+		 *	here.
+		 */
+		rcode = write(my->info.socket.fd, buffer, size);
+	} while (fr_bio_fd_write_retry(my, &rcode, &tries, size));
 
-#include "fd_write.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 
 /** Write to a UDP socket where we know our IP
@@ -294,12 +292,11 @@ static ssize_t fr_bio_fd_sendto(fr_bio_t *bio, void *packet_ctx, const void *buf
 	// get destination IP
 	(void) fr_ipaddr_to_sockaddr(&sockaddr, &salen, &addr->socket.inet.dst_ipaddr, addr->socket.inet.dst_port);
 
-retry:
-	rcode = sendto(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, salen);
+	do {
+		rcode = sendto(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, salen);
+	} while (fr_bio_fd_write_retry(my, &rcode, &tries, size));
 
-#include "fd_write.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 
 
@@ -333,23 +330,22 @@ static ssize_t fd_fd_recvfromto_common(fr_bio_fd_t *my, void *packet_ctx, void *
 		.msg_flags	= 0,
 	};
 
-retry:
-	rcode = recvmsg(my->info.socket.fd, &my->msgh, 0);
-	if (rcode > 0) {
-		if (my->msgh.msg_flags == MSG_TRUNC) return 0;
-		if (my->msgh.msg_flags == MSG_CTRUNC) return 0;
+	do {
+		rcode = recvmsg(my->info.socket.fd, &my->msgh, 0);
+		if (rcode > 0) {
+			if (my->msgh.msg_flags == MSG_TRUNC) return 0;
+			if (my->msgh.msg_flags == MSG_CTRUNC) return 0;
 
-		ADDR_INIT;
+			ADDR_INIT;
 
-		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
-					       &from, my->msgh.msg_namelen);
-	}
+			(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
+						       &from, my->msgh.msg_namelen);
+		}
 
-	if (rcode == 0) return rcode;
+		if (rcode == 0) return rcode;
+	} while (fr_bio_fd_read_retry(my, &rcode, &tries));
 
-#include "fd_read.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 #endif
 
@@ -487,12 +483,11 @@ static ssize_t fr_bio_fd_sendfromto4(fr_bio_t *bio, void *packet_ctx, const void
 #endif
 	}
 
-retry:
-	rcode = sendmsg(my->info.socket.fd, &my->msgh, 0);
+	do {
+		rcode = sendmsg(my->info.socket.fd, &my->msgh, 0);
+	} while (fr_bio_fd_write_retry(my, &rcode, &tries, size));
 
-#include "fd_write.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 
 static inline int fr_bio_fd_udpfromto_init4(int fd)
@@ -621,12 +616,11 @@ static ssize_t fr_bio_fd_sendfromto6(fr_bio_t *bio, void *packet_ctx, const void
 		pkt->ipi6_ifindex = addr->socket.inet.ifindex;
 	}
 
-retry:
-	rcode = sendmsg(my->info.socket.fd, &my->msgh, 0);
+	do {
+		rcode = sendmsg(my->info.socket.fd, &my->msgh, 0);
+	} while (fr_bio_fd_write_retry(my, &rcode, &tries, size));
 
-#include "fd_write.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 
 
@@ -1308,15 +1302,12 @@ static ssize_t fr_bio_fd_read_discard_datagram(fr_bio_t *bio, UNUSED void *packe
 	ssize_t rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
-retry:
-	rcode = read(my->info.socket.fd, buffer, size);
-	if (rcode >= 0) return 0; /* always return that we read no data */
+	do {
+		rcode = read(my->info.socket.fd, buffer, size);
+		if (rcode >= 0) return 0; /* always return that we read no data */
+	} while (fr_bio_fd_errno_retry(my, &rcode, &tries, false));
 
-#undef flag_blocked
-#define flag_blocked read_blocked
-#include "fd_errno.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 
 /** Discard all reads from a TCP socket.
@@ -1327,19 +1318,16 @@ static ssize_t fr_bio_fd_read_discard_stream(fr_bio_t *bio, UNUSED void *packet_
 	ssize_t rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
-retry:
-	rcode = read(my->info.socket.fd, buffer, size);
-	if (rcode > 0 ) return 0; /* always return that we read no data */
-	if (rcode == 0) {
-		fr_bio_eof(bio);
-		return 0;
-	}
+	do {
+		rcode = read(my->info.socket.fd, buffer, size);
+		if (rcode > 0 ) return 0; /* always return that we read no data */
+		if (rcode == 0) {
+			fr_bio_eof(bio);
+			return 0;
+		}
+	} while (fr_bio_fd_errno_retry(my, &rcode, &tries, false));
 
-#undef flag_blocked
-#define flag_blocked read_blocked
-#include "fd_errno.h"
-
-	return fr_bio_error(IO);
+	return rcode;
 }
 
 /** Mark up a bio as write-only
