@@ -489,7 +489,7 @@ static char lua_alloc_cmd[] =
 	 *	The additional sanity checks are to allow for the record
 	 *	of device/ip binding to persist for longer than the lease.
 	 */
-	"exists = redis.call('GET', owner_key);" EOL							/* 9 */
+	"exists = redis.call('GET', owner_key)" EOL							/* 9 */
 	"if exists then" EOL										/* 10 */
 	"  local expires = tonumber(redis.call('ZSCORE', pool_key, exists))" EOL			/* 11 */
 	"  local static = expires >= " STRINGIFY(IPPOOL_STATIC_BIT) EOL					/* 12 */
