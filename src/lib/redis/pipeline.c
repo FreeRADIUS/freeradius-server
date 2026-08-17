@@ -750,15 +750,26 @@ static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *
 			 */
 			switch (cmd->fmt) {
 			case FR_REDIS_COMMAND_FMT_ARGV:
+				if (DEBUG_ENABLED3) {
+					size_t	i;
+					ROPTIONAL(RDEBUG3, DEBUG3, "Sending Redis argv command");
+					for (i = 0; i < cmd->argc; i++) {
+						ROPTIONAL(RDEBUG3, DEBUG3, "  %pV",
+							  fr_box_strvalue_len(cmd->argv[i], cmd->argv_len[i]));
+					}
+
+				}
 				ret = redisAsyncCommandArgv(h->ac, _redis_pipeline_demux, cmd, cmd->argc,
 							    cmd->argv, cmd->argv_len);
 				break;
 
 			case FR_REDIS_COMMAND_FMT_EXPANDED:
+				ROPTIONAL(RDEBUG3, DEBUG3, "Sending Redis command %s", cmd->str);
 				ret = redisAsyncCommand(h->ac, _redis_pipeline_demux, cmd, cmd->str);
 				break;
 
 			case FR_REDIS_COMMAND_FMT_PREFORMATTED:
+				ROPTIONAL(RDEBUG3, DEBUG3, "Sending Redis formatted command %s", cmd->str);
 				ret = redisAsyncFormattedCommand(h->ac, _redis_pipeline_demux, cmd,
 								 cmd->str, cmd->str_len);
 				break;
