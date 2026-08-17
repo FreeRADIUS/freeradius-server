@@ -580,8 +580,6 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	if (slen < 0) {
 		ERROR("%s - Failed sending %s ID %d length %zu over connection %s: %s",
 		      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->ctx.fd_info->name, fr_syserror(errno));
-
-
 		goto fail;
 	}
 
@@ -1790,6 +1788,17 @@ do_write:
 	 */
 	if (slen == 0) {
 		if (u->partial) return;
+
+		/*
+		 *	We didn't get a "blocked" error, but we didn't write any data.  And the socket is
+		 *	unconnected.  This means we just discard the packet.
+		 */
+		if (h->ctx.fd_info->type == FR_BIO_FD_UNCONNECTED) {
+			ERROR("%s - Failed sending %s ID %d length %zu over connection %s: Destination network is down or unreachable",
+			      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->ctx.fd_info->name);
+			trunk_request_signal_fail(treq);
+			return;
+		}
 
 	requeue:
 		RWARN("%s - Failed sending data over connection %s: sent zero bytes",
