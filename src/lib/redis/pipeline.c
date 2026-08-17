@@ -199,6 +199,28 @@ static int _redis_command_set_free(fr_redis_command_set_t *cmds)
 		return 0;
 	}
 
+	/*
+	 *	It is possible for a command set to be freed while its trunk request
+	 *	is still inflight.
+	 *	This is an edge case such as shutting down the server when scripts
+	 *	are still being loaded, since the script loading done on redis trunk
+	 *	startup are not run through requests, so there isn't a cancellation
+	 *	path.
+	 */
+	if (cmds->treq) {
+		switch (cmds->treq->state) {
+		case TRUNK_REQUEST_STATE_BACKLOG:
+		case TRUNK_REQUEST_STATE_PENDING:
+		case TRUNK_REQUEST_STATE_SENT:
+			trunk_request_signal_cancel(cmds->treq);
+			break;
+
+		default:
+			break;
+
+		}
+	}
+
 	talloc_free_children(cmds);
 	memset(cmds, 0, sizeof(*cmds));
 
