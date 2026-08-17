@@ -2004,6 +2004,9 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	if (!fr_type_is_leaf(a->type)) return invalid_type(a->type);
 	if (!fr_type_is_leaf(b->type)) return invalid_type(b->type);
 
+	VALUE_BOX_VERIFY(a);
+	VALUE_BOX_VERIFY(b);
+
 	/*
 	 *	=== and !== also check types.  If the types are
 	 *	different, it's a failure.  Otherwise they revert to == and !=.
@@ -2262,11 +2265,13 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			if (a->type != hint) {
 				if (fr_value_box_cast(NULL, &one, hint, enumv, a) < 0) goto done;
 				a = &one;
+				VALUE_BOX_VERIFY(a);
 			}
 
 			if (b->type != hint) {
 				if (fr_value_box_cast(NULL, &two, hint, enumv, b) < 0) goto done;
 				b = &two;
+				VALUE_BOX_VERIFY(b);
 			}
 		}
 
