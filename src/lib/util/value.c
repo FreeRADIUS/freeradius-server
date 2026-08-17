@@ -2588,8 +2588,16 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 	 *	Copy the raw octets into the datum of a value_box
 	 *	inverting bytesex for uint32s (if LE).
 	 */
-	memcpy(ptr, src->vb_octets, src->vb_length);
-	fr_value_box_hton(dst, dst);
+	switch (dst->type) {
+	default:
+		memcpy(ptr, src->vb_octets, src->vb_length);
+		fr_value_box_hton(dst, dst);
+		break;
+
+	case FR_TYPE_BOOL:
+		dst->vb_bool = (src->vb_octets[0] != 0);
+		break;
+	}
 
 	return 0;
 }
@@ -7270,6 +7278,11 @@ DIAG_ON(nonnull-compare)
 	case FR_TYPE_ATTR:
 		fr_fatal_assert_msg(vb->vb_attr, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_attr field "
 				    "was NULL", file, line);
+		break;
+
+	case FR_TYPE_BOOL:
+		fr_fatal_assert_msg(vb->vb_uint8 <= 1, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_bool field "
+				    "was not boolean!", file, line);
 		break;
 
 	default:
