@@ -164,6 +164,8 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 {
 	tmpl_t *vpt = node->vpt;
 
+	XLAT_VERIFY(node);
+
 	/*
 	 *	Any casting, etc. has to be taken care of in the xlat expression parser, and not here.
 	 */
@@ -1659,6 +1661,7 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 	} while (--triple > 0);
 
 done:
+	XLAT_VERIFY(node);
 	*out = node;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);

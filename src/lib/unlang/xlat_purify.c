@@ -542,6 +542,9 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 
 int xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
 {
+	XLAT_VERIFY(lhs);
+	XLAT_VERIFY(rhs);
+
 	if (op == T_LOR) {
 		xlat_exp_t *node;
 

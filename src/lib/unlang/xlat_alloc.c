@@ -505,6 +505,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 				fr_assert(da->type != FR_TYPE_STRING);
 			}
 
+			TMPL_ATTR_VERIFY(vpt);
 			return;
 		}
 
@@ -513,6 +514,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 		 */
 		if (tmpl_is_data(node->vpt)) {
 			fr_assert(tmpl_rules_cast(node->vpt) == FR_TYPE_NULL);
+			VALUE_BOX_VERIFY(tmpl_value(node->vpt));
 		}
 
 #if 0
@@ -533,6 +535,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 			fr_assert(!node->flags.can_purify);
 		}
 
+		TMPL_VERIFY(vpt);
 		return;
 	}
 
@@ -540,6 +543,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 		fr_assert(node->flags.constant);
 		fr_assert(node->flags.pure);
 //		fr_assert(node->flags.can_purify);
+		VALUE_BOX_VERIFY(&node->data);
 		break;
 
 	default:

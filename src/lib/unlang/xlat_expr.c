@@ -2173,6 +2173,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *	Don't add it to head->flags, that will be done when it's actually inserted.
 	 */
 
+	XLAT_VERIFY(unary);
 	*out = unary;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2420,6 +2421,7 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	xlat_func_append_arg(node, arg, false);
 
+	XLAT_VERIFY(node);
 	*out = node;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2691,6 +2693,7 @@ done:
 		node = cast;
 	}
 
+	XLAT_VERIFY(node);
 	*out = node;
 
 	fr_sbuff_skip_whitespace(&our_in);
@@ -2817,6 +2820,7 @@ redo:
 		/*
 		 *	LHS may be NULL if the expression has spaces followed by a terminal character.
 		 */
+		if (lhs) XLAT_VERIFY(lhs);
 		*out = lhs;
 		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
@@ -2980,6 +2984,8 @@ redo:
 	 */
 	if (!rhs) goto done;
 
+	XLAT_VERIFY(rhs);
+
 	func = xlat_func_find(binary_ops[op].str, binary_ops[op].len);
 	fr_assert(func != NULL);
 
@@ -3056,6 +3062,7 @@ redo:
 	}
 
 	lhs = node;
+	XLAT_VERIFY(lhs);
 	goto redo;
 }
 
@@ -3132,7 +3139,9 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	}
 
 	if (!node) {
+		XLAT_HEAD_VERIFY(head);
 		*out = head;
+
 		return slen;
 	}
 
@@ -3156,7 +3165,9 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 
 	xlat_exp_insert_tail(head, node);
 
+	XLAT_HEAD_VERIFY(head);
 	*out = head;
+
 	return slen;
 }
 
