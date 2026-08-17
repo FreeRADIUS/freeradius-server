@@ -525,7 +525,7 @@ static int radius_fixups(rlm_radius_t const *inst, request_t *request)
 	 */
 	if ((request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) &&
 	    ((request->packet->socket.af == AF_INET) || (request->packet->socket.af == AF_INET6))) {
-		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
+		RWDEBUG("Status-Server is reserved for internal use, and cannot be proxied.");
 		return 0;
 	}
 
