@@ -322,11 +322,6 @@ jobs:
             image_name: docker.internal.networkradius.com/self-hosted-ci-debiansid
             dockerfile: scripts/docker/build/debiansid/Dockerfile.ci
 
-          - base_image: ubuntu:22.04
-            display: self-hosted-ci-ubuntu22
-            image_name: docker.internal.networkradius.com/self-hosted-ci-ubuntu22
-            dockerfile: scripts/docker/build/ubuntu22/Dockerfile.ci
-
           - base_image: ubuntu:24.04
             display: self-hosted-ci-ubuntu24
             image_name: docker.internal.networkradius.com/self-hosted-ci-ubuntu24
@@ -561,7 +556,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu22, ubuntu24, ubuntu26, debian13, debiansid, rocky9, rocky10]
+        os: [ubuntu24, ubuntu26, debian13, debiansid, rocky9, rocky10]
 
     services:
       dind:

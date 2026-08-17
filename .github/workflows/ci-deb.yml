@@ -44,7 +44,6 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-22.04", "OS": "ubuntu:22.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-ubuntu22"   },
               { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-ubuntu24"   },
               { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-ubuntu26"   },
               { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-debian13"   },

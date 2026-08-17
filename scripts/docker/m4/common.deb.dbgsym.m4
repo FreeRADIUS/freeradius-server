@@ -20,7 +20,7 @@ changequote([,])dnl
 #  Glibc-linked libs gained the t64 suffix in ubuntu 24.04 and debian
 #  13. T64 expands to "t64" on those releases. The same boundary also
 #  picks the libldap and libhiredis soname names, so PRE_T64 captures
-#  pre-transition releases (bookworm, jammy) as 1.
+#  pre-transition releases as 1.
 #
 #  We deliberately do NOT `apt-get clean / rm -r /var/lib/apt/lists/*'
 #  here: the cache would invalidate every subsequent apt-get install
@@ -73,7 +73,6 @@ ifelse(OS_CODENAME, [resolute], [], [dnl
 ifelse(OS_CODENAME, [bookworm], [        python3.11-dbg \
 ], OS_CODENAME, [trixie],   [        python3.13-dbg \
 ], OS_CODENAME, [sid],    [        python3.13-dbg \
-], OS_CODENAME, [jammy],    [        python3.10-dbg \
 ], OS_CODENAME, [noble],    [        python3.12-dbg \
 ])dnl
     ; do \

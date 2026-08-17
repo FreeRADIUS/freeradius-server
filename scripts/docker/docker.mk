@@ -17,7 +17,7 @@ else
 #  Short list of common-case images: `make docker` without further
 #  qualification falls back to this set.
 #
-DOCKER_COMMON := ubuntu22
+DOCKER_COMMON := ubuntu24
 
 # dockerfile.mk owns CB_DIR / DT / IMAGES / PROFILING_IMAGES / Q.
 include scripts/docker/dockerfile.mk

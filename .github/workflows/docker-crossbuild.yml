@@ -143,7 +143,6 @@ jobs:
       env:
         CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-ci-debian13
         CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-ci-debiansid
-        CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-ci-ubuntu22
         CB_FROM_ubuntu24:  docker.internal.networkradius.com/self-hosted-ci-ubuntu24
         CB_FROM_ubuntu26:  docker.internal.networkradius.com/self-hosted-ci-ubuntu26
         CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-ci-rocky9
