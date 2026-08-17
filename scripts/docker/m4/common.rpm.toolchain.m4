@@ -19,6 +19,19 @@ RUN dnf install -y \
 
 RUN dnf config-manager --set-enabled crb
 
+ifelse(OS_VER, `9', `dnl
+#
+#  The system gcc 11 on Rocky 9 predates C23, which FreeRADIUS
+#  requires. gcc-toolset-14 supplies a new enough gcc; putting the
+#  toolset bin directory first in PATH makes every later build step
+#  use the toolset gcc without sourcing the enable script. The annobin
+#  plugin is needed so rpmbuild hardening annotations keep working
+#  with the toolset compiler.
+#
+RUN dnf install -y gcc-toolset-14-gcc gcc-toolset-14-gcc-c++ gcc-toolset-14-annobin-plugin-gcc
+ENV PATH=/opt/rh/gcc-toolset-14/root/usr/bin:$PATH
+
+')dnl
 dnl  EPEL mirror lists can only be snapshotted after the epel-release
 dnl  install above puts the repo files in place.
 include(`common.dnf.mirrorlist.epel.m4')dnl
