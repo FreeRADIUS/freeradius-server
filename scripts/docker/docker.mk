@@ -110,7 +110,11 @@ $(DOCKER_STATE)/stamp-image.${1}.${2}: $(DT)/${1}/Dockerfile.${2} ${4} | $(DOCKE
 			-f $(DT)/${1}/Dockerfile.${2} \
 			-t $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) \
 			-t $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest \
-			. >$(DOCKER_STATE)/build.${1}.${2} 2>&1; \
+			. >$(DOCKER_STATE)/build.${1}.${2} 2>&1 || { \
+				echo "FAILED $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA), build log follows"; \
+				cat $(DOCKER_STATE)/build.${1}.${2}; \
+				exit 1; \
+			}; \
 	fi
 	$${Q}touch $$@
 endef
