@@ -558,7 +558,7 @@ fr_redis_async_rcode_t fr_redis_async_cmd_redirect(fr_redis_async_cmd_t *cmd)
 
 	fr_redis_command_set_next_node(cmd->cmds, &find.ioconf);
 
-	cluster_node = fr_rb_find(cmd->rtcluster->used_nodes, &find);
+	fr_rb_find((void **)&cluster_node, cmd->rtcluster->used_nodes, &find);
 	if (!cluster_node) {
 		ERROR("Asked to redirect to a node not in the current cluster map");
 		return REDIS_ASYNC_RCODE_ERROR;
@@ -587,14 +587,14 @@ fr_redis_async_rcode_t fr_redis_async_cmd_resend(fr_redis_async_cmd_t *cmd)
  * @param[in] two second node.
  * @return CMP(one, two)
  */
-static int8_t _cluster_thread_node_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _cluster_thread_node_cmp(void const *one, void const *two)
 {
 	fr_redis_ct_node_t const *a = one;
 	fr_redis_ct_node_t const *b = two;
 	int ret;
 
 	ret = strcmp(a->ioconf.hostname, b->ioconf.hostname);
-	if (ret != 0) return ret;
+	if (ret != 0) return CMP(ret, 0);
 
 	return CMP(a->ioconf.port, b->ioconf.port);
 }
@@ -830,7 +830,7 @@ do { \
 				if (unlikely(!node_port)) continue;
 				find.ioconf.port = node_port->vp_uint16;
 
-				cluster_node = fr_rb_find(rtcluster->used_nodes, &find);
+				fr_rb_find((void **)&cluster_node, rtcluster->used_nodes, &find);
 				break;
 			}
 		}
@@ -871,7 +871,7 @@ do { \
 			if (unlikely(!node_port)) continue;
 			find.ioconf.port = node_port->vp_uint16;
 
-			cluster_node = fr_rb_find(rtcluster->used_nodes, &find);
+			fr_rb_find((void **)&cluster_node, rtcluster->used_nodes, &find);
 
 			if (cluster_node) {
 				tmp_slot.replica[tmp_slot.num_replicas++] = cluster_node->id;
@@ -935,7 +935,7 @@ do { \
 
 		if (rtcluster->node[i].is_active) {
 			/* Sanity check for duplicates that are active */
-			found = fr_rb_find(rtcluster->used_nodes, &rtcluster->node[i]);
+			fr_rb_find((void **)&found, rtcluster->used_nodes, &rtcluster->node[i]);
 			fr_assert(found);
 			fr_assert(found->is_active);
 			fr_assert(found->id == i);
@@ -1110,11 +1110,12 @@ fr_redis_async_rcode_t fr_redis_ct_map_get(fr_redis_ct_t *rtcluster, fr_coord_wo
 
 fr_redis_ct_node_t *fr_redis_ct_node_by_addr(fr_redis_ct_t *rtcluster, fr_redis_io_conf_t *ioconf)
 {
-	fr_redis_ct_node_t	find;
+	fr_redis_ct_node_t	find, *found;
 
 	find.ioconf.hostname = ioconf->hostname;
 	find.ioconf.port = ioconf->port;
-	return fr_rb_find(rtcluster->used_nodes, &find);
+	fr_rb_find((void **)&found, rtcluster->used_nodes, &find);
+	return found;
 }
 
 fr_redis_async_rcode_t fr_redis_ct_node_addr_by_role(TALLOC_CTX *ctx, fr_redis_io_conf_t *out[], uint8_t *count_out,

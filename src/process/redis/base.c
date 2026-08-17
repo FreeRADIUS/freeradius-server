@@ -95,11 +95,11 @@ typedef struct {
 	fr_rb_node_t			node;
 } process_redis_pending_t;
 
-static int8_t cluster_server_cmp(void const *a, void const *b)
+static fr_cmp_ret_t cluster_server_cmp(void const *a, void const *b)
 {
 	process_redis_cluster_t const	*cluster_a = (process_redis_cluster_t const *)a;
 	process_redis_cluster_t const	*cluster_b = (process_redis_cluster_t const *)b;
-	int8_t	ret;
+	fr_cmp_ret_t	ret;
 
 	ret = fr_ipaddr_cmp(&cluster_a->addr, &cluster_b->addr);
 	if (ret != 0) return ret;
@@ -107,7 +107,7 @@ static int8_t cluster_server_cmp(void const *a, void const *b)
 	return CMP(cluster_a->port, cluster_b->port);
 }
 
-static int8_t cluster_id_cmp(void const*a, void const *b)
+static fr_cmp_ret_t cluster_id_cmp(void const*a, void const *b)
 {
 	process_redis_cluster_t const	*cluster_a = (process_redis_cluster_t const *)a;
 	process_redis_cluster_t const	*cluster_b = (process_redis_cluster_t const *)b;
@@ -115,7 +115,7 @@ static int8_t cluster_id_cmp(void const*a, void const *b)
 	return CMP(cluster_a->cluster_id, cluster_b->cluster_id);
 }
 
-static int8_t process_redis_pending_cmp(void const *a, void const *b)
+static fr_cmp_ret_t process_redis_pending_cmp(void const *a, void const *b)
 {
 	process_redis_pending_t	const *pending_a = (process_redis_pending_t const *)a;
 	process_redis_pending_t	const *pending_b = (process_redis_pending_t const *)b;
@@ -969,10 +969,10 @@ static void process_redis_pending_cancel(module_ctx_t const *mctx, request_t *re
 	process_redis_pending_t	find, *pending;
 
 	find.request = request;
-	pending = fr_rb_find(&rctx->cluster->pending, &find);
+	fr_rb_find((void **)&pending, &rctx->cluster->pending, &find);
 	if (!pending) return;
 
-	fr_rb_remove(&rctx->cluster->pending, pending);
+	fr_rb_remove(NULL, &rctx->cluster->pending, pending);
 	talloc_free(pending);
 }
 
@@ -1021,7 +1021,7 @@ RECV(cluster_map_bootstrap)
 		find.port = port_vp->vp_uint16;
 	}
 
-	cluster = fr_rb_find(&thread->cluster_by_server, &find);
+	fr_rb_find((void **)&cluster, &thread->cluster_by_server, &find);
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_max_nodes);
 	fr_fatal_assert_msg(vp, "Missing %s", attr_redis_max_nodes->name);
@@ -1142,7 +1142,7 @@ RECV(cluster_map_get)
 	fr_fatal_assert_msg(vp, "Missing %s", attr_redis_cluster_id->name);
 
 	find.cluster_id = vp->vp_uint16;
-	rctx->cluster = fr_rb_find(&rctx->thread->cluster_by_id, &find);
+	fr_rb_find((void **)&rctx->cluster, &rctx->thread->cluster_by_id, &find);
 	fr_fatal_assert_msg(rctx->cluster, "Update requested for cluster %d which has not been bootstrapped",
 			    vp->vp_uint16);
 
