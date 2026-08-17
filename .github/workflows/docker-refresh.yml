@@ -618,9 +618,16 @@ jobs:
       #  of the crossbuild build, so the chain resolves in order
       #  without a registry pull between layers.
       #
+      #
+      #  NOPULL=1 forces docker.mk to build from the local Dockerfile
+      #  instead of pulling the existing :latest tag from the registry.
+      #  Without it the refresh silently retags whatever is already
+      #  published, defeating the whole point of the workflow.
+      #
       - name: Build crossbuild + profiling-deps + service images
         env:
           OS: ${{ matrix.os }}
+          NOPULL: 1
         run: |
           make dockerfile.check
           make docker.crossbuild.$OS
