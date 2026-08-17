@@ -32,6 +32,8 @@ FUZZER_tmpl_ARGS  := -D share/dictionary
 FUZZER_xlat_ARGS  := -D share/dictionary
 FUZZER_der_ARGS   := -D share/dictionary
 
+FUZZER_PROTO_LIBS := $(foreach X,${FUZZER_PROTOCOLS},libfreeradius-$(X)$(L))
+
 #
 #  Add the fuzzer only if everything was built with the fuzzing flags.
 #

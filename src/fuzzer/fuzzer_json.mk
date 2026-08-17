@@ -1,7 +1,7 @@
 TARGET			:= fuzzer_json$(E)
 SOURCES			:= fuzzer_json.c
 
-TGT_PREREQS		:= libfreeradius-json$(L) $(LIBFREERADIUS_SERVER) libfreeradius-io$(L)
+TGT_PREREQS		:= libfreeradius-json$(L) $(LIBFREERADIUS_SERVER) libfreeradius-io$(L) $(FUZZER_PROTO_LIBS)
 
 SRC_CFLAGS		:= -fsanitize=fuzzer
 SRC_CFLAGS		+= -I$(top_builddir)/src/lib/json/
