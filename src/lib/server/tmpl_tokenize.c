@@ -1035,6 +1035,8 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bo
 	} else {
 		if (unlikely(fr_value_box_copy(vpt, tmpl_value(vpt), data) < 0)) goto error;
 	}
+
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	return 0;
@@ -1295,7 +1297,6 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	vpt->quote = T_BARE_WORD;
 
 	TMPL_ATTR_VERIFY(vpt);
-
 	*out = vpt;
 
 	return 0;
@@ -2540,9 +2541,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		}
 	}
 
-	TMPL_VERIFY(vpt);	/* Because we want to ensure we produced something sane */
-
+	TMPL_VERIFY(vpt);
 	*out = vpt;
+
 	FR_SBUFF_SET_RETURN(name, &our_name);
 }
 
@@ -2628,11 +2629,10 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 
 	fr_value_box_copy_shallow(NULL, tmpl_value(vpt), &tmp);
 
-	*out = vpt;
-
 	if (cast == tmpl_value_type(vpt)) vpt->rules.cast = FR_TYPE_NULL;
 
 	TMPL_VERIFY(vpt);
+	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
@@ -2667,6 +2667,7 @@ static fr_slen_t tmpl_afrom_null_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 			     fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
 	fr_value_box_init(&vpt->data.literal, FR_TYPE_NULL, NULL, false);
 
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2704,6 +2705,7 @@ static fr_slen_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	fr_value_box_init(&vpt->data.literal, FR_TYPE_BOOL, NULL, false);
 	vpt->data.literal.vb_bool = a_bool;
 
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2764,6 +2766,7 @@ static fr_slen_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuf
 	MEM(bin = talloc_realloc_size(vpt, bin, binlen));	/* Realloc to the correct length */
 	(void)fr_value_box_memdup_shallow(&vpt->data.literal, NULL, bin, binlen, false);
 
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2840,6 +2843,7 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	}
 	vpt->data.literal.vb_ipv4addr = htonl(ipaddr);
 
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2957,6 +2961,8 @@ static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 		talloc_free(vpt);
 		goto error;
 	}
+
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -3025,6 +3031,7 @@ static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 	fr_value_box_init(vb, FR_TYPE_ETHERNET, NULL, false);
 	memcpy(vb->vb_ether, buff, sizeof(vb->vb_ether));
 
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -3111,6 +3118,7 @@ static fr_slen_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbu
 		}
 	}
 
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -3139,6 +3147,7 @@ static ssize_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 	fr_value_box_init(vb, FR_TYPE_FLOAT64, NULL, false);
 	vb->vb_float64 = a_float;
 
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -3162,6 +3171,7 @@ static ssize_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *
 	fr_value_box_init(vb, FR_TYPE_TIME_DELTA, NULL, false);
 	vb->vb_time_delta = a_delta;
 
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -3277,7 +3287,9 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 			}
 			vpt->data.literal.enumv = t_rules->enumv;
 
+			TMPL_VERIFY(vpt);
 			*out = vpt;
+
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 	}
@@ -3292,6 +3304,8 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, T_BARE_WORD,
 		  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 	MEM(vpt->data.unescaped = talloc_bstrndup(vpt, fr_sbuff_start(enum_buff), fr_sbuff_used(enum_buff)));
+
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -3392,9 +3406,8 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 				vpt->data.xlat.ex = head;
 			}
 
-			*out = vpt;
-
 			TMPL_VERIFY(vpt);
+			*out = vpt;
 
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
@@ -3579,6 +3592,8 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
 			  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 		vpt->data.unescaped = str;
+
+		TMPL_VERIFY(vpt);
 		*out = vpt;
 
 		FR_SBUFF_SET_RETURN(in, &our_in);
@@ -5325,6 +5340,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 					     "has a NULL xlat.ex field", file, line);
 
 		}
+		XLAT_HEAD_VERIFY(tmpl_xlat(vpt));
 		break;
 
 /* @todo When regexes get converted to xlat the flags field of the regex union is used
@@ -5344,6 +5360,9 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 */
 
 	case TMPL_TYPE_EXEC:
+		XLAT_HEAD_VERIFY(tmpl_xlat(vpt));
+		break;
+
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 		/* tmpl_xlat(vpt) can be initialized */
 		break;
@@ -5450,10 +5469,17 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			break;
 		}
 
+		VALUE_BOX_VERIFY(tmpl_value(vpt));
 		break;
 
-	case TMPL_TYPE_REGEX_UNCOMPILED:
 	case TMPL_TYPE_REGEX_XLAT:
+#ifdef HAVE_REGEX
+		XLAT_HEAD_VERIFY(tmpl_xlat(vpt));
+		break;
+#endif
+
+
+	case TMPL_TYPE_REGEX_UNCOMPILED:
 	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
 #ifndef HAVE_REGEX
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_XLAT_UNRESOLVED - No regex support",
