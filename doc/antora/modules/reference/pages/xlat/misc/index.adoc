@@ -5,7 +5,7 @@ of built-in expansions.  These expansions act largely as functions
 which operate on inputs, and produce an output.
 
 .Builtin Functions
-[options="headers, autowidth]
+[options="header, autowidth"]
 |===
 | *Function*				            | *Description*
 | xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items
