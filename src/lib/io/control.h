@@ -42,7 +42,7 @@ extern "C" {
  *  Multiple-producer, single consumer.
  */
 typedef struct fr_control_s fr_control_t;
-typedef	void (*fr_control_callback_t)(void *ctx, void const *data, size_t data_size, fr_time_t now);
+typedef	void (*fr_control_callback_t)(void const *data, size_t data_size, fr_time_t now, void *uctx);
 
 /*
  *	A suggestion for max # of messages, and max message size.
@@ -61,7 +61,7 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size) CC_HINT(nonnull);
 ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data, size_t data_size) CC_HINT(nonnull);
 
-int fr_control_callback_add(fr_control_t **c, uint32_t id, void *ctx, fr_control_callback_t callback) CC_HINT(nonnull(1,4));
+int fr_control_callback_add(fr_control_t **c, uint32_t id, fr_control_callback_t callback, void *uctx) CC_HINT(nonnull(1,3));
 int fr_control_callback_delete(fr_control_t *c, uint32_t id) CC_HINT(nonnull);
 
 int fr_control_same_thread(fr_control_t *c) CC_HINT(nonnull);

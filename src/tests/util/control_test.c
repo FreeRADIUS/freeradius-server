@@ -81,10 +81,10 @@ typedef struct {
 	size_t			num_messages;
 } master_ctx_t;
 
-static void recv_control_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+static void recv_control_callback(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
 	my_message_t const	*m = data;
-	master_ctx_t		*master_ctx = ctx;
+	master_ctx_t		*master_ctx = uctx;
 
 	fr_assert(m->header == CONTROL_MAGIC);
 	fr_assert(data_size == sizeof(*m));
@@ -109,7 +109,7 @@ static void *control_master(void *arg)
 	MPRINT1("Master started.\n");
 
 	for (i = 0; i < num_aq; i++) {
-		fr_control_callback_add(&control[i], FR_CONTROL_ID_CHANNEL, master_ctx, recv_control_callback);
+		fr_control_callback_add(&control[i], FR_CONTROL_ID_CHANNEL, recv_control_callback, master_ctx);
 		fr_control_open(control[i]);
 	}
 

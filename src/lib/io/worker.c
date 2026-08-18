@@ -239,12 +239,12 @@ static void worker_exit(fr_worker_t *worker)
 
 /** Handle a control plane message sent to the worker via a channel
  *
- * @param[in] ctx	the worker
  * @param[in] data	the message
  * @param[in] data_size	size of the data
  * @param[in] now	the current time
+ * @param[in] uctx	the worker
  */
-static void worker_channel_callback(void *ctx, void const *data, size_t data_size, fr_time_t now)
+static void worker_channel_callback(void const *data, size_t data_size, fr_time_t now, void *uctx)
 {
 	int			i;
 	unsigned int		num;
@@ -252,7 +252,7 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 	fr_channel_t		*ch;
 	fr_message_set_t	*ms;
 	fr_channel_event_t	ce;
-	fr_worker_t		*worker = ctx;
+	fr_worker_t		*worker = uctx;
 
 	was_sleeping = worker->was_sleeping;
 	worker->was_sleeping = false;
@@ -405,15 +405,15 @@ static int fr_worker_listen_cancel_self(fr_worker_t *worker, fr_listen_t const *
 
 /** A socket is going away, so clean up any requests which use this socket.
  *
- * @param[in] ctx	the worker
  * @param[in] data	the message
  * @param[in] data_size	size of the data
  * @param[in] now	the current time
+ * @param[in] uctx	the worker
  */
-static void worker_listen_cancel_callback(void *ctx, void const *data, NDEBUG_UNUSED size_t data_size, UNUSED fr_time_t now)
+static void worker_listen_cancel_callback(void const *data, NDEBUG_UNUSED size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
 	fr_listen_t const	*li;
-	fr_worker_t		*worker = ctx;
+	fr_worker_t		*worker = uctx;
 
 	fr_assert(data_size == sizeof(li));
 
@@ -1441,12 +1441,12 @@ nomem:
 		goto fail;
 	}
 
-	if (fr_control_callback_add(&worker->control, FR_CONTROL_ID_CHANNEL, worker, worker_channel_callback) < 0) {
+	if (fr_control_callback_add(&worker->control, FR_CONTROL_ID_CHANNEL, worker_channel_callback, worker) < 0) {
 		fr_strerror_const_push("Failed adding control channel");
 		goto fail;
 	}
 
-	if (fr_control_callback_add(&worker->control, FR_CONTROL_ID_LISTEN_DEAD, worker, worker_listen_cancel_callback) < 0) {
+	if (fr_control_callback_add(&worker->control, FR_CONTROL_ID_LISTEN_DEAD, worker_listen_cancel_callback, worker) < 0) {
 		fr_strerror_const_push("Failed adding callback for listeners");
 		goto fail;
 	}

@@ -202,9 +202,9 @@ void fr_coord_thread_join(void)
 
 /** Callback for a coordinator receiving data from a worker
  */
-static void coord_data_recv(void *ctx, void const *data, size_t data_size, fr_time_t now)
+static void coord_data_recv(void const *data, size_t data_size, fr_time_t now, void *uctx)
 {
-	fr_coord_t		*coord = talloc_get_type_abort(ctx, fr_coord_t);
+	fr_coord_t		*coord = talloc_get_type_abort(uctx, fr_coord_t);
 	fr_coord_msg_t		cm;
 	fr_coord_data_t		*cd;
 	fr_dbuff_t		dbuff;
@@ -236,9 +236,9 @@ static void coord_data_recv(void *ctx, void const *data, size_t data_size, fr_ti
 
 /** Callback for a worker receiving data from a coordinator
  */
-static void coord_worker_data_recv(void *ctx, void const *data, size_t data_size, fr_time_t now)
+static void coord_worker_data_recv(void const *data, size_t data_size, fr_time_t now, void *uctx)
 {
-	fr_coord_worker_t	*cw = talloc_get_type_abort(ctx, fr_coord_worker_t);
+	fr_coord_worker_t	*cw = talloc_get_type_abort(uctx, fr_coord_worker_t);
 	fr_coord_msg_t		cm;
 	fr_coord_data_t		*cd;
 	fr_dbuff_t		dbuff;
@@ -266,9 +266,9 @@ static void coord_worker_data_recv(void *ctx, void const *data, size_t data_size
 
 /** Callback run by a coordinator when a worker attaches
  */
-static void coord_worker_attach(void *ctx, void const *data, NDEBUG_UNUSED size_t data_size, UNUSED fr_time_t now)
+static void coord_worker_attach(void const *data, NDEBUG_UNUSED size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
-	fr_coord_t				*coord = talloc_get_type_abort(ctx, fr_coord_t);
+	fr_coord_t				*coord = talloc_get_type_abort(uctx, fr_coord_t);
 	fr_coord_worker_attach_msg_t const	*msg = data;
 	fr_coord_msg_t				ack;
 	uint32_t				thread_id;
@@ -289,9 +289,9 @@ static void coord_worker_attach(void *ctx, void const *data, NDEBUG_UNUSED size_
 
 /** Callback run by a coordinator when a worker detaches
  */
-static void coord_worker_detach(void *ctx, void const *data, NDEBUG_UNUSED size_t data_size, UNUSED fr_time_t now)
+static void coord_worker_detach(void const *data, NDEBUG_UNUSED size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
-	fr_coord_t				*coord = talloc_get_type_abort(ctx, fr_coord_t);
+	fr_coord_t				*coord = talloc_get_type_abort(uctx, fr_coord_t);
 	fr_coord_worker_detach_msg_t const	*msg = data;
 	fr_coord_msg_t				ack;
 	uint32_t				thread_id;
@@ -361,11 +361,11 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	}
 
 	if (fr_control_callback_add(&coord->coord_recv_control, FR_CONTROL_ID_COORD_WORKER_ATTACH,
-				    coord, coord_worker_attach) < 0) goto fail;
+				    coord_worker_attach, coord) < 0) goto fail;
 	if (fr_control_callback_add(&coord->coord_recv_control, FR_CONTROL_ID_COORD_WORKER_DETACH,
-				    coord, coord_worker_detach) < 0) goto fail;
+				    coord_worker_detach, coord) < 0) goto fail;
 	if (fr_control_callback_add(&coord->coord_recv_control, FR_CONTROL_ID_COORD_DATA,
-				    coord, coord_data_recv) < 0) goto fail;
+				    coord_data_recv, coord) < 0) goto fail;
 
 	/* Count the number of callbacks defined, for sanity checking messages */
 	while (cb->callback) {
@@ -639,8 +639,8 @@ int fr_coord_detach(fr_coord_worker_t *cw, bool exiting)
 
 /** A worker got an ack from a coordinator in response to attach / detach
  */
-static void coordinate_worker_ack(UNUSED void *ctx, NDEBUG_UNUSED void const *data, NDEBUG_UNUSED size_t data_size,
-				  UNUSED fr_time_t now)
+static void coordinate_worker_ack(NDEBUG_UNUSED void const *data, NDEBUG_UNUSED size_t data_size,
+				  UNUSED fr_time_t now, UNUSED void *uctx)
 {
 #ifndef NDEBUG
 	fr_coord_msg_t const		*cm = data;
@@ -693,9 +693,9 @@ fr_coord_worker_t *fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	cw->callbacks = coord_reg->worker_cb;
 
 	if (fr_control_callback_add(&cw->worker_recv_control, FR_CONTROL_ID_COORD_WORKER_ACK,
-				    cw, coordinate_worker_ack) < 0) goto fail;
+				    coordinate_worker_ack, cw) < 0) goto fail;
 	if (fr_control_callback_add(&cw->worker_recv_control, FR_CONTROL_ID_COORD_DATA,
-				    cw, coord_worker_data_recv) < 0) goto fail;
+				    coord_worker_data_recv, cw) < 0) goto fail;
 
 	if (fr_control_open(cw->worker_recv_control) < 0) goto fail;
 

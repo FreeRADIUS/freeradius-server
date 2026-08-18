@@ -65,8 +65,8 @@ typedef struct {
 
 typedef struct {
 	uint32_t			id;		//!< id of this callback
-	void				*ctx;		//!< context for the callback
 	fr_control_callback_t		callback;	//!< the function to call
+	void				*uctx;		//!< context for the callback
 } fr_control_ctx_t;
 
 
@@ -114,7 +114,7 @@ static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 
 		if (!c->type[id].callback) continue;
 
-		c->type[id].callback(c->type[id].ctx, data, message_size, now);
+		c->type[id].callback(data, message_size, now, c->type[id].uctx);
 	}
 }
 
@@ -359,7 +359,7 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	if (c->same_thread) {
 		if (!c->type[id].callback) return -1;
 
-		c->type[id].callback(c->type[id].ctx, data, data_size, fr_time());
+		c->type[id].callback(data, data_size, fr_time(), c->type[id].uctx);
 		return 0;
 	}
 
@@ -435,13 +435,13 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
  *
  * @param[in] c the control structure
  * @param[in] id the ident of this message.
- * @param[in] ctx the context for the callback
  * @param[in] callback the callback function
+ * @param[in] uctx the context passed to the callback
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_callback_add(fr_control_t **c, uint32_t id, void *ctx, fr_control_callback_t callback)
+int fr_control_callback_add(fr_control_t **c, uint32_t id, fr_control_callback_t callback, void *uctx)
 {
 	fr_control_t	*ctrl = talloc_get_type_abort(*c, fr_control_t);
 
@@ -475,7 +475,7 @@ int fr_control_callback_add(fr_control_t **c, uint32_t id, void *ctx, fr_control
 	/*
 	 *	Re-registering the same thing is OK.
 	 */
-	if ((ctrl->type[id].ctx == ctx) &&
+	if ((ctrl->type[id].uctx == uctx) &&
 	    (ctrl->type[id].callback == callback)) {
 		return 0;
 	}
@@ -486,7 +486,7 @@ int fr_control_callback_add(fr_control_t **c, uint32_t id, void *ctx, fr_control
 	}
 
 	ctrl->type[id].id = id;
-	ctrl->type[id].ctx = ctx;
+	ctrl->type[id].uctx = uctx;
 	ctrl->type[id].callback = callback;
 
 	return 0;
@@ -512,7 +512,7 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 	if (c->type[id].callback == NULL) return 0;
 
 	c->type[id].id = 0;
-	c->type[id].ctx = NULL;
+	c->type[id].uctx = NULL;
 	c->type[id].callback = NULL;
 
 	return 0;

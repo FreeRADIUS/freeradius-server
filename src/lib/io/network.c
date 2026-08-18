@@ -314,7 +314,7 @@ int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
 }
 
-static void fr_network_worker_started_callback(void *ctx, void const *data, size_t data_size, fr_time_t now);
+static void fr_network_worker_started_callback(void const *data, size_t data_size, fr_time_t now, void *uctx);
 
 /** Add a worker to a network in the same thread
  *
@@ -323,7 +323,7 @@ static void fr_network_worker_started_callback(void *ctx, void const *data, size
  */
 void fr_network_worker_add_self(fr_network_t *nr, fr_worker_t *worker)
 {
-	fr_network_worker_started_callback(nr, &worker, sizeof(worker), fr_time_wrap(0));
+	fr_network_worker_started_callback(&worker, sizeof(worker), fr_time_wrap(0), nr);
 }
 
 
@@ -559,16 +559,16 @@ static void fr_network_recv_reply(fr_channel_t *ch, fr_channel_data_t *cd, void 
  * This is called from the event loop when we get a notification
  * from the event signalling pipe.
  *
- * @param[in] ctx	the network
  * @param[in] data	the message
  * @param[in] data_size	size of the data
  * @param[in] now	the current time
+ * @param[in] uctx	the network
  */
-static void fr_network_channel_callback(void *ctx, void const *data, size_t data_size, fr_time_t now)
+static void fr_network_channel_callback(void const *data, size_t data_size, fr_time_t now, void *uctx)
 {
 	fr_channel_event_t	ce;
 	fr_channel_t		*ch;
-	fr_network_t		*nr = ctx;
+	fr_network_t		*nr = uctx;
 
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	DEBUG3("Channel %s",
@@ -1426,14 +1426,14 @@ static int _network_socket_free(fr_network_socket_t *s)
 
 /** Handle a network control message callback for a new listener
  *
- * @param[in] ctx the network
  * @param[in] data the message
  * @param[in] data_size size of the data
  * @param[in] now the current time
+ * @param[in] uctx the network
  */
-static void fr_network_listen_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+static void fr_network_listen_callback(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
-	fr_network_t		*nr = talloc_get_type_abort(ctx, fr_network_t);
+	fr_network_t		*nr = talloc_get_type_abort(uctx, fr_network_t);
 	fr_listen_t		*li;
 
 	fr_assert(data_size == sizeof(li));
@@ -1567,16 +1567,16 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 
 /** Handle a network control message callback for a new "watch directory"
  *
- * @param[in] ctx the network
  * @param[in] data the message
  * @param[in] data_size size of the data
  * @param[in] now the current time
+ * @param[in] uctx the network
  */
-static void fr_network_directory_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+static void fr_network_directory_callback(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
 	int			num_messages;
 	size_t			size;
-	fr_network_t		*nr = talloc_get_type_abort(ctx, fr_network_t);
+	fr_network_t		*nr = talloc_get_type_abort(uctx, fr_network_t);
 	fr_listen_t		*li = talloc_get_type_abort(*((void * const *)data), fr_listen_t);
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
@@ -1637,15 +1637,15 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 /** Handle a network control message callback for a new worker
  *
- * @param[in] ctx the network
  * @param[in] data the message
  * @param[in] data_size size of the data
  * @param[in] now the current time
+ * @param[in] uctx the network
  */
-static void fr_network_worker_started_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+static void fr_network_worker_started_callback(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
 	int i;
-	fr_network_t *nr = ctx;
+	fr_network_t *nr = uctx;
 	fr_worker_t *worker;
 	fr_network_worker_t *w;
 
@@ -1683,14 +1683,14 @@ static void fr_network_worker_started_callback(void *ctx, void const *data, size
 
 /** Handle a network control message callback for a packet sent to a socket
  *
- * @param[in] ctx the network
  * @param[in] data the message
  * @param[in] data_size size of the data
  * @param[in] now the current time
+ * @param[in] uctx the network
  */
-static void fr_network_inject_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+static void fr_network_inject_callback(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
-	fr_network_t *nr = ctx;
+	fr_network_t *nr = uctx;
 	fr_network_inject_t my_inject;
 	fr_network_socket_t *s;
 
@@ -2102,27 +2102,27 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 		goto fail;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_CHANNEL, nr, fr_network_channel_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_CHANNEL, fr_network_channel_callback, nr) < 0) {
 		fr_strerror_const_push("Failed adding channel callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_LISTEN, nr, fr_network_listen_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_LISTEN, fr_network_listen_callback, nr) < 0) {
 		fr_strerror_const_push("Failed adding socket callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_DIRECTORY, nr, fr_network_directory_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_DIRECTORY, fr_network_directory_callback, nr) < 0) {
 		fr_strerror_const_push("Failed adding socket callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_WORKER, nr, fr_network_worker_started_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_WORKER, fr_network_worker_started_callback, nr) < 0) {
 		fr_strerror_const_push("Failed adding worker callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_INJECT, nr, fr_network_inject_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_INJECT, fr_network_inject_callback, nr) < 0) {
 		fr_strerror_const_push("Failed adding packet injection callback");
 		goto fail2;
 	}
