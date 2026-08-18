@@ -75,6 +75,9 @@ FR_SLAB_FUNCS(request, request_t)
 static _Thread_local fr_ring_buffer_t *fr_worker_rb;
 
 typedef struct {
+	fr_worker_t		*worker;	//!< the worker that owns this channel slot,
+						///< so channel callbacks can reach back without
+						///< threading `worker` through every layer.
 	fr_channel_t		*ch;
 
 	/*
@@ -197,11 +200,12 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool do_n
  *
  * @param[in] ch the channel to drain
  * @param[in] cd the message (if any) to start with
- * @param[in] uctx the worker
+ * @param[in] uctx the worker channel slot the message came in on
  */
 static void worker_recv_request(fr_channel_t *ch, fr_channel_data_t *cd, void *uctx)
 {
-	fr_worker_t *worker = uctx;
+	fr_worker_channel_t *wc = uctx;
+	fr_worker_t *worker = wc->worker;
 
 	worker->stats.in++;
 	DEBUG3("Received request %" PRIu64 "", worker->stats.in);
@@ -292,6 +296,7 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 
 			if (worker->channel[i].ch != NULL) continue;
 
+			worker->channel[i].worker = worker;
 			worker->channel[i].ch = ch;
 			fr_dlist_init(&worker->channel[i].dlist, fr_async_t, entry);
 
@@ -302,6 +307,14 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 						   worker->config.ring_buffer_size, false);
 			fr_assert(ms != NULL);
 			fr_channel_responder_uctx_add(ch, ms);
+
+			/*
+			 *	Now that the slot is claimed, hand the callback a
+			 *	pointer straight to it.  set_recv_request cannot
+			 *	live in fr_worker_channel_create() because the
+			 *	slot has not been allocated at that point.
+			 */
+			fr_channel_set_recv_request(ch, worker_recv_request, &worker->channel[i]);
 
 			worker->num_channels++;
 			ok = true;
@@ -1646,7 +1659,6 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	ch = fr_channel_create(ctx, master, worker->control, same);
 	if (!ch) return NULL;
 
-	fr_channel_set_recv_request(ch, worker_recv_request, worker);
 
 	/*
 	 *	Tell the worker about the channel
