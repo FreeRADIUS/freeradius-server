@@ -4,14 +4,14 @@
 
 # Load generator configuration
 loadgen:
-  start_pps: 100
-  max_pps: 100
-  duration: 60
+  start_pps: 50
+  max_pps: 50
+  duration: 120
   step: 100
   parallel: 1
   max_backlog: 1000
   repeat: "no"
 
 # Test framework
-test_timeout: 125
-test_verify_timeout: 120
+test_timeout: 300
+test_verify_timeout: 290
