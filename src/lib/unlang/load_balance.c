@@ -82,8 +82,8 @@ uint8_t unlang_load_balance_child(request_t *request)
 
 #define unlang_redundant_load_balance unlang_load_balance
 
-static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, request_t *request,
-						unlang_stack_frame_t *frame)
+static unlang_action_t unlang_redundant_next(unlang_result_t *p_result, request_t *request,
+					     unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_redundant_t	*redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
@@ -166,8 +166,8 @@ static unlang_action_t unlang_redundant(unlang_result_t *p_result, request_t *re
 	 */
 	redundant->start = unlang_list_head(&g->children);
 
-	frame->process = unlang_load_balance_next;
-	return unlang_load_balance_next(p_result, request, frame);
+	frame->process = unlang_redundant_next;
+	return unlang_redundant_next(p_result, request, frame);
 }
 
 static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -296,8 +296,8 @@ selected_child:
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	frame->process = unlang_load_balance_next;
-	return unlang_load_balance_next(p_result, request, frame);
+	frame->process = unlang_redundant_next;
+	return unlang_redundant_next(p_result, request, frame);
 }
 
 

@@ -1163,6 +1163,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			ua = UNLANG_ACTION_CALCULATE_RESULT;
 
 		} else {
+
 			/*
 			 *	catch plays games with the frame so we skip
 			 *	to the next catch section at a given depth,
