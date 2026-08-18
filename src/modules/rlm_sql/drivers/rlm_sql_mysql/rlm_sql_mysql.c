@@ -101,6 +101,13 @@ typedef struct {
 	char const	*character_set;		//!< Character set to use on connections.
 } rlm_sql_mysql_t;
 
+typedef struct {
+	MYSQL		db;			//!< Our copy of the connection details - holds the flags needed
+						///< by mysql_real_escape_string()
+	bool		ready;			//!< Has the db structure been populated.
+	connection_t	*conn;			//!< Connection used to fetch server status.
+} rlm_sql_mysql_esc_ctx_t;
+
 static conf_parser_t tls_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_ca_file) },
 	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_ca_path) },
@@ -922,19 +929,16 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 
 static int sql_escape_func(request_t *request, fr_value_box_t *vb, void *arg)
 {
-	connection_t		*conn = talloc_get_type_abort(arg, connection_t);
-	rlm_sql_mysql_conn_t	*c;
+	rlm_sql_mysql_esc_ctx_t	*esc_ctx = talloc_get_type_abort(arg, rlm_sql_mysql_esc_ctx_t);
 	char			*out;
 	size_t			inlen = vb->vb_length;
 	unsigned long		real_len;
-	char const		*log_prefix = conn->name;
+	char const		*log_prefix = esc_ctx->conn->name;
 
-	if (!((conn->state == CONNECTION_STATE_CONNECTING) || (conn->state == CONNECTION_STATE_CONNECTED))) {
-		ROPTIONAL(RERROR, ERROR, "Connection not available for escaping");
+	if (!esc_ctx->ready) {
+		ROPTIONAL(RERROR, ERROR, "Connection flags not available for escaping");
 		return -1;
 	}
-
-	c = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
 
 	/* Prevent integer overflow on (inlen * 2 + 1) */
 	if (inlen > (SIZE_MAX - 1) / 2) {
@@ -943,7 +947,7 @@ static int sql_escape_func(request_t *request, fr_value_box_t *vb, void *arg)
 	}
 
 	MEM(out = talloc_array(vb, char, inlen * 2 + 1));
-	real_len = mysql_real_escape_string(&c->db, out, vb->vb_strvalue, inlen);
+	real_len = mysql_real_escape_string(&esc_ctx->db, out, vb->vb_strvalue, inlen);
 
 	if ((size_t)real_len + 1 < inlen * 2 + 1) MEM(out = talloc_realloc(vb, out, char, real_len + 1));
 	fr_value_box_strdup_shallow_replace(vb, out, real_len);
@@ -1189,19 +1193,40 @@ static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, UNUSED
 	RETURN_UNLANG_OK;
 }
 
+/** Capture our copy of the connection details for escaping purposes.
+ *
+ * After an "escape" connection has been started and again after it is
+ * established.
+ * Then close the connection.  mysql_real_escape_string only looks at one
+ * flag inside the MYSQL structure, so no need to keep an open connection.
+ */
+static void _sql_escape_post_conn(connection_t *conn, UNUSED connection_state_t prev,
+				  UNUSED connection_state_t state, void *uctx)
+{
+	rlm_sql_mysql_esc_ctx_t	*esc_ctx = talloc_get_type_abort(uctx, rlm_sql_mysql_esc_ctx_t);
+	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
+
+	esc_ctx->db = c->db;
+	esc_ctx->ready = true;
+	if (conn->state == CONNECTION_STATE_CONNECTED) connection_signal_halt(conn);
+}
+
+
 /** Allocate the argument used for the SQL escape function
  *
- * In this case, a dedicated connection to allow the escape
- * function to have access to server side parameters, though
- * no packets ever flow after the connection is made.
+ * In this case, a dedicated connection is made to fetch server flags used by
+ * the escape function, though no packets ever flow after the connection is made.
+ * Once the server flags have been retrieved, the connection is closed, by a
+ * watch function.
  */
 static void *sql_escape_arg_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx)
 {
 	rlm_sql_t const	*inst = talloc_get_type_abort(uctx, rlm_sql_t);
-	connection_t *conn;
+	rlm_sql_mysql_esc_ctx_t	*esc_ctx;
 	char const	*log_prefix = inst->name;
 
-	conn = connection_alloc(ctx, el,
+	MEM(esc_ctx = talloc_zero(ctx, rlm_sql_mysql_esc_ctx_t));
+	esc_ctx->conn = connection_alloc(ctx, el,
 				    &(connection_funcs_t){
 					.init = _sql_connection_init,
 					.close = _sql_connection_close,
@@ -1209,19 +1234,30 @@ static void *sql_escape_arg_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, void *uc
 				    inst->config.trunk_conf.conn_conf,
 				    inst->name, inst);
 
-	if (!conn) {
+	if (!esc_ctx->conn) {
 		PERROR("Failed allocating state handler for SQL escape connection");
+		talloc_free(esc_ctx);
 		return NULL;
 	}
 
-	connection_signal_init(conn);
-	return conn;
+	/*
+	 *	The watch is run both after entering CONNECTING and CONNECTED
+	 *	The first will capture the configured character set.  The second will
+	 *	capture status returned by the server.
+	 */
+	connection_add_watch_post(esc_ctx->conn, CONNECTION_STATE_CONNECTING,
+				  _sql_escape_post_conn, true, esc_ctx);
+	connection_add_watch_post(esc_ctx->conn, CONNECTION_STATE_CONNECTED,
+				  _sql_escape_post_conn, true, esc_ctx);
+
+	connection_signal_init(esc_ctx->conn);
+	return esc_ctx;
 }
 
 static void sql_escape_arg_free(void *uctx)
 {
-	connection_t	*conn = talloc_get_type_abort(uctx, connection_t);
-	connection_signal_halt(conn);
+	rlm_sql_mysql_esc_ctx_t	*esc_ctx = talloc_get_type_abort(uctx, rlm_sql_mysql_esc_ctx_t);
+	connection_signal_halt(esc_ctx->conn);
 }
 
 /* Exported to rlm_sql */
