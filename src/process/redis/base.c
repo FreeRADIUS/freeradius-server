@@ -1208,13 +1208,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	process_redis_t *inst = talloc_get_type_abort(mctx->mi->data, process_redis_t);
 
 	inst->inst_name = mctx->mi->name;
-	return (0);
+	return 0;
 }
 
 static int mod_load(void)
 {
-	return redis_dict_init();
+	if (redis_dict_init() < 0) return -1;
+
 	attr_packet_type = attr_redis_packet_type;
+	return 0;
 }
 
 static fr_process_state_t const process_state[] = {
