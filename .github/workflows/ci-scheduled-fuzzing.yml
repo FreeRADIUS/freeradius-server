@@ -249,8 +249,9 @@ jobs:
         REMAINING_TIME=$(( $TOTAL_RUNTIME + $START_TIMESTAMP - `date +%s` ))
         echo "Started at $START_TIMESTAMP for $TOTAL_RUNTIME secs. Fuzzing ${{ steps.pick_commit.outputs.commit_id }}:$PROTOCOL for $REMAINING_TIME secs"
         [[ "$REMAINING_TIME" -lt 1 ]] && exit 1
-        make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT="$REMAINING_TIME" FUZZER_ARGUMENTS="-jobs=`nproc` -workers=`nproc`" || :
+        make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT="$REMAINING_TIME" FUZZER_ARGUMENTS="-jobs=`nproc` -workers=`nproc`" | tee build/fuzzer/$PROTOCOL.out.log || :
         find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
+        ! grep -sqr FAILED build/fuzzer/*.log
       env:
         GITHUB_REF: "${{ github.ref }}"
         START_TIMESTAMP: "${{ needs.set-matrix.outputs.starttimestamp }}"
