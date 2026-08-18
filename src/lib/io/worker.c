@@ -195,13 +195,13 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool do_n
 
 /** Callback which handles a message being received on the worker side.
  *
- * @param[in] ctx the worker
  * @param[in] ch the channel to drain
  * @param[in] cd the message (if any) to start with
+ * @param[in] uctx the worker
  */
-static void worker_recv_request(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd)
+static void worker_recv_request(fr_channel_t *ch, fr_channel_data_t *cd, void *uctx)
 {
-	fr_worker_t *worker = ctx;
+	fr_worker_t *worker = uctx;
 
 	worker->stats.in++;
 	DEBUG3("Received request %" PRIu64 "", worker->stats.in);
@@ -1646,7 +1646,7 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	ch = fr_channel_create(ctx, master, worker->control, same);
 	if (!ch) return NULL;
 
-	fr_channel_set_recv_request(ch, worker, worker_recv_request);
+	fr_channel_set_recv_request(ch, worker_recv_request, worker);
 
 	/*
 	 *	Tell the worker about the channel

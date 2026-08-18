@@ -512,13 +512,13 @@ static void fr_network_unsuspend(fr_network_t *nr)
 
 /** Callback which handles a message being received on the network side.
  *
- * @param[in] ctx the network
  * @param[in] ch the channel that the message is on.
  * @param[in] cd the message (if any) to start with
+ * @param[in] uctx the network
  */
-static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd)
+static void fr_network_recv_reply(fr_channel_t *ch, fr_channel_data_t *cd, void *uctx)
 {
-	fr_network_t *nr = ctx;
+	fr_network_t *nr = uctx;
 	fr_network_worker_t *worker;
 
 	cd->channel.ch = ch;
@@ -1667,7 +1667,7 @@ static void fr_network_worker_started_callback(void *ctx, void const *data, size
 	fr_fatal_assert_msg(w->channel, "Failed creating new channel");
 
 	fr_channel_requestor_uctx_add(w->channel, w);
-	fr_channel_set_recv_reply(w->channel, nr, fr_network_recv_reply);
+	fr_channel_set_recv_reply(w->channel, fr_network_recv_reply, nr);
 
 	/*
 	 *	Insert the worker into the array of workers.

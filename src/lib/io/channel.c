@@ -314,7 +314,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	Same thread?  Just call the "recv" function directly.
 	 */
 	if (ch->same_thread) {
-		ch->end[TO_REQUESTOR].recv(ch->end[TO_REQUESTOR].recv_uctx, ch, cd);
+		ch->end[TO_REQUESTOR].recv(ch, cd, ch->end[TO_REQUESTOR].recv_uctx);
 		return 0;
 	}
 
@@ -454,7 +454,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	fr_assert(fr_time_lteq(requestor->stats.last_read_other, cd->m.when));
 	requestor->stats.last_read_other = cd->m.when;
 
-	ch->end[TO_RESPONDER].recv(ch->end[TO_RESPONDER].recv_uctx, ch, cd);
+	ch->end[TO_RESPONDER].recv(ch, cd, ch->end[TO_RESPONDER].recv_uctx);
 
 	return true;
 }
@@ -491,7 +491,7 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 	fr_assert(fr_time_lteq(responder->stats.last_read_other, cd->m.when));
 	responder->stats.last_read_other = cd->m.when;
 
-	ch->end[TO_REQUESTOR].recv(ch->end[TO_REQUESTOR].recv_uctx, ch, cd);
+	ch->end[TO_REQUESTOR].recv(ch, cd, ch->end[TO_REQUESTOR].recv_uctx);
 
 	return true;
 }
@@ -519,7 +519,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	Same thread?  Just call the "recv" function directly.
 	 */
 	if (ch->same_thread) {
-		ch->end[TO_RESPONDER].recv(ch->end[TO_RESPONDER].recv_uctx, ch, cd);
+		ch->end[TO_RESPONDER].recv(ch, cd, ch->end[TO_RESPONDER].recv_uctx);
 		return 0;
 	}
 
@@ -966,7 +966,7 @@ void *fr_channel_requestor_uctx_get(fr_channel_t *ch)
 }
 
 
-int fr_channel_set_recv_reply(fr_channel_t *ch, void *uctx, fr_channel_recv_callback_t recv_reply)
+int fr_channel_set_recv_reply(fr_channel_t *ch, fr_channel_recv_callback_t recv_reply, void *uctx)
 {
 	ch->end[TO_RESPONDER].recv = recv_reply;
 	ch->end[TO_RESPONDER].recv_uctx = uctx;
@@ -974,7 +974,7 @@ int fr_channel_set_recv_reply(fr_channel_t *ch, void *uctx, fr_channel_recv_call
 	return 0;
 }
 
-int fr_channel_set_recv_request(fr_channel_t *ch, void *uctx, fr_channel_recv_callback_t recv_request)
+int fr_channel_set_recv_request(fr_channel_t *ch, fr_channel_recv_callback_t recv_request, void *uctx)
 {
 	ch->end[TO_REQUESTOR].recv = recv_request;
 	ch->end[TO_REQUESTOR].recv_uctx = uctx;

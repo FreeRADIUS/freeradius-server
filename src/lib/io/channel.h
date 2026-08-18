@@ -168,9 +168,9 @@ int	fr_channel_null_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 bool	fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
-typedef void (*fr_channel_recv_callback_t)(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd);
-int	fr_channel_set_recv_reply(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply) CC_HINT(nonnull(1,3));
-int	fr_channel_set_recv_request(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply) CC_HINT(nonnull(1,3));
+typedef void (*fr_channel_recv_callback_t)(fr_channel_t *ch, fr_channel_data_t *cd, void *uctx);
+int	fr_channel_set_recv_reply(fr_channel_t *ch, fr_channel_recv_callback_t recv_reply, void *uctx) CC_HINT(nonnull(1,2));
+int	fr_channel_set_recv_request(fr_channel_t *ch, fr_channel_recv_callback_t recv_request, void *uctx) CC_HINT(nonnull(1,2));
 
 int	fr_channel_responder_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
 
