@@ -175,7 +175,7 @@ static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUS
 		return 0;
 	}
 
-	fprintf(fp, "%s\n", fr_table_str_by_value(rcode_table, mi->code, "<invalid>"));
+	fprintf(fp, "%s\n", fr_table_str_by_value(rcode_table, mi->rcode, "<invalid>"));
 
 	return 0;
 }
@@ -199,7 +199,7 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 	}
 
 	module_instance_data_unprotect(mi);
-	mi->code = rcode;
+	mi->rcode = rcode;
 	mi->force = true;
 	module_instance_data_protect(mi);
 

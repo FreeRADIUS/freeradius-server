@@ -790,10 +790,20 @@ static unlang_action_t unlang_module(unlang_result_t *p_result, request_t *reque
 		m->mmc.mi->module->exported->name, m->mmc.mi->name);
 
 	/*
-	 *	Return administratively configured return code
+	 *	Return administratively configured return code, either for the module as a whole, or for this
+	 *	thread.
 	 */
 	if (m->mmc.mi->force) {
-		p_result->rcode = m->mmc.mi->code;
+		p_result->rcode = m->mmc.mi->rcode;
+		ua = UNLANG_ACTION_CALCULATE_RESULT;
+		goto done;
+	}
+
+	state->thread = module_thread(m->mmc.mi);
+	fr_assert(state->thread != NULL);
+
+	if (state->thread->force) {
+		p_result->rcode = state->thread->rcode;
 		ua = UNLANG_ACTION_CALCULATE_RESULT;
 		goto done;
 	}
@@ -819,12 +829,6 @@ static unlang_action_t unlang_module(unlang_result_t *p_result, request_t *reque
 		 */
 		if (state->env_result != CALL_ENV_SUCCESS) return UNLANG_ACTION_FAIL;
 	}
-
-	/*
-	 *	Grab the thread/module specific data if any exists.
-	 */
-	state->thread = module_thread(m->mmc.mi);
-	fr_assert(state->thread != NULL);
 
 	/*
 	 *	For logging unresponsive children.

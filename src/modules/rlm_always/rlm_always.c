@@ -87,7 +87,7 @@ static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	p = "alive";
 	if (mi->force) {
-		p = fr_table_str_by_value(rcode_table, mi->code, "<invalid>");
+		p = fr_table_str_by_value(rcode_table, mi->rcode, "<invalid>");
 	}
 
 	if (!in_head || in_head->vb_length == 0) goto done;
@@ -107,7 +107,7 @@ static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		mi->code = rcode;
+		mi->rcode = rcode;
 		mi->force = true;
 
 	}

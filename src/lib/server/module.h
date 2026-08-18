@@ -319,7 +319,7 @@ struct module_instance_s {
 	bool				force;		//!< Force the module to return a specific code.
 							//!< Usually set via an administrative interface.
 
-	rlm_rcode_t			code;		//!< Code module will return when 'force' has
+	rlm_rcode_t			rcode;		//!< Code module will return when 'force' has
 							//!< has been set to true.
 
 	unlang_mod_actions_t       	actions;	//!< default actions and retries.
@@ -379,6 +379,16 @@ struct module_thread_instance_s {
 
 	uint64_t			total_calls;	//!< total number of times we've been called
 	uint64_t			active_callers; //!< number of active callers.  i.e. number of current yields
+
+	/** @name Return code overrides
+	 * @{
+ 	 */
+	bool				force;		//!< Force the module to return a specific code.
+							//!< Usually set via an administrative interface.
+
+	rlm_rcode_t			rcode;		//!< Code module will return when 'force' has
+							//!< has been set to true.
+	/** @} */
 };
 
 /** Callback to retrieve thread-local data for a module
@@ -506,6 +516,17 @@ module_thread_instance_t *module_thread(module_instance_t const *mi)
 }
 
 module_thread_instance_t *module_thread_by_data(module_list_t const *ml, void const *data) CC_HINT(warn_unused_result);
+
+static inline void module_thread_force(module_thread_instance_t *mt, rlm_rcode_t rcode)
+{
+	if (rcode == RLM_MODULE_NOT_SET) {
+		mt->force = false;
+	} else {
+		mt->force = true;
+		mt->rcode = rcode;
+	}
+}
+
 /** @} */
 
 /** @name Module and module thread initialisation and instantiation
