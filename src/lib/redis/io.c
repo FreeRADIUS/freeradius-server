@@ -175,7 +175,8 @@ static void _redis_connected_nc(redisAsyncContext *ac, UNUSED int status)
 		if (!tls_session) {
 			fr_tls_strerror_printf("%s - [%s]", io_conf->log_prefix, conn->name);
 			ERROR("%s - Failed to allocate TLS session", io_conf->log_prefix);
-			return connection_signal_reconnect(conn, CONNECTION_FAILED);
+			connection_signal_reconnect(conn, CONNECTION_FAILED);
+			return;
 		}
 
 		// redisInitiateSSL() takes ownership of SSL object on success
@@ -183,7 +184,8 @@ static void _redis_connected_nc(redisAsyncContext *ac, UNUSED int status)
 		if (redisInitiateSSL(&ac->c, tls_session->ssl) != REDIS_OK) {
 			ERROR("%s - Failed to initiate SSL: %s", io_conf->log_prefix, ac->c.errstr);
 			SSL_free(tls_session->ssl);
-			return connection_signal_reconnect(conn, CONNECTION_FAILED);
+			connection_signal_reconnect(conn, CONNECTION_FAILED);
+			return;
 		}
 	}
 #endif
@@ -199,7 +201,7 @@ static void _redis_connected_nc(redisAsyncContext *ac, UNUSED int status)
 					      io_conf->username, io_conf->password) != REDIS_OK) {
 			error:
 				ERROR("Failed executing command");
-				return connection_signal_reconnect(conn, CONNECTION_FAILED);
+				connection_signal_reconnect(conn, CONNECTION_FAILED);
 			}
 			return;
 		}
