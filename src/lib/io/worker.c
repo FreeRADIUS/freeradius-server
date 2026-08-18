@@ -79,12 +79,9 @@ typedef struct {
 						///< so channel callbacks can reach back without
 						///< threading `worker` through every layer.
 	fr_channel_t		*ch;
+	fr_message_set_t	*ms;		//!< messages for this channel
 
-	/*
-	 *	To save time, we don't care about num_elements here.  Which means that we don't
-	 *	need to cache or lookup the fr_worker_listen_t when we free a request.
-	 */
-	fr_dlist_head_t		dlist;
+	fr_dlist_head_t		dlist;		//!< of requests received on this channel
 } fr_worker_channel_t;
 
 /**
@@ -193,7 +190,7 @@ static inline bool is_worker_thread(fr_worker_t const *worker)
 	return (pthread_equal(pthread_self(), worker->thread_id) != 0);
 }
 
-static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now);
+static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t *cd, fr_time_t now);
 static void worker_send_reply(fr_worker_t *worker, request_t *request, bool do_not_respond, fr_time_t now);
 
 /** Callback which handles a message being received on the worker side.
@@ -210,15 +207,15 @@ static void worker_recv_request(fr_channel_t *ch, fr_channel_data_t *cd, void *u
 	worker->stats.in++;
 	DEBUG3("Received request %" PRIu64 "", worker->stats.in);
 	cd->channel.ch = ch;
-	worker_request_bootstrap(worker, cd, fr_time());
+	worker_request_bootstrap(wc, cd, fr_time());
 }
 
 static void worker_requests_cancel(fr_worker_channel_t *ch)
 {
-	request_t *request;
+	fr_async_t *async;
 
-	while ((request = fr_dlist_pop_head(&ch->dlist)) != NULL) {
-		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+	while ((async = fr_dlist_pop_head(&ch->dlist)) != NULL) {
+		unlang_interpret_signal(async->request, FR_SIGNAL_CANCEL);
 	}
 }
 
@@ -306,14 +303,17 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 						   sizeof(fr_channel_data_t),
 						   worker->config.ring_buffer_size, false);
 			fr_assert(ms != NULL);
-			fr_channel_responder_uctx_add(ch, ms);
+			worker->channel[i].ms = ms;
 
 			/*
-			 *	Now that the slot is claimed, hand the callback a
-			 *	pointer straight to it.  set_recv_request cannot
-			 *	live in fr_worker_channel_create() because the
-			 *	slot has not been allocated at that point.
+			 *	Hand the channel a pointer to the slot rather than to
+			 *	any one field of it, so a callback holding only the
+			 *	channel reaches the message set and the request list
+			 *	alike.  Neither can be set in
+			 *	fr_worker_channel_create() because the slot has not
+			 *	been claimed at that point.
 			 */
+			fr_channel_responder_uctx_add(ch, &worker->channel[i]);
 			fr_channel_set_recv_request(ch, worker_recv_request, &worker->channel[i]);
 
 			worker->num_channels++;
@@ -340,7 +340,7 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 
 			worker_requests_cancel(&worker->channel[i]);
 
-			ms = fr_channel_responder_uctx_get(ch);
+			ms = worker->channel[i].ms;
 
 			fr_assert_msg(fr_dlist_num_elements(&worker->channel[i].dlist) == 0,
 				      "Network added messages to channel after sending FR_CHANNEL_CLOSE");
@@ -364,7 +364,7 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 
 			worker->channel[i].ch = NULL;
 
-			fr_assert(!fr_dlist_head(&worker->channel[i].dlist)); /* we can't look at num_elements */
+			fr_assert(fr_dlist_num_elements(&worker->channel[i].dlist) == 0);
 			fr_assert(worker->num_channels > 0);
 
 			worker->num_channels--;
@@ -437,6 +437,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	size_t			size;
 	fr_channel_data_t	*reply;
 	fr_channel_t		*ch;
+	fr_worker_channel_t	*wc;
 	fr_message_set_t	*ms;
 	fr_listen_t		*listen;
 
@@ -460,7 +461,8 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 		return;
 	}
 
-	ms = fr_channel_responder_uctx_get(ch);
+	wc = fr_channel_responder_uctx_get(ch);
+	ms = wc->ms;
 	fr_assert(ms != NULL);
 
 	size = listen->app_io->default_reply_size;
@@ -613,6 +615,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 {
 	fr_channel_data_t *reply;
 	fr_channel_t *ch;
+	fr_worker_channel_t *wc;
 	fr_message_set_t *ms;
 	size_t size = 1;
 
@@ -645,7 +648,8 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 		return;
 	}
 
-	ms = fr_channel_responder_uctx_get(ch);
+	wc = fr_channel_responder_uctx_get(ch);
+	ms = wc->ms;
 	fr_assert(ms != NULL);
 
 	reply = (fr_channel_data_t *) fr_message_and_data_reserve(ms, size);
@@ -770,6 +774,7 @@ void worker_request_init(fr_worker_t *worker, request_t *request, fr_time_t now)
 
 	request->packet->timestamp = now;
 	request->async = talloc_zero(request, fr_async_t);
+	request->async->request = request;
 	request->async->recv_time = now;
 	request->async->el = worker->el;
 	fr_dlist_entry_init(&request->async->entry);
@@ -794,8 +799,9 @@ static int _worker_request_deinit(request_t *request, UNUSED void *uctx)
 	return request_slab_deinit(request);
 }
 
-static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
+static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t *cd, fr_time_t now)
 {
+	fr_worker_t		*worker = wc->worker;
 	int			ret = -1;
 	request_t		*request;
 	fr_listen_t		*listen = cd->listen;
@@ -827,7 +833,8 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	 *	Have to initialise the request manually because namspace
 	 *	changes based on the listener that allocated it.
 	 */
-	if (request_init(request, REQUEST_TYPE_EXTERNAL, (&(request_init_args_t){ .namespace = listen->dict })) < 0) {
+	if (request_init(request, REQUEST_TYPE_EXTERNAL,
+			 (&(request_init_args_t){ .namespace = listen->dict })) < 0) {
 		request_slab_release(request);
 		goto nak;
 	}
@@ -980,6 +987,13 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 
 		fr_dlist_insert_tail(&wl->dlist, request);
 	}
+
+	/*
+	 *	Track this request against the channel it came in on so
+	 *	worker_requests_cancel() has something to walk when the
+	 *	network signals CHANNEL_CLOSE.
+	 */
+	fr_dlist_insert_tail(&wc->dlist, request->async);
 }
 
 /**
@@ -1162,7 +1176,9 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 	 *	Remove it from the list of requests associated with this channel.
 	 */
 	if (fr_dlist_entry_in_list(&request->async->entry)) {
-		fr_dlist_entry_unlink(&request->async->entry);
+		fr_worker_channel_t *wc = fr_channel_responder_uctx_get(request->async->channel);
+
+		fr_dlist_remove(&wc->dlist, request->async);
 	}
 
 	/*

@@ -318,6 +318,7 @@ void coord_pair_request_init(fr_event_list_t *el, request_t *request, fr_time_t 
 
 	request->packet->timestamp = now;
 	request->async = talloc_zero(request, fr_async_t);
+	request->async->request = request;
 	request->async->recv_time = now;
 	request->async->el = el;
 	request->async->packet_ctx = packet_ctx;
@@ -407,6 +408,7 @@ static void _coord_pair_request_internal_init(request_t *request, void *uctx)
 
 	request->packet->timestamp = now;
 	request->async = talloc_zero(request, fr_async_t);
+	request->async->request = request;
 	request->async->recv_time = now;
 	request->async->el = coord_pair->el;
 	fr_dlist_entry_init(&request->async->entry);

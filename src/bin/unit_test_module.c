@@ -171,6 +171,7 @@ static request_t *request_from_internal(TALLOC_CTX *ctx)
 	request->master_state = REQUEST_ACTIVE;
 	request->log.lvl = fr_debug_lvl;
 	request->async = talloc_zero(request, fr_async_t);
+	request->async->request = request;
 
 	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
 		talloc_free(request);
@@ -342,6 +343,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	request->master_state = REQUEST_ACTIVE;
 	request->log.lvl = fr_debug_lvl;
 	request->async = talloc_zero(request, fr_async_t);
+	request->async->request = request;
 
 
 	/*

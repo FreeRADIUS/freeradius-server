@@ -280,6 +280,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 	 *      runs.
 	 */
 	request->async = talloc_zero(request, fr_async_t);
+	request->async->request = request;
 	talloc_const_free(request->name);
 	request->name = talloc_strdup(request, h->ctx.module_name);
 
