@@ -154,15 +154,15 @@ jobs:
         if: steps.gate.outputs.ready == 'yes'
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.GH_APP_ID }}
+          app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
       - name: Set up Git with app token
         if: steps.gate.outputs.ready == 'yes'
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
-          git config --global user.name "freeradius-server-ci[bot]"
-          git config --global user.email "freeradius-server-ci[bot]@users.noreply.github.com"
+          git config --global user.name "freeradius-server-merge-ci[bot]"
+          git config --global user.email "freeradius-server-merge-ci[bot]@users.noreply.github.com"
           git config --global commit.gpgSign true
           git config --global gpg.format ssh
 

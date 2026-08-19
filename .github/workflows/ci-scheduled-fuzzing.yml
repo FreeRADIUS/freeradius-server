@@ -278,7 +278,7 @@ jobs:
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') && steps.corpusparams.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
       uses: actions/create-github-app-token@v3
       with:
-        app-id: ${{ secrets.GH_APP_ID }}
+        app-id: ${{ vars.GH_APP_ID }}
         private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
     #
