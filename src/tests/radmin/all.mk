@@ -85,7 +85,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		touch $@;\
 	fi
 
-.NO_PARALLEL: $(TEST)
+.NOTPARALLEL: $(TEST)
 $(TEST):
 	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@

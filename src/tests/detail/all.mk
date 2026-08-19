@@ -32,6 +32,6 @@ $(OUTPUT)/%: $(DIR)/% $(addprefix ${BUILD_DIR}/lib/,proto_detail.la proto_detail
 	fi
 	${Q}touch $@
 
-.NO_PARALLEL: $(TEST)
+.NOTPARALLEL: $(TEST)
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@
