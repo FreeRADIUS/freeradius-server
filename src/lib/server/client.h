@@ -108,13 +108,7 @@ struct fr_client_s {
 	 */
 	bool			limit_proxy_state_is_set;
 
-	bool			received_message_authenticator;	//!< Whether we've seen a message authenticator
-								///< from this client in any previous packets.
-
-	bool			seen_first_packet;		//!< Whether we've seen a packet from this client.
-	bool			first_packet_no_proxy_state;	//!< Whether that first packet contained a Proxy-State
-								///< attribute.
-
+	bool			blastradius_complaint;	//!< whether we already did a BlastRADIUS complaint
 	bool			protocol_error;		//!< Whether the client supports Protocol-Error
 	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients

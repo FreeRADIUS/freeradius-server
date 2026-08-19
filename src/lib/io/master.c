@@ -423,8 +423,6 @@ static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 #endif
 	COPY_FIELD(limit_proxy_state);
 	COPY_FIELD(limit_proxy_state_is_set);
-	COPY_FIELD(received_message_authenticator);
-	COPY_FIELD(first_packet_no_proxy_state);
 	/* dynamic MUST be false */
 	COPY_FIELD(server_cs);
 	COPY_FIELD(cs);

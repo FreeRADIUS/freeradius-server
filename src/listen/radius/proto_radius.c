@@ -299,19 +299,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	};
 
 	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
-		/*
-		 *	bit1 is set if we've seen a packet, and the auto bit in require_message_authenticator is set/
-		 *	bit2 is set if we always require a message_authenticator.
-		 *	If either bit is high we require a message authenticator in the packet.
-		 */
-		decode_ctx.require_message_authenticator = (
-				(client->received_message_authenticator & require_message_authenticator) |
-				(require_message_authenticator & FR_RADIUS_REQUIRE_MA_YES)
-			) > 0;
-		decode_ctx.limit_proxy_state = (
-				(client->first_packet_no_proxy_state & limit_proxy_state) |
-				(limit_proxy_state & FR_RADIUS_LIMIT_PROXY_STATE_YES)
-			) > 0;
+		decode_ctx.require_message_authenticator = (require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES);
+		decode_ctx.limit_proxy_state = (limit_proxy_state == FR_RADIUS_LIMIT_PROXY_STATE_YES);
 	}
 
 	/*
@@ -349,88 +338,68 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	request->packet->socket = address->socket;
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);
 
-	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
-		/*
-		 *	If require_message_authenticator is "auto" then
-		 *	we start requiring messages authenticator after
-		 *	the first Access-Request packet containing a
-		 *	verified one.  This isn't vulnerable to the same
-		 *	attack as limit_proxy_state, as the attacker would
-		 *	need knowledge of the secret.
-		 *
-		 *	Unfortunately there are too many cases where
-		 *	auto mode could break things (dealing with
-		 *	multiple clients behind a NAT for example).
-		 */
-		if (!client->received_message_authenticator &&
-		    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
+	/*
+	 *	Do BlastRADIUS checks for Access-Request and Message-Authenticator
+	 */
+	if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
+	    !client->blastradius_complaint &&
+	    (require_message_authenticator != FR_RADIUS_REQUIRE_MA_YES)) {
+		bool has_ma = (fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator) != NULL);
+
+		client->blastradius_complaint = true;
+
+		if (has_ma) {
+			RINFO("Packet from client %pV (%pV) contains a valid Message-Authenticator.",
+			      fr_box_ipaddr(client->ipaddr),
+			      fr_box_strvalue_buffer(client->shortname));
+			RINFO("Please set \"require_message_authenticator = yes\"");
+
 			/*
-			 *	Don't print debugging messages if all is OK.
+			 *	If require_message_authenticator is "auto", then we start requiring messages
+			 *	authenticator after the first Access-Request packet which contains one.  This isn't
+			 *	vulnerable to the same attack as limit_proxy_state, as the attacker would need
+			 *	knowledge of the secret.
+			 *
+			 *	Unfortunately there are many cases where auto mode can break things (dealing
+			 *	with multiple clients behind a NAT for example).  So we don't recommend using
+			 *	it.
 			 */
-			if (require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) {
-				client->received_message_authenticator = true;
-
-			} else if (require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) {
+			if (require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) {
 				if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
-					client->received_message_authenticator = true;
+					client->require_message_authenticator_is_set = true;
+					client->require_message_authenticator = FR_RADIUS_REQUIRE_MA_YES;
 
-					RINFO("Packet from client %pV (%pV) contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"",
-					      fr_box_ipaddr(client->ipaddr),
-					      fr_box_strvalue_buffer(client->shortname));
+					RINFO("Setting \"require_message_authenticator = yes\"");
 				} else {
-					RINFO("Packet from client %pV (%pV) contained a valid Message-Authenticator but also EAP-Message",
-					      fr_box_ipaddr(client->ipaddr),
-					      fr_box_strvalue_buffer(client->shortname));
-					RINFO("Not changing the value of 'require_message_authenticator = auto'");
+					RINFO("Not changing the value of 'require_message_authenticator = auto', as packet also contains EAP-Message");
 				}
 			}
+		} else {
+			RERROR("Packet from client %pV (%s) does not contain a Message-Authenticator.",
+			       fr_box_ipaddr(client->ipaddr),
+			       client->shortname);
+			RERROR("Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
+			RERROR("Then set \"require_message_authenticator = yes\"");
 		}
 
 		/*
-		 *	It's important we only evaluate this on the
-		 *	first packet.  Otherwise an attacker could send
-		 *	Access-Requests with no Proxy-State whilst
-		 *	spoofing a legitimate Proxy-Server, and causing an
-		 *	outage.
+		 *	We check limit_proxy_state only for packets without Message-Authenticator.  But we
+		 *	check it unconditionally for the first packet.
 		 *
-		 *	The likelihood of an attacker sending a packet
-		 *	to coincide with the reboot of a RADIUS
-		 *	server is low. That said, 'auto' should likely
-		 * 	not be enabled for internet facing servers.
+		 *	There is perhaps a small race window for an attacker when the server reboots, but
+		 *	there isn't much that we can do about that.
 		 */
-		if (!client->received_message_authenticator &&
-		    (limit_proxy_state == FR_RADIUS_LIMIT_PROXY_STATE_AUTO) &&
-		    client->active && !client->seen_first_packet) {
-			client->seen_first_packet = true;
-			client->first_packet_no_proxy_state = fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state) == NULL;
+		if (!has_ma && client->active && (limit_proxy_state == FR_RADIUS_LIMIT_PROXY_STATE_AUTO)) {
+			bool seen_ps = (fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state) != NULL);
 
-			/* None of these should be errors */
-			if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
-				RWARN("Packet from %pV (%pV) did not contain Message-Authenticator:",
-				      fr_box_ipaddr(client->ipaddr),
-				      fr_box_strvalue_buffer(client->shortname));
-				RWARN("- Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
-				RWARN("- Then set 'require_message_authenticator = yes' in the client definition");
-			} else {
-				RWARN("Packet from %pV (%pV) contains Message-Authenticator:",
-				      fr_box_ipaddr(client->ipaddr),
-				      fr_box_strvalue_buffer(client->shortname));
-				RWARN("- Then set 'require_message_authenticator = yes' in the client definition");
-			}
-
-			RINFO("First packet from %pV (%pV) %s Proxy-State.  Setting \"limit_proxy_state = %s\"",
+			RINFO("Packet from %pV (%s) %s Proxy-State.  Setting \"limit_proxy_state = %s\"",
 			      fr_box_ipaddr(client->ipaddr),
-			      fr_box_strvalue_buffer(client->shortname),
-			      client->first_packet_no_proxy_state ? "did not contain" : "contained",
-			      client->first_packet_no_proxy_state ? "yes" : "no");
+			      client->shortname,
+			      seen_ps ? "contains" : "does not contain",
+			      seen_ps ? "no" : "yes");
 
-			if (!client->first_packet_no_proxy_state) {
-				RERROR("Packet from %pV (%pV) contains Proxy-State, but no Message-Authenticator:",
-				       fr_box_ipaddr(client->ipaddr),
-				       fr_box_strvalue_buffer(client->shortname));
-				RERROR("- Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
-				RERROR("- Then set 'require_message_authenticator = yes' in the client definition");
-			}
+			client->limit_proxy_state_is_set = true;
+			client->limit_proxy_state = seen_ps ? FR_RADIUS_LIMIT_PROXY_STATE_YES : FR_RADIUS_LIMIT_PROXY_STATE_NO;
 		}
 	}
 
