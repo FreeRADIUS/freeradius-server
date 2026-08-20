@@ -4,6 +4,9 @@ inputs:
   use_sanitizers:
     description: Enable sanitizers if true
     default: false
+  use_scan:
+    description: Run "clang scan" if true
+    default: false
   cc:
     description: Which CC to use
     default: gcc
@@ -162,15 +165,15 @@ runs:
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         make -j `nproc`
 
-    # Disabled on MacOS and when fuzzing to reduce the runtime
+    # only do this on the main CI build, it doesn't help on everything else.
     - name: Clang Static Analyzer
-      if: ${{ inputs.cc == 'clang' && runner.os != 'macOS' && inputs.test_type != 'fuzzing' }}
+      if: ${{ inputs.cc == 'clang' && inputs.use_scan == 'true' && inputs.test_type != 'fuzzing' }}
       shell: bash
       run: |
         make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ];
 
     - name: "Clang Static Analyzer: Store assets on failure"
-      if: ${{ inputs.cc == 'clang' && failure() }}
+      if: ${{ inputs.cc == 'clang' && inputs.use_scan == 'true' && inputs.test_type != 'fuzzing' && failure() }}
       uses: actions/upload-artifact@v6
       with:
         name: clang-scan.tgz

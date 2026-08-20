@@ -182,6 +182,7 @@ jobs:
         uses: ./.github/actions/build-freeradius
         with:
           use_sanitizers: false
+          use_scan: true
           cc: ${{ matrix.env.CC }}
           test_type: ${{ matrix.env.TEST_TYPE }}
           platform: ${{ matrix.os.imageos }}
