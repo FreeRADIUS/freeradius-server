@@ -2263,6 +2263,7 @@ static void request_replicate_mux(UNUSED fr_event_list_t *el,
 	if (!treq) return;
 
 	mod_write(treq->request, treq, h);
+	trunk_request_signal_complete(treq);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
