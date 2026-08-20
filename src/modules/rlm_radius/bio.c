@@ -1126,7 +1126,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 	 *	Over-ride read for replication.
 	 */
 	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) {
-		read_fn = conn_discard;
+		if (read_fn) read_fn = conn_discard;
 
 		if (fr_bio_fd_write_only(h->bio.fd) < 0) {
 			PERROR("%s - Failed setting socket to write-only", h->ctx.module_name);
