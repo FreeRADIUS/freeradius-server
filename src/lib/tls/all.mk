@@ -12,7 +12,6 @@ SOURCES	:= \
 	cert.c \
 	conf.c \
 	ctx.c \
-	engine.c \
 	log.c \
 	pairs.c \
 	session.c \
