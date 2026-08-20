@@ -609,7 +609,9 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	 */
 	if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
 	    (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY)) {
-		REDEBUG("When using 'mode = unconnected-*', this module cannot be used in-place.  Instead, it must be called via a function call");
+		REDEBUG("When using 'mode = %s', this module cannot be used in-place.  "
+			"Instead, it must be called via a function call",
+			fr_table_str_by_value(mode_names, inst->mode, "<INVALID>"));
 		RETURN_UNLANG_FAIL;
 	}
 
