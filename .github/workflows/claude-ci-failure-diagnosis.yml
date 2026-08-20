@@ -1,71 +1,50 @@
 name: Claude CI Failure Diagnosis
 
-# Fires after a CI workflow finishes on master or a developer/* branch.
-# If it failed, Claude reads the job logs, classifies the failure
-# (regression / flake / infra / unknown), and posts a diagnostic comment on
-# the offending commit. Diagnosis only - no PRs, no pushes, no edits to the
-# repo.
+#
+#  Called by ci-pipeline.yml when a gating leg fails, once, after every leg has
+#  finished.  Claude reads the failed jobs, classifies each distinct failure and
+#  posts a single commit comment.  Diagnosis only - no PRs, no pushes, no edits.
+#
 
 on:
-  workflow_run:
-    workflows:
-      - CI
-      - CI DEB
-      - CI FreeBSD
-      - CI macOS
-      - CI RPM
-      - CI-Sanitizers
-      - Multi-Server CI Tests
-      - Docker crossbuild images
-      - Coverity
-      - Documentation
-    types: [completed]
-
-# Serialize per-SHA: if several CI workflows fail on the same commit, queue
-# their diagnoses one at a time rather than spawning concurrent Claude sessions
-# against the same head. Each queued workflow still gets its own comment.
-concurrency:
-  group: claude-ci-diagnosis-${{ github.event.workflow_run.head_sha }}
-  cancel-in-progress: false
+  workflow_call:
+    inputs:
+      results:
+        description: "each leg's result, as name=result pairs"
+        required: true
+        type: string
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
 
 jobs:
   diagnose:
-    # GitHub doesn't expose an event-level conclusion filter for workflow_run,
-    # so the workflow fires for every CI completion and this job-level if:
-    # filters out anything that isn't a failure on master or one of the
-    # developer/* personal branches. The downside is a "Skipped" entry in
-    # the Actions tab for every CI success; the upside is that the
-    # alternative (self-delete from inside the job) doesn't work because
-    # the API refuses to delete an in-progress run.
     if: |
       github.repository == 'FreeRADIUS/freeradius-server' &&
-      github.event.workflow_run.conclusion == 'failure' &&
-      (github.event.workflow_run.head_branch == 'master' ||
-       startsWith(github.event.workflow_run.head_branch, 'developer/')) &&
-      github.event.workflow_run.event == 'push'
+      github.event_name == 'push' &&
+      (github.ref_name == 'master' || startsWith(github.ref_name, 'developer/'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write   # post commit comment via gh api
-      actions: read     # download failed-job logs
+      actions: read     # read failed-job logs
       id-token: write
 
     steps:
       - name: Checkout failing commit
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 2
 
       - name: Run Claude Code diagnosis
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ github.token }}
-          FAILED_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
-          FAILED_WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
-          FAILED_WORKFLOW_RUN_URL: ${{ github.event.workflow_run.html_url }}
-          FAILING_SHA: ${{ github.event.workflow_run.head_sha }}
+          LEG_RESULTS: ${{ inputs.results }}
+          FAILING_SHA: ${{ github.sha }}
+          FAILING_BRANCH: ${{ github.ref_name }}
+          PIPELINE_RUN_ID: ${{ github.run_id }}
           REPO: ${{ github.repository }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -75,59 +54,51 @@ jobs:
             --allowed-tools
             "Bash(gh run view:*),Bash(gh run download:*),Bash(gh api:*),Bash(gh issue view:*),Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(git blame:*),Read,Grep,Glob"
           prompt: |
-            CI workflow "${{ github.event.workflow_run.name }}" failed on master at commit ${{ github.event.workflow_run.head_sha }}.
+            One or more CI legs failed on ${{ github.ref_name }} at commit ${{ github.sha }}.
 
-              Run URL: ${{ github.event.workflow_run.html_url }}
-              Repo:    ${{ github.repository }}
-
-            Your job: diagnose the failure, decide whether it's the same thing the bot already flagged on a recent earlier commit, and either skip the comment or post a single new one. Do not open a PR, do not push, do not edit any file in the repo.
+            You run once for the whole pipeline, after every leg has finished, so you are seeing the complete picture and no other session is running against this commit. Diagnose every failure and post exactly ONE commit comment covering all of them. Do not open a PR, do not push, do not edit any file in the repo.
 
             The following env vars are exported for use in `gh`/`git` commands:
-              FAILED_WORKFLOW_RUN_ID   - the run that failed
-              FAILED_WORKFLOW_RUN_URL  - link to that run
-              FAILED_WORKFLOW_NAME     - workflow name
-              FAILING_SHA              - commit under test
-              REPO                     - owner/repo
+              LEG_RESULTS      - each leg's result as name=result pairs
+              FAILING_SHA      - commit under test
+              FAILING_BRANCH   - branch the commit is on
+              PIPELINE_RUN_ID  - this pipeline run, which contains every leg's jobs
+              REPO             - owner/repo
 
             Steps:
 
-            1. Read the failing job logs:
-                 gh run view "$FAILED_WORKFLOW_RUN_ID" --repo "$REPO" --log-failed
-               If the output is too large, list jobs first and view one job at a time:
-                 gh run view "$FAILED_WORKFLOW_RUN_ID" --repo "$REPO" --json jobs --jq '.jobs[] | {id, name, conclusion}'
+            1. Every failed job is in this one run, so one call lists them:
+                 gh run view "$PIPELINE_RUN_ID" --repo "$REPO" --json jobs \
+                   --jq '.jobs[] | select(.conclusion == "failure") | {id, name}'
+               Then read each one:
                  gh run view --job "<job id>" --repo "$REPO" --log
 
-            2. Inspect the commit under test:
+            2. Group the failures. Several legs failing on the same underlying cause (one compile error breaking every build leg) is ONE finding, not one per leg. Only treat them separately when the root causes genuinely differ.
+
+            3. Inspect the commit under test:
                  git show --stat "$FAILING_SHA"
                  git show "$FAILING_SHA" -- <files of interest>
 
-            3. Classify the failure as exactly one of:
+            4. Classify each distinct failure as exactly one of:
                  REGRESSION  - this commit (or one of its files) caused the failure; cite file:line.
                  FLAKE       - intermittent failure unrelated to the change (timing, network, ordering).
                  INFRA       - runner / mirror / image / dependency-fetch failure outside the codebase.
                  UNKNOWN     - logs are insufficient to classify; say what's missing.
 
-            4. Check whether this is a repeat of the bot's most recent diagnosis on this branch. Walk back from $FAILING_SHA along the first-parent history until you find a commit that has a Claude diagnosis comment for the same workflow, or until you've covered the last 20 commits:
+            5. Check whether this repeats the bot's most recent diagnosis on this branch. Walk back from $FAILING_SHA along the first-parent history until you find a commit carrying a Claude diagnosis comment, or until you have covered the last 20 commits:
 
                  for sha in $(git rev-list --first-parent --max-count=20 "$FAILING_SHA"); do
                    gh api "repos/$REPO/commits/$sha/comments" \
-                     --jq '.[] | select(.body | contains("Posted automatically by Claude CI Failure Diagnosis")) | select(.body | contains("'"$FAILED_WORKFLOW_NAME"'")) | {sha: "'"$sha"'", body: .body, url: .html_url}' \
+                     --jq '.[] | select(.body | contains("Posted automatically by Claude CI Failure Diagnosis")) | {sha: "'"$sha"'", body: .body, url: .html_url}' \
                      | head -1
                  done | head -1 > /tmp/prev.json
 
-               If /tmp/prev.json is non-empty, read its body and compare it to the failure you're about to report. "Substantially the same" means:
-                 - same Classification, AND
-                 - same failing job / step, AND
-                 - the key Evidence quote matches (same package name / error string / file path / linker message).
+               If /tmp/prev.json is non-empty, compare its body to what you are about to report. "Substantially the same" means same Classification, same failing job / step, and the key Evidence quote matches (same package name / error string / file path / linker message). If substantially the same, print "duplicate of <previous sha>" and stop without posting.
 
-               If substantially the same, exit without posting. Print "duplicate of <previous sha>" to stdout so the run log records the decision and stop. Do not post a new comment.
-
-               If different (different classification, different failing step, different root-cause evidence), proceed to step 5.
-
-            5. Write the commit-comment body to /tmp/comment.md with this shape (keep under ~120 lines total):
+            6. Write the comment body to /tmp/comment.md (keep under ~120 lines). Repeat the block once per distinct root cause, listing every leg that failure took down:
 
                  **Classification:** <one of the four above>
-                 **Failed workflow:** [<name>](<run url>)
+                 **Failed legs:** CI, CI DEB
 
                  **Summary:** one or two sentences.
 
@@ -138,11 +109,9 @@ jobs:
                  ---
                  _Posted automatically by Claude CI Failure Diagnosis._
 
-            6. Post the comment via the GitHub API (jq -Rs is the safe way to escape multi-line bodies with backticks):
+            7. Post it (jq -Rs is the safe way to escape multi-line bodies with backticks):
 
                  jq -Rs '{body: .}' < /tmp/comment.md > /tmp/comment.json
-                 gh api -X POST \
-                   "repos/$REPO/commits/$FAILING_SHA/comments" \
-                   --input /tmp/comment.json
+                 gh api -X POST "repos/$REPO/commits/$FAILING_SHA/comments" --input /tmp/comment.json
 
-            Do not speculate beyond what the logs support. UNKNOWN is a useful signal - prefer it over a guess. Skipping a duplicate is preferred over re-posting the same diagnosis on every subsequent commit while the underlying issue is being worked on.
+            Do not speculate beyond what the logs support. UNKNOWN is a useful signal - prefer it over a guess.

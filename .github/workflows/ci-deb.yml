@@ -1,15 +1,7 @@
 name: CI DEB
 
 on:
-  workflow_dispatch:
-  push:
-    branches-ignore:
-      - coverity_scan
-      - run-fuzzer**
-      - debug-fuzzer-**
-  pull_request:
-  schedule:
-    - cron: '0 20 * * *'
+  workflow_call:
 
 env:
   DEBIAN_FRONTEND: noninteractive

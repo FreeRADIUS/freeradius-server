@@ -1,0 +1,95 @@
+name: CI Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - coverity_scan
+      - run-fuzzer**
+      - debug-fuzzer-**
+  pull_request:
+  schedule:
+    - cron: '0 20 * * *'
+
+#
+#  Cancel any in-flight or queued run of this workflow on the same branch when a
+#  new commit lands, so only the newest commit gets tested. head_ref names the
+#  source branch on pull_request events and ref_name covers push events, so
+#  keying on either rather than on github.ref stops a branch with an open pull
+#  request from running two full sets of jobs.
+#
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  ci-deb:
+    name: CI DEB
+    uses: ./.github/workflows/ci-deb.yml
+    secrets: inherit
+
+  ci-rpm:
+    name: CI RPM
+    uses: ./.github/workflows/ci-rpm.yml
+    secrets: inherit
+
+  ci-sanitizers:
+    name: CI-Sanitizers
+    uses: ./.github/workflows/ci-sanitizers.yml
+    secrets: inherit
+
+  #
+  #  Run on every commit but absent from merge's needs:, so a failure here is
+  #  reported and diagnosed without holding up the merge.
+  #
+  ci-freebsd:
+    name: CI FreeBSD
+    uses: ./.github/workflows/ci-freebsd.yml
+    secrets: inherit
+
+  ci-macos:
+    name: CI macOS
+    uses: ./.github/workflows/ci-macos.yml
+    secrets: inherit
+
+  ci-multi-server:
+    name: Multi-Server CI Tests
+    uses: ./.github/workflows/ci-multi-server-tests.yml
+    secrets: inherit
+
+  #
+  #  No if:, so the default applies: runs only when every leg it needs
+  #  succeeded, and is skipped otherwise.  Only the gating legs are listed.
+  #
+  merge:
+    needs: [ci, ci-deb, ci-rpm, ci-sanitizers]
+    uses: ./.github/workflows/merge-upstream.yml
+    secrets:
+      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+  #
+  #  Needs every leg, gating or not, so a FreeBSD or macOS failure still gets
+  #  diagnosed.  failure() is true when any of them failed, and the job runs
+  #  once for the whole pipeline, so one session sees every failure instead of
+  #  one per failing leg.
+  #
+  diagnose:
+    needs: [ci, ci-deb, ci-rpm, ci-sanitizers, ci-freebsd, ci-macos, ci-multi-server]
+    if: failure()
+    uses: ./.github/workflows/claude-ci-failure-diagnosis.yml
+    with:
+      results: >-
+        ci=${{ needs.ci.result }}
+        ci-deb=${{ needs.ci-deb.result }}
+        ci-rpm=${{ needs.ci-rpm.result }}
+        ci-sanitizers=${{ needs.ci-sanitizers.result }}
+        ci-freebsd=${{ needs.ci-freebsd.result }}
+        ci-macos=${{ needs.ci-macos.result }}
+        ci-multi-server=${{ needs.ci-multi-server.result }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

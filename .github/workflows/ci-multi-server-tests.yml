@@ -2,9 +2,9 @@ name: Multi-Server CI Tests
 
 on:
   #
-  #  Two entry points:
+  #  Called by ci-pipeline.yml, which decides the entry point:
   #
-  #    push: per-commit gate. Pulls crossbuild:latest /
+  #    push: per-commit run. Pulls crossbuild:latest /
   #    profiling-deps:latest / service:latest / profiling:latest from
   #    the internal registry (refreshed periodically by
   #    docker-refresh.yml). For the multi-server tests' purposes the
@@ -12,24 +12,11 @@ on:
   #    multi-server topology / compose / proto_load changes per
   #    commit. Runs the CI subset.
   #
-  #    schedule: nightly full-suite run. Falls back to a local layer
-  #    rebuild if the registry has been pruned of any :latest tag.
+  #    schedule: nightly full-suite run, from the pipeline's own cron.
+  #    Falls back to a local layer rebuild if the registry has been
+  #    pruned of any :latest tag.
   #
-  #    workflow_dispatch: manual "Run workflow" button in the Actions
-  #    tab. GitHub's UI provides the branch/tag picker natively (the
-  #    "Use workflow from" dropdown), so no input is needed to select
-  #    the ref. The button only appears once this file is present on
-  #    the default branch.
-  #
-  workflow_dispatch:
-  push:
-    branches-ignore:
-      - coverity_scan
-      - run-fuzzer**
-      - debug-fuzzer-**
-  schedule:
-    #  Daily at 2pm EST (7pm UTC) - full test set, not just CI subset.
-    - cron: '0 19 * * *'
+  workflow_call:
 
 jobs:
   multi-server-tests:
@@ -185,8 +172,9 @@ jobs:
           done
 
       #
-      #  schedule runs the full test set; workflow_run runs the CI
-      #  subset that gates per-commit.
+      #  schedule runs the full test set; a push runs the CI subset.
+      #  github.event_name is the caller's event, so the pipeline's
+      #  nightly selects the full set here without extra wiring.
       #
       - name: Run multi-server tests (${{ matrix.mode }})
         run: |

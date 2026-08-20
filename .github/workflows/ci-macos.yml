@@ -1,22 +1,7 @@
 name: CI macOS
 
 on:
-  workflow_dispatch:
-  push:
-    branches-ignore:
-      - coverity_scan
-      - run-fuzzer**
-      - debug-fuzzer-**
-  pull_request:
-
-#
-#  Cancel any in-flight or queued run of this workflow on the same
-#  ref when a new commit lands. Replaces fkirc/skip-duplicate-actions
-#  for the "don't waste CI on a stale push" use case.
-#
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
 
 env:
   ASAN_OPTIONS: symbolize=1 detect_leaks=0 detect_stack_use_after_return=1
