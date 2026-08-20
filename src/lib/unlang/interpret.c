@@ -2383,6 +2383,50 @@ static xlat_action_t unlang_interpret_lb_child_xlat(TALLOC_CTX *ctx, fr_dcursor_
 }
 
 
+static xlat_arg_parser_t const unlang_interpret_module_force_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	{ .required = false, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+
+/** Enable a module
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t unlang_interpret_module_force(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						   UNUSED xlat_ctx_t const *xctx,
+						   request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
+	char const		*name = arg->vb_strvalue;
+	rlm_rcode_t		rcode;
+	module_instance_t	*mi;
+
+	mi = module_rlm_static_by_name(NULL, name);
+	if (!mi) {
+		RDEBUG("Unknown module '%s'", name);
+		return XLAT_ACTION_FAIL;
+	}
+
+
+	arg = fr_value_box_list_next(in, arg);
+	if (arg) {
+		rcode = fr_table_value_by_str(rcode_table, arg->vb_strvalue, RLM_MODULE_NOT_SET);
+		if (rcode == RLM_MODULE_NOT_SET) {
+			RDEBUG("Unknown rcode '%s'", arg->vb_strvalue);
+			return XLAT_ACTION_FAIL;
+		}
+	} else {
+		rcode = RLM_MODULE_NOT_SET;
+	}
+
+	module_thread_force(module_thread(mi), rcode);
+	return XLAT_ACTION_DONE;
+}
+
+
+
 /** Return the current virtual server for this request
  *
  * @param[in] request	To return virtual server for.
@@ -2531,8 +2575,11 @@ int unlang_interpret_init_global(TALLOC_CTX *ctx)
 	if (unlikely((xlat = xlat_func_register(ctx, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_interpret_xlat_args);
 
-	if (unlikely((xlat = xlat_func_register(ctx, "interpreter.load-balance.persist", unlang_interpret_lb_persist_xlat, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "interpreter.load-balance.persist", unlang_interpret_lb_persist_xlat, FR_TYPE_NULL)) == NULL)) return -1;
 	if (unlikely((xlat = xlat_func_register(ctx, "interpreter.load-balance.child", unlang_interpret_lb_child_xlat, FR_TYPE_UINT8)) == NULL)) return -1;
+
+	if (unlikely((xlat = xlat_func_register(ctx, "interpreter.module.force", unlang_interpret_module_force, FR_TYPE_NULL)) == NULL)) return -1;
+	xlat_func_args_set(xlat, unlang_interpret_module_force_args);
 
 	if (unlikely((xlat = xlat_func_register(ctx, "cancel", unlang_cancel_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_cancel_xlat_args);

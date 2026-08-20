@@ -1,0 +1,26 @@
+#
+#  Check that the "ok" module works, then disable it, then re-enable it.
+#
+ok
+if (!ok) {
+	test_fail
+}
+
+%interpreter.module.force('ok', 'fail')
+
+try {
+    ok
+}
+catch fail {
+
+}
+catch {
+	test_fail
+}
+
+%interpreter.module.force('ok')
+ok
+if (!ok) {
+	test_fail
+}
+success

@@ -82,11 +82,17 @@ Which section of a virtual server is processing the request.
 
 == %interpreter('rcode')
 
-The current interpreter return code, e.g. `handle`, or `ok`, etc.
+Return the current interpreter xref:unlang/return_codes.adoc[rcode], e.g. `handled`, or `ok`, etc.
 
 == %interpreter('server')
 
 The name of the virtual server which is running the request.
+
+== %interpreter.module.force('name', 'noop')
+
+Force a module xref:unlang/return_codes.adoc[rcode], e.g. `handled` or `ok`, etc
+
+A module can be "un-forced" by not passing a second argument.
 
 === %client(<key>)
 

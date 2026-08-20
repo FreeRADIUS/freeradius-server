@@ -23,6 +23,7 @@ references, function calls, etc.  The table below gives more examples of expansi
 | xref:xlat/attribute.adoc[attributes]    | Expand the value of a named attribute.
 | xref:xlat/function.adoc[functions]      | Function call syntax.
 | xref:xlat/misc/misc.adoc[misc]          | Miscellaneous functions.
+| xref:xlat/interpreter.adoc[interpreter] | Query the interpreter status, or set interpreter flags.
 | xref:xlat/str/index.adoc[str]           | String handling.
 | xref:xlat/time/index.adoc[time]         | Time handling.
 | xref:xlat/alternation.adoc[condition]   | Conditionally expand a string.
