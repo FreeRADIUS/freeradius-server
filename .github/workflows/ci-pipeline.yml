@@ -26,6 +26,9 @@ jobs:
   ci:
     name: CI
     uses: ./.github/workflows/ci.yml
+    with:
+      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
     secrets: inherit
 
   ci-deb:
@@ -41,6 +44,9 @@ jobs:
   ci-sanitizers:
     name: CI-Sanitizers
     uses: ./.github/workflows/ci-sanitizers.yml
+    with:
+      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
     secrets: inherit
 
   #

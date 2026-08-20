@@ -2,6 +2,15 @@ name: CI
 
 on:
   workflow_call:
+    inputs:
+      selfhosted:
+        description: "'1' when the org's self-hosted runners and registry are available"
+        required: true
+        type: string
+      docker_prefix:
+        description: "registry prefix for service container images, empty for Docker Hub"
+        required: true
+        type: string
 
 env:
   M_PERTURB: "0x42"
@@ -20,21 +29,8 @@ env:
   GH_ACTIONS: 1
 
 jobs:
-  pre-ci:
-    runs-on: ubuntu-latest
-    #  No skip-duplicate logic here any more - workflow-level
-    #  concurrency: above handles that natively. This job exists only
-    #  to expose the selfhosted/docker_prefix expressions as outputs
-    #  so the matrix below stays readable.
-    outputs:
-      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
-      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
-    steps:
-      - run: 'true'
-
   ci:
     timeout-minutes: 150
-    needs: pre-ci
 
     runs-on: ${{ matrix.os.runs_on }}
 
@@ -60,9 +56,9 @@ jobs:
         #  docker  - the docker image name, if containers are being used
         #  name    - used in the job name only
         os:
-          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
-            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
-            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
+          - runs_on: "${{ inputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
+            docker: "${{ inputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
+            name: "${{ inputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
             code: "ubuntu2404"
             imageos: "ubuntu24"
 
@@ -90,7 +86,7 @@ jobs:
     #  we need to run separate database containers to provide these.
     services:
       mariadb:
-        image: ${{ needs.pre-ci.outputs.docker_prefix }}mariadb
+        image: ${{ inputs.docker_prefix }}mariadb
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
         ports:
@@ -102,7 +98,7 @@ jobs:
           --health-retries 10
 
       postgres:
-        image: ${{ needs.pre-ci.outputs.docker_prefix }}postgres
+        image: ${{ inputs.docker_prefix }}postgres
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
@@ -114,7 +110,7 @@ jobs:
           --health-retries 5
 
       threeds:
-        image: ${{ needs.pre-ci.outputs.docker_prefix }}4teamwork/389ds
+        image: ${{ inputs.docker_prefix }}4teamwork/389ds
         ports:
           - 3389:3389
           - 3636:3636
