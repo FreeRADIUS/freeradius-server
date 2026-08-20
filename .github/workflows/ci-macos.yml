@@ -69,6 +69,11 @@ jobs:
 
     - name: Install dependencies (macOS)
       run: |
+        #  The runner image ships this tap, and Homebrew warns on every
+        #  invocation while it is untrusted.  Nothing installed below comes
+        #  from it, so drop it rather than granting it blanket trust.
+        brew untap aws/tap || true
+
         brew install \
           cassandra-cpp-driver \
           gperftools \
