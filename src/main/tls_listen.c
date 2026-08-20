@@ -701,13 +701,13 @@ get_application_data:
 	 *	Hold application data if we're not yet in the RUNNING
 	 *	state.
 	 */
+read_application_data:
 	if (sock->state != LISTEN_TLS_RUNNING) {
 		RDEBUG3("(TLS) Holding application data until setup is complete");
 		PTHREAD_MUTEX_UNLOCK(sock->mutex);
 		return 0;
 	}
 
-read_application_data:
 	/*
 	 *	We now have a bunch of application data.
 	 */
