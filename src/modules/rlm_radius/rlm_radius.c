@@ -605,8 +605,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	}
 
 	/*
-	 *	Unconnected sockets use %radius.replicate(ip, port, secret),
-	 *	or %radius.sendto(ip, port, secret)
+	 *	Unconnected sockets use %radius.sendto.ipaddr(ip, port, secret)
 	 */
 	if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
 	    (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY)) {
