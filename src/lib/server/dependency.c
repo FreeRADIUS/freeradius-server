@@ -47,7 +47,6 @@ static CONF_SECTION *default_version_cs;		//!< Default configuration section to 
 #  include <freeradius-devel/tls/version.h>
 #  include <openssl/crypto.h>
 #  include <openssl/opensslv.h>
-#  include <openssl/engine.h>
 #endif
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H

@@ -1435,8 +1435,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       openssl/md4.h \
       openssl/sha.h \
       openssl/ssl.h \
-      openssl/ocsp.h \
-      openssl/engine.h,
+      openssl/ocsp.h,
       [ OPENSSL_CPPFLAGS="$smart_include" ],
       [
         AC_MSG_FAILURE([failed locating OpenSSL headers. Use --with-openssl-include-dir=<path>, or --with-openssl=no (builds without OpenSSL)])

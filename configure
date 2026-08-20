@@ -10936,7 +10936,7 @@ smart_prefix=
 printf '%s\n' "#define HAVE_OPENSSL_SSL_H 1" >>confdefs.h
 
 
-           for ac_header in openssl/crypto.h openssl/err.h openssl/evp.h openssl/md5.h openssl/md4.h openssl/sha.h openssl/ssl.h openssl/ocsp.h openssl/engine.h
+           for ac_header in openssl/crypto.h openssl/err.h openssl/evp.h openssl/md5.h openssl/md4.h openssl/sha.h openssl/ssl.h openssl/ocsp.h
 do :
   as_ac_Header=`printf '%s\n' "ac_cv_header_$ac_header" | sed "$as_sed_sh"`
 ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
