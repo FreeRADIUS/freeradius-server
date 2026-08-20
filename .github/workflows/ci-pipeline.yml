@@ -69,6 +69,24 @@ jobs:
     secrets: inherit
 
   #
+  #  Image builds take about as long as CI takes to fail, so ungated they were
+  #  finishing in full on every broken commit.  needs: ci skips them instead.
+  #  They are per-commit smoke builds - docker-refresh.yml does the publishing
+  #  on its own schedule - so starting them later costs nothing.
+  #
+  docker-crossbuild:
+    name: Docker crossbuild images
+    needs: [ci]
+    uses: ./.github/workflows/docker-crossbuild.yml
+    secrets: inherit
+
+  docker-service:
+    name: Docker service images
+    needs: [ci]
+    uses: ./.github/workflows/docker-service.yml
+    secrets: inherit
+
+  #
   #  No if:, so the default applies: runs only when every leg it needs
   #  succeeded, and is skipped otherwise.  Only the gating legs are listed.
   #
@@ -85,7 +103,8 @@ jobs:
   #  one per failing leg.
   #
   diagnose:
-    needs: [ci, ci-deb, ci-rpm, ci-sanitizers, ci-freebsd, ci-macos, ci-multi-server]
+    needs: [ci, ci-deb, ci-rpm, ci-sanitizers, ci-freebsd, ci-macos, ci-multi-server,
+            docker-crossbuild, docker-service]
     if: failure()
     uses: ./.github/workflows/claude-ci-failure-diagnosis.yml
     with:
@@ -97,5 +116,7 @@ jobs:
         ci-freebsd=${{ needs.ci-freebsd.result }}
         ci-macos=${{ needs.ci-macos.result }}
         ci-multi-server=${{ needs.ci-multi-server.result }}
+        docker-crossbuild=${{ needs.docker-crossbuild.result }}
+        docker-service=${{ needs.docker-service.result }}
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

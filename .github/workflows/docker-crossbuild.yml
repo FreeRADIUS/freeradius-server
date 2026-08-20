@@ -1,21 +1,8 @@
 name: Docker crossbuild images
 
 on:
-  push:
-    branches-ignore:
-      - coverity_scan
+  workflow_call:
   workflow_dispatch:
-
-#
-#  Cancel any in-flight or queued run of this workflow on the same branch
-#  when a new commit lands, so only the newest commit gets tested. head_ref
-#  names the source branch on pull_request events and ref_name covers push
-#  events, so keying on either rather than on github.ref stops a branch with
-#  an open pull request from running two full sets of jobs.
-#
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
 
 env:
   CI: 1
