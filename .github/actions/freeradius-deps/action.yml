@@ -16,12 +16,26 @@ inputs:
   cc:
     description: Which CC to use
     default: gcc
+  selfhosted:
+    description: "'1' when running in the org's CI image, which already carries the packages below"
+    default: '0'
+  packaging_changed:
+    description: "'true' when this commit touches debian/**, so the image's baked build-deps may be stale"
+    default: 'false'
 
 
 runs:
   using: composite
 
   steps:
+
+    #
+    #  HOME is bind-mounted from the runner and survives between jobs on a
+    #  reused self-hosted runner, so it has to be cleared per job.
+    #
+    - name: Tidy home directory
+      shell: bash
+      run: rm -rf "$HOME"/*
 
     - name: Package manager performance improvements
       if: ${{ runner.os != 'macOS' && inputs.use_docker == false}}
@@ -32,23 +46,24 @@ runs:
         sudo dpkg-reconfigure man-db
         sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
 
-    #  Currently GitHub runners have a conflicting version of libhashkit2 installed which breaks dependency installation
-    - name: Remove package conflicts
-      if: ${{ runner.os != 'macOS' }}
-      shell: bash
-      run: |
-        sudo apt-get remove -y libhashkit2
-
     - name: Generate debian/control
       if: ${{ runner.os != 'macOS' }}
       shell: bash
       run: |
         debian/rules debian/control
 
-    - name: Install libstdc++ for fuzzing
+    #
+    #  The image bakes in the build-dep closure, refreshed when a packaging
+    #  change lands on master.  A pull request that adds a dependency - a new
+    #  module, say - is testing a closure the image predates, and cannot wait
+    #  for its own merge to fix that.  Top up from the tree in that case only.
+    #
+    - name: Top up build dependencies from debian/control
+      if: ${{ runner.os != 'macOS' && inputs.packaging_changed == 'true' }}
       shell: bash
-      run: sudo apt-get -y install libstdc++-14-dev
-      if: ${{ inputs.fuzzing && runner.os != 'macOS' }}
+      run: |
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
     - name: Install LLVM ${{ inputs.llvm_ver }}
       if: ${{ inputs.cc == 'clang' && runner.os != 'macOS' }}

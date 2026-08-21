@@ -11,6 +11,11 @@ on:
         description: "registry prefix for service container images, empty for Docker Hub"
         required: true
         type: string
+      packaging_changed:
+        description: "'true' when this commit touches debian/**, so the image's build-deps may be stale"
+        required: false
+        type: string
+        default: 'false'
 
 env:
   M_PERTURB: "0x42"
@@ -57,7 +62,7 @@ jobs:
         #  name    - used in the job name only
         os:
           - runs_on: "${{ inputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
-            docker: "${{ inputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
+            docker: "${{ inputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || format('ghcr.io/{0}/self-hosted', github.repository_owner) }}"
             name: "${{ inputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
             code: "ubuntu2404"
             imageos: "ubuntu24"
@@ -140,12 +145,11 @@ jobs:
       #  Docker image does not have same environment as the
       #  standard GitHub actions image, so use this to bring them
       #  more in line.
-      - name: Prepare Docker environment
-        uses: ./.github/actions/docker-prep
-
       - name: Install build dependencies
         uses: ./.github/actions/freeradius-deps
         with:
+          selfhosted: ${{ inputs.selfhosted }}
+          packaging_changed: ${{ inputs.packaging_changed }}
           use_docker: true
           cc: ${{ matrix.env.CC }}
           fuzzing: ${{ matrix.env.TEST_TYPE == 'fuzzing' }}

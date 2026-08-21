@@ -115,10 +115,11 @@ gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc'\
 RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
 
 #
-#  Pre-install the build-dep closure for the FreeRADIUS spec. The spec
-#  is baked in at image-build time; ci-rpm.yml still runs dnf builddep
-#  per job as a top-up so newly added deps are picked up without an
-#  image rebuild. Run twice; occasionally dnf misses something first time.
+#  Pre-install the build-dep closure for the FreeRADIUS spec. The spec is
+#  baked in at image-build time; ci-rpm.yml only tops up when a commit
+#  touches the packaging, since ci-pipeline.yml refreshes this image before
+#  the build legs in that case. Run twice; dnf occasionally misses something
+#  first time.
 #
 COPY redhat/freeradius.spec /tmp/freeradius.spec
 RUN dnf builddep -y /tmp/freeradius.spec && \

@@ -201,6 +201,7 @@ jobs:
     - name: Install build dependencies
       uses: ./.github/actions/freeradius-deps
       with:
+        selfhosted: '1'
         use_docker: true
         cc: ${{ env.CC }}
         llvm_ver: 18

@@ -2,6 +2,12 @@ name: CI RPM
 
 on:
   workflow_call:
+    inputs:
+      packaging_changed:
+        description: "'true' when this commit touches redhat/**, so the image's baked builddep closure may be stale"
+        required: false
+        type: string
+        default: 'false'
 
 jobs:
 
@@ -78,26 +84,17 @@ jobs:
         path: freeradius
 
     #
-    #  Top-up builddep against the just-checked-out spec in case the
-    #  image was baked before a recent dep change. No-op when the image
-    #  is current. Run twice; occasionally dnf misses something first
-    #  time round.
+    #  The image bakes the builddep closure for the spec, refreshed when a
+    #  packaging change lands on master.  A pull request that adds a
+    #  dependency is testing a closure the image predates and cannot wait for
+    #  its own merge, so top up from the checked-out spec in that case only.
+    #  Run twice; occasionally dnf misses something first time round.
     #
-    - name: Install build dependencies
+    - name: Top up build dependencies from the spec
+      if: ${{ inputs.packaging_changed == 'true' }}
       run: |
         dnf builddep -y freeradius.spec && dnf builddep -y freeradius.spec
       working-directory: freeradius/redhat
-
-    #
-    #  The system gcc on rocky 9 is too old for the C23 fixed underlying
-    #  enum types the source relies on.  AppStream ships newer compilers
-    #  as gcc-toolset packages, which install to /opt/rh and leave the
-    #  system gcc untouched.
-    #
-    - name: Install gcc-toolset-14
-      if: ${{ matrix.env.VERSION == 9 }}
-      run: |
-        dnf install -y gcc-toolset-14-gcc gcc-toolset-14-annobin-plugin-gcc
 
     - name: Build RPMs
       run: |

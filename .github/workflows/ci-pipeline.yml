@@ -62,21 +62,29 @@ jobs:
   #  waits for it, so the docker images have all necessary packages before
   #  the rest of CI runs.
   #
+  #
+  #  A fork has no image until it builds one, so it always refreshes; buildx
+  #  layer reuse from its own GHCR makes the unchanged case cheap.  The org
+  #  only refreshes when a commit touches something baked into the images.
+  #
   refresh:
     name: Docker refresh
     needs: [changes]
-    if: needs.changes.outputs.images == 'true'
+    if: ${{ needs.changes.outputs.images == 'true' || github.repository_owner != 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-refresh.yml
+    with:
+      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
     secrets: inherit
 
   ci:
-    needs: [refresh]
+    needs: [changes, refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI
     uses: ./.github/workflows/ci.yml
     with:
       selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
       docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
+      packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
   ci-deb:
@@ -87,20 +95,23 @@ jobs:
     secrets: inherit
 
   ci-rpm:
-    needs: [refresh]
+    needs: [changes, refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI RPM
     uses: ./.github/workflows/ci-rpm.yml
+    with:
+      packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
   ci-sanitizers:
-    needs: [refresh]
+    needs: [changes, refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI-Sanitizers
     uses: ./.github/workflows/ci-sanitizers.yml
     with:
       selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
       docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
+      packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
   #

@@ -9,6 +9,12 @@ name: Docker refresh
 #
 on:
   workflow_call:
+    inputs:
+      selfhosted:
+        description: "'1' for the org's runners and internal registry, '0' for a fork building its own"
+        required: false
+        type: string
+        default: '1'
   workflow_dispatch:
   schedule:
     - cron: '0 1 * * *'
@@ -23,8 +29,14 @@ concurrency:
   group: docker-refresh
   cancel-in-progress: false
 
+#
+#  A fork cannot reach the internal registry, so it builds the CI base for
+#  itself and pushes it to its own GHCR.  Everything downstream just follows
+#  DOCKER_REGISTRY.
+#
 env:
-  DOCKER_REGISTRY: "docker.internal.networkradius.com"
+  DOCKER_REGISTRY: ${{ (inputs.selfhosted || '1') == '1' && 'docker.internal.networkradius.com' || format('ghcr.io/{0}', github.repository_owner) }}
+  SELFHOSTED: ${{ inputs.selfhosted || '1' }}
 
 jobs:
   #
@@ -33,10 +45,9 @@ jobs:
   #  because that container is built on top of them.
   #
   process-host-bases:
-    timeout-minutes: 20
+    timeout-minutes: 40
 
-    runs-on: self-hosted
-    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
+    runs-on: ${{ (inputs.selfhosted || '1') == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     strategy:
       fail-fast: false
@@ -44,9 +55,8 @@ jobs:
         os:
           - base_image: ubuntu:24.04
             display: self-hosted-ubuntu24
-            image_name: docker.internal.networkradius.com/self-hosted-ubuntu24
             extra_tags:
-              - docker.internal.networkradius.com/self-hosted
+              - self-hosted
             dockerfile: scripts/ci/docker/Dockerfile
             needs_build_deps: true
 
@@ -59,19 +69,21 @@ jobs:
           #
           - base_image: docker:24-dind
             display: self-hosted-docker-dind
-            image_name: docker.internal.networkradius.com/self-hosted-docker-dind
             dockerfile: scripts/ci/docker/Dockerfile.docker-dind
             needs_internal_ca: true
+            selfhosted_only: true
 
     name: "${{ matrix.os.display }}"
 
     steps:
 
       - uses: actions/checkout@v6
+        if: ${{ env.SELFHOSTED == '1' || !matrix.os.selfhosted_only }}
         with:
           lfs: false
 
       - name: Login to Docker Hub
+        if: ${{ (env.SELFHOSTED == '1' || !matrix.os.selfhosted_only) && env.SELFHOSTED == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_READ_USER }}
@@ -122,24 +134,40 @@ jobs:
 
       - name: Build main Docker image
         env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
+          #  The nightly refresh exists to pick up new upstream packages, so it
+          #  must not reuse layers.  A fork rebuilding per push wants the
+          #  opposite or it pays 20+ minutes every time.
+          NO_CACHE: ${{ env.SELFHOSTED == '1' && '--no-cache' || '' }}
         run: |
           for attempt in 1 2 3; do
-            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true . && exit 0
+            docker build $NO_CACHE -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true . && exit 0
             echo "Build attempt $attempt failed; retrying after backoff..."
             sleep 10
           done
           exit 1
 
       - name: Login to internal Docker registry for push
+        if: ${{ env.SELFHOSTED == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
           password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
 
+      #  A fork pushes to its own GHCR, which GITHUB_TOKEN can write to when
+      #  the workflow runs in the fork's own context.
+      - name: Login to GHCR for push
+        if: ${{ env.SELFHOSTED != '1' }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+          registry: ghcr.io
+
       - name: Push base image to local registry
+        if: ${{ env.SELFHOSTED == '1' }}
         env:
           DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
         run: |
@@ -152,7 +180,7 @@ jobs:
 
       - name: Push main image to local registry
         env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
@@ -164,10 +192,11 @@ jobs:
       - name: Create and push alternative tags
         if: ${{ matrix.os.extra_tags }}
         env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
           DOCKER_TAGS: ${{ join(matrix.os.extra_tags, ' ') }}
         run: |
-          for TAG in $DOCKER_TAGS; do
+          for NAME in $DOCKER_TAGS; do
+            TAG="$DOCKER_REGISTRY/$NAME"
             docker image tag "$DOCKER_IMAGE_NAME" "$TAG"
             for attempt in 1 2 3; do
               docker push "$TAG" && break
@@ -187,7 +216,7 @@ jobs:
     timeout-minutes: 15
 
     runs-on: self-hosted
-    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
+    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && (inputs.selfhosted || '1') == '1' }}
 
     strategy:
       fail-fast: false
@@ -226,7 +255,7 @@ jobs:
 
       - name: Build derived image
         env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
         run: |
           for attempt in 1 2 3; do
@@ -245,7 +274,7 @@ jobs:
 
       - name: Push derived image
         env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
@@ -264,7 +293,7 @@ jobs:
     timeout-minutes: 20
 
     runs-on: self-hosted
-    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
+    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && (inputs.selfhosted || '1') == '1' }}
 
     services:
       dind:
@@ -454,7 +483,7 @@ jobs:
       - name: Build main Docker image
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
         env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
           BUILD_ARGS_JSON: ${{ toJson(matrix.os.build_args) }}
         run: |
@@ -494,7 +523,7 @@ jobs:
       - name: Push main image to local registry
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
         env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
@@ -506,7 +535,7 @@ jobs:
       - name: Create and push alternative tags
         if: ${{ matrix.os.image_name && matrix.os.extra_tags }}
         env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
           DOCKER_TAGS: ${{ join(matrix.os.extra_tags, ' ') }}
         run: |
           for TAG in $DOCKER_TAGS; do
@@ -550,7 +579,7 @@ jobs:
     timeout-minutes: 90
 
     runs-on: self-hosted
-    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
+    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && (inputs.selfhosted || '1') == '1' }}
 
     strategy:
       fail-fast: false
