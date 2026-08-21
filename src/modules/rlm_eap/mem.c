@@ -460,7 +460,6 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	if (!handler) {
 		RERROR("No EAP session matching state "
 		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
-		       inst->xlat_name,
 		       state->vp_octets[0], state->vp_octets[1],
 		       state->vp_octets[2], state->vp_octets[3],
 		       state->vp_octets[4], state->vp_octets[5],
@@ -472,7 +471,6 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		RERROR("Aborting! More than 50 roundtrips "
 		       "made in session with state "
 		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
-		       inst->xlat_name,
 		       state->vp_octets[0], state->vp_octets[1],
 		       state->vp_octets[2], state->vp_octets[3],
 		       state->vp_octets[4], state->vp_octets[5],
