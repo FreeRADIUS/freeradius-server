@@ -95,28 +95,3 @@ jobs:
     uses: ./.github/workflows/merge-upstream.yml
     secrets:
       GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
-
-  #
-  #  Needs every leg, gating or not, so a FreeBSD or macOS failure still gets
-  #  diagnosed.  failure() is true when any of them failed, and the job runs
-  #  once for the whole pipeline, so one session sees every failure instead of
-  #  one per failing leg.
-  #
-  diagnose:
-    needs: [ci, ci-deb, ci-rpm, ci-sanitizers, ci-freebsd, ci-macos, ci-multi-server,
-            docker-crossbuild, docker-service]
-    if: failure()
-    uses: ./.github/workflows/claude-ci-failure-diagnosis.yml
-    with:
-      results: >-
-        ci=${{ needs.ci.result }}
-        ci-deb=${{ needs.ci-deb.result }}
-        ci-rpm=${{ needs.ci-rpm.result }}
-        ci-sanitizers=${{ needs.ci-sanitizers.result }}
-        ci-freebsd=${{ needs.ci-freebsd.result }}
-        ci-macos=${{ needs.ci-macos.result }}
-        ci-multi-server=${{ needs.ci-multi-server.result }}
-        docker-crossbuild=${{ needs.docker-crossbuild.result }}
-        docker-service=${{ needs.docker-service.result }}
-    secrets:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
