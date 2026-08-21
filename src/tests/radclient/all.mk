@@ -112,7 +112,6 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 	fi
 	${Q}touch $@
 
-.NOTPARALLEL: $(TEST)
 $(TEST):
 	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@
