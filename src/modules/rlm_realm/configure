@@ -585,7 +585,6 @@ PACKAGE_URL=
 ac_unique_file="rlm_realm.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-trustrouter
 mod_ldflags
 mod_cflags
 targetname

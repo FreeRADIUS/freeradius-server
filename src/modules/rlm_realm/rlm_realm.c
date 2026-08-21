@@ -26,8 +26,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-#include "trustrouter.h"
-
 #define  REALM_FORMAT_PREFIX   0
 #define  REALM_FORMAT_SUFFIX   1
 
@@ -39,15 +37,6 @@ typedef struct rlm_realm_t {
 	bool		ignore_null;
 	bool		return_notfound;
 	rlm_rcode_t	notfound;
-
-#ifdef HAVE_TRUST_ROUTER_TR_DH_H
-	char const	*default_community;
-	char const	*rp_realm;
-	char const	*trust_router;
-	uint32_t	tr_port;
-	bool		rekey_enabled;
-	uint32_t	realm_lifetime;
-#endif
 } rlm_realm_t;
 
 static CONF_PARSER module_config[] = {
@@ -56,14 +45,6 @@ static CONF_PARSER module_config[] = {
 	{ "ignore_default", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_default), "no" },
 	{ "ignore_null", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_null), "no" },
 	{ "return_notfound", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, return_notfound), "no" },
-#ifdef HAVE_TRUST_ROUTER_TR_DH_H
-	{ "default_community", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, default_community),  "none" },
-	{ "rp_realm", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, rp_realm),  "none" },
-	{ "trust_router", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, trust_router),  "none" },
-	{ "tr_port", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_realm_t, tr_port),  "0" },
-	{ "rekey_enabled", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, rekey_enabled),  "no" },
-	{ "realm_lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_realm_t, realm_lifetime),  "0" },
-#endif
 	CONF_PARSER_TERMINATOR
 };
 
@@ -173,21 +154,6 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	Allow DEFAULT realms unless told not to.
 	 */
 	realm = realm_find(realmname);
-
-#ifdef HAVE_TRUST_ROUTER_TR_DH_H
-	/*
-	 *	Try querying for the dynamic realm.
-	 */
-	if (!realm) {
-		if (inst->trust_router) {
-			realm = tr_query_realm(request, realmname, inst->default_community, inst->rp_realm,
-					       inst->trust_router, inst->tr_port);
-		}
-		else {
-			RDEBUG2("No trust router configured, skipping dynamic realm lookup");
-		}
-	}
-#endif
 
 	if (!realm) {
 		RDEBUG2("No such realm \"%s\"", (!realmname) ? "NULL" : realmname);
@@ -404,16 +370,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	} else {
 		inst->notfound = RLM_MODULE_NOOP;
 	}
-
-#ifdef HAVE_TRUST_ROUTER_TR_DH_H
-	/* initialize the trust router integration code */
-	if (strcmp(inst->trust_router, "none") != 0) {
-		if (!tr_init(inst->rekey_enabled, inst->realm_lifetime)) return -1;
-	} else {
-		rad_const_free(inst->trust_router);
-		inst->trust_router = NULL;
-	}
-#endif
 
 	return 0;
 }

@@ -1,3 +1,7 @@
+bob	PSK-Password := 0x9f9d51bc70ef21ca5c14f307980a29d8, Cleartext-Password := "bob"
+
+doug	PSK-Password := 0x4e0c55bc125db6f26b392528a7689785, Cleartext-Password := "doug"
+
 #
 # 	Configuration file for the rlm_files module.
 # 	Please see rlm_files(5) manpage for more information.
