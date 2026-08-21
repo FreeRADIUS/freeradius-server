@@ -42,7 +42,10 @@ make test.multi-server.profiling.ci    # CI subset
 ```
 
 Profiling results land under
-`prof-results/<suite>/<test>/<branch>/<commit>/<run-index>/`. Set
+`prof-results/<branch>/<commit>/<run-index>/<suite>/<test>/`. One make
+invocation is one run index, so every suite and test of a single run sits
+under the same one; in CI that index is the workflow run number, locally it
+is the highest run index already present plus one. Set
 `PROFILING_RESULT_MODE=dev` to use a flat per-suite layout that overwrites
 each run.
 
