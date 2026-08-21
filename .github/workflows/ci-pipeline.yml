@@ -22,76 +22,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
+#
+#  BRANCH-LOCAL: every leg except the multi-server tests is removed while the
+#  profiling result check is developed on this branch. Restore the full job
+#  list from master before merging.
+#
 jobs:
-  ci:
-    name: CI
-    uses: ./.github/workflows/ci.yml
-    with:
-      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
-      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
-    secrets: inherit
-
-  ci-deb:
-    name: CI DEB
-    uses: ./.github/workflows/ci-deb.yml
-    secrets: inherit
-
-  ci-rpm:
-    name: CI RPM
-    uses: ./.github/workflows/ci-rpm.yml
-    secrets: inherit
-
-  ci-sanitizers:
-    name: CI-Sanitizers
-    uses: ./.github/workflows/ci-sanitizers.yml
-    with:
-      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
-      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
-    secrets: inherit
-
-  #
-  #  Run on every commit but absent from merge's needs:, so a failure here is
-  #  reported and diagnosed without holding up the merge.
-  #
-  ci-freebsd:
-    name: CI FreeBSD
-    uses: ./.github/workflows/ci-freebsd.yml
-    secrets: inherit
-
-  ci-macos:
-    name: CI macOS
-    uses: ./.github/workflows/ci-macos.yml
-    secrets: inherit
-
   ci-multi-server:
     name: Multi-Server CI Tests
     uses: ./.github/workflows/ci-multi-server-tests.yml
     secrets: inherit
-
-  #
-  #  Image builds take about as long as CI takes to fail, so ungated they were
-  #  finishing in full on every broken commit.  needs: ci skips them instead.
-  #  They are per-commit smoke builds - docker-refresh.yml does the publishing
-  #  on its own schedule - so starting them later costs nothing.
-  #
-  docker-crossbuild:
-    name: Docker crossbuild images
-    needs: [ci]
-    uses: ./.github/workflows/docker-crossbuild.yml
-    secrets: inherit
-
-  docker-service:
-    name: Docker service images
-    needs: [ci]
-    uses: ./.github/workflows/docker-service.yml
-    secrets: inherit
-
-  #
-  #  No if:, so the default applies: runs only when every leg it needs
-  #  succeeded, and is skipped otherwise.  Only the gating legs are listed.
-  #
-  merge:
-    needs: [ci, ci-deb, ci-rpm, ci-sanitizers]
-    uses: ./.github/workflows/merge-upstream.yml
-    secrets:
-      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}

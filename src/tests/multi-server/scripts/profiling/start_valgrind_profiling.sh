@@ -128,15 +128,27 @@ wait ${VALGRIND_PID} 2>/dev/null || VALGRIND_STATUS=$?
 echo "${VALGRIND_STATUS}" > /etc/prof-results/valgrind-exit-status
 
 if [ "${VALGRIND_STATUS}" -ne 0 ]; then
-  #  Over 128 means a signal. 139 is SIGSEGV, which is how valgrind exiting on
-  #  its 8 MB brk segment ceiling presents; valgrind.log names the real reason
-  #  on the line above its backtrace.
+  #  Over 128 means a signal. Valgrind passes the profiled server's exit
+  #  status through (verified: freeradius's own _EXIT(134) matched the 134
+  #  recorded here on the e26e348 ldap run), so a signal status usually
+  #  means FREERADIUS died of that signal - an assert or crash logged in
+  #  freeradius.log - rather than valgrind itself being killed.
+  #  valgrind.log's "brk segment overflow" warning is NOT the reason: clean
+  #  runs carry it too (glibc falls back to mmap when brk cannot grow).
   if [ "${VALGRIND_STATUS}" -gt 128 ]; then
-    echo "ERROR: valgrind was killed by signal $((VALGRIND_STATUS - 128)); profiling data is truncated" >&2
+    SIG=$((VALGRIND_STATUS - 128))
+    case ${SIG} in
+    6)  SIGNAME="SIGABRT (abort/assertion)" ;;
+    9)  SIGNAME="SIGKILL (OOM killer or forced teardown)" ;;
+    11) SIGNAME="SIGSEGV (crash)" ;;
+    15) SIGNAME="SIGTERM" ;;
+    *)  SIGNAME="signal ${SIG}" ;;
+    esac
+    echo "ERROR: exit status ${VALGRIND_STATUS}: ${SIGNAME}; freeradius likely died of that signal (see freeradius.log for asserts/backtraces)" >&2
   else
     echo "ERROR: valgrind exited ${VALGRIND_STATUS}; profiling data may be truncated" >&2
   fi
-  echo "ERROR: see valgrind.log for the reason; these results will not be published" >&2
+  echo "ERROR: these results will not be published" >&2
 fi
 
 # Signal that valgrind has finished writing all profiling data
