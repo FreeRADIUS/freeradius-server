@@ -106,52 +106,13 @@ runs:
         echo "exit 101" | sudo tee -a /usr/sbin/policy-rc.d
         sudo chmod 755 /usr/sbin/policy-rc.d
 
-    - name: Set up repositories
-      shell: bash
-      run: |
-        sudo install -d -o root -g root -m 0755 /etc/apt/keyrings
-        curl -s https://openresty.org/package/pubkey.gpg | sudo tee /etc/apt/keyrings/openresty.asc
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/openresty.asc] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
-
-        sudo apt-get update
-
-    - name: Install test servers
+    - name: Quiesce test servers
       shell: bash
       env:
         USE_DOCKER: ${{ inputs.use_docker }}
       run: |
-        sudo apt-get install -y --no-install-recommends \
-          389-ds \
-          dovecot-imapd \
-          exim4 \
-          memcached \
-          openresty \
-          redis-server \
-          slapd
-
         test x"$USE_DOCKER" = "xtrue" || sudo systemctl stop dovecot exim4 slapd openresty
         test x"$USE_DOCKER" = "xtrue" || sudo aa-complain /usr/sbin/slapd
-
-        echo "samba-common samba-common/workgroup string WORKGROUP" | sudo debconf-set-selections
-        echo "samba-common samba-common/dhcp boolean false" | sudo debconf-set-selections
-        echo "samba-common samba-common/do_debconf boolean true" | sudo debconf-set-selections
-        sudo apt-get install -y samba samba-ad-provision samba-dsdb-modules samba-vfs-modules winbind krb5-user
-
-    - name: Install test clients
-      shell: bash
-      run: |
-        sudo apt-get install -y --no-install-recommends \
-          redis-tools \
-          oathtool \
-          ldap-utils
-
-    - name: Install test clients (containers)
-      if: ${{ inputs.use_docker == 'true' }}
-      shell: bash
-      run: |
-        sudo apt-get install -y --no-install-recommends \
-          mariadb-client \
-          postgresql-client
 
     - name: Configure databases (GitHub runner)
       if: ${{ inputs.use_docker != 'true' }}

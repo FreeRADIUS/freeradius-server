@@ -106,8 +106,10 @@ RUN PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install tacacs_plus
 #
 RUN apt-get install -y --no-install-recommends \
 	clang-${llvm_ver} \
+	libclang-rt-${llvm_ver}-dev \
 	llvm-${llvm_ver} \
 	gcc-${gcc_ver} \
+	libstdc++-${gcc_ver}-dev \
 	gdb \
 	lldb
 
@@ -136,6 +138,14 @@ RUN apt-get install -yd --no-install-recommends \
 	libpcre3-dev
 
 #
+#  openresty is not in the distro repos; rlm_rest's tests need it.
+#
+RUN curl -s https://openresty.org/package/pubkey.gpg -o /etc/apt/keyrings/openresty.asc && \
+	RELEASE=$(lsb_release -sc) && \
+	echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/openresty.asc] http://openresty.org/package/ubuntu ${RELEASE} main" \
+		> /etc/apt/sources.list.d/openresty.list
+
+#
 #  Extra installs for the CI testing stage
 #
 RUN apt-get update
@@ -157,10 +167,17 @@ RUN apt-get install -y --no-install-recommends \
 	libnginx-mod-http-lua \
 	lua-cjson \
 	mariadb-client \
+	memcached \
 	nginx \
+	oathtool \
+	openresty \
 	postgresql-client \
 	redis-server \
 	redis-tools \
+	samba \
+	samba-ad-provision \
+	samba-dsdb-modules \
+	samba-vfs-modules \
 	slapd \
 	winbind \
 	samba \
@@ -168,6 +185,29 @@ RUN apt-get install -y --no-install-recommends \
 	samba-dsdb-modules \
 	samba-vfs-modules
 
+#
+#  Documentation toolchain.  documentation.yml used to install these per
+#  job; they only change when this image is rebuilt.
+#
+RUN apt-get install -y --no-install-recommends \
+	asciidoctor \
+	doxygen \
+	graphviz \
+	nodejs \
+	npm
+
+RUN npm i -g @antora/cli@3.1 @antora/site-generator@3.1
+
+#
+#  Used by the scheduled fuzzing corpus push.
+#
+RUN apt-get install -y --no-install-recommends python3-venv
+
+#
+#  Pulled in as a transitive dependency but conflicts with the
+#  libmemcached the tests build against.
+#
+RUN apt-get remove -y libhashkit2 || true
 
 #
 #  Trust any workspace path. The job container runs as root but the

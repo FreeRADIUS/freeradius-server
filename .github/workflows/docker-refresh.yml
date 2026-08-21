@@ -11,8 +11,15 @@ on:
       - scripts/docker/build/*/Dockerfile.crossbuild
       - scripts/docker/build/*/Dockerfile.profiling-deps
       - scripts/docker/build/*/Dockerfile.service
-      - debian/control
-      - redhat/freeradius.spec
+      #
+      #  The build-dep closure is baked into the images, so a packaging
+      #  change needs a rebuild or the jobs build against stale deps.
+      #  debian/control itself is generated from control.in and is not
+      #  tracked, so matching on it never fired.
+      #
+      - debian/**
+      - scripts/ci/extra-packages.debian.control
+      - redhat/**
   workflow_dispatch:
   schedule:
     - cron: '0 1 * * *'

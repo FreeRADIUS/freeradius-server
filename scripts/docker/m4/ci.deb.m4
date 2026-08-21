@@ -27,9 +27,9 @@ include(`common.deb.nr-extras.m4')dnl
 
 #
 #  Pre-install the build-dep closure derived from debian/control. The
-#  source-tree debian/ subtree is baked in at image-build time; ci-deb.yml
-#  still runs mk-build-deps per job as a top-up so newly added deps are
-#  picked up without an image rebuild.
+#  source-tree debian/ subtree is baked in at image-build time. There is no
+#  per-job top-up any more, so a new build dependency needs an image refresh;
+#  ci-pipeline.yml runs one before its build legs when debian/** changes.
 #
 COPY debian/ /tmp/freeradius-build/debian/
 RUN cd /tmp/freeradius-build && \

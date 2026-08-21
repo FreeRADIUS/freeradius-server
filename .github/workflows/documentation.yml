@@ -54,11 +54,6 @@ jobs:
     #  the documentation-specific tools - install those here. apt indexes
     #  are already refreshed in the image; just install.
     #
-    - name: Install documentation tools
-      run: |
-        apt-get install -y --no-install-recommends asciidoctor doxygen graphviz nodejs npm
-        npm i -g @antora/cli@3.1 @antora/site-generator@3.1
-
     - name: Show versions
       run: |
         make --version
@@ -158,8 +153,6 @@ jobs:
       cancel-in-progress: true
 
     steps:
-    - name: Install ssh client
-      run: apt-get install -y --no-install-recommends openssh-client
 
     - name: Setup SSH for git access
       uses: shimataro/ssh-key-action@v2
