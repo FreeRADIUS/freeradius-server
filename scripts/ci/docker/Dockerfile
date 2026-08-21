@@ -162,8 +162,11 @@ RUN apt-get install -y --no-install-recommends \
 	redis-server \
 	redis-tools \
 	slapd \
-	winbind
-#	samba \
+	winbind \
+	samba \
+	samba-ad-provision \
+	samba-dsdb-modules \
+	samba-vfs-modules
 
 
 #
