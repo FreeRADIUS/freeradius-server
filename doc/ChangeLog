@@ -9,6 +9,8 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Add notes on the security of CHAP-Password and MS-CHAP-*
 	  If you send these attributes over RADIUS/UDP, then any observer
 	  can crack those passwords in milliseconds on a laptop.
+	* Removed all code and configuration related to trustrouter (abfab)
+	  That project was marked as end of life a few years ago.
 
 	Feature improvements
 	* Implement "track_home_server" in home_server_pool configuration
@@ -30,6 +32,8 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Improve performance of State handling when tracking many EAP packets.
 	* Fix overflow on relayed DHCP packets.  Issue found by A. Ramos.
 	* Fix more corner cases in RadSec when sockets have errors.
+	* Tweaked module messages to be more consistent, so that messages
+	  associated with a request are printed with the correct request ID.
 
 FreeRADIUS 3.2.10 Wed 03 Jun 2026 12:00:00 UTC urgency=high
 	Configuration changes
