@@ -1,25 +1,14 @@
 name: Docker refresh
 
+#
+#  ci-pipeline.yml calls this before its build legs when a commit touches
+#  anything baked into the images, so the legs never build against stale
+#  ones. There is no push: trigger: the pipeline already runs on push, and
+#  a second standalone run would race the one the pipeline is waiting for.
+#  The list of paths that count lives in the pipeline's "changes" job.
+#
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - .github/workflows/docker-refresh.yml
-      - scripts/ci/docker/Dockerfile*
-      - scripts/docker/build/*/Dockerfile.ci
-      - scripts/docker/build/*/Dockerfile.crossbuild
-      - scripts/docker/build/*/Dockerfile.profiling-deps
-      - scripts/docker/build/*/Dockerfile.service
-      #
-      #  The build-dep closure is baked into the images, so a packaging
-      #  change needs a rebuild or the jobs build against stale deps.
-      #  debian/control itself is generated from control.in and is not
-      #  tracked, so matching on it never fired.
-      #
-      - debian/**
-      - scripts/ci/extra-packages.debian.control
-      - redhat/**
+  workflow_call:
   workflow_dispatch:
   schedule:
     - cron: '0 1 * * *'

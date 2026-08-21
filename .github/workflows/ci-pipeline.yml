@@ -12,18 +12,66 @@ on:
     - cron: '0 20 * * *'
 
 #
-#  Cancel any in-flight or queued run of this workflow on the same branch when a
-#  new commit lands, so only the newest commit gets tested. head_ref names the
-#  source branch on pull_request events and ref_name covers push events, so
-#  keying on either rather than on github.ref stops a branch with an open pull
-#  request from running two full sets of jobs.
+#  Cancel any in-flight or queued run of this workflow on the same branch.
 #
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
+  #
+  #  Anything baked into the CI Docker images has to be updated before any of
+  #  the main CI jobs run against them.  This _should_ in theory catch any new
+  #  modules that are added, as long as they're packaged.
+  #
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.check.outputs.images }}
+    steps:
+      #  paths-filter diffs (below) needs a checkout of the repository.
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      #
+      #  Only refresh the docker image if we think any of the files which
+      #  might pull in additional dependencies have changed.  We ONLY do 
+      #  this on push, not pull requests so we don't poison our docker 
+      #  images.  We really need to figure out how to qualify the images
+      #  so we can generate dedicated images for PRs.
+      #
+      - uses: dorny/paths-filter@v4.0.3
+        id: check
+        if: github.event_name == 'push'
+        with:
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          filters: |
+            images:
+              - 'debian/**'
+              - 'redhat/**'
+              - 'scripts/ci/extra-packages.debian.control'
+              - 'scripts/ci/docker/Dockerfile*'
+              - 'scripts/docker/build/*/Dockerfile.ci'
+              - 'scripts/docker/build/*/Dockerfile.crossbuild'
+              - 'scripts/docker/build/*/Dockerfile.profiling-deps'
+              - 'scripts/docker/build/*/Dockerfile.service'
+
+  #
+  #  Skipped on the vast majority of commits.  When it does run every leg
+  #  waits for it, so the docker images have all necessary packages before
+  #  the rest of CI runs.
+  #
+  refresh:
+    name: Docker refresh
+    needs: [changes]
+    if: needs.changes.outputs.images == 'true'
+    uses: ./.github/workflows/docker-refresh.yml
+    secrets: inherit
+
   ci:
+    needs: [refresh]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI
     uses: ./.github/workflows/ci.yml
     with:
@@ -32,16 +80,22 @@ jobs:
     secrets: inherit
 
   ci-deb:
+    needs: [refresh]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI DEB
     uses: ./.github/workflows/ci-deb.yml
     secrets: inherit
 
   ci-rpm:
+    needs: [refresh]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI RPM
     uses: ./.github/workflows/ci-rpm.yml
     secrets: inherit
 
   ci-sanitizers:
+    needs: [refresh]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI-Sanitizers
     uses: ./.github/workflows/ci-sanitizers.yml
     with:
@@ -50,39 +104,41 @@ jobs:
     secrets: inherit
 
   #
-  #  Run on every commit but absent from merge's needs:, so a failure here is
-  #  reported and diagnosed without holding up the merge.
+  #  Run on every commit but absent from merge's needs, because they're
+  #  too unreliable.
   #
   ci-freebsd:
+    needs: [refresh]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI FreeBSD
     uses: ./.github/workflows/ci-freebsd.yml
     secrets: inherit
 
   ci-macos:
+    needs: [refresh]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI macOS
     uses: ./.github/workflows/ci-macos.yml
     secrets: inherit
 
   ci-multi-server:
+    needs: [refresh]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: Multi-Server CI Tests
     uses: ./.github/workflows/ci-multi-server-tests.yml
     secrets: inherit
 
-  #
-  #  Image builds take about as long as CI takes to fail, so ungated they were
-  #  finishing in full on every broken commit.  needs: ci skips them instead.
-  #  They are per-commit smoke builds - docker-refresh.yml does the publishing
-  #  on its own schedule - so starting them later costs nothing.
-  #
   docker-crossbuild:
     name: Docker crossbuild images
-    needs: [ci]
+    needs: [refresh, ci]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' }}
     uses: ./.github/workflows/docker-crossbuild.yml
     secrets: inherit
 
   docker-service:
     name: Docker service images
-    needs: [ci]
+    needs: [refresh, ci]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' }}
     uses: ./.github/workflows/docker-service.yml
     secrets: inherit
 
