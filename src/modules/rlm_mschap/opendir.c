@@ -170,7 +170,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		}
 
 		if (!pUserLocation) {
-			DEBUG2("[mschap] OpenDirectory has no user location");
+			RDEBUG2("OpenDirectory has no user location");
 			result = RLM_MODULE_NOOP;
 			break;
 		}
@@ -180,14 +180,14 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		 * normal freeradius AD path (i.e. ntlm_auth).
 		 */
 		if (strncmp(pUserLocation, kActiveDirLoc, strlen(kActiveDirLoc)) == 0) {
-			DEBUG2("[mschap] OpenDirectory authentication returning noop.  OD doesn't support MSCHAPv2 for ActiveDirectory users");
+			RDEBUG2("OpenDirectory authentication returning noop.  OD doesn't support MSCHAPv2 for ActiveDirectory users");
 			result = RLM_MODULE_NOOP;
 			break;
 		}
 
 		pUserNode = dsBuildFromPath(dsRef, pUserLocation, "/");
 		if (!pUserNode) {
-			RERROR("Failed building user from path");
+			RERROR("Opendir Failed building user from path");
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -199,7 +199,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		if (status != eDSNoErr) {
 		error:
 			status_name = dsCopyDirStatusName(status);
-			RERROR("%s: status = %s", what, status_name);
+			RERROR("Opendir %s: status = %s", what, status_name);
 			free(status_name);
 			result = RLM_MODULE_FAIL;
 			break;
@@ -417,7 +417,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 
 	if (status != eDSNoErr) {
 		char *status_name = dsCopyDirStatusName(status);
-		RERROR("rlm_mschap: authentication failed - status = %s", status_name);
+		RERROR("authentication failed - status = %s", status_name);
 		free(status_name);
 		return RLM_MODULE_REJECT;
 	}
