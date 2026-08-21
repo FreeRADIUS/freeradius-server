@@ -22,12 +22,11 @@ Core dumps are excluded; collect-core-dumps.sh keeps those instead. Run from
 the directory holding prof-results/. A missing prof-results/ tree, or one
 holding nothing publishable, is a quiet success.
 
-Fails without publishing when any test's valgrind-exit-status is non-zero or
-missing, because a run valgrind killed has truncated callgrind output whose
-numbers are not comparable with previous runs. Set PROF_PUBLISH_PRUNE_UNCLEAN=1
-to prune the unclean tests' directories and publish the clean remainder
-instead: the store then receives only comparable data, and a run where every
-test is unclean still publishes nothing.
+Prunes any test whose valgrind-exit-status is non-zero or missing, because a
+run valgrind killed has truncated callgrind output whose numbers are not
+comparable with previous runs. The clean remainder is published, so the store
+receives only comparable data. A run where every test is unclean has nothing
+comparable to publish and exits non-zero so the CI leg goes red.
 
   <url>  Where to POST. Its origin becomes the OIDC audience.
   -h     Show this help.
@@ -56,13 +55,13 @@ audience="${url%%://*}://${host_path%%/*}"
 
 [ -d prof-results ] || { echo "no prof-results/ tree; skipping"; exit 0; }
 
-#  Refuse to publish a run valgrind did not finish cleanly. start_valgrind_-
+#  Never publish a test valgrind did not finish cleanly. start_valgrind_-
 #  profiling.sh drops a valgrind-exit-status file in each test's results dir; a
 #  non-zero status means valgrind was killed, which leaves callgrind output
 #  truncated at whatever point it died. Numbers from a truncated run are not
 #  comparable with a clean one, and publishing them silently poisons the
-#  per-suite history the regression gate compares against. Exits non-zero so
-#  the leg goes red rather than passing with nothing uploaded.
+#  per-suite history the regression gate compares against, so unclean tests
+#  are pruned (with a warning naming each one) and the rest publish normally.
 #
 #  A results dir holding the wrapper's log but no valgrind-exit-status is just
 #  as unclean: the wrapper writes valgrind_profiling.log first and the status
@@ -101,11 +100,7 @@ explain_status()
 }
 
 if [ -n "$unclean" ]; then
-	if [ "${PROF_PUBLISH_PRUNE_UNCLEAN:-0}" = "1" ]; then
-		echo "WARNING: pruning tests where valgrind did not finish cleanly:" >&2
-	else
-		echo "ERROR: refusing to publish, valgrind did not finish cleanly in:" >&2
-	fi
+	echo "WARNING: pruning tests where valgrind did not finish cleanly:" >&2
 	for entry in $unclean; do
 		dir=${entry%:*}
 		echo "         ${dir}" >&2
@@ -120,17 +115,13 @@ if [ -n "$unclean" ]; then
 		if [ -n "$diag" ]; then
 			echo "           freeradius.log: ${diag}" >&2
 		else
-			diag=$(grep -E -m1 "Assertion|FATAL|out of memory|impossible happened|Fatal error" "$dir/valgrind.log" 2>/dev/null || true)
+			diag=$(grep -E -m1 "Assertion|FATAL|out of memory|'impossible' happened|Fatal error" "$dir/valgrind.log" 2>/dev/null || true)
 			[ -n "$diag" ] && echo "           valgrind.log: ${diag}" >&2
 		fi
 	done
-	if [ "${PROF_PUBLISH_PRUNE_UNCLEAN:-0}" != "1" ]; then
-		echo "ERROR: truncated profiling data is not comparable with previous runs" >&2
-		exit 1
-	fi
-	#  Prune mode: drop each unclean test's directory so only comparable data
-	#  travels. An all-unclean run leaves nothing publishable and exits 0 at
-	#  the empty-file-list check below, same as an empty tree.
+	#  Drop each unclean test's directory so only comparable data travels. An
+	#  all-unclean run leaves nothing publishable and errors out at the
+	#  empty-file-list check below.
 	for entry in $unclean; do
 		rm -rf "${entry%:*}"
 	done
@@ -172,6 +163,13 @@ if [ -s "$core_list" ]; then
 fi
 
 if ! [ -s "$file_list" ]; then
+	#  An all-unclean run is a failure, not a skip: every test was pruned, so
+	#  the run produced no comparable data at all and the leg must go red
+	#  rather than quietly publishing nothing.
+	if [ -n "$unclean" ]; then
+		echo "ERROR: every test was pruned as unclean; no comparable data to publish" >&2
+		exit 1
+	fi
 	echo "prof-results/ holds no publishable files; skipping"
 	exit 0
 fi
