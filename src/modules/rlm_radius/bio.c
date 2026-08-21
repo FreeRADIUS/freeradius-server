@@ -2781,10 +2781,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	case RLM_RADIUS_MODE_REPLICATE:
 		/*
-		 *	We can replicate over TCP, but that uses trunks.
+		 *	Replication trunks use a different set of functions.
 		 */
-		if (inst->fd_config.socket_type == SOCK_DGRAM) break;
-
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_replicate_funcs,
 						&inst->trunk_conf, inst->name, thread, false, inst->trigger_args);
 		if (!thread->ctx.trunk) return -1;
