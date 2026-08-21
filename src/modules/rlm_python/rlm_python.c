@@ -357,9 +357,9 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			quote = "'";
 			s2p = s2;
 		}
-		DEBUG("%s - %s'%s:%s' %s %s%s%s", funcname,
-			fr_pair_value_from_str(vp, s2, -1) < 0 ? "Failed: " : "",
-			list_name, s1, fr_int2str(fr_tokens, op, "="), quote, s2p, quote);
+		RDEBUG("%s - %s'%s:%s' %s %s%s%s", funcname,
+		       fr_pair_value_from_str(vp, s2, -1) < 0 ? "Failed: " : "",
+		       list_name, s1, fr_int2str(fr_tokens, op, "="), quote, s2p, quote);
 
 		radius_pairmove(current, vps, vp, false);
 	}

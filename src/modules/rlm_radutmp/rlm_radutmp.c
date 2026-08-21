@@ -167,7 +167,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	char		*expanded = NULL;
 
 	if (request->packet->src_ipaddr.af != AF_INET) {
-		DEBUG("rlm_radutmp: IPv6 not supported!");
+		RDEBUG("rlm_radutmp: IPv6 not supported!");
 		return RLM_MODULE_NOOP;
 	}
 

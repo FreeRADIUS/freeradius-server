@@ -163,15 +163,15 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 					s2 = StringValuePtr(pString2);
 
 					if ((s1 != NULL) && (s2 != NULL)) {
-						DEBUG("%s: %s = %s ",
+						RDEBUG("%s: %s = %s ",
 						       function_name, s1, s2);
 
 						/* xxx Might need to support other T_OP */
 						vp = fr_pair_make(ctx, vpp, s1, s2, T_OP_EQ);
 						if (vp != NULL) {
-							DEBUG("%s: s1, s2 OK", function_name);
+							RDEBUG3("%s: s1, s2 OK", function_name);
 						} else {
-							DEBUG("%s: s1, s2 FAILED", function_name);
+							RDEBUG("%s: s1, s2 FAILED", function_name);
 						}
 					} else {
 						REDEBUG("%s: string conv failed", function_name);
@@ -208,7 +208,8 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 	VALUE rb_request, rb_result, rb_reply_items, rb_config, rbString1, rbString2;
 
 	int n_tuple;
-	DEBUG("Calling ruby function %s which has id: %lu\n", function_name, func);
+
+	RDEBUG("Calling ruby function %s which has id: %lu\n", function_name, func);
 
 	/* Return with "OK, continue" if the function is not defined.
 	 * TODO: Should check with rb_respond_to each time, just because ruby can define function dynamicly?

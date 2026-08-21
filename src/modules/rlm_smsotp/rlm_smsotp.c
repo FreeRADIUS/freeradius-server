@@ -285,7 +285,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *  The server will take care of sending it to the user.
 	 */
 	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
-	DEBUG("rlm_smsotp: Sending Access-Challenge");
+	RDEBUG("rlm_smsotp: Sending Access-Challenge");
 
 	rcode = RLM_MODULE_HANDLED;
 
@@ -310,7 +310,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 */
 	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (state != NULL) {
-		DEBUG("rlm_smsotp: Found reply to access challenge (AUTZ), Adding Auth-Type '%s'",inst->authtype);
+		RDEBUG("rlm_smsotp: Found reply to access challenge (AUTZ), Adding Auth-Type '%s'",inst->authtype);
 
 		fr_pair_delete_by_num(&request->config, PW_AUTH_TYPE, 0, TAG_ANY); /* delete old auth-type */
 		pair_make_config("Auth-Type", inst->authtype, T_OP_SET);

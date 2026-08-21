@@ -203,7 +203,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 		/* continue previous session */
 		switch (securid_session->securidSessionState) {
 		case NEXT_CODE_REQUIRED_STATE:
-			DEBUG2("Securid NEXT_CODE_REQUIRED_STATE: User [%s]", username);
+			RDEBUG2("Securid NEXT_CODE_REQUIRED_STATE: User [%s]", username);
 			/* next token code mode */
 
 			acm_ret = SD_Next(securid_session->sdiHandle, securid_pass);

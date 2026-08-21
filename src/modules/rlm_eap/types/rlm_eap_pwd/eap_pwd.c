@@ -285,7 +285,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		break;
 
 	default:
-		DEBUG("unknown group %d", grp_num);
+		RDEBUG("unknown group %d", grp_num);
 		goto fail;
 	}
 
@@ -294,7 +294,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	session->prime = NULL;
 
 	if ((session->group = EC_GROUP_new_by_curve_name(nid)) == NULL) {
-		DEBUG("unable to create EC_GROUP");
+		RDEBUG("unable to create EC_GROUP");
 		goto fail;
 	}
 
@@ -310,44 +310,44 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	    ((y2 = consttime_BN()) == NULL) ||
 	    ((y = consttime_BN()) == NULL) ||
         ((exp = consttime_BN()) == NULL)) {
-		DEBUG("unable to create bignums");
+		RDEBUG("unable to create bignums");
 		goto fail;
 	}
 
 	if (!EC_GROUP_get_curve(session->group, session->prime, NULL, NULL, NULL)) {
-		DEBUG("unable to get prime for GFp curve");
+		RDEBUG("unable to get prime for GFp curve");
 		goto fail;
 	}
 
 	if (!EC_GROUP_get_order(session->group, session->order, NULL)) {
-		DEBUG("unable to get order for curve");
+		RDEBUG("unable to get order for curve");
 		goto fail;
 	}
 
 	primebitlen = BN_num_bits(session->prime);
 	primebytelen = BN_num_bytes(session->prime);
 	if ((prfbuf = talloc_zero_array(session, uint8_t, primebytelen)) == NULL) {
-		DEBUG("unable to alloc space for prf buffer");
+		RDEBUG("unable to alloc space for prf buffer");
 		goto fail;
 	}
 	if ((xbuf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
-		DEBUG("unable to alloc space for x buffer");
+		RDEBUG("unable to alloc space for x buffer");
 		goto fail;
 	}
 	if ((pm1buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
-		DEBUG("unable to alloc space for pm1 buffer");
+		RDEBUG("unable to alloc space for pm1 buffer");
 		goto fail;
 	}
 	if ((y1buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
-		DEBUG("unable to alloc space for y1 buffer");
+		RDEBUG("unable to alloc space for y1 buffer");
 		goto fail;
 	}
 	if ((y2buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
-		DEBUG("unable to alloc space for y2 buffer");
+		RDEBUG("unable to alloc space for y2 buffer");
 		goto fail;
 	}
 	if ((ybuf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
-		DEBUG("unable to alloc space for y buffer");
+		RDEBUG("unable to alloc space for y buffer");
 		goto fail;
 	}
 
@@ -476,7 +476,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		 !BN_rshift(exp, exp, 2) ||
 		 !BN_mod_exp_mont_consttime(y1, y_sqrd, exp, session->prime, session->bnctx, NULL) ||
 		 !BN_sub(y2, session->prime, y1)) {
-		DEBUG("unable to compute y");
+		RDEBUG("unable to compute y");
 		goto fail;
 	}
 	/*
@@ -494,7 +494,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		memset(y2buf, 0, y2_pad);
 		if ((BN_bn2bin(y1, y1buf + y1_pad) < 0) ||
 		    (BN_bn2bin(y2, y2buf + y2_pad) < 0)) {
-			DEBUG("unable to write y to buffer");
+			RDEBUG("unable to write y to buffer");
 			goto fail;
 		}
 	}
@@ -502,7 +502,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	const_time_select_bin(mask, y1buf, y2buf, primebytelen, ybuf);
 	if (BN_bin2bn(ybuf, primebytelen, y) == NULL ||
 		!EC_POINT_set_affine_coordinates(session->group, session->pwe, x_candidate, y, session->bnctx)) {
-		DEBUG("unable to set point coordinate");
+		RDEBUG("unable to set point coordinate");
 		goto fail;
 	}
 

@@ -33,9 +33,9 @@ RCSID("$Id$")
 
 static int vmps_process(REQUEST *request)
 {
-	DEBUG2("Doing VMPS");
+	RDEBUG2("Doing VMPS");
 	process_post_auth(0, request);
-	DEBUG2("Done VMPS");
+	RDEBUG2("Done VMPS");
 
 	request->packet->code = 0; /* hack for VMPS */
 	request->reply->code = PW_CODE_ACCESS_ACCEPT;
@@ -91,7 +91,7 @@ static int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(listener->send == vqp_socket_send);
 
 	if (vqp_encode(request->reply, request->packet) < 0) {
-		DEBUG2("Failed encoding packet: %s\n", fr_strerror());
+		RDEBUG2("Failed encoding packet: %s\n", fr_strerror());
 		return -1;
 	}
 

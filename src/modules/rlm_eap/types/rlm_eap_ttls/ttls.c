@@ -189,11 +189,11 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			offset += 4; /* offset to value field */
 
 			if (attr > 65535) {
-				DEBUG("Skipping Diameter attribute %08x", attr);
+				RDEBUG("Skipping Diameter attribute %08x", attr);
 				goto next_attr;
 			}
 			if (vendor > FR_MAX_VENDOR) {
-				DEBUG("Skipping large vendor ID %08x", vendor);
+				RDEBUG("Skipping large vendor ID %08x", vendor);
 				goto next_attr;
 			}
 		}
