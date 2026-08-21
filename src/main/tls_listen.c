@@ -1538,8 +1538,8 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 #endif
 	}
 
-	DEBUG3("Proxy is writing %u bytes to SSL",
-	       (unsigned int) request->proxy->data_len);
+	RDEBUG3("Proxy is writing %u bytes to SSL",
+		(unsigned int) request->proxy->data_len);
 
 	/*
 	 *	We may have previously cached data on SSL_connect(), which now needs to be written to the home server.
@@ -1559,7 +1559,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 		/*
 		 *	Write to SSL.
 		 */
-		DEBUG3("(TLS) proxy writing %zu to socket", sock->ssn->clean_out.used);
+		RDEBUG3("(TLS) proxy writing %zu to socket", sock->ssn->clean_out.used);
 
 		rcode = SSL_write(sock->ssn->ssl, sock->ssn->clean_out.data, sock->ssn->clean_out.used);
 		if (rcode > 0) {
@@ -1644,7 +1644,7 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 
 	rad_assert(sock->ssn != NULL);
 
-	DEBUG3("Proxy is writing %u bytes to SSL",
+	RDEBUG3("Proxy is writing %u bytes to SSL",
 	       (unsigned int) request->reply->data_len);
 	PTHREAD_MUTEX_LOCK(sock->mutex);
 	rcode = SSL_write(sock->ssn->ssl, request->reply->data,

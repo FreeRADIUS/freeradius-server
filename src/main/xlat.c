@@ -1846,8 +1846,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	}
 
 	if (*head && (rad_debug_lvl > 2)) {
-		DEBUG("%s", fmt);
-		DEBUG("Parsed xlat tree:");
+		RDEBUG2("Parsed xlat tree for : %s", fmt);
 		xlat_tokenize_debug(*head, 0);
 	}
 

@@ -553,7 +553,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	}
 	uniqueid_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
 	if (uniqueid_vp != NULL)
-		DEBUG("Packet Unique ID = '%s'",uniqueid_vp->vp_strvalue);
+		RDEBUG("Packet Unique ID = '%s'",uniqueid_vp->vp_strvalue);
 
 	/*
 	 *	Before doing anything else, see if we have to reset
@@ -574,7 +574,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 */
 	if (inst->service_type != NULL) {
 		if ((proto_vp = fr_pair_find_by_num(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY)) == NULL) {
-			DEBUG("rlm_counter: Could not find Service-Type attribute in the request. Returning NOOP");
+			RDEBUG("Could not find Service-Type attribute in the request. Returning NOOP");
 			return RLM_MODULE_NOOP;
 		}
 		if ((unsigned)proto_vp->vp_integer != inst->service_val) {
@@ -619,11 +619,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	ASSIGN(key_datum.dptr, key_vp->vp_strvalue);
 	key_datum.dsize = key_vp->vp_length;
 
-	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->vp_strvalue);
+	RDEBUG("Searching the database for key '%s'",key_vp->vp_strvalue);
 	pthread_mutex_lock(&inst->mutex);
 	count_datum = gdbm_fetch(inst->gdbm, key_datum);
 	if (!count_datum.dptr) {
-		RDEBUG(" Could not find the requested key in the database");
+		RDEBUG("Could not find the requested key in the database");
 		counter.user_counter = 0;
 		if (uniqueid_vp != NULL)
 			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue, sizeof(counter.uniqueid));
@@ -729,11 +729,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *      Look for the key.  User-Name is special.  It means
 	 *      The REAL username, after stripping.
 	 */
-	DEBUG2("rlm_counter: Entering module authorize code");
 	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
 		 fr_pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
-		DEBUG2("rlm_counter: Could not find Key value pair");
+		RDEBUG2("rlm_counter: Could not find Key value pair");
 		return rcode;
 	}
 
@@ -741,7 +740,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *      Look for the check item
 	 */
 	if ((check_vp = fr_pair_find_by_da(request->config, inst->check_attr, TAG_ANY)) == NULL) {
-		DEBUG2("rlm_counter: Could not find Check item value pair");
+		RDEBUG2("Could not find Check item value pair");
 		return rcode;
 	}
 
@@ -831,10 +830,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 		rcode = RLM_MODULE_OK;
 
-		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
-		DEBUG2("rlm_counter: Authorized user %s, check_item=%d, counter=%d",
-				key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
-		DEBUG2("rlm_counter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d", key_vp->vp_strvalue,res);
+		RDEBUG2("(Check item - counter) is greater than zero");
+		RDEBUG2("Authorized user %s, check_item=%d, counter=%d",
+			key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
+		RDEBUG2("Sent Reply-Item for user %s, Type=Session-Timeout, value=%d", key_vp->vp_strvalue,res);
 	} else {
 		/*
 		 * User is denied access, send back a reply message
@@ -845,8 +844,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		REDEBUG("Maximum %s usage time reached", inst->reset);
 		rcode = RLM_MODULE_REJECT;
 
-		DEBUG2("rlm_counter: Rejected user %s, check_item=%d, counter=%d",
-				key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
+		RDEBUG2("Rejected user %s, check_item=%d, counter=%d",
+			key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
 	}
 
 	return rcode;

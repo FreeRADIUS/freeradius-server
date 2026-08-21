@@ -87,7 +87,7 @@ int rad_accounting(REQUEST *request)
 		vp = fr_pair_find_by_num(request->config, PW_ACCT_TYPE, 0, TAG_ANY);
 		if (vp) {
 			acct_type = vp->vp_integer;
-			DEBUG2("  Found Acct-Type %s",
+			RDEBUG2("  Found Acct-Type %s",
 			       dict_valnamebyattr(PW_ACCT_TYPE, 0, acct_type));
 		}
 		result = process_accounting(acct_type, request);
@@ -131,7 +131,7 @@ int rad_accounting(REQUEST *request)
 			 */
 			realm = realm_find2(vp->vp_strvalue);
 			if (realm && !realm->acct_pool) {
-				DEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->name);
+				RDEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->name);
 				fr_pair_delete_by_num(&request->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
 			} else {
 				/*

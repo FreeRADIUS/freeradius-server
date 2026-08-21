@@ -107,7 +107,7 @@ static int rediswho_command(char const *fmt, REDISSOCK **dissocket_p,
 
 	switch (dissocket->reply->type) {
 	case REDIS_REPLY_INTEGER:
-		DEBUG("rediswho_command: query response %lld\n",
+		RDEBUG("rediswho_command: query response %lld\n",
 		      dissocket->reply->integer);
 		if (dissocket->reply->integer > 0)
 			result = dissocket->reply->integer;
@@ -115,7 +115,7 @@ static int rediswho_command(char const *fmt, REDISSOCK **dissocket_p,
 
 	case REDIS_REPLY_STATUS:
 	case REDIS_REPLY_STRING:
-		DEBUG("rediswho_command: query response %s\n",
+		RDEBUG("rediswho_command: query response %s\n",
 		      dissocket->reply->str);
 		break;
 

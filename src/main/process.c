@@ -1395,10 +1395,10 @@ static void request_cleanup_delay(REQUEST *request, int action)
 	switch (action) {
 	case FR_ACTION_DUP:
 		if (request->reply->code != 0) {
-			DEBUG("(%u) Sending duplicate reply to "
-			      "client %s port %d - ID: %u",
-			      request->number, request->client->shortname,
-			      request->packet->src_port,request->packet->id);
+			RDEBUG("(%u) Sending duplicate reply to "
+			       "client %s port %d - ID: %u",
+			       request->number, request->client->shortname,
+			       request->packet->src_port,request->packet->id);
 			request->listener->send(request->listener, request);
 		} else {
 			RDEBUG("No reply.  Ignoring retransmit");
@@ -3763,19 +3763,19 @@ static int request_will_proxy(REQUEST *request)
 		 *	Figure out which pool to use.
 		 */
 		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-			DEBUG3("Using home pool auth for realm %s", realm->name);
+			RDEBUG3("Using home pool auth for realm %s", realm->name);
 			pool = realm->auth_pool;
 
 #ifdef WITH_ACCOUNTING
 		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
-			DEBUG3("Using home pool acct for realm %s", realm->name);
+			RDEBUG3("Using home pool acct for realm %s", realm->name);
 			pool = realm->acct_pool;
 #endif
 
 #ifdef WITH_COA
 		} else if ((request->packet->code == PW_CODE_COA_REQUEST) ||
 			   (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
-			DEBUG3("Using home pool coa for realm %s", realm->name);
+			RDEBUG3("Using home pool coa for realm %s", realm->name);
 			pool = realm->coa_pool;
 #endif
 
@@ -3786,7 +3786,7 @@ static int request_will_proxy(REQUEST *request)
 	} else if ((vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		int pool_type;
 
-		DEBUG3("Using Home-Server-Pool %s", vp->vp_strvalue);
+		RDEBUG3("Using Home-Server-Pool %s", vp->vp_strvalue);
 
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
@@ -4217,8 +4217,8 @@ static int proxy_to_virtual_server(REQUEST *request)
 		return 0;
 	}
 
-	DEBUG("Proxying to virtual server %s",
-	      request->home_server->virtual_server);
+	RDEBUG("Proxying to virtual server %s",
+	       request->home_server->virtual_server);
 
 	/*
 	 *	Packets to virtual servers don't get
@@ -5084,12 +5084,12 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	So there's no need to retransmit.
 		 */
 		if (home->proto == IPPROTO_TCP) {
-			DEBUG2("Suppressing duplicate proxied request (tcp) to home server %s port %d proto TCP - ID: %d",
-			       inet_ntop(request->proxy->dst_ipaddr.af,
-					 &request->proxy->dst_ipaddr.ipaddr,
-					 buffer, sizeof(buffer)),
-			       request->proxy->dst_port,
-			       request->proxy->id);
+			RDEBUG2("Suppressing duplicate proxied request (tcp) to home server %s port %d proto TCP - ID: %d",
+				inet_ntop(request->proxy->dst_ipaddr.af,
+					  &request->proxy->dst_ipaddr.ipaddr,
+					  buffer, sizeof(buffer)),
+				request->proxy->dst_port,
+				request->proxy->id);
 			return;
 		}
 #endif
@@ -5102,12 +5102,12 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		when.tv_sec += main_config.proxy_dedup_window;
 
 		if (timercmp(&now, &when, <)) {
-			DEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d - ID: %d",
-			       inet_ntop(request->proxy->dst_ipaddr.af,
-					 &request->proxy->dst_ipaddr.ipaddr,
-					 buffer, sizeof(buffer)),
-			       request->proxy->dst_port,
-			       request->proxy->id);
+			RDEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d - ID: %d",
+				inet_ntop(request->proxy->dst_ipaddr.af,
+					  &request->proxy->dst_ipaddr.ipaddr,
+					  buffer, sizeof(buffer)),
+				request->proxy->dst_port,
+				request->proxy->id);
 			return;
 		}
 
@@ -5418,7 +5418,7 @@ static void request_coa_originate(REQUEST *request)
 
 		coa->home_server = home_server_find(&ipaddr, port, IPPROTO_UDP);
 		if (!coa->home_server) {
-			RWDEBUG2("Unknown destination %s:%d for CoA request.",
+			REDEBUG2("Unknown destination %s:%d for CoA request.",
 			       inet_ntop(ipaddr.af, &ipaddr.ipaddr,
 					 buffer, sizeof(buffer)), port);
 			goto fail;
@@ -5437,8 +5437,8 @@ set_packet_type:
 			break;
 
 		default:
-			DEBUG("Cannot set CoA Packet-Type to code %d",
-			      vp->vp_integer);
+			REDEBUG("Cannot set CoA Packet-Type to code %d",
+			       vp->vp_integer);
 			goto fail;
 		}
 	}
