@@ -73,7 +73,10 @@ static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pai
 			       module_ctx_t *mctx, UNUSED void *uctx) \
 { \
 	_thread_type	*t = talloc_get_type_abort(mctx->thread, _thread_type); \
-	fr_redis_ct_map_update(t->rtcluster, list); \
+	module_thread_instance_t	*mt; \
+	if (fr_redis_ct_map_update(t->rtcluster, list) < 0) return; \
+	mt = module_thread(mctx->mi); \
+	module_thread_force(mt, RLM_MODULE_NOT_SET); \
 	return; \
 } \
 static void cluster_map_fail(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg, \
@@ -81,7 +84,10 @@ static void cluster_map_fail(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_
 			    module_ctx_t *mctx, UNUSED void *uctx) \
 { \
 	_thread_type	*t = talloc_get_type_abort(mctx->thread, _thread_type); \
+	module_thread_instance_t	*mt; \
 	fr_redis_ct_map_fail(t->rtcluster, list); \
+	mt = module_thread(mctx->mi); \
+	module_thread_force(mt, RLM_MODULE_FAIL); \
 	return; \
 } \
 static fr_coord_cb_reg_t coord_callbacks[] = { \
