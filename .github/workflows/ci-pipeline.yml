@@ -28,6 +28,52 @@ jobs:
     uses: ./.github/workflows/common_vars.yml
 
   #
+  #  Does the registry hold the images this ref expects? They can be absent
+  #  for multiple reasons, a failed refresh, pruned images, rebuilt registry.
+  #
+  #  Runs on a self-hosted runner, because GitHub runners can't resolve the
+  #  registry. If one image is present, we assume all are. If we can't get a
+  #  definitive answer, we skip the build.
+  #
+  images_present:
+    name: Docker images present
+    needs: [common_vars]
+    if: ${{ github.event_name == 'push'
+            && github.repository_owner == 'FreeRADIUS'
+            && needs.common_vars.outputs.images_changed == 'false' }}
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
+    outputs:
+      missing: ${{ steps.probe.outputs.missing }}
+    steps:
+      - uses: regclient/actions/regctl-installer@main
+
+      - id: probe
+        env:
+          DOCKER_SENTINEL_IMAGE: ${{ needs.common_vars.outputs.image_prefix }}self-hosted:${{ needs.common_vars.outputs.image_tag }}
+          DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+        run: |
+          if [ -n "$DOCKER_USERNAME" ]; then
+            printf '%s' "$DOCKER_PASSWORD" \
+              | regctl registry login "$DOCKER_REGISTRY" -u "$DOCKER_USERNAME" --pass-stdin \
+              || echo "could not sign in to $DOCKER_REGISTRY"
+          fi
+
+          if regctl manifest head "$DOCKER_SENTINEL_IMAGE" >/dev/null 2>&1; then
+            echo "$DOCKER_SENTINEL_IMAGE is present"
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          elif regctl repo ls "$DOCKER_REGISTRY" >/dev/null 2>&1; then
+            #  The registry answered, so it is reachable and the image really
+            #  is absent.
+            echo "$DOCKER_SENTINEL_IMAGE is absent, the images need rebuilding"
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$DOCKER_REGISTRY did not answer, assuming the images are present"
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  #
   #  Skipped on the vast majority of commits.  When it does run every leg
   #  waits for it, so the docker images have all necessary packages before
   #  the rest of CI runs.
@@ -41,8 +87,11 @@ jobs:
   #
   refresh:
     name: Docker refresh
-    needs: [common_vars]
-    if: ${{ (github.event_name == 'push' && needs.common_vars.outputs.images_changed == 'true') || github.repository_owner != 'FreeRADIUS' }}
+    needs: [common_vars, images_present]
+    if: ${{ (github.event_name == 'push'
+             && (needs.common_vars.outputs.images_changed == 'true'
+                 || needs.images_present.outputs.missing == 'true'))
+            || github.repository_owner != 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-refresh.yml
     secrets: inherit
 
