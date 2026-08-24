@@ -2,12 +2,6 @@ name: CI RPM
 
 on:
   workflow_call:
-    inputs:
-      packaging_changed:
-        description: "'true' when this commit touches redhat/**, so the image's baked builddep closure may be stale"
-        required: false
-        type: string
-        default: 'false'
 
 jobs:
   #
@@ -41,8 +35,8 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky9",  "DIST": "rocky", "VERSION": 9  },
-              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10", "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky10", "DIST": "rocky", "VERSION": 10 }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky9:${{ needs.common_vars.outputs.image_tag }}",  "DIST": "rocky", "VERSION": 9  },
+              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10", "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky10:${{ needs.common_vars.outputs.image_tag }}", "DIST": "rocky", "VERSION": 10 }
             ]
           }
         EOF
@@ -51,7 +45,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky9",  "DIST": "rocky", "VERSION": 9 }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky9:${{ needs.common_vars.outputs.image_tag }}",  "DIST": "rocky", "VERSION": 9 }
             ]
           }
         EOF
@@ -94,7 +88,7 @@ jobs:
     #  Run twice; occasionally dnf misses something first time round.
     #
     - name: Top up build dependencies from the spec
-      if: ${{ inputs.packaging_changed == 'true' }}
+      if: ${{ needs.common_vars.outputs.images == 'true' }}
       run: |
         dnf builddep -y freeradius.spec && dnf builddep -y freeradius.spec
       working-directory: freeradius/redhat

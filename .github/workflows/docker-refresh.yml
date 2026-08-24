@@ -44,6 +44,7 @@ jobs:
 
     env:
       DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+      IMAGE_TAG: ${{ needs.common_vars.outputs.image_tag }}
 
     runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
@@ -130,7 +131,7 @@ jobs:
 
       - name: Build main Docker image
         env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
           #  The nightly refresh exists to pick up new upstream packages, so it
           #  must not reuse layers.  A fork rebuilding per push wants the
@@ -187,7 +188,7 @@ jobs:
 
       - name: Push main image to local registry
         env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
@@ -199,11 +200,11 @@ jobs:
       - name: Create and push alternative tags
         if: ${{ matrix.os.extra_tags }}
         env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
           DOCKER_TAGS: ${{ join(matrix.os.extra_tags, ' ') }}
         run: |
           for NAME in $DOCKER_TAGS; do
-            TAG="$DOCKER_REGISTRY/$NAME"
+            TAG="$DOCKER_REGISTRY/$NAME:$IMAGE_TAG"
             docker image tag "$DOCKER_IMAGE_NAME" "$TAG"
             for attempt in 1 2 3; do
               docker push "$TAG" && break
@@ -224,6 +225,7 @@ jobs:
 
     env:
       DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+      IMAGE_TAG: ${{ needs.common_vars.outputs.image_tag }}
 
     runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
@@ -231,7 +233,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - parent_image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted
+          - parent_image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted:${{ needs.common_vars.outputs.image_tag }}
             display: self-hosted-docker-cli
             image_name: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli
             dockerfile: scripts/ci/docker/Dockerfile.docker-cli
@@ -276,7 +278,7 @@ jobs:
 
       - name: Build derived image
         env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
           PARENT_IMAGE: ${{ matrix.os.parent_image }}
         run: |
@@ -308,7 +310,7 @@ jobs:
 
       - name: Push derived image
         env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
@@ -328,12 +330,13 @@ jobs:
 
     env:
       DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+      IMAGE_TAG: ${{ needs.common_vars.outputs.image_tag }}
 
     runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     services:
       dind:
-        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind
+        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
@@ -342,7 +345,7 @@ jobs:
           - ${{ github.workspace }}:/workspace
 
     container:
-      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli
+      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}
       env:
         DOCKER_HOST: tcp://dind:2375
         NO_PROXY: dind,*.networkradius.com,127.0.0.1
@@ -531,7 +534,7 @@ jobs:
       - name: Build main Docker image
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
         env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
           BUILD_ARGS_JSON: ${{ toJson(matrix.os.build_args) }}
         run: |
@@ -586,7 +589,7 @@ jobs:
       - name: Push main image to local registry
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
         env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
@@ -598,7 +601,7 @@ jobs:
       - name: Create and push alternative tags
         if: ${{ matrix.os.image_name && matrix.os.extra_tags }}
         env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
           DOCKER_TAGS: ${{ join(matrix.os.extra_tags, ' ') }}
         run: |
           for TAG in $DOCKER_TAGS; do
@@ -643,6 +646,7 @@ jobs:
 
     env:
       DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+      IMAGE_TAG: ${{ needs.common_vars.outputs.image_tag }}
 
     runs-on: self-hosted
     if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && needs.common_vars.outputs.selfhosted == '1' }}
@@ -654,7 +658,7 @@ jobs:
 
     services:
       dind:
-        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind
+        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
@@ -663,7 +667,7 @@ jobs:
           - ${{ github.workspace }}:/workspace
 
     container:
-      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli
+      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}
       env:
         DOCKER_HOST: tcp://dind:2375
         NO_PROXY: dind,*.networkradius.com,127.0.0.1
@@ -752,14 +756,15 @@ jobs:
           password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
 
-      - name: Push freeradius4-{crossbuild,profiling-deps,service}:latest
+      - name: Push freeradius4-{crossbuild,profiling-deps,service}
         env:
           OS: ${{ matrix.os }}
           REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
         run: |
           for type in crossbuild profiling-deps service; do
+            #  docker.mk always builds the local tag as :latest.
             local_tag="freeradius4-${type}/${OS}:latest"
-            remote_tag="${REGISTRY}/${local_tag}"
+            remote_tag="${REGISTRY}/freeradius4-${type}/${OS}:${IMAGE_TAG}"
             docker tag "${local_tag}" "${remote_tag}"
             for attempt in 1 2 3; do
               docker push "${remote_tag}" && break

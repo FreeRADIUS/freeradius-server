@@ -84,7 +84,7 @@ jobs:
         #  pointing at the internal NR registry as a Docker Hub
         #  pull-through mirror, and the internal CA pre-trusted.
         #
-        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind
+        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
@@ -108,7 +108,7 @@ jobs:
       #  Custom CI image with docker CLI / buildx / m4 baked on top
       #  of the self-hosted base.
       #
-      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli
+      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}
       env:
         DOCKER_HOST: tcp://dind:2375
         NO_PROXY: dind,*.networkradius.com,127.0.0.1

@@ -52,7 +52,7 @@ jobs:
         #  pull-through mirror, and the internal CA pre-trusted.
         #  Built by docker-refresh.yml from scripts/ci/docker/Dockerfile.docker-dind.
         #
-        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind
+        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
@@ -79,7 +79,7 @@ jobs:
       #  of the self-hosted base. Built by docker-refresh.yml from
       #  scripts/ci/docker/Dockerfile.docker-cli.
       #
-      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli
+      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}
       #  "privileged" is needed for Samba install
       #  "memory-swap -1" enables full use of host swap and may help
       #    with containers randomly quitting with "The operation was

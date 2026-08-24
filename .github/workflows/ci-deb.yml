@@ -2,12 +2,6 @@ name: CI DEB
 
 on:
   workflow_call:
-    inputs:
-      packaging_changed:
-        description: "'true' when this commit touches debian/**, so the image's baked builddep closure may be stale"
-        required: false
-        type: string
-        default: 'false'
 
 env:
   DEBIAN_FRONTEND: noninteractive
@@ -44,10 +38,10 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu24"   },
-              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu26"   },
-              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debian13"   },
-              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debiansid"  }
+              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu24:${{ needs.common_vars.outputs.image_tag }}"   },
+              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu26:${{ needs.common_vars.outputs.image_tag }}"   },
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debian13:${{ needs.common_vars.outputs.image_tag }}"   },
+              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debiansid:${{ needs.common_vars.outputs.image_tag }}"  }
             ]
           }
         EOF
@@ -56,7 +50,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debian13" }
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debian13:${{ needs.common_vars.outputs.image_tag }}" }
             ]
           }
         EOF
@@ -104,7 +98,7 @@ jobs:
     #  so top up from the checked-out control file in that case only.
     #
     - name: Top up build dependencies from debian/control
-      if: ${{ inputs.packaging_changed == 'true' }}
+      if: ${{ needs.common_vars.outputs.images == 'true' }}
       run: |
         touch -t 202001010000 debian/control
         debian/rules debian/control

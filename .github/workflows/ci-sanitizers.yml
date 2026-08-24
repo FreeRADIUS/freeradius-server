@@ -2,12 +2,6 @@ name: CI-Sanitizers
 
 on:
   workflow_call:
-    inputs:
-      packaging_changed:
-        description: "'true' when this commit touches debian/**, so the image's build-deps may be stale"
-        required: false
-        type: string
-        default: 'false'
 
 env:
   ASAN_OPTIONS: symbolize=1 detect_leaks=1 detect_stack_use_after_return=1
@@ -65,7 +59,7 @@ jobs:
         #  name    - used in the job name only
         os:
           - runs_on: "${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
-            docker: "${{ needs.common_vars.outputs.docker_registry }}/self-hosted"
+            docker: "${{ needs.common_vars.outputs.docker_registry }}/self-hosted:${{ needs.common_vars.outputs.image_tag }}"
             name: "${{ needs.common_vars.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
             code: "ubuntu2404"
             imageos: "ubuntu24"
@@ -145,7 +139,7 @@ jobs:
         uses: ./.github/actions/freeradius-deps
         with:
           selfhosted: ${{ needs.common_vars.outputs.selfhosted }}
-          packaging_changed: ${{ inputs.packaging_changed }}
+          packaging_changed: ${{ needs.common_vars.outputs.images }}
           use_docker: true
           cc: ${{ matrix.env.CC }}
 

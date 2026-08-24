@@ -20,108 +20,58 @@ concurrency:
 
 jobs:
   #
-  #  Anything baked into the CI Docker images has to be updated before any of
-  #  the main CI jobs run against them.  This _should_ in theory catch any new
-  #  modules that are added, as long as they're packaged.
+  #  Determines which registry the images live in, which tag of them this ref
+  #  should use, and whether this ref changes anything they bake in.  See
+  #  .github/workflows/common_vars.yml.
   #
-  changes:
-    runs-on: ubuntu-latest
-
-    #  On a pull request paths-filter asks the REST API which files changed,
-    #  rather than diffing locally, and the API call needs this.
-    permissions:
-      contents: read
-      pull-requests: read
-
-    outputs:
-      images: ${{ steps.check.outputs.images }}
-    steps:
-      #  paths-filter diffs (below) needs a checkout of the repository.
-      - uses: actions/checkout@v6
-        with:
-          lfs: false
-
-      #
-      #  Answers one question: does this commit touch anything the CI images
-      #  bake in?  Two jobs read the answer and do different things with the
-      #  answer.  The refresh job rebuilds the images, and only on a push,
-      #  because a rebuild publishes a :latest tag and a pull request must not
-      #  be able to overwrite what everybody else builds against.  The build
-      #  legs read the answer as packaging_changed and top up their build
-      #  dependencies from the tree, which is what covers a pull request that
-      #  adds a dependency and cannot wait for its own merge.
-      #
-      #  So the answer is worked out for a pull request as well as a push, and
-      #  the refresh job carries the push-only restriction itself.
-      #
-      - uses: dorny/paths-filter@v4.0.3
-        id: check
-        if: github.event_name == 'push' || github.event_name == 'pull_request'
-        with:
-          base: ${{ github.event.pull_request.base.sha || github.event.before }}
-          filters: |
-            images:
-              - 'debian/**'
-              - 'redhat/**'
-              - 'scripts/ci/extra-packages.debian.control'
-              - 'scripts/ci/docker/Dockerfile*'
-              - 'scripts/docker/build/*/Dockerfile.ci'
-              - 'scripts/docker/build/*/Dockerfile.crossbuild'
-              - 'scripts/docker/build/*/Dockerfile.profiling-deps'
-              - 'scripts/docker/build/*/Dockerfile.service'
+  common_vars:
+    uses: ./.github/workflows/common_vars.yml
 
   #
   #  Skipped on the vast majority of commits.  When it does run every leg
   #  waits for it, so the docker images have all necessary packages before
   #  the rest of CI runs.
   #
-  #  A rebuild publishes a :latest tag that everybody else then builds
-  #  against, so the main repository rebuilds on a push and never on a pull
-  #  request.  A fork has no image until it builds one, so a fork always
-  #  refreshes; buildx layer reuse from its own GHCR makes the unchanged case
-  #  cheap, and a fork can only overwrite its own tags.
+  #  Only a push rebuilds, because only a push publishes, and a pull request
+  #  has no tag of its own to publish to.  A branch publishes under a tag
+  #  named after the branch, so the images the default branch reads are never
+  #  overwritten by somebody's work in progress.  A fork has no images at all
+  #  until it builds them, so a fork always refreshes, into its own registry
+  #  where it can overwrite nothing but its own tags.
   #
   refresh:
     name: Docker refresh
-    needs: [changes]
-    if: ${{ (github.event_name == 'push' && needs.changes.outputs.images == 'true') || github.repository_owner != 'FreeRADIUS' }}
+    needs: [common_vars]
+    if: ${{ (github.event_name == 'push' && needs.common_vars.outputs.images == 'true') || github.repository_owner != 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-refresh.yml
     secrets: inherit
 
   ci:
-    needs: [changes, refresh]
+    needs: [refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI
     uses: ./.github/workflows/ci.yml
-    with:
-      packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
   ci-deb:
-    needs: [changes, refresh]
+    needs: [refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI DEB
     uses: ./.github/workflows/ci-deb.yml
-    with:
-      packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
   ci-rpm:
-    needs: [changes, refresh]
+    needs: [refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI RPM
     uses: ./.github/workflows/ci-rpm.yml
-    with:
-      packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
   ci-sanitizers:
-    needs: [changes, refresh]
+    needs: [refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI-Sanitizers
     uses: ./.github/workflows/ci-sanitizers.yml
-    with:
-      packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
   #
@@ -143,7 +93,7 @@ jobs:
     secrets: inherit
 
   ci-multi-server:
-    needs: [changes, refresh]
+    needs: [refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: Multi-Server CI Tests
     uses: ./.github/workflows/ci-multi-server-tests.yml
@@ -151,14 +101,14 @@ jobs:
 
   docker-crossbuild:
     name: Docker crossbuild images
-    needs: [changes, refresh, ci]
+    needs: [refresh, ci]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-crossbuild.yml
     secrets: inherit
 
   docker-service:
     name: Docker service images
-    needs: [changes, refresh, ci]
+    needs: [refresh, ci]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-service.yml
     secrets: inherit

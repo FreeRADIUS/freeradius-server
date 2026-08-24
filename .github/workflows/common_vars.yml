@@ -1,29 +1,26 @@
 name: Common vars
 
 #
-#  Determines the values that every other workflow needs.  Each value answers
-#  the same question: is the run happening in the FreeRADIUS organisation, or
-#  in somebody else's fork of the repository?
+#  Determines the values every other workflow needs, so no workflow works any
+#  of them out for itself.
 #
 #    docker_registry   which registry holds the continuous integration (CI)
 #                      images
 #    selfhosted        whether the organisation's own build machines are
 #                      available
 #    docker_prefix     what to put in front of a third-party image name
+#    images            whether this ref changes anything the CI images bake in
+#    image_tag         which tag of the CI images this ref should use
 #
-#  An answer reaches the job that uses the answer in three steps:
+#  The first three follow from one question, is the run happening in the
+#  FreeRADIUS organisation or in somebody else's fork.  The last two follow
+#  from a second question, does this ref change the images, which is answered
+#  by diffing against the default branch.
 #
-#    1. The pipeline (ci-pipeline.yml) calls this workflow before anything
-#       else, and gets the answers back.
-#    2. The pipeline hands each answer to the workflow that needs the answer,
-#       as an input.
-#    3. That workflow calls this workflow as well, passing on the answer the
-#       pipeline gave, and gets the same answer straight back.
-#
-#  Step 3 reads as redundant and is not.  A workflow can also start on its
-#  own, from the nightly schedule or by hand, and a workflow that starts that
-#  way receives no inputs at all.  Calling this workflow covers both cases
-#  with one line.
+#  Every workflow that reads any of the five calls this one for itself.  There
+#  is no way to have GitHub evaluate a reusable workflow once and share the
+#  result, and passing the answers down as inputs would leave a workflow
+#  started on its own, by the nightly schedule or by hand, with nothing.
 #
 #  The answers come back as job outputs rather than as a workflow-level env:
 #  block, because GitHub does not let the container:, services:, runs-on: and
@@ -31,8 +28,8 @@ name: Common vars
 #  so a caller writes needs.common_vars.outputs.<name> instead.
 #
 #  To use in another workflow: add a job named common_vars that calls this
-#  workflow, passing on any answer the caller was already given, then name
-#  common_vars in the needs: of every job that reads an answer.
+#  workflow, then name common_vars in the needs: of every job that reads an
+#  answer.
 #
 #  To add another value: add an output below, and add a line to the evaluate
 #  step that writes the value.
@@ -49,16 +46,65 @@ on:
       docker_prefix:
         description: "prefix that points a third-party image at the org's pull-through cache, empty elsewhere"
         value: ${{ jobs.common_vars.outputs.docker_prefix }}
+      images:
+        description: "'true' when this ref changes something the CI images bake in"
+        value: ${{ jobs.common_vars.outputs.images }}
+      image_tag:
+        description: "tag of the CI images this ref should build against"
+        value: ${{ jobs.common_vars.outputs.image_tag }}
 
 jobs:
   common_vars:
     name: Common vars
+
+    #  paths-filter asks the REST API which files a pull request changed.
+    permissions:
+      contents: read
+      pull-requests: read
+
     runs-on: ubuntu-latest
+
     outputs:
       docker_registry: ${{ steps.evaluate.outputs.docker_registry }}
       selfhosted: ${{ steps.evaluate.outputs.selfhosted }}
       docker_prefix: ${{ steps.evaluate.outputs.docker_prefix }}
+      images: ${{ steps.changed.outputs.images }}
+      image_tag: ${{ steps.evaluate.outputs.image_tag }}
+
     steps:
+      #  paths-filter diffs a push locally, so it needs a checkout.
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      #
+      #  Does this ref change anything baked into the CI images?
+      #
+      #  On the default branch the answer is about the newest commit, because
+      #  that is what decides whether to rebuild the shared images.  On any
+      #  other branch paths-filter compares against the default branch
+      #  instead, so the answer describes the whole branch and stays the same
+      #  no matter how the commits were split up or how long ago the packaging
+      #  commit landed.
+      #
+      #  A scheduled or hand-started run has nothing to diff against, so the
+      #  step is skipped and the answer is empty, which reads as no change.
+      #
+      - uses: dorny/paths-filter@v4.0.3
+        id: changed
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        with:
+          filters: |
+            images:
+              - 'debian/**'
+              - 'redhat/**'
+              - 'scripts/ci/extra-packages.debian.control'
+              - 'scripts/ci/docker/Dockerfile*'
+              - 'scripts/docker/build/*/Dockerfile.ci'
+              - 'scripts/docker/build/*/Dockerfile.crossbuild'
+              - 'scripts/docker/build/*/Dockerfile.profiling-deps'
+              - 'scripts/docker/build/*/Dockerfile.service'
+
       #
       #  docker_registry.  The FreeRADIUS organisation sets a repository
       #  variable named DOCKER_REGISTRY that points at the organisation's own
@@ -74,18 +120,50 @@ jobs:
       #  so docker_prefix stays empty and a fork fetches those images from
       #  Docker Hub under their plain names.
       #
+      #  image_tag.  The default branch uses latest.  A branch that changes
+      #  the images gets a tag of its own, so the images it builds never
+      #  overwrite what the default branch and every other branch read.  A
+      #  branch that leaves the images alone reads latest, because the images
+      #  it would build are the ones already there.
+      #
+      #  Only a push gets a tag of its own, because only a push rebuilds the
+      #  images.  A pull request that named a tag would name one nothing ever
+      #  published, and every job would fail pulling it.
+      #
+      #  The repository name is part of the tag because several repositories
+      #  publish into the same registry, and a branch name on its own would
+      #  collide between them.  A docker tag holds at most 128 characters of
+      #  letters, digits, underscore, period and dash, so anything else in a
+      #  branch name becomes a dash and the result is cut to length.
+      #
       - id: evaluate
         env:
           #  The one place in the repository that names the registry.
           registry: ${{ vars.DOCKER_REGISTRY || format('ghcr.io/{0}', github.repository_owner) }}
           selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+          default_branch: ${{ github.event.repository.default_branch }}
+          ref_name: ${{ github.ref_name }}
+          repo_name: ${{ github.event.repository.name }}
+          images: ${{ steps.changed.outputs.images }}
+          event: ${{ github.event_name }}
         run: |
           prefix=
           if [ "$selfhosted" = "1" ]; then
             prefix="$registry/"
           fi
+
+          image_tag=latest
+          if [ "$event" = "push" ] && [ "$ref_name" != "$default_branch" ] \
+             && [ "$images" = "true" ]; then
+            image_tag=$(printf '%s-%s' "$repo_name" "$ref_name" \
+                        | tr 'A-Z' 'a-z' \
+                        | tr -c 'a-z0-9_.-' '-' \
+                        | cut -c1-128)
+          fi
+
           {
             echo "docker_registry=$registry"
             echo "selfhosted=$selfhosted"
             echo "docker_prefix=$prefix"
+            echo "image_tag=$image_tag"
           } >> "$GITHUB_OUTPUT"
