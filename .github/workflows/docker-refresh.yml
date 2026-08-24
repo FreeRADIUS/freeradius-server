@@ -225,8 +225,7 @@ jobs:
     env:
       DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
 
-    runs-on: self-hosted
-    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && needs.common_vars.outputs.selfhosted == '1' }}
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     strategy:
       fail-fast: false
@@ -246,11 +245,23 @@ jobs:
           lfs: false
 
       - name: Login to internal Docker registry (read)
+        if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_REPO_USERNAME }}
           password: ${{ secrets.DOCKER_REPO_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
+
+      #  A fork pushes to, and pulls from, the fork's own GitHub Container
+      #  Registry (GHCR) namespace.  The automatic GITHUB_TOKEN can reach that
+      #  namespace whenever the workflow runs in the fork's own context.
+      - name: Login to GHCR (read)
+        if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+          registry: ghcr.io
 
       - name: Pull parent image
         env:
@@ -276,11 +287,23 @@ jobs:
           exit 1
 
       - name: Login to internal Docker registry for push
+        if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
           password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
+
+      #  A fork pushes to, and pulls from, the fork's own GitHub Container
+      #  Registry (GHCR) namespace.  The automatic GITHUB_TOKEN can reach that
+      #  namespace whenever the workflow runs in the fork's own context.
+      - name: Login to GHCR for push
+        if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+          registry: ghcr.io
 
       - name: Push derived image
         env:
@@ -305,8 +328,7 @@ jobs:
     env:
       DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
 
-    runs-on: self-hosted
-    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && needs.common_vars.outputs.selfhosted == '1' }}
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     services:
       dind:
@@ -399,7 +421,7 @@ jobs:
       #  since they pull from the internal registry instead.
       #
       - name: Login to Docker Hub (via dind)
-        if: ${{ matrix.os.base_image }}
+        if: ${{ matrix.os.base_image && needs.common_vars.outputs.selfhosted == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_READ_USER }}
@@ -411,11 +433,23 @@ jobs:
       #  build step.
       #
       - name: Login to internal Docker registry (read, via dind)
+        if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_REPO_USERNAME }}
           password: ${{ secrets.DOCKER_REPO_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
+
+      #  A fork pushes to, and pulls from, the fork's own GitHub Container
+      #  Registry (GHCR) namespace.  The automatic GITHUB_TOKEN can reach that
+      #  namespace whenever the workflow runs in the fork's own context.
+      - name: Login to GHCR (read, via dind)
+        if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+          registry: ghcr.io
 
       #
       #  Pull the source image into dind. base_image entries pull from
@@ -515,14 +549,29 @@ jobs:
       #  Switch to push-capable creds and publish.
       #
       - name: Login to internal Docker registry for push (via dind)
+        if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
           password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
 
+      #  A fork pushes to, and pulls from, the fork's own GitHub Container
+      #  Registry (GHCR) namespace.  The automatic GITHUB_TOKEN can reach that
+      #  namespace whenever the workflow runs in the fork's own context.
+      - name: Login to GHCR for push (via dind)
+        if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+          registry: ghcr.io
+
+      #  Renaming the image is how the organisation fills its local copy of
+      #  Docker Hub.  A fork keeps no such copy and fetches third-party images
+      #  under their plain names, so a fork skips the rename.
       - name: Push base image to local registry
-        if: ${{ matrix.os.base_image }}
+        if: ${{ matrix.os.base_image && needs.common_vars.outputs.selfhosted == '1' }}
         env:
           DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
         run: |
