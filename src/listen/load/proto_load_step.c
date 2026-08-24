@@ -145,6 +145,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		}
 
 		thread->suspended = true;
+		return 0;
 	}
 
 	*leftover = 0;		/* always for load generation */
@@ -439,7 +440,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		cf_log_err(conf, "Please define 'namespace' in this virtual server");
 		return -1;
 	}
-	
+
 	fr_pair_list_init(&inst->pair_list);
 	MEM(inst->client = client = talloc_zero(inst, fr_client_t));
 
