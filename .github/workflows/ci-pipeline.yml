@@ -122,6 +122,19 @@ jobs:
   #  packaging, and that causes the merge step to be skipped, unless we add an
   #  explicit condition.
   #
+  #
+  #  Only runs when the commit changes something the documentation is built
+  #  from, which is what the workflow's own paths filter used to decide before
+  #  the workflow moved in here.  Absent from merge's needs: a documentation
+  #  build failing should not hold up a merge.
+  #
+  docs:
+    name: Documentation
+    needs: [common_vars, refresh]
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.common_vars.outputs.docs == 'true' }}
+    uses: ./.github/workflows/documentation.yml
+    secrets: inherit
+
   merge:
     needs: [ci, ci-deb, ci-rpm, ci-sanitizers]
     if: ${{ !cancelled()
