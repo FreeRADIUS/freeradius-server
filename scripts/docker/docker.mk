@@ -23,9 +23,9 @@ DOCKER_COMMON := ubuntu24
 include scripts/docker/dockerfile.mk
 
 #
-#  Short commit hash used as the dev-local image tag. Hub-pushed
-#  images use :latest in the publish workflow and aren't subject to
-#  the local prune.
+#  Short commit hash used as the dev-local image tag. Published copies
+#  carry the tag the publish workflow chose for the ref, and aren't
+#  subject to the local prune.
 #
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null)
 
@@ -93,9 +93,10 @@ DOCKER_REMOTE_TAG    ?= latest
 #  invocation is a no-op until a dep changes.
 #
 #  When DOCKER_REGISTRY is set the rule first tries to pull the
-#  matching SHA-tagged image from the registry (capped at
-#  DOCKER_PULL_TIMEOUT seconds). Hit > retag locally + touch stamp,
-#  no build runs. Miss > fall through to the normal docker build.
+#  published copy, DOCKER_REMOTE_PREFIX and DOCKER_REMOTE_TAG naming
+#  which one (capped at DOCKER_PULL_TIMEOUT seconds). Hit > retag
+#  locally as :latest and :<sha>, touch the stamp, no build runs.
+#  Miss > fall through to the normal docker build.
 #
 #  $(1) image name
 #  $(2) type
@@ -253,8 +254,9 @@ $(DOCKER_STATE):
 #    profiling-deps   FROMs crossbuild/<image>:latest
 #    profiling        FROMs profiling-deps/<image>:latest
 #
-#  The :latest base tags are published periodically by
-#  docker-refresh.yml.
+#  Those two FROMs name local tags, which docker.mk always writes as
+#  :latest whatever the published copy is called. docker-refresh.yml
+#  publishes the copies periodically.
 #
 DOCKER_TYPES := ci crossbuild profiling-deps profiling service
 
