@@ -634,15 +634,16 @@ jobs:
   #                      bloat the runtime image with toolchain
   #                      artefacts.
   #
-  #  Tags pushed: <prefix>-<type>/<image>:latest for each of those
-  #  three.
+  #  Each of those three is pushed under the repository's path, tagged
+  #  for the ref being built: latest on the default branch, the branch's
+  #  own tag elsewhere.  common_vars.yml decides which.
   #
   #  The `profiling` layer (FR compiled with callgrind-friendly CFLAGS
-  #  on top of profiling-deps:latest) is deliberately NOT published
-  #  here. It's per-commit by design - we want to profile specific
-  #  commits, not whatever master HEAD was at refresh time. Multi-
-  #  server profiling tests pull profiling-deps:latest and build the
-  #  profiling layer locally per commit.
+  #  on top of profiling-deps) is deliberately NOT published here. It's
+  #  per-commit by design - we want to profile specific commits, not
+  #  whatever master HEAD was at refresh time. Multi-server profiling
+  #  tests pull profiling-deps and build the profiling layer locally
+  #  per commit.
   #
   process-freeradius-images:
     needs: [process-docker-cli, common_vars]
@@ -723,7 +724,8 @@ jobs:
       #
       #
       #  NOPULL=1 forces docker.mk to build from the local Dockerfile
-      #  instead of pulling the existing :latest tag from the registry.
+      #  instead of pulling whatever the registry already holds for this
+      #  ref.
       #  Without it the refresh silently retags whatever is already
       #  published, defeating the whole point of the workflow.
       #
@@ -751,8 +753,8 @@ jobs:
           done
 
       #
-      #  Switch to push-capable creds and publish the three :latest
-      #  tags. The per-commit `profiling` layer stays local.
+      #  Switch to push-capable creds and publish the three images under
+      #  this ref's tag. The per-commit `profiling` layer stays local.
       #
       - name: Login to internal Docker registry for push (via dind)
         uses: docker/login-action@v4

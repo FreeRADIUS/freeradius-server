@@ -53,8 +53,8 @@ jobs:
   #  certificate authority (CA) the organisation signs its own registry with.
   #
   #  Only the main repository builds these images.  The build publishes each
-  #  image under a :latest tag that the rest of continuous integration (CI)
-  #  then pulls, so a fork that rebuilt the images would gain nothing, and a
+  #  image where the rest of continuous integration (CI) then reads it, so a
+  #  fork that rebuilt the images would gain nothing, and a
   #  GitHub-hosted machine cannot reach the local copy of Docker Hub that the
   #  build expects.  ci-pipeline.yml skips this workflow on a fork.  The if:
   #  below covers the one remaining case, somebody starting this workflow by
@@ -171,7 +171,7 @@ jobs:
         make crossbuild.$OS
 
     #
-    #  No push step here. crossbuild:latest is published by
+    #  No push step here. crossbuild is published by
     #  docker-refresh.yml on its periodic schedule. This workflow is
     #  a per-commit sanity test - it builds crossbuild and runs FR's
     #  in-container test suite against the working source, then the

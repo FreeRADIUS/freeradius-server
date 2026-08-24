@@ -4,17 +4,17 @@ on:
   #
   #  Called by ci-pipeline.yml, which decides the entry point:
   #
-  #    push: per-commit run. Pulls crossbuild:latest /
-  #    profiling-deps:latest / service:latest / profiling:latest from
-  #    the internal registry (refreshed periodically by
-  #    docker-refresh.yml). For the multi-server tests' purposes the
-  #    FR runtime in those :latest tags is "recent enough" to validate
+  #    push: per-commit run. Pulls crossbuild, profiling-deps, service
+  #    and profiling from the internal registry, under whichever tag
+  #    common_vars.yml picks for this ref, refreshed by
+  #    docker-refresh.yml. For the multi-server tests' purposes the FR
+  #    runtime in those images is "recent enough" to validate
   #    multi-server topology / compose / proto_load changes per
   #    commit. Runs the CI subset.
   #
   #    schedule: nightly full-suite run, from the pipeline's own cron.
-  #    Falls back to a local layer rebuild if the registry has been
-  #    pruned of any :latest tag.
+  #    Falls back to a local layer rebuild if the registry no longer
+  #    holds the image.
   #
   workflow_call:
 
