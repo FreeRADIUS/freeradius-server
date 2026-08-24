@@ -136,14 +136,14 @@ jobs:
   docker-crossbuild:
     name: Docker crossbuild images
     needs: [changes, refresh, ci]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' }}
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-crossbuild.yml
     secrets: inherit
 
   docker-service:
     name: Docker service images
     needs: [changes, refresh, ci]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' }}
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-service.yml
     secrets: inherit
 
