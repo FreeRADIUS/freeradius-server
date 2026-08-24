@@ -164,11 +164,21 @@ jobs:
     secrets: inherit
 
   #
-  #  No if:, so the default applies: runs only when every leg it needs
-  #  succeeded, and is skipped otherwise.  Only the gating legs are listed.
+  #  Merges when every gating leg passed.  Only the gating legs are listed;
+  #  the other legs are too unreliable to block a merge on.
+  #
+  #  By default a job is skipped unless every job it depends on with "needs"
+  #  succeeds.  Docker refresh is skipped on commits that don't modify
+  #  packaging, and that causes the merge step to be skipped, unless we add an
+  #  explicit condition.
   #
   merge:
     needs: [ci, ci-deb, ci-rpm, ci-sanitizers]
+    if: ${{ !cancelled()
+            && needs.ci.result == 'success'
+            && needs.ci-deb.result == 'success'
+            && needs.ci-rpm.result == 'success'
+            && needs.ci-sanitizers.result == 'success' }}
     uses: ./.github/workflows/merge-upstream.yml
     secrets:
       GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
