@@ -60,6 +60,13 @@ env:
   CC: clang
 
 jobs:
+  #
+  #  Determines which registry holds the continuous integration (CI) images.
+  #  See .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    uses: ./.github/workflows/common_vars.yml
+
 
   #
   #  Constructs a matrix of protocols to fuzz as JSON that when set in the main
@@ -137,13 +144,14 @@ jobs:
 
     needs:
       - set-matrix
+      - common_vars
 
     if: github.repository_owner == 'FreeRADIUS'
 
     runs-on: self-hosted
 
     container:
-      image: docker.internal.networkradius.com/self-hosted
+      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted
 
     defaults:
       run:

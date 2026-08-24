@@ -7,6 +7,14 @@ env:
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
+  #
+  #  Determines the values that turn on whether the run is happening in the
+  #  FreeRADIUS organisation or in a fork.  See
+  #  .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    uses: ./.github/workflows/common_vars.yml
+
 
   #
   #  We don't want to consume many workers on each push so we only build the
@@ -23,6 +31,7 @@ jobs:
   #  are skipped via their `needs:` dependency.
   #
   set-matrix:
+    needs: common_vars
     name: Setup build matrix
     if: github.repository_owner == 'FreeRADIUS'
     runs-on: ubuntu-latest
@@ -36,10 +45,10 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-ubuntu24"   },
-              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-ubuntu26"   },
-              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-debian13"   },
-              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-debiansid"  }
+              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu24"   },
+              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu26"   },
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debian13"   },
+              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debiansid"  }
             ]
           }
         EOF
@@ -48,7 +57,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-debian13" }
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debian13" }
             ]
           }
         EOF

@@ -9,12 +9,6 @@ name: Docker refresh
 #
 on:
   workflow_call:
-    inputs:
-      selfhosted:
-        description: "'1' for the org's runners and internal registry, '0' for a fork building its own"
-        required: false
-        type: string
-        default: '1'
   workflow_dispatch:
   schedule:
     - cron: '0 1 * * *'
@@ -29,25 +23,29 @@ concurrency:
   group: docker-refresh
   cancel-in-progress: false
 
-#
-#  A fork cannot reach the internal registry, so it builds the CI base for
-#  itself and pushes it to its own GHCR.  Everything downstream just follows
-#  DOCKER_REGISTRY.
-#
-env:
-  DOCKER_REGISTRY: ${{ (inputs.selfhosted || '1') == '1' && 'docker.internal.networkradius.com' || format('ghcr.io/{0}', github.repository_owner) }}
-  SELFHOSTED: ${{ inputs.selfhosted || '1' }}
-
 jobs:
+  #
+  #  Determines which registry holds the continuous integration (CI) images.
+  #  A caller that already has the answer passes the answer down.  A run that
+  #  starts from the nightly schedule or by hand receives no inputs, so this
+  #  job determines the answer instead.  See .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    uses: ./.github/workflows/common_vars.yml
+
   #
   #  Stage 1: rebuild the runner-host base and the dind sidecar image
   #  from upstream. These can't run inside our own dind/cli container
   #  because that container is built on top of them.
   #
   process-host-bases:
+    needs: common_vars
     timeout-minutes: 40
 
-    runs-on: ${{ (inputs.selfhosted || '1') == '1' && 'self-hosted' || 'ubuntu-latest' }}
+    env:
+      DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     strategy:
       fail-fast: false
@@ -78,12 +76,12 @@ jobs:
     steps:
 
       - uses: actions/checkout@v6
-        if: ${{ env.SELFHOSTED == '1' || !matrix.os.selfhosted_only }}
+        if: ${{ needs.common_vars.outputs.selfhosted == '1' || !matrix.os.selfhosted_only }}
         with:
           lfs: false
 
       - name: Login to Docker Hub
-        if: ${{ (env.SELFHOSTED == '1' || !matrix.os.selfhosted_only) && env.SELFHOSTED == '1' }}
+        if: ${{ (needs.common_vars.outputs.selfhosted == '1' || !matrix.os.selfhosted_only) && needs.common_vars.outputs.selfhosted == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_READ_USER }}
@@ -102,7 +100,7 @@ jobs:
           echo "FROM $DOCKER_BASE_IMAGE" | docker build --label preserve=true -t "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" -
 
       - name: Stage internal CA into build context
-        if: ${{ matrix.os.needs_internal_ca }}
+        if: ${{ matrix.os.needs_internal_ca && needs.common_vars.outputs.selfhosted == '1' }}
         run: |
           cp /usr/local/share/ca-certificates/networkradius.com.crt \
              scripts/ci/networkradius.com.crt
@@ -139,7 +137,7 @@ jobs:
           #  The nightly refresh exists to pick up new upstream packages, so it
           #  must not reuse layers.  A fork rebuilding per push wants the
           #  opposite or it pays 20+ minutes every time.
-          NO_CACHE: ${{ env.SELFHOSTED == '1' && '--no-cache' || '' }}
+          NO_CACHE: ${{ needs.common_vars.outputs.selfhosted == '1' && '--no-cache' || '' }}
         run: |
           for attempt in 1 2 3; do
             docker build $NO_CACHE -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true . && exit 0
@@ -149,7 +147,7 @@ jobs:
           exit 1
 
       - name: Login to internal Docker registry for push
-        if: ${{ env.SELFHOSTED == '1' }}
+        if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
@@ -159,7 +157,7 @@ jobs:
       #  A fork pushes to its own GHCR, which GITHUB_TOKEN can write to when
       #  the workflow runs in the fork's own context.
       - name: Login to GHCR for push
-        if: ${{ env.SELFHOSTED != '1' }}
+        if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ github.actor }}
@@ -167,7 +165,7 @@ jobs:
           registry: ghcr.io
 
       - name: Push base image to local registry
-        if: ${{ env.SELFHOSTED == '1' }}
+        if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
         env:
           DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
         run: |
@@ -212,19 +210,22 @@ jobs:
   #  to be fresh before they start.
   #
   process-docker-cli:
-    needs: process-host-bases
+    needs: [process-host-bases, common_vars]
     timeout-minutes: 15
 
+    env:
+      DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+
     runs-on: self-hosted
-    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && (inputs.selfhosted || '1') == '1' }}
+    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && needs.common_vars.outputs.selfhosted == '1' }}
 
     strategy:
       fail-fast: false
       matrix:
         os:
-          - parent_image: docker.internal.networkradius.com/self-hosted
+          - parent_image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted
             display: self-hosted-docker-cli
-            image_name: docker.internal.networkradius.com/self-hosted-docker-cli
+            image_name: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli
             dockerfile: scripts/ci/docker/Dockerfile.docker-cli
 
     name: "${{ matrix.os.display }}"
@@ -289,15 +290,18 @@ jobs:
   #  container.
   #
   process-ci-images:
-    needs: process-docker-cli
+    needs: [process-docker-cli, common_vars]
     timeout-minutes: 20
 
+    env:
+      DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+
     runs-on: self-hosted
-    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && (inputs.selfhosted || '1') == '1' }}
+    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && needs.common_vars.outputs.selfhosted == '1' }}
 
     services:
       dind:
-        image: docker.internal.networkradius.com/self-hosted-docker-dind
+        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
@@ -306,7 +310,7 @@ jobs:
           - ${{ github.workspace }}:/workspace
 
     container:
-      image: docker.internal.networkradius.com/self-hosted-docker-cli
+      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli
       env:
         DOCKER_HOST: tcp://dind:2375
         NO_PROXY: dind,*.networkradius.com,127.0.0.1
@@ -332,32 +336,32 @@ jobs:
           #
           - base_image: rockylinux/rockylinux:9
             display: self-hosted-ci-rocky9
-            image_name: docker.internal.networkradius.com/self-hosted-ci-rocky9
+            image_name: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky9
             dockerfile: scripts/docker/build/rocky9/Dockerfile.ci
 
           - base_image: rockylinux/rockylinux:10
             display: self-hosted-ci-rocky10
-            image_name: docker.internal.networkradius.com/self-hosted-ci-rocky10
+            image_name: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky10
             dockerfile: scripts/docker/build/rocky10/Dockerfile.ci
 
           - base_image: debian:trixie
             display: self-hosted-ci-debian13
-            image_name: docker.internal.networkradius.com/self-hosted-ci-debian13
+            image_name: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debian13
             dockerfile: scripts/docker/build/debian13/Dockerfile.ci
 
           - base_image: debian:sid
             display: self-hosted-ci-debiansid
-            image_name: docker.internal.networkradius.com/self-hosted-ci-debiansid
+            image_name: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debiansid
             dockerfile: scripts/docker/build/debiansid/Dockerfile.ci
 
           - base_image: ubuntu:24.04
             display: self-hosted-ci-ubuntu24
-            image_name: docker.internal.networkradius.com/self-hosted-ci-ubuntu24
+            image_name: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu24
             dockerfile: scripts/docker/build/ubuntu24/Dockerfile.ci
 
           - base_image: ubuntu:26.04
             display: self-hosted-ci-ubuntu26
-            image_name: docker.internal.networkradius.com/self-hosted-ci-ubuntu26
+            image_name: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu26
             dockerfile: scripts/docker/build/ubuntu26/Dockerfile.ci
 
           - base_image: mariadb
@@ -469,7 +473,7 @@ jobs:
       #  image, which needs to trust docker.internal.networkradius.com).
       #
       - name: Stage internal CA into build context
-        if: ${{ matrix.os.needs_internal_ca }}
+        if: ${{ matrix.os.needs_internal_ca && needs.common_vars.outputs.selfhosted == '1' }}
         run: |
           cp /usr/local/share/ca-certificates/networkradius.com.crt \
              scripts/ci/networkradius.com.crt
@@ -575,11 +579,14 @@ jobs:
   #  profiling layer locally per commit.
   #
   process-freeradius-images:
-    needs: process-docker-cli
+    needs: [process-docker-cli, common_vars]
     timeout-minutes: 90
 
+    env:
+      DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+
     runs-on: self-hosted
-    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && (inputs.selfhosted || '1') == '1' }}
+    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && needs.common_vars.outputs.selfhosted == '1' }}
 
     strategy:
       fail-fast: false
@@ -588,7 +595,7 @@ jobs:
 
     services:
       dind:
-        image: docker.internal.networkradius.com/self-hosted-docker-dind
+        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
@@ -597,7 +604,7 @@ jobs:
           - ${{ github.workspace }}:/workspace
 
     container:
-      image: docker.internal.networkradius.com/self-hosted-docker-cli
+      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli
       env:
         DOCKER_HOST: tcp://dind:2375
         NO_PROXY: dind,*.networkradius.com,127.0.0.1
@@ -689,7 +696,7 @@ jobs:
       - name: Push freeradius4-{crossbuild,profiling-deps,service}:latest
         env:
           OS: ${{ matrix.os }}
-          REGISTRY: docker.internal.networkradius.com
+          REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
         run: |
           for type in crossbuild profiling-deps service; do
             local_tag="freeradius4-${type}/${OS}:latest"

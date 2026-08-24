@@ -1,0 +1,90 @@
+name: Common vars
+
+#
+#  Determines the values that every other workflow needs.  Each value answers
+#  the same question: is the run happening in the FreeRADIUS organisation, or
+#  in somebody else's fork of the repository?
+#
+#    docker_registry   which registry holds the continuous integration (CI)
+#                      images
+#    selfhosted        whether the organisation's own build machines are
+#                      available
+#    docker_prefix     what to put in front of a third-party image name
+#
+#  An answer reaches the job that uses the answer in three steps:
+#
+#    1. The pipeline (ci-pipeline.yml) calls this workflow before anything
+#       else, and gets the answers back.
+#    2. The pipeline hands each answer to the workflow that needs the answer,
+#       as an input.
+#    3. That workflow calls this workflow as well, passing on the answer the
+#       pipeline gave, and gets the same answer straight back.
+#
+#  Step 3 reads as redundant and is not.  A workflow can also start on its
+#  own, from the nightly schedule or by hand, and a workflow that starts that
+#  way receives no inputs at all.  Calling this workflow covers both cases
+#  with one line.
+#
+#  The answers come back as job outputs rather than as a workflow-level env:
+#  block, because GitHub does not let the container:, services:, runs-on: and
+#  strategy: keys read the env context.  Those same keys can all read needs,
+#  so a caller writes needs.common_vars.outputs.<name> instead.
+#
+#  To use in another workflow: add a job named common_vars that calls this
+#  workflow, passing on any answer the caller was already given, then name
+#  common_vars in the needs: of every job that reads an answer.
+#
+#  To add another value: add an output below, and add a line to the resolve
+#  step that writes the value.
+#
+on:
+  workflow_call:
+    outputs:
+      docker_registry:
+        description: "registry holding the CI images"
+        value: ${{ jobs.resolve.outputs.docker_registry }}
+      selfhosted:
+        description: "'1' when the org's self-hosted runners and registry are available"
+        value: ${{ jobs.resolve.outputs.selfhosted }}
+      docker_prefix:
+        description: "prefix that points a third-party image at the org's pull-through cache, empty elsewhere"
+        value: ${{ jobs.resolve.outputs.docker_prefix }}
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      docker_registry: ${{ steps.resolve.outputs.docker_registry }}
+      selfhosted: ${{ steps.resolve.outputs.selfhosted }}
+      docker_prefix: ${{ steps.resolve.outputs.docker_prefix }}
+    steps:
+      #
+      #  docker_registry.  The FreeRADIUS organisation sets a repository
+      #  variable named DOCKER_REGISTRY that points at the organisation's own
+      #  registry.  GitHub does not copy repository variables into a fork, so
+      #  in a fork the variable is empty and the answer becomes the fork's own
+      #  GitHub Container Registry (GHCR) namespace, which is the only
+      #  registry a fork is allowed to push to.
+      #
+      #  docker_prefix.  The organisation keeps a local copy of third-party
+      #  images (mariadb, postgres, 389ds), so a build fetches each image from
+      #  Docker Hub once rather than every time, and docker_prefix is what
+      #  points an image name at that local copy.  A fork keeps no local copy,
+      #  so docker_prefix stays empty and a fork fetches those images from
+      #  Docker Hub under their plain names.
+      #
+      - id: resolve
+        env:
+          #  The one place in the repository that names the registry.
+          registry: ${{ vars.DOCKER_REGISTRY || format('ghcr.io/{0}', github.repository_owner) }}
+          selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+        run: |
+          prefix=
+          if [ "$selfhosted" = "1" ]; then
+            prefix="$registry/"
+          fi
+          {
+            echo "docker_registry=$registry"
+            echo "selfhosted=$selfhosted"
+            echo "docker_prefix=$prefix"
+          } >> "$GITHUB_OUTPUT"

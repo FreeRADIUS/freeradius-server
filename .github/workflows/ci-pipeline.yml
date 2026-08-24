@@ -72,8 +72,6 @@ jobs:
     needs: [changes]
     if: ${{ needs.changes.outputs.images == 'true' || github.repository_owner != 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-refresh.yml
-    with:
-      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
     secrets: inherit
 
   ci:
@@ -82,13 +80,11 @@ jobs:
     name: CI
     uses: ./.github/workflows/ci.yml
     with:
-      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
-      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
       packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
   ci-deb:
-    needs: [refresh]
+    needs: [changes, refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI DEB
     uses: ./.github/workflows/ci-deb.yml
@@ -109,8 +105,6 @@ jobs:
     name: CI-Sanitizers
     uses: ./.github/workflows/ci-sanitizers.yml
     with:
-      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
-      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
       packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
@@ -133,7 +127,7 @@ jobs:
     secrets: inherit
 
   ci-multi-server:
-    needs: [refresh]
+    needs: [changes, refresh]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: Multi-Server CI Tests
     uses: ./.github/workflows/ci-multi-server-tests.yml
@@ -141,14 +135,14 @@ jobs:
 
   docker-crossbuild:
     name: Docker crossbuild images
-    needs: [refresh, ci]
+    needs: [changes, refresh, ci]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' }}
     uses: ./.github/workflows/docker-crossbuild.yml
     secrets: inherit
 
   docker-service:
     name: Docker service images
-    needs: [refresh, ci]
+    needs: [changes, refresh, ci]
     if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' }}
     uses: ./.github/workflows/docker-service.yml
     secrets: inherit

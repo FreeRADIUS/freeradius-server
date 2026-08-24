@@ -10,6 +10,14 @@ on:
         default: 'false'
 
 jobs:
+  #
+  #  Determines the values that turn on whether the run is happening in the
+  #  FreeRADIUS organisation or in a fork.  See
+  #  .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    uses: ./.github/workflows/common_vars.yml
+
 
   #
   #  We don't want to consume many workers on each push so we only build the
@@ -26,6 +34,7 @@ jobs:
   #  are skipped via their `needs:` dependency.
   #
   set-matrix:
+    needs: common_vars
     name: Setup build matrix
     if: github.repository_owner == 'FreeRADIUS'
     runs-on: ubuntu-latest
@@ -39,8 +48,8 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-rocky9",  "DIST": "rocky", "VERSION": 9  },
-              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-rocky10", "DIST": "rocky", "VERSION": 10 }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky9",  "DIST": "rocky", "VERSION": 9  },
+              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10", "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky10", "DIST": "rocky", "VERSION": 10 }
             ]
           }
         EOF
@@ -49,7 +58,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-rocky9",  "DIST": "rocky", "VERSION": 9 }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky9",  "DIST": "rocky", "VERSION": 9 }
             ]
           }
         EOF

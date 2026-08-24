@@ -19,7 +19,16 @@ on:
   workflow_call:
 
 jobs:
+  #
+  #  Determines the values that turn on whether the run is happening in the
+  #  FreeRADIUS organisation or in a fork.  See
+  #  .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    uses: ./.github/workflows/common_vars.yml
+
   multi-server-tests:
+    needs: common_vars
     runs-on: self-hosted
     if: github.repository_owner == 'FreeRADIUS'
 
@@ -43,7 +52,7 @@ jobs:
         #  pull-through mirror, and the internal CA pre-trusted.
         #  Built by docker-refresh.yml from scripts/ci/docker/Dockerfile.docker-dind.
         #
-        image: docker.internal.networkradius.com/self-hosted-docker-dind
+        image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-dind
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
@@ -70,7 +79,7 @@ jobs:
       #  of the self-hosted base. Built by docker-refresh.yml from
       #  scripts/ci/docker/Dockerfile.docker-cli.
       #
-      image: docker.internal.networkradius.com/self-hosted-docker-cli
+      image: ${{ needs.common_vars.outputs.docker_registry }}/self-hosted-docker-cli
       #  "privileged" is needed for Samba install
       #  "memory-swap -1" enables full use of host swap and may help
       #    with containers randomly quitting with "The operation was
@@ -83,7 +92,7 @@ jobs:
         NO_PROXY: dind,*.networkradius.com,127.0.0.1
       #
       #  CA cert mount lets the in-container apt and curl talk HTTPS
-      #  to docker.internal.networkradius.com. Shared workspace - see
+      #  to ${{ needs.common_vars.outputs.docker_registry }}. Shared workspace - see
       #  dind volumes comment above.
       #
       volumes:
@@ -107,7 +116,7 @@ jobs:
 
       #
       #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
-      #  registry-mirrors -> docker.internal.networkradius.com baked
+      #  registry-mirrors -> ${{ needs.common_vars.outputs.docker_registry }} baked
       #  in, but our internal registry isn't actually a Hub pull-
       #  through cache (it 404s on library/kafka etc.), so dockerd
       #  falls back to docker.io and we hit anonymous rate limits
@@ -122,7 +131,7 @@ jobs:
       #
       #  Authenticate dind to the internal registry so docker compose
       #  can pull mariadb / postgres / 389ds etc. tagged under
-      #  docker.internal.networkradius.com. The host docker daemon is
+      #  ${{ needs.common_vars.outputs.docker_registry }}. The host docker daemon is
       #  logged in via the runner's job-started hook, but dind is a
       #  separate daemon with no auth config.
       #
@@ -131,7 +140,7 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
         run: |
-          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://${{ needs.common_vars.outputs.docker_registry }}/
 
       #
       #  Build the FreeRADIUS image for this matrix leg. Service mode
@@ -149,7 +158,7 @@ jobs:
       #
       - name: Build FreeRADIUS image (${{ matrix.mode }})
         env:
-          DOCKER_REGISTRY: docker.internal.networkradius.com
+          DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
         run: |
           case "${{ matrix.mode }}" in
             service)
