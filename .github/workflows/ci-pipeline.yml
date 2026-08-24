@@ -26,6 +26,13 @@ jobs:
   #
   changes:
     runs-on: ubuntu-latest
+
+    #  On a pull request paths-filter asks the REST API which files changed,
+    #  rather than diffing locally, and the API call needs this.
+    permissions:
+      contents: read
+      pull-requests: read
+
     outputs:
       images: ${{ steps.check.outputs.images }}
     steps:
@@ -35,15 +42,21 @@ jobs:
           lfs: false
 
       #
-      #  Only refresh the docker image if we think any of the files which
-      #  might pull in additional dependencies have changed.  We ONLY do 
-      #  this on push, not pull requests so we don't poison our docker 
-      #  images.  We really need to figure out how to qualify the images
-      #  so we can generate dedicated images for PRs.
+      #  Answers one question: does this commit touch anything the CI images
+      #  bake in?  Two jobs read the answer and do different things with the
+      #  answer.  The refresh job rebuilds the images, and only on a push,
+      #  because a rebuild publishes a :latest tag and a pull request must not
+      #  be able to overwrite what everybody else builds against.  The build
+      #  legs read the answer as packaging_changed and top up their build
+      #  dependencies from the tree, which is what covers a pull request that
+      #  adds a dependency and cannot wait for its own merge.
+      #
+      #  So the answer is worked out for a pull request as well as a push, and
+      #  the refresh job carries the push-only restriction itself.
       #
       - uses: dorny/paths-filter@v4.0.3
         id: check
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         with:
           base: ${{ github.event.pull_request.base.sha || github.event.before }}
           filters: |
@@ -62,15 +75,16 @@ jobs:
   #  waits for it, so the docker images have all necessary packages before
   #  the rest of CI runs.
   #
-  #
-  #  A fork has no image until it builds one, so it always refreshes; buildx
-  #  layer reuse from its own GHCR makes the unchanged case cheap.  The org
-  #  only refreshes when a commit touches something baked into the images.
+  #  A rebuild publishes a :latest tag that everybody else then builds
+  #  against, so the main repository rebuilds on a push and never on a pull
+  #  request.  A fork has no image until it builds one, so a fork always
+  #  refreshes; buildx layer reuse from its own GHCR makes the unchanged case
+  #  cheap, and a fork can only overwrite its own tags.
   #
   refresh:
     name: Docker refresh
     needs: [changes]
-    if: ${{ needs.changes.outputs.images == 'true' || github.repository_owner != 'FreeRADIUS' }}
+    if: ${{ (github.event_name == 'push' && needs.changes.outputs.images == 'true') || github.repository_owner != 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-refresh.yml
     secrets: inherit
 
