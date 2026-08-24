@@ -34,7 +34,7 @@ name: Common vars
 #  workflow, passing on any answer the caller was already given, then name
 #  common_vars in the needs: of every job that reads an answer.
 #
-#  To add another value: add an output below, and add a line to the resolve
+#  To add another value: add an output below, and add a line to the evaluate
 #  step that writes the value.
 #
 on:
@@ -42,21 +42,22 @@ on:
     outputs:
       docker_registry:
         description: "registry holding the CI images"
-        value: ${{ jobs.resolve.outputs.docker_registry }}
+        value: ${{ jobs.common_vars.outputs.docker_registry }}
       selfhosted:
         description: "'1' when the org's self-hosted runners and registry are available"
-        value: ${{ jobs.resolve.outputs.selfhosted }}
+        value: ${{ jobs.common_vars.outputs.selfhosted }}
       docker_prefix:
         description: "prefix that points a third-party image at the org's pull-through cache, empty elsewhere"
-        value: ${{ jobs.resolve.outputs.docker_prefix }}
+        value: ${{ jobs.common_vars.outputs.docker_prefix }}
 
 jobs:
-  resolve:
+  common_vars:
+    name: Common vars
     runs-on: ubuntu-latest
     outputs:
-      docker_registry: ${{ steps.resolve.outputs.docker_registry }}
-      selfhosted: ${{ steps.resolve.outputs.selfhosted }}
-      docker_prefix: ${{ steps.resolve.outputs.docker_prefix }}
+      docker_registry: ${{ steps.evaluate.outputs.docker_registry }}
+      selfhosted: ${{ steps.evaluate.outputs.selfhosted }}
+      docker_prefix: ${{ steps.evaluate.outputs.docker_prefix }}
     steps:
       #
       #  docker_registry.  The FreeRADIUS organisation sets a repository
@@ -73,7 +74,7 @@ jobs:
       #  so docker_prefix stays empty and a fork fetches those images from
       #  Docker Hub under their plain names.
       #
-      - id: resolve
+      - id: evaluate
         env:
           #  The one place in the repository that names the registry.
           registry: ${{ vars.DOCKER_REGISTRY || format('ghcr.io/{0}', github.repository_owner) }}
