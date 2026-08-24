@@ -97,6 +97,18 @@ endef
 #  Use $(eval $(call TEST_MODULES_DEPS))
 #
 ######################################################################
+#
+#  A directory says its tests can run at the same time as each other with:
+#
+#	$(eval $(call TEST_PARALLEL))
+#
+#  It works out its own directory name, so the line is identical in every
+#  file and can be copied without editing.
+#
+define TEST_PARALLEL
+TEST.modules.$(lastword $(subst /, ,$(dir $(lastword $(MAKEFILE_LIST))))).parallel := 1
+endef
+
 define TEST_MODULES_DEPS
 ifneq "$(TEST.modules.$(subst /,,$(dir $1)).parallel)" "1"
 ifeq "$(OUTPUT.modules.$(dir $1))" ""
