@@ -66,8 +66,21 @@ jobs:
       fingerprint: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).fingerprint || '' }}
 
     steps:
+      #  claude-code-action sets a git user name as it starts, which fails if
+      #  there is no repository. Triage only reads logs with gh, so a shallow
+      #  checkout without LFS files is enough.
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
+          lfs: false
+
+      #  The action exits non-zero if the model returns no structured output.
+      #  Without continue-on-error that fails the job, and the fallback values
+      #  in outputs above are never used.
       - name: Run Claude Code triage
         id: triage
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ github.token }}
