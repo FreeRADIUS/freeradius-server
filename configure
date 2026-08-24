@@ -16407,6 +16407,8 @@ subdirs="$subdirs $mysubdirs"
 
 
 
+ax_subconf_args_src_lib_backtrace="--enable-host-shared"
+
 if test "x$ax_cv_cc_no_date_time_flag" = "xyes" && test "x$reproducible_builds" != "xyes"; then
   CFLAGS="-Wno-date-time $CFLAGS"
 fi

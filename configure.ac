@@ -2617,6 +2617,14 @@ dnl #
 AX_CONFIG_SUBDIRS_PARALLEL
 
 dnl #
+dnl #  libbacktrace is linked into libfreeradius-util, a shared library, so the
+dnl #  libbacktrace objects have to be position independent code (PIC).
+dnl #  --enable-host-shared is how libbacktrace's configure asks for PIC,
+dnl #  despite the name.
+dnl #
+ax_subconf_args_src_lib_backtrace="--enable-host-shared"
+
+dnl #
 dnl #  If reproducible builds are not enabled, disable
 dnl #  -Wdate-time so the compiler doesn't croak.
 dnl #
