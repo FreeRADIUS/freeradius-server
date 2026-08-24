@@ -92,7 +92,7 @@ jobs:
         NO_PROXY: dind,*.networkradius.com,127.0.0.1
       #
       #  CA cert mount lets the in-container apt and curl talk HTTPS
-      #  to ${{ needs.common_vars.outputs.docker_registry }}. Shared workspace - see
+      #  to the internal registry. Shared workspace - see
       #  dind volumes comment above.
       #
       volumes:
@@ -114,7 +114,7 @@ jobs:
 
       #
       #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
-      #  registry-mirrors -> ${{ needs.common_vars.outputs.docker_registry }} baked
+      #  registry-mirrors -> the internal registry baked
       #  in, but our internal registry isn't actually a Hub pull-
       #  through cache (it 404s on library/kafka etc.), so dockerd
       #  falls back to docker.io and we hit anonymous rate limits
@@ -129,7 +129,7 @@ jobs:
       #
       #  Authenticate dind to the internal registry so docker compose
       #  can pull mariadb / postgres / 389ds etc. tagged under
-      #  ${{ needs.common_vars.outputs.docker_registry }}. The host docker daemon is
+      #  the internal registry. The host docker daemon is
       #  logged in via the runner's job-started hook, but dind is a
       #  separate daemon with no auth config.
       #
