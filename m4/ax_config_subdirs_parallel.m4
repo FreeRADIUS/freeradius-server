@@ -149,6 +149,9 @@ if test "$no_recursion" != yes; then
 	    [*" $ax_subconf_dir "*], [continue])
     ax_subconf_seen="$ax_subconf_seen $ax_subconf_dir"
 
+    AS_VAR_ARITH([ax_subconf_n], [$ax_subconf_n + 1])
+    ax_subconf_id=$ax_subconf_n
+
     AS_MKDIR_P(["$ac_dir"])
     _AC_SRCDIRS(["$ac_dir"])
 
@@ -164,37 +167,33 @@ if test "$no_recursion" != yes; then
     #
     #  Concurrent sub-configure scripts sharing one cache file read and write
     #  the file at the same time and corrupt each other's entries, so each
-    #  subdirectory needs a cache file to itself. Autoconf points every
-    #  subdirectory at the one top-level cache file, which is safe only
-    #  because autoconf runs the sub-configure scripts one after another.
-    #  GCC's top-level Makefile carries the same warning: "Host configures
-    #  don't work well in parallel to each other, due to contention over
-    #  config.cache".
+    #  sub-configure script gets a copy of the top-level cache to itself.
+    #  Autoconf points every subdirectory at the one top-level cache file,
+    #  which is safe only because autoconf runs the sub-configure scripts one
+    #  after another. GCC's top-level Makefile carries the same warning: "Host
+    #  configures don't work well in parallel to each other, due to contention
+    #  over config.cache".
     #
-    #  The subdirectory goes between the directory the user named and the file
-    #  name the user named, so --cache-file=/tmp/x/foo.cache writes
-    #  /tmp/x/src/lib/backtrace/foo.cache. Both halves of the request survive
-    #  and every subdirectory still gets a file of its own.
+    #  The copies sit with the logs and go when the logs go, so no cache file
+    #  outlives the configure run that wrote the cache file. A copy left in a
+    #  subdirectory would be picked up by the next run, and a run with
+    #  different CFLAGS then stops with "`CFLAGS' has changed since the
+    #  previous run". Nothing else in the tree knows to delete a cache file in
+    #  a subdirectory, so leaving one there breaks the next build.
     #
-    #  A relative directory is relative to the top build directory, and the
-    #  job script runs with the subdirectory's build directory as its working
-    #  directory, so $ac_top_build_prefix leads back to the top first.
+    #  Reading is where the saving is anyway: the top-level cache already
+    #  holds the compiler and header answers every sub-configure script would
+    #  otherwise work out again. The answers a sub-configure script adds are
+    #  dropped, so the top-level cache stays exactly as the top-level
+    #  configure left the top-level cache.
     #
-    #  /dev/null is the default and means no cache at all, so /dev/null passes
-    #  through untouched.
+    #  /dev/null is the default and means no cache at all.
     #
     AS_CASE([$cache_file],
 	    [/dev/null], [ac_sub_cache_file=/dev/null],
-	    [ax_cache_dir=`AS_DIRNAME([$cache_file])`
-	     ax_cache_base=`AS_BASENAME([$cache_file])`
-	     AS_CASE([$ax_cache_dir],
-		     [.], [ax_cache_dir=$ac_dir],
-		     [ax_cache_dir=$ax_cache_dir/$ac_dir])
-	     AS_MKDIR_P(["$ax_cache_dir"])
-	     AS_CASE([$cache_file],
-		     [[[\\/]]* | ?:[[\\/]]*],
-		       [ac_sub_cache_file=$ax_cache_dir/$ax_cache_base],
-		       [ac_sub_cache_file=$ac_top_build_prefix$ax_cache_dir/$ax_cache_base])])
+	    [ac_sub_cache_file=$ax_subconf_logs/$ax_subconf_id.cache
+	     AS_IF([test -f "$cache_file"],
+		   [cp "$cache_file" "$ac_sub_cache_file"])])
 
     #
     #  The extra arguments for a sub-configure script come from a shell
@@ -209,8 +208,6 @@ if test "$no_recursion" != yes; then
     ax_subconf_key=`AS_ECHO(["$ax_subconf_dir"]) | sed 's|[[/.-]]|_|g'`
     eval "ax_subconf_extra=\${ax_subconf_args_$ax_subconf_key:-}"
 
-    AS_VAR_ARITH([ax_subconf_n], [$ax_subconf_n + 1])
-    ax_subconf_id=$ax_subconf_n
     ax_subconf_cmd="\$SHELL '$ac_srcdir/$ax_sub_configure' $ac_sub_configure_args $ax_subconf_extra --cache-file='$ac_sub_cache_file' --srcdir='$ac_srcdir'"
 
     #
