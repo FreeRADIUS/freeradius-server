@@ -122,6 +122,7 @@ if test "$no_recursion" != yes; then
   : > "$ax_subconf_jobs"
   : > "$ax_subconf_manifest"
   ax_subconf_n=0
+  ax_subconf_seen=
 
   ac_popdir=`pwd`
   for ac_dir in : $subdirs; do test "x$ac_dir" = x: && continue
@@ -129,6 +130,24 @@ if test "$no_recursion" != yes; then
     # Do not complain, so a configure script can configure whichever
     # parts of a large source tree are present.
     test -d "$srcdir/$ac_dir" || continue
+
+    #
+    #  Two sub-configure scripts running in the same directory at the same
+    #  time delete each other's conftest files, and AC_PROG_CC reports the
+    #  wreckage as "C compiler cannot create executables", so a directory
+    #  named twice in $subdirs is configured once. Autoconf tolerates the
+    #  repeat because autoconf runs the sub-configure scripts one after
+    #  another, and $MODULES does repeat a module when the same
+    #  --with-modules name is given twice.
+    #
+    #  ./src/lib/curl and src/lib/curl are the same directory, so the leading
+    #  ./ comes off before the comparison. The stripped name is also what the
+    #  ax_subconf_args_ lookup below is keyed on.
+    #
+    ax_subconf_dir=`AS_ECHO(["$ac_dir"]) | sed -e 's|^\./||' -e 's|^/||'`
+    AS_CASE([" $ax_subconf_seen "],
+	    [*" $ax_subconf_dir "*], [continue])
+    ax_subconf_seen="$ax_subconf_seen $ax_subconf_dir"
 
     AS_MKDIR_P(["$ac_dir"])
     _AC_SRCDIRS(["$ac_dir"])
@@ -182,12 +201,12 @@ if test "$no_recursion" != yes; then
     #  variable named after the directory, with the characters a shell variable
     #  name cannot contain replaced by underscores.
     #
-    #  The leading ./ has to come off first. mysubdirs is built by find(1)
-    #  over $srcdir, so an in-tree build yields ./src/lib/backtrace, and a
+    #  The key is built from the stripped name, because mysubdirs is built by
+    #  find(1) over $srcdir and an in-tree build yields ./src/lib/backtrace. A
     #  leading ./ left in place looks for ax_subconf_args_._src_lib_backtrace,
     #  which nobody would think to set.
     #
-    ax_subconf_key=`AS_ECHO(["$ac_dir"]) | sed -e 's|^\./||' -e 's|^/||' -e 's|[[/.-]]|_|g'`
+    ax_subconf_key=`AS_ECHO(["$ax_subconf_dir"]) | sed 's|[[/.-]]|_|g'`
     eval "ax_subconf_extra=\${ax_subconf_args_$ax_subconf_key:-}"
 
     AS_VAR_ARITH([ax_subconf_n], [$ax_subconf_n + 1])
