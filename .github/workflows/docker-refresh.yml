@@ -65,7 +65,7 @@ jobs:
           #  internal CA, so per-job apt-installing and daemon.json
           #  wiring goes away.
           #
-          - base_image: docker:24-dind
+          - base_image: docker:27-dind
             display: self-hosted-docker-dind
             dockerfile: scripts/ci/docker/Dockerfile.docker-dind
             needs_internal_ca: true
