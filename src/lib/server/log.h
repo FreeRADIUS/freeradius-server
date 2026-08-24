@@ -771,4 +771,4 @@ do {\
  *				Will be declared in the scope of the loop.
  */
 #define log_dst_foreach(_head, _iter) \
-	for (log_dst_t *JOIN(_next,_iter), *_iter = _head; JOIN(_next,_iter) = (_head)->next, _iter != NULL; _iter = JOIN(_next,_iter))
+	for (log_dst_t *JOIN(_next,_iter), *_iter = _head; JOIN(_next,_iter) = (_iter ? _iter->next : NULL), _iter != NULL; _iter = JOIN(_next,_iter))
