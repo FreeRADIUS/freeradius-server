@@ -51,6 +51,16 @@ RUN apt-get install -y --no-install-recommends \
 #  built against -- otherwise libfreeradius4's `(= <ver>)` libkqueue
 #  dep rejects the source-built version at runtime install time.
 #
+#  libkqueue numbers a package with the most recent release tag, followed by
+#  the count of commits made since that tag.  The NetworkRADIUS extras
+#  repository numbers its amd64 packages the same way, so an amd64 machine
+#  and a machine of any other architecture reach the same number for the same
+#  source.
+#
+#  libkqueue asks git for the tag and the count, using "git describe".  A
+#  clone made with --depth 1 downloads no tags, so the clone below downloads
+#  the whole history.
+#
 #  cpack's DEB generator emits a -dbg package whenever the build produces
 #  unstripped objects; RelWithDebInfo with explicit C flags overrides
 #  libkqueue's default -O2 -g -DNDEBUG so the symbols actually survive.
@@ -61,7 +71,7 @@ RUN mkdir -p /opt/libkqueue-debs && \
             echo "libkqueue: skipping source build, NetworkRADIUS extras ships amd64" ;; \
         *) \
             apt-get install -y --no-install-recommends cmake git build-essential file && \
-            git clone --depth 1 https://github.com/mheily/libkqueue.git /tmp/libkqueue && \
+            git clone https://github.com/mheily/libkqueue.git /tmp/libkqueue && \
             cd /tmp/libkqueue && \
             cmake -G "Unix Makefiles" \
                 -DCMAKE_INSTALL_PREFIX=/usr \

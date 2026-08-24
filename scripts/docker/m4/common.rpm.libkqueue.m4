@@ -9,12 +9,25 @@
 #  flags overrides that and CPACK_RPM_DEBUGINFO_PACKAGE=ON makes cpack
 #  emit a separate -debuginfo package alongside the main rpm.
 #
+#  libkqueue numbers a package with the most recent release tag, followed by
+#  the count of commits made since that tag, for example 2.7.0.41.  The
+#  NetworkRADIUS extras repository numbers its own libkqueue packages the
+#  same way.  Two builds from the same source therefore reach the same
+#  number, and a later "dnf update" finds nothing newer to install.
+#
+#  libkqueue asks git for the tag and the count, using "git describe".  A
+#  clone made with --depth 1 downloads no tags, git describe then answers
+#  nothing, and libkqueue falls back to a number written into its own
+#  CMakeLists.txt.  dnf reads the fallback as older than the repository's
+#  package and replaces the build here.  So the clone below downloads the
+#  whole history.
+#
 #  Build out-of-tree (separate build dir) because cpack's debuginfo
 #  generator demands a source-vs-build path distinction to relocate
 #  debug records.
 #
 RUN dnf install -y gcc make cmake git rpm-build && \
-    git clone --depth 1 https://github.com/mheily/libkqueue.git /tmp/libkqueue-from-source-for-debuginfo-packaging && \
+    git clone https://github.com/mheily/libkqueue.git /tmp/libkqueue-from-source-for-debuginfo-packaging && \
     mkdir /tmp/libkqueue-from-source-build && \
     cd /tmp/libkqueue-from-source-build && \
     cmake -G "Unix Makefiles" \
