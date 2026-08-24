@@ -2610,6 +2610,13 @@ AC_CONFIG_SUBDIRS($mysubdirs)
 AC_SUBST(MODULES)
 
 dnl #
+dnl #  Run the sub-configure scripts above concurrently instead of one after
+dnl #  another, and allow per-subdirectory arguments, which autoconf has no way
+dnl #  to express. See m4/ax_config_subdirs_parallel.m4.
+dnl #
+AX_CONFIG_SUBDIRS_PARALLEL
+
+dnl #
 dnl #  If reproducible builds are not enabled, disable
 dnl #  -Wdate-time so the compiler doesn't croak.
 dnl #

@@ -185,7 +185,8 @@ test -x / || exit 1"
   as_suggested="  as_lineno_1=";as_suggested=$as_suggested$LINENO;as_suggested=$as_suggested" as_lineno_1a=\$LINENO
   as_lineno_2=";as_suggested=$as_suggested$LINENO;as_suggested=$as_suggested" as_lineno_2a=\$LINENO
   eval 'test \"x\$as_lineno_1'\$as_run'\" != \"x\$as_lineno_2'\$as_run'\" &&
-  test \"x\`expr \$as_lineno_1'\$as_run' + 1\`\" = \"x\$as_lineno_2'\$as_run'\"' || exit 1"
+  test \"x\`expr \$as_lineno_1'\$as_run' + 1\`\" = \"x\$as_lineno_2'\$as_run'\"' || exit 1
+test \$(( 1 + 1 )) = 2 || exit 1"
   if (eval "$as_required") 2>/dev/null
 then :
   as_have_required=yes
@@ -3364,6 +3365,9 @@ ln -s ../../../install-sh install-sh
 
 subdirs="$subdirs $mysubdirs"
 
+
+
+
 rm install-sh
 
 
@@ -4536,6 +4540,14 @@ fi
 #
 if test "$no_recursion" != yes; then
 
+                                      ax_subconfs_deferred=$subdirs
+  subdirs=
+
+#
+# CONFIG_SUBDIRS section.
+#
+if test "$no_recursion" != yes; then
+
   # Remove --cache-file, --srcdir, and --disable-option-checking arguments
   # so they do not pile up.
   ac_sub_configure_args=
@@ -4672,6 +4684,286 @@ printf '%s\n' "$as_me: running $SHELL $ac_sub_configure $ac_sub_configure_args -
 
     cd "$ac_popdir"
   done
+fi
+
+  subdirs=$ax_subconfs_deferred
+
+  #
+  #  Only the parent shell has $srcdir and $ac_pwd, so we derive every
+  #  subdirectory's paths here rather than inside the job script that runs the
+  #  sub-configure script. The result is one job script per subdirectory, each
+  #  holding a complete command that xargs can run.
+  #
+  #  Each job script gets a number, counting up in the order $subdirs lists
+  #  the subdirectories, so the captured output can print in that order rather
+  #  than in whatever order the job scripts happen to finish.
+  #
+  ax_subconf_logs=`pwd`/config-subconfs.logs
+  rm -rf "$ax_subconf_logs"
+  as_dir="$ax_subconf_logs"; as_fn_mkdir_p
+
+  ax_subconf_jobs=$ax_subconf_logs/jobs
+  ax_subconf_manifest=$ax_subconf_logs/manifest
+  : > "$ax_subconf_jobs"
+  : > "$ax_subconf_manifest"
+  ax_subconf_n=0
+
+  ac_popdir=`pwd`
+  for ac_dir in : $subdirs; do test "x$ac_dir" = x: && continue
+
+    # Do not complain, so a configure script can configure whichever
+    # parts of a large source tree are present.
+    test -d "$srcdir/$ac_dir" || continue
+
+    as_dir="$ac_dir"; as_fn_mkdir_p
+    ac_builddir=.
+
+case "$ac_dir" in
+.) ac_dir_suffix= ac_top_builddir_sub=. ac_top_build_prefix= ;;
+*)
+  ac_dir_suffix=/`printf '%s\n' "$ac_dir" | sed 's|^\.[\\/]||'`
+  # A ".." for each directory in $ac_dir_suffix.
+  ac_top_builddir_sub=`printf '%s\n' "$ac_dir_suffix" | sed 's|/[^\\/]*|/..|g;s|/||'`
+  case $ac_top_builddir_sub in
+  "") ac_top_builddir_sub=. ac_top_build_prefix= ;;
+  *)  ac_top_build_prefix=$ac_top_builddir_sub/ ;;
+  esac ;;
+esac
+ac_abs_top_builddir=$ac_pwd
+ac_abs_builddir=$ac_pwd$ac_dir_suffix
+# for backward compatibility:
+ac_top_builddir=$ac_top_build_prefix
+
+case $srcdir in
+  .)  # We are building in place.
+    ac_srcdir=.
+    ac_top_srcdir=$ac_top_builddir_sub
+    ac_abs_top_srcdir=$ac_pwd ;;
+  [\\/]* | ?:[\\/]* )  # Absolute name.
+    ac_srcdir=$srcdir$ac_dir_suffix;
+    ac_top_srcdir=$srcdir
+    ac_abs_top_srcdir=$srcdir ;;
+  *) # Relative name.
+    ac_srcdir=$ac_top_build_prefix$srcdir$ac_dir_suffix
+    ac_top_srcdir=$ac_top_build_prefix$srcdir
+    ac_abs_top_srcdir=$ac_pwd/$srcdir ;;
+esac
+ac_abs_srcdir=$ac_abs_top_srcdir$ac_dir_suffix
+
+
+    # Check for configure.gnu first; this name is used for a wrapper for
+    # Metaconfig's "Configure" on case-insensitive file systems.
+    if test -f "$srcdir/$ac_dir/configure.gnu"
+then :
+  ax_sub_configure=configure.gnu
+elif test -f "$srcdir/$ac_dir/configure"
+then :
+  ax_sub_configure=configure
+else case e in #(
+  e) { printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: no configuration information is in $ac_dir" >&5
+printf '%s\n' "$as_me: WARNING: no configuration information is in $ac_dir" >&2;}
+	   continue ;;
+esac
+fi
+
+    #
+    #  Concurrent sub-configure scripts sharing one cache file read and write
+    #  the file at the same time and corrupt each other's entries, so each
+    #  subdirectory needs a cache file to itself. Autoconf points every
+    #  subdirectory at the one top-level cache file, which is safe only
+    #  because autoconf runs the sub-configure scripts one after another.
+    #  GCC's top-level Makefile carries the same warning: "Host configures
+    #  don't work well in parallel to each other, due to contention over
+    #  config.cache".
+    #
+    #  The subdirectory goes between the directory the user named and the file
+    #  name the user named, so --cache-file=/tmp/x/foo.cache writes
+    #  /tmp/x/src/lib/backtrace/foo.cache. Both halves of the request survive
+    #  and every subdirectory still gets a file of its own.
+    #
+    #  A relative directory is relative to the top build directory, and the
+    #  job script runs with the subdirectory's build directory as its working
+    #  directory, so $ac_top_build_prefix leads back to the top first.
+    #
+    #  /dev/null is the default and means no cache at all, so /dev/null passes
+    #  through untouched.
+    #
+    case $cache_file in #(
+  /dev/null) :
+    ac_sub_cache_file=/dev/null ;; #(
+  *) :
+    ax_cache_dir=`$as_dirname -- $cache_file ||
+$as_expr X$cache_file : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
+	 X$cache_file : 'X\(//\)[^/]' \| \
+	 X$cache_file : 'X\(//\)$' \| \
+	 X$cache_file : 'X\(/\)' \| . 2>/dev/null ||
+printf '%s\n' X$cache_file |
+    sed '/^X\(.*[^/]\)\/\/*[^/][^/]*\/*$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\/\)[^/].*/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\/\)$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\).*/{
+	    s//\1/
+	    q
+	  }
+	  s/.*/./; q'`
+	     ax_cache_base=`$as_basename -- $cache_file ||
+$as_expr X/$cache_file : '.*/\([^/][^/]*\)/*$' \| \
+	 X$cache_file : 'X\(//\)$' \| \
+	 X$cache_file : 'X\(/\)' \| . 2>/dev/null ||
+printf '%s\n' X/$cache_file |
+    sed '/^.*\/\([^/][^/]*\)\/*$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\/\(\/\/\)$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\/\(\/\).*/{
+	    s//\1/
+	    q
+	  }
+	  s/.*/./; q'`
+	     case $ax_cache_dir in #(
+  .) :
+    ax_cache_dir=$ac_dir ;; #(
+  *) :
+    ax_cache_dir=$ax_cache_dir/$ac_dir ;;
+esac
+	     as_dir="$ax_cache_dir"; as_fn_mkdir_p
+	     case $cache_file in #(
+  [\\/]* | ?:[\\/]*) :
+    ac_sub_cache_file=$ax_cache_dir/$ax_cache_base ;; #(
+  *) :
+    ac_sub_cache_file=$ac_top_build_prefix$ax_cache_dir/$ax_cache_base ;;
+esac ;;
+esac
+
+    #
+    #  The extra arguments for a sub-configure script come from a shell
+    #  variable named after the directory, with the characters a shell variable
+    #  name cannot contain replaced by underscores.
+    #
+    #  The leading ./ has to come off first. mysubdirs is built by find(1)
+    #  over $srcdir, so an in-tree build yields ./src/lib/backtrace, and a
+    #  leading ./ left in place looks for ax_subconf_args_._src_lib_backtrace,
+    #  which nobody would think to set.
+    #
+    ax_subconf_key=`printf '%s\n' "$ac_dir" | sed -e 's|^\./||' -e 's|^/||' -e 's|[/.-]|_|g'`
+    eval "ax_subconf_extra=\${ax_subconf_args_$ax_subconf_key:-}"
+
+    as_fn_arith $ax_subconf_n + 1 && ax_subconf_n=$as_val
+    ax_subconf_id=$ax_subconf_n
+    ax_subconf_cmd="\$SHELL '$ac_srcdir/$ax_sub_configure' $ac_sub_configure_args $ax_subconf_extra --cache-file='$ac_sub_cache_file' --srcdir='$ac_srcdir'"
+
+    #
+    #  The manifest holds one line per subdirectory, in the order $subdirs
+    #  lists the subdirectories, carrying what _AC_OUTPUT_SUBDIRS printed
+    #  before running each sub-configure script.
+    #
+    printf '%s\n' "$ax_subconf_id	$ac_dir	$ax_subconf_cmd" >> "$ax_subconf_manifest"
+
+    #
+    #  Each subdirectory gets a job script of its own holding the whole
+    #  command, redirect and failure marker included, so xargs only has to run
+    #  $SHELL on the job script. Splitting a command back apart inside the job
+    #  script is one quoting mistake away from writing the log somewhere nobody
+    #  looks.
+    #
+    #  Passing the command through xargs -I instead is not portable: the BSD
+    #  xargs on macOS caps a replacement at 255 bytes and refuses a configure
+    #  line with "command line cannot be assembled, too long".
+    #
+    printf '%s\n' "cd '$ac_popdir/$ac_dir' && $ax_subconf_cmd > '$ax_subconf_logs/$ax_subconf_id.log' 2>&1 || { : > '$ax_subconf_logs/$ax_subconf_id.failed'; exit 1; }" > "$ax_subconf_logs/$ax_subconf_id.sh"
+    printf '%s\n' "$ax_subconf_logs/$ax_subconf_id.sh" >> "$ax_subconf_jobs"
+  done
+
+  if test "$ax_subconf_n" -gt 0
+then :
+
+    #
+    #  No POSIX utility reports the core count. The order below comes from
+    #  AX_COUNT_CPUS in the autoconf archive, minus the branches that read
+    #  $host_os: rlm_sql and rlm_cache ship no config.guess, so
+    #  AC_CANONICAL_HOST is not available in every configure that calls this
+    #  macro.
+    #
+    #  POSIX spells the getconf name NPROCESSORS_ONLN while Linux and macOS
+    #  want _NPROCESSORS_ONLN, so try both. nproc is GNU coreutils. sysctl
+    #  hw.ncpu answers on the BSDs. One at a time is the safe last resort:
+    #  slower, never wrong.
+    #
+    if test -z "$AX_SUBCONF_JOBS"
+then :
+  AX_SUBCONF_JOBS=`getconf _NPROCESSORS_ONLN 2>/dev/null \
+	     || getconf NPROCESSORS_ONLN 2>/dev/null \
+	     || nproc 2>/dev/null \
+	     || sysctl -n hw.ncpu 2>/dev/null`
+	   if test "$AX_SUBCONF_JOBS" -gt 0 2>/dev/null
+then :
+
+else case e in #(
+  e) AX_SUBCONF_JOBS=1 ;;
+esac
+fi
+fi
+
+    { printf '%s\n' "$as_me:${as_lineno-$LINENO}: calling $ax_subconf_n sub-configure scripts, $AX_SUBCONF_JOBS at a time" >&5
+printf '%s\n' "$as_me: calling $ax_subconf_n sub-configure scripts, $AX_SUBCONF_JOBS at a time" >&6;}
+
+    #
+    #  xargs runs the job scripts. Each job script writes one sub-configure
+    #  script's output to a numbered log; nothing reaches the terminal while
+    #  the job scripts are running, because interleaved output is unreadable.
+    #
+    ax_subconf_rc=0
+                        xargs -n1 -P "$AX_SUBCONF_JOBS" \
+      $SHELL < "$ax_subconf_jobs" || ax_subconf_rc=$?
+
+    #
+    #  The loop below walks the manifest, so the logs print in the order
+    #  $subdirs lists the subdirectories rather than the order the job scripts
+    #  finished. The transcript then matches what _AC_OUTPUT_SUBDIRS would have
+    #  written running one sub-configure script after another: the same header,
+    #  the same "running" notice, then the sub-configure script's output. The
+    #  loop prints to stdout for the person watching and to config.log for
+    #  afterwards.
+    #
+    while IFS="	" read ax_id ax_dir ax_cmd; do
+      ax_msg="=== configuring in $ax_dir (`pwd`/$ax_dir)"
+      printf '%s\n' "$as_me:${as_lineno-$LINENO}: $ax_msg" >&5
+      printf '%s\n' "$ax_msg" >&6
+      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: running $ax_cmd" >&5
+printf '%s\n' "$as_me: running $ax_cmd" >&6;}
+      if test -f "$ax_subconf_logs/$ax_id.log"
+then :
+  cat "$ax_subconf_logs/$ax_id.log"
+	     cat "$ax_subconf_logs/$ax_id.log" >&5
+fi
+      if test -f "$ax_subconf_logs/$ax_id.failed"
+then :
+  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: sub-configure script failed for $ax_dir" >&5
+printf '%s\n' "$as_me: sub-configure script failed for $ax_dir" >&6;}
+fi
+    done < "$ax_subconf_manifest"
+
+    if test "$ax_subconf_rc" -ne 0
+then :
+  as_fn_error $? "one or more sub-configure scripts failed, see above" "$LINENO" 5
+fi
+
+    rm -rf "$ax_subconf_logs"
+
+fi
 fi
 if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5

@@ -27,6 +27,14 @@ dnl # don't ask... this is done to avoid autoconf stupidities.
 ln -s ../../../install-sh install-sh
 
 AC_CONFIG_SUBDIRS($mysubdirs)
+
+dnl #
+dnl #  No driver's sub-configure script depends on another, so
+dnl #  AX_CONFIG_SUBDIRS_PARALLEL runs the driver sub-configure scripts at the
+dnl #  same time. See m4/ax_config_subdirs_parallel.m4.
+dnl #
+AX_CONFIG_SUBDIRS_PARALLEL
+
 rm install-sh
 
 FR_MODULE_END_TESTS([nostrict])
