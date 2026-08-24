@@ -62,24 +62,24 @@ jobs:
       #
       - if: ${{ steps.target.outputs.run == 'yes' }}
         env:
-          REGISTRY: ${{ steps.target.outputs.registry }}
-          PATH_PREFIX: ${{ steps.target.outputs.path }}
-          TAG: ${{ steps.target.outputs.tag }}
-          USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
-          PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+          DOCKER_REGISTRY: ${{ steps.target.outputs.registry }}
+          DOCKER_PATH_PREFIX: ${{ steps.target.outputs.path }}
+          DOCKER_TAG: ${{ steps.target.outputs.tag }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
         run: |
           set -u
-          printf '%s' "$PASSWORD" \
-            | regctl registry login "$REGISTRY" -u "$USERNAME" --pass-stdin
+          printf '%s' "$DOCKER_PASSWORD" \
+            | regctl registry login "$DOCKER_REGISTRY" -u "$DOCKER_USERNAME" --pass-stdin
 
           deleted=0 absent=0
-          for repo in $(regctl repo ls "$REGISTRY"); do
+          for repo in $(regctl repo ls "$DOCKER_REGISTRY"); do
             case "$repo" in
-              "$PATH_PREFIX"/*) ;;
+              "$DOCKER_PATH_PREFIX"/*) ;;
               *) continue ;;
             esac
-            if regctl tag delete "$REGISTRY/$repo:$TAG" >/dev/null 2>&1; then
-              echo "deleted $repo:$TAG"
+            if regctl tag delete "$DOCKER_REGISTRY/$repo:$DOCKER_TAG" >/dev/null 2>&1; then
+              echo "deleted $repo:$DOCKER_TAG"
               deleted=$((deleted + 1))
             else
               absent=$((absent + 1))
