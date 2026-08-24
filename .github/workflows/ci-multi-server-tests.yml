@@ -111,8 +111,6 @@ jobs:
 
       - name: setup-dind
         uses: ./.github/actions/setup-dind
-        with:
-          packages: docker-compose-v2 python3-venv
 
       #
       #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
