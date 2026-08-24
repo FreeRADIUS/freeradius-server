@@ -139,7 +139,7 @@ jobs:
         uses: ./.github/actions/freeradius-deps
         with:
           selfhosted: ${{ needs.common_vars.outputs.selfhosted }}
-          packaging_changed: ${{ needs.common_vars.outputs.images }}
+          packaging_changed: ${{ needs.common_vars.outputs.images_changed }}
           use_docker: true
           cc: ${{ matrix.env.CC }}
 

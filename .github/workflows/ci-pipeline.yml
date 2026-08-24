@@ -42,7 +42,7 @@ jobs:
   refresh:
     name: Docker refresh
     needs: [common_vars]
-    if: ${{ (github.event_name == 'push' && needs.common_vars.outputs.images == 'true') || github.repository_owner != 'FreeRADIUS' }}
+    if: ${{ (github.event_name == 'push' && needs.common_vars.outputs.images_changed == 'true') || github.repository_owner != 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-refresh.yml
     secrets: inherit
 
@@ -131,7 +131,7 @@ jobs:
   docs:
     name: Documentation
     needs: [common_vars, refresh]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.common_vars.outputs.docs == 'true' }}
+    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.common_vars.outputs.docs_changed == 'true' }}
     uses: ./.github/workflows/documentation.yml
     secrets: inherit
 

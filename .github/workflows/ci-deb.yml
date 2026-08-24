@@ -98,7 +98,7 @@ jobs:
     #  so top up from the checked-out control file in that case only.
     #
     - name: Top up build dependencies from debian/control
-      if: ${{ needs.common_vars.outputs.images == 'true' }}
+      if: ${{ needs.common_vars.outputs.images_changed == 'true' }}
       run: |
         touch -t 202001010000 debian/control
         debian/rules debian/control

@@ -9,8 +9,8 @@ name: Common vars
 #    selfhosted        whether the organisation's own build machines are
 #                      available
 #    docker_prefix     what to put in front of a third-party image name
-#    images            whether this ref changes anything the CI images bake in
-#    docs              whether this ref changes anything the documentation uses
+#    images_changed    whether this ref changes anything the CI images bake in
+#    docs_changed      whether this ref changes anything the documentation uses
 #    image_prefix      registry and path the CI images sit under
 #    image_tag         which tag of the CI images this ref should use
 #
@@ -48,12 +48,12 @@ on:
       docker_prefix:
         description: "prefix that points a third-party image at the org's pull-through cache, empty elsewhere"
         value: ${{ jobs.common_vars.outputs.docker_prefix }}
-      images:
+      images_changed:
         description: "'true' when this ref changes something the CI images bake in"
-        value: ${{ jobs.common_vars.outputs.images }}
-      docs:
+        value: ${{ jobs.common_vars.outputs.images_changed }}
+      docs_changed:
         description: "'true' when this ref changes something the documentation is built from"
-        value: ${{ jobs.common_vars.outputs.docs }}
+        value: ${{ jobs.common_vars.outputs.docs_changed }}
       image_prefix:
         description: "registry and path every CI image sits under, ending in a slash"
         value: ${{ jobs.common_vars.outputs.image_prefix }}
@@ -76,8 +76,8 @@ jobs:
       docker_registry: ${{ steps.evaluate.outputs.docker_registry }}
       selfhosted: ${{ steps.evaluate.outputs.selfhosted }}
       docker_prefix: ${{ steps.evaluate.outputs.docker_prefix }}
-      images: ${{ steps.changed.outputs.images }}
-      docs: ${{ steps.changed.outputs.docs }}
+      images_changed: ${{ steps.changed.outputs.images_changed }}
+      docs_changed: ${{ steps.changed.outputs.docs_changed }}
       image_prefix: ${{ steps.evaluate.outputs.image_prefix }}
       image_tag: ${{ steps.evaluate.outputs.image_tag }}
 
@@ -105,7 +105,7 @@ jobs:
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         with:
           filters: |
-            images:
+            images_changed:
               - 'debian/**'
               - 'redhat/**'
               - 'scripts/ci/extra-packages.debian.control'
@@ -119,7 +119,7 @@ jobs:
               #  the result.
               - 'scripts/docker/docker.mk'
               - '.github/workflows/docker-refresh.yml'
-            docs:
+            docs_changed:
               - '.github/workflows/documentation.yml'
               - 'doc/**'
               - 'man/**'
@@ -168,7 +168,7 @@ jobs:
           default_branch: ${{ github.event.repository.default_branch }}
           ref_name: ${{ github.ref_name }}
           repo_name: ${{ github.event.repository.name }}
-          images: ${{ steps.changed.outputs.images }}
+          images_changed: ${{ steps.changed.outputs.images_changed }}
           event: ${{ github.event_name }}
         run: |
           prefix=
@@ -178,7 +178,7 @@ jobs:
 
           image_tag=latest
           if [ "$event" = "push" ] && [ "$ref_name" != "$default_branch" ] \
-             && [ "$images" = "true" ]; then
+             && [ "$images_changed" = "true" ]; then
             image_tag=$(printf '%s' "$ref_name" \
                         | tr 'A-Z' 'a-z' \
                         | tr -c 'a-z0-9_.-' '-' \
