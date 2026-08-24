@@ -88,6 +88,8 @@ jobs:
     if: ${{ !cancelled() && needs.refresh.result != 'failure' }}
     name: CI DEB
     uses: ./.github/workflows/ci-deb.yml
+    with:
+      packaging_changed: ${{ needs.changes.outputs.images }}
     secrets: inherit
 
   ci-rpm:

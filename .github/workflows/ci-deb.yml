@@ -2,6 +2,12 @@ name: CI DEB
 
 on:
   workflow_call:
+    inputs:
+      packaging_changed:
+        description: "'true' when this commit touches debian/**, so the image's baked builddep closure may be stale"
+        required: false
+        type: string
+        default: 'false'
 
 env:
   DEBIAN_FRONTEND: noninteractive
@@ -91,7 +97,14 @@ jobs:
     #  case the image was baked before a recent control change. No-op
     #  when the image is current.
     #
-    - name: Install build dependencies
+    #
+    #  The image bakes in the build-dep closure, refreshed when a packaging
+    #  change lands on master.  A pull request that adds a dependency is
+    #  testing a closure the image predates and cannot wait for its own merge,
+    #  so top up from the checked-out control file in that case only.
+    #
+    - name: Top up build dependencies from debian/control
+      if: ${{ inputs.packaging_changed == 'true' }}
       run: |
         touch -t 202001010000 debian/control
         debian/rules debian/control
