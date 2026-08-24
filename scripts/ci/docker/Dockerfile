@@ -199,9 +199,18 @@ RUN apt-get install -y --no-install-recommends \
 RUN npm i -g @antora/cli@3.1 @antora/site-generator@3.1
 
 #
-#  Used by the scheduled fuzzing corpus push.
+#  Used by the scheduled fuzzing corpus push, which commits through the GitHub
+#  API and so needs PyGithub.  The environment is built here rather than in the
+#  job so the nightly run does not download the packages every time.
 #
-RUN apt-get install -y --no-install-recommends python3-venv
+#  Both packages go in one pip run so pip settles on one consistent set of
+#  versions.  Installed separately, PyGithub pulls a newer cryptography that
+#  an already-present pyOpenSSL will not work with.
+#  https://github.com/pyca/pyopenssl/issues/1143
+#
+RUN apt-get install -y --no-install-recommends python3-venv && \
+	python3 -m venv /opt/corpus-venv && \
+	/opt/corpus-venv/bin/pip install --no-cache-dir pyOpenSSL PyGithub
 
 #
 #  Pulled in as a transitive dependency but conflicts with the
