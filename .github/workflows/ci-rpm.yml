@@ -169,22 +169,21 @@ jobs:
     runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     container:
-      image: ${{ matrix.env.OS }}
       #
-      #  rpm-test intentionally runs on a stock distro image (pulled from
-      #  Docker Hub) so the install test exercises a clean OS. Auth the
-      #  pull to dodge the anonymous 100/6h rate limit shared across
-      #  self-hosted runners.
+      #  rpm-test runs on a stock distro image so the install test exercises a
+      #  clean operating system.  docker_prefix points the name at the copy
+      #  the organisation keeps of that same image, put there by
+      #  docker-refresh.yml, which is the identical image under another name
+      #  and so leaves the clean-operating-system property intact.  Pulling
+      #  the copy also keeps the organisation's build machines, which share a
+      #  few outbound addresses, away from Docker Hub's allowance of 100
+      #  downloads every six hours per address.
       #
-      #  GitHub does not copy the variable or the secret into a fork, so a
-      #  fork downloads the image without signing in.  GitHub-hosted machines
-      #  leave the network through a large pool of addresses, so the
-      #  per-address allowance that the organisation's few fixed addresses run
-      #  out of is not a problem for a fork.
+      #  A fork has no such copy, so docker_prefix is empty and the name
+      #  reaches Docker Hub unchanged.  GitHub-hosted machines spread over a
+      #  large pool of addresses, so the allowance is not a problem there.
       #
-      credentials:
-        username: ${{ vars.DOCKERHUB_READ_USER }}
-        password: ${{ secrets.DOCKERHUB_READ_KEY }}
+      image: ${{ needs.common_vars.outputs.docker_prefix }}${{ matrix.env.OS }}
 
     name: "RPM install test"
 
