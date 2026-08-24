@@ -252,7 +252,7 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	 */
 	l->next = fr_time_add(l->next, l->delta);
 	if (fr_time_lt(l->next, now)) {
-		while (fr_time_lt(fr_time_add(l->next, l->delta), now)) {
+		while (fr_time_lt(l->next, now)) {
 //			l->stats.skipped += l->count;
 			l->next = fr_time_add(l->next, l->delta);
 		}
