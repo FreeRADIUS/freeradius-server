@@ -13,7 +13,10 @@
 #  workflows that never call docker.
 #
 
-FROM docker.internal.networkradius.com/self-hosted
+#  The parent lives in whichever registry the run is using, so the caller
+#  passes the full name. docker-refresh.yml passes the image it just pulled.
+ARG from
+FROM ${from}
 
 ARG DEBIAN_FRONTEND=noninteractive
 
