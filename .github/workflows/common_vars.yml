@@ -83,7 +83,8 @@ jobs:
 
     steps:
       #  paths-filter diffs a push locally, so it needs a checkout.
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
         with:
           lfs: false
 
@@ -100,7 +101,8 @@ jobs:
       #  A scheduled or hand-started run has nothing to diff against, so the
       #  step is skipped and the answer is empty, which reads as no change.
       #
-      - uses: dorny/paths-filter@v4.0.3
+      - name: Determine what this ref changes
+        uses: dorny/paths-filter@v4.0.3
         id: changed
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         with:
@@ -160,7 +162,8 @@ jobs:
       #  underscore, period and dash, so anything else in a branch name
       #  becomes a dash and the result is cut to length.
       #
-      - id: evaluate
+      - name: Evaluate vars
+        id: evaluate
         env:
           #  The one place in the repository that names the registry.
           registry: ${{ vars.DOCKER_REGISTRY || format('ghcr.io/{0}', github.repository_owner) }}

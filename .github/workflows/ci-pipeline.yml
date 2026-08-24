@@ -45,9 +45,11 @@ jobs:
     outputs:
       missing: ${{ steps.probe.outputs.missing }}
     steps:
-      - uses: regclient/actions/regctl-installer@main
+      - name: Install regctl
+        uses: regclient/actions/regctl-installer@main
 
-      - id: probe
+      - name: Look for the sentinel image
+        id: probe
         env:
           DOCKER_SENTINEL_IMAGE: ${{ needs.common_vars.outputs.image_prefix }}self-hosted:${{ needs.common_vars.outputs.image_tag }}
           DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
@@ -163,19 +165,9 @@ jobs:
     secrets: inherit
 
   #
-  #  Merges when every gating leg passed.  Only the gating legs are listed;
-  #  the other legs are too unreliable to block a merge on.
-  #
-  #  By default a job is skipped unless every job it depends on with "needs"
-  #  succeeds.  Docker refresh is skipped on commits that don't modify
-  #  packaging, and that causes the merge step to be skipped, unless we add an
-  #  explicit condition.
-  #
-  #
   #  Only runs when the commit changes something the documentation is built
-  #  from, which is what the workflow's own paths filter used to decide before
-  #  the workflow moved in here.  Absent from merge's needs: a documentation
-  #  build failing should not hold up a merge.
+  #  from.  Absent from merge's needs: a documentation build failing should
+  #  not hold up a merge.
   #
   docs:
     name: Documentation
@@ -184,6 +176,15 @@ jobs:
     uses: ./.github/workflows/documentation.yml
     secrets: inherit
 
+  #
+  #  Merges when every gating leg passed.  Only the gating legs are listed;
+  #  the other legs are too unreliable to block a merge on.
+  #
+  #  By default a job is skipped unless every job it depends on with "needs"
+  #  succeeds.  Docker refresh is skipped on commits that don't modify
+  #  packaging, and that causes the merge step to be skipped, unless we add an
+  #  explicit condition.
+  #
   merge:
     needs: [ci, ci-deb, ci-rpm, ci-sanitizers]
     if: ${{ !cancelled()
