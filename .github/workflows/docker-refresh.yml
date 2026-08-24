@@ -133,10 +133,11 @@ jobs:
         env:
           DOCKER_IMAGE_NAME: ${{ env.DOCKER_REGISTRY }}/${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
-          #  The nightly refresh exists to pick up new upstream packages, so it
-          #  must not reuse layers.  A fork rebuilding per push wants the
-          #  opposite or it pays 20+ minutes every time.
-          NO_CACHE: ${{ needs.common_vars.outputs.selfhosted == '1' && '--no-cache' || '' }}
+          #  Reusing layers would hide new upstream packages, which is what
+          #  the nightly run exists to pick up, so only the nightly discards
+          #  them.  Every other run rebuilds because a file changed, and pays
+          #  20+ minutes for nothing if the layers go as well.
+          NO_CACHE: ${{ github.event_name == 'schedule' && '--no-cache' || '' }}
           REGISTRY_MIRROR: ${{ needs.common_vars.outputs.selfhosted == '1' && env.DOCKER_REGISTRY || '' }}
           #  BuildKit builds only the stages the selected one is built from,
           #  so the certificate COPY in Dockerfile.docker-dind never runs on
