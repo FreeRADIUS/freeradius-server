@@ -24,16 +24,9 @@ jobs:
   #  This job builds the matrix based on the event that trigger this run which
   #  the next job consumes.
   #
-  #  Gated to the main repo: the deb-build container is a BUILD_IMAGE on the
-  #  internal NetworkRADIUS registry, which forks can't reach. PRs targeting
-  #  the main repo run in the base-repo context and pass the gate. Pushes to
-  #  forks short-circuit here so set-matrix never runs and downstream jobs
-  #  are skipped via their `needs:` dependency.
-  #
   set-matrix:
     needs: common_vars
     name: Setup build matrix
-    if: github.repository_owner == 'FreeRADIUS'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -70,12 +63,13 @@ jobs:
 
     needs:
       - set-matrix
+      - common_vars
 
     strategy:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: self-hosted
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     container:
       image: ${{ matrix.env.BUILD_IMAGE }}
@@ -158,12 +152,13 @@ jobs:
     needs:
       - set-matrix
       - deb-build
+      - common_vars
 
     strategy:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: self-hosted
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     container:
       image: ${{ matrix.env.OS }}
@@ -172,6 +167,12 @@ jobs:
       #  Docker Hub) so the install test exercises a clean OS. Auth the
       #  pull to dodge the anonymous 100/6h rate limit shared across
       #  self-hosted runners.
+      #
+      #  GitHub does not copy the variable or the secret into a fork, so a
+      #  fork downloads the image without signing in.  GitHub-hosted machines
+      #  leave the network through a large pool of addresses, so the
+      #  per-address allowance that the organisation's few fixed addresses run
+      #  out of is not a problem for a fork.
       #
       credentials:
         username: ${{ vars.DOCKERHUB_READ_USER }}
