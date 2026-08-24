@@ -78,33 +78,27 @@ endef
 
 ######################################################################
 #
-#  Ensure that tests in one directory run in sequence.
+#  Tests in one directory run in series, because a test that shares a
+#  fixture or a file with its neighbours breaks when both run at once.
 #
-#  If the magic macro is set: TEST.modules.foo.parallel=1
-#  then the tests in that directory can be run in parallel.
+#  A directory opts out by setting, in its own all.mk:
 #
-#  Each "foo/all.mk" file contains a horrible GNU Make thing which
-#  automatically uses the correct name.  This is so that we can just
-#  copy the macro to a new file, and don't have to edit it for each
-#  directory.
+#	TEST.modules.foo.parallel := 1
 #
-#  If there's no macro defined for this subdirectory, then define it
-#  to be the current test.
+#  Any other value, 0 included, and not setting it at all, means series.
 #
-#  Otherwise, make the current test depend on the previous one.
-#  Then redefine the macro to be the current test.
+#  Series is built as a chain: each test is made a prerequisite of the
+#  one before it, so make runs them one after another even under -j.
 #
-#  This creates a "chain" of dependencies for all tests in a
-#  subdirectory, so that they run in series.
-#
-#  We only do this if the module is explicitly marked as can
-#  parallelize.
+#  Each "foo/all.mk" contains a GNU Make expression that works out its
+#  own directory name, so the line can be copied between directories
+#  unchanged.
 #
 #  Use $(eval $(call TEST_MODULES_DEPS))
 #
 ######################################################################
 define TEST_MODULES_DEPS
-ifneq "$(TEST.modules.$(subst /,,$(dir $1)).parallel)" ""
+ifneq "$(TEST.modules.$(subst /,,$(dir $1)).parallel)" "1"
 ifeq "$(OUTPUT.modules.$(dir $1))" ""
 OUTPUT.modules.$(dir $1) := $(OUTPUT)/$1
 else
