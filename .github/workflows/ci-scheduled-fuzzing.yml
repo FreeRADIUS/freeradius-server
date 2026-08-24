@@ -151,7 +151,7 @@ jobs:
     runs-on: self-hosted
 
     container:
-      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted:${{ needs.common_vars.outputs.image_tag }}
+      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted:latest
 
     defaults:
       run:
