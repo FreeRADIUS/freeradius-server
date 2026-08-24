@@ -35,8 +35,8 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky9:${{ needs.common_vars.outputs.image_tag }}",  "DIST": "rocky", "VERSION": 9  },
-              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10", "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky10:${{ needs.common_vars.outputs.image_tag }}", "DIST": "rocky", "VERSION": 10 }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-rocky9:${{ needs.common_vars.outputs.image_tag }}",  "DIST": "rocky", "VERSION": 9  },
+              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10", "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-rocky10:${{ needs.common_vars.outputs.image_tag }}", "DIST": "rocky", "VERSION": 10 }
             ]
           }
         EOF
@@ -45,7 +45,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-rocky9:${{ needs.common_vars.outputs.image_tag }}",  "DIST": "rocky", "VERSION": 9 }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-rocky9:${{ needs.common_vars.outputs.image_tag }}",  "DIST": "rocky", "VERSION": 9 }
             ]
           }
         EOF

@@ -64,7 +64,8 @@ endif
 #  any docker.<type>.<image> from scratch. Set DOCKER_REGISTRY in the
 #  environment (or make.conf / a -e flag) to e.g.
 #  docker.internal.networkradius.com and every build rule will first
-#  attempt `docker pull <REGISTRY>/<prefix>-<type>/<image>:<sha>` with
+#  attempt `docker pull <REMOTE_PREFIX><prefix>-<type>/<image>:<REMOTE_TAG>`
+#  with
 #  a short timeout, retag locally on success, and skip the build.
 #  Falls through to the local build if the pull fails for any reason
 #  (no registry configured, pull times out, image not in registry,
@@ -74,6 +75,16 @@ endif
 #
 DOCKER_REGISTRY     ?=
 DOCKER_PULL_TIMEOUT ?= 30
+
+#
+#  Where the published copies live. CI publishes under a path named after the
+#  repository so several repositories can share one registry, and under a tag
+#  named after the branch when the branch changes the images. A developer who
+#  sets only DOCKER_REGISTRY gets the registry root and latest, which is what
+#  a single-repository registry looks like.
+#
+DOCKER_REMOTE_PREFIX ?= $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/,)
+DOCKER_REMOTE_TAG    ?= latest
 
 #
 #  Per-image build rule. Tags $(DOCKER_IMAGE_PREFIX)-<type>/<image>:<sha>,
@@ -96,13 +107,13 @@ $(DOCKER_STATE)/stamp-image.${1}.${2}: $(DT)/${1}/Dockerfile.${2} ${4} | $(DOCKE
 	$${Q}set -e; \
 	if [ -z "$(NOPULL)" ] && [ -n "$(DOCKER_REGISTRY)" ] && \
 	   timeout $(DOCKER_PULL_TIMEOUT) docker pull -q \
-	           "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest" \
+	           "$(DOCKER_REMOTE_PREFIX)$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(DOCKER_REMOTE_TAG)" \
 	           >$(DOCKER_STATE)/pull.${1}.${2} 2>&1; then \
-		docker tag "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest" \
+		docker tag "$(DOCKER_REMOTE_PREFIX)$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(DOCKER_REMOTE_TAG)" \
 		           "$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest"; \
-		docker tag "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest" \
+		docker tag "$(DOCKER_REMOTE_PREFIX)$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(DOCKER_REMOTE_TAG)" \
 		           "$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)"; \
-		echo "PULL   $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest < $(DOCKER_REGISTRY)"; \
+		echo "PULL   $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest < $(DOCKER_REMOTE_PREFIX)"; \
 	else \
 		echo "BUILD  $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) > $(DOCKER_STATE)/build.${1}.${2}"; \
 		docker build $$(DOCKER_BUILD_OPTS) ${3} \

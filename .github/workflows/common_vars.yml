@@ -10,6 +10,7 @@ name: Common vars
 #                      available
 #    docker_prefix     what to put in front of a third-party image name
 #    images            whether this ref changes anything the CI images bake in
+#    image_prefix      registry and path the CI images sit under
 #    image_tag         which tag of the CI images this ref should use
 #
 #  The first three follow from one question, is the run happening in the
@@ -49,6 +50,9 @@ on:
       images:
         description: "'true' when this ref changes something the CI images bake in"
         value: ${{ jobs.common_vars.outputs.images }}
+      image_prefix:
+        description: "registry and path every CI image sits under, ending in a slash"
+        value: ${{ jobs.common_vars.outputs.image_prefix }}
       image_tag:
         description: "tag of the CI images this ref should build against"
         value: ${{ jobs.common_vars.outputs.image_tag }}
@@ -69,6 +73,7 @@ jobs:
       selfhosted: ${{ steps.evaluate.outputs.selfhosted }}
       docker_prefix: ${{ steps.evaluate.outputs.docker_prefix }}
       images: ${{ steps.changed.outputs.images }}
+      image_prefix: ${{ steps.evaluate.outputs.image_prefix }}
       image_tag: ${{ steps.evaluate.outputs.image_tag }}
 
     steps:
@@ -104,6 +109,11 @@ jobs:
               - 'scripts/docker/build/*/Dockerfile.crossbuild'
               - 'scripts/docker/build/*/Dockerfile.profiling-deps'
               - 'scripts/docker/build/*/Dockerfile.service'
+              #  These two decide what gets built and where it is published,
+              #  so a change to either has to rebuild before anything reads
+              #  the result.
+              - 'scripts/docker/docker.mk'
+              - '.github/workflows/docker-refresh.yml'
 
       #
       #  docker_registry.  The FreeRADIUS organisation sets a repository
@@ -130,11 +140,14 @@ jobs:
       #  images.  A pull request that named a tag would name one nothing ever
       #  published, and every job would fail pulling it.
       #
-      #  The repository name is part of the tag because several repositories
-      #  publish into the same registry, and a branch name on its own would
-      #  collide between them.  A docker tag holds at most 128 characters of
-      #  letters, digits, underscore, period and dash, so anything else in a
-      #  branch name becomes a dash and the result is cut to length.
+      #  image_prefix.  Every image this repository publishes sits under a
+      #  path named after the repository, so several repositories can share
+      #  one registry without colliding, and so anything sweeping the registry
+      #  can tell this repository's images from everybody else's.
+      #
+      #  A docker tag holds at most 128 characters of letters, digits,
+      #  underscore, period and dash, so anything else in a branch name
+      #  becomes a dash and the result is cut to length.
       #
       - id: evaluate
         env:
@@ -155,7 +168,7 @@ jobs:
           image_tag=latest
           if [ "$event" = "push" ] && [ "$ref_name" != "$default_branch" ] \
              && [ "$images" = "true" ]; then
-            image_tag=$(printf '%s-%s' "$repo_name" "$ref_name" \
+            image_tag=$(printf '%s' "$ref_name" \
                         | tr 'A-Z' 'a-z' \
                         | tr -c 'a-z0-9_.-' '-' \
                         | cut -c1-128)
@@ -165,5 +178,6 @@ jobs:
             echo "docker_registry=$registry"
             echo "selfhosted=$selfhosted"
             echo "docker_prefix=$prefix"
+            echo "image_prefix=$registry/$repo_name/"
             echo "image_tag=$image_tag"
           } >> "$GITHUB_OUTPUT"

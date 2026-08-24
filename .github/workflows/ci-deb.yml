@@ -38,10 +38,10 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu24:${{ needs.common_vars.outputs.image_tag }}"   },
-              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-ubuntu26:${{ needs.common_vars.outputs.image_tag }}"   },
-              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debian13:${{ needs.common_vars.outputs.image_tag }}"   },
-              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debiansid:${{ needs.common_vars.outputs.image_tag }}"  }
+              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-ubuntu24:${{ needs.common_vars.outputs.image_tag }}"   },
+              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-ubuntu26:${{ needs.common_vars.outputs.image_tag }}"   },
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-debian13:${{ needs.common_vars.outputs.image_tag }}"   },
+              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-debiansid:${{ needs.common_vars.outputs.image_tag }}"  }
             ]
           }
         EOF
@@ -50,7 +50,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.docker_registry }}/self-hosted-ci-debian13:${{ needs.common_vars.outputs.image_tag }}" }
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-debian13:${{ needs.common_vars.outputs.image_tag }}" }
             ]
           }
         EOF
