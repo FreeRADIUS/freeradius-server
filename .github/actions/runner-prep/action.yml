@@ -1,4 +1,4 @@
-name: freeradius-deps
+name: runner-prep
 
 inputs:
   use_docker:

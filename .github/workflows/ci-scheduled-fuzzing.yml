@@ -206,8 +206,8 @@ jobs:
           corpus-${{ matrix.env.PROTOCOL }}-${{ steps.corpusparams.outputs.corpusct }}-
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
-    - name: Install build dependencies
-      uses: ./.github/actions/freeradius-deps
+    - name: Prepare the runner
+      uses: ./.github/actions/runner-prep
       with:
         selfhosted: '1'
         use_docker: true

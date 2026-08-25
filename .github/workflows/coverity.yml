@@ -36,8 +36,8 @@ jobs:
       #  compiler named clang, finds none, and stops with "C compiler cannot
       #  create executables".
       #
-      - name: Install build dependencies
-        uses: ./.github/actions/freeradius-deps
+      - name: Prepare the runner
+        uses: ./.github/actions/runner-prep
         with:
           packaging_changed: ${{ needs.common_vars.outputs.images_changed }}
           use_docker: true
