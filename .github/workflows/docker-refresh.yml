@@ -540,26 +540,10 @@ jobs:
       #  containerd snapshot-store lock race (transient, ~ms-scale).
       #  Three attempts with a short sleep is enough to absorb this
       #  without masking real failures.
-      - name: Build main Docker image
-        if: ${{ matrix.os.publishes && matrix.os.dockerfile }}
-        env:
-          DOCKER_IMAGE_NAME: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
-          DOCKERFILE: ${{ matrix.os.dockerfile }}
-          BUILD_ARGS_JSON: ${{ toJson(matrix.os.build_args) }}
-        run: |
-          build_args=()
-          while IFS=$'\t' read -r key value; do
-            [ -n "$key" ] && build_args+=(--build-arg "${key}=${value}")
-          done < <(printf '%s' "$BUILD_ARGS_JSON" | jq -r 'to_entries[]? | [.key, .value] | @tsv')
-          for attempt in 1 2 3; do
-            docker build -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true "${build_args[@]}" . && exit 0
-            echo "Build attempt $attempt failed; retrying after backoff..."
-            sleep 10
-          done
-          exit 1
-
       #
-      #  Switch to push-capable creds and publish.
+      #  Log in before building.  The dind sidecar starts empty every job,
+      #  so the previous image pulled from the registry is the only layer
+      #  cache a build can have, and the same creds push the result.
       #
       - name: Login to internal Docker registry for push (via dind)
         if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
@@ -579,6 +563,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
           registry: ghcr.io
+
+      - name: Build main Docker image
+        if: ${{ matrix.os.publishes && matrix.os.dockerfile }}
+        env:
+          DOCKER_IMAGE_NAME: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
+          DOCKER_CACHE_IMAGE: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:latest
+          DOCKERFILE: ${{ matrix.os.dockerfile }}
+          BUILD_ARGS_JSON: ${{ toJson(matrix.os.build_args) }}
+        run: |
+          build_args=()
+          while IFS=$'\t' read -r key value; do
+            [ -n "$key" ] && build_args+=(--build-arg "${key}=${value}")
+          done < <(printf '%s' "$BUILD_ARGS_JSON" | jq -r 'to_entries[]? | [.key, .value] | @tsv')
+
+          #  This ref's previous image is the best cache, the latest tag the
+          #  fallback for a ref building for the first time.  A pull that
+          #  finds nothing just means a cold build.
+          docker pull "$DOCKER_IMAGE_NAME" 2>/dev/null || true
+          docker pull "$DOCKER_CACHE_IMAGE" 2>/dev/null || true
+
+          #  BUILDKIT_INLINE_CACHE embeds the cache metadata in the pushed
+          #  image, without which a pulled image cannot seed the next build.
+          for attempt in 1 2 3; do
+            docker build -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true \
+              --cache-from "$DOCKER_IMAGE_NAME" --cache-from "$DOCKER_CACHE_IMAGE" \
+              --build-arg BUILDKIT_INLINE_CACHE=1 \
+              "${build_args[@]}" . && exit 0
+            echo "Build attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
 
       #  Renaming the image is how the organisation fills its local copy of
       #  Docker Hub.  A fork keeps no such copy and fetches third-party images
