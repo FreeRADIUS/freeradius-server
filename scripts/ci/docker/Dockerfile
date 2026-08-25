@@ -102,6 +102,20 @@ RUN apt-get install -y --no-install-recommends /tmp/freeradius-build-deps.deb &&
 RUN PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install tacacs_plus
 
 #
+#  Install the redis cluster management script (create-cluster).
+#
+#  No package ships the script.  The script only exists in the redis source
+#  repository, so a test run without this copy has to fetch the script from
+#  GitHub, and a failed fetch fails the redis tests.
+#
+#  scripts/ci/redis-setup.sh looks here first, and only downloads when this
+#  copy is missing.
+#
+RUN curl -fsSL -o /usr/local/bin/redis-create-cluster \
+	https://raw.githubusercontent.com/redis/redis/unstable/utils/create-cluster/create-cluster && \
+	chmod 0755 /usr/local/bin/redis-create-cluster
+
+#
 #  Install Clang and GCC
 #
 RUN apt-get install -y --no-install-recommends \

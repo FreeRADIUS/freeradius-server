@@ -47,8 +47,18 @@ cd "${TMP_REDIS_DIR}"
 # these are only available via the Redis repo, and it seems more sensible to download
 # two short scripts, than to maintain a local copy, or clone the whole repo.
 if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
-    curl https://raw.githubusercontent.com/antirez/redis/unstable/utils/create-cluster/create-cluster > "${TMP_REDIS_DIR}/create-cluster"
-    chmod +x "${TMP_REDIS_DIR}/create-cluster"
+    if [ -e /usr/local/bin/redis-create-cluster ]; then
+        #  The CI images bake a copy in, so no test-time download is needed.
+        cp /usr/local/bin/redis-create-cluster "${TMP_REDIS_DIR}/create-cluster"
+        chmod +x "${TMP_REDIS_DIR}/create-cluster"
+    else
+        #  Download to a temporary name and move into place on success only.
+        #  A failed download must not leave an empty create-cluster behind,
+        #  because the file's existence is what skips this block next run.
+        curl -f -o "${TMP_REDIS_DIR}/create-cluster.dl" https://raw.githubusercontent.com/redis/redis/unstable/utils/create-cluster/create-cluster
+        chmod +x "${TMP_REDIS_DIR}/create-cluster.dl"
+        mv "${TMP_REDIS_DIR}/create-cluster.dl" "${TMP_REDIS_DIR}/create-cluster"
+    fi
 
     # redis versions greater than 7 need --enable-debug-command local passed otherwise
     # they don't allow access to the debug commands we use in tests.
