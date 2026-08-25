@@ -19,8 +19,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  duplicate_check:
-    name: Duplicate check
+  ci_prev_run:
+    name: "CI already run?"
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -49,7 +49,7 @@ jobs:
   #  definitive answer, we skip the build.
   #
   images_present:
-    name: Docker images present
+    name: "Docker images present?"
     needs: [common_vars]
     if: ${{ github.event_name == 'push'
             && github.repository_owner == 'FreeRADIUS'
@@ -107,14 +107,14 @@ jobs:
   #  is exactly when the refresh has to run, so the condition checks each
   #  prerequisite's result itself.
   #
-  refresh:
-    name: Docker refresh
-    needs: [common_vars, images_present, duplicate_check]
+  images_refresh:
+    name: Docker images refresh
+    needs: [common_vars, images_present, ci_prev_run]
     if: ${{ !cancelled()
             && needs.common_vars.result == 'success'
-            && needs.duplicate_check.result == 'success'
+            && needs.ci_prev_run.result == 'success'
             && needs.images_present.result != 'failure'
-            && needs.duplicate_check.outputs.should_skip != 'true'
+            && needs.ci_prev_run.outputs.should_skip != 'true'
             && ((github.event_name == 'push'
                  && (needs.common_vars.outputs.images_changed == 'true'
                      || needs.images_present.outputs.missing == 'true'))
@@ -123,33 +123,33 @@ jobs:
     secrets: inherit
 
   ci:
-    needs: [refresh, duplicate_check]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure'
-            && needs.duplicate_check.outputs.should_skip != 'true' }}
+    needs: [images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI
     uses: ./.github/workflows/ci.yml
     secrets: inherit
 
   ci-deb:
-    needs: [refresh, duplicate_check]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure'
-            && needs.duplicate_check.outputs.should_skip != 'true' }}
+    needs: [images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI DEB
     uses: ./.github/workflows/ci-deb.yml
     secrets: inherit
 
   ci-rpm:
-    needs: [refresh, duplicate_check]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure'
-            && needs.duplicate_check.outputs.should_skip != 'true' }}
+    needs: [images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI RPM
     uses: ./.github/workflows/ci-rpm.yml
     secrets: inherit
 
   ci-sanitizers:
-    needs: [refresh, duplicate_check]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure'
-            && needs.duplicate_check.outputs.should_skip != 'true' }}
+    needs: [images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI-Sanitizers
     uses: ./.github/workflows/ci-sanitizers.yml
     secrets: inherit
@@ -159,40 +159,40 @@ jobs:
   #  too unreliable.
   #
   ci-freebsd:
-    needs: [refresh, duplicate_check]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure'
-            && needs.duplicate_check.outputs.should_skip != 'true' }}
+    needs: [images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI FreeBSD
     uses: ./.github/workflows/ci-freebsd.yml
     secrets: inherit
 
   ci-macos:
-    needs: [refresh, duplicate_check]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure'
-            && needs.duplicate_check.outputs.should_skip != 'true' }}
+    needs: [images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI macOS
     uses: ./.github/workflows/ci-macos.yml
     secrets: inherit
 
   ci-multi-server:
-    needs: [refresh, duplicate_check]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure'
-            && needs.duplicate_check.outputs.should_skip != 'true' }}
+    needs: [images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: Multi-Server CI Tests
     uses: ./.github/workflows/ci-multi-server-tests.yml
     secrets: inherit
 
   docker-crossbuild:
     name: Docker crossbuild images
-    needs: [refresh, ci]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
+    needs: [images_refresh, ci]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure' && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-crossbuild.yml
     secrets: inherit
 
   docker-service:
     name: Docker service images
-    needs: [refresh, ci]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure' && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
+    needs: [images_refresh, ci]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure' && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-service.yml
     secrets: inherit
 
@@ -203,9 +203,9 @@ jobs:
   #
   docs:
     name: Documentation
-    needs: [common_vars, refresh, duplicate_check]
-    if: ${{ !cancelled() && needs.refresh.result != 'failure'
-            && needs.duplicate_check.outputs.should_skip != 'true'
+    needs: [common_vars, images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true'
             && needs.common_vars.outputs.docs_changed == 'true' }}
     uses: ./.github/workflows/documentation.yml
     secrets: inherit
@@ -227,9 +227,10 @@ jobs:
   #  carries the tree that just went green and every leg skips.
   #
   merge:
-    needs: [duplicate_check, ci, ci-deb, ci-rpm, ci-sanitizers]
+    name: Merge
+    needs: [ci_prev_run, ci, ci-deb, ci-rpm, ci-sanitizers]
     if: ${{ !cancelled()
-            && (needs.duplicate_check.outputs.should_skip == 'true'
+            && (needs.ci_prev_run.outputs.should_skip == 'true'
                 || (needs.ci.result == 'success'
                     && needs.ci-deb.result == 'success'
                     && needs.ci-rpm.result == 'success'
