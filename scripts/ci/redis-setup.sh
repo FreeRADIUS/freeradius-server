@@ -149,7 +149,26 @@ if [ "$1" == "reset" ] || [ "$1" == "rebuild" ]; then
     "$SELF" -p "$PORT" stop
     "$SELF" -p "$PORT" clean
     "$SELF" -p "$PORT" start
-    exec "$SELF" -p "$PORT" create
+    "$SELF" -p "$PORT" create
+
+    #  create returns before the nodes agree on the cluster state, and a
+    #  cluster answering cluster_state:fail fails every command sent to it,
+    #  so wait until every node reports the cluster is usable.
+    for i in $(seq 1 40); do
+        converged=1
+        for node in $(seq $STARTPORT $ENDPORT); do
+            if ! redis-cli ${TLS_CLIENT_OPTIONS} -p $node cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
+                converged=0
+                break
+            fi
+        done
+        if [ "$converged" -eq 1 ]; then
+            exit 0
+        fi
+        sleep 0.5
+    done
+    echo "Gave up waiting for the cluster on port $PORT to converge" >&2
+    exit 1
 fi
 
 # Ensure all nodes are accessible before creating cluster
@@ -160,7 +179,7 @@ if [ "$1" == "create" ]; then
         waits=0
         STARTPORT=$((PORT+1))
         ENDPORT=$((STARTPORT+NODES))
-        for node in {$STARTPORT..$ENDPORT}; do
+        for node in $(seq $STARTPORT $ENDPORT); do
                 while [ $waits -lt 10 ]; do
                         redis-cli ${TLS_CLIENT_OPTIONS} -p $node quit > /dev/null && break
                         sleep 0.5

@@ -17,6 +17,10 @@ $(eval $(call TEST_PARALLEL))
 #  The cluster's base port is defined once here.  The node ports, base+1 to
 #  base+6, reach the test configuration through the environment.
 #
+#  Guarded, because modules/all.mk includes this file once per test file,
+#  and redefining a target's recipe makes make warn.
+#
+ifndef REDIS_IPPOOL_CLUSTER_PORT
 REDIS_IPPOOL_CLUSTER_PORT := 30100
 
 .PHONY: test.modules.redis_ippool_bootstrap
@@ -40,3 +44,4 @@ $(BUILD_DIR)/tests/modules/redis_ippool/cluster_node_fail: | $(filter-out %/clus
 #  bounded wait.  Skipped until the module's failover recovery is fixed.
 #
 FILES_SKIP += redis_ippool/cluster_node_fail
+endif

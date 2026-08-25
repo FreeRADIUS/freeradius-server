@@ -21,6 +21,10 @@ $(eval $(call TEST_PARALLEL))
 #  The cluster's base port is defined once here.  The node ports, base+1 to
 #  base+6, reach the test configuration through the environment.
 #
+#  Guarded, because modules/all.mk includes this file once per test file,
+#  and redefining a target's recipe makes make warn.
+#
+ifndef REDIS_MAIN_CLUSTER_PORT
 REDIS_MAIN_CLUSTER_PORT := 30000
 
 .PHONY: test.modules.redis_bootstrap
@@ -49,4 +53,4 @@ $(BUILD_DIR)/tests/modules/redis/functions: | $(filter-out %/functions %/cluster
 #  The failover test kills a node, so every other test has to finish first.
 #
 $(BUILD_DIR)/tests/modules/redis/cluster_node_fail: | $(filter-out %/cluster_node_fail,$(REDIS_MAIN_TESTS))
-
+endif
