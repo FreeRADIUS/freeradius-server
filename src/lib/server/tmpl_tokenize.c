@@ -1234,23 +1234,6 @@ void tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t to)
 	TMPL_VERIFY(vpt);
 }
 
-/** Set the request for an attribute ref
- *
- */
-void tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) const *request_def)
-{
-	fr_assert_msg(tmpl_is_attr(vpt), "Expected tmpl type 'attr', got '%s'",
-		      tmpl_type_to_str(vpt->type));
-
-	/*
-	 *	Clear any existing request references
-	 */
-	tmpl_request_list_talloc_reverse_free(&vpt->data.attribute.rr);
-	tmpl_request_ref_list_copy(vpt, &vpt->data.attribute.rr, request_def);
-
-	TMPL_VERIFY(vpt);
-}
-
 void tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list)
 {
 	tmpl_attr_t *ref = tmpl_attr_list_head(tmpl_attr(vpt));
