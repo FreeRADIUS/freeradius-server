@@ -47,7 +47,17 @@ include Make.inc
 
 define RADIUSD_SERVICE
 $$(eval RADIUSD_BIN := $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --mode=execute $$(TEST_BIN)/radiusd)
+#
+#  The package test runs an already installed server with no build tree, so the
+#  allocator, which is a loadable make function, is not there.  Counting
+#  upwards from the standard RADIUS port is enough, because the package test is
+#  the only thing running.
+#
+ifdef PACKAGE_TEST
 $(eval PORT := $(shell echo $$(($(PORT)+20))))
+else
+$(eval PORT := $(unique-port $(PORT_FILE),$(TEST),20,$(PORT_FIRST)))
+endif
 $(eval $(subst test.,,$(TEST))_port := $(PORT))
 
 #

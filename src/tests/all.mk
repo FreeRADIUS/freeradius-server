@@ -2,7 +2,17 @@
 #	Common test values
 #
 
-PORT := $(if $(PORT),$(PORT),12340)
+#
+#  Ports for the test servers come from the allocator in
+#  scripts/build/make/port.c.  Each server gets a block that nothing else on
+#  the machine holds, so a second "make" running at the same time never lands
+#  on the same ports.
+#
+#  PORT_FILE is where the allocator remembers the port to try next.  Setting
+#  PORT on the command line moves the bottom of the range.
+#
+PORT_FILE := $(BUILD_DIR)/ports
+PORT_FIRST := $(PORT)
 SECRET := $(if $(SECRET),$(SECRET),testing123)
 DICT_PATH := $(top_srcdir)/share/dictionary
 
@@ -68,6 +78,13 @@ test: \
 
 clean: clean.test
 .PHONY: clean.test
+
+#
+#  Throwing away the names the ports were handed out against makes the next
+#  build allocate again.
+#
+clean.test:
+	${Q}rm -f $(PORT_FILE)
 
 #  Tests specifically for CI. We do a LOT more than just
 #  the above tests
