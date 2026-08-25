@@ -24,18 +24,25 @@ GIT_HAS_LFS = $(shell git lfs 1> /dev/null 2>&1 && echo yes || echo no)
 #
 #  To work around OpenSSL issues encountered with old OpenSSL within CI.
 #
+#
+#  Written in one go.  Appending line by line leaves a half-written file for
+#  anything reading it at the same time, and leaves the same behind for the
+#  next build when the write is interrupted.
+#
 raddb/test.conf:
-	${Q}echo 'security {' >> $@
-	${Q}echo '        allow_vulnerable_openssl = yes' >> $@
-	${Q}echo '}' >> $@
-	${Q}echo '$$INCLUDE radiusd.conf' >> $@
+	${Q}printf 'security {\nallow_vulnerable_openssl = yes\n}\n$$INCLUDE radiusd.conf\n' > $@
 
 #
 #  Run "radiusd -C", looking for errors.
 #
 # Only redirect STDOUT, which should contain details of why the test failed.
 # Don't molest STDERR as this may be used to receive output from a debugger.
-$(BUILD_DIR)/tests/radiusd-c:
+#
+#  The recipe reads raddb/test.conf, so the file has to be finished before the
+#  recipe starts.  Naming both on test.radiusd-c does not do that, because make
+#  builds the prerequisites of one target at the same time under "make -j".
+#
+$(BUILD_DIR)/tests/radiusd-c: | raddb/test.conf
 	@printf "radiusd -C... "
 	${Q}if ! ${TEST_BIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
