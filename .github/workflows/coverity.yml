@@ -29,6 +29,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      #
+      #  The CI image installs clang under its versioned name, clang-18, and
+      #  nothing in the image makes plain clang mean that binary.  The build
+      #  step below sets CC=clang, so without this step configure looks for a
+      #  compiler named clang, finds none, and stops with "C compiler cannot
+      #  create executables".
+      #
       - name: Install build dependencies
         uses: ./.github/actions/freeradius-deps
         with:
