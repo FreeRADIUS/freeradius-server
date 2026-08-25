@@ -27,7 +27,7 @@ REDIS_IPPOOL_TESTS := $(patsubst src/%.unlang,$(BUILD_DIR)/%,$(wildcard src/test
 
 $(REDIS_IPPOOL_TESTS): | test.modules.redis_ippool_bootstrap
 $(REDIS_IPPOOL_TESTS): private export REDIS_CLUSTER_PORT := $(REDIS_IPPOOL_CLUSTER_PORT)
-$(foreach n,1 2 3 4 5 6,$(eval $(REDIS_IPPOOL_TESTS): private export REDIS_CLUSTER_PORT_$(n) := $(shell echo $$(($(REDIS_IPPOOL_CLUSTER_PORT)+$(n))))))
+$(foreach n,1 2 3 4 5 6,$(eval $(REDIS_IPPOOL_TESTS): private export REDIS_IPPOOL_CLUSTER_PORT_$(n) := $(shell echo $$(($(REDIS_IPPOOL_CLUSTER_PORT)+$(n))))))
 
 #
 #  The failover test kills a node, so every other test has to finish first.

@@ -25,4 +25,4 @@ REDISWHO_TESTS := $(patsubst src/%.unlang,$(BUILD_DIR)/%,$(wildcard src/tests/mo
 
 $(REDISWHO_TESTS): | test.modules.cache_redis_bootstrap
 $(REDISWHO_TESTS): private export REDIS_CLUSTER_PORT := $(CACHE_REDIS_CLUSTER_PORT)
-$(foreach n,1 2 3 4 5 6,$(eval $(REDISWHO_TESTS): private export REDIS_CLUSTER_PORT_$(n) := $(shell echo $$(($(CACHE_REDIS_CLUSTER_PORT)+$(n))))))
+$(foreach n,1 2 3 4 5 6,$(eval $(REDISWHO_TESTS): private export REDISWHO_CLUSTER_PORT_$(n) := $(shell echo $$(($(CACHE_REDIS_CLUSTER_PORT)+$(n))))))
