@@ -651,12 +651,13 @@ static unlang_action_t ldap_trunk_query_results(request_t *request, void *uctx)
 static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	fr_ldap_query_t	*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+	trunk_request_t	*treq = query->treq;
 
 	/*
 	 *	Query may have completed, but the request
 	 *	not yet have been resumed.
 	 */
-	if (!query->treq) return;
+	if (!treq) return;
 
 	/*
 	 *	Depending on the state of the trunk request, the query needs to
@@ -672,13 +673,11 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_
 	case TRUNK_REQUEST_STATE_CANCEL_PARTIAL:
 	case TRUNK_REQUEST_STATE_CANCEL_SENT:
 	case TRUNK_REQUEST_STATE_CANCEL_COMPLETE:
-		talloc_steal(query->treq, query);
+		talloc_steal(treq, query);
 		break;
 	default:
 		break;
 	}
-
-	trunk_request_signal_cancel(query->treq);
 
 	/*
 	 *	Once we've called cancel, the treq is no
@@ -686,6 +685,8 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_
 	 *	the trunk code.
 	 */
 	query->treq = NULL;
+
+	trunk_request_signal_cancel(treq);
 }
 
 #define SET_LDAP_CTRLS(_dest, _src) \
