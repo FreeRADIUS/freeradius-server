@@ -100,10 +100,21 @@ jobs:
   #  until it builds them, so a fork always refreshes, into its own registry
   #  where it can overwrite nothing but its own tags.
   #
+  #
+  #  A skipped job in "needs" skips every dependent before the dependent's
+  #  own condition is read, unless the condition contains !cancelled().
+  #  images_present skips whenever the images changed, and an image change
+  #  is exactly when the refresh has to run, so the condition checks each
+  #  prerequisite's result itself.
+  #
   refresh:
     name: Docker refresh
     needs: [common_vars, images_present, duplicate_check]
-    if: ${{ needs.duplicate_check.outputs.should_skip != 'true'
+    if: ${{ !cancelled()
+            && needs.common_vars.result == 'success'
+            && needs.duplicate_check.result == 'success'
+            && needs.images_present.result != 'failure'
+            && needs.duplicate_check.outputs.should_skip != 'true'
             && ((github.event_name == 'push'
                  && (needs.common_vars.outputs.images_changed == 'true'
                      || needs.images_present.outputs.missing == 'true'))
