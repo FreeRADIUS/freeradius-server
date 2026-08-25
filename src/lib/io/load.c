@@ -300,7 +300,7 @@ int fr_load_generator_start(fr_load_t *l)
 	l->delta = fr_time_delta_div(fr_time_delta_from_sec(l->config->parallel), fr_time_delta_wrap(l->pps));
 	l->next = fr_time_add(l->step_start, l->delta);
 
-	load_timer(l->el->tl, l->step_start, l);
+	if (fr_timer_in(l, l->el->tl, &l->ev, fr_time_delta_wrap(0), false, load_timer, l) < 0) return -1;
 	return 0;
 }
 
