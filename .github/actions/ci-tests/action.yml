@@ -176,8 +176,7 @@ runs:
             openresty-setup.sh \
             ldap-setup.sh \
             ldap1-setup.sh \
-            389ds-setup.sh \
-            redis-setup.sh; do
+            389ds-setup.sh; do
 
             script="./scripts/ci/$i"
             echo

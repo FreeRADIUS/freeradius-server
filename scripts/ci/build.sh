@@ -64,8 +64,7 @@ for i in \
     imap-setup.sh \
     exim-setup.sh \
     mysql-setup.sh \
-    ldap-setup.sh \
-    redis-setup.sh; do
+    ldap-setup.sh; do
     script="./scripts/ci/$i"
 
     echo "Calling $i"
