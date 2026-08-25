@@ -16,6 +16,11 @@ TEST := test.config
 FILES := $(filter-out %.ignore %.md %.attrs %.servers %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/modules/*)))
 
 $(eval $(call TEST_BOOTSTRAP))
+#
+#  The test loads modules at run time, so make needs telling about them.  The
+#  list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/unit_test_module.conf,$(FILES.$(TEST))))
 
 #
 #  For sheer laziness, allow "make test.keywords.foo"
@@ -79,7 +84,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(CONFIG_LIBS)
 			exit 1; \
 		fi; \
 	fi
-	touch "$@"
+	@touch "$@"
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@
