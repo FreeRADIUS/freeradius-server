@@ -111,7 +111,12 @@ $(TEST).radiusd_stop: | ${2}
 #
 #	Start radiusd instance
 #
-${2}/radiusd.pid: ${2}
+#  A server left behind by an earlier run still holds the port, so the kill has
+#  to finish before this rule starts a new one.  Make builds the order-only
+#  prerequisites of one target at the same time under "make -j", so naming the
+#  kill and the start side by side on a test output does not order them.
+#
+${2}/radiusd.pid: ${2} | $(TEST).radiusd_kill
 	$$(eval export TESTDIR	   := $(DIR))
 	$$(eval export OUTPUT	   := ${2})
 	$$(eval export TEST_PORT   := $(PORT))
