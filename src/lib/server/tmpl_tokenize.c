@@ -826,6 +826,8 @@ void tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len)
 void tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict)
 {
 	vpt->rules.attr.dict_def = dict;
+
+	TMPL_VERIFY(vpt);
 }
 
 /** Set escape parameters for the tmpl output
@@ -836,6 +838,8 @@ void tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict)
 void tmpl_set_escape(tmpl_t *vpt, tmpl_escape_t const *escape)
 {
 	vpt->rules.escape = *escape;
+
+	TMPL_VERIFY(vpt);
 }
 
 /** Change the default dictionary in the tmpl's resolution rules
@@ -848,6 +852,8 @@ void tmpl_set_xlat(tmpl_t *vpt, xlat_exp_head_t *xlat)
 	fr_assert((vpt->type == TMPL_TYPE_XLAT) || (vpt->type == TMPL_TYPE_EXEC));
 
 	tmpl_xlat(vpt) = xlat;
+
+	TMPL_VERIFY(vpt);
 }
 
 
@@ -1093,7 +1099,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	 */
 	dst->rules = src->rules;
 
-	TMPL_ATTR_VERIFY(dst);
+	TMPL_VERIFY(dst);
 
 	return 0;
 }
@@ -1126,7 +1132,7 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	}
 	ref->ar_parent = fr_dict_root(fr_dict_by_da(da));	/* Parent is the root of the dictionary */
 
-	TMPL_ATTR_VERIFY(vpt);
+	TMPL_VERIFY(vpt);
 
 	return 0;
 }
@@ -1187,7 +1193,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	ref->ar_parent = fr_dict_root(fr_dict_by_da(da));	/* Parent is the root of the dictionary */
 
-	TMPL_ATTR_VERIFY(vpt);
+	TMPL_VERIFY(vpt);
 
 	return 0;
 }
@@ -1222,7 +1228,7 @@ void tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t to)
 		ref->ar_num = to;
 	}
 
-	TMPL_ATTR_VERIFY(vpt);
+	TMPL_VERIFY(vpt);
 }
 
 /** Set the request for an attribute ref
@@ -1239,7 +1245,7 @@ void tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) con
 	tmpl_request_list_talloc_reverse_free(&vpt->data.attribute.rr);
 	tmpl_request_ref_list_copy(vpt, &vpt->data.attribute.rr, request_def);
 
-	TMPL_ATTR_VERIFY(vpt);
+	TMPL_VERIFY(vpt);
 }
 
 void tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list)
@@ -1247,7 +1253,7 @@ void tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list)
 	tmpl_attr_t *ref = tmpl_attr_list_head(tmpl_attr(vpt));
 	if (tmpl_attr_is_list_attr(ref)) ref->da = list;
 
-	TMPL_ATTR_VERIFY(vpt);
+	TMPL_VERIFY(vpt);
 }
 
 /** Create a new tmpl from a list tmpl and a da
@@ -1296,7 +1302,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	vpt->name = talloc_strdup(vpt, attr);
 	vpt->quote = T_BARE_WORD;
 
-	TMPL_ATTR_VERIFY(vpt);
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	return 0;
@@ -2232,7 +2238,7 @@ static int attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 		break;
 	}
 
-	TMPL_ATTR_VERIFY(vpt);
+	TMPL_VERIFY(vpt);
 
 	return 0;
 }
@@ -4015,6 +4021,9 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 
 done:
 	vpt->rules.cast = dst_type;
+
+	TMPL_VERIFY(vpt);
+
 	return 0;
 }
 
@@ -4045,6 +4054,8 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
 	case -2:	/* Duplicate flag */
 		return slen;
 	}
+
+	TMPL_VERIFY(vpt);
 
 	return slen;
 }
