@@ -3,15 +3,14 @@ name: Docker refresh
 #
 #  ci-pipeline.yml calls this before its build legs when a commit touches
 #  anything baked into the images, so the legs never build against stale
-#  ones. There is no push: trigger: the pipeline already runs on push, and
-#  a second standalone run would race the one the pipeline is waiting for.
-#  The list of paths that count lives in the pipeline's "changes" job.
+#  ones, and docker-refresh-nightly.yml calls this on the schedule and on
+#  workflow_dispatch.  There is no push: trigger: the pipeline already runs
+#  on push, and a second standalone run would race the one the pipeline is
+#  waiting for.  The list of paths that count lives in the pipeline's
+#  "changes" job.
 #
 on:
   workflow_call:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 1 * * *'
 
 concurrency:
   #
@@ -641,18 +640,3 @@ jobs:
             done
           done
 
-  #
-  #  The freeradius4-{crossbuild,profiling-deps,service} images live in
-  #  docker-refresh-freeradius.yml, so ci-pipeline.yml can gate the legs
-  #  that read them separately from the legs that do not.  The pipeline
-  #  calls that workflow itself; this job covers the nightly schedule and
-  #  workflow_dispatch, where nothing else would.  It waits on the cli
-  #  image because the freeradius builds run inside the freshly-built
-  #  docker-cli container.
-  #
-  process-freeradius-images:
-    name: FreeRADIUS images (nightly and manual runs)
-    needs: process-docker-cli
-    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-    uses: ./.github/workflows/docker-refresh-freeradius.yml
-    secrets: inherit
