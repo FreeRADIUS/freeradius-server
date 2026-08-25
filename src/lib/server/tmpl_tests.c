@@ -1034,6 +1034,279 @@ static void test_parse_attr_unresolved_disallowed(void)
 	TEST_CHECK(vpt == NULL);
 }
 
+/*
+ *	=== tmpl_attr_copy ===
+ *
+ *	None of the functions below had any test coverage.  They matter because
+ *	each one edits a tmpl_t in place and then verifies it, so a suite which
+ *	never calls them leaves that verification unexercised.
+ */
+
+static void test_attr_copy_simple(void)
+{
+	tmpl_t			*src = NULL, *dst = NULL;
+	tmpl_attr_error_t	err;
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &src, "Test-String-0", test_rules()) > 0);
+	TEST_ASSERT(src != NULL);
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &dst, "Test-Uint32-0", test_rules()) > 0);
+	TEST_ASSERT(dst != NULL);
+
+	/*
+	 *	dst already holds a reference, so this also covers the branch
+	 *	which frees the existing references before copying.
+	 */
+	TEST_CHECK(tmpl_attr_copy(dst, src) == 0);
+
+	TEST_CHECK(tmpl_attr_tail_da(dst) == fr_dict_attr_test_string);
+	TEST_CHECK(tmpl_attr_num_elements(dst) == tmpl_attr_num_elements(src));
+
+	talloc_free(src);
+	talloc_free(dst);
+}
+
+static void test_attr_copy_nested(void)
+{
+	tmpl_t			*src = NULL, *dst = NULL;
+	tmpl_attr_error_t	err;
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &src,
+				       "Test-Nested-Top-TLV-0.Child-TLV.Leaf-String", test_rules()) > 0);
+	TEST_ASSERT(src != NULL);
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &dst, "Test-String-0", test_rules()) > 0);
+	TEST_ASSERT(dst != NULL);
+
+	TEST_CHECK(tmpl_attr_copy(dst, src) == 0);
+
+	/*
+	 *	The whole chain has to come across, not just the leaf.
+	 */
+	TEST_CHECK(tmpl_attr_num_elements(dst) >= 3);
+	TEST_MSG("Expected at least 3 attr refs after the copy, got %zu", tmpl_attr_num_elements(dst));
+	TEST_CHECK(tmpl_attr_tail_da(dst) == fr_dict_attr_test_nested_leaf_string);
+
+	talloc_free(src);
+	talloc_free(dst);
+}
+
+/*
+ *	=== tmpl_attr_afrom_list ===
+ *
+ *	This also covers tmpl_attr_copy() being handed a destination which is
+ *	still under construction: tmpl_attr_afrom_list() allocates a tmpl with
+ *	no name, copies the list references into it, and only names it
+ *	afterwards.
+ */
+static void test_attr_afrom_list(void)
+{
+	tmpl_t			*list = NULL, *combined = NULL;
+	tmpl_attr_error_t	err;
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &list,
+				       "Test-Nested-Top-TLV-0.Child-TLV", test_rules()) > 0);
+	TEST_ASSERT(list != NULL);
+	TEST_CHECK(tmpl_attr_tail_da_is_structural(list));
+
+	TEST_CHECK(tmpl_attr_afrom_list(autofree, &combined, list,
+					fr_dict_attr_test_nested_leaf_string) == 0);
+	TEST_ASSERT(combined != NULL);
+
+	TEST_CHECK(tmpl_is_attr(combined));
+	TEST_CHECK(tmpl_attr_tail_da(combined) == fr_dict_attr_test_nested_leaf_string);
+
+	talloc_free(list);
+	talloc_free(combined);
+}
+
+/*
+ *	=== tmpl_cast_set ===
+ */
+
+static void test_cast_set_attr(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Uint32-0", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+	TEST_CHECK(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
+
+	TEST_CHECK(tmpl_cast_set(vpt, FR_TYPE_UINT64) == 0);
+	TEST_CHECK(tmpl_rules_cast(vpt) == FR_TYPE_UINT64);
+
+	talloc_free(vpt);
+}
+
+static void test_cast_set_clear(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Uint32-0", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+
+	TEST_CHECK(tmpl_cast_set(vpt, FR_TYPE_UINT64) == 0);
+	TEST_CHECK(tmpl_rules_cast(vpt) == FR_TYPE_UINT64);
+
+	/*
+	 *	A cast can always be removed.
+	 */
+	TEST_CHECK(tmpl_cast_set(vpt, FR_TYPE_NULL) == 0);
+	TEST_CHECK(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
+
+	talloc_free(vpt);
+}
+
+static void test_cast_set_forbidden(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Uint32-0", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+
+	/*
+	 *	Only leaf types may be cast to.  A structural type is refused,
+	 *	and the existing cast must be left alone.
+	 */
+	TEST_CHECK(tmpl_cast_set(vpt, FR_TYPE_TLV) < 0);
+	TEST_CHECK(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
+
+	talloc_free(vpt);
+}
+
+/*
+ *	=== tmpl_attr_set_da, tmpl_attr_set_leaf_da, tmpl_attr_rewrite_leaf_num ===
+ */
+
+static void test_attr_set_da(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-String-0", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+
+	/*
+	 *	Replaces the whole reference list with a single reference.
+	 */
+	TEST_CHECK(tmpl_attr_set_da(vpt, fr_dict_attr_test_uint32) == 0);
+	TEST_CHECK(tmpl_attr_tail_da(vpt) == fr_dict_attr_test_uint32);
+	TEST_CHECK(tmpl_attr_num_elements(vpt) == 1);
+
+	talloc_free(vpt);
+}
+
+static void test_attr_set_leaf_da(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+
+	/*
+	 *	The new leaf has to share an ancestor with the old one, so swap
+	 *	two children of the same TLV.  Note that a parsed tmpl also
+	 *	carries a list reference, so the reference list has more than
+	 *	one element and the ancestor check does apply.
+	 */
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt,
+				       "Test-Nested-Top-TLV-0.Child-TLV.Leaf-String", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+
+	TEST_CHECK(tmpl_attr_set_leaf_da(vpt, fr_dict_attr_test_nested_leaf_int32) == 0);
+	TEST_CHECK(tmpl_attr_tail_da(vpt) == fr_dict_attr_test_nested_leaf_int32);
+
+	talloc_free(vpt);
+}
+
+static void test_attr_rewrite_leaf_num(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+
+	/*
+	 *	No filter on the reference, so the number gets filled in.
+	 */
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Int32-0", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+
+	tmpl_attr_rewrite_leaf_num(vpt, 1);
+	TEST_CHECK(tmpl_attr_tail_num(vpt) == 1);
+
+	talloc_free(vpt);
+}
+
+static void test_attr_rewrite_leaf_num_keeps_explicit(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+
+	/*
+	 *	An index which was written out explicitly is NOT overwritten.
+	 *	Only an unspecified number is filled in.
+	 */
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Int32-0[0]", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+	TEST_CHECK(tmpl_attr_tail_num(vpt) == 0);
+
+	tmpl_attr_rewrite_leaf_num(vpt, 1);
+	TEST_CHECK(tmpl_attr_tail_num(vpt) == 0);
+
+	talloc_free(vpt);
+}
+
+/*
+ *	=== tmpl_set_dict_def and tmpl_set_escape ===
+ */
+
+static void test_set_dict_def(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-String-0", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+
+	tmpl_set_dict_def(vpt, test_dict);
+	TEST_CHECK(vpt->rules.attr.dict_def == test_dict);
+
+	talloc_free(vpt);
+}
+
+static void test_set_escape(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+	tmpl_escape_t		escape = {};
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-String-0", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+
+	tmpl_set_escape(vpt, &escape);
+	TEST_CHECK(vpt->rules.escape.mode == escape.mode);
+
+	talloc_free(vpt);
+}
+
+/*
+ *	=== attr_to_raw, reached through the "raw." prefix ===
+ */
+
+static void test_parse_attr_raw(void)
+{
+	tmpl_t			*vpt = NULL;
+	tmpl_attr_error_t	err;
+
+	TEST_CHECK(tmpl_afrom_attr_str(autofree, &err, &vpt, "raw.Test-String-0", test_rules()) > 0);
+	TEST_ASSERT(vpt != NULL);
+
+	TEST_CHECK(tmpl_is_attr(vpt));
+	TEST_CHECK(tmpl_attr_tail_is_raw(vpt));
+
+	talloc_free(vpt);
+}
+
 TEST_LIST = {
 	/* Tokenization: tmpl_afrom_attr_str */
 	{ "test_parse_attr_simple",		test_parse_attr_simple },
@@ -1093,6 +1366,31 @@ TEST_LIST = {
 	/* Error cases */
 	{ "test_parse_attr_empty_ref",		test_parse_attr_empty_ref },
 	{ "test_parse_attr_unresolved_disallowed", test_parse_attr_unresolved_disallowed },
+
+	/* tmpl_attr_copy */
+	{ "test_attr_copy_simple",		test_attr_copy_simple },
+	{ "test_attr_copy_nested",		test_attr_copy_nested },
+
+	/* tmpl_attr_afrom_list */
+	{ "test_attr_afrom_list",		test_attr_afrom_list },
+
+	/* tmpl_cast_set */
+	{ "test_cast_set_attr",			test_cast_set_attr },
+	{ "test_cast_set_clear",		test_cast_set_clear },
+	{ "test_cast_set_forbidden",		test_cast_set_forbidden },
+
+	/* tmpl_attr_set_da and friends */
+	{ "test_attr_set_da",			test_attr_set_da },
+	{ "test_attr_set_leaf_da",		test_attr_set_leaf_da },
+	{ "test_attr_rewrite_leaf_num",		test_attr_rewrite_leaf_num },
+	{ "test_attr_rewrite_leaf_num_keeps_explicit",	test_attr_rewrite_leaf_num_keeps_explicit },
+
+	/* tmpl_set_dict_def and tmpl_set_escape */
+	{ "test_set_dict_def",			test_set_dict_def },
+	{ "test_set_escape",			test_set_escape },
+
+	/* attr_to_raw */
+	{ "test_parse_attr_raw",		test_parse_attr_raw },
 
 	TEST_TERMINATOR
 };
