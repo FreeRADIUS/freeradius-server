@@ -58,10 +58,10 @@ $(BUILD_DIR)/tests/radiusd-c: | raddb/test.conf
 test.radiusd-c: raddb/test.conf $(BUILD_DIR)/tests/radiusd-c ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | $(BUILD_DIR)/tests build.raddb
 
 #
-#  The tests are manually ordered for now, as it's a PITA to fix all
+#  The suites are manually ordered for now, as it's a PITA to fix all
 #  of the dependencies.
 #
-test: \
+TEST_SUITES := \
 		test.bin	\
 		test.trie	\
 		test.dict	\
@@ -80,8 +80,21 @@ test: \
 		test.eap	\
 		test.tacacs	\
 		test.vmps	\
-		test.ldap_sync	\
-		| build.raddb
+		test.ldap_sync
+
+#
+#  Suites which mutate shared state, such as the redis cluster and
+#  raddb/test.conf, are not safe to overlap, so "test" runs each suite as its
+#  own sub-make, one after another.
+#
+#  A sub-make inherits the job slots of the make that started it, so "make -j"
+#  still runs the tests inside a suite at the same time as each other.
+#
+.PHONY: test
+test: | build.raddb
+	${Q}for suite in $(TEST_SUITES); do \
+		$(MAKE) --no-print-directory $$suite || exit 1; \
+	done
 
 clean: clean.test
 .PHONY: clean.test
