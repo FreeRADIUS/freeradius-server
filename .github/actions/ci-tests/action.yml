@@ -201,7 +201,7 @@ runs:
         make -j `nproc` test.keywords test.unit test.auth test.digest
         make test.modules.redis test.modules.redis_ippool
         make -j `nproc` test.modules
-        make ci-test
+        make -j `nproc` ci-test
 
       env:
         USE_DOCKER: ${{ inputs.use_docker }}
