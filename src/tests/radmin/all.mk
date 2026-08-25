@@ -40,10 +40,10 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 	${Q}rm -f $@
 	${Q}touch $@
 	${Q}for x in $^; do \
-		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/radmin/,g'`; \
+		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/radmin/,g;s,[^ ][^ ]*,&.txt,g'`; \
 		if [ "$$y" != "" ]; then \
 			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
-			echo "$${z}: $${y}.txt" >> $@; \
+			echo "$${z}: $${y}" >> $@; \
 			echo "" >> $@; \
 		fi \
 	done

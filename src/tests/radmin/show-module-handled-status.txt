@@ -1,4 +1,7 @@
 #
-#  PRE: set-module-handled-updated
+#  set-module-wildcard also changes the module's rcode, so this test
+#  must run after the other tests which modify it.
+#
+#  PRE: set-module-handled-updated set-module-wildcard
 #
 show module handled status
