@@ -199,7 +199,6 @@ runs:
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
 
         make -j `nproc` test.keywords test.unit test.auth test.digest
-        make test.modules.redis test.modules.redis_ippool
         make -j `nproc` test.modules
         make -j `nproc` ci-test
 

@@ -1,7 +1,6 @@
 #
 #  Test basic address allocation using redis_ippool.
 #
-$INCLUDE cluster_reset.inc
 
 control.IP-Pool.Name := 'test_alloc'
 

@@ -1,7 +1,6 @@
 #
 #  Test static IP allocation not given to dynamic users
 #
-$INCLUDE cluster_reset.inc
 
 control.IP-Pool.Name := 'test_static_dynamic'
 

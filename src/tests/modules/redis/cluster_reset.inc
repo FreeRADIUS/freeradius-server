@@ -2,6 +2,7 @@
 #  Include from Redis cluster tests to get clusters back into a known state
 #
 string clusterctrl
+string clusterport
 string redisserver
 string data1
 string data2
@@ -19,15 +20,16 @@ if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 }
 
 #
-#  Reset the cluster
+#  Each test suite has a cluster of its own, told apart by base port.
 #
-%exec(%{clusterctrl}, 'stop')
-%exec(%{clusterctrl}, 'clean')
-%exec(%{clusterctrl}, 'start')
+clusterport := "$ENV{REDIS_CLUSTER_PORT}"
+if (clusterport == '') {
+	clusterport := '30000'
+}
 
 # Sometimes redis just fails to start - without it we can't run
 # the tests - so just exit early.
-cmdresult = %exec(%{clusterctrl}, 'create')
+cmdresult = %exec(%{clusterctrl}, '-p', %{clusterport}, 'rebuild')
 if (cmdresult == '') {
 	test_pass
 	handled

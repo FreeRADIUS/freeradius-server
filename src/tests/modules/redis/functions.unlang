@@ -3,7 +3,6 @@
 #
 string dummy_string
 string result_string
-$INCLUDE cluster_reset.inc
 
 if (!(%redis.hello_world(0) == 'hello world')) {
 	test_fail

@@ -1,7 +1,6 @@
 #
 #  Test the renew method of rlm_redis_ippool updates the gateway.
 #
-$INCLUDE cluster_reset.inc
 
 control.IP-Pool.Name := 'test_update_alloc'
 

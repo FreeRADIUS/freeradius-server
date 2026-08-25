@@ -26,7 +26,12 @@ while getopts 'a:p:n:r:t' opt; do
 done
 shift $((OPTIND - 1))
 
-TMP_REDIS_DIR='/tmp/redis'
+# Each cluster keeps its own state, so two clusters on different base ports
+# can run at the same time.
+TMP_REDIS_DIR="/tmp/redis-${PORT}"
+
+# The script changes directory below, so recursive calls need the full path.
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 REDIS_MAJOR_VERSION="$(redis-server -v | grep -o 'v=[0-9.]*' | cut -d= -f2 | cut -d. -f1)"
 
 export PATH="${TMP_REDIS_DIR}:${PATH}"
@@ -60,10 +65,16 @@ if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
         mv "${TMP_REDIS_DIR}/create-cluster.dl" "${TMP_REDIS_DIR}/create-cluster"
     fi
 
+    # Masters delay the first replica sync by repl-diskless-sync-delay
+    # (5s by default) to batch replicas up, and with retries a replica can
+    # take tens of seconds to hold any data.  The tests wait on replicas,
+    # so sync immediately.
+    echo "ADDITIONAL_OPTIONS=\"--repl-diskless-sync-delay 0\"" > "${TMP_REDIS_DIR}/config.sh"
+
     # redis versions greater than 7 need --enable-debug-command local passed otherwise
     # they don't allow access to the debug commands we use in tests.
     if [ "${REDIS_MAJOR_VERSION}" -ge 7 ]; then
-        echo "ADDITIONAL_OPTIONS=\"--enable-debug-command local\"" > "${TMP_REDIS_DIR}/config.sh"
+        echo "ADDITIONAL_OPTIONS=\"\${ADDITIONAL_OPTIONS} --enable-debug-command local\"" >> "${TMP_REDIS_DIR}/config.sh"
     fi
     if [ "x$PASSWORD" != "x" ]; then
 	echo "AUTH_OPTIONS=\"--masterauth ${PASSWORD} --requirepass ${PASSWORD}\"" >> "${TMP_REDIS_DIR}/config.sh"
@@ -101,6 +112,44 @@ if [ "${REDIS_MAJOR_VERSION}" -lt 7 ]; then
     sed -ie "s# --appenddirname appendonlydir-\${PORT}##" "${TMP_REDIS_DIR}/create-cluster"
     # Fix cleanup to match option change above
     sed -ie "s#appendonlydir-\*#appendonly\*.aof#" "${TMP_REDIS_DIR}/create-cluster"
+fi
+
+#
+#  Reset for the next test.  A healthy cluster only needs its data flushed,
+#  which takes milliseconds.  A cluster with a dead node (the node_fail test
+#  kills one) or no cluster at all needs the full rebuild.
+#
+if [ "$1" == "reset" ] || [ "$1" == "rebuild" ]; then
+    if [ -f "${TMP_REDIS_DIR}/config.sh" ]; then
+        source "${TMP_REDIS_DIR}/config.sh"
+    fi
+    healthy=1
+    if [ "$1" == "rebuild" ]; then
+        healthy=0
+    fi
+    STARTPORT=$((PORT+1))
+    ENDPORT=$((PORT+NODES))
+    for node in $(seq $STARTPORT $ENDPORT); do
+        if [ "$(redis-cli ${TLS_CLIENT_OPTIONS} -p $node ping 2>/dev/null)" != "PONG" ]; then
+            healthy=0
+            break
+        fi
+    done
+    if [ "$healthy" -eq 1 ] && ! redis-cli ${TLS_CLIENT_OPTIONS} -p $STARTPORT cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
+        healthy=0
+    fi
+    if [ "$healthy" -eq 1 ]; then
+        # Replicas refuse FLUSHALL and inherit the flush from their master.
+        for node in $(seq $STARTPORT $ENDPORT); do
+            redis-cli ${TLS_CLIENT_OPTIONS} -p $node FLUSHALL > /dev/null 2>&1 || true
+        done
+        echo "flushed"
+        exit 0
+    fi
+    "$SELF" -p "$PORT" stop
+    "$SELF" -p "$PORT" clean
+    "$SELF" -p "$PORT" start
+    exec "$SELF" -p "$PORT" create
 fi
 
 # Ensure all nodes are accessible before creating cluster

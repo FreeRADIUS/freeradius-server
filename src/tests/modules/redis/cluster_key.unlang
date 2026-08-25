@@ -5,7 +5,6 @@ string testdata1
 string testdata2
 string testdata3
 
-$INCLUDE cluster_reset.inc
 
 #  Test nodes should be running on
 #  - 127.0.0.1:30001 - master [0-5460]

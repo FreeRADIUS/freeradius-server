@@ -42,8 +42,13 @@ if (takeoverresult != 'OK') {
 
 #  Allow time for the takeover to propagate to other nodes
 foreach i (%range(20)) {
-	# Keep remapping the cluster
-	%redis.remap(%{redisreplica})
+	#
+	#  Keep remapping the cluster.  The remap can wait on a node which is
+	#  not answering, so bound each attempt and retry.
+	#
+	timeout 1s {
+		%redis.remap(%{redisreplica})
+	}
 
 	if (%redis.node('b', 0) == redisreplica) {
 		break
