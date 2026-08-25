@@ -1165,6 +1165,7 @@ static fr_io_track_t *fr_io_track_add(fr_listen_t const *li, fr_io_client_t *cli
 {
 	size_t len;
 	fr_io_track_t *track, *old;
+	TALLOC_CTX *track_ctx = client->table ? (TALLOC_CTX *)client->table : (TALLOC_CTX *)client;
 
 	*is_dup = false;
 
@@ -1173,12 +1174,12 @@ static fr_io_track_t *fr_io_track_add(fr_listen_t const *li, fr_io_client_t *cli
 	 *	there are no duplicates, so this is fine.
 	 */
 	if (client->connection) {
-		MEM(track = talloc_zero_pooled_object(client->table, fr_io_track_t, 1, sizeof(*track) + 64));
+		MEM(track = talloc_zero_pooled_object(track_ctx, fr_io_track_t, 1, sizeof(*track) + 64));
 		track->address = client->connection->address;
 	} else {
 		fr_io_address_t *my_address;
 
-		MEM(track = talloc_zero_pooled_object(client->table, fr_io_track_t, 1, sizeof(*track) + sizeof(*track->address) + 64));
+		MEM(track = talloc_zero_pooled_object(track_ctx, fr_io_track_t, 1, sizeof(*track) + sizeof(*track->address) + 64));
 		MEM(track->address = my_address = talloc(track, fr_io_address_t));
 
 		*my_address = *address;
