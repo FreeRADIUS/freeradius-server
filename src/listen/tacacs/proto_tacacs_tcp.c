@@ -380,7 +380,7 @@ static int mod_open(fr_listen_t *li)
 		goto error;
 	}
 
-	if (listen(sockfd, 8) < 0) {
+	if (listen(sockfd, SOMAXCONN) < 0) {
 		close(sockfd);
 		cf_log_err(li->cs, "Failed listening on socket - %s", fr_syserror(errno));
 		goto error;

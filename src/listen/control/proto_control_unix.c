@@ -417,6 +417,8 @@ static int mod_open(fr_listen_t *li)
 		.gid = inst->gid,
 		.perm = 0600,
 		.async = true,
+		.backlog = SOMAXCONN,
+		.backlog_is_set = true,
 	};
 
 	thread->fd_bio = fr_bio_fd_alloc(thread, &cfg, 0);
