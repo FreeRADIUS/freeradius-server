@@ -53,11 +53,12 @@ $$(eval RADIUSD_BIN := $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --mode=exec
 #  upwards from the standard RADIUS port is enough, because the package test is
 #  the only thing running.
 #
-ifdef PACKAGE_TEST
-$(eval PORT := $(shell echo $$(($(PORT)+20))))
-else
-$(eval PORT := $(unique-port $(PORT_FILE),$(TEST),20,$(PORT_FIRST)))
-endif
+#  This has to be one $(if), not an ifdef block.  $(call) expands every
+#  $(eval) in the define body before the outer $(eval) parses the ifdef
+#  lines, so both branches would run and the undefined allocator function
+#  would expand to nothing and empty the port.
+#
+$(eval PORT := $(if $(PACKAGE_TEST),$(shell echo $$(($(PORT)+20))),$(unique-port $(PORT_FILE),$(TEST),20,$(PORT_FIRST))))
 $(eval $(subst test.,,$(TEST))_port := $(PORT))
 
 #
