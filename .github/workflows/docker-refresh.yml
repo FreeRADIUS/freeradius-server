@@ -31,6 +31,7 @@ jobs:
   #  job determines the answer instead.  See .github/workflows/common_vars.yml.
   #
   common_vars:
+    name: Common vars
     uses: ./.github/workflows/common_vars.yml
 
   #

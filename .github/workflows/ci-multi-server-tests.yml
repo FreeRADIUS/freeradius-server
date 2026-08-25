@@ -25,6 +25,7 @@ jobs:
   #  .github/workflows/common_vars.yml.
   #
   common_vars:
+    name: Common vars
     uses: ./.github/workflows/common_vars.yml
 
   multi-server-tests:

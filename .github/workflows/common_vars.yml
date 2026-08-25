@@ -63,7 +63,7 @@ on:
 
 jobs:
   common_vars:
-    name: Common vars
+    name: Evaluate
 
     #  paths-filter asks the REST API which files a pull request changed.
     permissions:
