@@ -1400,7 +1400,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	 *	released while the message set stays alive for the workers.
 	 */
 	fr_assert_msg(s->closed, "socket %d freed without being closed", s->number);
-	fr_assert(s->outstanding == 0);
+	fr_assert(s->outstanding == 0 || nr->exiting);
 
 	fr_rb_delete(nr->sockets, s);
 	fr_rb_delete(nr->sockets_by_num, s);
