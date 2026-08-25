@@ -115,7 +115,7 @@ static inline fr_redis_sqn_t fr_redis_connection_sent_request(fr_redis_handle_t 
  */
 static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_redis_sqn_t sqn)
 {
-	fr_redis_sqn_ignore_t *ignore;
+	fr_redis_sqn_ignore_t *ignore, *check = NULL;
 
 	fr_assert(sqn <= h->req_sqn);
 
@@ -126,7 +126,15 @@ static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_
 
 	MEM(ignore = talloc_zero(h, fr_redis_sqn_ignore_t));
 	ignore->sqn = sqn;
-	fr_dlist_insert_tail(&h->ignore, ignore);
+	check = fr_dlist_tail(&h->ignore);
+	if (!check || check->sqn < sqn) {
+		fr_dlist_insert_tail(&h->ignore, ignore);
+		return;
+	}
+	while ((check = fr_dlist_prev(&h->ignore, check))) {
+		if (check->sqn < sqn) break;
+	}
+	fr_dlist_insert_after(&h->ignore, check, ignore);
 }
 
 /** Update the response sequence number and check if we should ignore the response
