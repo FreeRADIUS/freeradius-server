@@ -255,7 +255,7 @@ $(DOCKER_STATE):
 #    profiling        FROMs profiling-deps/<image>:latest
 #
 #  Those two FROMs name local tags, which docker.mk always writes as
-#  :latest whatever the published copy is called. docker-refresh.yml
+#  :latest whatever the published copy is called. docker-ci-images-refresh.yml
 #  publishes the copies periodically.
 #
 DOCKER_TYPES := ci crossbuild profiling-deps profiling service

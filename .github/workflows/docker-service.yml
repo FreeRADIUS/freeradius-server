@@ -188,7 +188,7 @@ jobs:
 
     #
     #  No push step here. service + profiling images are published by
-    #  docker-refresh.yml on its periodic schedule. This
+    #  docker-ci-images-refresh.yml on its periodic schedule. This
     #  workflow is a per-commit smoke build only - it confirms the
     #  Dockerfile chain still compiles. The built :<sha> tags die with
     #  the per-job dind sidecar.

@@ -107,8 +107,8 @@ jobs:
   #  is exactly when the refresh has to run, so the condition checks each
   #  prerequisite's result itself.
   #
-  images_refresh:
-    name: Docker images refresh
+  docker_ci_images_refresh:
+    name: Docker CI images refresh
     needs: [common_vars, images_present, ci_prev_run]
     if: ${{ !cancelled()
             && needs.common_vars.result == 'success'
@@ -119,7 +119,7 @@ jobs:
                  && (needs.common_vars.outputs.images_changed == 'true'
                      || needs.images_present.outputs.missing == 'true'))
                 || github.repository_owner != 'FreeRADIUS') }}
-    uses: ./.github/workflows/docker-refresh.yml
+    uses: ./.github/workflows/docker-ci-images-refresh.yml
     secrets: inherit
 
   #
@@ -127,42 +127,42 @@ jobs:
   #  the freeradius4-{crossbuild,profiling-deps,service} images, and those
   #  images take the longest to build, so their refresh runs as its own job
   #  and only the legs that read them wait for it.  The build legs start as
-  #  soon as images_refresh publishes the images they read.
+  #  soon as docker_ci_images_refresh publishes the images they read.
   #
-  freeradius_images_refresh:
-    name: FreeRADIUS images refresh
-    needs: [images_refresh]
-    if: ${{ !cancelled() && needs.images_refresh.result == 'success' }}
-    uses: ./.github/workflows/docker-refresh-freeradius.yml
+  docker_freeradius_images_refresh:
+    name: Docker FreeRADIUS images refresh
+    needs: [docker_ci_images_refresh]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result == 'success' }}
+    uses: ./.github/workflows/docker-freeradius-images-refresh.yml
     secrets: inherit
 
   ci:
-    needs: [images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+    needs: [docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
             && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI
     uses: ./.github/workflows/ci.yml
     secrets: inherit
 
   ci-deb:
-    needs: [images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+    needs: [docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
             && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI DEB
     uses: ./.github/workflows/ci-deb.yml
     secrets: inherit
 
   ci-rpm:
-    needs: [images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+    needs: [docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
             && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI RPM
     uses: ./.github/workflows/ci-rpm.yml
     secrets: inherit
 
   ci-sanitizers:
-    needs: [images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+    needs: [docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
             && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: CI-Sanitizers
     uses: ./.github/workflows/ci-sanitizers.yml
@@ -190,15 +190,15 @@ jobs:
     secrets: inherit
 
   #
-  #  freeradius_images_refresh skips whenever images_refresh skips or fails,
+  #  docker_freeradius_images_refresh skips whenever docker_ci_images_refresh skips or fails,
   #  so the legs that read the freeradius4 images check both results: a
-  #  skipped freeradius_images_refresh after a failed images_refresh must
+  #  skipped docker_freeradius_images_refresh after a failed docker_ci_images_refresh must
   #  not read stale images.
   #
   ci-multi-server:
-    needs: [images_refresh, freeradius_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
-            && needs.freeradius_images_refresh.result != 'failure'
+    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.docker_freeradius_images_refresh.result != 'failure'
             && needs.ci_prev_run.outputs.should_skip != 'true' }}
     name: Multi-Server CI Tests
     uses: ./.github/workflows/ci-multi-server-tests.yml
@@ -206,18 +206,18 @@ jobs:
 
   docker-crossbuild:
     name: Docker crossbuild images
-    needs: [images_refresh, freeradius_images_refresh, ci]
-    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
-            && needs.freeradius_images_refresh.result != 'failure'
+    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.docker_freeradius_images_refresh.result != 'failure'
             && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-crossbuild.yml
     secrets: inherit
 
   docker-service:
     name: Docker service images
-    needs: [images_refresh, freeradius_images_refresh, ci]
-    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
-            && needs.freeradius_images_refresh.result != 'failure'
+    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.docker_freeradius_images_refresh.result != 'failure'
             && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
     uses: ./.github/workflows/docker-service.yml
     secrets: inherit
@@ -229,8 +229,8 @@ jobs:
   #
   docs:
     name: Documentation
-    needs: [common_vars, images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.images_refresh.result != 'failure'
+    needs: [common_vars, docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
             && needs.ci_prev_run.outputs.should_skip != 'true'
             && needs.common_vars.outputs.docs_changed == 'true' }}
     uses: ./.github/workflows/documentation.yml

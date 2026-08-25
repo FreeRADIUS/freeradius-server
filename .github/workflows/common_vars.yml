@@ -120,7 +120,7 @@ jobs:
               #  so a change to either has to rebuild before anything reads
               #  the result.
               - 'scripts/docker/docker.mk'
-              - '.github/workflows/docker-refresh.yml'
+              - '.github/workflows/docker-ci-images-refresh.yml'
             docs_changed:
               - '.github/workflows/documentation.yml'
               - 'doc/**'

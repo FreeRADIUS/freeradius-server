@@ -1,8 +1,8 @@
-name: Docker refresh nightly
+name: Docker images refresh nightly
 
 #
 #  The nightly and manual entry point for refreshing every image in the
-#  registry.  docker-refresh.yml rebuilds the tooling images, and the
+#  registry.  docker-ci-images-refresh.yml rebuilds the tooling images, and the
 #  FreeRADIUS image chain builds afterwards, because those images build
 #  inside the docker-cli and dind job containers the first stage publishes.
 #
@@ -20,18 +20,18 @@ concurrency:
   #  cancelling: an interrupted refresh leaves the registry partially
   #  updated, whereas a queued second run re-publishes everything cleanly.
   #
-  group: docker-refresh
+  group: docker-ci-images-refresh
   cancel-in-progress: false
 
 jobs:
-  images_refresh:
-    name: Docker images refresh
-    uses: ./.github/workflows/docker-refresh.yml
+  docker_ci_images_refresh:
+    name: Docker CI images refresh
+    uses: ./.github/workflows/docker-ci-images-refresh.yml
     secrets: inherit
 
-  freeradius_images_refresh:
-    name: FreeRADIUS images refresh
-    needs: images_refresh
-    if: ${{ !cancelled() && needs.images_refresh.result == 'success' }}
-    uses: ./.github/workflows/docker-refresh-freeradius.yml
+  docker_freeradius_images_refresh:
+    name: Docker FreeRADIUS images refresh
+    needs: docker_ci_images_refresh
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result == 'success' }}
+    uses: ./.github/workflows/docker-freeradius-images-refresh.yml
     secrets: inherit

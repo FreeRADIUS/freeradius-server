@@ -7,7 +7,7 @@ on:
   #    push: per-commit run. Pulls crossbuild, profiling-deps, service
   #    and profiling from the internal registry, under whichever tag
   #    common_vars.yml picks for this ref, refreshed by
-  #    docker-refresh.yml. For the multi-server tests' purposes the FR
+  #    docker-ci-images-refresh.yml. For the multi-server tests' purposes the FR
   #    runtime in those images is "recent enough" to validate
   #    multi-server topology / compose / proto_load changes per
   #    commit. Runs the CI subset.
@@ -51,7 +51,7 @@ jobs:
         #  Custom dind image with /etc/docker/daemon.json baked in
         #  pointing at the internal NR registry as a Docker Hub
         #  pull-through mirror, and the internal CA pre-trusted.
-        #  Built by docker-refresh.yml from scripts/ci/docker/Dockerfile.docker-dind.
+        #  Built by docker-ci-images-refresh.yml from scripts/ci/docker/Dockerfile.docker-dind.
         #
         image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
         options: --privileged
@@ -77,7 +77,7 @@ jobs:
     container:
       #
       #  Custom CI image with docker CLI / buildx / m4 baked on top
-      #  of the self-hosted base. Built by docker-refresh.yml from
+      #  of the self-hosted base. Built by docker-ci-images-refresh.yml from
       #  scripts/ci/docker/Dockerfile.docker-cli.
       #
       image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}

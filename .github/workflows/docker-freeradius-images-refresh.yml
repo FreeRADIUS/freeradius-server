@@ -1,4 +1,4 @@
-name: Docker refresh FreeRADIUS
+name: Docker FreeRADIUS images refresh
 
 #
 #  Rebuilds and publishes the freeradius4-{crossbuild,profiling-deps,service}
@@ -9,10 +9,10 @@ name: Docker refresh FreeRADIUS
 #  the slowest images in the registry.
 #
 #  Called by ci-pipeline.yml when a commit changes the images, and by
-#  docker-refresh.yml on the nightly schedule and on workflow_dispatch.
+#  docker-ci-images-refresh.yml on the nightly schedule and on workflow_dispatch.
 #  The self-hosted-docker-{dind,cli} job containers must already be
 #  published for the ref's tag, which both callers guarantee by running
-#  docker-refresh.yml's earlier stages first.
+#  docker-ci-images-refresh.yml's earlier stages first.
 #
 on:
   workflow_call:
@@ -24,7 +24,7 @@ concurrency:
   #  leaves the registry partially updated, whereas a queued second run just
   #  re-publishes everything cleanly after the first one finishes.
   #
-  group: docker-refresh-freeradius
+  group: docker-freeradius-images-refresh
   cancel-in-progress: false
 
 jobs:

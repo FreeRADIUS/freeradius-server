@@ -173,7 +173,7 @@ jobs:
 
     #
     #  No push step here. crossbuild is published by
-    #  docker-refresh.yml on its periodic schedule. This workflow is
+    #  docker-ci-images-refresh.yml on its periodic schedule. This workflow is
     #  a per-commit sanity test - it builds crossbuild and runs FR's
     #  in-container test suite against the working source, then the
     #  per-job dind sidecar tears down with the :<sha> image inside.

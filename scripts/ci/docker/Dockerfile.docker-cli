@@ -14,7 +14,7 @@
 #
 
 #  The parent lives in whichever registry the run is using, so the caller
-#  passes the full name. docker-refresh.yml passes the image it just pulled.
+#  passes the full name. docker-ci-images-refresh.yml passes the image it just pulled.
 ARG from
 FROM ${from}
 

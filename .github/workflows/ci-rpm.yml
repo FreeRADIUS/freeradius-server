@@ -168,7 +168,7 @@ jobs:
       #  rpm-test runs on a stock distro image so the install test exercises a
       #  clean operating system.  docker_prefix points the name at the copy
       #  the organisation keeps of that same image, put there by
-      #  docker-refresh.yml, which is the identical image under another name
+      #  docker-ci-images-refresh.yml, which is the identical image under another name
       #  and so leaves the clean-operating-system property intact.  Pulling
       #  the copy also keeps the organisation's build machines, which share a
       #  few outbound addresses, away from Docker Hub's allowance of 100

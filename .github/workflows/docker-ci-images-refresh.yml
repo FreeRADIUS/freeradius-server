@@ -1,9 +1,9 @@
-name: Docker refresh
+name: Docker CI images refresh
 
 #
 #  ci-pipeline.yml calls this before its build legs when a commit touches
 #  anything baked into the images, so the legs never build against stale
-#  ones, and docker-refresh-nightly.yml calls this on the schedule and on
+#  ones, and docker-images-refresh-nightly.yml calls this on the schedule and on
 #  workflow_dispatch.  There is no push: trigger: the pipeline already runs
 #  on push, and a second standalone run would race the one the pipeline is
 #  waiting for.  The list of paths that count lives in the pipeline's
@@ -19,7 +19,7 @@ concurrency:
   #  registry partially updated, whereas a queued second run just
   #  re-publishes everything cleanly after the first one finishes.
   #
-  group: docker-refresh
+  group: docker-ci-images-refresh
   cancel-in-progress: false
 
 jobs:
