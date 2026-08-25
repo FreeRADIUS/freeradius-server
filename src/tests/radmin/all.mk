@@ -31,6 +31,11 @@ RADMIN_CONFIG_PATH := $(DIR)/config
 CLIENT := radmin
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,control-socket,$(OUTPUT)))
+#
+#  The server loads its protocol and module libraries at run time, so make
+#  needs telling about them.  The list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/control-socket.conf,$(OUTPUT)/radiusd.pid))
 
 #
 #  For each file, look for precursor test.

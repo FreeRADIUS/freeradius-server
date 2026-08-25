@@ -28,6 +28,11 @@ DIGEST_GDB_LOG    := $(DIGEST_BUILD_DIR)/gdb.log
 CLIENT := radclient
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,digest,$(OUTPUT)))
+#
+#  The server loads its protocol and module libraries at run time, so make
+#  needs telling about them.  The list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/digest.conf,$(OUTPUT)/radiusd.pid))
 
 #
 #	Run the digest commands against the radiusd.

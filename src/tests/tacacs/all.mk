@@ -42,6 +42,11 @@ TACCLIENT := scripts/tacacs/tacacs_client
 #
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
+#
+#  The server loads its protocol and module libraries at run time, so make
+#  needs telling about them.  The list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/radiusd.conf,$(OUTPUT)/radiusd.pid))
 
 #
 #	Run the tacacs_client commands against the radiusd.

@@ -15,6 +15,11 @@ TEST := test.auth
 FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 $(eval $(call TEST_BOOTSTRAP))
+#
+#  The test loads modules at run time, so make needs telling about them.  The
+#  list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/unit_test_module.conf,$(FILES.$(TEST))))
 
 #
 #  Find which input files are needed by the tests

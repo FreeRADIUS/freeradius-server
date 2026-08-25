@@ -126,6 +126,11 @@ endef
 $(foreach x,$(FILES),$(eval $(call MODULE_FILTER,$(firstword $(subst /, ,$x)),$x)))
 FILES := $(filter-out $(FILES_SKIP),$(FILES))
 $(eval $(call TEST_BOOTSTRAP))
+#
+#  The test loads modules at run time, so make needs telling about them.  The
+#  list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/unit_test_module.conf,$(FILES.$(TEST))))
 
 $(foreach x,$(FILES),$(eval $(call TEST_MODULES_DEPS,$x)))
 

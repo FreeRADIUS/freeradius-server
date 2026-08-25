@@ -88,6 +88,14 @@ ifeq "$(PACKAGE_TEST)" ""
 #  The EAP-MSCHAPv2 module calls MSCHAP to do the dirty work.
 #
 $(OUTPUT)/mschapv2.ok: rlm_mschap.la
+
+#
+#  The server loads its protocol and module libraries at run time, so make
+#  needs telling about them.  The list comes from the config itself.
+#
+#  This has to come before the foreach below, which reassigns TEST.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/servers.conf,$(EAPOL_OK_FILES)))
 endif
 
 #

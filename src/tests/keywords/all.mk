@@ -30,6 +30,11 @@ FILES := $(filter-out if-regex-match-named,$(FILES))
 endif
 
 $(eval $(call TEST_BOOTSTRAP))
+#
+#  The test loads modules at run time, so make needs telling about them.  The
+#  list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(wildcard $(DIR)/*.conf),$(FILES.$(TEST))))
 
 #
 #  For sheer laziness, allow "make test.keywords.foo"
