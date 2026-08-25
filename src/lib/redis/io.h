@@ -119,6 +119,11 @@ static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_
 
 	fr_assert(sqn <= h->req_sqn);
 
+	if (sqn < h->rsp_sqn) {
+		DEBUG4("Asked to ignore sequence %"PRIu64", but next expected response is %"PRIu64, sqn, h->rsp_sqn);
+		return;
+	}
+
 	MEM(ignore = talloc_zero(h, fr_redis_sqn_ignore_t));
 	ignore->sqn = sqn;
 	fr_dlist_insert_tail(&h->ignore, ignore);
