@@ -29,6 +29,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Install build dependencies
+        uses: ./.github/actions/freeradius-deps
+        with:
+          packaging_changed: ${{ needs.common_vars.outputs.images_changed }}
+          use_docker: true
+          cc: clang
+
       - name: Download coverity tool MD5
         run: |
           wget https://scan.coverity.com/download/linux64 \
