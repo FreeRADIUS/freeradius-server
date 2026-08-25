@@ -145,6 +145,58 @@ test.multi-server.%:
 
 ######################################################################
 #
+#  Make a test depend on the libraries its configuration loads.
+#
+#  The `radiusd` and `unit_test_module` binaries load libraries via
+#  dlopen().  This includes every proto_*, process_* and rlm_* file.
+#  As a result, `make` cannot see the dependency, as the dependency
+#  isn't captured in the Makefiles.
+#
+#  Unless it is told otherwise, `make` will not rebuild a module
+#  before the test which exercises it: the test then runs against a
+#  stale module, or fails with "Failed to link to module" rather than
+#  make simply building the module first.
+#
+#  The list is read out of the test's configuration files by
+#  `scripts/build/config-libs.sh`, and cached in the `build`
+#  directory.  This means that the `all.mk` file doesn't need to be
+#  manually updated when the dependencies change.  Instead, this
+#  function sees that the relevant `all.mk` file changed, and re-runs
+#  the script to get the dependencies.
+#
+#  For speed, the output is cached into a `libs.mk` file.  This means
+#  that we don't need to run the script many times for each invocation
+#  of `make`.
+#
+#  The candidates are also filtered through ALL_TGTS.  That filtering
+#  drops anything which is not a real target, such as an `unlang`
+#  keyword which looks like a module declaration.  The filtering also
+#  drops a module which is not part of this build.
+#
+#  The src/tests/all.mk file is the last one parsed (see src/all.mk),
+#  so ALL_TGTS is complete by the time we are called here.
+#
+#  Use $(eval $(call TEST_CONFIG_LIBS,<config files>,<target>))
+#
+#  <target> is whatever should depend on the libraries.  For a test which
+#  starts a server, use the start target, so the libraries are built before
+#  the server tries to load them.  Otherwise use the test files.
+#
+######################################################################
+define TEST_CONFIG_LIBS
+CACHE_DIR.$(TEST) := $$(subst src/,$(BUILD_DIR)/,$(DIR))
+
+-include $$(CACHE_DIR.$(TEST))/libs.mk
+
+$$(CACHE_DIR.$(TEST))/libs.mk: $(DIR)/all.mk src/tests/all.mk scripts/build/config-libs.sh
+	@mkdir -p $$(dir $$@)
+	@echo "CONFIG_LIBS.$(TEST) := $$(filter $$(ALL_TGTS),$$(shell $(top_srcdir)/scripts/build/config-libs.sh ${1}))" > $$@
+
+${2}: $$(addprefix $$(BUILD_DIR)/lib/local/,$$(CONFIG_LIBS.$(TEST)))
+endef
+
+######################################################################
+#
 #  Generic rules to set up the tests
 #
 #  Use $(eval $(call TEST_BOOTSTRAP))
