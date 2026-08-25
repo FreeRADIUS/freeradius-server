@@ -24,8 +24,12 @@ $(eval $(call TEST_PARALLEL))
 REDIS_MAIN_CLUSTER_PORT := 30000
 
 .PHONY: test.modules.redis_bootstrap
+#
+#  REDIS_CLUSTER_CONTROL substitutes the operator's own cluster control
+#  script, for clusters this machine does not manage.
+#
 test.modules.redis_bootstrap:
-	${Q}scripts/ci/redis-setup.sh -p $(REDIS_MAIN_CLUSTER_PORT) reset > /dev/null
+	${Q}$${REDIS_CLUSTER_CONTROL:-scripts/ci/redis-setup.sh} -p $(REDIS_MAIN_CLUSTER_PORT) reset > /dev/null
 
 REDIS_MAIN_TESTS := $(patsubst src/%.unlang,$(BUILD_DIR)/%,$(wildcard src/tests/modules/redis/*.unlang))
 

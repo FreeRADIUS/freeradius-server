@@ -18,7 +18,7 @@ CACHE_REDIS_CLUSTER_PORT := 30200
 
 .PHONY: test.modules.cache_redis_bootstrap
 test.modules.cache_redis_bootstrap:
-	${Q}scripts/ci/redis-setup.sh -p $(CACHE_REDIS_CLUSTER_PORT) reset > /dev/null
+	${Q}$${REDIS_CLUSTER_CONTROL:-scripts/ci/redis-setup.sh} -p $(CACHE_REDIS_CLUSTER_PORT) reset > /dev/null
 endif
 
 REDISWHO_TESTS := $(patsubst src/%.unlang,$(BUILD_DIR)/%,$(wildcard src/tests/modules/rediswho/*.unlang))

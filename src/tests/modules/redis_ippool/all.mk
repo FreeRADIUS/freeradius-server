@@ -21,7 +21,7 @@ REDIS_IPPOOL_CLUSTER_PORT := 30100
 
 .PHONY: test.modules.redis_ippool_bootstrap
 test.modules.redis_ippool_bootstrap:
-	${Q}scripts/ci/redis-setup.sh -p $(REDIS_IPPOOL_CLUSTER_PORT) reset > /dev/null
+	${Q}$${REDIS_CLUSTER_CONTROL:-scripts/ci/redis-setup.sh} -p $(REDIS_IPPOOL_CLUSTER_PORT) reset > /dev/null
 
 REDIS_IPPOOL_TESTS := $(patsubst src/%.unlang,$(BUILD_DIR)/%,$(wildcard src/tests/modules/redis_ippool/*.unlang))
 
