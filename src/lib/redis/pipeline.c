@@ -556,7 +556,10 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
  */
 void fr_redis_command_set_cancel(fr_redis_command_set_t *cmds)
 {
-	if (cmds->treq) trunk_request_signal_cancel(cmds->treq);
+	if (cmds->treq) {
+		trunk_request_signal_cancel(cmds->treq);
+		cmds->treq = NULL;
+	}
 	if (cmds->request) unlang_interpret_mark_runnable(cmds->request);
 }
 
@@ -806,6 +809,7 @@ static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *
 					fr_dlist_insert_tail(&cmds->pending, cmd);
 				}
 				trunk_request_signal_fail(treq);
+				cmds->treq = NULL;
 				return;
 			}
 			cmd->sqn = fr_redis_connection_sent_request(h);
