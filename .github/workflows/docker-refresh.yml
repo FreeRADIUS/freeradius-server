@@ -280,6 +280,11 @@ jobs:
           done
           exit 1
 
+      #
+      #  Layer cache stays enabled: the nightly rebuilds the parent image
+      #  with --no-cache, which changes the parent image ID, which
+      #  invalidates every layer here.
+      #
       - name: Build derived image
         env:
           DOCKER_IMAGE_NAME: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
@@ -287,7 +292,7 @@ jobs:
           PARENT_IMAGE: ${{ matrix.os.parent_image }}
         run: |
           for attempt in 1 2 3; do
-            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --build-arg "from=$PARENT_IMAGE" --label preserve=true . && exit 0
+            docker build -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --build-arg "from=$PARENT_IMAGE" --label preserve=true . && exit 0
             echo "Build attempt $attempt failed; retrying after backoff..."
             sleep 10
           done
@@ -547,7 +552,7 @@ jobs:
             [ -n "$key" ] && build_args+=(--build-arg "${key}=${value}")
           done < <(printf '%s' "$BUILD_ARGS_JSON" | jq -r 'to_entries[]? | [.key, .value] | @tsv')
           for attempt in 1 2 3; do
-            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true "${build_args[@]}" . && exit 0
+            docker build -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true "${build_args[@]}" . && exit 0
             echo "Build attempt $attempt failed; retrying after backoff..."
             sleep 10
           done
