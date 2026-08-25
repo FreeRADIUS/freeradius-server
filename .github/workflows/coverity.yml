@@ -78,7 +78,7 @@ jobs:
         run: |
           export CC=clang
           export PATH=`pwd`/coverity_tool/bin:$PATH
-          ./configure -with-rlm-python-bin=/usr/bin/python2.7
+          ./configure
           cov-configure --template --compiler clang --comptype clangcc
           cov-build --dir cov-int make
 
