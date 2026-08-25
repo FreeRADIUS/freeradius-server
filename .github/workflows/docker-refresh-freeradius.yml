@@ -140,6 +140,10 @@ jobs:
       #  of the crossbuild build, so the chain resolves in order
       #  without a registry pull between layers.
       #
+      #  docker.mk encodes the chain as stamp prerequisites, so one make
+      #  invocation with -j builds the independent service image alongside
+      #  the crossbuild > profiling-deps chain.
+      #
       #  NOPULL=1 forces docker.mk to build from the local Dockerfile
       #  instead of pulling whatever the registry already holds for this
       #  ref.
@@ -152,9 +156,7 @@ jobs:
           NOPULL: 1
         run: |
           make dockerfile.check
-          make docker.crossbuild.$OS
-          make docker.profiling-deps.$OS
-          make docker.service.$OS
+          make -j$(nproc) docker.profiling-deps.$OS docker.service.$OS
 
       - name: Show docker build logs
         if: failure()
