@@ -1189,9 +1189,12 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	}
 
 	/*
-	 *	FIXME - Should be calculated from existing ar
+	 *	The parent of the reference is the parent of the attribute, not
+	 *	the root of the dictionary.  tmpl_attr_verify() asserts that the
+	 *	two agree, so using the root here fails verification for any
+	 *	attribute which is not a child of the root.
 	 */
-	ref->ar_parent = fr_dict_root(fr_dict_by_da(da));	/* Parent is the root of the dictionary */
+	ref->ar_parent = da->parent;
 
 	TMPL_VERIFY(vpt);
 
@@ -1283,7 +1286,11 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 		ar->ar_da = da;
 	}
 
-	ar->ar_parent = fr_dict_root(fr_dict_by_da(da));
+	/*
+	 *	As above: the reference's parent is the attribute's parent, not
+	 *	the root of the dictionary.
+	 */
+	ar->ar_parent = da->parent;
 
 	/*
 	 *	We need to rebuild the attribute name, to be the
