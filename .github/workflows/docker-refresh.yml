@@ -535,7 +535,6 @@ jobs:
       #  containerd snapshot-store lock race (transient, ~ms-scale).
       #  Three attempts with a short sleep is enough to absorb this
       #  without masking real failures.
-      #
       - name: Build main Docker image
         if: ${{ matrix.os.publishes && matrix.os.dockerfile }}
         env:
@@ -620,162 +619,16 @@ jobs:
           done
 
   #
-  #  Periodic refresh of the FreeRADIUS base image chain in the
-  #  internal registry. Builds for each supported distro in parallel:
-  #
-  #    crossbuild        FROM upstream OS base, full toolchain + FR
-  #                      build-deps
-  #    profiling-deps    FROM crossbuild:latest, toolchain layer
-  #                      (valgrind / kcachegrind / dbgsym / FlameGraph /
-  #                      inferno)
-  #    service           FROM the same upstream OS base as crossbuild
-  #                      (NOT from crossbuild) - the FR debian/rpm
-  #                      package build does its own apt-install of
-  #                      build deps; layering on crossbuild would
-  #                      bloat the runtime image with toolchain
-  #                      artefacts.
-  #
-  #  Each of those three is pushed under the repository's path, tagged
-  #  for the ref being built: latest on the default branch, the branch's
-  #  own tag elsewhere.  common_vars.yml decides which.
-  #
-  #  The `profiling` layer (FR compiled with callgrind-friendly CFLAGS
-  #  on top of profiling-deps) is deliberately NOT published here. It's
-  #  per-commit by design - we want to profile specific commits, not
-  #  whatever master HEAD was at refresh time. Multi-server profiling
-  #  tests pull profiling-deps and build the profiling layer locally
-  #  per commit.
+  #  The freeradius4-{crossbuild,profiling-deps,service} images live in
+  #  docker-refresh-freeradius.yml, so ci-pipeline.yml can gate the legs
+  #  that read them separately from the legs that do not.  The pipeline
+  #  calls that workflow itself; this job covers the nightly schedule and
+  #  workflow_dispatch, where nothing else would.  It waits on the cli
+  #  image because the freeradius builds run inside the freshly-built
+  #  docker-cli container.
   #
   process-freeradius-images:
-    needs: [process-docker-cli, common_vars]
-    timeout-minutes: 90
-
-    env:
-      DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
-      IMAGE_PREFIX: ${{ needs.common_vars.outputs.image_prefix }}
-      IMAGE_TAG: ${{ needs.common_vars.outputs.image_tag }}
-
-    runs-on: self-hosted
-    if: ${{ (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && needs.common_vars.outputs.selfhosted == '1' }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu24, ubuntu26, debian13, debiansid, rocky9, rocky10]
-
-    services:
-      dind:
-        image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
-        options: --privileged
-        env:
-          DOCKER_TLS_CERTDIR: ""
-          NO_PROXY: "*.networkradius.com,127.0.0.1"
-        volumes:
-          - ${{ github.workspace }}:/workspace
-
-    container:
-      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}
-      env:
-        DOCKER_HOST: tcp://dind:2375
-        NO_PROXY: dind,*.networkradius.com,127.0.0.1
-      volumes:
-        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
-        - ${{ github.workspace }}:/workspace
-
-    defaults:
-      run:
-        shell: bash
-        working-directory: /workspace
-
-    name: "freeradius4-{crossbuild,profiling-deps,service}-${{ matrix.os }}"
-
-    steps:
-
-      - uses: actions/checkout@v6
-        with:
-          lfs: false
-
-      - name: setup-dind
-        uses: ./.github/actions/setup-dind
-
-      - name: Login to Docker Hub (via dind)
-        uses: docker/login-action@v4
-        with:
-          username: ${{ vars.DOCKERHUB_READ_USER }}
-          password: ${{ secrets.DOCKERHUB_READ_KEY }}
-
-      #
-      #  Read-only login for any DOCKER_REGISTRY pull-through misses
-      #  during the build (crossbuild itself FROMs upstream OS, not
-      #  the internal registry).
-      #
-      - name: Login to internal Docker registry (read, via dind)
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKER_REPO_USERNAME }}
-          password: ${{ secrets.DOCKER_REPO_PASSWORD }}
-          registry: ${{ env.DOCKER_REGISTRY }}
-
-      #
-      #  Build crossbuild + profiling-deps + service. crossbuild and
-      #  service both FROM the upstream OS base; profiling-deps FROMs
-      #  crossbuild:latest which DOCKER_BUILD writes locally as part
-      #  of the crossbuild build, so the chain resolves in order
-      #  without a registry pull between layers.
-      #
-      #
-      #  NOPULL=1 forces docker.mk to build from the local Dockerfile
-      #  instead of pulling whatever the registry already holds for this
-      #  ref.
-      #  Without it the refresh silently retags whatever is already
-      #  published, defeating the whole point of the workflow.
-      #
-      - name: Build crossbuild + profiling-deps + service images
-        env:
-          OS: ${{ matrix.os }}
-          NOPULL: 1
-        run: |
-          make dockerfile.check
-          make docker.crossbuild.$OS
-          make docker.profiling-deps.$OS
-          make docker.service.$OS
-
-      - name: Show docker build logs
-        if: failure()
-        env:
-          OS: ${{ matrix.os }}
-        run: |
-          for type in crossbuild profiling-deps service; do
-            log="build/docker/build.$OS.$type"
-            if [ -f "$log" ]; then
-              echo "===== $log ====="
-              cat "$log"
-            fi
-          done
-
-      #
-      #  Switch to push-capable creds and publish the three images under
-      #  this ref's tag. The per-commit `profiling` layer stays local.
-      #
-      - name: Login to internal Docker registry for push (via dind)
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
-          password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
-          registry: ${{ env.DOCKER_REGISTRY }}
-
-      - name: Push freeradius4-{crossbuild,profiling-deps,service}
-        env:
-          OS: ${{ matrix.os }}
-        run: |
-          for type in crossbuild profiling-deps service; do
-            #  docker.mk always builds the local tag as :latest.
-            local_tag="freeradius4-${type}/${OS}:latest"
-            remote_tag="${IMAGE_PREFIX}freeradius4-${type}/${OS}:${IMAGE_TAG}"
-            docker tag "${local_tag}" "${remote_tag}"
-            for attempt in 1 2 3; do
-              docker push "${remote_tag}" && break
-              echo "Push attempt $attempt for ${remote_tag} failed; retrying after backoff..."
-              sleep 10
-            done
-          done
+    needs: process-docker-cli
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    uses: ./.github/workflows/docker-refresh-freeradius.yml
+    secrets: inherit
