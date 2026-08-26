@@ -4422,7 +4422,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 {
 	static tmpl_res_rules_t const default_tr_rules = {};
 
-	int ret = 0;
+	TMPL_VERIFY(vpt);
 
 	if (!tmpl_needs_resolving(vpt)) return 0;	/* Nothing to do */
 
@@ -4441,8 +4441,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	if (tr_rules->enumv && tmpl_rules_enumv(vpt) && !tmpl_rules_enumv(vpt)->flags.is_unknown &&
 	    (tr_rules->enumv != tmpl_rules_enumv(vpt))) {
 	    	fr_strerror_printf("mismatch between parse-time enumv '%s' and resolution-time enumv '%s'",
-	    			   tmpl_rules_enumv(vpt)->name, tr_rules->enumv->name);
-
+				   tmpl_rules_enumv(vpt)->name, tr_rules->enumv->name);
 	    	return -1;
 	}
 
@@ -4453,7 +4452,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	 *	"under the hood".
 	 */
 	if (tmpl_contains_xlat(vpt)) {
-		ret = tmpl_xlat_resolve(vpt, tr_rules);
+		if (tmpl_xlat_resolve(vpt, tr_rules) < 0) return -1;
 
 	/*
 	 *	The attribute reference needs resolving.
@@ -4463,8 +4462,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 
 		fr_assert(vpt->quote == T_BARE_WORD); /* 'User-Name' or "User-Name" is not allowed. */
 
-		ret = tmpl_attr_resolve(vpt, tr_rules);
-		if (ret < 0) return ret;
+		if (tmpl_attr_resolve(vpt, tr_rules) < 0) return -1;
 
 		if (dst_type == tmpl_attr_tail_da(vpt)->type) {
 			vpt->rules.cast = FR_TYPE_NULL;
@@ -4533,12 +4531,16 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	 *	code for non-debug builds.
 	 */
 	} else {
+#ifndef NDEBUG
 		fr_assert(0);
+#else
+		return -1;
+#endif
 	}
 
 	TMPL_VERIFY(vpt);
 
-	return ret;
+	return 0;
 }
 
 /** Reset the tmpl, leaving only the name in place
