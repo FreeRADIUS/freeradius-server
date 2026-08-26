@@ -1165,7 +1165,7 @@ static fr_io_track_t *fr_io_track_add(fr_listen_t const *li, fr_io_client_t *cli
 {
 	size_t len;
 	fr_io_track_t *track, *old;
-	TALLOC_CTX *track_ctx = client->table ? (TALLOC_CTX *)client->table : (TALLOC_CTX *)client;
+	TALLOC_CTX *track_ctx = client->inst->app_io->track_duplicates ? (TALLOC_CTX *)client->table : (TALLOC_CTX *)client;
 
 	*is_dup = false;
 
