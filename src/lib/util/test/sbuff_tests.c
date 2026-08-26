@@ -778,7 +778,7 @@ static void test_terminal_search_past_visible_end(void)
 	fr_sbuff_term_t		tt = FR_SBUFF_TERMS(
 					L("}xyz")
 				);
-	char			out[16];
+	char			out[16] = "";
 	ssize_t			slen;
 
 	fr_sbuff_init_in(&sbuff, in, (size_t)4);	/* Only "abc}" is visible */
