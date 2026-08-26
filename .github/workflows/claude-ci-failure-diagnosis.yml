@@ -237,12 +237,15 @@ jobs:
   diagnose:
     needs: [triage, recurrence]
     #
-    #  !cancelled() rather than a bare condition: a triage job that errored is
-    #  a skipped dependency, which would silently drop the diagnosis for a
+    #  Triage's if: is the one copy of the pipeline conditions, and triage
+    #  skips exactly when they fail, so "not skipped" stands in for the
+    #  whole list.  !cancelled() plus "failure is fine" keeps a triage job
+    #  that errored from silently dropping the diagnosis for a pipeline
     #  failure nobody has looked at.
     #
     if: >-
-      ${{ !cancelled() && needs.recurrence.outputs.matched != 'true' &&
+      ${{ !cancelled() && needs.triage.result != 'skipped' &&
+          needs.recurrence.outputs.matched != 'true' &&
           !(needs.triage.outputs.verdict == 'infrastructure' &&
             fromJSON(needs.triage.outputs.confidence) >= 0.8) }}
 
