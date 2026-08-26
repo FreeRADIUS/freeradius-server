@@ -2536,7 +2536,7 @@ static xlat_action_t redis_ippool_common_resume(TALLOC_CTX *ctx, fr_dcursor_t *o
 		return XLAT_ACTION_FAIL;
 	}
 
-	vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL);
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
 	vb->vb_uint32 = rctx->changes;
 	fr_dcursor_append(out, vb);
 
