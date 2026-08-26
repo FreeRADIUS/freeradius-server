@@ -174,22 +174,22 @@ int fr_uri_has_scheme(fr_value_box_list_t *uri, fr_table_num_sorted_t const *sch
 	 */
 	fr_value_box_list_foreach(uri, vb) {
 		fr_value_box_t tmp;
-		int ret;
+		ssize_t slen;
 
 		if (unlikely(vb->type != FR_TYPE_STRING)) {
 			if (unlikely(fr_value_box_cast(NULL, &tmp, FR_TYPE_STRING, vb->enumv, vb) < 0)) {
 				fr_strerror_printf_push("Unable to cast %pV to a string", vb);
 				return 0;
 			}
-			ret = fr_sbuff_in_bstrncpy(&sbuff, tmp.vb_strvalue,
+			slen = fr_sbuff_in_bstrncpy(&sbuff, tmp.vb_strvalue,
 						   fr_sbuff_remaining(&sbuff) > tmp.vb_length ? tmp.vb_length : fr_sbuff_remaining(&sbuff));
 			fr_value_box_clear_value(&tmp);
 		} else {
-			ret = fr_sbuff_in_bstrncpy(&sbuff, vb->vb_strvalue,
+			slen = fr_sbuff_in_bstrncpy(&sbuff, vb->vb_strvalue,
 						   fr_sbuff_remaining(&sbuff) > vb->vb_length ? vb->vb_length : fr_sbuff_remaining(&sbuff));
 		}
 
-		if (unlikely(ret < 0)) return -1;
+		if (unlikely(slen < 0)) return -1;
 	}
 
 	/*
