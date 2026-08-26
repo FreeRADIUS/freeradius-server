@@ -136,16 +136,27 @@ jobs:
 
             When the failures differ from each other, fingerprint the first one a reader would care about. Return an empty string only if you genuinely cannot name the failure.
 
+      #
+      #  The verdict fields are model output quoting untrusted CI logs, so
+      #  they reach the shell as environment values, never as script text.
+      #  Interpolating them into the script would let a quoted log line
+      #  terminate the quoting and execute whatever follows.
+      #
       - name: Record the verdict
+        env:
+          VERDICT: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).verdict || 'unavailable' }}
+          CONFIDENCE: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).confidence || 0 }}
+          FINGERPRINT: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).fingerprint || 'none' }}
+          REASON: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).reason || 'triage produced no structured output; full diagnosis will run' }}
         run: |
           {
             echo "### CI failure triage"
             echo
-            echo "verdict: \`${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).verdict || 'unavailable' }}\` at \`${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).confidence || 0 }}\` confidence"
+            echo "verdict: \`${VERDICT}\` at \`${CONFIDENCE}\` confidence"
             echo
-            echo "fingerprint: \`${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).fingerprint || 'none' }}\`"
+            echo "fingerprint: \`${FINGERPRINT}\`"
             echo
-            echo "${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).reason || 'triage produced no structured output; full diagnosis will run' }}"
+            echo "${REASON}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   #
