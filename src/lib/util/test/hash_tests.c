@@ -317,7 +317,7 @@ static void test_hash_table_iter(void)
 
 	for (i = 0; i < 16; i++) {
 		nodes[i].num = i;
-		fr_hash_table_insert(ht, &nodes[i]);
+		TEST_CHECK(fr_hash_table_insert(ht, &nodes[i]) == 0);
 	}
 
 	TEST_CASE("Iterate over all elements");
@@ -352,7 +352,7 @@ static void test_hash_table_flatten(void)
 
 	for (i = 0; i < 8; i++) {
 		nodes[i].num = i;
-		fr_hash_table_insert(ht, &nodes[i]);
+		TEST_CHECK(fr_hash_table_insert(ht, &nodes[i]) == 0);
 	}
 
 	TEST_CASE("Flatten table into array");
