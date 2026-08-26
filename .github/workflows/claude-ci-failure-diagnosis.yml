@@ -114,13 +114,15 @@ jobs:
 
             Answer "code" when any failure could come from the tree: a compile or link error, a failing test, a missing dependency the commit introduced, a packaging rule that no longer resolves.
 
+            A log line starting "FAILED:" or "make: ***" names a test or build failure. When any failed job's log contains one, the verdict must not be "infrastructure".
+
             A test that fails intermittently is "code". Intermittency is not evidence of an infrastructure problem; it is what a race, a use-after-free, a leaked fixture or an order-dependent test looks like from the outside. Only call a failure infrastructure when the log shows the machinery around the test breaking, never because the same test passed on a retry or on another leg.
 
             Answer "unknown" when the logs do not settle it.
 
             Give "confidence" as 0 to 1 for the verdict. Anything below 0.8 lets the full diagnosis run, so use the range honestly rather than rounding up: a wrong "infrastructure" buries a real bug, while a needless diagnosis costs only tokens.
 
-            Put a one-sentence justification naming the deciding log line in "reason".
+            Put a one-sentence justification in "reason", quoting the deciding log line verbatim. A reason that describes a line you cannot quote is a reason to answer "unknown" instead.
 
             Also return a "fingerprint" identifying the failure itself, so the same bug recurring on a later commit can be recognised without analysing it again. Build it as three colon-separated parts, lowercase, no spaces:
 
