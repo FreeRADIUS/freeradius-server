@@ -230,7 +230,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	 *	inputs leave unresolved refs, but the resolution walk
 	 *	still exercises the code.
 	 */
-	(void) tmpl_resolve(vpt, &tr_rules);
+	if (tmpl_resolve(vpt, &tr_rules) < 0) goto done;
 
 	/*
 	 *	Write the tmpl out.  This check exercises every
