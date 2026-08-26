@@ -1613,6 +1613,7 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 
 			} else if (num == 1) {
 				xlat_exp_t *child = xlat_exp_head(node->group);
+				fr_assert(child != NULL);
 
 				if (child->type == XLAT_BOX) {
 					(void) talloc_steal(ctx, child);
