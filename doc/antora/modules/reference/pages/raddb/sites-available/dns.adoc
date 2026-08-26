@@ -71,7 +71,7 @@ recv Query {
 			Type = ::A
 			Class = ::Internet
 			TTL = 0
-			Type.A.IP = 127.0.0.1
+			A = { IP = 127.0.0.1 }
 		}
 	}
 

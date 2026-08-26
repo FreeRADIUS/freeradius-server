@@ -13,5 +13,7 @@ BEGIN PROTOCOL	DNS		11	format=2
 $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc1034
 $INCLUDE dictionary.rfc2782
+$INCLUDE dictionary.rfc4408
+$INCLUDE dictionary.rfc8659
 
 END-PROTOCOL	DNS

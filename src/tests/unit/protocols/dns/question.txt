@@ -1,0 +1,22 @@
+#
+#  Test vectors for Question decoding, and the QTYPE enum values
+#
+proto dns
+proto-dictionary dns
+fuzzer-out dns
+
+#  Query for example.com AXFR - a QTYPE which is only valid in a question
+#
+decode-proto 00 00 00 00 00 01 00 00 00 00 00 00 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 fc 00 01
+match Header = { ID = 0, Query = ::Query, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 1, Answer-Count = 0, Name-Server-Count = 0, Additional-Records-Count = 0 }, Question = { Name = "example.com", Type = ::AXFR, Class = ::Internet }
+
+encode-proto -
+match 00 00 00 00 00 01 00 00 00 00 00 00 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 fc 00 01
+
+#  Query for example.com CAA
+#
+decode-proto 00 00 00 00 00 01 00 00 00 00 00 00 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 01 01 00 01
+match Header = { ID = 0, Query = ::Query, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 1, Answer-Count = 0, Name-Server-Count = 0, Additional-Records-Count = 0 }, Question = { Name = "example.com", Type = ::CAA, Class = ::Internet }
+
+encode-proto -
+match 00 00 00 00 00 01 00 00 00 00 00 00 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 01 01 00 01

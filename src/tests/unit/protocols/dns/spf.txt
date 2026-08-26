@@ -1,0 +1,15 @@
+#
+#  Test vectors for SPF resource records (RFC 4408, deprecated by RFC 7208)
+#
+proto dns
+proto-dictionary dns
+fuzzer-out dns
+
+#  example.com SPF "v=spf1 -all"
+#
+#            name: example.com                          type   class  TTL          length  data: v=spf1 -all
+decode-pair 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00      00 63  00 01  00 00 00 10  00 0b   76 3d 73 70 66 31 20 2d 61 6c 6c
+match Resource-Record = { Name = "example.com", Type = ::SPF, Class = ::Internet, TTL = 16, SPF = { Data = "v=spf1 -all" } }
+
+encode-pair -
+match 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 63 00 01 00 00 00 10 00 0b 76 3d 73 70 66 31 20 2d 61 6c 6c

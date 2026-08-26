@@ -61,6 +61,26 @@ MEMBER		Name					string	dns_label
 MEMBER		Type					uint16  # from packet.type
 MEMBER		Class					uint16
 
+#
+#  QTYPEs.  A superset of the Resource-Record types: IXFR, AXFR and
+#  Any are only valid in a question, never in a resource record.
+#
+VALUE	Type				A			1
+VALUE	Type				NS			2
+VALUE	Type				CNAME			5
+VALUE	Type				SOA			6
+VALUE	Type				PTR			12
+VALUE	Type				MX			15
+VALUE	Type				TXT			16
+VALUE	Type				AAAA			28
+VALUE	Type				SRV			33
+VALUE	Type				DHCID			49
+VALUE	Type				SPF			99
+VALUE	Type				IXFR			251
+VALUE	Type				AXFR			252
+VALUE	Type				Any			255
+VALUE	Type				CAA			257
+
 VALUE	Class				Internet		1
 VALUE	Class				Chaos			3
 VALUE	Class				Hesiod			4

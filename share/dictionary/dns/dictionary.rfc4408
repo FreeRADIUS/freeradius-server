@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#  The SPF resource record type is deprecated by RFC 7208, which says
+#  SPF data belongs in TXT records.  The type is defined here so that
+#  servers can still decode and answer queries for legacy records.
+#
+
+BEGIN Resource-Record.RDATA
+
+ATTRIBUTE	SPF					99	struct length=uint16
+MEMBER		Data					string
+
+END Resource-Record.RDATA

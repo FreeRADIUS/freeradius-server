@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+
+BEGIN Resource-Record.RDATA
+
+ATTRIBUTE	CAA					257	struct length=uint16
+MEMBER		Flags					uint8
+MEMBER		Tag					string	length=uint8
+MEMBER		Value					string
+
+VALUE	Flags				Issuer-Critical		128
+
+END Resource-Record.RDATA

@@ -1,0 +1,24 @@
+#
+#  Test vectors for CAA resource records (RFC 8659)
+#
+proto dns
+proto-dictionary dns
+fuzzer-out dns
+
+#  example.com CAA 0 issue "ca.example.net"
+#
+#            name: example.com                          type   class  TTL          length  flags  tag: issue         value: ca.example.net
+decode-pair 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00      01 01  00 01  00 00 00 10  00 15   00     05 69 73 73 75 65  63 61 2e 65 78 61 6d 70 6c 65 2e 6e 65 74
+match Resource-Record = { Name = "example.com", Type = ::CAA, Class = ::Internet, TTL = 16, CAA = { Flags = 0, Tag = "issue", Value = "ca.example.net" } }
+
+encode-pair -
+match 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 01 01 00 01 00 00 00 10 00 15 00 05 69 73 73 75 65 63 61 2e 65 78 61 6d 70 6c 65 2e 6e 65 74
+
+#
+#  The critical bit set, and a tag with no value
+#
+encode-pair Resource-Record = { Name = "example.com", Type = ::CAA, Class = ::Internet, TTL = 16, CAA = { Flags = ::Issuer-Critical, Tag = "issuewild", Value = ";" } }
+match 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 01 01 00 01 00 00 00 10 00 0c 80 09 69 73 73 75 65 77 69 6c 64 3b
+
+decode-pair -
+match Resource-Record = { Name = "example.com", Type = ::CAA, Class = ::Internet, TTL = 16, CAA = { Flags = ::Issuer-Critical, Tag = "issuewild", Value = ";" } }

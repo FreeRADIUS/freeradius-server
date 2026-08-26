@@ -125,13 +125,22 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!vp) return PAIR_DECODE_OOM;
 		PAIR_ALLOCED(vp);
 
-		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
-					      &FR_DBUFF_TMP(data, data_len), data_len, true) < 0) {
+		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
+						 &FR_DBUFF_TMP(data, data_len), data_len, true);
+		if (slen < 0) {
 			FR_PROTO_TRACE("failed decoding?");
 			talloc_free(vp);
 			goto raw;
 		}
-		break;
+
+		/*
+		 *	A length-prefixed member (e.g. CAA Tag, string length=uint8) consumes
+		 *	less than data_len, and the struct decoder needs the true count to
+		 *	find the next member.
+		 */
+		vp->vp_tainted = true;
+		fr_pair_append(out, vp);
+		return slen;
 	}
 
 	vp->vp_tainted = true;
