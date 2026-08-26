@@ -554,6 +554,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *o
 	char const			**argv;
 	size_t				*arg_len;
 	size_t				argc;
+	fr_value_box_t			*key_vb;
 	char				*key_count;
 	uint8_t	const			*key = NULL;
 	size_t				key_len = 0;
@@ -588,7 +589,9 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *o
 	/*
 	 *	First argument is always the key count
 	 */
-	arg_len[2] = fr_value_box_aprint(argv, &key_count, fr_value_box_list_pop_head(in), NULL);
+	key_vb = fr_value_box_list_pop_head(in);
+	fr_assert(key_vb);
+	arg_len[2] = fr_value_box_aprint(argv, &key_count, key_vb, NULL);
 	if (unlikely(!key_count)) {
 		RPERROR("Failed converting key count to string");
 		return XLAT_ACTION_FAIL;
