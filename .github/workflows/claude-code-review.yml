@@ -7,11 +7,15 @@ on:
 jobs:
   claude-review:
     # Auto-review PRs from authors with previous contributions (or write access).
+    # author_association only reports MEMBER when the membership is public, so
+    # a branch pushed to the organisation's own repository also qualifies:
+    # only someone with write access to the organisation can create one.
     # For first-time contributors and drive-by PRs, a maintainer must add the
     # 'claude-review' label to trigger a review.
     if: |
       (github.event.action != 'labeled' &&
-       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association)) ||
+       (contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association) ||
+        github.event.pull_request.head.repo.owner.login == 'FreeRADIUS')) ||
       (github.event.action == 'labeled' && github.event.label.name == 'claude-review')
 
     runs-on: ubuntu-latest
