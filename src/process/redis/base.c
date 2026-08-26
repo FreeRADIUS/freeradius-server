@@ -574,7 +574,7 @@ static void redis_cluster_info_server_results(request_t *request, UNUSED fr_redi
 	char			buffer[20];
 
 	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
-	if (fr_redis_parse_version(buffer, sizeof(buffer), reply) != REDIS_RCODE_SUCCESS) return;
+	if (fr_redis_parse_version(buffer, sizeof(buffer), reply) < 0) return;
 	node->version = fr_redis_version_num(buffer);
 	RDEBUG3("Cluster node %s:%d is running Redis version %s", node->io_conf.hostname, node->io_conf.port, buffer);
 }

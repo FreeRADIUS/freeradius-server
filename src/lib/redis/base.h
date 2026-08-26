@@ -172,7 +172,7 @@ int			fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out,
 
 int			fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], map_t *map);
 
-fr_redis_rcode_t	fr_redis_parse_version(char *out, size_t out_len, redisReply *reply);
+int			fr_redis_parse_version(char *out, size_t out_len, redisReply *reply);
 
 uint32_t		fr_redis_version_num(char const *version);
 

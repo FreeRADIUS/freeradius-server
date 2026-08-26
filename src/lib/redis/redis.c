@@ -529,10 +529,10 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
  * @param[in] out_len Length of the version string buffer.
  * @param[in] reply Redis reply to parse
  * @return
- *	- #REDIS_RCODE_SUCCESS on success.
- *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
+ *	- 0 on success.
+ *	- -1 on command/response mismatch or command error.
  */
-fr_redis_rcode_t fr_redis_parse_version(char *out, size_t out_len, redisReply *reply)
+int fr_redis_parse_version(char *out, size_t out_len, redisReply *reply)
 {
 	fr_sbuff_t	sbuff;
 
@@ -540,7 +540,7 @@ fr_redis_rcode_t fr_redis_parse_version(char *out, size_t out_len, redisReply *r
 		fr_strerror_printf("Bad value type, expected string or integer, got %s",
 				   fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 	error:
-		return REDIS_RCODE_ERROR;
+		return -1;
 	}
 
 	fr_sbuff_init_in(&sbuff, reply->str, reply->len);
@@ -556,7 +556,7 @@ fr_redis_rcode_t fr_redis_parse_version(char *out, size_t out_len, redisReply *r
 		goto error;
 	}
 
-	return REDIS_RCODE_SUCCESS;
+	return 0;
 }
 
 /** Convert version string into a 32bit unsigned integer for comparisons
