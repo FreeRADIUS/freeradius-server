@@ -24,7 +24,7 @@
  */
 #include <netdb.h>
 #include <fcntl.h>
-#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/main_loop.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
@@ -35,6 +35,27 @@
 extern fr_app_io_t proto_load_step;
 
 typedef struct proto_load_step_s proto_load_step_t;
+
+/** What to do when the load test is complete
+ *
+ *  The test is complete when the PPS ramp has passed max_pps, all
+ *  max_requests packets (if set) have been sent, and every reply has
+ *  been received.
+ */
+typedef enum {
+	LOAD_STEP_ON_COMPLETE_EXIT = 0,			//!< make the server exit
+	LOAD_STEP_ON_COMPLETE_REPEAT,			//!< run the test again from start_pps
+	LOAD_STEP_ON_COMPLETE_STOP,			//!< stop generating load, leave the server running
+	LOAD_STEP_ON_COMPLETE_CONTINUE			//!< never complete, keep sending at max_pps forever
+} load_step_on_complete_t;
+
+static fr_table_num_sorted_t const load_on_complete_table[] = {
+	{ L("continue"),	LOAD_STEP_ON_COMPLETE_CONTINUE },
+	{ L("exit"),		LOAD_STEP_ON_COMPLETE_EXIT },
+	{ L("repeat"),		LOAD_STEP_ON_COMPLETE_REPEAT },
+	{ L("stop"),		LOAD_STEP_ON_COMPLETE_STOP }
+};
+static size_t load_on_complete_table_len = NUM_ELEMENTS(load_on_complete_table);
 
 typedef struct {
 	fr_event_list_t			*el;			//!< event list
@@ -71,7 +92,7 @@ struct proto_load_step_s {
 	fr_client_t			*client;		//!< static client
 
 	fr_load_config_t		load;			//!< load configuration
-	bool				repeat;			//!, do we repeat the load generation
+	load_step_on_complete_t		on_complete;		//!< what to do when the load test completes
 	char const     			*csv;			//!< where to write CSV stats
 
 	fr_dict_t const			*dict;			//!< Our namespace.
@@ -90,7 +111,11 @@ static const conf_parser_t load_listen_config[] = {
 	{ FR_CONF_OFFSET("step", proto_load_step_t, load.step) },
 	{ FR_CONF_OFFSET("max_backlog", proto_load_step_t, load.milliseconds) },
 	{ FR_CONF_OFFSET("parallel", proto_load_step_t, load.parallel) },
-	{ FR_CONF_OFFSET("repeat", proto_load_step_t, repeat) },
+	{ FR_CONF_OFFSET("max_requests", proto_load_step_t, load.max_requests) },
+	{ FR_CONF_OFFSET("on_complete", proto_load_step_t, on_complete),
+	  .func = cf_table_parse_int,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = load_on_complete_table, .len = &load_on_complete_table_len },
+	  .dflt = "exit" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -120,13 +145,14 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		}
 
 		thread->suspended = true;
+		return 0;
 	}
 
 	*leftover = 0;		/* always for load generation */
 
 	/*
 	 *	Where the addresses should go.  This is a special case
-	 *	for proto_radius.
+	 *	for proto_load.
 	 */
 	address_p = (fr_io_address_t **) packet_ctx;
 	address = *address_p;
@@ -155,6 +181,53 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 }
 
 
+/** The load test is complete - apply on_complete
+ *
+ */
+static void load_complete(proto_load_step_thread_t *thread)
+{
+	fr_load_stats_t const *stats = fr_load_generator_stats(thread->l);
+
+	INFO("Load test for %s complete - sent %d packets, received %d replies",
+	     thread->name, stats->sent, stats->received);
+
+	switch (thread->inst->on_complete) {
+	case LOAD_STEP_ON_COMPLETE_EXIT:
+		INFO("Signalling the server to exit");
+		thread->done = true;
+		main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
+		break;
+
+	case LOAD_STEP_ON_COMPLETE_REPEAT:
+		(void) fr_load_generator_stop(thread->l); /* ensure l->ev is gone */
+		(void) fr_load_generator_start(thread->l);
+		break;
+
+	case LOAD_STEP_ON_COMPLETE_STOP:
+		thread->done = true;
+		break;
+
+	/*
+	 *	The generator never completes when it's told to
+	 *	continue forever.
+	 */
+	case LOAD_STEP_ON_COMPLETE_CONTINUE:
+		fr_assert(0);
+		break;
+	}
+}
+
+/** The generator noticed completion itself, without a final reply.
+ *
+ */
+static void mod_load_done(void *uctx)
+{
+	fr_listen_t			*li = uctx;
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
+
+	load_complete(thread);
+}
+
 static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t request_time,
 			 UNUSED uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
@@ -169,18 +242,13 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t req
 	thread->stats.total_responses++;
 
 	/*
-	 *	Tell the load generatopr subsystem that we have a
-	 *	reply.  Then if the load test is done, exit the
-	 *	server.
+	 *	Tell the load generator subsystem that we have a
+	 *	reply.  If the reply completes the load test, apply
+	 *	on_complete.
 	 */
 	state = fr_load_generator_have_reply(thread->l, request_time);
 	if (state == FR_LOAD_DONE) {
-		if (!thread->inst->repeat) {
-			thread->done = true;
-		} else {
-			(void) fr_load_generator_stop(thread->l); /* ensure l->ev is gone */
-			(void) fr_load_generator_start(thread->l);
-		}
+		load_complete(thread);
 	}
 
 	return buffer_len;
@@ -202,6 +270,10 @@ static int mod_open(fr_listen_t *li)
 	 *	readable FD in order to bootstrap the process.
 	 */
 	li->fd = open(inst->filename, O_RDONLY);
+	if (li->fd < 0) {
+		cf_log_err(li->cs, "Failed opening %s - %s", inst->filename, fr_syserror(errno));
+		return -1;
+	}
 
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.af = AF_INET;
@@ -284,6 +356,31 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	return 0;
 }
 
+/** Close a virtual listener
+ *
+ * The fd only exists to bootstrap the listener, so closing it mostly means
+ * removing the timer that drives the load generator.
+ *
+ * @param[in] li the listener
+ * @return
+ *	- 0 on success.
+ *	- -1 if the generator could not be stopped.  The fd is closed either way.
+ */
+static int mod_close(fr_listen_t *li)
+{
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
+	int				ret = 0;
+
+	if (thread->l && (fr_load_generator_stop(thread->l) < 0)) {
+		PERROR("Failed stopping load generator");
+		ret = -1;
+	}
+
+	close(li->fd);
+
+	return ret;
+}
+
 /** Set the event list for a new socket
  *
  * @param[in] li the listener
@@ -302,7 +399,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	thread->inst = inst;
 	thread->load = inst->load;
 
-	thread->l = fr_load_generator_create(thread, el, &thread->load, mod_generate, li);
+	thread->l = fr_load_generator_create(thread, el, &thread->load, mod_generate, mod_load_done, li);
 	if (!thread->l) return;
 
 	(void) fr_load_generator_start(thread->l);
@@ -345,8 +442,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	fr_pair_list_init(&inst->pair_list);
-	inst->client = client = talloc_zero(inst, fr_client_t);
-	if (!inst->client) return 0;
+	MEM(inst->client = client = talloc_zero(inst, fr_client_t));
 
 	client->ipaddr.af = AF_INET;
 	client->src_ipaddr = client->ipaddr;
@@ -401,6 +497,17 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	FR_INTEGER_BOUND_CHECK("max_backlog", inst->load.milliseconds, >=, 1);
 	FR_INTEGER_BOUND_CHECK("max_backlog", inst->load.milliseconds, <, 100000);
 
+	/*
+	 *	"continue" means the test never completes, which
+	 *	contradicts a finite request count.
+	 */
+	if (inst->load.max_requests && (inst->on_complete == LOAD_STEP_ON_COMPLETE_CONTINUE)) {
+		cf_log_err(conf, "'max_requests' cannot be used with 'on_complete = continue'");
+		return -1;
+	}
+
+	inst->load.unlimited = (inst->on_complete == LOAD_STEP_ON_COMPLETE_CONTINUE);
+
 	return 0;
 }
 
@@ -424,6 +531,7 @@ fr_app_io_t proto_load_step = {
 	.track_duplicates	= false,
 
 	.open			= mod_open,
+	.close			= mod_close,
 	.read			= mod_read,
 	.write			= mod_write,
 	.event_list_set		= mod_event_list_set,

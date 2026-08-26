@@ -186,9 +186,6 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if ((da->type == FR_TYPE_STRING) && fr_dns_flag_dns_label(da)) {
 		slen = fr_pair_dns_labels_from_network(ctx, out, da, packet_ctx->packet, data + 4, len, packet_ctx->lb, true);
 
-	} else if (da->flags.array) {
-		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
-
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
 	}
@@ -265,7 +262,8 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	slen = decode_record(ctx, out, attr_dns_question, p, end, packet_ctx, packet + 4);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding questions - %s", fr_strerror());
-		return slen;
+		/* coverity[return_overflow] */
+		return slen - (p - packet);
 	}
 	p += slen;
 	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of questions", slen);
@@ -273,6 +271,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	slen = decode_record(ctx, out, attr_dns_rr, p, end, packet_ctx, packet + 6);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding RRs - %s", fr_strerror());
+		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
 	p += slen;
@@ -281,6 +280,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	slen = decode_record(ctx, out, attr_dns_ns, p, end, packet_ctx, packet + 8);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding NS - %s", fr_strerror());
+		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
 	p += slen;
@@ -289,6 +289,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	slen = decode_record(ctx, out, attr_dns_ar, p, end, packet_ctx, packet + 10);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding additional records - %s", fr_strerror());
+		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
 	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of additional records", slen);
@@ -359,11 +360,12 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 
 fr_table_num_ordered_t fr_dns_reason_fail_table[] = {
 	{ L("none"),						FR_DNS_DECODE_FAIL_NONE		},
+	{ L("unknown opcode"),					FR_DNS_DECODE_FAIL_UNKNOWN_OPCODE	},
 	{ L("packet is smaller than DNS header"),		FR_DNS_DECODE_FAIL_MIN_LENGTH_PACKET	},
 	{ L("packet is larger than 65535"),			FR_DNS_DECODE_FAIL_MAX_LENGTH_PACKET	},
 	{ L("expected query / answer, got answer / query"),	FR_DNS_DECODE_FAIL_UNEXPECTED		},
 	{ L("no 'questions' in query packet"),			FR_DNS_DECODE_FAIL_NO_QUESTIONS	},
-	{ L("unexprected answers in query packet"),		FR_DNS_DECODE_FAIL_ANSWERS_IN_QUESTION	},
+	{ L("unexpected answers in query packet"),		FR_DNS_DECODE_FAIL_ANSWERS_IN_QUESTION	},
 	{ L("unexpected NS records in query packet"),		FR_DNS_DECODE_FAIL_NS_IN_QUESTION	},
 	{ L("invalid label for resource record"),	       	FR_DNS_DECODE_FAIL_INVALID_RR_LABEL	},
 	{ L("missing resource record header"),			FR_DNS_DECODE_FAIL_MISSING_RR_HEADER	},
@@ -382,6 +384,7 @@ fr_table_num_ordered_t fr_dns_reason_fail_table[] = {
 	{ L("query record header is missing"),			FR_DNS_DECODE_FAIL_MISSING_QD_HEADER		},
 	{ L("missing TLV header in OPT RR"),			FR_DNS_DECODE_FAIL_MISSING_TLV_HEADER		},
 	{ L("TLV overflows enclosing RR"),			FR_DNS_DECODE_FAIL_TLV_OVERFLOWS_RR		},
+	{ L("TC bit indicates truncation"),			FR_DNS_DECODE_FAIL_TRUNCATED		},
 };
 size_t fr_dns_reason_fail_table_len = NUM_ELEMENTS(fr_dns_reason_fail_table);
 

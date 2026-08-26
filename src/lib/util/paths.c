@@ -45,14 +45,14 @@ char const *fr_path_default_lib_dir(void)
 	return LIBDIR;
 }
 
-/** Return the default raddb dir
+/** Return the default configuration dir
  *
  * This is set at build time from --prefix
- * @return the value of RADDBDIR
+ * @return the value of CONFDIR
  */
-char const *fr_path_default_raddb_dir(void)
+char const *fr_path_default_confdir(void)
 {
-	return RADDBDIR;
+	return CONFDIR;
 }
 
 /** Return the default run dir

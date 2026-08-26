@@ -82,11 +82,17 @@ Which section of a virtual server is processing the request.
 
 == %interpreter('rcode')
 
-The current interpreter return code, e.g. `handle`, or `ok`, etc.
+Return the current interpreter xref:unlang/return_codes.adoc[rcode], e.g. `handled`, or `ok`, etc.
 
 == %interpreter('server')
 
 The name of the virtual server which is running the request.
+
+== %interpreter.module.force('name', 'noop')
+
+Force a module xref:unlang/return_codes.adoc[rcode], e.g. `handled` or `ok`, etc
+
+A module can be "un-forced" by not passing a second argument.
 
 === %client(<key>)
 
@@ -108,5 +114,5 @@ current client. See the sections `client { ... }` in `clients.conf`.
 The client ipaddr is 192.168.5.9
 ```
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

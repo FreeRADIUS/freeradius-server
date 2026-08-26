@@ -1,7 +1,7 @@
 /*
  * GPLv2 LICENSE:
  *
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -169,7 +169,7 @@ void fr_aka_sim_fips186_2prf(uint8_t out[static 160], uint8_t mk[static 20])
 /*
  *  cc fips186prf.c -g3 -Wall -DTESTING_FIPS186_PRF -DHAVE_DLFCN_H -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_fips186prf && ./test_fips186prf
  */
-#include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/test/acutest.h>
 
 /*
  * test vectors
@@ -232,7 +232,7 @@ static void test_fips186prf(void)
 {
 	uint8_t res[160];
 
-	fr_sim_fips186_2prf(res, xkey);
+	fr_aka_sim_fips186_2prf(res, xkey);
 
 	TEST_CHECK(memcmp(exp, res, sizeof(exp)) == 0);
 }

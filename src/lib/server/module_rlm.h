@@ -129,6 +129,9 @@ module_instance_t	*module_rlm_dynamic_by_name(module_instance_t const *parent, c
 module_instance_t	*module_rlm_static_by_name(module_instance_t const *parent, char const *name);
 
 CONF_SECTION		*module_rlm_virtual_by_name(char const *name);
+
+CONF_SECTION		*module_rlm_virtual_iter_init(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
+CONF_SECTION		*module_rlm_virtual_iter_next(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
 /** @} */
 
 /** @name Support functions
@@ -146,6 +149,8 @@ int			module_rlm_submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
 void			modules_rlm_thread_detach(void);
 
 int			modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull(2));
+
+int			modules_rlm_coord_attach(fr_event_list_t *el) CC_HINT(nonnull);
 
 int			modules_rlm_instantiate(void);
 

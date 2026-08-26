@@ -38,7 +38,7 @@ Common flags and meanings
 | `ref=<ref>`  | For `group` types, the referenced attributes will be allowed in the group
 |=====
 
-See the the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
 
 .Examples
 ----
@@ -46,5 +46,5 @@ DEFINE Foo string
 DEFINE Bar ipv4addr
 ----
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

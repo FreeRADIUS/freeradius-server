@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 if the
  *   License as published by the Free Software Foundation.
  *
@@ -96,9 +96,9 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 
 #define IN_RANGE_FLOAT_SIGNED(_x) \
 	do { \
-		if ((((double)(_x)) < DBL_MIN) || (((double)(_x)) > DBL_MAX)) { \
+		if ((((double)(_x)) < -DBL_MAX) || (((double)(_x)) > DBL_MAX)) { \
 			REDEBUG("Value (%f) cannot be represented as Lua number.  Must be between %f-%f", \
-				(double)(_x), DBL_MIN, DBL_MAX); \
+				(double)(_x), -DBL_MAX, DBL_MAX); \
 			return -1; \
 		} \
 	} while (0)
@@ -297,8 +297,9 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_value_box_t *out_vb, request_t 
 		p = lua_touserdata(L, -1);
 		if (!p) {
 			REDEBUG("Unmarshalling failed, user data was NULL");
+			return -1;
 		}
-		fr_value_box_memdup(ctx, out_vb, da, p, len, true);
+		if (fr_value_box_memdup(ctx, out_vb, da, p, len, true) < 0) return -1;
 	}
 		break;
 

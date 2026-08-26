@@ -3,3 +3,6 @@ Download the latest version of the FreeRADIUS source from one of these sites:
 *  https://www.freeradius.org/releases/[the FreeRADIUS web site]; or
 * from https://github.com/FreeRADIUS/freeradius-server/[GitHub].
 * from https://hub.docker.com/r/freeradius/freeradius-server/[Docker Hub].
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

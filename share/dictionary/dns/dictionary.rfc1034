@@ -102,7 +102,7 @@ ATTRIBUTE	PTR					12	struct length=uint16
 MEMBER		Domain-Name				string	dns_label
 
 ATTRIBUTE	MX					15	struct length=uint16
-MEMBER		Preference				uint32
+MEMBER		Preference				uint16
 MEMBER		Domain-Name				string	dns_label
 
 ATTRIBUTE	TXT					16	struct length=uint16

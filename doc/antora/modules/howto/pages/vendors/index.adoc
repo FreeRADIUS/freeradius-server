@@ -1,12 +1,28 @@
 = Vendors
 
-FreeRADIUS supports vendor-specific attributes (VSAs), allowing vendors to extend RADIUS functionality beyond the basic IETF attributes. FreeRADIUS interprets the VSAs and uses them for authentication, authorization, and accounting processes.
+FreeRADIUS supports vendor-specific attributes (VSAs), allowing
+vendors to extend RADIUS functionality beyond the basic IETF
+attributes. FreeRADIUS interprets the VSAs and uses them for
+authentication, authorization, and accounting processes.
 
-By using VSAs, vendors can include their proprietary information within the RADIUS packets. VSAs allow vendors to define specific behaviors or pass custom information. FreeRADIUS incorporates VSAs into its policies to implement vendor-specific logic allowing for more complex integrations.
+By using VSAs, vendors can include their proprietary information
+within the RADIUS packets. VSAs allow vendors to define specific
+behaviors or pass custom information. FreeRADIUS incorporates VSAs
+into its policies to implement vendor-specific logic allowing for more
+complex integrations.
 
-FreeRADIUS provides vendor-specific attributes for many vendors that include:
+FreeRADIUS provides vendor-specific attributes for many vendors.  The
+following pages are largely historical, but may contain some useful
+information.
 
+* xref:vendors/alcatel-lucent.adoc[Alcatel-Lucent]
+* xref:vendors/alvarion.adoc[Alvarion]
 * xref:vendors/ascend.adoc[Ascend]
 * xref:vendors/bay.adoc[Bay]
 * xref:vendors/cisco.adoc[Cisco]
+* xref:vendors/hp.adoc[HP]
+* xref:vendors/huawei.adoc[Huawei]
 * xref:vendors/proxim.adoc[ProxIM]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

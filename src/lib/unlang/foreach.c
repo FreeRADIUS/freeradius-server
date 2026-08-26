@@ -26,7 +26,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/unlang_priv.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -191,7 +190,7 @@ next:
 
 	fr_value_box_clear_value(&state->value->data);
 	if (fr_value_box_cast(state->value, &state->value->data, state->value->vp_type, state->value->da, box) < 0) {
-		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
+		RPEDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
 		goto next;
 	}
 
@@ -224,7 +223,7 @@ static unlang_action_t unlang_foreach_xlat_expanded(unlang_result_t *p_result, r
 
 next:
 	if (fr_value_box_cast(state->value, &state->value->data, state->value->vp_type, state->value->da, box) < 0) {
-		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
+		RPEDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
 		box = fr_dcursor_next(&state->cursor);
 		if (!box) goto done;
 
@@ -304,7 +303,7 @@ static unlang_action_t unlang_foreach_attr_next(unlang_result_t *p_result, reque
 			fr_value_box_clear_value(&vp->data);
 			if (unlikely(fr_value_box_copy(vp, &vp->data, &state->value->data) < 0)) {
 				RPEDEBUG("Failed copying value from %s to %s", state->value->da->name, vp->da->name);
-				return UNLANG_ACTION_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 		} else {
 			/*
@@ -361,7 +360,7 @@ next:
 		}
 
 #ifndef NDEBUG
-		RDEBUG2("# looping with: %s = %pV", state->value->da->name, &vp->data);
+		RDEBUG2("# looping with: %s = %pR", state->value->da->name, &vp->data);
 #endif
 	}
 
@@ -589,6 +588,13 @@ static unlang_t *unlang_compile_foreach(unlang_t *parent, unlang_compile_ctx_t *
 
 	name2 = cf_section_name2(cs);
 	fr_assert(name2 != NULL); /* checked in cf_file.c */
+
+	type_name = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+	if (!type_name) {
+		cf_log_err(cs, "Invalid foreach %s (...) - missing reference", name2);
+		cf_log_err(ci, DOC_KEYWORD_REF(foreach));
+		return NULL;
+	}
 
 	/*
 	 *	Allocate a group for the "foreach" block.

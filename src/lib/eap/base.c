@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -65,11 +65,9 @@ RCSID("$Id$")
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/auth.h>
 #include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/function.h>
 #include "types.h"
 #include "attrs.h"
@@ -100,7 +98,6 @@ fr_dict_attr_t const *attr_framed_mtu;
 fr_dict_attr_t const *attr_freeradius_proxied_to;
 fr_dict_attr_t const *attr_ms_mppe_send_key;
 fr_dict_attr_t const *attr_ms_mppe_recv_key;
-fr_dict_attr_t const *attr_state;
 fr_dict_attr_t const *attr_user_name;
 fr_dict_attr_t const *attr_tls_min_version;
 fr_dict_attr_t const *attr_tls_max_version;
@@ -111,7 +108,6 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ .out = &attr_eap_identity, .name = "EAP-Identity", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_eap_session_id, .name = "EAP-Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_eap_channel_binding_message, .name = "Vendor-Specific.UKERNA.EAP-Channel-Binding-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -193,88 +189,78 @@ static bool eap_is_valid(TALLOC_CTX *ctx, eap_packet_raw_t **eap_packet_p)
 	}
 
 	/*
-	 *	High level EAP packet checks
+	 *	The supplicant only sends us a response.
 	 */
-	switch (eap_packet->code) {
-	case FR_EAP_CODE_RESPONSE:
-	case FR_EAP_CODE_REQUEST:
-		break;
-
-	default:
+	if (eap_packet->code != FR_EAP_CODE_RESPONSE) {
 		fr_strerror_printf("Invalid EAP code %d: Ignoring the packet", eap_packet->code);
-		return false;
-	}
-
-	if ((eap_packet->data[0] == 0) ||
-	    (eap_packet->data[0] >= FR_EAP_METHOD_MAX)) {
-		/*
-		 *	Handle expanded types by smashing them to
-		 *	normal types.
-		 */
-		if (eap_packet->data[0] == FR_EAP_EXPANDED_TYPE) {
-			uint8_t *p, *q;
-
-			if (len <= (EAP_HEADER_LEN + 1 + 3 + 4)) {
-				fr_strerror_const("Expanded EAP type is too short: ignoring the packet");
-				return false;
-			}
-
-			if ((eap_packet->data[1] != 0) ||
-			    (eap_packet->data[2] != 0) ||
-			    (eap_packet->data[3] != 0)) {
-				fr_strerror_const("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
-				return false;
-			}
-
-			if ((eap_packet->data[4] != 0) ||
-			    (eap_packet->data[5] != 0) ||
-			    (eap_packet->data[6] != 0)) {
-				fr_strerror_const("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
-				return false;
-			}
-
-			if ((eap_packet->data[7] == 0) ||
-			    (eap_packet->data[7] >= FR_EAP_METHOD_MAX)) {
-				fr_strerror_printf("Unsupported Expanded EAP type %s (%u): ignoring the packet",
-						   eap_type2name(eap_packet->data[7]), eap_packet->data[7]);
-				return false;
-			}
-
-			if (eap_packet->data[7] == FR_EAP_METHOD_NAK) {
-				fr_strerror_const("Unsupported Expanded EAP-NAK: ignoring the packet");
-				return false;
-			}
-
-			/*
-			 *	Re-write the EAP packet to NOT have the expanded type.
-			 */
-			q = (uint8_t *) eap_packet;
-			memmove(q + EAP_HEADER_LEN, q + EAP_HEADER_LEN + 7, len - 7 - EAP_HEADER_LEN);
-
-			p = talloc_realloc(ctx, eap_packet, uint8_t, len - 7);
-			if (!p) {
-				fr_strerror_printf("Unsupported EAP type %s (%u): ignoring the packet",
-						   eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
-				return false;
-			}
-
-			len -= 7;
-			p[2] = (len >> 8) & 0xff;
-			p[3] = len & 0xff;
-
-			*eap_packet_p = (eap_packet_raw_t *)p;
-
-			return true;
-		}
-
-		fr_strerror_printf("Unsupported EAP type %s (%u): ignoring the packet",
-				   eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
 		return false;
 	}
 
 	/* we don't expect notification, but we send it */
 	if (eap_packet->data[0] == FR_EAP_METHOD_NOTIFICATION) {
 		fr_strerror_const("Got NOTIFICATION, Ignoring the packet");
+		return false;
+	}
+
+	/*
+	 *	Handle expanded types by smashing them to
+	 *	normal types.
+	 */
+	if (eap_packet->data[0] == FR_EAP_EXPANDED_TYPE) {
+		uint8_t *p, *q;
+
+		if (len <= (EAP_HEADER_LEN + 1 + 3 + 4)) {
+			fr_strerror_const("Expanded EAP type is too short: ignoring the packet");
+			return false;
+		}
+
+		if ((eap_packet->data[1] != 0) ||
+		    (eap_packet->data[2] != 0) ||
+		    (eap_packet->data[3] != 0)) {
+			fr_strerror_const("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
+			return false;
+		}
+
+		if ((eap_packet->data[4] != 0) ||
+		    (eap_packet->data[5] != 0) ||
+		    (eap_packet->data[6] != 0)) {
+			fr_strerror_const("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
+			return false;
+		}
+
+		if ((eap_packet->data[7] <= FR_EAP_METHOD_NAK) ||
+		    (eap_packet->data[7] >= FR_EAP_METHOD_MAX)) {
+			fr_strerror_printf("Unsupported Expanded EAP type %s (%u): ignoring the packet",
+					   eap_type2name(eap_packet->data[7]), eap_packet->data[7]);
+			return false;
+		}
+
+		/*
+		 *	Re-write the EAP packet to NOT have the expanded type.
+		 */
+		q = (uint8_t *) eap_packet;
+		memmove(q + EAP_HEADER_LEN, q + EAP_HEADER_LEN + 7, len - 7 - EAP_HEADER_LEN);
+
+		p = talloc_realloc(ctx, eap_packet, uint8_t, len - 7);
+		if (!p) {
+			fr_strerror_printf("Unsupported EAP type %s (%u): ignoring the packet",
+					   eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
+			return false;
+		}
+
+		len -= 7;
+		p[2] = (len >> 8) & 0xff;
+		p[3] = len & 0xff;
+
+		*eap_packet_p = (eap_packet_raw_t *)p;
+
+		return true;
+	}
+
+	if ((eap_packet->data[0] == 0) ||
+	    (eap_packet->data[0] >= FR_EAP_METHOD_MAX)) {
+		fr_strerror_printf("Unsupported EAP type %s (%u): ignoring the packet",
+				   eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
 		return false;
 	}
 
@@ -292,15 +278,12 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 {
 	fr_pair_t		*vp;
 	eap_packet_raw_t	*eap_packet;
-	unsigned char		*ptr;
 	uint16_t		len;
-	int			total_len;
-	fr_dcursor_t		cursor;
 
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	vp = fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_message);
+	vp = fr_pair_find_by_da(vps, NULL, attr_eap_message);
 	if (!vp) {
 		fr_strerror_const("EAP-Message not found");
 		return NULL;
@@ -329,26 +312,11 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 		return NULL;
 	}
 
-	/*
-	 *	Sanity check the length, BEFORE allocating  memory.
-	 */
-	total_len = 0;
-	for (vp = fr_dcursor_head(&cursor);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		total_len += vp->vp_length;
-
-		if (total_len > len) {
-			fr_strerror_printf("Malformed EAP packet.  Length in packet header %i, "
-					   "does not match actual length %i", len, total_len);
-			return NULL;
-		}
-	}
 
 	/*
-	 *	If the length is SMALLER, die, too.
+	 *	If the data is SMALLER than the requested length, die, too.
 	 */
-	if (total_len < len) {
+	if (vp->vp_length < len) {
 		fr_strerror_printf("Malformed EAP packet.  Length in packet header does not "
 				   "match actual length");
 		return NULL;
@@ -357,22 +325,12 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	/*
 	 *	Now that we know the lengths are OK, allocate memory.
 	 */
-	eap_packet = (eap_packet_raw_t *) talloc_zero_array(ctx, uint8_t, len);
+	eap_packet = (eap_packet_raw_t *) talloc_memdup(ctx, vp->vp_octets, len);
 	if (!eap_packet) return NULL;
 
 	/*
-	 *	Copy the data from EAP-Message's over to our EAP packet.
+	 *	Do more in-depth validity checks.
 	 */
-	ptr = (unsigned char *)eap_packet;
-
-	/* RADIUS ensures order of attrs, so just concatenate all */
-	for (vp = fr_dcursor_head(&cursor);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		memcpy(ptr, vp->vp_strvalue, vp->vp_length);
-		ptr += vp->vp_length;
-	}
-
 	if (!eap_is_valid(ctx, &eap_packet)) {
 		talloc_free(eap_packet);
 		return NULL;
@@ -431,12 +389,12 @@ unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_sessio
 	fr_assert(request->parent);
 	fr_assert(virtual_server);
 
-	RDEBUG2("Running request through virtual server \"%s\"", cf_section_name2(virtual_server_cs(virtual_server)));
+	RIDEBUG("Running virtual_server = %s", cf_section_name2(virtual_server_cs(virtual_server)));
 
 	/*
 	 *	Re-present the previously stored child's session state if there is one
 	 */
-	fr_state_restore_to_child(request, eap_session->identity, REQUEST_DATA_EAP_SESSION);
+	fr_state_restore_from_parent(request, eap_session->identity, REQUEST_DATA_EAP_SESSION);
 
 	if (fr_pair_prepend_by_da(request->request_ctx, &vp, &request->request_pairs,
 				  attr_packet_type) < 0) return UNLANG_ACTION_FAIL;

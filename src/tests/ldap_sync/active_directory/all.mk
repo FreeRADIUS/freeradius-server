@@ -20,6 +20,14 @@ $(TEST).trigger_clear:
 	${Q}rm -f $(BUILD_DIR)/tests/ldap_sync/active_directory/sync_started
 
 #
+#  The server writes sync_started once the sync is running, so the clear has to
+#  finish before the server starts.  Naming the two side by side on a test
+#  output does not order them, because make builds the order-only prerequisites
+#  of one target at the same time under "make -j".
+#
+$(OUTPUT)/radiusd.pid: | $(TEST).trigger_clear
+
+#
 #	There is a delay of up to 30 seconds looking for the output file
 #	as samba only sends results of persistent LDAP searches on a polled
 #	basis.  Real Active Directory sends the results immediately.

@@ -30,7 +30,6 @@ typedef struct fr_timer_list_s fr_timer_list_t;
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/lst.h>
-#include <freeradius-devel/util/rb.h>
 
 FR_DLIST_TYPES(timer)
 FR_DLIST_TYPEDEFS(timer, fr_timer_head_t, fr_timer_entry_t)
@@ -249,7 +248,7 @@ static timer_list_funcs_t const timer_funcs[] = {
  *	- -1 if a should occur earlier than b.
  *	- 0 if both events occur at the same time.
  */
-static int8_t timer_cmp(void const *a, void const *b)
+static fr_cmp_ret_t timer_cmp(void const *a, void const *b)
 {
 	fr_timer_t const *ev_a = a, *ev_b = b;
 
@@ -706,11 +705,11 @@ int fr_timer_delete(fr_timer_t **ev_p)
 	 */
 	if (likely(ret == 0)) {
 		*ev_p = NULL;
-	} else {
-		EVENT_DEBUG("Deleting timer %p failed: %s", ev, fr_strerror_peek());
+		return 0;
 	}
 
-	return 0;
+	EVENT_DEBUG("Deleting timer %p failed: %s", ev, fr_strerror_peek());
+	return -1;
 }
 
 /** Internal timestamp representing when the timer should fire
@@ -730,7 +729,7 @@ fr_time_t fr_timer_when(fr_timer_t *ev)
 fr_time_delta_t fr_timer_remaining(fr_timer_t *ev)
 {
 	if (!fr_timer_armed(ev)) return fr_time_delta_wrap(0);
-	return fr_time_sub(ev->tl->pub.time(), ev->when);
+	return fr_time_sub(ev->when, ev->tl->pub.time());
 }
 
 /** Check if a timer event is armed
@@ -760,11 +759,13 @@ static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
 {
 	fr_timer_cb_t	callback;
 	void		*uctx;
+	void		*item;
 	fr_timer_t	*ev;
 	int		fired = 0;
 
 	while (fr_lst_num_elements(tl->lst) > 0) {
-		ev = talloc_get_type_abort(fr_lst_peek(tl->lst), fr_timer_t);
+		fr_lst_peek(&item, tl->lst);
+		ev = talloc_get_type_abort(item, fr_timer_t);
 
 		/*
 		 *	See if it's time to do this one.
@@ -893,7 +894,7 @@ static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when)
 			return fired;
 		}
 
-		fr_rb_remove(tl->shared.rb, uctx);
+		fr_rb_remove(NULL, tl->shared.rb, uctx);
 
 		tl->shared.callback(tl, *when, uctx);
 
@@ -978,7 +979,11 @@ int fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when)
  */
 static fr_timer_t *timer_list_lst_head(fr_timer_list_t *tl)
 {
-	return fr_lst_peek(tl->lst);
+	fr_timer_t *ev;
+
+	fr_lst_peek((void **)&ev, tl->lst);
+
+	return ev;
 }
 
 /** Return the head of the ordered list
@@ -1006,7 +1011,7 @@ static int timer_list_lst_deferred(fr_timer_list_t *tl)
 	fr_timer_t *ev;
 
 	while((ev = timer_pop_head(&tl->deferred))) {
-		if (unlikely(timer_lst_insert_at(tl, ev)) < 0) {
+		if (unlikely(timer_lst_insert_at(tl, ev) < 0)) {
 			timer_insert_head(&tl->deferred, ev);	/* Don't lose track of events we failed to insert */
 			return -1;
 		}
@@ -1070,12 +1075,11 @@ static int timer_list_shared_deferred(fr_timer_list_t *tl)
 		fr_rb_remove_by_inline_node(tl->shared.deferred,
 					    (fr_rb_node_t *) (((uintptr_t) (uctx)) + tl->shared.node_offset));
 
-		fr_rb_insert(tl->shared.deferred, uctx);
+		fr_rb_insert(tl->shared.rb, uctx);
 	}
 
 	return 0;
 }
-
 
 static uint64_t timer_list_lst_num_events(fr_timer_list_t *tl)
 {
@@ -1256,6 +1260,8 @@ static fr_timer_list_t *timer_list_alloc(TALLOC_CTX *ctx, fr_timer_list_t *paren
 
 /** Allocate a new lst based timer list
  *
+ * @note Entries may be inserted in any order.
+ *
  * @param[in] ctx	to insert head timer event into.
  * @param[in] parent	to insert the head timer event into.
  */
@@ -1281,6 +1287,8 @@ fr_timer_list_t *fr_timer_list_lst_alloc(TALLOC_CTX *ctx, fr_timer_list_t *paren
 }
 
 /** Allocate a new sorted event timer list
+ *
+ * @note Entries must be inserted in the order that they will fire.
  *
  * @param[in] ctx	to allocate the event timer list from.
  * @param[in] parent	to insert the head timer event into.
@@ -1347,12 +1355,12 @@ int fr_timer_uctx_insert(fr_timer_list_t *tl, void *uctx)
 	fr_assert(tl->type == TIMER_LIST_TYPE_SHARED);
 
 	if (tl->in_handler) {
-		if (!fr_rb_insert(tl->shared.deferred, uctx)) return -1;
+		if (fr_rb_insert(tl->shared.deferred, uctx) != 0) return -1;
 
 		return 0;
 	}
 
-	if (!fr_rb_insert(tl->shared.rb, uctx)) return -1;
+	if (fr_rb_insert(tl->shared.rb, uctx) != 0) return -1;
 
 	return timer_list_parent_update(tl);
 }
@@ -1409,7 +1417,7 @@ typedef struct {
 	uint32_t	count;
 } fr_event_counter_t;
 
-static int8_t timer_location_cmp(void const *one, void const *two)
+static fr_cmp_ret_t timer_location_cmp(void const *one, void const *two)
 {
 	fr_event_counter_t const	*a = one;
 	fr_event_counter_t const	*b = two;
@@ -1429,7 +1437,7 @@ static int _event_report_process(fr_rb_tree_t **locations, size_t array[], fr_ti
 			fr_event_counter_t find = { .file = ev->file, .line = ev->line };
 			fr_event_counter_t *counter;
 
-			counter = fr_rb_find(locations[i], &find);
+			fr_rb_find((void **)&counter, locations[i], &find);
 			if (!counter) {
 				counter = talloc(locations[i], fr_event_counter_t);
 				if (!counter) {

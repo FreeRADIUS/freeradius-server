@@ -42,6 +42,15 @@ typedef struct {
 								///< sections run in the server_cs.
 } unlang_call_t;
 
+/** A module stack entry
+ *
+ * Represents a single module call on the unlang stack.
+ */
+typedef struct {
+	char const			*module;		//!< module name from request->module
+} unlang_frame_state_call_t;
+
+
 /** Cast a group structure to the call keyword extension
  *
  */

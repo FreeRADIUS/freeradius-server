@@ -34,15 +34,15 @@ extern "C" {
 
 typedef struct fr_htrie_s fr_htrie_t;
 
-typedef void *(*fr_htrie_find_t)(void *ht, void const *data);
+typedef int (*fr_htrie_find_t)(void **found, void *ht, void const *data);
 
-typedef bool (*fr_htrie_insert_t)(void *ht, void const *data);
+typedef int (*fr_htrie_insert_t)(void *ht, void const *data);
 
 typedef int (*fr_htrie_replace_t)(void **old, void *ht, void const *data);
 
-typedef void *(*fr_htrie_remove_t)(void *ht, void const *data);
+typedef int (*fr_htrie_remove_t)(void **removed, void *ht, void const *data);
 
-typedef bool (*fr_htrie_delete_t)(void *ht, void const *data);
+typedef int (*fr_htrie_delete_t)(void *ht, void const *data);
 
 typedef uint32_t (*fr_htrie_num_elements_t)(void *ht);
 
@@ -104,23 +104,23 @@ fr_htrie_t *fr_htrie_alloc(TALLOC_CTX *ctx,
 /** Match data in a htrie
  *
  */
-static inline CC_HINT(nonnull) void *fr_htrie_match(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull) int fr_htrie_match(void **found, fr_htrie_t *ht, void const *data)
 {
-	return ht->funcs.match(ht->store, data);
+	return ht->funcs.match(found, ht->store, data);
 }
 
 /** Find data in a htrie
  *
  */
-static inline CC_HINT(nonnull) void *fr_htrie_find(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull) int fr_htrie_find(void **found, fr_htrie_t *ht, void const *data)
 {
-	return ht->funcs.find(ht->store, data);
+	return ht->funcs.find(found, ht->store, data);
 }
 
 /** Insert data into a htrie
  *
  */
-static inline CC_HINT(nonnull) bool fr_htrie_insert(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull) int fr_htrie_insert(fr_htrie_t *ht, void const *data)
 {
 	return ht->funcs.insert(ht->store, data);
 }
@@ -136,15 +136,15 @@ static inline CC_HINT(nonnull(2,3)) int fr_htrie_replace(void **old, fr_htrie_t 
 /** Remove data from a htrie without freeing it
  *
  */
-static inline CC_HINT(nonnull) void *fr_htrie_remove(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull(2,3)) int fr_htrie_remove(void **removed, fr_htrie_t *ht, void const *data)
 {
-	return ht->funcs.remove(ht->store, data);
+	return ht->funcs.remove(removed, ht->store, data);
 }
 
 /** Delete data from a htrie, freeing it if free_data cb was passed to fr_htrie_alloc
  *
  */
-static inline CC_HINT(nonnull) bool fr_htrie_delete(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull) int fr_htrie_delete(fr_htrie_t *ht, void const *data)
 {
 	return ht->funcs.delete(ht->store, data);
 }

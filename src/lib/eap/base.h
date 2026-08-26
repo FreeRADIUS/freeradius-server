@@ -30,12 +30,9 @@ RCSIDH(lib_eap_base_h, "$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/eap/compose.h>
-#include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/eap/session.h>
 #include <freeradius-devel/eap/submodule.h>
-#include <freeradius-devel/eap/types.h>
 
 /* TLS configuration name */
 #define TLS_CONFIG_SECTION "tls-config"

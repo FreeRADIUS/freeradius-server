@@ -2,7 +2,7 @@
 
 Once you have verified that Samba is installed and working correctly, and that the `ntlm_auth` program works, you can proceed with configuring FreeRADIUS to use ntlm_auth. For initial testing, we use the exec module, and will run the exact command line used in the previous testing step.
 
-Edit the `ntlm_auth` module configuration which saved as raddb/mods-enabled/ntlm_auth. The example snippet shown below needs to be updated with your site parameters which includes the path and domain.
+Edit the `ntlm_auth` module configuration which saved as `mods-enabled/ntlm_auth`. The example snippet shown below needs to be updated with your site parameters which includes the path and domain.
 
 ```
 
@@ -12,7 +12,7 @@ Edit the `ntlm_auth` module configuration which saved as raddb/mods-enabled/ntlm
         }
 ```
 
-This configuration tells the server to run the ntlm_auth program with the user name and password obtained from the Access-Request. You will also have to list ntlm_auth in the authenticate sections of each the raddb/sites-enabled/default file, and of the raddb/sites-enabled/inner-tunnel file:
+This configuration tells the server to run the ntlm_auth program with the user name and password obtained from the Access-Request. You will also have to list ntlm_auth in the authenticate sections of each the `sites-enabled/default` file, and of the `sites-enabled/inner-tunnel` file:
 
 ```
 authenticate {
@@ -24,7 +24,7 @@ authenticate {
 
 == Test ntlm_auth
 
-Add the following text for testing purposes only to the top of the users file. The "users" file is located at `raddb/mods-config/files/authorize`.
+Add the following text for testing purposes only to the top of the users file. The "users" file is located at `mods-config/files/authorize`.
 
 ```
 DEFAULT     Auth-Type = ntlm_auth
@@ -51,7 +51,7 @@ This text means that authentication succeeded. A few lines above this text, the 
 
 == Configure FreeRADIUS to use `ntlm_auth` for MS-CHAP
 
-Once you have the previous steps working, configure FreeRADIUS to use `ntlm_auth` for MS-CHAP. First, delete the testing entry used above from the users file, as leaving it in will break other authentication types. Then, find the mschap module in raddb/modules/mschap file, and look for the line containing `ntlm_auth = `. It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
+Once you have the previous steps working, configure FreeRADIUS to use `ntlm_auth` for MS-CHAP. First, delete the testing entry used above from the users file, as leaving it in will break other authentication types. Then, find the mschap module in `mods-enabled/mschap` file, and look for the line containing `ntlm_auth = `. It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
 
 
 ```
@@ -80,3 +80,6 @@ ntlm_auth_username = "username: %{mschap:User-Name}
 ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
 
 With the settings above it works correctly, so even if it is unnecessary, it doesn't break anything. It hasn't been tested without this option while denying ntlmv1 overall on the AD DC, but it is thought that it will work without it.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

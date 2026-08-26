@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -261,7 +261,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 	if (finfo.st_size > BOOTSTRAP_MAX) {
 	too_big:
-		fr_strerror_printf("Size of SQL (%zu) file exceeds limit (%uk)",
+		fr_strerror_printf("Size of SQL (%zuk) file exceeds limit (%uk)",
 		       (size_t) finfo.st_size / 1024, BOOTSTRAP_MAX / 1024);
 		goto error;
 	}
@@ -520,7 +520,7 @@ static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t
 			char const *p;
 			p = (char const *) sqlite3_column_text(conn->statement, i);
 
-			if (p) MEM(row[i] = talloc_typed_strdup(row, p));
+			if (p) MEM(row[i] = talloc_strdup(row, p));
 		}
 			break;
 
@@ -696,7 +696,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (!inst->filename) {
 		MEM(inst->filename = talloc_typed_asprintf(inst, "%s/%s",
-							   main_config->raddb_dir, config->sql_db));
+							   main_config->confdir, config->sql_db));
 	}
 
 	/*
@@ -738,7 +738,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			buff = talloc_array(mctx->mi->conf, char, len);
 			strlcpy(buff, inst->filename, len);
 		} else {
-			MEM(buff = talloc_typed_strdup(mctx->mi->conf, inst->filename));
+			MEM(buff = talloc_strdup(mctx->mi->conf, inst->filename));
 		}
 
 		ret = fr_mkdir(NULL, buff, -1, 0700, NULL, NULL);

@@ -156,18 +156,18 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 		fr_assert(fr_dict_by_da(vp->da) == dict_tacacs);
 
 		/*
-		 *	RFC 8907 attributes.
-		 */
-		if (vp->da->parent->flags.is_root) {
-			arg_cnt++;
-			continue;
-		}
-
-		/*
 		 *	Recurse into children.
 		 */
 		if (vp->vp_type == FR_TYPE_VENDOR) {
 			arg_cnt += tacacs_encode_body_arg_cnt(&vp->vp_group, NULL);
+			continue;
+		}
+
+		/*
+		 *	RFC 8907 attributes.
+		 */
+		if (vp->da->parent->flags.is_root) {
+			arg_cnt++;
 			continue;
 		}
 
@@ -217,7 +217,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 			 *	Nested attribute: just recurse.
 			 */
 			child_argc = fr_pair_list_num_elements(&vp->vp_group);
-			if (child_argc > (arg_cnt - i)) child_argc = arg_cnt = i;
+			if (child_argc > (arg_cnt - i)) child_argc = arg_cnt - i;
 
 			slen = tacacs_encode_body_arg_n(&work_dbuff, child_argc, &arg_len[i], &vp->vp_group, vp->da);
 			if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
@@ -259,12 +259,16 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 				}
 
 				slen = fr_sbuff_in_sprintf(&sbuff, "%lu", box.vb_uint64);
-				if (slen <= 0) return -1;
+				if (slen < 0) {
+				error:
+					fr_strerror_printf("Failed encoding %s", vp->da->name);
+					return -1;
+				}
 				break;
 
 			default:
 				slen = fr_pair_print_value_quoted(&sbuff, vp, T_BARE_WORD);
-				if (slen <= 0) return -1;
+				if (slen < 0) goto error;
 			}
 
 			FR_DBUFF_IN_MEMCPY_RETURN(&arg_dbuff, buffer, (size_t) slen);
@@ -329,6 +333,11 @@ static ssize_t tacacs_encode_chap(fr_dbuff_t *dbuff, fr_tacacs_packet_t *packet,
 		return -1;
 	}
 
+	if (chap->vp_length <= 1) {
+		fr_strerror_printf("%s is too small", da_chap->name);
+		return -1;
+	}
+
 	if ((chap->vp_length + challenge->vp_length) > 255) {
 		fr_strerror_printf("%s and %s are longer than 255 octets", da_chap->name, da_challenge->name);
 		return -1;
@@ -376,7 +385,6 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	fr_tacacs_packet_hdr_t const *original = (fr_tacacs_packet_hdr_t const *) original_packet;
 
 	if (!vps) {
-	error:
 		fr_strerror_const("Cannot encode empty packet");
 		return -1;
 	}
@@ -724,7 +732,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author_req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_req.arg_cnt, &packet->author_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_req.arg_cnt, &packet->author_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) return -1;
 			}
 
 			goto check_request;
@@ -795,7 +803,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author_reply.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_reply.arg_cnt, &packet->author_reply.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_reply.arg_cnt, &packet->author_reply.arg_len[0], vps, attr_tacacs_argument_list) < 0) return -1;
 			}
 
 			goto check_reply;
@@ -865,7 +873,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->acct_req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->acct_req.arg_cnt, &packet->acct_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->acct_req.arg_cnt, &packet->acct_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) return -1;
 			}
 
 		check_request:
@@ -1045,12 +1053,13 @@ static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 
-	return fr_tacacs_encode(&FR_DBUFF_TMP(data, data_len), NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), 0, vps);
+	return fr_tacacs_encode(&FR_DBUFF_TMP(data, data_len), NULL, test_ctx->secret,
+				test_ctx->secret ? talloc_strlen(test_ctx->secret) : 0, 0, vps);
 }
 
-static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
+static int _encode_test_ctx(fr_tacacs_ctx_t *test_ctx)
 {
-	talloc_const_free(proto_ctx->secret);
+	talloc_const_free(test_ctx->secret);
 
 	fr_tacacs_global_free();
 

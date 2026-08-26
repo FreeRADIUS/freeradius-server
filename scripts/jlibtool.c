@@ -157,6 +157,12 @@ typedef struct {
 
 	char const			*pic_flag;
 	char const			*rpath;
+	char const			*rpath_link;	//!< Link-time-only search path flag, if the toolchain supports one.
+						//!< Emitted alongside rpath so the linker can resolve transitively
+						//!< NEEDED shared libraries during symbol verification without
+						//!< pulling them into the output's own NEEDED entries. Set this
+						//!< for GNU ld toolchains; leave NULL on linkers that lack the
+						//!< concept (ld64, Sun ld, etc.).
 	char const			*shared_opts;
 	char const			*module_opts;
 	char const			*linker_flag_prefix;
@@ -213,6 +219,7 @@ static const target_t target_linux_and_bsd = {
 	.librarian_opts			= "cr",
 	.pic_flag			= "-fPIC",
 	.rpath				= "-rpath",
+	.rpath_link			= "-rpath-link",
 	.shared_opts			= "-shared",
 	.module_opts			= "-shared",
 	.linker_flag_prefix		= "-Wl,",
@@ -234,6 +241,7 @@ static const target_t target_solaris_gnu = {
 	.librarian_opts			= "cr",
 	.pic_flag			= "-fPIC",
 	.rpath				= "-rpath",
+	.rpath_link			= "-rpath-link",
 	.shared_opts			= "-shared",
 	.module_opts			= "-shared",
 	.linker_flag_prefix		= "-Wl,",
@@ -622,6 +630,7 @@ static void __attribute__((noreturn)) usage(int code)
 	printf("  --shared	           Build shared libraries when using --mode=link\n");
 	printf("  --show-config	           show all configuration variables\n");
 	printf("                           Or --show-config=VALUE to see just one value\n");
+	printf("  --profile=filename	   Set 'CPUPROFILE=filename' when using --execute\n");
 	printf("  --version	           print version information\n");
 
 	printf("\nMODE must be one of the following:\n\n");
@@ -886,6 +895,8 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 			argument++;
 		}
 		puts("");
+
+		fflush(stdout);
 	}
 
 	if (cmd->options.dry_run) {
@@ -1082,7 +1093,7 @@ static void add_runtime_dir_lib(char const *arg, command_t *cmd)
 
 static int parse_long_opt(char const *arg, command_t *cmd)
 {
-	char *equal_pos = strchr(arg, '=');
+	char const *equal_pos = strchr(arg, '=');
 	char var[50];
 	char value[500];
 	static bool toolset_set = false;
@@ -1238,6 +1249,16 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 	} else if (strcmp(var, "timeout") == 0) {
 		cmd->timeout = strtoul(value, NULL, 10);
 		NOTICE("Timeout %u\n", cmd->timeout);
+
+	} else if (strcmp(var, "profile") == 0) {
+		/*
+		 *	This option allows you to use jlibtool to run a program from within the build tree,
+		 *	but where we don't profile jlibtool itself.
+		 *
+		 *	If instead we did "CPUPROFILE=foo jlibtool --exec..", it would profile jlibtool.
+		 */
+		setenv("CPUPROFILE", value, 1);
+
 	} else {
 		return 0;
 	}
@@ -1742,27 +1763,45 @@ static void add_dynamic_link_opts(command_t *cmd, count_chars *args)
 	}
 }
 
-/* Read the final install location and add it to runtime library search path. */
-static void add_rpath(count_chars *cc, char const *path)
+/* Build a "<prefix><flag>[=]<path>" argument and append it to cc. */
+static void push_path_flag(count_chars *cc, char const *flag, char const *path)
 {
 	int size = 0;
 	char *tmp;
 
 	if (target->linker_flag_prefix) size = strlen(target->linker_flag_prefix);
-	size = size + strlen(path) + strlen(target->rpath) + 2;
+	size = size + strlen(path) + strlen(flag) + 2;
 	tmp = lt_malloc(size);
 
 	if (target->linker_flag_prefix) {
 		strcpy(tmp, target->linker_flag_prefix);
-		strcat(tmp, target->rpath);
+		strcat(tmp, flag);
 	} else {
-		strcpy(tmp, target->rpath);
+		strcpy(tmp, flag);
 	}
 
 	if (!target->linker_flag_no_equals) strcat(tmp, "=");
 	strcat(tmp, path);
 
 	push_count_chars(cc, tmp);
+}
+
+/* Read the final install location and add it to runtime library search path. */
+static void add_rpath(count_chars *cc, char const *path)
+{
+	push_path_flag(cc, target->rpath, path);
+
+	/*
+	 *	Modern GNU ld defaults to --no-copy-dt-needed-entries, so
+	 *	transitively-NEEDED shared libraries of libraries on the link
+	 *	line aren't searched via the consumer's command-line -L paths.
+	 *	-rpath-link tells the linker where to find those at link time
+	 *	for symbol verification, without affecting what ends up in the
+	 *	output's own DT_NEEDED.
+	 */
+	if (target->rpath_link) {
+		push_path_flag(cc, target->rpath_link, path);
+	}
 }
 
 static void add_rpath_file(count_chars *cc, char const *arg)
@@ -1838,8 +1877,8 @@ static void add_dylink_noinstall(count_chars *cc, char const *arg, int pathlen,
 static void add_minus_l(count_chars *cc, char const *arg)
 {
 	char *newarg;
-	char *name = strrchr(arg, '/');
-	char *file = strrchr(arg, '.');
+	char *name = UNCONST(char *, strrchr(arg, '/'));
+	char *file = UNCONST(char *, strrchr(arg, '.'));
 
 	/*
 	 * Most linkers require the -l argument value
@@ -2470,7 +2509,7 @@ static void link_fixup(command_t *cmd)
 
 				{
 					char *tmp = lt_malloc(PATH_MAX + 30);
-					char *suffix;
+					char const *suffix;
 
 					if (cmd->install_path) {
 						strcpy(tmp, cmd->install_path);

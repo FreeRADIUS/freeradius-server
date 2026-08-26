@@ -1,0 +1,11 @@
+#
+#  Test: syslog with all facility values
+#
+linelog {
+	destination = syslog
+
+	syslog {
+		facility = local0
+		severity = warning
+	}
+}

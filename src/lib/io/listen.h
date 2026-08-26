@@ -38,6 +38,7 @@ struct fr_listen {
 	fr_app_t const		*app;
 	void const		*app_instance;
 
+	CONF_SECTION		*cs;			//!< of this listener
 	CONF_SECTION		*server_cs;		//!< CONF_SECTION of the server
 
 	bool			connected;		//!< is this for a connected socket?
@@ -67,6 +68,9 @@ struct fr_async_s {
 	fr_channel_t		*channel;
 
 	fr_dlist_t		entry;		//!< in the list of requests associated with this channel
+	request_t		*request;	//!< back-pointer to the owning request so anything that
+						///< pops this async off its dlist can reach the request
+						///< without walking the talloc parent.
 
 	void			*packet_ctx;
 	fr_listen_t		*listen;	//!< How we received this request,

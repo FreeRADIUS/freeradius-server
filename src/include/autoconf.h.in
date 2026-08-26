@@ -296,9 +296,6 @@
 /* Define to 1 if you have the <openssl/crypto.h> header file. */
 #undef HAVE_OPENSSL_CRYPTO_H
 
-/* Define to 1 if you have the <openssl/engine.h> header file. */
-#undef HAVE_OPENSSL_ENGINE_H
-
 /* Define to 1 if you have the <openssl/err.h> header file. */
 #undef HAVE_OPENSSL_ERR_H
 
@@ -337,6 +334,9 @@
 
 /* Define to 1 if you have the <pthread.h> header file. */
 #undef HAVE_PTHREAD_H
+
+/* Define to 1 if you have the 'pthread_setname_np' function. */
+#undef HAVE_PTHREAD_SETNAME_NP
 
 /* Define to 1 if you have the 'pthread_sigmask' function. */
 #undef HAVE_PTHREAD_SIGMASK
@@ -560,8 +560,8 @@
 /* Define to 1 if you have the <utmp.h> header file. */
 #undef HAVE_UTMP_H
 
-/* Define to 1 if you have the <valgrind.h> header file. */
-#undef HAVE_VALGRIND_H
+/* Define to 1 if you have the <valgrind/valgrind.h> header file. */
+#undef HAVE_VALGRIND_VALGRIND_H
 
 /* Define to 1 if you have the 'vdprintf' function. */
 #undef HAVE_VDPRINTF
@@ -651,6 +651,10 @@
 /* Enable extensions on AIX, Interix, z/OS.  */
 #ifndef _ALL_SOURCE
 # undef _ALL_SOURCE
+#endif
+/* Enable extensions on Cosmopolitan Libc. */
+#ifndef _COSMO_SOURCE
+# undef _COSMO_SOURCE
 #endif
 /* Enable general extensions on macOS.  */
 #ifndef _DARWIN_C_SOURCE

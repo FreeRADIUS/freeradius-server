@@ -21,5 +21,5 @@ Network Access Servers (NAS) don't have to use AAA servers, but they almost alwa
 -   https://datatracker.ietf.org/doc/html/rfc2881[RFC 2881] Network Access Server Requirements Next Generation NAS Model
 -   https://datatracker.ietf.org/doc/html/rfc2881[RFC 2882] Network Access Servers Requirements: Extended RADIUS Practices
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

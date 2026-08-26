@@ -1,0 +1,148 @@
+# Auto generated for rocky10
+# from scripts/docker/m4/ci.rpm.m4
+#
+# Rebuild this file with `make dockerfile.ci`
+#
+ARG from=rockylinux/rockylinux:10
+FROM ${from}
+
+#
+#  Retry transient package-repo failures. dnf retries 10 times by default;
+#  cap that at 3 and shorten the per-request timeout from 30s to 15s so a
+#  hung mirror fails fast and the retry kicks in quickly. Stall detection
+#  (minrate) stays on so a stalled in-flight download still gets killed.
+#
+RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
+
+#
+#  Snapshot the Rocky mirror lists at build time so no later dnf
+#  invocation depends on the mirrors.rockylinux.org redirector (see
+#  the script header for the full story).
+#
+COPY scripts/docker/bin/dnf-mirrorlist-snapshot /usr/local/bin/dnf-mirrorlist-snapshot
+RUN dnf-mirrorlist-snapshot rocky
+#
+#  Refresh dnf metadata and install the build toolchain shared by the
+#  production, crossbuild, and CI base templates. CRB is enabled because
+#  the build-dep closure pulls packages that live there. OS_VER is
+#  substituted by the dispatcher (Dockerfile.m4) per Rocky major version.
+#
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+
+RUN dnf update -y
+RUN dnf install -y \
+		dnf-plugins-core \
+		dnf-utils \
+		epel-release \
+		git \
+		openssl \
+		procps \
+		rpmdevtools \
+		rsync
+
+RUN dnf config-manager --set-enabled crb
+
+#
+#  Snapshot the EPEL mirror lists, which only exist once epel-release
+#  is installed (the script itself arrives via common.dnf.retries.m4).
+#
+RUN dnf-mirrorlist-snapshot epel
+#
+#  Build libkqueue from source as proper RPMs (libkqueue, libkqueue-devel,
+#  libkqueue-debuginfo) so downstream dnf-builddep / Requires steps find
+#  the -devel and so a debugger sees symbols.
+#
+#  Rocky's arm64 archives don't currently ship libkqueue at all, and the
+#  upstream project's own packaging keeps default optimisation flags that
+#  strip the symbols we care about -- RelWithDebInfo with explicit C
+#  flags overrides that and CPACK_RPM_DEBUGINFO_PACKAGE=ON makes cpack
+#  emit a separate -debuginfo package alongside the main rpm.
+#
+#  libkqueue numbers a package with the most recent release tag, followed by
+#  the count of commits made since that tag, for example 2.7.0.41.  The
+#  NetworkRADIUS extras repository numbers its own libkqueue packages the
+#  same way.  Two builds from the same source therefore reach the same
+#  number, and a later "dnf update" finds nothing newer to install.
+#
+#  libkqueue asks git for the tag and the count, using "git describe".  A
+#  clone made with --depth 1 downloads no tags, git describe then answers
+#  nothing, and libkqueue falls back to a number written into its own
+#  CMakeLists.txt.  dnf reads the fallback as older than the repository's
+#  package and replaces the build here.  So the clone below downloads the
+#  whole history.
+#
+#  Build out-of-tree (separate build dir) because cpack's debuginfo
+#  generator demands a source-vs-build path distinction to relocate
+#  debug records.
+#
+RUN dnf install -y gcc make cmake git rpm-build && \
+    git clone https://github.com/mheily/libkqueue.git /tmp/libkqueue-from-source-for-debuginfo-packaging && \
+    mkdir /tmp/libkqueue-from-source-build && \
+    cd /tmp/libkqueue-from-source-build && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib64 \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g3 -O1 -fno-omit-frame-pointer -DNDEBUG" \
+        -DCPACK_RPM_DEBUGINFO_PACKAGE=ON \
+        -DCPACK_BUILD_SOURCE_DIRS=/tmp/libkqueue-from-source-for-debuginfo-packaging \
+        /tmp/libkqueue-from-source-for-debuginfo-packaging && \
+    make && \
+    cpack -G RPM && \
+    rpm -i --force libkqueue*.rpm && \
+    mkdir -p /opt/libkqueue-rpms && cp libkqueue*.rpm /opt/libkqueue-rpms/ && \
+    cd / && rm -rf /tmp/libkqueue-from-source-for-debuginfo-packaging /tmp/libkqueue-from-source-build
+
+#
+#  Extras the CI base needs on top of the common toolchain. libnl3-devel
+#  and which feed the eapol_test build; xz feeds the tmate debug step;
+#  gcc / make / perl / rpm-build are pulled by dnf builddep anyway but
+#  installing them eagerly keeps the layer cache stable when freeradius.spec
+#  changes.
+#
+RUN dnf install -y \
+		gcc \
+		libnl3-devel \
+		make \
+		perl \
+		rpm-build \
+		which \
+		xz
+
+#
+#  Set up NetworkRADIUS extras repository. OS_NAME is substituted by the
+#  dispatcher (Dockerfile.m4); $releasever resolves at dnf runtime so the
+#  same repo file works on rocky9 and rocky10.
+#
+RUN curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
+        -o /etc/pki/rpm-gpg/packages.networkradius.com.asc \
+        "https://packages.networkradius.com/pgp/packages%40networkradius.com"
+
+RUN echo $'[networkradius-extras]\n\
+name=NetworkRADIUS-extras-$releasever\n\
+baseurl=http://packages.networkradius.com/extras/rocky/$releasever/\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc'\
+> /etc/yum.repos.d/networkradius-extras.repo
+RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
+
+#
+#  Pre-install the build-dep closure for the FreeRADIUS spec. The spec is
+#  baked in at image-build time; ci-rpm.yml only tops up when a commit
+#  touches the packaging, since ci-pipeline.yml refreshes this image before
+#  the build legs in that case. Run twice; dnf occasionally misses something
+#  first time.
+#
+COPY redhat/freeradius.spec /tmp/freeradius.spec
+RUN dnf builddep -y /tmp/freeradius.spec && \
+	dnf builddep -y /tmp/freeradius.spec && \
+	rm /tmp/freeradius.spec
+
+#
+#  Trust any workspace path. The job container runs as root but the
+#  bind-mounted runner workspace is owned by the runner user; without
+#  this, git refuses with "dubious ownership" the moment a Makefile
+#  runs `git rev-parse`. System-wide so it applies to every shell.
+#
+RUN git config --system --add safe.directory '*'

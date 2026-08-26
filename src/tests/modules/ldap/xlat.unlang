@@ -8,13 +8,13 @@ string result_string
 test_string := "safe string"
 
 # String with no escaping
-result_string := %ldap.uri.escape(%{test_string})
+result_string := %ldap.dn.escape(%{test_string})
 
 if (!(result_string == "safe string")) {
         test_fail
 }
 
-result_string := %ldap.uri.unescape(%{result_string})
+result_string := %ldap.dn.unescape(%{result_string})
 
 if (!(result_string == 'safe string')) {
         test_fail
@@ -22,13 +22,13 @@ if (!(result_string == 'safe string')) {
 
 # String with some characters to escape
 test_string := 'non safe,+"\<>;*=() string'
-result_string := %ldap.uri.escape(%{test_string})
+result_string := %ldap.dn.escape(%{test_string})
 
 if (!(result_string == 'non safe\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29 string')) {
         test_fail
 }
 
-result_string := %ldap.uri.unescape(%{result_string})
+result_string := %ldap.dn.unescape(%{result_string})
 
 if (!(result_string == 'non safe,+"\<>;*=() string')) {
         test_fail
@@ -36,7 +36,7 @@ if (!(result_string == 'non safe,+"\<>;*=() string')) {
 
 # String where all characters require escaping
 test_string := ',+"\<>;*=()'
-result_string := %ldap.uri.escape(%{test_string})
+result_string := %ldap.dn.escape(%{test_string})
 
 if (!(result_string == '\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29')) {
         test_fail
@@ -47,21 +47,77 @@ control += {
 	Filter-Id = 'safe'
 	Filter-Id = 'non safe,+'
 }
-control.Filter-Id := %ldap.uri.escape(control.Filter-Id[*])
+control.Filter-Id := %ldap.dn.escape(control.Filter-Id[*])
 if ((control.Filter-Id[0] != 'safe') || (control.Filter-Id[1] != 'non safe\2c\2b')) {
 	test_fail
 }
 
-control.Filter-Id := %ldap.uri.unescape(control.Filter-Id[*])
+control.Filter-Id := %ldap.dn.unescape(control.Filter-Id[*])
 if ((control.Filter-Id[0] != 'safe') || (control.Filter-Id[1] != 'non safe,+')) {
 	test_fail
 }
 
-result_string := %ldap.uri.unescape(%{result_string})
+result_string := %ldap.dn.unescape(%{result_string})
 
 if (!(result_string == ',+"\<>;*=()')) {
         test_fail
 }
+
+# Filter escape: only *()\  are escaped; , + = and others are left as-is
+test_string := '*()\,+='
+result_string := %ldap.filter.escape(%{test_string})
+if (!(result_string == '\2a\28\29\5c,+=')) {
+	test_fail
+}
+
+result_string := %ldap.filter.unescape(%{result_string})
+if (!(result_string == '*()\,+=')) {
+	test_fail
+}
+
+#
+#  Injection scenario tests: verify that dn.escape and filter.escape
+#  neutralize attack payloads differently, reflecting the distinct RFC rules.
+#
+
+# DN injection: a crafted value containing , and = would add extra DN components
+# if left unescaped.  dn.escape converts them to \HH.
+test_string := 'john,ou=evil,dc=attacker,dc=com'
+result_string := %ldap.dn.escape(%{test_string})
+if (!(result_string == 'john\2cou\3devil\2cdc\3dattacker\2cdc\3dcom')) {
+	test_fail
+}
+
+# filter.escape leaves , and = alone (OpenLDAP does not decode non-required \HH
+# sequences, so escaping = as \3d would cause silent match failures).
+result_string := %ldap.filter.escape(%{test_string})
+if (!(result_string == 'john,ou=evil,dc=attacker,dc=com')) {
+	test_fail
+}
+
+# Filter injection: parens and asterisk must be escaped to prevent filter manipulation.
+# Pipe and equals are NOT in filter_specials.
+test_string := 'john)(|(uid=*)'
+result_string := %ldap.filter.escape(%{test_string})
+if (!(result_string == 'john\29\28|\28uid=\2a\29')) {
+	test_fail
+}
+
+# The same payload through dn.escape also escapes = (to \3d).
+result_string := %ldap.dn.escape(%{test_string})
+if (!(result_string == 'john\29\28|\28uid\3d\2a\29')) {
+	test_fail
+}
+
+# Wildcard injection via the %ldap() URI xlat: User-Name='*' becomes (uid=*)
+# without escaping, matching every user.  Wrapping with filter.escape makes it
+# (uid=\2a) which matches nobody.
+User-Name := '*'
+result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?displayName?sub?(uid=%ldap.filter.escape(%{User-Name}))")
+if (result_string) {
+	test_fail
+}
+User-Name := 'john'
 
 result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?displayName?sub?(uid=john)")
 
@@ -105,7 +161,7 @@ if (!(result_string == "Fred Jones")) {
 }
 
 # Reference an alternative LDAP server in the xlat
-result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:%ldap.uri.escape(%{$ENV{LDAP_TEST_SERVER_PORT} + 1})/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)")
+result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:%ldap.dn.escape(%{$ENV{LDAP_TEST_SERVER_PORT} + 1})/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)")
 
 if (!(result_string == "Fred Jones")) {
         test_fail
@@ -159,6 +215,14 @@ if (result_string != 'ldap://localhost:389/ou=people,dc=example,dc=com?displayNa
 
 result_string := %ldap.uri.attr_option("ldap://localhost:3890/ou=people,dc=example,dc=com?displayName;binary;lang_en?base?(uid=john)", "binary");
 if (result_string != 'ldap://localhost:3890/ou=people,dc=example,dc=com?displayName;binary;lang_en?base?(uid=john)') {
+	test_fail
+}
+
+#
+#  RFC 4532 whoami returns the DN the directory resolved for the
+#  admin bind on the module's connections.
+#
+if (%ldap.whoami() != 'cn=admin,dc=example,dc=com') {
 	test_fail
 }
 

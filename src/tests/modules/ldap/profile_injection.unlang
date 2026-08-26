@@ -1,0 +1,28 @@
+#
+#  Verify that User-Profile DN injection is blocked by call_env escaping.
+#
+#  Set a crafted User-Profile value before running ldap.  Without DN escaping
+#  on the profile lookup, filter-special chars in a DN reference can be used
+#  to manipulate the search.  With LDAP_DN_CALL_ENV_ESCAPE the crafted DN is
+#  escaped and simply returns notfound, leaving the user authorised via the
+#  default (radprofile) profile only.
+#
+control.User-Profile := 'cn=suspended)(|(cn=*,ou=profiles,dc=example,dc=com'
+
+ldap
+
+if (!(ok || updated)) {
+	test_fail
+}
+
+#  radprofile should still have been applied.
+if (!(reply.Idle-Timeout == 3600)) {
+	test_fail
+}
+
+#  The injected profile must not have been applied.
+if (reply.Reply-Message == 'User-Suspended') {
+	test_fail
+}
+
+test_pass

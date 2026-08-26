@@ -49,7 +49,7 @@ case "$1" in
         # install or an upgrade from before there were links; users may
         # want to remove them...
         if [ -z "$2" ] || dpkg --compare-versions "$2" lt 2.0.4+dfsg-4; then
-          for site in default inner-tunnel; do
+          for site in default inner-tunnel proxy; do
             if test ! -h /etc/freeradius/sites-enabled/$site && \
                test ! -e /etc/freeradius/sites-enabled/$site; then
               ln -s ../sites-available/$site /etc/freeradius/sites-enabled/$site

@@ -87,6 +87,7 @@ extern "C" {
 #define DOC_ROOT_URL "https://www.freeradius.org/documentation/freeradius-server/" STRINGIFY(RADIUSD_DOC_VERSION)
 #define DOC_KEYWORD_URL(_x) DOC_ROOT_URL "/reference/unlang/" STRINGIFY(_x) ".html"
 #define DOC_KEYWORD_REF(_x) "For more information, please see " DOC_KEYWORD_URL(_x)
+#define DOC_ROOT_REF(_x) "For more information, please see " STRINGIFY(_x) ".html"
 
 /*
  *	Version check.

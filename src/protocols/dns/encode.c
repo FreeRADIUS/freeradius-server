@@ -29,7 +29,6 @@
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/encode.h>
 
 #include "dns.h"
 #include "attrs.h"
@@ -131,7 +130,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	if (vp->da != da) {
+	if ((vp->da != da) && !vp->da->flags.is_raw) {
 		fr_strerror_printf("%s: Top of stack does not match vp->da", __FUNCTION__);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
@@ -150,10 +149,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	DNS labels get a special encoder.
 		 */
 		if (fr_dns_flag_dns_label_any(da)) {
-			fr_dbuff_marker_t	last_byte, src;
-
-			fr_dbuff_marker(&last_byte, &work_dbuff);
-			fr_dbuff_marker(&src, &work_dbuff);
 			FR_PROTO_TRACE("encode DNS label %s", vp->vp_strvalue);
 			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, fr_dns_flag_dns_label(da),
 								 &vp->data, packet_ctx->lb);
@@ -174,7 +169,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	case FR_TYPE_IPV6_PREFIX:
-		fr_strerror_const("invalid data type - ipv4prefix");
+		fr_strerror_const("invalid data type - ipv6prefix");
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	case FR_TYPE_BOOL:
@@ -368,6 +363,8 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 
 /** Encode a Dns option and any sub-options.
  *
+ *  This function is only used by the test harness.
+ *
  * @param[out] dbuff		Where to write encoded DHCP attributes.
  * @param[in] cursor		with current VP set to the option to be encoded.
  *				Will be advanced to the next option to encode.
@@ -380,6 +377,7 @@ static ssize_t fr_dns_encode_rr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 {
 	ssize_t			slen;
 	fr_pair_t		*vp;
+	fr_dcursor_t		child_cursor;
 	fr_da_stack_t		da_stack;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, UINT16_MAX);
 
@@ -389,19 +387,15 @@ static ssize_t fr_dns_encode_rr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	FR_PROTO_TRACE("encode_rr -- remaining %zd", fr_dbuff_remaining(&work_dbuff));
 
 	vp = fr_dcursor_current(cursor);
-	if (vp->vp_type == FR_TYPE_STRUCT) {
-		fr_dcursor_t child_cursor;
+	if (!vp) return 0;
 
-		fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
+	fr_assert(vp->vp_type == FR_TYPE_STRUCT);
 
-		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &child_cursor, encode_ctx, encode_value, encode_child);
-		if (slen <= 0) return slen;
-		(void) fr_dcursor_next(cursor);
+	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 
-	} else {
-		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, cursor, encode_ctx, encode_value, encode_child);
-		if (slen <= 0) return slen;
-	}
+	slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &child_cursor, encode_ctx, encode_value, encode_child);
+	if (slen <= 0) return slen;
+	(void) fr_dcursor_next(cursor);
 
 	FR_PROTO_TRACE("Complete rr is %zu byte(s)", fr_dbuff_used(&work_dbuff));
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), NULL);
@@ -420,6 +414,7 @@ static ssize_t encode_record(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, fr_pair
 	vp = fr_pair_dcursor_by_da_init(&cursor, vps, attr);
 	if (!vp) {
 		FR_PROTO_TRACE("      %s not found in list", attr->name);
+		counter[0] = counter[1] = 0;
 		return 0;
 	}
 
@@ -454,7 +449,7 @@ ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *pack
 	ssize_t			slen;
 	uint8_t			*packet;
 	fr_pair_t		*vp;
-	fr_dcursor_t		cursor, child_cursor;
+	fr_dcursor_t		cursor;
 	fr_da_stack_t		da_stack;
 
 	packet = fr_dbuff_current(&work_dbuff);
@@ -474,7 +469,6 @@ ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *pack
 	/*
 	 *	Encode the header.
 	 */
-	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	fr_proto_da_stack_build(&da_stack, attr_dns_packet);
 
 	slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &cursor, packet_ctx, encode_value, NULL);

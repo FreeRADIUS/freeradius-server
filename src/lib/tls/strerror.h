@@ -40,7 +40,6 @@ extern "C" {
  *
  * @param[in] _chain	A stack of X509 certificates representing the chain.
  * @param[in] _leaf	The leaf certificate.  May be NULL.
- * @param[in] _marker	The certificate to emit a marker for.
  */
 #define		fr_tls_strerror_push_chain(_chain, _leaf) \
 			_fr_tls_strerror_push_chain( __FILE__, __LINE__, _chain, _leaf)
@@ -53,7 +52,7 @@ void		_fr_tls_strerror_push_chain(char const *file, int line, STACK_OF(X509) *ch
  * @param[in] _marker	The certificate to emit a marker for.
  */
 #define		fr_tls_strerror_push_chain_marker(_chain, _leaf, _marker) \
-			_fr_tls_strerror_push_chain( __FILE__, __LINE__, _chain, _leaf, _marker)
+			_fr_tls_strerror_push_chain_marker( __FILE__, __LINE__, _chain, _leaf, _marker)
 void		_fr_tls_strerror_push_chain_marker(char const *file, int line,
 					  STACK_OF(X509) *chain, X509 *cert, X509 *marker);
 

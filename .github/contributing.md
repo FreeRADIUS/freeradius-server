@@ -71,10 +71,10 @@ problem that doesn't require additional code, or may have ideas as to how your p
 in a way that will better fit with the long-term vision for the server.
 
 Once you've got the go ahead, please read through the
-[coding standards document](https://wiki.freeradius.org/contributing/coding-standards).
+[coding standards](https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/coding-methods.html) document.
 
 If you're creating a new module you may wish to read the
-[module creation guide](https://wiki.freeradius.org/contributing/Modules3).
+[module creation guide](https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/module_interface.html).
 
 You may also wish to utilise the [doxygen site](https://doc.freeradius.org) to review code documentation.
 
@@ -84,7 +84,7 @@ commit to the master branch of the freeradius-server repository.
 
 Finally, this file was written to be displayed automatically on the GitHub issue tracker, so
 Git/GitHub knowledge is assumed.  If you're wondering what a pull-request is, this document may be of
-some use <https://wiki.freeradius.org/contributing/GitHub>.
+some use <https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/github.html>
 
 
 ## Continuous Integration Tests (CIT)

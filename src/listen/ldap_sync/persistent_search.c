@@ -122,7 +122,7 @@ int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, proto
 		goto error;
 	}
 
-	if (!fr_rb_insert(tree, sync)) {
+	if (fr_rb_insert(tree, sync) != 0) {
 		ERROR("Duplicate sync (msgid %i)", sync->msgid);
 		goto error;
 	}
@@ -130,7 +130,7 @@ int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, proto
 	DEBUG3("Sync created with base dn \"%s\", filter \"%s\", msgid %i",
 		sync->config->base_dn, sync->config->filter, sync->msgid);
 
-	trigger(unlang_interpret_get_thread_default(), config->cs, NULL, "modules.ldap_sync.start", true, &sync->trigger_args);
+	trigger(unlang_interpret_get_thread_default(), config->cs, NULL, "modules.ldap_sync.start", true, &sync->trigger_args, inst);
 
 	/*
 	 *	Register event to store cookies at a regular interval

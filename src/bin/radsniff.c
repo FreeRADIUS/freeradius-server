@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -36,7 +36,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/pcap.h>
@@ -627,7 +626,7 @@ static void rs_stats_process_counters(rs_latency_t *stats)
 	stats->interval.reused = ((long double) stats->interval.reused_total) / conf->stats.interval;
 	stats->interval.lost = ((long double) stats->interval.lost_total) / conf->stats.interval;
 
-	for (i = 1; i < RS_RETRANSMIT_MAX; i++) {
+	for (i = 1; i <= RS_RETRANSMIT_MAX; i++) {
 		stats->interval.rt[i] = ((long double) stats->interval.rt_total[i]) / conf->stats.interval;
 	}
 }
@@ -1037,12 +1036,12 @@ static int _request_free(rs_request_t *request)
 	 */
 	if (request->in_request_tree) {
 		ret = fr_rb_delete(request_tree, request);
-		RS_ASSERT(ret);
+		RS_ASSERT(ret == 0);
 	}
 
 	if (request->in_link_tree) {
 		ret = fr_rb_delete(link_tree, request);
-		RS_ASSERT(ret);
+		RS_ASSERT(ret == 0);
 	}
 
 	if (fr_timer_armed(request->event)) {
@@ -1137,7 +1136,7 @@ static void _rs_event(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ct
 /** Wrapper around fr_packet_cmp to strip off the outer request struct
  *
  */
-static int8_t rs_packet_cmp(void const *one, void const *two)
+static fr_cmp_ret_t rs_packet_cmp(void const *one, void const *two)
 {
 	rs_request_t const *a = one;
 	rs_request_t const *b = two;
@@ -1179,7 +1178,7 @@ static inline int rs_response_to_pcap(rs_event_t *event, rs_request_t *request, 
 			TALLOC_FREE(request->capture_p->data);
 
 			/* Reset the pointer to the start of the circular buffer */
-			if (request->capture_p++ >=
+			if (++request->capture_p >=
 					(request->capture +
 					 NUM_ELEMENTS(request->capture))) {
 				request->capture_p = request->capture;
@@ -1331,8 +1330,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 */
 	len = (p - data) + sizeof(udp_header_t) + RADIUS_HEADER_LENGTH;	/* length value */
 	if ((size_t) len > header->caplen) {
-		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
-			(size_t) len, header->caplen);
+		char src[INET6_ADDRSTRLEN];
+		inet_ntop(version == 4 ? AF_INET : AF_INET6,
+			  version == 4 ? (void const *)&ip->ip_src.s_addr : (void const *)&ip6->ip_src, src, sizeof(src));
+		REDEBUG("Packet from %s too small, we require at least %zu bytes, captured %i bytes",
+			src, (size_t) len, header->caplen);
 		return;
 	}
 
@@ -1348,8 +1350,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		actual_len = header->caplen - (p - data);
 		/* Truncated data */
 		if (udp_len > actual_len) {
-			REDEBUG("Packet too small by %zi bytes, UDP header + Payload should be %hu bytes",
-				udp_len - actual_len, udp_len);
+			char src[INET6_ADDRSTRLEN];
+			inet_ntop(version == 4 ? AF_INET : AF_INET6,
+				  version == 4 ? (void const *)&ip->ip_src.s_addr : (void const *)&ip6->ip_src, src, sizeof(src));
+			REDEBUG("Packet from %s too small by %zi bytes, UDP header + Payload should be %hu bytes",
+				src, udp_len - actual_len, udp_len);
 			return;
 		}
 
@@ -1449,7 +1454,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	{
 		/* look for a matching request and use it for decoding */
 		search.expect = packet;
-		original = fr_rb_find(request_tree, &search);
+		fr_rb_find((void **)&original, request_tree, &search);
 
 		/*
 		 *	Verify this code is allowed
@@ -1471,7 +1476,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = fr_packet_verify(packet, original->expect, conf->radius_secret);
+			ret = fr_radius_packet_verify(packet, original->expect, conf->radius_secret);
 			fr_log_fp = log_fp;
 			if (ret != 0) {
 				fr_perror("Failed verifying packet ID %d", packet->id);
@@ -1609,7 +1614,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				FILE *log_fp = fr_log_fp;
 
 				fr_log_fp = NULL;
-				ret = fr_packet_verify(packet, NULL, conf->radius_secret);
+				ret = fr_radius_packet_verify(packet, NULL, conf->radius_secret);
 				fr_log_fp = log_fp;
 				if (ret != 0) {
 					fr_perror("Failed verifying packet ID %d", packet->id);
@@ -1661,6 +1666,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		}
 		search.expect->code = packet->code;
 		memcpy(search.expect->vector, packet->vector, sizeof(search.expect->vector));
+		if (conf->verify_radius_authenticator) {
+			search.expect->data_len = packet->data_len;
+			search.expect->data = talloc_memdup(search.expect, packet->data, packet->data_len);
+		}
 
 		if ((conf->link_da_num > 0) && (!fr_pair_list_empty(&decoded))) {
 			int ret;
@@ -1679,8 +1688,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (!fr_pair_list_empty(&search.link_vps)) {
 			rs_request_t *tuple;
 
-			original = fr_rb_find(link_tree, &search);
-			tuple = fr_rb_find(request_tree, &search);
+			fr_rb_find((void **)&original, link_tree, &search);
+			fr_rb_find((void **)&tuple, request_tree, &search);
 
 			/*
 			 *	If the packet we matched using attributes is not the same
@@ -1694,7 +1703,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	Detect duplicates using the normal 5-tuple of src/dst ips/ports id
 		 */
 		} else {
-			original = fr_rb_find(request_tree, &search);
+			fr_rb_find((void **)&original, request_tree, &search);
 			if (original && (memcmp(original->expect->vector, packet->vector,
 			    			sizeof(original->expect->vector)) != 0)) {
 				/*
@@ -1785,7 +1794,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				fr_pair_list_append(&original->link_vps, &search.link_vps);
 
 				/* We should never have conflicts */
-				ret = fr_rb_insert(link_tree, original);
+				ret = (fr_rb_insert(link_tree, original) == 0);
 				RS_ASSERT(ret);
 				original->in_link_tree = true;
 			}
@@ -1805,7 +1814,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			bool ret;
 
 			/* We should never have conflicts */
-			ret = fr_rb_insert(request_tree, original);
+			ret = (fr_rb_insert(request_tree, original) == 0);
 			RS_ASSERT(ret);
 			original->in_request_tree = true;
 		}
@@ -2039,11 +2048,11 @@ static int  _rs_event_status(UNUSED fr_time_t now, fr_time_delta_t wake_t, UNUSE
 /** Compare requests using packet info and lists of attributes
  *
  */
-static int8_t rs_rtx_cmp(void const *one, void const *two)
+static fr_cmp_ret_t rs_rtx_cmp(void const *one, void const *two)
 {
 	rs_request_t const *a = one;
 	rs_request_t const *b = two;
-	int ret;
+	fr_cmp_ret_t ret;
 
 	RS_ASSERT(!fr_pair_list_empty(&a->link_vps));
 	RS_ASSERT(!fr_pair_list_empty(&b->link_vps));
@@ -2057,8 +2066,7 @@ static int8_t rs_rtx_cmp(void const *one, void const *two)
 	ret = fr_ipaddr_cmp(&a->expect->socket.inet.dst_ipaddr, &b->expect->socket.inet.dst_ipaddr);
 	if (ret != 0) return ret;
 
-	ret = fr_pair_list_cmp(&a->link_vps, &b->link_vps);
-	return CMP(ret, 0);
+	return fr_pair_list_cmp(&a->link_vps, &b->link_vps);
 }
 
 static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list)
@@ -2274,7 +2282,7 @@ static NEVER_RETURNS void usage(int status)
 	fprintf(output, "  -a                    List all interfaces available for capture.\n");
 	fprintf(output, "  -c <count>            Number of packets to capture.\n");
 	fprintf(output, "  -C <checksum_type>    Enable checksum validation. (Specify 'udp' or 'radius')\n");
-	fprintf(output, "  -d <raddb>            Set configuration directory (defaults to " RADDBDIR ").\n");
+	fprintf(output, "  -d <confdir>          Set configuration directory (defaults to " CONFDIR ").\n");
 	fprintf(output, "  -D <dictdir>          Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e <event>[,<event>]  Only log requests with these event flags.\n");
 	fprintf(output, "                        Event may be one of the following:\n");
@@ -2335,7 +2343,7 @@ int main(int argc, char *argv[])
 	int			c;
 	unsigned int		timeout = 0;
 	fr_timer_t		*timeout_ev = NULL;
-	char const		*raddb_dir = RADDBDIR;
+	char const		*confdir = CONFDIR;
 	char const		*dict_dir = DICTDIR;
 	TALLOC_CTX		*autofree;
 
@@ -2355,7 +2363,7 @@ int main(int argc, char *argv[])
 	 *	Useful if using radsniff as a long running stats daemon
 	 */
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("radsniff");
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -2445,7 +2453,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'd':
-			raddb_dir = optarg;
+			confdir = optarg;
 			break;
 
 		case 'D':
@@ -2733,7 +2741,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (fr_dict_read(fr_dict_unconst(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_unconst(dict_freeradius), confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("radsniff");
 		ret = 64;
 		goto finish;

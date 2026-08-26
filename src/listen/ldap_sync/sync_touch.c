@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -53,13 +53,13 @@ int main(int argc, char **argv)
 	conf = talloc_zero(NULL, sync_touch_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
-	conf->raddb_dir = RADDBDIR;
+	conf->confdir = CONFDIR;
 	conf->secret = talloc_strdup(conf, "testing123");
 	conf->timeout = fr_time_delta_from_sec(3);
 	conf->retries = 5;
 
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("sync_touch");
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(dict_freeradius, conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict_freeradius, conf->confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("sync_touch");
 		fr_exit_now(EXIT_FAILURE);
 	}

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -215,6 +215,17 @@ void fr_bio_eof(fr_bio_t *bio)
 
 	/*
 	 *	This BIO is at EOF.  So we can't call read() any more.
+	 *
+	 *	@todo - we have to fix ordering of priv.cb.eof() versus cb.eof() the application may signal
+	 *	EOF on the BIO, in which case we have to do various things in the right order, so that the
+	 *	various callbacks can be set / updated correctly.  See mem.c and pipe.c for examples.
+	 *
+	 *	What we probably want is to ensure that there is no NEXT bio, OR that the next BIO is already
+	 *	at EOF.  So the FD BIO can call "eof" when it hits EOF, and the various upstream BIOs have
+	 *	their EOF callbacks run when they hit EOF.
+	 *
+	 *	We probably want to also add "bool eof" to fr_bio_common_s.  And perhaps also read/write
+	 *	blocked.
 	 */
 	this->bio.read = fr_bio_null_read;
 
@@ -240,9 +251,9 @@ void fr_bio_eof(fr_bio_t *bio)
 		if (!this->priv_cb.eof) continue;
 
 		/*
-		 *	The EOF handler said it's NOT at EOF, so we stop processing here.
+		 *	The EOF handler said it's an error or NOT at EOF, so we stop processing here.
 		 */
-		if (this->priv_cb.eof((fr_bio_t *) this) == 0) break;
+		if (this->priv_cb.eof((fr_bio_t *) this) <= 0) break;
 
 		/*
 		 *	Don't run the EOF callback multiple times, and continue the loop.
@@ -287,7 +298,9 @@ int fr_bio_write_blocked(fr_bio_t *bio)
 		if (!this->priv_cb.write_blocked) continue;
 
 		/*
-		 *	The EOF handler said it's NOT at EOF, so we stop processing here.
+		 *	Run this BIO's write_blocked handler.  On error we bail out immediately;
+		 *	otherwise we record whether it considers itself blocked and keep walking up
+		 *	the chain so that every BIO is told that writes are blocked.
 		 */
 		rcode = this->priv_cb.write_blocked((fr_bio_t *) this);
 		if (rcode < 0) return rcode;

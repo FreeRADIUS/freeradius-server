@@ -1,0 +1,12 @@
+= More than one Message-Authenticator in a packet is invalid
+
+This error happens when there are more than one Message-Authenticator attributes in the packet.
+
+The `Message-Authenticator` attribute acts like a digital signature
+for RADIUS messages. It verifies that the messages are genuine, and
+are from a genuine client.
+
+This error means that the client does not implement RADIUS correctly.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -120,8 +120,9 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Encode the type and write the width of the
 	 *	integer to the encoding byte.
 	 */
-	flen = fr_dbuff_in_uint64v(&work_dbuff, da->attr);
-	if (flen <= 0) return flen;
+	slen = fr_dbuff_in_uint64v(&work_dbuff, da->attr);
+	if (slen < 0) return slen;
+	flen = (size_t) slen;
 	enc_byte |= ((flen - 1) << 5);
 
 	/*
@@ -244,7 +245,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	the function.
 	 */
 	vlen = fr_dbuff_used(&value_dbuff);
-	flen = (ssize_t) fr_nbo_from_uint64v(buff, vlen);
+	flen = fr_nbo_from_uint64v(buff, vlen);
 
 	/*
 	 *	Ugh, it's a long one, need to move the data.

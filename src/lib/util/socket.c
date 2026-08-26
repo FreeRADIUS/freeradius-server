@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -82,32 +82,6 @@ static int socket_port_from_service(int proto, char const *port_name)
 	return ntohs(service->s_port);
 }
 
-#ifdef FD_CLOEXEC
-static int socket_dont_inherit(int sockfd)
-{
-	int ret;
-
-	/*
-	 *	We don't want child processes inheriting these
-	 *	file descriptors.
-	 */
-	ret = fcntl(sockfd, F_GETFD);
-	if (ret >= 0) {
-		if (fcntl(sockfd, F_SETFD, ret | FD_CLOEXEC) < 0) {
-			fr_strerror_printf("Failed setting close on exec: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-
-	return 0;
-}
-#else
-static socket_dont_inherit(UNUSED int sockfd)
-{
-	return 0;
-}
-#endif
-
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 /** Restrict wildcard sockets to v6 only
  *
@@ -137,7 +111,6 @@ static int socket_inaddr_any_v6only(int sockfd, fr_ipaddr_t const *ipaddr)
 			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
 				       (char *)&on, sizeof(on)) < 0) {
 				fr_strerror_printf("Failed setting socket to IPv6 only: %s", fr_syserror(errno));
-				close(sockfd);
 				return -1;
 			}
 		}
@@ -755,10 +728,7 @@ int fr_socket_client_tcp(char const *ifname, fr_ipaddr_t *src_ipaddr,
 
 	if (unlikely(fr_socket_bind(sockfd, ifname, src_ipaddr, NULL) < 0)) goto error;
 
-	if (fr_ipaddr_to_sockaddr(&salocal, &salen, dst_ipaddr, dst_port) < 0) {
-		close(sockfd);
-		return -1;
-	}
+	if (fr_ipaddr_to_sockaddr(&salocal, &salen, dst_ipaddr, dst_port) < 0) goto error;
 
 	/*
 	 *	Although we ignore SIGPIPE, some operating systems
@@ -918,7 +888,7 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	/*
 	 *	Don't allow child processes to inherit the socket
 	 */
-	if (socket_dont_inherit(sockfd) < 0) goto error;
+	if (fr_cloexec(sockfd) < 0) goto error;
 
 	/*
 	 *	Initialize udpfromto for UDP sockets.
@@ -1020,7 +990,7 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	/*
 	 *	Don't allow child processes to inherit the socket
 	 */
-	if (socket_dont_inherit(sockfd) < 0) goto error;
+	if (fr_cloexec(sockfd) < 0) goto error;
 
 	/*
 	 *	Make sure we don't get v4 and v6 packets on inaddr_any sockets.
@@ -1040,4 +1010,85 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	if (src_port) *src_port = my_port;
 
 	return sockfd;
+}
+
+/** Print an #fr_socket_t to a string.
+ *
+ */
+ssize_t fr_socket_to_str(char *out, size_t outlen, fr_socket_t const *sock, bool received)
+{
+	ssize_t slen;
+	static char const *sense[2] = { "to", "from" };
+	char *src_ip, src_ip_buffer[FR_IPADDR_STRLEN];
+	char *dst_ip, dst_ip_buffer[FR_IPADDR_STRLEN];
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+	char if_name[IFNAMSIZ];
+#endif
+
+	switch (sock->af) {
+	case AF_INET:
+	case AF_INET6:
+		src_ip = fr_inet_ntop(src_ip_buffer, sizeof(src_ip_buffer), &sock->inet.src_ipaddr);
+		if (!src_ip) return 0;
+
+		dst_ip = fr_inet_ntop(dst_ip_buffer, sizeof(dst_ip_buffer), &sock->inet.dst_ipaddr);
+		if (!dst_ip) return 0;
+
+		slen = snprintf(out, outlen, "%s %s%s%s:%u %s %s%s%s:%u",
+				sense[received],
+				sock->af == AF_INET6 ? "[" : "",
+				src_ip,
+				sock->af == AF_INET6 ? "]" : "",
+				sock->inet.src_port,
+
+				sense[!received],
+				sock->af == AF_INET6 ? "[" : "",
+				dst_ip,
+				sock->af == AF_INET6 ? "]" : "",
+				sock->inet.dst_port);
+
+#ifndef WITH_IFINDEX_NAME_RESOLUTION
+		break;
+#else
+
+		/*
+		 *	Catch errors.
+		 */
+		if (slen <= 0) return slen;
+		if ((size_t) slen > outlen) return -slen;
+
+		/*
+		 *	No ifindex, we don't need to do anything else.
+		 */
+		if (!sock->inet.ifindex) return slen;
+
+		out += slen;
+		outlen -= slen;
+
+		slen = snprintf(out, outlen, " via %s",
+				fr_ifname_from_ifindex(if_name, sock->inet.ifindex));
+#endif
+		break;
+
+	case AF_LOCAL:
+		slen = snprintf(out, outlen, "%s unix path %s", sense[received], sock->unix.path);
+		break;
+
+	case AF_FR_FILENAME:
+		slen = snprintf(out, outlen, "%s filename %s", sense[received], sock->file.path);
+		break;
+
+	case AF_FR_VIRTUAL_SERVER:
+		slen = snprintf(out, outlen, "%s virtual server %s", sense[received], sock->virtual.server);
+		break;
+
+	default:
+		fr_strerror_printf("Invalid address family %d", sock->af);
+		return -1;
+	}
+
+	if (slen <= 0) return slen;
+	if ((size_t) slen > outlen) return -slen;
+
+	return slen;
 }

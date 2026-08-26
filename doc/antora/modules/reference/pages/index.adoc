@@ -1,6 +1,6 @@
 = Reference Documentation
 
-This comprehensive reference documents all aspects of the unlang syntax and its features. These details help the readers’ understanding and use of the configuration language. Additionally, the FreeRADIUS configuration is organised into directories for modules, virtual servers, and policies.  To enable specific modules or virtual servers, create symbolic links in the mods-enabled and sites-enabled directories. This hierarchy ensures clarity and manageability during setup. The man pages offer a quick way to look up functionality and options, serving as a handy reference for administrators.
+This comprehensive reference documents all aspects of the unlang syntax and its features. These details help the readers' understanding and use of the configuration language. Additionally, the FreeRADIUS configuration is organised into directories for modules, virtual servers, and policies.  To enable specific modules or virtual servers, create symbolic links in the mods-enabled and sites-enabled directories. This hierarchy ensures clarity and manageability during setup. The man pages offer a quick way to look up functionality and options, serving as a handy reference for administrators.
 
 == xref:unlang/index.adoc[Unlang Policy Language]
 
@@ -14,7 +14,7 @@ attribute "Framed-IP-Address" has data type xref:type/ip.adoc[ipaddr].
 
 == xref:xlat/index.adoc[Dynamic Expansions]
 
-Dynamic expansions may also be referred to as "xlats" for historical reasons.When processing packets, it's possible to call functions or do string
+Dynamic expansions may also be referred to as "xlats" for historical reasons. When processing packets, it's possible to call functions or do string
 manipulation with attribute contents.  The xref:xlat/index.adoc[dynamic expansion] documentation describes how this is done.
 
 == xref:dictionary/index.adoc[Dictionaries]
@@ -32,7 +32,7 @@ The FreeRADIUS server uses modules to manage different functions and tasks. Most
 
 == xref:raddb/mods-available/doc/policy.adoc[Policies]
 
-Contains policies, written in unlang, that determine how the server processes messages. For example, policy.d/debug determines what information to print to the terminal when the server is run in debug mode. >It’s important to note that the policy.d directory is not the only place containing policies. Policies are anything written in Unlang, throughout the configuration files, which describes how data should be processed as it flows through the processing sections.
+Contains policies, written in unlang, that determine how the server processes messages. For example, policy.d/debug determines what information to print to the terminal when the server is run in debug mode. >It's important to note that the policy.d directory is not the only place containing policies. Policies are anything written in Unlang, throughout the configuration files, which describes how data should be processed as it flows through the processing sections.
 
 == xref:raddb/sites-available/index.adoc[Virtual Servers]
 
@@ -44,5 +44,5 @@ These man pages are for quick reference and maintaining compatibility over time.
 
 
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

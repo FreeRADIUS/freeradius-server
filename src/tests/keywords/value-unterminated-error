@@ -1,0 +1,6 @@
+string test
+
+#
+#  $VALUE{...} requires a closing "}".  Missing one is an error.
+#
+test = "$VALUE{value-data.md"                                     # ERROR

@@ -64,7 +64,7 @@ typedef enum {
 /*
  *	For debugging.
  */
-static const char *edit_names[4] = {
+static const char *edit_names[5] = {
 	"invalid",
 	"delete",
 	"value",
@@ -136,6 +136,15 @@ static int edit_undo(fr_edit_t *e)
 	int rcode;
 #endif
 
+	/*
+	 *	FR_EDIT_CHILD has vp == NULL, handle it
+	 *	before the vp assertions.
+	 */
+	if (e->op == FR_EDIT_CHILD) {
+		fr_edit_list_abort(e->child_edit);
+		return 0;
+	}
+
 	fr_assert(vp != NULL);
 	PAIR_VERIFY(vp);
 
@@ -167,7 +176,7 @@ static int edit_undo(fr_edit_t *e)
 
 	case FR_EDIT_INSERT:
 		/*
-		 *	We can free the VP here, as any edits to its'
+		 *	We can free the VP here, as any edits to its
 		 *	children MUST come after the creation of the
 		 *	VP.  And any deletion of VPs after this one
 		 *	must come after this VP was created.
@@ -176,8 +185,8 @@ static int edit_undo(fr_edit_t *e)
 		break;
 
 	case FR_EDIT_CHILD:
-		fr_edit_list_abort(e->child_edit);
-		break;
+		fr_assert(0);	/* handled above */
+		return -1;
 	}
 
 	return 0;
@@ -402,7 +411,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			/*
 			 *	If we're clearing it, we MUST have
 			 *	previously inserted it.  So just nuke
-			 *	it's children, as merging the
+			 *	its children, as merging the
 			 *	operations of "insert with stuff" and
 			 *	then "clear" is just "insert empty
 			 *	pair".
@@ -476,6 +485,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 *	which has been deleted!
 			 */
 			e->op = FR_EDIT_DELETE;
+			fr_value_box_clear(&e->data);
 			fr_dlist_remove(&el->undo, e);
 			goto delete;
 
@@ -565,7 +575,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 	insert_ignore:
 		i = talloc_zero(el, fr_edit_ignore_t);
-		if (!i) return 0;
+		if (!i) return -1;
 
 		i->list = &vp->vp_group;
 		fr_dlist_insert_tail(&el->ignore, i);
@@ -671,7 +681,7 @@ int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_
 	if (!el) {
 		if (fr_pair_insert_after(list, to_replace, vp) < 0) return -1;
 		fr_pair_delete(list, to_replace);
-		return -1;
+		return 0;
 	}
 
 	/*
@@ -705,7 +715,7 @@ int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_
 
 /** Free children of a structural pair.
  *
- *  This function mirrors fr_pair_replace().
+ *  This function mirrors fr_pair_list_free(&vp->children).
  *
  *  After this function returns, the new VP has replaced the old one,
  *  and the new one can be edited.
@@ -775,8 +785,6 @@ static int _edit_list_destructor(fr_edit_list_t *el)
 	}
 
 	fr_pair_list_free(&el->deleted_pairs);
-
-	talloc_free(el);
 
 	return 0;
 }
@@ -1098,12 +1106,12 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, b
 		 *
 		 *	This means that in the ordered set, the
 		 *	equivalent to B does not exist.  So we copy B
-		 *	to after A.
+		 *	to before A.
 		 */
 		if (rcode > 0) {
 			COPY(b);
 
-			if (fr_edit_list_insert_pair_after(el, &dst->children, a, c) < 0) {
+			if (fr_edit_list_insert_pair_before(el, &dst->children, a, c) < 0) {
 				return -1;
 			}
 

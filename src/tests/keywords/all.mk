@@ -30,6 +30,11 @@ FILES := $(filter-out if-regex-match-named,$(FILES))
 endif
 
 $(eval $(call TEST_BOOTSTRAP))
+#
+#  The test loads modules at run time, so make needs telling about them.  The
+#  list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(wildcard $(DIR)/*.conf),$(FILES.$(TEST))))
 
 #
 #  For sheer laziness, allow "make test.keywords.foo"
@@ -108,6 +113,11 @@ $(OUTPUT)/enabled.mk: src/tests/keywords/unit_test_module.conf | $(OUTPUT)
 
 KEYWORD_RADDB	:= $(addprefix raddb/mods-enabled/,$(KEYWORD_MODULES))
 KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_csv.la
+
+#
+# if-env test.
+#
+export IF_ENV_CONDITION := !test || (test != 'if-env')
 
 #
 #  Files in the output dir depend on the unit tests

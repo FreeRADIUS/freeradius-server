@@ -1,0 +1,56 @@
+name: Claude Code Review
+
+#
+#  pull_request_target rather than pull_request: a fork's pull_request run is
+#  never granted the id-token permission, so the Anthropic authentication
+#  failed on every pull request from a fork.  The target event runs in this
+#  repository's context with real permissions.  The checkout below stays on
+#  the base branch, and the review reads the pull request through the API,
+#  so no code from the fork runs here.  The job condition decides whose pull
+#  requests get reviewed.
+#
+on:
+  pull_request_target:
+    types: [opened, synchronize, ready_for_review, reopened, labeled]
+
+jobs:
+  claude-review:
+    # Auto-review PRs from authors with previous contributions (or write access).
+    # author_association only reports MEMBER when the membership is public, so
+    # a branch pushed to the organisation's own repository also qualifies:
+    # only someone with write access to the organisation can create one.
+    # For first-time contributors and drive-by PRs, a maintainer must add the
+    # 'claude-review' label to trigger a review.
+    if: |
+      (github.event.action != 'labeled' &&
+       (contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association) ||
+        github.event.pull_request.head.repo.owner.login == 'FreeRADIUS')) ||
+      (github.event.action == 'labeled' && github.event.label.name == 'claude-review')
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_federation_rule_id: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
+          anthropic_organization_id: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
+          anthropic_service_account_id: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
+          anthropic_workspace_id: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options
+

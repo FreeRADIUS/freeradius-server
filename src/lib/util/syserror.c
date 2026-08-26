@@ -274,7 +274,7 @@ char const *fr_syserror(int num)
 	} else {
 		p += snprintf(p, end - p, "errno %i: ", num);
 	}
-	if (p >= end) return p;
+	if (p >= end) return buffer;
 
 	if (_fr_syserror(num, p, end - p) < 0) goto error;
 

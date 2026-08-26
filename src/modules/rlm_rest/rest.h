@@ -92,6 +92,8 @@ extern char const *rest_no_proxy;
  */
 extern const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES];
 
+extern const bool http_body_type_binary[REST_HTTP_BODY_NUM_ENTRIES];
+
 extern const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES];
 
 extern fr_table_num_sorted_t const http_auth_table[];
@@ -125,12 +127,31 @@ typedef struct {
 } rlm_rest_section_request_t;
 
 typedef struct {
+	bool				do_xlat;	//!< Section default for the per-attribute "do_xlat"
+							//!< flag in JSON responses.  Defaults to false, the
+							//!< API must opt in to expansion.
+	bool				is_json;	//!< Section default for the per-attribute "is_json"
+							//!< flag in JSON responses.  If true, nested JSON data
+							//!< is copied to the attribute in string form.
+							//!< Defaults to false.
+} rlm_rest_section_response_json_t;
+
+typedef struct {
+	bool				do_xlat;	//!< If true, values in POST responses are xlat
+							//!< expanded before being assigned to attributes.
+							//!< Defaults to false.
+} rlm_rest_section_response_post_t;
+
+typedef struct {
 	char const			*force_to_str;	//!< Force decoding with this decoder.
 	http_body_type_t		force_to;	//!< Override the Content-Type header in the response
 							//!< to force decoding as a particular type.
 	bool				accept_all;	//!< Accept all content types.
 
 	size_t				max_body_in;	//!< Maximum size of incoming data.
+
+	rlm_rest_section_response_json_t	json;	//!< Configuration for the JSON decoder.
+	rlm_rest_section_response_post_t	post;	//!< Configuration for the POST decoder.
 } rlm_rest_section_response_t;
 
 /*
@@ -140,6 +161,7 @@ typedef struct {
 	char const			*name;		//!< Section name.
 
 	fr_time_delta_t			timeout;	//!< Timeout timeval.
+	bool				binary;		//!< Do we expect binary data - so xlat will output octets.
 
 	rlm_rest_section_request_t	request;	//!< Request configuration.
 	rlm_rest_section_response_t	response;	//!< Response configuration.
@@ -333,6 +355,8 @@ void rest_response_debug(request_t *request, fr_curl_io_request_t *handle);
 #define rest_get_handle_type(_handle)(((rlm_rest_curl_context_t*)((fr_curl_io_request_t*)(_handle))->uctx)->response.type)
 
 size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle);
+
+http_body_type_t rest_response_body_type_get(fr_curl_io_request_t *randle);
 
 /*
  *	Helper functions

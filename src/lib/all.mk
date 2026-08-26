@@ -12,7 +12,7 @@ define LIB_INCLUDE
 #  to evaluate the condition.  Instead, it evaluates the rule
 #  immediately, and decides that nothing is there.
 #
-#  So, we instead depend on a targe which has already been defined.t
+#  So, we instead depend on a target which has already been defined.
 #  - This is a terrible hack
 #
 src/freeradius-devel: | src/include/${1}
@@ -41,7 +41,7 @@ endef
 #  And then get the rest by wildcard, and ensure unsure that they're
 #  all unique.
 #
-SUBMAKEFILES := $(strip $(call uniq,$(patsubst %,${top_srcdir}/src/lib/%/all.mk,util tls eap eap_aka_sim server unlang io) $(wildcard ${top_srcdir}/src/lib/*/all.mk)))
+SUBMAKEFILES := $(strip $(call uniq,$(patsubst %,${top_srcdir}/src/lib/%/all.mk,util tls eap eap_aka_sim server unlang io) $(sort $(wildcard ${top_srcdir}/src/lib/*/all.mk))))
 
 #
 #  Add library-specific rules to link include files, etc.

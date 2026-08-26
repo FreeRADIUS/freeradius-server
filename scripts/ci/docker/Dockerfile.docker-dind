@@ -1,0 +1,22 @@
+ARG registry_mirror_stage=none
+
+FROM docker:27-dind AS base
+
+FROM base AS mirror-none
+
+FROM base AS mirror-configured
+ARG registry_mirror
+
+COPY scripts/ci/networkradius.com.crt \
+     /usr/local/share/ca-certificates/networkradius.com.crt
+
+RUN mkdir -p /etc/docker && \
+    printf '{\n  "registry-mirrors": ["https://%s"]\n}\n' "$registry_mirror" \
+        > /etc/docker/daemon.json && \
+    apk add --no-cache ca-certificates && \
+    update-ca-certificates && \
+    mkdir -p "/etc/docker/certs.d/$registry_mirror" && \
+    cp /usr/local/share/ca-certificates/networkradius.com.crt \
+       "/etc/docker/certs.d/$registry_mirror/ca.crt"
+
+FROM mirror-${registry_mirror_stage}

@@ -74,7 +74,7 @@ haproxy -f /etc/haproxy/haproxy.cfg -db
 Now edit the test RadSec client, so that instead of making connections directly
 to the RadSec server it makes connections to the HAproxy server.
 
-On `radseccli` edit the `/etc/raddb/sites-enabled/tls` file, and set
+On `radseccli` edit the `sites-enabled/tls` file, and set
 the IP address to the address of the `haproxy` host.
 
 .Example updated test client homeserver configuration
@@ -131,3 +131,6 @@ before continuing.
 Once proxied connections are working we are ready to
 xref:protocols/radius/enable_proxy_protocol.adoc[enable the PROXY
 Protocol] on both HAproxy and the RadSec server.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

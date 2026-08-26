@@ -28,16 +28,10 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/section.h>
-#include <freeradius-devel/server/main_config.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/call_env.h>
 
-#include <talloc.h>
 #include "call_env.h"
 
 struct call_env_parsed_s {
@@ -477,10 +471,20 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 		if (call_env_is_subsection(rule_p->flags)) {
 			CONF_SECTION const *subcs;
 			subcs = cf_section_find(cs, rule_p->name, rule_p->section.name2);
-			if (!subcs && !call_env_parse_missing(rule_p->flags)) {
-				if (!call_env_required(rule_p->flags)) goto next;
-				cf_log_err(cs, "Module %s missing required section \"%s\"", name, rule_p->name);
-				return -1;
+			if (!subcs) {
+				/*
+				 *	No CONF_SECTION, but it's required.  That's an error.
+				 */
+				if (call_env_required(rule_p->flags)) {
+					cf_log_err(cs, "Module %s missing required section \"%s\"", name, rule_p->name);
+					return -1;
+				}
+
+				/*
+				 *	No flag saying "do callback even if subcs is missing", just skip the
+				 *	callbacks.
+				 */
+				if (!call_env_parse_missing(rule_p->flags)) goto next;
 			}
 
 			/*
@@ -498,7 +502,6 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 				if (rule_p->section.func(ctx, parsed, t_rules, cf_section_to_item(subcs), cec, rule_p) < 0) {
 					cf_log_perr(cs, "Failed parsing configuration section %s",
 						    rule_p->name == CF_IDENT_ANY ? cf_section_name(cs) : rule_p->name);
-					talloc_free(call_env_parsed);
 					return -1;
 				}
 
@@ -512,7 +515,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 				 */
 				call_env_parsed = last;
 				while ((call_env_parsed = call_env_parsed_next(parsed, call_env_parsed))) {
-					CALL_ENV_DEBUG(subcs, "%s: Checking parsed env", name, rule_p->section.func);
+					CALL_ENV_DEBUG(subcs, "%s: Checking parsed env %p", name, rule_p->section.func);
 					if (call_env_parsed_valid(call_env_parsed, cf_section_to_item(subcs), rule_p) < 0) {
 						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s",
 							   rule_p->name == CF_IDENT_ANY ? cf_section_name(cs) : rule_p->name);
@@ -623,7 +626,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 		rule_p++;
 	}
 
-	CALL_ENV_DEBUG(cs, "Returning afer processing %u rules", (unsigned int)(rule_p - rule));
+	CALL_ENV_DEBUG(cs, "Returning after processing %u rules", (unsigned int)(rule_p - rule));
 
 	return 0;
 }
@@ -641,8 +644,6 @@ static size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env
 {
 	size_t	pair_count, tmpl_count = 0;
 	CONF_PAIR const	*cp;
-
-	*names_len = 0;
 
 	while (call_env->name) {
 		if (call_env_is_subsection(call_env->flags)) {
@@ -794,7 +795,7 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 			   tmpl_rules_t const *t_rules, CONF_SECTION *cs, call_env_ctx_t const *cec)
 {
 	unsigned int	count;
-	size_t		names_len;
+	size_t		names_len = 0;
 	call_env_t	*call_env;
 
 	/*
@@ -828,3 +829,49 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 
 	return call_env;
 }
+
+/** Bit-pos indexed table of `CALL_ENV_FLAG_*` names. */
+static fr_table_num_indexed_bit_pos_t const call_env_flag_table[] = {
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_REQUIRED),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_CONCAT),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_SINGLE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_MULTI),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_NULLABLE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_FORCE_QUOTE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_PARSE_ONLY),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_ATTRIBUTE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_SUBSECTION),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_PARSE_MISSING),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_SECRET),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE),
+};
+static size_t call_env_flag_table_len = NUM_ELEMENTS(call_env_flag_table);
+
+char const *call_env_flag_to_enum_str(call_env_flags_t mask)
+{
+	return fr_table_str_by_value(call_env_flag_table, mask, NULL);
+}
+
+static fr_table_num_indexed_t const call_env_parse_type_table[] = {
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_PARSE_TYPE_TMPL),
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_PARSE_TYPE_VALUE_BOX),
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_PARSE_TYPE_VOID),
+};
+static size_t call_env_parse_type_table_len = NUM_ELEMENTS(call_env_parse_type_table);
+
+char const *call_env_parse_type_to_enum_str(call_env_parse_type_t t)
+{
+	return fr_table_str_by_value(call_env_parse_type_table, t, "CALL_ENV_PARSE_TYPE_VOID");
+}
+
+static fr_table_num_indexed_t const call_env_result_type_table[] = {
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_RESULT_TYPE_VALUE_BOX),
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_RESULT_TYPE_VALUE_BOX_LIST),
+};
+static size_t call_env_result_type_table_len = NUM_ELEMENTS(call_env_result_type_table);
+
+char const *call_env_result_type_to_enum_str(call_env_result_type_t t)
+{
+	return fr_table_str_by_value(call_env_result_type_table, t, "CALL_ENV_RESULT_TYPE_VALUE_BOX");
+}
+

@@ -25,12 +25,9 @@
  */
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/master.h>
-#include <freeradius-devel/server/main_config.h>
-#include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/tacacs/tacacs.h>
 #include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/protocol/tacacs/tacacs.h>
@@ -161,16 +158,8 @@ typedef struct {
 } process_tacacs_sections_t;
 
 typedef struct {
-	fr_time_delta_t	session_timeout;	//!< Maximum time between the last response and next request.
-	uint32_t	max_session;		//!< Maximum ongoing session allowed.
-
-	uint32_t	max_rounds;		//!< maximum number of authentication rounds allowed
-
-	uint8_t       	state_server_id;	//!< Sets a specific byte in the state to allow the
-						//!< authenticating server to be identified in packet
-						//!<captures.
-
-	fr_state_tree_t	*state_tree;		//!< State tree to link multiple requests/responses.
+	fr_state_config_t      	session;	//!< track state session information.
+	fr_state_tree_t		*state_tree;	//!< State tree to link multiple requests/responses.
 } process_tacacs_auth_t;
 
 typedef struct {
@@ -187,7 +176,6 @@ typedef struct {
 } process_tacacs_t;
 
 typedef struct {
-	uint32_t       	rounds;			//!< how many rounds were taken
 	uint32_t	reply;			//!< for multiround state machine
 	uint8_t		seq_no;			//!< sequence number of last request.
 	fr_pair_list_t	list;			//!< copied from the request
@@ -203,17 +191,8 @@ typedef struct {
 
 #include <freeradius-devel/server/process.h>
 
-static const conf_parser_t session_config[] = {
-	{ FR_CONF_OFFSET("timeout", process_tacacs_auth_t, session_timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", process_tacacs_auth_t, max_session), .dflt = "4096" },
-	{ FR_CONF_OFFSET("max_rounds", process_tacacs_auth_t, max_rounds), .dflt = "4" },
-	{ FR_CONF_OFFSET("state_server_id", process_tacacs_auth_t, state_server_id) },
-
-	CONF_PARSER_TERMINATOR
-};
-
 static const conf_parser_t auth_config[] = {
-	{ FR_CONF_POINTER("session", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) session_config },
+	{ FR_CONF_POINTER("session", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) state_session_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -231,14 +210,16 @@ static const conf_parser_t config[] = {
  */
 static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, bool reply)
 {
-	uint8_t		buffer[12];
-	uint32_t	hash;
+	uint64_t	hash;
+	uint32_t	sequence;
 	fr_pair_t 	*vp;
+
+	if (!request->async->listen) return -1;
 
 	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_session_id);
 	if (!vp) return -1;
 
-	fr_nbo_from_uint32(buffer, vp->vp_uint32);
+	hash = fr_hash64(&vp->vp_uint32, sizeof(vp->vp_uint32));
 
 	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_sequence_number);
 	if (!vp) return -1;
@@ -248,23 +229,15 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 	 *	So if we want to synthesize a state in a reply which gets matched with the next
 	 *	request, we have to add 2 to it.
 	 */
-	hash = vp->vp_uint8 + ((int) reply << 1);
+	sequence = vp->vp_uint8 + ((int) reply << 1);
+	hash = fr_hash64_update(&sequence, sizeof(sequence), hash);
 
-	fr_nbo_from_uint32(buffer + 4, hash);
-
-	/*
-	 *	Hash in the listener.  For now, we don't allow internally proxied requests.
-	 */
-	fr_assert(request->async != NULL);
-	fr_assert(request->async->listen != NULL);
-	hash = fr_hash(&request->async->listen, sizeof(request->async->listen));
-
-	fr_nbo_from_uint32(buffer + 8, hash);
+	hash = fr_hash64_update(&request->async->listen, sizeof(request->async->listen), hash);
 
 	vp = fr_pair_afrom_da(ctx, attr_tacacs_state);
 	if (!vp) return -1;
 
-	(void) fr_pair_value_memdup(vp, buffer, 12, false);
+	(void) fr_pair_value_memdup(vp, (uint8_t const *) &hash, sizeof(hash), false);
 
 	fr_pair_append(out, vp);
 
@@ -312,24 +285,25 @@ static uint32_t reply_code(request_t *request, fr_dict_attr_t const *status_da,
 			RDEBUG("Setting reply Packet-Type from %pP", vp);
 			return code;
 		}
+
 		REDEBUG("Ignoring invalid status %pP", vp);
 	}
 
 	if (state) {
 		code = state->packet_type[rcode];
-		if (FR_TACACS_PACKET_CODE_VALID(code)) return code;
+		if (FR_TACACS_PACKET_CODE_VALID(code) || (code == FR_TACACS_CODE_DO_NOT_RESPOND)) return code;
 	}
 
 	if (process_rcode) {
 		code = process_rcode[rcode];
-		if (FR_TACACS_PACKET_CODE_VALID(code)) return code;
+		if (FR_TACACS_PACKET_CODE_VALID(code) || (code == FR_TACACS_CODE_DO_NOT_RESPOND)) return code;
 	}
 
 	/*
 	 *	Otherwise use Packet-Type (if set)
 	 */
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
-	if (vp && FR_TACACS_PACKET_CODE_VALID(vp->vp_uint32)) {
+	if (vp && (FR_TACACS_PACKET_CODE_VALID(vp->vp_uint32) || (vp->vp_uint32 == FR_TACACS_CODE_DO_NOT_RESPOND))) {
 		RDEBUG("Setting reply Packet-Type from %pV", &vp->data);
 		return vp->vp_uint32;
 	}
@@ -491,11 +465,16 @@ RESUME(auth_start)
 	if (request->reply->code) {
 		switch (request->reply->code) {
 		case FR_TACACS_CODE_AUTH_FAIL:
-			RDEBUG("The 'recv Authentication-Start' section returned %s - rejecting the request",
+			RDEBUG("The 'recv Authentication-Start' section returned %s - failing the request",
 			       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 			break;
 
+		case FR_TACACS_CODE_DO_NOT_RESPOND:
+			RDEBUG("Reply packet type was set to Do-Not-Respond");
+			break;
+
 		default:
+			fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
 			RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
 			break;
 		}
@@ -562,7 +541,6 @@ RESUME(auth_start)
 	 *
 	 *	And continue with sending the generic reply.
 	 */
-	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
 					      NULL, 0, mctx->rctx);
@@ -622,7 +600,7 @@ RESUME(auth_type)
 	case FR_TACACS_CODE_AUTH_GETUSER:
 	case FR_TACACS_CODE_AUTH_GETPASS:
 		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
-		if (vp && (vp->vp_uint32 != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+		if (vp && (vp->vp_uint8 != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
 			RDEBUG2("Cannot send challenges for %pP", vp);
 			goto fail;
 		}
@@ -723,13 +701,6 @@ RESUME(auth_get)
 		REXDENT();
 
 	} else {
-		session->rounds++;
-
-		if (session->rounds > inst->auth.max_rounds) {
-			REDEBUG("Too many rounds of authentication - failing the session");
-			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_FAIL);
-		}
-
 		/*
 		 *	It is possible that the user name or password are added on subsequent Authentication-Continue
 		 *	packets following replies with Authentication-GetUser or Authentication-GetPass.
@@ -755,7 +726,7 @@ send_reply:
 	 *	Cache the session state context.
 	 */
 	if ((state_create(request->reply_ctx, &request->reply_pairs, request, true) < 0) ||
-	    (fr_request_to_state(inst->auth.state_tree, request) < 0)) {
+	    (fr_state_store(inst->auth.state_tree, request) < 0)) {
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
@@ -768,7 +739,7 @@ RECV(auth_cont)
 	process_tacacs_session_t	*session;
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
-	    (fr_state_to_request(inst->auth.state_tree, request) < 0)) {
+	    (fr_state_restore(inst->auth.state_tree, request) < 0)) {
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
@@ -835,7 +806,7 @@ RECV(auth_cont_abort)
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
-	    (fr_state_to_request(inst->auth.state_tree, request) < 0)) {
+	    (fr_state_restore(inst->auth.state_tree, request) < 0)) {
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
@@ -844,9 +815,29 @@ RECV(auth_cont_abort)
 
 RESUME(auth_cont_abort)
 {
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_process_state_t const	*state;
 
-	if (!request->reply->code) request->reply->code = FR_TACACS_CODE_AUTH_RESTART;
+	UPDATE_STATE(packet);
+
+	if (!request->reply->code) {
+		switch (rcode) {
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			request->reply->code = FR_TACACS_CODE_AUTH_RESTART;
+			break;
+
+		default:
+			request->reply->code = FR_TACACS_CODE_AUTH_FAIL;
+			break;
+		}
+
+	} else {
+		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code) ||
+			  (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND));
+	}
+
+	RDEBUG("Reply packet type set to %s", (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND) ? "Do-Not-Respond" : fr_tacacs_packet_names[request->reply->code]);
 
 	UPDATE_STATE(reply);
 
@@ -888,11 +879,11 @@ RESUME(autz_request)
 						  author_status_to_packet_code, state, NULL, rcode);
 		if (!request->reply->code) request->reply->code = FR_TACACS_CODE_AUTZ_ERROR;
 
-	} else {
-		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
 	}
+	fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code) ||
+		  (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND));
 
-	RDEBUG("Reply packet type set to %s", fr_tacacs_packet_names[request->reply->code]);
+	RDEBUG("Reply packet type set to %s", (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND) ? "Do-Not-Respond" : fr_tacacs_packet_names[request->reply->code]);
 
 	UPDATE_STATE(reply);
 
@@ -994,9 +985,10 @@ RESUME(accounting_request)
 	 *	Something set the reply code, so we reply and don't run "accounting foo { ... }"
 	 */
 	if (request->reply->code) {
-		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->packet->code));
+		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code) ||
+			  (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND));
 
-		RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
+		RDEBUG("Reply packet type set to %s", (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND) ? "Do-Not-Respond" : fr_tacacs_packet_names[request->reply->code]);
 
 		UPDATE_STATE(reply);
 
@@ -1055,14 +1047,62 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		RETURN_UNLANG_FAIL;
 	}
 
-	// @todo - debug stuff!
-//	tacacs_packet_debug(request, request->packet, &request->request_pairs, true);
-
 	if (unlikely(request_is_dynamic_client(request))) {
 		return new_client(p_result, mctx, request);
 	}
 
 	return state->recv(p_result, mctx, request);
+}
+
+static xlat_arg_parser_t const xlat_func_tacacs_secret_verify_args[] = {
+        { .required = true, .single = true, .type = FR_TYPE_OCTETS },
+        XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Validates a request against a known shared secret
+ *
+ * Designed for the specific purpose of verifying dynamic clients
+ * against a known shared secret in a `new client` section.
+ *
+ * Example:
+@verbatim
+%tacacs.secret.verify(<secret>)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_tacacs_secret_verify(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+                                                    request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t  *secret, *vb;
+	int		ret;
+	TALLOC_CTX	*local = talloc_new(NULL);
+	fr_pair_list_t	list;
+
+	XLAT_ARGS(args, &secret);
+
+	if (request->proto_dict != dict_tacacs) return XLAT_ACTION_FAIL;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+
+	/*
+	 *	Attempt to decode the packet using the supplied secret.
+	 *	If the decoding fails then the secret is wrong.
+	 */
+	fr_pair_list_init(&list);
+	ret = fr_tacacs_decode(local, &list, NULL, request->packet->data, request->packet->data_len, NULL,
+			       secret->vb_strvalue, secret->vb_length, NULL);
+	talloc_free(local);
+
+	if (ret < 0) {
+		RPEDEBUG("Failed to verify the TACACS secret");
+		vb->vb_bool = false;
+	} else {
+		vb->vb_bool = true;
+	}
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -1071,15 +1111,17 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 
-	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.max_rounds, >=, 1);
-	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.max_rounds, <=, 8);
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.session.max_rounds, >=, 1);
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.session.max_rounds, <=, 8);
 
-	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.max_session, >=, 64);
-	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.max_session, <=, (1 << 18));
+	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.session.max_sessions, >=, 64);
+	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.session.max_sessions, <=, (1 << 18));
 
-	inst->auth.state_tree = fr_state_tree_init(inst, attr_tacacs_state, main_config->spawn_workers, inst->auth.max_session,
-						   inst->auth.session_timeout, inst->auth.state_server_id,
-						   fr_hash_string(cf_section_name2(inst->server_cs)));
+	inst->auth.session.thread_safe = main_config->spawn_workers;
+	inst->auth.session.context_id = fr_hash_string(cf_section_name2(inst->server_cs));
+
+	MEM(inst->auth.state_tree = fr_state_tree_init(inst, attr_tacacs_state, &inst->auth.session));
+
 	return 0;
 }
 
@@ -1090,6 +1132,23 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;
+}
+
+static int mod_load(void)
+{
+	xlat_t	*xlat;
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "tacacs.secret.verify", xlat_func_tacacs_secret_verify,
+						 FR_TYPE_BOOL)))) return -1;
+
+	xlat_func_args_set(xlat, xlat_func_tacacs_secret_verify_args);
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_func_unregister("tacacs.secret.verify");
 }
 
 /*
@@ -1511,6 +1570,8 @@ fr_process_module_t process_tacacs = {
 		.config		= config,
 		MODULE_INST(process_tacacs_t),
 		MODULE_RCTX(process_rctx_t),
+		.onload		= mod_load,
+		.unload		= mod_unload,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},

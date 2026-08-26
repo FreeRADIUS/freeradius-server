@@ -30,8 +30,8 @@ A RADIUS session consists of the following steps:
 
 * Access Reject locks the user out of the network if the user is invalid or not authorized, denying them access to the requested resource.
 * Access Challenge occurs when the server requires additional information from the user. Since RADIUS packages are limited in size, Access Challenges allow the exchange of larger amounts of data.
-* Access Accept provides the user access to the resource and contains policy information which the NAS uses to provide services to, and enforce the behavior of the user. An Access Accept condition does not apply to all resources. Each additional resource is checked as required. The RADIUS client also verifies the original access offered on a periodic basis.
-* An Access Accept response results in the NAS providing the following services to the remote client: supplys a static or dynamic IP address; assigning a Time-to-Live for the session; downloading and applying the users’ Access Control List (ACL); setting up any L2TP , VLAN, and QoS session parameters required
+* Access Accept provides the user access to the resource and contains policy information which the NAS uses to provide services to, and enforce the behaviour of the user. An Access Accept condition does not apply to all resources. Each additional resource is checked as required. The RADIUS client also verifies the original access offered on a periodic basis.
+* An Access Accept response results in the NAS providing the following services to the remote client: supplys a static or dynamic IP address; assigning a Time-to-Live for the session; downloading and applying the users' Access Control List (ACL); setting up any L2TP , VLAN, and QoS session parameters required
 
 . Once the session is established on the RADIUS client, the accounting process is initiated:
 
@@ -39,3 +39,6 @@ A RADIUS session consists of the following steps:
 (stop) message indicates the end of the session; the session
 * The data stored in the database during the accounting sessions is used to generate billable information and reports.
 * Accounting information retained in the database includes the following: time of session, number of packets and amount of data transferred, user and machine identification, network address, and point of attachment information.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

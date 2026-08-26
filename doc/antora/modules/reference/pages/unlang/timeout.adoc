@@ -11,14 +11,18 @@ timeout <value> {
 .Description
 The `timeout` statement limits the total time which a section can use
 to process a particular request.  If the request takes more than the
-given time, it returns `fail`.
+given time, it returns `timeout`.
 
-The _<value>_ text can be a number, or a dynamic expansion, or an
-attribute reference.  The contents of _<value>_ are interpreted as a
-`time_delta`, with default scale in seconds.
-
+<value>:: A number, or a dynamic expansion, or an attribute reference.
+The value is interpreted as a `time_delta`, with default scale in
+seconds.
++
 The time scale can be changed by appending `s`, `us`, `ms`, `ns`, etc. as
 with all uses of `time_delta` values.
++
+Negative times, and times less than 1us are treated as zero.  The
+`timeout` section does not run, but instead immediately returns the
+`timeout` rcode.
 
 .Example
 [source,unlang]
@@ -53,7 +57,7 @@ catch timeout {
 
 The `timeout` can also be used inside of a
 xref:unlang/redundant.adoc[redundant] block.  This example has
-_almost_ the same behavior as above.  The difference here is that the
+_almost_ the same behaviour as above.  The difference here is that the
 `detail` file here is run on when _either_ the `sql` module fails, or
 the timeout is reached.
 
@@ -64,7 +68,7 @@ your local requirements.
 .Example using redundant
 [source,unlang]
 ----
-redundant
+redundant {
     timeout 4s {
         sql
     }
@@ -73,5 +77,11 @@ redundant
 }
 ----
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+[NOTE]
+====
+If the timeout value is taken from a dynamic expansion or attribute
+reference which fails, the entire `timeout` block returns `fail`.
+====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

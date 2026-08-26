@@ -1,0 +1,88 @@
+name: Delete branch images
+
+#
+#  A branch that changes the CI images publishes its own copies of them, under
+#  a tag named after the branch.  Nothing else ever reads those copies, so once
+#  the branch is gone the copies are litter.  Deleting the branch is the event
+#  that says the copies are finished with, which is why the clean-up hangs off
+#  that rather than off a sweep that would have to guess when a tag stopped
+#  mattering.
+#
+#  Nothing here lists the images.  Every image this repository publishes sits
+#  under a path named after the repository, so the registry is asked what it
+#  holds under that path and the answer cannot drift from what was published.
+#
+on:
+  delete:
+
+jobs:
+  delete-branch-images:
+    name: Delete branch images
+    if: ${{ github.event.ref_type == 'branch' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      #
+      #  The default branch publishes as latest, which nothing here may touch.
+      #  A repository with no shared registry is skipped: a fork publishes to
+      #  its own GitHub Container Registry, which its owner prunes from the
+      #  packages page.
+      #
+      - id: target
+        env:
+          registry: ${{ vars.DOCKER_REGISTRY }}
+          deleted_ref: ${{ github.event.ref }}
+          default_branch: ${{ github.event.repository.default_branch }}
+          repo_name: ${{ github.event.repository.name }}
+        run: |
+          if [ -z "$registry" ] || [ "$deleted_ref" = "$default_branch" ]; then
+            echo "Nothing to prune."
+            echo "run=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          #  Sanitised the same way common_vars.yml sanitises it.
+          tag=$(printf '%s' "$deleted_ref" \
+                | tr 'A-Z' 'a-z' \
+                | tr -c 'a-z0-9_.-' '-' \
+                | cut -c1-128)
+          {
+            echo "run=yes"
+            echo "tag=$tag"
+            echo "registry=$registry"
+            echo "path=$repo_name"
+          } >> "$GITHUB_OUTPUT"
+
+      - if: ${{ steps.target.outputs.run == 'yes' }}
+        uses: regclient/actions/regctl-installer@main
+
+      #
+      #  regctl removes the tag and leaves the manifest, so an image the branch
+      #  happened to build byte for byte identical to the one latest points at
+      #  keeps its other tags.  Deleting by digest would take those with it.
+      #
+      - if: ${{ steps.target.outputs.run == 'yes' }}
+        env:
+          DOCKER_REGISTRY: ${{ steps.target.outputs.registry }}
+          DOCKER_PATH_PREFIX: ${{ steps.target.outputs.path }}
+          DOCKER_TAG: ${{ steps.target.outputs.tag }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+        run: |
+          set -u
+          printf '%s' "$DOCKER_PASSWORD" \
+            | regctl registry login "$DOCKER_REGISTRY" -u "$DOCKER_USERNAME" --pass-stdin
+
+          deleted=0 absent=0
+          for repo in $(regctl repo ls "$DOCKER_REGISTRY"); do
+            case "$repo" in
+              "$DOCKER_PATH_PREFIX"/*) ;;
+              *) continue ;;
+            esac
+            if regctl tag delete "$DOCKER_REGISTRY/$repo:$DOCKER_TAG" >/dev/null 2>&1; then
+              echo "deleted $repo:$DOCKER_TAG"
+              deleted=$((deleted + 1))
+            else
+              absent=$((absent + 1))
+            fi
+          done
+          echo "deleted $deleted, not published $absent"

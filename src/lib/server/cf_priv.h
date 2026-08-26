@@ -41,6 +41,11 @@ typedef enum conf_type {
 	CONF_ITEM_PAIR,
 	CONF_ITEM_SECTION,
 	CONF_ITEM_DATA,
+	CONF_ITEM_COMMENT,		//!< A `# ...` line preserved verbatim
+					///< from the input - only created when
+					///< the parser is asked to keep comments
+					///< (off by default; the runtime parser
+					///< doesn't keep them, tooling can opt in).
 } CONF_ITEM_TYPE;
 
 /** Common header for all CONF_* types
@@ -60,6 +65,8 @@ struct cf_item {
 
 	CONF_ITEM_TYPE		type;		//!< Whether the config item is a config_pair, conf_section or cf_data.
 
+	bool			parsed;		//!< Was this item used during parsing?
+	bool			referenced;	//!< Was this item referenced in the config?
 	int			lineno;		//!< The line number the config item began on.
 	char const		*filename;	//!< The file the config item was parsed from.
 };
@@ -78,9 +85,7 @@ struct cf_pair {
 	fr_token_t		rhs_quote;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 
 	bool			pass2;		//!< do expansion in pass2.
-	bool			parsed;		//!< Was this item used during parsing?
 	bool			printed;	//!< Was this item printed already in debug mode?
-	bool			referenced;	//!< Was this item referenced in the config?
 };
 
 typedef enum {
@@ -118,6 +123,32 @@ struct cf_section {
 
 	CONF_SECTION		*template;
 };
+#define CONF_SECTION_MAX_DEPTH 256
+
+/*
+ *	Private getter for cf_file.c's parser hook - the public API is the
+ *	`cf_preserve_comments_set()` setter in cf_util.h; the flag itself
+ *	lives static in cf_util.c.
+ */
+bool _cf_preserve_comments(void);
+
+/*
+ *	Private getter for cf_file.c's cf_expand_variables() short-circuit.
+ *	Public API is `cf_expand_variables_set()` in cf_util.h.
+ */
+bool _cf_expand_variables(void);
+
+/** A `# ...` comment line preserved verbatim from the input.
+ *
+ * Only constructed when `cf_preserve_comments` is set before parsing;
+ * the runtime config parser drops comments as it always has.
+ */
+struct cf_comment {
+	CONF_ITEM		item;		//!< Common set of fields.
+
+	char const		*text;		//!< Comment text, with the leading `#`
+						//!< and any surrounding whitespace stripped.
+};
 
 /** Internal data that is associated with a configuration section
  *
@@ -130,7 +161,6 @@ struct cf_data {
 
 	void const   		*data;		//!< User data.
 	bool			is_talloced;	//!< If true we can do extra checks.
-	bool			free;		//!< If true, free data with talloc if parent node is freed.
 };
 
 typedef struct {
@@ -140,15 +170,6 @@ typedef struct {
 	struct stat		buf;		//!< stat about the file
 	bool			from_dir;	//!< was read from a directory
 } cf_file_t;
-
-/** Iterate over the contents of a list
- *
- * @param[in] _ci		to iterate over.
- * @param[in] _iter		Name of iteration variable.
- *				Will be declared in the scope of the loop.
- */
-#define cf_item_foreach(_ci, _iter) \
-	for (CONF_ITEM *_iter = fr_dlist_head(&(_ci)->children); _iter; _iter = fr_dlist_next(&(_ci)->children, _iter))
 
 /** Iterate over the contents of a list
  *

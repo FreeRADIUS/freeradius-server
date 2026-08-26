@@ -1,0 +1,30 @@
+[options=cols="15,~",autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.14[Login-IP-Host]  |Indicates the system with which to connect the user, when the Login-Service Attribute is included
+
+|https://datatracker.ietf.org/doc/html/rfc3162#section-2.4[Login-IPv6-Host] |Indicates the system with which to connect the user, when the Login-Service Attribute is included.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.36[Login-LAT-Group]    |Contains a string identifying the LAT group codes which this user is authorized to use.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.35[Login-LAT-Node] |Indicates the Node with which the user is to be automatically connected by LAT.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.43[Login-LAT-Port] |Indicates the Port with which the user is to be connected by LAT.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.34[Login-LAT-Service]  |Indicates the system with which the user is to be connected by LAT.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.15[Login-Service]  |Indicates the service to use to connect the user to the login host.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.16[Login-TCP-Port] |indicates the TCP port with which the user is to be connected.
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-3.5[Long-Extended-Type-1]    |Encapsulates attributes of the "Long Extended Type" format, in the RADIUS Attribute Type space of 245.{1-255}.
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-3.6[Long-Extended-Type-2]    |Encapsulates attributes of the "Long Extended Type"format, in the RADIUS Attribute Type space of 246.{1-255}.
+
+|====
+
+
+
+
+
+

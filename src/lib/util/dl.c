@@ -34,8 +34,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 
 
-#ifdef HAVE_VALGRIND_H
-#  include <valgrind.h>
+#ifdef HAVE_VALGRIND_VALGRIND_H
+#  include <valgrind/valgrind.h>
 #else
 #  define RUNNING_ON_VALGRIND 0
 #endif
@@ -116,7 +116,7 @@ struct dl_loader_s {
  */
 static char *dl_global_libdir = NULL;
 
-static int8_t dl_symbol_init_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dl_symbol_init_cmp(void const *one, void const *two)
 {
 	dl_symbol_init_t const *a = one, *b = two;
 	int ret;
@@ -139,7 +139,7 @@ static int8_t dl_symbol_init_cmp(void const *one, void const *two)
 	return CMP(ret, 0);
 }
 
-static int8_t dl_symbol_free_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dl_symbol_free_cmp(void const *one, void const *two)
 {
 	dl_symbol_free_t const *a = one, *b = two;
 	int ret;
@@ -165,7 +165,7 @@ static int8_t dl_symbol_free_cmp(void const *one, void const *two)
 /** Compare the name of two dl_t
  *
  */
-static int8_t dl_handle_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dl_handle_cmp(void const *one, void const *two)
 {
 	int ret;
 
@@ -234,7 +234,7 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 {
 	dl_symbol_init_t	*init = NULL;
 	void			*sym = NULL;
-	char			buffer[256];
+	char			buffer[256] = "";
 
 	while ((init = fr_dlist_next(&dl_loader->sym_init, init))) {
 		if (init->symbol) {
@@ -258,7 +258,7 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 		}
 
 		if (init->func(dl, sym, init->uctx) < 0) {
-			fr_strerror_printf("Initialiser \"%s\" failed", buffer);
+			fr_strerror_printf("Initialiser failed for %s", dl->name);
 			return -1;
 		}
 	}
@@ -478,7 +478,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 *	There's already something in the tree,
 	 *	just return that instead.
 	 */
-	dl = fr_rb_find(dl_loader->tree, &(dl_t){ .name = name });
+	fr_rb_find((void **)&dl, dl_loader->tree, &(dl_t){ .name = name });
 	if (dl) {
 		talloc_increase_ref_count(dl);
 		return dl;
@@ -535,17 +535,19 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 
 		fr_strerror_clear();
 
-		ctx = paths = talloc_typed_strdup(NULL, search_path);
+		ctx = paths = talloc_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
+			char *fullpath;
+
 			/*
 			 *	Trim the trailing slash
 			 */
 			p = strrchr(path, '/');
 			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';
 
-			path = talloc_typed_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
-			handle = dlopen(path, flags);
-			talloc_free(path);
+			fullpath = talloc_typed_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
+			handle = dlopen(fullpath, flags);
+			talloc_free(fullpath);
 			if (handle) break;
 
 			/*
@@ -574,6 +576,10 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 			 *	and instead complain about access permissions.
 			 */
 			dlerror_txt = dlerror();
+			if (!dlerror_txt) {
+				fr_strerror_printf_push("Unknown error when trying directory %s", path);
+				continue;
+			}
 
 			/*
 			 *	Yes, this really is the only way of getting the errno
@@ -586,7 +592,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 #  ifdef AT_ACCESS
 				access_mode |= AT_ACCESS;
 #  endif
-				if (access(path, access_mode) < 0 && errno == ENOENT) continue;
+				if ((access(path, access_mode) < 0) && (errno == ENOENT)) continue;
 #endif
 				fr_strerror_printf_push("Access check failed: %s", dlerror_txt);
 				break;
@@ -601,8 +607,24 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 			 *	don't know which one would be useful
 			 *	in diagnosing the underlying cause of the
 			 *	load failure.
+			 *
+			 *	However, OSX doesn't clear the error,
+			 *	it simply appends to it.  We don't
+			 *	want endless amounts of duplication,
+			 *	so we tidy it up here.
+			 *
+			 *	The message must be copied (printf, not
+			 *	const): dlerror() hands back a buffer
+			 *	which is reused by the next dl call,
+			 *	including this loop's next dlopen(),
+			 *	and the const variants store only the
+			 *	pointer.
 			 */
-			fr_strerror_printf_push("%s", dlerror_txt ? dlerror_txt : "unknown dlopen error");
+#ifndef __APPLE__
+			fr_strerror_printf_push("%s", dlerror_txt);
+#else
+			fr_strerror_printf("%s", dlerror_txt);
+#endif
 		}
 
 		/*
@@ -645,7 +667,7 @@ do_symbol_check:
 		return NULL;
 	}
 	*dl = (dl_t){
-		.name = talloc_typed_strdup(dl, name),
+		.name = talloc_strdup(dl, name),
 		.handle = handle,
 		.loader = dl_loader,
 		.uctx = uctx,
@@ -653,7 +675,7 @@ do_symbol_check:
 	};
 	talloc_set_destructor(dl, _dl_free);
 
-	dl->in_tree = fr_rb_insert(dl_loader->tree, dl);
+	dl->in_tree = (fr_rb_insert(dl_loader->tree, dl) == 0);
 	if (!dl->in_tree) {
 		talloc_free(dl);
 		return NULL;
@@ -769,7 +791,7 @@ int dl_search_global_path_set(char const *lib_dir)
 {
 	if (dl_global_libdir) TALLOC_FREE(dl_global_libdir);
 
-	dl_global_libdir = talloc_typed_strdup(NULL, lib_dir);
+	dl_global_libdir = talloc_strdup(NULL, lib_dir);
 	if (!dl_global_libdir) {
 		fr_strerror_const("Failed allocating memory for global dl search path");
 		return -1;
@@ -815,7 +837,7 @@ int dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir)
 	char *new;
 
 	if (!dl_loader->lib_dir) {
-		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
+		dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
 		if (!dl_loader->lib_dir) {
 		oom:
 			fr_strerror_const("Failed allocating memory for dl search path");
@@ -845,7 +867,7 @@ int dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir)
 	char *new;
 
 	if (!dl_loader->lib_dir) {
-		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
+		dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
 		if (!dl_loader->lib_dir) {
 		oom:
 			fr_strerror_const("Failed allocating memory for dl search path");
@@ -961,11 +983,11 @@ bool dl_loader_set_static(dl_loader_t *dl_loader, bool do_static)
  */
 void dl_loader_debug(FILE *fp, dl_loader_t *dl)
 {
-	fprintf(fp, "dl_loader %p", dl);
+	fprintf(fp, "dl_loader %p\n", dl);
 	fprintf(fp, "lib_dir           : %s\n", dl->lib_dir);
 	fprintf(fp, "do_dlclose        : %s\n", dl->do_dlclose ? "yes" : "no");
 	fprintf(fp, "uctx              : %p\n", dl->uctx);
-	fprintf(fp, "uctx_free         : %s\n", dl->do_dlclose ? "yes" : "no");
+	fprintf(fp, "uctx_free         : %s\n", dl->uctx_free ? "yes" : "no");
 	fprintf(fp, "defer_symbol_init : %s\n", dl->defer_symbol_init ? "yes" : "no");
 
 	fr_dlist_foreach(&dl->sym_init, dl_symbol_init_t, sym) {

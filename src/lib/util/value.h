@@ -70,22 +70,22 @@ extern size_t const fr_value_box_field_sizes[];
 
 extern size_t const fr_value_box_offsets[];
 
-extern fr_sbuff_unescape_rules_t fr_value_unescape_double;
-extern fr_sbuff_unescape_rules_t fr_value_unescape_single;
-extern fr_sbuff_unescape_rules_t fr_value_unescape_solidus;
-extern fr_sbuff_unescape_rules_t fr_value_unescape_backtick;
-extern fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST];
-extern fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[UINT8_MAX + 1];
+extern fr_sbuff_unescape_rules_t const fr_value_unescape_double;
+extern fr_sbuff_unescape_rules_t const fr_value_unescape_single;
+extern fr_sbuff_unescape_rules_t const fr_value_unescape_solidus;
+extern fr_sbuff_unescape_rules_t const fr_value_unescape_backtick;
+extern fr_sbuff_unescape_rules_t const *fr_value_unescape_by_quote[T_TOKEN_LAST];
+extern fr_sbuff_unescape_rules_t const *fr_value_unescape_by_char[SBUFF_CHAR_CLASS];
 
-extern fr_sbuff_escape_rules_t fr_value_escape_double;
-extern fr_sbuff_escape_rules_t fr_value_escape_single;
-extern fr_sbuff_escape_rules_t fr_value_escape_solidus;
-extern fr_sbuff_escape_rules_t fr_value_escape_backtick;
-extern fr_sbuff_escape_rules_t fr_value_escape_secret;
-extern fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST];
-extern fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1];
+extern fr_sbuff_escape_rules_t const fr_value_escape_double;
+extern fr_sbuff_escape_rules_t const fr_value_escape_single;
+extern fr_sbuff_escape_rules_t const fr_value_escape_solidus;
+extern fr_sbuff_escape_rules_t const fr_value_escape_backtick;
+extern fr_sbuff_escape_rules_t const fr_value_escape_secret;
+extern fr_sbuff_escape_rules_t const *fr_value_escape_by_quote[T_TOKEN_LAST];
+extern fr_sbuff_escape_rules_t const *fr_value_escape_by_char[SBUFF_CHAR_CLASS];
 
-extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
+extern fr_sbuff_escape_rules_t const fr_value_escape_unprintables;
 
 #ifndef NDEBUG
 #  define FR_VALUE_BOX_MAGIC RADIUSD_MAGIC_NUMBER
@@ -309,7 +309,7 @@ typedef enum {
 #define fr_box_strvalue_len(_val, _len)		_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, _len)
 
 #define fr_box_octets(_val, _len)		_fr_box_with_len(FR_TYPE_OCTETS, .vb_octets, _val, _len)
-#define fr_box_strvalue_buffer(_val)		_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, talloc_array_length(_val) - 1)
+#define fr_box_strvalue_buffer(_val)		_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, talloc_strlen(_val))
 #define fr_box_octets_buffer(_val)		_fr_box_with_len(FR_TYPE_OCTETS, .vb_octets, _val, talloc_array_length(_val))
 
 #define _fr_box(_type, _field, _val) (&(fr_value_box_t){ .type = _type, _field = (_val), VALUE_BOX_NDEBUG_INITIALISER })
@@ -480,7 +480,7 @@ extern fr_sbuff_parse_rules_t const value_parse_rules_single_unquoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_unquoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_unquoted;
 extern fr_sbuff_parse_rules_t const *value_parse_rules_unquoted[T_TOKEN_LAST];
-extern fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[UINT8_MAX];
+extern fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[SBUFF_CHAR_CLASS];
 
 extern fr_sbuff_parse_rules_t const value_parse_rules_bareword_quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_double_quoted;
@@ -488,7 +488,7 @@ extern fr_sbuff_parse_rules_t const value_parse_rules_single_quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_quoted;
 extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted[T_TOKEN_LAST];
-extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
+extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[SBUFF_CHAR_CLASS];
 
 extern fr_sbuff_parse_rules_t const value_parse_rules_double_3quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_single_3quoted;
@@ -683,6 +683,12 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const
 				 CC_HINT(nonnull(1,2));
 int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t const *escape, void *uctx)
 				      CC_HINT(nonnull(1,2));
+
+int fr_value_box_escape_in_place_erules(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_sbuff_escape_rules_t const *erules)
+	CC_HINT(nonnull);
+
+int fr_value_box_escape_erules(fr_value_box_t *vb, void *uctx) CC_HINT(nonnull);
+
 /** @} */
 
 /** @name Convenience functions
@@ -1003,7 +1009,7 @@ _Generic((_var), \
 /*
  *	Comparison
  */
-int8_t		fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
+fr_cmp_ret_t	fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		CC_HINT(nonnull);
 
 int		fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)
@@ -1250,9 +1256,11 @@ void		fr_value_box_increment(fr_value_box_t *vb)
 
 
 
-void		fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *ptr, char const *name) CC_HINT(nonnull);
+void		fr_value_box_set_cursor_shallow(fr_value_box_t *dst, fr_type_t type, void *ptr, char const *name) CC_HINT(nonnull);
 
 #define		fr_value_box_get_cursor(_dst) talloc_get_type_abort((_dst)->vb_cursor, fr_dcursor_t)
+
+void		fr_value_box_set_void_shallow(fr_value_box_t *dst, void const *ptr);
 
 void		fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da);
 

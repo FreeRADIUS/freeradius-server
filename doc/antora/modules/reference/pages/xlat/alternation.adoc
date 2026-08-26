@@ -36,5 +36,5 @@ Reply-Message := "Hello %{NAS-Identifier || User-Name || 'none'}"
 Unlike version 3, any strings used in `||` alternation must be quoted.  Numbers and IP addresses do not need to be quoted.
 ====
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

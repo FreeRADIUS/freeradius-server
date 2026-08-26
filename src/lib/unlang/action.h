@@ -42,10 +42,10 @@ typedef enum {
 } unlang_action_t;
 
 #define RETURN_UNLANG_ACTION_FATAL \
-{ \
+do { \
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL); \
 	return UNLANG_ACTION_FAIL; \
-}
+} while (0)
 
 #ifdef __cplusplus
 }

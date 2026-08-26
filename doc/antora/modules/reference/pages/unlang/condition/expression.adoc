@@ -1,4 +1,4 @@
-= Mathematical expressions.
+= Mathematical Expressions
 
 It is now possible to use xref:unlang/expression.adoc[expressions] inside of xref:unlang/condition/index.adoc[conditions].
 
@@ -17,5 +17,5 @@ See the main xref:unlang/expression.adoc[expressions] page for a list
 of supported operators.  In short, mathematical operations will work,
 and will do what you expect.
 
-// Copyright (C) 2022 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

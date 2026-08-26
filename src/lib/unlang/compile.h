@@ -43,6 +43,8 @@ bool		unlang_compile_is_keyword(const char *name);
 
 bool		unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *parent, bool module_retry);
 
+int		unlang_compile_virtual_module(CONF_SECTION *cs, fr_dict_t const *dict) CC_HINT(nonnull);
+
 #ifdef __cplusplus
 }
 #endif

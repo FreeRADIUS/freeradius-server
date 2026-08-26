@@ -1,0 +1,209 @@
+#
+#  Tests for DHCPv6 encode paths not exercised by other test files.
+#
+proto dhcpv6
+proto-dictionary dhcpv6
+fuzzer-out dhcpv6
+
+#
+#  ----  Standalone ipv6addr (S46-Border-Relay)  ----
+#
+#  Option 90 (0x005a) - simple ipv6addr without struct context.
+#
+
+encode-pair S46-Border-Relay = 2001:db8::1
+match 00 5a 00 10 20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 01
+
+decode-pair -
+match S46-Border-Relay = 2001:db8::1
+
+encode-pair S46-Border-Relay = fe80::1
+match 00 5a 00 10 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 01
+
+decode-pair -
+match S46-Border-Relay = fe80::1
+
+#
+#  ----  Standalone ipv6prefix variable length (S46-Default-Mapping-Rule)  ----
+#
+#  Option 91 (0x005b) - variable-length encoding: prefix_len(1) + ceil(prefix/8) bytes.
+#  Unlike ipv6prefix inside structs (which always writes 17 bytes), standalone
+#  ipv6prefix uses variable-length encoding.
+#
+
+#
+#  /0 prefix - just the prefix length byte, no address bytes
+#
+encode-pair S46-Default-Mapping-Rule = ::/0
+match 00 5b 00 01 00
+
+decode-pair -
+match S46-Default-Mapping-Rule = ::/0
+
+#
+#  /32 prefix - 4 address bytes
+#
+encode-pair S46-Default-Mapping-Rule = 2001:db8::/32
+match 00 5b 00 05 20 20 01 0d b8
+
+decode-pair -
+match S46-Default-Mapping-Rule = 2001:db8::/32
+
+#
+#  /48 prefix - 6 address bytes
+#
+encode-pair S46-Default-Mapping-Rule = 2001:db8:abcd::/48
+match 00 5b 00 07 30 20 01 0d b8 ab cd
+
+decode-pair -
+match S46-Default-Mapping-Rule = 2001:db8:abcd::/48
+
+#
+#  /128 prefix - full 16 address bytes
+#
+encode-pair S46-Default-Mapping-Rule = ::1/128
+match 00 5b 00 11 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01
+
+decode-pair -
+match S46-Default-Mapping-Rule = ::1/128
+
+#
+#  ----  Standalone dns_label (LIS-Access-Domain)  ----
+#
+#  Option 57 (0x0039) - dns_label flag without array.
+#  Exercises encode_value() string dns_label path outside of struct/TLV.
+#
+
+encode-pair LIS-Access-Domain = "example.com"
+match 00 39 00 0d 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+decode-pair -
+match LIS-Access-Domain = "example.com"
+
+encode-pair LIS-Access-Domain = "sub.example.org"
+match 00 39 00 11 03 73 75 62 07 65 78 61 6d 70 6c 65 03 6f 72 67 00
+
+decode-pair -
+match LIS-Access-Domain = "sub.example.org"
+
+#
+#  ----  Ether type (ANI-Access-Point-BSSID)  ----
+#
+#  Option 108 (0x006c) - 6-byte MAC address.
+#
+
+encode-pair ANI-Access-Point-BSSID = aa:bb:cc:dd:ee:ff
+match 00 6c 00 06 aa bb cc dd ee ff
+
+decode-pair -
+match ANI-Access-Point-BSSID = aa:bb:cc:dd:ee:ff
+
+encode-pair ANI-Access-Point-BSSID = 00:00:00:00:00:00
+match 00 6c 00 06 00 00 00 00 00 00
+
+decode-pair -
+match ANI-Access-Point-BSSID = 00:00:00:00:00:00
+
+#
+#  ----  Simple string at option level (ANI-Network-Name)  ----
+#
+#  Option 106 (0x006a) - plain string.
+#
+
+encode-pair ANI-Network-Name = "MyWiFi"
+match 00 6a 00 06 4d 79 57 69 46 69
+
+decode-pair -
+match ANI-Network-Name = "MyWiFi"
+
+encode-pair ANI-Network-Name = ""
+match 00 6a 00 00
+
+decode-pair -
+match ANI-Network-Name = ""
+
+#
+#  ----  Partial DNS label (Client-FQDN with multi-label FQDN)  ----
+#
+#  RFC 4704 Client-FQDN Domain-Name has partial_dns_label flag.
+#  The trailing null byte is stripped for both single-label and
+#  multi-label names (RFC 4704 says partial name omits trailing zero).
+#
+#  Existing tests (rfc4704.txt) cover single-label "tapioca01".
+#  This tests multi-label FQDN to verify trailing null is also stripped.
+#
+
+encode-pair Client-FQDN.No-Server-Update = no, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = yes, Client-FQDN.Domain-Name = "host.example.com"
+match 00 27 00 12 01 04 68 6f 73 74 07 65 78 61 6d 70 6c 65 03 63 6f 6d
+
+decode-pair -
+match Client-FQDN = { Reserved = 0, No-Server-Update = no, Server-Override = no, Server-Update = yes, Domain-Name = "host.example.com" }
+
+#
+#  ----  ipv6addr array (SNTP-Servers)  ----
+#
+#  Option 31 (0x001f) - ipv6addr array.
+#  Exercises encode_rfc() array path with ipv6addr values.
+#
+
+encode-pair SNTP-Servers = 2001:db8::1
+match 00 1f 00 10 20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 01
+
+decode-pair -
+match SNTP-Servers = 2001:db8::1
+
+encode-pair SNTP-Servers = 2001:db8::1, SNTP-Servers = 2001:db8::2
+match 00 1f 00 20 20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 01 20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 02
+
+decode-pair -
+match SNTP-Servers = 2001:db8::1, SNTP-Servers = 2001:db8::2
+
+#
+#  ----  Struct with ipv4prefix + ipv6prefix (S46-Rule)  ----
+#
+#  Option 89 (0x0059) - struct encoding with mixed prefix types.
+#  In structs, ipv4prefix is fixed 5 bytes and ipv6prefix is fixed 17 bytes.
+#
+
+encode-pair S46-Rule.Flags = 1, S46-Rule.IPv4-Prefix = 192.168.0.0/24, S46-Rule.IPv6-Prefix = 2001:db8::/32
+match 00 59 00 17 01 18 c0 a8 00 00 20 20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 00
+
+decode-pair -
+match S46-Rule = { Flags = 1, IPv4-Prefix = 192.168.0.0/24, IPv6-Prefix = 2001:db8::/32 }
+
+#
+#  ----  Struct with simple scalars (S46-Port-Parameters)  ----
+#
+#  Option 93 (0x005d) - struct with uint8 + uint8 + uint16.
+#
+
+encode-pair S46-Port-Parameters.Port-Set-Identifier-Offset = 6, S46-Port-Parameters.PSID-Len = 8, S46-Port-Parameters.PSID = 1024
+match 00 5d 00 04 06 08 04 00
+
+decode-pair -
+match S46-Port-Parameters = { Port-Set-Identifier-Offset = 6, PSID-Len = 8, PSID = 1024 }
+
+#
+#  ----  Struct with ipv4addr + ipv6prefix (S46-Address-Binding)  ----
+#
+#  Option 92 (0x005c) - struct with ipv4addr(4) + ipv6prefix(fixed 17).
+#
+
+encode-pair S46-Address-Binding.IPv4-Address = 10.0.0.1, S46-Address-Binding.Bind-IPv6-Prefix = 2001:db8:1::/48
+match 00 5c 00 15 0a 00 00 01 30 20 01 0d b8 00 01 00 00 00 00 00 00 00 00 00 00
+
+decode-pair -
+match S46-Address-Binding = { IPv4-Address = 10.0.0.1, Bind-IPv6-Prefix = 2001:db8:1::/48 }
+
+#
+#  ----  Multiple different options in one encode-pair  ----
+#
+
+encode-pair Preference = 100, Elapsed-Time = 5000
+match 00 07 00 01 64 00 08 00 02 13 88
+
+decode-pair -
+match Preference = 100, Elapsed-Time = 5000
+
+count
+match 79

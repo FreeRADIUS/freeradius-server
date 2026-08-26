@@ -1,0 +1,59 @@
+timeout: {{ test_timeout }}
+state_order: sequence
+states:
+
+  #
+  #  proto_load on kafka-producer1 is generating Access-Requests
+  #  continuously for `loadgen.duration` seconds.  Drop the
+  #  producer's network to the broker in the middle of that window:
+  #  packets produced during the outage queue inside librdkafka and
+  #  their request threads yield waiting for delivery reports.
+  #
+  #  The verify timeout on this state is how long we hold the outage.
+  #
+  state_1:
+    description: >
+      Apply 100% packet loss on the producer while proto_load is
+      in flight, and hold the outage for {{ outage_seconds }}s.
+    host:
+      kafka-producer1:
+        actions:
+        - packet_loss:
+            interface: eth0
+            loss: 100
+    verify:
+      timeout: {{ outage_seconds }}
+      trigger_mode: unordered
+
+  #
+  #  Remove the packet loss.  librdkafka reconnects, drains its
+  #  queue, delivery reports fire for the queued produces, yielded
+  #  request threads resume, and the consumer eventually sees every
+  #  message.  Pass criterion: the consumer summary reports PASS
+  #  with received == expected == full count.
+  #
+  state_2:
+    description: >
+      Remove the packet loss and wait for the consumer to report
+      PASS with received == expected == {{ expected_messages }}.
+    host:
+      kafka-producer1:
+        actions:
+        - packet_loss:
+            interface: eth0
+            loss: 0
+    verify:
+      timeout: {{ test_verify_timeout }}
+      trigger_mode: unordered
+      triggers:
+      - kafka-consumer-summary:
+          json:
+            result:
+              pattern:
+                reg_pattern: PASS
+            expected:
+              pattern:
+                reg_pattern: "^{{ expected_messages }}$"
+            received:
+              pattern:
+                reg_pattern: "^{{ expected_messages }}$"

@@ -1,0 +1,58 @@
+#
+#  Generic SQL escape function:
+#    - `\n`, `\r`, `\t` become backslash + letter
+#    - anything < 32 or not in `safe_characters` is mime-encoded as `=XX`
+#    - multi-byte UTF-8 is passed through
+#
+#  Drivers without their own escape (sqlite, oracle, etc.) all use this path.
+#
+#  String literals in unlang are marked "safe for any escape" so we wrap each
+#  input in %taint(...) to force the escape to actually run.
+#
+
+#
+#  Characters in the default safe set pass through unchanged.
+#
+if (%sql.escape(%taint("Hello world.test")) != "Hello world.test") {
+	test_fail
+}
+
+#
+#  Single quote is not in the safe set -> =27
+#
+if (%sql.escape(%taint("it's")) != "it=27s") {
+	test_fail
+}
+
+#
+#  Backslash -> =5C
+#
+if (%sql.escape(%taint("back\\slash")) != "back=5Cslash") {
+	test_fail
+}
+
+#
+#  Newline -> two-byte `\n` literal (backslash + the letter n),
+#  NOT mime-encoded as =0A.
+#
+if (%sql.escape(%taint("a\nb")) != "a\\nb") {
+	test_fail
+}
+
+#
+#  Regression: embedded NUL byte must NOT truncate the input.
+#  Before the byte-length fix the escape stopped at the first NUL
+#  and returned just "a".
+#
+if (%sql.escape(%taint("a\000b")) != "a=00b") {
+	test_fail
+}
+
+#
+#  Multi-byte UTF-8 is passed through unchanged.
+#
+if (%sql.escape(%taint("café")) != "café") {
+	test_fail
+}
+
+test_pass

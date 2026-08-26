@@ -1,0 +1,14 @@
+#
+#  Input packet - User-Name is a wildcard filter injection payload.
+#  Without call_env escaping on user.filter, (uid=*) matches every user
+#  in the directory.  With escaping it becomes (uid=\2a) and matches nobody.
+#
+Packet-Type = Access-Request
+User-Name = "*"
+User-Password = "password"
+NAS-IP-Address = 1.2.3.5
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

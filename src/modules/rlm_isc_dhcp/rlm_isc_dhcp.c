@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/skip.h>
 
-#include <freeradius-devel/server/map_proc.h>
 
 static fr_dict_t const *dict_dhcpv4;
 
@@ -313,7 +312,7 @@ static int read_string(rlm_isc_dhcp_tokenizer_t *state)
 			}
 		}
 
-		if ((size_t) (q - state->string) >= sizeof(state->string)) {
+		if ((size_t) (q - state->string) >= sizeof(state->string) - 1) {
 			fr_strerror_const("string is too long");
 			return -1;
 		}
@@ -729,15 +728,18 @@ redo_multi:
 static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	int ret;
-	char *p, pathname[8192];
+	char pathname[8192];
+	char const *sep;
 	char const *name = info->argv[0]->vb_strvalue;
 
 	IDEBUG("%.*s include %s ;", state->braces, spaces, name);
 
-	p = strrchr(state->filename, '/');
-	if (p) {
+	sep = strrchr(state->filename, '/');
+	if (sep) {
+		char *p;
+
 		strlcpy(pathname, state->filename, sizeof(pathname));
-		p = pathname + (p - state->filename) + 1;
+		p = pathname + (sep - state->filename) + 1;
 		strlcpy(p, name, sizeof(pathname) - (p - pathname));
 
 		name = pathname;
@@ -771,7 +773,7 @@ static uint32_t host_ether_hash(void const *data)
 	return fr_hash(self->ether, sizeof(self->ether));
 }
 
-static int8_t host_ether_cmp(void const *one, void const *two)
+static fr_cmp_ret_t host_ether_cmp(void const *one, void const *two)
 {
 	isc_host_ether_t const *a = one;
 	isc_host_ether_t const *b = two;
@@ -793,7 +795,7 @@ static uint32_t host_uid_hash(void const *data)
 	return fr_hash(self->client->vb_octets, self->client->vb_length);
 }
 
-static int8_t host_uid_cmp(void const *one, void const *two)
+static fr_cmp_ret_t host_uid_cmp(void const *one, void const *two)
 {
 	isc_host_uid_t const *a = one;
 	isc_host_uid_t const *b = two;
@@ -1015,7 +1017,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 	/*
 	 *	Add in the first value.
 	 */
-	ret = fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, NULL, false);
+	ret = fr_pair_value_from_str(vp, value, talloc_strlen(value), NULL, false);
 	if (ret < 0) {
 		talloc_free(value);
 		return ret;
@@ -1413,10 +1415,20 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	/*
 	 *	We can't have duplicate ethernet addresses for hosts.
 	 */
-	old_ether = fr_hash_table_find(state->inst->hosts_by_ether, my_ether);
+	fr_hash_table_find((void **)&old_ether, state->inst->hosts_by_ether, my_ether);
 	if (old_ether) {
 		fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'hardware ethernet' fields",
 				   info->argv[0]->vb_strvalue, old_ether->host->argv[0]->vb_strvalue);
+		talloc_free(my_ether);
+		return -1;
+	}
+
+	/*
+	 *	Insert into the ether hashes.
+	 */
+	if (fr_hash_table_insert(state->inst->hosts_by_ether, my_ether) != 0) {
+		fr_strerror_printf("Failed inserting 'host %s' into hash table",
+				   info->argv[0]->vb_strvalue);
 		talloc_free(my_ether);
 		return -1;
 	}
@@ -1430,33 +1442,20 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 		my_uid->client = &vp->data;
 		my_uid->host = info;
 
-		old_uid = fr_hash_table_find(state->inst->hosts_by_uid, my_uid);
+		fr_hash_table_find((void **)&old_uid, state->inst->hosts_by_uid, my_uid);
 		if (old_uid) {
 			fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'option client-identifier' fields",
 					   info->argv[0]->vb_strvalue, old_uid->host->argv[0]->vb_strvalue);
-			talloc_free(my_ether);
+		fail:
+			(void) fr_hash_table_delete(state->inst->hosts_by_ether, my_ether);
 			talloc_free(my_uid);
 			return -1;
 		}
-	}
 
-	/*
-	 *	Insert into the ether hashes.
-	 */
-	if (!fr_hash_table_insert(state->inst->hosts_by_ether, my_ether)) {
-		fr_strerror_printf("Failed inserting 'host %s' into hash table",
-				   info->argv[0]->vb_strvalue);
-		talloc_free(my_ether);
-		if (my_uid) talloc_free(my_uid);
-		return -1;
-	}
-
-	if (my_uid) {
-		if (!fr_hash_table_insert(state->inst->hosts_by_uid, my_uid)) {
+		if (fr_hash_table_insert(state->inst->hosts_by_uid, my_uid) != 0) {
 			fr_strerror_printf("Failed inserting 'host %s' into hash table",
 					   info->argv[0]->vb_strvalue);
-			talloc_free(my_uid);
-			return -1;
+			goto fail;
 		}
 	}
 
@@ -1482,7 +1481,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 		}
 	}
 
-	if (!fr_hash_table_insert(parent->hosts_by_ether, my_ether)) {
+	if (fr_hash_table_insert(parent->hosts_by_ether, my_ether) != 0) {
 		fr_strerror_printf("Failed inserting 'host %s' into hash table",
 				   info->argv[0]->vb_strvalue);
 		return -1;
@@ -1499,8 +1498,8 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 			}
 		}
 
-
-		if (!fr_hash_table_insert(parent->hosts_by_uid, my_uid)) {
+		if (fr_hash_table_insert(parent->hosts_by_uid, my_uid) != 0) {
+			(void) fr_hash_table_remove(NULL, parent->hosts_by_ether, my_ether); /* remove and don't free */
 			fr_strerror_printf("Failed inserting 'host %s' into hash table",
 					   info->argv[0]->vb_strvalue);
 			return -1;
@@ -1528,7 +1527,7 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	/*
 	 *	Check if argv[1] is a valid netmask
 	 */
-	if (!(netmask & (~netmask >> 1))) {
+	if (netmask & (~netmask >> 1)) {
 		fr_strerror_printf("invalid netmask '%pV'", info->argv[1]);
 		return -1;
 	}
@@ -1610,26 +1609,27 @@ static rlm_isc_dhcp_info_t *get_host(request_t *request, fr_hash_table_t *hosts_
 	 *	If that doesn't match, use client hardware
 	 *	address.
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_client_identifier);
-	if (vp) {
-		isc_host_uid_t *client, my_client;
+	if (hosts_by_uid) {
+		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_client_identifier);
+		if (vp) {
+			isc_host_uid_t *client, my_client;
 
-		my_client.client = &(vp->data);
+			my_client.client = &(vp->data);
 
-		client = fr_hash_table_find(hosts_by_uid, &my_client);
-		if (client) {
-			host = client->host;
-			goto done;
+			fr_hash_table_find((void **)&client, hosts_by_uid, &my_client);
+			if (client) {
+				host = client->host;
+				goto done;
+			}
 		}
 	}
-
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_client_hardware_address);
 	if (!vp) return NULL;
 
 	memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
 
-	ether = fr_hash_table_find(hosts_by_ether, &my_ether);
+	fr_hash_table_find((void **)&ether, hosts_by_ether, &my_ether);
 	if (!ether) return NULL;
 
 	host = ether->host;
@@ -1688,7 +1688,7 @@ static int parse_filename(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_i
 static int parse_server_name(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	if (info->argv[0]->vb_length > member_size(dhcp_packet_t, sname)) {
-		fr_strerror_const("filename is too long");
+		fr_strerror_const("server name is too long");
 		return -1;
 	}
 

@@ -902,8 +902,8 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 
 static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
 {
-	uint8_t *buf;
-	size_t len;
+	uint8_t *buf, *p;
+	size_t i, len;
 	fr_value_box_t one = {};
 	fr_value_box_t two = {};
 
@@ -916,6 +916,11 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		 *	Don't touch the RHS.
 		 */
 		fr_assert(b->type == FR_TYPE_UINT32);
+
+	} else if (op == T_MUL) {
+		fr_assert(fr_type_is_integer_except_bool(b->type));
+
+		COERCE_B(FR_TYPE_UINT64, NULL);
 
 	} else {
 		COERCE_B(FR_TYPE_OCTETS, dst->enumv);
@@ -1034,6 +1039,32 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		fr_value_box_safety_copy(dst, a);
 		break;
 
+	case T_MUL:
+		/*
+		 *	0 * 0 = 0
+		 */
+		if (!b->vb_uint64 || !a->vb_length) {
+			fr_value_box_memdup(ctx, dst, dst->enumv, (const uint8_t *) "", 0, false);
+			fr_value_box_safety_copy(dst, a);
+			break;
+		}
+
+		if (b->vb_uint64 > 256) return ERR_OVERFLOW;
+		if (a->vb_length > 16) return ERR_OVERFLOW;
+
+		len = a->vb_length * b->vb_uint64;
+
+		buf = talloc_array(ctx, uint8_t, len);
+		if (!buf) goto oom;
+
+		for (i = 0, p = buf; i < b->vb_uint64; i++, p += a->vb_length) {
+			memcpy(p, a->vb_octets, a->vb_length);
+		}
+
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
+		break;
+
 	default:
 		return ERR_INVALID;	/* invalid operator */
 	}
@@ -1046,8 +1077,8 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
 {
-	char *buf;
-	size_t len;
+	char *buf, *p;
+	size_t i, len;
 	fr_value_box_t one = {};
 	fr_value_box_t two = {};
 
@@ -1060,6 +1091,11 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		 *	Don't touch the RHS.
 		 */
 		fr_assert(b->type == FR_TYPE_UINT32);
+
+	} else if (op == T_MUL) {
+		fr_assert(fr_type_is_integer_except_bool(b->type));
+
+		COERCE_B(FR_TYPE_UINT64, NULL);
 
 	} else {
 		COERCE_B(FR_TYPE_STRING, dst->enumv);
@@ -1149,6 +1185,33 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		memcpy(buf, a->vb_strvalue + b->vb_uint32, len);
 		buf[len] = '\0';
+
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
+		break;
+
+	case T_MUL:
+		/*
+		 *	0 * 0 = 0
+		 */
+		if (!b->vb_uint64 || !a->vb_length) {
+			fr_value_box_strdup(ctx, dst, dst->enumv, "", false);
+			fr_value_box_safety_copy(dst, a);
+			break;
+		}
+
+		if (b->vb_uint64 > 256) return ERR_OVERFLOW;
+		if (a->vb_length > 16) return ERR_OVERFLOW;
+
+		len = a->vb_length * b->vb_uint64;
+
+		buf = talloc_array(ctx, char, len + 1);
+		if (!buf) goto oom;
+
+		for (i = 0, p = buf; i < b->vb_uint64; i++, p += a->vb_length) {
+			memcpy(p, a->vb_strvalue, a->vb_length);
+		}
+		*p = '\0';
 
 		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, false);
 		fr_value_box_safety_copy(dst, a);
@@ -1376,14 +1439,16 @@ static int cast_ipv6_addr(fr_value_box_t *out, fr_value_box_t const *in)
 	case FR_TYPE_COMBO_IP_ADDR:
 		if (in->vb_ip.af == AF_INET) goto cast_ipv4_addr;
 
-		fr_value_box_init(out, FR_TYPE_IPV4_ADDR, NULL, in->tainted);
+		fr_assert(in->vb_ip.af == AF_INET6);
+		fr_value_box_init(out, FR_TYPE_IPV6_ADDR, NULL, in->tainted);
 		out->vb_ip = in->vb_ip;
 		break;
 
 	case FR_TYPE_COMBO_IP_PREFIX:
 		if (in->vb_ip.af == AF_INET) goto cast_ipv4_prefix;
 
-		fr_value_box_init(out, FR_TYPE_IPV4_PREFIX, NULL, in->tainted);
+		fr_assert(in->vb_ip.af == AF_INET6);
+		fr_value_box_init(out, FR_TYPE_IPV6_PREFIX, NULL, in->tainted);
 		out->vb_ip = in->vb_ip;
 		break;
 
@@ -1448,6 +1513,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 
 	switch (op) {
 	case T_ADD:
+	case T_OR:
 		/*
 		 *	For simplicity, make sure that the prefix is first.
 		 */
@@ -1457,7 +1523,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		 *	We can only add something to a prefix, and
 		 *	that something has to be a number. The cast
 		 *	operation already ensured that the number is
-		 *	uint32, and is at least vaguely within the
+		 *	uint64, and is at least vaguely within the
 		 *	allowed range.
 		 */
 		if (a->type != FR_TYPE_IPV6_PREFIX) return ERR_INVALID;
@@ -1477,6 +1543,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		/*
 		 *	Add in the relevant low bits.
 		 */
+		memcpy(&dst->vb_ipv6addr, a->vb_ipv6addr, sizeof(dst->vb_ipv6addr));
 		mask = b->vb_uint64;
 		for (i = 15; i >= ((a->vb_ip.prefix + 7) >> 3); i--) {
 			dst->vb_ipv6addr[i] |= mask & 0xff;
@@ -1484,7 +1551,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		}
 
 		dst->vb_ip.af = AF_INET6;
-		dst->vb_ip.prefix = 0;
+		dst->vb_ip.prefix = 128;
 		dst->vb_ip.scope_id = a->vb_ip.scope_id;
 		fr_value_box_safety_copy(dst, a);
 		break;
@@ -1550,7 +1617,7 @@ static int calc_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 		pb = b->vb_octets;
 		prefix = get_ipv6_prefix(pb);
 
-	} else if (a->type == FR_TYPE_IPV6_ADDR) {
+	} else if (b->type == FR_TYPE_IPV6_ADDR) {
 		pb = (const uint8_t *) &b->vb_ip.addr.v6;
 
 	} else {
@@ -1744,7 +1811,7 @@ static int calc_uint64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	case T_MOD:
 		if (b->vb_uint64 == 0) return ERR_ZERO;
 
-		result.vb_uint64 = a->vb_uint64 % in2->vb_uint64;
+		result.vb_uint64 = a->vb_uint64 % b->vb_uint64;
 		break;
 
 	case T_AND:
@@ -1831,7 +1898,7 @@ static int calc_int64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const
 	case T_MOD:
 		if (b->vb_int64 == 0) return ERR_ZERO;
 
-		result.vb_int64 = a->vb_int64 % in2->vb_int64;
+		result.vb_int64 = a->vb_int64 % b->vb_int64;
 		break;
 
 	case T_AND:
@@ -1937,6 +2004,9 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	if (!fr_type_is_leaf(a->type)) return invalid_type(a->type);
 	if (!fr_type_is_leaf(b->type)) return invalid_type(b->type);
 
+	VALUE_BOX_VERIFY(a);
+	VALUE_BOX_VERIFY(b);
+
 	/*
 	 *	=== and !== also check types.  If the types are
 	 *	different, it's a failure.  Otherwise they revert to == and !=.
@@ -2005,6 +2075,16 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			} else if (b->type == FR_TYPE_TIME_DELTA) {
 				hint = upcast_op[a->type][FR_TYPE_FLOAT64];
 				if (hint == FR_TYPE_NULL) hint = upcast_op[FR_TYPE_FLOAT64][a->type];
+			}
+
+			if ((a->type == FR_TYPE_STRING) &&
+			    (fr_type_is_integer_except_bool(b->type))) {
+				hint = FR_TYPE_STRING;
+			}
+
+			if ((a->type == FR_TYPE_OCTETS) &&
+			    (fr_type_is_integer_except_bool(b->type))) {
+				hint = FR_TYPE_OCTETS;
 			}
 
 			if (hint != FR_TYPE_NULL) break;
@@ -2185,11 +2265,13 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			if (a->type != hint) {
 				if (fr_value_box_cast(NULL, &one, hint, enumv, a) < 0) goto done;
 				a = &one;
+				VALUE_BOX_VERIFY(a);
 			}
 
 			if (b->type != hint) {
 				if (fr_value_box_cast(NULL, &two, hint, enumv, b) < 0) goto done;
 				b = &two;
+				VALUE_BOX_VERIFY(b);
 			}
 		}
 

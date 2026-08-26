@@ -1,5 +1,3 @@
-bob	Password.Cleartext := "hello"
-
 #
 # 	Configuration file for the rlm_files module.
 # 	Please see rlm_files documentation for more information.
@@ -83,7 +81,7 @@ bob	Password.Cleartext := "hello"
 # users with spaces in their names, you must also change
 # the "filter_username" policy to allow spaces.
 #
-# See raddb/policy.d/filter, filter_username {} section.
+# See policy.d/filter, filter_username {} section.
 #
 #"John Doe"	Password.Cleartext := "hello"
 #		Reply-Message = "Hello, %{User-Name}"
@@ -153,7 +151,7 @@ DEFAULT	Framed-Protocol == ::PPP
 #	Login-IP-Host = shellbox.ispdomain.com
 
 # #
-# # Last default: shell on the local terminal server.
+#  = Last default: shell on the local terminal server.
 # #
 # DEFAULT
 # 	Service-Type = ::Administrative-User

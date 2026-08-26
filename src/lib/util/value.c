@@ -48,7 +48,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/value.h>
 #undef _VALUE_PRIVATE
 
-#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/size.h>
 
@@ -80,7 +79,7 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_uint64) == 8,
 	      "vb_uint64 has unexpected length");
 
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int8) == 1,
-	      "vb_int16 has unexpected length");
+	      "vb_int8 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int16) == 2,
 	      "vb_int16 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int32) == 4,
@@ -269,7 +268,7 @@ static int64_t const fr_value_box_integer_min[] = {
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
-fr_sbuff_unescape_rules_t fr_value_unescape_double = {
+fr_sbuff_unescape_rules_t const fr_value_unescape_double = {
 	.name = "double",
 	.chr = '\\',
 	.subs = {
@@ -288,7 +287,7 @@ fr_sbuff_unescape_rules_t fr_value_unescape_double = {
 	.do_oct = true
 };
 
-fr_sbuff_unescape_rules_t fr_value_unescape_single = {
+fr_sbuff_unescape_rules_t const fr_value_unescape_single = {
 	.name = "single",
 	.chr = '\\',
 	.subs = {
@@ -299,7 +298,7 @@ fr_sbuff_unescape_rules_t fr_value_unescape_single = {
 	.do_oct = false
 };
 
-fr_sbuff_unescape_rules_t fr_value_unescape_solidus = {
+fr_sbuff_unescape_rules_t const fr_value_unescape_solidus = {
 	.name = "solidus",
 	.chr = '\\',
 	.subs = {
@@ -320,7 +319,7 @@ fr_sbuff_unescape_rules_t fr_value_unescape_solidus = {
 	.do_oct = true
 };
 
-fr_sbuff_unescape_rules_t fr_value_unescape_backtick = {
+fr_sbuff_unescape_rules_t const fr_value_unescape_backtick = {
 	.name = "backtick",
 	.chr = '\\',
 	.subs = {
@@ -339,21 +338,21 @@ fr_sbuff_unescape_rules_t fr_value_unescape_backtick = {
 	.do_oct = true
 };
 
-fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST] = {
+fr_sbuff_unescape_rules_t const *fr_value_unescape_by_quote[T_TOKEN_LAST] = {
 	[T_DOUBLE_QUOTED_STRING]	= &fr_value_unescape_double,
 	[T_SINGLE_QUOTED_STRING]	= &fr_value_unescape_single,
 	[T_SOLIDUS_QUOTED_STRING]	= &fr_value_unescape_solidus,
 	[T_BACK_QUOTED_STRING]		= &fr_value_unescape_backtick,
 };
 
-fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[UINT8_MAX + 1] = {
+fr_sbuff_unescape_rules_t const *fr_value_unescape_by_char[SBUFF_CHAR_CLASS] = {
 	['"']	= &fr_value_unescape_double,
 	['\'']	= &fr_value_unescape_single,
 	['/']	= &fr_value_unescape_solidus,
 	['`']	= &fr_value_unescape_backtick,
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_double = {
+fr_sbuff_escape_rules_t const fr_value_escape_double = {
 	.name = "double",
 	.chr = '\\',
 	.subs = {
@@ -384,14 +383,14 @@ fr_sbuff_escape_rules_t fr_value_escape_double = {
  *  The length of the secret still leaks, but that is likely fine.  Fixing that is more work.
  *
  */
-fr_sbuff_escape_rules_t fr_value_escape_secret = {
+fr_sbuff_escape_rules_t const fr_value_escape_secret = {
 	.name = "secret",
 	.subs = {
 		[ 0 ... 255 ] = '.',
 	},
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_single = {
+fr_sbuff_escape_rules_t const fr_value_escape_single = {
 	.name = "single",
 	.chr = '\\',
 	.subs = {
@@ -401,7 +400,7 @@ fr_sbuff_escape_rules_t fr_value_escape_single = {
 	.do_utf8 = true,
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_solidus = {
+fr_sbuff_escape_rules_t const fr_value_escape_solidus = {
 	.name = "solidus",
 	.chr = '\\',
 	.subs = {
@@ -422,7 +421,7 @@ fr_sbuff_escape_rules_t fr_value_escape_solidus = {
 	.do_oct = true
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_backtick = {
+fr_sbuff_escape_rules_t const fr_value_escape_backtick = {
 	.name = "backtick",
 	.chr = '\\',
 	.subs = {
@@ -444,21 +443,21 @@ fr_sbuff_escape_rules_t fr_value_escape_backtick = {
 	.do_oct = true
 };
 
-fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST] = {
+fr_sbuff_escape_rules_t const *fr_value_escape_by_quote[T_TOKEN_LAST] = {
 	[T_DOUBLE_QUOTED_STRING]	= &fr_value_escape_double,
 	[T_SINGLE_QUOTED_STRING]	= &fr_value_escape_single,
 	[T_SOLIDUS_QUOTED_STRING]	= &fr_value_escape_solidus,
 	[T_BACK_QUOTED_STRING]		= &fr_value_escape_backtick,
 };
 
-fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1] = {
+fr_sbuff_escape_rules_t const *fr_value_escape_by_char[SBUFF_CHAR_CLASS] = {
 	['"']	= &fr_value_escape_double,
 	['\'']	= &fr_value_escape_single,
 	['/']	= &fr_value_escape_solidus,
 	['`']	= &fr_value_escape_backtick,
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_unprintables = {
+fr_sbuff_escape_rules_t const fr_value_escape_unprintables = {
 	.name = "unprintables",
 	.chr = '\\',
 	.subs = {
@@ -519,7 +518,7 @@ fr_sbuff_parse_rules_t const *value_parse_rules_unquoted[T_TOKEN_LAST] = {
 	[T_BACK_QUOTED_STRING]		= &value_parse_rules_backtick_unquoted
 };
 
-fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[UINT8_MAX] = {
+fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[SBUFF_CHAR_CLASS] = {
 	['\0']				= &value_parse_rules_bareword_unquoted,
 	['"']				= &value_parse_rules_double_unquoted,
 	['\'']				= &value_parse_rules_single_unquoted,
@@ -617,7 +616,7 @@ fr_sbuff_parse_rules_t const *value_parse_rules_quoted[T_TOKEN_LAST] = {
 	[T_BACK_QUOTED_STRING]		= &value_parse_rules_backtick_quoted
 };
 
-fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX] = {
+fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[SBUFF_CHAR_CLASS] = {
 	['\0']				= &value_parse_rules_bareword_quoted,
 	['"']				= &value_parse_rules_double_quoted,
 	['\'']				= &value_parse_rules_single_quoted,
@@ -663,6 +662,10 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_ATTR:
 	case FR_TYPE_NULL:
+	case FR_TYPE_VOID:
+	case FR_TYPE_VALUE_BOX_CURSOR:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_PAIR_CURSOR:
 		break;
 
 	case FR_TYPE_TLV:
@@ -670,10 +673,16 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_UNION:
-	case FR_TYPE_INTERNAL:
+	case FR_TYPE_MAX:
 		fr_assert(0);
 		break;
 	}
+
+#ifndef NDEBUG
+	dst->magic = FR_VALUE_BOX_MAGIC;
+	dst->file = src->file;
+	dst->line = src->line;
+#endif
 
 	dst->enumv = src->enumv;
 	dst->type = src->type;
@@ -681,6 +690,11 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	dst->safe_for = src->safe_for;
 	dst->secret = src->secret;
 	fr_value_box_list_entry_init(dst);
+
+	/*
+	 *	We have no idea if this is true, but we can't _guarantee_ it.  So we clear the flag.
+	 */
+	dst->talloced = false;
 }
 
 /** Compare two floating point numbers for equality.
@@ -737,16 +751,16 @@ DIAG_ON(float-equal)
  * @param[in] a Value to compare.
  * @param[in] b Value to compare.
  * @return
- *	- -1 if a is less than b.
- *	- 0 if both are equal.
- *	- 1 if a is more than b.
- *	- < -1 on failure.
+ *	- CMP_LT if a is less than b.
+ *	- CMP_EQ if both are equal.
+ *	- CMP_GT if a is more than b.
+ *	- CMP_ERR if the values are not comparable, retrieve the error with fr_strerror.
  */
-int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
+fr_cmp_ret_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 {
 	if (a->type != b->type) {
 		fr_strerror_printf("%s: Can't compare values of different types", __FUNCTION__);
-		return -2;
+		return CMP_ERR;
 	}
 
 	/*
@@ -755,37 +769,12 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	 */
 	switch (a->type) {
 	case FR_TYPE_VARIABLE_SIZE:
-	{
-		size_t length;
-
-		if (a->vb_length < b->vb_length) {
-			length = a->vb_length;
-		} else {
-			length = b->vb_length;
-		}
-
-		if (length) {
-			int cmp;
-
-			/*
-			 *	Use constant-time comparisons for secret values.
-			 */
-			if (a->secret || b->secret) {
-				cmp = fr_digest_cmp(a->datum.ptr, b->datum.ptr, length);
-			} else {
-				cmp = memcmp(a->datum.ptr, b->datum.ptr, length);
-			}
-			if (cmp != 0) return CMP(cmp, 0);
-		}
-
 		/*
-		 *	Contents are the same.  The return code
-		 *	is therefore the difference in lengths.
-		 *
-		 *	i.e. "0x00" is smaller than "0x0000"
+		 *	Note that we do NOT check a->secret or b->secret.  This function is used to sort pairs
+		 *	and sets of value-boxes.  The fr_digest_cmp() function returns 0..255 no matter what
+		 *	the two inputs are.  So it can't be used in a stable sort.
 		 */
-		return CMP(a->vb_length, b->vb_length);
-	}
+		return MEMCMP_FIELDS(a, b, datum.ptr, vb_length);
 
 	/*
 	 *	Short-hand for simplicity.
@@ -850,7 +839,8 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		COMPARE(ifid);
 
 	case FR_TYPE_NULL:	/* NULLs are not comparable */
-		return -2;
+		fr_strerror_const("NULL values are not comparable");
+		return CMP_ERR;
 
 	case FR_TYPE_ATTR:
 		/*
@@ -863,8 +853,14 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		 */
 		return fr_dict_attr_cmp(a->vb_attr, b->vb_attr);
 
+	case FR_TYPE_VOID:
+		return CMP(a->vb_void, b->vb_void);
+
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_INTERNAL:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VALUE_BOX_CURSOR:
+	case FR_TYPE_PAIR_CURSOR:
+	case FR_TYPE_MAX:
 		break;
 
 	/*
@@ -874,7 +870,8 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	}
 
 	(void)fr_cond_assert(0);	/* invalud type for leaf comparison */
-	return -2;
+	fr_strerror_printf("Invalid type %s for leaf comparison", fr_type_to_str(a->type));
+	return CMP_ERR;
 }
 
 /*
@@ -1012,6 +1009,9 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 	if (unlikely((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) return fr_regex_cmp_op(op, a, b);
 
+	VALUE_BOX_VERIFY(a);
+	VALUE_BOX_VERIFY(b);
+
 	switch (a->type) {
 	case FR_TYPE_IPV4_ADDR:
 		switch (b->type) {
@@ -1131,9 +1131,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 	case FR_TYPE_NULL:
 	cmp:
 		compare = fr_value_box_cmp(a, b);
-		if (compare < -1) {	/* comparison error */
-			return -2;
-		}
+		if (unlikely(compare == CMP_ERR)) return -1;
 		break;
 
 	case FR_TYPE_GROUP:
@@ -1144,7 +1142,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 	case FR_TYPE_UNION:
 	case FR_TYPE_INTERNAL:
 		fr_assert(0);
-		return -2;
+		return -1;
 	}
 
 	/*
@@ -1381,10 +1379,12 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		break;
 
 	case FR_TYPE_UINT32:
+	case FR_TYPE_FLOAT32:	/* same offset and size as uint32 */
 		dst->vb_uint32 = htonl(src->vb_uint32);
 		break;
 
 	case FR_TYPE_UINT64:
+	case FR_TYPE_FLOAT64:	/* same offset and size as uint64 */
 		dst->vb_uint64 = htonll(src->vb_uint64);
 		break;
 
@@ -1406,14 +1406,6 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 
 	case FR_TYPE_TIME_DELTA:
 		dst->vb_time_delta = fr_time_delta_wrap(htonll(fr_time_delta_unwrap(src->vb_time_delta)));
-		break;
-
-	case FR_TYPE_FLOAT32:
-		dst->vb_float32 = htonl((uint32_t)src->vb_float32);
-		break;
-
-	case FR_TYPE_FLOAT64:
-		dst->vb_float64 = htonll((uint64_t)src->vb_float64);
 		break;
 
 	default:
@@ -1768,13 +1760,13 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		} else switch (value->enumv->flags.length) {
 		case 2:
 			if (date > UINT16_MAX) date = UINT16_MAX;
-			FR_DBUFF_IN_RETURN(&work_dbuff, (int16_t) date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) date);
 			break;
 
 		date_size4:
 		case 4:
 			if (date > UINT32_MAX) date = UINT32_MAX;
-			FR_DBUFF_IN_RETURN(&work_dbuff, (int32_t) date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) date);
 			break;
 
 		case 8:
@@ -2329,7 +2321,7 @@ ssize_t fr_value_box_ipaddr_from_network(fr_value_box_t *dst, fr_type_t type, fr
 	default:
 		fr_strerror_printf("Invalid data type '%s' passed to IP address decode function",
 				   fr_type_to_str(type));
-		return 0;
+		return -1;
 	}
 
 	/*
@@ -2604,8 +2596,16 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 	 *	Copy the raw octets into the datum of a value_box
 	 *	inverting bytesex for uint32s (if LE).
 	 */
-	memcpy(ptr, src->vb_octets, src->vb_length);
-	fr_value_box_hton(dst, dst);
+	switch (dst->type) {
+	default:
+		memcpy(ptr, src->vb_octets, src->vb_length);
+		fr_value_box_hton(dst, dst);
+		break;
+
+	case FR_TYPE_BOOL:
+		dst->vb_bool = (src->vb_octets[0] != 0);
+		break;
+	}
 
 	return 0;
 }
@@ -2637,6 +2637,14 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 	fr_value_box_init(dst, FR_TYPE_STRING, dst_enumv, false);
 
 	switch (src->type) {
+	/*
+	 *	An explicit `null` has no representation to cast from.
+	 *	Refuse rather than silently coerce to an empty string.
+	 */
+	case FR_TYPE_NULL:
+		fr_strerror_const("Cannot cast null to a string");
+		return -1;
+
 	/*
 	 *	The presentation format of octets is hex
 	 *	What we actually want here is the raw string
@@ -2689,6 +2697,14 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	fr_value_box_safety_copy_changed(dst, src);
 
 	switch (src->type) {
+	/*
+	 *	An explicit `null` has no representation to cast from.
+	 *	Refuse rather than silently coerce to zero-length octets.
+	 */
+	case FR_TYPE_NULL:
+		fr_strerror_const("Cannot cast null to octets");
+		return -1;
+
 	/*
 	 *	<string> (excluding terminating \0)
 	 */
@@ -2768,7 +2784,6 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_UNION:
 	case FR_TYPE_INTERNAL:
-	case FR_TYPE_NULL:
 	case FR_TYPE_ATTR:
 	case FR_TYPE_COMBO_IP_ADDR: /* the types should have been realized to ipv4 / ipv6 */
 	case FR_TYPE_COMBO_IP_PREFIX:
@@ -3248,7 +3263,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 		}
 		dst->vb_ip.scope_id = src->vb_octets[0];
 		dst->vb_ip.prefix = src->vb_octets[1];
-		memcpy(&dst->vb_ipv6addr, src->vb_octets, sizeof(dst->vb_ipv6addr));
+		memcpy(&dst->vb_ipv6addr, src->vb_octets + 2, sizeof(dst->vb_ipv6addr));
 		break;
 
 	default:
@@ -3398,11 +3413,11 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 		break;
 
 	case FR_TYPE_FLOAT32:
-		dst->vb_bool = (fpclassify(src->vb_float32) == FP_ZERO);
+		dst->vb_bool = (fpclassify(src->vb_float32) != FP_ZERO);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		dst->vb_bool = (fpclassify(src->vb_float64) == FP_ZERO);
+		dst->vb_bool = (fpclassify(src->vb_float64) != FP_ZERO);
 		break;
 
 	default:
@@ -4352,9 +4367,9 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 		 *	of talloc hierarchy.
 		 */
 		{
-			fr_value_box_t	*vb = NULL;
+			fr_value_box_t *vb;
 
-			while ((vb = fr_value_box_list_next(&data->vb_group, vb))) {
+			while ((vb = fr_value_box_list_pop_head(&data->vb_group)) != NULL) {
 				fr_value_box_clear_value(vb);
 				talloc_free(vb);
 			}
@@ -4539,6 +4554,11 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->vb_attr = src->vb_attr;
 		fr_value_box_copy_meta(dst, src);
 		break;
+
+	case FR_TYPE_VOID:
+		dst->vb_void = src->vb_void;
+		fr_value_box_copy_meta(dst, src);
+		break;
 	}
 }
 
@@ -4553,6 +4573,8 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
  */
 int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
 {
+	VALUE_BOX_VERIFY(src);
+
 	switch (src->type) {
 	default:
 		return fr_value_box_copy(ctx, dst, src);
@@ -4623,7 +4645,7 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 {
 	char const	*str;
 
-	str = talloc_typed_strdup(ctx, src);
+	str = talloc_strdup(ctx, src);
 	if (!str) {
 		fr_strerror_const("Failed allocating string buffer");
 		return -1;
@@ -4631,7 +4653,7 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->vb_length = talloc_array_length(str) - 1;
+	dst->vb_length = talloc_strlen(str);
 
 	return 0;
 }
@@ -4657,6 +4679,7 @@ int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
 		fr_strerror_const("Failed re-allocing string buffer");
 		return -1;
 	}
+	vb->vb_strvalue = str;
 	vb->vb_length = len;
 
 	return 0;
@@ -4688,7 +4711,7 @@ int fr_value_box_vasprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->vb_length = talloc_array_length(str) - 1;
+	dst->vb_length = talloc_strlen(str);
 
 	return 0;
 }
@@ -4797,18 +4820,15 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
  */
 int fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, size_t len)
 {
-	size_t	clen;
-	char	*cstr;
+	size_t	dstlen;
 	char	*str;
 
 	fr_assert(dst->type == FR_TYPE_STRING);
 
-	memcpy(&cstr, &dst->vb_strvalue, sizeof(cstr));
+	dstlen = talloc_strlen(dst->vb_strvalue);
+	if (dstlen == len) return 0;	/* No change */
 
-	clen = talloc_array_length(dst->vb_strvalue) - 1;
-	if (clen == len) return 0;	/* No change */
-
-	str = talloc_realloc(ctx, cstr, char, len + 1);
+	str = talloc_realloc(ctx, UNCONST(char *, dst->vb_strvalue), char, len + 1);
 	if (!str) {
 		fr_strerror_printf("Failed reallocing value box buffer to %zu bytes", len + 1);
 		return -1;
@@ -4817,10 +4837,10 @@ int fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, 
 	/*
 	 *	Zero out the additional bytes
 	 */
-	if (clen < len) {
-		memset(str + clen, '\0', (len - clen) + 1);
+	if (dstlen < len) {
+		memset(str + dstlen, '\0', (len - dstlen) + 1);
 	} else {
-		cstr[len] = '\0';
+		str[len] = '\0';
 	}
 	dst->vb_strvalue = str;
 	dst->vb_length = len;
@@ -4874,7 +4894,10 @@ int fr_value_box_bstrndup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_at
 		return -1;
 	}
 
-	if (fr_dbuff_out_memcpy((uint8_t *)str, dbuff, len) < 0) return -1;
+	if (fr_dbuff_out_memcpy((uint8_t *)str, dbuff, len) < 0) {
+		talloc_free(str);
+		return -1;
+	}
 	str[len] = '\0';
 
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
@@ -5018,16 +5041,13 @@ int fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, 
  */
 int fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, size_t len)
 {
-	size_t	clen;
-	uint8_t	*cbin;
+	size_t	dstlen;
 	uint8_t	*bin;
 
 	fr_assert(dst->type == FR_TYPE_OCTETS);
 
-	memcpy(&cbin, &dst->vb_octets, sizeof(cbin));
-
-	clen = talloc_array_length(dst->vb_octets);
-	if (clen == len) return 0;	/* No change */
+	dstlen = talloc_array_length(dst->vb_octets);
+	if (dstlen == len) return 0;	/* No change */
 
 	/*
 	 *	Realloc the buffer.  If the new length is 0, we
@@ -5035,7 +5055,7 @@ int fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst
 	 *	as talloc_realloc() will fail.
 	 */
 	if (len > 0) {
-		bin = talloc_realloc(ctx, cbin, uint8_t, len);
+		bin = talloc_realloc(ctx, UNCONST(uint8_t *, dst->vb_octets), uint8_t, len);
 	} else {
 		bin = talloc_array(ctx, uint8_t, 0);
 	}
@@ -5048,12 +5068,12 @@ int fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst
 	 *	Only free the original buffer once we've allocated
 	 *	a new empty array.
 	 */
-	if (len == 0) talloc_free(cbin);
+	if (len == 0) talloc_const_free(dst->vb_octets);
 
 	/*
 	 *	Zero out the additional bytes
 	 */
-	if (clen < len) memset(bin + clen, 0x00, len - clen);
+	if (dstlen < len) memset(bin + dstlen, 0x00, len - dstlen);
 	dst->vb_octets = bin;
 	dst->vb_length = len;
 
@@ -5115,7 +5135,11 @@ int fr_value_box_memdup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr
 		fr_strerror_printf("Failed allocating octets buffer");
 		return -1;
 	}
-	if (fr_dbuff_out_memcpy(bin, dbuff, len) < (ssize_t) len) return -1;
+
+	if (fr_dbuff_out_memcpy(bin, dbuff, len) < (ssize_t) len) {
+		talloc_free(bin);
+		return -1;
+	}
 	talloc_set_type(bin, uint8_t);
 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
@@ -5191,13 +5215,25 @@ void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
 /*
  *	Assign a cursor to the data type.
  */
-void fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *cursor, char const *name)
+void fr_value_box_set_cursor_shallow(fr_value_box_t *dst, fr_type_t type, void *cursor, char const *name)
 {
 	fr_assert((type == FR_TYPE_VALUE_BOX_CURSOR) || (type == FR_TYPE_PAIR_CURSOR));
 
 	fr_value_box_init(dst, type, NULL, false);
 	dst->vb_cursor = cursor;
 	dst->vb_cursor_name = name;
+}
+
+
+/** Assign a void pointer to a box
+ *
+ * @param[in] dst	to assign void pointer to.
+ * @param[in] ptr	to assign.
+ */
+void fr_value_box_set_void_shallow(fr_value_box_t *dst, void const *ptr)
+{
+	fr_value_box_init(dst, FR_TYPE_VOID, NULL, false);
+	dst->vb_void = UNCONST(void *, ptr);
 }
 
 static fr_dict_attr_t const *fr_value_box_attr_enumv(fr_dict_attr_t const *da)
@@ -5378,7 +5414,6 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 		}
 	}
 
-
 	return slen;
 }
 
@@ -5408,6 +5443,7 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (!rules) rules = &default_rules;
 
 	fr_strerror_clear();
+	fr_value_box_init(dst, dst_type, NULL, false);
 
 	/*
 	 *	Lookup any names before continuing
@@ -5543,18 +5579,21 @@ parse:
 					fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX,
 								     rules->terminals, rules->escapes);
 
-					if (talloc_array_length(buff) == 1) {
+					if (talloc_strlen(buff) == 0) {
 						talloc_free(buff);
 						goto zero;
 					}
 
-					bin = talloc_realloc(ctx, buff, uint8_t, talloc_array_length(buff) - 1);
+					/*
+					 *	Trim off the trailing '\0', and change the data type.
+					 */
+					bin = talloc_typed_memdup(ctx, (uint8_t *) buff, talloc_strlen(buff));
 					if (unlikely(!bin)) {
 						fr_strerror_const("Failed trimming string buffer");
 						talloc_free(buff);
 						return -1;
 					}
-					talloc_set_type(bin, uint8_t); /* talloc_realloc doesn't do this */
+
 				/*
 				 *	Input data is zero
 				 *
@@ -5623,7 +5662,7 @@ parse:
 	case FR_TYPE_IPV4_ADDR:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		if (fr_inet_pton4(&addr, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
@@ -5646,7 +5685,7 @@ parse:
 	case FR_TYPE_IPV4_PREFIX:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		if (fr_inet_pton4(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
@@ -5656,7 +5695,7 @@ parse:
 	case FR_TYPE_IPV6_ADDR:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		/*
 		 *	Parse scope, too.
@@ -5686,7 +5725,7 @@ parse:
 	case FR_TYPE_IPV6_PREFIX:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		if (fr_inet_pton6(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
@@ -5696,7 +5735,7 @@ parse:
 	case FR_TYPE_COMBO_IP_ADDR:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		/*
 		 *	Parse scope, too.
@@ -5723,7 +5762,7 @@ parse:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		if (fr_inet_pton(&dst->vb_ip, fr_sbuff_current(in), name_len, AF_UNSPEC,
 				  fr_hostname_lookups, true) < 0) return -1;
@@ -5753,7 +5792,7 @@ parse:
 		 *	Quoted boolean values are "yes", "no", "true", "false"
 		 */
 		slen = fr_sbuff_out(NULL, &dst->vb_bool, in);
-		if (slen >= 0) return slen;
+		if (slen > 0) return slen;
 
 		/*
 		 *	For barewords we also allow 0 for false and any other
@@ -5867,6 +5906,11 @@ parse:
 						 dst_enumv ? dst_enumv->flags.flag_time_res : FR_TIME_RES_SEC,
 						 false, rules->terminals);
 		if (slen < 0) return slen;
+		if (!slen) {
+		empty_is_invalid:
+			fr_strerror_const("Empty input is invalid");
+			return -1;
+		}
 		FR_SBUFF_SET_RETURN(in, &our_in);
 
 	case FR_TYPE_NULL:
@@ -6042,6 +6086,7 @@ finish:
 	 */
 	dst->enumv = dst_enumv;
 	fr_value_box_list_entry_init(dst);
+	VALUE_BOX_VERIFY(dst);
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
@@ -6818,6 +6863,120 @@ int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_es
 	return ret;
 }
 
+typedef struct {
+	TALLOC_CTX			*ctx;
+	fr_sbuff_escape_rules_t const	*erules;
+} fr_value_box_escape_rules_ctx_t;
+
+static int _value_box_escape_rules(fr_value_box_t *vb, void *uctx)
+{
+	fr_value_box_escape_rules_ctx_t *ctx = uctx;
+
+	if (fr_type_is_leaf(vb->type)) {
+		if (fr_value_box_escape_in_place_erules(ctx->ctx, vb, ctx->erules) < 0) return -1;
+
+		return 1;	/* safe_for has been updated */
+	}
+
+	return fr_value_box_escape_in_place(vb,
+					    &(fr_value_box_escape_t) {
+						    .func = _value_box_escape_rules,
+						    .safe_for = (fr_value_box_safe_for_t) ctx->erules,
+						    .always_escape = false,
+					    },
+					    &(fr_value_box_escape_rules_ctx_t)  {
+						    .ctx = vb,
+						    .erules = ctx->erules,
+					    }
+		);
+}
+
+/** Escape a value-box in place using sbuff escaping rules, and mark it safe-for.
+ *
+ *  If the input type isn't a string, then it is converted to a string.
+ *
+ *  The output type is always #FR_TYPE_STRING
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[in] vb	which will be escaped
+ * @param[in] erules	escape rules
+ * @return
+ *	- <0 for error, generally OOM
+ *	- 0 for success (did not set safe_for)
+ *	- 1 for success (did set safe_for)
+ */
+int fr_value_box_escape_in_place_erules(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_sbuff_escape_rules_t const *erules)
+{
+	ssize_t slen;
+	fr_sbuff_t *escaped = NULL;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&escaped, 256, 4096);
+
+	/*
+	 *	Structural types are much more complicated.  :(
+	 */
+	if (!fr_type_is_leaf(vb->type)) {
+		int rcode;
+
+		rcode = fr_value_box_escape_in_place(vb,
+						     &(fr_value_box_escape_t) {
+							     .func = _value_box_escape_rules,
+							     .safe_for = (fr_value_box_safe_for_t) erules,
+							     .always_escape = false,
+						     },
+						     &(fr_value_box_escape_rules_ctx_t)  {
+							     .ctx = ctx,
+							     .erules = erules,
+						     }
+			);
+		if (rcode < 0) return rcode;
+
+		rcode = fr_value_box_list_concat_as_string(NULL, escaped, &vb->vb_group, NULL, 0, NULL,
+							   FR_VALUE_BOX_LIST_FREE,
+							   (fr_value_box_safe_for_t) erules, true);
+		if (rcode < 0) return rcode;
+
+		fr_assert(fr_value_box_list_num_elements(&vb->vb_group) == 0);
+
+		goto set_value;
+	}
+
+	if (vb->type != FR_TYPE_STRING) {
+		if (fr_value_box_cast_in_place(ctx, vb, FR_TYPE_STRING, NULL) < 0) return -1;
+	} else {
+		if (fr_value_box_is_safe_for(vb, erules)) return 0;
+	}
+
+	slen = fr_sbuff_in_escape(escaped, vb->vb_strvalue, vb->vb_length, erules);
+	if (slen < 0) return -1;
+
+set_value:
+	if (fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_start(escaped), fr_sbuff_used(escaped), false) < 0) return -1;
+
+	fr_value_box_mark_safe_for(vb, erules);
+
+	return 1;
+}
+
+/** Escape a value-box in place using the supplied #fr_sbuff_escape_rules_t in uctx
+ *
+ *  If the input type isn't a string, then it is converted to a string.
+ *
+ *  The output type is always #FR_TYPE_STRING
+ *
+ * @param[in] vb	which will be escaped
+ * @param[in] uctx	escape rules
+ * @return
+ *	- <0 for error, generally OOM
+ *	- 0 for success (did not set safe_for)
+ *	- 1 for success (did set safe_for)
+ */
+int fr_value_box_escape_erules(fr_value_box_t *vb, void *uctx)
+{
+	return fr_value_box_escape_in_place_erules(vb, vb, uctx);
+}
+
+
 /** Removes a single layer of nesting, moving all children into the parent list
  *
  * @param[in] ctx	to reparent children in if steal is true.
@@ -6869,7 +7028,7 @@ char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list,
 	 *	allocate a temporary pool.
 	 */
 	pool = talloc_pool(NULL, 255);
-	if (delim) td = talloc_typed_strdup(pool, delim);
+	if (delim) td = talloc_strdup(pool, delim);
 
 	while ((vb = fr_value_box_list_next(list, vb))) {
 		char *str, *new_aggr;
@@ -6911,7 +7070,7 @@ char *fr_value_box_list_aprint_secure(TALLOC_CTX *ctx, fr_value_box_list_t const
 	if (!vb) return NULL;
 
 	if (unlikely (fr_value_box_contains_secret(vb))) {
-		aggr = talloc_typed_strdup(ctx, "<<< secret >>>");
+		aggr = talloc_strdup(ctx, "<<< secret >>>");
 	} else {
 		fr_value_box_aprint(ctx, &aggr, vb, e_rules);
 	}
@@ -6923,13 +7082,13 @@ char *fr_value_box_list_aprint_secure(TALLOC_CTX *ctx, fr_value_box_list_t const
 	 *	allocate a temporary pool.
 	 */
 	pool = talloc_pool(NULL, 255);
-	if (delim) td = talloc_typed_strdup(pool, delim);
+	if (delim) td = talloc_strdup(pool, delim);
 
 	while ((vb = fr_value_box_list_next(list, vb))) {
 		char *str, *new_aggr;
 
 		if (unlikely (fr_value_box_contains_secret(vb))) {
-			str = talloc_typed_strdup(pool, "<<< secret >>>");
+			str = talloc_strdup(pool, "<<< secret >>>");
 		} else {
 			fr_value_box_aprint(pool, &str, vb, e_rules);
 		}
@@ -7130,6 +7289,11 @@ DIAG_ON(nonnull-compare)
 	case FR_TYPE_ATTR:
 		fr_fatal_assert_msg(vb->vb_attr, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_attr field "
 				    "was NULL", file, line);
+		break;
+
+	case FR_TYPE_BOOL:
+		fr_fatal_assert_msg(vb->vb_uint8 <= 1, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_bool field "
+				    "was not boolean!", file, line);
 		break;
 
 	default:

@@ -31,7 +31,7 @@
  *
  * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
  */
-RCSIDH(lib_bio_fd_h, "$Id$")
+RCSIDH(lib_bio_haproxy_h, "$Id$")
 
 #include <freeradius-devel/util/socket.h>
 

@@ -6,21 +6,22 @@
 #
 #  = Attr_filter Module
 #
-#  The `attr_filter` module exists for filtering certain attributes and
-#  values in received (or transmitted) radius  packets. It gives the
-#  server a flexible framework to filter the attributes we send to or
-#  receive from home servers or NASes. This makes sense, for example,
-#  in an  out-sourced  dialup  situation to various policy decisions, such as
-#  restricting a client to certain ranges of `Idle-Timeout` or `Session-Time-out`.
+#  The `attr_filter` module exists for filtering certain attributes
+#  and values in received (or transmitted) radius packets. It gives
+#  the server a flexible framework to filter the attributes we send to
+#  or receive from home servers or NASes. This makes sense, for
+#  example, in an out-sourced dialup situation to various policy
+#  decisions, such as restricting a client to certain ranges of
+#  `Idle-Timeout` or `Session-Time-out`.
 #
-#  Filter rules are normally defined and applied on a per-realm basis, Filter
-#  rules can optionally be applied using another attribute, by editing the key
-#  configuration for this module.
+#  Filter rules are normally defined and applied on a per-realm basis,
+#  Filter rules can optionally be applied using another attribute, by
+#  editing the key configuration for this module.
 #
-#  The rules for each entry are parsed to top to bottom, and an attribute
-#  must pass *all* the rules which affect it in order to make it past the filter.
-#  Order of the rules is important.
-#  The operators and their purpose in defining the rules are as follows:
+#  The rules for each entry are parsed to top to bottom, and an
+#  attribute must pass *all* the rules which affect it in order to
+#  make it past the filter. Order of the rules is important. The
+#  operators and their purpose in defining the rules are as follows:
 #
 #  [options="header", cols="10%,90%"]
 #  |===
@@ -43,9 +44,10 @@
 #  | <        | Less Than.
 #  |===
 #
-#  If regular expressions are enabled the following operators are also possible.
-#  (Regular Expressions are included by default unless your system doesn't support
-#  them, which should be rare). The value field uses standard regular expression syntax.
+#  If regular expressions are enabled the following operators are also
+#  possible. (Regular Expressions are included by default unless your
+#  system doesn't support them, which should be rare). The value field
+#  uses standard regular expression syntax.
 #
 #  [options="header", cols="10%,90%"]
 #  |===
@@ -54,39 +56,39 @@
 #  | !~       | Regular Expression Not Equal
 #  |===
 #
-#  ## Syntax
+#  == Syntax
 #
 #  The configuration items are:
 #
-#attr_filter attr_filter.<section> {
-	#
-	#  key:: The `key` to use for filter the packets.
-	#
-#	key = "<value>"
+##attr_filter attr_filter.<section> {
+#
+#  key:: The `key` to use for filter the packets.
+#
+##	key = "<value>"
 
 	#
-	#  relaxed:: Only move attribute if it passed all rules, or if the config says we
-	#  should copy unmatched attributes.
+	#  relaxed:: Only move attribute if it passed all rules, or if the
+	#  config says we should copy unmatched attributes.
 	#
-#	relaxed = no
+##	relaxed = no
 
 	#
 	#  filename:: The `filename` with the attributes to filter.
 	#
-#	filename = </path/><section>
-#}
+##	filename = </path/><section>
+##}
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  The following default instances.
 #
 
 #
-#  ### pre-proxy
+#  === pre-proxy
 #
-#  Filters the attributes in the packets we send to
-#  the RADIUS home servers.
+#  Filters the attributes in the packets we send to the RADIUS home
+#  servers.
 #
 #  Add this before calling rlm_radius for proxying.
 #
@@ -96,11 +98,11 @@ attr_filter attr_filter.pre-proxy {
 }
 
 #
-#  ### post-proxy
+#  === post-proxy
 #
-#  Filters the attributes received in replies from proxied
-#  servers, to make sure we send back to our RADIUS client
-#  only allowed attributes.
+#  Filters the attributes received in replies from proxied servers, to
+#  make sure we send back to our RADIUS client only allowed
+#  attributes.
 #
 #  Add this after calling `rlm_radius` for proxying.
 #
@@ -110,7 +112,7 @@ attr_filter attr_filter.post-proxy {
 }
 
 #
-#  ### access_reject
+#  === access_reject
 #
 #  Enforce RFC requirements on the contents of `Access-Reject`
 #  packets. This should be called from `send Access-Reject`.
@@ -121,7 +123,7 @@ attr_filter attr_filter.access_reject {
 }
 
 #
-#  ### access_challenge
+#  === access_challenge
 #
 #  Enforce RFC requirements on the contents of `Access-Challenge`
 #  packets. This is called from `send Access-Challenge`.
@@ -132,11 +134,11 @@ attr_filter attr_filter.access_challenge {
 }
 
 #
-#  ### accounting_response
+#  === accounting_response
 #
 #  Enforce RFC requirements on the contents of the
-#  `Accounting-Response` packets. Called from the
-#  `send Accounting-Response` section.
+#  `Accounting-Response` packets. Called from the `send
+#  Accounting-Response` section.
 #
 attr_filter attr_filter.accounting_response {
 	key = User-Name

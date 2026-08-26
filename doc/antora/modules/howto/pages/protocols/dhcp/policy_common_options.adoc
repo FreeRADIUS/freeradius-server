@@ -66,3 +66,6 @@ module. This module is responsible for assigning a free IP address into the
 Here `IP-Pool.Name` is being set to a constant value (`local`) indicating
 that a single pool is to be used. If you have multiple pools, then replace this
 assignment with logic to map clients to the correct pool, as described below.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

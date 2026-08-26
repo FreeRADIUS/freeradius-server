@@ -77,7 +77,7 @@ typedef enum {
 
 #define DER_UTC_TIME_LEN 13	 //!< Length of the UTC time string.
 #define DER_GENERALIZED_TIME_LEN_MIN 15	 //!< Minimum length of the generalized time string.
-#define DER_GENERALIZED_TIME_PRECISION_MAX 4 //!< Maximum precision of the generalized time string.
+#define DER_GENERALIZED_TIME_PRECISION_MAX 9 //!< Maximum precision of the generalized time string (nanoseconds).
 
 #define DER_TAG_CLASS_MASK 0xc0	 //!< Mask to extract the class from the tag.
 #define DER_TAG_CONSTRUCTED_MASK 0x20	 //!< Mask to check if the tag is constructed.
@@ -97,6 +97,7 @@ typedef struct {
 		fr_der_tag_t 		sequence_of;
 		fr_der_tag_t 		set_of;
 		fr_value_box_t		*default_value;
+		char const		*shortname;
 	};
 	uint64_t 		max;			//!< maximum count of items in a sequence, set, or string.
 	uint32_t		restrictions;		//!< for choice of options and tags - no dups allowed
@@ -109,12 +110,14 @@ typedef struct {
 	bool 			is_oid_and_value : 1;	//!< is OID+value
 	bool 			is_extensions : 1;	//!< a list of X.509 extensions
 	bool			has_default_value : 1;	//!< a default value exists
+	bool			has_shortname : 1;	//!< has a short name
 	bool 			leaf : 1;		//!< encode this OID along with its value
 	bool			is_choice : 1;		//!< DER name "choice".
 } fr_der_attr_flags_t;
 
 typedef struct {
 	TALLOC_CTX	*tmp_ctx;		//!< ctx under which temporary data will be allocated
+	fr_dict_attr_t const *root;		//!< where to start decoding from
 } fr_der_decode_ctx_t;
 
 static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const *da)
@@ -133,7 +136,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 #define fr_der_flag_max(_da) 		(fr_der_attr_flags(_da)->max)
 #define fr_der_flag_is_oid_and_value(_da) (fr_der_attr_flags(_da)->is_oid_and_value)
 #define fr_der_flag_is_extensions(_da) 	(fr_der_attr_flags(_da)->is_extensions)
-#define fr_der_flag_has_default_value(_da) 	((fr_der_attr_flags(_da)->has_default_value) != NULL);
+#define fr_der_flag_has_default_value(_da) 	(fr_der_attr_flags(_da)->has_default_value)
 #define fr_der_flag_leaf(_da) 		(fr_der_attr_flags(_da)->leaf)
 #define fr_der_flag_is_choice(_da) 	(fr_der_attr_flags(_da)->is_choice)
 
@@ -144,6 +147,7 @@ fr_der_tag_t fr_type_to_der_tag_default(fr_type_t type);
 bool	fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_t tag);
 bool	fr_der_tags_compatible(fr_der_tag_t tag1, fr_der_tag_t tag2);
 char	const *fr_der_tag_to_str(fr_der_tag_t tag);
+char	const *fr_der_dict_attr_to_shortname(fr_dict_attr_t const *da);
 
 int	fr_der_global_init(void);
 void	fr_der_global_free(void);

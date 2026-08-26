@@ -1,5 +1,8 @@
 = EAP
 EAP, or Extensible Authentication Protocol, is your gateway to secure connections. As outlined in RFC 3748, this authentication framework operates at the data link layer. It empowers network access points to embrace various authentication methods.
 
-Each EAP Type unveils a unique mechanism for securing access. The robust 802.1X standard diligently authenticates both wireless and wired LAN users. It’s your trusted sentry for safeguarding entry into enterprise networks.
+Each EAP Type unveils a unique mechanism for securing access. The robust 802.1X standard diligently authenticates both wireless and wired LAN users. It's your trusted sentry for safeguarding entry into enterprise networks.
 
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

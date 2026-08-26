@@ -1,0 +1,14 @@
+#
+#  Test: file destination with all options
+#
+linelog {
+	destination = file
+	delimiter = "\n"
+
+	file {
+		filename = /tmp/linelog_test
+		permissions = 0640
+		escape_filenames = yes
+		fsync = yes
+	}
+}

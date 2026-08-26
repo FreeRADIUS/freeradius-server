@@ -64,7 +64,7 @@ fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size)
 	fq = talloc_size(ctx, sizeof(*fq) + (size - 1) * sizeof(fq->entry[0]));
 	if (!fq) return NULL;
 
-	talloc_set_name(fq, "fr_queue_t");
+	talloc_set_name_const(fq, "fr_queue_t");
 
 	memset(fq, 0, sizeof(*fq) + (size - 1) * sizeof(fq->entry[0]));
 
@@ -186,7 +186,8 @@ fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size)
 	 */
 	if (fq->head > fq->tail) {
 		fr_assert(fq->num == (fq->head - fq->tail));
-		memcpy(&nq->entry[0], &fq->entry[fq->tail], &fq->entry[fq->head] - &fq->entry[fq->tail]);
+		memcpy(&nq->entry[0], &fq->entry[fq->tail],
+		       (uint8_t *) &fq->entry[fq->head] - (uint8_t *) &fq->entry[fq->tail]);
 		nq->head = fq->num;
 		nq->num = fq->num;
 		goto done;
@@ -196,12 +197,14 @@ fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size)
 	 *	The block of elements is split in two.  Copy the tail
 	 *	to the bottom of our array, and then then head.
 	 */
-	memcpy(&nq->entry[0], &fq->entry[fq->tail], &fq->entry[fq->size] - &fq->entry[fq->tail]);
+	memcpy(&nq->entry[0], &fq->entry[fq->tail],
+	       (uint8_t *) &fq->entry[fq->size] - (uint8_t *) &fq->entry[fq->tail]);
 	nq->head = fq->size - fq->tail;
 
 	fr_assert((nq->head + fq->head) == fq->num);
 
-	memcpy(&nq->entry[nq->head], &fq->entry[0], &fq->entry[fq->head] - &fq->entry[0]);
+	memcpy(&nq->entry[nq->head], &fq->entry[0],
+	       (uint8_t *) &fq->entry[fq->head] - (uint8_t *) &fq->entry[0]);
 	nq->head = fq->num;
 	nq->num = fq->num;
 

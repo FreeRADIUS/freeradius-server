@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -29,7 +29,6 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/xlat.h>
 
 #include <ctype.h>
 
@@ -74,7 +73,7 @@ static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	int			i;
 
-	len = talloc_array_length(inst->allowed_chars) - 1;
+	len = talloc_strlen(inst->allowed_chars);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	/*
@@ -142,7 +141,8 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*arg = fr_value_box_list_head(in);
 	char const	*p, *end;
 	char		*out_p;
-	char		*c1, *c2, c3;
+	char const	*c1, *c2;
+	char		c3;
 	fr_sbuff_t	sbuff;
 	fr_value_box_t	*vb;
 

@@ -1,0 +1,6 @@
+BEGIN PROTOCOL Test-Err-5 204
+ATTRIBUTE	my-tlv 1 tlv
+BEGIN		my-tlv
+MEMBER		bad-member uint32
+END		my-tlv
+END PROTOCOL Test-Err-5

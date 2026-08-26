@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/unlang/action.h>
 #include "rlm_yubikey.h"
 
 #ifdef HAVE_YKCLIENT
@@ -105,7 +104,7 @@ static char const hextab[] = "0123456789abcdef";
 static ssize_t modhex2hex(char const *modhex, char *hex, size_t len)
 {
 	size_t i;
-	char *c1, *c2;
+	char const *c1, *c2;
 
 	for (i = 0; i < len; i += 2) {
 		if (modhex[i] == '\0') {
@@ -180,7 +179,10 @@ static int mod_load(void)
 		return -1;
 	}
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "modhextohex", modhex_to_hex_xlat, FR_TYPE_STRING)))) return -1;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "modhextohex", modhex_to_hex_xlat, FR_TYPE_STRING)))) {
+		fr_dict_autofree(rlm_yubikey_dict);
+		return -1;
+	}
 	xlat_func_args_set(xlat, modhex_to_hex_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 

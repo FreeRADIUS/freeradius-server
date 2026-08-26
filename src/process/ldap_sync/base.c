@@ -24,7 +24,6 @@
 #define LOG_PREFIX "process_ldap_sync"
 
 #include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/ldap/sync.h>
 
@@ -44,41 +43,6 @@ fr_dict_attr_autoload_t process_ldap_sync_dict_attr[] = {
 
 	DICT_AUTOLOAD_TERMINATOR
 };
-
-static char const *ldap_sync_message_types[FR_LDAP_SYNC_CODE_MAX] = {
-	"",					//!< 0
-	"Present",
-	"Add",
-	"Modify",
-	"Delete",
-	"Entry-Response",
-	"Cookie-Load",
-	"Cookie-Load-Response",
-	"Cookie-Store",
-	"Cookie-Store-Response",
-};
-
-static void ldap_sync_packet_debug(request_t *request, fr_packet_t *packet, fr_pair_list_t *list, bool received)
-{
-
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s",
-			received ? "Received" : "Sending",
-			ldap_sync_message_types[packet->code]
-			);
-
-	if (received) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	} else {
-	/*
-	 *	At higher debug levels, log returned data as well.
-	 */
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, list, NULL);
-	}
-
-}
 
 typedef struct {
 	uint64_t	nothing;		// so that the next field isn't at offset 0
@@ -117,8 +81,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 	fr_assert(request->proto_dict == dict_ldap_sync);
 
 	UPDATE_STATE(packet);
-
-	ldap_sync_packet_debug(request, request->packet, &request->request_pairs, true);
 
 	return state->recv(p_result, mctx, request);
 }

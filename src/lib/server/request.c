@@ -170,7 +170,9 @@ static inline void CC_HINT(always_inline) request_log_init_detachable(request_t 
 	 *	Ensure that we use our own version of the logging
 	 *	information, and not the original request one.
 	 */
-	child->log.dst = talloc_zero(child, log_dst_t);
+	if (!parent->log.dst) return;
+
+	MEM(child->log.dst = talloc_zero(child, log_dst_t));
 	memcpy(child->log.dst, parent->log.dst, sizeof(*child->log.dst));
 }
 
@@ -428,7 +430,7 @@ static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *c
 	 *	and would have to be freed.
 	 */
 	MEM(request = talloc_pooled_object(ctx, request_t,
-					   REQUEST_POOL_HEADERS,
+					   REQUEST_POOL_NUM_OBJECTS,
 					   REQUEST_POOL_SIZE));
 	fr_assert(ctx != request);
 

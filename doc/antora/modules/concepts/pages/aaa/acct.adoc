@@ -10,3 +10,6 @@ network monitoring increases, though, so does the need to store and process acco
 The accounting summary sent by the NAS to the RADIUS server does not include detailed information such as web sites visited or even how many bytes were transferred using a particular protocol (e.g., SMTP, HTTP). That type of detailed information is only available to the NAS, and it does not send that data to the RADIUS server.
 
 If detailed information about user activity is required, network administrators obtain it through other protocols such as sFlow or NetFlow. Network administrators may find it difficult to tie the pieces together to get a more comprehensive understanding of user activity.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

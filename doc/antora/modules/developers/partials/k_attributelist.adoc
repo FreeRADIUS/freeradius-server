@@ -1,0 +1,9 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-2.6[Keep-Alives] |The process of sending test RADIUS requests to see if a server is alive.
+
+|====
+
+
+

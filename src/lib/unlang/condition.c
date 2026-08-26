@@ -89,7 +89,7 @@ static unlang_action_t unlang_if_resume(unlang_result_t *p_result, request_t *re
 	frame->next = unlang;
 
 	/*
-	 *	We took the "if".  Go recurse into its' children.
+	 *	We took the "if".  Go recurse into its children.
 	 */
 	return unlang_group(p_result, request, frame);
 }
@@ -303,7 +303,7 @@ void unlang_condition_init(void)
 			.interpret = unlang_group,
 
 			.unlang_size = sizeof(unlang_group_t),
-			.unlang_name = "unlang_group_t"	
+			.unlang_name = "unlang_group_t"
 		});
 
 	unlang_register(&(unlang_op_t){

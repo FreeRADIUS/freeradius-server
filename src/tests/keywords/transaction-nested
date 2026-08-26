@@ -1,0 +1,49 @@
+#
+# PRE: transaction
+#
+#  Nested transactions - inner failure rolls back inner changes only
+#
+string foo
+string bar
+
+transaction {
+	foo := "hello"
+
+	transaction {
+		bar := "world"
+
+		fail
+	}
+
+	#
+	#  Inner transaction failed, so bar should be rolled back
+	#
+	if (bar) {
+		test_fail
+	}
+
+	#
+	#  But foo should still be set from the outer transaction
+	#
+	if (foo != "hello") {
+		test_fail
+	}
+
+	ok
+}
+
+#
+#  Outer transaction succeeded, so foo is committed
+#
+if (foo != "hello") {
+	test_fail
+}
+
+#
+#  Inner transaction failed, so bar is rolled back
+#
+if (bar) {
+	test_fail
+}
+
+success

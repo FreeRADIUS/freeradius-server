@@ -35,7 +35,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include "base.h"
@@ -111,7 +110,8 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	}
 
 	ret = SSL_CTX_set0_tmp_dh_pkey(ctx, dh);
-	if (ret < 0) {
+	if (ret == 0) {
+		EVP_PKEY_free(dh);
 		ERROR("Unable to set DH parameters");
 		return -1;
 	}
@@ -326,7 +326,12 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 				fr_tls_log(NULL, "Failed reading certificate file \"%s\"", filename);
 				return -1;
 			}
-			SSL_CTX_add0_chain_cert(ctx, cert);
+
+			if (SSL_CTX_add0_chain_cert(ctx, cert) != 1) {
+				fr_tls_log(NULL, "Failed adding certificate to chain for \"%s\"", filename);
+				X509_free(cert);
+				return -1;
+			}
 		}
 	}
 
@@ -545,9 +550,9 @@ int tls_ctx_version_set(
 SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
-	X509_STORE	*cert_vpstore;
-	X509_STORE	*verify_store;
+	X509_STORE	*verify_store = NULL;
 	int		ctx_options = 0;
+	int		mode= SSL_MODE_ASYNC;
 
 	ctx = SSL_CTX_new(TLS_method());
 	if (!ctx) {
@@ -651,6 +656,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			goto error;
 		}
 
+		SSL_CTX_set_mode(ctx, mode);
 		goto post_ca;
 	}
 #else
@@ -658,29 +664,22 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 #endif
 
 	/*
-	 *	Set mode before processing any certifictes
-	 */
-	{
-		int mode = SSL_MODE_ASYNC;
-
-		/*
-		 *	OpenSSL will automatically create certificate chains,
-		 *	unless we tell it to not do that.  The problem is that
-		 *	it sometimes gets the chains right from a certificate
-		 *	signature view, but wrong from the clients view.
-		 *
-		 *	It's better just to have users specify the complete
-		 *	chains.
+	 *	OpenSSL will automatically create certificate chains,
+	 *	unless we tell it to not do that.  The problem is that
+	 *	it sometimes gets the chains right from a certificate
+	 *	signature view, but wrong from the clients view.
+	 *
+	 *	It's better just to have users specify the complete
+	 *	chains.
 		 */
-		mode |= SSL_MODE_NO_AUTO_CHAIN;
+	mode |= SSL_MODE_NO_AUTO_CHAIN;
 
-		if (client) {
-			mode |= SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER;
-			mode |= SSL_MODE_AUTO_RETRY;
-		}
-
-		if (mode) SSL_CTX_set_mode(ctx, mode);
+	if (client) {
+		mode |= SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER;
+		mode |= SSL_MODE_AUTO_RETRY;
 	}
+
+	SSL_CTX_set_mode(ctx, mode);
 
 	/*
 	 *	Initialise a separate store for verifying user
@@ -709,7 +708,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 */
 		if (!X509_STORE_load_locations(verify_store, conf->ca_file, conf->ca_path)) {
 			fr_tls_log(NULL, "Failed reading Trusted root CA list \"%s\"",
-				      conf->ca_file);
+				      conf->ca_file ? conf->ca_file : conf->ca_path);
 			goto error;
 		}
 
@@ -881,30 +880,6 @@ post_ca:
 	SSL_CTX_set_info_callback(ctx, fr_tls_session_info_cb);
 
 	/*
-	 *	Check the certificates for revocation.
-	 */
-#ifdef X509_V_FLAG_CRL_CHECK_ALL
-	if (conf->verify.check_crl) {
-		cert_vpstore = SSL_CTX_get_cert_store(ctx);
-		if (cert_vpstore == NULL) {
-			fr_tls_log(NULL, "Error reading Certificate Store");
-	    		goto error;
-		}
-		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-#ifdef X509_V_FLAG_USE_DELTAS
-		/*
-		 *	If set, delta CRLs (if present) are used to
-		 *	determine certificate status. If not set
-		 *	deltas are ignored.
-		 *
-		 *	So it's safe to always set this flag.
-		 */
-		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_USE_DELTAS);
-#endif
-	}
-#endif
-
-	/*
 	 *	SSL_ctx_set_verify is now called in the session
 	 *	alloc functions so they can set custom behaviour
 	 *	depending on the code area the SSL * will be used
@@ -933,6 +908,22 @@ post_ca:
 			goto error;
 		}
 	}
+
+#ifdef TLS1_3_VERSION
+	/*
+	 *	Set the TLS 1.3 cipher suites if we were told to.
+	 *
+	 *	This helps with TLS-PSK: OpenSSL will otherwise
+	 *	negotiate cipher suites which are incompatible with
+	 *	PSK, and then fail.
+	 */
+	if (conf->cipher_suites) {
+		if (!SSL_CTX_set_ciphersuites(ctx, conf->cipher_suites)) {
+			fr_tls_log(NULL, "Failed setting cipher suites");
+			goto error;
+		}
+	}
+#endif
 
 	/*
 	 *	Print the actual cipher list

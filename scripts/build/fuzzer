@@ -23,14 +23,22 @@ fi
 
 if [ "$1" = "-l" ]; then
     shift
-    LLDB="lldb --"
+    if $(which gdb 2>&1); then
+        LLDB="gdb --args"
+    else
+        LLDB="lldb --"
+    fi
 fi
 
 export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1"
 export LSAN_OPTIONS="fast_unwind_on_malloc=0:malloc_context_size=50"
 PROTOCOL="$(basename "$(dirname "$1")")"
 
-make "./build/bin/local/fuzzer_$PROTOCOL"
+[ -f ./build/bin/local/fuzzer_$PROTOCOL ] || make "./build/bin/local/fuzzer_$PROTOCOL"
 
 # shellcheck disable=SC2086  # Intentional splitting of $LLDB
-exec ./build/make/jlibtool --quiet --mode=execute $LLDB "./build/bin/local/fuzzer_$PROTOCOL" -artifact_prefix="build/fuzzer/$PROTOCOL/" -max_len=512   -D share/dictionary "$1"
+if [ "$PROTOCOL" = "cf" ] || [ "$PROTOCOL" = "value" ]; then
+  exec ./build/make/jlibtool --quiet --mode=execute $LLDB ./build/bin/local/fuzzer_$PROTOCOL $1
+else
+  exec ./build/make/jlibtool --quiet --mode=execute $LLDB "./build/bin/local/fuzzer_$PROTOCOL" -artifact_prefix="build/fuzzer/$PROTOCOL/" -max_len=512   -D share/dictionary "$1"
+fi

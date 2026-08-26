@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -393,7 +393,7 @@ static void ldap_async_sasl_bind_auth_cancel(request_t *request, UNUSED fr_signa
 	fr_ldap_bind_auth_ctx_t *bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
 
 	RWARN("Cancelling SASL bind auth");
-	if (bind_auth_ctx->msgid > 0) fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
+	if (bind_auth_ctx->msgid > 0) fr_rb_remove(NULL, bind_auth_ctx->thread->binds, bind_auth_ctx);
 	trunk_request_signal_cancel(bind_auth_ctx->treq);
 }
 

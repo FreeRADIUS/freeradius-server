@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -33,6 +33,8 @@ static fr_table_num_sorted_t mode_names[] = {
 	{ L("read-write"),		O_RDWR		},
 	{ L("ro"),			O_RDONLY       	},
 	{ L("rw"),			O_RDWR		},
+	{ L("wo"),			O_WRONLY       	},
+	{ L("write-only"),		O_WRONLY       	},
 };
 static size_t mode_names_len = NUM_ELEMENTS(mode_names);
 
@@ -48,6 +50,23 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CO
 	}
 
 	*(int *) out = mode;
+
+	return 0;
+}
+
+static int send_recv_buf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	uint32_t size;
+
+	if (cf_table_parse_uint32(ctx, out, parent, ci, rule) < 0) {
+		return -1;
+	}
+
+	size = *(uint32_t *) out;
+	if (size > INT_MAX) {
+		cf_log_err(ci, "Invalid value - it is too large");
+		return -1;
+	}
 
 	return 0;
 }
@@ -122,8 +141,8 @@ static const conf_parser_t client_udp_sub_config[] = {
 	{ FR_CONF_OFFSET("exceed_mtu", fr_bio_fd_config_t, exceed_mtu), .dflt = "yes" },
 #endif
 
-	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
-	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff), .func = send_recv_buf_parse },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff), .func = send_recv_buf_parse },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -149,8 +168,8 @@ static const conf_parser_t client_udp_unconnected_sub_config[] = {
 	{ FR_CONF_OFFSET("exceed_mtu", fr_bio_fd_config_t, exceed_mtu), .dflt = "yes" },
 #endif
 
-	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
-	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff), .func = send_recv_buf_parse },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff), .func = send_recv_buf_parse },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -179,8 +198,8 @@ static const conf_parser_t client_tcp_sub_config[] = {
 
 	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
 
-	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
-	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff), .func = send_recv_buf_parse },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff), .func = send_recv_buf_parse },
 
 	{ FR_CONF_OFFSET("delay_tcp_writes", fr_bio_fd_config_t, tcp_delay) },
 
@@ -294,8 +313,8 @@ static const conf_parser_t server_udp_sub_config[] = {
 
 	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
 
-	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
-	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff), .func = send_recv_buf_parse },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff), .func = send_recv_buf_parse },
 
 #if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
 	{ FR_CONF_OFFSET("exceed_mtu", fr_bio_fd_config_t, exceed_mtu), .dflt = "yes" },
@@ -321,8 +340,8 @@ static const conf_parser_t server_tcp_sub_config[] = {
 
 	{ FR_CONF_OFFSET_IS_SET("backlog", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, backlog) },
 
-	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
-	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff), .func = send_recv_buf_parse },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff), .func = send_recv_buf_parse },
 
 	{ FR_CONF_OFFSET("delay_tcp_writes", fr_bio_fd_config_t, tcp_delay) },
 

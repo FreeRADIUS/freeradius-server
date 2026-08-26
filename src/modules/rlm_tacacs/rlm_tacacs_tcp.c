@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -26,12 +26,9 @@ RCSID("$Id$")
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/pair.h>
-#include <freeradius-devel/missing.h>
 #include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
 
-#include <sys/socket.h>
 #include <sys/uio.h>
 
 #include "rlm_tacacs.h"
@@ -120,7 +117,7 @@ typedef struct {
 
 	int			id;			//!< starts at 1.
 	int			active;			//!< active packets
-	trunk_request_t     	*tracking[UINT8_MAX];	//!< all sequential!
+	trunk_request_t     	*tracking[UINT8_MAX + 1];	//!< all sequential!
 
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
@@ -177,7 +174,7 @@ static const conf_parser_t module_config[] = {
 
 	{ FR_CONF_OFFSET("port", rlm_tacacs_tcp_t, dst_port) },
 
-	{ FR_CONF_OFFSET("secret", rlm_tacacs_tcp_t, secret) }, /* can be NULL */
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_SECRET, rlm_tacacs_tcp_t, secret) }, /* can be NULL */
 
 	{ FR_CONF_OFFSET("interface", rlm_tacacs_tcp_t, interface) },
 
@@ -530,7 +527,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
  *  We want the value with the lowest timestamp to be prioritized at
  *  the top of the heap.
  */
-static int8_t request_prioritise(void const *one, void const *two)
+static fr_cmp_ret_t request_prioritise(void const *one, void const *two)
 {
 	tcp_request_t const *a = one;
 	tcp_request_t const *b = two;
@@ -539,13 +536,13 @@ static int8_t request_prioritise(void const *one, void const *two)
 	/*
 	 *	Larger priority is more important.
 	 */
-	ret = CMP(a->priority, b->priority);
+	ret = CMP_PREFER_LARGER(a->priority, b->priority);
 	if (ret != 0) return ret;
 
 	/*
 	 *	Smaller timestamp (i.e. earlier) is more important.
 	 */
-	return CMP_PREFER_SMALLER(fr_time_unwrap(a->recv_time), fr_time_unwrap(b->recv_time));
+	return fr_time_cmp(a->recv_time, b->recv_time);
 }
 
 /** Decode response packet data, extracting relevant information and validating the packet
@@ -1549,7 +1546,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->secret = NULL;
 	}
 
-	if (inst->secret) inst->secretlen = talloc_array_length(inst->secret) - 1;
+	if (inst->secret) inst->secretlen = talloc_strlen(inst->secret);
 
 	if (!parent->trunk_conf.conn_triggers) return 0;
 

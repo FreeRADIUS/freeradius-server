@@ -32,7 +32,6 @@ RCSID("$Id$")
 
 #include <sys/event.h>
 #include <stdio.h>
-#include <string.h>
 #include <pthread.h>
 
 #ifdef HAVE_GETOPT_H
@@ -277,7 +276,7 @@ int main(int argc, char *argv[])
 	app_io_inst->ipaddr = my_ipaddr;
 	app_io_inst->port = my_port;
 
-	sched = fr_schedule_create(autofree, NULL, &default_log, debug_lvl, num_networks, num_workers, NULL, NULL);
+	sched = fr_schedule_create(autofree, false, NULL, &default_log, debug_lvl, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
 		fr_exit_now(EXIT_FAILURE);
@@ -296,7 +295,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	(void) fr_fault_setup(autofree, NULL, argv[0]);
+	(void) fr_fault_setup(autofree, NULL, argv[0], PANIC_ACTION_SIGNALS);
 	(void) fr_schedule_listen_add(sched, &listen);
 
 	sleep(10);

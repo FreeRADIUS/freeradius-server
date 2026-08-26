@@ -34,7 +34,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/subrequest.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 
 #include "attrs.h"
@@ -153,8 +152,8 @@ void _tls_cache_clear_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
 			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing session ID to clear in %s",
 				  fr_box_octets_buffer(cache->clear.id), func);
-			TALLOC_FREE(cache->clear.id);
 		}
+		TALLOC_FREE(cache->clear.id);
 	}
 	cache->clear.state = FR_TLS_CACHE_CLEAR_INIT;
 }
@@ -207,7 +206,8 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_
 
 			RPERROR("Session ID %pV - Failed serialising session-state list", &sess_id);
 			fr_dbuff_free_talloc(&dbuff);
-			return 0;
+			fr_pair_delete(&request->session_state_pairs, type_vp);
+			return 0; /* didn't store data */
 		}
 	}
 
@@ -228,7 +228,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_
 		return -1;
 	}
 
-	return 0;
+	return 1;		/* successfully stored data */
 }
 
 static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
@@ -491,6 +491,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 {
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
 	size_t			len, ret;
+	int			rcode;
 
 	uint8_t			*p, *data = NULL;
 
@@ -520,7 +521,13 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Add the current session-state list
 	 *	contents to the ssl-data
 	 */
-	if (tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateful->vb_uint32) < 0) return UNLANG_ACTION_FAIL;
+	rcode = tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateful->vb_uint32);
+	if (rcode < 0) {
+		tls_cache_store_state_reset(request, tls_cache);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	if (rcode == 0) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
@@ -548,8 +555,8 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	/*
 	 *	Serialize the session
 	 */
-	len = i2d_SSL_SESSION(sess, NULL);	/* find out what length data we need */
-	if (len < 1) {
+	ret = i2d_SSL_SESSION(sess, NULL);	/* find out what length data we need */
+	if (ret < 1) {
 		fr_value_box_t	id;
  		fr_tls_cache_id_to_box_shallow(&id, sess);
 
@@ -562,6 +569,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
+	len = ret;
 
 	MEM(pair_update_request(&vp, attr_tls_session_data) >= 0);
 	MEM(data = talloc_array(vp, uint8_t, len));
@@ -1478,12 +1486,15 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 			fr_tls_strerror_printf(NULL);
 			PERROR("Failed deriving session ticket key");
 
+		key_buff_error:
 			talloc_free(key_buff);
 			goto kdf_error;
 		}
 		EVP_PKEY_CTX_free(pkey_ctx);
+		pkey_ctx = NULL;
 
 		fr_assert(talloc_array_length(key_buff) == key_len);
+
 		/*
 		 *	Ensure the same keys are used across all threads
 		 */
@@ -1491,12 +1502,12 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 						   key_buff, key_len) != 1) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting session ticket keys");
-			return -1;
+			goto key_buff_error;
 		}
 
 		DEBUG3("Derived session-ticket-key:");
 		HEXDUMP3(key_buff, key_len, NULL);
-		talloc_free(key_buff);
+		TALLOC_FREE(key_buff);
 
 		/*
 		 *	These callbacks embed and extract the
@@ -1508,7 +1519,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 							   UNCONST(fr_tls_cache_conf_t *, cache_conf)) != 1)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting session ticket callbacks");
-			return -1;
+			goto kdf_error;
 		}
 
 		/*

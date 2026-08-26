@@ -1,4 +1,4 @@
-= Miscellanous functions
+= Miscellaneous functions
 
 In addition to storing attribute references, the server has a number
 of built-in expansions.  These expansions act largely as functions
@@ -15,5 +15,5 @@ which operate on inputs, and produce an output.
 | xref:xlat/misc/uuid.adoc[UUID]                    | Generation of UUIDs
 |===
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

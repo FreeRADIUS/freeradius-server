@@ -1,0 +1,49 @@
+
+server eap-aka {
+	namespace = eap-aka
+
+	eap-aka {
+		network_name = "testing123"
+	}
+
+	recv Identity-Response {
+#		%pairs.debug(session-state.)
+		if (!session-state.Stripped-User-Name) {
+			reply.Any-ID-Req := yes
+			session-state.Stripped-User-Name := yes
+		}
+		ok
+	}
+
+	send Identity-Request {
+		ok
+	}
+
+	send Challenge-Request {
+                control.SIM-Ki  := 0x465b5ce8b199b49faa5f0a2ee238a6bc
+                control.SIM-Opc := 0xcd63cb71954a9f4e48a5994e37a02baf
+                control.SIM-SQN := 3
+
+		reply.Encr-Data.Next-Reauth-Id := ""
+		reply.Encr-Data.Next-Pseudonym := ""
+	}
+
+	send Reauthentication-Request {
+		reply.Encr-Data.Next-Reauth-Id := ""
+		reply.Encr-Data.Next-Pseudonym := ""
+
+		ok
+	}
+
+	store session {
+		eap_aka_cache
+	}
+
+	load session {
+		eap_aka_cache
+	}
+
+	clear session {
+		eap_aka_cache
+	}
+}

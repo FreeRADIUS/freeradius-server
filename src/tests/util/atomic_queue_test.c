@@ -24,8 +24,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/talloc.h>
-#include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
 
@@ -86,7 +84,7 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
-	aq = fr_atomic_queue_alloc(autofree, size);
+	aq = fr_atomic_queue_talloc(autofree, size);
 
 #ifndef NDEBUG
 	if (debug_lvl) {

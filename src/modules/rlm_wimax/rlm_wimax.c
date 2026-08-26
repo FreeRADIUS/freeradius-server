@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -34,7 +34,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /*
  *	FIXME: Add check for this header to configure.ac
  */
-#include <freeradius-devel/tls/openssl_user_macros.h>
 #include <openssl/hmac.h>
 
 /*
@@ -148,7 +147,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 		 */
 		for (i = 0; i < 6; i++) {
 			fr_base16_encode(&FR_SBUFF_OUT(&p[i * 3], 2 + 1), &FR_DBUFF_TMP(&buffer[i], 1));
-			p[(i * 3) + 2] = '-';
+			if (i < 5) p[(i * 3) + 2] = '-';
 		}
 
 		DEBUG2("Fixing WiMAX binary Calling-Station-Id to %pV", &vp->data);
@@ -241,7 +240,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, mip_rk, rk_len));
 	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
-	EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "SPI CMIP PMIP", 12);
+	EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "SPI CMIP PMIP", 13);
 	EVP_DigestSignFinal(hmac_ctx, &mip_rk_1[0], &rk1_len);
 
 	/*

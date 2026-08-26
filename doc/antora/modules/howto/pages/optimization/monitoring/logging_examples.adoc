@@ -25,7 +25,7 @@ In this example, the sql_auth instance of the rlm_sql module is opening an addit
 
 Currently 1 of 24 pending connection slots are being used. The 24 is the number of connections left until the connection pool has opened the maximum number of allowed connections.
 
-The 1 shows how many connections the server is trying to open at the same time. A high number here means that there’s likely been a large and sudden increase in load and that the server is trying to open lots of new connections simultaneously to cope with the sudden increase.
+The 1 shows how many connections the server is trying to open at the same time. A high number here means that there's likely been a large and sudden increase in load and that the server is trying to open lots of new connections simultaneously to cope with the sudden increase.
 
 ```
 ... Info: rlm_sql ...: Opening additional connection (8), 1 of 24 pending slots used
@@ -34,7 +34,7 @@ The 1 shows how many connections the server is trying to open at the same time. 
 === Module closing a connection
 
 The server recognized that there are surplus connections open to a given server and is therefore closing a spare connection.
-The way the server determines that there is a surplus is by concentrating new queries on as small a subset of the connection pool as possible and then closing connections that haven’t been used for a period.
+The way the server determines that there is a surplus is by concentrating new queries on as small a subset of the connection pool as possible and then closing connections that haven't been used for a period.
 
 ```
 ... Info: rlm_ldap ...: Closing connection (1), from 7 unused connections
@@ -59,3 +59,6 @@ The database encountered a deadlock while placing a lock on data to prevent conf
 ERROR 1213 (Deadlock found when trying to get lock; \
 try restarting transaction): 40001
 ```
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

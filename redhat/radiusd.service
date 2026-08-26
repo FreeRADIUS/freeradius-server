@@ -1,7 +1,7 @@
 [Unit]
 Description=FreeRADIUS multi-protocol policy server
 After=network-online.target
-Documentation=man:radiusd(8) man:radiusd.conf(5) https://wiki.freeradius.org/ https://freeradius.org/documentation/freeradius-server/
+Documentation=man:radiusd(8) man:radiusd.conf(5) https://freeradius.org/documentation/freeradius-server/
 
 [Service]
 Type=notify
@@ -69,7 +69,7 @@ ProtectKernelTunables=true
 SystemCallArchitectures=native
 
 # We shouldn't be writing to the configuration directory
-ReadOnlyDirectories=/etc/raddb/
+ReadOnlyDirectories=/etc/freeradius/
 
 # We can read and write to the log directory.
 ReadWriteDirectories=/var/log/radius/

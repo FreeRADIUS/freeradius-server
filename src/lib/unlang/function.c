@@ -29,8 +29,8 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "function.h"
 
-#define FUNC(_state) *((void **)&state->func)
-#define REPEAT(_state) *((void **)&state->repeat)
+#define FUNC(_state) *((void **)&(_state)->func)
+#define REPEAT(_state) *((void **)&(_state)->repeat)
 
 /*
  *	Some functions differ mainly in their parsing

@@ -25,8 +25,7 @@ listen {
 	transport = udp
 
 	#
-	#  See sample dhcp virtual server for details of
-	#  these options.
+	#  See sample dhcp virtual server for details of these options.
 	#
 	udp {
 		ipaddr = *
@@ -38,17 +37,17 @@ listen {
 }
 
 #
-#  Packets received on the socket will be processed through one
-#  of the following sections, named after the DHCP packet type.
-#  See dictionary.dhcp for the packet types.
+#  Packets received on the socket will be processed through one of the
+#  following sections, named after the DHCP packet type. See
+#  dictionary.dhcp for the packet types.
 #
 recv Discover {
 	#  IP Address of the DHCP server
 	control.Net.Dst.IP := 192.0.2.2
 
-	#  IP Address of the DHCP relay (where the reply should go to)
-	#  If requests are coming from an upstream relay, this will
-	#  already be set in the packet
+	#  IP Address of the DHCP relay (where the reply should go to) If
+	#  requests are coming from an upstream relay, this will already be
+	#  set in the packet
 	request.Gateway-IP-Address := 192.0.2.1
 
 	#  Call the dhcpv4 module to do the relay
@@ -59,8 +58,8 @@ recv Discover {
 }
 
 #
-#  A repeat of the Discover section to handle Request packets
-#  This can be repeated for Inform, Release and Decline as required.
+#  A repeat of the Discover section to handle Request packets This can
+#  be repeated for Inform, Release and Decline as required.
 #
 recv Request {
 	control.Net.Dst.IP := 192.0.2.2

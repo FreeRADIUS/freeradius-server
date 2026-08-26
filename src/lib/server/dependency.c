@@ -47,15 +47,14 @@ static CONF_SECTION *default_version_cs;		//!< Default configuration section to 
 #  include <freeradius-devel/tls/version.h>
 #  include <openssl/crypto.h>
 #  include <openssl/opensslv.h>
-#  include <openssl/engine.h>
 #endif
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
 #  include <gperftools/profiler.h>
 #endif
 
-#ifdef HAVE_VALGRIND_H
-#  include <valgrind.h>
+#ifdef HAVE_VALGRIND_VALGRIND_H
+#  include <valgrind/valgrind.h>
 #endif
 
 /** Check if the application linking to the library has the correct magic number
@@ -431,20 +430,35 @@ void dependency_version_print(void)
 
 		DEBUG2("Compilation flags:");
 #ifdef BUILT_WITH_CPPFLAGS
-		DEBUG2("  cppflags : " BUILT_WITH_CPPFLAGS);
+		DEBUG2("  cppflags : %s", BUILT_WITH_CPPFLAGS);
 #endif
 #ifdef BUILT_WITH_CFLAGS
-		DEBUG2("  cflags   : " BUILT_WITH_CFLAGS);
+		DEBUG2("  cflags   : %s", BUILT_WITH_CFLAGS);
 #endif
 #ifdef BUILT_WITH_LDFLAGS
-		DEBUG2("  ldflags  : " BUILT_WITH_LDFLAGS);
+		DEBUG2("  ldflags  : %s", BUILT_WITH_LDFLAGS);
 #endif
 #ifdef BUILT_WITH_LIBS
-		DEBUG2("  libs     : " BUILT_WITH_LIBS);
+		DEBUG2("  libs     : %s", BUILT_WITH_LIBS);
 #endif
 		DEBUG2("  ");
 	}
-	INFO("Copyright 1999-2025 The FreeRADIUS server project and contributors");
+#ifdef WITH_VERIFY_PTR
+	WARN(" ");
+	WARN("#######################################################################");
+	WARN("# ");
+	WARN("# The server was built with the 'WITH_VERIFY_PTR' flag set.  This is a");
+	WARN("# developer-only build option that DRASTICALLY slows down the server.");
+	WARN("# If you are using the server in a production environment, you will see");
+	WARN("# significantly improved performance (3x-4x) by re-running 'configure'");
+	WARN("# with the flag '--disable-developer', and then re-building and");
+	WARN("# re-installing the server.");
+	WARN("# ");
+	WARN("#######################################################################");
+	WARN(" ");
+#endif
+
+	INFO("Copyright 1999-2026 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");
 	INFO("You may redistribute copies of FreeRADIUS under the terms of the");

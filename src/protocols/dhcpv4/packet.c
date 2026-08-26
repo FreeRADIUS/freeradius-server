@@ -129,6 +129,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 
 	fr_pair_list_init(&tmp);
 
+	fr_assert(data_len >= MIN_PACKET_SIZE); /* fr_dhcpv4_ok() MUST be called first */
+
 	if (data[1] > 1) {
 		fr_strerror_printf("Packet is not Ethernet: %u",
 		      data[1]);
@@ -149,8 +151,9 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) {
 			fr_strerror_const_push("Cannot decode packet due to internal error");
-		error:
+		error_vp:
 			talloc_free(vp);
+		error:
 			fr_pair_list_free(&tmp);
 			talloc_free(packet_ctx);
 			return -1;
@@ -163,7 +166,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 			 *	We don't trust everyone to abide by the RFC, though.
 			 */
 			if (*p != '\0') {
-				uint8_t *q;
+				uint8_t const *q;
 
 				q = memchr(p, '\0', dhcp_header_sizes[i]);
 				fr_pair_value_bstrndup(vp, (char const *)p, q ? q - p : dhcp_header_sizes[i], true);
@@ -189,7 +192,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		default:
 			if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						      &FR_DBUFF_TMP(p, (size_t)dhcp_header_sizes[i]),
-						      dhcp_header_sizes[i], true) < 0) goto error;
+						      dhcp_header_sizes[i], true) < 0) goto error_vp;
 			break;
 		}
 		p += dhcp_header_sizes[i];
@@ -242,8 +245,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 				 *	The 'file' field is used to hold options.
 				 *	It must be interpreted before 'sname'.
 				 */
-				p = data + 44;
-				end = p + 64;
+				p = data + offsetof(dhcp_packet_t, file);
+				end = p + DHCP_FILE_LEN;
 				while (p < end) {
 					len = fr_dhcpv4_decode_option(ctx, &tmp,
 								      p, end - p, packet_ctx);
@@ -256,8 +259,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 				/*
 				 *	The 'sname' field is used to hold options.
 				 */
-				p = data + 108;
-				end = p + 128;
+				p = data + offsetof(dhcp_packet_t, sname);
+				end = p + DHCP_SNAME_LEN;
 				while (p < end) {
 					len = fr_dhcpv4_decode_option(ctx, &tmp,
 								      p, end - p, packet_ctx);
@@ -312,7 +315,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 	 *	"ipv4prefix".
 	 */
 	vp = fr_pair_afrom_da(ctx, attr_dhcp_network_subnet);
-	if (!vp) return -1;
+	if (!vp) goto error;
 
 	/*
 	 *	First look for Relay-Link-Selection
@@ -331,23 +334,23 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		 *	the data type matches the pair, i.e address to prefix
 		 *	conversion.
 		 */
-		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &netaddr->data) < 0) return -1;
+		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &netaddr->data) < 0) goto error_vp;
 
 	} else if (giaddr != htonl(INADDR_ANY)) {
 		/*
 		 *	Gateway address is set - use that one
 		 */
 		if (fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL,
-					  &FR_DBUFF_TMP(data + 24, 4), 4, true) < 0) return -1;
-		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &box) < 0) return -1;
+					  &FR_DBUFF_TMP(data + 24, 4), 4, true) < 0) goto error_vp;
+		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &box) < 0) goto error_vp;
 
 	} else {
 		/*
 		 *	else, store client address whatever it is
 		 */
 		if (fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL,
-					  &FR_DBUFF_TMP(data + 12, 4), 4, true) < 0) return -1;
-		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &box) < 0) return -1;
+					  &FR_DBUFF_TMP(data + 12, 4), 4, true) < 0) goto error_vp;
+		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &box) < 0) goto error_vp;
 	}
 
 	fr_pair_append(&tmp, vp);
@@ -361,7 +364,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 
 	if (mtu && (mtu->vp_uint16 < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_const("Client says MTU is smaller than minimum permitted by the specification");
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -412,16 +415,16 @@ int fr_dhcpv4_packet_encode(fr_packet_t *packet, fr_pair_list_t *list)
 	return 0;
 }
 
-fr_packet_t *fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len)
+fr_packet_t *fr_dhcpv4_packet_alloc(uint8_t const *data, size_t data_len)
 {
 	fr_packet_t *packet;
 	uint32_t	magic;
 	uint8_t const	*code;
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
-	if (!code) return NULL;
+	fr_assert(data_len >= MIN_PACKET_SIZE); /* fr_dhcpv4_ok() MUST be called first */
 
-	if (data_len < MIN_PACKET_SIZE) return NULL;
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
+	if (!code || (code[1] != 1)) return NULL;
 
 	/* Now that checks are done, allocate packet */
 	packet = fr_packet_alloc(NULL, false);

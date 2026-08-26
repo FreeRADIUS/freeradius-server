@@ -2,4 +2,5 @@ usr/lib/freeradius/libfreeradius-redis*.so
 usr/lib/freeradius/rlm_redis*.so
 usr/lib/freeradius/rlm_rediswho*.so
 usr/lib/freeradius/rlm_cache_redis*.so
+usr/lib/freeradius/process_redis*.so
 usr/bin/rlm_redis_ippool_tool

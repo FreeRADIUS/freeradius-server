@@ -40,5 +40,5 @@ VALUE Service-Type Login-User 1
 VALUE Framed-IP-Address broadcast 255.255.255.255
 ----
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

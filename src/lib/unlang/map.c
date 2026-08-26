@@ -28,7 +28,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/map.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/map.h>
 
@@ -364,7 +363,7 @@ static unlang_t *unlang_compile_map(unlang_t *parent, unlang_compile_ctx_t *unla
 		 *	Try to parse the template.
 		 */
 		(void) tmpl_afrom_substr(gext, &vpt,
-					 &FR_SBUFF_IN(tmpl_str, talloc_array_length(tmpl_str) - 1),
+					 &FR_SBUFF_IN(tmpl_str, talloc_strlen(tmpl_str)),
 					 type,
 					 NULL,
 					 &t_rules);
@@ -390,9 +389,8 @@ static unlang_t *unlang_compile_map(unlang_t *parent, unlang_compile_ctx_t *unla
 			break;
 
 		default:
-			talloc_free(vpt);
 			cf_log_err(cs, "Invalid third argument for map");
-			return NULL;
+			goto error;
 		}
 	}
 
@@ -401,7 +399,7 @@ static unlang_t *unlang_compile_map(unlang_t *parent, unlang_compile_ctx_t *unla
 	 */
 	map_list_init(&gext->map);
 	rcode = map_afrom_cs(gext, &gext->map, cs, unlang_ctx->rules, &t_rules, fixup_map_cb, NULL, 256);
-	if (rcode < 0) return NULL; /* message already printed */
+	if (rcode < 0) goto error; /* message already printed */
 	if (map_list_empty(&gext->map)) {
 		cf_log_err(cs, "'map' sections cannot be empty");
 		goto error;

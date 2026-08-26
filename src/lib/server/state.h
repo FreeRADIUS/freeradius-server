@@ -32,28 +32,34 @@ extern "C" {
 
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/tmpl.h>
 
 typedef struct fr_state_tree_s fr_state_tree_t;
 
-fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, bool thread_safe,
-				    uint32_t max_sessions, fr_time_delta_t timeout,
-				    uint8_t server_id, uint32_t context_id);
+typedef struct {
+	uint32_t		max_sessions;  	//!< maximum number of sessions
+	uint32_t		max_rounds;	//!< maximum number of rounds before we give up
+	uint32_t		context_id;	//!< internal number to help keep state trees separate
+	fr_time_delta_t		timeout;	//!< idle timeout
+	tmpl_t			*dedup_key;	//!< for tracking misbehaving supplicants
+	uint8_t			server_id;	//!< for mangling State
+	bool			thread_safe;	
+} fr_state_config_t;
+
+extern const conf_parser_t state_session_config[];
+
+fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, fr_state_config_t const *config);
 
 void	fr_state_discard(fr_state_tree_t *state, request_t *request);
+void	fr_state_discard_by_state(fr_state_tree_t *state, request_t *request);
 
-int	fr_state_to_request(fr_state_tree_t *state, request_t *request);
-int	fr_request_to_state(fr_state_tree_t *state, request_t *request);
+int	fr_state_restore(fr_state_tree_t *state, request_t *request);
+int	fr_state_store(fr_state_tree_t *state, request_t *request);
 
 void	fr_state_store_in_parent(request_t *request, void const *unique_ptr, int unique_int);
-void	fr_state_restore_to_child(request_t *child, void const *unique_ptr, int unique_int);
+void	fr_state_restore_from_parent(request_t *child, void const *unique_ptr, int unique_int);
 void	fr_state_discard_child(request_t *parent, void const *unique_ptr, int unique_int);
-
-/*
- *	Stats
- */
-uint64_t fr_state_entries_created(fr_state_tree_t *state);
-uint64_t fr_state_entries_timeout(fr_state_tree_t *state);
-uint64_t fr_state_entries_tracked(fr_state_tree_t *state);
 
 #ifdef __cplusplus
 }

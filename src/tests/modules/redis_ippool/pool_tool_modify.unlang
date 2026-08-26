@@ -1,14 +1,13 @@
 #
-#  Run the "redis" xlat
+#  Test modification of address using rlm_redis_ippool_tool
 #
-$INCLUDE cluster_reset.inc
 
 control.IP-Pool.Name := 'test_tool_modify'
 
 #
 #  Add IP addresses
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-D', './share/dictionary', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:$ENV{REDIS_IPPOOL_CLUSTER_PORT_1}', %{control.IP-Pool.Name}, '192.168.0.0')
 
 #
 #  Verify the range was set OK
@@ -20,7 +19,7 @@ if !(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:192.168.0.1", 'range') == '192
 #
 #  Modify the range
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-m', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '10.0.0.0')
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-D', './share/dictionary', '-m', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:$ENV{REDIS_IPPOOL_CLUSTER_PORT_1}', %{control.IP-Pool.Name}, '10.0.0.0')
 
 #
 #  Check it was updated

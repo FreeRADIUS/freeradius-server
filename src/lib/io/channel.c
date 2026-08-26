@@ -25,8 +25,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/channel.h>
-#include <freeradius-devel/io/control.h>
-#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_STDATOMIC_H
@@ -197,13 +195,13 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
 	ch->end[TO_RESPONDER].direction = TO_RESPONDER;
 	ch->end[TO_REQUESTOR].direction = TO_REQUESTOR;
 
-	ch->end[TO_RESPONDER].aq = fr_atomic_queue_alloc(ch, ATOMIC_QUEUE_SIZE);
+	ch->end[TO_RESPONDER].aq = fr_atomic_queue_talloc(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[TO_RESPONDER].aq) {
 		talloc_free(ch);
 		goto nomem;
 	}
 
-	ch->end[TO_REQUESTOR].aq = fr_atomic_queue_alloc(ch, ATOMIC_QUEUE_SIZE);
+	ch->end[TO_REQUESTOR].aq = fr_atomic_queue_talloc(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[TO_REQUESTOR].aq) {
 		talloc_free(ch);
 		goto nomem;
@@ -316,7 +314,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	Same thread?  Just call the "recv" function directly.
 	 */
 	if (ch->same_thread) {
-		ch->end[TO_REQUESTOR].recv(ch->end[TO_REQUESTOR].recv_uctx, ch, cd);
+		ch->end[TO_REQUESTOR].recv(ch, cd, ch->end[TO_REQUESTOR].recv_uctx);
 		return 0;
 	}
 
@@ -341,7 +339,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	requestor->sequence = sequence;
 	message_interval = fr_time_sub(when, requestor->stats.last_write);
 
-	if (fr_time_delta_ispos(requestor->stats.message_interval)) {
+	if (!fr_time_delta_ispos(requestor->stats.message_interval)) {
 		requestor->stats.message_interval = message_interval;
 	} else {
 		requestor->stats.message_interval = RTT(requestor->stats.message_interval, message_interval);
@@ -456,7 +454,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	fr_assert(fr_time_lteq(requestor->stats.last_read_other, cd->m.when));
 	requestor->stats.last_read_other = cd->m.when;
 
-	ch->end[TO_RESPONDER].recv(ch->end[TO_RESPONDER].recv_uctx, ch, cd);
+	ch->end[TO_RESPONDER].recv(ch, cd, ch->end[TO_RESPONDER].recv_uctx);
 
 	return true;
 }
@@ -493,7 +491,7 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 	fr_assert(fr_time_lteq(responder->stats.last_read_other, cd->m.when));
 	responder->stats.last_read_other = cd->m.when;
 
-	ch->end[TO_REQUESTOR].recv(ch->end[TO_REQUESTOR].recv_uctx, ch, cd);
+	ch->end[TO_REQUESTOR].recv(ch, cd, ch->end[TO_REQUESTOR].recv_uctx);
 
 	return true;
 }
@@ -521,7 +519,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	Same thread?  Just call the "recv" function directly.
 	 */
 	if (ch->same_thread) {
-		ch->end[TO_RESPONDER].recv(ch->end[TO_RESPONDER].recv_uctx, ch, cd);
+		ch->end[TO_RESPONDER].recv(ch, cd, ch->end[TO_RESPONDER].recv_uctx);
 		return 0;
 	}
 
@@ -548,7 +546,11 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 
 	responder->sequence = sequence;
 	message_interval = fr_time_sub(when, responder->stats.last_write);
-	responder->stats.message_interval = RTT(responder->stats.message_interval, message_interval);
+	if (!fr_time_delta_ispos(responder->stats.message_interval)) {
+		responder->stats.message_interval = message_interval;
+	} else {
+		responder->stats.message_interval = RTT(responder->stats.message_interval, message_interval);
+	}
 
 	fr_assert_msg(fr_time_lteq(responder->stats.last_write, when),
 		      "Channel data timestamp (%" PRId64") older than last channel data sent (%" PRId64 ")",
@@ -741,6 +743,21 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 *	to wake up.
 	 */
 	requestor = &ch->end[TO_RESPONDER];
+
+	/*
+	 *	We have told this end to close, so there is nothing left to
+	 *	wake it for: fr_channel_send_request() refuses on an inactive
+	 *	end, so no more data can be queued.  Signalling it anyway
+	 *	writes into the control plane which the responder may have
+	 *	already freed (this has been observed and caused a crash-on-exit).
+	 *
+	 *	Servicing the message is still correct: it was in flight
+	 *	before the close, and we must keep servicing to receive the
+	 *	ack at all.  The load is relaxed because only this thread
+	 *	clears "active" for this end.
+	 */
+	if (unlikely(!atomic_load_explicit(&requestor->active, memory_order_relaxed))) return ce;
+
 #if ENABLE_SKIPS
 	if (!requestor->must_signal && (ack == requestor->sequence)) {
 		MPRINT("REQUESTOR SKIPS signal AFTER CE %d num_outstanding %"PRIu64"\n", cs, requestor->stats.outstanding);
@@ -830,6 +847,8 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 	active = atomic_load(&ch->end[TO_RESPONDER].active);
 	if (!active) return 0;					/* Already signalled to close */
 
+	atomic_store(&ch->end[TO_RESPONDER].active, false);	/* Prevent further requests */
+
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
@@ -839,9 +858,31 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 	ret = fr_control_message_send(ch->end[TO_RESPONDER].control,
 				      ch->end[TO_RESPONDER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 
-	atomic_store(&ch->end[TO_RESPONDER].active, false);	/* Prevent further requests */
-
 	return ret;
+}
+
+/** Discard any requests the requestor queued but we never received
+ *
+ * The messages belong to the requestor's message set, and it cannot reclaim them
+ * until they are marked done.  A responder that closes with requests still in
+ * the queue would strand them there, and with them the memory they were
+ * allocated from.
+ *
+ * @param[in] ch	to discard the queued requests of.
+ * @return the number of requests discarded.
+ */
+unsigned int fr_channel_responder_discard(fr_channel_t *ch)
+{
+	fr_channel_data_t	*cd;
+	fr_atomic_queue_t	*aq = ch->end[TO_RESPONDER].aq;
+	unsigned int		num = 0;
+
+	while (fr_atomic_queue_pop(aq, (void **) &cd)) {
+		fr_message_done(&cd->m);
+		num++;
+	}
+
+	return num;
 }
 
 /** Acknowledge that the channel is closing
@@ -861,9 +902,9 @@ int fr_channel_responder_ack_close(fr_channel_t *ch)
 	active = atomic_load(&ch->end[TO_REQUESTOR].active);
 	if (!active) return 0;					/* Already signalled to close */
 
-	(void) talloc_get_type_abort(ch, fr_channel_t);
-
 	atomic_store(&ch->end[TO_REQUESTOR].active, false);	/* Prevent further responses */
+
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
 	cc.ack = TO_REQUESTOR;
@@ -871,8 +912,6 @@ int fr_channel_responder_ack_close(fr_channel_t *ch)
 
 	ret = fr_control_message_send(ch->end[TO_REQUESTOR].control,
 				      ch->end[TO_REQUESTOR].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
-
-	atomic_store(&ch->end[TO_REQUESTOR].active, false);	/* Prevent further requests */
 
 	return ret;
 }
@@ -927,7 +966,7 @@ void *fr_channel_requestor_uctx_get(fr_channel_t *ch)
 }
 
 
-int fr_channel_set_recv_reply(fr_channel_t *ch, void *uctx, fr_channel_recv_callback_t recv_reply)
+int fr_channel_set_recv_reply(fr_channel_t *ch, fr_channel_recv_callback_t recv_reply, void *uctx)
 {
 	ch->end[TO_RESPONDER].recv = recv_reply;
 	ch->end[TO_RESPONDER].recv_uctx = uctx;
@@ -935,7 +974,7 @@ int fr_channel_set_recv_reply(fr_channel_t *ch, void *uctx, fr_channel_recv_call
 	return 0;
 }
 
-int fr_channel_set_recv_request(fr_channel_t *ch, void *uctx, fr_channel_recv_callback_t recv_request)
+int fr_channel_set_recv_request(fr_channel_t *ch, fr_channel_recv_callback_t recv_request, void *uctx)
 {
 	ch->end[TO_REQUESTOR].recv = recv_request;
 	ch->end[TO_REQUESTOR].recv_uctx = uctx;
@@ -969,7 +1008,7 @@ void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char cons
 	fr_log(log, L_INFO, file, line, "\toutstanding = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.outstanding);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.packets);
 	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", fr_time_delta_unwrap(ch->end[TO_RESPONDER].stats.message_interval));
-	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_read_other));
+	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_write));
 	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_read_other));
 	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_sent_signal));
 
@@ -978,7 +1017,7 @@ void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char cons
 	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.kevents);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.packets);
 	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", fr_time_delta_unwrap(ch->end[TO_REQUESTOR].stats.message_interval));
-	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_read_other));
+	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_write));
 	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_read_other));
 	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_sent_signal));
 }

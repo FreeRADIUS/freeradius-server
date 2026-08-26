@@ -1,0 +1,41 @@
+* xref:index.adoc[Troubleshooting]
+
+** xref:network/index.adoc[Network Errors]
+
+*** Server does not start
+**** xref:network/bind.adoc[Failed binding to socket]
+
+*** Common Errors
+**** xref:network/shared_secret.adoc[Shared secret is incorrect]
+**** xref:network/packet_fails_verification.adoc[Packet fails verification]
+**** xref:network/message_authenticator_invalid.adoc[Message-Authenticator fail verification]
+**** xref:network/unknown_packet_code.adoc[Unknown packet code]
+**** xref:network/unexpected_request_code.adoc[Unexpected request code]
+**** xref:network/message_authenticator_missing.adoc[Message-Authenticator is missing]
+**** xref:network/proxy_state_missing_ma.adoc[Proxy-State without Message-Authenticator]
+**** xref:network/packet_fails_verification.adoc[Packet fails verification]
+**** xref:network/no_matching_request.adoc[Did not find request which matches response]
+
+*** Other Errors
+**** xref:network/unexpected_response_code.adoc[Unexpected response code]
+**** xref:network/too_many_attributes.adoc[Too many attributes]
+**** xref:network/io_error.adoc[IO error]
+
+*** Rare Errors
+**** xref:network/packet_too_small.adoc[Packet is too small]
+**** xref:network/packet_too_large.adoc[Packet is too large]
+**** xref:network/mismatched_length.adoc[Header length does not match received packet length]
+**** xref:network/attribute_0.adoc[Attribute 0 is invalid]
+**** xref:network/attribute_invalid_length.adoc[Attribute has invalid length]
+**** xref:network/attribute_overflow.adoc[Attribute overflows the packet]
+**** xref:network/attribute_header.adoc[Attribute header overflows the packet]
+**** xref:network/decode_failure.adoc[Failure decoding a packet]
+**** xref:network/message_authenticator_length.adoc[Message Authenticator has invalid length]
+**** xref:network/message_authenticator_too_many.adoc[Multiple Message-Authenticators is invalid]
+
+
+** xref:user.adoc[User Management]
+** xref:server.adoc[Server Configuration]
+** xref:client.adoc[Client Configuration]
+** xref:connect_nas.adoc[Connectivity]
+** xref:datastore.adoc[Datastores]

@@ -68,7 +68,7 @@ static int inet2pairs(TALLOC_CTX *ctx, fr_pair_list_t *list,
 	fr_pair_t *vp;
 
 	if (fr_pair_find_or_append_by_da(ctx, &vp, list, attr_ip) < 0) return -1;
-	fr_value_box_ipaddr(&vp->data, attr_ip, ipaddr, false);
+	if (fr_value_box_ipaddr(&vp->data, attr_ip, ipaddr, false) < 0) return -1;
 	fr_pair_set_immutable(vp);
 
 	if (fr_pair_find_or_append_by_da(ctx, &vp, list, attr_port) < 0) return -1;
@@ -102,18 +102,26 @@ int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_packet
 
 	/*
 	 *	Net.Src
+	 *
+	 *	Only create the address attributes if the packet
+	 *	actually has a source address.  Layer 2 protocols
+	 *	(e.g. ARP) leave the inet addresses unset, in which
+	 *	case fr_value_box_ipaddr() would fail.
 	 */
-	if (fr_pair_find_or_append_by_da(net, &tlv, &net->vp_group, attr_net_src) < 0) return -1;
+	 if (packet->socket.inet.src_ipaddr.af != AF_UNSPEC) {
+		if (fr_pair_find_or_append_by_da(net, &tlv, &net->vp_group, attr_net_src) < 0) return -1;
 
-	if (inet2pairs(tlv, &tlv->vp_group, attr_net_src_ip, attr_net_src_port, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port) < 0) return -1;
+		if (inet2pairs(tlv, &tlv->vp_group, attr_net_src_ip, attr_net_src_port, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port) < 0) return -1;
+	 }
 
 	/*
 	 *	Net.Dst
 	 */
-	if (fr_pair_find_or_append_by_da(net, &tlv, &net->vp_group, attr_net_dst) < 0) return -1;
+	 if (packet->socket.inet.dst_ipaddr.af != AF_UNSPEC) {
+		if (fr_pair_find_or_append_by_da(net, &tlv, &net->vp_group, attr_net_dst) < 0) return -1;
 
-	if (inet2pairs(tlv, &tlv->vp_group, attr_net_dst_ip, attr_net_dst_port, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port) < 0) return -1;
-
+		if (inet2pairs(tlv, &tlv->vp_group, attr_net_dst_ip, attr_net_dst_port, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port) < 0) return -1;
+	 }
 	/*
 	 *	Timestamp
 	 */

@@ -103,7 +103,7 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 		/*
 		 *	Include substring matches.
 		 */
-		slen = regex_compile(request, &preg, expr_p, talloc_array_length(expr_p) - 1,
+		slen = regex_compile(request, &preg, expr_p, talloc_strlen(expr_p),
 				     NULL, true, true);
 		if (slen <= 0) {
 			REMARKER(expr_p, -slen, "%s", fr_strerror());
@@ -118,7 +118,7 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 		/*
 		 *	Evaluate the expression
 		 */
-		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, regmatch);
+		slen = regex_exec(preg, value_p, talloc_strlen(value_p), regmatch);
 		if (slen < 0) {
 			RPERROR("Invalid regex");
 
@@ -159,58 +159,39 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 	 */
 	switch (check->vp_type) {
 		case FR_TYPE_OCTETS:
-			if (vp->vp_length != check->vp_length) {
-				ret = 1; /* NOT equal */
-				break;
-			}
-			ret = memcmp(vp->vp_strvalue, check->vp_strvalue, vp->vp_length);
-			break;
+			return MEMCMP_FIELDS(vp, check, vp_octets, vp_length);
 
 		case FR_TYPE_STRING:
-			ret = strcmp(vp->vp_strvalue, check->vp_strvalue);
-			break;
+			/*
+			 *	Do NOT check the secret flag!  This function is used to compare check items,
+			 *	and needs the full comparison, even if it isn't constant time.
+			 */
+			return CMP(strcmp(vp->vp_strvalue, check->vp_strvalue), 0);
 
 		case FR_TYPE_UINT8:
-			ret = vp->vp_uint8 - check->vp_uint8;
-			break;
+			return CMP(vp->vp_uint8, check->vp_uint8);
 
 		case FR_TYPE_UINT16:
-			ret = vp->vp_uint16 - check->vp_uint16;
-			break;
+			return CMP(vp->vp_uint16, check->vp_uint16);
 
 		case FR_TYPE_UINT32:
-			ret = vp->vp_uint32 - check->vp_uint32;
-			break;
+			return CMP(vp->vp_uint32, check->vp_uint32);
 
 		case FR_TYPE_UINT64:
-			/*
-			 *	Don't want integer overflow!
-			 */
-			if (vp->vp_uint64 < check->vp_uint64) {
-				ret = -1;
-			} else if (vp->vp_uint64 > check->vp_uint64) {
-				ret = +1;
-			} else {
-				ret = 0;
-			}
-			break;
+			return CMP(vp->vp_uint64, check->vp_uint64);
 
 		case FR_TYPE_INT32:
-			ret = CMP(vp->vp_int32, check->vp_int32);
-			break;
+			return CMP(vp->vp_int32, check->vp_int32);
 
 		case FR_TYPE_DATE:
-			ret = fr_unix_time_cmp(vp->vp_date, check->vp_date);
-			break;
+			return fr_unix_time_cmp(vp->vp_date, check->vp_date);
 
 		case FR_TYPE_IPV4_ADDR:
-			ret = ntohl(vp->vp_ipv4addr) - ntohl(check->vp_ipv4addr);
-			break;
+			return CMP(ntohl(vp->vp_ipv4addr), ntohl(check->vp_ipv4addr));
 
 		case FR_TYPE_IPV6_ADDR:
-			ret = memcmp(vp->vp_ip.addr.v6.s6_addr, check->vp_ip.addr.v6.s6_addr,
-				     sizeof(vp->vp_ip.addr.v6.s6_addr));
-			break;
+			return CMP(memcmp(vp->vp_ip.addr.v6.s6_addr, check->vp_ip.addr.v6.s6_addr,
+					  sizeof(vp->vp_ip.addr.v6.s6_addr)), 0);
 
 		case FR_TYPE_IPV4_PREFIX:
 		case FR_TYPE_IPV6_PREFIX:
@@ -225,11 +206,10 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 			break;
 
 		case FR_TYPE_IFID:
-			ret = memcmp(vp->vp_ifid, check->vp_ifid, sizeof(vp->vp_ifid));
-			break;
-
+			return CMP(memcmp(vp->vp_ifid, check->vp_ifid, sizeof(vp->vp_ifid)), 0);
+			
 		default:
-			break;
+			return -2;
 	}
 
 finish:

@@ -1,0 +1,6 @@
+BEGIN PROTOCOL Test-Struct 103
+ATTRIBUTE	my-struct 1 struct
+MEMBER		field1 uint16
+MEMBER		field2 uint32
+MEMBER		field3 octets
+END PROTOCOL Test-Struct

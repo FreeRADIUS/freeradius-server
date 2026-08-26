@@ -494,7 +494,7 @@ static void sql_trunk_connection_read_poll(fr_timer_list_t *tl, UNUSED fr_time_t
 			ROPTIONAL(RERROR, ERROR, "Query failed: %s", errbuff);
 			query_ctx->status = SQL_QUERY_FAILED;
 			trunk_request_signal_fail(treq);
-			if (query_ctx->rcode == RLM_SQL_RECONNECT) connection_signal_reconnect(c->conn, CONNECTION_FAILED);
+			if (sql_check_reconnect(c) == RLM_SQL_RECONNECT) connection_signal_reconnect(c->conn, CONNECTION_FAILED);
 			return;
 		}
 		}

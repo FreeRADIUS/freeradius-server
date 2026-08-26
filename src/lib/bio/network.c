@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -52,14 +52,17 @@ static ssize_t fr_bio_network_read(fr_bio_t *bio, void *packet_ctx, void *buffer
 	fr_bio_network_t *my = talloc_get_type_abort(bio, fr_bio_network_t);
 	fr_bio_fd_packet_ctx_t *addr;
 	fr_bio_t *next;
-	
+
+	if (!packet_ctx) {
+		fr_strerror_const("Cannot perform network filtering");
+		return fr_bio_error(GENERIC);
+	}
+
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
 
 	rcode = next->read(next, packet_ctx, buffer, size);
 	if (rcode <= 0) return rcode;
-
-	if (!packet_ctx) return rcode;
 
 	addr = fr_bio_fd_packet_ctx(my, packet_ctx);
 
@@ -93,7 +96,6 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 			       fr_bio_read_t discard, fr_bio_t *next)
 {
 	fr_bio_network_t *my;
-	fr_bio_t *fd;
 	fr_bio_fd_info_t const *info;
 
 	/*
@@ -101,21 +103,12 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	 *	want to have an API which allows for two different "offset" values to be passed to two
 	 *	different bios.
 	 */
-	fd = NULL;
+	if (strcmp(talloc_get_name(next), "fr_bio_fd_t") != 0) {
+		fr_strerror_const("Invalid 'next' BIO - must be an FD one");
+		return NULL;
+	}
 
-	/*
-	 *	@todo - add an internal "type" to the bio?
-	 */
-	do {
-		if (strcmp(talloc_get_name(next), "fr_bio_fd_t") == 0) {
-			fd = next;
-			break;
-		}
-	} while ((next = fr_bio_next(next)) != NULL);
-
-	if (!fd) return NULL;
-
-	info = fr_bio_fd_info(fd);
+	info = fr_bio_fd_info(next);
 	fr_assert(info != NULL);
 
 	/*
@@ -134,6 +127,7 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 
 	case FR_BIO_FD_INVALID:
 	case FR_BIO_FD_CONNECTED:
+		fr_strerror_const("Cannot use network BIO with connected FD BIO");
 		return NULL;
 
 	case FR_BIO_FD_LISTEN:
@@ -143,7 +137,7 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	my = talloc_zero(ctx, fr_bio_network_t);
 	if (!my) return NULL;
 
-	my->offset = ((fr_bio_fd_t *) fd)->offset;
+	my->offset = ((fr_bio_fd_t *) next)->offset;
 	my->discard = discard;
 
 	my->bio.write = fr_bio_next_write;
@@ -156,6 +150,7 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	}
 
 	fr_bio_chain(&my->bio, next);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 
 	return (fr_bio_t *) my;
 }
@@ -189,37 +184,24 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		}
 
 		/*
-		 *	Duplicates are bad.
+		 *	Catch duplicants, and also catch the case where we insert a /16, and then later try to
+		 *	insert a /24 inside of that.
+		 *
+		 *	If instead we insert a /24, and then later a /16, we won't catch that.
 		 */
-		value = fr_trie_match_by_key(trie, &allow[i].addr, allow[i].prefix);
+		value = fr_trie_lookup_by_key(trie, &allow[i].addr, allow[i].prefix);
 		if (value) {
-			fr_strerror_printf("Cannot add duplicate entry 'allow = %pV'",
+			fr_strerror_printf("Cannot add duplicate / overlapping entry 'allow = %pV'",
 					   fr_box_ipaddr(allow[i]));
 			goto fail;
 		}
-
-#if 0
-		/*
-		 *	Look for overlapping entries.  i.e. the networks MUST be disjoint.
-		 *
-		 *	Note that this catches 192.168.1/24 followed by 192.168/16, but NOT the other way
-		 *	around.  The best fix is likely to add a flag to fr_trie_alloc() saying "we can only
-		 *	have terminal fr_trie_user_t nodes"
-		 */
-		value = fr_trie_lookup_by_key(trie, &allow[i].addr, allow[i].prefix);
-		if (network && (network->prefix <= allow[i].prefix)) {
-			fr_strerror_printf("Cannot add overlapping entry 'allow = %pV'", fr_box_ipaddr(allow[i]));
-			fr_strerror_const("Entry is completely enclosed inside of a previously defined network.");
-			goto fail;
-		}
-#endif
 
 		/*
 		 *	Insert the network into the trie.  Lookups will return a bool ptr of allow / deny.
 		 */
 		if (fr_trie_insert_by_key(trie, &allow[i].addr, allow[i].prefix, FR_BIO_NETWORK_ALLOW) < 0) {
 			fr_strerror_printf("Failed adding 'allow = %pV' to filtering rules", fr_box_ipaddr(allow[i]));
-			return NULL;
+			goto fail;
 		}
 	}
 
@@ -256,7 +238,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		/*
 		 *	A "deny" can only be within a previous "allow".
 		 */
-		value = fr_trie_lookup_by_key(trie, &deny[i].addr, deny[i].prefix);		
+		value = fr_trie_lookup_by_key(trie, &deny[i].addr, deny[i].prefix);
 		if (!value) {
 			fr_strerror_printf("The network in entry %zu - 'deny = %pV' is not "
 					   "contained within a previous 'allow'", i + 1, fr_box_ipaddr(deny[i]));
@@ -267,7 +249,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		 *	A "deny" cannot be within a previous "deny".
 		 */
 		if (value == FR_BIO_NETWORK_DENY) {
-			fr_strerror_printf("The network in entry %zu - 'deny = %pV' is overlaps "
+			fr_strerror_printf("The network in entry %zu - 'deny = %pV' overlaps "
 					   "with another 'deny' rule", i + 1, fr_box_ipaddr(deny[i]));
 			goto fail;
 		}
@@ -277,7 +259,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		 */
 		if (fr_trie_insert_by_key(trie, &deny[i].addr, deny[i].prefix, FR_BIO_NETWORK_DENY) < 0) {
 			fr_strerror_printf("Failed adding 'deny = %pV' to filtering rules", fr_box_ipaddr(deny[i]));
-			return NULL;
+			goto fail;
 		}
 	}
 

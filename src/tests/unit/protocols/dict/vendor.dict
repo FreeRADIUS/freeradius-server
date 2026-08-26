@@ -1,0 +1,8 @@
+BEGIN PROTOCOL Test-Vendor 101
+ATTRIBUTE	Vendor-Specific 26 vsa
+VENDOR		Test-Vendor-A 1234
+BEGIN-VENDOR	Test-Vendor-A
+ATTRIBUTE	Vendor-A-Attr1 1 string
+ATTRIBUTE	Vendor-A-Attr2 2 uint32
+END-VENDOR	Test-Vendor-A
+END PROTOCOL Test-Vendor

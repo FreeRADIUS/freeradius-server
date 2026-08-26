@@ -25,7 +25,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/unlang/mod_action.h>
-#include <freeradius-devel/server/rcode.h>
 
 unlang_mod_actions_t const mod_actions_authenticate = {
 	.actions = {

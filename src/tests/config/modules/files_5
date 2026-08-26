@@ -1,0 +1,7 @@
+#
+#  Test: lookup_type = trie
+#
+files {
+	filename = ${modconfdir}/files/authorize
+	lookup_type = trie
+}

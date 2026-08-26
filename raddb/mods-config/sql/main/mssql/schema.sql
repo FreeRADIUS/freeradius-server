@@ -54,7 +54,7 @@ GO
 ALTER TABLE [radacct] WITH NOCHECK ADD
 	CONSTRAINT [DF_radacct_groupname] DEFAULT ('') FOR [groupname],
 	CONSTRAINT [DF_radacct_acctsessionid] DEFAULT ('') FOR [acctsessionid],
-	CONSTRAINT [DF_radacct_acctuniqueid] DEFAULT ('') FOR [acctnniqueid],
+	CONSTRAINT [DF_radacct_acctuniqueid] DEFAULT ('') FOR [acctuniqueid],
 	CONSTRAINT [DF_radacct_username] DEFAULT ('') FOR [username],
 	CONSTRAINT [DF_radacct_realm] DEFAULT ('') FOR [realm],
 	CONSTRAINT [DF_radacct_nasipaddress] DEFAULT ('') FOR [nasipaddress],
@@ -123,6 +123,9 @@ CREATE INDEX [class] ON [radacct]([class]) ON [PRIMARY]
 GO
 
 -- For use by onoff
+SET QUOTED_IDENTIFIER ON
+GO
+
 CREATE INDEX [radacctbulkclose] ON [radacct]([nasipaddress],[acctstarttime]) WHERE [acctstoptime] IS NULL ON [PRIMARY]
 GO
 
@@ -130,7 +133,7 @@ GO
 --
 -- Table structure for table 'radcheck'
 --
--- Note: [op] is varchar to allow for "=" as a value -
+-- NOTE: [op] is varchar to allow for "=" as a value -
 -- depending on which driver is used to access the database, if
 -- the field is defined as char, then the trailing space may be
 -- returned, which fails to parse correctly.

@@ -70,7 +70,8 @@ typedef struct {
 	MYSQL		*sock;			//!< Connection details as returned by connection init functions.
 	MYSQL_RES	*result;		//!< Result from most recent query.
 	connection_t	*conn;			//!< Generic connection structure for this connection.
-	int		fd;			//!< fd for this connection's I/O events.
+	int		fd;			//!< Our fd for this connection's I/O events.
+	int		client_fd;		//!< Socket the client library last reported, for detecting fd changes.
 	fr_sql_query_t	*query_ctx;		//!< Current query running on this connection.
 	int		status;			//!< returned by the most recent non-blocking function call.
 } rlm_sql_mysql_conn_t;
@@ -99,6 +100,13 @@ typedef struct {
 
 	char const	*character_set;		//!< Character set to use on connections.
 } rlm_sql_mysql_t;
+
+typedef struct {
+	MYSQL		db;			//!< Our copy of the connection details - holds the flags needed
+						///< by mysql_real_escape_string()
+	bool		ready;			//!< Has the db structure been populated.
+	connection_t	*conn;			//!< Connection used to fetch server status.
+} rlm_sql_mysql_esc_ctx_t;
 
 static conf_parser_t tls_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_ca_file) },
@@ -187,9 +195,89 @@ static int mod_load(void)
 	return 0;
 }
 
+/** Stop tracking our fd for a connection.
+ *
+ * Removes the event and closes our descriptor.  Safe to call repeatedly.
+ */
+static void sql_mysql_fd_release(rlm_sql_mysql_conn_t *c, fr_event_list_t *el)
+{
+	if (c->fd < 0) return;
+
+	if (el) fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO);
+	close(c->fd);
+	c->fd = -1;
+	c->client_fd = -1;
+}
+
+/** Track the socket actually being used by the client library.
+ *
+ * The client library owns its socket and potentially both closes and replaces
+ * it without telling us during connection setup, meaning events are still
+ * registered on the wrong fd.
+ *
+ * Create a dup() of the fd which gets used in the event list to avoid this
+ * issue.
+ *
+ * Call after each mysql_real_connect_* call to ensure the correct fd is in
+ * the event list.
+ *
+ * @param[in] c		connection to update.
+ * @param[in] el	event list the old event is registered in, may be NULL if
+ *			nothing is registered yet.
+ * @return
+ *	- 0 if the descriptor is unchanged or was updated.
+ *	- -1 on error or if the library closed closed the connection.
+ */
+static int sql_mysql_fd_track(rlm_sql_mysql_conn_t *c, fr_event_list_t *el)
+{
+	char const	*log_prefix = c->conn->name;
+	int		client_fd = mysql_get_socket(&c->db);
+
+	if (client_fd == c->client_fd) return 0;    /* Still the same socket */
+
+	sql_mysql_fd_release(c, el);
+
+	/*
+	 *	The library has finished with the socket entirely, which is what a
+	 *	failed connect leaves behind.
+	 */
+	if (client_fd < 0){
+		ERROR("MySQL error: %s", mysql_error(&c->db));
+ 		return -1;
+	}
+
+	c->fd = dup(client_fd);
+	if (unlikely(c->fd < 0)) {
+		ERROR("Failed duplicating MySQL socket %d: %s", client_fd, fr_syserror(errno));
+		return -1;
+	}
+	c->client_fd = client_fd;
+
+	return 0;
+}
+
+#ifdef HAVE_MARIADB_OPT_SOCKET_CALLBACK
+/** Called by the client library when it is about to close, or has just created, a socket
+ *
+ * The handle is still valid when MARIADB_SOCKET_CLOSING arrives, so this is the one
+ * point at which the event can be removed without racing the number being reused.
+ * Only the closing notification is of interest; the new socket is picked up by
+ * sql_mysql_fd_track() on return from the call that created it.
+ */
+static void _sql_socket_event(void *uctx, my_socket handle, enum enum_mariadb_socket_event event)
+{
+	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_mysql_conn_t);
+
+	if (event != MARIADB_SOCKET_CLOSING) return;
+	if (handle != c->client_fd) return;
+
+	sql_mysql_fd_release(c, c->conn->el);
+}
+#endif
+
 /** Callback for I/O events in response to mysql_real_connect_start()
  */
-static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+static void _sql_connect_io_notify(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_mysql_conn_t);
 	char const		*log_prefix = c->conn->name;
@@ -198,10 +286,24 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	c->status = mysql_real_connect_cont(&c->sock, &c->db, c->status);
 
 	/*
+	 *    The library may have closed the socket we were waiting on and moved
+	 *    to the next address, so re-check before doing anything with it.
+	 */
+	if (unlikely(sql_mysql_fd_track(c, el) < 0)) {
+		connection_signal_reconnect(c->conn, CONNECTION_FAILED);
+		return;
+	}
+
+	/*
 	 *	If status is not zero, we're still waiting for something.
 	 *	The event will be fired again when that happens.
 	 */
 	if (c->status != 0) {
+		if (unlikely(c->fd < 0)) {
+			ERROR("MySQL is waiting on a socket it has already closed");
+			connection_signal_reconnect(c->conn, CONNECTION_FAILED);
+			return;
+		}
 		(void) fr_event_fd_insert(c, NULL, c->conn->el, c->fd,
 				          c->status & MYSQL_WAIT_READ ? _sql_connect_io_notify : NULL,
 					  c->status & MYSQL_WAIT_WRITE ? _sql_connect_io_notify : NULL, NULL, c);
@@ -212,8 +314,11 @@ connected:
 	/*
 	 *	Pause any notifications until we're actually ready
 	 *	to operate on the connection.
+	 *
+	 *    Deleting by fd is safe here only because the fd is ours: see
+	 *    sql_mysql_fd_track().
 	 */
-	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
+	if (c->fd >= 0) fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO);
 
 	if (!c->sock) {
 		ERROR("MySQL error: %s", mysql_error(&c->db));
@@ -270,17 +375,22 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	rlm_sql_config_t const	*config = &sql->config;
 
 	unsigned long		sql_flags;
-	enum mysql_option	ssl_mysql_opt;
-	unsigned int		ssl_mode = 0;
-	bool			ssl_mode_isset = false;
 
 	MEM(c = talloc_zero(conn, rlm_sql_mysql_conn_t));
 	c->conn = conn;
 	c->fd = -1;
+	c->client_fd = -1;
 
 	DEBUG("Starting connect to MySQL server");
 
 	mysql_init(&c->db);
+
+#ifdef HAVE_MARIADB_OPT_SOCKET_CALLBACK
+	/*
+	 *    Get notifications when the library is going to close a socket.
+	 */
+	mysql_optionsv(&c->db, MARIADB_OPT_SOCKET_CALLBACK, (void *)_sql_socket_event, (void *)c);
+#endif
 
 	/*
 	 *	If any of the TLS options are set, configure TLS
@@ -294,52 +404,21 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 			      inst->tls_ca_file, inst->tls_ca_path, inst->tls_cipher);
 	}
 
-#ifdef MARIADB_BASE_VERSION
 	if (inst->tls_required || inst->tls_check_cert || inst->tls_check_cert_cn) {
-		ssl_mode_isset = true;
+		unsigned int	ssl_mode = true;
 		/**
 		 * For MariaDB, It should be true as can be seen in
 		 * https://github.com/MariaDB/server/blob/mariadb-5.5.68/sql-common/client.c#L4338
 		 */
-		ssl_mode = true;
-		ssl_mysql_opt = MYSQL_OPT_SSL_VERIFY_SERVER_CERT;
+		mysql_optionsv(&(c->db), MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &ssl_mode);
 	}
-#else
-	ssl_mysql_opt = MYSQL_OPT_SSL_MODE;
-	if (inst->tls_required) {
-		ssl_mode = SSL_MODE_REQUIRED;
-		ssl_mode_isset = true;
-	}
-	if (inst->tls_check_cert) {
-		ssl_mode = SSL_MODE_VERIFY_CA;
-		ssl_mode_isset = true;
-	}
-	if (inst->tls_check_cert_cn) {
-		ssl_mode = SSL_MODE_VERIFY_IDENTITY;
-		ssl_mode_isset = true;
-	}
-#endif
-	if (ssl_mode_isset) mysql_options(&(c->db), ssl_mysql_opt, &ssl_mode);
 
-	if (inst->tls_crl_file) mysql_options(&(c->db), MYSQL_OPT_SSL_CRL, inst->tls_crl_file);
-	if (inst->tls_crl_path) mysql_options(&(c->db), MYSQL_OPT_SSL_CRLPATH, inst->tls_crl_path);
+	if (inst->tls_crl_file) mysql_optionsv(&(c->db), MYSQL_OPT_SSL_CRL, inst->tls_crl_file);
+	if (inst->tls_crl_path) mysql_optionsv(&(c->db), MYSQL_OPT_SSL_CRLPATH, inst->tls_crl_path);
 
-	mysql_options(&(c->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
+	mysql_optionsv(&(c->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
 
-	if (inst->character_set) mysql_options(&(c->db), MYSQL_SET_CHARSET_NAME, inst->character_set);
-
-#if MYSQL_VERSION_ID < 80034
-	/*
-	 *	We need to know about connection errors, and are capable
-	 *	of reconnecting automatically.
-	 *
-	 *	This deprecated as of 8.0.34.
-	 */
-	{
-		bool reconnect = 0;
-		mysql_options(&(c->db), MYSQL_OPT_RECONNECT, &reconnect);
-	}
-#endif
+	if (inst->character_set) mysql_optionsv(&(c->db), MYSQL_SET_CHARSET_NAME, inst->character_set);
 
 	sql_flags = CLIENT_MULTI_RESULTS | CLIENT_FOUND_ROWS;
 
@@ -347,7 +426,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	sql_flags |= CLIENT_MULTI_STATEMENTS;
 #endif
 
- 	mysql_options(&c->db, MYSQL_OPT_NONBLOCK, 0);
+ 	mysql_optionsv(&c->db, MYSQL_OPT_NONBLOCK, 0);
 
 	c->status = mysql_real_connect_start(&c->sock, &c->db,
 					     config->sql_server,
@@ -356,8 +435,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 					     config->sql_db,
 					     config->sql_port, NULL, sql_flags);
 
-	c->fd = mysql_get_socket(&c->db);
-	if (c->fd < 0) {
+	if ((mysql_get_socket(&c->db) < 0) || (sql_mysql_fd_track(c, NULL) < 0)) {
 		ERROR("Could't connect to MySQL server %s@%s:%s", config->sql_login,
 		      config->sql_server, config->sql_db);
 		ERROR("MySQL error: %s", mysql_error(&c->db));
@@ -393,10 +471,11 @@ static void _sql_connection_close(fr_event_list_t *el, void *h, UNUSED void *uct
 {
 	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(h, rlm_sql_mysql_conn_t);
 
-	if (c->fd >= 0) {
-		fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO);
-		c->fd = -1;
-	}
+	/*
+	 *    Clean up event and our fd before closing.
+	 */
+	sql_mysql_fd_release(c, el);
+
 	mysql_close(&c->db);
 	c->query_ctx = NULL;
 	talloc_free(h);
@@ -848,27 +927,32 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 	return mysql_affected_rows(conn->sock);
 }
 
-static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
+static int sql_escape_func(request_t *request, fr_value_box_t *vb, void *arg)
 {
-	size_t			inlen;
-	connection_t		*c = talloc_get_type_abort(arg, connection_t);
-	rlm_sql_mysql_conn_t	*conn;
-	char const		*log_prefix = c->name;
+	rlm_sql_mysql_esc_ctx_t	*esc_ctx = talloc_get_type_abort(arg, rlm_sql_mysql_esc_ctx_t);
+	char			*out;
+	size_t			inlen = vb->vb_length;
+	unsigned long		real_len;
+	char const		*log_prefix = esc_ctx->conn->name;
 
-	if ((c->state == CONNECTION_STATE_HALTED) || (c->state == CONNECTION_STATE_CLOSED)) {
-		ROPTIONAL(RERROR, ERROR, "Connection not available for escaping");
+	if (!esc_ctx->ready) {
+		ROPTIONAL(RERROR, ERROR, "Connection flags not available for escaping");
 		return -1;
 	}
 
-	conn = talloc_get_type_abort(c->h, rlm_sql_mysql_conn_t);
+	/* Prevent integer overflow on (inlen * 2 + 1) */
+	if (inlen > (SIZE_MAX - 1) / 2) {
+		ROPTIONAL(RERROR, ERROR, "Input too large to escape");
+		return -1;
+	}
 
-	/* Check for potential buffer overflow */
-	inlen = strlen(in);
-	if ((inlen * 2 + 1) > outlen) return 0;
-	/* Prevent integer overflow */
-	if ((inlen * 2 + 1) <= inlen) return 0;
+	MEM(out = talloc_array(vb, char, inlen * 2 + 1));
+	real_len = mysql_real_escape_string(&esc_ctx->db, out, vb->vb_strvalue, inlen);
 
-	return mysql_real_escape_string(&conn->db, out, in, inlen);
+	if ((size_t)real_len + 1 < inlen * 2 + 1) MEM(out = talloc_realloc(vb, out, char, real_len + 1));
+	fr_value_box_strdup_shallow_replace(vb, out, real_len);
+
+	return 0;
 }
 
 SQL_TRUNK_CONNECTION_ALLOC
@@ -1058,8 +1142,15 @@ static void sql_request_cancel(connection_t *conn, void *preq, trunk_cancel_reas
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
 	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
 
-	if (!query_ctx->treq) return;
 	if (reason != TRUNK_CANCEL_REASON_SIGNAL) return;
+
+	/*
+	 *	Prevent any further queries being enqueued on the trunk connection
+	 *	since the cancellation mux will close the connection.
+	 */
+	if (query_ctx->tconn) trunk_connection_signal_inactive(query_ctx->tconn);
+
+	if (!query_ctx->treq) return;
 	if (sql_conn->query_ctx == query_ctx) sql_conn->query_ctx = NULL;
 }
 
@@ -1075,7 +1166,7 @@ static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_
 	 */
 	if ((trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
 		trunk_request_signal_cancel_complete(treq);
-		connection_signal_reconnect(conn, CONNECTION_FAILED);
+		connection_signal_reconnect(conn, CONNECTION_EXPIRED);
 	}
 }
 
@@ -1102,19 +1193,40 @@ static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, UNUSED
 	RETURN_UNLANG_OK;
 }
 
+/** Capture our copy of the connection details for escaping purposes.
+ *
+ * After an "escape" connection has been started and again after it is
+ * established.
+ * Then close the connection.  mysql_real_escape_string only looks at one
+ * flag inside the MYSQL structure, so no need to keep an open connection.
+ */
+static void _sql_escape_post_conn(connection_t *conn, UNUSED connection_state_t prev,
+				  UNUSED connection_state_t state, void *uctx)
+{
+	rlm_sql_mysql_esc_ctx_t	*esc_ctx = talloc_get_type_abort(uctx, rlm_sql_mysql_esc_ctx_t);
+	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
+
+	esc_ctx->db = c->db;
+	esc_ctx->ready = true;
+	if (conn->state == CONNECTION_STATE_CONNECTED) connection_signal_halt(conn);
+}
+
+
 /** Allocate the argument used for the SQL escape function
  *
- * In this case, a dedicated connection to allow the escape
- * function to have access to server side parameters, though
- * no packets ever flow after the connection is made.
+ * In this case, a dedicated connection is made to fetch server flags used by
+ * the escape function, though no packets ever flow after the connection is made.
+ * Once the server flags have been retrieved, the connection is closed, by a
+ * watch function.
  */
 static void *sql_escape_arg_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx)
 {
 	rlm_sql_t const	*inst = talloc_get_type_abort(uctx, rlm_sql_t);
-	connection_t *conn;
+	rlm_sql_mysql_esc_ctx_t	*esc_ctx;
 	char const	*log_prefix = inst->name;
 
-	conn = connection_alloc(ctx, el,
+	MEM(esc_ctx = talloc_zero(ctx, rlm_sql_mysql_esc_ctx_t));
+	esc_ctx->conn = connection_alloc(ctx, el,
 				    &(connection_funcs_t){
 					.init = _sql_connection_init,
 					.close = _sql_connection_close,
@@ -1122,19 +1234,30 @@ static void *sql_escape_arg_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, void *uc
 				    inst->config.trunk_conf.conn_conf,
 				    inst->name, inst);
 
-	if (!conn) {
+	if (!esc_ctx->conn) {
 		PERROR("Failed allocating state handler for SQL escape connection");
+		talloc_free(esc_ctx);
 		return NULL;
 	}
 
-	connection_signal_init(conn);
-	return conn;
+	/*
+	 *	The watch is run both after entering CONNECTING and CONNECTED
+	 *	The first will capture the configured character set.  The second will
+	 *	capture status returned by the server.
+	 */
+	connection_add_watch_post(esc_ctx->conn, CONNECTION_STATE_CONNECTING,
+				  _sql_escape_post_conn, true, esc_ctx);
+	connection_add_watch_post(esc_ctx->conn, CONNECTION_STATE_CONNECTED,
+				  _sql_escape_post_conn, true, esc_ctx);
+
+	connection_signal_init(esc_ctx->conn);
+	return esc_ctx;
 }
 
 static void sql_escape_arg_free(void *uctx)
 {
-	connection_t	*conn = talloc_get_type_abort(uctx, connection_t);
-	connection_signal_halt(conn);
+	rlm_sql_mysql_esc_ctx_t	*esc_ctx = talloc_get_type_abort(uctx, rlm_sql_mysql_esc_ctx_t);
+	connection_signal_halt(esc_ctx->conn);
 }
 
 /* Exported to rlm_sql */

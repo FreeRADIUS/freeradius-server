@@ -45,3 +45,15 @@ typedef struct {
 	fr_radius_limit_proxy_state_t	limit_proxy_state;		//!< Limit Proxy-State to packets containing
 									///< Message-Authenticator.
 } proto_radius_t;
+
+struct proto_radius_io_thread_s {
+	char const			*name;			//!< socket name
+	int				sockfd;
+
+	fr_io_address_t			*connection;		//!< for connected sockets.
+
+	fr_stats_t			stats;			//!< statistics for this socket
+
+};
+
+void proto_radius_log(fr_listen_t const *li, fr_radius_decode_fail_t reason, fr_socket_t const *sock, char const *fmt, ...);

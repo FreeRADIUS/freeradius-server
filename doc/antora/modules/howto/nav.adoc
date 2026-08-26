@@ -29,10 +29,11 @@
 **** xref:howto:upgrade/modules.adoc#rlm_python[Python]
 **** xref:howto:upgrade/modules.adoc#rlm_radutmp[Radutmp]
 **** xref:howto:upgrade/modules.adoc#rlm_rest[REST]
+**** xref:howto:upgrade/modules.adoc#rlm_securid[Securid]
 **** xref:howto:upgrade/modules.adoc#rlm_sql[SQL]
 ***** xref:howto:upgrade/modules.adoc#profiles[Profiles]
 ***** xref:howto:upgrade/modules.adoc#rlm_sql_mysql[MYSQL]
-***** xref:howto:upgrade/modules.adoc#PostgreSQL[PostgreSQL]
+***** xref:howto:upgrade/modules.adoc#rlm_sql_postgresql[PostgreSQL]
 **** xref:howto:upgrade/modules.adoc#rlm_sqlcounter[SQL-Counter]
 **** xref:howto:upgrade/modules.adoc#rlm_sqlippool[SQL-IP-POOL]
 **** xref:howto:upgrade/modules.adoc#rlm_unix[Unix]
@@ -51,7 +52,12 @@
 
 ** xref:modules/configuring_modules.adoc[Configure Modules]
 *** xref:modules/chap/index.adoc[CHAP]
+**** xref:modules/chap/testing.adoc[Testing]
 *** xref:modules/eap/index.adoc[EAP]
+**** xref:modules/eap/eap_subtypes.adoc[EAP Sub-Types]
+**** xref:modules/eap/eap_sim.adoc[EAP SIM Server]
+***** xref:modules/eap/eap_sim_aka.adoc[EAP SIM-AKA Testing]
+**** xref:modules/eap/rfcs.adoc[EAP RFCs]
 *** xref:modules/expiration/index.adoc[Expiration]
 *** xref:modules/krb5/index.adoc[KRB5]
 
@@ -129,9 +135,13 @@
 *** xref:os/letsencrypt.adoc[LetsEncrypt]
 
 ** xref:vendors/index.adoc[Vendors]
+*** xref:vendors/alcatel-lucent.adoc[Alcatel-Lucent]
+*** xref:vendors/alvarion.adoc[Alvarion]
 *** xref:vendors/ascend.adoc[Ascend]
 *** xref:vendors/bay.adoc[Bay]
 *** xref:vendors/cisco.adoc[Cisco]
+*** xref:vendors/hp.adoc[HP]
+*** xref:vendors/huawei.adoc[Huawei]
 *** xref:vendors/proxim.adoc[ProxIM]
 
 ** xref:optimization/index.adoc[Optimisation]
@@ -148,5 +158,5 @@
 *** xref:tuning/tuning_guide.adoc[Tuning Guide]
 
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

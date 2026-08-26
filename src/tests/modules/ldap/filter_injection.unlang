@@ -1,0 +1,13 @@
+#
+#  Verify that user.filter call_env escaping prevents LDAP filter injection.
+#
+#  User-Name = "*" would produce (uid=*) without escaping, matching every
+#  user in the directory.  With LDAP_FILTER_CALL_ENV_ESCAPE applied to
+#  user.filter, the wildcard is escaped to \2a and the search returns nothing.
+#
+ldap
+if (!notfound) {
+	test_fail
+}
+
+test_pass

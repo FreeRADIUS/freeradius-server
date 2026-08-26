@@ -42,11 +42,26 @@ TEST_BIN := $(BUILD_DIR)/bin/local
 RADDB_PATH := $(top_builddir)/raddb
 
 #
+#   Increase the eapol_test timeout when running under sanitizers, as the
+#   additional overhead can cause EAP conversations to take much longer.
+#
+ifneq "$(findstring sanitize,$(CFLAGS))"  ""
+EAPOL_TEST_TIMEOUT := 30
+else
+EAPOL_TEST_TIMEOUT := 10
+endif
+
+#
 #   This ensures that FreeRADIUS uses modules from the build directory
 #
 EAP_TARGETS      := $(filter rlm_eap_%,$(ALL_TGTS))
 EAP_TYPES        := $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
-EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(DIR)/$(x)*.conf))
+#
+#  Discover both `<type>*.conf` (positive tests) and `fail-<type>*.conf`
+#  (negative tests where eapol_test is expected to fail but the server
+#  must remain alive).
+#
+EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(DIR)/$(x)*.conf) $(wildcard $(DIR)/fail-$(x)*.conf))
 EAPOL_OK_FILES	 := $(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,$(EAPOL_TEST_FILES))
 EAP_TESTS        := $(sort $(patsubst $(DIR)/%.conf,%,$(EAPOL_TEST_FILES)))
 
@@ -62,7 +77,7 @@ ifeq "$(PACKAGE_TEST)" ""
 #
 #  Ensure that we run
 #
-$(OUTPUT)/${1}.ok:  $(patsubst %,rlm_eap_%.la,$(word 1,$(subst -, ,${1})))
+$(OUTPUT)/${1}.ok:  $(patsubst %,rlm_eap_%.la,$(word 1,$(subst -, ,$(patsubst fail-%,%,${1}))))
 endif
 
 endef
@@ -73,6 +88,14 @@ ifeq "$(PACKAGE_TEST)" ""
 #  The EAP-MSCHAPv2 module calls MSCHAP to do the dirty work.
 #
 $(OUTPUT)/mschapv2.ok: rlm_mschap.la
+
+#
+#  The server loads its protocol and module libraries at run time, so make
+#  needs telling about them.  The list comes from the config itself.
+#
+#  This has to come before the foreach below, which reassigns TEST.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/servers.conf,$(EAPOL_OK_FILES)))
 endif
 
 #
@@ -101,6 +124,11 @@ test.eap.check: $(OUTPUT) $(GENERATED_CERT_FILES)
 #
 #  Run EAP tests.
 #
+#  A test conf whose filename starts with `fail-` is a negative scenario:
+#  eapol_test is expected NOT to complete authentication, but the server
+#  must remain alive. radiusd_stop will fail the build if the daemon
+#  died, which is what catches the actual regression.
+#
 #  We don't depend on server build artifacts when we are executing from the post-install test environment
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/lib/libfreeradius-server.la $(BUILD_DIR)/lib/libfreeradius-util.la) | $(GENERATED_CERT_FILES)
@@ -109,22 +137,32 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	$(eval RADIUS_LOG := $(dir $@)/test.$(METHOD)/radiusd.log)
 	$(eval TEST_PORT := $($(METHOD)_port))
-	@echo "EAPOL-TEST $(METHOD)"
+	$(eval EXPECT_FAIL := $(if $(filter fail-%,$(METHOD)),yes,))
+	@echo "EAPOL-TEST $(METHOD)$(if $(EXPECT_FAIL), (expect-fail),)"
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_start $(POST_INSTALL_RADIUSD_BIN_ARG)
-	${Q}if ! $(EAPOL_TEST) -t 10 -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) > $(EAPOL_TEST_LOG) 2>&1; then	\
-		echo "Last entries in supplicant log ($(EAPOL_TEST_LOG)):";	\
-		tail -n 40 "$(EAPOL_TEST_LOG)";							\
-		echo "--------------------------------------------------";		\
-		tail -n 40 "$(RADIUS_LOG)";						\
-		echo "Last entries in server log ($(RADIUS_LOG)):";			\
-		echo "--------------------------------------------------";		\
+	${Q}$(EAPOL_TEST) -t $(EAPOL_TEST_TIMEOUT) -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) > $(EAPOL_TEST_LOG) 2>&1; rc=$$?; \
+	if [ -z "$(EXPECT_FAIL)" ] && [ $$rc -ne 0 ]; then \
+		failed=1; reason="eapol_test exited $$rc, expected success"; \
+	elif [ -n "$(EXPECT_FAIL)" ] && [ $$rc -eq 0 ]; then \
+		failed=1; reason="eapol_test exited 0, expected non-zero (test marked expect-fail)"; \
+	else \
+		failed=0; \
+	fi; \
+	if [ $$failed -eq 1 ]; then \
+		echo "$$reason"; \
+		echo "Last entries in supplicant log ($(EAPOL_TEST_LOG)):"; \
+		tail -n 40 "$(EAPOL_TEST_LOG)"; \
+		echo "--------------------------------------------------"; \
+		echo "Last entries in server log ($(RADIUS_LOG)):"; \
+		tail -n 500 "$(RADIUS_LOG)"; \
+		echo "--------------------------------------------------"; \
 		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) TEST=$(METHOD) TEST_PORT=$(TEST_PORT) $(RADIUSD_BIN) -fxxx -n servers -d $(dir $<)config -D $(DICT_PATH) -lstdout -f"; \
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(TEST_PORT) -s $(SECRET) $(KEY) "; \
-		echo "           log is in $(OUT)"; \
-		rm -f $(BUILD_DIR)/tests/test.eap;                                      \
-		$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill;			\
-		exit 1;\
+		echo "           log is in $(RADIUS_LOG)"; \
+		rm -f $(BUILD_DIR)/tests/test.eap; \
+		$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill; \
+		exit 1; \
 	fi
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_stop
 	${Q}touch $@

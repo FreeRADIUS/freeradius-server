@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/password.h>
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/defs.h>
@@ -41,7 +40,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/sha1.h>
 
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -56,7 +54,6 @@ RCSID("$Id$")
 
 #ifdef WITH_TLS
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
-#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/rc4.h>
 #endif
 
@@ -559,7 +556,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	This is the full domain name, not just the name after host/
 	 */
 	} else if (strncasecmp(arg->vb_strvalue, "Domain-Name", 11) == 0) {
-		char *p;
+		char const *p;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 
@@ -594,12 +591,8 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				return XLAT_ACTION_FAIL;
 			}
 
-			/*
-			 *	Hack.  This is simpler than the alternatives.
-			 */
-			*p = '\0';
-			fr_value_box_strdup(ctx, vb, NULL, user_name->vp_strvalue, user_name->vp_tainted);
-			*p = '\\';
+			fr_value_box_bstrndup(ctx, vb, NULL, user_name->vp_strvalue,
+					      p - user_name->vp_strvalue, user_name->vp_tainted);
 		}
 
 		fr_dcursor_append(out, vb);
@@ -609,7 +602,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Pull the NT-Domain out of the User-Name, if it exists.
 	 */
 	} else if (strncasecmp(arg->vb_strvalue, "NT-Domain", 9) == 0) {
-		char *p, *q;
+		char const *p, *q;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 
@@ -634,13 +627,11 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			} else {
 				p++;	/* skip the period */
 				q = strchr(p, '.');
-				/*
-				 * use the same hack as below
-				 * only if another period was found
-				 */
-				if (q) *q = '\0';
-				fr_value_box_strdup(ctx, vb, NULL, p, user_name->vp_tainted);
-				if (q) *q = '.';
+				if (q) {
+					fr_value_box_bstrndup(ctx, vb, NULL, p, q - p, user_name->vp_tainted);
+				} else {
+					fr_value_box_strdup(ctx, vb, NULL, p, user_name->vp_tainted);
+				}
 			}
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
@@ -650,12 +641,8 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				return XLAT_ACTION_FAIL;
 			}
 
-			/*
-			 *	Hack.  This is simpler than the alternatives.
-			 */
-			*p = '\0';
-			fr_value_box_strdup(ctx, vb, NULL, user_name->vp_strvalue, user_name->vp_tainted);
-			*p = '\\';
+			fr_value_box_bstrndup(ctx, vb, NULL, user_name->vp_strvalue,
+					      p - user_name->vp_strvalue, user_name->vp_tainted);
 		}
 
 		fr_dcursor_append(out, vb);
@@ -951,7 +938,7 @@ static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t const *inst, request_t *r
 		/*
 		 *  Read from the child
 		 */
-		len = radius_readfrom_program_legacy(from_child, pid, fr_time_delta_from_sec(10), buf, sizeof(buf));
+		len = radius_readfrom_program_legacy(from_child, pid, fr_time_delta_from_sec(10), buf, sizeof(buf) - 1);
 		if (len < 0) {
 			/* radius_readfrom_program_legacy will have closed from_child for us */
 			REDEBUG("Failure reading from child");
@@ -2072,18 +2059,21 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
 	MEM(evp_ctx = EVP_CIPHER_CTX_new());
 
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_rc4(), NULL, auth_ctx->nt_password->vp_octets, NULL) != 1)) {
+		EVP_CIPHER_CTX_free(evp_ctx);
 		fr_tls_strerror_printf(NULL);
 		RPERROR("Failed initialising RC4 ctx");
 		return -1;
 	}
 
-	if (unlikely(EVP_CIPHER_CTX_set_key_length(evp_ctx, auth_ctx->nt_password->vp_length)) != 1) {
+	if (unlikely(EVP_CIPHER_CTX_set_key_length(evp_ctx, auth_ctx->nt_password->vp_length) != 1)) {
+		EVP_CIPHER_CTX_free(evp_ctx);
 		fr_tls_strerror_printf(NULL);
 		RPERROR("Failed setting key length");
 		return -1;
 	}
 
 	if (unlikely(EVP_EncryptUpdate(evp_ctx, nt_pass_decrypted, &ntlen, auth_ctx->cpw_ctx->new_nt_encrypted, ntlen) != 1)) {
+		EVP_CIPHER_CTX_free(evp_ctx);
 		fr_tls_strerror_printf(NULL);
 		RPERROR("Failed ingesting new password");
 		return -1;
@@ -2153,9 +2143,9 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
 		/*
 		 *  Gah. nasty. maybe we should just pull in iconv?
 		 */
-		if (c < 0x7f) {
+		if (c <= 0x7f) {
 			len++;
-		} else if (c < 0x7ff) {
+		} else if (c <= 0x7ff) {
 			len += 2;
 		} else {
 			len += 3;

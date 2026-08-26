@@ -17,3 +17,6 @@ Languages:
 freeradius-perl (Perl support: rlm_perl)
 freeradius-perl-util (Perl rlm_sqlippool_tool utility)
 freeradius-python (Python 2 and 3: rlm_python, rlm_python3)
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -71,5 +71,5 @@ dictionary.
 
 The `ref=` flag can only be used for the data type `group`.  The destination of the reference must be of data type `group` or `tlv`.
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

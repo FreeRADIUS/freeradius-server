@@ -26,9 +26,6 @@
  * @copyright 2013 Hacking projects [http://www.hackingprojects.net/]
  * @copyright 2009 Sylvain Munaut (tnt@246tNt.com)
  */
-#include <string.h>
-#include <stdint.h>
-#include <stdbool.h>
 
 void comp128v1(uint8_t sres[static 4], uint8_t kc[static 8], uint8_t const ki[static 16], uint8_t const rand[static 16]);
 void comp128v23(uint8_t sres[static 4], uint8_t kc[static 8], uint8_t const ki[static 16], uint8_t const rand[static 16], bool v2);

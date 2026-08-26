@@ -55,12 +55,17 @@ static size_t cond_quote_table_len = NUM_ELEMENTS(cond_quote_table);
 #ifdef DEBUG_MAP
 static void map_dump(request_t *request, map_t const *map)
 {
-	RDEBUG2(">>> MAP TYPES LHS: %s, RHS: %s",
-	        tmpl_type_to_str(map->lhs->type),
-	        tmpl_type_to_str(map->rhs->type));
-
 	if (map->rhs) {
 		RDEBUG2(">>> MAP NAMES %s %s", map->lhs->name, map->rhs->name);
+
+		RDEBUG2(">>> MAP TYPES LHS: %s, RHS: %s",
+			tmpl_type_to_str(map->lhs->type),
+			tmpl_type_to_str(map->rhs->type));
+	} else {
+		RDEBUG2(">>> MAP NAMES %s", map->lhs->name);
+
+		RDEBUG2(">>> MAP TYPES LHS: %s",
+			tmpl_type_to_str(map->lhs->type));
 	}
 }
 #endif
@@ -147,7 +152,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	case T_DOUBLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
 		slen = tmpl_afrom_substr(ctx, &map->lhs,
-					 &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1),
+					 &FR_SBUFF_IN(attr, talloc_strlen(attr)),
 					 quote,
 					 value_parse_rules_unquoted[quote],	/* We're not searching for quotes */
 					 lhs_rules);
@@ -217,7 +222,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	p_rules = value_parse_rules_unquoted[quote]; /* We're not searching for quotes */
 	if (quote == T_DOUBLE_QUOTED_STRING || quote == T_BACK_QUOTED_STRING) {
 		slen = fr_sbuff_out_aunescape_until(child_ctx, &unescaped_value,
-				&FR_SBUFF_IN(value, talloc_array_length(value) - 1), SIZE_MAX, p_rules->terminals, p_rules->escapes);
+				&FR_SBUFF_IN(value, talloc_strlen(value)), SIZE_MAX, p_rules->terminals, p_rules->escapes);
 		if (slen < 0) {
 			marker_subject = value;
 			goto marker;
@@ -235,7 +240,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		 *	See cf_file.c, parse_input() and the use of T_HASH when doing alloc_pair,
 		 *	in order to see what magic is going on here.
 		 */
-		slen = talloc_array_length(value) - 1;
+		slen = talloc_strlen(value);
 
 		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_XLAT, T_BARE_WORD, value, slen));
 
@@ -265,7 +270,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		goto verify;
 
 	} else {
-		slen = talloc_array_length(value) - 1;
+		slen = talloc_strlen(value);
 	}
 
 	/*
@@ -803,7 +808,7 @@ parse_rhs:
 
 check_for_child:
 	/*
-	 *	Add this map to to the parents list.  Note that the caller
+	 *	Add this map to the parents list.  Note that the caller
 	 *	will have to check for this, but checking if map->parent
 	 *	exists.
 	 */
@@ -834,7 +839,7 @@ check_for_child:
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
-static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION *cs,
+static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION const *cs,
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 map_validate_t validate, void *uctx,
 			 unsigned int max, bool update, bool edit)
@@ -847,7 +852,6 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	TALLOC_CTX	*parent_ctx;
 
 	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
-	TALLOC_CTX	*tmp_ctx = NULL;		/* Temporary context for request lists */
 	tmpl_rules_t	child_rhs_rules = *rhs_rules;
 	tmpl_rules_t const  *our_rhs_rules;
 
@@ -915,7 +919,6 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			 *	Free in reverse as successive entries have their
 			 *	prececessors as talloc parent contexts
 			 */
-			talloc_free(tmp_ctx);
 			map_list_talloc_reverse_free(out);
 			return -1;
 		}
@@ -955,7 +958,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			 *	them for now.  Once the functionality
 			 *	is tested and used, we can allow that.
 			 */
-			slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules);
+			slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules);
 			if (slen <= 0) {
 				cf_log_err(ci, "Failed parsing attribute reference for list %s - %s",
 					   cf_section_name1(subcs), fr_strerror());
@@ -1110,7 +1113,6 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		map_list_insert_tail(out, map);
 	}
 
-	talloc_free(tmp_ctx);
 	return 0;
 
 }
@@ -1131,7 +1133,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
+int map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION const *cs,
 		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 		 map_validate_t validate, void *uctx,
 		 unsigned int max)
@@ -1221,7 +1223,7 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 	case T_BACK_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
 		slen = tmpl_afrom_substr(ctx, &map->lhs,
-					 &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1),
+					 &FR_SBUFF_IN(attr, talloc_strlen(attr)),
 					 type,
 					 value_parse_rules_unquoted[type],	/* We're not searching for quotes */
 					 t_rules);
@@ -1249,7 +1251,7 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 		/*
 		 *	Let the tmpl code determine if it's an attribute reference or else is a raw value.
 		 */
-		slen = tmpl_afrom_substr(ctx, &map->lhs, &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1), T_BARE_WORD, NULL, t_rules);
+		slen = tmpl_afrom_substr(ctx, &map->lhs, &FR_SBUFF_IN(attr, talloc_strlen(attr)), T_BARE_WORD, NULL, t_rules);
 		if (slen <= 0) goto marker;
 
 		if (tmpl_is_attr(map->lhs) && (tmpl_attr_unknown_add(map->lhs) < 0)) {
@@ -1449,70 +1451,6 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 	return 0;
 }
 
-/** Convert a fr_pair_t into a map
- *
- * @param[in] ctx		where to allocate the map.
- * @param[out] out		Where to write the new map (must be freed with talloc_free()).
- * @param[in] vp		to convert.
- * @param[in] rules		to insert attributes into.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const *rules)
-{
-	char buffer[256];
-	fr_sbuff_t buffer_sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
-
-	map_t *map;
-
-	map = map_alloc(ctx, NULL);
-	if (!map) {
-	oom:
-		fr_strerror_const("Out of memory");
-		return -1;
-	}
-
-	/*
-	 *	Allocate the LHS
-	 */
-	map->lhs = tmpl_alloc(map, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0);
-	if (!map->lhs) goto oom;
-
-	tmpl_attr_set_leaf_da(map->lhs, vp->da);
-
-	tmpl_attr_set_request_ref(map->lhs, rules->attr.request_def);
-	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
-
-	tmpl_print(&buffer_sbuff, map->lhs, NULL);
-	tmpl_set_name(map->lhs, T_BARE_WORD, fr_sbuff_start(&buffer_sbuff), -1);
-
-	/*
-	 *	Allocate the RHS
-	 */
-	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, T_BARE_WORD, NULL, -1);
-	if (!map->lhs) goto oom;
-
-	switch (vp->vp_type) {
-	case FR_TYPE_QUOTED:
-		tmpl_set_name_printf(map->rhs, T_DOUBLE_QUOTED_STRING, "%pV", &vp->data);
-		break;
-
-	default:
-		tmpl_set_name_printf(map->rhs, T_BARE_WORD, "%pV", &vp->data);
-		break;
-	}
-
-	if (unlikely(fr_value_box_copy(map->rhs, tmpl_value(map->rhs), &vp->data) < 0)) {
-		talloc_free(map);
-		return -1;
-	}
-
-	*out = map;
-
-	return 0;
-}
-
 /** Process map which has exec as a src
  *
  * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
@@ -1574,7 +1512,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	vp->op = map->op;
 	if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
 		RPEDEBUG("Failed parsing exec output");
-		talloc_free(&vp);
+		talloc_free(vp);
 		return -2;
 	}
 	fr_pair_append(out, vp);
@@ -1735,7 +1673,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 		if (fr_pair_value_from_str(n, map->rhs->name, strlen(map->rhs->name), NULL, false) < 0) {
-			rcode = 0;
+			rcode = -1;
 			goto error;
 		}
 		n->op = map->op;
@@ -1831,8 +1769,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		return map_exec_to_vp(ctx, out, request, map);
 
 	default:
-		fr_assert(0);	/* Should have been caught at parse time */
-
+		fr_strerror_const("Internal sanity check failure");
+		rcode = -1;
 	error:
 		talloc_free(n);
 		return rcode;
@@ -1881,8 +1819,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	request_t		*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
 	fr_dcursor_t		dst_list;
-
-	bool			found = false;
 
 	map_t			exp_map;
 	tmpl_t			*exp_lhs;
@@ -1948,6 +1884,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			rcode = -1;
 			goto finish;
 		}
+		talloc_free(attr_str);
 		fr_assert(tmpl_is_attr(exp_lhs));
 
 		memcpy(&exp_map, map, sizeof(exp_map));
@@ -1985,7 +1922,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	list_ref = tmpl_list(map->lhs);
 	list = tmpl_list_head(context, list_ref);
 	if (!list) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\" in left side of map",
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid list qualifier \"%s\" in left side of map",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
 			tmpl_list_name(list_ref, "<INVALID>"));
 		rcode = -2;
@@ -2053,14 +1990,13 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		case T_OP_ADD_EQ:
 			fr_pair_list_move_op(list, &src_list, T_OP_ADD_EQ);
 			}
-			goto update;
+			goto finish;
 
 		case T_OP_PREPEND:
 			fr_pair_list_move_op(list, &src_list, T_OP_PREPEND);
-			goto update;
+			goto finish;
 
 		default:
-			fr_pair_list_free(&src_list);
 			rcode = -1;
 			goto finish;
 		}
@@ -2072,6 +2008,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	being NULL (no attribute at that index).
 	 */
 	dst = tmpl_dcursor_init(NULL, tmp_ctx, &cc, &dst_list, request, map->lhs);
+
 	/*
 	 *	The destination is an attribute
 	 */
@@ -2105,7 +2042,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	Check that the User-Name and User-Password
 		 *	caches point to the correct attribute.
 		 */
-		goto update;
+		goto finish;
 
 	/*
 	 *	-= - Delete attributes in the dst list which match any of the
@@ -2120,49 +2057,51 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	case T_OP_SUB_EQ:
 		/* We didn't find any attributes earlier */
 		if (!dst) {
-			fr_pair_list_free(&src_list);
 			goto finish;
-		}
+		} else {
+			fr_pair_list_t free_list;
 
-		/*
-		 *	Instance specific[n] delete
-		 */
-		if (tmpl_attr_tail_num(map->lhs) != NUM_UNSPEC) {
-			fr_pair_list_foreach(&src_list, vp) {
-				vp->op = T_OP_CMP_EQ;
-				rcode = paircmp_pairs(request, vp, dst);
-				if (rcode == 0) {
-					dst = fr_dcursor_remove(&dst_list);
-					talloc_free(dst);
-					found = true;
+			fr_pair_list_init(&free_list);
+
+			/*
+			 *	Instance specific[n] delete
+			 */
+			if (tmpl_attr_tail_num(map->lhs) != NUM_UNSPEC) {
+				fr_pair_list_foreach(&src_list, vp) {
+					vp->op = T_OP_CMP_EQ;
+					rcode = paircmp_pairs(request, vp, dst);
+					if (rcode == 0) {
+						dst = fr_dcursor_remove(&dst_list);
+						fr_pair_append(&free_list, dst);
+						break;
+					}
+				}
+
+				goto done_subeq;
+			}
+
+			/*
+			 *	All instances[*] delete
+			 */
+			for (dst = fr_dcursor_current(&dst_list);
+			     dst;
+			     dst = fr_dcursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_attr_tail_da(map->lhs))) {
+				fr_pair_list_foreach(&src_list, vp) {
+					vp->op = T_OP_CMP_EQ;
+					rcode = paircmp_pairs(request, vp, dst);
+					if (rcode == 0) {
+						dst = fr_dcursor_remove(&dst_list);
+						fr_pair_append(&free_list, dst);
+					}
 				}
 			}
-			rcode = 0;
-			fr_pair_list_free(&src_list);
-			if (!found) goto finish;
-			goto update;
+
+		done_subeq:
+			fr_pair_list_free(&free_list);
 		}
 
-		/*
-		 *	All instances[*] delete
-		 */
-		for (dst = fr_dcursor_current(&dst_list);
-		     dst;
-		     dst = fr_dcursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_attr_tail_da(map->lhs))) {
-			fr_pair_list_foreach(&src_list, vp) {
-				vp->op = T_OP_CMP_EQ;
-				rcode = paircmp_pairs(request, vp, dst);
-				if (rcode == 0) {
-					dst = fr_dcursor_remove(&dst_list);
-					talloc_free(dst);
-					found = true;
-				}
-			}
-		}
 		rcode = 0;
-		fr_pair_list_free(&src_list);
-		if (!found) goto finish;
-		goto update;
+		goto finish;
 	}
 
 	switch (map->op) {
@@ -2178,7 +2117,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		if (dst) {
 			RDEBUG3("Refusing to overwrite (use :=)");
-			fr_pair_list_free(&src_list);
 			goto finish;
 		}
 
@@ -2218,7 +2156,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		/* Free any we didn't insert */
-		fr_pair_list_free(&src_list);
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_assert(fr_dlist_num_elements(&leaf) == 0);
 	}
@@ -2241,8 +2178,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 			fr_pair_reinit_from_da(NULL, dst, src_vp->da);
 			fr_pair_value_copy(dst, src_vp);
-
-			goto op_set_done;
+			break;
 		}
 
 		fr_dlist_talloc_init(&leaf, tmpl_attr_extent_t, entry);
@@ -2262,19 +2198,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		if (fr_dlist_num_elements(&leaf) > 1) {
 			ERROR("Not yet supported");
-
 			goto op_set_error;
-		} else {
-			extent = fr_dlist_head(&leaf);
-			fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 		}
+
+		extent = fr_dlist_head(&leaf);
+		fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_dlist_talloc_free(&leaf);
-
-	op_set_done:
-		/* Free any we didn't insert */
-		fr_pair_list_free(&src_list);
 	}
 		break;
 
@@ -2283,7 +2214,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 */
 	case T_OP_PREPEND:
 		fr_pair_list_prepend(list, &src_list);
-		fr_pair_list_free(&src_list);
 		break;
 
 	/*
@@ -2314,15 +2244,12 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				(void) fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
 				fr_dlist_talloc_free_tail(&leaf);
 			}
-			/* Free all the src vps */
-			fr_pair_list_free(&src_list);
 		} else {
 			extent = fr_dlist_head(&leaf);
 			(void) fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
 			fr_dlist_talloc_free_head(&leaf);
 		}
 
-		fr_pair_list_free(&src_list);
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_assert(fr_dlist_num_elements(&leaf) == 0);
 	}
@@ -2363,20 +2290,17 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			}
 			if (!a) break;	/* end of the list */
 		}
-		fr_pair_list_free(&src_list);
 	}
 		break;
 
 	default:
 		fr_assert(0);	/* Should have been caught be the caller */
 		rcode = -1;
-		goto finish;
+		break;
 	}
 
-update:
-	fr_assert(fr_pair_list_empty(&src_list));
-
 finish:
+	fr_pair_list_free(&src_list);
 	tmpl_dcursor_clear(&cc);
 	talloc_free(tmp_ctx);
 	return rcode;
@@ -2421,10 +2345,11 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	}
 
 	/*
-	 *	If there's no child and no RHS then the
-	 *	map was invalid.
+	 *	If there's no RHS but no children, then the map was
+	 *	invalid.
 	 */
-	if (map_list_empty(&map->child) && !fr_cond_assert(map->rhs != NULL)) {
+	if (!map->rhs) {
+		fr_assert(!map_list_empty(&map->child));
 		fr_sbuff_terminate(out);
 		return 0;
 	}
@@ -2539,7 +2464,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	fr_token_t	quote, op;
 	map_t		*map;
 	map_t		*parent = *parent_p;
-	tmpl_rules_t	my_rules;
+	tmpl_rules_t	my_lhs_rules, my_rhs_rules;
 
 	op = fr_table_value_by_str(fr_tokens_table, op_str, T_INVALID);
 	if (op == T_INVALID) {
@@ -2553,20 +2478,17 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	 */
 	if (!bare_word_only) {
 		if (!fr_assignment_op[op]) {
-			fr_assert(0);
 			fr_strerror_printf("Invalid operator '%s' for assignment in reply item", op_str);
 			return -1;
 		}
 
 	} else if (!fr_assignment_op[op] && !fr_comparison_op[op]) {
-		if (!fr_assignment_op[op]) {
-			fr_strerror_printf("Invalid operator '%s' for check item", op_str);
-			return -1;
-		}
+		fr_strerror_printf("Invalid operator '%s' for check item", op_str);
+		return -1;
 	}
 
-	my_rules = *lhs_rules;
-	lhs_rules = &my_rules;
+	my_lhs_rules = *lhs_rules;
+	lhs_rules = &my_lhs_rules;
 
 	/*
 	 *	We're only called from SQL.  If the default list is request, then we only use that for
@@ -2576,7 +2498,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	 *	this flag.  But this function already has parameter overload :(
 	 */
 	if (fr_assignment_op[op] && (lhs_rules->attr.list_def == request_attr_request)) {
-		my_rules.attr.list_def = request_attr_control;
+		my_lhs_rules.attr.list_def = request_attr_control;
 	}
 
 	/*
@@ -2624,7 +2546,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	 */
 	if (parent) {
 		fr_assert(tmpl_is_attr(parent->lhs));
-		my_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
+		my_lhs_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
 
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &FR_SBUFF_IN_STR(lhs),
 					      &map_parse_rules_bareword_quoted, lhs_rules);
@@ -2641,7 +2563,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 *
 		 *	@todo - track relative attributes, which begin with a '.'
 		 */
-		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, lhs, lhs_rules);
+		slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, lhs, lhs_rules);
 	}
 	if (slen <= 0) {
 	error:
@@ -2654,17 +2576,17 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		goto error;
 	}
 
-	my_rules = *rhs_rules;
-	my_rules.at_runtime = true;
-	my_rules.xlat.runtime_el = unlang_interpret_event_list(request);
-	my_rules.enumv = tmpl_attr_tail_da(map->lhs);
+	my_rhs_rules = *rhs_rules;
+	my_rhs_rules.at_runtime = true;
+	my_rhs_rules.xlat.runtime_el = unlang_interpret_event_list(request);
+	my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
 
 	/*
 	 *	LHS is a structureal type.  The RHS is either empty (create empty LHS), or it's a string
 	 *	containing a list of attributes to create.
 	 */
-	if (!fr_type_is_leaf(my_rules.enumv->type)) {
-		my_rules.enumv = NULL;
+	if (!fr_type_is_leaf(my_rhs_rules.enumv->type)) {
+		my_rhs_rules.enumv = NULL;
 	}
 
 	/*
@@ -2687,14 +2609,14 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		/*
 		 *	No value, or no enum, parse it as a bare-word string.
 		 */
-		if (!rhs[0] || !my_rules.enumv) goto do_bare_word;
+		if (!rhs[0] || !my_rhs_rules.enumv) goto do_bare_word;
 
-		MEM(vb = fr_value_box_alloc(map, my_rules.enumv->type, my_rules.enumv));
+		MEM(vb = fr_value_box_alloc(map, my_rhs_rules.enumv->type, my_rhs_rules.enumv));
 
 		/*
 		 *	It MUST be the given data type.
 		 */
-		slen = fr_value_box_from_str(map, vb, my_rules.enumv->type, my_rules.enumv,
+		slen = fr_value_box_from_str(map, vb, my_rhs_rules.enumv->type, my_rhs_rules.enumv,
 					     rhs, strlen(rhs), NULL);
 		if (slen <= 0) goto error;
 
@@ -2720,22 +2642,39 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 
 	parse_quoted:
 		len = strlen(rhs + 1);
+		if (len == 0) {
+			fr_strerror_const("Unclosed quote on right side");
+			return -1;
+		}
+
 		if (len == 1) {
 			if (rhs[1] != rhs[0]) {
 				fr_strerror_const("Invalid string on right side");
-				return -1;
+				goto error;
 			}
 
 			rhs = "";
 			goto alloc_empty;
 		}
 
-		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs + 1, len - 1),
-					 quote, value_parse_rules_quoted[quote], &my_rules);
+		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs + 1, len),
+					 quote, value_parse_rules_quoted[quote], &my_rhs_rules);
 		if (slen < 0) {
 			REDEBUG3("Failed parsing right-hand side as quoted string.");
 		fail_rhs:
-			fr_strerror_printf("Failed parsing right-hand side: %s", fr_strerror());
+			fr_strerror_printf("Failed parsing right-hand side, %s", fr_strerror());
+			goto error;
+		}
+
+		fr_assert((size_t) slen <= (len + 1));
+
+		if (rhs[slen + 1] != rhs[0]) {
+			fr_strerror_printf("Failed parsing right-hand side, missing end quote in ... %s", rhs);
+			goto error;
+		}
+
+		if (rhs[slen + 2]) {
+			fr_strerror_const("Failed parsing right-hand side, unexpected data after end quote");
 			goto error;
 		}
 
@@ -2744,28 +2683,22 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 			goto alloc_empty;
 		}
 
-		/*
-		 *	Ignore any extra data after the string.
-		 *
-		 *	@todo - this should likely be a parse error: we didn't parse the entire string!
-		 */
-
 	} else if (rhs[0] == '&') {
 		/*
 		 *	No enums here.
 		 */
-		fr_assert(my_rules.attr.list_def == request_attr_request);
+		fr_assert(my_rhs_rules.attr.list_def == request_attr_request);
 
 	parse_as_attr:
-		my_rules.enumv = NULL;
+		my_rhs_rules.enumv = NULL;
 
-		slen = tmpl_afrom_attr_str(map, NULL, &map->rhs, rhs, &my_rules);
+		slen = tmpl_afrom_attr_str(map, NULL, &map->rhs, rhs, rhs_rules);
 		if (slen <= 0) {
 			REDEBUG3("Failed parsing right-hand side as attribute.");
 			goto fail_rhs;
 		}
 
-	} else if (!rhs[0] || !my_rules.enumv || (my_rules.enumv->type == FR_TYPE_STRING)) {
+	} else if (!rhs[0] || !my_rhs_rules.enumv || (my_rhs_rules.enumv->type == FR_TYPE_STRING)) {
 	do_bare_word:
 		quote = T_BARE_WORD;
 
@@ -2786,7 +2719,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 *	Parse it as the given data type.
 		 */
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN_STR(rhs),
-					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
+					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rhs_rules);
 		if (slen <= 0) {
 			goto parse_as_attr;
 		}

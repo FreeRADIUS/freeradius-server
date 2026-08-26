@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -145,8 +145,8 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 
 		if (RDEBUG_ENABLED3) {
 			char buf_now[32], buf_then[32];
-			fr_sbuff_t snow = FR_SBUFF_IN(buf_now, sizeof(buf_now));
-			fr_sbuff_t sthen = FR_SBUFF_IN(buf_then, sizeof(buf_then));
+			fr_sbuff_t snow = FR_SBUFF_OUT(buf_now, sizeof(buf_now));
+			fr_sbuff_t sthen = FR_SBUFF_OUT(buf_then, sizeof(buf_then));
 
 			fr_time_strftime_local(&snow, fr_time_wrap(now), "%a %b %d %H:%M:%S %Y");
 			fr_time_strftime_local(&sthen, fr_time_wrap(then), "%a %b %d %H:%M:%S %Y");

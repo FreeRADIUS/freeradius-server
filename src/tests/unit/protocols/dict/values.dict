@@ -1,0 +1,9 @@
+BEGIN PROTOCOL Test-Values 102
+ATTRIBUTE	my-status 1 uint32
+VALUE		my-status Active 1
+VALUE		my-status Disabled 2
+VALUE		my-status Error 3
+ATTRIBUTE	my-flag 2 uint8
+VALUE		my-flag On 1
+VALUE		my-flag Off 0
+END PROTOCOL Test-Values

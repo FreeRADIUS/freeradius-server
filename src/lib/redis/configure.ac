@@ -1,4 +1,4 @@
-AC_PREREQ([2.71])
+AC_PREREQ([2.73])
 AC_INIT
 AC_CONFIG_SRCDIR([redis.c])
 AC_REVISION($Revision$)
@@ -100,6 +100,20 @@ FR_LIBRARY_START_TESTS
     if test "x$ac_cv_lib_hiredis_ssl_redisCreateSSLContext" == "xyes"
     then
       AC_DEFINE([HAVE_REDIS_SSL],[1],[Build with SSL support])
+    fi
+
+    smart_try_dir="$redis_lib_dir"
+    FR_SMART_CHECK_LIB(hiredis, redisAsyncHandleTimeout)
+    if test "x$ac_cv_lib_hiredis_redisAsyncHandleTimeout" == "xyes"
+    then
+      AC_DEFINE([HAVE_REDIS_TIMEOUT],[1],[Define if redisAsyncHandleTimeout is available])
+    fi
+
+    smart_try_dir="$redis_lib_dir"
+    FR_SMART_CHECK_LIB(hiredis, redisAsyncSetConnectCallbackNC)
+    if test "x$ac_cv_lib_hiredis_redisAsyncSetConnectCallbackNC" == "xyes"
+    then
+      AC_DEFINE([HAVE_REDIS_CALLBACKNC],[1],[Define if redisAsyncSetConnectCallbackNC is available])
     fi
 FR_LIBRARY_END_TESTS
 

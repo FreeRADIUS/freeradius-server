@@ -24,9 +24,6 @@ fi
 #
 #  Configure the server as per the build matrix
 #
-#  We specify -with-rlm-python-bin because Otherwise travis picks up
-#  /opt/python, which doesn't have .so available
-#
 echo "Performing full configuration"
 CFLAGS="${BUILD_CFLAGS}" ./configure -C \
     --enable-werror \
@@ -67,8 +64,7 @@ for i in \
     imap-setup.sh \
     exim-setup.sh \
     mysql-setup.sh \
-    ldap-setup.sh \
-    redis-setup.sh; do
+    ldap-setup.sh; do
     script="./scripts/ci/$i"
 
     echo "Calling $i"

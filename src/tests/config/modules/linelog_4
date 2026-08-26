@@ -1,0 +1,6 @@
+#
+#  Test: stdout destination
+#
+linelog {
+	destination = stdout
+}

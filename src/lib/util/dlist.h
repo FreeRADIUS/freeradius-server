@@ -832,19 +832,21 @@ static inline CC_HINT(nonnull) int fr_dlist_move_head(fr_dlist_head_t *list_dst,
 /** Free the first item in the list
  *
  * @param[in] list_head		to free head item in.
+ * @return result of talloc_free
  */
-static inline void fr_dlist_talloc_free_head(fr_dlist_head_t *list_head)
+static inline int fr_dlist_talloc_free_head(fr_dlist_head_t *list_head)
 {
-	talloc_free(fr_dlist_pop_head(list_head));
+	return talloc_free(fr_dlist_pop_head(list_head));
 }
 
 /** Free the last item in the list
  *
  * @param[in] list_head		to free tail item in.
+ * @return result of talloc_free
  */
-static inline void fr_dlist_talloc_free_tail(fr_dlist_head_t *list_head)
+static inline int fr_dlist_talloc_free_tail(fr_dlist_head_t *list_head)
 {
-	talloc_free(fr_dlist_pop_head(list_head));
+	return talloc_free(fr_dlist_pop_tail(list_head));
 }
 
 /** Free the item specified
@@ -889,12 +891,10 @@ static inline void fr_dlist_talloc_free_to_tail(fr_dlist_head_t *head, void *ptr
  */
 static inline void fr_dlist_talloc_free(fr_dlist_head_t *head)
 {
-	void *e = NULL, *p;
+	void *e;
 
-	while ((e = fr_dlist_next(head, e))) {
-		p = fr_dlist_remove(head, e);
+	while ((e = fr_dlist_pop_head(head)) != NULL) {
 		talloc_free(e);
-		e = p;
 	}
 }
 
@@ -975,40 +975,62 @@ static inline void fr_dlist_sort_split(fr_dlist_head_t *head, void **source, voi
  *
  * @note Only to be used within a merge sort
  *
+ * @param[out] merged	first item in the merged list
  * @param[in] head	of the original list being sorted
  * @param[in] a		first element of first list being merged
  * @param[in] b		first element of second list being merged
  * @param[in] cmp	comparison function for the sort
- * @returns pointer to first item in merged list
+ * @return
+ *	- 0 on success.
+ *	- -1 on comparator error.
  */
-static inline void *fr_dlist_sort_merge(fr_dlist_head_t *head, void **a, void **b, fr_cmp_t cmp)
+static inline int fr_dlist_sort_merge(void **merged, fr_dlist_head_t *head, void **a, void **b, fr_cmp_t cmp)
 {
 	void *result = NULL;
 	void *next;
 	fr_dlist_t *result_entry;
 	fr_dlist_t *next_entry;
+	fr_cmp_ret_t c;
+	int ret = 0;
 
-	if (!*a) return *b;
-	if (!*b) return *a;
+	if (!*a) {
+		*merged = *b;
+		return 0;
+	}
+	if (!*b) {
+		*merged = *a;
+		return 0;
+	}
 
 	/*
-	 *	Compare entries in the lists
+	 *	Compare entries in the lists.
+	 *
+	 *	On comparator error keep merging so every node is relinked:
+	 *	the list stays intact, only the order is undefined.  Sibling
+	 *	recursion levels may still call the comparator after an error;
+	 *	the error is accumulated through the return values.
 	 */
-	if (cmp(*a, *b) <= 0) {
+	c = cmp(*a, *b);
+	if (unlikely(c == CMP_ERR)) {
+		ret = -1;
+		c = CMP_EQ;
+	}
+	if (c != CMP_GT) {
 		result = *a;
 		next = fr_dlist_next(head, *a);
-		next = fr_dlist_sort_merge(head, &next, b, cmp);
+		if (unlikely(fr_dlist_sort_merge(&next, head, &next, b, cmp) < 0)) ret = -1;
 	} else {
 		result = *b;
 		next = fr_dlist_next(head, *b);
-		next = fr_dlist_sort_merge(head, a, &next, cmp);
+		if (unlikely(fr_dlist_sort_merge(&next, head, a, &next, cmp) < 0)) ret = -1;
 	}
 
 	result_entry = fr_dlist_item_to_entry(head->offset, result);
-	next_entry = fr_dlist_item_to_entry(head->offset, next);
+	next_entry = next ? fr_dlist_item_to_entry(head->offset, next) : NULL;
 	result_entry->next = next_entry;
 
-	return result;
+	*merged = result;
+	return ret;
 }
 
 /** Recursive sort routine for dlist
@@ -1016,24 +1038,30 @@ static inline void *fr_dlist_sort_merge(fr_dlist_head_t *head, void **a, void **
  * @param[in] head	of the list being sorted
  * @param[in,out] ptr	to the first item in the current section of the list being sorted.
  * @param[in] cmp	comparison function to sort with
+ * @return
+ *	- 0 on success.
+ *	- -1 on comparator error.
  */
-static inline void fr_dlist_recursive_sort(fr_dlist_head_t *head, void **ptr, fr_cmp_t cmp)
+static inline int fr_dlist_recursive_sort(fr_dlist_head_t *head, void **ptr, fr_cmp_t cmp)
 {
 	void *a;
 	void *b;
 	fr_dlist_t *entry = NULL;
+	int ret = 0;
 
 	if (*ptr) entry = fr_dlist_item_to_entry(head->offset, *ptr);
 
-	if (!*ptr || (!entry->next)) return;
-	fr_dlist_sort_split(head, ptr, &a, &b);		/* Split into sublists */
-	fr_dlist_recursive_sort(head, &a, cmp);		/* Traverse left */
-	fr_dlist_recursive_sort(head, &b, cmp);		/* Traverse right */
+	if (!*ptr || (!entry->next)) return 0;
+	fr_dlist_sort_split(head, ptr, &a, &b);				/* Split into sublists */
+	if (unlikely(fr_dlist_recursive_sort(head, &a, cmp) < 0)) ret = -1;	/* Traverse left */
+	if (unlikely(fr_dlist_recursive_sort(head, &b, cmp) < 0)) ret = -1;	/* Traverse right */
 
 	/*
 	 *	merge the two sorted lists together
 	 */
-	*ptr = fr_dlist_sort_merge(head, &a, &b, cmp);
+	if (unlikely(fr_dlist_sort_merge(ptr, head, &a, &b, cmp) < 0)) ret = -1;
+
+	return ret;
 }
 
 /** Sort a dlist using merge sort
@@ -1042,13 +1070,18 @@ static inline void fr_dlist_recursive_sort(fr_dlist_head_t *head, void **ptr, fr
  *
  * @param[in,out] list	to sort
  * @param[in] cmp	comparison function to sort with
+ * @return
+ *	- 0 on success.
+ *	- -1 on comparator error, retrieve the error with fr_strerror.  The list is
+ *	  intact but its order is undefined.
  */
-static inline void fr_dlist_sort(fr_dlist_head_t *list, fr_cmp_t cmp)
+static inline int fr_dlist_sort(fr_dlist_head_t *list, fr_cmp_t cmp)
 {
 	void *head;
 	fr_dlist_t *entry;
+	int ret;
 
-	if (fr_dlist_num_elements(list) <= 1) return;
+	if (fr_dlist_num_elements(list) <= 1) return 0;
 
 	head = fr_dlist_head(list);
 	/* NULL terminate existing list */
@@ -1057,7 +1090,7 @@ static inline void fr_dlist_sort(fr_dlist_head_t *list, fr_cmp_t cmp)
 	/*
 	 *	Call the recursive sort routine
 	 */
-	fr_dlist_recursive_sort(list, &head, cmp);
+	ret = fr_dlist_recursive_sort(list, &head, cmp);
 
 	/*
 	 *	Reset "prev" pointers broken during sort
@@ -1082,6 +1115,8 @@ static inline void fr_dlist_sort(fr_dlist_head_t *list, fr_cmp_t cmp)
 		}
 		head = fr_dlist_next(list, head);
 	}
+
+	return ret;
 }
 
 static inline void fr_dlist_noop(void)
@@ -1232,8 +1267,8 @@ DIAG_OFF(unused-function) \
 	static inline	unsigned int _name ## _num_elements(FR_DLIST_HEAD(_name) const *list) \
 		{ return	fr_dlist_num_elements(&list->head); } \
 \
-	static inline	void _name ## _sort(FR_DLIST_HEAD(_name) *list, fr_cmp_t cmp) \
-		{		fr_dlist_sort(&list->head, cmp); } \
+	static inline	int _name ## _sort(FR_DLIST_HEAD(_name) *list, fr_cmp_t cmp) \
+		{ return	fr_dlist_sort(&list->head, cmp); } \
 DIAG_ON(unused-function)
 
 /*

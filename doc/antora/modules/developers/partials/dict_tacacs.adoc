@@ -1,0 +1,8 @@
+[options=header,cols="20,~",autowidth]
+|====
+
+|RFC    |Description
+
+|https://datatracker.ietf.org/doc/html/rfc8907[RFC 8907] | The Terminal Access Controller Access-Control System Plus (TACACS+) Protocol
+
+|====

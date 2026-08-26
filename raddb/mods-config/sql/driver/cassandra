@@ -39,10 +39,10 @@ cassandra {
 	# Number of IO threads (default 1).
 #	io_threads = 1
 
-	# Size of the the fixed size queue that stores pending requests (default 4096).
+	# Size of the fixed size queue that stores pending requests (default 4096).
 #	io_queue_size = 4096
 
-	# The size of the the fixed size queue that stores events (default 4096).
+	# The size of the fixed size queue that stores events (default 4096).
 #	event_queue_size = 4096
 
 	# Use DC aware load balancing (enabled by default)

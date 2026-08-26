@@ -18,6 +18,10 @@ include /usr/share/dpkg/default.mk
 
 .NOTPARALLEL:
 
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+  MAKEFLAGS += -j$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+endif
+
 SHELL           = /bin/bash
 
 package         = freeradius
@@ -27,9 +31,9 @@ mandir          = /usr/share/man
 libdir          = /usr/lib/$(package)
 logdir          = /var/log/$(package)
 pkgdocdir       = /usr/share/doc/$(package)
-raddbdir        = /etc/$(package)
+confdir        = /etc/$(package)
 
-modulelist=krb5 ldap redis rest yubikey
+modulelist=kafka krb5 ldap redis rest yubikey
 sqldriverlist=freetds mysql unixodbc postgresql
 pkgs=$(shell dh_listpackages)
 
@@ -99,7 +103,7 @@ endif
 		--libdir=$(libdir) \
 		--datadir=/usr/share \
 		--localstatedir=/var \
-		--with-raddbdir=$(raddbdir) \
+		--with-raddbdir=$(confdir) \
 		--with-logdir=/var/log/$(package) \
 		--with-large-files \
 		--with-udpfromto \
@@ -108,7 +112,6 @@ endif
 		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
-		--without-rlm_sql_unixodbc \
 		--with-systemd \
 		--enable-reproducible-builds
 

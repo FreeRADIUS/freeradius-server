@@ -1,0 +1,55 @@
+#
+#  kafka.produce.<topic> (and .send / .recv aliases) - method form with
+#  explicit name2.  The topic is the method's second identifier; `value`
+#  comes from the topic's per-topic setting in module.conf (here
+#  `value = "%{User-Name}"`).  All three aliases dispatch to the same
+#  code path, so the subscriber should see three identical records.
+#
+%exec('/bin/sh', '-c', '"$KAFKA_SUBSCRIBE" freeradius-test-method $ENV{OUTPUT_DIR}kafka-method.json 3')
+
+kafka.produce.freeradius-test-method
+if (!ok) {
+	test_fail
+}
+
+kafka.send.freeradius-test-method
+if (!ok) {
+	test_fail
+}
+
+kafka.recv.freeradius-test-method
+if (!ok) {
+	test_fail
+}
+
+#
+#  All three records should carry the expanded User-Name as their
+#  payload.  Decode each and compare byte-for-byte against what the
+#  topic's template would have produced.
+#
+control.Tmp-String-0 := "%{User-Name}"
+
+timeout 10s {
+	map json %exec('/bin/sh', '-c', '"$KAFKA_WAIT_AND_CLEANUP" $ENV{OUTPUT_DIR}kafka-method.json 3') {
+		control.Tmp-String-1 := '$[0].value'
+		control.Tmp-String-2 := '$[1].value'
+		control.Tmp-String-3 := '$[2].value'
+	}
+}
+
+control.Tmp-Octets-0 := %base64.decode(control.Tmp-String-1)
+if ((string)control.Tmp-Octets-0 != control.Tmp-String-0) {
+	test_fail
+}
+
+control.Tmp-Octets-1 := %base64.decode(control.Tmp-String-2)
+if ((string)control.Tmp-Octets-1 != control.Tmp-String-0) {
+	test_fail
+}
+
+control.Tmp-Octets-2 := %base64.decode(control.Tmp-String-3)
+if ((string)control.Tmp-Octets-2 != control.Tmp-String-0) {
+	test_fail
+}
+
+test_pass

@@ -1,0 +1,30 @@
+timeout: {{ test_timeout }}
+environment_timeout: {{ environment_timeout | default(test_timeout) }}
+state_order: sequence
+states:
+  produce_and_consume:
+    description: >
+      proto_load on kafka-producer1 generates {{ expected_messages }}
+      Access-Requests into its own `recv Access-Request`, each of
+      which calls kafka.produce.  Wait for the consumer to report
+      PASS with received == expected == {{ expected_messages }}.
+    host:
+      kafka-producer1:
+        actions:
+        - execute_command:
+            command: "true"
+    verify:
+      timeout: {{ state_produce_and_consume_timeout }}
+      trigger_mode: unordered
+      triggers:
+      - kafka-consumer-summary:
+          json:
+            result:
+              pattern:
+                reg_pattern: PASS
+            expected:
+              pattern:
+                reg_pattern: "^{{ expected_messages }}$"
+            received:
+              pattern:
+                reg_pattern: "^{{ expected_messages }}$"

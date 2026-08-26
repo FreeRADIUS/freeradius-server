@@ -1,0 +1,94 @@
+= RADIUS Attribute Definitions
+
+This page contains a list of RADIUS attribute definitions, with links
+to the relevant standards.
+
+It is critical that all vendors and administrators follow the RFC
+definitions of attributes.  Standardization enables devices from
+different manufacturers to communicate using shared protocols and
+frameworks.  RFC-compliant systems have consistent behaviour, which
+prevents interoperability issues that can cause problems in production
+networks.
+
+In addition to interoperability issues, FreeRADIUS depends on the data
+types which are defined in
+https://datatracker.ietf.org/doc/html/rfc8044[RFC 8044].  Many modules
+in the server use specific RFC attributes, and rely on using their
+defined data types.  Changing the definitions of those attributes in
+the dictionaries _will_ cause problems.  Since the server needs a
+specific definition for these attributes, it will detect edits to the
+dictionaries, and refuse to start if the dictionary definitions for
+standard attributes have been modified.
+
+RADIUS also has a finite range (1-255) available for standard
+attributes.  Defining a custom attribute with a number already used by
+an RFC can cause a collision.  Vendors who need custom attributes
+*must* use
+https://datatracker.ietf.org/doc/html/rfc6929#section-4[Vendor-Specific]
+attributes.
+
+For local site policy, administrators can define local attributes in
+the xref:reference:raddb/dictionary.adoc[local dictionary].  These
+attributes should use the
+xref:reference:dictionary/define.adoc[DEFINE] keyword, which avoids
+all issues with assigning attribute numbers. Policies in `unlang` can
+also use xref:reference:unlang/local.adoc[local variables].  All of
+these local attributes are never sent over the network.
+
+== Attribute RFCs and Definitions
+
+The following tables list the RADIUS attributes which are defined in
+the RFCs.  Each attribute includes a brief explanation and a direct
+link to its definition in the RFCs.
+
+== A
+
+include::partial$a_attributelist.adoc[]
+== C
+
+include::partial$c_attributelist.adoc[]
+== D
+
+include::partial$d_attributelist.adoc[]
+== E
+
+include::partial$e_attributelist.adoc[]
+== F
+
+include::partial$f_attributelist.adoc[]
+== I
+
+include::partial$i_attributelist.adoc[]
+== K
+
+include::partial$k_attributelist.adoc[]
+== L
+
+include::partial$l_attributelist.adoc[]
+== M
+
+include::partial$m_attributelist.adoc[]
+== N
+
+include::partial$n_attributelist.adoc[]
+== P
+
+include::partial$p_attributelist.adoc[]
+== R
+
+include::partial$r_attributelist.adoc[]
+== S
+
+include::partial$s_attributelist.adoc[]
+== T
+
+include::partial$t_attributelist.adoc[]
+== U
+
+include::partial$u_attributelist.adoc[]
+== V
+
+include::partial$v_attributelist.adoc[]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

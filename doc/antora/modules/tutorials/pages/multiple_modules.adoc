@@ -1,14 +1,12 @@
 = Multiple instances of a module
 
-include::ROOT:partial$v3_warning.adoc[]
-
 *Goal:* To configure the server to have multiple instances of a module.
 
 *Time:* 10-20 minutes
 
 *File:*
 
-- `/etc/raddb/mods-available/detail`
+- `mods-available/detail`
 
 In this exercise, we will configure the server to use two independent
 ``databases'' (here, detail files) for recording accounting data. These
@@ -18,47 +16,158 @@ the request to a local file and is therefore an easy module to use for
 demonstration purposes.
 
 The first step is to configure the server to have two instances of the
-`detail` module. The first instance should log requests to a different
-file for each user name. The second should log requests to a different file
-for each date. The following information should be added to the
-`/etc/raddb/mods-available/detail` file.
+`detail` module. 
 
---------------------------------------------------------------------
+The first instance should log requests to a different file for each
+username.The second should log requests to a different file for each
+date. The following configuration should be added after the `detail{}`
+section in the `mods-available/detail` file.
+
+[source]
+----
 detail byname {
-	filename = ${radacctdir}/byname/%{User-Name || 'none'}
-	permissions = 0600
+    filename = "${radacctdir}/byname/%{User-Name}"
+    permissions = 0600
 }
 
 detail bydate {
-	filename = ${radacctdir}/bydate/%Y-%m-%d
-	permissions = 0600
+    filename = "${radacctdir}/bydate/%Y%m%d"
+    permissions = 0600
 }
---------------------------------------------------------------------
+----
 
-In the module configurations contained within `/etc/raddb/mods-available/*`,
+In the module configurations contained within `mods-available/*`,
 each module may have two names. The first name is the name of the dynamically
 loadable module that implements that functionality. The second (optional) name
 is the name of an additional instance of the module. In this case, the `detail`
-module has two additional instances, `byname` and `bydate`. These instance names
-can be used in the `authorize`, `accounting`, etc. sections, just like a
-normal module name.
+module has two additional instances, `byname` and `bydate`.
 
-You should now add the two modules to the list of modules in the
-`authorize` section. Start the server and verify that it is
-`Ready to process requests.`
+These instance names can be used in the `sites-enabled/default` file,
+`recv Access-Request`, `recv Accounting-Request`, etc. sections, just
+like a normal module name.  Add the following configuration at the
+bottom of the `recv Access-Request` section, and leave the rest of the
+section unchanged:
 
-Send the server a test `Access-Request` packet (`bob.sh`). Verify that
-the client receives a response packet and that the server is using the
-two modules to log the request.
+[source]
+----
+recv Access-Request {
+    # ... previous configuration ...
 
-Verify that the request was logged to two different files by examining
-them:
+    # Log to per user file
+    byname
 
-[source, bash]
-------------------------------------------------
+    # Log to per-date file
+    bydate
+}
+----
+
+Start the server and verify that it is `Ready to process requests.`
+
+[source,bash]
+----
+$ radiusd -X
+----
+
+Send the server a test `Access-Request` packet and verify that
+the client receives a response packet.
+
+[source,bash]
+----
+$ echo -e 'User-Name = "bob"
+User-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+----
+
+Verify the server is using the two modules to log the request:
+
+[source,text]
+----
+...
+(1)        | %{User-Name}
+(1)        | --> bob
+(1)      | t
+(1)        | %t
+(1)        | --> Wed Jan 21 10:49:21 2026
+(1)      byname - /usr/local/var/log/radius/radacct/byname/%{User-Name} expands to /usr/local/var/log/radius/radacct/byname/bob
+(1)      byname (ok)
+...
+(1)        | %Y%m%d
+(1)          | %{\%Y\%m\%d}
+(1)          | Y
+(1)            | %Y
+(1)            | --> 2026
+(1)            | %m
+(1)            | --> 1
+(1)            | %d
+(1)            | --> 21
+(1)      | t
+(1)        | %t
+(1)        | --> Wed Jan 21 10:49:21 2026
+(1)      bydate - /usr/local/var/log/radius/radacct/bydate/%{%Y%m%d} expands to /usr/local/var/log/radius/radacct/bydate/2112026
+(1)      bydate (ok)
+----
+
+The correct file paths can be obtained from the debug output and verify that the request was logged into two different files by examining them:
+
+[source,bash]
+----
 $ more /var/log/radius/radacct/byname/*
 $ more /var/log/radius/radacct/bydate/*
-------------------------------------------------
+----
+
+Once you navigate to `/var/log/radius/radacct/byname/*`, you can view
+the detailed RADIUS access request packet logs.  Some of the hex
+strings that you see will be different from the example below.  Don't
+worry about that, those differences are not important.
+
+[source,bash]
+----
+$ cat /usr/local/var/log/radius/radacct/byname/bob
+Wed Jan 21 10:49:07 2026
+	Message-Authenticator = 0xaacc2a1e9975dd0e3844cb3c16cb25c6
+	User-Name = "bob"
+	User-Password = "hello"
+	NAS-IP-Address = 127.0.0.1
+	NAS-Port = 501
+	NAS-Port-Type = ::Virtual
+	Net.Src.IP = 127.0.0.1
+	Net.Src.Port = 39245
+	Net.Dst.IP = 127.0.0.1
+	Net.Dst.Port = 1812
+	Net.Timestamp = "2026-01-21T10:49:07Z"
+	Net.Interface = "lo"
+	Packet.Id = 64
+	Packet.Authenticator = 0x6541d513a41109f3134d57691fa11d26
+	Packet-Type = ::Access-Request
+	Timestamp = 1768992547
+----
+
+Verify that the same RADIUS Access-Request is also logged in the files
+under `/var/log/radius/radacct/bydate/*`.
+
+[source,bash]
+----
+$ cat /usr/local/var/log/radius/radacct/bydate/2112026
+Wed Jan 21 10:49:07 2026
+	Message-Authenticator = 0xaacc2a1e9975dd0e3844cb3c16cb25c6
+	User-Name = "bob"
+	User-Password = "hello"
+	NAS-IP-Address = 127.0.0.1
+	NAS-Port = 501
+	NAS-Port-Type = ::Virtual
+	Net.Src.IP = 127.0.0.1
+	Net.Src.Port = 39245
+	Net.Dst.IP = 127.0.0.1
+	Net.Dst.Port = 1812
+	Net.Timestamp = "2026-01-21T10:49:07Z"
+	Net.Interface = "lo"
+	Packet.Id = 64
+	Packet.Authenticator = 0x6541d513a41109f3134d57691fa11d26
+	Packet-Type = ::Access-Request
+	Timestamp = 1768992547
+----
 
 Once you have verified that the files exist and that the correct
 information is logged in them, you may stop the server.
@@ -67,5 +176,5 @@ information is logged in them, you may stop the server.
 
 1.  Why is it useful to have multiple versions of a module?
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

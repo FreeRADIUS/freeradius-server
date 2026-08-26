@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -30,8 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/xlat.h>
-#include <freeradius-devel/radius/radius.h>
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(compound-token-split-by-macro) /* Perl does horrible things with macros */
@@ -132,7 +130,7 @@ static const conf_parser_t module_config[] = {
 /** How to compare two Perl function calls
  *
  */
-static int8_t perl_func_def_cmp(void const *one, void const *two)
+static fr_cmp_ret_t perl_func_def_cmp(void const *one, void const *two)
 {
 	perl_func_def_t const *a = one, *b = two;
 	int ret;
@@ -494,6 +492,7 @@ static XS(XS_pairlist_FIRSTKEY)
 	if (!pair_data->vp) XSRETURN_EMPTY;
 
 	vp = fr_pair_dcursor_init(&pair_data->cursor, &pair_data->vp->vp_group);
+	if (!vp) XSRETURN_EMPTY;
 	ST(0) = sv_2mortal(newSVpv(vp->da->name, vp->da->name_len));
 	XSRETURN(1);
 }
@@ -1235,6 +1234,8 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_list_t		list, sub_list;
 	fr_value_box_t			*vb = NULL;
 
+	fr_assert(func);
+
 	fr_value_box_list_init(&list);
 	fr_value_box_list_init(&sub_list);
 
@@ -1738,7 +1739,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				cf_log_err(cp, "Perl subroutine %s does not exist", func->function_name);
 				return -1;
 			}
-		}		
+		}
 	}
 
 	PL_endav = end_AV;
@@ -1809,10 +1810,10 @@ static int mod_load(void)
 
 #define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_perl - " _fmt,  ## __VA_ARGS__)
 #define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, \
-					   &(fr_log_perror_format_t){ \
+					   (&(fr_log_perror_format_t){ \
 					   	.first_prefix = "rlm_perl - ", \
 					   	.subsq_prefix = "rlm_perl - ", \
-					   }, \
+					   }), \
 					   _fmt,  ## __VA_ARGS__)
 
 	LOAD_INFO("Perl version: %s", PERL_API_VERSION_STRING);

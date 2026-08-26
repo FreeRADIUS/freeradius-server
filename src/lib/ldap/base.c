@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -33,10 +33,7 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX handle_config->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/ldap/base.h>
-#include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/util/sbuff.h>
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
 
@@ -52,6 +49,7 @@ static fr_ldap_config_t ldap_global_handle_config = {
 
 fr_table_num_sorted_t const fr_ldap_connection_states[] = {
 	{ L("bind"),		FR_LDAP_STATE_BIND	},
+	{ L("discover"),	FR_LDAP_STATE_DISCOVER	},
 	{ L("error"),		FR_LDAP_STATE_ERROR	},
 	{ L("init"),		FR_LDAP_STATE_INIT	},
 	{ L("run"),		FR_LDAP_STATE_RUN	},
@@ -597,7 +595,7 @@ static void ldap_trunk_search_results_debug(request_t *request, fr_ldap_query_t 
 	int			count;
 
 	count = ldap_count_entries(ld, query->result);
-	RDEBUG3("LDAP query returned %d entr%s", count, count > 1 ? "y" : "ies");
+	RDEBUG3("LDAP query returned %d entr%s", count, count > 1 ? "ies" : "y");
 	message = ldap_first_entry(ld, query->result);
 	RINDENT();
 	while (message) {
@@ -653,12 +651,13 @@ static unlang_action_t ldap_trunk_query_results(request_t *request, void *uctx)
 static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	fr_ldap_query_t	*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+	trunk_request_t	*treq = query->treq;
 
 	/*
 	 *	Query may have completed, but the request
 	 *	not yet have been resumed.
 	 */
-	if (!query->treq) return;
+	if (!treq) return;
 
 	/*
 	 *	Depending on the state of the trunk request, the query needs to
@@ -674,13 +673,11 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_
 	case TRUNK_REQUEST_STATE_CANCEL_PARTIAL:
 	case TRUNK_REQUEST_STATE_CANCEL_SENT:
 	case TRUNK_REQUEST_STATE_CANCEL_COMPLETE:
-		talloc_steal(query->treq, query);
+		talloc_steal(treq, query);
 		break;
 	default:
 		break;
 	}
-
-	trunk_request_signal_cancel(query->treq);
 
 	/*
 	 *	Once we've called cancel, the treq is no
@@ -688,6 +685,8 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_
 	 *	the trunk code.
 	 */
 	query->treq = NULL;
+
+	trunk_request_signal_cancel(treq);
 }
 
 #define SET_LDAP_CTRLS(_dest, _src) \
@@ -1134,7 +1133,8 @@ LDAP *fr_ldap_handle_thread_local(void)
 	if (!ldap_thread_local_handle) {
 		LDAP *handle;
 
-		ldap_initialize(&handle, "");
+		MEM(ldap_initialize(&ldap_thread_local_handle, "") == LDAP_SUCCESS);
+		handle = ldap_thread_local_handle;
 
 		fr_atexit_thread_local(ldap_thread_local_handle, _ldap_handle_thread_local_free, handle);
 	}

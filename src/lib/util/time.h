@@ -520,7 +520,7 @@ static inline int64_t fr_unix_time_to_hour(fr_unix_time_t delta)
 
 static inline int64_t fr_unix_time_to_day(fr_unix_time_t delta)
 {
-	return (fr_unix_time_unwrap(delta) / NSEC) / 386400;
+	return (fr_unix_time_unwrap(delta) / NSEC) / 86400;
 }
 
 /** Convert a time_t into out internal fr_unix_time_t

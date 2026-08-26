@@ -1,48 +1,37 @@
 name: Documentation
 
 on:
-  push:
-    branches-ignore:
-      - coverity_scan
-      - run-fuzzer**
-      - debug-fuzzer-**
-    paths:
-      - '.github/workflows/documentation.yml'
-      - 'doc/**'
-      - 'man/**'
-      - 'raddb/**'
-      - 'share/**'
-  pull_request:
-    paths:
-      - '.github/workflows/documentation.yml'
-      - 'doc/**'
-      - 'man/**'
-      - 'raddb/**'
-      - 'share/**'
-  schedule:
-    - cron: '1 20 * * *'
+  workflow_call:
 
 jobs:
+  #
+  #  Determines which registry holds the continuous integration (CI) images.
+  #  See .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
   build-docs:
-    runs-on: ubuntu-latest
-    if: github.repository_owner == 'FreeRADIUS' || github.event_name != 'schedule'
+    needs: common_vars
+    if: github.repository_owner == 'FreeRADIUS'
+    runs-on: self-hosted
+    container:
+      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted:${{ needs.common_vars.outputs.image_tag }}
+    defaults:
+      run:
+        shell: bash
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
-    - name: Install common build dependencies
-      run: |
-        sudo apt-get install -y --no-install-recommends \
-        asciidoctor \
-        doxygen \
-        graphviz
-
-    - name: Install Antora
-      run: |
-        sudo npm i -g @antora/cli@3.1 @antora/site-generator@3.1;
-
+    #
+    #  The self-hosted testbed image carries the build toolchain but not
+    #  the documentation-specific tools - install those here. apt indexes
+    #  are already refreshed in the image; just install.
+    #
     - name: Show versions
       run: |
         make --version
@@ -67,7 +56,7 @@ jobs:
       run: tar -czf site.tgz doc/doxygen/html build/docsite
 
     - name: Store output
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: compiled-docs
         path: site.tgz
@@ -79,8 +68,14 @@ jobs:
 
     needs:
       - build-docs
+      - common_vars
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    container:
+      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted:${{ needs.common_vars.outputs.image_tag }}
+    defaults:
+      run:
+        shell: bash
 
     # Permissions needed to deploy on GitHub Pages
     permissions:
@@ -99,7 +94,7 @@ jobs:
 
     steps:
     - name: Retrieve output
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: compiled-docs
 
@@ -107,24 +102,30 @@ jobs:
       run: tar -zxf site.tgz
 
     - name: Setup Pages
-      uses: actions/configure-pages@v3
+      uses: actions/configure-pages@v6.0.0
 
     - name: Upload Doxygen content
-      uses: actions/upload-pages-artifact@v3
+      uses: actions/upload-pages-artifact@v5.0.0
       with:
         path: 'doc/doxygen/html'
 
     - name: Deploy doxygen content to GitHub pages
       id: deployment
-      uses: actions/deploy-pages@v4
+      uses: actions/deploy-pages@v5.0.0
 
   deploy-antora-docs:
     if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && (( github.event_name == 'push' ) || ( github.event_name == 'schedule' ))
 
     needs:
       - build-docs
+      - common_vars
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    container:
+      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted:${{ needs.common_vars.outputs.image_tag }}
+    defaults:
+      run:
+        shell: bash
 
     # Ensure only one job is attempting to update the docs repo
     concurrency:
@@ -132,6 +133,7 @@ jobs:
       cancel-in-progress: true
 
     steps:
+
     - name: Setup SSH for git access
       uses: shimataro/ssh-key-action@v2
       with:
@@ -144,7 +146,7 @@ jobs:
             IdentityFile ~/.ssh/id_rsa-git
 
     - name: Retrieve output
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: compiled-docs
 

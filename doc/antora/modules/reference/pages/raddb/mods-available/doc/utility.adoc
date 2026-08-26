@@ -4,3 +4,6 @@ The utility modules implement a wide range of functionality which
 cannot be placed into one of the other categories.
 
 include::partial$utility_table.adoc[]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

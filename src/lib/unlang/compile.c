@@ -29,10 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 
 #include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/module_rlm.h>
 
 
 #include <freeradius-devel/unlang/xlat_priv.h>
@@ -54,21 +52,15 @@ RCSID("$Id$")
 #include "try_priv.h"
 #include "mod_action.h"
 
-static unsigned int unlang_number = 1;
-
-/*
- *	For simplicity, this is just array[unlang_number].  Once we
- *	call unlang_thread_instantiate(), the "unlang_number" above MUST
- *	NOT change.
- */
-static _Thread_local unlang_thread_t *unlang_thread_array;
+extern uint64_t unlang_number;
 
 /*
  *	Until we know how many instructions there are, we can't
  *	allocate an array.  So we have to put the instructions into an
  *	RB tree.
  */
-static fr_rb_tree_t *unlang_instruction_tree = NULL;
+extern fr_rb_tree_t *unlang_instruction_tree;
+fr_rb_tree_t *unlang_instruction_tree = NULL;
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
@@ -233,6 +225,8 @@ bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 	 */
 	if (!gext->vpt) return true;
 
+	if (map_list_num_elements(&gext->map) == 0) return true;
+
 	return pass2_fixup_tmpl(map_list_head(&gext->map)->ci, &gext->vpt,
 				cf_section_to_item(g->cs), rules->attr.dict_def);
 }
@@ -283,6 +277,8 @@ static void unlang_dump(unlang_t *c, int depth)
 	case UNLANG_TYPE_EDIT:
 	{
 		unlang_edit_t *edit;
+
+		DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
 
 		edit = unlang_generic_to_edit(c);
 		map = NULL;
@@ -354,14 +350,18 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	if (!ctx) {
 		/*
 		 *	Fixup RHS attribute references to change NUM_UNSPEC to NUM_ALL.
+		 *
+		 *	RHS may be NULL for T_OP_CMP_FALSE.
 		 */
-		switch (map->rhs->type) {
-		case TMPL_TYPE_ATTR:
-			if (!tmpl_is_list(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ALL);
-			break;
+		if (map->rhs) {
+			switch (map->rhs->type) {
+			case TMPL_TYPE_ATTR:
+				if (!tmpl_is_list(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ALL);
+				break;
 
-		default:
-			break;
+			default:
+				break;
+			}
 		}
 	}
 
@@ -374,10 +374,10 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 */
 	if (tmpl_is_attr(map->lhs)) {
 		/*
-		 *	What exactly where you expecting to happen here?
+		 *	What exactly were you expecting to happen here?
 		 */
 		if (tmpl_attr_tail_da_is_leaf(map->lhs) &&
-		    tmpl_is_list(map->rhs)) {
+		    map->rhs && tmpl_is_list(map->rhs)) {
 			cf_log_err(map->ci, "Can't copy list into an attribute");
 			return -1;
 		}
@@ -399,6 +399,11 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 *	processing we need to, as RHS is unused.
 	 */
 	if (map->op == T_OP_CMP_FALSE) return 0;
+
+	if (unlikely(!map->rhs)) {
+		cf_log_err(map->ci, "Missing rhs");
+		return -1;
+	}
 
 	if (!tmpl_is_data_unresolved(map->rhs)) return 0;
 
@@ -535,7 +540,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 
 	fr_assert(tmpl_is_attr(parent_map->lhs));
 
-	if (parent_map && (parent_map->op == T_OP_SUB_EQ)) {
+	if (parent_map->op == T_OP_SUB_EQ) {
 		if (!edit_list_sub_op[map->op]) {
 			cf_log_err(cp, "Invalid operator '%s' for right-hand side list.  It must be a comparison operator", fr_tokens[map->op]);
 			return -1;
@@ -561,7 +566,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 			/* FIXME - Broken check, doesn't work for key attributes */
 			cf_log_err(cp, "Invalid location for %s - it is not a child of %s",
 				   da->name, parent->name);
-			return 0;
+			return -1;
 		}
 		break;
 
@@ -650,7 +655,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_ctx_t *un
 	/*
 	 *	Allocate the map and initialize it.
 	 */
-	MEM(map = talloc_zero(parent, map_t));
+	MEM(map = talloc_zero(edit, map_t));
 	map->op = op;
 	map->ci = cf_section_to_item(cs);
 	map_list_init(&map->child);
@@ -786,6 +791,8 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_ctx_t *unlan
 	if ((op == T_OP_CMP_TRUE) || (op == T_OP_CMP_FALSE)) {
 		cf_log_err(cp, "Invalid operator \"%s\".",
 			   fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"));
+	fail:
+		talloc_free(edit);
 		return NULL;
 	}
 
@@ -793,9 +800,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_ctx_t *unlan
 	 *	Convert this particular map.
 	 */
 	if (map_afrom_cp(edit, &map, map_list_tail(&edit->maps), cp, &t_rules, NULL, true) < 0) {
-	fail:
-		talloc_free(edit);
-		return NULL;
+		goto fail;
 	}
 
 	/*
@@ -833,8 +838,6 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_ctx_t *unlan
 
 	return out;
 }
-
-#define debug_braces(_type)	(unlang_ops[_type].flag & UNLANG_OP_FLAG_DEBUG_BRACES)
 
 /** Compile a variable definition.
  *
@@ -887,6 +890,7 @@ static int compile_variable(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, 
 
 		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
 		if (!var->dict) {
+			group->variables = NULL;
 			talloc_free(var);
 			return -1;
 		}
@@ -929,14 +933,14 @@ invalid_type:
 /*
  *	Compile action && rcode for later use.
  */
-static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
+static bool compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 {
 	int action;
 	char const *attr, *value;
 
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
-	if (!value) return 0;
+	if (!value) return true;
 
 	if (!strcasecmp(value, "return"))
 		action = MOD_ACTION_RETURN;
@@ -954,7 +958,7 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 		if (strlen(value) > 2) {
 		invalid_action:
 			cf_log_err(cp, "Priorities MUST be between 1 and 64.");
-			return 0;
+			return false;
 		}
 
 		action = MOD_PRIORITY(atoi(value));
@@ -964,7 +968,7 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 	} else {
 		cf_log_err(cp, "Unknown action '%s'.\n",
 			   value);
-		return 0;
+		return false;
 	}
 
 	if (strcasecmp(attr, "default") != 0) {
@@ -975,7 +979,7 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 			cf_log_err(cp,
 				   "Unknown module rcode '%s'.",
 				   attr);
-			return 0;
+			return false;
 		}
 		actions->actions[rcode] = action;
 
@@ -987,7 +991,7 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 		}
 	}
 
-	return 1;
+	return true;
 }
 
 static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
@@ -1050,9 +1054,10 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 			CLAMP(max_rtx_time, mrt, 10);
 
 		} else if (strcmp(name, "max_rtx_count") == 0) {
-			unsigned long v = strtoul(value, 0, 0);
+			char *end;
+			unsigned long v = strtoul(value, &end, 10);
 
-			if (v > 10) {
+			if (*end || (end == value) || (v > 10)) {
 				cf_log_err(csi, "Invalid value for 'max_rtx_count = %s' - value must be between 0 and 10",
 					   value);
 				return false;
@@ -1074,17 +1079,15 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 	return true;
 }
 
-bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_cs, bool module_retry)
+bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *cs, bool module_retry)
 {
 	int i;
 	bool disallow_retry_action = false;
 	CONF_ITEM *csi;
-	CONF_SECTION *cs;
 
 	/*
 	 *	Over-ride the default return codes of the module.
 	 */
-	cs = cf_item_to_section(cf_section_to_item(action_cs));
 	for (csi=cf_item_next(cs, NULL);
 	     csi != NULL;
 	     csi=cf_item_next(cs, csi)) {
@@ -1125,7 +1128,7 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 				return false;
 			}
 
-			subci = cf_reference_item(cs, cf_root(cf_section_to_item(action_cs)), value);
+			subci = cf_reference_item(cs, cf_root(cf_section_to_item(cs)), value);
 			if (!subci) {
 				cf_log_perr(csi, "Failed finding reference '%s'", value);
 				return false;
@@ -1142,12 +1145,12 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 
 	if (module_retry) {
 		if (!fr_time_delta_ispos(actions->retry.irt)) {
-			cf_log_err(csi, "initial_rtx_time MUST be non-zero for modules which support retries.");
+			cf_log_err(cs, "initial_rtx_time MUST be non-zero for modules which support retries.");
 			return false;
 		}
 	} else {
 		if (fr_time_delta_ispos(actions->retry.irt)) {
-			cf_log_err(csi, "initial_rtx_time MUST be zero, as only max_rtx_count and max_rtx_duration are used.");
+			cf_log_err(cs, "initial_rtx_time MUST be zero, as only max_rtx_count and max_rtx_duration are used.");
 			return false;
 		}
 
@@ -1164,13 +1167,13 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 		if (actions->actions[i] != MOD_ACTION_RETRY) continue;
 
 		if (module_retry) {
-			cf_log_err(csi, "Cannot use a '%s = retry' action for a module which has its own retries",
+			cf_log_err(cs, "Cannot use a '%s = retry' action for a module which has its own retries",
 				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
 
 		if (disallow_retry_action) {
-			cf_log_err(csi, "max_rtx_count and max_rtx_duration cannot both be zero when using '%s = retry'",
+			cf_log_err(cs, "max_rtx_count and max_rtx_duration cannot both be zero when using '%s = retry'",
 				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
@@ -1178,7 +1181,7 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 		if (!fr_time_delta_ispos(actions->retry.irt) &&
 		    !actions->retry.mrc &&
 		    !fr_time_delta_ispos(actions->retry.mrd)) {
-			cf_log_err(csi, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
+			cf_log_err(cs, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
 				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
@@ -1381,7 +1384,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 					cf_section_free_children(subcs);
 
 					cf_log_debug_prefix(ci, "Skipping contents of '%s' due to previous "
-							    "'%s' being always being taken.",
+							    "'%s' always being taken.",
 							    name, skip_else);
 					continue;
 				}
@@ -1460,6 +1463,12 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 					if (gext->value) {
 						skip_else = single->debug_name;
 					} else {
+						/*
+						 *	If this came from compile_single, then it will already
+						 *	have a number and be in the tree.
+						 */
+						if (single->number) fr_rb_remove(NULL, unlang_instruction_tree, single);
+
 						/*
 						 *	The condition never
 						 *	matches, so we can
@@ -1566,7 +1575,7 @@ static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 
 	RULES_VERIFY(unlang_ctx->rules);
 	slen = tmpl_afrom_substr(ut, &vpt,
-				 &FR_SBUFF_IN(p, talloc_array_length(p) - 1),
+				 &FR_SBUFF_IN(p, talloc_strlen(p)),
 				 cf_pair_attr_quote(cp),
 				 NULL,
 				 unlang_ctx->rules);
@@ -1586,11 +1595,7 @@ static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
  */
 bool unlang_compile_limit_subsection(CONF_SECTION *cs, char const *name)
 {
-	CONF_ITEM *ci;
-
-	for (ci=cf_item_next(cs, NULL);
-	     ci != NULL;
-	     ci=cf_item_next(cs, ci)) {
+	cf_item_foreach(cs, ci) {
 		/*
 		 *	If we're a redundant, etc. group, then the
 		 *	intention is to call modules, rather than
@@ -1618,10 +1623,13 @@ bool unlang_compile_limit_subsection(CONF_SECTION *cs, char const *name)
 			continue;
 		}
 
+		/*
+		 *	Allow a module as a child.
+		 */
 		if (cf_item_is_pair(ci)) {
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
-			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) return true;
+			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) continue;
 
 			if (cf_pair_value(cp) != NULL) {
 				cf_log_err(cp, "Unknown keyword '%s', or invalid location", cf_pair_attr(cp));
@@ -1762,8 +1770,12 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, UNUSED char const *re
 	 *	"foo.name1" and if that's not found just look for
 	 *	a policy "foo".
 	 */
-	snprintf(buffer, sizeof(buffer), "%s.%s.%s", virtual_name, unlang_ctx->section_name1, unlang_ctx->section_name2);
-	subcs = cf_section_find(cs, buffer, NULL);
+	if (unlang_ctx->section_name2) {
+		snprintf(buffer, sizeof(buffer), "%s.%s.%s", virtual_name, unlang_ctx->section_name1, unlang_ctx->section_name2);
+		subcs = cf_section_find(cs, buffer, NULL);
+	} else {
+		subcs = NULL;
+	}
 
 	if (!subcs) {
 		snprintf(buffer, sizeof(buffer), "%s.%s", virtual_name, unlang_ctx->section_name1);
@@ -1826,7 +1838,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 
 	c = unlang_module_to_generic(m);
 	unlang_type_init(c, parent, UNLANG_TYPE_MODULE);
-	c->name = talloc_typed_strdup(c, name);
+	c->name = talloc_strdup(c, name);
 	c->debug_name = c->name;
 	c->ci = ci;
 
@@ -1876,14 +1888,13 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 
 extern int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
-static inline CC_HINT(always_inline) unlang_op_t const *name_to_op(char const *name)
+static unlang_op_t *name_to_op(char const *name)
 {
-	unlang_op_t const *op;
+	unlang_op_t *op;
 
-	op = fr_hash_table_find(unlang_op_table, &(unlang_op_t) { .name = name });
-	if (op) return op;
+	fr_hash_table_find((void **)&op, unlang_op_table, &(unlang_op_t) { .name = name });
 
-	return NULL;
+	return op;
 }
 
 int unlang_define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name,
@@ -1967,13 +1978,13 @@ int unlang_define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rul
 	/*
 	 *	Copy the children over.
 	 */
+	var->max_attr++;
 	if (fr_type_is_structural(type) && (type != FR_TYPE_GROUP)) {
 		fr_fatal_assert(ref != NULL);
 
 		if (fr_dict_attr_acopy_local(da, ref) < 0) goto fail;
 	}
 
-	var->max_attr++;
 
 	return 0;
 }
@@ -2108,6 +2119,11 @@ check_for_module:
 	} else {
 		char buffer[256];
 
+		if ((size_t) (p - name) >= sizeof(buffer)) {
+			cf_log_err(ci, "Module name '%s' is too long", name);
+			return NULL;
+		}
+
 		strlcpy(buffer, name, sizeof(buffer));
 		buffer[p - name] = '\0';
 
@@ -2149,16 +2165,16 @@ allocate_number:
 	if (!c) return NULL;
 	if (c == UNLANG_IGNORE) return UNLANG_IGNORE;
 
+	/*
+	 *	Some compilation paths already go through this path
+	 *	and will have assigned a number.
+	 */
+	if (c->number) return c;
+
 	c->number = unlang_number++;
 	compile_set_default_actions(c, unlang_ctx);
 
-	/*
-	 *	Only insert the per-thread allocation && instantiation if it's used.
-	 */
-	op = &unlang_ops[c->type];
-	if (!op->thread_inst_size) return c;
-
-	if (!fr_rb_insert(unlang_instruction_tree, c)) {
+	if (fr_rb_insert(unlang_instruction_tree, c) != 0) {
 		cf_log_err(ci, "Instruction \"%s\" number %u has conflict with previous one.",
 			   c->debug_name, c->number);
 		talloc_free(c);
@@ -2183,7 +2199,6 @@ int unlang_compile(virtual_server_t const *vs,
 		   CONF_SECTION *cs, unlang_mod_actions_t const *actions, tmpl_rules_t const *rules, void **instruction)
 {
 	unlang_t			*c;
-	tmpl_rules_t			my_rules;
 	char const			*name1, *name2;
 	CONF_DATA const			*cd;
 
@@ -2197,20 +2212,20 @@ int unlang_compile(virtual_server_t const *vs,
 		return 1;
 	}
 
+	/*
+	 *	Ensure that all compile functions get valid rules.
+	 */
+	if (!rules) {
+		cf_log_err(cs, "Failed compiling section - no namespace rules passed");
+		return -1;
+	}
+
 	name1 = cf_section_name1(cs);
 	name2 = cf_section_name2(cs);
 
 	if (!name2) name2 = "";
 
 	cf_log_debug(cs, "Compiling policies in - %s %s {...}", name1, name2);
-
-	/*
-	 *	Ensure that all compile functions get valid rules.
-	 */
-	if (!rules) {
-		memset(&my_rules, 0, sizeof(my_rules));
-		rules = &my_rules;
-	}
 
 	c = unlang_compile_section(NULL,
 			    &(unlang_compile_ctx_t){
@@ -2228,16 +2243,90 @@ int unlang_compile(virtual_server_t const *vs,
 	if (DEBUG_ENABLED4) unlang_dump(c, 2);
 
 	/*
-	 *	Associate the unlang with the configuration section,
-	 *	and free the unlang code when the configuration
-	 *	section is freed.
+	 *	Associate the unlang_t with the configuration section.
+	 *	It's already parented from "cs", so don't free it.
 	 */
-	cf_data_add(cs, c, NULL, true);
+	cf_data_add(cs, c, NULL, false);
+	cf_item_mark_parsed(cs);
+	c->add_filename = true;
 	if (instruction) *instruction = c;
 
 	return 0;
 }
 
+/** Compile an unlang section for a virtual module.
+ *
+ *  This is just a wrapper around unlang_compile_section(), as the unlang_compile_ctx isn't public.
+ *
+ * @param[in] cs		containing the unlang calls to compile.
+ * @param[in] dict		dictionary to use
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+int unlang_compile_virtual_module(CONF_SECTION *cs, fr_dict_t const *dict)
+{
+	unlang_t *c;
+	char const *name;
+	unlang_op_t const *op;
+	CONF_DATA const *cd;
+	unlang_compile_ctx_t unlang_ctx;
+
+	/*
+	 *	Get the name, and then the opcode type.
+	 */
+	name = cf_section_name1(cs);
+	op = name_to_op(name);
+	if (!op) {
+		cf_log_err(cs, "Invalid keyword in virtual module");
+		return -1;
+	}
+
+	/*
+	 *	There's no virtual server, just this dictionary.
+	 *
+	 *	@todo - find a way to change the list_def.  We need to do this based on the caller.  But when
+	 *	we're compiling the virtual module, we don't know what context the caller will be using.
+	 */
+	unlang_ctx = (unlang_compile_ctx_t) {
+		.vs = NULL,
+		.section_name1 = NULL,
+		.section_name2 = NULL,
+		.actions = mod_actions_authorize,
+		.rules = &(tmpl_rules_t) {
+			.attr = {
+				.dict_def = dict,
+				.list_def = request_attr_request,
+			},
+			.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
+		},
+	};
+
+	/*
+	 *	Compile it with the appropriate data type.
+	 */
+	c = unlang_compile_section(NULL, &unlang_ctx, cs, op->type);
+	if (!c) return -1;
+
+	if (c == UNLANG_IGNORE) {
+		cf_log_err(cs, "Virtual modules cannot be empty");
+		return -1;
+	}
+
+	/*
+	 *	Don't use the talloc type, which might be unlang_load_balance_t.
+	 */
+	cd = cf_data_add_static(cs, c, unlang_group_t, NULL);
+	if (!cd) {
+		cf_log_perr(cs, "Failed caching compiled virtual module");
+		return -1;
+	}
+
+	fr_assert(cf_data_find(cs, unlang_group_t, NULL) == cd);
+	fr_assert(c = cf_data_value(cd));
+
+	return 0;
+}
 
 /** Check if name is an unlang keyword
  *
@@ -2250,13 +2339,13 @@ bool unlang_compile_is_keyword(const char *name)
 {
 	if (!name || !*name) return false;
 
-	return (name_to_op(name) != 0);
+	return (name_to_op(name) != NULL);
 }
 
 /*
  *	These are really unlang_foo_t, but that's fine...
  */
-static int8_t instruction_cmp(void const *one, void const *two)
+static fr_cmp_ret_t instruction_cmp(void const *one, void const *two)
 {
 	unlang_t const *a = one;
 	unlang_t const *b = two;
@@ -2269,245 +2358,3 @@ void unlang_compile_init(TALLOC_CTX *ctx)
 {
 	unlang_instruction_tree = fr_rb_alloc(ctx, instruction_cmp, NULL);
 }
-
-
-/** Create thread-specific data structures for unlang
- *
- */
-int unlang_thread_instantiate(TALLOC_CTX *ctx)
-{
-	fr_rb_iter_inorder_t	iter;
-	unlang_t		*instruction;
-
-	if (unlang_thread_array) {
-		fr_strerror_const("already initialized");
-		return -1;
-	}
-
-	MEM(unlang_thread_array = talloc_zero_array(ctx, unlang_thread_t, unlang_number + 1));
-//	talloc_set_destructor(unlang_thread_array, _unlang_thread_array_free);
-
-	/*
-	 *	Instantiate each instruction with thread-specific data.
-	 */
-	for (instruction = fr_rb_iter_init_inorder(unlang_instruction_tree, &iter);
-	     instruction;
-	     instruction = fr_rb_iter_next_inorder(unlang_instruction_tree, &iter)) {
-		unlang_op_t *op;
-
-		unlang_thread_array[instruction->number].instruction = instruction;
-
-		op = &unlang_ops[instruction->type];
-
-		fr_assert(op->thread_inst_size);
-
-		/*
-		 *	Allocate any thread-specific instance data.
-		 */
-		MEM(unlang_thread_array[instruction->number].thread_inst = talloc_zero_array(unlang_thread_array, uint8_t, op->thread_inst_size));
-		talloc_set_name_const(unlang_thread_array[instruction->number].thread_inst, op->thread_inst_type);
-
-		if (op->thread_instantiate && (op->thread_instantiate(instruction, unlang_thread_array[instruction->number].thread_inst) < 0)) {
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-/** Get the thread-instance data for an instruction.
- *
- * @param[in] instruction	the instruction to use
- * @return			a pointer to thread-local data
- */
-void *unlang_thread_instance(unlang_t const *instruction)
-{
-	if (!instruction->number || !unlang_thread_array) return NULL;
-
-	fr_assert(instruction->number <= unlang_number);
-
-	return unlang_thread_array[instruction->number].thread_inst;
-}
-
-#ifdef WITH_PERF
-void unlang_frame_perf_init(unlang_stack_frame_t *frame)
-{
-	unlang_thread_t *t;
-	fr_time_t now;
-	unlang_t const *instruction = frame->instruction;
-
-	if (!instruction->number || !unlang_thread_array) return;
-
-	fr_assert(instruction->number <= unlang_number);
-
-	t = &unlang_thread_array[instruction->number];
-
-	t->use_count++;
-	t->yielded++;			// everything starts off as yielded
-	now = fr_time();
-
-	fr_time_tracking_start(NULL, &frame->tracking, now);
-	fr_time_tracking_yield(&frame->tracking, fr_time());
-}
-
-void unlang_frame_perf_yield(unlang_stack_frame_t *frame)
-{
-	unlang_t const *instruction = frame->instruction;
-	unlang_thread_t *t;
-
-	if (!instruction->number || !unlang_thread_array) return;
-
-	t = &unlang_thread_array[instruction->number];
-	t->yielded++;
-	t->running--;
-
-	fr_time_tracking_yield(&frame->tracking, fr_time());
-}
-
-void unlang_frame_perf_resume(unlang_stack_frame_t *frame)
-{
-	unlang_t const *instruction = frame->instruction;
-	unlang_thread_t *t;
-
-	if (!instruction->number || !unlang_thread_array) return;
-
-	if (frame->tracking.state != FR_TIME_TRACKING_YIELDED) return;
-
-	t = &unlang_thread_array[instruction->number];
-	t->running++;
-	t->yielded--;
-
-	fr_time_tracking_resume(&frame->tracking, fr_time());
-}
-
-void unlang_frame_perf_cleanup(unlang_stack_frame_t *frame)
-{
-	unlang_t const *instruction = frame->instruction;
-	unlang_thread_t *t;
-
-	if (!instruction || !instruction->number || !unlang_thread_array) return;
-
-	fr_assert(instruction->number <= unlang_number);
-
-	t = &unlang_thread_array[instruction->number];
-
-	if (frame->tracking.state == FR_TIME_TRACKING_YIELDED) {
-		t->yielded--;
-		fr_time_tracking_resume(&frame->tracking, fr_time());
-	} else {
-		t->running--;
-	}
-
-	fr_time_tracking_end(NULL, &frame->tracking, fr_time());
-	t->tracking.running_total = fr_time_delta_add(t->tracking.running_total, frame->tracking.running_total);
-	t->tracking.waiting_total = fr_time_delta_add(t->tracking.waiting_total, frame->tracking.waiting_total);
-}
-
-
-static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int depth)
-{
-	unlang_group_t const *g;
-	unlang_thread_t *t;
-	char const *file;
-	int line;
-
-	if (!instruction || !instruction->number) return;
-
-	/*
-	 *	These are generally pushed onto the stack, and therefore ignored.
-	 */
-	if (instruction->type == UNLANG_TYPE_TMPL) return;
-
-	/*
-	 *	Everything else is an unlang_group_t;
-	 */
-	g = unlang_generic_to_group(instruction);
-
-	if (!g->cs) return;
-
-	file = cf_filename(g->cs);
-	line = cf_lineno(g->cs);
-
-	if (depth) {
-		fr_log(log, L_DBG, file, line, "%.*s", depth, unlang_spaces);
-	}
-
-	if (debug_braces(instruction->type)) {
-		fr_log(log, L_DBG, file, line, "%s { #", instruction->debug_name);
-	} else {
-		fr_log(log, L_DBG, file, line, "%s #", instruction->debug_name);
-	}
-
-	t = &unlang_thread_array[instruction->number];
-
-	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
-	       t->use_count, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
-
-	if (!unlang_list_empty(&g->children)) {
-		unlang_list_foreach(&g->children, child) {
-			unlang_perf_dump(log, child, depth + 1);
-		}
-	}
-
-	if (debug_braces(instruction->type)) {
-		if (depth) {
-			fr_log(log, L_DBG, file, line, "%.*s", depth, unlang_spaces);
-		}
-
-		fr_log(log, L_DBG, file, line, "}");
-	}
-}
-
-void unlang_perf_virtual_server(fr_log_t *log, char const *name)
-{
-
-	virtual_server_t const	*vs = virtual_server_find(name);
-	CONF_SECTION		*cs;
-	CONF_ITEM		*ci;
-	char const		*file;
-	int			line;
-
-	if (!vs) return;
-
-	cs = virtual_server_cs(vs);
-
-	file = cf_filename(cs);
-	line = cf_lineno(cs);
-
-	fr_log(log, L_DBG, file, line, " server %s {\n", name);
-
-	/*
-	 *	Loop over the children of the virtual server, checking for unlang_t;
-	 */
-	for (ci = cf_item_next(cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_next(cs, ci)) {
-		char const *name1, *name2;
-		unlang_t *instruction;
-		CONF_SECTION *subcs;
-
-		if (!cf_item_is_section(ci)) continue;
-
-		instruction = (unlang_t *)cf_data_value(cf_data_find(ci, unlang_group_t, NULL));
-		if (!instruction) continue;
-
-		subcs = cf_item_to_section(ci);
-		name1 = cf_section_name1(subcs);
-		name2 = cf_section_name2(subcs);
-		file = cf_filename(ci);
-		line = cf_lineno(ci);
-
-		if (!name2) {
-			fr_log(log, L_DBG, file, line, " %s {\n", name1);
-		} else {
-			fr_log(log, L_DBG, file, line, " %s %s {\n", name1, name2);
-		}
-
-		unlang_perf_dump(log, instruction, 2);
-
-		fr_log(log, L_DBG, file, line, " }\n");
-	}
-
-	fr_log(log, L_DBG, file, line, "}\n");
-}
-#endif

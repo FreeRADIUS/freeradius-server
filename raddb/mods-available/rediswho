@@ -7,48 +7,23 @@
 #
 #  = REDISWho Module
 #
-#  The `rediswho` module tracks the last set of login sessions for a user.
+#  The `rediswho` module tracks the last set of login sessions for a
+#  user.
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 rediswho {
 	#
-	#  server::
+	#  key:: Value to use as Redis key.
 	#
-	#  If using Redis cluster, multiple 'bootstrap' servers may be
-	#  listed here (as separate config items). These will be contacted
-	#  in turn until one provides us with a valid map for the cluster.
-	#  Server strings may contain unique ports e.g.:
-	#
-	#    server = '127.0.0.1:30001'
-	#    server = '[::1]:30002'
-	#
-	#  NOTE: Instantiation failure behaviour is controlled by
-	#  `pool.start` as with other modules. With clustering
-	#  however, the `pool { ... }` section determines limits for
-	#  each node we access in the cluster, and not the cluster as
-	#  a whole.
-	#
-	server = 127.0.0.1
+	key = User-Name
 
 	#
-	#  database:: Select the Redis logical database having the specified zero-based numeric index.
+	#  value:: Expansion to produce value to store against Redis key.
 	#
-#	database = 0
-
-	#
-	#  port:: Port to connect to
-	#  The default port is 6379.
-	#
-	port = 6379
-
-	#  password:: The password used to authenticate to the server.
-	#
-	#  We recommend using a strong password.
-	#
-#	password = thisisreallysecretandhardtoguess
+	value = "%l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
 
 	#
 	#  trim_count:: How many sessions to keep track of per user.
@@ -58,78 +33,124 @@ rediswho {
 	trim_count = 15
 
 	#
-	#  expire_time:: Expiry time in seconds.
+	#  expiry_time:: Expiry time in seconds.
 	#
-	#  Any sessions which have not received an update in this time will be
-	#  automatically expired.
+	#  Any sessions which have not received an update in this time will
+	#  be automatically expired.
 	#
-	expire_time = 86400
+	expiry_time = 86400
 
 	#
-	#  ## Queries by Acct-Status-Type
+	#  == Per accounting section configuration
 	#
-	#  Each subsection contains insert / trim / expire queries.
-	#
-	#  The subsections are named after the contents of the `Acct-Status-Type` attribute.
-	#
-	#  See `dictionary.rfc2866` for the names of the various Acct-Status-Type values,
-	#  or look at the output of debug mode.
-	#
-	#  This module supports *any* `Acct-Status-Type`.  Just add a subsection
-	#  of the appropriate name, along with insert / trim / expire queries.
+	#  Each subsection contains values appropriate to the
+	#  module being called in the named accounting section.
 	#
 
 	#
-	#  ### Start
+	#  === start
 	#
-	Start {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
-		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	start {
+		#
+		#  key:: Value to use as Redis key
+		#
+		key = ${..key}
+
+		#
+		#  insert_arg:: Argument to append to Redis insert command
+		#
+		insert_arg = ${..value}
+
+		#
+		#  insert_cmd:: Redis command to run when inserting a new value
+		#
+		#  Defaults to LPUSH.  This command will be combined with the key
+		#  and insert_arg to produce the insert command.
+		#
+#		insert_cmd = 'LPUSH'
+
+		#
+		#  trim_cmd:: Redis command to run when trimming values.
+		#
+		#  Defaults to LTRIM.  This command will be combined with the key,
+		#  0 and the value of trim_count to produce the trim command.
+		#
+#		trim_cmd = 'LTRIM'
 	}
 
 	#
-	#  ### Interim-Update
+	#  === interim-update
 	#
-	Interim-Update {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
-		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	interim-update {
+		key = ${..key}
+		insert_arg = ${..value}
 	}
 
 	#
-	#  ### Stop
+	#  === stop
 	#
-	Stop {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
-		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	stop {
+		key = ${..key}
+		insert_arg = ${..value}
 	}
 
 	#
-	#  ### Accounting-On
+	#  === accounting-on
 	#
-#	Accounting-On {
-#		insert = ""
-#		trim =   ""
-#		expire = ""
-#	}
+##	accounting-on {
+##		key = ""
+##		insert_arg = ""
+##	}
 
 	#
-	#  ### Accounting-Off
+	#  === accounting-off
 	#
-#	Accounting-Off {
-#		insert = ""
-#		trim =   ""
-#		expire = ""
-#	}
+##	accounting-off {
+##		key = ""
+##		insert_arg = ""
+##	}
 
 	#
-	#  ### Failed
+	#  === failed
 	#
-#	Failed {
-#		insert = ""
-#		trim =   ""
-#		expire = ""
-#	}
+##	failed {
+##		key = ""
+##		insert_arg = ""
+##	}
+
+	#
+	#  redis { ... }:: Redis connection settings.
+	#
+	#  Identical to all other Redis based modules.
+	#
+	#  NOTE: See the `redis` module for more information.
+	#
+	redis {
+		server = 127.0.0.1
+
+		virtual_server = redis
+
+		port = 6379
+
+##		password = thisisreallysecretandhardtoguess
+
+		pool {
+			start = 0
+			min = 1
+			max = 10
+			connecting = 2
+##			open_delay = 0.2
+##			close_delay = 10
+##			manage_interval = 0.2
+			connection {
+				connect_timeout = 3.0
+				reconnect_delay = 5
+			}
+			request {
+				per_connection_max = 2000
+				per_connection_target = 1000
+				free_delay = 10
+			}
+		}
+	}
 }

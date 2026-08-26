@@ -21,5 +21,13 @@ match Vendor-Opts = { Microsoft = { Rogue-Detection-Request = 0x00 } }
 encode-pair -
 match 00 11 00 09 00 00 01 37 00 5e 00 01 00
 
+#
+#  Badly formatted VSA: the vendor length field is bad.
+#
+#  @todo - make only the Microsoft Vendor invalid?
+#
+decode-pair 00 11 00 09 00 00 01 37 00 5e 00 aa 00
+match raw.Vendor-Opts = 0x00000137005e00aa00
+
 count
-match 9
+match 11

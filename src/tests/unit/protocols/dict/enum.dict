@@ -1,0 +1,7 @@
+BEGIN PROTOCOL Test-Enum 106
+ENUM		Color uint32
+VALUE		Color Red 1
+VALUE		Color Green 2
+VALUE		Color Blue 3
+ATTRIBUTE	my-color 1 uint32 enum=.Color
+END PROTOCOL Test-Enum

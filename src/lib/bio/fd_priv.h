@@ -55,7 +55,7 @@ typedef struct fr_bio_fd_s {
 #if defined(IP_PKTINFO) || defined(IP_RECVDSTADDR) || defined(IPV6_PKTINFO)
 	struct iovec	iov;			//!< for recvfromto
 	struct msghdr	msgh;			//!< for recvfromto
-	uint8_t		cbuf[sizeof(struct cmsghdr) * 2]; //!< for recvfromto
+	uint8_t		cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo))]; //!< for recvfromto and sendfromto
 #endif
 } fr_bio_fd_t;
 

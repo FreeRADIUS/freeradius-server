@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -65,7 +65,6 @@
 #include <freeradius-devel/bio/null.h>
 #include <freeradius-devel/bio/buf.h>
 #include <freeradius-devel/util/rb.h>
-#include <freeradius-devel/util/dlist.h>
 
 #define _BIO_DEDUP_PRIVATE
 #include <freeradius-devel/bio/dedup.h>
@@ -270,7 +269,6 @@ ssize_t fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 		 *	We're already trying to write this entry, don't do anything else.
 		 */
 	case FR_BIO_DEDUP_STATE_PENDING:
-		fr_assert(my->partial != NULL);
 		FALL_THROUGH;
 
 	case FR_BIO_DEDUP_STATE_PARTIAL:
@@ -400,7 +398,7 @@ static void fr_bio_dedup_release(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item,
 		 *	It was pending another write, so we just discard the write.
 		 */
 	case FR_BIO_DEDUP_STATE_PENDING:
-		fr_bio_dedup_list_remove(&my->active, item);
+		fr_bio_dedup_list_remove(&my->pending, item);
 		break;
 
 		/*
@@ -480,7 +478,6 @@ static ssize_t fr_bio_dedup_flush_pending(fr_bio_dedup_t *my)
 		 *	We've written the entire packet, move it to the expiry list.
 		 */
 		if ((size_t) rcode == item->reply_size) {
-			(void) fr_bio_dedup_list_remove(&my->pending, item);
 			(void) fr_rb_insert(&my->rb, item);
 			item->state = FR_BIO_DEDUP_STATE_REPLIED;
 			continue;
@@ -604,7 +601,7 @@ static ssize_t fr_bio_dedup_write_partial(fr_bio_t *bio, void *packet_ctx, const
 			 *	We've changed the tree, so update the timer.  fr_bio_dedup_write() only
 			 *	updates the timer on successful write.
 			 */
-			item->state = FR_BIO_DEDUP_STATE_ACTIVE;
+			item->state = FR_BIO_DEDUP_STATE_REPLIED;
 			(void) fr_rb_insert(&my->rb, item);
 		}
 		(void) fr_bio_dedup_timer_reset(my);
@@ -690,7 +687,7 @@ static ssize_t fr_bio_dedup_blocked(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *it
 	}
 
 	my->partial = item;
-	item->state = FR_BIO_DEDUP_STATE_PENDING;
+	item->state = FR_BIO_DEDUP_STATE_PARTIAL;
 
 	/*
 	 *	Reset the write routine, so that if the application tries any more writes, the partial entry
@@ -873,7 +870,7 @@ static ssize_t fr_bio_dedup_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	 *	Get a free item
 	 */
 	item = fr_bio_dedup_list_pop_head(&my->free);
-	fr_assert(item != NULL);
+	if (!item) return fr_bio_error(OOM);
 
 	fr_assert(item->my == my);
 	*item = (fr_bio_dedup_entry_t) {
@@ -916,7 +913,7 @@ static ssize_t fr_bio_dedup_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	return rcode;
 }
 
-static int8_t _entry_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _entry_cmp(void const *one, void const *two)
 {
 	fr_bio_dedup_entry_t const *a = one;
 	fr_bio_dedup_entry_t const *b = two;
@@ -977,12 +974,6 @@ int fr_bio_dedup_entry_extend(fr_bio_t *bio, fr_bio_dedup_entry_t *item, fr_time
 	}
 
 	/*
-	 *	Shortening the lifetime is OK.  If the caller does something dumb like set expiry to a time in
-	 *	the past, well... that's their problem.
-	 */
-	fr_assert(fr_time_lteq(expires, fr_time()));
-
-	/*
 	 *	Change places in the tree.
 	 */
 	item->expires = expires;
@@ -1020,6 +1011,14 @@ static int fr_bio_dedup_shutdown(fr_bio_t *bio)
 	 */
 	while ((item = fr_rb_iter_init_inorder(&my->rb, &iter)) != NULL) {
 		fr_rb_iter_delete_inorder(&my->rb, &iter);
+		my->release((fr_bio_t *) my, item, FR_BIO_DEDUP_CANCELLED);
+	}
+
+	while ((item = fr_bio_dedup_list_pop_head(&my->active)) != NULL) {
+		my->release((fr_bio_t *) my, item, FR_BIO_DEDUP_CANCELLED);
+	}
+
+	while ((item = fr_bio_dedup_list_pop_head(&my->pending)) != NULL) {
 		my->release((fr_bio_t *) my, item, FR_BIO_DEDUP_CANCELLED);
 	}
 
@@ -1061,7 +1060,10 @@ fr_bio_t *fr_bio_dedup_alloc(TALLOC_CTX *ctx, size_t max_saved,
 	 *	and better reuse of data structures.
 	 */
 	items = talloc_array(my, fr_bio_dedup_entry_t, max_saved);
-	if (!items) return NULL;
+	if (!items) {
+		talloc_free(my);
+		return NULL;
+	}
 
 	/*
 	 *	Insert the entries into the free list in order.

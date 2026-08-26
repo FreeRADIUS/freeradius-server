@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -34,6 +34,8 @@ RCSIDH(redis_pipeline_h, "$Id$")
 #include <freeradius-devel/redis/io.h>
 #include <hiredis/async.h>
 
+#include "base.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,44 +48,65 @@ typedef enum {
 	FR_REDIS_PIPELINE_FAIL				//!< Generic failure.
 } fr_redis_pipeline_status_t;
 
-typedef struct fr_redis_cluster_thread_s fr_redis_cluster_thread_t;
 typedef struct fr_redis_command_s fr_redis_command_t;
 typedef struct fr_redis_command_set_s fr_redis_command_set_t;
 typedef struct fr_redis_trunk_s fr_redis_trunk_t;
 
+typedef void(*fr_redis_trunk_active_t)(fr_redis_trunk_t *rtrunk, void *uctx);
+
+/** Process the reply from a single command
+ *
+ */
+typedef void (*fr_redis_command_complete_t)(request_t *request, fr_redis_command_t *cmd, redisReply *reply, void *rctx);
+
 /** Do something meaningful with the replies to the commands previously issued
  *
- * Should mark the request as runnable, if there's a request.
  */
 typedef void (*fr_redis_command_set_complete_t)(request_t *request, fr_dlist_head_t *completed, void *rctx);
 
 /** Write a failure result to the rctx so that the module is aware that the request failed
  *
- * Should mark the request as runnable, if there's a request.
  */
 typedef void (*fr_redis_command_set_fail_t)(request_t *request, fr_dlist_head_t *completed, void *rctx);
 
-fr_redis_pipeline_status_t	fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds,
-							     	  char const *cmd_str, size_t cmd_len);
+fr_redis_pipeline_status_t	fr_redis_command_literal_add(fr_redis_command_set_t *cmds, char const *cmd_str,
+							     fr_redis_command_complete_t complete, void *rctx);
+
+fr_redis_pipeline_status_t	fr_redis_command_argv_add(fr_redis_command_set_t *cmds, size_t argc,
+							  char const **argv, size_t *argv_len,
+							  fr_redis_command_complete_t complete, void *rctx);
+
+fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str,
+							     size_t cmd_len,
+							     fr_redis_command_complete_t complete, void *rctx);
+
+char const			*fr_redis_command_get_cmd(fr_redis_command_t *cmd);
 
 /*
  *	TEMPORARY
  */
 fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, fr_redis_command_set_t *cmds);
 
-redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd);
+void				fr_redis_command_set_cancel(fr_redis_command_set_t *cmds);
 
 fr_redis_command_set_t		*fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 							    request_t *request,
 							    fr_redis_command_set_complete_t complete,
 							    fr_redis_command_set_fail_t fail,
-							    void *rctx);
+							    void *rctx, bool autofree);
 
-fr_redis_trunk_t		*fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster,
-						      fr_redis_io_conf_t const *conf);
+fr_redis_async_rcode_t		fr_redis_command_set_rcode(fr_redis_command_set_t *cmds);
 
-fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-							       trunk_conf_t const *tconf);
+void				fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_redis_io_conf_t *ioconf);
+
+int				fr_redis_command_set_reset(fr_redis_command_set_t *cmds);
+
+int				fr_redis_command_set_clear(fr_redis_command_set_t *cmds);
+
+fr_redis_trunk_t		*fr_redis_trunk_alloc(fr_redis_ct_t *rtcluster,
+						      fr_redis_io_conf_t const *conf, fr_pair_list_t *trigger_args,
+						      fr_redis_trunk_active_t active, void *active_uctx,
+						      bool active_oneshot);
 
 #ifdef __cplusplus
 }

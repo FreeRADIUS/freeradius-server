@@ -714,15 +714,18 @@ static inline void fr_tlist_sort_split(fr_tlist_head_t *head, void **source, voi
  *
  * @note Only to be used within a merge sort
  *
+ * @param[out] merged	first item in the merged list
  * @param[in] head	of the original list being sorted
  * @param[in] a		first element of first list being merged
  * @param[in] b		first element of second list being merged
  * @param[in] cmp	comparison function for the sort
- * @returns pointer to first item in merged list
+ * @return
+ *	- 0 on success.
+ *	- -1 on comparator error.
  */
-static inline void *fr_tlist_sort_merge(fr_tlist_head_t *head, void **a, void **b, fr_cmp_t cmp)
+static inline int fr_tlist_sort_merge(void **merged, fr_tlist_head_t *head, void **a, void **b, fr_cmp_t cmp)
 {
-	return fr_dlist_sort_merge(&head->dlist_head, a, b, cmp);
+	return fr_dlist_sort_merge(merged, &head->dlist_head, a, b, cmp);
 }
 
 /** Recursive sort routine for tlist
@@ -730,10 +733,13 @@ static inline void *fr_tlist_sort_merge(fr_tlist_head_t *head, void **a, void **
  * @param[in] head	of the list being sorted
  * @param[in,out] ptr	to the first item in the current section of the list being sorted.
  * @param[in] cmp	comparison function to sort with
+ * @return
+ *	- 0 on success.
+ *	- -1 on comparator error.
  */
-static inline void fr_tlist_recursive_sort(fr_tlist_head_t *head, void **ptr, fr_cmp_t cmp)
+static inline int fr_tlist_recursive_sort(fr_tlist_head_t *head, void **ptr, fr_cmp_t cmp)
 {
-	fr_dlist_recursive_sort(&head->dlist_head, ptr, cmp);
+	return fr_dlist_recursive_sort(&head->dlist_head, ptr, cmp);
 }
 
 /** Sort a tlist using merge sort
@@ -742,10 +748,14 @@ static inline void fr_tlist_recursive_sort(fr_tlist_head_t *head, void **ptr, fr
  *
  * @param[in,out] list	to sort
  * @param[in] cmp	comparison function to sort with
+ * @return
+ *	- 0 on success.
+ *	- -1 on comparator error, retrieve the error with fr_strerror.  The list is
+ *	  intact but its order is undefined.
  */
-static inline void fr_tlist_sort(fr_tlist_head_t *list, fr_cmp_t cmp)
+static inline int fr_tlist_sort(fr_tlist_head_t *list, fr_cmp_t cmp)
 {
-	fr_dlist_sort(&list->dlist_head, cmp);
+	return fr_dlist_sort(&list->dlist_head, cmp);
 }
 
 static inline void fr_tlist_noop(void)
@@ -888,8 +898,8 @@ DIAG_OFF(unused-function) \
 	static inline	unsigned int _name ## _num_elements(FR_TLIST_HEAD(_name) const *list) \
 		{ return	fr_tlist_num_elements(&list->head); } \
 \
-	static inline	void _name ## _sort(FR_TLIST_HEAD(_name) *list, fr_cmp_t cmp) \
-		{		fr_tlist_sort(&list->head, cmp); } \
+	static inline	int _name ## _sort(FR_TLIST_HEAD(_name) *list, fr_cmp_t cmp) \
+		{ return	fr_tlist_sort(&list->head, cmp); } \
 \
 	static inline FR_TLIST_HEAD(_name) *_name ## _parent(const _element_type *ptr) \
 		{		return (FR_TLIST_HEAD(_name) *) (ptr->_element_entry.entry.list_head); } \

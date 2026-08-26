@@ -75,5 +75,5 @@ For short entries, it can be simpler to use the full name an OID.
 However, for complex dictionaries, it is almost always clearer to use
 `BEGIN` and xref:dictionary/end.adoc[END].
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

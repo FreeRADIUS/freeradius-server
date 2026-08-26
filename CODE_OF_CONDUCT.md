@@ -13,14 +13,13 @@ The GitHub issue tracker and mailing lists have a strict code of conduct.
 > will result in the individual being unsubscribed from the mailing lists and/or permanent
 > banishment from the GitHub repositories.
 
-This code of conduct is simple to abide by, and is simple to enforce. Unlike other codes of conduct,
-it does not require participants to be explicitly "inclusive" or "accepting" of certain topics. It
-requires participants to be *blind* to non-technical subjects, as those subjects are explicitly off
-topic. The FreeRADIUS community is inclusive by virtue of not being exclusionary.
+This code of conduct is simple to abide by, and is simple to enforce. The code of conduct only requires that
+the list is free of non-technical subjects, as those subjects are explicitly off topic. The result is that the
+FreeRADIUS community is inclusive by virtue of not being exclusionary.
 
-If you believe that the implicit biases of community members may affect how your contributions are
-evaluated, you are invited to anonymise your contributions.  You will not be penalised for use of
-pseudonyms or anonymised identities when creating/signing patches, or posting on the mailing list(s).
+If you believe that the implicit biases of community members may affect how your contributions are evaluated,
+you are invited to anonymise your contributions.  You will not be penalised for use of pseudonyms or
+anonymised identities when creating/signing patches, or posting on the mailing list(s).
 
 ## 2. Expected Behaviour
 
@@ -28,8 +27,8 @@ The following behaviours are expected and requested of all community members:
 
 - Ensure that the rules of the community resource you're using have been reviewed in full, [mailing
   list guidelines](https://freeradius.org/support/) for the mailing lists, [the guidelines for
-  contributing](https://github.com/FreeRADIUS/freeradius-server/blob/master/.github/contributing.md)
-  for GitHub.
+  contributing](https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/contributing.html)
+  for GitHub.  A [local version](.github/contributing.md) of this content is also available.
 - Use a neutral tone with a focus on technical arguments and technical discussion.
 - Evaluate contributions, ideas and feedback on technical merit only.  The personal attributes of
   community members are entirely irrelevant and comments of this nature will not be tolerated.
@@ -38,13 +37,15 @@ The following behaviours are expected and requested of all community members:
 
 ## 3. Unacceptable Behaviour
 
-The main source of unacceptable behavior is community participants who are unaware of the
-complexities of the software and protocols involved.
-They have questions, and they want answers.  They believe that as the experts, we can answer any and
-all questions about all possible technologies which interact with FreeRADIUS.
+The main source of unacceptable behavior is participants who get frustrated and lash out when they receive
+answers that they are unprepared to accept.  The software and protocols involved are extremely complex, and
+there is no "one magic button" which solves a problem.  In many cases, the only possible way for people to get
+help is if they [ask good questions](https://wiki.freeradius.org/guide/Users-Mailing-List).
 
-That expectation is unreasonable.  When that expectation turns to entitlement and anger, it becomes
-unacceptable behaviour.
+Another source of problematic behavior is participants who believe that as the experts, we can answer any and
+all questions about all possible technologies which interact with FreeRADIUS.  That expectation is
+unfortunatley impossible.  When that expectation turns to entitlement and anger, it becomes unacceptable
+behaviour.
 
 The following behaviours are also unacceptable within our community:
 

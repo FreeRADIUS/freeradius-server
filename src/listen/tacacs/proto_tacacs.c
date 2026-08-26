@@ -54,8 +54,6 @@ static conf_parser_t const limit_config[] = {
 static const conf_parser_t priority_config[] = {
 	{ FR_CONF_OFFSET("Authentication-Start", proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
-	{ FR_CONF_OFFSET("Authentication-Continue", proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
 	{ FR_CONF_OFFSET("Authorization-Request", proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHOR]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	{ FR_CONF_OFFSET("Accounting-Request", proto_tacacs_t, priorities[FR_TAC_PLUS_ACCT]),
@@ -153,7 +151,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 {
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
-	fr_client_t const		*client;
+	fr_client_t const	*client;
 	int			code = -1;
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
 	char const		*secret;
@@ -207,10 +205,10 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	secret = client->secret;
 	if (secret) {
 		if (!packet_is_encrypted((fr_tacacs_packet_t const *) data)) {
-			REDEBUG("Expected to see encrypted packet, got unencrypted packet!");
+			REDEBUG("Expected to see encrypted packet, got unencrypted packet from %s!", client->longname);
 			return -1;
 		}
-		secretlen = talloc_array_length(client->secret) - 1;
+		secretlen = talloc_strlen(client->secret);
 	}
 
 	/*
@@ -230,7 +228,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	if (fr_tacacs_decode(request->request_ctx, &request->request_pairs, dv,
 			     request->packet->data, request->packet->data_len,
 			     NULL, secret, secretlen, &code) < 0) {
-		RPEDEBUG("Failed decoding packet");
+		RPEDEBUG("Failed decoding packet from %s", client->longname);
 		return -1;
 	}
 
@@ -365,7 +363,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	}
 
 	secret = client->secret;
-	if (secret) secretlen = talloc_array_length(client->secret) - 1;
+	if (secret) secretlen = talloc_strlen(client->secret);
 
 	data_len = fr_tacacs_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
 				    secret, secretlen,
@@ -394,11 +392,13 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	return data_len;
 }
 
-static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
+static int mod_priority_set(void const *instance, uint8_t const *buffer, size_t buflen)
 {
 	proto_tacacs_t const *inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
 
 	fr_assert(FR_TACACS_PACKET_CODE_VALID(buffer[1]));
+
+	if (!buflen) return 0;
 
 	/*
 	 *	Disallowed packet

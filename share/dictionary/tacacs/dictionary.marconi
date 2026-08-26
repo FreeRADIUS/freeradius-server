@@ -1,0 +1,21 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#	Marconi commands
+#
+#	$Id$
+#
+##############################################################################
+
+Vendor		Marconi				1012
+
+BEGIN-VENDOR	Marconi
+
+DEFINE	idle-timeout					time_delta precision=minutes
+DEFINE	profile						string
+
+END-VENDOR	Marconi
+

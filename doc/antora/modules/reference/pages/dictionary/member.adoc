@@ -46,7 +46,7 @@ Common flags and meanings
 | `key`        | This member is a "key" type.  The structure can have different children of type `union`, depending on the value of the key.
 |=====
 
-See the the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
 
 .Examples
 ----
@@ -71,5 +71,5 @@ Fixed Size types and meanings
 | `string[n]`  | Declare that this attribute uses `n` bytes of `string` data
 |=====
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

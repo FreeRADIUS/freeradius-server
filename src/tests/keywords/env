@@ -1,0 +1,14 @@
+string test
+
+#
+#  In some cases, a missing environment variable is OK.
+#
+test = "$ENV{THIS_VARIABLE_IS_MISSING}"
+if (!test) {
+	test_fail
+}
+
+if (test != "") {
+	test_fail
+}
+success

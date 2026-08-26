@@ -195,7 +195,7 @@ int fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const
 				return -1;
 			}
 
-			if (!fr_hash_table_insert((rel->dict)->autoref, dict)) {
+			if (fr_hash_table_insert((rel->dict)->autoref, dict) != 0) {
 				fr_strerror_const("Failed inserting into internal autoref table");
 				return -1;
 			}
@@ -327,7 +327,7 @@ static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixu
 	type = da->type;
 
 	if (fr_value_box_from_str(fixup, &value, type, NULL,
-				  fixup->value, talloc_array_length(fixup->value) - 1,
+				  fixup->value, talloc_strlen(fixup->value),
 				  NULL) < 0) {
 		fr_strerror_printf_push("Invalid VALUE '%pV' for attribute '%s' at %s[%d]",
 					fr_box_strvalue_buffer(fixup->value),
@@ -441,7 +441,7 @@ int dict_fixup_clone_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char co
 	}
 	*fixup = (dict_fixup_clone_t) {
 		.da = da,
-		.ref = talloc_typed_strdup(fixup, ref)
+		.ref = talloc_strdup(fixup, ref)
 	};
 
 	return dict_fixup_common(&fctx->clone, &fixup->common);
@@ -593,7 +593,7 @@ int dict_fixup_clone_enum_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, ch
 	}
 	*fixup = (dict_fixup_clone_t) {
 		.da = da,
-		.ref = talloc_typed_strdup(fixup, ref)
+		.ref = talloc_strdup(fixup, ref)
 	};
 
 	return dict_fixup_common(&fctx->clone_enum, &fixup->common);
@@ -649,7 +649,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 	}
 
 	if (!dict_attr_ext_copy(&fixup->da, src, FR_DICT_ATTR_EXT_ENUMV)) {
-		fr_strerror_printf("Reference copied no VALUEs from type type '%s' at %s[%d]",
+		fr_strerror_printf("Reference copied no VALUEs from type '%s' at %s[%d]",
 					fr_type_to_str(fixup->da->type),
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
@@ -747,15 +747,17 @@ int dict_fixup_alias_enqueue(dict_fixup_ctx_t *fctx, char const *filename, int l
 		return -1;
 	}
 	*fixup = (dict_fixup_alias_t) {
-		.alias = talloc_typed_strdup(fixup, alias),
+		.alias = talloc_strdup(fixup, alias),
 		.alias_parent = alias_parent,
-		.ref = talloc_typed_strdup(fixup, ref),
+		.ref = talloc_strdup(fixup, ref),
 		.ref_parent = ref_parent
 	};
 
 	fixup->filename = talloc_strdup(fixup, filename);
 	if (!fixup->filename) goto oom;
 	fixup->line = line;
+
+	alias_parent->flags.has_fixup = true;
 
 	return dict_fixup_common(&fctx->alias, &fixup->common);
 }
@@ -774,19 +776,18 @@ static inline CC_HINT(always_inline) int dict_fixup_alias_apply(UNUSED dict_fixu
 		return -1;
 	}
 
-	fr_dict_attr_unconst(da)->flags.has_fixup = false;
-	return dict_attr_alias_add(fixup->alias_parent, fixup->alias, da);
+	fixup->alias_parent->flags.has_fixup = false;
+	return dict_attr_alias_add(fixup->alias_parent, fixup->alias, da, true);
 }
 
 /** Initialise a fixup ctx
  *
- * @param[in] ctx	to allocate the fixup pool in.
  * @param[in] fctx	to initialise.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx)
+int dict_fixup_init(dict_fixup_ctx_t *fctx)
 {
 	if (fctx->pool) return 0;
 
@@ -797,7 +798,7 @@ int dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx)
 	fr_dlist_talloc_init(&fctx->vsa, dict_fixup_vsa_t, common.entry);
 	fr_dlist_talloc_init(&fctx->alias, dict_fixup_alias_t, common.entry);
 
-	fctx->pool = talloc_pool(ctx, DICT_FIXUP_POOL_SIZE);
+	fctx->pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
 	if (!fctx->pool) return -1;
 
 	return 0;

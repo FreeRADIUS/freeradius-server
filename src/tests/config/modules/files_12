@@ -1,0 +1,7 @@
+#
+#  Test: invalid lookup_type
+#
+files {
+	filename = ${modconfdir}/files/authorize
+	lookup_type = btree		# ERROR
+}

@@ -59,7 +59,9 @@ else ifeq "$(wildcard src/tests/modules/${1}/all.mk)" ""
 else
   -include src/tests/modules/${1}/all.mk
 
-  ifdef ${1}_require_test_server
+  ifndef ${1}_require_test_server
+    $(BUILD_DIR)/tests/modules/${2}: $(BUILD_DIR)/lib/local/rlm_${1}.la
+  else
     ifdef TEST_SERVER
       # define and export FOO_TEST_SERVER if it's not already defined
       $(eval export $(toupper ${1})_TEST_SERVER ?= $(TEST_SERVER))
@@ -67,6 +69,8 @@ else
     ifeq "$($(toupper ${1})_TEST_SERVER)" ""
       # the module requires a test server, but we don't have one.  Skip it.
       FILES_SKIP += ${2}
+    else
+      $(BUILD_DIR)/tests/modules/${2}: $(BUILD_DIR)/lib/local/rlm_${1}.la
     endif
   endif
 endif
@@ -74,33 +78,39 @@ endef
 
 ######################################################################
 #
-#  Ensure that tests in one directory run in sequence.
+#  Tests in one directory run in series, because a test that shares a
+#  fixture or a file with its neighbours breaks when both run at once.
 #
-#  If the magic macro is set: TEST.modules.foo.parallel=1
-#  then the tests in that directory can be run in parallel.
+#  A directory opts out by setting, in its own all.mk:
 #
-#  Each "foo/all.mk" file contains a horrible GNU Make thing which
-#  automatically uses the correct name.  This is so that we can just
-#  copy the macro to a new file, and don't have to edit it for each
-#  directory.
+#	TEST.modules.foo.parallel := 1
 #
-#  If there's no macro defined for this subdirectory, then define it
-#  to be the current test.
+#  Any other value, 0 included, and not setting it at all, means series.
 #
-#  Otherwise, make the current test depend on the previous one.
-#  Then redefine the macro to be the current test.
+#  Series is built as a chain: each test is made a prerequisite of the
+#  one before it, so make runs them one after another even under -j.
 #
-#  This creates a "chain" of dependencies for all tests in a
-#  subdirectory, so that they run in series.
-#
-#  We only do this if the module is explicitly marked as can
-#  parallelize.
+#  Each "foo/all.mk" contains a GNU Make expression that works out its
+#  own directory name, so the line can be copied between directories
+#  unchanged.
 #
 #  Use $(eval $(call TEST_MODULES_DEPS))
 #
 ######################################################################
+#
+#  A directory says its tests can run at the same time as each other with:
+#
+#	$(eval $(call TEST_PARALLEL))
+#
+#  It works out its own directory name, so the line is identical in every
+#  file and can be copied without editing.
+#
+define TEST_PARALLEL
+TEST.modules.$(lastword $(subst /, ,$(dir $(lastword $(MAKEFILE_LIST))))).parallel := 1
+endef
+
 define TEST_MODULES_DEPS
-ifneq "$(TEST.modules.$(subst /,,$(dir $1)).parallel)" ""
+ifneq "$(TEST.modules.$(subst /,,$(dir $1)).parallel)" "1"
 ifeq "$(OUTPUT.modules.$(dir $1))" ""
 OUTPUT.modules.$(dir $1) := $(OUTPUT)/$1
 else
@@ -116,6 +126,11 @@ endef
 $(foreach x,$(FILES),$(eval $(call MODULE_FILTER,$(firstword $(subst /, ,$x)),$x)))
 FILES := $(filter-out $(FILES_SKIP),$(FILES))
 $(eval $(call TEST_BOOTSTRAP))
+#
+#  The test loads modules at run time, so make needs telling about them.  The
+#  list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/unit_test_module.conf,$(FILES.$(TEST))))
 
 $(foreach x,$(FILES),$(eval $(call TEST_MODULES_DEPS,$x)))
 
@@ -128,9 +143,10 @@ $(foreach x,$(FILES),$(eval $(call TEST_MODULES_DEPS,$x)))
 $(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_%.la,$(patsubst %/,%,$(firstword $(subst /, ,$(dir $x))))) $(patsubst %,$(BUILD_DIR)/lib/local/rlm_%.la,$(patsubst %/,%,$(firstword $(subst /, ,$(dir $x)))))))
 
 #
-#  sql_foo depends on rlm_sql, too.
+#  sql_foo depends on rlm_sql, too, and the same for rlm_cache.
 #
-$(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(BUILD_DIR)/lib/local/rlm_sql.la))
+$(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(BUILD_DIR)/lib/local/rlm_sql.la $(BUILD_DIR)/lib/rlm_sql.la))
+$(foreach x, $(filter cache_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(BUILD_DIR)/lib/local/rlm_cache.la $(BUILD_DIR)/lib/rlm_cache.la))
 
 #
 #  Files in the output dir depend on the unit tests

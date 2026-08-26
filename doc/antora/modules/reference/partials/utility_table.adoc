@@ -8,3 +8,6 @@
 | xref:raddb/mods-available/stats.adoc[stats]	        | Gather internal server statistics.
 | xref:raddb/mods-available/unbound.adoc[unbound]	| Performs queries against a DNS service to allow FQDNs to be resolved during request processing.
 |=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -35,3 +35,6 @@ validate the responses from the server.  It should be used as part of
 a test suite to ensure that changes to the server configuration do not
 affect the flow of requests and responses, or even the content of the
 responses.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

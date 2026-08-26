@@ -1,0 +1,202 @@
+name: Common vars
+
+#
+#  Determines the values every other workflow needs, so no workflow works any
+#  of them out for itself.
+#
+#    docker_registry   which registry holds the continuous integration (CI)
+#                      images
+#    selfhosted        whether the organisation's own build machines are
+#                      available
+#    docker_prefix     what to put in front of a third-party image name
+#    images_changed    whether this ref changes anything the CI images bake in
+#    docs_changed      whether this ref changes anything the documentation uses
+#    image_prefix      registry and path the CI images sit under
+#    image_tag         which tag of the CI images this ref should use
+#
+#  The first three follow from one question, is the run happening in the
+#  FreeRADIUS organisation or in somebody else's fork.  The last two follow
+#  from a second question, does this ref change the images, which is answered
+#  by diffing against the default branch.
+#
+#  Every workflow that reads any of the five calls this one for itself.  There
+#  is no way to have GitHub evaluate a reusable workflow once and share the
+#  result, and passing the answers down as inputs would leave a workflow
+#  started on its own, by the nightly schedule or by hand, with nothing.
+#
+#  The answers come back as job outputs rather than as a workflow-level env:
+#  block, because GitHub does not let the container:, services:, runs-on: and
+#  strategy: keys read the env context.  Those same keys can all read needs,
+#  so a caller writes needs.common_vars.outputs.<name> instead.
+#
+#  To use in another workflow: add a job named common_vars that calls this
+#  workflow, then name common_vars in the needs: of every job that reads an
+#  answer.
+#
+#  To add another value: add an output below, and add a line to the evaluate
+#  step that writes the value.
+#
+on:
+  workflow_call:
+    outputs:
+      docker_registry:
+        description: "registry holding the CI images"
+        value: ${{ jobs.common_vars.outputs.docker_registry }}
+      selfhosted:
+        description: "'1' when the org's self-hosted runners and registry are available"
+        value: ${{ jobs.common_vars.outputs.selfhosted }}
+      docker_prefix:
+        description: "prefix that points a third-party image at the org's pull-through cache, empty elsewhere"
+        value: ${{ jobs.common_vars.outputs.docker_prefix }}
+      images_changed:
+        description: "'true' when this ref changes something the CI images bake in"
+        value: ${{ jobs.common_vars.outputs.images_changed }}
+      docs_changed:
+        description: "'true' when this ref changes something the documentation is built from"
+        value: ${{ jobs.common_vars.outputs.docs_changed }}
+      image_prefix:
+        description: "registry and path every CI image sits under, ending in a slash"
+        value: ${{ jobs.common_vars.outputs.image_prefix }}
+      image_tag:
+        description: "tag of the CI images this ref should build against"
+        value: ${{ jobs.common_vars.outputs.image_tag }}
+
+jobs:
+  common_vars:
+    name: Evaluate
+
+    #  paths-filter asks the REST API which files a pull request changed.
+    permissions:
+      contents: read
+      pull-requests: read
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      docker_registry: ${{ steps.evaluate.outputs.docker_registry }}
+      selfhosted: ${{ steps.evaluate.outputs.selfhosted }}
+      docker_prefix: ${{ steps.evaluate.outputs.docker_prefix }}
+      images_changed: ${{ steps.changed.outputs.images_changed }}
+      docs_changed: ${{ steps.changed.outputs.docs_changed }}
+      image_prefix: ${{ steps.evaluate.outputs.image_prefix }}
+      image_tag: ${{ steps.evaluate.outputs.image_tag }}
+
+    steps:
+      #  paths-filter diffs a push locally, so it needs a checkout.
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      #
+      #  Does this ref change anything baked into the CI images?
+      #
+      #  On the default branch the answer is about the newest commit, because
+      #  that is what decides whether to rebuild the shared images.  On any
+      #  other branch paths-filter compares against the default branch
+      #  instead, so the answer describes the whole branch and stays the same
+      #  no matter how the commits were split up or how long ago the packaging
+      #  commit landed.
+      #
+      #  A scheduled or hand-started run has nothing to diff against, so the
+      #  step is skipped and the answer is empty, which reads as no change.
+      #
+      - name: Determine what this ref changes
+        uses: dorny/paths-filter@v4.0.3
+        id: changed
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        with:
+          filters: |
+            images_changed:
+              - 'debian/**'
+              - 'redhat/**'
+              - 'scripts/ci/extra-packages.debian.control'
+              - 'scripts/ci/docker/Dockerfile*'
+              #  COPY'd into the self-hosted image, so a change has to
+              #  rebuild the image that bakes the result in.
+              - 'scripts/ci/eapol_test-build.sh'
+              - 'scripts/ci/eapol_test/**'
+              - 'scripts/ci/ubuntu-mirrors-setup.sh'
+              - 'scripts/docker/build/*/Dockerfile.ci'
+              - 'scripts/docker/build/*/Dockerfile.crossbuild'
+              - 'scripts/docker/build/*/Dockerfile.profiling-deps'
+              - 'scripts/docker/build/*/Dockerfile.service'
+              #  These two decide what gets built and where it is published,
+              #  so a change to either has to rebuild before anything reads
+              #  the result.
+              - 'scripts/docker/docker.mk'
+              - '.github/workflows/docker-ci-images-refresh.yml'
+            docs_changed:
+              - '.github/workflows/documentation.yml'
+              - 'doc/**'
+              - 'man/**'
+              - 'raddb/**'
+              - 'share/**'
+
+      #
+      #  docker_registry.  The FreeRADIUS organisation sets a repository
+      #  variable named DOCKER_REGISTRY that points at the organisation's own
+      #  registry.  GitHub does not copy repository variables into a fork, so
+      #  in a fork the variable is empty and the answer becomes the fork's own
+      #  GitHub Container Registry (GHCR) namespace, which is the only
+      #  registry a fork is allowed to push to.
+      #
+      #  docker_prefix.  The organisation keeps a local copy of third-party
+      #  images (mariadb, postgres, 389ds), so a build fetches each image from
+      #  Docker Hub once rather than every time, and docker_prefix is what
+      #  points an image name at that local copy.  A fork keeps no local copy,
+      #  so docker_prefix stays empty and a fork fetches those images from
+      #  Docker Hub under their plain names.
+      #
+      #  image_tag.  The default branch uses latest.  A branch that changes
+      #  the images gets a tag of its own, so the images it builds never
+      #  overwrite what the default branch and every other branch read.  A
+      #  branch that leaves the images alone reads latest, because the images
+      #  it would build are the ones already there.
+      #
+      #  Only a push gets a tag of its own, because only a push rebuilds the
+      #  images.  A pull request that named a tag would name one nothing ever
+      #  published, and every job would fail pulling it.
+      #
+      #  image_prefix.  Every image this repository publishes sits under a
+      #  path named after the repository, so several repositories can share
+      #  one registry without colliding, and so anything sweeping the registry
+      #  can tell this repository's images from everybody else's.
+      #
+      #  A docker tag holds at most 128 characters of letters, digits,
+      #  underscore, period and dash, so anything else in a branch name
+      #  becomes a dash and the result is cut to length.
+      #
+      - name: Evaluate vars
+        id: evaluate
+        env:
+          #  The one place in the repository that names the registry.
+          registry: ${{ vars.DOCKER_REGISTRY || format('ghcr.io/{0}', github.repository_owner) }}
+          selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+          default_branch: ${{ github.event.repository.default_branch }}
+          ref_name: ${{ github.ref_name }}
+          repo_name: ${{ github.event.repository.name }}
+          images_changed: ${{ steps.changed.outputs.images_changed }}
+          event: ${{ github.event_name }}
+        run: |
+          prefix=
+          if [ "$selfhosted" = "1" ]; then
+            prefix="$registry/"
+          fi
+
+          image_tag=latest
+          if [ "$event" = "push" ] && [ "$ref_name" != "$default_branch" ] \
+             && [ "$images_changed" = "true" ]; then
+            image_tag=$(printf '%s' "$ref_name" \
+                        | tr 'A-Z' 'a-z' \
+                        | tr -c 'a-z0-9_.-' '-' \
+                        | cut -c1-128)
+          fi
+
+          {
+            echo "docker_registry=$registry"
+            echo "selfhosted=$selfhosted"
+            echo "docker_prefix=$prefix"
+            echo "image_prefix=$registry/$repo_name/"
+            echo "image_tag=$image_tag"
+          } >> "$GITHUB_OUTPUT"

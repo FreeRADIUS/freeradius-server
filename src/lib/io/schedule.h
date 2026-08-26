@@ -38,6 +38,7 @@ typedef struct fr_schedule_s fr_schedule_t;
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/network.h>
 #include <freeradius-devel/io/worker.h>
+#include <freeradius-devel/io/coord.h>
 #include <freeradius-devel/util/log.h>
 
 #ifdef __cplusplus
@@ -62,20 +63,24 @@ typedef void (*fr_schedule_thread_detach_t)(void *uctx);
 
 typedef struct {
 	uint32_t	max_networks;		//!< number of network threads
-	uint32_t	max_workers;		//!< number of network threads
+	uint32_t	max_workers;		//!< number of worker threads
 
 	fr_worker_config_t worker;		//!< configuration for each worker
 	fr_network_config_t network;		//!< configuration for each network;
 
 	fr_time_delta_t	stats_interval;		//!< print channel statistics
+
+	CONF_SECTION	*cs;			//!< root config section
 } fr_schedule_config_t;
 
 int			fr_schedule_worker_id(void);
 
-int			fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *arg);
-fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *log, fr_log_lvl_t lvl,
+void			fr_schedule_worker_id_set(int id);
+
+fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, bool single_threaded, fr_event_list_t *el,
+					    fr_log_t *log, fr_log_lvl_t lvl,
 					    fr_schedule_thread_instantiate_t worker_thread_instantiate,
-					    fr_schedule_thread_detach_t worked_thread_detach,
+					    fr_schedule_thread_detach_t worker_thread_detach,
 					    fr_schedule_config_t *config) CC_HINT(nonnull(3));
 /* schedulers are async, so there's no fr_schedule_run() */
 int			fr_schedule_destroy(fr_schedule_t **sc);

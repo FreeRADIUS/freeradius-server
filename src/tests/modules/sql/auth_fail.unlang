@@ -1,0 +1,22 @@
+#
+#  Clear out old data
+#
+%sql("${delete_from_radcheck} 'user_auth_fail'")
+%sql("${delete_from_radreply} 'user_auth_fail'")
+
+if (%sql("${insert_into_radcheck} ('user_auth_fail', 'NAS-IP-Address', '==', '1.2.3.4')") != "1") {
+	test_fail
+}
+
+if (%sql("${insert_into_radcheck} ('user_auth_fail', 'Password.Cleartext', ':=', 'password')") != "1") {
+	test_fail
+}
+
+if (%sql("${insert_into_radreply} ('user_auth_fail', 'Reply-Message', ':=', '\"whoops')") != "1") {
+	test_fail
+}
+
+sql
+if (!fail) {
+	test_fail
+}

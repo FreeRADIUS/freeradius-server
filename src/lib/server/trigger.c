@@ -35,7 +35,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/subrequest.h>
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/tmpl.h>
 
 
@@ -54,6 +53,7 @@ static pthread_mutex_t		*trigger_mutex;
 typedef struct {
 	fr_rb_node_t	node;		//!< Entry in the trigger last fired tree.
 	CONF_ITEM	*ci;		//!< Config item this rate limit counter is associated with.
+	void const	*uctx;		//!< Combined with ci to distinguish trigger calls.  E.g. trunk / connection.
 	fr_time_t	last_fired;	//!< When this trigger last fired.
 } trigger_last_fired_t;
 
@@ -82,11 +82,14 @@ static void _trigger_last_fired_free(void *data)
  * @param two second pointer to compare.
  * @return CMP(one, two)
  */
-static int8_t _trigger_last_fired_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _trigger_last_fired_cmp(void const *one, void const *two)
 {
 	trigger_last_fired_t const *a = one, *b = two;
+	int8_t	ret;
 
-	return CMP(a->ci, b->ci);
+	ret = CMP(a->ci, b->ci);
+	if (ret != 0) return ret;
+	return CMP(a->uctx, b->uctx);
 }
 
 /** Return whether triggers are enabled
@@ -107,7 +110,7 @@ typedef struct {
 /** Execute a trigger - call an executable to process an event
  *
  * A trigger ties a state change (e.g. connection up) in a module to an action
- * (e.g. send an SNMP trap) defined in raddb/triggers.conf or in the trigger
+ * (e.g. send an SNMP trap) defined in triggers.conf or in the trigger
  * section of a module.  There's no setup for triggers, the triggering code
  * just calls this function with the name of the trigger to run, and an optional
  * interpreter if the trigger should run asynchronously.
@@ -147,6 +150,7 @@ typedef struct {
  *				e.g. module.ldap.pool.start.
  * @param[in] rate_limit	whether to rate limit triggers.
  * @param[in] args		to populate the trigger's request list with.
+ * @param[in] uctx		to distinguish triggers which use the same CONF_ITEM when rate limiting.
  * @return
  *	- 0 on success.
  *	- -1 if the trigger is not defined.
@@ -154,7 +158,7 @@ typedef struct {
  *	- -3 on failure.
  */
 int trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigger_cp,
-	    char const *name, bool rate_limit, fr_pair_list_t *args)
+	    char const *name, bool rate_limit, fr_pair_list_t *args, void const *uctx)
 {
 	CONF_ITEM		*ci;
 	CONF_PAIR		*cp;
@@ -168,6 +172,7 @@ int trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigge
 
 	fr_event_list_t		*el;
 	tmpl_rules_t		t_rules;
+	fr_pair_t		*vp;
 
 	/*
 	 *	noop if trigger_init was never called, or if
@@ -252,13 +257,15 @@ cp_found:
 		fr_time_t		now = fr_time();
 
 		find.ci = ci;
+		find.uctx = uctx;
 
 		pthread_mutex_lock(trigger_mutex);
 
-		found = fr_rb_find(trigger_last_fired_tree, &find);
+		fr_rb_find((void **)&found, trigger_last_fired_tree, &find);
 		if (!found) {
 			MEM(found = talloc(NULL, trigger_last_fired_t));
 			found->ci = ci;
+			found->uctx = uctx;
 			/*
 			 *	Initialise last_fired to 2 seconds ago so
 			 *	the trigger fires on the first occurrence
@@ -268,15 +275,18 @@ cp_found:
 			fr_rb_insert(trigger_last_fired_tree, found);
 		}
 
-		pthread_mutex_unlock(trigger_mutex);
-
 		/*
 		 *	Send the rate_limited traps at most once per second.
 		 *
 		 *	@todo - make this configurable for longer periods of time.
 		 */
-		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) return -2;
+		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) {
+			pthread_mutex_unlock(trigger_mutex);
+			return -2;
+		}
+
 		found->last_fired = now;
+		pthread_mutex_unlock(trigger_mutex);
 	}
 
 	/*
@@ -286,20 +296,21 @@ cp_found:
 	request->name = talloc_typed_asprintf(request, "trigger-%s", name);
 
 	if (args) {
-		fr_pair_t	*vp;
 
 		if (fr_pair_list_copy(request->request_ctx, &request->request_pairs, args) < 0) {
 			PERROR("Failed copying trigger arguments");
+
+		fail:
 			talloc_free(request);
 			return -3;
 		}
-
-		/*
-		 *	Add the trigger name to the request data
-		 */
-		MEM(pair_append_request(&vp, attr_trigger_name) >= 0);
-		fr_pair_value_strdup(vp, cf_pair_attr(cp), false);
 	}
+
+	/*
+	 *	Add the trigger name to the request data
+	 */
+	MEM(pair_append_request(&vp, attr_trigger_name) >= 0);
+	fr_pair_value_strdup(vp, cf_pair_attr(cp), false);
 
 	MEM(trigger = talloc_zero(request, fr_trigger_t));
 	fr_value_box_list_init(&trigger->out);
@@ -310,10 +321,8 @@ cp_found:
 	/*
 	 *	During shutdown there may be no event list, so nothing much can be done.
 	 */
-	if (unlikely(!el)) {
-		talloc_free(request);
-		return -3;
-	}
+	if (unlikely(!el)) goto fail;
+
 
 	t_rules = (tmpl_rules_t) {
 		.attr = {
@@ -333,12 +342,11 @@ cp_found:
 
 		fr_canonicalize_error(trigger, &spaces, &text, slen, value);
 
-		cf_log_err(cp, "Failed parsing trigger expresion");
+		cf_log_err(cp, "Failed parsing trigger expression");
 		cf_log_err(cp, "%s", text);
 		cf_log_perr(cp, "%s^", spaces);
 
-		talloc_free(request);
-		return -3;
+		goto fail;
 	}
 
 	if (!tmpl_is_exec(trigger->vpt) && !tmpl_is_xlat(trigger->vpt)) {
@@ -347,8 +355,7 @@ cp_found:
 		 *	Anything else is an error.
 		 */
 		cf_log_err(cp, "Trigger must be an \"expr\" or `exec`");
-		talloc_free(request);
-		return -3;
+		goto fail;
 	}
 
 	fr_assert(trigger->vpt != NULL);
@@ -361,7 +368,7 @@ cp_found:
 					.timeout = fr_time_delta_from_sec(5),
 					},
 			     }, UNLANG_TOP_FRAME) < 0) {
-		talloc_free(request);
+		goto fail;
 	}
 
 	/*
@@ -379,14 +386,12 @@ cp_found:
 		 */
 		if (unlang_interpret_set_timeout(request, fr_time_delta_from_sec(1)) < 0) {
 			DEBUG("Failed setting timeout on trigger %s", value);
-			talloc_free(request);
-			return -3;
+			goto fail;
 		}
 
 		if (unlang_subrequest_child_push_and_detach(request) < 0) {
 			PERROR("Running trigger failed");
-			talloc_free(request);
-			return -3;
+			goto fail;
 		}
 	} else {
 		/*
@@ -471,7 +476,7 @@ static int trigger_args_validate(map_t *map, UNUSED void *uctx)
 		break;
 
 	default:
-		cf_log_err(map->ci, "Right hand side of trigger_args must be litteral, not %s", tmpl_type_to_str(map->rhs->type));
+		cf_log_err(map->ci, "Right hand side of trigger_args must be literal, not %s", tmpl_type_to_str(map->rhs->type));
 		return -1;
 	}
 
@@ -496,7 +501,7 @@ static int trigger_args_validate(map_t *map, UNUSED void *uctx)
  * @param[in] cs	CONF_SECTION to search for a "trigger_args" section
  * @param[in] args	Common module data which will populate default pairs
  */
-int module_trigger_args_build(TALLOC_CTX *ctx, fr_pair_list_t *list, CONF_SECTION *cs, module_trigger_args_t *args)
+int module_trigger_args_build(TALLOC_CTX *ctx, fr_pair_list_t *list, CONF_SECTION const *cs, module_trigger_args_t *args)
 {
 	map_list_t		*maps;
 	map_t			*map = NULL;
@@ -610,7 +615,12 @@ static int _trigger_init(void *cs_arg)
 								_trigger_last_fired_cmp, _trigger_last_fired_free));
 
 	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
-	pthread_mutex_init(trigger_mutex, 0);
+	if (pthread_mutex_init(trigger_mutex, 0) != 0) {
+		PERROR("Failed to initialize trigger mutex");
+		talloc_free(trigger_mutex);
+		return -1;
+	}
+
 	talloc_set_destructor(trigger_mutex, _mutex_free);
 
 	return 0;

@@ -22,7 +22,6 @@
  * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/debug.h>
@@ -33,7 +32,7 @@
 
 /** Update this if new rcodes are added
  */
-#define FR_DNS_RCODE_MAX	FR_RCODE_VALUE_BAD_COOKIE
+#define FR_DNS_RCODE_MAX	(FR_RCODE_VALUE_BAD_COOKIE + 1)
 
 static fr_dict_t const *dict_dns;
 
@@ -121,6 +120,7 @@ typedef struct {
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_DNS_DO_NOT_RESPOND
 #define PROCESS_PACKET_CODE_VALID	FR_DNS_PACKET_CODE_VALID
 #define PROCESS_INST			process_dns_t
+#define PROCESS_RCTX_EXTRA_FIELDS	process_dns_fields_t fields;
 
 /** Map an rlm_rcode_t to a header.rcode value
  */
@@ -180,7 +180,7 @@ static const virtual_server_compile_t compile_list[] = {
 		.offset = PROCESS_CONF_OFFSET(stateful_operation_response),
 	},
 	{
-		.section = SECTION_NAME("send", "Do-Dot-Respond"),
+		.section = SECTION_NAME("send", "Do-Not-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
@@ -218,37 +218,17 @@ static const virtual_server_compile_t compile_list[] = {
 	COMPILE_TERMINATOR
 };
 
-/*
- *	Debug the packet if requested.
- */
-static void dns_packet_debug(request_t *request, fr_packet_t const *packet, fr_pair_list_t const *list, bool received)
-{
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	if ((packet->code & 0x0f) >= FR_DNS_CODE_MAX) return;
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s",
-		    received ? "Received" : "Sending",
-		    fr_dns_packet_names[packet->code & 0x0f]);
-
-	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	}
-}
 
 /** Keep a copy of header fields to prevent them being tampered with
  *
  */
 static inline CC_HINT(always_inline)
-process_dns_fields_t *dns_fields_store(request_t *request)
+process_rctx_t *dns_fields_store(request_t *request)
 {
 	fr_pair_t		*header;
 	fr_pair_t		*id;
 	fr_pair_t		*opcode;
-	process_dns_fields_t	*rctx;
+	process_rctx_t		*rctx;
 
 	/*
 	 *	We could use fr_find_by_da_nested, but it's more efficient
@@ -272,9 +252,9 @@ process_dns_fields_t *dns_fields_store(request_t *request)
 		return NULL;
 	}
 
-	MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), process_dns_fields_t));
-	rctx->id = id->vp_uint16;
-	rctx->opcode = opcode->vp_uint8;
+	MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), process_rctx_t));
+	rctx->fields.id = id->vp_uint16;
+	rctx->fields.opcode = opcode->vp_uint8;
 
 	return rctx;
 }
@@ -284,7 +264,7 @@ process_dns_fields_t *dns_fields_store(request_t *request)
  * If a value already exists in the response, don't overwrite it so the user has absolute control
  */
 static inline CC_HINT(always_inline)
-int dns_fields_restore(request_t *request, process_dns_fields_t *rctx)
+int dns_fields_restore(request_t *request, process_rctx_t *rctx)
 {
 	fr_pair_t *header;
 	fr_pair_t *id;
@@ -301,7 +281,7 @@ int dns_fields_restore(request_t *request, process_dns_fields_t *rctx)
 	 */
 	MEM((ret = fr_pair_update_by_da_parent(header, &id, attr_id)) != -1);
 	fr_assert_msg(ret >= 0, "Failed to update header attribute %s:", fr_strerror());
-	if (ret == 0) id->vp_uint16 = rctx->id;
+	if (ret == 0) id->vp_uint16 = rctx->fields.id;
 
 	/*
 	 *	This marks the packet as a response.
@@ -317,7 +297,7 @@ int dns_fields_restore(request_t *request, process_dns_fields_t *rctx)
 	 */
 	MEM((ret = fr_pair_update_by_da_parent(header, &opcode, attr_opcode)) != -1);
 	fr_assert_msg(ret >= 0, "Failed to update opcode attribute %s:", fr_strerror());
-	if (ret == 0) opcode->vp_uint8 = rctx->opcode;
+	if (ret == 0) opcode->vp_uint8 = rctx->fields.opcode;
 
 	/*
 	 *	Default to setting the authoritative bit if
@@ -362,7 +342,7 @@ void dns_rcode_add(fr_pair_t **rcode, request_t *request, fr_value_box_t const *
  */
 RECV(request)
 {
-	process_dns_fields_t		*rctx;
+	process_rctx_t		*rctx;
 
 	PROCESS_TRACE;
 
@@ -400,16 +380,12 @@ RESUME(recv_request)
 	 */
 	dns_rcode_add(&rcode, request, state->dns_rcode[RESULT_RCODE]);
 
-#ifdef __clang_analyzer__
-	if (!rcode) RETURN_UNLANG_FAIL;
-#endif
-
 	/*
 	 *	Call an appropriate error section if it's been set
 	 *	otherwise, just call the generic recv resume
 	 *	which'll call an appropriate send section.
 	 */
-	if ((rcode->vp_uint8 < NUM_ELEMENTS(inst->sections.rcode)) &&
+	if (rcode && (rcode->vp_uint8 < NUM_ELEMENTS(inst->sections.rcode)) &&
 	    (inst->sections.rcode[rcode->vp_uint8])) {
 		return unlang_module_yield_to_section(RESULT_P, request,
 						      inst->sections.rcode[rcode->vp_uint8],
@@ -450,13 +426,7 @@ RESUME(send_response)
 	 *	Add fields from the request back in,
 	 *	deferring to user specified values.
 	 */
-	dns_fields_restore(request, talloc_get_type_abort(mctx->rctx, process_dns_fields_t));
-
-	/*
-	 *	Do this last, so we show everything
-	 *	we'll be sending back.
-	 */
-	dns_packet_debug(request, request->reply, &request->reply_pairs, false);
+	dns_fields_restore(request, talloc_get_type_abort(mctx->rctx, process_rctx_t));
 
 	/*
 	 *	Hack.  This is because this stupid framework uses
@@ -464,8 +434,9 @@ RESUME(send_response)
 	 *	packet types, and DNS uses the same values for
 	 *	both request and response packet types.
 	 */
-	MEM(pair_update_reply(&vp, attr_packet_type) >= 1);
-	request->reply->code = vp->vp_uint8 = state->default_reply;
+	(void) pair_update_reply(&vp, attr_packet_type);
+	MEM(vp);
+	request->reply->code = vp->vp_uint32 = state->default_reply;
 
 	return CALL_RESUME(send_generic);
 }
@@ -492,8 +463,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		RETURN_UNLANG_FAIL;
 	}
 
-	dns_packet_debug(request, request->packet, &request->request_pairs, true);
-
 	return state->recv(p_result, mctx, request);
 }
 
@@ -507,7 +476,8 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		[RLM_MODULE_FAIL] = &enum_rcode_server_failure, \
 		[RLM_MODULE_INVALID] = &enum_rcode_format_error, \
 		[RLM_MODULE_DISALLOW] = &enum_rcode_refused, \
-		[RLM_MODULE_NOTFOUND] = &enum_rcode_name_error \
+		[RLM_MODULE_NOTFOUND] = &enum_rcode_name_error, \
+		[RLM_MODULE_TIMEOUT] = &enum_rcode_server_failure, \
 	}
 
 static fr_process_state_t const process_state[] = {

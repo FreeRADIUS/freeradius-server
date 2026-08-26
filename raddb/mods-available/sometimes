@@ -7,14 +7,14 @@
 #
 #  = Sometimes Module
 #
-#  The `sometimes` module is used for `debugging` purposes. Each instance
-#  randomly returns the configured result, or `noop`.
+#  The `sometimes` module is used for `debugging` purposes. Each
+#  instance randomly returns the configured result, or `noop`.
 #
 #  NOTE: It is based on the `always` module.
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 sometimes {
 	#

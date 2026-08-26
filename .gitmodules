@@ -12,4 +12,4 @@
 	url = https://github.com/osmocom/libosmo-abis.git
 [submodule "src/lib/backtrace"]
 	path = src/lib/backtrace
-	url = git@github.com:ianlancetaylor/libbacktrace.git
+	url = https://github.com/ianlancetaylor/libbacktrace.git

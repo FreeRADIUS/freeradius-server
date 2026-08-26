@@ -1,0 +1,28 @@
+#
+#  Heavy stress variant.  Ramps PPS aggressively to exercise every
+#  worker thread and drive many back-to-back delivery reports
+#  through rlm_kafka's shared producer + per-worker mailbox path.
+#
+#  Not tagged *.ci.test.yml - developers run this locally via
+#  `make test.multi-server.kafka-produce.heavy`, or via the full
+#  `make test.multi-server` sweep.
+#
+listener_type: file
+
+loadgen:
+  start_pps: 500
+  max_pps: 2000
+  duration: 2
+  step: 500
+  parallel: 4
+  max_backlog: 20000
+
+# 2 * (500 + 1000 + 1500 + 2000) = 10000
+expected_messages: 10000
+
+kafka_topic: fr-multi-server-test
+
+# Generous budget for the 10k burst + broker drain on CI.
+test_timeout: 360
+state_produce_and_consume_timeout: 300
+consumer_timeout: 300

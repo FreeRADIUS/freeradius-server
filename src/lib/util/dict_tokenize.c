@@ -102,7 +102,7 @@ struct dict_tokenize_ctx_s {
 };
 
 static int _dict_from_file(dict_tokenize_ctx_t *dctx,
-			   char  const *dir_name, char const *filename,
+			   char const *dir_name, char const *filename,
 			   char const *src_file, int src_line);
 
 #define CURRENT_FRAME(_dctx)	(&(_dctx)->stack[(_dctx)->stack_depth])
@@ -268,11 +268,11 @@ int fr_dict_str_to_argv(char *str, char **argv, int max_argc)
 	return argc;
 }
 
-static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
+static bool dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 {
 	int unsigned ret = 0;
 	int base = 10;
-	static char const *tab = "0123456789";
+	char const *tab = "0123456789";
 
 	if ((str[0] == '0') &&
 	    ((str[1] == 'x') || (str[1] == 'X'))) {
@@ -288,7 +288,9 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 		if (*str == '.') break;
 
 		c = memchr(tab, tolower((uint8_t)*str), base);
-		if (!c) return 0;
+		if (!c) return false;
+
+		if (ret >= (UINT_MAX / base)) return false;
 
 		ret *= base;
 		ret += (c - tab);
@@ -296,7 +298,7 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 	}
 
 	*pvalue = ret;
-	return 1;
+	return true;
 }
 
 /** Set a new root dictionary attribute
@@ -336,10 +338,22 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 	return 0;
 }
 
-static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, fr_dict_attr_t **da_p)
+static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name_in, fr_dict_attr_t **da_p)
 {
+	char name_buff[128];
+	char *name;
 	char *p;
 	fr_type_t type;
+
+	/*
+	 *	Work on a writable copy so we can split the type name and length
+	 *	in place without modifying the caller's buffer.
+	 */
+	if (strlcpy(name_buff, name_in, sizeof(name_buff)) >= sizeof(name_buff)) {
+		fr_strerror_printf("Type field '%s' is too long", name_in);
+		return -1;
+	}
+	name = name_buff;
 
 	/*
 	 *	Some types can have fixed length
@@ -1046,7 +1060,7 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 	if (!da->parent) return 1;	/* no parent no conflicts possible */
 
 	dup_name = fr_dict_attr_by_name(NULL, da->parent, da->name);
-	if (da->flags.name_only) dup_num = fr_dict_attr_child_by_num(da->parent, da->attr);
+	if (!da->flags.name_only) dup_num = fr_dict_attr_child_by_num(da->parent, da->attr);
 
 	/*
 	 *	Not a duplicate...
@@ -1057,15 +1071,23 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 
 	switch (da->type) {
 	/*
-	 *	For certain STRUCTURAL types, we allow strict duplicates
-	 *	as if the user wants to add extra children in the custom
+	 *	For certain types, we allow strict duplicates as if
+	 *	the user wants to add extra children in the custom
 	 *	dictionary, or wants to avoid ordering issues between
 	 *	multiple dictionaries, we need to support this.
 	 */
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_TLV:
-		if (fr_dict_attr_cmp_fields(da, found) == 0) return -1;
+		if (fr_dict_attr_cmp_fields(da, found) == 0) return 0;
+		break;
+
+	case FR_TYPE_LEAF:
+		/*
+		 *	Leaf types can be duplicated if they are identical.
+		 */
+		if ((da->type == found->type) &&
+		    (fr_dict_attr_cmp_fields(da, found) == 0)) return 0;
 		break;
 
 	default:
@@ -1075,12 +1097,12 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 	if (dup_name) {
 		fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  Originally defined %s[%d]",
 				   da->name, da->parent->name, dup_name->filename, dup_name->line);
-		return 0;
+		return -1;
 	}
 
 	fr_strerror_printf("Duplicate attribute number %u in parent '%s'.  Originally defined %s[%d]",
 				da->attr, da->parent->name, dup_num->filename, dup_num->line);
-	return 0;
+	return -1;
 }
 
 static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
@@ -1332,11 +1354,6 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 	} while ((rcode = fr_globdir_iter_next(&filename, &iter)) == 1);
 	(void) fr_globdir_iter_free(&iter);
 
-	/*
-	 *	Reset the filename and line number.
-	 */
-	dctx->filename = src_file;
-	dctx->line = src_line;
 	return rcode;		/* could be an error! */
 }
 
@@ -1460,11 +1477,13 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 		return -1;
 
 	} else if (argv[1][0] == '.') {
-		if (argv[1][1] == '.') goto no_up;
+		if (argv[1][1] == '.') {
+			fr_strerror_const("An ALIAS reference cannot use '..' to go back up to another parent");
+			return -1;
+		}
 
 	} else if (parent != dctx->dict->root) {
-	no_up:
-		fr_strerror_const("An ALIAS reference cannot go back up the tree");
+		fr_strerror_const("An ALIAS reference must use a leading '.' when referring to attributes with the same parent");
 		return -1;
 	}
 
@@ -1484,7 +1503,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 					fr_dict_attr_unconst(parent), argv[1]);
 	}
 
-	return dict_attr_alias_add(fr_dict_attr_unconst(parent), argv[0], da);
+	return dict_attr_alias_add(fr_dict_attr_unconst(parent), argv[0], da, true);
 }
 
 /*
@@ -1534,7 +1553,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 			}
 
 		} else {
-			slen = fr_dict_attr_by_oid_legacy(dctx->dict, &parent, &attr, argv[1]);
+			slen = fr_dict_attr_by_oid_legacy(&parent, &attr, argv[1]);
 			if (slen <= 0) return -1;
 		}
 
@@ -1554,7 +1573,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 
 		parent = dctx->relative_attr;
 
-		slen = fr_dict_attr_by_oid_legacy(dctx->dict, &parent, &attr, argv[1]);
+		slen = fr_dict_attr_by_oid_legacy(&parent, &attr, argv[1]);
 		if (slen <= 0) return -1;
 
 		set_relative_attr = false;
@@ -1639,7 +1658,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	 */
 	if (da->type == FR_TYPE_UNION) {
 		fr_strerror_const("ATTRIBUTEs of type 'union' can only be defined as a MEMBER of data type 'struct'");
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -1653,7 +1672,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		} else if (da->flags.length != parent->flags.length) {
 			fr_strerror_printf("Invalid length %u for struct, the parent union %s has a different length %u",
 					   da->flags.length, parent->name, parent->flags.length);
-			return -1;
+			goto error;
 		}
 	}
 
@@ -1718,7 +1737,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		 *	the VALUE also contains a pointer to the child struct.
 		 */
 		if (key && (dict_attr_enum_add_name(fr_dict_attr_unconst(key), da->name, &box, false, true, da) < 0)) {
-			goto error;
+			return -1;	/* Leaves attr added */
 		}
 
 		/*
@@ -1750,8 +1769,8 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	if (parent->type == FR_TYPE_UNION) {
 		fr_assert(parent->parent);
 
-		if (dict_attr_alias_add(parent->parent, da->name, da) < 0) {
-			goto error;
+		if (dict_attr_alias_add(parent->parent, da->name, da, false) < 0) {
+			return -1;	/* Leaves attr added */
 		}
 	}
 
@@ -1852,10 +1871,8 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 
 	/*
 	 *	Add a temporary fixup pool
-	 *
-	 *	@todo - make a nested ctx?
 	 */
-	dict_fixup_init(NULL, &dctx->fixup);
+	if (dict_fixup_init(&dctx->fixup) < 0) return -1;
 
 	/*
 	 *	We're in the middle of loading this dictionary.  Tell
@@ -1970,8 +1987,7 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		}
 
 		if (dict_attr_add_to_namespace(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
-			talloc_free(new);
-			return -1;
+			return -1; /* leaves attr added */
 		}
 
 		vendor_da = new;
@@ -2111,8 +2127,14 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 	return 0;
 }
 
+static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+					  fr_dict_attr_flags_t *base_flags);
+
+static int dict_read_process_end_vendor(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+					fr_dict_attr_flags_t *base_flags);
+
 static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int argc,
-				 UNUSED fr_dict_attr_flags_t *base_flags)
+				 fr_dict_attr_flags_t *base_flags)
 {
 	fr_dict_attr_t const *current;
 	fr_dict_attr_t const *da;
@@ -2125,6 +2147,13 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 		fr_strerror_const("Invalid END syntax, expected END <ref>");
 		return -1;
 	}
+
+	/*
+	 *	Allow for the obvious.
+	 */
+	if (strcmp(argv[0], "PROTOCOL") == 0) return dict_read_process_end_protocol(dctx, argv + 1, argc - 1, base_flags);
+
+	if (strcmp(argv[0], "VENDOR") == 0) return dict_read_process_end_vendor(dctx, argv + 1, argc - 1, base_flags);
 
 	/*
 	 *	Unwind until we hit an attribute nesting section
@@ -2142,7 +2171,7 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 	 *	No checks on the attribute, we're just popping _A_ frame,
 	 *	we don't care what attribute it represents.
 	 */
-	if (argc == 1) return 0;
+	if (argc == 0) return 0;
 
 	/*
 	 *	This is where we'll have begun the previous search to
@@ -2327,7 +2356,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 	default:
 		fr_strerror_printf("ENUMs can only be a leaf type, not %s",
 				   fr_type_to_str(da->type));
-		break;
+		goto error;
 	}
 
 	parent = CURRENT_FRAME(dctx)->da;
@@ -2525,7 +2554,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		CURRENT_FRAME(dctx)->struct_is_closed = da;
         }
 
-	if (unlikely(dict_attr_num_init(da, ++CURRENT_FRAME(dctx)->member_num) < 0)) goto error;
+	if (unlikely(dict_attr_num_init(da, CURRENT_FRAME(dctx)->member_num + 1) < 0)) goto error;
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
 
 	/*
@@ -2631,6 +2660,11 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 			return -1;
 		}
 	}
+
+	/*
+	 *	Now that we know everything is OK, we can increase the number.
+	 */
+	CURRENT_FRAME(dctx)->member_num++;
 
 	/*
 	 *	Set or clear the attribute for VALUE statements.
@@ -2843,6 +2877,7 @@ static fr_table_num_ordered_t const dict_proto_table[] = {
 	{ L("DNS"),		FR_DICT_PROTO_DNS },
 	{ L("LDAP"),		FR_DICT_PROTO_LDAP },
 	{ L("BFD"),		FR_DICT_PROTO_BFD },
+	{ L("CRL"),		FR_DICT_PROTO_CRL },
 };
 static size_t const dict_proto_table_len = NUM_ELEMENTS(dict_proto_table);
 
@@ -2872,7 +2907,7 @@ static int dict_read_process_protocol(dict_tokenize_ctx_t *dctx, char **argv, in
 	dctx->relative_attr = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
-		fr_strerror_const("Missing arguments after PROTOCOL.  Expected PROTOCOL <num> <name>");
+		fr_strerror_const("Missing arguments after PROTOCOL.  Expected PROTOCOL <name> <number>");
 		return -1;
 	}
 
@@ -2994,6 +3029,7 @@ post_option:
 	}
 
 	dict = dict_alloc(dict_gctx);
+	if (!dict) return -1;
 
 	/*
 	 *	Try to load protocol-specific validation routines.
@@ -3052,12 +3088,12 @@ static inline int dict_filename_add(char **filename_out, fr_dict_t *dict, char c
 		fr_strerror_const("Out of memory");
 		return -1;
 	}
-	*filename_out = file->filename = talloc_typed_strdup(file, filename);
+	*filename_out = file->filename = talloc_strdup(file, filename);
 	if (unlikely(!*filename_out)) goto oom;
 
 	if (src_file) {
 		file->src_line = src_line;
-		file->src_file = talloc_typed_strdup(file, src_file);
+		file->src_file = talloc_strdup(file, src_file);
 		if (!file->src_file) goto oom;
 	}
 
@@ -3206,6 +3242,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	int			argc;
 
 	int			stack_depth = dctx->stack_depth;
+	char			*old_filename;
+	int			old_line;
 
 	/*
 	 *	Base flags are only set for the current file
@@ -3214,11 +3252,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 
 	if (!fr_cond_assert(!dctx->dict->root || CURRENT_FRAME(dctx)->da)) return -1;
 
-	if ((strlen(dir) + 2 + strlen(filename)) > sizeof(filename_buf)) {
-		fr_strerror_printf("%s: Filename name too long", "Error reading dictionary");
-		return -1;
-	}
-
 	/*
 	 *	The filename is relative to the current directory.
 	 *
@@ -3226,15 +3259,42 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	and then create the full path from dir + filename.
 	 */
 	if (FR_DIR_IS_RELATIVE(filename)) {
-		/*
-		 *	The filename is relative to the input
-		 *	directory.
-		 */
-		strlcpy(filename_buf, dir, sizeof(filename_buf));
-		p = strrchr(filename_buf, FR_DIR_SEP);
-		if (p && !p[1]) *p = '\0';
+		char const *q;
+		bool slash = false;
 
-		snprintf(filename_buf, sizeof(filename_buf), "%s/%s", dir, filename);
+		if (!dir) {
+			fr_strerror_printf("Error reading dictionary: No directory was supplied");
+			return -1;
+		}
+
+		if ((strlen(dir) + 2 + strlen(filename)) > sizeof(filename_buf)) {
+			fr_strerror_printf("%s: Filename name too long", "Error reading dictionary");
+			return -1;
+		}
+
+		/*
+		 *	We either have to do strcpy + strrchr(), or manual checks.
+		 */
+		p = filename_buf;
+		for (q = dir; *q != '\0'; q++) {
+			if (*q != '/') {
+				*(p++) = *q;
+				slash = false;
+				continue;
+			}
+
+			/*
+			 *	Suppress multiple consecutive slashes.
+			 */
+			if (slash) continue;
+
+			*(p++) = *q;
+			slash = true;
+		}
+
+		if (!slash) *(p++) = '/';
+		strcpy(p, filename);
+
 		filename = filename_buf;
 	}
 	/*
@@ -3291,6 +3351,9 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	}
 #endif
 
+	old_filename = dctx->filename;
+	old_line = dctx->line;
+
 	/*
 	 *	Now that we've opened the file, copy the filename into the dictionary and add it to the ctx
 	 *	This string is safe to assign to the filename pointer in any attributes added beneath the
@@ -3299,6 +3362,9 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	if (unlikely(dict_filename_add(&dctx->filename, dctx->dict, filename, src_file, src_line) < 0)) {
 		goto perm_error;
 	}
+
+	CURRENT_FRAME(dctx)->filename = dctx->filename;
+	CURRENT_FRAME(dctx)->line = line;
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		bool do_begin = false;
@@ -3339,6 +3405,9 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		error:
 			fr_strerror_printf_push("Failed parsing dictionary at %s[%d]", fr_cwd_strip(filename), line);
 			fclose(fp);
+
+			dctx->filename = CURRENT_FRAME(dctx)->filename = old_filename;
+			dctx->line = CURRENT_FRAME(dctx)->line = old_line;
 			return -1;
 		}
 
@@ -3447,6 +3516,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	}
 
 	fclose(fp);
+	dctx->filename = CURRENT_FRAME(dctx)->filename = old_filename;
+	dctx->line = CURRENT_FRAME(dctx)->line = old_line;
 
 	return 0;
 }
@@ -3460,7 +3531,7 @@ static int dict_from_file(fr_dict_t *dict,
 
 	memset(&dctx, 0, sizeof(dctx));
 	dctx.dict = dict;
-	dict_fixup_init(NULL, &dctx.fixup);
+	if (dict_fixup_init(&dctx.fixup) < 0) return -1;
 	dctx.stack[0].da = dict->root;
 	dctx.stack[0].nest = NEST_TOP;
 
@@ -3798,32 +3869,45 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 /*
  *	External API for testing
  */
-int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
+int fr_dict_parse_str(fr_dict_t *dict, char const *input, fr_dict_attr_t const *parent)
 {
 	int			argc;
 	char			*argv[DICT_MAX_ARGV];
 	int			ret;
-	fr_dict_attr_flags_t	base_flags;
+	fr_dict_attr_flags_t	base_flags = {};
 	dict_tokenize_ctx_t	dctx;
+	char			*buf;
 
 	INTERNAL_IF_NULL(dict, -1);
 
-	argc = fr_dict_str_to_argv(buf, argv, DICT_MAX_ARGV);
-	if (argc == 0) return 0;
+	/*
+	 *	str_to_argv() mangles the input buffer, which messes with 'unit_test_attribute -w foo'
+	 */
+	buf = talloc_strdup(NULL, input);
 
+	argc = fr_dict_str_to_argv(buf, argv, DICT_MAX_ARGV);
+	if (argc == 0) {
+		talloc_free(buf);
+		return 0;
+	}
 
 	memset(&dctx, 0, sizeof(dctx));
 	dctx.dict = dict;
+
+	dctx.stack[0].da = parent;
 	dctx.stack[0].nest = NEST_TOP;
 
-	if (dict_fixup_init(NULL, &dctx.fixup) < 0) return -1;
+	if (dict_fixup_init(&dctx.fixup) < 0) {
+	error:
+		TALLOC_FREE(dctx.fixup.pool);
+		talloc_free(buf);
+		return -1;
+	}
 
 	if (strcasecmp(argv[0], "VALUE") == 0) {
 		if (argc < 4) {
 			fr_strerror_printf("VALUE needs at least 4 arguments, got %i", argc);
-		error:
-			TALLOC_FREE(dctx.fixup.pool);
-			return -1;
+			goto error;
 		}
 
 		if (!fr_dict_attr_by_oid(NULL, fr_dict_root(dict), argv[1])) {
@@ -3832,25 +3916,92 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 			goto error;
 		}
 		ret = dict_read_process_value(&dctx, argv + 1, argc - 1, &base_flags);
-		if (ret < 0) goto error;
 
 	} else if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-		if (parent && (parent != dict->root)) {
+		if (parent != dict->root) {
 			(void) dict_dctx_push(&dctx, parent, NEST_NONE);
 		}
 
-		memset(&base_flags, 0, sizeof(base_flags));
-
 		ret = dict_read_process_attribute(&dctx,
 						  argv + 1, argc - 1, &base_flags);
-		if (ret < 0) goto error;
+
+	} else if (strcasecmp(argv[0], "DEFINE") == 0) {
+		if (parent != dict->root) {
+			(void) dict_dctx_push(&dctx, parent, NEST_NONE);
+		}
+
+		ret = dict_read_process_define(&dctx,
+					       argv + 1, argc - 1, &base_flags);
+
 	} else if (strcasecmp(argv[0], "VENDOR") == 0) {
 		ret = dict_read_process_vendor(&dctx, argv + 1, argc - 1, &base_flags);
-		if (ret < 0) goto error;
+
 	} else {
 		fr_strerror_printf("Invalid input '%s'", argv[0]);
 		goto error;
 	}
 
+	if (ret < 0) goto error;
+
+	talloc_free(buf);
+
 	return dict_finalise(&dctx);
+}
+
+/** Load one dictionary file.
+ *
+ * @param[out] out		Where to write a pointer to the new dictionary.  Will free existing
+ *				dictionary if files have changed and *out is not NULL.
+ * @param[in] dir		directory
+ * @param[in] filename		file to load.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_afrom_file(fr_dict_t **out, char const *dir, char const *filename)
+{
+	fr_dict_t	*dict;
+
+	*out = NULL;
+
+	if (unlikely(!dict_gctx)) {
+		fr_strerror_const("fr_dict_global_ctx_init() must be called before loading dictionary files");
+		return -1;
+	}
+
+	if (unlikely(!dict_gctx->internal)) {
+		fr_strerror_const("Internal dictionary must be initialised before loading test dictionaries");
+		return -1;
+	}
+
+	fr_strerror_clear();	/* Ensure we don't report spurious errors */
+
+	dict = dict_alloc(dict_gctx);
+	if (!dict) return -1;
+
+	if (dict_from_file(dict, dir, filename, NULL, 0) < 0) {
+		talloc_free(dict);
+		return -1;
+	}
+
+	/*
+	 *	Finalize the library
+	 *
+	 *	Note that we cannot use this function to test loading of protocol dictionaries without
+	 *	significant changes.  We would have to free up all of the dependencies, etc. which isn't
+	 *	entirely done right now.
+	 */
+	fr_assert(dict->proto);
+	fr_assert(strcmp(dict->proto->name, "default") == 0);
+	fr_assert(!dict->proto->init);
+	fr_assert(!dict->proto->free);
+	fr_assert(!dict->proto->encode);
+	fr_assert(!dict->proto->decode);
+
+	dict->loaded = true;
+	dict->loading = false;
+
+	*out = dict;
+
+	return 0;
 }

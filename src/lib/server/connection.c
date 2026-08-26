@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -90,7 +90,6 @@ struct connection_s {
 	void			*uctx;			//!< User data.
 
 	void			*in_handler;		//!< Connection is currently in a callback.
-	bool			is_closed;		//!< The close callback has previously been called.
 	bool			processing_signals;	//!< Processing deferred signals, don't let the deferred
 							///< signal processor be called multiple times.
 
@@ -129,7 +128,7 @@ struct connection_s {
 
 #define CONN_TRIGGER(_state) do { \
 	if (conn->triggers) trigger(unlang_interpret_get_thread_default(), \
-		conn->trigger_cs, NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, conn->trigger_args); \
+		conn->trigger_cs, NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, conn->trigger_args, conn); \
 } while (0)
 
 #define STATE_TRANSITION(_new) \
@@ -212,6 +211,16 @@ static inline void connection_deferred_signal_add(connection_t *conn, connection
 {
 	connection_dsignal_entry_t *dsignal, *prev;
 
+	/*
+	 *	We only suppresses consecutive duplicates at the
+	 *	tail. A sequence such as [INIT, HALT, INIT] will push
+	 *	the second INIT, because the tail is HALT. The signal
+	 *	handlers are generally idempotent (they check current
+	 *	state), so redundant signals are harmless.  Avoiding
+	 *	this corner case involves doing more work in the
+	 *	common case, in order to avoid a small amount of work
+	 *	in the rare case.
+	 */
 	prev = fr_dlist_tail(&conn->deferred_signals);
 	if (prev && (prev->signal == signal)) return;		/* Don't insert duplicates */
 
@@ -294,11 +303,10 @@ static void connection_deferred_signal_process(connection_t *conn)
 		}
 
 		/*
-		 *	One of the signal handlers freed the connection
-		 *	return immediately.
+		 *	One of the signal handlers freed the connection,
+		 *	reset the processing signals and return.
 		 */
-		/* coverity[dead_error_line] */
-		if (freed) return;
+		if (freed) break;
 	}
 
 	conn->processing_signals = false;
@@ -647,6 +655,8 @@ static void connection_state_enter_closed(connection_t *conn)
 	switch (conn->pub.state) {
 	case CONNECTION_STATE_CONNECTING:
 	case CONNECTION_STATE_CONNECTED:
+	case CONNECTION_STATE_SHUTDOWN:
+	case CONNECTION_STATE_TIMEOUT:
 	case CONNECTION_STATE_FAILED:
 		break;
 
@@ -667,19 +677,26 @@ static void connection_state_enter_closed(connection_t *conn)
 	WATCH_PRE(conn);
 
 	/*
-	 *	is_closed is for pure paranoia.  If everything
-	 *	is working correctly this state should never
-	 *	be entered if the connection is closed.
+	 *	We can reach "is_closed" if a connection is halted,
+	 *	then signaled to INIT, which fails, and then sits in
+	 *	the FAILED state.  Eventually the connection is
+	 *	shutdown, and enter_shutdown calls this function.
 	 */
-	fr_assert(!conn->is_closed);
-	if (conn->close && !conn->is_closed) {
+	if (conn->close && !conn->pub.is_closed) {
 		HANDLER_BEGIN(conn, conn->close);
 		DEBUG4("Calling close(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
 		conn->close(conn->pub.el, conn->pub.h, conn->uctx);
-		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
+		conn->pub.is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_CLOSED) return;
 	} else {
-		conn->is_closed = true;
+		conn->pub.is_closed = true;
 	}
 	WATCH_POST(conn);
 }
@@ -704,7 +721,7 @@ static void _connection_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now
  */
 static void connection_state_enter_shutdown(connection_t *conn)
 {
-	connection_state_t ret;
+	connection_state_t ret = CONNECTION_STATE_SHUTDOWN;
 
 	switch (conn->pub.state) {
 	case CONNECTION_STATE_CONNECTED:
@@ -718,11 +735,18 @@ static void connection_state_enter_shutdown(connection_t *conn)
 	STATE_TRANSITION(CONNECTION_STATE_SHUTDOWN);
 
 	WATCH_PRE(conn);
-	{
+	if (conn->shutdown) {
 		HANDLER_BEGIN(conn, conn->shutdown);
 		DEBUG4("Calling shutdown(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
 		ret = conn->shutdown(conn->pub.el, conn->pub.h, conn->uctx);
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_SHUTDOWN) return;
 	}
 	switch (ret) {
 	case CONNECTION_STATE_SHUTDOWN:
@@ -733,6 +757,11 @@ static void connection_state_enter_shutdown(connection_t *conn)
 		return;
 	}
 	WATCH_POST(conn);
+
+	/*
+	 *	If a deferred signal changed the connection state, we're done.
+	 */
+	if (conn->pub.state != CONNECTION_STATE_SHUTDOWN) return;
 
 	/*
 	 *	If there's a connection timeout,
@@ -750,7 +779,7 @@ static void connection_state_enter_shutdown(connection_t *conn)
 			 *	Can happen when the event loop is exiting
 			 */
 			PERROR("Failed setting connection_timeout timer, closing connection");
-			connection_state_enter_closed(conn);
+			connection_state_enter_failed(conn);
 		}
 	}
 }
@@ -801,6 +830,13 @@ static void connection_state_enter_failed(connection_t *conn)
 		       fr_table_str_by_value(connection_states, prev, "<INVALID>"), conn->uctx);
 		ret = conn->failed(conn->pub.h, prev, conn->uctx);
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_FAILED) return;
 	}
 	WATCH_POST(conn);
 
@@ -898,6 +934,7 @@ static void connection_state_enter_timeout(connection_t *conn)
 
 	default:
 		BAD_STATE_TRANSITION(CONNECTION_STATE_TIMEOUT);
+		break;
 	}
 
 	ERROR("Connection failed - timed out after %pVs", fr_box_time_delta(conn->connection_timeout));
@@ -915,15 +952,17 @@ static void connection_state_enter_timeout(connection_t *conn)
  */
 static void connection_state_enter_halted(connection_t *conn)
 {
-	fr_assert(conn->is_closed);
+	fr_assert(conn->pub.is_closed);
 
 	switch (conn->pub.state) {
+	case CONNECTION_STATE_INIT:
 	case CONNECTION_STATE_FAILED:	/* Init failure */
 	case CONNECTION_STATE_CLOSED:
 		break;
 
 	default:
 		BAD_STATE_TRANSITION(CONNECTION_STATE_HALTED);
+		break;
 	}
 
 	FR_TIMER_DISARM(conn->ev);
@@ -961,6 +1000,13 @@ static void connection_state_enter_connected(connection_t *conn)
 		DEBUG4("Calling open(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
 		ret = conn->open(conn->pub.el, conn->pub.h, conn->uctx);
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_CONNECTED) return;
 	} else {
 		ret = CONNECTION_STATE_CONNECTED;
 	}
@@ -1075,19 +1121,26 @@ static void connection_state_enter_init(connection_t *conn)
 		DEBUG4("Calling init(h_out=%p, conn=%p, uctx=%p)", &conn->pub.h, conn, conn->uctx);
 		ret = conn->init(&conn->pub.h, conn, conn->uctx);
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_INIT) return;
 	} else {
 		ret = CONNECTION_STATE_CONNECTING;
 	}
 
 	switch (ret) {
 	case CONNECTION_STATE_CONNECTING:
-		conn->is_closed = false;	/* We now have a handle */
+		conn->pub.is_closed = false;	/* We now have a handle */
 		WATCH_POST(conn);		/* Only call if we successfully initialised the handle */
 		connection_state_enter_connecting(conn);
 		return;
 
 	case CONNECTION_STATE_CONNECTED:
-		conn->is_closed = false;	/* We now have a handle */
+		conn->pub.is_closed = false;	/* We now have a handle */
 		WATCH_POST(conn);		/* Only call if we successfully initialised the handle */
 		connection_state_enter_connected(conn);
 		return;
@@ -1202,14 +1255,17 @@ void connection_signal_reconnect(connection_t *conn, connection_reason_t reason)
 		 		break;
 		 	}
 		 	connection_state_enter_closed(conn);
+			connection_signal_halt(conn);
 		 	break;
 		}
 		FALL_THROUGH;
 
 	case CONNECTION_STATE_CONNECTING:
 	case CONNECTION_STATE_TIMEOUT:
-	case CONNECTION_STATE_FAILED:
 		connection_state_enter_failed(conn);
+		break;
+
+	case CONNECTION_STATE_FAILED: /* already entered failed, don't re-enter */
 		break;
 
 	case CONNECTION_STATE_MAX:
@@ -1270,7 +1326,7 @@ void connection_signal_shutdown(connection_t *conn)
 	case CONNECTION_STATE_TIMEOUT:
 	case CONNECTION_STATE_FAILED:
 		connection_state_enter_closed(conn);
-		fr_assert(conn->is_closed);
+		fr_assert(conn->pub.is_closed);
 
 	FALL_THROUGH;
 	case CONNECTION_STATE_CLOSED:
@@ -1324,8 +1380,8 @@ void connection_signal_halt(connection_t *conn)
 	case CONNECTION_STATE_SHUTDOWN:
 	case CONNECTION_STATE_TIMEOUT:
 	case CONNECTION_STATE_FAILED:
-		if (!conn->is_closed) connection_state_enter_closed(conn);
-		fr_assert(conn->is_closed);
+		if (!conn->pub.is_closed) connection_state_enter_closed(conn);
+		fr_assert(conn->pub.is_closed);
 		connection_state_enter_halted(conn);
 		break;
 
@@ -1337,8 +1393,8 @@ void connection_signal_halt(connection_t *conn)
 /** Receive an error notification when we're connecting a socket
  *
  * @param[in] el	event list the I/O event occurred on.
- * @param[in] fd	the I/O even occurred for.
- * @param[in] flags	from_kevent.
+ * @param[in] fd	the I/O event occurred for.
+ * @param[in] flags	from kevent.
  * @param[in] fd_errno	from kevent.
  * @param[in] uctx	The #connection_t this fd is associated with.
  */
@@ -1353,7 +1409,7 @@ static void _connection_error(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 /** Receive a write notification after a socket is connected
  *
  * @param[in] el	event list the I/O event occurred on.
- * @param[in] fd	the I/O even occurred for.
+ * @param[in] fd	the I/O event occurred for.
  * @param[in] flags	from kevent.
  * @param[in] uctx	The #connection_t this fd is associated with.
  */
@@ -1477,6 +1533,8 @@ static int _connection_free(connection_t *conn)
 	 */
 	case CONNECTION_STATE_CONNECTING:
 	case CONNECTION_STATE_CONNECTED:
+	case CONNECTION_STATE_SHUTDOWN:
+	case CONNECTION_STATE_TIMEOUT:
 		connection_state_enter_closed(conn);
 		FALL_THROUGH;
 
@@ -1520,7 +1578,7 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	connection_t *conn;
 	uint64_t id;
 
-	fr_assert(el);
+	fr_assert_msg(el, "No event list provided");
 
 	MEM(conn = talloc(ctx, connection_t));
 	talloc_set_destructor(conn, _connection_free);
@@ -1531,7 +1589,8 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		.pub = {
 			.id = id,
 			.state = CONNECTION_STATE_HALTED,
-			.el = el
+			.el = el,
+			.is_closed = true		/* Starts closed */
 		},
 		.reconnection_delay = conf->reconnection_delay,
 		.connection_timeout = conf->connection_timeout,
@@ -1540,7 +1599,6 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		.close = funcs->close,
 		.failed = funcs->failed,
 		.shutdown = funcs->shutdown,
-		.is_closed = true,		/* Starts closed */
 		.triggers = conf->triggers,
 		.trigger_args = conf->trigger_args,
 		.trigger_cs = conf->trigger_cs,
@@ -1558,10 +1616,17 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	/*
 	 *	Pre-allocate a on_halt watcher for deferred signal processing
+	 *
+	 *	Note that we do NOT set "oneshot".  This lets the watcher remain valid after the oneshot
+	 *	watcher fires.  Otherwise the connection is freed out from under the watcher.
 	 */
 	conn->on_halted = connection_add_watch_post(conn, CONNECTION_STATE_HALTED,
-						    _deferred_signal_connection_on_halted, true, NULL);
+						    _deferred_signal_connection_on_halted, false, NULL);
 	connection_watch_disable(conn->on_halted);	/* Start disabled */
 
 	return conn;
+}
+
+void *connection_uctx_get(connection_t *conn) {
+	return conn->uctx;
 }

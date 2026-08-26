@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include "dns.h"
 #include "attrs.h"
+#include <freeradius-devel/protocol/dns/rfc1034.h>
 
 static uint32_t instance_count = 0;
 static bool	instantiated = false;
@@ -48,7 +49,6 @@ fr_dict_autoload_t dns_dict[] = {
 	DICT_AUTOLOAD_TERMINATOR
 };
 
-//fr_dict_attr_t const *attr_dns_packet_type;
 fr_dict_attr_t const *attr_dns_packet;
 fr_dict_attr_t const *attr_dns_question;
 fr_dict_attr_t const *attr_dns_rr;
@@ -57,7 +57,6 @@ fr_dict_attr_t const *attr_dns_ar;
 
 extern fr_dict_attr_autoload_t dns_dict_attr[];
 fr_dict_attr_autoload_t dns_dict_attr[] = {
-//	{ .out = &attr_dns_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT16, .dict = &dict_dns },
 	{ .out = &attr_dns_packet, .name = "Header", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
 	{ .out = &attr_dns_question, .name = "Question", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
 	{ .out = &attr_dns_rr, .name = "Resource-Record", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
@@ -70,6 +69,7 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 	[FR_DNS_QUERY] = "Query",
 	[FR_DNS_INVERSE_QUERY] = "Inverse-Query",
 	[FR_DNS_STATUS] = "Status",
+	[FR_DNS_NOTIFY] = "Notify",
 	[FR_DNS_UPDATE] = "Update",
 	[FR_DNS_STATEFUL_OPERATION] = "Stateful-Operation",
 };
@@ -110,6 +110,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 {
 	uint8_t const *p, *end;
 	int qdcount, count, expected;
+	uint8_t opcode;
 
 	if (packet_len <= DNS_HDR_LEN) {
 		DECODE_FAIL(MIN_LENGTH_PACKET);
@@ -129,9 +130,34 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		return false;
 	}
 
+	/*
+	 *	@todo - the truncation rules mean that the various counts below are wrong, and the caller
+	 *	should retry over TCP.  This is really an indication to us, that we need to fully implement
+	 *	the truncation checks.
+	 */
+	if ((packet[2] & 0x02) != 0) {
+		DECODE_FAIL(TRUNCATED);
+		return false;
+	}
 	qdcount = fr_nbo_to_uint16(packet + 4);
 
-	if (query) {
+	opcode = (packet[2] >> 3) & 0x0f;
+	if ((opcode >= FR_DNS_CODE_MAX) || !fr_dns_packet_names[opcode]) {
+		DECODE_FAIL(UNKNOWN_OPCODE);
+		return false;
+	}
+
+	/*
+	 *	RFC 2136 (DNS update) defines the four "count" fields to have different meanings:
+	 *
+	 *	ZOCOUNT The number of RRs in the Zone Section.
+	 *	PRCOUNT The number of RRs in the Prerequisite Section.
+	 *	UPCOUNT The number of RRs in the Update Section.
+	 *	ADCOUNT The number of RRs in the Additional Data Section.
+	 *
+	 *	@todo - we can likely do more validation checks on input packets.
+	 */
+	if (query && (opcode != FR_OPCODE_VALUE_UPDATE)) {
 		/*
 		 *	There should be at least one query, and no
 		 *	replies in the query.
@@ -144,12 +170,14 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			DECODE_FAIL(NO_QUESTIONS);
 			return false;
 		}
+
 		if (fr_nbo_to_uint16(packet + 6) != 0) {
-			DECODE_FAIL(NS_IN_QUESTION);
+			DECODE_FAIL(ANSWERS_IN_QUESTION);
 			return false;
 		}
+
 		if (fr_nbo_to_uint16(packet + 8) != 0) {
-			DECODE_FAIL(ANSWERS_IN_QUESTION);
+			DECODE_FAIL(NS_IN_QUESTION);
 			return false;
 		}
 		// additional records can exist!
@@ -270,7 +298,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			}
 
 			/*
-			 *	0b10 and 0b10 are forbidden
+			 *	0b01 and 0b10 are forbidden
 			 */
 			if (*p > 63) {
 				DECODE_FAIL(INVALID_POINTER);
@@ -342,6 +370,9 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			return false;
 		}
 
+		/*
+		 *	@todo - RFC2136 allows RDLENGTH=0 for many cases.
+		 */
 		len = fr_nbo_to_uint16(p);
 		if (!is_opt && (len == 0)) {
 			DECODE_FAIL(ZERO_RR_LEN);
@@ -376,6 +407,11 @@ next:
 		DECODE_FAIL(TOO_FEW_RRS);
 		return false;
 	}
+
+	/*
+	 *	@todo - save fr_dns_marker[] data, so that it can be used by fr_dns_labels_get().  This helps
+	 *	to reduce redundant work.
+	 */
 
 	DECODE_FAIL(NONE);
 	return true;

@@ -31,14 +31,9 @@ RCSID("$Id$")
 #include <time.h>
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/pool.h>
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/util/value.h>
 
-#include <talloc.h>
 
 #include "rest.h"
 
@@ -67,6 +62,13 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
 	REST_HTTP_BODY_INVALID,			// REST_HTTP_BODY_HTML
 	REST_HTTP_BODY_PLAIN,			// REST_HTTP_BODY_PLAIN
 	REST_HTTP_BODY_PLAIN			// REST_HTTP_BODY_CRL
+};
+
+/** Table of which known body types are expected to give binary data
+ */
+const bool http_body_type_binary[REST_HTTP_BODY_NUM_ENTRIES] = {
+	[REST_HTTP_BODY_UNKNOWN] = true,
+	[REST_HTTP_BODY_CRL] = true,
 };
 
 /*
@@ -695,7 +697,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
  *	- Number of fr_pair_ts processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static int rest_decode_post(UNUSED rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			    request_t *request, fr_curl_io_request_t *randle, char *raw, size_t rawlen)
 {
 	CURL			*candle = randle->candle;
@@ -722,6 +724,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		char			*name  = NULL;
 		char			*value = NULL;
 
+		char const		*to_parse = NULL;
 		char			*expanded = NULL;
 
 		size_t			len;
@@ -787,11 +790,16 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 
 		talloc_free(dst);	/* Free our temporary tmpl */
 
-		RDEBUG2("Performing xlat expansion of response value");
+		if (section->response.post.do_xlat) {
+			RDEBUG2("Performing xlat expansion of response value");
 
-		if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) goto skip;
+			if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) goto skip;
 
-		fr_assert(expanded);
+			fr_assert(expanded);
+			to_parse = expanded;
+		} else {
+			to_parse = value;
+		}
 
 		MEM(vp = fr_pair_afrom_da(ctx, da));
 		if (!vp) {
@@ -804,7 +812,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			return count;
 		}
 
-		ret = fr_pair_value_from_str(vp, expanded, strlen(value), NULL, true);
+		ret = fr_pair_value_from_str(vp, to_parse, strlen(to_parse), NULL, true);
 		TALLOC_FREE(expanded);
 		if (ret < 0) {
 			RWDEBUG("Incompatible value assignment, skipping");
@@ -891,7 +899,7 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 				return NULL;
 			}
 			fr_value_box_bstrndup_shallow(&src, NULL, expanded,
-						      talloc_array_length(expanded) - 1, true);
+						      talloc_strlen(expanded), true);
 		} else {
 			fr_value_box_bstrndup_shallow(&src, NULL, value,
 						      json_object_get_string_len(leaf), true);
@@ -960,9 +968,13 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 @endverbatim
  *
  * JSON valuepair flags:
- *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to true.
+ *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to the
+ *			   "do_xlat" config item in the response "json"
+ *			   subsection, which itself defaults to false.
  *  - is_json	(optional) If true, any nested JSON data will be copied to the
- *			   fr_pair_t in string form. Defaults to true.
+ *			   fr_pair_t in string form. Defaults to the "is_json"
+ *			   config item in the response "json" subsection, which
+ *			   itself defaults to false.
  *  - op	(optional) Controls how the attribute is inserted into
  *			   the target list. Defaults to ':=' (T_OP_SET).
  *
@@ -1012,8 +1024,8 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 
 			json_flags_t flags = {
 				.op = T_OP_SET,
-				.do_xlat = 1,
-				.is_json = 0
+				.do_xlat = section->response.json.do_xlat,
+				.is_json = section->response.json.is_json
 			};
 
 			request_t		*current = request;
@@ -1251,7 +1263,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 	request_t		*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = (char *)in, *p = start, *end = p + (size * nmemb);
-	char			*q;
+	char const		*q;
 	size_t			len;
 
 	http_body_type_t	type;
@@ -1347,12 +1359,16 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		}
 
 		/*
-		 *  Convert status code into an integer value
+		 *  Convert status code into an integer value.  strtoul needs
+		 *  a writable endptr, so shadow q in a local scope.
 		 */
-		q = NULL;
-		ctx->code = (int)strtoul(p, &q, 10);
-		fr_assert(q == (p + 3));	/* We check this above */
-		p = q;
+		{
+			char *qq = NULL;
+
+			ctx->code = (int)strtoul(p, &qq, 10);
+			fr_assert(qq == (p + 3));	/* We check this above */
+			p = qq;
+		}
 
 		/*
 		 *  Process reason_phrase (if present).
@@ -1408,12 +1424,15 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			 *  Figure out if the type is supported by one of the decoders.
 			 */
 			} else {
-				ctx->type = http_body_type_supported[type];
-
 				/*
 				 *  No need to check supported types if we accept everything.
 				 */
-				if (ctx->section->response.accept_all) break;
+				if (ctx->section->response.accept_all) {
+					ctx->type = type;
+					break;
+				}
+
+				ctx->type = http_body_type_supported[type];
 
 				switch (ctx->type) {
 				case REST_HTTP_BODY_UNKNOWN:
@@ -1470,7 +1489,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 	request_t			*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = in, *p = start, *end = p + (size * nmemb);
-	char			*q;
+	char const		*q;
 
 	size_t			needed;
 
@@ -1549,7 +1568,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 void rest_response_error(request_t *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
-	char		*q;
+	char const	*q;
 	size_t len;
 
 	len = rest_get_handle_data(&p, handle);
@@ -1574,7 +1593,7 @@ void rest_response_error(request_t *request, fr_curl_io_request_t *handle)
 void rest_response_debug(request_t *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
-	char		*q;
+	char const	*q;
 	size_t len;
 
 	len = rest_get_handle_data(&p, handle);
@@ -1638,6 +1657,19 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
 	return ctx->response.used;
 }
 
+/** Return the body type of a HTTP response
+ *
+ * @param[in] randle	used for the last request.
+ * @return
+ *	- http_body_type_t
+ */
+http_body_type_t rest_response_body_type_get(fr_curl_io_request_t *randle)
+{
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
+
+	return ctx->response.type;
+}
+
 /** Configures body specific curlopts.
  *
  * Configures libcurl handle to use either chunked mode, where the request
@@ -1666,7 +1698,7 @@ static int rest_request_config_body(module_ctx_t const *mctx, rlm_rest_section_t
 	 *  no body should be sent.
 	 */
 	if (!func) {
-		FR_CURL_REQUEST_SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_POSTFIELDSIZE, 0L);
 		return 0;
 	}
 
@@ -1817,7 +1849,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	/*
 	 *	Control which HTTP version we're going to use
 	 */
-	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) FR_CURL_REQUEST_SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
+	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) FR_CURL_REQUEST_SET_OPTION(CURLOPT_HTTP_VERSION, (long)inst->http_negotiation);
 
 	/*
 	 *	Setup any header options and generic headers.
@@ -1851,7 +1883,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Section: %s", section->name);
 	if (unlikely(rest_request_config_add_header(request, randle, buffer, false) < 0)) return -1;
 
-	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", cf_section_name2(unlang_call_current(request)));
+	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", unlang_interpret_virtual_server(request));
 	if (unlikely(rest_request_config_add_header(request, randle, buffer, false) < 0)) return -1;
 
 	/*
@@ -2220,5 +2252,5 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, reques
 	MEM(*out);
 	curl_free(scheme);
 
-	return talloc_array_length(*out) - 1;	/* array_length includes \0 */
+	return talloc_strlen(*out);	/* array_length includes \0 */
 }

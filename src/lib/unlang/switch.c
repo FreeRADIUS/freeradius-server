@@ -36,7 +36,7 @@ static unlang_action_t unlang_switch(UNUSED unlang_result_t *p_result, request_t
 	unlang_group_t		*switch_g;
 	unlang_switch_t		*switch_gext;
 
-	fr_value_box_t const	*box = NULL;
+	fr_value_box_t const	*box = NULL, *to_free = NULL;
 
 	fr_pair_t		*vp;
 
@@ -86,7 +86,12 @@ static unlang_action_t unlang_switch(UNUSED unlang_result_t *p_result, request_t
 
 		slen = tmpl_aexpand_type(unlang_interpret_frame_talloc_ctx(request), &box, FR_TYPE_VALUE_BOX,
 					 request, switch_gext->vpt);
-		if (slen < 0) goto find_null_case;
+		if (slen < 0) {
+			RDEBUG("Switch failed expanding %s - %s", switch_gext->vpt->name, fr_strerror());
+			goto find_null_case;
+		}
+		to_free = box;
+
 	} else if (!fr_cond_assert_msg(0, "Invalid tmpl type %s", tmpl_type_to_str(switch_gext->vpt->type))) {
 		return UNLANG_ACTION_FAIL;
 	}
@@ -99,7 +104,7 @@ static unlang_action_t unlang_switch(UNUSED unlang_result_t *p_result, request_t
 	 *	create a reference.
 	 */
 	fr_value_box_copy_shallow(NULL, &case_vpt.data.literal, box);
-	found = fr_htrie_find(switch_gext->ht, &my_case);
+	fr_htrie_find((void **)&found, switch_gext->ht, &my_case);
 	if (!found) {
 	find_null_case:
 		found = switch_gext->default_case;
@@ -110,7 +115,17 @@ do_null_case:
 	 *	Nothing found.  Just continue, and ignore the "switch"
 	 *	statement.
 	 */
-	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
+	if (!found) {
+		if (box) {
+			RWDEBUG("Failed to find 'case' target for value %pV", box);
+		} else {
+			RWDEBUG("Failed to find 'default' target when expansion of %s returning no value",
+				switch_gext->vpt->name);
+		}
+		talloc_const_free(to_free);
+		return UNLANG_ACTION_EXECUTE_NEXT;
+	}
+	talloc_const_free(to_free);
 
 	if (unlang_interpret_push(NULL, request, found, FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 		RETURN_UNLANG_ACTION_FATAL;
@@ -204,12 +219,11 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 		 *	Bare word strings are attribute references
 		 */
 		if (tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt)) {
-		fail_attr:
 			cf_log_err(cs, "arguments to 'case' statements MUST NOT be attribute references.");
 			goto fail;
 		}
 
-		if (!tmpl_is_data(vpt) || tmpl_is_data_unresolved(vpt)) {
+		if (!tmpl_is_data(vpt)) {
 			cf_log_err(cs, "arguments to 'case' statements MUST be static data.");
 		fail:
 			talloc_free(vpt);
@@ -221,7 +235,8 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 		 *	strings".
 		 */
 		if ((quote == T_BARE_WORD) && (tmpl_value_type(vpt) == FR_TYPE_STRING)) {
-			goto fail_attr;
+			cf_log_err(cs, "String arguments to 'case' statements MUST be quoted.");
+			goto fail;
 		}
 
 	} /* else it's a default 'case' statement */
@@ -243,7 +258,7 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 	case_gext->vpt = talloc_steal(case_gext, vpt);
 
 	/*
-	 *	Set all of it's codes to return, so that
+	 *	Set all of its codes to return, so that
 	 *	when we pick a 'case' statement, we don't
 	 *	fall through to processing the next one.
 	 */
@@ -252,7 +267,7 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 	return c;
 }
 
-static int8_t case_cmp(void const *one, void const *two)
+static fr_cmp_ret_t case_cmp(void const *one, void const *two)
 {
 	unlang_case_t const *a = (unlang_case_t const *) one; /* may not be talloc'd! See switch.c */
 	unlang_case_t const *b = (unlang_case_t const *) two; /* may not be talloc'd! */
@@ -376,12 +391,16 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 	if (tmpl_is_xlat(gext->vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(gext->vpt);
 
-		if (xlat->flags.constant || xlat->flags.pure) {
+		fr_assert(xlat != NULL);
+
+		/*
+		 *	Pure xlats are allowed, e.g. for %tolower(User-Name).
+		 */
+		if (xlat->flags.constant) {
 			cf_log_err(cs, "Cannot use constant data for 'switch' statement");
 			goto error;
 		}
 	}
-
 
 	if (tmpl_needs_resolving(gext->vpt)) {
 		cf_log_err(cs, "Cannot resolve key for 'switch' statement");
@@ -398,11 +417,7 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 		fr_assert(type != FR_TYPE_NULL);
 		fr_assert(fr_type_is_leaf(type));
 
-	do_cast:
-		if (tmpl_cast_set(gext->vpt, type) < 0) {
-			cf_log_perr(cs, "Failed setting cast type");
-			goto error;
-		}
+		goto do_cast;
 
 	} else {
 		/*
@@ -412,7 +427,12 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 		type = tmpl_data_type(gext->vpt);
 		if ((type == FR_TYPE_NULL) || (type == FR_TYPE_VOID)) {
 			type = FR_TYPE_STRING;
-			goto do_cast;
+		}
+
+	do_cast:
+		if (tmpl_cast_set(gext->vpt, type) < 0) {
+			cf_log_perr(cs, "Failed setting cast type");
+			goto error;
 		}
 	}
 
@@ -460,7 +480,7 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 			 *	We finally support "default" sections for "switch".
 			 */
 			if (strcmp(name1, "default") == 0) {
-				if (cf_section_name2(subcs) != 0) {
+				if (cf_section_name2(subcs) != NULL) {
 					cf_log_err(subci, "\"default\" sections cannot have a match argument");
 					goto error;
 				}
@@ -496,17 +516,23 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 		if (!case_gext->vpt) {
 			gext->default_case = single;
 
-		} else if (!fr_htrie_insert(gext->ht, single)) {
-			single = fr_htrie_find(gext->ht, single);
+		} else {
+			int insert_ret;
 
-			/*
-			 *	@todo - look up the key and get the previous one?
-			 */
-			cf_log_err(subci, "Failed inserting 'case' statement.  Is there a duplicate?");
+			insert_ret = fr_htrie_insert(gext->ht, single);
+			if (unlikely(insert_ret < 0)) {
+				cf_log_err(subci, "Failed inserting 'case' statement - %s", fr_strerror());
+				goto error;
+			}
+			if (insert_ret > 0) {
+				fr_htrie_find((void **)&single, gext->ht, single);
 
-			if (single) cf_log_err(unlang_generic_to_group(single)->cs, "Duplicate may be here.");
+				cf_log_err(subci, "Failed inserting 'case' statement.  Is there a duplicate?");
 
-			goto error;
+				if (single) cf_log_err(unlang_generic_to_group(single)->cs, "Duplicate may be here.");
+
+				goto error;
+			}
 		}
 
 		unlang_list_insert_tail(&g->children, single);

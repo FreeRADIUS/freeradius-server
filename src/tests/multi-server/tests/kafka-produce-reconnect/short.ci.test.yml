@@ -1,0 +1,50 @@
+#
+#  Broker disconnect / reconnect round-trip test.
+#
+#  proto_load on kafka-producer1 generates Access-Requests steadily
+#  for `loadgen.duration` seconds.  Partway through that window we
+#  cut the producer's network to the broker with 100% packet loss,
+#  hold for `outage_seconds`, then restore.  Messages produced
+#  during the outage queue inside librdkafka; their request threads
+#  yield waiting for delivery reports.  When the link is restored
+#  librdkafka reconnects, drains its queue, delivery reports fire
+#  and yielded requests resume.
+#
+#  Pass criterion: consumer reports PASS with
+#  received == expected == loadgen total.
+#
+listener_type: file
+
+#
+#  proto_load profile.  max_pps has a floor of 10 internally, so
+#  the effective steady-state rate is 10 pps.  Duration must be
+#  long enough that proto_load is still generating by the time the
+#  framework finishes compose-up and reaches state_1 (CI DinD adds
+#  ~40-50s of startup before the first state runs).
+#
+loadgen:
+  start_pps: 10
+  max_pps: 10
+  duration: 30
+  step: 10
+  parallel: 1
+  max_backlog: 1000
+
+#  30s x 10pps = 300, but num_messages caps at 200 so proto_load
+#  stops at 200 emitted.  Consumer expects exactly 200.  If the
+#  disconnect / reconnect path drops ANY message the test fails -
+#  that's deliberate, we want to catch regressions, not hide them.
+expected_messages: 200
+
+kafka_topic: fr-multi-server-reconnect-test
+
+#  How long to hold the outage.  Shorter than librdkafka's default
+#  message.timeout.ms (5 min) so queued produces don't fail before
+#  recovery.
+outage_seconds: 3
+
+#  Timeouts sized for the self-hosted CI DinD runners.  test_timeout
+#  must cover compose up + state_1 outage + state_2 wait-for-summary.
+test_timeout: 240
+test_verify_timeout: 120
+consumer_timeout: 180

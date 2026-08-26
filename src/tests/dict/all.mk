@@ -20,11 +20,11 @@ $(OUTPUT)/%.dict: $(DIR)/%.dict $(TEST_BIN_DIR)/unit_test_attribute
 	@cp $< $@
 	@cp src/tests/dict/base.txt $@.txt
 	@echo "load-dictionary $(top_srcdir)/$<" >> $@.txt
-	${Q}if ! $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -r "$@" "$@.txt" > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}if ! $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" "$@.txt" > "$@.log" 2>&1 || ! test -f "$@"; then \
 		rm -f $@; \
 		cat "$@.log"; \
 		echo "# $@.log"; \
-		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -r "$@" -xx '$@.txt'"; \
+		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" -xx '$@.txt'"; \
 		exit 1; \
 	fi
 
@@ -38,11 +38,11 @@ $(OUTPUT)/%.dict: $(DIR)/%.dict $(TEST_BIN_DIR)/unit_test_attribute
 	@cp $< $@
 	@cp src/tests/dict/base.txt $@.txt
 	@echo "load-dictionary $(top_srcdir)/$<" >> $@.txt
-	${Q}if ! $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -r "$@" "$@.txt" > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}if ! $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" "$@.txt" > "$@.log" 2>&1 || ! test -f "$@"; then \
 		rm -f $@; \
 		cat "$@.log"; \
 		echo "# $@.log"; \
-		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -r "$@" -xx '$@.txt'"; \
+		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" -xx '$@.txt'"; \
 		exit 1; \
 	fi
 

@@ -1,0 +1,18 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc4849#section-2[NAS-Filter-Rule]   |The filter rules to be applied for the select user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.4[NAS-IP-Address]  |The NAS's IP Address that is requesting authentication of the user.
+
+|https://datatracker.ietf.org/doc/html/rfc3162#section-3.1[NAS-IPv6-Address]    |The NAS's IPv6 Address that is requesting authentication of the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.32[NAS-Identifier] |A string used to identify the NAS originating the Access-Request packet.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.5[NAS-Port]    |The NAS's physical port number that is authenticating the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.17[NAS-Port-Id]    |The name (text string) used to reference the NAS's port that is authenticating the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.41[NAS-Port-Type]  |The type of the physical port of the NAS that is authenticating the user.
+
+|====

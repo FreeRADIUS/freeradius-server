@@ -1,0 +1,109 @@
+= Troubleshooting
+
+The guides in this section enable administrators to quickly determine
+the root cause of an issue, to resolve it, and to get the FreeRADIUS
+server back into production.  The guides also provide information that
+helps administrators easily debug changes to complex policies.
+
+The most important thing to know about these guides is that _method is
+more important than memorization_.  That is, there is no one piece of
+information you can remember that will somehow solve all problems.
+FreeRADIUS has extensive documentation, and there is no need to
+memorise it.
+
+Instead of searching for the one piece of information which will
+somehow fix the problem, you should carefully troubleshoot the issues
+that you are seeing.  Troubleshooting is the step-by-step method that
+helps you to determine the root cause of a problem.  Once the root
+cause is determined, you should use similar step-by-step methods to
+fix the problem, and verify that the fix works.
+
+This process can seem slow, but it is much more productive than making
+a bunch of changes in the hope that one of the changes will fix the
+issue.  As the saying goes, **slow is fast, and fast is slow**.
+
+== General Rules
+
+Run the server in debugging mode (`radiusd -X`).  Look at the debug
+output.  Don't look at the output of `radclient`.  **You cannot debug
+server policies by looking at a simple binary result of
+`Access-Accept` or `Access-Reject` on the client**.
+
+The error messages produced by FreeRADIUS are necessarily short, and
+cannot contain a full explanation of the issue.  The documentation
+pages here are much larger, and can therefore contain detailed
+description descriptions.  In many cases, the debug output of the
+server will point you to a relevant documentation page!
+
+== Network Errors
+
+The xref:network/index.adoc[network errors] page covers the most
+common errors that people see when initially trying to configure the
+server, and have it process packets.  Start there if the server isn't
+receiving packets, or if it is complaining about the packets it is
+receiving.
+
+== Authentication Failures
+
+* password incorrect
+* unprintable characters in the password
+* certificate failures
+* authentication does not complete
+
+== Database Problems
+
+* can't connect
+* user not found in database
+
+== How to make Changes
+
+If your server starts up successfully, *save* a copy of the
+configuration so you always have a "known working" configuration. When
+the server doesn't start up, go back and verify the configuration and
+read the entire debug output.
+
+Follow these recommended steps to troubleshoot your server:
+
+1. Make small, discrete changes to the configuration files.
+
+2. Start the server in debugging mode by entering the command `radiusd -X`.
+
+3. Send test packets using `radclient`, or wait for a real client to send a packet.
+
+4. Read the debug output to verify that the it is doing what you expect.
+
+The debug output show the current configuration and relevant information such as:
+
+* The server is reading the configuration files that you expect it to read
+
+* Datastores are connected and operating.
+
+* the server is listening on the correct IP address(es) and port(s).
+
+* Test packets are accepted by the server.
+
+* The debug output shows that the request packets are being processed as you expect.
+
+* The response packets contain the attributes you expect to see.
+
+== Common Issues
+
+Some of the more common issues are covered in the
+xref:ROOT:faq.adoc[FAQ]. The section is divided into the following
+areas:
+
+* xref:network/index.adoc[Network Errors]
+* xref:user.adoc[User Management]
+* xref:server.adoc[Server Configuration]
+* xref:client.adoc[Client Configuration]
+* xref:connect_nas.adoc[Connectivity-NAS]
+* xref:datastore.adoc[Datastores]
+
+== Further Readings
+
+* https://www.inkbridgenetworks.com/blog/blog-10/what-does-unresponsive-child-error-message-mean-116[What does unresponsive child error message mean]
+* https://www.inkbridgenetworks.com/blog/blog-10/common-freeradius-debug-messages-96[Common FreeRADIUS debug messages]
+
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

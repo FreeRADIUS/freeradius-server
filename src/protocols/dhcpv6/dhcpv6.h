@@ -132,7 +132,7 @@ typedef struct {
 typedef struct {
 	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
 	uint32_t		transaction_id;		//!< previous transaction ID
-	uint8_t			*duid;			//!< the expected DUID, in wire format
+	uint8_t const  		*duid;			//!< the expected DUID, in wire format
 	size_t			duid_len;		//!< length of the expected DUID
 } fr_dhcpv6_decode_ctx_t;
 
@@ -181,6 +181,8 @@ void		fr_dhcpv6_global_free(void);
 /*
  *	encode.c
  */
+void		*fr_dhcpv6_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx);
+
 ssize_t		fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * encode_ctx);
 
 ssize_t		fr_dhcpv6_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list);

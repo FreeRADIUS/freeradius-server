@@ -187,6 +187,10 @@ static inline CC_HINT(nonnull) bool fr_tls_session_request_bound(SSL *ssl)
  */
 static inline request_t *fr_tls_session_request(SSL const *ssl)
 {
+	request_t *request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+
+	if (!request) return NULL;
+
 	return talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
 }
 
@@ -202,7 +206,7 @@ static inline CC_HINT(nonnull) void _fr_tls_session_request_bind(char const *fil
 		request_t *old;
 		old = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 		if (old) {
-			(void)talloc_get_type_abort(ssl, request_t);
+			(void)talloc_get_type_abort(old, request_t);
 			fr_assert(0);
 		}
 	}

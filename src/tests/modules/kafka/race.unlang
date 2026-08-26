@@ -1,0 +1,37 @@
+#
+#  Race dr_msg_cb against kafka_xlat_produce_signal.
+#
+#  The `freeradius-test-race` topic is configured with
+#  `message.timeout.ms = 300`.  We wrap a batch of concurrent produces
+#  in `timeout 300ms`, so the unlang cancel signal and librdkafka's
+#  DR-timeout fire at approximately the same wall-clock moment.  Both
+#  paths run on the same worker thread's event loop, but the ordering
+#  between them - "DR first, then cancel" vs "cancel first, then DR"
+#  vs "DR marks runnable, cancel fires before resume gets dispatched"
+#  - is determined entirely by epoll/kqueue timing.
+#
+#  Running enough concurrent produces here means at least one of them
+#  hits each interleaving.  Any UAF, double-free, or lost pctx
+#  surfaces here under ASAN/TSAN.  The only behavioural assertion is
+#  that we reach test_pass without the worker wedging or tripping an
+#  invariant check in the interpreter.
+#
+redundant {
+	timeout 300ms {
+		parallel {
+			group { %kafka_unreachable.produce('freeradius-test-race', null, "race 1") }
+			group { %kafka_unreachable.produce('freeradius-test-race', null, "race 2") }
+			group { %kafka_unreachable.produce('freeradius-test-race', null, "race 3") }
+			group { %kafka_unreachable.produce('freeradius-test-race', null, "race 4") }
+			group { %kafka_unreachable.produce('freeradius-test-race', null, "race 5") }
+			group { %kafka_unreachable.produce('freeradius-test-race', null, "race 6") }
+			group { %kafka_unreachable.produce('freeradius-test-race', null, "race 7") }
+			group { %kafka_unreachable.produce('freeradius-test-race', null, "race 8") }
+		}
+	}
+	group {
+		ok
+	}
+}
+
+test_pass

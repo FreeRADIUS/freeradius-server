@@ -25,14 +25,11 @@ RCSID("$Id$")
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <sys/event.h>
-#include <stdio.h>
-#include <string.h>
 #include <pthread.h>
 
 #ifdef HAVE_GETOPT_H
@@ -90,7 +87,7 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
-	sched = fr_schedule_create(autofree, NULL, &default_log, L_DBG_LVL_MAX, num_networks, num_workers, NULL, NULL);
+	sched = fr_schedule_create(autofree, false, NULL, &default_log, L_DBG_LVL_MAX, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
 		fr_exit_now(EXIT_FAILURE);

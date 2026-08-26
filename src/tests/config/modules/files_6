@@ -1,0 +1,6 @@
+#
+#  Test: accounting file
+#
+files {
+	filename = ${modconfdir}/files/accounting
+}

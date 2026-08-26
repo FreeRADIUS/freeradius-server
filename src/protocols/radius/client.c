@@ -666,7 +666,7 @@ int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id)
 		return -1;
 	}
 
-	if ((id < 0) || (id > 256)) {
+	if ((id < 0) || (id > 255)) {
 		fr_strerror_const("Invalid ID");
 		return -1;
 	}

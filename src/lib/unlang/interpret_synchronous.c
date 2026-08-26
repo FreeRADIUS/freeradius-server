@@ -230,8 +230,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 			break;
 		}
 
-		DEBUG4("%d event(s) pending%s",
-		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
+		DEBUG4("%d event(s) pending", num_events);
 
 		/*
 		 *	This function ends up pushing a
@@ -254,7 +253,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		 *	request, THEN we're guaranteed that there is
 		 *	still a timer event left.
 		 */
-		sub_request = fr_heap_pop(&intps->runnable);
+		fr_heap_pop((void **)&sub_request, &intps->runnable);
 		if (!sub_request) {
 			DEBUG4("No pending requests (%d yielded)", intps->yielded);
 			continue;

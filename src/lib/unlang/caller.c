@@ -41,12 +41,12 @@ static unlang_action_t unlang_caller(unlang_result_t *p_result, request_t *reque
 	 *	No parent, or the dictionaries don't match.  Ignore it.
 	 */
 	if (!request->parent || (request->parent->proto_dict != gext->dict)) {
-		RDEBUG2("...");
+		RDEBUG2("... parent does not match 'caller %s', ignoring contents ...", fr_dict_root(gext->dict)->name);
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
 	/*
-	 *	The dictionary matches.  Go recurse into its' children.
+	 *	The dictionary matches.  Go recurse into its children.
 	 */
 	return unlang_group(p_result, request, frame);
 }

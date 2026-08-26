@@ -1,0 +1,277 @@
+name: CI Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - coverity_scan
+      - run-fuzzer**
+      - debug-fuzzer-**
+  pull_request:
+  schedule:
+    - cron: '0 20 * * *'
+
+#
+#  Cancel any in-flight or queued run of this workflow on the same branch.
+#
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  ci_prev_run:
+    name: "CI already run?"
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      #
+      #  concurrent_skipping widens the duplicate check to runs still
+      #  executing: same_content_newer skips this run when an older run
+      #  of the identical tree is in flight. The ff to master lands while
+      #  the branch pipeline that tested the commit is still running, so
+      #  only that concurrent check can match. Developer branches and PRs
+      #  keep 'never': their concurrency groups cancel the older run, and
+      #  skipping against a cancelled run would merge an untested tree.
+      #
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5.3.2
+        with:
+          concurrent_skipping: ${{ github.event_name == 'push' && !startsWith(github.ref_name, 'developer/') && 'same_content_newer' || 'never' }}
+
+  #
+  #  Determines which registry the images live in, which tag of them this ref
+  #  should use, and whether this ref changes anything they bake in.  See
+  #  .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
+  #
+  #  Does the registry hold the images this ref expects? They can be absent
+  #  for multiple reasons, a failed refresh, pruned images, rebuilt registry.
+  #
+  #  Runs on a self-hosted runner, because GitHub runners can't resolve the
+  #  registry. If one image is present, we assume all are. If we can't get a
+  #  definitive answer, we skip the build.
+  #
+  images_present:
+    name: "Docker images present?"
+    needs: [common_vars]
+    if: ${{ github.event_name == 'push'
+            && github.repository_owner == 'FreeRADIUS'
+            && needs.common_vars.outputs.images_changed == 'false' }}
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
+    outputs:
+      missing: ${{ steps.probe.outputs.missing }}
+    steps:
+      - name: Install regctl
+        uses: regclient/actions/regctl-installer@main
+
+      - name: Look for the sentinel image
+        id: probe
+        env:
+          DOCKER_SENTINEL_IMAGE: ${{ needs.common_vars.outputs.image_prefix }}self-hosted:${{ needs.common_vars.outputs.image_tag }}
+          DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+        run: |
+          if [ -n "$DOCKER_USERNAME" ]; then
+            printf '%s' "$DOCKER_PASSWORD" \
+              | regctl registry login "$DOCKER_REGISTRY" -u "$DOCKER_USERNAME" --pass-stdin \
+              || echo "could not sign in to $DOCKER_REGISTRY"
+          fi
+
+          if regctl manifest head "$DOCKER_SENTINEL_IMAGE" >/dev/null 2>&1; then
+            echo "$DOCKER_SENTINEL_IMAGE is present"
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          elif regctl repo ls "$DOCKER_REGISTRY" >/dev/null 2>&1; then
+            #  The registry answered, so it is reachable and the image really
+            #  is absent.
+            echo "$DOCKER_SENTINEL_IMAGE is absent, the images need rebuilding"
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$DOCKER_REGISTRY did not answer, assuming the images are present"
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  #
+  #  Skipped on the vast majority of commits.  When it does run every leg
+  #  waits for it, so the docker images have all necessary packages before
+  #  the rest of CI runs.
+  #
+  #  Only a push rebuilds, because only a push publishes, and a pull request
+  #  has no tag of its own to publish to.  A branch publishes under a tag
+  #  named after the branch, so the images the default branch reads are never
+  #  overwritten by somebody's work in progress.  A fork has no images at all
+  #  until it builds them, so a fork always refreshes, into its own registry
+  #  where it can overwrite nothing but its own tags.
+  #
+  #
+  #  A skipped job in "needs" skips every dependent before the dependent's
+  #  own condition is read, unless the condition contains !cancelled().
+  #  images_present skips whenever the images changed, and an image change
+  #  is exactly when the refresh has to run, so the condition checks each
+  #  prerequisite's result itself.
+  #
+  docker_ci_images_refresh:
+    name: Docker CI images refresh
+    needs: [common_vars, images_present, ci_prev_run]
+    if: ${{ !cancelled()
+            && needs.common_vars.result == 'success'
+            && needs.ci_prev_run.result == 'success'
+            && needs.images_present.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true'
+            && ((github.event_name == 'push'
+                 && (needs.common_vars.outputs.images_changed == 'true'
+                     || needs.images_present.outputs.missing == 'true'))
+                || github.repository_owner != 'FreeRADIUS') }}
+    uses: ./.github/workflows/docker-ci-images-refresh.yml
+    secrets: inherit
+
+  #
+  #  Only the multi-server tests, docker-crossbuild and docker-service read
+  #  the freeradius4-{crossbuild,profiling-deps,service} images, and those
+  #  images take the longest to build, so their refresh runs as its own job
+  #  and only the legs that read them wait for it.  The build legs start as
+  #  soon as docker_ci_images_refresh publishes the images they read.
+  #
+  docker_freeradius_images_refresh:
+    name: Docker FreeRADIUS images refresh
+    needs: [docker_ci_images_refresh]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result == 'success' }}
+    uses: ./.github/workflows/docker-freeradius-images-refresh.yml
+    secrets: inherit
+
+  ci:
+    needs: [docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  ci-deb:
+    needs: [docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+    name: CI DEB
+    uses: ./.github/workflows/ci-deb.yml
+    secrets: inherit
+
+  ci-rpm:
+    needs: [docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+    name: CI RPM
+    uses: ./.github/workflows/ci-rpm.yml
+    secrets: inherit
+
+  ci-sanitizers:
+    needs: [docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+    name: CI-Sanitizers
+    uses: ./.github/workflows/ci-sanitizers.yml
+    secrets: inherit
+
+  #
+  #  Run on every commit but absent from merge's needs, because they're
+  #  too unreliable.  Both run on VMs and read no docker images, so
+  #  neither waits for a refresh.
+  #
+  ci-freebsd:
+    needs: [ci_prev_run]
+    if: ${{ !cancelled()
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+    name: CI FreeBSD
+    uses: ./.github/workflows/ci-freebsd.yml
+    secrets: inherit
+
+  ci-macos:
+    needs: [ci_prev_run]
+    if: ${{ !cancelled()
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+    name: CI macOS
+    uses: ./.github/workflows/ci-macos.yml
+    secrets: inherit
+
+  #
+  #  docker_freeradius_images_refresh skips whenever docker_ci_images_refresh skips or fails,
+  #  so the legs that read the freeradius4 images check both results: a
+  #  skipped docker_freeradius_images_refresh after a failed docker_ci_images_refresh must
+  #  not read stale images.
+  #
+  ci-multi-server:
+    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.docker_freeradius_images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+    name: Multi-Server CI Tests
+    uses: ./.github/workflows/ci-multi-server-tests.yml
+    secrets: inherit
+
+  docker-crossbuild:
+    name: Docker crossbuild images
+    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.docker_freeradius_images_refresh.result != 'failure'
+            && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
+    uses: ./.github/workflows/docker-crossbuild.yml
+    secrets: inherit
+
+  docker-service:
+    name: Docker service images
+    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.docker_freeradius_images_refresh.result != 'failure'
+            && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
+    uses: ./.github/workflows/docker-service.yml
+    secrets: inherit
+
+  #
+  #  Only runs when the commit changes something the documentation is built
+  #  from.  Absent from merge's needs: a documentation build failing should
+  #  not hold up a merge.
+  #
+  docs:
+    name: Documentation
+    needs: [common_vars, docker_ci_images_refresh, ci_prev_run]
+    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+            && needs.ci_prev_run.outputs.should_skip != 'true'
+            && needs.common_vars.outputs.docs_changed == 'true' }}
+    uses: ./.github/workflows/documentation.yml
+    secrets: inherit
+
+  #
+  #  Merges when every gating leg passed.  Only the gating legs are listed;
+  #  the other legs are too unreliable to block a merge on.
+  #
+  #  By default a job is skipped unless every job it depends on with "needs"
+  #  succeeds.  Docker refresh is skipped on commits that don't modify
+  #  packaging, and that causes the merge step to be skipped, unless we add an
+  #  explicit condition.
+  #
+  #  A skipped pipeline still merges.  The duplicate check only reports a skip
+  #  once an earlier run of this workflow finished successfully on the same
+  #  tree, so the content being merged is content that has already passed.
+  #  Requiring the legs to say "success" here would strand a developer who
+  #  amends a commit message and force pushes, because the reworded commit
+  #  carries the tree that just went green and every leg skips.
+  #
+  merge:
+    name: Merge
+    needs: [ci_prev_run, ci, ci-deb, ci-rpm, ci-sanitizers]
+    if: ${{ !cancelled()
+            && (needs.ci_prev_run.outputs.should_skip == 'true'
+                || (needs.ci.result == 'success'
+                    && needs.ci-deb.result == 'success'
+                    && needs.ci-rpm.result == 'success'
+                    && needs.ci-sanitizers.result == 'success')) }}
+    uses: ./.github/workflows/merge-upstream.yml
+    secrets:
+      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}

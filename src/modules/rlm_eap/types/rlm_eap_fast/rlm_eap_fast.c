@@ -30,7 +30,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/tls/utils.h>
 #include <openssl/rand.h>
-#include <openssl/ssl.h>
 #include "eap_fast.h"
 #include "eap_fast_crypto.h"
 
@@ -331,7 +330,7 @@ static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_s
 	pac.info.a_id_info.hdr.length = htons(sizeof(pac.info.a_id_info.data));
 
 #define MIN(a,b) (((a)>(b)) ? (b) : (a))
-	alen = MIN(talloc_array_length(t->authority_identity) - 1, sizeof(pac.info.a_id_info.data));
+	alen = MIN(talloc_strlen(t->authority_identity), sizeof(pac.info.a_id_info.data));
 	memcpy(pac.info.a_id_info.data, t->authority_identity, alen);
 
 	pac.info.type.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_info_pac_type->attr);
@@ -391,7 +390,7 @@ static void eap_fast_append_crypto_binding(request_t *request, fr_tls_session_t 
 	eap_fast_tlv_append(tls_session, attr_eap_fast_crypto_binding, true, len, &binding.reserved);
 }
 
-#define EAP_FAST_TLV_MAX 11
+#define EAP_FAST_TLV_MAX 13
 
 static int eap_fast_verify(request_t *request, fr_tls_session_t *tls_session, uint8_t const *data, unsigned int data_len)
 {
@@ -399,7 +398,7 @@ static int eap_fast_verify(request_t *request, fr_tls_session_t *tls_session, ui
 	uint16_t length;
 	unsigned int remaining = data_len;
 	int	total = 0;
-	int	num[EAP_FAST_TLV_MAX] = {0};
+	int	num[EAP_FAST_TLV_MAX + 1] = {0};
 	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint32_t present = 0;
 
@@ -512,11 +511,6 @@ unexpected:
 	 * Check if the peer mixed & matched TLVs.
 	 */
 	if ((num[attr_eap_fast_nak->attr] > 0) && (num[attr_eap_fast_nak->attr] != total)) {
-		REDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request");
-		goto unexpected;
-	}
-
-	if (num[attr_eap_fast_intermediate_result->attr] > 0) {
 		REDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request");
 		goto unexpected;
 	}
@@ -644,8 +638,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 	 */
 	switch (reply->code) {
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		RDEBUG2("Got tunneled Access-Accept");
-
 		rcode = RLM_MODULE_OK;
 
 		/*
@@ -688,13 +680,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		break;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
-		REDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
 
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		RDEBUG2("Got tunneled Access-Challenge");
-
 		/*
 		 *	Copy the EAP-Message back to the tunnel.
 		 */
@@ -741,18 +730,21 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 	 *	Add the tunneled attributes to the fake request.
 	 */
 
+	/*
+	 *	Tell the request that it's a fake one.
+	 */
+	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
+	(void)fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
+
+	/*
+	 *	Add EAP-Message after other attributes, as VP is used below.
+	 */
 	MEM(vp = fr_pair_afrom_da(fake->request_ctx, attr_eap_message));
 	fr_pair_append(&fake->request_pairs, vp);
 	fr_pair_value_memdup(vp, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
 
 	RDEBUG2("Got tunneled request");
 	log_request_pair_list(L_DBG_LVL_1, fake, NULL, &fake->request_pairs, NULL);
-
-	/*
-	 *	Tell the request that it's a fake one.
-	 */
-	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
-	(void)fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
 
 	/*
 	 *	If there's no User-Name in the stored data, look for
@@ -784,7 +776,7 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 	} /* else there WAS a t->username */
 
 	if (t->username) {
-		vp = fr_pair_copy(fake->request_ctx, t->username);
+		MEM(vp = fr_pair_copy(fake->request_ctx, t->username));
 		fr_pair_append(&fake->request_pairs, vp);
 	}
 
@@ -1658,7 +1650,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (talloc_array_length(inst->pac_opaque_key) - 1 != 32) {
+	if (talloc_strlen(inst->pac_opaque_key) != 32) {
 		cf_log_err_by_child(conf, "pac_opaque_key", "Must be 32 bytes long");
 		return -1;
 	}
@@ -1680,7 +1672,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
 
 	fr_md5_calc(inst->a_id, (uint8_t const *)inst->authority_identity,
-		    talloc_array_length(inst->authority_identity) - 1);
+		    talloc_strlen(inst->authority_identity));
 
 	return 0;
 }

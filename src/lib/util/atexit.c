@@ -30,8 +30,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/atexit.h>
 
+#include <stdatomic.h>
+
 #ifdef HAVE_PTHREADS
-#include <pthread.h>
 #endif
 
 #if defined(DEBUG_ATEXIT) && !defined(NDEBUG)
@@ -76,6 +77,24 @@ static pthread_mutex_t			fr_atexit_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 static fr_atexit_list_t			*fr_atexit_global = NULL;
 static bool				is_exiting;
 static _Thread_local bool		thread_is_exiting;
+
+/** Latched once main has decided no more thread-local pools should be handed out
+ *
+ * `fr_atexit_thread_trigger_all()` runs every registered thread destructor on
+ * the calling (main) thread, including ones that free `_Thread_local` pools
+ * owned by threads we don't manage (librdkafka's bg threads, perl, etc.).  We
+ * can free the underlying chunks but can't reset another thread's TLS slot,
+ * so those threads keep a dangling pointer in their per-thread cache.  Code
+ * that lazily allocates a TLS-cached pool (log.c, sbuff.c, strerror.c, ...)
+ * checks this flag *before* reading its TLS slot and falls back to
+ * `talloc_*(NULL, ...)` (or returns NULL) when set, side-stepping the
+ * dangling pointer entirely.
+ *
+ * Set once, never cleared.  Relaxed atomic because this is a one-shot signal
+ * with no other state synchronised through it - readers tolerate observing
+ * the old value briefly.
+ */
+static atomic_bool			thread_local_alloc_disabled;
 
 /** Call the exit handler
  *
@@ -171,7 +190,10 @@ int fr_atexit_global_setup(void)
 
 #ifdef HAVE_PTHREADS
 	fr_atexit_threads = talloc_zero(NULL, fr_atexit_list_t);
-	if (unlikely(!fr_atexit_threads)) return -1;
+	if (unlikely(!fr_atexit_threads)) {
+		TALLOC_FREE(fr_atexit_global);
+		return -1;
+	}
 
 	ATEXIT_DEBUG("%s - Alloced threads destructor list %p", __FUNCTION__, fr_atexit_threads);
 
@@ -230,6 +252,8 @@ unsigned int fr_atexit_global_disarm(bool uctx_scope, fr_atexit_t func, void con
 {
 	fr_atexit_entry_t 	*e = NULL;
 	unsigned int		count = 0;
+
+	if (!fr_atexit_global) return 0;
 
 	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
 		fr_atexit_entry_t *disarm;
@@ -404,6 +428,27 @@ do_threads:
 }
 
 
+/** Disable lazy allocation of thread-local caches for the rest of the process
+ *
+ * Call this from main *before* `fr_atexit_thread_trigger_all()`.  After it
+ * returns, every TLS-pool initialiser that consults
+ * `fr_atexit_thread_local_alloc_disabled()` falls back to the un-cached path,
+ * so `_Thread_local` slots in other threads aren't read after the trigger
+ * frees their backing memory.
+ */
+void fr_atexit_thread_local_disable_alloc(void)
+{
+	atomic_store_explicit(&thread_local_alloc_disabled, true, memory_order_relaxed);
+}
+
+/** Has @ref fr_atexit_thread_local_disable_alloc been called yet
+ *
+ */
+bool fr_atexit_thread_local_alloc_disabled(void)
+{
+	return atomic_load_explicit(&thread_local_alloc_disabled, memory_order_relaxed);
+}
+
 /** Return whether we're currently in the teardown phase
  *
  * When this function returns true no more thread local or global
@@ -541,7 +586,7 @@ unsigned int fr_atexit_thread_local_disarm(bool uctx_scope, fr_atexit_t func, vo
 	fr_atexit_entry_t 	*e = NULL;
 	unsigned int		count = 0;
 
-	if (!fr_atexit_thread_local) return -1;
+	if (!fr_atexit_thread_local) return 0;
 
 	while ((e = fr_dlist_next(&fr_atexit_thread_local->head, e))) {
 		fr_atexit_entry_t *disarm;
@@ -602,6 +647,16 @@ int fr_atexit_thread_trigger_all(void)
 	fr_atexit_entry_t		*e = NULL, *ee, *to_free;
 	fr_atexit_list_t		*list;
 	unsigned int			count = 0;
+
+	/*
+	 *	Disable TLS-cached pool handouts before we start freeing
+	 *	any of them.  Threads we don't manage (librdkafka's bg
+	 *	threads, etc.) keep dangling pointers in their
+	 *	`_Thread_local` slots once the chunks here are reaped, so
+	 *	any TLS-pool initialiser that consults the flag falls back
+	 *	to `talloc_*(NULL, ...)` from now on.
+	 */
+	fr_atexit_thread_local_disable_alloc();
 
 	/*
 	 *	Iterate over the list of thread local

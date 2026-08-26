@@ -23,12 +23,10 @@
  */
 #include <netdb.h>
 #include <fcntl.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/server/cf_util.h>
 
 #include "proto_cron.h"
 
@@ -238,6 +236,7 @@ static int parse_field(CONF_ITEM *ci, char const **start, char const *name,
 		/*
 		 *	We're at the end of the field, stop.
 		 */
+		fields |= ((uint64_t) 1) << num;
 		break;
 	}
 
@@ -286,7 +285,7 @@ static size_t time_names_len = NUM_ELEMENTS(time_names);
  */
 static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
-	proto_cron_crontab_t       	*inst = talloc_get_type_abort(parent, proto_cron_crontab_t);
+	proto_cron_crontab_t    *inst = talloc_get_type_abort(parent, proto_cron_crontab_t);
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	char const		*value = cf_pair_value(cp);
 	char const		*p;
@@ -313,8 +312,10 @@ static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 
 	*((char const **) out) = value;
 
+	memset(&inst->tab, 0, sizeof(inst->tab)); /* talloc_zeroed, but this shuts up the analuzer */
+
 	if (parse_field(ci, &p, "minute", 	&inst->tab[0], 0, 59, offsetof(struct tm, tm_min)) < 0) return -1;
-	if (parse_field(ci, &p, "hour",		&inst->tab[1], 0, 59, offsetof(struct tm, tm_hour)) < 0) return -1;
+	if (parse_field(ci, &p, "hour",		&inst->tab[1], 0, 23, offsetof(struct tm, tm_hour)) < 0) return -1;
 	if (parse_field(ci, &p, "day of month", &inst->tab[2], 1, 31, offsetof(struct tm, tm_mday)) < 0) return -1;
 	if (parse_field(ci, &p, "month",	&inst->tab[3], 1,12, offsetof(struct tm, tm_mon)) < 0) return -1;
 	if (parse_field(ci, &p, "day of week",	&inst->tab[4], 0, 6, offsetof(struct tm, tm_wday)) < 0) return -1;
@@ -412,6 +413,10 @@ static int mod_open(fr_listen_t *li)
 	 */
 	if (inst->filename == NULL) return -1;
 	li->fd = open(inst->filename, O_RDONLY);
+	if (li->fd < 0) {
+		cf_log_err(li->cs, "Failed opening %s - %s", inst->filename, fr_syserror(errno));
+		return -1;
+	}
 
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.af = AF_INET;
@@ -479,7 +484,7 @@ static bool get_next(struct tm *tm, cron_tab_t const *tab)
 	 *	Simplified process for "do each thing".
 	 */
 	if (tab->wildcard) {
-		if (num < tab->max) goto done;
+		if (num <= tab->max) goto done;
 		goto next;
 	}
 
@@ -647,6 +652,31 @@ use_time:
 	fr_network_listen_read(thread->nr, thread->parent);
 }
 
+/** Close a virtual listener
+ *
+ * The fd only exists to bootstrap the listener, so closing it mostly means
+ * removing the timer that runs the jobs.
+ *
+ * @param[in] li the listener
+ * @return
+ *	- 0 on success.
+ *	- -1 if the timer could not be deleted.  The fd is closed either way.
+ */
+static int mod_close(fr_listen_t *li)
+{
+	proto_cron_crontab_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_cron_crontab_thread_t);
+	int				ret = 0;
+
+	if (thread->ev && (fr_timer_delete(&thread->ev) < 0)) {
+		PERROR("Failed deleting cron timer");
+		ret = -1;
+	}
+
+	close(li->fd);
+
+	return ret;
+}
+
 /** Set the event list for a new socket
  *
  * @param[in] li the listener
@@ -683,7 +713,7 @@ static fr_client_t *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *i
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_cron_crontab_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_cron_crontab_t);
-	CONF_SECTION		*conf = mctx->mi->data;
+	CONF_SECTION		*conf = mctx->mi->conf;
 	fr_client_t		*client;
 	fr_pair_t		*vp;
 	FILE			*fp;
@@ -698,8 +728,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	fr_pair_list_init(&inst->pair_list);
-	inst->client = client = talloc_zero(inst, fr_client_t);
-	if (!inst->client) return 0;
+	MEM(inst->client = client = talloc_zero(inst, fr_client_t));
 
 	client->ipaddr.af = AF_INET;
 	client->src_ipaddr = client->ipaddr;
@@ -743,6 +772,7 @@ fr_app_io_t proto_cron_crontab = {
 	.track_duplicates	= false,
 
 	.open			= mod_open,
+	.close			= mod_close,
 	.read			= mod_read,
 	.write			= mod_write,
 	.event_list_set		= mod_event_list_set,

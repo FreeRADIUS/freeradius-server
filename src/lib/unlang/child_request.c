@@ -23,11 +23,7 @@
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/server/signal.h>
-#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/mod_action.h>
-#include <freeradius-devel/util/talloc.h>
 
 #include "unlang_priv.h"
 #include "child_request_priv.h"
@@ -69,8 +65,8 @@ static void unlang_child_request_signal(request_t *request, UNUSED unlang_stack_
 	cr = state->cr;	/* Can't use talloc_get_type_abort, may be an array element */
 
 	/*
-	 *	Ignore signals which aren't detach, and ar
-	 *	and ignore the signal if we have no parent.
+	 *	Ignore signals which aren't detached, and
+	 *	are ignore the signal if we have no parent.
 	 */
 	switch (action) {
 	case FR_SIGNAL_DETACH:
@@ -235,7 +231,7 @@ static int unlang_child_request_stack_init(unlang_child_request_t *cr)
  * @param[out] out			Child request to initialize.
  * @param[in] child			The child request to initialize.
  * @param[in] p_result			Where to write out the rcode from the child.
- * @param[in,out] sibling_count		If non-null the bumber of siblings.  This is incremented
+ * @param[in,out] sibling_count		If non-null the number of siblings.  This is incremented
  *					for each child created.
  * @param[in] unique_session_ptr	Unique session pointer for this child.
  *					If NULL session data won't be stored/restored for the child.

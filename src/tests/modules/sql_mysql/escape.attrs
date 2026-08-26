@@ -1,0 +1,11 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "escape_mysql"
+NAS-IP-Address = "1.2.3.4"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

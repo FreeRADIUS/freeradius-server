@@ -17,9 +17,6 @@ extern "C" {
 
 #include <inttypes.h>
 #include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
 
 #ifndef MD5_DIGEST_LENGTH
 #  define MD5_DIGEST_LENGTH 16

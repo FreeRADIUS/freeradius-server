@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -28,8 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/util/rand.h>
 
 #include "attrs.h"
@@ -131,7 +129,7 @@ static unlang_action_t mod_encode(unlang_result_t *p_result, module_ctx_t const 
 	switch (subtype_vp->vp_uint16) {
 	case FR_SUBTYPE_VALUE_AKA_IDENTITY:
 	case FR_SUBTYPE_VALUE_SIM_START:
-		if (RDEBUG_ENABLED2) break;
+		if (!RDEBUG_ENABLED2) break;
 
 		/*
 		 *	Figure out if the state machine is
@@ -187,8 +185,9 @@ static unlang_action_t mod_encode(unlang_result_t *p_result, module_ctx_t const 
 			if (fr_aka_sim_crypto_finalise_checkcode(vp, &checkcode, mod_session->checkcode_state) < 0) {
 				RPWDEBUG("Failed calculating checkcode");
 				pair_delete_reply(vp);
+			} else {
+				fr_pair_value_memdup_buffer_shallow(vp, checkcode, false);	/* Buffer already in the correct ctx */
 			}
-			fr_pair_value_memdup_buffer_shallow(vp, checkcode, false);	/* Buffer already in the correct ctx */
 		}
 
 		/*

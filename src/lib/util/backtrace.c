@@ -1,9 +1,32 @@
+/*
+ *   This library is free software; you can redistribute it and/or
+ *   modify it under the terms of the GNU Lesser General Public
+ *   License as published by the Free Software Foundation; either
+ *   version 2.1 of the License, or (at your option) any later version.
+ *
+ *   This library is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *   Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ *   License along with this library; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/** Functions which we wish were included in the standard talloc distribution
+ *
+ * @file src/lib/util/backtrace.c
+ *
+ * @copyright 2026 The FreeRADIUS server project
+ */
+RCSID("$Id$")
+
 #include <dlfcn.h>
 
 #include <freeradius-devel/util/backtrace.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/fring.h>
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/file.h>
 
 #ifdef HAVE_BACKTRACE
 #  include <freeradius-devel/backtrace/backtrace.h>
@@ -84,18 +107,18 @@ static void backtrace_info_print(fr_bt_info_frame_t *frame, int fd, bool trim_pa
 		return;
 	}
 	else if (!frame->filename) {
-		dprintf(fd, "%u: 0x%lx %s in %s()\n",
+		dprintf(fd, "#%u: 0x%lx %s in %s()\n",
 			frame->frameno,
 			(unsigned long)frame->pc,
 			trim_path ? fr_filename(frame->library) : frame->library,
-			frame->function);
+			frame->function ? frame->function : "??");
 		return;
 	}
 	dprintf(fd, "#%u: 0x%lx %s in %s() at %s:%d\n",
 		frame->frameno,
 		(unsigned long)frame->pc,
 		trim_path ? fr_filename(frame->library) : frame->library,
-		frame->function,
+		frame->function ? frame->function : "??",
 		trim_path ? fr_filename_common_trim(frame->filename, frame->library) : frame->filename,
 		frame->lineno);
 
@@ -242,7 +265,7 @@ static int _backtrace_do(fr_bt_marker_t *marker)
 
 	bt->obj = marker->obj;
 #ifdef HAVE_BACKTRACE
-
+	backtrace_record(bt);
 #else
 	bt->count = backtrace(bt->frames, MAX_BT_FRAMES);
 #endif

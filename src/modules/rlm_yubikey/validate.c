@@ -78,14 +78,17 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 
 	status = ykclient_global_init();
 	if (status != YKCLIENT_OK) {
-yk_error:
 		ERROR("%s", ykclient_strerror(status));
 
 		return -1;
 	}
 
 	status = ykclient_init(&inst->ykc);
-	if (status != YKCLIENT_OK) goto yk_error;
+	if (status != YKCLIENT_OK) {
+		ERROR("%s", ykclient_strerror(status));
+		ykclient_global_done();
+		return -1;
+	}
 
 	servers = cf_section_find(conf, "servers", CF_IDENT_ANY);
 	if (servers) {
@@ -114,7 +117,10 @@ yk_error:
 		if (count) {
 			status = ykclient_set_url_templates(inst->ykc, count, inst->uris);
 			if (status != YKCLIENT_OK) {
-				goto yk_error;
+				ERROR("%s", ykclient_strerror(status));
+				ykclient_done(&inst->ykc);
+				ykclient_global_done();
+				return -1;
 			}
 		}
 	}
@@ -123,14 +129,15 @@ init:
 	status = ykclient_set_client_b64(inst->ykc, inst->client_id, inst->api_key);
 	if (status != YKCLIENT_OK) {
 		ERROR("%s", ykclient_strerror(status));
-
+		ykclient_done(&inst->ykc);
+		ykclient_global_done();
 		return -1;
 	}
 
 	inst->pool = module_rlm_connection_pool_init(conf, inst, mod_conn_create, NULL, inst->name, NULL, NULL);
 	if (!inst->pool) {
 		ykclient_done(&inst->ykc);
-
+		ykclient_global_done();
 		return -1;
 	}
 

@@ -39,10 +39,8 @@
 
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/unlang/subrequest.h>
-#include <freeradius-devel/unlang/interpret.h>
 
 #include <sys/stat.h>
-#include <ctype.h>
 #include <fcntl.h>
 
 #include "attrs.h"
@@ -272,7 +270,7 @@ int fr_tls_session_password_cb(char *buf, int size, int rwflag UNUSED, void *u)
 	}
 
 	len = strlcpy(buf, (char *)u, size);
-	if (len > (size_t)size) {
+	if (len >= (size_t)size) {
 		ERROR("Password too long.  Maximum length is %i bytes", size - 1);
 		return 0;
 	}
@@ -543,17 +541,19 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_UNKNOWN_CA:
-				REDEBUG("Verify the client has a copy of the server's Certificate "
-					"Authority (CA) installed, and trusts that CA");
+				ROPTIONAL(REDEBUG, ERROR, "Verify the client has a copy of the server's Certificate "
+							  "Authority (CA) installed, and trusts that CA");
 				break;
 
 			default:
 				break;
 			}
 
-			MEM(pair_update_request(&vp, attr_tls_client_error_code) >= 0);
-			vp->vp_uint8 = ret & 0xff;
-			ROPTIONAL(RDEBUG2, DEBUG2, "TLS-Client-Error-Code := %pV", &vp->data);
+			if (request) {
+				MEM(pair_update_request(&vp, attr_tls_client_error_code) >= 0);
+				vp->vp_uint8 = ret & 0xff;
+				ROPTIONAL(RDEBUG2, DEBUG2, "TLS-Client-Error-Code := %pV", &vp->data);
+			}
 		/*
 		 *	We're sending the client an alert.
 		 */
@@ -587,7 +587,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 		if (ret < 0) {
 			if (SSL_want_read(ssl)) {
-				RDEBUG2("Need more data from client"); /* State same as previous call, don't print */
+				ROPTIONAL(RDEBUG2, DEBUG2, "Need more data from client"); /* State same as previous call, don't print */
 				return;
 			}
 			ROPTIONAL(REDEBUG, ERROR, "Handshake exit state %s%s", role, state);
@@ -749,7 +749,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	/*
 	 *	Mostly to check for memory corruption...
 	 */
-	if (!fr_cond_assert(tls_session->ssl = ssl)) {
+	if (!fr_cond_assert(tls_session->ssl == ssl)) {
 		ROPTIONAL(REDEBUG, ERROR, "fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
 		tls_session->invalid = true;
 		return;
@@ -804,12 +804,21 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 
 	switch (content_type) {
 	case SSL3_RT_ALERT:
+		if (len < 2) {
+		invalid_alert:
+			ROPTIONAL(REDEBUG, ERROR, "Invalid TLS Alert.  Closing connection");
+			tls_session->invalid = true;
+			return;
+		}
+
 		tls_session->info.alert_level = buf[0];
 		tls_session->info.alert_description = buf[1];
 		tls_session->info.handshake_type = 0x00;
 		break;
 
 	case SSL3_RT_HANDSHAKE:
+		if (!len) goto invalid_alert;
+
 		tls_session->info.handshake_type = buf[0];
 		tls_session->info.alert_level = 0x00;
 		tls_session->info.alert_description = 0x00;
@@ -956,8 +965,8 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 	if (tls_session->dirty_in.used) {
 		ret = BIO_write(tls_session->into_ssl, tls_session->dirty_in.data, tls_session->dirty_in.used);
 		if (ret != (int) tls_session->dirty_in.used) {
-			record_init(&tls_session->dirty_in);
 			REDEBUG("Failed writing %zu bytes to SSL BIO: %d", tls_session->dirty_in.used, ret);
+			record_init(&tls_session->dirty_in);
 			goto error;
 		}
 
@@ -1076,17 +1085,24 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 		}
 
 		ret = SSL_write(tls_session->ssl, tls_session->clean_in.data, tls_session->clean_in.used);
+		if (ret < 0) goto log_io_error;
 		record_to_buff(&tls_session->clean_in, NULL, ret);
 
 		/* Get the dirty data from Bio to send it */
 		ret = BIO_read(tls_session->from_ssl, tls_session->dirty_out.data,
 			       sizeof(tls_session->dirty_out.data));
-		if (ret > 0) {
+		if (ret < 0) {
+		log_io_error:
+			ret = fr_tls_log_io_error(request, SSL_get_error(tls_session->ssl, ret),
+						  "SSL_write (%s)", __FUNCTION__);
+			/*
+			 *	ret<0 means that we have a real error.
+			 *
+			 *	ret=0 means the "error" is SSL_WANT_READ, SSL_WANT_WRITE, etc.
+			 */
+		} else {
 			tls_session->dirty_out.used = ret;
 			ret = 0;
-		} else {
-			if (fr_tls_log_io_error(request, SSL_get_error(tls_session->ssl, ret),
-						"SSL_write (%s)", __FUNCTION__) < 0) ret = -1;
 		}
 	}
 
@@ -1281,7 +1297,6 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 		if (RDEBUG_ENABLED3) {
 			if (SSL_SESSION_print(fr_tls_request_log_bio(request, L_DBG, L_DBG_LVL_3),
 					      tls_session->session) != 1) {
-			} else {
 				RDEBUG3("Failed retrieving session data");
 			}
 		}
@@ -1806,6 +1821,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 	ssl = SSL_new(ssl_ctx);
 	if (ssl == NULL) {
+		talloc_free(tls_session);
 		fr_tls_log(request, "Error creating new TLS session");
 		return NULL;
 	}
@@ -1883,7 +1899,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 		MEM(md_ctx = EVP_MD_CTX_create());
 		EVP_DigestInit_ex(md_ctx, EVP_sha256(), NULL);
-		EVP_DigestUpdate(md_ctx, context_id, talloc_array_length(context_id) - 1);
+		EVP_DigestUpdate(md_ctx, context_id, talloc_strlen(context_id));
 		EVP_DigestFinal_ex(md_ctx, digest, NULL);
 		EVP_MD_CTX_destroy(md_ctx);
 		talloc_free(context_id);
@@ -1997,28 +2013,35 @@ static unlang_action_t tls_new_session_result(request_t *request, UNUSED void *u
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const *tls_conf) {
+unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const *tls_conf)
+{
 	request_t	*child;
 	fr_pair_t	*vp;
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
-	request = child;
 
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
 	vp->vp_uint32 = enum_tls_packet_type_new_session->vb_uint32;
 
-	if (unlang_subrequest_child_push(NULL, child, child->parent, true, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_subrequest_child_push(NULL, child, request, true, UNLANG_SUB_FRAME) < 0) {
+		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
+
 	if (unlang_function_push(child,
 				 NULL,
 				 tls_new_session_result,
 				 NULL, 0,
-				 UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;
-
-	if (unlang_call_push(NULL, child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
+				 UNLANG_SUB_FRAME, NULL) < 0) {
+		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
+
+	if (unlang_call_push(NULL, child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
+		talloc_free(child);
+		return UNLANG_ACTION_FAIL;
+	}
+
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 #endif /* WITH_TLS */

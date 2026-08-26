@@ -1,0 +1,4 @@
+BEGIN PROTOCOL Test-Err-4 203
+ATTRIBUTE	foo 1 uint32
+VALUE		foo Active
+END PROTOCOL Test-Err-4

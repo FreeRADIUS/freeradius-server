@@ -1,0 +1,22 @@
+#
+# PRE: foreach
+#
+#  Foreach over non-existent attribute - zero iterations
+#
+uint32 count
+
+count := 0
+
+#
+#  NAS-Identifier is not in the request, so the body never runs
+#
+foreach thing (NAS-Identifier) {
+	count += 1
+	test_fail
+}
+
+if (count != 0) {
+	test_fail
+}
+
+success

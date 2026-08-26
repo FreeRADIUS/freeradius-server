@@ -172,7 +172,7 @@ server implements _variant 1_.
 - If the result shows a attribute containing the name of known group, the LDAP
 server implements _variant 2_.
 
-Perform the the search for group objects (below) using a filter that matches a group
+Perform the search for group objects (below) using a filter that matches a group
 the user is known to be a member of e.g. `(&(objectClass=groupOfNames)(cn=mariner-alert))`.
 
 - If the result shows an attribute containing the DN of a user, the ldap server
@@ -275,5 +275,5 @@ user object search with '+' set as the second positional argument.
 ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(ObjectClass=posixAccount)" "*" "+"
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

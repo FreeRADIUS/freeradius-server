@@ -110,7 +110,7 @@ static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, fr_value_box_t *out, NDEBU
 {
 	fr_assert(map->da->type == FR_TYPE_STRING);
 
-	fr_value_box_asprintf(ctx, out, NULL, false, "FreeRADIUS %s", radiusd_version_short);
+	if (fr_value_box_asprintf(ctx, out, NULL, false, "FreeRADIUS %s", radiusd_version_short) < 0) return -1;
 
 	return 0;
 }
@@ -197,6 +197,7 @@ static int snmp_client_index(UNUSED TALLOC_CTX *ctx, void **snmp_ctx_out,
 
 	fr_assert(!snmp_ctx_in);
 
+	if (index_num == 0) return 1;				/* SNMP indices start from 1; 0 is invalid */
 	client = client_findbynumber(NULL, index_num - 1);	/* Clients indexed from 0 */
 	if (!client) return 1;		/* No more clients */
 
@@ -246,7 +247,7 @@ static int snmp_client_id_get(TALLOC_CTX *ctx, fr_value_box_t *out,
 	fr_assert(client);
 	fr_assert(map->da->type == FR_TYPE_STRING);
 
-	fr_value_box_bstrdup_buffer(ctx, out, NULL, client->longname, false);
+	if (fr_value_box_bstrdup_buffer(ctx, out, NULL, client->longname, false) < 0) return -1;
 
 	return 0;
 }
@@ -652,6 +653,10 @@ static ssize_t snmp_process_index_attr(fr_dcursor_t *out, request_t *request,
 	 *	Get the index from the index attribute's value.
 	 */
 	vp = fr_dcursor_current(cursor);
+	if (!vp) {
+		fr_strerror_const("Invalid OID: No index attribute in request");
+		goto error;
+	}
 	index_num = vp->vp_uint32;
 
 	/*
@@ -765,7 +770,7 @@ static ssize_t snmp_process_leaf(fr_dcursor_t *out, request_t *request,
 		if (map_p == map[0].last) {
 			return 1;	/* findNext at lower level */
 		}
-		if (map_p->da == vp->da) {		/* Next unless we faked part of the stack */
+		if (vp && (map_p->da == vp->da)) {		/* Next unless we faked part of the stack */
 			map_p++;
 
 			/*
@@ -830,6 +835,10 @@ static ssize_t snmp_process_leaf(fr_dcursor_t *out, request_t *request,
 		}
 
 		vp = fr_dcursor_current(cursor);
+		if (!vp) {
+			fr_strerror_const("Invalid OID: No value provided for SET operation");
+			goto error;
+		}
 		ret = map_p->set(map_p, snmp_ctx, &vp->data);
 		if (ret < 0) switch (-(ret)) {
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE:
@@ -887,7 +896,7 @@ static ssize_t snmp_process(fr_dcursor_t *out, request_t *request,
 	if (!da_stack->da[depth]) {
 		if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) {
 			fr_strerror_const("Invalid OID: Not a leaf");
-			return -(ssize_t)(depth - 1);
+			return -(ssize_t)depth;
 		}
 		snmp_next_leaf(da_stack, depth, &map[1]);
 
@@ -1016,7 +1025,7 @@ int fr_snmp_process(request_t *request)
 			break;
 
 		default:
-			ERROR("Invalid operation %u", vp->vp_uint32);
+			ERROR("Invalid operation %u", op->vp_uint32);
 			return -1;
 		}
 

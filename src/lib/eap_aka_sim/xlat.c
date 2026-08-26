@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -83,6 +83,11 @@ static xlat_action_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, fr_dcursor_t *
 		break;
 	}
 
+	if (!method) {
+		REDEBUG2("No dictionary value name for method hint");
+		return XLAT_ACTION_FAIL;
+	}
+
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 	fr_value_box_bstrndup(vb, vb, NULL, method, strlen(method), false);
 	fr_dcursor_append(out, vb);
@@ -137,6 +142,11 @@ static xlat_action_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, fr_dcursor_t *ou
 		type = fr_dict_enum_name_by_value(attr_eap_aka_sim_identity_type,
 						  fr_box_uint32(FR_IDENTITY_TYPE_VALUE_FASTAUTH));
 		break;
+	}
+
+	if (!type) {
+		REDEBUG2("No dictionary value name for identity type");
+		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
@@ -466,6 +476,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 			tag = !fastauth ? ID_TAG_AKA_PRIME_PSEUDONYM_B64 : ID_TAG_AKA_PRIME_FASTAUTH_B64;
 		} else {
 			REDEBUG("request.EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
+			goto error;
 		}
 
 		id_p = id;
@@ -538,7 +549,10 @@ void fr_aka_sim_xlat_func_unregister(void)
 	xlat_func_unregister("aka_sim_id_method");
 	xlat_func_unregister("aka_sim_id_type");
 	xlat_func_unregister("3gpp_temporary_id_key_index");
+	xlat_func_unregister("3gpp_temporary_id.key_index");
 	xlat_func_unregister("3gpp_temporary_id_decrypt");
+	xlat_func_unregister("3gpp_temporary_id.decrypt");
 	xlat_func_unregister("3gpp_temporary_id_encrypt");
+	xlat_func_unregister("3gpp_temporary_id.encrypt");
 	aka_sim_xlat_refs = 0;
 }

@@ -279,7 +279,7 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 *			Set bfd.SessionState to Down
 	 */
 	if (bfd->state == BFD_STATE_ADMIN_DOWN) {
-		if (bfd->state != BFD_STATE_DOWN) {
+		if (session->session_state != BFD_STATE_DOWN) {
 		down:
 			session->local_diag = BFD_NEIGHBOR_DOWN;
 
@@ -539,8 +539,8 @@ static int bfd_verify_sequence(bfd_session_t *session, uint32_t sequence_no,
 		}
 
 	} else {	/* start is ~2^32, stop is ~10 */
-		if ((sequence_no > start) &&
-		    (sequence_no < stop)) {
+		if ((sequence_no < start) &&
+		    (sequence_no > stop)) {
 			return 0;
 		}
 	}
@@ -986,15 +986,13 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 {
 	fr_time_t timeout;
 	uint64_t delay;
-	fr_time_delta_t delta;
 
 	delay = fr_time_delta_unwrap(session->detection_time);
 	delay *= session->detect_multi;
 
 	delay += fr_time_delta_unwrap(session->detection_time) / 2;
-	delta = fr_time_delta_from_usec(delay);
 
-	timeout = fr_time_add(when, delta);
+	timeout = fr_time_add(when, fr_time_delta_wrap(delay));
 
 	if (fr_timer_at(session, session->el->tl, &session->timeout_ev,
 			timeout, false, bfd_detection_timeout, session) < 0) {

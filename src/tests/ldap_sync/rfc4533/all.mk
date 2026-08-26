@@ -20,6 +20,14 @@ $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 $(TEST).trigger_clear:
 	${Q}rm -f $(BUILD_DIR)/tests/ldap_sync/rfc4533/sync_started
 
+#
+#  The server writes sync_started once the sync is running, so the clear has to
+#  finish before the server starts.  Naming the two side by side on a test
+#  output does not order them, because make builds the order-only prerequisites
+#  of one target at the same time under "make -j".
+#
+$(OUTPUT)/radiusd.pid: | $(TEST).trigger_clear
+
 $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))
 	$(eval EXPECTED := $(patsubst %.ldif,%.out,$<))

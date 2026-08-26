@@ -1,0 +1,49 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Internal attributes for the EAP-PSK (RFC 4764) virtual server.
+#
+#	The Packet-Type values use semantic names.  The RFC names the
+#	messages positionally; the mapping is:
+#
+#		Identity-Request	- First message  (RFC 4764 Section 5.1)
+#		Identity-Response	- Second message (RFC 4764 Section 5.2)
+#		Result-Indication	- Third message  (RFC 4764 Section 5.3)
+#		Result-Acknowledgement	- Fourth message (RFC 4764 Section 5.4)
+#
+ATTRIBUTE	Packet-Type				1	uint32
+
+VALUE	Packet-Type			Identity-Request	1
+VALUE	Packet-Type			Identity-Response	2
+VALUE	Packet-Type			Result-Indication	3
+VALUE	Packet-Type			Result-Acknowledgement	4
+
+VALUE	Packet-Type			Success			10
+VALUE	Packet-Type			Failure			11
+VALUE	Packet-Type			Notfound		12
+
+#
+#	Set as the reply Packet-Type to silently discard a message
+#	which failed validation, keeping the session alive so the
+#	peer can retransmit (RFC 4764 Section 4.1).  This is the
+#	default behaviour for invalid messages.
+#
+VALUE	Packet-Type			Do-Not-Respond		256
+
+#
+#	The identity the peer asserted (ID_P, from the second message).
+#
+ATTRIBUTE	Identity				2	string
+
+#
+#	The identity the server sent (ID_S, from the first message).
+#
+ATTRIBUTE	Server-Identity				3	string
+
+#
+#	The nonces exchanged during authentication.
+#
+ATTRIBUTE	RAND-Server				4	octets
+ATTRIBUTE	RAND-Peer				5	octets

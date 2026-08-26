@@ -41,7 +41,7 @@ will configure a reply message in an appropriate attribute. This
 configuration entry will cause the server to continue processing the
 file.
 
-Add the following configuration to `raddb/mods-config/files/authorize`:
+Add the following configuration to `mods-config/files/authorize`:
 
 [source,text]
 ----
@@ -90,7 +90,7 @@ appropriate attributes to the reply, to allow "bob" to use PPP and to
 assign him the IP address 192.168.10.12. This entry should also cause
 the server to continue processing the file.
 
-Update `raddb/mods-config/files/authorize` with this additional entry:
+Update `mods-config/files/authorize` with this additional entry:
 
 [source,text]
 ----
@@ -113,7 +113,7 @@ The debug output will confirm the match on the specific line and the assignment 
 [source,text]
 ----
 (0)      files - files - Looking for key "bob"
-(0)      files - files - Found match "bob" on line 7 raddb/mods-config/files/authorize
+(0)      files - files - Found match "bob" on line 7 /etc/raddb/mods-config/files/authorize
 (0)      files - files - Preparing attribute updates:
 (0)        files - Password.Cleartext := hello
 (0)        files - Framed-Protocol := ::PPP
@@ -145,7 +145,7 @@ The last entry will configure any user asking for "framed" service,
 and will assign them a default route of 192.168.10.1 with netmask of
 255.255.255.0.
 
-Add this final entry to `raddb/mods-config/files/authorize`:
+Add this final entry to `mods-config/files/authorize`:
 
 [source,text]
 ----
@@ -167,11 +167,11 @@ The server logs will show matches for both "bob" (Entry 1) and "DEFAULT" (Entry 
 [source,text]
 ----
 (0)      files - files - Looking for key "bob"
-(0)      files - files - Found match "bob" on line 2 of raddb/mods-config/files/authorize
+(0)      files - files - Found match "bob" on line 2 of /etc/raddb/mods-config/files/authorize
 (0)      files - files - Preparing attribute updates:
 (0)        files - Password.Cleartext := hello
 (0)        files - Reply-Message = Hello, bob! Basic access granted.
-(0)      files - files - Found match "DEFAULT" on line 14 of raddb/mods-config/files/authorize
+(0)      files - files - Found match "DEFAULT" on line 14 of /etc/raddb/mods-config/files/authorize
 (0)      files - files - Preparing attribute updates:
 (0)        files - Framed-IP-Netmask = 255.255.255.0
 (0)        files - Framed-Route = 192.168.10.0/24 192.168.10.1 1
@@ -223,11 +223,11 @@ Debug Output:
 [source,text]
 ----
 (0)      files - files - Looking for key "bob"
-(0)      files - files - Found match "bob" on line 2 of raddb/mods-config/files/authorize
+(0)      files - files - Found match "bob" on line 2 of /etc/raddb/mods-config/files/authorize
 (0)      files - files - Preparing attribute updates:
 (0)        files - Password.Cleartext := hello
 (0)        files - Reply-Message = Hello, bob! Basic access granted.
-(0)      files - files - Found match "bob" on line 8 of raddb/mods-config/files/authorize
+(0)      files - files - Found match "bob" on line 8 of /etc/raddb/mods-config/files/authorize
 (0)      files - files - Preparing attribute updates:
 (0)        files - Password.Cleartext := hello
 (0)        files - Framed-Protocol := ::PPP
@@ -272,11 +272,11 @@ Debug Output:
 [source,text]
 ----
 (0)      files - files - Looking for key "bob"
-(0)      files - files - Found match "bob" on line 2 of raddb/mods-config/files/authorize
+(0)      files - files - Found match "bob" on line 2 of /etc/raddb/mods-config/files/authorize
 (0)      files - files - Preparing attribute updates:
 (0)        files - Password.Cleartext := hello
 (0)        files - Reply-Message = Hello, bob! Basic access granted.
-(0)      files - files - Found match "bob" on line 8 of raddb/mods-config/files/authorize
+(0)      files - files - Found match "bob" on line 8 of /etc/raddb/mods-config/files/authorize
 (0)      files - files - Preparing attribute updates:
 (0)        files - Password.Cleartext := hello
 (0)        files - Framed-Protocol := ::PPP

@@ -45,7 +45,7 @@ backend service, unless it is otherwise made available. Identifying the
 originator of connections is often necessary for security purposes and for
 request processing.
 
-Whilst many application protcols support headers that allow proxies to preserve
+Whilst many application protocols support headers that allow proxies to preserve
 connection information these are not helpful in the context of Layer 4
 proxying: The process of populating headers requires knowledge of the
 application protocol to re-encode requests as they are transmitted between the
@@ -124,3 +124,6 @@ This guide is organised into four parts that should be read in order:
 3. xref:protocols/radius/radsec_with_haproxy.adoc[Proxying RadSec with HAproxy]
 4. xref:protocols/radius/radsec_with_traefik.adoc[Proxying RadSec with Traefik]
 5. xref:protocols/radius/enable_proxy_protocol.adoc[Enabling PROXY Protocol for RadSec]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

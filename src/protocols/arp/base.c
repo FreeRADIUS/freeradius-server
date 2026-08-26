@@ -188,6 +188,7 @@ int fr_bsd_arp_entry_add(uint32_t ifindex, uint8_t ipaddr[static 4], uint8_t mac
 		} else {
 		open_error:
 			fr_strerror_const("Unable to open netlink socket");
+			return -1;
 		}
 		if (!snl_init(&state, NETLINK_ROUTE)) goto open_error;
 	}

@@ -134,7 +134,7 @@ int active_directory_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no,
 
 	if (rcode != LDAP_PROC_SUCCESS) goto error;
 
-	if (!fr_rb_insert(tree, sync)) {
+	if (fr_rb_insert(tree, sync) != 0) {
 		ERROR("Duplicate sync (msgid %i)", sync->msgid);
 		goto error;
 	}
@@ -142,7 +142,8 @@ int active_directory_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no,
 	DEBUG3("Sync created with base dn \"%s\", filter \"%s\", msgid %i",
 		sync->config->base_dn, sync->config->filter, sync->msgid);
 
-	trigger(unlang_interpret_get_thread_default(), config->cs, NULL, "modules.ldap_sync.start", true, &sync->trigger_args);
+	trigger(unlang_interpret_get_thread_default(), config->cs, NULL, "modules.ldap_sync.start", true,
+		&sync->trigger_args, inst);
 
 	return 0;
 }
@@ -174,8 +175,8 @@ int active_directory_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, UNU
 	sync_op_t	op = SYNC_OP_MODIFY;
 	struct berval	**values;
 
-	fr_assert(sync->conn);
 	fr_assert(sync);
+	fr_assert(sync->conn);
 	fr_assert(msg);
 
 	/*

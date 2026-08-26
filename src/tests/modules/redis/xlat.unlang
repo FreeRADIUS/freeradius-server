@@ -5,7 +5,6 @@ integer dummy_number
 string result0
 string result1
 string result3
-$INCLUDE cluster_reset.inc
 
 %redis('SET', 'value1', 100)
 

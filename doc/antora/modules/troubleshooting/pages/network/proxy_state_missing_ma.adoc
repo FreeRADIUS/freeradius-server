@@ -1,0 +1,10 @@
+= Packet Proxy-State but no Message-Authenticator
+
+This error occurs when the `Proxy-State` attribute is in an
+`Access-Request` packet, but the packet does not contain
+`Message-Authenticator`.
+
+TBD: Point to BlastRADIUS document and `limit_proxy_state`
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -38,5 +38,5 @@ if (User-Name == %hash.md5(NAS-Identifier)) {
 reply.Reply-Message := %sql(SELECT name FROM mytable WHERE username = %{User-Name})
 ----
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -25,11 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 /** Return a VP from the specified request.
@@ -64,40 +60,6 @@ static int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name
 }
 
 
-static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
-/** Xlat for %attr_by_num(\<number\>)
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, fr_value_box_list_t *in)
-{
-	fr_dict_attr_t const	*da;
-	fr_value_box_t		*attr = fr_value_box_list_head(in);
-	fr_value_box_t		*vb;
-
-	da = fr_dict_attr_child_by_num(fr_dict_root(request->proto_dict), attr->vb_uint32);
-	if (!da) {
-		REDEBUG("No attribute found with number %pV", attr);
-		return XLAT_ACTION_FAIL;
-	}
-
-	MEM(vb = fr_value_box_alloc_null(ctx));
-
-	if (fr_value_box_bstrndup(vb, vb, NULL, da->name, strlen(da->name), false) < 0) {
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_dcursor_append(out, vb);
-	return XLAT_ACTION_DONE;
-}
-
 static xlat_arg_parser_t const xlat_dict_attr_by_oid_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -111,22 +73,27 @@ static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
 					   request_t *request, fr_value_box_list_t *in)
 {
-	unsigned int		attr = 0;
 	fr_dict_attr_t const	*parent = fr_dict_root(request->proto_dict);
 	fr_dict_attr_t const	*da;
-	ssize_t			ret;
 	fr_value_box_t		*attr_vb = fr_value_box_list_head(in);
 	fr_value_box_t		*vb;
 
-	ret = fr_dict_attr_by_oid_legacy(fr_dict_internal(), &parent, &attr, attr_vb->vb_strvalue);
-	if (ret <= 0) {
-		REMARKER(attr_vb->vb_strvalue, -(ret), "%s", fr_strerror());
-		return XLAT_ACTION_FAIL;
+	fr_sbuff_t		sbuff = FR_SBUFF_IN(attr_vb->vb_strvalue, attr_vb->vb_length);
+	fr_dict_attr_err_t	err;
+
+	if (fr_sbuff_next_if_char(&sbuff, '@')) {
+		fr_dict_t const *dict;
+
+		if (fr_dict_by_protocol_substr(NULL, &dict, &sbuff, NULL) < 0) {
+			RPEDEBUG("OID resolution failed");
+			return XLAT_ACTION_FAIL;
+		}
+		parent = fr_dict_root(dict);
 	}
 
-	da = fr_dict_attr_child_by_num(parent, attr);
-	if (!da) {
-		RDEBUG("Parent %s has no child %u", parent->name, attr);
+	(void)fr_dict_attr_by_oid_substr(&err, &da, parent, &sbuff, NULL);
+	if (err != FR_DICT_ATTR_OK) {
+		RPEDEBUG("OID resolution failed");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -289,7 +256,7 @@ static xlat_action_t xlat_attr_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_value_box_strdup(vb, vb, NULL, fr_sbuff_start(oid_buff), false);
+	MEM(fr_value_box_strdup(vb, vb, NULL, fr_sbuff_start(oid_buff), false) >= 0);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -324,7 +291,6 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	XLAT_REGISTER("dict.attr.by_num", xlat_dict_attr_by_num, FR_TYPE_STRING, xlat_dict_attr_by_num_args);
 	XLAT_REGISTER("dict.attr.by_oid", xlat_dict_attr_by_oid, FR_TYPE_STRING, xlat_dict_attr_by_oid_args);
 	XLAT_REGISTER("dict.vendor", xlat_vendor, FR_TYPE_STRING, xlat_vendor_args);
 	XLAT_REGISTER("dict.vendor.num", xlat_vendor_num, FR_TYPE_UINT32, xlat_vendor_num_args);
@@ -337,7 +303,6 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_func_unregister("dict.attr.by_num");
 	xlat_func_unregister("dict.attr.by_oid");
 	xlat_func_unregister("dict.vendor");
 	xlat_func_unregister("dict.vendor.num");

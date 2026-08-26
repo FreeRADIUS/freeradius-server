@@ -1,0 +1,13 @@
+= Unknown Packet Code
+
+This error occurs when the network receives a RADIUS packet which is
+not defined by the standards. Each RADIUS packet has a "code" field
+that defines its type, like `Access-Request` or `Access-Accept`. The
+Internet Engineering Task Force (IETF) specifies valid codes in their
+documents. These codes must be between 1 and 53. Any code outside this
+range, such as 0 or above 53, is invalid and cannot be processed.
+
+include::partial$not-radius.adoc[]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

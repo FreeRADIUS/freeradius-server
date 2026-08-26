@@ -1,0 +1,10 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.1[User-Name]   |This Attribute indicates the name of the user to be authenticated.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.2[User-Password]   |This Attribute indicates the password of the user to be authenticated, or the user's input following an Access-Challenge.
+
+|====
+
+

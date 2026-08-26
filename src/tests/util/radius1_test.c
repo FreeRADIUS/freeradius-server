@@ -27,8 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/inet.h>
-#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -36,10 +34,8 @@ RCSID("$Id$")
 #  include <getopt.h>
 #endif
 
-#include <pthread.h>
 #include <signal.h>
 
-#include <sys/event.h>
 
 #define MAX_MESSAGES		(2048)
 #define MAX_CONTROL_PLANE	(1024)
@@ -223,7 +219,7 @@ static void master_process(TALLOC_CTX *ctx)
 
 	MPRINT1("Master started.\n");
 
-	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
+	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024, false);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
 		fr_exit_now(EXIT_FAILURE);
@@ -235,7 +231,7 @@ static void master_process(TALLOC_CTX *ctx)
 	kq_master = kqueue();
 	fr_assert(kq_master >= 0);
 
-	aq_master = fr_atomic_queue_alloc(ctx, max_control_plane);
+	aq_master = fr_atomic_queue_talloc(ctx, max_control_plane);
 	fr_assert(aq_master != NULL);
 
 	control_master = fr_control_create(ctx, kq_master, aq_master, 1024);
@@ -342,7 +338,7 @@ static void master_process(TALLOC_CTX *ctx)
 
 			fr_assert(events[i].filter == EVFILT_READ);
 
-			cd = (fr_channel_data_t *) fr_message_reserve(ms, 4096);
+			cd = (fr_channel_data_t *) fr_message_and_data_reserve(ms, 4096);
 			fr_assert(cd != NULL);
 
 			packet_ctx = talloc(ctx, fr_packet_ctx_t);
@@ -395,7 +391,7 @@ static void master_process(TALLOC_CTX *ctx)
 				attr += attr[1];
 			}
 
-			(void) fr_message_alloc(ms, &cd->m, total_len);
+			(void) fr_message_and_data_commit(ms, &cd->m, total_len);
 
 			MPRINT1("Master sending packet size %zd to worker %d\n", cd->m.data_size, which_worker);
 			cd->m.when = fr_time();

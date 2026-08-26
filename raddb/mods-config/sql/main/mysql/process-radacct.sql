@@ -218,7 +218,7 @@ LEFT OUTER JOIN nasreload n USING (nasipaddress);
 --
 --      CALL fr_radacct_close_after_reload();
 --
---  Note: This SP walks radacct in strides of v_batch_size. It will typically
+--  NOTE: This SP walks radacct in strides of v_batch_size. It will typically
 --  skip closed and ongoing sessions at a rate significantly faster than
 --  100,000 rows per second and process batched updates faster than 20,000
 --  orphaned sessions per second. If this isn't fast enough then you should

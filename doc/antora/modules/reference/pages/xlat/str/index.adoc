@@ -17,5 +17,5 @@ The following functions perform string manipulation.
 | xref:xlat/str/upper.adoc[upper]       | Convert the input string to uppercase
 |=====
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

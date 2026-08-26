@@ -8,7 +8,16 @@
 #
 # Declare the important path variables
 #
-PATH="/opt/homebrew/opt/openresty/bin:${PATH}"
+PATH="/opt/homebrew/opt/openresty/bin:/usr/sbin:${PATH}"
+
+# Use openresty if available (macOS dev), otherwise fall back to stock nginx
+if command -v openresty > /dev/null 2>&1; then
+	NGINX_BIN="openresty"
+	LOAD_LUA_MODULE=""
+else
+	NGINX_BIN="nginx"
+	LOAD_LUA_MODULE="load_module /usr/lib/nginx/modules/ngx_http_lua_module.so;"
+fi
 
 # Base Directories
 BASEDIR=$(git rev-parse --show-toplevel)
@@ -65,7 +74,7 @@ touch "${CONF}"
 
 # Build nginx.conf
 echo "
-#
+${LOAD_LUA_MODULE}
 worker_processes  1;
 error_log  ${LOGDIR}/error.log;
 pid        ${LOGDIR}/nginx.pid;
@@ -136,8 +145,9 @@ http {
 	    default_type 'application/json';
 	    add_header   'Content-Type' 'application/json';
             content_by_lua_block {
+                local t0 = ngx.now()
                 ngx.sleep(tonumber(ngx.var[1]))
-		ngx.say('{\"delay_us\":' .. ngx.ctx.openresty_request_time_us .. '}')
+                ngx.say('{\"delay_us\":' .. math.floor((ngx.now() - t0) * 1000000) .. '}')
             }
 	}
 
@@ -167,8 +177,8 @@ cp "${CIDIR}/openresty/.htpasswd" "${BUILDDIR}"
 #
 # Run the openresty instance
 #
-echo "Starting openresty"
-openresty -c ${CONF} -p ${BUILDDIR}
+echo "Starting ${NGINX_BIN}"
+${NGINX_BIN} -c ${CONF} -p ${BUILDDIR}
 echo "Running openresty on port ${HTTP_PORT} and ${HTTPS_PORT}, accepting all local connections"
 cat << EOF
 export REST_TEST_SERVER=127.0.0.1

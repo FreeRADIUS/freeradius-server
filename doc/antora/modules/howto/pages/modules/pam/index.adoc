@@ -1,27 +1,32 @@
 = PAM
 
-PAM support was done by Jeph Blaize. Miguel a.l. Paraz
-mailto:map@iphil.net[map@iphil.net] ported it to FreeRADIUS’
-parent, Cistron-Radius. Chris Dent
-mailto:cdent@kiva.net[cdent@kiva.net] added the Pam-Auth
-attribute.
+FreeRADIUS integrates with PAM (Pluggable Authentication Modules) to
+manage user authentication. PAM is a secure method for user
+authentication and is widely used on Linux systems.
 
-== Usage
+== Edit `users` file
 
-Use Auth-Type = Pam in the users file. You cannot use
-`User-Password = PAM` as in other radius servers. Sorry.
+Start by editing the users file with the following configuration items.
+
+Use `Auth-Type = PAM` in the users file. You cannot use
+`User-Password = PAM` as in other radius servers.
 
 You can also use `Pam-Auth = somestring` to specify an entry in
-/etc/pam.d. The default is `radius`.
+/etc/pam.d directory. The default entry is `radius`, but you can change this to suit your needs.
 
-Compile and install freeradius with pam support (./configure –help will
-tell you how)
+== Compile FreeRADIUS with PAM
 
-Within your radiusd.conf file, in the `modules' section, make sure that
-the pam section is enabled:
+The `pam` module should be automatically built and included with the
+server.  If it is not, you will need to install the relevant PAM
+development headers, then re-run `configure`, and re-compile FreeRADIUS.
+
+== Edit `radiusd.conf`
+
+Ensure that the `pam` module is linked into `sites-enabled/pam`.
+
 
 ```
- pam {
+pam {
          #
          #  The name to use for PAM authentication.
          #  PAM looks in /etc/pam.d/${pam_auth_name}
@@ -31,19 +36,19 @@ the pam section is enabled:
          #  file over-rides this one.
          #
          pam_auth = radiusd
- }
+}
 ```
 
-In the `authenticate` section, do the same:
+In the `authenticate pam` section, do the same:
 
 ```
-process Access-Request { # Uncomment this if you want to use PAM
-(Auth-Type = PAM) pam …
+#authenticate pam {
+#	pam
+#}
 ```
 
-In your /etc/pam.d/ directory create a file called radiusd with the
-following contents (or whatever you want for your pam configuration,
-this seems to work for me):
+In your `/etc/pam.d/` directory create a file called `radiusd` with the
+following configuration items (or whatever you need for your pam configuration):
 
 ```
 #%PAM-1.0 auth required /lib/security/pam_unix_auth.so shadow md5 nullok
@@ -54,10 +59,10 @@ auth required /lib/security/pam_nologin.so account required
 required /lib/security/pam_unix_session.so
 ```
 
-If you don’t want to run your freeradius server in debug mode as root
+If you don't want to run your freeradius server in debug mode as root
 (ie, run as an unprivileged user) you will need to run freeradius with
-a group membership that is able to read the /etc/shadow file - otherwise
-pam will be unable to read the /etc/shadow file and will fail. I suggest
+a group membership that is able to read the `/etc/shadow` file - otherwise
+pam will be unable to read the `/etc/shadow` file and will fail. We suggest
 a group called `shadow' or the like.
 
 ```
@@ -65,38 +70,33 @@ $ chgrp /etc/shadow shadow
 $ chmod g+w /etc/shadow
 ```
 
-And in the radiusd.conf file:
+And in the `radiusd.conf` file:
 
 ```
 # On systems with shadow passwords, you might have to set `group = shadow`
 # for the server to be able to read the shadow password file.
-# Change below to suit your setup. user = radius group = shadow
+# Change below to suit your setup.
+
+user = radius
+group = shadow
 ```
 
-Please understand that giving anything except root read permissions to
-the /etc/shadow file is something that you want to think a bit upon!!
+[NOTE]
+====
+Granting read access to the `/etc/shadow` file can be a security risk;
+use this option with caution. Generally, only root read permissions
+are safe.
+====
 
-[arabic, start=2]
-. NOTES
-+
-None.
-. TODO:
-+
-Real PAM support, figure out how we can write a module that will make it
-blend in with PAM more seamlessly. With this, we can replace the
-DENY_SHELL with something more flexible such as a database.
-
-.EXAMPLE:
+== Worked Example
 
 ```
-DEFAULT Auth-Type = Pam, NAS-IP-Address = 206.97.64.5 Service-Type =
-Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 255.255.255.254,
-Filter-Id = std.ppp, Framed-MTU = 1500, Framed-Compression =
-Van-Jacobson-TCP-IP DEFAULT Auth-Type = Pam, Pam-Auth = radius2,
-NAS-IP-Address = 127.0.0.1 Service-Type = Framed-User, Framed-Protocol =
-PPP, Framed-IP-Address = 255.255.255.254, Filter-Id = std.ppp,
-Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP
+DEFAULT Auth-Type = Pam, ..
+	...
+
+DEFAULT Auth-Type = Pam, Pam-Auth = radius2, ..
+	...
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

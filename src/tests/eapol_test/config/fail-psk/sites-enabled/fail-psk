@@ -1,0 +1,17 @@
+server eap-psk {
+	namespace = eap-psk
+
+	eap-psk {
+		identity = "FreeRADIUS"
+	}
+
+	recv Identity-Response {
+		if (Identity == "bob@example.org") {
+			control.Password.PSK := %md5('bob')
+			ok
+		}
+		else {
+			notfound
+		}
+	}
+}

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <sys/sem.h>
 #include <sys/stat.h>
 
-#include <stdbool.h>
 #include <signal.h>
 
 #include <freeradius-devel/util/perm.h>
@@ -188,7 +187,7 @@ int fr_sem_post(int sem_id, char const *file, bool undo_on_exit)
 	if (errno != 0) {
 		fr_strerror_printf("Failed getting value from semaphore bound to \"%s\" - %s", file,
 				   fr_syserror(errno));
-		return 01;
+		return -1;
 	}
 	if (num == 0) return 1;
 
@@ -299,7 +298,7 @@ int fr_sem_wait(int sem_id, char const *file, bool undo_on_exit, bool nonblock)
 		if (unlikely(!uid_str)) goto simple_error;
 
 		gid_str = fr_perm_gid_to_str(NULL, gid);
-		if (unlikely(!uid_str)) {
+		if (unlikely(!gid_str)) {
 			talloc_free(uid_str);
 			goto simple_error;
 		}

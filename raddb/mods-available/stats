@@ -17,12 +17,12 @@
 #  When listed in a `recv Status-Server` section, it will add global
 #  server statistics to the packet.
 #
-#  See `dictionary.freeradius`, and the `FreeRADIUS-Stats4` attributes,
-#  for a list of which attributes it adds.
+#  See `dictionary.freeradius`, and the `FreeRADIUS-Stats4`
+#  attributes, for a list of which attributes it adds.
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  This module takes no configuration.
 #

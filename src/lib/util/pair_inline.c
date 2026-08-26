@@ -135,10 +135,14 @@ _INLINE bool fr_pair_list_empty(fr_pair_list_t const *list)
  *
  * @param[in,out] list head of dlinked fr_pair_ts to sort.
  * @param[in] cmp to sort with
+ * @return
+ *	- 0 on success.
+ *	- -1 on comparator error, retrieve the error with fr_strerror.  The list is
+ *	  intact but its order is undefined.
  */
-_INLINE void fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp)
+_INLINE int fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp)
 {
-	fr_pair_order_list_sort(&list->order, cmp);
+	return fr_pair_order_list_sort(&list->order, cmp);
 }
 
 /** Get the length of a list of fr_pair_t

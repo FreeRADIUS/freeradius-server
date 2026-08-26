@@ -148,9 +148,6 @@ static conf_parser_t tls_verify_config[] = {
 			 	.len = &verify_mode_table_len
 			 },
 			 .dflt = "client-and-issuer" },
-	{ FR_CONF_OFFSET("check_crl", fr_tls_verify_conf_t, check_crl), .dflt = "no" },
-	{ FR_CONF_OFFSET("allow_expired_crl", fr_tls_verify_conf_t, allow_expired_crl) },
-	{ FR_CONF_OFFSET("allow_not_yet_valid_crl", fr_tls_verify_conf_t, allow_not_yet_valid_crl) },
 	{ FR_CONF_OFFSET("der_decode", fr_tls_verify_conf_t, der_decode) },
 	CONF_PARSER_TERMINATOR
 };
@@ -184,6 +181,9 @@ conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("disable_single_dh_use", fr_tls_conf_t, disable_single_dh_use) },
 
 	{ FR_CONF_OFFSET("cipher_list", fr_tls_conf_t, cipher_list) },
+#ifdef TLS1_3_VERSION
+	{ FR_CONF_OFFSET("cipher_suites", fr_tls_conf_t, cipher_suites) },
+#endif
 	{ FR_CONF_OFFSET("cipher_server_preference", fr_tls_conf_t, cipher_server_preference), .dflt = "yes" },
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 	{ FR_CONF_OFFSET("allow_renegotiation", fr_tls_conf_t, allow_renegotiation), .dflt = "no" },
@@ -232,6 +232,9 @@ conf_parser_t fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET("fragment_size",  fr_tls_conf_t, fragment_size), .dflt = "1024" },
 
 	{ FR_CONF_OFFSET("cipher_list", fr_tls_conf_t, cipher_list) },
+#ifdef TLS1_3_VERSION
+	{ FR_CONF_OFFSET("cipher_suites", fr_tls_conf_t, cipher_suites) },
+#endif
 
 #ifndef OPENSSL_NO_ECDH
 	{ FR_CONF_OFFSET("ecdh_curve", fr_tls_conf_t, ecdh_curve), .dflt = "prime256v1" },
@@ -343,7 +346,7 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 		if (conf->tls_min_version >= (float)1.3) {
 			cf_log_err(ci, "stateful session-resumption is not supported with tls_min_version >= 1.3. "
 			           "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
-			goto error;
+			goto cache_stateless;
 		}
 		break;
 	}
@@ -388,7 +391,7 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 	cnt = talloc_array_length(conf->chains);
 	for (i = 0; i < cnt; i++) {
 		char		cmd[256];
-		char		*password;
+		char		*password, *buf;
 		long const	max_password_len = 128;
 		FILE		*cmd_pipe;
 
@@ -416,12 +419,31 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 			return -1;
 		}
 
-		fgets(password, max_password_len, cmd_pipe);
+		buf = fgets(password, max_password_len, cmd_pipe);
+
+		if (!buf || ferror(cmd_pipe)) {
+			pclose(cmd_pipe);
+			talloc_free(password);
+			ERROR("%s command failed: Unable to get private_key_password", cmd);
+			ERROR("Error reading private_key_file %s", conf->chains[i]->private_key_file);
+			return -1;
+		}
 		pclose(cmd_pipe);
 
 		/* Get rid of newline at end of password. */
-		password[strlen(password) - 1] = '\0';
+		for (buf = password; buf < (password + max_password_len); buf++) {
+			if ((unsigned char)*buf < ' ') {
+				*buf = '\0';
+				goto found;
+			}
+		}
 
+		talloc_free(password);
+		ERROR("%s command failed: Unable to get private_key_password", cmd);
+		ERROR("Error reading private_key_file %s - password is too long", conf->chains[i]->private_key_file);
+		return -1;
+
+	found:
 		DEBUG3("Password from command = \"%s\"", password);
 		talloc_const_free(conf->chains[i]->password);
 		conf->chains[i]->password = password;

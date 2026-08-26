@@ -45,7 +45,7 @@ extern "C" {
 /** @hidecallergraph */
 void		_fr_strerror_vprintf(char const *file, int line, char const *fmt, va_list ap);
 
-#define		fr_strerror_vprintf_push(_fmt, _ap) _fr_strerror_vprintf_push(__FILE__, __LINE, _fmt, _ap)
+#define		fr_strerror_vprintf_push(_fmt, _ap) _fr_strerror_vprintf_push(__FILE__, __LINE__, _fmt, _ap)
 /** @hidecallergraph */
 void		_fr_strerror_vprintf_push(char const *file, int line, char const *fmt, va_list ap);
 

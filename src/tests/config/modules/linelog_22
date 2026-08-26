@@ -1,0 +1,10 @@
+#
+#  Test: world-writable permissions 0666
+#
+linelog {
+	destination = file
+	file {
+		filename = /tmp/linelog_test
+		permissions = 0666	# ERROR
+	}
+}

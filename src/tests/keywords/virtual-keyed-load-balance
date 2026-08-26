@@ -1,0 +1,10 @@
+#
+#  Just to see if this compiles and runs
+#
+keyed-virtual
+
+if (!control.Filter-Id) {
+	test_fail
+}
+
+success

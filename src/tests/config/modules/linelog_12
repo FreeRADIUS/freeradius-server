@@ -1,0 +1,6 @@
+#
+#  Test: destination=file without file section
+#
+linelog {	# ERROR
+	destination = file
+}

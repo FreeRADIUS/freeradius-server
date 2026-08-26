@@ -40,10 +40,10 @@ RCSID("$Id$")
  *	That's because if the authentication vector is different,
  *	it means that the NAS has given up on the earlier request.
  */
-int8_t fr_packet_cmp(void const *a_v, void const *b_v)
+fr_cmp_ret_t fr_packet_cmp(void const *a_v, void const *b_v)
 {
 	fr_packet_t const *a = a_v, *b = b_v;
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	/*
 	 *	256-way fanout for RADIUS IDs, then by FD.  And then
@@ -91,6 +91,10 @@ typedef struct {
 	bool		dont_use;
 
 	uint8_t		id[32];
+
+	uint8_t		*buffer;
+	size_t		bufsize;
+	size_t		used;
 } fr_packet_socket_t;
 
 
@@ -177,6 +181,8 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd)
 
 	if (ps->num_outgoing != 0) return false;
 
+	TALLOC_FREE(ps->buffer);
+
 	ps->socket.fd = -1;
 	pl->num_sockets--;
 
@@ -221,6 +227,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	}
 
 	memset(ps, 0, sizeof(*ps));
+	ps->socket.fd = -1;
 	ps->ctx = ctx;
 	ps->socket.type = (proto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 
@@ -251,6 +258,14 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	ps->dst_any = fr_ipaddr_is_inaddr_any(&ps->socket.inet.dst_ipaddr);
 	if (ps->dst_any < 0) return false;
+
+	if (proto == IPPROTO_TCP) {
+		ps->buffer = talloc_array(pl, uint8_t, RADIUS_MAX_PACKET_SIZE);
+		if (!ps->buffer) return false;
+
+		ps->bufsize = RADIUS_MAX_PACKET_SIZE;
+		ps->used = 0;
+	}
 
 	/*
 	 *	As the last step before returning.
@@ -305,14 +320,18 @@ bool fr_packet_list_insert(fr_packet_list_t *pl,
 {
 	if (!pl || !request) return 0;
 
-	return fr_rb_insert(pl->tree, request);
+	return fr_rb_insert(pl->tree, request) == 0;
 }
 
 fr_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_packet_t *request)
 {
+	fr_packet_t *found;
+
 	if (!pl || !request) return 0;
 
-	return fr_rb_find(pl->tree, request);
+	fr_rb_find((void **)&found, pl->tree, request);
+
+	return found;
 }
 
 
@@ -352,9 +371,10 @@ fr_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_packet_t *repl
 	 */
 	my_request.socket.fd = reply->socket.fd;
 	my_request.id = reply->id;
-	request = &my_request;
 
-	return fr_rb_find(pl->tree, request);
+	fr_rb_find((void **)&request, pl->tree, &my_request);
+
+	return request;
 }
 
 
@@ -362,7 +382,7 @@ bool fr_packet_list_yank(fr_packet_list_t *pl, fr_packet_t *request)
 {
 	if (!pl || !request) return false;
 
-	return fr_rb_delete(pl->tree, request);
+	return fr_rb_delete(pl->tree, request) == 0;
 }
 
 uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)
@@ -398,7 +418,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
 	int type;
-	fr_packet_socket_t *ps= NULL;
+	fr_packet_socket_t *ps = NULL;
 
 	if ((request->socket.inet.dst_ipaddr.af == AF_UNSPEC) ||
 	    (request->socket.inet.dst_port == 0)) {
@@ -425,6 +445,11 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 */
 	if (fr_ipaddr_is_inaddr_any(&request->socket.inet.dst_ipaddr) != 0) {
 		fr_strerror_const("Must specify a dst_ipaddr");
+		return false;
+	}
+
+	if (!pl->num_sockets) {
+		fr_strerror_const("No sockets have been added to the packet list");
 		return false;
 	}
 
@@ -669,15 +694,17 @@ int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
  *	FIXME: Add socket.fd, if -1, do round-robin, else do socket.fd
  *		IF in fdset.
  */
-fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_message_authenticator)
+int fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, TALLOC_CTX *ctx, fr_packet_t **packet_p, uint32_t max_attributes, bool require_message_authenticator)
 {
 	int start;
 	fr_packet_t *packet;
 
-	if (!pl || !set) return NULL;
+	if (!pl || !set) return 0;
 
 	start = pl->last_recv;
 	do {
+		fr_packet_socket_t *ps;
+
 		start++;
 		start &= SOCKOFFSET_MASK;
 
@@ -686,10 +713,44 @@ fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max
 		if (!FD_ISSET(pl->sockets[start].socket.fd, set)) continue;
 
 		if (pl->sockets[start].socket.type == SOCK_STREAM) {
-			packet = fr_tcp_recv(pl->sockets[start].socket.fd, false);
-		} else
-			packet = fr_packet_recv(NULL, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
+			int rcode;
+			ps = &pl->sockets[start];
+
+			ps->used = 0;
+			rcode = fr_tcp_read_packet(ps->socket.fd, ps->buffer, ps->bufsize,
+						   &ps->used, max_attributes, require_message_authenticator);
+			if (rcode <= 0) return rcode;
+
+			if (ps->used < RADIUS_HEADER_LENGTH) {
+				fr_strerror_printf("TCP packet too short: %zu", ps->used);
+				return -1;
+			}
+
+			packet = fr_packet_alloc(ctx, false);
+			if (!packet) return -1;
+
+			packet->data = talloc_memdup(packet, ps->buffer, rcode);
+			if (!packet->data) {
+				talloc_free(packet);
+				return -1;
+			}
+
+			packet->data_len = rcode;
+			packet->socket = ps->socket;
+
+			if (ps->used == (size_t) rcode) {
+				ps->used = 0;
+			} else {
+				fr_assert(ps->used > (size_t) rcode);
+
+				memmove(ps->buffer, ps->buffer + rcode, ps->used - rcode);
+				ps->used -= rcode;
+			}
+
+		} else {
+			packet = fr_packet_recv(ctx, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
 						       max_attributes, require_message_authenticator);
+		}
 		if (!packet) continue;
 
 		/*
@@ -699,10 +760,11 @@ fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max
 
 		pl->last_recv = start;
 		packet->socket.type = pl->sockets[start].socket.type;
-		return packet;
+		*packet_p = packet;
+		return 0;
 	} while (start != pl->last_recv);
 
-	return NULL;
+	return 0;
 }
 
 uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl)

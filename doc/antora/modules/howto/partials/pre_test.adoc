@@ -19,5 +19,5 @@ and all errors before proceeding to the next step.  It is a good idea
 to ensure that the current configuration works _before_ making changes
 to it.
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

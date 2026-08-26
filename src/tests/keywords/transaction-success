@@ -1,0 +1,25 @@
+#
+# PRE: transaction
+#
+#  Transaction succeeds - edits are committed
+#
+string foo
+string bar
+
+transaction {
+	foo := "hello"
+	bar := "world"
+}
+
+#
+#  Both assignments should have been committed
+#
+if (foo != "hello") {
+	test_fail
+}
+
+if (bar != "world") {
+	test_fail
+}
+
+success

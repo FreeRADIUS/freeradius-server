@@ -1,0 +1,9 @@
+#
+#  Test: invalid syslog severity
+#
+linelog {	# ERROR
+	destination = syslog
+	syslog {
+		severity = bogus
+	}
+}

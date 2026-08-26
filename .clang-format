@@ -98,6 +98,14 @@ IndentCaseLabels: false
 IndentPPDirectives: AfterHash
 
 #
+#  Indent continued preprocessor directives with two spaces (rendered
+#  as spaces, not tabs, because PPIndentWidth is below TabWidth=8).
+#  Matches the established `#  include`, `#  ifdef`, `#  define` style
+#  used throughout the v4 headers.
+#
+PPIndentWidth: 2
+
+#
 #  Ensures pointers '*' are placed next to the variable name
 #  instead of the type.
 #

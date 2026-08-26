@@ -17,5 +17,5 @@ including daylight savings and UTC offset.
 | xref:xlat/time/request.adoc[request]     | Return the time when the request. was received.
 |=====
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

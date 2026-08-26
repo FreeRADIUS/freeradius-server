@@ -1,12 +1,7 @@
 name: CI-Sanitizers
 
 on:
-  push:
-    branches-ignore:
-      - coverity_scan
-      - run-fuzzer**
-      - debug-fuzzer-**
-  pull_request:
+  workflow_call:
 
 env:
   ASAN_OPTIONS: symbolize=1 detect_leaks=1 detect_stack_use_after_return=1
@@ -28,21 +23,18 @@ env:
   GH_ACTIONS: 1
 
 jobs:
-  pre-ci:
-    runs-on: ubuntu-latest
-    # Map a step output to a job output
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
-      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
-    steps:
-      - id: skip_check
-        uses: fkirc/skip-duplicate-actions@master
+  #
+  #  Determines the values that turn on whether the run is happening in the
+  #  FreeRADIUS organisation or in a fork.  See
+  #  .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
 
   ci-sanitizers:
+    needs: common_vars
     timeout-minutes: 150
-    needs: pre-ci
-    if: ${{ needs.pre-ci.outputs.should_skip != 'true' }}
 
     runs-on: ${{ matrix.os.runs_on }}
 
@@ -67,18 +59,18 @@ jobs:
         #  docker  - the docker image name, if containers are being used
         #  name    - used in the job name only
         os:
-          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
-            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
-            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
+          - runs_on: "${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
+            docker: "${{ needs.common_vars.outputs.image_prefix }}self-hosted:${{ needs.common_vars.outputs.image_tag }}"
+            name: "${{ needs.common_vars.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
             code: "ubuntu2404"
             imageos: "ubuntu24"
 
         env:
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-lean    }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang         }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-O2-g3   }
-          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-ndebug  }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, NAME: linux-clang-altlibs }
+          - { CC: clang, BUILD_CFLAGS: "",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-lean    }
+          - { CC: clang, BUILD_CFLAGS: "",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-O2 -g3",  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-O2-g3   }
+          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-ndebug  }
+          - { CC: clang, BUILD_CFLAGS: "",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, NAME: linux-clang-altlibs }
 
     env: ${{ matrix.env }}
 
@@ -92,7 +84,7 @@ jobs:
     #  we need to run separate database containers to provide these.
     services:
       mariadb:
-        image: ${{ needs.pre-ci.outputs.docker_prefix }}mariadb
+        image: ${{ needs.common_vars.outputs.docker_prefix }}mariadb
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
         ports:
@@ -104,7 +96,7 @@ jobs:
           --health-retries 10
 
       postgres:
-        image: ${{ needs.pre-ci.outputs.docker_prefix }}postgres
+        image: ${{ needs.common_vars.outputs.docker_prefix }}postgres
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
@@ -116,7 +108,7 @@ jobs:
           --health-retries 5
 
       threeds:
-        image: ${{ needs.pre-ci.outputs.docker_prefix }}4teamwork/389ds
+        image: ${{ needs.common_vars.outputs.docker_prefix }}4teamwork/389ds
         ports:
           - 3389:3389
           - 3636:3636
@@ -128,26 +120,27 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      #
+      #  No redpanda service container: seastar exits EINVAL on these
+      #  runners with the default command, and GitHub Actions services
+      #  don't let us override it.  Kafka module tests skip here; the
+      #  multi-server kafka-produce test covers the produce path instead.
+      #
+
     steps:
-
-      #  Need git installed for checkout to behave normally
-      - name: Install checkout prerequisites
-        run: apt-get update && apt-get install -y --no-install-recommends git git-lfs ca-certificates
-
       # Checkout, but defer pulling LFS objects until we've restored the cache
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: false
 
       #  Docker image does not have same environment as the
       #  standard GitHub actions image, so use this to bring them
       #  more in line.
-      - name: Prepare Docker environment
-        uses: ./.github/actions/docker-prep
-
-      - name: Install build dependencies
-        uses: ./.github/actions/freeradius-deps
+      - name: Prepare the runner
+        uses: ./.github/actions/runner-prep
         with:
+          selfhosted: ${{ needs.common_vars.outputs.selfhosted }}
+          packaging_changed: ${{ needs.common_vars.outputs.images_changed }}
           use_docker: true
           cc: ${{ matrix.env.CC }}
 
@@ -185,6 +178,12 @@ jobs:
           imap_test_server_ssl_port: 1432
           smtp_test_server: 127.0.0.1
           smtp_test_server_port: 2525
+
+      - name: Collect core dumps
+        if: ${{ always() }}
+        uses: ./.github/actions/collect-core-dumps
+        with:
+          name: ${{ matrix.os.name }}-${{ matrix.env.NAME }}
 
       #
       #  If the CI has failed and the branch is ci-debug then we start a tmate

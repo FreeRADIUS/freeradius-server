@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -28,14 +28,12 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/connection.h>
 
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
 #endif
 
 #ifdef HAVE_UNISTD_H
-#  include <unistd.h>
 #endif
 
 #ifdef HAVE_GRP_H
@@ -93,8 +91,6 @@ typedef struct {
 		uint32_t		permissions;		//!< Permissions to use when creating new files.
 		char const		*group_str;		//!< Group to set on new files.
 		gid_t			group;			//!< Resolved gid.
-		bool			escape;			//!< Do filename escaping, yes / no.
-		xlat_escape_legacy_t		escape_func;		//!< Escape function.
 	} file;
 
 	struct {
@@ -133,7 +129,6 @@ static const conf_parser_t file_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_WRITABLE | CONF_FLAG_XLAT, rlm_logtee_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", rlm_logtee_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", rlm_logtee_t, file.group_str) },
-	{ FR_CONF_OFFSET("escape_filenames", rlm_logtee_t, file.escape), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -271,7 +266,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 	while ((msg = fr_fring_next(t->fring))) {
 		ssize_t slen;
 
-		slen = write(sock, msg, talloc_array_length(msg) - 1) ;
+		slen = write(sock, msg, talloc_strlen(msg)) ;
 	write_error:
 		if (slen < 0) {
 			switch (errno) {
@@ -489,7 +484,10 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 	 */
 	dst = request->log.dst;
 	request->log.dst = NULL;
-	if (tmpl_aexpand(t, &exp, request, inst->log_fmt, NULL, NULL) < 0) goto finish;
+	if (tmpl_aexpand(t, &exp, request, inst->log_fmt, NULL, NULL) < 0) {
+		request->log.dst = dst;
+		goto finish;
+	}
 	request->log.dst = dst;
 
 	fr_fring_overwrite(t->fring, exp);	/* Insert it into the buffer */
@@ -601,15 +599,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	CONF_SECTION    *conf = mctx->mi->conf;
 	char		prefix[100];
 
-	/*
-	 *	Escape filenames only if asked.
-	 */
-	if (inst->file.escape) {
-		inst->file.escape_func = rad_filename_escape;
-	} else {
-		inst->file.escape_func = rad_filename_make_safe;
-	}
-
 	inst->log_dst = fr_table_value_by_str(logtee_dst_table, inst->log_dst_str, LOGTEE_DST_INVALID);
 	if (inst->log_dst == LOGTEE_DST_INVALID) {
 		cf_log_err(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
@@ -646,7 +635,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		break;
 	}
 
-	inst->delimiter_len = talloc_array_length(inst->delimiter) - 1;
+	inst->delimiter_len = talloc_strlen(inst->delimiter);
 
 	return 0;
 }

@@ -44,6 +44,8 @@ on:
   schedule:
     - cron: '0 4 * * *'
 
+  workflow_dispatch:
+
 env:
   ASAN_OPTIONS: symbolize=1 detect_leaks=1 detect_stack_use_after_return=1
   LSAN_OPTIONS: fast_unwind_on_malloc=0:malloc_context_size=50
@@ -58,6 +60,14 @@ env:
   CC: clang
 
 jobs:
+  #
+  #  Determines which registry holds the continuous integration (CI) images.
+  #  See .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
 
   #
   #  Constructs a matrix of protocols to fuzz as JSON that when set in the main
@@ -86,7 +96,7 @@ jobs:
       run: |
         echo starttimestamp=`date +%s` >> $GITHUB_OUTPUT
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         lfs: false
 
@@ -99,7 +109,9 @@ jobs:
         #
         TOTAL_RUNTIME=20000
         SLOT_SPREAD=3  # secs
-        read -r -a PROTOS <<< $(sed -ne 's/^FUZZER_PROTOCOLS\s\+=\s\+\(.*\)/\1/p' src/bin/all.mk)
+        read -r -a PROTOS <<< $(sed -ne 's/^FUZZER_PROTOCOLS\s\+=\s\+\(.*\)/\1/p' src/fuzzer/all.mk)
+        read -r -a NON_PROTOS <<< $(sed -ne 's/^FUZZER_NON_PROTOCOL_TARGETS\s\+=\s\+\(.*\)/\1/p' src/fuzzer/all.mk)
+        PROTOS=( "${PROTOS[@]}" "${NON_PROTOS[@]}" )
         #
         if [[ "$GITHUB_REF" = refs/heads/run-fuzzer-*-* ]]; then
           PROTOS=${GITHUB_REF#refs/heads/run-fuzzer-}
@@ -133,8 +145,18 @@ jobs:
 
     needs:
       - set-matrix
+      - common_vars
 
-    runs-on: ubuntu-24.04
+    if: github.repository_owner == 'FreeRADIUS'
+
+    runs-on: self-hosted
+
+    container:
+      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted:latest
+
+    defaults:
+      run:
+        shell: bash
 
     strategy:
       fail-fast: false
@@ -152,7 +174,7 @@ jobs:
     #  last updated and because we will walk the tree until we find a commit
     #  that builds.
     #
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         lfs: false
         fetch-depth: 500
@@ -176,7 +198,7 @@ jobs:
         echo "corpusage=$CORPUSAGE" >> $GITHUB_OUTPUT
 
     - name: Restore the fuzzer corpus tar file from cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: corpus-cache
       with:
         path: src/tests/fuzzer-corpus/${{ matrix.env.PROTOCOL }}.tar
@@ -185,11 +207,12 @@ jobs:
           corpus-${{ matrix.env.PROTOCOL }}-${{ steps.corpusparams.outputs.corpusct }}-
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
-    - name: Install build dependencies
-      uses: ./.github/actions/freeradius-deps
+    - name: Prepare the runner
+      uses: ./.github/actions/runner-prep
       with:
-        use_docker: false
-        cc: ${{ matrix.env.CC }}
+        selfhosted: '1'
+        use_docker: true
+        cc: ${{ env.CC }}
         llvm_ver: 18
 
     - name: Show versions
@@ -211,7 +234,7 @@ jobs:
           echo "Testing commit:"
           git log -n1
           echo
-          CFLAGS="-DWITH_EVAL_DEBUG -g3" ./configure -C \
+          CFLAGS="-g3" ./configure -C \
             --enable-werror \
             --enable-address-sanitizer \
             --enable-undefined-behaviour-sanitizer \
@@ -229,22 +252,23 @@ jobs:
         done
         echo "commit_id=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         make -j `nproc`
-        make test.unit
+        make -j `nproc` test.unit
 
     - name: Run fuzzer tests
       run: |
         REMAINING_TIME=$(( $TOTAL_RUNTIME + $START_TIMESTAMP - `date +%s` ))
         echo "Started at $START_TIMESTAMP for $TOTAL_RUNTIME secs. Fuzzing ${{ steps.pick_commit.outputs.commit_id }}:$PROTOCOL for $REMAINING_TIME secs"
         [[ "$REMAINING_TIME" -lt 1 ]] && exit 1
-        make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT="$REMAINING_TIME" FUZZER_ARGUMENTS="-jobs=`nproc` -workers=`nproc`" || :
+        make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT="$REMAINING_TIME" FUZZER_ARGUMENTS="-jobs=`nproc` -workers=`nproc`" | tee build/fuzzer/$PROTOCOL.out.log || :
         find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
+        ! grep -sqr FAILED build/fuzzer/*.log
       env:
         GITHUB_REF: "${{ github.ref }}"
         START_TIMESTAMP: "${{ needs.set-matrix.outputs.starttimestamp }}"
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
     - name: "Clang libFuzzer: Store assets on failure"
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: clang-fuzzer-${{ matrix.env.PROTOCOL }}-${{ steps.pick_commit.outputs.commit_id }}
         path: build/fuzzer
@@ -259,25 +283,23 @@ jobs:
         make test.fuzzer.$PROTOCOL.merge
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
+    - name: Generate app token to push corpus
+      id: app-token
+      if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') && steps.corpusparams.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
+      uses: actions/create-github-app-token@v3
+      with:
+        client-id: ${{ vars.GH_APP_CLIENT_ID }}
+        private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
     #
     #  We can push the LFS file directly, but we must use the GitHub API to
     #  create the actual commit due to the "signed-commits" branch protection
     #  rule for the master branch.
-    #
-    #  Force reinstall of pyOpenSSL is to work around Python
-    #  cryptograpy package issue - PyGithub pulls in a newer
-    #  version which clashes with older apt-installed pyOpenSSL
-    #  https://github.com/pyca/pyopenssl/issues/1143
-    #
     - name: Monthly push back of corpus
       run: |
         export FILE=src/tests/fuzzer-corpus/$PROTOCOL.tar
         if ! git diff --exit-code "$FILE"; then
-          sudo apt-get install -y python3-venv
-          python3 -m venv ~/.venv
-          . ~/.venv/bin/activate
-          pip install --force-reinstall -I -U pyOpenSSL
-          pip install PyGithub
+          . /opt/corpus-venv/bin/activate
           git add "$FILE"
           OID="$(git lfs ls-files -l -I "$FILE" | cut -f1 -d ' ')"
           git lfs push --object-id origin "$OID"
@@ -288,7 +310,7 @@ jobs:
           python3 scripts/ci/commit_lfs_file_update.py
         fi
       env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        APP_TOKEN: ${{ steps.app-token.outputs.token }}
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') && steps.corpusparams.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
 
 

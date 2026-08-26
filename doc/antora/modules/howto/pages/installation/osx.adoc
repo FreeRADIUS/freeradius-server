@@ -1,19 +1,23 @@
 = OSX
 
-FreeRADIUS can be built and installed on OSX platforms, however some environment setup is required. Additional dev tools are also configured before the server installation.
+FreeRADIUS can be built and installed on OSX platforms, however some
+environment setup is required. Additional dev tools are also
+configured before the server installation.
 
 == Dependencies
 
 === Homebrew
 
-Install the https://brew.sh[Homebrew] package manager to streamline the installation process on OSX platforms. It'll make your life on macOS far simpler. Once you've installed Homebrew, you can install more from the command line:
+Install the https://brew.sh[Homebrew] package manager to streamline
+the installation process on OSX platforms. It'll make your life on
+macOS far simpler. Once you've installed Homebrew, you can install
+more from the command line:
 
-```bash
-brew install talloc
+```bash brew install talloc
 ```
 === Install script
 
-Run the `install_deps.sh` script to install the build dependencies. It's recommended to create a copy of this file and edit locally. You can remove apps, libs, or utilites that you don't need such as postgresql. Ensure that you use the updated file when running the script.
+Run the `install_deps.sh` script to install the build dependencies. It's recommended to create a copy of this file and edit locally. You can remove apps, libs, or utilities that you don't need such as postgresql. Ensure that you use the updated file when running the script.
 
 === Xcode tools
 
@@ -32,7 +36,7 @@ cat scripts/osx/bash_profile >> ~/.zshrc
 ```
 [NOTE]
 ====
-If using a different shell, ensure you copy the environment paramenters to your current shell.
+If using a different shell, ensure you copy the environment parameters to your current shell.
 ====
 
 === Get the source
@@ -55,9 +59,9 @@ make
 The information below is for future reference.
 
 ```
-cp ./org.freeradius.radius.plist /Library/LaunchDaemons
-launchctl load -w Library/LaunchDaemons/org.freeradius.radiusd.plist
+cp ./org.freeradius.radius.plist /Library/LaunchDaemons launchctl load
+-w Library/LaunchDaemons/org.freeradius.radiusd.plist
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

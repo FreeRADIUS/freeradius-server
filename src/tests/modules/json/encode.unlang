@@ -180,4 +180,34 @@ group {
 	}
 }
 
+# 7a. binary_format = base64 tests
+group {
+	octets local_octets
+
+	local_octets := 0xdeadbeef
+
+	# With binary_format = base64, octets should be base64 encoded
+	test_string1 := %json_object_b64.encode("local_octets")
+	if !(test_string1 == '{"local_octets":{"type":"octets","value":"3q2+7w=="}}') {
+		test_fail
+	}
+}
+
+# 8a. binary_format = base16 tests
+group {
+	octets local_octets
+
+	local_octets := 0xdeadbeef
+
+	if (%str.utf8(local_octets)) {
+		test_fail
+	}
+
+	# With binary_format = base16, octets should be base16 encoded
+	test_string1 := %json_object_base16.encode("local_octets")
+	if !(test_string1 == '{"local_octets":{"type":"octets","value":"deadbeef"}}') {
+		test_fail
+	}
+}
+
 test_pass

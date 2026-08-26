@@ -1,0 +1,90 @@
+name: runner-prep
+
+inputs:
+  use_docker:
+    description: True if running in a Docker container
+    default: false
+  llvm_ver:
+    description: Version of LLVM to use
+    default: 18
+  gcc_ver:
+    description: Version of GCC to use
+    default: 14
+  fuzzing:
+    description: True if fuzzing is enabled
+    default: false
+  cc:
+    description: Which CC to use
+    default: gcc
+  selfhosted:
+    description: "'1' when running in the org's CI image, which already carries the packages below"
+    default: '0'
+  packaging_changed:
+    description: "'true' when this commit touches debian/**, so the image's baked build-deps may be stale"
+    default: 'false'
+
+
+runs:
+  using: composite
+
+  steps:
+
+    #
+    #  HOME is bind-mounted from the runner and survives between jobs on a
+    #  reused self-hosted runner, so it has to be cleared per job.
+    #
+    - name: Tidy home directory
+      shell: bash
+      run: rm -rf "$HOME"/*
+
+    - name: Package manager performance improvements
+      if: ${{ runner.os != 'macOS' && inputs.use_docker == false}}
+      shell: bash
+      run: |
+        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+        sudo dpkg-reconfigure man-db
+        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
+
+    - name: Generate debian/control
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        debian/rules debian/control
+
+    #
+    #  The image bakes in the build-dep closure, refreshed when a packaging
+    #  change lands on master.  A pull request that adds a dependency - a new
+    #  module, say - is testing a closure the image predates, and cannot wait
+    #  for its own merge to fix that.  Top up from the tree in that case only.
+    #
+    - name: Top up build dependencies from debian/control
+      if: ${{ runner.os != 'macOS' && inputs.packaging_changed == 'true' }}
+      shell: bash
+      run: |
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
+
+    - name: Install LLVM ${{ inputs.llvm_ver }}
+      if: ${{ inputs.cc == 'clang' && runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        #wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
+        #sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ inputs.llvm_ver }} 60 && sudo update-alternatives --set clang /usr/bin/clang-${{ inputs.llvm_ver }}
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-${{ inputs.llvm_ver }} 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-${{ inputs.llvm_ver }}
+
+    - name: Set compiler to GCC ${{ inputs.gcc_ver }}
+      if: ${{ inputs.cc == 'gcc' }}
+      shell: bash
+      run: |
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ inputs.gcc_ver }} 60 && sudo update-alternatives --set gcc /usr/bin/gcc-${{ inputs.gcc_ver }}
+
+    #
+    #  Ensure the homebrew version of clang is run rather than the Apple compiler.
+    #
+    - name: Set path for clang
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        echo "PATH=`brew --prefix`/opt/llvm@18/bin/:$PATH" >> $GITHUB_ENV

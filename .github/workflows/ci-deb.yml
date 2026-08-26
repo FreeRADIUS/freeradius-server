@@ -1,18 +1,21 @@
 name: CI DEB
 
 on:
-  push:
-    branches-ignore:
-      - coverity_scan
-      - run-fuzzer**
-      - debug-fuzzer-**
-  schedule:
-    - cron: '0 20 * * *'
+  workflow_call:
 
 env:
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
+  #
+  #  Determines the values that turn on whether the run is happening in the
+  #  FreeRADIUS organisation or in a fork.  See
+  #  .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
 
   #
   #  We don't want to consume many workers on each push so we only build the
@@ -23,6 +26,7 @@ jobs:
   #  the next job consumes.
   #
   set-matrix:
+    needs: common_vars
     name: Setup build matrix
     runs-on: ubuntu-latest
     outputs:
@@ -35,11 +39,10 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-22.04", "OS": "ubuntu:22.04"    },
-              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04"    },
-              { "NAME": "debian-12",    "OS": "debian:bookworm" },
-              { "NAME": "debian-13",    "OS": "debian:trixie"   },
-              { "NAME": "debian-sid",   "OS": "debian:sid"      }
+              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-ubuntu24:${{ needs.common_vars.outputs.image_tag }}"   },
+              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-ubuntu26:${{ needs.common_vars.outputs.image_tag }}"   },
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-debian13:${{ needs.common_vars.outputs.image_tag }}"   },
+              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-debiansid:${{ needs.common_vars.outputs.image_tag }}"  }
             ]
           }
         EOF
@@ -48,7 +51,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-12",    "OS": "debian:bookworm" }
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "${{ needs.common_vars.outputs.image_prefix }}self-hosted-ci-debian13:${{ needs.common_vars.outputs.image_tag }}" }
             ]
           }
         EOF
@@ -61,15 +64,16 @@ jobs:
 
     needs:
       - set-matrix
+      - common_vars
 
     strategy:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     container:
-      image: ${{ matrix.env.OS }}
+      image: ${{ matrix.env.BUILD_IMAGE }}
 
     env:
       HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
@@ -79,58 +83,27 @@ jobs:
 
     steps:
 
-    - name: Package manager performance and stability improvements
-      run: |
-        if [ -f "/etc/apt/sources.list" ]; then
-        sed -i 's/deb.debian.org/debian-archive.trafficmanager.net/' /etc/apt/sources.list
-        sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/' /etc/apt/sources.list
-        fi
-        echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries
-        echo 'force-unsafe-io' > /etc/dpkg/dpkg.cfg.d/02speedup
-        echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
-        apt-get update
-
-    #
-    #  Required so that the checkout action uses git protocol rather than the GitHub REST API.
-    #  make rpm requires the FR directory to be a git repository.
-    #
-    - name: Install recent git
-      run: |
-        apt-get install -y --no-install-recommends git-core ca-certificates
-
-    - name: Install build tools
-      run: |
-        apt-get install -y --no-install-recommends make gcc libc6-dev equivs file curl gnupg2 lsb-release
-
-    - name: NetworkRADIUS signing key
-      run: |
-        install -d -o root -g root -m 0755 /etc/apt/keyrings
-        curl -s 'https://packages.inkbridgenetworks.com/pgp/packages.networkradius.com.asc' | tee /etc/apt/keyrings/packages.networkradius.com.asc > /dev/null
-
-    - name: Set up NetworkRADIUS extras repository
-      run: |
-        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-        RELEASE=$(lsb_release -cs)
-        if [ "$RELEASE" = "n/a" ]; then
-            RELEASE=$(cat /etc/debian_version | awk -F \/ '{ print $(NF) }')
-        fi
-        [ "$RELEASE" != "forky" ] || RELEASE=sid
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
-          > /etc/apt/sources.list.d/networkradius-extras.list
-
-    - name: Update apt repository lists
-      run: apt-get update
-
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         path: freeradius
 
-    - name: Install build dependencies
+    #
+    #  Top-up build-deps against the just-checked-out debian/control in
+    #  case the image was baked before a recent control change. No-op
+    #  when the image is current.
+    #
+    #
+    #  The image bakes in the build-dep closure, refreshed when a packaging
+    #  change lands on master.  A pull request that adds a dependency is
+    #  testing a closure the image predates and cannot wait for its own merge,
+    #  so top up from the checked-out control file in that case only.
+    #
+    - name: Top up build dependencies from debian/control
+      if: ${{ needs.common_vars.outputs.images_changed == 'true' }}
       run: |
-        apt-get install -y --no-install-recommends build-essential devscripts quilt fakeroot
         touch -t 202001010000 debian/control
         debian/rules debian/control
-        mk-build-deps -irt"apt-get -y" debian/control
+        mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
       working-directory: freeradius
 
     - name: Build DEBs
@@ -140,11 +113,12 @@ jobs:
 
     - name: Collect DEBs
       run: |
+        rm -rf debs
         mkdir debs
         mv *.deb debs
 
     - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
@@ -153,13 +127,12 @@ jobs:
     # Build eapol_test using a minimal make environment to avoid configuring
     - name: Build eapol_test
       run: |
-        apt-get install -y libnl-3-dev libnl-genl-3-dev
         scripts/ci/eapol_test-build.sh
         mv scripts/ci/eapol_test/eapol_test ../debs
       working-directory: freeradius
 
     - name: Store DEBs
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: debs-${{ matrix.env.NAME }}
         path: debs
@@ -169,11 +142,6 @@ jobs:
     #  If the CI has failed and the branch is ci-debug then start a tmate
     #  session. SSH rendezvous point is emited continuously in the job output.
     #
-    - name: "Debug: Package dependancies for tmate"
-      run: |
-        apt-get install -y --no-install-recommends xz-utils
-      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
-
     - name: "Debug: Start tmate"
       uses: mxschmitt/action-tmate@v3
       with:
@@ -192,22 +160,37 @@ jobs:
     needs:
       - set-matrix
       - deb-build
+      - common_vars
 
     strategy:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     container:
-      image: ${{ matrix.env.OS }}
+      #
+      #  deb-test runs on a stock distro image so the install test exercises a
+      #  clean operating system.  docker_prefix points the name at the copy
+      #  the organisation keeps of that same image, put there by
+      #  docker-ci-images-refresh.yml, which is the identical image under another name
+      #  and so leaves the clean-operating-system property intact.  Pulling
+      #  the copy also keeps the organisation's build machines, which share a
+      #  few outbound addresses, away from Docker Hub's allowance of 100
+      #  downloads every six hours per address.
+      #
+      #  A fork has no such copy, so docker_prefix is empty and the name
+      #  reaches Docker Hub unchanged.  GitHub-hosted machines spread over a
+      #  large pool of addresses, so the allowance is not a problem there.
+      #
+      image: ${{ needs.common_vars.outputs.docker_prefix }}${{ matrix.env.OS }}
 
     name: "DEB install test"
 
     steps:
 
     - name: Load DEBs
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: debs-${{ matrix.env.NAME }}
 
@@ -264,22 +247,31 @@ jobs:
         mv eapol_test /usr/local/bin
         chmod +x /usr/local/bin/eapol_test
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         path: freeradius
 
     - name: Run the post-install test target
       run: |
-        make -C raddb/certs
+        make -C raddb/certs Q=@
         touch Make.inc
         mkdir -p build/tests/eapol_test
         echo "EAPOL_TEST=" $(which eapol_test) > build/tests/eapol_test/eapol_test.mk
         make -f scripts/ci/package-test.mk package-test
       working-directory: freeradius
 
+    #  This job checks out into freeradius/, so the action lives below that path
+    #  and the collection runs from there.
+    - name: Collect core dumps
+      if: ${{ always() }}
+      uses: ./freeradius/.github/actions/collect-core-dumps
+      with:
+        name: ${{ matrix.env.NAME }}
+        working-directory: freeradius
+
     - name: Upload radius logs on failure
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: radius-logs-${{ matrix.env.NAME }}
         path: |

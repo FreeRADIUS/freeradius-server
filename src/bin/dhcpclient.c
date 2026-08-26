@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/server/packet.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
-#include <freeradius-devel/util/pcap.h>
 
 /*
  *	Logging macros
@@ -117,7 +116,7 @@ static NEVER_RETURNS void usage(void)
 	DEBUG("Send a DHCP request with provided RADIUS attrs and output response.");
 
 	DEBUG("  <command>              One of: discover, request, decline, release, inform; or: auto.");
-	DEBUG("  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").");
+	DEBUG("  -d <directory>         Set the directory where the dictionaries are stored (defaults to " CONFDIR ").");
 	DEBUG("  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").");
 	DEBUG("  -f <file>              Read packets from file, not stdin.");
 	DEBUG("  -i <interface>         Use this interface to send/receive at packet level on a raw socket.");
@@ -316,7 +315,7 @@ static fr_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 		int i;
 
 		DEBUG("Received %d DHCP Offer(s):", nb_offer);
-		for (i = 0; i < nb_reply; i++) {
+		for (i = 0; i < nb_offer; i++) {
 			char server_addr_buf[INET6_ADDRSTRLEN];
 			char offered_addr_buf[INET6_ADDRSTRLEN];
 
@@ -494,7 +493,7 @@ static void dhcp_packet_debug(fr_packet_t *packet, fr_pair_list_t *list, bool re
 #endif
 	       "length %zu\n",
 	       received ? "Received" : "Sending",
-	       dhcp_message_types[packet->code],
+	       FR_DHCP_PACKET_CODE_VALID(packet->code) ? dhcp_message_types[packet->code] : "unknown",
 	       packet->id,
 	       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
 	       inet_ntop(packet->socket.inet.src_ipaddr.af,
@@ -537,7 +536,7 @@ int main(int argc, char **argv)
 	static fr_ipaddr_t	client_ipaddr;
 
 	int			c;
-	char const		*raddb_dir = RADDBDIR;
+	char const		*confdir = CONFDIR;
 	char const		*dict_dir = DICTDIR;
 	char const		*filename = NULL;
 
@@ -564,7 +563,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			raddb_dir = optarg;
+			confdir = optarg;
 			break;
 
 		case 'f':
@@ -617,7 +616,7 @@ int main(int argc, char **argv)
 		fr_exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(fr_dict_unconst(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_unconst(dict_freeradius), confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("dhcpclient");
 		fr_exit(EXIT_FAILURE);
 	}
@@ -675,7 +674,7 @@ int main(int argc, char **argv)
 		}
 
 		if (server_ipaddr.addr.v4.s_addr == 0xFFFFFFFF) {
-			ERROR("Using interface: %s (index: %d) in raw packet mode", iface, iface_ind);
+			DEBUG("Using interface: %s (index: %d) in raw packet mode", iface, iface_ind);
 			raw_mode = true;
 		}
 	}

@@ -1,0 +1,30 @@
+#
+#  self-hosted-docker-cli: extends the standard self-hosted CI base
+#  with the tools needed when the image is used as the JOB container
+#  of a dind-based workflow (docker.yml, crossbuild.yml,
+#  multi-server-tests).
+#
+#  The in-container docker CLI talks to the self-hosted-docker-dind
+#  sidecar over DOCKER_HOST, and m4 regenerates per-distro Dockerfiles
+#  from the m4 templates in scripts/docker/m4/.
+#
+#  ci.yml and ci-sanitizers.yml don't need these and continue to use
+#  the plain self-hosted image - this avoids bloating the base for
+#  workflows that never call docker.
+#
+
+#  The parent lives in whichever registry the run is using, so the caller
+#  passes the full name. docker-ci-images-refresh.yml passes the image it just pulled.
+ARG from
+FROM ${from}
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        docker-buildx \
+        docker-compose-v2 \
+        docker.io \
+        m4 \
+        python3-venv \
+    && rm -rf /var/lib/apt/lists/*

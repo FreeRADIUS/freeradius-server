@@ -87,7 +87,7 @@ This example should be converted to the following syntax:
 [source,unlang]
 .New Syntax
 ----
-request += {
+reply += {
 	User-Name = "foo"
 	Filter-Id = "bar"
 	NAS-IP-Address = 127.0.0.1
@@ -125,7 +125,7 @@ converted to a one-line edit statement:
 [source,unlang]
 ----
 .New Syntax
-reply.Filter-Id := { "bar", "boo", "baz" }
+reply.Filter-Id := { "bar", "foo", "baz" }
 ----
 
 This functionality makes it much easier to write complex assignments.
@@ -211,5 +211,5 @@ allowed the separation of list assignments from value modifications,
 which meant that xref:unlang/expression.adoc[expressions] became
 became simpler.
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

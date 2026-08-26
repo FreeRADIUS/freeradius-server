@@ -372,7 +372,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 			 *	which matches.
 			 */
 			ptr = q + *q + 1;
-			if (ptr > end) return false;
+			if (ptr >= end) return false;
 
 			/*
 			 *	Label lengths aren't the same, skip
@@ -433,7 +433,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 	 *	The next label is still uncompressed, so we call
 	 *	ourselves recursively in order to compress it.
 	 */
-	if (*next < 63) {
+	if (*next <= 63) {
 		if (!dns_label_compress(packet, start, end, &search, next, label_end)) return false;
 
 		/*
@@ -506,7 +506,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 		 *	buffer.  Check for a match.
 		 */
 		ptr = q + *q + 1;
-		if (ptr > end) return compressed;
+		if (ptr >= end) return compressed;
 
 		/*
 		 *	Label lengths aren't the same, skip it.
@@ -520,7 +520,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 		 *	If the NEXT label is uncompressed, then skip
 		 *	it unless it's the suffix we're pointing to.
 		 */
-		if (*ptr < 63) {
+		if (*ptr <= 63) {
 			if (ptr != suffix) {
 				q = ptr;
 				continue;
@@ -597,9 +597,8 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
  * @param[in] value	to encode.
  * @param[in] lb	label tracking data structure.
  * @return
- *	- >0 the number of bytes written to the dbuff
- *	- 0 could not encode anything, an error has occurred.
- *	- <0 the number of bytes the dbuff should have had, instead of "remaining".
+ *	- >=0 the number of bytes written to the dbuff
+ *	- <0 error
  */
 ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, fr_value_box_t const *value, fr_dns_labels_t *lb)
 {
@@ -607,11 +606,9 @@ ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, f
 	size_t			need = 0;
 
 	slen = fr_dns_label_from_value_box(&need, dbuff->p, fr_dbuff_remaining(dbuff), dbuff->p, compression, value, lb);
-	if (slen < 0) return 0;
+	if (slen < 0) return -need;
 
-	if (slen == 0) return -need;
-
-	fr_dbuff_advance(dbuff, (size_t)slen);
+	fr_dbuff_advance(dbuff, (size_t) slen);
 	return slen;
 }
 
@@ -640,7 +637,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 				    fr_value_box_t const *value, fr_dns_labels_t *lb)
 {
 	uint8_t *label;
-	uint8_t const *end = buf + buf_len;
+	uint8_t const *end;
 	uint8_t const *q, *strend, *last;
 	uint8_t *data;
 	bool underscore = true;
@@ -649,6 +646,8 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 		fr_strerror_const("Invalid input");
 		return -1;
 	}
+
+	end = buf + buf_len;
 
 	/*
 	 *	Don't allow stupidities
@@ -946,7 +945,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 		if ((p + 1) >= end) goto overflow;
 
 		/*
-		 *	0b10 and 0b10 are forbidden
+		 *	0b01 and 0b10 are forbidden
 		 */
 		if ((*p > 63) && (*p < 0xc0)) {
 			fr_strerror_const("Data with invalid high bits");
@@ -1172,7 +1171,7 @@ static ssize_t dns_label_decode(uint8_t const *packet, uint8_t const *end, uint8
 	if (*p >= 0xc0) {
 		uint16_t offset;
 
-		if ((end - packet) < 2) {
+		if ((end - p) < 2) {
 			return -(p - packet);
 		}
 
@@ -1187,7 +1186,7 @@ static ssize_t dns_label_decode(uint8_t const *packet, uint8_t const *end, uint8
 	}
 
 	/*
-	 *	0b10 and 0b10 are forbidden, and pointers can't point to other pointers.
+	 *	0b01 and 0b10 are forbidden, and pointers can't point to other pointers.
 	 */
 	if (*p > 63) return -(p - packet);
 

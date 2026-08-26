@@ -18,5 +18,5 @@ return configuration parameters to the NAS. Receives accounting information from
 | Optional datastore such as a database or directory containing user authentication and authorization information.| RADIUS server communicates with the datastore using a database API or LDAP.                | SQL Database, Kerberos Service Server, or an LDAP Directory.
 |===
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

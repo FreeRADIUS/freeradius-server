@@ -309,7 +309,7 @@ int fr_stats_merge_value_box(fr_value_box_t *dst, fr_value_box_t const *src)
 void fr_stats_iter_init(fr_stats_instance_t const *inst, fr_stats_iter_t *iter)
 {
 	iter->inst = inst;
-	iter->current = 0;
+	iter->current = UINT_MAX; /* will be incremented to 0 on first call to fr_stats_iter_next */
 }
 
 /** Go to the next entry in a structure
@@ -321,12 +321,8 @@ void fr_stats_iter_init(fr_stats_instance_t const *inst, fr_stats_iter_t *iter)
  */
 bool fr_stats_iter_next(fr_stats_iter_t *iter)
 {
-	if (iter->current < iter->inst->def->num_elements) {
-		iter->current++;
-		return true;
-	}
-
-	return false;
+	iter->current++;
+	return (iter->current < iter->inst->def->num_elements);
 }
 
 

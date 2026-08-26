@@ -100,7 +100,7 @@ This text means that authentication succeeded. A few lines above this text, the 
 
 == Configure FreeRADIUS to use ntlm_auth for MS-CHAP
 
-Once you have the previous steps working, configuring FreeRADIUS to use `ntlm_auth` for MS-CHAP is simple. First, delete the testing entry used above from the `users` file, as leaving it in will break other authentication types. Then, find the mschap module in raddb/modules/mschap file, and look for the line containing `ntlm_auth = `. It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
+Once you have the previous steps working, configuring FreeRADIUS to use `ntlm_auth` for MS-CHAP is simple. First, delete the testing entry used above from the `users` file, as leaving it in will break other authentication types. Then, find the mschap module in `mods-enabled/mschap` file, and look for the line containing `ntlm_auth = `. It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
 
 ```
 ntlm_auth = "/path/to/ntlm_auth --request-nt-key --allow-mschapv2 --username=%{mschap:User-Name:-None} --domain=%{%{mschap:NT-Domain}:-MYDOMAIN} --challenge=%{mschap:Challenge:-00} --nt-response=%{mschap:NT-Response:-00}"
@@ -115,3 +115,6 @@ If everything goes well, you should see the server returning an Access-Accept me
 If it does not work, double-check the password you entered on the supplicant against the password in Active Directory. If it still does not work, it might be a bug in Samba. Change your version of Samba, either by installing a fixed version, or by repeatedly down-grading it (and testing) until it works.
 
 If it does not work, then it is possible to test authentication with just the `ntlm_auth` command-line. Look at the FreeRADIUS debug output, and see the arguments passed to ntlm_auth. Copy and paste them to a command-line, and then use that command line for testing. This limited test is often simpler and faster than running a complex test with a full RADIUS server. When this limited test passes, then authentication with FreeRADIUS will work, too.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -22,6 +22,7 @@
 | xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items.
 | xref:xlat/misc/length.adoc[length]	            | Get the length of data.
 | xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute. regular expression search on string, using pattern.
+| xref:xlat/misc/module_call.adoc[module.call]      | Call a virtual module
 | xref:xlat/misc/rand.adoc[rand]	            | Generate random integers.
 |===
 
@@ -76,3 +77,6 @@
 | xref:xlat/ipv4/broadcast.adoc[broadcast]          | Get the broadcast address from an IPv4 prefix
 | xref:xlat/ipv4/netmask.adoc[netmask]              | Get the netmask from an IPv4 prefix
 |=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

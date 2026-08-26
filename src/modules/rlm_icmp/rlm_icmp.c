@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <fcntl.h>
-#include <unistd.h>
 
 /*
  *	Define a structure for our module configuration.
@@ -200,7 +199,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	This insert will never fail, because of the unique
 	 *	counter above.
 	 */
-	if (!fr_rb_insert(t->tree, echo)) {
+	if (fr_rb_insert(t->tree, echo) != 0) {
 		RPEDEBUG("Failed inserting IP into tracking table");
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
@@ -234,7 +233,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	Start off with the IPv6 pseudo-header checksum
 	 */
 	if (t->ipaddr_type == FR_TYPE_IPV6_ADDR) {
-		checksum = fr_ip6_pesudo_header_checksum(&inst->src_ipaddr.addr.v6, &echo->ip->vb_ip.addr.v6,
+		checksum = fr_ip6_pseudo_header_checksum(&inst->src_ipaddr.addr.v6, &echo->ip->vb_ip.addr.v6,
 							 sizeof(ip_header6_t) + sizeof(icmp), IPPROTO_ICMPV6);
 	}
 
@@ -261,7 +260,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, ~FR_SIGNAL_CANCEL, echo);
 }
 
-static int8_t echo_cmp(void const *one, void const *two)
+static fr_cmp_ret_t echo_cmp(void const *one, void const *two)
 {
 	rlm_icmp_echo_t const *a = one;
 	rlm_icmp_echo_t const *b = two;
@@ -342,7 +341,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	 *	Look up the packet by the fields which determine *our* ICMP packets.
 	 */
 	my_echo.counter = icmp->counter;
-	echo = fr_rb_find(t->tree, &my_echo);
+	fr_rb_find((void **)&echo, t->tree, &my_echo);
 	if (!echo) {
 		DEBUG("%s - Can't find packet counter=%d in tree", mctx->mi->name, icmp->counter);
 		return;
@@ -360,7 +359,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags,
 			   UNUSED int fd_errno, void *uctx)
 {
-	module_ctx_t const	*mctx = talloc_get_type_abort(uctx, module_ctx_t);
+	module_thread_inst_ctx_t const *mctx = talloc_get_type_abort(uctx, module_thread_inst_ctx_t);
 	rlm_icmp_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
 
 	ERROR("%s - Failed reading from ICMP socket - Closing it", mctx->mi->name);
@@ -466,11 +465,10 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-#ifndef FD_CLOEXEC
-#define FD_CLOEXEC (0)
-#endif
-
-	(void) fcntl(fd, F_SETFL, O_NONBLOCK | FD_CLOEXEC);
+	if (fr_cloexec(fd) < 0) {
+		close(fd);
+		return -1;
+	}
 
 	if (inst->src_ipaddr.af != AF_UNSPEC) {
 		ipaddr = inst->src_ipaddr;

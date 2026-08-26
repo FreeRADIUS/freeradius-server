@@ -1,12 +1,7 @@
 name: CI macOS
 
 on:
-  push:
-    branches-ignore:
-      - coverity_scan
-      - run-fuzzer**
-      - debug-fuzzer-**
-  pull_request:
+  workflow_call:
 
 env:
   ASAN_OPTIONS: symbolize=1 detect_leaks=0 detect_stack_use_after_return=1
@@ -26,19 +21,8 @@ env:
   GH_ACTIONS: 1
 
 jobs:
-  pre-ci:
-    runs-on: ubuntu-latest
-    # Map a step output to a job output
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-      - id: skip_check
-        uses: fkirc/skip-duplicate-actions@master
-
   ci:
     timeout-minutes: 90
-    needs: pre-ci
-    if: ${{ needs.pre-ci.outputs.should_skip != 'true' }}
 
     runs-on: ${{ matrix.env.OS }}
 
@@ -46,7 +30,7 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-15,     NAME: macos-clang         }
+          - { CC: clang, BUILD_CFLAGS: "",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-15,     NAME: macos-clang         }
 
     env: ${{ matrix.env }}
 
@@ -58,7 +42,7 @@ jobs:
     steps:
 
     # Checkout, but defer pulling LFS objects until we've restored the cache
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         lfs: false
 
@@ -66,7 +50,7 @@ jobs:
       run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
 
     - name: Restore LFS cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: lfs-cache
       with:
         path: .git/lfs
@@ -77,7 +61,7 @@ jobs:
       run: git lfs pull
 
     - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
@@ -85,6 +69,11 @@ jobs:
 
     - name: Install dependencies (macOS)
       run: |
+        #  The runner image ships this tap, and Homebrew warns on every
+        #  invocation while it is untrusted.  Nothing installed below comes
+        #  from it, so drop it rather than granting it blanket trust.
+        brew untap aws/tap || true
+
         brew install \
           cassandra-cpp-driver \
           gperftools \
@@ -193,21 +182,22 @@ jobs:
       run: |
         make -j `nproc`
 
-    - name: "Clang Static Analyzer: Store assets on failure"
-      uses: actions/upload-artifact@v4
-      with:
-        name: clang-scan.tgz
-        path: build/plist/**/*.html
-        retention-days: 30
-      if: ${{ matrix.env.CC == 'clang' && failure() }}
-
     # No detect_leaks support for ASAN on macOS
     - name: Run basic tests (macOS)
       run: |
         make -j `nproc` test.keywords test.unit test.modules test.auth test.digest
-        make test
+        make -j `nproc` test
       env:
         ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1
+
+    #  macOS writes cores to /cores rather than next to the crashing process,
+    #  so search that directory as well as the checkout.
+    - name: Collect core dumps
+      if: ${{ always() }}
+      uses: ./.github/actions/collect-core-dumps
+      with:
+        name: ${{ matrix.env.NAME }}
+        roots: ". /cores"
 
     #
     #  If the CI has failed and the branch is ci-debug then we start a tmate

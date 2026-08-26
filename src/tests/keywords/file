@@ -1,0 +1,15 @@
+string test
+
+#
+#  $FILE{path} reads the entire file at config parse time and
+#  substitutes its raw contents into the input stream.  The data
+#  file used here has no trailing newline so the result is the
+#  same as $VALUE{} would produce.
+#
+test = "$FILE{file-data.md}"
+
+if (test != "hello\nvalue") {
+	test_fail
+}
+
+success

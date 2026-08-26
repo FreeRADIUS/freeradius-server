@@ -1,0 +1,6 @@
+string test
+
+#
+#  $FILE{path} fails when the file is empty.
+#
+test = "$FILE{value-empty.md}"                                    # ERROR

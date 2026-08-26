@@ -123,10 +123,6 @@ typedef struct {
 	fr_tls_verify_mode_t attribute_mode;		//!< What set of certificates we're going to convert to
 							///< pairs for verification.
 
-	bool		check_crl;			//!< Check certificate revocation lists.
-	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
-	bool		allow_not_yet_valid_crl;	//!< Don't error out if CRL is not-yet-valid.
-
 	bool		der_decode;			//!< Should certificates be passed to the DER decoder.
 } fr_tls_verify_conf_t;
 
@@ -158,6 +154,7 @@ struct fr_tls_conf_s {
 	uint32_t	padding_block_size;		//!< for TLS 1.3, pad blocks to multiple of this size.
 
 	char const	*cipher_list;			//!< Acceptable ciphers.
+	char const	*cipher_suites;			//!< Acceptable TLS 1.3 cipher suites.
 	bool		cipher_server_preference;	//!< use server preferences for cipher selection
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 	bool		allow_renegotiation;		//!< Whether or not to allow cipher renegotiation.

@@ -6,7 +6,7 @@
 
 *File:*
 
-- `etc/raddb/sites-enabled/control-socket`
+- `sites-enabled/control-socket`
 
 *`man` page:* radmin, raddebug
 
@@ -30,5 +30,5 @@ user?
 4.  Can you start the server in non-debugging mode (`radiusd -f`), and
 still see the debugging output? How?
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -2,6 +2,7 @@
 #  Include from Redis cluster tests to get clusters back into a known state
 #
 string clusterctrl
+string clusterport
 string redisserver
 string data1
 string data2
@@ -15,19 +16,20 @@ data3 := "3-%str.rand('aaaaaaaa')"
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 	clusterctrl := 'scripts/ci/redis-setup.sh'
 } else {
-	clusterctrl := $ENV{REDIS_CLUSTER_CONTROL}
+	clusterctrl := "$ENV{REDIS_CLUSTER_CONTROL}"
 }
 
 #
-#  Reset the cluster
+#  Each test suite has a cluster of its own, told apart by base port.
 #
-%exec(%{clusterctrl}, 'stop')
-%exec(%{clusterctrl}, 'clean')
-%exec(%{clusterctrl}, 'start')
+clusterport := "$ENV{REDIS_CLUSTER_PORT}"
+if (clusterport == '') {
+	clusterport := '30000'
+}
 
 # Sometimes redis just fails to start - without it we can't run
 # the tests - so just exit early.
-cmdresult = %exec(%{clusterctrl}, 'create')
+cmdresult = %exec(%{clusterctrl}, '-p', %{clusterport}, 'rebuild')
 if (cmdresult == '') {
 	test_pass
 	handled
@@ -53,20 +55,22 @@ foreach i (%range(20)) {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
-	if (%redis.remap("%{redisserver}:30001") == 'success') {
-		#  Hashes to Redis cluster node master 0 (1)
-		if ((%redis('SET', 'b', %{data1}) == 'OK') && \
-		    (%redis('SET', 'c', %{data2}) == 'OK') && \
-		    (%redis('SET', 'd', %{data3}) == 'OK')) {
-			#
-			#  The actual node to keyslot mapping seems to be somewhat random
-			#  so we now need to figure out which slave each of those keys
-			#  ended up on.
-			#
-			if ((%redis("-@%redis.node('b', 1)", 'GET', 'b') == data1) && \
-			    (%redis("-@%redis.node('c', 1)", 'GET', 'c') == data2) && \
-			    (%redis("-@%redis.node('d', 1)", 'GET', 'd') == data3)) {
-				break
+	timeout 1s {
+		if (%redis.remap() == 'success') {
+			#  Hashes to Redis cluster node master 0 (1)
+			if ((%redis('SET', 'b', %{data1}) == 'OK') && \
+			    (%redis('SET', 'c', %{data2}) == 'OK') && \
+			    (%redis('SET', 'd', %{data3}) == 'OK')) {
+				#
+				#  The actual node to keyslot mapping seems to be somewhat random
+				#  so we now need to figure out which slave each of those keys
+				#  ended up on.
+				#
+				if ((%redis("-@%redis.node('b', 1)", 'GET', 'b') == data1) && \
+				    (%redis("-@%redis.node('c', 1)", 'GET', 'c') == data2) && \
+				    (%redis("-@%redis.node('d', 1)", 'GET', 'd') == data3)) {
+					break
+				}
 			}
 		}
 	}

@@ -1,0 +1,95 @@
+#
+#  kafka.produce with a topic that declares both `value` and `key`.
+#  The partition is derived deterministically from the key; two produces
+#  with the same key must land in the same partition and the bytes we
+#  produced must round-trip unchanged.
+#
+%exec('/bin/sh', '-c', '"$KAFKA_SUBSCRIBE" freeradius-test-keyed $ENV{OUTPUT_DIR}kafka-keyed.json 2')
+%exec('/bin/sh', '-c', '"$KAFKA_SUBSCRIBE" freeradius-test-keyed-nokey $ENV{OUTPUT_DIR}kafka-keyed-nokey.json 1')
+
+#
+#  Keyed produce - value = "payload=%{User-Name}", key = &User-Name.
+#
+kafka.produce.freeradius-test-keyed
+if (!ok) {
+	test_fail
+}
+
+#
+#  Same topic, same key - repeatable.  Stable partitioning means both
+#  records should end up on the same partition.
+#
+kafka.produce.freeradius-test-keyed
+if (!ok) {
+	test_fail
+}
+
+#
+#  Topic without a declared `key` - produces still succeed; librdkafka
+#  picks a partition via the configured partitioner.
+#
+kafka.produce.freeradius-test-keyed-nokey
+if (!ok) {
+	test_fail
+}
+
+#
+#  Expected byte values per topic's declared template.
+#
+control.Tmp-String-0 := "payload=%{User-Name}"
+control.Tmp-String-1 := "%{User-Name}"
+
+#
+#  Keyed topic: two identical records, each with value + key matching
+#  the expanded template.  Partitions must match.
+#
+timeout 10s {
+	map json %exec('/bin/sh', '-c', '"$KAFKA_WAIT_AND_CLEANUP" $ENV{OUTPUT_DIR}kafka-keyed.json 2') {
+		control.Tmp-String-2   := '$[0].value'
+		control.Tmp-String-3   := '$[0].key'
+		control.Tmp-Integer-0  := '$[0].partition'
+		control.Tmp-String-4   := '$[1].value'
+		control.Tmp-String-5   := '$[1].key'
+		control.Tmp-Integer-1  := '$[1].partition'
+	}
+}
+
+control.Tmp-Octets-0 := %base64.decode(control.Tmp-String-2)
+if ((string)control.Tmp-Octets-0 != control.Tmp-String-0) {
+	test_fail
+}
+
+control.Tmp-Octets-1 := %base64.decode(control.Tmp-String-3)
+if ((string)control.Tmp-Octets-1 != control.Tmp-String-1) {
+	test_fail
+}
+
+control.Tmp-Octets-2 := %base64.decode(control.Tmp-String-4)
+if ((string)control.Tmp-Octets-2 != control.Tmp-String-0) {
+	test_fail
+}
+
+control.Tmp-Octets-3 := %base64.decode(control.Tmp-String-5)
+if ((string)control.Tmp-Octets-3 != control.Tmp-String-1) {
+	test_fail
+}
+
+if (control.Tmp-Integer-0 != control.Tmp-Integer-1) {
+	test_fail
+}
+
+#
+#  Unkeyed topic: one record, value = expanded User-Name, no key.
+#
+timeout 10s {
+	map json %exec('/bin/sh', '-c', '"$KAFKA_WAIT_AND_CLEANUP" $ENV{OUTPUT_DIR}kafka-keyed-nokey.json 1') {
+		control.Tmp-String-6 := '$[0].value'
+	}
+}
+
+control.Tmp-Octets-4 := %base64.decode(control.Tmp-String-6)
+if ((string)control.Tmp-Octets-4 != control.Tmp-String-1) {
+	test_fail
+}
+
+test_pass

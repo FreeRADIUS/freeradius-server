@@ -124,7 +124,20 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query
 	char const	*driver = inst->driver_submodule->name;
 	sql_log_entry_t	log[20];
 	size_t		num, i;
-	TALLOC_CTX	*log_ctx = talloc_new(NULL);
+	TALLOC_CTX	*log_ctx;
+
+	/*
+	 *	Every driver reads the errors off the connection handle, which the
+	 *	trunk frees when it closes the connection.  A query that failed
+	 *	because its connection died is resumed after that has happened,
+	 *	so there is nothing left to ask the driver for.
+	 */
+	if (!query_ctx->tconn || query_ctx->tconn->conn->is_closed) {
+		ROPTIONAL(RERROR, ERROR, "%s: Connection closed", driver);
+		return;
+	}
+
+	log_ctx = talloc_new(NULL);
 
 	num = (inst->driver->sql_error)(log_ctx, log, (NUM_ELEMENTS(log)), query_ctx);
 	if (num == 0) {
@@ -206,30 +219,33 @@ static unlang_action_t sql_trunk_query_start(UNUSED unlang_result_t *p_result,
 
 /** Cancel an SQL query submitted on a trunk
  */
-static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+static void sql_trunk_query_cancel(request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	trunk_request_t	*treq;
 
 	if (!query_ctx->treq) return;
+	treq = query_ctx->treq;
 
 	/*
 	 *	A reapable trunk request has already completed.
 	 */
-	if (unlikely(query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE)) {
-		trunk_request_signal_complete(query_ctx->treq);
+	if (unlikely(treq->state == TRUNK_REQUEST_STATE_REAPABLE)) {
+		trunk_request_signal_complete(treq);
 		query_ctx->treq = NULL;
 		return;
 	}
+
+	RDEBUG2("Forcefully cancelling query %s", query_ctx->query_str);
 
 	/*
 	 *	The query_ctx needs to be parented by the treq so that it still exists
 	 *	when the cancel_mux callback is run.
 	 */
-	if (query_ctx->inst->driver->trunk_io_funcs.request_cancel_mux) talloc_steal(query_ctx->treq, query_ctx);
-
-	trunk_request_signal_cancel(query_ctx->treq);
-
+	if (query_ctx->inst->driver->trunk_io_funcs.request_cancel_mux) talloc_steal(treq, query_ctx);
 	query_ctx->treq = NULL;
+
+	trunk_request_signal_cancel(treq);
 }
 
 /** Submit an SQL query using a trunk connection.

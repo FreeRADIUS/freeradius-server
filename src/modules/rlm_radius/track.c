@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -24,10 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/debug.h>
 
 #include "track.h"
 
@@ -67,6 +64,13 @@ radius_track_t *radius_track_alloc(TALLOC_CTX *ctx)
  */
 static int _radius_track_entry_release_on_free(radius_track_entry_t ***te_p)
 {
+	/*
+	 *	This function is a talloc destructor for the binding.  We therefore zero out the te->binding
+	 *	in the entry before calling radius_track_entry_release().  Otherwise it will try to
+	 *	talloc_free() the binding, even though we're already in the process of freeing it.
+	 */
+	(**te_p)->binding = NULL;
+
 	radius_track_entry_release(*te_p);
 
 	return 0;
@@ -142,7 +146,7 @@ done:
 	te->line = line;
 #endif
 	if (ctx) {
-		te->binding = talloc_zero(ctx, radius_track_entry_t **);
+		MEM(te->binding = talloc_zero(ctx, radius_track_entry_t **));
 		talloc_set_destructor(te->binding, _radius_track_entry_release_on_free);
 		*(te->binding) = te_out;
 	}

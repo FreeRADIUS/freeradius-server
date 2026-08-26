@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/ring_buffer.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/debug.h>
-#include <string.h>
 
 /*
  *	Ring buffers are allocated in a block.
@@ -40,7 +39,8 @@ struct fr_ring_buffer_s {
 	size_t		data_end;	//!< end of used portion of the buffer
 
 	size_t		write_offset;	//!< where writes are done
-	size_t		reserved;	//!< amount of reserved data at write_offset
+	size_t		reserved_offset;	//!< where the reservation starts.
+	size_t		reserved;	//!< amount of reserved data at reserved_offset
 
 	bool		closed;		//!< whether allocations are closed
 };
@@ -134,6 +134,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 	if (rb->write_offset < rb->data_start) {
 		if ((rb->write_offset + size) < rb->data_start) {
 			rb->reserved = size;
+			rb->reserved_offset = rb->write_offset;
 			return rb->buffer + rb->write_offset;
 		}
 
@@ -150,6 +151,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 	 */
 	if ((rb->write_offset + size) <= rb->size) {
 		rb->reserved = size;
+		rb->reserved_offset = rb->write_offset;
 		return rb->buffer + rb->write_offset;
 	}
 
@@ -163,6 +165,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 	if (size < rb->data_start) {
 		rb->write_offset = 0;
 		rb->reserved = size;
+		rb->reserved_offset = rb->write_offset;
 		return rb->buffer;
 	}
 
@@ -206,13 +209,16 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 		return NULL;
 	}
 
-	/*
-	 *	Shrink the "reserved" portion of the buffer by the
-	 *	allocated size.
-	 */
-	if (rb->reserved >= size) {
-		rb->reserved -= size;
-	} else {
+	if (rb->reserved > 0) {
+		if (!rb->data_start && !rb->data_end) {
+			/*
+			 *	If, between reservation and allocation all entries are
+			 *	freed, then data_start and data_end will be zero.
+			 *	Set all the offsets to reserved_offset, so we
+			 *	return the previously reserved chunk.
+			 */
+			rb->write_offset = rb->data_start = rb->data_end = rb->reserved_offset;
+		}
 		rb->reserved = 0;
 	}
 
@@ -468,7 +474,7 @@ int fr_ring_buffer_start(fr_ring_buffer_t *rb, uint8_t **p_start, size_t *p_size
 	*p_start = rb->buffer + rb->data_start;
 
 	if (rb->write_offset < rb->data_start) {
-		*p_size = rb->write_offset;
+		*p_size = rb->data_end - rb->data_start;
 		return 0;
 	}
 

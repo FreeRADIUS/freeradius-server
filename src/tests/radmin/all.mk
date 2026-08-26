@@ -31,6 +31,11 @@ RADMIN_CONFIG_PATH := $(DIR)/config
 CLIENT := radmin
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,control-socket,$(OUTPUT)))
+#
+#  The server loads its protocol and module libraries at run time, so make
+#  needs telling about them.  The list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/control-socket.conf,$(OUTPUT)/radiusd.pid))
 
 #
 #  For each file, look for precursor test.
@@ -40,10 +45,10 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 	${Q}rm -f $@
 	${Q}touch $@
 	${Q}for x in $^; do \
-		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/radmin/,g'`; \
+		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/radmin/,g;s,[^ ][^ ]*,&.txt,g'`; \
 		if [ "$$y" != "" ]; then \
 			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
-			echo "$${z}: $${y}.txt" >> $@; \
+			echo "$${z}: $${y}" >> $@; \
 			echo "" >> $@; \
 		fi \
 	done
@@ -85,7 +90,6 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		touch $@;\
 	fi
 
-.NO_PARALLEL: $(TEST)
 $(TEST):
 	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@

@@ -21,7 +21,7 @@ dnl #  AC_OUTPUT
 dnl #
 dnl #############################################################
 
-AC_PREREQ([2.71])
+AC_PREREQ([2.73])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 AC_INIT([freeradius],[$Id$],[http://bugs.freeradius.org],[],[http://www.freeradius.org])
@@ -343,12 +343,7 @@ AX_CC_STD_C23
 if test "x$ax_cv_cc_std_c23_flag" != x; then
   CFLAGS="$CFLAGS $ax_cv_cc_std_c23_flag"
 else
-  AX_CC_STD_C11
-  if test "x$ax_cv_cc_std_c11_flag" != x; then
-    CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
-  else
-    AC_MSG_ERROR([FreeRADIUS requires a C11 compiler])
-  fi
+  AC_MSG_ERROR([FreeRADIUS requires a C23 compiler (gcc >= 13 or clang >= 17)])
 fi
 
 dnl #
@@ -740,7 +735,7 @@ AC_MSG_RESULT($radacctdir)
 dnl #
 dnl #  extra argument: --with-raddbdir
 dnl #
-raddbdir='${sysconfdir}/raddb'
+confdir='${sysconfdir}/raddb'
 AC_MSG_CHECKING(raddbdir)
 AC_ARG_WITH(raddbdir,
 [  --with-raddbdir=DIR     directory for config files [SYSCONFDIR/raddb] ],
@@ -751,15 +746,15 @@ AC_ARG_WITH(raddbdir,
   yes)
     ;;
   [[\\/$]]* | ?:[[\\/]]* )
-    raddbdir="$withval"
+    confdir="$withval"
     ;;
   *)
     AC_MSG_ERROR([expected an absolute directory name for --with-raddbdir: $withval])
     ;;
   esac ]
 )
-AC_SUBST(raddbdir)
-AC_MSG_RESULT($raddbdir)
+AC_SUBST(confdir)
+AC_MSG_RESULT($confdir)
 
 dnl #
 dnl #  extra argument: --with-dictdir
@@ -808,9 +803,6 @@ AC_ARG_WITH(mibdir,
 )
 AC_SUBST(mibdir)
 AC_MSG_RESULT($mibdir)
-
-modconfdir='${raddbdir}/mods-config'
-AC_SUBST(modconfdir)
 
 dnl #############################################################
 dnl #
@@ -1064,7 +1056,7 @@ AC_CHECK_HEADERS( \
   utime.h \
   utmp.h \
   utmpx.h \
-  valgrind.h
+  valgrind/valgrind.h
 )
 
 dnl #
@@ -1215,7 +1207,14 @@ AC_ARG_WITH(libbacktrace,
     else
       WITH_BACKTRACE=no
     fi
-  esac ]
+  esac ],
+[ dnl  Default behaviour when --with-libbacktrace is omitted: yes if
+  dnl  the submodule has been checked out, no otherwise.
+  if test -f src/lib/backtrace/configure; then
+    WITH_BACKTRACE=yes
+  else
+    WITH_BACKTRACE=no
+  fi ]
 )
 
 dnl #
@@ -1228,6 +1227,18 @@ dnl #  gracefully.
 dnl #
 if test "x$WITH_BACKTRACE" = xyes; then
   AC_MSG_NOTICE([building with libbacktrace, this will be statically linked])
+  dnl #
+  dnl #  Regenerate the submodule's configure against the host autoconf
+  dnl #  so it accepts --runstatedir. We invoke autoconf directly rather
+  dnl #  than autoreconf so libtoolize stays out of the loop -- the
+  dnl #  submodule's aclocal.m4 is shipped and the autoconf 2.70+ output
+  dnl #  is enough to fix the --runstatedir handling.
+  dnl #
+  if test -f src/lib/backtrace/configure.ac && \
+     command -v autoconf > /dev/null 2>&1; then
+    AC_MSG_NOTICE([regenerating libbacktrace configure against host autoconf])
+    (cd src/lib/backtrace && autoconf -f)
+  fi
   AC_DEFINE(HAVE_BACKTRACE, 1,
     [Define to 1 if you have the `backtrace' library (-lbacktrace).]
   )
@@ -1424,8 +1435,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       openssl/md4.h \
       openssl/sha.h \
       openssl/ssl.h \
-      openssl/ocsp.h \
-      openssl/engine.h,
+      openssl/ocsp.h,
       [ OPENSSL_CPPFLAGS="$smart_include" ],
       [
         AC_MSG_FAILURE([failed locating OpenSSL headers. Use --with-openssl-include-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
@@ -1823,6 +1833,7 @@ AC_CHECK_FUNCS( \
   mkdirat \
   openat \
   pthread_sigmask \
+  pthread_setname_np \
   recvmmsg \
   sendmmsg \
   setlinebuf \
@@ -2599,6 +2610,21 @@ AC_CONFIG_SUBDIRS($mysubdirs)
 AC_SUBST(MODULES)
 
 dnl #
+dnl #  Run the sub-configure scripts above concurrently instead of one after
+dnl #  another, and allow per-subdirectory arguments, which autoconf has no way
+dnl #  to express. See m4/ax_config_subdirs_parallel.m4.
+dnl #
+AX_CONFIG_SUBDIRS_PARALLEL
+
+dnl #
+dnl #  libbacktrace is linked into libfreeradius-util, a shared library, so the
+dnl #  libbacktrace objects have to be position independent code (PIC).
+dnl #  --enable-host-shared is how libbacktrace's configure asks for PIC,
+dnl #  despite the name.
+dnl #
+ax_subconf_args_src_lib_backtrace="--enable-host-shared"
+
+dnl #
 dnl #  If reproducible builds are not enabled, disable
 dnl #  -Wdate-time so the compiler doesn't croak.
 dnl #
@@ -2625,7 +2651,6 @@ dnl #  And finally, output the results.
 dnl #
 dnl #############################################################
 AC_CONFIG_COMMANDS([stamp-h], [echo timestamp > src/include/stamp-h])
-AC_CONFIG_COMMANDS([build-radpaths-h], [(cd ./src/include && /bin/sh ./build-radpaths-h)])
 AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/bin && chmod +x checkrad radtest)])
 AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly util/cryptpasswd)])
 
@@ -2637,7 +2662,6 @@ AC_SUBST(INSTALLSTRIP)
 
 AC_CONFIG_FILES([\
   ./Make.inc \
-  ./src/include/build-radpaths-h \
   ./src/bin/checkrad \
   ./src/bin/radtest \
   ./scripts/rc.radiusd \

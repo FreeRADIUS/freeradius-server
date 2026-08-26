@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 if the
  *   License as published by the Free Software Foundation.
  *
@@ -214,7 +214,7 @@ int fr_lua_util_jit_log_register(lua_State *L)
 	 */
 	if (strchr(search_path, ':')) {
 		char *paths, *path, *file, *p;
-		ctx = paths = talloc_typed_strdup(NULL, search_path);
+		ctx = paths = talloc_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
 			p = strrchr(path, '/');
 			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';

@@ -1,0 +1,17 @@
+#
+#  Test: all options enabled
+#
+detail {
+	filename = /tmp/test-detail-%Y-%m-%d
+
+	permissions = 0644
+	locking = yes
+	escape_filenames = yes
+	log_packet_header = yes
+	triggers = yes
+	header = "%t"
+
+	suppress {
+		User-Password
+	}
+}

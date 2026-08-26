@@ -8,6 +8,7 @@ ifneq "${TARGETNAME}" ""
   TARGETNAME	:= rlm_redis_ippool_tool
   TARGET	:= $(TARGETNAME)
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c
 SRC_CFLAGS	+= -I$(top_builddir)/src/lib/redis

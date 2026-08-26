@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -62,9 +62,9 @@ struct fr_client_list_s {
 static fr_client_list_t	*root_clients = NULL;	//!< Global client list.
 
 #ifndef WITH_TRIE
-static int8_t client_cmp(void const *one, void const *two)
+static fr_cmp_ret_t client_cmp(void const *one, void const *two)
 {
-	int ret;
+	fr_cmp_ret_t ret;
 	fr_client_t const *a = one;
 	fr_client_t const *b = two;
 
@@ -248,7 +248,7 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 			clients = cf_data_value(cf_data_find(cs, fr_client_list_t, NULL));
 			if (!clients) {
 				MEM(clients = client_list_init(cs));
-				if (!cf_data_add(cs, clients, NULL, true)) {
+				if (!cf_data_add(cs, clients, NULL, false)) {
 					ERROR("Failed to associate clients with virtual server %s", client->server);
 					talloc_free(clients);
 					return false;
@@ -288,7 +288,7 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 		}
 	}
 
-	old = fr_rb_find(clients->tree[client->ipaddr.prefix], client);
+	fr_rb_find((void **)&old, clients->tree[client->ipaddr.prefix], client);
 #endif
 	if (old) {
 		/*
@@ -305,7 +305,6 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 		}
 
 		ERROR("Failed to add duplicate client %s", client->shortname);
-		client_free(client);
 		return false;
 	}
 #undef namecmp
@@ -315,12 +314,10 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 	 *	Other error adding client: likely is fatal.
 	 */
 	if (fr_trie_insert_by_key(trie, &client->ipaddr.addr, client->ipaddr.prefix, client) < 0) {
-		client_free(client);
 		return false;
 	}
 #else
-	if (!fr_rb_insert(clients->tree[client->ipaddr.prefix], client)) {
-		client_free(client);
+	if (fr_rb_insert(clients->tree[client->ipaddr.prefix], client) != 0) {
 		return false;
 	}
 #endif
@@ -368,7 +365,7 @@ fr_client_t *client_findbynumber(UNUSED const fr_client_list_t *clients, UNUSED 
 
 
 /*
- *	Find a client in the fr_client_tS list.
+ *	Find a client in the fr_client_t list.
  */
 fr_client_t *client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {
@@ -389,7 +386,7 @@ fr_client_t *client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipa
 	return fr_trie_lookup_by_key(trie, &ipaddr->addr, ipaddr->prefix);
 #else
 
-	if (proto == AF_INET) {
+	if (ipaddr->af == AF_INET) {
 		max = 32;
 	} else {
 		max = 128;
@@ -403,7 +400,7 @@ fr_client_t *client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipa
 
 		my_client.ipaddr = *ipaddr;
 		fr_ipaddr_mask(&my_client.ipaddr, i);
-		client = fr_rb_find(clients->tree[i], &my_client);
+		fr_rb_find((void **)&client, clients->tree[i], &my_client);
 		if (client) {
 			return client;
 		}
@@ -482,12 +479,40 @@ fr_client_list_t *client_list_parse_section(CONF_SECTION *section, int proto, TL
 	fr_client_t	*c = NULL;
 	fr_client_list_t	*clients = NULL;
 	CONF_SECTION	*server_cs = NULL;
+	char const	*cache_name;
+
+	/*
+	 *	Key the cached list by protocol.  The section walk below
+	 *	filters out client definitions whose proto doesn't match
+	 *	the caller's, so caching the filtered list under a single
+	 *	key would let whichever listener instantiated first poison
+	 *	the cache for the other.  In particular the UDP listener
+	 *	would reuse a TCP-filtered list (with UDP-default clients
+	 *	dropped) and never see its own clients.
+	 */
+	switch (proto) {
+	case IPPROTO_UDP:
+		cache_name = "udp";
+		break;
+
+	case IPPROTO_TCP:
+		cache_name = "tcp";
+		break;
+
+	default:
+		/*
+		 *	proto == 0 is the unfiltered / global path
+		 *	(main_config.c passes 0 for root clients).
+		 */
+		cache_name = NULL;
+		break;
+	}
 
 	/*
 	 *	Be forgiving.  If there's already a clients, return
 	 *	it.  Otherwise create a new one.
 	 */
-	clients = cf_data_value(cf_data_find(section, fr_client_list_t, NULL));
+	clients = cf_data_value(cf_data_find(section, fr_client_list_t, cache_name));
 	if (clients) return clients;
 
 	/*
@@ -584,12 +609,15 @@ fr_client_list_t *client_list_parse_section(CONF_SECTION *section, int proto, TL
 			goto error;
 		}
 
+		cf_item_mark_parsed(cs);
 	}
 
 	/*
-	 *	Associate the clients structure with the section.
+	 *	Associate the clients structure with the section,
+	 *	keyed by protocol so a per-proto listener's filtered
+	 *	list doesn't shadow another proto's.
 	 */
-	if (!cf_data_add(section, clients, NULL, false)) {
+	if (!cf_data_add(section, clients, cache_name, false)) {
 		cf_log_err(section, "Failed to associate clients with section %s", cf_section_name1(section));
 		talloc_free(clients);
 		return NULL;
@@ -735,7 +763,7 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 	c->cs = cs;
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
-	if (cf_section_rules_push(cs, client_config) < 0) return NULL;
+	if (cf_section_rules_push(cs, client_config) < 0) goto error;
 
 	if (cf_section_parse(c, c, cs) < 0) {
 		cf_log_err(cs, "Error parsing client section");
@@ -818,12 +846,12 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 		 *	Set the long name to be the result of a reverse lookup on the IP address.
 		 */
 		fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-		c->longname = talloc_typed_strdup(c, buffer);
+		c->longname = talloc_strdup(c, buffer);
 
 		/*
 		 *	Set the short name to the name2.
 		 */
-		if (!c->shortname) c->shortname = talloc_typed_strdup(c, name2);
+		if (!c->shortname) c->shortname = talloc_strdup(c, name2);
 	/*
 	 *	No "ipaddr" or "ipv6addr", use old-style "client <ipaddr> {" syntax.
 	 */
@@ -903,7 +931,14 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 	 *	"radsec".  See RFC 6614.
 	 */
 	if (c->tls_required) {
-		c->secret = talloc_typed_strdup(cs, "radsec");
+		if (c->secret) {
+			if (strcmp(c->secret, "radsec") != 0) {
+				cf_log_warn(cs, "'secret' is not 'radsec' for TLS");
+				cf_log_warn(cs, "Packets may not be processed correctly!");
+			}
+		} else {
+			c->secret = talloc_strdup(cs, "radsec");
+		}
 	}
 #endif
 
@@ -916,6 +951,7 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 			c->limit.idle_timeout = fr_time_delta_wrap(0);
 	}
 
+	cf_item_mark_parsed(cs);
 	return c;
 }
 
@@ -1061,28 +1097,36 @@ fr_client_t *client_read(char const *filename, CONF_SECTION *server_cs, bool che
 {
 	char const	*p;
 	fr_client_t	*c;
-	CONF_SECTION	*cs;
+	CONF_SECTION	*root_cs, *cs;
 	char buffer[256];
 
 	if (!filename) return NULL;
 
-	cs = cf_section_alloc(NULL, NULL, "main", NULL);
-	if (!cs) return NULL;
+	root_cs = cf_section_alloc(NULL, NULL, "main", NULL);
+	if (!root_cs) return NULL;
 
-	if ((cf_file_read(cs, filename) < 0) || (cf_section_pass2(cs) < 0)) {
-		talloc_free(cs);
+	if ((cf_file_read(root_cs, filename, false) < 0) || (cf_section_pass2(root_cs) < 0)) {
+	error:
+		talloc_free(root_cs);
 		return NULL;
 	}
 
-	cs = cf_section_find(cs, "client", CF_IDENT_ANY);
+	cs = cf_section_find(root_cs, "client", CF_IDENT_ANY);
 	if (!cs) {
 		ERROR("No \"client\" section found in client file");
-		return NULL;
+		goto error;
 	}
 
 	c = client_afrom_cs(cs, cs, server_cs, 0);
-	if (!c) return NULL;
-	talloc_steal(cs, c);
+	if (!c) goto error;
+
+	/*
+	 *	Detach c from cs (breaking the cs -> c parent link), then make root_cs a child of c.  This
+	 *	avoids a talloc cycle (c -> root_cs -> cs -> c), and ensures that freeing c also frees root_cs
+	 *	and cs.
+	 */
+	(void) talloc_steal(NULL, c);
+	(void) talloc_steal(c, root_cs);
 
 	p = strrchr(filename, FR_DIR_SEP);
 	if (p) {
@@ -1099,7 +1143,7 @@ fr_client_t *client_read(char const *filename, CONF_SECTION *server_cs, bool che
 	fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 	if (strcmp(p, buffer) != 0) {
 		ERROR("Invalid client definition in %s: IP address %s does not match name %s", filename, buffer, p);
-		client_free(c);
+		talloc_free(c);	/* also frees root_cs and cs */
 		return NULL;
 	}
 

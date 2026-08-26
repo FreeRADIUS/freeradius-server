@@ -1,0 +1,62 @@
+#
+#  MySQL/MariaDB escape function (via mysql_real_escape_string):
+#    '  -> \'
+#    "  -> \"
+#    \  -> \\
+#    \n -> backslash + n  (literal two bytes)
+#    \r -> backslash + r
+#    \0 -> backslash + 0
+#
+#  Each escape sequence is exactly two ASCII bytes; everything else
+#  passes through unchanged.  Behaviour is character-set sensitive
+#  (the connection's charset is set up by the driver).
+#
+#  String literals in unlang are marked "safe for any escape" so we wrap
+#  each input in %taint(...) to force the escape to actually run.
+#
+
+#
+#  Plain ASCII passes through unchanged.
+#
+if (%sql.escape(%taint("Hello world")) != "Hello world") {
+	test_fail
+}
+
+#
+#  Single quote -> \'
+#
+if (%sql.escape(%taint("it's")) != "it\\'s") {
+	test_fail
+}
+
+#
+#  Double quote -> \"
+#
+if (%sql.escape(%taint("say \"hi\"")) != "say \\\"hi\\\"") {
+	test_fail
+}
+
+#
+#  Backslash -> \\  (input has one backslash, output has two)
+#
+if (%sql.escape(%taint("back\\slash")) != "back\\\\slash") {
+	test_fail
+}
+
+#
+#  Newline -> two-byte `\n` literal.
+#
+if (%sql.escape(%taint("a\nb")) != "a\\nb") {
+	test_fail
+}
+
+#
+#  Regression: embedded NUL byte must round-trip as `\0`.
+#  Before the byte-length fix the driver called strlen() on the input
+#  and the NUL truncated the rest of the value.
+#
+if (%sql.escape(%taint("a\000b")) != "a\\0b") {
+	test_fail
+}
+
+test_pass

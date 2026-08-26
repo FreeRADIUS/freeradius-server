@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -26,13 +26,11 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/pair.h>
-#include <freeradius-devel/missing.h>
 #include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/load_balance_priv.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/rb_expire.h>
 
-#include <sys/socket.h>
 
 //#include "rlm_radius.h"
 #include "track.h"
@@ -52,6 +50,7 @@ typedef struct {
 	fr_bio_fd_info_t const	*fd_info;	//!< status of the FD.
 	fr_radius_ctx_t		radius_ctx;	//!< for signing packets
 	bio_limit_ports_t	limit_source_ports;	//!< What type of port limit is in use.
+	bool			dynamic;	//!< is this a dynamic home server.
 } bio_handle_ctx_t;
 
 typedef struct {
@@ -102,6 +101,7 @@ typedef struct {
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
 	fr_timer_t		*zombie_ev;		//!< Zombie timeout.
+	unlang_t const		*instruction;		//!< Instruction which triggered the start of the zombie period.
 
 	bool			status_checking;       	//!< whether we're doing status checks
 	bio_request_t		*status_u;		//!< for sending status check packets
@@ -134,7 +134,7 @@ struct bio_request_s {
 	size_t			partial;		//!< partially sent data
 
 	radius_track_entry_t	*rr;			//!< ID tracking, resend count, etc.
-	fr_timer_t	*ev;			//!< timer for retransmissions
+	fr_timer_t		*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
@@ -183,7 +183,7 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 
 static int _bio_request_free(bio_request_t *u);
 
-static int8_t home_server_cmp(void const *one, void const *two);
+static fr_cmp_ret_t home_server_cmp(void const *one, void const *two);
 
 #ifndef NDEBUG
 /** Log additional information about a tracking entry
@@ -251,8 +251,8 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 {
 	bio_request_t		*u;
 	request_t		*request;
+	fr_pair_t		*vp;
 	rlm_radius_t const	*inst = h->ctx.inst;
-	map_t			*map = NULL;
 
 	fr_assert(!h->status_u && !h->status_request);
 
@@ -280,6 +280,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 	 *      runs.
 	 */
 	request->async = talloc_zero(request, fr_async_t);
+	request->async->request = request;
 	talloc_const_free(request->name);
 	request->name = talloc_strdup(request, h->ctx.module_name);
 
@@ -287,32 +288,38 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 	request->reply = fr_packet_alloc(request, false);
 
 	/*
-	 *	Create the VPs, and ignore any errors
-	 *	creating them.
+	 *	Create the VPs, and ignore any errors creating them.
 	 */
-	while ((map = map_list_next(&inst->status_check_map, map))) {
-		(void) map_to_request(request, map, map_to_vp, NULL);
+	if (map_list_num_elements(&inst->status_check_map) > 0) {
+		map_t *map = NULL;
+
+		while ((map = map_list_next(&inst->status_check_map, map))) {
+			(void) map_to_request(request, map, map_to_vp, NULL);
+		}
+	} else {
+		/*
+		 *	Ensure that there's a NAS-Identifier with a value.
+		 *
+		 *	Arguably if there's no status-check map, then the request_pairs are empty.  But
+		 *	whatever...
+		 */
+		if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_nas_identifier)) {
+			MEM(pair_append_request(&vp, attr_nas_identifier) >= 0);
+			fr_pair_value_strdup(vp, "status check - are you alive?", false);
+		}
 	}
 
 	/*
-	 *	Ensure that there's a NAS-Identifier, if one wasn't
-	 *	already added.
+	 *	Always add an Event-Timestamp, and update its value every time we send a packet.
+	 *
+	 *	The retry code will later update the timestamp, too, but updating it here means that the debug
+	 *	output doesn't show a zero-value Event-Timstamp.
 	 */
-	if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_nas_identifier)) {
-		fr_pair_t *vp;
-
-		MEM(pair_append_request(&vp, attr_nas_identifier) >= 0);
-		fr_pair_value_strdup(vp, "status check - are you alive?", false);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
+	if (!vp) {
+		MEM(pair_append_request(&vp, attr_event_timestamp) >= 0);
 	}
-
-	/*
-	 *	Always add an Event-Timestamp, which will be the time
-	 *	at which the first packet is sent.  Or for
-	 *	Status-Server, the time of the current packet.
-	 */
-	if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp)) {
-		MEM(pair_append_request(NULL, attr_event_timestamp) >= 0);
-	}
+	vp->vp_date = fr_time_to_unix_time(fr_time());
 
 	/*
 	 *	Initialize the request IO ctx.  Note that we don't set
@@ -469,6 +476,12 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 */
 	fr_assert(slen >= RADIUS_HEADER_LENGTH); /* checked in verify */
 
+	if (!u->packet) {
+		ERROR("%s - Received response to expired status check packet",
+		       h->ctx.module_name);
+		return;
+	}
+
 	if (u->id != h->buffer[1]) {
 		ERROR("%s - Received response with incorrect or expired ID.  Expected %u, got %u",
 		      h->ctx.module_name, u->id, h->buffer[1]);
@@ -477,7 +490,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 
 	if (decode(h, &reply, &code,
 		   h, h->status_request, h->status_u, u->packet + RADIUS_AUTH_VECTOR_OFFSET,
-		   h->buffer, slen) != DECODE_FAIL_NONE) return;
+		   h->buffer, slen) != FR_RADIUS_FAIL_NONE) return;
 
 	fr_pair_list_free(&reply);	/* FIXME - Do something with these... */
 
@@ -568,8 +581,6 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	if (slen < 0) {
 		ERROR("%s - Failed sending %s ID %d length %zu over connection %s: %s",
 		      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->ctx.fd_info->name, fr_syserror(errno));
-
-
 		goto fail;
 	}
 
@@ -600,11 +611,6 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 		PERROR("%s - Failed inserting timer event", h->ctx.module_name);
 		goto fail;
 	}
-
-	/*
-	 *	Save a copy of the header + Authentication Vector for checking the response.
-	 */
-	MEM(u->packet = talloc_memdup(u, u->packet, RADIUS_HEADER_LENGTH));
 }
 
 /** Free a connection handle, closing associated resources
@@ -671,7 +677,7 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	/*
 	 *	Not a full packet, we want more data.
 	 */
-	if (want < *size) {
+	if (want > *size) {
 		*size = want;
 		return FR_BIO_VERIFY_WANT_MORE;
 	}
@@ -685,11 +691,11 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	 *	the logging destination of the module.
 	 */
 	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), &failure)) {
-		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
+		if (failure == FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
 
 		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->ctx.fd_info->name);
 
-		if (failure == DECODE_FAIL_MA_MISSING) {
+		if (failure == FR_RADIUS_FAIL_MA_MISSING) {
 			if (h->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) {
 				ERROR("We are configured with 'require_message_authenticator = true'");
 			} else {
@@ -718,7 +724,7 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
  *
  * @param[out] h_out	Where to write the new file descriptor.
  * @param[in] conn	to initialise.
- * @param[in] uctx	A #bio_thread_t
+ * @param[in] uctx	A #bio_handle_ctx_t
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx)
@@ -1120,7 +1126,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 	 *	Over-ride read for replication.
 	 */
 	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) {
-		read_fn = conn_discard;
+		if (read_fn) read_fn = conn_discard;
 
 		if (fr_bio_fd_write_only(h->bio.fd) < 0) {
 			PERROR("%s - Failed setting socket to write-only", h->ctx.module_name);
@@ -1150,7 +1156,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
  *  We want the value with the lowest timestamp to be prioritized at
  *  the top of the heap.
  */
-static int8_t request_prioritise(void const *one, void const *two)
+static fr_cmp_ret_t request_prioritise(void const *one, void const *two)
 {
 	bio_request_t const *a = one;
 	bio_request_t const *b = two;
@@ -1159,19 +1165,19 @@ static int8_t request_prioritise(void const *one, void const *two)
 	/*
 	 *	Prioritise status check packets
 	 */
-	ret = (b->status_check - a->status_check);
+	ret = CMP_PREFER_LARGER(a->status_check, b->status_check);
 	if (ret != 0) return ret;
 
 	/*
 	 *	Larger priority is more important.
 	 */
-	ret = CMP(a->priority, b->priority);
+	ret = CMP_PREFER_LARGER(a->priority, b->priority);
 	if (ret != 0) return ret;
 
 	/*
 	 *	Smaller timestamp (i.e. earlier) is more important.
 	 */
-	return CMP_PREFER_SMALLER(fr_time_unwrap(a->recv_time), fr_time_unwrap(b->recv_time));
+	return fr_time_cmp(a->recv_time, b->recv_time);
 }
 
 /** Decode response packet data, extracting relevant information and validating the packet
@@ -1186,8 +1192,8 @@ static int8_t request_prioritise(void const *one, void const *two)
  * @param[in] data			to decode.
  * @param[in] data_len			Length of input data.
  * @return
- *	- DECODE_FAIL_NONE on success.
- *	- DECODE_FAIL_* on failure.
+ *	- FR_RADIUS_FAIL_NONE on success.
+ *	- FR_RADIUS_FAIL_* on failure.
  */
 static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
 			    bio_handle_t *h, request_t *request, bio_request_t *u,
@@ -1215,7 +1221,7 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	if (fr_radius_decode(ctx, reply, data, data_len, &decode_ctx) < 0) {
 		talloc_free(decode_ctx.tmp_ctx);
 		RPEDEBUG("Failed reading packet");
-		return DECODE_FAIL_UNKNOWN;
+		return decode_ctx.reason;
 	}
 	talloc_free(decode_ctx.tmp_ctx);
 
@@ -1253,7 +1259,7 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	 */
 	if (fr_time_gt(u->retry.start, h->mrs_time)) h->mrs_time = u->retry.start;
 
-	return DECODE_FAIL_NONE;
+	return FR_RADIUS_FAIL_NONE;
 }
 
 static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t id)
@@ -1304,31 +1310,11 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	 */
 	packet_len = fr_radius_encode(&FR_DBUFF_TMP(u->packet, u->packet_len),
 				      &request->request_pairs, &encode_ctx);
-	if (fr_pair_encode_is_error(packet_len)) {
+	if (packet_len < 0) {
 		RPERROR("Failed encoding packet");
-
-	error:
-		TALLOC_FREE(u->packet);
 		return -1;
 	}
 
-	if (packet_len < 0) {
-		size_t have;
-		size_t need;
-
-		have = u->packet_len;
-		need = have - packet_len;
-
-		if (need > RADIUS_MAX_PACKET_SIZE) {
-			RERROR("Failed encoding packet.  Have %zu bytes of buffer, need %zu bytes",
-			       have, need);
-		} else {
-			RERROR("Failed encoding packet.  Have %zu bytes of buffer, need %zu bytes.  "
-			       "Increase 'max_packet_size'", have, need);
-		}
-
-		goto error;
-	}
 	/*
 	 *	The encoded packet should NOT over-run the input buffer.
 	 */
@@ -1361,8 +1347,10 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) h->ctx.radius_ctx.secret,
 			   h->ctx.radius_ctx.secret_length) < 0) {
 		RPERROR("Failed signing packet");
-		goto error;
+		return -1;
 	}
+
+	MEM(u->packet = talloc_memdup(u, h->buffer, packet_len));
 
 	return 0;
 }
@@ -1406,6 +1394,21 @@ static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		return;
 	}
 
+	if (!h->ctx.dynamic) {
+		/*
+		 *	Force the instruction to immediately fail until the revive interval has expired.
+		 */
+		unlang_interpret_force_result(h->instruction, &(unlang_result_t){.rcode = RLM_MODULE_FAIL}, tl,
+					      h->ctx.inst->revive_interval);
+
+		/*
+		 *	Mark the connection as active, so when the module forced result times out
+		 *	requests will be sent again.
+		 */
+		trunk_connection_signal_active(tconn);
+		return;
+	}
+
 	/*
 	 *	Revive the connection after a time.
 	 */
@@ -1441,9 +1444,10 @@ static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
  *	- true if the connection is zombie.
  *	- false if the connection is not zombie.
  */
-static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
+static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
 {
 	bio_handle_t	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
+	fr_event_list_t	*el = unlang_interpret_event_list(request);
 
 	/*
 	 *	We're replicating, and don't care about the health of
@@ -1466,8 +1470,8 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	/*
 	 *	If we've seen ANY response in the allowed window, then the connection is still alive.
 	 */
-	if ((h->ctx.inst->mode == RLM_RADIUS_MODE_PROXY) && fr_time_gt(last_sent, fr_time_wrap(0)) &&
-	    (fr_time_lt(fr_time_add(last_sent, h->ctx.inst->response_window), now))) return false;
+	if ((h->ctx.inst->mode == RLM_RADIUS_MODE_PROXY) &&
+	    fr_time_gt(h->last_reply, fr_time_sub(now, h->ctx.inst->response_window))) return false;
 
 	/*
 	 *	Stop using it for new requests.
@@ -1476,6 +1480,14 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	trunk_connection_signal_inactive(tconn);
 
 	if (h->ctx.inst->status_check) {
+		/*
+		 *	If it's UDP, reconnect.  This will start the sending of status checks.
+		 */
+		if (h->ctx.inst->fd_config.socket_type == SOCK_DGRAM) {
+			(void) trunk_connection_requests_requeue(tconn, TRUNK_REQUEST_STATE_ALL, 0, false);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+		}
+
 		h->status_checking = true;
 
 		/*
@@ -1490,6 +1502,11 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
 	} else {
+		/*
+		 * Capture the instruction which started the zombie period.
+		 */
+		h->instruction = unlang_interpret_instruction(request);
+
 		if (fr_timer_at(h, el->tl, &h->zombie_ev, fr_time_add(now, h->ctx.inst->zombie_period),
 				false, zombie_timeout, tconn) < 0) {
 			ERROR("Failed inserting zombie timeout for connection");
@@ -1623,7 +1640,7 @@ static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *requ
 	 */
 	if (!tconn || (inst->mode == RLM_RADIUS_MODE_REPLICATE)) return;
 
-	check_for_zombie(unlang_interpret_event_list(request), tconn, now, retry->start);
+	check_for_zombie(request, tconn, now, retry->start);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
@@ -1661,7 +1678,7 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 		  (treq->state == TRUNK_REQUEST_STATE_PARTIAL) ||
 		  ((u->retry.count > 0) && (treq->state == TRUNK_REQUEST_STATE_SENT)));
 
-	fr_assert(!u->status_check);
+	fr_assert(!u->status_check || h->status_checking);
 
 	/*
 	 *	If it's a partial packet, then write the partial bit.
@@ -1773,6 +1790,17 @@ do_write:
 	if (slen == 0) {
 		if (u->partial) return;
 
+		/*
+		 *	We didn't get a "blocked" error, but we didn't write any data.  And the socket is
+		 *	unconnected.  This means we just discard the packet.
+		 */
+		if (h->ctx.fd_info->type == FR_BIO_FD_UNCONNECTED) {
+			ERROR("%s - Failed sending %s ID %d length %zu over connection %s: Destination network is down or unreachable",
+			      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->ctx.fd_info->name);
+			trunk_request_signal_fail(treq);
+			return;
+		}
+
 	requeue:
 		RWARN("%s - Failed sending data over connection %s: sent zero bytes",
 		      h->ctx.module_name, h->ctx.fd_info->name);
@@ -1782,11 +1810,6 @@ do_write:
 
 	packet_len += slen;
 	if (packet_len < u->packet_len) {
-		/*
-		 *	The first time around, save a copy of the packet for later writing.
-		 */
-		if (!u->partial) MEM(u->packet = talloc_memdup(u, u->packet, u->packet_len));
-
 		u->partial = packet_len;
 		trunk_request_signal_partial(treq);
 		return;
@@ -1827,7 +1850,7 @@ do_write:
 		action = "Retransmitted";
 	}
 
-	fr_assert(!u->status_check);
+	fr_assert(!u->status_check || h->status_checking);
 
 	if (!u->proxied) {
 		RDEBUG("%s request.  Expecting response within %pVs", action,
@@ -2106,10 +2129,19 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		fr_assert(u == treq->preq);
 
 		/*
+		 *	If we got a reply during the zombie period mark the
+		 *	connection as active and remove the timer.
+		 */
+		if (unlikely(fr_timer_armed(h->zombie_ev))) {
+			trunk_connection_signal_active(tconn);
+			FR_TIMER_DELETE(&h->zombie_ev);
+		}
+
+		/*
 		 *	Decode the incoming packet.
 		 */
 		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
-		if (reason != DECODE_FAIL_NONE) continue;
+		if (reason != FR_RADIUS_FAIL_NONE) continue;
 
 		/*
 		 *	Only valid packets are processed
@@ -2180,6 +2212,17 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				vp->vp_uint32 = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 				fr_pair_append(&request->reply_pairs, vp);
 			}
+
+			/*
+			 *	If the Access-Request got a challenge, AND the request doesn't have State, AND
+			 *	the challenge does have State, THEN try to load-balance future packets to the
+			 *	same destination.
+			 */
+			if (h->ctx.inst->track_load_balance &&
+			    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_state) &&
+			    fr_pair_find_by_da(&request->reply_pairs, NULL, attr_state)) {
+				(void) unlang_load_balance_persist(request);
+			}
 		}
 
 		/*
@@ -2220,6 +2263,7 @@ static void request_replicate_mux(UNUSED fr_event_list_t *el,
 	if (!treq) return;
 
 	mod_write(treq->request, treq, h);
+	trunk_request_signal_complete(treq);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
@@ -2302,7 +2346,7 @@ static void request_replicate_demux(UNUSED fr_event_list_t *el, trunk_connection
 		 *	Decode the incoming packet
 		 */
 		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
-		if (reason != DECODE_FAIL_NONE) continue;
+		if (reason != FR_RADIUS_FAIL_NONE) continue;
 
 		/*
 		 *	Only valid packets are processed
@@ -2649,6 +2693,10 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 	timeout_retry:
 		retry_config = &inst->timeout_retry;
 		break;
+
+	default:
+		fr_assert(0);
+		return -1;
 	}
 
 	/*
@@ -2733,10 +2781,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	case RLM_RADIUS_MODE_REPLICATE:
 		/*
-		 *	We can replicate over TCP, but that uses trunks.
+		 *	Replication trunks use a different set of functions.
 		 */
-		if (inst->fd_config.socket_type == SOCK_DGRAM) break;
-
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_replicate_funcs,
 						&inst->trunk_conf, inst->name, thread, false, inst->trigger_args);
 		if (!thread->ctx.trunk) return -1;
@@ -2839,8 +2885,8 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 */
 	packet_len = fr_radius_encode(&FR_DBUFF_TMP(buffer, sizeof(buffer)),
 				      &request->request_pairs, &encode_ctx);
-	if (fr_pair_encode_is_error(packet_len)) {
-		RPERROR("Failed encoding packet");
+	if (packet_len < 0) {
+		RPERROR("Failed encoding replicated packet");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -2848,7 +2894,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 *	Sign it.
 	 */
 	if (fr_radius_sign(buffer, NULL, (uint8_t const *) radius_ctx.secret, radius_ctx.secret_length) < 0) {
-		RPERROR("Failed signing packet");
+		RPERROR("Failed signing replicated packet");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -2868,7 +2914,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 */
 	packet_len = fr_bio_write(thread->bio.fd, &addr, buffer, packet_len);
 	if (packet_len < 0) {
-		RPERROR("Failed sending packet to %pV:%u", ipaddr, port->vb_uint16);
+		RPERROR("Failed replicating packet to %pV:%u", ipaddr, port->vb_uint16);
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -2884,11 +2930,11 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
  *
  */
 
-static int8_t home_server_cmp(void const *one, void const *two)
+static fr_cmp_ret_t home_server_cmp(void const *one, void const *two)
 {
 	home_server_t const *a = one;
 	home_server_t const *b = two;
-	int8_t rcode;
+	fr_cmp_ret_t rcode;
 
 	rcode = fr_ipaddr_cmp(&a->ctx.fd_config.dst_ipaddr, &b->ctx.fd_config.dst_ipaddr);
 	if (rcode != 0) return rcode;
@@ -2957,7 +3003,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		return XLAT_ACTION_DONE;
 	}
 
-	home = fr_rb_find(&thread->bio.expires.tree, &(home_server_t) {
+	fr_rb_find((void **)&home, &thread->bio.expires.tree, &(home_server_t) {
 			.ctx = {
 				.fd_config = (fr_bio_fd_config_t) {
 					.dst_ipaddr = ipaddr->vb_ip,
@@ -2978,6 +3024,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 				.module_name = inst->name,
 				.inst = inst,
 				.limit_source_ports = (thread->num_ports > 0) ? LIMIT_PORTS_DYNAMIC : LIMIT_PORTS_NONE,
+				.dynamic = true,
 			},
 			.num_ports = thread->num_ports,
 		};

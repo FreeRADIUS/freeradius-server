@@ -1,0 +1,7 @@
+#
+#  Test: v3_compat enabled
+#
+files {
+	filename = ${modconfdir}/files/authorize
+	v3_compat = true
+}

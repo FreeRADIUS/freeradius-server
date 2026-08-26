@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <sys/stat.h>
 
 #include <freeradius-devel/util/file.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/value.h>
 
@@ -326,7 +325,7 @@ ssize_t fr_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir, mod
 	fd = open(filename, O_WRONLY | O_CREAT, mode);
 	if (fd < 0) {
 		ssize_t slen = 0;
-		char	*q;
+		char const *q;
 
 		if (mkdir && (errno == ENOENT) && (q = strrchr(filename, FR_DIR_SEP))) {
 			int dir_fd = -1;
@@ -383,8 +382,8 @@ int fr_unlink(char const *filename) {
  */
 char const *fr_cwd_strip(char const *filename)
 {
-	static char our_wd[MAXPATHLEN];
-	char *found;
+	char our_wd[MAXPATHLEN];
+	char const *found;
 
 	if (!getcwd(our_wd, sizeof(our_wd))) return filename;
 
@@ -487,8 +486,8 @@ static bool fr_globdir_file_ok(char const *try, fr_globdir_iter_t *iter)
 	 */
 	if ((len > 10) && (strncmp(&try[len - 10], ".dpkg-dist", 10) == 0)) return false;
 	if ((len > 9) && (strncmp(&try[len - 9], ".dpkg-old", 9) == 0)) return false;
-	if ((len > 7) && (strncmp(&try[len - 7], ".rpmnew", 9) == 0)) return false;
-	if ((len > 8) && (strncmp(&try[len - 8], ".rpmsave", 10) == 0)) return false;
+	if ((len > 7) && (strncmp(&try[len - 7], ".rpmnew", 7) == 0)) return false;
+	if ((len > 8) && (strncmp(&try[len - 8], ".rpmsave", 8) == 0)) return false;
 
 	/*
 	 *	When reading all files in a directory, iter->filename points to the directory
@@ -592,7 +591,7 @@ static int fr_globdir_get_path(char const *dir, char const *pattern, fr_globdir_
 
 			while (*p == '/') p++;
 
-			if (!p[1]) break;
+			if (!*p) break;
 			continue;
 		}
 
@@ -912,4 +911,194 @@ int fr_globdir_iter_free(fr_globdir_iter_t *iter)
 	}
 
 	return 0;
+}
+
+const fr_sbuff_escape_rules_t fr_filename_escape = {
+	.name = "filename",
+	.chr = '_',
+	.do_utf8 = true,
+	.do_hex = true,
+
+	.esc = {
+		[ 0x00 ... 0x2d ] = true,		// special characters, but not '.'
+		[ 0x2f ] = true,			// /
+		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
+		[ 0x5b ... 0x5e ] = true,		// [\]^
+		[ 0x60 ] = true,			// back-tick
+		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
+	},
+};
+
+const fr_sbuff_escape_rules_t fr_filename_escape_dots = {
+	.name = "filename",
+	.chr = '_',
+	.do_utf8 = true,
+	.do_hex = true,
+
+	.esc = {
+		[ 0x00 ... 0x2f ] = true,		// special characters, '.', '/', etc.
+		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
+		[ 0x5b ... 0x5e ] = true,		// [\]^
+		[ 0x60 ] = true,			// back-tick
+		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
+	},
+};
+
+/** Escape a string-typed value box so its contents are safe to use in a filename.
+ *
+ *  The box's safe_for marker is set to this function, so a second
+ *  call is a no-op.  Boxes with zero length are also a no-op.
+ *
+ *  @param[in]      ctx    talloc_ctx
+ *  @param[in,out]  vb     value box to escape in place.
+ *  @return
+ *      - 0 on no-op (empty box).
+ *      - 1 on success (box was either already safe or has been
+ *        rewritten).
+ *      - -1 on allocation/escape failure.
+ */
+int fr_filename_box_make_safe(TALLOC_CTX *ctx, fr_value_box_t *vb)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	tctx;
+	fr_slen_t		slen;
+
+	fr_assert(vb->type == FR_TYPE_STRING);
+
+	if (vb->vb_length == 0) return 0;
+
+	if (fr_value_box_is_safe_for(vb, fr_filename_box_make_safe)) return 1;
+
+	/*
+	 *	In many cases, the filename is already clean, so we can avoid all kinds of work.
+	 */
+	if (!fr_sbuff_in_needs_escaping(vb->vb_strvalue, vb->vb_length, &fr_filename_escape)) {
+		goto done;
+	}
+
+	/*
+	 *	Escaped output can be up to ~4x the input (each byte
+	 *	may turn into "_XX").  Let the sbuff grow as needed.
+	 *	rather than guessing.
+	 */
+	if (!fr_sbuff_init_talloc(ctx, &sbuff, &tctx, vb->vb_length + 1, SIZE_MAX)) {
+		return -1;
+	}
+
+	slen = fr_sbuff_in_escape(&sbuff, vb->vb_strvalue, vb->vb_length, &fr_filename_escape);
+	if (slen < 0) {
+	error:
+		talloc_free(sbuff.buff);
+		return -1;
+	}
+
+	/*
+	 *	Trim it to the correct size.
+	 */
+	if (fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) < 0) goto error;
+
+	fr_value_box_strdup_shallow_replace(vb, sbuff.buff, (size_t) slen);
+
+done:
+	fr_value_box_mark_safe_for(vb, fr_filename_box_make_safe);
+
+	return 1;
+}
+
+/** See if a filename is OK.
+ *
+ * @param[in] filename	to check
+ * @return
+ *	- false - filename is invalid or insecure
+ *	- true - filename is sane and OK
+ */
+bool fr_filename_ok(char const *filename)
+{
+	char const *p = filename;
+
+	if (*p == '/') {
+		fr_strerror_const("Invalid filename - leading '/' is forbidden");
+		return false;
+	}
+
+	if (*p == '.') {
+		fr_strerror_const("Invalid filename - leading '.' is forbidden");
+		return false;
+	}
+
+	while (*p) {
+		if (*p < ' ') {
+			fr_strerror_const("Invalid filename - control characters are forbidden");
+			return false;
+		}
+
+		if (*p == '\\') {
+			fr_strerror_const("Invalid filename - backslashes are forbidden");
+			return false;
+		}
+
+		if (*p != '/') {
+			p++;
+			continue;
+		}
+
+		if (p[1] == '/') {
+			fr_strerror_const("Invalid filename - multiple '/' are forbidden");
+			return false;
+		}
+
+		if (p[1] == '.') {
+			fr_strerror_const("Invalid filename - 'dot' files cannot be accessed");
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/** Get the filename from a path
+ *
+ * @param path to get filename from.
+ * @return
+ *	- pointer to the filename in the path.
+ *	- pointer to the path if no '/' is found.
+ */
+char const *fr_filename(char const *path)
+{
+	char const *p = strrchr(path, '/');
+
+	if (p) return p + 1;
+
+	return path;
+}
+
+/** Trim a common prefix from a filename
+ *
+ * @param path to get filename from.
+ * @param common prefix to trim from the path.
+ * @return
+ *	- pointer to the position on the path where the common prefix match ended.
+ */
+char const *fr_filename_common_trim(char const *path, char const *common)
+{
+	char const *p_p, *p_c, *p_pn, *p_cn;
+
+	if (!path) return NULL;
+	if (!common) return NULL;
+
+	p_p = path;
+	p_c = common;
+
+	while ((p_pn = strchr(p_p, '/')) != NULL) {
+		p_cn = strchr(p_c, '/');
+		if (!p_cn) p_cn = p_c + strlen(p_c);
+
+		if ((p_pn - p_p) != (p_cn - p_c)) break;	/* path component not the same len */
+		if (strncmp(p_p, p_c, p_pn - p_p) != 0) break;  /* path component not the same */
+
+		p_p = p_pn + 1;
+		p_c = p_cn + 1;
+	}
+
+	return p_p;
 }

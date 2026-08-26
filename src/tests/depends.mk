@@ -1,3 +1,4 @@
+ifneq "$(DEPENDS)" ""
 #
 #  Track inter-test dependencies.
 #
@@ -68,3 +69,5 @@ $(foreach x,$(FILES.test.${1}),$(eval $(call TEST_ALL_DEPS_INNER,${1},$x)))
 endef
 
 $(foreach x,$(TEST_ALL_ORDER),$(eval $(call TEST_ALL_DEPS,$x)))
+
+endif

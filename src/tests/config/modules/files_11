@@ -1,0 +1,6 @@
+#
+#  Test: non-existent file (must be readable)
+#
+files {
+	filename = /nonexistent/path/to/file		# ERROR
+}

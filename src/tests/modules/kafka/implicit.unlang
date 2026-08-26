@@ -1,0 +1,32 @@
+#
+#  Implicit-topic dispatch: bare `kafka` inside a `recv` section
+#  resolves the topic from the section's name2.  The harness runs this
+#  file inside `recv Access-Request { ... }`, so the topic must be
+#  declared as `Access-Request` in module.conf (with
+#  `value = "recv-implicit %{User-Name}"`).
+#
+%exec('/bin/sh', '-c', '"$KAFKA_SUBSCRIBE" Access-Request $ENV{OUTPUT_DIR}kafka-implicit.json 1')
+
+kafka
+if (!ok) {
+	test_fail
+}
+
+#
+#  Expand the same template the module would have used and compare
+#  byte-for-byte against the decoded record.
+#
+control.Tmp-String-0 := "recv-implicit %{User-Name}"
+
+timeout 10s {
+	map json %exec('/bin/sh', '-c', '"$KAFKA_WAIT_AND_CLEANUP" $ENV{OUTPUT_DIR}kafka-implicit.json 1') {
+		control.Tmp-String-1 := '$[0].value'
+	}
+}
+
+control.Tmp-Octets-0 := %base64.decode(control.Tmp-String-1)
+if ((string)control.Tmp-Octets-0 != control.Tmp-String-0) {
+	test_fail
+}
+
+test_pass

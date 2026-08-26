@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -26,11 +26,9 @@
  */
 RCSID("$Id$")
 #include <freeradius-devel/eap/base.h>
-#include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/module.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/rand.h>
 
 #include "base.h"
@@ -62,12 +60,6 @@ RCSID("$Id$")
 	static unlang_action_t guard_ ## _x(UNUSED unlang_result_t *p_result, \
 					    module_ctx_t const *mctx, \
 					    request_t *request)
-
-#define RESUME_NO_RESULT(_x) \
-	static inline unlang_action_t resume_ ## _x(UNUSED unlang_result_t *p_result, \
-						    module_ctx_t const *mctx, \
-						    request_t *request)
-
 
 #define STATE_TRANSITION(_x) guard_ ## _x(p_result, mctx, request)
 
@@ -286,7 +278,7 @@ static void identity_hint_pairs_add(fr_aka_sim_id_type_t *type_p, fr_aka_sim_met
 	 *	Process the identity that we received.
 	 */
 	if (fr_aka_sim_id_type(&type, &method,
-			       identity, talloc_array_length(identity) - 1) < 0) {
+			       identity, talloc_strlen(identity)) < 0) {
 		RPWDEBUG2("Failed parsing identity, continuing anyway");
 	}
 
@@ -730,7 +722,7 @@ RESUME(store_pseudonym)
 				break;
 			}
 			fr_rand_str((uint8_t *)identity + 1, inst->ephemeral_id_length, 'a');
-			identity[talloc_array_length(identity) - 1] = '\0';
+			identity[talloc_strlen(identity)] = '\0';
 
 			fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
 		}
@@ -861,7 +853,7 @@ static unlang_action_t session_and_pseudonym_store(unlang_result_t *p_result, mo
 			default:
 				break;
 			}
-			identity[talloc_array_length(identity) - 1] = '\0';
+			identity[talloc_strlen(identity)] = '\0';
 			fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
 		}
 		MEM(pair_update_request(&new, attr_eap_aka_sim_next_pseudonym) >= 0);
@@ -908,7 +900,7 @@ RESUME(clear_pseudonym)
 		MEM(pair_update_request(&vp, attr_session_id) >= 0);
 		fr_value_box_memdup(vp, &vp->data, NULL,
 				    (uint8_t *)eap_aka_sim_session->fastauth_sent,
-				    talloc_array_length(eap_aka_sim_session->fastauth_sent) - 1, true);
+				    talloc_strlen(eap_aka_sim_session->fastauth_sent), true);
 		TALLOC_FREE(eap_aka_sim_session->fastauth_sent);
 
 		return CALL_SECTION(clear_session);
@@ -1167,9 +1159,10 @@ static int sim_start_selected_version_check(request_t *request, eap_aka_sim_sess
 		selected_version[0] = (selected_version_vp->vp_uint16 & 0xff00) >> 8;
 		selected_version[1] = (selected_version_vp->vp_uint16 & 0x00ff);
 
-		while (p < end) {
+		while ((p + 2) <= end) {
 			if ((p[0] == selected_version[0]) && (p[1] == selected_version[1])) {
 				found = true;
+
 				/*
 				 *	Update our keying material
 				 */
@@ -1177,6 +1170,7 @@ static int sim_start_selected_version_check(request_t *request, eap_aka_sim_sess
 				eap_aka_sim_session->keys.gsm.version_select[1] = selected_version[1];
 				break;
 			}
+			p += 2;
 		}
 
 		if (!found) {
@@ -2459,6 +2453,31 @@ RESUME(send_aka_challenge_request)
 
 	case FR_EAP_METHOD_AKA_PRIME:
 		if (eap_aka_sim_session->kdf == enum_kdf_prime_with_ck_prime_ik_prime->vb_int16) {
+			fr_pair_t *ck_prime_vp;
+			fr_pair_t *ik_prime_vp;
+
+			/*
+			 *	When control.CK-Prime / control.IK-Prime are
+			 *	supplied (e.g. by a 3GPP HSS over SWx which performs
+			 *	the RFC 5448 / TS 33.402 transform itself), read them
+			 *	from those attributes and skip the local Annex A
+			 *	derivation in fr_aka_sim_crypto_umts_kdf_1().
+			 *
+			 *	The helper returns 1 when neither attribute is set
+			 *	(normal local-derivation path) and -1 when the inputs
+			 *	are present but invalid (mismatched pair or wrong
+			 *	length).  Only the -1 case is a real error.
+			 */
+			ck_prime_vp = fr_pair_find_by_da(&request->control_pairs, NULL,
+							 attr_eap_aka_sim_ck_prime);
+			ik_prime_vp = fr_pair_find_by_da(&request->control_pairs, NULL,
+							 attr_eap_aka_sim_ik_prime);
+
+			if (fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request,
+									  ck_prime_vp, ik_prime_vp,
+									  &eap_aka_sim_session->keys) < 0) {
+				goto failure;
+			}
 			fr_aka_sim_crypto_umts_kdf_1(&eap_aka_sim_session->keys);
 		} else {
 			fr_assert(0);
@@ -3686,7 +3705,7 @@ STATE(init)
 	 */
 	crypto_identity_set(request, eap_aka_sim_session,
 			    (uint8_t const *)eap_session->identity,
-			    talloc_array_length(eap_session->identity) - 1);
+			    talloc_strlen(eap_session->identity));
 
 	return CALL_SECTION(recv_common_identity_response);
 }

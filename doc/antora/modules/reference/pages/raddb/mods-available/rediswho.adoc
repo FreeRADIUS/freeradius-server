@@ -1,140 +1,129 @@
 
-
-
-
 = REDISWho Module
 
-The `rediswho` module tracks the last set of login sessions for a user.
+The `rediswho` module tracks the last set of login sessions for a
+user.
 
+== Configuration Settings
 
+key:: Value to use as Redis key.
 
-## Configuration Settings
-
-
-server::
-
-If using Redis cluster, multiple 'bootstrap' servers may be
-listed here (as separate config items). These will be contacted
-in turn until one provides us with a valid map for the cluster.
-Server strings may contain unique ports e.g.:
-
-  server = '127.0.0.1:30001'
-  server = '[::1]:30002'
-
-NOTE: Instantiation failure behaviour is controlled by
-`pool.start` as with other modules. With clustering
-however, the `pool { ... }` section determines limits for
-each node we access in the cluster, and not the cluster as
-a whole.
-
-
-
-database:: Select the Redis logical database having the specified zero-based numeric index.
-
-
-
-port:: Port to connect to
-The default port is 6379.
-
-
-password:: The password used to authenticate to the server.
-
-We recommend using a strong password.
-
-
+value:: Expansion to produce value to store against Redis key.
 
 trim_count:: How many sessions to keep track of per user.
 
 If there are more than this number, older sessions are deleted.
 
-
-
-expire_time:: Expiry time in seconds.
+expiry_time:: Expiry time in seconds.
 
 Any sessions which have not received an update in this time will be
 automatically expired.
 
+== Per accounting section configuration
 
+Each subsection contains values appropriate to the
+module being called in the named accounting section.
 
-## Queries by Acct-Status-Type
+See `dictionary.rfc2866` for the names of the various Acct-Status-Type
+values, or look at the output of debug mode.
 
-Each subsection contains insert / trim / expire queries.
+This module supports *any*
+`link:https://freeradius.org/rfc/rfc2866.html#Acct-Status-Type[Acct-Status-Type]`.
+Just add a subsection of the appropriate name, along with insert /
+trim / expire queries.
 
-The subsections are named after the contents of the `link:https://freeradius.org/rfc/rfc2866.html#Acct-Status-Type[Acct-Status-Type]` attribute.
+=== start
 
-See `dictionary.rfc2866` for the names of the various Acct-Status-Type values,
-or look at the output of debug mode.
+key:: Value to use as Redis key
 
-This module supports *any* `link:https://freeradius.org/rfc/rfc2866.html#Acct-Status-Type[Acct-Status-Type]`.  Just add a subsection
-of the appropriate name, along with insert / trim / expire queries.
+insert_arg:: Argument to append to Redis insert command
 
+insert_cmd:: Redis command to run when inserting a new value
 
+Defaults to LPUSH.  This command will be combined with the key
+and insert_arg to produce the insert command.
 
-### Start
+trim_cmd:: Redis command to run when trimming values.
 
+Defaults to LTRIM.  This command will be combined with the key,
+0 and the value of trim_count to produce the trim command.
 
+=== interim-update
 
-### Interim-Update
+=== stop
 
+=== accounting-on
 
+=== accounting-off
 
-### Stop
+=== failed
 
+redis { ... }:: Redis connection settings.
 
+Identical to all other Redis based modules.
 
-### Accounting-On
-
-
-
-### Accounting-Off
-
-
-
-### Failed
-
+NOTE: See the `redis` module for more information.
 
 == Default Configuration
 
-```
+----
 rediswho {
-	server = 127.0.0.1
-#	database = 0
-	port = 6379
-#	password = thisisreallysecretandhardtoguess
+	key = User-Name
+	value = "%l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
 	trim_count = 15
-	expire_time = 86400
-	Start {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
-		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	expiry_time = 86400
+	start {
+		key = ${..key}
+		insert_arg = ${..value}
+#		insert_cmd = 'LPUSH'
+#		trim_cmd = 'LTRIM'
 	}
-	Interim-Update {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
-		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	interim-update {
+		key = ${..key}
+		insert_arg = ${..value}
 	}
-	Stop {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
-		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	stop {
+		key = ${..key}
+		insert_arg = ${..value}
 	}
-#	Accounting-On {
-#		insert = ""
-#		trim =   ""
-#		expire = ""
-#	}
-#	Accounting-Off {
-#		insert = ""
-#		trim =   ""
-#		expire = ""
-#	}
-#	Failed {
-#		insert = ""
-#		trim =   ""
-#		expire = ""
-#	}
+##	accounting-on {
+##		key = ""
+##		insert_arg = ""
+##	}
+##	accounting-off {
+##		key = ""
+##		insert_arg = ""
+##	}
+##	failed {
+##		key = ""
+##		insert_arg = ""
+##	}
+	redis {
+		server = 127.0.0.1
+		virtual_server = redis
+		port = 6379
+##		password = thisisreallysecretandhardtoguess
+		pool {
+			start = 0
+			min = 1
+			max = 10
+			connecting = 2
+##			open_delay = 0.2
+##			close_delay = 10
+##			manage_interval = 0.2
+			connection {
+				connect_timeout = 3.0
+				reconnect_delay = 5
+			}
+			request {
+				per_connection_max = 2000
+				per_connection_target = 1000
+				free_delay = 10
+			}
+		}
+	}
 }
-```
+----
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

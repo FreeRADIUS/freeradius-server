@@ -36,7 +36,7 @@ RCSID("$Id$")
  * @param[in] data		to data to send
  * @param[in] data_len		length of data to send
  * @return
- *	- 0 on success.
+ *	- >=0 amount of data written.
  *	- -1 on failure.
  */
 int udp_send(fr_socket_t const *sock, int flags, void *data, size_t data_len)
@@ -46,7 +46,7 @@ int udp_send(fr_socket_t const *sock, int flags, void *data, size_t data_len)
 	fr_assert(sock->type == SOCK_DGRAM);
 
 	if (flags & UDP_FLAGS_CONNECTED) {
-		ret = (send(sock->fd, data, data_len, 0) == (ssize_t)data_len) ? 0 : -1;
+		ret = send(sock->fd, data, data_len, 0);
 	} else {
 		struct sockaddr_storage	dst, src;
 		socklen_t		sizeof_dst, sizeof_src;
@@ -161,6 +161,7 @@ ssize_t udp_recv(int sockfd, int flags,
 	*socket_out = (fr_socket_t){
 		.fd = sockfd,
 		.type = SOCK_DGRAM,
+		.af = AF_UNSPEC,
 	};
 
 	/*
@@ -205,5 +206,6 @@ done:
 	 */
 	if (when && fr_time_eq(*when, fr_time_wrap(0))) *when = fr_time();
 
+	socket_out->af = socket_out->inet.dst_ipaddr.af;
 	return slen;
 }

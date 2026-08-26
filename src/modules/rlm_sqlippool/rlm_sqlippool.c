@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -337,7 +337,8 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case IPPOOL_ALLOC_FIND:
-		SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_FIND_RUN, SQL_QUERY_SELECT, select);
+		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_FIND_RUN, SQL_QUERY_SELECT, select);
+		RETURN_UNLANG_FAIL;
 
 	case IPPOOL_ALLOC_FIND_RUN:
 		TALLOC_FREE(alloc_ctx->query);
@@ -708,7 +709,7 @@ static int sqlippool_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t con
 	our_rules.literals_safe_for = (fr_value_box_safe_for_t)sql->driver;
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
-			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 			      &our_rules) < 0) return -1;
 	*(void **)out = parsed_tmpl;

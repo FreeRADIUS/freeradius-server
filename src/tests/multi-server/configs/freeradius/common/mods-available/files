@@ -1,0 +1,9 @@
+
+files {
+	moddir = ${modconfdir}/${.:instance}
+	filename = ${moddir}/authorize
+}
+
+files files_accounting {
+	filename = ${modconfdir}/files/accounting
+}

@@ -18,18 +18,18 @@ match 32
 
 # Need 63 bytes, we have 32 so we should get back -31
 encode-pair User-Name = "0123456789a123456789b123456789c123456789d123456789e123456789f"
-match
+match ERROR: 
 returned
 match -31
 
 # Need 63 bytes, we have 32 so we should get back -31
 encode-pair User-Password = "0123456789a123456789b123456789c123456789d123456789e123456789f"
-match
+match ERROR: 
 returned
 match -31
 
 encode-pair User-Name = "bob", Filter-Id = "0123456789a123456789b123456789c123456789d123456789e123456789f"
-match
+match ERROR: 
 returned
 match -36
 

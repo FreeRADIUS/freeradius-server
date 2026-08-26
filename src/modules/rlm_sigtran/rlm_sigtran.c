@@ -48,7 +48,6 @@ RCSID("$Id$")
 #include "sigtran.h"
 #include "attrs.h"
 
-#include <assert.h>
 #include <limits.h>
 
 #if !defined(PIPE_BUF) && defined(_POSIX_PIPE_BUF)
@@ -246,7 +245,7 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx,
 	if (conf->gt_is_set || conf->gt.address) {
 		int	gti_ind = SCCP_TITLE_IND_NONE;
 		size_t	i;
-		size_t	len = talloc_array_length(conf->gt.address) - 1;
+		size_t	len = talloc_strlen(conf->gt.address);
 
 		if (conf->gt.nai_is_set && (conf->gt.nai & 0x80)) {
 			cf_log_err(cs, "Global title 'nai' must be between 0-127");
@@ -255,13 +254,13 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx,
 
 		if (conf->gt.tt_is_set) {
 			if ((conf->gt.np_is_set && !conf->gt.es_is_set) ||
-			    (!conf->gt.np_is_set && conf->gt.np_is_set)) {
+			    (!conf->gt.np_is_set && conf->gt.es_is_set)) {
 				cf_log_err(cs, "Global title 'np' and 'es' must be "
 					      "specified together");
 				return -1;
 			}
 
-			if (conf->gt.np) {
+			if (conf->gt.np > 0x0f) {
 				cf_log_err(cs, "Global title 'np' must be between 0-15");
 				return -1;
 			}

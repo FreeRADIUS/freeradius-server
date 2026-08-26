@@ -109,7 +109,7 @@ function pre_run
         file_path="${test_path}/${PRE_FILE}"
 
         DEBUG "Executing pre-file: ${file_path}"
-        "${filte_path}"
+        "${file_path}"
         ret=$?
         if [ $ret -ne 0 ]; then
             ERROR "Pre-file failed with ${ret}"

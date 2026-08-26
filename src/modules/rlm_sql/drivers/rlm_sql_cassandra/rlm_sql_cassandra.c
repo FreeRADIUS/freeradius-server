@@ -422,7 +422,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 		switch (query_ctx->status) {
 		case SQL_QUERY_PREPARED:
 			ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
-			statement = cass_statement_new_n(query_ctx->query_str, talloc_array_length(query_ctx->query_str) - 1, 0);
+			statement = cass_statement_new_n(query_ctx->query_str, talloc_strlen(query_ctx->query_str), 0);
 			if (inst->consistency_str) cass_statement_set_consistency(statement, inst->consistency);
 
 			/*
@@ -613,6 +613,7 @@ static void sql_request_cancel(connection_t *conn, void *preq, trunk_cancel_reas
 		if (cass_query->query_ctx == query_ctx) {
 			fr_dlist_remove(&sql_conn->queries, cass_query);
 			cass_future_free(cass_query->future);
+			talloc_free(cass_query);
 			return;
 		}
 	}
@@ -831,7 +832,6 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 {
 	cassandra_query_ctx_t	*cass_query_ctx = talloc_get_type_abort(query_ctx->uctx, cassandra_query_ctx_t);
 
-	cass_result_free(cass_query_ctx->result);
 	talloc_const_free(cass_query_ctx->error.msg);
 
 	return sql_free_result(query_ctx, config);

@@ -1,0 +1,6 @@
+#
+#  This isn't allowed
+#
+group %{User-Name} {	# ERROR
+
+}

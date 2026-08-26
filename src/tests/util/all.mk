@@ -1,4 +1,4 @@
-SUBMAKEFILES := ring_buffer_test.mk message_set_test.mk atomic_queue_test.mk control_test.mk
+SUBMAKEFILES := ring_buffer_test.mk message_set_test.mk atomic_queue_test.mk atomic_ring_test.mk control_test.mk
 
 #
 #  These require pthread.

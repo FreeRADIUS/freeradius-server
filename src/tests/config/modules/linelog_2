@@ -1,0 +1,11 @@
+#
+#  Test: syslog destination
+#
+linelog {
+	destination = syslog
+
+	syslog {
+		facility = daemon
+		severity = info
+	}
+}

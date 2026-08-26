@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -161,11 +161,12 @@ int sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 		sql_state_entry_t	*entry;
 
 		state = cf_pair_attr(cp);
-		len = strlen(state) * 8;
+		len = strlen(state);
 		if (len < 2) {
 			cf_log_err(cp, "Expected state to have a length between 2-5 chars, got %zu", len);
 			return -1;
 		}
+		len *= 8;
 
 		/*
 		 *	Resolve value to sql_rcode_t
@@ -186,7 +187,7 @@ int sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 			entry->rcode = rcode;	/* Override previous sql rcode */
 		}
 
-		cf_pair_mark_parsed(cp);		/* Make sure it doesn't emit a warning later */
+		cf_item_mark_parsed(cp);		/* Make sure it doesn't emit a warning later */
 	}
 
 	return 0;

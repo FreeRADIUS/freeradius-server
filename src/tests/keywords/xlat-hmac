@@ -1,0 +1,21 @@
+#
+# PRE: if
+#
+#  Test %hmac.md5() and %hmac.sha1()
+#
+octets result_octets
+
+#
+#  Known test vectors
+#
+result_octets := %hmac.md5('foo', 'bar')
+if (result_octets != 0x31b6db9e5eb4addb42f1a6ca07367adc) {
+	test_fail
+}
+
+result_octets := %hmac.sha1('foo', 'bar')
+if (result_octets != 0x85d155c55ed286a300bd1cf124de08d87e914f3a) {
+	test_fail
+}
+
+success

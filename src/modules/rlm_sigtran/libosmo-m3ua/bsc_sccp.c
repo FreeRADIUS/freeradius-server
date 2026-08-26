@@ -24,7 +24,6 @@
 
 #include <cellmgr_debug.h>
 #include <ss7_application.h>
-#include <ss7_application.h>
 
 #include <osmocom/core/talloc.h>
 
@@ -81,7 +80,7 @@ struct active_sccp_con *find_con_by_src_dest_ref(struct ss7_application *fw,
 	return NULL;
 }
 
-unsigned int sls_for_src_ref(struct ss7_application *fw, struct sccp_source_reference *ref)
+int sls_for_src_ref(struct ss7_application *fw, struct sccp_source_reference *ref)
 {
 	struct active_sccp_con *con;
 

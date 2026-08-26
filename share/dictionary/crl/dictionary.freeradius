@@ -1,0 +1,26 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	The FreeRADIUS Vendor-Specific dictionary for CRL operations.
+#
+# Version:	$Id$
+#
+
+ATTRIBUTE	Packet-Type				1	uint32
+
+VALUE	Packet-Type			CRL-Fetch		1
+VALUE	Packet-Type			CRL-Refresh		2
+VALUE	Packet-Type			Fetch-OK		3
+VALUE	Packet-Type			Fetch-Fail		4
+VALUE	Packet-Type			CRL-Expire		5
+VALUE	Packet-Type			Do-Not-Respond		255
+
+ATTRIBUTE	CDP-URL					3	string
+ATTRIBUTE	Base-CRL				4	string
+ATTRIBUTE	CRL-Data				5	octets
+ATTRIBUTE	CRL-Num					6	uint64
+ATTRIBUTE	Delta-CRL				7	string
+ATTRIBUTE	Last-Update				8	date
+ATTRIBUTE	Next-Update				9	date

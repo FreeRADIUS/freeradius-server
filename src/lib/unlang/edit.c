@@ -50,7 +50,7 @@ static void rdebug_assign(request_t *request, char const *attr, fr_token_t op, f
 
 	switch (box->type) {
 	case FR_TYPE_QUOTED:
-		RDEBUG2("%s %s \"%pV\"", attr, fr_tokens[op], box);
+		RDEBUG2("%s %s %pR", attr, fr_tokens[op], box);
 		break;
 
 	case FR_TYPE_INTERNAL:
@@ -66,7 +66,7 @@ static void rdebug_assign(request_t *request, char const *attr, fr_token_t op, f
 			break;
 		}
 
-		RDEBUG2("%s %s %pV", attr, fr_tokens[op], box);
+		RDEBUG2("%s %s %pR", attr, fr_tokens[op], box);
 		break;
 	}
 }
@@ -351,7 +351,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			 *	Can't concatenate empty results.
 			 */
 			if (!box) {
-				RWDEBUG("%s %s ... - Assignment failed to having no value on right-hand side", map->lhs->name, fr_tokens[map->op]);
+				RWDEBUG("%s %s ... - Assignment failed due to having no value on right-hand side", map->lhs->name, fr_tokens[map->op]);
 				return -1;
 			}
 
@@ -386,7 +386,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		relative = (fr_pair_parse_t) { };
 
 		if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(box->vb_strvalue, box->vb_length)) < 0) {
-			RPEDEBUG("Failed parsing string '%pV' as attribute list", box);
+			RPEDEBUG("Failed parsing string %pV as attribute list", box);
 			return -1;
 		}
 
@@ -608,12 +608,12 @@ static int edit_delete_lhs(request_t *request, edit_map_t *current, bool delete)
 		 */
 		vp = tmpl_dcursor_init(&err, current->ctx, &cc, &cursor, request, current->lhs.vpt);
 		if (!vp) break;
+		tmpl_dcursor_clear(&cc);
 
 		parent = fr_pair_parent(vp);
 		fr_assert(parent != NULL);
 
 		if (!pair_is_editable(request, vp)) {
-			tmpl_dcursor_clear(&cc);
 			return -1;
 		}
 
@@ -629,7 +629,6 @@ static int edit_delete_lhs(request_t *request, edit_map_t *current, bool delete)
 			}
 
 			current->lhs.vp = vp;
-			tmpl_dcursor_clear(&cc);
 			return 0;
 		}
 
@@ -640,7 +639,6 @@ static int edit_delete_lhs(request_t *request, edit_map_t *current, bool delete)
 			RPWDEBUG("Failed deleting attribute");
 			return -1;
 		}
-		tmpl_dcursor_clear(&cc);
 	}
 
 	return 0;
@@ -785,7 +783,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		fr_pair_t *vp;
 
 		if (!current->parent->lhs.vp) {
-			if (edit_create_lhs_vp(request, request, current->parent) < 0) return -1;
+			if (edit_create_lhs_vp(request, request, current->parent) < 0) goto fail;
 		}
 
 		while (box) {
@@ -797,13 +795,13 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			 */
 			if (pair_append_by_tmpl_parent(current->parent->lhs.vp, &vp, list, current->lhs.vpt, true) < 0) {
 				RPEDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
-				return -1;
+				goto fail;
 			}
 
 			vp->op = map->op;
 			PAIR_ALLOCED(vp);
 
-			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) return -1;
+			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
 
 			if (single) break;
 
@@ -873,7 +871,10 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
 			if (vp->da->flags.unsafe) fr_value_box_mark_unsafe(&vp->data);
 
-			if (fr_edit_list_insert_pair_tail(state->el, &current->lhs.vp_parent->vp_group, vp) < 0) goto fail;
+			if (fr_edit_list_insert_pair_tail(state->el, &current->lhs.vp_parent->vp_group, vp) < 0) {
+				talloc_free(vp);
+				goto fail;
+			}
 			vp->op = T_OP_EQ;
 			PAIR_ALLOCED(vp);
 		}
@@ -1158,6 +1159,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 		child->ctx = child;
 		child->check_lhs = check_lhs_value;
 		child->expanded_lhs = expanded_lhs_value;
+		child->temporary_pair_list = false;
 	} else {
 		fr_assert(fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type));
 
@@ -1246,7 +1248,8 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 		vpt = map->lhs;
 
 		/*
-		 *
+		 *	If the LHS is an xlat, then we don't need to do additional checking.  The xlat output
+		 *	has already been move to the output list.
 		 */
 		if (tmpl_is_xlat(vpt)) return next_map(request,state, current);
 
@@ -1259,7 +1262,10 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 		vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, vpt);
 		while (vp) {
 			MEM(box = fr_value_box_alloc_null(state));
-			if (unlikely(fr_value_box_copy(box, box, &vp->data) < 0)) return -1;
+			if (unlikely(fr_value_box_copy(box, box, &vp->data) < 0)) {
+				tmpl_dcursor_clear(&cc);
+				return -1;
+			}
 
 			fr_value_box_list_insert_tail(&current->parent->rhs.list, box);
 
@@ -1289,7 +1295,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 	fr_type_t type;
 	fr_value_box_t *box = fr_value_box_list_head(&current->lhs.list);
 	fr_value_box_t *dst;
-	fr_sbuff_unescape_rules_t *erules = NULL;
+	fr_sbuff_unescape_rules_t const *erules = NULL;
 
 	fr_assert(current->parent);
 
@@ -1347,6 +1353,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 	erules = fr_value_unescape_by_quote[current->map->lhs->quote];
 
 	if (fr_value_box_from_str(dst, dst, da->type, da, box->vb_strvalue, box->vb_length, erules) < 0) {
+		talloc_free(dst);
 		RWDEBUG("Failed converting result to '%s' - %s", fr_type_to_str(type), fr_strerror());
 		return -1;
 	}

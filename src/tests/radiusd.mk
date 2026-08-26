@@ -47,7 +47,18 @@ include Make.inc
 
 define RADIUSD_SERVICE
 $$(eval RADIUSD_BIN := $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --mode=execute $$(TEST_BIN)/radiusd)
-$(eval PORT := $(shell echo $$(($(PORT)+20))))
+#
+#  The package test runs an already installed server with no build tree, so the
+#  allocator, which is a loadable make function, is not there.  Counting
+#  upwards from the standard RADIUS port is enough, because the package test is
+#  the only thing running.
+#
+#  This has to be one $(if), not an ifdef block.  $(call) expands every
+#  $(eval) in the define body before the outer $(eval) parses the ifdef
+#  lines, so both branches would run and the undefined allocator function
+#  would expand to nothing and empty the port.
+#
+$(eval PORT := $(if $(PACKAGE_TEST),$(shell echo $$(($(PORT)+20))),$(unique-port $(PORT_FILE),$(TEST),20,$(PORT_FIRST))))
 $(eval $(subst test.,,$(TEST))_port := $(PORT))
 
 #
@@ -57,8 +68,8 @@ $(eval $(subst test.,,$(TEST))_port := $(PORT))
 .PHONY: $(TEST).radiusd_kill
 $(TEST).radiusd_kill: | ${2}
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
-		echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		    rm -f ${2}/radiusd.pid; \
 		    echo "GDB output was:"; \
 		    cat "${2}/gdb.log" 2> /dev/null; \
@@ -68,6 +79,7 @@ $(TEST).radiusd_kill: | ${2}
 		    exit 0; \
 		fi; \
 		if ! kill -9 `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+			rm -f ${2}/radiusd.pid; \
 			exit 1; \
 		fi; \
 		rm -f ${2}/radiusd.pid; \
@@ -100,12 +112,17 @@ $(TEST).radiusd_stop: | ${2}
 #
 #	Start radiusd instance
 #
-${2}/radiusd.pid: ${2}
+#  A server left behind by an earlier run still holds the port, so the kill has
+#  to finish before this rule starts a new one.  Make builds the order-only
+#  prerequisites of one target at the same time under "make -j", so naming the
+#  kill and the start side by side on a test output does not order them.
+#
+${2}/radiusd.pid: ${2} | $(TEST).radiusd_kill
 	$$(eval export TESTDIR	   := $(DIR))
 	$$(eval export OUTPUT	   := ${2})
 	$$(eval export TEST_PORT   := $(PORT))
 	$$(eval export TEST	   := $(subst test.,,$(TEST)))
-	$$(eval export RADIUSD_RUN := $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -e 300 -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
+	$$(eval export RADIUSD_RUN := $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -e 600 -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
 
 	${Q}rm -f ${2}/radiusd.log
 	${Q}if test ! -z "$$(PRINT_PORT)"; then \

@@ -1,212 +1,182 @@
 
-
-
-
 = REDIS Module
 
-The `redis` module handles connections to a redis database,
-and the `%redis( ...)` dynamic expansion.
+The `redis` module handles connections to a redis database, and the
+`%redis( ...)` dynamic expansion.
 
-See also https://redis.io/documentation for documentation on the
-Redis database.
+See also https://redis.io/documentation for documentation on the Redis
+database.
 
+== Configuration Settings
 
-
-## Configuration Settings
-
-This module connects to a Redis database.  Other modules
-(e.g. `redis_ippool`) perform task-specific functions using Redis.
-
+This module connects to a Redis database. Other modules (e.g.
+`redis_ippool`) perform task-specific functions using Redis.
 
 server:: The server to connect to.
 
-If using Redis cluster, multiple 'bootstrap' servers may be
-listed here (as separate config items). These will be contacted
-in turn until one provides us with a valid map for the cluster.
+If using Redis cluster, multiple 'bootstrap' servers may be listed
+here (as separate config items). These will be contacted in turn until
+one provides us with a valid map for the cluster.
 
 Server strings may contain unique ports e.g.:
 
-  server = '127.0.0.1:30001'
-  server = '[::1]:30002'
+server = '127.0.0.1:30001' server = '[::1]:30002'
 
-NOTE: Instantiation failure behaviour is controlled by `pool.start`
-as with every other module, but with clustering, the `pool { ... }`
+NOTE: Instantiation failure behaviour is controlled by `pool.start` as
+with every other module, but with clustering, the `pool { ... }`
 section determines limits for each node in the cluster, not the
 cluster as a whole.
 
+database:: Select the Redis logical database having the specified
+zero-based numeric index.
 
+NOTE: Redis only supports logical databases when Redis cluster is not
+in use.
 
-database:: Select the Redis logical database having the specified zero-based numeric index.
-
-
-
-port:: Port to connect to
-The default port is 6379.
-
-
+port:: Port to connect to The default port is 6379.
 
 password:: The password used to authenticate to the server.
 
 We recommend using a strong password.
 
-
-
 use_tls:: Use TLS (requires hiredis 1.0+)
 
-TLS parameters can be specified in the optional adjacent tls {} section
+TLS parameters can be specified in an optional tls {} section.  See
+the `eap` module for documentation on the `tls` section.
 
+virtual_server:: Virtual server used to fetch Redis cluster map
 
+Rather than each thread independently fetching the Redis cluster map
+a coordinator thread is used.  This requires a virtual server which
+uses the `redis` namespace.
 
 use_cluster_map:: Use cluster map
 
 Build cluster map during initialization.
 
-The cluster client can operate, albeit inefficiently, without a cluster map
-by following '-ASK' and '-MOVE' redirects.
+The cluster client can operate, albeit inefficiently, without a
+cluster map by following '-ASK' and '-MOVE' redirects.
 
 Disabling cluster map can be required for stunnel-based deployments.
-Alternatively, cluster map is not built during initialization when pool.start == 0
+Alternatively, cluster map is not built during initialization when
+pool.start == 0
 
+In addition the cluster map should be disabled when connecting to
+non-clustered Redis servers.
 
 lua { ... }::
 
-Configuration options which control the execution of lua scripts
-on redis nodes.
-
+Configuration options which control the execution of lua scripts on
+redis nodes.
 
 function <name> { ... }::
 
-Every function section listed here will be registered as an expansion with a name
-in the format `<inst>.<name>`.
+Every function section listed here will be registered as an expansion
+with a name in the format `<inst>.<name>`.
 
-For example the function below would be callable as `%redis.hello_world(...)`.
+For example the function below would be callable as
+`%redis.hello_world(...)`.
 
-expansion functions take the same arguments as the redis `EVALSHA` command,
-i.e. `<numkeys> [<key> [<key> ...]] [<arg> [<arg> ...]]`.
+expansion functions take the same arguments as the redis `EVALSHA`
+command, i.e. `<numkeys> [<key> [<key> ...]] [<arg>
+[<arg> ...]]`.
 
-`numkeys` specifies how many of the proceeding arguments should be treated as keys.
+`numkeys` specifies how many of the proceeding arguments should be
+treated as keys.
 
-The redis module will use the first key to determine which cluster node the function
-should called on.
+The redis module will use the first key to determine which cluster
+node the function should called on.
 
-The redis module pre-calcualtes the SHA1 hash of all lua functions on startup.
-When an expansion function is called, it uses the `EVALSHA` command to attempt to
-call lua function on a remote redis node.  If `EVALSHA` fails with an error indicating
-no script could be found with the calculated SHA1 hash, the lua function will be
-loaded transparently using `SCRIPT LOAD`.
-
+The redis module pre-calcualtes the SHA1 hash of all lua functions on
+startup. When an expansion function is called, it uses the `EVALSHA`
+command to attempt to call lua function on a remote redis node. If
+`EVALSHA` fails with an error indicating no script could be found with
+the calculated SHA1 hash, the lua function will be loaded
+transparently using `SCRIPT LOAD`.
 
 body:: Lua code to send to redis nodes with SCRIPT LOAD
 
-
-
 pool { ... }::
 
-Information for the connection pool.  The configuration items below
-are the same for all modules which use the new connection pool.
-
+The connection pool is a set of per-thread parameters for connections to the redis cluster.
 
 start:: Connections to create during module instantiation.
 
-If the server cannot create specified number of
-connections during instantiation it will exit.
-Set to `0` to allow the server to start without the
-external service being available.
-
-
+Set to `0` to allow the server to start without immediately
+creating connections to the redis cluster.
 
 min:: Minimum number of connections to keep open.
 
-
-
 max:: Maximum number of connections.
 
-If these connections are all in use and a new one
-is requested, the request will NOT get a connection.
-
-Setting `max` to *LESS* than the number of threads means
-that some threads may starve, and you will see errors
-like _No connections available and at max connection limit_.
-
-Setting `max` to MORE than the number of threads means
-that there are more connections than necessary.
-
-If `max` is not specified, then it defaults to the number
-of workers configured.
-
-
-
-spare:: Spare connections to be left idle.
-
-NOTE: Idle connections WILL be closed if `idle_timeout`
-is set.  This should be less than or equal to `max` above.
-
-
+If these connections are all in use and a new one is requested, the
+request will NOT get a connection.
 
 uses:: Number of uses before the connection is closed.
 
 NOTE: `0` means "infinite".
 
-
-
-retry_delay:: The number of seconds to wait after the server tries
-to open a connection, and fails.
-
-During this time, no new connections will be opened.
-
-
-
 lifetime:: The lifetime (in seconds) of the connection.
 
 NOTE: `0` means "infinite".
 
+open_delay:: Open delay (in seconds).
 
+How long must we be above the target utilisation for connections to be opened.
 
-cleanup_interval:: The pool is checked for free connections every
-`cleanup_interval`.
+close_delay:: Close delay (in seconds).
 
-If there are free connections, then one of them is closed.
+How long we must be below the target utilisation for connections to be closed
 
+manage_interval:: How often to manage the connection pool.
 
+connection { ... }:: Per-connection configuration.
 
-idle_timeout:: The idle timeout (in seconds).
+connect_timeout:: How long to wait
+before giving up on a connection which is
+being opened.
 
-A connection which is unused for this length of time will be closed.
+reconnect_delay:: If opening a connection
+fails, or an open connection fails,
+we wait `reconnect_delay` seconds before
+attempting to open another connection.
 
-NOTE: `0` means "infinite".
+request:: Options specific to requests handled by this connection pool
 
+Note:  Due to the one outstanding query per connection limit, the settings
+`per_connection_max` and `per_connection_target` are forcibly set to 1 for
+SQL database connections.
 
+per_connection_max:: The maximum number of requests
+which are "live" on a particular connection.
 
-connect_timeout:: Connection timeout (in seconds).
+per_connection_target:: The target number
+of requests which are "live" on a
+particular connection.
 
-The maximum amount of time to wait for a new connection to be established.
+There can be a balance between overloading
+a connection, and under-utilizing it.  The
+default is to fill each connection before
+opening a new one.
 
+free_delay:: How long must a request in the unassigned (free) list not have been
+used for before it's cleaned up and actually freed.
 
-
-[NOTE]
-====
-All configuration settings are enforced.  If a connection is closed because of
-`idle_timeout`, `uses`, or `lifetime`, then the total number of connections MAY
-fall below `min`.
-
-When that happens, it will open a new connection.  It will also log a *WARNING*
-message.
-
-The solution is to either lower the "min" connections,
-or increase lifetime/idle_timeout.
-====
-
+Unassigned requests can be re-used, multiple times, reducing memory allocation
+and freeing overheads.
 
 == Default Configuration
 
-```
+----
 redis {
 	server = 127.0.0.1
 #	database = 0
 	port = 6379
 #	password = thisisreallysecretandhardtoguess
 #	use_tls = no
-#	tls { }
+##	tls {
+##	}
+	virtual_server = redis
 #	use_cluster_map = yes
 	lua {
 		function hello_world {
@@ -215,18 +185,25 @@ redis {
 	}
 	pool {
 		start = 0
-		min = 0
-#		max =
-		spare = 1
+		min = 1
+		max = 10
 		uses = 0
-		retry_delay = 30
 		lifetime = 86400
-		cleanup_interval = 300
-		idle_timeout = 600
-		connect_timeout = 3.0
+#		open_delay = 0.2
+#		close_delay = 10
+#		manage_interval = 0.2
+		connection {
+			connect_timeout = 3.0
+			reconnect_delay = 5
+		}
+		request {
+#			per_connection_max = 2000
+#			per_connection_target = 1000
+#			free_delay = 10
+		}
 	}
 }
-```
+----
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

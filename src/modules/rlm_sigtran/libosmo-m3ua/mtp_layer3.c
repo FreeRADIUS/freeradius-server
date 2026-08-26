@@ -306,7 +306,7 @@ int mtp_link_verified(struct mtp_link *link)
 	if (set->isup_opc != set->opc &&
 	    send_tfa(link, set->isup_opc) != 0) {
 		LOGP(DINP, LOGL_ERROR,
-		     "Failed to send TFA for OPC %d on linkset %d.\n", set->sccp_opc, set->nr);
+		     "Failed to send TFA for OPC %d on linkset %d.\n", set->isup_opc, set->nr);
 	}
 
 	if (set->timeout_t18 == 0)
@@ -543,6 +543,13 @@ static int mtp_link_sccp_data(struct mtp_link_set *set, struct mtp_level_3_hdr *
 					  MTP_LINK_SLS(hdr->addr));
 		if (!out)
 			return -1;
+
+		if (!set->slc[sls]) {
+			LOGP(DINP, LOGL_ERROR, "No link for SLS %u on %d/%s\n",
+				sls, set->nr, set->name);
+			msgb_free(out);
+			return -1;
+		}
 
 		mtp_link_submit(set->slc[MTP_LINK_SLS(hdr->addr)], out);
 

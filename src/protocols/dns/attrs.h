@@ -18,7 +18,7 @@
 /**
  * $Id$
  * @file src/protocols/dns/attrs.h
- * @brief DHCP attributes
+ * @brief DNS attributes
  *
  * @copyright 2018 The FreeRADIUS project
  * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)

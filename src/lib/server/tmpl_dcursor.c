@@ -66,13 +66,15 @@ static inline CC_HINT(always_inline) void tmpl_cursor_nested_push(tmpl_dcursor_c
 	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
-static inline CC_HINT(always_inline) tmpl_dcursor_nested_t *tmpl_cursor_nested_pop(tmpl_dcursor_ctx_t *cc)
+static inline CC_HINT(always_inline) bool tmpl_cursor_nested_pop(tmpl_dcursor_ctx_t *cc)
 {
 	tmpl_dcursor_nested_t *ns = fr_dlist_pop_tail(&cc->nested);
 
+	if (!ns) return false;
+
 	if (ns != &cc->leaf) talloc_free(ns);
 
-	return ns;
+	return true;		/* at least one leaf */
 }
 
 /** Initialise the evaluation context for traversing a group attribute
@@ -420,6 +422,7 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 		return NULL;
 	}
 
+	if (err) *err = 0;
 	return vp;
 }
 
@@ -527,20 +530,20 @@ fr_pair_t *tmpl_dcursor_value_box_init(int *err, TALLOC_CTX *ctx, fr_value_box_t
 	 */
 	vp = tmpl_dcursor_init(err, cc, cc, cursor, request, vpt);
 	if (!vp) {
-		if (!err) return NULL;
+		talloc_free(cc);
 
-		if (*err == -1) {
+		if (err && (*err == -1)) {
 			RWDEBUG("Cursor %s returned no attributes", vpt->name);
 			goto set_cursor;
-		} else {
-			RPEDEBUG("Failed initializing cursor");
 		}
 
+		RPEDEBUG("Failed initializing cursor");
+		talloc_free(cursor);
 		return NULL;
 	}
 
 set_cursor:
-	fr_value_box_set_cursor(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
+	fr_value_box_set_cursor_shallow(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
 	return vp;
 }
 
@@ -720,6 +723,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		break;
 	}
 
+	tmpl_dcursor_clear(&cc);
 	return 0;
 }
 
@@ -837,6 +841,7 @@ ssize_t tmpl_dcursor_print(fr_sbuff_t *out, tmpl_dcursor_ctx_t const *cc)
 	}
 
 	ns = fr_dlist_head(&cc->nested);
+	if (!ns) FR_SBUFF_SET_RETURN(out, &our_out);
 
 	/*
 	 *	This also prints out the things we're looping over in nested?
@@ -862,13 +867,13 @@ ssize_t tmpl_dcursor_print(fr_sbuff_t *out, tmpl_dcursor_ctx_t const *cc)
 
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, ns->ar->da->name);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '[');
-		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%zd", ns->num - 1);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%zu", ns->num - 1);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ']');
 
 		ns = fr_dlist_next(&cc->nested, ns);
 		if (!ns) break;
 
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, ']');
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}
 
 	FR_SBUFF_SET_RETURN(out, &our_out);

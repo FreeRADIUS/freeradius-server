@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -23,7 +23,7 @@
  */
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/null.h>
-#include <freeradius-devel/bio/mem.h>
+#include <freeradius-devel/bio/buf.h>
 
 #include <freeradius-devel/bio/pipe.h>
 
@@ -35,11 +35,9 @@
 typedef struct {
 	FR_BIO_COMMON;
 
-	fr_bio_t	*next;
+	fr_bio_buf_t	buf;		//!< for reading and writing
 
 	bool		eof;		//!< are we at EOF?
-
-	fr_bio_pipe_cb_funcs_t signal; //!< inform us that the pipe is readable
 
 	pthread_mutex_t mutex;
 } fr_bio_pipe_t;
@@ -58,36 +56,34 @@ static int fr_bio_pipe_destructor(fr_bio_pipe_t *my)
  *
  *  Once EOF is set, any pending data is read, and then EOF is returned.
  */
-static ssize_t fr_bio_pipe_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
+static ssize_t fr_bio_pipe_read(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
 {
-	ssize_t rcode;
+	bool eof = false;
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);
 
-	fr_assert(my->next != NULL);
-
 	pthread_mutex_lock(&my->mutex);
-	rcode = my->next->read(my->next, packet_ctx, buffer, size);
-	if ((rcode == 0) && my->eof) {
-		pthread_mutex_unlock(&my->mutex);
+	size = fr_bio_buf_read(&my->buf, buffer, size);
 
-		/*
-		 *	Don't call our EOF function.  But do tell the other BIOs that we're at EOF.
-		 */
-		my->priv_cb.eof = NULL;
-		fr_bio_eof(bio);
-		return 0;
-
-	} else if (rcode > 0) {
-		/*
-		 *	There is room to write more data.
-		 *
-		 *	@todo - only signal when we transition from BLOCKED to unblocked.
-		 */
-		my->signal.writeable(&my->bio);
+	if (my->eof && (fr_bio_buf_used(&my->buf) == 0)) {
+		eof = true;
+		my->bio.read = fr_bio_null_read;
 	}
 	pthread_mutex_unlock(&my->mutex);
 
-	return rcode;
+	if (size > 0) {
+		if (eof) {
+			my->cb.eof(&my->bio);
+			my->cb.eof = NULL;
+
+		} else {
+			(void) my->cb.write_resume(&my->bio);
+		}
+
+	} else {
+		(void) my->cb.read_blocked(&my->bio);
+	}
+
+	return size;
 }
 
 
@@ -95,32 +91,28 @@ static ssize_t fr_bio_pipe_read(fr_bio_t *bio, void *packet_ctx, void *buffer, s
  *
  *  Once EOF is set, no further writes are possible.
  */
-static ssize_t fr_bio_pipe_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size)
+static ssize_t fr_bio_pipe_write(fr_bio_t *bio, UNUSED void *packet_ctx, void const *buffer, size_t size)
 {
-	ssize_t rcode;
+	size_t room;
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
 
-	fr_assert(my->next != NULL);
-
 	pthread_mutex_lock(&my->mutex);
-	if (!my->eof) {
-		rcode = my->next->write(my->next, packet_ctx, buffer, size);
-
-		/*
-		 *	There is more data to read.
-		 *
-		 *	@todo - only signal when we transition from no data to data.
-		 */
-		if (rcode > 0) {
-			my->signal.readable(&my->bio);
-		}
-
+	room = fr_bio_buf_write_room(&my->buf);
+	if (room > 0) {
+		if (room < size) size = room;
+		(void) fr_bio_buf_write(&my->buf, buffer, size); /* always succeeds */
 	} else {
-		rcode = 0;
+		size = 0;
 	}
 	pthread_mutex_unlock(&my->mutex);
 
-	return rcode;
+	if (size > 0) {
+		(void) my->cb.read_resume(&my->bio);
+	} else {
+		(void) my->cb.write_blocked(&my->bio);
+	}
+
+	return size;
 }
 
 /** Shutdown callback.
@@ -128,16 +120,20 @@ static ssize_t fr_bio_pipe_write(fr_bio_t *bio, void *packet_ctx, void const *bu
  */
 static int fr_bio_pipe_shutdown(fr_bio_t *bio)
 {
-	int rcode;
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
 
-	fr_assert(my->next != NULL);
-
 	pthread_mutex_lock(&my->mutex);
-	rcode = fr_bio_shutdown(my->next);
+	my->bio.read = fr_bio_fail_read;
+	my->bio.write = fr_bio_fail_write;
 	pthread_mutex_unlock(&my->mutex);
 
-	return rcode;
+	return 0;
+}
+
+static ssize_t fr_bio_pipe_shutdown_write(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void const *buffer, UNUSED size_t size)
+{
+	fr_strerror_const("BIO has been closed");
+	return fr_bio_error(SHUTDOWN);
 }
 
 /** Set EOF.
@@ -147,17 +143,25 @@ static int fr_bio_pipe_shutdown(fr_bio_t *bio)
  */
 static int fr_bio_pipe_eof(fr_bio_t *bio)
 {
+	int rcode;
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
 
+	/*
+	 *	@todo - fr_bio_eof() sets our read to NULL read before this callback is run.  That has to be
+	 *	addressed.
+	 */
 	pthread_mutex_lock(&my->mutex);
-	my->eof = true;
+	my->eof = true;	
+	my->bio.write = fr_bio_pipe_shutdown_write;
+	if (fr_bio_buf_used(&my->buf) == 0) {
+		my->bio.read = fr_bio_null_read;
+		rcode = 0;
+	} else {
+		rcode = -1;	/* can't close this BIO yet */
+	}
 	pthread_mutex_unlock(&my->mutex);
 
-	/*
-	 *	We don't know if the other end is at EOF, we have to do a read.  So we tell fr_bio_eof() to
-	 *	stop processing.
-	 */
-	return 0;
+	return rcode;
 }
 
 /** Allocate a thread-safe pipe which can be used for both reads and writes.
@@ -166,7 +170,7 @@ static int fr_bio_pipe_eof(fr_bio_t *bio)
  *  need to be called twice.  That way a free in each context won't result in a race condition on two mutex
  *  locks.
  *
- *  For now, iqt's too difficult to emulate the pipe[2] behavior, where two identical "connected" things are
+ *  For now, it's too difficult to emulate the pipe[2] behavior, where two identical "connected" things are
  *  returned, and either can be used for reading or for writing.
  *
  *  i.e. a pipe is really a mutex-protected memory buffer.  One side should call write (and never read).  The
@@ -174,11 +178,14 @@ static int fr_bio_pipe_eof(fr_bio_t *bio)
  *
  *  The pipe should be freed only after both ends have set EOF.
  */
-fr_bio_t *fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_pipe_cb_funcs_t *cb, size_t buffer_size)
+fr_bio_t *fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, size_t buffer_size)
 {
-	fr_bio_pipe_t *my;
+	fr_bio_pipe_t	*my;
+	uint8_t		*buffer;
 
-	if (!cb->readable || !cb->writeable) return NULL;
+	if (!cb->read_resume  || !cb->write_resume) return NULL;
+	if (!cb->read_blocked || !cb->write_blocked) return NULL;
+	if (!cb->eof) return NULL;
 
 	if (buffer_size < 1024)		buffer_size = 1024;
 	if (buffer_size > (1 << 20))	buffer_size = (1 << 20);
@@ -186,13 +193,15 @@ fr_bio_t *fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_pipe_cb_funcs_t *cb, size_t 
 	my = talloc_zero(ctx, fr_bio_pipe_t);
 	if (!my) return NULL;
 
-	my->next = fr_bio_mem_sink_alloc(my, buffer_size);
-	if (!my->next) {
+	buffer = talloc_array(my, uint8_t, buffer_size);
+	if (!buffer) {
 		talloc_free(my);
 		return NULL;
 	}
 
-	my->signal = *cb;
+	my->cb = *cb;
+
+	fr_bio_buf_init(&my->buf, buffer, buffer_size);
 
 	pthread_mutex_init(&my->mutex, NULL);
 

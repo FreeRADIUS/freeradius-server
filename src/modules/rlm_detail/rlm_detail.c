@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -24,22 +24,16 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cf_util.h>
-#include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/perm.h>
 
-#include <ctype.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 
 #ifdef HAVE_UNISTD_H
-#  include <unistd.h>
 #endif
 
 #ifdef HAVE_GRP_H
-#  include <grp.h>
 #endif
 
 /** Instance configuration for rlm_detail
@@ -147,7 +141,7 @@ static uint32_t detail_hash(void const *data)
 	return fr_hash(&da, sizeof(da));
 }
 
-static int8_t detail_cmp(void const *a, void const *b)
+static fr_cmp_ret_t detail_cmp(void const *a, void const *b)
 {
 	return CMP(a, b);
 }
@@ -189,7 +183,10 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
 static int detail_recurse(FILE *out, fr_hash_table_t *ht, fr_pair_list_t *list)
 {
 	fr_pair_list_foreach(list, vp) {
-		if (ht && fr_hash_table_find(ht, vp->da)) continue;
+		void *suppressed = NULL;
+
+		if (ht) fr_hash_table_find(&suppressed, ht, vp->da);
+		if (suppressed) continue;
 
 		if (fr_type_is_leaf(vp->vp_type)) {
 			if (fr_pair_fprint(out, vp) < 0) return -1;
@@ -218,6 +215,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 			fr_packet_t *packet, fr_pair_list_t *list, fr_hash_table_t *ht)
 {
 	fr_dict_attr_t const *da;
+	void *suppressed = NULL;
 
 	if (fr_pair_list_empty(list)) {
 		RWDEBUG("Skipping empty packet");
@@ -234,7 +232,8 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	 *	Write the Packet-Type, but only if we're not suppressing it.
 	 */
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->proto_dict), "Packet-Type");
-	if (ht && da && !fr_hash_table_find(ht, da)) {
+	if (ht && da) fr_hash_table_find(&suppressed, ht, da);
+	if (ht && da && !suppressed) {
 		char const *name = NULL;
 
 		name = fr_dict_enum_name_by_value(da, fr_box_uint32(packet->code));
@@ -276,12 +275,15 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	 *	Write each attribute/value to the log file
 	 */
 	fr_pair_list_foreach(list, vp) {
-		if (ht && fr_hash_table_find(ht, vp->da)) continue;
+		void *found = NULL;
+
+		if (ht) fr_hash_table_find(&found, ht, vp->da);
+		if (found) continue;
 
 		/*
 		 *	Skip Net.* if we're not logging src/dst
 		 */
-		if (!inst->log_srcdst && (da == attr_net)) continue;
+		if (!inst->log_srcdst && (vp->da == attr_net)) continue;
 
 		if (fr_type_is_leaf(vp->vp_type)) {
 			if (fr_pair_fprint(out, vp) < 0) {
@@ -409,7 +411,7 @@ static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 	our_rules.literals_safe_for = our_rules.escape.box_escape.safe_for;
 
 	if (tmpl_afrom_substr(ctx, &parsed,
-			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 			      &our_rules) < 0) return -1;
 
@@ -449,12 +451,17 @@ static int call_env_suppress_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out,
 		/*
 		 *	Be kind to minor mistakes
 		 */
-		if (fr_hash_table_find(ht, da)) {
-			cf_log_warn(to_parse, "Ignoring duplicate entry '%s'", attr);
-			continue;
+		{
+			void *found = NULL;
+
+			fr_hash_table_find(&found, ht, da);
+			if (found) {
+				cf_log_warn(to_parse, "Ignoring duplicate entry '%s'", attr);
+				continue;
+			}
 		}
 
-		if (!fr_hash_table_insert(ht, da)) {
+		if (fr_hash_table_insert(ht, da) != 0) {
 			cf_log_perr(to_parse, "Failed inserting '%s' into suppression table", attr);
 			return -1;
 		}

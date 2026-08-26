@@ -64,6 +64,8 @@ typedef struct fr_listen fr_listen_t;
 extern "C" {
 #endif
 
+#define FR_CONTROL_ID_CHANNEL		(1)
+
 typedef enum fr_channel_event_t {
 	FR_CHANNEL_ERROR = 0,
 	FR_CHANNEL_DATA_READY_RESPONDER,
@@ -166,9 +168,9 @@ int	fr_channel_null_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 bool	fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
-typedef void (*fr_channel_recv_callback_t)(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd);
-int	fr_channel_set_recv_reply(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply) CC_HINT(nonnull(1,3));
-int	fr_channel_set_recv_request(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply) CC_HINT(nonnull(1,3));
+typedef void (*fr_channel_recv_callback_t)(fr_channel_t *ch, fr_channel_data_t *cd, void *uctx);
+int	fr_channel_set_recv_reply(fr_channel_t *ch, fr_channel_recv_callback_t recv_reply, void *uctx) CC_HINT(nonnull(1,2));
+int	fr_channel_set_recv_request(fr_channel_t *ch, fr_channel_recv_callback_t recv_request, void *uctx) CC_HINT(nonnull(1,2));
 
 int	fr_channel_responder_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
 
@@ -180,6 +182,8 @@ bool	fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);
 int	fr_channel_signal_open(fr_channel_t *ch) CC_HINT(nonnull);
 
 int	fr_channel_signal_responder_close(fr_channel_t *ch) CC_HINT(nonnull);
+unsigned int fr_channel_responder_discard(fr_channel_t *ch) CC_HINT(nonnull);
+
 int	fr_channel_responder_ack_close(fr_channel_t *ch) CC_HINT(nonnull);
 
 void	fr_channel_responder_uctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull);

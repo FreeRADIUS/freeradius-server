@@ -1,0 +1,20 @@
+= Supported RFCs
+
+FreeRADIUS supports a large number of protocols, and therefore a large
+number of standards.  This pages documents the RFC compliance of the
+server, for each protocol.
+
+* xref:rfc/compliance.adoc[Comments on RFC Compliance]
+
+* xref:rfc/radius.adoc[RADIUS]
+** xref:rfc/radius_attributes.adoc[List of Attributes]
+** xref:rfc/design.adoc[Designing and creating new attributes]
+
+* xref:rfc/dns.adoc[DNS]
+
+* xref:rfc/dhcpv4.adoc[DHCPv4]
+
+* xref:rfc/dhcpv6.adoc[DHCPv4]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

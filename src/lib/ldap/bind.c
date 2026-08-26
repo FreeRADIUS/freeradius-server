@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -74,12 +74,14 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	case LDAP_PROC_NOT_PERMITTED:
 		PERROR("Bind as \"%s\" to \"%s\" not permitted",
 		       *bind_ctx->bind_dn ? bind_ctx->bind_dn : "(anonymous)", c->config->server);
+		talloc_free(bind_ctx);		/* Also removes fd events */
 		fr_ldap_state_error(c);		/* Restart the connection state machine */
 		return;
 
 	default:
 		PERROR("Bind as \"%s\" to \"%s\" failed",
 		       *bind_ctx->bind_dn ? bind_ctx->bind_dn : "(anonymous)", c->config->server);
+		talloc_free(bind_ctx);		/* Also removes fd events */
 		fr_ldap_state_error(c);		/* Restart the connection state machine */
 		return;
 	}
@@ -111,7 +113,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 
 	if (bind_ctx->password) {
 		memcpy(&cred.bv_val, &bind_ctx->password, sizeof(cred.bv_val));
-		cred.bv_len = talloc_array_length(bind_ctx->password) - 1;
+		cred.bv_len = talloc_strlen(bind_ctx->password);
 	} else {
 		cred.bv_val = NULL;
 		cred.bv_len = 0;
@@ -301,7 +303,7 @@ static void ldap_async_auth_bind_cancel(request_t *request, UNUSED fr_signal_t a
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
 
 	RWARN("Cancelling bind auth");
-	if (bind_auth_ctx->msgid > 0) fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
+	if (bind_auth_ctx->msgid > 0) fr_rb_remove(NULL, bind_auth_ctx->thread->binds, bind_auth_ctx);
 	trunk_request_signal_cancel(bind_auth_ctx->treq);
 }
 
@@ -329,6 +331,12 @@ unlang_action_t fr_ldap_bind_auth_async(unlang_result_t *p_result, request_t *re
 	trunk_request_t		*treq;
 	fr_ldap_thread_trunk_t	*ttrunk = fr_thread_ldap_bind_trunk_get(thread);
 	trunk_enqueue_t		ret;
+
+	if (!password || (password[0] == '\0')) {
+		REDEBUG("Refusing to bind as \"%s\" with an empty password - this would be an unauthenticated bind",
+			bind_dn ? bind_dn : "");
+		RETURN_UNLANG_INVALID;
+	}
 
 	if (!ttrunk) {
 		ERROR("Failed to get trunk connection for LDAP bind");

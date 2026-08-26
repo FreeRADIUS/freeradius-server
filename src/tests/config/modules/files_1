@@ -1,0 +1,8 @@
+#
+#  Test: all options set explicitly
+#
+files {
+	filename = ${modconfdir}/files/authorize
+	v3_compat = false
+	lookup_type = auto
+}

@@ -87,13 +87,13 @@ char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_er
  * @return 0 (always indicates success).
  */
 static int _mod_conn_free(rlm_krb5_handle_t *conn) {
-	krb5_free_context(conn->context);
-
 	if (conn->keytab) krb5_kt_close(conn->context, conn->keytab);
 
 #ifdef HEIMDAL_KRB5
 	if (conn->ccache) krb5_cc_destroy(conn->context, conn->ccache);
 #endif
+
+	krb5_free_context(conn->context);
 
 	return 0;
 }

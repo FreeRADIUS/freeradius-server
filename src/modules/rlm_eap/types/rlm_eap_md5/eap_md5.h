@@ -39,11 +39,10 @@ typedef struct {
 	unsigned short	length;
 	unsigned char	value_size;
 	unsigned char	*value;
-	char		*name;
 } MD5_PACKET;
 
 /* function declarations here */
 
 int 		eap_md5_compose(eap_round_t *auth, MD5_PACKET *reply);
-MD5_PACKET 	*eap_md5_extract(request_t *request, eap_round_t *auth);
-int 		eap_md5_verify(request_t *request, MD5_PACKET *pkt, fr_pair_t* pwd, uint8_t *ch);
+MD5_PACKET 	*eap_md5_extract(request_t *request, eap_round_t *eap_round);
+int 		eap_md5_verify(request_t *request, MD5_PACKET *packet, fr_pair_t *password, uint8_t *challenge) CC_HINT(nonnull);

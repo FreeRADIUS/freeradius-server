@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -29,10 +29,23 @@
 
 #include <sys/stat.h>
 #include <net/if.h>
-#include <fcntl.h>
 #include <libgen.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>
+
+/*
+ *	@todo - allow for the server to start when DNS fails at start time.
+ *
+ *	- add a flag indicating whether client DNS failures are fatal.
+ *	  - DNS failures are _always_ fatal for the server side
+ *	- add an internal enum indicating what type of socket it is, so that we don't need to parse it at run time.
+ *	  - move the code in fd_open() doing cross-checks to a new routine, and call that new routine from fd_alloc().
+ *	    so that it can set enum type even if the ipaddr is unset
+ *      - add a dst_hostname field to fr_bio_fd_config_t
+ *	- in fd_config.c, add a custom parser to save the raw value into dst_hostname
+ *	  if the DNS lookup fails, set AF_INET=AF_UNSPEC, and set the enum as appropriate.
+ *	- in fd_open.c, if enum is FR_BIO_FD_IP_UNSET, do DNS lookup, and fail if there's no DNS.
+ */
 
 /** Initialize common datagram information
  *
@@ -111,12 +124,10 @@ static int fr_bio_fd_common_datagram(int fd, UNUSED fr_socket_t const *sock, fr_
 
 #ifdef SO_RCVBUF
 	if (cfg->recv_buff) {
-		int opt = cfg->recv_buff;
+		int opt;
 
-		/*
-		 *	Clamp value to something reasonable.
-		 */
-		if (opt > (1 << 29)) opt = (1 << 29);
+		fr_assert(cfg->recv_buff <= INT_MAX);
+		opt = (int) cfg->recv_buff;
 
 		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
 			fr_strerror_printf("Failed setting SO_RCVBUF: %s", fr_syserror(errno));
@@ -127,12 +138,10 @@ static int fr_bio_fd_common_datagram(int fd, UNUSED fr_socket_t const *sock, fr_
 
 #ifdef SO_SNDBUF
 	if (cfg->send_buff) {
-		int opt = cfg->send_buff;
+		int opt;
 
-		/*
-		 *	Clamp value to something reasonable.
-		 */
-		if (opt > (1 << 29)) opt = (1 << 29);
+		fr_assert(cfg->send_buff <= INT_MAX);
+		opt = (int) cfg->send_buff;
 
 		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0) {
 			fr_strerror_printf("Failed setting SO_SNDBUF: %s", fr_syserror(errno));
@@ -365,6 +374,9 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	if (fr_dirfd(dirfd, filename, path) == 0) {
 		struct stat buf;
 
+		fr_assert(*filename);
+		fr_assert(*dirfd >= 0);
+
 		if (fstat(*dirfd, &buf) < 0) {
 			fr_strerror_printf("Failed reading parent directory for file %s: %s", path, fr_syserror(errno));
 		fail:
@@ -396,6 +408,9 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 		return 0;
 	}
 
+	/*
+	 *	We have to create the directories.
+	 */
 	dir = talloc_strdup(NULL, path);
 	if (!dir) goto fail;
 
@@ -449,21 +464,21 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	 */
 	*slashes[0] = '/';
 	*slashes[1] = '\0';
-	if (mkdirat(parent_fd, dir, 0700) < 0) {
-		fr_strerror_printf("Failed creating directory %s: %s", dir, fr_syserror(errno));
+	if (mkdirat(parent_fd, slashes[0] + 1, 0700) < 0) {
+		fr_strerror_printf("Failed creating directory %s: %s", slashes[0], fr_syserror(errno));
 	close_parent:
 		close(parent_fd);
 		goto fail;
 	}
 
-	fd = openat(parent_fd, dir, O_DIRECTORY);
+	fd = openat(parent_fd, slashes[0] + 1, O_DIRECTORY);
 	if (fd < 0) {
-		fr_strerror_printf("Failed opening directory %s: %s", dir, fr_syserror(errno));
+		fr_strerror_printf("Failed opening directory %s: %s", slashes[0] + 1, fr_syserror(errno));
 		goto close_parent;
 	}
 
 	if (fchmod(fd, perm) < 0) {
-		fr_strerror_printf("Failed changing permission for directory %s: %s", dir, fr_syserror(errno));
+		fr_strerror_printf("Failed changing permission for domain socket %s: %s", cfg->path, fr_syserror(errno));
 	close_fd:
 		close(fd);
 		goto close_parent;
@@ -475,12 +490,17 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	 *	Otherwise if we're running as root, it will set ownership to the correct user.
 	 */
 	if (fchown(fd, cfg->uid, cfg->gid) < 0) {
-		fr_strerror_printf("Failed changing ownershipt for directory %s: %s", dir, fr_syserror(errno));
+		fr_strerror_printf("Failed changing ownership for domain socket %s: %s", dir, fr_syserror(errno));
 		goto close_fd;
 	}
 
+	*dirfd = fd;
+	path = strrchr(cfg->path, '/');
+	if (path) path++;
+
+	*filename = path;
+
 	talloc_free(dir);
-	close(fd);
 	close(parent_fd);
 
 	return 0;
@@ -622,7 +642,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	 *	Otherwise if we're running as root, it will set ownership to the correct user.
 	 */
 	if (fchown(my->info.socket.fd, cfg->uid, cfg->gid) < 0) {
-		fr_strerror_printf("Failed changing ownershipt for domain directory %s: %s", cfg->path, fr_syserror(errno));
+		fr_strerror_printf("Failed changing ownership for domain socket %s: %s", cfg->path, fr_syserror(errno));
 		goto fail;
 	}
 
@@ -633,6 +653,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	 */
 	if (my->cb.shutdown) my->user_shutdown = my->cb.shutdown;
 	my->cb.shutdown = fr_bio_fd_unix_shutdown;
+	if (dirfd != AT_FDCWD) close(dirfd);
 
 	return 0;
 }
@@ -689,7 +710,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
 	opt = my->info.socket.inet.ifindex;
 
 	switch (my->info.socket.af) {
-	case AF_LOCAL:
+	case AF_INET:
 		rcode = setsockopt(my->info.socket.fd, IPPROTO_IP, IP_BOUND_IF, &opt, sizeof(opt));
 		break;
 
@@ -731,37 +752,70 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
 
 static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 {
+	bool do_suid;
+	int rcode;
 	socklen_t salen;
 	struct sockaddr_storage	salocal;
 
 	fr_assert((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6));
 
+	/*
+	 *	Ranges must be a high value.
+	 */
+	if (my->info.cfg->src_port_start) {
+		if (my->info.cfg->src_port_start < 1024) {
+			fr_strerror_const("Cannot set src_port_start in the range 1..1023");
+			return -1;
+		}
+
+		if (my->info.cfg->src_port_end <= my->info.cfg->src_port_start) {
+			fr_strerror_const("Invalid range src_port_end <= src_port_start");
+			return -1;
+		}
+	}
+
+	/*
+	 *	Source port is in the restricted range, and we're not root, update permissions / capabilities
+	 *	so that the bind is permitted.
+	 */
+	do_suid = (my->info.socket.inet.src_port > 0) && (my->info.socket.inet.src_port < 1024) && (geteuid() != 0);
+
 #ifdef HAVE_CAPABILITY_H
 	/*
-	 *	If we're binding to a special port as non-root, then
-	 *	check capabilities.  If we're root, we already have
-	 *	equivalent capabilities so we don't need to check.
+	 *	If we can set the capabilities, then we don't need to do SUID.
 	 */
-	if ((my->info.socket.inet.src_port < 1024) && (geteuid() != 0)) {
-		(void)fr_cap_enable(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE);
-	}
+	if (do_suid) do_suid = (fr_cap_enable(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE) < 0);
 #endif
 
-	if (fr_bio_fd_socket_bind_to_device(my, cfg) < 0) return -1;
+	/*
+	 *	SUID up before we bind to the interface.  If we can set the capabilities above, then should
+	 *	also be able to set the capabilities to bind to an interface.
+	 */
+	if (do_suid) fr_suid_up();
+
+	if (fr_bio_fd_socket_bind_to_device(my, cfg) < 0) {
+	down:
+		if (do_suid) fr_suid_down();
+		return -1;
+	}
 
 	/*
-	 *	Bind to the IP + interface.
+	 *	Get the sockaddr for bind()
 	 */
-	if (fr_ipaddr_to_sockaddr(&salocal, &salen, &my->info.socket.inet.src_ipaddr, my->info.socket.inet.src_port) < 0) return -1;
+	if (fr_ipaddr_to_sockaddr(&salocal, &salen, &my->info.socket.inet.src_ipaddr, my->info.socket.inet.src_port) < 0) goto down;
 
 	/*
-	 *	If we have a fixed source port, just use that.
+	 *	We don't have a source port range, just bind to whatever source port that we're given.
 	 */
-	if (my->info.cfg->src_port || !my->info.cfg->src_port_start) {
-		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) < 0) {
+	if (!my->info.cfg->src_port_start) {
+		rcode = bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen);
+		if (do_suid) fr_suid_down();
+
+		if (rcode < 0) {
 			fr_strerror_printf("Failed binding to socket: %s", fr_syserror(errno));
 			return -1;
 		}
+
 	} else {
 		uint16_t src_port, current, range;
 		struct sockaddr_in *sin = (struct sockaddr_in *) &salocal;
@@ -784,7 +838,11 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 		 *	We've picked a random port in what is hopefully a large range.  If that works, we're
 		 *	done.
 		 */
-		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) == 0) goto done;
+		rcode = bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen);
+		if (rcode == 0) {
+			if (do_suid) fr_suid_down();
+			goto done;
+		}
 
 		/*
 		 *	Hunt & peck.  Which is horrible.
@@ -804,19 +862,24 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 
 			sin->sin_port = htons(my->info.cfg->src_port_start + current);
 
-			if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) == 0) goto done;
+			rcode = bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen);
+			if (rcode == 0) {
+				if (do_suid) fr_suid_down();
+				goto done;
+			}
 		}
 
 		/*
 		 *	The error is a good hint at _why_ we failed to bind.
 		 *	We expect errno to be EADDRINUSE, anything else is a surprise.
 		 */
+		if (do_suid) fr_suid_down();
 		fr_strerror_printf("Failed binding port between 'src_port_start' and 'src_port_end': %s", fr_syserror(errno));
 		return -1;
 	}
 
 	/*
-	 *	The source IP may have changed, so get the new one.
+	 *	The IP and/or port may have changed, so get the new one.
 	 */
 done:
 	return fr_bio_fd_socket_name(my);
@@ -874,7 +937,7 @@ void fr_bio_fd_name(fr_bio_fd_t *my)
 						    cfg->path);
 			break;
 
-		case AF_FILE_BIO:
+		case AF_FR_FILENAME:
 			fr_assert(cfg->socket_type == SOCK_STREAM);
 
 			if (cfg->flags == O_RDONLY) {
@@ -927,11 +990,6 @@ void fr_bio_fd_name(fr_bio_fd_t *my)
 int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 {
 	/*
-	 *	Unix sockets and files are OK.
-	 */
-	if (cfg->path || cfg->filename) return 0;
-
-	/*
 	 *	Sanitize the IP addresses.
 	 *
 	 */
@@ -945,12 +1003,12 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 		 *	Ensure that we have a destination address.
 		 */
 		if (cfg->dst_ipaddr.af == AF_UNSPEC) {
-			fr_strerror_const("No destination IP address was specified");
+			fr_strerror_const("Destination IP address must be specified for a connected socket");
 			return -1;
 		}
 
 		if (!cfg->dst_port) {
-			fr_strerror_const("No destination port was specified");
+			fr_strerror_const("Destination port must be specified for a connected socket");
 			return -1;
 		}
 
@@ -965,7 +1023,7 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 
 	case FR_BIO_FD_LISTEN:
 		if (!cfg->src_port) {
-			fr_strerror_const("No source port was specified");
+			fr_strerror_const("Source port must be specified for a server socket");
 			return -1;
 		}
 		FALL_THROUGH;
@@ -980,7 +1038,7 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 		}
 
 		if (cfg->src_ipaddr.af == AF_UNSPEC) {
-			fr_strerror_const("No source IP address was specified");
+			fr_strerror_const("Source IP address must be specified for an unconnected socket");
 			return -1;
 		}
 		break;
@@ -996,7 +1054,7 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 {
 	int fd;
-	int rcode;
+	int rcode = -1;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	fr_strerror_clear();
@@ -1004,6 +1062,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	my->info = (fr_bio_fd_info_t) {
 		.socket = {
 			.type = cfg->socket_type,
+			.fd = -1,
 		},
 		.cfg = cfg,
 	};
@@ -1011,13 +1070,13 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	if (!cfg->path && !cfg->filename) {
 		int protocol;
 
+		if (fr_bio_fd_check_config(cfg) < 0) return -1;
+
 		my->info.socket.af = cfg->src_ipaddr.af;
 		my->info.socket.inet.src_ipaddr = cfg->src_ipaddr;
 		my->info.socket.inet.dst_ipaddr = cfg->dst_ipaddr;
 		my->info.socket.inet.src_port = cfg->src_port;
 		my->info.socket.inet.dst_port = cfg->dst_port;
-
-		if (fr_bio_fd_check_config(cfg) < 0) return -1;
 
 		/*
 		 *	Sanitize the IP addresses.
@@ -1043,25 +1102,24 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 				my->info.socket.af = my->info.socket.inet.dst_ipaddr.af;
 			}
 
-			/*
-			 *	The source IP has to be the same address family as the destination IP.
-			 */
-			if (my->info.socket.inet.src_ipaddr.af != my->info.socket.inet.dst_ipaddr.af) {
-				fr_strerror_const("Source and destination IP addresses are not from the same IP address family");
-				return -1;
-			}
-
 #ifdef SO_REUSEPORT
 			/*
 			 *	Connected UDP sockets really only matter when writing packets.  They allow the
 			 *	system to use write() instead of sendto().
 			 *
-			 *	However for reading packets, the kernel does NOT check the source IP.
-			 *	Instead, it just delivers any packet with the correct dst IP/port.  Even
+			 *	However for reading packets, POSIX says that the OS does NOT check the source
+			 *	IP.  Instead, it just delivers any packet with the correct dst IP/port.  Even
 			 *	worse, if multiple sockets re-use the same dst IP/port, packets are delivered
 			 *	to a _random_ socket.
 			 *
 			 *	As a result, we cannot use wildcard sockets with SO_REUSEPORT, and UDP.
+			 *
+			 *	However, recent OS (macOS 24.6.0 (Sequoia) and Linux 6.12, and FreeBSD) all
+			 *	support connected UDP sockets, and check the 4-tuple, so that only packets for
+			 *	the connection get delivered to the socket.
+			 *
+			 *	For now, we leave this check alone.  The caller should really be passing in a
+			 *	specific source IP address, and not a wildcard for connected UDP sockets.
 			 */
 			if (cfg->reuse_port && (cfg->socket_type == SOCK_DGRAM) &&
 			    fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) { /* checks AF, so we're OK */
@@ -1069,7 +1127,6 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 				return -1;
 			}
 #endif
-
 			break;
 
 		case FR_BIO_FD_UNCONNECTED:
@@ -1119,9 +1176,9 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		/*
 		 *	Filenames overload the #fr_socket_t for now.
 		 */
-		my->info.socket.af = AF_FILE_BIO;
+		my->info.socket.af = AF_FR_FILENAME;
 		my->info.socket.type = SOCK_STREAM;
-		my->info.socket.unix.path = cfg->filename;
+		my->info.socket.file.path = cfg->filename;
 
 		/*
 		 *	Allow hacks for stdout and stderr
@@ -1179,18 +1236,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		return rcode;
 	}
 
-#ifdef FD_CLOEXEC
-	/*
-	 *	We don't want child processes inheriting these file descriptors.
-	 */
-	rcode = fcntl(fd, F_GETFD);
-	if (rcode >= 0) {
-		if (fcntl(fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
-			fr_strerror_printf("Failed  setting FD_CLOEXEC: %s", fr_syserror(errno));
-			goto fail;
-		}
-	}
-#endif
+	if (fr_cloexec(fd) < 0) goto fail;
 
 	/*
 	 *	Initialize the bio information before calling the various setup functions.
@@ -1213,7 +1259,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	 */
 	switch (cfg->type) {
 	case FR_BIO_FD_INVALID:
-		return -1;
+		goto fail;
 
 		/*
 		 *	Unconnected UDP or datagram AF_LOCAL server sockets.
@@ -1221,7 +1267,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	case FR_BIO_FD_UNCONNECTED:
 		if (my->info.socket.type != SOCK_DGRAM) {
 			fr_strerror_const("Failed configuring socket: unconnected sockets must be UDP");
-			return -1;
+			goto fail;
 		}
 
 		switch (my->info.socket.af) {
@@ -1234,7 +1280,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
 			break;
 
-		case AF_FILE_BIO:
+		case AF_FR_FILENAME:
 			fr_strerror_const("Filenames must use the connected API");
 			goto fail;
 
@@ -1249,7 +1295,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		break;
 
 		/*
-		 *	A connected client: UDP, TCP, AF_LOCAL, or AF_FILE_BIO
+		 *	A connected client: UDP, TCP, AF_LOCAL, or AF_FR_FILENAME
 		 */
 	case FR_BIO_FD_CONNECTED:
 		if (my->info.socket.type == SOCK_DGRAM) {
@@ -1273,7 +1319,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			if ((rcode = fr_bio_fd_socket_bind_unix(my, cfg)) < 0) goto fail;
 			break;
 
-		case AF_FILE_BIO:
+		case AF_FR_FILENAME:
 			break;
 
 		case AF_INET:
@@ -1282,7 +1328,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			break;
 
 		default:
-			return -1;
+			goto fail;
 		}
 
 		if ((rcode = fr_bio_fd_init_connected(my)) < 0) goto fail;
@@ -1343,7 +1389,7 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 	fr_bio_fd_config_t const *cfg = my->info.cfg;
 	int fd, flags;
 
-	if (my->info.socket.af != AF_FILE_BIO) {
+	if (my->info.socket.af != AF_FR_FILENAME) {
 		fr_strerror_const("Cannot reopen a non-file BIO");
 		return -1;
 	}
@@ -1370,7 +1416,7 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 		/*
 		 *	We make the parent directory if told to, AND if there's a '/' in the path.
 		 */
-		char *p = strrchr(cfg->filename, '/');
+		char const *p = strrchr(cfg->filename, '/');
 		int dir_fd;
 
 		if (!p) goto do_open;
@@ -1388,6 +1434,8 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 			close(dir_fd);
 			goto failed_open;
 		}
+
+		close(dir_fd);
 	}
 
 	/*

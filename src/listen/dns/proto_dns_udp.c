@@ -17,16 +17,14 @@
 /**
  * $Id$
  * @file proto_dns_udp.c
- * @brief DHCPv6 handler for UDP.
+ * @brief DNS handler for UDP.
  *
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
 #define LOG_PREFIX "proto_dns_udp"
 
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/util/udp.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
@@ -86,7 +84,7 @@ static const conf_parser_t udp_listen_config[] = {
 
 	{ FR_CONF_OFFSET("interface", proto_dns_udp_t, interface) },
 
-	{ FR_CONF_OFFSET("port", proto_dns_udp_t, port), .dflt = "547"  },
+	{ FR_CONF_OFFSET("port", proto_dns_udp_t, port), .dflt = "53"  },
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, proto_dns_udp_t, recv_buff) },
 
 	{ FR_CONF_POINTER("networks", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) networks_config },
@@ -266,7 +264,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, "domain", true);
 	if (sockfd < 0) {
-		PERROR("Failed opening UDP socket");
+		cf_log_err(li->cs, "Failed opening UDP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -281,7 +279,7 @@ static int mod_open(fr_listen_t *li)
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
-			ERROR("Failed to set socket 'reuseport': %s", fr_syserror(errno));
+			cf_log_err(li->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -294,8 +292,9 @@ static int mod_open(fr_listen_t *li)
 	rcode = fr_socket_bind(sockfd, inst->interface, &ipaddr, &port);
 	rad_suid_down();
 	if (rcode < 0) {
-		PERROR("Failed binding socket");
 		close(sockfd);
+		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
+		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 		goto error;
 	}
 
@@ -412,7 +411,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Create a fake client.
 	 */
 	client = inst->default_client = talloc_zero(inst, fr_client_t);
-	if (!inst->default_client) return 0;
+	if (!inst->default_client) return -1;
 
 	client->ipaddr = (fr_ipaddr_t ) {
 		.af = AF_INET6,

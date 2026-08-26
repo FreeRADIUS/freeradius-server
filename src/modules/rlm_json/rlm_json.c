@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -30,12 +30,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/json/base.h>
 
@@ -85,12 +81,14 @@ static xlat_arg_parser_t const json_escape_xlat_arg[] = {
 };
 
 static xlat_action_t json_escape(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				 UNUSED xlat_ctx_t const *xctx,
+				 xlat_ctx_t const *xctx,
 				 request_t *request, fr_value_box_list_t *in, bool quote)
 {
-	fr_value_box_t	*vb_out;
-	fr_value_box_t	*in_head = fr_value_box_list_head(in);
-	fr_sbuff_t	*agg;
+	rlm_json_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_json_t);
+	fr_json_format_t const	*format = inst->format;
+	fr_value_box_t		*vb_out;
+	fr_value_box_t		*in_head = fr_value_box_list_head(in);
+	fr_sbuff_t		*agg;
 
 	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 1024, SIZE_MAX);
 
@@ -103,11 +101,62 @@ static xlat_action_t json_escape(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	fr_value_box_list_foreach(&in_head->vb_group, vb_in) {
+		fr_value_box_t	*vb_to_encode = vb_in;
+		fr_value_box_t	vb_str = FR_VALUE_BOX_INITIALISER_NULL(vb_str);
+		fr_slen_t	slen;
+
+		if (format) {
+			/*
+			 *	Encode octets as base16 or base64 when requested.
+			 */
+			if ((vb_in->type == FR_TYPE_OCTETS) &&
+			    (format->value.binary_format != JSON_BINARY_FORMAT_RAW)) {
+				MEM(vb_out = fr_value_box_alloc_null(ctx));
+				if (quote) fr_sbuff_in_char(agg, '"');
+				switch (format->value.binary_format) {
+					/*
+					 *	Hex encode octets values when requested.
+					 */
+				case JSON_BINARY_FORMAT_BASE16:
+					fr_base16_encode(agg, &FR_DBUFF_TMP(vb_in->vb_octets, vb_in->vb_length));
+					break;
+
+					/*
+					 *	Base64-encode octets values when requested.
+					 */
+				case JSON_BINARY_FORMAT_BASE64:
+					fr_base64_encode(agg, &FR_DBUFF_TMP(vb_in->vb_octets, vb_in->vb_length), true);
+						break;
+
+				default:
+					fr_assert(0); /* ENUM updated and no encode() function */
+					break;
+				}
+				if (quote) fr_sbuff_in_char(agg, '"');
+				goto assign;
+			}
+
+			/*
+			 *	Cast to string when always_string is set.
+			 */
+			if (format->value.always_string && (vb_in->type != FR_TYPE_STRING)) {
+				if (unlikely(fr_value_box_cast(ctx, &vb_str, FR_TYPE_STRING, NULL, vb_to_encode) < 0)) {
+					RPERROR("Failed casting value to string");
+					return XLAT_ACTION_FAIL;
+				}
+				vb_to_encode = &vb_str;
+			}
+		}
+
 		MEM(vb_out = fr_value_box_alloc_null(ctx));
-		if (fr_json_str_from_value(agg, vb_in, quote) < 0) {
+		slen = fr_json_str_from_value(agg, vb_to_encode, quote);
+		fr_value_box_clear(&vb_str);
+		if (slen < 0) {
 			RPERROR("Failed creating escaped JSON value");
 			return XLAT_ACTION_FAIL;
 		}
+
+	assign:
 		if (fr_value_box_bstrndup(vb_out, vb_out, NULL, fr_sbuff_start(agg), fr_sbuff_used(agg), vb_in->tainted) < 0) {
 			RPERROR("Failed assigning escaped JSON value to output box");
 			return XLAT_ACTION_FAIL;
@@ -474,13 +523,17 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 	}
 	json_str = json_head->vb_strvalue;
 
-	if ((talloc_array_length(json_str) - 1) == 0) {
+	if ((talloc_strlen(json_str)) == 0) {
 		REDEBUG("JSON map input length must be > 0");
 		RETURN_UNLANG_FAIL;
 	}
 
 	tok = json_tokener_new();
-	to_eval.root = json_tokener_parse_ex(tok, json_str, (int)(talloc_array_length(json_str) - 1));
+	if (!tok) {
+		REDEBUG("Failed allocating JSON tokeniser");
+		RETURN_UNLANG_FAIL;
+	}
+	to_eval.root = json_tokener_parse_ex(tok, json_str, (int)(talloc_strlen(json_str)));
 	if (!to_eval.root) {
 		REMARKER(json_str, tok->char_offset, "%s", json_tokener_error_desc(json_tokener_get_error(tok)));
 		rcode = RLM_MODULE_FAIL;
@@ -517,7 +570,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
-			slen = fr_jpath_parse(request, &node, to_parse, talloc_array_length(to_parse) - 1);
+			slen = fr_jpath_parse(request, &node, to_parse, talloc_strlen(to_parse));
 			if (slen <= 0) {
 				REMARKER(to_parse, -(slen), "%s", fr_strerror());
 				talloc_free(to_parse);
@@ -533,6 +586,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 				goto finish;
 			}
 			talloc_free(node);
+			talloc_free(to_parse);
 		}
 			break;
 		}
@@ -574,6 +628,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "encode", json_encode_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, json_encode_xlat_arg);
 
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "escape", json_escape_xlat, FR_TYPE_STRING);
+	xlat_func_args_set(xlat, json_escape_xlat_arg);
+
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "quote", json_quote_xlat, FR_TYPE_STRING);
+	xlat_func_args_set(xlat, json_escape_xlat_arg);
+
 	if (map_proc_register(mctx->mi->boot, inst, "json", mod_map_proc,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t), FR_VALUE_BOX_SAFE_FOR_ANY) < 0) return -1;
 	return 0;
@@ -585,10 +645,6 @@ static int mod_load(void)
 
 	fr_json_version_print();
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "json.escape", json_escape_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_args_set(xlat, json_escape_xlat_arg);
-	if (unlikely(!(xlat = xlat_func_register(NULL, "json.quote", json_quote_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_args_set(xlat, json_escape_xlat_arg);
 	if (unlikely(!(xlat = xlat_func_register(NULL, "json.jpath_validate", json_jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_args_set(xlat, json_jpath_validate_xlat_arg);
 
@@ -597,8 +653,6 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_func_unregister("json.escape");
-	xlat_func_unregister("json.quote");
 	xlat_func_unregister("json.jpath_validate");
 }
 

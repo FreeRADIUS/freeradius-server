@@ -144,7 +144,7 @@ int fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 	}
 
 	if ((end - p) < 4) {
-		fr_strerror_printf("ASN1 string too short, expected 10 additional bytes, got %zu bytes",
+		fr_strerror_printf("ASN1 string too short, expected 4 additional bytes, got %zu bytes",
 				   (size_t) (end - p));
 		return -1;
 	}

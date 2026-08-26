@@ -156,5 +156,5 @@ with _all_ the module expansions it would call, the server will log an
 error and either fail to start, or stop processing the expression which
 called the redundant expansion.
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

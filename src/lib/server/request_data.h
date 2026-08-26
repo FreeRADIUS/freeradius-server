@@ -58,7 +58,7 @@ void		request_data_list_init(fr_dlist_head_t *data);
  */
 #define request_data_add(_request, _unique_ptr, _unique_int, _opaque, _free_on_replace, _free_on_parent, _persist) \
 		_request_data_add(_request, _unique_ptr, _unique_int, NULL, _opaque,  \
-				  _free_on_replace, _free_on_parent, _persist, __FILE__, __LINE__)
+				  _free_on_replace, _free_on_parent, _persist, false, __FILE__, __LINE__)
 
 
 /** Add opaque data to a request_t
@@ -85,10 +85,28 @@ void		request_data_list_init(fr_dlist_head_t *data);
  */
 #define request_data_talloc_add(_request, _unique_ptr, _unique_int, _type, _opaque, _free_on_replace, _free_on_parent, _persist) \
 		_request_data_add(_request, _unique_ptr, _unique_int, STRINGIFY(_type), _opaque, \
-				  _free_on_replace, _free_on_parent, _persist, __FILE__, __LINE__)
+				  _free_on_replace, _free_on_parent, _persist, false, __FILE__, __LINE__)
+
+/** Add const opaque data to a request_t
+ *
+ * @param[in] _request		to associate data with.
+ * @param[in] _unique_ptr	Identifier for the data.
+ * @param[in] _unique_int	Qualifier for the identifier.
+ * @param[in] _opaque		Data to associate with the request.  May be NULL.
+ * @param[in] _persist		Transfer request data to an #fr_state_entry_t, and
+ *				add it back to the next request we receive for the
+ *				session.
+ * @return
+ *	- -2 on bad arguments.
+ *	- -1 on memory allocation error.
+ *	- 0 on success.
+ */
+#define request_data_add_const(_request, _unique_ptr, _unique_int, _opaque, _persist) \
+		_request_data_add(_request, _unique_ptr, _unique_int, NULL, _opaque,  \
+				  false, false, _persist, true, __FILE__, __LINE__)
 
 int		_request_data_add(request_t *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
-				  bool free_on_replace, bool free_on_parent, bool persist, char const *file, int line);
+				  bool free_on_replace, bool free_on_parent, bool persist, bool is_const, char const *file, int line);
 
 void		*request_data_get(request_t *request, void const *unique_ptr, int unique_int);
 

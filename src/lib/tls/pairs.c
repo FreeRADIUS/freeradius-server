@@ -124,6 +124,15 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 
 	for (i = 0; i < sk_DIST_POINT_num(dps); i++) {
 		dp = sk_DIST_POINT_value(dps, i);
+
+		/*
+		 *	RFC 5280 Section 4.2.1.13 says that the distpoint is optional.
+		 */
+		if (!dp->distpoint) {
+			CRL_DIST_POINTS_free(dps);
+			return false;
+		}
+
 		names = dp->distpoint->name.fullname;
 
 		/*
@@ -191,22 +200,33 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		uint8_t			*cd;
 		int			der_len;
 		fr_der_decode_ctx_t	der_ctx;
+		fr_pair_list_t		tmp_list;
 
 		der_len = i2d_X509(cert, NULL);
 		if (der_len < 0) {
 			fr_tls_log(request, "Failed retrieving certificate");
 			return -1;
 		}
-		der_ctx.tmp_ctx = talloc_new(ctx);
+		der_ctx = (fr_der_decode_ctx_t) {
+			.tmp_ctx = talloc_new(ctx),
+			.root = attr_der_certificate,
+		};
 		cert_der = cd = talloc_array(der_ctx.tmp_ctx, uint8_t, der_len);
 		i2d_X509(cert, &cd);
-		slen = fr_der_decode_pair_dbuff(request->session_state_ctx, &request->session_state_pairs,
+		fr_pair_list_init(&tmp_list);
+		slen = fr_der_decode_pair_dbuff(request->session_state_ctx, &tmp_list,
 						attr_der_certificate, &FR_DBUFF_TMP(cert_der, (size_t)der_len), &der_ctx);
 		talloc_free(der_ctx.tmp_ctx);
 		if (slen < 0) {
 			fr_tls_log(request, "Failed decoding certificate");
+			fr_pair_list_free(&tmp_list);
 			return -1;
 		}
+		/*
+		 *  Certificates are decoded in CA .. intermediate .. client sequence
+		 *  so, prepend each decoded one to get the client cert first.
+		 */
+		fr_pair_list_prepend(&request->session_state_pairs, &tmp_list);
 	}
 #endif
 
@@ -453,6 +473,56 @@ done:
 	return 0;
 }
 
+static int fr_tls_extension_decode(request_t *request, fr_pair_t *container, uint8_t const *extension,
+				   size_t hlen, size_t dlen, size_t total_len, fr_dict_attr_t const *da)
+{
+	size_t i,extension_len;
+	uint8_t const *data;
+
+	fr_assert((hlen == 1) || (hlen == 2));
+	fr_assert((dlen == 1) || (dlen == 2));
+
+	if (total_len < hlen) {
+		REDEBUG("Missing length in %s extension", da->name);
+		return -1;
+	}
+
+	if (hlen == 1) {
+		fr_assert(da->type == FR_TYPE_UINT8);
+		extension_len = extension[0];
+	} else {
+		fr_assert(da->type == FR_TYPE_UINT16);
+		extension_len = (extension[0] << 8) + extension[1];
+	}
+
+	if (extension_len * dlen + hlen > total_len) {
+		REDEBUG("Invalid length in %s extension", da->name);
+		return -1;
+	}
+
+	data = extension + hlen;
+
+	for (i = 0; i < extension_len; i += dlen) {
+		fr_pair_t *vp;
+
+		MEM(fr_pair_append_by_da(container, &vp, &container->vp_group, da) >= 0);
+
+		switch (dlen) {
+		case 1:
+			vp->vp_uint8= data[0];
+			break;
+
+		case 2:
+			vp->vp_uint16 = (data[0] << 8) + data[1];
+			break;
+		}
+
+		data += dlen;
+	}
+
+	return 0;
+}
+
 /** Callback to extract pairs from a Client Hello
  *
  */
@@ -461,12 +531,11 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 	request_t		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	request_t		*parent = request->parent;
 	uint8_t	const		*ciphers, *extension;
-	int			*extensions, extension_len, i;
+	int			i, *extensions = NULL;
 	size_t			data_size, j;
 	STACK_OF(SSL_CIPHER)	*sk;
 	SSL_CIPHER const	*cipher;
 	STACK_OF(SSL_CIPHER)	*scsvs;
-	uint16_t		tls_version = 0;
 	fr_pair_t		*container, *vp;
 
 	fr_assert(parent);
@@ -480,6 +549,7 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 	if (SSL_bytes_to_cipher_list(ssl, ciphers, data_size, SSL_client_hello_isv2(ssl), &sk, &scsvs) == 0) {
 		RPEDEBUG("Failed to decode cipher list");
 	fail:
+		if (extensions) OPENSSL_free(extensions);
 		talloc_free(container);
 		return SSL_CLIENT_HELLO_ERROR;
 	}
@@ -502,49 +572,39 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 		RPEDEBUG("Failed to fetch client hello extensions");
 		goto fail;
 	}
+
 	for (j = 0; j < data_size; j++) {
-		if (SSL_client_hello_get0_ext(ssl, extensions[j], &extension, NULL) == 0) {
+		size_t total_len;
+
+		if (SSL_client_hello_get0_ext(ssl, extensions[j], &extension, &total_len) == 0) {
 			RPDEBUG("Failed getting client hello extension %d", extensions[j]);
-			OPENSSL_free(extensions);
 			goto fail;
 		}
 
 		switch (extensions[j]) {
-		case TLSEXT_TYPE_supported_groups:
-			extension_len = (extension[0] << 8) + extension[1];
-			for (i = 0; i < extension_len; i += 2) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_supported_group);
-				vp->vp_uint16 = (extension[i + 2] << 8) + extension[i + 3];
-			}
+		case TLSEXT_TYPE_supported_groups: /* length[2] + 2*data */
+			if (fr_tls_extension_decode(request, container, extension, 2, 2, total_len,
+						    attr_tls_client_hello_supported_group) < 0) goto fail;
 			break;
 
-		case TLSEXT_TYPE_ec_point_formats:
-			for (i = 0; i < extension[0]; i += 1) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_ec_point_format);
-				vp->vp_uint8 = extension[i + 1];
-			}
+		case TLSEXT_TYPE_ec_point_formats: /* length[1] + data */
+			if (fr_tls_extension_decode(request, container, extension, 1, 1, total_len,
+						    attr_tls_client_hello_ec_point_format) < 0) goto fail;
 			break;
 
-		case TLSEXT_TYPE_signature_algorithms:
-			extension_len = (extension[0] << 8) + extension[1];
-			for (i = 0; i < extension_len; i += 2) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_sig_algo);
-				vp->vp_uint16 = (extension[i + 2] << 8) + extension[i + 3];
-			}
+		case TLSEXT_TYPE_signature_algorithms: /* length[2] + 2*data */
+			if (fr_tls_extension_decode(request, container, extension, 2, 2, total_len,
+						    attr_tls_client_hello_sig_algo) < 0) goto fail;
 			break;
 
-		case TLSEXT_TYPE_supported_versions:
-			for (i = 0; i < extension[0]; i += 2) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_tls_version);
-				tls_version = vp->vp_uint16 = (extension[i + 1] << 8) + extension[i + 2];
-			}
+		case TLSEXT_TYPE_supported_versions: /* length[1] + 2*data */
+			if (fr_tls_extension_decode(request, container, extension, 1, 2, total_len,
+						    attr_tls_client_hello_tls_version) < 0) goto fail;
 			break;
 
-		case TLSEXT_TYPE_psk_kex_modes:
-			for (i = 0; i < extension[0]; i += 1) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_psk_key_mode);
-				vp->vp_uint8 = extension[i + 1];
-			}
+		case TLSEXT_TYPE_psk_kex_modes: /* length[1] + data */
+			if (fr_tls_extension_decode(request, container, extension, 1, 1, total_len,
+						    attr_tls_client_hello_psk_key_mode) < 0) goto fail;
 			break;
 		}
 	}
@@ -555,10 +615,8 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 	 *	This is the version being negotiated by the client, but tops at	1.2.
 	 *	After that the supported_versions extension is where the real value is.
 	 */
-	if (tls_version == 0) {
-		fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_tls_version);
-		vp->vp_uint16 = SSL_client_hello_get0_legacy_version(ssl);
-	}
+	fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_tls_version);
+	vp->vp_uint16 = SSL_client_hello_get0_legacy_version(ssl);
 
 	fr_pair_append(&parent->session_state_pairs, container);
 

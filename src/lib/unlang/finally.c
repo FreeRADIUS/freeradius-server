@@ -26,13 +26,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/signal.h>
 #include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/unlang_priv.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/finally.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/timer.h>
 
 typedef struct {
@@ -75,16 +71,17 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 {
 	unlang_frame_state_finally_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_finally_t);
 
-	state->original_rcode = request->rcode;;
+	state->original_rcode = request->rcode;
 
 	/*
 	 *	Ensure the request has at least min_time to continue
 	 *	executing before we cancel it.
 	 */
-	if (request->timeout && fr_time_delta_lt(state->min_time, fr_timer_remaining(request->timeout))) {
+	if (request->timeout && fr_time_delta_lt(fr_timer_remaining(request->timeout), state->min_time)) {
 		if (unlikely(fr_timer_in(unlang_interpret_frame_talloc_ctx(request),
 			     unlang_interpret_event_list(request)->tl, &request->timeout,
 			     state->min_time, false, unlang_timeout_handler, state) < 0)) {
+		fail:
 			unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
 			return UNLANG_ACTION_FAIL;
 		}
@@ -97,7 +94,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 	 */
 	if (unlikely(unlang_interpret_push_instruction(&state->result, request, state->instruction,
 						       FRAME_CONF(RLM_MODULE_NOOP, UNLANG_SUB_FRAME)) < 0)) {
-		unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
+		goto fail;
 	}
 
 	frame_repeat(frame, unlang_finally_resume);
@@ -109,7 +106,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Push a finally instructtion on the stack, to be evaluated as the stack is unwound
+/** Push a finally instruction on the stack, to be evaluated as the stack is unwound
  *
  * @param[in] request		to push timeout onto
  * @param[in] instruction	to run as we unwind
@@ -119,7 +116,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
  *				a guarantee of a minimum amount of time for the finally
  *				instruction to run.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
- *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *				Set to UNLANG_SUB_FRAME if the interpreter should continue.
  *
  * @return
  *	- 0 on success.

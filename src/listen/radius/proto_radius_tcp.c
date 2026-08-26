@@ -23,7 +23,6 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/radius/tcp.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/radius/radius.h>
@@ -34,14 +33,7 @@
 
 extern fr_app_io_t proto_radius_tcp;
 
-typedef struct {
-	char const			*name;			//!< socket name
-	int				sockfd;
-
-	fr_io_address_t			*connection;		//!< for connected sockets.
-
-	fr_stats_t			stats;			//!< statistics for this socket
-} proto_radius_tcp_thread_t;
+typedef struct proto_radius_io_thread_s proto_radius_tcp_thread_t;
 
 typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
@@ -152,7 +144,8 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 			break;
 		}
 
-		PDEBUG2("proto_radius_tcp got read error (%zd) - %s", data_size, fr_syserror(errno));
+		proto_radius_log(li, FR_RADIUS_FAIL_IO_ERROR, NULL,
+				 "%s", fr_strerror());
 		return data_size;
 	}
 
@@ -166,7 +159,8 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 *	TCP read of zero means the socket is dead.
 	 */
 	if (!data_size) {
-		DEBUG2("proto_radius_tcp - other side closed the socket.");
+		proto_radius_log(li, FR_RADIUS_FAIL_IO_ERROR, NULL,
+				 "Client closed the connection");
 		return -1;
 	}
 
@@ -175,7 +169,8 @@ have_packet:
 	 *	We MUST always start with a known RADIUS packet.
 	 */
 	if ((buffer[0] == 0) || (buffer[0] >= FR_RADIUS_CODE_MAX)) {
-		DEBUG("proto_radius_tcp got invalid packet code %d", buffer[0]);
+		proto_radius_log(li, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, NULL,
+				 "Received packet code %u", buffer[0]);
 		thread->stats.total_unknown_types++;
 		return -1;
 	}
@@ -196,6 +191,23 @@ have_packet:
 	packet_len = fr_nbo_to_uint16(buffer + 2);
 
 	/*
+	 *	Invalid packet lengths cause the socket to be closed.
+	 */
+	if (packet_len < RADIUS_HEADER_LENGTH) {
+		proto_radius_log(li, FR_RADIUS_FAIL_MIN_LENGTH_PACKET, &thread->connection->socket,
+				 "Received packet length %zu", packet_len);
+		thread->stats.total_malformed_requests++;
+		return -1;
+	}
+
+	if (packet_len > inst->max_packet_size) {
+		proto_radius_log(li, FR_RADIUS_FAIL_MAX_LENGTH_PACKET, &thread->connection->socket,
+				 "Received packet length %zu", packet_len);
+		thread->stats.total_malformed_requests++;
+		return -1;
+	}
+
+	/*
 	 *	We don't have a complete RADIUS packet.  Tell the
 	 *	caller that we need to read more.
 	 */
@@ -211,13 +223,20 @@ have_packet:
 	*leftover = in_buffer - packet_len;
 
 	/*
+	 *	Unknown packets get discarded, but the socket can remain open.
+	 */
+	if ((buffer[0] == 0) || (buffer[0] >= FR_RADIUS_CODE_MAX)) {
+		proto_radius_log(li, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, &thread->connection->socket,
+				 "Received packet code %u", buffer[0]);
+		thread->stats.total_unknown_types++;
+		return 0;
+	}
+
+	/*
 	 *      If it's not a RADIUS packet, ignore it.
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, &reason)) {
-		/*
-		 *      @todo - check for F5 load balancer packets.  <sigh>
-		 */
-		DEBUG2("proto_radius_tcp got a packet which isn't RADIUS");
+		proto_radius_log(li, reason, NULL, "Received invalid packet");
 		thread->stats.total_malformed_requests++;
 		return -1;
 	}
@@ -347,7 +366,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_tcp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		PERROR("Failed opening TCP socket");
+		cf_log_err(li->cs, "Failed opening TCP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -356,23 +375,25 @@ static int mod_open(fr_listen_t *li)
 
 	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
-		PERROR("Failed binding socket");
+		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
+		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 		goto error;
 	}
 
-	if (listen(sockfd, 8) < 0) {
+	if (listen(sockfd, SOMAXCONN) < 0) {
 		close(sockfd);
-		PERROR("Failed listening on socket");
+		cf_log_err(li->cs, "Failed listening on socket - %s", fr_syserror(errno));
 		goto error;
 	}
 
 	thread->sockfd = sockfd;
 
 	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
+	li->app_io_addr = fr_socket_addr_alloc_inet_src(li, IPPROTO_TCP, 0, &ipaddr, port);
 
 	thread->name = fr_app_io_socket_name(thread, &proto_radius_tcp,
 					     NULL, 0,
-					     &inst->ipaddr, inst->port,
+					     &ipaddr, port,
 					     inst->interface);
 
 	return 0;
@@ -435,7 +456,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_radius_tcp_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_radius_tcp_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
-	size_t			i, num;
+	size_t			num;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;
 
@@ -467,11 +488,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 		s = getservbyname(inst->port_name, "tcp");
 		if (!s) {
-			cf_log_err(conf, "Unknown value for 'port_name = %s", inst->port_name);
+			cf_log_err(conf, "Unknown value for 'port_name = %s'", inst->port_name);
 			return -1;
 		}
 
-		inst->port = ntohl(s->s_port);
+		inst->port = ntohs(s->s_port);
 	}
 
 	/*
@@ -489,136 +510,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			return -1;
 		}
 	} else {
-		MEM(inst->trie = fr_trie_alloc(inst, NULL, NULL));
-
-		for (i = 0; i < num; i++) {
-			fr_ipaddr_t *network;
-
-			/*
-			 *	Can't add v4 networks to a v6 socket, or vice versa.
-			 */
-			if (inst->allow[i].af != inst->ipaddr.af) {
-				cf_log_err(conf, "Address family in entry %zd - 'allow = %pV' does not match 'ipaddr'",
-					   i + 1, fr_box_ipaddr(inst->allow[i]));
-				return -1;
-			}
-
-			/*
-			 *	Duplicates are bad.
-			 */
-			network = fr_trie_match_by_key(inst->trie,
-						&inst->allow[i].addr, inst->allow[i].prefix);
-			if (network) {
-				cf_log_err(conf, "Cannot add duplicate entry 'allow = %pV'",
-					   fr_box_ipaddr(inst->allow[i]));
-				return -1;
-			}
-
-			/*
-			 *	Look for overlapping entries.
-			 *	i.e. the networks MUST be disjoint.
-			 *
-			 *	Note that this catches 192.168.1/24
-			 *	followed by 192.168/16, but NOT the
-			 *	other way around.  The best fix is
-			 *	likely to add a flag to
-			 *	fr_trie_alloc() saying "we can only
-			 *	have terminal fr_trie_user_t nodes"
-			 */
-			network = fr_trie_lookup_by_key(inst->trie,
-						 &inst->allow[i].addr, inst->allow[i].prefix);
-			if (network && (network->prefix <= inst->allow[i].prefix)) {
-				cf_log_err(conf, "Cannot add overlapping entry 'allow = %pV'",
-					   fr_box_ipaddr(inst->allow[i]));
-				cf_log_err(conf, "Entry is completely enclosed inside of a previously defined network");
-				return -1;
-			}
-
-			/*
-			 *	Insert the network into the trie.
-			 *	Lookups will return the fr_ipaddr_t of
-			 *	the network.
-			 */
-			if (fr_trie_insert_by_key(inst->trie,
-					   &inst->allow[i].addr, inst->allow[i].prefix,
-					   &inst->allow[i]) < 0) {
-				cf_log_err(conf, "Failed adding 'allow = %pV' to tracking table",
-					   fr_box_ipaddr(inst->allow[i]));
-				return -1;
-			}
-		}
-
-		/*
-		 *	And now check denied networks.
-		 */
-		num = talloc_array_length(inst->deny);
-		if (!num) return 0;
-
-		/*
-		 *	Since the default is to deny, you can only add
-		 *	a "deny" inside of a previous "allow".
-		 */
-		for (i = 0; i < num; i++) {
-			fr_ipaddr_t	*network;
-
-			/*
-			 *	Can't add v4 networks to a v6 socket, or vice versa.
-			 */
-			if (inst->deny[i].af != inst->ipaddr.af) {
-				cf_log_err(conf, "Address family in entry %zd - 'deny = %pV' does not match 'ipaddr'",
-					   i + 1, fr_box_ipaddr(inst->deny[i]));
-				return -1;
-			}
-
-			/*
-			 *	Duplicates are bad.
-			 */
-			network = fr_trie_match_by_key(inst->trie,
-						&inst->deny[i].addr, inst->deny[i].prefix);
-			if (network) {
-				cf_log_err(conf, "Cannot add duplicate entry 'deny = %pV'", fr_box_ipaddr(inst->deny[i]));
-				return -1;
-			}
-
-			/*
-			 *	A "deny" can only be within a previous "allow".
-			 */
-			network = fr_trie_lookup_by_key(inst->trie,
-						&inst->deny[i].addr, inst->deny[i].prefix);
-			if (!network) {
-				cf_log_err(conf, "The network in entry %zd - 'deny = %pV' is not contained "
-					   "within a previous 'allow'", i + 1, fr_box_ipaddr(inst->deny[i]));
-				return -1;
-			}
-
-			/*
-			 *	We hack the AF in "deny" rules.  If
-			 *	the lookup gets AF_UNSPEC, then we're
-			 *	adding a "deny" inside of a "deny".
-			 */
-			if (network->af != inst->ipaddr.af) {
-				cf_log_err(conf, "The network in entry %zd - 'deny = %pV' overlaps with "
-					   "another 'deny' rule", i + 1, fr_box_ipaddr(inst->deny[i]));
-				return -1;
-			}
-
-			/*
-			 *	Insert the network into the trie.
-			 *	Lookups will return the fr_ipaddr_t of
-			 *	the network.
-			 */
-			if (fr_trie_insert_by_key(inst->trie,
-					   &inst->deny[i].addr, inst->deny[i].prefix,
-					   &inst->deny[i]) < 0) {
-				cf_log_err(conf, "Failed adding 'deny = %pV' to tracking table",
-					   fr_box_ipaddr(inst->deny[i]));
-				return -1;
-			}
-
-			/*
-			 *	Hack it to make it a deny rule.
-			 */
-			inst->deny[i].af = AF_UNSPEC;
+		inst->trie = fr_master_io_network(inst, inst->ipaddr.af, inst->allow, inst->deny);
+		if (!inst->trie) {
+			cf_log_perr(conf, "Failed creating list of networks");
+			return -1;
 		}
 	}
 

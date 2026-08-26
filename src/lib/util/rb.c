@@ -114,18 +114,18 @@ static int _tree_free(fr_rb_tree_t *tree)
 	 */
 	if ((tree->root != NIL) && tree->data_free) free_walker(tree, tree->root);
 
-#ifndef NDEBUG
-	tree->magic = 0;
-#endif
-	tree->root = NIL;
-	tree->num_elements = 0;
-
 	/*
 	 *	Ensure all dependents on the tree run their
 	 *	destructors.  The tree at this point should
 	 *	and any tree operations should be empty.
 	 */
 	talloc_free_children(tree);
+
+#ifndef NDEBUG
+	tree->magic = 0;
+#endif
+	tree->root = NIL;
+	tree->num_elements = 0;
 
 	return 0;
 }
@@ -345,6 +345,7 @@ static inline CC_HINT(always_inline) void insert_fixup(fr_rb_tree_t *tree, fr_rb
 static int insert_node(fr_rb_node_t **existing, fr_rb_tree_t *tree, void *data)
 {
 	fr_rb_node_t *current, *parent, *x;
+	fr_cmp_ret_t last_result = CMP_EQ;
 
 	if (unlikely(tree->being_freed)) return -1;
 
@@ -356,19 +357,21 @@ static int insert_node(fr_rb_node_t **existing, fr_rb_tree_t *tree, void *data)
 	current = tree->root;
 	parent = NIL;
 	while (current != NIL) {
-		int result;
+		fr_cmp_ret_t result;
 
 		/*
 		 *	See if two entries are identical.
 		 */
 		result = tree->data_cmp(data, current->data);
-		if (result == 0) {
+		if (unlikely(result == CMP_ERR)) return -1;
+		if (result == CMP_EQ) {
 			if (existing) *existing = current;
 			return 1;
 		}
 
 		parent = current;
-		current = (result < 0) ? current->left : current->right;
+		last_result = result;
+		current = (result == CMP_LT) ? current->left : current->right;
 	}
 
 	/* setup new node */
@@ -383,9 +386,9 @@ static int insert_node(fr_rb_node_t **existing, fr_rb_tree_t *tree, void *data)
 		.colour = RED
 	};
 
-	/* insert node in tree */
+	/* insert node in tree, on the side the final descent comparison chose */
 	if (parent != NIL) {
-		if (tree->data_cmp(data, parent->data) <= 0) {
+		if (last_result == CMP_LT) {
 			parent->left = x;
 		} else {
 			parent->right = x;
@@ -544,45 +547,52 @@ static void delete_internal(fr_rb_tree_t *tree, fr_rb_node_t *z, bool free_data)
 /* Find user data, returning the node
  *
  */
-static inline CC_HINT(always_inline) fr_rb_node_t *find_node(fr_rb_tree_t const *tree, void const *data)
+static inline CC_HINT(always_inline) int find_node(fr_rb_node_t **found, fr_rb_tree_t const *tree, void const *data)
 {
 	fr_rb_node_t *current;
 
-	if (unlikely(tree->being_freed)) return NULL;
+	*found = NULL;
+	if (unlikely(tree->being_freed)) return 0;
 
 	current = tree->root;
 
 	while (current != NIL) {
-		int result = tree->data_cmp(data, current->data);
+		fr_cmp_ret_t result = tree->data_cmp(data, current->data);
 
-		if (result == 0) return current;
+		if (unlikely(result == CMP_ERR)) return -1;
+		if (result == CMP_EQ) {
+			*found = current;
+			return 0;
+		}
 
-		current = (result < 0) ? current->left : current->right;
+		current = (result == CMP_LT) ? current->left : current->right;
 	}
 
-	return NULL;
+	return 0;
 }
 
 /** Find an element in the tree, returning the data, not the node
  *
+ * @param[out] found	the matching element, or NULL if no element matched.
  * @param[in] tree to search in.
  * @param[in] data to find.
  * @return
- *	- User data matching the data passed in.
- *	- NULL if nothing matched passed data.
+ *	- 0 the comparison sequence succeeded, check found for the result.
+ *	- -1 the comparator errored, retrieve the error with fr_strerror.
  *
  * @hidecallergraph
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-void *fr_rb_find(fr_rb_tree_t const *tree, void const *data)
+int fr_rb_find(void **found, fr_rb_tree_t const *tree, void const *data)
 {
-	fr_rb_node_t *x;
+	fr_rb_node_t	*x;
 
-	if (unlikely(tree->being_freed)) return NULL;
-	x = find_node(tree, data);
-	if (!x) return NULL;
+	*found = NULL;
+	if (unlikely(tree->being_freed)) return 0;
+	if (unlikely(find_node(&x, tree, data) < 0)) return -1;
+	if (x) *found = x->data;
 
-	return x->data;
+	return 0;
 }
 
 /** Attempt to find current data in the tree, if it does not exist insert it
@@ -593,11 +603,11 @@ void *fr_rb_find(fr_rb_tree_t const *tree, void const *data)
  * @return
  *	- 1 if existing data was found, found will be populated.
  *	- 0 if no existing data was found.
- *	- -1 on insert error.
+ *	- -1 on insert or comparator error, retrieve the error with fr_strerror.
  */
 int fr_rb_find_or_insert(void **found, fr_rb_tree_t *tree, void const *data)
 {
-	fr_rb_node_t *existing;
+	fr_rb_node_t	*existing;
 
 	switch (insert_node(&existing, tree, UNCONST(void *, data))) {
 	case 1:
@@ -619,15 +629,14 @@ int fr_rb_find_or_insert(void **found, fr_rb_tree_t *tree, void const *data)
  * @param[in] tree	to insert data into.
  * @param[in] data 	to insert.
  * @return
- *	- true if data was inserted.
- *	- false if data already existed and was not inserted.
+ *	- 0 if data was inserted.
+ *	- 1 if data already existed and was not inserted.
+ *	- -1 on comparator or allocation error, retrieve the error with fr_strerror.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-bool fr_rb_insert(fr_rb_tree_t *tree, void const *data)
+int fr_rb_insert(fr_rb_tree_t *tree, void const *data)
 {
-	if (insert_node(NULL, tree, UNCONST(void *, data)) == 0) return true;
-
-	return false;
+	return insert_node(NULL, tree, UNCONST(void *, data));
 }
 
 /** Replace old data with new data, OR insert if there is no old
@@ -641,7 +650,7 @@ bool fr_rb_insert(fr_rb_tree_t *tree, void const *data)
  * @return
  *      - 1 if data was replaced.
  *	- 0 if data was inserted.
- *      - -1 if we failed to replace data
+ *      - -1 if we failed to replace data, retrieve the error with fr_strerror.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 int fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data)
@@ -652,6 +661,7 @@ int fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data)
 	case 1: /* Something exists */
 	{
 		void	*old_data = node->data;
+		int	ret = 1;
 
 		/*
 		 *	If the fr_node_t is inline with the
@@ -661,7 +671,18 @@ int fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data)
 		 */
 		if (tree->node_alloc == _node_inline_alloc) {
 			delete_internal(tree, node, false);
-			insert_node(NULL, tree, UNCONST(void *, data));
+
+			/*
+			 *	The re-insert repeats comparisons which just succeeded,
+			 *	so a failure means the comparator is non-deterministic
+			 *	or allocation failed.  The old data has already been
+			 *	unlinked; it is still handed to the caller (or freed)
+			 *	below so it isn't leaked.
+			 */
+			if (!fr_cond_assert_msg(insert_node(NULL, tree, UNCONST(void *, data)) == 0,
+						"re-insert failed after delete")) {
+				ret = -1;
+			}
 		} else {
 			node->data = UNCONST(void *, data);
 		}
@@ -671,7 +692,7 @@ int fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data)
 		} else if (tree->data_free) {
 			tree->data_free(old_data);
 		}
-		return 1;
+		return ret;
 	}
 	case 0: /* New node was inserted - There was no pre-existing node */
 		if (old) *old = NULL;
@@ -685,27 +706,32 @@ int fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data)
 
 /** Remove an entry from the tree, without freeing the data
  *
+ * @param[out] removed	the data we removed, if any.  May be NULL.
  * @param[in] tree	to remove data from.
  * @param[in] data 	to remove.
  * @return
- *      - The user data we removed.
- *	- NULL if we couldn't find any matching data.
+ *      - 0 if we removed data, removed is populated.
+ *	- 1 if we couldn't find any matching data.
+ *      - -1 if the comparator errored, retrieve the error with fr_strerror.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-void *fr_rb_remove(fr_rb_tree_t *tree, void const *data)
+int fr_rb_remove(void **removed, fr_rb_tree_t *tree, void const *data)
 {
 	fr_rb_node_t	*node;
-	void		*node_data;
 
-	if (unlikely(tree->being_freed)) return NULL;
-	node = find_node(tree, data);
-	if (!node) return NULL;
+	if (removed) *removed = NULL;
+	if (unlikely(tree->being_freed)) return 1;
+	if (unlikely(find_node(&node, tree, data) < 0)) return -1;
+	if (!node) return 1;
 
-	if (unlikely(node->being_freed)) return node->data;
+	if (unlikely(node->being_freed)) {
+		if (removed) *removed = node->data;
+		return 0;
+	}
 
-	node_data = node->data;
+	if (removed) *removed = node->data;
 	delete_internal(tree, node, false);	/* nullified node->data */
-	return node_data;
+	return 0;
 }
 
 /** Remove an entry from the tree, using the node structure, without freeing the data
@@ -738,19 +764,19 @@ void *fr_rb_remove_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node)
  *      - false if we couldn't find any matching data.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-bool fr_rb_delete(fr_rb_tree_t *tree, void const *data)
+int fr_rb_delete(fr_rb_tree_t *tree, void const *data)
 {
-	fr_rb_node_t *node;
+	fr_rb_node_t	*node;
 
-	if (unlikely(tree->being_freed)) return false;
-	node = find_node(tree, data);
-	if (!node) return false;
+	if (unlikely(tree->being_freed)) return 1;
+	if (unlikely(find_node(&node, tree, data) < 0)) return -1;
+	if (!node) return 1;
 
-	if (unlikely(node->being_freed)) return true;
+	if (unlikely(node->being_freed)) return 0;
 
 	delete_internal(tree, node, tree->data_free);
 
-	return true;
+	return 0;
 }
 
 /** Remove node and free data (if a free function was specified)

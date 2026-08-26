@@ -46,7 +46,7 @@ typedef struct rindent_s {
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/packet.h>
 
 /** Logging callback to write log messages to a destination
  *
@@ -126,6 +126,11 @@ void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 
 void	log_request_pair(fr_log_lvl_t lvl, request_t *request,
 			 fr_pair_t const *parent, fr_pair_t const *vp, char const *prefix) CC_HINT(nonnull(2));
+
+void	log_request_packet(request_t *request, fr_packet_t *packet, fr_pair_list_t *list,
+			   fr_dict_attr_t const *type_da, bool received, bool id) CC_HINT(nonnull);
+
+#define LOG_PACKET_DEBUG(_request, ...) if (RDEBUG_ENABLED) log_request_packet(_request, ## __VA_ARGS__)
 
 void	log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 			      fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
@@ -257,7 +262,7 @@ void	log_global_free(void);
 #define DEBUG_ENABLED		debug_enabled(L_DBG, L_DBG_LVL_1)			//!< True if global debug level 1 messages are enabled
 #define DEBUG_ENABLED2		debug_enabled(L_DBG, L_DBG_LVL_2)			//!< True if global debug level 1-2 messages are enabled
 #define DEBUG_ENABLED3		debug_enabled(L_DBG, L_DBG_LVL_3)			//!< True if global debug level 1-3 messages are enabled
-#define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_4)			//!< True if global debug level 1-3 messages are enabled
+#define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_4)			//!< True if global debug level 1-4 messages are enabled
 #define DEBUG_ENABLED5		debug_enabled(L_DBG, L_DBG_LVL_MAX)			//!< True if global debug level 1-5 messages are enabled
 
 #define _DEBUG_LOG(_type, _lvl, _fmt, ...)	if (fr_debug_lvl >= _lvl) _FR_LOG_PREFIX(_type, _fmt, ## __VA_ARGS__)
@@ -273,6 +278,18 @@ void	log_global_free(void);
 #define PDEBUG3(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
 #define PDEBUG4(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
 #define PDEBUGX(_lvl, _fmt, ...)	_PDEBUG_LOG(L_DBG, _lvl, _fmt, ## __VA_ARGS__)
+
+#define WDEBUG(_fmt, ...)		_DEBUG_LOG(L_DBG_WARN, L_DBG_LVL_1, _fmt, ## __VA_ARGS__)
+#define WDEBUG2(_fmt, ...)		_DEBUG_LOG(L_DBG_WARN, L_DBG_LVL_2, _fmt, ## __VA_ARGS__)
+#define WDEBUG3(_fmt, ...)		_DEBUG_LOG(L_DBG_WARN, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
+#define WDEBUG4(_fmt, ...)		_DEBUG_LOG(L_DBG_WARN, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
+#define WDEBUGX(_lvl, _fmt, ...)       	_DEBUG_LOG(L_DBG_WARN, _lvl, _fmt, ## __VA_ARGS__)
+
+#define EDEBUG(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_1, _fmt, ## __VA_ARGS__)
+#define EDEBUG2(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_2, _fmt, ## __VA_ARGS__)
+#define EDEBUG3(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
+#define EDEBUG4(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
+#define EDEBUGX(_lvl, _fmt, ...)       	_DEBUG_LOG(L_DBG_ERR, _lvl, _fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)
@@ -429,7 +446,7 @@ void	log_global_free(void);
  */
 #  define RINDENT() do {\
 	if (request->module) {\
-		request->log.indent.unlang += 2;\
+		request->log.indent.module += 2;\
 	} else {\
 		request->log.indent.unlang += 2;\
 	}\
@@ -442,7 +459,7 @@ void	log_global_free(void);
  */
 #  define REXDENT() do {\
 	if (request->module) {\
-		request->log.indent.unlang -= 2;\
+		request->log.indent.module -= 2;\
 	} else {\
 		request->log.indent.unlang -= 2;\
 	}\
@@ -742,3 +759,16 @@ do {\
 #define HEX_MARKER2(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_2, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)
 #define HEX_MARKER3(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_3, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)
 #define HEX_MARKER4(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_4, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)
+
+/** Iterate over the contents of a log_dst_t
+ *
+ * The macro is "safe", in that the current iterator variable can be deleted.
+ *
+ * The iterators can be nested, so long as the _iter variable names are different.
+ *
+ * @param[in] _head		to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define log_dst_foreach(_head, _iter) \
+	for (log_dst_t *JOIN(_next,_iter), *_iter = _head; JOIN(_next,_iter) = (_iter ? _iter->next : NULL), _iter != NULL; _iter = JOIN(_next,_iter))

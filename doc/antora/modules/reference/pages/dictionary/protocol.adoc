@@ -30,5 +30,5 @@ only be used by the FreeRADIUS developers.
 PROTOCOL RADIUS 1 verify=lib
 ----
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

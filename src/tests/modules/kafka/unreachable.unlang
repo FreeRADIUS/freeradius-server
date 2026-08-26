@@ -1,0 +1,68 @@
+#
+#  Exercise the two error paths a produce can take when the broker is
+#  dead: cancellation mid-flight, and delivery-report timeout.
+#
+#  The `kafka_unreachable` module instance in module.conf points at
+#  127.0.0.1:1 with a 1s message_timeout, so every produce here is
+#  guaranteed to fail - the only question is whether it fails via the
+#  signal path or via a natural DR.
+#
+
+#
+#  Cancellation path.
+#
+#  `parallel` starts two branches concurrently.  Branch 1 calls
+#  `%kafka_unreachable.produce()` which yields waiting for a DR that
+#  won't arrive inside the timeout.  Branch 2 immediately calls
+#  `%cancel(0)` to terminate itself; combined with the wrapping
+#  `timeout 200ms`, branch 1 gets an FR_SIGNAL_CANCEL delivered to
+#  kafka_produce_signal long before the 1s message_timeout fires.
+#
+#  The signal handler must detach ctx->request without freeing the
+#  ctx - librdkafka still owns the opaque and will call dr_msg_cb
+#  when the message eventually times out.  At that point dr_msg_cb
+#  sees ctx->request == NULL and silently frees.  No crash, no resume
+#  into a freed request.
+#
+#  If the worker survives this cleanly, the subsequent produces in
+#  this test file will run on a healthy event loop - that's the real
+#  assertion here, not anything about the rcode of the cancelled call.
+#
+redundant {
+	timeout 200ms {
+		parallel {
+			redundant {
+				%kafka_unreachable.produce('freeradius-test-unreachable', null, "cancelled mid-flight")
+			}
+			group {
+				%cancel(0)
+			}
+		}
+	}
+	group {
+		ok
+	}
+}
+
+#
+#  Delivery-report failure path.
+#
+#  No timeout wrapper this time: let the produce run to completion so
+#  the DR actually fires.  librdkafka can't reach the broker, retries
+#  until message.timeout.ms (1s), then delivers a DR with
+#  RD_KAFKA_RESP_ERR__MSG_TIMED_OUT.  kafka_produce_resume translates
+#  that to a false return from the xlat.
+#
+if (%kafka_unreachable.produce('freeradius-test-unreachable', null, "doomed")) {
+	test_fail
+}
+
+#
+#  And one more, to prove the worker's produce path is still healthy
+#  after both the cancel and the natural failure above.
+#
+if (%kafka_unreachable.produce('freeradius-test-unreachable', null, "also doomed")) {
+	test_fail
+}
+
+test_pass

@@ -1,0 +1,6 @@
+#
+#  Test: stderr destination
+#
+linelog {
+	destination = stderr
+}

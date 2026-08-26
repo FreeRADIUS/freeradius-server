@@ -4,6 +4,7 @@
 # Version:      $Id$
 #
 TARGET		:= libfreeradius-arp$(L)
+TGT_CATEGORY	:= lib-protocol
 
 SOURCES		:= base.c
 

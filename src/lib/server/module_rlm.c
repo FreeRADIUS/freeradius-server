@@ -51,12 +51,14 @@ typedef struct {
 	fr_rb_node_t			name_node;	//!< Entry in the name tree.
 	char const			*name;		//!< module name
 	CONF_SECTION			*cs;		//!< CONF_SECTION where it is defined
-	bool				all_same;
+	module_instance_t		*mi;		//!< module instance
+	fr_dict_t const			*dict;		//!< dict / namespace we expect to use.
+	bool				xlat_redundant;	//!< whether we might need it
 } module_rlm_virtual_t;
 
 /** Compare virtual modules by name
  */
-static int8_t module_rlm_virtual_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t module_rlm_virtual_name_cmp(void const *one, void const *two)
 {
 	module_rlm_virtual_t const *a = one;
 	module_rlm_virtual_t const *b = two;
@@ -175,7 +177,6 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	cs = cf_section_find(module, name, NULL);
 	if (cs) {
 		*out = cs;
-
 		return 0;
 	}
 
@@ -187,7 +188,6 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 
 	if (cf_data_find(module, CONF_SECTION, FIND_SIBLING_CF_KEY)) {
 		cf_log_err(cp, "Module reference loop found");
-
 		return -1;
 	}
 	cd = cf_data_add(module, module, FIND_SIBLING_CF_KEY, false);
@@ -201,26 +201,14 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	mi = module_instance_by_name(rlm_modules_static, NULL, inst_name);
 	if (!mi) {
 		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
-
+	error:
+		cf_data_remove_by_data(module, cd);
 		return -1;
 	}
 
-	if (mi->state != MODULE_INSTANCE_INSTANTIATED) {
-		CONF_SECTION *parent = module;
-
-		/*
-		 *	Find the root of the config...
-		 */
-		do {
-			CONF_SECTION *tmp;
-
-			tmp = cf_item_to_section(cf_parent(parent));
-			if (!tmp) break;
-
-			parent = tmp;
-		} while (true);
-
-		if (unlikely(module_instantiate(module_instance_by_name(rlm_modules_static, NULL, inst_name)) < 0)) return -1;
+	if ((mi->state != MODULE_INSTANCE_INSTANTIATED) &&
+	    (module_instantiate(module_instance_by_name(rlm_modules_static, NULL, inst_name)) < 0)) {
+		    goto error;
 	}
 
 	/*
@@ -235,7 +223,6 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	if (strcmp(cf_section_name1(mi->conf), cf_section_name1(module)) != 0) {
 		cf_log_err(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
 			      cf_section_name1(mi->conf), cf_section_name1(module));
-
 		return -1;
 	}
 
@@ -308,23 +295,23 @@ fr_pool_t *module_rlm_connection_pool_init(CONF_SECTION *module,
 	char trigger_prefix_buff[128];
 
 	fr_pool_t *pool;
-	char const *cs_name1, *cs_name2;
+	char const *mod_name1, *mod_name2;
 
 	int ret;
 
 #define parent_name(_x) cf_section_name(cf_item_to_section(cf_parent(_x)))
 
-	cs_name1 = cf_section_name1(module);
-	cs_name2 = cf_section_name2(module);
-	if (!cs_name2) cs_name2 = cs_name1;
+	mod_name1 = cf_section_name1(module);
+	mod_name2 = cf_section_name2(module);
+	if (!mod_name2) mod_name2 = mod_name1;
 
 	if (!trigger_prefix) {
-		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.pool", cs_name1);
+		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.pool", mod_name1);
 		trigger_prefix = trigger_prefix_buff;
 	}
 
 	if (!log_prefix) {
-		snprintf(log_prefix_buff, sizeof(log_prefix_buff), "rlm_%s (%s)", cs_name1, cs_name2);
+		snprintf(log_prefix_buff, sizeof(log_prefix_buff), "rlm_%s (%s)", mod_name1, mod_name2);
 		log_prefix = log_prefix_buff;
 	}
 
@@ -350,10 +337,11 @@ fr_pool_t *module_rlm_connection_pool_init(CONF_SECTION *module,
 	 */
 	mycs = cf_section_find(module, "pool", NULL);
 	if (!mycs) {
-		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", log_prefix,
-		       cf_section_name(module));
+		DEBUG4("%s: Adding pool section to module configuration \"%s\" to store pool references", log_prefix,
+		       mod_name2);
 
 		mycs = cf_section_alloc(module, module, "pool", NULL);
+		if (!mycs) return NULL;
 	}
 
 	/*
@@ -362,7 +350,7 @@ fr_pool_t *module_rlm_connection_pool_init(CONF_SECTION *module,
 	 */
 	if (!cs) {
 		DEBUG4("%s: \"%s.pool\" section not found, using \"%s.pool\"", log_prefix,
-		       parent_name(cs), parent_name(mycs));
+		       mod_name1, parent_name(mycs));
 		cs = mycs;
 	}
 
@@ -618,14 +606,12 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 		slen = tmpl_afrom_substr(ctx, &mmc->key, &our_name, T_BARE_WORD, NULL, t_rules);
 		if (slen < 0) {
 			fr_strerror_const_push("Invalid dynamic module selector expression");
-			talloc_free(mmc);
 			return slen;
 		}
 
 		if (!fr_sbuff_is_char(&our_name, ']')) {
 			fr_strerror_const_push("Missing terminating ']' for dynamic module selector");
 		error:
-			talloc_free(mmc);
 			return fr_sbuff_error(&our_name);
 		}
 		fr_sbuff_marker(&s_end, &our_name);
@@ -774,7 +760,11 @@ by_section:
 	 */
 	mmb = module_binding_find(&mmc->rlm->method_group, section);
 	if (!mmb) {
-		section_name_t const **alt_p = virtual_server_section_methods(vs, section);
+		section_name_t const **alt_p;
+
+		if (!vs) goto section_error;
+
+		alt_p = virtual_server_section_methods(vs, section);
 		if (alt_p) {
 			for (; *alt_p; alt_p++) {
 				mmb = module_binding_find(&mmc->rlm->method_group, *alt_p);
@@ -788,6 +778,7 @@ by_section:
 		if (mmc_out) section_name_dup(ctx, &mmc->asked, section);
 	}
 	if (!mmb) {
+	section_error:
 		fr_strerror_printf("Module \"%s\" has no method for section %s %s { ... }, i.e. %s%s%s",
 				   mmc->mi->name,
 				   section->name1,
@@ -809,10 +800,10 @@ CONF_SECTION *module_rlm_virtual_by_name(char const *asked_name)
 {
 	module_rlm_virtual_t *inst;
 
-	inst = fr_rb_find(module_rlm_virtual_name_tree,
-			  &(module_rlm_virtual_t){
-				.name = asked_name,
-			  });
+	fr_rb_find((void **)&inst, module_rlm_virtual_name_tree,
+		   &(module_rlm_virtual_t){
+			.name = asked_name,
+		   });
 	if (!inst) return NULL;
 
 	return inst->cs;
@@ -838,11 +829,11 @@ module_instance_t *module_rlm_static_by_name(module_instance_t const *parent, ch
 static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 {
 	char const		*name;
-	bool			all_same;
+	bool			xlat_redundant;
 	CONF_ITEM 		*sub_ci = NULL;
 	CONF_PAIR		*cp;
 	module_instance_t	*mi;
-	module_rlm_virtual_t	*inst;
+	module_rlm_virtual_t	*inst, *old;
 
 	name = cf_section_name1(cs);
 
@@ -885,56 +876,74 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	/*
 	 *	Don't bother registering redundant xlats for a simple "group".
 	 */
-	all_same = (strcmp(cf_section_name1(cs), "group") != 0);
+	xlat_redundant = (strcmp(cf_section_name1(cs), "group") != 0);
 
-	{
-		module_t const 		*last = NULL;
+	/*
+	 *	Do a quick check to see if we _might_ need to load a virtual module.
+	 */
+	while ((sub_ci = cf_item_next(cs, sub_ci))) {
+		char const *attr;
+
+		if (!cf_item_is_pair(sub_ci)) {
+			xlat_redundant = false;
+			continue;
+		}
+
+		cp = cf_item_to_pair(sub_ci);
+		if (cf_pair_value(cp)) {
+			cf_log_err(sub_ci, "Cannot edit attributes or set return codes in a %s block - use 'group' to separate individual items",
+				   cf_section_name1(cs));
+			return -1;
+		}
+
+		attr = cf_pair_attr(cp);
 
 		/*
-		*	Ensure that the modules we reference here exist.
-		*/
-		while ((sub_ci = cf_item_next(cs, sub_ci))) {
-			if (cf_item_is_pair(sub_ci)) {
-				cp = cf_item_to_pair(sub_ci);
-				if (cf_pair_value(cp)) {
-					cf_log_err(sub_ci, "Cannot set return codes in a %s block", cf_section_name1(cs));
-					return -1;
-				}
+		 *	A conditionally loaded module (e.g. "-foo") means that we silently omit it if
+		 *	it doesn't exist, which changes all of the load-balance and redundant
+		 *	behavior.
+		 *
+		 *	Plus, a conditionally loaded module is almost always going to be of a
+		 *	different type than the other modules.  Which means that any redundant xlats
+		 *	won't work.
+		 */
+		if (*attr == '-') {
+			cf_log_err(sub_ci, "Cannot use conditionally loaded modules in a %s block",
+				   cf_section_name1(cs));
+			return -1;
+		}
 
-				mi = module_rlm_static_by_name(NULL, cf_pair_attr(cp));
-				if (!mi) {
-					cf_log_perr(sub_ci, "Failed resolving module reference '%s' in %s block",
-						    cf_pair_attr(cp), cf_section_name1(cs));
-					return -1;
-				}
-
-				if (all_same) {
-					if (!last) {
-						last = mi->exported;
-					} else if (last != mi->exported) {
-						last = NULL;
-						all_same = false;
-					}
-				}
-			} else {
-				all_same = false;
-			}
-
-			/*
-			*	Don't check subsections for now.  That check
-			*	happens later in the unlang compiler.
-			*/
-		} /* loop over things in a virtual module section */
-	}
+		/*
+		 *	%foo() is not a module.
+		 */
+		if (!isalpha((uint8_t) *attr)) {
+			xlat_redundant = false;
+			continue;
+		}
+	} /* loop over things in a virtual module section */
 
 	inst = talloc_zero(cs, module_rlm_virtual_t);
 	if (!inst) return -1;
 
 	inst->cs = cs;
+	inst->mi = mi;
 	MEM(inst->name = talloc_strdup(inst, name));
-	inst->all_same = all_same;
+	inst->xlat_redundant = xlat_redundant;
 
-	if (!fr_cond_assert(fr_rb_insert(module_rlm_virtual_name_tree, inst))) {
+	fr_rb_find((void **)&old, module_rlm_virtual_name_tree, inst);
+	if (old) {
+		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
+		      name,
+		      cf_filename(cs),
+		      cf_lineno(cs),
+		      cf_filename(old->cs),
+		      cf_lineno(old->cs));
+		talloc_free(inst);
+		return -1;
+	}
+
+	if (fr_rb_insert(module_rlm_virtual_name_tree, inst) != 0) {
+		cf_log_perr(cs, "Failed inserting module into internal tracking table");
 		talloc_free(inst);
 		return -1;
 	}
@@ -976,6 +985,18 @@ int modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 	return modules_thread_instantiate(ctx, rlm_modules_static, el);
 }
 
+/** Runs the coord_attach method of all registered backend modules
+ *
+ * @param[in] el	to register events.
+ * @return
+ *	- 0 if all calls succeeded.
+ *	- -1 if a call failed.
+ */
+int modules_rlm_coord_attach(fr_event_list_t *el)
+{
+	return modules_coord_attach(rlm_modules_static, el);
+}
+
 /** Performs the instantiation phase for all backend modules
  *
  * @return
@@ -989,7 +1010,7 @@ int modules_rlm_instantiate(void)
 
 /** Compare the section names of two module_method_binding_t structures
  */
-static int8_t binding_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t binding_name_cmp(void const *one, void const *two)
 {
 	module_method_binding_t const *a = one;
 	module_method_binding_t const *b = two;
@@ -1013,8 +1034,6 @@ static int module_method_group_validate(module_method_group_t *group)
 	for (p = group->bindings; p->section; p++) {
 		if (!fr_cond_assert_msg(p->section->name1,
 					"First section identifier can't be NULL")) return -1;
-		if (!fr_cond_assert_msg(p->section->name1 || p->section->name2,
-					"Section identifiers can't both be null")) return -1;
 
 		/*
 		 *	All the bindings go in a list so we can sort them
@@ -1192,9 +1211,117 @@ static int module_conf_parse(module_list_t *ml, CONF_SECTION *mod_conf)
 	 *	Compile the default "actions" subsection, which includes retries.
 	 */
 	actions = cf_section_find(mod_conf, "actions", NULL);
-	if (actions && unlang_compile_actions(&mi->actions, actions, (mi->exported->flags & MODULE_TYPE_RETRY) != 0)) {
+	if (actions && !unlang_compile_actions(&mi->actions, actions, (mi->exported->flags & MODULE_TYPE_RETRY))) {
 		talloc_free(mi);
 		return -1;
+	}
+
+	return 0;
+}
+
+/** Figure out the dictionary so that we can compile a virtual module.
+ *
+ *  Virtual modules replace the v3 home_server_pool and "fallback" configuration.  However, using the v4
+ *  syntax means putting sections inside of each other.  So we have to walk the entire hierarchy to determine
+ *  what to do.  e.g.:
+ *
+ *	redundant pool1 {
+ *		load-balance "%{Calling-Station-Id}" {
+ *			radius1
+ *			radius2
+ *			...
+ *		}
+ *		group {
+ *			fallback policy
+ *		}
+ *	}
+ *
+ *  @todo - if there is no dictionary, then compile it once for each possible dictionary?
+ *
+ *  @todo - look at the attributes, to determine which dictionary that they belong to?
+ */
+static int virtual_module_determine_dict(module_rlm_virtual_t *vm, CONF_SECTION *cs)
+{
+	cf_item_foreach(cs, ci) {
+		CONF_PAIR *cp;
+		char const *name;
+		fr_dict_t const *dict;
+		module_instance_t *mi;
+
+		if (cf_item_is_data(ci)) continue;
+
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *subcs;
+
+			subcs = cf_item_to_section(ci);
+			name = cf_section_name1(subcs);
+
+			/*
+			 *	Ignore edit sections.
+			 */
+			if (fr_list_assignment_op[cf_section_name2_quote(subcs)]) continue;
+
+			/*
+			 *	Recurse into keywords
+			 */
+			if (unlang_compile_is_keyword(name)) {
+				if (virtual_module_determine_dict(vm, subcs) < 0) return -1;
+				continue;
+			}
+
+			if ((strcmp(name, "actions") == 0) ||
+			    (strcmp(name, "retry") == 0)) {
+				return 0;
+			}
+
+			goto check_for_module;
+		}
+
+		/*
+		 *	Ignore edit assignments
+		 */
+		cp = cf_item_to_pair(ci);
+		if (cf_pair_value(cp)) continue;
+
+		name = cf_pair_attr(cp);
+
+		/*
+		 *	%debug(4)
+		 */
+		if ((*name == '%') || (*name == '&')) continue;
+
+		/*
+		 *	Ignore 'break', 'return', etc.
+		 */
+		if (unlang_compile_is_keyword(name)) continue;
+
+		if (*name == '-') name++;
+
+	check_for_module:
+		/*
+		 *	Be forgiving about module names.
+		 */
+		mi = module_rlm_static_by_name(NULL, name);
+		if (!mi) continue;
+
+		if (!mi->exported->dict) continue;
+
+		/*
+		 *	Check that the namespaces are compatible.
+		 */
+		dict = *mi->exported->dict;
+
+		if (!vm->dict) {
+			vm->dict = dict;
+
+		} else if (vm->dict != dict) {
+			cf_log_err(ci, "Module %s has namespace %s, while the previous modules in this section have namespace %s",
+				   mi->name, fr_dict_root(dict)->name,
+				   fr_dict_root(vm->dict)->name);
+			cf_log_err(ci, "Cannot have modules for different namespaces in %s %s { ... } section",
+				   cf_section_name1(vm->cs), vm->name);
+			return -1;
+		}
 	}
 
 	return 0;
@@ -1218,7 +1345,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	/*
 	 *	Ensure any libraries the modules depend on are instantiated
 	 */
-	global_lib_instantiate();
+	if (global_lib_instantiate() < 0) return -1;
 
 	/*
 	 *	Remember where the modules were stored.
@@ -1333,20 +1460,88 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	}
 
 	/*
-	 *	Now that all of the xlat things have been registered,
-	 *	register our redundant xlats.  But only when all of
-	 *	the items in such a section are the same.
+	 *	Now that all of the xlat things have been registered, register our redundant xlats.
+	 *
+	 *	Since the checks above in module_rlm_bootstrap_virtual() only checked for CONF_PAIRs, we have
+	 *	to double-check the module instances.  We couldn't do that previously, due to the fact that
+	 *	modules are loaded in alphabetical order.  A virtual module "aaa" may therefore reference a
+	 *	real module "zzz", which would not have yet been loaded.
 	 */
 	for (vm = fr_rb_iter_init_inorder(module_rlm_virtual_name_tree, &iter);
 	     vm;
 	     vm = fr_rb_iter_next_inorder(module_rlm_virtual_name_tree, &iter)) {
-		if (!vm->all_same) continue;
+		CONF_ITEM	*sub_ci = NULL;
+		module_t const	*last = NULL;
+		bool		all_same = true;
+
+		if (!vm->xlat_redundant) continue;
+
+		while ((sub_ci = cf_item_next(vm->cs, sub_ci))) {
+			module_instance_t *mi;
+			CONF_PAIR *cp;
+
+			if (!cf_item_is_pair(sub_ci)) continue;
+
+			cp = cf_item_to_pair(sub_ci);
+			mi = module_rlm_static_by_name(NULL, cf_pair_attr(cp));
+			if (!mi) {
+				cf_log_perr(sub_ci, "Failed resolving module reference '%s' in %s block",
+					    cf_pair_attr(cp), cf_section_name1(cs));
+				return -1;
+			}
+
+			if (!all_same) continue;
+
+			if (!last) {
+				last = mi->exported;
+			} else if (last != mi->exported) {
+				last = NULL;
+			}
+		}
+
+		/*
+		 *	See if we can automatically determine the
+		 *	dictionary by walking the unlang tree.
+		 */
+		if (virtual_module_determine_dict(vm, vm->cs) < 0) return -1;
+
+		/*
+		 *	Associate the dictionary with the CONF_SECTION, so that later compilation code can
+		 *	find it.
+		 */
+		if (vm->dict) cf_data_add(vm->cs, vm->dict, "dict", false);
+
+		if (!all_same) continue;
 
 		if (xlat_register_redundant(vm->cs) < 0) return -1;
 	}
 
 	return 0;
 }
+
+/** Iterate over the virtual modules.
+ *
+ */
+CONF_SECTION *module_rlm_virtual_iter_init(fr_rb_iter_inorder_t *iter)
+{
+	module_rlm_virtual_t *vm;
+
+	vm = fr_rb_iter_init_inorder(module_rlm_virtual_name_tree, iter);
+	if (!vm) return NULL;
+
+	return vm->cs;
+}
+
+CONF_SECTION *module_rlm_virtual_iter_next(fr_rb_iter_inorder_t *iter)
+{
+	module_rlm_virtual_t *vm;
+
+	vm = fr_rb_iter_next_inorder(module_rlm_virtual_name_tree, iter);
+	if (!vm) return NULL;
+
+	return vm->cs;
+}
+
 
 /** Cleanup all global structures
  *
@@ -1356,6 +1551,10 @@ int modules_rlm_free(void)
 {
 	if (talloc_free(rlm_modules_static) < 0) return -1;
 	rlm_modules_static = NULL;
+
+	if (talloc_free(rlm_modules_dynamic) < 0) return -1;
+	rlm_modules_dynamic = NULL;
+
 	if (talloc_free(module_rlm_virtual_name_tree) < 0) return -1;
 	module_rlm_virtual_name_tree = NULL;
 

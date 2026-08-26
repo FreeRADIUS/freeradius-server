@@ -36,7 +36,8 @@ DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	XLAT_FUNC_FLAG_NONE = 0x00,
 	XLAT_FUNC_FLAG_PURE = 0x01,
-	XLAT_FUNC_FLAG_INTERNAL = 0x02
+	XLAT_FUNC_FLAG_INTERNAL = 0x02,
+	XLAT_FUNC_FLAG_MODULE_STATUS = 0x04
 } xlat_func_flags_t;
 DIAG_ON(attributes)
 
@@ -52,7 +53,7 @@ typedef	int (*xlat_resolve_t)(xlat_exp_t *xlat, void *inst, xlat_res_rules_t con
  */
 typedef int (*xlat_purify_t)(xlat_exp_t *xlat, void *inst, request_t *request);
 
-int8_t		xlat_func_cmp(void const *one, void const *two);
+fr_cmp_ret_t	xlat_func_cmp(void const *one, void const *two);
 
 xlat_t		*xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name);
 
@@ -79,13 +80,13 @@ void		xlat_purify_func_set(xlat_t *xlat, xlat_purify_t func);
  * @param[in] _xlat		function to set the escaped value for (as returned by xlat_register).
  * @param[in] _escaped		escaped value to write to output boxes.
  */
-#define		xlat_func_safe_for_set(_xlat, _escaped) _xlat_func_safe_for_set(_xlat, (uintptr_t) (_escaped))
+#define		xlat_func_safe_for_set(_xlat, _escaped) _xlat_func_safe_for_set(_xlat, (fr_value_box_safe_for_t) (_escaped))
 void		_xlat_func_safe_for_set(xlat_t *xlat, uintptr_t escaped);
 
 /** Set a callback for global instantiation of xlat functions
  *
  * @param[in] _xlat		function to set the callback for (as returned by xlat_register).
- * @param[in] _instantiate	A instantiation callback.
+ * @param[in] _instantiate	An instantiation callback.
  * @param[in] _inst_struct	The instance struct to pre-allocate.
  * @param[in] _detach		A destructor callback.
  * @param[in] _uctx		to pass to _instantiate and _detach callbacks.

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 of the
  *   License as published by the Free Software Foundation.
  *
@@ -34,13 +34,8 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/perm.h>
 
-#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <grp.h>
-#include <pwd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #include <DirectoryService/DirectoryService.h>
 #include <membership.h>
@@ -372,7 +367,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 
 	if (ret != RLM_MODULE_OK) {
 		RDEBUG2("Invalid password: %pV", &username->data);
-		return ret;
+		RETURN_UNLANG_RCODE(ret);
 	}
 
 	RETURN_UNLANG_OK;

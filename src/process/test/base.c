@@ -21,7 +21,6 @@
  *
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 
@@ -59,7 +58,7 @@ typedef enum {
 	FR_TEST_REQUEST,
 	FR_TEST_REPLY,
 } fr_test_packet_code_t;
-#define FR_TEST_CODE_MAX (2)
+#define FR_TEST_CODE_MAX (3)
 
 #define FR_TEST_PACKET_CODE_VALID(_code) ((_code == FR_TEST_REQUEST) || (_code == FR_TEST_REPLY))
 
@@ -132,4 +131,5 @@ fr_process_module_t process_test = {
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_test,
+	.packet_type	= &attr_packet_type,
 };

@@ -1,12 +1,7 @@
 name: CI FreeBSD
 
 on:
-  push:
-    branches-ignore:
-      - coverity_scan
-      - run-fuzzer**
-      - debug-fuzzer-**
-  pull_request:
+  workflow_call:
 
 env:
   HOSTAPD_BUILD_DIR: eapol_test.ci
@@ -23,7 +18,7 @@ jobs:
     steps:
 
     # Checkout, but defer pulling LFS objects until we've restored the cache
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         lfs: false
         path: freeradius
@@ -33,7 +28,7 @@ jobs:
       working-directory: freeradius
 
     - name: Restore LFS cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: lfs-cache
       with:
         path: .git/lfs
@@ -45,57 +40,78 @@ jobs:
       working-directory: freeradius
 
     - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
         key: hostapd-freebsd-${{ env.HOSTAPD_GIT_TAG }}-v4
 
-    - name: Test using a FreeBSD VirtualBox VM
-      uses: cross-platform-actions/action@v0.25.0
+    - name: Start a FreeBSD VirtualBox VM
+      uses: cross-platform-actions/action@v1.4.0
       with:
         operating_system: freebsd
-        version: '14.0'
+        version: '14.3'
         sync_files: runner-to-vm
         memory: 4G
         environment_variables: HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG NO_PERFORMANCE_TESTS
-        run: |
-          sudo pkg upgrade -y
-          sudo pkg install -y    \
-            brotli               \
-            curl                 \
-            cyrus-sasl           \
-            freetds              \
-            git                  \
-            git-lfs              \
-            gmake                \
-            google-perftools     \
-            hiredis              \
-            json-c               \
-            libidn               \
-            libmemcached         \
-            libpcap              \
-            libyubikey           \
-            lua52                \
-            mariadb-connector-c  \
-            net-snmp             \
-            openldap25-client    \
-            python3              \
-            py311-pip            \
-            postgresql14-client  \
-            sqlite3              \
-            talloc               \
-            unixODBC
-          PIP_BREAK_SYSTEM_PACKAGES=1 pip install tacacs_plus
-          echo "#! /bin/sh"        | sudo tee /usr/local/bin/nproc
-          echo "sysctl -n hw.ncpu" | sudo tee -a /usr/local/bin/nproc
-          sudo chmod +x /usr/local/bin/nproc
-          freebsd-version
-          cd freeradius
-          ./configure
-          gmake -j `nproc`
-          gmake -j `nproc` test.keywords test.unit test.modules test.auth test.digest
-          gmake test
+
+    #
+    #  The VM stays up after the step above, and "shell: cpa.sh {0}" runs the
+    #  step inside it.  The action's own "run:" input is deprecated in favour
+    #  of this.
+    #
+    - name: Install dependencies (FreeBSD)
+      shell: cpa.sh {0}
+      run: |
+        sudo pkg upgrade -y
+        sudo pkg install -y    \
+          bash                 \
+          brotli               \
+          curl                 \
+          cyrus-sasl           \
+          freetds              \
+          git                  \
+          git-lfs              \
+          gmake                \
+          google-perftools     \
+          hiredis              \
+          json-c               \
+          libidn               \
+          libmemcached         \
+          libpcap              \
+          libyubikey           \
+          lua52                \
+          mariadb-connector-c  \
+          net-snmp             \
+          openldap25-client    \
+          python3              \
+          py312-pip            \
+          postgresql14-client  \
+          sqlite3              \
+          talloc               \
+          unixODBC
+        PIP_BREAK_SYSTEM_PACKAGES=1 pip install tacacs_plus
+        echo "#! /bin/sh"        | sudo tee /usr/local/bin/nproc
+        echo "sysctl -n hw.ncpu" | sudo tee -a /usr/local/bin/nproc
+        sudo chmod +x /usr/local/bin/nproc
+        if [ ! -f /bin/bash ]; then
+          sudo ln -s /usr/local/bin/bash /bin/bash
+        fi
+        freebsd-version
+
+    - name: Build FreeRADIUS (FreeBSD)
+      shell: cpa.sh {0}
+      run: |
+        cd freeradius
+        ./configure
+        gmake -j `nproc`
+
+    - name: Run tests (FreeBSD)
+      shell: cpa.sh {0}
+      run: |
+        cd freeradius
+        gmake -j `nproc` test.keywords test.unit test.modules test.auth test.digest
+        gmake -j `nproc` test
 
     #
     #  If the CI has failed and the branch is ci-debug then we start a tmate

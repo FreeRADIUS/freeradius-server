@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -33,11 +33,11 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/value.h>
 
 #include <stdarg.h>
-#include <ctype.h>
 
-static const char specials[] = ",+\"\\<>;*=()";
+/* RFC 4514 DN attribute value special characters */
+static const char dn_specials[] = ",+\"\\<>;*=()";
 static const char hextab[] = "0123456789abcdef";
-static const bool escapes[UINT8_MAX + 1] = {
+static const bool escapes[SBUFF_CHAR_CLASS] = {
 	[' '] = true,
 	['#'] = true,
 	['='] = true,
@@ -50,18 +50,15 @@ static const bool escapes[UINT8_MAX + 1] = {
 	['\''] = true
 };
 
-/** Converts "bad" strings into ones which are safe for LDAP
+/* RFC 4515 filter assertion value special characters */
+static const char filter_specials[] = "*()\\";
+;
+
+/** Escape a string for use as an RFC 4514 DN attribute value
  *
- * @note RFC 4515 says filter strings can only use the @verbatim \<hex><hex> @endverbatim
- *	format, whereas RFC 4514 indicates that some chars in DNs, may be escaped simply
- *	with a backslash. For simplicity, we always use the hex escape sequences.
- *	In other areas where we're doing DN comparison, the DNs need to be normalised first
- *	so that they both use only hex escape sequences.
- *
- * @note This is a callback for xlat operations.
- *
- * Will escape any characters in input strings that would cause the string to be interpreted
- * as part of a DN and or filter. Escape sequence is @verbatim \<hex><hex> @endverbatim.
+ * Escapes characters that have special meaning in DNs.  Leading space and
+ * '#' are also escaped as required by RFC 4514.
+ * Escape sequence is @verbatim \<hex><hex> @endverbatim.
  *
  * @param request The current request.
  * @param out Pointer to output buffer.
@@ -69,7 +66,7 @@ static const bool escapes[UINT8_MAX + 1] = {
  * @param in Raw unescaped string.
  * @param arg Any additional arguments (unused).
  */
-size_t fr_ldap_uri_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t fr_ldap_dn_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t left = outlen;
 
@@ -79,7 +76,7 @@ size_t fr_ldap_uri_escape_func(UNUSED request_t *request, char *out, size_t outl
 		/*
 		 *	Encode unsafe characters.
 		 */
-		if (memchr(specials, *in, sizeof(specials) - 1)) {
+		if (memchr(dn_specials, *in, sizeof(dn_specials) - 1)) {
 		encode:
 			/*
 			 *	Only 3 or less bytes available.
@@ -109,13 +106,87 @@ size_t fr_ldap_uri_escape_func(UNUSED request_t *request, char *out, size_t outl
 	return outlen - left;
 }
 
-int fr_ldap_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
+int fr_ldap_dn_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t 	sbuff_ctx;
 	size_t			len;
 
-	fr_assert(!fr_value_box_is_safe_for(vb, fr_ldap_box_escape));
+	fr_assert(!fr_value_box_is_safe_for(vb, fr_ldap_dn_box_escape));
+
+	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) {
+		return -1;
+	}
+
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->vb_length * 3, vb->vb_length * 3)) {
+		fr_strerror_printf_push("Failed to allocate buffer for escaped DN");
+		return -1;
+	}
+
+	len = fr_ldap_dn_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
+
+	/*
+	 *	If the returned length is unchanged, the value was already safe
+	 */
+	if (len == vb->vb_length) {
+		talloc_free(fr_sbuff_buff(&sbuff));
+	} else {
+		fr_sbuff_trim_talloc(&sbuff, len);
+		fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
+	}
+
+	return 0;
+}
+
+/** Escape a string for use as an RFC 4515 filter assertion value
+ *
+ * Escapes only the characters that MUST be escaped in filter assertion values
+ * per RFC 4515: '*', '(', ')', '\'.  Other characters (including ',', '+',
+ * '=') must NOT be escaped -- some LDAP implementations do not decode
+ * non-required \HH sequences in assertion values and will fail to match.
+ * Escape sequence is @verbatim \<hex><hex> @endverbatim.
+ *
+ * @param request The current request.
+ * @param out Pointer to output buffer.
+ * @param outlen Size of the output buffer.
+ * @param in Raw unescaped string.
+ * @param arg Any additional arguments (unused).
+ */
+size_t fr_ldap_filter_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+{
+	size_t left = outlen;
+
+	while (*in) {
+		if (memchr(filter_specials, *in, sizeof(filter_specials) - 1)) {
+			if (left <= 3) break;
+
+			*out++ = '\\';
+			*out++ = hextab[(*in >> 4) & 0x0f];
+			*out++ = hextab[*in & 0x0f];
+			in++;
+			left -= 3;
+
+			continue;
+		}
+
+		if (left <= 1) break;
+
+		*out++ = *in++;
+		left--;
+	}
+
+	*out = '\0';
+
+	return outlen - left;
+}
+
+int fr_ldap_filter_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_ctx;
+	size_t			len;
+
+	fr_assert(!fr_value_box_is_safe_for(vb, fr_ldap_filter_box_escape));
 
 	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) {
 		return -1;
@@ -126,11 +197,8 @@ int fr_ldap_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
 		return -1;
 	}
 
-	len = fr_ldap_uri_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
+	len = fr_ldap_filter_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
 
-	/*
-	 *	If the returned length is unchanged, the value was already safe
-	 */
 	if (len == vb->vb_length) {
 		talloc_free(fr_sbuff_buff(&sbuff));
 	} else {
@@ -159,7 +227,8 @@ int fr_ldap_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
 size_t fr_ldap_uri_unescape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *p;
-	char *c1, *c2, c3;
+	char const *c1, *c2;
+	char c3;
 	size_t	freespace = outlen;
 
 	if (outlen <= 1) return 0;
@@ -175,7 +244,7 @@ size_t fr_ldap_uri_unescape_func(UNUSED request_t *request, char *out, size_t ou
 		p++;
 
 		/* It's an escaped special, just remove the slash */
-		if (memchr(specials, *p, sizeof(specials) - 1)) {
+		if (memchr(dn_specials, *p, sizeof(dn_specials) - 1)) {
 			*out++ = *p++;
 			continue;
 		}
@@ -428,6 +497,272 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 	return (sss_end - sss_p);
 }
 
+/** Release value iteration state
+ *
+ * Must be called once for every fr_ldap_value_iter_init, whether
+ * iteration completed or not.
+ *
+ * @param[in] iter	to release.
+ */
+void fr_ldap_value_iter_done(fr_ldap_value_iter_t *iter)
+{
+	ber_free(iter->ber, 0);
+	iter->ber = NULL;
+}
+
+/** Return the next value of the iterated attribute
+ *
+ * @param[out] err	Set to -1 if the entry could not be parsed.
+ *			Untouched otherwise.  May be NULL.
+ * @param[in] iter	to advance.
+ * @return
+ *	- The next value.
+ *	- NULL when the values are exhausted, or the entry could not be
+ *	  parsed.
+ */
+struct berval *fr_ldap_value_iter_next(int *err, fr_ldap_value_iter_t *iter)
+{
+	if (iter->end) return NULL;
+
+	if (ber_scanf(iter->ber, "m", &iter->value) == LBER_ERROR) {
+		fr_strerror_const("Malformed search result entry");
+		iter->end = true;
+		if (err) *err = -1;
+		return NULL;
+	}
+
+	if (ber_next_element(iter->ber, &iter->len, iter->last) == LBER_DEFAULT) iter->end = true;
+
+	return &iter->value;
+}
+
+/** Start an in place iteration over an attribute's values in an entry
+ *
+ * The returned values point into the result message the entry belongs
+ * to, nothing is copied, and the values remain valid until the result
+ * message is freed with ldap_msgfree.
+ *
+ * @param[out] err	Set to -1 if the entry could not be parsed.
+ *			Untouched otherwise.  May be NULL.
+ * @param[out] iter	to initialise.  Release with fr_ldap_value_iter_done.
+ * @param[in] handle	the entry was received on.
+ * @param[in] entry	whose values to iterate.
+ * @param[in] attr	to find.
+ * @return
+ *	- The attribute's first value.
+ *	- NULL if the entry does not contain the attribute, or could not
+ *	  be parsed.
+ */
+struct berval *fr_ldap_value_iter_init(int *err, fr_ldap_value_iter_t *iter, LDAP *handle, LDAPMessage *entry,
+				       char const *attr)
+{
+	struct berval	dn, name;
+	size_t		attr_len = strlen(attr);
+	ber_len_t	remaining;
+
+	*iter = (fr_ldap_value_iter_t){};
+
+	if (ldap_get_dn_ber(handle, entry, &iter->ber, &dn) != LDAP_SUCCESS) {
+	error:
+		fr_strerror_const("Malformed search result entry");
+		iter->end = true;
+		if (err) *err = -1;
+		return NULL;
+	}
+
+	for (;;) {
+		if (ber_get_option(iter->ber, LBER_OPT_BER_REMAINING_BYTES, &remaining) != LBER_OPT_SUCCESS) goto error;
+		if (remaining == 0) break;
+
+		if (ber_scanf(iter->ber, "{m" /*}*/, &name) == LBER_ERROR) goto error;
+
+		if ((name.bv_len != attr_len) || (strncasecmp(name.bv_val, attr, attr_len) != 0)) {
+			if (ber_scanf(iter->ber, "x") == LBER_ERROR) goto error;
+			continue;
+		}
+
+		if (ber_first_element(iter->ber, &iter->len, &iter->last) != LBER_DEFAULT) iter->found = true;
+		break;
+	}
+	if (!iter->found) {
+		iter->end = true;
+		return NULL;
+	}
+
+	return fr_ldap_value_iter_next(err, iter);
+}
+
+/** Free the ber held by an allocated value iterator
+ *
+ */
+static int _fr_ldap_value_iter_free(fr_ldap_value_iter_t *iter)
+{
+	fr_ldap_value_iter_done(iter);
+
+	return 0;
+}
+
+/** Allocate a value iterator, released when the iterator is freed
+ *
+ * Behaves as fr_ldap_value_iter_init, with the ber memory freed by a
+ * talloc destructor, so the iteration state is released when the
+ * iterator or any of its talloc ancestors are freed.
+ *
+ * @param[out] err	Set to -1 if the entry could not be parsed.
+ *			Untouched otherwise.  May be NULL.
+ * @param[out] out	The allocated iterator.
+ * @param[in] ctx	to allocate the iterator in.
+ * @param[in] handle	the entry was received on.
+ * @param[in] entry	whose values to iterate.
+ * @param[in] attr	to find.
+ * @return
+ *	- The attribute's first value.
+ *	- NULL if the entry does not contain the attribute, or could not
+ *	  be parsed.
+ */
+struct berval *fr_ldap_value_iter_alloc(int *err, fr_ldap_value_iter_t **out, TALLOC_CTX *ctx,
+					LDAP *handle, LDAPMessage *entry, char const *attr)
+{
+	fr_ldap_value_iter_t	*iter;
+	struct berval		*value;
+
+	MEM(iter = talloc(ctx, fr_ldap_value_iter_t));
+
+	value = fr_ldap_value_iter_init(err, iter, handle, entry, attr);
+	talloc_set_destructor(iter, _fr_ldap_value_iter_free);
+	*out = iter;
+
+	return value;
+}
+
+/** Sum the lengths of an attribute's values across every entry of a result
+ *
+ * The values are read in place from the result message, no arrays are
+ * allocated and no values are copied.
+ *
+ * @param[out] num		Number of values found.
+ * @param[out] strings_len	Total length of the values, including a NUL
+ *				byte for each.
+ * @param[in] handle		the result was received on.
+ * @param[in] result		Head of the result message chain.
+ * @param[in] attr		whose values to measure.
+ * @return
+ *	- 0 on success.
+ *	- -1 if an entry could not be parsed.
+ */
+int fr_ldap_result_values_len(size_t *num, size_t *strings_len, LDAP *handle, LDAPMessage *result, char const *attr)
+{
+	LDAPMessage	*entry;
+
+	*num = 0;
+	*strings_len = 0;
+
+	for (entry = ldap_first_entry(handle, result); entry; entry = ldap_next_entry(handle, entry)) {
+		fr_ldap_value_iter_t	iter;
+		struct berval		*value;
+		int			err = 0;
+
+		for (value = fr_ldap_value_iter_init(&err, &iter, handle, entry, attr);
+		     value;
+		     value = fr_ldap_value_iter_next(&err, &iter)) {
+			*strings_len += value->bv_len + 1;
+			(*num)++;
+		}
+		fr_ldap_value_iter_done(&iter);
+		if (unlikely(err < 0)) return -1;
+	}
+
+	return 0;
+}
+
+/** Copy an attribute's values from every entry of a result into a string list
+ *
+ * The list, its pointer array and every string come from a single talloc
+ * pool.  The values are read in place from the result message, the only
+ * copies made are the strings in the list.
+ *
+ * @param[in] ctx	to allocate the list in.
+ * @param[in] handle	the result was received on.
+ * @param[in] result	Head of the result message chain.
+ * @param[in] attr	whose values to copy.  May be NULL, in which case
+ *			only the extra slots are allocated.
+ * @param[in] extra	Leading pointer array slots to leave NULL, for the
+ *			caller to fill with strings not copied into the pool.
+ * @return
+ *	- List of the attribute's values.  Empty if the result holds no
+ *	  values for the attribute.
+ *	- NULL if an entry could not be parsed.
+ */
+talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, LDAPMessage *result,
+						 char const *attr, size_t extra)
+{
+	talloc_str_list_t	*list = NULL;
+	LDAPMessage		*entry;
+	size_t			num = 0, strings_len = 0;
+
+	if (attr) {
+		if (unlikely(fr_ldap_result_values_len(&num, &strings_len, handle, result, attr) < 0)) return NULL;
+	}
+
+	MEM(list = talloc_str_list_alloc(ctx, num + extra, strings_len));
+	list->p += extra;
+
+	if (num == 0) return list;
+
+	for (entry = ldap_first_entry(handle, result); entry; entry = ldap_next_entry(handle, entry)) {
+		fr_ldap_value_iter_t	iter;
+		struct berval		*value;
+		int			err = 0;
+
+		for (value = fr_ldap_value_iter_init(&err, &iter, handle, entry, attr);
+		     value;
+		     value = fr_ldap_value_iter_next(&err, &iter)) {
+			MEM(talloc_str_list_append(list, value->bv_val, value->bv_len));
+		}
+		fr_ldap_value_iter_done(&iter);
+		if (unlikely(err < 0)) {
+			talloc_free(list);
+			return NULL;
+		}
+	}
+
+	return list;
+}
+
+/** Find an attribute in an entry, returning its first value referenced in place
+ *
+ * The value points into the result message the entry belongs to, nothing
+ * is allocated and nothing needs freeing.  The value remains valid until
+ * the result message is freed with ldap_msgfree.
+ *
+ * @param[out] out	First value of the attribute.  Untouched when the
+ *			attribute is not found.
+ * @param[in] handle	the entry was received on.
+ * @param[in] entry	to search.
+ * @param[in] attr	to find.
+ * @return
+ *	- The number of values the attribute has.
+ *	- 0 if the entry does not contain the attribute.
+ *	- -1 if the entry could not be parsed.
+ */
+int fr_ldap_entry_value_find(struct berval *out, LDAP *handle, LDAPMessage *entry, char const *attr)
+{
+	fr_ldap_value_iter_t	iter;
+	struct berval		*value;
+	int			num = 0, err = 0;
+
+	for (value = fr_ldap_value_iter_init(&err, &iter, handle, entry, attr);
+	     value;
+	     value = fr_ldap_value_iter_next(&err, &iter)) {
+		if (num == 0) *out = *value;
+		num++;
+	}
+	fr_ldap_value_iter_done(&iter);
+	if (unlikely(err < 0)) return -1;
+
+	return num;
+}
+
 /** Convert a berval to a talloced string
  *
  * The ldap_get_values function is deprecated, and ldap_get_values_len
@@ -499,12 +834,13 @@ size_t fr_ldap_util_normalise_dn(char *out, char const *in)
 			char c = '\0';
 
 			/*
-			 *	Double backslashes get processed specially
+			 *	Double backslashes get passed through as-is.
+			 *	Copy both and let the for loop advance past the second.
 			 */
 			if (p[1] == '\\') {
-				p += 1;
 				*o++ = p[0];
 				*o++ = p[1];
+				p++;
 				continue;
 			}
 
@@ -553,9 +889,51 @@ size_t fr_ldap_common_dn(char const *full, char const *part)
 
 	if ((f_len < p_len) || !f_len) return -1;
 
-	for (i = 0; i < p_len; i++) if (part[p_len - i] != full[f_len - i]) return -1;
+	for (i = 0; i < p_len; i++) if (part[p_len - 1 - i] != full[f_len - 1 - i]) return -1;
 
 	return f_len - p_len;
+}
+
+/** Build a filter matching a set of objects by DN
+ *
+ * Produces `(|(<dn_attr>=<dn>)...)`, ANDed with filter if one is given.
+ * DN values are escaped.
+ *
+ * @param[in] ctx	to allocate the filter string in.
+ * @param[in] dn_attr	Attribute which matches an object's own DN,
+ *			e.g. entryDN or distinguishedName.
+ * @param[in] filter	Optional filter to AND with the DN set, may be NULL.
+ * @param[in] dn_list	NULL terminated list of DNs to match, no empty strings.
+ * @return The filter string.
+ */
+char *fr_ldap_filter_afrom_dn_list(TALLOC_CTX *ctx, char const *dn_attr, char const *filter,
+			       char const * const *dn_list)
+{
+	char			*out;
+	char const * const	*dn_p;
+
+	MEM(out = talloc_typed_strdup(ctx, "(|"));
+	for (dn_p = dn_list; *dn_p; dn_p++) {
+		char	*escaped;
+		size_t	len;
+
+		len = (strlen(*dn_p) * 3) + 1;
+		MEM(escaped = talloc_array(ctx, char, len));
+		fr_ldap_filter_escape_func(NULL, escaped, len, *dn_p, NULL);
+		MEM(out = talloc_asprintf_append_buffer(out, "(%s=%s)", dn_attr, escaped));
+		talloc_free(escaped);
+	}
+	MEM(out = talloc_strdup_append_buffer(out, ")"));
+
+	if (filter && *filter) {
+		char *combined;
+
+		MEM(combined = talloc_typed_asprintf(ctx, "(&%s%s)", filter, out));
+		talloc_free(out);
+		return combined;
+	}
+
+	return out;
 }
 
 /** Combine filters and tokenize to a tmpl
@@ -660,7 +1038,8 @@ int fr_ldap_server_url_check(fr_ldap_config_t *handle_config, char const *server
 	LDAPURLDesc	*ldap_url;
 	bool		set_port_maybe = true;
 	int		default_port = LDAP_PORT;
-	char		*p, *url;
+	char const	*p;
+	char		*url;
 	CONF_ITEM	*ci = (CONF_ITEM *)cf_pair_find(cs, "server");
 
 	if (ldap_url_parse(server, &ldap_url)) {

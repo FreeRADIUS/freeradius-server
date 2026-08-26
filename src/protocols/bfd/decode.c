@@ -96,7 +96,7 @@ ssize_t fr_bfd_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_pair_append(out, vp);
 	}
 
-	return slen;
+	return packet_len;
 }
 
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
@@ -147,11 +147,6 @@ static ssize_t fr_bfd_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return -1;
 	}
 
-	if (packet->detect_multi == 0) {
-		fr_strerror_const("Packet.detect-multi has invalid value zero");
-		return -1;
-	}
-
 	if (packet->multipoint != 0) {
 		fr_strerror_const("Packet.multipoint has invalid non-zero value");
 		return -1;
@@ -166,7 +161,7 @@ static ssize_t fr_bfd_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	    !((packet->state == BFD_STATE_DOWN) ||
 	      (packet->state == BFD_STATE_ADMIN_DOWN))) {
 		fr_strerror_const("Packet has invalid values for your-discriminator and state");
-		return 0;
+		return -1;
 	}
 
 	/*
@@ -195,7 +190,7 @@ static ssize_t fr_bfd_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	/* coverity[tainted_data] */
 	return fr_bfd_decode(ctx, out, data, data_len,
-			     test_ctx->secret, talloc_array_length(test_ctx->secret) - 1);
+			     test_ctx->secret, talloc_strlen(test_ctx->secret));
 }
 
 /*

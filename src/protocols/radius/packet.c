@@ -40,7 +40,7 @@ RCSID("$Id$")
 /** Encode a packet
  *
  */
-ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
+ssize_t fr_radius_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 				fr_packet_t const *original, char const *secret)
 {
 	ssize_t slen;
@@ -57,7 +57,7 @@ ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 #endif
 
 	common.secret = secret;
-	common.secret_length = talloc_array_length(secret) - 1;
+	common.secret_length = talloc_strlen(secret);
 
 	packet_ctx = (fr_radius_encode_ctx_t) {
 		.common = &common,
@@ -109,12 +109,7 @@ ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
  */
 bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
 {
-	char host_ipaddr[INET6_ADDRSTRLEN];
-
 	if (!fr_radius_ok(packet->data, &packet->data_len, max_attributes, require_message_authenticator, reason)) {
-		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s",
-					 inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr,
-						   host_ipaddr, sizeof(host_ipaddr)));
 		return false;
 	}
 
@@ -131,14 +126,14 @@ bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_mes
 /** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
  *
  */
-int fr_packet_verify(fr_packet_t *packet, fr_packet_t *original, char const *secret)
+int fr_radius_packet_verify(fr_packet_t *packet, fr_packet_t *original, char const *secret)
 {
 	char		buffer[INET6_ADDRSTRLEN];
 
 	if (!packet->data) return -1;
 
 	if (fr_radius_verify(packet->data, original ? original->data + 4 : NULL,
-			     (uint8_t const *) secret, talloc_array_length(secret) - 1, false, false) < 0) {
+			     (uint8_t const *) secret, talloc_strlen(secret), false, false) < 0) {
 		fr_strerror_printf_push("Received invalid packet from %s",
 					inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr,
 						  buffer, sizeof(buffer)));
@@ -152,13 +147,13 @@ int fr_packet_verify(fr_packet_t *packet, fr_packet_t *original, char const *sec
 /** Sign a previously encoded packet
  *
  */
-int fr_packet_sign(fr_packet_t *packet, fr_packet_t const *original,
+int fr_radius_packet_sign(fr_packet_t *packet, fr_packet_t const *original,
 			  char const *secret)
 {
 	int ret;
 
 	ret = fr_radius_sign(packet->data, original ? original->data + 4 : NULL,
-			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
+			       (uint8_t const *) secret, talloc_strlen(secret));
 	if (ret < 0) return ret;
 
 	memcpy(packet->vector, packet->data + 4, RADIUS_AUTH_VECTOR_LENGTH);
@@ -279,7 +274,7 @@ fr_packet_t *fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_att
  *
  * Also attach reply attribute value pairs and any user message provided.
  */
-int fr_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
+int fr_radius_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
 			  fr_packet_t const *original, char const *secret)
 {
 	/*
@@ -296,7 +291,7 @@ int fr_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
 		/*
 		 *	Encode the packet.
 		 */
-		if (fr_packet_encode(packet, list, original, secret) < 0) {
+		if (fr_radius_packet_encode(packet, list, original, secret) < 0) {
 			return -1;
 		}
 
@@ -304,7 +299,7 @@ int fr_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
 		 *	Re-sign it, including updating the
 		 *	Message-Authenticator.
 		 */
-		if (fr_packet_sign(packet, original, secret) < 0) {
+		if (fr_radius_packet_sign(packet, original, secret) < 0) {
 			return -1;
 		}
 
@@ -374,9 +369,10 @@ void _fr_packet_log_hex(fr_log_t const *log, fr_packet_t const *packet, char con
 	       char		*p;
 	       char const	*truncated = "";
 
-#ifndef NDEBUG
-               if (attr[1] < 2) break; /* Coverity */
-#endif
+	       /*
+		*	rad_packet_ok() already checks, but let's do defense in depth.
+		*/
+               if (attr[1] < 2) break;
 
 	       snprintf(buffer, sizeof(buffer), "%02x %02x  ", attr[0], attr[1]);
 	       p = buffer + strlen(buffer);

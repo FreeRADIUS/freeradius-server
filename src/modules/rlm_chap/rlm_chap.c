@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -26,12 +26,9 @@ RCSID("$Id$")
 #define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/util/chap.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/call_env.h>
 
 typedef struct {
 	fr_dict_enum_value_t const	*auth_type;

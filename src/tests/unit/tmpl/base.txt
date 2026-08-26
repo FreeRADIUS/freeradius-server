@@ -25,7 +25,7 @@ tmpl User-Name[#]
 match User-Name[#]
 
 tmpl User-Name["foo"]
-match ERROR offset 10: Invalid data type for array index
+match ERROR: ERROR offset 10: Invalid data type for array index
 
 count
 match 15

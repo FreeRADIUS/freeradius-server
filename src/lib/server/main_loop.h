@@ -40,7 +40,6 @@ typedef enum {
 } radius_signal_t;
 
 #include <freeradius-devel/server/client.h>
-#include <freeradius-devel/server/listen.h>
 #include <freeradius-devel/server/signal.h>
 
 fr_event_list_t		*main_loop_event_list(void);

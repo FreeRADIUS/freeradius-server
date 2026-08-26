@@ -90,7 +90,7 @@ $ docker run -it freeradius/centos7-deps
 [root@08a222f5fdfe freeradius-server]# ls
 acinclude.m4  config.guess  configure.ac  debian      install-sh  main.mk      man      raddb      scripts  suse
 aclocal.m4    config.sub    COPYRIGHT     doc         LICENSE     Makefile     mibs     README.md  share    VERSION
-autogen.sh    configure     CREDITS       m4          Make.inc.in  missing  redhat     src
+autogen.sh    configure     m4          Make.inc.in  missing  redhat     src
 ```
 
 To run FreeRADIUS, use:

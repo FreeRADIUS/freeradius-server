@@ -41,7 +41,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
-#include <freeradius-devel/util/syserror.h>
 
 static conf_parser_t conf_term = CONF_PARSER_TERMINATOR;
 static char const parse_spaces[] = "                                                                                                                                                                                                                                              ";
@@ -77,7 +76,7 @@ void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t cons
 	 *	Print the strings with the correct quotation character and escaping.
 	 */
 	if (fr_type_is_string(type)) {
-		value = tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, fr_token_quote[cp->rhs_quote]);
+		value = tmp = fr_asprint(NULL, cp->value, talloc_strlen(cp->value), fr_token_quote[cp->rhs_quote]);
 
 	} else {
 		value = cf_pair_value(cp);
@@ -128,9 +127,9 @@ void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t cons
  */
 int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, conf_parser_t const *rule)
 {
-	if (fr_value_box_from_str(ctx, out, rule->type, NULL, cp->value, talloc_array_length(cp->value) - 1, NULL) < 0) {
-		cf_log_perr(cp, "Invalid value \"%s\" for config item %s",
-			    cp->value, cp->attr);
+	if (fr_value_box_from_str(ctx, out, rule->type, NULL, cp->value, talloc_strlen(cp->value), NULL) < 0) {
+		cf_log_perr(cp, "Invalid value \"%s\" for config item %s (data type %s)",
+			    cp->value, cp->attr, fr_type_to_str(rule->type));
 
 		return -1;
 	}
@@ -403,7 +402,8 @@ static int cf_pair_default(CONF_PAIR **out, void *parent, CONF_SECTION *cs, conf
 		return 0;
 	}
 
-	expanded = cf_expand_variables("<internal>", lineno, cs, buffer, sizeof(buffer), rule->dflt, -1, NULL);
+	expanded = cf_expand_variables("<internal>", lineno, cs, buffer, sizeof(buffer), rule->dflt, -1, NULL,
+				       (dflt_quote != T_BARE_WORD));
 	if (!expanded) {
 		cf_log_err(cs, "Failed expanding variable %s", rule->name1);
 		return -1;
@@ -441,14 +441,16 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 	p = cp->value;
 	q = str;
 	while (*p) {
-		unsigned int x;
-
 		if (*p != '\\') {
 			*(q++) = *(p++);
 			continue;
 		}
 
 		p++;
+		if (*p == '\0') {
+			*q++ = '\\';
+			continue;
+		}
 		switch (*p) {
 		case 'r':
 			*q++ = '\r';
@@ -461,15 +463,31 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 			break;
 
 		default:
-			if (*p >= '0' && *p <= '9' &&
-			    sscanf(p, "%3o", &x) == 1) {
-				if (!x) {
-					cf_log_err(cp, "Cannot have embedded zeros in value for %s", cp->attr);
+			if ((*p >= '0') && (*p <= '7')) {
+				unsigned long oct;
+				char *end;
+
+				oct = strtoul(p, &end, 8);
+				if (oct == ULONG_MAX) {
+					cf_log_err(cp, "Failed parsing octal string");
+				error:
+					talloc_free(str);
 					return -1;
 				}
 
-				*q++ = x;
-				p += 2;
+				if (!oct) {
+					cf_log_err(cp, "Cannot have embedded zeros in value at %s", p);
+					goto error;
+				}
+
+				if (oct > UINT8_MAX) {
+					cf_log_err(cp, "Invalid octal number in value at %s", p);
+					goto error;
+				}
+
+				*q++ = oct;
+				p = end;
+				continue;
 			} else {
 				*q++ = *p;
 			}
@@ -479,10 +497,9 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 	}
 	*q = '\0';
 
-	unescaped = talloc_typed_strdup(cp, str); /* no embedded NUL */
-	if (!unescaped) return -1;
-
+	unescaped = talloc_strdup(cp, str); /* no embedded NUL */
 	talloc_free(str);
+	if (!unescaped) return -1;
 
 	/*
 	 *	Replace the old value with the new one.
@@ -536,6 +553,12 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 	required = fr_rule_required(rule);
 	deprecated = fr_rule_deprecated(rule);
+
+	cp = cf_pair_find(cs, rule->name1);
+	if (cp && cp->item.parsed) {
+		return 0;
+	}
+	cp = NULL;
 
 	/*
 	 *	If the item is multi-valued we allocate an array
@@ -640,13 +663,13 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 */
 			cf_pair_debug_log(cs, cp, rule);
 
-			if (cf_pair_is_parsed(cp)) continue;
+			if (cp->item.parsed) continue;
 			ret = func(value_ctx, entry, base, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				return -1;
 			}
-			cf_pair_mark_parsed(cp);
+			cp->item.parsed = true;
 		}
 		if (array) *(void **)out = array;
 	/*
@@ -690,10 +713,10 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		cf_pair_debug_log(cs, cp, rule);
 
-		if (cf_pair_is_parsed(cp)) return 0;
+		if (cp->item.parsed) return 0;
 		ret = func(ctx, out, base, cf_pair_to_item(cp), rule);
 		if (ret < 0) return -1;
-		cf_pair_mark_parsed(cp);
+		cp->item.parsed = true;
 	}
 
 	return was_dflt ? 1 : 0;
@@ -890,13 +913,19 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t con
 	 *	Don't re-initialize data which was already parsed.
 	 */
 	cp = cf_pair_find(cs, rule->name1);
-	if (cp && cp->parsed) return 0;
+	if (cp && cp->item.parsed) return 0;
 
 	if ((rule->type != FR_TYPE_STRING) &&
 	    (!(rule->flags & CONF_FLAG_FILE_READABLE)) &&
 	    (!(rule->flags & CONF_FLAG_FILE_WRITABLE))) {
 		return 0;
 	}
+
+	/*
+	 *	CONF_FLAG_NO_OUTPUT means the rule has no framework-managed
+	 *	output slot - nothing to NULL-init.
+	 */
+	if (rule->flags & CONF_FLAG_NO_OUTPUT) return 0;
 
 	if (rule->data) {
 		*(char **) rule->data = NULL;
@@ -922,7 +951,7 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
 			CONF_PAIR *cp;
 
 			cp = cf_item_to_pair(ci);
-			if (cp->parsed || cp->referenced || (ci->lineno < 0)) continue;
+			if (cp->item.parsed || cp->item.referenced || (ci->lineno < 0)) continue;
 
 			WARN("%s[%d]: The item '%s' is defined, but is unused by the configuration",
 			     ci->filename, ci->lineno,
@@ -961,11 +990,29 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 	size_t			subcs_size = rule->subcs_size;
 	conf_parser_t const	*rules = rule->subcs;
 
+	/*
+	 *	CF_IDENT_ANY section rules act as a catch-all: skip any
+	 *	subsection that's already been claimed and marked parsed
+	 *	by an earlier specific rule, so the wildcard only handles
+	 *	the leftovers.  CONF_FLAG_ALWAYS_PARSE overrides this and
+	 *	makes the rule observe every matching subsection.
+	 */
+	bool const		skip_parsed = (rule->name1 == CF_IDENT_ANY) &&
+					      !(rule->flags & CONF_FLAG_ALWAYS_PARSE);
+
+	bool const		no_output = (rule->flags & CONF_FLAG_NO_OUTPUT);
+
 	uint8_t			**array = NULL;
 
 	fr_assert(rule->flags & CONF_FLAG_SUBSECTION);
 
-	subcs = cf_section_find(cs, rule->name1, rule->name2);
+	if (skip_parsed) {
+		while ((subcs = cf_section_find_next(cs, subcs, rule->name1, rule->name2))) {
+			if (!cf_item_is_parsed(cf_section_to_item(subcs))) break;
+		}
+	} else {
+		subcs = cf_section_find(cs, rule->name1, rule->name2);
+	}
 	if (!subcs) return 0;
 
 	/*
@@ -991,7 +1038,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 		 */
 	 	if (!subcs_size) return cf_section_parse(ctx, out, subcs);
 
-		if (out) {
+		if (out && !no_output) {
 			MEM(buff = talloc_zero_array(ctx, uint8_t, subcs_size));
 			if (rule->subcs_type) talloc_set_name_const(buff, rule->subcs_type);
 		}
@@ -1002,7 +1049,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 			return ret;
 		}
 
-		if (out) *((uint8_t **)out) = buff;
+		if (out && !no_output) *((uint8_t **)out) = buff;
 
 		return 0;
 	}
@@ -1013,12 +1060,15 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 	 *	Handle the multi subsection case (which is harder)
 	 */
 	subcs = NULL;
-	while ((subcs = cf_section_find_next(cs, subcs, rule->name1, rule->name2))) count++;
+	while ((subcs = cf_section_find_next(cs, subcs, rule->name1, rule->name2))) {
+		if (skip_parsed && cf_item_is_parsed(cf_section_to_item(subcs))) continue;
+		count++;
+	}
 
 	/*
 	 *	Allocate an array to hold the subsections
 	 */
-	if (out) {
+	if (out && !no_output) {
 		MEM(array = talloc_zero_array(ctx, uint8_t *, count));
 		if (rule->subcs_type) talloc_set_name(array, "%s *", rule->subcs_type);
 	}
@@ -1032,6 +1082,8 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 	subcs = NULL;
 	while ((subcs = cf_section_find_next(cs, subcs, rule->name1, rule->name2))) {
 		uint8_t *buff = NULL;
+
+		if (skip_parsed && cf_item_is_parsed(cf_section_to_item(subcs))) continue;
 
 		if (DEBUG_ENABLED4) cf_log_debug(cs, "Evaluating rules for %s[%i] section.  Output %p",
 						 cf_section_name1(subcs),
@@ -1067,7 +1119,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 		}
 	}
 
-	if (out) *((uint8_t ***)out) = array;
+	if (out && !no_output) *((uint8_t ***)out) = array;
 
 	return 0;
 }
@@ -1091,7 +1143,16 @@ static int cf_section_parse_rule(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, 
 
 	if (rule->data) {
 		data = rule->data; /* prefer this. */
-	} else if (base) {
+	} else if (base &&
+		   (!(rule->flags & CONF_FLAG_NO_OUTPUT) || (rule->flags & CONF_FLAG_SUBSECTION))) {
+		/*
+		 *	CONF_FLAG_NO_OUTPUT on a pair rule means leave
+		 *	data NULL so the framework won't write through
+		 *	base+offset.  For subsections it only suppresses
+		 *	the end-of-MULTI array write (handled inside
+		 *	cf_subsection_parse) - we still need to pass
+		 *	`base` through so nested rules can address into it.
+		 */
 		data = ((uint8_t *)base) + rule->offset;
 	}
 
@@ -1100,6 +1161,38 @@ static int cf_section_parse_rule(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, 
 	 */
 	if (rule->flags & CONF_FLAG_SUBSECTION) {
 		return cf_subsection_parse(ctx, data, base, cs, rule);
+	}
+
+	/*
+	 *	A pair rule with name1 == CF_IDENT_ANY is a catch-all:
+	 *	feed every still-unparsed CONF_PAIR in this section to the
+	 *	rule's parser func.  Order matters - specific rules before
+	 *	this entry have already claimed (and marked parsed) their
+	 *	pairs, so the catch-all only sees the leftovers, unless
+	 *	CONF_FLAG_ALWAYS_PARSE is set (in which case it sees every
+	 *	pair regardless).
+	 *
+	 *	The rule must provide a func; there's no sensible default
+	 *	output offset when the pair's name varies.  The func
+	 *	receives one CONF_PAIR at a time via ci and can read the
+	 *	name via cf_pair_attr().
+	 */
+	if (!(rule->flags & CONF_FLAG_REF) && rule->name1 == CF_IDENT_ANY) {
+		bool const	always_parse = (rule->flags & CONF_FLAG_ALWAYS_PARSE);
+		CONF_PAIR	*cp = NULL;
+
+		if (!rule->func) {
+			cf_log_err(cs, "CF_IDENT_ANY pair rule must provide a parse function");
+			return -1;
+		}
+
+		while ((cp = cf_pair_find_next(cs, cp, NULL))) {
+			if (!always_parse && cf_item_is_parsed(cf_pair_to_item(cp))) continue;
+
+			if (rule->func(ctx, data, base, cf_pair_to_item(cp), rule) < 0) return -1;
+			cf_item_mark_parsed(cf_pair_to_item(cp));
+		}
+		return 0;
 	}
 
 	/*
@@ -1226,6 +1319,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 
 	cf_log_debug(cs, "%.*s}", SECTION_SPACE(cs), parse_spaces);
 
+	cf_item_mark_parsed(cs);
 	return 0;
 }
 
@@ -1331,7 +1425,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			 *	Select base by whether this is a nested struct,
 			 *	or a pointer to another struct.
 			 */
-			if (!base) {
+			if (!base || (flags & CONF_FLAG_NO_OUTPUT)) {
 				subcs_base = NULL;
 			} else if (multi) {
 				size_t		j, len;
@@ -1362,7 +1456,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 *	Figure out which data we need to fix.
 		 */
 		data = rule->data; /* prefer this. */
-		if (!data && base) data = ((char *)base) + rule->offset;
+		if (!data && base && !(rule->flags & CONF_FLAG_NO_OUTPUT)) data = ((char *)base) + rule->offset;
 		if (!data) continue;
 
 		/*
@@ -1417,7 +1511,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			 *	xlat expansions should be parseable.
 			 */
 			slen = xlat_tokenize(cs, &xlat,
-					     &FR_SBUFF_IN(cp->value, talloc_array_length(cp->value) - 1), NULL,
+					     &FR_SBUFF_IN(cp->value, talloc_strlen(cp->value)), NULL,
 					     &(tmpl_rules_t) {
 						     .attr = {
 							     .dict_def = dict,
@@ -1558,7 +1652,14 @@ int _cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char cons
 
 			subcs = cf_section_find(cs, name1, name2);
 			if (!subcs) {
-				cf_log_err(cs, "Failed finding '%s' subsection", name1);
+				if ((rule->flags & CONF_FLAG_OK_MISSING) != 0) return 0;
+
+				if (!name2 || (name2 == CF_IDENT_ANY)) {
+					cf_log_err(cs, "Failed finding '%s' subsection", name1);
+				} else {
+					cf_log_err(cs, "Failed finding '%s %s' subsection", name1, name2);
+				}
+
 				cf_item_debug(cs);
 				return -1;
 			}
@@ -1738,4 +1839,39 @@ int cf_null_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *paren
 		    UNUSED CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	return 0;
+}
+
+/** Bit-pos indexed table of `CONF_FLAG_*` names.
+ *
+ * Index is `fr_high_bit_pos()` of the flag value, which matches the
+ * `_Generic` dispatch on `fr_table_num_indexed_bit_pos_t` in
+ * `fr_table_str_by_value`.
+ */
+static fr_table_num_indexed_bit_pos_t const cf_parser_flag_table[] = {
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_SUBSECTION),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_DEPRECATED),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_REQUIRED),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_ATTRIBUTE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_SECRET),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_FILE_READABLE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_FILE_WRITABLE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_FILE_SOCKET),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_FILE_EXISTS),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_XLAT),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_TMPL),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_MULTI),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_NOT_EMPTY),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_IS_SET),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_OK_MISSING),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_HIDDEN),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_REF),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_OPTIONAL),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_ALWAYS_PARSE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_NO_OUTPUT),
+};
+static size_t cf_parser_flag_table_len = NUM_ELEMENTS(cf_parser_flag_table);
+
+char const *cf_parser_flag_to_enum_str(conf_parser_flags_t mask)
+{
+	return fr_table_str_by_value(cf_parser_flag_table, mask, NULL);
 }

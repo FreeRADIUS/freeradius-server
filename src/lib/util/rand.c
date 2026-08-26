@@ -26,7 +26,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/hash.h>
 
 #include <fcntl.h>
-#include <stdbool.h>
 
 static _Thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
 static _Thread_local bool fr_rand_initialized = false;
@@ -131,7 +130,7 @@ void fr_rand_buffer(void *start, size_t length)
 	if (buflen > 4) {
 		size_t i;
 
-		for (i = 0; i < buflen; i += 4) {
+		for (i = 0; i <= (buflen - 4); i += 4) {
 			x = fr_rand();
 			memcpy(buffer + i, &x, sizeof(x));
 		}

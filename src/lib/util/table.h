@@ -94,6 +94,36 @@ typedef struct {
 	unsigned int		value;
 } fr_table_num_indexed_t;
 
+/** Build a single fr_table_num_indexed_t entry from an enum identifier.
+ *
+ * Expands to `[FOO] = { L("FOO"), FOO }` so the identifier doesn't have
+ * to be written three times.  Use with a typed
+ * `fr_table_num_indexed_t const []` initialiser to map enum-value-to-name
+ * lookups via fr_table_str_by_value().
+ *
+ *  static fr_table_num_indexed_t const my_table[] = {
+ *      FR_TABLE_INDEXED_ENTRY(FR_TYPE_STRING),
+ *      FR_TABLE_INDEXED_ENTRY(FR_TYPE_OCTETS),
+ *      ...
+ *  };
+ */
+#define FR_TABLE_INDEXED_ENTRY(_v)	[_v] = { L(STRINGIFY(_v)), _v }
+
+/** Build a single fr_table_num_indexed_bit_pos_t entry from an enum identifier.
+ *
+ * `_v` is a single-bit mask of the form `(1 << N)`; the entry's table
+ * index is `N + 1` (matching what `fr_table_indexed_str_by_bit_field`
+ * computes via `fr_high_bit_pos()`).  The compile-time `__builtin_ctz`
+ * keeps the position-arithmetic out of the call site:
+ *
+ *  static fr_table_num_indexed_bit_pos_t const my_flags[] = {
+ *      FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_REQUIRED),
+ *      FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_MULTI),
+ *      ...
+ *  };
+ */
+#define FR_TABLE_INDEXED_BIT_POS_ENTRY(_v)	[__builtin_ctz(_v) + 1] = { L(STRINGIFY(_v)), _v }
+
 /** Macro to use as dflt
  *
  */
@@ -299,6 +329,7 @@ char const *_our_name(_our_table_type table, size_t table_len, _our_value_type v
 { \
 	uint8_t	idx = fr_high_bit_pos(value); \
 	if (idx >= table_len) return def; \
+	if (!table[idx].name.str) return def; /* sparse table: unpopulated slot */ \
 	return table[idx].name.str; \
 }
 
@@ -312,6 +343,7 @@ char const *_our_name(_our_table_type table, size_t table_len, _our_value_type v
 char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
 { \
 	if (value >= table_len) return def; \
+	if (!table[value].name.str) return def; /* sparse table: unpopulated slot */ \
 	return table[value].name.str; \
 }
 
@@ -789,7 +821,7 @@ _Generic((_table), \
 static inline size_t _our_name(_our_table_type table, size_t table_len) \
 { \
 	size_t i, max = 0; \
-	for (i = 0; i < table_len; i++) if (table->name.len > max) max = table->name.len; \
+	for (i = 0; i < table_len; i++) if (table[i].name.len > max) max = table[i].name.len; \
 	return max; \
 }
 

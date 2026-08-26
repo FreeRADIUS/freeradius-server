@@ -65,7 +65,7 @@ void unlang_register(unlang_op_t *op)
 	 */
 	if ((op->flag & UNLANG_OP_FLAG_INTERNAL) != 0) return;
 
-	MEM(fr_hash_table_insert(unlang_op_table, &unlang_ops[op->type]));
+	MEM(fr_hash_table_insert(unlang_op_table, &unlang_ops[op->type]) == 0);
 }
 
 static TALLOC_CTX *unlang_ctx = NULL;
@@ -77,7 +77,7 @@ static uint32_t op_hash(void const *data)
 	return fr_hash_string(a->name);
 }
 
-static int8_t op_cmp(void const *one, void const *two)
+static fr_cmp_ret_t op_cmp(void const *one, void const *two)
 {
 	unlang_op_t const *a = one;
 	unlang_op_t const *b = two;

@@ -1,0 +1,230 @@
+name        = kafka-producer
+
+raddbdir    = /etc/freeradius
+confdir     = ${raddbdir}
+modconfdir  = ${confdir}/mods-config
+logdir      = /var/log/freeradius
+radacctdir  = ${logdir}/radacct
+
+security {
+	allow_core_dumps = yes
+}
+
+# logging configuration required for linelog module
+log {
+	destination = files
+	file = ${logdir}/radius.log
+	syslog_facility = daemon
+	stripped_names = no
+	auth = yes
+	auth_badpass = yes
+	auth_goodpass = yes
+}
+
+modules {
+	# Common linelog module configuration
+	{% include "freeradius/common/mods-available/linelog" %}
+
+	# Test framework linelog - one line per logged event
+	{% if listener_type == "unix" %}
+        {% include "freeradius/common/mods-available/linelog_socket" %}
+	{% elif listener_type == "file" %}
+        {% include "freeradius/common/mods-available/linelog_file" %}
+	{% endif %}
+
+	# Common json module (so %json.quote / map json work)
+	{% include "freeradius/common/mods-available/json" %}
+
+	# always.ok / always.handled used by recv/send blocks
+	{% include "freeradius/common/mods-available/always" %}
+
+	#
+	#  The module under test.  rlm_kafka's config goes directly in the
+	#  kafka { ... } section - librdkafka producer settings sit alongside
+	#  the kafka.produce method's target topic and payload tmpls
+	#  (idiomatic FreeRADIUS - same model as rlm_cache).
+	#
+	kafka {
+		#
+		#  The broker is reachable under the docker compose
+		#  service name "kafka" from the producer container.
+		#
+		server = "kafka:9092"
+
+		#
+		#  Ask librdkafka to request broker-side topic auto-creation
+		#  during metadata resolution.  Without this the broker only
+		#  auto-creates on the first PRODUCE it sees, but librdkafka
+		#  won't send a PRODUCE until metadata says the topic exists -
+		#  classic chicken-and-egg that stalls the first burst of
+		#  yielded requests for up to 30s and races max_request_time.
+		#
+		auto_create_topic = yes
+
+		#
+		#  Shrink librdkafka's "topic just appeared, wait for it
+		#  to propagate" window (default 30s).  With the broker
+		#  also set to auto-create topics, the first produce to
+		#  a fresh topic would otherwise stall the full 30s after
+		#  the initial UNKNOWN_TOPIC metadata reply, racing
+		#  max_request_time.  A small value is safe in a single-
+		#  broker test rig where "propagation" is trivial.
+		#
+		metadata {
+			max_propagation = 1s
+		}
+
+		debug = "broker,topic,msg,queue"
+
+		topic {
+			{{ kafka_topic | default('fr-multi-server-test') }} {
+				#
+				#  Wait for all in-sync replicas to ack before
+				#  firing the delivery report.  With a single
+				#  broker this is equivalent to acks=1 but it
+				#  keeps the test honest about durability.
+				#
+#				request_required_acks = -1
+
+				#
+				#  Payload template expanded per invocation.
+				#  The test harness uses unique User-Names per
+				#  packet so the consumer can verify each
+				#  message landed.
+				#
+				value = "%{User-Name}"
+			}
+		}
+
+		flush_timeout = 5s
+	}
+
+	# attr_filter entries referenced by Access-Challenge / Access-Reject.
+	{% include "freeradius/common/mods-available/attr_filter" %}
+}
+
+policy {
+	# Common control policy configuration.
+	{% include "freeradius/common/policy.d/control" %}
+}
+
+server kafka-producer {
+
+	namespace = radius
+
+	#
+	#  proto_load based synthetic Access-Request generator.  Lives in
+	#  the same virtual server as the rlm_kafka call path so generated
+	#  packets flow straight into `recv Access-Request` without going
+	#  over the wire - no separate load-generator container, no
+	#  inter-container RADIUS hop.
+	#
+	#  Profile parameters come from the per-test env vars set on this
+	#  container by the compose file (which pulls them from the test's
+	#  loadgen: {} block).
+	#
+	listen load {
+		handler = load
+		type = Access-Request
+		transport = step
+
+		step {
+			filename = ${confdir}/load-generator-packets/packet.conf
+
+			max_attributes = 64
+
+			start_pps    = $ENV{TEST_LOADGEN_START_PPS}
+			max_pps      = $ENV{TEST_LOADGEN_MAX_PPS}
+			duration     = $ENV{TEST_LOADGEN_DURATION}
+			step         = $ENV{TEST_LOADGEN_STEP}
+			max_backlog  = $ENV{TEST_LOADGEN_MAX_BACKLOG}
+			parallel     = $ENV{TEST_LOADGEN_PARALLEL}
+			max_requests = $ENV{TEST_LOADGEN_MAX_REQUESTS}
+			on_complete  = stop
+		}
+	}
+
+	listen authentication {
+		type = Access-Request
+		type = Status-Server
+		transport = udp
+		require_message_authenticator = auto
+		limit_proxy_state = auto
+		limit {
+			max_clients = 256
+			max_connections = 256
+			idle_timeout = 60.0
+			dynamic_timeout = 600.0
+			nak_lifetime = 30.0
+			cleanup_delay = 5.0
+		}
+		udp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+		tcp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+	}
+
+	client localhost {
+		ipaddr = 127.0.0.1
+		secret = testing123
+	}
+
+	client upstream-proxy {
+		ipaddr = $ENV{TEST_SUBNET}
+		secret = testing123
+		require_message_authenticator = auto
+		limit_proxy_state = auto
+	}
+
+	#
+	#  Produce a message to Kafka for every inbound Access-Request.
+	#  The value payload is just the User-Name - the test harness uses
+	#  unique User-Names per packet so the consumer can verify each
+	#  message landed.
+	#
+	#  kafka.produce yields until a delivery report arrives; if the
+	#  broker rejects or times out, the module returns fail and we
+	#  reject the packet, which surfaces in the load-generator stats.
+	#
+	recv Access-Request {
+		kafka.produce.{{ kafka_topic | default('fr-multi-server-test') }}
+		accept
+	}
+
+	{% raw %}
+	send Access-Accept {
+		#
+		#  The docker healthcheck pokes the UDP listener with a
+		#  Status-Server every 2s.  In this namespace the reply
+		#  code is Access-Accept, so the healthcheck also lands
+		#  here.  Skip the linelog for non-proto_load traffic so
+		#  the test framework only sees load-generator output.
+		#
+		if (request.Packet-Type == ::Access-Request) {
+			%linelog_test_framework("kafka-producer-accept {\"User-Name\": %json.quote(%{User-Name})}")
+		}
+		handled
+	}
+
+	send Access-Reject {
+		%linelog_test_framework("kafka-producer-reject {\"User-Name\": %json.quote(%{User-Name})}")
+		attr_filter.access_reject
+	}
+	{% endraw %}
+
+	recv Status-Server {
+		ok
+	}
+}

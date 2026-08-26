@@ -1,0 +1,48 @@
+name: 'Set up DinD inside a job'
+description: |
+  Common setup for jobs that run inside a debian/ubuntu container and
+  talk to a docker:dind service sidecar.
+
+  Trusts the internal NetworkRADIUS CA so image pulls from
+  docker.internal.networkradius.com succeed, installs the docker CLI
+  (docker.io, docker-buildx) plus any caller-supplied extras, and
+  blocks until the dind daemon accepts connections.
+
+inputs:
+  packages:
+    description: 'Extra apt packages to install alongside the docker CLI (whitespace-separated)'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    #
+    #  If docker is already on PATH the job is running inside the
+    #  custom self-hosted-docker-cli image, which already has docker
+    #  CLI, ca-certificates trust and git safe.directory baked in.
+    #  Only install caller-supplied extras in that case.
+    #
+    #  Otherwise (e.g. plain ubuntu:24.04 in fork-runner public
+    #  variants) install the full set: docker tools, ca-certificates,
+    #  refresh the trust store and set safe.directory.
+    #
+    - name: Install required packages
+      shell: bash
+      run: |
+        if command -v docker >/dev/null 2>&1; then
+          if [ -n "${{ inputs.packages }}" ]; then
+            apt-get update
+            apt-get install -y --no-install-recommends ${{ inputs.packages }}
+          fi
+        else
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates docker.io docker-buildx ${{ inputs.packages }}
+          /usr/sbin/update-ca-certificates
+          git config --global --add safe.directory '*'
+        fi
+
+    - name: Wait for Docker daemon
+      shell: bash
+      run: timeout 60 sh -c 'while ! docker image ls; do sleep 2; done'

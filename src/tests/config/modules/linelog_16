@@ -1,0 +1,10 @@
+#
+#  Test: invalid file group
+#
+linelog {	# ERROR
+	destination = file
+	file {
+		filename = /tmp/linelog_test
+		group = nonexistent_group_12345
+	}
+}

@@ -101,7 +101,7 @@ int fr_uri_escape(fr_value_box_t *uri_vb, void *uctx)
 		/*
 		 *	We've not found a terminal in the current box
 		 */
-		adv = ctx->uri_part->part_adv[fr_sbuff_char(&sbuff, '\0')];
+		adv = ctx->uri_part->part_adv[fr_sbuff_uint8(&sbuff, '\0')];
 		if (adv == 0) continue;
 
 		/*

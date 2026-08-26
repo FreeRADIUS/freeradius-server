@@ -28,8 +28,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 static int instance_count = 0;
@@ -161,10 +159,15 @@ static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 
 	case XLAT_TMPL:
 		fr_assert(node->fmt != NULL);
-		if (tmpl_is_attr(node->vpt) && (node->fmt[0] == '&')) {
+
+		/*
+		 *	Just print the attribute name, or the nested xlat.
+		 */
+		if (tmpl_is_attr(node->vpt) || (tmpl_is_xlat(node->vpt))) {
 			return fr_sbuff_in_strcpy(out, node->fmt);
+
 		} else {
-			return fr_sbuff_in_sprintf(out, "%%{%pV}", fr_box_strvalue_buffer(node->fmt));
+			return fr_sbuff_in_sprintf(out, "%%{%s}", node->fmt);
 		}
 
 #ifdef HAVE_REGEX
@@ -236,20 +239,18 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 			fr_value_box_t *a, *b;
 
 			a = fr_value_box_list_head(args);
+			if (!a) return;
 			b = fr_value_box_list_next(args, a);
 
-			RDEBUG2("| (%pV %s %pV)", a, fr_tokens[node->call.func->token], b);
-
-#ifndef NDEBUG
-			if (a && b) {
-				a = fr_value_box_list_next(args, b);
-				if (a) {
-					RDEBUG2("| ... ??? %pV", a);
-					fr_assert(0);
-				}
+			if (b) {
+				RDEBUG2("| (%pR %s %pR)", a, fr_tokens[node->call.func->token], b);
+			} else {
+				/*
+				 *	@todo - things like regexes "steal" their arguments.  we should really
+				 *	have a way to print those arguments here.
+				 */
+				RDEBUG2("| (%pR %s ...)", a, fr_tokens[node->call.func->token]);
 			}
-#endif
-
 		}
 	} else {
 		fr_sbuff_t *agg;
@@ -291,7 +292,7 @@ static inline void xlat_debug_log_result(request_t *request, xlat_exp_t const *n
 
 	if (!RDEBUG_ENABLED2) return;
 
-	RDEBUG2("| --> %pV", result);
+	RDEBUG2("| --> %pR", result);
 }
 
 static int xlat_arg_stringify(request_t *request, xlat_arg_parser_t const *arg, xlat_exp_t const *node, fr_value_box_t *vb)
@@ -452,9 +453,21 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 	fr_assert(node->type == XLAT_GROUP);
 
 	/*
-	 *	Concatenate child boxes, then cast to the desired type.
+	 *	Coverity doesn't understand that the previous check for an empty list
+	 *	means that fr_value_box_list_head() will return a box.
 	 */
-	if (concat) {
+#ifdef __COVERITY__
+	if (!vb) return XLAT_ACTION_DONE;
+#endif
+
+	/*
+	 *	Concatenate child boxes, then cast to the desired type.
+	 *	Skip for an explicit `null` - concatenating would force
+	 *	a cast of FR_TYPE_NULL to the arg's declared type, which
+	 *	would either error or silently coerce to a zero-length
+	 *	value.  Let the null box reach check_types intact.
+	 */
+	if (concat && !(fr_value_box_list_num_elements(list) == 1 && fr_type_is_null(vb->type))) {
 		if (fr_value_box_list_concat_in_place(ctx, vb, list, type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 			RPEDEBUG("Function \"%s\" failed concatenating arguments to type %s", name, fr_type_to_str(type));
 			return XLAT_ACTION_FAIL;
@@ -463,6 +476,8 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 
 		goto check_types;
 	}
+
+	if (concat) goto check_types;
 
 	/*
 	 *	Only a single child box is valid here.  Check there is
@@ -473,13 +488,23 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 			RPEDEBUG("Function \"%s\" was provided an incorrect number of values at argument %u, "
 				 "expected %s got %u",
 				 name, arg_num,
-				 arg->required ? "0-1" : "1",
+				 arg->required ? "1" : "0-1",
 				 fr_value_box_list_num_elements(list));
 			return XLAT_ACTION_FAIL;
 		}
 
 	check_types:
 		if (!fr_type_is_leaf(arg->type)) goto check_non_leaf;
+
+		/*
+		 *	FR_TYPE_NULL is an explicit "no value" placeholder
+		 *	(the `null` keyword).  Passing it through to the
+		 *	xlat body lets the implementation distinguish it
+		 *	from a zero-length value of the declared type; the
+		 *	author opted-in by writing `null` in the source.
+		 *	Casting it would paper over the distinction.
+		 */
+		if (fr_type_is_null(vb->type)) return XLAT_ACTION_DONE;
 
 		/*
 		 *	Cast to the correct type if necessary.
@@ -776,6 +801,9 @@ bool xlat_process_return(request_t *request, xlat_t const *func, fr_value_box_li
 
 			/* We are not forgiving for debug builds */
 			fr_assert_fail("Treating invalid return type as fatal");
+#ifdef NDEBUG
+			return false;
+#endif
 		}
 		fr_value_box_mark_safe_for(pos, func->return_safe_for); /* Always set this */
 		count++;
@@ -810,7 +838,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	switch (letter) {
 	case '%':
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, "%", false) < 0) return XLAT_ACTION_FAIL;
+		MEM(fr_value_box_strdup(value, value, NULL, "%", false) >= 0);
 		break;
 
 	/*
@@ -819,17 +847,17 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 
 	case 'I': /* Request ID */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
-		value->datum.uint32 = request->packet->id;
+		value->vb_uint32 = request->packet->id;
 		break;
 
 	case 'n': /* Request number */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = request->number;
+		value->vb_uint64 = request->number;
 		break;
 
 	case 's': /* First request in this sequence */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = request->seq_start;
+		value->vb_uint64 = request->seq_start;
 		break;
 
 	/*
@@ -838,19 +866,17 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 
 	case 'c': /* Current epoch time seconds */
 		/*
-		 *	@todo - leave this as FR_TYPE_DATE, but add an enumv which changes the scale to
-		 *	seconds?
+		 *	Note that this number MUST be an integer,
+		 *	otherwise it will get printed as an actual
+		 *	date!
 		 */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = (uint64_t)fr_time_to_sec(fr_time());
+		value->vb_uint64 = (uint64_t)fr_time_to_sec(fr_time());
 		break;
 
 	case 'C': /* Current epoch time microsecond component */
-		/*
-		 *	@todo - we probably should remove this now that we have FR_TYPE_DATE with scaling.
-		 */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = (uint64_t)fr_time_to_usec(fr_time()) % 1000000;
+		value->vb_uint64 = (uint64_t)fr_time_to_usec(fr_time()) % 1000000;
 		break;
 
 	/*
@@ -865,7 +891,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		}
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_mday;
+		value->vb_uint8 = ts.tm_mday;
 		break;
 
 	case 'D': /* Request date */
@@ -874,52 +900,50 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		strftime(buffer, sizeof(buffer), "%Y%m%d", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(fr_value_box_strdup(value, value, NULL, buffer, false) >= 0);
 		break;
 
 	case 'e': /* Request second */
 		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_sec;
+		value->vb_uint8 = ts.tm_sec;
 		break;
 
 	case 'G': /* Request minute */
 		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_min;
+		value->vb_uint8 = ts.tm_min;
 		break;
 
 	case 'H': /* Request hour */
 		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_hour;
+		value->vb_uint8 = ts.tm_hour;
 		break;
 
 	case 'l': /* Request timestamp as seconds since the epoch */
 		/*
-		 *	@todo - leave this as FR_TYPE_DATE, but add an enumv which changes the scale to
-		 *	seconds?
+		 *	Note that this number MUST be an integer,
+		 *	otherwise it will get printed as an actual
+		 *	date!
 		 */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = (uint64_t ) now;
+		value->vb_uint64 = (uint64_t) now;
 		break;
 
 	case 'm': /* Request month */
 		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_mon + 1;
+		value->vb_uint8 = ts.tm_mon + 1;
 		break;
 
 	case 'M': /* Request time microsecond component */
-		/*
-		 *	@todo - we probably should remove this now that we have FR_TYPE_DATE with scaling.
-		 */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = (uint64_t)fr_time_to_usec(request->packet->timestamp) % 1000000;
+		value->vb_uint64 = (uint64_t)fr_time_to_usec(request->packet->timestamp) % 1000000;
 		break;
 
 	case 'S': /* Request timestamp in SQL format */
@@ -928,7 +952,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(fr_value_box_strdup(value, value, NULL, buffer, false) >= 0);
 		break;
 
 	case 't': /* Request timestamp in CTIME format */
@@ -940,7 +964,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		if (p) *p = '\0';
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(fr_value_box_strdup(value, value, NULL, buffer, false) >= 0);
 	}
 		break;
 
@@ -960,7 +984,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 			 (int) fr_time_to_msec(request->packet->timestamp) % 1000);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(fr_value_box_strdup(value, value, NULL, buffer, false) >= 0);
 	}
 		break;
 
@@ -969,7 +993,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL));
 
-		value->datum.int16 = ts.tm_year + 1900;
+		value->vb_uint16 = ts.tm_year + 1900;
 		break;
 
 	default:
@@ -1122,8 +1146,8 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (unlang_xlat_yield(request, xlat_null_resume, NULL, 0, NULL) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
 
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
-		if (node->call.func) {
-			RDEBUG2("| --> %pV", fr_dcursor_current(out));
+		if ((node->type == XLAT_FUNC) && (node->call.func)) {
+			RDEBUG2("| --> %pR", fr_dcursor_current(out));
 			if (!xlat_process_return(request, node->call.func, (fr_value_box_list_t *)out->dlist,
 					 fr_dcursor_current(out))) return XLAT_ACTION_FAIL;
 		}
@@ -1188,6 +1212,24 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			REXDENT();
 			xlat_debug_log_expansion(request, *in, result, __LINE__);
 			RINDENT();
+		}
+
+		if (t->mctx && node->flags.use_module_status) {
+			module_thread_instance_t *thread = module_thread(t->mctx->mi);
+			if (thread->force) {
+				/*
+				 *	If the module forced rcode is one of the reject ones
+				 *	fail the XLAT early.
+				 */
+				switch (thread->rcode) {
+				default:
+					break;
+
+				case RLM_MODULE_USER_SECTION_REJECT:
+					RDEBUG2("Failing due to failed module thread instance");
+					return XLAT_ACTION_FAIL;
+				}
+			}
 		}
 
 		xa = xlat_process_args(ctx, result, request, node);
@@ -1262,7 +1304,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			if ((node->quote != T_BARE_WORD) && !head->is_argv) {
 				if (!fr_value_box_list_head(result)) {
 					MEM(arg = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
-					fr_value_box_strdup(arg, arg, NULL, "", false);
+					MEM(fr_value_box_strdup(arg, arg, NULL, "", false) >= 0);
 					fr_dcursor_insert(out, arg);
 					break;
 				}
@@ -1358,7 +1400,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	xlat_action_t		xa = XLAT_ACTION_DONE;
 	xlat_exp_t const       	*node;
 	fr_value_box_list_t	result;		/* tmp list so debug works correctly */
-	fr_value_box_t		*value;
+	fr_value_box_t		*value = NULL;
 
 	fr_value_box_list_init(&result);
 
@@ -1425,7 +1467,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			 *	because references aren't threadsafe.
 			 */
 			MEM(value = fr_value_box_alloc_null(ctx));
-			if (unlikely(fr_value_box_copy(value, value, &node->data) < 0)) goto fail;
+			MEM(fr_value_box_copy(value, value, &node->data) >= 0);
 			fr_dcursor_append(out, value);
 			continue;
 
@@ -1562,7 +1604,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 		case XLAT_GROUP:
 			XLAT_DEBUG("** [%i] %s(child) - %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
-			if (!node->group) return XLAT_ACTION_DONE;
+			if (!node->group) continue; /* empty group means we just keep going */
 
 			/*
 			 *	Hand back the child node to the caller
@@ -1653,7 +1695,7 @@ static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_hea
 		}
 
 		len = vb->vb_length * 3;
-		MEM(escaped = talloc_array(vb, char, len));
+		MEM(escaped = talloc_array(vb, char, len + 1));
 		real_len = escape(request, escaped, len, vb->vb_strvalue, UNCONST(void *, escape_ctx));
 
 		fr_value_box_strdup_shallow_replace(vb, escaped, real_len);
@@ -1662,7 +1704,6 @@ static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_hea
 	next:
 		vb = fr_value_box_list_next(list, vb);
 		node = xlat_exp_next(head, node);
-
 	} while (node && vb);
 
 	return 0;
@@ -1726,13 +1767,13 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 		str = fr_value_box_list_aprint(ctx, &result, NULL, NULL);
 		if (!str) goto fail;
 	} else {
-		str = talloc_typed_strdup(ctx, "");
+		str = talloc_strdup(ctx, "");
 	}
 	talloc_free(pool);	/* Memory should be in new ctx */
 
 	*out = str;
 
-	return talloc_array_length(str) - 1;
+	return talloc_strlen(str);
 }
 
 /** Replace %whatever in a string.
@@ -1773,6 +1814,7 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, r
 	}
 
 	if ((size_t)slen >= outlen) {
+		talloc_free(buff);
 		fr_strerror_const("Insufficient output buffer space");
 		return -1;
 	}
@@ -1997,14 +2039,10 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 
 int xlat_eval_init(void)
 {
-	fr_assert(!instance_count);
-
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;
 	}
-
-	instance_count++;
 
 	if (fr_dict_autoload(xlat_eval_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
@@ -2017,6 +2055,7 @@ int xlat_eval_init(void)
 		return -1;
 	}
 
+	instance_count++;
 	return 0;
 }
 

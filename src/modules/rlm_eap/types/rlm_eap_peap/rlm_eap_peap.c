@@ -141,12 +141,7 @@ static int eap_peap_failure(request_t *request, eap_session_t *eap_session, fr_t
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 11);
 
-	/*
-	 *	FIXME: Check the return code.
-	 */
-	fr_tls_session_send(request, tls_session);
-
-	return 1;
+	return fr_tls_session_send(request, tls_session);
 }
 
 /*
@@ -174,12 +169,7 @@ static int eap_peap_success(request_t *request, eap_session_t *eap_session, fr_t
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 11);
 
-	/*
-	 *	FIXME: Check the return code.
-	 */
-	fr_tls_session_send(request, tls_session);
-
-	return 1;
+	return fr_tls_session_send(request, tls_session);
 }
 
 
@@ -194,10 +184,7 @@ static int eap_peap_identity(request_t *request, eap_session_t *eap_session, fr_
 	eap_packet.data[0] = FR_EAP_METHOD_IDENTITY;
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, &eap_packet, sizeof(eap_packet));
-	fr_tls_session_send(request, tls_session);
-	(tls_session->record_init)(&tls_session->clean_in);
-
-	return 1;
+	return fr_tls_session_send(request, tls_session);
 }
 
 /*
@@ -212,7 +199,7 @@ static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 	/*
 	 *	No data, OR only 1 byte of EAP type.
 	 */
-	if (!data || (data_len == 0) || ((data_len <= 1) && (data[0] != FR_EAP_METHOD_IDENTITY))) return 0;
+	if (!data || !data_len || (data[0] != FR_EAP_METHOD_IDENTITY)) return 0;
 
 	/*
 	 *  Since the full EAP header is sent for the EAP Extensions type (Type 33),
@@ -225,6 +212,11 @@ static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 	switch (peap_tunnel->status) {
 	case PEAP_STATUS_SENT_TLV_SUCCESS:
 	case PEAP_STATUS_SENT_TLV_FAILURE:
+		if (data_len < 5) {
+			REDEBUG("Peer sent too-short EAP packet in PEAP Extensions exchange (%zu < 5)", data_len);
+			return -1;
+		}
+
 		if (eap_packet->data[0] != FR_PEAP_EXTENSIONS_TYPE) {
 			REDEBUG("Invalid inner tunnel data, expected method (%u), got (%u)",
 				FR_PEAP_EXTENSIONS_TYPE, eap_packet->data[0]);
@@ -302,12 +294,13 @@ static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_s
 	fr_pair_t *this;
 
 	fr_assert(!fr_pair_list_empty(vps));
-
 	/*
 	 *	Send the EAP data in the first attribute, WITHOUT the
 	 *	header.
 	 */
 	this = fr_pair_list_head(vps);
+	if (this->vp_length <= EAP_HEADER_LEN) return 1;
+
 	(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets + EAP_HEADER_LEN,
 					this->vp_length - EAP_HEADER_LEN);
 
@@ -359,7 +352,7 @@ static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t da
 /*
  *	Use a reply packet to determine what to do.
  */
-static unlang_action_t process_reply(unlang_result_t *p_result, request_t *request, UNUSED void *uctx)
+static unlang_action_t process_reply(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -387,20 +380,16 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 
 	switch (reply->code) {
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		RDEBUG2("Tunneled authentication was successful");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-		eap_peap_success(request, eap_session, tls_session);
+		if (eap_peap_success(request, eap_session, tls_session) < 0) RETURN_UNLANG_FAIL;
 		RETURN_UNLANG_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
-		RDEBUG2("Tunneled authentication was rejected");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
-		eap_peap_failure(request, eap_session, tls_session);
+		if (eap_peap_failure(request, eap_session, tls_session) < 0) RETURN_UNLANG_FAIL;
 		RETURN_UNLANG_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		RDEBUG2("Got tunneled Access-Challenge");
-
 		/*
 		 *	PEAP takes only EAP-Message attributes inside
 		 *	of the tunnel.  Any Reply-Message in the
@@ -420,7 +409,7 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 		RETURN_UNLANG_HANDLED;
 
 	default:
-		RDEBUG2("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		REDEBUG2("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		RETURN_UNLANG_REJECT;
 	}
 }
@@ -492,20 +481,26 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 			t->session_resumption_state = PEAP_RESUMPTION_YES;
 			/* we're good, send success TLV */
 			t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-			eap_peap_success(request, eap_session, tls_session);
+			if (eap_peap_success(request, eap_session, tls_session) < 0) {
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
 
 		} else {
 			/* send an identity request */
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
 			t->status = PEAP_STATUS_INNER_IDENTITY_REQ_SENT;
-			eap_peap_identity(request, eap_session, tls_session);
+			if (eap_peap_identity(request, eap_session, tls_session) < 0) {
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
 		}
 		rcode = RLM_MODULE_HANDLED;
 		goto finish;
 
 	case PEAP_STATUS_INNER_IDENTITY_REQ_SENT:
 		/* we're expecting an identity response */
-		if (data[0] != FR_EAP_METHOD_IDENTITY) {
+		if (!data_len || (data[0] != FR_EAP_METHOD_IDENTITY)) {
 			REDEBUG("Expected EAP-Identity, got something else");
 			rcode = RLM_MODULE_REJECT;
 			goto finish;
@@ -550,7 +545,10 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 			t->status = PEAP_STATUS_INNER_IDENTITY_REQ_SENT;
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
 
-			eap_peap_identity(request, eap_session, tls_session);
+			if (eap_peap_identity(request, eap_session, tls_session) < 0) {
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
 			rcode = RLM_MODULE_HANDLED;
 			goto finish;
 		}
@@ -659,7 +657,7 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 	} /* else there WAS a t->username */
 
 	if (t->username) {
-		vp = fr_pair_copy(child->request_ctx, t->username);
+		MEM(vp = fr_pair_copy(child->request_ctx, t->username));
 		fr_pair_append(&child->request_pairs, vp);
 		RDEBUG2("Setting request.User-Name from tunneled (inner) identity \"%s\"",
 			vp->vp_strvalue);
@@ -764,7 +762,7 @@ static unlang_action_t process_rcode(unlang_result_t *p_result, module_ctx_t con
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		if (eap_tls_success(request, eap_session, &prf_label) > 0) RETURN_UNLANG_FAIL;
+		if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_UNLANG_FAIL;
 		p_result->rcode = RLM_MODULE_OK;
 
 		/*

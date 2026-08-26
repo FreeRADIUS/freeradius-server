@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -34,20 +34,15 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/uri.h>
-#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/ldap/conf.h>
-#include <freeradius-devel/ldap/base.h>
 
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/rcode.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/map.h>
 
-#include <ldap.h>
 #include "rlm_ldap.h"
 
 typedef struct {
@@ -96,11 +91,20 @@ static const call_env_parser_t sasl_call_env[] = {
 	CALL_ENV_TERMINATOR
 };
 
+static fr_table_num_sorted_t const profile_search_mode_table[] = {
+	{ L("auto"),	LDAP_PROFILE_SEARCH_MODE_AUTO	},
+	{ L("bulk"),	LDAP_PROFILE_SEARCH_MODE_BULK	},
+	{ L("seq"),	LDAP_PROFILE_SEARCH_MODE_SEQ	}
+};
+static size_t profile_search_mode_table_len = NUM_ELEMENTS(profile_search_mode_table);
+
 static conf_parser_t profile_config[] = {
 	{ FR_CONF_OFFSET("scope", rlm_ldap_t, profile.obj_scope), .dflt = "base",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
-	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile.attr) },
-	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile.attr_suspend) },
+	{ FR_CONF_OFFSET("search_mode", rlm_ldap_t, profile.search_mode), .dflt = "auto",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = profile_search_mode_table, .len = &profile_search_mode_table_len } },
+	{ FR_CONF_DEPRECATED("attribute", rlm_ldap_t, user.profile_attr) },
+	{ FR_CONF_DEPRECATED("attribute_suspend", rlm_ldap_t, user.profile_attr_suspend) },
 	{ FR_CONF_OFFSET("check_attribute", rlm_ldap_t, profile.check_attr) },
 	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, profile.obj_sort_by) },
 	{ FR_CONF_OFFSET("fallthrough_attribute", rlm_ldap_t, profile.fallthrough_attr) },
@@ -122,6 +126,8 @@ static conf_parser_t user_config[] = {
 	{ FR_CONF_OFFSET("access_value_suspend", rlm_ldap_t, user.access_value_suspend), .dflt = "suspended" },
 	{ FR_CONF_OFFSET("dn_attribute", rlm_ldap_t, user.dn_attr_str), .dflt = "LDAP-UserDN" },
 	{ FR_CONF_OFFSET_IS_SET("expect_password", FR_TYPE_BOOL, 0, rlm_ldap_t, user.expect_password) },
+	{ FR_CONF_OFFSET("profile_attribute", rlm_ldap_t, user.profile_attr) },
+	{ FR_CONF_OFFSET("profile_attribute_suspend", rlm_ldap_t, user.profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -142,6 +148,8 @@ static conf_parser_t group_config[] = {
 	{ FR_CONF_OFFSET("group_attribute", rlm_ldap_t, group.attribute) },
 	{ FR_CONF_OFFSET("allow_dangling_group_ref", rlm_ldap_t, group.allow_dangling_refs), .dflt = "no" },
 	{ FR_CONF_OFFSET("skip_on_suspend", rlm_ldap_t, group.skip_on_suspend), .dflt = "yes"},
+	{ FR_CONF_OFFSET("profile_attribute", rlm_ldap_t, group.profile_attr) },
+	{ FR_CONF_OFFSET("profile_attribute_suspend", rlm_ldap_t, group.profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -157,6 +165,8 @@ static const conf_parser_t module_config[] = {
 	FR_LDAP_COMMON_CONF(rlm_ldap_t),
 
 	{ FR_CONF_OFFSET("valuepair_attribute", rlm_ldap_t, valuepair_attr) },
+
+	{ FR_CONF_OFFSET("dn_attribute", rlm_ldap_t, dn_attr) },
 
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
 	{ FR_CONF_OFFSET("session_tracking", rlm_ldap_t, session_tracking), .dflt = "no" },
@@ -186,9 +196,36 @@ static const conf_parser_t module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#define LDAP_DN_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_dn_escape_func
+#define LDAP_FILTER_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_filter_escape_func
+
+#define LDAP_DN_CALL_ENV_ESCAPE \
+	.pair.escape = { \
+		.box_escape = { \
+			.func = fr_ldap_dn_box_escape, \
+			.safe_for = LDAP_DN_SAFE_FOR, \
+			.always_escape = false, \
+		}, \
+		.mode = TMPL_ESCAPE_PRE_CONCAT \
+	}, \
+	.pair.literals_safe_for = LDAP_DN_SAFE_FOR
+
+#define LDAP_FILTER_CALL_ENV_ESCAPE \
+	.pair.escape = { \
+		.box_escape = { \
+			.func = fr_ldap_filter_box_escape, \
+			.safe_for = LDAP_FILTER_SAFE_FOR, \
+			.always_escape = false, \
+		}, \
+		.mode = TMPL_ESCAPE_PRE_CONCAT \
+	}, \
+	.pair.literals_safe_for = LDAP_FILTER_SAFE_FOR
+
 #define USER_CALL_ENV_COMMON(_struct) \
-	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, _struct, user_base), .pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING }, \
-	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, _struct, user_filter), .pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING }
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, _struct, user_base), \
+	  .pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING, LDAP_DN_CALL_ENV_ESCAPE }, \
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, _struct, user_filter), \
+	  .pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING, LDAP_FILTER_CALL_ENV_ESCAPE }
 
 static const call_env_method_t authenticate_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_auth_call_env_t),
@@ -228,26 +265,23 @@ static const call_env_method_t authorize_method_env = {
 					 })) },
 		{ FR_CALL_ENV_SUBSECTION("group", NULL, CALL_ENV_FLAG_NONE,
 					 ((call_env_parser_t[]) {
-						{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, group_base) },
+						{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, group_base),
+						  LDAP_DN_CALL_ENV_ESCAPE },
 						{ FR_CALL_ENV_PARSE_ONLY_OFFSET("membership_filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, group_filter),
 						  .pair.func = ldap_group_filter_parse,
-						  .pair.escape = {
-							  .box_escape = {
-								  .func = fr_ldap_box_escape,
-								  .safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
-								  .always_escape = false,
-							  },
-							.mode = TMPL_ESCAPE_PRE_CONCAT
-						  },
-						  .pair.literals_safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+						  LDAP_FILTER_CALL_ENV_ESCAPE
 						},
 						CALL_ENV_TERMINATOR
 					 })) },
 		{ FR_CALL_ENV_SUBSECTION("profile", NULL, CALL_ENV_FLAG_NONE,
 					 ((call_env_parser_t[]) {
-						{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, default_profile) },
+						{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, default_profile),
+						  LDAP_DN_CALL_ENV_ESCAPE },
+						{ FR_CALL_ENV_OFFSET("child_rdn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, ldap_autz_call_env_t, profile_child_rdn),
+						  LDAP_DN_CALL_ENV_ESCAPE },
 						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, profile_filter),
-								.pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },	//!< Correct filter for when the DN is known.
+						  .pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING,
+						  LDAP_FILTER_CALL_ENV_ESCAPE },
 						CALL_ENV_TERMINATOR
 					 } )) },
 		CALL_ENV_TERMINATOR
@@ -279,18 +313,11 @@ static const call_env_method_t xlat_memberof_method_env = {
 					 })) },
 		{ FR_CALL_ENV_SUBSECTION("group", NULL, CALL_ENV_FLAG_NONE,
 					 ((call_env_parser_t[]) {
-						{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_memberof_call_env_t, group_base) },
+						{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_memberof_call_env_t, group_base),
+						  LDAP_DN_CALL_ENV_ESCAPE },
 						{ FR_CALL_ENV_PARSE_ONLY_OFFSET("membership_filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_memberof_call_env_t, group_filter),
 						  .pair.func = ldap_group_filter_parse,
-						  .pair.escape = {
-							  .box_escape = {
-								  .func = fr_ldap_box_escape,
-								  .safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
-								  .always_escape = false,
-							  },
-							.mode = TMPL_ESCAPE_PRE_CONCAT
-						  },
-						  .pair.literals_safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+						  LDAP_FILTER_CALL_ENV_ESCAPE
 						},
 						CALL_ENV_TERMINATOR
 					 })) },
@@ -309,7 +336,8 @@ static const call_env_method_t xlat_profile_method_env = {
 		{ FR_CALL_ENV_SUBSECTION("profile", NULL, CALL_ENV_FLAG_NONE,
 					 ((call_env_parser_t[])  {
 						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_profile_call_env_t, profile_filter),
-								     .pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING }, //!< Correct filter for when the DN is known.
+								     .pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING,
+								     LDAP_FILTER_CALL_ENV_ESCAPE }, //!< Correct filter for when the DN is known.
 						CALL_ENV_TERMINATOR
 					 })) },
 		CALL_ENV_TERMINATOR
@@ -401,11 +429,7 @@ static fr_table_num_sorted_t const ldap_uri_scheme_table[] = {
 };
 static size_t ldap_uri_scheme_table_len = NUM_ELEMENTS(ldap_uri_scheme_table);
 
-/** This is the common function that actually ends up doing all the URI escaping
- */
-#define LDAP_URI_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_uri_escape_func
-
-static xlat_arg_parser_t const ldap_uri_escape_xlat_arg[] = {
+static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
 	{ .required=true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -415,11 +439,11 @@ static xlat_arg_parser_t const ldap_safe_xlat_arg[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Escape LDAP string
+/** Escape a string for use in an RFC 4514 DN attribute value
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t ldap_uri_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t ldap_dn_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  UNUSED xlat_ctx_t const *xctx,
 					  request_t *request, fr_value_box_list_t *in)
 {
@@ -431,34 +455,61 @@ static xlat_action_t ldap_uri_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(in_group->type == FR_TYPE_GROUP);
 
 	while ((in_vb = fr_value_box_list_pop_head(&in_group->vb_group))) {
-		/*
-		 *	If it's already safe, just move it over.
-		 */
-		if (fr_value_box_is_safe_for_only(in_vb, LDAP_URI_SAFE_FOR)) {
+		if (fr_value_box_is_safe_for_only(in_vb, LDAP_DN_SAFE_FOR)) {
 			fr_dcursor_append(out, in_vb);
 			continue;
 		}
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 
-		/*
-		 *	Maximum space needed for output would be 3 times the input if every
-		 *	char needed escaping
-		 */
 		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length * 3, in_vb->vb_length * 3)) {
 			REDEBUG("Failed to allocate buffer for escaped string");
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
 
-		/*
-		 *	Call the escape function, including the space for the trailing NULL
-		 */
-		len = fr_ldap_uri_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
+		len = fr_ldap_dn_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
 
-		/*
-		 *	Trim buffer to fit used space and assign to box
-		 */
+		fr_sbuff_trim_talloc(&sbuff, len);
+		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
+		talloc_free(in_vb);
+
+		fr_dcursor_append(out, vb);
+	}
+	return XLAT_ACTION_DONE;
+}
+
+/** Escape a string for use as an RFC 4515 filter assertion value
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_filter_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					      UNUSED xlat_ctx_t const *xctx,
+					      request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t		*vb, *in_vb, *in_group = fr_value_box_list_head(in);
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_ctx;
+	size_t			len;
+
+	fr_assert(in_group->type == FR_TYPE_GROUP);
+
+	while ((in_vb = fr_value_box_list_pop_head(&in_group->vb_group))) {
+		if (fr_value_box_is_safe_for_only(in_vb, LDAP_FILTER_SAFE_FOR)) {
+			fr_dcursor_append(out, in_vb);
+			continue;
+		}
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+
+		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length * 3, in_vb->vb_length * 3)) {
+			REDEBUG("Failed to allocate buffer for escaped string");
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
+
+		len = fr_ldap_filter_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
+
 		fr_sbuff_trim_talloc(&sbuff, len);
 		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
 		talloc_free(in_vb);
@@ -537,7 +588,7 @@ static int ldap_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	/*
 	 *	Call the escape function, including the space for the trailing NULL
 	 */
-	len = fr_ldap_uri_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
+	len = fr_ldap_dn_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
 
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
@@ -728,24 +779,24 @@ static void ldap_xlat_signal(xlat_ctx_t const *xctx, request_t *request, UNUSED 
  *	This is equivalent to the old "tainted_allowed" flag.
  */
 static fr_uri_part_t const ldap_uri_parts[] = {
-	{ .name = "scheme", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 }, .extra_skip = 2 },
-	{ .name = "host", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 } },
-	{ .name = "port", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 } },
-	{ .name = "dn", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = ldap_uri_part_escape },
-	{ .name = "attrs", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }},
-	{ .name = "scope", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = ldap_uri_part_escape },
-	{ .name = "filter", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1}, .func = ldap_uri_part_escape },
-	{ .name = "exts", .safe_for = LDAP_URI_SAFE_FOR, .func = ldap_uri_part_escape },
+	{ .name = "scheme", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 }, .extra_skip = 2 },
+	{ .name = "host", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 } },
+	{ .name = "port", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 } },
+	{ .name = "dn", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = ldap_uri_part_escape },
+	{ .name = "attrs", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }},
+	{ .name = "scope", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = ldap_uri_part_escape },
+	{ .name = "filter", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1}, .func = ldap_uri_part_escape },
+	{ .name = "exts", .safe_for = LDAP_DN_SAFE_FOR, .func = ldap_uri_part_escape },
 	XLAT_URI_PART_TERMINATOR
 };
 
 static fr_uri_part_t const ldap_dn_parts[] = {
-	{ .name = "dn", .safe_for = LDAP_URI_SAFE_FOR , .func = ldap_uri_part_escape },
+	{ .name = "dn", .safe_for = LDAP_DN_SAFE_FOR , .func = ldap_uri_part_escape },
 	XLAT_URI_PART_TERMINATOR
 };
 
 static xlat_arg_parser_t const ldap_xlat_arg[] = {
-	{ .required = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR, .will_escape = true, },
+	{ .required = true, .type = FR_TYPE_STRING, .safe_for = LDAP_DN_SAFE_FOR, .will_escape = true, },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -1042,7 +1093,7 @@ static xlat_action_t ldap_group_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 }
 
 static xlat_arg_parser_t const ldap_group_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING, .safe_for = LDAP_DN_SAFE_FOR },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -1307,6 +1358,104 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
+/** State of an in progress whoami extended operation
+ *
+ */
+typedef struct {
+	fr_ldap_query_t	*query;			//!< Current query performing the whoami operation.
+} ldap_xlat_whoami_ctx_t;
+
+/** Return the authorization identity from the whoami response
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_whoami_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					     request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	ldap_xlat_whoami_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_xlat_whoami_ctx_t);
+	fr_ldap_query_t		*query = xlat_ctx->query;
+	fr_value_box_t		*vb;
+	struct berval		*authz_id = NULL;
+	char const		*p;
+	size_t			len;
+	int			err;
+
+	if (query->ret != LDAP_RESULT_SUCCESS) {
+		REDEBUG("Whoami extended operation failed");
+		return XLAT_ACTION_FAIL;
+	}
+
+	err = ldap_parse_extended_result(query->ldap_conn->handle, query->result, NULL, &authz_id, false);
+	if (err != LDAP_SUCCESS) {
+		REDEBUG("Failed parsing whoami response: %s", ldap_err2string(err));
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	An empty authzId means the connection is bound anonymously.
+	 */
+	if (!authz_id || (authz_id->bv_len == 0)) {
+		if (authz_id) ber_bvfree(authz_id);
+		return XLAT_ACTION_DONE;
+	}
+
+	/*
+	 *	RFC 4532 returns an authzId (RFC 4513), "dn:<dn>" for
+	 *	distinguished names.  Strip the prefix, "u:<user>" forms
+	 *	are returned unmodified.
+	 */
+	p = authz_id->bv_val;
+	len = authz_id->bv_len;
+	if ((len >= 3) && (memcmp(p, "dn:", 3) == 0)) {
+		p += 3;
+		len -= 3;
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	MEM(fr_value_box_bstrndup(vb, vb, NULL, p, len, false) == 0);
+	fr_dcursor_append(out, vb);
+
+	ber_bvfree(authz_id);
+
+	return XLAT_ACTION_DONE;
+}
+
+/** Perform the RFC 4532 whoami extended operation
+ *
+ * Runs on the same connections as the module's queries, so the identity
+ * returned is the one the directory resolved for the admin bind.
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_whoami_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx, request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_ldap_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
+	fr_ldap_config_t const	*handle_config = t->config;
+	fr_ldap_thread_trunk_t	*ttrunk;
+	ldap_xlat_whoami_ctx_t	*xlat_ctx;
+
+	ttrunk = fr_thread_ldap_trunk_get(t, handle_config->server, handle_config->admin_identity,
+					  handle_config->admin_password, request, handle_config);
+	if (!ttrunk) {
+		REDEBUG("Unable to get LDAP trunk for whoami");
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(xlat_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_xlat_whoami_ctx_t));
+
+	if (unlang_xlat_yield(request, ldap_whoami_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) {
+	error:
+		talloc_free(xlat_ctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_ldap_trunk_extended(xlat_ctx, &xlat_ctx->query, request, ttrunk,
+				   LDAP_EXOP_WHO_AM_I, NULL, NULL, NULL) != UNLANG_ACTION_PUSHED_CHILD) goto error;
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
 /*
  *	Verify the result of the map.
  */
@@ -1376,28 +1525,28 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 		for (map = map_list_head(map_ctx->maps), i = 0;
 		     map != NULL;
 		     map = map_list_next(map_ctx->maps, map), i++) {
-			int			ret;
-			fr_ldap_result_t	attr;
+			fr_ldap_value_iter_t	*iter;
+			int			ret, iter_err = 0;
 
-			attr.values = ldap_get_values_len(query->ldap_conn->handle, entry, expanded->attrs[i]);
-			if (!attr.values) {
+			if (!fr_ldap_value_iter_alloc(&iter_err, &iter, request, query->ldap_conn->handle, entry,
+						      expanded->attrs[i])) {
+				talloc_free(iter);
+				if (unlikely(iter_err < 0)) {
+					RPERROR("Failed parsing entry");
+					rcode = RLM_MODULE_FAIL;
+					ldap_memfree(dn);
+					goto finish;
+				}
+
 				/*
 				 *	Many LDAP directories don't expose the DN of
 				 *	the object as an attribute, so we need this
 				 *	hack, to allow the user to retrieve it.
 				 */
 				if (strcmp(LDAP_VIRTUAL_DN_ATTR, expanded->attrs[i]) == 0) {
-					struct berval value;
-					struct berval *values[2] = { &value, NULL };
-
 					if (!dn) dn = ldap_get_dn(query->ldap_conn->handle, entry);
-					value.bv_val = dn;
-					value.bv_len = strlen(dn);
 
-					attr.values = values;
-					attr.count = 1;
-
-					ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
+					ret = map_to_request(request, map, fr_ldap_map_getdn, dn);
 					if (ret == -1) {
 						rcode = RLM_MODULE_FAIL;
 						ldap_memfree(dn);
@@ -1410,10 +1559,9 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 
 				continue;
 			}
-			attr.count = ldap_count_values_len(attr.values);
 
-			ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
-			ldap_value_free_len(attr.values);
+			ret = map_to_request(request, map, fr_ldap_map_getvalue, iter);
+			talloc_free(iter);
 			if (ret == -1) {
 				rcode = RLM_MODULE_FAIL;
 				ldap_memfree(dn);
@@ -1619,6 +1767,29 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	return fr_ldap_bind_auth_async(p_result, request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
 }
 
+/** Remove duplicate DNs from a NULL terminated list, keeping the first occurrence
+ *
+ * A profile referenced by both a group object and the user object must
+ * only be applied once.
+ */
+static void profile_dn_list_dedupe(char const **dn_list)
+{
+	int i, j, n;
+
+	for (n = 0; dn_list[n]; n++);
+
+	for (i = 1; i < n; i++) {
+		for (j = 0; j < i; j++) {
+			if (strcasecmp(dn_list[i], dn_list[j]) != 0) continue;
+
+			memmove(&dn_list[i], &dn_list[i + 1], (n - i) * sizeof(dn_list[0]));
+			n--;
+			i--;
+			break;
+		}
+	}
+}
+
 #define REPEAT_MOD_AUTHORIZE_RESUME \
 	if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) do { \
 		p_result->rcode = RLM_MODULE_FAIL; \
@@ -1696,9 +1867,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		}
 
 		/*
-		 *	Check if we need to cache group memberships
+		 *	Check if we need to cache group memberships,
+		 *	or record group DNs for the group profile search.
 		 */
-		if ((inst->group.cacheable_dn || inst->group.cacheable_name) && (inst->group.userobj_membership_attr)) {
+		if ((inst->group.cacheable_dn || inst->group.cacheable_name ||
+		     rlm_ldap_profile_attr_select(inst->group.profile_attr, inst->group.profile_attr_suspend,
+						  autz_ctx->access_state)) &&
+		    (inst->group.userobj_membership_attr)) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			if (rlm_ldap_cacheable_userobj(p_result, request, autz_ctx,
 						       inst->group.userobj_membership_attr) == UNLANG_ACTION_PUSHED_CHILD) {
@@ -1710,9 +1885,24 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_GROUP:
-		if (inst->group.cacheable_dn || inst->group.cacheable_name) {
+		if (inst->group.cacheable_dn || inst->group.cacheable_name ||
+		    rlm_ldap_profile_attr_select(inst->group.profile_attr, inst->group.profile_attr_suspend,
+						 autz_ctx->access_state)) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			if (rlm_ldap_cacheable_groupobj(p_result, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
+				autz_ctx->status = LDAP_AUTZ_GROUP_PROFILES;
+				return UNLANG_ACTION_PUSHED_CHILD;
+			}
+			if (p_result->rcode != RLM_MODULE_OK) goto finish;
+		}
+		FALL_THROUGH;
+
+	case LDAP_AUTZ_GROUP_PROFILES:
+		if (rlm_ldap_profile_attr_select(inst->group.profile_attr, inst->group.profile_attr_suspend,
+						 autz_ctx->access_state) &&
+		    autz_ctx->group_dn_list && (talloc_str_list_num(autz_ctx->group_dn_list) > 0)) {
+			REPEAT_MOD_AUTHORIZE_RESUME;
+			if (rlm_ldap_group_profiles(p_result, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				autz_ctx->status = LDAP_AUTZ_POST_GROUP;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
@@ -1794,113 +1984,96 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		}
 		FALL_THROUGH;
 
-	case LDAP_AUTZ_DEFAULT_PROFILE:
+	case LDAP_AUTZ_PROFILES:
+	{
+		talloc_str_list_t	*list;
+		char const		*profile_attr;
+		char const		**dn_p;
+		bool			have_default = !fr_box_is_null(&call_env->default_profile);
+		size_t			count = 0, strings_len = 0, group_count = 0, i;
+
 		/*
-		 *	Apply ONE user profile, or a default user profile.
+		 *	Which set of profiles to apply depends on the user's
+		 *	access state.  The default profile always applies.
 		 */
-		if (call_env->default_profile.type == FR_TYPE_STRING) {
-			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk,
-						   call_env->default_profile.vb_strvalue,
-						   inst->profile.obj_scope, NULL, &autz_ctx->expanded);
-			switch (ret) {
-			case UNLANG_ACTION_FAIL:
+		profile_attr = rlm_ldap_profile_attr_select(inst->user.profile_attr, inst->user.profile_attr_suspend,
+							    autz_ctx->access_state);
+		if (profile_attr) {
+			if (unlikely(fr_ldap_result_values_len(&count, &strings_len, handle,
+							       autz_ctx->query->result, profile_attr) < 0)) {
+				RPERROR("Failed parsing user object");
 				p_result->rcode = RLM_MODULE_FAIL;
 				goto finish;
-
-			case UNLANG_ACTION_PUSHED_CHILD:
-				autz_ctx->status = LDAP_AUTZ_POST_DEFAULT_PROFILE;
-				return UNLANG_ACTION_PUSHED_CHILD;
-
-			default:
-				break;
+			}
+			if (count > 0) {
+				RDEBUG2("Processing %zu profile(s) found in attribute \"%s\"", count, profile_attr);
+			} else {
+				RDEBUG2("No profile(s) found in attribute \"%s\"", profile_attr);
 			}
 		}
-		FALL_THROUGH;
 
-	case LDAP_AUTZ_POST_DEFAULT_PROFILE:
-		/*
-		 *	Did we jump back her after applying the default profile?
-		 */
-		if (autz_ctx->status == LDAP_AUTZ_POST_DEFAULT_PROFILE) autz_ctx->rcode = RLM_MODULE_UPDATED;
+		if (autz_ctx->group_profile_dn_list) {
+			group_count = talloc_str_list_num(autz_ctx->group_profile_dn_list);
+			RDEBUG2("Processing %zu profile(s) found in group objects", group_count);
+		}
+
+		if (!have_default && (group_count == 0) && (count == 0)) break;
 
 		/*
-		 *	Apply a SET of user profiles.
+		 *	Build the list of profile DNs to apply, the default
+		 *	profile first, then the profiles from the group
+		 *	objects, then the profiles from the user object.
 		 */
-		switch (autz_ctx->access_state) {
-		case LDAP_ACCESS_ALLOWED:
-			if (inst->profile.attr) {
-				int count;
+		MEM(list = fr_ldap_str_list_afrom_result(autz_ctx, handle, autz_ctx->query->result,
+							 count ? profile_attr : NULL,
+							 (have_default ? 1 : 0) + group_count));
+		dn_p = list->strings;
+		if (have_default) *dn_p++ = call_env->default_profile.vb_strvalue;
+		for (i = 0; i < group_count; i++) *dn_p++ = autz_ctx->group_profile_dn_list->strings[i];
 
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile.attr);
-				count = ldap_count_values_len(autz_ctx->profile_values);
-				if (count > 0) {
-					RDEBUG2("Processing %i profile(s) found in attribute \"%s\"", count, inst->profile.attr);
-					if (RDEBUG_ENABLED3) {
-						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
-							RDEBUG3("Will evaluate profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
-						}
-					}
-				} else {
-					RDEBUG2("No profile(s) found in attribute \"%s\"", inst->profile.attr);
-				}
-			}
-			break;
-
-		case LDAP_ACCESS_SUSPENDED:
-			if (inst->profile.attr_suspend) {
-				int count;
-
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile.attr_suspend);
-				count = ldap_count_values_len(autz_ctx->profile_values);
-				if (count > 0) {
-					RDEBUG2("Processing %i suspension profile(s) found in attribute \"%s\"", count, inst->profile.attr_suspend);
-					if (RDEBUG_ENABLED3) {
-						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
-							RDEBUG3("Will evaluate suspenension profile with DN \"%pV\"",
-								fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
-						}
-					}
-				} else {
-					RDEBUG2("No suspension profile(s) found in attribute \"%s\"", inst->profile.attr_suspend);
-				}
-			}
-			break;
-
-		case LDAP_ACCESS_DISALLOWED:
-			break;
-		}
-
-		FALL_THROUGH;
-
-	case LDAP_AUTZ_USER_PROFILE:
 		/*
-		 *	After each profile has been applied, execution will restart here.
-		 *	Start by clearing the previously used value.
+		 *	Evaluate the child object below each profile instead
+		 *	of the profile itself.
 		 */
-		if (autz_ctx->profile_value) {
-			TALLOC_FREE(autz_ctx->profile_value);
-			autz_ctx->rcode = RLM_MODULE_UPDATED;	/* We're back here after applying a profile successfully */
-		}
-
-		if (autz_ctx->profile_values && autz_ctx->profile_values[autz_ctx->value_idx]) {
-			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
-			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
-						   inst->profile.obj_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
-			switch (ret) {
-			case UNLANG_ACTION_FAIL:
-				p_result->rcode = RLM_MODULE_FAIL;
-				goto finish;
-
-			case UNLANG_ACTION_PUSHED_CHILD:
-				autz_ctx->status = LDAP_AUTZ_USER_PROFILE;
-				return UNLANG_ACTION_PUSHED_CHILD;
-
-			default:
-				break;
+		if (!fr_box_is_null(&call_env->profile_child_rdn) && (call_env->profile_child_rdn.vb_length > 0)) {
+			for (dn_p = list->strings; *dn_p; dn_p++) {
+				MEM(*dn_p = talloc_asprintf(list, "%s,%s",
+							    call_env->profile_child_rdn.vb_strvalue, *dn_p));
 			}
 		}
+
+		autz_ctx->profile_dn_list = list->strings;
+		profile_dn_list_dedupe(autz_ctx->profile_dn_list);
+
+		if (!autz_ctx->profile_dn_list[0]) break;
+
+		if (RDEBUG_ENABLED3) {
+			for (dn_p = autz_ctx->profile_dn_list; *dn_p; dn_p++) {
+				RDEBUG3("Will evaluate profile with DN \"%s\"", *dn_p);
+			}
+		}
+
+		REPEAT_MOD_AUTHORIZE_RESUME;
+		ret = rlm_ldap_map_profiles(NULL, &autz_ctx->profiles_applied, inst, request, autz_ctx->ttrunk,
+					    autz_ctx->profile_dn_list, call_env->profile_filter.vb_strvalue,
+					    &autz_ctx->expanded);
+		switch (ret) {
+		case UNLANG_ACTION_FAIL:
+			p_result->rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case UNLANG_ACTION_PUSHED_CHILD:
+			autz_ctx->status = LDAP_AUTZ_POST_PROFILES;
+			return UNLANG_ACTION_PUSHED_CHILD;
+
+		default:
+			break;
+		}
+	}
+	FALL_THROUGH;
+
+	case LDAP_AUTZ_POST_PROFILES:
+		if (autz_ctx->profiles_applied > 0) autz_ctx->rcode = RLM_MODULE_UPDATED;
 		break;
 	}
 
@@ -1926,7 +2099,6 @@ static void mod_authorize_cancel(module_ctx_t const *mctx, UNUSED request_t *req
 static int autz_ctx_free(ldap_autz_ctx_t *autz_ctx)
 {
 	talloc_free(autz_ctx->expanded.ctx);
-	if (autz_ctx->profile_values) ldap_value_free_len(autz_ctx->profile_values);
 	return 0;
 }
 
@@ -1968,19 +2140,21 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 		expanded->attrs[expanded->count++] = inst->user.obj_access_attr;
 	}
 
-	if (inst->group.userobj_membership_attr && (inst->group.cacheable_dn || inst->group.cacheable_name)) {
+	if (inst->group.userobj_membership_attr &&
+	    (inst->group.cacheable_dn || inst->group.cacheable_name ||
+	     inst->group.profile_attr || inst->group.profile_attr_suspend)) {
 		CHECK_EXPANDED_SPACE(expanded);
 		expanded->attrs[expanded->count++] = inst->group.userobj_membership_attr;
 	}
 
-	if (inst->profile.attr) {
+	if (inst->user.profile_attr) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->profile.attr;
+		expanded->attrs[expanded->count++] = inst->user.profile_attr;
 	}
 
-	if (inst->profile.attr_suspend) {
+	if (inst->user.profile_attr_suspend) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->profile.attr_suspend;
+		expanded->attrs[expanded->count++] = inst->user.profile_attr_suspend;
 	}
 	expanded->attrs[expanded->count] = NULL;
 
@@ -2452,7 +2626,7 @@ static int ldap_mod_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 						     }));
 
 		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
-					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 					 cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 					 t_rules);
 
@@ -2643,7 +2817,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	Explicitly prevent multiple server definitions
 		 *	being used in the same string.
 		 */
-		for (j = 0; j < talloc_array_length(value) - 1; j++) {
+		for (j = 0; j < talloc_strlen(value); j++) {
 			switch (value[j]) {
 			case ' ':
 			case ',':
@@ -2730,15 +2904,44 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	SSS_CONTROL_BUILD(user)
 	SSS_CONTROL_BUILD(profile)
 
+	/*
+	 *	Bulk retrieval matches profile objects by their exact DN,
+	 *	so subtree (non-base scope) semantics cannot be preserved.
+	 */
+	switch (inst->profile.search_mode) {
+	case LDAP_PROFILE_SEARCH_MODE_AUTO:
+		if (inst->profile.obj_sort_ctrl && (inst->profile.obj_scope == LDAP_SCOPE_BASE)) {
+			inst->profile.search_mode = LDAP_PROFILE_SEARCH_MODE_BULK;
+		} else {
+			inst->profile.search_mode = LDAP_PROFILE_SEARCH_MODE_SEQ;
+		}
+		break;
+
+	case LDAP_PROFILE_SEARCH_MODE_BULK:
+		if (inst->profile.obj_scope != LDAP_SCOPE_BASE) {
+			cf_log_err(conf, "'profile.search_mode = bulk' requires 'profile.scope = base'");
+			return -1;
+		}
+		if (!inst->profile.obj_sort_ctrl) {
+			cf_log_err(conf, "'profile.search_mode = bulk' requires 'profile.sort_by', "
+				   "else profile evaluation order is non-deterministic");
+			return -1;
+		}
+		break;
+
+	case LDAP_PROFILE_SEARCH_MODE_SEQ:
+		break;
+	}
+
 	if (inst->handle_config.tls_require_cert_str) {
 		/*
 		 *	Convert cert strictness to enumerated constants
 		 */
 		inst->handle_config.tls_require_cert = fr_table_value_by_str(fr_ldap_tls_require_cert,
-							      inst->handle_config.tls_require_cert_str, -1);
+									     inst->handle_config.tls_require_cert_str, -1);
 		if (inst->handle_config.tls_require_cert < 0) {
 			cf_log_err(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
-				      "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
+				   "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
 			return -1;
 		}
 	}
@@ -2874,7 +3077,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_func_args_set(xlat, ldap_xlat_arg);
 	xlat_func_call_env_set(xlat, &xlat_profile_method_env);
 
-	map_proc_register(mctx->mi->boot, inst, mctx->mi->name, mod_map_proc, ldap_map_verify, 0, LDAP_URI_SAFE_FOR);
+	if (unlikely(!module_rlm_xlat_register(mctx->mi->boot, mctx, "whoami", ldap_whoami_xlat,
+					       FR_TYPE_STRING))) return -1;
+
+	map_proc_register(mctx->mi->boot, inst, mctx->mi->name, mod_map_proc, ldap_map_verify, 0, LDAP_DN_SAFE_FOR);
 
 	return 0;
 }
@@ -2883,17 +3089,31 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.escape", ldap_uri_escape_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_args_set(xlat, ldap_uri_escape_xlat_arg);
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.dn.escape", ldap_dn_escape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, ldap_escape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
-	xlat_func_safe_for_set(xlat, LDAP_URI_SAFE_FOR);	/* Used for all LDAP escaping */
+	xlat_func_safe_for_set(xlat, LDAP_DN_SAFE_FOR);
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.safe", xlat_transparent, FR_TYPE_STRING)))) return -1;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.dn.safe", xlat_transparent, FR_TYPE_STRING)))) return -1;
 	xlat_func_args_set(xlat, ldap_safe_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
-	xlat_func_safe_for_set(xlat, LDAP_URI_SAFE_FOR);
+	xlat_func_safe_for_set(xlat, LDAP_DN_SAFE_FOR);
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.unescape", ldap_uri_unescape_xlat, FR_TYPE_STRING)))) return -1;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.dn.unescape", ldap_uri_unescape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, ldap_uri_unescape_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.filter.escape", ldap_filter_escape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, ldap_escape_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+	xlat_func_safe_for_set(xlat, LDAP_FILTER_SAFE_FOR);
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.filter.safe", xlat_transparent, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, ldap_safe_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+	xlat_func_safe_for_set(xlat, LDAP_FILTER_SAFE_FOR);
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.filter.unescape", ldap_uri_unescape_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_args_set(xlat, ldap_uri_unescape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
@@ -2901,11 +3121,36 @@ static int mod_load(void)
 	xlat_func_args_set(xlat, ldap_uri_attr_option_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
+	/*
+	 *  ldap.uri.* are kept as aliases for ldap.dn.* so that existing configs
+	 *  continue to work.  They use the same safe_for token for now; if the URI
+	 *  context ever needs its own rules, a separate token can be introduced.
+	 */
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.escape", ldap_dn_escape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, ldap_escape_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+	xlat_func_safe_for_set(xlat, LDAP_DN_SAFE_FOR);
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.safe", xlat_transparent, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, ldap_safe_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+	xlat_func_safe_for_set(xlat, LDAP_DN_SAFE_FOR);
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.unescape", ldap_uri_unescape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, ldap_uri_unescape_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+
 	return 0;
 }
 
 static void mod_unload(void)
 {
+	xlat_func_unregister("ldap.dn.escape");
+	xlat_func_unregister("ldap.dn.safe");
+	xlat_func_unregister("ldap.dn.unescape");
+	xlat_func_unregister("ldap.filter.escape");
+	xlat_func_unregister("ldap.filter.safe");
+	xlat_func_unregister("ldap.filter.unescape");
 	xlat_func_unregister("ldap.uri.escape");
 	xlat_func_unregister("ldap.uri.safe");
 	xlat_func_unregister("ldap.uri.unescape");

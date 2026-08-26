@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -22,9 +22,7 @@
  * @copyright 2014 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/value.h>
 #include "../../rlm_cache.h"
 
 typedef struct {
@@ -49,19 +47,18 @@ typedef struct {
  *
  * There may only be one entry with the same key.
  */
-static int8_t cache_entry_cmp(void const *one, void const *two)
+static fr_cmp_ret_t cache_entry_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
 
-	MEMCMP_RETURN(a, b, key.vb_strvalue, key.vb_length);
-	return 0;
+	return MEMCMP_FIELDS(a, b, key.vb_strvalue, key.vb_length);
 }
 
 /** Compare two entries by expiry time
  *
  * There may be multiple entries with the same expiry time.
  */
-static int8_t cache_heap_cmp(void const *one, void const *two)
+static fr_cmp_ret_t cache_heap_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
 
@@ -94,14 +91,14 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
  *
  * @copydetails cache_entry_find_t
  */
-static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
+static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED void **rctx_out,
 				       UNUSED rlm_cache_config_t const *config, void *instance,
 				       request_t *request, UNUSED void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 	rlm_cache_rbtree_mutable_t *mutable = driver->mutable;
 	rlm_cache_entry_t find = {};
-
+	int i;
 	rlm_cache_entry_t *c;
 
 	fr_assert(mutable->cache);
@@ -109,8 +106,12 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Clear out old entries
 	 */
-	c = fr_heap_peek(mutable->heap);
-	if (c && (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp)))) {
+	for (i = 0; i < 3; i++) {
+		c = fr_heap_peek(mutable->heap);
+		if (!c) break;
+
+		if (fr_unix_time_gt(c->expires, fr_time_to_unix_time(request->packet->timestamp))) break;
+
 		fr_heap_extract(&mutable->heap, c);
 		fr_rb_delete(mutable->cache, c);
 		talloc_free(c);
@@ -120,8 +121,16 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 	/*
 	 *	Is there an entry for this key?
+	 *
+	 *	A comparator error must not read as a miss: a miss
+	 *	triggers "insert as new", which would shadow the
+	 *	existing entry.
 	 */
-	c = fr_rb_find(mutable->cache, &find);
+	if (unlikely(fr_rb_find((void **)&c, mutable->cache, &find) < 0)) {
+		RPEDEBUG("Cache lookup failed");
+		*out = NULL;
+		return CACHE_ERROR;
+	}
 	if (!c) {
 		*out = NULL;
 		return CACHE_MISS;
@@ -137,7 +146,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  *
  * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
+static cache_status_t cache_entry_expire(UNUSED void **rctx_out, UNUSED rlm_cache_config_t const *config, void *instance,
 					 request_t *request, UNUSED void *handle,
 					 fr_value_box_t const *key)
 {
@@ -149,7 +158,10 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 
 	fr_value_box_copy_shallow(NULL, &find.key, key);
 
-	c = fr_rb_find(driver->mutable->cache, &find);
+	if (unlikely(fr_rb_find((void **)&c, driver->mutable->cache, &find) < 0)) {
+		RPEDEBUG("Cache lookup failed");
+		return CACHE_ERROR;
+	}
 	if (!c) return CACHE_MISS;
 
 	fr_heap_extract(&driver->mutable->heap, c);
@@ -165,7 +177,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
  *
  * @copydetails cache_entry_insert_t
  */
-static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void *instance,
+static cache_status_t cache_entry_insert(UNUSED void **rctx_out, rlm_cache_config_t const *config, void *instance,
 					 request_t *request, void *handle,
 					 rlm_cache_entry_t const *c)
 {
@@ -180,11 +192,11 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	/*
 	 *	Allow overwriting
 	 */
-	if (!fr_rb_insert(driver->mutable->cache, c)) {
-		status = cache_entry_expire(config, instance, request, handle, &c->key);
+	if (fr_rb_insert(driver->mutable->cache, c) != 0) {
+		status = cache_entry_expire(NULL, config, instance, request, handle, &c->key);
 		if ((status != CACHE_OK) && !fr_cond_assert(0)) return CACHE_ERROR;
 
-		if (!fr_rb_insert(driver->mutable->cache, c)) {
+		if (fr_rb_insert(driver->mutable->cache, c) != 0) {
 			RERROR("Failed adding entry");
 
 			return CACHE_ERROR;
@@ -241,7 +253,7 @@ static uint64_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
-	if (!request) return CACHE_ERROR;
+	if (!request) return 0;	/* can't return an error due to signed   */
 
 	return fr_rb_num_elements(driver->mutable->cache);
 }
@@ -332,7 +344,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		ERROR("Failed to create cache");
 	error:
 		talloc_free(mutable);
-		goto error;
+		return -1;
 	}
 
 	/*

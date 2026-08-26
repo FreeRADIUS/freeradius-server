@@ -1,0 +1,54 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc3580#section-3.9[Filter-ID]   |Indicates the name of the filter list to be applied to the Supplicant's session.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.11[Filter-Id]  |Indicates the name of the filter list for the specific user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.37[Framed-AppleTalk-Link]  |The AppleTalk Network number to be used for the serial link to the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.38[Framed-AppleTalk-Network]
+|The AppleTalk Network number which the NAS should probe to allocate an AppleTalk node for the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.39[Framed-AppleTalk-Zone]  |Defines the AppleTalk Default Zone to be used for this user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.13[Framed-Compression] |Indicates a compression protocol to be used for the link.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.8[Framed-IP-Address]   |Indicates the address to be configured for the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.9[Framed-IP-Netmask]   |Indicates the IP netmask to be configured for the user when the user is a router to a network.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.23[Framed-IPX-Network] |Indicates the IPX Network number to be configured for the user.
+
+|https://datatracker.ietf.org/doc/html/rfc6911#section-3.1[Framed-IPv6-Address] |Indicates an IPv6 address that's assigned to the NAS-facing interface of the RG/host.
+
+|https://datatracker.ietf.org/doc/html/rfc3162#section-2.6[Framed-IPv6-Pool]    |Contains the name of an assigned pool that's used to assign an IPv6 prefix for the user.
+
+|https://datatracker.ietf.org/doc/html/rfc3162#section-2.3[Framed-IPv6-Prefix]  |Indicates an IPv6 prefix (and corresponding route) to be configured for the user.
+
+|https://datatracker.ietf.org/doc/html/rfc3162#section-2.5[Framed-IPv6-Route]   |Provides routing information to be configured for the user on the NAS.
+
+|https://datatracker.ietf.org/doc/html/rfc3162#section-3.2[Framed-Interface-Id] |Indicates the IPv6 interface identifier to be configured for the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.12[Framed-MTU] |Indicates the Maximum Transmission Unit to be configured for the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.18[Framed-Pool]    |Contains the name of an assigned address pool used to assign an address for the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.7[Framed-Protocol] |Indicates the framing to be used for framed access.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.22[Framed-Route]   |Provides routing information to be configured for the user on the NAS.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.10[Framed-Routing] |Indicates the routing method for the user, when theuser is a router to a network.
+
+|====
+
+
+
+
+
+
+
+
+
+
+

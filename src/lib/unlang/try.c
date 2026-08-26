@@ -181,7 +181,9 @@ static unlang_t *unlang_compile_try(unlang_t *parent, unlang_compile_ctx_t *unla
 	if (default_catch) {
 		bool set = false;
 
-		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		static_assert(RLM_MODULE_NOT_SET == 0, "Loop below assumes RLM_MODULE_NOT_SET is the first rcode");
+
+		for (i = RLM_MODULE_NOT_SET + 1; i < RLM_MODULE_NUMCODES; i++) {
 			if (!catcher[i]) {
 				set = true;
 				break;
@@ -189,7 +191,7 @@ static unlang_t *unlang_compile_try(unlang_t *parent, unlang_compile_ctx_t *unla
 		}
 
 		if (!set) {
-			cf_log_err(default_catch, "Invalide 'catch { ... }' - all rcodes had previously been used");
+			cf_log_err(default_catch, "Invalid 'catch { ... }' - all rcodes had previously been used");
 			goto print_catch_url;
 		}
 

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -54,7 +54,7 @@ static int _eap_session_free(eap_session_t *eap_session)
 		ROPTIONAL(RWDEBUG, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		ROPTIONAL(RWDEBUG, WARN, "!! EAP session %016" PRIxPTR " did not finish!                   !!",
 			  (uintptr_t)eap_session);
-		ROPTIONAL(RWDEBUG, WARN, "!! See http://wiki.freeradius.org/guide/Certificate_Compatibility !!");
+		ROPTIONAL(RWDEBUG, WARN, "!! See https://www.freeradius.org/documentation/freeradius-server/4.0.0/trouble-shooting/client.html !!");
 		ROPTIONAL(RWDEBUG, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 
@@ -153,6 +153,37 @@ void eap_session_destroy(eap_session_t **eap_session)
 	*eap_session = NULL;
 }
 
+/** discard and 'destroy' an EAP session and disassociate it from the current request
+ *
+ * @see eap_session_continue
+ * @see eap_session_freeze
+ * @see eap_session_thaw
+ *
+ * @param request to destroy (disassociate and free).
+ */
+void eap_session_discard(request_t *request)
+{
+	eap_session_t *eap_session;
+
+	/*
+	 *	Unlink the request_data_t entry as we pull the
+	 *	eap_session out.  Using _reference here would leave
+	 *	the entry in place with rd->opaque pointing at the
+	 *	chunk we're about to free, and the destructor's
+	 *	own request_data_get cleanup is skipped when the
+	 *	session is frozen (request == NULL).
+	 */
+	eap_session = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
+	if (!eap_session) return;
+
+	/*
+	 *	Don't print "session didn't finish".
+	 */
+	eap_session->finished = true;
+
+	eap_session_destroy(&eap_session);
+}
+
 /** Freeze an #eap_session_t so that it can continue later
  *
  * Sets the request and pointer to the eap_session to NULL. Primarily here to help track
@@ -229,7 +260,7 @@ eap_session_t *eap_session_thaw(request_t *request)
  */
 static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_packet_raw_t *eap_packet)
 {
-	uint16_t 	len;
+	size_t 	len;
 
 	if (!eap_packet ||
 	    (eap_packet->code != FR_EAP_CODE_RESPONSE) ||
@@ -265,7 +296,7 @@ static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_pa
 	 *  here.
 	 */
 	if (len <= EAP_HEADER_LEN) {
-		REDEBUG("EAP-Identity length field too short, expected >= 5, got %u", len);
+		REDEBUG("EAP-Identity length field too short, expected >= 5, got %zu", len);
 		return NULL;
 	}
 
@@ -358,10 +389,10 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 			 *	random junk is coming from.
 			 */
 			RHEXDUMP3((uint8_t *const)eap_session->identity,
-				 talloc_array_length(eap_session->identity) - 1,
+				 talloc_strlen(eap_session->identity),
 				 "EAP Identity Response - \"%pV\"",
 				 fr_box_strvalue_len(eap_session->identity,
-						     talloc_array_length(eap_session->identity) - 1));
+						     talloc_strlen(eap_session->identity)));
 			break;
 
 		case FR_EAP_METHOD_INVALID:
@@ -447,7 +478,7 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 	 *	so if the EAP identity is longer than the max RADIUS attribute length
 	 *	then ignore mismatches.
 	 */
-	} else if ((talloc_array_length(eap_session->identity) - 1) <= RADIUS_MAX_STRING_LENGTH) {
+	} else if ((talloc_strlen(eap_session->identity)) <= RADIUS_MAX_STRING_LENGTH) {
 		/*
 		 *      A little more paranoia.  If the NAS
 		 *      *did* set the User-Name, and it doesn't

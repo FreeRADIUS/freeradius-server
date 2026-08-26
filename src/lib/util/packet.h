@@ -47,7 +47,7 @@ extern "C" {
 /*
  *	vector:		Request authenticator from access-request packet
  *			Put in there by rad_decode, and must be put in the
- *			response fr_packet_t as well before calling fr_packet_send
+ *			response fr_packet_t as well before calling fr_radius_packet_send
  *
  *	verified:	Filled in by rad_decode for accounting-request packets
  *

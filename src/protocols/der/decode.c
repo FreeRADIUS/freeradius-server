@@ -31,12 +31,8 @@
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/decode.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dict_ext.h>
 
 #include "attrs.h"
 #include "der.h"
@@ -796,7 +792,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
 				if ((tag_byte & DER_TAG_CLASS_MASK) == FR_DER_CLASS_UNIVERSAL) {
 				unexpected_class:
-					fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
+					fr_strerror_printf_push("Tag has unexpected class %02x", tag_byte & DER_TAG_CLASS_MASK);
 					goto error;
 				}
 
@@ -924,6 +920,8 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	}
 
 	if (flags->is_set_of) {
+		fr_dbuff_marker_t current_value_marker;
+
 		/*
 		 *	There should only be one child in a "set_of".  We can't check this when we load
 		 *	the dictionaries, because there is no "finalize" callback.
@@ -939,8 +937,9 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			return -1;
 		}
 
+		fr_dbuff_marker(&current_value_marker, &our_in);
+
 		while (fr_dbuff_remaining(&our_in) > 0) {
-			fr_dbuff_marker_t current_value_marker;
 			ssize_t		  ret;
 			uint8_t		  current_tag;
 			uint8_t		 *current_marker = fr_dbuff_current(&our_in);
@@ -956,7 +955,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 				return ret;
 			}
 
-			fr_dbuff_marker(&current_value_marker, &our_in);
+			fr_dbuff_set(&current_value_marker, &our_in);
 
 			/*
 			 *	Ensure that the contents of the tags are sorted.
@@ -1071,10 +1070,14 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	return fr_dbuff_set(in, &our_in);
 }
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wgnu-designator"
+#endif
+
 static ssize_t fr_der_decode_printable_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					      fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	static bool const allowed_chars[UINT8_MAX + 1] = {
+	static bool const allowed_chars[SBUFF_CHAR_CLASS] = {
 		[' '] = true, ['\''] = true, ['('] = true, [')'] = true,
 		['+'] = true, [','] = true, ['-'] = true, ['.'] = true,
 		['/'] = true, [':'] = true, ['='] = true, ['?'] = true,
@@ -1088,7 +1091,7 @@ static ssize_t fr_der_decode_printable_string(TALLOC_CTX *ctx, fr_pair_list_t *o
 static ssize_t fr_der_decode_t61_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	static bool const allowed_chars[UINT8_MAX + 1] = {
+	static bool const allowed_chars[SBUFF_CHAR_CLASS] = {
 		[0x08] = true, [0x0A] = true, [0x0C] = true, [0x0D] = true,
 		[0x0E] = true, [0x0F] = true, [0x19] = true, [0x1A] = true,
 		[0x1B] = true, [0x1D] = true, [' '] = true, ['!'] = true,
@@ -1130,7 +1133,7 @@ static ssize_t fr_der_decode_ia5_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 					fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
 #if 0
-	static bool const allowed_chars[UINT8_MAX + 1] = {
+	static bool const allowed_chars[SBUFF_CHAR_CLASS] = {
 		[0x00 ... 0x7f] = true,
 	};
 #endif
@@ -1214,6 +1217,10 @@ static ssize_t fr_der_decode_utc_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	return fr_dbuff_set(in, &our_in);
 }
 
+static bool const sbuff_char_class_num[SBUFF_CHAR_CLASS] = {
+	SBUFF_CHAR_CLASS_NUM,
+};
+
 static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					      fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
@@ -1284,33 +1291,71 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 	}
 
 	/*
-	 *	Check if the fractional seconds are present
+	 *	Check if the fractional seconds are present.
 	 */
 	if (timestr[DER_GENERALIZED_TIME_LEN_MIN - 1] == '.') {
+		size_t sublen;
+
 		/*
-		 *	We only support subseconds up to 4 decimal places
+		 *	We only support subseconds up to 9 decimal places (nanoseconds).
 		 */
 		char subsecstring[DER_GENERALIZED_TIME_PRECISION_MAX + 1];
 
 		uint8_t precision = DER_GENERALIZED_TIME_PRECISION_MAX;
 
-		if (unlikely(fr_dbuff_remaining(&our_in) - 1 < DER_GENERALIZED_TIME_PRECISION_MAX)) {
-			precision = fr_dbuff_remaining(&our_in) - 1;
-		}
-
-		if (unlikely(precision == 0)) {
+		/*
+		 *	"." is invalid, as is ".Z", or even ".0"
+		 */
+		sublen = fr_dbuff_remaining(&our_in);
+		if (sublen <= 1) {
+		insufficient_data:
 			fr_strerror_const_push("Insufficient data for subseconds");
 			return -1;
 		}
 
+		/*
+		 *	Ensure that the remaining characters are all decimal numbers.
+		 */
+		sublen = fr_sbuff_adv_past_allowed(&FR_SBUFF_IN((char const *) fr_dbuff_current(&our_in), sublen),
+						   SIZE_MAX, sbuff_char_class_num, NULL);
+		if (sublen == 0) goto insufficient_data;
+
+		/*
+		 *	Limit precision to either what's there, or the maximum that we care about.
+		 */
+		precision = (sublen <= DER_GENERALIZED_TIME_PRECISION_MAX ?
+			     sublen : DER_GENERALIZED_TIME_PRECISION_MAX);
+
 		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)subsecstring, &our_in, precision);
 
-		if (memchr(subsecstring, '\0', precision) != NULL) {
-			fr_strerror_const_push("Generalized time contains null byte in subseconds");
-			return -1;
-		}
+		subsecstring[precision] = '\0';
 
-		subsecstring[DER_GENERALIZED_TIME_PRECISION_MAX] = '\0';
+		/*
+		 *	Skip the numbers, and see if we have a trailing 'Z'.
+		 */
+		if (precision < sublen) (void) fr_dbuff_advance(&our_in, sublen - precision);
+
+		sublen = fr_dbuff_remaining(&our_in);
+
+		/*
+		 *	Time zone can be missing.
+		 */
+		if (sublen > 0) {
+			FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)subsecstring, &our_in, 1);
+
+			/*
+			 *	This is a special case for error messages.
+			 */
+			if (!subsecstring[0]) {
+				fr_strerror_const_push("Generalized time contains null byte in subseconds");
+				return -1;
+			}
+
+			if ((sublen > 1) || (subsecstring[0] != 'Z')) {
+				fr_strerror_const_push("Generalized time contains invalid time zone");
+				return -1;
+			}
+		}
 
 		/*
 		 *	Convert the subseconds to an unsigned long
@@ -1318,10 +1363,23 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 		subseconds = strtoul(subsecstring, NULL, 10);
 
 		/*
-		 *	Scale to nanoseconds
+		 *	Scale to nanoseconds based on actual precision.
 		 */
-		subseconds *= 1000000;
-	}
+		{
+			static const unsigned long nsec_multiplier[] = {
+				[1] = 100000000,
+				[2] = 10000000,
+				[3] = 1000000,
+				[4] = 100000,
+				[5] = 10000,
+				[6] = 1000,
+				[7] = 100,
+				[8] = 10,
+				[9] = 1,
+			};
+			subseconds *= nsec_multiplier[precision];
+		}
+	} /* else the trailing character is 'Z' */
 
 	/*
 	 *	Make sure the timezone is UTC (Z)
@@ -1347,19 +1405,13 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 
 	fr_pair_append(out, vp);
 
-	/*
-	 *	Move to the end of the buffer
-	 *	This is necessary because the fractional seconds are being ignored
-	 */
-	fr_dbuff_advance(&our_in, fr_dbuff_remaining(&our_in));
-
 	return fr_dbuff_set(in, &our_in);
 }
 
 static ssize_t fr_der_decode_visible_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					    fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	static bool const allowed_chars[UINT8_MAX + 1] = {
+	static bool const allowed_chars[SBUFF_CHAR_CLASS] = {
 		[' '] = true,  ['!'] = true,  ['"'] = true, ['#'] = true,
 		['$'] = true,  ['%'] = true,  ['&'] = true, ['\''] = true,
 		['('] = true,  [')'] = true,  ['*'] = true, ['+'] = true,
@@ -1710,7 +1762,7 @@ static ssize_t fr_der_decode_oid_and_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_dbuff_t		      our_in = FR_DBUFF(in);
 	fr_dbuff_t		      oid_in;
 	fr_der_decode_oid_to_da_ctx_t uctx;
-	fr_pair_t		      *vp;
+	fr_pair_t		      *vp = NULL;
 
 	uint8_t	 tag;
 	size_t	 oid_len;
@@ -1730,6 +1782,7 @@ static ssize_t fr_der_decode_oid_and_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &oid_len, FR_DER_TAG_OID)) <= 0)) {
 	error:
+		talloc_free(vp);
 		fr_strerror_printf_push("Failed decoding %s OID header", parent->name);
 		return slen;
 	}
@@ -1769,11 +1822,13 @@ static ssize_t fr_der_decode_oid_and_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		if (unlikely((slen = fr_der_decode_octetstring(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
 							       decode_ctx)) < 0)) {
+			talloc_free(vp);
 			fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
 			return -1;
 		}
 	} else if (unlikely((slen = fr_der_decode_pair_dbuff(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
 							    decode_ctx)) < 0)) {
+		talloc_free(vp);
 		fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
 		return -1;
 	}
@@ -1956,21 +2011,46 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		*len		= 0;
 
 		/*
-		 *	Length bits of zero is an indeterminate length field where
-		 *	the length is encoded in the data instead.
+		 *	Length-of-length of zero is the BER indefinite-length form.  DER (X.690 Section 10.1)
+		 *	forbids it for both primitive and constructed encodings.  If we accept it, then an
+		 *	attacker can hide a zero-length value with trailing bytes, which then gets reparsed as
+		 *	a sibling TLV.
 		 */
-		if (len_len > 0) {
-			if (unlikely(len_len > sizeof(*len))) {
-				fr_strerror_printf_push("Length field too large (%" PRIu32 ")", len_len);
-				return -1;
-			}
+		if (unlikely(len_len == 0)) {
+			fr_strerror_const_push("Indefinite-length form is forbidden in DER");
+			return -1;
+		}
 
-			while (len_len--) {
-				if (fr_dbuff_out(&len_byte, &our_in) < 0) goto error;
-				*len = (*len << 8) | len_byte;
-			}
-		} else if (!constructed) {
-			fr_strerror_const_push("Primitive data with indefinite form length field is invalid");
+		if (unlikely(len_len > sizeof(*len))) {
+			fr_strerror_printf_push("Length field too large (%" PRIu32 ")", len_len);
+			return -1;
+		}
+
+		/*
+		 *	DER (X.690 Section 10.1) mandates minimal length encoding.  In the long form, the
+		 *	leading length octet must not be zero, otherwise the length could be expressed in
+		 *	fewer octets.
+		 */
+		if (fr_dbuff_out(&len_byte, &our_in) < 0) goto error;
+		if (unlikely(len_byte == 0)) {
+			fr_strerror_const_push("Non-minimal DER length encoding (leading zero in long form)");
+			return -1;
+		}
+		*len = len_byte;
+		len_len--;
+
+		while (len_len--) {
+			if (fr_dbuff_out(&len_byte, &our_in) < 0) goto error;
+			*len = (*len << 8) | len_byte;
+		}
+
+		/*
+		 *	DER also mandates the short form whenever the
+		 *	length fits in 7 bits.  Reject the long form when
+		 *	the value is < 128.
+		 */
+		if (unlikely(*len < 128)) {
+			fr_strerror_printf_push("Non-minimal DER length encoding (long form used for length %zu)", *len);
 			return -1;
 		}
 
@@ -2672,10 +2752,10 @@ static ssize_t fr_der_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t
 				   void *proto_ctx)
 {
 	fr_dbuff_t our_in = FR_DBUFF_TMP(data, data_len);
+	fr_der_decode_ctx_t *der_ctx = proto_ctx;
+	fr_dict_attr_t const *parent = der_ctx->root;
 
-	fr_dict_attr_t const *parent = fr_dict_root(dict_der);
-
-	if (unlikely(parent == fr_dict_root(dict_der))) {
+	if (!parent || (parent == fr_dict_root(dict_der))) {
 		fr_strerror_printf_push("Invalid dictionary. DER decoding requires a specific dictionary.");
 		return -1;
 	}
@@ -2711,14 +2791,15 @@ static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t 
  *	Test points
  */
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
-			   UNUSED fr_dict_attr_t const *root_da)
+			   fr_dict_attr_t const *root_da)
 {
 	fr_der_decode_ctx_t *test_ctx;
 
 	test_ctx = talloc_zero(ctx, fr_der_decode_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->tmp_ctx	  = talloc_new(test_ctx);
+	test_ctx->tmp_ctx = talloc_new(test_ctx);
+	test_ctx->root = root_da;	 
 
 	*out = test_ctx;
 

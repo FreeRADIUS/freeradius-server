@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file proto_bfd.c
- * @brief RADIUS master protocol handler.
+ * @brief BFD master protocol handler.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
@@ -102,7 +102,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 /*
  *	They all have to be UDP.
  */
-static int8_t client_cmp(void const *one, void const *two)
+static fr_cmp_ret_t client_cmp(void const *one, void const *two)
 {
 	fr_client_t const *a = one;
 	fr_client_t const *b = two;
@@ -178,7 +178,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	if (wrapper->type == BFD_WRAPPER_SEND_PACKET) {
 		if (fr_bfd_decode(request->reply_ctx, &request->reply_pairs,
 				  (uint8_t const *) bfd, bfd->length,
-				  client->secret, talloc_array_length(client->secret) - 1) < 0) {
+				  client->secret, talloc_strlen(client->secret)) < 0) {
 			RPEDEBUG("Failed decoding packet");
 			return -1;
 		}
@@ -190,7 +190,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 
 	if (fr_bfd_decode(request->request_ctx, &request->request_pairs,
 			  (uint8_t const *) bfd, bfd->length,
-			  client->secret, talloc_array_length(client->secret) - 1) < 0) {
+			  client->secret, talloc_strlen(client->secret)) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -198,10 +198,9 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	/*
 	 *	Initialize the reply.
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_bfd_packet);
-	if (!vp) return -1;
-
-	reply = fr_pair_copy(request->reply_ctx, vp);
+	MEM(vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_bfd_packet));
+	
+	MEM(reply = fr_pair_copy(request->reply_ctx, vp));
 	fr_pair_append(&request->reply_pairs, reply);
 
 	my = fr_pair_find_by_da_nested(&reply->vp_group, NULL, attr_my_discriminator);
@@ -404,7 +403,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 					goto error;
 				}
 
-				peer->secret_len = talloc_array_length(c->secret) - 1;
+				peer->secret_len = talloc_strlen(c->secret);
 			}
 
 			switch (peer->auth_type) {
@@ -434,7 +433,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				}
 
 				if (strlen(c->secret) > 20) {
-					cf_log_err(cs, "Length of 'secret' must be no more than 16 octets for 'auth_type = simple'");
+					cf_log_err(cs, "Length of 'secret' must be no more than 20 octets for 'auth_type = simple'");
 					goto error;
 				}
 				break;
@@ -443,7 +442,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 			c->active = true;
 
-			if (!fr_rb_insert(inst->peers, c)) {
+			if (fr_rb_insert(inst->peers, c) != 0) {
 				cf_log_err(cs, "Failed to add peer %s", cf_section_name2(cs));
 				goto error;
 			}

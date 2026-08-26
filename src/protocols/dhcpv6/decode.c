@@ -36,6 +36,33 @@
 #include "dhcpv6.h"
 #include "attrs.h"
 
+/*
+ *    RFC 8415 Section 21.7 defines option codes that MUST NOT appear
+ *    in an Option Request option.  We convert the attributes to a
+ *    64-bit number which can be easily checked.
+ */
+#define DHCPV6_ORO_FORBIDDEN			    \
+	((1ULL << 1)  |	 /* OPTION_CLIENTID */	    \
+	 (1ULL << 2)  |	 /* OPTION_SERVERID */	    \
+	 (1ULL << 3)  |	 /* OPTION_IA_NA */	    \
+	 (1ULL << 4)  |	 /* OPTION_IA_TA */	    \
+	 (1ULL << 5)  |	 /* OPTION_IAADDR */	    \
+	 (1ULL << 6)  |	 /* OPTION_ORO */	    \
+	 (1ULL << 7)  |	 /* OPTION_PREFERENCE */    \
+	 (1ULL << 8)  |	 /* OPTION_ELAPSED_TIME */  \
+	 (1ULL << 9)  |	 /* OPTION_RELAY_MSG */	    \
+	 (1ULL << 11) |	 /* OPTION_AUTH */	    \
+	 (1ULL << 12) |	 /* OPTION_UNICAST */	    \
+	 (1ULL << 13) |	 /* OPTION_STATUS_CODE */   \
+	 (1ULL << 14) |	 /* OPTION_RAPID_COMMIT */  \
+	 (1ULL << 15) |	 /* OPTION_USER_CLASS */    \
+	 (1ULL << 16) |	 /* OPTION_VENDOR_CLASS */  \
+	 (1ULL << 18) |	 /* OPTION_INTERFACE_ID */  \
+	 (1ULL << 19) |	 /* OPTION_RECONF_MSG */    \
+	 (1ULL << 20) |	 /* OPTION_RECONF_ACCEPT */ \
+	 (1ULL << 25) |	 /* OPTION_IA_PD */	    \
+	 (1ULL << 26))	  /* OPTION_IAPREFIX */
+
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			     fr_dict_attr_t const *parent,
 			     uint8_t const *data, size_t const data_len, void *decode_ctx);
@@ -87,7 +114,10 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		if (data_len < 2) goto raw;
 
-		fr_assert(parent->parent->flags.is_root);
+		/*
+		 *	Run-time checks rather than assertions.
+		 */
+		if (!parent->parent->flags.is_root) return -1;
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
@@ -248,56 +278,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
-static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			  fr_dict_attr_t const *parent,
-			  uint8_t const *data, size_t const data_len, void *decode_ctx)
-{
-	uint32_t		pen;
-	fr_dict_attr_t const	*da;
-	fr_pair_t		*vp;
-	fr_dhcpv6_decode_ctx_t	*packet_ctx = decode_ctx;
-
-	FR_PROTO_HEX_DUMP(data, data_len, "decode_vsa");
-
-	if (!fr_cond_assert_msg(parent->type == FR_TYPE_VSA,
-				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'vsa'",
-				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
-
-	/*
-	 *	Enterprise code plus at least one option header
-	 */
-	if (data_len < 8) return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
-
-	memcpy(&pen, data, sizeof(pen));
-	pen = htonl(pen);
-
-	/*
-	 *	Verify that the parent (which should be a VSA)
-	 *	contains a fake attribute representing the vendor.
-	 *
-	 *	If it doesn't then this vendor is unknown, but we know
-	 *	vendor attributes have a standard format, so we can
-	 *	decode the data anyway.
-	 */
-	da = fr_dict_attr_child_by_num(parent, pen);
-	if (!da) {
-		fr_dict_attr_t *n;
-
-		n = fr_dict_attr_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, pen);
-		if (!n) return PAIR_DECODE_OOM;
-		da = n;
-	}
-
-	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
-
-	vp = fr_pair_find_by_da(out, NULL, da);
-	if (vp) {
-		return fr_pair_tlvs_from_network(vp, &vp->vp_group, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, false);
-	}
-
-	return fr_pair_tlvs_from_network(ctx, out, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, true);
-}
-
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const data_len, void *decode_ctx)
@@ -347,6 +327,11 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!vp) return PAIR_DECODE_FATAL_ERROR;
 		PAIR_ALLOCED(vp);
 
+		/*
+		 *	Check if the relayed packet is OK.  If not, it's an error.
+		 */
+		if (!fr_dhcpv6_ok(data + 4, len, 200)) return -1;
+
 		slen = fr_dhcpv6_decode(vp, &vp->vp_group, data + 4, len);
 		if (slen < 0) {
 			talloc_free(vp);
@@ -363,32 +348,119 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (slen < 0) return slen;
 
 	} else if (da->flags.array) {
-		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
+		if (da == attr_option_request) {
+			uint8_t const *p;
 
-	} else if (da->type == FR_TYPE_VSA) {
-		bool append = false;
-		fr_pair_t *vp;
+			if ((len < 2) || ((len & 0x01) != 0)) {
+				fr_strerror_const("Invalid Option-Request, length is not a multiple of 2");
+				return -1;
+			}
 
-		vp = fr_pair_find_by_da(out, NULL, da);
-		if (!vp) {
-			vp = fr_pair_afrom_da(ctx, da);
-			if (!vp) return PAIR_DECODE_FATAL_ERROR;
-			PAIR_ALLOCED(vp);
+			/*
+			 *	Check for the forbidden options.
+			 */
+			for (p = data + 4; p < (data + 4 + len); p += 2) {
+				if (*p) continue;
 
-			append = true;
-		}
+				if (*p > 26) continue;
 
-		slen = decode_vsa(vp, &vp->vp_group, da, data + 4, len, decode_ctx);
-		if (append) {
-			if (slen < 0) {
-				TALLOC_FREE(vp);
-			} else {
-				fr_pair_append(out, vp);
+				if ((1 << *p) & DHCPV6_ORO_FORBIDDEN) {
+					fr_strerror_printf("Option %u is forbidden inside of Option-Request", *p);
+					return -1;
+				}
 			}
 		}
 
+		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
+
+	} else if (da->type == FR_TYPE_VSA) {
+		bool			append_vsa = false;
+		bool			append_vp = false;
+		uint32_t		pen;
+		fr_dict_attr_t const	*vendor;
+		fr_pair_t		*vsa, *vp;
+		fr_pair_list_t		list;
+
+		/*
+		 *	Insufficient room for a 4-octet enterprise
+		 *	code, plus at least one option header.
+		 */
+		if (len < 8) goto raw;
+
+		pen = fr_nbo_to_uint32(data + 4);
+
+		/*
+		 *	Verify that the VSA contains a vendor.
+		 *
+		 *	If it doesn't then this vendor is unknown, but we know
+		 *	vendor attributes have a standard format, so we can
+		 *	decode the data anyway.
+		 */
+		vendor = fr_dict_attr_child_by_num(da, pen);
+		if (!vendor) {
+			fr_dict_attr_t *n;
+
+			n = fr_dict_attr_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, da, pen);
+			if (!n) return PAIR_DECODE_OOM;
+			vendor = n;
+		}
+
+		vsa = fr_pair_find_by_da(out, NULL, da);
+		if (!vsa) {
+			vsa = fr_pair_afrom_da(ctx, da);
+			if (!vsa) return PAIR_DECODE_FATAL_ERROR;
+			PAIR_ALLOCED(vsa);
+
+			append_vsa = true;
+		}
+
+		vp = NULL;
+		if (!append_vsa) vp = fr_pair_find_by_da(&vsa->vp_group, NULL, vendor);
+
+		if (!vp) {
+			vp = fr_pair_afrom_da(vsa, vendor);
+			if (!vp) return PAIR_DECODE_FATAL_ERROR;
+			PAIR_ALLOCED(vp);
+
+			append_vp = true;
+		}
+
+		fr_pair_list_init(&list);
+		slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, vendor, data + 8, len - 4,
+						 decode_ctx, decode_option, NULL, false);
+
+		if (slen < 0) {
+			fr_pair_list_free(&list);
+			if (append_vp) talloc_free(vp);
+			if (append_vsa) talloc_free(vsa);
+			goto raw;
+		}
+
+		/*
+		 *	The child list contains vendors, and we have to merge the vendors 
+		 */
+		fr_pair_list_append(&vp->vp_group, &list);
+		if (append_vp) fr_pair_append(&vsa->vp_group, vp);
+		if (append_vsa) fr_pair_append(out, vsa);
+
 	} else if (da->type == FR_TYPE_TLV) {
 		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, true);
+
+	} else if (da == attr_auth) {
+		/*
+		 *	See RFC 8415 Section 18 (option format), and Section 20 (functionality).
+		 *
+		 *	The Auth option can be sent from a server to client in a Reply message, and contains a
+		 *	128-bit secret key that is recorded somewhere on the server side.
+		 *
+		 *	The Auth option can be sent from a server to a client in a Reconfigure message, and
+		 *	contains an HMAC-MD5 of the packet and the secret key.
+		 *
+		 *	We are not currently a DHCPv6 client, so we do not support the Auth option, or
+		 *	Reconfigure messages.  See verify_to_client() in base.c.
+		 */
+		fr_strerror_const("The 'Auth' option is not supported");
+		return -1;
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);

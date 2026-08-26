@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -84,6 +84,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 	}
 finish:
 	talloc_free(value_pool);
+	talloc_set_type(to_store, char);
 	*out = to_store;
 
 	return 0;

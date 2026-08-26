@@ -1,0 +1,16 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "test"
+User-Password = "hello"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == "first allowed"
+Reply-Message == "second allowed"
+Reply-Message == "keyed first allowed"
+Reply-Message == "keyed second blocked"
+Reply-Message == "keyed after interval allowed"

@@ -328,6 +328,15 @@ do_timestamp:
 	res = hint;
 
 	/*
+	 *	We allow 2^15 hours, but much less than that in seconds/
+	 */
+	if (integer < 0) {
+		if (integer < INT16_MIN) goto fail_overflow;
+	} else {
+		if (integer > INT16_MAX) goto fail_overflow;
+	}
+
+	/*
 	 *	It's a timestamp format
 	 *
 	 *	[hours:]minutes:seconds
@@ -345,41 +354,32 @@ do_timestamp:
 		 */
 		if (!fr_sbuff_next_if_char(&our_in, ':')) {
 			hours = 0;
-			minutes = negative ? -(integer) : integer;
-
-			if (minutes > 60) {
-				fr_strerror_printf("minutes component of time_delta is too large");
-				fr_sbuff_set_to_start(&our_in);
-				FR_SBUFF_ERROR_RETURN(&our_in);
-			}
+			minutes = negative ? -integer : integer;
 
 		} else {
 			/*
 			 *	hours:minutes:seconds
+			 *
+			 *	The second number we read is the minutes,
+			 *	and the seconds are the third number, read
+			 *	below.  For the mm:ss form the second number
+			 *	is already the seconds, so it must NOT be
+			 *	re-read here.
 			 */
-			hours = negative ? -(integer) : integer;
+			hours = negative ? -integer : integer;
 			minutes = seconds;
 
 			if (fr_sbuff_out(&sberr, &seconds, &our_in) < 0) goto num_error;
+		}
 
-			/*
-			 *	We allow >24 hours.  What the heck.
-			 */
-			if (hours > UINT16_MAX) {
-				fr_strerror_printf("hours component of time_delta is too large");
-				fr_sbuff_set_to_start(&our_in);
-				FR_SBUFF_ERROR_RETURN(&our_in);
-			}
+		if (minutes >= 60) {
+			fr_strerror_printf("minutes component of time_delta is too large");
+			FR_SBUFF_ERROR_RETURN(&m1);
+		}
 
-			if (minutes > 60) {
-				fr_strerror_printf("minuts component of time_delta is too large");
-				FR_SBUFF_ERROR_RETURN(&m1);
-			}
-
-			if (seconds > 60) {
-				fr_strerror_printf("seconds component of time_delta is too large");
-				FR_SBUFF_ERROR_RETURN(&m1);
-			}
+		if (seconds >= 60) {
+			fr_strerror_printf("seconds component of time_delta is too large");
+			FR_SBUFF_ERROR_RETURN(&m1);
 		}
 
 		if (no_trailing && !fr_sbuff_is_terminal(&our_in, tt)) goto fail_trailing_data;
@@ -388,6 +388,13 @@ do_timestamp:
 		 *	Add all the components together...
 		 */
 		if (!fr_add(&integer, ((hours * 60) * 60) + (minutes * 60), seconds)) goto fail_overflow;
+
+		/*
+		 *	We can't have more than 64K hours plus a bit,
+		 *	which limits the size of the integer that we
+		 *	return.
+		 */
+		fr_assert(integer < ((int64_t) UINT16_MAX) * 3600 + 3600 + 60);
 
 		/*
 		 *	Flip the sign back to negative
@@ -413,6 +420,11 @@ fr_slen_t fr_time_delta_from_str(fr_time_delta_t *out, char const *in, size_t in
 {
 	fr_slen_t slen;
 
+	if (!*in) {
+		fr_strerror_const("Empty input is invalid");
+		return -1;
+	}
+
 	slen = fr_time_delta_from_substr(out, &FR_SBUFF_IN(in, inlen), hint, true, NULL);
 	if (slen < 0) return slen;
 	if (slen != (fr_slen_t)inlen) {
@@ -436,6 +448,7 @@ fr_slen_t fr_time_delta_to_str(fr_sbuff_t *out, fr_time_delta_t delta, fr_time_r
 {
 	fr_sbuff_t	our_out = FR_SBUFF(out);
 	char		*q;
+	char		*start;
 	int64_t		lhs = 0;
 	uint64_t	rhs = 0;
 
@@ -443,7 +456,7 @@ fr_slen_t fr_time_delta_to_str(fr_sbuff_t *out, fr_time_delta_t delta, fr_time_r
  *	The % operator can return a _signed_ value.  This macro is
  *	correct for both positive and negative inputs.
  */
-#define MOD(a,b) (((a<0) ? (-a) : (a))%(b))
+#define MOD(a,b) ((((a) < 0) ? -(uint64_t)(a) : (uint64_t)(a)) % (b))
 
 	lhs = fr_time_delta_to_integer(delta, res);
 	rhs = MOD(fr_time_delta_unwrap(delta), fr_time_multiplier_by_res[res]);
@@ -463,12 +476,22 @@ fr_slen_t fr_time_delta_to_str(fr_sbuff_t *out, fr_time_delta_t delta, fr_time_r
 
 		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
 	}
+	/*
+	 *	If the sprintf wrote nothing there's nothing to trim.
+	 *	(Shouldn't happen for a non-zero format like %lu.%09lu, but
+	 *	guarding keeps us from walking behind the buffer if the sbuff
+	 *	ran out of room and no bytes were written.)
+	 */
+	if (fr_sbuff_current(&our_out) == fr_sbuff_start(&our_out)) FR_SBUFF_SET_RETURN(out, &our_out);
+
 	q = fr_sbuff_current(&our_out) - 1;
+	start = fr_sbuff_start(&our_out);
 
 	/*
-	 *	Truncate trailing zeros.
+	 *	Truncate trailing zeros.  Don't walk past the start of the
+	 *	buffer - a bare "0" has no trailing zeros to strip.
 	 */
-	while (*q == '0') *(q--) = '\0';
+	while ((q > start) && (*q == '0')) *(q--) = '\0';
 
 	/*
 	 *	If there's nothing after the decimal point,
@@ -803,6 +826,11 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	unsigned long	l;
 	fr_time_delta_t	gmt_delta = fr_time_delta_wrap(0);
 
+	if (!*date_str) {
+		fr_strerror_const("Empty input is invalid");
+		return -1;
+	}
+
 	/*
 	 *	Test for unix timestamp, which is just a number and
 	 *	nothing else.
@@ -906,14 +934,16 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		 *	So insyead of using stupid C library
 		 *	functions, we just roll our own.
 		 */
-		tz = tz_hour * 3600 + tz_min;
+		tz = tz_hour * 3600 + tz_min * 60;
 		if (*tail == '-') tz *= -1;
 
 	done:
 		/*
-		 *	We REMOVE the time zone offset in order to get internal unix times in UTC.
+		 *	Set the gmt offset correctly, as
+		 *	fr_unix_time_from_tm() will do the correction
+		 *	to remove the time zone.
 		 */
-		tm->tm_gmtoff = -tz;
+		tm->tm_gmtoff = tz;
 		*date = fr_unix_time_add(fr_unix_time_from_tm(tm), fr_time_delta_wrap(subseconds));
 		return 0;
 	}

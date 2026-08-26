@@ -10,3 +10,6 @@
 | xref:raddb/mods-available/perl.adoc[perl]	| Allows the server to call a persistent, embedded Perl script.
 | xref:raddb/mods-available/python.adoc[python]	| Allows the server to call a persistent, embedded Python script.
 |=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

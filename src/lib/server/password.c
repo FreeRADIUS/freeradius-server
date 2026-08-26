@@ -120,6 +120,8 @@ static fr_dict_attr_t const *attr_lm;
 static fr_dict_attr_t const *attr_nt;
 static fr_dict_attr_t const *attr_ns_mta_md5;
 
+static fr_dict_attr_t const *attr_psk;
+
 static fr_dict_attr_t const *attr_user;
 
 extern fr_dict_autoload_t password_dict[];
@@ -171,6 +173,8 @@ fr_dict_attr_autoload_t password_dict_attr[] = {
 	{ .out = &attr_lm, .name = "Password.LM", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_nt, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ns_mta_md5, .name = "Password.NS-MTA-MD5", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_psk, .name = "Password.PSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
 	{ .out = &attr_user, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
@@ -420,11 +424,17 @@ static password_info_t password_info[] = {
 						.type = PASSWORD_HASH_SALTED,
 						.da = &attr_ssha3_512,
 						.min_hash_len = SHA512_DIGEST_LENGTH
-					}
+					},
 #endif
+
+	[FR_PSK]			= {
+						.type = PASSWORD_HASH,
+						.da = &attr_psk,
+						.min_hash_len = 16
+					},
 };
 
-#define MIN_LEN(_info) (info->type == PASSWORD_HASH_SALTED ? (info->min_hash_len + 1) : info->min_hash_len)
+#define MIN_LEN(_info) ((_info)->type == PASSWORD_HASH_SALTED ? ((_info)->min_hash_len + 1) : (_info)->min_hash_len)
 
 static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
 		       char const *known_good, size_t len, size_t min_len)
@@ -615,7 +625,7 @@ static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_
 		return out;
 
 	default:
-		MEM(out = password_normify(ctx, request, known_good));
+		out = password_normify(ctx, request, known_good);
 		if (!out) return NULL;
 
 		normalised = password_process_sha3(ctx, request, out);
@@ -702,7 +712,7 @@ do_header:
 
 		p = q + 1;
 
-		if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
+		if (!fr_cond_assert((size_t) attr < NUM_ELEMENTS(password_info))) return NULL;
 		info = &password_info[attr];
 
 		MEM(new = fr_pair_afrom_da(ctx, *(info->da)));
@@ -716,6 +726,7 @@ do_header:
 			break;
 
 		default:
+			talloc_free(new);
 			fr_assert_fail(NULL);
 			return NULL;
 		}
@@ -785,6 +796,8 @@ static fr_pair_t *password_process(TALLOC_CTX *ctx, request_t *request, fr_pair_
 {
 	password_info_t		*info;
 	fr_pair_t		*out;
+
+	if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
 
 	info = &password_info[known_good->da->attr];
 	if (info->func) {
@@ -899,7 +912,15 @@ int password_normalise_and_replace(request_t *request, bool normify)
 		 *	Apply preprocessing steps and normalisation.
 		 */
 		new = password_process(request, request, known_good, normify);
-		if (!new) break;		/* Process next input attribute */
+		if (!new) continue;		/* Process next input attribute */
+
+		/*
+		 *	If we didn't do anything to it, we do nothing.
+		 */
+		if (new == known_good) {
+			replaced++;
+			continue;
+		}
 
 		if (RDEBUG_ENABLED3) {
 			RDEBUG3("Replacing control.%pP with control.%pP",

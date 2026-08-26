@@ -1,0 +1,34 @@
+#
+# PRE: try
+#
+#  Nested try/catch - inner catch handles inner failure,
+#  outer catch is not triggered.
+#
+string inner_caught
+string outer_caught
+
+try {
+	try {
+		fail
+	}
+	catch fail {
+		inner_caught := "yes"
+		ok
+	}
+}
+catch fail {
+	#
+	#  Should not get here - the inner catch handled the 'fail', and rewrote it to 'ok'
+	#
+	outer_caught := "yes"
+}
+
+if (inner_caught != "yes") {
+	test_fail
+}
+
+if (outer_caught) {
+	test_fail
+}
+
+success

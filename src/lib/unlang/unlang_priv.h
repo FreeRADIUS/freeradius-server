@@ -139,6 +139,7 @@ struct unlang_s {
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
 	bool			closed;		//!< whether or not this section is closed to new statements
+	bool			add_filename;	//!< add the filename when printing in debug mode
 	CONF_ITEM		*ci;		//!< used to generate this item
 	unsigned int		number;		//!< unique node number
 	unlang_mod_actions_t	actions;	//!< Priorities, etc. for the various return codes.
@@ -354,9 +355,14 @@ typedef struct {
 typedef struct {
 	unlang_t const		*instruction;			//!< instruction which we're executing
 	void			*thread_inst;			//!< thread-specific instance data
+
+	bool			use_forced_result;		//!< Do we force a result for this module?
+	unlang_result_t		forced_result;			//!< the result to force
+	fr_timer_t		*ev;				//!< run on expiry
+
 #ifdef WITH_PERF
-	uint64_t		use_count;			//!< how many packets it has processed
-	uint64_t		running;			//!< currently running this instruction
+	uint64_t		uses;				//!< how many packets it has processed
+	uint64_t		active;				//!< currently active in this instruction
 	uint64_t		yielded;			//!< currently yielded
 	fr_time_tracking_t	tracking;			//!< tracking cpu time
 #endif
@@ -375,6 +381,10 @@ void		unlang_frame_perf_cleanup(unlang_stack_frame_t *frame);
 #define		unlang_frame_perf_resume(_x)
 #define		unlang_frame_perf_cleanup(_x)
 #endif
+
+unlang_thread_t const *unlang_thread_stats(unlang_t const *instruction) CC_HINT(nonnull);
+
+#define debug_braces(_type)    (unlang_ops[_type].flag & UNLANG_OP_FLAG_DEBUG_BRACES)
 
 void	unlang_stack_signal(request_t *request, fr_signal_t action, int limit);
 
@@ -448,6 +458,14 @@ struct unlang_stack_frame_s {
 	unlang_frame_flag_t	flag;				//!< Flags that mark up the frame for various things
 								///< such as being the point where break, return or
 								///< continue stop, or for forced unwinding.
+
+	struct {						//!< reference to a previous frame
+		uint8_t		frame_break;			//!< previous "break" frame
+		uint8_t		frame_continue;			//!< previous "continue" frame
+		uint8_t		frame_return;			//!< previous "return" frame
+		uint8_t		frame_load_balance;		//!< previous "load-balance" frame
+		uint8_t		frame_call;			//!< previous "call" frame
+	} prev;
 
 #ifdef WITH_PERF
 	fr_time_tracking_t	tracking;			//!< track this instance of this instruction
@@ -542,13 +560,66 @@ static inline unsigned int unlang_frame_by_flag(unlang_stack_t *stack, unlang_fr
  */
 static inline unsigned int unlang_frame_by_op_flag(unlang_stack_t *stack, unlang_op_flag_t flag)
 {
+	unlang_stack_frame_t *frame;
+
+#ifndef NDEBUG
+	unlang_stack_frame_t	*current = &stack->frame[stack->depth];
 	unsigned int	i;
 
 	for (i = stack->depth; i > 0; i--) {
-		unlang_stack_frame_t *frame = &stack->frame[i];
+		frame = &stack->frame[i];
 
-		if (unlang_ops[frame->instruction->type].flag & flag) return i;
+		if (unlang_ops[frame->instruction->type].flag & flag) {
+			switch (flag) {
+			default:
+				fr_assert(0);
+				break;
+
+			case UNLANG_OP_FLAG_BREAK_POINT:
+				fr_assert(frame->prev.frame_break == i);
+				fr_assert(current->prev.frame_break == i);
+				break;
+
+			case UNLANG_OP_FLAG_RETURN_POINT:
+				fr_assert(frame->prev.frame_return == i);
+				fr_assert(current->prev.frame_return == i);
+			break;
+
+			case UNLANG_OP_FLAG_CONTINUE_POINT:
+				fr_assert(frame->prev.frame_continue == i);
+				fr_assert(current->prev.frame_continue == i);
+				break;
+			}
+
+			return i;
+		}
+
+		/*
+		 *	Do not unwind past a top frame.
+		 */
+		if (is_top_frame(frame)) return 0;
 	}
+#else
+	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	No asserts in NDEBUG mode.  Just return the frame, and stop looping up the stack.
+	 */
+	switch (flag) {
+	default:
+		break;
+
+	case UNLANG_OP_FLAG_BREAK_POINT:
+		return frame->prev.frame_break;
+
+	case UNLANG_OP_FLAG_RETURN_POINT:
+		return frame->prev.frame_return;
+
+	case UNLANG_OP_FLAG_CONTINUE_POINT:
+		return frame->prev.frame_continue;
+	}
+#endif
+
 	return 0;
 }
 
@@ -559,12 +630,12 @@ static inline unsigned int unlang_frame_by_op_flag(unlang_stack_t *stack, unlang
  *	the request.
  *
  * @param[in] stack	The current stack.
- * @param[in] to_depth	mark all frames below this depth as cancelled.
+ * @param[in] to_depth	mark all frames up to and including this depth as cancelled.
  */
 static inline unlang_action_t unwind_to_depth(unlang_stack_t *stack, unsigned int to_depth)
 {
 	unlang_stack_frame_t	*frame;
-	unsigned int i, depth = stack->depth;	/* must be signed to avoid underflow */
+	unsigned int i, depth = stack->depth;
 
 	if (!fr_cond_assert(to_depth >= 1)) return UNLANG_ACTION_FAIL;
 
@@ -677,6 +748,45 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	/*
 	 *	Don't change frame->retry, it may be left over from a previous retry.
 	 */
+
+	/*
+	 *	Normal frames get their "prev" pointers copied from the previous frame, and then get the break
+	 *	/ continue / etc. point update, if the current instruction warrants it.
+	 */
+	if (!is_top_frame(frame)) {
+		/*
+		 *	A sub-frame / xlat can be the first item pushed on a stack.  In that case, stack frame 0 is all zeros.
+		 */
+		fr_assert(stack->depth >= 1);
+		frame->prev = (frame - 1)->prev;
+
+		if (unlang_ops[frame->instruction->type].flag) {
+			/*
+			 *	TBD: A return point should (or should not?) erase any previous frame settings.
+			 */
+			if (unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RETURN_POINT) {
+				frame->prev.frame_return = stack->depth;
+			}
+
+			if (unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_BREAK_POINT) {
+				frame->prev.frame_break = stack->depth;
+			}
+
+			if (unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_CONTINUE_POINT) {
+				frame->prev.frame_continue = stack->depth;
+			}
+
+			if ((frame->instruction->type == UNLANG_TYPE_LOAD_BALANCE) ||
+			    (frame->instruction->type == UNLANG_TYPE_REDUNDANT_LOAD_BALANCE)) {
+				frame->prev.frame_load_balance = stack->depth;
+			}
+		}
+	} else {
+		/*
+		 *	TBD: Top frames are also return points?
+		 */
+		frame->prev.frame_return = stack->depth;
+	}
 }
 
 /** Cleanup any lingering frame state

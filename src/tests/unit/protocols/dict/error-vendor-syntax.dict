@@ -1,0 +1,3 @@
+BEGIN PROTOCOL Test-Err-3 202
+VENDOR	My-Vendor
+END PROTOCOL Test-Err-3

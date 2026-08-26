@@ -112,8 +112,8 @@ void fb_free_sqlda(XSQLDA *sqlda)
 {
 	int i;
 	for (i = 0; i < sqlda->sqld; i++) {
-		free(sqlda->sqlvar[i].sqldata);
-		free(sqlda->sqlvar[i].sqlind);
+		talloc_free(sqlda->sqlvar[i].sqldata);
+		talloc_free(sqlda->sqlvar[i].sqlind);
 	}
 	sqlda->sqld = 0;
 }

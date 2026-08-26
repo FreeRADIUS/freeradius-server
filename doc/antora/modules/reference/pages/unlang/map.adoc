@@ -23,8 +23,8 @@ database query which returns one or more fields.
 taken from the database query.
 
 <op>:: The operator such as `=`, `:=`, etc. Any
-xref:unlang/update.adoc#_editing_operators[editing operator] defined for an
-xref:unlang/update.adoc[update] statement is permissible.
+xref:unlang/edit.adoc#list-editing-ops[editing operators] defined for an
+xref:unlang/update.adoc[subrequest] statement is permissible.
 
 <field>:: The name of the field from the database. For SQL, the field names are
 usually column names.  For LDAP, the field names are usually LDAP attributes.
@@ -52,5 +52,5 @@ map sql "SELECT column1, column2, column3 from table WHERE user=%{User-Name}" {
 }
 ----
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

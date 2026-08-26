@@ -29,11 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/sem.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/strerror.h>
 
-#include <ctype.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 
@@ -90,6 +86,7 @@ int main(int argc, char *argv[])
 	int			c;
 	fr_radlock_action_t	action;
 	char const		*file;
+	char			*end;
 	uid_t			uid = geteuid();
 	bool			uid_set = false;
 	gid_t			gid = getegid();
@@ -103,7 +100,7 @@ int main(int argc, char *argv[])
 	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("radict");
 		fr_exit(EXIT_FAILURE);
 	}
@@ -121,7 +118,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'g':
-			if (fr_perm_uid_from_str(autofree, &gid, optarg) < 0) {
+			if (fr_perm_gid_from_str(autofree, &gid, optarg) < 0) {
 				fr_perror("radlock");
 				EXIT_WITH_FAILURE;
 			}
@@ -129,8 +126,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'm':
-			mode = strtol(optarg, NULL, 0);	/* 0 base plus 0 prefix = octal */
-			if (errno == EINVAL) {
+			mode = strtol(optarg, &end, 0);	/* 0 base plus 0 prefix = octal */
+			if (*end || (end == optarg)) {
 				fr_perror("radlock - Bad mode value");
 				EXIT_WITH_FAILURE;
 			}
@@ -161,7 +158,7 @@ int main(int argc, char *argv[])
 		usage(64);
 	}
 
-	if (action == RADLOCK_PERM) {
+	if ((action == RADLOCK_PERM) && !uid_set && !gid_set && !mode_set) {
 		fr_perror("radlock - At least one of -u, -g, -m must be specified");
 		usage(64);
 	}
@@ -226,6 +223,10 @@ int main(int argc, char *argv[])
 	case RADLOCK_REMOVE:
 		sem_id = fr_sem_get(file, 0, uid, gid, false, true);
 		if (sem_id == -4) EXIT_WITH_SUCCESS;
+		if (sem_id < 0) {
+			fr_perror("radlock");
+			EXIT_WITH_FAILURE;
+		}
 
 		if (fr_sem_close(sem_id, file) < 0) {
 			fr_perror("radlock");
@@ -261,7 +262,7 @@ int main(int argc, char *argv[])
 			EXIT_WITH_FAILURE;
 		}
 
-		ret = kill(sem_id, 0);
+		ret = kill(pid, 0);
 		if ((ret < 0) && (errno == ESRCH)) dead = true;
 
 		uid_str = fr_perm_uid_to_str(autofree, info.sem_perm.uid);
@@ -308,7 +309,7 @@ int main(int argc, char *argv[])
 
 		if (semctl(sem_id, 0, IPC_STAT, &info) < 0) {
 			fr_perror("radlock - Failed getting lock info for \"%s\": %s",
-				  fr_syserror(errno), file);
+				  file, fr_syserror(errno));
 			EXIT_WITH_FAILURE;
 		}
 
@@ -318,7 +319,7 @@ int main(int argc, char *argv[])
 
 		if (semctl(sem_id, 0, IPC_SET, &info) < 0) {
 			fr_perror("radlock - Failed setting lock permissions for \"%s\": %s",
-				  fr_syserror(errno), file);
+				  file, fr_syserror(errno));
 			EXIT_WITH_FAILURE;
 		}
 	}

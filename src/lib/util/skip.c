@@ -24,7 +24,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/util/strerror.h>
 
 /**  Skip a quoted string.
  *
@@ -41,7 +40,7 @@ ssize_t fr_skip_string(char const *start, char const *end)
 
 	quote = *(p++);
 
-	while ((end && (p < end)) || *p) {
+	while (end ? ((p < end) && *p) : *p) {
 		/*
 		 *	Stop at the quotation character
 		 */
@@ -111,15 +110,28 @@ ssize_t fr_skip_string(char const *start, char const *end)
 	return -(p - start);
 }
 
-/** Skip a generic {...} or (...) arguments
- *
+/*
+ *	Recursion cap shared by fr_skip_brackets and fr_skip_xlat, which
+ *	are mutually recursive. Real configs nest far below this; the
+ *	cap exists so untrusted input (config-file fuzzer) can't exhaust
+ *	the C stack via `((((...` or `${${${...`.
  */
-ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
+#define SKIP_MAX_DEPTH		64
+
+static ssize_t skip_brackets(char const *start, char const *end, char end_quote, unsigned int depth);
+static ssize_t skip_xlat(char const *start, char const *end, unsigned int depth);
+
+static ssize_t skip_brackets(char const *start, char const *end, char end_quote, unsigned int depth)
 {
 	ssize_t slen;
 	char const *p = start;
 
-	while ((end && (p < end)) || *p) {
+	if (depth >= SKIP_MAX_DEPTH) {
+		fr_strerror_const("Nesting too deep");
+		return -(p - start);
+	}
+
+	while (end ? ((p < end) && *p) : *p) {
 		if (*p == end_quote) {
 			p++;
 			return p - start;
@@ -133,10 +145,11 @@ ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
 		 */
 		if (*p == '(') {
 			p++;
-			slen = fr_skip_brackets(p, end, ')');
-			if (slen <= 0) return slen - (p - start);
+			slen = skip_brackets(p, end, ')', depth + 1);
 
 		next:
+			if (slen <= 0) return slen - (p - start);
+
 			fr_assert((size_t) slen <= (size_t) (end - p));
 			p += slen;
 			continue;
@@ -165,7 +178,7 @@ ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
 			}
 
 			if ((p[1] == '{') || (p[1] == '(')) {
-				slen = fr_skip_xlat(p, end);
+				slen = skip_xlat(p, end, depth + 1);
 				goto next;
 			}
 
@@ -200,24 +213,15 @@ ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
 	return -(p - start);
 }
 
-/**  Skip an xlat expression.
- *
- *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
- *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
- *  But it also rejects all malformed expressions.
- *
- *  It's used as a quick hack because the full parser isn't always available.
- *
- *  @param[in] start	start of the expression, MUST point to the "%{" or "%("
- *  @param[in] end	end of the string (or NULL for zero-terminated strings)
- *  @return
- *	>0 length of the string which was parsed
- *	<=0 on error
- */
-ssize_t fr_skip_xlat(char const *start, char const *end)
+static ssize_t skip_xlat(char const *start, char const *end, unsigned int depth)
 {
 	ssize_t slen;
 	char const *p = start;
+
+	if (depth >= SKIP_MAX_DEPTH) {
+		fr_strerror_const("Nesting too deep");
+		return -(p - start);
+	}
 
 	/*
 	 *	At least %{1} or $(.)
@@ -237,11 +241,11 @@ ssize_t fr_skip_xlat(char const *start, char const *end)
 
 	if (*p == '(') {
 		p++;		/* skip the '(' */
-		slen = fr_skip_brackets(p, end, ')');
+		slen = skip_brackets(p, end, ')', depth + 1);
 
 	} else if (*p == '{') {
 		p++;		/* skip the '{' */
-		slen = fr_skip_brackets(p, end, '}');
+		slen = skip_brackets(p, end, '}', depth + 1);
 
 	} else {
 		char const *q = p;
@@ -260,11 +264,38 @@ ssize_t fr_skip_xlat(char const *start, char const *end)
 
 		p = q + 1;
 
-		slen = fr_skip_brackets(p, end, ')');
+		slen = skip_brackets(p, end, ')', depth + 1);
 	}
 
 	if (slen <= 0) return slen - (p - start);
 	return slen + (p - start);
+}
+
+/** Skip a generic {...} or (...) arguments
+ *
+ */
+ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
+{
+	return skip_brackets(start, end, end_quote, 0);
+}
+
+/**  Skip an xlat expression.
+ *
+ *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
+ *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
+ *  But it also rejects all malformed expressions.
+ *
+ *  It's used as a quick hack because the full parser isn't always available.
+ *
+ *  @param[in] start	start of the expression, MUST point to the "%{" or "%("
+ *  @param[in] end	end of the string (or NULL for zero-terminated strings)
+ *  @return
+ *	>0 length of the string which was parsed
+ *	<=0 on error
+ */
+ssize_t fr_skip_xlat(char const *start, char const *end)
+{
+	return skip_xlat(start, end, 0);
 }
 
 /**  Skip a conditional expression.
@@ -283,7 +314,7 @@ ssize_t fr_skip_xlat(char const *start, char const *end)
  *	>0 length of the string which was parsed.  *eol is false.
  *	<=0 on error, *eol may be set.
  */
-ssize_t fr_skip_condition(char const *start, char const *end, bool const terminal[static UINT8_MAX + 1], bool *eol)
+ssize_t fr_skip_condition(char const *start, char const *end, bool const terminal[static SBUFF_CHAR_CLASS], bool *eol)
 {
 	char const *p = start;
 	bool was_regex = false;
@@ -295,7 +326,7 @@ ssize_t fr_skip_condition(char const *start, char const *end, bool const termina
 	/*
 	 *	Keep parsing the condition until we hit EOS or EOL.
 	 */
-	while ((end && (p < end)) || *p) {
+	while (end ? ((p < end) && *p) : *p) {
 		if (isspace((uint8_t) *p)) {
 			p++;
 			continue;
@@ -397,7 +428,10 @@ ssize_t fr_skip_condition(char const *start, char const *end, bool const termina
 		/*
 		 *	Any control characters (other than \t) cause an error.
 		 */
-		if (*p < ' ') break;
+		if (*p < ' ') {
+			fr_strerror_const("Invalid escape in condition");
+			return -(p - start);
+		}
 
 		was_regex = false;
 

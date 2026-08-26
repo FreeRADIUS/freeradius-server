@@ -25,7 +25,6 @@
  */
 
 #include <netdb.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
@@ -220,9 +219,9 @@ have_packet:
 	 *	how much we read in leftover.
 	 */
 	if (in_buffer < (size_t) packet_len) {
+		*leftover = in_buffer;
 		DEBUG3("proto_tacacs_tcp - Received packet fragment of %zu bytes (%zu bytes now pending)",
 		       packet_len, *leftover);
-		*leftover = in_buffer;
 		return 0;
 	}
 
@@ -306,15 +305,18 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 			if (pkt->authen_reply.status == FR_TAC_PLUS_AUTHEN_STATUS_ERROR) goto close_it;
 			break;
 
-
 		case FR_TAC_PLUS_AUTHOR:
 			if (pkt->author_reply.status == FR_TAC_PLUS_AUTHOR_STATUS_ERROR) {
 			close_it:
-				ERROR("tavacs %s - Closing connection due to unrecoverable server error response",
+				ERROR("tacacs %s - Closing connection due to unrecoverable server error response",
 					thread->name);
 				errno = ECONNRESET;
 				return -1;
 			}
+			break;
+
+		case FR_TAC_PLUS_ACCT:
+			if (pkt->acct_reply.status == FR_TAC_PLUS_ACCT_STATUS_ERROR) goto close_it;
 			break;
 
 		default:
@@ -364,7 +366,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_tcp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		PERROR("Failed opening TCP socket");
+		cf_log_err(li->cs, "Failed opening TCP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -373,13 +375,14 @@ static int mod_open(fr_listen_t *li)
 
 	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
-		PERROR("Failed binding socket");
+		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
+		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 		goto error;
 	}
 
-	if (listen(sockfd, 8) < 0) {
+	if (listen(sockfd, SOMAXCONN) < 0) {
 		close(sockfd);
-		PERROR("Failed listening on socket");
+		cf_log_err(li->cs, "Failed listening on socket - %s", fr_syserror(errno));
 		goto error;
 	}
 
@@ -467,7 +470,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			return -1;
 		}
 
-		inst->port = ntohl(s->s_port);
+		inst->port = ntohs(s->s_port);
 	}
 
 	/*

@@ -201,7 +201,7 @@ static fr_dict_flag_parser_t const dhcpv4_flags[] = {
  *	Instead, the encoder should just do 3 passes, where middle one
  *	ignores the message-type and option 82.
  */
-int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
+fr_cmp_ret_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a, *my_b = b;
 
@@ -257,11 +257,11 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	}
 
 	if (data_len > MAX_PACKET_SIZE) {
-		fr_strerror_printf("DHCP packet is too large (%zx > %d)", data_len, MAX_PACKET_SIZE);
+		fr_strerror_printf("DHCP packet is too large (%zd > %d)", data_len, MAX_PACKET_SIZE);
 		return false;
 	}
 
-	if (data[1] > 1) {
+	if (data[1] != 1) {
 		fr_strerror_printf("DHCP can only process ethernet requests, not type %02x", data[1]);
 		return false;
 	}
@@ -280,8 +280,8 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	}
 
 	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
-	if (!code || (code[1] == 0)) {
-		fr_strerror_const("No message-type option was found in the packet");
+	if (!code || (code[1] != 1)) {
+		fr_strerror_const("No message-type, or invalid option was found in the packet");
 		return false;
 	}
 
@@ -336,7 +336,7 @@ void *fr_dhcpv4_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
 		if (c->vp_type == FR_TYPE_BOOL && fr_dhcpv4_flag_exists(c->da) && !c->vp_bool) continue;
 
 		/*
-		 *	The VSIO encoder expects to seee VENDOR inside of VSA, and has an assertion to that
+		 *	The VSIO encoder expects to see VENDOR inside of VSA, and has an assertion to that
 		 *	effect.  Until we fix that, we simply ignore all attributes which do not fit into the
 		 *	established hierarchy.
 		 */
@@ -376,8 +376,8 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 
 	/* Maximum-Msg-Size */
 	vp = fr_pair_find_by_da(vps, NULL, attr_dhcp_dhcp_maximum_msg_size);
-	if (vp && (vp->vp_uint32 > mms)) {
-		mms = vp->vp_uint32;
+	if (vp && (vp->vp_uint16 > mms)) {
+		mms = vp->vp_uint16;
 
 		if (mms > MAX_PACKET_SIZE) mms = MAX_PACKET_SIZE;
 	}
@@ -695,14 +695,22 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 	while (attr < end) {
 		fprintf(fp, "\t\t");
 
+		/*
+		 *	The caller should already have called fr_dhcpv4_ok().
+		 */
+		fr_assert((attr + 2) <= end);
+
+		/*
+		 *	End of options.
+		 */
+		if ((attr[0] == 0) || (attr[1] == 255)) {
+			fprintf(fp, "%02x\n", attr[0]);
+			break;
+		}
+
 		fprintf(fp, "%02x  %02x  ", attr[0], attr[1]);
 
 		print_hex_data(fp, attr + 2, attr[1], 3);
-
-		/*
-		 *	"End of option" option.
-		 */
-		if (attr[0] == 255) break;
 
 		attr += attr[1] + 2;
 	}

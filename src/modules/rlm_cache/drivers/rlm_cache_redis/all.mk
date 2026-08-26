@@ -8,6 +8,7 @@ ifneq "${TARGETNAME}" ""
   TARGETNAME	:= rlm_cache_redis
   TARGET	:= $(TARGETNAME)$(L)
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c
 

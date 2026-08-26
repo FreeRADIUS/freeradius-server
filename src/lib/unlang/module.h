@@ -39,7 +39,7 @@ extern "C" {
 
 /** A callback when a retry happens
  *
- * Used when a module needs wait for an event.
+ * Used when a module needs to wait for an event.
  * Typically the callback is set, and then the module returns unlang_module_yield().
  *
  * @note The callback is automatically removed on unlang_interpret_mark_runnable(), i.e. if an event
@@ -68,7 +68,7 @@ typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *re
 
 /** A callback when the request gets a fr_signal_t.
  *
- * A module may call unlang_yeild(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
+ * A module may call unlang_yield(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
  * set here.
  *
  * @note The callback is automatically removed on unlang_interpret_mark_runnable().

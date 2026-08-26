@@ -4,6 +4,9 @@ inputs:
   use_sanitizers:
     description: Enable sanitizers if true
     default: false
+  use_scan:
+    description: Run "clang scan" if true
+    default: false
   cc:
     description: Which CC to use
     default: gcc
@@ -25,7 +28,7 @@ runs:
         git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
 
     - name: Restore LFS cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: lfs-cache
       with:
         path: .git/lfs
@@ -36,14 +39,6 @@ runs:
       shell: bash
       run: |
         git lfs pull
-
-    - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v4
-      id: hostapd-cache
-      with:
-        path: ${{ env.HOSTAPD_BUILD_DIR }}
-        key: hostapd-${{ runner.os }}-${{ inputs.platform }}-${{ env.HOSTAPD_GIT_TAG }}-v4
-      if: ${{ inputs.test_type != 'fuzzing' }}
 
     #  Has issues in Docker container when running on GitHub...
     - uses: ruby/setup-ruby@v1
@@ -146,6 +141,7 @@ runs:
             --with-udpfromto=$LIBS_OPTIONAL \
             --with-openssl=$LIBS_OPTIONAL \
             --with-pcre=$LIBS_OPTIONAL \
+            --with-libbacktrace=yes \
         || {
             echo "config.log"
             cat config.log
@@ -161,16 +157,16 @@ runs:
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         make -j `nproc`
 
-    # Disabled on MacOS and when fuzzing to reduce the runtime
+    # only do this on the main CI build, it doesn't help on everything else.
     - name: Clang Static Analyzer
-      if: ${{ inputs.cc == 'clang' && runner.os != 'macOS' && inputs.test_type != 'fuzzing' }}
+      if: ${{ inputs.cc == 'clang' && inputs.use_scan == 'true' && inputs.test_type != 'fuzzing' }}
       shell: bash
       run: |
         make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ];
 
     - name: "Clang Static Analyzer: Store assets on failure"
-      if: ${{ inputs.cc == 'clang' && failure() }}
-      uses: actions/upload-artifact@v4
+      if: ${{ inputs.cc == 'clang' && inputs.use_scan == 'true' && inputs.test_type != 'fuzzing' && failure() }}
+      uses: actions/upload-artifact@v6
       with:
         name: clang-scan.tgz
         path: build/plist/**/*.html

@@ -1,0 +1,6 @@
+#
+#  Test: basic files module configuration
+#
+files {
+	filename = ${modconfdir}/files/authorize
+}

@@ -1,0 +1,48 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	The FreeRADIUS Vendor-Specific dictionary for Redis cluster operations.
+#
+# Version:	$Id$
+#
+
+ATTRIBUTE	Packet-Type				1	uint32
+
+VALUE	Packet-Type			Cluster-Map-Bootstrap	1
+VALUE	Packet-Type			Cluster-Map-Get		2
+VALUE	Packet-Type			Cluster-Map-Update	3
+VALUE	Packet-Type			Cluster-Map-Fail	4
+VALUE	Packet-Type			Do-Not-Respond		255
+
+ATTRIBUTE	Log-Prefix				2	string
+
+ATTRIBUTE	Max-Nodes				3	uint8
+
+ATTRIBUTE	Bootstrap-Node				4	string
+ATTRIBUTE	Bootstrap-Port				5	uint16
+
+ATTRIBUTE	Username				6	string
+ATTRIBUTE	Password				7	string secret
+
+ATTRIBUTE	Cluster-Id				8	uint16
+
+ATTRIBUTE	Shard					9	tlv
+
+ATTRIBUTE	Slot					9.1	tlv
+ATTRIBUTE	Start					.1	uint16
+ATTRIBUTE	End					.2	uint16
+
+ATTRIBUTE	Node					9.2	tlv
+ATTRIBUTE	Endpoint				.1	string
+ATTRIBUTE	Port					.2	uint16
+ATTRIBUTE	Role					.3	uint8
+
+VALUE		Role			Master			1
+VALUE		Role			Replica			2
+
+ATTRIBUTE	Force-Update				10	bool
+
+ATTRIBUTE	Use-TLS					11	bool
+ATTRIBUTE	TLS-Conf				12	uint64

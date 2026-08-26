@@ -122,7 +122,7 @@ config {
 }
 ```
 
-will result in `freeradius.config['name']` having the vaule `value`.
+will result in `freeradius.config['name']` having the value `value`.
 
 === Function
 
@@ -141,5 +141,5 @@ Its arguments are:
   * (optional) log level - the FreeRADIUS debug level at which this message
     should be logged. (e.g. L_DBG_LVL_2)
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

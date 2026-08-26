@@ -422,7 +422,7 @@ static void write_chunk(uint8_t *out, int start_bit, int num_bits, uint16_t chun
 	 *	Special-case 1-bit writes.
 	 */
 	if (num_bits == 1) {
-		out[0] &= ~((1 << (7 - start_bit)) - 1);
+		out[0] &= ~(1 << (7 - start_bit));
 		out[0] |= chunk << (7 - start_bit);
 		return;
 	}
@@ -847,7 +847,10 @@ static CC_HINT(nonnull(2)) fr_trie_path_t *trie_path_split(TALLOC_CTX *ctx, fr_t
 	if (!split) return NULL;
 
 	child = fr_trie_path_alloc(ctx, &path->key[0], start_bit + lcp, start_bit + path->bits);
-	if (!child) return NULL;
+	if (!child) {
+		talloc_free(split);
+		return NULL;
+	}
 
 	split->trie = (fr_trie_t *) child;
 	child->trie = (fr_trie_t *) path->trie;
@@ -2632,66 +2635,76 @@ int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
 
 /** Find an element in the trie, returning the data.
  *
+ * @param[out] found	the matching element, or NULL if no element matched.
  * @param[in] ft to search in.
  * @param[in] data to find.
  * @return
- *	- User data matching the data passed in.
- *	- NULL if nothing matched passed data.
+ *	- 0 always, tries never run a comparator.  Check found for the result.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-void *fr_trie_find(fr_trie_t *ft, void const *data)
+int fr_trie_find(void **found, fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
 	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
 	uint8_t *key;
 	size_t keylen;
 
+	*found = NULL;
+
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
 
-	if (!uctx->get_key) return NULL;
+	if (!uctx->get_key) return 0;
 
-	if (uctx->get_key(&key, &keylen, data) < 0) return NULL;
+	if (uctx->get_key(&key, &keylen, data) < 0) return 0;
 
-	return fr_trie_lookup_by_key(ft, key, keylen);
+	*found = fr_trie_lookup_by_key(ft, key, keylen);
+	return 0;
 }
 
 /** Match an element exactly in the trie, returning the data.
  *
+ * @param[out] found	the matching element, or NULL if no element matched.
  * @param[in] ft to search in.
  * @param[in] data to find.
  * @return
- *	- User data matching the data passed in.
- *	- NULL if nothing matched passed data.
+ *	- 0 always, tries never run a comparator.  Check found for the result.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-void *fr_trie_match(fr_trie_t *ft, void const *data)
+int fr_trie_match(void **found, fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
 	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
 	uint8_t *key;
 	size_t keylen;
 
+	*found = NULL;
+
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
 
-	if (!uctx->get_key) return NULL;
+	if (!uctx->get_key) return 0;
 
-	if (uctx->get_key(&key, &keylen, data) < 0) return NULL;
+	if (uctx->get_key(&key, &keylen, data) < 0) return 0;
 
-	return fr_trie_match_by_key(ft, key, keylen);
+	*found = fr_trie_match_by_key(ft, key, keylen);
+	return 0;
 }
 
 /** Insert data into a trie
  *
+ * @note Unlike the other containers, inserting a duplicate reports -1,
+ *	 not 1, as the trie key path doesn't distinguish duplicates from
+ *	 other insertion failures.
+ *
  * @param[in] ft	to insert data into.
  * @param[in] data 	to insert.
  * @return
- *	- true if data was inserted.
- *	- false if data already existed and was not inserted.
+ *	- 0 if data was inserted.
+ *	- -1 if data was not inserted, retrieve the error with fr_strerror.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-bool fr_trie_insert(fr_trie_t *ft, void const *data)
+int fr_trie_insert(fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
 	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
@@ -2701,13 +2714,13 @@ bool fr_trie_insert(fr_trie_t *ft, void const *data)
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
 
-	if (!uctx->get_key) return false;
+	if (!uctx->get_key) return -1;
 
-	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+	if (uctx->get_key(&key, &keylen, data) < 0) return -1;
 
-	if (fr_trie_insert_by_key(ft, key, keylen, data) < 0) return false;
+	if (fr_trie_insert_by_key(ft, key, keylen, data) < 0) return -1;
 
-	return true;
+	return 0;
 }
 
 /** Replace old data with new data, OR insert if there is no old
@@ -2757,28 +2770,36 @@ int fr_trie_replace(void **old, fr_trie_t *ft, void const *data)
 
 /** Remove an entry, without freeing the data
  *
+ * @param[out] removed	the data we removed, if any.  May be NULL.
  * @param[in] ft	to remove data from.
  * @param[in] data 	to remove.
  * @return
- *      - The user data we removed.
- *	- NULL if we couldn't find any matching data.
+ *      - 0 if we removed data, removed is populated.
+ *	- 1 if we couldn't find any matching data.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-void *fr_trie_remove(fr_trie_t *ft, void const *data)
+int fr_trie_remove(void **removed, fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
 	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
 	uint8_t *key;
 	size_t keylen;
+	void *found;
+
+	if (removed) *removed = NULL;
 
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
 
-	if (!uctx->get_key) return NULL;
+	if (!uctx->get_key) return 1;
 
-	if (uctx->get_key(&key, &keylen, data) < 0) return NULL;
+	if (uctx->get_key(&key, &keylen, data) < 0) return 1;
 
-	return fr_trie_remove_by_key(ft, key, keylen);
+	found = fr_trie_remove_by_key(ft, key, keylen);
+	if (!found) return 1;
+
+	if (removed) *removed = found;
+	return 0;
 }
 
 /** Remove node and free data (if a free function was specified)
@@ -2786,11 +2807,11 @@ void *fr_trie_remove(fr_trie_t *ft, void const *data)
  * @param[in] ft	to remove data from.
  * @param[in] data 	to remove/free.
  * @return
- *	- true if we removed data.
- *      - false if we couldn't find any matching data.
+ *	- 0 if we removed data.
+ *	- 1 if we couldn't find any matching data.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
-bool fr_trie_delete(fr_trie_t *ft, void const *data)
+int fr_trie_delete(fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
 	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
@@ -2801,17 +2822,17 @@ bool fr_trie_delete(fr_trie_t *ft, void const *data)
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
 
-	if (!uctx->get_key) return false;
+	if (!uctx->get_key) return 1;
 
-	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+	if (uctx->get_key(&key, &keylen, data) < 0) return 1;
 
 	found = fr_trie_remove_by_key(ft, key, keylen);
-	if (!found) return false;
+	if (!found) return 1;
 
-	if (!uctx->free_data) return true;
+	if (!uctx->free_data) return 0;
 
 	uctx->free_data(found);
-	return true;
+	return 0;
 }
 
 /** Return how many nodes there are in a trie

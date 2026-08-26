@@ -26,11 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/encode.h>
-#include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dict_ext.h>
 
 #include <freeradius-devel/io/test_point.h>
 
@@ -83,7 +79,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
  * @param[in] b	Second pair.
  * @return		-1 if a < b, 0 if a == b, 1 if a > b.
  */
-static inline CC_HINT(always_inline) int8_t fr_der_pair_cmp_by_da_tag(void const *a, void const *b)
+static inline CC_HINT(always_inline) fr_cmp_ret_t fr_der_pair_cmp_by_da_tag(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
@@ -415,7 +411,7 @@ static ssize_t fr_der_encode_ipv4_prefix(fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
-	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (8 - (vp->vp_ip.prefix & 0x07)));
+	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) ((8 - (vp->vp_ip.prefix & 0x07)) & 0x07));
 
 	len = (vp->vp_ip.prefix + 0x07) >> 3;
 
@@ -486,7 +482,7 @@ static ssize_t fr_der_encode_ipv6_prefix(fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
-	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (8 - (vp->vp_ip.prefix & 0x07)));
+	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) ((8 - (vp->vp_ip.prefix & 0x07)) & 0x07));
 
 	len = (vp->vp_ip.prefix + 0x07) >> 3;
 
@@ -594,6 +590,7 @@ static ssize_t fr_der_encode_oid_from_value(fr_dbuff_t *dbuff, uint64_t value, u
 {
 	fr_dbuff_t	our_dbuff;
 	int		i;
+	bool		wrote = false;
 	uint64_t	oid;
 
 	/*
@@ -636,12 +633,16 @@ static ssize_t fr_der_encode_oid_from_value(fr_dbuff_t *dbuff, uint64_t value, u
 	for (i = 63; i >= 0; i -= 7) {
 		uint8_t more, part;
 
+		/*
+		 *	Skip leading zeroes, but not intermediate ones.
+		 */
 		part = (oid >> i) & 0x7f;
-		if (!part) continue;
+		if (!part && !wrote && (i > 0)) continue;
 
 		more = ((uint8_t) (i > 0)) << 7;
 
 		FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (more | part));
+		wrote = true;
 	}
 
 	(*count)++;
@@ -755,11 +756,7 @@ static int CC_HINT(nonnull) fr_der_encode_set_of_cmp(void const *one, void const
 	fr_der_encode_set_of_ptr_pairs_t const *a = one;
 	fr_der_encode_set_of_ptr_pairs_t const *b = two;
 
-	if (a->len >= b->len) {
-		return memcmp(a->data, b->data, a->len);
-	}
-
-	return memcmp(a->data, b->data, b->len);
+	return MEMCMP_FIELDS(a, b, data, len);
 }
 
 static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx)
@@ -1121,6 +1118,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	ssize_t		  slen	      = 0;
 	size_t		  is_critical = 0;
 	uint64_t	  max, num;
+	fr_dbuff_marker_t length_start, inner_seq_len_start;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
@@ -1172,10 +1170,12 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	fr_pair_dcursor_child_iter_init(&root_cursor, &vp->children, cursor);
 	fr_dcursor_copy(&parent_cursor, &root_cursor);
 
+	fr_dbuff_marker(&inner_seq_len_start, &our_dbuff);
+	fr_dbuff_marker(&length_start, &our_dbuff);
+
 	while (fr_dcursor_current(&parent_cursor)) {
 		uint64_t	  component;
 		int		  count;
-		fr_dbuff_marker_t length_start, inner_seq_len_start;
 		fr_pair_t	  *child;
 
 		/*
@@ -1194,7 +1194,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_SEQUENCE, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_CONSTRUCTED);
 		if (slen < 0) return slen;
 
-		fr_dbuff_marker(&inner_seq_len_start, &our_dbuff);
+		fr_dbuff_set(&inner_seq_len_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 		/*
@@ -1203,7 +1203,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
 		if (slen < 0) return slen;
 
-		fr_dbuff_marker(&length_start, &our_dbuff);
+		fr_dbuff_set(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 		/*
@@ -1287,7 +1287,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OCTETSTRING, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
 		if (slen < 0) return slen;
 
-		fr_dbuff_marker(&length_start, &our_dbuff);
+		fr_dbuff_set(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 		/*

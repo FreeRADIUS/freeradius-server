@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -31,10 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/eap_aka_sim/attrs.h>
 #include <freeradius-devel/eap_aka_sim/base.h>
 #include <freeradius-devel/eap_aka_sim/module.h>
-#include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/debug.h>
 
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, 0, eap_aka_sim_module_conf_t, virtual_server),

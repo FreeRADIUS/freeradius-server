@@ -1,0 +1,36 @@
+#
+# PRE: redundant
+#
+#  All children in redundant block fail - final rcode is fail
+#
+string marker
+
+try {
+	redundant {
+		group {
+			fail
+		}
+
+		group {
+			fail
+		}
+
+		group {
+			fail
+		}
+	}
+
+	#
+	#  Should not reach here
+	#
+	test_fail
+}
+catch fail {
+	marker := "caught"
+}
+
+if (marker != "caught") {
+	test_fail
+}
+
+success

@@ -1,0 +1,17 @@
+
+#
+# radius module template for load-generator
+#
+radius-module-dst-server-tmpl {
+	mode = proxy
+	transport = udp
+	type = Access-Request
+	require_message_authenticator = auto
+	file {
+	     filename = ${logdir}/packets.bin
+	}
+	udp {
+		port = 1812
+		secret = testing123
+	}
+}

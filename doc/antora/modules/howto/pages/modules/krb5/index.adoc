@@ -18,7 +18,7 @@ deplibs_test_method="pass_all"
 
 in `../libtool`
 
-Otherwise, it complains if the krb5 libs aren’t shared.
+Otherwise, it complains if the krb5 libs aren't shared.
 
 === Heimdal libraries
 
@@ -49,5 +49,5 @@ Auth-Type Kerberos {
     krb5
 }
 ```
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

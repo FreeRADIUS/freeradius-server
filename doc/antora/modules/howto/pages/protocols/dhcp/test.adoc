@@ -120,7 +120,7 @@ are being generated.
 
 You can now change the content of the sample DHCP request by editing the
 `dhcp-packet.txt` file and re-run the above command to see the server's reply.
-You should examine the DHCP dictionary distrubuted with FreeRADIUS (usually
+You should examine the DHCP dictionary distributed with FreeRADIUS (usually
 `/usr/share/freeradius/dictionary/dhcpv4/`) which provides the list of all of the
 DHCP parameters ("attributes") understood by FreeRADIUS.
 
@@ -135,3 +135,6 @@ The remainder of this guide describes how to configure the IP address plan,
 setup the IP pools and define a DHCP policy. It's recommended to develop your policy by making small, incremental changes to the provided configuration and then test those changes with the approach described above, using `dhcpclient` and `radius -X`, modifying the sample DHCP packet as required. If you break the policy then revert the last change, attempt to understand what went wrong, and try something else.
 
 Now xref:protocols/dhcp/policy.adoc[define the DHCP policy].
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

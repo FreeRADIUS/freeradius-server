@@ -236,7 +236,7 @@ static inline int dict_attr_ref_aunresolved(fr_dict_attr_t **da_p, char const *r
 		return -1;
 	}
 	ext->type = type | FR_DICT_ATTR_REF_UNRESOLVED;	/* Always unresolved */
-	ext->unresolved = talloc_typed_strdup(da, ref);
+	ext->unresolved = talloc_strdup(da, ref);
 
 	return 0;
 }

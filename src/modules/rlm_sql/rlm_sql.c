@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -30,20 +30,10 @@ RCSID("$Id$")
 #define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/exfile.h>
-#include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/server/trigger.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/util/table.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/unlang/map.h>
 
 #include <sys/stat.h>
@@ -332,20 +322,11 @@ static sql_fall_through_t fall_through(map_list_t *maps)
 	return  FALL_THROUGH_DEFAULT;
 }
 
-/*
- *	Yucky prototype.
- */
-static ssize_t sql_escape_func(request_t *, char *out, size_t outlen, char const *in, void *arg);
-
 /** Escape a tainted VB used as an xlat argument
  *
  */
 static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 {
-	fr_sbuff_t			sbuff;
-	fr_sbuff_uctx_talloc_t		sbuff_ctx;
-
-	ssize_t				len;
 	void				*arg = NULL;
 	rlm_sql_escape_uctx_t		*ctx = uctx;
 	rlm_sql_t const			*inst = talloc_get_type_abort_const(ctx->sql, rlm_sql_t);
@@ -409,23 +390,14 @@ check_escape_arg:
 	}
 
 	/*
-	 *	Escaping functions work on strings - ensure the box is a string
+	 *	The escape function works with the bytes already in the box
+	 *	(using vb_length, not strlen()) so binary data containing NUL
+	 *	bytes survives the escape.  Cast non-string boxes to a string
+	 *	first - the cast preserves the underlying bytes.
 	 */
 	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) goto error;
 
-	/*
-	 *	Maximum escaped length is 3 * original - if every character needs escaping
-	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->vb_length * 3, vb->vb_length * 3)) {
-		fr_strerror_printf_push("Failed to allocate buffer for escaped sql argument");
-		return -1;
-	}
-
-	len = inst->sql_escape_func(request, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, arg);
-	if (len < 0) goto error;
-
-	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
+	if (inst->sql_escape_func(request, vb, arg) < 0) goto error;
 
 	/*
 	 *	Different databases have slightly different ideas as
@@ -461,7 +433,10 @@ static xlat_action_t sql_escape_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, 
 	while ((vb = fr_value_box_list_pop_head(in))) {
 		if (fr_value_box_is_safe_for(vb, inst->driver)) goto append;
 		if (!escape_uctx) escape_uctx = sql_escape_uctx_alloc(request, inst);
-		sql_box_escape(vb, escape_uctx);
+		if (sql_box_escape(vb, escape_uctx) < 0) {
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
 	append:
 		fr_dcursor_append(out, vb);
 	}
@@ -918,7 +893,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 	while ((vb = fr_value_box_list_next(query, vb))) {
 		if (fr_value_box_is_safe_for(vb, inst->driver)) continue;
 		if (!escape_uctx) escape_uctx = sql_escape_uctx_alloc(request, inst);
-		sql_box_escape(vb, escape_uctx);
+		if (sql_box_escape(vb, escape_uctx) < 0) RETURN_UNLANG_FAIL;
 	}
 
 	if (fr_value_box_list_concat_in_place(request,
@@ -942,29 +917,37 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 						query_ctx);
 }
 
-/** xlat escape function for drivers which do not provide their own
+/** Default escape function for drivers which do not provide their own
  *
+ * Multi-byte UTF-8 characters pass through unchanged, `\n` / `\r` / `\t` become
+ * their backslash-escaped equivalents, and anything else outside
+ * `allowed_chars` is replaced with `=XX` (mime-style hex).
  */
-static ssize_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
+static int sql_escape_func(UNUSED request_t *request, fr_value_box_t *vb, void *arg)
 {
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(arg, rlm_sql_t);
+	char const		*in = vb->vb_strvalue;
+	char const		*end = in + vb->vb_length;
+	char			*out, *p;
+	size_t			outlen = vb->vb_length * 3 + 1;
 	size_t			len = 0;
 
-	while (in[0]) {
+	/*
+	 *	Worst case: every input byte expands to `=XX` (3 chars), plus a NUL.
+	 */
+	MEM(p = out = talloc_array(vb, char, outlen));
+
+	while (in < end) {
 		size_t utf8_len;
 
 		/*
 		 *	Allow all multi-byte UTF8 characters.
 		 */
-		utf8_len = fr_utf8_char((uint8_t const *) in, -1);
+		utf8_len = fr_utf8_char((uint8_t const *) in, end - in);
 		if (utf8_len > 1) {
-			if (outlen <= utf8_len) break;
-
-			memcpy(out, in, utf8_len);
+			memcpy(p, in, utf8_len);
 			in += utf8_len;
-			out += utf8_len;
-
-			outlen -= utf8_len;
+			p += utf8_len;
 			len += utf8_len;
 			continue;
 		}
@@ -974,80 +957,57 @@ static ssize_t sql_escape_func(UNUSED request_t *request, char *out, size_t outl
 		 *	we're now responsible for escaping all special
 		 *	chars in an xlat expansion or attribute value.
 		 */
-		switch (in[0]) {
+		switch (*in) {
 		case '\n':
-			if (outlen <= 2) break;
-			out[0] = '\\';
-			out[1] = 'n';
-
-			in++;
-			out += 2;
-			outlen -= 2;
-			len += 2;
-			break;
+			p[0] = '\\';
+			p[1] = 'n';
+			goto next;
 
 		case '\r':
-			if (outlen <= 2) break;
-			out[0] = '\\';
-			out[1] = 'r';
-
-			in++;
-			out += 2;
-			outlen -= 2;
-			len += 2;
-			break;
+			p[0] = '\\';
+			p[1] = 'r';
+			goto next;
 
 		case '\t':
-			if (outlen <= 2) break;
-			out[0] = '\\';
-			out[1] = 't';
+			p[0] = '\\';
+			p[1] = 't';
 
+		next:
 			in++;
-			out += 2;
-			outlen -= 2;
+			p += 2;
 			len += 2;
-			break;
+			continue;
 		}
 
 		/*
-		 *	Non-printable characters get replaced with their
-		 *	mime-encoded equivalents.
+		 *	Non-printable characters (including embedded NULs) get
+		 *	replaced with their mime-encoded equivalents.
 		 */
-		if ((in[0] < 32) ||
+		if (((unsigned char)*in < 32) ||
 		    strchr(inst->config.allowed_chars, *in) == NULL) {
-			/*
-			 *	Only 3 or less bytes available.
-			 */
-			if (outlen <= 3) {
-				break;
-			}
-
-			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
+			snprintf(p, 4, "=%02X", (unsigned char) in[0]);
 			in++;
-			out += 3;
-			outlen -= 3;
+			p += 3;
 			len += 3;
 			continue;
 		}
 
 		/*
-		 *	Only one byte left.
-		 */
-		if (outlen <= 1) {
-			break;
-		}
-
-		/*
 		 *	Allowed character.
 		 */
-		*out = *in;
-		out++;
-		in++;
-		outlen--;
+		*p++ = *in++;
 		len++;
 	}
-	*out = '\0';
-	return len;
+	*p = '\0';
+
+	/*
+	 *	Shrink the buffer to fit the actual escaped length, then
+	 *	hand it to the box.
+	 */
+	if (len + 1 < outlen) MEM(out = talloc_realloc(vb, out, char, len + 1));
+	fr_value_box_strdup_shallow_replace(vb, out, len);
+
+	return 0;
 }
 
 /*
@@ -1119,7 +1079,7 @@ static unlang_action_t sql_get_grouplist_resume(unlang_result_t *p_result, reque
 			entry = entry->next;
 		}
 		entry->next = NULL;
-		entry->name = talloc_typed_strdup(entry, row[0]);
+		entry->name = talloc_strdup(entry, row[0]);
 
 		group_ctx->num_groups++;
 	}
@@ -1681,7 +1641,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			}
 
 			if (!call_env->group_check_query && !call_env->group_reply_query) {
-				RWARN("Cannot process groups when neither authorize_group_check_query nor authorize_group_check_query are set");
+				RWARN("Cannot process groups when neither authorize_group_check_query nor authorize_group_reply_query are set");
 				break;
 			}
 
@@ -1697,7 +1657,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			RDEBUG3("... falling-through to profile processing");
 
 			if (!call_env->group_check_query && !call_env->group_reply_query) {
-				RWARN("Cannot process profiles when neither authorize_group_check_query nor authorize_group_check_query are set");
+				RWARN("Cannot process profiles when neither authorize_group_check_query nor authorize_group_reply_query are set");
 				break;
 			}
 
@@ -2027,7 +1987,7 @@ static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 					     &(call_env_parser_t){ FR_CALL_ENV_OFFSET("logfile", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, filename)}));
 
 	if (tmpl_afrom_substr(parsed_env, &parsed_tmpl,
-			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 			      &our_rules) < 0) {
 	error:
@@ -2105,7 +2065,7 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 						     }));
 
 		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
-					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 					 cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 					 &our_rules);
 		if (slen <= 0) {
@@ -2476,7 +2436,7 @@ static int sql_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_
 	our_rules.literals_safe_for = SQL_SAFE_FOR;
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
-			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 			      &our_rules) < 0) return -1;
 	*(void **)out = parsed_tmpl;

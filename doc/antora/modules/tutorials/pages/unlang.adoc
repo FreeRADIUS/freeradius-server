@@ -1,5 +1,8 @@
 = Unlang
 
-The xref:reference:unlang/index.adoc[Unlang] policy language in FreeRADIUS enables you to create policies with ease. Unlang enables conditional checks and updates to request or response attributes based on those checks. Unlang’s syntax is similar to configuration files. It supports comments, whitespace, and sections. The main difference is that configuration files are static and declarative. They define variables and values that remain static while the server runs.
+The xref:reference:unlang/index.adoc[Unlang] policy language in FreeRADIUS enables you to create policies with ease. Unlang enables conditional checks and updates to request or response attributes based on those checks. Unlang's syntax is similar to configuration files. It supports comments, whitespace, and sections. The main difference is that configuration files are static and declarative. They define variables and values that remain static while the server runs.
 
 In contrast, xref:reference:unlang/index.adoc[Unlang] operates at runtime. It processes each incoming packet and evaluates conditional statements, like xref:reference:unlang/if.adoc[if] for every packet. This allows dynamic editing of attribute contents or lists, making it more flexible for "in-flight" requests.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

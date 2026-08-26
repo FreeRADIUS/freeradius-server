@@ -34,8 +34,6 @@ extern "C" {
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/nbo.h>
 #include <limits.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <sys/types.h>
 
 DIAG_OFF(cast-align)
@@ -256,7 +254,7 @@ do { \
  *
  * @param[in] _dbuff_or_marker	to make an ephemeral copy of.
  */
-#define FR_DBUFF_BIND_CURRENT_ABS(_dbuff_or_marker) FR_DBUFF_ABS(_dbuff_or_marker, fr_dbuff_start(_dbuff_or_marker), FR_DBUFF_ADV_PARENT_CURRENT)
+#define FR_DBUFF_BIND_CURRENT_ABS(_dbuff_or_marker) _FR_DBUFF(_dbuff_or_marker, fr_dbuff_start(_dbuff_or_marker), FR_DBUFF_ADV_PARENT_CURRENT)
 
 /** Create a new dbuff pointing to the same underlying buffer
  *
@@ -1036,27 +1034,23 @@ _fr_dbuff_set(\
  *
  * @param[out] dbuff		dbuff to use for constraints checks.
  * @param[in] p			Position to set.
- * @return
- *	- 0	not advanced (p before dbuff start) or after dbuff end.
- *	- >0	the number of bytes the dbuff was trimmed by.
  */
-static inline ssize_t _fr_dbuff_set_end(fr_dbuff_t *dbuff, uint8_t const *p)
+static inline void _fr_dbuff_set_end(fr_dbuff_t *dbuff, uint8_t const *p)
 {
-	if (unlikely(p > dbuff->end)) return -(p - dbuff->end);
-	if (unlikely(p < dbuff->start)) return 0;
+#ifndef NDEBUG
+	fr_assert(p >= dbuff->start);
+	fr_assert(p <= dbuff->end);
+#else
+	if (!((p >= dbuff->start) && (p <= dbuff->end))) return;
+#endif
 
 	dbuff->end = UNCONST(uint8_t *, p);
-
-	return dbuff->end - p;
 }
 
 /** Set a new 'end' position in a dbuff or marker
  *
  * @param[out] _dst		dbuff to use for constraints checks.
  * @param[in] _end		Position to set.
- * @return
- *	- 0	not advanced (p before dbuff start) or after dbuff end.
- *	- >0	the number of bytes the dbuff was trimmed by.
  */
 #define fr_dbuff_set_end(_dst, _end) \
 _fr_dbuff_set_end(\
@@ -1148,7 +1142,7 @@ static inline ssize_t _fr_dbuff_advance_extend(uint8_t **pos_p, fr_dbuff_t *dbuf
  *      - <0	the number of bytes we'd need to complete the advance.
  */
 #define fr_dbuff_advance_extend(_dbuff_or_marker, _len)  \
-	_fr_dbuff_advance(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), \
+	_fr_dbuff_advance_extend(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), \
 			  (_Generic((_len), \
 			  	unsigned char : (size_t)(_len), \
 			 	unsigned short : (size_t)(_len), \

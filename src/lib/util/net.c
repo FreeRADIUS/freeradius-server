@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 of the
  *   License as published by the Free Software Foundation.
  *
@@ -166,7 +166,7 @@ uint16_t fr_ip_header_checksum(uint8_t const *data, uint8_t ihl)
 	return ((uint16_t) ~sum);
 }
 
-uint16_t fr_ip6_pesudo_header_checksum(struct in6_addr const *src, struct in6_addr const *dst, uint16_t ip_len, uint8_t ip_next)
+uint16_t fr_ip6_pseudo_header_checksum(struct in6_addr const *src, struct in6_addr const *dst, uint16_t ip_len, uint8_t ip_next)
 {
 	uint64_t sum = 0;
 	ip_pseudo_header6_t ip6; /* Keep correct alignment for the pointer */

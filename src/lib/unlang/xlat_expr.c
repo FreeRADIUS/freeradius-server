@@ -272,6 +272,7 @@ flags:
 	fr_assert(!arg2->flags.needs_resolving);
 
 	node->call.args->flags.needs_resolving = false;
+	xlat_flags_merge(&node->flags, &node->call.args->flags);
 
 	return 0;
 }
@@ -317,13 +318,15 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	a = fr_value_box_list_head(in);
 	if (!a) {
 		REDEBUG("Left argument to %s is missing", fr_tokens[op]);
+	fail:
+		talloc_free(dst);
 		return XLAT_ACTION_FAIL;
 	}
 
 	b = fr_value_box_list_next(in, a);
 	if (!b) {
 		REDEBUG("Right argument to %s is missing", fr_tokens[op]);
-		return XLAT_ACTION_FAIL;
+		goto fail;
 	}
 
 	fr_assert(!fr_comparison_op[op]);
@@ -331,14 +334,14 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (fr_value_box_list_num_elements(&a->vb_group) > 1) {
 		REDEBUG("Expected one value as the first argument, got %u",
 			fr_value_box_list_num_elements(&a->vb_group));
-		return XLAT_ACTION_FAIL;
+		goto fail;
 	}
 	a = fr_value_box_list_head(&a->vb_group);
 
 	if (fr_value_box_list_num_elements(&b->vb_group) > 1) {
 		REDEBUG("Expected one value as the second argument, got %u",
 			fr_value_box_list_num_elements(&b->vb_group));
-		return XLAT_ACTION_FAIL;
+		goto fail;
 	}
 	b = fr_value_box_list_head(&b->vb_group);
 
@@ -354,9 +357,8 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
 	if (rcode < 0) {
-		RPEDEBUG("Failed calculating '%pV %s %pV'", a, fr_tokens[op], b);
-		talloc_free(dst);
-		return XLAT_ACTION_FAIL;
+		RPEDEBUG("Failed calculating '%pR %s %pR'", a, fr_tokens[op], b);
+		goto fail;
 	}
 
 	/*
@@ -590,10 +592,10 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 	lhs = xlat_exp_head(xctx->ex->call.args);
 	rhs = xlat_exp_next(xctx->ex->call.args, lhs);
 
-	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, rhs);
-
 	fr_assert(rhs);
 	fr_assert(rhs->type == XLAT_GROUP);
+	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, rhs);
+
 	regex = xlat_exp_head(rhs->group);
 	fr_assert(tmpl_contains_regex(regex->vpt));
 
@@ -717,10 +719,11 @@ static xlat_action_t xlat_regex_do_op(TALLOC_CTX *ctx, request_t *request, fr_va
 		 *	Evaluate the expression
 		 */
 		ret = regex_exec(*preg, subject, len, regmatch);
+		talloc_free(vb);
+
 		switch (ret) {
 		default:
 			RPEDEBUG("REGEX failed");
-			talloc_free(vb);
 			talloc_free(regmatch);
 			return XLAT_ACTION_FAIL;
 
@@ -730,12 +733,8 @@ static xlat_action_t xlat_regex_do_op(TALLOC_CTX *ctx, request_t *request, fr_va
 
 		case 1:
 			regex_sub_to_request(request, preg, &regmatch, &safety);
-			talloc_free(vb);
 			goto done;
-
 		}
-
-		talloc_free(vb);
 	}
 
 done:
@@ -841,8 +840,6 @@ static xlat_action_t xlat_func_regex_search(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	regex_t			*preg;
 	fr_value_box_t		*regex;
 	xlat_action_t		action;
-
-	RDEBUG("IN IS %pM", in);
 
 	regex = fr_value_box_list_pop_head(in);
 	fr_assert(regex);
@@ -1238,11 +1235,11 @@ static xlat_action_t xlat_logical_or_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Nothing to expand, return the final value we saw.
 	 */
 	if (rctx->current >= inst->argc) {
-	done:
 		/*
 		 *	Otherwise we stop on failure, with the boolean
 		 *	we just updated.
 		 */
+	done:
 		if (rctx->box) fr_dcursor_append(out, rctx->box);
 
 		talloc_free(rctx);
@@ -1297,7 +1294,7 @@ static bool xlat_logical_and(xlat_logical_rctx_t *rctx, fr_value_box_list_t cons
 	if (!found) return false;
 
 	if (!rctx->box) {
-		MEM(rctx->box = fr_value_box_alloc_null(rctx));
+		MEM(rctx->box = fr_value_box_alloc_null(rctx->ctx));
 	} else {
 		fr_value_box_clear(rctx->box);
 	}
@@ -1332,7 +1329,10 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	(a, b, c) && (d, e, f) == a && b && c && d && e && f
 	 */
 	match = xlat_logical_and(rctx, &rctx->list);
-	if (!match) return XLAT_ACTION_DONE;
+	if (!match) {
+		TALLOC_FREE(rctx->box); /* parented from ctx */
+		goto done;
+	}
 
 	fr_value_box_list_talloc_free(&rctx->list);
 
@@ -1349,6 +1349,7 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_assert(rctx->box != NULL);
 		fr_dcursor_append(out, rctx->box);
 
+	done:
 		talloc_free(rctx);
 		return XLAT_ACTION_DONE;
 	}
@@ -2042,7 +2043,7 @@ static const int precedence[T_TOKEN_LAST] = {
 
 #define fr_sbuff_skip_whitespace(_x) \
 	do { \
-		while (isspace((uint8_t) fr_sbuff_char(_x, '\0'))) fr_sbuff_advance(_x, 1); \
+		while (isspace(fr_sbuff_uint8(_x, '\0'))) fr_sbuff_advance(_x, 1); \
 	} while (0)
 
 static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
@@ -2172,6 +2173,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *	Don't add it to head->flags, that will be done when it's actually inserted.
 	 */
 
+	XLAT_VERIFY(unary);
 	*out = unary;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2383,7 +2385,7 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	if (slen <= 0) return 0;
 
 	if (!fr_sbuff_is_terminal(&our_in, terminals)) {
-		if (!fr_dict_attr_allowed_chars[fr_sbuff_char(&our_in, '\0')]) {
+		if (!fr_dict_attr_allowed_chars[fr_sbuff_uint8(&our_in, '\0')]) {
 			fr_strerror_const("Unexpected text after return code");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -2419,6 +2421,7 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	xlat_func_append_arg(node, arg, false);
 
+	XLAT_VERIFY(node);
 	*out = node;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2690,6 +2693,7 @@ done:
 		node = cast;
 	}
 
+	XLAT_VERIFY(node);
 	*out = node;
 
 	fr_sbuff_skip_whitespace(&our_in);
@@ -2816,6 +2820,7 @@ redo:
 		/*
 		 *	LHS may be NULL if the expression has spaces followed by a terminal character.
 		 */
+		if (lhs) XLAT_VERIFY(lhs);
 		*out = lhs;
 		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
@@ -2979,6 +2984,8 @@ redo:
 	 */
 	if (!rhs) goto done;
 
+	XLAT_VERIFY(rhs);
+
 	func = xlat_func_find(binary_ops[op].str, binary_ops[op].len);
 	fr_assert(func != NULL);
 
@@ -3055,6 +3062,7 @@ redo:
 	}
 
 	lhs = node;
+	XLAT_VERIFY(lhs);
 	goto redo;
 }
 
@@ -3131,7 +3139,9 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	}
 
 	if (!node) {
+		XLAT_HEAD_VERIFY(head);
 		*out = head;
+
 		return slen;
 	}
 
@@ -3155,7 +3165,9 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 
 	xlat_exp_insert_tail(head, node);
 
+	XLAT_HEAD_VERIFY(head);
 	*out = head;
+
 	return slen;
 }
 

@@ -1,14 +1,13 @@
 #
-#  Run the "redis" xlat
+#  Test the release method of rlm_redis_ippool
 #
-$INCLUDE cluster_reset.inc
 
 control.IP-Pool.Name := 'test_release'
 
 #
 #  Add IP addresses
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+%redis_ippool.subnet.add(control.IP-Pool.Name,'192.168.0.1/32', 32, '192.168.0.0')
 
 #
 #  Check allocation
@@ -78,6 +77,60 @@ redis_ippool.release {
 if (updated) {
 	test_pass
 } else {
+	test_fail
+}
+
+#
+#  Set the attribute being referenced in association_time
+#
+control.Session-Timeout := 120
+
+#
+#  Now allocate and release the address to create the association.
+#
+redis_ippool {
+	invalid = 1
+}
+if (!(updated)) {
+	test_fail
+}
+
+Framed-IP-Address := reply.Framed-IP-Address
+
+redis_ippool.release {
+	invalid = 1
+}
+if (!(updated)) {
+	test_fail
+}
+
+#
+#  Verify the association with the device remains
+#
+if (%redis('EXISTS', "{%{control.IP-Pool.Name}}:device:%{Calling-Station-ID}") != '1') {
+	test_fail
+}
+
+#
+#  Add an additional address.  Without the device association this would be the next
+#  allocated address.
+#
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.0.2/32')
+
+#
+#  Re-allocate
+#
+request -= Framed-IP-Address[*]
+reply -= Framed-IP-Address[*]
+
+redis_ippool {
+	invalid = 1
+}
+if (!(updated)) {
+	test_fail
+}
+
+if (reply.Framed-IP-Address != 192.168.0.1) {
 	test_fail
 }
 

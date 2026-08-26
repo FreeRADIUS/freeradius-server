@@ -3,7 +3,7 @@
 This guide describes how FreeRADIUS can be used in place of ISC DHCP or ISC Kea
 to provide a significantly more performant and flexible DHCP server.
 
-The suggested configuration is likely familiar to anyone who’s used DHCP with common features of other DHCP server software.
+The suggested configuration is likely familiar to anyone who's used DHCP with common features of other DHCP server software.
 
 The modular design of FreeRADIUS means that there is no one "right" way to
 implement the DHCP service. FreeRADIUS allows you to put together a "mix and
@@ -30,3 +30,6 @@ This guide is organized into four sections and we recommend to review each one i
 2. xref:protocols/dhcp/enable.adoc[Enable the DHCP service]
 3. xref:protocols/dhcp/test.adoc[Test the DHCP service]
 4. xref:protocols/dhcp/policy.adoc[Define the DHCP policy]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

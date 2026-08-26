@@ -326,10 +326,14 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, size_t 
 	if (buflen < MIN_PACKET_SIZE) return -1;
 
 	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) buffer, buflen, attr_message_type);
-	fr_assert(code != NULL);
-	fr_assert(code[1] == 1);
-	fr_assert(code[2] != 0);
-	fr_assert(code[2] < FR_DHCP_CODE_MAX);
+
+	/*
+	 *	This is already checked by fr_dhcpv4_ok().  The checks
+	 *	here are simply to quiet the static analyzer.
+	 */
+#ifdef STATIC_ANALYZER
+	if (!code || (code[1] != 1) || (code[2] == 0) || (code[2] >= FR_DHCP_CODE_MAX)) return -1;
+#endif
 
 	/*
 	 *	Disallowed packet

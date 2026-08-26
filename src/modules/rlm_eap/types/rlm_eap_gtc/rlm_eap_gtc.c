@@ -24,11 +24,8 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/eap/base.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/unlang/interpret.h>
 
 static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
@@ -165,7 +162,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 	 */
 	MEM(pair_update_request(&vp, attr_user_password) >= 0);
 	fr_pair_value_bstrndup(vp, (char const *)eap_round->response->type.data, eap_round->response->type.length, true);
-	vp->vp_tainted = true;
 
 	unlang = cf_section_find(unlang_call_current(request), "authenticate", inst->auth_type->name);
 	if (!unlang) unlang = cf_section_find(unlang_call_current(request->parent), "authenticate", inst->auth_type->name);

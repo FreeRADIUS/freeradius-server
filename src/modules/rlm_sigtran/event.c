@@ -62,8 +62,6 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/io/schedule.h>
-#include <unistd.h>
 #include <semaphore.h>
 #include <signal.h>
 
@@ -292,7 +290,7 @@ int sigtran_event_submit(struct osmo_fd *ofd, sigtran_transaction_t *txn)
 
 		slen = write(ofd->fd, p, end - p);
 		if (slen > 0) {
-			p += slen;
+			p += slen - 1; /* -1 because of p++ in for loop */
 			continue;
 		}
 
@@ -480,9 +478,18 @@ static void *sigtran_event_loop(UNUSED void *instance)
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, ctrl_pipe) < 0) {
 		ERROR("osmocom thread - Failed creating ctrl_pipe: %s", fr_syserror(errno));
+		talloc_free(ctx);
+		sem_post(&event_thread_running);
 		return NULL;
 	}
-	if (!ofd_create(ctx, ctrl_pipe[1], event_process_request, ctx)) return NULL;
+	if (!ofd_create(ctx, ctrl_pipe[1], event_process_request, ctx)) {
+		close(ctrl_pipe[0]);
+		close(ctrl_pipe[1]);
+		ctrl_pipe[0] = ctrl_pipe[1] = -1;
+		talloc_free(ctx);
+		sem_post(&event_thread_running);
+		return NULL;
+	}
 
 	DEBUG2("osmocom thread - Entering event loop, listening on fd %i (client fd %i)", ctrl_pipe[1], ctrl_pipe[0]);
 
@@ -546,12 +553,18 @@ int sigtran_event_start(void)
 	 */
 	pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
 
-	if (fr_schedule_pthread_create(&event_thread, sigtran_event_loop, NULL) < 0) {
+	if (fr_thread_create(&event_thread, sigtran_event_loop, NULL) < 0) {
 		ERROR("main thread - Failed spawning thread for multiplexer event loop: %s", fr_syserror(errno));
 		return -1;
 	}
 
 	sem_wait(&event_thread_running);
+
+	if (ctrl_pipe[0] < 0) {
+		ERROR("main thread - Event thread failed to initialize");
+		pthread_join(event_thread, NULL);
+		return -1;
+	}
 
 #ifndef NDEBUG
 	{

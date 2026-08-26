@@ -23,16 +23,67 @@
  * @copyright 2006-2019 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/rand.h>
 
 #include "unlang_priv.h"
 #include "load_balance_priv.h"
+#include "xlat_priv.h"
+
+/**  Persist the current load-balance selection
+ *
+ *  If the frame is UNLANG_TYPE_LOAD_BALANCE or
+ *  UNLANG_TYPE_REDUNDANT_LOAD_BALANCE, then remember which child was
+ *  chosen, and choose that again the next time around.
+ */
+int unlang_load_balance_persist(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_frame_state_redundant_t	*redundant;
+	unlang_t		*child;
+
+	if (!frame->prev.frame_load_balance) return 0;
+
+	fr_assert(frame->prev.frame_load_balance < stack->depth);
+
+	frame = &stack->frame[frame->prev.frame_load_balance];
+	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
+
+	child = redundant->child;
+	if (!child) child = redundant->start;
+
+	return request_data_add_const(request, frame->instruction, 0, child, true);
+}
+
+/**  Returns the current child of the load balance section
+ *
+ *  If the frame is UNLANG_TYPE_LOAD_BALANCE or
+ *  UNLANG_TYPE_REDUNDANT_LOAD_BALANCE, then return the child number.
+ */
+uint8_t unlang_load_balance_child(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_frame_state_redundant_t	*redundant;
+
+	if (!frame->prev.frame_load_balance) return 0;
+
+	fr_assert(frame->prev.frame_load_balance < stack->depth);
+
+	frame = &stack->frame[frame->prev.frame_load_balance];
+	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
+
+	fr_assert(redundant->num <= UINT8_MAX);
+
+	return redundant->num;
+}
 
 #define unlang_redundant_load_balance unlang_load_balance
 
-static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, request_t *request,
-						unlang_stack_frame_t *frame)
+static unlang_action_t unlang_redundant_next(unlang_result_t *p_result, request_t *request,
+					     unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_redundant_t	*redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
@@ -70,7 +121,12 @@ static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, reque
 	 *	end, loop around to the next one.
 	 */
 	redundant->child = unlang_list_next(&g->children, redundant->child);
-	if (!redundant->child) redundant->child = unlang_list_head(&g->children);
+	if (!redundant->child) {
+		redundant->child = unlang_list_head(&g->children);
+		redundant->num = 0;
+	} else {
+		redundant->num++;
+	}
 
 	/*
 	 *	We looped back to the start.  Return whatever results we had from the last child.
@@ -110,8 +166,8 @@ static unlang_action_t unlang_redundant(unlang_result_t *p_result, request_t *re
 	 */
 	redundant->start = unlang_list_head(&g->children);
 
-	frame->process = unlang_load_balance_next;
-	return unlang_load_balance_next(p_result, request, frame);
+	frame->process = unlang_redundant_next;
+	return unlang_redundant_next(p_result, request, frame);
 }
 
 static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -119,8 +175,6 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	unlang_frame_state_redundant_t	*redundant;
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_load_balance_t		*gext = NULL;
-
-	uint32_t			count = 0;
 
 #ifdef STATIC_ANALYZER
 	if (!g || unlang_list_empty(&g->children)) return UNLANG_ACTION_FAIL;
@@ -130,92 +184,109 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 #endif
 
 	gext = unlang_group_to_load_balance(g);
+	fr_assert(gext != NULL);
 
 	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 
-	if (gext && gext->vpt) {
-		uint32_t hash, start;
-		ssize_t slen;
-		char buffer[1024];
+	redundant->start = request_data_get(request, frame->instruction, 0);
+	if (redundant->start) {
+		uint32_t i;
 
 		/*
-		 *	Integer data types let the admin
-		 *	select which frame is being used.
+		 *	This loop should be small, typically less than 16 items.
+		 */
+		for (i = 0; i < unlang_list_num_elements(&g->children); i++) {
+			if (gext->children[i] != redundant->start) continue;
+
+			redundant->num = i;
+			RDEBUG3("load-balance starting at child %u", redundant->num);
+			goto selected_child;
+		}
+
+		fr_assert(0);
+
+		goto selected_child;
+	}
+
+	if (gext->vpt) {
+		uint32_t start;
+		size_t num;
+		ssize_t slen;
+		fr_value_box_t *box, *to_free = NULL;
+
+		num = unlang_list_num_elements(&g->children);
+
+		/*
+		 *	Use the attribute value to select the statement which will be used.
 		 */
 		if (tmpl_is_attr(gext->vpt)) {
 			fr_pair_t *vp;
 
 			slen = tmpl_find_vp(&vp, request, gext->vpt);
 			if (slen < 0) {
-				REDEBUG("Failed finding attribute %s", gext->vpt->name);
+				REDEBUG("Failed finding attribute %s - choosing random statement", gext->vpt->name);
 				goto randomly_choose;
 			}
 
 			fr_assert(fr_type_is_leaf(vp->vp_type));
-
-			start = fr_value_box_hash(&vp->data) % unlang_list_num_elements(&g->children);
+			box = &vp->data;
 
 		} else {
-			uint8_t *octets = NULL;
-
-			/*
-			 *	If the input is an IP address, prefix, etc., we don't need to convert it to a
-			 *	string.  We can just hash the raw data directly.
-			 */
-			slen = tmpl_expand(&octets, buffer, sizeof(buffer), request, gext->vpt);
-			if (slen <= 0) goto randomly_choose;
-
-			hash = fr_hash(octets, slen);
-
-			start = hash % unlang_list_num_elements(&g->children);
-		}
-
-		RDEBUG3("load-balance starting at child %d", (int) start);
-
-		count = 0;
-		unlang_list_foreach(&g->children, child) {
-			if (count == start) {
-				redundant->start = child;
-				break;
+			slen = tmpl_aexpand_type(unlang_interpret_frame_talloc_ctx(request), &box, FR_TYPE_VALUE_BOX,
+						 request, gext->vpt);
+			if (slen <= 0) {
+				REDEBUG("Failed expanding %s - choosing random statement", gext->vpt->name);
+				goto randomly_choose;
 			}
 
-			count++;
+			to_free = box;
 		}
-		fr_assert(redundant->start != NULL);
+
+
+		if ((box->type == FR_TYPE_UINT8) && (box->vb_uint8 <= num)) {
+			start = box->vb_uint8;
+		} else {
+			start = fr_value_box_hash(box) % num;
+		}
+		talloc_free(to_free);
+
+		RDEBUG3("load-balance starting at child %u", start);
+
+		redundant->start = gext->children[start];
+		redundant->num = start;
 
 	} else {
-	randomly_choose:
-		count = 1;
+		uint32_t start, one, two;
+		unlang_thread_t const *t1, *t2;
 
+	randomly_choose:
 		/*
-		 *	Choose a child at random.
-		 *
-		 *	@todo - leverage the "power of 2", as per
-		 *      lib/io/network.c.  This is good enough for
-		 *      most purposes.  However, in order to do this,
-		 *      we need to track active callers across
-		 *      *either* multiple modules in one thread, *or*
-		 *      across multiple threads.
-		 *
-		 *	We don't have thread-specific instance data
-		 *	for this load-balance section.  So for now,
-		 *	just pick a random child.
+		 *	Leverage the "power of two".  See src/lib/io/network.c for more information.
 		 */
-		unlang_list_foreach(&g->children, child) {
-			if ((count * (fr_rand() & 0xffffff)) < (uint32_t) 0x1000000) {
-				redundant->start = child;
-			}
-			count++;
+		one = fr_rand() % unlang_list_num_elements(&g->children);
+		do {
+			two = fr_rand() % unlang_list_num_elements(&g->children);
+		} while (two == one);
+
+		t1 = unlang_thread_stats(gext->children[one]);
+		t2 = unlang_thread_stats(gext->children[two]);
+
+		if (t1->active <= t2->active) {
+			start = one;
+		} else {
+			start = two;
 		}
 
-		fr_assert(redundant->start != NULL);
-
+		RDEBUG3("load-balance starting at child %u", start);
+		redundant->start = gext->children[start];
+		redundant->num = start;
 	}
 
+selected_child:
 	fr_assert(redundant->start != NULL);
 
 	/*
-	 *	Plain "load-balance".  Just do one child, and return the result directly bacl to the caller.
+	 *	Plain "load-balance".  Just do one child, and return the result directly back to the caller.
 	 */
 	if (frame->instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
 		if (unlang_interpret_push(p_result, request, redundant->start,
@@ -225,8 +296,8 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	frame->process = unlang_load_balance_next;
-	return unlang_load_balance_next(p_result, request, frame);
+	frame->process = unlang_redundant_next;
+	return unlang_redundant_next(p_result, request, frame);
 }
 
 
@@ -234,6 +305,8 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 						 unlang_type_t type)
 {
 	char const			*name2;
+	int				i;
+	fr_token_t			quote;
 	unlang_t			*c;
 	unlang_group_t			*g;
 	unlang_load_balance_t		*gext;
@@ -257,28 +330,53 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	g = unlang_generic_to_group(c);
 
 	/*
-	 *	Allow for keyed load-balance / redundant-load-balance sections.
+	 *	The various State mangling functions need to limit the number of load-balance sections.
+	 *
+	 *	Plus, it doesn't make a lot of sense to have 256 children of a load-balance section.  Just
+	 *	what the heck are they doing?
 	 */
-	name2 = cf_section_name2(cs);
-
-	/*
-	 *	Inside of the "modules" section, it's a virtual
-	 *	module.  The name is a module name, not a key.
-	 */
-	if (name2) {
-		if (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "modules") == 0) name2 = NULL;
+	if (unlang_list_num_elements(&g->children) > UINT8_MAX) {
+		cf_log_err(cs, "Too many children for %s section", c->name);
+		return NULL;
 	}
 
+	/*
+	 *	Inside of the "modules" section, it's a virtual module.  The key is the third argument, and
+	 *	the "name2" is the module name, which we ignore here.
+	 */
+	name2 = cf_section_name2(cs);
+	quote = cf_section_name2_quote(cs);
+
 	if (name2) {
-		fr_token_t quote;
+		if (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "modules") == 0) {
+			char const *key;
+
+			/*
+			 *	Key is optional.
+			 */
+			key = cf_section_argv(cs, 0);
+			if (key) {
+				name2 = key;
+				quote = cf_section_argv_quote(cs, 0);
+			} else {
+				name2 = NULL; /* no key */
+			}
+		}
+	}
+
+	gext = unlang_group_to_load_balance(g);
+
+	/*
+	 *	Allow for keyed load-balance / redundant-load-balance sections.
+	 */
+	if (name2) {
 		ssize_t slen;
+		xlat_exp_head_t const *xlat;
 
 		/*
 		 *	Create the template.  All attributes and xlats are
 		 *	defined by now.
 		 */
-		quote = cf_section_name2_quote(cs);
-		gext = unlang_group_to_load_balance(g);
 		slen = tmpl_afrom_substr(gext, &gext->vpt,
 					 &FR_SBUFF_IN_STR(name2),
 					 quote,
@@ -286,6 +384,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 					 &t_rules);
 		if (!gext->vpt) {
 			cf_canonicalize_error(cs, slen, "Failed parsing argument", name2);
+		error:
 			talloc_free(g);
 			return NULL;
 		}
@@ -296,15 +395,13 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		 *	Fixup the templates
 		 */
 		if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
-			talloc_free(g);
-			return NULL;
+			goto error;
 		}
 
 		switch (gext->vpt->type) {
 		default:
 			cf_log_err(cs, "Invalid type in '%s': data will not result in a load-balance key", name2);
-			talloc_free(g);
-			return NULL;
+			goto error;
 
 			/*
 			 *	Allow only these ones.
@@ -312,15 +409,34 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		case TMPL_TYPE_ATTR:
 			if (!fr_type_is_leaf(tmpl_attr_tail_da(gext->vpt)->type)) {
 				cf_log_err(cs, "Invalid attribute reference in '%s': load-balancing can only be done on 'leaf' data types", name2);
-				talloc_free(g);
-				return NULL;
+				goto error;
 			}
 			break;
 
+			/*
+			 *	Allow xlat, but disallow exec.  If the admin really wants exec, then they can
+			 *	use `%exec(...)`
+			 */
 		case TMPL_TYPE_XLAT:
-		case TMPL_TYPE_EXEC:
+			xlat = tmpl_xlat(gext->vpt);
+			fr_assert(xlat != NULL);
+
+			if (xlat->flags.constant) {
+				cf_log_err(cs, "Cannot use constant data for 'load-balance' statement");
+				goto error;
+			}
 			break;
 		}
+	}
+
+	/*
+	 *	Cache the children, so we can do O(1) lookups.
+	 */
+	MEM(gext->children = talloc_array(gext, unlang_t *, unlang_list_num_elements(&g->children)));
+
+	i = 0;
+	unlang_list_foreach(&g->children, child) {
+		gext->children[i++] = child;
 	}
 
 	return c;

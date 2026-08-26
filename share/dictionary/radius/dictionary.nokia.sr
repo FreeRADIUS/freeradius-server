@@ -536,6 +536,15 @@ ATTRIBUTE	Onetime-Http-Redirect-Reactivate	185	string
 ATTRIBUTE	ToServer-Dhcp6-Options			191	group ref=@DHCPv6
 ATTRIBUTE	ToClient-Dhcp6-Options			192	group ref=@DHCPv6
 
+ATTRIBUTE	AA-App-Service-Options			193	string
+
+ATTRIBUTE	IPv6-Acct-Input-Packets			194	uint32
+ATTRIBUTE	IPv6-Acct-Input-Octets			195	uint32
+ATTRIBUTE	IPv6-Acct-Input-Gigawords		196	uint32
+ATTRIBUTE	IPv6-Acct-Output-Packets		197	uint32
+ATTRIBUTE	IPv6-Acct-Output-Octets			198	uint32
+ATTRIBUTE	IPv6-Acct-Output-Gigawords		199	uint32
+
 #
 #  MUST have renew time <= rebind time <= preferred lifetime <= valid lifetime
 #
@@ -549,6 +558,9 @@ ATTRIBUTE	Dhcp6-Rebind-Time			203	time_delta
 ATTRIBUTE	Wlan-SSID-VLAN				206	string
 
 ATTRIBUTE	UPnP-Sub-Override-Policy		217	string
+
+ATTRIBUTE	Error-Code				226	uint32
+ATTRIBUTE	Error-Message				227	string
 
 ATTRIBUTE	Trigger-Acct-Interim			228	string
 

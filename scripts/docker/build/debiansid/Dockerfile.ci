@@ -1,0 +1,143 @@
+# Auto generated for debiansid
+# from scripts/docker/m4/ci.deb.m4
+#
+# Rebuild this file with `make dockerfile.ci`
+#
+ARG from=debian:sid
+FROM ${from}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+#
+#  Retry transient apt repo failures. apt does no retries out of the box;
+#  turn that on and shorten the connect timeout so a hung mirror fails
+#  fast and the retry kicks in quickly. Belt-and-braces dpkg / debconf
+#  tweaks save a few seconds per image build.
+#
+RUN printf 'Acquire::Retries "3";\nAcquire::http::ConnectTimeout "5";\nAcquire::https::ConnectTimeout "5";\n' \
+		> /etc/apt/apt.conf.d/80-retries && \
+	printf 'force-unsafe-io\n' > /etc/dpkg/dpkg.cfg.d/02speedup && \
+	echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+#
+#  Refresh apt lists, upgrade in place, install the build toolchain.
+#  Shared by the production, crossbuild, and CI base templates - each
+#  adds whatever extras they specifically need on top.
+#
+RUN apt-get update && apt-get dist-upgrade -y
+
+RUN apt-get install -y --no-install-recommends \
+		apt-transport-https \
+		build-essential \
+		ca-certificates \
+		curl \
+		devscripts \
+		equivs \
+		fakeroot \
+		git-core \
+		gnupg2 \
+		lsb-release \
+		make \
+		quilt
+
+#
+#  Build libkqueue from source as proper .debs (libkqueue0, libkqueue-dev,
+#  libkqueue-dbg) so downstream dpkg-checkbuilddeps / Build-Depends steps
+#  find -dev and so a debugger sees symbols.
+#
+#  Gated to architectures the NetworkRADIUS extras repo doesn't carry
+#  (currently anything that isn't amd64). On amd64 we install libkqueue
+#  from NR's extras repo via common.deb.nr-extras.m4, which keeps the
+#  shlibs version in lockstep with what NR's freeradius packages were
+#  built against -- otherwise libfreeradius4's `(= <ver>)` libkqueue
+#  dep rejects the source-built version at runtime install time.
+#
+#  libkqueue numbers a package with the most recent release tag, followed by
+#  the count of commits made since that tag.  The NetworkRADIUS extras
+#  repository numbers its amd64 packages the same way, so an amd64 machine
+#  and a machine of any other architecture reach the same number for the same
+#  source.
+#
+#  libkqueue asks git for the tag and the count, using "git describe".  A
+#  clone made with --depth 1 downloads no tags, so the clone below downloads
+#  the whole history.
+#
+#  cpack's DEB generator emits a -dbg package whenever the build produces
+#  unstripped objects; RelWithDebInfo with explicit C flags overrides
+#  libkqueue's default -O2 -g -DNDEBUG so the symbols actually survive.
+#
+RUN mkdir -p /opt/libkqueue-debs && \
+    case "$(dpkg --print-architecture)" in \
+        amd64) \
+            echo "libkqueue: skipping source build, NetworkRADIUS extras ships amd64" ;; \
+        *) \
+            apt-get install -y --no-install-recommends cmake git build-essential file && \
+            git clone https://github.com/mheily/libkqueue.git /tmp/libkqueue && \
+            cd /tmp/libkqueue && \
+            cmake -G "Unix Makefiles" \
+                -DCMAKE_INSTALL_PREFIX=/usr \
+                -DCMAKE_INSTALL_LIBDIR=lib \
+                -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+                -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g3 -O1 -fno-omit-frame-pointer -DNDEBUG" \
+                -DCPACK_DEBIAN_PACKAGE_NAME=libkqueue0 \
+                . && \
+            make && \
+            cpack -G DEB && \
+            dpkg -i libkqueue*.deb && \
+            cp libkqueue*.deb /opt/libkqueue-debs/ && \
+            cd / && rm -rf /tmp/libkqueue \
+            ;; \
+    esac
+
+#
+#  Extras the CI base needs on top of the common toolchain. libnl deps
+#  feed the eapol_test build; xz-utils feeds the tmate debug step; file
+#  is occasionally invoked from debian/rules.
+#
+#  Note: scripts/ci/extra-packages.debian.control is intentionally NOT
+#  consumed here. That file is for the self-hosted-ubuntu24 integration
+#  testbed (dovecot, freetds, firebird, etc.) and several of its entries
+#  don't exist on older ubuntu/debian releases. The deb-build job only
+#  needs debian/control's closure plus libnl for eapol_test.
+#
+RUN apt-get install -y --no-install-recommends \
+		file \
+		libnl-3-dev \
+		libnl-genl-3-dev \
+		xz-utils
+
+#
+#  Set up NetworkRADIUS extras repository. OS_NAME and OS_CODENAME are
+#  substituted by the dispatcher (Dockerfile.m4) per-distro.
+#
+RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
+	curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
+		-o /etc/apt/keyrings/packages.networkradius.com.asc \
+		"https://packages.networkradius.com/pgp/packages%40networkradius.com"
+
+RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/debian/sid sid main" \
+		> /etc/apt/sources.list.d/networkradius-extras.list && \
+	apt-get update
+
+#
+#  Pre-install the build-dep closure derived from debian/control. The
+#  source-tree debian/ subtree is baked in at image-build time. There is no
+#  per-job top-up any more, so a new build dependency needs an image refresh;
+#  ci-pipeline.yml runs one before its build legs when debian/** changes.
+#
+COPY debian/ /tmp/freeradius-build/debian/
+RUN cd /tmp/freeradius-build && \
+	touch -t 202001010000 debian/control && \
+	debian/rules debian/control && \
+	mk-build-deps -irt"apt-get -y" debian/control && \
+	apt-get -y --purge remove freeradius-build-deps && \
+	cd / && \
+	rm -rf /tmp/freeradius-build \
+		/freeradius-build-deps_*.deb /freeradius-build-deps_*.buildinfo /freeradius-build-deps_*.changes
+
+#
+#  Trust any workspace path. The job container runs as root but the
+#  bind-mounted runner workspace is owned by the runner user; without
+#  this, git refuses with "dubious ownership" the moment a Makefile
+#  runs `git rev-parse`. System-wide so it applies to every shell.
+#
+RUN git config --system --add safe.directory '*'

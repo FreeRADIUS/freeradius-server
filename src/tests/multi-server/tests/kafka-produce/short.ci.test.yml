@@ -1,0 +1,45 @@
+listener_type: file
+
+#
+#  proto_load profile for the kafka-producer1 container's built-in
+#  load generator.  Modest burst - enough to exercise delivery
+#  reports without stressing CI timing budgets.
+#
+loadgen:
+  start_pps: 5
+  max_pps: 5
+  duration: 4
+  step: 5
+  #
+  #  parallel > 1 lets proto_load keep multiple produce calls in
+  #  flight simultaneously.  With parallel=1 the generator is
+  #  serialised on the kafka.produce round trip - each request
+  #  yields until its delivery report arrives - which caps the
+  #  achievable rate well below start_pps/max_pps.
+  #
+  parallel: 5
+  max_backlog: 1000
+
+#
+#  Expected message count at the consumer.  Must equal the total
+#  proto_load emits: sum over each pps step of (duration * pps).
+#
+expected_messages: 20
+
+kafka_topic: fr-multi-server-test
+
+#  environment_timeout: how long to wait for compose up to bring
+#  every service healthy (kafka boot + radiusd ready + healthcheck)
+#  before the state machine starts.  Runs before test_timeout.
+#
+#  test_timeout: wall-clock budget for the state machine phase
+#  (starts once the environment is up).
+#
+#  state_produce_and_consume_timeout: verify-window for the
+#  produce_and_consume state.  With a healthy stack proto_load
+#  emits its burst in ~4s and the consumer writes its summary
+#  within a second or two, so 30s is plenty.
+environment_timeout: 120
+test_timeout: 180
+state_produce_and_consume_timeout: 30
+consumer_timeout: 60

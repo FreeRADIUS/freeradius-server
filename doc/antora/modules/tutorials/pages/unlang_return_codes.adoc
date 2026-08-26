@@ -6,7 +6,7 @@
 
 *File:*
 
-- `etc/raddb/policy.d/*`
+- `policy.d/*`
 
 *`man` page:* unlang
 
@@ -29,7 +29,7 @@ return code for the request.
 One of the most common reasons for overriding return codes is to implement
 special behaviour on failure.
 
-To minimize external dependencies, for this exercise we will use the
+To minimise external dependencies, for this exercise we will use the
 xref:reference:raddb/mods-available/sometimes.adoc[sometimes] module to simulate an
 unreliable external database.
 
@@ -64,5 +64,5 @@ If the policies are correct you will see that FreeRADIUS returns an
     configured above xref:reference:unlang/keywords.adoc[Keywords].
 
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

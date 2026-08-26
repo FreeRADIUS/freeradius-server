@@ -30,17 +30,12 @@ RCSID("$Id$")
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/io/test_point.h>
 
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/dbuff.h>
-#include <freeradius-devel/util/dcursor.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/table.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <freeradius-devel/tls/openssl_user_macros.h>
@@ -128,16 +123,18 @@ done:
 }
 
 
-static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp);
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp,
+			       fr_dict_attr_t const *da);
 
-static void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
+static void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list,
+				 fr_dict_attr_t const *parent)
 {
 	fr_pair_t *vp;
 
 	for (vp = fr_pair_list_next(list, NULL);
 	     vp != NULL;
 	     vp = fr_pair_list_next(list, vp)) {
-		xlat_debug_attr_vp(request, vp);
+		xlat_debug_attr_vp(request, vp, parent);
 	}
 }
 
@@ -147,7 +144,8 @@ static xlat_arg_parser_t const xlat_pair_cursor_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp,
+			       fr_dict_attr_t const *parent)
 {
 	fr_dict_vendor_t const		*vendor;
 	fr_table_num_ordered_t const	*type;
@@ -162,7 +160,7 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
 	 *	Squash the names down if necessary.
 	 */
 	if (!RDEBUG_ENABLED3) {
-		slen = fr_pair_print_name(&sbuff, NULL, &vp);
+		slen = fr_pair_print_name(&sbuff, parent, &vp);
 	} else {
 		slen = fr_sbuff_in_sprintf(&sbuff, "%s %s ", vp->da->name, fr_tokens[vp->op]);
 	}
@@ -172,14 +170,13 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
 	case FR_TYPE_STRUCTURAL:
 		RIDEBUG2("%s{", buffer);
 		RINDENT();
-		xlat_debug_attr_list(request, &vp->vp_group);
+		xlat_debug_attr_list(request, &vp->vp_group, vp->da);
 		REXDENT();
 		RIDEBUG2("}");
 		break;
 
 	default:
-		if (fr_pair_print_value_quoted(&sbuff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
-		RIDEBUG2("%s", buffer);
+		RIDEBUG2("%s%pV", buffer, &vp->data);
 	}
 
 	if (!RDEBUG_ENABLED3) return;
@@ -303,7 +300,7 @@ static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	for (vp = fr_dcursor_current(cursor);
 	     vp;
 	     vp = fr_dcursor_next(cursor)) {
-		xlat_debug_attr_vp(request, vp);
+		xlat_debug_attr_vp(request, vp, NULL);
 	}
 	REXDENT();
 
@@ -313,37 +310,6 @@ static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wgnu-designator"
 #endif
-
-static const fr_sbuff_escape_rules_t xlat_filename_escape = {
-	.name = "filename",
-	.chr = '_',
-	.do_utf8 = true,
-	.do_hex = true,
-
-	.esc = {
-		[ 0x00 ... 0x2d ] = true,		// special characters, but not '.'
-		[ 0x2f ] = true,			// /
-		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
-		[ 0x5b ... 0x5e ] = true,		// [\]^
-		[ 0x60 ] = true,			// back-tick
-		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
-	},
-};
-
-static const fr_sbuff_escape_rules_t xlat_filename_escape_dots = {
-	.name = "filename",
-	.chr = '_',
-	.do_utf8 = true,
-	.do_hex = true,
-
-	.esc = {
-		[ 0x00 ... 0x2f ] = true,		// special characters, '.', '/', etc.
-		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
-		[ 0x5b ... 0x5e ] = true,		// [\]^
-		[ 0x60 ] = true,			// back-tick
-		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
-	},
-};
 
 #define FR_FILENAME_SAFE_FOR ((uintptr_t) filename_xlat_escape)
 
@@ -398,7 +364,7 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 		 */
 		if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) return -1;
 
-		fr_value_box_print(out, vb, &xlat_filename_escape);
+		fr_value_box_print(out, vb, &fr_filename_escape);
 		break;
 
 	case FR_TYPE_STRING:
@@ -422,9 +388,9 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 		 *	"log/aland@freeradius.org".
 		 */
 		if (vb->vb_strvalue[0] == '.') {
-			fr_value_box_print(out, vb, &xlat_filename_escape_dots);
+			fr_value_box_print(out, vb, &fr_filename_escape_dots);
 		} else {
-			fr_value_box_print(out, vb, &xlat_filename_escape);
+			fr_value_box_print(out, vb, &fr_filename_escape);
 		}
 
 		break;
@@ -452,6 +418,53 @@ static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
 };
 
 
+/*
+ *	Limit the %file...() functions to a particular subset of directories.
+ */
+static bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
+{
+	size_t i, num_files;
+
+	/*
+	 *	Note that we do *not* allow SAFE_FOR_ANY here.  We
+	 *	want to have "defense in depth".
+	 */
+	if (!main_config->limit_files) return true;
+
+	num_files = talloc_array_length(main_config->limit_files);
+	if (!num_files) goto fail;
+
+	for (i = 0; i < num_files; i++) {
+		size_t alen = talloc_array_length(main_config->limit_files[i]);
+
+		/*
+		 *	The allowed directory is longer than the filename, it's not allowed.
+		 */
+		if (alen > vb->vb_length) continue;
+
+		/*
+		 *	No leading match, it's not allowed.
+		 */
+		if (memcmp(vb->vb_strvalue, main_config->limit_files[i], alen) != 0) continue;
+
+		if (alen == vb->vb_length) return true;
+
+		/*
+		 *	Setting "allow = foo/bar" does NOT mean that
+		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
+		 */
+		if (vb->vb_strvalue[vb->vb_length] != '/') break;
+
+		return true;
+	}
+
+fail:
+	REDEBUG("Failed accessing file %s - it is outside of 'limit files { ... }'", vb->vb_strvalue);
+	return false;
+}
+
+#define XLAT_FILE_ALLOWED(_vb) xlat_file_allowed(request, vb)
+
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
 					   UNUSED request_t *request, fr_value_box_list_t *args)
@@ -463,6 +476,8 @@ static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -486,6 +501,8 @@ static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -543,6 +560,8 @@ static xlat_action_t xlat_func_file_size(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	if (stat(filename, &buf) < 0) {
 		REDEBUG3("Failed checking file %s - %s", filename, fr_syserror(errno));
 		return XLAT_ACTION_FAIL;
@@ -572,6 +591,8 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb, &num);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -630,7 +651,7 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			stop = 1;
 
 		} else if (num->vb_uint32 <= 16) {
-			stop = num->vb_uint64;
+			stop = num->vb_uint32;
 
 		} else {
 			stop = 16;
@@ -760,6 +781,8 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
 		RPERROR("Failed opening file %s - %s", filename, fr_syserror(errno));
@@ -789,6 +812,12 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 	close(fd);
 
+	if (len < buf.st_size) {
+		RPERROR("Failed reading all of file %s", filename);
+		talloc_free(dst);
+		return XLAT_ACTION_FAIL;
+	}
+
 	fr_dcursor_append(out, dst);
 
 	return XLAT_ACTION_DONE;
@@ -804,6 +833,8 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -827,17 +858,66 @@ static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
 
-	fd = open(filename, O_CREAT | S_IRUSR | S_IWUSR, 0600);
-	if (fd == -1) {
+	fd = open(filename, O_CREAT | O_WRONLY, 0600);
+	if (fd < 0) {
 		dst->vb_bool = false;
 		REDEBUG3("Failed touching file %s - %s", filename, fr_syserror(errno));
+		return XLAT_ACTION_DONE;
 	}
 	dst->vb_bool = true;
 
 	close(fd);
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t xlat_func_file_mkdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*dirname;
+
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	dirname = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	dst->vb_bool = (fr_mkdir(NULL, dirname, -1, 0700, NULL, NULL) == 0);
+	if (!dst->vb_bool) {
+		REDEBUG3("Failed creating directory %s - %s", dirname, fr_syserror(errno));
+	}
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t xlat_func_file_rmdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*dirname;
+
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	dirname = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	dst->vb_bool = (rmdir(dirname) == 0);
+	if (!dst->vb_bool) {
+		REDEBUG3("Failed removing directory %s - %s", dirname, fr_syserror(errno));
+	}
 
 	return XLAT_ACTION_DONE;
 }
@@ -1045,7 +1125,7 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	switch (in_vb->type) {
 	default:
 	error:
-		RPEDEBUG("Failed converting %pV (%s) to an integer", in_vb,
+		RPEDEBUG("Failed converting %pR (%s) to an integer", in_vb,
 			 fr_type_to_str(in_vb->type));
 		talloc_free(in_vb);
 		return XLAT_ACTION_FAIL;
@@ -1278,6 +1358,15 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 
 	XLAT_ARGS(args, &dst, &lvl, &file);
 
+	/*
+	 *	An explicit `null` is treated the same as a missing arg.
+	 *	vb_strvalue on an FR_TYPE_NULL box is unset, so reading
+	 *	it below would be UB.
+	 */
+	if (dst  && fr_type_is_null(dst->type))  dst  = NULL;
+	if (lvl  && fr_type_is_null(lvl->type))  lvl  = NULL;
+	if (file && fr_type_is_null(file->type)) file = NULL;
+
 	if (!dst || !*dst->vb_strvalue) {
 		request_log_prepend(request, NULL, L_DBG_LVL_DISABLE);
 		return XLAT_ACTION_DONE;
@@ -1300,10 +1389,15 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	dbg->parent = log;
 
 	/*
+	 *	If we have a filename passed to us, then it over-rides
+	 *	the one in the "log foo { ... }" destination.
+	 */
+	if (file) MEM(dbg->file = talloc_strdup(dbg, file->vb_strvalue));
+
+	/*
 	 *	Open the new filename.
 	 */
 	dbg->dst = L_DST_FILES;
-	dbg->file = talloc_strdup(dbg, file->vb_strvalue);
 	dbg->fd = open(dbg->file, O_WRONLY | O_CREAT | O_CLOEXEC, 0600);
 	if (dbg->fd < 0) {
 		REDEBUG("Failed opening %s - %s", dbg->file, fr_syserror(errno));
@@ -1407,6 +1501,87 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+typedef struct {
+	unlang_result_t	last_result;
+	xlat_exp_head_t	*ex;
+} xlat_module_call_rctx_t;
+
+
+static xlat_arg_parser_t const xlat_func_module_call_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Just serves to push the result up the stack
+ *
+ */
+static xlat_action_t xlat_module_call_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					     xlat_ctx_t const *xctx,
+					     UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	xlat_module_call_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_module_call_rctx_t);
+	xlat_action_t		xa = XLAT_RESULT_SUCCESS(&rctx->last_result) ? XLAT_ACTION_DONE : XLAT_ACTION_FAIL;
+
+	talloc_free(rctx);
+
+	return xa;
+}
+
+
+/** Calls a named virtual module
+ *
+ * e.g.
+@verbatim
+%module.call("foo")
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_module_call(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*box;
+	CONF_SECTION *cs;
+	xlat_module_call_rctx_t *rctx;
+	fr_dict_t const *dict;
+
+	XLAT_ARGS(args, &box);
+
+	cs = module_rlm_virtual_by_name(box->vb_strvalue);
+	if (!cs) {
+		REDEBUG("Unknown module %pV", box);
+		return XLAT_ACTION_FAIL;
+	}
+
+	dict = virtual_server_dict_by_cs(cs);
+	if (!dict) {
+		REDEBUG("Virtual module %pV does not have a known dictionary - ignoring", box);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (!fr_dict_compatible(request->proto_dict, dict)) {
+		REDEBUG("Virtual module %pV has incompatible namespace %s", box, fr_dict_root(dict)->name);
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_module_call_rctx_t));
+
+	/*
+	 *	Push the resumption point BEFORE pushing the module onto
+	 *	the stack.
+	 */
+	(void) unlang_xlat_yield(request, xlat_module_call_resume, NULL, 0, rctx);
+
+	if (unlang_interpret_push_section(&rctx->last_result, request, cs,
+					  FRAME_CONF(RLM_MODULE_NOOP, UNLANG_SUB_FRAME)) < 0) {
+		return XLAT_ACTION_FAIL;
+	}
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
+
 static xlat_arg_parser_t const xlat_func_next_time_args[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -1427,7 +1602,7 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
 					 request_t *request, fr_value_box_list_t *args)
 {
-	long		num;
+	unsigned long  	num;
 
 	char const	*p;
 	char		*q;
@@ -1447,8 +1622,12 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	p = in_head->vb_strvalue;
 
 	num = strtoul(p, &q, 10);
-	if (!q || *q == '\0') {
+	if ((num == ULONG_MAX) || !q || *q == '\0') {
 		REDEBUG("<int> must be followed by time period (h|d|w|m|y)");
+		return XLAT_ACTION_FAIL;
+	}
+	if (num == 0) {
+		REDEBUG("<int> must be greater than zero");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -1656,7 +1835,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (fill) {
 		fill_str = fill->vb_strvalue;
-		fill_len = talloc_array_length(fill_str) - 1;
+		fill_len = talloc_strlen(fill_str);
 	}
 
 	if (fill_len == 0) {
@@ -1665,7 +1844,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	while ((in = fr_value_box_list_pop_head(list))) {
-		size_t			len = talloc_array_length(in->vb_strvalue) - 1;
+		size_t			len = talloc_strlen(in->vb_strvalue);
 		size_t			remaining;
 		char			*buff;
 		fr_sbuff_t		sbuff;
@@ -1750,7 +1929,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (fill) {
 		fill_str = fill->vb_strvalue;
-		fill_len = talloc_array_length(fill_str) - 1;
+		fill_len = talloc_strlen(fill_str);
 	}
 
 	if (fill_len == 0) {
@@ -1759,7 +1938,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	while ((in = fr_value_box_list_pop_head(list))) {
-		size_t		len = talloc_array_length(in->vb_strvalue) - 1;
+		size_t		len = talloc_strlen(in->vb_strvalue);
 		size_t		remaining;
 		char		*buff;
 		fr_sbuff_t	sbuff;
@@ -1966,6 +2145,45 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_value_box_safety_copy_changed(result, hex);
 		fr_dcursor_append(out, result);
 	}
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_arg_parser_t const xlat_func_block_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_TIME_DELTA },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Block for the specified duration
+ *
+ * This is for developer use only to simulate blocking, synchronous I/O.
+ * For normal use, use the %delay() xlat instead.
+ *
+ * Example:
+@verbatim
+%block(1s)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_block(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     UNUSED xlat_ctx_t const *xctx,
+				     UNUSED request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t		*delay;
+	fr_value_box_t		*vb;
+	struct timespec		ts_in, ts_remain = {};
+
+	XLAT_ARGS(args, &delay);
+
+	ts_in = fr_time_delta_to_timespec(delay->vb_time_delta);
+
+	(void)nanosleep(&ts_in, &ts_remain);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
+	vb->vb_time_delta = fr_time_delta_sub(delay->vb_time_delta,
+					      fr_time_delta_from_timespec(&ts_remain));
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2635,7 +2853,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			reps = strtol(p, &endptr, 10);
 			if (reps > REPETITION_MAX) {
 				reps = REPETITION_MAX;
-				RMARKER(L_WARN, L_DBG_LVL_2, start, start - p,
+				RMARKER(L_WARN, L_DBG_LVL_2, start, p - start,
 					"Forcing repetition to %u", (unsigned int)REPETITION_MAX);
 			}
 			p = endptr;
@@ -2824,7 +3042,10 @@ static xlat_action_t xlat_func_uuid_v4(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSE
 	uuid_set_version(vals, 4);
 	uuid_set_variant(vals, 1);
 
-	if (uuid_print_vb(vb, vals) < 0) return XLAT_ACTION_FAIL;
+	if (uuid_print_vb(vb, vals) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
 
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
@@ -2903,7 +3124,21 @@ static xlat_action_t xlat_func_range(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &start_vb, &end_vb, &step_vb);
 
+	/*
+	 *	Explicit `null` for an optional arg is equivalent to the
+	 *	arg being absent.  The vb_group field on an FR_TYPE_NULL
+	 *	box is zeroed, so list_head() would return NULL and the
+	 *	downstream `->vb_uint64` would dereference NULL.
+	 */
+	if (end_vb && fr_type_is_null(end_vb->type)) end_vb = NULL;
+	if (step_vb && fr_type_is_null(step_vb->type)) step_vb = NULL;
+
 	if (step_vb) {
+		if (!end_vb) {
+			REDEBUG("Invalid range - 'end' cannot be null when 'step' is provided");
+			return XLAT_ACTION_FAIL;
+		}
+
 		start = fr_value_box_list_head(&start_vb->vb_group)->vb_uint64;
 		end = fr_value_box_list_head(&end_vb->vb_group)->vb_uint64;
 		step = fr_value_box_list_head(&step_vb->vb_group)->vb_uint64;
@@ -3236,7 +3471,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const xlat_func_str_printable_arg[] = {
-	{ .concat = true, .type = FR_TYPE_STRING },
+	{ .concat = true, .type = FR_TYPE_STRING, .required = true, },
 	{ .single = true, .type = FR_TYPE_BOOL },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -3320,6 +3555,8 @@ static xlat_action_t xlat_func_str_utf8(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*in_head;
 
 	XLAT_ARGS(args, &in_head);
+
+	if (!in_head) return XLAT_ACTION_FAIL;
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	vb->vb_bool = (fr_utf8_str((uint8_t const *)in_head->vb_strvalue,
@@ -3409,7 +3646,8 @@ static xlat_action_t xlat_func_substr(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED
 		memcpy(buf, &in->vb_octets[start], len);
 	}
 		break;
-	default:
+
+	default:		/* 'in' was cast to #FR_TYPE_STRING */
 		fr_assert(0);
 	}
 
@@ -3802,6 +4040,13 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &arg);
 
+	/*
+	 *	An explicit `null` is treated the same as a missing arg -
+	 *	vb_strvalue is unset on an FR_TYPE_NULL box, so reading it
+	 *	would be UB.
+	 */
+	if (arg && fr_type_is_null(arg->type)) arg = NULL;
+
 	if (!arg || (strcmp(arg->vb_strvalue, "now") == 0)) {
 		value = fr_time_to_unix_time(fr_time());
 
@@ -3847,9 +4092,6 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		nsec += when % 86400;
 		nsec *= NSEC;
 		nsec += fr_unix_time_unwrap(unix_time) % NSEC;
-
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
-		vb->vb_time_delta = fr_time_delta_wrap(nsec);
 
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
 		vb->vb_time_delta = fr_time_delta_wrap(nsec);
@@ -3987,7 +4229,7 @@ static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	end = p + vb->vb_length;
 
 	while (p < end) {
-		*(p) = upper ? toupper ((int) *(p)) : tolower((uint8_t) *(p));
+		*(p) = upper ? toupper ((uint8_t) *(p)) : tolower((uint8_t) *(p));
 		p++;
 	}
 
@@ -4145,7 +4387,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	char const	*p, *end;
 	char		*buff_p;
-	char		*c1, *c2;
+	char const	*c1, *c2;
 	size_t		outlen = 0;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head;
@@ -4160,6 +4402,10 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	while (p < end) {
 		if (*p == '%') {
+			if (!p[1] || !p[2]) {
+				REMARKER(in_head->vb_strvalue, p - in_head->vb_strvalue, "Invalid %% sequence");
+				return XLAT_ACTION_FAIL;
+			}
 			p += 3;
 		} else {
 			p++;
@@ -4302,7 +4548,21 @@ static xlat_action_t xlat_func_subnet_netmask(TALLOC_CTX *ctx, fr_dcursor_t *out
 	XLAT_ARGS(args, &subnet);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
-	vb->vb_ipv4addr = htonl((uint32_t)0xffffffff << (32 - subnet->vb_ip.prefix));
+
+	switch (subnet->vb_ip.prefix) {
+	case 0:
+		vb->vb_ipv4addr = 0;
+		break;
+
+	case 32:
+		vb->vb_ipv4addr = 0xffffffff;
+		break;
+
+	default:
+		vb->vb_ipv4addr = htonl((uint32_t)0xffffffff << (32 - subnet->vb_ip.prefix));
+		break;
+	}
+
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -4324,7 +4584,7 @@ static xlat_action_t xlat_func_subnet_broadcast(TALLOC_CTX *ctx, fr_dcursor_t *o
 	XLAT_ARGS(args, &subnet);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
-	vb->vb_ipv4addr = htonl( ntohl(subnet->vb_ipv4addr) | (uint32_t)0xffffffff >> subnet->vb_ip.prefix);
+	vb->vb_ipv4addr = htonl( ntohl(subnet->vb_ipv4addr) | ((uint32_t)0xffffffff >> subnet->vb_ip.prefix));
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -4391,11 +4651,13 @@ static xlat_action_t xlat_pair_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 		vp = fr_dcursor_current(cursor);
-		if (!fr_dict_attr_common_parent(root_da->vb_attr, vp->da, true) && (root_da->vb_attr != vp->da)) {
-			REDEBUG2("%s is not a child of %s", vp->da->name, root_da->vb_attr->name);
-			return XLAT_ACTION_FAIL;
+		if (vp) {
+			if (!fr_dict_attr_common_parent(root_da->vb_attr, vp->da, true) && (root_da->vb_attr != vp->da)) {
+				REDEBUG2("%s is not a child of %s", vp->da->name, root_da->vb_attr->name);
+				return XLAT_ACTION_FAIL;
+			}
+			if (root_da->vb_attr == vp->da) encode_children = true;
 		}
-		if (root_da->vb_attr == vp->da) encode_children = true;
 	}
 
 	/*
@@ -4706,6 +4968,7 @@ do { \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
 
+	XLAT_REGISTER_ARGS("block", xlat_func_block, FR_TYPE_TIME_DELTA, xlat_func_block_args);
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, FR_TYPE_INT8, xlat_func_debug_args);
 	XLAT_REGISTER_ARGS("debug_attr", xlat_func_pairs_debug, FR_TYPE_NULL, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.debug");
@@ -4717,6 +4980,8 @@ do { \
 	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
 	XLAT_REGISTER_ARGS("file.cat", xlat_func_file_cat, FR_TYPE_OCTETS, xlat_func_file_cat_args);
+	XLAT_REGISTER_ARGS("file.mkdir", xlat_func_file_mkdir, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.rmdir", xlat_func_file_rmdir, FR_TYPE_BOOL, xlat_func_file_name_args);
 
 	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.immutable");
@@ -4761,6 +5026,8 @@ do { \
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
+	XLAT_REGISTER_ARGS("map", xlat_func_map, FR_TYPE_BOOL, xlat_func_map_arg);
+	XLAT_REGISTER_ARGS("module.call", xlat_func_module_call, FR_TYPE_VOID, xlat_func_module_call_arg);
 
 	XLAT_REGISTER_ARGS("str.rand", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 	XLAT_REGISTER_ARGS("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
@@ -4791,7 +5058,6 @@ do { \
 
 	XLAT_REGISTER_PURE("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
 	XLAT_REGISTER_PURE("hex", xlat_func_hex, FR_TYPE_STRING, xlat_func_hex_arg);
-	XLAT_REGISTER_PURE("map", xlat_func_map, FR_TYPE_BOOL, xlat_func_map_arg);
 	XLAT_REGISTER_PURE("hash.md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
 	XLAT_REGISTER_PURE("md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
 	XLAT_NEW("hash.md4");

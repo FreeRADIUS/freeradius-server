@@ -1,19 +1,18 @@
 #
 #  Test static IP allocation followed by un-assignment using redis_ippool
 #
-$INCLUDE cluster_reset.inc
 
 control.IP-Pool.Name := 'test_static_unassign'
 
 #
 #  Add a dynamic IP addresses
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.0.1/32')
 
 #
 #  Add a static IP assigned to the calling station in the request
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-A', '192.168.0.10/32', '-O', 'aa:bb:cc:dd:ee:ff', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+%redis_ippool.address.assign(control.IP-Pool.Name, '192.168.0.10/32', 'aa:bb:cc:dd:ee:ff', '192.168.0.0')
 
 #
 #  Check allocation
@@ -40,7 +39,7 @@ if (!(reply.Session-Timeout == 30)) {
 #
 #  Un-assign static allocation
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-U', '192.168.0.10/32', '-O', 'aa:bb:cc:dd:ee:ff', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name})
+%redis_ippool.address.unassign(control.IP-Pool.Name, '192.168.0.10/32', 'aa:bb:cc:dd:ee:ff')
 
 #
 #  Check ZSCORE is now < 2^52 - the "static bit"
@@ -92,7 +91,7 @@ if (%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", %{reply.Framed-IP-Address
 #
 #  Delete original dynamic address - so only the previously static one remains
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-d', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name})
+%redis_ippool.subnet.remove(control.IP-Pool.Name, '192.168.0.1/32')
 
 #
 #  Perform IP allocation for alternative device

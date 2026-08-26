@@ -143,7 +143,8 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 			 char const *file, int lineno, bool v3_compat, int *order)
 {
 	size_t		len;
-	char		*newfile, *p, c;
+	char		*newfile, c;
+	char const	*p;
 	fr_sbuff_marker_t name;
 
 	fr_sbuff_advance(sbuff, 8);
@@ -402,7 +403,7 @@ check_item:
 			    (tmpl_regex_compile(new_map->rhs, false) < 0)) {
 				ERROR("%s[%d]: Failed compiling regular expression /%s/ - %s",
 				      file, lineno, new_map->rhs->name, fr_strerror());
-				return -1;
+				goto fail_entry;
 			}
 
 			goto do_insert;
@@ -541,7 +542,7 @@ next_reply_item:
 				       &lhs_rules, &rhs_rules, &rhs_term);
 		if (!new_map) {
 			ERROR_MARKER_ADJ(&sbuff, slen, fr_strerror());
-			goto fail;
+			goto fail_entry;
 		}
 
 		fr_assert(new_map->lhs != NULL);

@@ -58,7 +58,7 @@ parallel {
 Each module or subsection runs as a new child request, i.e. a
 xref:unlang/subrequest.adoc[subrequest].  Each child request is an identical
 copy of the parent request.  Policies in the child can update the
-original parent by referencing `parent.request`, or 
+original parent by referencing `parent.request`, or
 `parent.reply`.  Please see the xref:unlang/list.adoc[list] syntax for a
 more complete description of how to refer to parent requests.
 
@@ -104,14 +104,14 @@ parallel {
 == Subrequests are Synchronous
 
 Execution of the parent request is paused while each child request is
-running.  The parent request continues execution once all of the the
+running.  The parent request continues execution once all of the
 child requests have finished.
 
 Unlike the xref:unlang/subrequest.adoc[subrequest] keyword, the child
 requests of a `parallel` section cannot be made asynchronous via the
 xref:unlang/detach.adoc[detach] keyword.
 
-== parallel empty
+== The "parallel empty" Statement
 
 The `parallel empty { ... }` syntax creates empty child requests.
 These requests contain no attributes.  Attributes in the child request
@@ -128,7 +128,7 @@ nothing.
 
 In this example, the `radius1` module sees a `User-Name` which is
 modified from the parent `User-Name`, and a `User-Password` which is
-static.  The `radius1` module sees a `User-Name` which is modified in
+static.  The `radius2` module sees a `User-Name` which is modified in
 a different way from the parent `User-Name`, and it sees a
 `User-Password` which is a copy of the parents `User-Password`.
 
@@ -152,7 +152,7 @@ parallel empty {
 }
 ----
 
-== parallel detach
+== The "parallel detach" Statement
 
 The `parallel detach { ... }` syntax creates child requests which are
 immediately detached from the parent request.  Each child request
@@ -197,7 +197,7 @@ section.  For example, to proxy a packet to multiple destinations, and
 then return as soon as any one of the destinations returns a reply.
 
 The xref:unlang/return.adoc[return] keyword in a child is used to return from
-the `parallel` section, and to stop the execution of all children.
+the `parallel` section, and to stop the execution of that child.
 
 .Example
 
@@ -232,5 +232,5 @@ parallel {
 ----
 
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -25,12 +25,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/io/thread.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/radmin.h>
 
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/socket.h>
 
@@ -40,7 +39,6 @@ RCSID("$Id$")
  *	Readline headers aren't compliant
  */
 DIAG_OFF(strict-prototypes)
-# include <stdio.h>
 #if defined(HAVE_READLINE_READLINE_H)
 #  include <readline/readline.h>
 #  define USE_READLINE (1)
@@ -345,7 +343,10 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		/*
 		 *	Skip blank lines.
 		 */
-		if (argc == context) continue;
+		if (argc == context) {
+			radmin_free(line);
+			continue;
+		}
 
 		/*
 		 *	It's a partial command.  Add it to the context
@@ -807,7 +808,7 @@ static int cmd_show_client(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 			proto = IPPROTO_TCP;
 
 		} else if (strcmp(info->argv[1], "udp") == 0) {
-			proto = IPPROTO_TCP;
+			proto = IPPROTO_UDP;
 
 		} else {
 			fprintf(fp_err, "Unknown proto '%s'.\n", info->argv[1]);
@@ -1110,6 +1111,8 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 
 	my_stdout = fdopen(std_fd[STDOUT_FILENO], "w");
 	if (!my_stdout) {
+		fclose(my_stdin);
+		my_stdin = NULL;
 		ERROR("Failed initializing radmin stdout - %s", fr_syserror(errno));
 		return -1;
 	}
@@ -1119,6 +1122,10 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 
 	my_stderr = fdopen(std_fd[2], "w");
 	if (!my_stderr) {
+		fclose(my_stdin);
+		fclose(my_stdout);
+		my_stdin = NULL;
+		my_stdout = NULL;
 		PERROR("Failed initializing radmin stderr");
 		return -1;
 	}
@@ -1130,7 +1137,7 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 	 *	won't go into la-la-land.  They might find unfinished
 	 *	commands, but they don't crash.
 	 */
-	if (fr_schedule_pthread_create(&cli_pthread_id, fr_radmin, NULL) < 0) {
+	if (fr_thread_create(&cli_pthread_id, fr_radmin, NULL) < 0) {
 		PERROR("Failed creating radmin thread");
 		return -1;
 	}

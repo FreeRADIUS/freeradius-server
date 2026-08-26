@@ -1,0 +1,11 @@
+BEGIN PROTOCOL Test-TLV 104
+ATTRIBUTE	my-tlv 1 tlv
+BEGIN		my-tlv
+ATTRIBUTE	child1 1 string
+ATTRIBUTE	child2 2 uint32
+ATTRIBUTE	nested-tlv 3 tlv
+BEGIN		nested-tlv
+ATTRIBUTE	deep-child 1 string
+END		nested-tlv
+END		my-tlv
+END PROTOCOL Test-TLV

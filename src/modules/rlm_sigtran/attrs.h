@@ -36,4 +36,3 @@ extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_xres;
 
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_kc;
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_sres;
-extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_rand;

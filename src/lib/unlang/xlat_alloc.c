@@ -166,7 +166,7 @@ static xlat_exp_t *xlat_exp_alloc_pool(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, uns
 {
 	xlat_exp_t *node;
 
-	MEM(node = talloc_zero_pooled_object(ctx, xlat_exp_t, extra_hdrs, extra));
+	MEM(node = talloc_zero_pooled_object(ctx, xlat_exp_t, extra_hdrs, sizeof(xlat_exp_t) + extra * extra_hdrs));
 	node->flags = XLAT_FLAGS_INIT;
 	node->quote = T_BARE_WORD;
 #ifndef NDEBUG
@@ -354,8 +354,6 @@ void xlat_exp_set_name_shallow(xlat_exp_t *node, char const *fmt)
  */
 static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_head_t *out, xlat_exp_head_t const *in)
 {
-	xlat_exp_head_t *head = NULL;
-
 	xlat_flags_merge(&out->flags, &in->flags);
 
 	/*
@@ -371,7 +369,7 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 		 *	they should all be talloc'd strings.
 		 */
 		MEM(node = xlat_exp_alloc(ctx, p->type,
-					  talloc_get_type_abort_const(p->fmt, char), talloc_array_length(p->fmt) - 1));
+					  talloc_get_type_abort_const(p->fmt, char), talloc_strlen(p->fmt)));
 
 		node->quote = p->quote;
 		node->flags = p->flags;
@@ -380,7 +378,6 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 		case XLAT_INVALID:
 			fr_strerror_printf("Cannot copy xlat node of type \"invalid\"");
 		error:
-			talloc_free(head);
 			return -1;
 
 		case XLAT_BOX:
@@ -412,7 +409,7 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 			break;
 
 		case XLAT_TMPL:
-			node->vpt = tmpl_copy(node, p->vpt);
+			if (unlikely((node->vpt = tmpl_copy(node, p->vpt)) == NULL)) goto error;
 			break;
 
 #ifdef HAVE_REGEX
@@ -508,6 +505,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 				fr_assert(da->type != FR_TYPE_STRING);
 			}
 
+			TMPL_ATTR_VERIFY(vpt);
 			return;
 		}
 
@@ -516,6 +514,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 		 */
 		if (tmpl_is_data(node->vpt)) {
 			fr_assert(tmpl_rules_cast(node->vpt) == FR_TYPE_NULL);
+			VALUE_BOX_VERIFY(tmpl_value(node->vpt));
 		}
 
 #if 0
@@ -536,6 +535,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 			fr_assert(!node->flags.can_purify);
 		}
 
+		TMPL_VERIFY(vpt);
 		return;
 	}
 
@@ -543,6 +543,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 		fr_assert(node->flags.constant);
 		fr_assert(node->flags.pure);
 //		fr_assert(node->flags.can_purify);
+		VALUE_BOX_VERIFY(&node->data);
 		break;
 
 	default:

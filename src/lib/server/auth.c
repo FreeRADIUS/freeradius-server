@@ -26,10 +26,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/auth.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/unlang/call.h>
 
@@ -43,7 +41,9 @@ RCSID("$Id$")
  */
 unlang_action_t rad_virtual_server(unlang_result_t *p_result, request_t *request)
 {
-	RDEBUG("Virtual server %s received request NOT IMPLEMENTED", cf_section_name2(unlang_call_current(request)));
+	char const *server = unlang_interpret_virtual_server(request);
+
+	RDEBUG("Virtual server %s received request NOT IMPLEMENTED", server);
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 	/*
@@ -168,11 +168,11 @@ unlang_action_t rad_virtual_server(unlang_result_t *p_result, request_t *request
 		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));
 	}
 
-	RDEBUG("server %s {", cf_section_name2(unlang_call_current(request)));
+	RDEBUG("server %s {", server);
 	request->async->process(&final,
 				MODULE_CTX(module_rlm_by_data(request->async->process_inst), NULL, NULL, NULL),
 				request);
-	RDEBUG("} # server %s", cf_section_name2(unlang_call_current(request)));
+	RDEBUG("} # server %s", server);
 
 	fr_cond_assert(final == RLM_MODULE_OK);
 
@@ -187,47 +187,4 @@ unlang_action_t rad_virtual_server(unlang_result_t *p_result, request_t *request
 
 	RETURN_UNLANG_OK;
 #endif
-}
-
-/*
- *	Debug the packet if requested.
- */
-void common_packet_debug(request_t *request, fr_packet_t *packet, fr_pair_list_t *pairs, bool received)
-{
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-	char if_name[IFNAMSIZ];
-#endif
-
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s code %u Id %i from %s%pV%s:%i to %s%pV%s:%i "
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       "%s%s%s"
-#endif
-		       "length %zu",
-		       received ? "Received" : "Sent",
-		       packet->code,
-		       packet->id,
-		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->socket.inet.src_ipaddr),
-		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->socket.inet.src_port,
-		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
-		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->socket.inet.dst_port,
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       packet->socket.inet.ifindex ? "via " : "",
-		       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
-		       packet->socket.inet.ifindex ? " " : "",
-#endif
-		       packet->data_len);
-
-	if (received) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, pairs, NULL);
-	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, pairs, NULL);
-	}
 }

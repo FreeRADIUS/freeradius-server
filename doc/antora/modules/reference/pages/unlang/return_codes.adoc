@@ -16,5 +16,5 @@ associated with the request, then the request rcode is overwritten.
 Return code priorities are assigned by the section the module call, expansion or
 keyword was used in.
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

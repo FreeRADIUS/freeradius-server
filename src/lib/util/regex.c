@@ -26,7 +26,6 @@ RCSID("$Id$")
 #ifdef HAVE_REGEX
 
 #include <freeradius-devel/util/regex.h>
-#include <freeradius-devel/util/atexit.h>
 
 #if defined(HAVE_REGEX_PCRE2) && defined(PCRE2_CONFIG_JIT)
 #ifndef FR_PCRE_JIT_STACK_MIN
@@ -560,6 +559,10 @@ again:
 			}
 			buff_len = actual_len;	/* The length we get passed back includes the \0 */
 			buff = talloc_array(ctx, char, buff_len);
+			if (!buff) {
+				fr_strerror_const("Out of memory");
+				return -1;
+			}
 			goto again;
 		}
 

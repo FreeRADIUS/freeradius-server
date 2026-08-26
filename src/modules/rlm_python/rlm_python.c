@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/lsan.h>
-#include <freeradius-devel/unlang/action.h>
 
 #include <Python.h>
 #include <structmember.h>
@@ -408,7 +407,7 @@ static PyModuleDef py_freeradius_def = {
 /** How to compare two Python calls
  *
  */
-static int8_t python_func_def_cmp(void const *one, void const *two)
+static fr_cmp_ret_t python_func_def_cmp(void const *one, void const *two)
 {
 	python_func_def_t const *a = one, *b = two;
 	int ret;
@@ -520,17 +519,17 @@ static int py_freeradius_state_init(PyObject *self, UNUSED PyObject *args, UNUSE
  */
 static PyObject *py_freeradius_attribute_instance(PyObject *self, PyObject *attr)
 {
-	long			index;
+	long			idx;
 	py_freeradius_pair_t	*pair, *init_pair = (py_freeradius_pair_t *)self;
 
 	if (!PyLong_CheckExact(attr)) Py_RETURN_NONE;
-	index = PyLong_AsLong(attr);
+	idx = PyLong_AsLong(attr);
 
-	if (index < 0) {
+	if (idx < 0) {
 		PyErr_SetString(PyExc_AttributeError, "Cannot use negative attribute instance values");
 		return NULL;
 	}
-	if (index == 0) return self;
+	if (idx == 0) return self;
 
 	if (fr_type_is_leaf(init_pair->da->type)) {
 		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_value_pair_def);
@@ -548,8 +547,8 @@ static PyObject *py_freeradius_attribute_instance(PyObject *self, PyObject *attr
 	pair->parent = init_pair->parent;
 	Py_INCREF(init_pair->parent);
 	pair->da = init_pair->da;
-	pair->idx = index;
-	if (init_pair->vp) pair->vp = fr_pair_find_by_da_idx(fr_pair_parent_list(init_pair->vp), pair->da, (unsigned int)index);
+	pair->idx = idx;
+	if (init_pair->vp) pair->vp = fr_pair_find_by_da_idx(fr_pair_parent_list(init_pair->vp), pair->da, (unsigned int)idx);
 	return (PyObject *)pair;
 }
 
@@ -637,7 +636,7 @@ static fr_pair_t *py_freeradius_build_parents(PyObject *obj)
 	if (obj_pair->idx > 0) {
 		unsigned int count = fr_pair_count_by_da(&parent->vp_group, obj_pair->da);
 		if (count < obj_pair->idx) {
-			PyErr_Format(PyExc_AttributeError, "Attempt to set instance %d when only %d exist", index, count);
+			PyErr_Format(PyExc_AttributeError, "Attempt to set instance %d when only %d exist", obj_pair->idx, count);
 			return NULL;
 		}
 	}
@@ -729,10 +728,10 @@ static int py_freeradius_pair_map_set(PyObject* self, PyObject* attr, PyObject* 
 	 *	Look for instance n, creating if necessary
 	 */
 	} else if (PyLong_CheckExact(attr)) {
-		long			index = PyLong_AsLong(attr);
+		long			idx = PyLong_AsLong(attr);
 		py_freeradius_pair_t	*parent = (py_freeradius_pair_t *)our_self->parent;
 
-		if (index < 0) {
+		if (idx < 0) {
 			PyErr_SetString(PyExc_AttributeError, "Cannot use negative attribute instance values");
 			return -1;
 		}
@@ -745,7 +744,7 @@ static int py_freeradius_pair_map_set(PyObject* self, PyObject* attr, PyObject* 
 
 		list = &parent->vp->vp_group;
 
-		if (index == 0) {
+		if (idx == 0) {
 			if (!our_self->vp) {
 				if (fr_pair_append_by_da(fr_pair_list_parent(list), &our_self->vp, list, our_self->da) < 0) {
 					PyErr_Format(PyExc_MemoryError, "Failed to add attribute %s", our_self->da->name);
@@ -757,12 +756,12 @@ static int py_freeradius_pair_map_set(PyObject* self, PyObject* attr, PyObject* 
 			vp = our_self->vp;
 			if (del) goto del;
 		} else {
-			vp = fr_pair_find_by_da_idx(list, our_self->da, index);
+			vp = fr_pair_find_by_da_idx(list, our_self->da, idx);
 			if (del) goto del;
 			if (!vp) {
 				unsigned int	count = fr_pair_count_by_da(list, our_self->da);
-				if (count < index) {
-					PyErr_Format(PyExc_AttributeError, "Attempt to set instance %ld when only %d exist", index, count);
+				if (count < idx) {
+					PyErr_Format(PyExc_AttributeError, "Attempt to set instance %ld when only %d exist", idx, count);
 					return -1;
 				}
 				if (fr_pair_append_by_da(fr_pair_list_parent(list), &vp, list, our_self->da) < 0) {
@@ -1392,11 +1391,14 @@ static int python_parse_config(rlm_python_t const *inst, CONF_SECTION *cs, int l
 
 			if (PyDict_Contains(dict, p_key)) {
 				WARN("Ignoring duplicate config section '%s'", key);
+				Py_DECREF(p_key);
 				continue;
 			}
 
 			MEM(sub_dict = PyDict_New());
 			(void)PyDict_SetItem(dict, p_key, sub_dict);
+			Py_DECREF(p_key);
+			Py_DECREF(sub_dict);
 
 			ret = python_parse_config(inst, sub_cs, lvl + 1, sub_dict);
 			if (ret < 0) break;
@@ -1415,10 +1417,12 @@ static int python_parse_config(rlm_python_t const *inst, CONF_SECTION *cs, int l
 			p_value = PyUnicode_FromString(value);
 			if (!p_key) {
 				ERROR("Failed converting config key \"%s\" to python string", key);
+				Py_XDECREF(p_value);
 				return -1;
 			}
 			if (!p_value) {
 				ERROR("Failed converting config value \"%s\" to python string", value);
+				Py_DECREF(p_key);
 				return -1;
 			}
 
@@ -1428,10 +1432,14 @@ static int python_parse_config(rlm_python_t const *inst, CONF_SECTION *cs, int l
 			 */
 			if (PyDict_Contains(dict, p_key)) {
 				WARN("Ignoring duplicate config item '%s'", key);
+				Py_DECREF(p_key);
+				Py_DECREF(p_value);
 				continue;
 			}
 
 			(void)PyDict_SetItem(dict, p_key, p_value);
+			Py_DECREF(p_key);
+			Py_DECREF(p_value);
 
 			DEBUG("%*s%s = \"%s\"", indent_item, " ", key, value);
 		}
@@ -1571,9 +1579,14 @@ static PyObject *python_module_init(void)
 	 *	variables.
 	 */
 	p_state = PyObject_CallObject((PyObject *)&py_freeradius_state_def, NULL);
+	if (unlikely(!p_state)) {
+		Py_DECREF(module);
+		goto error;
+	}
 	Py_INCREF(&py_freeradius_state_def);
 
 	if (PyModule_AddObject(module, "__State", p_state) < 0) {
+		Py_DECREF(p_state);
 		Py_DECREF(&py_freeradius_state_def);
 		Py_DECREF(module);
 		goto error;
@@ -1880,10 +1893,10 @@ static int libpython_init(void)
 {
 #define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
 #define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, \
-					   &(fr_log_perror_format_t){ \
+					   (&(fr_log_perror_format_t){ \
 					   	.first_prefix = "rlm_python - ", \
 					   	.subsq_prefix = "rlm_python - ", \
-					   }, \
+					   }), \
 					   _fmt,  ## __VA_ARGS__)
 	PyConfig	config;
 	PyStatus	status;

@@ -185,7 +185,7 @@ struct module_method_binding_s {
 									///< type of the rctx.
 
 	fr_dlist_head_t				same_name1;		//!< List of bindings with the same name1.  Only initialised
-									///< for the the first name1 binding.
+									///< for the first name1 binding.
 									///< DO NOT INITIALISE IN THE MODULE.
 	fr_dlist_t				entry;			//!< Linked list of bindings with the same name1.
 									///< Allows us to more quickly iterate over all
@@ -229,7 +229,7 @@ struct module_s {
 								///< After instantiate completes the module instance data
 								///< is mprotected to prevent modification.
 
-	module_detach_t			detach;			//!< Clean up module resources from the instantiation pahses.
+	module_detach_t			detach;			//!< Clean up module resources from the instantiation phases.
 
 	module_detach_t			unstrap;		//!< Clean up module resources from both the bootstrap phase.
 
@@ -240,6 +240,8 @@ struct module_s {
 								///< Called once per thread.
 	module_thread_detach_t		thread_detach;		//!< Callback to free thread-specific resources associated
 								///!< with a module.
+
+	module_thread_instantiate_t	coord_attach;		//!< Callback to attach a worker to a coordinator.
 
 	size_t				thread_inst_size;	//!< Size of the module's thread-specific instance data.
 	char const			*thread_inst_type;	//!< talloc type to assign to thread instance data.
@@ -317,7 +319,7 @@ struct module_instance_s {
 	bool				force;		//!< Force the module to return a specific code.
 							//!< Usually set via an administrative interface.
 
-	rlm_rcode_t			code;		//!< Code module will return when 'force' has
+	rlm_rcode_t			rcode;		//!< Code module will return when 'force' has
 							//!< has been set to true.
 
 	unlang_mod_actions_t       	actions;	//!< default actions and retries.
@@ -375,8 +377,18 @@ struct module_thread_instance_s {
 
 	module_instance_t		*mi;		//!< As opposed to the thread local inst.
 
-	uint64_t			total_calls;	//! total number of times we've been called
-	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
+	uint64_t			total_calls;	//!< total number of times we've been called
+	uint64_t			active_callers; //!< number of active callers.  i.e. number of current yields
+
+	/** @name Return code overrides
+	 * @{
+ 	 */
+	bool				force;		//!< Force the module to return a specific code.
+							//!< Usually set via an administrative interface.
+
+	rlm_rcode_t			rcode;		//!< Code module will return when 'force' has
+							//!< has been set to true.
+	/** @} */
 };
 
 /** Callback to retrieve thread-local data for a module
@@ -468,9 +480,9 @@ void module_list_debug(module_list_t const *ml) CC_HINT(nonnull);
  *
  * @{
  */
-int			module_instance_data_protect(module_instance_t const *mi);
+int			module_instance_data_protect(module_instance_t *mi);
 
-int			module_instance_data_unprotect(module_instance_t const *mi);
+int			module_instance_data_unprotect(module_instance_t *mi);
  /** @} */
 
 /** @name Module and module thread lookup
@@ -483,7 +495,7 @@ int 			module_instance_conf_parse(module_instance_t *mi, CONF_SECTION *conf);
 
 char const 		*module_instance_root_prefix_str(module_instance_t const *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-module_instance_t	*module_instance_root(module_instance_t const *child); CC_HINT(warn_unused_result)
+module_instance_t	*module_instance_root(module_instance_t const *child) CC_HINT(warn_unused_result);
 
 module_instance_t	*module_instance_by_name(module_list_t const *ml, module_instance_t const *parent, char const *asked_name)
 			CC_HINT(nonnull(1,3)) CC_HINT(warn_unused_result);
@@ -504,6 +516,17 @@ module_thread_instance_t *module_thread(module_instance_t const *mi)
 }
 
 module_thread_instance_t *module_thread_by_data(module_list_t const *ml, void const *data) CC_HINT(warn_unused_result);
+
+static inline void module_thread_force(module_thread_instance_t *mt, rlm_rcode_t rcode)
+{
+	if (rcode == RLM_MODULE_NOT_SET) {
+		mt->force = false;
+	} else {
+		mt->force = true;
+		mt->rcode = rcode;
+	}
+}
+
 /** @} */
 
 /** @name Module and module thread initialisation and instantiation
@@ -518,6 +541,9 @@ int 			module_thread_instantiate(TALLOC_CTX *ctx, module_instance_t *mi, fr_even
 int			modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_event_list_t *el)
 			CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
+int			modules_coord_attach(module_list_t const *ml, fr_event_list_t *el)
+			CC_HINT(nonnull) CC_HINT(warn_unused_result);
+
 int			module_instantiate(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
 int			modules_instantiate(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
@@ -526,7 +552,7 @@ int			module_bootstrap(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unus
 
 int			modules_bootstrap(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-extern bool const module_instance_allowed_chars[UINT8_MAX + 1];
+extern bool const module_instance_allowed_chars[SBUFF_CHAR_CLASS];
 
 fr_slen_t		module_instance_name_valid(char const *inst_name) CC_HINT(nonnull);
 

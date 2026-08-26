@@ -1,0 +1,20 @@
+
+linelog {
+	format = "This is a log message for %{User-Name}"
+	destination = file
+
+	file {
+		filename = ${logdir}/linelog
+		permissions = 0600
+		escape_filenames = no
+
+		# Disable message buffering
+		buffer_count = 0
+		buffer_delay = 0
+		buffer_expiry = 0
+	}
+}
+
+linelog log_stdout {
+	destination = stdout
+}

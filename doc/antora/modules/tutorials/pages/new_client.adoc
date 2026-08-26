@@ -7,7 +7,7 @@ server.
 
 *File:*
 
-- `etc/raddb/clients.conf`
+- `clients.conf`
 
 The RADIUS server will only communicate with known clients. This
 restriction is for security, so that unknown machines on the Internet
@@ -124,5 +124,5 @@ file is edited?
 4.  What are the other fields in a client entry, and what are they used
 for?
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1,6 +1,8 @@
+# autoconf is needed so configure can regenerate src/lib/backtrace's
+# shipped configure to accept --runstatedir from dh_auto_configure.
 Source: freeradius
 Build-Depends: @BUILDDEPS@ debhelper (>= 9),
- asciidoctor,
+ autoconf,
  autotools-dev,
  dh-systemd (>= 1.5) | debhelper (>= 13.3.0),
  dpkg-dev (>= 1.13.19),
@@ -10,7 +12,7 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libgdbm-dev,
  libhiredis-dev,
- libidn11-dev,
+ libidn11-dev | libidn-dev,
  libjson-c (>= 1.13) | libjson-c4 | libjson-c5,
  libjson-c-dev,
  libjson-perl,
@@ -34,7 +36,6 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libwbclient-dev,
  libykclient-dev,
  libyubikey-dev,
- pandoc,
  python3-dev,
  quilt,
  samba-dev,
@@ -99,6 +100,20 @@ Depends: libnet-ip-perl
 Recommends: libtemplate-perl, libdbi-perl, libyaml-libyaml-perl, libdbd-pg-perl, libdbd-mysql-perl, libdbd-sqlite3-perl, libdbd-sybase-perl
 Description: FreeRADIUS Perl utilities
  This package contains utilities for managing IP pools in SQL databases
+
+Package: freeradius-utils-json
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, libfreeradius4 (= ${binary:Version})
+Description: FreeRADIUS JSON conversion utilities
+ This package contains utilities that bridge between FreeRADIUS configuration
+ and JSON:
+  - radconf2json: render a parsed server configuration as JSON
+  - radjson2conf: render a JSON configuration tree back to .conf form
+  - radmod2json: dump the parser definitions of installed modules as JSON
+ .
+ These utilities are intended for tooling that needs to inspect or transform
+ FreeRADIUS configuration programmatically (config migration, schema
+ documentation, third-party integrations).
 
 Package: freeradius-snmp
 Architecture: any

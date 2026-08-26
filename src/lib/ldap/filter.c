@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -31,7 +31,7 @@ static fr_table_num_sorted_t const ldap_filter_op_table[] = {
 };
 static size_t ldap_filter_op_table_len = NUM_ELEMENTS(ldap_filter_op_table);
 
-static bool const 	fr_ldap_attr_allowed_chars[UINT8_MAX + 1] = {
+static bool const 	fr_ldap_attr_allowed_chars[SBUFF_CHAR_CLASS] = {
 				['-'] = true,
 				SBUFF_CHAR_CLASS_ALPHA_NUM
 };
@@ -63,17 +63,17 @@ static fr_slen_t ldap_filter_parse_logic(ldap_filter_t *node, fr_sbuff_t *sbuff,
 	fr_sbuff_switch(sbuff, '\0') {
 	case '&':
 		node->logic_op = LDAP_FILTER_LOGIC_AND;
-		node->orig = talloc_typed_strdup(node, "&");
+		node->orig = talloc_strdup(node, "&");
 		break;
 
 	case '|':
 		node->logic_op = LDAP_FILTER_LOGIC_OR;
-		node->orig = talloc_typed_strdup(node, "|");
+		node->orig = talloc_strdup(node, "|");
 		break;
 
 	case '!':
 		node->logic_op = LDAP_FILTER_LOGIC_NOT;
-		node->orig = talloc_typed_strdup(node, "!");
+		node->orig = talloc_strdup(node, "!");
 		break;
 	}
 	parsed += fr_sbuff_advance(sbuff, 1);

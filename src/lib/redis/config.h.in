@@ -2,3 +2,9 @@
 
 /* Build with SSL support */
 #undef HAVE_REDIS_SSL
+
+/* Define if redisAsyncHandleTimeout is available */
+#undef HAVE_REDIS_TIMEOUT
+
+/* Define if redisAsyncSetConnectCallbackNC is available */
+#undef HAVE_REDIS_CALLBACKNC

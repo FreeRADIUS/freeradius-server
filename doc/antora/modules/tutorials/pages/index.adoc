@@ -1,6 +1,6 @@
 = Tutorials
 
-The tutorials are here to help. They are divided into three main sections so you can pick and choose what exactly you need. Alternatively, you can start on the first tutorial and work you way through each section and tutorial sequentialy.
+The tutorials are here to help. They are divided into three main sections so you can pick and choose what exactly you need. Alternatively, you can start on the first tutorial and work you way through each section and tutorial sequentially.
 
 == xref:basic.adoc[Basic Configuration]
 
@@ -16,6 +16,9 @@ Finally, it covers proxying and how to set up proxy receive, fail-over, and load
 
 == xref:connectinterop.adoc[Connectivity and Interoperability]
 
-This section covers connectivity and interoperability in FreeRADIUS.  It navigates key topics such as variable usage and dynamic translation. It also tackles the art of managing multiple module instances and different authorization types (Autz-Type).
+This section covers connectivity and interoperability in FreeRADIUS.  It navigates key topics such as variable usage and dynamic translation. It also tackles the art of managing multiple module instances.
 
-More topics include strategies for module failover, handling prepaid accounts, and working with dictionaries. You’ll find guidance on setting up virtual servers and using the Radmin management tool.
+More topics include strategies for module failover, handling prepaid accounts, and working with dictionaries. You'll find guidance on setting up virtual servers and using the Radmin management tool.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

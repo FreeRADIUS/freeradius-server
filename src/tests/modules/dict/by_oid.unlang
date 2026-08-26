@@ -1,0 +1,91 @@
+#
+#  Tests for %dict.attr.by_oid() using the new fr_dict_attr_by_oid_substr() API
+#
+#  The new API supports attribute name-based OIDs and cross-protocol
+#  lookups via the '@protocol' prefix.
+#
+#  Basic numeric OID tests are in map.unlang
+#
+
+Vendor-Specific.FreeRADIUS.Proxied-To := 127.0.0.1
+
+#
+#  Name-based OID resolution
+#
+if (%dict.attr.by_oid('User-Name') != 'User-Name') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('Vendor-Specific') != 'Vendor-Specific') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('Vendor-Specific.FreeRADIUS') != 'FreeRADIUS') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('Vendor-Specific.FreeRADIUS.Proxied-To') != 'Proxied-To') {
+	test_fail
+}
+
+#
+#  Mixed name and numeric OID components
+#
+if (%dict.attr.by_oid('Vendor-Specific.11344.1') != 'Proxied-To') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('26.FreeRADIUS.Proxied-To') != 'Proxied-To') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('Vendor-Specific.11344.Proxied-To') != 'Proxied-To') {
+	test_fail
+}
+
+#
+#  Cross-protocol lookup using @RADIUS prefix
+#
+if (%dict.attr.by_oid('@RADIUS.User-Name') != 'User-Name') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('@RADIUS.1') != 'User-Name') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('@RADIUS.Vendor-Specific.FreeRADIUS.Proxied-To') != 'Proxied-To') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('@RADIUS.26.11344.1') != 'Proxied-To') {
+	test_fail
+}
+
+#
+#  Cross-protocol lookup using @internal prefix
+#
+if (%dict.attr.by_oid('@internal.Protocol') != 'Protocol') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('@internal.Auth-Type') != 'Auth-Type') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('@internal.Fall-Through') != 'Fall-Through') {
+	test_fail
+}
+
+#
+#  @internal with numeric OID
+#
+if (%dict.attr.by_oid('@internal.500') != 'Fall-Through') {
+	test_fail
+}
+
+if (%dict.attr.by_oid('@internal.11') != 'Protocol') {
+	test_fail
+}
+
+test_pass

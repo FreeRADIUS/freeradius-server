@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/htrie.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/server/map_proc.h>
 
 static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
 				    fr_value_box_list_t *key, map_list_t const *maps);
@@ -161,7 +160,7 @@ static bool buf2entry(rlm_csv_t *inst, char *buf, char **out)
 }
 
 
-static int8_t csv_cmp(void const *one, void const *two)
+static fr_cmp_ret_t csv_cmp(void const *one, void const *two)
 {
 	rlm_csv_entry_t const *a = (rlm_csv_entry_t const *) one; /* may not be talloc'd! */
 	rlm_csv_entry_t const *b = (rlm_csv_entry_t const *) two; /* may not be talloc'd! */
@@ -191,7 +190,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 
 	fr_assert(e != NULL);
 
-	old = fr_htrie_find(inst->trie, e);
+	fr_htrie_find((void **)&old, inst->trie, e);
 	if (old) {
 		if (!inst->allow_multiple_keys && !inst->multiple_index_fields) {
 			cf_log_err(conf, "%s[%d]: Multiple entries are disallowed", inst->filename, lineno);
@@ -207,7 +206,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 		return true;
 	}
 
-	if (!fr_htrie_insert(inst->trie, e)) {
+	if (fr_htrie_insert(inst->trie, e) != 0) {
 		cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 			   inst->filename, lineno, fr_strerror());
 fail:
@@ -244,7 +243,7 @@ static bool duplicate_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t
 	 *	Copy the other fields;
 	 */
 	for (i = 0; i < inst->used_fields; i++) {
-		if (old->data[i]) e->data[i] = old->data[i]; /* no need to dup it, it's never freed... */
+		if (old->data[i]) e->data[i] = talloc_reference(e, old->data[i]);
 	}
 
 	return insert_entry(conf, inst, e, lineno);
@@ -266,14 +265,14 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 	for (p = buffer, i = 0; p != NULL; p = q, i++) {
 		if (!buf2entry(inst, p, &q)) {
 			cf_log_err(conf, "Malformed entry in file %s line %d", inst->filename, lineno);
-			return false;
+			goto fail;
 		}
 
 		if (q) *(q++) = '\0';
 
 		if (i >= inst->num_fields) {
 			cf_log_err(conf, "Too many fields at file %s line %d", inst->filename, lineno);
-			return false;
+			goto fail;
 		}
 
 		/*
@@ -351,7 +350,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			fr_value_box_clear(&box);
 		}
 
-		MEM(e->data[inst->field_offsets[i]] = talloc_typed_strdup(e, p));
+		MEM(e->data[inst->field_offsets[i]] = talloc_strdup(e, p));
 	}
 
 	if (i < inst->num_fields) {
@@ -636,7 +635,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Get a writable copy of the fields definition
 	 */
-	MEM(fields = talloc_typed_strdup(inst, inst->fields));
+	MEM(fields = talloc_strdup(inst, inst->fields));
 
 	/*
 	 *	Mark up the field names.  Note that they can be empty,
@@ -870,7 +869,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 	vp = fr_pair_afrom_da(ctx, da);
 	fr_assert(vp);
 
-	if (fr_pair_value_from_str(vp, str, talloc_array_length(str) - 1, NULL, true) < 0) {
+	if (fr_pair_value_from_str(vp, str, talloc_strlen(str), NULL, true) < 0) {
 		RPWDEBUG("Failed parsing value \"%pV\" for attribute %s", fr_box_strvalue_buffer(str),
 			tmpl_attr_tail_da(map->lhs)->name);
 		talloc_free(vp);
@@ -902,7 +901,7 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
 	rlm_csv_entry_t		*e;
 	map_t const		*map = NULL;
 
-	e = fr_htrie_find(inst->trie, &(rlm_csv_entry_t) { .key = UNCONST(fr_value_box_t *, key) } );
+	fr_htrie_find((void **)&e, inst->trie, &(rlm_csv_entry_t) { .key = UNCONST(fr_value_box_t *, key) } );
 	if (!e) {
 		rcode = RLM_MODULE_NOOP;
 		goto finish;
@@ -954,6 +953,7 @@ redo:
 
 	if (e->next) {
 		e = e->next;
+		map = NULL;
 		goto redo;
 	}
 

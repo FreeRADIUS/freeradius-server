@@ -42,22 +42,19 @@ RCSID("$Id$")
 #ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/ssl.h>
 #include <freeradius-devel/util/md4.h>
-#include <freeradius-devel/util/md5.h>
 #endif
-#include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 #endif
 
-#include <assert.h>
 
 typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 
 #include "smbdes.h"
 #include "mschap.h"
 
-#include "radclient.h"
+#include "radclient-ng.h"
 
 #define pair_update_request(_attr, _da) do { \
 		_attr = fr_pair_find_by_da(&request->request_pairs, NULL, _da); \
@@ -98,7 +95,7 @@ static bool do_coa = false;
 static int coa_port = FR_COA_UDP_PORT;
 static fr_rb_tree_t *coa_tree = NULL;
 
-static fr_dlist_head_t rc_request_list;
+static FR_DLIST_HEAD(rc_request_list) rc_request_list;
 static rc_request_t	*current = NULL;
 
 static char const *radclient_version = RADIUSD_VERSION_BUILD("radclient");
@@ -133,7 +130,7 @@ static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_radclient_coa_filename;
 static fr_dict_attr_t const *attr_radclient_coa_filter;
 
-static fr_dict_attr_t const *attr_coa_filter = NULL;
+static fr_dict_attr_t const *attr_coa_match_attr = NULL;
 
 extern fr_dict_attr_autoload_t radclient_dict_attr[];
 fr_dict_attr_autoload_t radclient_dict_attr[] = {
@@ -167,7 +164,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  -A <attribute>		     Use named 'attribute' to match CoA requests to packets.  Default is User-Name\n");
 	fprintf(stderr, "  -C [<client_ip>:]<client_port>    Client source port and source IP address.  Port values may be 1..65535\n");
 	fprintf(stderr, "  -c <count>			     Send each packet 'count' times.\n");
-	fprintf(stderr, "  -d <raddb>                        Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -d <confdir>                      Set user dictionary directory (defaults to " CONFDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>                      Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f <file>[:<file>]                Read packets from file, not stdin.\n");
 	fprintf(stderr, "                                    If a second file is provided, it will be used to verify responses\n");
@@ -193,7 +190,7 @@ static NEVER_RETURNS void usage(void)
  */
 static int _rc_request_free(rc_request_t *request)
 {
-	fr_dlist_remove(&rc_request_list, request);
+	rc_request_list_remove(&rc_request_list, request);
 
 	if (do_coa) {
 		(void) fr_rb_delete(coa_tree, &request->node);
@@ -265,7 +262,7 @@ static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void 
 {
 	if (fr_time_delta_unwrap(wake) < (NSEC / 10)) return 0;
 
-	if (fr_dlist_num_elements(&rc_request_list) != 0) return 0;
+	if (rc_request_list_num_elements(&rc_request_list) != 0) return 0;
 
 	fr_log(&default_log, L_DBG, __FILE__, __LINE__, "Main loop waking up in %pV seconds", fr_box_time_delta(wake));
 
@@ -397,10 +394,12 @@ static bool already_hex(fr_pair_t *vp)
 	return false;
 }
 
-/*
- *	Read one CoA reply and possibly filter
+/** Read one CoA reply and potentially a filter
+ *
  */
-static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_filename, bool *coa_reply_done, FILE *coa_filter, char const *filter_filename, bool *coa_filter_done)
+static int coa_init(rc_request_t *parent,
+		    FILE *coa_reply, char const *reply_filename, bool *coa_reply_done,
+		    FILE *coa_filter, char const *filter_filename, bool *coa_filter_done)
 {
 	rc_request_t	*request;
 	fr_pair_t	*vp;
@@ -479,7 +478,7 @@ static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_fil
 	 *	Ensure that the packet is also tracked in the CoA tree.
 	 */
 	fr_assert(coa_tree);
-	if (!fr_rb_insert(coa_tree, parent)) {
+	if (fr_rb_insert(coa_tree, parent) != 0) {
 		ERROR("Failed inserting packet from %s into CoA tree", request->name);
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -613,18 +612,24 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 			if (filters_done && !packets_done) {
 				REDEBUG("Differing number of packets/filters in %s:%s "
-				        "(too many requests))", files->packets, files->filters);
+				        "(too many requests)", files->packets, files->filters);
 				goto error;
 			}
 
 			if (!filters_done && packets_done) {
 				REDEBUG("Differing number of packets/filters in %s:%s "
-				        "(too many filters))", files->packets, files->filters);
+				        "(too many filters)", files->packets, files->filters);
 				goto error;
 			}
 
 			vp = fr_pair_find_by_da(&request->filter, NULL, attr_packet_type);
 			if (vp) {
+				if (!FR_RADIUS_PACKET_CODE_VALID(vp->vp_uint32)) {
+					REDEBUG("Invalid filter code %u in %s:%s", vp->vp_uint32,
+						files->packets, files->filters);
+					goto error;
+				}
+
 				request->filter_code = vp->vp_uint32;
 				fr_pair_delete(&request->filter, vp);
 			}
@@ -677,6 +682,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			} else if (vp->da == attr_radclient_test_name) {
 				request->name = vp->vp_strvalue;
 
+			/*
+			 *	Allow these to be dynamically specified
+			 *	in the request file, as well as on the
+			 *	command line.
+			 */
 			} else if (vp->da == attr_radclient_coa_filename) {
 				coa_reply_filename = vp->vp_strvalue;
 
@@ -822,7 +832,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				coa_filter = NULL;
 			}
 
-			if (coa_init(request, coa_reply, coa_reply_filename, &coa_reply_done,
+			/*
+			 *	Read in one CoA reply and/or filter
+			 */
+			if (coa_init(request,
+				     coa_reply, coa_reply_filename, &coa_reply_done,
 				     coa_filter, coa_filter_filename, &coa_filter_done) < 0) {
 				goto error;
 			}
@@ -836,7 +850,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			do_coa = true;
 
 		} else if (coa_reply) {
-			if (coa_init(request, coa_reply, coa_reply_filename, &coa_reply_done,
+			if (coa_init(request,
+				     coa_reply, coa_reply_filename, &coa_reply_done,
 				     coa_filter, coa_filter_filename, &coa_filter_done) < 0) {
 				goto error;
 			}
@@ -852,7 +867,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Add it to the tail of the list.
 		 */
-		fr_dlist_insert_tail(&rc_request_list, request);
+		rc_request_list_insert_tail(&rc_request_list, request);
 
 		/*
 		 *	Set the destructor so it removes itself from the
@@ -922,13 +937,13 @@ static int radclient_sane(rc_request_t *request)
 }
 
 
-static int8_t request_cmp(void const *one, void const *two)
+static fr_cmp_ret_t request_cmp(void const *one, void const *two)
 {
 	rc_request_t const *a = one, *b = two;
 	fr_pair_t *vp1, *vp2;
 
-	vp1 = fr_pair_find_by_da(&a->request_pairs, NULL, attr_coa_filter);
-	vp2 = fr_pair_find_by_da(&b->request_pairs, NULL, attr_coa_filter);
+	vp1 = fr_pair_find_by_da(&a->request_pairs, NULL, attr_coa_match_attr);
+	vp2 = fr_pair_find_by_da(&b->request_pairs, NULL, attr_coa_match_attr);
 
 	if (!vp1) return -1;
 	if (!vp2) return +1;
@@ -942,7 +957,7 @@ static void cleanup(fr_bio_packet_t *client, rc_request_t *request)
 	 *	Don't leave a dangling pointer around.
 	 */
 	if (current == request) {
-		current = fr_dlist_prev(&rc_request_list, current);
+		current = rc_request_list_prev(&rc_request_list, current);
 	}
 
 	talloc_free(request);
@@ -950,7 +965,7 @@ static void cleanup(fr_bio_packet_t *client, rc_request_t *request)
 	/*
 	 *	There are more packets to send, then allow the writer to send them.
 	 */
-	if (fr_dlist_num_elements(&rc_request_list) != 0) {
+	if (rc_request_list_num_elements(&rc_request_list) != 0) {
 		return;
 	}
 
@@ -1017,7 +1032,7 @@ static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 			 *	Use CHAP-Challenge pair if present, otherwise create CHAP-Challenge and
 			 *	populate with current Request Authenticator.
 			 *
-			 *	Request Authenticator is re-calculated by fr_packet_sign
+			 *	Request Authenticator is re-calculated by fr_radius_packet_sign
 			 */
 			challenge = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_challenge);
 			if (!challenge || (challenge->vp_length < 7)) {
@@ -1249,10 +1264,10 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	fr_bio_packet_t *client = uctx;
 	rc_request_t *request;
 
-	request = fr_dlist_next(&rc_request_list, current);
+	request = rc_request_list_next(&rc_request_list, current);
 	fr_assert(!paused);
 
-	if (!request) request = fr_dlist_head(&rc_request_list);
+	if (!request) request = rc_request_list_head(&rc_request_list);
 
 	/*
 	 *	Nothing more to send, stop trying to write packets.
@@ -1313,7 +1328,7 @@ int main(int argc, char **argv)
 {
 	int		ret = EXIT_SUCCESS;
 	int		c;
-	char		const *raddb_dir = RADDBDIR;
+	char		const *confdir = CONFDIR;
 	char		const *dict_dir = DICTDIR;
 	char		*end;
 	char		filesecret[256];
@@ -1341,7 +1356,7 @@ int main(int argc, char **argv)
 
 	autofree = talloc_autofree_context();
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("radclient");
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -1356,7 +1371,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	fr_dlist_talloc_init(&rc_request_list, rc_request_t, entry);
+	rc_request_list_talloc_init(&rc_request_list);
 
 	fr_dlist_talloc_init(&filenames, rc_file_pair_t, entry);
 
@@ -1456,7 +1471,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			raddb_dir = optarg;
+			confdir = optarg;
 			break;
 
 			/*
@@ -1495,8 +1510,9 @@ int main(int argc, char **argv)
 			break;
 
 		case 'i':
-			if (!isdigit((uint8_t) *optarg))
+			if (!isdigit((uint8_t) *optarg)) {
 				usage();
+			}
 			forced_id = atoi(optarg);
 			if ((forced_id < 0) || (forced_id > 255)) {
 				usage();
@@ -1571,7 +1587,7 @@ int main(int argc, char **argv)
 			}
 			secret = talloc_strdup(autofree, filesecret);
 			client_config.verify.secret = (uint8_t *) secret;
-			client_config.verify.secret_len = talloc_array_length(secret) - 1;
+			client_config.verify.secret_len = talloc_strlen(secret);
 		}
 		       break;
 
@@ -1656,7 +1672,7 @@ int main(int argc, char **argv)
 	if (argv[3]) {
 		secret = talloc_strdup(autofree, argv[3]);
 		client_config.verify.secret = (uint8_t *) secret;
-		client_config.verify.secret_len = talloc_array_length(secret) - 1;
+		client_config.verify.secret_len = talloc_strlen(secret);
 	}
 
 	/***********************************************************************
@@ -1690,15 +1706,15 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(fr_dict_unconst(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_unconst(dict_freeradius), confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, __FILE__, __LINE__, NULL,
 			      "Failed to initialize the dictionaries");
 		exit(EXIT_FAILURE);
 	}
 
 	if (do_coa) {
-		attr_coa_filter = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), attr_coa_filter_name);
-		if (!attr_coa_filter) {
+		attr_coa_match_attr = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), attr_coa_filter_name);
+		if (!attr_coa_match_attr) {
 			ERROR("Unknown or invalid CoA filter attribute %s", optarg);
 			fr_exit_now(EXIT_FAILURE);
 		}
@@ -1706,7 +1722,7 @@ int main(int argc, char **argv)
 		/*
 		 *	If there's no attribute given to match CoA to requests, use User-Name
 		 */
-		if (!attr_coa_filter) attr_coa_filter = attr_user_name;
+		if (!attr_coa_match_attr) attr_coa_match_attr = attr_user_name;
 
 		MEM(coa_tree = fr_rb_talloc_alloc(autofree, rc_request_t, request_cmp, NULL));
 	}
@@ -1750,7 +1766,7 @@ int main(int argc, char **argv)
 	/*
 	 *	No packets were read.  Die.
 	 */
-	if (!fr_dlist_num_elements(&rc_request_list)) {
+	if (!rc_request_list_num_elements(&rc_request_list)) {
 		ERROR("Nothing to send");
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -1815,7 +1831,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Walk over the list of packets, updating to use the correct addresses, and sanity checking them.
 	 */
-	fr_dlist_foreach(&rc_request_list, rc_request_t, this) {
+	rc_request_list_foreach(&rc_request_list, this) {
 		if (radclient_sane(this) < 0) {
 			fr_exit_now(EXIT_FAILURE);
 		}
@@ -1844,7 +1860,7 @@ int main(int argc, char **argv)
 	 *	We are done the event loop.  Start cleaning things up.
 	 *
 	 ***********************************************************************/
-	fr_dlist_talloc_free(&rc_request_list);
+	rc_request_list_talloc_free(&rc_request_list);
 
 	(void) fr_event_fd_delete(client_config.retry_cfg.el, client_info->fd_info->socket.fd, FR_EVENT_FILTER_IO);
 

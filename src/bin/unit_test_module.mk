@@ -2,7 +2,8 @@ TARGET		:= unit_test_module$(E)
 SOURCES 	:= unit_test_module.c
 
 TGT_INSTALLDIR  :=
-TGT_LDLIBS	:= $(LIBS) $(LCRYPT)
+TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(GPERFTOOLS_LIBS)
+TGT_LDFLAGS	:= $(GPERFTOOLS_LDFLAGS)
 TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-io$(L)
 
 # Flags needed when linking main executables that link against LuaJIT

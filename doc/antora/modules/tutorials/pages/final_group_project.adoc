@@ -51,11 +51,11 @@ For local preparation, you should ensure that the following sections have no
 content:
 
 - The `recv Access-Request { ... }` or `authorize { ... }` section of
-  `/etc/raddb/sites-available/default`.
+  `sites-available/default`.
 - The `send Access-Accept { ... }` or `post-auth { ... }` section of
-  `/etc/raddb/sites-available/default`.
+  `sites-available/default`.
   _Clear the `post-auth-type reject { ...}` section if present but do not remove_.
-- The `send Access-Reject { ... }` section of `/etc/raddb/sites-available/default`.
+- The `send Access-Reject { ... }` section of `sites-available/default`.
 
 After completing each of the sections below, you should check that the
 configuration you've produced is valid (radiusd -XC), and if possible, test the
@@ -68,9 +68,9 @@ multiple upstream home servers.
 
 *Files:*
 
-- xref:reference:raddb/mods-available/radius.adoc[`etc/raddb/mods-available/radius`]
-- xref:reference:raddb/sites-available/default.adoc[`etc/raddb/sites-available/default`] (optionally)
-- xref:reference:raddb/mods-available/linelog.adoc[`etc/raddb/mods-available/linelog`] (optionally)
+- xref:reference:raddb/mods-available/radius.adoc[`mods-available/radius`]
+- xref:reference:raddb/sites-available/default.adoc[`sites-available/default`] (optionally)
+- xref:reference:raddb/mods-available/linelog.adoc[`mods-available/linelog`] (optionally)
 
 *Time:* 20-30 minutes
 
@@ -106,7 +106,7 @@ The local realm should not have "nostrip" set.
 
 *Files:*
 
-- xref:reference:raddb/clients.conf.adoc[`etc/raddb/clients.conf`]
+- xref:reference:raddb/clients.conf.adoc[`clients.conf`]
 
 *Time*: 15-20 minutes
 
@@ -147,13 +147,13 @@ login, retrieve the user's password and store it in
 
 *Files:*
 
-//- xref:reference:raddb/mods-available/suffix.adoc[`etc/raddb/mods-available/suffix`]
-- xref:reference:raddb/mods-available/files.adoc[`etc/raddb/mods-available/files`]
-- `etc/raddb/mods-config/files/authorize`
-- xref:reference:raddb/mods-available/ldap.adoc[`etc/raddb/mods-available/ldap`]
-- xref:reference:raddb/mods-available/redis.adoc[`etc/raddb/mods-available/redis`]
-- xref:reference:raddb/mods-available/rest.adoc[`etc/raddb/mods-available/rest`]
-- xref:reference:raddb/mods-available/sql.adoc[`etc/raddb/mods-available/sql`]
+//- xref:reference:raddb/mods-available/suffix.adoc[`mods-available/suffix`]
+- xref:reference:raddb/mods-available/files.adoc[`mods-available/files`]
+- `mods-config/files/authorize`
+- xref:reference:raddb/mods-available/ldap.adoc[`mods-available/ldap`]
+- xref:reference:raddb/mods-available/redis.adoc[`mods-available/redis`]
+- xref:reference:raddb/mods-available/rest.adoc[`mods-available/rest`]
+- xref:reference:raddb/mods-available/sql.adoc[`mods-available/sql`]
 
 *Time:* 20-60 minutes
 
@@ -231,5 +231,5 @@ If their server does not respond with an Access-Accept, work with the other
 participant to debug the issue.
 
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

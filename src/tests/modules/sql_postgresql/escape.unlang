@@ -1,0 +1,38 @@
+#
+#  PostgreSQL escape function (via PQescapeStringConn).
+#
+#  Single-quote doubling is the only byte transformation that's stable
+#  regardless of the server's standard_conforming_strings setting, so it's
+#  the only one we assert on here.  ASCII and UTF-8 pass-through are also
+#  invariant.
+#
+#  String literals in unlang are marked "safe for any escape" so we wrap
+#  each input in %taint(...) to force the escape to actually run.
+#
+
+#
+#  Plain ASCII passes through unchanged.
+#
+if (%sql.escape(%taint("Hello world")) != "Hello world") {
+	test_fail
+}
+
+#
+#  Single quote is doubled.
+#
+if (%sql.escape(%taint("it's")) != "it''s") {
+	test_fail
+}
+
+if (%sql.escape(%taint("''")) != "''''") {
+	test_fail
+}
+
+#
+#  Multi-byte UTF-8 is passed through unchanged.
+#
+if (%sql.escape(%taint("café")) != "café") {
+	test_fail
+}
+
+test_pass

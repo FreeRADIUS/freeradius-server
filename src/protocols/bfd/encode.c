@@ -188,7 +188,7 @@ static ssize_t fr_bfd_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, 
 	 *	@todo - pass in test_ctx to this function, so that we
 	 *	can leverage a consistent random number generator.
 	 */
-	slen = fr_bfd_encode(data, data_len, NULL, test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, vps);
+	slen = fr_bfd_encode(data, data_len, NULL, test_ctx->secret, talloc_strlen(test_ctx->secret), vps);
 	if (slen <= 0) return slen;
 
 	vp = fr_pair_find_by_da(vps, NULL, attr_bfd_additional_data);

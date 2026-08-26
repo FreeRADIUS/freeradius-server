@@ -1,0 +1,14 @@
+= IO Error
+
+An IO error usually indicates a temporary problem with the local
+operating system or network.  For example, it can be due to
+permissions error, failure of a network interface, routing failure,
+etc.  It should happen rarely.
+
+As the error here is due to the network or operating system, you
+generally cannot fix it by updating the server configuration.  You
+will have to track down the source of the error, which is outside of
+the server.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

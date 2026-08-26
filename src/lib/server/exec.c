@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/exec_priv.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/util.h>
 
 #define MAX_ENVP 1024
@@ -57,7 +58,13 @@ int fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 	 *	a tainted source.
 	 */
 	first = fr_value_box_list_head(in);
+	if (!first) {
+	missing:
+		fr_strerror_const("No program to run");
+		return -1;
+	}
 	if (first->type == FR_TYPE_GROUP) first = fr_value_box_list_head(&first->vb_group);
+	if (!first) goto missing;
 	if (first->tainted) {
 		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
 		return -1;
@@ -283,7 +290,7 @@ char **fr_exec_pair_to_env(request_t *request, fr_pair_list_t *env_pairs, bool e
  *				STDOUT will be set to stdout_pipe[1], stdout_pipe[0]
  *				will be closed.
  * @param[in] stderr_pipe	the pipe used to read error text from the process.
- *				STDERR will be set to stderr_pipe[1], stderr_pip[0]
+ *				STDERR will be set to stderr_pipe[1], stderr_pipe[0]
  *				will be closed.
  */
 static NEVER_RETURNS void exec_child(char **argv, char **envp,
@@ -419,23 +426,63 @@ char **exec_build_env(char **env_in, bool env_inherit)
 	/*
 	 *	No room to copy anything after the environment variables.
 	 */
-	if (((num_environ + 1) == NUM_ELEMENTS(env_exec_arr))) {
+	if (((num_environ + 1) >= NUM_ELEMENTS(env_exec_arr))) {
 		return environ;
 	}
 
 	/*
 	 *	Copy the radiusd environment to the local array
 	 */
-	memcpy(env_exec_arr, environ, num_environ + 1);
+	memcpy(env_exec_arr, environ, (num_environ + 1) * sizeof(environ[0]));
 
 	for (num_in = 0; env_in[num_in] != NULL; num_in++) {
 		if ((num_environ + num_in + 1) >= NUM_ELEMENTS(env_exec_arr)) break;
 	}
 
-	memcpy(env_exec_arr + num_environ, env_in, num_in);
+	memcpy(env_exec_arr + num_environ, env_in, num_in * sizeof(environ[0]));
 	env_exec_arr[num_environ + num_in] = NULL;
 
 	return env_exec_arr;
+}
+
+static bool fr_exec_allowed(char const *filename)
+{
+	size_t i, num_files, len;
+
+	if (!main_config->limit_exec) return true;
+
+	num_files = talloc_array_length(main_config->limit_exec);
+	if (!num_files) goto fail;
+
+	len = strlen(filename);
+
+	for (i = 0; i < num_files; i++) {
+		size_t alen = talloc_array_length(main_config->limit_exec[i]);
+
+		/*
+		 *	The allowed directory is longer than the filename, it's not allowed.
+		 */
+		if (alen > len) continue;
+
+		/*
+		 *	No leading match, it's not allowed.
+		 */
+		if (memcmp(filename, main_config->limit_exec[i], alen) != 0) continue;
+
+		if (alen == len) return true;
+
+		/*
+		 *	Setting "allow = foo/bar" does NOT mean that
+		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
+		 */
+		if (filename[alen] != '/') break;
+
+		return true;
+	}
+
+fail:
+	EDEBUG("Failed running program %s - it is outside of 'limit exec { ... }'", filename);
+	return false;
 }
 
 /** Execute a program without waiting for the program to finish.
@@ -460,6 +507,8 @@ int fr_exec_fork_nowait(fr_event_list_t *el, char **argv_in, char **env_in, bool
 {
 	char		**env;
 	pid_t		pid;
+
+	if (!fr_exec_allowed(argv_in[0])) return -1;
 
 	env = exec_build_env(env_in, env_inherit);
 	pid = fork();
@@ -533,6 +582,8 @@ int fr_exec_fork_wait(pid_t *pid_p,
 	int		stderr_pipe[2] = {-1, -1};
 	int		stdout_pipe[2] = {-1, -1};
 
+	if (!fr_exec_allowed(argv_in[0])) return -1;
+
 	if (stdin_fd) {
 		if (pipe(stdin_pipe) < 0) {
 			fr_strerror_const("Failed opening pipe to write to child");
@@ -540,7 +591,10 @@ int fr_exec_fork_wait(pid_t *pid_p,
 		error1:
 			return -1;
 		}
-		if (fr_nonblock(stdin_pipe[1]) < 0) fr_strerror_const("Error setting stdin to nonblock");
+		if (fr_nonblock(stdin_pipe[1]) < 0) {
+			fr_strerror_const("Error setting stdin to nonblock");
+			goto error2;
+		}
 	}
 
 	if (stdout_fd) {
@@ -552,7 +606,10 @@ int fr_exec_fork_wait(pid_t *pid_p,
 			close(stdin_pipe[1]);
 			goto error1;
 		}
-		if (fr_nonblock(stdout_pipe[0]) < 0) fr_strerror_const("Error setting stdout to nonblock");
+		if (fr_nonblock(stdout_pipe[0]) < 0) {
+			fr_strerror_const("Error setting stdout to nonblock");
+			goto error3;
+		}
 	}
 
 	if (stderr_fd) {
@@ -564,7 +621,12 @@ int fr_exec_fork_wait(pid_t *pid_p,
 			close(stdout_pipe[1]);
 			goto error2;
 		}
-		if (fr_nonblock(stderr_pipe[0]) < 0) fr_strerror_const("Error setting stderr to nonblock");
+		if (fr_nonblock(stderr_pipe[0]) < 0) {
+			fr_strerror_const("Error setting stderr to nonblock");
+			close(stderr_pipe[0]);
+			close(stderr_pipe[1]);
+			goto error3;
+		}
 	}
 
 	env = exec_build_env(env_in, env_inherit);
@@ -577,6 +639,10 @@ int fr_exec_fork_wait(pid_t *pid_p,
 	if (pid < 0) {
 		fr_strerror_printf("Couldn't fork %s", argv_in[0]);
 		*pid_p = -1;	/* Ensure the PID is set even if the caller didn't check the return code */
+		if (stderr_fd) {
+			close(stderr_pipe[0]);
+			close(stderr_pipe[1]);
+		}
 		goto error3;
 	}
 
@@ -668,7 +734,8 @@ void fr_exec_oneshot_cleanup(fr_exec_state_t *exec, int signal)
 
 	if (exec->pid >= 0) {
 		RDEBUG3("Cleaning up exec state for PID %u", exec->pid);
-	} else {
+
+	} else if (exec->failed != FR_EXEC_FAIL_NONE) {
 		RDEBUG3("Cleaning up failed exec");
 	}
 

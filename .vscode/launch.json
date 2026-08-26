@@ -156,6 +156,7 @@
                                 { "name": "SMTP_TEST_SERVER_PORT", "value": "2525" },
                                 { "name": "REDIS_TEST_SERVER", "value": "${input:testserver}" },
                                 { "name": "REDIS_IPPOOL_TEST_SERVER", "value": "${input:testserver}" },
+                                { "name": "REDISWHO_TEST_SERVER", "value": "${input:testserver}" },
                                 { "name": "CACHE_REDIS_TEST_SERVER", "value": "${input:testserver}" },
                                 { "name": "IMAP_TEST_SERVER", "value": "${input:testserver" },
                                 { "name": "IMAP_TEST_SERVER_PORT", "value": "1430" },

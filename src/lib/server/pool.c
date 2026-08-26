@@ -179,7 +179,7 @@ static int max_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_t
 
 /** Order connections by reserved most recently
  */
-static int8_t last_reserved_cmp(void const *one, void const *two)
+static fr_cmp_ret_t last_reserved_cmp(void const *one, void const *two)
 {
 	fr_pool_connection_t const *a = one, *b = two;
 
@@ -188,7 +188,7 @@ static int8_t last_reserved_cmp(void const *one, void const *two)
 
 /** Order connections by released longest ago
  */
-static int8_t last_released_cmp(void const *one, void const *two)
+static fr_cmp_ret_t last_released_cmp(void const *one, void const *two)
 {
 	fr_pool_connection_t const *a = one, *b = two;
 
@@ -266,7 +266,7 @@ static inline void fr_pool_trigger(fr_pool_t *pool, char const *event)
 	if (!pool->triggers_enabled) return;
 
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, event);
-	trigger(unlang_interpret_get_thread_default(), pool->cs, NULL, name, true, &pool->trigger_args);
+	trigger(unlang_interpret_get_thread_default(), pool->cs, NULL, name, true, &pool->trigger_args, pool);
 }
 
 /** Find a connection handle in the connection list
@@ -282,7 +282,7 @@ static inline void fr_pool_trigger(fr_pool_t *pool, char const *event)
  * @param[in] conn	handle to search for.
  * @return
  *	- Connection containing the specified handle.
- *	- NULL if non if connection was found.
+ *	- NULL if no such connection was found.
  */
 static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 {
@@ -432,8 +432,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 *	Allocate a new top level ctx for the create callback
 	 *	to hang its memory off of.
 	 */
-	ctx = talloc_init("connection_ctx");
-	if (!ctx) return NULL;
+	MEM(ctx = talloc_init("connection_ctx"));
 
 	/*
 	 *	This may take a long time, which prevents other
@@ -445,8 +444,8 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	if (!conn) {
 		ERROR("Opening connection failed (%" PRIu64 ")", number);
 
-		pool->state.last_failed = now;
 		pthread_mutex_lock(&pool->mutex);
+		pool->state.last_failed = now;
 		pool->pending_window = 1;
 		pool->state.pending--;
 
@@ -471,14 +470,19 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 
 	this = talloc_zero(pool, fr_pool_connection_t);
 	if (!this) {
+		pool->state.last_failed = now;
+		pool->state.pending--;
+
 		pthread_cond_broadcast(&pool->done_spawn);
 		pthread_mutex_unlock(&pool->mutex);
+
+		ERROR("Memory allocation failed for new connection (%" PRIu64 ")", number);
 
 		talloc_free(ctx);
 
 		return NULL;
 	}
-	talloc_link_ctx(this, ctx);
+	MEM(talloc_link_ctx(this, ctx) >= 0);
 
 	this->created = now;
 	this->connection = conn;
@@ -872,15 +876,16 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 			pool->state.last_at_max = now;
 		}
 
-		pthread_mutex_unlock(&pool->mutex);
 		if (!fr_rate_limit_enabled() || complain) {
 			ERROR("No connections available and at max connection limit");
+
 			/*
 			 *	Must be done inside the mutex, reconnect callback
 			 *	may modify args.
 			 */
 			fr_pool_trigger(pool, "none");
 		}
+		pthread_mutex_unlock(&pool->mutex);
 
 		return NULL;
 	}
@@ -889,7 +894,7 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 
 	if (!spawn) return NULL;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "%i of %u connections in use.  You  may need to increase \"spare\"",
+	ROPTIONAL(RDEBUG2, DEBUG2, "%i of %u connections in use.  You may need to increase \"spare\"",
 	       pool->state.active, pool->state.num);
 
 	/*
@@ -918,7 +923,7 @@ do_return:
  *
  * @param[in] pool		to enable triggers for.
  * @param[in] trigger_prefix	prefix to prepend to all trigger names.  Usually a path
- *				to the module's trigger configuration .e.g.
+ *				to the module's trigger configuration e.g.
  *      			@verbatim modules.<name>.pool @endverbatim
  *				@verbatim <trigger name> @endverbatim is appended to form
  *				the complete path.
@@ -933,7 +938,7 @@ void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, fr_pai
 	pool->triggers_enabled = true;
 
 	talloc_const_free(pool->trigger_prefix);
-	MEM(pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "");
+	MEM(pool->trigger_prefix = trigger_prefix ? talloc_strdup(pool, trigger_prefix) : "");
 
 	fr_pair_list_free(&pool->trigger_args);
 
@@ -1024,7 +1029,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	to maintaining a cache of open connections.
 	 *
 	 *	With libcurl's multihandle, connections can only be reused
-	 *	if all handles that make up the multhandle are done processing
+	 *	if all handles that make up the multihandle are done processing
 	 *	their requests.
 	 *
 	 *	We can't tell when that's happened using libcurl, and even
@@ -1046,7 +1051,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 		return NULL;
 	}
 
-	pool->log_prefix = log_prefix ? talloc_typed_strdup(pool, log_prefix) : "core";
+	pool->log_prefix = log_prefix ? talloc_strdup(pool, log_prefix) : "core";
 	pthread_mutex_init(&pool->mutex, NULL);
 	pthread_cond_init(&pool->done_spawn, NULL);
 	pthread_cond_init(&pool->done_reconnecting, NULL);
@@ -1370,7 +1375,7 @@ void fr_pool_free(fr_pool_t *pool)
 /** Reserve a connection in the connection pool
  *
  * Will attempt to find an unused connection in the connection pool, if one is
- * found, will mark it as in in use increment the number of active connections
+ * found, will mark it as in use, and increment the number of active connections
  * and return the connection handle.
  *
  * If no free connections are found will attempt to spawn a new one, conditional
@@ -1437,7 +1442,7 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	    	pool->state.last_held_min = this->last_released;
 	}
 
-	if (fr_time_delta_ispos(pool->held_trigger_min) &&
+	if (fr_time_delta_ispos(pool->held_trigger_max) &&
 	    (fr_time_delta_gt(held, pool->held_trigger_max)) &&
 	    (fr_time_delta_gteq(fr_time_sub(this->last_released, pool->state.last_held_max), fr_time_delta_from_sec(1)))) {
 	    	trigger_max = true;

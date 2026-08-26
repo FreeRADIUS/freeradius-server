@@ -1,0 +1,67 @@
+# ---------------------------------------------------------------
+# Docker Compose Test Environment:
+#
+#   load-generator (proto_load, in-process) -> FreeRADIUS -> openldap
+#
+#   Same compose serves both service and profiling modes; see
+#   environments/accept.yml.j2 for the FREERADIUS_IMAGE / PROFILING
+#   convention.
+# ---------------------------------------------------------------
+x-common-config: &id001
+  cap_add:
+  - NET_ADMIN
+  - SYS_PTRACE
+  environment:
+    TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
+services:
+  openldap:
+    image: dinkel/openldap:latest
+    environment:
+      SLAPD_DOMAIN: "example.com"
+      SLAPD_PASSWORD: "adminpassword"
+      SLAPD_ORGANIZATION: "Example"
+    volumes:
+    # dinkel's entrypoint slapadds any *.ldif under /etc/ldap/prepopulate
+    # on first start. It iterates the files via slapadd directly, no
+    # in-place sed/chown/rm shenanigans, so a read-only bind-mount of the
+    # parent dir survives the init unscathed.
+    - ${DATA_PATH}/openldap/bootstrap:/etc/ldap/prepopulate:ro
+    healthcheck:
+      # dinkel doesn't ship ldap-utils; probe the listener via bash's
+      # built-in /dev/tcp so we don't need ldapsearch in the image.
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/389'"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    <<: *id001
+  freeradius:
+    image: ${FREERADIUS_IMAGE}
+    environment:
+      PROFILING: ${PROFILING:-no}
+    depends_on:
+      openldap:
+        condition: service_healthy
+    volumes:
+    # freeradius server config
+    - ${DATA_PATH}/freeradius/ldap/radiusd.conf:/etc/freeradius/radiusd.conf
+    # proto_load packet configuration and statistics output
+    - ${DATA_PATH}/freeradius/common/proto-load/proto_load_config.env:/etc/freeradius/proto_load_config.env
+    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
+    - ${DATA_PATH}/freeradius/common/proto-load/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
+    # Profiling wrapper (no-op in service mode)
+    - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
+    # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
+    - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:/etc/prof-results/
+    # Listener directory
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      # Keep the container alive. The test framework starts FreeRADIUS
+      # and runs commands via 'docker exec' so it can control timing.
+      sleep infinity
+    <<: *id001
+

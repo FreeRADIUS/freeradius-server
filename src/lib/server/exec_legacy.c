@@ -74,7 +74,7 @@ static void exec_pair_to_env_legacy(request_t *request, fr_pair_list_t *input_pa
 					   shell_escape ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 
 		DEBUG3("export %s", buffer);
-		envp[i++] = talloc_typed_strdup(envp, buffer);
+		envp[i++] = talloc_strdup(envp, buffer);
 	}
 
 	if (request) {
@@ -310,6 +310,7 @@ pid_t radius_start_program_legacy(int *stdin_fd, int *stdout_fd, int *stderr_fd,
 	if (pid < 0) {
 		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
 		if (exec_wait) goto error;
+		return -1;
 	}
 
 	/*
@@ -360,7 +361,7 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 	int status;
 	fr_time_t start;
 
-	fr_nonblock(fd);
+	(void) fr_nonblock(fd);
 
 	/*
 	 *	Minimum timeout period is one section
@@ -458,7 +459,7 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
  *
  * @param[out] out buffer to append plaintext (non valuepair) output.
  * @param[in] outlen length of out buffer.
- * @param[in] request Current request (may be NULL).
+ * @param[in] request Current request. Must not be NULL.
  * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv
  *	part is xlat'ed.
  * @param[in] input_pairs list of value pairs - these will be available in the environment of the
@@ -495,7 +496,7 @@ int radius_exec_program_legacy(char *out, size_t outlen,
 		return 0;
 	}
 
-	len = radius_readfrom_program_legacy(stdout_pipe, pid, timeout, answer, sizeof(answer));
+	len = radius_readfrom_program_legacy(stdout_pipe, pid, timeout, answer, sizeof(answer) - 1);
 	if (len < 0) {
 		/*
 		 *	Failure - radius_readfrom_program_legacy will
@@ -538,10 +539,10 @@ wait:
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
 			if (status != 0) {
-				RERROR("Program returned code (%d) and output \"%pV\"", status,
+				RERROR("Program returned code (%d) and output %pV", status,
 				       fr_box_strvalue_len(answer, len));
 			} else {
-				RDEBUG2("Program returned code (%d) and output \"%pV\"", status,
+				RDEBUG2("Program returned code (%d) and output %pV", status,
 					fr_box_strvalue_len(answer, len));
 			}
 

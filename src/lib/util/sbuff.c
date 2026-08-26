@@ -47,7 +47,8 @@ fr_table_num_ordered_t const sbuff_parse_error_table[] = {
 	{ L("token format invalid"),	FR_SBUFF_PARSE_ERROR_FORMAT			},
 	{ L("out of space"),		FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE		},
 	{ L("integer overflow"),	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW		},
-	{ L("integer underflow"),	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW		}
+	{ L("integer underflow"),	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW		},
+	{ L("empty input is invalid"),	FR_SBUFF_PARSE_ERROR_INPUT_EMPTY		},
 };
 size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
@@ -60,29 +61,29 @@ size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 #  define CHECK_SBUFF_WRITEABLE(_sbuff)
 #endif
 
-bool const sbuff_char_class_uint[UINT8_MAX + 1] = {
+bool const sbuff_char_class_uint[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_NUM,
 	['+'] = true
 };
 
-bool const sbuff_char_class_int[UINT8_MAX + 1] = {
+bool const sbuff_char_class_int[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_NUM,
 	['+'] = true, ['-'] = true
 };
 
-bool const sbuff_char_class_float[UINT8_MAX + 1] = {
+bool const sbuff_char_class_float[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_NUM,
 	['-'] = true, ['+'] = true, ['e'] = true, ['E'] = true, ['.'] = true,
 };
 
-bool const sbuff_char_class_zero[UINT8_MAX + 1] = {
+bool const sbuff_char_class_zero[SBUFF_CHAR_CLASS] = {
 	['0'] = true
 };
 
 /*
  *	Anything which vaguely resembles an IP address, prefix, or host name.
  */
-bool const sbuff_char_class_hostname[UINT8_MAX + 1] = {
+bool const sbuff_char_class_hostname[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_ALPHA_NUM,
 	['.'] = true,		/* only for IPv4 and host names */
 	[':'] = true,		/* only for IPv6 numerical addresses */
@@ -94,21 +95,21 @@ bool const sbuff_char_class_hostname[UINT8_MAX + 1] = {
 	['*'] = true,		/* really only for ipv4 addresses */
 };
 
-bool const sbuff_char_class_hex[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_HEX };
-bool const sbuff_char_alpha_num[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
-bool const sbuff_char_word[UINT8_MAX + 1] = {
+bool const sbuff_char_class_hex[SBUFF_CHAR_CLASS] = { SBUFF_CHAR_CLASS_HEX };
+bool const sbuff_char_alpha_num[SBUFF_CHAR_CLASS] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
+bool const sbuff_char_word[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_ALPHA_NUM,
 	['-'] = true, ['_'] = true,
 };
-bool const sbuff_char_whitespace[UINT8_MAX + 1] = {
+bool const sbuff_char_whitespace[SBUFF_CHAR_CLASS] = {
 	['\t'] = true, ['\n'] = true, ['\r'] = true, ['\f'] = true, ['\v'] = true, [' '] = true,
 };
 
-bool const sbuff_char_line_endings[UINT8_MAX + 1] = {
+bool const sbuff_char_line_endings[SBUFF_CHAR_CLASS] = {
 	['\n'] = true, ['\r'] = true
 };
 
-bool const sbuff_char_blank[UINT8_MAX + 1] = {
+bool const sbuff_char_blank[SBUFF_CHAR_CLASS] = {
 	['\t'] = true, [' '] = true,
 };
 
@@ -326,8 +327,16 @@ size_t fr_sbuff_extend_file(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuff,
 	/** Check for errors
 	 */
 	if (read < available) {
-		if (!feof(fctx->file)) {	/* It's a real error */
-			fr_strerror_printf("Error extending buffer: %s", fr_syserror(ferror(fctx->file)));
+		if (!feof(fctx->file)) {
+			/*
+			 *	It's an error, but ferror() returns a ??? error number,
+			 *	and not errno.
+			 *
+			 *	Posix says "The ferror() function shall not change the setting of errno if
+			 *	stream is valid".  And the return value is defined to be non-zero, but with no
+			 *	meaning associated with any non-zero values.
+			 */
+			fr_strerror_printf("Error extending buffer: %d", ferror(fctx->file));
 			*status |= FR_SBUFF_FLAG_EXTEND_ERROR;
 			return 0;
 		}
@@ -385,9 +394,9 @@ size_t fr_sbuff_extend_talloc(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuf
 
 	/*
 	 *	Check we don't exceed the maximum buffer
-	 *	length.
+	 *	length, including the NUL byte.
 	 */
-	if (tctx->max && ((clen + elen) > tctx->max)) {
+	if (tctx->max && ((clen + elen + 1) > tctx->max)) {
 		elen = tctx->max - clen;
 		if (elen == 0) {
 			fr_strerror_printf("Failed extending buffer by %zu bytes to "
@@ -508,14 +517,14 @@ int fr_sbuff_reset_talloc(fr_sbuff_t *sbuff)
  * @param[in] term		Terminals to populate the index with.
  */
 static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *needle_len,
-								     uint8_t idx[static UINT8_MAX + 1],
+								     uint8_t idx[static SBUFF_CHAR_CLASS],
 								     fr_sbuff_term_t const *term)
 {
 	size_t i, len, max = 0;
 
 	if (!term) return;
 
-	memset(idx, 0, UINT8_MAX + 1);
+	memset(idx, 0, SBUFF_CHAR_CLASS);
 
 	for (i = 0; i < term->len; i++) {
 		len = term->elem[i].len;
@@ -543,8 +552,8 @@ static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *nee
  *	- false if not.
  */
 static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
-					    uint8_t idx[static UINT8_MAX + 1],
-					    fr_sbuff_term_t const *term, size_t needle_len)
+					    uint8_t idx[static SBUFF_CHAR_CLASS],
+					    fr_sbuff_term_t const *term, UNUSED size_t needle_len)
 {
 	uint8_t 	term_idx;
 
@@ -556,31 +565,30 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 
 	if (!term) return false;			/* If there's no terminals, we don't need to search */
 
-	end = term->len - 1;
+	if (p > in->end) return false; /* paranoia */
+
+	/*
+	 *	"p" may be ahead of "in->p", as the caller can scan forward without advancing "in->p`".  So we
+	 *	need to measure bytes available from "p".  Othwrwise using fr_sbuff_remaining(in) would
+	 *	over-state the available bytes by (p - in->p) and read past in->end.
+	 */
+	remaining = (size_t)(in->end - p);
+
+	/*
+	 *	Special case for EOFlike states.
+	 *
+	 *	This MUST be checked before dereferencing "*p" below.  When the buffer is fully consumed, we
+	 *	have "p == in->end".  A dereference of "*p" is one byte past the end of the buffer, and would result in an overflow.
+	 */
+	if (remaining == 0) {
+		if (!fr_sbuff_is_extendable(in) && (idx['\0'] != 0)) return true;
+		return false;
+	}
 
 	term_idx = idx[(uint8_t)*p];			/* Fast path */
 	if (!term_idx) return false;
 
-	/*
-	 *	Special case for EOFlike states
-	 */
-	remaining = fr_sbuff_remaining(in);
-	if ((remaining == 0) && !fr_sbuff_is_extendable(in)) {
-		if (idx['\0'] != 0) return true;
-		return false;
-	}
-
-	if (remaining < needle_len) {
-		fr_assert_msg(!fr_sbuff_is_extendable(in),
-			      "Caller failed to extend buffer by %zu bytes before calling fr_sbuff_terminal_search",
-			      needle_len);
-		/*
-		 *	We can't search for the needle if we don't have
-		 *	enough data to match it.
-		 */
-		return false;
-	}
-
+	end = term->len - 1;
 	mid = term_idx - 1;				/* Inform the mid point from the index */
 
 	while (start <= end) {
@@ -625,8 +633,7 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
  */
 static inline int8_t terminal_cmp(fr_sbuff_term_elem_t const *a, fr_sbuff_term_elem_t const *b)
 {
-	MEMCMP_RETURN(a, b, str, len);
-	return 0;
+	return MEMCMP_FIELDS(a, b, str, len);
 }
 
 #if 0
@@ -651,7 +658,7 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 {
 	size_t				i, j, num;
 	fr_sbuff_term_t			*out;
-	fr_sbuff_term_elem_t const	*tmp[UINT8_MAX + 1];
+	fr_sbuff_term_elem_t const	*tmp[SBUFF_CHAR_CLASS];
 
 	/*
 	 *	Check all inputs are pre-sorted.  It doesn't break this
@@ -659,8 +666,8 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 	 *	are defined elsewhere without merging.
 	 */
 #if !defined(NDEBUG) && defined(WITH_VERIFY_PTR)
-	for (i = 0; i < a->len - 1; i++) fr_assert(terminal_cmp(&a->elem[i], &a->elem[i + 1]) < 0);
-	for (i = 0; i < b->len - 1; i++) fr_assert(terminal_cmp(&b->elem[i], &b->elem[i + 1]) < 0);
+	if (a->len) for (i = 0; i < a->len - 1; i++) fr_assert(terminal_cmp(&a->elem[i], &a->elem[i + 1]) < 0);
+	if (b->len) for (i = 0; i < b->len - 1; i++) fr_assert(terminal_cmp(&b->elem[i], &b->elem[i + 1]) < 0);
 #endif
 
 	/*
@@ -686,7 +693,7 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 			tmp[num++] = &b->elem[j++];
 		}
 
-		fr_assert(num <= UINT8_MAX);
+		fr_assert(num < SBUFF_CHAR_CLASS);
 	}
 
 	/*
@@ -792,13 +799,18 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 			*m.p = '\0';			/* Re-terminate */
 
 			/* Amount remaining in input buffer minus the amount we could have copied */
-			if (len == SIZE_MAX) return -(fr_sbuff_remaining(in) - (chunk_len + copied));
+			if (len == SIZE_MAX) {
+				fr_sbuff_marker_release(&m);
+				return -(fr_sbuff_remaining(in) - (chunk_len + copied));
+			}
 			/* Amount remaining to copy minus the amount we could have copied */
 			fr_sbuff_marker_release(&m);
 			return -(remaining - (chunk_len + copied));
 		}
 		fr_sbuff_advance(&our_in, copied);
 	} while (fr_sbuff_used_total(&our_in) < len);
+
+	fr_sbuff_marker_release(&m);
 
 	FR_SBUFF_SET_RETURN(in, &our_in);	/* in was pinned, so this works */
 }
@@ -819,7 +831,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
  *	- >0 the number of bytes copied.
  */
 size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				     bool const allowed[static UINT8_MAX + 1])
+				     bool const allowed[static SBUFF_CHAR_CLASS])
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 
@@ -871,7 +883,7 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 	bool		do_escape = false;		/* Track state across extensions */
 
-	uint8_t		idx[UINT8_MAX + 1];		/* Fast path index */
+	uint8_t		idx[SBUFF_CHAR_CLASS];		/* Fast path index */
 	size_t		needle_len = 1;
 	char		escape_chr = u_rules ? u_rules->chr : '\0';
 
@@ -947,7 +959,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	fr_sbuff_marker_t		c_s;
 	fr_sbuff_marker_t		end;
 
-	uint8_t				idx[UINT8_MAX + 1];			/* Fast path index */
+	uint8_t				idx[SBUFF_CHAR_CLASS];			/* Fast path index */
 	size_t				needle_len = 1;
 	fr_sbuff_extend_status_t	status = 0;
 
@@ -1115,7 +1127,7 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 {
 	fr_sbuff_t our_in = FR_SBUFF(in);
 
-	static bool const bool_prefix[UINT8_MAX + 1] = {
+	static bool const bool_prefix[SBUFF_CHAR_CLASS] = {
 		['t'] = true, ['T'] = true,	/* true */
 		['f'] = true, ['F'] = true,	/* false */
 		['y'] = true, ['Y'] = true,	/* yes */
@@ -1123,7 +1135,7 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 	};
 
 	if (fr_sbuff_is_in_charset(&our_in, bool_prefix)) {
-		switch (tolower(fr_sbuff_char(&our_in, '\0'))) {
+		switch (tolower(fr_sbuff_uint8(&our_in, '\0'))) {
 		default:
 			break;
 
@@ -1187,7 +1199,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_PARSE_ERROR_INPUT_EMPTY : FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
 	errno = 0; /* this is needed as strtoll doesn't reset errno */ \
@@ -1211,7 +1223,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		return -1; \
 	} \
 	if ((errno == ERANGE) && (num == LLONG_MIN)) goto underflow; \
-	if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
+	if (no_trailing && ((a_end = in->p + (end - buff)) < in->end)) { \
 		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
@@ -1254,7 +1266,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_PARSE_ERROR_INPUT_EMPTY : FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
 	if (buff[0] == '-') { \
@@ -1275,7 +1287,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		return -1; \
 	} \
 	if (((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) goto overflow; \
-	if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
+	if (no_trailing && ((a_end = in->p + (end - buff)) < in->end)) { \
 		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
@@ -1339,7 +1351,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} else if (len == 0) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_PARSE_ERROR_INPUT_EMPTY : FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
 	errno = 0; /* this is needed as parsing functions don't reset errno */ \
@@ -1506,7 +1518,7 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 
 	CHECK_SBUFF_WRITEABLE(sbuff);
 
-	len = talloc_array_length(str) - 1;
+	len = talloc_strlen(str);
 
 	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
@@ -1529,7 +1541,14 @@ static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
 {
 	TALLOC_CTX	*scratch;
 
-	if (sbuff_scratch_freed) {
+	/*
+	 *	Once main has signalled shutdown the TLS slot may be a
+	 *	dangling pointer on threads we don't own; skip the scratch
+	 *	cache and let callers allocate at top level instead.  The
+	 *	TLS-local `sbuff_scratch_freed` is left in place for the
+	 *	per-thread teardown path on FR-managed threads.
+	 */
+	if (sbuff_scratch_freed || fr_atexit_thread_local_alloc_disabled()) {
 		*out = NULL;
 		return 0;
 	}
@@ -1677,6 +1696,49 @@ ssize_t fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_s
 	FR_SBUFF_SET_RETURN(sbuff, &our_sbuff);
 }
 
+/** Walk an input string and report whether fr_sbuff_in_escape() would
+ * escape any characters in it.
+ *
+ *  Mirrors the per-byte decisions of #fr_sbuff_in_escape: a byte
+ *  inside a multi-byte UTF-8 sequence (when do_utf8 is set) is passed
+ *  through, a byte with a substitution mapping is escaped, and a byte
+ *  in the esc[] table is escaped.  If any byte would be escaped, the
+ *  function returns false at that byte.  A NULL or chr=='\0' ruleset
+ *  is treated as "no escaping": the function always returns true.
+ *
+ * @param[in] in	to inspect.
+ * @param[in] inlen	bytes of `in` to inspect.
+ * @param[in] e_rules	escaping rules.  May be NULL.
+ * @return
+ *	- false	at least one byte would be escaped.
+ *	- true	no byte would be escaped (the string is already safe).
+ */
+bool fr_sbuff_in_needs_escaping(char const *in, size_t inlen, fr_sbuff_escape_rules_t const *e_rules)
+{
+	char const	*end = in + inlen;
+	char const	*p = in;
+
+	if (!e_rules || !e_rules->chr) return false;
+
+	while (p < end) {
+		size_t	clen;
+		uint8_t	c = (uint8_t) *p;
+
+		if (e_rules->do_utf8 && ((clen = fr_utf8_char((uint8_t const *) p, end - p)) > 1)) {
+			p += clen;
+			continue;
+		}
+
+		if (e_rules->subs[c] != '\0') return false;
+
+		if (e_rules->esc[c]) return false;
+
+		p++;
+	}
+
+	return true;
+}
+
 /** Print an escaped string to an sbuff taking a talloced buffer as input
  *
  * @param[in] sbuff	to print into.
@@ -1693,7 +1755,7 @@ ssize_t fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_es
 
 	CHECK_SBUFF_WRITEABLE(sbuff);
 
-	return fr_sbuff_in_escape(sbuff, in, talloc_array_length(in) - 1, e_rules);
+	return fr_sbuff_in_escape(sbuff, in, talloc_strlen(in), e_rules);
 }
 
 /** Concat an array of strings (NULL terminated), with a string separator
@@ -1803,11 +1865,11 @@ size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
  * @return how many bytes we advanced.
  */
 size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool
-				 const allowed[static UINT8_MAX + 1], fr_sbuff_term_t const *tt)
+				 const allowed[static SBUFF_CHAR_CLASS], fr_sbuff_term_t const *tt)
 {
 	size_t		total = 0;
 	char const	*p;
-	uint8_t		idx[UINT8_MAX + 1];	/* Fast path index */
+	uint8_t		idx[SBUFF_CHAR_CLASS];	/* Fast path index */
 	size_t		needle_len = 0;
 
 	CHECK_SBUFF_INIT(sbuff);
@@ -1883,7 +1945,7 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *
 	char const	*p;
 	bool		do_escape = false;		/* Track state across extensions */
 
-	uint8_t		idx[UINT8_MAX + 1];		/* Fast path index */
+	uint8_t		idx[SBUFF_CHAR_CLASS];		/* Fast path index */
 	size_t		needle_len = 1;
 
 	CHECK_SBUFF_INIT(sbuff);
@@ -1994,7 +2056,7 @@ char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, size_t len, char c)
 
 		if (!fr_sbuff_extend(&our_sbuff)) break;
 
-		end = CONSTRAINED_END(sbuff, len, total);
+		end = CONSTRAINED_END(&our_sbuff, len, total);
 		found = memchr(our_sbuff.p, c, end - our_sbuff.p);
 		if (found) {
 			(void)fr_sbuff_set(sbuff, found);
@@ -2025,7 +2087,7 @@ char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, size_t len, char const *needle, siz
 	CHECK_SBUFF_INIT(sbuff);
 
 	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
-	if (!needle_len) return 0;
+	if (!needle_len) return NULL;
 
 	/*
 	 *	Needle bigger than haystack
@@ -2078,7 +2140,7 @@ char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, size_t len, char const *needle,
 	CHECK_SBUFF_INIT(sbuff);
 
 	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
-	if (!needle_len) return 0;
+	if (!needle_len) return NULL;
 
 	/*
 	 *	Needle bigger than haystack
@@ -2153,7 +2215,7 @@ bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
  * @param[in] to_trim		Charset to trim.
  * @return how many chars we removed.
  */
-size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1])
+size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static SBUFF_CHAR_CLASS])
 {
 	char	*p = sbuff->p - 1;
 	ssize_t	slen;
@@ -2179,7 +2241,7 @@ size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1]
  */
 bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
-	uint8_t		idx[UINT8_MAX + 1];	/* Fast path index */
+	uint8_t		idx[SBUFF_CHAR_CLASS];	/* Fast path index */
 	size_t		needle_len = 1;
 
 	/*
@@ -2212,7 +2274,7 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
  */
 static char const *sbuff_print_char(char c)
 {
-	static bool const unprintables[UINT8_MAX + 1] = {
+	static bool const unprintables[SBUFF_CHAR_CLASS] = {
 		SBUFF_CHAR_UNPRINTABLES_LOW,
 		SBUFF_CHAR_UNPRINTABLES_EXTENDED
 	};
@@ -2246,7 +2308,7 @@ static char const *sbuff_print_char(char c)
 		if (i >= NUM_ELEMENTS(str)) i = 0;
 
 		if (unprintables[(uint8_t)c]) {
-			snprintf(str[i], sizeof(str[i]), "\\x%x", c);
+			snprintf(str[i], sizeof(str[i]), "\\x%02x", (uint8_t) c);
 			return str[i++];
 		}
 
@@ -2258,7 +2320,7 @@ static char const *sbuff_print_char(char c)
 
 void fr_sbuff_unescape_debug(FILE *fp, fr_sbuff_unescape_rules_t const *escapes)
 {
-	uint8_t i;
+	int i;
 
 	fprintf(fp, "Escape rules %s (%p)\n", escapes->name, escapes);
 	fprintf(fp, "chr     : %c\n", escapes->chr ? escapes->chr : ' ');
@@ -2266,13 +2328,13 @@ void fr_sbuff_unescape_debug(FILE *fp, fr_sbuff_unescape_rules_t const *escapes)
 	fprintf(fp, "do_oct  : %s\n", escapes->do_oct ? "yes" : "no");
 
 	fprintf(fp, "substitutions:\n");
-	for (i = 0; i < UINT8_MAX; i++) {
+	for (i = 0; i < SBUFF_CHAR_CLASS; i++) {
 		if (escapes->subs[i]) FR_FAULT_LOG("\t%s -> %s\n",
 						   sbuff_print_char((char)i),
 						   sbuff_print_char((char)escapes->subs[i]));
 	}
-	fprintf(fp, "skipes:\n");
-	for (i = 0; i < UINT8_MAX; i++) {
+	fprintf(fp, "skips:\n");
+	for (i = 0; i < SBUFF_CHAR_CLASS; i++) {
 		if (escapes->skip[i]) fprintf(fp, "\t%s\n", sbuff_print_char((char)i));
 	}
 }
@@ -2303,4 +2365,39 @@ void fr_sbuff_parse_rules_debug(FILE *fp, fr_sbuff_parse_rules_t const *p_rules)
 	} else {
 		fprintf(fp, "<none>\n");
 	}
+}
+
+/** Concat an array of strings (not NULL terminated), with a string separator
+ *
+ * @param[out] out	Where to write the resulting string.
+ * @param[in] array	of strings to concat.
+ * @param[in] sep	to insert between elements.  May be NULL.
+ * @return
+ *      - >= 0 on success - length of the string created.
+ *	- <0 on failure.  How many bytes we would need.
+ */
+fr_slen_t fr_sbuff_array_concat(fr_sbuff_t *out, char const * const *array, char const *sep)
+{
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+	size_t			len = talloc_array_length(array);
+	char const * const *	p;
+	char const * const *	end;
+	fr_sbuff_escape_rules_t	e_rules = {
+					.name = __FUNCTION__,
+					.chr = '\\'
+				};
+
+	if (sep) e_rules.subs[(uint8_t)*sep] = *sep;
+
+	for (p = array, end = array + len;
+	     (p < end);
+	     p++) {
+		if (*p) FR_SBUFF_RETURN(fr_sbuff_in_escape, &our_out, *p, strlen(*p), &e_rules);
+
+		if (sep && ((p + 1) < end)) {
+			FR_SBUFF_RETURN(fr_sbuff_in_strcpy, &our_out, sep);
+		}
+	}
+
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }

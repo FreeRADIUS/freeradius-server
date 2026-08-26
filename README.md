@@ -13,18 +13,40 @@ be done when adding or deleting new users to a network.
 
 FreeRADIUS can authenticate users on systems such as 802.1x (WiFi),
 dialup, PPPoE, VPN's, VoIP, and many others.  It supports back-end
-databases such as MySQL, PostgreSQL, Oracle, Microsoft Active
+databases such as MySQL, MariaDB, PostgreSQL, Oracle, Microsoft Active
 Directory, Apache Cassandra, Redis, OpenLDAP, and many more.  It is
 used daily to authenticate the Internet access for hundreds of millions
 of people, in sites ranging from 10 to 10 million+ users.
+
+## WARNING
+
+VERSION 4 IS IN DEVELOPMENT AND HAS NOT BEEN OFFICIALLY RELEASED. USE AT YOUR OWN RISK.
+
+Please wait for an official release before using version 4 (v4).
 
 ## Documentation
 
 Please see the [documentation](doc/) directory, which has full
 documentation for version 4.
 
-Please also see <https://freeradius.org> and <https://wiki.freeradius.org>
+Please also see <https://freeradius.org> and <https://www.freeradius.org/documentation/freeradius-server/4.0.0/>
 for additional documentation.
+
+### Use of AI
+
+We do _not_ recommend using AI tools to generate FreeRADIUS
+configurations.  Experience has shown that these configurations are
+largely wrong.
+
+We _do_ recommend using AI tools to analyze your configuration, and
+suggest optimizations or improvements.  However, these suuggestions
+should be viewed with great suspicion.
+
+The benefit of AI is not in creating new content.  The benefit of AI
+is in analyzing large amounts of existing content.  Computers remember
+things better than people, and are better at cross-checking
+configurations for consistency, errors, or things which were missed.
+As such, AI can sometimes be helpful.
 
 ## Installation
 
@@ -70,12 +92,8 @@ which includes WARNINGs about common issues, and suggestions for how
 they may be fixed.
 
 The debug output is explained in detail in the
-[radiusd-X](https://wiki.freeradius.org/radiusd-X) page on the
-[wiki](https://wiki.freeradius.org).
-
-Many questions are answered on the Wiki:
-
-<https://wiki.freeradius.org>
+[radiusd-X](https://www.freeradius.org/documentation/freeradius-server/4.0.0/debugging/radiusd_X.html)
+page.
 
 Read the configuration files.  Many parts of the server are
 documented only with extensive comments in the configuration files.
@@ -84,17 +102,21 @@ Search the mailing lists. For example, using Google, searching
 "site:lists.freeradius.org <search term>" will return results from
 the FreeRADIUS mailing lists.
 
-<https://freeradius.org/support/>
+[Additional
+help](https://www.freeradius.org/documentation/freeradius-server/4.0.0/gethelp.html)
+is available via the mailing lists, including commercial support.
 
-Instructions for what to post on the mailing list are [on the
-wiki](https://wiki.freeradius.org/list-help).  Please note that we DO
-recommend posting the output of `radiusd -X`.  That information shows
-what the server is doing when it receives packets, and how it
-processes those packets.
+When posting to the mailing list, we recommend posting the output of
+`radiusd -X`.  That information shows what the server is doing when it
+receives packets, and how it processes those packets.
 
-We do NOT recommend posting the configuration files to the mailing
-list.  They don't help.  Instead, post the output of `radiusd -X`.  We
-really cannot emphasize that enough.
+Do NOT post the configuration files to the mailing list.  They're not
+useful.  Instead, post the output of `radiusd -X`.  We really cannot
+emphasize that enough.
+
+DO post a clear description of what the problem is.  Empty questions
+will not make you friends.  e.g. "I changed things and now it doesn't
+work.  What do I do to fix it?"
 
 ## Feedback, Defects, and Community Support
 
@@ -114,8 +136,8 @@ mailing lists first to determine whether it really is a defect or
 missing feature.
 
 Instructions for gathering data for defect reports can be found in
-[here](doc/antora/modules/developers/pages/bugs.adoc) or on the
-[wiki](https://wiki.freeradius.org/project/bug-reports).
+[here](doc/antora/modules/developers/pages/bugs.adoc) and online at
+<https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/bugs.html>
 
 Under no circumstances should the issue tracker be used for support
 requests, those questions belong on the user's mailing list.  If you
@@ -140,7 +162,7 @@ code, or documentation).
 
 Technical support, managed systems support, custom deployments,
 sponsored feature development and many other commercial services
-are available from [Network RADIUS](https://networkradius.com).
+are available from [InkBridge Networks](https://www.inkbridgenetworks.com).
 
 [BuildStatus]: https://github.com/FreeRADIUS/freeradius-server/workflows/CI/badge.svg?branch=master "CI status"
 [BuildStatusLink]: https://github.com/FreeRADIUS/freeradius-server/actions?query=workflow%3ACI

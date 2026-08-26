@@ -181,7 +181,7 @@ static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 	if (hh->proto == IPAC_PROTO_SCCP) {
 		msc_dispatch_sccp(fw, msg);
 	} else if (hh->proto == NAT_MUX) {
-		abort();
+		LOGP(DMSC, LOGL_ERROR, "NAT_MUX proto (0x%x) not supported, dropping message.\n", hh->proto);
 	/*
 		msg = mgcp_patch(fw->app, msg);
 		mgcp_forward(&fw->mgcp_agent, msg->l2h, msgb_l2len(msg));
@@ -452,6 +452,10 @@ static void msc_send_id_response(struct msc_connection *fw)
 	}
 
 	msg = msgb_alloc_headroom(4096, 128, "id resp");
+	if (!msg) {
+    	LOGP(DMSC, LOGL_ERROR, "Failed to create ID response.\n");
+    	return;
+	}
 	msg->l2h = msgb_v_put(msg, IPAC_MSGT_ID_RESP);
 	msgb_l16tv_put(msg, strlen(fw->token) + 1,
 		       IPAC_IDTAG_UNITNAME, (uint8_t *) fw->token);

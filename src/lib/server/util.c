@@ -81,77 +81,47 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
  *
  * Also sanitizes control chars.
  *
- * @param request Current request (may be NULL).
  * @param out Output buffer.
- * @param outlen Size of the output buffer.
  * @param in string to escape.
- * @param arg Context arguments (unused, should be NULL).
+ * @param len Size of the output buffer.
  */
-ssize_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+static ssize_t rad_filename_make_safe(char *out, char const *in, size_t len)
 {
-	char const *q = in;
+	char const *q, *end;
 	char *p = out;
-	size_t left = outlen;
 
-	while (*q) {
+	q = in;
+	end = in + len;
+
+	/*
+	 *	Escape '.foo', as it could be used to either read the local directory, walk back up the
+	 *	directory hierarchy, or else to create "dot" files.
+	 */
+	if (len > 1) {
+		if (*q == '.') {
+			*(p++) = '_';
+			q++;
+		}
+	}
+
+	while (q < end) {
+		if (*q < ' ') {
+			*(p++) = '_';
+			q++;
+			continue;
+		}
+
 		if (*q != '/') {
-			if (left < 2) break;
-
-			/*
-			 *	Smash control characters and spaces to
-			 *	something simpler.
-			 */
-			if (*q < ' ') {
-				*(p++) = '_';
-				q++;
-				continue;
-			}
-
 			*(p++) = *(q++);
-			left--;
 			continue;
 		}
 
 		/*
-		 *	For now, allow slashes in the expanded
-		 *	filename.  This allows the admin to set
-		 *	attributes which create sub-directories.
-		 *	Unfortunately, it also allows users to send
-		 *	attributes which *may* end up creating
-		 *	sub-directories.
+		 *	Mash slashes, too.
 		 */
-		if (left < 2) break;
-		*(p++) = *(q++);
-
-		/*
-		 *	Get rid of ////../.././///.///..//
-		 */
-	redo:
-		/*
-		 *	Get rid of ////
-		 */
-		if (*q == '/') {
-			q++;
-			goto redo;
-		}
-
-		/*
-		 *	Get rid of /./././
-		 */
-		if ((q[0] == '.') &&
-		    (q[1] == '/')) {
-			q += 2;
-			goto redo;
-		}
-
-		/*
-		 *	Get rid of /../../../
-		 */
-		if ((q[0] == '.') && (q[1] == '.') &&
-		    (q[2] == '/')) {
-			q += 3;
-			goto redo;
-		}
+		*(p++) = '_';
+		q++;
+		continue;
 	}
 	*p = '\0';
 
@@ -165,18 +135,20 @@ int rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc)
 
 	if (vb->vb_length == 0) return 0;
 
-	fr_assert(!fr_value_box_is_safe_for(vb, rad_filename_box_make_safe));
+	if (fr_value_box_is_safe_for(vb, rad_filename_box_make_safe)) return 1;
 
 	/*
 	 *	Allocate an output buffer, only ever the same or shorter than the input
 	 */
 	MEM(escaped = talloc_array(vb, char, vb->vb_length + 1));
 
-	len = rad_filename_make_safe(NULL, escaped, (vb->vb_length + 1), vb->vb_strvalue, NULL);
+	len = rad_filename_make_safe(escaped, vb->vb_strvalue, vb->vb_length);
 
 	fr_value_box_strdup_shallow_replace(vb, escaped, len);
 
-	return 0;
+	fr_value_box_mark_safe_for(vb, rad_filename_box_make_safe);
+
+	return 1;
 }
 
 /** Escapes the raw string such that it should be safe to use as part of a file path
@@ -219,15 +191,15 @@ ssize_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen,
 
 			switch (utf8_len) {
 			case 2:
-				snprintf(out, freespace, "-%x-%x", (uint8_t)in[0], (uint8_t)in[1]);
+				snprintf(out, freespace, "-%02x-%02x", (uint8_t)in[0], (uint8_t)in[1]);
 				break;
 
 			case 3:
-				snprintf(out, freespace, "-%x-%x-%x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2]);
+				snprintf(out, freespace, "-%02x-%02x-%02x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2]);
 				break;
 
 			case 4:
-				snprintf(out, freespace, "-%x-%x-%x-%x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2], (uint8_t)in[3]);
+				snprintf(out, freespace, "-%02x-%02x-%02x-%02x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2], (uint8_t)in[3]);
 				break;
 			}
 
@@ -266,12 +238,11 @@ ssize_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen,
 		}
 
 		/*
-		 *	Unsafe chars
+		 *	Unsafe chars get escaped as -XX.
 		 */
-		*out++ = '-';
-		fr_base16_encode(&FR_SBUFF_OUT(out, freespace), &FR_DBUFF_TMP((uint8_t const *)in, 1));
+		snprintf(out, freespace, "-%02x", (uint8_t) in[0]);
 		in++;
-		out += 2;
+		out += 3;
 		freespace -= 3;
 	}
 	*out = '\0';
@@ -309,112 +280,6 @@ int rad_filename_box_escape(fr_value_box_t *vb, UNUSED void *uxtc)
 	return 0;
 }
 
-/** Converts data stored in a file name back to its original form
- *
- * @param out Where to write the unescaped string (may be the same as in).
- * @param outlen Length of the output buffer.
- * @param in Input filename.
- * @param inlen Length of input.
- * @return
- *	- Number of bytes written to output buffer
- *	- offset where parse error occurred on failure.
- */
-ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen)
-{
-	char const *p, *end = in + inlen;
-	size_t freespace = outlen;
-
-	for (p = in; p < end; p++) {
-		if (freespace <= 1) break;
-
-		if (((*p >= 'A') && (*p <= 'Z')) ||
-		    ((*p >= 'a') && (*p <= 'z')) ||
-		    ((*p >= '0') && (*p <= '9')) ||
-		    (*p == '_')) {
-		 	*out++ = *p;
-		 	freespace--;
-		 	continue;
-		}
-
-		if (p[0] == '-') {
-			/*
-			 *	End of input, '-' needs at least one extra char after
-			 *	it to be valid.
-			 */
-			if ((end - p) < 2) return in - p;
-			if (p[1] == '-') {
-				p++;
-				*out++ = '-';
-				freespace--;
-				continue;
-			}
-
-			/*
-			 *	End of input, '-' must be followed by <hex><hex>
-			 *	but there aren't enough chars left
-			 */
-			if ((end - p) < 3) return in - p;
-
-			/*
-			 *	If hex2bin returns 0 the next two chars weren't hexits.
-			 */
-			if (fr_base16_decode(NULL,
-				       &FR_DBUFF_TMP((uint8_t *) out, 1),
-				       &FR_SBUFF_IN(in, 1), false) == 0) return in - (p + 1);
-			in += 2;
-			out++;
-			freespace--;
-		}
-
-		return in - p; /* offset we found the bad char at */
-	}
-	*out = '\0';
-
-	return outlen - freespace;	/* how many bytes were written */
-}
-
-/** talloc a buffer to hold the concatenated value of all elements of argv
- *
- * @param ctx to allocate buffer in.
- * @param argv array of substrings.
- * @param argc length of array.
- * @param c separation character. Optional, may be '\0' for no separator.
- * @return the concatenation of the elements of argv, separated by c.
- */
-char *rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c)
-{
-	char *buff, *p;
-	int i;
-	size_t total = 0, freespace;
-
-	if (!*argv) {
-		goto null;
-	}
-
-	for (i = 0; i < argc; i++) total += (strlen(argv[i]) + ((c == '\0') ? 0 : 1));
-	if (!total) {
-	null:
-		return talloc_zero_array(ctx, char, 1);
-	}
-
-	if (c == '\0') total++;
-
-	freespace = total;
-	buff = p = talloc_array(ctx, char, total);
-	for (i = 0; i < argc; i++) {
-		size_t len;
-
-		len = strlcpy(p, argv[i], freespace);
-		p += len;
-		freespace -= len;
-
-		*p++ = c;
-		freespace--;
-	}
-	buff[total] = '\0';
-
-	return buff;
-}
 
 /*
  *	Copy a quoted string.
@@ -591,8 +456,9 @@ int rad_expand_xlat(request_t *request, char const *cmd,
 	int argc = -1;
 	int i;
 	int left;
+	size_t len = strlen(cmd);
 
-	if (strlen(cmd) > (argv_buflen - 1)) {
+	if (len > (argv_buflen - 1)) {
 		fr_strerror_const("Expansion string is too long for output buffer");
 		return -1;
 	}
@@ -600,7 +466,7 @@ int rad_expand_xlat(request_t *request, char const *cmd,
 	/*
 	 *	Check for bad escapes.
 	 */
-	if (cmd[strlen(cmd) - 1] == '\\') {
+	if ((len > 0) && (cmd[len - 1] == '\\')) {
 		fr_strerror_const("Expansion string ends with a trailing backslash - invalid escape sequence");
 		return -1;
 	}

@@ -30,7 +30,7 @@ Many sites run multiple radius servers; at least one primary and one
 backup server. When the primary goes down, most NASes will detect that
 and switch to the backup server.
 
-That change will cause your accounting packets to go the the backup
+That change will cause your accounting packets to go the backup
 server - and some NASes will not switch back to the primary server
 when it comes back up.
 
@@ -42,7 +42,7 @@ accounting database gets out of sync.
 `radrelay` solves this issue by "relaying" packets from one server to
 another, so they both have the same set of accounting data.
 
-## Overload
+== Overload
 
 If the RADIUS server suddenly receives a many accounting packets,
 there may be insufficient CPU power to process them all in a timely
@@ -59,7 +59,7 @@ with a few minutes delay, without any harm being done.
 
 
 
-## General definitions
+== General definitions
 
 The following options define where the server files are stored
 when installed. They are set by 'make' at compile time, and it
@@ -84,7 +84,7 @@ Request handling configuration.
 
 
 
-## Logging configuration
+== Logging configuration
 
 The following section defines global server logging options.
 For more configurable and detailed logging, the logging modules
@@ -152,7 +152,7 @@ distribution maintainers.
 
 
 
-## Modules
+== Modules
 
 If you need more modules, add them here. The `radrelay`
 configuration is very simple, and only includes one module.
@@ -163,7 +163,7 @@ If you need to instantiate modules, add them here.
 
 
 
-## Home server configuration
+== Home server configuration
 
 
 NOTE: Proxying has changed in v4.  This example is no longer correct.
@@ -207,7 +207,7 @@ Create a dummy realm that relays to the above server pool.
 
 
 
-## Server configuration
+== Server configuration
 
 We now define a virtual server to read RADIUS packets from a
 'detail' file, and proxy them to the dummy realm above.
@@ -253,10 +253,9 @@ sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
 sbindir = ${exec_prefix}/sbin
 logdir = ${localstatedir}/log/radius
-raddbdir = ${sysconfdir}/raddb
+confdir = ${sysconfdir}/raddb
 radacctdir = ${logdir}/radacct
 name = radrelay
-confdir = ${raddbdir}
 run_dir = ${localstatedir}/run/${name}
 libdir = ${exec_prefix}/lib
 pidfile = ${run_dir}/${name}.pid
@@ -303,5 +302,5 @@ server radrelay {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

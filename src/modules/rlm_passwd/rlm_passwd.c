@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -70,14 +70,14 @@ void printpw(struct mypasswd *pw, int num_fields){
 #endif
 
 
-static struct mypasswd *mypasswd_alloc(char const* buffer, int num_fields, size_t* len)
+static struct mypasswd *mypasswd_alloc(TALLOC_CTX *ctx, char const* buffer, int num_fields, size_t* len)
 {
 	struct mypasswd *t;
 	/* reserve memory for (struct mypasswd) + listflag (num_fields * sizeof (char*)) +
 	** fields (num_fields * sizeof (char)) + strlen (inst->format) + 1 */
 
 	*len = sizeof(struct mypasswd) + num_fields * sizeof (char*) + num_fields * sizeof (char ) + strlen(buffer) + 1;
-	MEM(t = (struct mypasswd *)talloc_zero_array(NULL, uint8_t, *len));
+	MEM(t = (struct mypasswd *)talloc_zero_array(ctx, uint8_t, *len));
 
 	return t;
 }
@@ -169,7 +169,7 @@ static struct hashtable * build_hash_table (char const * file, int num_fields,
 	char buffer[1024];
 
 	MEM(ht = talloc_zero(NULL, struct hashtable));
-	MEM(ht->filename = talloc_typed_strdup(ht, file));
+	MEM(ht->filename = talloc_strdup(ht, file));
 
 	ht->tablesize = tablesize;
 	ht->num_fields = num_fields;
@@ -194,7 +194,7 @@ static struct hashtable * build_hash_table (char const * file, int num_fields,
 	MEM(ht->table = talloc_zero_array(ht, struct mypasswd *, tablesize));
 	while (fgets(buffer, 1024, ht->fp)) {
 		if(*buffer && *buffer!='\n' && (!ignorenis || (*buffer != '+' && *buffer != '-')) ){
-			hashentry = mypasswd_alloc(buffer, num_fields, &len);
+			hashentry = mypasswd_alloc(ht, buffer, num_fields, &len);
 			if (!hashentry){
 				release_hash_table(ht);
 				return ht;
@@ -220,7 +220,7 @@ static struct hashtable * build_hash_table (char const * file, int num_fields,
 					for (nextlist = list; *nextlist && *nextlist!=','; nextlist++);
 					if (*nextlist) *nextlist++ = 0;
 					else nextlist = 0;
-					if(!(hashentry1 = mypasswd_alloc("", num_fields, &len))){
+					if(!(hashentry1 = mypasswd_alloc(ht, "", num_fields, &len))){
 						release_hash_table(ht);
 						return ht;
 					}
@@ -404,7 +404,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	lf = talloc_typed_strdup(inst, inst->format);
+	lf = talloc_strdup(inst, inst->format);
 	if (!lf) {
 		ERROR("Memory allocation failed for lf");
 		return -1;
@@ -448,7 +448,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	inst->pwd_fmt = mypasswd_alloc(inst->format, num_fields, &len);
+	inst->pwd_fmt = mypasswd_alloc(inst, inst->format, num_fields, &len);
 	if (!inst->pwd_fmt){
 		ERROR("Memory allocation failed");
 		release_ht(inst->ht);

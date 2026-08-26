@@ -5,7 +5,7 @@ should skip this section if you are not using Traefik as your proxy.
 
 Installing Traefik is beyond the scope of this guide. It is typically installed
 as a service mesh router within a Docker or Kubernetes environment using
-offical Docker images.
+official Docker images.
 
 Traefik configuration has two components of interest:
 
@@ -69,7 +69,7 @@ policy decisions.
 Now amend the test RadSec client so that instead of making connections directly
 to the RadSec server it makes them via Traefik.
 
-On `radseccli` amend `/etc/raddb/sites-enabled/tls` and set the IP address to
+On `radseccli` amend `sites-enabled/tls` and set the IP address to
 that of the `traefik` host.
 
 .Example updated test client homeserver configuration
@@ -126,3 +126,6 @@ Once proxied connections are working we are ready to
 xref:protocols/radius/enable_proxy_protocol.adoc[enable the PROXY Protocol] on
 both Traefik and the RadSec server.
 
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

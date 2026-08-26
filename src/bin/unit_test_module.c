@@ -26,24 +26,19 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/version.h>
 
+#include <freeradius-devel/io/thread.h>
+
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-#include <freeradius-devel/radius/radius.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -176,6 +171,7 @@ static request_t *request_from_internal(TALLOC_CTX *ctx)
 	request->master_state = REQUEST_ACTIVE;
 	request->log.lvl = fr_debug_lvl;
 	request->async = talloc_zero(request, fr_async_t);
+	request->async->request = request;
 
 	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
 		talloc_free(request);
@@ -347,12 +343,12 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	request->master_state = REQUEST_ACTIVE;
 	request->log.lvl = fr_debug_lvl;
 	request->async = talloc_zero(request, fr_async_t);
+	request->async->request = request;
 
 
 	/*
 	 *	New async listeners
 	 */
-	request->async = talloc_zero(request, fr_async_t);
 	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	return request;
@@ -761,7 +757,7 @@ int main(int argc, char *argv[])
 	 *	the basic fatal signal handlers.
 	 */
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("%s", config->name);
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -785,14 +781,18 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "c:d:D:f:hi:I:mMn:o:p:r:S:xXz")) != -1) {
+	while ((c = getopt(argc, argv, "c:Cd:D:f:hi:I:mMn:o:p:r:xXz")) != -1) {
 		switch (c) {
 			case 'c':
 				count = atoi(optarg);
 				break;
 
+			case 'C':
+				check_config = true;
+				break;
+
 			case 'd':
-				main_config_raddb_dir_set(config, optarg);
+				main_config_confdir_set(config, optarg);
 				break;
 
 			case 'D':
@@ -834,16 +834,6 @@ int main(int argc, char *argv[])
 
 			case 'r':
 				receipt_file = optarg;
-				break;
-
-			case 'S': /* Migration support */
-#if 0
-				if (main_config_parse_option(optarg) < 0) {
-					fprintf(stderr, "%s: Unknown configuration option '%s'\n",
-						config->name, optarg);
-					fr_exit_now(EXIT_FAILURE);
-				}
-#endif
 				break;
 
 			case 'X':
@@ -922,7 +912,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Load the custom dictionary
 	 */
-	if (fr_dict_read(dict, config->raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict, config->confdir, FR_DICTIONARY_FILE) == -1) {
 		PERROR("Failed to initialize the dictionaries");
 		EXIT_WITH_FAILURE;
 	}
@@ -999,7 +989,7 @@ int main(int argc, char *argv[])
 		client_add(NULL, client);
 	}
 
-	if (server_init(config->root_cs, config->raddb_dir, dict) < 0) EXIT_WITH_FAILURE;
+	if (server_init(config->root_cs, config->confdir, dict) < 0) EXIT_WITH_FAILURE;
 
 	vs = virtual_server_find("default");
 	if (!vs) {
@@ -1019,19 +1009,45 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Everything seems to have loaded OK, exit gracefully.
+	 */
+	if (check_config) {
+		DEBUG("Configuration appears to be OK");
+		goto cleanup;
+	}
+
+	/*
 	 *	Get the main event list.
 	 */
 	el = main_loop_event_list();
 	fr_assert(el != NULL);
 	fr_timer_list_set_time_func(el->tl, _synthetic_time_source);
 
+	fr_coords_create(autofree, el);
+
 	/*
 	 *	Simulate thread specific instantiation
 	 */
-	if (modules_rlm_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
-	if (virtual_servers_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
-	if (xlat_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
-	unlang_thread_instantiate(thread_ctx);
+	fr_schedule_worker_id_set(0);
+	if (fr_thread_instantiate(thread_ctx, el) < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
+
+	if (modules_rlm_coord_attach(el) < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
+
+	if (fr_coord_pre_event_insert(el) < 0) {
+		fr_strerror_const("Failed adding coordinator pre-check to event list");
+		EXIT_WITH_FAILURE;
+	}
+
+	if (fr_coord_post_event_insert(el) < 0) {
+		fr_strerror_const("Failed adding coordinator pre-check to event list");
+		EXIT_WITH_FAILURE;
+	}
 
 	/*
 	 *  Set the panic action (if required)
@@ -1042,7 +1058,7 @@ int main(int argc, char *argv[])
 		panic_action = getenv("PANIC_ACTION");
 		if (!panic_action) panic_action = config->panic_action;
 
-		if (panic_action && (fr_fault_setup(autofree, panic_action, argv[0]) < 0)) {
+		if (panic_action && (fr_fault_setup(autofree, panic_action, argv[0], PANIC_ACTION_SIGNALS) < 0)) {
 			fr_perror("%s", config->name);
 			EXIT_WITH_FAILURE;
 		}
@@ -1094,7 +1110,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (!do_xlats(el, request, xlat_input_file, fp)) ret = EXIT_FAILURE;
-		if (input_file) fclose(fp);
+		fclose(fp);
 		goto cleanup;
 	}
 
@@ -1253,6 +1269,8 @@ cleanup:
 	 */
 	talloc_free(thread_ctx);
 
+	fr_coords_destroy();
+
 	/*
 	 *	Ensure all thread local memory is cleaned up
 	 *	at the appropriate time.  This emulates what's
@@ -1354,13 +1372,14 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -c <count>         Run packets through the interpreter <count> times\n");
-	fprintf(output, "  -d <raddb_dir>     Configuration files are in \"raddb_dir/*\".\n");
+	fprintf(output, "  -C                 Check configuration and exit.\n");
+	fprintf(output, "  -d <confdir>       Configuration file directory. (defaults to " CONFDIR ").");
 	fprintf(output, "  -D <dict_dir>      Dictionary files are in \"dict_dir/*\".\n");
 	fprintf(output, "  -f <file>          Filter reply against attributes in 'file'.\n");
 	fprintf(output, "  -h                 Print this help message.\n");
 	fprintf(output, "  -i <file>          File containing request attributes.\n");
 	fprintf(output, "  -m                 On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
-	fprintf(output, "  -n <name>          Read raddb/name.conf instead of raddb/radiusd.conf.\n");
+	fprintf(output, "  -n <name>          Read ${confdir}/name.conf instead of ${confdir}/radiusd.conf.\n");
 	fprintf(output, "  -o <file>          Output file for the reply.\n");
 	fprintf(output, "  -p <radius|...>    Define which protocol namespace is used to read the file\n");
 	fprintf(output, "                     Use radius, dhcpv4, or dhcpv6\n");

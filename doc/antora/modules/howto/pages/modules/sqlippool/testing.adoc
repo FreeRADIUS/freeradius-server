@@ -102,7 +102,7 @@ reply.
 ====
 If you do no receive an IP address then start FreeRADIUS in debugging mode
 to determine where the process if failing as described in the
-https://wiki.freeradius.org/guide/radiusd-X[guide to debugging FreeRADIUS]. Do
+https://www.freeradius.org/documentation/freeradius-server/4.0.0/debugging/radiusd_X.html[guide to debugging FreeRADIUS]. Do
 not proceed until you have resolved the IP allocation issue.
 ====
 
@@ -197,3 +197,6 @@ and device data is not removed when an `Accounting Stop` (and `Accounting
 On/Off`) request is received. Ensure that users receive their previous IP
 address when they authenticate using a device whose recent session is
 disconnected.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

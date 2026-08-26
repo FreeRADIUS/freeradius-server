@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "binary-test"
+
+#
+#  Expected answer.  The binary payload (`Hello\0World\0\xff\0\xff` - 15
+#  bytes, with embedded NULs and high-bit chars) is assigned onto the
+#  control list from inside binary.unlang so the xlat path exercises an
+#  attribute reference rather than a compile-time literal.
+#
+Packet-Type == Access-Accept

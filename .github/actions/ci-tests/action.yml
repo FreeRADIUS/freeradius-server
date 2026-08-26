@@ -57,6 +57,21 @@ inputs:
     description: SMTP server SMTP port
     default: 2525
 
+  #
+  #  Kafka is opt-in.  Redpanda (our Kafka-compatible test broker) can't
+  #  start with the default command on GitHub Actions `services:` runners
+  #  - the seastar runtime fails EINVAL without extra flags we can't pass
+  #  through the services stanza.  Leaving this empty makes
+  #  test.modules.kafka skip cleanly; the multi-server kafka test covers
+  #  the full produce path via docker-compose.
+  #
+  kafka_test_server:
+    description: Kafka/Redpanda broker host (empty = skip kafka module tests)
+    default: ""
+  kafka_test_server_port:
+    description: Kafka/Redpanda broker port
+    default: 9092
+
   memcached_test_server:
     description: Memcached server host
     default: 127.0.0.1
@@ -91,52 +106,13 @@ runs:
         echo "exit 101" | sudo tee -a /usr/sbin/policy-rc.d
         sudo chmod 755 /usr/sbin/policy-rc.d
 
-    - name: Set up repositories
-      shell: bash
-      run: |
-        sudo install -d -o root -g root -m 0755 /etc/apt/keyrings
-        curl -s https://openresty.org/package/pubkey.gpg | sudo tee /etc/apt/keyrings/openresty.asc
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/openresty.asc] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
-
-        sudo apt-get update
-
-    - name: Install test servers
+    - name: Quiesce test servers
       shell: bash
       env:
         USE_DOCKER: ${{ inputs.use_docker }}
       run: |
-        sudo apt-get install -y --no-install-recommends \
-          389-ds \
-          dovecot-imapd \
-          exim4 \
-          memcached \
-          openresty \
-          redis-server \
-          slapd
-
         test x"$USE_DOCKER" = "xtrue" || sudo systemctl stop dovecot exim4 slapd openresty
         test x"$USE_DOCKER" = "xtrue" || sudo aa-complain /usr/sbin/slapd
-
-        echo "samba-common samba-common/workgroup string WORKGROUP" | sudo debconf-set-selections
-        echo "samba-common samba-common/dhcp boolean false" | sudo debconf-set-selections
-        echo "samba-common samba-common/do_debconf boolean true" | sudo debconf-set-selections
-        sudo apt-get install -y samba winbind krb5-user
-
-    - name: Install test clients
-      shell: bash
-      run: |
-        sudo apt-get install -y --no-install-recommends \
-          redis-tools \
-          oathtool \
-          ldap-utils
-
-    - name: Install test clients (containers)
-      if: ${{ inputs.use_docker == 'true' }}
-      shell: bash
-      run: |
-        sudo apt-get install -y --no-install-recommends \
-          mariadb-client \
-          postgresql-client
 
     - name: Configure databases (GitHub runner)
       if: ${{ inputs.use_docker != 'true' }}
@@ -186,6 +162,8 @@ runs:
         IMAP_TEST_SERVER: ${{ inputs.imap_test_server }}
         IMAP_TEST_SERVER_PORT: ${{ inputs.imap_test_server_port }}
         IMAP_TEST_SERVER_SSL_PORT: ${{ inputs.imap_test_server_ssl_port }}
+        KAFKA_TEST_SERVER: ${{ inputs.kafka_test_server }}
+        KAFKA_TEST_SERVER_PORT: ${{ inputs.kafka_test_server_port }}
       run: |
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
 
@@ -198,8 +176,7 @@ runs:
             openresty-setup.sh \
             ldap-setup.sh \
             ldap1-setup.sh \
-            389ds-setup.sh \
-            redis-setup.sh; do
+            389ds-setup.sh; do
 
             script="./scripts/ci/$i"
             echo
@@ -221,9 +198,8 @@ runs:
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
 
         make -j `nproc` test.keywords test.unit test.auth test.digest
-        make test.modules.redis test.modules.redis_ippool
         make -j `nproc` test.modules
-        make ci-test
+        make -j `nproc` ci-test
 
       env:
         USE_DOCKER: ${{ inputs.use_docker }}
@@ -244,10 +220,13 @@ runs:
         SMTP_TEST_SERVER_PORT: ${{ inputs.smtp_test_server_port }}
         REDIS_TEST_SERVER: ${{ inputs.redis_test_server }}
         REDIS_IPPOOL_TEST_SERVER: ${{ inputs.redis_test_server }}
+        REDISWHO_TEST_SERVER: ${{ inputs.redis_test_server }}
         CACHE_REDIS_TEST_SERVER: ${{ inputs.redis_test_server }}
         IMAP_TEST_SERVER: ${{ inputs.imap_test_server }}
         IMAP_TEST_SERVER_PORT: ${{ inputs.imap_test_server_port }}
         IMAP_TEST_SERVER_SSL_PORT: ${{ inputs.imap_test_server_ssl_port }}
+        KAFKA_TEST_SERVER: ${{ inputs.kafka_test_server }}
+        KAFKA_TEST_SERVER_PORT: ${{ inputs.kafka_test_server_port }}
         CACHE_MEMCACHED_TEST_SERVER: ${{ inputs.memcached_test_server }}
 
     # Restore ucf

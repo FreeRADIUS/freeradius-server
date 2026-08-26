@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -60,9 +60,18 @@ typedef enum {
 } trunk_cancel_reason_t;
 
 typedef enum {
-	TRUNK_STATE_IDLE = 0,				//!< Trunk has no connections
-	TRUNK_STATE_ACTIVE,				//!< Trunk has active connections
-	TRUNK_STATE_PENDING,				//!< Trunk has connections, but none are active
+	TRUNK_STATE_IDLE = 0,				//!< Trunk has no connections.
+	TRUNK_STATE_ACTIVE,				//!< Trunk has at least one active connection which
+							///< can service requests.
+	TRUNK_STATE_PENDING,				//!< Trunk has connections, but none are usable yet;
+							///< connections are being opened (INIT / CONNECTING).
+	TRUNK_STATE_FULL,				//!< Trunk has no active connections, but has one or
+							///< more connected connections which are all full (at
+							///< capacity).  The backend is reachable but has no
+							///< spare request capacity.
+	TRUNK_STATE_FAILED,				//!< Trunk has connections, but they have all failed
+							///< and are closed / in reconnect backoff.  The
+							///< backend is currently unreachable.
 	TRUNK_STATE_MAX
 } trunk_state_t;
 
@@ -116,6 +125,7 @@ typedef enum {
 	TRUNK_CONN_CLOSED | \
 	TRUNK_CONN_FULL | \
 	TRUNK_CONN_INACTIVE | \
+	TRUNK_CONN_INACTIVE_DRAINING | \
 	TRUNK_CONN_DRAINING | \
 	TRUNK_CONN_DRAINING_TO_FREE \
 )
@@ -151,7 +161,7 @@ typedef enum {
 	TRUNK_ENQUEUE_NO_CAPACITY = -1,				//!< At maximum number of connections,
 								///< and no connection has capacity.
 	TRUNK_ENQUEUE_DST_UNAVAILABLE = -2,			//!< Destination is down.
-	TRUNK_ENQUEUE_FAIL = -3					//!< General failure.
+	TRUNK_ENQUEUE_FAIL = -3					//!< General internal sanity check failure.
 } trunk_enqueue_t;
 
 /** Used for sanity checks and to simplify freeing
@@ -587,7 +597,7 @@ typedef void (*trunk_request_cancel_mux_t)(fr_event_list_t *el,
  * the treq.
  *
  * The treq, and any associated resources, should be
- * removed from the the matching structure associated with the
+ * removed from the matching structure associated with the
  * #connection_t or uctx.
  *
  * Which resources should be freed depends on the cancellation reason:
@@ -817,6 +827,8 @@ trunk_enqueue_t trunk_request_requeue(trunk_request_t *treq) CC_HINT(nonnull);
 trunk_enqueue_t trunk_request_enqueue_on_conn(trunk_request_t **treq_out, trunk_connection_t *tconn,
 						    request_t *request, void *preq, void *rctx,
 						    bool ignore_limits) CC_HINT(nonnull(2));
+
+void		trunk_request_mark_blocking(trunk_request_t *treq);
 
 #ifndef NDEBUG
 void		trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,

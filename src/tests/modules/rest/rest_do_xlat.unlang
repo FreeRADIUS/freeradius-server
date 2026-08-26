@@ -1,0 +1,84 @@
+#
+#  Test the response do_xlat / is_json defaults, and the per-attribute
+#  overrides in JSON responses.
+#
+#  The /expand endpoint returns:
+#    Filter-Id          bare value "%{User-Name}", follows the configured default
+#    Callback-Id        "%{User-Name}" with "do_xlat":true
+#    Login-LAT-Node     "%{User-Name}" with "do_xlat":false
+#    Login-LAT-Service  nested JSON, only assigned when is_json is true
+#
+
+#  No response config, expansion disabled by default
+rest_expand
+
+if (!(REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+#  Bare value, literal by default
+if (!(control.Filter-Id == '%{User-Name}')) {
+	test_fail
+}
+
+#  Per-attribute "do_xlat":true overrides the default, expanded
+if (!(control.Callback-Id == "Bob")) {
+	test_fail
+}
+
+#  Per-attribute "do_xlat":false, literal
+if (!(control.Login-LAT-Node == '%{User-Name}')) {
+	test_fail
+}
+
+#  Nested JSON skipped, is_json defaults to no
+if (control.Login-LAT-Service) {
+	test_fail
+}
+
+control -= Filter-Id[*]
+control -= Callback-Id[*]
+control -= Login-LAT-Node[*]
+
+#  response json { do_xlat = yes }
+rest_expand_xlat
+
+if (!(REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+#  Bare value, expanded
+if (!(control.Filter-Id == "Bob")) {
+	test_fail
+}
+
+if (!(control.Callback-Id == "Bob")) {
+	test_fail
+}
+
+#  Per-attribute "do_xlat":false overrides the configured default, literal
+if (!(control.Login-LAT-Node == '%{User-Name}')) {
+	test_fail
+}
+
+control -= Filter-Id[*]
+control -= Callback-Id[*]
+control -= Login-LAT-Node[*]
+
+#  response json { is_json = yes }, nested JSON assigned in string form
+rest_expand_is_json
+
+if (!(REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(control.Login-LAT-Service =~ /"key"/)) {
+	test_fail
+}
+
+control -= Filter-Id[*]
+control -= Callback-Id[*]
+control -= Login-LAT-Node[*]
+control -= Login-LAT-Service[*]
+
+test_pass

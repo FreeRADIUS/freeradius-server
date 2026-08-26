@@ -138,6 +138,6 @@ string is being used.
 `"The result of 'SELECT * FROM foo WHERE 1' is: %sql(SELECT * FROM foo WHERE 1)"`
 
 // Licenced under CC-by-NC 4.0.
-// Copyright (C) 2019 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
-// Copyright (C) 2019 The FreeRADIUS project.
-// Copyright (C) 2021 Network RADIUS SAS.
+// Copyright (C) 2026 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+// Copyright (C) 2026 The FreeRADIUS project.
+// Copyright (C) 2026 Network RADIUS SAS.

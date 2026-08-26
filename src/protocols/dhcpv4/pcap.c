@@ -47,6 +47,7 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_packet_t *p
 	/* Pointer to the current position in the frame */
 	uint8_t			*end = dhcp_packet;
 	uint16_t		l4_len;
+	size_t			header_len;
 
 	/* fill in Ethernet layer (L2) */
 	eth_hdr = (ethernet_header_t *)dhcp_packet;
@@ -85,6 +86,12 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_packet_t *p
 
 	/* DHCP layer (L7) */
 	/* just copy what FreeRADIUS has encoded for us. */
+	header_len = (size_t)(end - dhcp_packet);
+	if (packet->data_len > sizeof(dhcp_packet) - header_len) {
+		fr_strerror_printf("DHCP packet too large (%zu bytes), maximum %zu bytes",
+						packet->data_len, sizeof(dhcp_packet) - header_len);
+		return -1;
+	}
 	memcpy(end, packet->data, packet->data_len);
 
 	/* UDP checksum is done here */
@@ -113,7 +120,7 @@ fr_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	int			ret;
 
 	uint8_t const		*data;
-	ssize_t			data_len;
+	size_t			data_len;
 	fr_ipaddr_t		src_ipaddr, dst_ipaddr;
 	uint16_t		src_port, dst_port;
 	struct pcap_pkthdr	*header;
@@ -149,6 +156,11 @@ fr_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 
 	/* Skip ethernet header */
 	p += link_len;
+
+	if (p >= (data + header->caplen)) {
+		fr_strerror_const("No IP protocol packet after link layer header");
+		return NULL;
+	}
 
 	version = (p[0] & 0xf0) >> 4;
 	switch (version) {
@@ -194,6 +206,11 @@ fr_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	p += sizeof(udp_header_t);
 
 	data_len = ntohs(udp->len);
+	if (data_len <= sizeof(udp_header_t)) {
+		fr_strerror_printf("UDP header length (%zd) smaller than required for layers 2+3+4", data_len);
+		return NULL;
+	}
+	data_len -= sizeof(udp_header_t);
 
 	dst_port = ntohs(udp->dst);
 	src_port = ntohs(udp->src);

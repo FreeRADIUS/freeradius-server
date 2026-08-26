@@ -25,17 +25,14 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/ring_buffer.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 
 #include <fcntl.h>
-#include <string.h>
 #include <sys/event.h>
-
-#define FR_CONTROL_MAX_TYPES	(32)
+#include <poll.h>
 
 /*
  *	Debugging, mainly for channel_test
@@ -68,8 +65,8 @@ typedef struct {
 
 typedef struct {
 	uint32_t			id;		//!< id of this callback
-	void				*ctx;		//!< context for the callback
 	fr_control_callback_t		callback;	//!< the function to call
+	void				*uctx;		//!< context for the callback
 } fr_control_ctx_t;
 
 
@@ -85,7 +82,12 @@ struct fr_control_s {
 
 	bool			same_thread;		//!< are the two ends in the same thread
 
-	fr_control_ctx_t 	type[FR_CONTROL_MAX_TYPES];	//!< callbacks
+	bool			opened;			//!< has the control path been opened.
+
+	uint32_t		num_callbacks;		//!< the size of the callback array
+
+	fr_control_ctx_t 	type[];			//!< callbacks.  Must be at the end of the structure as these
+							///< are created by allocating a larger memory size.
 };
 
 static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
@@ -94,19 +96,25 @@ static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 	fr_time_t now;
 	char read_buffer[256];
 	uint8_t	data[256];
-	size_t message_size;
+	ssize_t message_size;
 	uint32_t id = 0;
 
+	/*
+	 *  The presence of data on the pipe fd is just a trigger to pop all
+	 *  available messages from the atomic queue, so the number of bytes
+	 *  read is not important.
+	 */
+	/* coverity[check_return] */
 	if (read(fd, read_buffer, sizeof(read_buffer)) <= 0) return;
 
 	now = fr_time();
 
 	while((message_size = fr_control_message_pop(c->aq, &id, data, sizeof(data)))) {
-		if (id >= FR_CONTROL_MAX_TYPES) continue;
+		if (id >= c->num_callbacks) continue;
 
 		if (!c->type[id].callback) continue;
 
-		c->type[id].callback(c->type[id].ctx, data, message_size, now);
+		c->type[id].callback(data, message_size, now, c->type[id].uctx);
 	}
 }
 
@@ -136,48 +144,63 @@ static int _control_free(fr_control_t *c)
  * @param[in] ctx the talloc context
  * @param[in] el the event list for the control socket
  * @param[in] aq the atomic queue where we will be pushing message data
+ * @param[in] num_callbacks the initial number of callback entries to allocate.
  * @return
  *	- NULL on error
  *	- fr_control_t on success
  */
-fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq)
+fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq, size_t num_callbacks)
 {
 	fr_control_t *c;
 
-	c = talloc_zero(ctx, fr_control_t);
+	c = talloc_zero_size(ctx, sizeof(fr_control_t) + sizeof(fr_control_ctx_t) * num_callbacks);
 	if (!c) {
 		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
+	talloc_set_type(c, fr_control_t);
 	c->el = el;
 	c->aq = aq;
+	c->num_callbacks = num_callbacks;
 
-	if (pipe((int *) &c->pipe) < 0) {
-		talloc_free(c);
+	return c;
+}
+
+/** Open the control-plane signalling path
+ *
+ * @param[in] c the control-plane to open
+ * @return
+ * 	- 0 on success
+ * 	- -1 on failure
+ */
+int fr_control_open(fr_control_t *c)
+{
+	if (pipe(c->pipe) < 0) {
 		fr_strerror_printf("Failed opening pipe for control socket: %s", fr_syserror(errno));
-		return NULL;
+		return -1;
 	}
 	talloc_set_destructor(c, _control_free);
 
 	/*
 	 *	We don't want reads from the pipe to be blocking.
 	 */
-	(void) fcntl(c->pipe[0], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
-	(void) fcntl(c->pipe[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
+	(void) fr_nonblock(c->pipe[0]);
+	(void) fr_nonblock(c->pipe[1]);
+	(void) fr_cloexec(c->pipe[0]);
+	(void) fr_cloexec(c->pipe[1]);
 
-	if (fr_event_fd_insert(c, NULL, el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
-		talloc_free(c);
+	if (fr_event_fd_insert(c, NULL, c->el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
 		fr_strerror_const_push("Failed adding FD to event list control socket");
-		return NULL;
+		return -1;
 	}
 
 #ifndef NDEBUG
 	(void) fr_event_fd_armour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
 #endif
+	c->opened = true;
 
-	return c;
+	return 0;
 }
-
 
 /** Clean up messages in a control-plane buffer
  *
@@ -277,7 +300,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
 
 /** Push a control-plane message
  *
- *  This function is called ONLY from the originating thread.
+ *  This function is called ONLY from the originating threads.
  *
  * @param[in] c the control structure
  * @param[in] rb the callers ring buffer for message allocation.
@@ -318,7 +341,7 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 
 /** Send a control-plane message
  *
- *  This function is called ONLY from the originating thread.
+ *  This function is called ONLY from the originating threads.
  *
  * @param[in] c the control structure
  * @param[in] rb the callers ring buffer for message allocation.
@@ -331,33 +354,36 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
  */
 int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
-	ssize_t	ret;
-	int	delay = 0;
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 	if (c->same_thread) {
 		if (!c->type[id].callback) return -1;
 
-		c->type[id].callback(c->type[id].ctx, data, data_size, fr_time());
+		c->type[id].callback(data, data_size, fr_time(), c->type[id].uctx);
 		return 0;
 	}
 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
-again:
-	while ((ret = write(c->pipe[1], ".", 1)) == 0) {
-		/* nothing */
-	}
-	if ((ret < 0) && ((errno == EAGAIN))
+redo:
+	if (write(c->pipe[1], ".", 1) >= 0) return 0;
+
+	if (errno == EINTR) goto redo;
+
+	/*
+	 *	EAGAIN means that the pipe is full, which means that the other end will eventually
+	 *	read from it.
+	 */
+	if (errno == EAGAIN) return 0;
+
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-	    || (errno == EWOULDBLOCK)
+	if (errno == EWOULDBLOCK) return 0;
 #endif
-	) {
-		delay += 10;
-		usleep(delay);
-		goto again;
-	}
-	return 0;
+
+	/*
+	 *	Other error, that's an issue.
+	 */
+	return -1;
 }
 
 
@@ -391,6 +417,7 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 	 */
 	if (data_size < m->data_size) {
 		fr_strerror_printf("Allocation size should be at least %zd", m->data_size);
+		m->status = FR_CONTROL_MESSAGE_DONE;
 		return -(m->data_size);
 	}
 
@@ -408,37 +435,59 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
  *
  * @param[in] c the control structure
  * @param[in] id the ident of this message.
- * @param[in] ctx the context for the callback
  * @param[in] callback the callback function
+ * @param[in] uctx the context passed to the callback
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_callback_t callback)
+int fr_control_callback_add(fr_control_t **c, uint32_t id, fr_control_callback_t callback, void *uctx)
 {
-	(void) talloc_get_type_abort(c, fr_control_t);
+	fr_control_t	*ctrl = talloc_get_type_abort(*c, fr_control_t);
 
-	if (id >= FR_CONTROL_MAX_TYPES) {
-		fr_strerror_printf("Failed adding unknown ID %d", id);
+	if (ctrl->opened) {
+		fr_strerror_printf("Cannot add callbacks after the control is opened");
 		return -1;
+	}
+
+	/*
+	 *	If there is not enough space in the array of callbacks
+	 *	re-allocate the fr_control_t with a larger array.
+	 */
+	if (id >= ctrl->num_callbacks) {
+		ctrl = talloc_realloc_size(talloc_parent(*c), *c, sizeof(fr_control_t) + sizeof(fr_control_ctx_t) * (id + 1));
+		if (!ctrl) {
+			fr_strerror_printf("Failed re-allocating control when registering callback ID %d", id);
+			return -1;
+		}
+		talloc_set_type(ctrl, fr_control_t);
+
+		/*
+		 *	Zero the additional callback entries.
+		 */
+		memset((uint8_t *)ctrl + sizeof(fr_control_t) + sizeof(fr_control_ctx_t) * ctrl->num_callbacks, 0,
+		       (id + 1 - ctrl->num_callbacks) * sizeof(fr_control_ctx_t));
+
+		ctrl->num_callbacks = id + 1;
+		*c = ctrl;
 	}
 
 	/*
 	 *	Re-registering the same thing is OK.
 	 */
-	if ((c->type[id].ctx == ctx) &&
-	    (c->type[id].callback == callback)) {
+	if ((ctrl->type[id].uctx == uctx) &&
+	    (ctrl->type[id].callback == callback)) {
 		return 0;
 	}
 
-	if (c->type[id].callback != NULL) {
+	if (ctrl->type[id].callback != NULL) {
 		fr_strerror_const("Callback is already set");
 		return -1;
 	}
 
-	c->type[id].id = id;
-	c->type[id].ctx = ctx;
-	c->type[id].callback = callback;
+	ctrl->type[id].id = id;
+	ctrl->type[id].uctx = uctx;
+	ctrl->type[id].callback = callback;
 
 	return 0;
 }
@@ -455,15 +504,15 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 {
 	(void) talloc_get_type_abort(c, fr_control_t);
 
-	if (id >= FR_CONTROL_MAX_TYPES) {
-		fr_strerror_printf("Failed adding unknown ID %d", id);
+	if (id >= c->num_callbacks) {
+		fr_strerror_printf("Failed deleting unknown ID %d", id);
 		return -1;
 	}
 
 	if (c->type[id].callback == NULL) return 0;
 
 	c->type[id].id = 0;
-	c->type[id].ctx = NULL;
+	c->type[id].uctx = NULL;
 	c->type[id].callback = NULL;
 
 	return 0;
@@ -482,4 +531,21 @@ int fr_control_same_thread(fr_control_t *c)
 	talloc_set_destructor(c, NULL);
 
 	return 0;
+}
+
+/** Wait for a plane control to become readable
+ *
+ * This is a blocking function so only to be used in rare cases such as waiting
+ * for another thread to complete a task before proceeding.
+ *
+ * @param[in] c the control structure.
+ */
+void fr_control_wait(fr_control_t *c)
+{
+	struct pollfd	fd;
+
+	fd.fd = c->pipe[0];
+	fd.events = POLLIN;
+
+	(void) poll(&fd, 1, -1);
 }

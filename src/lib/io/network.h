@@ -68,7 +68,7 @@ int		fr_network_sendto_worker(fr_network_t *nr, fr_listen_t *li, void *packet_ct
 int		fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_listen_t *li,
 					      const uint8_t *buffer, size_t buflen, fr_time_t recv_time, void *packet_ctx) CC_HINT(nonnull(1,2,3,4)) CC_HINT(warn_unused_result);
 
-size_t		fr_network_listen_outstanding(fr_network_t *nr, fr_listen_t *li) CC_HINT(warn_unused_result);
+ssize_t		fr_network_listen_outstanding(fr_network_t *nr, fr_listen_t *li) CC_HINT(warn_unused_result);
 
 fr_network_t	*fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 				   char const *nr, fr_log_t const *logger, fr_log_lvl_t lvl,

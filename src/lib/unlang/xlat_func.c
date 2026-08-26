@@ -39,7 +39,7 @@ static fr_rb_tree_t *xlat_root = NULL;
  *	- 0 if one == two
  *	- 1 if one > two
  */
-static int8_t xlat_name_cmp(void const *one, void const *two)
+static fr_cmp_ret_t xlat_name_cmp(void const *one, void const *two)
 {
 	xlat_t const *a = one, *b = two;
 	size_t a_len, b_len;
@@ -64,7 +64,7 @@ static int8_t xlat_name_cmp(void const *one, void const *two)
  *	- 0 if one == two
  *	- 1 if one > two
  */
-int8_t xlat_func_cmp(void const *one, void const *two)
+fr_cmp_ret_t xlat_func_cmp(void const *one, void const *two)
 {
 	xlat_t const *a = one, *b = two;
 
@@ -77,17 +77,23 @@ int8_t xlat_func_cmp(void const *one, void const *two)
 xlat_t *xlat_func_find(char const *in, ssize_t inlen)
 {
 	char buffer[256];
+	xlat_t *found;
 
 	if (!xlat_root) return NULL;
 
-	if (inlen < 0) return fr_rb_find(xlat_root, &(xlat_t){ .name = in });
+	if (inlen < 0) {
+		fr_rb_find((void **)&found, xlat_root, &(xlat_t){ .name = in });
+		return found;
+	}
 
 	if ((size_t) inlen >= sizeof(buffer)) return NULL;
 
 	memcpy(buffer, in, inlen);
 	buffer[inlen] = '\0';
 
-	return fr_rb_find(xlat_root, &(xlat_t){ .name = buffer });
+	fr_rb_find((void **)&found, xlat_root, &(xlat_t){ .name = buffer });
+
+	return found;
 }
 
 /** Remove an xlat function from the function tree
@@ -180,6 +186,7 @@ static int xlat_arg_cmp_list_no_escape(xlat_arg_parser_t const a[], xlat_arg_par
 xlat_t *xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name)
 {
 	char inst_name[256];
+	xlat_t *found;
 
 	fr_assert(xlat_root);
 
@@ -200,7 +207,9 @@ xlat_t *xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name)
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	return fr_rb_find(xlat_root, &(xlat_t){ .name = name });
+	fr_rb_find((void **)&found, xlat_root, &(xlat_t){ .name = name });
+
+	return found;
 }
 
 /** Register an xlat function
@@ -242,7 +251,7 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	c = fr_rb_find(xlat_root, &(xlat_t){ .name = name });
+	fr_rb_find((void **)&c, xlat_root, &(xlat_t){ .name = name });
 	if (c) {
 		if (c->internal) {
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
@@ -262,7 +271,7 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
 	 */
 	MEM(c = talloc(NULL, xlat_t));
 	*c = (xlat_t){
-		.name = talloc_typed_strdup(c, name),
+		.name = talloc_strdup(c, name),
 		.func = func,
 		.return_type = return_type,
 	};
@@ -271,8 +280,10 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
 	 *	Don't allocate directly in the parent ctx, it might be mprotected
 	 *	later, and that'll cause segfaults if any of the xlat_t are still
 	 *	protected when we start shuffling the contents of the rbtree.
+	 *
+	 *	But we do want "c" to be freed when "ctx" is freed.
 	 */
-	if (ctx) talloc_link_ctx(c, ctx);
+	if (ctx) talloc_link_ctx(ctx, c);
 
 	talloc_set_destructor(c, _xlat_func_talloc_free);
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
@@ -291,7 +302,7 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
  * @note Intended to be called from the module_rlm
  *
  * @param[in] x		to set the mctx for.
- * @param[in] mctx	Is duplicated and about to the lifetime of the xlat.
+ * @param[in] mctx	Is duplicated and bound to the lifetime of the xlat.
  */
 void xlat_mctx_set(xlat_t *x, module_inst_ctx_t const *mctx)
 {
@@ -363,18 +374,9 @@ static inline int xlat_arg_parser_validate(xlat_t *x, xlat_arg_parser_t const *a
 int xlat_func_args_set(xlat_t *x, xlat_arg_parser_t const args[])
 {
 	xlat_arg_parser_t const *arg_p = args;
-	bool			seen_optional = false;
 
 	for (arg_p = args; arg_p->type != FR_TYPE_NULL; arg_p++) {
 		if (xlat_arg_parser_validate(x, arg_p, (arg_p + 1)->type == FR_TYPE_NULL) < 0) return -1;
-
-		if (arg_p->required) {
-			if (!fr_cond_assert_msg(!seen_optional,
-						"required arguments must be at the "
-						"start of the argument list")) return -1;
-		} else {
-			seen_optional = true;
-		}
 	}
 	x->args = args;
 
@@ -401,6 +403,7 @@ void xlat_func_flags_set(xlat_t *x, xlat_func_flags_t flags)
 	x->flags.pure = flags & XLAT_FUNC_FLAG_PURE;
 	x->internal = flags & XLAT_FUNC_FLAG_INTERNAL;
 	x->flags.impure_func = !x->flags.pure;
+	x->flags.use_module_status = flags & XLAT_FUNC_FLAG_MODULE_STATUS ? 1 : 0;
 }
 
 /** Set a print routine for an xlat function.
@@ -519,7 +522,7 @@ void xlat_func_unregister(char const *name)
 
 	if (!name || !xlat_root) return;
 
-	c = fr_rb_find(xlat_root, &(xlat_t){ .name = name });
+	fr_rb_find((void **)&c, xlat_root, &(xlat_t){ .name = name });
 	if (!c) return;
 
 	(void) talloc_get_type_abort(c, xlat_t);

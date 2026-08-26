@@ -1,0 +1,89 @@
+#
+#  PRE: load-balance
+#
+
+#
+#  Test the situation of forcing the load-balance key
+#
+uint8 key
+
+#
+#  Do this a bunch of times to be sure that it's OK,
+#  and if any one test fails, return.  That way we don't have
+#  100's of errors when something goes wrong.
+#
+foreach i (%range(50)) {
+key := 0
+load-balance %{key} {
+	group {
+		if (%interpreter.load-balance.child() != key) {
+			test_fail
+			return
+		}
+		ok
+	}
+	test_fail
+	test_fail
+	test_fail
+}
+if (!ok) {
+	return
+}
+
+key := 1
+load-balance %{key} {
+	test_fail
+	group {
+		if (%interpreter.load-balance.child() != key) {
+			test_fail
+			return
+		}
+		ok
+	}
+
+	test_fail
+	test_fail
+}
+if (!ok) {
+	return
+}
+
+key := 2
+load-balance %{key} {
+	test_fail
+	test_fail
+	group {
+		if (%interpreter.load-balance.child() != key) {
+			test_fail
+			return
+		}
+		ok
+	}
+
+	test_fail
+}
+if (!ok) {
+	return
+}
+
+key := 3
+load-balance %{key} {
+	test_fail
+	test_fail
+	test_fail
+	group {
+		if (%interpreter.load-balance.child() != key) {
+			test_fail
+			return
+		}
+		ok
+	}
+
+}
+if (!ok) {
+	return
+}
+
+} # foreach
+
+success

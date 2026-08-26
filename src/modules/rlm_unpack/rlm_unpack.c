@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/base16.h>
 
-#include <ctype.h>
 
 static xlat_arg_parser_t const unpack_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_VOID },
@@ -72,24 +71,27 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if ((data_vb->type == FR_TYPE_STRING) && (data_vb->vb_length > 1) &&
 	    (data_vb->vb_strvalue[0] == '0') && (data_vb->vb_strvalue[1] == 'x')) {
+		fr_slen_t slen;
+		fr_sbuff_parse_error_t err;
+
 		/*
 		 *	Hex data.
 		 */
 		len = strlen(data_vb->vb_strvalue + 2);
-		if (len > 0) {
-			fr_sbuff_parse_error_t err;
-
-			input = blob;
-			input_len = fr_base16_decode(&err, &FR_DBUFF_TMP(blob, sizeof(blob)),
-					       &FR_SBUFF_IN(data_vb->vb_strvalue + 2, len), true);
-			if (err) {
-				REDEBUG("Invalid hex string in '%s'", data_vb->vb_strvalue);
-				return XLAT_ACTION_FAIL;
-			}
-		} else {
+		if (len <= 0) {
 			REDEBUG("Zero length hex string in '%s'", data_vb->vb_strvalue);
 			return XLAT_ACTION_FAIL;
 		}
+
+		input = blob;
+		slen = fr_base16_decode(&err, &FR_DBUFF_TMP(blob, sizeof(blob)),
+					&FR_SBUFF_IN(data_vb->vb_strvalue + 2, len), true);
+		if ((slen < 0) || err) {
+			REDEBUG("Invalid hex string in '%s'", data_vb->vb_strvalue);
+			return XLAT_ACTION_FAIL;
+		}
+		input_len = slen;
+
 	} else if (data_vb->type == FR_TYPE_STRING) {
 		input = (uint8_t const *)data_vb->vb_strvalue;
 		input_len = data_vb->vb_length;
@@ -144,7 +146,7 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (count == repeat) break;
 
 		offset += used;
-		if (offset + used > input_len) break;
+		if (offset >= input_len) break;
 		count++;
 	}
 

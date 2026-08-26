@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -27,7 +27,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/eap/base.h>
-#include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/sim/common.h>
 #include <freeradius-devel/sim/milenage.h>
 #include <freeradius-devel/sim/ts_34_108.h>
@@ -38,7 +37,6 @@ RCSID("$Id$")
 #include "base.h"
 #include "attrs.h"
 
-#include <freeradius-devel/util/debug.h>
 
 static int vector_opc_from_op(request_t *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
 			      fr_pair_list_t *list, uint8_t const ki[MILENAGE_KI_SIZE])
@@ -484,6 +482,11 @@ static int vector_umts_from_ki(request_t *request, fr_pair_list_t *vps, fr_aka_s
 		uint8_t	const	*opc_p;
 
 		if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
+		if (!opc_p) {
+			RPEDEBUG2("No control.%s or control.%s found, "
+				  "can't run Milenage", attr_sim_op->name, attr_sim_opc->name);
+			return -1;
+		}
 
 		uint48_to_buff(sqn_buff, keys->sqn);
 		if (amf_vp) memcpy(amf_buff, amf_vp->vp_octets, amf_size);
@@ -604,7 +607,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 		return 1;
 	}
 
-	if (autn_vp->vp_length > AKA_SIM_VECTOR_UMTS_AUTN_SIZE) {
+	if (autn_vp->vp_length != AKA_SIM_VECTOR_UMTS_AUTN_SIZE) {
 		REDEBUG("control.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_VECTOR_UMTS_AUTN_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_autn->name, autn_vp->vp_length);
@@ -620,7 +623,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 		return 1;
 	}
 
-	if (ck_vp->vp_length > AKA_SIM_VECTOR_UMTS_CK_SIZE) {
+	if (ck_vp->vp_length != AKA_SIM_VECTOR_UMTS_CK_SIZE) {
 		REDEBUG("control.%s incorrect length.  Expected "
 			STRINGIFY(EAP_AKA_XRES_MAX_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_ck->name, ck_vp->vp_length);
@@ -636,7 +639,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 		return 1;
 	}
 
-	if (ik_vp->vp_length > AKA_SIM_VECTOR_UMTS_IK_SIZE) {
+	if (ik_vp->vp_length != AKA_SIM_VECTOR_UMTS_IK_SIZE) {
 		REDEBUG("control.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_VECTOR_UMTS_IK_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_ik->name, ik_vp->vp_length);
@@ -687,12 +690,14 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 
 	/*
 	 *	Fetch (optional) SQN
+	 *
+	 *	SQN is 48 bits.  uint48_to_buff() silently truncates anything
+	 *	wider, so reject it rather than derive AK from a mangled SQN.
 	 */
 	sqn_vp = fr_pair_find_by_da(vps, NULL, attr_sim_sqn);
-	if (sqn_vp && (sqn_vp->vp_length != MILENAGE_SQN_SIZE)) {
-		REDEBUG("control.%s incorrect length.  Expected "
-			STRINGIFY(MILENAGE_AK_SIZE) " bytes, got %zu bytes",
-			attr_sim_sqn->name, sqn_vp->vp_length);
+	if (sqn_vp && (sqn_vp->vp_uint64 > UINT64_C(0xffffffffffff))) {
+		REDEBUG("control.%s invalid.  Expected a %u-bit value, got %" PRIu64,
+			attr_sim_sqn->name, (unsigned int)(MILENAGE_SQN_SIZE * 8), sqn_vp->vp_uint64);
 		return -1;
 	}
 
@@ -807,6 +812,66 @@ int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
 	}
 
 	keys->vector_type = AKA_SIM_VECTOR_UMTS;
+
+	return 0;
+}
+
+/** Validate and copy pre-derived CK'/IK' for EAP-AKA' from caller-supplied pairs.
+ *
+ * When the UMTS quintuplet is fetched from a 3GPP HSS over the SWx interface
+ * (3GPP TS 29.273), the HSS has already performed the RFC 5448 / TS 33.402
+ * Annex A transform of CK/IK into CK'/IK' (it must, because the transform binds
+ * the keys to the Access Network Identity the HSS was given).  In that case the
+ * server must not derive CK'/IK' a second time; it consumes the values supplied
+ * in control.CK-Prime / control.IK-Prime directly.  Both attributes must be
+ * present together.
+ *
+ * The caller is expected to look up control.CK-Prime / control.IK-Prime once
+ * and pass the resulting pairs in here, so this function does not repeat the
+ * list walk.
+ *
+ * @param[in] request		The current request.
+ * @param[in] ck_prime_vp	control.CK-Prime pair, or NULL if not present.
+ * @param[in] ik_prime_vp	control.IK-Prime pair, or NULL if not present.
+ * @param[in] keys		key structure to populate.
+ * @return
+ *	- 0	CK'/IK' were valid and written to keys.
+ *	- 1	Neither pair was supplied; caller should fall back to local derivation.
+ *	- -1	Only one of the two pairs is supplied, or either has the wrong length.
+ */
+int fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request,
+						  fr_pair_t *ck_prime_vp, fr_pair_t *ik_prime_vp,
+						  fr_aka_sim_keys_t *keys)
+{
+	if (!ck_prime_vp && !ik_prime_vp) {
+		RDEBUG3("control.%s / control.%s not supplied; local Annex A derivation will be used",
+			attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);
+		return 1;
+	}
+
+	if (!ck_prime_vp || !ik_prime_vp) {
+		REDEBUG("control.%s and control.%s must be supplied together",
+			attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);
+		return -1;
+	}
+
+	if (ck_prime_vp->vp_length != AKA_SIM_VECTOR_UMTS_CK_SIZE) {
+		REDEBUG("control.%s incorrect length.  Expected "
+			STRINGIFY(AKA_SIM_VECTOR_UMTS_CK_SIZE) " bytes, got %zu bytes",
+			attr_eap_aka_sim_ck_prime->name, ck_prime_vp->vp_length);
+		return -1;
+	}
+
+	if (ik_prime_vp->vp_length != AKA_SIM_VECTOR_UMTS_IK_SIZE) {
+		REDEBUG("control.%s incorrect length.  Expected "
+			STRINGIFY(AKA_SIM_VECTOR_UMTS_IK_SIZE) " bytes, got %zu bytes",
+			attr_eap_aka_sim_ik_prime->name, ik_prime_vp->vp_length);
+		return -1;
+	}
+
+	memcpy(keys->ck_prime, ck_prime_vp->vp_octets, AKA_SIM_VECTOR_UMTS_CK_SIZE);
+	memcpy(keys->ik_prime, ik_prime_vp->vp_octets, AKA_SIM_VECTOR_UMTS_IK_SIZE);
+	keys->ck_ik_prime_provided = true;
 
 	return 0;
 }

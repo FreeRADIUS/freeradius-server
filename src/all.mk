@@ -8,6 +8,7 @@ SUBMAKEFILES := include/all.mk \
 	process/all.mk \
 	modules/all.mk \
 	bin/all.mk \
+	fuzzer/all.mk \
 	stats/all.mk
 
 #

@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/value.h>
 
 #include <fcntl.h>
+#include <stdatomic.h>
 #ifdef HAVE_FEATURES_H
 #  include <features.h>
 #endif
@@ -40,6 +41,23 @@ FILE	*fr_log_fp = NULL;
 int	fr_debug_lvl = 0;
 
 static _Thread_local TALLOC_CTX *fr_log_pool;
+
+/** Latched once shutdown has freed every thread's log pool
+ *
+ * `fr_atexit_thread_trigger_all()` runs every registered thread destructor
+ * on the calling (main) thread, so it frees the log pool memory for threads
+ * whose TLS slot it can't reach (librdkafka's bg threads, anything spawned
+ * by a third-party library that bypasses our schedule).  Those threads
+ * still hold the now-dangling pointer in their `_Thread_local fr_log_pool`,
+ * and will hand it to `talloc_new` on the next log call - "Bad talloc magic
+ * value" abort.
+ *
+ * Once set, `fr_log_pool_init()` ignores the TLS slot entirely and returns
+ * NULL; downstream `talloc_new(NULL)` / `talloc_asprintf(NULL, ...)` calls
+ * just allocate top-level chunks for the duration of the log line.  No
+ * pooling, no TLS, safe from any thread.
+ */
+static atomic_bool log_pools_disabled;
 
 static uint32_t location_indent = 30;
 static fr_event_list_t *log_el;			//!< Event loop we use for process logging data.
@@ -175,7 +193,7 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
  */
 void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
-	char			buffer[1024];
+	char			buffer[1024] = "";
 	fr_log_fd_event_ctx_t	*log_info = uctx;
 	fr_sbuff_t		sbuff;
 	fr_sbuff_marker_t	m_start, m_end;
@@ -303,16 +321,37 @@ static int _fr_log_pool_free(void *arg)
 	return 0;
 }
 
+/** Disable per-thread log pools for the rest of the process lifetime
+ *
+ * Call this from the main thread immediately after
+ * `fr_atexit_thread_trigger_all()`, which frees every other thread's log
+ * pool but can't reset their `_Thread_local` slot.  After this returns,
+ * subsequent `fr_log` calls fall back to `talloc_new(NULL)` instead of
+ * touching the (now dangling) TLS pool pointer.
+ */
+void fr_log_disable_pools(void)
+{
+	atomic_store_explicit(&log_pools_disabled, true, memory_order_relaxed);
+}
+
 /** talloc ctx to use when composing log messages
  *
  * Functions must ensure that they allocate a new ctx from the one returned
  * here, and that this ctx is freed before the function returns.
  *
- * @return talloc pool to use for scratch space.
+ * @return talloc pool to use for scratch space, or NULL if pools have been
+ *	disabled - callers must tolerate a NULL return.
  */
 TALLOC_CTX *fr_log_pool_init(void)
 {
 	TALLOC_CTX	*pool;
+
+	/*
+	 *	Once main has signalled shutdown the TLS slot may be a
+	 *	dangling pointer for any thread we don't own (librdkafka's
+	 *	bg threads etc.) - skip the pool entirely.
+	 */
+	if (unlikely(fr_atexit_thread_local_alloc_disabled())) return NULL;
 
 	pool = fr_log_pool;
 	if (unlikely(!pool)) {
@@ -335,10 +374,12 @@ TALLOC_CTX *fr_log_pool_init(void)
  * @param[in] type	of log message.
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
+ * @param[in] arg_names	source text of each substitution argument, or NULL.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, va_list ap)
+void _fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+	      UNUSED char const * const arg_names[], char const *fmt, va_list ap)
 {
 	int		colourise = log->colourise;
 	char		*buffer;
@@ -379,7 +420,7 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 		char	*str;
 
 		str = talloc_asprintf(pool, "%s:%i", file, line);
-		len = talloc_array_length(str) - 1;
+		len = talloc_strlen(str);
 
 		/*
 		 *	Only increase the indent
@@ -453,7 +494,7 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 		char	*p, *end;
 
 		p = fmt_msg = fr_vasprintf(pool, fmt, ap);
-		end = p + talloc_array_length(fmt_msg) - 1;
+		end = p + talloc_strlen(fmt_msg);
 
 		/*
 		 *	Filter out control chars and non UTF8 chars
@@ -549,7 +590,7 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 				 	 fmt_msg,
 				 	 colourise ? VTC_RESET : "");
 
-		len = talloc_array_length(buffer) - 1;
+		len = talloc_strlen(buffer);
 		wrote = write(log->fd, buffer, len);
 		if (wrote < len) return;
 	}
@@ -567,14 +608,16 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 
 /** Send a server log message to its destination
  *
- * @param log	destination.
- * @param type	of log message.
- * @param file	where the log message originated
- * @param line	where the log message originated
- * @param fmt	with printf style substitution tokens.
- * @param ...	Substitution arguments.
+ * @param log		destination.
+ * @param type		of log message.
+ * @param file		where the log message originated
+ * @param line		where the log message originated
+ * @param arg_names	source text of each substitution argument, or NULL.
+ * @param fmt		with printf style substitution tokens.
+ * @param ...		Substitution arguments.
  */
-void fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
+void _fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+	     char const * const arg_names[], char const *fmt, ...)
 {
 	va_list ap;
 
@@ -584,7 +627,7 @@ void fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return;
 
 	va_start(ap, fmt);
-	fr_vlog(log, type, file, line, fmt, ap);
+	_fr_vlog(log, type, file, line, arg_names, fmt, ap);
 	va_end(ap);
 }
 
@@ -602,11 +645,13 @@ void fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
  * @param[in] f_rules	for printing multiline errors.
+ * @param[in] arg_names	source text of each substitution argument, or NULL.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
-		    fr_log_perror_format_t const *f_rules, char const *fmt, va_list ap)
+void _fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		     fr_log_perror_format_t const *f_rules,
+		     UNUSED char const * const arg_names[], char const *fmt, va_list ap)
 {
 	char const				*error;
 	static fr_log_perror_format_t		default_f_rules;
@@ -697,16 +742,18 @@ void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, i
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
  * @param[in] rules	for printing multiline errors.
+ * @param[in] arg_names	source text of each substitution argument, or NULL.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
-		   fr_log_perror_format_t const *rules, char const *fmt, ...)
+void _fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		    fr_log_perror_format_t const *rules,
+		    char const * const arg_names[], char const *fmt, ...)
 {
 	va_list ap;
 
 	va_start(ap, fmt);
-	fr_vlog_perror(log, type, file, line, rules, fmt, ap);
+	_fr_vlog_perror(log, type, file, line, rules, arg_names, fmt, ap);
 	va_end(ap);
 }
 
@@ -882,8 +929,8 @@ DIAG_ON(format-nonliteral)
 static int _restore_std_legacy(UNUSED int sig)
 {
 	if ((stderr_fd > 0) && (stdout_fd > 0)) {
-		dup2(stderr_fd, STDOUT_FILENO);
-		dup2(stdout_fd, STDERR_FILENO);
+		dup2(stdout_fd, STDOUT_FILENO);
+		dup2(stderr_fd, STDERR_FILENO);
 		return 0;
 	}
 
@@ -1290,7 +1337,7 @@ int fr_log_global_init(fr_event_list_t *el, bool daemonize)
 		goto error_3;
 	}
 
-	if (unlikely(dup2(stderr_pipe[0], STDOUT_FILENO) < 0)) {
+	if (unlikely(dup2(stderr_pipe[0], STDERR_FILENO) < 0)) {
 		fr_strerror_printf("Failed copying pipe end over stderr: %s", fr_syserror(errno));
 	error_5:
 		close(stderr_pipe[0]);
@@ -1300,10 +1347,10 @@ int fr_log_global_init(fr_event_list_t *el, bool daemonize)
 		goto error_4;
 	}
 
-	stdout_ctx.dst = &default_log;
-	stdout_ctx.prefix = "(stderr)";
-	stdout_ctx.type = L_ERR;
-	stdout_ctx.lvl = L_DBG_LVL_OFF;	/* Log at all debug levels */
+	stderr_ctx.dst = &default_log;
+	stderr_ctx.prefix = "(stderr)";
+	stderr_ctx.type = L_ERR;
+	stderr_ctx.lvl = L_DBG_LVL_OFF;	/* Log at all debug levels */
 
 	if (unlikely(fr_event_fd_insert(NULL, NULL, el, stderr_pipe[1], fr_log_fd_event, NULL, NULL, &stderr_ctx) < 0)) {
 		fr_strerror_const_push("Failed adding stdout handler to event loop");

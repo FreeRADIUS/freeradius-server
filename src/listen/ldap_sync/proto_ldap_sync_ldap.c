@@ -27,10 +27,8 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/internal/internal.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/io/application.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/ldap/base.h>
@@ -137,7 +135,7 @@ typedef struct {
  * @param[in] two second sync to compare.
  * @return CMP(one, two)
  */
-int8_t sync_state_cmp(void const *one, void const *two)
+fr_cmp_ret_t sync_state_cmp(void const *one, void const *two)
 {
 	sync_state_t const *a = one, *b = two;
 
@@ -163,7 +161,7 @@ static int sync_state_free(sync_state_t *sync)
 
 	DEBUG3("Abandoning sync base dn \"%s\", filter \"%s\"", sync->config->base_dn, sync->config->filter);
 
-	trigger(unlang_interpret_get_thread_default(), sync->config->cs, NULL, "modules.ldap_sync.stop", true, &sync->trigger_args);
+	trigger(unlang_interpret_get_thread_default(), sync->config->cs, NULL, "modules.ldap_sync.stop", true, &sync->trigger_args, sync);
 
 	if (!sync->conn->handle) return 0;	/* Handled already closed? */
 
@@ -205,7 +203,7 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, prot
 	 */
 	fr_pair_list_init(&sync->trigger_args);
 	fr_pair_list_append_by_da_len(sync, vp, &sync->trigger_args, attr_ldap_sync_base_dn, config->base_dn,
-				      talloc_array_length(config->base_dn) - 1, false);
+				      talloc_strlen(config->base_dn), false);
 
 	/*
 	 *	If the connection is freed, all the sync state is also freed
@@ -548,7 +546,16 @@ static void proto_ldap_connection_init(fr_timer_list_t *tl, UNUSED fr_time_t now
 	/*
 	 *	Allocate an outbound LDAP connection
 	 */
-	thread->conn = fr_ldap_connection_state_alloc(thread, thread->el, &inst->handle_config, "ldap_sync");
+	thread->conn = connection_alloc(thread, thread->el,
+					&(connection_funcs_t){
+						.init = fr_ldap_connection_init,
+						.close = fr_ldap_connection_close
+					},
+					&(connection_conf_t){
+						.connection_timeout = inst->handle_config.net_timeout,
+						.reconnection_delay = inst->handle_config.reconnection_delay
+					},
+					"ldap_sync", &inst->handle_config);
 
 	if (!thread->conn) {
 		PERROR("Failed (re)initialising connection, will retry in %pV seconds",
@@ -676,7 +683,7 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
 		return ret;
 	}
 
-	sync = fr_rb_find(tree, &(sync_state_t){.msgid = msgid});
+	fr_rb_find((void **)&sync, tree, &(sync_state_t){.msgid = msgid});
 	if (!sync) {
 		WARN("Ignoring msgid %i, doesn't match any outstanding syncs", msgid);
 		goto free_msg;
@@ -771,7 +778,7 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
  */
 static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t const *inst, size_t sync_no,
 				       proto_ldap_sync_ldap_thread_t *thread) {
-	size_t			j, len;
+	size_t			len;
 	sync_config_t		*config = inst->parent->sync_config[sync_no];
 	fr_pair_list_t		pairs;
 	fr_pair_t		*vp;
@@ -790,15 +797,19 @@ static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t c
 	/*
 	 *	Assess the namingContext which applies to this sync
 	 */
-	for (j = 0; j < talloc_array_length(ldap_conn->directory->naming_contexts); j++) {
-		len = strlen(ldap_conn->directory->naming_contexts[j]);
-		if (strlen(config->base_dn) < len) continue;
+	if (ldap_conn->directory->naming_contexts) {
+		char const * const	*contexts = ldap_conn->directory->naming_contexts;
+		size_t			j, num = talloc_str_array_len(contexts);
+		size_t			base_dn_len = talloc_strlen(config->base_dn);
 
-		if (strncasecmp(&config->base_dn[strlen(config->base_dn)-len],
-				ldap_conn->directory->naming_contexts[j],
-				strlen(ldap_conn->directory->naming_contexts[j])) == 0) {
-			config->root_dn = ldap_conn->directory->naming_contexts[j];
-			break;
+		for (j = 0; j < num; j++) {
+			len = talloc_strlen(contexts[j]);
+			if (base_dn_len < len) continue;
+
+			if (strncasecmp(&config->base_dn[base_dn_len - len], contexts[j], len) == 0) {
+				config->root_dn = contexts[j];
+				break;
+			}
 		}
 	}
 
@@ -923,7 +934,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 		 *	If the received packet ID is greater than the number of syncs
 		 *	we have then something very bad has happened
 		 */
-		fr_assert (packet_id <= talloc_array_length(inst->parent->sync_config));
+		fr_assert (packet_id < talloc_array_length(inst->parent->sync_config));
 
 		/*
 		 *	Look for the returned cookie.
@@ -1139,6 +1150,7 @@ static void _proto_ldap_socket_init(connection_t *conn, UNUSED connection_state_
 	thread->li = li;
 	li->thread_instance = thread;
 
+	li->cs = thread->parent->cs;
 	li->app_io = &proto_ldap_sync_child;
 	li->name = li->app_io->common.name;
 	li->default_message_size = li->app_io->default_message_size;
@@ -1239,7 +1251,6 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
 	 *	Allocate the directory structure and send the query
 	 */
 	dir_ctx->msgid = fr_ldap_conn_directory_alloc_async(ldap_conn);
-
 	if (dir_ctx->msgid < 0) {
 		talloc_free(dir_ctx);
 		goto connection_failed;
@@ -1309,7 +1320,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (fr_ldap_server_config_check(&inst->handle_config, server, conf) < 0) return -1;
 	}
 
-	inst->handle_config.server[talloc_array_length(inst->handle_config.server) - 1] = '\0';
+	inst->handle_config.server[talloc_strlen(inst->handle_config.server)] = '\0';
 
 	inst->handle_config.name = talloc_typed_asprintf(inst, "proto_ldap_conn (%s)",
 							 cf_section_name(cf_item_to_section(cf_parent(cf_parent(conf)))));

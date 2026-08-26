@@ -92,5 +92,5 @@ modules are expanded again _for each call_.  If the expansion
 arguments have side effects, then those side effects can be applied
 multiple times, once for each `redundant-load-balance` attempt.
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

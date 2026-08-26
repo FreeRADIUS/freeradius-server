@@ -453,10 +453,10 @@ match Elapsed-Time = 45887
 #                               option-len field).
 #
 encode-pair Auth.Protocol = Reconfigure-Key, Auth.Algorithm = HMAC-MD5, Auth.Replay-Detection-Method = Monotonicly-Increasing-Value, Auth.Replay-Detection = 1234567890, Auth.Information = 0x010203040506070809101112131415
-match 00 0b 00 1a 03 01 00 00 00 00 00 49 96 02 d2 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+match ERROR: The 'Auth' option is not supported
 
-decode-pair -
-match Auth = { Protocol = ::Reconfigure-Key, Algorithm = ::HMAC-MD5, Replay-Detection-Method = ::Monotonicly-Increasing-Value, Replay-Detection = 1234567890, Information = 0x010203040506070809101112131415 }
+decode-pair 00 0b 00 1a 03 01 00 00 00 00 00 49 96 02 d2 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+match ERROR: The 'Auth' option is not supported
 
 #
 #  21.12.  Server Unicast Option

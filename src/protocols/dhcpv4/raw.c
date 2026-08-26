@@ -309,7 +309,7 @@ fr_packet_t *fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_laye
 		return NULL;
 	}
 
-	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 8)) {
+	if ((code[1] < 1) || (code[2] == 0) || (code[2] >= FR_DHCP_CODE_MAX)) {
 		fr_strerror_const("Unknown value for message-type option");
 		fr_packet_free(&packet);
 		return NULL;

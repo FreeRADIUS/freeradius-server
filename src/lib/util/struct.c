@@ -520,7 +520,7 @@ static int put_bits_dbuff(fr_dbuff_t *dbuff, uint8_t *p, int start_bit, uint8_t 
 	return start_bit % 8;
 }
 
-static int8_t pair_sort_increasing(void const *a, void const *b)
+static fr_cmp_ret_t pair_sort_increasing(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;

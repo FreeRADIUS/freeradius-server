@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/udp_queue.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 
-#include <freeradius-devel/unlang/module.h>
 
 static fr_dict_t const *dict_dhcpv4;
 static fr_dict_t const *dict_freeradius;

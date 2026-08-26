@@ -1,14 +1,13 @@
 #
-#  Run the "redis" xlat
+#  Test basic address allocation using redis_ippool.
 #
-$INCLUDE cluster_reset.inc
 
 control.IP-Pool.Name := 'test_alloc'
 
 #
 #  Add IP addresses
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.0.1/32', 32, '192.168.0.0')
 
 #
 #  Check allocation
@@ -75,7 +74,7 @@ reply := {}
 #
 #  Add IP addresses
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.1.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.1.0')
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.1.1/32', 32, '192.168.1.0')
 
 #
 #  Check we get the same lease, with the same lease time
@@ -124,6 +123,22 @@ if (!updated) {
 #
 #  Check we got the right lease
 #
+if !(reply.Framed-IP-Address == 192.168.1.1) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  Clear the script from the node for the current pool, and re-allocate
+#
+%redis("@%redis.node(control.IP-Pool.Name, 0)",'SCRIPT', 'FLUSH')
+
+redis_ippool
+if (!updated) {
+	test_fail
+}
+
 if !(reply.Framed-IP-Address == 192.168.1.1) {
 	test_fail
 }

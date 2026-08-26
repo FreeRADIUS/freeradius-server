@@ -17,6 +17,18 @@
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/ldap/base.h>
 
+/** How profile objects are retrieved from the directory
+ *
+ */
+typedef enum {
+	LDAP_PROFILE_SEARCH_MODE_AUTO = 0,		//!< Resolved at instantiation, LDAP_PROFILE_SEARCH_MODE_BULK
+							///< when server side sorting is configured and the search
+							///< scope is base, otherwise LDAP_PROFILE_SEARCH_MODE_SEQ.
+	LDAP_PROFILE_SEARCH_MODE_SEQ,			//!< One search per profile DN, applied in list order.
+	LDAP_PROFILE_SEARCH_MODE_BULK			//!< A single search retrieving every profile object,
+							///< applied in result order.  Requires base scope.
+} ldap_profile_search_mode_t;
+
 typedef struct {
 	/*
 	 *	Options
@@ -47,6 +59,10 @@ typedef struct {
 		bool		expect_password;		//!< Allow the user to forcefully decide if a password should be
 								///< expected.  Controls whether warnings are issued.
 		bool		expect_password_is_set;		//!< Whether an expect password value was provided.
+
+		char const	*profile_attr;			//!< Attribute in the user object naming profiles to apply.
+		char const	*profile_attr_suspend;		//!< Attribute in the user object naming profiles to apply
+								///< when the user's account is suspended.
 
 		char const	*dn_attr_str;			//!< Sets the attribute we use when creating and retrieving
 								//!< cached group memberships.
@@ -95,20 +111,26 @@ typedef struct {
 								///< from a user object.
 
 		bool		skip_on_suspend;		//!< Don't process groups if the user is suspended.
+
+		char const	*profile_attr;			//!< Attribute in group objects naming profiles to apply.
+		char const	*profile_attr_suspend;		//!< Attribute in group objects naming profiles to apply
+								///< when the user's account is suspended.
 	} group;
 
 	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
 							//!< attribute and value.
+
+	char const	*dn_attr;			//!< Attribute to match an entry's DN in a search filter.
+							///< If unset, the value detected for the directory
+							///< (fr_ldap_directory_t dn_attr) is used.
 
 	/*
 	 *	Profiles
 	 */
 	struct {
 		int		obj_scope;			//!< Search scope.
-		char const	*attr;				//!< Attribute that identifies profiles to apply. May appear
-								//!< in userobj or groupobj.
-		char const	*attr_suspend;			//!< Attribute that identifies profiles to apply when the user's
-								///< account is suspended. May appear in userobj or groupobj.
+		ldap_profile_search_mode_t search_mode;		//!< Whether profiles are retrieved one at a time or
+								///< with a single search.
 		char const	*obj_sort_by;			//!< List of attributes to sort profiles by
 		LDAPControl	*obj_sort_ctrl;			//!< Server side sort control
 		char const	*check_attr;			//!< LDAP attribute containing check conditions to determine if
@@ -151,6 +173,7 @@ typedef struct {
 							//!< with this name, and map any attributes it contains.
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
+	fr_value_box_t	profile_child_rdn;		//!< RDN of a child object to evaluate below each profile.
 	fr_value_box_t	profile_filter;			//!< Filter to use when searching for profiles.
 
 	map_list_t	*user_map;			//!< Attribute map applied to users and profiles.
@@ -175,15 +198,15 @@ typedef struct {
 typedef enum {
 	LDAP_AUTZ_FIND = 0,
 	LDAP_AUTZ_GROUP,
+	LDAP_AUTZ_GROUP_PROFILES,
 	LDAP_AUTZ_POST_GROUP,
 #ifdef WITH_EDIR
 	LDAP_AUTZ_EDIR_BIND,
 	LDAP_AUTZ_POST_EDIR,
 #endif
 	LDAP_AUTZ_MAP,
-	LDAP_AUTZ_DEFAULT_PROFILE,
-	LDAP_AUTZ_POST_DEFAULT_PROFILE,
-	LDAP_AUTZ_USER_PROFILE,
+	LDAP_AUTZ_PROFILES,
+	LDAP_AUTZ_POST_PROFILES,
 } ldap_autz_status_t;
 
 /** User's access state
@@ -207,13 +230,38 @@ typedef struct {
 	ldap_autz_call_env_t	*call_env;
 	LDAPMessage		*entry;
 	ldap_autz_status_t	status;
-	struct berval		**profile_values;
-	int			value_idx;
-	char			*profile_value;
+	char const		**profile_dn_list;	//!< List of profile DNs to apply, default profile first,
+							///< then group profiles, then profiles from the user
+							///< object.  NULL terminated.
+	talloc_str_list_t	*group_dn_list;		//!< DNs of the group objects the user is a member of.
+	talloc_str_list_t	*group_profile_dn_list;	//!< Profile DNs found in the user's group objects.
+	int			profiles_applied;	//!< Number of profile maps applied.
 	char const		*dn;
 	ldap_access_state_t	access_state;		//!< What state a user's account is in.
 	rlm_rcode_t		rcode;			//!< What rcode we'll finally respond with.
 } ldap_autz_ctx_t;
+
+/** Return the profile attribute matching the user's access state
+ *
+ * User and group objects have their own profile attribute pairs, the
+ * caller passes the pair for the object type being processed.
+ */
+static inline char const *rlm_ldap_profile_attr_select(char const *attr, char const *attr_suspend,
+						       ldap_access_state_t access_state)
+{
+	switch (access_state) {
+	case LDAP_ACCESS_ALLOWED:
+		return attr;
+
+	case LDAP_ACCESS_SUSPENDED:
+		return attr_suspend;
+
+	case LDAP_ACCESS_DISALLOWED:
+		break;
+	}
+
+	return NULL;
+}
 
 /** State list for xlat evaluation of LDAP group membership
  */
@@ -284,6 +332,8 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 
 unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
 
+unlang_action_t rlm_ldap_group_profiles(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
+
 unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, request_t *request,
 						ldap_group_xlat_ctx_t *xlat_ctx);
 
@@ -296,3 +346,8 @@ unlang_action_t rlm_ldap_check_cached(unlang_result_t *p_result,
 unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret, int *applied,
 				     rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, int scope, char const *filter, fr_ldap_map_exp_t const *expanded);
+
+unlang_action_t rlm_ldap_map_profiles(fr_ldap_result_code_t *ret, int *applied,
+				      rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+				      char const * const *dn_list, char const *filter,
+				      fr_ldap_map_exp_t const *expanded);

@@ -1,0 +1,21 @@
+= rmdir
+
+The `rmdir` function removes a directory.  If the directory exists and could be removed, it returns `true`.  Otherwise if the directory does not exist, or if the directory could not be removed, it returns `false.
+
+[#syntax]
+== Syntax
+
+`%file.rmdir(_string_)`
+
+.Return: _bool_
+
+.Removing a directory
+====
+[source,unlang]
+----
+%file.rmdir("/var/log/radius/auth")
+----
+====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

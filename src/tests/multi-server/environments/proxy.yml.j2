@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------
+# Docker Compose Test Environment:
+#
+#                  --> HS1 (auto-accept)
+#
+#                  --> HS2 (auto-accept)
+#
+#   load-generator --> HS3 (auto-accept)
+#
+#                  --> HS4 (auto-accept)
+#
+#                  --> HS5 (auto-accept)
+#
+# ---------------------------------------------------------------
+x-common-config: &id001
+  cap_add:
+  - NET_ADMIN
+  - SYS_PTRACE
+  environment:
+    TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
+services:
+{% for i in range(1, (compose_num_of_home_servers + 1)) %}
+  homeserver{{ i }}:
+    image: ${FREERADIUS_IMAGE}
+    volumes:
+    - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/freeradius/radiusd.conf
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'Message-Authenticator = 0x00' | radclient localhost:1812 status testing123"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    command: ["freeradius", "-f", "-l", "stdout"]
+    <<: *id001
+{% endfor %}
+  load-generator:
+    image: ${FREERADIUS_IMAGE}
+    depends_on:
+{% for i in range(1, (compose_num_of_home_servers + 1)) %}
+      homeserver{{ i }}:
+        condition: service_healthy
+{% endfor %}
+    volumes:
+    # load-generator templates
+    - ${DATA_PATH}/freeradius/load-generator/template.d/load-generator-templates:/etc/freeradius/template.d/load-generator-templates
+
+    # Setup a testuser/testpass user for authentication testing with load-generator
+    # This is only really needed when testing the load-generator with radclient during development.
+    - ${DATA_PATH}/freeradius/load-generator/mods-config/files/authorize:/etc/freeradius/mods-config/files/authorize
+
+    # load-generator server config
+    - ${DATA_PATH}/freeradius/load-generator/radiusd.conf:/etc/freeradius/radiusd.conf
+
+    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      # Keep the container alive.  The test framework starts FreeRADIUS
+      # and runs commands via 'docker exec' so it can control timing.
+      sleep infinity
+    <<: *id001

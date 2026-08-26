@@ -58,27 +58,25 @@ struct main_config_s {
 	bool		spawn_workers;			//!< Should the server spawn threads.
 	char const      *pid_file;			//!< Path to write out PID file.
 
-	fr_worker_config_t	worker;			//!< Worker thread configuration.
-
-	bool		drop_requests;			//!< Administratively disable request processing.
-	bool		suppress_secrets;		//!< suppress secrets (or not)
+	bool		write_pid;			//!< write the PID file
 
 	char const	*log_dir;
 	char const	*local_state_dir;
 
-	bool		reverse_lookups;
-	bool		hostname_lookups;
+	bool		reverse_lookups;		//!< do IP -> host lookups.  Don't set this!
+	bool		hostname_lookups;		//!< do hostname -> IP lookups
+	bool		drop_requests;			//!< Administratively disable request processing.
+	bool		suppress_secrets;		//!< suppress secrets (or not)
 
 	char const	*radacct_dir;
 	char const	*lib_dir;
 	char const	*sbin_dir;
 	char const	*run_dir;
-	char const	*raddb_dir;			//!< Path to raddb directory
+	char const	*confdir;			//!< Path to configuration directory
 
 	char const	*prefix;
 
 	char const	*log_dest;
-
 	char const	*log_file;
 	bool		do_colourise;
 	bool		log_line_number;		//!< Log src file/line the message was generated on.
@@ -90,8 +88,7 @@ struct main_config_s {
 	int32_t		syslog_facility;
 
 	char const	*dict_dir;			//!< Where to load dictionaries from.
-
-	bool		write_pid;			//!< write the PID file
+	fr_dict_t	*dict;				//!< Main dictionary.
 
 #ifdef HAVE_SETUID
 	uid_t		server_uid;			//!< UID we're running as.
@@ -105,6 +102,13 @@ struct main_config_s {
 	char const	*chdir;				//!< where to chdir() to when we start.
 	bool		chdir_is_set;
 
+	char const	**limit_files;			//!< where %file....() is limited to
+
+	char const	**limit_exec;			//!< where %exec() is limited to
+
+	/*
+	 *	OpenSSL configuration
+	 */
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
@@ -120,51 +124,53 @@ struct main_config_s {
 							///< in the async ctx pool.
 #endif
 
-	fr_dict_t	*dict;				//!< Main dictionary.
-
-
 	/*
 	 *	Debugging options
 	 */
-	bool		allow_core_dumps;		//!< Whether the server is allowed to drop a core when
-							//!< receiving a fatal signal.
-
-	char const	*panic_action;			//!< Command to execute if the server receives a fatal
-							//!< signal.
-
 	uint32_t	debug_level;			//!< The base log level for the server.
 
 	bool		talloc_memory_report;		//!< Print a memory report on what's left unfreed.
 							//!< Can only be used when the server is running in single
 							//!< threaded mode.
 
+	bool		talloc_skip_cleanup;		//!< skip talloc cleanups at exit
+
+	bool		allow_core_dumps;		//!< Whether the server is allowed to drop a core when
+							//!< receiving a fatal signal.
+
+	char const	*panic_action;			//!< Command to execute if the server receives a fatal
+							//!< signal.
+
+
+	/*
+	 *	Multiple processing sharing configs
+	 */
 	bool		allow_multiple_procs;		//!< Allow multiple instances of radiusd to run with the
 							///< same config file.
 
 	int		multi_proc_sem_id;		//!< Semaphore we use to prevent multiple processes running.
 	char		*multi_proc_sem_path;		//!< Semaphore path.
 
+	/*
+	 *	Internal scheduler configuration
+	 */
 	uint32_t	max_networks;			//!< for the scheduler
 	uint32_t	max_workers;			//!< for the scheduler
 	fr_time_delta_t	stats_interval;			//!< for the scheduler
+
+	fr_worker_config_t	worker;			//!< Worker thread configuration.
 
 #ifndef NDEBUG
 	uint32_t	ins_max;			//!< max instruction count
 	bool		ins_countup;			//!< count up to "max"
 #endif
-
-	/*
-	 *	Migration tools
-	 */
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
-void			main_config_raddb_dir_set(main_config_t *config, char const *path);
+void			main_config_confdir_set(main_config_t *config, char const *path);
 void			main_config_dict_dir_set(main_config_t *config, char const *path);
 
-int			main_config_parse_option(char const *value); /* flat / nested migration */
-
-bool			main_config_migrate_option_get(char const *name);
+int			main_config_save_override(char const *value);
 
 void			main_config_exclusive_proc_done(main_config_t  const *config);
 int			main_config_exclusive_proc_child(main_config_t const *config);

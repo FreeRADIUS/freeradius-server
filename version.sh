@@ -98,9 +98,17 @@ version_component()
 	;;
 
 	commit_depth)
+		#
+		#  Branches under active development (and freshly checked-out
+		#  CI workspaces) often have neither a branch_* nor a release_*
+		#  tag reachable from HEAD. git describe then emits "fatal: No
+		#  names found, cannot describe anything." to stderr; the ||
+		#  fallback already handles the exit status, so silence stderr
+		#  to keep build logs quiet.
+		#
 		out=$(\
 			cat ${commit_depth_file} 2> /dev/null || \
-			(${in_repo} && ${git} describe --tags --match 'branch_*' --match 'release_*' | cut -s -d '-' -f 2) || \
+			(${in_repo} && ${git} describe --tags --match 'branch_*' --match 'release_*' 2> /dev/null | cut -s -d '-' -f 2) || \
 			echo "${commit_depth}" \
 		)
 	;;

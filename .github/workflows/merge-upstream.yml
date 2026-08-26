@@ -1,0 +1,95 @@
+name: Merge into upstream
+
+#
+#  FREERADIUS CORE DEVELOPERS ONLY
+#
+#  Called by ci-pipeline.yml once every gating leg has passed, so there is no
+#  gating logic here.
+#
+#  Branch name decides what happens:
+#    developer/<login>          master is fast forwarded to the branch HEAD
+#    developer/<login>/ff       same
+#    developer/<login>/merge    branch is merged into master, possibly creating
+#                               a merge commit
+#
+
+on:
+  workflow_call:
+    secrets:
+      GH_APP_PRIVATE_KEY:
+        required: true
+
+jobs:
+  merge-upstream:
+    if: |
+      github.repository_owner == 'FreeRADIUS' &&
+      github.event_name == 'push' &&
+      startsWith(github.ref_name, format('developer/{0}', github.actor))
+
+    runs-on: ubuntu-latest
+    name: "Merge into upstream"
+    timeout-minutes: 15
+
+    #  The pushes below use the app token, not GITHUB_TOKEN.
+    permissions:
+      contents: read
+
+    env:
+      BRANCH: ${{ github.ref_name }}
+      HEAD_SHA: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+
+      - name: Generate app token for push
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.GH_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Set up Git with app token
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global user.name "freeradius-server-merge-ci[bot]"
+          git config --global user.email "freeradius-server-merge-ci[bot]@users.noreply.github.com"
+          git config --global commit.gpgSign true
+          git config --global gpg.format ssh
+
+      # First, as this was a shallow checkout, and only the user's branch was fetched, we need
+      # to fetch the rest of the branches, and more history.
+      - name: "Fetch branches"
+        run: git fetch --depth=1000 --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/*
+
+      #
+      #  Merge the commit the legs actually ran on.  Merging the branch ref
+      #  instead would put whatever it points at now onto master, which is not
+      #  necessarily what passed.  A commit already on master merges and pushes
+      #  as a no-op, so re-running the pipeline needs no special handling.
+      #
+      - name: "Merge into upstream dev branch and update local branch"
+        if: endsWith(github.ref_name, '/merge')
+        run: |
+          echo "Merging master into user branch: ${BRANCH}"
+          git checkout --progress --force -B master origin/master
+          git merge --no-commit --no-edit "${HEAD_SHA}"
+
+          echo "Pushing to user branch: ${BRANCH}"
+          git push origin "HEAD:${BRANCH}"
+
+          echo "Pushing to master"
+          git push origin HEAD:master
+
+      - name: "Fast forward upstream"
+        if: endsWith(github.ref_name, format('/{0}', github.actor)) || endsWith(github.ref_name, '/ff')
+        run: |
+          echo "Fast forwarding local copy of master to match developer's branch: ${BRANCH}"
+          git checkout --progress --force -B master origin/master
+          git merge --ff-only "${HEAD_SHA}"
+
+          echo "Pushing to master"
+          git push origin HEAD:master

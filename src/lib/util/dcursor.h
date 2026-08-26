@@ -1,7 +1,7 @@
 #pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License, cursor 2 of the
+ *   it under the terms of the GNU General Public License, version 2 of the
  *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
@@ -31,8 +31,6 @@ extern "C" {
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/talloc.h>
 
-#include <stddef.h>
-#include <stdbool.h>
 
 DIAG_OFF(unused-function)
 typedef struct fr_dcursor_s fr_dcursor_t;
@@ -193,7 +191,7 @@ static inline void fr_dcursor_copy(fr_dcursor_t *out, fr_dcursor_t const *in)
 {
 	memcpy(out, in, sizeof(*out));
 
-	if (in->copy) fr_dcursor_copy(out, in);
+	if (in->copy) in->copy(out, in);
 }
 
 /** Copy a read-only iterator from a parent to a child cursor

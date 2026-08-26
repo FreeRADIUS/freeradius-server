@@ -53,7 +53,8 @@ typedef enum {
 /*
  *	Config file parsing
  */
-int			cf_file_read(CONF_SECTION *cs, char const *file);
+int			cf_file_read(CONF_SECTION *cs, char const *file, bool root);
+int			cf_file_read_buffer(CONF_SECTION *cs, char const *buffer, size_t buflen, char const *filename);
 int			cf_section_pass2(CONF_SECTION *cs);
 void			cf_file_free(CONF_SECTION *cs);
 
@@ -75,6 +76,8 @@ void			cf_md5_final(uint8_t *digest);
  *	Config file writing
  */
 int			cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
+int			cf_section_write_children(FILE *fp, CONF_SECTION *cs, int depth);
+int			cf_pair_write(FILE *fp, CONF_PAIR *cp);
 
 /*
  *	Misc
@@ -83,7 +86,7 @@ CONF_ITEM		*cf_reference_item(CONF_SECTION const *parentcs, CONF_SECTION const *
 char const		*cf_expand_variables(char const *filename, int lineno,
 				     	     CONF_SECTION *outer_cs,
 					     char *output, size_t outsize,
-					     char const *input, ssize_t inlen, bool *soft_fail);
+					     char const *input, ssize_t inlen, bool *soft_fail, bool soft_fail_env);
 void			cf_section_set_unlang(CONF_SECTION *cs);
 
 #ifdef __cplusplus

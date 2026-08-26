@@ -188,6 +188,7 @@ static void sql_trunk_connection_init_poll(fr_timer_list_t *tl, UNUSED fr_time_t
 	if (sql_check_error(ret, SQL_HANDLE_DBC, c->dbc)) {
 		ERROR("Connection failed");
 		connection_signal_reconnect(c->conn, CONNECTION_FAILED);
+		return;
 	}
 
 	if (sql_trunk_connection_init_stmt(c) == CONNECTION_STATE_CONNECTED) connection_signal_connected(c->conn);
@@ -518,7 +519,7 @@ static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, UNUSED
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_unixodbc_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_unixodbc_conn_t);
-	SQLSMALLINT		len, i;
+	SQLSMALLINT		len = 0, i;
 	SQLRETURN		ret;
 	char const		**names;
 	char			field[128];
@@ -617,6 +618,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_co
 	conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_unixodbc_conn_t);
 
 	TALLOC_FREE(conn->row);
+	TALLOC_FREE(conn->ind);
 	conn->colcount = 0;
 	conn->query_ctx = NULL;
 

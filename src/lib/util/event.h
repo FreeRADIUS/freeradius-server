@@ -53,7 +53,6 @@ struct fr_event_list_pub_s {
 
 #include <freeradius-devel/util/talloc.h>
 
-#include <stdbool.h>
 #include <sys/event.h>
 
 
@@ -248,6 +247,8 @@ int		_fr_event_fd_insert(NDEBUG_LOCATION_ARGS
 #define		fr_event_fd_insert(...) _fr_event_fd_insert(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
 int		fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter);
+
+int		fr_event_fd_delete_handle(fr_event_fd_t *ef);
 
 fr_event_fd_t	*fr_event_fd_handle(fr_event_list_t *el, int fd, fr_event_filter_t filter);
 

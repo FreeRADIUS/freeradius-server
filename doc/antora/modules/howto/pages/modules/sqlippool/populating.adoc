@@ -142,7 +142,7 @@ generate_pool_addresses.pl main_pool 10.66.0.0 10.66.255.255 10000
 
 Will create a pool from a sparsely populated IPv4 range for a `/16`
 network (maximum of 65.536 addresses), populating the range with 10,000
-addreses. The effective size of the pool can be increased in future by
+addresses. The effective size of the pool can be increased in future by
 increasing the capacity of the range with:
 =============================================
 
@@ -207,5 +207,5 @@ each of the ranges first being populated with entries from the
 with random addresses to the defined capacity.
 =============================================
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -251,7 +251,7 @@ typedef int (*fr_io_data_inject_t)(fr_listen_t *li,uint8_t const *buffer, size_t
 /** Tell the IO handler that a VNODE has changed
  *
  * @param[in] li		the listener for this socket
- * @param[in] fflags		from kevent.  Usually just NOTE_EXEND
+ * @param[in] fflags		from kevent.  Usually just NOTE_EXTEND
  */
 typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
 

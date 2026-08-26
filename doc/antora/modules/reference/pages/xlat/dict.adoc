@@ -4,5 +4,5 @@ The dictionary functions are defined in the
 xref:raddb/mods-available/dict.adoc[dict] module.  It must be listed
 in the `mods-enabled/` directory in order for the expansions to work.
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

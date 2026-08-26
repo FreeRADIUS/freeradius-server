@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -30,10 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/dl_module.h>
-#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/module.h>
 #include "rlm_eap.h"
 
 extern module_rlm_t rlm_eap;
@@ -97,7 +94,6 @@ static fr_dict_attr_t const *attr_module_failure_message;
 
 static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_message_authenticator;
-static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 
 
@@ -111,7 +107,6 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	DICT_AUTOLOAD_TERMINATOR
@@ -173,6 +168,7 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	case FR_EAP_METHOD_TLS:
 	case FR_EAP_METHOD_TTLS:
 	case FR_EAP_METHOD_PEAP:
+	case FR_EAP_METHOD_PSK:
 	case FR_EAP_METHOD_PWD:
 	case FR_EAP_METHOD_AKA_PRIME:
 	case FR_EAP_METHOD_AKA:
@@ -236,7 +232,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 	unsigned int i, s_i = 0;
 	fr_pair_t *vp = NULL;
 	eap_type_t method = FR_EAP_METHOD_INVALID;
-	eap_type_t sanitised[nak->length];
+	eap_type_t sanitised[FR_EAP_METHOD_MAX];
 
 	/*
 	 *	The NAK data is the preferred EAP type(s) of
@@ -256,7 +252,8 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 	 *	Do a loop over the contents of the NAK, only moving entries
 	 *	which are valid to the sanitised array.
 	 */
-	for (i = 0; i < nak->length; i++) {
+	for (i = 0; (i < nak->length) && (i < FR_EAP_METHOD_MAX); i++) {
+
 		/*
 		 *	Type 0 is valid, and means there are no
 		 *	common choices.
@@ -395,7 +392,17 @@ static void mod_authenticate_cancel(module_ctx_t const *mctx, request_t *request
 
 	eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 
-	TALLOC_FREE(eap_session->subrequest);
+	/*
+	 *	Normally the unlang_subrequest_signal() function forwards the CANCEL signal to the subrequest,
+	 *	when there's a subrequest frame in the parents stack.  For EAP, this isn't the case.  So we
+	 *	have to forward the signal manually.
+	 *
+	 *	Note that we CANNOT detach the child.  It was created as not detachable.  If we did create it
+	 *	as detachable, then the admin could use the "detach" keyword, which is bad.
+	 */
+	if (eap_session->subrequest) {
+		unlang_interpret_signal(eap_session->subrequest, FR_SIGNAL_CANCEL);
+	}
 
 	/*
 	 *	This is the only safe thing to do.
@@ -535,7 +542,7 @@ static unlang_action_t mod_authenticate_result_async(unlang_result_t *p_result, 
 static ssize_t eap_identity_is_nai_with_realm(char const *identity)
 {
 	char const *p = identity;
-	char const *end = identity + (talloc_array_length(identity) - 1);
+	char const *end = identity + (talloc_strlen(identity));
 	char const *realm;
 
 	/*
@@ -553,7 +560,7 @@ static ssize_t eap_identity_is_nai_with_realm(char const *identity)
 		return identity - end;
 	}
 
-	if ((realm - 1) == p) {
+	if ((realm + 1) == p) {
 		fr_strerror_printf("Identity is not valid.  "
 				   "Realm is missing label between realm separator '@' and label separator '.'");
 		return identity - realm;
@@ -652,7 +659,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 					 */
 					MEM(tmp_id = fr_asprint(NULL,
 								eap_session->identity,
-								talloc_array_length(eap_session->identity) - 1,
+								talloc_strlen(eap_session->identity),
 								'"'));
 					slen = eap_identity_is_nai_with_realm(tmp_id);
 
@@ -705,7 +712,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 
 				ret = submodule->type_identity(inst->type_identity_submodule[i]->data,
 							       eap_session->identity,
-							       talloc_array_length(eap_session->identity) - 1);
+							       talloc_strlen(eap_session->identity));
 				if (ret != FR_EAP_METHOD_INVALID) {
 					next = ret;
 					break;
@@ -789,7 +796,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 	RDEBUG2("Calling submodule %s", method->submodule->common.name);
 
 	/*
-	 *	Allocate a new subrequest
+	 *	Allocate a new subrequest, which is NOT detachable.
 	 */
 	MEM(eap_session->subrequest = unlang_subrequest_alloc(request,
 							      method->submodule->namespace ?
@@ -867,14 +874,43 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+static void eap_failure(request_t *request)
+{
+	fr_pair_t *vp;
+	uint8_t buffer[4];
+
+	fr_pair_delete_by_da(&request->reply_pairs, attr_eap_message);
+
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_message_authenticator);
+	if (!vp) {
+		static uint8_t const auth_vector[RADIUS_AUTH_VECTOR_LENGTH] = { 0x00 };
+
+		MEM(pair_append_reply(&vp, attr_message_authenticator) >= 0);
+		fr_pair_value_memdup(vp, auth_vector, sizeof(auth_vector), false);
+	}
+	request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+
+	buffer[0] = FR_EAP_CODE_FAILURE;
+	buffer[1] = (vp->vp_length >= 2) ? vp->vp_octets[1] : 0;
+	buffer[2] = 0;
+	buffer[3] = 4;
+
+	MEM(pair_append_reply(&vp, attr_eap_message) >= 0);
+	fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
+
+	eap_session_discard(request);
+}
+
 static unlang_action_t mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_t);
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
 	unlang_action_t		ua;
+	fr_pair_t		*vp;
 
-	if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message);
+	if (!vp) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		RETURN_UNLANG_INVALID;
 	}
@@ -883,11 +919,16 @@ static unlang_action_t mod_authenticate(unlang_result_t *p_result, module_ctx_t 
 	 *	Reconstruct the EAP packet from the EAP-Message
 	 *	attribute.  The relevant decoder should have already
 	 *	concatenated the fragments into a single buffer.
+	 *
+	 *	If it's not a valid EAP packet, we send back a canned
+	 *	failure, and discard the entire EAP session.
 	 */
 	eap_packet = eap_packet_from_vp(request, &request->request_pairs);
 	if (!eap_packet) {
 		RPERROR("Malformed EAP Message");
-		RETURN_UNLANG_FAIL;
+	fail:
+		eap_failure(request);
+		RETURN_UNLANG_HANDLED;
 	}
 
 	/*
@@ -897,7 +938,7 @@ static unlang_action_t mod_authenticate(unlang_result_t *p_result, module_ctx_t 
 	 *	data.
 	 */
 	eap_session = eap_session_continue(inst, &eap_packet, request);
-	if (!eap_session) RETURN_UNLANG_INVALID;	/* Don't emit error here, it will mask the real issue */
+	if (!eap_session) goto fail;
 
 	/*
 	 *	Call an EAP submodule to process the request,
@@ -956,8 +997,12 @@ static unlang_action_t mod_authorize(unlang_result_t *p_result, module_ctx_t con
 	status = eap_start(request, inst->methods, inst->ignore_unknown_types);
 	switch (status) {
 	case RLM_MODULE_NOOP:
-	case RLM_MODULE_FAIL:
 	case RLM_MODULE_HANDLED:
+		return status;
+
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_INVALID:
+		eap_failure(request);
 		return status;
 
 	default:
@@ -989,7 +1034,7 @@ static unlang_action_t mod_post_auth(unlang_result_t *p_result, module_ctx_t con
 		 */
 		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_user_name);
 		if (!vp) {
-			vp = fr_pair_copy(request->reply_ctx, username);
+			MEM(vp = fr_pair_copy(request->reply_ctx, username));
 			fr_pair_append(&request->reply_pairs, vp);
 		}
 	}

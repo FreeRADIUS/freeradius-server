@@ -72,3 +72,6 @@ Then call radclient with the acct option to generate the actual accounting reque
 nwkrad@radius-fe-01:~$ cat acct_request.txt | \
 radclient -x 127.0.0.1 acct testing123
 ```
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

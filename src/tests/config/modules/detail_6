@@ -1,0 +1,9 @@
+#
+#  Test: empty suppress section is valid
+#
+detail {
+	filename = /tmp/test-detail
+
+	suppress {
+	}
+}

@@ -17,13 +17,12 @@
 /**
  * $Id$
  * @file proto_arp.c
- * @brief RADIUS master protocol handler.
+ * @brief ARP protocol handler.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/server/packet.h>
 #include <freeradius-devel/util/debug.h>
 #include "proto_arp.h"
@@ -151,7 +150,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf)
+static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
 	fr_listen_t	*li;
 	proto_arp_t 	*inst = talloc_get_type_abort(instance, proto_arp_t);
@@ -162,8 +161,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 	 *	back again.
 	 */
 	li = talloc_zero(inst, fr_listen_t);
-	talloc_set_destructor(li, fr_io_listen_free);
+	talloc_set_destructor(li, fr_io_listen_free); /* frees li->thread_instance */
 
+	li->cs = conf;
 	li->app = &proto_arp;
 	li->app_instance = instance;
 	li->server_cs = inst->server_cs;

@@ -1,0 +1,147 @@
+#
+#  Exercise the %kafka.produce(topic, key, value) xlat across several
+#  produce cycles.  Each produce yields waiting for a delivery report;
+#  the resume path translates it to a bool (true = delivered).
+#
+#  Two topics in use: `freeradius-test-xlat` takes seven records (1
+#  expanded, 5 sequential, 1 empty) and `freeradius-test-xlat-alt`
+#  takes one, so we subscribe to both up-front.
+#
+%exec('/bin/sh', '-c', '"$KAFKA_SUBSCRIBE" freeradius-test-xlat $ENV{OUTPUT_DIR}kafka-xlat.json 7')
+%exec('/bin/sh', '-c', '"$KAFKA_SUBSCRIBE" freeradius-test-xlat-alt $ENV{OUTPUT_DIR}kafka-xlat-alt.json 1')
+
+#
+#  Value can contain request-scope xlats so we confirm the value is expanded
+#  before being handed to librdkafka.
+#
+control.Tmp-String-0 := "user=%{User-Name},packet=%{Packet-Type}"
+if (!%kafka.produce('freeradius-test-xlat', "", control.Tmp-String-0)) {
+	test_fail
+}
+
+#
+#  Produce several messages sequentially to the same topic.  This confirms
+#  the topic handle cache works (first call creates, subsequent calls reuse)
+#  and that the delivery report dispatch loop handles back-to-back DRs
+#  without dropping any.  Each call exercises a different shape of key
+#  argument so the framework's handling of every variant is covered:
+#  the `null` keyword, a zero-length string literal, a zero-length
+#  octets cast, a non-empty string, and a non-empty octets literal.
+#  Unrolled because the unlang parser here doesn't accept `while` as a
+#  loop construct.
+#
+if (!%kafka.produce('freeradius-test-xlat', null, "sequential 1")) { test_fail }
+if (!%kafka.produce('freeradius-test-xlat', "", "sequential 2")) { test_fail }
+if (!%kafka.produce('freeradius-test-xlat', (octets) "", "sequential 3")) { test_fail }
+if (!%kafka.produce('freeradius-test-xlat', "key-4", "sequential 4")) { test_fail }
+if (!%kafka.produce('freeradius-test-xlat', 0xdeadbeef, "sequential 5")) { test_fail }
+
+#
+#  Produce to a distinct topic to exercise a second topic handle cache
+#  entry, and pass a non-empty key so we also cover the xlat key path.
+#  Same key bytes should round-trip unaltered on the consumer side.
+#
+if (!%kafka.produce('freeradius-test-xlat-alt', "xlat-key", "alternate topic")) {
+	test_fail
+}
+
+#
+#  Empty value - librdkafka accepts zero-length payloads.
+#
+if (!%kafka.produce('freeradius-test-xlat', "", "")) {
+	test_fail
+}
+
+#
+#  Primary topic: seven records in produce order.
+#
+timeout 10s {
+	map json %exec('/bin/sh', '-c', '"$KAFKA_WAIT_AND_CLEANUP" $ENV{OUTPUT_DIR}kafka-xlat.json 7') {
+		control.Tmp-String-1 := '$[0].value'
+		control.Tmp-String-2 := '$[1].value'
+		control.Tmp-String-3 := '$[2].value'
+		control.Tmp-String-4 := '$[3].value'
+		control.Tmp-String-5 := '$[4].value'
+		control.Tmp-String-6 := '$[5].value'
+		control.Tmp-String-7 := '$[6].value'
+	}
+}
+
+#
+#  Record 0: "user=<name>,packet=<type>" expanded.
+#
+control.Tmp-Octets-0 := %base64.decode(control.Tmp-String-1)
+if ((string)control.Tmp-Octets-0 != control.Tmp-String-0) {
+	test_fail
+}
+
+#
+#  Records 1-5: the unrolled sequential payloads.
+#
+control.Tmp-Octets-1 := %base64.decode(control.Tmp-String-2)
+if ((string)control.Tmp-Octets-1 != "sequential 1") { test_fail }
+
+control.Tmp-Octets-2 := %base64.decode(control.Tmp-String-3)
+if ((string)control.Tmp-Octets-2 != "sequential 2") { test_fail }
+
+control.Tmp-Octets-3 := %base64.decode(control.Tmp-String-4)
+if ((string)control.Tmp-Octets-3 != "sequential 3") { test_fail }
+
+control.Tmp-Octets-4 := %base64.decode(control.Tmp-String-5)
+if ((string)control.Tmp-Octets-4 != "sequential 4") { test_fail }
+
+control.Tmp-Octets-5 := %base64.decode(control.Tmp-String-6)
+if ((string)control.Tmp-Octets-5 != "sequential 5") { test_fail }
+
+#
+#  Key round-trip.  Re-read the same subscriber output (the file is
+#  still on disk even though the rpk consumer has exited) and pull
+#  keys for records 1-5.  Records 1/2/3 were produced with the no-key
+#  variants (`null`, `""`, `(octets) ""`) and should land on the
+#  broker with no key at all - kcat's %k{base64} renders a missing
+#  key as an empty field.  Records 4/5 carried real key bytes;
+#  decode and compare.
+#
+timeout 10s {
+	map json %exec('/bin/sh', '-c', '"$KAFKA_WAIT_AND_CLEANUP" $ENV{OUTPUT_DIR}kafka-xlat.json 7') {
+		control.Tmp-String-1 := '$[1].key'
+		control.Tmp-String-2 := '$[2].key'
+		control.Tmp-String-3 := '$[3].key'
+		control.Tmp-String-4 := '$[4].key'
+		control.Tmp-String-5 := '$[5].key'
+	}
+}
+
+if (control.Tmp-String-1 != "") { test_fail }
+if (control.Tmp-String-2 != "") { test_fail }
+if (control.Tmp-String-3 != "") { test_fail }
+
+control.Tmp-Octets-0 := %base64.decode(control.Tmp-String-4)
+if ((string)control.Tmp-Octets-0 != "key-4") { test_fail }
+
+control.Tmp-Octets-1 := %base64.decode(control.Tmp-String-5)
+if (control.Tmp-Octets-1 != 0xdeadbeef) { test_fail }
+
+#
+#  Record 6: empty payload.
+#
+control.Tmp-Octets-6 := %base64.decode(control.Tmp-String-7)
+if (%length(control.Tmp-Octets-6) != 0) { test_fail }
+
+#
+#  Alternate topic: one record, value + key.
+#
+timeout 10s {
+	map json %exec('/bin/sh', '-c', '"$KAFKA_WAIT_AND_CLEANUP" $ENV{OUTPUT_DIR}kafka-xlat-alt.json 1') {
+		control.Tmp-String-8 := '$[0].value'
+		control.Tmp-String-9 := '$[0].key'
+	}
+}
+
+control.Tmp-Octets-7 := %base64.decode(control.Tmp-String-8)
+if ((string)control.Tmp-Octets-7 != "alternate topic") { test_fail }
+
+control.Tmp-Octets-8 := %base64.decode(control.Tmp-String-9)
+if ((string)control.Tmp-Octets-8 != "xlat-key") { test_fail }
+
+test_pass

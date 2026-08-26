@@ -36,6 +36,7 @@ static unlang_action_t unlang_call_resume(UNUSED unlang_result_t *p_result, requ
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_call_t			*gext = unlang_group_to_call(g);
 	fr_pair_t			*packet_type_vp = NULL;
+	unlang_frame_state_call_t	*state = frame->state;
 
 	switch (pair_update_reply(&packet_type_vp, gext->attr_packet_type)) {
 	case 0:
@@ -44,7 +45,15 @@ static unlang_action_t unlang_call_resume(UNUSED unlang_result_t *p_result, requ
 
 	case 1:
 		break;	/* Don't change */
+
+	default:
+		request->module = state->module;
+		RETURN_UNLANG_FAIL;
 	}
+
+	LOG_PACKET_DEBUG(request, request->reply, &request->reply_pairs, gext->attr_packet_type, false, (request->reply->id >= 0));
+
+	request->module = state->module;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -67,8 +76,9 @@ static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request
 {
 	unlang_group_t			*g;
 	unlang_call_t			*gext;
-	fr_dict_enum_value_t const		*type_enum;
+	fr_dict_enum_value_t const	*type_enum;
 	fr_pair_t			*packet_type_vp = NULL;
+	unlang_stack_t			*stack = request->stack;
 
 	/*
 	 *	Do not check for children here.
@@ -120,27 +130,21 @@ static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request
 		goto error;
 	}
 
-	/*
-	 *	Need to add reply.Packet-Type if it
-	 *	wasn't set by the virtual server...
-	 *
-	 *	AGAIN packet->code NEEDS TO DIE.
-	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
-	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
-	 *	DIE DIE DIE.
-	 */
 	if (unlang_list_empty(&g->children)) {
 		frame_repeat(frame, unlang_call_resume);
 	} else {
 		frame_repeat(frame, unlang_call_children);
 	}
+	frame->prev.frame_call = stack->depth;
 
 	if (virtual_server_push(NULL, request, virtual_server_from_cs(gext->server_cs), UNLANG_SUB_FRAME) < 0) goto error;
+
+	LOG_PACKET_DEBUG(request, request->packet, &request->request_pairs, gext->attr_packet_type, true, (request->packet->id >= 0));
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Push a call frame onto the stack
+/** Push a virtual server #CONF_SECTION as a call frame onto the stack
  *
  * This should be used instead of virtual_server_push in the majority of the code
  */
@@ -151,6 +155,8 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 	char const			*name;
 	fr_dict_t const			*dict;
 	fr_dict_attr_t const		*attr_packet_type;
+	unlang_stack_frame_t		*frame;
+	unlang_frame_state_call_t	*state;
 
 	/*
 	 *	Temporary hack until packet->code is removed
@@ -161,7 +167,7 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 		return UNLANG_ACTION_FAIL;
 	}
 
-	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+	attr_packet_type = virtual_server_packet_type_by_cs(server_cs);
 	if (!attr_packet_type) {
 		REDEBUG("No Packet-Type attribute available");
 		return UNLANG_ACTION_FAIL;
@@ -172,7 +178,7 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 	 *	stack.  The only sane way to do it is to attach it to
 	 *	the frame state.
 	 */
-	name = cf_section_name2(server_cs);
+	name = talloc_asprintf(request, "server %s", cf_section_name2(server_cs));
 	MEM(c = talloc(stack, unlang_call_t));	/* Free at the same time as the state */
 	*c = (unlang_call_t){
 		.group = {
@@ -182,6 +188,7 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 				.debug_name = name,
 				.ci = CF_TO_ITEM(server_cs),
 				.actions = MOD_ACTIONS_FAIL_TIMEOUT_RETURN,
+				.add_filename = true,
 			},
 
 			.cs = server_cs,
@@ -201,6 +208,11 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 		return UNLANG_ACTION_FAIL;
 	}
 
+	frame = &stack->frame[stack->depth];
+	state = frame->state;
+	state->module = request->module;
+	request->module = NULL;
+
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -214,6 +226,9 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 CONF_SECTION *unlang_call_current(request_t *request)
 {
 	unlang_stack_t	*stack = request->stack;
+	unlang_stack_frame_t *frame;
+
+#ifndef NDEBUG
 	unsigned int	depth;
 
 	/*
@@ -221,7 +236,7 @@ CONF_SECTION *unlang_call_current(request_t *request)
 	 *	looking for modules.
 	 */
 	for (depth = stack_depth_current(request); depth > 0; depth--) {
-		unlang_stack_frame_t	*frame = &stack->frame[depth];
+		frame = &stack->frame[depth];
 
 		/*
 		 *	Look at the module frames,
@@ -230,9 +245,19 @@ CONF_SECTION *unlang_call_current(request_t *request)
 		 */
 		if (frame->instruction->type != UNLANG_TYPE_CALL) continue;
 
+		fr_assert(stack->frame[stack->depth].prev.frame_call == depth);
+
 		return unlang_group_to_call(unlang_generic_to_group(frame->instruction))->server_cs;
 	}
+
 	return NULL;
+#else
+	frame = &stack->frame[stack->depth];
+	if (!frame->prev.frame_call) return NULL;
+
+	frame = &stack->frame[frame->prev.frame_call];
+	return unlang_group_to_call(unlang_generic_to_group(frame->instruction))->server_cs;
+#endif
 }
 
 static unlang_t *unlang_compile_call(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
@@ -288,7 +313,7 @@ static unlang_t *unlang_compile_call(unlang_t *parent, unlang_compile_ctx_t *unl
 		return NULL;
 	}
 
-	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+	attr_packet_type = virtual_server_packet_type_by_cs(server_cs);
 	if (!attr_packet_type) {
 		cf_log_err(cs, "Cannot call server %s with namespace '%s' - it has no Packet-Type attribute",
 			   server, fr_dict_root(dict)->name);
@@ -322,5 +347,8 @@ void unlang_call_init(void)
 
 			.unlang_size	= sizeof(unlang_call_t),
 			.unlang_name	= "unlang_call_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_call_t),
+			.frame_state_type = "unlang_frame_state_call_t",
 		});
 }

@@ -1,0 +1,15 @@
+
+attr_filter attr_filter.access_reject {
+	key = User-Name
+	filename = ${modconfdir}/${.:name}/access_reject
+}
+
+attr_filter attr_filter.access_challenge {
+	key = User-Name
+	filename = ${modconfdir}/${.:name}/access_challenge
+}
+
+attr_filter attr_filter.accounting_response {
+	key = User-Name
+	filename = ${modconfdir}/${.:name}/accounting_response
+}

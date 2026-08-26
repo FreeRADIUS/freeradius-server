@@ -57,16 +57,24 @@ static ssize_t encode_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *input, size
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t	digest[RADIUS_AUTH_VECTOR_LENGTH];
-	uint8_t	passwd[RADIUS_MAX_PASS_LENGTH] = {0};
+	uint8_t	passwd[256] = {0};
 	size_t		i, n;
 	size_t		len;
+
+	if (!packet_ctx->request_authenticator) {
+		fr_strerror_const("Request Authenticator is required to encode User-Password attributes");
+		return -1;
+	}
 
 	/*
 	 *	If the length is zero, round it up.
 	 */
 	len = inlen;
 
-	if (len > RADIUS_MAX_PASS_LENGTH) len = RADIUS_MAX_PASS_LENGTH;
+	if (len > RADIUS_MAX_STRING_LENGTH) {
+		fr_strerror_const("User-Password is too long (253 octets max)");
+		return -1;
+	}
 
 	(void) fr_dbuff_out_memcpy(passwd, input, len);
 	if (len < sizeof(passwd)) memset(passwd + len, 0, sizeof(passwd) - len);
@@ -115,6 +123,11 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	size_t		output_len, encrypted_len, padding;
 	ssize_t		slen;
 	fr_dbuff_t	work_dbuff = FR_DBUFF_MAX(dbuff, RADIUS_MAX_STRING_LENGTH);
+
+	if (!packet_ctx->request_authenticator) {
+		fr_strerror_const("Request Authenticator is required to encode Tunnel-Password attributes");
+		return -1;
+	}
 
 	/*
 	 *	Limit the maximum size of the input password.  2 bytes
@@ -182,11 +195,10 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	 *	The high bit of salt[0] must be set, each salt in a
 	 *	packet should be unique, and they should be random
 	 *
-	 *	So, we set the high bit, add in a counter, and then
-	 *	add in some PRNG data.  should be OK..
+	 *	So we get 15 bytes of randomness, and set the high bit.
 	 */
 	r = fr_fast_rand(&packet_ctx->rand_ctx);
-	tpasswd[0] = (0x80 | (((packet_ctx->salt_offset++) & 0x07) << 4) | ((r >> 8) & 0x0f));
+	tpasswd[0] = (0x80 | ((r >> 8) & 0x7f));
 	tpasswd[1] = r & 0xff;
 	tpasswd[2] = inlen;	/* length of the password string */
 
@@ -416,11 +428,14 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	If the first byte of the string value looks like a
 	 *	tag, then we always encode a tag byte, even one that
 	 *	is zero.
+	 *
+	 *	And for Tunnel-Password, we always encode a tag byte.
 	 */
 	if ((vp->vp_type == FR_TYPE_STRING) && fr_radius_flag_has_tag(vp->da)) {
 		if (packet_ctx->tag) {
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)packet_ctx->tag);
-		} else if (TAG_VALID(vp->vp_strvalue[0])) {
+		} else if (TAG_VALID(vp->vp_strvalue[0]) ||
+			   (fr_radius_flag_encrypted(da) == RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)0x00);
 		}
 	}
@@ -463,12 +478,31 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		break;
 
 	/*
-	 *	Common encoder doesn't add reserved byte
+	 *	Common encoder doesn't add reserved byte, so we add one here to be compliant with RFC 8044
+	 *	Section 3.11.
 	 */
 	case FR_TYPE_IPV4_PREFIX:
 	ipv4_prefix:
-		FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, vp->vp_ip.prefix);
-		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *)&vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+		if (!vp->vp_ipv4addr) {
+			/*
+			 *	If the ipaddr is all zeros, then the prefix length MUST be set to 32.
+			 */
+			FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00);
+		} else {
+			uint32_t ipaddr = vp->vp_ipv4addr;
+
+			FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, vp->vp_ip.prefix);
+
+			if (vp->vp_ip.prefix == 0) {
+				ipaddr = 0;
+
+			} else if (vp->vp_ip.prefix < 32) {
+				ipaddr &= htonl(~((1UL << (32 - vp->vp_ip.prefix)) - 1));
+
+			} /* else leave ipaddr alone */
+
+			FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *) &ipaddr, sizeof(ipaddr));
+		}
 		break;
 
 	/*
@@ -507,6 +541,11 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	}
 
 	/*
+	 *	We don't encode encrypted attributes in foreign protocols.
+	 */
+	if (packet_ctx->foreign && (fr_radius_flag_encrypted(da) != RADIUS_FLAG_ENCRYPT_NONE)) goto return_0;
+
+	/*
 	 *	Encrypt the various password styles
 	 *
 	 *	Attributes with encrypted values MUST be less than
@@ -523,9 +562,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		break;
 
 	case RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD:
-	{
-		bool has_tag = fr_radius_flag_has_tag(vp->da);
-
 		fr_assert(packet_ctx->code < FR_RADIUS_CODE_MAX);
 		if (!allow_tunnel_passwords[packet_ctx->code]) {
 			fr_strerror_printf("Attributes with 'encrypt=Tunnel-Password' set cannot go into %s.",
@@ -533,33 +569,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			goto return_0;
 		}
 
-		/*
-		 *	Always encode the tag even if it's zero.
-		 *
-		 *	The Tunnel-Password uses 2 salt fields which
-		 *	MAY have any value.  As a result, we always
-		 *	encode a tag.  If we would omit the tag, then
-		 *	perhaps one of the salt fields could be
-		 *	mistaken for the tag.
-		 */
-		if (has_tag) fr_dbuff_advance(&work_dbuff, 1);
-
 		slen = encode_tunnel_password(&work_dbuff, &value_start, fr_dbuff_used(&value_dbuff), packet_ctx);
-		if (slen < 0) {
-			fr_strerror_printf("%s too long", vp->da->name);
-			return slen - has_tag;
-		}
+		if (slen < 0) return slen;
 
-		/*
-		 *	Do this after so we don't mess up the input
-		 *	value.
-		 */
-		if (has_tag) {
-			fr_dbuff_set_to_start(&value_start);
-			fr_dbuff_in(&value_start, (uint8_t) 0x00);
-		}
 		encrypted = true;
-	}
 		break;
 
 	/*
@@ -573,7 +586,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	there can pass a marker so we can use it here, too.
 		 */
 		slen = fr_radius_ascend_secret(&work_dbuff, fr_dbuff_current(&value_start), fr_dbuff_used(&value_dbuff),
-					       packet_ctx->common->secret, packet_ctx->request_authenticator);
+					       packet_ctx->common->secret, packet_ctx->common->secret_length,
+					       packet_ctx->request_authenticator);
 		if (slen < 0) return slen;
 		encrypted = true;
 		break;
@@ -1380,7 +1394,7 @@ static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
 			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, p, frag_len);
 			fr_dbuff_in(&hdr, (uint8_t) UINT8_MAX);
 
-			fr_dbuff_marker(&hdr, &work_dbuff);
+			fr_dbuff_set(&hdr, &work_dbuff);
 			fr_dbuff_advance(&hdr, 1);
 			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 0x02);
 			attr_len = 2;
@@ -1416,7 +1430,7 @@ static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
 		 *	overflow.  Create a new header with the zero
 		 *	byte already populated, and keep going.
 		 */
-		fr_dbuff_marker(&hdr, &work_dbuff);
+		fr_dbuff_set(&hdr, &work_dbuff);
 		fr_dbuff_advance(&hdr, 1);
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 0x00, 0x00);
 		attr_len = 3;
@@ -1466,7 +1480,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 		 */
 		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
 		    (da_stack->da[depth]->attr > UINT8_MAX)) {
-			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__, vp->da->attr);
+			(void) fr_dcursor_next(cursor);
 			return 0;
 		}
 		break;
@@ -1689,6 +1703,14 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	}
 
 	/*
+	 *	We didn't encode any data, continue.
+	 */
+	if (!slen) {
+		fr_assert(fr_dcursor_current(cursor) != vp);
+		return 0;
+	}
+
+	/*
 	 *	We couldn't do it, so we didn't do anything.
 	 */
 	if (fr_dcursor_current(cursor) == vp) {
@@ -1704,6 +1726,7 @@ ssize_t	fr_radius_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
        	fr_radius_ctx_t common_ctx = {};
 	fr_radius_encode_ctx_t encode_ctx = {
 		.common = &common_ctx,
+		.foreign = true,		/* we are being called from a foreign protocol */
 	};
 
 	/*
@@ -1734,8 +1757,8 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 
 	test_ctx->common = common = talloc_zero(test_ctx, fr_radius_ctx_t);
 
-	common->secret = talloc_strdup(test_ctx->common, "testing123");
-	common->secret_length = talloc_array_length(test_ctx->common->secret) - 1;
+	common->secret = talloc_strdup(common, "testing123");
+	common->secret_length = talloc_strlen(common->secret);
 
 	/*
 	 *	We don't want to automatically add Message-Authenticator
@@ -1792,7 +1815,7 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	if (slen <= 0) return slen;
 
 	if (fr_radius_sign(data, request_authenticator,
-			   (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1) < 0) {
+			   (uint8_t const *) packet_ctx->common->secret, talloc_strlen(packet_ctx->common->secret)) < 0) {
 		return -1;
 	}
 

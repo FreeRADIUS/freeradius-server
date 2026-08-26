@@ -1,0 +1,8 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.18[Reply-Message]  |A text message that may be shown to the user.
+
+|https://datatracker.ietf.org/doc/html/rfc6911#section-3.3[Route-IPv6-Information]  |Defines the prefix and route for the user on the NAS.
+
+|====

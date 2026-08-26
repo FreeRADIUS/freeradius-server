@@ -1,0 +1,11 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "kafka-test-user"
+User-Password = "hunter2"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

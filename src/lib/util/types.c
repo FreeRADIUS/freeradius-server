@@ -86,6 +86,64 @@ fr_table_num_ordered_t const fr_type_table[] = {
 };
 size_t fr_type_table_len = NUM_ELEMENTS(fr_type_table);
 
+/** Map each `fr_type_t` to the C identifier of its enum constant.
+ *
+ * The complement of fr_type_table - that one maps to the short
+ * "string", "ipv4addr", "uint32" names used in dictionaries and conf
+ * files; this maps to the source-identical FR_TYPE_STRING /
+ * FR_TYPE_IPV4_ADDR / FR_TYPE_UINT32 forms, for tooling that wants
+ * to grep the v4 source tree by enum name (radmod2json, etc.).
+ *
+ * Stored as `fr_table_num_indexed_t` so fr_table_str_by_value() can
+ * do the value->name look-up through v4's standard table machinery;
+ * the table is indexed directly by `fr_type_t` value (gaps return
+ * the default).
+ */
+static fr_table_num_indexed_t const fr_type_to_enum_str_table[] = {
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_NULL),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_STRING),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_OCTETS),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_IPV4_ADDR),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_IPV4_PREFIX),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_IPV6_ADDR),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_IPV6_PREFIX),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_IFID),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_COMBO_IP_ADDR),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_COMBO_IP_PREFIX),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_ETHERNET),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_BOOL),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_UINT8),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_UINT16),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_UINT32),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_UINT64),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_INT8),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_INT16),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_INT32),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_INT64),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_FLOAT32),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_FLOAT64),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_DATE),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_TIME_DELTA),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_SIZE),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_TLV),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_STRUCT),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_VSA),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_VENDOR),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_GROUP),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_UNION),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_VALUE_BOX),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_ATTR),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_VOID),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_VALUE_BOX_CURSOR),
+	FR_TABLE_INDEXED_ENTRY(FR_TYPE_PAIR_CURSOR),
+};
+static size_t fr_type_to_enum_str_table_len = NUM_ELEMENTS(fr_type_to_enum_str_table);
+
+char const *fr_type_to_enum_str(fr_type_t t)
+{
+	return fr_table_str_by_value(fr_type_to_enum_str_table, t, "FR_TYPE_NULL");
+}
+
 /** Table of all the direct mappings between types and C types
  *
  * Useful for setting talloc types correctly.

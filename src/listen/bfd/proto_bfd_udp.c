@@ -22,7 +22,6 @@
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/bfd/bfd.h>
@@ -151,7 +150,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Try to find the client before looking at any packet data.
 	 */
-	client =  fr_rb_find(inst->peers, &(fr_client_t) { .ipaddr = address->socket.inet.src_ipaddr, .proto = IPPROTO_UDP });
+	fr_rb_find((void **)&client, inst->peers, &(fr_client_t) { .ipaddr = address->socket.inet.src_ipaddr, .proto = IPPROTO_UDP });
 	if (!client) {
 		DEBUG2("BFD %s - Received invalid packet on %s - unknown client %pV:%u", inst->server_name, thread->name,
 		       fr_box_ipaddr(address->socket.inet.src_ipaddr), address->socket.inet.src_port);
@@ -188,7 +187,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	wrapper->type = BFD_WRAPPER_RECV_PACKET;
 	wrapper->state_change = state_change;
 
-	return sizeof(wrapper) + packet_len;
+	return sizeof(*wrapper) + packet_len;
 }
 
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
@@ -253,7 +252,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		PERROR("Failed opening UDP socket");
+		cf_log_err(li->cs, "Failed opening UDP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -268,7 +267,8 @@ static int mod_open(fr_listen_t *li)
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
-			ERROR("Failed to set socket 'reuseport': %s", fr_syserror(errno));
+			cf_log_err(li->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
+			close(sockfd);
 			return -1;
 		}
 	}
@@ -279,7 +279,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->recv_buff;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
-			WARN("Failed setting 'recv_buf': %s", fr_syserror(errno));
+			cf_log_warn(li->cs, "Failed setting 'recv_buf' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -290,7 +290,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->send_buff;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
-			WARN("Failed setting 'send_buf': %s", fr_syserror(errno));
+			cf_log_warn(li->cs, "Failed setting 'send_buf' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -301,7 +301,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->ttl;
 		if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, &opt, sizeof(opt)) < 0) {
-			WARN("Failed setting 'ttl': %s", fr_syserror(errno));
+			cf_log_warn(li->cs, "Failed setting 'ttl' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -311,7 +311,8 @@ static int mod_open(fr_listen_t *li)
 	 */
 	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
-		PERROR("Failed binding socket");
+		cf_log_err(li->cs, "Failed binding socket - %s", fr_strerror());
+		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 		goto error;
 	}
 
@@ -399,7 +400,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			return -1;
 		}
 
-		inst->port = ntohl(s->s_port);
+		inst->port = ntohs(s->s_port);
 	}
 
 	/*
@@ -474,10 +475,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	proto_bfd_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
+	fr_client_t		*client;
 
 	if (ipproto != IPPROTO_UDP) return NULL;
 
-	return fr_rb_find(inst->peers, &(fr_client_t) { .ipaddr = *ipaddr, .proto = IPPROTO_UDP });
+	fr_rb_find((void **)&client, inst->peers, &(fr_client_t) { .ipaddr = *ipaddr, .proto = IPPROTO_UDP });
+
+	return client;
 }
 
 /** Set the event list for a new socket

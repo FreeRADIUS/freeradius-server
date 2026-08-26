@@ -399,12 +399,14 @@ ssize_t _tmpl_to_type(void *out,
 		if (bufflen < len) {
 			REDEBUG("Expansion buffer is too small.  Buffer is %zu bytes, and we need %zu bytes",
 				bufflen, len);
+			return -1;
 		}
 
 		/*
 		 *	Copy the data to the buffer, and clear the alloc'd pointer.
 		 */
-		memcpy(buff, to_cast->vb_octets, len);
+		memcpy(buff, from_cast->vb_octets, len);
+		len = from_cast->vb_length;
 		fr_value_box_clear(&value_from_cast);
 
 		/*
@@ -412,7 +414,7 @@ ssize_t _tmpl_to_type(void *out,
 		 */
 		*(uint8_t **) out = buff;
 
-		return from_cast->vb_length;
+		return len;	/* the amount of data we copied above */
 	}
 
 do_copy:
@@ -584,11 +586,9 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			} else {
 				fr_value_box_steal(vb_out, vb_out, vb_in);
 			}
-			talloc_free(tmp_ctx);
 
 		} else {
 			ret = fr_value_box_cast(vb_out, vb_out, cast_type, NULL, vb_in);
-			talloc_free(tmp_ctx);
 
 			if (ret < 0) {
 				talloc_free(vb_out);
@@ -600,6 +600,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			}
 		}
 
+		talloc_free(tmp_ctx);
 		VALUE_BOX_VERIFY(vb_out);
 		*(fr_value_box_t **) out = vb_out;
 		return 0;
@@ -611,13 +612,16 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 */
 	if (dst_type != vb_in->type) {
 		if (vb_in == &value) {
+			size_t datalen;
+
 			fr_assert(tmp_ctx != NULL);
 			fr_assert(str != NULL);
 			fr_assert(dst_type != FR_TYPE_STRING); /* exec / xlat returned string in 'str' */
 
-			slen = fr_value_box_from_str(ctx, &value, dst_type, NULL, str, (size_t) slen, NULL);
+			datalen = talloc_strlen(str);
+			slen = fr_value_box_from_str(ctx, &value, dst_type, NULL, str, datalen, NULL);
 			if (slen < 0) {
-				fr_value_box_bstrndup_shallow(&value, NULL, str, (size_t) slen, false);
+				fr_value_box_bstrndup_shallow(&value, NULL, str, datalen, false);
 				goto failed_cast;
 			}
 
@@ -987,7 +991,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 				ret = -1;
 				goto fail;
 			}
-			value->datum.int32 = 0;
+			value->datum.uint32 = 0;
 			fr_value_box_list_insert_tail(&list, value);
 		} /* Fall through to being done */
 
@@ -1055,7 +1059,10 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da);
 		if (!value) goto oom;
 
-		if (unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) goto fail;
+		if (unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) {
+			talloc_free(value);
+			goto fail;
+		}
 		fr_value_box_list_insert_tail(&list, value);
 		break;
 	}
@@ -1141,7 +1148,7 @@ int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmp
 		talloc_free(value);
 		return -1;
 	}
-	fr_value_box_bstrndup_shallow(value, NULL, p, talloc_array_length(p) - 1, true);
+	fr_value_box_bstrndup_shallow(value, NULL, p, talloc_strlen(p), true);
 
 	/*
 	 *	Cast the results if necessary.
@@ -1254,6 +1261,7 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 
 		if (tmpl_escape_pre_concat(vpt)) {
 			uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
+
 			/*
 			 *	Sets escaped values, so boxes don't get re-escaped
 			 */
@@ -1308,7 +1316,7 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 	 *	it expects.
 	 */
 	if ((!did_concat && tmpl_escape_pre_concat(vpt)) || tmpl_escape_post_concat(vpt)) {
-		uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
+		if (!uctx) uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
 		if (unlikely(fr_value_box_list_escape_in_place(list, &vpt->rules.escape.box_escape, uctx) < 0)) goto error;
 	}
 
@@ -1378,5 +1386,5 @@ int tmpl_global_init(void)
 
 	fr_atexit_global_once_ret(&ret, _tmpl_global_init, _tmpl_global_free, NULL);
 
-	return 0;
+	return ret;
 }

@@ -1,5 +1,5 @@
 Testing authentication is simple. Edit the `users` file (in v3 this has
-been moved to `raddb/mods-config/files/authorize`), and add the
+been moved to `mods-config/files/authorize`), and add the
 following line of text at the top of the file, before anything else:
 
     testing Cleartext-Password := "password"
@@ -25,3 +25,6 @@ authentication methods now work for the `testing` user:
 The next step is to add more users, and to configure databases. Those
 steps are outside of the scope of this short web page, but the general
 method to use is important, and is outlined in the next section.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

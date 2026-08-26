@@ -1,0 +1,163 @@
+# ---------------------------------------------------------------
+#  Docker Compose Test Environment:
+#
+#   kafka-producer1 (rlm_kafka)
+#         ^           |
+#         |           | kafka.produce
+#         |           v
+#     radclient     kafka (broker)
+#     (via framework  |
+#      exec on same   | consume
+#      container)     v
+#                kafka-consumer
+#                   (one listener line per received
+#                    message + a summary; the test
+#                    framework reads those to verify)
+#
+#  The test framework drives load by exec-ing `radclient` inside the
+#  kafka-producer1 container and sending to the RADIUS listener at
+#  localhost:1812.  Each Access-Request triggers exactly one
+#  kafka.produce.  Keeping load generation in-container means no
+#  separate load-generator service and no inter-container RADIUS hop.
+# ---------------------------------------------------------------
+x-common-config: &id001
+  cap_add:
+  - NET_ADMIN
+  - SYS_PTRACE
+  environment:
+    TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
+services:
+  kafka:
+    # Apache Kafka (KRaft mode, no ZooKeeper).  Previously we used
+    # redpanda here, but its seastar reactor aborts during init with
+    # close() EINVAL on the self-hosted CI runners under every
+    # sandbox/privilege combination we tried, across multiple image
+    # versions.  The apache/kafka JVM image starts cleanly in the
+    # same environment.
+    image: apache/kafka:3.9.1
+    environment:
+      #  Single-node KRaft combined controller + broker.  `kafka` is
+      #  the compose service name and is what the other containers
+      #  connect to.
+      KAFKA_NODE_ID: "0"
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      #  Single-node, so replicas and the transaction log must all
+      #  fit on one broker.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      #  Auto-create topics on first produce (kcat + rlm_kafka both
+      #  rely on this in the tests).
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    restart: unless-stopped
+    #
+    #  JVM startup is faster than seastar's probing but still needs
+    #  a grace period before the controller topic is ready.
+    #
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 60s
+
+  kafka-producer1:
+    image: ${FREERADIUS_IMAGE}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+    - ${DATA_PATH}/freeradius/kafka-producer1/radiusd.conf:/etc/freeradius/radiusd.conf
+    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
+    - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    #
+    #  proto_load runs the generator to completion and then radiusd
+    #  exits normally.  If docker restarts the container at that point
+    #  the next generator run duplicates traffic and races the test
+    #  framework's verify phase.  Let it exit once and stay exited.
+    #
+    restart: "no"
+    environment:
+      #
+      #  YAML's `<<:` anchor merge doesn't union nested dicts, so
+      #  declaring an `environment:` block on the service replaces
+      #  the one inherited from x-common-config.  Re-include the
+      #  shared vars here.
+      #
+      TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
+      #
+      #  proto_load profile - read by the `listen load { step { ... } }`
+      #  block in this container's radiusd.conf.  The test's loadgen:
+      #  dict in its .test.yml feeds these.
+      #
+      TEST_LOADGEN_START_PPS:    "{{ loadgen.start_pps }}"
+      TEST_LOADGEN_MAX_PPS:      "{{ loadgen.max_pps }}"
+      TEST_LOADGEN_DURATION:     "{{ loadgen.duration }}"
+      TEST_LOADGEN_STEP:         "{{ loadgen.step }}"
+      TEST_LOADGEN_MAX_BACKLOG:  "{{ loadgen.max_backlog }}"
+      TEST_LOADGEN_PARALLEL:     "{{ loadgen.parallel }}"
+      #
+      #  Hard cap on packets emitted.  Tests that want the emit
+      #  count to equal the consume count default this to
+      #  `expected_messages`; tests where some loss is expected
+      #  (e.g. the reconnect test, where a brief outage can fail a
+      #  small fraction of in-flight produces) override with a
+      #  larger `loadgen_max_requests`.
+      #
+      TEST_LOADGEN_MAX_REQUESTS: "{{ loadgen_max_requests | default(expected_messages) }}"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'Message-Authenticator = 0x00' | radclient localhost:1812 status testing123"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+    #  The env-setup source installs iproute2 so tests that need to
+    #  apply netem qdiscs (e.g. the reconnect test's packet_loss
+    #  action) have `tc` available inside the container.  Harmless
+    #  no-op for tests that don't.
+    entrypoint:
+    - bash
+    - -c
+    - |
+      source /tmp/env-setup.sh && \
+      exec /docker-entrypoint.sh "$@"
+    - --
+    command: ["freeradius", "-l", "stdout", "-xxx", "-f", "-n", "radiusd"]
+    <<: *id001
+
+  kafka-consumer:
+    image: confluentinc/cp-kcat:latest
+    # cp-kcat defaults to uid 1000 (appuser).  On the self-hosted CI
+    # runners the bind-mounted listener dir is owned by root with
+    # mode 0755, so the default user can't write its summary line
+    # ("Permission denied").  Force root to sidestep the ownership
+    # mismatch - the image has nothing privileged worth protecting.
+    user: "0:0"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-producer1:
+        condition: service_healthy
+    volumes:
+    - ${DATA_PATH}/kafka-consumer/consume.sh:/usr/local/bin/consume.sh
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    environment:
+      TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      TEST_KAFKA_BROKER: kafka:9092
+      TEST_KAFKA_TOPIC: {{ kafka_topic | default('fr-multi-server-test') }}
+      TEST_EXPECTED_MESSAGES: "{{ expected_messages }}"
+      TEST_CONSUMER_TIMEOUT: "{{ consumer_timeout | default(30) }}"
+    entrypoint:
+    - bash
+    - /usr/local/bin/consume.sh
+    restart: "no"
+    <<: *id001

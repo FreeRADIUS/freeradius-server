@@ -46,7 +46,7 @@ static bool verify_tlvs(uint8_t const *data, size_t data_len)
 	while (p < end) {
 		if ((end - p) < 2) return false;
 
-		if ((p + p[1]) > end) return false;
+		if ((p + 2 + p[1]) > end) return false;
 
 		p += 2 + p[1];
 	}
@@ -369,13 +369,15 @@ finish:
 static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	ssize_t			len;
+	size_t			len;
+	ssize_t			slen;
 	uint8_t			option_len;
 	uint32_t		pen;
 	fr_pair_t		*vp;
 	fr_dict_attr_t const	*vendor;
 	uint8_t const		*end = data + data_len;
 	uint8_t const		*p = data;
+	fr_pair_list_t		list;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_vsa");
 
@@ -383,14 +385,29 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'vsa'",
 				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
+	fr_pair_list_init(&list);
+
 next:
 	/*
-	 *	We need at least 4 (PEN) + 1 (data-len) + 1 (vendor option num) to be able to decode vendor
-	 *	specific attributes.  If we don't have that, then we return an error.  The caller will free
-	 *	the VSA, and create a "raw.VSA" attribute.
+	 *	RFC 4243 Section 3 says that "the minimum length is 4 bytes."
 	 */
-	if ((size_t)(end - p) < (sizeof(uint32_t) + 1 + 1)) {
+	len = (size_t) (end - p);
+	if (len < (sizeof(uint32_t))) {
+fail:
+		fr_pair_list_free(&list);
 		return -1;
+	}
+
+	/*
+	 *	RFC 4243 is silent about this, but we assime that anything with no vendor data means that we
+	 *	ignore it.  i.e. we don't create an empty vendor attribute.
+	 */
+	if (len == (sizeof(uint32_t) + 1)) {
+		/*
+		 *	There's no more data, so this length field must be zero.
+		 */
+		if (p[4] != 0) goto fail;
+		goto done;
 	}
 
 	pen = fr_nbo_to_uint32(p);
@@ -408,19 +425,28 @@ next:
 		fr_dict_attr_t *n;
 
 		n = fr_dict_attr_unknown_vendor_afrom_num(ctx, parent, pen);
-		if (!n) return PAIR_DECODE_OOM;
+		if (!n) {
+		oom:
+			fr_pair_list_free(&list);
+			return PAIR_DECODE_OOM;
+		}
 		vendor = n;
 	}
 	p += sizeof(uint32_t);
+
+	/*
+	 *	No more data, we're done.
+	 */
+	if (p == end) goto done;
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor->name);
 
 	option_len = p[0];
 	if ((p + 1 + option_len) > end) {
-		len = fr_pair_raw_from_network(ctx, out, vendor, p, end - p);
-		if (len < 0) return len;
+		slen = fr_pair_raw_from_network(ctx, out, vendor, p, end - p);
+		if (slen < 0) goto fail;
 
-		return data_len + 2; /* decoded the whole thing */
+		goto done;
 	}
 	p++;
 
@@ -432,14 +458,14 @@ next:
 	vp = fr_pair_find_by_da(out, NULL, vendor);
 	if (!vp) {
 		vp = fr_pair_afrom_da(ctx, vendor);
-		if (!vp) return PAIR_DECODE_FATAL_ERROR;
+		if (!vp) goto oom;
 		PAIR_ALLOCED(vp);
 
 		fr_pair_append(out, vp);
 	}
 
-	len = fr_pair_tlvs_from_network(vp, &vp->vp_group, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
-	if (len < 0) return len;
+	slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
+	if (slen < 0) goto fail;
 
 	p += option_len;
 	if (p < end) goto next;
@@ -447,7 +473,9 @@ next:
 	/*
 	 *	Tell the caller we read all of it, even if we didn't.
 	 */
-	return data_len + 2;
+done:
+	fr_pair_list_append(out, &list);
+	return data_len;
 }
 
 
@@ -480,7 +508,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	dhcpv4 root, OR inside of option 43.  It could be
 	 *	argued that it's wrong for all other TLVs.
 	 */
-	if ((data_len == 1) && ((data[0] == 0) || (data[1] == 255))) return data_len;
+	if ((data_len == 1) && ((data[0] == 0) || (data[0] == 255))) return data_len;
 
 	/*
 	 *	Must have at least an option header.
@@ -619,7 +647,6 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		q = concat_buffer;
 
 		for (next = data; next < end; next += 2 + next[1]) {
-			if (next >= end) return -1;
 			if (next[0] != data[0]) break;
 			if ((end - next) < 2) return -1;
 			if ((next + 2 + next[1]) > end) return -1;
@@ -629,8 +656,6 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			memcpy(q, next + 2, next[1]);
 			q += next[1];
 		}
-
-		if (q == concat_buffer) return 0;
 
 		da = fr_dict_attr_child_by_num(packet_ctx->root, p[0]);
 		if (!da) {
@@ -648,6 +673,9 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		} else if (da->flags.array) {
 			slen = fr_pair_array_from_network(ctx, out, da, concat_buffer, q - concat_buffer, packet_ctx, decode_value);
+		} else if ((da->type == FR_TYPE_STRING) && fr_dhcpv4_flag_dns_label(da)) {
+			slen = fr_pair_dns_labels_from_network(ctx, out, da, concat_buffer, concat_buffer,
+							       q - concat_buffer, NULL, true);
 
 		} else {
 			slen = decode_value(ctx, out, da, concat_buffer, q - concat_buffer, packet_ctx);

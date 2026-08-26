@@ -810,7 +810,7 @@ static inline fr_dict_attr_t const *tmpl_attr_tail_da(tmpl_t const *vpt)
 	return ar->ar_da;
 }
 
-/** Return true if the the last attribute reference is a leaf attribute
+/** Return true if the last attribute reference is a leaf attribute
  *
  * @hidecallergraph
  */
@@ -828,7 +828,7 @@ static inline bool tmpl_attr_tail_da_is_leaf(tmpl_t const *vpt)
 	return fr_type_is_leaf(ar->ar_da->type);
 }
 
-/** Return true if the the last attribute reference is a structural attribute
+/** Return true if the last attribute reference is a structural attribute
  *
  * @hidecallergraph
  */
@@ -980,8 +980,8 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    tmpl_pair_list_and_ctx(ctx, head, request, CURRENT_REQUEST, request_attr_request);
    if (!list) return -1; // error
 
-   value.strvalue = talloc_typed_strdup(NULL, "my new username");
-   value.length = talloc_array_length(value.strvalue) - 1;
+   value.strvalue = talloc_strdup(NULL, "my new username");
+   value.length = talloc_strlen(value.strvalue);
  @endcode
  *
  * @param _ctx new #fr_pair_t s should be allocated in for the specified list.
@@ -1009,8 +1009,8 @@ typedef enum {
 	TMPL_ATTR_ERROR_LIST_MISSING,			//!< List qualifier is required, but missing.
 	TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED,		//!< Attribute specified as OID, could not be
 							///< found in the dictionaries, and is disallowed
-							///< because 'disallow_internal' in tmpl_rules_t
-							///< is trie.
+							///< because 'allow_unknown' in tmpl_rules_t
+							///< is false.
 	TMPL_ATTR_ERROR_UNRESOLVED_NOT_ALLOWED,		//!< Attribute couldn't be found in the dictionaries.
 	TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED,	//!< Attribute must be qualified to be used here.
 	TMPL_ATTR_ERROR_INVALID_NAME,			//!< Attribute ref length is zero, or longer than
@@ -1083,7 +1083,7 @@ TALLOC_CTX		*tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list);
 
 fr_slen_t		tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in) CC_HINT(nonnull);
 
-tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4));
+tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4)) CC_HINT(format (printf, 4, 5));
 
 tmpl_t			*tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
 					   char const *name, ssize_t len,
@@ -1157,7 +1157,7 @@ fr_slen_t		tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 							   fr_sbuff_t *in);
 /** @} */
 
-void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,3));
+void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,3)) CC_HINT(format(printf, 3, 4));
 
 void			tmpl_set_name_shallow(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
 
@@ -1184,8 +1184,6 @@ int			tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
 int			tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 void			tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t num) CC_HINT(nonnull);
-
-void			tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) const *request_def) CC_HINT(nonnull);
 
 void			tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list) CC_HINT(nonnull);
 

@@ -29,42 +29,29 @@ typedef struct request_s request_t;
 
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/command.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/map.h>
-#include <freeradius-devel/server/tmpl.h>
 #ifdef WITH_TLS
 #  include <freeradius-devel/tls/base.h>
 #endif
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/util/lsan.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/file.h>
-#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <freeradius-devel/util/dict_priv.h>
-
-#include <ctype.h>
-
-#ifdef __clangd__
-#  undef HAVE_SANITIZER_LSAN_INTERFACE_H
-#endif
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  include <sanitizer/asan_interface.h>
-#endif
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -73,15 +60,9 @@ typedef struct request_s request_t;
 #include <assert.h>
 #include <fcntl.h>
 #include <libgen.h>
-#include <limits.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-
-#ifndef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  define ASAN_POISON_MEMORY_REGION(_start, _end)
-#  define ASAN_UNPOISON_MEMORY_REGION(_start, _end)
-#endif
 
 #define EXIT_WITH_FAILURE \
 do { \
@@ -203,9 +184,9 @@ typedef struct {
 typedef struct {
 	fr_dict_t 		*dict;			//!< Dictionary to "reset" to.
 	fr_dict_gctx_t const	*dict_gctx;		//!< Dictionary gctx to "reset" to.
-	char const		*raddb_dir;
+	char const		*confdir;
 	char const		*dict_dir;
-	char const		*fuzzer_dir;		//!< Where to write fuzzer files.
+	char const		*fuzzer_base_dir;      	//!< Base directory of where to write fuzzer files, from '-F'
 	CONF_SECTION		*features;		//!< Enabled features.
 } command_config_t;
 
@@ -228,7 +209,9 @@ typedef struct {
 	fr_dict_t		*test_internal_dict;	//!< Internal dictionary of test_gctx.
 	fr_dict_gctx_t const	*test_gctx;		//!< Dictionary context for test dictionaries.
 
-	int			fuzzer_dir;		//!< File descriptor pointing to a a directory to
+	char			*fuzzer_proto_dir;     	//!< Subdirectory of where to write fuzzer files,
+							//!< from 'fuzzer-out dir'.
+	int			fuzzer_fd;		//!< File descriptor pointing to a a directory to
 							///< write fuzzer output.
 	command_config_t const	*config;
 } command_file_ctx_t;
@@ -437,6 +420,9 @@ static inline size_t strerror_concat(char *out, size_t outlen)
 	char *p = out;
 	char const *err;
 
+	strcpy(out, "ERROR: ");
+	p += 7;
+
 	while ((p < end) && (err = fr_strerror_pop())) {
 		if (*fr_strerror_peek()) {
 			p += snprintf(p, end - p, "%s: ", err);
@@ -551,6 +537,7 @@ static ssize_t encode_data_string(char *buffer, uint8_t *output, size_t outlen)
 			break;
 		}
 
+		p += 2;
 		outlen--;
 		slen++;
 	}
@@ -597,7 +584,7 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 	uint8_t		*out_p = out, *out_end = out_p + outlen;
 
 	while (p < end) {
-		char *c1, *c2;
+		char const *c1, *c2;
 
 		if (out_p >= out_end) {
 			fr_strerror_const("Would overflow output buffer");
@@ -608,15 +595,17 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 
 		if (!*p) break;
 
-		c1 = memchr(hextab, tolower((uint8_t) *p++), sizeof(hextab));
+		c1 = memchr(hextab, tolower((uint8_t) *p), sizeof(hextab) - 1);
 		if (!c1) {
 		bad_input:
 			fr_strerror_printf("Invalid hex data starting at \"%s\"", p);
 			return -(p - in);
 		}
+		p++;
 
-		c2 = memchr(hextab, tolower((uint8_t)*p++), sizeof(hextab));
+		c2 = memchr(hextab, tolower((uint8_t) *p), sizeof(hextab) - 1);
 		if (!c2) goto bad_input;
+		p++;
 
 		*out_p++ = ((c1 - hextab) << 4) + (c2 - hextab);
 	}
@@ -1022,7 +1011,7 @@ static fr_dict_t *dictionary_current(command_file_ctx_t *cc)
 static int dictionary_load_common(command_result_t *result, command_file_ctx_t *cc, char const *in, char const *default_subdir)
 {
 	char const	*dir;
-	char		*q;
+	char const	*q;
 	char const	*name;
 	char		*tmp = NULL;
 	int		ret;
@@ -1082,7 +1071,7 @@ static size_t parse_typed_value(command_result_t *result, command_file_ctx_t *cc
 	if (fr_type_is_null(type)) {
 		RETURN_PARSE_ERROR(0);
 	}
-	fr_assert(match_len < inlen);
+	fr_assert(match_len <= inlen);
 
 	p = in + match_len;
 	fr_skip_whitespace(p);
@@ -1302,7 +1291,7 @@ static size_t command_attr_children(command_result_t *result, command_file_ctx_t
 		if (slen <= 0) RETURN_OK_WITH_ERROR();
 	}
 
-	fr_sbuff_trim(&out, (bool[UINT8_MAX + 1]){ [' '] = true, [','] = true });
+	fr_sbuff_trim(&out, (bool[SBUFF_CHAR_CLASS]){ [' '] = true, [','] = true });
 
 	RETURN_OK(fr_sbuff_used(&out));
 }
@@ -1364,7 +1353,7 @@ static size_t command_attr_type(command_result_t *result, command_file_ctx_t *cc
 	RETURN_OK(slen);
 }
 
-static const fr_token_t token2op[UINT8_MAX + 1] = {
+static const fr_token_t token2op[SBUFF_CHAR_CLASS] = {
 	[ '+' ] = T_ADD,
 	[ '-' ] = T_SUB,
 	[ '*' ] = T_MUL,
@@ -1589,7 +1578,7 @@ static size_t command_cd(command_result_t *result, command_file_ctx_t *cc,
 
 	strlcpy(data, cc->path, COMMAND_OUTPUT_MAX);
 
-	RETURN_OK(talloc_array_length(cc->path) - 1);
+	RETURN_OK(talloc_strlen(cc->path));
 }
 
 /*
@@ -1780,9 +1769,12 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	fr_test_point_pair_decode_t	*tp = NULL;
 	void		*decode_ctx = NULL;
 	char		*p;
-	uint8_t		*to_dec;
+	uint8_t		*to_dec, *to_dec_start;
 	uint8_t		*to_dec_end;
 	ssize_t		slen;
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+	size_t		poison_size;
+#endif
 
 	fr_dict_attr_t	const *da;
 	fr_pair_t	*head;
@@ -1829,10 +1821,13 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_PARSE_ERROR(-(slen));
 	}
 
-	to_dec = (uint8_t *)data;
+	to_dec = to_dec_start = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
 
-	ASAN_POISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+	poison_size = COMMAND_OUTPUT_MAX - slen;
+#endif
+	ASAN_POISON_MEMORY_REGION(to_dec_end, poison_size);
 
 	/*
 	 *	Run the input data through the test
@@ -1841,15 +1836,16 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	while (to_dec < to_dec_end) {
 		slen = tp->func(head, &head->vp_group, cc->tmpl_rules.attr.namespace,
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
+
 		cc->last_ret = slen;
 		if (slen <= 0) {
-			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 			CLEAR_TEST_POINT(cc);
 			RETURN_OK_WITH_ERROR();
 		}
 		if ((size_t)slen > (size_t)(to_dec_end - to_dec)) {
 			fr_perror("%s: Internal sanity check failed at %d", __FUNCTION__, __LINE__);
-			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 			CLEAR_TEST_POINT(cc);
 			RETURN_COMMAND_ERROR();
 		}
@@ -1860,7 +1856,12 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	Clear any spurious errors
 	 */
 	fr_strerror_clear();
-	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
+
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, in, to_dec_start, (to_dec - to_dec_start)) < 0)) {
+		RETURN_COMMAND_ERROR();
+	}
 
 	/*
 	 *	Output may be an error, and we ignore
@@ -1881,10 +1882,12 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	fr_test_point_proto_decode_t	*tp = NULL;
 	void		*decode_ctx = NULL;
 	char		*p;
-	uint8_t		*to_dec;
+	uint8_t		*to_dec, *to_dec_start;
 	uint8_t		*to_dec_end;
 	ssize_t		slen;
-
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+	size_t		poison_size;
+#endif
 	fr_dict_attr_t	const *da;
 	fr_pair_t	*head;
 
@@ -1930,16 +1933,19 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_PARSE_ERROR(-(slen));
 	}
 
-	to_dec = (uint8_t *)data;
+	to_dec = to_dec_start = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
 
-	ASAN_POISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+	poison_size = COMMAND_OUTPUT_MAX - slen;
+#endif
+	ASAN_POISON_MEMORY_REGION(to_dec_end, poison_size);
 
 	slen = tp->func(head, &head->vp_group,
 			(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 	cc->last_ret = slen;
 	if (slen <= 0) {
-		ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+		ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -1948,7 +1954,12 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	 *	Clear any spurious errors
 	 */
 	fr_strerror_clear();
-	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
+
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, in, to_dec_start, slen) < 0)) {
+		RETURN_COMMAND_ERROR();
+	}
 
 	/*
 	 *	Output may be an error, and we ignore
@@ -1975,6 +1986,44 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
 					  	 char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	if (fr_dict_parse_str(dictionary_current(cc), in, cc->tmpl_rules.attr.namespace) < 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(strlcpy(data, "ok", COMMAND_OUTPUT_MAX));
+}
+
+/** Read a dictionary from a file, and then free it.
+ *
+ */
+static size_t command_dictionary_read(command_result_t *result, command_file_ctx_t *cc,
+				      char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	int ret;
+	char *filename, *dir = NULL;
+	char *p;
+	fr_dict_t *dict;
+
+	fr_dict_global_ctx_set(cc->config->dict_gctx);
+
+	if (in[0] == '\0') {
+		fr_strerror_const("Missing dictionary name");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	p = strchr(in, ' ');
+	if (p) *p = '\0';
+
+	filename = in;
+	if (*filename != '/') {
+		dir = cc->path;
+
+	}
+
+	/*
+	 *	Load the dictionary, and then immediately free it.  This lets each run proceed independently.
+	 */
+	ret = fr_dict_afrom_file(&dict, dir, filename);
+	if (ret < 0) RETURN_OK_WITH_ERROR();
+
+	talloc_free(dict);
 
 	RETURN_OK(strlcpy(data, "ok", COMMAND_OUTPUT_MAX));
 }
@@ -2043,8 +2092,8 @@ size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc
 		if (next) *next = 0;
 	}
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, in, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, in, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -2254,8 +2303,8 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 	CLEAR_TEST_POINT(cc);
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, p, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, p, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -2398,8 +2447,8 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 
 	CLEAR_TEST_POINT(cc);
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, p, cc->buffer_start, slen) < 0)) {
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, p, cc->buffer_start, slen) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -2418,35 +2467,25 @@ static size_t command_eof(UNUSED command_result_t *result, UNUSED command_file_c
 	return 0;
 }
 
-/** Enable fuzzer output
- *
- * Any commands that produce potentially useful corpus seed data will write that out data
- * to files in the specified directory, using the md5 of the text input at as the file name.
+/** Helper function to open a fuzzer path, and update the name / FD.
  *
  */
-static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *cc,
-				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+static int fuzzer_open_fd(command_file_ctx_t *cc, char **out, char const *base, char const *dir)
 {
 	int	fd;
 	struct	stat sdir;
-	char	*fuzzer_dir;
+	char	*fuzzer_dir = NULL;
 	bool	retry_dir = true;
 
 	/*
 	 *	Close any open fuzzer output dirs
 	 */
-	if (cc->fuzzer_dir >= 0) {
-		close(cc->fuzzer_dir);
-		cc->fuzzer_dir = -1;
+	if (cc->fuzzer_fd >= 0) {
+		close(cc->fuzzer_fd);
+		cc->fuzzer_fd = -1;
 	}
 
-	if (in[0] == '\0') {
-		fr_strerror_const("Missing directory name");
-		RETURN_PARSE_ERROR(0);
-	}
-
-	fuzzer_dir = talloc_asprintf(cc->tmp_ctx, "%s/%s",
-				     cc->config->fuzzer_dir ? cc->config->fuzzer_dir : cc->path, in);
+	fuzzer_dir = talloc_asprintf(cc, "%s/%s", base, dir);
 
 again:
 	fd = open(fuzzer_dir, O_RDONLY);
@@ -2464,23 +2503,54 @@ again:
 		}
 
 		fr_strerror_printf("fuzzer-out \"%s\" doesn't exist: %s", fuzzer_dir, fr_syserror(errno));
-		RETURN_PARSE_ERROR(0);
+		return -1;
 	}
 
 stat:
 	if (fstat(fd, &sdir) < 0) {
 		close(fd);
 		fr_strerror_printf("failed statting fuzzer-out \"%s\": %s", fuzzer_dir, fr_syserror(errno));
-		RETURN_PARSE_ERROR(0);
+		return -1;
 	}
 
 	if (!(sdir.st_mode & S_IFDIR)) {
 		close(fd);
 		fr_strerror_printf("fuzzer-out \"%s\" is not a directory", fuzzer_dir);
+		return -1;
+	}
+
+	cc->fuzzer_fd = fd;
+
+	talloc_free(*out);
+	*out = fuzzer_dir;
+
+	return 0;
+}
+
+/** Enable fuzzer output
+ *
+ *  Any commands that produce potentially useful corpus seed data will write that out data
+ *  to files in the specified directory, using the md5 of the text input at as the file name.
+ *
+ *  The output directory given here is appended to the path given by '-F path'.
+ *
+ *  If there's no '-F path' command-line option set, then the path of the current file is used as the base
+ *  directory.
+ */
+static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	if (in[0] == '\0') {
+		fr_strerror_const("Missing directory name");
 		RETURN_PARSE_ERROR(0);
 	}
-	cc->fuzzer_dir = fd;
-	talloc_free(fuzzer_dir);
+
+	if (fuzzer_open_fd(cc, &cc->fuzzer_proto_dir,
+			   cc->config->fuzzer_base_dir ? cc->config->fuzzer_base_dir : cc->path,
+			   in) < 0) {
+		RETURN_PARSE_ERROR(0);
+
+	}
 
 	return 0;
 }
@@ -2810,6 +2880,9 @@ static size_t command_proto_dictionary_root(command_result_t *result, command_fi
 	fr_dict_t const		*dict = dictionary_current(cc);
 	fr_dict_attr_t const	*root_da = fr_dict_root(dict);
 	fr_dict_attr_t const	*new_root;
+	char			*p, buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char			*fuzzer_dir = NULL;
+	char const		*q;
 
 	if (is_whitespace(in) || (*in == '\0')) {
 		new_root = fr_dict_root(dict);
@@ -2822,6 +2895,21 @@ static size_t command_proto_dictionary_root(command_result_t *result, command_fi
 	}
 
 	cc->tmpl_rules.attr.namespace = new_root;
+
+	if (cc->fuzzer_fd < 0) RETURN_OK(0);
+
+	for (p = buffer, q = new_root->name; *q != '\0'; p++, q++) {
+		if (isalnum((uint8_t) *q)) {
+			*p = *q;
+		} else {
+			*p = '_';
+		}
+	}
+	*p = '\0';
+
+	if (fuzzer_open_fd(cc, &fuzzer_dir, cc->fuzzer_proto_dir, buffer) < 0) {
+		RETURN_PARSE_ERROR(0);
+	}
 
 	RETURN_OK(0);
 }
@@ -3063,7 +3151,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	/*
 	 *	Store <type><value str...>
 	 */
-	if (cc->fuzzer_dir >= 0) {
+	if (cc->fuzzer_fd >= 0) {
 		char fuzzer_buffer[1024];
 		char *fuzzer_p = fuzzer_buffer, *fuzzer_end = fuzzer_p + sizeof(fuzzer_buffer);
 
@@ -3071,7 +3159,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 
 		strlcpy(fuzzer_p, data, slen > fuzzer_end - fuzzer_p ? fuzzer_end - fuzzer_p : slen);
 
-		if (dump_fuzzer_data(cc->fuzzer_dir, fuzzer_buffer,
+		if (dump_fuzzer_data(cc->fuzzer_fd, fuzzer_buffer,
 				     (uint8_t *)fuzzer_buffer, strlen(fuzzer_buffer)) < 0) {
 			RETURN_COMMAND_ERROR();
 		}
@@ -3509,6 +3597,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "dictionary-dump",
 					.description = "Print the contents of the currently active dictionary to stdout",
 				}},
+	{ L("dictionary-read "),	&(command_entry_t){
+					.func = command_dictionary_read,
+					.usage = "dictionary-read <filename>",
+					.description = "Load the named dictionary file, writing \"ok\" to the data buffer if successful",
+				}},
 	{ L("encode-dns-label "),	&(command_entry_t){
 					.func = command_encode_dns_label,
 					.usage = "encode-dns-label (-|string[,string])",
@@ -3771,9 +3864,9 @@ static int _command_ctx_free(command_file_ctx_t *cc)
 		fr_perror("unit_test_attribute");
 		return -1;
 	}
-	if (cc->fuzzer_dir >= 0) {
-		close(cc->fuzzer_dir);
-		cc->fuzzer_dir = -1;
+	if (cc->fuzzer_fd >= 0) {
+		close(cc->fuzzer_fd);
+		cc->fuzzer_fd = -1;
 	}
 	return 0;
 }
@@ -3824,7 +3917,7 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 	fr_dict_global_ctx_dir_set(cc->path);	/* Load new dictionaries relative to the test file */
 	fr_dict_global_ctx_set(cc->config->dict_gctx);
 
-	cc->fuzzer_dir = -1;
+	cc->fuzzer_fd = -1;
 
 	cc->tmpl_rules.attr.list_def = request_attr_request;
 	cc->tmpl_rules.attr.namespace = fr_dict_root(cc->config->dict);
@@ -3850,9 +3943,9 @@ static void command_ctx_reset(command_file_ctx_t *cc, TALLOC_CTX *ctx)
 		fr_perror("Failed loading test dict_gctx internal dictionary");
 	}
 
-	if (cc->fuzzer_dir >= 0) {
-		close(cc->fuzzer_dir);
-		cc->fuzzer_dir = -1;
+	if (cc->fuzzer_fd >= 0) {
+		close(cc->fuzzer_fd);
+		cc->fuzzer_fd = -1;
 	}
 }
 
@@ -4020,6 +4113,11 @@ finish:
 		ret = -1;
 	}
 
+	if ((ret == 0) && !cc->test_count) {
+		ERROR("Empty input file is invalid");
+		ret = -1;
+	}
+
 	fr_dict_global_ctx_set(config->dict_gctx);	/* Switch back to the main dict ctx */
 	unload_proto_library();
 	talloc_free(cc);
@@ -4031,7 +4129,7 @@ static void usage(char const *name)
 {
 	INFO("usage: %s [options] (-|<filename>[:<lines>] [ <filename>[:<lines>]])", name);
 	INFO("options:");
-	INFO("  -d <raddb>         Set user dictionary path (defaults to " RADDBDIR ").");
+	INFO("  -d <confdir>       Set user dictionary path (defaults to " CONFDIR ").");
 	INFO("  -D <dictdir>       Set main dictionary path (defaults to " DICTDIR ").");
 	INFO("  -x                 Debugging mode.");
 	INFO("  -f                 Print features.");
@@ -4039,7 +4137,7 @@ static void usage(char const *name)
 	INFO("  -h                 Print help text.");
 	INFO("  -M                 Show talloc memory report.");
 	INFO("  -p                 Allow xlat_purify");
-	INFO("  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.");
+	INFO("  -o <receipt_file>  Create the <receipt_file> as a 'success' exit.");
 	INFO("  -w <output_file>   Write 'corrected' output to <output_file>.");
 	INFO("Where <filename> is a file containing one or more commands and '-' indicates commands should be read from stdin.");
 	INFO("Ranges of <lines> may be specified in the format <start>[-[<end>]][,]");
@@ -4071,7 +4169,7 @@ static void commands_print(void)
 
 static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *in)
 {
-	static bool		tokens[UINT8_MAX + 1] = { [','] = true , ['-'] = true };
+	static bool		tokens[SBUFF_CHAR_CLASS] = { [','] = true , ['-'] = true };
 	uint32_t		max = 0;
 	command_line_range_t	*lr;
 	fr_sbuff_parse_error_t	err;
@@ -4210,11 +4308,11 @@ static int process_path(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 	 */
 	if ((receipt_dir || receipt_file) &&
 	    (strncmp(path, "src/tests/unit/", 15) == 0)) {
-		p = strchr(path + 15, '/');
+		p = UNCONST(char *, strchr(path + 15, '/'));
 		if (!p) {
 			printf("UNIT-TEST %s\n", path + 15);
 		} else {
-			char *q = strchr(p + 1, '/');
+			char *q = UNCONST(char *, strchr(p + 1, '/'));
 
 			*p = '\0';
 
@@ -4313,7 +4411,7 @@ int main(int argc, char *argv[])
 	bool			exit_now = false;
 
 	command_config_t	config = {
-					.raddb_dir = RADDBDIR,
+					.confdir = CONFDIR,
 					.dict_dir = DICTDIR
 				};
 
@@ -4334,7 +4432,7 @@ int main(int argc, char *argv[])
 	thread_ctx = talloc_new(autofree);
 
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("unit_test_attribute");
 		goto cleanup;
 	}
@@ -4366,13 +4464,13 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "cd:D:F:fxMhpr:S:w:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "cd:D:F:fxMhpo:S:w:")) != -1) switch (c) {
 		case 'c':
 			do_commands = true;
 			break;
 
 		case 'd':
-			config.raddb_dir = optarg;
+			config.confdir = optarg;
 			break;
 
 		case 'D':
@@ -4380,7 +4478,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'F':
-			config.fuzzer_dir = optarg;
+			config.fuzzer_base_dir = optarg;
 			break;
 
 		case 'f':
@@ -4396,7 +4494,7 @@ int main(int argc, char *argv[])
 			talloc_enable_leak_report();
 			break;
 
-		case 'r':
+		case 'o':
 			p = strrchr(optarg, '/');
 			if (!p || p[1]) {
 				receipt_file = optarg;
@@ -4474,6 +4572,14 @@ int main(int argc, char *argv[])
 	}
 
 	if (fr_dict_internal_afrom_file(&config.dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
+		fr_perror("unit_test_attribute");
+		EXIT_WITH_FAILURE;
+	}
+
+	/*
+	 *	Initialize the internal attributes needed by the tmpls.
+	 */
+	if (tmpl_global_init() < 0) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
@@ -4584,6 +4690,13 @@ int main(int argc, char *argv[])
 
 	} else if (argc > 1) {
 		int i;
+
+		if (receipt_file) for (i = 1; i < argc; i++) {
+			if (strcmp(receipt_file, argv[i]) == 0) {
+				ERROR("Receipt file cannot be one of the input files");
+				EXIT_WITH_FAILURE;
+			}
+		}
 
 		/*
 		 *	Read test commands from a list of files in argv[].

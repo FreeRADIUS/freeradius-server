@@ -1,6 +1,6 @@
 = UUID generation
 
-Two functions are availble to generate UUIDs.
+Two functions are available to generate UUIDs.
 
 `uuid.v4` generates a version 4 UUID and `uuid.v7` generates a
 version 7 UUID.
@@ -24,5 +24,5 @@ A version 7 UUID is 019a58d8-8524-7342-aa07-c0fa2bba6a4e
 ....
 ====
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

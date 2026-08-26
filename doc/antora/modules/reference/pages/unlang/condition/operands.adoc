@@ -11,8 +11,7 @@ integer
 ----
 
 Any text not matching xref:unlang/attr.adoc[Attribute-Name] or a
-xref:unlang/condition/return_codes.adoc[return code] is interpreted as a value for a
-particular xref:type/index.adoc[data type].
+xref:unlang/condition/return_codes.adoc[return code] is interpreted as a value for a particular xref:type/index.adoc[data type].
 
 Double-quoted strings and back-quoted strings are dynamically expanded
 before the condition is evaluated.  Single-quoted strings are static
@@ -26,6 +25,19 @@ For integer existence checks, `0` is `false`; all other values are `true`.
 For string existence checks, an empty string is `false`.  All other
 strings are `true`.
 
+.Data Types Truthiness
+[options=header, cols=autowidth]
+|===
+| *Type*                | *True When*
+| Bool	                | Value is true
+| String, octets        | Length > 0
+| Group	                | Has at least one element
+| Ipv4addr, ipv6addr	| Not INADDR_ANY (not 0.0.0.0 / ::)
+| Ipv4prefix, ipv6prefix| Not 0.0.0.0/0 or ::/0
+| Integers, float32, float64 | Cast to bool is true (non-zero)
+| Ifid, ethernet	| Cast to bool is true (non-zero)
+|===
+
 All other data types are disallowed in existence checks.
 
 .Examples
@@ -33,5 +45,5 @@ All other data types are disallowed in existence checks.
 `"hello there"` +
 `5`
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -61,12 +61,12 @@ void fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct 
  */
 int fr_timeval_from_str(struct timeval *out, char const *in)
 {
-	int	sec;
+	unsigned long	sec;
 	char	*end;
 	struct	timeval tv;
 
 	sec = strtoul(in, &end, 10);
-	if (in == end) {
+	if ((sec == ULONG_MAX) || (in == end)) {
 	failed:
 		fr_strerror_printf("Failed parsing \"%s\" as timeval", in);
 		return -1;
@@ -78,6 +78,7 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 
 	if (*end == '.') {
 		size_t len;
+		char const *frac;
 
 		len = strlen(end + 1);
 
@@ -90,8 +91,10 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 		 *	If they write "0.1", that means
 		 *	"10000" microseconds.
 		 */
-		sec = strtoul(end + 1, &end, 10);
-		if (in == end) {
+		frac = end + 1;
+
+		sec = strtoul(frac, &end, 10);
+		if ((sec == ULONG_MAX) || (frac == end)) {
 			fr_strerror_printf("Failed parsing fractional component \"%s\" of timeval", in);
 			return -1;
 		}

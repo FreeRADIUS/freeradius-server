@@ -43,7 +43,9 @@ endif
 #  there's no point in requiring the developer to run configure
 #  *before* making packages.
 #
-ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% freeradius-server-%,$(MAKECMDGOALS))" ""
+#  Multi-server tests use Docker and don't need a local build.
+#
+ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% dockerfile.% freeradius-server-% test.multi-server%,$(MAKECMDGOALS))" ""
   $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
   include Make.inc
 else
@@ -95,16 +97,19 @@ export PROJECT_NAME := freeradius
 #
 PROTOCOLS    := \
 	arp \
+	crl \
 	bfd \
 	der \
 	dhcpv4 \
 	dhcpv6 \
 	dns \
 	eap/aka-sim \
+	eap/psk \
 	ethernet \
 	freeradius \
 	ldap \
 	radius \
+	redis \
 	snmp \
 	tacacs \
 	vmps \
@@ -112,10 +117,10 @@ PROTOCOLS    := \
 	tls
 
 #
-#  If we're building packages or crossbuilding, just do that.
-#  Don't try to do a local build.
+#  If we're building packages, crossbuilding, or running Docker-based
+#  tests, just do that.  Don't try to do a local build.
 #
-ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% freeradius-server-%,$(MAKECMDGOALS))" ""
+ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% dockerfile.% freeradius-server-% test.multi-server%,$(MAKECMDGOALS))" ""
 
 #
 #  Include all of the autoconf definitions into the Make variable space
@@ -156,7 +161,7 @@ build/autoconf.mk: src/include/autoconf.h
         endif
       endef
 
-      $(foreach x, dlopen fork util version,$(eval $(call MAKE_LIB_CHECK,${x})))
+      $(foreach x, dlopen fork port util version,$(eval $(call MAKE_LIB_CHECK,${x})))
 
       ifdef BUILD_MAKE_LIBS
         #
@@ -181,6 +186,7 @@ build/autoconf.mk: src/include/autoconf.h
       load build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT}(version_gmk_setup)
       load build/lib/.libs/libfreeradius-make-util.${BUILD_LIB_EXT}(util_gmk_setup)
       load build/lib/.libs/libfreeradius-make-fork.${BUILD_LIB_EXT}(fork_gmk_setup)
+      load build/lib/.libs/libfreeradius-make-port.${BUILD_LIB_EXT}(port_gmk_setup)
     else
       BUILD_DIR:=${top_srcdir}/build
       top_builddir:=${top_srcdir}/scripts/build
@@ -191,6 +197,19 @@ build/autoconf.mk: src/include/autoconf.h
   #  Load the huge boilermake framework.
   #
   include scripts/boiler.mk
+
+  #
+  #  Print every categorised build target, one per line, as
+  #  "<category> <name>".  Categories are lib-protocol and lib-util,
+  #  declared via TGT_CATEGORY next to each TARGET in the makefile
+  #  fragments.  Useful for keeping the packaging
+  #  manifests honest, e.g.
+  #
+  #    make library.list | awk '$$1 == "lib-protocol" { print $$2 }'
+  #
+  .PHONY: library.list
+  library.list:
+	${Q}printf '%s\n' $(foreach x,$(sort ${ALL_TGTS}),$(if $($(x)_CATEGORY),"$($(x)_CATEGORY) $(basename $(notdir $(x)))"))
 endif
 
 #
@@ -241,7 +260,7 @@ install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 
 $(R)$(mandir)/%: man/%
 	@echo INSTALL $(notdir $<)
-	@sed -e "s,/etc/raddb,$(raddbdir),g" \
+	@sed -e "s,/etc/raddb,$(confdir),g" \
 		-e "s,/usr/local/share,$(datarootdir),g" \
 		$< > $<.subst
 	@$(INSTALL) -m 644 $<.subst $@
@@ -260,10 +279,10 @@ ifneq ($(RADMIN),)
   ifneq ($(RGROUP),)
 .PHONY: install-chown
 install-chown:
-	chown -R $(RADMIN)   $(R)$(raddbdir)
-	chgrp -R $(RGROUP)   $(R)$(raddbdir)
-	chmod u=rwx,g=rx,o=  `find $(R)$(raddbdir) -type d -print`
-	chmod u=rw,g=r,o=    `find $(R)$(raddbdir) -type f -print`
+	chown -R $(RADMIN)   $(R)$(confdir)
+	chgrp -R $(RGROUP)   $(R)$(confdir)
+	chmod u=rwx,g=rx,o=  `find $(R)$(confdir) -type d -print`
+	chmod u=rw,g=r,o=    `find $(R)$(confdir) -type f -print`
 	chown -R $(RADMIN)   $(R)$(logdir)
 	chgrp -R $(RGROUP)   $(R)$(logdir)
 	find $(R)$(logdir) -type d -exec chmod u=rwx,g=rwx,o= {} \;
@@ -402,7 +421,7 @@ compile_commands.json:
 #
 .PHONY: certs
 certs:
-	@$(MAKE) -C raddb/certs
+	@$(MAKE) -C raddb/certs Q=@
 
 ######################################################################
 #
@@ -531,7 +550,7 @@ deb:
 	fi
 	EMAIL="packages@freeradius.org" fakeroot dch -b -v$(PKG_VERSION) ""
 	fakeroot debian/rules debian/control # Clean
-	fakeroot dpkg-buildpackage -b -uc
+	fakeroot dpkg-buildpackage -b -uc -jauto
 
 .PHONY: rpm
 rpmbuild/SOURCES/freeradius-server-$(PKG_VERSION).tar.bz2: freeradius-server-$(PKG_VERSION).tar.bz2
@@ -563,15 +582,29 @@ whitespace:
 	@perl -p -i -e 'trim' $$(git ls-files src/)
 
 #
-#  Include the crossbuild make file only if we're cross building
+#  Docker pipeline. dockerfile.mk owns m4 -> Dockerfile.<type>
+#  generation; docker.mk owns image + container lifecycle. Both
+#  pull in _common.mk for shared variables and macros. We include
+#  both whenever any docker / dockerfile / crossbuild target is
+#  requested so cross-references resolve cleanly.
 #
-ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+ifneq "$(or $(findstring docker,$(MAKECMDGOALS)),$(findstring dockerfile,$(MAKECMDGOALS)),$(findstring crossbuild,$(MAKECMDGOALS)))" ""
   include scripts/docker/crossbuild.mk
 endif
 
 #
-#  Conditionally include the docker make file
+#  Multi-server integration tests (Docker-based, no configure needed)
 #
-ifneq "$(findstring docker,$(MAKECMDGOALS))" ""
-  include scripts/docker/docker.mk
+ifneq "$(findstring test.multi-server,$(MAKECMDGOALS))" ""
+  include src/tests/multi-server/all.mk
 endif
+
+#
+#  There are horrible, stupid, magic commands for submodule.  A normal
+#  "git checkout" doesn't get the submodules.  So we add a Makefile
+#  command to fix it.
+#
+.PHONY: submodule
+submodule:
+	@git submodule init
+	@git submodule update --recursive

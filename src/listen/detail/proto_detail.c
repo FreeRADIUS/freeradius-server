@@ -28,7 +28,6 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
-#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
 
@@ -120,8 +119,6 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	char const		*value = cf_pair_value(cp);
 
-	*((char const **) out) = value;
-
 	inst->dict = virtual_server_dict_by_child_ci(ci);
 	if (!inst->dict) {
 		cf_log_err(ci, "Please define 'namespace' in this virtual server");
@@ -146,6 +143,8 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	}
 
 	inst->code = type_enum->value->vb_uint32;
+	*((char const **) out) = value;
+
 	return 0;
 }
 
@@ -439,6 +438,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	MEM(li = talloc_zero(inst, fr_listen_t));	/* Assigned thread steals the memory */
 	talloc_set_destructor(li, fr_io_listen_free);
 
+	li->cs = conf;
 	li->app_io = inst->app_io;
 	li->thread_instance = talloc_zero_array(li, uint8_t, li->app_io->common.thread_inst_size);
 	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->common.name);

@@ -75,6 +75,10 @@ struct connection_pub_s {
 	void			* _CONST h;		//!< Connection handle
 	fr_event_list_t		* _CONST el;		//!< Event list for timers and I/O events.
 
+	bool			_CONST is_closed;	//!< The close callback has previously been called,
+							///< so the handle is gone.  Check this before using
+							///< anything that lives on the connection.
+
 	uint64_t _CONST			reconnected;	//!< How many times we've attempted to establish or
 							///< re-establish this connection.
 	uint64_t _CONST			timed_out;	//!< How many times has this connection timed out when
@@ -278,6 +282,8 @@ connection_t		*connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					     connection_funcs_t const *funcs, connection_conf_t const *conf,
 					     char const *log_prefix, void const *uctx);
 /** @} */
+
+void			*connection_uctx_get(connection_t *conn);
 
 #undef _CONST
 

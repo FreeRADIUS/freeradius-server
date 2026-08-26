@@ -25,10 +25,6 @@ BEGIN-VENDOR	Aerohive
 
 # Beginning of HiveManager Classic VSAs
 # The following ATTRIBUTE and VALUE definitions are required.
-ATTRIBUTE	AH-HM-Admin-Group-Id			1	uint32
-VALUE	AH-HM-Admin-Group-Id		Read-Only-Admin		0
-VALUE	AH-HM-Admin-Group-Id		Super-Admin		1
-VALUE	AH-HM-Admin-Group-Id		Read-Write-Admin	2
 
 # The following is an example of an admin group that you can define.
 #VALUE  AH-HM-Admin-Group-Id            Admin-Group100          100
@@ -37,6 +33,12 @@ VALUE	AH-HM-Admin-Group-Id		Read-Write-Admin	2
 # Beginning of HiveOS VSAs
 
 ATTRIBUTE	Extreme-User-Vlan			1	uint32
+ALIAS		AH-HM-Admin-Group-Id	.Extreme-User-Vlan
+
+VALUE	AH-HM-Admin-Group-Id		Read-Only-Admin		0
+VALUE	AH-HM-Admin-Group-Id		Super-Admin		1
+VALUE	AH-HM-Admin-Group-Id		Read-Write-Admin	2
+
 ATTRIBUTE	Extreme-Libsip-Patron-Info		3	octets encrypt=Tunnel-Password
 ATTRIBUTE	Extreme-Libsip-Action			4	uint32
 ATTRIBUTE	Extreme-Libsip-Additional-Message	5	octets

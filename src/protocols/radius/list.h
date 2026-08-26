@@ -26,10 +26,8 @@
 RCSIDH(list_h, "$Id$")
 
 #include <freeradius-devel/util/packet.h>
-#include <stdbool.h>
-#include <stdint.h>
 
-int8_t fr_packet_cmp(void const *a, void const *b);
+fr_cmp_ret_t fr_packet_cmp(void const *a, void const *b);
 void fr_request_from_reply(fr_packet_t *request,
 			     fr_packet_t const *reply);
 
@@ -55,7 +53,7 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
-fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_message_authenticator);
+int fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, TALLOC_CTX *ctx, fr_packet_t **packet, uint32_t max_attributes, bool require_message_authenticator);
 
 uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl);
 uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl);

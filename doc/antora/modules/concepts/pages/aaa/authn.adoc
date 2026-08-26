@@ -5,9 +5,9 @@ the credentials do not match, authentication fails, and network access is denied
 
 Authentication can also fail if user credentials are entered incorrectly. For example, a site policy may allow a user network access from an on-site location using a cleartext password. However, if the same password is entered by the user from a remote location, access may be denied.
 
-An ISP can also choose to deny network access to authenticated users if the users’ account is suspended. As well, an administrator can permit limited network access to unknown users. For example, an administrator provides access to an area where the user can purchase additional network connectivity. This last example is most often seen in for-pay WiFi hotspots.
+An ISP can also choose to deny network access to authenticated users if the users' account is suspended. As well, an administrator can permit limited network access to unknown users. For example, an administrator provides access to an area where the user can purchase additional network connectivity. This last example is most often seen in for-pay WiFi hotspots.
 
-Authentication is simply a process of comparing a user’s credentials in a request with the "known good" credentials retrieved from a database. Authentication usually deals with password encryption. The modules `pap`, `chap`, `mschap`, etc., do the authentication.
+Authentication is simply a process of comparing a user's credentials in a request with the "known good" credentials retrieved from a database. Authentication usually deals with password encryption. The modules `pap`, `chap`, `mschap`, etc., do the authentication.
 
 Some modules do both authentication and limited authorization. For
 example, the `mschap` module authenticates MS-CHAP credentials, but it
@@ -18,3 +18,6 @@ instructs the server to use `mschap` for authentication too.
 These dual modules are usually related to protocol-specific
 attributes, such as the `pap` module for the `User-Password`
 attribute, `chap` for `CHAP-Password`, `mschap` for `MS-CHAP-*`.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

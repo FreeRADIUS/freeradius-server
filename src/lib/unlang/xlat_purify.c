@@ -27,7 +27,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
 
@@ -221,10 +220,9 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 					fr_dlist_insert_before(&head->dlist, next, child);
 					child->flags.can_purify = false;
 					xlat_flags_merge(&our_flags, &child->flags);
-
-					node = child;
 				}
 				talloc_free(to_free);
+				continue;
 			}
 		}
 			break;
@@ -544,6 +542,9 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 
 int xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
 {
+	XLAT_VERIFY(lhs);
+	XLAT_VERIFY(rhs);
+
 	if (op == T_LOR) {
 		xlat_exp_t *node;
 

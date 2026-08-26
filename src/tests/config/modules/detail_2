@@ -1,0 +1,12 @@
+#
+#  Test: multiple suppressed attributes
+#
+detail {
+	filename = /tmp/test-detail
+
+	suppress {
+		User-Password
+		CHAP-Password
+		EAP-Message
+	}
+}

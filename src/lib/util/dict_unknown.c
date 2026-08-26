@@ -561,7 +561,7 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 				 *	is an error.
 				 */
 				if (fr_sbuff_is_char(&our_in, '.')) {
-					fr_strerror_printf("Interior OID component cannot proceed a %s type",
+					fr_strerror_printf("Interior OID component cannot precede a %s type",
 							   fr_type_to_str(our_parent->type));
 					goto error;
 				}

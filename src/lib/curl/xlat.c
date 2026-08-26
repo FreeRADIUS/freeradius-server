@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -50,7 +50,10 @@ xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char		*escaped;
 
 	escaped = curl_easy_escape(fr_curl_tmp_handle(), to_escape->vb_strvalue, to_escape->vb_length);
-	if (!escaped) return XLAT_ACTION_FAIL;
+	if (!escaped) {
+		talloc_free(to_escape);
+		return XLAT_ACTION_FAIL;
+	}
 
 	/*
 	 *	Returned string the same length - nothing changed
@@ -58,7 +61,7 @@ xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (strlen(escaped) == to_escape->vb_length) goto done;
 
 	fr_value_box_clear_value(to_escape);
-	fr_value_box_strdup(to_escape, to_escape, NULL, escaped, to_escape->tainted);
+	MEM(fr_value_box_strdup(to_escape, to_escape, NULL, escaped, to_escape->tainted) >= 0);
 
 done:
 	curl_free(escaped);
@@ -94,7 +97,7 @@ xlat_action_t fr_curl_xlat_uri_unescape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *ou
 	}
 
 	fr_value_box_clear_value(to_unescape);
-	fr_value_box_bstrndup(to_unescape, to_unescape, NULL, unescaped, unescaped_len, to_unescape->tainted);
+	MEM(fr_value_box_bstrndup(to_unescape, to_unescape, NULL, unescaped, unescaped_len, to_unescape->tainted) >= 0);
 	curl_free(unescaped);
 	fr_dcursor_insert(out, to_unescape);
 

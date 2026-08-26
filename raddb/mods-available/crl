@@ -15,135 +15,41 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 crl {
 	#
-	#  source:: Where CRLs will be loaded from
+	#  virtual_server:: Name of the virtual server used to fetch CRLs.
 	#
-	source {
-		#
-		#  dynamic:: Expansions for CRLs loaded dynamically from URIs in certificates
-		#
-		#  The CRL distribution point URI will be in the
-		#  attribute `CRL.CDP-URL` when this expansion is performed.
-		#
-		dynamic {
-			#
-			#  http:: Expansion to use when URI scheme is http
-			#
-			#  The `rest` module must be enabled to support this
-			#
-			http = %rest('GET', "%uri.safe(%{CRL.CDP-URL})")
-
-			#
-			#  ldap:: Expansion to use when URI scheme is ldap
-			#
-			#  If any CRLs need to be retrieved by LDAP queries
-			#  then configure and enable the `ldap` module to
-			#  support this.
-			#
-			#  If the URIs in CRL distribution points do not include
-			#  an LDAP host (i.e. they start ldap:///) then the
-			#  ldap module must be configured with the correct
-			#  server details to fetch the CRL from
-			#
-#			ldap = %ldap(%ldap.uri.safe("%{CRL.CDP-URL}"))
-
-			#
-			#  ftp:: Expansion to use when URI scheme is ftp
-			#
-			#  If any CRLs need to be retrieved by FTP GET calls
-			#  then configure and enable the `ftp` module to
-			#  support this.
-			#
-#			ftp = %ftp.get(%uri.safe("%{CRL.CDP-URL}"))
-		}
-	}
+	#  This virtual server must use the 'crl' namespace and provide a
+	#  `recv CRL-Fetch` section to fetch CRLs.
+	#
+	#  A suitable example virtual server is provided in
+	#  sites-available/crl
+	#
+	virtual_server = crl
 
 	#
-	#  force_expiry:: Maximum time between expiring CRLs
+	#  url:: URL to fetch CRL data from when the server starts.
 	#
-	#  If the `nextUpdate` attribute of a CRL is closer than this interval
-	#  then that will be used as the point that the CRL is expired.
+	#  The CRL used during certificate verification is determined by the
+	#  X509v3 CRL Distribution Points extension within the certificate.
+	#  If a given CRL has not already been fetched when a certificate
+	#  requires verification, then it will be fetched.
 	#
-#	force_expiry = 7d
+	#  If the CRL distribution points which will be needed are known then
+	#  they can be configured using one or more instance of this option.
+	#
+	#  These distribution points will be fetched during server startup.
+	#
+	#  Only base CRL distribution points should be listed here. Deltas
+	#  which they refer to will automatically be fetched.
+	#
+##	url = http://example.com/ca.crl
+##	url = ldap://ldap.example.com/cn=example%20CA,dc=example,dc=com?certificateRevocationList;binary
 
 	#
-	#  force_delta_expiry:: Maximum time between expiring delta CRLs
+	#  retry_delay:: How long to wait before retrying a fetch failure.
 	#
-	#  This overrides `force_expiry` for delta CRLs.
-	#
-#	force_delta_expiry = 1d
-
-	#
-	#  early_refresh:: Time before `nextUpdate` which the CRL will be refreshed
-	#
-	early_refresh = 1h
-
-	#
-	#  ca_file:: File containing trusted CA, used to sign CRLs
-	#
-	#  This can reference the setting in the `eap` module, but in that
-	#  case, the eap module must be instantiate before the `crl` module
-	#  by adding it to the list of explicitly instantiated modules
-	#  in `radiusd.conf`
-	#
-#	ca_file = ${modules.eap.tls-config[tls-common].ca_file}
-	ca_file = ${cadir}/rsa/ca.pem
-
-	#
-	#  ca_path:: Directory containing trusted CAs, used to sign CRLs
-	#
-#	ca_path = ${modules.eap.tls-config[tls-common].ca_path}
-	ca_path = ${cadir}
-
-	#
-	#  trigger_rate_limit::
-	#
-	#  If triggers are enabled (either here or in trigger.conf),
-	#  should the trigger messages be rate limited.
-#	trigger_rate_limit = yes
-
-	#
-	#  trigger::  Xlats to run when specific CRL events happen
-	#
-	#  When configured here, they are specific to this module instance.
-	#  Alternatively global settings for all instances of the `crl`
-	#  module can be set in `triggers.conf` under the `modules` -> `crl`
-	#  section.
-	#
-	#  For triggers to be enabled, a top level `trigger` section must
-	#  exist.  Enable the line `$INCLUDE trigger.conf` in `radiusd.conf`
-	#  and if none of the triggers in there are required, comment them
-	#  out, leaving just the outer section.
-	#
-	#  Triggers can either be calls to execute programs or xlat expansions.
-	#  The examples below show the use of the `linelog` xlat.
-	#
-	#  In the "fetch..." triggers, the attributes from the request list
-	#  where the `crl` module is called are available.
-	#  The "expired" trigger only has `CRL.CDP-URL` available.
-	#
-#	trigger {
-		#
-		#  fetchuri:: A CRL URI is being requested
-		#
-#		fetchuri = %linelog("Fetching CRL from %{CRL.CDP-URL}")
-
-		#
-		#  fetchfail:: Fetching a CRL URI failed
-		#
-#		fetchfail = %linelog("Failed fetching %{CRL.CDP-URL}: %{Module-Failure-Message}")
-
-		#
-		#  fetchbad:: Fetching a CRL URI returned bad data
-		#
-#		fetchbad = %linelog("Data returned from %{CRL.CDP-URL} was not valid")
-
-		#
-		#  expired:: A CRL has expired
-		#
-#		expired = %linelog("CRL from %{CRL.CDP-URL} has expired")
-#	}
+#	retry_delay = 30s
 }

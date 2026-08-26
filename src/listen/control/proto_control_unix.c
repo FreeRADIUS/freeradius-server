@@ -27,7 +27,6 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/util/file.h>
@@ -41,7 +40,6 @@
 #ifdef HAVE_SYS_STAT_H
 #endif
 
-#include <fcntl.h>
 #include <libgen.h>
 
 typedef struct {
@@ -101,7 +99,7 @@ static const conf_parser_t peercred_config[] = {
 
 static const conf_parser_t unix_listen_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, proto_control_unix_t, filename),
-	.dflt = "${run_dir}/radiusd.sock}" },
+	.dflt = "${run_dir}/radiusd.sock" },
 	{ FR_CONF_OFFSET("uid", proto_control_unix_t, uid_name) },
 	{ FR_CONF_OFFSET("gid", proto_control_unix_t, gid_name) },
 	{ FR_CONF_OFFSET("mode", proto_control_unix_t, mode_name) },
@@ -419,11 +417,13 @@ static int mod_open(fr_listen_t *li)
 		.gid = inst->gid,
 		.perm = 0600,
 		.async = true,
+		.backlog = SOMAXCONN,
+		.backlog_is_set = true,
 	};
 
 	thread->fd_bio = fr_bio_fd_alloc(thread, &cfg, 0);
 	if (!thread->fd_bio) {
-		PERROR("Failed allocating UNIX path %s", inst->filename);
+		cf_log_err(li->cs, "Failed opening UNIX path %s - %s", inst->filename, fr_strerror());
 		return -1;
 	}
 
@@ -559,12 +559,24 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	io.write = write_stdout;
 
 	thread->stdout_fp = fopencookie(thread, "w", io);
+	if (!thread->stdout_fp) {
+		fr_strerror_printf("Failed to open stdout cookie: %s", fr_syserror(errno));
+		return -1;
+	}
 
 	io.write = write_stderr;
 	thread->stderr_fp = fopencookie(thread, "w", io);
+	if (!thread->stderr_fp) {
+		fr_strerror_printf("Failed to open stderr cookie: %s", fr_syserror(errno));
+		return -1;
+	}
 
 	io.write = write_misc;
 	thread->misc = fopencookie(thread, "w", io);
+	if (!thread->misc) {
+		fr_strerror_printf("Failed to open misc cookie: %s", fr_syserror(errno));
+		return -1;
+	}
 
 	talloc_set_destructor(thread, _close_cookies);
 

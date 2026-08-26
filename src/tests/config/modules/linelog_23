@@ -1,0 +1,7 @@
+#
+#  Test: invalid triggers boolean
+#
+linelog {
+	destination = stdout
+	triggers = banana	# ERROR
+}

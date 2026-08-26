@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -30,11 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/unlang/action.h>
-#include <freeradius-devel/unlang/module.h>
-#include <ctype.h>
 
 /*
  *	Note: When your counter spans more than 1 period (ie 3 months
@@ -239,7 +235,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 		tm->tm_mon -= num - 1;
 		inst->last_reset = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "never") == 0) {
-		inst->reset_time = fr_time_wrap(0);
+		inst->last_reset = fr_time_wrap(0);
 	} else {
 		return -1;
 	}
@@ -592,6 +588,7 @@ module_rlm_t rlm_sqlcounter = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "sqlcounter",
+		.flags      = MODULE_TYPE_THREAD_UNSAFE,
 		.inst_size	= sizeof(rlm_sqlcounter_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,

@@ -171,6 +171,7 @@ typedef enum {
 	FR_DICT_PROTO_DNS = 11,
 	FR_DICT_PROTO_LDAP = 12,
 	FR_DICT_PROTO_BFD = 13,
+	FR_DICT_PROTO_CRL = 14,
 } fr_dict_protocol_id_t;
 
 extern fr_dict_gctx_t *dict_gctx;
@@ -269,7 +270,7 @@ int			dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
 int			dict_attr_acopy_aliases(fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
-int 			dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref);
+int 			dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref, bool from_public);
 
 int			dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child);
 
@@ -300,6 +301,8 @@ bool			dict_attr_can_have_children(fr_dict_attr_t const *da);
 
 int			dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name, fr_value_box_t const *value,
 					   bool coerce, bool replace, fr_dict_attr_t const *child_struct);
+
+int			fr_dict_afrom_file(fr_dict_t **out, char const *dir, char const *filename) CC_HINT(nonnull(1,3));
 
 #ifdef __cplusplus
 }

@@ -11,5 +11,5 @@ The following functions perform manipulation of IPv4 addresses / subnets.
 | xref:xlat/ipv4/netmask.adoc[netmask]       | Get the netmask from an IPv4 prefix
 |=====
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

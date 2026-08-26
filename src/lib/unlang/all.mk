@@ -1,4 +1,5 @@
 TARGET		:= libfreeradius-unlang$(L)
+TGT_CATEGORY	:= lib-util
 
 SOURCES	:=	base.c \
 		call.c \

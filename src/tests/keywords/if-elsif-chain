@@ -1,0 +1,49 @@
+#
+# PRE: if if-elsif
+#
+#  Long elsif chain testing skip-forward logic
+#
+string result
+
+result := ""
+
+if (User-Name == "alice") {
+	result := "alice"
+	test_fail
+
+} elsif (User-Name == "charlie") {
+	result := "charlie"
+	test_fail
+
+} elsif (User-Name == "dave") {
+	result := "dave"
+	test_fail
+
+} elsif (User-Name == "eve") {
+	result := "eve"
+	test_fail
+
+} elsif (User-Name == "frank") {
+	result := "frank"
+	test_fail
+
+} elsif (User-Name == "bob") {
+	result := "bob"
+
+} elsif (User-Name == "george") {
+	result := "george"
+	test_fail
+
+} else {
+	result := "unknown"
+	test_fail
+}
+
+#
+#  User-Name is "bob" from default-input.attrs
+#
+if (result != "bob") {
+	test_fail
+}
+
+success

@@ -19,3 +19,6 @@ To integrate linux-based systems with a Windows Active Directory domain, you nee
 
 A description of how to test and troubleshoot winbind is provided in the
 [Troubleshooting guide].
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

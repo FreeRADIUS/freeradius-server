@@ -29,7 +29,6 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
-#include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
 #include <freeradius-devel/server/module_rlm.h>
 
 #include "attrs.h"
@@ -444,7 +443,7 @@ unlang_action_t sigtran_client_map_send_auth_info(unlang_result_t *p_result, rlm
 		goto error;
 	}
 
-	len = talloc_array_length(imsi) - 1;
+	len = talloc_strlen(imsi);
 	if ((len != 16) && (len != 15)) {
 		REDEBUG("IMSI must be 15 or 16 digits got %zu digits", len);
 		goto error;
@@ -455,11 +454,11 @@ unlang_action_t sigtran_client_map_send_auth_info(unlang_result_t *p_result, rlm
 		goto error;
 	}
 
-	if (RDEBUG_ENABLED2) {
-		RDEBUG2("Sending MAPv%u request with IMSI \"%pV\"", req->version, fr_box_strvalue_buffer(imsi));
-	} else if (RDEBUG_ENABLED3){
+	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Sending MAPv%u request with IMSI \"%pV\" (TBCD %pV)",
 			req->version, fr_box_strvalue_buffer(imsi), fr_box_octets_buffer(req->imsi));
+	} else if (RDEBUG_ENABLED2) {
+		RDEBUG2("Sending MAPv%u request with IMSI \"%pV\"", req->version, fr_box_strvalue_buffer(imsi));
 	}
 
 	/*

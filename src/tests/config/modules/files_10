@@ -1,0 +1,6 @@
+#
+#  Test: missing filename (required)
+#
+files {		# ERROR
+	v3_compat = false
+}

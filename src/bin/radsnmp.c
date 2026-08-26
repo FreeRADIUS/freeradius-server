@@ -66,9 +66,9 @@ typedef enum {
 
 static fr_table_num_sorted_t const radsnmp_command_str[] = {
 	{ L(""),		RADSNMP_EXIT },			//!< Terminate radsnmp.
-	{ L("PING"), 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
 	{ L("get"),	RADSNMP_GET },			//!< Get the value of an OID.
 	{ L("getnext"), 	RADSNMP_GETNEXT },		//!< Get the next OID in the tree.
+	{ L("PING"), 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
 	{ L("set"),	RADSNMP_SET },			//!< Set the value of an OID.
 };
 static size_t radsnmp_command_str_len = NUM_ELEMENTS(radsnmp_command_str);
@@ -80,7 +80,7 @@ typedef struct {
 	fr_dict_attr_t const	*snmp_op;		//!< SNMP operation.
 	fr_dict_attr_t const	*snmp_type;		//!< SNMP type attribute.
 	fr_dict_attr_t const	*snmp_failure;		//!< SNMP set error attribute.
-	char const		*raddb_dir;		//!< Radius dictionary directory.
+	char const		*confdir;		//!< Radius dictionary directory.
 	char const		*dict_dir;		//!< Dictionary director.
 	unsigned int		code;			//!< Request type.
 	int			proto;			//!< Protocol TCP/UDP.
@@ -97,11 +97,13 @@ typedef struct {
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
+static fr_dict_t const *dict_snmp;
 
 extern fr_dict_autoload_t radsnmp_dict[];
 fr_dict_autoload_t radsnmp_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_snmp, .proto = "snmp" },
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -115,9 +117,9 @@ static fr_dict_attr_t const *attr_vendor_specific;
 extern fr_dict_attr_autoload_t radsnmp_dict_attr[];
 fr_dict_attr_autoload_t radsnmp_dict_attr[] = {
 	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_TLV, .dict = &dict_radius },
-	{ .out = &attr_freeradius_snmp_failure, .name = "FreeRADIUS-SNMP-Failure", .type = FR_TYPE_UINT8, .dict = &dict_radius },
-	{ .out = &attr_freeradius_snmp_operation, .name = "FreeRADIUS-SNMP-Operation", .type = FR_TYPE_UINT8, .dict = &dict_radius },
-	{ .out = &attr_freeradius_snmp_type, .name = "FreeRADIUS-SNMP-Type", .type = FR_TYPE_UINT8, .dict = &dict_radius },
+	{ .out = &attr_freeradius_snmp_failure, .name = "FreeRADIUS-SNMP-Failure", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
+	{ .out = &attr_freeradius_snmp_operation, .name = "FreeRADIUS-SNMP-Operation", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
+	{ .out = &attr_freeradius_snmp_type, .name = "FreeRADIUS-SNMP-Type", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
 	DICT_AUTOLOAD_TERMINATOR
@@ -130,7 +132,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  <command>              One of auth, acct, status, coa, disconnect or auto.\n");
 	fprintf(stderr, "  -4                     Use IPv4 address of server\n");
 	fprintf(stderr, "  -6                     Use IPv6 address of server.\n");
-	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -d <confdir>           Set user dictionary directory (defaults to " CONFDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -h                     Print usage help information.\n");
 	fprintf(stderr, "  -l <file>              Log output to file.\n");
@@ -236,7 +238,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_d
 	for (;;) {
 		unsigned int num = 0;
 
-		slen = fr_dict_attr_by_oid_legacy(conf->dict, &parent, &attr, p);
+		slen = fr_dict_attr_by_oid_legacy(&parent, &attr, p);
 		if (slen > 0) break;
 		p += -(slen);
 
@@ -635,11 +637,10 @@ do { \
 	if (stop) return 0; \
 	errno = 0;\
 	_line = fgets(_buffer, sizeof(_buffer), stdin); \
-	if (_line) { \
-		_len = strlen(_line); \
-		if ((_len > 0) && (_line[_len - 1] == '\n')) _line[_len - 1] = '\0'; \
-		DEBUG2("read: %s", _line); \
-	} \
+	if (!_line) return 0; \
+	_len = strlen(_line); \
+	if ((_len > 0) && (_line[_len - 1] == '\n')) _line[_len - 1] = '\0'; \
+	DEBUG2("read: %s", _line); \
 } while (0)
 
 	/*
@@ -797,7 +798,7 @@ do { \
 			 *	next call.
 			 */
 			for (i = 0; i < conf->retries; i++) {
-				rcode = fr_packet_send(packet, &request_vps, NULL, conf->secret);
+				rcode = fr_radius_packet_send(packet, &request_vps, NULL, conf->secret);
 				if (rcode < 0) {
 					ERROR("Failed sending: %s", fr_syserror(errno));
 					return EXIT_FAILURE;
@@ -828,6 +829,7 @@ do { \
 								    packet->vector,
 								    conf->secret) < 0) {
 						fr_perror("Failed decoding reply");
+						talloc_free(reply);
 						goto recv_error;
 					}
 					break;
@@ -913,13 +915,13 @@ int main(int argc, char **argv)
 	conf = talloc_zero(autofree, radsnmp_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
-	conf->raddb_dir = RADDBDIR;
+	conf->confdir = CONFDIR;
 	conf->secret = talloc_strdup(conf, "testing123");
 	conf->timeout = fr_time_delta_from_sec(3);
 	conf->retries = 5;
 
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("radsnmp");
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -945,7 +947,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			conf->raddb_dir = optarg;
+			conf->confdir = optarg;
 			break;
 
 		case 'l':
@@ -1043,6 +1045,11 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	if (!fr_dict_global_ctx_init(NULL, true, conf->dict_dir)) {
+		fr_perror("radsnmp");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
 	if (fr_dict_autoload(radsnmp_dict) < 0) {
 		fr_perror("radsnmp");
 		fr_exit_now(EXIT_FAILURE);
@@ -1053,10 +1060,16 @@ int main(int argc, char **argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(fr_dict_unconst(dict_freeradius), conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_unconst(dict_freeradius), conf->confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("radsnmp");
 		fr_exit_now(EXIT_FAILURE);
 	}
+
+	if (fr_radius_global_init() < 0) {
+		fr_perror("radsnmp");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
 	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*

@@ -115,5 +115,5 @@ In general, the following rules apply:
 
 * There is no longer a need to use `%{expr:..}` to do math in conditions.  Using the math in-place will work, as with `if (1 + 2 == 3)`.  See xref:unlang/condition/expression.adoc[expressions].
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

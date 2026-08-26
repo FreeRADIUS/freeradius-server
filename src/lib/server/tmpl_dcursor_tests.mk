@@ -3,6 +3,6 @@ SOURCES		:= tmpl_dcursor_tests.c
 
 TGT_LDLIBS	:= $(LIBS) $(GPERFTOOLS_LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS) $(GPERFTOOLS_LDFLAGS)
-TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-server$(L) libfreeradius-unlang$(L)
+TGT_PREREQS	:= libfreeradius-util$(L) $(LIBFREERADIUS_SERVER)
 
 TGT_INSTALLDIR	:=

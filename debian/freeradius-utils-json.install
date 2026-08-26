@@ -1,0 +1,3 @@
+usr/bin/radconf2json
+usr/bin/radjson2conf
+usr/bin/radmod2json

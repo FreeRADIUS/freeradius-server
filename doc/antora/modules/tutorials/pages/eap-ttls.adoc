@@ -9,7 +9,7 @@ protocol and to send and receive test packets.
 
 *File:*
 
-- `etc/raddb/sites-available/default`
+- `sites-available/default`
 
 *Diagram:*
 
@@ -46,5 +46,5 @@ tunnel for EAP-TTLS?
 3.  Would you use EAP-TTLS in a large deployment? If so, why? If not,
 why not?
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

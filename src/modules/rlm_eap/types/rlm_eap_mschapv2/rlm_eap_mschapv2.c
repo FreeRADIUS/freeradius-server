@@ -26,7 +26,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/rand.h>
@@ -82,7 +81,6 @@ static fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
 static fr_dict_attr_t const *attr_ms_mppe_encryption_type;
 static fr_dict_attr_t const *attr_ms_mppe_send_key;
 static fr_dict_attr_t const *attr_ms_mppe_recv_key;
-static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[];
@@ -103,7 +101,6 @@ fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[] = {
 	{ .out = &attr_ms_mppe_encryption_type, .name = "Vendor-Specific.Microsoft.MPPE-Encryption-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	DICT_AUTOLOAD_TERMINATOR
 };
@@ -197,13 +194,12 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		 *  |                             Server Name...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
-		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + (talloc_array_length(inst->identity) - 1);
-		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
+		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + (talloc_strlen(inst->identity));
+		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length));
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_round->request->type.data) return -1;
 		eap_round->request->type.length = length;
 
 		ptr = eap_round->request->type.data;
@@ -221,7 +217,7 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		 *	Copy the Challenge, success, or error over.
 		 */
 		memcpy(ptr, reply->vp_octets, reply->vp_length);
-		memcpy((ptr + reply->vp_length), inst->identity, (talloc_array_length(inst->identity) - 1));
+		memcpy((ptr + reply->vp_length), inst->identity, (talloc_strlen(inst->identity)));
 	} else if (reply->da == attr_ms_chap2_success) {
 		/*
 		 *   0                   1                   2                   3
@@ -236,11 +232,11 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		 */
 		RDEBUG2("MS-CHAPv2 Success");
 		length = 46;
-		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
+		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length));
+
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_round->request->type.data) return -1;
 		memset(eap_round->request->type.data, 0, length);
 		eap_round->request->type.length = length;
 
@@ -252,7 +248,7 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 	} else if (reply->da == attr_ms_chap_error) {
 		REDEBUG("MS-CHAPv2 Failure");
 		length = 4 + reply->vp_length - 1;
-		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
+		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length));
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
@@ -413,15 +409,24 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 		 */
 		if (ccode == FR_EAP_MSCHAPV2_CHGPASSWD) {
 			fr_pair_t	*cpw;
-			int		mschap_id = eap_round->response->type.data[1];
+			int		mschap_id;
 			int		copied = 0;
 			int		seq = 1;
 			fr_pair_t	*ms;
+
+
+			if (eap_round->response->type.length < 586) {
+				RDEBUG2("Password change has invalid length %zu < 586",
+					eap_round->response->type.length);
+				RETURN_UNLANG_INVALID;
+			}
 
 			RDEBUG2("Password change packet received");
 
 			MEM(pair_update_request(&auth_challenge, attr_ms_chap_challenge) >= 0);
 			fr_pair_value_memdup(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
+
+			mschap_id = eap_round->response->type.data[1];
 
 			MEM(pair_update_request(&cpw, attr_ms_chap2_cpw) >= 0);
 			MEM(fr_pair_value_mem_alloc(cpw, &p, 68, false) == 0);
@@ -563,9 +568,21 @@ failure:
 	 *	The MS-Length field is 5 + value_size + length
 	 *	of name, which is put after the response.
 	 */
+	if (eap_round->response->type.length < (5 + MSCHAPV2_RESPONSE_LEN + 1)) {
+		REDEBUG("MS-CHAPv2 response packet is too short %zu < %d",
+			eap_round->response->type.length, 5 + MSCHAPV2_RESPONSE_LEN + 1);
+		RETURN_UNLANG_INVALID;
+	}
+
 	length = fr_nbo_to_uint16(eap_round->response->type.data + 2);
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
 		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
+		RETURN_UNLANG_INVALID;
+	}
+
+	if (eap_round->response->type.length < length) {
+		REDEBUG("Response type data (%zu bytes) is shorter than claimed MS-Length (%zu)",
+			eap_round->response->type.length, length);
 		RETURN_UNLANG_INVALID;
 	}
 

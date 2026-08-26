@@ -9,22 +9,22 @@
 #
 #  More examples of doing detail logs.
 #
-#  NOTE: For a full explanation of the configuration options,
-#  please see the `detail` module.
+#  NOTE: For a full explanation of the configuration options, please
+#  see the `detail` module.
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 
-#  ### Access-Request
+#  === Access-Request
 #
 #  Many people want to log authentication requests. Different
 #  instances of the `detail` module can be used to log the
 #  authentication requests to one or more files.
 #
 #  NOTE: You will also need to un-comment the `auth_log` line in the
-#  `recv Access-Request` section of `raddb/sites-enabled/default`.
+#  `recv Access-Request` section of `sites-enabled/default`.
 #
 detail auth_log {
 	filename = "${radacctdir}/%{Net.Src.IP}/auth-detail-%Y-%m-%d"
@@ -32,7 +32,8 @@ detail auth_log {
 	permissions = 0600
 
 	#
-	#  suppress { ... }:: This will stop passwords being written to the log.
+	#  suppress { ... }:: This will stop passwords being written to the
+	#  log.
 	#
 	suppress {
 		User-Password
@@ -40,13 +41,13 @@ detail auth_log {
 }
 
 #
-#  ### Access-Accept
+#  === Access-Accept
 #
-#  This module logs authentication reply packets sent to a NAS.
-#  Both `Access-Accept` and `Access-Reject` packets are logged.
+#  This module logs authentication reply packets sent to a NAS. Both
+#  `Access-Accept` and `Access-Reject` packets are logged.
 #
 #  NOTE: You will also need to un-comment the 'reply_log' line in the
-#  `send Access-Accept` section of `raddb/sites-enabled/default`.
+#  `send Access-Accept` section of `sites-enabled/default`.
 #
 detail reply_log {
 	filename = "${radacctdir}/%{Net.Src.IP}/reply-detail-%Y-%m-%d"

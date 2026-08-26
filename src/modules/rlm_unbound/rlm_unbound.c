@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -28,7 +28,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <fcntl.h>
 
@@ -304,12 +303,6 @@ static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *o
 	case 1:
 		break;
 
-	default:
-		REDEBUG("Unknown DNS error");
-	error:
-		talloc_free(ur);
-		return XLAT_ACTION_FAIL;
-
 	RCODEERROR(0, "%s - No result");
 	RCODEERROR(-1, "%s - Query format error");
 	RCODEERROR(-2, "%s - DNS server failure");
@@ -318,6 +311,12 @@ static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *o
 	RCODEERROR(-5, "%s - DNS server refused query");
 	RCODEERROR(-16, "%s - Bogus DNS response");
 	RCODEERROR(-32, "%s - Error parsing DNS response");
+
+	default:
+		REDEBUG("Unknown DNS error");
+	error:
+		talloc_free(ur);
+		return XLAT_ACTION_FAIL;
 	}
 
 	/*

@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @brief Handle the the main server's (radiusd) configuration.
+ * @brief Handle the main server's (radiusd) configuration.
  * @file src/lib/server/main_config.c
  *
  * @copyright 2002,2006-2007 The FreeRADIUS server project
@@ -45,8 +45,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/xlat_func.h>
 
-
-
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
 #endif
@@ -60,6 +58,27 @@ main_config_t const	*main_config;				//!< Main server configuration.
 extern fr_log_t		debug_log;
 
 fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
+
+/*
+ *	Configuration file overrides
+ */
+FR_DLIST_TYPES(fr_override_list)
+typedef FR_DLIST_HEAD(fr_override_list) fr_override_list_t;
+FR_DLIST_TYPEDEFS(fr_override_list, fr_override_list_t, fr_override_entry_t)
+
+static fr_override_list_t override;
+
+typedef struct {
+	char				*name;	//!< must not be 'const'
+	char		       		*value;
+	FR_DLIST_ENTRY(fr_override_list)  entry;
+} fr_override_t;
+
+FR_DLIST_FUNCS(fr_override_list, fr_override_t, entry)
+
+#define fr_override_list_foreach(_list_head, _iter) \
+	for (fr_override_t *JOIN(_next,_iter), *_iter = fr_override_list_head(_list_head); JOIN(_next,_iter) = fr_override_list_next(_list_head, _iter), _iter != NULL; _iter = JOIN(_next,_iter))
+
 
 /**********************************************************************
  *
@@ -103,7 +122,9 @@ static const conf_parser_t initial_log_config[] = {
 	{ FR_CONF_OFFSET("local_state_dir", main_config_t, local_state_dir), .dflt = "${prefix}/var"},
 	{ FR_CONF_OFFSET("logdir", main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
 	{ FR_CONF_OFFSET("file", main_config_t, log_file), .dflt = "${logdir}/radius.log" },
-	{ FR_CONF_OFFSET("suppress_secrets", main_config_t, suppress_secrets), .dflt = "no" },
+	{ FR_CONF_OFFSET("suppress_secrets", main_config_t, suppress_secrets), .dflt = "yes" },
+	{ FR_CONF_OFFSET_IS_SET("timestamp", FR_TYPE_BOOL, 0, main_config_t, log_timestamp) },
+	{ FR_CONF_OFFSET("use_utc", main_config_t, log_dates_utc) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -140,7 +161,7 @@ static const conf_parser_t lib_dir_on_read_config[] = {
 static const conf_parser_t log_config[] = {
 	{ FR_CONF_OFFSET("colourise", main_config_t, do_colourise) },
 	{ FR_CONF_OFFSET("line_number", main_config_t, log_line_number) },
-	{ FR_CONF_OFFSET("timestamp", main_config_t, log_timestamp) },
+	{ FR_CONF_OFFSET_IS_SET("timestamp", FR_TYPE_BOOL, 0, main_config_t, log_timestamp) },
 	{ FR_CONF_OFFSET("use_utc", main_config_t, log_dates_utc) },
 	CONF_PARSER_TERMINATOR
 };
@@ -148,11 +169,11 @@ static const conf_parser_t log_config[] = {
 
 static const conf_parser_t resources[] = {
 	/*
-	 *	Don't set a default here.  It's set in the code, below.  This means that
-	 *	the config item will *not* get printed out in debug mode, so that no one knows
-	 *	it exists.
+	 *	Don't set defaults here.  They're set in the command line.  This means
+	 *	that the config item will *not* get printed out in debug mode, so that no one knows it exists.
 	 */
-	{ FR_CONF_OFFSET_FLAGS("talloc_memory_report", CONF_FLAG_HIDDEN, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET_FLAGS("talloc_memory_report", CONF_FLAG_HIDDEN, main_config_t, talloc_memory_report) }, /* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET_FLAGS("talloc_skip_cleanup", CONF_FLAG_HIDDEN, main_config_t, talloc_skip_cleanup) }, /* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
 
@@ -245,6 +266,19 @@ static const conf_parser_t server_config[] = {
 };
 
 
+static const conf_parser_t limit_files_config[] = {
+	{ FR_CONF_OFFSET_FLAGS("allow", CONF_FLAG_REQUIRED | CONF_FLAG_MULTI, main_config_t, limit_files) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t limit_exec_config[] = {
+	{ FR_CONF_OFFSET_FLAGS("allow", CONF_FLAG_REQUIRED | CONF_FLAG_MULTI, main_config_t, limit_exec) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+
 /**********************************************************************
  *
  *	The next few items are here to allow for switching of users
@@ -275,6 +309,10 @@ static const conf_parser_t security_config[] = {
 #endif
 
 	{ FR_CONF_OFFSET_IS_SET("chdir", FR_TYPE_STRING, 0, main_config_t, chdir), },
+
+	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .name2 = "files", .subcs = (void const *) limit_files_config },
+
+	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .name2 = "exec", .subcs = (void const *) limit_exec_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -500,51 +538,58 @@ static int xlat_config_escape(UNUSED request_t *request, fr_value_box_t *vb, UNU
 {
 	static char const	disallowed[] = "%{}\\'\"`";
 	size_t 			outmax = vb->vb_length * 3;
-	size_t			outlen = 0;
-	char 			escaped[outmax + 1];
+	char 			*escaped;
 	char const		*in, *end;
-	char			*out = escaped;
+	char			*out;
+
+	if (!vb->vb_length) return 0;
 
 	fr_assert(vb->type == FR_TYPE_STRING);
-	in = vb->vb_strvalue;
-	end = in + vb->vb_length;
 
-	do {
+	escaped = out = talloc_array(vb, char, outmax + 1);
+	if (!escaped) return -1;
+
+	end = escaped + outmax + 1;
+
+	for (in = vb->vb_strvalue; in < (vb->vb_strvalue + vb->vb_length); in++) {
 		/*
 		 *	Non-printable characters get replaced with their
 		 *	mime-encoded equivalents.
 		 */
-		if ((in[0] < 32)) {
-			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
+		if (in[0] < 32) {
+			snprintf(out, (size_t) (end - out), "=%02X", (unsigned char) in[0]);
 			out += 3;
-			outlen += 3;
 			continue;
 		}
+
 		if (strchr(disallowed, *in) != NULL) {
 			out[0] = '\\';
 			out[1] = *in;
 			out += 2;
-			outlen += 2;
 			continue;
 		}
+
 		/*
 		 *	Allowed character.
 		 */
 		*out = *in;
 		out++;
-		outlen++;
-	} while (++in < end);
+	}
 	*out = '\0';
 
 	/*
-	 *	If the output length is greater than the input length
-	 *	something has been escaped - replace the original string
+	 *	No change - do nothing.
 	 */
-	if (outlen > vb->vb_length) {
-		char	*outbuff;
-		if (fr_value_box_bstr_realloc(vb, &outbuff, vb, outlen) < 0) return -1;
-		memcpy(outbuff, escaped, outlen);
+	if ((size_t) (out - escaped) == vb->vb_length) {
+		talloc_free(escaped);
+		return 0;
 	}
+
+	/*
+	 *	Replace the original string.
+	 */
+	(void) fr_value_box_bstrndup(vb, vb, vb->enumv, escaped, (size_t) (out - escaped), vb->tainted);
+	talloc_free(escaped);
 
 	return 0;
 
@@ -714,6 +759,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 
 			fprintf(stderr, "%s: Failed setting group to %s: %s",
 				config->name, group->gr_name, fr_syserror(errno));
+			talloc_free(group);
 			return -1;
 		}
 	}
@@ -819,7 +865,7 @@ void main_config_name_set_default(main_config_t *config, char const *name, bool 
 		talloc_free(p);
 		config->name = NULL;
 	}
-	if (name) config->name = talloc_typed_strdup(config, name);
+	if (name) config->name = talloc_strdup(config, name);
 
 	config->overwrite_config_name = overwrite_config;
 }
@@ -827,15 +873,15 @@ void main_config_name_set_default(main_config_t *config, char const *name, bool 
 /** Set the global radius config directory.
  *
  * @param[in] config	to alter.
- * @param[in] name	to set as dir root e.g. /usr/local/etc/raddb.
+ * @param[in] name	to set as main configuration directory.
  */
-void main_config_raddb_dir_set(main_config_t *config, char const *name)
+void main_config_confdir_set(main_config_t *config, char const *name)
 {
-	if (config->raddb_dir) {
-		talloc_const_free(config->raddb_dir);
-		config->raddb_dir = NULL;
+	if (config->confdir) {
+		talloc_const_free(config->confdir);
+		config->confdir = NULL;
 	}
-	if (name) config->raddb_dir = talloc_typed_strdup(config, name);
+	if (name) config->confdir = talloc_strdup(config, name);
 }
 
 /** Clean up the semaphore when the main config is freed
@@ -905,9 +951,9 @@ int main_config_exclusive_proc(main_config_t *config)
 					   config->pid_file, fr_syserror(errno));
 			return -1;
 		}
-		MEM(path = talloc_typed_strdup(config, config->pid_file));
+		MEM(path = talloc_strdup(config, config->pid_file));
 	}  else {
-		MEM(path = talloc_asprintf(config, "%s/%s.conf", config->raddb_dir, config->name));
+		MEM(path = talloc_asprintf(config, "%s/%s.conf", config->confdir, config->name));
 	}
 
 #ifdef HAVE_SEMAPHORES
@@ -964,7 +1010,7 @@ void main_config_dict_dir_set(main_config_t *config, char const *name)
 		talloc_const_free(config->dict_dir);
 		config->dict_dir = NULL;
 	}
-	if (name) config->dict_dir = talloc_typed_strdup(config, name);
+	if (name) config->dict_dir = talloc_strdup(config, name);
 }
 
 /** Allocate a main_config_t struct, setting defaults
@@ -984,10 +1030,12 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 	 *	Set the defaults from compile time arguments
 	 *	these can be overridden later on the command line.
 	 */
-	main_config_raddb_dir_set(config, RADDBDIR);
+	main_config_confdir_set(config, CONFDIR);
 	main_config_dict_dir_set(config, DICTDIR);
 
 	main_config = config;
+
+	fr_override_list_init(&override);
 
 	return config;
 }
@@ -1018,15 +1066,15 @@ int main_config_init(main_config_t *config)
 	 */
 	xlat_func_init();
 
-	if (stat(config->raddb_dir, &statbuf) < 0) {
-		ERROR("Error checking raddb_dir \"%s\": %s", config->raddb_dir, fr_syserror(errno));
+	if (stat(config->confdir, &statbuf) < 0) {
+		ERROR("Error checking confdir \"%s\": %s", config->confdir, fr_syserror(errno));
 		return -1;
 	}
 
 #ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
 		ERROR("Configuration directory %s is globally writable. "
-		      "Refusing to start due to insecure configuration", config->raddb_dir);
+		      "Refusing to start due to insecure configuration", config->confdir);
 		return -1;
 	}
 #endif
@@ -1034,7 +1082,7 @@ int main_config_init(main_config_t *config)
 #if 0 && defined(S_IROTH)
 	if (statbuf.st_mode & S_IROTH != 0) {
 		ERROR("Configuration directory %s is globally readable. "
-		      "Refusing to start due to insecure configuration", config->raddb_dir);
+		      "Refusing to start due to insecure configuration", config->confdir);
 		return -1;
 	}
 #endif
@@ -1094,9 +1142,9 @@ int main_config_init(main_config_t *config)
 
 	/*
 	 *	@todo - not quite done yet... these dictionaries have
-	 *	to be loaded from raddb_dir.  But the
+	 *	to be loaded from confdir.  But the
 	 *	fr_dict_autoload_t has a base_dir pointer
-	 *	there... it's probably best to pass raddb_dir into
+	 *	there... it's probably best to pass confdir into
 	 *	fr_dict_autoload() and have it use that instead.
 	 *
 	 *	Once that's done, the proto_foo dictionaries SHOULD be
@@ -1115,8 +1163,8 @@ int main_config_init(main_config_t *config)
 	if (fr_debug_lvl) cf_md5_init();
 
 	/* Read the configuration file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->raddb_dir, config->name);
-	if (cf_file_read(cs, buffer) < 0) {
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->confdir, config->name);
+	if (cf_file_read(cs, buffer, true) < 0) {
 		ERROR("Error reading or parsing %s", buffer);
 		goto failure;
 	}
@@ -1206,6 +1254,17 @@ int main_config_init(main_config_t *config)
 	} /* there's an ENV subsection */
 
 	/*
+	 *	Now that we've read the configuration files, override the values.
+	 */
+	fr_override_list_foreach(&override, ov) {
+		if (cf_pair_replace_or_add(cs, ov->name, ov->value) < 0) {
+			fprintf(stderr, "%s: Error: Cannot update configuration item '%s' - %s.\n",
+				config->name, ov->name, fr_strerror());
+			goto failure;
+		}
+	}
+
+	/*
 	 *	Parse log section of main config.
 	 */
 	if (cf_section_rules_push(cs, initial_server_config) < 0) {
@@ -1271,6 +1330,8 @@ int main_config_init(main_config_t *config)
 	if (config->log_timestamp_is_set && (default_log.timestamp == L_TIMESTAMP_AUTO)) {
 		default_log.timestamp = config->log_timestamp ? L_TIMESTAMP_ON : L_TIMESTAMP_OFF;
 	}
+
+	default_log.dates_utc = config->log_dates_utc;
 
 #ifdef HAVE_SETUID
 	/*
@@ -1442,11 +1503,6 @@ void main_config_hup(main_config_t *config)
 	INFO("HUP - NYI in version 4");	/* Not yet implemented in v4 */
 }
 
-#if 0
-static fr_table_num_ordered_t config_arg_table[] = {
-};
-static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
-
 /*
  *	Migration function that allows for command-line over-ride of
  *	data structures which need to be initialized before the
@@ -1454,50 +1510,30 @@ static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
  *
  *	This should really only be temporary, until we get rid of flat vs nested.
  */
-int main_config_parse_option(char const *value)
+int main_config_save_override(char const *str)
 {
-	fr_value_box_t box;
-	size_t offset;
-	char const *p;
-	bool *out;
+	char *p;
+	fr_override_t *ov;
 
-	p = strchr(value, '=');
-	if (!p) return -1;
+	MEM(ov = talloc_zero(main_config, fr_override_t));
 
-	offset = fr_table_value_by_substr(config_arg_table, value, p - value, 0);
-	if (offset) {
-		out = (bool *) (((uintptr_t) main_config) + offset);
+	MEM(ov->name = talloc_strdup(ov, str));
 
-	} else {
+	p = strchr(ov->name, '=');
+	if (!p) {
+		talloc_free(ov);
+		fr_strerror_const("Missing '='");
 		return -1;
 	}
 
-	p += 1;
-
-	fr_value_box_init(&box, FR_TYPE_BOOL, NULL, false);
-	if (fr_value_box_from_str(NULL, &box, FR_TYPE_BOOL, NULL,
-				  p, strlen(p), NULL) < 0) {
-		fr_perror("Invalid boolean \"%s\"", p);
-		fr_exit(1);
+	*p++ = '\0';
+	if (!*p) {
+		talloc_free(ov);
+		fr_strerror_const("Missing value after '='");
+		return -1;
 	}
+	ov->value = p;
 
-	*out = box.vb_bool;
-
+	fr_override_list_insert_tail(&override, ov);
 	return 0;
 }
-
-/*
- *	Allow other pieces of the code to examine the migration options.
- */
-bool main_config_migrate_option_get(char const *name)
-{
-	size_t offset;
-
-	if (!main_config) return false;
-
-	offset = fr_table_value_by_substr(config_arg_table, name, strlen(name), 0);
-	if (!offset) return false;
-
-	return *(bool *) (((uintptr_t) main_config) + offset);
-}
-#endif

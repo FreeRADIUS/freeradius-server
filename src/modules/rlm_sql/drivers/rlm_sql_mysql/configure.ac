@@ -1,4 +1,4 @@
-AC_PREREQ([2.71])
+AC_PREREQ([2.73])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_sql_mysql.c])
 AC_REVISION($Revision$)
@@ -182,6 +182,30 @@ if test "x$have_mysql_h" != "xyes"; then
 		FR_MODULE_FAIL([mysql.h])
 	fi
 fi
+
+dnl ############################################################
+dnl # Check for socket lifetime callbacks
+dnl ############################################################
+CPPFLAGS="$SMART_CPPFLAGS"
+AC_MSG_CHECKING([for MARIADB_OPT_SOCKET_CALLBACK])
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM([[
+		#ifdef HAVE_MYSQL_MYSQL_H
+        	#include <mysql/mysql.h>
+        	#else
+        	#include <mysql.h>
+        	#endif
+	]],[[
+		if (MARIADB_OPT_SOCKET_CALLBACK) return 0;
+		return 1;
+	]])],
+	[
+		AC_DEFINE([HAVE_MARIADB_OPT_SOCKET_CALLBACK], [1], [Define if the client library reports socket lifetime events])
+		AC_MSG_RESULT(yes)
+	],
+	[
+		AC_MSG_RESULT(no)
+	])
 
 FR_MODULE_END_TESTS
 

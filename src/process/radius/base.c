@@ -29,19 +29,12 @@
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/server/log.h>
-#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/unlang/module.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/value.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -66,7 +59,6 @@ static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_original_packet_code;
 static fr_dict_attr_t const *attr_error_cause;
-static fr_dict_attr_t const *attr_event_timestamp;
 
 extern fr_dict_attr_autoload_t process_radius_dict_attr[];
 fr_dict_attr_autoload_t process_radius_dict_attr[] = {
@@ -84,8 +76,6 @@ fr_dict_attr_autoload_t process_radius_dict_attr[] = {
 
 	{ .out = &attr_original_packet_code, .name = "Extended-Attribute-1.Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-
-	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius },
 
 	DICT_AUTOLOAD_TERMINATOR
 };
@@ -125,7 +115,7 @@ typedef struct {
 	CONF_SECTION	*disconnect_nak;
 
 	CONF_SECTION	*do_not_respond;
-	CONF_SECTION	*protocol_error;	/* @todo - allow protocol error as a reject reply? */
+	CONF_SECTION	*protocol_error;
 
 	CONF_SECTION	*new_client;
 	CONF_SECTION	*add_client;
@@ -133,13 +123,7 @@ typedef struct {
 } process_radius_sections_t;
 
 typedef struct {
-	fr_time_delta_t			session_timeout;//!< Maximum time between the last response and next request.
-	uint32_t			max_session;	//!< Maximum ongoing session allowed.
-
-	uint8_t       			state_server_id;//!< Sets a specific byte in the state to allow the
-							//!< authenticating server to be identified in packet
-							//!<captures.
-
+	fr_state_config_t		session;	//!< track state session information.
 	fr_state_tree_t			*state_tree;	//!< State tree to link multiple requests/responses.
 } process_radius_auth_t;
 
@@ -169,16 +153,8 @@ typedef struct {
 #define PROCESS_CODE_DYNAMIC_CLIENT	FR_RADIUS_CODE_ACCESS_ACCEPT
 #include <freeradius-devel/server/process.h>
 
-static const conf_parser_t session_config[] = {
-	{ FR_CONF_OFFSET("timeout", process_radius_auth_t, session_timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", process_radius_auth_t, max_session), .dflt = "4096" },
-	{ FR_CONF_OFFSET("state_server_id", process_radius_auth_t, state_server_id) },
-
-	CONF_PARSER_TERMINATOR
-};
-
 static const conf_parser_t auth_config[] = {
-	{ FR_CONF_POINTER("session", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) session_config },
+	{ FR_CONF_POINTER("session", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) state_session_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -190,49 +166,7 @@ static const conf_parser_t config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/*
- *	Debug the packet if requested.
- */
-static void radius_packet_debug(request_t *request, fr_packet_t *packet, fr_pair_list_t *list, bool received)
-{
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-	char if_name[IFNAMSIZ];
-#endif
-
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s ID %d from %s%pV%s:%i to %s%pV%s:%i "
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       "%s%s%s"
-#endif
-		       "",
-		       received ? "Received" : "Sending",
-		       fr_radius_packet_name[packet->code],
-		       packet->id,
-		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->socket.inet.src_ipaddr),
-		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->socket.inet.src_port,
-		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
-		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->socket.inet.dst_port
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       , packet->socket.inet.ifindex ? "via " : "",
-		       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
-		       packet->socket.inet.ifindex ? " " : ""
-#endif
-		       );
-
-	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	}
-}
-
-/** Keep a copy of some attributes to keep them from being tamptered with
+/** Keep a copy of some attributes to keep them from being tampered with
  *
  */
 static inline CC_HINT(always_inline)
@@ -323,12 +257,7 @@ RECV(access_request)
 {
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
-	/*
-	 *	Only reject if the state has already been thawed.
-	 *	It could be that the state value wasn't intended
-	 *	for us, and we're just proxying upstream.
-	 */
-	if (fr_state_to_request(inst->auth.state_tree, request) < 0) {
+	if (fr_state_restore(inst->auth.state_tree, request) < 0) {
 		return CALL_SEND_TYPE(FR_RADIUS_CODE_ACCESS_REJECT);
 	}
 
@@ -355,11 +284,24 @@ RESUME(access_request)
 	 */
 	UPDATE_STATE(packet);
 
-	request->reply->code = state->packet_type[rcode];
-	if (!request->reply->code) request->reply->code = state->default_reply;
+	/*
+	 *	A policy or a module can hard-code the reply, in which case we can process that immediately,
+	 *	and bypass the "authenticate" section.
+	 */
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
+	if (vp && FR_RADIUS_PROCESS_CODE_VALID(vp->vp_uint32)) {
+		request->reply->code = vp->vp_uint32;
+		(void) fr_pair_delete(&request->reply_pairs, vp);
+	} else {
+		/*
+		 *	Get the default reply packet based on the rcode.
+		 */
+		request->reply->code = state->packet_type[rcode];
+		if (!request->reply->code) request->reply->code = state->default_reply;
+	}
 
 	/*
-	 *	Something set reject, we're done.
+	 *	Either the code above or a module set reject, we're done.
 	 */
 	if (request->reply->code == FR_RADIUS_CODE_ACCESS_REJECT) {
 		RDEBUG("The 'recv Access-Request' section returned %s - rejecting the request",
@@ -372,19 +314,11 @@ RESUME(access_request)
 		return CALL_SEND_STATE(state);
 	}
 
+	/*
+	 *	Something set a reply, bypass the "authenticate" section.
+	 */
 	if (request->reply->code) {
 		goto send_reply;
-	}
-
-	/*
-	 *	A policy _or_ a module can hard-code the reply.
-	 */
-	if (!request->reply->code) {
-		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
-		if (vp && FR_RADIUS_PROCESS_CODE_VALID(vp->vp_uint32)) {
-			request->reply->code = vp->vp_uint32;
-			goto send_reply;
-		}
 	}
 
 	/*
@@ -405,25 +339,21 @@ RESUME(access_request)
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) {
 		RDEBUG("Invalid value for 'Auth-Type' attribute, cannot authenticate the user - rejecting the request");
-
 		goto reject;
 	}
 
 	/*
-	 *	The magic Auth-Type Accept value
-	 *	which means skip the authenticate
-	 *	section.
+	 *	The magic Auth-Type Accept value which means skip the authenticate section.
 	 *
-	 *	And Reject means always reject.  Tho the admin should
-	 *	just return "reject" from the section.
+	 *	And Reject means always reject.  Tho the admin should instead just return "reject" from the
+	 *	section.
 	 */
 	if (fr_value_box_cmp(enum_auth_type_accept, dv->value) == 0) {
 		request->reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 		goto send_reply;
 
 	} else if (fr_value_box_cmp(enum_auth_type_reject, dv->value) == 0) {
-		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
-		goto send_reply;
+		goto reject;
 	}
 
 	cs = cf_section_find(inst->server_cs, "authenticate", dv->name);
@@ -437,7 +367,6 @@ RESUME(access_request)
 	 *
 	 *	And continue with sending the generic reply.
 	 */
-	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
 					      NULL, 0, mctx->rctx);
@@ -446,14 +375,16 @@ RESUME(access_request)
 RESUME(auth_type)
 {
 	static const fr_process_rcode_t auth_type_rcode = {
-		[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
-		[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+		[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+		[RLM_MODULE_HANDLED] =	0,
+		[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+		[RLM_MODULE_TIMEOUT] =  FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 
 	rlm_rcode_t			rcode = RESULT_RCODE;
@@ -464,21 +395,18 @@ RESUME(auth_type)
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
-	if (auth_type_rcode[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND) {
-		request->reply->code = auth_type_rcode[rcode];
-		UPDATE_STATE(reply);
-
-		RDEBUG("The 'authenticate' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
-
-		fr_assert(state->send != NULL);
-		return state->send(p_result, mctx, request);
-	}
-
 	/*
-	 *	Most cases except handled...
+	 *	Allow user to specify response packet type here, too.
 	 */
-	if (auth_type_rcode[rcode]) request->reply->code = auth_type_rcode[rcode];
+	if (!auth_type_rcode[rcode]) {
+		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
+		if (vp && FR_RADIUS_PROCESS_CODE_VALID(vp->vp_uint32)) {
+			request->reply->code = vp->vp_uint32;
+			(void) fr_pair_delete(&request->reply_pairs, vp);
+		}
+	} else {
+		request->reply->code = auth_type_rcode[rcode];
+	}
 
 	switch (request->reply->code) {
 	case 0:
@@ -509,6 +437,7 @@ RESUME(auth_type)
 						RWDEBUG("Unprintable characters in the password. "
 							"Double-check the shared secret on the server "
 							"and the NAS!");
+						RWDEBUG("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/shared_secret.html");
 						break;
 					}
 					p += size;
@@ -524,7 +453,7 @@ RESUME(auth_type)
 	 *	section.
 	 */
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		if ((vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_state)) != NULL) {
+		if ((vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_state)) == NULL) {
 			uint8_t buffer[16];
 
 			fr_rand_buffer(buffer, sizeof(buffer));
@@ -536,7 +465,6 @@ RESUME(auth_type)
 
 	default:
 		break;
-
 	}
 	UPDATE_STATE(reply);
 
@@ -594,7 +522,7 @@ RESUME(access_challenge)
 	 *
 	 *	If this fails, don't respond to the request.
 	 */
-	if (!request->parent && fr_request_to_state(inst->auth.state_tree, request) < 0) {
+	if (!request->parent && fr_state_store(inst->auth.state_tree, request) < 0) {
 		return CALL_SEND_TYPE(FR_RADIUS_CODE_DO_NOT_RESPOND);
 	}
 
@@ -607,36 +535,7 @@ RESUME(access_challenge)
  */
 RECV(accounting_request)
 {
-	fr_pair_t			*acct_delay, *event_timestamp;
-
 	radius_request_pairs_store(request, mctx->rctx);
-
-	/*
-	 *	Acct-Delay-Time is horrific.  Its existence in a packet means that any retransmissions can't
-	 *	be retransmissions!  Instead, we have to send a brand new packet each time.  This rewriting is
-	 *	expensive, causes ID churn, over-allocation of IDs, and makes it more difficult to discover
-	 *	end-to-end failures.
-	 *
-	 *	As a result, we delete Acct-Delay-Time, and replace it with Event-Timestamp.
-	 */
-	event_timestamp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
-	if (!event_timestamp) {
-		MEM(event_timestamp = fr_pair_afrom_da(request->request_ctx, attr_event_timestamp));
-		fr_pair_append(&request->request_pairs, event_timestamp);
-		event_timestamp->vp_date = fr_time_to_unix_time(request->packet->timestamp);
-
-		acct_delay = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
-		if (acct_delay) {
-			if (acct_delay->vp_uint32 < ((365 * 86400))) {
-				event_timestamp->vp_date = fr_unix_time_sub_time_delta(event_timestamp->vp_date, fr_time_delta_from_sec(acct_delay->vp_uint32));
-
-				RDEBUG("Accounting-Request packet contains %pP.  Creating %pP",
-				       acct_delay, event_timestamp);
-			}
-		} else {
-			RDEBUG("Accounting-Request packet is missing Event-Timestamp.  Adding it to packet as %pP.", event_timestamp);
-		}
-	}
 
 	return CALL_RECV(generic);
 }
@@ -649,6 +548,7 @@ RESUME(acct_type)
 		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
 		[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_TIMEOUT] =  FR_RADIUS_CODE_DO_NOT_RESPOND,
 	};
 
 	rlm_rcode_t			rcode = RESULT_RCODE;
@@ -745,9 +645,10 @@ RESUME(status_server)
 }
 #endif
 
-RESUME(protocol_error)
+RESUME_FLAG(protocol_error,UNUSED,)
 {
 	fr_pair_t 			*vp;
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -778,6 +679,18 @@ RESUME(protocol_error)
 	}
 
 	/*
+	 *	Discard any session state associated with the request.
+	 */
+	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
+		fr_state_discard(inst->auth.state_tree, request);
+	}
+
+	/*
+	 *	Add Proxy-State back.
+	 */
+	radius_request_pairs_to_reply(request, talloc_get_type_abort(mctx->rctx, process_radius_rctx_t));
+
+	/*
 	 *	And do the generic processing after running a "send" section.
 	 */
 	return CALL_RESUME(send_generic);
@@ -804,8 +717,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		RETURN_UNLANG_FAIL;
 	}
 
-	radius_packet_debug(request, request->packet, &request->request_pairs, true);
-
 	if (unlikely(request_is_dynamic_client(request))) {
 		return new_client(p_result, mctx, request);
 	}
@@ -818,10 +729,10 @@ static xlat_arg_parser_t const xlat_func_radius_secret_verify_args[] = {
         XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Validates a request against a know shared secret
+/** Validates a request against a known shared secret
  *
  * Designed for the specific purpose of verifying dynamic clients
- * against a know shared secret.
+ * against a known shared secret in a `new client` section.
  *
  * Example:
 @verbatim
@@ -860,8 +771,8 @@ static xlat_action_t xlat_func_radius_secret_verify(TALLOC_CTX *ctx, fr_dcursor_
 		RPEDEBUG("Invalid packet");
 		return XLAT_ACTION_FAIL;
 
-	case -DECODE_FAIL_MA_INVALID:
-	case -DECODE_FAIL_VERIFY:
+	case -FR_RADIUS_FAIL_MA_INVALID:
+	case -FR_RADIUS_FAIL_VERIFY:
 		RPEDEBUG("Failed to verify the packet signature");
 		vb->vb_bool = false;
 		break;
@@ -877,9 +788,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 
-	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.max_session,
-						   inst->auth.session_timeout, inst->auth.state_server_id,
-						   fr_hash_string(cf_section_name2(inst->server_cs)));
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.session.max_rounds, >=, 32);
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.session.max_rounds, <=, 100);
+
+	inst->auth.session.thread_safe = main_config->spawn_workers;
+	inst->auth.session.context_id = fr_hash_string(cf_section_name2(inst->server_cs));
+
+	MEM(inst->auth.state_tree = fr_state_tree_init(inst, attr_state, &inst->auth.session));
 
 	return 0;
 }
@@ -923,7 +838,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_REJECT]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_NOTFOUND]	= FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
+			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 		},
 		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_access_request,
@@ -936,7 +851,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_REJECT]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
+			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 		},
 		.default_rcode = RLM_MODULE_NOOP,
 		.result_rcode = RLM_MODULE_OK,
@@ -950,7 +865,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_REJECT]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
+			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 		},
 		.default_rcode = RLM_MODULE_NOOP,
 		.result_rcode = RLM_MODULE_REJECT,
@@ -964,7 +879,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_REJECT]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
+			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 		},
 		.default_rcode = RLM_MODULE_NOOP,
 		.result_rcode = RLM_MODULE_OK,
@@ -1085,7 +1000,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
 		.default_rcode = RLM_MODULE_NOOP,
-		.recv = recv_generic,
+		.recv = recv_generic_radius_request,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_request),
 	},

@@ -264,6 +264,7 @@ fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 
 	if (unlikely(da->flags.is_unknown)) {
 		fr_strerror_const("Root attribute cannot be unknown");
+		talloc_free(vp);
 		return NULL;
 	}
 
@@ -292,7 +293,8 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 
 	vp = fr_pair_alloc_null(ctx);
 	if (!vp) {
-		fr_strerror_printf("Out of memory");
+	oom:
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
@@ -304,6 +306,10 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		fr_dict_attr_t const *unknown;
 
 		unknown = fr_dict_attr_unknown_copy(vp, da);
+		if (!unknown) {
+			talloc_free(vp);
+			goto oom;
+		}
 		da = unknown;
 	}
 
@@ -613,14 +619,12 @@ int fr_pair_raw_afrom_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 	unknown = fr_dict_attr_unknown_afrom_da(vp, vp->da);
 	if (!unknown) return -1;
 
+	fr_value_box_clear(&vp->data);
+
 	vp->da = unknown;
 	fr_assert(vp->da->type == FR_TYPE_OCTETS);
 
-	fr_value_box_init(&vp->data, FR_TYPE_OCTETS, NULL, true);
-
-	fr_pair_value_memdup(vp, data, data_len, true);
-
-	return 0;
+	return fr_value_box_memdup(vp, &vp->data, NULL, data, data_len, true);
 }
 
 /** Iterate over pairs with a specified da
@@ -1161,7 +1165,7 @@ fr_pair_t *_fr_pair_dcursor_by_da_init(fr_dcursor_t *cursor,
  *
  * @param[in] cursor	to initialise.
  * @param[in] list	to iterate over.
- * @param[in] da	who's decentness to search for.
+ * @param[in] da	who's descendants to search for.
  * @param[in] is_const	whether the fr_pair_list_t is const.
  * @return
  *	- The first matching pair.
@@ -1844,7 +1848,7 @@ int fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp)
  *	- 0 if a == b
  *	- -1 if a < b
  */
-int8_t fr_pair_cmp_by_da(void const *a, void const *b)
+fr_cmp_ret_t fr_pair_cmp_by_da(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
@@ -1864,7 +1868,7 @@ int8_t fr_pair_cmp_by_da(void const *a, void const *b)
  *	- 0 if a == b
  *	- -1 if a < b
  */
-static inline int8_t pair_cmp_by_num(void const *a, void const *b)
+static inline fr_cmp_ret_t pair_cmp_by_num(void const *a, void const *b)
 {
 	int8_t ret;
 	unsigned int i, min;
@@ -1921,7 +1925,7 @@ static inline int8_t pair_cmp_by_num(void const *a, void const *b)
  *	- 0 if a == b
  *	- -1 if a < b
  */
-int8_t fr_pair_cmp_by_parent_num(void const *a, void const *b)
+fr_cmp_ret_t fr_pair_cmp_by_parent_num(void const *a, void const *b)
 {
 	fr_pair_t const	*vp_a = a;
 	fr_pair_t const	*vp_b = b;
@@ -2001,7 +2005,7 @@ int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
 
 			if (!fr_cond_assert(a->vp_type == FR_TYPE_STRING)) return -1;
 
-			slen = regex_compile(NULL, &preg, a->vp_strvalue, talloc_array_length(a->vp_strvalue) - 1,
+			slen = regex_compile(NULL, &preg, a->vp_strvalue, talloc_strlen(a->vp_strvalue),
 					     NULL, false, true);
 			if (slen <= 0) {
 				fr_strerror_printf_push("Error at offset %zd compiling regex for %s", -slen,
@@ -2017,7 +2021,7 @@ int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
 			/*
 			 *	Don't care about substring matches, oh well...
 			 */
-			slen = regex_exec(preg, value, talloc_array_length(value) - 1, NULL);
+			slen = regex_exec(preg, value, talloc_strlen(value), NULL);
 			talloc_free(preg);
 			talloc_free(value);
 
@@ -2042,24 +2046,24 @@ int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
  * @param a head list of #fr_pair_t.
  * @param b second list of #fr_pair_t.
  * @return
- *	- -1 if a < b.
- *	- 0 if the two lists are equal.
- *	- 1 if a > b.
- *	- -2 on error.
+ *	- CMP_LT if a < b.
+ *	- CMP_EQ if the two lists are equal.
+ *	- CMP_GT if a > b.
+ *	- CMP_ERR if the lists are not comparable, retrieve the error with fr_strerror.
  */
-int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
+fr_cmp_ret_t fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 {
 	fr_pair_t *a_p, *b_p;
 
 	for (a_p = fr_pair_list_head(a), b_p = fr_pair_list_head(b);
 	     a_p && b_p;
 	     a_p = fr_pair_list_next(a, a_p), b_p = fr_pair_list_next(b, b_p)) {
-		int ret;
+		fr_cmp_ret_t ret;
 
 		/* Same VP, no point doing expensive checks */
 		if (a_p == b_p) continue;
 
-		ret = (a_p->da < b_p->da) - (a_p->da > b_p->da);
+		ret = CMP(a_p->da, b_p->da);
 		if (ret != 0) return ret;
 
 		switch (a_p->vp_type) {
@@ -2070,19 +2074,15 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 
 		default:
 			ret = fr_value_box_cmp(&a_p->data, &b_p->data);
-			if (ret != 0) {
-				(void)fr_cond_assert(ret >= -1); 	/* Comparison error */
-				return ret;
-			}
+			if (ret != 0) return ret;
 		}
 
 	}
 
-	if (!a_p && !b_p) return 0;
-	if (!a_p) return -1;
-
-	/* if(!b_p) */
-	return 1;
+	/*
+	 *	If we've run off of the end of one of the lists.
+	 */
+	return CMP(a_p, b_p);
 }
 
 /** Write an error to the library errorbuff detailing the mismatch
@@ -2293,7 +2293,7 @@ bool fr_pair_immutable(fr_pair_t const *vp)
 			continue;
 		}
 
-		fr_assert(fr_type_is_structural(vp->vp_type));
+		fr_assert(fr_type_is_structural(child->vp_type));
 
 		if (fr_pair_immutable(child)) return true;
 	}
@@ -2467,6 +2467,7 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 {
 	fr_pair_t	*tlv;
 	bool		found = false;
+	fr_pair_list_t	list;
 
 	if (!fr_type_is_structural(parent_da->type)) return -1;
 
@@ -2485,17 +2486,24 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 		return 1;
 	}
 
+	fr_pair_list_init(&list);
+
 	fr_pair_list_foreach(from, vp) {
 		fr_pair_t *new_vp;
 
 		if (!fr_dict_attr_common_parent(parent_da, vp->da, true)) continue;
 
 		new_vp = fr_pair_copy(ctx, vp);
-		if (unlikely(!new_vp)) return -1;
+		if (unlikely(!new_vp)) {
+			fr_pair_list_free(&list);
+			return -1;
+		}
 
-		fr_pair_append(to, new_vp);
+		fr_pair_append(&list, new_vp);
 		found = true;
 	}
+
+	fr_pair_list_append(to, &list);
 
 	return found;
 }
@@ -2521,6 +2529,9 @@ int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	fr_pair_t const	*vp;
 	fr_pair_t	*new_vp;
 	unsigned int	cnt = 0;
+	fr_pair_list_t	list;
+
+	fr_pair_list_init(&list);
 
 	if (!start) start = fr_pair_list_head(from);
 
@@ -2528,10 +2539,17 @@ int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	     vp && ((count == 0) || (cnt < count));
 	     vp = fr_pair_list_next(from, vp), cnt++) {
 		PAIR_VERIFY_WITH_LIST(from, vp);
+
 		new_vp = fr_pair_copy(ctx, vp);
-		if (unlikely(!new_vp)) return -1;
-		fr_pair_append(to, new_vp);
+		if (unlikely(!new_vp)) {
+			fr_pair_list_free(&list);
+			return -1;
+		}
+
+		fr_pair_append(&list, new_vp);
 	}
+
+	fr_pair_list_append(to, &list);
 
 	return cnt;
 }
@@ -2550,7 +2568,7 @@ void fr_pair_value_clear(fr_pair_t *vp)
 		break;
 
 	case FR_TYPE_STRUCTURAL:
-		if (!fr_pair_list_empty(&vp->vp_group)) return;
+		if (fr_pair_list_empty(&vp->vp_group)) return;
 
 		while ((child = fr_pair_order_list_pop_tail(&vp->vp_group.order))) {
 			fr_pair_value_clear(child);
@@ -3116,7 +3134,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 		fr_fatal_assert_msg(vp->da->parent == parent_da,
 				    "CONSISTENCY CHECK FAILED %s[%d]:  pair %s does not have the correct parentage - "
 				    "expected parent %s, found different parent %s",
-				    file, line, vp->da->name, vp->da->parent->name, parent_da->name);
+				    file, line, vp->da->name, parent_da->name, vp->da->parent->name);
 	}
 
 	if (list) {
@@ -3222,7 +3240,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     "char but is %s", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
 		}
 
-		len = (talloc_array_length(vp->vp_strvalue) - 1);
+		len = (talloc_strlen(vp->vp_strvalue));
 		if (vp->vp_length > len) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" length %zu is greater than "
 					     "char buffer length %zu", file, line, vp->da->name, vp->vp_length, len);
@@ -3239,7 +3257,6 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     "parented by fr_pair_t %p, instead parented by %p (%s)",
 					     file, line, vp->da->name,
 					     vp, parent, parent ? talloc_get_name(parent) : "NULL");
-					     fr_fatal_assert_fail("0");
 		}
 	}
 		break;
@@ -3253,7 +3270,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 		}
 		if (vp->vp_ip.prefix != 32) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" address prefix "
-					     "set correctly for IPv4 address.  Expected %i got %i",
+					     "not set correctly for IPv4 address.  Expected %i got %i",
 					     file, line, vp->da->name,
 					     32, vp->vp_ip.prefix);
 		}
@@ -3319,22 +3336,6 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 	if (vp->da->flags.is_unknown || vp->vp_raw) {
 		(void) talloc_get_type_abort_const(vp->da, fr_dict_attr_t);
 
-	} else {
-		fr_dict_attr_t const *da;
-
-		da = vp->da;
-		if (da != vp->da) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t "
-					     "dictionary pointer %p \"%s\" (%s) "
-					     "and global dictionary pointer %p \"%s\" (%s) differ",
-					     file, line, vp->da, vp->da->name,
-					     fr_type_to_str(vp->vp_type),
-					     da, da->name,
-					     fr_type_to_str(da->type));
-		}
-	}
-
-	if (vp->vp_raw || vp->da->flags.is_unknown) {
 		/*
 		 *	Raw or unknown attributes can have specific data types.  See DER and CBOR.
 		 */
@@ -3345,13 +3346,13 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 		char data_type_int[10], da_type_int[10];
 
 		snprintf(data_type_int, sizeof(data_type_int), "%u", vp->vp_type);
-		snprintf(da_type_int, sizeof(da_type_int), "%u", vp->vp_type);
+		snprintf(da_type_int, sizeof(da_type_int), "%u", vp->da->type);
 
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t attribute %p \"%s\" "
 				     "data type (%s) does not match da type (%s)",
 				     file, line, vp->da, vp->da->name,
 				     fr_table_str_by_value(fr_type_table, vp->vp_type, data_type_int),
-				     fr_table_str_by_value(fr_type_table, vp->vp_type, da_type_int));
+				     fr_table_str_by_value(fr_type_table, vp->da->type, da_type_int));
 	}
 }
 

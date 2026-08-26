@@ -44,13 +44,18 @@ $(FILES.$(TEST)): export TZ = GMT
 #
 PROTOCOLS := $(subst $(DIR)/protocols/,,$(wildcard $(DIR)/protocols/*))
 define UNIT_TEST_PROTOCOLS
+ifneq "${1}" "dict"
 $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))): $(wildcard $(top_srcdir)/share/dictionary/${1}/dictionary* $(top_srcdir)/src/tests/unit/protocols/${1}/dictionary*) $(BUILD_DIR)/lib/local/libfreeradius-${1}.la $(BUILD_DIR)/lib/libfreeradius-${1}.la
+test.unit.${1}: $(BUILD_DIR)/lib/libfreeradius-${1}.la $(BUILD_DIR)/lib/local/libfreeradius-${1}.la
+else
+$(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))): $(wildcard $(top_srcdir)/src/tests/unit/protocols/${1}/*.dict)
+endif
 
 ifeq "${1}" "eap"
 $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))): $(wildcard $(top_srcdir)/share/dictionary/${1}/dictionary*) $(BUILD_DIR)/lib/local/libfreeradius-${1}.la $(BUILD_DIR)/lib/libfreeradius-eap-aka-sim.la
 endif
 
-test.unit.${1}: $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-${1}.la $(BUILD_DIR)/lib/local/libfreeradius-${1}.la
+test.unit.${1}: $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES)))
 
 .PHONY: clean.test.unit.${1}
 clean.test.unit.${1}:
@@ -89,8 +94,8 @@ $(filter $(BUILD_DIR)/tests/unit/purify/%,$(FILES.$(TEST))): PURIFY=-p
 #
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
-	$(eval export UNIT_TEST_ATTRIBUTE:=TZ=GMT $(TEST_BIN_NO_TIMEOUT)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $<)
-	${Q}$(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<
+	$(eval export UNIT_TEST_ATTRIBUTE:=TZ=GMT $(TEST_BIN_NO_TIMEOUT)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -o \"$@\" $<)
+	${Q}$(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -o "$@" $<
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@

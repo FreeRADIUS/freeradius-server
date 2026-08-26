@@ -1,0 +1,7 @@
+string test
+
+#
+#  $VALUE{path} accepts only a single line of text.  A file that
+#  contains multiple non-blank lines is an error.
+#
+test = "$VALUE{value-multiline.md}"                               # ERROR

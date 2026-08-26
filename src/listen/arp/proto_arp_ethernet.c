@@ -23,10 +23,10 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/util.h>
 #include <freeradius-devel/util/trie.h>
+#include <freeradius-devel/util/pcap.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 
 #include "proto_arp.h"
@@ -172,15 +172,19 @@ static int mod_open(fr_listen_t *li)
 
 	char const			*filter;
 	char				*our_filter = NULL;
+	int				rcode;
 
 	thread->pcap = fr_pcap_init(thread, inst->interface, PCAP_INTERFACE_IN);
 	if (!thread->pcap) {
-		PERROR("Failed initializing pcap handle.");
+		cf_log_err(li->cs, "Failed initializing pcap - %s", fr_strerror());
 		return -1;
 	}
 
-	if (fr_pcap_open(thread->pcap) < 0) {
-		PERROR("Failed opening interface %s", inst->interface);
+	rad_suid_up();
+	rcode = fr_pcap_open(thread->pcap);
+	rad_suid_down();
+	if (rcode < 0) {
+		cf_log_err(li->cs, "Failed opening interface %s - %s", inst->interface, fr_strerror());
 		return -1;
 	}
 
@@ -194,7 +198,7 @@ static int mod_open(fr_listen_t *li)
 	}
 
 	if (fr_pcap_apply_filter(thread->pcap, filter) < 0) {
-		PERROR("Failed applying pcap filter '%s'", filter);
+		cf_log_err(li->cs, "Failed applying pcap filter '%s' - %s", filter, fr_strerror());
 		talloc_free(our_filter);
 		return -1;
 	}

@@ -193,16 +193,16 @@ match false
 #  These are just booleans now.  We can subtract and invert them.
 #
 xlat_purify_cond -fail
-match ERROR offset 1: Attribute 'fail' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR: ERROR offset 1: Attribute 'fail' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify_cond ~fail
-match ERROR offset 1: Attribute 'fail' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR: ERROR offset 1: Attribute 'fail' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify_cond !fail
 match !%interpreter.rcode('fail')
 
 xlat_purify -fail
-match ERROR offset 1: Attribute 'fail' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR: ERROR offset 1: Attribute 'fail' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify !fail
 match !%interpreter.rcode('fail')

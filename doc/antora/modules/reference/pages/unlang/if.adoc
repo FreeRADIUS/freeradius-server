@@ -14,8 +14,7 @@ _<condition>_ evaluates to `true`, the statements within the subsection
 are executed.  When the _<condition>_ evaluates to `false`, those
 statements are skipped.
 
-An `if` statement can optionally be followed by an xref:unlang/else.adoc[else] or
-an xref:unlang/elsif.adoc[elsif] statement.
+An `if` statement can optionally be followed by an xref:unlang/else.adoc[else] or an xref:unlang/elsif.adoc[elsif] statement.
 
 .Example
 [source,unlang]
@@ -77,7 +76,7 @@ if (User-Name == "bob") {
 
 And without:
 
-.Example Without Brackes
+.Example Without Brackets
 [source,unlang]
 ----
 if User-Name == "bob" {
@@ -85,8 +84,8 @@ if User-Name == "bob" {
 }
 ----
 
-The same behavior applies to conditions with complex statements using
-`&` and `||`.  So long as the text between the `if` and the `{` is a
+The same behaviour applies to conditions with complex statements using
+`&&` and `||`.  So long as the text between the `if` and the `{` is a
 valid condition, it will be parsed correctly.
 
 === Multi-line conditions
@@ -106,5 +105,5 @@ if (User-Name ==
 
 The last entry in an `if` section can also be an xref:unlang/actions.adoc[actions] subsection.
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

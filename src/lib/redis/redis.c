@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -26,6 +26,7 @@
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/value.h>
+#include "attrs.h"
 
 fr_table_num_sorted_t const redis_reply_types[] = {
 	{ L("array"),		REDIS_REPLY_ARRAY	},
@@ -47,6 +48,59 @@ fr_table_num_sorted_t const redis_rcodes[] = {
 };
 size_t redis_rcodes_len = NUM_ELEMENTS(redis_rcodes);
 
+fr_dict_t const *dict_redis;
+
+extern fr_dict_autoload_t redis_base_dict[];
+fr_dict_autoload_t redis_base_dict[] = {
+	{ .out = &dict_redis, .proto = "redis" },
+	DICT_AUTOLOAD_TERMINATOR
+};
+
+fr_dict_attr_t const *attr_redis_packet_type;
+fr_dict_attr_t const *attr_redis_log_prefix;
+fr_dict_attr_t const *attr_redis_max_nodes;
+fr_dict_attr_t const *attr_redis_bootstrap_node;
+fr_dict_attr_t const *attr_redis_bootstrap_port;
+fr_dict_attr_t const *attr_redis_username;
+fr_dict_attr_t const *attr_redis_password;
+fr_dict_attr_t const *attr_redis_cluster_id;
+fr_dict_attr_t const *attr_redis_shard;
+fr_dict_attr_t const *attr_redis_slot;
+fr_dict_attr_t const *attr_redis_slot_start;
+fr_dict_attr_t const *attr_redis_slot_end;
+fr_dict_attr_t const *attr_redis_node;
+fr_dict_attr_t const *attr_redis_node_endpoint;
+fr_dict_attr_t const *attr_redis_node_port;
+fr_dict_attr_t const *attr_redis_node_role;
+fr_dict_attr_t const *attr_redis_force_update;
+fr_dict_attr_t const *attr_redis_use_tls;
+fr_dict_attr_t const *attr_redis_tls_conf;
+
+extern fr_dict_attr_autoload_t redis_base_dict_attr[];
+fr_dict_attr_autoload_t redis_base_dict_attr[] = {
+	{ .out = &attr_redis_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_redis },
+	{ .out = &attr_redis_log_prefix, .name = "Log-Prefix", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_max_nodes, .name = "Max-Nodes", .type = FR_TYPE_UINT8, .dict = &dict_redis },
+	{ .out = &attr_redis_bootstrap_node, .name = "Bootstrap-Node", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_bootstrap_port, .name = "Bootstrap-Port", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_username, .name = "Username", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_password, .name = "Password", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_cluster_id, .name = "Cluster-Id", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_shard, .name = "Shard", .type = FR_TYPE_TLV, .dict = &dict_redis },
+	{ .out = &attr_redis_slot, .name = "Shard.Slot", .type = FR_TYPE_TLV, .dict = &dict_redis },
+	{ .out = &attr_redis_slot_start, .name = "Shard.Slot.Start", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_slot_end, .name = "Shard.Slot.End", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_node, .name = "Shard.Node", .type = FR_TYPE_TLV, .dict = &dict_redis },
+	{ .out = &attr_redis_node_endpoint, .name = "Shard.Node.Endpoint", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_node_port, .name = "Shard.Node.Port", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_node_role, .name = "Shard.Node.Role", .type = FR_TYPE_UINT8, .dict = &dict_redis },
+	{ .out = &attr_redis_force_update, .name = "Force-Update", .type = FR_TYPE_BOOL, .dict = &dict_redis },
+	{ .out = &attr_redis_use_tls, .name = "Use-TLS", .type = FR_TYPE_BOOL, .dict = &dict_redis },
+	{ .out = &attr_redis_tls_conf, .name = "TLS-Conf", .type = FR_TYPE_UINT64, .dict = &dict_redis },
+
+	DICT_AUTOLOAD_TERMINATOR
+};
+
 /** Print the version of libhiredis the server was built against
  *
  */
@@ -55,13 +109,46 @@ void fr_redis_version_print(void)
 	INFO("libfreeradius-redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
 }
 
+static int _redis_dict_init(UNUSED void *uctx)
+{
+	if (fr_dict_autoload(redis_base_dict) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
+	}
+	if (fr_dict_attr_autoload(redis_base_dict_attr) < 0) {
+		PERROR("%s", __FUNCTION__);
+		fr_dict_autofree(redis_base_dict);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int _redis_dict_free(UNUSED void *uctx)
+{
+	fr_dict_autofree(redis_base_dict);
+	return 0;
+}
+
+/** Load the Redis dictionaries
+ *
+ */
+int redis_dict_init(void)
+{
+	int ret;
+
+	fr_atexit_global_once_ret(&ret, _redis_dict_init, _redis_dict_free, NULL);
+
+	return ret;
+}
+
 /** Check the reply for errors
  *
  * @param[in] conn used to issue the command.
  * @param[in] reply to process.
  * @return
  *	- REDIS_RCODE_TRY_AGAIN - If the operation should be retries.
- *	- REDIS_RCODE_MOVED  	- If the key has been permanently moved.
+ *	- REDIS_RCODE_MOVE  	- If the key has been permanently moved.
  *	- REDIS_RCODE_ASK	- If the key has been temporarily moved.
  *	- REDIS_RCODE_SUCCESS   - if no errors.
  *	- REDIS_RCODE_ERROR     - on command/server error.
@@ -382,7 +469,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 	}
 
 	if (op->type != REDIS_REPLY_STRING) {
-		REDEBUG("Bad key type, expected string, got %s",
+		REDEBUG("Bad op type, expected string, got %s",
 			fr_table_str_by_value(redis_reply_types, op->type, "<UNKNOWN>"));
 		goto error;
 	}
@@ -500,7 +587,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 			return -1;
 		}
 		out[2] = new;
-		out_len[2] = talloc_array_length(new) - 1;
+		out_len[2] = talloc_strlen(new);
 		break;
 	}
 
@@ -512,174 +599,38 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	return 0;
 }
 
-/** Simplifies handling of pipelined commands with Redis cluster
- *
- * Retrieve all available pipelined responses, and write them to the array.
- *
- * On encountering an error, all previously retrieved responses are freed, and the reply
- * containing the error is written to the first element of out. All responses after the
- * error are also freed.
- *
- * If the number of responses != pipelined, that's also an error, a very serious one,
- * in libhiredis or Redis.  We can't really do much here apart from error out.
- *
- * @param[out] pipelined	Number of pipelined commands we sent to the server.
- * @param[out] rcode		Status of the first errored response, or REDIS_RCODE_SUCCESS
- *				if all responses were processed.
- * @param[out] out		Where to write the replies from pipelined commands.
- *				Will contain exactly 1 element on error WHICH MUST BE FREED,
- *				else the number passed in pipelined.
- * @param[in] out_len		number of elements in out.
- * @param[in] conn		the pipelined commands were issued on.
- * @return
- *	- #REDIS_RCODE_SUCCESS on success.
- *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
- *	- REDIS_RCODE_* on other errors;
- */
-fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcode_t *rcode,
-					  redisReply *out[], size_t out_len,
-					  fr_redis_conn_t *conn)
-{
-	size_t			i;
-	redisReply		**out_p = out;
-	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
-	redisReply		*reply = NULL;
-
-	fr_assert(out_len >= (size_t)*pipelined);
-
-	fr_strerror_clear();	/* Clear any outstanding errors */
-
-	if ((size_t) *pipelined > out_len) {
-		for (i = 0; i < (size_t)*pipelined; i++) {
-			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) break;
-			fr_redis_reply_free(&reply);
-		}
-
-		*pipelined = 0;			/* all outstanding responses should be cleared */
-
-		fr_strerror_const("Too many pipelined commands");
-		out[0] = NULL;
-		return REDIS_RCODE_ERROR;
-	}
-
-	for (i = 0; i < (size_t)*pipelined; i++) {
-		bool maybe_more = false;
-
-		/*
-		 *	we don't need to check the return code here,
-		 *	as it's also stored in the conn->handle.
-		 */
-		reply = NULL;	/* redisGetReply doesn't NULLify reply on error *sigh* */
-		if (redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) maybe_more = true;
-		status = fr_redis_command_status(conn, reply);
-		*out_p++ = reply;
-
-		/*
-		 *	Bail out of processing responses,
-		 *	free the remaining ones (leaving this one intact)
-		 *	pass control back to the cluster code.
-		 */
-		if (maybe_more && (status != REDIS_RCODE_SUCCESS)) {
-			size_t j;
-		error:
-			/*
-			 *	Append the hiredis error
-			 */
-			if (conn->handle->errstr[0]) fr_strerror_printf_push("%s", conn->handle->errstr);
-
-			/*
-			 *	Free everything that came before the bad reply
-			 */
-			for (j = 0; j < i; j++) {
-				fr_redis_reply_free(&out[j]);
-				out[j] = NULL;
-			}
-
-			/*
-			 *	...and drain the rest of the pipelined responses
-			 */
-			for (j = i + 1; j < (size_t)*pipelined; j++) {
-				redisReply *to_clear;
-
-				if (redisGetReply(conn->handle, (void **)&to_clear) != REDIS_OK) break;
-				fr_redis_reply_free(&to_clear);
-			}
-
-			out[0] = reply;
-
-			*rcode = status;
-			*pipelined = 0;		 /* all outstanding responses should be cleared */
-
-			return reply ? 1 : 0;
-		}
-	}
-
-	if (i != (size_t)*pipelined) {
-		fr_strerror_printf("Expected %u responses, got %zu", *pipelined, i);
-		status = REDIS_RCODE_ERROR;
-		goto error;
-	}
-
-	*rcode = status;
-
-	*pipelined = 0;				/* all outstanding responses should be cleared */
-
-	return i;
-}
-
-/** Get the version of Redis running on the remote server
- *
- * This can be useful for some modules, as it allows adaptive behaviour, or early termination.
+/** Parse the reply from the Redis command INFO SERVER to extract the version
  *
  * @param[out] out Where to write the version string.
  * @param[in] out_len Length of the version string buffer.
- * @param[in] conn Used to query the version string.
+ * @param[in] reply Redis reply to parse
  * @return
  *	- #REDIS_RCODE_SUCCESS on success.
  *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
- *	- REDIS_RCODE_* on other errors;
  */
-fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t *conn)
+fr_redis_rcode_t fr_redis_parse_version(char *out, size_t out_len, redisReply *reply)
 {
-	redisReply		*reply;
-	fr_redis_rcode_t	status;
-	char			*p, *q;
-
-	fr_assert(out_len > 0);
-	out[0] = '\0';
-
-	reply = redisCommand(conn->handle, "INFO SERVER");
-	status = fr_redis_command_status(conn, reply);
-	if (status != REDIS_RCODE_SUCCESS) return status;
+	fr_sbuff_t	sbuff;
 
 	if (reply->type != REDIS_REPLY_STRING) {
 		fr_strerror_printf("Bad value type, expected string or integer, got %s",
 				   fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 	error:
-		fr_redis_reply_free(&reply);
 		return REDIS_RCODE_ERROR;
 	}
 
-	p = strstr(reply->str, "redis_version:");
-	if (!p) {
+	fr_sbuff_init_in(&sbuff, reply->str, reply->len);
+
+	if (!fr_sbuff_adv_to_str_literal(&sbuff, SIZE_MAX, "redis_version:")) {
 		fr_strerror_const("Response did not contain version string");
 		goto error;
 	}
+	fr_sbuff_advance(&sbuff, sizeof("redis_version:") -1);
 
-	p = strchr(p, ':');
-	fr_assert(p);
-	p++;
-
-	q = strstr(p, "\r\n");
-	if (!q) q = p + strlen(p);
-
-	if ((size_t)(q - p) >= out_len) {
-		fr_strerror_printf("Version string %zu bytes, expected < %zu bytes", q - p, out_len);
+	if (fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, out_len), &sbuff, SIZE_MAX, &FR_SBUFF_TERMS(L("\r\n")), NULL) == 0) {
+		fr_strerror_printf("Failed extracting version string");
 		goto error;
 	}
-	strlcpy(out, p, (q - p) + 1);
-
-	fr_redis_reply_free(&reply);
 
 	return REDIS_RCODE_SUCCESS;
 }

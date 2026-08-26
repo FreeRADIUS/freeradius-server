@@ -1,0 +1,139 @@
+#
+#  Check the ippool module keeps allocating across a cluster node failure
+#
+string redismaster
+string redisreplica
+string takeoverresult
+string allocresult
+
+#
+#  No cluster reset here.  This test runs last, on a cluster the bootstrap
+#  target guaranteed healthy at the start of the run, and the tests before
+#  it only touch their own pools.  The node killed below is brought back
+#  by the next run's bootstrap.
+#
+control.IP-Pool.Name := 'test_node_fail'
+
+#
+#  Create the pool and check the module allocates from it
+#
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.2.1/32', 32, '192.168.2.0')
+
+redis_ippool
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Framed-IP-Address == 192.168.2.1) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  Note the master and replica holding the pool.  The replica only appears
+#  in the cluster map a little after the cluster is built, so keep looking
+#  until the map lists one.
+#
+foreach i (%range(20)) {
+	#
+	#  The map only lists the replica after a remap succeeds, so keep
+	#  remapping until one does.
+	#
+	timeout 1s {
+		if (%redis.remap() == 'success') {
+			redisreplica = %redis.node(control.IP-Pool.Name, 1)
+			if (redisreplica != '') {
+				break
+			}
+		}
+	}
+	%delay(0.5)
+}
+if (redisreplica == '') {
+	test_fail
+	return
+}
+
+redismaster := %redis.node(control.IP-Pool.Name, 0)
+
+#
+#  Replication is asynchronous, and a master killed before the pool writes
+#  reach the replica loses them, so the promoted replica would correctly
+#  answer notfound.  A probe key is written after the pool, and replication
+#  is ordered, so the probe being readable on the replica proves the pool
+#  arrived too.
+#
+%redis('SET', "{%{control.IP-Pool.Name}}:probe", 'sync')
+foreach i (%range(20)) {
+	if (%redis("-@%{redisreplica}", 'GET', "{%{control.IP-Pool.Name}}:probe") == 'sync') {
+		break
+	}
+	if (i == 19) {
+		test_fail
+		return
+	}
+	%delay(0.5)
+}
+
+#  Cause the master holding the pool to SEGV
+if (%redis("@%{redismaster}", 'DEBUG', 'SEGFAULT')) {
+	test_fail
+}
+
+#  Forcefully failover the slave for that node
+#  If the failover has happened automatically, then there is no result
+#  which sometimes happens when running tests with sanitizers, due to
+#  slowness introduced by the sanitizers.
+try {
+	takeoverresult = %redis("@%{redisreplica}", 'CLUSTER', 'FAILOVER', 'TAKEOVER')
+}
+catch fail {
+	takeoverresult = 'OK'
+}
+if (takeoverresult != 'OK') {
+	test_fail
+}
+
+#  Allow time for the takeover to propagate to other nodes
+foreach i (%range(20)) {
+	timeout 1s {
+		%redis.remap(%{redisreplica})
+	}
+
+	if (%redis.node(control.IP-Pool.Name, 0) == redisreplica) {
+		break
+	}
+	%delay(0.5)
+}
+
+#
+#  The same device must get its lease back from the promoted replica.  The
+#  module discovers the dead node on first use and remaps on its own, so
+#  allow a bounded window for that recovery rather than a single attempt.
+#
+foreach i (%range(20)) {
+	#
+	#  A request enqueued while the module has no live connection to the
+	#  node sits in the trunk backlog with no timeout of its own, so cap
+	#  each attempt rather than letting one hang until max_request_time.
+	#
+	timeout 2s {
+		redis_ippool.recv.Access-Request
+		if (updated) {
+			allocresult = 'ok'
+			break
+		}
+	}
+	%delay(0.5)
+}
+
+if (allocresult != 'ok') {
+	test_fail
+}
+
+if !(reply.Framed-IP-Address == 192.168.2.1) {
+	test_fail
+}
+
+test_pass

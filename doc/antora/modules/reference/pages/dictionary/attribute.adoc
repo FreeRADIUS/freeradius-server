@@ -23,7 +23,7 @@ or as partial OIDs (`.14`).
 +
 There are a number of complex rules and interpretations of OID values
 which are difficult to clearly document using simple examples.  This
-complex behavior is only needed for rare situations.  In short, if you
+complex behaviour is only needed for rare situations.  In short, if you
 are creating complex protocol dictionaries, you need to understand
 those protocols before creating the dictionaries.  On the other hand,
 if you are creating simple protocol dictionaries, there is no need to
@@ -60,7 +60,7 @@ Common flags and meanings
 | `secret`       | The server will not print `secret` values in debug mode, and in many other situations.
 |=====
 
-See the the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
 
 .Examples
 ----
@@ -85,5 +85,5 @@ Fixed Size types and meanings
 |=====
 
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

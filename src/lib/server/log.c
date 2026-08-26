@@ -611,12 +611,11 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		 char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
-	log_dst_t	*dst;
 
 	if (!request->log.dst) return;
 
 	va_start(ap, fmt);
-	for (dst = request->log.dst; dst; dst = dst->next) {
+	log_dst_foreach(request->log.dst, dst) {
 		if ((lvl > request->log.lvl) && (lvl > dst->lvl)) continue;
 
 		dst->func(type, lvl, request, file, line, fmt, ap, dst->uctx);
@@ -646,14 +645,19 @@ void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		       char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
-	log_dst_t	*dst_p;
 
 	if (!request->log.dst) return;
 
 	va_start(ap, fmt);
-	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
-		dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
+	log_dst_foreach(request->log.dst, dst) {
+		va_list copy;
+		va_copy(copy, ap);
+
+		dst->func(type, lvl, request, file, line, fmt, copy, dst->uctx);
+
+		va_end(copy);
 	}
+
 	if ((type == L_ERR) || (type == L_DBG_ERR) || (type == L_DBG_ERR_REQ)) {
 		vlog_module_failure_msg(request, fmt, ap);
 	}
@@ -687,13 +691,17 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	error = fr_strerror_pop();
 	if (!error) {
 		va_list		ap;
-		log_dst_t	*dst_p;
 
 		if (!fmt) return;	/* NOOP */
 
 		va_start(ap, fmt);
-		for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
-			dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
+		log_dst_foreach(request->log.dst, dst) {
+			va_list copy;
+			va_copy(copy, ap);
+
+			dst->func(type, lvl, request, file, line, fmt, copy, dst->uctx);
+
+			va_end(copy);
 		}
 		if ((type == L_ERR) || (type == L_DBG_ERR) || (type == L_DBG_ERR_REQ)) {
 			vlog_module_failure_msg(request, fmt, ap);
@@ -803,9 +811,8 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 
 	default:
 		fr_assert(fr_type_is_leaf(vp->vp_type));
-		if (fr_pair_print_value_quoted(oid_buff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
 
-		RDEBUGX(lvl, "%s%s", prefix ? prefix : "", fr_sbuff_start(oid_buff));
+		RDEBUGX(lvl, "%s%s%pV", prefix ? prefix : "", fr_sbuff_start(oid_buff), &vp->data);
 		break;
 	}
 }
@@ -832,6 +839,56 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 		log_request_pair(lvl, request, parent, vp, prefix);
 	}
 	REXDENT();
+}
+
+/** Print a packet which we received or sent
+ *
+ * @param[in] request	to read logging params from.
+ * @param[in] packet	the packet in question
+ * @param[in] list	to print.
+ * @param[in] type_da	of Packet-Type
+ * @param[in] received	is this packet being received or being sent
+ * @param[in] id	do we log IDs, too
+ */
+void log_request_packet(request_t *request, fr_packet_t *packet, fr_pair_list_t *list, fr_dict_attr_t const *type_da, bool received, bool id)
+{
+	ssize_t slen;
+	fr_dict_enum_value_t const *enumv;
+	char const *name;
+	char name_buffer[32];
+	char id_buffer[32];
+	char buffer[256];
+
+	if (!RDEBUG_ENABLED) return;
+
+	slen = fr_socket_to_str(buffer, sizeof(buffer), &packet->socket, received);
+	if (slen <= 0) buffer[0] = '\0';
+
+	if (id) {
+		(void) snprintf(id_buffer, sizeof(id_buffer), " ID %u", packet->id);
+	} else {
+		id_buffer[0] = '\0';
+	}
+
+	enumv = fr_dict_enum_by_value(type_da, fr_box_uint32((uint32_t) packet->code));
+	if (enumv) {
+		name = enumv->name;
+	} else {
+		(void) snprintf(name_buffer, sizeof(name_buffer), "%u", packet->code);
+		name = name_buffer;
+	}
+
+	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s%s %s",
+		    received ? "Received" : "Sending",
+		    name,
+		    id_buffer,
+		    buffer);
+
+	if (received || request->parent) {
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	} else {
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	}
 }
 
 /** Print a list of protocol fr_pair_ts.
@@ -887,19 +944,26 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 
 	if (str_len == SIZE_MAX) str_len = strlen(str);
 
-	if (marker_idx < 0) marker_idx = marker_idx * -1;
+	if (marker_idx < 0) marker_idx = (marker_idx == SSIZE_MIN) ? SSIZE_MAX : -marker_idx;
 
-	if ((size_t)marker_idx >= sizeof(marker_spaces)) {
+	if ((size_t) marker_idx >= sizeof(marker_spaces)) {
 		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + (sizeof(marker_spaces) * 0.75);
+
 		marker_idx -= offset;
-		str += offset;
-		str_len -= offset;
+
+		if (offset >= str_len) {
+			str += str_len;
+			str_len = 0;
+		} else {
+			str += offset;
+			str_len -= offset;
+		}
 
 		ellipses = "... ";
 	}
 
 	/*
-	 *  Don't want format markers being indented
+	 *	Don't want format markers being indented
 	 */
 	indent = request->log.indent;
 	request->log.indent.module = 0;
@@ -909,7 +973,7 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	error = fr_vasprintf(request, marker_fmt, ap);
 	va_end(ap);
 
-	log_request(type, lvl, request, file, line, "%s%.*s", ellipses, (int)str_len, str);
+	log_request(type, lvl, request, file, line, "%s%.*s", ellipses, (int) str_len, str);
 	log_request(type, lvl, request, file, line, "%s%.*s^ %s", ellipses, (int) marker_idx, marker_spaces, error);
 	talloc_free(error);
 
@@ -955,7 +1019,7 @@ void log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, 
 	fr_sbuff_term_t const 	line_endings = FR_SBUFF_TERMS(L("\n"), L("\r"));
 
 	if (!RDEBUG_ENABLEDX(log_info->lvl)) {
-		while (read(fd, buffer, sizeof(buffer) > 0));
+		while (read(fd, buffer, sizeof(buffer)) > 0); /* discard all input */
 		return;
 	}
 
@@ -1069,7 +1133,7 @@ fr_log_t *log_dst_by_name(char const *name)
 	memset(&find, 0, sizeof(find));
 	find.name = name;
 
-	found = fr_rb_find(dst_tree, &find);
+	fr_rb_find((void **)&found, dst_tree, &find);
 	return (found) ? found->log : NULL;
 }
 
@@ -1109,6 +1173,7 @@ static const conf_parser_t log_config[] = {
 	{ FR_CONF_OFFSET("line_number", fr_log_t, line_number) },
 	{ FR_CONF_OFFSET("use_utc", fr_log_t, dates_utc) },
 	{ FR_CONF_OFFSET("print_level", fr_log_t, print_level) },
+	{ FR_CONF_OFFSET("suppress_secrets", fr_log_t, suppress_secrets) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1129,7 +1194,7 @@ int log_parse_section(CONF_SECTION *cs)
 	name = cf_section_name2(cs);
 	if (!name) name = "DEFAULT";
 
-	dst = fr_rb_find(dst_tree, &(fr_log_track_t) {
+	fr_rb_find((void **)&dst, dst_tree, &(fr_log_track_t) {
 			.name = name,
 		});
 	if (dst) {
@@ -1187,7 +1252,7 @@ int log_parse_section(CONF_SECTION *cs)
 			goto error;
 		}
 
-		dst = fr_rb_find(filename_tree, &(fr_log_track_t) {
+		fr_rb_find((void **)&dst, filename_tree, &(fr_log_track_t) {
 				.log = log,
 			});
 		if (dst) {
@@ -1223,7 +1288,7 @@ int log_parse_section(CONF_SECTION *cs)
 	return 0;
 }
 
-static int8_t _log_track_name_cmp(void const *two, void const *one)
+static fr_cmp_ret_t _log_track_name_cmp(void const *two, void const *one)
 {
 	fr_log_track_t const *a = one;
 	fr_log_track_t const *b = two;
@@ -1231,7 +1296,7 @@ static int8_t _log_track_name_cmp(void const *two, void const *one)
 	return CMP(strcmp(a->name, b->name), 0);
 }
 
-static int8_t _log_track_filename_cmp(void const *two, void const *one)
+static fr_cmp_ret_t _log_track_filename_cmp(void const *two, void const *one)
 {
 	fr_log_track_t const *a = one;
 	fr_log_track_t const *b = two;

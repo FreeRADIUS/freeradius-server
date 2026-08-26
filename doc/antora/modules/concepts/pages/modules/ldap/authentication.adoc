@@ -105,5 +105,5 @@ recommendations, see the InkBridge article on
 https://www.inkbridgenetworks.com/blog/blog-10/pap-vs-chap-is-pap-less-secure-55[PAP
 vs CHAP]
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

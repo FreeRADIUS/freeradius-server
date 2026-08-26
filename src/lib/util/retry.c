@@ -35,6 +35,7 @@ RCSID("$Id$")
  */
 void fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 {
+	int64_t			tenth;
 	uint64_t		scale;
 	fr_time_delta_t		rt;
 	uint128_t		delay;
@@ -78,9 +79,10 @@ void fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config
 	 *	RT = IRT + RAND * IRT
 	 *	   = IRT * (1 + RAND)
 	 */
-	scale = fr_rand();
-	scale += ((uint64_t) 1) << 32; /* multiple it by 1 * 2^32 */
-	scale -= ((uint64_t) 1) << 31; /* scale it -2^31..+2^31 */
+	tenth = fr_rand();
+	tenth -= ((uint64_t) 1) << 31; /* scale it -2^31..+2^31 */
+	tenth /= 5;		       /* convert [-.499,+.499] to  [-.0999,+.0999] */
+	scale = (((uint64_t) 1) << 32) + tenth; /* make it 1.RAND modulo 2^32 */
 
 	delay = uint128_mul64(scale, fr_time_delta_unwrap(r->config->irt));
 	rt = fr_time_delta_wrap(uint128_to_64(uint128_rshift(delay, 32)));
@@ -107,7 +109,8 @@ void fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config
  */
 fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 {
-	uint64_t		scale;
+	int64_t			tenth;
+	uint64_t	       	scale;
 	fr_time_delta_t		rt;
 	uint128_t		delay;
 
@@ -157,9 +160,10 @@ redo:
 	 *	RT = 2*RTprev + RAND*RTprev
 	 *	   = RTprev * (2 + RAND)
 	 */
-	scale = fr_rand();
-	scale -= ((uint64_t) 1) << 31; /* scale it -2^31..+2^31 */
-	scale += ((uint64_t) 1) << 33; /* multiple it by 2 * 2^32 */
+	tenth = fr_rand();
+	tenth -= ((uint64_t) 1) << 31; /* scale it -2^31..+2^31 */
+	tenth /= 5;		       /* convert [-.499,+.499] to  [-.0999,+.0999] */
+	scale = (((uint64_t) 1) << 33) + tenth; /* make it 2.RAND modulo 2^32 */
 
 	delay = uint128_mul64(scale, fr_time_delta_unwrap(r->rt));
 	rt = fr_time_delta_wrap(uint128_to_64(uint128_rshift(delay, 32)));
@@ -171,9 +175,10 @@ redo:
 	 *	   = MRT * (1 + RAND)
 	 */
 	if (fr_time_delta_ispos(r->config->mrt) && (fr_time_delta_gt(rt, r->config->mrt))) {
-		scale = fr_rand();
-		scale -= ((uint64_t) 1) << 31; /* scale it -2^31..+2^31 */
-		scale += ((uint64_t) 1) << 32; /* multiple it by 1 * 2^32 */
+		tenth = fr_rand();
+		tenth -= ((uint64_t) 1) << 31; /* scale it -2^31..+2^31 */
+		tenth /= 5;		       /* convert [-.499,+.499] to  [-.0999,+.0999] */
+		scale = (((uint64_t) 1) << 32) + tenth; /* make it 1.RAND modulo 2^32 */
 
 		delay = uint128_mul64(scale, fr_time_delta_unwrap(r->config->mrt));
 		rt = fr_time_delta_wrap(uint128_to_64(uint128_rshift(delay, 32)));

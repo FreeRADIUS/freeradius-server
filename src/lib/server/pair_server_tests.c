@@ -24,19 +24,14 @@
 static void test_init(void);
 #  define TEST_INIT  test_init()
 
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
-#include <freeradius-devel/util/pair_test_helpers.h>
+#include <freeradius-devel/util/test/acutest.h>
+#include <freeradius-devel/util/test/acutest_helpers.h>
+#include <freeradius-devel/util/test/pair_test_helpers.h>
 
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/dict.h>
 
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/request.h>
-
-#ifdef HAVE_GPERFTOOLS_PROFILER_H
-#  include <gperftools/profiler.h>
-#endif
 
 static TALLOC_CTX       *autofree;
 static fr_pair_list_t   test_pairs;

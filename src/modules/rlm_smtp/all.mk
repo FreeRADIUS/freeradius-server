@@ -35,6 +35,7 @@ TGT_PREREQS	+= libfreeradius-curl$(L)
 endif
 
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c
 LOG_ID_LIB	= 47

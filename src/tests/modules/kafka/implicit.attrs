@@ -1,0 +1,12 @@
+#
+#  Input packet - the test harness wraps the script in
+#  `recv Access-Request { ... }`, so bare `kafka` below resolves its
+#  topic from that section's name2 ("Access-Request").
+#
+Packet-Type = Access-Request
+User-Name = "method-implicit"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

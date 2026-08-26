@@ -64,12 +64,12 @@ extern "C" {
 #  error PROCESS_INST must be defined to the C type of the process instance e.g. process_bfd_t
 #endif
 
-#ifndef PROCESS_RCTX
-#  define PROCESS_RCTX	process_rctx_t
-#endif
-
 #if defined(PROCESS_RCTX) && defined(PROCESS_RCTX_EXTRA_FIELDS)
 #  error Only one of PROCESS_RCTX (the type of the rctx struct) OR PROCESS_RCTX_EXTRA_FIELDS (extra fields for the common rctx struct) can be defined.
+#endif
+
+#ifndef PROCESS_RCTX
+#  define PROCESS_RCTX	process_rctx_t
 #endif
 
 #ifndef PROCESS_RCTX_RESULT
@@ -154,10 +154,12 @@ do { \
 
 #define UPDATE_STATE(_x) state = &process_state_ ## _x [request->_x->code]
 
-#define RECV(_x) static inline unlang_action_t recv_ ## _x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND(_x) static inline unlang_action_t send_ ## _x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND_NO_RESULT(_x) static inline unlang_action_t send_ ## _x(UNUSED unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define RESUME(_x) static inline unlang_action_t resume_ ## _x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define PROCESS_ARGS unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request
+
+#define RECV(_x) static inline unlang_action_t recv_ ## _x(PROCESS_ARGS)
+#define SEND(_x) static inline unlang_action_t send_ ## _x(PROCESS_ARGS)
+#define SEND_NO_RESULT(_x) static inline unlang_action_t send_ ## _x(UNUSED PROCESS_ARGS)
+#define RESUME(_x) static inline unlang_action_t resume_ ## _x(PROCESS_ARGS)
 #define RESUME_FLAG(_x, _p_result_flag, _mctx_flag) static inline unlang_action_t resume_ ## _x(_p_result_flag unlang_result_t *p_result, _mctx_flag module_ctx_t const *mctx, request_t *request)
 
 /** Returns the current rcode then resets it for the next module call
@@ -251,8 +253,6 @@ RECV(generic)
 		RETURN_UNLANG_FAIL;
 	}
 
-
-	if (cs) RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, state->default_rcode, state->resume,
 					      NULL, 0, mctx->rctx);
@@ -359,9 +359,7 @@ SEND_NO_RESULT(generic)
 		MEM(0);
 	}
 
-	if (cs) {
-		RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
-	} else {
+	if (!cs) {
 		char const *name;
 
 		name = fr_dict_enum_name_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
@@ -512,7 +510,6 @@ RESUME(new_client)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_FAIL, resume_new_client_done,
 					      NULL, 0, mctx->rctx);
@@ -530,7 +527,6 @@ static inline unlang_action_t new_client(UNUSED unlang_result_t *p_result, modul
 	fr_assert(inst->sections.new_client != NULL);
 	cs = inst->sections.new_client;
 
-	RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_FAIL, resume_new_client,
 					      NULL, 0, mctx->rctx);

@@ -23,7 +23,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/channel.h>
-#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
@@ -33,7 +32,6 @@ RCSID("$Id$")
 #endif
 
 #include <pthread.h>
-#include <sys/event.h>
 
 #define MAX_MESSAGES		(2048)
 #define MAX_CONTROL_PLANE	(1024)
@@ -92,7 +90,7 @@ static void *channel_master(void *arg)
 
 	MEM(ctx = talloc_init_const("channel_master"));
 
-	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
+	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024, false);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
 		fr_exit_now(EXIT_FAILURE);
@@ -150,7 +148,7 @@ static void *channel_master(void *arg)
 		MPRINT1("Master sending %d messages\n", num_to_send);
 
 		for (i = 0; i < num_to_send; i++) {
-			cd = (fr_channel_data_t *) fr_message_alloc(ms, NULL, 100);
+			cd = (fr_channel_data_t *) fr_message_and_data_alloc(ms, 100);
 			fr_assert(cd != NULL);
 
 			num_outstanding++;
@@ -208,7 +206,7 @@ check_close:
 		MPRINT1("Master kevent returned %d\n", num_events);
 
 		if (num_events < 0) {
-			if (num_events == EINTR) continue;
+			if (errno == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
 			fr_exit_now(EXIT_FAILURE);
@@ -318,7 +316,7 @@ static void *channel_worker(void *arg)
 
 	MEM(ctx = talloc_init_const("channel_worker"));
 
-	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
+	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024, false);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
 		fr_exit_now(EXIT_FAILURE);
@@ -410,7 +408,7 @@ static void *channel_worker(void *arg)
 					memcpy(&message_id, cd->m.data, sizeof(message_id));
 					MPRINT1("\tWorker got message %d (says %d)\n", worker_messages, message_id);
 
-					reply = (fr_channel_data_t *) fr_message_alloc(ms, NULL, 100);
+					reply = (fr_channel_data_t *) fr_message_and_data_alloc(ms, 100);
 					fr_assert(reply != NULL);
 
 					reply->m.when = fr_time();
@@ -535,10 +533,10 @@ int main(int argc, char *argv[])
 	kq_worker = kqueue();
 	fr_assert(kq_worker >= 0);
 
-	aq_master = fr_atomic_queue_alloc(autofree, max_control_plane);
+	aq_master = fr_atomic_queue_talloc(autofree, max_control_plane);
 	fr_assert(aq_master != NULL);
 
-	aq_worker = fr_atomic_queue_alloc(autofree, max_control_plane);
+	aq_worker = fr_atomic_queue_talloc(autofree, max_control_plane);
 	fr_assert(aq_worker != NULL);
 
 	control_master = fr_control_create(autofree, kq_master, aq_master, 1024);

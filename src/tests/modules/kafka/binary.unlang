@@ -1,0 +1,63 @@
+#
+#  Binary payload with embedded NUL bytes and high-bit chars, plus two
+#  zero-length produces (via the method and xlat forms).  Every record
+#  the broker actually received is read back through the subscriber
+#  helper and decoded so we can compare byte-for-byte against what we
+#  put in.
+#
+%exec('/bin/sh', '-c', '"$KAFKA_SUBSCRIBE" freeradius-test-binary $ENV{OUTPUT_DIR}kafka-binary.json 3')
+
+#
+#  Binary - `Hello\0World\0\xff\0\xff` - 15 bytes.  Assigned onto
+#  control so the xlat path exercises an attribute reference.
+#
+control.Tmp-Octets-0 := 0x48656c6c6f00576f726c6400ff00ff
+if (!%kafka.produce('freeradius-test-binary', null, control.Tmp-Octets-0)) {
+	test_fail
+}
+
+#
+#  Empty payload via the method form (topic's declared `value = ""`).
+#
+kafka.produce.freeradius-test-binary
+if (!ok) {
+	test_fail
+}
+
+#
+#  Empty payload via the xlat form.
+#
+if (!%kafka.produce('freeradius-test-binary', null, "")) {
+	test_fail
+}
+
+timeout 10s {
+	map json %exec('/bin/sh', '-c', '"$KAFKA_WAIT_AND_CLEANUP" $ENV{OUTPUT_DIR}kafka-binary.json 3') {
+		control.Tmp-String-0 := '$[0].value'
+		control.Tmp-String-1 := '$[1].value'
+		control.Tmp-String-2 := '$[2].value'
+	}
+}
+
+#
+#  Offset 0: the binary payload.  Byte-for-byte against the original.
+#
+control.Tmp-Octets-1 := %base64.decode(control.Tmp-String-0)
+if (control.Tmp-Octets-1 != control.Tmp-Octets-0) {
+	test_fail
+}
+
+#
+#  Offsets 1 & 2: zero-length payloads, base64 of empty is empty.
+#
+control.Tmp-Octets-2 := %base64.decode(control.Tmp-String-1)
+if (%length(control.Tmp-Octets-2) != 0) {
+	test_fail
+}
+
+control.Tmp-Octets-3 := %base64.decode(control.Tmp-String-2)
+if (%length(control.Tmp-Octets-3) != 0) {
+	test_fail
+}
+
+test_pass

@@ -27,9 +27,6 @@ RCSIDH(cf_parse_h, "$Id$")
 
 typedef struct conf_parser_s conf_parser_t;
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <freeradius-devel/util/rb.h>
@@ -145,7 +142,7 @@ _Generic((_ct), \
 						(_t == FR_TYPE_IPV6_ADDR) || \
 						(_t == FR_TYPE_IPV6_PREFIX) || \
 						(_t == FR_TYPE_COMBO_IP_PREFIX) || \
-						(_t == FR_TYPE_COMBO_IP_ADDR)) || \
+						(_t == FR_TYPE_COMBO_IP_ADDR)) && \
 						!((_f) & CONF_FLAG_MULTI), _p, (_mismatch_fripaddr) 0), \
 	fr_ipaddr_t **	: __builtin_choose_expr(((_t == FR_TYPE_IPV4_ADDR) || \
 						(_t == FR_TYPE_IPV4_PREFIX) || \
@@ -385,10 +382,10 @@ _Generic(&(_ct), \
  * @param[in] _func		to use to record value.
  * @param[in] _dflt_func	to use to get defaults from a 3rd party library.
  */
-#  define FR_CONF_FUNC(_name, _type, _flags, _func, _dflt_func) \
+#  define FR_CONF_PAIR_GLOBAL(_name, _type, _flags, _func, _dflt_func) \
 	.name1 = _name, \
 	.type = (_type), \
-	.flags = (_flags), \
+	.flags = CONF_FLAG_NO_OUTPUT | (_flags), \
 	.func = _func, \
 	.dflt_func = _dflt_func
 
@@ -400,7 +397,7 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_SUBSECTION_GLOBAL(_name, _flags, _subcs) \
 	.name1 = _name, \
-	.flags = CONF_FLAG_SUBSECTION | (_flags), \
+	.flags = CONF_FLAG_SUBSECTION | CONF_FLAG_NO_OUTPUT | (_flags), \
 	.subcs = _subcs
 
 /** conf_parser_t entry which raises an error if a matching CONF_PAIR is found
@@ -459,6 +456,18 @@ typedef enum CC_HINT(flag_enum) {
 									///< generated documentation.
 	CONF_FLAG_REF			= (1 << 25),			//!< reference another conf_parser_t inline in this one
 	CONF_FLAG_OPTIONAL     		= (1 << 26),			//!< subsection is pushed only if a non-optional matching one is pushed
+	CONF_FLAG_ALWAYS_PARSE		= (1 << 27),			//!< Run this rule even against items already marked
+									///< parsed.  Useful for CF_IDENT_ANY observer rules that
+									///< want to see every item, not just the leftovers, or for
+									///< a second-pass rule that needs to re-examine something
+									///< an earlier rule already claimed.
+	CONF_FLAG_NO_OUTPUT		= (1 << 28),			//!< Rule has no framework-managed output destination.
+									///< The parse function owns its own side effects - the
+									///< framework will not pre-zero `base + offset` for
+									///< strings, nor write a MULTI array pointer through
+									///< that offset.  Set automatically by `FR_CONF_PAIR_GLOBAL`
+									///< so its default `offset = 0` doesn't clobber the
+									///< first field of `base`.
 } conf_parser_flags_t;
 DIAG_ON(attributes)
 
@@ -715,6 +724,18 @@ int		cf_parse_permissions(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 int		cf_null_on_read(TALLOC_CTX *ctx, void *out, void *parent,
 				CONF_ITEM *ci, conf_parser_t const *rule);
+
+/** Return the source-identifier name for a single CONF_FLAG_* bit.
+ *
+ * `mask` MUST be a single-bit mask from `conf_parser_flags_t`
+ * (e.g. `CONF_FLAG_REQUIRED`).  Used by tooling that wants to
+ * stringify a flag set bit-by-bit (radmod2json).
+ *
+ * @param[in] mask	single-bit `CONF_FLAG_*` value.
+ * @return		the enum-identifier name, or `NULL` if `mask`
+ *			is not a known flag bit.
+ */
+char const	*cf_parser_flag_to_enum_str(conf_parser_flags_t mask);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,11 @@
+#
+#  Test: basic detail module configuration with defaults
+#
+detail {
+	filename = /tmp/test-detail-%Y-%m-%d
+
+	permissions = 0600
+	locking = no
+	escape_filenames = no
+	log_packet_header = no
+}

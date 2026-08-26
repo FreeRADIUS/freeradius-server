@@ -1,0 +1,96 @@
+[options=header,cols="20,~",autowidth]
+|====
+
+|RFC    |Description
+
+|https://datatracker.ietf.org/doc/html/rfc2131[RFC 2131] | Dynamic Host Configuration Protocol
+
+|https://datatracker.ietf.org/doc/html/rfc2241[RFC 2241] | DHCP Options for Novell Directory Services
+
+|https://datatracker.ietf.org/doc/html/rfc2242[RFC 2242] | NetWare/IP Domain Name and Information
+
+|https://datatracker.ietf.org/doc/html/rfc2485[RFC 2485] | DHCP Option for The Open Group's User Authentication Protocol
+
+|https://datatracker.ietf.org/doc/html/rfc2563[RFC 2563] | DHCP Option to Disable Stateless Auto-Configuration in IPv4 Clients
+
+|https://datatracker.ietf.org/doc/html/rfc2610[RFC 2610] | DHCP Options for Service Location Protocol
+
+|https://datatracker.ietf.org/doc/html/rfc2937[RFC 2937] | The Name Service Search Option for DHCP
+
+|https://datatracker.ietf.org/doc/html/rfc3004[RFC 3004] | The User Class Option for DHCP
+
+|https://datatracker.ietf.org/doc/html/rfc3011[RFC 3011] | The IPv4 Subnet Selection Option for DHCP
+
+|https://datatracker.ietf.org/doc/html/rfc3046[RFC 3046] | DHCP Relay Agent Information Option
+
+|https://datatracker.ietf.org/doc/html/rfc3118[RFC 3118] | Authentication for DHCP Messages
+
+|https://datatracker.ietf.org/doc/html/rfc3361[RFC 3361] | Dynamic Host Configuration Protocol (DHCP-for-IPv4) Option for Session Initiation Protocol (SIP) Servers
+
+|https://datatracker.ietf.org/doc/html/rfc3397[RFC 3397] | Dynamic Host Configuration Protocol (DHCP) Domain Search Option
+
+|https://datatracker.ietf.org/doc/html/rfc3442[RFC 3442] | The Classless Static Route Option for Dynamic Host Configuration Protocol (DHCP) version 4
+
+|https://datatracker.ietf.org/doc/html/rfc3495[RFC 3495] | Dynamic Host Configuration Protocol (DHCP) Option for CableLabs Client Configuration
+
+|https://datatracker.ietf.org/doc/html/rfc3679[RFC 3679] | Unused Dynamic Host Configuration Protocol (DHCP) Option Codes
+
+|https://datatracker.ietf.org/doc/html/rfc3925[RFC 3925] | Vendor-Identifying Vendor Options for Dynamic Host Configuration Protocol version 4 (DHCPv4)
+
+|https://datatracker.ietf.org/doc/html/rfc4039[RFC 4039] | Rapid Commit Option for the Dynamic Host Configuration Protocol version 4 (DHCPv4)
+
+|https://datatracker.ietf.org/doc/html/rfc4174[RFC 4174] | The IPv4 Dynamic Host Configuration Protocol (DHCP) Option for the Internet Storage Name Service
+
+|https://datatracker.ietf.org/doc/html/rfc4280[RFC 4280] | Dynamic Host Configuration Protocol (DHCP) Options for Broadcast and Multicast Control Servers
+
+|https://datatracker.ietf.org/doc/html/rfc4388[RFC 4388] | Dynamic Host Configuration Protocol (DHCP) Leasequery
+
+|https://datatracker.ietf.org/doc/html/rfc4578[RFC 4578] | Dynamic Host Configuration Protocol (DHCP) Options for the Intel Preboot eXecution Environment (PXE)
+
+|https://datatracker.ietf.org/doc/html/rfc4702[RFC 4702] | The Dynamic Host Configuration Protocol (DHCP) Client Fully Qualified Domain Name (FQDN) Option
+
+|https://datatracker.ietf.org/doc/html/rfc4776[RFC 4776] | Dynamic Host Configuration Protocol (DHCPv4 and DHCPv6) Option for Civic Addresses Configuration Information
+
+|https://datatracker.ietf.org/doc/html/rfc4833[RFC 4833] | Timezone Options for DHCP
+
+|https://datatracker.ietf.org/doc/html/rfc5071[RFC 5071] | Dynamic Host Configuration Protocol Options Used by PXELINUX
+
+|https://datatracker.ietf.org/doc/html/rfc5192[RFC 5192] | DHCP Options for Protocol for Carrying Authentication for Network Access (PANA) Authentication Agents
+
+|https://datatracker.ietf.org/doc/html/rfc5223[RFC 5223] | Discovering Location-to-Service Translation (LoST) Servers Using the Dynamic Host Configuration Protocol (DHCP)
+
+|https://datatracker.ietf.org/doc/html/rfc5417[RFC 5417] | Control And Provisioning of Wireless Access Points (CAPWAP) Access Controller DHCP Option
+
+|https://datatracker.ietf.org/doc/html/rfc5678[RFC 5678] | Dynamic Host Configuration Protocol (DHCPv4 and DHCPv6) Options for IEEE 802.21 Mobility Services (MoS) Discovery
+
+|https://datatracker.ietf.org/doc/html/rfc5859[RFC 5859] | TFTP Server Address Option for DHCPv4
+
+|https://datatracker.ietf.org/doc/html/rfc5969[RFC 5969] | IPv6 Rapid Deployment on IPv4 Infrastructures (6rd) -- Protocol Specification
+
+|https://datatracker.ietf.org/doc/html/rfc5986[RFC 5986] | Discovering the Local Location Information Server (LIS)
+
+|https://datatracker.ietf.org/doc/html/rfc6011[RFC 6011] | Session Initiation Protocol (SIP) User Agent Configuration
+
+|https://datatracker.ietf.org/doc/html/rfc6153[RFC 6153] | DHCPv4 and DHCPv6 Options for Access Network Discovery and Selection Function (ANDSF) Discovery
+
+|https://datatracker.ietf.org/doc/html/rfc6225[RFC 6225] | Dynamic Host Configuration Protocol Options for Coordinate-Based Location Configuration Information
+
+|https://datatracker.ietf.org/doc/html/rfc6656[RFC 6656] | Description of Cisco Systems' Subnet Allocation Option for DHCPv4
+
+|https://datatracker.ietf.org/doc/html/rfc6731[RFC 6731] | Improved Recursive DNS Server Selection for Multi-Interfaced Nodes
+
+|https://datatracker.ietf.org/doc/html/rfc6926[RFC 6926] | DHCPv4 Bulk Leasequery
+
+|https://datatracker.ietf.org/doc/html/rfc7291[RFC 7291] | DHCP Options for the Port Control Protocol (PCP)
+
+|https://datatracker.ietf.org/doc/html/rfc7710[RFC 7710] | Captive-Portal Identification Using DHCP or Router Advertisements (RAs)
+
+|https://datatracker.ietf.org/doc/html/rfc7839[RFC 7839] | Access-Network-Identifier Option in DHCP
+
+|https://datatracker.ietf.org/doc/html/rfc8357[RFC 8357] | Generalized UDP Source Port for DHCP Relay
+
+|https://datatracker.ietf.org/doc/html/rfc8910[RFC 8910] | Captive-Portal Identification in DHCP and Router Advertisements (RAs)
+
+|https://datatracker.ietf.org/doc/html/rfc8925[RFC 8925] | IPv6-Only Preferred Option for DHCPv4
+
+|====

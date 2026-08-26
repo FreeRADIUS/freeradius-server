@@ -1,0 +1,17 @@
+# Bootstrap testuser into dc=example,dc=com so the ldap suite can
+# authenticate against it. Loaded by the osixia/openldap container at
+# first start from /container/service/slapd/assets/config/bootstrap/ldif/custom/.
+dn: ou=people,dc=example,dc=com
+objectClass: organizationalUnit
+ou: people
+
+dn: uid=testuser,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+cn: Test User
+sn: User
+uid: testuser
+uidNumber: 10000
+gidNumber: 10000
+homeDirectory: /home/testuser
+userPassword: testpass

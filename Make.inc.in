@@ -20,20 +20,8 @@ mibdir		= @mibdir@
 logdir		= @logdir@
 includedir	= @includedir@
 
-#
-#  In some systems, we don't want to over-write ANY configuration.
-#  So we do:
-#
-#	$./configure
-#	$ make
-#	$ make -Draddbdir=/tmp/garbage install
-#
-#  and all of the configuration files go into /tmp/garbage
-#
-ifeq "${raddbdir}" ""
-raddbdir	= @raddbdir@
-endif
-modconfdir	= @modconfdir@
+confdir		= @confdir@
+modconfdir	= ${confdir}/mods-config
 radacctdir	= @radacctdir@
 top_builddir	= @abs_top_builddir@
 top_build_prefix=@abs_top_builddir@/
@@ -76,7 +64,7 @@ INCLUDE		= -I. -Isrc \
 		  -include src/freeradius-devel/build.h \
 		  -include src/freeradius-devel/features.h \
 		  -include src/freeradius-devel/radpaths.h
-CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@
+CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@ $(TALLOC_CFLAGS)
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
 
@@ -131,7 +119,7 @@ LIBS		= $(OPENSSL_LIBS) $(TALLOC_LIBS) $(KQUEUE_LIBS) @LIBS@
 LDFLAGS		= $(OPENSSL_LDFLAGS) $(TALLOC_LDFLAGS) $(KQUEUE_LDFLAGS) @LDFLAGS@
 
 LOGDIR		= ${logdir}
-RADDBDIR	= ${raddbdir}
+CONFDIR		= ${confdir}
 RUNDIR		= ${localstatedir}/run/radiusd
 SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
@@ -213,12 +201,18 @@ ANALYZE.c       := @clang_path@
 #
 #  Have wrappers for the test tools, so that they run.
 #
-#  We have a hardcoded maximum execution time of 300 seconds
-#  If your test takes > 300 seconds to run, you're doing
-#  something wrong.
+#  We have a default maximum execution time of 300 seconds.
+#  When running under sanitizers, allow 600 seconds due to
+#  the additional overhead.
 #
+ifneq "$(findstring sanitize,$(CFLAGS))" ""
+TEST_TIMEOUT        := 600
+else
+TEST_TIMEOUT        := 300
+endif
+
 TEST_BIN_DIR        = ./$(BUILD_DIR)/bin/local
-TEST_BIN            = $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --timeout=300 --mode=execute $(TEST_BIN_DIR)
+TEST_BIN            = $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --timeout=$(TEST_TIMEOUT) --mode=execute $(TEST_BIN_DIR)
 TEST_BIN_NO_TIMEOUT = $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --mode=execute $(TEST_BIN_DIR)
 
 #

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -22,8 +22,6 @@
  * @copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/curl/base.h>
-#include <freeradius-devel/server/module.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -77,12 +75,12 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 			 *	There is no good work around for this other than
 			 *	upgrading to a newer version of curl.
 			 */
-			talloc_get_type_abort(randle, fr_curl_io_request_t);
-			if (!fr_cond_assert_msg(ret == CURLE_OK,
+			 if (!fr_cond_assert_msg(ret == CURLE_OK,
 						"Failed retrieving request data from CURL easy handle (candle)")) {
 				curl_multi_remove_handle(mandle, candle);
 				return;
 			}
+			talloc_get_type_abort(randle, fr_curl_io_request_t);
 			request = randle->request;
 
 			REQUEST_VERIFY(request);
@@ -108,7 +106,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 
 		default:
 #ifndef NDEBUG
-			DEBUG4("Got unknown msg (%i) when dequeueing curl responses", msg_queued);
+			DEBUG4("Got unknown msg (%i) when dequeueing curl responses", m->msg);
 #endif
 			break;
 		}
@@ -412,7 +410,7 @@ static int curl_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 			q = memchr(p, '\n', end - p);
 			if (!q) q = end;
 
-			RDEBUG3("libcurl - %pV", fr_box_strvalue_len(p, q ? q - p : p - end));
+			RDEBUG3("libcurl - %pV", fr_box_strvalue_len(p, q - p));
 			p = q + 1;
 		}
 

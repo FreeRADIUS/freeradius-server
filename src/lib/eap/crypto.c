@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -171,6 +171,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 					       prf_label->context,
 					       prf_label->context_len,
 					       prf_label->use_context) != 1) {
+			talloc_free(buff);
 			fr_tls_log(request, "Failed generating TLS session ID");
 			return -1;
 		}

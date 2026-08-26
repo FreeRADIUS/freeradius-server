@@ -1,8 +1,8 @@
 static void test_init(void);
 #  define TEST_INIT  test_init()
 
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include <freeradius-devel/util/test/acutest.h>
+#include <freeradius-devel/util/test/acutest_helpers.h>
 #include <freeradius-devel/util/dict_test.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/server/pair.h>

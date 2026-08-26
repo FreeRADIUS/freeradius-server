@@ -6,5 +6,9 @@
 | xref:raddb/mods-available/always.adoc[always]	| Returns a pre-configured result code such as 'ok', 'noop', 'reject' etc...
 | xref:raddb/mods-available/attr_filter.adoc[attr_filter]	| Filters attributes in a request. Can delete attributes or permit them to have only certain values.
 | xref:raddb/mods-available/idn.adoc[idn]	        | Converts internationalized domain names to ASCII.
+| xref:raddb/mods-available/interval.adoc[interval]	| Rate-limits requests over a time interval, returning 'true' when a request is allowed or 'false' when the interval limit has been exceeded.
 | xref:raddb/mods-available/sometimes.adoc[sometimes]	| Is a hashing and distribution protocol, that will sometimes return one code or another depending on the input value configured.
 |=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

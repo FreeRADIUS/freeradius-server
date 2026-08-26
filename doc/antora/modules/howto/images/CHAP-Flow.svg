@@ -1,0 +1,800 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xl="http://www.w3.org/1999/xlink" viewBox="0 0 1280 1180" width="1280" height="1180">
+  <defs/>
+  <g id="Canvas_1" fill-opacity="1" fill="none" stroke-opacity="1" stroke-dasharray="none" stroke="none">
+    <title>Canvas 1</title>
+    <rect fill="white" x="0" y="0" width="1280" height="1180"/>
+    <g id="Canvas_1_Layer_1">
+      <title>Layer 1</title>
+      <g id="Line_2">
+        <line x1="260" y1="60" x2="340" y2="60" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.5"/>
+      </g>
+      <g id="Line_3">
+        <line x1="340" y1="140" x2="260" y2="140" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.5"/>
+      </g>
+      <g id="Line_4">
+        <line x1="460" y1="180" x2="460" y2="280" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+      </g>
+      <g id="Line_5">
+        <line x1="356" y1="450" x2="376" y2="450" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.5"/>
+      </g>
+      <g id="Line_6">
+        <line x1="468" y1="560" x2="468" y2="620" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+      </g>
+      <g id="Line_7">
+        <line x1="480" y1="700" x2="400" y2="700" stroke="#6b7a8c" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="4.8,4.8" stroke-width="1.2"/>
+      </g>
+      <g id="Line_8">
+        <line x1="270" y1="790" x2="270" y2="850" stroke="#6b7a8c" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="4.8,4.8" stroke-width="1.2"/>
+      </g>
+      <g id="Graphic_9">
+        <path d="M 560 620 L 560 596 L 755 596 L 755 374" stroke="#2e7fb0" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.7"/>
+      </g>
+      <g id="Graphic_10">
+        <path d="M 780 710 L 1200 710 L 1200 374" stroke="#b84a3e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+      </g>
+      <g id="Graphic_11">
+        <path d="M 880 320 L 880 296 L 1240 296 L 1240 1e3 L 400 1e3 L 400 1020" stroke="#2e7fb0" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.7"/>
+      </g>
+      <g id="Graphic_12">
+        <path d="M 50 1085 L 10 1085 L 10 100 L 160 100" stroke="#2e7fb0" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="5.6,5.6" stroke-width="1.4"/>
+      </g>
+      <g id="Group_13">
+        <g id="Graphic_24">
+          <path d="M 30 20 L 250 20 C 255.52285 20 260 24.477153 260 30 L 260 170 C 260 175.52285 255.52285 180 250 180 L 30 180 C 24.477153 180 20 175.52285 20 170 L 20 30 C 20 24.477153 24.477153 20 30 20 Z" fill="white"/>
+          <path d="M 30 20 L 250 20 C 255.52285 20 260 24.477153 260 30 L 260 170 C 260 175.52285 255.52285 180 250 180 L 30 180 C 24.477153 180 20 175.52285 20 170 L 20 30 C 20 24.477153 24.477153 20 30 20 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.2"/>
+        </g>
+        <g id="Graphic_23">
+          <path d="M 30 20 L 250 20 C 255.52285 20 260 24.477153 260 30 L 260 40 C 260 45.52285 255.52285 50 250 50 L 30 50 C 24.477153 50 20 45.52285 20 40 L 20 30 C 20 24.477153 24.477153 20 30 20 Z" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_22">
+          <rect x="20" y="40" width="240" height="10" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_21">
+          <title>Text</title>
+          <text transform="translate(34 24.679688)" fill="#9fb0c5">
+            <tspan font-family="Helvetica" font-size="16" fill="#9fb0c5" x="0" y="15" xml:space="preserve">CLIENT · EXTERNAL</tspan>
+          </text>
+        </g>
+        <g id="Graphic_20">
+          <title>Text</title>
+          <text transform="translate(34 60.67969)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Supplicant</tspan>
+          </text>
+        </g>
+        <g id="Graphic_19">
+          <title>Text</title>
+          <text transform="translate(34 78.67969)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">PPP / dial-up client</tspan>
+          </text>
+        </g>
+        <g id="Group_16">
+          <g id="Graphic_18">
+            <path d="M 38 106 L 242 106 C 244.20914 106 246 107.79086 246 110 L 246 122 C 246 124.20914 244.20914 126 242 126 L 38 126 C 35.79086 126 34 124.20914 34 122 L 34 110 C 34 107.79086 35.79086 106 38 106 Z" fill="#eeece2"/>
+            <path d="M 38 106 L 242 106 C 244.20914 106 246 107.79086 246 110 L 246 122 C 246 124.20914 244.20914 126 242 126 L 38 126 C 35.79086 126 34 124.20914 34 122 L 34 110 C 34 107.79086 35.79086 106 38 106 Z" stroke="#d7d3c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_17">
+            <title>Text</title>
+            <text transform="translate(44 104.01172)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">R = MD5(id </tspan>
+              <tspan font-family="Apple Symbols" font-size="16" fill="black" y="15" xml:space="preserve">∥</tspan>
+              <tspan font-family="Helvetica" font-size="16" fill="black" y="15" xml:space="preserve"> secret </tspan>
+              <tspan font-family="Apple Symbols" font-size="16" fill="black" y="15" xml:space="preserve">∥</tspan>
+              <tspan font-family="Helvetica" font-size="16" fill="black" y="15" xml:space="preserve"> chal)</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Graphic_15">
+          <title>Text</title>
+          <text transform="translate(34 132.67969)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">user: bob</tspan>
+          </text>
+        </g>
+        <g id="Graphic_14">
+          <title>Text</title>
+          <text transform="translate(34 148.67969)" fill="#2e7fb0">
+            <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">secret: hello (never on wire)</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_25">
+        <g id="Graphic_39">
+          <path d="M 351.73077 20 L 633.2692 20 C 639.74796 20 645 24.477153 645 30 L 645 170 C 645 175.52285 639.74796 180 633.2692 180 L 351.73077 180 C 345.25204 180 340 175.52285 340 170 L 340 30 C 340 24.477153 345.25204 20 351.73077 20 Z" fill="white"/>
+          <path d="M 351.73077 20 L 633.2692 20 C 639.74796 20 645 24.477153 645 30 L 645 170 C 645 175.52285 639.74796 180 633.2692 180 L 351.73077 180 C 345.25204 180 340 175.52285 340 170 L 340 30 C 340 24.477153 345.25204 20 351.73077 20 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.2"/>
+        </g>
+        <g id="Graphic_38">
+          <path d="M 351.73077 20 L 633.2692 20 C 639.74796 20 645 24.477153 645 30 L 645 40 C 645 45.52285 639.74796 50 633.2692 50 L 351.73077 50 C 345.25204 50 340 45.52285 340 40 L 340 30 C 340 24.477153 345.25204 20 351.73077 20 Z" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_37">
+          <rect x="340" y="40" width="260" height="10" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_36">
+          <title>Text</title>
+          <text transform="translate(354 24.679688)" fill="#9fb0c5">
+            <tspan font-family="Helvetica" font-size="16" fill="#9fb0c5" x="0" y="15" xml:space="preserve">AUTHENTICATOR</tspan>
+          </text>
+        </g>
+        <g id="Graphic_35">
+          <title>Text</title>
+          <text transform="translate(354 60.67969)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">NAS</tspan>
+          </text>
+        </g>
+        <g id="Graphic_34">
+          <title>Text</title>
+          <text transform="translate(354 78.67969)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">PPP server · radtest relay</tspan>
+          </text>
+        </g>
+        <g id="Group_31">
+          <g id="Graphic_33">
+            <path d="M 359.0345 106 L 494.9655 106 C 497.746 106 500 107.79086 500 110 L 500 122 C 500 124.20914 497.746 126 494.9655 126 L 359.0345 126 C 356.254 126 354 124.20914 354 122 L 354 110 C 354 107.79086 356.254 106 359.0345 106 Z" fill="#eeece2"/>
+            <path d="M 359.0345 106 L 494.9655 106 C 497.746 106 500 107.79086 500 110 L 500 122 C 500 124.20914 497.746 126 494.9655 126 L 359.0345 126 C 356.254 126 354 124.20914 354 122 L 354 110 C 354 107.79086 356.254 106 359.0345 106 Z" stroke="#d7d3c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_32">
+            <title>Text</title>
+            <text transform="translate(371.08203 106)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">CHAP-Challenge</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_28">
+          <g id="Graphic_30">
+            <path d="M 505.5058 106 L 631.4317 106 C 634.2136 106 636.46875 107.79086 636.46875 110 L 636.46875 122 C 636.46875 124.20914 634.2136 126 631.4317 126 L 505.5058 126 C 502.7239 126 500.46875 124.20914 500.46875 122 L 500.46875 110 C 500.46875 107.79086 502.7239 106 505.5058 106 Z" fill="#eeece2"/>
+            <path d="M 505.5058 106 L 631.4317 106 C 634.2136 106 636.46875 107.79086 636.46875 110 L 636.46875 122 C 636.46875 124.20914 634.2136 126 631.4317 126 L 505.5058 126 C 502.7239 126 500.46875 124.20914 500.46875 122 L 500.46875 110 C 500.46875 107.79086 502.7239 106 505.5058 106 Z" stroke="#d7d3c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_29">
+            <title>Text</title>
+            <text transform="translate(514.375 106)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">CHAP-Password</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Graphic_27">
+          <title>Text</title>
+          <text transform="translate(354 132.67969)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Chooses random challenge,</tspan>
+          </text>
+        </g>
+        <g id="Graphic_26">
+          <title>Text</title>
+          <text transform="translate(354 148.67969)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">forwards user&apos;s response to RADIUS.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_40">
+        <g id="Graphic_41">
+          <title>Text</title>
+          <text transform="translate(295.55078 88.67969)" fill="#33689c">
+            <tspan font-family="Helvetica" font-size="16" fill="#33689c" x="0" y="15" xml:space="preserve">1</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_42">
+        <g id="Graphic_44">
+          <path d="M 247 2 L 353 2 C 354.65685 2 356 3.3431458 356 5 L 356 15 C 356 16.656854 354.65685 18 353 18 L 247 18 C 245.34315 18 244 16.656854 244 15 L 244 5 C 244 3.3431458 245.34315 2 247 2 Z" fill="white"/>
+          <path d="M 247 2 L 353 2 C 354.65685 2 356 3.3431458 356 5 L 356 15 C 356 16.656854 354.65685 18 353 18 L 247 18 C 245.34315 18 244 16.656854 244 15 L 244 5 C 244 3.3431458 245.34315 2 247 2 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_43">
+          <title>Text</title>
+          <text transform="translate(265.75 -1.3203125)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">challenge</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_45">
+        <g id="Graphic_47">
+          <path d="M 247 194.16016 L 353 194.16016 C 354.65685 194.16016 356 195.5033 356 197.16016 L 356 207.16016 C 356 208.817 354.65685 210.16016 353 210.16016 L 247 210.16016 C 245.34315 210.16016 244 208.817 244 207.16016 L 244 197.16016 C 244 195.5033 245.34315 194.16016 247 194.16016 Z" fill="white"/>
+          <path d="M 247 194.16016 L 353 194.16016 C 354.65685 194.16016 356 195.5033 356 197.16016 L 356 207.16016 C 356 208.817 354.65685 210.16016 353 210.16016 L 247 210.16016 C 245.34315 210.16016 244 208.817 244 207.16016 L 244 197.16016 C 244 195.5033 245.34315 194.16016 247 194.16016 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_46">
+          <title>Text</title>
+          <text transform="translate(247.97656 190.83984)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">MD5 response</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_48">
+        <g id="Graphic_51">
+          <path d="M 481.33333 200 L 848.6667 200 C 852.1645 200 855 202.23858 855 205 L 855 245 C 855 247.76142 852.1645 250 848.6667 250 L 481.33333 250 C 477.83553 250 475 247.76142 475 245 L 475 205 C 475 202.23858 477.83553 200 481.33333 200 Z" fill="white"/>
+          <path d="M 481.33333 200 L 848.6667 200 C 852.1645 200 855 202.23858 855 205 L 855 245 C 855 247.76142 852.1645 250 848.6667 250 L 481.33333 250 C 477.83553 250 475 247.76142 475 245 L 475 205 C 475 202.23858 477.83553 200 481.33333 200 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_50">
+          <title>Text</title>
+          <text transform="translate(489 204.67969)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Access-Request · udp/1812</tspan>
+          </text>
+        </g>
+        <g id="Graphic_49">
+          <title>Text</title>
+          <text transform="translate(489 222.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">User-Name · CHAP-Challenge · CHAP-Password</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_52">
+        <g id="Graphic_57">
+          <path d="M 34 260 L 1246 260 C 1253.732 260 1260 266.268 1260 274 L 1260 826 C 1260 833.732 1253.732 840 1246 840 L 34 840 C 26.268014 840 20 833.732 20 826 L 20 274 C 20 266.268 26.268014 260 34 260 Z" fill="#fcfbf5"/>
+          <path d="M 34 260 L 1246 260 C 1253.732 260 1260 266.268 1260 274 L 1260 826 C 1260 833.732 1253.732 840 1246 840 L 34 840 C 26.268014 840 20 833.732 20 826 L 20 274 C 20 266.268 26.268014 260 34 260 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.2"/>
+        </g>
+        <g id="Graphic_56">
+          <path d="M 34 260 L 1246 260 C 1253.732 260 1260 266.268 1260 274 L 1260 278 C 1260 285.732 1253.732 292 1246 292 L 34 292 C 26.268014 292 20 285.732 20 278 L 20 274 C 20 266.268 26.268014 260 34 260 Z" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_55">
+          <rect x="20" y="278" width="1240" height="14" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_54">
+          <title>Text</title>
+          <text transform="translate(38 265.6797)" fill="#9fb0c5">
+            <tspan font-family="Helvetica" font-size="16" fill="#9fb0c5" x="0" y="15" xml:space="preserve">FREERADIUS v4 · radiusd -X</tspan>
+          </text>
+        </g>
+        <g id="Graphic_53">
+          <title>Text</title>
+          <text transform="translate(1053.0078 265.6797)" fill="#9fb0c5">
+            <tspan font-family="Helvetica" font-size="16" fill="#9fb0c5" x="0" y="15" xml:space="preserve">PID 1 · namespace=radius</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_58">
+        <g id="Graphic_102">
+          <path d="M 60 320 L 1220 320 C 1225.5228 320 1230 324.47715 1230 330 L 1230 540 C 1230 545.52285 1225.5228 550 1220 550 L 60 550 C 54.47715 550 50 545.52285 50 540 L 50 330 C 50 324.47715 54.47715 320 60 320 Z" fill="white"/>
+          <path d="M 60 320 L 1220 320 C 1225.5228 320 1230 324.47715 1230 330 L 1230 540 C 1230 545.52285 1225.5228 550 1220 550 L 60 550 C 54.47715 550 50 545.52285 50 540 L 50 330 C 50 324.47715 54.47715 320 60 320 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_101">
+          <path d="M 60 320 L 1220 320 C 1225.5228 320 1230 324.47715 1230 330 L 1230 342 C 1230 347.52285 1225.5228 352 1220 352 L 60 352 C 54.47715 352 50 347.52285 50 342 L 50 330 C 50 324.47715 54.47715 320 60 320 Z" fill="#eeece2"/>
+        </g>
+        <g id="Graphic_100">
+          <rect x="50" y="342" width="1180" height="10" fill="#eeece2"/>
+        </g>
+        <g id="Graphic_99">
+          <title>Text</title>
+          <text transform="translate(66 325.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">SITES-AVAILABLE / DEFAULT · PORT 1812</tspan>
+          </text>
+        </g>
+        <g id="Group_87">
+          <g id="Graphic_98">
+            <path d="M 78 374 L 350 374 C 353.3137 374 356 376.6863 356 380 L 356 528 C 356 531.3137 353.3137 534 350 534 L 78 534 C 74.68629 534 72 531.3137 72 528 L 72 380 C 72 376.6863 74.68629 374 78 374 Z" fill="#f7f6f1"/>
+            <path d="M 78 374 L 350 374 C 353.3137 374 356 376.6863 356 380 L 356 528 C 356 531.3137 353.3137 534 350 534 L 78 534 C 74.68629 534 72 531.3137 72 528 L 72 380 C 72 376.6863 74.68629 374 78 374 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_97">
+            <title>Text</title>
+            <text transform="translate(88 384.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">recv Access-Request</tspan>
+            </text>
+          </g>
+          <g id="Graphic_96">
+            <title>Text</title>
+            <text transform="translate(88 404.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">authorize section</tspan>
+            </text>
+          </g>
+          <g id="Group_93">
+            <g id="Graphic_95">
+              <path d="M 92 432 L 234 432 C 236.20914 432 238 433.79086 238 436 L 238 450 C 238 452.20914 236.20914 454 234 454 L 92 454 C 89.79086 454 88 452.20914 88 450 L 88 436 C 88 433.79086 89.79086 432 92 432 Z" fill="#eeece2"/>
+              <path d="M 92 432 L 234 432 C 236.20914 432 238 433.79086 238 436 L 238 450 C 238 452.20914 236.20914 454 234 454 L 92 454 C 89.79086 454 88 452.20914 88 450 L 88 436 C 88 433.79086 89.79086 432 92 432 Z" stroke="#d7d3c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+            </g>
+            <g id="Graphic_94">
+              <title>Text</title>
+              <text transform="translate(98 431.6797)" fill="black">
+                <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">filter_username</tspan>
+              </text>
+            </g>
+          </g>
+          <g id="Group_90">
+            <g id="Graphic_92">
+              <path d="M 92 460 L 162 460 C 164.20914 460 166 461.79086 166 464 L 166 478 C 166 480.20914 164.20914 482 162 482 L 92 482 C 89.79086 482 88 480.20914 88 478 L 88 464 C 88 461.79086 89.79086 460 92 460 Z" fill="#e6f2f9"/>
+              <path d="M 92 460 L 162 460 C 164.20914 460 166 461.79086 166 464 L 166 478 C 166 480.20914 164.20914 482 162 482 L 92 482 C 89.79086 482 88 480.20914 88 478 L 88 464 C 88 461.79086 89.79086 460 92 460 Z" stroke="#b8d8eb" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+            </g>
+            <g id="Graphic_91">
+              <title>Text</title>
+              <text transform="translate(109.65234 459.6797)" fill="#2e7fb0">
+                <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">chap</tspan>
+              </text>
+            </g>
+          </g>
+          <g id="Graphic_89">
+            <title>Text</title>
+            <text transform="translate(88 490.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">chap sees CHAP-Password,</tspan>
+            </text>
+          </g>
+          <g id="Graphic_88">
+            <title>Text</title>
+            <text transform="translate(88 506.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">sets Auth-Type := CHAP.</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_77">
+          <g id="Graphic_86">
+            <path d="M 382 370.5 L 654 370.5 C 657.3137 370.5 660 373.1863 660 376.5 L 660 524.5 C 660 527.8137 657.3137 530.5 654 530.5 L 382 530.5 C 378.6863 530.5 376 527.8137 376 524.5 L 376 376.5 C 376 373.1863 378.6863 370.5 382 370.5 Z" fill="#f7f6f1"/>
+            <path d="M 382 370.5 L 654 370.5 C 657.3137 370.5 660 373.1863 660 376.5 L 660 524.5 C 660 527.8137 657.3137 530.5 654 530.5 L 382 530.5 C 378.6863 530.5 376 527.8137 376 524.5 L 376 376.5 C 376 373.1863 378.6863 370.5 382 370.5 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_85">
+            <title>Text</title>
+            <text transform="translate(392 383.01953)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">authenticate</tspan>
+            </text>
+          </g>
+          <g id="Graphic_84">
+            <title>Text</title>
+            <text transform="translate(392 403.01953)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Auth-Type CHAP { … }</tspan>
+            </text>
+          </g>
+          <g id="Group_81">
+            <g id="Graphic_83">
+              <path d="M 396 430.33984 L 466 430.33984 C 468.20914 430.33984 470 432.1307 470 434.33984 L 470 448.33984 C 470 450.549 468.20914 452.33984 466 452.33984 L 396 452.33984 C 393.79086 452.33984 392 450.549 392 448.33984 L 392 434.33984 C 392 432.1307 393.79086 430.33984 396 430.33984 Z" fill="#e6f2f9"/>
+              <path d="M 396 430.33984 L 466 430.33984 C 468.20914 430.33984 470 432.1307 470 434.33984 L 470 448.33984 C 470 450.549 468.20914 452.33984 466 452.33984 L 396 452.33984 C 393.79086 452.33984 392 450.549 392 448.33984 L 392 434.33984 C 392 432.1307 393.79086 430.33984 396 430.33984 Z" stroke="#b8d8eb" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+            </g>
+            <g id="Graphic_82">
+              <title>Text</title>
+              <text transform="translate(413.65234 430.01953)" fill="#2e7fb0">
+                <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">chap</tspan>
+              </text>
+            </g>
+          </g>
+          <g id="Graphic_80">
+            <title>Text</title>
+            <text transform="translate(392 461.01953)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Re-invokes the chap module,</tspan>
+            </text>
+          </g>
+          <g id="Graphic_79">
+            <title>Text</title>
+            <text transform="translate(394.65234 477.3203)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">this time in verify mode and</tspan>
+            </text>
+          </g>
+          <g id="Graphic_78">
+            <title>Text</title>
+            <text transform="translate(392 493.01953)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">delegates to the module below.</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_68">
+          <g id="Graphic_76">
+            <path d="M 686 374 L 924 374 C 927.3137 374 930 376.6863 930 380 L 930 528 C 930 531.3137 927.3137 534 924 534 L 686 534 C 682.6863 534 680 531.3137 680 528 L 680 380 C 680 376.6863 682.6863 374 686 374 Z" fill="#f7f6f1"/>
+            <path d="M 686 374 L 924 374 C 927.3137 374 930 376.6863 930 380 L 930 528 C 930 531.3137 927.3137 534 924 534 L 686 534 C 682.6863 534 680 531.3137 680 528 L 680 380 C 680 376.6863 682.6863 374 686 374 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_75">
+            <title>Text</title>
+            <text transform="translate(696 384.6797)" fill="#2e7fb0">
+              <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">send Access-Accept</tspan>
+            </text>
+          </g>
+          <g id="Graphic_74">
+            <title>Text</title>
+            <text transform="translate(696 404.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">success outcome</tspan>
+            </text>
+          </g>
+          <g id="Group_71">
+            <g id="Graphic_73">
+              <path d="M 700 432 L 908 432 C 910.2091 432 912 433.79086 912 436 L 912 450 C 912 452.20914 910.2091 454 908 454 L 700 454 C 697.7909 454 696 452.20914 696 450 L 696 436 C 696 433.79086 697.7909 432 700 432 Z" fill="#e6f2f9"/>
+              <path d="M 700 432 L 908 432 C 910.2091 432 912 433.79086 912 436 L 912 450 C 912 452.20914 910.2091 454 908 454 L 700 454 C 697.7909 454 696 452.20914 696 450 L 696 436 C 696 433.79086 697.7909 432 700 432 Z" stroke="#b8d8eb" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+            </g>
+            <g id="Graphic_72">
+              <title>Text</title>
+              <text transform="translate(706 431.6797)" fill="#2e7fb0">
+                <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">Service-Type = Framed-User</tspan>
+              </text>
+            </g>
+          </g>
+          <g id="Graphic_70">
+            <title>Text</title>
+            <text transform="translate(696 478.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Reply attrs loaded from</tspan>
+            </text>
+          </g>
+          <g id="Graphic_69">
+            <title>Text</title>
+            <text transform="translate(696 494.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">files(reply) block.</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_59">
+          <g id="Graphic_67">
+            <path d="M 956 374 L 1202 374 C 1205.3137 374 1208 376.6863 1208 380 L 1208 528 C 1208 531.3137 1205.3137 534 1202 534 L 956 534 C 952.6863 534 950 531.3137 950 528 L 950 380 C 950 376.6863 952.6863 374 956 374 Z" fill="#fbf3f2"/>
+            <path d="M 956 374 L 1202 374 C 1205.3137 374 1208 376.6863 1208 380 L 1208 528 C 1208 531.3137 1205.3137 534 1202 534 L 956 534 C 952.6863 534 950 531.3137 950 528 L 950 380 C 950 376.6863 952.6863 374 956 374 Z" stroke="#e7c8c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_66">
+            <title>Text</title>
+            <text transform="translate(966 384.6797)" fill="#b84a3e">
+              <tspan font-family="Helvetica" font-size="16" fill="#b84a3e" x="0" y="15" xml:space="preserve">send Access-Reject</tspan>
+            </text>
+          </g>
+          <g id="Graphic_65">
+            <title>Text</title>
+            <text transform="translate(966 404.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">failure outcome</tspan>
+            </text>
+          </g>
+          <g id="Group_62">
+            <g id="Graphic_64">
+              <path d="M 970 432 L 1184 432 C 1186.2091 432 1188 433.79086 1188 436 L 1188 450 C 1188 452.20914 1186.2091 454 1184 454 L 970 454 C 967.7909 454 966 452.20914 966 450 L 966 436 C 966 433.79086 967.7909 432 970 432 Z" fill="#f6e5e1"/>
+              <path d="M 970 432 L 1184 432 C 1186.2091 432 1188 433.79086 1188 436 L 1188 450 C 1188 452.20914 1186.2091 454 1184 454 L 970 454 C 967.7909 454 966 452.20914 966 450 L 966 436 C 966 433.79086 967.7909 432 970 432 Z" stroke="#e7c8c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+            </g>
+            <g id="Graphic_63">
+              <title>Text</title>
+              <text transform="translate(976 431.6797)" fill="#b84a3e">
+                <tspan font-family="Helvetica" font-size="16" fill="#b84a3e" x="0" y="15" xml:space="preserve">Reply-Message = &quot;auth fail&quot;</tspan>
+              </text>
+            </g>
+          </g>
+          <g id="Graphic_61">
+            <title>Text</title>
+            <text transform="translate(966 478.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Triggered when chap&apos;s MD5</tspan>
+            </text>
+          </g>
+          <g id="Graphic_60">
+            <title>Text</title>
+            <text transform="translate(966 494.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">recomputation does not match.</tspan>
+            </text>
+          </g>
+        </g>
+      </g>
+      <g id="Group_103">
+        <g id="Graphic_105">
+          <path d="M 251 357 L 381 357 C 382.65685 357 384 358.34315 384 360 L 384 374 C 384 375.65685 382.65685 377 381 377 L 251 377 C 249.34315 377 248 375.65685 248 374 L 248 360 C 248 358.34315 249.34315 357 251 357 Z" fill="white"/>
+          <path d="M 251 357 L 381 357 C 382.65685 357 384 358.34315 384 360 L 384 374 C 384 375.65685 382.65685 377 381 377 L 251 377 C 249.34315 377 248 375.65685 248 374 L 248 360 C 248 358.34315 249.34315 357 251 357 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_104">
+          <title>Text</title>
+          <text transform="translate(248.1875 355.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Auth-Type = CHAP</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_106">
+        <g id="Graphic_120">
+          <path d="M 494.5586 620 L 854.5586 620 C 860.0814 620 864.5586 624.47715 864.5586 630 L 864.5586 810 C 864.5586 815.5228 860.0814 820 854.5586 820 L 494.5586 820 C 489.03575 820 484.5586 815.5228 484.5586 810 L 484.5586 630 C 484.5586 624.47715 489.03575 620 494.5586 620 Z" fill="white"/>
+          <path d="M 494.5586 620 L 854.5586 620 C 860.0814 620 864.5586 624.47715 864.5586 630 L 864.5586 810 C 864.5586 815.5228 860.0814 820 854.5586 820 L 494.5586 820 C 489.03575 820 484.5586 815.5228 484.5586 810 L 484.5586 630 C 484.5586 624.47715 489.03575 620 494.5586 620 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_119">
+          <path d="M 494.5586 620 L 854.5586 620 C 860.0814 620 864.5586 624.47715 864.5586 630 L 864.5586 642 C 864.5586 647.52285 860.0814 652 854.5586 652 L 494.5586 652 C 489.03575 652 484.5586 647.52285 484.5586 642 L 484.5586 630 C 484.5586 624.47715 489.03575 620 494.5586 620 Z" fill="#eeece2"/>
+        </g>
+        <g id="Graphic_118">
+          <rect x="484.5586" y="642" width="380" height="10" fill="#eeece2"/>
+        </g>
+        <g id="Graphic_117">
+          <title>Text</title>
+          <text transform="translate(500.5586 625.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">MODS-AVAILABLE / CHAP</tspan>
+          </text>
+        </g>
+        <g id="Graphic_116">
+          <title>Text</title>
+          <text transform="translate(500.5586 662.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">CHAP verifier</tspan>
+          </text>
+        </g>
+        <g id="Graphic_115">
+          <title>Text</title>
+          <text transform="translate(500.5586 680.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">invoked in authenticate section</tspan>
+          </text>
+        </g>
+        <g id="Group_112">
+          <g id="Graphic_114">
+            <path d="M 504.5586 708 L 844.5586 708 C 846.7677 708 848.5586 709.7909 848.5586 712 L 848.5586 726 C 848.5586 728.2091 846.7677 730 844.5586 730 L 504.5586 730 C 502.34945 730 500.5586 728.2091 500.5586 726 L 500.5586 712 C 500.5586 709.7909 502.34945 708 504.5586 708 Z" fill="#eeece2"/>
+            <path d="M 504.5586 708 L 844.5586 708 C 846.7677 708 848.5586 709.7909 848.5586 712 L 848.5586 726 C 848.5586 728.2091 846.7677 730 844.5586 730 L 504.5586 730 C 502.34945 730 500.5586 728.2091 500.5586 726 L 500.5586 712 C 500.5586 709.7909 502.34945 708 504.5586 708 Z" stroke="#d7d3c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_113">
+            <title>Text</title>
+            <text transform="translate(510.5664 707.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">needs Password.Cleartext in `control`</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Graphic_111">
+          <title>Text</title>
+          <text transform="translate(500.5586 736.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Recomputes locally:</tspan>
+          </text>
+        </g>
+        <g id="Group_108">
+          <g id="Graphic_110">
+            <path d="M 504.5586 760 L 844.5586 760 C 846.7677 760 848.5586 761.7909 848.5586 764 L 848.5586 778 C 848.5586 780.2091 846.7677 782 844.5586 782 L 504.5586 782 C 502.34945 782 500.5586 780.2091 500.5586 778 L 500.5586 764 C 500.5586 761.7909 502.34945 760 504.5586 760 Z" fill="#e6f2f9"/>
+            <path d="M 504.5586 760 L 844.5586 760 C 846.7677 760 848.5586 761.7909 848.5586 764 L 848.5586 778 C 848.5586 780.2091 846.7677 782 844.5586 782 L 504.5586 782 C 502.34945 782 500.5586 780.2091 500.5586 778 L 500.5586 764 C 500.5586 761.7909 502.34945 760 504.5586 760 Z" stroke="#b8d8eb" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_109">
+            <title>Text</title>
+            <text transform="translate(510.5586 759.0117)" fill="#2e7fb0">
+              <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">MD5(id </tspan>
+              <tspan font-family="Apple Symbols" font-size="16" fill="#2e7fb0" y="15" xml:space="preserve">∥</tspan>
+              <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" y="15" xml:space="preserve"> cleartext </tspan>
+              <tspan font-family="Apple Symbols" font-size="16" fill="#2e7fb0" y="15" xml:space="preserve">∥</tspan>
+              <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" y="15" xml:space="preserve"> challenge)</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Graphic_107">
+          <title>Text</title>
+          <text transform="translate(500.5586 786.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Byte-compares result with CHAP-Password.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_121">
+        <g id="Graphic_132">
+          <path d="M 150 620 L 390 620 C 395.52285 620 400 624.47715 400 630 L 400 780 C 400 785.52285 395.52285 790 390 790 L 150 790 C 144.47715 790 140 785.52285 140 780 L 140 630 C 140 624.47715 144.47715 620 150 620 Z" fill="white"/>
+          <path d="M 150 620 L 390 620 C 395.52285 620 400 624.47715 400 630 L 400 780 C 400 785.52285 395.52285 790 390 790 L 150 790 C 144.47715 790 140 785.52285 140 780 L 140 630 C 140 624.47715 144.47715 620 150 620 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_131">
+          <path d="M 150 620 L 390 620 C 395.52285 620 400 624.47715 400 630 L 400 642 C 400 647.52285 395.52285 652 390 652 L 150 652 C 144.47715 652 140 647.52285 140 642 L 140 630 C 140 624.47715 144.47715 620 150 620 Z" fill="#eeece2"/>
+        </g>
+        <g id="Graphic_130">
+          <rect x="140" y="642" width="260" height="10" fill="#eeece2"/>
+        </g>
+        <g id="Graphic_129">
+          <title>Text</title>
+          <text transform="translate(156 625.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">MODS-ENABLED / FILES</tspan>
+          </text>
+        </g>
+        <g id="Graphic_128">
+          <title>Text</title>
+          <text transform="translate(156 662.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">User lookup</tspan>
+          </text>
+        </g>
+        <g id="Graphic_127">
+          <title>Text</title>
+          <text transform="translate(156 680.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">authorize-section module</tspan>
+          </text>
+        </g>
+        <g id="Group_124">
+          <g id="Graphic_126">
+            <path d="M 160 708 L 380 708 C 382.20914 708 384 709.7909 384 712 L 384 726 C 384 728.2091 382.20914 730 380 730 L 160 730 C 157.79086 730 156 728.2091 156 726 L 156 712 C 156 709.7909 157.79086 708 160 708 Z" fill="#eeece2"/>
+            <path d="M 160 708 L 380 708 C 382.20914 708 384 709.7909 384 712 L 384 726 C 384 728.2091 382.20914 730 380 730 L 160 730 C 157.79086 730 156 728.2091 156 726 L 156 712 C 156 709.7909 157.79086 708 160 708 Z" stroke="#d7d3c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_125">
+            <title>Text</title>
+            <text transform="translate(177.1289 707.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">keyed by `User-Name`</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Graphic_123">
+          <title>Text</title>
+          <text transform="translate(156 736.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Surfaces the cleartext password</tspan>
+          </text>
+        </g>
+        <g id="Graphic_122">
+          <title>Text</title>
+          <text transform="translate(156 752.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">that chap needs to verify.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_133">
+        <g id="Graphic_142">
+          <path d="M 151.73077 850 L 433.26923 850 C 439.74796 850 445 854.4772 445 860 L 445 970 C 445 975.5228 439.74796 980 433.26923 980 L 151.73077 980 C 145.25204 980 140 975.5228 140 970 L 140 860 C 140 854.4772 145.25204 850 151.73077 850 Z" fill="white"/>
+          <path d="M 151.73077 850 L 433.26923 850 C 439.74796 850 445 854.4772 445 860 L 445 970 C 445 975.5228 439.74796 980 433.26923 980 L 151.73077 980 C 145.25204 980 140 975.5228 140 970 L 140 860 C 140 854.4772 145.25204 850 151.73077 850 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_141">
+          <path d="M 151.5 850 L 427.5 850 C 433.8513 850 439 854.4772 439 860 L 439 872 C 439 877.5228 433.8513 882 427.5 882 L 151.5 882 C 145.14873 882 140 877.5228 140 872 L 140 860 C 140 854.4772 145.14873 850 151.5 850 Z" fill="#eeece2"/>
+        </g>
+        <g id="Graphic_140">
+          <rect x="140" y="872" width="305" height="10" fill="#eeece2"/>
+        </g>
+        <g id="Graphic_139">
+          <title>Text</title>
+          <text transform="translate(156 855.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">MODS-CONFIG / FILES · AUTHORIZE</tspan>
+          </text>
+        </g>
+        <g id="Graphic_138">
+          <title>Text</title>
+          <text transform="translate(156 894.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Flat-file user DB</tspan>
+          </text>
+        </g>
+        <g id="Group_135">
+          <g id="Graphic_137">
+            <path d="M 160 922 L 380 922 C 382.20914 922 384 923.7909 384 926 L 384 940 C 384 942.2091 382.20914 944 380 944 L 160 944 C 157.79086 944 156 942.2091 156 940 L 156 926 C 156 923.7909 157.79086 922 160 922 Z" fill="#eeece2"/>
+            <path d="M 160 922 L 380 922 C 382.20914 922 384 923.7909 384 926 L 384 940 C 384 942.2091 382.20914 944 380 944 L 160 944 C 157.79086 944 156 942.2091 156 940 L 156 926 C 156 923.7909 157.79086 922 160 922 Z" stroke="#d7d3c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_136">
+            <title>Text</title>
+            <text transform="translate(166 921.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">bob Password.Cleartext := &quot;hello&quot;</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Graphic_134">
+          <title>Text</title>
+          <text transform="translate(156 950.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">No SQL needed for this flow.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_143">
+        <g id="Graphic_145">
+          <path d="M 483 572 L 645 572 C 646.65685 572 648 573.34315 648 575 L 648 589 C 648 590.65685 646.65685 592 645 592 L 483 592 C 481.34315 592 480 590.65685 480 589 L 480 575 C 480 573.34315 481.34315 572 483 572 Z" fill="white"/>
+          <path d="M 483 572 L 645 572 C 646.65685 572 648 573.34315 648 575 L 648 589 C 648 590.65685 646.65685 592 645 592 L 483 592 C 481.34315 592 480 590.65685 480 589 L 480 575 C 480 573.34315 481.34315 572 483 572 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_144">
+          <title>Text</title>
+          <text transform="translate(472.40625 570.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">invoke chap (verify mode)</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_146">
+        <g id="Graphic_148">
+          <path d="M 407 686 L 473 686 C 474.65685 686 476 687.34315 476 689 L 476 701 C 476 702.65685 474.65685 704 473 704 L 407 704 C 405.34315 704 404 702.65685 404 701 L 404 689 C 404 687.34315 405.34315 686 407 686 Z" fill="white"/>
+          <path d="M 407 686 L 473 686 C 474.65685 686 476 687.34315 476 689 L 476 701 C 476 702.65685 474.65685 704 473 704 L 407 704 C 405.34315 704 404 702.65685 404 701 L 404 689 C 404 687.34315 405.34315 686 407 686 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_147">
+          <title>Text</title>
+          <text transform="translate(419.9883 683.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">reads</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_149">
+        <g id="Graphic_151">
+          <path d="M 239 808 L 305 808 C 306.65685 808 308 809.3431 308 811 L 308 823 C 308 824.6569 306.65685 826 305 826 L 239 826 C 237.34315 826 236 824.6569 236 823 L 236 811 C 236 809.3431 237.34315 808 239 808 Z" fill="white"/>
+          <path d="M 239 808 L 305 808 C 306.65685 808 308 809.3431 308 811 L 308 823 C 308 824.6569 306.65685 826 305 826 L 239 826 C 237.34315 826 236 824.6569 236 823 L 236 811 C 236 809.3431 237.34315 808 239 808 Z" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_150">
+          <title>Text</title>
+          <text transform="translate(251.98828 805.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">reads</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_152">
+        <g id="Graphic_154">
+          <path d="M 675.2969 591.3203 L 809.2969 591.3203 C 810.9537 591.3203 812.2969 592.66346 812.2969 594.3203 L 812.2969 608.3203 C 812.2969 609.9772 810.9537 611.3203 809.2969 611.3203 L 675.2969 611.3203 C 673.64 611.3203 672.2969 609.9772 672.2969 608.3203 L 672.2969 594.3203 C 672.2969 592.66346 673.64 591.3203 675.2969 591.3203 Z" fill="white"/>
+          <path d="M 675.2969 591.3203 L 809.2969 591.3203 C 810.9537 591.3203 812.2969 592.66346 812.2969 594.3203 L 812.2969 608.3203 C 812.2969 609.9772 810.9537 611.3203 809.2969 611.3203 L 675.2969 611.3203 C 673.64 611.3203 672.2969 609.9772 672.2969 608.3203 L 672.2969 594.3203 C 672.2969 592.66346 673.64 591.3203 675.2969 591.3203 Z" stroke="#b8d8eb" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_153">
+          <title>Text</title>
+          <text transform="translate(676.9258 590)" fill="#2e7fb0">
+            <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">ok · hash matched</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_155">
+        <g id="Graphic_157">
+          <path d="M 953.6992 591.3203 L 1119.6992 591.3203 C 1121.3561 591.3203 1122.6992 592.66346 1122.6992 594.3203 L 1122.6992 608.3203 C 1122.6992 609.9772 1121.3561 611.3203 1119.6992 611.3203 L 953.6992 611.3203 C 952.0424 611.3203 950.6992 609.9772 950.6992 608.3203 L 950.6992 594.3203 C 950.6992 592.66346 952.0424 591.3203 953.6992 591.3203 Z" fill="#fbf3f2"/>
+          <path d="M 953.6992 591.3203 L 1119.6992 591.3203 C 1121.3561 591.3203 1122.6992 592.66346 1122.6992 594.3203 L 1122.6992 608.3203 C 1122.6992 609.9772 1121.3561 611.3203 1119.6992 611.3203 L 953.6992 611.3203 C 952.0424 611.3203 950.6992 609.9772 950.6992 608.3203 L 950.6992 594.3203 C 950.6992 592.66346 952.0424 591.3203 953.6992 591.3203 Z" stroke="#e7c8c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_156">
+          <title>Text</title>
+          <text transform="translate(956.6719 590)" fill="#b84a3e">
+            <tspan font-family="Helvetica" font-size="16" fill="#b84a3e" x="0" y="15" xml:space="preserve">reject · hash mismatch</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Graphic_160">
+        <title>Text</title>
+        <text transform="translate(1219.6797 660) rotate(-90)" fill="#2e7fb0">
+          <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="34" xml:space="preserve">        return · Access-Accept / Reject </tspan>
+          <tspan font-family="Lucida Grande" font-size="16" fill="#2e7fb0" y="34" xml:space="preserve">→</tspan>
+          <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" y="34" xml:space="preserve"> NAS :1812</tspan>
+          <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="53" xml:space="preserve">      </tspan>
+        </text>
+      </g>
+      <g id="Group_161">
+        <g id="Graphic_180">
+          <path d="M 60 1020 L 1220 1020 C 1225.5228 1020 1230 1024.4772 1230 1030 L 1230 1140 C 1230 1145.5228 1225.5228 1150 1220 1150 L 60 1150 C 54.47715 1150 50 1145.5228 50 1140 L 50 1030 C 50 1024.4772 54.47715 1020 60 1020 Z" fill="white"/>
+          <path d="M 60 1020 L 1220 1020 C 1225.5228 1020 1230 1024.4772 1230 1030 L 1230 1140 C 1230 1145.5228 1225.5228 1150 1220 1150 L 60 1150 C 54.47715 1150 50 1145.5228 50 1140 L 50 1030 C 50 1024.4772 54.47715 1020 60 1020 Z" stroke="#b8d8eb" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.4"/>
+        </g>
+        <g id="Graphic_179">
+          <path d="M 60 1020 L 1220 1020 C 1225.5228 1020 1230 1024.4772 1230 1030 L 1230 1040 C 1230 1045.5228 1225.5228 1050 1220 1050 L 60 1050 C 54.47715 1050 50 1045.5228 50 1040 L 50 1030 C 50 1024.4772 54.47715 1020 60 1020 Z" fill="#e6f2f9"/>
+        </g>
+        <g id="Graphic_178">
+          <rect x="50" y="1040" width="1180" height="10" fill="#e6f2f9"/>
+        </g>
+        <g id="Graphic_177">
+          <title>Text</title>
+          <text transform="translate(64 1021.6797)" fill="#2e7fb0">
+            <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">PHASE </tspan>
+            <tspan font-family="Hiragino Sans" font-size="16" fill="#2e7fb0" y="15" xml:space="preserve">③</tspan>
+            <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" y="15" xml:space="preserve"> · RADIUS REPLY</tspan>
+          </text>
+        </g>
+        <g id="Group_162">
+          <g id="Graphic_176">
+            <title>Text</title>
+            <text transform="translate(68 1064.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Single RADIUS reply returned to the NAS</tspan>
+            </text>
+          </g>
+          <g id="Graphic_175">
+            <title>Text</title>
+            <text transform="translate(68 1084.6797)" fill="black">
+              <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">NAS accepts or rejects the supplicant&apos;s PPP session based on the RADIUS outcome.</tspan>
+            </text>
+          </g>
+          <g id="Group_172">
+            <g id="Graphic_174">
+              <path d="M 72 1116 L 244 1116 C 246.20914 1116 248 1117.7909 248 1120 L 248 1134 C 248 1136.2091 246.20914 1138 244 1138 L 72 1138 C 69.79086 1138 68 1136.2091 68 1134 L 68 1120 C 68 1117.7909 69.79086 1116 72 1116 Z" fill="#e6f2f9"/>
+              <path d="M 72 1116 L 244 1116 C 246.20914 1116 248 1117.7909 248 1120 L 248 1134 C 248 1136.2091 246.20914 1138 244 1138 L 72 1138 C 69.79086 1138 68 1136.2091 68 1134 L 68 1120 C 68 1117.7909 69.79086 1116 72 1116 Z" stroke="#b8d8eb" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+            </g>
+            <g id="Graphic_173">
+              <title>Text</title>
+              <text transform="translate(78 1115.6797)" fill="#2e7fb0">
+                <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">Access-Accept</tspan>
+              </text>
+            </g>
+          </g>
+          <g id="Group_169">
+            <g id="Graphic_171">
+              <path d="M 264 1116 L 436 1116 C 438.20914 1116 440 1117.7909 440 1120 L 440 1134 C 440 1136.2091 438.20914 1138 436 1138 L 264 1138 C 261.79086 1138 260 1136.2091 260 1134 L 260 1120 C 260 1117.7909 261.79086 1116 264 1116 Z" fill="#eeece2"/>
+              <path d="M 264 1116 L 436 1116 C 438.20914 1116 440 1117.7909 440 1120 L 440 1134 C 440 1136.2091 438.20914 1138 436 1138 L 264 1138 C 261.79086 1138 260 1136.2091 260 1134 L 260 1120 C 260 1117.7909 261.79086 1116 264 1116 Z" stroke="#d7d3c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+            </g>
+            <g id="Graphic_170">
+              <title>Text</title>
+              <text transform="translate(270 1115.6797)" fill="black">
+                <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Service-Type = Framed</tspan>
+              </text>
+            </g>
+          </g>
+          <g id="Group_166">
+            <g id="Graphic_168">
+              <path d="M 456 1116 L 628 1116 C 630.20914 1116 632 1117.7909 632 1120 L 632 1134 C 632 1136.2091 630.20914 1138 628 1138 L 456 1138 C 453.79086 1138 452 1136.2091 452 1134 L 452 1120 C 452 1117.7909 453.79086 1116 456 1116 Z" fill="#f6e5e1"/>
+              <path d="M 456 1116 L 628 1116 C 630.20914 1116 632 1117.7909 632 1120 L 632 1134 C 632 1136.2091 630.20914 1138 628 1138 L 456 1138 C 453.79086 1138 452 1136.2091 452 1134 L 452 1120 C 452 1117.7909 453.79086 1116 456 1116 Z" stroke="#e7c8c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+            </g>
+            <g id="Graphic_167">
+              <title>Text</title>
+              <text transform="translate(462 1115.6797)" fill="#b84a3e">
+                <tspan font-family="Helvetica" font-size="16" fill="#b84a3e" x="0" y="15" xml:space="preserve">Access-Reject (on fail)</tspan>
+              </text>
+            </g>
+          </g>
+          <g id="Group_163">
+            <g id="Graphic_165">
+              <path d="M 648 1116 L 860 1116 C 862.2091 1116 864 1117.7909 864 1120 L 864 1134 C 864 1136.2091 862.2091 1138 860 1138 L 648 1138 C 645.79086 1138 644 1136.2091 644 1134 L 644 1120 C 644 1117.7909 645.79086 1116 648 1116 Z" fill="#eeece2"/>
+              <path d="M 648 1116 L 860 1116 C 862.2091 1116 864 1117.7909 864 1120 L 864 1134 C 864 1136.2091 862.2091 1138 860 1138 L 648 1138 C 645.79086 1138 644 1136.2091 644 1134 L 644 1120 C 644 1117.7909 645.79086 1116 648 1116 Z" stroke="#d7d3c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1"/>
+            </g>
+            <g id="Graphic_164">
+              <title>Text</title>
+              <text transform="translate(654 1115.6797)" fill="black">
+                <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">Reply-Message = &quot;auth fail&quot;</tspan>
+              </text>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g id="Group_181">
+        <g id="Graphic_182">
+          <title>Text</title>
+          <text transform="translate(1206.5508 1026.6797)" fill="black">
+            <tspan font-family="Helvetica" font-size="16" fill="black" x="0" y="15" xml:space="preserve">3</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Graphic_189">
+        <title>③</title>
+        <text transform="translate(836.3398 623)" fill="#33689c">
+          <tspan font-family="Helvetica" font-size="16" fill="#33689c" x="0" y="15" xml:space="preserve"> 2</tspan>
+        </text>
+      </g>
+      <g id="Graphic_191">
+        <text transform="translate(781.6191 623)" fill="#2e7fb0">
+          <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">PHASE</tspan>
+        </text>
+      </g>
+      <g id="Graphic_192">
+        <text transform="translate(270 65)" fill="#2e7fb0">
+          <tspan font-family="Helvetica" font-size="16" fill="#2e7fb0" x="0" y="15" xml:space="preserve">PHASE</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>

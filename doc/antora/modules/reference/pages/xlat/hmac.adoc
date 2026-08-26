@@ -66,5 +66,5 @@ The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\3
 The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

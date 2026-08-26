@@ -26,7 +26,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 #include <pthread.h>
-#include <stdbool.h>
 
 #if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
 #  include <mach/mach_time.h>
@@ -181,9 +180,14 @@ struct tm *localtime_r(time_t const *l_clock, struct tm *result)
  */
 char *ctime_r(time_t const *l_clock, char *l_buf)
 {
-  strcpy(l_buf, ctime(l_clock));
+	char *p;
 
-  return l_buf;
+	p = ctime(l_clock);
+	if (!p) return NULL;
+
+	strcpy(l_buf, p);
+
+	return l_buf;
 }
 #endif
 
@@ -207,7 +211,7 @@ struct tm *gmtime_r(time_t const *l_clock, struct tm *result)
 #endif
 
 #ifndef HAVE_VDPRINTF
-int vdprintf (int fd, char const *format, va_list args)
+int vdprintf(int fd, char const *format, va_list args)
 {
 	int     ret;
 	FILE    *fp;
@@ -216,7 +220,7 @@ int vdprintf (int fd, char const *format, va_list args)
 	dup_fd = dup(fd);
 	if (dup_fd < 0) return -1;
 
-	fp = fdopen(fd, "w");
+	fp = fdopen(dup_fd, "w");
 	if (!fp) {
 		close(dup_fd);
 		return -1;

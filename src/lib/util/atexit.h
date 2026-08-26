@@ -26,7 +26,6 @@
  */
 RCSIDH(atexit_h, "$Id$")
 
-#include <stdbool.h>
 #include <stdatomic.h>
 #include <pthread.h>
 #include <freeradius-devel/util/talloc.h>
@@ -67,6 +66,10 @@ int		fr_atexit_global_trigger_all(void);
 int		fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx);
 
 bool		fr_atexit_is_exiting(void);
+
+void		fr_atexit_thread_local_disable_alloc(void);
+
+bool		fr_atexit_thread_local_alloc_disabled(void);
 
 #ifdef HAVE_PTHREADS
 /*
@@ -207,13 +210,13 @@ bool		fr_atexit_thread_is_exiting(void);
 /*
  *	Don't emit a _Thread_local_storage qualifier
  */
-#  define __Thread_local
+#  define _Thread_local
 #  define fr_atexit_global_once(_init, _free, _uctx) \
 do { \
 	static bool _init_done = false; \
 	void * _our_uctx = _uctx; /* stop _uctx being evaluated multiple times, it may be a call to malloc() */ \
 	if (unlikely(!_init_done)) { \
-		_init(_our_uctx); \
+		if (_init) _init(_our_uctx); \
 		fr_atexit_global(_free, _our_uctx); \
 		_init_done = true; \
 	} \

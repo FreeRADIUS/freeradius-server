@@ -27,7 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/command.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/skip.h>
 
@@ -112,7 +111,7 @@ static fr_cmd_t *fr_command_find(fr_cmd_t **head, char const *name, fr_cmd_t ***
 	}
 
 	/*
-	 *	Ensure if we exit int he loop insert is initialised
+	 *	Ensure if we exit in the loop insert is initialised
 	 */
 	if (insert) *insert = NULL;
 
@@ -204,6 +203,7 @@ static bool fr_command_valid_name(char const *name)
 		if (fr_utf8_char(p, -1)) continue;
 
 		fr_strerror_const("Invalid non-UTF8 character in name");
+		return false;
 	}
 
 	return true;
@@ -1204,7 +1204,7 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
 			ret = fr_command_tab_expand_argv(ctx, cmd, info, name, child, max_expansions - count, &expansions[count]);
 			if (!ret) continue;
 
-			count++;
+			count += ret;
 		}
 
 		return count;
@@ -1914,7 +1914,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 {
 	int argc = start_argc;
 	int ret;
-	bool child_done;
+	bool child_done = false;
 	char const *word, *my_word, *p, *q;
 	fr_cmd_argv_t *argv = start;
 	fr_cmd_argv_t *child;
@@ -2341,7 +2341,7 @@ check_syntax:
 	if (!cmd->syntax_argv) {
 		fr_skip_whitespace(word);
 
-		if (*word > 0) goto too_many;
+		if (*(uint8_t const *)word > 0) goto too_many;
 
 		info->runnable = true;
 		info->argc = argc;
@@ -2436,20 +2436,6 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, i
 		return count;
 	}
 
-	if (argv->type == FR_TYPE_ALTERNATE) {
-		for (child = argv->child; child != NULL; child = child->next) {
-			fr_cmd_argv_t *sub;
-
-			fr_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
-			fr_assert(child->child != NULL);
-			sub = child->child;
-
-			count = expand_all(cmd, info, sub, count, max_expansions, expansions);
-		}
-
-		return count;
-	}
-
 	/*
 	 *	@todo - might want to do something smarter here?
 	 */
@@ -2505,7 +2491,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 
 			count = expand_syntax(cmd, info, argv->child, text, start, &my_word, count, max_expansions, expansions);
 
-			if (word != my_word) *word_p = word;
+			if (word != my_word) *word_p = my_word;
 			continue;
 		}
 
@@ -2525,8 +2511,8 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				 *	the input.  If so, use it.
 				 */
 				count = expand_syntax(cmd, info, sub, text, start, &my_word, count, max_expansions, expansions);
-				if (my_word != word) {
-					*word_p = word;
+				if (word != my_word) {
+					*word_p = my_word;
 					break;
 				}
 			}
@@ -2754,10 +2740,9 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		if (cmd->intermediate) {
 			fr_assert(cmd->child != NULL);
 			word = p;
-			cmd = cmd->child;
-
 			info->argv[info->argc] = cmd->name;
 			info->argc++;
+			cmd = cmd->child;
 			continue;
 		}
 

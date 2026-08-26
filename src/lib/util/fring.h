@@ -31,8 +31,6 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/talloc.h>
 
-#include <stdbool.h>
-#include <stdint.h>
 
 typedef struct fr_fring_buffer fr_fring_t;
 

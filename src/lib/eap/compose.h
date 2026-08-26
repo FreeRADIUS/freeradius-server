@@ -23,7 +23,6 @@
  * @copyright 2019 The FreeRADIUS server project
  */
 
-#include <stdbool.h>
 
 #include "types.h"
 

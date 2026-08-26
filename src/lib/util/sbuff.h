@@ -32,10 +32,7 @@ extern "C" {
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/types.h>
 
 /** Represents number of bytes parsed or location of parse error
@@ -196,6 +193,15 @@ typedef struct {
 	.elem = (fr_sbuff_term_elem_t[]){ __VA_ARGS__ }, \
 }
 
+/*
+ *	We can't put this into a typdef:
+ *
+ *	  typedef bool sbuff_char_class_t[static UINT8_MAX + 1];
+ *
+ *	So we use a macro instead.
+ */
+#define SBUFF_CHAR_CLASS UINT8_MAX + 1
+
 /** Set of parsing rules for *unescape_until functions
  *
  */
@@ -203,10 +209,10 @@ typedef struct {
 	char const	*name;				//!< Name for rule set to aid we debugging.
 
 	char		chr;				//!< Character at the start of an escape sequence.
-	char		subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+	char		subs[SBUFF_CHAR_CLASS];		//!< Special characters and their substitutions.
 							///< Indexed by the printable representation i.e.
 							///< 'n' for \n.
-	bool		skip[UINT8_MAX + 1];		//!< Characters that are escaped, but left in the
+	bool		skip[SBUFF_CHAR_CLASS];		//!< Characters that are escaped, but left in the
 							///< output along with the escape character.
 							///< This is useful where we need to interpret escape
 							///< sequences for parsing, but where the string will
@@ -225,10 +231,10 @@ typedef struct {
 
 	char		chr;				//!< Character at the start of an escape sequence.
 
-	char		subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+	char		subs[SBUFF_CHAR_CLASS];		//!< Special characters and their substitutions.
 							///< Indexed by the binary representation i.e.
 							///< 0x0a for \n.
-	bool		esc[UINT8_MAX + 1];		//!< Characters that should be translated to hex or
+	bool		esc[SBUFF_CHAR_CLASS];		//!< Characters that should be translated to hex or
 							///< octal escape sequences.
 	bool		do_utf8;			//!< If true Don't apply escaping rules to valid UTF-8 sequences.
 
@@ -259,7 +265,8 @@ typedef enum {
 	FR_SBUFF_PARSE_ERROR_FORMAT		= -3,		//!< Format of data was invalid.
 	FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE	= -4,		//!< No space available in output buffer.
 	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW	= -5,		//!< Integer type would overflow.
-	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -6		//!< Integer type would underflow.
+	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -6,		//!< Integer type would underflow.
+	FR_SBUFF_PARSE_ERROR_INPUT_EMPTY	= -7,		//!< Input is empty, and should not be empty
 } fr_sbuff_parse_error_t;
 
 extern fr_table_num_ordered_t const sbuff_parse_error_table[];
@@ -281,17 +288,17 @@ static inline bool fr_sbuff_is_extendable(fr_sbuff_t *sbuff)
 
 #define fr_sbuff_was_extended(_status)		(_status & FR_SBUFF_FLAG_EXTENDED)
 
-extern bool const sbuff_char_class_uint[UINT8_MAX + 1];
-extern bool const sbuff_char_class_int[UINT8_MAX + 1];
-extern bool const sbuff_char_class_float[UINT8_MAX + 1];
-extern bool const sbuff_char_class_zero[UINT8_MAX + 1];
-extern bool const sbuff_char_class_hex[UINT8_MAX + 1];
-extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
-extern bool const sbuff_char_word[UINT8_MAX + 1];
-extern bool const sbuff_char_whitespace[UINT8_MAX + 1];
-extern bool const sbuff_char_line_endings[UINT8_MAX + 1];
-extern bool const sbuff_char_blank[UINT8_MAX + 1];
-extern bool const sbuff_char_class_hostname[UINT8_MAX + 1];
+extern bool const sbuff_char_class_uint[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_int[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_float[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_zero[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_hex[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_alpha_num[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_word[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_whitespace[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_line_endings[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_blank[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_hostname[SBUFF_CHAR_CLASS];
 
 /** Matches a-z,A-Z
  */
@@ -878,6 +885,16 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 #define fr_sbuff_char(_sbuff_or_marker, _eob) \
 	(fr_sbuff_current(_sbuff_or_marker) >= fr_sbuff_end(_sbuff_or_marker) ? _eob : *fr_sbuff_current(_sbuff_or_marker))
 
+/** Return the current char as a uint8_t, pointed to by the sbuff or '\0' if no more chars remain
+ *
+ * @note  Should be used in place of #fr_sbuff_char when using the char as an index to an array
+ *
+ * @param[in] _sbuff_or_marker	to return the current char from.
+ * @param[in] _eob		char used to indicate End of Buffer, usually '\0'.
+ * @return The current char pointed to be the sbuff.
+ */
+#define fr_sbuff_uint8(_sbuff_or_marker, _eob) ((uint8_t) fr_sbuff_char(_sbuff_or_marker, _eob))
+
 /** Start a switch block over the current sbuff char
  *
  * @note '\0' is used to indicate EOB.
@@ -1279,7 +1296,7 @@ static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m)
 {
 	m->parent->m = m->next;
 
-#ifndef NDEBUF
+#ifndef NDEBUG
 	memset(m, 0, sizeof(*m));	/* Use after release */
 #endif
 }
@@ -1429,6 +1446,8 @@ ssize_t	fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...);
 ssize_t	fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_sbuff_escape_rules_t const *e_rules);
 #define	FR_SBUFF_IN_ESCAPE_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_escape, ##__VA_ARGS__)
 
+bool	fr_sbuff_in_needs_escaping(char const *in, size_t inlen, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1));
+
 ssize_t	fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_escape_rules_t const *e_rules);
 #define	FR_SBUFF_IN_ESCAPE_BUFFER_RETURN(...)	FR_SBUFF_RETURN(fr_sbuff_in_escape_buffer, ##__VA_ARGS__)
 
@@ -1463,7 +1482,7 @@ do { \
 /** Toggle any chars to 'true' in out, that were present in, out or in
  *
  */
-static inline void fr_sbuff_allowed_merge(bool out[static UINT8_MAX + 1], bool const in[static UINT8_MAX + 1])
+static inline void fr_sbuff_allowed_merge(bool out[static SBUFF_CHAR_CLASS], bool const in[static SBUFF_CHAR_CLASS])
 {
 	for (size_t i = 0; i <= UINT8_MAX; i++) out[i] = out[i] || in[i];
 }
@@ -1476,7 +1495,7 @@ size_t	fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 ssize_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
 size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				      bool const allowed[static UINT8_MAX + 1]);
+				      bool const allowed[static SBUFF_CHAR_CLASS]);
 
 size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				    fr_sbuff_term_t const *tt,
@@ -1600,7 +1619,7 @@ static inline fr_slen_t fr_sbuff_out_abstrncpy_exact(TALLOC_CTX *ctx, char **out
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_exact, in, len)
 
 static inline fr_slen_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						       bool const allowed[static UINT8_MAX + 1])
+						       bool const allowed[static SBUFF_CHAR_CLASS])
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed)
 
 static inline fr_slen_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
@@ -1709,7 +1728,7 @@ size_t	fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
 #define fr_sbuff_adv_past_strcase_literal(_sbuff, _needle) fr_sbuff_adv_past_strcase(_sbuff, _needle, sizeof(_needle) - 1)
 
 size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len,
-				  bool const allowed[static UINT8_MAX + 1], fr_sbuff_term_t const *tt);
+				  bool const allowed[static SBUFF_CHAR_CLASS], fr_sbuff_term_t const *tt);
 
 #define fr_sbuff_adv_past_zeros(_sbuff, _len, _tt) fr_sbuff_adv_past_allowed(_sbuff, _len, sbuff_char_class_zero, _tt)
 
@@ -1749,7 +1768,7 @@ static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
  *
  * @{
  */
-size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1]);
+size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static SBUFF_CHAR_CLASS]);
 /** @} */
 
 /** @name Conditions
@@ -1760,7 +1779,7 @@ size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1]
  */
 bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt);
 
-static inline bool fr_sbuff_is_in_charset(fr_sbuff_t *sbuff, bool const chars[static UINT8_MAX + 1])
+static inline bool fr_sbuff_is_in_charset(fr_sbuff_t *sbuff, bool const chars[static SBUFF_CHAR_CLASS])
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
 	return chars[(uint8_t)*sbuff->p];
@@ -1850,6 +1869,9 @@ void 	fr_sbuff_parse_rules_debug(FILE *fp, fr_sbuff_parse_rules_t const *p_rules
  *	...printf("foo %.*s", fr_sbuff_as_percent_s(&sbuff));
  */
 #define fr_sbuff_as_percent_s(_sbuff) (int) fr_sbuff_remaining(_sbuff), fr_sbuff_current(_sbuff)
+
+fr_slen_t  fr_sbuff_array_concat(fr_sbuff_t *out, char const * const *array, char const *sep) CC_HINT(nonnull(1,2));
+
 
 #ifdef __cplusplus
 }

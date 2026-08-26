@@ -1,0 +1,26 @@
+integer gottimeout
+
+try {
+	timeout 0.1s {
+		%sql('SELECT SLEEP(1)')
+	}
+}
+catch timeout {
+	gottimeout := 1
+}
+
+if (!gottimeout) {
+	test_fail
+}
+
+#
+#  Query cancellation for MySQL is just closing the connection,
+#  and the module is configured to only start one connection.
+#  Check that we can still run a query.
+#
+if (%sql('SELECT 1') != 1) {
+	test_fail
+}
+
+test_pass
+

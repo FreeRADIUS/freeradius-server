@@ -86,7 +86,7 @@ typedef struct {
 
 /** A callback when the request gets a fr_signal_t.
  *
- * A module may call unlang_yeild(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
+ * A module may call unlang_yield(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
  * set here.
  *
  * @note The callback is automatically removed on unlang_interpret_mark_runnable().

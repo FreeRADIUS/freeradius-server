@@ -1,0 +1,15 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	The FreeRADIUS Vendor-Specific dictionary for CRL operations.
+#
+# Version:	$Id$
+#
+
+BEGIN PROTOCOL	CRL		14
+
+$INCLUDE dictionary.freeradius
+
+END-PROTOCOL CRL

@@ -27,7 +27,6 @@ RCSID("$Id$")
 #define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -70,7 +69,7 @@ static xlat_arg_parser_t const always_xlat_args[] = {
  *
  * Look ma, no locks...
  *
- * Example: %db_status(fail)
+ * Example: %db_status('fail')
  */
 static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 xlat_ctx_t const *xctx,
@@ -88,7 +87,7 @@ static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	p = "alive";
 	if (mi->force) {
-		p = fr_table_str_by_value(rcode_table, mi->code, "<invalid>");
+		p = fr_table_str_by_value(rcode_table, mi->rcode, "<invalid>");
 	}
 
 	if (!in_head || in_head->vb_length == 0) goto done;
@@ -108,7 +107,7 @@ static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		mi->code = rcode;
+		mi->rcode = rcode;
 		mi->force = true;
 
 	}
@@ -147,10 +146,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_always_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_always_t);
 
 	inst->mi = UNCONST(module_instance_t *, mctx->mi);
-	if (!inst->mi) {
-		cf_log_err(mctx->mi->conf, "Can't find the module instance data for this module: %s", mctx->mi->name);
-		return -1;
-	}
 
 	/*
 	 *	Allocate this outside of the module instance data,
@@ -164,6 +159,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->mutable->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_NOT_SET);
 	if (inst->mutable->rcode == RLM_MODULE_NOT_SET) {
 		cf_log_err(mctx->mi->conf, "rcode value \"%s\" is invalid", inst->rcode_str);
+		talloc_free(inst->mutable);
 		return -1;
 	}
 

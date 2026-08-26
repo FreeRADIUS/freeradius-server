@@ -14,7 +14,7 @@ cast float64 6.25 -> time_delta
 match 6.25
 
 cast float64 1024 -> uint8
-match Source value for cast would overflow destination type
+match ERROR: Source value for cast would overflow destination type
 
 #
 #  Input can be qualified with a resolution.  Output is seconds by default.
@@ -62,7 +62,7 @@ match ::Vendor-Specific.Cisco.AVPair
 #  Can't change protocols.
 #
 cast attribute @DHCPv4.Message-Type
-match Type 'attribute' cannot reference a different protocol
+match ERROR: Type 'attribute' cannot reference a different protocol
 
 cast string "::26.9.1" -> attribute
 match ::Vendor-Specific.Cisco.AVPair

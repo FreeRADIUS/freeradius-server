@@ -17,3 +17,6 @@ faster.
 The available Language modules are:
 
 include::partial$language_table.adoc[]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

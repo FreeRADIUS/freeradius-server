@@ -533,7 +533,7 @@ static inline CC_HINT(always_inline) fr_event_fd_cb_t event_fd_func(fr_event_fd_
  * @param[in] two the second file descriptor handle.
  * @return CMP(one, two)
  */
-static int8_t fr_event_fd_cmp(void const *one, void const *two)
+static fr_cmp_ret_t fr_event_fd_cmp(void const *one, void const *two)
 {
 	fr_event_fd_t const	*a = one, *b = two;
 
@@ -547,7 +547,7 @@ static int8_t fr_event_fd_cmp(void const *one, void const *two)
  */
 uint64_t fr_event_list_num_fds(fr_event_list_t *el)
 {
-	if (unlikely(!el)) return -1;
+	if (unlikely(!el)) return 0;
 
 	return fr_rb_num_elements(el->fds);
 }
@@ -559,7 +559,7 @@ uint64_t fr_event_list_num_fds(fr_event_list_t *el)
  */
 uint64_t fr_event_list_num_timers(fr_event_list_t *el)
 {
-	if (unlikely(!el)) return -1;
+	if (unlikely(!el)) return 0;
 
 	return fr_timer_list_num_events(el->pub.tl);
 }
@@ -699,7 +699,7 @@ static ssize_t fr_event_build_evset(
 			map++;
 		} while (1);
 
-		if (out > end) {
+		if (out >= end) {
 			fr_strerror_const("Out of memory to store kevent filters");
 			return -1;
 		}
@@ -903,7 +903,7 @@ int _fr_event_fd_move(NDEBUG_LOCATION_ARGS
 	/*
 	 *	Ensure this exists
 	 */
-	ef = fr_rb_find(src->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, src->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -949,7 +949,7 @@ int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
 	struct kevent		evset[10];
 	int			count = 0;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -1045,7 +1045,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	}
 
 	if (!ef_out || !*ef_out) {
-		ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+		fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	} else {
 		ef = *ef_out;
 		fr_assert((fd < 0) || (ef->fd == fd));
@@ -1064,7 +1064,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	 *	for insertion into the rbtree.
 	 */
 	if (!ef) {
-		ef = talloc_zero(el, fr_event_fd_t);
+		ef = talloc_zero(el->fds, fr_event_fd_t);
 		if (unlikely(!ef)) {
 			fr_strerror_const("Out of memory");
 			return -1;
@@ -1204,12 +1204,29 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
 	fr_event_fd_t	*ef;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %d, filter %u", fd, filter);
 		return -1;
 	}
 
+	return fr_event_fd_delete_handle(ef);
+}
+
+/** Remove a file descriptor from the event loop, by handle
+ *
+ * Lets a caller holding the handle from #fr_event_fd_insert remove exactly the
+ * event it inserted, without a lookup and without having to still know the fd
+ * and filter it was inserted with.
+ *
+ * @param[in] ef	to remove, as returned by #fr_event_fd_insert or
+ *			#fr_event_fd_handle.
+ * @return
+ *	- 0 if file descriptor was removed.
+ *	- <0 on error.
+ */
+int fr_event_fd_delete_handle(fr_event_fd_t *ef)
+{
 	/*
 	 *	Free will normally fail if it's
 	 *	a deferred free. There is a special
@@ -1240,7 +1257,7 @@ fr_event_fd_t *fr_event_fd_handle(fr_event_list_t *el, int fd, fr_event_filter_t
 {
 	fr_event_fd_t *ef;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return NULL;
@@ -1286,7 +1303,7 @@ int fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t filter, ui
 {
 	fr_event_fd_t	*ef;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -1316,7 +1333,7 @@ int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, 
 {
 	fr_event_fd_t	*ef;
 
-	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -1928,7 +1945,17 @@ int fr_event_user_trigger(fr_event_user_t *ev)
 {
 	struct kevent evset;
 
-	EV_SET(&evset, (uintptr_t)ev, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
+	/*
+	 *	The event was registered with EV_DISPATCH, which makes
+	 *	kqueue auto-disable it each time it fires.  A plain
+	 *	NOTE_TRIGGER on a disabled event is accepted by the kernel
+	 *	but not delivered to userspace until the event is
+	 *	re-enabled, so we pass EV_ENABLE alongside the trigger to
+	 *	re-arm it atomically.  Without this, the second and
+	 *	subsequent trigger calls would silently never wake the
+	 *	consumer.
+	 */
+	EV_SET(&evset, (uintptr_t)ev, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, NULL);
 
 	if (unlikely(kevent(ev->el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed triggering user event - kevent %s", fr_syserror(evset.flags));
@@ -1974,18 +2001,11 @@ int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void
  */
 int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx)
 {
-	fr_event_pre_t *pre, *next;
-
-	for (pre = fr_dlist_head(&el->pre_callbacks);
-	     pre != NULL;
-	     pre = next) {
-		next = fr_dlist_next(&el->pre_callbacks, pre);
-
+	fr_dlist_foreach(&el->pre_callbacks, fr_event_pre_t, pre) {
 		if ((pre->callback == callback) &&
 		    (pre->uctx == uctx)) {
 			fr_dlist_remove(&el->pre_callbacks, pre);
-			talloc_free(pre);
-			return 0;
+			return talloc_free(pre);
 		}
 	}
 
@@ -2009,6 +2029,7 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_post_cb_t callback, void 
 	fr_event_post_t *post;
 
 	post = talloc(el, fr_event_post_t);
+	if (!post) return -1;
 	post->callback = callback;
 	post->uctx = uctx;
 
@@ -2028,18 +2049,11 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_post_cb_t callback, void 
  */
 int fr_event_post_delete(fr_event_list_t *el, fr_event_post_cb_t callback, void *uctx)
 {
-	fr_event_post_t *post, *next;
-
-	for (post = fr_dlist_head(&el->post_callbacks);
-	     post != NULL;
-	     post = next) {
-		next = fr_dlist_next(&el->post_callbacks, post);
-
+	fr_dlist_foreach(&el->post_callbacks, fr_event_post_t, post) {
 		if ((post->callback == callback) &&
 		    (post->uctx == uctx)) {
 			fr_dlist_remove(&el->post_callbacks, post);
-			talloc_free(post);
-			return 0;
+			return talloc_free(post);
 		}
 	}
 
@@ -2059,7 +2073,6 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 {
 	fr_time_delta_t		when, *wake;
 	struct timespec		ts_when, *ts_wake;
-	fr_event_pre_t		*pre;
 	int			num_fd_events;
 	bool			timer_event_ready = false;
 	fr_time_t		next;
@@ -2112,9 +2125,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 *	idle.
 	 */
 	if (wait) {
-		for (pre = fr_dlist_head(&el->pre_callbacks);
-		     pre != NULL;
-		     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
+		fr_dlist_foreach(&el->pre_callbacks, fr_event_pre_t, pre) {
 			if (pre->callback(now, wake ? *wake : fr_time_delta_wrap(0), pre->uctx) > 0) {
 				wake = &when;
 				when = fr_time_delta_wrap(0);

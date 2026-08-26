@@ -29,24 +29,16 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/process_types.h>
-#include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/server/cf_util.h>
 
 #include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/finally.h>
-#include <freeradius-devel/unlang/interpret.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/value.h>
 
 typedef struct {
 	module_instance_t		*proto_mi;			//!< The proto_* module for a listen section.
@@ -250,7 +242,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	/*
 	 *	Smush all hyphens to underscores for module names
 	 */
-	for (p = module_name, end = module_name + talloc_array_length(module_name) - 1;
+	for (p = module_name, end = module_name + talloc_strlen(module_name);
 	     p < end;
 	     p++) if (*p == '-') *p = '_';
 
@@ -271,7 +263,10 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 		cf_log_perr(ci, "Failed loading process module");
 		return -1;
 	}
-	if (unlikely(module_instance_conf_parse(mi, mi->conf) < 0)) goto error;
+	if (unlikely(module_instance_conf_parse(mi, mi->conf) < 0)) {
+		talloc_free(mi);
+		goto error;
+	}
 
 	process = (fr_process_module_t const *)mi->module->exported;
 	if (!*(process->dict)) {
@@ -367,9 +362,7 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	 *	Pull the list of sections we need to compile out of
 	 *	the process module's public struct.
 	 */
-	add_compile_list(server, server->process_mi->conf, server->process_module->compile_list, namespace);
-
-	return 0;
+	return add_compile_list(server, server->process_mi->conf, server->process_module->compile_list, namespace);
 }
 
 /** dl_open a proto_* module
@@ -488,6 +481,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	}
 
 	if (unlikely(module_instance_conf_parse(mi, listener_cs) < 0)) {
+		talloc_free(mi);
 		cf_log_perr(listener_cs, "Failed parsing listen section");
 		return -1;
 	}
@@ -517,7 +511,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	return 0;
 }
 
-static int8_t virtual_server_compile_name_cmp(void const *a, void const *b)
+static fr_cmp_ret_t virtual_server_compile_name_cmp(void const *a, void const *b)
 {
 	virtual_server_compile_t const *sa = a;
 	virtual_server_compile_t const *sb = b;
@@ -583,19 +577,19 @@ fr_dict_t const *virtual_server_dict_by_name(char const *virtual_server)
 	return virtual_server_dict_by_cs(vs->server_cs);
 }
 
-/** Return the namespace for the virtual server specified by a config section
+/** Return the namespace for specified CONF_SECTION
  *
- * @param[in] server_cs		to look for namespace in.
+ * @param[in] cs		to look for namespace in.
  * @return
  *	- NULL on error.
  *	- Namespace on success.
  */
-fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *server_cs)
+fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *cs)
 {
 	CONF_DATA const *cd;
 	fr_dict_t *dict;
 
-	cd = cf_data_find(server_cs, fr_dict_t, "dict");
+	cd = cf_data_find(cs, fr_dict_t, "dict");
 	if (!cd) return NULL;
 
 	dict = cf_data_value(cd);
@@ -679,7 +673,7 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 }
 
 /*
- *	If we pushed a log destination, we need to pop it/
+ *	If we pushed a log destination, we need to pop it.
  */
 static unlang_action_t server_remove_log_destination(UNUSED unlang_result_t *p_result,
 						     request_t *request, void *uctx)
@@ -838,7 +832,7 @@ static fr_cmd_table_t cmd_table[] = {
  *
  *  Only works for IP addresses, and will blow up on file names
  */
-static int8_t listen_addr_cmp(void const *one, void const *two)
+static fr_cmp_ret_t listen_addr_cmp(void const *one, void const *two)
 {
 	fr_listen_t const *a = one;
 	fr_listen_t const *b = two;
@@ -912,9 +906,13 @@ static int8_t listen_addr_cmp(void const *one, void const *two)
  */
 fr_listen_t *listen_find_any(fr_listen_t *li)
 {
+	fr_listen_t *found;
+
 	if (!listen_addr_root) return NULL;
 
-	return fr_rb_find(listen_addr_root, li);
+	fr_rb_find((void **)&found, listen_addr_root, li);
+
+	return found;
 }
 
 
@@ -929,7 +927,7 @@ bool listen_record(fr_listen_t *li)
 
 	if (listen_find_any(li) != NULL) return false;
 
-	return fr_rb_insert(listen_addr_root, li);
+	return fr_rb_insert(listen_addr_root, li) == 0;
 }
 
 /** Return the configuration section for a virtual server
@@ -946,7 +944,7 @@ CONF_SECTION *virtual_server_cs(virtual_server_t const *vs)
 /** Resolve a CONF_SECTION to a virtual server
  *
  */
-virtual_server_t const *virtual_server_from_cs(CONF_SECTION *server_cs)
+virtual_server_t const *virtual_server_from_cs(CONF_SECTION const *server_cs)
 {
 	virtual_server_t *vs;
 
@@ -1008,6 +1006,21 @@ virtual_server_t const *virtual_server_by_child(CONF_ITEM const *ci)
 	return cf_data_value(cd);
 }
 
+/** Return the packet type attribute for a virtual server specified by a config section
+ *
+ * @param[in] server_cs		to look for packet type attribute in.
+ * @return
+ *	- NULL on error.
+ *	- packet type dict attr on success.
+ */
+fr_dict_attr_t const *virtual_server_packet_type_by_cs(CONF_SECTION const *server_cs)
+{
+	virtual_server_t const *vs = virtual_server_from_cs(server_cs);
+
+	if (unlikely(!vs || !vs->process_module || !vs->process_module->packet_type)) return NULL;
+	return *vs->process_module->packet_type;
+}
+
 /** Wrapper for the config parser to allow pass1 resolution of virtual servers
  *
  */
@@ -1054,7 +1067,7 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 
 			if (!fr_cond_assert_msg(required_dict != NULL,
 						"dict not resolved before virtual server reference")) {
-				goto done;
+				return -1;
 			}
 
 			if (required_dict != *vs->process_module->dict) {
@@ -1068,7 +1081,6 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 		}
 	}
 
-done:
 	*((virtual_server_t const **)out) = vs;
 
 	return 0;
@@ -1091,14 +1103,19 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 		.retry = RETRY_INIT,
 	};
 
-	fr_dict_attr_t const	*da = NULL;
+	fr_dict_attr_t const	*da;
 	fr_dict_attr_t const 	**da_p = vs->process_module->packet_type;
 	CONF_SECTION		*subcs;
 
-	if (da_p) {
-		da = *da_p;
-		fr_assert_msg(da != NULL, "Packet-Type attr not resolved");
+	if (!da_p || !*da_p) {
+		subcs = cf_section_find(vs->server_cs, "finally", CF_IDENT_ANY);
+		if (!subcs) return 0;
+
+		cf_log_err(subcs, "Invalid 'finally' section - virtual server does not define a 'packet_type'");
+		return -1;
 	}
+
+	da = *da_p;
 
 	/*
 	 *	Iterate over all the finally sections, trying to resolve
@@ -1113,7 +1130,7 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 		int				ret;
 		void				*instruction;
 
-		if (!cf_section_name2(subcs)) {
+		if (!packet_type) {
 			if (vs->finally_default) {
 				cf_log_err(subcs, "Duplicate 'finally { ... }' section");
 				return -1;
@@ -1146,15 +1163,10 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 		 */
 		if (!fr_type_is_integer_except_bool(ev->value->type)) {
 		forbid:
-			if (da) {
-				cf_log_err(subcs, "'finally %s { ... }' section, "
-					"not supported for this protocol.  %s is a %s", packet_type,
-					da->name, fr_type_to_str(ev->value->type));
-			} else {
-
-				cf_log_err(subcs, "'finally %s { ... }' section, "
-					"not supported for this protocol", packet_type);
-			}
+			fr_assert(da);
+			cf_log_err(subcs, "'finally %s { ... }' section, "
+				   "not supported for this protocol.  %s is a %s", packet_type,
+				   da->name, fr_type_to_str(ev->value->type));
 			return -1;
 		}
 
@@ -1162,7 +1174,7 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 			goto forbid;
 		}
 
-		if (key.vb_uint16 > talloc_array_length(vs->finally_by_packet_type)) {
+		if (key.vb_uint16 >= talloc_array_length(vs->finally_by_packet_type)) {
 			MEM(vs->finally_by_packet_type = talloc_realloc_zero(vs, vs->finally_by_packet_type,
 									     void *, key.vb_uint16 + 1));
 		}
@@ -1183,6 +1195,93 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 	return 0;
 }
 
+/*
+ *	Check for 'send FOO' and 'recv BAR' which are unused.
+ */
+static bool virtual_server_warn_unused(CONF_SECTION *server, virtual_server_compile_t const *list)
+{
+	bool fail = false;
+
+	cf_section_foreach(server, subcs) {
+		char const *name, *name2;
+
+		if (cf_item_is_parsed(subcs)) continue;
+
+		name = cf_section_name1(subcs);
+
+		/*
+		 *	Allow them to "comment out" an entire block by prefixing the name with "-", ala
+		 *	"-sql".
+		 */
+		if (*name == '-') continue;
+
+		/*
+		 *	Local clients are parsed by the listener after the virtual server is bootstrapped.  So
+		 *	we just ignore them here.
+		 */
+		if (strcmp(name, "client") == 0) continue;
+
+		name2 = cf_section_name2(subcs);
+
+		/*
+		 *	When checking the configuration, it is an error to have an unused "send FOO" or "recv
+		 *	BAR" section.
+		 */
+		if (check_config && ((strcmp(name, "recv") == 0) || (strcmp(name, "send") == 0))) {
+			if (!name2) {
+				cf_log_err(subcs, "Unused processing section' %s {'", name);
+				cf_log_err(subcs, "If this is intentional, please rename it to '-%s { ...'", name);
+			} else {
+				cf_log_err(subcs, "Unused processing section '%s %s {'", name, name2);
+				cf_log_err(subcs, "If this is intentional, please rename it to '-%s %s { ...'",
+					   name, name2);
+			}
+
+			fail = true;
+			continue;
+		}
+
+		/*
+		 *	Print warnings if it's unused.  If there's an issue with case sensitivity, then that's
+		 *	an error, even if we're not running check_config.
+		 */
+		name2 = cf_section_name2(subcs);
+		if (!name2) {
+			cf_log_warn(subcs, "Ignoring '%s {' - it is unused", name);
+
+		} else if (list) {
+			int i;
+			const char *realname = NULL;
+
+			/*
+			 *	See if it's a case-sensitive issue.
+			 *
+			 *	The dictionaries are case insensitive.  The configuration files are
+			 *	case sensitive.
+			 */
+			for (i = 0; list[i].section; i++) {
+				if (list[i].section->name2 == CF_IDENT_ANY) continue;
+
+				if (strcasecmp(list[i].section->name2, name2) == 0) {
+					realname = list[i].section->name2;
+					break;
+				}
+			}
+
+			if (realname) {
+				cf_log_err(subcs, "Unused processing section '%s %s {'", name, name2);
+				cf_log_err(subcs, "Do you mean '%s %s { ...' ? ", name, realname);
+				fail = true;
+				break;
+			}
+
+			cf_log_warn(subcs, "Ignoring %s %s { - it is unused", name, name2);
+		}
+	}
+
+	return fail;
+}
+
 /** Compile sections for a virtual server.
  *
  *  When the "proto_foo" module calls fr_app_process_instantiate(), it
@@ -1192,7 +1291,7 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
  *  This function walks down the registration table, compiling each
  *  named section.
  *
- * @param[in] vs	to to compile sections for.
+ * @param[in] vs	to compile sections for.
  * @param[in] rules	to apply for pass1.
  */
 static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t const *rules)
@@ -1201,7 +1300,9 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 	void				*instance = vs->process_mi->data;
 	CONF_SECTION			*server = vs->server_cs;
 	int				i, found;
+	bool				fail;
 	CONF_SECTION			*subcs = NULL;
+	char const			*name, *name2;
 
 	found = 0;
 
@@ -1213,11 +1314,9 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 	 *	definitely want to tell people when running in debug mode.
 	 */
 	if (check_config || DEBUG_ENABLED) {
-		bool fail = false;
+		fail = false;
 
 		while ((subcs = cf_section_next(server, subcs)) != NULL) {
-			char const *name;
-
 			if (cf_section_name2(subcs) != NULL) continue;
 
 			name = cf_section_name1(subcs);
@@ -1312,8 +1411,6 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 		 *	and compile them.
 		 */
 		while ((subcs = cf_section_find_next(server, subcs, list[i].section->name1, CF_IDENT_ANY))) {
-			char const	*name2;
-
 			name2 = cf_section_name2(subcs);
 			if (!name2) {
 				cf_log_err(subcs, "Invalid '%s { ... }' section, it must have a name", list[i].section->name1);
@@ -1364,6 +1461,16 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 		return -1;
 	}
 
+	if (!check_config && !DEBUG_ENABLED) return found;
+
+	fail = virtual_server_warn_unused(server, list);
+
+	/*
+	 *	Be nice to people, and complaining about ALL unused processing sections.  That way they don't
+	 *	have to run the server many, many, times to see all of the errors.
+	 */
+	if (fail) return -1;
+
 	return found;
 }
 
@@ -1376,7 +1483,7 @@ int virtual_server_section_register(virtual_server_t *vs, virtual_server_compile
 {
 	virtual_server_compile_t *old;
 
-	old = fr_rb_find(vs->sections, entry);
+	fr_rb_find((void **)&old, vs->sections, entry);
 	if (old) return 0;
 
 #ifndef NDEBUG
@@ -1406,7 +1513,7 @@ int virtual_server_section_register(virtual_server_t *vs, virtual_server_compile
 	}
 #endif
 
-	if (!fr_rb_insert(vs->sections, entry)) {
+	if (fr_rb_insert(vs->sections, entry) != 0) {
 		fr_strerror_const("Failed inserting entry into internal tree");
 		return -1;
 	}
@@ -1426,20 +1533,20 @@ section_name_t const **virtual_server_section_methods(virtual_server_t const *vs
 	 *	define both "accounting on", and "accounting *".
 	 */
 	if (section->name2 != CF_IDENT_ANY) {
-		entry = fr_rb_find(vs->sections,
-				   &(virtual_server_compile_t) {
-					.section = section
-				   });
+		fr_rb_find((void **)&entry, vs->sections,
+			   &(virtual_server_compile_t) {
+				.section = section
+			   });
 		if (entry) return entry->methods;
 	}
 
 	/*
 	 *	Then look up the wildcard, if we didn't find any matching name2.
 	 */
-	entry = fr_rb_find(vs->sections,
-			   &(virtual_server_compile_t) {
-				.section = SECTION_NAME(section->name1, CF_IDENT_ANY)
-			   });
+	fr_rb_find((void **)&entry, vs->sections,
+		   &(virtual_server_compile_t) {
+			.section = SECTION_NAME(section->name1, CF_IDENT_ANY)
+		   });
 	if (!entry) return NULL;
 
 	return entry->methods;
@@ -1560,7 +1667,7 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 		attr = cf_pair_attr(cp);
 		value = cf_pair_value(cp);
 
-		dv = fr_dict_enum_by_name(parent, attr, talloc_array_length(attr) - 1);
+		dv = fr_dict_enum_by_name(da, attr, talloc_strlen(attr));
 		if (dv) {
 			cf_log_err(cp, "Duplicate value name");
 			return -1;
@@ -1568,7 +1675,7 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 
 		fr_value_box_init_null(&box);
 
-		len = talloc_array_length(value) - 1;
+		len = talloc_strlen(value);
 
 		/*
 		 *	@todo - unescape for double quoted strings.  Whoops.
@@ -1581,11 +1688,13 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 
 		if (slen != len) {
 			cf_log_err(cp, "Unexpected text after value");
+			fr_value_box_clear(&box);
 			return -1;
 		}
 
 		if (fr_dict_enum_add_name(UNCONST(fr_dict_attr_t *, da), attr, &box, false, false) < 0) {
 			cf_log_err(cp, "Failed adding value - %s", fr_strerror());
+			fr_value_box_clear(&box);
 			return -1;
 		}
 
@@ -1716,13 +1825,17 @@ static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_di
 		return NULL;
 	}
 
-	if (define_server_attrs(cs, dict, UNCONST(fr_dict_attr_t *, fr_dict_root(dict)), fr_dict_root(dict_def)) < 0) return NULL;
+	if (define_server_attrs(cs, dict, UNCONST(fr_dict_attr_t *, fr_dict_root(dict)), fr_dict_root(dict_def)) < 0){
+		talloc_free(dict);
+		return NULL;
+	}
 
 	/*
 	 *	Replace the original dictionary with the new one.
 	 */
 	cf_data_remove(server_cs, fr_dict_t, "dict");
 	cf_data_add(server_cs, dict, "dict", false);
+	cf_item_mark_parsed(cs);
 
 	return dict;
 }
@@ -1750,6 +1863,8 @@ int virtual_servers_open(fr_schedule_t *sc)
 		size_t			j, listener_cnt;
 
 		listeners = virtual_servers[i]->listeners;
+		if (!listeners) continue; /* servers can have no listeners */
+
 		listener_cnt = talloc_array_length(listeners);
 
 		for (j = 0; j < listener_cnt; j++) {
@@ -1783,9 +1898,6 @@ int virtual_servers_open(fr_schedule_t *sc)
 							   listener->proto_mi->conf);
 			module_instance_data_protect(listener->proto_mi);
 			if (unlikely(ret < 0)) {
-				cf_log_err(listener->proto_mi->conf,
-					   "Failed opening listener %s",
-					   listener->proto_module->common.name);
 				return -1;
 			}
 
@@ -1839,6 +1951,8 @@ int virtual_servers_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 int virtual_servers_instantiate(void)
 {
 	size_t	i, server_cnt;
+	CONF_SECTION *cs;
+	fr_rb_iter_inorder_t iter;
 
 	/*
 	 *	User didn't specify any "server" sections
@@ -1858,7 +1972,6 @@ int virtual_servers_instantiate(void)
 	}
 
 	for (i = 0; i < server_cnt; i++) {
-		CONF_ITEM			*ci = NULL;
 		CONF_SECTION			*server_cs = virtual_servers[i]->server_cs;
 		fr_dict_t const			*dict;
 		virtual_server_t		*vs = virtual_servers[i];
@@ -1913,40 +2026,21 @@ int virtual_servers_instantiate(void)
 			}
 		}
 
-		/*
-		 *	Print out warnings for unused "recv" and
-		 *	"send" sections.
-		 *
-		 *	@todo - check against the "compile_list"
-		 *	registered for this virtual server, instead of hard-coding stuff.
-		 */
-		while ((ci = cf_item_next(server_cs, ci))) {
-			char const	*name;
-			CONF_SECTION	*subcs;
+		(void) virtual_server_warn_unused(server_cs, process->compile_list);
+	}
 
-			if (!cf_item_is_section(ci)) continue;
+	/*
+	 *	Iterate over virtual modules to see if we can compile them.
+	 */
+	for (cs = module_rlm_virtual_iter_init(&iter);
+	     cs != NULL;
+	     cs = module_rlm_virtual_iter_next(&iter)) {
+		fr_dict_t const *dict;
 
-			subcs = cf_item_to_section(ci);
-			name = cf_section_name1(subcs);
+		dict = virtual_server_dict_by_cs(cs); /* cheating! */
+		if (!dict) continue;
 
-			/*
-			 *	Skip known "other" sections
-			 */
-			if ((strcmp(name, "listen") == 0) || (strcmp(name, "client") == 0)) continue;
-
-			/*
-			 *	For every other section, warn if it hasn't
-			 *	been compiled.
-			 */
-			if (!cf_data_find(subcs, unlang_group_t, NULL)) {
-				char const *name2;
-
-				name2 = cf_section_name2(subcs);
-				if (!name2) name2 = "";
-
-				cf_log_warn(subcs, "%s %s { ... } section is unused", name, name2);
-			}
-		}
+		if (unlang_compile_virtual_module(cs, dict) < 0) return -1;
 	}
 
 	if (modules_instantiate(process_modules) < 0) {
@@ -1975,14 +2069,14 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	/*
 	 *	Ensure any libraries the modules depend on are instantiated
 	 */
-	global_lib_instantiate();
+	if (global_lib_instantiate() < 0) return -1;
 
 	if (modules_bootstrap(process_modules) < 0) {
-		PERROR("Failed instantiating process modules");
+		PERROR("Failed bootstrapping process modules");
 		return -1;
 	}
 	if (modules_bootstrap(proto_modules) < 0) {
-		PERROR("Failed instantiating protocol modules");
+		PERROR("Failed bootstrapping protocol modules");
 		return -1;
 	}
 

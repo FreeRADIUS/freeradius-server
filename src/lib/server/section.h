@@ -25,7 +25,6 @@
  */
 RCSIDH(section_h, "$Id$")
 
-#include <stdbool.h>
 #include <freeradius-devel/server/cf_util.h>
 
 #ifdef __cplusplus
@@ -83,7 +82,7 @@ static inline int section_name2_match(section_name_t const *a, section_name_t co
  */
 static inline int section_name_match(section_name_t const *a, section_name_t const *b)
 {
-	if ((a->name1 == CF_IDENT_ANY) || (b->name2 == CF_IDENT_ANY)) goto name2;
+	if ((a->name1 == CF_IDENT_ANY) || (b->name1 == CF_IDENT_ANY)) goto name2;
 
 	if (strcmp(a->name1, b->name1) != 0) return -1;
 
@@ -107,8 +106,8 @@ static inline void section_name_dup(TALLOC_CTX *ctx, section_name_t *dst, sectio
 	dst->name1 = src->name1;
 	dst->name2 = src->name2;
 
-	if (dst->name1 && (dst->name1 != CF_IDENT_ANY)) dst->name1 = talloc_typed_strdup(ctx, src->name1);
-	if (dst->name2 && (dst->name2 != CF_IDENT_ANY)) dst->name2 = talloc_typed_strdup(ctx, src->name2);
+	if (dst->name1 && (dst->name1 != CF_IDENT_ANY)) dst->name1 = talloc_strdup(ctx, src->name1);
+	if (dst->name2 && (dst->name2 != CF_IDENT_ANY)) dst->name2 = talloc_strdup(ctx, src->name2);
 }
 
 int8_t section_name_cmp(void const *one, void const *two);

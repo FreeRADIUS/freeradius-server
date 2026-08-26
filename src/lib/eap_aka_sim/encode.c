@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/sha1.h>
 
 #include <freeradius-devel/eap/types.h>
@@ -160,7 +159,8 @@ static ssize_t encode_iv(fr_dbuff_t *dbuff, void *encode_ctx)
 static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
 			     	      uint8_t const *in, size_t inlen, void *encode_ctx)
 {
-	size_t			total_len, pad_len, encr_len, len = 0;
+	size_t			total_len, pad_len, encr_len;
+	int			len = 0;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	uint8_t			*encr = NULL;
 	fr_aka_sim_ctx_t	*packet_ctx = encode_ctx;
@@ -232,13 +232,13 @@ static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
 	 *	inform OpenSSL explicitly that there's no padding.
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
-	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, (int *)&len, fr_dbuff_start(&work_dbuff), total_len) != 1)) {
+	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, &len, fr_dbuff_start(&work_dbuff), total_len) != 1)) {
 		fr_tls_strerror_printf("%s: Failed encrypting attribute", __FUNCTION__);
 		goto error;
 	}
 	encr_len = len;
 
-	if (unlikely(EVP_EncryptFinal_ex(evp_ctx, encr + encr_len, (int *)&len) != 1)) {
+	if (unlikely(EVP_EncryptFinal_ex(evp_ctx, encr + encr_len, &len) != 1)) {
 		fr_tls_strerror_printf("%s: Failed finalising encrypted attribute", __FUNCTION__);
 		goto error;
 	}
@@ -952,6 +952,8 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *e
 		if (slen < 0) {
 		error:
 			talloc_free(fr_dbuff_buff(&dbuff));
+			eap_packet->type.data = NULL;
+			eap_packet->type.length = 0;
 			return PAIR_ENCODE_FATAL_ERROR;
 		}
 		fr_assert(fr_dbuff_used(&dbuff) > 0);	/* We messed up a check somewhere in the encoder */

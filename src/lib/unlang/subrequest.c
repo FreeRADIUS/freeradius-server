@@ -27,9 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/unlang/action.h>
 #include "unlang_priv.h"
 #include "interpret_priv.h"
 #include "subrequest_priv.h"
@@ -125,7 +122,7 @@ static unlang_action_t unlang_subrequest_parent_resume(UNUSED unlang_result_t *p
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
-	RDEBUG3("subrequest completeed with rcode %s",
+	RDEBUG3("subrequest completed with rcode %s",
 		fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"));
 
 	/*
@@ -192,6 +189,7 @@ static unlang_action_t unlang_subrequest_init(unlang_result_t *p_result, request
 	child = unlang_io_subrequest_alloc(request, gext->dict, UNLANG_DETACHABLE);
 	if (!child) {
 	fail:
+		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
 	/*
@@ -371,7 +369,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED unlang_result_t *p_result, UN
 	 *	Ensure we restore the session state information
 	 *      into the child.
 	 */
-	if (cr->config.session_unique_ptr) fr_state_restore_to_child(child,
+	if (cr->config.session_unique_ptr) fr_state_restore_from_parent(child,
 								     cr->config.session_unique_ptr,
 								     cr->num);
 	/*
@@ -419,7 +417,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED unlang_result_t *p_result, UN
  *					done using the child's stack, and so the parent never needs
  *					to access it.
  * @param[in] top_frame			Set to UNLANG_TOP_FRAME if the interpreter should return.
- *					Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *					Set to UNLANG_SUB_FRAME if the interpreter should continue.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -473,7 +471,10 @@ int unlang_subrequest_child_push(unlang_result_t *p_result, request_t *child, vo
 	 *	This instruction will mark the parent as runnable
 	 *	when it executed.
 	 */
-	if (unlang_child_request_init(cr, cr, child, p_result, NULL, unique_session_ptr, free_child) < 0) return -1;
+	if (unlang_child_request_init(cr, cr, child, p_result, NULL, unique_session_ptr, free_child) < 0) {
+		unwind_set(frame);
+		return -1;
+	}
 
 	return 0;
 }
@@ -518,7 +519,7 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	fr_dict_autoload_talloc_t	*dict_ref = NULL;
 
 	fr_dict_t const			*dict;
-	fr_dict_attr_t const		*da = NULL;
+	fr_dict_attr_t const		*attr_packet_type = NULL;
 	fr_dict_enum_value_t const	*type_enum = NULL;
 
 	ssize_t				slen;
@@ -541,6 +542,7 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	if (!name2) {
 		dict = unlang_ctx->rules->attr.dict_def;
 		packet_name = name2 = unlang_ctx->section_name2;
+		attr_packet_type =  virtual_server_packet_type_by_cs(virtual_server_cs(unlang_ctx->vs));
 		goto get_packet_type;
 	}
 
@@ -568,12 +570,20 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	    ((name2[0] != ':') && (name2[0] != '&') && (strchr(name2 + 1, ':') != NULL))) {
 		char *q;
 
-		if (name2[0] == '@') name2++;
+		/*
+		 *	This is a different protocol dictionary.  We reset the packet type.
+		 *
+		 *	@todo - the packet type should really be stored in #fr_dict_protocol_t.
+		 */
+		if (name2[0] == '@') {
+			attr_packet_type = NULL;
+			name2++;
+		}
 
 		MEM(namespace = talloc_strdup(parent, name2));
 		q = namespace;
 
-		while (fr_dict_attr_allowed_chars[(unsigned int) *q]) {
+		while (fr_dict_attr_allowed_chars[(uint8_t) *q]) {
 			q++;
 		}
 		*q = '\0';
@@ -614,12 +624,10 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	}
 
 	/*
-	 *	'&' means "attribute reference"
-	 *
-	 *	Or, bare word an require_enum_prefix means "attribute reference".
+	 *	Bare words are attribute references.
 	 */
 	slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
-				      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
+				      &FR_SBUFF_IN(name2, talloc_strlen(name2)),
 				      NULL, unlang_ctx->rules);
 	if (slen <= 0) {
 		cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
@@ -649,25 +657,27 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 
 get_packet_type:
 	/*
-	 *	Local attributes cannot be used in a subrequest.  They belong to the parent.  Local attributes
-	 *	are NOT copied to the subrequest.
+	 *      Local attributes cannot be used in a subrequest.  They belong to the parent.  Local attributes
+	 *      are NOT copied to the subrequest.
 	 *
-	 *	@todo - maybe we want to copy local variables, too?  But there may be multiple nested local
-	 *	variables, each with their own dictionary.
+	 *      @todo - maybe we want to copy local variables, too?  But there may be multiple nested local
+	 *      variables, each with their own dictionary.
 	 */
 	dict = fr_dict_proto_dict(dict);
 
 	/*
-	 *	Use dict name instead of "namespace", because "namespace" can be omitted.
+	 *	We're switching virtual servers, find the packet type by name.
 	 */
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
-	if (!da) {
-		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
+	if (!attr_packet_type) {
+		attr_packet_type =  fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+		if (!attr_packet_type) {
+			cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
 	error:
-		talloc_free(namespace);
-		talloc_free(vpt);
-		talloc_free(dict_ref);
-		goto print_url;
+			talloc_free(namespace);
+			talloc_free(vpt);
+			talloc_free(dict_ref);
+			goto print_url;
+		}
 	}
 
 	if (packet_name) {
@@ -676,10 +686,10 @@ get_packet_type:
 		 */
 		if ((packet_name[0] == ':') && (packet_name[1] == ':')) packet_name += 2;
 
-		type_enum = fr_dict_enum_by_name(da, packet_name, -1);
+		type_enum = fr_dict_enum_by_name(attr_packet_type, packet_name, -1);
 		if (!type_enum) {
-			cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
-				   packet_name, fr_dict_root(dict)->name);
+			cf_log_err(cs, "No such value '%s' for attribute '%s' in namespace '%s'",
+				   packet_name, attr_packet_type->name, fr_dict_root(dict)->name);
 			goto error;
 		}
 	}
@@ -700,7 +710,7 @@ get_packet_type:
 			RULES_VERIFY(unlang_ctx->rules);
 
 			(void) tmpl_afrom_substr(parent, &src_vpt,
-						 &FR_SBUFF_IN(src, talloc_array_length(src) - 1),
+						 &FR_SBUFF_IN(src, talloc_strlen(src)),
 						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
 			if (!src_vpt) {
 				cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing src");
@@ -719,7 +729,7 @@ get_packet_type:
 				RULES_VERIFY(unlang_ctx->rules);
 
 				(void) tmpl_afrom_substr(parent, &dst_vpt,
-							 &FR_SBUFF_IN(dst, talloc_array_length(dst) - 1),
+							 &FR_SBUFF_IN(dst, talloc_strlen(dst)),
 							 cf_section_argv_quote(cs, 1), NULL, unlang_ctx->rules);
 				if (!dst_vpt) {
 					cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing dst");
@@ -729,7 +739,7 @@ get_packet_type:
 				if (!tmpl_contains_attr(dst_vpt)) {
 					cf_log_err(cs, "Invalid argument to 'subrequest' dst must be an "
 						   "attr or list, got %s",
-						   tmpl_type_to_str(src_vpt->type));
+						   tmpl_type_to_str(dst_vpt->type));
 					talloc_free(src_vpt);
 					talloc_free(dst_vpt);
 					goto error;
@@ -788,7 +798,7 @@ get_packet_type:
 	if (vpt) gext->vpt = talloc_steal(gext, vpt);
 
 	gext->dict = dict;
-	gext->attr_packet_type = da;
+	gext->attr_packet_type = attr_packet_type;
 	gext->type_enum = type_enum;
 	gext->src = src_vpt;
 	gext->dst = dst_vpt;

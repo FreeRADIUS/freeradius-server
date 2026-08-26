@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -29,20 +29,9 @@
 #include <freeradius-devel/server/trunk.h>
 
 #include "pipeline.h"
+#include "cluster_async.h"
 #include "io.h"
 
-
-/** Thread local state for a cluster
- *
- * MOVE ME TO NEW ASYNC CLUSTER CODE
- */
-struct fr_redis_cluster_thread_s {
-	fr_event_list_t			*el;
-	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
-	char				*log_prefix;	//!< Common log prefix to use for all cluster related
-							///< messages.
-	bool				delay_start;	//!< Prevent connections from spawning immediately.
-};
 
 /** The thread local free list
  *
@@ -61,6 +50,12 @@ typedef enum {
 							///< MULTI command must be requeued.
 } fr_redis_command_type_t;
 
+typedef enum {
+	FR_REDIS_COMMAND_FMT_EXPANDED = 0,		//!< A command as a single string
+	FR_REDIS_COMMAND_FMT_ARGV,			//!< A command as an argv array
+	FR_REDIS_COMMAND_FMT_PREFORMATTED		//!< A command preformatted with redisCommandFormat
+} fr_redis_command_fmt_t;
+
 /** Represents a single command
  *
  */
@@ -69,15 +64,27 @@ struct fr_redis_command_s {
 	fr_dlist_t			entry;		//!< Entry in the command buffer.
 
 	fr_redis_command_type_t		type;		//!< Redis command type.
+	fr_redis_command_fmt_t		fmt;		//!< Redis command format.
 
-	char const			*str;		//!< The command string.
-	size_t				len;		//!< Length of the command string.
+	union {
+		struct{
+			char const	*str;		//!< The command string.
+			size_t		str_len;	//!< Length of the command string.
+		};
+		struct {
+			size_t		argc;		//!< Number of argv arguments.
+			char const	**argv;		//!< Arguments for the redis command.
+			size_t		*argv_len;	//!< Lengths of the arguments.
+		};
+	};
 
 	uint64_t			sqn;		//!< The sequence number of the command.  This is only
 							///< valid for a specific handle, and is unique within
 							///< the handle.
 
-	redisReply			*result;	//!< The result from the REDIS server.
+	fr_redis_command_complete_t	complete;	//!< Callback to process result from this command.
+
+	void				*rctx;		//!< To be passed to the callback.
 };
 
 /** Represents a collection of pipelined commands
@@ -86,6 +93,12 @@ struct fr_redis_command_s {
  */
 struct fr_redis_command_set_s {
 	fr_dlist_t			entry;
+
+	fr_redis_async_rcode_t		rcode;		//!< Code from last error returned.
+	bool				autofree;	//!< Should the command set be freed when it is complete
+
+	char				*next_node_ip;	//!< IP address of node from MOVED / ASK reply
+	uint16_t			next_node_port; //!< Port of node from MOVED / ASK reply
 
 	/** @name Command state lists
 	 * @{
@@ -105,7 +118,7 @@ struct fr_redis_command_set_s {
 	 * encapsulated within the command set, not just within the trunk.
 	 * @{
  	 */
-	trunk_request_t		*treq;		//!< Trunk request this command set is associated with.
+	trunk_request_t			*treq;		//!< Trunk request this command set is associated with.
 	request_t			*request;	//!< Request this commands set is associated with (if any).
 	void				*rctx;		//!< Resume context to write results to.
 	/** @} */
@@ -139,14 +152,20 @@ struct fr_redis_command_set_s {
 							///< in this command set.
 
 	/** @} */
+
+	bool				blocking;	//!< This command set contains one or more commands
+							///< which block the client (e.g. WAIT)
 };
 
 struct fr_redis_trunk_s {
 	fr_redis_io_conf_t const	*io_conf;	//!< Redis I/O configuration.  Specifies how to connect
 							///< to the host this trunk is used to communicate with.
-	trunk_t			*trunk;		//!< Trunk containing all the connections to a specific
+	trunk_t				*trunk;		//!< Trunk containing all the connections to a specific
 							///< host.
-	fr_redis_cluster_thread_t	*cluster;	//!< Cluster this trunk belongs to.
+	fr_redis_ct_t			*rtcluster;	//!< Cluster this trunk belongs to.
+
+	fr_redis_trunk_active_t		active;		//!< Callback to run when the trunk becomes active.
+	void				*active_uctx;	//!< Uctx to pass to active callback.
 };
 
 /** Free any free requests when the thread is joined
@@ -169,7 +188,8 @@ static int _command_set_free_list_free_on_exit(void *arg)
  */
 static int _redis_command_set_free(fr_redis_command_set_t *cmds)
 {
-	if (fr_dlist_num_elements(command_set_free_list) >= 1024) return 0;	/* Keep a buffer of 1024 */
+	if ((fr_dlist_num_elements(command_set_free_list) >= 1024) &&
+	    (likely(!fr_dlist_entry_in_list(&cmds->entry)))) return 0;	/* Keep a buffer of 1024 */
 
 	/*
 	 *	Freed from the free list....
@@ -179,8 +199,30 @@ static int _redis_command_set_free(fr_redis_command_set_t *cmds)
 		return 0;
 	}
 
+	/*
+	 *	It is possible for a command set to be freed while its trunk request
+	 *	is still inflight.
+	 *	This is an edge case such as shutting down the server when scripts
+	 *	are still being loaded, since the script loading done on redis trunk
+	 *	startup are not run through requests, so there isn't a cancellation
+	 *	path.
+	 */
+	if (cmds->treq) {
+		switch (cmds->treq->state) {
+		case TRUNK_REQUEST_STATE_BACKLOG:
+		case TRUNK_REQUEST_STATE_PENDING:
+		case TRUNK_REQUEST_STATE_SENT:
+			trunk_request_signal_cancel(cmds->treq);
+			break;
+
+		default:
+			break;
+
+		}
+	}
+
 	talloc_free_children(cmds);
-	memset(&cmds, 0, sizeof(cmds));
+	memset(cmds, 0, sizeof(*cmds));
 
 	fr_dlist_insert_head(command_set_free_list, cmds);
 
@@ -201,13 +243,14 @@ static int _redis_command_set_free(fr_redis_command_set_t *cmds)
  * @param[in] fail	Function to call if the command set was not executed
  *			or was partially executed.
  * @param[in] rctx	Resume context to pass to complete and fail functions.
+ * @param[in] autofree	Should the command set be freed when completed.
  * @return A new or refurbished command set.
  */
 fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 						   request_t *request,
 						   fr_redis_command_set_complete_t complete,
 						   fr_redis_command_set_fail_t fail,
-						   void *rctx)
+						   void *rctx, bool autofree)
 
 {
 	fr_redis_command_set_t	*cmds;
@@ -231,7 +274,7 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 	 *	Pull an element out of the free list
 	 *	or allocate a new one.
 	 */
-	cmds = fr_dlist_head(free_list);
+	cmds = fr_dlist_pop_head(free_list);
 	if (!cmds) {
 		MEM(cmds = talloc_zero_pooled_object(NULL, fr_redis_command_set_t,
 						     COMMAND_PRE_ALLOC_COUNT,
@@ -239,8 +282,6 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 						     COMMAND_PRE_ALLOC_LEN)));
 		talloc_set_destructor(cmds, _redis_command_set_free);
 		fr_dlist_entry_init(&cmds->entry);
-	} else {
-		fr_dlist_remove(free_list, cmds);
 	}
 
 	fr_dlist_talloc_init(&cmds->pending, fr_redis_command_t, entry);
@@ -250,29 +291,96 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 	cmds->complete = complete;
 	cmds->fail = fail;
 	cmds->rctx = rctx;
+	cmds->autofree = autofree;
 
 	if (ctx) talloc_link_ctx(ctx, cmds);
 
 	return cmds;
 }
 
-/** Free any result associated with the command
- *
- * @param[in] cmd to free.  Frees any redis results associated with the command.
- */
-static int _redis_command_free(fr_redis_command_t *cmd)
+static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *request, fr_redis_command_type_t *type,
+								  fr_redis_command_set_t *cmds, char const *cmd)
 {
-	//if (cmd->result) fr_redis_reply_free(&cmd->result);
+	/*
+	 *	Transaction sanity checks.
+	 *
+	 *	Because commands from many different requests share the same connection
+	 *	we need to ensure that transaction blocks aren't left dangling and
+	 *	that the commands are all in the right order.
+	 *
+	 *	We try very hard to do this without incurring a performance penalty
+	 *      for non-transactional commands.
+	 */
+	switch (tolower(cmd[0])) {
+	case 'm':
+		if (tolower(cmd[1]) != 'u') break;
+		if (strncasecmp(cmd, "multi", sizeof("multi") - 1) != 0) break;
+		/*
+		 *	There should only ever be a difference of
+		 *	1 between txn starts and txn ends.
+		 */
+		if ((cmds->txn_end < cmds->txn_start) && ((cmds->txn_start - cmds->txn_end) > 1)) {
+			ROPTIONAL(REDEBUG, ERROR, "Too many consecutive \"MULTI\" commands");
+			return FR_REDIS_PIPELINE_BAD_CMDS;
+		}
+		/*
+		 *	If we have a watch before the MULTI,
+		 *	that's marked as the start of the transaction
+		 *	block.
+		 */
+		*type = cmds->txn_watch ? FR_REDIS_COMMAND_TRANSACTION_START : FR_REDIS_COMMAND_NORMAL;
+		cmds->txn_start++;	/* Yes MULTI increments start, not WATCH */
+		break;
 
-	return 0;
+	case 'e':
+		if (tolower(cmd[1]) != 'x') break;
+		if (strncasecmp(cmd, "exec", sizeof("exec") - 1) != 0) break;
+		goto txn_end;
+
+	/*
+	 *	It's useful to allow discard as it allows command syntax checks
+	 *	to be performed against the REDIS server without actually
+	 *	executing the commands.
+	 */
+	case 'd':
+		if (tolower(cmd[1]) != 'i') break;
+		if (strncasecmp(cmd, "discard", sizeof("discard") - 1) != 0) break;
+	txn_end:
+		if (cmds->txn_start <= cmds->txn_end) {
+			ROPTIONAL(REDEBUG, ERROR, "Transaction not started, missing \"MULTI\" command");
+			return FR_REDIS_PIPELINE_BAD_CMDS;
+		}
+		*type = FR_REDIS_COMMAND_TRANSACTION_END;
+		cmds->txn_end++;
+		break;
+
+	case 'w':
+		if (tolower(cmd[1]) != 'a') break;
+
+		if (strncasecmp(cmd, "wait", sizeof("wait") - 1) == 0) {
+			cmds->blocking = true;
+			break;
+		}
+
+		if (strncasecmp(cmd, "watch", sizeof("watch") - 1) != 0) break;
+		if (cmds->txn_watch) {
+			ROPTIONAL(REDEBUG, ERROR, "Too many consecutive \"WATCH\" commands");
+			return FR_REDIS_PIPELINE_BAD_CMDS;
+		}
+		if (cmds->txn_start > cmds->txn_end) {
+			ROPTIONAL(REDEBUG, ERROR, "\"WATCH\" can only be used before \"MULTI\"");
+			return FR_REDIS_PIPELINE_BAD_CMDS;
+		}
+		FALL_THROUGH;
+
+	default:
+		break;
+	}
+
+	return FR_REDIS_PIPELINE_OK;
 }
 
-redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd)
-{
-	return cmd->result;
-}
-
-/** Add a preformatted/expanded command to the command set
+/** Add a literal command to the command set
  *
  * The command must either be entirely static, or parented by the command set.
  *
@@ -284,94 +392,126 @@ redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd)
  * @param[in] cmd_str	A fully expanded/formatted command to send to redis.
  *			Must be static, or have the same lifetime as the
  *			command set (allocated with the command set as the parent).
- * @param[in] cmd_len	Length of the command.
+ * @param[in] complete	Callback to run when this command completes
+ * @param[in] rctx	to pass to `complete`
  * @return
  *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
  *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
  */
-fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds,
-							     char const *cmd_str, size_t cmd_len)
+fr_redis_pipeline_status_t fr_redis_command_literal_add(fr_redis_command_set_t *cmds, char const *cmd_str,
+							fr_redis_command_complete_t complete, void *rctx)
 {
-	request_t			*request = cmds->request;
+	request_t		*request = cmds->request;
 	fr_redis_command_t	*cmd;
 	fr_redis_command_type_t	type = FR_REDIS_COMMAND_NORMAL;
 
-	/*
-	 *	Transaction sanity checks.
-	 *
-	 *	Because commands from many different requests share the same connection
-	 *	we need to ensure that transaction blocks aren't left dangling and
-	 *	that the commands are all in the right order.
-	 *
-	 *	We try very hard to do this without incurring a performance penalty
-	 *      for non-transactional commands.
-	 */
-	switch (tolower(cmd_str[0])) {
-	case 'm':
-		if (tolower(cmd_str[1] != 'u')) break;
-		if (strncasecmp(cmd_str, "multi", sizeof("multi") - 1) != 0) break;
-		/*
-		 *	There should only ever be a difference of
-		 *	1 between txn starts and txn ends.
-		 */
-		if ((cmds->txn_end < cmds->txn_start) && ((cmds->txn_start - cmds->txn_end) > 1)) {
-			ROPTIONAL(ERROR, REDEBUG, "Too many consecutive \"MULTI\" commands");
-			return FR_REDIS_PIPELINE_BAD_CMDS;
-		}
-		/*
-		 *	If we have a watch before the MULTI,
-		 *	that's marked as the start of the transaction
-		 *	block.
-		 */
-		type = cmds->txn_watch ? FR_REDIS_COMMAND_TRANSACTION_START : FR_REDIS_COMMAND_NORMAL;
-		cmds->txn_start++;	/* Yes MULTI increments start, not WATCH */
-		break;
-
-	case 'e':
-		if (tolower(cmd_str[1] != 'e')) break;
-		if (strncasecmp(cmd_str, "exec", sizeof("exec") - 1) != 0) break;
-		goto txn_end;
-
-	/*
-	 *	It's useful to allow discard as it allows command syntax checks
-	 *	to be performed against the REDIS server without actually
-	 *	executing the commands.
-	 */
-	case 'd':
-		if (tolower(cmd_str[1] != 'i')) break;
-		if (strncasecmp(cmd_str, "discard", sizeof("discard") - 1) != 0) break;
-	txn_end:
-		if (cmds->txn_start <= cmds->txn_end) {
-			ROPTIONAL(ERROR, REDEBUG, "Transaction not started, missing \"MULTI\" command");
-			return FR_REDIS_PIPELINE_BAD_CMDS;
-		}
-		type = FR_REDIS_COMMAND_TRANSACTION_END;
-		cmds->txn_end++;
-		break;
-
-	case 'w':
-		if (tolower(cmd_str[1] != 'a')) break;
-		if (strncasecmp(cmd_str, "watch", sizeof("watch") - 1) != 0) break;
-		if (cmds->txn_watch) {
-			ROPTIONAL(ERROR, REDEBUG, "Too many consecutive \"WATCH\" commands");
-			return FR_REDIS_PIPELINE_BAD_CMDS;
-		}
-		if (cmds->txn_start > cmds->txn_end) {
-			ROPTIONAL(ERROR, REDEBUG, "\"WATCH\" can only be used before \"MULTI\"");
-			return FR_REDIS_PIPELINE_BAD_CMDS;
-		}
-		FALL_THROUGH;
-
-	default:
-		break;
-	}
+	if (redis_command_transaction_check(request, &type, cmds, cmd_str) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
 
 	MEM(cmd = talloc_zero(cmds, fr_redis_command_t));
-	talloc_set_destructor(cmd, _redis_command_free);
 	cmd->cmds = cmds;
 	cmd->type = type;
 	cmd->str = cmd_str;
-	cmd->len = cmd_len;
+	cmd->complete = complete;
+	cmd->rctx = rctx;
+	cmd->fmt = FR_REDIS_COMMAND_FMT_EXPANDED;
+	fr_dlist_insert_tail(&cmds->pending, cmd);
+
+	return FR_REDIS_PIPELINE_OK;
+}
+
+/** Add a command with arguments to the command set
+ *
+ * The command and arguments must either be entirely static, or parented by the command set.
+ *
+ * @param[in] cmds	Command set to add command to.
+ * @param[in] argc	Number of arguments.
+ * @param[in] argv	Redis command arguments.
+ * @param[in] argv_len	Length of the command arguments.
+ * @param[in] complete	Callback to run when this command completes
+ * @param[in] rctx	to pass to `complete`
+ * @return
+ *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
+ *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
+ */
+fr_redis_pipeline_status_t fr_redis_command_argv_add(fr_redis_command_set_t *cmds, size_t argc,
+						     char const **argv, size_t *argv_len,
+						     fr_redis_command_complete_t complete, void *rctx)
+{
+	request_t		*request = cmds->request;
+	fr_redis_command_t	*cmd;
+	fr_redis_command_type_t	type = FR_REDIS_COMMAND_NORMAL;
+
+	if (redis_command_transaction_check(request, &type, cmds, argv[0]) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
+
+	MEM(cmd = talloc_zero(cmds, fr_redis_command_t));
+	cmd->cmds = cmds;
+	cmd->type = type;
+	cmd->argc = argc;
+	cmd->argv = argv;
+	cmd->argv_len = argv_len;
+	cmd->complete = complete;
+	cmd->rctx = rctx;
+	cmd->fmt = FR_REDIS_COMMAND_FMT_ARGV;
+	fr_dlist_insert_tail(&cmds->pending, cmd);
+
+	return FR_REDIS_PIPELINE_OK;
+}
+
+/** Add an preformatted command to the command set as formatted by redisCommandFormat or it's variants
+ *
+ * The command must either be entirely static, or parented by the command set.
+ *
+ * @note Caller should disallow "SUBSCRIBE" et al, if they're not appropriate.
+ * 	 As subscribing to a stream where we're not expecting it would break
+ * 	 things, badly.
+ *
+ * @param[in] cmds	Command set to add command to.
+ * @param[in] cmd_str	A fully formatted command to send to redis.
+ *			Must be static, or have the same lifetime as the
+ *			command set (allocated with the command set as the parent).
+ * @param[in] cmd_len	The length of cmd_str (as returned by redisCommandForamt)
+ * @param[in] complete	Callback to run when this command completes
+ * @param[in] rctx	to pass to `complete`
+ * @return
+ *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
+ *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
+ */
+fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str,
+							     size_t cmd_len,
+							     fr_redis_command_complete_t complete, void *rctx)
+{
+	request_t		*request = cmds->request;
+	fr_redis_command_t	*cmd;
+	fr_redis_command_type_t	type = FR_REDIS_COMMAND_NORMAL;
+	char const		*p = cmd_str, *end;
+
+	/*
+	 *	Preformatted Redis commands start *<n>\r\n$<n>\r\n<cmd>.  Verify that is what we have.
+	 */
+	end = p + cmd_len;
+	if (*p++ != '*') {
+	error:
+		ERROR("Incorrect Redis command format");
+		return FR_REDIS_PIPELINE_BAD_CMDS;
+	}
+	while (isdigit(*p) && (p < end)) p++;
+	if (*p++ != '\r') goto error;
+	if (*p++ != '\n') goto error;
+	if (*p++ != '$') goto error;
+	while (isdigit(*p) && (p < end)) p++;
+	if (*p++ != '\r') goto error;
+	if (*p++ != '\n') goto error;
+
+	if (redis_command_transaction_check(request, &type, cmds, p) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
+
+	MEM(cmd = talloc_zero(cmds, fr_redis_command_t));
+	cmd->cmds = cmds;
+	cmd->type = type;
+	cmd->str = cmd_str;
+	cmd->str_len = cmd_len;
+	cmd->complete = complete;
+	cmd->rctx = rctx;
+	cmd->fmt = FR_REDIS_COMMAND_FMT_PREFORMATTED;
 	fr_dlist_insert_tail(&cmds->pending, cmd);
 
 	return FR_REDIS_PIPELINE_OK;
@@ -399,6 +539,7 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
 	switch (trunk_request_enqueue(&cmds->treq, rtrunk->trunk, cmds->request, cmds, cmds->rctx)) {
 	case TRUNK_ENQUEUE_OK:
 	case TRUNK_ENQUEUE_IN_BACKLOG:
+		if (cmds->blocking) trunk_request_mark_blocking(cmds->treq);
 		return FR_REDIS_PIPELINE_OK;
 
 	case TRUNK_ENQUEUE_DST_UNAVAILABLE:
@@ -407,6 +548,64 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
 	default:
 		return FR_REDIS_PIPELINE_FAIL;
 	}
+}
+
+/** Cancel a command set
+ *
+ * @param[in] cmds	Command set to cancel.
+ */
+void fr_redis_command_set_cancel(fr_redis_command_set_t *cmds)
+{
+	if (cmds->treq) {
+		trunk_request_signal_cancel(cmds->treq);
+		cmds->treq = NULL;
+	}
+	if (cmds->request) unlang_interpret_mark_runnable(cmds->request);
+}
+
+/** Convert a MOVED / ASK reply into an address and port
+ *
+ */
+static int redis_addr_from_redirect(TALLOC_CTX *ctx, char **addr, uint16_t *port, redisReply *redirect)
+{
+	unsigned long	key;
+	fr_sbuff_t	sbuff;
+	fr_ipaddr_t	ipaddr;
+	char		buff[FR_IPADDR_STRLEN];
+
+	if (!redirect || (redirect->type != REDIS_REPLY_ERROR)) return -1;
+
+	fr_sbuff_init_in(&sbuff, redirect->str, redirect->len);
+
+	if (!((fr_sbuff_adv_past_str_literal(&sbuff, REDIS_ERROR_MOVED_STR " ")) ||
+	    (fr_sbuff_adv_past_str_literal(&sbuff, REDIS_ERROR_MOVED_STR " ")))) {
+		fr_strerror_const("No '-MOVED' or '-ASK' log_prefix");
+		return -1;
+	}
+
+	if (fr_sbuff_out(NULL, &key, &sbuff) < 0) {
+		fr_strerror_const("Failed to parse key slot from MOVED / ASK reply");
+		return -1;
+	};
+	if (key >= KEY_SLOTS) {
+		fr_strerror_printf("Key %lu outside of redis slot range", key);
+		return -1;
+	}
+
+	if (!fr_sbuff_next_if_char(&sbuff, ' ')) {
+		fr_strerror_const("Missing key/host separator");
+		return -1;
+	}
+
+	if (fr_inet_pton_port(&ipaddr, port, fr_sbuff_current(&sbuff), fr_sbuff_remaining(&sbuff),
+			      AF_UNSPEC, true, true) < 0) {
+		return -1;
+	}
+	fr_assert(ipaddr.af);
+
+	*addr = talloc_strdup(ctx, fr_inet_ntop(buff, sizeof(buff), &ipaddr));
+
+	return 0;
 }
 
 /** Callback for for receiving Redis replies
@@ -431,26 +630,91 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	connection_t		*conn = talloc_get_type_abort(ac->ev.data, connection_t);
 	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
 	redisReply		*reply = vreply;
+
+	/*
+	 *	If we're already disconnecting, then ignore the response.
+	 *	Testing has shown this callback can be called by hiredis after the connection
+	 *	has errored.  At that point privdata is no longer valid so there's nothing
+	 *	that can be done.
+	 */
+	if (h->freeing) return;
+
 	/*
 	 *	First check if we should ignore the response
 	 */
 	if (!fr_redis_connection_process_response(h)) {
 		DEBUG4("Ignoring response with SQN %"PRIu64, (h->rsp_sqn - 1));	/* Already incremented */
-		fr_redis_reply_free((redisReply **)&reply);
+		return;
+	}
+
+	cmd = talloc_get_type_abort(privdata, fr_redis_command_t);
+	cmds = cmd->cmds;
+
+	/*
+	 *	The trunk request has already failed, nothing more to do.
+	 */
+	if (cmds->rcode == REDIS_ASYNC_RCODE_FAIL) return;
+
+	fr_dlist_remove(&cmds->sent, cmd);
+	fr_dlist_insert_tail(&cmds->completed, cmd);
+
+	if (!reply) {
+		cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
+	error:
+		/*
+		 *	Mark remaining sent commands to be ignored and fail the treq
+		 */
+		fr_dlist_foreach(&cmds->sent, fr_redis_command_t, sent_cmd) {
+			fr_redis_connection_ignore_response(h, sent_cmd->sqn);
+		}
+
+		/*
+		 *	Only REDIS_ASYNC_RCODE_ERROR is really a failure.
+		 */
+		if (cmds->rcode == REDIS_ASYNC_RCODE_ERROR) {
+			trunk_request_signal_fail(cmds->treq);
+		} else {
+			trunk_request_signal_complete(cmds->treq);
+		}
+		cmds->treq = NULL;
 		return;
 	}
 
 	/*
-	 *	FIXME - Need to check TRYAGAIN, MOVED etc...
-	 *	I guess we might want to wait for the end of
-	 *	the command set to do that.
+	 *	If the reply was an error, look for known types.
 	 */
-	cmd = talloc_get_type_abort(privdata, fr_redis_command_t);
-	cmds = cmd->cmds;
-	cmd->result = reply;
+	if (reply->type == REDIS_REPLY_ERROR) {
+		request_t	*request = cmds->request;
 
-	fr_dlist_remove(&cmds->sent, cmd);
-	fr_dlist_insert_tail(&cmds->completed, cmd);
+		fr_assert_msg(reply->str, "Error response contained no error string");
+
+		if (strncmp(REDIS_ERROR_MOVED_STR, reply->str, sizeof(REDIS_ERROR_MOVED_STR) - 1) == 0) {
+			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_MOVE;
+			goto redirect;
+		} else if (strncmp(REDIS_ERROR_ASK_STR, reply->str, sizeof(REDIS_ERROR_ASK_STR) - 1) == 0) {
+			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_ASK;
+		redirect:
+			if (redis_addr_from_redirect(cmds, &cmds->next_node_ip, &cmds->next_node_port, reply) < 0) {
+				cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
+			}
+			cmds->redirected++;
+		} else if (strncmp(REDIS_ERROR_TRY_AGAIN_STR, reply->str, sizeof(REDIS_ERROR_TRY_AGAIN_STR) - 1) == 0) {
+			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_TRY_AGAIN;
+		} else if (strncmp(REDIS_ERROR_NO_SCRIPT_STR, reply->str, sizeof(REDIS_ERROR_NO_SCRIPT_STR) - 1) == 0) {
+			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_NO_SCRIPT;
+		} else {
+			fr_strerror_printf("Server error: %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
+		}
+		goto error;
+	}
+
+	if (cmd->complete) cmd->complete(cmds->request, cmd, reply, cmd->rctx);
+	cmds->rcode = REDIS_ASYNC_RCODE_SUCCESS;
 
 	/*
 	 *	Check is the command set is complete,
@@ -458,16 +722,24 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	 *	is complete.
 	 */
 	if ((fr_dlist_num_elements(&cmds->pending) == 0) &&
-	    (fr_dlist_num_elements(&cmds->sent) == 0)) trunk_request_signal_complete(cmds->treq);
+	    (fr_dlist_num_elements(&cmds->sent) == 0)) {
+		trunk_request_signal_complete(cmds->treq);
+		cmds->treq = NULL;
+	}
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
 static connection_t *_redis_pipeline_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
 							 connection_conf_t const *conf,
 							 char const *log_prefix, void *uctx)
 {
 	fr_redis_trunk_t *rtrunk = talloc_get_type_abort(uctx, fr_redis_trunk_t);
 
-	return fr_redis_connection_alloc(tconn, el, conf, rtrunk->io_conf, log_prefix);
+	return fr_redis_connection_alloc(tconn, el, conf, rtrunk->io_conf,
+#ifdef HAVE_REDIS_SSL
+					 fr_redis_ct_ssl_ctx(rtrunk->rtcluster),
+#endif
+					 log_prefix);
 }
 
 /** Enqueue one or more command sets onto a redis handle
@@ -476,41 +748,76 @@ static connection_t *_redis_pipeline_connection_alloc(trunk_connection_t *tconn,
  * will be called any time trunk_request_enqueue is called, so there'll only
  * ever be one command to dequeue.
  *
+ * @param[in] el		Event list for trunk events. Unused.
  * @param[in] tconn		Trunk connection holding the commands to enqueue.
  * @param[in] conn		Connection handle containing the fr_redis_handle_t.
  * @param[in] uctx		fr_redis_cluster_t.  Unused.
  */
-static void _redis_pipeline_mux(trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				connection_t *conn, UNUSED void *uctx)
 {
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	fr_redis_command_set_t 	*cmds;
 	fr_redis_command_t	*cmd;
 	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
-	request_t			*request;
+	request_t		*request;
+	int			ret;
 
-	treq = trunk_connection_pop_request(&request, (void *)&cmds, NULL, tconn);
-	while ((cmd = fr_dlist_head(&cmds->pending))) {
-		/*
-		 *	If this fails it probably means the connection
-		 *	is disconnecting, but if that's happening then
-		 *	we shouldn't be enqueueing new requests?
-		 */
-		if (unlikely(redisAsyncCommand(h->ac, _redis_pipeline_demux, cmd, "%s", cmd->str) != REDIS_OK)) {
-			ROPTIONAL(ERROR, REDEBUG, "Unexpected error queueing REDIS command");
+	while (trunk_connection_pop_request(&treq, tconn) == 0) {
+		cmds = talloc_get_type_abort(treq->preq, fr_redis_command_set_t);
+		request = treq->request;
+		while ((cmd = fr_dlist_head(&cmds->pending))) {
+			/*
+			 *	If this fails it probably means the connection
+			 *	is disconnecting, but if that's happening then
+			 *	we shouldn't be enqueueing new requests?
+			 */
+			switch (cmd->fmt) {
+			case FR_REDIS_COMMAND_FMT_ARGV:
+				if (DEBUG_ENABLED3) {
+					size_t	i;
+					ROPTIONAL(RDEBUG3, DEBUG3, "Sending Redis argv command");
+					for (i = 0; i < cmd->argc; i++) {
+						ROPTIONAL(RDEBUG3, DEBUG3, "  %pV",
+							  fr_box_strvalue_len(cmd->argv[i], cmd->argv_len[i]));
+					}
 
-			while ((cmd = fr_dlist_head(&cmds->sent))) {
-				fr_redis_connection_ignore_response(h, cmd->sqn);
-				fr_dlist_remove(&cmds->sent, cmd);
-				fr_dlist_insert_tail(&cmds->pending, cmd);
+				}
+				ret = redisAsyncCommandArgv(h->ac, _redis_pipeline_demux, cmd, cmd->argc,
+							    cmd->argv, cmd->argv_len);
+				break;
+
+			case FR_REDIS_COMMAND_FMT_EXPANDED:
+				ROPTIONAL(RDEBUG3, DEBUG3, "Sending Redis command %s", cmd->str);
+				ret = redisAsyncCommand(h->ac, _redis_pipeline_demux, cmd, cmd->str);
+				break;
+
+			case FR_REDIS_COMMAND_FMT_PREFORMATTED:
+				ROPTIONAL(RDEBUG3, DEBUG3, "Sending Redis formatted command %s", cmd->str);
+				ret = redisAsyncFormattedCommand(h->ac, _redis_pipeline_demux, cmd,
+								 cmd->str, cmd->str_len);
+				break;
 			}
-			trunk_request_signal_fail(treq);
-			return;
+
+			if (unlikely(ret != REDIS_OK)) {
+				ROPTIONAL(REDEBUG, ERROR, "Unexpected error queueing REDIS command");
+
+				while ((cmd = fr_dlist_head(&cmds->sent))) {
+					fr_redis_connection_ignore_response(h, cmd->sqn);
+					fr_dlist_remove(&cmds->sent, cmd);
+					fr_dlist_insert_tail(&cmds->pending, cmd);
+				}
+				trunk_request_signal_fail(treq);
+				cmds->treq = NULL;
+				return;
+			}
+			cmd->sqn = fr_redis_connection_sent_request(h);
+			fr_dlist_remove(&cmds->pending, cmd);
+			fr_dlist_insert_tail(&cmds->sent, cmd);
 		}
-		cmd->sqn = fr_redis_connection_sent_request(h);
-		fr_dlist_remove(&cmds->pending, cmd);
-		fr_dlist_insert_tail(&cmds->sent, cmd);
+		trunk_request_signal_sent(treq);
 	}
-	trunk_request_signal_sent(treq);
 }
 
 /** Deal with cancellation of sent requests
@@ -519,7 +826,7 @@ static void _redis_pipeline_mux(trunk_connection_t *tconn, connection_t *conn, U
  * on why the commands were cancelled, we either tell the handle to ignore
  * them, or move them back into the pending list.
  */
-static void _redis_pipeline_command_set_cancel(connection_t *conn, UNUSED trunk_request_t *treq, void *preq,
+static void _redis_pipeline_command_set_cancel(connection_t *conn, void *preq,
 					       trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
@@ -540,6 +847,7 @@ static void _redis_pipeline_command_set_cancel(connection_t *conn, UNUSED trunk_
 	 *	command set back into the correct state for
 	 *	execution by another handle.
 	 */
+	case TRUNK_CANCEL_REASON_REQUEUE:
 	case TRUNK_CANCEL_REASON_MOVE:
 		fr_dlist_move(&cmds->pending, &cmds->sent);
 		return;
@@ -558,12 +866,19 @@ static void _redis_pipeline_command_set_cancel(connection_t *conn, UNUSED trunk_
 	{
 		fr_redis_command_t	*cmd;
 
+		/*
+		 *	Only connected connections will get replies that
+		 *	need to be ignored.
+		 */
+		if (conn->state != CONNECTION_STATE_CONNECTED) return;
+
 		for (cmd = fr_dlist_head(&cmds->sent);
 		     cmd;
 		     cmd = fr_dlist_next(&cmds->sent, cmd)) {
 			fr_redis_connection_ignore_response(h, cmd->sqn);
 		}
 	}
+		return;
 
 	case TRUNK_CANCEL_REASON_NONE:
 		fr_assert(0);
@@ -580,17 +895,20 @@ static void _redis_pipeline_command_set_complete(UNUSED request_t *request, void
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 
 	if (cmds->complete) cmds->complete(cmds->request, &cmds->completed, cmds->rctx);
+	if (cmds->request) unlang_interpret_mark_runnable(cmds->request);
 }
 
 /** Signal the API client that we failed enqueuing the commands
  *
  */
-static void _redis_pipeline_command_set_fail(UNUSED request_t *request, void *preq,
-					     UNUSED void *rctx, UNUSED void *uctx)
+static void _redis_pipeline_command_set_fail(UNUSED request_t *request, void *preq, UNUSED void *rctx,
+					     UNUSED trunk_request_state_t state,  UNUSED void *uctx)
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 
+	cmds->rcode = REDIS_ASYNC_RCODE_FAIL;
 	if (cmds->fail) cmds->fail(cmds->request, &cmds->completed, cmds->rctx);
+	if (cmds->request) unlang_interpret_mark_runnable(cmds->request);
 }
 
 /** Free the command set
@@ -601,18 +919,32 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 
-	talloc_free(cmds);
+	if (cmds->autofree) talloc_free(cmds);
+}
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private trunk_t trips --fsanitize=function */
+static void _redis_trunk_active(UNUSED trunk_t *trunk, UNUSED trunk_state_t prev, UNUSED trunk_state_t state, void *uctx)
+{
+	fr_redis_trunk_t	*rtcluster = talloc_get_type_abort(uctx, fr_redis_trunk_t);
+
+	rtcluster->active(rtcluster, rtcluster->active_uctx);
 }
 
 /** Allocate a new trunk
  *
- * @param[in] cluster_thread	to allocate the trunk for.
+ * @param[in] rtcluster		to allocate the trunk for.
  * @param[in] io_conf		Describing the connection to a single REDIS host.
+ * @param[in] trigger_args	Pairs to pass to trigger requests, if triggers are enabled.
+ * @param[in] active		Callback to run when the trunk becomes active.
+ * @param[in] active_uctx	Uctx to pass to active callback.
+ * @param[in] active_oneshot	Should the call back be run just once.
  * @return
  *	- On success, a new fr_redis_trunk_t which can be used for pipelining commands.
  *	- NULL on failure.
  */
-fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread, fr_redis_io_conf_t const *io_conf)
+fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_ct_t *rtcluster, fr_redis_io_conf_t const *io_conf,
+				       fr_pair_list_t *trigger_args, fr_redis_trunk_active_t active,
+				       void *active_uctx, bool active_oneshot)
 {
 	fr_redis_trunk_t	*rtrunk;
 	trunk_io_funcs_t	io_funcs = {
@@ -625,36 +957,89 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread
 					.request_free		= _redis_pipeline_command_set_free
 				};
 
-	MEM(rtrunk = talloc_zero(cluster_thread, fr_redis_trunk_t));
-	rtrunk->io_conf = io_conf;
-	rtrunk->trunk = trunk_alloc(rtrunk, cluster_thread->el,
-				       &io_funcs, cluster_thread->tconf, cluster_thread->log_prefix, rtrunk,
-				       cluster_thread->delay_start);
+	MEM(rtrunk = talloc(rtcluster, fr_redis_trunk_t));
+	*rtrunk = (fr_redis_trunk_t) {
+		.io_conf = io_conf,
+		.rtcluster = rtcluster,
+		.active = active,
+		.active_uctx = active_uctx,
+	};
+	rtrunk->trunk = trunk_alloc(rtrunk, fr_redis_ct_el(rtcluster), &io_funcs, fr_redis_ct_trunk_conf(rtcluster),
+				    io_conf->log_prefix, rtrunk, false, trigger_args);
 	if (!rtrunk->trunk) {
 		talloc_free(rtrunk);
 		return NULL;
 	}
 
+	if (active) trunk_add_watch(rtrunk->trunk, TRUNK_STATE_ACTIVE, _redis_trunk_active, active_oneshot, rtrunk);
+
 	return rtrunk;
 }
 
-/** Allocate per-thread, per-cluster instance
- *
- * This structure represents all the connections for a given thread for a given cluster.
- * The structures holds the trunk connections to talk to each cluster member.
- *
- */
-fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, trunk_conf_t const *tconf)
+char const *fr_redis_command_get_cmd(fr_redis_command_t *cmd)
 {
-	fr_redis_cluster_thread_t *cluster_thread;
-	trunk_conf_t *our_tconf;
+	switch(cmd->type) {
+	case FR_REDIS_COMMAND_FMT_EXPANDED:
+	case FR_REDIS_COMMAND_FMT_PREFORMATTED:
+		return cmd->str;
 
-	MEM(cluster_thread = talloc_zero(ctx, fr_redis_cluster_thread_t));
-	MEM(our_tconf = talloc_memdup(cluster_thread, tconf, sizeof(*tconf)));
-	our_tconf->always_writable = true;
+	case FR_REDIS_COMMAND_FMT_ARGV:
+		return cmd->argv[0];
+	}
+	return NULL;
+}
 
-	cluster_thread->el = el;
-	cluster_thread->tconf = our_tconf;
+/** Extract the rcode from a command set
+ */
+fr_redis_async_rcode_t fr_redis_command_set_rcode(fr_redis_command_set_t *cmds)
+{
+	return cmds->rcode;
+}
 
-	return cluster_thread;
+/** Extract the next node address and port from a command set
+ */
+void fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_redis_io_conf_t *ioconf)
+{
+	ioconf->hostname = cmds->next_node_ip;
+	ioconf->port = cmds->next_node_port;
+}
+
+/** Reset a command set to it's state before enqueuing
+ *
+ * For use when handling MOVED / ASK where the command set needs to be sent
+ * to another node.
+ */
+int fr_redis_command_set_reset(fr_redis_command_set_t *cmds)
+{
+	fr_redis_command_t	*cmd;
+
+	/*
+	 *	Move sent and completed commands back to the pending list
+	 *	Popping from the tail of sent, then completed and inserting
+	 *	into the head of pending ensures pending is back in the
+	 *	original sequence.
+	 */
+	while ((cmd = fr_dlist_pop_tail(&cmds->sent))) {
+		fr_dlist_insert_head(&cmds->pending, cmd);
+	}
+	while ((cmd = fr_dlist_pop_tail(&cmds->completed))) {
+		fr_dlist_insert_head(&cmds->pending, cmd);
+	}
+
+	TALLOC_FREE(cmds->next_node_ip);
+	cmds->next_node_port = 0;
+	cmds->treq = NULL;
+
+	return 0;
+}
+
+int fr_redis_command_set_clear(fr_redis_command_set_t *cmds)
+{
+	if (fr_dlist_num_elements(&cmds->pending) > 0) return -1;
+	if (fr_dlist_num_elements(&cmds->sent) > 0) return -1;
+	fr_dlist_clear(&cmds->completed);
+	TALLOC_FREE(cmds->next_node_ip);
+	cmds->next_node_port = 0;
+	cmds->treq = NULL;
+	return 0;
 }

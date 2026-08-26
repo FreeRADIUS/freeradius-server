@@ -29,18 +29,360 @@ RCSID("$Id$")
 #include <freeradius-devel/util/timer.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/mod_action.h>
 
 #include "interpret_priv.h"
 #include "unlang_priv.h"
 #include "module_priv.h"
+#include "load_balance_priv.h"
 
+/*
+ *	Start of thread-local variables and functions.
+ */
 
 /** The default interpreter instance for this thread
  */
 static _Thread_local unlang_interpret_t *intp_thread_default;
+
+/*
+ *	For simplicity, this is just array[unlang_number].  Once we
+ *	call unlang_thread_instantiate(), the "unlang_number" above MUST
+ *	NOT change.
+ */
+static _Thread_local unlang_thread_t *unlang_thread_array;
+
+extern uint64_t unlang_number;
+uint64_t unlang_number = 1;
+
+extern fr_rb_tree_t *unlang_instruction_tree;
+
+static char const unlang_spaces[] = "                                                                                                                                                                                                                                                                ";
+
+unlang_thread_t const *unlang_thread_stats(unlang_t const *instruction)
+{
+	return &unlang_thread_array[instruction->number];
+}
+
+/** Create thread-specific data structures for unlang
+ *
+ */
+int unlang_thread_instantiate(TALLOC_CTX *ctx)
+{
+	fr_rb_iter_inorder_t	iter;
+	unlang_t		*instruction;
+
+	if (unlang_thread_array) {
+		fr_strerror_const("already initialized");
+		return -1;
+	}
+
+	MEM(unlang_thread_array = talloc_zero_array(ctx, unlang_thread_t, unlang_number + 1));
+//	talloc_set_destructor(unlang_thread_array, _unlang_thread_array_free);
+
+	/*
+	 *	Instantiate each instruction with thread-specific data.
+	 */
+	for (instruction = fr_rb_iter_init_inorder(unlang_instruction_tree, &iter);
+	     instruction;
+	     instruction = fr_rb_iter_next_inorder(unlang_instruction_tree, &iter)) {
+		unlang_op_t *op;
+
+		unlang_thread_array[instruction->number].instruction = instruction;
+
+		op = &unlang_ops[instruction->type];
+
+		if (!op->thread_inst_size) continue;
+
+		/*
+		 *	Allocate any thread-specific instance data.
+		 */
+		MEM(unlang_thread_array[instruction->number].thread_inst = talloc_zero_array(unlang_thread_array, uint8_t, op->thread_inst_size));
+		talloc_set_name_const(unlang_thread_array[instruction->number].thread_inst, op->thread_inst_type);
+
+		if (op->thread_instantiate && (op->thread_instantiate(instruction, unlang_thread_array[instruction->number].thread_inst) < 0)) {
+			TALLOC_FREE(unlang_thread_array);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+/** Get the thread-instance data for an instruction.
+ *
+ * @param[in] instruction	the instruction to use
+ * @return			a pointer to thread-local data
+ */
+void *unlang_thread_instance(unlang_t const *instruction)
+{
+	if (!instruction->number || !unlang_thread_array) return NULL;
+
+	fr_assert(instruction->number <= unlang_number);
+
+	return unlang_thread_array[instruction->number].thread_inst;
+}
+
+/** Get the thread-instance data for an instruction.
+ *
+ * @param[in] instruction	the instruction to use
+ * @return			a pointer to thread-local data
+ */
+static inline unlang_thread_t *unlang_thread_data(unlang_t const *instruction)
+{
+	if (!instruction->number) return NULL;
+
+	fr_assert(unlang_thread_array);
+	fr_assert(instruction->number <= unlang_number);
+
+	return &unlang_thread_array[instruction->number];
+}
+
+
+#ifdef WITH_PERF
+void unlang_frame_perf_init(unlang_stack_frame_t *frame)
+{
+	unlang_thread_t *t;
+	fr_time_t now;
+	unlang_t const *instruction = frame->instruction;
+
+	if (!instruction->number || !unlang_thread_array) return;
+
+	fr_assert(instruction->number <= unlang_number);
+
+	t = &unlang_thread_array[instruction->number];
+
+	t->uses++;
+	t->active++;
+	t->yielded++;
+	now = fr_time();
+
+	fr_time_tracking_start(NULL, &frame->tracking, now);
+	fr_time_tracking_yield(&frame->tracking, now);
+}
+
+void unlang_frame_perf_yield(unlang_stack_frame_t *frame)
+{
+	unlang_t const *instruction = frame->instruction;
+	unlang_thread_t *t;
+
+	if (!instruction->number || !unlang_thread_array) return;
+
+	t = &unlang_thread_array[instruction->number];
+	t->yielded++;
+
+	fr_time_tracking_yield(&frame->tracking, fr_time());
+}
+
+void unlang_frame_perf_resume(unlang_stack_frame_t *frame)
+{
+	unlang_t const *instruction = frame->instruction;
+	unlang_thread_t *t;
+
+	if (!instruction->number || !unlang_thread_array) return;
+
+	if (frame->tracking.state != FR_TIME_TRACKING_YIELDED) return;
+
+	t = &unlang_thread_array[instruction->number];
+	t->yielded--;
+
+	fr_time_tracking_resume(&frame->tracking, fr_time());
+}
+
+void unlang_frame_perf_cleanup(unlang_stack_frame_t *frame)
+{
+	unlang_t const *instruction = frame->instruction;
+	unlang_thread_t *t;
+
+	if (!instruction || !instruction->number || !unlang_thread_array) return;
+
+	fr_assert(instruction->number <= unlang_number);
+
+	t = &unlang_thread_array[instruction->number];
+
+	if (frame->tracking.state == FR_TIME_TRACKING_YIELDED) {
+		fr_assert(t->yielded > 0);
+		t->yielded--;
+		fr_time_tracking_resume(&frame->tracking, fr_time());
+	}
+	fr_assert(t->active > 0);
+	t->active--;
+
+	fr_time_tracking_end(NULL, &frame->tracking, fr_time());
+	t->tracking.running_total = fr_time_delta_add(t->tracking.running_total, frame->tracking.running_total);
+	t->tracking.waiting_total = fr_time_delta_add(t->tracking.waiting_total, frame->tracking.waiting_total);
+}
+
+
+static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int depth)
+{
+	unlang_group_t const *g;
+	unlang_thread_t *t;
+	char const *file;
+	int line;
+
+	if (!instruction || !instruction->number) return;
+
+	/*
+	 *	Ignore any non-group instruction.
+	 */
+	if (!((instruction->type > UNLANG_TYPE_MODULE) && (instruction->type <= UNLANG_TYPE_POLICY))) return;
+
+	/*
+	 *	Everything else is an unlang_group_t;
+	 */
+	g = unlang_generic_to_group(instruction);
+
+	if (!g->cs) return;
+
+	file = cf_filename(g->cs);
+	line = cf_lineno(g->cs);
+
+	if (depth) {
+		fr_log(log, L_DBG, file, line, "%.*s", depth, unlang_spaces);
+	}
+
+	if (debug_braces(instruction->type)) {
+		fr_log(log, L_DBG, file, line, "%s { #", instruction->debug_name);
+	} else {
+		fr_log(log, L_DBG, file, line, "%s #", instruction->debug_name);
+	}
+
+	t = &unlang_thread_array[instruction->number];
+
+	fr_log(log, L_DBG, file, line, "uses=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
+	       t->uses, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
+
+	if (!unlang_list_empty(&g->children)) {
+		unlang_list_foreach(&g->children, child) {
+			unlang_perf_dump(log, child, depth + 1);
+		}
+	}
+
+	if (debug_braces(instruction->type)) {
+		if (depth) {
+			fr_log(log, L_DBG, file, line, "%.*s", depth, unlang_spaces);
+		}
+
+		fr_log(log, L_DBG, file, line, "}");
+	}
+}
+
+void unlang_perf_virtual_server(fr_log_t *log, char const *name)
+{
+
+	virtual_server_t const	*vs = virtual_server_find(name);
+	CONF_SECTION		*cs;
+	CONF_ITEM		*ci;
+	char const		*file;
+	int			line;
+
+	if (!vs) return;
+
+	cs = virtual_server_cs(vs);
+
+	file = cf_filename(cs);
+	line = cf_lineno(cs);
+
+	fr_log(log, L_DBG, file, line, " server %s {\n", name);
+
+	/*
+	 *	Loop over the children of the virtual server, checking for unlang_t;
+	 */
+	for (ci = cf_item_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_next(cs, ci)) {
+		char const *name1, *name2;
+		unlang_t *instruction;
+		CONF_SECTION *subcs;
+
+		if (!cf_item_is_section(ci)) continue;
+
+		instruction = (unlang_t *)cf_data_value(cf_data_find(ci, unlang_group_t, NULL));
+		if (!instruction) continue;
+
+		subcs = cf_item_to_section(ci);
+		name1 = cf_section_name1(subcs);
+		name2 = cf_section_name2(subcs);
+		file = cf_filename(ci);
+		line = cf_lineno(ci);
+
+		if (!name2) {
+			fr_log(log, L_DBG, file, line, " %s {\n", name1);
+		} else {
+			fr_log(log, L_DBG, file, line, " %s %s {\n", name1, name2);
+		}
+
+		unlang_perf_dump(log, instruction, 2);
+
+		fr_log(log, L_DBG, file, line, " }\n");
+	}
+
+	fr_log(log, L_DBG, file, line, "}\n");
+}
+#endif
+
+/** Get the current instruction
+ *
+ */
+unlang_t const *unlang_interpret_instruction(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame;
+
+	frame = &stack->frame[stack->depth];
+	fr_assert(frame->instruction != NULL);
+
+	return frame->instruction;
+}
+
+static void forced_result_expiry_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
+{
+	unlang_thread_t *thread_data = ctx;
+
+	thread_data->use_forced_result = false;
+}
+
+/** Set (or clear) a forced result
+ *
+ *  If timer list is passed, and a future expiry time, the function
+ *  will set a timer that removes the forced result at that time.
+ */
+int unlang_interpret_force_result(unlang_t const *instruction, unlang_result_t *p_result,
+				  fr_timer_list_t *tl, fr_time_delta_t expire)
+{
+	unlang_thread_t *thread_data;
+
+	thread_data = unlang_thread_data(instruction);
+	if (!thread_data) return -1;
+
+	if (!p_result) {
+		thread_data->use_forced_result = false;
+		if (thread_data->ev) (void) fr_timer_delete(&thread_data->ev);
+		return 0;
+	}
+
+	if (tl && fr_time_delta_ispos(expire)) {
+		if (fr_timer_in(tl, tl, &thread_data->ev, expire,
+				false, forced_result_expiry_handler, thread_data) < 0) {
+			return -1;
+		}
+	} else {
+		/*
+		 *	Delete any previous expiry timers.
+		 */
+		if (thread_data->ev) (void) fr_timer_delete(&thread_data->ev);
+	}
+
+	thread_data->use_forced_result = true;
+	thread_data->forced_result = *p_result;
+	return 0;
+}
+
+/*
+ *	End of thread-local variables and functions.
+ *
+ */
+
 
 static fr_table_num_ordered_t const unlang_action_table[] = {
 	{ L("fail"),			UNLANG_ACTION_FAIL },
@@ -290,11 +632,11 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 
 	if (!conf) conf = &default_conf;
 
-	fr_assert(instruction);
+	if (!instruction) return -1;
 
 #ifndef NDEBUG
 	if (DEBUG_ENABLED5) RDEBUG3("unlang_interpret_push called with instruction type \"%s\" - args %s %s",
-				    instruction ? instruction->debug_name : "<none>",
+				    instruction->debug_name,
 				    do_next_sibling ? "UNLANG_NEXT_SIBLING" : "UNLANG_NEXT_STOP",
 				    conf->top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
 #endif
@@ -320,7 +662,6 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 	frame->instruction = instruction;
 
 	if (do_next_sibling && instruction->list) {
-		fr_assert(instruction != NULL);
 		frame->next = unlang_list_next(instruction->list, instruction);
 	}
 	/* else frame->next MUST be NULL */
@@ -333,8 +674,6 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 
 	frame->indent = request->log.indent;
 
-	if (!instruction) return 0;
-
 	frame_state_init(stack, frame);
 
 	return 0;
@@ -342,6 +681,7 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 
 typedef struct {
 	fr_dict_t const	*old_dict;     	//!< the previous dictionary for the request
+	fr_dict_t const	*to_free_dict;	//!< Free entries matching this dictionary
 	request_t	*request;	//!< the request
 } unlang_variable_ref_t;
 
@@ -355,8 +695,10 @@ static int _local_variables_free(unlang_variable_ref_t *ref)
 	 */
 	vp = fr_pair_list_tail(&ref->request->local_pairs);
 	while (vp) {
+		fr_assert(vp->da->flags.local);
+
 		prev = fr_pair_list_prev(&ref->request->local_pairs, vp);
-		if (vp->da->dict != ref->request->local_dict) {
+		if (vp->da->dict != ref->to_free_dict) {
 			break;
 		}
 
@@ -371,7 +713,7 @@ static int _local_variables_free(unlang_variable_ref_t *ref)
 
 /** Push the children of the current frame onto a new frame onto the stack
  *
- * @param[out] p_result		set to RLM_MOULDE_FAIL if pushing the children fails
+ * @param[out] p_result		set to RLM_MODULE_FAIL if pushing the children fails
  * @param[in] request		to push the frame onto.
  * @param[in] default_rcode	The default result.
  * @param[in] do_next_sibling	Whether to only execute the first node in the #unlang_t program
@@ -427,6 +769,7 @@ unlang_action_t unlang_interpret_push_children(unlang_result_t *p_result, reques
 	 */
 	ref->request = request;
 	ref->old_dict = request->local_dict;
+	ref->to_free_dict = g->variables->dict;
 	request->local_dict = g->variables->dict;
 	talloc_set_destructor(ref, _local_variables_free);
 
@@ -571,7 +914,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			 */
 			if (fr_time_delta_ispos(instruction->actions.retry.mrd)) {
 				if (fr_timer_in(retry, unlang_interpret_event_list(request)->tl, &retry->ev, instruction->actions.retry.mrd,
-						false, instruction_retry_handler, request) < 0) {
+						false, instruction_retry_handler, retry) < 0) {
 					RPEDEBUG("Failed inserting retry event");
 					*frame_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 					goto finalize;
@@ -611,13 +954,14 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		}
 		REXDENT();
 
-		talloc_free(frame->state);
+		TALLOC_FREE(frame->state);
 		unlang_frame_perf_cleanup(frame);
 		frame_state_init(stack, frame);	/* Don't change p_result */
 		return UNLANG_FRAME_ACTION_RETRY;
+	}
+
 	default:
 		break;
-	}
 	}
 
 finalize:
@@ -702,9 +1046,9 @@ static inline CC_HINT(always_inline) void instruction_done_debug(request_t *requ
 		 */
 		if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
 			RDEBUG("# %s %s%s%s", frame->instruction->debug_name,
-				frame->p_result == &frame->section_result ? "(" : "))",
-				fr_table_str_by_value(mod_rcode_table, frame->p_result->rcode, "<invalid>"),
-				frame->p_result == &frame->section_result ? "(" : "))");
+			       frame->p_result == &frame->section_result ? "(" : "((",
+			       fr_table_str_by_value(mod_rcode_table, frame->p_result->rcode, "<invalid>"),
+			       frame->p_result == &frame->section_result ? ")" : "))");
 		} else {
 			RDEBUG2("} # %s %s%s%s", frame->instruction->debug_name,
 				frame->p_result == &frame->section_result ? "(" : "((",
@@ -742,6 +1086,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		unlang_t const		*instruction = frame->instruction;
 		unlang_action_t		ua;
 		unlang_frame_action_t	fa;
+		unlang_thread_t		*thread_data;
 
 		DUMP_STACK;
 
@@ -781,7 +1126,11 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 */
 		if (!is_repeatable(frame)) {
 			if (has_debug_braces(frame)) {
-				RDEBUG2("%s {", instruction->debug_name);
+				if (unlikely(instruction->add_filename)) {
+					RDEBUG2("%s { # from file %s", instruction->debug_name, cf_filename(instruction->ci));
+				} else {
+					RDEBUG2("%s {", instruction->debug_name);
+				}
 				RINDENT();
 			}
 		/*
@@ -806,13 +1155,24 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		unlang_frame_perf_resume(frame);
 
 		/*
-		 *	catch plays games with the frame so we skip
-		 *	to the next catch section at a given depth,
-		 *	it's not safe to access frame->instruction
-		 *	after this point, and the cached instruction
-		 *	should be used instead.
+		 *	A module (or even a section) may be administratively down
 		 */
-		ua = frame->process(&frame->scratch_result, request, frame);
+		if (unlikely(((thread_data = unlang_thread_data(instruction)) != NULL) &&
+			     thread_data->use_forced_result)) {
+			frame->scratch_result = thread_data->forced_result;
+			ua = UNLANG_ACTION_CALCULATE_RESULT;
+
+		} else {
+
+			/*
+			 *	catch plays games with the frame so we skip
+			 *	to the next catch section at a given depth,
+			 *	it's not safe to access frame->instruction
+			 *	after this point, and the cached instruction
+			 *	should be used instead.
+			 */
+			ua = frame->process(&frame->scratch_result, request, frame);
+		}
 
 		fr_assert(MOD_ACTION_VALID(scratch->priority));
 
@@ -932,7 +1292,7 @@ pop:
 /** Run the interpreter for a current request
  *
  * This function runs the interpreter for a request.  It deals with popping
- * stack frames, and calaculating the final result for the frame.
+ * stack frames, and calculating the final result for the frame.
  *
  * @param[in] request		to run.  If this is an internal request
  *				the request may be freed by the interpreter.
@@ -1051,6 +1411,10 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 
 			/*
 			 *	Close out the section we entered earlier
+			 *
+			 *	@todo - this arguably accesses the
+			 *	frame after it's been popped, but this
+			 *	is usually OK.  :(
 			 */
 			instruction_done_debug(request, frame, frame->instruction);
 
@@ -1136,6 +1500,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 static unlang_group_t empty_group = {
 	.self = {
 		.type = UNLANG_TYPE_GROUP,
+		.name = "empty-group",
 		.debug_name = "empty-group",
 		.actions = {
 			.actions = {
@@ -1147,9 +1512,19 @@ static unlang_group_t empty_group = {
 				MOD_ACTION_RETURN,
 				MOD_ACTION_RETURN,
 				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
 				MOD_ACTION_RETURN
 			},
 			.retry = RETRY_INIT,
+		},
+	},
+	.children = {
+		.head = {
+			.entry = {
+				.prev = &empty_group.children.head.entry,
+				.next = &empty_group.children.head.entry,
+			}
 		},
 	},
 };
@@ -1168,8 +1543,15 @@ int unlang_interpret_push_section(unlang_result_t *p_result, request_t *request,
 	if (cs) {
 		instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
 		if (!instruction) {
-			REDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
-				cf_section_name1(cs), cf_section_name2(cs));
+			char const *name2;
+			char const *space = " ";
+
+			name2 = cf_section_name2(cs);
+			if (!name2) name2 = space = "";
+
+			REDEBUG("Cannot interpret section at %s[%d]", cf_filename(cs), cf_lineno(cs));
+			REDEBUG("Failed to find pre-compiled unlang for section %s%s%s%s{ ... }",
+				cf_section_name1(cs), space, name2, space);
 			return -1;
 		}
 	}
@@ -1222,10 +1604,9 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	unlang_stack_t *stack;
 
 	/*
-	 *	If we have talloc_pooled_object allocate the
-	 *	stack as a combined chunk/pool, with memory
-	 *	to hold at mutable data for at least a quarter
-	 *	of the maximum number of stack frames.
+	 *	If we have talloc_pooled_object allocate the stack as
+	 *	a combined chunk/pool, with memory to hold at mutable
+	 *	state data for the of the stack frames.
 	 *
 	 *	Having a dedicated pool for mutable stack data
 	 *	means we don't have memory fragmentations issues
@@ -1234,7 +1615,7 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	 *	This number is pretty arbitrary, but it seems
 	 *	like too low level to make into a tuneable.
 	 */
-	MEM(stack = talloc_zero_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX, 128));	/* 128 bytes per state */
+	MEM(stack = talloc_zero_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX, UNLANG_FRAME_POOL_SIZE));
 	stack->frame[0].p_result = &stack->frame[0].section_result;
 	stack->frame[0].scratch_result = UNLANG_RESULT_NOT_SET;
 	stack->frame[0].section_result = UNLANG_RESULT_NOT_SET;
@@ -1488,7 +1869,7 @@ static void instruction_retry_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time
 	/*
 	 *	Signal all lower frames to exit.
 	 */
-	unlang_stack_signal(request, FR_SIGNAL_CANCEL, retry->depth);
+	unlang_stack_signal(request, FR_SIGNAL_CANCEL, retry->depth + 1);
 
 	retry->state = FR_RETRY_MRD;
 	unlang_interpret_mark_runnable(request);
@@ -1517,15 +1898,11 @@ int unlang_interpret_set_timeout(request_t *request, fr_time_delta_t timeout)
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_retry_t			*retry;
-	TALLOC_CTX			*frame_ctx;
 
 	fr_assert(!frame->retry);
 	fr_assert(fr_time_delta_ispos(timeout));
 
-	frame_ctx = frame->state;
-	if (!frame_ctx) frame_ctx = stack;
-
-	frame->retry = retry = talloc_zero(frame_ctx, unlang_retry_t);
+	frame->retry = retry = talloc_zero(stack, unlang_retry_t);
 	if (!frame->retry) return -1;
 
 	retry->request = request;
@@ -1685,7 +2062,7 @@ TALLOC_CTX *unlang_interpret_frame_talloc_ctx(request_t *request)
 	 *	state, assume the caller knows what it's
 	 *	doing and allocate one.
 	 */
-	return (TALLOC_CTX *)(frame->state = talloc_new(request));
+	return (TALLOC_CTX *)(frame->state = talloc_new(stack));
 }
 
 static xlat_arg_parser_t const unlang_cancel_xlat_args[] = {
@@ -1733,15 +2110,17 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*vb;
 	fr_time_t		when = fr_time_from_sec(0); /* Invalid clang complaints if we don't set this */
 
+	fr_assert(el != NULL);
+
 	XLAT_ARGS(args, &timeout);
 
 	/*
-	 *	No timeout means cancel immediately, so yield allowing
-	 *	the interpreter to run the event we added to cancel
-	 *	the request.
+	 *	No timeout means cancel immediately, so we signal the
+	 *	interpreter to cancel the request directly.
 	 *
-	 *	We call unlang_xlat_yield to keep the interpreter happy
-	 *	as it expects to see a resume function set.
+	 *	The cancellation is processed once this xlat returns
+	 *	(the frames are marked for unwinding), so there's no
+	 *	need to add a timer event or yield here.
 	 */
 	if (!timeout || fr_time_delta_eq(timeout->vb_time_delta, fr_time_delta_from_sec(0))) {
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
@@ -1754,7 +2133,9 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	ev_p = ev_p_og = request_data_get(request, (void *)unlang_cancel_xlat, 0);
 	if (ev_p) {
-		if (*ev_p) when = fr_timer_when(*ev_p);	/* *ev_p should never be NULL, really... */
+		fr_assert(*ev_p);
+
+		when = fr_timer_when(*ev_p);
 	} else {
 		/*
 		 *	Must not be parented from the request
@@ -1846,10 +2227,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Nothing there...
 	 */
-	if (!instruction) {
-		talloc_free(vb);
-		return XLAT_ACTION_DONE;
-	}
+	if (!instruction) goto clear;
 
 	/*
 	 *	How deep the current stack is.
@@ -1860,9 +2238,20 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	/*
+	 *	Persist the current load-balancer choice.
+	 */
+	if (strcmp(fmt, "load_balance.persist") == 0) {
+		fr_value_box_bool(vb, NULL,
+				  unlang_load_balance_persist(request) == 0, false);
+		goto finish;
+	}
+
+	/*
 	 *	The current module
 	 */
 	if (strcmp(fmt, "module") == 0) {
+		if (!request->module) goto clear;
+
 		if (fr_value_box_strdup(vb, vb, NULL, request->module, false) < 0) goto error;
 
 		goto finish;
@@ -1872,6 +2261,8 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Name of the instruction.
 	 */
 	if (strcmp(fmt, "name") == 0) {
+		if (!instruction->name) goto clear;
+
 		if (fr_value_box_bstrndup(vb, vb, NULL, instruction->name,
 					  strlen(instruction->name), false) < 0) goto error;
 		goto finish;
@@ -1881,6 +2272,8 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The request processing stage.
 	 */
 	if (strcmp(fmt, "processing_stage") == 0) {
+		if (!request->component) goto clear;
+
 		if (fr_value_box_strdup(vb, vb, NULL, request->component, false) < 0) goto error;
 
 		goto finish;
@@ -1899,25 +2292,12 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The virtual server handling the request
 	 */
 	if (strcmp(fmt, "server") == 0) {
-		request_t *our_request;
-		CONF_SECTION *server = NULL;
+		char const *server;
 
-		/*
-		*	If we're being pedantic subrequests don't have a virtual
-		*	server associated with them unless they go call {}.
-		*
-		*	But we're not being pendantic, so go back up the request
-		*	list ooking for a call frame.
-		*
-		*	Unfortunately for detached subrequests we still won't find
-		*	the actual virtual server...
-		*/
-		for (our_request = request; our_request && server == NULL; our_request = our_request->parent) {
-			server = unlang_call_current(our_request);
-		}
+		server = unlang_interpret_virtual_server(request);
 		if (server == NULL) goto finish;
 
-		if (fr_value_box_strdup(vb, vb, NULL, cf_section_name2(server), false) < 0) goto error;
+		if (fr_value_box_strdup(vb, vb, NULL, server, false) < 0) goto error;
 
 		goto finish;
 	}
@@ -1936,7 +2316,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	All of the remaining things need a CONF_ITEM.
 	 */
 	if (!instruction->ci) {
-		if (fr_value_box_bstrndup(vb, vb, NULL, "<INVALID>", 3, false) < 0) goto error;
+		if (fr_value_box_bstrndup(vb, vb, NULL, "<INVALID>", 9, false) < 0) goto error;
 
 		goto finish;
 	}
@@ -1963,11 +2343,125 @@ finish:
 	if (vb->type != FR_TYPE_NULL) {
 		fr_dcursor_append(out, vb);
 	} else {
+	clear:
 		talloc_free(vb);
 	}
 
 	return XLAT_ACTION_DONE;
 }
+
+/** Tell the load-balance keyword to persist this child selection
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t unlang_interpret_lb_persist_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						      UNUSED xlat_ctx_t const *xctx,
+						      request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	if (unlang_load_balance_persist(request) < 0) return XLAT_ACTION_FAIL;
+
+	return XLAT_ACTION_DONE;
+}
+
+
+/** Tell the load-balance keyword to persist this child selection
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t unlang_interpret_lb_child_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+						    UNUSED xlat_ctx_t const *xctx,
+						    request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_value_box_t		*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
+
+	vb->vb_uint8 = unlang_load_balance_child(request);
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
+}
+
+
+static xlat_arg_parser_t const unlang_interpret_module_force_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	{ .required = false, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+
+/** Enable a module
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t unlang_interpret_module_force(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						   UNUSED xlat_ctx_t const *xctx,
+						   request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
+	char const		*name = arg->vb_strvalue;
+	rlm_rcode_t		rcode;
+	module_instance_t	*mi;
+
+	mi = module_rlm_static_by_name(NULL, name);
+	if (!mi) {
+		RDEBUG("Unknown module '%s'", name);
+		return XLAT_ACTION_FAIL;
+	}
+
+
+	arg = fr_value_box_list_next(in, arg);
+	if (arg) {
+		rcode = fr_table_value_by_str(rcode_table, arg->vb_strvalue, RLM_MODULE_NOT_SET);
+		if (rcode == RLM_MODULE_NOT_SET) {
+			RDEBUG("Unknown rcode '%s'", arg->vb_strvalue);
+			return XLAT_ACTION_FAIL;
+		}
+	} else {
+		rcode = RLM_MODULE_NOT_SET;
+	}
+
+	module_thread_force(module_thread(mi), rcode);
+	return XLAT_ACTION_DONE;
+}
+
+
+
+/** Return the current virtual server for this request
+ *
+ * @param[in] request	To return virtual server for.
+ * @return
+ *	- The name of a virtual server on success
+ *	- NULL on failure.
+ */
+char const *unlang_interpret_virtual_server(request_t *request)
+{
+	request_t *our_request;
+
+	/*
+	 *	If we're being pedantic subrequests don't have a virtual
+	 *	server associated with them unless they go call {}.
+	 *
+	 *	But we're not being pendantic, so go back up the request
+	 *	list looking for a call frame.
+	 *
+	 *	Unfortunately for detached subrequests we still won't find
+	 *	the actual virtual server...
+	 */
+	for (our_request = request; our_request; our_request = our_request->parent) {
+		CONF_SECTION *cs;
+
+		if (our_request->packet->socket.af == AF_FR_VIRTUAL_SERVER) return our_request->packet->socket.virtual.server;
+
+		cs = unlang_call_current(our_request);
+		if (!cs) continue;
+
+		return cf_section_name2(cs);
+	}
+
+	return NULL;
+}
+
 
 /** Initialize a unlang compiler / interpret.
  *
@@ -2080,6 +2574,12 @@ int unlang_interpret_init_global(TALLOC_CTX *ctx)
 	 */
 	if (unlikely((xlat = xlat_func_register(ctx, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_interpret_xlat_args);
+
+	if (unlikely((xlat = xlat_func_register(ctx, "interpreter.load-balance.persist", unlang_interpret_lb_persist_xlat, FR_TYPE_NULL)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "interpreter.load-balance.child", unlang_interpret_lb_child_xlat, FR_TYPE_UINT8)) == NULL)) return -1;
+
+	if (unlikely((xlat = xlat_func_register(ctx, "interpreter.module.force", unlang_interpret_module_force, FR_TYPE_NULL)) == NULL)) return -1;
+	xlat_func_args_set(xlat, unlang_interpret_module_force_args);
 
 	if (unlikely((xlat = xlat_func_register(ctx, "cancel", unlang_cancel_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_cancel_xlat_args);

@@ -1,0 +1,92 @@
+= RADIUS RFCs
+
+The following is a comprehensive set of tables that list all the
+related RFCs.  Depending on the section or feature that you are
+developing, will determine which documents you need to review.
+
+.RADIUS
+include::partial$dict_dhcpv4.adoc[]
+
+NOTE: More authentication methods are supported, and this list has to
+be updated.
+
+.Authentication Methods
+[options=header, cols="20,~", autowidth]
+|====
+|RFC |Description
+
+|https://datatracker.ietf.org/doc/html/rfc1994[RFC 1994]
+|PPP Challenge Handshake Authentication Protocol (CHAP).
+
+|https://datatracker.ietf.org/doc/html/rfc2285[RFC 2284]
+|PPP Extensible Authentication Protocol (EAP)
+
+|https://datatracker.ietf.org/doc/html/rfc2759[RFC 2759]
+|Microsoft PPP CHAP Extensions, Version 2.
+
+|https://datatracker.ietf.org/doc/html/rfc3748[RFC 3748]
+|Extensible Authentication Protocol (EAP).
+
+|https://datatracker.ietf.org/doc/html/rfc5716[RFC 5716]
+|PPP EAP TLS Authentication Protocol.
+
+|https://datatracker.ietf.org/doc/html/rfc9190[RFC 9190]
+|EAP-TLS 1.3: Using the Extensible Authentication Protocol with TLS 1.3
+
+|====
+
+NOTE: More SNMP MIBS are supported, and this list has to be updated.
+
+.SNMP Related
+[options=header, cols="20,~",autowidth]
+|====
+
+|RFC |Description
+
+|https://datatracker.ietf.org/doc/html/rfc1227[RFC 1227]    | SNMP MUX Protocol and MIB.
+
+|https://datatracker.ietf.org/doc/html/rfc2169[RFC 2619]    | RADIUS Authentication Server MIB.
+
+|https://datatracker.ietf.org/doc/html/rfc2621[RFC 2621]    | RADIUS Accounting Server MIB.
+
+|====
+
+.Additional RADIUS related RFCs
+[options=header, cols="20,~",autowidth]
+|====
+| RFC |Description
+
+|https://datatracker.ietf.org/doc/html/rfc6677[RFC 6677] | Channel-Binding Support for Extensible Authentication Protocol (EAP) Methods
+
+|https://datatracker.ietf.org/doc/html/rfc7055[RFC 7055] | A GSS-API Mechanism or the Extensible Authentication Protocol
+
+|https://datatracker.ietf.org/doc/html/rfc7155[RFC 7155] | Diameter Network Access Server Application
+
+|https://datatracker.ietf.org/doc/html/rfc7499[RFC 7499] | Support of Fragmentation of RADIUS Packets
+
+|https://datatracker.ietf.org/doc/html/rfc7930[RFC 7930] | Larger Packets for RADIUS over TCP
+
+|https://datatracker.ietf.org/doc/rfc5080/[RFC 5080]     | Common Remote Authentication Dial In User Service (RADIUS) Implementation Issues and Suggested Fixes (information)
+
+|https://datatracker.ietf.org/doc/rfc5997/[RFC 5997]     | Use of Status-Server Packets in the Remote Authentication Dial In User Service (RADIUS) Protocol (information)
+
+|https://datatracker.ietf.org/doc/html/rfc6929[RFC 6929] | Remote Authentication Dial In User Service (RADIUS) Protocol Extensions
+
+|https://datatracker.ietf.org/doc/html/rfc8044[RFC 8044] | Data Types in RADIUS
+
+|====
+
+.Unpublished drafts
+[options=header, cols="20,~",autowidth]
+|====
+|Document|Description
+
+|http://tools.ietf.org/wg/eap/draft-funk-eap-ttls-v1-01.txt[draft-funk-eap-ttls]
+|EAP Tunneled TLS Authentication Protocol Version 1 (EAP-TTLSv1).
+
+|http://www.freeradius.org/rfc/draft-schulzrinne-sipping-radius-accounting-00.txt[draft-schulzrinne-sipping-radius-accounting]
+|RADIUS accounting for SIP servers.
+|====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

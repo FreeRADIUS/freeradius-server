@@ -87,7 +87,7 @@ match Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 #  249 octets left for real data.
 #
 encode-pair Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789"
-match 45 ff 00 82 44 15 f2 ec c0 59 86 8c 4b 70 4f 23 85 79 36 f6 f3 fb 44 d7 a6 a5 cb 27 9c 57 f5 8e 7d 08 ef 82 bf 27 06 d4 c9 0d e8 ed d0 fd 76 ca b2 d4 24 0b 9d b5 5f 02 09 c8 25 c8 61 00 73 16 61 58 5e 29 2b fd c9 1b b9 de b1 16 04 2b bd 7a cb 70 e9 f4 f4 e7 6a e1 37 a4 62 79 32 cd ec e5 db 3a 66 75 0d 35 90 11 69 55 f3 48 ac 02 a8 a8 84 90 0e 29 e0 84 bc c6 2e d7 82 e2 42 11 38 56 1a 31 c7 2b 43 ae e0 56 47 d4 f6 27 89 6e 38 33 cf f2 98 4f 64 2e 8a 8b d6 bc 8d de 7e 4e ef 25 78 bd 51 b4 e0 f3 90 d4 33 e9 a8 32 cb f6 fe 4a f5 8c 63 12 60 b5 61 13 19 25 21 63 24 fb b7 d5 35 26 0d 77 f4 dd 7c c2 ac 93 24 90 1b 3b a5 4c fb 77 51 be fc 35 8e 35 b3 95 43 5a 37 6f a3 d8 11 b5 7e 48 dd 3c 95 53 37 71 80 f6 13 8b a0 20 18 ec 76 84 88 dd 92 1a 67 1c 56 57 ae 3e 95
+match 45 ff 00 c2 44 a5 fe fd 03 ec 60 3d ae 52 32 84 53 ca a5 5a 49 f7 e0 ba cf 2c 88 0e 62 90 e8 26 bd 64 50 50 bf 59 e1 4d ac 80 63 aa 85 3b b6 1d b8 48 a1 b8 ca ed 1c b6 5a ba 1f b7 40 92 df 98 64 ea 4b 7c cb 32 0c 7c 68 a5 1e 72 ea 6a 7e b8 a9 f6 a4 14 25 bf f2 b2 e1 eb dd dc a6 fe b9 c1 a8 63 1e 10 7c 27 83 55 60 38 51 09 ef bc 8b 7b 39 5d e7 bb 8b cf 66 f7 3c c4 86 fe 28 73 ce 07 78 14 0c 9d d8 f0 8d 0a 2e 1b cf a6 f4 c9 26 6f 41 99 92 cc 5e e7 5c 13 9a 9d 0c 3c 81 fc ce 84 95 9c 16 5d 27 92 60 f6 5d 2a 1d 46 5e 1a 46 7a 6b 07 76 0a d3 03 41 d6 4a a1 ad 8f b6 d6 72 63 0b d9 62 2f 34 50 1e 3d b8 57 af 47 fb 55 59 50 14 79 c5 ba f6 3d 7b 16 46 ce 1a 73 e9 55 cb 1d 09 26 c3 54 b7 40 31 bf 3f da c2 72 95 04 8c cb 5e d1 01 b2 08 ed 7f bc f8 f5 09 99 d5 af dd
 
 decode-pair -
 match Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789"
@@ -96,10 +96,10 @@ match Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 #  250 octets is not OK.
 #
 encode-pair Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789a"
-match Tunnel-Password too long
+match ERROR: Input password is too large for tunnel password encoding
 
 returned
-match -254
+match -253
 
 count
 match 65

@@ -1,0 +1,51 @@
+[options=header,cols="20,~",autowidth]
+| ====
+
+| RFC  | Description
+
+| https://datatracker.ietf.org/doc/rfc1157/[RFC 1157]   | A Simple Network Management Protocol (SNMP)
+
+| https://datatracker.ietf.org/doc/rfc1227/[RFC 1227]   | SNMP MUX Protocol and MIB
+
+| https://datatracker.ietf.org/doc/rfc1448/[RFC 1448]   | Protocol Operations for version 2 of the Simple Network Management Protocol (SNMPv2)
+
+| https://datatracker.ietf.org/doc/rfc1901/[RFC 1901]   | Introduction to Community-based SNMPv2
+
+| https://datatracker.ietf.org/doc/rfc1905/[RFC 1905]   | Protocol Operations for Version 2 of the Simple Network Management Protocol (SNMPv2)
+
+| https://datatracker.ietf.org/doc/rfc2058/[RFC 2058]   | Remote Authentication Dial In User Service (RADIUS)
+
+| https://datatracker.ietf.org/doc/rfc2059/[RFC 2059]   | RADIUS Accounting
+
+| https://datatracker.ietf.org/doc/rfc2138/[RFC 2138]   | Remote Authentication Dial In User Service (RADIUS)
+
+| https://datatracker.ietf.org/doc/rfc2139/[RFC 2139]   | RADIUS Accounting
+
+| https://datatracker.ietf.org/doc/rfc2243/[RFC 2243]   | OTP Extended Responses
+
+| https://datatracker.ietf.org/doc/rfc2289/[RFC 2289]   | A One-Time Password System
+
+| https://datatracker.ietf.org/doc/rfc2433/[RFC 2433]   | Microsoft PPP CHAP Extensions
+
+| https://datatracker.ietf.org/doc/rfc2607/[RFC 2607]   | Proxy Chaining and Policy Implementation in Roaming
+
+| https://datatracker.ietf.org/doc/rfc2618/[RFC 2618]   | RADIUS Authentication Client MIB
+
+| https://datatracker.ietf.org/doc/rfc2619/[RFC 2619]   | RADIUS Authentication Server MIB
+
+| https://datatracker.ietf.org/doc/rfc2620/[RFC 2620]   | RADIUS Accounting Client MIB
+
+| https://datatracker.ietf.org/doc/rfc2621/[RFC 2621]   | RADIUS Accounting Server MIB
+
+| https://datatracker.ietf.org/doc/rfc2716/[RFC 2716]   | PPP EAP TLS Authentication Protocol
+
+| https://datatracker.ietf.org/doc/rfc2759/[RFC 2759]   | Microsoft PPP CHAP Extensions, Version 2
+
+| https://datatracker.ietf.org/doc/rfc2924/[RFC 2924]   | Accounting Attributes and Record Formats
+
+| https://datatracker.ietf.org/doc/rfc3575/[RFC 3575]   | IANA Considerations for RADIUS (Remote Authentication Dial In User Service)
+
+| https://datatracker.ietf.org/doc/rfc3748/[RFC 3748]   | Extensible Authentication Protocol (EAP)
+
+| ====
+

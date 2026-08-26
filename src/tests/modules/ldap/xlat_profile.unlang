@@ -6,7 +6,8 @@ if (!((reply.Framed-IP-Netmask == 255.255.128.0) && \
       (reply.Acct-Interim-Interval == 3600) && \
       (request.Service-Type == ::Framed-User) && \
       (control.Framed-IP-Address == 1.2.3.5) && \
-      (control.Reply-Message == 'Bonjour'))) {
+      (control.Reply-Message == 'Bonjour') && \
+      (control.User-Profile == 'cn=profile2,ou=profiles,dc=example,dc=com'))) {
 	test_fail
 }
 
@@ -27,6 +28,9 @@ group {
       if (reply.Reply-Message != 'User-Suspended') {
             test_fail
       }
+      if (control.User-Profile[n] != 'cn=suspended,ou=profiles,dc=example,dc=com') {
+            test_fail
+      }
 
       control := {}
       reply := {}
@@ -36,6 +40,18 @@ group {
       }
 
       if (reply.Reply-Message != 'User-Suspended') {
+            test_fail
+      }
+
+      control := {}
+      reply := {}
+
+      # Profile DN injection: injection chars in %{user} are DN-escaped before use.
+      # Without escaping, 'suspended)(|(cn=*' would be injected into the filter,
+      # matching all profiles.  With DN escaping the crafted DN simply doesn't exist.
+      user := 'suspended)(|(cn=*'
+
+      if (%ldap.profile("ldap:///cn=%{user},ou=profiles,dc=example,dc=com")) {
             test_fail
       }
 

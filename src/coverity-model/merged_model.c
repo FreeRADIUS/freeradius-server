@@ -53,7 +53,7 @@ typedef enum {
 	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -6		//!< Integer type would underflow.
 } fr_sbuff_parse_error_t;
 
-fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static UINT8_MAX + 1])
+fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static SBUFF_CHAR_CLASS])
 {
 	fr_slen_t	result;
 
@@ -63,7 +63,7 @@ fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alph
 }
 
 fr_slen_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
-				bool no_trailing, uint8_t const alphabet[static UINT8_MAX + 1])
+				bool no_trailing, uint8_t const alphabet[static SBUFF_CHAR_CLASS])
 {
 	fr_slen_t	result;
 
@@ -149,7 +149,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 }
 
 size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				     bool const allowed[static UINT8_MAX + 1])
+				     bool const allowed[static SBUFF_CHAR_CLASS])
 {
 	size_t	result;
 

@@ -142,9 +142,9 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 		SQLCHAR		state[6];
 		SQLSMALLINT	len;
 
-		SQLGetDiagField(SQL_HANDLE_STMT, sql_conn->dbc_handle, 1, SQL_DIAG_SQLSTATE, state, sizeof(state), &len);
+		SQLGetDiagField(SQL_HANDLE_STMT, sql_conn->stmt, 1, SQL_DIAG_SQLSTATE, state, sizeof(state), &len);
 
-		if (strncmp((char *)state, SQL_CONSTR_INDEX_UNIQUE, 5)) {
+		if (strncmp((char *)state, SQL_CONSTR_INDEX_UNIQUE, 5) == 0) {
 			query_ctx->rcode = RLM_SQL_ALT_QUERY;
 			goto finish;
 		}
@@ -180,7 +180,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 	for (i = 0; i < fields; i++) {
 		char *p;
 
-		switch (SQLColAttribute(conn->stmt, i, SQL_DESC_BASE_COLUMN_NAME,
+		switch (SQLColAttribute(conn->stmt, i + 1, SQL_DESC_BASE_COLUMN_NAME,
 					field, sizeof(field), &len, NULL)) {
 		case SQL_INVALID_HANDLE:
 		case SQL_ERROR:

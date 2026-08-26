@@ -77,8 +77,6 @@ fr_debug_state_t fr_debug_state = DEBUGGER_STATE_UNKNOWN;	//!< Whether we're att
 static struct rlimit init_core_limit;
 #endif
 
-static TALLOC_CTX *talloc_autofree_ctx;
-
 /*
  * On BSD systems, ptrace(PT_DETACH) uses a third argument for
  * resume address, with the magic value (void *)1 to resume where
@@ -124,6 +122,9 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 {
 	return
 		"leak:CRYPTO_THREAD_lock_new\n"		/* OpenSSL init leak - reported by heaptrack */
+		/* librdkafka initialises Cyrus SASL on first rd_kafka_new(), which dlopens
+		 * libsasl2 and never unloads it.  Not an rlm_kafka bug. */
+		"leak:rd_kafka_sasl_cyrus_global_init\n"
 #if defined(__APPLE__)
 		"leak:*gmtsub*\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
@@ -142,11 +143,23 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:realizeClassWithoutSwift\n"
 		"leak:tzset\n"
 		"leak:tzsetwall_basic\n"
+		/* macOS Objective-C runtime and CoreFoundation lazily allocate
+		 * metadata on first class touch (e.g. inside libsasl2 which
+		 * librdkafka dlopens, or on dispatch-apply worker threads).
+		 * These stacks have no symbols, only library paths; suppress by
+		 * path substring since the process-wide state is reclaimed on
+		 * exit by the OS. */
+		"leak:libobjc.A.dylib\n"
+		"leak:CoreFoundation.framework\n"
+		"leak:td::__1::thread::thread\n"
 #elif defined(__linux__)
 		"leak:*getpwnam_r*\n"			/* libc startup leak - reported by heaptrack */
 		"leak:_dl_init\n"			/* dl startup leak - reported by heaptrack */
 		"leak:initgroups\n"			/* libc startup leak - reported by heaptrack */
 		"leak:kqueue\n"
+		/* libdigestmd5 (cyrus-sasl) calls EVP_CIPHER_fetch on OpenSSL 3.x
+		 * but never calls EVP_CIPHER_free.  Third-party bug; not ours to fix. */
+		"leak:libdigestmd5\n"
 #endif
 		;
 }
@@ -1000,7 +1013,7 @@ int fr_log_talloc_report(TALLOC_CTX const *ctx)
 			talloc_report_full(ctx, log);
 		} while ((ctx = talloc_parent(ctx)) &&
 			 (i < TALLOC_REPORT_MAX_DEPTH) &&
-			 (talloc_parent(ctx) != talloc_autofree_ctx) &&	/* Stop before we hit the autofree ctx */
+			 (talloc_parent(ctx) != talloc_autofree_context_global()) &&	/* Stop before we hit the autofree ctx */
 			 (talloc_parent(ctx) != talloc_null_ctx()));  	/* Stop before we hit NULL ctx */
 	}
 
@@ -1044,16 +1057,21 @@ void fr_talloc_fault_setup(void)
  *
  * May be called multiple time to change the panic_action/program.
  *
- * @param[in] ctx	to allocate autofreeable resources in.
- * @param[in] cmd	to execute on fault. If present %p will be substituted
- *      		for the parent PID before the command is executed, and %e
- *      		will be substituted for the currently running program.
- * @param program Name of program currently executing (argv[0]).
+ * @param[in] ctx		to allocate autofreeable resources in.
+ * @param[in] cmd		to execute on fault. If present %p will be substituted
+ *      			for the parent PID before the command is executed, and %e
+ *      			will be substituted for the currently running program.
+ * @param[in] program		Name of program currently executing (argv[0]).
+ * @param[in] fault_signals	Bitmask (bit N = signal N) of signals to install the
+ *				panic-action handler on. Callers pass
+ *				#PANIC_ACTION_SIGNALS unless they need to leave a
+ *				specific signal's handler alone (e.g. the fuzzer
+ *				shares SIGALRM with libFuzzer's own timeout).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
+int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program, unsigned long fault_signals)
 {
 	static bool setup = false;
 
@@ -1121,30 +1139,37 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 		default:
 		case DEBUGGER_STATE_NOT_ATTACHED:
 #ifdef SIGABRT
-			if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
+			if (fault_signals & (1UL << SIGABRT)) {
+				if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
 
-			/*
-			 *  Use this instead of abort so we get a
-			 *  full backtrace with broken versions of LLDB
-			 */
-			talloc_set_abort_fn(_fr_talloc_fault);
+				/*
+				 *  Use this instead of abort so we get a
+				 *  full backtrace with broken versions of LLDB
+				 */
+				talloc_set_abort_fn(_fr_talloc_fault);
+			}
 #endif
 #ifdef SIGILL
-			if (fr_set_signal(SIGILL, fr_fault) < 0) return -1;
+			if ((fault_signals & (1UL << SIGILL)) &&
+			    (fr_set_signal(SIGILL, fr_fault) < 0)) return -1;
 #endif
 #ifdef SIGFPE
-			if (fr_set_signal(SIGFPE, fr_fault) < 0) return -1;
+			if ((fault_signals & (1UL << SIGFPE)) &&
+			    (fr_set_signal(SIGFPE, fr_fault) < 0)) return -1;
 #endif
 #ifdef SIGSEGV
-			if (fr_set_signal(SIGSEGV, fr_fault) < 0) return -1;
+			if ((fault_signals & (1UL << SIGSEGV)) &&
+			    (fr_set_signal(SIGSEGV, fr_fault) < 0)) return -1;
 #endif
 #ifdef SIGALRM
 			/*
-			 *  This is used be jlibtool to terminate
-			 *  processes which have been running too
-			 *  long.
+			 *  Used by jlibtool to terminate processes
+			 *  that have been running too long. The fuzzer
+			 *  clears this bit so libFuzzer's own SIGALRM
+			 *  timeout handler stays in place.
 			 */
-			if (fr_set_signal(SIGALRM, fr_fault) < 0) return -1;
+			if ((fault_signals & (1UL << SIGALRM)) &&
+			    (fr_set_signal(SIGALRM, fr_fault) < 0)) return -1;
 #endif
 			break;
 

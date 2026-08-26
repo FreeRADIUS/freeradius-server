@@ -27,11 +27,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/semaphore.h>
 
 #include <sys/event.h>
-#include <stdio.h>
-#include <string.h>
 #include <pthread.h>
 
 #ifdef HAVE_GETOPT_H
@@ -83,10 +81,10 @@ typedef struct {
 	size_t			num_messages;
 } master_ctx_t;
 
-static void recv_control_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+static void recv_control_callback(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
 	my_message_t const	*m = data;
-	master_ctx_t		*master_ctx = ctx;
+	master_ctx_t		*master_ctx = uctx;
 
 	fr_assert(m->header == CONTROL_MAGIC);
 	fr_assert(data_size == sizeof(*m));
@@ -96,12 +94,13 @@ static void recv_control_callback(void *ctx, void const *data, size_t data_size,
 	master_ctx->num_messages++;
 }
 
-static void *control_master(UNUSED void *arg)
+static void *control_master(void *arg)
 {
 	TALLOC_CTX *ctx;
 	master_ctx_t *master_ctx;
 	size_t i;
 	fr_time_t start;
+	fr_sem_t *master_sem = arg;
 
 	MEM(ctx = talloc_init_const("control_master"));
 
@@ -110,8 +109,11 @@ static void *control_master(UNUSED void *arg)
 	MPRINT1("Master started.\n");
 
 	for (i = 0; i < num_aq; i++) {
-		fr_control_callback_add(control[i], FR_CONTROL_ID_CHANNEL, master_ctx, recv_control_callback);
+		fr_control_callback_add(&control[i], FR_CONTROL_ID_CHANNEL, recv_control_callback, master_ctx);
+		fr_control_open(control[i]);
 	}
+
+	sem_post(master_sem);
 
 	start = fr_time();
 	while (master_ctx->num_messages < (max_messages * num_workers)) {
@@ -190,8 +192,7 @@ int main(int argc, char *argv[])
 	pthread_t		master_id, *worker_id;
 	size_t			i;
 	worker_args_t		*worker_args;
-
-	fr_atexit_global_setup();
+	fr_sem_t		*master_sem;
 
 	fr_time_start();
 
@@ -229,13 +230,13 @@ int main(int argc, char *argv[])
 	aq_size = single_aq ? FR_CONTROL_MAX_MESSAGES * num_workers : FR_CONTROL_MAX_MESSAGES;
 	aq = talloc_array(autofree, fr_atomic_queue_t *, num_aq);
 	for (i = 0; i < num_aq; i++) {
-		aq[i] = fr_atomic_queue_alloc(aq, aq_size);
+		aq[i] = fr_atomic_queue_talloc(aq, aq_size);
 		fr_assert(aq[i] != NULL);
 	}
 
 	control = talloc_array(autofree, fr_control_t *, num_aq);
 	for (i = 0; i < num_aq; i++) {
-		control[i] = fr_control_create(control, el, aq[i]);
+		control[i] = fr_control_create(control, el, aq[i], 2);
 		if (!control[i]) {
 			fprintf(stderr, "control_test: Failed to create control plane\n");
 			fr_exit_now(EXIT_FAILURE);
@@ -248,7 +249,11 @@ int main(int argc, char *argv[])
 	(void) pthread_attr_init(&attr);
 	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-	(void) pthread_create(&master_id, &attr, control_master, NULL);
+	master_sem = fr_sem_alloc();
+	fr_assert(master_sem != NULL);
+	(void) pthread_create(&master_id, &attr, control_master, master_sem);
+	SEM_WAIT_INTR(master_sem);
+
 	worker_id = talloc_array(autofree, pthread_t, num_workers);
 	worker_args = talloc_array(autofree, worker_args_t, num_workers);
 	for (i = 0; i < num_workers; i++) {
@@ -262,11 +267,10 @@ int main(int argc, char *argv[])
 		(void) pthread_join(worker_id[i], NULL);
 	}
 
+	fr_sem_free(master_sem);
 	talloc_free(control);
 
 	main_loop_free();
 
-	fr_atexit_global_trigger_all();
-
-	return 0;
+	fr_exit_now(EXIT_SUCCESS);
 }

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -58,7 +58,7 @@ size_t fr_aka_sim_id_user_len(char const *nai, size_t nai_len)
 {
 	char const *p;
 
-	p = (char *)memchr((uint8_t const *)nai, '@', nai_len);
+	p = memchr(nai, '@', nai_len);
 	if (!p) return nai_len;
 
 	return p - nai;
@@ -76,7 +76,7 @@ char const *fr_aka_sim_domain(char const *nai, size_t nai_len)
 {
 	char const *p;
 
-	p = (char *)memchr((uint8_t const *)nai, '@', nai_len);
+	p = memchr(nai, '@', nai_len);
 	if (!p) return NULL;
 
 	return p + 1;
@@ -101,10 +101,10 @@ ssize_t fr_aka_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 	char *q;
 	unsigned long num;
 
-	if (((p + 8) < end) || (CRYPTO_memcmp(p, "wlan.mnc", 8) != 0)) return -1;
+	if (((p + 8) > end) || (CRYPTO_memcmp(p, "wlan.mnc", 8) != 0)) return -1;
 	p += 8;
 
-	if (((p + 3) < end)) {
+	if (((p + 3) > end)) {
 		fr_strerror_const("Missing MNC component");
 		return (domain - p);
 	}
@@ -116,7 +116,7 @@ ssize_t fr_aka_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 	if (mnc) *mnc = (uint16_t)num;
 	p = q + 1;
 
-	if (((p + 3) < end) || (CRYPTO_memcmp(p, "mcc", 3) != 0)) {
+	if (((p + 3) > end) || (CRYPTO_memcmp(p, "mcc", 3) != 0)) {
 		fr_strerror_const("Missing MCC component");
 		return (domain - p);
 	}
@@ -128,7 +128,7 @@ ssize_t fr_aka_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 	if (mcc) *mcc = (uint16_t)num;
 
 	p = q + 1;
-	if (((p + 15) < end) || (CRYPTO_memcmp(p, "3gppnetwork.org", 15) != 0)) {
+	if (((p + 15) > end) || (CRYPTO_memcmp(p, "3gppnetwork.org", 15) != 0)) {
 		fr_strerror_const("Missing 3gppnetwork.org suffix");
 		return (domain - p);
 	}
@@ -344,19 +344,19 @@ static char hint_byte_matrix[AKA_SIM_METHOD_HINT_MAX][AKA_SIM_ID_TYPE_MAX] = {
 	[AKA_SIM_METHOD_HINT_SIM] = {
 		[AKA_SIM_ID_TYPE_PERMANENT]	= ID_TAG_SIM_PERMANENT,
 		[AKA_SIM_ID_TYPE_PSEUDONYM]	= ID_TAG_SIM_PSEUDONYM,
-		[AKA_SIM_ID_TYPE_FASTAUTH]	= ID_TAG_SIM_PERMANENT,
+		[AKA_SIM_ID_TYPE_FASTAUTH]	= ID_TAG_SIM_FASTAUTH,
 		[AKA_SIM_ID_TYPE_UNKNOWN]	= '\0',
 	},
 	[AKA_SIM_METHOD_HINT_AKA] = {
 		[AKA_SIM_ID_TYPE_PERMANENT]	= ID_TAG_AKA_PERMANENT,
 		[AKA_SIM_ID_TYPE_PSEUDONYM]	= ID_TAG_AKA_PSEUDONYM,
-		[AKA_SIM_ID_TYPE_FASTAUTH]	= ID_TAG_AKA_PERMANENT,
+		[AKA_SIM_ID_TYPE_FASTAUTH]	= ID_TAG_AKA_FASTAUTH,
 		[AKA_SIM_ID_TYPE_UNKNOWN]	= '\0',
 	},
 	[AKA_SIM_METHOD_HINT_AKA_PRIME] = {
 		[AKA_SIM_ID_TYPE_PERMANENT]	= ID_TAG_AKA_PRIME_PERMANENT,
 		[AKA_SIM_ID_TYPE_PSEUDONYM]	= ID_TAG_AKA_PRIME_PSEUDONYM,
-		[AKA_SIM_ID_TYPE_FASTAUTH]	= ID_TAG_AKA_PRIME_PERMANENT,
+		[AKA_SIM_ID_TYPE_FASTAUTH]	= ID_TAG_AKA_PRIME_FASTAUTH,
 		[AKA_SIM_ID_TYPE_UNKNOWN]	= '\0',
 	},
 	[AKA_SIM_METHOD_HINT_UNKNOWN] = {
@@ -670,9 +670,7 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 /*
  *  cc id.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_SIM_ID -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_sim_id && ./test_sim_id
  */
-#include <stddef.h>
-#include <stdbool.h>
-#include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/test/acutest.h>
 
 void test_encrypt_decypt_key0(void)
 {

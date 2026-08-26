@@ -23,7 +23,6 @@
  */
 #define LOG_PREFIX "proto_dhcpv6_udp"
 
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/io/application.h>
@@ -45,6 +44,7 @@ typedef struct {
 
 typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
+	proto_dhcpv6_t const		*parent;		//!< parent instance
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
@@ -192,6 +192,27 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	} /* else it was multicast... remember that */
 
 	/*
+	 *	@todo - make this take "&packet_len", as the DHCPv4
+	 *	packet may be smaller than the parent UDP packet.
+	 */
+	if (fr_dhcpv6_ok(buffer, data_size, inst->max_attributes) <= 0) {
+		RATE_LIMIT_GLOBAL(PWARN, "Invalid packet - ignoring message which is not DHCPv6");
+		return 0;
+	}
+
+	/*
+	 *	If there is a Server-ID option configured, then it has to match.
+	 */
+	if (inst->parent->server_id &&
+	    !fr_dhcpv6_verify(buffer, data_size, &(fr_dhcpv6_decode_ctx_t) {
+			    .duid = inst->parent->server_id,
+			    .duid_len = talloc_array_length(inst->parent->server_id),
+		    }, false)) {
+		RATE_LIMIT_GLOBAL(PWARN, "Invalid packet - ignoring message which is malformed (%s)", fr_strerror());
+		return 0;
+	}
+
+	/*
 	 *	proto_dhcpv6 sets the priority
 	 */
 
@@ -288,7 +309,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		PERROR("Failed opening UDP socket");
+		cf_log_err(li->cs, "Failed opening UDP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -303,7 +324,7 @@ static int mod_open(fr_listen_t *li)
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
-			ERROR("Failed to set socket 'reuseport': %s", fr_syserror(errno));
+			cf_log_err(li->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -315,7 +336,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->recv_buff;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
-			WARN("Failed setting 'recv_buf': %s", fr_syserror(errno));
+			cf_log_warn(li->cs, "Failed setting 'recv_buf' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -327,7 +348,8 @@ static int mod_open(fr_listen_t *li)
 	rcode = fr_socket_bind(sockfd, inst->interface, &ipaddr, &port);
 	rad_suid_down();
 	if (rcode < 0) {
-		PERROR("Failed binding socket");
+		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
+		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 	close_error:
 		close(sockfd);
 		goto error;
@@ -585,7 +607,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			return -1;
 		}
 
-		inst->port = ntohl(s->s_port);
+		inst->port = ntohs(s->s_port);
 	}
 
 	/*
@@ -632,7 +654,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Create a fake client.
 	 */
 	client = inst->default_client = talloc_zero(inst, fr_client_t);
-	if (!inst->default_client) return 0;
+	if (!inst->default_client) return -1;
 
 	client->ipaddr = (fr_ipaddr_t ) {
 		.af = AF_INET6,
@@ -642,6 +664,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	client->longname = client->shortname = client->secret = talloc_strdup(client, "default");
 	client->nas_type = talloc_strdup(client, "other");
+
+	inst->parent = talloc_get_type_abort_const(mctx->mi->parent->data, proto_dhcpv6_t);
 
 	return 0;
 }
@@ -654,10 +678,7 @@ static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, 
 	 *	Prefer local clients.
 	 */
 	if (inst->clients) {
-		fr_client_t *client;
-
-		client = client_find(inst->clients, ipaddr, ipproto);
-		if (client) return client;
+		return client_find(inst->clients, ipaddr, ipproto);
 	}
 
 	return inst->default_client;

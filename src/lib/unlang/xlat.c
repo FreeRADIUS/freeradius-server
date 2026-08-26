@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 
 #include <ctype.h>
-#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/debug.h>
 #include "unlang_priv.h"	/* Fixme - Should create a proper semi-public interface for the interpret */
@@ -193,7 +192,7 @@ int unlang_xlat_timeout_add(request_t *request,
  * @param[in] xlat		head of list
  * @param[in] node		to evaluate.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
- *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *				Set to UNLANG_SUB_FRAME if the interpreter should continue.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -262,7 +261,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, unlang_result_t *p_result,
  * @param[in] request		to push xlat onto.
  * @param[in] xlat		to evaluate.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
- *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *				Set to UNLANG_SUB_FRAME if the interpreter should continue.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -371,7 +370,7 @@ static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_xlat(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;

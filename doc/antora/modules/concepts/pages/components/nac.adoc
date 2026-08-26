@@ -12,7 +12,7 @@ Multiple companies (such as NeoAccel, StillSecure, Cisco Systems, Microsoft, Sym
 
 Alternatively, the Free and Open Source PacketFence project is also a complete NAC product. It leverages FreeRADIUS for AAA over wireless Mac-Auth and 802.1X (aka WPA Enterprise) but also wired Mac-Auth and 802.1X.
 
-Layers of a compelete NAC security deployment 
+Layers of a complete NAC security deployment 
 * Agent-Based or Agentless Posture Check
 * Zero-Day Threat Prevention
 * Dynamic Policy Enforcement
@@ -28,5 +28,5 @@ Policy decision may be separate from policy enforcement - this architecture is o
 * Network Admission Control
 * Trusted Network Connect
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

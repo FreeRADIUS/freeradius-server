@@ -310,3 +310,6 @@ To which you would expect to see a response such as:
  Boot-Filename := "http://my.web.server/boot_script.php"
  ...
 ===============================
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

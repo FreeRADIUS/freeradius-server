@@ -222,6 +222,8 @@ static fr_md4_funcs_t md4_openssl_funcs = {
 /* This is the central step in the MD4 algorithm. */
 #define MD4STEP(f, w, x, y, z, data, s) (w += f(x, y, z) + data, w = w << s | w >> (32 - s))
 
+DIAG_OFF(cast-align)
+
 /** The core of the MD4 algorithm
  *
  * This alters an existing MD4 hash to reflect the addition of 16
@@ -488,7 +490,11 @@ static int _md4_ctx_free_on_exit(void *arg)
 
 		fr_md4_ctx_free(&free_list[i].md_ctx);
 	}
-	return talloc_free(free_list);
+
+	if (talloc_free(free_list) < 0) return -1;
+
+	md4_array = NULL;
+	return 0;
 }
 
 /** @copydoc fr_md4_ctx_alloc
@@ -560,13 +566,40 @@ void fr_md4_ctx_free_from_list(fr_md4_ctx_t **ctx)
 }
 
 #ifdef HAVE_OPENSSL_EVP_H
+static void md4_free_list_reinit(fr_md4_funcs_t *funcs)
+{
+	int i;
+	fr_md4_ctx_t	   *md_ctx;
+	fr_md4_free_list_t *free_list = md4_array;
+
+	if (!free_list) {
+		fr_md4_funcs = funcs;
+		return;
+	}
+
+	for (i = 0; i < ARRAY_SIZE; i++) {
+		fr_assert(!free_list[i].used);
+
+		fr_md4_ctx_free(&free_list[i].md_ctx);
+	}
+
+	fr_md4_funcs = funcs;
+
+	for (i = 0; i < ARRAY_SIZE; i++) {
+		md_ctx = fr_md4_ctx_alloc();
+		fr_assert(md_ctx != NULL);
+
+		free_list[i].md_ctx = md_ctx;
+	}
+}
+
 void fr_md4_openssl_init(void)
 {
 	/*
 	 *	If we are in FIPS mode, then we still use the local
 	 *	allocator.
 	 */
-	if (!EVP_default_properties_is_fips_enabled(NULL)) return;
+	if (EVP_default_properties_is_fips_enabled(NULL)) return;
 
 	/*
 	 *	OpenSSL isn't in FIPS mode.  Swap out the functions
@@ -576,11 +609,13 @@ void fr_md4_openssl_init(void)
 	 *	containing the functions, as this prevents possible
 	 *	skew where some threads see a mixture of functions.
 	 */
-	fr_md4_funcs = &md4_openssl_funcs;
+	md4_free_list_reinit(&md4_openssl_funcs);
 }
 
 void fr_md4_openssl_free(void)
 {
-	fr_md4_funcs = &md4_local_funcs;
+	if (fr_md4_funcs == &md4_local_funcs) return; /* not initialized, or FIPS. */
+
+	md4_free_list_reinit(&md4_local_funcs);
 }
 #endif

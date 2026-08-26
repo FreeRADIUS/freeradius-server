@@ -1,0 +1,62 @@
+#
+# PRE: local-variable
+#
+#  Multiple local variables of different types in one scope,
+#  and adjacent scopes.  They should be cleaned up appropriately.
+#
+string result
+
+#
+#  First scope - multiple types
+#
+group {
+	uint32 count
+	string name
+	ipv4addr addr
+
+	count := 42
+	name := "test"
+	addr := 192.168.1.1
+
+	result := "%{name}-%{count}"
+	if (result != "test-42") {
+		test_fail
+	}
+
+	if (addr != 192.168.1.1) {
+		test_fail
+	}
+}
+
+#
+#  After the first scope, local variables should be cleaned up.
+#  Declare new variables with the same names in a different scope.
+#
+group {
+	uint32 count
+	string name
+
+	#
+	#  They should not have values from the previous scope
+	#
+	if (count) {
+		test_fail
+	}
+
+	if (name) {
+		test_fail
+	}
+
+	count := 99
+	name := "other"
+
+	if (count != 99) {
+		test_fail
+	}
+
+	if (name != "other") {
+		test_fail
+	}
+}
+
+success

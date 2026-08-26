@@ -99,12 +99,12 @@ int fr_radius_server_fd_bio_write(fr_bio_packet_t *bio, UNUSED void *pctx, fr_pa
 	/*
 	 *	Encode the packet.
 	 */
-	if (fr_packet_encode(reply, list, request, (char const *) my->cfg.verify.secret) < 0) {
+	if (fr_radius_packet_encode(reply, list, request, (char const *) my->cfg.verify.secret) < 0) {
 	fail:
 		return fr_bio_error(GENERIC);
 	}
 
-	if (fr_packet_sign(reply, request, (char const *) my->cfg.verify.secret) < 0) goto fail;
+	if (fr_radius_packet_sign(reply, request, (char const *) my->cfg.verify.secret) < 0) goto fail;
 
 	slen = fr_bio_write(my->common.bio, &reply->socket, reply->data, reply->data_len);
 	if (slen < 0) {

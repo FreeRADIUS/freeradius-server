@@ -1,0 +1,6 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.28[Idle-Timeout]   |Sets the maximum number of consecutive seconds of idle connection allowed to the user before termination of the session.
+
+|====

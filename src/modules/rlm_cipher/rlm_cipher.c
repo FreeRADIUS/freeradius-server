@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -34,16 +34,12 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/tls/utils.h>
 #include <freeradius-devel/tls/strerror.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/xlat.h>
 
-#include <freeradius-devel/tls/openssl_user_macros.h>
 #include <openssl/crypto.h>
 #include <openssl/pem.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
-#include <openssl/x509.h>
 
 static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			     CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
@@ -114,8 +110,8 @@ static size_t cipher_type_len = NUM_ELEMENTS(cipher_type);
 
 static fr_table_num_sorted_t const cipher_cert_verify_mode_table[] = {
 	{ L("hard"),	CIPHER_CERT_VERIFY_HARD	},
-	{ L("none"),	CIPHER_CERT_VERIFY_SOFT	},
-	{ L("soft"),	CIPHER_CERT_VERIFY_NONE	}
+	{ L("none"),	CIPHER_CERT_VERIFY_NONE	},
+	{ L("soft"),	CIPHER_CERT_VERIFY_SOFT	}
 };
 static size_t cipher_cert_verify_mode_table_len = NUM_ELEMENTS(cipher_cert_verify_mode_table);
 
@@ -769,6 +765,8 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*in_head = fr_value_box_list_pop_head(in);
 	fr_value_box_t			*args;
 
+	fr_assert(in_head);
+
 	/*
 	 *	Don't auto-cast to octets if the signature
 	 *	isn't already in that form.
@@ -873,15 +871,19 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*vb;
 	uint8_t				*digest;
 
-	if (!fr_value_box_list_next(in, fr_value_box_list_head(in))) {
-		REDEBUG("Missing digest argument");
-		return XLAT_ACTION_FAIL;
-	}
+	{
+		fr_value_box_t *digest_vb = fr_value_box_list_next(in, fr_value_box_list_head(in));
 
-	/*
-	 *	Second arg...
-	 */
-	md_name = ((fr_value_box_t *)fr_value_box_list_next(in, fr_value_box_list_head(in)))->vb_strvalue;
+		if (!digest_vb || fr_type_is_null(digest_vb->type)) {
+			REDEBUG("Missing digest argument");
+			return XLAT_ACTION_FAIL;
+		}
+
+		/*
+		 *	Second arg...
+		 */
+		md_name = digest_vb->vb_strvalue;
+	}
 	md = EVP_get_digestbyname(md_name);
 	if (!md) {
 		REDEBUG("Specified digest \"%s\" is not a valid digest type", md_name);
@@ -1024,7 +1026,7 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 
 		if (rsa_inst->oaep->label) {
 			char	*label;
-			size_t	label_len = talloc_array_length(rsa_inst->oaep->label) - 1;
+			size_t	label_len = talloc_strlen(rsa_inst->oaep->label);
 
 			/*
 			 *	OpenSSL does not duplicate the label when
@@ -1089,7 +1091,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_encrypt_init(ti->evp_encrypt_ctx) <= 0)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising encrypt EVP_PKEY_CTX", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 		if (unlikely(cipher_rsa_padding_params_set(ti->evp_encrypt_ctx, inst->rsa) < 0)) {
 			ERROR("%s: Failed setting padding for encrypt EVP_PKEY_CTX", __FUNCTION__);
@@ -1115,7 +1117,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_verify_init(ti->evp_verify_ctx) <= 0)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising verify EVP_PKEY_CTX", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 
 		/*
@@ -1131,7 +1133,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_verify_ctx, inst->rsa->sig_digest)) <= 0) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed setting signature digest type", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 	}
 
@@ -1155,7 +1157,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_decrypt_init(ti->evp_decrypt_ctx) <= 0)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising decrypt EVP_PKEY_CTX", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 		if (unlikely(cipher_rsa_padding_params_set(ti->evp_decrypt_ctx, inst->rsa) < 0)) {
 			ERROR("%s: Failed setting padding for decrypt EVP_PKEY_CTX", __FUNCTION__);
@@ -1181,7 +1183,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_sign_init(ti->evp_sign_ctx) <= 0)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising sign EVP_PKEY_CTX", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 
 		/*
@@ -1197,7 +1199,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_sign_ctx, inst->rsa->sig_digest)) <= 0) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed setting signature digest type", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 
 		/*

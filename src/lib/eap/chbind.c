@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -37,7 +37,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 {
 	ssize_t			slen;
 	size_t			total;
-	uint8_t			*ptr, *end;
+	uint8_t			*ptr, *start, *end;
 	fr_pair_t		const *vp;
 	fr_dcursor_t		cursor;
 
@@ -58,9 +58,9 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	 *	No attributes: just send a 1-byte response code.
 	 */
 	if (!total) {
-		ptr = talloc_zero_array(chbind, uint8_t, 1);
+		ptr = start = talloc_zero_array(chbind, uint8_t, 1);
 	} else {
-		ptr = talloc_zero_array(chbind, uint8_t, total + 4);
+		ptr = start = talloc_zero_array(chbind, uint8_t, total + 4);
 	}
 	if (!ptr) return false;
 	chbind->response = (chbind_packet_t *) ptr;
@@ -94,22 +94,21 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	while ((vp = fr_dcursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
-		 *	i.e. tagged, encrypted, or extended attributes
 		 */
-		if (vp->da->flags.subtype) {
-		next:
+		if (vp->da->flags.internal || (!vp->da->flags.extra && vp->da->flags.subtype) ||
+		    (vp->da == attr_message_authenticator)) {
 			fr_dcursor_next(&cursor);
 			continue;
 		}
-		if (vp->da == attr_message_authenticator) goto next;
 
 		slen = fr_radius_encode_pair(&FR_DBUFF_TMP(ptr, end), &cursor, NULL);
 		if (slen < 0) {
 			RPERROR("Failed encoding chbind response");
-
-			talloc_free(ptr);
+			chbind->response = NULL;
+			talloc_free(start);
 			return false;
 		}
+
 		ptr += slen;
 	}
 
@@ -191,7 +190,7 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
-		vp = fr_pair_copy(fake->request_ctx, chbind->username);
+		MEM(vp = fr_pair_copy(fake->request_ctx, chbind->username));
 		fr_pair_append(&fake->request_pairs, vp);
 	}
 
@@ -222,7 +221,7 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 				talloc_free(packet_ctx.tmp_ctx);
 				talloc_free(packet_ctx.tags);
 
-				return FR_RADIUS_CODE_ACCESS_ACCEPT;
+				return FR_RADIUS_CODE_ACCESS_REJECT;
 			}
 			attr_data += attr_len;
 			data_len -= attr_len;

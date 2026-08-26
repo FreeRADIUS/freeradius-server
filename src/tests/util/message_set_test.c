@@ -26,9 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 
-#include <string.h>
 #include <sys/time.h>
 
 #ifdef HAVE_GETOPT_H
@@ -62,23 +60,6 @@ static size_t		seed_string_len = 3;
 static size_t		reserve_size = 2048;
 static size_t		allocation_mask = 0x3ff;
 
-/**********************************************************************/
-typedef struct request_s request_t;
-request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args);
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request);
-
-request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args)
-{
-	return NULL;
-}
-
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request)
-{
-}
-
-/**********************************************************************/
-
-
 static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *start, int *end)
 {
 	int i;
@@ -106,11 +87,11 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 
 		array[index] = hash;
 
-		m = fr_message_reserve(ms, reserve_size);
-		fr_assert(m != NULL);
+		m = fr_message_and_data_reserve(ms, reserve_size);
+		if (m == NULL) fr_exit_now(EXIT_FAILURE);
 
-		messages[index] = (fr_test_t *) fr_message_alloc(ms, m, hash);
-		fr_assert(messages[index] == (void *) m);
+		messages[index] = (fr_test_t *) fr_message_and_data_commit(ms, m, hash);
+		if (messages[index] != (void *) m) fr_exit_now(EXIT_FAILURE);
 
 		if (touch_memory) {
 			size_t j;
@@ -125,7 +106,7 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
-		fr_assert(m->status == FR_MESSAGE_USED);
+		if (m->status != FR_MESSAGE_USED) fr_exit_now(EXIT_FAILURE);
 
 		used += hash;
 //		fr_assert(fr_ring_buffer_used(rb) == used);
@@ -151,14 +132,11 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 
 		m = &messages[index]->m;
 
-		fr_assert(m->status == FR_MESSAGE_USED);
+		if(m->status != FR_MESSAGE_USED) fr_exit_now(EXIT_FAILURE);
 
 		ret = fr_message_done(m);
-#ifndef NDEBUG
-		fr_assert(ret == 0);
-#else
+
 		if (ret != 0) fr_exit_now(EXIT_FAILURE);
-#endif
 
 		used -= array[index];
 
@@ -167,7 +145,7 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 	}
 
 	*start += my_alloc_size;
-	if (*start > MY_ARRAY_SIZE) {
+	if (*start >= MY_ARRAY_SIZE) {
 		*start -= MY_ARRAY_SIZE;
 		*end -= MY_ARRAY_SIZE;
 		fr_assert(*start <= *end);
@@ -189,7 +167,7 @@ int main(int argc, char *argv[])
 {
 	int			c;
 	int			i, start, end, ret;
-	fr_message_set_t	*ms;
+	fr_message_set_t	*ms, *ms2;
 	uint32_t		seed;
 
 	TALLOC_CTX		*autofree = talloc_autofree_context();
@@ -220,7 +198,7 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
-	ms = fr_message_set_create(autofree, ARRAY_SIZE, sizeof(fr_message_t), ARRAY_SIZE * 1024);
+	ms = fr_message_set_create(autofree, ARRAY_SIZE, sizeof(fr_message_t), ARRAY_SIZE * 1024, false);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
 		fr_exit_now(EXIT_FAILURE);
@@ -361,10 +339,10 @@ int main(int argc, char *argv[])
 	my_alloc_size = end - start;
 	free_blocks(ms, &seed, &start, &end);
 
-	fr_assert(used == 0);
+	if (used != 0) fr_exit_now(EXIT_FAILURE);
 
 	for (i = 0; i < MY_ARRAY_SIZE; i++) {
-		fr_assert(messages[i] == NULL);
+		if (messages[i] != NULL) fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (debug_lvl) {
@@ -385,8 +363,9 @@ int main(int argc, char *argv[])
 
 		end_t = fr_time();
 
-		printf("\nELAPSED %d.%06d seconds, %d allocation / free cycles\n\n",
-		       (int) (end_t - start_t) / NSEC, (int) ((end_t - start_t) % NSEC),
+		printf("\nELAPSED %"PRIu64".%06d seconds, %d allocation / free cycles\n\n",
+		       fr_time_delta_to_sec(fr_time_sub(end_t, start_t)),
+		       (int) fr_time_delta_to_usec(fr_time_sub(end_t, start_t)),
 		       my_alloc_size * 10000);
 	}
 
@@ -404,6 +383,21 @@ int main(int argc, char *argv[])
 	ret = fr_message_set_messages_used(ms);
 	fr_assert(ret == 0);
 
+	/*
+	 *	Allocate a message set with small initial ring buffer size, but allowing for "unlimited" size.
+	 */
+	ms2 = fr_message_set_create(autofree, ARRAY_SIZE, sizeof(fr_message_t), ARRAY_SIZE / 4, true);
+	if (!ms2) {
+		fprintf(stderr, "Failed creating message set\n");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	/*
+	 *	Use the new message set - the allocations will be beyond the origial ring buffer size.
+	 */
+	alloc_blocks(ms2, &seed, &start, &end);
+	free_blocks(ms2, &seed, &start, &end);
+	fr_message_set_gc(ms2);
+
 	return ret;
 }
-

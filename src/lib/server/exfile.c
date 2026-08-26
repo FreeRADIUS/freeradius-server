@@ -63,6 +63,8 @@ typedef struct {
 struct exfile_s {
 	uint32_t		max_entries;		//!< How many file descriptors we keep track of.
 	fr_time_delta_t		max_idle;		//!< Maximum idle time for a descriptor.
+							///< If this is zero, the descriptor will be closed
+							///< immediately after it is unlocked.
 	fr_time_t      		last_cleaned;
 	pthread_mutex_t		mutex;
 	exfile_entry_t		*entries;
@@ -107,10 +109,10 @@ static inline void exfile_trigger(exfile_t *ef, exfile_entry_t *entry, exfile_tr
 	(void) fr_pair_list_copy(NULL, &args, &ef->trigger_args);
 
 	fr_pair_list_prepend_by_da_len(NULL, vp, &args, da, entry->filename,
-				       talloc_array_length(entry->filename) - 1, false);
+				       talloc_strlen(entry->filename), false);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, exfile_trigger_names[ex_trigger]);
-	if (trigger(unlang_interpret_get_thread_default(), ef->conf, &ef->trigger_cp[ex_trigger], name, false, &args) == -1) {
+	if (trigger(unlang_interpret_get_thread_default(), ef->conf, &ef->trigger_cp[ex_trigger], name, false, &args, NULL) == -1) {
 		ef->trigger_undef[ex_trigger] = true;
 	}
 
@@ -216,7 +218,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, fr_time_delta_t max
 void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, fr_pair_list_t *trigger_args)
 {
 	talloc_const_free(ef->trigger_prefix);
-	MEM(ef->trigger_prefix = trigger_prefix ? talloc_typed_strdup(ef, trigger_prefix) : "");
+	MEM(ef->trigger_prefix = trigger_prefix ? talloc_strdup(ef, trigger_prefix) : talloc_strdup(ef, ""));
 
 	fr_pair_list_free(&ef->trigger_args);
 
@@ -232,12 +234,13 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
  *	Try to open the file. It it doesn't exist, try to
  *	create it's parent directories.
  */
-static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions, int flags)
+static int exfile_open_mkdir(char const *filename, mode_t permissions, int flags)
 {
 	int fd;
 
 	fd = open(filename, O_RDWR | O_CREAT | flags, permissions);
 	if (fd < 0) {
+		int dirfd;
 		mode_t dirperm;
 		char *p, *dir;
 
@@ -245,7 +248,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		 *	Maybe the directory doesn't exist.  Try to
 		 *	create it.
 		 */
-		dir = talloc_typed_strdup(ef, filename);
+		dir = talloc_strdup(NULL, filename);
 		if (!dir) return -1;
 		p = strrchr(dir, FR_DIR_SEP);
 		if (!p) {
@@ -264,14 +267,16 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		if ((dirperm & 0060) != 0) dirperm |= 0010;
 		if ((dirperm & 0006) != 0) dirperm |= 0001;
 
-		if (fr_mkdir(NULL, dir, -1, dirperm, NULL, NULL) < 0) {
+		if (fr_mkdir(&dirfd, dir, -1, dirperm, NULL, NULL) < 0) {
 			fr_strerror_printf("Failed to create directory %s: %s", dir, fr_syserror(errno));
 			talloc_free(dir);
 			return -1;
 		}
-		talloc_free(dir);
 
-		fd = open(filename, O_RDWR | O_CREAT | flags, permissions);
+		fd = openat(dirfd, p+1, O_RDWR | O_CREAT | flags, permissions);
+		talloc_free(dir);
+		close(dirfd);
+
 		if (fd < 0) {
 			fr_strerror_printf("Failed to open file %s: %s", filename, fr_syserror(errno));
 			return -1;
@@ -369,13 +374,14 @@ static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissio
 		 *	and re-open the file.
 		 */
 		if (stat(ef->entries[i].filename, &st) < 0) {
-			goto reopen;
+			goto close_reopen;
 		}
 
 		if ((st.st_dev != ef->entries[i].st_dev) ||
 		    (st.st_ino != ef->entries[i].st_ino)) {
+		close_reopen:
 			close(ef->entries[i].fd);
-			goto reopen;
+			goto reopen_reset;
 		}
 
 		goto try_lock;
@@ -395,11 +401,12 @@ static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissio
 	i = unused;
 
 	ef->entries[i].hash = hash;
-	ef->entries[i].filename = talloc_typed_strdup(ef->entries, filename);
+	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
+
+reopen_reset:
 	ef->entries[i].fd = -1;
 
-reopen:
-	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions, flags);
+	ef->entries[i].fd = exfile_open_mkdir(filename, permissions, flags);
 	if (ef->entries[i].fd < 0) goto error;
 
 	exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_OPEN);
@@ -448,15 +455,9 @@ try_lock:
 	 *	Maybe someone deleted the file while we were waiting
 	 *	for the lock.  If so, re-open it.
 	 */
-	if (fstat(ef->entries[i].fd, &st) < 0) {
-		fr_strerror_printf("Failed to stat file %s: %s", filename, fr_syserror(errno));
-		goto reopen;
-	}
+	if (fstat(ef->entries[i].fd, &st) < 0) goto close_reopen;
 
-	if (st.st_nlink == 0) {
-		close(ef->entries[i].fd);
-		goto reopen;
-	}
+	if (st.st_nlink == 0) goto close_reopen;
 
 	/*
 	 *	Remember which device and inode this file is
@@ -529,7 +530,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flag
 	if (!ef || !filename) return -1;
 
 	if (!ef->locking) {
-		int found = exfile_open_mkdir(ef, filename, permissions, flags);
+		int found = exfile_open_mkdir(filename, permissions, flags);
 		off_t real_offset;
 
 		if (found < 0) return -1;
@@ -556,6 +557,17 @@ static int exfile_close_lock(exfile_t *ef, int fd)
 
 		(void) lseek(ef->entries[i].fd, 0, SEEK_SET);
 		(void) rad_unlockfd(ef->entries[i].fd, 0);
+
+		/*
+		 *	If max idle is 0, then clean up the file immediately
+		 *	this is mostly used for testing.
+		 */
+		if (fr_time_delta_eq(ef->max_idle, fr_time_delta_from_sec(0))) {
+			exfile_cleanup_entry(ef, &ef->entries[i]);
+			pthread_mutex_unlock(&(ef->mutex));
+			return 0;
+		}
+
 		pthread_mutex_unlock(&(ef->mutex));
 
 		exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_RELEASE);

@@ -59,7 +59,7 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 static NEVER_RETURNS void usage(char *argv[])
 {
 	fprintf(stderr, "usage: %s [OPTS] filename ...\n", argv[0]);
-	fprintf(stderr, "  -d <raddb>         Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -d <confdir>       Set user dictionary directory (defaults to " CONFDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>       Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x                 Debugging mode.\n");
 	fprintf(stderr, "  -M                 Show program version information.\n");
@@ -97,8 +97,10 @@ static int process_file(char const *filename)
 	config->root_cs = cf_section_alloc(config, NULL, "main", NULL);
 	cf_section_set_unlang(config->root_cs);
 
-	if ((cf_file_read(config->root_cs, filename) < 0) || (cf_section_pass2(config->root_cs) < 0)) {
+	if ((cf_file_read(config->root_cs, filename, true) < 0) || (cf_section_pass2(config->root_cs) < 0)) {
 		fprintf(stderr, "unit_test_map: Failed parsing %s\n", filename);
+	fail:
+		talloc_free(config);
 		return EXIT_FAILURE;
 	}
 
@@ -108,10 +110,7 @@ static int process_file(char const *filename)
 	 *	Always has to be an "update" section.
 	 */
 	cs = cf_section_find(config->root_cs, "update", CF_IDENT_ANY);
-	if (!cs) {
-		talloc_free(config->root_cs);
-		return EXIT_FAILURE;
-	}
+	if (!cs) goto fail;
 
 	/*
 	 *	Convert the update section to a list of maps.
@@ -119,11 +118,11 @@ static int process_file(char const *filename)
 	rcode = map_afrom_cs(cs, &list, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) {
 		cf_log_perr(cs, "map_afrom_cs failed");
-		return EXIT_FAILURE; /* message already printed */
+		goto fail;
 	}
 	if (map_list_empty(&list)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
-		return EXIT_FAILURE;
+		goto fail;
 	}
 
 	buffer[0] = '\t';
@@ -159,7 +158,7 @@ static int process_file(char const *filename)
 int main(int argc, char *argv[])
 {
 	int			c, ret = EXIT_SUCCESS;
-	char const		*raddb_dir = RADDBDIR;
+	char const		*confdir = CONFDIR;
 	char const		*dict_dir = DICTDIR;
 	fr_dict_t		*dict = NULL;
 	char const		*receipt_file = NULL;
@@ -174,7 +173,7 @@ int main(int argc, char *argv[])
 	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("unit_test_map");
 		fr_exit(EXIT_FAILURE);
 	}
@@ -194,7 +193,7 @@ int main(int argc, char *argv[])
 
 	while ((c = getopt(argc, argv, "d:D:xMhr:")) != -1) switch (c) {
 		case 'd':
-			raddb_dir = optarg;
+			confdir = optarg;
 			break;
 
 		case 'D':
@@ -246,7 +245,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Load the custom dictionary
 	 */
-	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict, confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_strerror_const_push("Failed to initialize the dictionaries");
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
@@ -266,10 +265,13 @@ int main(int argc, char *argv[])
 		ret = process_file("-");
 
 	} else {
-		ret = process_file(argv[1]);
-	}
+		int i;
 
-	if (ret < 0) ret = 1; /* internal to Unix process return code */
+		for (i = 1; i < argc; i++) {
+			ret = process_file(argv[i]);
+			if (ret != EXIT_SUCCESS) break;
+		}
+	}
 
 cleanup:
 	/*

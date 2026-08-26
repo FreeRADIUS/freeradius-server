@@ -28,7 +28,6 @@
 #include <freeradius-devel/io/schedule.h>
 
 #include <freeradius-devel/server/main_config.h>
-#include <freeradius-devel/server/protocol.h>
 
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
@@ -323,6 +322,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	This listener is parented from the worker.  So that
 	 *	when the worker goes away, so does the listener.
 	 */
+	li->cs = inst->parent->work_io_conf;
 	li->app_io = inst->parent->work_io;
 
 	li->app = inst->parent->self;
@@ -359,6 +359,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	if (fr_event_filter_insert(thread, NULL, thread->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, thread) < 0) {
 		PERROR("Failed adding work socket to event loop");
+		close(li->fd);
 		close(fd);
 		talloc_free(li);
 		return -1;
@@ -382,10 +383,6 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 */
 	li->default_message_size = inst->parent->max_packet_size;
 	li->num_messages = inst->parent->num_messages;
-
-	pthread_mutex_lock(&thread->worker_mutex);
-	thread->num_workers++;
-	pthread_mutex_unlock(&thread->worker_mutex);
 
 	/*
 	 *	Open the detail.work file.
@@ -411,6 +408,8 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 			(void) li->app_io->close(li);
 			thread->listen = NULL;
 			li = NULL;
+		} else {
+			close(li->fd);
 		}
 
 		talloc_free(li);
@@ -421,6 +420,10 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	Tell the worker to clean itself up.
 	 */
 	work->listen = li;
+
+	pthread_mutex_lock(&thread->worker_mutex);
+	thread->num_workers++;
+	pthread_mutex_unlock(&thread->worker_mutex);
 
 	return 0;
 }
@@ -610,7 +613,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 	 */
 	if (fr_timer_in(thread, thread->el->tl, &thread->ev,
 			fr_time_delta_from_sec(1), false, work_retry_timer, thread) < 0) {
-		ERROR("Failed inserting poll timer for %s", thread->filename_work);
+		ERROR("Failed inserting poll timer for %s", inst->filename_work);
 	}
 }
 
@@ -632,7 +635,7 @@ static pthread_mutex_t detail_file_mutex = PTHREAD_MUTEX_INITIALIZER;
  * @param[in] two	Second thread specific xlat expansion instance.
  * @return CMP(one, two)
  */
-static int8_t _detail_file_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _detail_file_cmp(void const *one, void const *two)
 {
 	proto_detail_file_t const *a = one, *b = two;
 
@@ -724,10 +727,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 	}
 
-	if (!fr_rb_insert(detail_file_tree, inst)) {
-		proto_detail_file_t const *old;
+	if (fr_rb_insert(detail_file_tree, inst) != 0) {
+		proto_detail_file_t *old;
 
-		old = fr_rb_find(detail_file_tree, inst);
+		fr_rb_find((void **)&old, detail_file_tree, inst);
 		fr_assert(old);
 
 		pthread_mutex_unlock(&detail_file_mutex);
@@ -771,9 +774,9 @@ static int mod_close(fr_listen_t *li)
 		}
 		close(thread->vnode_fd);
 		thread->vnode_fd = -1;
-
-		pthread_mutex_destroy(&thread->worker_mutex);
 	}
+
+	pthread_mutex_destroy(&thread->worker_mutex);
 
 	return 0;
 }

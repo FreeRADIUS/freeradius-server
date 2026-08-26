@@ -1,7 +1,6 @@
 ## Hard dependencies
 
-```bash
-yum -y install libtalloc-devel
+```bash yum -y install libtalloc-devel
 ```
 
 ### libkqueue
@@ -23,11 +22,13 @@ Then simply run:
 rpmbuild -ba /usr/src/packages/SPECS/freeradius.spec
 ```
 
-``rpmbuild`` will tell you if you are missing any build dependencies. If so, simply install them with ``yast2 -i packagename-devel`` then rerun ``rpmbuild``
+``rpmbuild`` will tell you if you are missing any build dependencies.
+If so, simply install them with ``yast2 -i packagename-devel`` then
+rerun ``rpmbuild``
 
 ### With Oracle support
 
 include:RPMs-with-Oracle-support
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

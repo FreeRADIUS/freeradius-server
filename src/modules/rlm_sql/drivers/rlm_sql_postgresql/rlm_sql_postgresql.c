@@ -335,6 +335,11 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		       PQdb(c->db), PQhost(c->db), PQserverVersion(c->db), PQprotocolVersion(c->db),
 		       PQbackendPID(c->db));
 		PQsetnonblocking(c->db, 1);
+
+		*h = c;
+		if (sql->config.connect_query) connection_add_watch_post(conn, CONNECTION_STATE_CONNECTED,
+									 _sql_connect_query_run, true, sql);
+		
 		connection_signal_connected(c->conn);
 		return CONNECTION_STATE_CONNECTING;
 
@@ -693,33 +698,40 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 	return conn->affected_rows;
 }
 
-static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
+static int sql_escape_func(request_t *request, fr_value_box_t *vb, void *arg)
 {
-	size_t			inlen, ret;
-	connection_t		*c = talloc_get_type_abort(arg, connection_t);
-	rlm_sql_postgres_conn_t	*conn;
+	size_t			inlen = vb->vb_length;
+	size_t			real_len;
+	connection_t		*conn = talloc_get_type_abort(arg, connection_t);
+	rlm_sql_postgres_conn_t	*c;
+	char			*out;
 	int			err;
 
-	if ((c->state == CONNECTION_STATE_HALTED) || (c->state == CONNECTION_STATE_CLOSED)) {
+	if (!((conn->state == CONNECTION_STATE_CONNECTING) || (conn->state == CONNECTION_STATE_CONNECTED))) {
 		ROPTIONAL(RERROR, ERROR, "Connection not available for escaping");
 		return -1;
 	}
 
-	conn = talloc_get_type_abort(c->h, rlm_sql_postgres_conn_t);
+	c = talloc_get_type_abort(conn->h, rlm_sql_postgres_conn_t);
 
-	/* Check for potential buffer overflow */
-	inlen = strlen(in);
-	if ((inlen * 2 + 1) > outlen) return 0;
-	/* Prevent integer overflow */
-	if ((inlen * 2 + 1) <= inlen) return 0;
-
-	ret = PQescapeStringConn(conn->db, out, in, inlen, &err);
-	if (err) {
-		ROPTIONAL(REDEBUG, ERROR, "Error escaping string \"%s\": %s", in, PQerrorMessage(conn->db));
-		return 0;
+	/* Prevent integer overflow on (inlen * 2 + 1) */
+	if (inlen > (SIZE_MAX - 1) / 2) {
+		ROPTIONAL(RERROR, ERROR, "Input too large to escape");
+		return -1;
 	}
 
-	return ret;
+	MEM(out = talloc_array(vb, char, inlen * 2 + 1));
+	real_len = PQescapeStringConn(c->db, out, vb->vb_strvalue, inlen, &err);
+	if (err) {
+		ROPTIONAL(REDEBUG, ERROR, "Error escaping string: %s", PQerrorMessage(c->db));
+		talloc_free(out);
+		return -1;
+	}
+
+	if (real_len + 1 < inlen * 2 + 1) MEM(out = talloc_realloc(vb, out, char, real_len + 1));
+	fr_value_box_strdup_shallow_replace(vb, out, real_len);
+
+	return 0;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -784,7 +796,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Only append options when not already present
 	 */
 	} else {
-		db_string = talloc_typed_strdup(inst, config->sql_db);
+		db_string = talloc_strdup(inst, config->sql_db);
 
 		if ((config->sql_server[0] != '\0') && !strstr(db_string, "host=")) {
 			db_string = talloc_asprintf_append(db_string, " host='%s'", config->sql_server);

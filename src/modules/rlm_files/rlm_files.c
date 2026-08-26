@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -26,10 +26,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/users_file.h>
 #include <freeradius-devel/util/htrie.h>
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/transaction.h>
 
@@ -92,12 +90,9 @@ static uint32_t pairlist_hash(void const *a)
 	return fr_value_box_hash(((PAIR_LIST_LIST const *)a)->box);
 }
 
-static int8_t pairlist_cmp(void const *a, void const *b)
+static fr_cmp_ret_t pairlist_cmp(void const *a, void const *b)
 {
-	int ret;
-
-	ret = fr_value_box_cmp(((PAIR_LIST_LIST const *)a)->box, ((PAIR_LIST_LIST const *)b)->box);
-	return CMP(ret, 0);
+	return fr_value_box_cmp(((PAIR_LIST_LIST const *)a)->box, ((PAIR_LIST_LIST const *)b)->box);
 }
 
 static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
@@ -366,7 +361,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, rlm_files_t const *inst, fr_htrie_t
 		/*
 		 *	Find an exact match, especially for patricia tries.
 		 */
-		user_list = fr_htrie_match(tree, &search_list);
+		fr_htrie_match((void **)&user_list, tree, &search_list);
 		if (!user_list) {
 			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
 			pairlist_list_init(user_list);
@@ -381,7 +376,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, rlm_files_t const *inst, fr_htrie_t
 			/*
 			 *	Insert the new list header.
 			 */
-			if (!fr_htrie_insert(tree, user_list)) {
+			if (fr_htrie_insert(tree, user_list) != 0) {
 				PERROR("%s[%d] Failed inserting key %s",
 				       entry->filename, entry->lineno, entry->name);
 				goto error;
@@ -439,7 +434,7 @@ static unlang_action_t CC_HINT(nonnull) mod_files_resume(unlang_result_t *p_resu
 	if (tree) {
 		my_list.name = NULL;
 		my_list.box = key_vb;
-		user_list = fr_htrie_find(tree, &my_list);
+		fr_htrie_find(UNCONST(void **, &user_list), tree, &my_list);
 
 		trie = (tree->type == FR_HTRIE_TRIE);
 
@@ -566,7 +561,7 @@ redo:
 
 			tmpl_init_shallow(&match_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0, NULL);
 			fr_value_box_bstrndup_shallow(&match_map.rhs->data.literal, NULL, pl->name,
-						      talloc_array_length(pl->name) - 1, false);
+						      talloc_strlen(pl->name), false);
 			if (map_to_request(request, &match_map, map_to_vp, NULL) < 0) {
 				RWARN("Failed populating %s with key value %s", env->match_attr->name, pl->name);
 			}
@@ -668,7 +663,7 @@ static int files_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *
 	MEM(files_data = talloc_zero(ctx, rlm_files_data_t));
 
 	if (tmpl_afrom_substr(ctx, &files_data->key_tmpl,
-			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 			      t_rules) < 0) return -1;
 

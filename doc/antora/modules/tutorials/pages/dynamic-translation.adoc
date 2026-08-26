@@ -7,8 +7,8 @@ references.
 
 *Files:*
 
-- `etc/raddb/radiusd.conf`
-- `etc/raddb/users`
+- `radiusd.conf`
+- `mods-config/files/authorize`
 
 Run-time variables in the server may include more than simple references to
 attributes in packets. The server supports the ability to perform complex
@@ -16,106 +16,275 @@ inter-module queries, which significantly extends its usefulness. In this
 exercise, we will work through a number of different examples of configuring
 inter-module calls.
 
-To start, open `raddb/mods-available/exec` and read the sample configuration for
-the `exec` module. Then, edit the users file to add the following entry at the
+To start, open `mods-available/exec` and read the sample configuration for
+the `exec` module.
+
+The `exec` module is used for executing external programs or scripts
+from within FreeRADIUS.  It is intended only for very rare use cases,
+such as testing or running programs which do more than the built-in
+FreeRADIUS functionality.
+
+The `%exec()` function provides a dynamic expansion function.  The
+output of `exec` is parsed, and the result can be assigned to the
+attribute.
+
 top:
 
--------------------------------------------------------------------------------
+[source,text]
+----
 bob Password.Cleartext := "hello"
-    Callback-Id = "%exec('/bin/echo', "Hello, there")
--------------------------------------------------------------------------------
+    Callback-Id = %exec('/bin/echo', "Hello, there")
+----
 
 The `echo` program may be in `/usr/bin/echo`, depending on your local system. On
 many systems you can use the following command:
 
 [source, bash]
-------------
+----
 $ which echo
-------------
+----
 
 This will tell you the full pathname of the `echo` command. Use that pathname in
 the file entry.
 
-Start the server and send it a test packet for user `bob`. The debug output of
-the server should print messages similar to the following.
+Start the server
 
--------------------------------------------------------------------------------
-(0)  files : users: Matched entry bob at line 1
-Executing: /bin/echo Hello, there:
-Program returned code (0) and output 'Hello, there'
-(0)  files : EXPAND %exec('/bin/echo', "Hello, there")
-(0)  files :    --> Hello, there
-(0)   [files] = ok
--------------------------------------------------------------------------------
+[source,bash]
+----
+$ radiusd -X
+----
 
-These message indicate that the first entry in the file (at line 1) was used to
-match the incoming request.
+Send the test packet for user `bob`
 
-The `exec` xlat function was then used to perform the dynamic translation of the
-string, which resulted in a call to the `rlm_exec` module.
+[source,bash]
+----
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+----
 
-That module called the `Exec-Program` function of the server to execute a
-program, and finally, the `exec` xlat function returned the string "Hello
-there".
+The debug output of the server should print messages similar to the following.
 
-That text was then sent back to the RADIUS client in the `Callback-Id`
-attribute, which was not quoted above.
+[source,text]
+----
+files - | ||
+(0)        files - | %logical_or()
+(0)          files - | Stripped-User-Name
+(0)            files - | %{Stripped-User-Name}
+(0)            files - (null)
+(0)          files - | User-Name
+(0)          files - | %logical_or(...)
+(0)            files - | %{User-Name}
+(0)            files - | --> bob
+(0)          files - | %logical_or(...)
+(0)          files - | --> bob
+(0)      files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 4 of ./scripts/bin/../../raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Callback-Id = %exec('/bin/echo', "Hello, there")
+(0)        files - | exec
+(0)        files - | %exec({/bin/echo}{Hello, there})
+proto_radius_udp - Received Access-Request ID 156 length 98 radius_udp server * port 1812
+Ignoring retransmit from client localhost - we are still processing the request
+(0)          files - pid 263593 (stdout) - Hello, there\n
+(0)          files - Program exited with status code 0
+(0)          files - xlat - Resuming execution
+(0)          files - | %exec(...)
+(0)          files - | --> Hello, there
+(0)      files (ok)
+----
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// This documentation was developed by Network RADIUS SAS.
-Another dynamic translation string function is the `expr` module. It performs
-some simple mathematical operations. The following sample file entry
-demonstrates how to use the `expr` module.
+== Mathematical Operations
 
--------------------------------------------------------------------------------
+It is possible to do mathematical operations "in place"
+Another dynamic translation string function is the `expr` module. It
+performs some simple mathematical operations. The following sample
+file entry demonstrates how to use mathematical expressions:
+
+* Just use `%{... math ... }` for mathematical operations.  There's no
+  need to use an `expr` module as was done in v3.
+* Don't use double quotes (`"..."`) around everything.  It's not necessary.
+
+[source,text]
+----
 bob	Password.Cleartext := "hello"
-	Session-Timeout = "%{60 * 60}"
--------------------------------------------------------------------------------
+	Session-Timeout = %{60 * 60}
+----
 
-Dynamically translated strings may also be used as "check items" to match
-requests coming in to the server. The following examples show how those strings
-(or run-time variables) may be used to both match a request and to configure
-dynamic responses.
+**What this does:**
 
-You should use the `bob-login-one.sh` script to send a request to match the
-first entry and should send another request with a different NAS-Port.
+User `bob` logs in with password `hello` and the server calculates: 60
+multiplied by 60 with a result of 3600 seconds (which equals 1
+hour).This timeout value is sent back to the client and the client
+will disconnect the user after 1 hour
 
--------------------------------------------------------------------------------
-bob	Password.Cleartext := "hello", NAS-Port == "%exec('/usr/bin/id', '-u')"
+This entry will set the Session-Timeout attribute to 3600 seconds
+(which equals 1 hour). The mathematical expression inside the `%{...}`
+braces is evaluated to produce the final value.
+
+Start the server and send it a test packet for user:
+
+[source,bash]
+----
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+----
+
+The debug output should show the mathematical expression being evaluated and the final result.
+
+[source,text]
+----
+files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 1 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Session-Timeout = %{60 * 60}
+(0)          files - | *
+(0)          files - | ({60} * {60})
+(0)          files - | --> 3600
+(0)      files (ok)
+......
+(0)  Sending Access-Accept ID 53 from 0.0.0.0/0:1812 to 127.0.0.1:39326 length 49 via socket radius_udp server * port 1812
+(0)    Session-Timeout = 3600
+(0)    Packet-Type = ::Access-Accept
+(0)    User-Name = "bob"
+(0)  Finished request
+----
+
+== Dynamic Check Items with Conditional Matching
+
+Dynamically translated strings may also be used as "check items" to
+match requests coming in to the server. The following examples show
+how those strings (or run-time variables) may be used to both match a
+request and to configure dynamic responses.
+
+You should send test packets to match the first entry and should send
+another request with a different NAS-Port.
+
+[source,text]
+----
+bob	Password.Cleartext := "hello", NAS-Port == 501
 	Reply-Message = "Your port is very nice.",
-	Session-Timeout = "%{60 * 60}"
+	Session-Timeout = %{60 * 60}
 
-bob	Password.Cleartext := "hello", NAS-Port != "%exec('/usr/bin/id', '-u')"
+bob	Password.Cleartext := "hello", NAS-Port != 501
         Reply-Message = "Your port is less nice.",
-        Session-Timeout = "%{60 * 2}"
--------------------------------------------------------------------------------
+        Session-Timeout = %{60 * 2}
+----
 
-The run-time variables may be nested, too. The following file entry
-demonstrates this nesting.
-
--------------------------------------------------------------------------------
+[source,text]
+----
 bob	Password.Cleartext := "hello"
 	Session-Timeout = "%{60 * %exec(/usr/bin/id -u})"
--------------------------------------------------------------------------------
+----
 
 In this case, the user "bob" is given one minute of access time,
-multiplied by the value of the "UID" of the RADIUS server.
+multiplied by the value of the "UID" of the RADIUS server.  Again,
+this example is just for testing.  Don't use `%exec()` on a production
+server!
+
+=======
+**Example:**
+Request comes in with NAS-Port = 501 -> First entry matches -> `Your port is very nice.`
+Request comes in with NAS-Port = 2000 -> Second entry matches -> `Your port is less nice.`
+=======
+
+You can find the UID by running the following command:
+
+[source,basg]
+----
+$ /bin/id -u
+----
+
+Send a test packet to verify the server's response as Your port is very nice using:
+
+[source,bash]
+----
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 0
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+----
+
+Debug output
+
+[source,text]
+----
+files - files - Looking for key "bob"
+(0)      files - | exec
+(0)      files - | %exec({/bin/id}{-u})
+proto_radius_udp - Received Access-Request ID 17 length 98 radius_udp server * port 1812
+Ignoring retransmit from client localhost - we are still processing the request
+(0)        files - pid 270061 (stdout) - 0\n
+(0)        files - Program exited with status code 0
+(0)        files - xlat - Resuming execution
+(0)        files - | %exec(...)
+(0)        files - | --> 0
+(0)      files - files - Found match "bob" on line 5 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message = Your port is very nice.
+(0)        files - Session-Timeout = %{60 * 60}
+(0)          files - | *
+(0)          files - | ({60} * {60})
+(0)          files - | --> 3600
+(0)      files (ok)
+----
+
+Verify by sending a test packet to receive the response `Your port is less nice`.
+
+[source,bash]
+----
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+----
+
+Debug output
+----
+files - pid 270077 (stdout) - 0\n
+(1)        files - Program exited with status code 0
+(1)        files - xlat - Resuming execution
+(1)        files - | %exec(...)
+(1)        files - | --> 0
+(1)      files - files - Found match "bob" on line 9 of raddb/mods-config/files/authorize
+(1)      files - files - Preparing attribute updates:
+(1)        files - Password.Cleartext := hello
+(1)        files - Reply-Message = Your port is less nice.
+(1)        files - Session-Timeout = %{60 * 2}
+(1)          files - | *
+(1)          files - | ({60} * {2})
+(1)          files - | --> 120
+(1)      files (ok)
+----
+
+These check items demonstrate how dynamic expansion can be used in
+conditional logic. The server evaluates the expression and compares it
+to the incoming request attribute to determine which entry to use for
+the user.
+
 
 == Further considerations
 
-Run-time variables allow inter-module calling. The administrator may perform LDAP
-queries and SQL queries to use database information in other modules.
+Run-time variables allow inter-module calling. The administrator may
+perform LDAP queries and SQL queries to use database information in
+other modules.
 
-Unfortunately, the format of the string is module-dependent. This limitation
-comes from the fact that each module has its own syntax for database queries.
-The syntax for querying LDAP databases is different than the syntax for querying
-SQL database. The administrator should consult the `man` pages for the relevant
-module for more information on the syntax for run-time dynamic translation of
-strings.
-
-Another limitation is that the query string can be only approximately 250
-characters long in the current version of the server. This limitation may be
-removed in a later version.
+Unfortunately, the format of the string is module-dependent. This
+limitation comes from the fact that each module has its own syntax for
+database queries.  The syntax for querying LDAP databases is different
+than the syntax for querying SQL database. The administrator should
+consult the `man` pages for the relevant module for more information
+on the syntax for run-time dynamic translation of strings.
 
 == Questions
 
@@ -125,3 +294,5 @@ executing a program?
 modules?
 3.  What is an example of conditional syntax for a run-time variable?
 
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

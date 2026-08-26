@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 of the
  *   License as published by the Free Software Foundation.
  *
@@ -26,7 +26,6 @@
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/value.h>
 
-#include <stdlib.h>
 #include <ifaddrs.h>
 #include <net/if_arp.h>
 #include <sys/un.h>
@@ -96,9 +95,10 @@ int fr_ipaddr_is_multicast(fr_ipaddr_t const *ipaddr)
 {
 	if (ipaddr->af == AF_INET) {
 		/*
-		 *	224.0.0.0 (3758096384) - 239.255.255.255 (4026531839)
+		 *	224.0.0.0 - 239.255.255.255.
 		 */
-		if ((ipaddr->addr.v4.s_addr >= 3758096384) && (ipaddr->addr.v4.s_addr <= 4026531839)) return 1;
+		if ((ipaddr->addr.v4.s_addr >= htonl((uint32_t) 0xe0000000)) &&
+		    (ipaddr->addr.v4.s_addr < htonl((uint32_t) 0xf0000000))) return 1;
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (ipaddr->af == AF_INET6) {
 		/* Unconst for emscripten/musl */
@@ -238,8 +238,8 @@ void fr_ipaddr_mask(fr_ipaddr_t *addr, uint8_t prefix)
  * This function returns only one IP address, of the specified address family,
  * or the first address (of whatever family), if AF_UNSPEC is used.
  *
- * If fallback is specified and af is AF_INET, but not AF_INET records were
- * found and a record for AF_INET6 exists that record will be returned.
+ * If fallback is specified and af is AF_INET, but no AF_INET records were
+ * found and a record for AF_INET6 exists, then the IPv6 record will be returned.
  *
  * If fallback is specified and af is AF_INET6, and a record with AF_INET4 exists
  * that record will be returned inserted.
@@ -285,7 +285,7 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 			return -1;
 		}
 		out->af = af;
-		out->prefix = 32;
+		out->prefix = (af == AF_INET) ? 32 : 128;
 		out->scope_id = 0;
 
 		return 0;
@@ -480,7 +480,7 @@ static int ip_prefix_addr_from_str(struct in_addr *out, char const *str)
  */
 int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask_bits)
 {
-	char		*p;
+	char const	*p;
 	unsigned int	mask;
 	char const	*end;
 	char		*eptr;
@@ -492,6 +492,8 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *	like scope_id hanging around with garbage values.
 	 */
 	memset(out, 0, sizeof(*out));
+
+	if (inlen < 0) inlen = strlen(value);
 
 	end = value + inlen;
 	while ((value < end) && isspace((uint8_t) *value)) value++;
@@ -664,7 +666,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	buffer[inlen] = '\0';
 	value = buffer;
 
-	p = strchr(value, '/');
+	p = UNCONST(char *, strchr(value, '/'));
 	if (!p) {
 		out->prefix = 128;
 		out->af = AF_INET6;
@@ -672,7 +674,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		/*
 		 *	Allow scopes for non-prefix values.
 		 */
-		p = strchr(value, '%');
+		p = UNCONST(char *, strchr(value, '%'));
 		if (p) *(p++) = '\0';
 
 		/*
@@ -693,7 +695,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		if (!p || !*p) return 0;
 
 		/*
-		 *	Parse scope.
+		 *	Parse scope ID.
 		 */
 		prefix = strtoul(p, &eptr, 10);
 		if (prefix > UINT32_MAX) {
@@ -705,6 +707,8 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 					   "got garbage after numerical scope value \"%s\"", p, eptr);
 			return -1;
 		}
+
+		out->scope_id = prefix;
 
 		return 0;
 	}
@@ -783,6 +787,8 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 	bool ipv4 = true;
 	bool ipv6 = true;
 	char const *end;
+
+	if (inlen < 0) inlen = strlen(value);
 
 	end = value + inlen;
 	while ((value < end) && isspace((uint8_t) *value)) value++;
@@ -1182,13 +1188,13 @@ int fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name)
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0) {
 		fr_strerror_printf("Failed opening temporary socket for SIOCGIFADDR: %s", fr_syserror(errno));
-	error:
-		close(fd);
 		return -1;
 	}
 	if (ioctl(fd, SIOCGIFADDR, &if_req) < 0) {
 		fr_strerror_printf("Failed determining address for interface %s: %s", name, fr_syserror(errno));
-		goto error;
+	error:
+		close(fd);
+		return -1;
 	}
 
 	/*
@@ -1341,10 +1347,10 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex)
  * @return
  *	- 1 if a > b
  *	- 0 if a == b
- *	- -1 if a < b
- *	- -2 on error.
+ *	- CMP_LT if a < b
+ *	- CMP_ERR on invalid address family, retrieve the error with fr_strerror.
  */
-int8_t fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
+fr_cmp_ret_t fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 {
 	int ret;
 	size_t len;
@@ -1373,7 +1379,7 @@ int8_t fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 
 	default:
 		fr_strerror_printf("Invalid address family %d", a->af);
-		return -2;
+		return CMP_ERR;
 	}
 }
 
@@ -1449,7 +1455,7 @@ int fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
 
 		if (salen < sizeof(s4)) {
 			fr_strerror_const("IPv4 address is too small");
-			return 0;
+			return -1;
 		}
 
 		memcpy(&s4, sa, sizeof(s4));
@@ -1465,7 +1471,7 @@ int fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
 
 		if (salen < sizeof(s6)) {
 			fr_strerror_const("IPv6 address is too small");
-			return 0;
+			return -1;
 		}
 
 		memcpy(&s6, sa, sizeof(s6));
@@ -1661,7 +1667,7 @@ int8_t fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage
 	int ret;
 
 	ret = CMP(a->ss_family, b->ss_family);
-	if (ret != 0) return 0;
+	if (ret != 0) return ret;
 
 	switch (a->ss_family) {
 	case AF_INET:

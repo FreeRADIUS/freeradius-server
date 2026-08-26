@@ -61,7 +61,7 @@ For a full list of data types which can be used in a cast, please see
 the xref:type/all_types.adoc[list of data types] page, and the
 "Basic Type Types" section.
 
-== Casting Behavior
+== Casting behaviour
 
 In general, casting data types of different sizes will fail.  For
 example, casting an `octet` string of length `3` to `uint32` is
@@ -125,7 +125,7 @@ of how double-quoted strings are used.
 === Lists
 
 When a cast is applied to a list, the cast is applied _individually to
-each entry in the list_.  This behavior is most noticeable when calling
+each entry in the list_.  This behaviour is most noticeable when calling
 a function, or looping over a set of attributes.
 
 The following example will first create two `Reply-Message` attributes
@@ -142,12 +142,12 @@ reply.Reply-Message := control.Reply-Message[*]
 
 The following example will take an input string `"192.168.0.1"`, split
 it on the `'.'` character, and then assign it to another attribute.
-The result will be four copies of the `Tmp-Integer-0` attribute, which
+The result will be four copies of the `NAS-Port` attribute, which
 each carry one octet of the IP address.
 
 .Example Creating multiple Attributes
 ----
-Tmp-Integer-0 := %str.split("192.168.0.1", '.')
+NAS-Port := %str.split("192.168.0.1", '.')
 ----
 
 If you need to cast an entire list to a value, then the value being
@@ -214,5 +214,5 @@ For compatibility with version 3, the `<cast>` syntax is also
 supported.  We recommend, however, that people use the new syntax.
 The old syntax will eventually be removed, and will create an error.
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

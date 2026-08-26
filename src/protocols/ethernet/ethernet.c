@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 of the
  *   License as published by the Free Software Foundation.
  *
@@ -125,7 +125,7 @@ static ssize_t fr_ethernet_decode(void *proto_ctx, uint8_t const *data, size_t d
 
 	default:
 		fr_strerror_const("Exceeded maximum level of VLAN tag nesting (2)");
-		break;
+		return -1;
 	}
 	p = ((uint8_t const *)vlan_hdr) + sizeof(ether_hdr->ether_type);
 

@@ -21,7 +21,6 @@
  *
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/bfd/bfd.h>
 #include "bfd/session.h"
@@ -74,48 +73,6 @@ typedef struct {
 
 #include <freeradius-devel/server/process.h>
 
-/*
- *	Debug the packet if requested.
- */
-static void bfd_packet_debug(request_t *request, fr_packet_t *packet, fr_pair_list_t *list, bool received)
-{
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-	char if_name[IFNAMSIZ];
-#endif
-
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s ID %d from %s%pV%s:%i to %s%pV%s:%i "
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       "%s%s%s"
-#endif
-		       "",
-		       received ? "Received" : "Sending",
-		       fr_bfd_packet_names[packet->code],
-		       packet->id,
-		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->socket.inet.src_ipaddr),
-		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->socket.inet.src_port,
-		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
-		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->socket.inet.dst_port
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       , packet->socket.inet.ifindex ? "via " : "",
-		       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
-		       packet->socket.inet.ifindex ? " " : ""
-#endif
-		       );
-
-	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	}
-}
-
 RESUME_FLAG(recv_bfd, UNUSED,)
 {
 	rlm_rcode_t			rcode = RESULT_RCODE;
@@ -134,15 +91,23 @@ RESUME_FLAG(recv_bfd, UNUSED,)
 		 */
 		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
 		if (vp) {
+			if (!PROCESS_PACKET_CODE_VALID(vp->vp_uint32)) {
+				REDEBUG("Invalid BFD packet type %u", vp->vp_uint32);
+				RETURN_UNLANG_FAIL;
+			}
 			state = vp->vp_uint32;
 		} else {
 			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_bfd_packet);
 			if (vp) vp = fr_pair_find_by_da_nested(&vp->vp_group, NULL, attr_bfd_state);
-			if (vp) state = vp->vp_uint8;
+			if (vp) {
+				if (!PROCESS_PACKET_CODE_VALID(vp->vp_uint8)) {
+					REDEBUG("Invalid BFD state %u", vp->vp_uint8);
+					RETURN_UNLANG_FAIL;
+				}
+				state = vp->vp_uint8;
+			}
 		}
 	}
-
-	fr_assert(PROCESS_PACKET_CODE_VALID(state));
 
 	request->reply->code = state;
 
@@ -243,11 +208,9 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 	 *	If there's no packet, we must be calling the "send" routine
 	 */
 	if (wrapper->type == BFD_WRAPPER_SEND_PACKET) {
-		fr_assert(wrapper->type == BFD_WRAPPER_SEND_PACKET);
 
 		UPDATE_STATE(reply);
 
-		bfd_packet_debug(request, request->reply, &request->reply_pairs, false);
 		return state->send(p_result, mctx, request);
 	}
 
@@ -259,8 +222,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_UNLANG_FAIL;
 	}
-
-	bfd_packet_debug(request, request->packet, &request->request_pairs, true);
 
 	return state->recv(p_result, mctx, request);
 }

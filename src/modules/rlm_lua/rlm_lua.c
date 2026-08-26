@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 if the
  *   License as published by the Free Software Foundation.
  *
@@ -64,7 +64,7 @@ typedef struct {
 /** How to compare two Lua function calls
  *
  */
-static int8_t lua_func_def_cmp(void const *one, void const *two)
+static fr_cmp_ret_t lua_func_def_cmp(void const *one, void const *two)
 {
 	lua_func_def_t const *a = one, *b = two;
 	int ret;

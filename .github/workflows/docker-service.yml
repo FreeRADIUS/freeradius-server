@@ -1,0 +1,210 @@
+name: Docker service images
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  CI: 1
+  GH_ACTIONS: 1
+  DEBIAN_FRONTEND: noninteractive
+  APT_OPTS: "-y --no-install-recommends"
+
+jobs:
+  #
+  #  Determines which registry holds the continuous integration (CI) images.
+  #  A caller that already has the answer passes the answer down.  A run that
+  #  someone starts by hand receives no inputs, so this job determines the
+  #  answer instead.  See .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
+  #
+  #  Generate matrix based on docker directories.
+  #
+  gen-matrix:
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.gen-matrix.outputs.matrix }}
+
+    steps:
+
+    - uses: actions/checkout@v6
+      with:
+        lfs: false
+
+    - id: gen-matrix
+      name: Generate matrix based on docker targets
+      run: |
+        cd scripts/docker/build
+        M=$(ls | perl -n -e '{chomp; push @L,"\"$_\""} END{print "{\"env\":[{\"OS\":",join("},{\"OS\":",@L),"}]}"}')
+        echo "Matrix: $M"
+        echo matrix=$M >> $GITHUB_OUTPUT
+
+  #
+  #  Runs on the FreeRADIUS organisation's own build machines, inside the
+  #  self-hosted-docker-cli image.  A second container runs alongside, named
+  #  self-hosted-docker-dind, and holds the docker daemon that does the actual
+  #  building.  That second container already fetches public images through
+  #  the organisation's local copy of Docker Hub, and already trusts the
+  #  certificate authority (CA) the organisation signs its own registry with.
+  #
+  #  Only the main repository builds these images.  The build publishes each
+  #  image where the rest of continuous integration (CI) then reads it, so a
+  #  fork that rebuilt the images would gain nothing, and a
+  #  GitHub-hosted machine cannot reach the local copy of Docker Hub that the
+  #  build expects.  ci-pipeline.yml skips this workflow on a fork.  The if:
+  #  below covers the one remaining case, somebody starting this workflow by
+  #  hand from a fork.
+  #
+  docker-selfhosted:
+    needs:
+      - gen-matrix
+      - common_vars
+
+    if: github.repository_owner == 'FreeRADIUS'
+
+    runs-on: self-hosted
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.gen-matrix.outputs.matrix) }}
+
+    env: ${{ matrix.env }}
+
+    name: "v4.0.x-${{ matrix.env.OS }}"
+
+    services:
+      dind:
+        #
+        #  Custom dind image with /etc/docker/daemon.json baked in
+        #  pointing at the internal NR registry as a Docker Hub
+        #  pull-through mirror, and the internal CA pre-trusted.
+        #
+        image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+          #  Bypass the squid proxy for internal registry access.
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+        #
+        #  Share the runner's workspace with dind so the build
+        #  context (Dockerfile + COPY sources) resolves to real
+        #  files inside the dind daemon.
+        #
+        #  github.workspace is the HOST path to the workspace. The
+        #  runner mounts it into the job container at a different
+        #  path (/__w/...), so we use a fixed mount point
+        #  (/workspace) that both containers agree on.
+        #
+        volumes:
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      #
+      #  Custom CI image with docker CLI / buildx / m4 baked on top
+      #  of the self-hosted base.
+      #
+      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
+      #  CA cert mount lets the in-container apt and curl talk HTTPS
+      #  to the internal registry. Shared workspace - see
+      #  dind volumes comment above.
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
+
+    steps:
+
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+        lfs: false
+
+    - name: setup-dind
+      uses: ./.github/actions/setup-dind
+
+    #
+    #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
+    #  registry-mirrors -> the internal registry baked
+    #  in, but our internal registry isn't actually a Hub pull-
+    #  through cache, so FROM ubuntu:24.04 etc. inside the build
+    #  falls back to docker.io and would otherwise hit anonymous
+    #  rate limits.
+    #
+    - name: Login to Docker Hub (via dind)
+      uses: docker/login-action@v4
+      with:
+        username: ${{ vars.DOCKERHUB_READ_USER }}
+        password: ${{ secrets.DOCKERHUB_READ_KEY }}
+
+    #
+    #  Authenticate dind to the internal registry so the push steps
+    #  below can publish service + profiling images. The host docker
+    #  daemon is logged in via the runner's job-started hook, but
+    #  dind is a separate daemon with no auth config.
+    #
+    - name: Login to internal Docker registry (via dind)
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+      run: |
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://${{ needs.common_vars.outputs.docker_registry }}/
+
+    - name: Verify Dockerfiles match m4 templates
+      run: |
+        make dockerfile.service.check
+        make dockerfile.profiling.check
+
+    #
+    #  Build service + profiling images for this distro. Profiling
+    #  FROMs the crossbuild image of the same distro, so its build
+    #  rule depends on the crossbuild stamp - covered by the
+    #  freeradius4-crossbuild push in docker-crossbuild.yml.
+    #
+    #  DOCKER_REGISTRY is set so any base image (crossbuild) that
+    #  hasn't yet been pulled locally is grabbed from the registry
+    #  instead of rebuilt, per the pull-through fallback in
+    #  scripts/docker/docker.mk.
+    #
+    - name: Build docker images
+      env:
+        DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+        DOCKER_REMOTE_PREFIX: ${{ needs.common_vars.outputs.image_prefix }}
+        DOCKER_REMOTE_TAG: ${{ needs.common_vars.outputs.image_tag }}
+      run: |
+        make docker.service.$OS
+        make docker.profiling.$OS
+
+    #
+    #  No push step here. service + profiling images are published by
+    #  docker-ci-images-refresh.yml on its periodic schedule. This
+    #  workflow is a per-commit smoke build only - it confirms the
+    #  Dockerfile chain still compiles. The built :<sha> tags die with
+    #  the per-job dind sidecar.
+
+    - name: Show docker build log
+      if: failure()
+      run: |
+        cat build/docker/build.$OS.service 2>/dev/null || true
+        cat build/docker/build.$OS.profiling 2>/dev/null || true
+
+    #
+    #  If the CI has failed and the branch is ci-debug then start a tmate
+    #  session. SSH rendezvous point is emited continuously in the job output.
+    #
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}

@@ -1,0 +1,12 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Protocol dictionary for EAP-PSK (RFC 4764)
+#
+BEGIN PROTOCOL	EAP-PSK	104
+
+$INCLUDE dictionary.freeradius
+
+END-PROTOCOL	EAP-PSK

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -28,13 +28,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/xlat.h>
-#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/util/value.h>
 
 #include "rlm_winbind.h"
 #include "auth_wbclient_pap.h"
@@ -302,6 +297,13 @@ static xlat_action_t winbind_ping_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*out_vb;
 	fr_time_t		then, now;
 
+	/*
+	 *	An explicit `null` is equivalent to no domain - libwbclient
+	 *	treats a NULL domain pointer as "any".  Drop the box rather
+	 *	than read vb_strvalue on a null-typed box.
+	 */
+	if (domain && fr_type_is_null(domain->type)) domain = NULL;
+
 	wbctx = winbind_slab_reserve(t->slab);
 	if (!wbctx) {
 		RERROR("Ping failed - Unable to get winbind context");
@@ -320,17 +322,18 @@ static xlat_action_t winbind_ping_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		RDEBUG2("Ping succeeded to DC %s after %pVms", dc,
 			fr_box_time_delta_msec(fr_time_sub(now, then)));
 
-		MEM(out_vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 		MEM(fr_value_box_strdup(out_vb, out_vb, NULL, "ok", false) == 0);
 	} else {
 		char const *err_str = wbcErrorString(err);
 
-		RERROR("Ping failed (%s) to DC %s after %pVms%s%s", err_str, dc,
-		       fr_box_time_delta_msec(fr_time_sub(now, then)),
-		       err_info->display_string ? " - " : "",
-		       err_info->display_string ? err_info->display_string : "");
+		if (err_str) {
+			RERROR("Ping failed (%s) to DC %s after %pVms%s%s", err_str, dc,
+			       fr_box_time_delta_msec(fr_time_sub(now, then)),
+			       err_info->display_string ? " - " : "",
+			       err_info->display_string ? err_info->display_string : "");
 
-		MEM(fr_value_box_strdup(out_vb, out_vb, NULL, err_str, false) == 0);
+			MEM(fr_value_box_strdup(out_vb, out_vb, NULL, err_str, false) == 0);
+		}
 	}
 
 	if (dc) wbcFreeMemory(dc);
@@ -482,7 +485,7 @@ static int domain_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const 
 
 	if (strlen(cf_pair_value(to_parse)) > 0) {
 		if (tmpl_afrom_substr(ctx, &parsed_tmpl,
-				      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+				      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 				      cf_pair_value_quote(to_parse),
 				      NULL, t_rules) < 0) return -1;
 	} else {

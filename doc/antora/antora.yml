@@ -12,6 +12,7 @@ nav:
 - modules/ROOT/nav.adoc
 - modules/concepts/nav.adoc
 - modules/reference/nav.adoc
+- modules/troubleshooting/nav.adoc
 - modules/howto/nav.adoc
 - modules/tutorials/nav.adoc
 - modules/developers/nav.adoc

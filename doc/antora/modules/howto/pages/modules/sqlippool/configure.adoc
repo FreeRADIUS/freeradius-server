@@ -30,12 +30,7 @@ any recent changes.  Then, consider what went wrong by examining the
 debug output.  If the issues are still clear, then ask a question on
 the
 https://lists.freeradius.org/mailman/listinfo/freeradius-users[freeradius-users]
-mailing list.  Please also read the
-https://wiki.freeradius.org/list-help[list help] instructions, for
-what information we need in order to help you.  This information is
-typically an explanation of what you are trying to achieve, what
-exactly isn't working and provide the full debugging output for a
-relevant test run.
+mailing list.  Please also see <https://www.freeradius.org/documentation/freeradius-server/4.0.0/gethelp.html>
 ====
 
 
@@ -188,7 +183,7 @@ mysql radius < /etc/raddb/mods-config/sql/ippool/mysql/schema.sql
 [NOTE]
 ====
 The above command assumes that passwordless login has been configured via
-the user’s `~/.my.cnf` file, or otherwise.
+the user's `~/.my.cnf` file, or otherwise.
 ====
 
 For performance reasons, if you are using a database that supports `SELECT ...
@@ -383,3 +378,6 @@ attribute then no action is taken. Also recall that if `sqlippool` is invoked
 while the attribute configured in the `attribute_name` configuration item
 (e.g. `Framed-IP-Address`) already exists then no action is taken.
 ====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

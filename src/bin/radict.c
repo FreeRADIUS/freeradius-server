@@ -31,7 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict_priv.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <stdbool.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -278,7 +277,10 @@ static void da_print_info(fr_dict_t const *dict, fr_dict_attr_t const *da, int d
 	if (!print_recursive || !fr_type_is_structural(da->type)) return;
 
 	namespace = dict_attr_namespace(da);
-	fr_assert(namespace != NULL);
+	if (!namespace) {
+		fr_assert(0);	/* the namespace should always exist */
+		return;
+	}
 
 	for (child = fr_hash_table_iter_init(namespace, &iter);
 	     child != NULL;
@@ -319,7 +321,7 @@ static char const *length_to_c_type[] = {
 	[8] = "uint64_t",
 };
 
-static void da_normalize_name(fr_dict_attr_t const *da, char buffer[static FR_DICT_ATTR_MAX_NAME_LEN + 1])
+static void da_normalize_name(fr_dict_attr_t const *da, char buffer[static FR_DICT_ATTR_MAX_NAME_LEN*2 + 1])
 {
 	char const *start = da->name;
 	char const *p;
@@ -334,7 +336,7 @@ static void da_normalize_name(fr_dict_attr_t const *da, char buffer[static FR_DI
 		size_t	len;
 
 		len = strlen(da->parent->name);
-       
+
 		/*
 		 *	"radiusAuthServer" and "radiusAuthServTotalAccessRejects"
 		 *	to "total_access_rejects"
@@ -382,7 +384,7 @@ static void da_normalize_name(fr_dict_attr_t const *da, char buffer[static FR_DI
 
 static void da_print_name(FILE *fp, fr_dict_attr_t const *da)
 {
-	char buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char buffer[FR_DICT_ATTR_MAX_NAME_LEN*2 + 1];
 
 	da_normalize_name(da, buffer);
 	fprintf(fp, "%s", buffer);
@@ -505,7 +507,7 @@ static void da_print_base_c_da_def(FILE *fp, fr_dict_attr_t const *parent)
 {
 	int i;
 	fr_dict_attr_t const *da;
-	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN*2 + 1];
 
 	CHECK_TYPE(parent);
 
@@ -576,8 +578,8 @@ static void da_print_stats_link(FILE *fp, fr_dict_attr_t const *parent)
 {
 	int i, num_elements = 0;
 	fr_dict_attr_t const *da;
-	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN*2 + 1];
+	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN*2 + 1];
 
 	CHECK_TYPE(parent);
 
@@ -627,8 +629,8 @@ static void da_print_attr_autoload(FILE *fp, fr_dict_attr_t const *parent)
 {
 	int i;
 	fr_dict_attr_t const *da;
-	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN*2 + 1];
+	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN*2 + 1];
 
 	CHECK_TYPE(parent);
 
@@ -656,8 +658,8 @@ static void da_print_attr_autoload(FILE *fp, fr_dict_attr_t const *parent)
 
 static void da_print_stats_h(FILE *fp, fr_dict_attr_t const *parent)
 {
-	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN*2 + 1];
+	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN*2 + 1];
 
 	CHECK_TYPE(parent);
 
@@ -778,7 +780,7 @@ int main(int argc, char *argv[])
 	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("radict - Fault setup");
 		fr_exit(EXIT_FAILURE);
 	}
@@ -888,7 +890,7 @@ int main(int argc, char *argv[])
 	if (dict_end == dicts) {
 		fr_perror("radict - No dictionaries loaded");
 		ret = 1;
-
+		goto finish;
 	}
 
 	if (print_headers) switch(output_format) {

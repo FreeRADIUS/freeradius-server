@@ -38,7 +38,7 @@ clientno := 1
 read_cert_serial
 
 session-state.TLS-Certificate.Serial := %bin(serial)
-# This is a dummy URI - the module is configured to just cat the crl using %exec()
+# This is a dummy URI - the module is configured to just read the file using %file.cat()
 session-state.TLS-Certificate.X509v3-CRL-Distribution-Points = 'http://www.example.com/example_ca.crl'
 
 crl
@@ -83,16 +83,20 @@ if (!ok) {
 }
 
 #
-#  And advance time beyond the forced CRL refresh interval
-#
-%time.advance(10s)
-
-#
 #  Now revoke the cert and update the crl
 #
 revoke_client_cert
 
 build_crl
+
+%crl.refresh(session-state.TLS-Certificate.X509v3-CRL-Distribution-Points)
+
+#
+#  Do something that yields the request twice so that the event loop will
+#  run the refresh in the coordinator, then the worker will read the refreshed
+#  CRL.  This is a work around for tests being run in a synchronous interpreter.
+%delay(0.1)
+%delay(0.1)
 
 crl {
 	reject = 1

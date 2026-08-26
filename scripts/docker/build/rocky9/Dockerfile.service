@@ -1,0 +1,255 @@
+# Auto generated for rocky9
+# from scripts/docker/m4/service.rpm.m4
+#
+# Rebuild this file with `make dockerfile.service`
+#
+ARG from=rockylinux/rockylinux:9
+FROM ${from} AS build
+
+#
+#  Retry transient package-repo failures. dnf retries 10 times by default;
+#  cap that at 3 and shorten the per-request timeout from 30s to 15s so a
+#  hung mirror fails fast and the retry kicks in quickly. Stall detection
+#  (minrate) stays on so a stalled in-flight download still gets killed.
+#
+RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
+
+#
+#  Snapshot the Rocky mirror lists at build time so no later dnf
+#  invocation depends on the mirrors.rockylinux.org redirector (see
+#  the script header for the full story).
+#
+COPY scripts/docker/bin/dnf-mirrorlist-snapshot /usr/local/bin/dnf-mirrorlist-snapshot
+RUN dnf-mirrorlist-snapshot rocky
+#
+#  Refresh dnf metadata and install the build toolchain shared by the
+#  production, crossbuild, and CI base templates. CRB is enabled because
+#  the build-dep closure pulls packages that live there. OS_VER is
+#  substituted by the dispatcher (Dockerfile.m4) per Rocky major version.
+#
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
+
+RUN dnf update -y
+RUN dnf install -y \
+		dnf-plugins-core \
+		dnf-utils \
+		epel-release \
+		git \
+		openssl \
+		procps \
+		rpmdevtools \
+		rsync
+
+RUN dnf config-manager --set-enabled crb
+
+#
+#  The system gcc 11 on Rocky 9 predates C23, which FreeRADIUS
+#  requires. gcc-toolset-14 supplies a new enough gcc; putting the
+#  toolset bin directory first in PATH makes every later build step
+#  use the toolset gcc without sourcing the enable script. The annobin
+#  plugin is needed so rpmbuild hardening annotations keep working
+#  with the toolset compiler.
+#
+RUN dnf install -y gcc-toolset-14-gcc gcc-toolset-14-gcc-c++ gcc-toolset-14-annobin-plugin-gcc
+ENV PATH=/opt/rh/gcc-toolset-14/root/usr/bin:$PATH
+
+#
+#  Snapshot the EPEL mirror lists, which only exist once epel-release
+#  is installed (the script itself arrives via common.dnf.retries.m4).
+#
+RUN dnf-mirrorlist-snapshot epel
+#
+#  Build libkqueue from source as proper RPMs (libkqueue, libkqueue-devel,
+#  libkqueue-debuginfo) so downstream dnf-builddep / Requires steps find
+#  the -devel and so a debugger sees symbols.
+#
+#  Rocky's arm64 archives don't currently ship libkqueue at all, and the
+#  upstream project's own packaging keeps default optimisation flags that
+#  strip the symbols we care about -- RelWithDebInfo with explicit C
+#  flags overrides that and CPACK_RPM_DEBUGINFO_PACKAGE=ON makes cpack
+#  emit a separate -debuginfo package alongside the main rpm.
+#
+#  libkqueue numbers a package with the most recent release tag, followed by
+#  the count of commits made since that tag, for example 2.7.0.41.  The
+#  NetworkRADIUS extras repository numbers its own libkqueue packages the
+#  same way.  Two builds from the same source therefore reach the same
+#  number, and a later "dnf update" finds nothing newer to install.
+#
+#  libkqueue asks git for the tag and the count, using "git describe".  A
+#  clone made with --depth 1 downloads no tags, git describe then answers
+#  nothing, and libkqueue falls back to a number written into its own
+#  CMakeLists.txt.  dnf reads the fallback as older than the repository's
+#  package and replaces the build here.  So the clone below downloads the
+#  whole history.
+#
+#  Build out-of-tree (separate build dir) because cpack's debuginfo
+#  generator demands a source-vs-build path distinction to relocate
+#  debug records.
+#
+RUN dnf install -y gcc make cmake git rpm-build && \
+    git clone https://github.com/mheily/libkqueue.git /tmp/libkqueue-from-source-for-debuginfo-packaging && \
+    mkdir /tmp/libkqueue-from-source-build && \
+    cd /tmp/libkqueue-from-source-build && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib64 \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g3 -O1 -fno-omit-frame-pointer -DNDEBUG" \
+        -DCPACK_RPM_DEBUGINFO_PACKAGE=ON \
+        -DCPACK_BUILD_SOURCE_DIRS=/tmp/libkqueue-from-source-for-debuginfo-packaging \
+        /tmp/libkqueue-from-source-for-debuginfo-packaging && \
+    make && \
+    cpack -G RPM && \
+    rpm -i --force libkqueue*.rpm && \
+    mkdir -p /opt/libkqueue-rpms && cp libkqueue*.rpm /opt/libkqueue-rpms/ && \
+    cd / && rm -rf /tmp/libkqueue-from-source-for-debuginfo-packaging /tmp/libkqueue-from-source-build
+#
+#  Set up NetworkRADIUS extras repository. OS_NAME is substituted by the
+#  dispatcher (Dockerfile.m4); $releasever resolves at dnf runtime so the
+#  same repo file works on rocky9 and rocky10.
+#
+RUN curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
+        -o /etc/pki/rpm-gpg/packages.networkradius.com.asc \
+        "https://packages.networkradius.com/pgp/packages%40networkradius.com"
+
+RUN echo $'[networkradius-extras]\n\
+name=NetworkRADIUS-extras-$releasever\n\
+baseurl=http://packages.networkradius.com/extras/rocky/$releasever/\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc'\
+> /etc/yum.repos.d/networkradius-extras.repo
+RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
+
+#
+#  Create build directory
+#
+RUN mkdir -p /usr/local/src/repositories/freeradius-server
+WORKDIR /usr/local/src/repositories/freeradius-server/
+
+#
+#  Copy the FreeRADIUS directory in
+#
+COPY . .
+
+#
+#  Clean up tree - we want to build from the latest commit, not from
+#  any cruft left around on the local system
+#
+RUN git clean -fdxx \
+ && git reset --hard HEAD
+
+#
+#  Install build dependencies
+#
+#  Run twice, it doesn't always get everything with one invocation
+RUN [ -e redhat/freeradius.spec ] && \
+	dnf builddep -y redhat/freeradius.spec && \
+	dnf builddep -y redhat/freeradius.spec
+
+#
+#  Create RPM build environment
+#
+ENV BUILDDIR=/root/rpmbuild
+RUN rpmdev-setuptree
+
+RUN ./configure
+RUN make pkg_version > /VERSION
+RUN cat /VERSION
+RUN make freeradius-server-$(cat /VERSION).tar.bz2
+RUN cp freeradius-server-$(cat /VERSION).tar.bz2 $BUILDDIR/SOURCES/
+RUN cp -r redhat/* $BUILDDIR/SOURCES/
+RUN make dist-check-rpm
+RUN cp -r redhat/freeradius.spec $BUILDDIR/SPECS/
+WORKDIR $BUILDDIR
+
+#
+#  Build the server
+#
+ENV QA_RPATHS=0x0003
+RUN rpmbuild -bb --define "_release $(cat /VERSION)" "$BUILDDIR/SPECS/freeradius.spec"
+
+RUN mkdir /root/rpms
+RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
+
+#
+#  Clean environment and run the server
+#
+FROM ${from}
+
+#
+#  Retry transient package-repo failures. dnf retries 10 times by default;
+#  cap that at 3 and shorten the per-request timeout from 30s to 15s so a
+#  hung mirror fails fast and the retry kicks in quickly. Stall detection
+#  (minrate) stays on so a stalled in-flight download still gets killed.
+#
+RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
+
+#
+#  Snapshot the Rocky mirror lists at build time so no later dnf
+#  invocation depends on the mirrors.rockylinux.org redirector (see
+#  the script header for the full story).
+#
+COPY scripts/docker/bin/dnf-mirrorlist-snapshot /usr/local/bin/dnf-mirrorlist-snapshot
+RUN dnf-mirrorlist-snapshot rocky
+
+COPY --from=build /root/rpms /tmp/
+
+#
+#  libkqueue isn't in the Rocky archives; the build stage built it from
+#  source (via common.rpm.libkqueue.m4). Ferry the runtime rpm across so
+#  freeradius's `Requires: libkqueue` resolves at install time.
+#
+COPY --from=build /opt/libkqueue-rpms/libkqueue-[0-9]*.rpm /tmp/
+
+#
+#  Set up NetworkRADIUS extras repository. OS_NAME is substituted by the
+#  dispatcher (Dockerfile.m4); $releasever resolves at dnf runtime so the
+#  same repo file works on rocky9 and rocky10.
+#
+RUN curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
+        -o /etc/pki/rpm-gpg/packages.networkradius.com.asc \
+        "https://packages.networkradius.com/pgp/packages%40networkradius.com"
+
+RUN echo $'[networkradius-extras]\n\
+name=NetworkRADIUS-extras-$releasever\n\
+baseurl=http://packages.networkradius.com/extras/rocky/$releasever/\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc'\
+> /etc/yum.repos.d/networkradius-extras.repo
+RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
+
+#
+#  Other requirements
+#
+
+#  Needed for mysql-libs
+RUN dnf install -y dnf-utils
+RUN dnf config-manager --enable crb
+
+#  EPEL repository for freetds and hiredis
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+    && dnf install -y dnf-utils \
+    && dnf config-manager --enable epel-testing
+
+#
+#  Snapshot the EPEL mirror lists, which only exist once epel-release
+#  is installed (the script itself arrives via common.dnf.retries.m4).
+#
+RUN dnf-mirrorlist-snapshot epel
+
+ARG radiusd_uid=95
+ARG radiusd_gid=95
+
+RUN groupadd -g ${radiusd_gid} -r radiusd \
+    && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \
+    && dnf install -y /tmp/*.rpm
+
+WORKDIR /
+COPY scripts/docker/etc/docker-entrypoint.sh.rpm docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh
+
+EXPOSE 1812/udp 1813/udp
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["radiusd"]

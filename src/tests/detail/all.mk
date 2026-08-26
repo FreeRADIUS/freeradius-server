@@ -9,6 +9,11 @@ TEST  := test.detail
 FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 
 $(eval $(call TEST_BOOTSTRAP))
+#
+#  The test loads modules at run time, so make needs telling about them.  The
+#  list comes from the config itself.
+#
+$(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/radiusd.conf,$(FILES.$(TEST))))
 
 #
 #	The server is reading and consuming the input detail file,
@@ -32,6 +37,5 @@ $(OUTPUT)/%: $(DIR)/% $(addprefix ${BUILD_DIR}/lib/,proto_detail.la proto_detail
 	fi
 	${Q}touch $@
 
-.NO_PARALLEL: $(TEST)
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@

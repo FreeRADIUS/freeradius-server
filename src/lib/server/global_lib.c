@@ -74,7 +74,7 @@ static int lib_init_call(global_lib_inst_t *lib)
 
 	if ((cf_section_rules_push(cs, lib->autoinit->config)) < 0 ||
 	    (cf_section_parse(lib, lib->autoinit->inst, cs) < 0)) {
-		cf_log_err(cs, "Failed evaluating configuration for libldap");
+		cf_log_err(cs, "Failed evaluating configuration for %s", lib->autoinit->name);
 		return -1;
 	}
 
@@ -102,14 +102,14 @@ static int lib_auto_instantiate(global_lib_autoinst_t * const *to_init)
 	for (p = to_init; *p != &global_lib_terminator; p++) {
 		global_lib_inst_t	*lib = NULL;
 
-		lib = fr_rb_find(&lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
+		fr_rb_find((void **)&lib, &lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
 
 		/*
 		 *  If the library is already initialised, just increase the reference count
 		 */
 		if ((lib) && (lib->initialised)) {
 			lib->instance_count++;
-			return 0;
+			continue;
 		}
 
 		if (!lib) {
@@ -152,18 +152,18 @@ static void lib_autofree(global_lib_autoinst_t * const *to_free)
 	for (p = to_free; *p != &global_lib_terminator; p++) {
 		global_lib_inst_t	*lib = NULL;
 
-		lib = fr_rb_find(&lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
+		fr_rb_find((void **)&lib, &lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
 
-		fr_assert_msg(lib, "Library %s already freed", (*p)->name);
+		if (!lib) continue;
 
-		if (--lib->instance_count > 0) return;
+		if (--lib->instance_count > 0) continue;
 
 		/*
 		 *  Only run the free callback if the library was successfully initialised
 		 */
 		if (lib->initialised && ((*p)->free)) (*p)->free();
 
-		fr_rb_remove(&lib_list->libs, lib);
+		fr_rb_remove(NULL, &lib_list->libs, lib);
 		talloc_free(lib);
 	}
 }
@@ -179,7 +179,7 @@ void global_lib_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *u
 /** Compare two fr_lib_t
  *
  */
-static int8_t _lib_cmp(void const *one, void const *two)
+static fr_cmp_ret_t _lib_cmp(void const *one, void const *two)
 {
 	global_lib_inst_t const	*a = one;
 	global_lib_inst_t const	*b = two;

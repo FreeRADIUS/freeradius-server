@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -26,10 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 /** Client field
@@ -85,7 +82,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
 		char const *value = cf_pair_value(cp);
 
 		MEM(vp = fr_pair_afrom_da(ctx, da));
-		if (fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, NULL, false) < 0) {
+		if (fr_pair_value_from_str(vp, value, talloc_strlen(value), NULL, false) < 0) {
 			RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue(value),
 				tmpl_attr_tail_da(map->lhs)->name, fr_strerror());
 			talloc_free(vp);

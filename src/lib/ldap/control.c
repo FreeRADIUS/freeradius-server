@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -56,22 +56,22 @@ USES_APPLE_DEPRECATED_API
 	size_t i, num_serverctrls = 0, num_clientctrls = 0;
 
 	if (serverctrls_in) {
-		for (i = 0; serverctrls_in[i] && (num_serverctrls < LDAP_MAX_CONTROLS); i++) {
+		for (i = 0; serverctrls_in[i] && (num_serverctrls < (serverctrls_len - 1)); i++) {
 			serverctrls_out[num_serverctrls++] = serverctrls_in[i];
 		}
 	}
 
 	if (clientctrls_in) {
-		for (i = 0; clientctrls_in[i] && (num_clientctrls < LDAP_MAX_CONTROLS); i++) {
+		for (i = 0; clientctrls_in[i] && (num_clientctrls < (clientctrls_len - 1)); i++) {
 			clientctrls_out[num_clientctrls++] = clientctrls_in[i];
 		}
 	}
 
-	for (i = 0; (i < (size_t)conn->serverctrls_cnt) && (num_serverctrls < serverctrls_len); i++) {
+	for (i = 0; (i < (size_t)conn->serverctrls_cnt) && (num_serverctrls < (serverctrls_len - 1)); i++) {
 		serverctrls_out[num_serverctrls++] = conn->serverctrls[i].control;
 	}
 
-	for (i = 0; (i < (size_t)conn->clientctrls_cnt) && (num_clientctrls < clientctrls_len); i++) {
+	for (i = 0; (i < (size_t)conn->clientctrls_cnt) && (num_clientctrls < (clientctrls_len - 1)); i++) {
 		clientctrls_out[num_clientctrls++] = conn->clientctrls[i].control;
 	}
 
@@ -220,7 +220,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *
 
 	if (username) {
 		tracking_id.bv_val = username;
-		tracking_id.bv_len = talloc_array_length(username) - 1;
+		tracking_id.bv_len = talloc_strlen(username);
 
 		ret = ldap_create_session_tracking_control(conn->handle, ipaddress,
 							   hostname,
@@ -239,7 +239,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *
 
 	if (acctsessionid) {
 		tracking_id.bv_val = acctsessionid;
-		tracking_id.bv_len = talloc_array_length(acctsessionid) - 1;
+		tracking_id.bv_len = talloc_strlen(acctsessionid);
 
 		ret = ldap_create_session_tracking_control(conn->handle, ipaddress,
 							   hostname,
@@ -254,7 +254,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *
 
 	if (acctmultisessionid) {
 		tracking_id.bv_val = acctmultisessionid;
-		tracking_id.bv_len = talloc_array_length(acctmultisessionid) - 1;
+		tracking_id.bv_len = talloc_strlen(acctmultisessionid);
 
 		ret = ldap_create_session_tracking_control(conn->handle, ipaddress,
 							   hostname,

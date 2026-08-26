@@ -1,0 +1,9 @@
+#
+#  Test: invalid syslog facility
+#
+linelog {	# ERROR
+	destination = syslog
+	syslog {
+		facility = bogus
+	}
+}

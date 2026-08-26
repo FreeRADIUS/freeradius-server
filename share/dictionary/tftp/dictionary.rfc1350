@@ -13,17 +13,17 @@
 ##############################################################################
 
 #
-#  TFTPD attributes for the packet header
+#  TFTP attributes for the packet header
 #
-ATTRIBUTE	Opcode					1	uint16
-ATTRIBUTE	Filename				2	string
-ATTRIBUTE	Mode					3	uint8
-ATTRIBUTE	Block-Size				4	uint16
+DEFINE		Opcode						uint16
+DEFINE	Filename						string
+DEFINE	Mode							uint8
+DEFINE	Block-Size						uint16
 
-ATTRIBUTE	Block					5	uint16
-ATTRIBUTE	Data					6	octets
-ATTRIBUTE	Error-Code				7	uint16
-ATTRIBUTE	Error-Message				8	string
+DEFINE	Block							uint16
+DEFINE	Data							octets
+DEFINE	Error-Code						uint16
+DEFINE	Error-Message						string
 
 VALUE	Opcode				Read-Request		0x0001
 VALUE	Opcode				Write-Request		0x0002

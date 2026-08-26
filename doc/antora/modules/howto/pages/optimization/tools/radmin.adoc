@@ -69,3 +69,6 @@ Next, clear the debug file setting to complete your session.
 radmin> debug file
 radmin> show debug file
 ```
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

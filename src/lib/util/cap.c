@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 of the
  *   License as published by the Free Software Foundation.
  *
@@ -68,7 +68,7 @@ bool fr_cap_is_enabled(cap_value_t cap, cap_flag_t set)
 		goto done;
 	}
 
-	if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &state) < 0) {
+	if (cap_get_flag(caps, cap, set, &state) < 0) {
 		char *cap_name = cap_to_name(cap);
 		fr_strerror_printf("Failed getting %s %s state from working set: %s",
 				   cap_name,
@@ -251,7 +251,11 @@ int fr_cap_disable(cap_value_t cap, cap_flag_t set)
 	}
 
 	if (state == CAP_SET) {
-		if (cap_clear_flag(caps, set) < 0) {
+		cap_value_t const to_clear[] = {
+			cap
+		};
+
+		if (cap_set_flag(caps, set, NUM_ELEMENTS(to_clear), to_clear, CAP_CLEAR) < 0) {
 			char *cap_name = cap_to_name(cap);
 			fr_strerror_printf("Failed clearing %s %s state in working set: %s",
 					   cap_name,

@@ -59,7 +59,7 @@ fr_table_num_sorted_t const dl_module_type_prefix[] = {
 };
 size_t dl_module_type_prefix_len = NUM_ELEMENTS(dl_module_type_prefix);
 
-static int8_t dl_module_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dl_module_cmp(void const *one, void const *two)
 {
 	dl_module_t const *a = one, *b = two;
 	int ret;
@@ -339,8 +339,8 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 	/*
 	 *	If the module's already been loaded, increment the reference count.
 	 */
-	dl_module = fr_rb_find(dl_module_loader->module_tree,
-			       &(dl_module_t){ .dl = &(dl_t){ .name = module_name }});
+	fr_rb_find((void **)&dl_module, dl_module_loader->module_tree,
+		   &(dl_module_t){ .dl = &(dl_t){ .name = module_name }});
 	if (dl_module) {
 		dl_module->refs++;
 
@@ -406,7 +406,7 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 	/*
 	 *	Add the module to the dl cache
 	 */
-	dl_module->in_tree = fr_rb_insert(dl_module_loader->module_tree, dl_module);
+	dl_module->in_tree = (fr_rb_insert(dl_module_loader->module_tree, dl_module) == 0);
 	if (!dl_module->in_tree) {
 		ERROR("Failed caching module \"%s\"", module_name);
 		goto error;
@@ -542,7 +542,7 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 	pthread_mutex_init(&dl_module_loader->lock, NULL);
 
 	dl_module_loader->dl_loader = dl_loader_init(NULL, dl_module_loader, false, true);
-	if (!dl_module_loader) {
+	if (!dl_module_loader->dl_loader) {
 		PERROR("Failed initialising dl_loader");
 	error:
 		TALLOC_FREE(dl_module_loader);
@@ -605,7 +605,7 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 		}
 		env = getenv("DYLD_LIBRARY_PATH");
 		if (env) {
-			DEBUG4("DYLB_LIBRARY_PATH          : %s", env);
+			DEBUG4("DYLD_LIBRARY_PATH          : %s", env);
 		}
 		env = getenv("DYLD_FALLBACK_LIBRARY_PATH");
 		if (env) {

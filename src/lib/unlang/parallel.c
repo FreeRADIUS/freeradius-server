@@ -29,8 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/signal.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/util/table.h>
 
 #include "action.h"
 #include "interpret.h"
@@ -48,25 +46,27 @@ RCSID("$Id$")
  *
  * We don't free any requests here, we just mark them up so their rcodes are ignored when
  * the parent is resumed, the parent then frees the child, once we're sure its done being
- * run through the intepreter.
+ * run through the interpreter.
  */
 static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_parallel_state_t *state, unlang_child_request_t *cr)
 {
-	request_t *child = cr->request;
-	request_t *request = child->parent;	/* For debug messages */
+	request_t *child;
+	request_t *request;
 	unlang_child_request_state_t child_state = cr->state;
 
 	switch (cr->state) {
 	case CHILD_INIT:
 		cr->state = CHILD_CANCELLED;
 		fr_assert(!cr->request);
-		break;
+		return;
 
 	case CHILD_EXITED:
 		cr->state = CHILD_CANCELLED;	/* Don't process its return code */
 		break;
 
 	case CHILD_RUNNABLE:	/* Don't check runnable_id, may be yielded */
+		fr_assert(cr->request);
+
 		/*
 		 *	Signal the child to stop
 		 *
@@ -74,6 +74,9 @@ static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_pa
 		 *	and signals anything that was tracking it
 		 *	that it's now complete.
 		 */
+
+		child = cr->request;
+
 		unlang_interpret_signal(child, FR_SIGNAL_CANCEL);
 
 		/*
@@ -91,12 +94,11 @@ static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_pa
 		return;
 
 	case CHILD_CANCELLED:
-		break;
-
 	case CHILD_FREED:
 		return;
 	}
 
+	request = cr->request->parent;
 	RDEBUG3("parallel - child %s (%d/%d) CANCELLED, previously %s",
 		cr->name, cr->num, state->num_children,
 		fr_table_str_by_value(unlang_child_states_table, child_state, "<INVALID>"));
@@ -117,6 +119,10 @@ static void unlang_parallel_signal(UNUSED request_t *request,
 	if (action == FR_SIGNAL_CANCEL) {
 		for (i = 0; i < state->num_children; i++) unlang_parallel_cancel_child(state, &state->children[i]);
 
+		/*
+		 *	If we're cancelled, then we fail, just to be safe.
+		 */
+		state->result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 		return;
 	}
 
@@ -223,10 +229,6 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 							      "unlang_parallel_state_t",
 							      num_children,
 							      (talloc_array_length(request->name) * 2)));
-	if (!state) {
-		return UNLANG_ACTION_FAIL;
-	}
-
 	(void) talloc_set_type(state, unlang_parallel_state_t);
 	state->result = UNLANG_RESULT_NOT_SET;
 	state->detach = gext->detach;
@@ -242,8 +244,8 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 		request_t			*child;
 		unlang_result_t			*child_result;
 
-		child = unlang_io_subrequest_alloc(request,
-						   request->proto_dict, state->detach);
+		MEM(child = unlang_io_subrequest_alloc(request,
+						   request->proto_dict, state->detach));
 		child->packet->code = request->packet->code;
 
 		RDEBUG3("parallel - child %s (%d/%d) INIT",
@@ -268,6 +270,7 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 					       &request->control_pairs) < 0)) {
 				REDEBUG("failed copying lists to child");
 			error:
+				talloc_free(child);
 
 				/*
 				 *	Remove all previously
@@ -314,7 +317,12 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 		if (unlang_interpret_push(child_result, child,
 					  instruction,
 					  FRAME_CONF(RLM_MODULE_NOOP, state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME),
-					  UNLANG_NEXT_STOP) < 0) goto error;
+					  UNLANG_NEXT_STOP) < 0) {
+			unlang_subrequest_detach_and_free(&state->children[i].request);
+			state->children[i].state = CHILD_FREED;
+			child = NULL;
+			goto error;
+		}
 	}
 
 	/*
@@ -342,6 +350,9 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 			 *	Converts to a detached request
 			 */
 			unlang_interpret_signal(state->children[i].request, FR_SIGNAL_DETACH);
+
+			state->children[i].request = NULL;
+			state->children[i].state = CHILD_DETACHED;
 		}
 
 		/*
@@ -357,7 +368,7 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 		 *      into the child.
 		 */
 		if (state->children[i].config.session_unique_ptr) {
-			fr_state_restore_to_child(state->children[i].request,
+			fr_state_restore_from_parent(state->children[i].request,
 						  state->children[i].config.session_unique_ptr,
 						  state->children[i].num);
 		}
@@ -447,7 +458,7 @@ void unlang_parallel_init(void)
 {
 	unlang_register(&(unlang_op_t){
 			.name = "parallel",
-			.type = UNLANG_TYPE_PARALLEL,	
+			.type = UNLANG_TYPE_PARALLEL,
 			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
 
 			.compile = unlang_compile_parallel,

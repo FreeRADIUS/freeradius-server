@@ -7,7 +7,7 @@ jobs:
     steps:
       - if: contains(github.event.pull_request.labels.*.name, 'close')
         name: Close Issue
-        uses: peter-evans/close-issue@v1
+        uses: peter-evans/close-issue@v3.0.2
         with:
           comment: Direct questions about server operation or development to the FreeRADIUS mailing lists https://freeradius.org/support/.
             

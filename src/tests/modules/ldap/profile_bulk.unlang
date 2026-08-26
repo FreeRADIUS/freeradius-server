@@ -1,0 +1,53 @@
+#
+#  profile { search_mode } matrix rows tested here
+#  (full option matrix documented in raddb/mods-available/ldap)
+#
+#  Ref | search_mode | scope | sort_by | Result
+#  ----+-------------+-------+---------+----------------------------------------------------
+#  b1  | bulk        | base  | set     | One search for all DNs, server sort order
+#  b2  | bulk        | base  | set     | Combined search returns zero entries
+#
+
+#
+#  b1: a single search retrieves every profile.  Application order is
+#  the server's sort order (radiusProfilePriority ascending), not the
+#  list order on the user object.  No default profile on this instance.
+#
+#  User object lists order1, missing, order2, order3.
+#  Priorities: order3 = 10, order2 = 20, order1 = 30.
+#
+Stripped-User-Name := 'profileseq'
+ldap_profile_bulk
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order3') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order2') {
+	test_fail
+}
+if !(reply.Filter-Id[2] == 'order1') {
+	test_fail
+}
+if (reply.Filter-Id[3]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  b2: the only profile DN doesn't exist and there is no default, so the
+#  combined search returns zero entries.
+#
+Stripped-User-Name := 'profilenone'
+ldap_profile_bulk
+
+if (reply.Filter-Id) {
+	test_fail
+}
+
+reply := {}
+
+test_pass

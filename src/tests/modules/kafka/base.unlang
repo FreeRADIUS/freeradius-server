@@ -1,1 +1,28 @@
-ok
+#
+#  Basic produce + round-trip verify via the xlat form.
+#
+#  Subscribe first (backgrounds rpk, resets the topic, returns), then
+#  produce, then inside a `timeout` block run the wait helper which
+#  `tail -F`s the subscriber's line-per-record output until the
+#  expected count has been written and emits the JSON array that
+#  map json consumes directly.
+#
+%exec('/bin/sh', '-c', '"$KAFKA_SUBSCRIBE" freeradius-test-base $ENV{OUTPUT_DIR}kafka-base.json 1')
+
+control.Tmp-String-0 := "hello from rlm_kafka base test"
+if (!%kafka.produce('freeradius-test-base', null, control.Tmp-String-0)) {
+	test_fail
+}
+
+timeout 10s {
+	map json %exec('/bin/sh', '-c', '"$KAFKA_WAIT_AND_CLEANUP" $ENV{OUTPUT_DIR}kafka-base.json 1') {
+		control.Tmp-String-1 := '$[0].value'
+	}
+}
+
+control.Tmp-Octets-0 := %base64.decode(control.Tmp-String-1)
+if ((string)control.Tmp-Octets-0 != control.Tmp-String-0) {
+	test_fail
+}
+
+test_pass

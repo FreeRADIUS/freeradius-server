@@ -3,6 +3,8 @@
 #
 uint32 test_integer1
 uint32 test_integer2
+int64  test_integer
+string test_string
 date test_date
 
 #
@@ -30,7 +32,7 @@ if !(1 + 2 * 3 + 4 == 11) {
 #
 test_integer1 := 3
 test_integer2 := 4
-test_date := "%l"
+test_date := %l
 
 if (!(%{ 1 + 2 * test_integer1 + 4} == 11)) {
 	test_fail
@@ -96,12 +98,6 @@ if !(((1 << 2) | 1) == 5) {	# needs extra () to resolve precedence
 	test_fail
 }
 
-if ("%{ test_date}" <= 0) {
-	test_fail
-} else {
-  # nothing!  Previous expansion has failed, so it MUST have an "else"
-}
-
 if (test_date <= 0) {
 	test_fail
 }
@@ -120,6 +116,26 @@ if (!(%{ 6 * -test_integer2} == -24)) {
 	test_fail
 }
 if !(6 * -test_integer2 == -24) {
+	test_fail
+}
+
+test_string = "%l"
+if (test_string !~ /^[0-9]+$/) {
+	test_fail
+}
+
+test_string = "%c"
+if (test_string !~ /^[0-9]+$/) {
+	test_fail
+}
+
+#
+#  %l is request receive time.  %c is wall-clock "now"
+#
+#  They should be reasonably close for the unit tests.
+#
+test_integer = %l - %c
+if ((test_integer < -2) || (test_integer > 2)) {
 	test_fail
 }
 

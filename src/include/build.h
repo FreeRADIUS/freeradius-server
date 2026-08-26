@@ -77,6 +77,7 @@ extern "C" {
 /*
  *	Basic headers we want everywhere
  */
+#include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
@@ -137,12 +138,19 @@ do { \
  */
 static inline int8_t memcmp_return(void const *a, void const *b, size_t a_len, size_t b_len)
 {
-	size_t cmp_len = (a_len < b_len) ? a_len : b_len;
-	int8_t l_ret = CMP(a_len, b_len);
+	size_t cmp_len;
 	int8_t ret;
-	ret = CMP(memcmp(a, b, cmp_len), 0);
+
+	if (!a_len && b_len) return -1;
+	if (a_len && !b_len) return +1;
+	if (!a_len && !b_len) return 0;
+
+	cmp_len = (a_len < b_len) ? a_len : b_len;
+
+	ret = CMP(memcmp(a, b, cmp_len), 0); /* memcmp() can't be passed a NULL pointer */
 	if (ret != 0) return ret;
-	return l_ret;
+
+	return CMP(a_len, b_len);
 }
 
 /** Return if the contents of the specified field is not identical between the specified structures
@@ -158,6 +166,17 @@ do { \
 	int8_t _ret = memcmp_return((_a)->_field, (_b)->_field, (_a)->_len_field, (_b)->_len_field); \
 	if (_ret != 0) return _ret; \
 } while (0)
+
+/** Return the comparison of two opaque fields of a structure
+ *
+ * @param[in] _a		pointer to first structure.
+ * @param[in] _b		pointer to second structure.
+ * @param[in] _field		within the structs to compare.
+ * @param[in] _len_field	within the structs, specifying the length of the data.
+ * @return The result of the comparison.
+ */
+#define MEMCMP_FIELDS(_a, _b, _field, _len_field) \
+	memcmp_return((_a)->_field, (_b)->_field, (_a)->_len_field, (_b)->_len_field)
 
 /** Remove const qualification from a pointer
  *
@@ -254,6 +273,54 @@ do { \
  * @param[in] ...	Variadic arguments to count.
  */
 #define VA_NARG(...)    _VA_NARG(__VA_ARGS__, VA_RSEQ_N())
+
+/** Expansion table for VA_STRINGIFY, one entry per supported argument count
+ */
+#define _VA_STR_1(_a)		#_a
+#define _VA_STR_2(_a, ...)	#_a, _VA_STR_1(__VA_ARGS__)
+#define _VA_STR_3(_a, ...)	#_a, _VA_STR_2(__VA_ARGS__)
+#define _VA_STR_4(_a, ...)	#_a, _VA_STR_3(__VA_ARGS__)
+#define _VA_STR_5(_a, ...)	#_a, _VA_STR_4(__VA_ARGS__)
+#define _VA_STR_6(_a, ...)	#_a, _VA_STR_5(__VA_ARGS__)
+#define _VA_STR_7(_a, ...)	#_a, _VA_STR_6(__VA_ARGS__)
+#define _VA_STR_8(_a, ...)	#_a, _VA_STR_7(__VA_ARGS__)
+#define _VA_STR_9(_a, ...)	#_a, _VA_STR_8(__VA_ARGS__)
+#define _VA_STR_10(_a, ...)	#_a, _VA_STR_9(__VA_ARGS__)
+#define _VA_STR_11(_a, ...)	#_a, _VA_STR_10(__VA_ARGS__)
+#define _VA_STR_12(_a, ...)	#_a, _VA_STR_11(__VA_ARGS__)
+#define _VA_STR_13(_a, ...)	#_a, _VA_STR_12(__VA_ARGS__)
+#define _VA_STR_14(_a, ...)	#_a, _VA_STR_13(__VA_ARGS__)
+#define _VA_STR_15(_a, ...)	#_a, _VA_STR_14(__VA_ARGS__)
+#define _VA_STR_16(_a, ...)	#_a, _VA_STR_15(__VA_ARGS__)
+#define _VA_STR_17(_a, ...)	#_a, _VA_STR_16(__VA_ARGS__)
+#define _VA_STR_18(_a, ...)	#_a, _VA_STR_17(__VA_ARGS__)
+#define _VA_STR_19(_a, ...)	#_a, _VA_STR_18(__VA_ARGS__)
+#define _VA_STR_20(_a, ...)	#_a, _VA_STR_19(__VA_ARGS__)
+#define _VA_STR_21(_a, ...)	#_a, _VA_STR_20(__VA_ARGS__)
+#define _VA_STR_22(_a, ...)	#_a, _VA_STR_21(__VA_ARGS__)
+#define _VA_STR_23(_a, ...)	#_a, _VA_STR_22(__VA_ARGS__)
+#define _VA_STR_24(_a, ...)	#_a, _VA_STR_23(__VA_ARGS__)
+#define _VA_STR_25(_a, ...)	#_a, _VA_STR_24(__VA_ARGS__)
+#define _VA_STR_26(_a, ...)	#_a, _VA_STR_25(__VA_ARGS__)
+#define _VA_STR_27(_a, ...)	#_a, _VA_STR_26(__VA_ARGS__)
+#define _VA_STR_28(_a, ...)	#_a, _VA_STR_27(__VA_ARGS__)
+#define _VA_STR_29(_a, ...)	#_a, _VA_STR_28(__VA_ARGS__)
+#define _VA_STR_30(_a, ...)	#_a, _VA_STR_29(__VA_ARGS__)
+#define _VA_STR_31(_a, ...)	#_a, _VA_STR_30(__VA_ARGS__)
+#define _VA_STR_32(_a, ...)	#_a, _VA_STR_31(__VA_ARGS__)
+
+#define _VA_STRINGIFY_N(_n, ...)	_VA_STRINGIFY_I(_n, __VA_ARGS__)
+#define _VA_STRINGIFY_I(_n, ...)	_VA_STR_ ## _n(__VA_ARGS__)
+
+/** Produce a comma separated list of string literals, one per variadic argument
+ *
+ * Each argument becomes the source text the caller wrote, so
+ * VA_STRINGIFY(request->reply, len + 1) expands to "request->reply", "len + 1".
+ * Argument counting reuses the VA_NARG table.  Expansion is limited to 32 arguments.
+ *
+ * @param[in] ...	Variadic arguments to stringify.
+ */
+#define VA_STRINGIFY(...)	_VA_STRINGIFY_N(VA_NARG(__VA_ARGS__), __VA_ARGS__)
 
 
 /** Pass caller information to the function
@@ -377,11 +444,17 @@ do { \
 #  define likely(_x)		__builtin_expect((_x), 1)
 #  define unlikely(_x)		__builtin_expect((_x), 0)
 #  define unpredictable(_x)	__builtin_unpredictable((_x))
+#  ifdef __clang__
+#    define assume(_x)            __builtin_assume(_x)
+#  else
+#    define assume(_x)		do { if (!_x) __builtin_unreachable(); } while (0)
+#  endif
 #else
 #  define CC_HINT(...)
 #  define likely(_x) _x
 #  define unlikely(_x) _x
 #  define unpredictable(_x) _x
+#  define assume(_x)
 #endif
 
 /*

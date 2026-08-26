@@ -21,7 +21,6 @@
  *
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/tls/freeradius.h>
@@ -186,6 +185,14 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 	request->component = "tls";
 	request->module = NULL;
 	fr_assert(request->proto_dict == dict_tls);
+
+	/*
+	 *	Success, failure, and notfound are not TLS packets that we 
+	 */
+	if (!request->packet->code || (request->packet->code > FR_PACKET_TYPE_VALUE_ESTABLISH_SESSION)) {
+		REDEBUG("Invalid packet code %u", request->packet->code);
+		RETURN_UNLANG_FAIL;
+	}
 
 	UPDATE_STATE(packet);
 

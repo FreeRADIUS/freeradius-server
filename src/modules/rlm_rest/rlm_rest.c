@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -26,14 +26,10 @@ RCSID("$Id$")
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/curl/xlat.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cf_parse.h>
 
-#include <freeradius-devel/server/global_lib.h>
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/uri.h>
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include "rest.h"
@@ -115,9 +111,32 @@ static const conf_parser_t section_request_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	Defaults for the JSON decoder.  "do_xlat" defaults to "no", the
+ *	REST API must opt in to expansion, either here or with the
+ *	per-attribute "do_xlat" flag.  Note that this differs from v3,
+ *	where "do_xlat" defaulted to "yes".
+ */
+static const conf_parser_t section_response_json_config[] = {
+	{ FR_CONF_OFFSET("do_xlat", rlm_rest_section_response_json_t, do_xlat), .dflt = "no" },
+	{ FR_CONF_OFFSET("is_json", rlm_rest_section_response_json_t, is_json), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
+};
+
+/*
+ *	Defaults for the POST decoder.  As above, "do_xlat" defaults to
+ *	"no".
+ */
+static const conf_parser_t section_response_post_config[] = {
+	{ FR_CONF_OFFSET("do_xlat", rlm_rest_section_response_post_t, do_xlat), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
+};
+
 static const conf_parser_t section_response_config[] = {
 	{ FR_CONF_OFFSET("force_to", rlm_rest_section_response_t, force_to_str) }, \
 	{ FR_CONF_OFFSET_TYPE_FLAGS("max_body_in", FR_TYPE_SIZE, 0, rlm_rest_section_response_t, max_body_in), .dflt = "16k" },
+	{ FR_CONF_OFFSET_SUBSECTION("json", 0, rlm_rest_section_response_t, json, section_response_json_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("post", 0, rlm_rest_section_response_t, post, section_response_post_config) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -141,6 +160,7 @@ static const conf_parser_t xlat_request_config[] = {
 static const conf_parser_t xlat_config[] = {
 	{ FR_CONF_OFFSET_SUBSECTION("request", 0, rlm_rest_section_t, request, xlat_request_config) },
 	{ FR_CONF_OFFSET_SUBSECTION("response", 0, rlm_rest_section_t, response, section_response_config) },
+	{ FR_CONF_OFFSET("binary", rlm_rest_section_t, binary) },
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", rlm_rest_section_t, timeout), .dflt = "4.0" },
@@ -270,7 +290,7 @@ global_lib_autoinst_t const * const rlm_rest_lib[] = {
 	GLOBAL_LIB_TERMINATOR
 };
 
-static int8_t rest_section_cmp(void const *one, void const *two)
+static fr_cmp_ret_t rest_section_cmp(void const *one, void const *two)
 {
 	rlm_rest_section_conf_t const *a = one, *b = two;
 	return CMP(a->cs, b->cs);
@@ -359,7 +379,7 @@ static int rest_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 		return 0;
 	}
 
-	str = talloc_typed_strdup(vb, escaped);
+	str = talloc_strdup(vb, escaped);
 	fr_value_box_strdup_shallow_replace(vb, str, talloc_strlen(str));
 
 	curl_free(escaped);
@@ -470,7 +490,11 @@ error:
 		fr_value_box_t *vb;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
+		if (rctx->section.binary || http_body_type_binary[rest_response_body_type_get(handle)]) {
+			fr_value_box_memdup(vb, vb, NULL, (uint8_t const *)body, len, true);
+		} else {
+			fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
+		}
 		fr_dcursor_insert(out, vb);
 	}
 finish:
@@ -1235,8 +1259,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	xlat_t	*xlat;
+	rlm_rest_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rest_t);
 
-	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, rest_xlat, FR_TYPE_STRING);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, rest_xlat, inst->xlat.binary ? FR_TYPE_OCTETS : FR_TYPE_VOID);
 	xlat_func_args_set(xlat, rest_xlat_args);
 	xlat_func_call_env_set(xlat, &rest_call_env_xlat);
 
@@ -1312,9 +1337,9 @@ static int rest_sect_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED 
 	 *	"authenticate" sections use a different rules with defaults set for username and password
 	 */
 	if (strcmp(cec->asked->name1, "authenticate") == 0) {
-		call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_authenticate_env);
+		if (call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_authenticate_env) < 0) return -1;
 	} else {
-		call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_common_env);
+		if (call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_common_env) < 0) return -1;
 	}
 	parsed = call_env_parsed_add(ctx, out,
 				     &(call_env_parser_t) {

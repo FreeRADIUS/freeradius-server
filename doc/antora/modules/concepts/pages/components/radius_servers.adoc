@@ -25,8 +25,8 @@ The RADIUS server processes a NAS request based on the following criteria:
 
 This processing criteria limits the server ability to perform more complex authentication scenarios. The server can't negotiate with a NAS to request more information. The server uses the initial information that the NAS sends and returns either an acknowledgment or a non-acknowledgment.
 
-The RADIUS server has no control over the content of the request that the NAS sends. When the RADIUS server receives the request from the NAS, it uses local policies to decide how best to respond to the NAS request. The policies may be simple, such as “accept anyone with a correct user name and password”. More complex policies may be “allow basic users to request premium services in
-non-premium hours, except for Sundays and holidays, if their payment status is current”.
+The RADIUS server has no control over the content of the request that the NAS sends. When the RADIUS server receives the request from the NAS, it uses local policies to decide how best to respond to the NAS request. The policies may be simple, such as "accept anyone with a correct user name and password". More complex policies may be "allow basic users to request premium services in
+non-premium hours, except for Sundays and holidays, if their payment status is current".
 
 In all cases, the policies must be designed, implemented, and deployed by the network administrator because policies are based on the contents of the NAS requests. Often, the NAS documentation doesn't describe the content of the NAS requests. The only way for a network administrator to determine the NAS request content is to set up a test network.
 
@@ -34,4 +34,7 @@ Test logins will result in the receipt of requests by the server. The administra
 the policy is created, the server then uses that information to make decisions.
 This process becomes more complex when different NAS elements send the same information in different formats.
 
-For example, RADIUS has no MAC address data type, which means that the MAC address is sent as ASCII strings. Some NAS elements send a MAC address in the format of “00:01:02:03:04:05”, while others use the format “00-01-02-03-04-05”. The fact that these differences are not documented makes policy creation very difficult.In most cases, the administrator has to resort to trial and error methods to determine how to implement policies.
+For example, RADIUS has no MAC address data type, which means that the MAC address is sent as ASCII strings. Some NAS elements send a MAC address in the format of "00:01:02:03:04:05", while others use the format "00-01-02-03-04-05". The fact that these differences are not documented makes policy creation very difficult.In most cases, the administrator has to resort to trial and error methods to determine how to implement policies.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

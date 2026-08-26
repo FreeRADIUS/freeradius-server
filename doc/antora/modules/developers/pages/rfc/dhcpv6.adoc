@@ -1,0 +1,11 @@
+= DHCPv4 RFCs
+
+The following is a comprehensive set of tables that list all the
+related RFCs.  Depending on the section or feature that you are
+developing, will determine which documents you need to review.
+
+.Dynamic Host Control Protocol for IPv6 (DHCPv6)
+include::partial$dict_dhcpv6.adoc[]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

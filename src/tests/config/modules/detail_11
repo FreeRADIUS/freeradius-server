@@ -1,0 +1,7 @@
+#
+#  Test: invalid permissions - text string
+#
+detail {
+	filename = /tmp/test-detail
+	permissions = hello		# ERROR
+}

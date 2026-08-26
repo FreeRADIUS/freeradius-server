@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -26,15 +26,10 @@ RCSID("$Id$")
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/curl/xlat.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cf_parse.h>
 
-#include <freeradius-devel/server/global_lib.h>
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/uri.h>
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #define FTP_BODY_ALLOC_CHUNK		1024
@@ -124,21 +119,20 @@ global_lib_autoinst_t const * const rlm_ftp_lib[] = {
  */
 static int ftp_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
-	char	*escaped, *str;
+	char	*escaped;
+	size_t	len;
 
 	escaped = curl_easy_escape(fr_curl_tmp_handle(), vb->vb_strvalue, vb->vb_length);
 	if (!escaped) return -1;
 
+	len = strlen(escaped);
+
 	/*
 	 *	Returned string the same length - nothing changed
 	 */
-	if (strlen(escaped) == vb->vb_length) {
-		curl_free(escaped);
-		return 0;
+	if (len != vb->vb_length) {
+		MEM(fr_value_box_bstrndup(vb, vb, NULL, escaped, len, false) >= 0);
 	}
-
-	str = talloc_typed_strdup(vb, escaped);
-	fr_value_box_strdup_shallow_replace(vb, str, strlen(str));
 
 	curl_free(escaped);
 
@@ -246,7 +240,7 @@ static size_t ftp_response_body(void *in, size_t size, size_t nmemb, void *userd
 	/*
 	 *	Ensure that there's enough room in the buffer for all of the data that we need to write.
 	 */
-	needed = ROUND_UP(total, FTP_BODY_ALLOC_CHUNK);
+	needed = ROUND_UP(total + 1, FTP_BODY_ALLOC_CHUNK);
 	if (needed > ctx->alloc) {
 		MEM(ctx->buffer = talloc_bstr_realloc(NULL, ctx->buffer, needed));
 		ctx->alloc = needed;

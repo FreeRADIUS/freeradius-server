@@ -22,7 +22,7 @@ This expansion has been removed.  Instead, just use `%{(integer) ...}` with math
 reply.Reply-Message := "Value of Service-Type is %{(integer) Service-Type}"
 ----
 
-=== +%pack(%{Attribute-Name}%{Attribute-Name}...)+
+== +%pack(%{Attribute-Name}%{Attribute-Name}...)+
 
 This expansion has been removed.  Just convert the strings to octets, and concatenate them via `+`.
 
@@ -45,5 +45,5 @@ reply.Reply-Message := "The printable version of Class is %{(string) Class}"
 
 This expansion is deprecated and has been be removed.  Just use `%length(...)` instead.
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

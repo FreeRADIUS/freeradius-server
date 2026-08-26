@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -98,7 +98,7 @@ static conf_parser_t disconnect_config[] = {
 };
 
 static conf_parser_t const transport_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED, rlm_radius_t, secret) },
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED | CONF_FLAG_SECRET, rlm_radius_t, secret) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -150,6 +150,8 @@ static conf_parser_t const module_config[] = {
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_require_ma_table, .len = &fr_radius_require_ma_table_len },
 	  .dflt = "no" },
 
+	{ FR_CONF_OFFSET("track_load_balance", rlm_radius_t, track_load_balance), },
+
 	{ FR_CONF_OFFSET("response_window", rlm_radius_t, response_window), .dflt = STRINGIFY(20) },
 
 	{ FR_CONF_OFFSET("zombie_period", rlm_radius_t, zombie_period), .dflt = STRINGIFY(40) },
@@ -182,6 +184,7 @@ static fr_dict_attr_t const *attr_chap_challenge;
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_proxy_state;
+static fr_dict_attr_t const *attr_state;
 
 static fr_dict_attr_t const *attr_error_cause;
 static fr_dict_attr_t const *attr_event_timestamp;
@@ -199,6 +202,7 @@ fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius},
@@ -325,8 +329,12 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	}
 
 	if (!code ||
-	    (code >= FR_RADIUS_CODE_MAX) ||
-	    (!type_interval_config[code].name1)) goto invalid_code;
+	    (code >= FR_RADIUS_CODE_MAX)) goto invalid_code;
+
+	if (!type_interval_config[code].name1) {
+		cf_log_err(ci, "Invalid packet type '%s' - cannot proxy a response packet", type_str);
+		return -1;
+	}
 
 	/*
 	 *	If we're doing async proxying, push the timers for the
@@ -386,11 +394,6 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
 	cf_section_rule_push(cf_item_to_section(cf_parent(cs)), &type_interval_config[code]);
 
 	memcpy(out, &code, sizeof(code));
-
-	/*
-	 *	Nothing more to do here, so we stop.
-	 */
-	if (code == FR_RADIUS_CODE_STATUS_SERVER) return 0;
 
 	cf_section_rule_push(cs, status_check_update_config);
 
@@ -515,8 +518,14 @@ static int radius_fixups(rlm_radius_t const *inst, request_t *request)
 {
 	fr_pair_t *vp;
 
-	if (request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) {
-		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
+	/*
+	 *	If we received a Status-Server packet from the network, then don't proxy it.
+	 *
+	 *	But we do sneakily allow virtual servers to originate and then send Status-Server packets.
+	 */
+	if ((request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) &&
+	    ((request->packet->socket.af == AF_INET) || (request->packet->socket.af == AF_INET6))) {
+		RWDEBUG("Status-Server is reserved for internal use, and cannot be proxied.");
 		return 0;
 	}
 
@@ -596,12 +605,13 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	}
 
 	/*
-	 *	Unconnected sockets use %radius.replicate(ip, port, secret),
-	 *	or %radius.sendto(ip, port, secret)
+	 *	Unconnected sockets use %radius.sendto.ipaddr(ip, port, secret)
 	 */
 	if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
 	    (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY)) {
-		REDEBUG("When using 'mode = unconnected-*', this module cannot be used in-place.  Instead, it must be called via a function call");
+		REDEBUG("When using 'mode = %s', this module cannot be used in-place.  "
+			"Instead, it must be called via a function call",
+			fr_table_str_by_value(mode_names, inst->mode, "<INVALID>"));
 		RETURN_UNLANG_FAIL;
 	}
 
@@ -787,8 +797,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	path, and the conflicts won't affect anything else.  Only the src_port range is special.
 	 */
 
-	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, >=, fr_time_delta_from_sec(1));
-	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, <=, fr_time_delta_from_sec(120));
+	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->response_window, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->response_window, <=, fr_time_delta_from_sec(120));
 
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(120));
@@ -808,7 +818,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->common_ctx = (fr_radius_ctx_t) {
 		.secret = inst->secret,
-		.secret_length = inst->secret ? talloc_array_length(inst->secret) - 1 : 0,
+		.secret_length = inst->secret ? talloc_strlen(inst->secret) : 0,
 		.proxy_state = ((uint64_t) fr_rand()) << 32 | fr_rand(),
 	};
 
@@ -821,6 +831,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		code = inst->types[i];
 		fr_assert(code > 0);
 		fr_assert(code < FR_RADIUS_CODE_MAX);
+
+		if (inst->allowed[code]) {
+			cf_log_err(conf, "Duplicate 'type = %s'", fr_radius_packet_name[code]);
+			return -1;
+		}
 
 		inst->allowed[code] = true;
 	}

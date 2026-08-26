@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -649,7 +649,7 @@ static ssize_t jpath_array_parse(jpath_selector_t *selector, char const *in, siz
 /** Parse a jpath field
  *
  */
-static size_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t inlen)
+static ssize_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t inlen)
 {
 	char buffer[128];
 
@@ -727,7 +727,7 @@ static size_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t in
 /** parse a jpath selector
  *
  */
-static size_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t inlen)
+static ssize_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t inlen)
 {
 	ssize_t slen;
 	char const *p = in, *end = p + inlen;

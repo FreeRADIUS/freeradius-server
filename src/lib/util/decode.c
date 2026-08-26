@@ -44,6 +44,9 @@ ssize_t fr_pair_array_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict
 {
 	uint8_t const  		*p = data, *end = p + data_len;
 	ssize_t			slen;
+	fr_pair_list_t		list;
+
+	fr_pair_list_init(&list);
 
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_pair_array_from_network");
 
@@ -57,12 +60,16 @@ ssize_t fr_pair_array_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict
 	if (data_len == 0) return data_len;
 
 	while (p < end) {
-		slen = decode_value(ctx, out, parent, p, (end - p), decode_ctx);
-		if (slen <= 0) return slen - (p - data);
+		slen = decode_value(ctx, &list, parent, p, (end - p), decode_ctx);
+		if (slen <= 0) {
+			fr_pair_list_free(&list);
+			return slen - (p - data);
+		}
 
 		p += slen;
 	}
 
+	fr_pair_list_append(out, &list);
 	return data_len;
 }
 

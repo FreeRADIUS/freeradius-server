@@ -1,0 +1,266 @@
+name: Multi-Server CI Tests
+
+on:
+  #
+  #  Called by ci-pipeline.yml, which decides the entry point:
+  #
+  #    push: per-commit run. Pulls crossbuild, profiling-deps, service
+  #    and profiling from the internal registry, under whichever tag
+  #    common_vars.yml picks for this ref, refreshed by
+  #    docker-ci-images-refresh.yml. For the multi-server tests' purposes the FR
+  #    runtime in those images is "recent enough" to validate
+  #    multi-server topology / compose / proto_load changes per
+  #    commit. Runs the CI subset.
+  #
+  #    schedule: nightly full-suite run, from the pipeline's own cron.
+  #    Falls back to a local layer rebuild if the registry no longer
+  #    holds the image.
+  #
+  workflow_call:
+
+jobs:
+  #
+  #  Determines the values that turn on whether the run is happening in the
+  #  FreeRADIUS organisation or in a fork.  See
+  #  .github/workflows/common_vars.yml.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
+  multi-server-tests:
+    needs: common_vars
+    runs-on: self-hosted
+    if: github.repository_owner == 'FreeRADIUS'
+
+    #  id-token: write lets the profiling leg mint a GitHub OIDC token, which
+    #  authenticates the prof-results publish. Listing any permission drops
+    #  the unlisted ones, so contents: read is stated to keep checkout working.
+    permissions:
+      contents: read
+      id-token: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [service, profiling]
+
+    services:
+      dind:
+        #
+        #  Custom dind image with /etc/docker/daemon.json baked in
+        #  pointing at the internal NR registry as a Docker Hub
+        #  pull-through mirror, and the internal CA pre-trusted.
+        #  Built by docker-ci-images-refresh.yml from scripts/ci/docker/Dockerfile.docker-dind.
+        #
+        image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+          #  Bypass the squid proxy for internal registry access.
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+          #  Fix the network pool so TEST_SUBNET is predictable.
+          DOCKER_OPTS: "--default-address-pool base=172.16.0.0/12,size=24"
+        #
+        #  Share the runner's workspace with dind so that docker
+        #  compose bind-mounts (radiusd.conf, env-setup.sh, listener
+        #  dirs, etc.) resolve to real files inside the dind daemon.
+        #
+        #  github.workspace is the HOST path to the workspace.
+        #  The runner mounts it into the job container at a
+        #  different path (/__w/...), so we use a fixed mount
+        #  point (/workspace) that both containers agree on.
+        #
+        volumes:
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      #
+      #  Custom CI image with docker CLI / buildx / m4 baked on top
+      #  of the self-hosted base. Built by docker-ci-images-refresh.yml from
+      #  scripts/ci/docker/Dockerfile.docker-cli.
+      #
+      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}
+      #  "privileged" is needed for Samba install
+      #  "memory-swap -1" enables full use of host swap and may help
+      #    with containers randomly quitting with "The operation was
+      #    canceled"
+      options: >-
+        --privileged
+        --memory-swap -1
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
+      #
+      #  CA cert mount lets the in-container apt and curl talk HTTPS
+      #  to the internal registry. Shared workspace - see
+      #  dind volumes comment above.
+      #
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
+
+    steps:
+
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      - name: setup-dind
+        uses: ./.github/actions/setup-dind
+
+      #
+      #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
+      #  registry-mirrors -> the internal registry baked
+      #  in, but our internal registry isn't actually a Hub pull-
+      #  through cache (it 404s on library/kafka etc.), so dockerd
+      #  falls back to docker.io and we hit anonymous rate limits
+      #  during compose pulls. Authenticated Hub pulls get 5000/day.
+      #
+      - name: Login to Docker Hub (via dind)
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_READ_USER }}
+          password: ${{ secrets.DOCKERHUB_READ_KEY }}
+
+      #
+      #  Authenticate dind to the internal registry so docker compose
+      #  can pull mariadb / postgres / 389ds etc. tagged under
+      #  the internal registry. The host docker daemon is
+      #  logged in via the runner's job-started hook, but dind is a
+      #  separate daemon with no auth config.
+      #
+      - name: Login to internal Docker registry
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://${{ needs.common_vars.outputs.docker_registry }}/
+
+      #
+      #  Build the FreeRADIUS image for this matrix leg. Service mode
+      #  uses the standard service image; profiling mode uses the
+      #  standard profiling image (FR compiled with callgrind-friendly
+      #  CFLAGS via scripts/docker/m4/common.freeradius-profile-build.m4).
+      #
+      #  DOCKER_REGISTRY tells scripts/docker/docker.mk to try pulling
+      #  freeradius4-<type>/<image>:<sha> from the internal registry
+      #  before rebuilding locally - so when the crossbuild workflow
+      #  has already pushed a matching crossbuild image we skip the
+      #  ~5-8 minute crossbuild stage. The crossbuild image itself
+      #  benefits from the same pull-through whenever a previous
+      #  docker-crossbuild.yml run published it.
+      #
+      - name: Build FreeRADIUS image (${{ matrix.mode }})
+        env:
+          DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+          DOCKER_REMOTE_PREFIX: ${{ needs.common_vars.outputs.image_prefix }}
+          DOCKER_REMOTE_TAG: ${{ needs.common_vars.outputs.image_tag }}
+        run: |
+          case "${{ matrix.mode }}" in
+            service)
+              make docker.service.ubuntu24
+              ;;
+            profiling)
+              make docker.profiling.ubuntu24
+              ;;
+          esac
+
+      - name: Show docker build logs
+        if: failure()
+        run: |
+          for type in crossbuild profiling-deps profiling service; do
+            log="build/docker/build.ubuntu24.$type"
+            if [ -f "$log" ]; then
+              echo "===== $log ====="
+              cat "$log"
+            fi
+          done
+
+      #
+      #  schedule runs the full test set; a push runs the CI subset.
+      #  github.event_name is the caller's event, so the pipeline's
+      #  nightly selects the full set here without extra wiring.
+      #
+      - name: Run multi-server tests (${{ matrix.mode }})
+        run: |
+          case "${{ matrix.mode }}-${{ github.event_name }}" in
+            service-schedule)
+              make -j$(nproc) test.multi-server
+              ;;
+            service-*)
+              make -j$(nproc) test.multi-server.ci
+              ;;
+            profiling-schedule)
+              make -j$(nproc) test.multi-server.profiling
+              ;;
+            profiling-*)
+              make -j$(nproc) test.multi-server.profiling.ci
+              ;;
+          esac
+
+      #  Runs before both uploads below, with move: true so a core leaves
+      #  prof-results/ and rides one artifact instead of inflating the
+      #  prof-results artifact and the store publish as well.
+      - name: Collect core dumps
+        if: ${{ always() }}
+        uses: ./.github/actions/collect-core-dumps
+        with:
+          name: ${{ matrix.mode }}-${{ github.sha }}
+          move: "true"
+
+      #
+      #  Stash callgrind output as a workflow artifact in profiling
+      #  mode. Skipped in service mode (nothing to upload).
+      #
+      - name: Upload profiling results
+        id: upload-prof-results
+        if: ${{ matrix.mode == 'profiling' && always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: prof-results-${{ github.sha }}
+          path: prof-results/
+          if-no-files-found: ignore
+
+      #
+      #  Publish the same prof-results/ tree to the durable store: the script
+      #  tars the tree and POSTs it, with a GitHub OIDC token, to the given
+      #  URL (see the script header). Skipped when the artifact step found no
+      #  files (empty artifact-id).
+      #
+      - name: Publish profiling results to the prof-results store
+        if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
+        run: scripts/ci/publish-profiling-results.sh "https://cinfra-ca.inkbridge.io/profiling/data"
+
+      #
+      #  Check latest profiling results vs each suite's previous run on the store.
+      #
+      #  cest-analyzer exit codes;
+      #   0 - clean
+      #   1 - latest result performance flagged
+      #   2 - tool error
+      #
+      - name: Check latest profiling results vs previous runs
+        if: ${{ matrix.mode == 'profiling' && success() }}
+        continue-on-error: true
+        run: |
+          curl -fsSL -o cest-analyzer \
+            "https://cinfra-ca.inkbridge.io/profiling/dashboard/bin/cest-analyzer"
+          chmod +x ./cest-analyzer
+          rc=0
+          ./cest-analyzer --latest -d prof-results --filter fr_ --gate 15 || rc=$?
+          echo "cest-analyzer exit code: $rc"
+
+      #
+      #  If the CI has failed and the branch is ci-debug
+      #  then start a tmate session for interactive debugging.
+      #
+      - name: "Debug: Start tmate"
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+        if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -28,10 +28,11 @@
  */
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
 #include "base.h"
+#include "lib/util/strerror.h"
 
 fr_table_num_sorted_t const fr_json_format_table[] = {
 	{ L("array"),		JSON_MODE_ARRAY		},
@@ -41,6 +42,13 @@ fr_table_num_sorted_t const fr_json_format_table[] = {
 	{ L("object_simple"),	JSON_MODE_OBJECT_SIMPLE	},
 };
 size_t fr_json_format_table_len = NUM_ELEMENTS(fr_json_format_table);
+
+fr_table_num_sorted_t const fr_json_binary_format_table[] = {
+	{ L("base16"),	JSON_BINARY_FORMAT_BASE16 },
+	{ L("base64"),	JSON_BINARY_FORMAT_BASE64 },
+	{ L("raw"),	JSON_BINARY_FORMAT_RAW },
+};
+size_t fr_json_binary_format_table_len = NUM_ELEMENTS(fr_json_binary_format_table);
 
 static fr_json_format_t const default_json_format = {
 	.attr = { .prefix = NULL },
@@ -57,6 +65,9 @@ static conf_parser_t const json_format_value_config[] = {
 	{ FR_CONF_OFFSET("single_value_as_array", fr_json_format_value_t, value_is_always_array), .dflt = "no" },
 	{ FR_CONF_OFFSET("enum_as_integer", fr_json_format_value_t, enum_as_int), .dflt = "no" },
 	{ FR_CONF_OFFSET("always_string", fr_json_format_value_t, always_string), .dflt = "no" },
+	{ FR_CONF_OFFSET("binary_format", fr_json_format_value_t, binary_format), .dflt = "raw",
+	  .func = cf_table_parse_int,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_json_binary_format_table, .len = &fr_json_binary_format_table_len } },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -68,6 +79,14 @@ conf_parser_t const fr_json_format_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	json-c >= 0.19 returns 0 for freed scalars and empty containers,
+ *	so the return value can't identify leaks.
+ *	Fix proposed upstream: https://github.com/json-c/json-c/pull/945
+ */
+#if JSON_C_VERSION_NUM >= 0x1300 /* 0.19.0 */
+#define json_object_put_assert(_obj) json_object_put(_obj)
+#else
 static inline CC_HINT(always_inline)
 void json_object_put_assert(json_object *obj)
 {
@@ -76,8 +95,9 @@ void json_object_put_assert(json_object *obj)
 	ret = json_object_put(obj);
 	if (ret == 1) return;
 
-	fr_assert_fail("json_object_put did not free object (returned %u), likely leaking memory", ret);
+	fr_assert_fail("json_object_put did not free object (returned %d), likely leaking memory", ret);
 }
+#endif
 
 /** Convert json object to fr_value_box_t
  *
@@ -123,7 +143,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		/*
 		 *	Just copy the string to the box.
 		 */
-		fr_value_box_bstrndup(out, out, NULL, value, len, tainted);
+		if (fr_value_box_bstrndup(out, out, NULL, value, len, tainted) < 0) return -1;
 	}
 		break;
 
@@ -176,7 +196,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 	{
 		char const *value = json_object_to_json_string(object);
 
-		fr_value_box_bstrndup(out, out, NULL, value, strlen(value), tainted);
+		if (fr_value_box_bstrndup(out, out, NULL, value, strlen(value), tainted) < 0) return -1;
 	}
 		break;
 	}
@@ -223,7 +243,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 		return json_object_new_string_len((char const *)data->vb_octets, data->vb_length);
 
 	case FR_TYPE_BOOL:
-		return json_object_new_boolean(data->vb_uint8);
+		return json_object_new_boolean(data->vb_bool);
 
 	case FR_TYPE_UINT8:
 		return json_object_new_int(data->vb_uint8);
@@ -233,7 +253,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 
 #ifdef HAVE_JSON_OBJECT_GET_INT64
 	case FR_TYPE_UINT32:
-		return json_object_new_int64((int64_t)data->vb_uint64);	/* uint32_t (max) > int32_t (max) */
+		return json_object_new_int64((int64_t)data->vb_uint32);	/* uint32_t (max) > int32_t (max) */
 
 	case FR_TYPE_UINT64:
 		if (data->vb_uint64 > INT64_MAX) goto do_string;
@@ -262,6 +282,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 #endif
 
 	case FR_TYPE_STRUCTURAL:
+		fr_strerror_const("Can't convert structural type to JSON");
 		return NULL;
 	}
 }
@@ -276,7 +297,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
  *	- <0 on error.
  *	- >= number of bytes written.
  */
-fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool include_quotes)
+fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t const *vb, bool include_quotes)
 {
 	fr_sbuff_t our_out = FR_SBUFF(out);
 
@@ -305,7 +326,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		end = p + vb->vb_length;
 
 		while (p < end) {
-			if (*p < ' ') {
+			if ((*p < ' ') || (*p == '"') || (*p == '\\') || (*p == '/')) {
 				if (p > last_app) FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, last_app, p - last_app);
 
 				switch (*p) {
@@ -368,7 +389,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		break;
 
 	case FR_TYPE_UINT64:
-		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", vb->vb_uint64);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64, vb->vb_uint64);
 		break;
 
 	case FR_TYPE_INT8:
@@ -384,7 +405,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		break;
 
 	case FR_TYPE_INT64:
-		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%i", vb->vb_int64);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIi64, vb->vb_int64);
 		break;
 
 	case FR_TYPE_SIZE:
@@ -404,7 +425,9 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		if (unlikely(obj == NULL)) return -1;
 		slen = fr_sbuff_in_strcpy(&our_out, json_object_to_json_string(obj));
 		json_object_put_assert(obj);
-		return slen;
+
+		if (slen < 0) return slen;
+		break;
 	}
 
 	case FR_TYPE_FLOAT64:
@@ -416,7 +439,9 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		if (unlikely(obj == NULL)) return -1;
 		slen = fr_sbuff_in_strcpy(&our_out, json_object_to_json_string(obj));
 		json_object_put_assert(obj);
-		return slen;
+
+		if (slen < 0) return slen;
+		break;
 	}
 
 	case FR_TYPE_IPV4_ADDR:
@@ -436,6 +461,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		if (include_quotes) FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
 		slen = fr_value_box_print(&our_out, vb, NULL);
 		if (include_quotes) FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
+		/* Intentionally after writing second dquote, so the buffer is always has a properly terminated string */
 		if (slen < 0) return slen;
 	}
 		break;
@@ -465,13 +491,89 @@ void fr_json_version_print(void)
 }
 
 
+/** Convert a value box into a JSON object
+ *
+ * If format.value.always_string is set then a numeric value
+ * will be returned as a JSON string object.
+ *
+ * @param[in] ctx	Talloc context.
+ * @param[out] out	returned json object.
+ * @param[in] vb	to get the value of.
+ * @param[in] format	format definition, or NULL.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+static inline CC_HINT(always_inline)
+int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
+			 fr_value_box_t const *vb, fr_json_format_t const *format)
+{
+	if (!format) {
+		MEM(*out = json_object_from_value_box(vb));
+		return 0;
+	}
+
+	/*
+	 *	Evaluated before "always_string".
+	 */
+	if (vb->type == FR_TYPE_OCTETS) {
+		switch (format->value.binary_format) {
+		case JSON_BINARY_FORMAT_BASE16:
+		case JSON_BINARY_FORMAT_BASE64:
+		{
+			fr_sbuff_t	*encoded;
+			FR_SBUFF_TALLOC_THREAD_LOCAL(&encoded, 256, SIZE_MAX);
+
+			switch (format->value.binary_format) {
+			/*
+			 *	Hex encode octets values when requested.
+			 */
+			case JSON_BINARY_FORMAT_BASE16:
+				fr_base16_encode(encoded, &FR_DBUFF_TMP(vb->vb_octets, vb->vb_length));
+				break;
+
+			/*
+			 *	Base64-encode octets values when requested.
+			 */
+			case JSON_BINARY_FORMAT_BASE64:
+				fr_base64_encode(encoded, &FR_DBUFF_TMP(vb->vb_octets, vb->vb_length), true);
+				break;
+
+			default:
+				break;
+			}
+
+			MEM(*out = json_object_new_string_len(fr_sbuff_start(encoded), fr_sbuff_used(encoded)));
+			return 0;
+		}
+
+		case JSON_BINARY_FORMAT_RAW:
+			break;
+		}
+	}
+
+	if (format->value.always_string) {
+		fr_value_box_t		vb_str = FR_VALUE_BOX_INITIALISER_NULL(vb_str);
+
+		if (unlikely(fr_value_box_cast(ctx, &vb_str, FR_TYPE_STRING, NULL, vb) < 0)) return -1;
+
+		MEM(*out = json_object_from_value_box(&vb_str));
+		fr_value_box_clear(&vb_str);
+
+		return 0;
+	}
+
+	MEM(*out = json_object_from_value_box(vb));
+	return 0;
+}
+
 /** Convert fr_pair_t into a JSON object
  *
  * If format.value.enum_as_int is set, and the given VP is an enum
  * value, the integer value is returned as a json_object rather
  * than the text representation.
  *
- * If format.value.always_string is set then a numeric value pair
+ * If format.value.always_string is set then a numeric value
  * will be returned as a JSON string object.
  *
  * @param[in] ctx	Talloc context.
@@ -479,42 +581,23 @@ void fr_json_version_print(void)
  * @param[in] vp	to get the value of.
  * @param[in] format	format definition, or NULL.
  * @return
- *	- 1 if 'out' is the integer enum value, 0 otherwise
+ *	- 0 on success.
  *	- -1 on error.
  */
-static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
-				fr_pair_t *vp, fr_json_format_t const *format)
+static int json_afrom_pair(TALLOC_CTX *ctx, json_object **out,
+			   fr_pair_t *vp, fr_json_format_t const *format)
 {
-	struct json_object	*obj;
 	fr_value_box_t const	*vb;
-	fr_value_box_t		vb_str = FR_VALUE_BOX_INITIALISER_NULL(vb_str);
-	int			is_enum = 0;
 
 	fr_assert(vp);
 
 	vb = &vp->data;
 
-	if (format && format->value.enum_as_int) {
-		is_enum = fr_pair_value_enum_box(&vb, vp);
-		fr_assert(is_enum >= 0);
+	if (format->value.enum_as_int) {
+		(void)fr_pair_value_enum_box(&vb, vp);
 	}
 
-	if (format && format->value.always_string) {
-		if (fr_value_box_cast(ctx, &vb_str, FR_TYPE_STRING, NULL, vb) < 0) {
-			return -1;
-		}
-
-		vb = &vb_str;
-	}
-
-	MEM(obj = json_object_from_value_box(vb));
-
-	if (format && format->value.always_string) {
-		fr_value_box_clear(&vb_str);
-	}
-
-	*out = obj;
-	return is_enum;
+	return json_afrom_value_box(ctx, out, vb, format);
 }
 
 
@@ -605,7 +688,7 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
 do { \
 	fr_assert(0); \
 	fr_strerror_printf("Invalid type %s for attribute %s", fr_type_to_str(vp->vp_type), vp->da->name); \
-	return NULL; \
+	goto error; \
 } while (0)
 
 /** Returns a JSON object representation of a list of value pairs
@@ -640,8 +723,8 @@ do { \
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
-						fr_json_format_t const *format)
+static CC_HINT(warn_unused_result)
+json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps, fr_json_format_t const *format)
 {
 	fr_pair_t		*vp;
 	struct json_object	*obj;
@@ -666,17 +749,16 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		 */
 		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+		error:
+			json_object_put_assert(obj);
 			return NULL;
 		}
 
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
-			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+			if (json_afrom_pair(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
-			error:
-				json_object_put_assert(obj);
-
-				return NULL;
+				goto error;
 			}
 			break;
 		/*
@@ -697,6 +779,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		 */
 		case FR_TYPE_STRUCTURAL:
 			value = json_object_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (unlikely(value == NULL)) goto error;
 			break;
 
 		default:
@@ -807,7 +890,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
+static json_object *json_simple_obj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 						 fr_json_format_t const *format)
 {
 	fr_pair_t		*vp;
@@ -836,16 +919,16 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		 */
 		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+		error:
+			json_object_put_assert(obj);
 			return NULL;
 		}
 
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
-			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+			if (json_afrom_pair(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
-				json_object_put_assert(obj);
-
-				return NULL;
+				goto error;
 			}
 			break;
 		/*
@@ -865,7 +948,8 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		 *	identical to top level attributes.
 		 */
 		case FR_TYPE_STRUCTURAL:
-			value = json_smplobj_afrom_pair_list(ctx, &vp->vp_group, format);
+			value = json_simple_obj_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (unlikely(value == NULL)) goto error;
 			break;
 
 		default:
@@ -984,20 +1068,23 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 		 */
 		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+		error:
+			json_object_put_assert(seen_attributes);
+			json_object_put_assert(obj);
 			return NULL;
 		}
 
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
-			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+			if (json_afrom_pair(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
-				json_object_put_assert(obj);
-				return NULL;
+				goto error;
 			}
 			break;
 
 		case FR_TYPE_STRUCTURAL:
 			value = json_array_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (unlikely(value == NULL)) goto error;
 			break;
 
 		default:
@@ -1116,8 +1203,9 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
-			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+			if (json_afrom_pair(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
+			error:
 				json_object_put_assert(obj);
 				return NULL;
 			}
@@ -1125,6 +1213,7 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 
 		case FR_TYPE_STRUCTURAL:
 			value = json_value_array_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (value == NULL) goto error;
 			break;
 
 		default:
@@ -1179,6 +1268,8 @@ static struct json_object *json_attr_array_afrom_pair_list(TALLOC_CTX *ctx, fr_p
 
 		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+		error:
+			json_object_put_assert(obj);
 			return NULL;
 		}
 		value = json_object_new_string(fr_sbuff_start(&attr_name));
@@ -1190,6 +1281,7 @@ static struct json_object *json_attr_array_afrom_pair_list(TALLOC_CTX *ctx, fr_p
 		case FR_TYPE_STRUCTURAL:
 			json_object_array_add(obj, value);
 			value = json_attr_array_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (value == NULL) goto error;
 			break;
 
 		default:
@@ -1249,7 +1341,7 @@ char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 		MEM(obj = json_object_afrom_pair_list(ctx, vps, format));
 		break;
 	case JSON_MODE_OBJECT_SIMPLE:
-		MEM(obj = json_smplobj_afrom_pair_list(ctx, vps, format));
+		MEM(obj = json_simple_obj_afrom_pair_list(ctx, vps, format));
 		break;
 	case JSON_MODE_ARRAY:
 		MEM(obj = json_array_afrom_pair_list(ctx, vps, format));
@@ -1270,7 +1362,7 @@ char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 	 *	when it is freed.
 	 */
 	MEM(p = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
-	MEM(out = talloc_typed_strdup(ctx, p));
+	MEM(out = talloc_strdup(ctx, p));
 
 	/*
 	 * Free the JSON structure, it's not needed any more

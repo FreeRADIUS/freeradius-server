@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -28,9 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 /*
@@ -134,8 +132,8 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_addr", FR_TYPE_IPV4_ADDR, 0, rlm_test_t, ipv4_addr), .dflt = "*" },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_addr_m", FR_TYPE_IPV4_ADDR, CONF_FLAG_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "*" },
 
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix", FR_TYPE_IPV4_PREFIX, 0, rlm_test_t, ipv4_addr), .dflt = "192.168.0.1/24" },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix_m", FR_TYPE_IPV4_PREFIX, CONF_FLAG_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "192.168.0.1/24" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix", FR_TYPE_IPV4_PREFIX, 0, rlm_test_t, ipv4_prefix), .dflt = "192.168.0.1/24" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix_m", FR_TYPE_IPV4_PREFIX, CONF_FLAG_MULTI, rlm_test_t, ipv4_prefix_m), .dflt = "192.168.0.1/24" },
 
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6_addr", FR_TYPE_IPV6_ADDR, 0, rlm_test_t, ipv6_addr), .dflt = "*" },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6_addr_m", FR_TYPE_IPV6_ADDR, CONF_FLAG_MULTI, rlm_test_t, ipv6_addr_m), .dflt = "*" },
@@ -353,7 +351,7 @@ static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*in_head = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
-	if (trigger(unlang_interpret_get(request), NULL, NULL, in_head->vb_strvalue, false, NULL) < 0) {
+	if (trigger(unlang_interpret_get(request), NULL, NULL, in_head->vb_strvalue, false, NULL, NULL) < 0) {
 		RPEDEBUG("Running trigger failed");
 		return XLAT_ACTION_FAIL;
 	}

@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -27,13 +27,10 @@ RCSID("$Id$")
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_priv.h>
-#include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/util/slab.h>
 #include <freeradius-devel/util/token.h>
 
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 static fr_dict_t const 	*dict_freeradius;
@@ -282,7 +279,7 @@ static int value_box_list_to_header(fr_mail_ctx_t *uctx, struct curl_slist **out
 /*
  * 	Takes a string value and adds it as a file path to upload as an attachment
  */
-static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const * str, size_t len,
+static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, fr_value_box_t *vb,
 			      fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
 	request_t		*request = uctx->request;
@@ -292,22 +289,20 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const *
 	fr_sbuff_set(path_buffer, m);
 
 	/* Check to see if the file attachment is valid, skip it if not */
-	RDEBUG2("Trying to set attachment: %s", str);
+	RDEBUG2("Trying to set attachment: %pV", vb);
 
-	if (*str == '/') {
-		RDEBUG2("File attachments cannot be an absolute path");
-		return 0;
+	if (vb->type != FR_TYPE_STRING) {
+		return -1;
 	}
 
-	if (strncmp(str, "..", 2) == 0) {
-		RDEBUG2("Cannot access values outside of template_directory");
-		return 0;
+	if (rad_filename_box_make_safe(vb, NULL) < 0) {
+		RPEDEBUG2("Failed escaping path");
+		return -1;
 	}
 
-	/* Copy the filename into the buffer */
-	if (fr_sbuff_in_bstrncpy(path_buffer, str, len) < 0) {
-		RDEBUG2("Cannot copy filename");
-		return 0;
+	if (fr_sbuff_in_bstrncpy(path_buffer, vb->vb_strvalue, vb->vb_length) < 0) {
+		RPEDEBUG2("Path is too long");
+		return -1;
 	}
 
 	/* Add the file attachment as a mime encoded part */
@@ -315,10 +310,10 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const *
 	curl_mime_encoder(part, "base64");
 	if (curl_mime_filedata(part, path_buffer->buff) != CURLE_OK) {
 		REDEBUG2("Cannot add file attachment");
-		return 0;
+		return -1;
 	}
 
-	return 1;
+	return 0;
 }
 
 /** Generate the `From:` header
@@ -570,7 +565,9 @@ static int attachments_source(fr_mail_ctx_t *uctx, curl_mime *mime, rlm_smtp_t c
 	/* Add the attachments to the email */
 	for (i = 0; i < list_count; i++) {
 		while ((vb = fr_value_box_list_next(list, vb))) {
-			attachments_set += str_to_attachments(uctx, mime, vb->vb_strvalue, vb->vb_length, &path_buffer, &m);
+			if (str_to_attachments(uctx, mime, vb, &path_buffer, &m) < 0) return -1;
+
+			attachments_set++;
 		}
 		list++;
 	}
@@ -754,8 +751,9 @@ skip_auth:
 	}
 
 	/* Initialize the attachments if there are any*/
-	if (attachments_source(mail_ctx, mail_ctx->mime, inst, call_env) == 0){
-		RDEBUG3("No files were attached to the email");
+	if (attachments_source(mail_ctx, mail_ctx->mime, inst, call_env) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto error;
 	}
 
 	/* Add the mime encoded elements to the curl request */
@@ -1164,7 +1162,7 @@ static int smtp_header_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 		to_parse = talloc_asprintf(NULL, "%s: %s", cf_pair_attr(cp), cf_pair_value(cp));
 
 		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
-					 &FR_SBUFF_IN(to_parse, talloc_array_length(to_parse) - 1),
+					 &FR_SBUFF_IN(to_parse, talloc_strlen(to_parse)),
 					 cf_pair_value_quote(cp), value_parse_rules_quoted[cf_pair_value_quote(cp)],
 					 t_rules);
 		talloc_free(to_parse);

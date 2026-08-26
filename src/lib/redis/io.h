@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -28,9 +28,18 @@
  */
 RCSIDH(redis_io_h, "$Id$")
 
+#include "config.h"
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/server/connection.h>
+
+#ifndef WITH_TLS
+#  undef HAVE_REDIS_SSL
+#endif
+
+#ifdef HAVE_REDIS_SSL
+#include <freeradius-devel/tls/strerror.h>
+#endif
 
 #include <hiredis/async.h>
 
@@ -39,14 +48,14 @@ extern "C" {
 #endif
 
 typedef struct {
-	char			*hostname;
+	char const		*hostname;
 	uint16_t		port;
 	uint32_t		database;	//!< number on Redis server.
 
+	char const		*username;	//!< to authenticate to Redis.
 	char const		*password;	//!< to authenticate to Redis.
-	fr_time_delta_t		connection_timeout;
-	fr_time_delta_t		reconnection_delay;
 	char const		*log_prefix;
+	bool			use_tls;
 } fr_redis_io_conf_t;
 
 typedef uint64_t fr_redis_sqn_t;
@@ -66,9 +75,10 @@ typedef struct {
 typedef struct {
 	bool			read_set;		//!< We're listening for reads.
 	bool			write_set;		//!< We're listening for writes.
-	bool			ignore_disconnect_cb;	//!< Ensure that redisAsyncFree doesn't cause
+	bool			freeing;		//!< Ensure that redisAsyncFree doesn't cause
 							///< a callback loop.
 	fr_timer_t		*timer_ev;		//!< Connection timer.
+	fr_event_fd_t		*fd_ev;			//!< IO event.
 
 
 	redisAsyncContext	*ac;			//!< Async handle for hiredis.
@@ -105,13 +115,26 @@ static inline fr_redis_sqn_t fr_redis_connection_sent_request(fr_redis_handle_t 
  */
 static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_redis_sqn_t sqn)
 {
-	fr_redis_sqn_ignore_t *ignore;
+	fr_redis_sqn_ignore_t *ignore, *check = NULL;
 
-	fr_assert(sqn <= h->rsp_sqn);
+	fr_assert(sqn <= h->req_sqn);
+
+	if (sqn < h->rsp_sqn) {
+		DEBUG4("Asked to ignore sequence %"PRIu64", but next expected response is %"PRIu64, sqn, h->rsp_sqn);
+		return;
+	}
 
 	MEM(ignore = talloc_zero(h, fr_redis_sqn_ignore_t));
 	ignore->sqn = sqn;
-	fr_dlist_insert_tail(&h->ignore, ignore);
+	check = fr_dlist_tail(&h->ignore);
+	if (!check || check->sqn < sqn) {
+		fr_dlist_insert_tail(&h->ignore, ignore);
+		return;
+	}
+	while ((check = fr_dlist_prev(&h->ignore, check))) {
+		if (check->sqn < sqn) break;
+	}
+	fr_dlist_insert_after(&h->ignore, check, ignore);
 }
 
 /** Update the response sequence number and check if we should ignore the response
@@ -141,6 +164,9 @@ static inline bool fr_redis_connection_process_response(fr_redis_handle_t *h)
 connection_t		*fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 						   connection_conf_t const *conn_conf,
 						   fr_redis_io_conf_t const *io_conf,
+#ifdef HAVE_REDIS_SSL
+						   SSL_CTX *ssl_ctx,
+#endif
 						   char const *log_prefix);
 
 redisAsyncContext	*fr_redis_connection_get_async_ctx(connection_t *conn);

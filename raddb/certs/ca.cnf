@@ -21,6 +21,7 @@ default_md		= sha256
 preserve		= no
 policy			= policy_match
 unique_subject 		= no
+#crl_extensions		= crl_ext
 
 [ policy_match ]
 countryName		= match
@@ -61,6 +62,9 @@ subjectKeyIdentifier	= hash
 authorityKeyIdentifier	= keyid:always,issuer:always
 basicConstraints	= critical,CA:true
 crlDistributionPoints	= URI:http://www.example.com/example_ca.crl
+
+[ crl_ext ]
+freshestCRL		= URI:http://www.example.com/delta.crl
 
 #  Extensions for an intermediate CA.  See "man x509v3_config"
 #

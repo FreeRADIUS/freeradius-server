@@ -34,11 +34,6 @@ RCSIDH(lib_bio_fd_h, "$Id$")
 
 #include <fcntl.h>
 
-/*
- *	Local hack.  AF_FILE is a synonym for AF_LOCAL on some platforms.
- */
-#define AF_FILE_BIO (INT_MAX)
-
 /** Per-packet context
  *
  *	For reading packets src_ip is *their* IP, and dst_ip is *our* IP.

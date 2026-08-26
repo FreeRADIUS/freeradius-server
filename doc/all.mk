@@ -9,28 +9,6 @@
 WITH_DOC := $(strip $(foreach x,doc man doxygen,$(findstring $(x),$(MAKECMDGOALS))))
 
 #
-#  Convert adoc to man, and then let "install.man" deal with things.
-#  This means a bare "make install.man" after "configure" won't get the
-#  right things, but oh well.
-#
-ADOC2MAN_FILES := $(filter-out %/index.adoc,$(wildcard doc/antora/modules/reference/pages/man/*.adoc))
-$(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
-	@rm -f $@
-	${Q}for x in $^; do \
-		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
-		z=$$(basename $$x | sed 's/.adoc//'); \
-		echo "AUTO_MAN_FILES += man/man$$y/$$z.$$y" >> $@; \
-		echo "man/man$$y/$$z.$$y: $$x" >> $@; \
-		printf "\t"'@echo AUTO-MAN $$(notdir $$@)'"\n" >> $@; \
-		printf "\t"'@mkdir -p $$(dir $$@)'"\n" >> $@; \
-		printf "\t"'@asciidoctor -b manpage $$< -o $$@'"\n" >> $@; \
-		echo "" >> $@; \
-	done
-
--include $(BUILD_DIR)/make/man.mk
-ALL_INSTALL += $(AUTO_MAN_FILES)
-
-#
 #  Skip documentation if any of the necessary prerequisites are missing.
 #
 ifeq "$(ASCIIDOCTOR)" ""
@@ -57,6 +35,28 @@ endif
 #  If we still decide to build the documentation, then add in all of the documentation rules.
 #
 ifneq "$(WITH_DOC)" ""
+#
+#  Convert adoc to man, and then let "install.man" deal with things.
+#  This means a bare "make install.man" after "configure" won't get the
+#  right things, but oh well.
+#
+ADOC2MAN_FILES := $(filter-out %/index.adoc,$(wildcard doc/antora/modules/reference/pages/man/*.adoc))
+$(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
+	@rm -f $@
+	${Q}for x in $^; do \
+		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
+		z=$$(basename $$x | sed 's/.adoc//'); \
+		echo "AUTO_MAN_FILES += man/man$$y/$$z.$$y" >> $@; \
+		echo "man/man$$y/$$z.$$y: $$x" >> $@; \
+		printf "\t"'@echo AUTO-MAN $$(notdir $$@)'"\n" >> $@; \
+		printf "\t"'@mkdir -p $$(dir $$@)'"\n" >> $@; \
+		printf "\t"'@asciidoctor -b manpage $$< -o $$@'"\n" >> $@; \
+		echo "" >> $@; \
+	done
+
+-include $(BUILD_DIR)/make/man.mk
+ALL_INSTALL += $(AUTO_MAN_FILES)
+
 all.doc: docsite
 
 install: install.doc
@@ -68,7 +68,8 @@ DOC_RADDB	:= doc/antora/modules/reference/pages/raddb
 #
 #  Our "conf to asciidoc" stuff.
 #
-CONF_FILES := $(filter-out %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
+CONF_FILES := $(filter-out %/radiusd.conf %radrelay.conf %in %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
+
 BASE_ADOC_FILES := $(wildcard doc/*.adoc doc/*/*.adoc doc/*/*/*.adoc) $(DOC_RADDB)/mods-available/all_modules.adoc
 
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
@@ -193,17 +194,46 @@ endif
 #
 #  Conf files get converted to Asciidoc via our own magic script.
 #
-$(DOC_RADDB)/%.adoc: raddb/%
+$(DOC_RADDB)/mods-available/%.adoc: raddb/mods-available/%
 	@echo ADOC $^
 	${Q}mkdir -p $(dir $@)
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
 	${Q}./scripts/asciidoc/conf2adoc -t -o $@ < $^
+	${Q}./scripts/asciidoc/wrap.py -i $@
+
+$(DOC_RADDB)/%.adoc: raddb/%
+	@echo ADOC $^
+	${Q}mkdir -p $(dir $@)
+	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
+	${Q}./scripts/asciidoc/conf2adoc -o $@ < $^
+	${Q}./scripts/asciidoc/wrap.py -i $@
+
+$(DOC_RADDB)/radiusd.conf.adoc: raddb/radiusd.conf.in
+	@echo ADOC $^
+	${Q}mkdir -p $(dir $@)
+	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
+	${Q}./scripts/asciidoc/conf2adoc -t -o $@ < $^
+	${Q}perl -p -i -e 's/\@RADIUSD_VERSION_MAJOR@/$(RADIUSD_VERSION_MAJOR)/g;s/\@RADIUSD_VERSION_MINOR@/$(RADIUSD_VERSION_MINOR)/g;s/\@RADIUSD_VERSION@/$(RADIUSD_VERSION)/g;s/\@RADIUSD_DOC_VERSION@/$(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR)/g' $@
+
+$(DOC_RADDB)/radrelay.conf.adoc: raddb/radrelay.conf.in
+	@echo ADOC $^
+	${Q}mkdir -p $(dir $@)
+	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
+	${Q}./scripts/asciidoc/conf2adoc -t -o $@ < $^
+	${Q}perl -p -i -e 's/\@RADIUSD_VERSION_MAJOR@/$(RADIUSD_VERSION_MAJOR)/g;s/\@RADIUSD_VERSION_MINOR@/$(RADIUSD_VERSION_MINOR)/g;s/\@RADIUSD_VERSION@/$(RADIUSD_VERSION)/g;s/\@RADIUSD_DOC_VERSION@/$(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR)/g' $@
 
 #
 #  Simple rule for lazy people.
 #
 .PHONY: doc.raddb
 doc.raddb: $(patsubst raddb/%,$(DOC_RADDB)/%.adoc,$(CONF_FILES))
+
+#
+#  Remove the generated raddb files, so that we can forcibly regenerate them.
+#
+.PHONY: clean.doc.raddb
+clean.doc.raddb:
+	@rm -f $(patsubst raddb/%,$(DOC_RADDB)/%.adoc,$(CONF_FILES))
 
 #
 #  We re-run antora if any of the input files change.  Antora can't do partial updates.
@@ -267,6 +297,31 @@ doc/man/%.1: doc/man/%.adoc
 .PHONY: asciidoc html clean clean.doc
 asciidoc: $(ADOC_FILES)
 docsite: build/docsite/sitemap.xml
+
+#
+#  OSX: pcregrep --color
+#  Linux: grep --color='auto' -P -n
+#
+
+.PHONY: doc.ascii
+doc.ascii:
+	@pcregrep --color  '[\x80-\xFF]'  $$(find doc/antora -name "*.adoc" -print)
+
+.PHONY: doc.fixascii
+doc.fixascii:
+	@perl -p -i -e "s,‘,',g;s,’,',g;s,–,-,g;s,—,-,g;s, , ,g;s:…:,:g;s,“,\",g;s,”,\",g;s,≤,<=,g;s,≥,>=,g;s,→,->,g" $$(find doc/antora -name "*.adoc" -print)
+
+
+.PHONY: doc.copyright
+doc.copyright:
+	perl -p -i -e "s/Copyright \(C\) 2.../Copyright (C) $$(date +%Y)/"  $$(git grep -l 'Copyright' $$(find doc/antora/ -name "*.adoc" -print))
+
+.phony: doc.wrap
+doc.wrap: $(BASE_ADOC_FILES)
+	@for x in $(BASE_ADOC_FILES); do \
+		./scripts/asciidoc/wrap.py -i $$x || exit 1; \
+	done
+
 
 doc: build/docsite/sitemap.xml
 

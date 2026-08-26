@@ -64,3 +64,6 @@ Statistics are usually gathered in two ways:
 
 * FreeRADIUS xref:optimization/monitoring/statistics.adoc[internal statistics].
 * Analyzing logs with some external tool.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

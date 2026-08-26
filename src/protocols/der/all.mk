@@ -4,6 +4,7 @@
 # Version:      $Id$
 #
 TARGET		:= libfreeradius-der$(L)
+TGT_CATEGORY	:= lib-protocol
 
 SOURCES		:= base.c \
 		   decode.c \

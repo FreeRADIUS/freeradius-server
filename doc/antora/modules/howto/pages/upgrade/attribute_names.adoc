@@ -10,7 +10,8 @@ attributes usually had the vendor name as a prefix.  For example,
 Cisco-AVPair = "foo"
 ```
 
-The `dictionary` file definition for this attribute would look like this:
+The `dictionary` file definition for this attribute would look like
+this:
 
 ```
 VENDOR Cisco
@@ -52,8 +53,8 @@ Note that these "alias" dictionaries are only used for reading
 attributes, such as from the `users` file or `sql`.  When the server
 prints attributes, it will always print the new v4 names.
 
-These alias dictionaries can be enabled by editing the
-`raddb/dictionary` file.  Please see that file for more information.
+These alias dictionaries can be enabled by editing the `dictionary`
+file.  Please see that file for more information.
 
 == Tools to help
 
@@ -71,5 +72,5 @@ remain the same.
 The output file still has be checked manually.  The rewrite process is
 automatic, but is not perfect.
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

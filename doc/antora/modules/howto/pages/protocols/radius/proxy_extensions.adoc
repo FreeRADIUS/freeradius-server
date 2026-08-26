@@ -103,3 +103,6 @@ recv Accounting-Request {
 ```
 
 Because the server does not wait for a response to any of the replicated packets, a parallel section is not necessary here.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

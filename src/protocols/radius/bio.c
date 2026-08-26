@@ -51,7 +51,7 @@ fr_bio_verify_action_t fr_radius_bio_verify(UNUSED fr_bio_t *bio, void *verify_c
 	 *	See if we need to discard the packet.
 	 */
 	if (!fr_radius_ok(data, size, uctx->max_attributes, uctx->require_message_authenticator, &failure)) {
-		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
+		if (failure == FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
 
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}

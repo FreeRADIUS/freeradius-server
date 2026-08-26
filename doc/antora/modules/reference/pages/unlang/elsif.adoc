@@ -41,5 +41,5 @@ elsif (User-Name == "doug") {
 
 The last entry in an `elsif` section can also be an xref:unlang/actions.adoc[actions] subsection.
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
