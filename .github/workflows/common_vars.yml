@@ -112,6 +112,11 @@ jobs:
               - 'redhat/**'
               - 'scripts/ci/extra-packages.debian.control'
               - 'scripts/ci/docker/Dockerfile*'
+              #  COPY'd into the self-hosted image, so a change has to
+              #  rebuild the image that bakes the result in.
+              - 'scripts/ci/eapol_test-build.sh'
+              - 'scripts/ci/eapol_test/**'
+              - 'scripts/ci/ubuntu-mirrors-setup.sh'
               - 'scripts/docker/build/*/Dockerfile.ci'
               - 'scripts/docker/build/*/Dockerfile.crossbuild'
               - 'scripts/docker/build/*/Dockerfile.profiling-deps'
