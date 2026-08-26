@@ -117,7 +117,7 @@ static void backtrace_info_print(fr_bt_info_frame_t *frame, int fd, bool trim_pa
 	dprintf(fd, "#%u: 0x%lx %s in %s() at %s:%d\n",
 		frame->frameno,
 		(unsigned long)frame->pc,
-		trim_path ? fr_filename(frame->library) : frame->library,
+		trim_path && frame->library ? fr_filename(frame->library) : frame->library,
 		frame->function ? frame->function : "??",
 		trim_path ? fr_filename_common_trim(frame->filename, frame->library) : frame->filename,
 		frame->lineno);
