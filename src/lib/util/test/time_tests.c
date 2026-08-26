@@ -59,7 +59,7 @@ DIAG_ON(unused-but-set-variable)
  */
 static void time_delta_to_str_int64_min(void)
 {
-	char		buf[64];
+	char		buf[64] = "";
 	fr_sbuff_t	sbuff;
 	fr_slen_t	slen;
 	fr_time_delta_t	delta = fr_time_delta_wrap(INT64_MIN);
@@ -272,7 +272,7 @@ static void unix_time_from_tm(void)
 static void unix_time_str(void)
 {
 	fr_unix_time_t	t;
-	char		buf[128];
+	char		buf[128] = "";
 	fr_sbuff_t	sbuff;
 
 	TEST_CASE("a bare unix timestamp scales by the hint");
