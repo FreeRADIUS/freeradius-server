@@ -28,8 +28,19 @@ jobs:
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
+      #
+      #  concurrent_skipping widens the duplicate check to runs still
+      #  executing: same_content_newer skips this run when an older run
+      #  of the identical tree is in flight. The ff to master lands while
+      #  the branch pipeline that tested the commit is still running, so
+      #  only that concurrent check can match. Developer branches and PRs
+      #  keep 'never': their concurrency groups cancel the older run, and
+      #  skipping against a cancelled run would merge an untested tree.
+      #
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@v5.3.2
+        with:
+          concurrent_skipping: ${{ github.event_name == 'push' && !startsWith(github.ref_name, 'developer/') && 'same_content_newer' || 'never' }}
 
   #
   #  Determines which registry the images live in, which tag of them this ref
