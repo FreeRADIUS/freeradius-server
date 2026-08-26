@@ -32,9 +32,13 @@ jobs:
   #  be real.
   #
   #  Skipping the expensive model needs an "infrastructure" verdict AND at
-  #  least 0.8 confidence. Everything else falls through to the full
-  #  diagnosis, including "unknown" and a confident-sounding guess: a missed
-  #  regression costs far more than a wasted analysis.
+  #  least 0.8 confidence AND no test failure line in any failed job's log.
+  #  The last check is a grep, not a prompt rule: the model has ruled
+  #  "infrastructure" over logs whose own grep output began with FAILED:
+  #  lines, so compliance is enforced mechanically. Everything else falls
+  #  through to the full diagnosis, including "unknown" and a
+  #  confident-sounding guess: a missed regression costs far more than a
+  #  wasted analysis.
   #
   #  An intermittent test failure is deliberately NOT infrastructure. A race
   #  or a use-after-free presents exactly that way, and retrying it green is
@@ -64,6 +68,7 @@ jobs:
       confidence: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).confidence || 0 }}
       reason: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).reason || 'triage produced no structured output' }}
       fingerprint: ${{ steps.fp.outputs.fingerprint || '' }}
+      test_failure: ${{ steps.markers.outputs.test_failure }}
 
     steps:
       #  claude-code-action sets a git user name as it starts, which fails if
@@ -74,6 +79,31 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 1
           lfs: false
+
+      #
+      #  A FAILED: or make error line in a failed job's log means a test or
+      #  build broke, and that can never be a skippable infrastructure
+      #  verdict.  The check is a plain grep so the model cannot talk its
+      #  way past the rule.
+      #
+      - name: Check the failed logs for test failure lines
+        id: markers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          found=false
+          for job in $(gh run view "$RUN_ID" --repo "$REPO" --json jobs \
+                       --jq '.jobs[] | select(.conclusion == "failure") | .databaseId'); do
+            if gh run view --job "$job" --repo "$REPO" --log 2>/dev/null \
+               | grep -q -E 'FAILED: |make(\[[0-9]+\])?: \*\*\*'; then
+              found=true
+              echo "job $job log contains a test or build failure line"
+            fi
+          done
+          echo "test_failure=$found" >> "$GITHUB_OUTPUT"
 
       #  The action exits non-zero if the model returns no structured output.
       #  Without continue-on-error that fails the job, and the fallback values
@@ -160,6 +190,7 @@ jobs:
           CONFIDENCE: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).confidence || 0 }}
           FINGERPRINT: ${{ steps.fp.outputs.fingerprint || 'none' }}
           REASON: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).reason || 'triage produced no structured output; full diagnosis will run' }}
+          TEST_FAILURE: ${{ steps.markers.outputs.test_failure }}
         run: |
           {
             echo "### CI failure triage"
@@ -169,6 +200,10 @@ jobs:
             echo "fingerprint: \`${FINGERPRINT}\`"
             echo
             echo "${REASON}"
+            if [ "$TEST_FAILURE" = "true" ] && [ "$VERDICT" = "infrastructure" ]; then
+              echo
+              echo "overridden: a failed job's log contains a test or build failure line, so the diagnosis runs regardless of the verdict"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   #
@@ -182,7 +217,8 @@ jobs:
     if: >-
       ${{ !cancelled() && needs.triage.outputs.fingerprint != '' &&
           !(needs.triage.outputs.verdict == 'infrastructure' &&
-            fromJSON(needs.triage.outputs.confidence) >= 0.8) }}
+            fromJSON(needs.triage.outputs.confidence) >= 0.8 &&
+            needs.triage.outputs.test_failure != 'true') }}
 
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -279,7 +315,8 @@ jobs:
       ${{ !cancelled() && needs.triage.result != 'skipped' &&
           needs.recurrence.outputs.matched != 'true' &&
           !(needs.triage.outputs.verdict == 'infrastructure' &&
-            fromJSON(needs.triage.outputs.confidence) >= 0.8) }}
+            fromJSON(needs.triage.outputs.confidence) >= 0.8 &&
+            needs.triage.outputs.test_failure != 'true') }}
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
