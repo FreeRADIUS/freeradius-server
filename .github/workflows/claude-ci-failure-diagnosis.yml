@@ -84,8 +84,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ github.token }}
-          PIPELINE_RUN_ID: ${{ github.event.workflow_run.id }}
-          REPO: ${{ github.repository }}
         with:
           anthropic_federation_rule_id: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
           anthropic_organization_id: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
@@ -100,13 +98,13 @@ jobs:
             --allowed-tools "Bash(gh run view:*),Bash(gh api:*)"
             --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["infrastructure","code","unknown"],"description":"Whether every failure lies outside the codebase"},"confidence":{"type":"number","minimum":0,"maximum":1,"description":"Confidence in the verdict"},"reason":{"type":"string","description":"One sentence naming the deciding log line"},"fingerprint":{"type":"string","description":"job:kind:token identifying the failure across commits"}},"required":["verdict","confidence","reason","fingerprint"],"additionalProperties":false}'
           prompt: |
-            One or more legs of CI run $PIPELINE_RUN_ID in $REPO failed. Decide only whether every failure is an infrastructure problem. Do not diagnose the code and do not post anything.
+            One or more legs of CI run ${{ github.event.workflow_run.id }} in ${{ github.repository }} failed. Decide only whether every failure is an infrastructure problem. Do not diagnose the code and do not post anything.
 
             List the failed jobs and read their logs:
 
-              gh run view "$PIPELINE_RUN_ID" --repo "$REPO" --json jobs \
+              gh run view ${{ github.event.workflow_run.id }} --repo ${{ github.repository }} --json jobs \
                 --jq '.jobs[] | select(.conclusion == "failure") | {databaseId, name}'
-              gh run view --job "<job id>" --repo "$REPO" --log
+              gh run view --job "<job id>" --repo ${{ github.repository }} --log
 
             Answer "infrastructure" only when EVERY failure is clearly one of:
               - a network transfer that stalled, truncated or timed out (git fetch, apt, docker pull, artifact download)
@@ -264,12 +262,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ github.token }}
-          FAILING_SHA: ${{ github.event.workflow_run.head_sha }}
-          FAILING_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          PIPELINE_RUN_ID: ${{ github.event.workflow_run.id }}
-          PIPELINE_RUN_URL: ${{ github.event.workflow_run.html_url }}
-          REPO: ${{ github.repository }}
-          FINGERPRINT: ${{ needs.triage.outputs.fingerprint }}
         with:
           anthropic_federation_rule_id: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
           anthropic_organization_id: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
@@ -281,32 +273,27 @@ jobs:
           claude_args: >-
             --model fable
             --allowed-tools
-            "Bash(gh run view:*),Bash(gh run download:*),Bash(gh api:*),Bash(gh issue view:*),Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(git blame:*),Read,Grep,Glob"
+            "Bash(gh run view:*),Bash(gh run download:*),Bash(gh api:*),Bash(gh issue view:*),Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(git blame:*),Bash(jq:*),Read,Write,Grep,Glob"
           prompt: |
             One or more CI legs failed on ${{ github.event.workflow_run.head_branch }} at commit ${{ github.event.workflow_run.head_sha }}.
 
             You run once for the whole pipeline, after every leg has finished, so you are seeing the complete picture and no other session is running against this commit. Diagnose every failure and post exactly ONE commit comment covering all of them. Do not open a PR, do not push, do not edit any file in the repo.
 
-            The following env vars are exported for use in `gh`/`git` commands:
-              FAILING_SHA       - commit under test
-              FAILING_BRANCH    - branch the commit is on
-              PIPELINE_RUN_ID   - the pipeline run, which contains every leg's jobs
-              PIPELINE_RUN_URL  - link to that run
-              REPO              - owner/repo
+            The pipeline run is ${{ github.event.workflow_run.html_url }}
 
             Steps:
 
             1. Every failed job is in this one run, so one call lists them:
-                 gh run view "$PIPELINE_RUN_ID" --repo "$REPO" --json jobs \
+                 gh run view ${{ github.event.workflow_run.id }} --repo ${{ github.repository }} --json jobs \
                    --jq '.jobs[] | select(.conclusion == "failure") | {databaseId, name}'
                Then read each one:
-                 gh run view --job "<job id>" --repo "$REPO" --log
+                 gh run view --job "<job id>" --repo ${{ github.repository }} --log
 
             2. Group the failures. Several legs failing on the same underlying cause (one compile error breaking every build leg) is ONE finding, not one per leg. Only treat them separately when the root causes genuinely differ.
 
             3. Inspect the commit under test:
-                 git show --stat "$FAILING_SHA"
-                 git show "$FAILING_SHA" -- <files of interest>
+                 git show --stat ${{ github.event.workflow_run.head_sha }}
+                 git show ${{ github.event.workflow_run.head_sha }} -- <files of interest>
 
             4. Classify each distinct failure as exactly one of:
                  REGRESSION  - this commit (or one of its files) caused the failure; cite file:line.
@@ -327,13 +314,13 @@ jobs:
 
                  ---
                  _Posted automatically by Claude CI Failure Diagnosis._
-                 <!-- claude-ci-fp: $FINGERPRINT -->
+                 <!-- claude-ci-fp: ${{ needs.triage.outputs.fingerprint }} -->
 
-               The marker on the last line is how a later run recognises this same failure and copies this analysis forward instead of paying to work it out again. Write $FINGERPRINT out literally as its value, exactly as given, on its own line, once per comment.
+               The marker on the last line is how a later run recognises this same failure and copies this analysis forward instead of paying to work it out again. Write the marker line exactly as given, on its own line, once per comment.
 
             6. Post it (jq -Rs is the safe way to escape multi-line bodies with backticks):
 
                  jq -Rs '{body: .}' < /tmp/comment.md > /tmp/comment.json
-                 gh api -X POST "repos/$REPO/commits/$FAILING_SHA/comments" --input /tmp/comment.json
+                 gh api -X POST repos/${{ github.repository }}/commits/${{ github.event.workflow_run.head_sha }}/comments --input /tmp/comment.json
 
             Do not speculate beyond what the logs support. UNKNOWN is a useful signal - prefer it over a guess.
