@@ -176,7 +176,10 @@ static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_S
 			return -1;
 		}
 
-		fr_time_delta_to_str(&value_elem, delta, FR_TIME_RES_SEC, true);
+		if (fr_time_delta_to_str(&value_elem, delta, FR_TIME_RES_SEC, true) < 0) {
+			cf_log_perr(cs, "Failed formatting \"%s\"", value);
+			return -1;
+		}
 		value = fr_sbuff_start(&value_elem);
 	}
 		break;
