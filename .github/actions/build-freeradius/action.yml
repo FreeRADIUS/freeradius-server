@@ -40,14 +40,6 @@ runs:
       run: |
         git lfs pull
 
-    - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v5
-      id: hostapd-cache
-      with:
-        path: ${{ env.HOSTAPD_BUILD_DIR }}
-        key: hostapd-${{ runner.os }}-${{ inputs.platform }}-${{ env.HOSTAPD_GIT_TAG }}-v4
-      if: ${{ inputs.test_type != 'fuzzing' }}
-
     #  Has issues in Docker container when running on GitHub...
     - uses: ruby/setup-ruby@v1
       if: ${{ inputs.test_type == 'fixtures' && matrix.os.runs_on == 'self-hosted' }}
