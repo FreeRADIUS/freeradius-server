@@ -1234,7 +1234,9 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_list_t		list, sub_list;
 	fr_value_box_t			*vb = NULL;
 
-	fr_assert(func);
+#ifdef __COVERITY__
+	if (!func) return XLAT_ACTION_FAIL;
+#endif
 
 	fr_value_box_list_init(&list);
 	fr_value_box_list_init(&sub_list);
