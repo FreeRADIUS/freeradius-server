@@ -913,7 +913,7 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 	fr_pair_list_free(&cluster->cluster_pairs);
 	MEM(fr_pair_list_copy(cluster, &cluster->cluster_pairs, list) >= 0);
 
-	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_cluster_id);
+	MEM(fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_cluster_id) >= 0);
 	vp->vp_uint16 = cluster->cluster_id;
 	cluster->fetching = false;
 	cluster->failed = false;
@@ -921,7 +921,7 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 
 	MEM(fr_pair_list_copy(request->reply_ctx, &request->reply_pairs, list) >= 0);
 
-	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_packet_type);
+	MEM(fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_packet_type) >= 0);
 	vp->vp_uint32 = FR_REDIS_CLUSTER_MAP_UPDATE;
 
 	fr_coord_to_worker_reply_broadcast(request);
