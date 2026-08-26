@@ -41,6 +41,7 @@ static void acutest_common_init(void);
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,7 +50,11 @@ static void acutest_common_init(void)
 {
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
-	if (fr_fault_setup(NULL, getenv("PANIC_ACTION"), acutest_argv0_, PANIC_ACTION_SIGNALS) < 0) {
+	/*
+	 *	fr_fault_setup allocates in the given context, and the autofree
+	 *	context is torn down at exit, so LeakSanitizer stays quiet.
+	 */
+	if (fr_fault_setup(talloc_autofree_context(), getenv("PANIC_ACTION"), acutest_argv0_, PANIC_ACTION_SIGNALS) < 0) {
 		fprintf(stderr, "Running without fatal signal handlers, because fr_fault_setup failed: %s\n",
 			fr_strerror());
 	}
