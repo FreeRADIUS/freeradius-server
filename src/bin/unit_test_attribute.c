@@ -139,6 +139,12 @@ do { \
 		return 0; \
 	} while (0)
 
+#define SBUFF_RETURN_OK_WITH_ERROR(_function, ...) \
+	do { \
+		slen = _function(__VA_ARGS__); \
+		if (slen <= 0) RETURN_OK_WITH_ERROR(); \
+	} while (0)
+
 /** Default buffer size for a command_file_ctx_t
  *
  */
@@ -1276,19 +1282,16 @@ static size_t command_attr_children(command_result_t *result, command_file_ctx_t
 			ref = fr_dict_attr_ref(da);
 			fr_assert(ref != NULL);
 
-			slen = fr_sbuff_in_sprintf(&out, "%s (ALIAS ref=", da->name);
-			if (slen <= 0) RETURN_OK_WITH_ERROR();
+			SBUFF_RETURN_OK_WITH_ERROR(fr_sbuff_in_sprintf, &out, "%s (ALIAS ref=", da->name);
 
 			slen = fr_dict_attr_oid_print(&out, fr_dict_root(da->dict), ref, false);
 			if (slen <= 0) RETURN_OK_WITH_ERROR();
 
-			slen = fr_sbuff_in_strcpy(&out, "), ");
-			if (slen <= 0) RETURN_OK_WITH_ERROR();
+			SBUFF_RETURN_OK_WITH_ERROR(fr_sbuff_in_strcpy, &out, "), ");
 			continue;
 		}
 
-		slen = fr_sbuff_in_sprintf(&out, "%s (%s), ", da->name, fr_type_to_str(da->type));
-		if (slen <= 0) RETURN_OK_WITH_ERROR();
+		SBUFF_RETURN_OK_WITH_ERROR(fr_sbuff_in_sprintf, &out, "%s (%s), ", da->name, fr_type_to_str(da->type));
 	}
 
 	fr_sbuff_trim(&out, (bool[SBUFF_CHAR_CLASS]){ [' '] = true, [','] = true });
@@ -1347,8 +1350,7 @@ static size_t command_attr_type(command_result_t *result, command_file_ctx_t *cc
 {
 	ATTR_COMMON;
 
-	slen = fr_sbuff_in_strcpy(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), fr_type_to_str(da->type));
-	if (slen <= 0) RETURN_OK_WITH_ERROR();
+	SBUFF_RETURN_OK_WITH_ERROR(fr_sbuff_in_strcpy, &FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), fr_type_to_str(da->type));
 
 	RETURN_OK(slen);
 }
