@@ -753,15 +753,14 @@ int main(int argc, char *argv[])
 	fr_talloc_fault_setup();
 
 	/*
-	 *	If the server was built with debugging enabled always install
-	 *	the basic fatal signal handlers.
+	 *	The test wrapper's timeout arrives as SIGALRM, so the fatal
+	 *	signal handlers are installed in every build.
 	 */
-#ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("%s", config->name);
 		fr_exit_now(EXIT_FAILURE);
 	}
-#else
+#ifdef NDEBUG
 	fr_disable_null_tracking_on_free(autofree);
 #endif
 

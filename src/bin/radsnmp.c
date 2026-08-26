@@ -920,12 +920,10 @@ int main(int argc, char **argv)
 	conf->timeout = fr_time_delta_from_sec(3);
 	conf->retries = 5;
 
-#ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("radsnmp");
 		fr_exit_now(EXIT_FAILURE);
 	}
-#endif
 
 	/*
 	 *	Need to log to stderr because net-snmp will interpret stdout

@@ -4431,12 +4431,11 @@ int main(int argc, char *argv[])
 	autofree = talloc_autofree_context();
 	thread_ctx = talloc_new(autofree);
 
-#ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
 		fr_perror("unit_test_attribute");
 		goto cleanup;
 	}
-#else
+#ifdef NDEBUG
 	fr_disable_null_tracking_on_free(autofree);
 #endif
 

@@ -99,12 +99,10 @@ int main(int argc, char *argv[])
 
 	autofree = talloc_autofree_context();
 
-#ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
-		fr_perror("radict");
+		fr_perror("radlock");
 		fr_exit(EXIT_FAILURE);
 	}
-#endif
 
 	talloc_set_log_stderr();
 
