@@ -27,7 +27,7 @@ jobs:
   #
   #  Cheap first pass. Most failures that are not the committer's fault look
   #  the same in the logs: a fetch that stalled, a mirror that timed out, a
-  #  runner that went away. Haiku reads the failed steps and says whether it
+  #  runner that went away. Sonnet reads the failed jobs and says whether it
   #  is one of those, so the expensive model only runs on failures that might
   #  be real.
   #
@@ -123,7 +123,7 @@ jobs:
           additional_permissions: |
             actions: read
           claude_args: >-
-            --model haiku
+            --model sonnet
             --max-budget-usd 0.50
             --allowed-tools "Bash(gh run view:*),Bash(gh api:*)"
             --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["infrastructure","code","unknown"],"description":"Whether every failure lies outside the codebase"},"confidence":{"type":"number","minimum":0,"maximum":1,"description":"Confidence in the verdict"},"reason":{"type":"string","description":"One sentence naming the deciding log line"},"failing_target":{"type":"string","description":"the failing test or build target, copied exactly from the FAILED: or make error line"}},"required":["verdict","confidence","reason","failing_target"],"additionalProperties":false}'
