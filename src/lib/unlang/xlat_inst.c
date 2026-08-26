@@ -570,6 +570,8 @@ int xlat_instance_unregister_func(xlat_exp_t *node)
 		TALLOC_FREE(node->call.thread_inst);
 	}
 
+	XLAT_VERIFY(node);
+
 	return 0;
 }
 
@@ -621,6 +623,8 @@ int xlat_instance_register_func(xlat_exp_t *node)
 		TALLOC_FREE(call->inst);
 		return -1;
 	}
+
+	XLAT_VERIFY(node);
 
 	return 0;
 }
@@ -691,10 +695,23 @@ static inline CC_HINT(always_inline) int xlat_instance_register(xlat_exp_head_t 
  */
 int xlat_finalize(xlat_exp_head_t *head, fr_event_list_t *runtime_el)
 {
+	int ret;
+
 	if (!runtime_el) {
-		return xlat_instance_register(head);
+		ret = xlat_instance_register(head);
+	} else {
+		ret = xlat_instantiate_ephemeral(head, runtime_el);
 	}
-	return xlat_instantiate_ephemeral(head, runtime_el);
+	if (ret < 0) return ret;
+
+	/*
+	 *	Both branches walk the tree and attach instance data to every
+	 *	function call in it, so check the result here.  Callers do not
+	 *	need to check it again themselves.
+	 */
+	XLAT_HEAD_VERIFY(head);
+
+	return ret;
 }
 
 /** Walk over all registered instance data and free them explicitly

@@ -143,6 +143,8 @@ int xlat_tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 	MEM(node = xlat_exp_alloc(head, XLAT_REGEX, fr_sbuff_current(m_s), fr_sbuff_behind(m_s)));
 	node->regex_index = num;
 
+	XLAT_VERIFY(node);
+
 	*out = node;
 
 	(void) fr_sbuff_advance(in, 1); /* must be '}' */
@@ -1963,7 +1965,6 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 		return 0;
 	}
 
-	XLAT_HEAD_VERIFY(head);
 	*out = head;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2158,6 +2159,11 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 	head->flags = our_flags;
 
 	fr_assert(!head->flags.needs_resolving);
+
+	/*
+	 *	Resolving walks the whole tree, so check the result.
+	 */
+	XLAT_HEAD_VERIFY(head);
 
 	return 0;
 }

@@ -321,6 +321,11 @@ int xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp)
 
 	fr_assert(!head->flags.can_purify);
 
+	/*
+	 *	Purifying rewrites the whole tree, so check the result.
+	 */
+	XLAT_HEAD_VERIFY(head);
+
 	return 0;
 }
 
@@ -535,6 +540,8 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 		return -1;
 	}
 
+	XLAT_VERIFY(node);
+
 	*out = node;
 
 	return 1;
@@ -551,6 +558,13 @@ int xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_
 		node = peephole_optimize_lor(lhs, rhs);
 		if (!node) return 0;
 
+		/*
+		 *	The surviving node is returned after its sibling was
+		 *	freed, so check it here rather than at each of the
+		 *	returns inside the optimizer.
+		 */
+		XLAT_VERIFY(node);
+
 		*out = node;
 		return 1;
 	}
@@ -560,6 +574,8 @@ int xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_
 
 		node = peephole_optimize_land(lhs, rhs);
 		if (!node) return 0;
+
+		XLAT_VERIFY(node);
 
 		*out = node;
 		return 1;

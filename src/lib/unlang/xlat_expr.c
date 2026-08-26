@@ -134,6 +134,8 @@ static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child)
 
 	xlat_func_append_arg(node, child, false);
 
+	XLAT_VERIFY(node);
+
 	return node;
 }
 
@@ -2218,6 +2220,8 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp_t *
 	xlat_func_append_arg(cast, node, false);
 	(void) talloc_steal(cast, child);
 	xlat_func_append_arg(cast, child, false);
+
+	XLAT_VERIFY(cast);
 
 	return cast;
 }
