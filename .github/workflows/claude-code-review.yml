@@ -1,7 +1,16 @@
 name: Claude Code Review
 
+#
+#  pull_request_target rather than pull_request: a fork's pull_request run is
+#  never granted the id-token permission, so the Anthropic authentication
+#  failed on every pull request from a fork.  The target event runs in this
+#  repository's context with real permissions.  The checkout below stays on
+#  the base branch, and the review reads the pull request through the API,
+#  so no code from the fork runs here.  The job condition decides whose pull
+#  requests get reviewed.
+#
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, ready_for_review, reopened, labeled]
 
 jobs:
