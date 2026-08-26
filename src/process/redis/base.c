@@ -875,6 +875,11 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 			endpoint = fr_pair_find_by_da(&vp->vp_group, NULL, attr_redis_node_endpoint);
 			port = fr_pair_find_by_da(&vp->vp_group, NULL, attr_redis_node_port);
 
+			if (unlikely(!endpoint || !port)) {
+				RERROR("Invalid cluster shard");
+				continue;
+			}
+
 			fr_dlist_foreach(&cluster->nodes, process_redis_node_t, node) {
 				if ((strcmp(node->io_conf.hostname, endpoint->vp_strvalue) == 0) &&
 				    (node->io_conf.port == port->vp_uint16)) {
