@@ -160,8 +160,6 @@ int		redis_dict_init(void);
 /*
  *	Command and resulting parsing
  */
-fr_redis_rcode_t	fr_redis_command_status(fr_redis_conn_t *conn, redisReply *reply);
-
 void			fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx,
 					     fr_redis_rcode_t status);
 
