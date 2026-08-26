@@ -341,9 +341,9 @@ static void cache_entry_find_results(request_t *request, UNUSED fr_redis_command
 	 *	are three chunks per map
 	 */
 
-	c = talloc_zero_pooled_object(NULL, rlm_cache_entry_t, reply->elements, pool_size);
+	MEM(c = talloc_zero_pooled_object(NULL, rlm_cache_entry_t, reply->elements, pool_size));
 #else
-	c = talloc_zero(NULL, rlm_cache_entry_t);
+	MEM(c = talloc_zero(NULL, rlm_cache_entry_t));
 #endif
 	map_list_init(&c->maps);
 	/*
