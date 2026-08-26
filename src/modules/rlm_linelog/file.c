@@ -96,7 +96,7 @@ void file_batching_xlat_handle_signal(xlat_ctx_t const *xctx, request_t *request
 
 static int _file_free(rlm_linelog_file_t *file)
 {
-	fr_hash_table_delete(file->thread_inst->file_table, file);
+	(void) fr_hash_table_delete(file->thread_inst->file_table, file);
 
 	return 0;
 }
