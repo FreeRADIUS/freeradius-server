@@ -45,10 +45,18 @@ static void acutest_common_init(void);
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <talloc.h>
 
 static void acutest_common_init(void)
 {
 	setvbuf(stdout, NULL, _IOLBF, 0);
+
+	/*
+	 *	Needed to prevent fr_fault_setup calling fr_get_debug_state,
+	 *	which can populate the error stack with a message about ptrace
+	 *	when running as a normal user, breaking the strerror tests.
+	 */
+	setenv("DEBUGGER_ATTACHED", "no", 0);
 
 	/*
 	 *	fr_fault_setup allocates in the given context, and the autofree
