@@ -100,7 +100,7 @@ static int _tls_bio_talloc_read_cb(BIO *bio, char *buf, int size)
 	if (to_copy > (size_t)size) to_copy = (size_t)size;
 
 	slen = fr_dbuff_out_memcpy((uint8_t *)buf, &bd->dbuff_out, to_copy);
-	if (!fr_cond_assert(slen >= 0)) {	/* Shouldn't happen */
+	if (fr_cond_assert(slen < 0)) {	/* Shouldn't happen */
 		buf[0] = '\0';
 		return (int)slen;
 	}
