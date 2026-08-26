@@ -2358,8 +2358,10 @@ static int redis_ippool_subnet_arg_parse(request_t *request, fr_value_box_t *sta
 	{
 		uint32_t ip;
 
+#ifdef __clang_analyzer__
 		/* cond assert to satisfy clang scan */
 		if (!fr_cond_assert((prefix > 0) && (prefix <= 32))) return -1;
+#endif
 
 		/* Set the input to /32 so cast works */
 		subnet->vb_ip.prefix = 32;
@@ -2387,8 +2389,10 @@ static int redis_ippool_subnet_arg_parse(request_t *request, fr_value_box_t *sta
 	{
 		uint128_t ip, p_mask;
 
+#ifdef __clang_analyzer__
 		/* cond assert to satisfy clang scan */
 		if (!fr_cond_assert((prefix > 0) && (prefix <= 128))) return -1;
+#endif
 
 		/* Set the input to /128 so cast works */
 		subnet->vb_ip.prefix = 128;
