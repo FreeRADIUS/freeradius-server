@@ -368,6 +368,8 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 		break;
 
 	case FR_TYPE_STRING:
+	{
+		ssize_t	slen;
 		/*
 		 *	Note that we set ".always_escape" in the function arguments, so that we get called for
 		 *	IP addresses.  Otherwise, the xlat evaluator and/or the list_concat_as_string
@@ -388,11 +390,12 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 		 *	"log/aland@freeradius.org".
 		 */
 		if (vb->vb_strvalue[0] == '.') {
-			fr_value_box_print(out, vb, &fr_filename_escape_dots);
+			slen = fr_value_box_print(out, vb, &fr_filename_escape_dots);
 		} else {
-			fr_value_box_print(out, vb, &fr_filename_escape);
+			slen = fr_value_box_print(out, vb, &fr_filename_escape);
 		}
-
+		if (slen < 0) return -1;
+	}
 		break;
 	}
 
