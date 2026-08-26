@@ -176,10 +176,10 @@ if [ "$1" == "create" ]; then
 	if [ "$TLS" -eq 1 ]; then
 	    source ${TMP_REDIS_DIR}/config.sh
 	fi
-        waits=0
         STARTPORT=$((PORT+1))
-        ENDPORT=$((STARTPORT+NODES))
+        ENDPORT=$((PORT+NODES))
         for node in $(seq $STARTPORT $ENDPORT); do
+                waits=0
                 while [ $waits -lt 10 ]; do
                         redis-cli ${TLS_CLIENT_OPTIONS} -p $node quit > /dev/null && break
                         sleep 0.5
