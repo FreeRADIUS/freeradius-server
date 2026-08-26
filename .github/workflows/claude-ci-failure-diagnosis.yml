@@ -63,7 +63,7 @@ jobs:
       verdict: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).verdict || 'unknown' }}
       confidence: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).confidence || 0 }}
       reason: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).reason || 'triage produced no structured output' }}
-      fingerprint: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).fingerprint || '' }}
+      fingerprint: ${{ steps.fp.outputs.fingerprint || '' }}
 
     steps:
       #  claude-code-action sets a git user name as it starts, which fails if
@@ -96,7 +96,7 @@ jobs:
             --model haiku
             --max-budget-usd 0.50
             --allowed-tools "Bash(gh run view:*),Bash(gh api:*)"
-            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["infrastructure","code","unknown"],"description":"Whether every failure lies outside the codebase"},"confidence":{"type":"number","minimum":0,"maximum":1,"description":"Confidence in the verdict"},"reason":{"type":"string","description":"One sentence naming the deciding log line"},"fingerprint":{"type":"string","description":"job:kind:token identifying the failure across commits"}},"required":["verdict","confidence","reason","fingerprint"],"additionalProperties":false}'
+            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["infrastructure","code","unknown"],"description":"Whether every failure lies outside the codebase"},"confidence":{"type":"number","minimum":0,"maximum":1,"description":"Confidence in the verdict"},"reason":{"type":"string","description":"One sentence naming the deciding log line"},"failing_target":{"type":"string","description":"the failing test or build target, copied exactly from the FAILED: or make error line"}},"required":["verdict","confidence","reason","failing_target"],"additionalProperties":false}'
           prompt: |
             One or more legs of CI run ${{ github.event.workflow_run.id }} in ${{ github.repository }} failed. Decide only whether every failure is an infrastructure problem. Do not diagnose the code and do not post anything.
 
@@ -124,17 +124,29 @@ jobs:
 
             Put a one-sentence justification in "reason", quoting the deciding log line verbatim. A reason that describes a line you cannot quote is a reason to answer "unknown" instead.
 
-            Also return a "fingerprint" identifying the failure itself, so the same bug recurring on a later commit can be recognised without analysing it again. Build it as three colon-separated parts, lowercase, no spaces:
+            Also return "failing_target": the name of the failing test or build target, copied character for character from the log. Take it from the FAILED: line, the make error line, or the file the toolchain names. Do not compose, summarise or reword it: the same failure on a later commit must produce the same string, and only a verbatim copy does. Examples of the shape:
 
-              <failing job>:<kind of failure>:<the token that makes it distinct>
+              test.multi-server.kafka-produce.short_ci
+              build/tests/bin/slab_tests
+              src/lib/util/dbuff.c
+              libluajit2-5.1-dev
 
-            The third part is whatever the log names: the unresolvable package, the undefined symbol, the failing test, the source file. Take it from the error, not from the commit, so the same bug on a different commit produces the same string. Examples:
+            When the failures differ from each other, copy the target of the first one a reader would care about. Return an empty string only if the logs never name a target.
 
-              deb-install-debian-13:unmet-dependency:libluajit2-5.1-dev
-              ci-sanitizers-ubuntu24:asan-heap-use-after-free:src/lib/util/dbuff.c
-              docker-crossbuild:git-clone-truncated:freeradius-server
-
-            When the failures differ from each other, fingerprint the first one a reader would care about. Return an empty string only if you genuinely cannot name the failure.
+      #
+      #  The model copies the failing target verbatim; everything that makes
+      #  the string comparable across commits happens here, mechanically.
+      #  Model-composed fingerprints produced six spellings for one
+      #  recurring failure.
+      #
+      - name: Normalise the fingerprint
+        id: fp
+        env:
+          FAILING_TARGET: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).failing_target || '' }}
+        run: |
+          fingerprint=$(printf '%s' "$FAILING_TARGET" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9._-' '-' | sed -e 's/-\{1,\}/-/g' -e 's/^-//' -e 's/-$//')
+          echo "fingerprint: ${fingerprint:-<empty>}"
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
 
       #
       #  The verdict fields are model output quoting untrusted CI logs, so
@@ -146,7 +158,7 @@ jobs:
         env:
           VERDICT: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).verdict || 'unavailable' }}
           CONFIDENCE: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).confidence || 0 }}
-          FINGERPRINT: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).fingerprint || 'none' }}
+          FINGERPRINT: ${{ steps.fp.outputs.fingerprint || 'none' }}
           REASON: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).reason || 'triage produced no structured output; full diagnosis will run' }}
         run: |
           {
@@ -206,6 +218,15 @@ jobs:
             [ "$page" -ge 1 ] || continue
             gh api "repos/$REPO/comments?per_page=100&page=$page" >> /tmp/recent.json || true
           done
+
+          #
+          #  A near-miss should read as two visibly different strings, not
+          #  as a silent "no previous diagnosis".
+          #
+          echo "searching for fingerprint: $FINGERPRINT"
+          echo "fingerprints seen in the scanned comments:"
+          jq -rs '[.[][] | .body | capture("claude-ci-fp: (?<f>[^ \n]+)")?.f]
+                  | group_by(.) | map("  \(length)x \(.[0])") | .[]' /tmp/recent.json || true
 
           #
           #  Oldest-first ordering means the last match is the most recent
