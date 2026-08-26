@@ -16,7 +16,7 @@ name: Merge into upstream
 on:
   workflow_call:
     secrets:
-      GH_APP_PRIVATE_KEY:
+      GH_APP_PRIVATE_KEY_CI_MERGE:
         required: true
 
 jobs:
@@ -49,8 +49,8 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ vars.GH_APP_CLIENT_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          client-id: ${{ vars.GH_APP_CLIENT_ID_CI_MERGE }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY_CI_MERGE }}
 
       - name: Set up Git with app token
         run: |

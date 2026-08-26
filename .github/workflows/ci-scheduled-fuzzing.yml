@@ -288,8 +288,8 @@ jobs:
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') && steps.corpusparams.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
       uses: actions/create-github-app-token@v3
       with:
-        client-id: ${{ vars.GH_APP_CLIENT_ID }}
-        private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+        client-id: ${{ vars.GH_APP_CLIENT_ID_CI_MERGE }}
+        private-key: ${{ secrets.GH_APP_PRIVATE_KEY_CI_MERGE }}
 
     #
     #  We can push the LFS file directly, but we must use the GitHub API to

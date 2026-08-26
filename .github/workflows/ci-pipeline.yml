@@ -274,4 +274,4 @@ jobs:
                     && needs.ci-sanitizers.result == 'success')) }}
     uses: ./.github/workflows/merge-upstream.yml
     secrets:
-      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      GH_APP_PRIVATE_KEY_CI_MERGE: ${{ secrets.GH_APP_PRIVATE_KEY_CI_MERGE }}
