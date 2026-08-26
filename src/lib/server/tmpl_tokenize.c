@@ -1664,6 +1664,8 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 		slen = fr_sbuff_out_abstrncpy_allowed(ar, &unresolved,
 						      &our_name, FR_DICT_ATTR_MAX_NAME_LEN + 1,
 						      fr_dict_attr_allowed_chars);
+		if (slen < 0) return -1;
+
 		if (slen == 0) {
 			slen = tmpl_attr_ref_from_unspecified_substr(ar, err, vpt, &our_name, at_rules);
 			if (slen < 0) {
