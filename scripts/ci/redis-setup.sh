@@ -180,8 +180,14 @@ if [ "$1" == "create" ]; then
         ENDPORT=$((PORT+NODES))
         for node in $(seq $STARTPORT $ENDPORT); do
                 waits=0
-                while [ $waits -lt 10 ]; do
-                        redis-cli ${TLS_CLIENT_OPTIONS} -p $node quit > /dev/null && break
+                until redis-cli ${TLS_CLIENT_OPTIONS} -p $node quit > /dev/null 2>&1; do
+                        #  Parallel test suites start several clusters at
+                        #  once, and a node has taken over five seconds to
+                        #  accept connections under that load.
+                        if [ $waits -ge 40 ]; then
+                                echo "Giving up on cluster create: node on port $node did not accept connections within 20 seconds" >&2
+                                exit 1
+                        fi
                         sleep 0.5
                         waits=$((waits + 1))
                 done
