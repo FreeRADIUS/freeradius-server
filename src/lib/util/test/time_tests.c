@@ -20,8 +20,8 @@
  *
  * @copyright 2022 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include "acutest.h"
-#include"acutest_helpers.h"
+#include "acutest_common_init.h"
+#include "acutest_helpers.h"
 #include <freeradius-devel/util/time.h>
 
 #define ROUNDS (100000)

@@ -21,8 +21,8 @@
  * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 
-#include "acutest.h"
-#include"acutest_helpers.h"
+#include "acutest_common_init.h"
+#include "acutest_helpers.h"
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/sha1.h>
 

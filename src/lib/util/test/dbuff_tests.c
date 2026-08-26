@@ -1,5 +1,5 @@
-#include "acutest.h"
-#include"acutest_helpers.h"
+#include "acutest_common_init.h"
+#include "acutest_helpers.h"
 #include <float.h>
 
 #include <freeradius-devel/util/dbuff.h>

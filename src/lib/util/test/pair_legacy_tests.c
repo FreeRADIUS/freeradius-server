@@ -39,7 +39,7 @@ static void test_init(void);
 #  define TEST_INIT  test_init()
 #endif
 
-#include "acutest.h"
+#include "acutest_common_init.h"
 #include "acutest_helpers.h"
 #include "pair_test_helpers.h"
 

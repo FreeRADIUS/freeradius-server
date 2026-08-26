@@ -1,5 +1,5 @@
-#include "acutest.h"
-#include"acutest_helpers.h"
+#include "acutest_common_init.h"
+#include "acutest_helpers.h"
 
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/base32.h>

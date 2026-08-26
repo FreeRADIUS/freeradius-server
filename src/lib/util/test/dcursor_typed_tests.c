@@ -1,4 +1,4 @@
-#include "acutest.h"
+#include "acutest_common_init.h"
 
 #include "../dcursor.c"
 

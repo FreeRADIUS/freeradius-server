@@ -40,7 +40,7 @@ static void pair_list_perf_init(void);
 #define TEST_INIT pair_list_perf_init()
 #endif
 
-#include "acutest.h"
+#include "acutest_common_init.h"
 
 #ifdef WITH_VERIFY_PTR
 #undef WITH_VERIFY_PTR

@@ -20,7 +20,7 @@
  *
  * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
-#include "acutest.h"
+#include "acutest_common_init.h"
 #include "acutest_helpers.h"
 
 #include <freeradius-devel/util/fifo.h>

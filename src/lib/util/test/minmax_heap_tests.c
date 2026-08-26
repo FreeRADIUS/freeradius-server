@@ -1,4 +1,4 @@
-#include "acutest.h"
+#include "acutest_common_init.h"
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/time.h>
