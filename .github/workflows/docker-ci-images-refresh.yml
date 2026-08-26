@@ -39,7 +39,6 @@ jobs:
   #  because that container is built on top of them.
   #
   process-host-bases:
-    name: Host base images
     needs: common_vars
     timeout-minutes: 40
 
@@ -223,7 +222,6 @@ jobs:
   #  to be fresh before they start.
   #
   process-docker-cli:
-    name: Docker CLI image
     needs: [process-host-bases, common_vars]
     timeout-minutes: 15
 
@@ -335,7 +333,6 @@ jobs:
   #  container.
   #
   process-ci-images:
-    name: CI images
     needs: [process-docker-cli, common_vars]
     timeout-minutes: 20
 
