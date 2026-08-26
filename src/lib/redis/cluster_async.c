@@ -860,6 +860,7 @@ do { \
 		node = NULL;
 		while ((node = fr_pair_find_by_da(&shard->vp_group, node, attr_redis_node))) {
 			role = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_role);
+			if (unlikely(!role)) continue;
 			if (tmp_slot.num_replicas >= MAX_REPLICAS) break;
 			if (role->vp_uint8 != 2) continue;
 
