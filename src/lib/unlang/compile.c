@@ -2323,7 +2323,7 @@ int unlang_compile_virtual_module(CONF_SECTION *cs, fr_dict_t const *dict)
 	}
 
 	fr_assert(cf_data_find(cs, unlang_group_t, NULL) == cd);
-	fr_assert(c = cf_data_value(cd));
+	fr_assert(c == cf_data_value(cd));
 
 	return 0;
 }
