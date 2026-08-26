@@ -41,6 +41,8 @@ TMP_BUILD_DIR="${BUILD_DIR}"
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
 : ${MAKE:=make}
+#  nproc is coreutils, so macOS and FreeBSD fall through to sysctl.
+: ${JOBS:=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 8)}
 : ${BUILD_CONF_DIR:="$(dirname "$0")/eapol_test"}
 : ${EAPOL_TEST_PATH:="${BUILD_CONF_DIR}/eapol_test"}
 
@@ -107,7 +109,7 @@ if which lsb_release > /dev/null 2>&1; then
     fi
 fi
 
-if ! ${MAKE} -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
+if ! ${MAKE} -C "${WPA_SUPPLICANT_DIR}" -j${JOBS} eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
     echo "Build error" 1>&2
     if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
     exit 1
