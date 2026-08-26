@@ -183,7 +183,7 @@ static void time_delta_from_str(void)
 /** Format time deltas to strings across sign, fraction and the unsigned flag. */
 static void time_delta_to_str(void)
 {
-	char		buf[64];
+	char		buf[64] = "";
 	fr_sbuff_t	sbuff;
 	struct {
 		int64_t		delta;		/* nanoseconds */
