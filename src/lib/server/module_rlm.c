@@ -1496,6 +1496,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 				last = mi->exported;
 			} else if (last != mi->exported) {
 				last = NULL;
+				all_same = false;
 			}
 		}
 
