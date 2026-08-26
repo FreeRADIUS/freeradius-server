@@ -437,7 +437,7 @@ static void queue_cmp(unsigned int count)
 		TEST_CHECK(hp != NULL);
 
 		start_insert = fr_time();
-		for (i = 0; i < count; i++) fr_heap_insert(&hp, &values[i]);
+		for (i = 0; i < count; i++) (void) fr_heap_insert(&hp, &values[i]);
 		end_insert = fr_time();
 
 		start_pop = fr_time();
