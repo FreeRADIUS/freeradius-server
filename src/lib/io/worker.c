@@ -1008,7 +1008,7 @@ static fr_cmp_ret_t worker_runnable_cmp(void const *one, void const *two)
 	/*
 	 *	Prefer higher priority packets.
 	 */
-	ret = CMP_PREFER_LARGER(b->priority, a->priority);
+	ret = CMP_PREFER_LARGER(a->priority, b->priority);
 	if (ret != 0) return ret;
 
 	/*
