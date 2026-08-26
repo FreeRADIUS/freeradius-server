@@ -231,8 +231,10 @@ static void sql_trunk_query_cancel(request_t *request, UNUSED fr_signal_t action
 	 *	A reapable trunk request has already completed.
 	 */
 	if (unlikely(treq->state == TRUNK_REQUEST_STATE_REAPABLE)) {
-		trunk_request_signal_complete(treq);
+		fr_sql_query_free(query_ctx);
 		query_ctx->treq = NULL;
+		query_ctx->status = 0;
+		query_ctx->tconn = NULL;
 		return;
 	}
 
