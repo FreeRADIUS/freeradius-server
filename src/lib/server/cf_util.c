@@ -1042,7 +1042,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 	/*
 	 *	Create the new output section.
 	 */
-	out = cf_section_alloc(ctx, parent, name1, name2);
+	MEM(out = cf_section_alloc(ctx, parent, name1, name2));
 
 	if (copy_meta) {
 		out->template = cs->template;
