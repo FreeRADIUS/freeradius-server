@@ -45,10 +45,10 @@ typedef void (*fr_coord_cb_inst_destroy_t)(fr_coord_t *coord, fr_coord_cb_inst_t
 
 typedef struct {
 	char const			*name;
-	fr_coord_cb_t			callback;
-	fr_coord_cb_inst_create_t	inst_create;
-	fr_coord_cb_inst_destroy_t	inst_destroy;
-	void				*uctx;
+	fr_coord_cb_t			callback;		//!< Callback to run when message is received.
+	fr_coord_cb_inst_create_t	inst_create;		//!< Callback to create coordinator instance.
+	fr_coord_cb_inst_destroy_t	inst_destroy;		//!< Callback to destroyed coordinator instance.
+	void				*uctx;			//!< To pass to all callbacks.
 } fr_coord_cb_reg_t;
 
 typedef struct {
