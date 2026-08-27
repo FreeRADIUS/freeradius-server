@@ -47,7 +47,12 @@ foreach i (%range(20)) {
 	#  not answering, so bound each attempt and retry.
 	#
 	timeout 1s {
-		%redis.remap(%{redisreplica})
+		try {
+			%redis.remap(%{redisreplica})
+		}
+		catch fail {
+			ok
+		}
 	}
 
 	if (%redis.node('b', 0) == redisreplica) {
