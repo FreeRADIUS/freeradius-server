@@ -33,12 +33,9 @@ jobs:
   #
   #  Skipping the expensive model needs an "infrastructure" verdict AND at
   #  least 0.8 confidence AND no test failure line in any failed job's log.
-  #  The last check is a grep, not a prompt rule: the model has ruled
-  #  "infrastructure" over logs whose own grep output began with FAILED:
-  #  lines, so compliance is enforced mechanically. Everything else falls
-  #  through to the full diagnosis, including "unknown" and a
-  #  confident-sounding guess: a missed regression costs far more than a
-  #  wasted analysis.
+  #  Everything else falls through to the full diagnosis, including
+  #  "unknown" and a confident-sounding guess: a missed regression costs
+  #  far more than a wasted analysis.
   #
   #  An intermittent test failure is deliberately NOT infrastructure. A race
   #  or a use-after-free presents exactly that way, and retrying it green is
@@ -166,8 +163,6 @@ jobs:
       #
       #  The model copies the failing target verbatim; everything that makes
       #  the string comparable across commits happens here, mechanically.
-      #  Model-composed fingerprints produced six spellings for one
-      #  recurring failure.
       #
       - name: Normalise the fingerprint
         id: fp
@@ -370,10 +365,10 @@ jobs:
                  git show ${{ github.event.workflow_run.head_sha }} -- <files of interest>
 
             4. Classify each distinct failure as exactly one of:
-                 REGRESSION  - this commit (or one of its files) caused the failure; cite file:line.
-                 FLAKE       - intermittent failure unrelated to the change (timing, network, ordering).
-                 INFRA       - runner / mirror / image / dependency-fetch failure outside the codebase.
-                 UNKNOWN     - logs are insufficient to classify; say what's missing.
+                 REGRESSION   - this commit (or one of its files) caused the failure; cite file:line.
+                 INTERMITTENT - an intermittent failure unrelated to the change. This is an undiagnosed bug (a race, a use-after-free, leaked state, an ordering assumption), never noise, and "flake" is a banned word.
+                 INFRA        - runner / mirror / image / dependency-fetch failure outside the codebase.
+                 UNKNOWN      - logs are insufficient to classify; say what's missing.
 
             5. Write the comment body to /tmp/comment.md (keep under ~120 lines). Repeat the block once per distinct root cause, listing every leg that failure took down:
 
@@ -384,7 +379,7 @@ jobs:
 
                  **Evidence:** the smallest relevant log excerpt (fenced code block) plus file:line refs.
 
-                 **Suggested next step:** for REGRESSION, a minimal unified diff in a ```diff block if the fix is small and obvious; otherwise the area to investigate. For FLAKE/INFRA, the indicator that justifies the label so a human can confirm.
+                 **Suggested next step:** for REGRESSION, a minimal unified diff in a ```diff block if the fix is small and obvious; otherwise the area to investigate. For INTERMITTENT, where the diagnosis of the underlying bug would start: the shared state, the timing window, or the ordering the failure depends on. For INFRA, the indicator that justifies the label so a human can confirm.
 
                  ---
                  _Posted automatically by Claude CI Failure Diagnosis._
