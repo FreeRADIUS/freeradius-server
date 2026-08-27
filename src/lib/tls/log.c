@@ -255,7 +255,7 @@ int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
 		(void)fr_tls_strerror_vprintf(fmt, ap);
 		va_end(ap);
 
-		ROPTIONAL(RPERROR, PERROR, "");
+		ROPTIONAL(RPERROR, PERROR, " ");
 		return -1;
 
 	/*
@@ -299,7 +299,7 @@ int fr_tls_log(request_t *request, char const *msg, ...)
 	ret = fr_tls_strerror_vprintf(msg, ap);
 	va_end(ap);
 
-	ROPTIONAL(RPERROR, PERROR, "");
+	ROPTIONAL(RPERROR, PERROR, " ");
 
 	return ret;
 }
