@@ -260,11 +260,19 @@ jobs:
                   | group_by(.) | map("  \(length)x \(.[0])") | .[]' /tmp/recent.json || true
 
           #
+          #  Copies carry the fingerprint marker too, so counting matches
+          #  gives the occurrence number, but only an original analysis may
+          #  be the source of a copy: a copy of a copy stacks another
+          #  "diagnosed before" header on every occurrence.  The
+          #  claude-ci-fp-copy marker in every copy's header is what
+          #  excludes copies here.
+          #
           #  Oldest-first ordering means the last match is the most recent
-          #  time this fingerprint was explained.
+          #  original analysis of this fingerprint.
           #
           jq -s --arg fp "$FINGERPRINT" --arg sha "$FAILING_SHA" '
             [ .[][] | select(.body | contains("claude-ci-fp: " + $fp))
+                    | select(.body | contains("claude-ci-fp-copy: " + $fp) | not)
                     | select(.commit_id != $sha) ] | last // empty
           ' /tmp/recent.json > /tmp/prev.json
 
@@ -282,7 +290,8 @@ jobs:
           {
             printf '**This failure has been diagnosed before.** Same fingerprint as [%s](%s), and this is occurrence %s.\n\n' \
               "${prev_sha:0:12}" "$prev_url" "$seen"
-            printf 'The earlier analysis is reproduced below rather than repeated, so no new analysis was run. It was written against a different commit, so any file:line references or suggested diffs may have moved.\n\n---\n\n'
+            printf 'The earlier analysis is reproduced below rather than repeated, so no new analysis was run. It was written against a different commit, so any file:line references or suggested diffs may have moved.\n\n'
+            printf '<!-- claude-ci-fp-copy: %s -->\n\n---\n\n' "$FINGERPRINT"
             jq -r .body /tmp/prev.json
           } > /tmp/comment.md
 
