@@ -74,7 +74,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(CONFIG_LIBS)
 			rm -f $(BUILD_DIR)/tests/test.config; \
 			exit 1; \
 		fi; \
-		FOUND=$$(grep 'Error : src/tests/config/' $@.log | egrep -v -- '-->' | head -1 | sed 's/]:.*//;s/.*\[//;s/\].*//'); \
+		FOUND=$$(grep 'Error : src/tests/config/' $@.log | grep -E -v -- '-->' | head -1 | sed 's/]:.*//;s/.*\[//;s/\].*//'); \
 		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \

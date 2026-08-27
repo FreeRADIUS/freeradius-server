@@ -141,12 +141,12 @@ check.doc:
 test.doc:
 	@echo TEST-DOC ALL
 	${Q}${MAKE} all.doc 3>&1 2>&1 > ${BUILD_DIR}/doc_stderr.log
-	${Q}if egrep -qi "(asciidoctor|pandoc).*(error|failed)" ${BUILD_DIR}/doc_stderr.log; then \
+	${Q}if grep -E -qi "(asciidoctor|pandoc).*(error|failed)" ${BUILD_DIR}/doc_stderr.log; then \
 		echo "TEST-DOC ERROR";                                                           \
 		cat ${BUILD_DIR}/doc_stderr.log;                                                    \
 		exit 1;                                                                             \
 	fi
-	${Q}if egrep -qi '^warning:' ${BUILD_DIR}/doc_stderr.log; then \
+	${Q}if grep -E -qi '^warning:' ${BUILD_DIR}/doc_stderr.log; then \
 		echo "TEST-DOC DOXYGEN ERROR";                       \
 		cat ${BUILD_DIR}/doc_stderr.log;                        \
 		exit 1;                                                 \

@@ -569,7 +569,7 @@ rpm: rpmbuild/SOURCES/freeradius-server-$(PKG_VERSION).tar.bz2
 # Developer checks
 .PHONY: warnings
 warnings:
-	@(make clean all 2>&1) | egrep -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LINK|^LN' > warnings.txt
+	@(make clean all 2>&1) | grep -E -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LINK|^LN' > warnings.txt
 	@wc -l warnings.txt
 
 #
