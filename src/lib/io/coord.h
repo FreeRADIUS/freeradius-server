@@ -104,3 +104,5 @@ int		fr_worker_to_coord_send(fr_coord_worker_t *cw, uint32_t cb_id, fr_dbuff_t *
 int		fr_coord_pre_event_insert(fr_event_list_t *el);
 
 int		fr_coord_post_event_insert(fr_event_list_t *el);
+
+char const	*fr_coord_name(fr_coord_t const *coord);

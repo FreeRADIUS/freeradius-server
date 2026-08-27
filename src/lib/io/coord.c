@@ -851,3 +851,10 @@ int fr_coord_post_event_insert(fr_event_list_t *el)
 	}
 	return 0;
 }
+
+/** Return the coordinator name
+ */
+char const *fr_coord_name(fr_coord_t const *coord)
+{
+	return coord->coord_reg->name;
+}
