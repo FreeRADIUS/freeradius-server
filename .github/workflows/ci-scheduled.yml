@@ -47,17 +47,31 @@ jobs:
       #  uses GitHub's hosted runners also blocks a round, which just
       #  delays the round to a later tick.
       #
+      #  GitHub sometimes creates a run, materialises no jobs for it, and
+      #  leaves the run in queued permanently.  An abandoned run holds no
+      #  runner but still answers the queued query, so counting every run
+      #  verbatim pins the answer at "busy" for good and no round ever
+      #  starts.  Runs older than STALE_AFTER_HOURS are therefore ignored.
+      #  The cutoff has to clear the longest real build, which is the
+      #  fuzzing schedule at several hours.
+      #
       - name: Look for active runs
         id: probe
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
+          STALE_AFTER_HOURS: 12
         run: |
-          running=$(gh api "repos/$REPO/actions/runs?status=in_progress&per_page=100" \
-                    --jq "[.workflow_runs[] | select(.id != $RUN_ID)] | length")
-          queued=$(gh api "repos/$REPO/actions/runs?status=queued&per_page=100" \
-                   --jq "[.workflow_runs[] | select(.id != $RUN_ID)] | length")
+          cutoff=$(date -u -d "$STALE_AFTER_HOURS hours ago" +%Y-%m-%dT%H:%M:%SZ)
+          echo "Ignoring runs created before $cutoff, GitHub abandoned them"
+
+          fresh='[.workflow_runs[]
+                  | select(.id != '"$RUN_ID"')
+                  | select(.created_at > "'"$cutoff"'")] | length'
+
+          running=$(gh api "repos/$REPO/actions/runs?status=in_progress&per_page=100" --jq "$fresh")
+          queued=$(gh api "repos/$REPO/actions/runs?status=queued&per_page=100" --jq "$fresh")
 
           if [ "$running" -eq 0 ] && [ "$queued" -eq 0 ]; then
             echo "idle=true" >> "$GITHUB_OUTPUT"
