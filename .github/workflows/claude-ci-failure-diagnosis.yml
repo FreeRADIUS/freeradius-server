@@ -287,6 +287,20 @@ jobs:
                  '[ .[][] | select(.body | contains("claude-ci-fp: " + $fp)) ] | length' \
                  /tmp/recent.json)
 
+          #
+          #  A failure that keeps recurring stops being news.  After five
+          #  occurrences the recurrence is recorded in the job log only, and
+          #  the commit gets no comment.  The count only covers the scanned
+          #  comment pages, so a failure still recurring after the old
+          #  occurrences scroll out of the scan gets an occasional comment
+          #  again rather than permanent silence.
+          #
+          if [ "$seen" -ge 5 ]; then
+            echo "matched=true" >> "$GITHUB_OUTPUT"
+            echo "fingerprint $FINGERPRINT has recurred $seen times; not commenting again"
+            exit 0
+          fi
+
           {
             printf '**This failure has been diagnosed before.** Same fingerprint as [%s](%s), and this is occurrence %s.\n\n' \
               "${prev_sha:0:12}" "$prev_url" "$seen"
