@@ -64,7 +64,7 @@ jobs:
       verdict: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).verdict || 'unknown' }}
       confidence: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).confidence || 0 }}
       reason: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).reason || 'triage produced no structured output' }}
-      fingerprint: ${{ steps.fp.outputs.fingerprint || '' }}
+      fingerprints: ${{ steps.fp.outputs.fingerprints || '' }}
       test_failure: ${{ steps.markers.outputs.test_failure }}
 
     steps:
@@ -123,7 +123,7 @@ jobs:
             --model sonnet
             --max-budget-usd 0.50
             --allowed-tools "Bash(gh run view:*),Bash(gh api:*)"
-            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["infrastructure","code","unknown"],"description":"Whether every failure lies outside the codebase"},"confidence":{"type":"number","minimum":0,"maximum":1,"description":"Confidence in the verdict"},"reason":{"type":"string","description":"One sentence naming the deciding log line"},"failing_target":{"type":"string","description":"the failing test or build target, copied exactly from the FAILED: or make error line"}},"required":["verdict","confidence","reason","failing_target"],"additionalProperties":false}'
+            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["infrastructure","code","unknown"],"description":"Whether every failure lies outside the codebase"},"confidence":{"type":"number","minimum":0,"maximum":1,"description":"Confidence in the verdict"},"reason":{"type":"string","description":"One sentence naming the deciding log line"},"failing_targets":{"type":"array","items":{"type":"string"},"description":"every distinct failing test or build target, each copied exactly from its FAILED: or make error line"}},"required":["verdict","confidence","reason","failing_targets"],"additionalProperties":false}'
           prompt: |
             One or more legs of CI run ${{ github.event.workflow_run.id }} in ${{ github.repository }} failed. Decide only whether every failure is an infrastructure problem. Do not diagnose the code and do not post anything.
 
@@ -151,27 +151,37 @@ jobs:
 
             Put a one-sentence justification in "reason", quoting the deciding log line verbatim. A reason that describes a line you cannot quote is a reason to answer "unknown" instead.
 
-            Also return "failing_target": the name of the failing test or build target, copied character for character from the log. Take it from the FAILED: line, the make error line, or the file the toolchain names. Do not compose, summarise or reword it: the same failure on a later commit must produce the same string, and only a verbatim copy does. Examples of the shape:
+            Also return "failing_targets": one entry per distinct failure, each the name of the failing test or build target copied character for character from the log. Take each from the FAILED: line, the make error line, or the file the toolchain names. Do not compose, summarise or reword an entry: the same failure on a later commit must produce the same string, and only a verbatim copy does. Several legs failing on the same target produce ONE entry. Examples of the shape:
 
               test.multi-server.kafka-produce.short_ci
               build/tests/bin/slab_tests
               src/lib/util/dbuff.c
               libluajit2-5.1-dev
 
-            When the failures differ from each other, copy the target of the first one a reader would care about. Return an empty string only if the logs never name a target.
+            Return an empty array only if the logs never name a target.
 
       #
-      #  The model copies the failing target verbatim; everything that makes
-      #  the string comparable across commits happens here, mechanically.
+      #  The model copies the failing targets verbatim; everything that makes
+      #  the strings comparable across commits happens here, mechanically.
+      #  One fingerprint per target, spaces impossible after normalisation,
+      #  so the output is a space-separated list.
       #
-      - name: Normalise the fingerprint
+      - name: Normalise the fingerprints
         id: fp
         env:
-          FAILING_TARGET: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).failing_target || '' }}
+          STRUCTURED: ${{ steps.triage.outputs.structured_output }}
         run: |
-          fingerprint=$(printf '%s' "$FAILING_TARGET" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9._-' '-' | sed -e 's/-\{1,\}/-/g' -e 's/^-//' -e 's/-$//')
-          echo "fingerprint: ${fingerprint:-<empty>}"
-          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          if [ -n "$STRUCTURED" ]; then
+            printf '%s' "$STRUCTURED" | jq -r '.failing_targets[]? // empty' \
+              | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9._\n-' '-' \
+              | sed -e 's/^-//' -e 's/-$//' -e '/^$/d' \
+              | awk '!seen[$0]++' > /tmp/fps
+          else
+            : > /tmp/fps
+          fi
+          fingerprints=$(tr '\n' ' ' < /tmp/fps | sed 's/ $//')
+          echo "fingerprints: ${fingerprints:-<none>}"
+          echo "fingerprints=$fingerprints" >> "$GITHUB_OUTPUT"
 
       #
       #  The verdict fields are model output quoting untrusted CI logs, so
@@ -183,7 +193,7 @@ jobs:
         env:
           VERDICT: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).verdict || 'unavailable' }}
           CONFIDENCE: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).confidence || 0 }}
-          FINGERPRINT: ${{ steps.fp.outputs.fingerprint || 'none' }}
+          FINGERPRINTS: ${{ steps.fp.outputs.fingerprints || 'none' }}
           REASON: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).reason || 'triage produced no structured output; full diagnosis will run' }}
           TEST_FAILURE: ${{ steps.markers.outputs.test_failure }}
         run: |
@@ -192,7 +202,7 @@ jobs:
             echo
             echo "verdict: \`${VERDICT}\` at \`${CONFIDENCE}\` confidence"
             echo
-            echo "fingerprint: \`${FINGERPRINT}\`"
+            echo "fingerprints: \`${FINGERPRINTS}\`"
             echo
             echo "${REASON}"
             if [ "$TEST_FAILURE" = "true" ] && [ "$VERDICT" = "infrastructure" ]; then
@@ -203,14 +213,16 @@ jobs:
 
   #
   #  Recurrence. A failure the bot has already explained does not need
-  #  explaining twice, but the commit that hit it still deserves the answer,
-  #  so the earlier diagnosis is copied onto it with a link back to where it
-  #  was first worked out. No model runs here; it is a string match.
+  #  explaining twice, but the commit that hit it still deserves the answer.
+  #  Each failure is matched by its own fingerprint, and only the matching
+  #  failure's block is copied out of the earlier comment, with a link back
+  #  to where the analysis was first worked out. No model runs here; it is
+  #  string matching and block extraction.
   #
   recurrence:
     needs: triage
     if: >-
-      ${{ !cancelled() && needs.triage.outputs.fingerprint != '' &&
+      ${{ !cancelled() && needs.triage.outputs.fingerprints != '' &&
           !(needs.triage.outputs.verdict == 'infrastructure' &&
             fromJSON(needs.triage.outputs.confidence) >= 0.8 &&
             needs.triage.outputs.test_failure != 'true') }}
@@ -222,18 +234,18 @@ jobs:
 
     outputs:
       matched: ${{ steps.copy.outputs.matched }}
+      known: ${{ steps.copy.outputs.known }}
 
     steps:
-      - name: Copy a previous diagnosis if this failure is a repeat
+      - name: Copy previous diagnoses for the failures that are repeats
         id: copy
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           FAILING_SHA: ${{ github.event.workflow_run.head_sha }}
-          FINGERPRINT: ${{ needs.triage.outputs.fingerprint }}
+          FINGERPRINTS: ${{ needs.triage.outputs.fingerprints }}
         run: |
           set -euo pipefail
-          echo "matched=false" >> "$GITHUB_OUTPUT"
 
           #
           #  The commit-comments endpoint ignores sort and returns oldest
@@ -254,66 +266,111 @@ jobs:
           #  A near-miss should read as two visibly different strings, not
           #  as a silent "no previous diagnosis".
           #
-          echo "searching for fingerprint: $FINGERPRINT"
+          echo "fingerprints in this run: $FINGERPRINTS"
           echo "fingerprints seen in the scanned comments:"
-          jq -rs '[.[][] | .body | capture("claude-ci-fp: (?<f>[^ \n]+)")?.f]
+          jq -rs '[.[][] | .body | capture("claude-ci-finding: (?<f>[^ \n]+)")?.f]
                   | group_by(.) | map("  \(length)x \(.[0])") | .[]' /tmp/recent.json || true
 
-          #
-          #  Copies carry the fingerprint marker too, so counting matches
-          #  gives the occurrence number, but only an original analysis may
-          #  be the source of a copy: a copy of a copy stacks another
-          #  "diagnosed before" header on every occurrence.  The
-          #  claude-ci-fp-copy marker in every copy's header is what
-          #  excludes copies here.
-          #
-          #  Oldest-first ordering means the last match is the most recent
-          #  original analysis of this fingerprint.
-          #
-          jq -s --arg fp "$FINGERPRINT" --arg sha "$FAILING_SHA" '
-            [ .[][] | select(.body | contains("claude-ci-fp: " + $fp))
-                    | select(.body | contains("claude-ci-fp-copy: " + $fp) | not)
-                    | select(.commit_id != $sha) ] | last // empty
-          ' /tmp/recent.json > /tmp/prev.json
+          known=""
+          new=""
+          : > /tmp/blocks.md
 
-          if [ ! -s /tmp/prev.json ]; then
-            echo "no previous diagnosis for fingerprint $FINGERPRINT"
-            exit 0
+          for fp in $FINGERPRINTS; do
+            #
+            #  Copies carry the finding marker too, so counting matches
+            #  gives the occurrence number, but only an original analysis
+            #  may be the source of a copy: a copy of a copy stacks another
+            #  "diagnosed before" header on every occurrence. The
+            #  claude-ci-fp-copy marker in every copy excludes copies here.
+            #
+            #  Oldest-first ordering means the last match is the most
+            #  recent original analysis of the fingerprint.
+            #
+            jq -s --arg fp "$fp" --arg sha "$FAILING_SHA" '
+              [ .[][] | select(.body | contains("claude-ci-finding: " + $fp))
+                      | select(.body | contains("claude-ci-fp-copy: " + $fp) | not)
+                      | select(.commit_id != $sha) ] | last // empty
+            ' /tmp/recent.json > /tmp/prev.json
+
+            if [ ! -s /tmp/prev.json ]; then
+              echo "no previous diagnosis for $fp"
+              new="$new $fp"
+              continue
+            fi
+
+            seen=$(jq -s --arg fp "$fp" \
+                   '[ .[][] | select(.body | contains("claude-ci-finding: " + $fp)) ] | length' \
+                   /tmp/recent.json)
+
+            #
+            #  A failure that keeps recurring stops being news. After five
+            #  occurrences the recurrence is recorded in the job log only.
+            #  The count only covers the scanned comment pages, so a failure
+            #  still recurring after the old occurrences scroll out of the
+            #  scan gets an occasional comment again rather than permanent
+            #  silence.
+            #
+            if [ "$seen" -ge 5 ]; then
+              echo "$fp has recurred $seen times; not commenting on it again"
+              known="$known $fp"
+              continue
+            fi
+
+            #
+            #  Pull just this finding's block out of the source comment.
+            #  A source comment without an extractable block (the model
+            #  omitted or mangled the markers) is treated as no previous
+            #  diagnosis, so the failure gets analysed afresh.
+            #
+            jq -r .body /tmp/prev.json > /tmp/prev_body.md
+            awk -v b="<!-- claude-ci-finding: $fp -->" -v e="<!-- claude-ci-finding-end: $fp -->" '
+              $0 == b {inblock=1}
+              inblock {print}
+              $0 == e {found=1; exit}
+              END {exit !found}
+            ' /tmp/prev_body.md > /tmp/block.md || {
+              echo "source comment for $fp has no extractable block; diagnosing afresh"
+              new="$new $fp"
+              continue
+            }
+
+            prev_sha=$(jq -r .commit_id /tmp/prev.json)
+            prev_url=$(jq -r .html_url /tmp/prev.json)
+            {
+              printf '### Recurring failure `%s` (occurrence %s)\n\n' "$fp" "$seen"
+              printf 'Diagnosed before at [%s](%s); the earlier analysis is reproduced below rather than repeated. It was written against a different commit, so file:line references and suggested diffs may have moved.\n' "${prev_sha:0:12}" "$prev_url"
+              printf '<!-- claude-ci-fp-copy: %s -->\n\n' "$fp"
+              cat /tmp/block.md
+              printf '\n\n'
+            } >> /tmp/blocks.md
+            known="$known $fp"
+            echo "copied diagnosis of $fp from $prev_sha (occurrence $seen)"
+          done
+
+          if [ -s /tmp/blocks.md ]; then
+            {
+              cat /tmp/blocks.md
+              printf -- '---\n_Posted automatically by Claude CI Failure Diagnosis._\n'
+            } > /tmp/comment.md
+            jq -Rs '{body: .}' < /tmp/comment.md > /tmp/comment.json
+            gh api -X POST "repos/$REPO/commits/$FAILING_SHA/comments" --input /tmp/comment.json >/dev/null
           fi
 
-          prev_sha=$(jq -r .commit_id /tmp/prev.json)
-          prev_url=$(jq -r .html_url /tmp/prev.json)
-          seen=$(jq -s --arg fp "$FINGERPRINT" \
-                 '[ .[][] | select(.body | contains("claude-ci-fp: " + $fp)) ] | length' \
-                 /tmp/recent.json)
-
           #
-          #  A failure that keeps recurring stops being news.  After five
-          #  occurrences the recurrence is recorded in the job log only, and
-          #  the commit gets no comment.  The count only covers the scanned
-          #  comment pages, so a failure still recurring after the old
-          #  occurrences scroll out of the scan gets an occasional comment
-          #  again rather than permanent silence.
+          #  matched=true means every fingerprint is already explained (by a
+          #  copy just posted, or by the recurrence cap), so the diagnose
+          #  job has nothing left to analyse.
           #
-          if [ "$seen" -ge 5 ]; then
-            echo "matched=true" >> "$GITHUB_OUTPUT"
-            echo "fingerprint $FINGERPRINT has recurred $seen times; not commenting again"
-            exit 0
+          known="${known# }"
+          new="${new# }"
+          if [ -z "$new" ]; then
+            matched=true
+          else
+            matched=false
           fi
-
-          {
-            printf '**This failure has been diagnosed before.** Same fingerprint as [%s](%s), and this is occurrence %s.\n\n' \
-              "${prev_sha:0:12}" "$prev_url" "$seen"
-            printf 'The earlier analysis is reproduced below rather than repeated, so no new analysis was run. It was written against a different commit, so any file:line references or suggested diffs may have moved.\n\n'
-            printf '<!-- claude-ci-fp-copy: %s -->\n\n---\n\n' "$FINGERPRINT"
-            jq -r .body /tmp/prev.json
-          } > /tmp/comment.md
-
-          jq -Rs '{body: .}' < /tmp/comment.md > /tmp/comment.json
-          gh api -X POST "repos/$REPO/commits/$FAILING_SHA/comments" --input /tmp/comment.json >/dev/null
-
-          echo "matched=true" >> "$GITHUB_OUTPUT"
-          echo "copied diagnosis from $prev_sha (occurrence $seen)"
+          echo "matched=$matched" >> "$GITHUB_OUTPUT"
+          echo "known=$known" >> "$GITHUB_OUTPUT"
+          echo "known: ${known:-<none>}; new: ${new:-<none>}"
 
   #
   #  Full diagnosis. Skipped on a confident infrastructure verdict, or when
@@ -383,6 +440,14 @@ jobs:
 
             2. Group the failures. Several legs failing on the same underlying cause (one compile error breaking every build leg) is ONE finding, not one per leg. Only treat them separately when the root causes genuinely differ.
 
+               Each failure has a machine fingerprint derived from its failing target. The fingerprints for this run are:
+
+                 ${{ needs.triage.outputs.fingerprints }}
+
+               Of those, the following are already diagnosed, and a separate comment on this commit already reproduces their analyses, so do NOT analyse them again; cover only the remaining fingerprints (an empty list means every failure needs analysis):
+
+                 ${{ needs.recurrence.outputs.known }}
+
             3. Inspect the commit under test:
                  git show --stat ${{ github.event.workflow_run.head_sha }}
                  git show ${{ github.event.workflow_run.head_sha }} -- <files of interest>
@@ -395,6 +460,7 @@ jobs:
 
             5. Write the comment body to /tmp/comment.md (keep under ~120 lines). Repeat the block once per distinct root cause, listing every leg that failure took down:
 
+                 <!-- claude-ci-finding: <fingerprint> -->
                  **Classification:** <one of the four above>
                  **Failed legs:** CI, CI DEB
 
@@ -403,12 +469,14 @@ jobs:
                  **Evidence:** the smallest relevant log excerpt (fenced code block) plus file:line refs.
 
                  **Suggested next step:** for REGRESSION, a minimal unified diff in a ```diff block if the fix is small and obvious; otherwise the area to investigate. For INTERMITTENT, where the diagnosis of the underlying bug would start: the shared state, the timing window, or the ordering the failure depends on. For INFRA, the indicator that justifies the label so a human can confirm.
+                 <!-- claude-ci-finding-end: <fingerprint> -->
+
+               End the comment, after the last block, with:
 
                  ---
                  _Posted automatically by Claude CI Failure Diagnosis._
-                 <!-- claude-ci-fp: ${{ needs.triage.outputs.fingerprint }} -->
 
-               The marker on the last line is how a later run recognises this same failure and copies this analysis forward instead of paying to work it out again. Write the marker line exactly as given, on its own line, once per comment.
+               The two marker lines are how a later run recognises the same failure and copies just that block forward instead of paying to work it out again. Substitute <fingerprint> with the fingerprint from the list in step 2 matching the failure the block explains, write each marker exactly as shown on its own line, and put nothing before the begin marker or after the end marker of a block. When one root cause covers several fingerprints, stack a begin marker line per fingerprint at the start of the block and an end marker line per fingerprint at the end. When no listed fingerprint matches the failure, omit the marker lines for that block.
 
             6. Post it (jq -Rs is the safe way to escape multi-line bodies with backticks):
 
