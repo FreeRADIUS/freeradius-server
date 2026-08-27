@@ -124,6 +124,8 @@ TGT_LDFLAGS	:= $(LDFLAGS) $(PCAP_LDFLAGS)
 
 TGT_PREREQS	:= $(TALLOC_EXTENSION_LIBS)
 
+LIBFREERADIUS_UTIL := $(TALLOC_EXTENSION_LIBS) libfreeradius-util$(L)
+
 # libbacktrace is checked out as a submodule and linked statically into libfreeradius-util
 # as it's the only library that uses it.  Other libraries should not use it directly but
 # instead add the functionality they need to libfreeradius-util.
