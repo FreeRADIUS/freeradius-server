@@ -1118,6 +1118,259 @@ static void test_talloc_extend_with_shift(void)
 	talloc_free(sbuff.buff);
 }
 
+/*
+ *	fr_sbuff_used() counts from the sbuff's start pointer to its current
+ *	position.  fr_sbuff_used_total() adds the "shifted" counter, which
+ *	records how much data has been moved out of the buffer and discarded.
+ *
+ *	The two come apart as soon as anything is shifted, and which one a
+ *	caller wants is not obvious, so pin the behaviour down here.
+ */
+static void test_shift_used_accounting(void)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	tctx;
+
+	TEST_CASE("Before any shift, used() and used_total() agree");
+	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 8, 32) == &sbuff);
+	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "01234567") == 8);
+
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 8);
+	TEST_CHECK_LEN(fr_sbuff_used_total(&sbuff), 8);
+	TEST_CHECK_LEN(fr_sbuff_shifted(&sbuff), 0);
+
+	TEST_CASE("A shift moves data out of the buffer");
+	TEST_CHECK_LEN(fr_sbuff_shift(&sbuff, 4, false), 4);
+
+	/*
+	 *	This sbuff's start pointer is the beginning of the buffer, so the
+	 *	shift cannot move it back any further.  fr_sbuff_shift() adds the
+	 *	whole shift to "shifted" instead (sbuff.c).
+	 *
+	 *	The result is that used() forgets the shifted data and
+	 *	used_total() does not.  used_total() is therefore the count which
+	 *	survives a shift.
+	 */
+	TEST_CASE("used() forgets the shifted data");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 4);
+
+	TEST_CASE("used_total() remembers it, and is unchanged by the shift");
+	TEST_CHECK_LEN(fr_sbuff_used_total(&sbuff), 8);
+	TEST_CHECK_LEN(fr_sbuff_shifted(&sbuff), 4);
+
+	TEST_CASE("used_total() stays whole across a second shift");
+	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "89AB") == 4);
+	TEST_CHECK_LEN(fr_sbuff_used_total(&sbuff), 12);
+	TEST_CHECK_LEN(fr_sbuff_shift(&sbuff, 4, false), 4);
+	TEST_CHECK_LEN(fr_sbuff_used_total(&sbuff), 12);
+	TEST_CHECK_LEN(fr_sbuff_shifted(&sbuff), 8);
+
+	/*
+	 *	The sum is the point: whatever the shift did, the two halves of
+	 *	the count still add up to everything ever written.
+	 */
+	TEST_CASE("used() plus shifted() equals used_total()");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff) + fr_sbuff_shifted(&sbuff),
+		       fr_sbuff_used_total(&sbuff));
+
+	talloc_free(sbuff.buff);
+}
+
+/*
+ *	fr_sbuff_marker_update_end() places a marker at the point where a
+ *	budget of "max" bytes runs out, and is called again after every buffer
+ *	extension.  It reads the budget already spent with
+ *	fr_sbuff_used_total(), which is the count that survives a shift.
+ */
+static void test_marker_update_end(void)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_marker_t	end;
+	char			buff[16];
+
+	TEST_CASE("SIZE_MAX means no constraint, so the marker sits at the end");
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, SIZE_MAX) == fr_sbuff_end(&sbuff));
+	fr_sbuff_marker_release(&end);
+
+	TEST_CASE("A budget smaller than the buffer stops the marker short");
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 4) == fr_sbuff_current(&sbuff) + 4);
+	fr_sbuff_marker_release(&end);
+
+	TEST_CASE("Data already consumed comes off the budget");
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	TEST_CHECK(fr_sbuff_advance(&sbuff, 3) > 0);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK_LEN(fr_sbuff_used_total(&sbuff), 3);
+
+	/*
+	 *	Three of the six are already spent, so three are left.
+	 */
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 6) == fr_sbuff_current(&sbuff) + 3);
+	fr_sbuff_marker_release(&end);
+
+	TEST_CASE("A budget which exactly matches what was consumed leaves nothing");
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	TEST_CHECK(fr_sbuff_advance(&sbuff, 4) > 0);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 4) == fr_sbuff_current(&sbuff));
+	fr_sbuff_marker_release(&end);
+
+	/*
+	 *	"max - used" is computed in size_t, so an overspent budget does
+	 *	not go negative.  Without a clamp it wraps to an enormous number,
+	 *	which compares greater than fr_sbuff_remaining(), and the marker
+	 *	lands on the end of the buffer: the budget is overspent, and the
+	 *	marker then permits everything which is left.
+	 *
+	 *	fr_sbuff_marker_update_end() checks for that case, so the marker
+	 *	stays at the current position and allows nothing more.
+	 */
+	TEST_CASE("An overspent budget allows nothing more");
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	TEST_CHECK(fr_sbuff_advance(&sbuff, 6) > 0);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK_LEN(fr_sbuff_used_total(&sbuff), 6);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 2) == fr_sbuff_current(&sbuff));
+	TEST_MSG("marker is %zu past the current position, expected 0",
+		 (size_t) (fr_sbuff_current(&end) - fr_sbuff_current(&sbuff)));
+	TEST_CHECK(fr_sbuff_current(&end) != fr_sbuff_end(&sbuff));
+	fr_sbuff_marker_release(&end);
+
+	TEST_CASE("A budget overspent by a single byte allows nothing more");
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	TEST_CHECK(fr_sbuff_advance(&sbuff, 4) > 0);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 3) == fr_sbuff_current(&sbuff));
+	fr_sbuff_marker_release(&end);
+
+	TEST_CASE("A zero budget allows nothing, whether or not anything was used");
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 0) == fr_sbuff_current(&sbuff));
+	fr_sbuff_marker_release(&end);
+
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	TEST_CHECK(fr_sbuff_advance(&sbuff, 5) > 0);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 0) == fr_sbuff_current(&sbuff));
+	fr_sbuff_marker_release(&end);
+
+	/*
+	 *	fr_sbuff_out_unescape_until() calls fr_sbuff_marker_update_end()
+	 *	once per extension, with the same budget every time.  Repeated
+	 *	calls on an overspent budget must keep giving the same answer.
+	 */
+	TEST_CASE("Repeated updates on an overspent budget stay put");
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	TEST_CHECK(fr_sbuff_advance(&sbuff, 7) > 0);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 2) == fr_sbuff_current(&sbuff));
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 2) == fr_sbuff_current(&sbuff));
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 2) == fr_sbuff_current(&sbuff));
+	fr_sbuff_marker_release(&end);
+
+	/*
+	 *	Nothing is left in the buffer, so "allow nothing more" and "allow
+	 *	everything which is left" are the same position.  The overspend
+	 *	is invisible here, which is why the cases above use a buffer with
+	 *	data still in it.
+	 */
+	TEST_CASE("An overspent budget at the end of the buffer");
+	fr_sbuff_init_in(&sbuff, "0123456789", 10);
+	TEST_CHECK(fr_sbuff_advance(&sbuff, 10) > 0);
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK_LEN(fr_sbuff_remaining(&sbuff), 0);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 4) == fr_sbuff_current(&sbuff));
+	TEST_CHECK(fr_sbuff_current(&end) == fr_sbuff_end(&sbuff));
+	fr_sbuff_marker_release(&end);
+
+	/*
+	 *	Keep the compiler honest about buff being used.
+	 */
+	fr_sbuff_init_out(&sbuff, buff, sizeof(buff));
+	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "x") == 1);
+}
+
+/** Check that the budget is measured with fr_sbuff_used_total(), not fr_sbuff_used()
+ *
+ * fr_sbuff_shift() moves data out of the buffer and adds the amount which
+ * fr_sbuff_start() can no longer account for to fr_sbuff_shifted().  So
+ * fr_sbuff_used_total() does not change across a shift, while fr_sbuff_used()
+ * shrinks.  See test_shift_used_accounting().
+ *
+ * fr_sbuff_out_unescape_until() re-runs fr_sbuff_marker_update_end() after every
+ * extension, and an extension is exactly when a shift happens.  Measuring the
+ * budget with fr_sbuff_used() would therefore reset the budget on every shift,
+ * and the operation could copy more than it was allowed to.
+ *
+ * The budget below is larger than fr_sbuff_used() but smaller than
+ * fr_sbuff_used_total(), so the two accessors give different answers.
+ */
+static void test_marker_update_end_after_shift(void)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	tctx;
+	fr_sbuff_marker_t	end;
+	size_t			used, used_total;
+
+	/*
+	 *	The buffer has to have room left in it.  fr_sbuff_remaining() is
+	 *	what an unclamped overspend gets compared against, so with a full
+	 *	buffer "allow nothing more" and "allow everything left" are the
+	 *	same position, and the overspend cannot be seen.
+	 */
+	TEST_CASE("Set up a buffer which has shifted, and which has room left");
+	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 16, 32) == &sbuff);
+	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "01234567") == 8);
+	TEST_CHECK_LEN(fr_sbuff_shift(&sbuff, 4, true), 4);
+
+	used = fr_sbuff_used(&sbuff);
+	used_total = fr_sbuff_used_total(&sbuff);
+
+	TEST_CHECK_LEN(used, 4);
+	TEST_CHECK_LEN(fr_sbuff_shifted(&sbuff), 4);
+	TEST_CHECK_LEN(used_total, 8);
+	TEST_CHECK(fr_sbuff_remaining(&sbuff) > 0);
+
+	/*
+	 *	A budget of 6 is more than the 4 which fr_sbuff_used() reports,
+	 *	and less than the 8 which fr_sbuff_used_total() reports.
+	 */
+	TEST_CASE("A budget between used and used_total is already overspent");
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, 6) == fr_sbuff_current(&sbuff));
+	TEST_MSG("marker is %zu past the current position, expected 0.  "
+		 "Measuring the budget with fr_sbuff_used() would give 2, "
+		 "and not clamping the overspend would give %zu",
+		 (size_t) (fr_sbuff_current(&end) - fr_sbuff_current(&sbuff)),
+		 fr_sbuff_remaining(&sbuff));
+	fr_sbuff_marker_release(&end);
+
+	/*
+	 *	A budget larger than used_total still has room in it, and the
+	 *	room left is measured from used_total, not from used.
+	 */
+	TEST_CASE("A budget larger than used_total leaves used_total's worth of room");
+	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "89") == 2);
+	used_total = fr_sbuff_used_total(&sbuff);
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 6);
+	TEST_CHECK_LEN(used_total, 10);
+	TEST_CHECK(fr_sbuff_remaining(&sbuff) > 1);
+
+	fr_sbuff_marker(&end, &sbuff);
+	TEST_CHECK(fr_sbuff_marker_update_end(&end, used_total + 1) == fr_sbuff_current(&sbuff) + 1);
+	TEST_MSG("marker is %zu past the current position, expected 1.  "
+		 "Measuring the budget with fr_sbuff_used() would give 5",
+		 (size_t) (fr_sbuff_current(&end) - fr_sbuff_current(&sbuff)));
+	fr_sbuff_marker_release(&end);
+
+	talloc_free(sbuff.buff);
+}
+
 static void test_file_extend(void)
 {
 	fr_sbuff_t	sbuff;
@@ -1684,6 +1937,9 @@ TEST_LIST = {
 	{ "fr_sbuff_talloc_extend_multi_level",	test_talloc_extend_multi_level },
 	{ "fr_sbuff_talloc_extend_with_marker",	test_talloc_extend_with_marker },
 	{ "fr_sbuff_talloc_extend_with_shift",	test_talloc_extend_with_shift},
+	{ "fr_sbuff_shift_used_accounting",	test_shift_used_accounting},
+	{ "fr_sbuff_marker_update_end",	test_marker_update_end},
+	{ "fr_sbuff_marker_update_end_after_shift",	test_marker_update_end_after_shift},
 	{ "fr_sbuff_file_extend",		test_file_extend },
 	{ "fr_sbuff_file_extend_max",		test_file_extend_max },
 

@@ -1275,10 +1275,21 @@ static inline char *fr_sbuff_marker_update_end(fr_sbuff_marker_t *m, size_t max)
 {
 	fr_sbuff_t	*sbuff = m->parent;
 	size_t		used = fr_sbuff_used_total(sbuff);
+	size_t		left;
 
-	m->p = (((max) - (used)) > fr_sbuff_remaining(sbuff) ?
+	/*
+	 *	Clamp at max instead of overflowing.
+	 */
+	if (used >= max) {
+		m->p = fr_sbuff_current(sbuff);
+		return m->p;
+	}
+
+	left = max - used;
+
+	m->p = (left > fr_sbuff_remaining(sbuff) ?
 	       fr_sbuff_end(sbuff) :
-	       fr_sbuff_current(sbuff) + ((max) - (used)));
+	       fr_sbuff_current(sbuff) + left);
 
 	return m->p;
 }
