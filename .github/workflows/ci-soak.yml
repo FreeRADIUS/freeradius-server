@@ -1,0 +1,81 @@
+name: CI Soak
+
+#
+#  Reruns the main CI tests on an unchanged master to catch intermittent
+#  failures: a race, a use-after-free, leaked state or an ordering
+#  assumption only fails on some runs, so the same tree has to run many
+#  times before the bug shows itself.
+#
+#  The soak only uses runner time nobody else wants:
+#
+#    1. Every half hour the schedule starts a soak round.  GitHub treats
+#       the schedule as best effort, so a round can arrive late or not at
+#       all during busy periods.
+#    2. The first job asks whether any other workflow has runs executing
+#       or queued: the pipeline, but also the fuzzing and coverity
+#       schedules, which use the same self-hosted runners.  If anything
+#       is active, the round skips itself.
+#    3. A pipeline run starting mid-round cancels the round (the
+#       soak_cancel job in ci-pipeline.yml), so adhoc CI never waits
+#       behind the soak.
+#    4. A round firing while a previous round still runs aborts itself,
+#       through the same idle check, so rounds never overlap and a
+#       running round is never cancelled by its successor.
+#
+#  To run a round by hand: gh workflow run ci-soak.yml
+#
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  runners_idle:
+    name: "Runners idle?"
+    if: github.repository == 'FreeRADIUS/freeradius-server'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      idle: ${{ steps.probe.outputs.idle }}
+    steps:
+      #
+      #  Counts every run in the repository except this one, so a new
+      #  contender never needs adding here, and a previous soak round
+      #  still in flight blocks this round like any other run.  A run
+      #  that only uses GitHub's hosted runners also blocks a round,
+      #  which just delays the round to a later tick.
+      #
+      - name: Look for active runs
+        id: probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          running=$(gh api "repos/$REPO/actions/runs?status=in_progress&per_page=100" \
+                    --jq "[.workflow_runs[] | select(.id != $RUN_ID)] | length")
+          queued=$(gh api "repos/$REPO/actions/runs?status=queued&per_page=100" \
+                   --jq "[.workflow_runs[] | select(.id != $RUN_ID)] | length")
+
+          if [ "$running" -eq 0 ] && [ "$queued" -eq 0 ]; then
+            echo "idle=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipping this soak round: $running running and $queued queued runs elsewhere"
+            echo "idle=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  ci:
+    needs: runners_idle
+    if: needs.runners_idle.outputs.idle == 'true'
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  ci-sanitizers:
+    needs: runners_idle
+    if: needs.runners_idle.outputs.idle == 'true'
+    name: CI-Sanitizers
+    uses: ./.github/workflows/ci-sanitizers.yml
+    secrets: inherit

@@ -19,6 +19,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  #
+  #  An adhoc CI run needs the runners a soak round (see ci-soak.yml) may
+  #  be occupying, so every pipeline run cancels any soak round in flight
+  #  before its own legs queue.  A pull request from a fork holds a
+  #  read-only token whatever permissions the job requests, so a fork
+  #  pull request cancels nothing, and its legs wait until the soak round
+  #  finishes on its own.
+  #
+  soak_cancel:
+    name: Cancel soak rounds
+    if: github.repository == 'FreeRADIUS/freeradius-server'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Cancel any soak round in flight
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          for status in queued in_progress; do
+            for id in $(gh run list --repo "$REPO" --workflow ci-soak.yml \
+                        --status "$status" --json databaseId --jq '.[].databaseId' 2>/dev/null); do
+              echo "Cancelling soak run $id, adhoc CI takes priority"
+              gh run cancel "$id" --repo "$REPO" || true
+            done
+          done
+
   ci_prev_run:
     name: "CI already run?"
     runs-on: ubuntu-latest
