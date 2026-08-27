@@ -241,7 +241,7 @@ static xlat_action_t redis_remap_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_
 	fr_value_box_t		*vb = NULL;
 
 	if (rctx->action != XLAT_ACTION_DONE) {
-		RPERROR("PING after cluter remap failed");
+		RPERROR("PING after cluster remap failed");
 		return rctx->action;
 	}
 
