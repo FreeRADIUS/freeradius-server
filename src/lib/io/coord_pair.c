@@ -568,7 +568,7 @@ void fr_coord_pair_inst_destroy(UNUSED fr_coord_t *coord, fr_coord_cb_inst_t *in
 		count += ret;
 	}
 
-	DEBUG("Coordinator is exiting - stopped %u requests", count);
+	DEBUG("Coordinator %s is exiting - stopped %u requests", fr_coord_name(coord), count);
 }
 
 /** Create the coord_pair coord instance data
