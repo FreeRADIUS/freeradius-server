@@ -95,6 +95,10 @@ jobs:
         dnf builddep -y freeradius.spec && dnf builddep -y freeradius.spec
       working-directory: freeradius/redhat
 
+    - name: Package update
+      run: |
+        dnf -y update
+
     - name: Build RPMs
       run: |
         [ -r /opt/rh/gcc-toolset-14/enable ] && source /opt/rh/gcc-toolset-14/enable || :
@@ -208,6 +212,10 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         name: rpms-${{ matrix.env.NAME }}
+
+    - name: Package update
+      run: |
+        dnf -y update
 
     - name: Install RPMs
       run: |
