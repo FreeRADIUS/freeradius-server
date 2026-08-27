@@ -13,6 +13,8 @@ int main(UNUSED int argc, UNUSED char **argv)
 	SIZEOF(CONF_PAIR);
 	SIZEOF(CONF_SECTION);
 
+	SIZEOF(fr_dbuff_t);
+
 	SIZEOF(fr_dict_attr_t);
 	SIZEOF(fr_dict_attr_flags_t);
 	SIZEOF(fr_dict_enum_value_t);
@@ -29,6 +31,8 @@ int main(UNUSED int argc, UNUSED char **argv)
 
 	SIZEOF(fr_rb_tree_t);
 	SIZEOF(fr_rb_node_t);
+
+	SIZEOF(fr_sbuff_t);
 
 	SIZEOF(fr_tlist_t);
 	SIZEOF(fr_tlist_head_t);
