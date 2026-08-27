@@ -48,6 +48,16 @@ unit_test_map.ARGS = -h
 unit_test_module.ARGS = -h
 
 #
+#  acutest runs TEST_INIT only in the forked per-test children, so the
+#  parent process, the one jlibtool's timeout signals, has no fault
+#  handlers and dies with no backtrace when a test hangs.  --no-exec runs
+#  every test in the one process that holds the handlers, so a hang
+#  produces a backtrace naming the hung test.  The cost is isolation: a
+#  crashing test takes the remaining tests in its binary with it.
+#
+$(foreach x,$(filter %_tests,$(ALL_TGTS)),$(eval $x.ARGS := --no-exec))
+
+#
 #  Files in the output dir depend on the bin tests, and on the binary
 #  that we're running
 #
