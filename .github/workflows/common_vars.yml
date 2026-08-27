@@ -170,8 +170,8 @@ jobs:
       - name: Evaluate vars
         id: evaluate
         env:
-          #  The one place in the repository that names the registry.
-          registry: ${{ vars.DOCKER_REGISTRY || format('ghcr.io/{0}', github.repository_owner) }}
+          registry_override: ${{ vars.DOCKER_REGISTRY }}
+          owner: ${{ github.repository_owner }}
           selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
           default_branch: ${{ github.event.repository.default_branch }}
           ref_name: ${{ github.ref_name }}
@@ -179,6 +179,24 @@ jobs:
           images_changed: ${{ steps.changed.outputs.images_changed }}
           event: ${{ github.event_name }}
         run: |
+          #
+          #  The DOCKER_REGISTRY variable always wins when set.  GitHub does
+          #  not deliver repository variables to a pull request from a fork,
+          #  so runs in the FreeRADIUS repository fall back to the
+          #  organisation's own registry.  A fork running CI in its own repository
+          #  falls back to the fork's GHCR namespace, because a fork can
+          #  push nowhere else.  Docker rejects uppercase in the image path,
+          #  and github.repository_owner preserves case, so the owner is
+          #  lowercased.
+          #
+          if [ -n "$registry_override" ]; then
+            registry="$registry_override"
+          elif [ "$selfhosted" = "1" ]; then
+            registry=docker.internal.networkradius.com
+          else
+            registry="ghcr.io/$(printf '%s' "$owner" | tr 'A-Z' 'a-z')"
+          fi
+
           prefix=
           if [ "$selfhosted" = "1" ]; then
             prefix="$registry/"
