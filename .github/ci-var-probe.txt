@@ -1,0 +1,1 @@
+Probe file for testing repository variable delivery to fork pull requests. Safe to delete.
