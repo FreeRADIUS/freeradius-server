@@ -1075,7 +1075,7 @@ static void test_fr_pair_value_bstrndup_shallow(void)
 	TEST_CASE("Check (vp->vp_string == copy_test_string)");
 	TEST_CHECK(vp && strncmp(vp->vp_strvalue, test_string, test_string_len) == 0);
 
-	talloc_free(copy_test_string);
+	fr_pair_value_clear(vp);
 }
 
 static void test_fr_pair_value_bstrdup_buffer_shallow(void)
@@ -1098,7 +1098,7 @@ static void test_fr_pair_value_bstrdup_buffer_shallow(void)
 	TEST_CASE("Check (vp->vp_string == copy_test_string)");
 	TEST_CHECK(vp && strncmp(vp->vp_strvalue, test_string, test_string_len) == 0);
 
-	talloc_free(copy_test_string);
+	fr_pair_value_clear(vp);
 }
 
 static void test_fr_pair_value_mem_alloc(void)
@@ -1223,7 +1223,7 @@ static void test_fr_pair_value_memdup_shallow(void)
 	TEST_CASE("Check (vp->vp_octets == test_octets)");
 	TEST_CHECK(vp && memcmp(vp->vp_octets, test_octets, NUM_ELEMENTS(test_octets)) == 0);
 
-	talloc_free(copy_test_octets);
+	fr_pair_value_clear(vp);
 }
 
 static void test_fr_pair_value_memdup_buffer_shallow(void)
@@ -1246,7 +1246,7 @@ static void test_fr_pair_value_memdup_buffer_shallow(void)
 	TEST_CASE("Check (vp->vp_octets == copy_test_octets)");
 	TEST_CHECK(vp && memcmp(vp->vp_octets, test_octets, NUM_ELEMENTS(test_octets)) == 0);
 
-	talloc_free(copy_test_octets);
+	fr_pair_value_clear(vp);
 }
 
 static void test_fr_pair_value_enum(void)
