@@ -985,8 +985,28 @@ do { \
  */
 int fr_redis_ct_map_fail(fr_redis_ct_t *rtcluster, UNUSED fr_pair_list_t const *list)
 {
+	fr_redis_async_cmd_t	*cmd;
+	fr_redis_ct_pend_req_t	*pend_req;
+
 	DEBUG3("Cluster %d failed", rtcluster->cluster_id);
 	rtcluster->state = CLUSTER_FAIL;
+
+	/*
+	 *	Inform any pending requests that the cluster has failed.
+	 */
+	while ((cmd = fr_dlist_pop_head(&rtcluster->pend_cmds))) {
+		fr_redis_command_set_rcode_set(cmd->cmds, REDIS_ASYNC_RCODE_FAIL);
+		unlang_interpret_mark_runnable(cmd->request);
+	}
+
+	/*
+	 *	Resume any requests which were waiting for the cluster remap.
+	 */
+	while ((pend_req = fr_dlist_pop_head(&rtcluster->pend_reqs))) {
+		unlang_interpret_mark_runnable(pend_req->request);
+		talloc_free(pend_req);
+	}
+
 	return 0;
 }
 
