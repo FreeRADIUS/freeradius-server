@@ -996,6 +996,13 @@ fr_redis_async_rcode_t fr_redis_command_set_rcode(fr_redis_command_set_t *cmds)
 	return cmds->rcode;
 }
 
+/** Set the rcode for a command set
+ */
+void fr_redis_command_set_rcode_set(fr_redis_command_set_t *cmds, fr_redis_async_rcode_t rcode)
+{
+	cmds->rcode = rcode;
+}
+
 /** Extract the next node address and port from a command set
  */
 void fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_redis_io_conf_t *ioconf)
