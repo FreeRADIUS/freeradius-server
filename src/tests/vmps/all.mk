@@ -46,6 +46,8 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		cat $(FOUND);                                             \
 		rm -f $(BUILD_DIR)/tests/test.vmps;                       \
 		$(MAKE) --no-print-directory test.vmps.radiusd_kill;      \
+		echo "RADIUSD LOG: $(VMPS_RADIUS_LOG)";                   \
+		cat $(VMPS_RADIUS_LOG);                                   \
 		echo "RADIUSD: $(RADIUSD_RUN)";                           \
 		echo "VQCLI:   $(VQCLI) -s 127.0.0.1 -p $(vmps_port) $(ARGV)"; \
 		exit 1;                                                   \
@@ -65,6 +67,8 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		diff $(EXPECTED) $(FOUND);                                   \
 		rm -f $(BUILD_DIR)/tests/test.vmps;                          \
 		$(MAKE) --no-print-directory test.vmps.radiusd_kill;         \
+		echo "RADIUSD LOG: $(VMPS_RADIUS_LOG)";                      \
+		cat $(VMPS_RADIUS_LOG);                                      \
 		exit 1;                                                      \
 	fi
 	${Q}touch $@

@@ -64,6 +64,8 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la $(BUILD_DIR)/lib/
 		cat $(FOUND);                                               \
 		rm -f $(BUILD_DIR)/tests/test.tacacs;                       \
 		$(MAKE) --no-print-directory test.tacacs.radiusd_kill;      \
+		echo "RADIUSD LOG: $(TACACS_RADIUS_LOG)";                   \
+		cat $(TACACS_RADIUS_LOG);                                   \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 		echo "TACCLIENT: $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV)"; \
 		exit 1;                                                     \
@@ -83,6 +85,8 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la $(BUILD_DIR)/lib/
 		diff $(EXPECTED) $(FOUND);                                  \
 		rm -f $(BUILD_DIR)/tests/test.tacacs;                       \
 		$(MAKE) --no-print-directory test.tacacs.radiusd_kill;      \
+		echo "RADIUSD LOG: $(TACACS_RADIUS_LOG)";                   \
+		cat $(TACACS_RADIUS_LOG);                                   \
 		exit 1;                                                     \
 	fi
 	${Q}touch $@

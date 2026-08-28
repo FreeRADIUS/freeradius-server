@@ -66,6 +66,8 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 			cat $(FOUND);                                               \
 			rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 			$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
+			echo "RADIUSD LOG: $(RADCLIENT_RADIUS_LOG)";                \
+			cat $(RADCLIENT_RADIUS_LOG);                                \
 			echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 			echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
 			exit 1;                                                     \
@@ -104,6 +106,8 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 		diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND);                                  \
 		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
+		echo "RADIUSD LOG: $(RADCLIENT_RADIUS_LOG)";                \
+		cat $(RADCLIENT_RADIUS_LOG);                                \
 		exit 1;                                                     \
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then           \
 		echo "RADCLIENT FAILED $@";                                 \
@@ -113,6 +117,8 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
+		echo "RADIUSD LOG: $(RADCLIENT_RADIUS_LOG)";                \
+		cat $(RADCLIENT_RADIUS_LOG);                                \
 		exit 1;                                                     \
 	fi
 	${Q}touch $@
