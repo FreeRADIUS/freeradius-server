@@ -626,7 +626,13 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 	}
 
 	if (unlikely((*da_p)->state.finalised == true)) {
-		fr_strerror_printf("Attempting to set parent for '%s' to '%s', but attribute already finalised",
+		fr_strerror_printf("Attempting to set parent for '%s' to '%s', but attribute was already finalised",
+				   da->name, parent->name);
+		return -1;
+	}
+
+	if ((parent->depth + 1) > FR_DICT_MAX_TLV_STACK) {
+		fr_strerror_printf("Attempting to set parent for '%s' to '%s', but parent is already at the maximum depth",
 				   da->name, parent->name);
 		return -1;
 	}
@@ -1132,7 +1138,7 @@ static int dict_attr_acopy_child(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_a
 	if (!copy) return -1;
 
 	fr_assert(copy->parent == dst);
-	copy->depth = copy->parent->depth + 1;
+	fr_assert(copy->depth == dst->depth + 1);
 
 	if (dict_attr_child_add(dst, copy) < 0) return -1;
 
@@ -1227,7 +1233,7 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 			if (!dict_attr_ext_alloc(&dst_key, FR_DICT_ATTR_EXT_ENUMV)) return -1;
 
 			fr_assert(dst_key->parent == dst);
-			dst_key->depth = dst->depth + 1;
+			fr_assert(dst_key->depth == dst->depth + 1);
 
 			if (dict_attr_child_add(dst, dst_key) < 0) return -1;
 
