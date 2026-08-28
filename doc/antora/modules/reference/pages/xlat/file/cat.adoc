@@ -1,13 +1,13 @@
 = Cat
 
-The `cat` function returns the contents of a file.
+The `file.cat` function returns the contents of a file.
 
-The function takes a second argument, which is the maximum number of bytes which should be returned.
+The function takes a second argument, which is the maximum number of bytes that should be returned. If the file is larger than this then the function fails and nothing is returned.
 
 [#syntax]
 == Syntax
 
-`%file.cat(_string_, [ _uint32_ ])`
+`%file.cat(_string_, _uint32_)`
 
 .Return: _octets_
 
@@ -17,9 +17,11 @@ The function takes a second argument, which is the maximum number of bytes which
 ----
 octets crl
 
-crl := %file.cat('/etc/ssl/certs/ca.crl')
+crl := %file.cat('/etc/ssl/certs/ca.crl', 8192)
 ----
 ====
+
+include::partial$file_limit.adoc[]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

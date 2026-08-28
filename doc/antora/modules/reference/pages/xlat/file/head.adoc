@@ -1,6 +1,6 @@
 = Head
 
-The `head` function returns the first line of the file.  If the file does not exist, or if the line is more than 256 characters in length, it fails and nothing is returned.
+The `file.head` function returns the first line of the file. Only up to the first 256 characters are returned. If the file does not exist, or ASCII control characters (except tab) are read, it fails and nothing is returned.
 
 [#syntax]
 == Syntax
@@ -18,6 +18,8 @@ string line
 line := %file.head("/var/log/radius.log")
 ----
 ====
+
+include::partial$file_limit.adoc[]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

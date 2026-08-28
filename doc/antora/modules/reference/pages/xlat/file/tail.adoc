@@ -1,8 +1,8 @@
 = Tail
 
-The `tail` function returns the last line of the file.  If the file does not exist, or if the line is more than 256 characters in length, it fails and nothing is returned.
+The `file.tail` function returns the last line of the file. Only up to the last 256 characters of the file are returned, including any trailing newline. This may be the end of the last line if it is more than 256 characters long. If the file does not exist it fails and nothing is returned.
 
-The function takes an optional second argument, which is the number of lines which should be returned.  The maximum number of lines which will be returned is limited to 15.
+The function takes an optional second argument, which is the number of lines which should be returned.  The maximum number of lines which will be returned is limited to 16.
 
 [#syntax]
 == Syntax
@@ -30,6 +30,8 @@ string line
 line := %file.tail("/var/log/radius.log", 2)
 ----
 ====
+
+include::partial$file_limit.adoc[]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

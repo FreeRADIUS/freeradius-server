@@ -1,6 +1,6 @@
 = Escape
 
-The `escape` function returns an escaped or "safe" version of the input string.
+The `file.escape` function returns an escaped or "safe" version of the input string.
 
 In some cases, as when using `%exec(...)`, it is impossible to determine which arguments are filenames, and which are simple strings.  This function allows the server to safely pass in a filename to external programs.
 

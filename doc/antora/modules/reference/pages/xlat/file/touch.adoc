@@ -1,0 +1,25 @@
+= Touch
+
+The `file.touch` function creates a file if it does not exist. If the file already exists then this function does nothing.
+
+[#syntax]
+== Syntax
+
+`%file.touch(_string_)`
+
+.Return: _string_
+
+.Ensuring a file exists
+====
+[source,unlang]
+----
+string line
+
+line := %file.touch("/var/log/debug.log")
+----
+====
+
+include::partial$file_limit.adoc[]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

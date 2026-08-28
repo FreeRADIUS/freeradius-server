@@ -1,0 +1,6 @@
+== File access restriction
+
+Files accessed in this function are restricted by the `limit files` section in the main xref:raddb/radiusd.conf.adoc#_security_configuration[security configuration]. If present in `radiusd.conf`, only files in the paths listed can be accessed.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

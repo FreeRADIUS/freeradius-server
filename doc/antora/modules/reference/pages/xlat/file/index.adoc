@@ -9,14 +9,17 @@ For example, the "unsafe" string `user@freeradius.org/..` will turn into the fil
 .File Handling Functions
 [options="headers, autowidth]
 |===
-| *Function*				                | *Description*
-| xref:xlat/file/cat.adoc[cat]				| Returns the contents of a file.
-| xref:reference:xlat/file/escape.adoc[escape]		| Returns an escaped or safe version of the input string.
-| xref:xlat/file/exists.adoc[exists]		        | Checks to see if a file exists on the filesystem.
-| xref:xlat/file/head.adoc[head]	                | Returns the first line of the file.
-| xref:xlat/file/rm.adoc[rm]	                	| Removes a file from the filesystem.
-| xref:xlat/file/size.adoc[size]		        | Returns the size of a file.
-| xref:xlat/file/tail.adoc[tail]		        | Return the last line of a file or the last number(n) of lines of a file.
+| *Function*						| *Description*
+| xref:xlat/file/cat.adoc[file.cat]			| Returns the contents of a file.
+| xref:xlat/file/escape.adoc[file.escape]		| Returns an escaped or safe version of the input string.
+| xref:xlat/file/exists.adoc[file.exists]		| Checks to see if a file exists on the filesystem.
+| xref:xlat/file/head.adoc[file.head]			| Returns the first line of the file.
+| xref:xlat/file/mkdir.adoc[file.mkdir]			| Create a directory on the filesystem.
+| xref:xlat/file/rm.adoc[file.rm]			| Removes a file from the filesystem.
+| xref:xlat/file/rmdir.adoc[file.rmdir]			| Removes a directory from the filesystem.
+| xref:xlat/file/size.adoc[file.size]			| Returns the size of a file.
+| xref:xlat/file/tail.adoc[file.tail]			| Return the last line of a file or the last number(n) of lines of a file.
+| xref:xlat/file/touch.adoc[file.touch]			| Create a file if it does not already exist.
 |===
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

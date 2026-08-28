@@ -1,6 +1,6 @@
 = mkdir
 
-The `mkdir` function creates directories and subdirectories.  If the directory exists or was created successfully, it returns `true`.  Otherwise if it could not be created, it returns `false.
+The `file.mkdir` function creates directories and subdirectories.  If the directory exists or was created successfully, it returns `true`.  Otherwise if it could not be created, it returns `false`.
 
 [#syntax]
 == Syntax
@@ -16,6 +16,8 @@ The `mkdir` function creates directories and subdirectories.  If the directory e
 %file.mkdir("/var/log/radius/auth")
 ----
 ====
+
+include::partial$file_limit.adoc[]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1280,7 +1280,7 @@ static xlat_action_t xlat_func_log_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurs
 }
 
 
-/** Log something at DEBUG level.
+/** Log something at ERROR level.
  *
  * Example:
 @verbatim
@@ -4976,15 +4976,15 @@ do { \
 	XLAT_REGISTER_ARGS("debug_attr", xlat_func_pairs_debug, FR_TYPE_NULL, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.debug");
 
+	XLAT_REGISTER_ARGS("file.cat", xlat_func_file_cat, FR_TYPE_OCTETS, xlat_func_file_cat_args);
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.mkdir", xlat_func_file_mkdir, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
-	XLAT_REGISTER_ARGS("file.touch", xlat_func_file_touch, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.rmdir", xlat_func_file_rmdir, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
-	XLAT_REGISTER_ARGS("file.cat", xlat_func_file_cat, FR_TYPE_OCTETS, xlat_func_file_cat_args);
-	XLAT_REGISTER_ARGS("file.mkdir", xlat_func_file_mkdir, FR_TYPE_BOOL, xlat_func_file_name_args);
-	XLAT_REGISTER_ARGS("file.rmdir", xlat_func_file_rmdir, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.touch", xlat_func_file_touch, FR_TYPE_BOOL, xlat_func_file_name_args);
 
 	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.immutable");

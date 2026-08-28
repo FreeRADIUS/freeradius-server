@@ -1,6 +1,6 @@
 = rmdir
 
-The `rmdir` function removes a directory.  If the directory exists and could be removed, it returns `true`.  Otherwise if the directory does not exist, or if the directory could not be removed, it returns `false.
+The `file.rmdir` function removes a directory.  If the directory exists and could be removed, it returns `true`.  Otherwise if the directory does not exist, or if the directory could not be removed, it returns `false`.
 
 [#syntax]
 == Syntax
@@ -16,6 +16,8 @@ The `rmdir` function removes a directory.  If the directory exists and could be 
 %file.rmdir("/var/log/radius/auth")
 ----
 ====
+
+include::partial$file_limit.adoc[]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
