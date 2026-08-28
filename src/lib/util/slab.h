@@ -39,7 +39,7 @@ extern "C" {
 
 /** Tuneable parameters for slabs
  */
-typedef struct { \
+typedef struct {
 	unsigned int		elements_per_slab;	//!< Number of elements to allocate per slab.
 	unsigned int		min_elements;		//!< Minimum number of elements to keep allocated.
 	unsigned int		max_elements;		//!< Maximum number of elements to allocate using slabs.
