@@ -299,7 +299,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 
 	char		*p;
 	char const	*extra = "";
-	uint8_t		unlang_indent, module_indent;
+	uint8_t		unlang_indent;
 	va_list		aq;
 
 	char const	*fmt_location = "";
@@ -443,16 +443,15 @@ print_fmt:
 			sizeof(spaces) - 1 :
 			request->log.indent.unlang;
 
-	module_indent = request->log.indent.module > sizeof(spaces) - 1 ?
-			sizeof(spaces) - 1 :
-			request->log.indent.module;
-
 	/*
 	 *	Module name and indentation i.e.
 	 *
 	 *	test -     <fmt>
 	 */
 	if (request->module) {
+		uint8_t module_indent = request->log.indent.module > sizeof(spaces) - 1 ?
+					sizeof(spaces) - 1 :
+					request->log.indent.module;
 		fmt_module = talloc_typed_asprintf(pool, "%s - %.*s", request->module, module_indent, spaces);
 	}
 
