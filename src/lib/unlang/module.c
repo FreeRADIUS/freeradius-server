@@ -511,9 +511,11 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_module_t			*m = unlang_generic_to_module(frame->instruction);
-	char const			*caller;
 
-	if (!state->signal) return;
+	if (!state->signal) {
+		request->module = state->previous_module;
+		return;
+	}
 
 	if (action == FR_SIGNAL_CANCEL) {
 		/*
@@ -525,10 +527,6 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 		TALLOC_FREE(state->ev);
 	}
 
-	/*
-	 *	Async calls can't push anything onto the unlang stack, so we just use a local "caller" here.
-	 */
-	caller = request->module;
 	request->module = m->mmc.mi->name;
 
 	/*
@@ -548,8 +546,7 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 		state->signal = NULL;
 	}
 
-	request->module = caller;
-
+	request->module = state->previous_module;
 }
 
 /** Cleanup after a module completes
