@@ -558,6 +558,7 @@ static fr_cmp_ret_t coord_pair_runnable_cmp(void const *one, void const *two)
 void fr_coord_pair_inst_destroy(UNUSED fr_coord_t *coord, fr_coord_cb_inst_t *inst, bool single_thread, UNUSED void *uctx) {
 	fr_coord_pair_t	*coord_pair = talloc_get_type_abort(inst->inst_data, fr_coord_pair_t);
 	int		ret, count = 0;
+	request_t	*request;
 
 	if (!single_thread) unlang_interpret_set_thread_default(NULL);
 
@@ -566,6 +567,15 @@ void fr_coord_pair_inst_destroy(UNUSED fr_coord_t *coord, fr_coord_cb_inst_t *in
 		fr_assert_msg(0, "Failed to force run the timeout list");
 	} else {
 		count += ret;
+	}
+
+	while ((request = fr_heap_peek(coord_pair->runnable)) && (unlang_request_is_cancelled(request))) {
+		fr_heap_extract(&coord_pair->runnable, request);
+
+		REQUEST_VERIFY(request);
+		fr_assert(!fr_heap_entry_inserted(request->runnable));
+
+		(void)unlang_interpret(request, UNLANG_REQUEST_RESUME);
 	}
 
 	DEBUG("Coordinator %s is exiting - stopped %u requests", fr_coord_name(coord), count);
