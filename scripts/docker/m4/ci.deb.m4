@@ -25,6 +25,8 @@ RUN apt-get install -y --no-install-recommends \
 
 include(`common.deb.nr-extras.m4')dnl
 
+include(`common.eapol_test.m4')dnl
+
 #
 #  Pre-install the build-dep closure derived from debian/control. The
 #  source-tree debian/ subtree is baked in at image-build time. There is no

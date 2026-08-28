@@ -22,6 +22,8 @@ RUN dnf install -y \
 
 include(`common.rpm.nr-extras.m4')dnl
 
+include(`common.eapol_test.m4')dnl
+
 #
 #  Pre-install the build-dep closure for the FreeRADIUS spec. The spec is
 #  baked in at image-build time; ci-rpm.yml only tops up when a commit

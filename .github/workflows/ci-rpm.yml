@@ -71,9 +71,6 @@ jobs:
     container:
       image: ${{ matrix.env.BUILD_IMAGE }}
 
-    env:
-      HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
-      HOSTAPD_GIT_TAG: hostap_2_11
 
     name: "RPM build"
 
@@ -111,20 +108,12 @@ jobs:
         mkdir rpms
         mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms
 
-    - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v5
-      id: hostapd-cache
-      with:
-        path: ${{ env.HOSTAPD_BUILD_DIR }}
-        key: hostapd-${{ matrix.env.NAME }}-${{ env.HOSTAPD_GIT_TAG }}-v1
-
-    # Build eapol_test using a minimal make environment to avoid configuring
-    - name: Build eapol_test
-      run: |
-        [ -r /opt/rh/gcc-toolset-14/enable ] && source /opt/rh/gcc-toolset-14/enable || :
-        scripts/ci/eapol_test-build.sh
-        mv scripts/ci/eapol_test/eapol_test ../rpms
-      working-directory: freeradius
+    #  The CI image already has eapol_test.  The stock image used by the
+    #  install test has no eapol_test, so copy eapol_test in alongside the
+    #  packages.  The install test moves eapol_test to /usr/local/bin, and
+    #  scripts/ci/package-test.mk looks eapol_test up on PATH.
+    - name: Stage eapol_test for the install test
+      run: cp /usr/local/bin/eapol_test rpms/eapol_test
 
     - name: Store RPMs
       uses: actions/upload-artifact@v6
@@ -243,8 +232,6 @@ jobs:
       run: |
         make -C raddb/certs Q=@
         touch Make.inc
-        mkdir -p build/tests/eapol_test
-        echo "EAPOL_TEST=" $(which eapol_test) > build/tests/eapol_test/eapol_test.mk
         make -f scripts/ci/package-test.mk package-test
       working-directory: freeradius
 
