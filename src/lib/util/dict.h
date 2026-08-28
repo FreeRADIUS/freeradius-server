@@ -197,17 +197,20 @@ struct dict_attr_s {
 	fr_dict_t _CONST* _CONST dict;				//!< Dict attribute belongs to.
 
 	char const		*name;				//!< Attribute name.
-	size_t			name_len;			//!< Length of the name.
-
-	unsigned int		attr;				//!< Attribute number.
-	unsigned int		depth;				//!< Depth of nesting for this attribute.
-
-	fr_type_t		type;				//!< Value type.
-
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
+
+	unsigned int		attr;				//!< Attribute number.
+
+	fr_type_t		type;				//!< Value type.
+
+	unsigned int   		line;				//!< Line number where the attribute was defined.
+
+	uint8_t			name_len;			//!< Length of the name.
+
+	uint8_t			depth;				//!< Depth of nesting for this attribute.
 
 	struct {
 		bool			attr_set : 1;		//!< Attribute number has been set.
@@ -220,12 +223,11 @@ struct dict_attr_s {
 								///< of the attribute are no longer permitted.
 	} state;
 
+	uint8_t			ext[FR_DICT_ATTR_EXT_MAX];	//!< Extensions to the dictionary attribute.
+
 	char const		*filename;			//!< Where the attribute was defined.
 								///< this buffer's lifetime is bound to the
 								///< fr_dict_t.
-	int			line;				//!< Line number where the attribute was defined.
-
-	uint8_t			ext[FR_DICT_ATTR_EXT_MAX];	//!< Extensions to the dictionary attribute.
 } CC_HINT(aligned(FR_EXT_ALIGNMENT));
 
 /** Extension identifier
@@ -994,6 +996,9 @@ int			fr_dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx
 
 void			fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da) CC_HINT(nonnull);
 /** @} */
+
+static_assert(FR_DICT_MAX_TLV_STACK <= UINT8_MAX, "FR_DICT_MAX_TLV_STACK is too large");
+static_assert(FR_DICT_ATTR_MAX_NAME_LEN <= UINT8_MAX, "FR_DICT_ATTR_MAX_NAME_LEN is too large");
 
 #undef _CONST
 
