@@ -210,13 +210,39 @@ static void worker_recv_request(fr_channel_t *ch, fr_channel_data_t *cd, void *u
 	worker_request_bootstrap(wc, cd, fr_time());
 }
 
-static void worker_requests_cancel(fr_worker_channel_t *ch)
+static inline int worker_cancelled_run(fr_worker_t *worker)
+{
+	int cancelled = 0;
+	request_t *request;
+
+	while ((request = fr_heap_peek(worker->runnable)) && (unlang_request_is_cancelled(request))) {
+		fr_heap_extract(&worker->runnable, request);
+
+		REQUEST_VERIFY(request);
+		fr_assert(!fr_heap_entry_inserted(request->runnable));
+
+		(void)unlang_interpret(request, UNLANG_REQUEST_RESUME);
+		cancelled++;
+	}
+
+	return cancelled;
+}
+
+static void worker_requests_cancel(fr_worker_t *worker, fr_worker_channel_t *ch)
 {
 	fr_async_t *async;
+	int cancelled;
 
 	while ((async = fr_dlist_pop_head(&ch->dlist)) != NULL) {
 		unlang_interpret_signal(async->request, FR_SIGNAL_CANCEL);
 	}
+
+	/*
+	 *	Signalled requests will now be at the top of the runnable heap.
+	 *	Run all cancelled requests at the top of the heap to conclusion.
+	 */
+	cancelled = worker_cancelled_run(worker);
+	DEBUG("%d requests cancelled", cancelled);
 }
 
 static void worker_exit(fr_worker_t *worker)
@@ -338,7 +364,7 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 
 			if (worker->channel[i].ch != ch) continue;
 
-			worker_requests_cancel(&worker->channel[i]);
+			worker_requests_cancel(worker, &worker->channel[i]);
 
 			ms = worker->channel[i].ms;
 
@@ -1077,6 +1103,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 	} else {
 		count += ret;
 	}
+	worker_cancelled_run(worker);
 
 	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
 
@@ -1094,7 +1121,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 	for (i = 0; i < worker->config.max_channels; i++) {
 		if (!worker->channel[i].ch) continue;
 
-		worker_requests_cancel(&worker->channel[i]);
+		worker_requests_cancel(worker, &worker->channel[i]);
 
 		fr_assert_msg(fr_dlist_num_elements(&worker->channel[i].dlist) == 0,
 			      "Pending messages in channel after cancelling request");
