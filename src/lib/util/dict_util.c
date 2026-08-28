@@ -440,6 +440,8 @@ static inline CC_HINT(always_inline) int dict_attr_children_init(fr_dict_attr_t 
 	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_CHILDREN);
 	if (unlikely(!ext)) return -1;
 
+	ext->last_child_attr = (1 << 24);	/* High enough not to conflict with protocol numbers */
+
 	return 0;
 }
 
@@ -561,8 +563,6 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 
 		if (dict_attr_children_init(da_p) < 0) return -1;
 		if (dict_attr_namespace_init(da_p) < 0) return -1;	/* Needed for all TLV style attributes */
-
-		(*da_p)->last_child_attr = (1 << 24);	/* High enough not to conflict with protocol numbers */
 		break;
 
 	/*
@@ -710,11 +710,17 @@ int dict_attr_num_init(fr_dict_attr_t *da, unsigned int num)
  */
 int dict_attr_num_init_name_only(fr_dict_attr_t *da)
 {
+	fr_dict_attr_ext_children_t *ext;
+
 	if (!da->parent) {
 		fr_strerror_const("Attribute must have parent set before automatically setting attribute number");
 		return -1;
 	}
-	return dict_attr_num_init(da, ++fr_dict_attr_unconst(da->parent)->last_child_attr);
+
+	ext = fr_dict_attr_ext(da->parent, FR_DICT_ATTR_EXT_CHILDREN);
+	fr_assert(ext != NULL);
+
+	return dict_attr_num_init(da, ++ext->last_child_attr);
 }
 
 /** Set where the dictionary attribute was defined
@@ -1866,9 +1872,13 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 	if (da->flags.name_only) {
 		if (da->state.attr_set) {
 			fr_dict_attr_t *parent = fr_dict_attr_unconst(da->parent);
+			fr_dict_attr_ext_children_t *ext;
 
-			if (da->attr > da->parent->last_child_attr) {
-				parent->last_child_attr = da->attr;
+			ext = fr_dict_attr_ext(parent, FR_DICT_ATTR_EXT_CHILDREN);
+			fr_assert(ext != NULL);
+
+			if (da->attr > ext->last_child_attr) {
+				ext->last_child_attr = da->attr;
 
 				/*
 				*	If the attribute is outside of the bounds of
@@ -4271,6 +4281,7 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 {
 	fr_dict_t *dict;
 	fr_dict_attr_t *da;
+	fr_dict_attr_ext_children_t *ext_child, *ext_parent;
 
 	fr_dict_attr_flags_t flags = {
 		.is_root = true,
@@ -4294,7 +4305,13 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 		return NULL;
 	}
 
-	da->last_child_attr = fr_dict_root(parent)->last_child_attr;
+	ext_parent = fr_dict_attr_ext(fr_dict_root(parent), FR_DICT_ATTR_EXT_CHILDREN);
+	fr_assert(ext_parent != NULL);
+
+	ext_child = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_CHILDREN);
+	fr_assert(ext_child != NULL);
+
+	ext_child->last_child_attr = ext_parent->last_child_attr;
 
 	dict->root = da;
 	dict->root->dict = dict;

@@ -50,6 +50,7 @@ extern fr_ext_t const fr_dict_enum_ext_def;
  * VALUE.  See dict_attr_can_have_children() for details.
  */
 typedef struct {
+	unsigned int		last_child_attr;		//!< highest value of last child attribute.
 	fr_dict_attr_t const	**children;			//!< Children of this attribute.
 } fr_dict_attr_ext_children_t;
 
