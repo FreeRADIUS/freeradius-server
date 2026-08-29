@@ -7,9 +7,9 @@ include(`common.apt.retries.m4')dnl
 include(`common.deb.toolchain.m4')dnl
 
 #
-#  Extras the CI base needs on top of the common toolchain. libnl deps
-#  feed the eapol_test build; xz-utils feeds the tmate debug step; file
-#  is occasionally invoked from debian/rules.
+#  Extras the CI base needs on top of the common toolchain. The libnl and
+#  OpenSSL headers and pkg-config feed the eapol_test build; xz-utils feeds
+#  the tmate debug step; file is occasionally invoked from debian/rules.
 #
 #  Note: scripts/ci/extra-packages.debian.control is intentionally NOT
 #  consumed here. That file is for the self-hosted-ubuntu24 integration
@@ -21,6 +21,8 @@ RUN apt-get install -y --no-install-recommends \
 		file \
 		libnl-3-dev \
 		libnl-genl-3-dev \
+		libssl-dev \
+		pkg-config \
 		xz-utils
 
 include(`common.deb.nr-extras.m4')dnl

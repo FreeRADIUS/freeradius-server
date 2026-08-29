@@ -16,8 +16,8 @@
 #  `.github/workflows/ci.yml`, so that every runner tests the same version of
 #  eapol_test.
 #
-#  Compiling eapol_test requires the libnl development headers, which every
-#  template that includes this file installs.
+#  Compiling eapol_test needs the libnl and OpenSSL development headers,
+#  which the extras layer in each including template installs.
 #
 COPY scripts/ci/eapol_test-build.sh /tmp/eapol_test-build/
 COPY scripts/ci/eapol_test/ /tmp/eapol_test-build/eapol_test/

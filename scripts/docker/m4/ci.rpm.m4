@@ -5,8 +5,8 @@ include(`common.dnf.retries.m4')dnl
 include(`common.rpm.toolchain.m4')dnl
 
 #
-#  Extras the CI base needs on top of the common toolchain. libnl3-devel
-#  and which feed the eapol_test build; xz feeds the tmate debug step;
+#  Extras the CI base needs on top of the common toolchain. libnl3-devel,
+#  openssl-devel, and which feed the eapol_test build; xz feeds the tmate debug step;
 #  gcc / make / perl / rpm-build are pulled by dnf builddep anyway but
 #  installing them eagerly keeps the layer cache stable when freeradius.spec
 #  changes.
@@ -15,6 +15,7 @@ RUN dnf install -y \
 		gcc \
 		libnl3-devel \
 		make \
+		openssl-devel \
 		perl \
 		rpm-build \
 		which \

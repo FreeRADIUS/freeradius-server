@@ -94,8 +94,8 @@ RUN dnf install -y gcc make cmake git rpm-build && \
     cd / && rm -rf /tmp/libkqueue-from-source-for-debuginfo-packaging /tmp/libkqueue-from-source-build
 
 #
-#  Extras the CI base needs on top of the common toolchain. libnl3-devel
-#  and which feed the eapol_test build; xz feeds the tmate debug step;
+#  Extras the CI base needs on top of the common toolchain. libnl3-devel,
+#  openssl-devel, and which feed the eapol_test build; xz feeds the tmate debug step;
 #  gcc / make / perl / rpm-build are pulled by dnf builddep anyway but
 #  installing them eagerly keeps the layer cache stable when freeradius.spec
 #  changes.
@@ -104,6 +104,7 @@ RUN dnf install -y \
 		gcc \
 		libnl3-devel \
 		make \
+		openssl-devel \
 		perl \
 		rpm-build \
 		which \
@@ -145,8 +146,8 @@ RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
 #  `.github/workflows/ci.yml`, so that every runner tests the same version of
 #  eapol_test.
 #
-#  Compiling eapol_test requires the libnl development headers, which every
-#  template that includes this file installs.
+#  Compiling eapol_test needs the libnl and OpenSSL development headers,
+#  which the extras layer in each including template installs.
 #
 COPY scripts/ci/eapol_test-build.sh /tmp/eapol_test-build/
 COPY scripts/ci/eapol_test/ /tmp/eapol_test-build/eapol_test/
