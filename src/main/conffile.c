@@ -457,8 +457,8 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	fp = fopen(filename, "r");
 	if (!fp) {
 error:
-		ERROR("Unable to open file \"%s\": %s",
-		      filename, fr_syserror(errno));
+		cf_log_err(&(cs->item), "Unable to open file \"%s\": %s",
+			   filename, fr_syserror(errno));
 		return -1;
 	}
 
@@ -477,8 +477,8 @@ error:
 	if (fstat(fd, &file->buf) == 0) {
 #ifdef S_IWOTH
 		if ((file->buf.st_mode & S_IWOTH) != 0) {
-			ERROR("Configuration file %s is globally writable.  "
-			      "Refusing to start due to insecure configuration.", filename);
+			cf_log_err(&(cs->item), "Configuration file %s is globally writable.  "
+				   "Refusing to start due to insecure configuration.", filename);
 
 			fclose(fp);
 			talloc_free(file);
@@ -524,7 +524,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 	file->cs = cs;
 
 	if (stat(filename, &file->buf) < 0) {
-		ERROR("Unable to check file \"%s\": %s", filename, fr_syserror(errno));
+		cf_log_err(&(cs->item), "Unable to check file \"%s\": %s", filename, fr_syserror(errno));
 		talloc_free(file);
 		return false;
 	}
@@ -536,8 +536,8 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 
 #ifdef S_IWOTH
 	if ((file->buf.st_mode & S_IWOTH) != 0) {
-		ERROR("Configuration file %s is globally writable.  "
-		      "Refusing to start due to insecure configuration.", filename);
+		cf_log_err(&(cs->item), "Configuration file %s is globally writable.  "
+			   "Refusing to start due to insecure configuration.", filename);
 		talloc_free(file);
 		return false;
 	}
@@ -758,7 +758,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
 						    parent,
 						    buffer, sizeof(buffer), name2, NULL);
 			if (!name2) {
-				ERROR("Failed expanding section name");
+				cf_log_err(&(parent->item), "Failed expanding section name");
 				return NULL;
 			}
 		}
@@ -987,7 +987,7 @@ void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 			name1_cs = rbtree_finddata(cs->section_tree, cs_new);
 			if (!name1_cs) {
 				if (!rbtree_insert(cs->section_tree, cs_new)) {
-					ERROR("Failed inserting section into tree");
+					cf_log_err(&(cs_new->item), "Failed inserting section into tree");
 					fr_exit_now(1);
 				}
 				break;
@@ -2279,7 +2279,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 			 *	to the CONF_PARSER struct for the subsection.
 			 */
 			if (!variables[i].dflt || !subcs) {
-				ERROR("Internal sanity check 1 failed in cf_section_parse %s", variables[i].name);
+				cf_log_err(&(cs->item), "Internal sanity check 1 failed in cf_section_parse %s", variables[i].name);
 				ret = -1;
 				goto finish;
 			}
@@ -2300,7 +2300,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 		} else if (base) {
 			data = ((char *)base) + variables[i].offset;
 		} else {
-			ERROR("Internal sanity check 2 failed in cf_section_parse");
+			cf_log_err(&(cs->item), "Internal sanity check 2 failed in cf_section_parse");
 			ret = -1;
 			goto finish;
 		}
@@ -4165,7 +4165,7 @@ void *cf_data_remove(CONF_SECTION *cs, char const *name)
 void cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)
 {
 	va_list ap;
-	char buffer[256];
+	char buffer[1024];
 
 	va_start(ap, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
@@ -4184,7 +4184,7 @@ void cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)
 void cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)
 {
 	va_list ap;
-	char buffer[256];
+	char buffer[1024];
 
 	va_start(ap, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
@@ -4201,7 +4201,7 @@ void cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)
 void cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)
 {
 	va_list ap;
-	char buffer[256];
+	char buffer[1024];
 
 	va_start(ap, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
