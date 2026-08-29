@@ -1,19 +1,23 @@
 #
-#  Build and install eapol_test, the client the EAP tests drive the server
-#  with.
+#  Build eapol_test and install eapol_test into `/usr/local/bin`.
 #
-#  No package ships eapol_test.  A test run that cannot find a copy clones
-#  the whole hostap repository from git.w1.fi and compiles the binary, which
-#  adds minutes to the run and fails when that one host is down.
+#  eapol_test is the Extensible Authentication Protocol (EAP) client that the
+#  EAP tests use to authenticate against the server.  No distribution packages
+#  eapol_test.
 #
-#  scripts/ci/eapol_test-build.sh takes any eapol_test on the PATH before it
-#  builds one, so installing the binary here makes the clone and compile go
-#  away.  The same script builds this copy, and HOSTAPD_GIT_TAG must match
-#  the tag in .github/workflows/ci.yml so every runner tests the same
-#  eapol_test version.
+#  When a test run finds no eapol_test, `scripts/ci/eapol_test-build.sh` clones
+#  the hostap repository from 'git.w1.fi' and compiles eapol_test.  The clone
+#  and the compilation add several minutes to the run, and both fail whenever
+#  'git.w1.fi' is unreachable.  The same script checks `PATH` before compiling and
+#  uses any eapol_test already installed, so the eapol_test installed below
+#  removes the clone and the compilation from every test run.
 #
-#  The libnl headers the build needs come from the CI extras in the template
-#  that includes this file.
+#  `HOSTAPD_GIT_TAG` below must match `HOSTAPD_GIT_TAG` in
+#  `.github/workflows/ci.yml`, so that every runner tests the same version of
+#  eapol_test.
+#
+#  Compiling eapol_test requires the libnl development headers, which every
+#  template that includes this file installs.
 #
 COPY scripts/ci/eapol_test-build.sh /tmp/eapol_test-build/
 COPY scripts/ci/eapol_test/ /tmp/eapol_test-build/eapol_test/
