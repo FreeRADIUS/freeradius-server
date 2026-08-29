@@ -1005,6 +1005,13 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				uint8_t			escape;
 				fr_sbuff_marker_t	m;
 
+				/*
+				 *	Any leading 'x' and subsequente hex digits have to fit within "len".
+				 *	We therefore check if there's enough room before trying to parse
+				 *	hexits.  If there's insufficient room, it's not a valid hex sequence.
+				 */
+				if ((len < 3) || (fr_sbuff_used_total(&our_in) > (len - 3))) goto check_subs;
+
 				fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
 				fr_sbuff_advance(&our_in, 1);		/* skip over the 'x' */
 
@@ -1030,6 +1037,11 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 			if (u_rules->do_oct && fr_sbuff_is_digit(&our_in)) {
 				uint8_t 		escape;
 				fr_sbuff_marker_t	m;
+
+				/*
+				 *	The octal digits have to fit, too.  See 'x' above.
+				 */
+				if ((len < 3) || (fr_sbuff_used_total(&our_in) > (len - 3))) goto check_subs;
 
 				fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
 

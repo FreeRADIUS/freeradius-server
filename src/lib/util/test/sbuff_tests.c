@@ -692,6 +692,131 @@ static void test_unescape_until(void)
 	}
 }
 
+/** Check that a hex or octal escape sequence cannot consume more input than "len" allows
+ *
+ * fr_sbuff_out_unescape_until() bounds the input it consumes with a marker placed
+ * "len" bytes ahead of the start.  The escape sequences are the one place where
+ * the input is advanced by more than a byte at a time, so they are the one place
+ * where the marker can be stepped over.
+ *
+ * An escape sequence which does not fit within "len" is not a complete escape
+ * sequence, and is copied out as-is.  That is the same thing which happens to an
+ * incomplete escape sequence at the end of the input.
+ */
+static void test_unescape_until_escape_bounds(void)
+{
+	char				out[24 + 1];
+	fr_sbuff_t			sbuff;
+	ssize_t				slen;
+
+	char const			in_hex[] = "|x41|x42|x43";
+	char const			in_oct[] = "|101|102|103";
+
+	fr_sbuff_unescape_rules_t	hex_rules = {
+					.chr = '|',
+					.subs = { ['|'] = '|' },
+					.do_hex = true
+				};
+
+	fr_sbuff_unescape_rules_t	oct_rules = {
+					.chr = '|',
+					.subs = { ['|'] = '|' },
+					.do_oct = true
+				};
+
+	TEST_CASE("Hex, no limit");
+	fr_sbuff_init_in(&sbuff, in_hex, sizeof(in_hex) - 1);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, NULL, &hex_rules);
+	TEST_CHECK_SLEN(slen, 3);
+	TEST_CHECK_STRCMP(out, "ABC");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 12);
+
+	TEST_CASE("Hex, limit falls on the end of an escape sequence");
+	fr_sbuff_init_in(&sbuff, in_hex, sizeof(in_hex) - 1);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 4, NULL, &hex_rules);
+	TEST_CHECK_SLEN(slen, 1);
+	TEST_CHECK_STRCMP(out, "A");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 4);
+
+	TEST_CASE("Hex, limit falls on the escape char");
+	fr_sbuff_init_in(&sbuff, in_hex, sizeof(in_hex) - 1);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, NULL, &hex_rules);
+	TEST_CHECK_SLEN(slen, 2);
+	TEST_CHECK_STRCMP(out, "A|");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 5);
+
+	/*
+	 *	"|x" is within the limit, but neither hex digit is.
+	 */
+	TEST_CASE("Hex, limit leaves no room for either hex digit");
+	fr_sbuff_init_in(&sbuff, in_hex, sizeof(in_hex) - 1);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 6, NULL, &hex_rules);
+	TEST_CHECK_SLEN(slen, 3);
+	TEST_CHECK_STRCMP(out, "A|x");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 6);
+	TEST_MSG("consumed %zu bytes of input, was allowed 6", fr_sbuff_used(&sbuff));
+
+	/*
+	 *	"|x4" is within the limit, the second hex digit is not.
+	 */
+	TEST_CASE("Hex, limit leaves room for only one hex digit");
+	fr_sbuff_init_in(&sbuff, in_hex, sizeof(in_hex) - 1);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 7, NULL, &hex_rules);
+	TEST_CHECK_SLEN(slen, 4);
+	TEST_CHECK_STRCMP(out, "A|x4");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 7);
+	TEST_MSG("consumed %zu bytes of input, was allowed 7", fr_sbuff_used(&sbuff));
+
+	TEST_CASE("Octal, no limit");
+	fr_sbuff_init_in(&sbuff, in_oct, sizeof(in_oct) - 1);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, NULL, &oct_rules);
+	TEST_CHECK_SLEN(slen, 3);
+	TEST_CHECK_STRCMP(out, "ABC");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 12);
+
+	TEST_CASE("Octal, limit falls on the end of an escape sequence");
+	fr_sbuff_init_in(&sbuff, in_oct, sizeof(in_oct) - 1);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 4, NULL, &oct_rules);
+	TEST_CHECK_SLEN(slen, 1);
+	TEST_CHECK_STRCMP(out, "A");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 4);
+
+	/*
+	 *	"|10" is within the limit, the third octal digit is not.
+	 */
+	TEST_CASE("Octal, limit leaves room for only two octal digits");
+	fr_sbuff_init_in(&sbuff, in_oct, sizeof(in_oct) - 1);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 7, NULL, &oct_rules);
+	TEST_CHECK_SLEN(slen, 4);
+	TEST_CHECK_STRCMP(out, "A|10");
+	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 7);
+	TEST_MSG("consumed %zu bytes of input, was allowed 7", fr_sbuff_used(&sbuff));
+
+	/*
+	 *	Once the input has been stepped over, the "have we reached the
+	 *	end" check compares for equality, so it never matches again and
+	 *	the rest of the input is consumed too.  Walk every limit and
+	 *	check that the input consumed never exceeds the limit.
+	 */
+	TEST_CASE("No limit is ever exceeded, hex");
+	for (size_t i = 0; i <= sizeof(in_hex); i++) {
+		fr_sbuff_init_in(&sbuff, in_hex, sizeof(in_hex) - 1);
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, i, NULL, &hex_rules);
+		TEST_CHECK(slen >= 0);
+		TEST_CHECK(fr_sbuff_used(&sbuff) <= i);
+		TEST_MSG("limit %zu consumed %zu bytes of input", i, fr_sbuff_used(&sbuff));
+	}
+
+	TEST_CASE("No limit is ever exceeded, octal");
+	for (size_t i = 0; i <= sizeof(in_oct); i++) {
+		fr_sbuff_init_in(&sbuff, in_oct, sizeof(in_oct) - 1);
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, i, NULL, &oct_rules);
+		TEST_CHECK(slen >= 0);
+		TEST_CHECK(fr_sbuff_used(&sbuff) <= i);
+		TEST_MSG("limit %zu consumed %zu bytes of input", i, fr_sbuff_used(&sbuff));
+	}
+}
+
 static void test_unescape_multi_char_terminals(void)
 {
 	char const		in[] = "foo, bar, baz```";
@@ -1924,6 +2049,7 @@ TEST_LIST = {
 	{ "fr_sbuff_out_bstrncpy_until",	test_bstrncpy_until },
 	{ "multi-char terminals",		test_unescape_multi_char_terminals },
 	{ "fr_sbuff_out_unescape_until",	test_unescape_until },
+	{ "fr_sbuff_out_unescape_until_escape_bounds",	test_unescape_until_escape_bounds },
 	{ "fr_sbuff_terminal_eof",		test_eof_terminal },
 	{ "terminal search past visible end",	test_terminal_search_past_visible_end },
 	{ "terminal search at end no overrun",	test_terminal_search_at_end_no_overrun },
