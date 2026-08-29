@@ -1,10 +1,11 @@
 name: Close support questions
 
 #
-#  The issue tracker is for bugs.  Support questions go to the mailing lists,
-#  so triage labels a support question "close" and this closes the issue with
-#  a pointer to the lists.  The "labeled" trigger is what makes that work:
-#  the label lands after the issue is opened, not with it.
+#  The issue tracker is for bugs.  Support questions go to the mailing
+#  lists, so triage labels a support question 'close'.  This workflow then
+#  closes the issue with a pointer to the mailing lists.  This workflow
+#  runs on the `labeled` trigger, because the label arrives after the
+#  issue is opened, not with the issue.
 #
 on:
   issues:

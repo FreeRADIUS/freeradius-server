@@ -1,16 +1,19 @@
 name: Claude CI Failure Diagnosis
 
 #
-#  Runs after CI Pipeline finishes with a failure.  Claude reads the failed
-#  jobs, classifies each distinct failure and posts a single commit comment.
-#  Diagnosis only - no PRs, no pushes, no edits.
+#  The workflow runs after 'CI Pipeline' finishes with a failure.  Claude reads
+#  the failed jobs, classifies each distinct failure and posts a single commit
+#  comment.  The workflow only diagnoses failures.  The workflow opens no pull
+#  requests, pushes no commits, and edits no files.
 #
-#  The pipeline is one workflow, so this fires once per commit with every leg
-#  already finished.  There is nothing to wait for and no gate step.
+#  The pipeline is one workflow, so the diagnosis runs once per commit with
+#  every leg already finished.  The workflow has nothing to wait for and
+#  needs no gate step.
 #
-#  This cannot be a job inside CI Pipeline: claude-code-action only accepts
-#  the event types listed in its src/github/context.ts, and push is not one of
-#  them.  workflow_run is.
+#  The diagnosis cannot be a job inside 'CI Pipeline'.  claude-code-action only
+#  accepts the event types listed in `src/github/context.ts` of
+#  claude-code-action, and `push` is not an accepted event type.  `workflow_run`
+#  is an accepted event type.
 #
 
 on:
@@ -25,21 +28,22 @@ concurrency:
 
 jobs:
   #
-  #  Cheap first pass. Most failures that are not the committer's fault look
-  #  the same in the logs: a fetch that stalled, a mirror that timed out, a
-  #  runner that went away. Sonnet reads the failed jobs and says whether it
-  #  is one of those, so the expensive model only runs on failures that might
-  #  be real.
+  #  The `triage` job is a cheap first pass. Most failures that are not the
+  #  committer's fault look the same in the logs: a fetch that stalled, a
+  #  mirror that timed out, a runner that went away. Sonnet reads the failed
+  #  jobs and reports whether every failure is an infrastructure failure.
+  #  The expensive model then runs only on failures that might be real.
   #
-  #  Skipping the expensive model needs an "infrastructure" verdict AND at
+  #  Skipping the expensive model needs an `infrastructure` verdict AND at
   #  least 0.8 confidence AND no test failure line in any failed job's log.
   #  Everything else falls through to the full diagnosis, including
-  #  "unknown" and a confident-sounding guess: a missed regression costs
+  #  `unknown` and a confident-sounding guess. A missed regression costs
   #  far more than a wasted analysis.
   #
-  #  An intermittent test failure is deliberately NOT infrastructure. A race
-  #  or a use-after-free presents exactly that way, and retrying it green is
-  #  how such a bug survives for months.
+  #  An intermittent test failure is deliberately NOT `infrastructure`. A race
+  #  or a use-after-free presents exactly as an intermittent test failure,
+  #  and retrying the test until the test passes is how such a bug survives
+  #  for months.
   #
   triage:
     if: |
@@ -57,8 +61,9 @@ jobs:
       id-token: write
 
     #
-    #  Guarded because fromJSON() on an empty string is an error, and a triage
-    #  step that produced nothing must not take the job down with it.
+    #  `fromJSON()` on an empty string is an error, and a `triage` step that
+    #  produced nothing must not fail the job.  Each output therefore guards
+    #  the `fromJSON()` call and falls back to a default.
     #
     outputs:
       verdict: ${{ steps.triage.outputs.structured_output && fromJSON(steps.triage.outputs.structured_output).verdict || 'unknown' }}
@@ -68,9 +73,10 @@ jobs:
       test_failure: ${{ steps.markers.outputs.test_failure }}
 
     steps:
-      #  claude-code-action sets a git user name as it starts, which fails if
-      #  there is no repository. Triage only reads logs with gh, so a shallow
-      #  checkout without LFS files is enough.
+      #  claude-code-action sets a git user name at startup, and setting the
+      #  name fails if no repository is checked out. `triage` only reads logs
+      #  with gh, so a shallow checkout without Git Large File Storage (LFS)
+      #  files is enough.
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
@@ -78,10 +84,10 @@ jobs:
           lfs: false
 
       #
-      #  A FAILED: or make error line in a failed job's log means a test or
-      #  build broke, and that can never be a skippable infrastructure
-      #  verdict.  The check is a plain grep so the model cannot talk its
-      #  way past the rule.
+      #  A `FAILED:` or make error line in a failed job's log means that a test
+      #  or build broke.  A broken test or build can never be a skippable
+      #  `infrastructure` verdict.  The check is a plain grep, so the model
+      #  cannot override the rule.
       #
       - name: Check the failed logs for test failure lines
         id: markers
@@ -97,14 +103,14 @@ jobs:
             if gh run view --job "$job" --repo "$REPO" --log 2>/dev/null \
                | grep -q -E 'FAILED: |make(\[[0-9]+\])?: \*\*\*'; then
               found=true
-              echo "job $job log contains a test or build failure line"
+              echo "grep found a test or build failure line in the log of job $job"
             fi
           done
           echo "test_failure=$found" >> "$GITHUB_OUTPUT"
 
       #  The action exits non-zero if the model returns no structured output.
-      #  Without continue-on-error that fails the job, and the fallback values
-      #  in outputs above are never used.
+      #  Without `continue-on-error` the non-zero exit fails the job, and the
+      #  fallback values in the outputs above are never used.
       - name: Run Claude Code triage
         id: triage
         continue-on-error: true
@@ -161,10 +167,10 @@ jobs:
             Return an empty array only if the logs never name a target.
 
       #
-      #  The model copies the failing targets verbatim; everything that makes
+      #  The model copies the failing targets verbatim. Everything that makes
       #  the strings comparable across commits happens here, mechanically.
-      #  One fingerprint per target, spaces impossible after normalisation,
-      #  so the output is a space-separated list.
+      #  The step normalises each target into one fingerprint and removes
+      #  every space, so the output is a space-separated list.
       #
       - name: Normalise the fingerprints
         id: fp
@@ -185,9 +191,10 @@ jobs:
 
       #
       #  The verdict fields are model output quoting untrusted CI logs, so
-      #  they reach the shell as environment values, never as script text.
-      #  Interpolating them into the script would let a quoted log line
-      #  terminate the quoting and execute whatever follows.
+      #  the verdict fields reach the shell as environment values, never as
+      #  script text.  Interpolating the verdict fields into the script would
+      #  let a quoted log line terminate the quoting and execute whatever
+      #  follows.
       #
       - name: Record the verdict
         env:
@@ -207,17 +214,18 @@ jobs:
             echo "${REASON}"
             if [ "$TEST_FAILURE" = "true" ] && [ "$VERDICT" = "infrastructure" ]; then
               echo
-              echo "overridden: a failed job's log contains a test or build failure line, so the diagnosis runs regardless of the verdict"
+              echo "overridden: grep found a test or build failure line in a failed job's log, so the diagnosis runs regardless of the verdict"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   #
-  #  Recurrence. A failure the bot has already explained does not need
-  #  explaining twice, but the commit that hit it still deserves the answer.
-  #  Each failure is matched by its own fingerprint, and only the matching
-  #  failure's block is copied out of the earlier comment, with a link back
-  #  to where the analysis was first worked out. No model runs here; it is
-  #  string matching and block extraction.
+  #  Recurrence. A failure that the bot has already explained does not need
+  #  explaining twice, but the commit that hit the failure still receives the
+  #  explanation.  The job matches each failure by the failure's fingerprint
+  #  and finds the source comment where the analysis first appeared.  The job
+  #  copies only the matching failure's block out of the source comment and
+  #  links back to the source comment. No model runs here. The job only
+  #  matches strings and extracts blocks.
   #
   recurrence:
     needs: triage
@@ -248,9 +256,9 @@ jobs:
           set -euo pipefail
 
           #
-          #  The commit-comments endpoint ignores sort and returns oldest
-          #  first, so the recent ones live on the final pages. The Link
-          #  header is the only way to find out where those are.
+          #  The commit-comments endpoint ignores `sort` and returns oldest
+          #  first, so the recent comments are on the final pages. The `Link`
+          #  header is the only way to find the number of the last page.
           #
           last=$(gh api "repos/$REPO/comments?per_page=100" --include 2>/dev/null \
                  | sed -n 's/.*[?&]page=\([0-9]*\)>; rel="last".*/\1/p' | head -1)
@@ -264,7 +272,7 @@ jobs:
 
           #
           #  A near-miss should read as two visibly different strings, not
-          #  as a silent "no previous diagnosis".
+          #  as a silent 'no previous diagnosis'.
           #
           echo "fingerprints in this run: $FINGERPRINTS"
           echo "fingerprints seen in the scanned comments:"
@@ -279,11 +287,11 @@ jobs:
             #
             #  Copies carry the finding marker too, so counting matches
             #  gives the occurrence number, but only an original analysis
-            #  may be the source of a copy: a copy of a copy stacks another
+            #  may be the source of a copy. A copy of a copy stacks another
             #  "diagnosed before" header on every occurrence. The
-            #  claude-ci-fp-copy marker in every copy excludes copies here.
+            #  `claude-ci-fp-copy` marker in every copy excludes copies here.
             #
-            #  Oldest-first ordering means the last match is the most
+            #  Oldest-first ordering means that the last match is the most
             #  recent original analysis of the fingerprint.
             #
             jq -s --arg fp "$fp" --arg sha "$FAILING_SHA" '
@@ -293,7 +301,7 @@ jobs:
             ' /tmp/recent.json > /tmp/prev.json
 
             if [ ! -s /tmp/prev.json ]; then
-              echo "no previous diagnosis for $fp"
+              echo "queueing $fp for fresh diagnosis, no scanned comment holds a previous diagnosis"
               new="$new $fp"
               continue
             fi
@@ -304,23 +312,24 @@ jobs:
 
             #
             #  A failure that keeps recurring stops being news. After five
-            #  occurrences the recurrence is recorded in the job log only.
-            #  The count only covers the scanned comment pages, so a failure
-            #  still recurring after the old occurrences scroll out of the
-            #  scan gets an occasional comment again rather than permanent
-            #  silence.
+            #  occurrences the job records the recurrence in the job log
+            #  only.  The count only covers the scanned comment pages.  A
+            #  failure that still recurs after the old occurrences leave the
+            #  scanned pages therefore receives an occasional comment again
+            #  rather than permanent silence.
             #
             if [ "$seen" -ge 5 ]; then
-              echo "$fp has recurred $seen times; not commenting on it again"
+              echo "skipping the comment for $fp, the failure has recurred $seen times"
               known="$known $fp"
               continue
             fi
 
             #
-            #  Pull just this finding's block out of the source comment.
-            #  A source comment without an extractable block (the model
-            #  omitted or mangled the markers) is treated as no previous
-            #  diagnosis, so the failure gets analysed afresh.
+            #  Pull just the current fingerprint's block out of the source
+            #  comment.  The job treats a source comment without an
+            #  extractable block (the model omitted or mangled the markers)
+            #  as no previous diagnosis, so the `diagnose` job analyses the
+            #  failure afresh.
             #
             jq -r .body /tmp/prev.json > /tmp/prev_body.md
             awk -v b="<!-- claude-ci-finding: $fp -->" -v e="<!-- claude-ci-finding-end: $fp -->" '
@@ -329,7 +338,7 @@ jobs:
               $0 == e {found=1; exit}
               END {exit !found}
             ' /tmp/prev_body.md > /tmp/block.md || {
-              echo "source comment for $fp has no extractable block; diagnosing afresh"
+              echo "queueing $fp for fresh diagnosis, the source comment has no extractable block"
               new="$new $fp"
               continue
             }
@@ -357,9 +366,9 @@ jobs:
           fi
 
           #
-          #  matched=true means every fingerprint is already explained (by a
-          #  copy just posted, or by the recurrence cap), so the diagnose
-          #  job has nothing left to analyse.
+          #  `matched=true` means that every fingerprint is already explained
+          #  (by a copy just posted, or by the recurrence cap), so the
+          #  `diagnose` job has nothing left to analyse.
           #
           known="${known# }"
           new="${new# }"
@@ -370,21 +379,27 @@ jobs:
           fi
           echo "matched=$matched" >> "$GITHUB_OUTPUT"
           echo "known=$known" >> "$GITHUB_OUTPUT"
-          echo "known: ${known:-<none>}; new: ${new:-<none>}"
+          echo "known: ${known:-<none>}, new: ${new:-<none>}"
 
   #
-  #  Full diagnosis. Skipped on a confident infrastructure verdict, or when
-  #  the recurrence job already answered the question. An empty or malformed
-  #  triage result still reaches this job.
+  #  Full diagnosis. The `diagnose` job does not run in exactly two cases:
+  #
+  #    1. `triage` returned a confident `infrastructure` verdict.
+  #    2. The `recurrence` job already explained every fingerprint.
+  #
+  #  An empty or malformed `triage` result matches neither case, so the
+  #  `diagnose` job runs.
   #
   diagnose:
     needs: [triage, recurrence]
     #
-    #  Triage's if: is the one copy of the pipeline conditions, and triage
-    #  skips exactly when they fail, so "not skipped" stands in for the
-    #  whole list.  !cancelled() plus "failure is fine" keeps a triage job
-    #  that errored from silently dropping the diagnosis for a pipeline
-    #  failure nobody has looked at.
+    #  The `if:` condition of the `triage` job is the one copy of the pipeline
+    #  conditions, and `triage`
+    #  skips exactly when the conditions fail.  'not skipped' therefore
+    #  stands in for the whole condition list.  A `triage` job that errored
+    #  must not silently drop the diagnosis for a pipeline failure that
+    #  nobody has looked at.  The condition therefore uses `!cancelled()` and
+    #  accepts a failed `triage` result.
     #
     if: >-
       ${{ !cancelled() && needs.triage.result != 'skipped' &&

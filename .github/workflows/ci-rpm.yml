@@ -5,9 +5,9 @@ on:
 
 jobs:
   #
-  #  Determines the values that turn on whether the run is happening in the
-  #  FreeRADIUS organisation or in a fork.  See
-  #  .github/workflows/common_vars.yml.
+  #  The `common_vars` job emits different values depending on whether the run
+  #  is occurring in the FreeRADIUS organisation or in a fork.  See
+  #  `.github/workflows/common_vars.yml`.
   #
   common_vars:
     name: Common vars
@@ -15,12 +15,13 @@ jobs:
 
 
   #
-  #  We don't want to consume many workers on each push so we only build the
-  #  full suite of distros during the scheduled or ci-debug run and just the
-  #  "bleeding-edge" distro on each push.
+  #  We do not want to consume many workers on each push.  We therefore
+  #  build the full suite of distros only during the scheduled or
+  #  `ci-debug` run, and build only the 'bleeding-edge' distro on each
+  #  push.
   #
-  #  This job builds the matrix based on the event that trigger this run which
-  #  the next job consumes.
+  #  `set-matrix` builds the matrix from the event that triggered the run,
+  #  and `rpm-build` consumes the matrix.
   #
   set-matrix:
     needs: common_vars
@@ -80,11 +81,15 @@ jobs:
         path: freeradius
 
     #
-    #  The image bakes the builddep closure for the spec, refreshed when a
-    #  packaging change lands on master.  A pull request that adds a
-    #  dependency is testing a closure the image predates and cannot wait for
-    #  its own merge, so top up from the checked-out spec in that case only.
-    #  Run twice; occasionally dnf misses something first time round.
+    #  The continuous integration (CI) image includes the build
+    #  dependencies for the spec.  The image refresh rebuilds the image
+    #  when a packaging change lands on master.  A pull request's tests
+    #  run on a docker image that does not include dependencies added in
+    #  the pull request.  The refreshed image only arrives after the
+    #  pull request merges.  The step therefore tops up the build
+    #  dependencies from the checked-out spec, and the step runs only
+    #  when the packaging changed.  The step runs `dnf builddep` twice,
+    #  because dnf occasionally misses a package on the first run.
     #
     - name: Top up build dependencies from the spec
       if: ${{ needs.common_vars.outputs.images_changed == 'true' }}
@@ -108,10 +113,11 @@ jobs:
         mkdir rpms
         mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms
 
-    #  The CI image already has eapol_test.  The stock image used by the
-    #  install test has no eapol_test, so copy eapol_test in alongside the
-    #  packages.  The install test moves eapol_test to /usr/local/bin, and
-    #  scripts/ci/package-test.mk looks eapol_test up on PATH.
+    #  The CI image already has `eapol_test`.  The stock image that the
+    #  install test uses has no `eapol_test`, so copy `eapol_test` into
+    #  `rpms/` alongside the packages.  The install test moves
+    #  `eapol_test` to `/usr/local/bin`, and `scripts/ci/package-test.mk`
+    #  looks `eapol_test` up on `PATH`.
     - name: Stage eapol_test for the install test
       run: cp /usr/local/bin/eapol_test rpms/eapol_test
 
@@ -123,10 +129,10 @@ jobs:
         retention-days: 1
 
     #
-    #  If the CI has failed and the branch is ci-debug then start a tmate
-    #  session. SSH rendezvous point is emited continuously in the job output.
+    #  If the CI has failed and the branch is `ci-debug` then the workflow starts
+    #  a tmate session.  See the tmate comment in `ci.yml` for the walkthrough.
     #
-    - name: "Debug: Package dependancies for tmate"
+    - name: "Debug: Package dependencies for tmate"
       run: |
         ln -s /bin/true /bin/apt-get
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
@@ -140,9 +146,9 @@ jobs:
 
 
   #
-  #  Perform "post-install" testing of the FR packages that we have just built
-  #  in a clean environment consisting of only the base OS and package
-  #  dependancies
+  #  `rpm-test` tests the FreeRADIUS packages that `rpm-build` just built,
+  #  in a clean environment consisting of only the base operating system
+  #  and the package dependencies.
   #
   rpm-test:
 
@@ -159,18 +165,20 @@ jobs:
 
     container:
       #
-      #  rpm-test runs on a stock distro image so the install test exercises a
-      #  clean operating system.  docker_prefix points the name at the copy
-      #  the organisation keeps of that same image, put there by
-      #  docker-ci-images-refresh.yml, which is the identical image under another name
-      #  and so leaves the clean-operating-system property intact.  Pulling
-      #  the copy also keeps the organisation's build machines, which share a
-      #  few outbound addresses, away from Docker Hub's allowance of 100
-      #  downloads every six hours per address.
+      #  `rpm-test` runs on a stock distro image so the install test
+      #  exercises a clean operating system.  `docker_prefix` points the
+      #  image name at the copy of the stock image that the organisation
+      #  keeps, and `docker-ci-images-refresh.yml` puts the copy in the
+      #  organisation's registry.  The copy is the identical image under
+      #  another name, so the operating system stays clean.  The
+      #  organisation's build machines share a few outbound addresses.
+      #  Pulling the copy also keeps the build machines away from Docker
+      #  Hub's allowance of 100 downloads every six hours per address.
       #
-      #  A fork has no such copy, so docker_prefix is empty and the name
-      #  reaches Docker Hub unchanged.  GitHub-hosted machines spread over a
-      #  large pool of addresses, so the allowance is not a problem there.
+      #  A fork keeps no copy of the stock image, so `docker_prefix` is
+      #  empty and the image name reaches Docker Hub unchanged.  GitHub-hosted
+      #  machines spread over a large pool of addresses, so the
+      #  allowance is not a problem for GitHub-hosted machines.
       #
       image: ${{ needs.common_vars.outputs.docker_prefix }}${{ matrix.env.OS }}
 
@@ -192,7 +200,7 @@ jobs:
         dnf install -y dnf-utils dnf-plugins-core epel-release
         dnf config-manager --enable crb
 
-    # For pkill
+    # `procps-ng` provides `pkill`
     - name: Enable procps-ng
       run: |
         dnf install -y procps-ng
@@ -215,8 +223,8 @@ jobs:
         radiusd -XC
 
     #
-    #  We now perform some post-install tests that depend on the availability
-    #  of the source tree
+    #  The steps below run post-install tests that depend on the source
+    #  tree.
     #
     - name: Install pre-built eapol_test
       run: |
@@ -235,8 +243,9 @@ jobs:
         make -f scripts/ci/package-test.mk package-test
       working-directory: freeradius
 
-    #  This job checks out into freeradius/, so the action lives below that path
-    #  and the collection runs from there.
+    #  `rpm-test` checks out into `freeradius/`, so the `uses:` reference
+    #  points below `freeradius/` and the collection step runs in
+    #  `freeradius/`.
     - name: Collect core dumps
       if: ${{ always() }}
       uses: ./freeradius/.github/actions/collect-core-dumps
@@ -255,9 +264,9 @@ jobs:
         retention-days: 30
 
     #
-    #  See above comments for tmate
+    #  See the tmate comment on the `rpm-build` job.
     #
-    - name: "Debug: Package dependancies for tmate"
+    - name: "Debug: Package dependencies for tmate"
       run: |
         dnf install -y xz
         ln -s /bin/true /bin/apt-get

@@ -12,7 +12,8 @@ on:
     - cron: '0 20 * * *'
 
 #
-#  Cancel any in-flight or queued run of this workflow on the same branch.
+#  Cancel any in-flight or queued run of the 'CI Pipeline' workflow on the
+#  same branch.
 #
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
@@ -20,12 +21,13 @@ concurrency:
 
 jobs:
   #
-  #  An adhoc CI run needs the runners a scheduled round (see
-  #  ci-scheduled.yml) may be occupying, so every pipeline run cancels any
-  #  scheduled round in flight before its own legs queue.  A pull request
-  #  from a fork holds a read-only token whatever permissions the job
-  #  requests, so a fork pull request cancels nothing, and its legs wait
-  #  until the scheduled round finishes on its own.
+  #  An ad hoc continuous integration (CI) run needs the runners that a
+  #  scheduled round (see `ci-scheduled.yml`) may be occupying.  Every
+  #  pipeline run therefore cancels any scheduled round in flight before
+  #  the pipeline run's own legs queue.  A pull request from a fork holds a read-only token
+  #  whatever permissions the job requests.  A fork pull request
+  #  therefore cancels nothing, and the fork pull request's legs wait
+  #  until the scheduled round finishes.
   #
   scheduled_ci_cancel:
     name: Cancel scheduled CI rounds
@@ -57,13 +59,16 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       #
-      #  concurrent_skipping widens the duplicate check to runs still
-      #  executing: same_content_newer skips this run when an older run
-      #  of the identical tree is in flight. The ff to master lands while
-      #  the branch pipeline that tested the commit is still running, so
-      #  only that concurrent check can match. Developer branches and PRs
-      #  keep 'never': their concurrency groups cancel the older run, and
-      #  skipping against a cancelled run would merge an untested tree.
+      #  `concurrent_skipping` widens the duplicate check to runs still in
+      #  flight. `same_content_newer` skips the current run when an older
+      #  run of the identical tree is in flight. The fast-forward to
+      #  `master` lands while the branch pipeline that tested the commit is
+      #  still in flight.  Only the check against runs still in flight
+      #  can match.
+      #  Developer branches and pull requests keep 'never'. The
+      #  concurrency group for a developer branch or pull request cancels
+      #  the older run, and skipping against a cancelled run would merge
+      #  an untested tree.
       #
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@v5.3.2
@@ -71,21 +76,24 @@ jobs:
           concurrent_skipping: ${{ github.event_name == 'push' && !startsWith(github.ref_name, 'developer/') && 'same_content_newer' || 'never' }}
 
   #
-  #  Determines which registry the images live in, which tag of them this ref
-  #  should use, and whether this ref changes anything they bake in.  See
-  #  .github/workflows/common_vars.yml.
+  #  `common_vars` determines which registry holds the images and which
+  #  image tag the current ref should use.  `common_vars` also determines
+  #  whether the current ref changes any file that the images include.
+  #  See `.github/workflows/common_vars.yml`.
   #
   common_vars:
     name: Common vars
     uses: ./.github/workflows/common_vars.yml
 
   #
-  #  Does the registry hold the images this ref expects? They can be absent
-  #  for multiple reasons, a failed refresh, pruned images, rebuilt registry.
+  #  Does the registry hold the images that the current ref needs? The
+  #  images can be absent for multiple reasons: a failed refresh, pruned
+  #  images, a rebuilt registry.
   #
-  #  Runs on a self-hosted runner, because GitHub runners can't resolve the
-  #  registry. If one image is present, we assume all are. If we can't get a
-  #  definitive answer, we skip the build.
+  #  The job runs on a self-hosted runner, because GitHub runners cannot
+  #  resolve the registry. If one image is present, we assume that all
+  #  the images are present. If we cannot get a definitive answer, we
+  #  skip the build.
   #
   images_present:
     name: "Docker images present?"
@@ -111,40 +119,44 @@ jobs:
           if [ -n "$DOCKER_USERNAME" ]; then
             printf '%s' "$DOCKER_PASSWORD" \
               | regctl registry login "$DOCKER_REGISTRY" -u "$DOCKER_USERNAME" --pass-stdin \
-              || echo "could not sign in to $DOCKER_REGISTRY"
+              || echo "Continuing without login, regctl could not sign in to $DOCKER_REGISTRY"
           fi
 
           if regctl manifest head "$DOCKER_SENTINEL_IMAGE" >/dev/null 2>&1; then
-            echo "$DOCKER_SENTINEL_IMAGE is present"
+            echo "$DOCKER_SENTINEL_IMAGE present"
             echo "missing=false" >> "$GITHUB_OUTPUT"
           elif regctl repo ls "$DOCKER_REGISTRY" >/dev/null 2>&1; then
-            #  The registry answered, so it is reachable and the image really
-            #  is absent.
-            echo "$DOCKER_SENTINEL_IMAGE is absent, the images need rebuilding"
+            #  The registry answered, so the registry is reachable and the
+            #  image really is absent.
+            echo "$DOCKER_SENTINEL_IMAGE absent, the images need rebuilding"
             echo "missing=true" >> "$GITHUB_OUTPUT"
           else
-            echo "$DOCKER_REGISTRY did not answer, assuming the images are present"
+            echo "Assuming the images are present, $DOCKER_REGISTRY did not answer"
             echo "missing=false" >> "$GITHUB_OUTPUT"
           fi
 
   #
-  #  Skipped on the vast majority of commits.  When it does run every leg
-  #  waits for it, so the docker images have all necessary packages before
-  #  the rest of CI runs.
+  #  The refresh job skips on the vast majority of commits.  When the
+  #  refresh job runs, every leg waits for the refresh job, so the
+  #  docker images have all necessary packages before the rest of CI
+  #  runs.
   #
-  #  Only a push rebuilds, because only a push publishes, and a pull request
-  #  has no tag of its own to publish to.  A branch publishes under a tag
-  #  named after the branch, so the images the default branch reads are never
-  #  overwritten by somebody's work in progress.  A fork has no images at all
-  #  until it builds them, so a fork always refreshes, into its own registry
-  #  where it can overwrite nothing but its own tags.
+  #  Only a push rebuilds, because only a push publishes, and a pull
+  #  request has no tag to publish to.  A branch publishes under a tag
+  #  named after the branch (a push to `feature/dhcp-fix` publishes
+  #  `self-hosted-ci-ubuntu24:feature-dhcp-fix`, while `master` keeps reading
+  #  `self-hosted-ci-ubuntu24:latest`), so work in progress never
+  #  overwrites the images that the default branch reads.  A fork has no
+  #  images at all until the fork builds images, so a fork always
+  #  refreshes.  The fork refreshes into the fork's own registry, where
+  #  the fork can overwrite nothing but the fork's own tags.
   #
   #
-  #  A skipped job in "needs" skips every dependent before the dependent's
-  #  own condition is read, unless the condition contains !cancelled().
-  #  images_present skips whenever the images changed, and an image change
-  #  is exactly when the refresh has to run, so the condition checks each
-  #  prerequisite's result itself.
+  #  A skipped job in `needs` skips every dependent before GitHub reads
+  #  the dependent's own condition, unless the condition contains
+  #  `!cancelled()`.  `images_present` skips whenever the images changed,
+  #  and an image change is exactly when the refresh has to run.  The
+  #  condition therefore checks each prerequisite's result itself.
   #
   docker_ci_images_refresh:
     name: Docker CI images refresh
@@ -162,11 +174,13 @@ jobs:
     secrets: inherit
 
   #
-  #  Only the multi-server tests, docker-crossbuild and docker-service read
-  #  the freeradius4-{crossbuild,profiling-deps,service} images, and those
-  #  images take the longest to build, so their refresh runs as its own job
-  #  and only the legs that read them wait for it.  The build legs start as
-  #  soon as docker_ci_images_refresh publishes the images they read.
+  #  Only the multi-server tests, `docker-crossbuild` and `docker-service`
+  #  read the `freeradius4-{crossbuild,profiling-deps,service}` images,
+  #  and the 'freeradius4' images take the longest to build.  The
+  #  'freeradius4' refresh therefore runs as a separate job, and only the
+  #  legs that read the 'freeradius4' images wait for the refresh.  The
+  #  build legs start as soon as `docker_ci_images_refresh` publishes the
+  #  images that the build legs read.
   #
   docker_freeradius_images_refresh:
     name: Docker FreeRADIUS images refresh
@@ -208,9 +222,10 @@ jobs:
     secrets: inherit
 
   #
-  #  Run on every commit but absent from merge's needs, because they're
-  #  too unreliable.  Both run on VMs and read no docker images, so
-  #  neither waits for a refresh.
+  #  `ci-freebsd` and `ci-macos` run on every commit but are absent
+  #  from the `needs` list of the `merge` job, because both legs are too unreliable.  Both legs run
+  #  on virtual machines and read no docker images, so neither leg waits
+  #  for a refresh.
   #
   ci-freebsd:
     needs: [ci_prev_run]
@@ -229,10 +244,10 @@ jobs:
     secrets: inherit
 
   #
-  #  docker_freeradius_images_refresh skips whenever docker_ci_images_refresh skips or fails,
-  #  so the legs that read the freeradius4 images check both results: a
-  #  skipped docker_freeradius_images_refresh after a failed docker_ci_images_refresh must
-  #  not read stale images.
+  #  `docker_freeradius_images_refresh` skips whenever `docker_ci_images_refresh` skips or fails,
+  #  so the legs that read the 'freeradius4' images check both results.
+  #  The legs must not read stale images after a skipped
+  #  `docker_freeradius_images_refresh` that follows a failed `docker_ci_images_refresh`.
   #
   ci-multi-server:
     needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci_prev_run]
@@ -262,9 +277,9 @@ jobs:
     secrets: inherit
 
   #
-  #  Only runs when the commit changes something the documentation is built
-  #  from.  Absent from merge's needs: a documentation build failing should
-  #  not hold up a merge.
+  #  `docs` only runs when the commit changes a file that the
+  #  documentation build reads.  `docs` is absent from the `needs` list of the `merge` job,
+  #  because a failed documentation build should not hold up a merge.
   #
   docs:
     name: Documentation
@@ -276,20 +291,22 @@ jobs:
     secrets: inherit
 
   #
-  #  Merges when every gating leg passed.  Only the gating legs are listed;
-  #  the other legs are too unreliable to block a merge on.
+  #  `merge` runs when every gating leg passed.  The `needs` list holds only
+  #  the gating legs.  The other legs are too unreliable to block a
+  #  merge on.
   #
-  #  By default a job is skipped unless every job it depends on with "needs"
-  #  succeeds.  Docker refresh is skipped on commits that don't modify
-  #  packaging, and that causes the merge step to be skipped, unless we add an
-  #  explicit condition.
+  #  By default GitHub skips a job unless every job in the job's `needs`
+  #  succeeds.  The docker refresh skips on commits that do not modify
+  #  packaging.  A skipped refresh would skip the merge step, unless the
+  #  merge step carries an explicit condition.
   #
-  #  A skipped pipeline still merges.  The duplicate check only reports a skip
-  #  once an earlier run of this workflow finished successfully on the same
-  #  tree, so the content being merged is content that has already passed.
-  #  Requiring the legs to say "success" here would strand a developer who
-  #  amends a commit message and force pushes, because the reworded commit
-  #  carries the tree that just went green and every leg skips.
+  #  A skipped pipeline still merges.  The duplicate check only reports
+  #  a skip once an earlier run of the 'CI Pipeline' workflow finished
+  #  successfully on the same tree.  The merged content has therefore
+  #  already passed.  Requiring the legs to report `success` in the merge
+  #  condition would strand a developer who amends a commit message and
+  #  force pushes.  The reworded commit carries the tree that just
+  #  passed, so every leg skips.
   #
   merge:
     name: Merge

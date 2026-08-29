@@ -1,67 +1,71 @@
 name: Docker FreeRADIUS images refresh
 
 #
-#  Rebuilds and publishes the freeradius4-{crossbuild,profiling-deps,service}
-#  images.  Only the multi-server tests, docker-crossbuild.yml and
-#  docker-service.yml read these images; the pipeline's build legs never do.
-#  Keeping this stage in its own workflow lets the pipeline gate each leg on
-#  the refresh stage the leg actually reads, so a build leg does not wait for
-#  the slowest images in the registry.
+#  This workflow rebuilds and publishes the
+#  `freeradius4-{crossbuild,profiling-deps,service}` images.  Only the
+#  multi-server tests, `docker-crossbuild.yml` and `docker-service.yml` read
+#  the 'freeradius4' images.  The pipeline's build legs never read the
+#  'freeradius4' images.  Keeping this stage in a separate workflow lets the
+#  pipeline gate each leg on the refresh stage that the leg actually reads.
+#  A build leg therefore does not wait for the slowest images in the registry.
 #
-#  Called by ci-pipeline.yml when a commit changes the images, and by
-#  docker-ci-images-refresh.yml on the nightly schedule and on workflow_dispatch.
-#  The self-hosted-docker-{dind,cli} job containers must already be
-#  published for the ref's tag, which both callers guarantee by running
-#  docker-ci-images-refresh.yml's earlier stages first.
+#  `ci-pipeline.yml` calls this workflow when a commit changes the images.
+#  `docker-ci-images-refresh.yml` calls this workflow on the nightly schedule
+#  and on `workflow_dispatch`.  The registry must already hold the
+#  `self-hosted-docker-{dind,cli}` job containers under the ref's tag, which
+#  both callers guarantee by running the earlier stages of
+#  `docker-ci-images-refresh.yml` first.
 #
 on:
   workflow_call:
 
 concurrency:
   #
-  #  Only one refresh of these images at a time.  Lets in-flight runs finish
-  #  rather than having a push trigger a cancel: an interrupted refresh
-  #  leaves the registry partially updated, whereas a queued second run just
-  #  re-publishes everything cleanly after the first one finishes.
+  #  Only one refresh of the 'freeradius4' images runs at a time.
+  #  `cancel-in-progress: false` lets an in-flight run finish rather than
+  #  having a push cancel the run.  An interrupted refresh leaves the
+  #  registry partially updated, whereas a queued second run re-publishes
+  #  everything cleanly after the first run finishes.
   #
   group: docker-freeradius-images-refresh
   cancel-in-progress: false
 
 jobs:
   #
-  #  Determines which registry holds the continuous integration (CI) images.
-  #  See .github/workflows/common_vars.yml.
+  #  The `common_vars` job determines which registry holds the continuous
+  #  integration (CI) images.  See `.github/workflows/common_vars.yml`.
   #
   common_vars:
     name: Common vars
     uses: ./.github/workflows/common_vars.yml
 
   #
-  #  Periodic refresh of the FreeRADIUS base image chain in the
-  #  internal registry. Builds for each supported distro in parallel:
+  #  This job periodically refreshes the FreeRADIUS base image chain in
+  #  the internal registry, and builds the chain for each supported
+  #  distro in parallel:
   #
-  #    crossbuild        FROM upstream OS base, full toolchain + FR
-  #                      build-deps
-  #    profiling-deps    FROM crossbuild:latest, toolchain layer
+  #    crossbuild        `FROM` the upstream OS base, full toolchain +
+  #                      FreeRADIUS build-deps
+  #    profiling-deps    `FROM` `crossbuild:latest`, toolchain layer
   #                      (valgrind / kcachegrind / dbgsym / FlameGraph /
   #                      inferno)
-  #    service           FROM the same upstream OS base as crossbuild
-  #                      (NOT from crossbuild) - the FR debian/rpm
-  #                      package build does its own apt-install of
-  #                      build deps; layering on crossbuild would
-  #                      bloat the runtime image with toolchain
+  #    service           `FROM` the same upstream OS base as 'crossbuild'
+  #                      (NOT from 'crossbuild') - the FreeRADIUS
+  #                      debian/rpm package build apt-installs build
+  #                      deps for itself, and layering on 'crossbuild'
+  #                      would bloat the runtime image with toolchain
   #                      artefacts.
   #
-  #  Each of those three is pushed under the repository's path, tagged
-  #  for the ref being built: latest on the default branch, the branch's
-  #  own tag elsewhere.  common_vars.yml decides which.
+  #  The job pushes each of the three images under the repository's path,
+  #  tagged for the ref being built: `latest` on the default branch, the
+  #  branch's own tag elsewhere.  `common_vars.yml` decides the tag.
   #
-  #  The `profiling` layer (FR compiled with callgrind-friendly CFLAGS
-  #  on top of profiling-deps) is deliberately NOT published here. It's
-  #  per-commit by design - we want to profile specific commits, not
-  #  whatever master HEAD was at refresh time. Multi-server profiling
-  #  tests pull profiling-deps and build the profiling layer locally
-  #  per commit.
+  #  This job deliberately does NOT publish the 'profiling' layer
+  #  (FreeRADIUS compiled with callgrind-friendly `CFLAGS` on top of
+  #  'profiling-deps').  The 'profiling' layer is per-commit by design.  We
+  #  want to profile specific commits, not whatever `master` HEAD was at
+  #  refresh time.  Multi-server profiling tests pull 'profiling-deps' and
+  #  build the 'profiling' layer locally per commit.
   #
   process-freeradius-images:
     needs: common_vars
@@ -122,9 +126,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
       #
-      #  Read-only login for any DOCKER_REGISTRY pull-through misses
-      #  during the build (crossbuild itself FROMs upstream OS, not
-      #  the internal registry).
+      #  The read-only login covers any `DOCKER_REGISTRY` pull-through
+      #  misses during the build (the 'crossbuild' Dockerfile pulls the upstream
+      #  OS base with `FROM`, not the internal registry).
       #
       - name: Login to internal Docker registry (read, via dind)
         uses: docker/login-action@v4
@@ -134,21 +138,21 @@ jobs:
           registry: ${{ env.DOCKER_REGISTRY }}
 
       #
-      #  Build crossbuild + profiling-deps + service. crossbuild and
-      #  service both FROM the upstream OS base; profiling-deps FROMs
-      #  crossbuild:latest which DOCKER_BUILD writes locally as part
-      #  of the crossbuild build, so the chain resolves in order
-      #  without a registry pull between layers.
+      #  Build 'crossbuild' + 'profiling-deps' + 'service'. 'crossbuild'
+      #  and 'service' both pull the upstream OS base with `FROM`. The
+      #  'profiling-deps' Dockerfile pulls `crossbuild:latest`, which `DOCKER_BUILD` writes locally
+      #  as part of the 'crossbuild' build, so the chain resolves in
+      #  order without a registry pull between layers.
       #
-      #  docker.mk encodes the chain as stamp prerequisites, so one make
-      #  invocation with -j builds the independent service image alongside
-      #  the crossbuild > profiling-deps chain.
+      #  `docker.mk` encodes the chain as stamp prerequisites, so one
+      #  make run with `-j` builds the independent 'service' image
+      #  alongside the 'crossbuild' > 'profiling-deps' chain.
       #
-      #  NOPULL=1 forces docker.mk to build from the local Dockerfile
-      #  instead of pulling whatever the registry already holds for this
-      #  ref.
-      #  Without it the refresh silently retags whatever is already
-      #  published, defeating the whole point of the workflow.
+      #  `NOPULL=1` forces `docker.mk` to build from the local
+      #  `Dockerfile` instead of pulling whatever the registry already
+      #  holds for this ref.  Without `NOPULL=1` the refresh silently
+      #  retags whatever the registry already published, which defeats
+      #  the point of the workflow.
       #
       - name: Build crossbuild + profiling-deps + service images
         env:
@@ -172,8 +176,9 @@ jobs:
           done
 
       #
-      #  Switch to push-capable creds and publish the three images under
-      #  this ref's tag. The per-commit `profiling` layer stays local.
+      #  Switch to push-capable credentials and publish the 'crossbuild',
+      #  'profiling-deps' and 'service' images under this ref's tag. The
+      #  per-commit 'profiling' layer stays local.
       #
       - name: Login to internal Docker registry for push (via dind)
         uses: docker/login-action@v4
@@ -187,13 +192,13 @@ jobs:
           OS: ${{ matrix.os }}
         run: |
           for type in crossbuild profiling-deps service; do
-            #  docker.mk always builds the local tag as :latest.
+            #  `docker.mk` always builds the local tag as `:latest`.
             local_tag="freeradius4-${type}/${OS}:latest"
             remote_tag="${IMAGE_PREFIX}freeradius4-${type}/${OS}:${IMAGE_TAG}"
             docker tag "${local_tag}" "${remote_tag}"
             for attempt in 1 2 3; do
               docker push "${remote_tag}" && break
-              echo "Push attempt $attempt for ${remote_tag} failed; retrying after backoff..."
+              echo "Retrying push of ${remote_tag} after backoff, attempt $attempt failed"
               sleep 10
             done
           done

@@ -2,16 +2,16 @@ name: Issue triage
 
 #
 #  The issue tracker is for bugs, but support questions arrive through the
-#  bug template anyway.  A cheap model reads each new issue and says whether
-#  the issue is a bug report, a support question, or spam.  A confident
-#  support-question or spam verdict adds the "close" label, and the
-#  "Close support questions" workflow then closes the issue and points the
-#  filer at the mailing lists.  The model only ever labels: closing stays in
-#  one place, and a wrong verdict is a label a human removes, not a lost
-#  issue.
+#  bug template anyway.  A cheap model reads each new issue and reports
+#  whether the issue is a bug report, a support question, or spam.  On a
+#  confident support-question or spam verdict, this workflow adds the
+#  'close' label.  The 'Close support questions' workflow then closes
+#  the issue and directs the filer to the mailing lists.  The model only
+#  ever labels the issue.  Closing stays in one place, and a wrong verdict
+#  is a label that a human removes, not a lost issue.
 #
-#  Issues filed through the "Other" template already carry the close label,
-#  so those skip the model entirely.
+#  Issues filed through the 'Other' template already carry the 'close' label,
+#  so issues filed through the 'Other' template skip the model entirely.
 #
 on:
   issues:
@@ -31,16 +31,17 @@ jobs:
       id-token: write
 
     steps:
-      #  claude-code-action sets a git user name as it starts, which fails
-      #  if there is no repository.
+      #  claude-code-action sets a git user name as the action starts, and
+      #  setting the name fails when the job has no checked-out repository.
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
           lfs: false
 
       #  The action exits non-zero if the model returns no structured
-      #  output.  Without continue-on-error that fails the job, and the
-      #  apply step below treats no output as "leave the issue alone".
+      #  output.  Without `continue-on-error` the non-zero exit fails the
+      #  job, and the steps below treat no output as "leave the issue
+      #  alone".
       - name: Classify the issue
         id: classify
         continue-on-error: true
@@ -78,15 +79,15 @@ jobs:
             Quote the sentence that decided the verdict, verbatim, in "evidence".
 
       #
-      #  Act on the verdict.  Only a confident support-question or spam
-      #  verdict does anything: the close label is added, and the
-      #  "Close support questions" workflow does the closing.
+      #  Act on the verdict.  The step below adds the 'close' label only on
+      #  a confident support-question or spam verdict, and the
+      #  'Close support questions' workflow closes the issue.
       #
-      #  The label is added with the app token, not GITHUB_TOKEN: events
-      #  caused by GITHUB_TOKEN do not trigger other workflows, so a label
-      #  added with the default token would never fire the closing
-      #  workflow's "labeled" trigger.  The app needs issues write
-      #  permission.
+      #  The step adds the label with the app token, not `GITHUB_TOKEN`.
+      #  Events caused by `GITHUB_TOKEN` do not trigger other workflows, so
+      #  a label added with `GITHUB_TOKEN` would never fire the `labeled`
+      #  trigger of the 'Close support questions' workflow.  The app needs
+      #  `issues: write` permission.
       #
       - name: Generate app token for labelling
         id: app-token

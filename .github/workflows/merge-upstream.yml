@@ -3,14 +3,16 @@ name: Merge into upstream
 #
 #  FREERADIUS CORE DEVELOPERS ONLY
 #
-#  Called by ci-pipeline.yml once every gating leg has passed, so there is no
-#  gating logic here.
+#  `ci-pipeline.yml` calls this workflow once every gating leg has passed, so
+#  this workflow contains no gating logic.
 #
-#  Branch name decides what happens:
-#    developer/<login>          master is fast forwarded to the branch HEAD
-#    developer/<login>/ff       same
-#    developer/<login>/merge    branch is merged into master, possibly creating
-#                               a merge commit
+#  The branch name decides what happens:
+#    developer/<login>          the workflow fast-forwards `master` to the
+#                               branch HEAD
+#    developer/<login>/ff       the workflow fast-forwards `master` to the
+#                               branch HEAD
+#    developer/<login>/merge    the workflow merges the branch into `master`,
+#                               possibly creating a merge commit
 #
 
 on:
@@ -30,7 +32,7 @@ jobs:
     name: "Merge into upstream"
     timeout-minutes: 15
 
-    #  The pushes below use the app token, not GITHUB_TOKEN.
+    #  The pushes below use the app token, not `GITHUB_TOKEN`.
     permissions:
       contents: read
 
@@ -60,16 +62,17 @@ jobs:
           git config --global commit.gpgSign true
           git config --global gpg.format ssh
 
-      # First, as this was a shallow checkout, and only the user's branch was fetched, we need
-      # to fetch the rest of the branches, and more history.
+      # The checkout above was shallow and fetched only the user's branch, so
+      # fetch the rest of the branches, and more history.
       - name: "Fetch branches"
         run: git fetch --depth=1000 --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/*
 
       #
-      #  Merge the commit the legs actually ran on.  Merging the branch ref
-      #  instead would put whatever it points at now onto master, which is not
-      #  necessarily what passed.  A commit already on master merges and pushes
-      #  as a no-op, so re-running the pipeline needs no special handling.
+      #  Merge the commit that the legs actually ran on.  Merging the branch
+      #  ref instead would put whatever the ref points at now onto `master`,
+      #  which is not necessarily what passed.  Merging and pushing a commit
+      #  already on `master` is a no-op, so re-running the pipeline needs no
+      #  special handling.
       #
       - name: "Merge into upstream dev branch and update local branch"
         if: endsWith(github.ref_name, '/merge')

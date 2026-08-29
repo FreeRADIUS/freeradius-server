@@ -5,8 +5,8 @@ on:
 
 jobs:
   #
-  #  Determines which registry holds the continuous integration (CI) images.
-  #  See .github/workflows/common_vars.yml.
+  #  The `common_vars` job determines which registry holds the continuous
+  #  integration (CI) images.  See `.github/workflows/common_vars.yml`.
   #
   common_vars:
     name: Common vars
@@ -28,7 +28,7 @@ jobs:
         fetch-depth: 0
 
     #
-    #  The self-hosted testbed image carries the build toolchain but not
+    #  The `self-hosted` testbed image carries the build toolchain but not
     #  the documentation-specific tools - install those here. apt indexes
     #  are already refreshed in the image; just install.
     #
@@ -62,7 +62,8 @@ jobs:
         path: site.tgz
         retention-days: 1
 
-  # Actual deployment to GitHub Pages is only on pushes to the head of the master branch
+  # The `deploy-doxygen-docs` job runs only for the head of the `master`
+  # branch, on a push or a scheduled run
   deploy-doxygen-docs:
     if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && (( github.event_name == 'push' ) || ( github.event_name == 'schedule' ))
 
@@ -77,13 +78,13 @@ jobs:
       run:
         shell: bash
 
-    # Permissions needed to deploy on GitHub Pages
+    # Permissions that the deploy to GitHub Pages needs
     permissions:
       contents: read
       pages: write
       id-token: write
 
-    # Ensure only one job is attempting to update GitHub Pages
+    # Ensure that only one job updates GitHub Pages at a time
     concurrency:
       group: "documentation"
       cancel-in-progress: true
@@ -127,7 +128,7 @@ jobs:
       run:
         shell: bash
 
-    # Ensure only one job is attempting to update the docs repo
+    # Ensure that only one job updates the documentation repository at a time
     concurrency:
       group: "antora-documentation"
       cancel-in-progress: true

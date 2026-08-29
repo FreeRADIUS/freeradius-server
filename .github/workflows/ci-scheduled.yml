@@ -1,28 +1,28 @@
 name: Scheduled CI
 
 #
-#  Reruns the main CI tests on an unchanged master to catch intermittent
-#  failures: a race, a use-after-free, leaked state or an ordering
-#  assumption only fails on some runs, so the same tree has to run many
-#  times before the bug shows itself.
+#  The workflow reruns the main CI tests on an unchanged `master` to catch
+#  intermittent failures.  A race, a use-after-free, leaked state or an
+#  ordering assumption only fails on some runs.  The same tree therefore
+#  has to run many times before the bug appears.
 #
-#  A scheduled round only uses runner time nobody else wants:
+#  A scheduled round only uses runner time that nobody else wants:
 #
 #    1. The schedule starts a round.  GitHub treats the schedule as best
-#       effort, so a round can arrive late or not at all during busy
-#       periods.
-#    2. The first job asks whether any other workflow has runs executing
-#       or queued: the pipeline, but also the fuzzing and coverity
-#       schedules, which use the same self-hosted runners.  If anything
-#       is active, the round skips itself.
+#       effort, so a round can arrive late, or can fail to arrive at all,
+#       during busy periods.
+#    2. The first job checks whether any other workflow has runs in
+#       progress or queued: the pipeline, but also the fuzzing and
+#       coverity schedules, which use the same self-hosted runners.  If
+#       anything is active then the first job skips the round.
 #    3. A pipeline run starting mid-round cancels the round (the
-#       scheduled_ci_cancel job in ci-pipeline.yml), so adhoc CI never
+#       `scheduled_ci_cancel` job in `ci-pipeline.yml`), so ad hoc CI never
 #       waits behind a scheduled round.
-#    4. A round firing while a previous round still runs aborts itself,
-#       through the same idle check, so rounds never overlap and a
-#       running round is never cancelled by its successor.
+#    4. A round that fires while a previous round still runs stops at the
+#       same idle check.  Rounds therefore never overlap, and a new round
+#       never cancels a running round.
 #
-#  To run a round by hand: gh workflow run ci-scheduled.yml
+#  To run a round by hand: `gh workflow run ci-scheduled.yml`
 #
 
 on:
@@ -41,19 +41,20 @@ jobs:
       idle: ${{ steps.probe.outputs.idle }}
     steps:
       #
-      #  Counts every run in the repository except this one, so a new
-      #  contender never needs adding here, and a previous round still in
-      #  flight blocks this round like any other run.  A run that only
-      #  uses GitHub's hosted runners also blocks a round, which just
-      #  delays the round to a later tick.
+      #  The probe counts every run in the repository except the current
+      #  run.  A new workflow therefore never needs adding to the probe.
+      #  A previous round that is still running blocks the current round
+      #  like any other run.  A run that only uses GitHub's hosted
+      #  runners also blocks a round, and the block just delays the round
+      #  to a later tick.
       #
-      #  GitHub sometimes creates a run, materialises no jobs for it, and
-      #  leaves the run in queued permanently.  An abandoned run holds no
-      #  runner but still answers the queued query, so counting every run
-      #  verbatim pins the answer at "busy" for good and no round ever
-      #  starts.  Runs older than STALE_AFTER_HOURS are therefore ignored.
-      #  The cutoff has to clear the longest real build, which is the
-      #  fuzzing schedule at several hours.
+      #  GitHub sometimes creates a run, materialises no jobs for the
+      #  run, and leaves the run in queued permanently.  An abandoned run
+      #  holds no runner but still matches the queued query.  Counting
+      #  every run verbatim pins the answer at 'busy' permanently, and no
+      #  round ever starts.  The probe therefore ignores runs older than
+      #  `STALE_AFTER_HOURS`.  The cutoff has to clear the longest real
+      #  build, which is the fuzzing schedule at several hours.
       #
       - name: Look for active runs
         id: probe
@@ -64,7 +65,7 @@ jobs:
           STALE_AFTER_HOURS: 12
         run: |
           cutoff=$(date -u -d "$STALE_AFTER_HOURS hours ago" +%Y-%m-%dT%H:%M:%SZ)
-          echo "Ignoring runs created before $cutoff, GitHub abandoned them"
+          echo "Ignoring runs created before $cutoff, GitHub abandoned the runs"
 
           fresh='[.workflow_runs[]
                   | select(.id != '"$RUN_ID"')
@@ -76,7 +77,7 @@ jobs:
           if [ "$running" -eq 0 ] && [ "$queued" -eq 0 ]; then
             echo "idle=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Skipping this round: $running running and $queued queued runs elsewhere"
+            echo "Skipping the round, $running running and $queued queued runs elsewhere"
             echo "idle=false" >> "$GITHUB_OUTPUT"
           fi
 

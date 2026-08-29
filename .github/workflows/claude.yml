@@ -13,14 +13,16 @@ on:
 jobs:
   claude:
     #
-    #  Restrict to trusted contributors. The Claude Code action needs
-    #  `id-token: write`, which GitHub denies for events originating on
-    #  fork PRs regardless of what we put in the permissions: block.
-    #  Without this gate the workflow fails on every first-time fork
-    #  contributor mention with "Could not fetch an OIDC token".
+    #  The condition restricts the job to trusted contributors. The
+    #  Claude Code action needs `id-token: write`. GitHub denies
+    #  `id-token: write` for events originating on fork pull requests,
+    #  regardless of what we put in the `permissions:` block. Without the
+    #  condition the workflow fails, with "Could not fetch an OIDC
+    #  token", every time a first-time fork contributor mentions
+    #  `@claude`.
     #
-    #  Maintainers can still trigger Claude on a fork PR by replying
-    #  in-thread with their own @claude mention.
+    #  Maintainers can still trigger Claude on a fork pull request by
+    #  replying in the thread with the maintainer's own `@claude` mention.
     #
     if: |
       (
@@ -40,7 +42,7 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read # Claude needs actions: read to read continuous integration (CI) results on pull requests
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -56,14 +58,15 @@ jobs:
           anthropic_service_account_id: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
           anthropic_workspace_id: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
 
-          # This is an optional setting that allows Claude to read CI results on PRs
+          # `additional_permissions` is an optional setting that allows Claude
+          # to read CI results on pull requests
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
+          # Optional: Give a custom prompt to Claude. If you specify no prompt, Claude performs the instructions in the comment that mentioned Claude.
           # prompt: 'Update the pull request description to include a summary of changes.'
 
-          # Optional: Add claude_args to customize behavior and configuration
+          # Optional: Add `claude_args` to customize behavior and configuration
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
           # claude_args: '--allowed-tools Bash(gh pr:*)'

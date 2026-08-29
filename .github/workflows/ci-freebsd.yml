@@ -17,7 +17,8 @@ jobs:
 
     steps:
 
-    # Checkout, but defer pulling LFS objects until we've restored the cache
+    # Checkout, but defer pulling the Git Large File Storage (LFS) objects
+    # until the cache restore step below runs
     - uses: actions/checkout@v6
       with:
         lfs: false
@@ -34,7 +35,8 @@ jobs:
         path: .git/lfs
         key: freebsd-lfs-${{ hashFiles('freeradius/.lfs-assets-id') }}-v1
 
-    # Now the LFS pull will be local if we hit the cache, or remote otherwise
+    # The LFS pull reads local objects on a cache hit, and downloads the
+    # objects from the remote on a miss
     - name: Git LFS pull
       run: git lfs pull
       working-directory: freeradius
@@ -56,9 +58,9 @@ jobs:
         environment_variables: HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG NO_PERFORMANCE_TESTS
 
     #
-    #  The VM stays up after the step above, and "shell: cpa.sh {0}" runs the
-    #  step inside it.  The action's own "run:" input is deprecated in favour
-    #  of this.
+    #  The virtual machine (VM) stays up after the step above, and
+    #  `shell: cpa.sh {0}` runs a step inside the VM.  The action's own
+    #  `run:` input is deprecated in favour of the `cpa.sh` shell.
     #
     - name: Install dependencies (FreeBSD)
       shell: cpa.sh {0}
@@ -114,27 +116,25 @@ jobs:
         gmake -j `nproc` test
 
     #
-    #  If the CI has failed and the branch is ci-debug then we start a tmate
-    #  session to provide interactive shell access to the session.
+    #  If the CI has failed and the branch is `ci-debug` then the workflow starts
+    #  a tmate session to provide interactive shell access to the runner.
     #
-    #  The SSH rendezvous point will be emited continuously in the job output,
-    #  which will look something like:
+    #  tmate prints the Secure Shell (SSH) rendezvous point continuously in the
+    #  job output:
     #
     #      SSH: ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
     #
-    #  For example:
+    #  To use the session:
     #
-    #      git push origin ci-debug --force
-    #
-    #  Look at the job output in: https://github.com/FreeRADIUS/freeradius-server/actions
-    #
-    #      ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+    #    1. Push the failing commit: `git push origin ci-debug --force`
+    #    2. Open the job output in https://github.com/FreeRADIUS/freeradius-server/actions
+    #    3. Run the ssh command from the job output.
     #
     #  Access requires that you have the private key corresponding to the
     #  public key of the GitHub user that initiated the job.
     #
-    #  The above will open a shell for the MacOS environment on which the
-    #  FreeBSD VM is running within VirtualBox.
+    #  The ssh command opens a shell into the MacOS environment on which
+    #  the FreeBSD VM runs within VirtualBox.
     #
     #  Access the FreeBSD VM with:
     #

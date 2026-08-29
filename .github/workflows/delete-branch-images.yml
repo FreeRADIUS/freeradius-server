@@ -1,16 +1,18 @@
 name: Delete branch images
 
 #
-#  A branch that changes the CI images publishes its own copies of them, under
-#  a tag named after the branch.  Nothing else ever reads those copies, so once
-#  the branch is gone the copies are litter.  Deleting the branch is the event
-#  that says the copies are finished with, which is why the clean-up hangs off
-#  that rather than off a sweep that would have to guess when a tag stopped
-#  mattering.
+#  A branch that changes the continuous integration (CI) images publishes
+#  copies of the images, under a tag named after the branch.  Nothing else
+#  ever reads the copies, so once the branch is deleted the copies only
+#  waste registry space.  The `delete` event is the point at which the copies
+#  stop mattering.  The clean-up therefore runs on the `delete` event rather
+#  than on a sweep that would have to guess when a tag stopped mattering.
 #
-#  Nothing here lists the images.  Every image this repository publishes sits
-#  under a path named after the repository, so the registry is asked what it
-#  holds under that path and the answer cannot drift from what was published.
+#  This workflow holds no list of image names.  Every image that this
+#  repository publishes sits under a path named after the repository.  The
+#  workflow therefore queries the registry for everything under the
+#  repository's path, and the answer cannot drift from what the repository
+#  published.
 #
 on:
   delete:
@@ -23,10 +25,10 @@ jobs:
 
     steps:
       #
-      #  The default branch publishes as latest, which nothing here may touch.
-      #  A repository with no shared registry is skipped: a fork publishes to
-      #  its own GitHub Container Registry, which its owner prunes from the
-      #  packages page.
+      #  The default branch publishes as `latest`, which nothing here may touch.
+      #  The step skips a repository with no shared registry.  A fork
+      #  publishes to the fork's own GitHub Container Registry, which the
+      #  fork's owner prunes from the packages page.
       #
       - id: target
         env:
@@ -36,11 +38,12 @@ jobs:
           repo_name: ${{ github.event.repository.name }}
         run: |
           if [ -z "$registry" ] || [ "$deleted_ref" = "$default_branch" ]; then
-            echo "Nothing to prune."
+            echo "Skipping prune, DOCKER_REGISTRY unset or the deleted ref is the default branch"
             echo "run=no" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          #  Sanitised the same way common_vars.yml sanitises it.
+          #  Sanitise the deleted ref the same way that `common_vars.yml`
+          #  sanitises a branch name.
           tag=$(printf '%s' "$deleted_ref" \
                 | tr 'A-Z' 'a-z' \
                 | tr -c 'a-z0-9_.-' '-' \
@@ -56,9 +59,10 @@ jobs:
         uses: regclient/actions/regctl-installer@main
 
       #
-      #  regctl removes the tag and leaves the manifest, so an image the branch
-      #  happened to build byte for byte identical to the one latest points at
-      #  keeps its other tags.  Deleting by digest would take those with it.
+      #  regctl removes the tag and leaves the manifest.  An image that the
+      #  branch happened to build byte for byte identical to the image that
+      #  `latest` points at therefore keeps the image's other tags.  Deleting
+      #  by digest would remove the other tags too.
       #
       - if: ${{ steps.target.outputs.run == 'yes' }}
         env:

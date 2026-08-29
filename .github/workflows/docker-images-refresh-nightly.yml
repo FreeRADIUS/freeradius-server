@@ -1,13 +1,16 @@
 name: Docker images refresh nightly
 
 #
-#  The nightly and manual entry point for refreshing every image in the
-#  registry.  docker-ci-images-refresh.yml rebuilds the tooling images, and the
-#  FreeRADIUS image chain builds afterwards, because those images build
-#  inside the docker-cli and dind job containers the first stage publishes.
+#  This workflow is the nightly and manual entry point for refreshing every
+#  image in the registry.  `docker-ci-images-refresh.yml` rebuilds the tooling
+#  images, and `docker-freeradius-images-refresh.yml` builds the FreeRADIUS
+#  image chain afterwards.  The FreeRADIUS image builds run inside the
+#  'docker-cli' and Docker-in-Docker (dind) job containers that
+#  `docker-ci-images-refresh.yml` publishes, so `docker-ci-images-refresh.yml`
+#  runs first.
 #
-#  Pushes never come through here: ci-pipeline.yml calls the same two
-#  workflows itself, gated on what the commit changed.
+#  A push never triggers this workflow.  `ci-pipeline.yml` calls the same
+#  two workflows directly and gates each call on what the commit changed.
 #
 on:
   workflow_dispatch:
@@ -16,9 +19,10 @@ on:
 
 concurrency:
   #
-  #  Only one refresh at a time.  Lets in-flight runs finish rather than
-  #  cancelling: an interrupted refresh leaves the registry partially
-  #  updated, whereas a queued second run re-publishes everything cleanly.
+  #  Only one refresh runs at a time, and a new run queues instead of
+  #  cancelling the run in flight.  An interrupted refresh leaves the
+  #  registry partially updated, whereas a queued second run re-publishes
+  #  everything cleanly.
   #
   group: docker-ci-images-refresh
   cancel-in-progress: false

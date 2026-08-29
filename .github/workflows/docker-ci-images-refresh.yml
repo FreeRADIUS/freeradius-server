@@ -1,42 +1,44 @@
 name: Docker CI images refresh
 
 #
-#  ci-pipeline.yml calls this before its build legs when a commit touches
-#  anything baked into the images, so the legs never build against stale
-#  ones, and docker-images-refresh-nightly.yml calls this on the schedule and on
-#  workflow_dispatch.  There is no push: trigger: the pipeline already runs
-#  on push, and a second standalone run would race the one the pipeline is
-#  waiting for.  The list of paths that count lives in the pipeline's
-#  "changes" job.
+#  `ci-pipeline.yml` calls this workflow before the pipeline's build legs
+#  when a commit touches anything baked into the images, so the legs never
+#  build against stale images.  `docker-images-refresh-nightly.yml` calls this
+#  workflow on the schedule and on `workflow_dispatch`.  This workflow has no
+#  `push:` trigger.  The pipeline already runs on push, and a second
+#  standalone run would race the run that the pipeline waits for.  The
+#  pipeline's 'changes' job holds the list of paths that trigger a refresh.
 #
 on:
   workflow_call:
 
 concurrency:
   #
-  #  Only one refresh at a time. Lets in-flight runs finish rather than
-  #  having a push trigger a cancel: an interrupted refresh leaves the
-  #  registry partially updated, whereas a queued second run just
-  #  re-publishes everything cleanly after the first one finishes.
+  #  Only one refresh runs at a time, and a push queues a second run
+  #  instead of cancelling the run in flight.  An interrupted refresh
+  #  leaves the registry partially updated, whereas a queued second run
+  #  re-publishes everything cleanly after the first run finishes.
   #
   group: docker-ci-images-refresh
   cancel-in-progress: false
 
 jobs:
   #
-  #  Determines which registry holds the continuous integration (CI) images.
-  #  A caller that already has the answer passes the answer down.  A run that
-  #  starts from the nightly schedule or by hand receives no inputs, so this
-  #  job determines the answer instead.  See .github/workflows/common_vars.yml.
+  #  This job determines which registry holds the continuous integration
+  #  (CI) images.  A caller that already has the answer passes the answer
+  #  as an input.  A run that starts from the nightly schedule or by hand receives
+  #  no inputs, so this job determines the answer instead.  See
+  #  `.github/workflows/common_vars.yml`.
   #
   common_vars:
     name: Common vars
     uses: ./.github/workflows/common_vars.yml
 
   #
-  #  Stage 1: rebuild the runner-host base and the dind sidecar image
-  #  from upstream. These can't run inside our own dind/cli container
-  #  because that container is built on top of them.
+  #  Stage 1: rebuild the runner-host base and the Docker-in-Docker (dind)
+  #  sidecar image from upstream.  The rebuilds cannot run inside our own
+  #  dind/cli container, because the two images are the parents of the
+  #  dind/cli container.
   #
   process-host-bases:
     needs: common_vars
@@ -61,11 +63,11 @@ jobs:
             needs_build_deps: true
 
           #
-          #  Custom dind sidecar image used by the dind-based
-          #  workflows (docker-service.yml, docker-crossbuild.yml, multi-server-tests).
-          #  Bakes in registry-mirror -> internal cache and trusts the
-          #  internal CA, so per-job apt-installing and daemon.json
-          #  wiring goes away.
+          #  Custom dind sidecar image for the dind-based
+          #  workflows (`docker-service.yml`, `docker-crossbuild.yml`, `multi-server-tests`).
+          #  The image sets the registry mirror to the internal cache and
+          #  trusts the internal certificate authority (CA), so the jobs
+          #  do not apt-install packages or write `daemon.json`.
           #
           - base_image: docker:27-dind
             display: self-hosted-docker-dind
@@ -94,7 +96,7 @@ jobs:
           for attempt in 1 2 3; do
             docker pull "$DOCKER_BASE_IMAGE" && break
             if [ "$attempt" = 3 ]; then exit 1; fi
-            echo "Pull attempt $attempt failed; retrying after backoff..."
+            echo "Retrying pull after backoff, attempt $attempt failed"
             sleep 10
           done
           echo "FROM $DOCKER_BASE_IMAGE" | docker build --label preserve=true -t "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" -
@@ -134,16 +136,17 @@ jobs:
         env:
           DOCKER_IMAGE_NAME: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
-          #  Reusing layers would hide new upstream packages, which is what
-          #  the nightly run exists to pick up, so only the nightly discards
-          #  them.  Every other run rebuilds because a file changed, and pays
-          #  20+ minutes for nothing if the layers go as well.
+          #  Reused layers hide new upstream packages, and fetching new
+          #  packages is why the nightly run exists, so only the nightly
+          #  run discards the layers.  Every other run rebuilds because a file
+          #  changed, and discarding the layers in such a run costs 20+
+          #  minutes for nothing.
           NO_CACHE: ${{ github.event_name == 'schedule' && '--no-cache' || '' }}
           REGISTRY_MIRROR: ${{ needs.common_vars.outputs.selfhosted == '1' && env.DOCKER_REGISTRY || '' }}
-          #  BuildKit builds only the stages the selected one is built from,
-          #  so the certificate COPY in Dockerfile.docker-dind never runs on
-          #  a fork, where the certificate is absent. The older builder
-          #  builds every stage and fails the COPY.
+          #  BuildKit builds only the stages that the selected stage
+          #  depends on, so the certificate `COPY` in `Dockerfile.docker-dind`
+          #  never runs on a fork, where the certificate is absent.  The
+          #  older builder builds every stage and fails on the `COPY`.
           DOCKER_BUILDKIT: 1
         run: |
           build_args=()
@@ -153,7 +156,7 @@ jobs:
           fi
           for attempt in 1 2 3; do
             docker build $NO_CACHE -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true "${build_args[@]}" . && exit 0
-            echo "Build attempt $attempt failed; retrying after backoff..."
+            echo "Retrying build after backoff, attempt $attempt failed"
             sleep 10
           done
           exit 1
@@ -166,8 +169,9 @@ jobs:
           password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
 
-      #  A fork pushes to its own GHCR, which GITHUB_TOKEN can write to when
-      #  the workflow runs in the fork's own context.
+      #  A fork pushes to the fork's own GitHub Container Registry (GHCR)
+      #  namespace, which `GITHUB_TOKEN` can write to when the workflow runs
+      #  in the fork's own context.
       - name: Login to GHCR for push
         if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
         uses: docker/login-action@v4
@@ -183,7 +187,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" && exit 0
-            echo "Push attempt $attempt failed; retrying after backoff..."
+            echo "Retrying push after backoff, attempt $attempt failed"
             sleep 10
           done
           exit 1
@@ -194,7 +198,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
-            echo "Push attempt $attempt failed; retrying after backoff..."
+            echo "Retrying push after backoff, attempt $attempt failed"
             sleep 10
           done
           exit 1
@@ -211,15 +215,16 @@ jobs:
             for attempt in 1 2 3; do
               docker push "$TAG" && break
               if [ "$attempt" = "3" ]; then exit 1; fi
-              echo "Push of $TAG attempt $attempt failed; retrying..."
+              echo "Retrying push of $TAG after backoff, attempt $attempt failed"
               sleep 10
             done
           done
 
   #
-  #  Stage 2: build the docker-cli image, which FROMs self-hosted (built
-  #  in stage 1). Stages 3+ use this as their job container, so it has
-  #  to be fresh before they start.
+  #  Stage 2: build the 'docker-cli' image on top of the 'self-hosted' image
+  #  that stage 1 builds.  Stages 3+ run the 'docker-cli' image as the job
+  #  container, so the 'docker-cli' image must be fresh before stages 3+
+  #  start.
   #
   process-docker-cli:
     needs: [process-host-bases, common_vars]
@@ -258,7 +263,7 @@ jobs:
           registry: ${{ env.DOCKER_REGISTRY }}
 
       #  A fork pushes to, and pulls from, the fork's own GitHub Container
-      #  Registry (GHCR) namespace.  The automatic GITHUB_TOKEN can reach that
+      #  Registry (GHCR) namespace.  The automatic `GITHUB_TOKEN` can reach that
       #  namespace whenever the workflow runs in the fork's own context.
       - name: Login to GHCR (read)
         if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
@@ -274,15 +279,15 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             docker pull "$PARENT_IMAGE" && exit 0
-            echo "Pull attempt $attempt failed; retrying after backoff..."
+            echo "Retrying pull after backoff, attempt $attempt failed"
             sleep 10
           done
           exit 1
 
       #
-      #  Layer cache stays enabled: the nightly rebuilds the parent image
-      #  with --no-cache, which changes the parent image ID, which
-      #  invalidates every layer here.
+      #  Layer cache stays enabled.  The nightly run rebuilds the parent image
+      #  with `--no-cache`, which changes the parent image ID, and the new
+      #  ID invalidates every layer of the 'docker-cli' image.
       #
       - name: Build derived image
         env:
@@ -292,7 +297,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             docker build -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --build-arg "from=$PARENT_IMAGE" --label preserve=true . && exit 0
-            echo "Build attempt $attempt failed; retrying after backoff..."
+            echo "Retrying build after backoff, attempt $attempt failed"
             sleep 10
           done
           exit 1
@@ -306,7 +311,7 @@ jobs:
           registry: ${{ env.DOCKER_REGISTRY }}
 
       #  A fork pushes to, and pulls from, the fork's own GitHub Container
-      #  Registry (GHCR) namespace.  The automatic GITHUB_TOKEN can reach that
+      #  Registry (GHCR) namespace.  The automatic `GITHUB_TOKEN` can reach that
       #  namespace whenever the workflow runs in the fork's own context.
       - name: Login to GHCR for push
         if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
@@ -322,15 +327,15 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
-            echo "Push attempt $attempt failed; retrying after backoff..."
+            echo "Retrying push after backoff, attempt $attempt failed"
             sleep 10
           done
           exit 1
 
   #
   #  Stage 3: refresh the remaining CI base images and the pull-through
-  #  cache mirrors. Runs inside dind + the freshly-built docker-cli
-  #  container.
+  #  cache mirrors.  Stage 3 runs inside the dind sidecar plus the
+  #  freshly built 'docker-cli' container.
   #
   process-ci-images:
     needs: [process-docker-cli, common_vars]
@@ -372,11 +377,11 @@ jobs:
       matrix:
         os:
           #
-          #  Slim build bases for ci-rpm.yml / ci-deb.yml. Generated from
-          #  scripts/docker/m4/ci.{rpm,deb}.m4 - regenerate with
-          #  `make dockerfile.ci` after editing the m4. The
-          #  generated Dockerfile.ci hardcodes the per-distro FROM, so
-          #  no build_args are needed here.
+          #  Slim build bases for `ci-rpm.yml` / `ci-deb.yml`.
+          #  `scripts/docker/m4/ci.{rpm,deb}.m4` generates each `Dockerfile.ci`,
+          #  so regenerate with `make dockerfile.ci` after editing the m4.
+          #  The generated `Dockerfile.ci` hardcodes the per-distro `FROM`, so
+          #  the matrix entries pass no `build_args`.
           #
           - base_image: rockylinux/rockylinux:9
             display: self-hosted-ci-rocky9
@@ -427,11 +432,12 @@ jobs:
         uses: ./.github/actions/setup-dind
 
       #
-      #  Authenticate dind to Docker Hub up-front so every subsequent
-      #  `docker pull` (and the implicit FROM-pulls triggered by
-      #  `docker build`) uses the higher per-user rate limit instead
-      #  of anonymous 100/6h. Skipped on parent_image-only entries
-      #  since they pull from the internal registry instead.
+      #  Authenticate dind to Docker Hub up front.  Every subsequent
+      #  `docker pull` (and the implicit `FROM` pull that `docker build`
+      #  triggers) then uses the higher per-user rate limit instead of the
+      #  anonymous 100 pulls per 6 hours.  The `parent_image`-only entries
+      #  skip the login, because a `parent_image`-only entry pulls from the
+      #  internal registry instead.
       #
       - name: Login to Docker Hub (via dind)
         if: ${{ matrix.os.base_image && needs.common_vars.outputs.selfhosted == '1' }}
@@ -441,9 +447,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
       #
-      #  Read-only login to the internal registry. Needed up front so
-      #  parent_image entries (cli) can pull their parent before the
-      #  build step.
+      #  Read-only login to the internal registry.  The login runs up
+      #  front so a `parent_image` entry (cli) can pull the parent image
+      #  before the build step.
       #
       - name: Login to internal Docker registry (read, via dind)
         if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
@@ -454,7 +460,7 @@ jobs:
           registry: ${{ env.DOCKER_REGISTRY }}
 
       #  A fork pushes to, and pulls from, the fork's own GitHub Container
-      #  Registry (GHCR) namespace.  The automatic GITHUB_TOKEN can reach that
+      #  Registry (GHCR) namespace.  The automatic `GITHUB_TOKEN` can reach that
       #  namespace whenever the workflow runs in the fork's own context.
       - name: Login to GHCR (read, via dind)
         if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
@@ -465,10 +471,10 @@ jobs:
           registry: ghcr.io
 
       #
-      #  Pull the source image into dind. base_image entries pull from
-      #  Docker Hub then re-tag to the internal registry namespace so
-      #  pull-through cache consumers see the same name. parent_image
-      #  entries pull from the internal registry directly.
+      #  Pull the source image into dind.  `base_image` entries pull from
+      #  Docker Hub and then re-tag the image to the internal registry namespace,
+      #  so jobs that pull through the cache use the same name.
+      #  `parent_image` entries pull from the internal registry directly.
       #
       - name: Pull source image
         env:
@@ -478,7 +484,7 @@ jobs:
           if [ -n "$PARENT_IMAGE" ]; then
             for attempt in 1 2 3; do
               docker pull "$PARENT_IMAGE" && exit 0
-              echo "Pull attempt $attempt failed; retrying after backoff..."
+              echo "Retrying pull after backoff, attempt $attempt failed"
               sleep 10
             done
             exit 1
@@ -486,17 +492,18 @@ jobs:
           for attempt in 1 2 3; do
             docker pull "$DOCKER_BASE_IMAGE" && break
             if [ "$attempt" = 3 ]; then exit 1; fi
-            echo "Pull attempt $attempt failed; retrying after backoff..."
+            echo "Retrying pull after backoff, attempt $attempt failed"
             sleep 10
           done
           echo "FROM $DOCKER_BASE_IMAGE" | docker build --label preserve=true -t "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" -
 
       #
-      #  Generate freeradius-build-deps*.deb so the slim CI base images
+      #  Generate `freeradius-build-deps*.deb` so the slim CI base images
       #  can apt-install the package list without pulling the full
-      #  build-essential / devscripts toolchain at every CI run. Only
-      #  meaningful for the deb-family CI bases that build FreeRADIUS;
-      #  pull-through DB caches, dind, and cli skip this.
+      #  `build-essential` / `devscripts` toolchain at every CI run.  The
+      #  step only matters for the deb-family CI bases that build
+      #  FreeRADIUS.  The pull-through database caches, dind, and cli
+      #  entries skip the step.
       #
       - name: Create build dependency package
         if: ${{ matrix.os.publishes && matrix.os.dockerfile && matrix.os.base_image }}
@@ -524,9 +531,9 @@ jobs:
             sh -c './build-dep-pkg.sh'
 
       #
-      #  Stage the internal CA cert into the build context for any
-      #  matrix entry that asks for it (currently the dind sidecar
-      #  image, which needs to trust docker.internal.networkradius.com).
+      #  Stage the internal CA certificate into the build context for
+      #  any matrix entry that sets `needs_internal_ca` (the dind sidecar
+      #  image, which must trust 'docker.internal.networkradius.com').
       #
       - name: Stage registry mirror CA into build context
         if: ${{ matrix.os.needs_internal_ca && needs.common_vars.outputs.selfhosted == '1' }}
@@ -535,14 +542,15 @@ jobs:
              scripts/ci/networkradius.com.crt
 
       #
-      #  docker build's "exporting to image" phase occasionally trips a
-      #  containerd snapshot-store lock race (transient, ~ms-scale).
-      #  Three attempts with a short sleep is enough to absorb this
-      #  without masking real failures.
+      #  The "exporting to image" phase of `docker build` occasionally trips a
+      #  transient, millisecond-scale lock race in the containerd
+      #  snapshot store.  Three attempts with a short sleep absorb the
+      #  race without masking real failures.
       #
-      #  Log in before building.  The dind sidecar starts empty every job,
+      #  Log in before building.  The dind sidecar starts empty in every job,
       #  so the previous image pulled from the registry is the only layer
-      #  cache a build can have, and the same creds push the result.
+      #  cache that a build can have, and the job pushes the result with
+      #  the same credentials.
       #
       - name: Login to internal Docker registry for push (via dind)
         if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
@@ -553,7 +561,7 @@ jobs:
           registry: ${{ env.DOCKER_REGISTRY }}
 
       #  A fork pushes to, and pulls from, the fork's own GitHub Container
-      #  Registry (GHCR) namespace.  The automatic GITHUB_TOKEN can reach that
+      #  Registry (GHCR) namespace.  The automatic `GITHUB_TOKEN` can reach that
       #  namespace whenever the workflow runs in the fork's own context.
       - name: Login to GHCR for push (via dind)
         if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
@@ -576,27 +584,28 @@ jobs:
             [ -n "$key" ] && build_args+=(--build-arg "${key}=${value}")
           done < <(printf '%s' "$BUILD_ARGS_JSON" | jq -r 'to_entries[]? | [.key, .value] | @tsv')
 
-          #  This ref's previous image is the best cache, the latest tag the
-          #  fallback for a ref building for the first time.  A pull that
-          #  finds nothing just means a cold build.
+          #  The previous image for the ref being built is the best cache,
+          #  and the `latest` tag is the fallback for a ref building for the
+          #  first time.  A pull
+          #  that finds nothing means a cold build.
           docker pull "$DOCKER_IMAGE_NAME" 2>/dev/null || true
           docker pull "$DOCKER_CACHE_IMAGE" 2>/dev/null || true
 
-          #  BUILDKIT_INLINE_CACHE embeds the cache metadata in the pushed
+          #  `BUILDKIT_INLINE_CACHE` embeds the cache metadata in the pushed
           #  image, without which a pulled image cannot seed the next build.
           for attempt in 1 2 3; do
             docker build -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true \
               --cache-from "$DOCKER_IMAGE_NAME" --cache-from "$DOCKER_CACHE_IMAGE" \
               --build-arg BUILDKIT_INLINE_CACHE=1 \
               "${build_args[@]}" . && exit 0
-            echo "Build attempt $attempt failed; retrying after backoff..."
+            echo "Retrying build after backoff, attempt $attempt failed"
             sleep 10
           done
           exit 1
 
-      #  Renaming the image is how the organisation fills its local copy of
-      #  Docker Hub.  A fork keeps no such copy and fetches third-party images
-      #  under their plain names, so a fork skips the rename.
+      #  Renaming the image fills the organisation's local copy of
+      #  Docker Hub.  A fork keeps no local copy and fetches third-party
+      #  images under plain upstream names, so a fork skips the rename.
       - name: Push base image to local registry
         if: ${{ matrix.os.base_image && needs.common_vars.outputs.selfhosted == '1' }}
         env:
@@ -604,7 +613,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" && exit 0
-            echo "Push attempt $attempt failed; retrying after backoff..."
+            echo "Retrying push after backoff, attempt $attempt failed"
             sleep 10
           done
           exit 1
@@ -616,7 +625,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
-            echo "Push attempt $attempt failed; retrying after backoff..."
+            echo "Retrying push after backoff, attempt $attempt failed"
             sleep 10
           done
           exit 1
@@ -632,7 +641,7 @@ jobs:
             for attempt in 1 2 3; do
               docker push "$TAG" && break
               if [ "$attempt" = "3" ]; then exit 1; fi
-              echo "Push of $TAG attempt $attempt failed; retrying..."
+              echo "Retrying push of $TAG after backoff, attempt $attempt failed"
               sleep 10
             done
           done

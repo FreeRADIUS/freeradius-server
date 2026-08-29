@@ -10,8 +10,8 @@ on:
 
 jobs:
   #
-  #  Determines which registry holds the continuous integration (CI) images.
-  #  See .github/workflows/common_vars.yml.
+  #  `common_vars` determines which registry holds the continuous
+  #  integration (CI) images.  See `.github/workflows/common_vars.yml`.
   #
   common_vars:
     name: Common vars
@@ -31,11 +31,11 @@ jobs:
         uses: actions/checkout@v6
 
       #
-      #  The CI image installs clang under its versioned name, clang-18, and
-      #  nothing in the image makes plain clang mean that binary.  The build
-      #  step below sets CC=clang, so without this step configure looks for a
-      #  compiler named clang, finds none, and stops with "C compiler cannot
-      #  create executables".
+      #  The CI image has clang only under a versioned name, `clang-18`,
+      #  and nothing in the image makes plain `clang` resolve to the
+      #  versioned binary.  The build step below sets `CC=clang`.  Without
+      #  runner-prep, configure looks for a compiler named `clang`, finds
+      #  none, and stops with "C compiler cannot create executables".
       #
       - name: Prepare the runner
         uses: ./.github/actions/runner-prep
