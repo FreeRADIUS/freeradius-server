@@ -669,6 +669,14 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 		}
 
 		/*
+		 *	No reply, move unfinished "sent" commands to the "completed" list.  This allows the
+		 *	"fail" callback to see the full list.
+		 *
+		 *	@todo - do we want to have a "failed" list?
+		 */
+		fr_dlist_move(&cmds->completed, &cmds->sent);
+
+		/*
 		 *	Only REDIS_ASYNC_RCODE_ERROR is really a failure.
 		 */
 		if (cmds->rcode == REDIS_ASYNC_RCODE_ERROR) {
@@ -1058,13 +1066,59 @@ int fr_redis_command_set_reset(fr_redis_command_set_t *cmds)
 	return 0;
 }
 
+/** Reinitialise a command set so that it can be used again
+ *
+ * Frees the completed commands, and returns the command set to the state it was in when it was created via
+ * fr_redis_command_set_alloc().  The command set keeps the request, the resume ctx, the callbacks, and the
+ * autofree setting it was allocated with, so that the caller can add a new set of commands and enqueue the
+ * command set again.
+ *
+ * @note The caller must have finished reading the results before calling this function.  The completed
+ *	commands are freed here, as is the address of the node named by a MOVED / ASK reply.
+ *	fr_redis_command_set_rcode() reports success after this function returns, whatever the previous
+ *	execution did.
+ *
+ * @param[in] cmds	Command set to reinitialise.
+ * @return
+ *	- 0 on success.
+ *	- -1 if the command set is still executing, in which case nothing is changed.
+ */
 int fr_redis_command_set_clear(fr_redis_command_set_t *cmds)
 {
+	/*
+	 *	@todo - the run-time checks should likely be asserts, and this function should probably return
+	 *	"void".
+	 */
 	if (fr_dlist_num_elements(&cmds->pending) > 0) return -1;
 	if (fr_dlist_num_elements(&cmds->sent) > 0) return -1;
-	fr_dlist_clear(&cmds->completed);
+
+	/*
+	 *	Free the commands, rather than just emptying the list.  The commands are allocated from the
+	 *	command set's pool, so leaving the commands allocated means the command set grows every time
+	 *	the command set is reused.
+	 *
+	 *	The reply is passed to the per command callback as the reply arrives, and is not stored on the
+	 *	command, so freeing a command here cannot free a reply which the caller is still reading.
+	 */
+	fr_dlist_talloc_free(&cmds->completed);
+
+	/*
+	 *	Clear the execution state.
+	 */
 	TALLOC_FREE(cmds->next_node_ip);
 	cmds->next_node_port = 0;
 	cmds->treq = NULL;
+	cmds->rcode = REDIS_ASYNC_RCODE_SUCCESS;
+	cmds->redirected = 0;
+
+	/*
+	 *	Clear the command state.  The transaction counts are checked when the command set is enqueued,
+	 *	so stale counts from the previous execution would be applied to the new set of commands.
+	 */
+	cmds->txn_watch = false;
+	cmds->txn_start = 0;
+	cmds->txn_end = 0;
+	cmds->blocking = false;
+
 	return 0;
 }
