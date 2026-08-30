@@ -925,14 +925,17 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
 	}
 
 	/*
-	 *	The trunk is about to either free the treq, or return the treq to the trunk's cache of free
-	 *	requests.  This command set is owned by whoever allocated it, and outlives the treq.  In order
-	 *	to prevent any later cleanup from erroneously freeing the dangling cmd->treq, we have to clear
-	 *	it here.
+	 *	The trunk is about to either free the treq, or return the treq to the
+	 *	trunk's free_requests list.  The caller that allocated the command set
+	 *	owns the command set, and the command set outlives the treq.  This
+	 *	callback clears cmds->treq so that no later cleanup accesses the
+	 *	dangling cmds->treq.
 	 *
-	 *	No other field is cleared here.  The fields rcode, completed, next_node_ip, next_node_port and
-	 *	redirected are all read after this point, either by the caller (after a resumption), or by
-	 *	fr_redis_command_set_reset() when a MOVED / ASK reply sends the command set to another node.
+	 *	This callback clears no other field.  The caller (after the request
+	 *	resumes) or fr_redis_command_set_reset() reads each of the fields
+	 *	rcode, completed, next_node_ip and next_node_port.
+	 *	fr_redis_command_set_reset() runs when a MOVED / ASK reply sends the
+	 *	command set to another node.
 	 */
 	cmds->treq = NULL;
 }
