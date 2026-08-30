@@ -932,7 +932,7 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
 	 *	dangling cmds->treq.
 	 *
 	 *	This callback clears no other field.  The caller (after the request
-	 *	resumes) or fr_redis_command_set_reset() reads each of the fields
+	 *	resumes) or fr_redis_command_set_reset() reads each of these fields:
 	 *	rcode, completed, next_node_ip and next_node_port.
 	 *	fr_redis_command_set_reset() runs when a MOVED / ASK reply sends the
 	 *	command set to another node.
