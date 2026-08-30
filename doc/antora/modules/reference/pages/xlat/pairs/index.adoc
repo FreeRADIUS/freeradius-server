@@ -3,7 +3,7 @@
 These functions manipulate attribute-value pairs.
 
 .Pair Manipulation
-[options="headers, autowidth]
+[options="header, autowidth"]
 |===
 | *Function*					| *Description*
 | xref:xlat/interpreter.adoc#debug_xlat[debug]  | Print attributes to the debug output.

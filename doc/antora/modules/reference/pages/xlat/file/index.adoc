@@ -7,7 +7,7 @@ The filenames can be taken from untrusted sources, in which cases special charac
 For example, the "unsafe" string `user@freeradius.org/..` will turn into the filename `user@freeradius.org_2f..`.  This operation renders the filename "safe" for operations on the local file system.  It is not possible for unsafe data to create unexpected files, or to perform directory traversal attacks.
 
 .File Handling Functions
-[options="headers, autowidth]
+[options="header, autowidth"]
 |===
 | *Function*				                | *Description*
 | xref:xlat/file/cat.adoc[cat]				| Returns the contents of a file.
