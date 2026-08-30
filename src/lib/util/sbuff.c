@@ -993,7 +993,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	 */
 	while (fr_sbuff_extend_lowat(&status, &our_in, needle_len) > 0) {
 		if (fr_sbuff_was_extended(status)) fr_sbuff_marker_update_end(&end, len);
-		if (!fr_sbuff_diff(&our_in, &end)) break;	/* Reached the end */
+		if (fr_sbuff_diff(&our_in, &end) >= 0) break;	/* Reached the end */
 
 		if (do_escape) {
 			do_escape = false;

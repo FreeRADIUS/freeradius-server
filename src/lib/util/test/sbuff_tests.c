@@ -705,7 +705,7 @@ static void test_unescape_until(void)
  */
 static void test_unescape_until_escape_bounds(void)
 {
-	char				out[24 + 1];
+	char				out[24 + 1] = "";
 	fr_sbuff_t			sbuff;
 	ssize_t				slen;
 
