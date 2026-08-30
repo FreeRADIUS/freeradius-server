@@ -181,6 +181,7 @@ struct fr_redis_ct_s {
 	fr_redis_trunk_active_t		active;		//!< Callback to run when the trunk becomes active.
 	void				*active_uctx;	//!< Uctx to pass to active callback.
 	bool				active_oneshot;	//!< Should the callback only be called once.
+	uint8_t				max_redirects;	//!< maximum number of redirects.
 
 #ifdef HAVE_REDIS_SSL
 	SSL_CTX				*ssl_ctx;	//!< SSL context.
@@ -691,6 +692,15 @@ fr_redis_ct_t *fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event
 #endif
 	}
 
+	/*
+	 *	cmds->redirected is uint8_t, so we limit the number of redirects here.
+	 */
+	if (rtcluster->conf->max_redirects > UINT8_MAX) {
+		rtcluster->max_redirects = UINT8_MAX;
+	} else {
+		rtcluster->max_redirects = rtcluster->conf->max_redirects;
+	}
+
 	if (conf->use_cluster_map) return rtcluster;
 
 	/*
@@ -742,6 +752,16 @@ fr_event_list_t *fr_redis_ct_el(fr_redis_ct_t *rtcluster)
 trunk_conf_t const *fr_redis_ct_trunk_conf(fr_redis_ct_t *rtcluster)
 {
 	return rtcluster->tconf;
+}
+
+/** How many times a command set running on this cluster may be redirected
+ *
+ * @param[in] rtcluster	to return the configured limit for.
+ * @return the value of the max_redirects configuration item.
+ */
+uint8_t fr_redis_ct_max_redirects(fr_redis_ct_t *rtcluster)
+{
+	return rtcluster->max_redirects;
 }
 
 #ifdef HAVE_REDIS_SSL

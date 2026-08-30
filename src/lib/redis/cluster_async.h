@@ -124,6 +124,8 @@ fr_event_list_t			*fr_redis_ct_el(fr_redis_ct_t *rtcluster);
 
 trunk_conf_t const		*fr_redis_ct_trunk_conf(fr_redis_ct_t *thread);
 
+uint8_t				fr_redis_ct_max_redirects(fr_redis_ct_t *rtcluster);
+
 #ifdef HAVE_REDIS_SSL
 SSL_CTX				*fr_redis_ct_ssl_ctx(fr_redis_ct_t *rtcluster);
 #endif

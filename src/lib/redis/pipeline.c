@@ -109,6 +109,9 @@ struct fr_redis_command_set_s {
 	/** @} */
 
 	uint8_t				redirected;	//!< How many times this command set was redirected.
+	uint32_t			max_redirects;	//!< How many times this command set may be redirected.
+						///< Copied from the cluster configuration when the
+						///< command set is enqueued.
 
 	/** @name Request state
 	 *
@@ -536,6 +539,12 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
 		return FR_REDIS_PIPELINE_BAD_CMDS;
 	}
 
+	/*
+	 *	Record the limit, rather than a pointer to the cluster, so that the command set does not
+	 *	depend on the cluster still being around when a redirect is received.
+	 */
+	cmds->max_redirects = fr_redis_ct_max_redirects(rtrunk->rtcluster);
+
 	switch (trunk_request_enqueue(&cmds->treq, rtrunk->trunk, cmds->request, cmds, cmds->rctx)) {
 	case TRUNK_ENQUEUE_OK:
 	case TRUNK_ENQUEUE_IN_BACKLOG:
@@ -704,10 +713,17 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
 			cmds->rcode = REDIS_ASYNC_RCODE_ASK;
 		redirect:
+			cmds->redirected++;
+			if (cmds->redirected >= cmds->max_redirects) {
+				ROPTIONAL(REDEBUG, ERROR, "Redirected too many times (%u > max_redirects %u)",
+					  cmds->redirected, cmds->max_redirects);
+				cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
+				goto error;
+			}
+
 			if (redis_addr_from_redirect(cmds, &cmds->next_node_ip, &cmds->next_node_port, reply) < 0) {
 				cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
 			}
-			cmds->redirected++;
 		} else if (strncmp(REDIS_ERROR_TRY_AGAIN_STR, reply->str, sizeof(REDIS_ERROR_TRY_AGAIN_STR) - 1) == 0) {
 			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
 			cmds->rcode = REDIS_ASYNC_RCODE_TRY_AGAIN;
