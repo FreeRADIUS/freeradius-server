@@ -919,7 +919,22 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 
-	if (cmds->autofree) talloc_free(cmds);
+	if (cmds->autofree) {
+		talloc_free(cmds);
+		return;
+	}
+
+	/*
+	 *	The trunk is about to either free the treq, or return the treq to the trunk's cache of free
+	 *	requests.  This command set is owned by whoever allocated it, and outlives the treq.  In order
+	 *	to prevent any later cleanup from erroneously freeing the dangling cmd->treq, we have to clear
+	 *	it here.
+	 *
+	 *	No other field is cleared here.  The fields rcode, completed, next_node_ip, next_node_port and
+	 *	redirected are all read after this point, either by the caller (after a resumption), or by
+	 *	fr_redis_command_set_reset() when a MOVED / ASK reply sends the command set to another node.
+	 */
+	cmds->treq = NULL;
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private trunk_t trips --fsanitize=function */
