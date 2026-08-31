@@ -194,24 +194,31 @@ typedef enum {
 /** Dictionary attribute
  */
 struct dict_attr_s {
+	/** @name Tree topology
+	 *
+	 * How the attribute connects to the rest of the dictionary.
+	 * @{
+	 */
 	fr_dict_t _CONST* _CONST dict;				//!< Dict attribute belongs to.
-
-	char const		*name;				//!< Attribute name.
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
+	/** @} */
 
-	fr_dict_attr_flags_t	flags;				//!< Flags.
-
+	/** @name Identity
+	 *
+	 * What the attribute is.
+	 * @{
+	 */
+	char const		*name;				//!< Attribute name.
 	unsigned int		attr;				//!< Attribute number.
-
 	fr_type_t		type;				//!< Value type.
-
-	unsigned int   		line;				//!< Line number where the attribute was defined.
-
 	uint8_t			name_len;			//!< Length of the name.
-
 	uint8_t			depth;				//!< Depth of nesting for this attribute.
+	/** @} */
 
+	/** @name Definition state
+	 * @{
+	 */
 	struct {
 		bool			attr_set : 1;		//!< Attribute number has been set.
 								//!< We need the full range of values 0-UINT32_MAX
@@ -222,12 +229,29 @@ struct dict_attr_s {
 								///< that would change the address of the memory chunk
 								///< of the attribute are no longer permitted.
 	} state;
+	/** @} */
 
+	/** @name Behaviour
+	 * @{
+	 */
+	fr_dict_attr_flags_t	flags;				//!< Flags.
+	/** @} */
+
+	/** @name Extensions
+	 * @{
+	 */
 	uint8_t			ext[FR_DICT_ATTR_EXT_MAX];	//!< Extensions to the dictionary attribute.
+	/** @} */
 
-	char const		*filename;			//!< Where the attribute was defined.
-								///< this buffer's lifetime is bound to the
-								///< fr_dict_t.
+	/** @name Location
+	 *
+	 * Where the definition came from.
+	 * @{
+	 */
+	uint16_t		file;				//!< Id of the file where the attribute was defined.
+								///< Resolve with fr_dict_attr_filename().
+	uint16_t		line;				//!< Line number where the attribute was defined.
+	/** @} */
 } CC_HINT(aligned(FR_EXT_ALIGNMENT));
 
 /** Extension identifier
@@ -999,6 +1023,7 @@ char const		*fr_dict_attr_filename(fr_dict_attr_t const *da) CC_HINT(nonnull);
 /** @} */
 
 static_assert(FR_DICT_MAX_TLV_STACK <= UINT8_MAX, "FR_DICT_MAX_TLV_STACK is too large");
+static_assert(sizeof(fr_dict_attr_t) <= 64, "fr_dict_attr_t grew past one 64 byte x86 cache line");
 static_assert(FR_DICT_ATTR_MAX_NAME_LEN <= UINT8_MAX, "FR_DICT_ATTR_MAX_NAME_LEN is too large");
 
 #undef _CONST

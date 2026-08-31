@@ -723,23 +723,80 @@ int dict_attr_num_init_name_only(fr_dict_attr_t *da)
 	return dict_attr_num_init(da, ++ext->last_child_attr);
 }
 
-/** Set where the dictionary attribute was defined
+/** Return the table entry for a filename, creating the entry if the filename is not in the table
  *
  */
-void dict_attr_location_init(fr_dict_attr_t *da, char const *filename, int line)
+fr_dict_filename_t *dict_filename_intern(fr_dict_t *dict, char const *filename)
 {
-	da->filename = filename;
-	da->line = line;
+	fr_dict_filename_t	*file;
+	fr_dict_filename_t	**by_id;
+	size_t			count;
+
+	fr_hash_table_find((void **)&file, dict->filenames,
+			   &(fr_dict_filename_t){ .filename = UNCONST(char *, filename) });
+	if (file) return file;
+
+	/*
+	 *	Id 0 is reserved for "no location recorded", and the id
+	 *	must fit the uint16_t in fr_dict_attr_t.
+	 */
+	count = talloc_array_length(dict->filename_by_id);
+	if (!fr_cond_assert_msg(count < UINT16_MAX, "too many location filenames")) return NULL;
+
+	file = talloc_zero(dict, fr_dict_filename_t);
+	if (unlikely(!file)) return NULL;
+
+	file->filename = talloc_strdup(file, filename);
+	if (unlikely(!file->filename)) {
+	error:
+		talloc_free(file);
+		return NULL;
+	}
+	file->id = (uint16_t)(count + 1);
+	fr_dlist_talloc_init(&file->sources, fr_dict_filename_src_t, entry);
+
+	if (unlikely(fr_hash_table_insert(dict->filenames, file) < 0)) goto error;
+
+	by_id = talloc_realloc(dict, dict->filename_by_id, fr_dict_filename_t *, count + 1);
+	if (unlikely(!by_id)) {
+		fr_hash_table_delete(dict->filenames, file);
+		goto error;
+	}
+	by_id[count] = file;
+	dict->filename_by_id = by_id;
+
+	return file;
 }
 
-/** Resolve an attribute's location to the filename the attribute was defined in
+/** Set where the dictionary attribute was defined
+ *
+ * The dict may be NULL when the attribute has no dictionary yet, in which
+ * case no location is recorded, and fr_dict_attr_filename() returns
+ * "<unknown>" for the attribute.
+ */
+void dict_attr_location_init(fr_dict_t *dict, fr_dict_attr_t *da, char const *filename, int line)
+{
+	fr_dict_filename_t *file;
+
+	da->line = (line > UINT16_MAX) ? UINT16_MAX : (uint16_t)line;
+	da->file = 0;
+
+	if (!dict || !filename) return;
+
+	file = dict_filename_intern(dict, filename);
+	if (unlikely(!file)) return;
+
+	da->file = file->id;
+}
+
+/** Resolve an attribute's location file id to the filename
  *
  */
 char const *fr_dict_attr_filename(fr_dict_attr_t const *da)
 {
-	if (!da->filename) return "<unknown>";
+	if (da->file == 0) return "<unknown>";
 
-	return da->filename;
+	return da->dict->filename_by_id[da->file - 1]->filename;
 }
 
 /** Set remaining fields in a dictionary attribute before insertion
@@ -826,7 +883,7 @@ int dict_attr_init_common(char const *filename, int line,
 			  fr_dict_attr_t const *parent,
 			  fr_type_t type, dict_attr_args_t const *args)
 {
-	dict_attr_location_init((*da_p), filename, line);
+	dict_attr_location_init(parent ? parent->dict : NULL, (*da_p), filename, line);
 
 	if (unlikely(dict_attr_type_init(da_p, type) < 0)) return -1;
 

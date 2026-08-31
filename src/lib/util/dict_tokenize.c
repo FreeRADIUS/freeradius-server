@@ -952,8 +952,7 @@ static int dict_finalise(dict_tokenize_ctx_t *dctx)
 static inline CC_HINT(always_inline)
 void dict_attr_location_set(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 {
-	da->filename = CURRENT_FILENAME(dctx);
-	da->line = CURRENT_LINE(dctx);
+	dict_attr_location_init(dctx->dict, da, CURRENT_FILENAME(dctx), CURRENT_LINE(dctx));
 }
 
 /** Add an attribute to the dictionary, or add it to a list of attributes to clone later
@@ -3092,43 +3091,31 @@ post_option:
 static inline int dict_filename_add(char **filename_out, fr_dict_t *dict, char const *filename,
 				    char const *src_file, int src_line)
 {
-	fr_dict_filename_t	*found;
 	fr_dict_filename_t	*file;
 	fr_dict_filename_src_t	*src;
 
-	fr_hash_table_find((void **)&found, dict->filenames,
-			   &(fr_dict_filename_t){ .filename = UNCONST(char *, filename) });
-	if (!found) {
-		file = talloc_zero(dict, fr_dict_filename_t);
-		if (unlikely(!file)) {
-		oom:
-			fr_strerror_const("Out of memory");
-			return -1;
-		}
-		file->filename = talloc_strdup(file, filename);
-		if (unlikely(!file->filename)) {
-			talloc_free(file);
-			goto oom;
-		}
-		fr_dlist_talloc_init(&file->sources, fr_dict_filename_src_t, entry);
+	file = dict_filename_intern(dict, filename);
+	if (unlikely(!file)) return -1;
 
-		if (unlikely(fr_hash_table_insert(dict->filenames, file) < 0)) {
-			talloc_free(file);
-			return -1;
-		}
-	} else {
-		file = found;
-	}
+	/*
+	 *	Every interned entry strdups the filename before insertion.
+	 *	Check quietens clang scan.
+	 */
+	if (!fr_cond_assert(file->filename)) return -1;
 
 	src = talloc_zero(file, fr_dict_filename_src_t);
-	if (unlikely(!src)) goto oom;
+	if (unlikely(!src)) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
 
 	if (src_file) {
 		src->src_line = src_line;
 		src->src_file = talloc_strdup(src, src_file);
 		if (unlikely(!src->src_file)) {
 			talloc_free(src);
-			goto oom;
+			fr_strerror_const("Out of memory");
+			return -1;
 		}
 	}
 
@@ -3422,6 +3409,15 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		char **argv_p = argv;
 
 		dctx->line = ++line;
+
+		/*
+		 *	fr_dict_attr_t stores the definition line as a uint16_t,
+		 *	so lines past UINT16_MAX cannot be recorded accurately.
+		 */
+		if (unlikely(line > UINT16_MAX)) {
+			fr_strerror_printf("Dictionary files are limited to %u lines", UINT16_MAX);
+			goto error;
+		}
 
 		switch (buf[0]) {
 		case '#':

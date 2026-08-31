@@ -78,6 +78,11 @@ typedef struct {
  * Mainly used for debugging.
  */
 typedef struct {
+	uint16_t		id;			//!< Ordinal of this file within the dictionary.
+							///< fr_dict_attr_t stores the id instead of a
+							///< pointer, which keeps the attribute struct
+							///< within one cache line. Id 0 is reserved for
+							///< "no location recorded".
 	char			*filename;		//!< Name of the file the dictionary was loaded from.
 	fr_dlist_head_t		sources;		//!< Each load or $INCLUDE of the file.
 } fr_dict_filename_t;
@@ -98,6 +103,9 @@ struct fr_dict_s {
 
 	fr_hash_table_t 	*filenames;		//!< Files that this dictionary was loaded from,
 							///< keyed by filename.
+
+	fr_dict_filename_t	**filename_by_id;	//!< Files indexed by id - 1, for resolving
+							///< attribute definition locations.
 
 	bool			read_only;		//!< If true, disallow modifications.
 
@@ -225,7 +233,8 @@ int			dict_attr_num_init(fr_dict_attr_t *da, unsigned int num);
 
 int			dict_attr_num_init_name_only(fr_dict_attr_t *da);
 
-void			dict_attr_location_init(fr_dict_attr_t *da, char const *filename, int line);
+void			dict_attr_location_init(fr_dict_t *dict, fr_dict_attr_t *da, char const *filename, int line);
+fr_dict_filename_t	*dict_filename_intern(fr_dict_t *dict, char const *filename);
 
 int			dict_attr_finalise(fr_dict_attr_t **da_p, char const *name);
 /** @} */
