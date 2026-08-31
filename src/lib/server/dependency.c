@@ -367,6 +367,18 @@ void dependency_version_print(void)
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 
+	INFO("Copyright 1999-2026 The FreeRADIUS server project and contributors");
+	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
+	INFO("PARTICULAR PURPOSE");
+	INFO("You may redistribute copies of FreeRADIUS under the terms of the");
+	INFO("GNU General Public License");
+	INFO("For more information about these matters, see the file named COPYRIGHT");
+	INFO(" ");
+	INFO("FreeRADIUS is developed, maintained, and supported by InkBridge Networks ");
+	INFO("with contributions from the open source community.");
+	INFO("For commercial support, please email sales@inkbridgenetworks.com");
+	INFO("https://inkbridgenetworks.com/");
+
 	if (DEBUG_ENABLED3) {
 		int max = 0, len;
 
@@ -443,31 +455,6 @@ void dependency_version_print(void)
 #endif
 		DEBUG2("  ");
 	}
-#ifdef WITH_VERIFY_PTR
-	WARN(" ");
-	WARN("#######################################################################");
-	WARN("# ");
-	WARN("# The server was built with the 'WITH_VERIFY_PTR' flag set.  This is a");
-	WARN("# developer-only build option that DRASTICALLY slows down the server.");
-	WARN("# If you are using the server in a production environment, you will see");
-	WARN("# significantly improved performance (3x-4x) by re-running 'configure'");
-	WARN("# with the flag '--disable-developer', and then re-building and");
-	WARN("# re-installing the server.");
-	WARN("# ");
-	WARN("#######################################################################");
-	WARN(" ");
-#endif
-
-	INFO("Copyright 1999-2026 The FreeRADIUS server project and contributors");
-	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
-	INFO("PARTICULAR PURPOSE");
-	INFO("You may redistribute copies of FreeRADIUS under the terms of the");
-	INFO("GNU General Public License");
-	INFO("For more information about these matters, see the file named COPYRIGHT");
-	INFO(" ");
-	INFO("FreeRADIUS is developed, maintained, and supported by InkBridge Networks.");
-	INFO("For commercial support, please email sales@inkbridgenetworks.com");
-	INFO("https://inkbridgenetworks.com/");
 
 	fflush(NULL);
 }

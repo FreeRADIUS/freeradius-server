@@ -520,6 +520,21 @@ int main(int argc, char *argv[])
 
 	if (fr_debug_lvl) dependency_version_print();
 
+#ifdef WITH_VERIFY_PTR
+	WARN(" ");
+	WARN("#######################################################################");
+	WARN("# ");
+	WARN("# The server was built with the 'WITH_VERIFY_PTR' flag set.  This is a");
+	WARN("# developer-only build option that DRASTICALLY slows down the server.");
+	WARN("# If you are using the server in a production environment, you will see");
+	WARN("# significantly improved performance (3x-4x) by re-running 'configure'");
+	WARN("# with the flag '--disable-developer', and then re-building and");
+	WARN("# re-installing the server.");
+	WARN("# ");
+	WARN("#######################################################################");
+	WARN(" ");
+#endif
+
 	/*
 	 *  Under linux CAP_SYS_PTRACE is usually only available before setuid/setguid,
 	 *  so we need to check whether we can attach before calling those functions
