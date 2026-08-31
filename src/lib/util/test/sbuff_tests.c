@@ -131,14 +131,14 @@ static void test_bstrncpy_exact(void)
 	fr_sbuff_init_in(&sbuff, in_long, sizeof(in_long) - 1);
 
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX);
-	TEST_CHECK_SLEN(slen, -7);
+	TEST_CHECK_SLEN(slen, -1);
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX);
-	TEST_CHECK_SLEN(slen, -25);
+	TEST_CHECK_SLEN(slen, -1);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 

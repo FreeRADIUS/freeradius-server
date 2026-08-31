@@ -1036,11 +1036,11 @@ static inline fr_slen_t _fr_sbuff_error(fr_sbuff_t *sbuff, char const *err)
  */
 #define FR_SBUFF_ERROR_RETURN(_sbuff_or_marker) return fr_sbuff_error(_sbuff_or_marker)
 
-/** Check if _len bytes are available in the sbuff, and if not return the number of bytes we'd need
+/** Check if _len bytes are available in the sbuff, and if not return -1
  *
  */
 #define FR_SBUFF_CHECK_REMAINING_RETURN(_sbuff, _len) \
-	if ((_len) > fr_sbuff_remaining(_sbuff)) return -((_len) - fr_sbuff_remaining(_sbuff))
+	if ((_len) > fr_sbuff_remaining(_sbuff)) return -1
 
 static inline size_t _fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr_sbuff_t *in, size_t remaining, size_t lowat)
 {
@@ -1096,7 +1096,7 @@ static inline size_t _fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr
 #define FR_SBUFF_EXTEND_LOWAT_OR_RETURN(_sbuff, _len) \
 do { \
 	size_t _remaining = fr_sbuff_extend_lowat(NULL, _sbuff, _len); \
-	if (_remaining < _len) return -(_len - _remaining); \
+	if (_remaining < _len) return -1; \
 } while (0)
 
 /** Extend a buffer if no space remains
@@ -1133,7 +1133,7 @@ static inline ssize_t _fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
 	fr_sbuff_t 	*sbuff = m->parent;
 	char		*current = m->p;
 
-	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
+	if (unlikely(p > sbuff->end)) return -1;
 	if (unlikely(p < sbuff->start)) return 0;
 
 	sbuff->err = NULL;	/* Modifying the position of any markers clears the error, unsure if this is correct? */
@@ -1146,7 +1146,7 @@ static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
 {
 	char const *c;
 
-	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
+	if (unlikely(p > sbuff->end)) return -1;
 	if (unlikely(p < sbuff->start)) return 0;
 
 	c = sbuff->p;
@@ -1167,7 +1167,8 @@ static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
  * @return
  *	- 0	not advanced.
  *	- >0	the number of bytes the sbuff was advanced by.
- *	- <0	the number of bytes required to complete the advancement
+ *	- <0	the number of bytes the sbuff was moved backwards by, or -1 if
+ *		the new position is past the end of the buffer.
  */
 #define fr_sbuff_set(_dst, _src) \
 _Generic((_dst), \
@@ -1199,7 +1200,8 @@ _Generic((_src), \
  * @return
  *	- 0	not advanced.
  *	- >0	the number of bytes the sbuff was advanced by.
- *	- <0	the number of bytes required to complete the advancement
+ *	- <0	the number of bytes the sbuff was moved backwards by, or -1 if
+ *		the new position is past the end of the buffer.
  */
 #define fr_sbuff_advance(_sbuff_or_marker, _len)  fr_sbuff_set(_sbuff_or_marker, (fr_sbuff_current(_sbuff_or_marker) + (_len)))
 #define FR_SBUFF_ADVANCE_RETURN(_sbuff, _len) FR_SBUFF_RETURN(fr_sbuff_advance, _sbuff, _len)

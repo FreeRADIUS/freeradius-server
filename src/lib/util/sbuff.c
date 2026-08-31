@@ -122,7 +122,7 @@ bool const sbuff_char_blank[SBUFF_CHAR_CLASS] = {
  * @return
  *	- >0 the number of bytes copied.
  *      - 0 invalid args.
- *      - <0 the number of bytes we'd need to complete the copy.
+ *      - -1 the copy would not fit in the output buffer.
  */
 static inline CC_HINT(always_inline) ssize_t safecpy(char *o_start, char *o_end,
 						     char const *i_start, char const *i_end)
@@ -133,7 +133,7 @@ static inline CC_HINT(always_inline) ssize_t safecpy(char *o_start, char *o_end,
 	if (unlikely((o_end < o_start) || (i_end < i_start))) return 0;	/* sanity check */
 
 	diff = (o_end - o_start) - (i_len);
-	if (diff < 0) return diff;
+	if (diff < 0) return -1;
 
 	if ((i_start > o_end) || (i_end < o_start)) {			/* no-overlap */
 		memcpy(o_start,  i_start, i_len);
@@ -767,8 +767,7 @@ done:
  * @return
  *	- 0 no bytes copied, no token found of sufficient length in input buffer.
  *	- >0 the number of bytes copied.
- *	- <0 the number of additional output bytes we would have needed to
- *	  complete the copy.
+ *	- -1 the copy would not fit in the output buffer.
  */
 ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
@@ -798,14 +797,8 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 			fr_sbuff_set(out, &m);		/* Reset out */
 			*m.p = '\0';			/* Re-terminate */
 
-			/* Amount remaining in input buffer minus the amount we could have copied */
-			if (len == SIZE_MAX) {
-				fr_sbuff_marker_release(&m);
-				return -(fr_sbuff_remaining(in) - (chunk_len + copied));
-			}
-			/* Amount remaining to copy minus the amount we could have copied */
 			fr_sbuff_marker_release(&m);
-			return -(remaining - (chunk_len + copied));
+			return -1;
 		}
 		fr_sbuff_advance(&our_in, copied);
 	} while (fr_sbuff_used_total(&our_in) < len);
@@ -1478,7 +1471,7 @@ size_t _fr_sbuff_move_sbuff_to_marker(fr_sbuff_marker_t *out, fr_sbuff_t *in, si
  * @param[in] str	to copy into buffer.
  * @return
  *	- >= 0 the number of bytes copied into the sbuff.
- *	- <0 the number of bytes required to complete the copy operation.
+ *	- -1 the copy would not fit in the output buffer.
  */
 ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
 {
@@ -1502,7 +1495,7 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
  * @param[in] len	number of bytes to copy.
  * @return
  *	- >= 0 the number of bytes copied into the sbuff.
- *	- <0 the number of bytes required to complete the copy operation.
+ *	- -1 the copy would not fit in the output buffer.
  */
 ssize_t fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len)
 {
@@ -1522,7 +1515,7 @@ ssize_t fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len)
  * @param[in] str	talloced buffer to copy into sbuff.
  * @return
  *	- >= 0 the number of bytes copied into the sbuff.
- *	- <0 the number of bytes required to complete the copy operation.
+ *	- -1 the copy would not fit in the output buffer.
  */
 ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 {
@@ -1587,7 +1580,7 @@ static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
  * @param[in] ap	arguments for format string.
 < * @return
  *	- >= 0 the number of bytes printed into the sbuff.
- *	- <0 the number of bytes required to complete the print operation.
+ *	- -1 the printed output would not fit in the output buffer.
  */
 ssize_t fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap)
 {
@@ -1618,7 +1611,7 @@ ssize_t fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap)
  * @param[in] ...	arguments for format string.
  * @return
  *	- >= 0 the number of bytes printed into the sbuff.
- *	- <0 the number of bytes required to complete the print operation.
+ *	- -1 the printed output would not fit in the output buffer.
  */
 ssize_t fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...)
 {
@@ -1643,7 +1636,7 @@ ssize_t fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...)
  *      		as data is written to the sbuff.  May be NULL.
  * @return
  *	- >= 0 the number of bytes printed into the sbuff.
- *	- <0 the number of bytes required to complete the print operation.
+ *	- -1 the printed output would not fit in the output buffer.
  */
 ssize_t fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_sbuff_escape_rules_t const *e_rules)
 {
@@ -1759,7 +1752,7 @@ bool fr_sbuff_in_needs_escaping(char const *in, size_t inlen, fr_sbuff_escape_ru
  *      		as data is written to the sbuff.  May be NULL.
  * @return
  *	- >= 0 the number of bytes printed into the sbuff.
- *	- <0 the number of bytes required to complete the print operation.
+ *	- -1 the printed output would not fit in the output buffer.
  */
 ssize_t fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_escape_rules_t const *e_rules)
 {
@@ -1777,7 +1770,7 @@ ssize_t fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_es
  * @param[in] sep	to insert between elements.  May be NULL.
  * @return
  *      - >= 0 on success - length of the string created.
- *	- <0 on failure.  How many bytes we would need.
+ *	- -1 on failure.
  */
 fr_slen_t fr_sbuff_in_array(fr_sbuff_t *out, char const * const *array, char const *sep)
 {
@@ -2386,7 +2379,7 @@ void fr_sbuff_parse_rules_debug(FILE *fp, fr_sbuff_parse_rules_t const *p_rules)
  * @param[in] sep	to insert between elements.  May be NULL.
  * @return
  *      - >= 0 on success - length of the string created.
- *	- <0 on failure.  How many bytes we would need.
+ *	- -1 on failure.
  */
 fr_slen_t fr_sbuff_array_concat(fr_sbuff_t *out, char const * const *array, char const *sep)
 {

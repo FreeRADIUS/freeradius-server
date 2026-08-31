@@ -1249,9 +1249,14 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 {
 	tmpl_t *vpt;
 	tmpl_attr_t *ar;
+	ssize_t ret;
 
-	char attr[256];
-	ssize_t slen;
+	/*
+	 *	Allow 4 levels of full-length names: foo.bar.bar.bad
+	 *
+	 *	Since most names are much smaller, this _should_ be generally long enough for most purposes.
+	 */
+	char attr[(FR_DICT_ATTR_MAX_NAME_LEN + 1) * 4];
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0));
 
@@ -1278,17 +1283,20 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	/*
 	 *	We need to rebuild the attribute name, to be the
 	 *	one we copied from the source list.
+	 *
+	 *	@todo - just figure out the maximum length first, allocate a buffer that large, and print the
+	 *	attribute list into it.  We also want to call tmpl_attr_print() directly, except it calls the
+	 *	sbuff functions, which return -need.
 	 */
-	slen = tmpl_print(&FR_SBUFF_OUT(attr, sizeof(attr)), vpt,
-			  fr_value_escape_by_quote[list->quote]);
-	if (slen < 0) {
+	ret = tmpl_print(&FR_SBUFF_OUT(attr, sizeof(attr)), vpt, NULL);
+	if (ret < 0) {
 		fr_strerror_printf("Serialized attribute too long.  Must be < "
-				   STRINGIFY(sizeof(attr)) " bytes, got %zu bytes", (size_t)-slen);
+				   STRINGIFY(sizeof(attr)) " bytes");
 		talloc_free(vpt);
 		return -1;
 	}
 
-	vpt->len = (size_t)slen;
+	vpt->len = (size_t) ret;
 	vpt->name = talloc_strdup(vpt, attr);
 	vpt->quote = T_BARE_WORD;
 
@@ -4845,8 +4853,8 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt)
 	 *	Print request references
 	 */
 	slen = tmpl_request_ref_list_print(&our_out, &vpt->data.attribute.rr);
-	if (slen > 0) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	if (slen < 0) return slen;
+	if (slen > 0) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 
 	/*
 	 *
