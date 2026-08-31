@@ -949,17 +949,21 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
 	}
 
 	/*
-	 *	The trunk is about to either free the treq, or return the treq to the
-	 *	trunk's free_requests list.  The caller that allocated the command set
-	 *	owns the command set, and the command set outlives the treq.  This
-	 *	callback clears cmds->treq so that no later cleanup accesses the
-	 *	dangling cmds->treq.
+	 *	Once this callback completes, the trunk either frees the treq or
+	 *	returns the treq to the trunk's `free_requests` list.  The
+	 *	caller-allocated command set outlives the treq.  We clear `cmds->treq`
+	 *	because after the callback returns, `cmds->treq` is left dangling.
+	 *	If we do NOT clear `cmds->treq`, the command set destructor and
+	 *	`fr_redis_command_set_cancel()` would access the freed treq through
+	 *	`cmds->treq`.
 	 *
-	 *	This callback clears no other field.  The caller (after the request
-	 *	resumes) or fr_redis_command_set_reset() reads each of these fields:
-	 *	rcode, completed, next_node_ip and next_node_port.
-	 *	fr_redis_command_set_reset() runs when a MOVED / ASK reply sends the
-	 *	command set to another node.
+	 *	We do NOT clear any other field.  The caller needs to read `rcode`
+	 *	after the request resumes to pick the result path.  A MOVED / ASK
+	 *	reply makes the caller resend the command set to a new node.
+	 *	`fr_redis_command_set_reset()` needs `completed` to move the
+	 *	completed commands back to `pending` for the resend.
+	 *	`fr_redis_command_set_next_node()` needs `next_node_ip` and
+	 *	`next_node_port` to name the new node.
 	 */
 	cmds->treq = NULL;
 }
