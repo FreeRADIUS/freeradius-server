@@ -732,6 +732,16 @@ void dict_attr_location_init(fr_dict_attr_t *da, char const *filename, int line)
 	da->line = line;
 }
 
+/** Resolve an attribute's location to the filename the attribute was defined in
+ *
+ */
+char const *fr_dict_attr_filename(fr_dict_attr_t const *da)
+{
+	if (!da->filename) return "<unknown>";
+
+	return da->filename;
+}
+
 /** Set remaining fields in a dictionary attribute before insertion
  *
  * @param[in] da_p		to finalise.
@@ -1802,7 +1812,7 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 				fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  "
 				   		   "Originally defined %s[%d]",
 						   da->name, parent->name,
-						   a->filename, a->line);
+						   fr_dict_attr_filename(a), a->line);
 				goto error;
 			}
 		}
@@ -1860,7 +1870,7 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 	if (exists) {
 		fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  "
 				   "Originally defined %s[%d]", da->name, da->parent->name,
-				   exists->filename, exists->line);
+				   fr_dict_attr_filename(exists), exists->line);
 		return -1;
 	}
 
@@ -1903,7 +1913,7 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 	if (exists) {
 		fr_strerror_printf("Duplicate attribute number %u in namespace '%s'.  "
 				   "Originally defined by '%s' at %s[%d]",
-				   da->attr, da->parent->name, exists->name, exists->filename, exists->line);
+				   da->attr, da->parent->name, exists->name, fr_dict_attr_filename(exists), exists->line);
 		return -1;
 	}
 

@@ -995,6 +995,7 @@ typedef int		(*fr_dict_walk_t)(fr_dict_attr_t const *da, void *uctx);
 int			fr_dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx) CC_HINT(nonnull(1,2));
 
 void			fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da) CC_HINT(nonnull);
+char const		*fr_dict_attr_filename(fr_dict_attr_t const *da) CC_HINT(nonnull);
 /** @} */
 
 static_assert(FR_DICT_MAX_TLV_STACK <= UINT8_MAX, "FR_DICT_MAX_TLV_STACK is too large");

@@ -389,19 +389,19 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
 	(void) fr_dict_protocol_reference(&da, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!da) {
 		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
-					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
+					fixup->da->name, fr_cwd_strip(fr_dict_attr_filename(fixup->da)), fixup->da->line);
 		return -1;
 	}
 
 	if (da->type != FR_TYPE_TLV) {
 		fr_strerror_printf("References MUST be to attributes of type 'tlv' at %s[%d]",
-				   fr_cwd_strip(fixup->da->filename), fixup->da->line);
+				   fr_cwd_strip(fr_dict_attr_filename(fixup->da)), fixup->da->line);
 		return -1;
 	}
 
 	if (fr_dict_attr_ref(da)) {
 		fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...' at %s[%d]",
-				   fr_cwd_strip(fixup->da->filename), fixup->da->line);
+				   fr_cwd_strip(fr_dict_attr_filename(fixup->da)), fixup->da->line);
 		return -1;
 	}
 
@@ -467,7 +467,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	 */
 	if (src->dict->proto != dst->dict->proto) {
 		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
-				   src->dict->proto->name, dst->dict->proto->name, dst->filename, dst->line);
+				   src->dict->proto->name, dst->dict->proto->name, fr_dict_attr_filename(dst), dst->line);
 		return -1;
 	}
 
@@ -483,7 +483,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 		for (parent = dst->parent; !parent->flags.is_root; parent = parent->parent) {
 			if (parent == src) {
 				fr_strerror_printf("References MUST NOT be to a parent attribute %s at %s[%d]",
-						   parent->name, fr_cwd_strip(dst->filename), dst->line);
+						   parent->name, fr_cwd_strip(fr_dict_attr_filename(dst)), dst->line);
 				return -1;
 			}
 		}
@@ -491,7 +491,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 
 	if (fr_dict_attr_ref(src)) {
 		fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which itself has a 'ref=...' at %s[%d]",
-				   fr_cwd_strip(dst->filename), dst->line);
+				   fr_cwd_strip(fr_dict_attr_filename(dst)), dst->line);
 		return -1;
 	}
 
@@ -504,7 +504,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	switch (src->type) {
 	default:
 		fr_strerror_printf("References MUST NOT refer to an attribute of data type '%s' at %s[%d]",
-				   fr_type_to_str(src->type), fr_cwd_strip(dst->filename), dst->line);
+				   fr_type_to_str(src->type), fr_cwd_strip(fr_dict_attr_filename(dst)), dst->line);
 		return -1;
 
 	case FR_TYPE_TLV:
@@ -515,7 +515,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	case FR_TYPE_STRUCT:
 		if (!dict_attr_children(src)) {
 			fr_strerror_printf_push("Reference %s has no children defined at %s[%d]",
-						src->name, fr_cwd_strip(dst->filename), dst->line);
+						src->name, fr_cwd_strip(fr_dict_attr_filename(dst)), dst->line);
 			return -1;
 		}
 		break;
@@ -554,7 +554,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
 		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
-					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
+					fixup->da->name, fr_cwd_strip(fr_dict_attr_filename(fixup->da)), fixup->da->line);
 		return -1;
 	}
 
@@ -622,13 +622,13 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
 		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
-					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
+					fixup->da->name, fr_cwd_strip(fr_dict_attr_filename(fixup->da)), fixup->da->line);
 		return -1;
 	}
 
 	if (!fr_dict_attr_ext(src, FR_DICT_ATTR_EXT_ENUMV)) {
 		fr_strerror_printf_push("Reference %s has no VALUEs defined at %s[%d]",
-					fixup->ref, fr_cwd_strip(fixup->da->filename), fixup->da->line);
+					fixup->ref, fr_cwd_strip(fr_dict_attr_filename(fixup->da)), fixup->da->line);
 		return -1;
 	}
 
@@ -638,20 +638,20 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 	 */
 	if (fr_dict_attr_is_key_field(src) || fr_dict_attr_is_key_field(fixup->da) || (src->type == FR_TYPE_ATTR)) {
 		fr_strerror_printf("Cannot clone VALUEs from 'key=...' or type 'attribute' at %s[%d]",
-				   fixup->da->filename, fixup->da->line);
+				   fr_dict_attr_filename(fixup->da), fixup->da->line);
 		return -1;
 	}
 
 	if (fr_dict_attr_ref(src)) {
 		fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which itself has a 'ref=...' at %s[%d]",
-				   fr_cwd_strip(fixup->da->filename), fixup->da->line);
+				   fr_cwd_strip(fr_dict_attr_filename(fixup->da)), fixup->da->line);
 		return -1;
 	}
 
 	if (!dict_attr_ext_copy(&fixup->da, src, FR_DICT_ATTR_EXT_ENUMV)) {
 		fr_strerror_printf("Reference copied no VALUEs from type '%s' at %s[%d]",
 					fr_type_to_str(fixup->da->type),
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+					fr_cwd_strip(fr_dict_attr_filename(fixup->da)), fixup->da->line);
 		return -1;
 	}
 

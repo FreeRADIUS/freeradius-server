@@ -1096,12 +1096,12 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 
 	if (dup_name) {
 		fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  Originally defined %s[%d]",
-				   da->name, da->parent->name, dup_name->filename, dup_name->line);
+				   da->name, da->parent->name, fr_dict_attr_filename(dup_name), dup_name->line);
 		return -1;
 	}
 
 	fr_strerror_printf("Duplicate attribute number %u in parent '%s'.  Originally defined %s[%d]",
-				da->attr, da->parent->name, dup_num->filename, dup_num->line);
+				da->attr, da->parent->name, fr_dict_attr_filename(dup_num), dup_num->line);
 	return -1;
 }
 
