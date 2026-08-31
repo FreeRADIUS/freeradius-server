@@ -27,7 +27,12 @@ name: Scheduled CI
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    #
+    #  The ticks avoid minute zero, which every default cron schedule
+    #  competes for.  GitHub delivers a fraction of the requested ticks,
+    #  and off-peak minutes may fare better in the scheduler.
+    #
+    - cron: '7,37 * * * *'
   workflow_dispatch:
 
 jobs:
