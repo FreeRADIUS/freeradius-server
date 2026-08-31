@@ -33,7 +33,7 @@ extern "C" {
 
 /** Internal data types
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_TYPE_NULL = 0,			//!< Invalid (uninitialised) attribute type.
 
 	FR_TYPE_STRING,				//!< String of printable characters.
