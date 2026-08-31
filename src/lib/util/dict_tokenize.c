@@ -3071,54 +3071,104 @@ post_option:
 	return 0;
 }
 
-/** Maintain a linked list of filenames which we've seen loading this dictionary
+/** Record a dictionary file we've loaded
  *
  * This is used for debug messages, so we have a copy of the original file path
- * that we can reference from fr_dict_attr_t without having the memory bloat of
- * assigning a buffer to every attribute.
+ * that we can reference from fr_dict_attr_t and the parser frames.
+ *
+ * Each load or $INCLUDE of the file also adds a source entry, which the
+ * recursive $INCLUDE guard in dict_filename_loaded() checks.
+ *
+ * @param[out] filename_out the canonical talloced copy of filename.  Shared by
+ *	every load of the file, freed with the dict.
+ * @param[in] dict to add a source dictionary file to.
+ * @param[in] filename we're currently parsing.
+ * @param[in] src_file NULL if this is top level, else where the dictionary file was loaded from.
+ * @param[in] src_line 0 if this is top level, else the line of the $INCLUDE in src_file.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static inline int dict_filename_add(char **filename_out, fr_dict_t *dict, char const *filename,
 				    char const *src_file, int src_line)
 {
-	fr_dict_filename_t *file;
+	fr_dict_filename_t	*found;
+	fr_dict_filename_t	*file;
+	fr_dict_filename_src_t	*src;
 
-	file = talloc_zero(dict, fr_dict_filename_t);
-	if (unlikely(!file)) {
-	oom:
-		fr_strerror_const("Out of memory");
-		return -1;
+	fr_hash_table_find((void **)&found, dict->filenames,
+			   &(fr_dict_filename_t){ .filename = UNCONST(char *, filename) });
+	if (!found) {
+		file = talloc_zero(dict, fr_dict_filename_t);
+		if (unlikely(!file)) {
+		oom:
+			fr_strerror_const("Out of memory");
+			return -1;
+		}
+		file->filename = talloc_strdup(file, filename);
+		if (unlikely(!file->filename)) {
+			talloc_free(file);
+			goto oom;
+		}
+		fr_dlist_talloc_init(&file->sources, fr_dict_filename_src_t, entry);
+
+		if (unlikely(fr_hash_table_insert(dict->filenames, file) < 0)) {
+			talloc_free(file);
+			return -1;
+		}
+	} else {
+		file = found;
 	}
-	*filename_out = file->filename = talloc_strdup(file, filename);
-	if (unlikely(!*filename_out)) goto oom;
+
+	src = talloc_zero(file, fr_dict_filename_src_t);
+	if (unlikely(!src)) goto oom;
 
 	if (src_file) {
-		file->src_line = src_line;
-		file->src_file = talloc_strdup(file, src_file);
-		if (!file->src_file) goto oom;
+		src->src_line = src_line;
+		src->src_file = talloc_strdup(src, src_file);
+		if (unlikely(!src->src_file)) {
+			talloc_free(src);
+			goto oom;
+		}
 	}
 
-	fr_dlist_insert_tail(&dict->filenames, file);
+	fr_dlist_insert_tail(&file->sources, src);
+	*filename_out = file->filename;
 
 	return 0;
 }
 
 /** See if we have already loaded the file,
  *
+ * @param[in] dict we're checking to see if we've already loaded the file for.
+ * @param[in] filename we're potentially going to load.
+ * @param[in] src_file we're loading the file from.  NULL to count any load of
+ *	the file.
+ * @param[in] src_line we're loading the file at.
+ * @return
+ *	- true if the same $INCLUDE (matching src_file and src_line) already
+ *	  loaded the file, if the file was loaded top level, or if src_file is
+ *	  NULL and any load of the file was recorded.
+ *	- false otherwise, including the same file loaded from a different
+ *	  location.
  */
 static inline bool dict_filename_loaded(fr_dict_t const *dict, char const *filename,
 					char const *src_file, int src_line)
 {
-	fr_dict_filename_t *file;
+	fr_dict_filename_t	*file;
+	fr_dict_filename_t	find = {
+					.filename = UNCONST(char *, filename)
+				};
 
-	for (file = (fr_dict_filename_t *) fr_dlist_head(&dict->filenames);
-	     file != NULL;
-	     file = (fr_dict_filename_t *) fr_dlist_next(&dict->filenames, &file->entry)) {
-		if (file->src_file && src_file) {
-			if (file->src_line != src_line) continue;
-			if (strcmp(file->src_file, src_file) != 0) continue;
-		}
+	fr_hash_table_find((void **)&file, dict->filenames, &find);
+	if (!file) return false;
 
-		if (strcmp(file->filename, filename) == 0) return true; /* this should always be true */
+	if (!src_file) return true;
+
+	fr_dlist_foreach(&file->sources, fr_dict_filename_src_t, src) {
+		if (!src->src_file) return true;
+		if (src->src_line != src_line) continue;
+		if (strcmp(src->src_file, src_file) == 0) return true;
 	}
 
 	return false;

@@ -4182,6 +4182,21 @@ static int _dict_free(fr_dict_t *dict)
 	return 0;
 }
 
+/** Hash the filename of a fr_dict_filename_t
+ */
+static uint32_t dict_filename_hash(void const *data)
+{
+	return fr_hash_string(((fr_dict_filename_t const *)data)->filename);
+}
+
+/** Compare two fr_dict_filename_t by filename
+ */
+static int8_t dict_filename_cmp(void const *one, void const *two)
+{
+	return CMP(strcmp(((fr_dict_filename_t const *)one)->filename,
+			  ((fr_dict_filename_t const *)two)->filename), 0);
+}
+
 /** Allocate a new dictionary
  *
  * @param[in] ctx to allocate dictionary in.
@@ -4208,9 +4223,14 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	talloc_set_destructor(dict, _dict_free);
 
 	/*
-	 *	A list of all the files that constitute this dictionary
+	 *	A table of all the files that constitute this dictionary
 	 */
-	fr_dlist_talloc_init(&dict->filenames, fr_dict_filename_t, entry);
+	dict->filenames = fr_hash_table_talloc_alloc(dict, fr_dict_filename_t,
+						     dict_filename_hash, dict_filename_cmp, NULL);
+	if (!dict->filenames) {
+		fr_strerror_const("Failed allocating filename table for dictionary");
+		goto error;
+	}
 
 	/*
 	 *	Pre-Allocate pool memory for rapid startup

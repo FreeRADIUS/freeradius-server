@@ -62,16 +62,24 @@ typedef struct {
 	char const	        *dependent;		//!< File holding the reference.
 } fr_dict_dependent_t;
 
-/** Entry in the filename list of files associated with this dictionary
+/** One load or $INCLUDE of a dictionary file
+ *
+ */
+typedef struct {
+	fr_dlist_t		entry;			//!< Entry in the file's list of sources.
+
+	char const		*src_file;		//!< File which did the $INCLUDE.  NULL for a
+							///< top-level load.
+	int			src_line;		//!< Line of the $INCLUDE in src_file.
+} fr_dict_filename_src_t;
+
+/** Entry in the table of files associated with this dictionary
  *
  * Mainly used for debugging.
  */
 typedef struct {
-	fr_dlist_t		entry;			//!< Entry in the list of filenames.
-
-	char const		*src_file;		//!< the source file which did the $INCLUDE
-	int			src_line;		//!< the line number in the source file
-	char			*filename;		//!< Name of the file the dictionary was loaded on.
+	char			*filename;		//!< Name of the file the dictionary was loaded from.
+	fr_dlist_head_t		sources;		//!< Each load or $INCLUDE of the file.
 } fr_dict_filename_t;
 
 /** Vendors and attribute names
@@ -88,7 +96,8 @@ struct fr_dict_s {
 
 	char const		*dir;			//!< where this protocol is located
 
-	fr_dlist_head_t 	filenames;		//!< Files that this dictionary was loaded from.
+	fr_hash_table_t 	*filenames;		//!< Files that this dictionary was loaded from,
+							///< keyed by filename.
 
 	bool			read_only;		//!< If true, disallow modifications.
 
