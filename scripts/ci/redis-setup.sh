@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-PORT=30000
+PORT=21000
 NODES=6
 REPLICAS=1
 TLS=0

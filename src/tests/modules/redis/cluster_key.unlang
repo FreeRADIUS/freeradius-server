@@ -7,12 +7,12 @@ string testdata3
 
 
 #  Test nodes should be running on
-#  - 127.0.0.1:30001 - master [0-5460]
-#  - 127.0.0.1:30004 - slave
-#  - 127.0.0.1:30002 - master [5461-10922]
-#  - 127.0.0.1:30005 - slave
-#  - 127.0.0.1:30003 - master [10923-16383]
-#  - 127.0.0.1:30006 - slave
+#  - 127.0.0.1:21001 - master [0-5460]
+#  - 127.0.0.1:21004 - slave
+#  - 127.0.0.1:21002 - master [5461-10922]
+#  - 127.0.0.1:21005 - slave
+#  - 127.0.0.1:21003 - master [10923-16383]
+#  - 127.0.0.1:21006 - slave
 testdata1 := "1-%str.rand('aaaaaaaa')"
 testdata2 := "2-%str.rand('aaaaaaaa')"
 testdata3 := "3-%str.rand('aaaaaaaa')"

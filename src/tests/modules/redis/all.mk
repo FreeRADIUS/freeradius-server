@@ -21,11 +21,17 @@ $(eval $(call TEST_PARALLEL))
 #  The cluster's base port is defined once here.  The node ports, base+1 to
 #  base+6, reach the test configuration through the environment.
 #
+#  The base keeps the node ports and the cluster bus ports (node port plus
+#  10000, a redis convention) below the Linux ephemeral port floor of 32768.
+#  The kernel hands any port in the ephemeral range to outgoing connections
+#  as their local port, and a node fails to bind while a connection holds
+#  the port.
+#
 #  Guarded, because modules/all.mk includes this file once per test file,
 #  and redefining a target's recipe makes make warn.
 #
 ifndef REDIS_MAIN_CLUSTER_PORT
-REDIS_MAIN_CLUSTER_PORT := 30000
+REDIS_MAIN_CLUSTER_PORT := 21000
 
 .PHONY: test.modules.redis_bootstrap
 #

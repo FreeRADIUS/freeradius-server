@@ -16,12 +16,13 @@ $(eval $(call TEST_PARALLEL))
 #
 #  The cluster's base port is defined once here.  The node ports, base+1 to
 #  base+6, reach the test configuration through the environment.
+#  modules/redis/all.mk documents the ephemeral floor constraint on the base.
 #
 #  Guarded, because modules/all.mk includes this file once per test file,
 #  and redefining a target's recipe makes make warn.
 #
 ifndef REDIS_IPPOOL_CLUSTER_PORT
-REDIS_IPPOOL_CLUSTER_PORT := 30100
+REDIS_IPPOOL_CLUSTER_PORT := 21100
 
 .PHONY: test.modules.redis_ippool_bootstrap
 test.modules.redis_ippool_bootstrap:

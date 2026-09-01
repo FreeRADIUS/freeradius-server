@@ -24,7 +24,7 @@ if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 #
 clusterport := "$ENV{REDIS_CLUSTER_PORT}"
 if (clusterport == '') {
-	clusterport := '30000'
+	clusterport := '21000'
 }
 
 # Sometimes redis just fails to start - without it we can't run
@@ -45,12 +45,12 @@ if (!redisserver || (redisserver == '')) {
 }
 
 #  Test nodes should be running on
-#  - 127.0.0.1:30001 - master [0-5460]
-#  - 127.0.0.1:30004 - slave
-#  - 127.0.0.1:30002 - master [5461-10922]
-#  - 127.0.0.1:30005 - slave
-#  - 127.0.0.1:30003 - master [10923-16383]
-#  - 127.0.0.1:30006 - slave
+#  - 127.0.0.1:21001 - master [0-5460]
+#  - 127.0.0.1:21004 - slave
+#  - 127.0.0.1:21002 - master [5461-10922]
+#  - 127.0.0.1:21005 - slave
+#  - 127.0.0.1:21003 - master [10923-16383]
+#  - 127.0.0.1:21006 - slave
 foreach i (%range(20)) {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
