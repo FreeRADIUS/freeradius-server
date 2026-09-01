@@ -459,9 +459,8 @@ fail:
 	if (!vp) {
 		vp = fr_pair_afrom_da(ctx, vendor);
 		if (!vp) goto oom;
-		PAIR_ALLOCED(vp);
 
-		fr_pair_append(out, vp);
+		FR_PAIR_APPEND(out, vp);
 	}
 
 	slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);

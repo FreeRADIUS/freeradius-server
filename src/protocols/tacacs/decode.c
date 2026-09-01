@@ -159,9 +159,8 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 #define DECODE_FIELD_UINT8(_da, _field) do { \
 	vp = fr_pair_afrom_da(ctx, _da); \
 	if (!vp) goto fail; \
-	PAIR_ALLOCED(vp); \
 	vp->vp_uint8 = _field; \
-	fr_pair_append(out, vp); \
+	FR_PAIR_APPEND(out, vp); \
 } while (0)
 
 #define DECODE_FIELD_STRING8(_da, _field) do { \
@@ -729,9 +728,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 
 				vp = fr_pair_afrom_da(ctx, da);
 				if (!vp) goto fail;
-				PAIR_ALLOCED(vp);
 
-				fr_pair_append(out, vp);
+				FR_PAIR_APPEND(out, vp);
 
 				/*
 				 *	ID + hash
@@ -743,9 +741,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 				 */
 				vp = fr_pair_afrom_da(ctx, challenge);
 				if (!vp) goto fail;
-				PAIR_ALLOCED(vp);
 
-				fr_pair_append(out, vp);
+				FR_PAIR_APPEND(out, vp);
 
 				if (fr_pair_value_memdup(vp, p + 1, challenge_len, true) < 0) goto fail;
 

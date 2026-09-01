@@ -121,7 +121,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
-		PAIR_ALLOCED(vp);
 
 		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, parent->parent,
 						 &FR_DBUFF_TMP(data, 2), 2, true);
@@ -131,7 +130,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 
 		vp->vp_tainted = true;
-		fr_pair_append(out, vp);
+		FR_PAIR_APPEND(out, vp);
 		return 2;
 
 	/*

@@ -47,7 +47,6 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head,
 
 	vp = fr_pair_afrom_da(ctx, parent_da);
 	if (!vp) return PAIR_DECODE_OOM;
-	PAIR_ALLOCED(vp);
 
 	/*
 	 *	Zero length is fine here
@@ -58,7 +57,7 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head,
 		talloc_free(vp);
 		return slen;
 	}
-	fr_pair_append(head, vp);
+	FR_PAIR_APPEND(head, vp);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -77,7 +76,6 @@ static ssize_t internal_decode_structural(TALLOC_CTX *ctx, fr_pair_list_t *head,
 
 	vp = fr_pair_afrom_da(ctx, parent_da);
 	if (!vp) return PAIR_DECODE_OOM;
-	PAIR_ALLOCED(vp);
 
 	/*
 	 *	Decode all the children of this group
@@ -92,7 +90,7 @@ static ssize_t internal_decode_structural(TALLOC_CTX *ctx, fr_pair_list_t *head,
 			return slen;
 		}
 	}
-	fr_pair_append(head, vp);
+	FR_PAIR_APPEND(head, vp);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }

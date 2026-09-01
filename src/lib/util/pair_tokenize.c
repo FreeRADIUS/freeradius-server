@@ -260,8 +260,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	vp = fr_pair_afrom_fields(pair_ctx->ctx, da, op, value, value_len, fr_value_unescape_by_char[(uint8_t)quote]);
 	if (!vp) return -(in - start);
 
-	PAIR_ALLOCED(vp);
-	fr_pair_append(pair_ctx->list, vp);
+	FR_PAIR_APPEND(pair_ctx->list, vp);
 
 	return p - start;
 }

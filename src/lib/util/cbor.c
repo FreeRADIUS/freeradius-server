@@ -1829,9 +1829,7 @@ static ssize_t cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t
 	}
 
 done:
-	PAIR_VERIFY(vp);
-
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
