@@ -171,7 +171,13 @@ void		fr_pair_list_verify(char const *file, int line,
 #  define PAIR_VERIFY_WITH_PARENT_VP(_p, _x)  fr_pair_verify(__FILE__, __LINE__, (_p)->da, &(_p)->vp_group, _x, true)
 #  define PAIR_VERIFY_WITH_PARENT_DA(_p, _x)  fr_pair_verify(__FILE__, __LINE__, _p, NULL, _x, true)
 
-#define PAIR_ALLOCED(_x) do { (_x)->filename = __FILE__; (_x)->line = __LINE__; } while (0)
+/*
+ *	On debug builds, various macros to ensure that the pair is marked up with the file and location of
+ *	where it was allocated.  Also have a wrapper for fr_pair_append(), so that before we put it into a
+ *	list, we mark the pair with where it was allocated, and then also verify it.
+ */
+#  define PAIR_ALLOCED(_x) do { (_x)->filename = __FILE__; (_x)->line = __LINE__; } while (0)
+#  define FR_PAIR_APPEND(_list, _x) do { PAIR_ALLOCED(_x); PAIR_VERIFY(_x); fr_pair_append(_list, _x); } while (0)
 #else
 DIAG_OFF(nonnull-compare)
 /** Wrapper function to defeat nonnull checks
@@ -210,6 +216,7 @@ DIAG_ON(nonnull-compare)
 					  fr_pair_list_nonnull_assert(_x)
 #  define PAIR_VERIFY_WITH_PARENT_DA(_p, _x) fr_pair_list_nonnull_assert(_x)
 #  define PAIR_ALLOCED(_x)		fr_pair_nonnull_assert(_x)
+#  define FR_PAIR_APPEND		fr_pair_append
 #endif
 
 
