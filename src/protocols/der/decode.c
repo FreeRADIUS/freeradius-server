@@ -118,7 +118,7 @@ static ssize_t fr_der_decode_boolean(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 
 	vp->vp_bool = value > 0;
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -208,7 +208,7 @@ static ssize_t fr_der_decode_integer(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 
 	vp->vp_int64 = value;
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -352,7 +352,7 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	 */
 	fr_pair_value_memdup(vp, data, len, false);
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -407,7 +407,7 @@ static ssize_t fr_der_decode_octetstring(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 
 	(void) fr_dbuff_out_memcpy(data, &our_in, len); /* this can never fail */
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -838,7 +838,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			}
 		}
 
-		fr_pair_append(out, vp);
+		FR_PAIR_APPEND(out, vp);
 
 		return fr_dbuff_set(in, &our_in);
 	}
@@ -875,7 +875,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 		(void) fr_dbuff_advance(&our_in, fr_dbuff_remaining(&our_in));
 	}
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -1004,7 +1004,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			}
 		}
 
-		fr_pair_append(out, vp);
+		FR_PAIR_APPEND(out, vp);
 
 		return fr_dbuff_set(in, &our_in);
 	}
@@ -1065,7 +1065,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		(void) fr_dbuff_advance(&our_in, fr_dbuff_remaining(&our_in));
 	}
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -1212,7 +1212,7 @@ static ssize_t fr_der_decode_utc_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 	vp->vp_date = fr_unix_time_from_tm(&tm);
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -1403,7 +1403,7 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 
 	vp->vp_date = fr_unix_time_add(fr_unix_time_from_tm(&tm), fr_time_delta_wrap(subseconds));
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -1489,7 +1489,7 @@ static ssize_t fr_der_decode_ipv4_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	vp->vp_ip.prefix = 32;
 	FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv4addr, &our_in, sizeof(vp->vp_ipv4addr));
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -1540,7 +1540,7 @@ static ssize_t fr_der_decode_ipv4_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 
 	if (len) FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv4addr, &our_in, len);
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -1588,7 +1588,7 @@ static ssize_t fr_der_decode_ipv6_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	vp->vp_ip.prefix = 128;
 	FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv6addr, &our_in, sizeof(vp->vp_ipv6addr));
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -1639,7 +1639,7 @@ static ssize_t fr_der_decode_ipv6_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 
 	if (len) FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv6addr, &our_in, len);
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -1685,7 +1685,7 @@ static ssize_t fr_der_decode_combo_ip_addr(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv6addr, &our_in, sizeof(vp->vp_ipv6addr));
 	}
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -1742,7 +1742,9 @@ static ssize_t fr_der_decode_oid_wrapper(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 
 	vp->vp_attr = da;
 	vp->data.enumv = attr_oid_tree;
-	fr_pair_append(out, vp);
+
+	FR_PAIR_APPEND(out, vp);
+
 	return slen;
 }
 
@@ -1833,7 +1835,7 @@ static ssize_t fr_der_decode_oid_and_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return -1;
 	}
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -2116,7 +2118,6 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
-	PAIR_ALLOCED(vp);
 
 	if (unlikely(fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx) < 0)) {
 		fr_strerror_printf_push("Failed decoding %s", vp->da->name);
@@ -2124,7 +2125,7 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		return -1;
 	}
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -2405,7 +2406,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		talloc_free(vp2);
 	}
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, fr_dbuff_end(&our_in));
 }
@@ -2440,7 +2441,6 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
-	PAIR_ALLOCED(vp);
 
 	if (unlikely(fr_pair_value_bstr_alloc(vp, &str, len, false) < 0)) {
 		talloc_free(vp);
@@ -2465,7 +2465,7 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 
 	str[len] = '\0';
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -2551,7 +2551,6 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			fr_strerror_const_push("Out of memory");
 			return -1;
 		}
-		PAIR_ALLOCED(vp);
 
 		if (unlikely(fr_value_box_copy(vp, &vp->data, flags->default_value) < 0)) {
 			talloc_free(vp);
@@ -2560,7 +2559,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 		vp->data.enumv = vp->da;
 
-		fr_pair_append(out, vp);
+		FR_PAIR_APPEND(out, vp);
 
 		return 0;
 	}
