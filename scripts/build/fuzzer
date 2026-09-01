@@ -36,9 +36,16 @@ PROTOCOL="$(basename "$(dirname "$1")")"
 
 [ -f ./build/bin/local/fuzzer_$PROTOCOL ] || make "./build/bin/local/fuzzer_$PROTOCOL"
 
-# shellcheck disable=SC2086  # Intentional splitting of $LLDB
-if [ "$PROTOCOL" = "cf" ] || [ "$PROTOCOL" = "value" ]; then
-  exec ./build/make/jlibtool --quiet --mode=execute $LLDB ./build/bin/local/fuzzer_$PROTOCOL $1
-else
-  exec ./build/make/jlibtool --quiet --mode=execute $LLDB "./build/bin/local/fuzzer_$PROTOCOL" -artifact_prefix="build/fuzzer/$PROTOCOL/" -max_len=512   -D share/dictionary "$1"
-fi
+for file in "$@"
+do
+  # shellcheck disable=SC2086  # Intentional splitting of $LLDB
+  if [ "$PROTOCOL" = "cf" ] || [ "$PROTOCOL" = "value" ]; then
+    ./build/make/jlibtool --quiet --mode=execute $LLDB ./build/bin/local/fuzzer_$PROTOCOL $file
+  else
+    ./build/make/jlibtool --quiet --mode=execute $LLDB "./build/bin/local/fuzzer_$PROTOCOL" -artifact_prefix="build/fuzzer/$PROTOCOL/" -max_len=512   -D share/dictionary "$file"
+  fi
+  if [ "$?" != "0" ]; then
+    exit 1
+  fi
+done
+
