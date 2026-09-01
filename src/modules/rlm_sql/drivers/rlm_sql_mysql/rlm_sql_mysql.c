@@ -526,6 +526,12 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 #ifdef ER_FOREIGN_DUPLICATE_KEY
 	case ER_FOREIGN_DUPLICATE_KEY: 		/* Upholding foreign key constraints for table '%s', entry '%s', key %d would lead to a duplicate entry. */
 #endif
+#ifdef ER_FOREIGN_DUPLICATE_KEY_WITH_CHILD_INFO
+	case ER_FOREIGN_DUPLICATE_KEY_WITH_CHILD_INFO:	/* Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in table '%s', key '%s' */
+#endif
+#ifdef ER_FOREIGN_DUPLICATE_KEY_WITHOUT_CHILD_INFO
+	case ER_FOREIGN_DUPLICATE_KEY_WITHOUT_CHILD_INFO:	/* Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in a child table */
+#endif
 #ifdef ER_DUP_ENTRY_WITH_KEY_NAME
 	case ER_DUP_ENTRY_WITH_KEY_NAME:	/* Duplicate entry '%s' for key '%s' */
 #endif
