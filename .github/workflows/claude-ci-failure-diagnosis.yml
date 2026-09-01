@@ -46,6 +46,15 @@ jobs:
   #  for months.
   #
   triage:
+    #
+    #  The event and branch conditions carry the workflow's security model.
+    #  Every push to these branches comes from a writer, so the upstream
+    #  actor always passes claude-code-action's token exchange, the logs
+    #  the models read come from maintainer pushes rather than fork pull
+    #  requests, and the head_sha the jobs check out is a trusted ref.
+    #  Widening the conditions to pull requests breaks all three
+    #  properties at once.
+    #
     if: |
       github.repository == 'FreeRADIUS/freeradius-server' &&
       github.event.workflow_run.conclusion == 'failure' &&
@@ -100,8 +109,17 @@ jobs:
           found=false
           for job in $(gh run view "$RUN_ID" --repo "$REPO" --json jobs \
                        --jq '.jobs[] | select(.conclusion == "failure") | .databaseId'); do
-            if gh run view --job "$job" --repo "$REPO" --log 2>/dev/null \
-               | grep -q -E 'FAILED: |make(\[[0-9]+\])?: \*\*\*'; then
+            #
+            #  An unfetchable log cannot prove the absence of a failure
+            #  line, so a failed fetch keeps the diagnosis running instead
+            #  of allowing the infrastructure skip.
+            #
+            if ! gh run view --job "$job" --repo "$REPO" --log > /tmp/job.log 2>/dev/null; then
+              found=true
+              echo "could not fetch the log of job $job, treating the log as holding a failure line"
+              continue
+            fi
+            if grep -q -E 'FAILED: |make(\[[0-9]+\])?: \*\*\*' /tmp/job.log; then
               found=true
               echo "grep found a test or build failure line in the log of job $job"
             fi
@@ -410,10 +428,19 @@ jobs:
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    #
+    #  The model runs in this job, so the job holds no write permission.
+    #  The `post` job posts the comment that this job saves as an
+    #  artifact.  A recovered job token therefore reads a public
+    #  repository and nothing else.
+    #
     permissions:
-      contents: write   # post commit comment via gh api
+      contents: read
       actions: read     # read failed-job logs
       id-token: write
+
+    outputs:
+      comment: ${{ steps.comment.outputs.present }}
 
     steps:
       - name: Checkout failing commit
@@ -436,12 +463,13 @@ jobs:
             actions: read
           claude_args: >-
             --model fable
+            --max-budget-usd 5.00
             --allowed-tools
             "Bash(gh run view:*),Bash(gh run download:*),Bash(gh api:*),Bash(gh issue view:*),Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(git blame:*),Bash(jq:*),Read,Write,Grep,Glob"
           prompt: |
             One or more CI legs failed on ${{ github.event.workflow_run.head_branch }} at commit ${{ github.event.workflow_run.head_sha }}.
 
-            You run once for the whole pipeline, after every leg has finished, so you are seeing the complete picture and no other session is running against this commit. Diagnose every failure and post exactly ONE commit comment covering all of them. Do not open a PR, do not push, do not edit any file in the repo.
+            You run once for the whole pipeline, after every leg has finished, so you are seeing the complete picture and no other session is running against this commit. Diagnose every failure and write exactly ONE comment body covering all of them. Do not open a PR, do not push, and do not edit any file in the repo.
 
             The pipeline run is ${{ github.event.workflow_run.html_url }}
 
@@ -493,9 +521,56 @@ jobs:
 
                The two marker lines are how a later run recognises the same failure and copies just that block forward instead of paying to work it out again. Substitute <fingerprint> with the fingerprint from the list in step 2 matching the failure the block explains, write each marker exactly as shown on its own line, and put nothing before the begin marker or after the end marker of a block. When one root cause covers several fingerprints, stack a begin marker line per fingerprint at the start of the block and an end marker line per fingerprint at the end. When no listed fingerprint matches the failure, omit the marker lines for that block.
 
-            6. Post it (jq -Rs is the safe way to escape multi-line bodies with backticks):
-
-                 jq -Rs '{body: .}' < /tmp/comment.md > /tmp/comment.json
-                 gh api -X POST repos/${{ github.repository }}/commits/${{ github.event.workflow_run.head_sha }}/comments --input /tmp/comment.json
+            6. Leave the finished body in /tmp/comment.md and post nothing yourself. A separate job posts the file with a write token; this session has read access only, and any attempt to post fails.
 
             Do not speculate beyond what the logs support. UNKNOWN is a useful signal - prefer it over a guess.
+
+      - name: Check for a comment to post
+        id: comment
+        run: |
+          if [ -s /tmp/comment.md ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "the diagnosis produced no comment body"
+          fi
+
+      - name: Save the comment for the posting job
+        if: steps.comment.outputs.present == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-diagnosis-comment
+          path: /tmp/comment.md
+          retention-days: 1
+
+  #
+  #  Post the comment.  The model writes the comment body in the read-only
+  #  `diagnose` job, and the posting happens here with the write token, so
+  #  no model runs with write access.
+  #
+  post:
+    needs: diagnose
+    if: ${{ !cancelled() && needs.diagnose.outputs.comment == 'true' }}
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write   # post commit comment via gh api
+
+    steps:
+      - name: Fetch the comment
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-diagnosis-comment
+          path: /tmp
+
+      #  jq -Rs is the safe way to escape multi-line bodies with backticks.
+      - name: Post the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          FAILING_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          jq -Rs '{body: .}' < /tmp/comment.md > /tmp/comment.json
+          gh api -X POST "repos/$REPO/commits/$FAILING_SHA/comments" --input /tmp/comment.json >/dev/null

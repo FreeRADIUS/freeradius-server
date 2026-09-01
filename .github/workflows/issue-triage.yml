@@ -25,9 +25,14 @@ jobs:
 
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    #
+    #  The job token reaches the step that processes untrusted issue
+    #  content, so the job declares no write permission.  The label step
+    #  writes with the app token.
+    #
     permissions:
       contents: read
-      issues: write
+      issues: read
       id-token: write
 
     steps:
@@ -42,6 +47,15 @@ jobs:
       #  output.  Without `continue-on-error` the non-zero exit fails the
       #  job, and the steps below treat no output as "leave the issue
       #  alone".
+      #
+      #  `github_token` and `allowed_non_write_users` authenticate the
+      #  action for issues opened by non-writers.  claude-code-action
+      #  refuses its own token exchange when the triggering actor has no
+      #  write access to the repository, and every public issue author is
+      #  such an actor.  The workflow's own token is the right token to
+      #  pass: the token is scoped to the permissions this job declares
+      #  and expires when the job completes, so recovering the token
+      #  through prompt injection gains nothing durable.
       - name: Classify the issue
         id: classify
         continue-on-error: true
@@ -49,6 +63,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          allowed_non_write_users: "*"
           anthropic_federation_rule_id: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
           anthropic_organization_id: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
           anthropic_service_account_id: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
