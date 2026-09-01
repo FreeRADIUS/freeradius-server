@@ -939,7 +939,7 @@ int fr_snmp_process(request_t *request)
 	fr_pair_t		*vp;
 
 	char			oid_str[FR_DICT_MAX_TLV_STACK * 4];	/* .<num>{1,3} */
-	size_t			oid_len, len;
+	ssize_t			oid_len, len;
 
 	fr_da_stack_t		da_stack;
 	unsigned int		depth;
@@ -1044,10 +1044,12 @@ int fr_snmp_process(request_t *request)
 
 			/* Get the length of the matching part */
 			oid_len = fr_dict_attr_oid_print(&oid_str_sbuff, attr_snmp_root, da_stack.da[-(ret)], false);
+			fr_assert(oid_len > 0);
 
 			/* Get the last frame in the current stack */
 			len = fr_dict_attr_oid_print(&oid_str_sbuff, attr_snmp_root,
 						     da_stack.da[da_stack.depth - 1], false);
+			fr_assert(len > 0);
 
 			/* Use the difference in OID string length to place the marker */
 			REMARKER(oid_str, oid_len - (len - oid_len), "%s", fr_strerror());
