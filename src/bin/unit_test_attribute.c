@@ -2977,31 +2977,31 @@ typedef ssize_t(*command_tmpl_rule_func)(TALLOC_CTX *ctx, tmpl_rules_t *rules, f
 static ssize_t command_tmpl_rule_allow_foreign(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	bool res;
-	ssize_t slen;
 
-	slen = fr_sbuff_out_bool(&res, value);
+	if (fr_sbuff_out_bool(&res, value) < 0) return -1;
+
 	rules->attr.allow_foreign = res;
-	return slen;
+	return 0;
 }
 
 static ssize_t command_tmpl_rule_allow_unknown(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	bool res;
-	ssize_t slen;
 
-	slen = fr_sbuff_out_bool(&res, value);
+	if (fr_sbuff_out_bool(&res, value) < 0) return -1;
+
 	rules->attr.allow_unknown = res;
-	return slen;
+	return 0;
 }
 
 static ssize_t command_tmpl_rule_allow_unresolved(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	bool res;
-	ssize_t slen;
 
-	slen = fr_sbuff_out_bool(&res, value);
+	if (fr_sbuff_out_bool(&res, value) < 0) return -1;
+
 	rules->attr.allow_unresolved = res;
-	return slen;
+	return 0;
 }
 
 static ssize_t command_tmpl_rule_attr_parent(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
@@ -3086,7 +3086,7 @@ static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *c
 
 		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
-		if (func(cc->tmp_ctx, &cc->tmpl_rules, &sbuff) <= 0) RETURN_COMMAND_ERROR();
+		if (func(cc->tmp_ctx, &cc->tmpl_rules, &sbuff) < 0) RETURN_COMMAND_ERROR();
 	}
 
 	return fr_sbuff_used(&sbuff);
