@@ -121,7 +121,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	integer to the encoding byte.
 	 */
 	slen = fr_dbuff_in_uint64v(&work_dbuff, da->attr);
-	if (slen < 0) return slen;
+	if (slen <= 0) return slen;
 	flen = (size_t) slen;
 	enc_byte |= ((flen - 1) << 5);
 
