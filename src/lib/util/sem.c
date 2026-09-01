@@ -98,7 +98,7 @@ int fr_sem_uid(uid_t *uid, int sem_id)
  *      - 0 on success.
  *	- -1 on failure.
  */
-int fr_sem_gid(uid_t *gid, int sem_id)
+int fr_sem_gid(gid_t *gid, int sem_id)
 {
 	int		ret;
 	struct semid_ds	info;
