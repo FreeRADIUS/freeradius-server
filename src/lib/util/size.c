@@ -174,7 +174,7 @@ fr_slen_t fr_size_to_str(fr_sbuff_t *out, size_t in)
 					{ "PB",		(uint64_t)1000 * 1000 * 1000 * 1000 * 1000},
 					{ "EB",		(uint64_t)1000 * 1000 * 1000 * 1000 * 1000 * 1000},
 				};
-	fr_slen_t slen;
+	ssize_t slen;
 	fr_size_unit_t const *unit = &base10_units[0];
 	uint8_t b2_idx = 0, b10_idx = 0;
 

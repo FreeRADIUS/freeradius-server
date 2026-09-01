@@ -419,7 +419,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t const *vb, bool
 	case FR_TYPE_FLOAT32:
 	{
 		struct json_object *obj;
-		fr_slen_t slen;
+		ssize_t slen;
 
 		obj = json_object_new_double((double)vb->vb_float32);
 		if (unlikely(obj == NULL)) return -1;
@@ -433,7 +433,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t const *vb, bool
 	case FR_TYPE_FLOAT64:
 	{
 		struct json_object *obj;
-		fr_slen_t slen;
+		ssize_t slen;
 
 		obj = json_object_new_double((double)vb->vb_float64);
 		if (unlikely(obj == NULL)) return -1;
@@ -456,7 +456,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t const *vb, bool
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ATTR:
 	{
-		fr_slen_t slen;
+		ssize_t slen;
 
 		if (include_quotes) FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
 		slen = fr_value_box_print(&our_out, vb, NULL);

@@ -961,7 +961,7 @@ int fr_filename_box_make_safe(TALLOC_CTX *ctx, fr_value_box_t *vb)
 {
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t	tctx;
-	fr_slen_t		slen;
+	ssize_t			slen;
 
 	fr_assert(vb->type == FR_TYPE_STRING);
 
