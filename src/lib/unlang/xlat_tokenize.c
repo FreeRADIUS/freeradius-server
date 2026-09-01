@@ -212,6 +212,7 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 	 *	Convert the XLAT_TMPL to XLAT_BOX
 	 */
 	xlat_exp_set_type(node, XLAT_BOX);
+	XLAT_VERIFY(node);
 
 	return 0;
 }
@@ -2134,6 +2135,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 
 			node->flags.needs_resolving = false;
 			xlat_exp_finalize_func(node);
+			XLAT_VERIFY(node);
 			break;
 
 		case XLAT_TMPL:

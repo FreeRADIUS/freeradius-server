@@ -153,8 +153,11 @@ static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, 
 static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
 {
 	size_t	at_in = fr_sbuff_used_total(out);
-	xlat_exp_t *child = xlat_exp_head(node->call.args);
+	xlat_exp_t *child;
 
+	XLAT_VERIFY(node);
+
+	child = xlat_exp_head(node->call.args);
 	fr_assert(child != NULL);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, '(');
@@ -164,7 +167,11 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
 
 	child = xlat_exp_next(node->call.args, child);
+#ifdef WITH_VERIFY_PTR
+	if (!child) xlat_debug(node);
+#else
 	fr_assert(child != NULL);
+#endif
 
 	xlat_print_node(out, node->call.args, child, e_rules, 0);
 
