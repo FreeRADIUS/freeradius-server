@@ -47,11 +47,14 @@ jobs:
   #
   triage:
     #
-    #  The event and branch conditions carry the workflow's security model.
-    #  Every push to these branches comes from a writer, so the upstream
-    #  actor always passes claude-code-action's token exchange, the logs
-    #  the models read come from maintainer pushes rather than fork pull
-    #  requests, and the head_sha the jobs check out is a trusted ref.
+    #  The event and branch conditions enforce the workflow's security
+    #  model.  Every push to `master` or a `developer/` branch comes
+    #  from a writer, so three properties hold:
+    #    1. The actor who pushed always passes claude-code-action's
+    #       token exchange.
+    #    2. The logs that the models read come from maintainer pushes,
+    #       not from fork pull requests.
+    #    3. The `head_sha` that the jobs check out is a trusted ref.
     #  Widening the conditions to pull requests breaks all three
     #  properties at once.
     #
@@ -110,9 +113,10 @@ jobs:
           for job in $(gh run view "$RUN_ID" --repo "$REPO" --json jobs \
                        --jq '.jobs[] | select(.conclusion == "failure") | .databaseId'); do
             #
-            #  An unfetchable log cannot prove the absence of a failure
-            #  line, so a failed fetch keeps the diagnosis running instead
-            #  of allowing the infrastructure skip.
+            #  An unfetchable log cannot prove that no failure line
+            #  exists, so the step treats a failed fetch as a failure
+            #  line.  The diagnosis then runs even on a confident
+            #  `infrastructure` verdict.
             #
             if ! gh run view --job "$job" --repo "$REPO" --log > /tmp/job.log 2>/dev/null; then
               found=true
@@ -429,9 +433,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     #
-    #  The model runs in this job, so the job holds no write permission.
-    #  The `post` job posts the comment that this job saves as an
-    #  artifact.  A recovered job token therefore reads a public
+    #  The model runs in the `diagnose` job, so the `diagnose` job holds
+    #  no write permission.  The `post` job posts the comment that the
+    #  `diagnose` job saves as an artifact.  A job token recovered
+    #  through prompt injection therefore grants read access to a public
     #  repository and nothing else.
     #
     permissions:
@@ -544,9 +549,9 @@ jobs:
           retention-days: 1
 
   #
-  #  Post the comment.  The model writes the comment body in the read-only
-  #  `diagnose` job, and the posting happens here with the write token, so
-  #  no model runs with write access.
+  #  The `post` job posts the comment.  The model writes the comment
+  #  body in the read-only `diagnose` job, and the `post` job posts
+  #  with a write-scoped token, so no model runs with write access.
   #
   post:
     needs: diagnose

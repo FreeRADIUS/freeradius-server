@@ -22,10 +22,10 @@ $(eval $(call TEST_PARALLEL))
 #  base+6, reach the test configuration through the environment.
 #
 #  The base keeps the node ports and the cluster bus ports (node port plus
-#  10000, a redis convention) below the Linux ephemeral port floor of 32768.
-#  The kernel hands any port in the ephemeral range to outgoing connections
-#  as their local port, and a node fails to bind while a connection holds
-#  the port.
+#  10000, a redis convention) below the default Linux ephemeral port floor
+#  of 32768.  The kernel assigns any port in the ephemeral range to an
+#  outgoing connection as the connection's local port.  A node fails to
+#  bind a port while a connection holds the port.
 #
 #  Guarded, because modules/all.mk includes this file once per test file,
 #  and redefining a target's recipe makes make warn.

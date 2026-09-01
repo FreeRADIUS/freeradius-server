@@ -27,8 +27,8 @@ jobs:
     timeout-minutes: 5
     #
     #  The job token reaches the step that processes untrusted issue
-    #  content, so the job declares no write permission.  The label step
-    #  writes with the app token.
+    #  content, so the job declares no write permission.  The 'Label
+    #  for closing' step adds the 'close' label with a GitHub App token.
     #
     permissions:
       contents: read
@@ -45,17 +45,18 @@ jobs:
 
       #  The action exits non-zero if the model returns no structured
       #  output.  Without `continue-on-error` the non-zero exit fails the
-      #  job, and the steps below treat no output as "leave the issue
-      #  alone".
+      #  job, and the steps below leave the issue alone when the action
+      #  produces no output.
       #
       #  `github_token` and `allowed_non_write_users` authenticate the
       #  action for issues opened by non-writers.  claude-code-action
-      #  refuses its own token exchange when the triggering actor has no
-      #  write access to the repository, and every public issue author is
-      #  such an actor.  The workflow's own token is the right token to
-      #  pass: the token is scoped to the permissions this job declares
-      #  and expires when the job completes, so recovering the token
-      #  through prompt injection gains nothing durable.
+      #  refuses the token exchange when the triggering actor has no
+      #  write access to the repository.  Every public issue author
+      #  lacks write access.  The job token is the right token to pass.
+      #  The job token is scoped to the permissions that the job
+      #  declares, and expires when the job completes.  Recovering the
+      #  job token through prompt injection therefore gains nothing
+      #  durable.
       - name: Classify the issue
         id: classify
         continue-on-error: true
