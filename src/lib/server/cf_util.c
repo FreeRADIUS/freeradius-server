@@ -1685,47 +1685,6 @@ unsigned int cf_pair_count(CONF_SECTION const *cs, char const *attr)
 	return i;
 }
 
-/** Concatenate the values of any pairs with name attr
- *
- * @param[out] out	where to write the concatenated values.
- * @param[in] cs	to search in.
- * @param[in] attr	to search for.
- * @param[in] sep	to use to separate values
- * @return
- *      - Length of the data written to out on success.
- *	- < 0 on failure.  Number of additional bytes required in buffer.
- */
-fr_slen_t cf_pair_values_concat(fr_sbuff_t *out, CONF_SECTION const *cs, char const *attr, char const *sep)
-{
-	fr_sbuff_t		our_out = FR_SBUFF(out);
-	CONF_PAIR		*cp;
-	fr_slen_t		slen = 0;
-	fr_sbuff_escape_rules_t	e_rules = {
-					.name = __FUNCTION__,
-					.chr = '\\'
-				};
-
-	if (sep) e_rules.subs[(uint8_t)*sep] = *sep;
-
-	for (cp = cf_pair_find(cs, attr); cp;) {
-		char const *value = cf_pair_value(cp);
-
-		cp = cf_pair_find_next(cs, cp, attr);
-
-		if (!value) continue;
-
-		slen = fr_sbuff_in_escape(&our_out, value, strlen(value), &e_rules);
-		if (slen < 0) return slen;
-
-		if (cp && sep) {
-			slen = fr_sbuff_in_strcpy(&our_out, sep);
-			if (slen < 0) return slen;
-		}
-	}
-
-	FR_SBUFF_SET_RETURN(out, &our_out);
-}
-
 /** Return the attr of a #CONF_PAIR
  *
  * Return the LHS value of a pair (the attribute).

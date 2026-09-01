@@ -1064,52 +1064,6 @@ static void test_expand_missing_ref(void)
 
 
 /*
- *	Pair value concatenation
- */
-
-static void test_pair_values_concat(void)
-{
-	CONF_SECTION	*cs;
-	char		buffer[256];
-	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
-	fr_slen_t	slen;
-
-	cs = cf_section_alloc(autofree, NULL, "test", NULL);
-	TEST_ASSERT(cs != NULL);
-
-	cf_pair_alloc(cs, "host", "a", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-	cf_pair_alloc(cs, "host", "b", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-	cf_pair_alloc(cs, "host", "c", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-
-	slen = cf_pair_values_concat(&sbuff, cs, "host", ", ");
-	TEST_CHECK(slen > 0);
-	TEST_MSG("cf_pair_values_concat returned %zd", slen);
-
-	fr_sbuff_terminate(&sbuff);
-	TEST_CHECK(strcmp(buffer, "a, b, c") == 0);
-	TEST_MSG("Expected 'a, b, c', got '%s'", buffer);
-
-	talloc_free(cs);
-}
-
-static void test_pair_values_concat_missing(void)
-{
-	CONF_SECTION	*cs;
-	char		buffer[256];
-	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
-	fr_slen_t	slen;
-
-	cs = cf_section_alloc(autofree, NULL, "test", NULL);
-	TEST_ASSERT(cs != NULL);
-
-	slen = cf_pair_values_concat(&sbuff, cs, "nope", ", ");
-	TEST_CHECK(slen == 0);
-
-	talloc_free(cs);
-}
-
-
-/*
  *	cf_reference_item
  */
 
@@ -1284,10 +1238,6 @@ TEST_LIST = {
 	{ "test_expand_section_ref",		test_expand_section_ref },
 	{ "test_expand_nested_ref",		test_expand_nested_ref },
 	{ "test_expand_missing_ref",		test_expand_missing_ref },
-
-	/* Pair value concatenation */
-	{ "test_pair_values_concat",		test_pair_values_concat },
-	{ "test_pair_values_concat_missing",	test_pair_values_concat_missing },
 
 	/* cf_reference_item */
 	{ "test_reference_item_pair",		test_reference_item_pair },

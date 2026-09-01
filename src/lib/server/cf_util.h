@@ -282,8 +282,6 @@ unsigned int	cf_pair_count_descendents(CONF_SECTION const *cs);
 
 unsigned int	cf_pair_count(CONF_SECTION const *cs, char const *attr);
 
-fr_slen_t	cf_pair_values_concat(fr_sbuff_t *sbuff, CONF_SECTION const *cs, char const *attr, char const *sep);
-
 /** @hidecallergraph */
 char const	*cf_pair_attr(CONF_PAIR const *pair);
 /** @hidecallergraph */
