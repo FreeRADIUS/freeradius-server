@@ -155,7 +155,7 @@ services:
       TEST_KAFKA_BROKER: kafka:9092
       TEST_KAFKA_TOPIC: {{ kafka_topic | default('fr-multi-server-test') }}
       TEST_EXPECTED_MESSAGES: "{{ expected_messages }}"
-      TEST_CONSUMER_TIMEOUT: "{{ consumer_timeout | default(30) }}"
+      TEST_CONSUMER_TIMEOUT: "{{ consumer_timeout | default(20) }}"
     entrypoint:
     - bash
     - /usr/local/bin/consume.sh

@@ -25,4 +25,6 @@ kafka_topic: fr-multi-server-test
 # Generous budget for the 10k burst + broker drain on CI.
 test_timeout: 360
 state_produce_and_consume_timeout: 300
-consumer_timeout: 300
+#  `consumer_timeout` must undercut `state_produce_and_consume_timeout`.
+#  consume.sh documents the reason.
+consumer_timeout: 270

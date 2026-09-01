@@ -42,4 +42,6 @@ kafka_topic: fr-multi-server-test
 environment_timeout: 120
 test_timeout: 180
 state_produce_and_consume_timeout: 30
-consumer_timeout: 60
+#  `consumer_timeout` must undercut `state_produce_and_consume_timeout`.
+#  consume.sh documents the reason.
+consumer_timeout: 20

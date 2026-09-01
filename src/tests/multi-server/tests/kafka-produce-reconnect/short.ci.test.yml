@@ -47,4 +47,6 @@ outage_seconds: 3
 #  must cover compose up + state_1 outage + state_2 wait-for-summary.
 test_timeout: 240
 test_verify_timeout: 120
-consumer_timeout: 180
+#  `consumer_timeout` must undercut `test_verify_timeout`.  consume.sh
+#  documents the reason.
+consumer_timeout: 100

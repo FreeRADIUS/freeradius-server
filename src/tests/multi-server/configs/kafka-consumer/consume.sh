@@ -17,7 +17,16 @@ set -u
 
 LISTENER="/var/run/multi-server/${TEST_PROJECT_NAME}.txt"
 EXPECTED="${TEST_EXPECTED_MESSAGES:-0}"
-TIMEOUT="${TEST_CONSUMER_TIMEOUT:-30}"
+
+#
+#  `TEST_CONSUMER_TIMEOUT` must undercut the verify window of the state
+#  that waits on the summary.  consume.sh writes the summary below only
+#  after kcat finishes.  A consumer that outlives the state writes the
+#  summary after teardown has removed the listener file, so the test
+#  framework reports "<no events seen>" instead of a received/expected
+#  count.
+#
+TIMEOUT="${TEST_CONSUMER_TIMEOUT:-20}"
 BROKER="${TEST_KAFKA_BROKER:-kafka:9092}"
 TOPIC="${TEST_KAFKA_TOPIC:-fr-multi-server-test}"
 
@@ -50,10 +59,11 @@ json_escape() {
 }
 
 #
-#  Consume EXPECTED messages (or stop on timeout).  kcat prints each message
-#  payload followed by a newline because of '-D'.  '-e' makes kcat exit when
-#  it reaches end-of-partition, so if fewer than EXPECTED arrive the loop
-#  still terminates and we write a FAIL summary.
+#  The loop consumes `EXPECTED` messages, or stops on timeout.  kcat
+#  prints each message payload followed by a newline because of `-D`.
+#  When fewer than `EXPECTED` messages arrive, kcat blocks until
+#  `timeout` kills kcat.  The loop then ends, and the script still
+#  writes the FAIL summary below.
 #
 count=0
 while IFS= read -r payload; do
