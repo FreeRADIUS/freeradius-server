@@ -3621,16 +3621,16 @@ printf '%s\n' "no" >&6; }
 fi
 
 if test "x$have_a_libmysqlclient" != "xyes"; then
-	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mariadb /usr/local/lib/mariadb /usr/local/mariadb/lib/mariadb"
+	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mariadb /usr/local/lib/mariadb /usr/local/mariadb/lib/mariadb /opt/homebrew/lib /opt/homebrew/opt/mariadb-connector-c/lib"
 
 
 sm_lib_safe=`echo "mariadb" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "mysql_get_socket" | sed 'y%./+-%__p_%'`
 
-if test "xmysql-client" = "x"; then
+if test "xmariadb-connector-c" = "x"; then
   sm_pkg="${sm_lib_safe}"
 else
-  sm_pkg="mysql-client"
+  sm_pkg="mariadb-connector-c"
 fi
 
 old_LIBS="$LIBS"
@@ -3757,7 +3757,7 @@ SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 SMART_LD_FOUND="$smart_ld_found"
 fi
 
-	if test "x$ac_cv_lib_mysqlclient_mysql_get_socket" = "xyes"; then
+	if test "x$ac_cv_lib_mariadb_mysql_get_socket" = "xyes"; then
 		have_a_libmysqlclient='yes'
 	fi
 fi
@@ -3844,10 +3844,10 @@ if test "x$have_mysql_h" != "xyes"; then
 
 ac_safe=`echo "mysql/mysql.h" | sed 'y%./+-%__pm%'`
 
-if test "xmysql-client" = "x"; then
+if test "xmariadb-connector-c" = "x"; then
   sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
 else
-  sm_pkg="mysql-client"
+  sm_pkg="mariadb-connector-c"
 fi
 
 old_CPPFLAGS="$CPPFLAGS"
@@ -4050,13 +4050,232 @@ smart_prefix=
 
 printf '%s\n' "#define HAVE_MYSQL_MYSQL_H /**/" >>confdefs.h
 
-	else
-		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: MariaDB headers not found. Use --with-mysql-include-dir=<path>." >&5
+		have_mysql_h=yes
+	fi
+fi
+
+if test "x$have_mysql_h" != "xyes"; then
+	smart_try_dir="$mysql_include_dir /usr/include/mariadb /usr/local/include/mariadb /opt/homebrew/include/mariadb /opt/homebrew/opt/mariadb-connector-c/include/mariadb"
+
+
+ac_safe=`echo "mysql.h" | sed 'y%./+-%__pm%'`
+
+if test "xmariadb-connector-c" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg="mariadb-connector-c"
+fi
+
+old_CPPFLAGS="$CPPFLAGS"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
+
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+for _dir in $smart_try_dir; do
+  _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+done
+
+for _dir in $smart_include_dir; do
+  _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+for try in $_smart_try_dir; do
+  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for mysql.h in $try" >&5
+printf %s "checking for mysql.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+		                        #include <mysql.h>
+
+int
+main (void)
+{
+
+                                        int a = 1;
+
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+		      smart_include="-isystem $try"
+		      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf '%s\n' "yes" >&6; }
+		      break
+
+else case e in #(
+  e)
+		      smart_include=
+		      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf '%s\n' "no" >&6; }
+		     ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
+for _prefix in $smart_prefix; do
+  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/mysql.h" >&5
+printf %s "checking for ${_prefix}/mysql.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+		                        #include <mysql.h>
+
+int
+main (void)
+{
+
+                                        int a = 1;
+
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+		      smart_include="-isystem ${_prefix}/"
+		      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf '%s\n' "yes" >&6; }
+		      break
+
+else case e in #(
+  e)
+		      smart_include=
+		      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf '%s\n' "no" >&6; }
+		     ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+done
+fi
+
+if test "x$smart_include" = "x"; then
+  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for mysql.h" >&5
+printf %s "checking for mysql.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+		                        #include <mysql.h>
+
+int
+main (void)
+{
+
+                                        int a = 1;
+
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+		      smart_include=" "
+		      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf '%s\n' "yes" >&6; }
+		      break
+
+else case e in #(
+  e)
+		      smart_include=
+		      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf '%s\n' "no" >&6; }
+		     ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+if test "x$smart_include" = "x"; then
+for try in $_smart_include_dir; do
+  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for mysql.h in $try" >&5
+printf %s "checking for mysql.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+		                        #include <mysql.h>
+
+int
+main (void)
+{
+
+                                        int a = 1;
+
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+		      smart_include="-isystem $try"
+		      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf '%s\n' "yes" >&6; }
+		      break
+
+else case e in #(
+  e)
+		      smart_include=
+		      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf '%s\n' "no" >&6; }
+		     ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+eval "ac_cv_header_$ac_safe=yes"
+CPPFLAGS="$smart_include $old_CPPFLAGS"
+SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
+fi
+
+smart_prefix=
+
+	if test "x$ac_cv_header_mysql_h" = "xyes"; then
+
+printf '%s\n' "#define HAVE_MYSQL_H /**/" >>confdefs.h
+
+		have_mysql_h=yes
+	fi
+fi
+
+if test "x$have_mysql_h" != "xyes"; then
+	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: MariaDB headers not found. Use --with-mysql-include-dir=<path>." >&5
 printf '%s\n' "$as_me: WARNING: MariaDB headers not found. Use --with-mysql-include-dir=<path>." >&2;}
 
 fail="$fail mysql.h"
 
-	fi
 fi
 
 CPPFLAGS="$SMART_CPPFLAGS"

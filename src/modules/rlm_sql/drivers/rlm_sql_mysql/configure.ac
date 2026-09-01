@@ -129,9 +129,9 @@ fi
 
 dnl # Check for libmariadb
 if test "x$have_a_libmysqlclient" != "xyes"; then
-	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mariadb /usr/local/lib/mariadb /usr/local/mariadb/lib/mariadb"
-	FR_SMART_CHECK_LIB(mariadb, mysql_get_socket, [mysql-client])
-	if test "x$ac_cv_lib_mysqlclient_mysql_get_socket" = "xyes"; then
+	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mariadb /usr/local/lib/mariadb /usr/local/mariadb/lib/mariadb /opt/homebrew/lib /opt/homebrew/opt/mariadb-connector-c/lib"
+	FR_SMART_CHECK_LIB(mariadb, mysql_get_socket, [mariadb-connector-c])
+	if test "x$ac_cv_lib_mariadb_mysql_get_socket" = "xyes"; then
 		have_a_libmysqlclient='yes'
 	fi
 fi
@@ -174,13 +174,28 @@ fi
 
 if test "x$have_mysql_h" != "xyes"; then
 	smart_try_dir="$mysql_include_dir /usr/local/include /usr/local/mysql/include /usr/local/mariadb/include"
-	FR_SMART_CHECK_INCLUDE(mysql/mysql.h,,[mysql-client])
+	FR_SMART_CHECK_INCLUDE(mysql/mysql.h,,[mariadb-connector-c])
 	if test "x$ac_cv_header_mysql_mysql_h" = "xyes"; then
 		AC_DEFINE(HAVE_MYSQL_MYSQL_H, [], [Define if you have <mysql/mysql.h>])
-	else
-		AC_MSG_WARN([MariaDB headers not found. Use --with-mysql-include-dir=<path>.])
-		FR_MODULE_FAIL([mysql.h])
+		have_mysql_h=yes
 	fi
+fi
+
+dnl # MariaDB Connector/C installs its headers into a mariadb/ subdirectory,
+dnl # where the entry point is <mysql.h> and not <mysql/mysql.h>.  Homebrew
+dnl # ships that layout, as does a source install of the connector.
+if test "x$have_mysql_h" != "xyes"; then
+	smart_try_dir="$mysql_include_dir /usr/include/mariadb /usr/local/include/mariadb /opt/homebrew/include/mariadb /opt/homebrew/opt/mariadb-connector-c/include/mariadb"
+	FR_SMART_CHECK_INCLUDE(mysql.h,,[mariadb-connector-c])
+	if test "x$ac_cv_header_mysql_h" = "xyes"; then
+		AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
+		have_mysql_h=yes
+	fi
+fi
+
+if test "x$have_mysql_h" != "xyes"; then
+	AC_MSG_WARN([MariaDB headers not found. Use --with-mysql-include-dir=<path>.])
+	FR_MODULE_FAIL([mysql.h])
 fi
 
 dnl ############################################################
