@@ -759,7 +759,7 @@ fr_dict_filename_t *dict_filename_intern(fr_dict_t *dict, char const *filename)
 
 	by_id = talloc_realloc(dict, dict->filename_by_id, fr_dict_filename_t *, count + 1);
 	if (unlikely(!by_id)) {
-		fr_hash_table_delete(dict->filenames, file);
+		(void) fr_hash_table_delete(dict->filenames, file);
 		goto error;
 	}
 	by_id[count] = file;
