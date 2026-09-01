@@ -363,6 +363,10 @@ static int dump_module(struct json_object *modules, char const *bare_name)
 			if (used >= sizeof(buf) - 1) break;
 		}
 		close(fds[0]);
+		if (used >= sizeof(buf) - 1) {
+			fprintf(stderr, "rlm_%s: overflowed buffer reading JSON\n", bare_name);
+			return -1;
+		}
 		buf[used] = '\0';
 
 		waitpid(pid, &status, 0);
