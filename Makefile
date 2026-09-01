@@ -549,7 +549,23 @@ deb:
 		exit 1; \
 	fi
 	EMAIL="packages@freeradius.org" fakeroot dch -b -v$(PKG_VERSION) ""
-	fakeroot debian/rules debian/control # Clean
+	#
+	#	`debian/control` does not exist yet.  The invocation below
+	#	generates `debian/control` from `debian/control.in`.  dpkg >= 1.22
+	#	runs dpkg-buildapi when `debian/rules` is parsed, and
+	#	dpkg-buildapi reads `debian/control`, so the parse fails before
+	#	the generation can run.  Setting `DPKG_BUILD_API` skips
+	#	dpkg-buildapi.
+	#
+	#	The build API level selects the set of default behaviours that
+	#	dpkg's build tools apply.  A package selects a level with a
+	#	`dpkg-build-api (= N)` entry in the `Build-Depends` of
+	#	`debian/control`, and a package with no entry gets level 0.
+	#	`debian/control.in` does not declare an entry, so pinning 0
+	#	matches the level that dpkg-buildapi computes once
+	#	`debian/control` exists.
+	#
+	DPKG_BUILD_API=0 fakeroot debian/rules debian/control # Clean
 	fakeroot dpkg-buildpackage -b -uc -jauto
 
 .PHONY: rpm
