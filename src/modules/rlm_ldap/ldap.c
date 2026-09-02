@@ -764,8 +764,6 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 					LDAP_DBGW_REQ("Bind with %s to %s failed: %s. Got new socket, retrying...",
 						      *dn ? dn : "(anonymous)", inst->server, error);
 
-					talloc_free(extra); /* don't leak debug info */
-
 					continue;
 				}
 			};
@@ -903,8 +901,6 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 			if (*pconn) {
 				LDAP_DBGW_REQ("Search failed: %s. Got new socket, retrying...", error);
 
-				talloc_free(extra); /* don't leak debug info */
-
 				continue;
 			}
 
@@ -1019,7 +1015,6 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 			if (*pconn) {
 				RWDEBUG("Modify failed: %s. Got new socket, retrying...", error);
 
-				talloc_free(extra); /* don't leak debug info */
 				continue;
 			}
 
