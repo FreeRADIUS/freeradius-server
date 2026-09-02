@@ -284,7 +284,7 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 	 *	We were woken up by a signal to do something.  We're
 	 *	not sleeping.
 	 */
-	ce = fr_channel_service_message(now, &ch, data, data_size);
+	ce = fr_channel_service_message(now, &ch, NULL, data, data_size);
 	DEBUG3("Channel %s",
 	       fr_table_str_by_value(channel_signals, ce, "<INVALID>"));
 	switch (ce) {

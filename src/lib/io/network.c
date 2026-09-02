@@ -570,7 +570,7 @@ static void fr_network_channel_callback(void const *data, size_t data_size, fr_t
 	fr_channel_t		*ch;
 	fr_network_t		*nr = uctx;
 
-	ce = fr_channel_service_message(now, &ch, data, data_size);
+	ce = fr_channel_service_message(now, &ch, NULL, data, data_size);
 	DEBUG3("Channel %s",
 	       fr_table_str_by_value(channel_signals, ce, "<INVALID>"));
 	switch (ce) {

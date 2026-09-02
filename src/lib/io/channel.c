@@ -96,6 +96,7 @@ typedef struct {
 	fr_channel_signal_t	signal;		//!< the signal to send
 	uint64_t		ack;		//!< or the endpoint..
 	fr_channel_t		*ch;		//!< the channel
+	void			*uctx;		//!< arbitrary message data
 } fr_channel_control_t;
 
 /** One end of a channel
@@ -675,6 +676,7 @@ int fr_channel_responder_sleeping(fr_channel_t *ch)
  *
  * @param[in] when		The current time.
  * @param[out] p_channel	The channel which should be serviced.
+ * @param[out] uctx_out		The uctx sent in the control message.
  * @param[in] data		The control message.
  * @param[in] data_size		The size of the control message.
  * @return
@@ -684,7 +686,7 @@ int fr_channel_responder_sleeping(fr_channel_t *ch)
  *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
  *	- FR_CHANNEL_CLOSE when a channel should be closed
  */
-fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void const *data, size_t data_size)
+fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void **uctx_out, void const *data, size_t data_size)
 {
 	int rcode;
 #if ENABLE_SKIPS
@@ -704,6 +706,7 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	ack = cc.ack;
 #endif
 	*p_channel = ch = cc.ch;
+	if (uctx_out) *uctx_out = cc.uctx;
 
 	switch (cs) {
 	/*
