@@ -613,14 +613,15 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	if (dst_type != vb_in->type) {
 		if (vb_in == &value) {
 			size_t datalen;
+			fr_slen_t parse_len;
 
 			fr_assert(tmp_ctx != NULL);
 			fr_assert(str != NULL);
 			fr_assert(dst_type != FR_TYPE_STRING); /* exec / xlat returned string in 'str' */
 
 			datalen = talloc_strlen(str);
-			slen = fr_value_box_from_str(ctx, &value, dst_type, NULL, str, datalen, NULL);
-			if (slen < 0) {
+			parse_len = fr_value_box_from_str(ctx, &value, dst_type, NULL, str, datalen, NULL);
+			if (parse_len < 0) {
 				fr_value_box_bstrndup_shallow(&value, NULL, str, datalen, false);
 				goto failed_cast;
 			}

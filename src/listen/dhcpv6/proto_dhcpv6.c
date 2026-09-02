@@ -453,6 +453,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (inst->server_id_str) {
 		fr_pair_t *vp;
 		fr_slen_t slen;
+		ssize_t enc_len;
 		fr_pair_parse_t	root, relative;
 		fr_dcursor_t cursor;
 		uint8_t buffer[256];
@@ -480,14 +481,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 		fr_pair_dcursor_iter_init(&cursor, &vp->vp_group, fr_dhcpv6_next_encodable, dict_dhcpv6);
 
-		slen = fr_dhcpv6_encode_option(&FR_DBUFF_TMP(buffer, sizeof(buffer)), &cursor,
+		enc_len = fr_dhcpv6_encode_option(&FR_DBUFF_TMP(buffer, sizeof(buffer)), &cursor,
 					       &(fr_dhcpv6_encode_ctx_t) { .root = fr_dict_root(dict_dhcpv6) });
-		if (slen < 0) {
+		if (enc_len < 0) {
 			cf_log_perr(mctx->mi->conf, "Failed encoding 'server-id' option");
 			return -1;
 		}
 
-		MEM(inst->server_id = talloc_memdup(inst, buffer, slen));
+		MEM(inst->server_id = talloc_memdup(inst, buffer, enc_len));
 	}
 
 	/*

@@ -2152,7 +2152,8 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 	fr_dcursor_t			cursor;
 	void				*encode_ctx = NULL;
-	fr_slen_t			slen;
+	fr_slen_t			parse_len;
+	ssize_t				slen;
 	char				*p = in;
 
 	uint8_t				*enc_p, *enc_end;
@@ -2207,8 +2208,8 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	};
 	relative = (fr_pair_parse_t) { };
 
-	slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(p, inlen - (p - in)));
-	if (slen <= 0) {
+	parse_len = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(p, inlen - (p - in)));
+	if (parse_len <= 0) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -2396,7 +2397,8 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	fr_test_point_proto_encode_t	*tp = NULL;
 
 	void		*encode_ctx = NULL;
-	fr_slen_t	slen;
+	fr_slen_t	parse_len;
+	ssize_t		slen;
 	char		*p = in;
 
 	fr_pair_list_t	head;
@@ -2429,8 +2431,8 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	};
 	relative = (fr_pair_parse_t) { };
 
-	slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(p, inlen - (p - in)));
-	if (slen <= 0) {
+	parse_len = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(p, inlen - (p - in)));
+	if (parse_len <= 0) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -2798,6 +2800,7 @@ static size_t command_pair_common(command_result_t *result, command_file_ctx_t *
 {
 	fr_pair_list_t 	head;
 	fr_slen_t	slen;
+	ssize_t		out_len;
 	fr_dict_t const	*dict = dictionary_current(cc);
 	fr_pair_parse_t	root, relative;
 
@@ -2826,14 +2829,14 @@ static size_t command_pair_common(command_result_t *result, command_file_ctx_t *
 	 *	it if so.
 	 */
 
-	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
-	if (slen <= 0) {
+	out_len = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
+	if (out_len <= 0) {
 		fr_pair_list_free(&head);
 		RETURN_OK_WITH_ERROR();
 	}
 
 	fr_pair_list_free(&head);
-	RETURN_OK(slen);
+	RETURN_OK(out_len);
 }
 
 static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
