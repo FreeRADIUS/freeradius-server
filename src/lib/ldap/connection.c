@@ -1131,8 +1131,8 @@ static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, trunk_connectio
 			break;
 		}
 	}
+	break;
 #endif
-		break;
 	}
 	/*
 	 *	The request is marked as sent, to remove from the pending list.
