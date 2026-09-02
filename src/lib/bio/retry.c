@@ -985,10 +985,10 @@ fr_bio_retry_info_t const *fr_bio_retry_info(fr_bio_t *bio)
 	return &my->info;
 }
 
-size_t fr_bio_retry_outstanding(fr_bio_t *bio)
+uint64_t fr_bio_retry_outstanding(fr_bio_t *bio)
 {
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
-	size_t num;
+	uint64_t num;
 
 	num = fr_timer_list_num_events(my->next_tl);
 
