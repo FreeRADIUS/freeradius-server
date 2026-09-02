@@ -128,7 +128,7 @@ extern const fr_sbuff_escape_rules_t regex_escape_rules;
  */
 #define FR_REGEX_SAFE_FOR ((uintptr_t)regex_exec)
 
-ssize_t		regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
+fr_slen_t      	regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
 				  fr_sbuff_term_t const *terminals, bool err_on_dup);
 
 ssize_t		regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const *flags);
