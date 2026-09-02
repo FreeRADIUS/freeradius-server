@@ -118,7 +118,7 @@ test.fuzzer.${1}: $$(TEST_BIN_DIR)/fuzzer_${1} src/tests/fuzzer-corpus/${1} $$(F
 		-max_total_time=$$(FUZZER_TIMEOUT) \
 		$$(FUZZER_${1}_ARGS) \
 		src/tests/fuzzer-corpus/${1} > $$(BUILD_DIR)/fuzzer/${1}.log 2>&1; then \
-		tail -20 $$(BUILD_DIR)/fuzzer/${1}.log; \
+		tail -100 $$(BUILD_DIR)/fuzzer/${1}.log; \
 		echo FAILED; \
 		exit 1; \
 	fi
