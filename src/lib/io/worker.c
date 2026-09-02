@@ -276,6 +276,7 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 	fr_message_set_t	*ms;
 	fr_channel_event_t	ce;
 	fr_worker_t		*worker = uctx;
+	void			*ch_uctx;
 
 	was_sleeping = worker->was_sleeping;
 	worker->was_sleeping = false;
@@ -284,7 +285,7 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 	 *	We were woken up by a signal to do something.  We're
 	 *	not sleeping.
 	 */
-	ce = fr_channel_service_message(now, &ch, NULL, data, data_size);
+	ce = fr_channel_service_message(now, &ch, &ch_uctx, data, data_size);
 	DEBUG3("Channel %s",
 	       fr_table_str_by_value(channel_signals, ce, "<INVALID>"));
 	switch (ce) {
@@ -325,10 +326,8 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 
 			DEBUG3("Received channel %p into array entry %d", ch, i);
 
-			ms = fr_message_set_create(worker, worker->config.message_set_size,
-						   sizeof(fr_channel_data_t),
-						   worker->config.ring_buffer_size, false);
-			fr_assert(ms != NULL);
+			ms = talloc_get_type_abort(ch_uctx, fr_message_set_t);
+
 			worker->channel[i].ms = ms;
 
 			/*

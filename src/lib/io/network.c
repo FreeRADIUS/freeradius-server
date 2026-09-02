@@ -61,6 +61,7 @@ typedef struct {
 	bool			blocked;		//!< is this worker blocked?
 
 	fr_channel_t		*channel;		//!< channel to the worker
+	fr_message_set_t	*reply_ms;		//!< message set the worker will use to send reply data.
 	fr_worker_t		*worker;		//!< worker pointer
 	fr_io_stats_t		stats;
 } fr_network_worker_t;
@@ -1648,6 +1649,7 @@ static void fr_network_worker_started_callback(void const *data, size_t data_siz
 	fr_network_t *nr = uctx;
 	fr_worker_t *worker;
 	fr_network_worker_t *w;
+	fr_worker_config_t const *worker_config;
 
 	fr_assert(data_size == sizeof(worker));
 
@@ -1658,11 +1660,15 @@ static void fr_network_worker_started_callback(void const *data, size_t data_siz
 
 	memcpy(&worker, data, data_size);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
+	worker_config = fr_worker_config(worker);
 
 	MEM(w = talloc_zero(nr, fr_network_worker_t));
 
 	w->worker = worker;
-	w->channel = fr_worker_channel_create(worker, w, nr->control, NULL);
+	w->reply_ms = fr_message_set_create(w, worker_config->message_set_size, sizeof(fr_channel_data_t),
+					    worker_config->ring_buffer_size, false);
+	fr_fatal_assert_msg(w->reply_ms, "Failed creating reply message set");
+	w->channel = fr_worker_channel_create(worker, w, nr->control, w->reply_ms);
 	w->predicted = fr_time_delta_from_msec(10);
 	fr_fatal_assert_msg(w->channel, "Failed creating new channel");
 
