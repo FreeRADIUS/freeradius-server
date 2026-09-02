@@ -145,7 +145,13 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		}
 
 		thread->suspended = true;
-		return 0;
+
+		/*
+		 *	If mod_read is first called by an FD read event, then
+		 *	the sent count will be zero, since the load generator
+		 *	pre-increments sent.
+		 */
+		if (fr_load_generator_stats(thread->l)->sent == 0) return 0;
 	}
 
 	*leftover = 0;		/* always for load generation */
