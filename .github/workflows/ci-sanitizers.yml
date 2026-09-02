@@ -133,6 +133,7 @@ jobs:
     steps:
       # Checkout, but defer pulling Git Large File Storage (LFS) objects until we have restored the cache
       - uses: actions/checkout@v6
+        id: checkout
         with:
           lfs: false
 
@@ -183,8 +184,10 @@ jobs:
           smtp_test_server: 127.0.0.1
           smtp_test_server_port: 2525
 
+      #  The `checkout` step writes the `collect-core-dumps` action into the
+      #  workspace, so the step runs only when the `checkout` step succeeds.
       - name: Collect core dumps
-        if: ${{ always() }}
+        if: ${{ always() && steps.checkout.outcome == 'success' }}
         uses: ./.github/actions/collect-core-dumps
         with:
           name: ${{ matrix.os.name }}-${{ matrix.env.NAME }}

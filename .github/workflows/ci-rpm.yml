@@ -181,6 +181,23 @@ jobs:
     name: "RPM install test"
 
     steps:
+    #
+    #  Rocky's `mirrorlist` assigns every download to a different mirror,
+    #  and the mirrors sync at different times.  When `repomd.xml` comes
+    #  from a lagging mirror, the repodata files that `repomd.xml` names
+    #  have already rotated away on the current mirrors.  Every repodata
+    #  download then returns 404.  The step therefore pins each
+    #  repository to an ordered pair of hosts.  dnf fetches every file
+    #  from the first host that answers, so the metadata and the packages
+    #  come from one consistent host.  The second host serves only while
+    #  the first host is unreachable.
+    #
+    - name: Pin the Rocky repositories to consistent hosts
+      run: |
+        sed -i -e 's/^mirrorlist=/#mirrorlist=/' \
+               -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir/\(.*\)|baseurl=https://dl.rockylinux.org/pub/rocky/\1 https://mirror.cogentco.com/pub/linux/rocky/\1|' \
+               /etc/yum.repos.d/rocky*.repo
+
     - name: Set up NetworkRADIUS extras repository
       run: |
         echo '[networkradius-extras]'                                                               >  /etc/yum.repos.d/networkradius-extras.repo
@@ -191,9 +208,18 @@ jobs:
         echo 'gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'             >> /etc/yum.repos.d/networkradius-extras.repo
         rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
 
+    #  The `metalink` for Extra Packages for Enterprise Linux (EPEL)
+    #  spreads downloads over mirrors that sync at different times, as
+    #  Rocky's `mirrorlist` does.  The step therefore pins the EPEL
+    #  repositories to an ordered pair of hosts.  The EPEL `.repo` files
+    #  only exist once dnf installs `epel-release`, so the step installs
+    #  `epel-release` before pinning the EPEL repositories.
     - name: Enable EPEL and CRB
       run: |
         dnf install -y dnf-utils dnf-plugins-core epel-release
+        sed -i -e 's/^metalink=/#metalink=/' \
+               -e 's|^#baseurl=https://download.example/pub/epel/\(.*\)|baseurl=https://dl.fedoraproject.org/pub/epel/\1 https://mirrors.kernel.org/fedora-epel/\1|' \
+               /etc/yum.repos.d/epel*.repo
         dnf config-manager --enable crb
 
     # `procps-ng` provides `pkill`
@@ -225,6 +251,7 @@ jobs:
         chmod +x /usr/local/bin/eapol_test
 
     - uses: actions/checkout@v6
+      id: checkout
       with:
         path: freeradius
 
@@ -235,11 +262,13 @@ jobs:
         make -f scripts/ci/package-test.mk package-test
       working-directory: freeradius
 
-    #  `rpm-test` checks out into `freeradius/`, so the `uses:` reference
-    #  points below `freeradius/` and the collection step runs in
-    #  `freeradius/`.
+    #  The `rpm-test` job checks out the source into `freeradius/`, so the
+    #  `uses:` path starts with `freeradius/` and the step runs in
+    #  `freeradius/`.  The `checkout` step writes the `collect-core-dumps`
+    #  action into `freeradius/`, so the step runs only when the
+    #  `checkout` step succeeds.
     - name: Collect core dumps
-      if: ${{ always() }}
+      if: ${{ always() && steps.checkout.outcome == 'success' }}
       uses: ./freeradius/.github/actions/collect-core-dumps
       with:
         name: ${{ matrix.env.NAME }}

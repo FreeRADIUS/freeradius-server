@@ -237,6 +237,7 @@ jobs:
         chmod +x /usr/local/bin/eapol_test
 
     - uses: actions/checkout@v6
+      id: checkout
       with:
         path: freeradius
 
@@ -248,10 +249,12 @@ jobs:
       working-directory: freeradius
 
     #  The `deb-test` job checks out the source into `freeradius/`, so the
-    #  `collect-core-dumps` action path starts with `freeradius/` and the action
-    #  runs from `freeradius/`.
+    #  `uses:` path starts with `freeradius/` and the step runs in
+    #  `freeradius/`.  The `checkout` step writes the `collect-core-dumps`
+    #  action into `freeradius/`, so the step runs only when the
+    #  `checkout` step succeeds.
     - name: Collect core dumps
-      if: ${{ always() }}
+      if: ${{ always() && steps.checkout.outcome == 'success' }}
       uses: ./freeradius/.github/actions/collect-core-dumps
       with:
         name: ${{ matrix.env.NAME }}

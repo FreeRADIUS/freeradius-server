@@ -116,6 +116,7 @@ jobs:
     steps:
 
       - uses: actions/checkout@v6
+        id: checkout
         with:
           lfs: false
 
@@ -219,8 +220,10 @@ jobs:
       #  `move: true` option moves a core out of `prof-results/`, so a core
       #  is uploaded once and does not inflate the `prof-results` artifact or
       #  the store publish.
+      #  The `checkout` step writes the `collect-core-dumps` action into the
+      #  workspace, so the step runs only when the `checkout` step succeeds.
       - name: Collect core dumps
-        if: ${{ always() }}
+        if: ${{ always() && steps.checkout.outcome == 'success' }}
         uses: ./.github/actions/collect-core-dumps
         with:
           name: ${{ matrix.mode }}-${{ github.sha }}
