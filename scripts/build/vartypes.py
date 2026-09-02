@@ -409,7 +409,18 @@ def calls_in(line):
 
 
 def local_declarations(body, first_line):
-    """Map each local variable to (declared type, line number)."""
+    """Map each local variable to every declaration of that name.
+
+    One function can declare the same name more than once, in blocks which do
+    not overlap:
+
+        case A: { ssize_t slen; ... }
+        case B: { fr_slen_t slen; ... }
+
+    Keeping only the last would report the wrong type for every use in the
+    earlier blocks, so each name maps to a list of (type, line) and a use picks
+    the declaration nearest above it.
+    """
     decl = re.compile(
         r'^[ \t]+(?P<type>(?:const\s+|volatile\s+|register\s+|static\s+|struct\s+|union\s+|enum\s+'
         r'|_Thread_local\s+|__thread\s+|_Atomic\s+)*'
@@ -445,9 +456,20 @@ def local_declarations(body, first_line):
             if not name:
                 continue
             spelling = vtype + (" *" * piece.count('*'))
-            out[name.group(1)] = (spelling, first_line + offset)
+            out.setdefault(name.group(1), []).append((spelling, first_line + offset))
 
     return out
+
+
+def declared_at(declarations, var, use_line):
+    """The declaration of `var` in force at `use_line`: the nearest above."""
+    seen = [d for d in declarations[var] if d[1] <= use_line]
+
+    #
+    #  A use above every declaration of the name means the declarations are in
+    #  blocks this scanner cannot see into.  The first is the best guess.
+    #
+    return seen[-1] if seen else declarations[var][0]
 
 
 def classify(target, source, typedefs):
@@ -528,7 +550,7 @@ def scan_file(path, sigs, local, typedefs, args):
                 if not sig:
                     continue
 
-                vtype, vline = locals_[var]
+                vtype, vline = declared_at(locals_, var, lineno)
                 rtype = sig[0]
 
                 #
@@ -563,7 +585,7 @@ def scan_file(path, sigs, local, typedefs, args):
                         continue
 
                     var = hit.group(1)
-                    vtype, vline = locals_[var]
+                    vtype, vline = declared_at(locals_, var, lineno)
                     ptype = ptypes[pos]
                     if not stars(ptype):
                         continue
