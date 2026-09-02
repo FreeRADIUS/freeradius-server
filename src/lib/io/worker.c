@@ -382,10 +382,9 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 			num = fr_channel_responder_discard(ch);
 			if (num > 0) PWARN("Discarded %u request(s) still queued at close", num);
 
-			fr_channel_responder_ack_close(ch);
 			fr_assert(ms != NULL);
 			fr_message_set_gc(ms);
-			talloc_free(ms);
+			fr_channel_responder_ack_close(ch);
 
 			worker->channel[i].ch = NULL;
 
