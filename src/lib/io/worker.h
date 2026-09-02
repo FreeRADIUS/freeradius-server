@@ -99,6 +99,8 @@ int		fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats) CC_HIN
 
 int		fr_worker_listen_cancel(fr_worker_t *worker, fr_listen_t const *li);
 
+fr_worker_config_t const *fr_worker_config(fr_worker_t *worker) CC_HINT(nonnull);
+
 #include <freeradius-devel/server/module.h>
 
 int		fr_worker_subrequest_add(request_t *request) CC_HINT(nonnull);

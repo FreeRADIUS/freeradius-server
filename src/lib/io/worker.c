@@ -1780,6 +1780,11 @@ int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
 	return 6;
 }
 
+fr_worker_config_t const *fr_worker_config(fr_worker_t *worker)
+{
+	return &worker->config;
+}
+
 static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
 	fr_worker_t const *worker = ctx;
