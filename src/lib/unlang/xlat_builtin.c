@@ -438,7 +438,10 @@ static bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
 	if (!num_files) goto fail;
 
 	for (i = 0; i < num_files; i++) {
-		size_t alen = talloc_array_length(main_config->limit_files[i]);
+		/*
+		 *	Get length of config entry, not including terminating NUL
+		 */
+		size_t alen = talloc_array_length(main_config->limit_files[i]) - 1;
 
 		/*
 		 *	The allowed directory is longer than the filename, it's not allowed.
@@ -450,13 +453,16 @@ static bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
 		 */
 		if (memcmp(vb->vb_strvalue, main_config->limit_files[i], alen) != 0) continue;
 
+		/*
+		 *	Exact match, it is allowed.
+		 */
 		if (alen == vb->vb_length) return true;
 
 		/*
 		 *	Setting "allow = foo/bar" does NOT mean that
 		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
 		 */
-		if (vb->vb_strvalue[vb->vb_length] != '/') break;
+		if (vb->vb_strvalue[alen] != '/') break;
 
 		return true;
 	}

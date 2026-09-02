@@ -457,7 +457,10 @@ static bool fr_exec_allowed(char const *filename)
 	len = strlen(filename);
 
 	for (i = 0; i < num_files; i++) {
-		size_t alen = talloc_array_length(main_config->limit_exec[i]);
+		/*
+		 *	Get length of config entry, not including terminating NUL
+		 */
+		size_t alen = talloc_array_length(main_config->limit_exec[i]) - 1;
 
 		/*
 		 *	The allowed directory is longer than the filename, it's not allowed.
