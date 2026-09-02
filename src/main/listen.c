@@ -3557,6 +3557,10 @@ static int listen_bind(rad_listen_t *this)
 
 static int _listener_free(rad_listen_t *this)
 {
+#ifdef WITH_TCP
+	listen_socket_t *sock = this->data;
+#endif
+
 	/*
 	 *	Other code may have eaten the FD.
 	 */
@@ -3566,77 +3570,92 @@ static int _listener_free(rad_listen_t *this)
 		master_listen[this->type].free(this);
 	}
 
+	/*
+	 *	No TCP means no TLS, either.  So we skip all of the
+	 *	TCP / TLS stuff if it's not in the build.
+	 */
 #ifdef WITH_TCP
-	if ((this->type == RAD_LISTEN_AUTH)
-#ifdef WITH_ACCT
-	    || (this->type == RAD_LISTEN_ACCT)
-#endif
-#ifdef WITH_PROXY
-	    || (this->type == RAD_LISTEN_PROXY)
-#endif
-#ifdef WITH_COMMAND_SOCKET
-	    || ((this->type == RAD_LISTEN_COMMAND) &&
-		(((fr_command_socket_t *) this->data)->magic != COMMAND_SOCKET_MAGIC))
-#endif
-		) {
+	/*
+	 *	Some sockets can't use TCP, in which case we just return immediately.
+	 */
+	switch (this->type) {
+	case RAD_LISTEN_DETAIL:
+	case RAD_LISTEN_VQP:
+	case RAD_LISTEN_DHCP:
+	case RAD_LISTEN_MAX:
+		return 0;
+
+	case RAD_LISTEN_COMMAND:
+		/*
+		 *	Some command sockets are Unix sockets, we
+		 *	don't do anything else for them.
+		 */
+		if (((fr_command_socket_t *) this->data)->magic != COMMAND_SOCKET_MAGIC) {
+			return 0;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	UDP sockets aren't connected, and aren't put into any
+	 *	parent tree.
+	 */
+	sock = this->data;
+	if (sock->proto == IPPROTO_UDP) return 0;
+
+	/*
+	 *	Remove the child from the parent tree.
+	 */
+	if (this->parent) {
+		rbtree_deletebydata(this->parent->children, this);
+		this->parent = NULL;
+	}
+
+	/*
+	 *	Delete / close all of the children, too!
+	 */
+	if (this->children) {
+		rbtree_walk(this->children, RBTREE_DELETE_ORDER, listener_unlink, this);
+		rbtree_free(this->children);
+		this->children = NULL;
+	}
 
 #ifdef WITH_TLS
-		listen_socket_t *sock = this->data;
-#endif
+	/*
+	 *	Note that we do NOT free this->tls, as the
+	 *	pointer is parented by its CONF_SECTION.  It
+	 *	may be used by multiple listeners.
+	 */
+	if (this->tls) {
+		rad_assert(talloc_parent(sock) == this);
+		rad_assert(sock->ev == NULL);
 
+		rad_assert(!sock->ssn || (talloc_parent(sock->ssn) == sock));
+		rad_assert(!sock->request || (talloc_parent(sock->request) == sock));
 
-		/*
-		 *	Remove the child from the parent tree.
-		 */
-		if (this->parent) {
-			rbtree_deletebydata(this->parent->children, this);
-			this->parent = NULL;
-		}
-
-		/*
-		 *	Delete / close all of the children, too!
-		 */
-		if (this->children) {
-			rbtree_walk(this->children, RBTREE_DELETE_ORDER, listener_unlink, this);
-			rbtree_free(this->children);
-			this->children = NULL;
-		}
-
-#ifdef WITH_TLS
-		/*
-		 *	Note that we do NOT free this->tls, as the
-		 *	pointer is parented by its CONF_SECTION.  It
-		 *	may be used by multiple listeners.
-		 */
-		if (this->tls) {
-			rad_assert(talloc_parent(sock) == this);
-			rad_assert(sock->ev == NULL);
-
-			rad_assert(!sock->ssn || (talloc_parent(sock->ssn) == sock));
-			rad_assert(!sock->request || (talloc_parent(sock->request) == sock));
-
-			if (sock->home && sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
-		}
+		if (sock->home && sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
+	}
 
 #ifdef HAVE_PTHREAD_H
-		/*
-		 *	The mutex is only ever allocated for TLS (incoming)
-		 *	or proxy sockets; both keep it in a listen_socket_t.
-		 *	Guard on the type so a command socket (whose "data"
-		 *	is NOT a listen_socket_t) is never treated as one.
-		 */
-		if ((this->tls
+	/*
+	 *	The mutex is only ever allocated for TLS (incoming)
+	 *	or proxy sockets; both keep it in a listen_socket_t.
+	 *	Guard on the type so a command socket (whose "data"
+	 *	is NOT a listen_socket_t) is never treated as one.
+	 */
+	if ((this->tls
 #ifdef WITH_PROXY
-		     || (this->type == RAD_LISTEN_PROXY)
+	     || (this->type == RAD_LISTEN_PROXY)
 #endif
-			    ) && sock->mutex) {
-			pthread_mutex_destroy(sock->mutex);
-		}
-#endif
-
-#endif	/* WITH_TLS */
+		    ) && sock->mutex) {
+		pthread_mutex_destroy(sock->mutex);
 	}
-#endif				/* WITH_TCP */
+#endif	/* HAVE_PTHREAD_H */
+#endif	/* WITH_TLS */
+#endif	/* WITH_TCP */
 
 	return 0;
 }
