@@ -81,6 +81,13 @@ void main_loop_signal_raise(int flag)
 	uint8_t buffer[16];
 
 	/*
+	 *	The main loop is exiting, don't read from the self
+	 *	pipe, which avoids a fault below when that pipe
+	 *	doesn't exist.
+	 */
+	if (self_pipe[1] < 0) return;
+
+	/*
 	 *	The read MUST be non-blocking for this to work.
 	 */
 	rcode = read(self_pipe[0], buffer, sizeof(buffer));
