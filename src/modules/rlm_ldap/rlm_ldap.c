@@ -1911,8 +1911,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		break;
 
 	}
-	FALL_THROUGH;
-
 #endif
 	case LDAP_AUTZ_MAP:
 #ifdef WITH_EDIR
