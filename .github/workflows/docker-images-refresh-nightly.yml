@@ -17,16 +17,6 @@ on:
   schedule:
     - cron: '0 1 * * *'
 
-concurrency:
-  #
-  #  Only one refresh runs at a time, and a new run queues instead of
-  #  cancelling the run in flight.  An interrupted refresh leaves the
-  #  registry partially updated, whereas a queued second run re-publishes
-  #  everything cleanly.
-  #
-  group: docker-ci-images-refresh
-  cancel-in-progress: false
-
 jobs:
   docker_ci_images_refresh:
     name: Docker CI images refresh
