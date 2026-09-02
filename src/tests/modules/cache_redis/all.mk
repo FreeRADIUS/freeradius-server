@@ -11,13 +11,15 @@ cache_redis_require_test_server := 1
 #  test in modules/redis can never kill a node under them.  The cluster's
 #  base port is defined once here, and the node ports, base+1 to base+6,
 #  reach the test configuration through the environment.
+#  `modules/redis/all.mk` explains why the base port stays below the
+#  ephemeral port floor.
 #
 #
 #  The definition is guarded, because cache_redis and rediswho both carry
 #  it, and only the suites whose modules build get their makefiles included.
 #
 ifndef CACHE_REDIS_CLUSTER_PORT
-CACHE_REDIS_CLUSTER_PORT := 30200
+CACHE_REDIS_CLUSTER_PORT := 21200
 
 .PHONY: test.modules.cache_redis_bootstrap
 test.modules.cache_redis_bootstrap:

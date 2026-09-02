@@ -16,8 +16,8 @@ $(eval $(call TEST_PARALLEL))
 #
 #  The cluster's base port is defined once here.  The node ports, base+1 to
 #  base+6, reach the test configuration through the environment.
-#  `modules/redis/all.mk` documents the constraint that keeps the base
-#  below the ephemeral port floor.
+#  `modules/redis/all.mk` explains why the base port stays below the
+#  ephemeral port floor.
 #
 #  Guarded, because modules/all.mk includes this file once per test file,
 #  and redefining a target's recipe makes make warn.
