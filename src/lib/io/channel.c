@@ -991,13 +991,14 @@ int fr_channel_set_recv_request(fr_channel_t *ch, fr_channel_recv_callback_t rec
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_signal_open(fr_channel_t *ch)
+int fr_channel_signal_open(fr_channel_t *ch, void *uctx)
 {
 	fr_channel_control_t cc;
 
 	cc.signal = FR_CHANNEL_SIGNAL_OPEN;
 	cc.ack = 0;
 	cc.ch = ch;
+	cc.uctx = uctx;
 
 	return fr_control_message_send(ch->end[TO_RESPONDER].control, ch->end[TO_RESPONDER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }

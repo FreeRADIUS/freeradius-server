@@ -1706,7 +1706,7 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	/*
 	 *	Tell the worker about the channel
 	 */
-	if (fr_channel_signal_open(ch) < 0) {
+	if (fr_channel_signal_open(ch, NULL) < 0) {
 		talloc_free(ch);
 		return NULL;
 	}

@@ -179,7 +179,7 @@ fr_channel_event_t	fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 
 bool	fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);
 
-int	fr_channel_signal_open(fr_channel_t *ch) CC_HINT(nonnull);
+int	fr_channel_signal_open(fr_channel_t *ch, void *uctx) CC_HINT(nonnull(1));
 
 int	fr_channel_signal_responder_close(fr_channel_t *ch) CC_HINT(nonnull);
 unsigned int fr_channel_responder_discard(fr_channel_t *ch) CC_HINT(nonnull);
