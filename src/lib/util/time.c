@@ -90,6 +90,13 @@ static char const		*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localti
 static long			gmtoff[2] = {0, 0};	       	//!< from localtime_r(), tm_gmtoff
 static bool			isdst = false;			//!< from localtime_r(), tm_is_dst
 
+/*
+ *	fr_time_to_sec() returns `int64_t`, which is then assigned to a local `time_t`.
+ *
+ *	 POSIX.1-2024 requires that the width of `time_t` is at least
+ *	 64 bits, so we check that here.
+ */
+static_assert(sizeof(time_t) == sizeof(int64_t), "time_t is not 64-bits");
 
 /** Get a new fr_time_monotonic_to_realtime value
  *
