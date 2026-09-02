@@ -1682,13 +1682,14 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 /** Create a channel to the worker
  *
  * Called by the master (i.e. network) thread when it needs to create
- * a new channel to a particuler worker.
+ * a new channel to a particular worker.
  *
  * @param[in] worker the worker
- * @param[in] master the control plane of the master
  * @param[in] ctx the context in which the channel will be created
+ * @param[in] master the control plane of the master
+ * @param[in] uctx to include in the channel open message
  */
-fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master)
+fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master, void *uctx)
 {
 	fr_channel_t *ch;
 	pthread_t id;
@@ -1706,7 +1707,7 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	/*
 	 *	Tell the worker about the channel
 	 */
-	if (fr_channel_signal_open(ch, NULL) < 0) {
+	if (fr_channel_signal_open(ch, uctx) < 0) {
 		talloc_free(ch);
 		return NULL;
 	}

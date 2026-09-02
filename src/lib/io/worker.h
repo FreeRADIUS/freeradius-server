@@ -93,7 +93,7 @@ int		fr_worker_pre_event(fr_time_t now, fr_time_delta_t wake, void *uctx);
 
 void		fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 
-fr_channel_t	*fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master) CC_HINT(nonnull);
+fr_channel_t	*fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master, void *uctx) CC_HINT(nonnull(1,2,3));
 
 int		fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats) CC_HINT(nonnull);
 

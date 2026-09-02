@@ -1662,7 +1662,7 @@ static void fr_network_worker_started_callback(void const *data, size_t data_siz
 	MEM(w = talloc_zero(nr, fr_network_worker_t));
 
 	w->worker = worker;
-	w->channel = fr_worker_channel_create(worker, w, nr->control);
+	w->channel = fr_worker_channel_create(worker, w, nr->control, NULL);
 	w->predicted = fr_time_delta_from_msec(10);
 	fr_fatal_assert_msg(w->channel, "Failed creating new channel");
 
