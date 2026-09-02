@@ -2812,7 +2812,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char const	*p, *start, *end;
 	char		*endptr;
 	char		*buff_p;
-	unsigned int	result;
+	uint32_t	result;
 	unsigned int	reps;
 	size_t		outlen = 0;
 	fr_value_box_t*	vb;

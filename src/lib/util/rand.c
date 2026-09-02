@@ -162,7 +162,8 @@ void fr_rand_buffer(void *start, size_t length)
 void fr_rand_str(uint8_t *out, size_t len, char class)
 {
 	uint8_t		*p = out, *end = p + len;
-	unsigned int	word, mod;
+	uint32_t	word;
+	unsigned int	mod;
 	uint8_t		byte;
 
 	/*
