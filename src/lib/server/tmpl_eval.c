@@ -494,7 +494,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 					       true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
 		error:
 			talloc_free(tmp_ctx);
-			return slen;
+			return -1;
 		}
 
 		fr_value_box_strtrim(tmp_ctx, &value);

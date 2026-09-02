@@ -1847,6 +1847,7 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 		   xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	ssize_t len;
+	fr_slen_t slen;
 	xlat_exp_head_t *head;
 
 	RINDENT();
@@ -1854,20 +1855,20 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 	/*
 	 *	Give better errors than the old code.
 	 */
-	len = xlat_tokenize(ctx, &head,
-			    &FR_SBUFF_IN_STR(fmt),
-			    NULL,
-			    &(tmpl_rules_t){
-				    .attr = {
-					    .dict_def = request->local_dict,
-					    .list_def = request_attr_request,
-				    },
-				    .xlat = {
-					    .runtime_el = unlang_interpret_event_list(request),
-				    },
-				    .at_runtime = true,
-			    });
-	if (len == 0) {
+	slen = xlat_tokenize(ctx, &head,
+			     &FR_SBUFF_IN_STR(fmt),
+			     NULL,
+			     &(tmpl_rules_t){
+				     .attr = {
+					     .dict_def = request->local_dict,
+					     .list_def = request_attr_request,
+				     },
+				     .xlat = {
+					     .runtime_el = unlang_interpret_event_list(request),
+				     },
+				     .at_runtime = true,
+			     });
+	if (slen == 0) {
 		if (*out) {
 			**out = '\0';
 		} else {
@@ -1877,8 +1878,8 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 		return 0;
 	}
 
-	if (len < 0) {
-		REMARKER(fmt, -(len), "%s", fr_strerror());
+	if (slen < 0) {
+		REMARKER(fmt, -(slen), "%s", fr_strerror());
 		if (*out) **out = '\0';
 		REXDENT();
 		return -1;
