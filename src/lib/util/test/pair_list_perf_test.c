@@ -179,7 +179,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 	fr_pair_t	*vp, *next;
 	int		i;
 	size_t		j;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	fr_pair_t	**vp_array;
 	size_t		input_count;
 

@@ -949,7 +949,7 @@ int fr_ldap_filter_to_tmpl(TALLOC_CTX *ctx, tmpl_rules_t const *t_rules, char co
 {
 	char		*buffer = NULL;
 	char const	*in = NULL;
-	ssize_t		len = 0;
+	fr_slen_t	len = 0;
 	size_t		i;
 	int		cnt = 0;
 	tmpl_t		*parsed;

@@ -93,7 +93,7 @@ static void test_parse_attr_simple(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-String-0", test_rules());
 	TEST_CHECK(slen > 0);
@@ -108,7 +108,7 @@ static void test_parse_attr_index(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Int32-0[0]", test_rules());
 	TEST_CHECK(slen > 0);
@@ -124,7 +124,7 @@ static void test_parse_attr_all(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Int32-0[*]", test_rules());
 	TEST_CHECK(slen > 0);
@@ -139,7 +139,7 @@ static void test_parse_attr_count(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Int32-0[#]", test_rules());
 	TEST_CHECK(slen > 0);
@@ -154,7 +154,7 @@ static void test_parse_attr_last(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Int32-0[n]", test_rules());
 	TEST_CHECK(slen > 0);
@@ -169,7 +169,7 @@ static void test_parse_attr_nested(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt,
 				   "Test-Nested-Top-TLV-0.Child-TLV.Leaf-String", test_rules());
@@ -187,7 +187,7 @@ static void test_parse_attr_missing(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	tmpl_rules_t		rules = {
 		.attr = {
 			.dict_def = test_dict,
@@ -208,7 +208,7 @@ static void test_parse_attr_invalid(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "aaa^442", test_rules());
 	TEST_CHECK(slen < 0);
@@ -220,7 +220,7 @@ static void test_parse_attr_emptystring(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err = TMPL_ATTR_ERROR_NONE;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	tmpl_rules_t		rules = {
 		.attr = {
 			.dict_def = test_dict,
@@ -243,7 +243,7 @@ static void test_parse_attr_emptystring(void)
 static void test_parse_bareword_attr(void)
 {
 	tmpl_t		*vpt = NULL;
-	ssize_t		slen;
+	fr_slen_t	slen;
 
 	slen = tmpl_afrom_substr(autofree, &vpt, &FR_SBUFF_IN_STR("Test-String-0"),
 				 T_BARE_WORD, NULL, test_rules());
@@ -258,7 +258,7 @@ static void test_parse_bareword_attr(void)
 static void test_parse_single_quoted(void)
 {
 	tmpl_t		*vpt = NULL;
-	ssize_t		slen;
+	fr_slen_t	slen;
 
 	slen = tmpl_afrom_substr(autofree, &vpt, &FR_SBUFF_IN_STR("hello world"),
 				 T_SINGLE_QUOTED_STRING, NULL, test_rules());
@@ -277,7 +277,7 @@ static void test_parse_single_quoted(void)
 static void test_parse_double_quoted_literal(void)
 {
 	tmpl_t		*vpt = NULL;
-	ssize_t		slen;
+	fr_slen_t	slen;
 
 	slen = tmpl_afrom_substr(autofree, &vpt, &FR_SBUFF_IN_STR("hello world"),
 				 T_DOUBLE_QUOTED_STRING, NULL, test_rules());
@@ -296,7 +296,7 @@ static void test_parse_double_quoted_literal(void)
 static void test_parse_double_quoted_xlat(void)
 {
 	tmpl_t		*vpt = NULL;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	tmpl_rules_t		rules = {
 		.attr = {
 			.dict_def = test_dict,
@@ -390,7 +390,7 @@ static void test_from_value_box_ipaddr(void)
 static void test_cast_unresolved_to_uint32(void)
 {
 	tmpl_t		*vpt = NULL;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	int		ret;
 	tmpl_rules_t	rules = *test_rules();
 
@@ -419,7 +419,7 @@ static void test_cast_unresolved_to_uint32(void)
 static void test_cast_unresolved_to_string(void)
 {
 	tmpl_t		*vpt = NULL;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	int		ret;
 
 	slen = tmpl_afrom_substr(autofree, &vpt, &FR_SBUFF_IN_STR("hello"),
@@ -464,7 +464,7 @@ static void test_cast_uint32_to_uint64(void)
 static void test_cast_invalid(void)
 {
 	tmpl_t		*vpt = NULL;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	int		ret;
 
 	slen = tmpl_afrom_substr(autofree, &vpt, &FR_SBUFF_IN_STR("not_a_number"),
@@ -514,7 +514,7 @@ static void test_copy_attr(void)
 	tmpl_t			*vpt = NULL;
 	tmpl_t			*copy;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-String-0", test_rules());
 	TEST_CHECK(slen > 0);
@@ -535,7 +535,7 @@ static void test_copy_data_unresolved(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_t			*copy;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_substr(autofree, &vpt, &FR_SBUFF_IN_STR("hello world"),
 				 T_DOUBLE_QUOTED_STRING, NULL, test_rules());
@@ -596,7 +596,7 @@ static void test_eval_attr_found(void)
 	fr_value_box_t		*result;
 	request_t		*request = request_fake_alloc();
 	fr_pair_t		*string_vp;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	int			ret;
 
 	fr_value_box_list_init(&out);
@@ -631,7 +631,7 @@ static void test_eval_attr_missing(void)
 	fr_value_box_list_t	out;
 	fr_value_box_t		*result;
 	request_t		*request = request_fake_alloc();
-	ssize_t			slen;
+	fr_slen_t		slen;
 	int			ret;
 
 	fr_value_box_list_init(&out);
@@ -663,7 +663,7 @@ static void test_eval_attr_multiple(void)
 	fr_value_box_t		*result;
 	request_t		*request = request_fake_alloc();
 	fr_pair_t		*vp1, *vp2;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	int			ret;
 
 	fr_value_box_list_init(&out);
@@ -704,7 +704,7 @@ static void test_eval_attr_count(void)
 	fr_value_box_t		*result;
 	request_t		*request = request_fake_alloc();
 	fr_pair_t		*vp1, *vp2;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	int			ret;
 
 	fr_value_box_list_init(&out);
@@ -745,7 +745,7 @@ static void test_find_vp_found(void)
 	request_t		*request = request_fake_alloc();
 	fr_pair_t		*string_vp;
 	fr_pair_t		*found = NULL;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	int			ret;
 
 	pair_append_request(&string_vp, fr_dict_attr_test_string);
@@ -769,7 +769,7 @@ static void test_find_vp_missing(void)
 	tmpl_attr_error_t	err;
 	request_t		*request = request_fake_alloc();
 	fr_pair_t		*found = NULL;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	int			ret;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Int16-0", test_rules());
@@ -791,7 +791,7 @@ static void test_find_or_add_existing(void)
 	request_t		*request = request_fake_alloc();
 	fr_pair_t		*string_vp;
 	fr_pair_t		*found = NULL;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	int			ret;
 
 	pair_append_request(&string_vp, fr_dict_attr_test_string);
@@ -816,7 +816,7 @@ static void test_find_or_add_new(void)
 	tmpl_attr_error_t	err;
 	request_t		*request = request_fake_alloc();
 	fr_pair_t		*found = NULL;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	int			ret;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-Int16-0", test_rules());
@@ -841,7 +841,7 @@ static void test_print_attr(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	char			*str = NULL;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "Test-String-0", test_rules());
@@ -956,7 +956,7 @@ static void test_type_checking(void)
 	tmpl_t			*unresolved_vpt = NULL;
 	tmpl_attr_error_t	err;
 	fr_value_box_t		box;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	int			ret;
 
 	/* Create a DATA tmpl */
@@ -1005,7 +1005,7 @@ static void test_parse_attr_empty_ref(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err = TMPL_ATTR_ERROR_NONE;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	slen = tmpl_afrom_attr_str(autofree, &err, &vpt, "", test_rules());
 	TEST_CHECK(slen <= 0);
@@ -1019,7 +1019,7 @@ static void test_parse_attr_unresolved_disallowed(void)
 {
 	tmpl_t			*vpt = NULL;
 	tmpl_attr_error_t	err = TMPL_ATTR_ERROR_NONE;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	tmpl_rules_t		rules = {
 		.attr = {
 			.dict_def = test_dict,

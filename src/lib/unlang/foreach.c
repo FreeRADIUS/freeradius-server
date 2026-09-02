@@ -564,7 +564,7 @@ static unlang_t *unlang_compile_foreach(unlang_t *parent, unlang_compile_ctx_t *
 	unlang_group_t		*g;
 	unlang_foreach_t	*gext;
 
-	ssize_t			slen;
+	fr_slen_t		slen;
 	tmpl_t			*vpt;
 	fr_dict_attr_t const	*da = NULL;
 

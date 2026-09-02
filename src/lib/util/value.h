@@ -1268,12 +1268,12 @@ void		fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da);
  *
  * @{
  */
-ssize_t		fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
+fr_slen_t	fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules)
 		CC_HINT(nonnull(2,5));
 
-ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
+fr_slen_t	fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				      char const *in, size_t inlen,
 				      fr_sbuff_unescape_rules_t const *erules)

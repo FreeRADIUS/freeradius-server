@@ -2013,7 +2013,8 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 	call_env_parsed_t	*parsed_env;
 	tmpl_rules_t		our_rules;
 	char			*section2, *p;
-	ssize_t			count, slen, multi_index = 0;
+	ssize_t			count, multi_index = 0;
+	fr_slen_t		slen;
 
 	fr_assert(cec->type == CALL_ENV_CTX_TYPE_MODULE);
 

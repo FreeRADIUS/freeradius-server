@@ -659,7 +659,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(unlang_result_t *p_result
 	char				buff[4096];
 	char				*p = buff;
 	tmpl_t				*empty, *vpt = NULL, *vpt_p = NULL;
-	ssize_t				slen;
+	fr_slen_t			slen;
 	bool				with_delim;
 
 	TALLOC_CTX			*frame_ctx = unlang_interpret_frame_talloc_ctx(request);

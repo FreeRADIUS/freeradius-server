@@ -155,7 +155,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_ctx_t *u
 	 */
 	{
 		char const *name2 = cf_section_name2(cs);
-		ssize_t slen;
+		fr_slen_t slen;
 
 		tmpl_rules_t t_rules = (tmpl_rules_t) {
 			.parent = unlang_ctx->rules->parent,

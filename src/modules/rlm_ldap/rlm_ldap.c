@@ -2565,7 +2565,8 @@ static int ldap_mod_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 	tmpl_t			*parsed_tmpl;
 	call_env_parsed_t	*parsed_env;
 	char			*section2, *p;
-	ssize_t			count, slen, multi_index = 0;
+	ssize_t			count, multi_index = 0;
+	fr_slen_t		slen;
 	ldap_mod_tmpl_t		*mod;
 
 	fr_assert(cec->type == CALL_ENV_CTX_TYPE_MODULE);

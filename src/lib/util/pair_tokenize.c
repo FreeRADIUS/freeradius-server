@@ -179,7 +179,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 {
 	char const *end = in + inlen;
 	char const *p = in;
-	ssize_t slen;
+	fr_slen_t slen;
 	fr_dict_attr_t const *da;
 	char quote;
 	char const *value;
@@ -289,11 +289,11 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
  *	    parent VP if this child has a SMALLER attribute number than the previous
  *	    child.  This allows the previous configurations to "just work".
  */
-static ssize_t fr_pair_ctx_set(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen)
+static fr_slen_t fr_pair_ctx_set(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen)
 {
 	char const *end = in + inlen;
 	char const *p = in;
-	ssize_t slen;
+	fr_slen_t slen;
 	fr_dict_attr_t const *da;
 	fr_dict_attr_t const *parent = pair_ctx->parent;
 
@@ -377,7 +377,7 @@ ssize_t fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t in
 {
 	char const *end = in + inlen;
 	char const *p = in;
-	ssize_t slen;
+	fr_slen_t slen;
 	fr_dict_attr_t const *da;
 
 	while (isspace((uint8_t) *p) && (p < end)) p++;

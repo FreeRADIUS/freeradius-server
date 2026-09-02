@@ -370,7 +370,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	 *	Allow for keyed load-balance / redundant-load-balance sections.
 	 */
 	if (name2) {
-		ssize_t slen;
+		fr_slen_t slen;
 		xlat_exp_head_t const *xlat;
 
 		/*

@@ -1639,7 +1639,8 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 	}
 
 	while ((ci = cf_item_next(cs, ci))) {
-		ssize_t slen, len;
+		fr_slen_t slen;
+		ssize_t len;
 		char const *attr, *value;
 		CONF_PAIR *cp;
 		fr_dict_enum_value_t const *dv;

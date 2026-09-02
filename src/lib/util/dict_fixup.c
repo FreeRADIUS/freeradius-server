@@ -136,7 +136,7 @@ int fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const
 {
 	fr_dict_t			*dict = fr_dict_unconst(rel->dict);
 	fr_dict_attr_t const		*da = rel;
-	ssize_t				slen;
+	fr_slen_t			slen;
 
 	*da_p = NULL;
 

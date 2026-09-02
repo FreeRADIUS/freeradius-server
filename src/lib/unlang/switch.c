@@ -175,7 +175,7 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 	 */
 	name2 = cf_section_name2(cs);
 	if (name2) {
-		ssize_t			slen;
+		fr_slen_t		slen;
 		fr_token_t		quote;
 		unlang_group_t		*switch_g;
 		unlang_switch_t		*switch_gext;
@@ -301,7 +301,7 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 	unlang_switch_t		*gext;
 
 	unlang_t		*c;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	tmpl_rules_t		t_rules;
 

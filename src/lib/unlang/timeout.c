@@ -215,7 +215,7 @@ static unlang_t *unlang_compile_timeout(unlang_t *parent, unlang_compile_ctx_t *
 			return NULL;
 		}
 	} else {
-		ssize_t		slen;
+		fr_slen_t	slen;
 		tmpl_rules_t	t_rules;
 
 		/*

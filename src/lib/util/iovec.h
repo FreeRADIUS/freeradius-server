@@ -33,7 +33,7 @@ RCSIDH(iovec_h, "$Id$")
 extern "C" {
 #endif
 
-fr_slen_t	fr_concatv(fr_dbuff_t *out, struct iovec vector[], int iovcnt);
+ssize_t		fr_concatv(fr_dbuff_t *out, struct iovec vector[], int iovcnt);
 ssize_t		fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t timeout);
 
 #ifdef __cplusplus

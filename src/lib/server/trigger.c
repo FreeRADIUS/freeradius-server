@@ -168,7 +168,7 @@ int trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigge
 
 	request_t		*request;
 	fr_trigger_t		*trigger;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	fr_event_list_t		*el;
 	tmpl_rules_t		t_rules;

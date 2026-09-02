@@ -1390,7 +1390,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*key = fr_value_box_list_head(&env->key);
 	rlm_cache_handle_t		*handle = NULL;
 
-	ssize_t				slen;
+	fr_slen_t			slen;
 
 	fr_value_box_t			*attr = fr_value_box_list_head(in);
 

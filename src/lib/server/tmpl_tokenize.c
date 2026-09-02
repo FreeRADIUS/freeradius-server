@@ -1533,7 +1533,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	parse_tmpl:
 	{
 		fr_sbuff_t tmp = FR_SBUFF(&our_name);
-		ssize_t slen;
+		fr_slen_t slen;
 		tmpl_rules_t t_rules;
 		fr_sbuff_parse_rules_t p_rules;
 		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
@@ -2283,7 +2283,7 @@ static int attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
  *	- <= 0 on error (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
-ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+fr_slen_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			       tmpl_t **out, fr_sbuff_t *name,
 			       fr_sbuff_parse_rules_t const *p_rules,
 			       tmpl_rules_t const *t_rules)
@@ -2565,10 +2565,11 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
  * @note Unlike #tmpl_afrom_attr_substr this function will error out if the entire
  *	name string isn't parsed.
  */
-ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+fr_slen_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			    tmpl_t **out, char const *name, tmpl_rules_t const *t_rules)
 {
-	ssize_t slen, name_len;
+	fr_slen_t slen;
+	ssize_t name_len;
 	DEFAULT_RULES;
 
 	CHECK_T_RULES;
@@ -2985,7 +2986,7 @@ static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
  *	- < 0 sbuff does not contain a mac address.
  *	- > 0 how many bytes were parsed.
  */
-static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+static fr_slen_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 				       fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t			*vpt;
@@ -3130,7 +3131,7 @@ static fr_slen_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbu
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
-static ssize_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+static fr_slen_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 				       fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t		*vpt;
@@ -3159,7 +3160,7 @@ static ssize_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
-static ssize_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+static fr_slen_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 				     fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t		*vpt;
@@ -3205,7 +3206,7 @@ static ssize_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *
  *	We also need to distinguish unresolved bare words as enums
  *	(with :: prefix) from unresolved attributes without an & prefix.
  */
-static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+static fr_slen_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 			       fr_sbuff_parse_rules_t const *p_rules,
 			       tmpl_rules_t const *t_rules)
 {
@@ -4827,7 +4828,7 @@ fr_slen_t tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_reques
  *	- 0 invalid argument.
  *	- <0 the number of bytes we would have needed to complete the print.
  */
-fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt)
+ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt)
 {
 	tmpl_attr_t		*ar = NULL;
 	fr_da_stack_t		stack;
@@ -5020,7 +5021,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt)
  *	- 0 invalid argument.
  *	- <0 the number of bytes we would have needed to complete the print.
  */
-fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
+ssize_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 		     fr_sbuff_escape_rules_t const *e_rules)
 {
 	fr_sbuff_t	our_out = FR_SBUFF(out);
@@ -5900,7 +5901,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 					p++;
 
 				} else {
-					ssize_t slen;
+					fr_slen_t slen;
 					bool eol = false;
 
 					slen = fr_skip_condition(p, end, array_terminal, &eol);

@@ -382,7 +382,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 			  redisReply *key, redisReply *op, redisReply *value)
 {
 	map_t	*map = NULL;
-	ssize_t		slen;
+	fr_slen_t	slen;
 
 	if (key->type != REDIS_REPLY_STRING) {
 		REDEBUG("Bad key type, expected string, got %s",

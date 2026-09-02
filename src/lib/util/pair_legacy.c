@@ -100,11 +100,11 @@ static fr_sbuff_parse_rules_t const bareword_unquoted = {
 };
 
 
-static ssize_t fr_pair_value_from_substr(fr_pair_parse_t const *conf, fr_pair_t *vp, fr_sbuff_t *in)
+static fr_slen_t fr_pair_value_from_substr(fr_pair_parse_t const *conf, fr_pair_t *vp, fr_sbuff_t *in)
 {
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	char				quote;
-	ssize_t				slen;
+	fr_slen_t			slen;
 	fr_sbuff_parse_rules_t const	*rules;
 
 	if (fr_sbuff_next_if_char(&our_in, '"')) {

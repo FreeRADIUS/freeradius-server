@@ -3755,7 +3755,7 @@ static int xlat_func_subst_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_sbuff_t		sbuff;
 	fr_sbuff_marker_t	start_m, end_m;
 	char			*buff;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	regex_t			*pattern, *our_pattern = NULL;
 	fr_regex_flags_t const	*flags;
 	fr_regex_flags_t	our_flags = {};

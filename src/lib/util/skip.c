@@ -33,7 +33,7 @@ RCSID("$Id$")
  *	>0 length of the string which was parsed
  *	<=0 on error
  */
-ssize_t fr_skip_string(char const *start, char const *end)
+fr_slen_t fr_skip_string(char const *start, char const *end)
 {
 	char const *p = start;
 	char quote;
@@ -118,12 +118,12 @@ ssize_t fr_skip_string(char const *start, char const *end)
  */
 #define SKIP_MAX_DEPTH		64
 
-static ssize_t skip_brackets(char const *start, char const *end, char end_quote, unsigned int depth);
-static ssize_t skip_xlat(char const *start, char const *end, unsigned int depth);
+static fr_slen_t skip_brackets(char const *start, char const *end, char end_quote, unsigned int depth);
+static fr_slen_t skip_xlat(char const *start, char const *end, unsigned int depth);
 
-static ssize_t skip_brackets(char const *start, char const *end, char end_quote, unsigned int depth)
+static fr_slen_t skip_brackets(char const *start, char const *end, char end_quote, unsigned int depth)
 {
-	ssize_t slen;
+	fr_slen_t slen;
 	char const *p = start;
 
 	if (depth >= SKIP_MAX_DEPTH) {
@@ -213,9 +213,9 @@ static ssize_t skip_brackets(char const *start, char const *end, char end_quote,
 	return -(p - start);
 }
 
-static ssize_t skip_xlat(char const *start, char const *end, unsigned int depth)
+static fr_slen_t skip_xlat(char const *start, char const *end, unsigned int depth)
 {
-	ssize_t slen;
+	fr_slen_t slen;
 	char const *p = start;
 
 	if (depth >= SKIP_MAX_DEPTH) {
@@ -274,7 +274,7 @@ static ssize_t skip_xlat(char const *start, char const *end, unsigned int depth)
 /** Skip a generic {...} or (...) arguments
  *
  */
-ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
+fr_slen_t fr_skip_brackets(char const *start, char const *end, char end_quote)
 {
 	return skip_brackets(start, end, end_quote, 0);
 }
@@ -293,7 +293,7 @@ ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
  *	>0 length of the string which was parsed
  *	<=0 on error
  */
-ssize_t fr_skip_xlat(char const *start, char const *end)
+fr_slen_t fr_skip_xlat(char const *start, char const *end)
 {
 	return skip_xlat(start, end, 0);
 }
@@ -314,12 +314,12 @@ ssize_t fr_skip_xlat(char const *start, char const *end)
  *	>0 length of the string which was parsed.  *eol is false.
  *	<=0 on error, *eol may be set.
  */
-ssize_t fr_skip_condition(char const *start, char const *end, bool const terminal[static SBUFF_CHAR_CLASS], bool *eol)
+fr_slen_t fr_skip_condition(char const *start, char const *end, bool const terminal[static SBUFF_CHAR_CLASS], bool *eol)
 {
 	char const *p = start;
 	bool was_regex = false;
 	int depth = 0;
-	ssize_t slen;
+	fr_slen_t slen;
 
 	if (eol) *eol = false;
 

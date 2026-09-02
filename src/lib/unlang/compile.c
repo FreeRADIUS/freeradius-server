@@ -610,7 +610,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_ctx_t *un
 	map_t			*map;
 	char const		*name;
 	fr_token_t		op;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	fr_dict_attr_t const	*parent_da;
 	int			num;
 
@@ -1562,7 +1562,7 @@ static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 	CONF_PAIR	*cp = cf_item_to_pair(ci);
 	unlang_t	*c;
 	unlang_tmpl_t	*ut;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	char const	*p = cf_pair_attr(cp);
 	tmpl_t		*vpt;
 

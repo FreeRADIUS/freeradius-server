@@ -259,7 +259,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rlm_json_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_json_t);
 	fr_json_format_t const	*format = inst->format;
 
-	ssize_t			slen;
+	fr_slen_t		slen;
 	tmpl_t			*vpt = NULL;
 	fr_pair_list_t		json_vps, vps;
 	bool			negate;

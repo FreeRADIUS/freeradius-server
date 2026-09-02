@@ -134,7 +134,7 @@ static unlang_t *unlang_compile_limit(unlang_t *parent, unlang_compile_ctx_t *un
 	unlang_limit_t		*gext;
 	tmpl_t			*vpt = NULL;
 	fr_token_t		token;
-	ssize_t			slen;
+	fr_slen_t		slen;
 	tmpl_rules_t		t_rules;
 
 	/*

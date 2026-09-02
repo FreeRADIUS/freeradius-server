@@ -3420,7 +3420,7 @@ fr_dict_attr_t const *fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *e
 							   char const *name,
 							   bool internal, bool foreign)
 {
-	ssize_t			slen;
+	fr_slen_t		slen;
 	fr_sbuff_t		our_name;
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_err_t	our_err;

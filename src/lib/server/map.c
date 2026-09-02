@@ -114,7 +114,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	char const	*attr, *value, *marker_subject;
 	char		*unescaped_value = NULL;
 	fr_sbuff_parse_rules_t const *p_rules;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	fr_token_t	quote;
 	fr_dict_attr_t const *da;
 	tmpl_rules_t	my_rhs_rules = {};
@@ -468,7 +468,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 fr_sbuff_parse_rules_t const *p_rules)
 {
-	ssize_t				slen;
+	fr_slen_t			slen;
 	fr_token_t			token;
 	map_t				*map;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
@@ -930,7 +930,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		if (cf_item_is_section(ci)) {
 			CONF_SECTION	*subcs;
 			fr_token_t	token;
-			ssize_t		slen;
+			fr_slen_t	slen;
 			map_list_t	child_list;
 
 			map_list_init(&child_list);
@@ -1200,7 +1200,7 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 {
 	map_t		*map;
 	char const	*attr, *marker_subject;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	fr_token_t	type;
 
 	*out = NULL;
@@ -1385,7 +1385,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 			fr_token_t op,
 			fr_value_box_t *rhs, bool steal_rhs_buffs)
 {
-	ssize_t slen;
+	fr_slen_t slen;
 	map_t *map;
 
 	map = map_alloc(ctx, NULL);
@@ -1861,7 +1861,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	case TMPL_TYPE_EXEC:
 	{
 		char *attr_str;
-		ssize_t slen;
+		fr_slen_t slen;
 
 		slen = tmpl_aexpand(request, &attr_str, request, map->lhs, NULL, NULL);
 		if (slen <= 0) {
@@ -2460,7 +2460,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		     char const *lhs, char const *op_str, char const *rhs,
 		     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules, bool bare_word_only)
 {
-	ssize_t		slen;
+	fr_slen_t	slen;
 	fr_token_t	quote, op;
 	map_t		*map;
 	map_t		*parent = *parent_p;

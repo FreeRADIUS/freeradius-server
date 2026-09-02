@@ -462,7 +462,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 		 *	Look for "xlat"
 		 */
 		if (fr_sbuff_adv_past_str_literal(&line, "xlat ") > 0) {
-			ssize_t			slen;
+			fr_slen_t		slen;
 			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
 			xlat_exp_head_t		*head = NULL;
 			fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
@@ -513,7 +513,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 		 *	Look for "xlat_expr"
 		 */
 		if (fr_sbuff_adv_past_str_literal(&line, "xlat_expr ") > 0) {
-			ssize_t			slen;
+			fr_slen_t		slen;
 			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
 			xlat_exp_head_t		*head = NULL;
 

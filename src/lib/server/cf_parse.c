@@ -215,7 +215,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	int		ret = 0;
 	bool		cant_be_empty, tmpl;
 
-	ssize_t		slen;
+	fr_slen_t	slen;
 
 	CONF_PAIR	*cp = cf_item_to_pair(ci);
 
@@ -1501,7 +1501,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 *	to CONF_FLAG_TMPL.
 		 */
 		if (is_xlat) {
-			ssize_t		slen;
+			fr_slen_t	slen;
 			xlat_exp_head_t	*xlat;
 
 		redo:

@@ -1065,7 +1065,7 @@ static size_t parse_typed_value(command_result_t *result, command_file_ctx_t *cc
 {
 	fr_type_t	type;
 	size_t		match_len;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	char const     	*p;
 	fr_sbuff_t	sbuff;
 	fr_dict_attr_t const *enumv = NULL;
@@ -1710,7 +1710,7 @@ static size_t command_radmin_tab(command_result_t *result, command_file_ctx_t *c
 static size_t command_condition_normalise(command_result_t *result, command_file_ctx_t *cc,
 					  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
-	ssize_t			slen;
+	fr_slen_t		slen;
 	CONF_SECTION		*cs;
 	size_t			len;
 	xlat_exp_head_t		*head = NULL;
@@ -2152,7 +2152,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 	fr_dcursor_t			cursor;
 	void				*encode_ctx = NULL;
-	ssize_t				slen;
+	fr_slen_t			slen;
 	char				*p = in;
 
 	uint8_t				*enc_p, *enc_end;
@@ -2396,7 +2396,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	fr_test_point_proto_encode_t	*tp = NULL;
 
 	void		*encode_ctx = NULL;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	char		*p = in;
 
 	fr_pair_list_t	head;
@@ -2797,7 +2797,7 @@ static size_t command_pair_common(command_result_t *result, command_file_ctx_t *
 				  bool allow_compare)
 {
 	fr_pair_list_t 	head;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	fr_dict_t const	*dict = dictionary_current(cc);
 	fr_pair_parse_t	root, relative;
 
@@ -2922,7 +2922,7 @@ static size_t command_proto_dictionary_root(command_result_t *result, command_fi
 static size_t command_tmpl(command_result_t *result, command_file_ctx_t *cc,
 				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	ssize_t			slen;
+	fr_slen_t		slen;
 	tmpl_t			*vpt;
 	size_t			input_len = strlen(in), escaped_len;
 
@@ -3020,7 +3020,7 @@ static ssize_t command_tmpl_rule_attr_parent(UNUSED TALLOC_CTX *ctx, tmpl_rules_
 
 static ssize_t command_tmpl_rule_list_def(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	ssize_t slen;
+	fr_slen_t slen;
 
 	slen = tmpl_attr_list_from_substr(&rules->attr.list_def, value);
 
@@ -3222,7 +3222,7 @@ static size_t command_write(command_result_t *result, command_file_ctx_t *cc,
 static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_t *cc,
 				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	ssize_t			slen;
+	fr_slen_t		slen;
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
@@ -3268,7 +3268,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc,
 				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	ssize_t			dec_len;
+	fr_slen_t		dec_len;
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 //	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
@@ -3303,7 +3303,7 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *cc,
 				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	ssize_t			slen;
+	fr_slen_t		slen;
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 	tmpl_rules_t		t_rules = (tmpl_rules_t) {
@@ -3365,7 +3365,7 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 static size_t command_xlat_purify_condition(command_result_t *result, command_file_ctx_t *cc,
 					    char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	ssize_t			slen;
+	fr_slen_t		slen;
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 	tmpl_rules_t		t_rules = (tmpl_rules_t) {
@@ -3429,7 +3429,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 {
 	int		i, argc;
 	char		*p;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	xlat_exp_head_t	*head = NULL;
 	xlat_exp_head_t **argv;
 	size_t		len;

@@ -1447,7 +1447,7 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	int		triple = 1;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_t	*node;
 	fr_sbuff_marker_t m;
@@ -1697,7 +1697,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 {
 	int				argc;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
-	ssize_t				slen;
+	fr_slen_t			slen;
 	fr_sbuff_marker_t		m;
 	fr_sbuff_parse_rules_t const	*our_p_rules;		/* Bareword parse rules */
 	fr_sbuff_parse_rules_t		tmp_p_rules;

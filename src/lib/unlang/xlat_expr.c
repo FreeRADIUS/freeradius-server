@@ -2384,7 +2384,7 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 }
 
 
-static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in, fr_sbuff_term_t const *terminals)
+static fr_slen_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in, fr_sbuff_term_t const *terminals)
 {
 	rlm_rcode_t		rcode;
 	ssize_t			slen;
@@ -2446,7 +2446,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 				fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				fr_sbuff_parse_rules_t const *bracket_rules, char *out_c, bool cond)
 {
-	ssize_t			slen;
+	fr_slen_t		slen;
 	xlat_exp_t		*node = NULL;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t	opand_m;
@@ -2795,7 +2795,7 @@ static fr_slen_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr
 	xlat_exp_t	*lhs = NULL, *rhs, *node;
 	xlat_t		*func = NULL;
 	fr_token_t	op;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	fr_sbuff_marker_t  m_lhs, m_op, m_rhs;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	char c = '\0';

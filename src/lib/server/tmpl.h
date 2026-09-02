@@ -1194,12 +1194,12 @@ int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
  *
  * @{
  */
-ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+fr_slen_t		tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					       tmpl_t **out, fr_sbuff_t *name,
 					       fr_sbuff_parse_rules_t const *p_rules,
 					       tmpl_rules_t const *t_rules) CC_HINT(nonnull(3,4));
 
-ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+fr_slen_t		tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					    tmpl_t **out, char const *name,
 					    tmpl_rules_t const *rules) CC_HINT(nonnull (3, 4));
 
@@ -1254,12 +1254,12 @@ fr_slen_t		tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_reque
 static inline fr_slen_t tmpl_request_ref_list_aprint(TALLOC_CTX *ctx, char **out, FR_DLIST_HEAD(tmpl_request_list) const *rql)
 			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_request_ref_list_print, rql)
 
-fr_slen_t		tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt) CC_HINT(nonnull);
+ssize_t			tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt) CC_HINT(nonnull);
 
 static inline fr_slen_t tmpl_attr_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt)
 			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_attr_print, vpt)
 
-fr_slen_t		tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
+ssize_t			tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 				   fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1,2));
 
 static inline fr_slen_t tmpl_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt,

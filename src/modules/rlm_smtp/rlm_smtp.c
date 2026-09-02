@@ -1142,7 +1142,7 @@ static int smtp_header_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 	CONF_PAIR const		*cp;
 	call_env_parsed_t	*parsed_env;
 	tmpl_t			*parsed_tmpl;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	while ((item = cf_item_next(cs, item))) {
 		char	*to_parse;

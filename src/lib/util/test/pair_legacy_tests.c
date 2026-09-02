@@ -126,7 +126,7 @@ static void test_fr_pair_list_afrom_substr_exec(void)
 	fr_pair_t	*vp;
 	ssize_t		len;
 	fr_pair_list_t	list;
-	ssize_t		slen;
+	fr_slen_t	slen;
 	char const	*buffer = "Test-Uint32-0 = 123, Test-String-0 = `echo \"Testing321\"`";
 	char const	*buffer_multi = "Test-String-0 = `echo \"Testing321\"`, Test-String-0 += 'Testing123'";
 	fr_pair_parse_t	root, relative;

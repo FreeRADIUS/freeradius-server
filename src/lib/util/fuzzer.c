@@ -39,7 +39,7 @@ static int decode_test_ctx(void **out, UNUSED TALLOC_CTX *ctx, UNUSED fr_dict_t 
 static ssize_t util_decode_proto(TALLOC_CTX *ctx, UNUSED fr_pair_list_t *out, uint8_t const *data, size_t data_len,
 				 UNUSED void *proto_ctx)
 {
-	ssize_t rcode;
+	fr_slen_t rcode;
 	fr_type_t type;
 	fr_value_box_t *box;
 

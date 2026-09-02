@@ -452,7 +452,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	if (inst->server_id_str) {
 		fr_pair_t *vp;
-		ssize_t slen;
+		fr_slen_t slen;
 		fr_pair_parse_t	root, relative;
 		fr_dcursor_t cursor;
 		uint8_t buffer[256];

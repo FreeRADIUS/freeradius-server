@@ -522,7 +522,7 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	fr_dict_attr_t const		*attr_packet_type = NULL;
 	fr_dict_enum_value_t const	*type_enum = NULL;
 
-	ssize_t				slen;
+	fr_slen_t			slen;
 	char 				*namespace = NULL;
 	char const			*packet_name = NULL;
 

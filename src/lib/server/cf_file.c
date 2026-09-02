@@ -349,7 +349,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 			CONF_ITEM *ci;
 			CONF_PAIR *cp;
 			char *q;
-			ssize_t len;
+			fr_slen_t len;
 
 			len = fr_skip_xlat(ptr, end);
 			if (len <= 0) {
@@ -1663,7 +1663,7 @@ static const bool terminal_end_line[SBUFF_CHAR_CLASS] = {
 
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
-	ssize_t		slen = 0;
+	fr_slen_t	slen = 0;
 	CONF_SECTION	*cs;
 	uint8_t const   *p;
 	char const	*ptr = stack->ptr;
@@ -3377,7 +3377,7 @@ operator:
 	 */
 	if ((parent->unlang == CF_UNLANG_ALLOW) || (parent->unlang == CF_UNLANG_EDIT)) {
 		bool eol;
-		ssize_t slen;
+		fr_slen_t slen;
 
 		name2_ptr = ptr;
 

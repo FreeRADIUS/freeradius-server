@@ -35,7 +35,7 @@ RCSID("$Id$")
  *	- >= 0 on success.
  *	- <0 on failure.
  */
-fr_slen_t fr_concatv(fr_dbuff_t *out, struct iovec vector[], int iovcnt)
+ssize_t fr_concatv(fr_dbuff_t *out, struct iovec vector[], int iovcnt)
 {
 	int i;
 

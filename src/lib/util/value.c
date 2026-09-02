@@ -5429,7 +5429,7 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
  *	- >0 on success.
  *	- <= 0 on parse error.
  */
-ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
+fr_slen_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules)
 {
@@ -6091,12 +6091,12 @@ finish:
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
-ssize_t fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
+fr_slen_t fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			      char const *in, size_t inlen,
 			      fr_sbuff_unescape_rules_t const *erules)
 {
-	ssize_t slen;
+	fr_slen_t slen;
 	fr_sbuff_parse_rules_t prules = { .escapes = erules };
 
 	slen = fr_value_box_from_substr(ctx, dst, dst_type, dst_enumv, &FR_SBUFF_IN(in, inlen), &prules);

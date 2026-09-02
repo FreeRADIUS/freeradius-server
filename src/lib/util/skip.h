@@ -48,13 +48,13 @@ extern "C" {
  */
 #define fr_skip_not_whitespace(_p) while(*_p && !isspace((uint8_t)*(_p))) _p++
 
-ssize_t		fr_skip_string(char const *start, char const *end) CC_HINT(nonnull(1));
+fr_slen_t	fr_skip_string(char const *start, char const *end) CC_HINT(nonnull(1));
 
-ssize_t		fr_skip_brackets(char const *start, char const *end, char end_quote);
+fr_slen_t	fr_skip_brackets(char const *start, char const *end, char end_quote);
 
-ssize_t		fr_skip_xlat(char const *start, char const *end) CC_HINT(nonnull(1));
+fr_slen_t	fr_skip_xlat(char const *start, char const *end) CC_HINT(nonnull(1));
 
-ssize_t		fr_skip_condition(char const *start, char const *end, bool const terminal[static SBUFF_CHAR_CLASS],
+fr_slen_t	fr_skip_condition(char const *start, char const *end, bool const terminal[static SBUFF_CHAR_CLASS],
 				  bool *eol) CC_HINT(nonnull(1,3));
 #ifdef __cplusplus
 }

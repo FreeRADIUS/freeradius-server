@@ -132,7 +132,7 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
  */
 static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_t *out, request_t *request)
 {
-	ssize_t slen;
+	fr_slen_t slen;
 	fr_value_box_t *box = fr_value_box_list_head(&out->list);
 
 	if (!box) {
