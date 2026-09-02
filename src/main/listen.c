@@ -3558,7 +3558,7 @@ static int listen_bind(rad_listen_t *this)
 static int _listener_free(rad_listen_t *this)
 {
 #ifdef WITH_TCP
-	listen_socket_t *sock = this->data;
+	listen_socket_t *sock;
 #endif
 
 	/*
