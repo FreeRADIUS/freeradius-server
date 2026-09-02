@@ -159,16 +159,31 @@ def stars(spelling):
     return spelling.count('*')
 
 
+def submodules(path=".gitmodules"):
+    """Every git submodule path.
+
+    A submodule holds someone else's code, so a mismatch inside one is not ours
+    to fix.  Reading .gitmodules keeps the list correct as submodules come and
+    go, rather than naming directories here and going stale.
+    """
+    try:
+        text = open(path, errors="replace").read()
+    except OSError:
+        return set()
+    return {m.strip() for m in re.findall(r'(?m)^\s*path\s*=\s*(.+)$', text)}
+
+
 def source_files(target):
     """Every C source and header file at or under a path."""
     if os.path.isfile(target):
         return [target]
 
+    vendored = submodules()
     out = []
     for root, dirs, files in os.walk(target):
         dirs[:] = [d for d in dirs
                    if d not in ("__pycache__", "coverity-model")
-                   and not d.startswith("libosmo")]
+                   and os.path.join(root, d).lstrip("./") not in vendored]
         for name in sorted(files):
             if name.endswith((".c", ".h")):
                 out.append(os.path.join(root, name))
@@ -380,6 +395,28 @@ def split_args(text):
     return args
 
 
+def whole_rhs(line, open_paren):
+    """Is this call the entire right hand side of the assignment?
+
+    `j = fr_fast_rand(&ctx) % len` gives `j` the type of the modulo, not the
+    type the function returns, so the call has to stand alone to say anything
+    about the variable.
+    """
+    depth, i = 0, open_paren
+    while i < len(line):
+        if line[i] == '(':
+            depth += 1
+        elif line[i] == ')':
+            depth -= 1
+            if depth == 0:
+                break
+        i += 1
+    else:
+        return False
+
+    return re.match(r'\s*(?:;|,|\)|$)', line[i + 1:]) is not None
+
+
 def calls_in(line):
     """Each complete function call on a line, as (name, [argument text])."""
     out = []
@@ -544,8 +581,16 @@ def scan_file(path, sigs, local, typedefs, args):
             #
             #  var = some_function(...)
             #
-            for m in re.finditer(r'\b(' + names + r')\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(', line):
+            for m in re.finditer(r'(?<![.>\w])(' + names + r')\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(', line):
                 var, callee = m.group(1), m.group(2)
+
+                #
+                #  The lookbehind above rejects "x.len = f()" and "x->len =
+                #  f()", which name a field rather than the local variable
+                #  which happens to share the name.
+                #
+                if not whole_rhs(line, m.end() - 1):
+                    continue
                 sig = None if callee in KEYWORDS else signature(callee)
                 if not sig:
                     continue
@@ -685,6 +730,10 @@ static void      take_size(size_t *out);
 static void      take_slen(fr_slen_t *out);
 static void      take_two(int a, ssize_t *out);
 static int       pick(int a, int b);
+static ssize_t   give_ssize_expr(int a);
+static fr_slen_t give_slen_field(int a);
+
+typedef struct { ssize_t b; } holder_t;
 
 int probe(void)
 {
@@ -693,6 +742,7 @@ int probe(void)
 \tsize_t\t\tc;
 \tint\t\td;
 \tint32_t\t\te;
+\tholder_t\tst;
 
 \ta = give_ssize(1);
 \tb = give_slen(1);
@@ -707,7 +757,10 @@ int probe(void)
 \ttake_two(pick(1, 2), &c);
 \ttake_slen(&a);
 
-\treturn a + b + c + d + e;
+\ta = give_ssize_expr(1) % 7;
+\tst.b = give_slen_field(1);
+
+\treturn a + b + c + d + e + st.b;
 }
 """
 
