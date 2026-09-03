@@ -41,6 +41,7 @@ int main(UNUSED int argc, UNUSED char **argv)
 
 	SIZEOF(fr_value_box_t);
 	SIZEOF(fr_value_box_datum_t);
+	SIZEOF(fr_value_box_list_t);
 
 	SIZEOF(tmpl_t);
 	SIZEOF(tmpl_attr_rules_t);
