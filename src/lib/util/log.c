@@ -571,8 +571,6 @@ void _fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int lin
 	case L_DST_STDOUT:
 	case L_DST_STDERR:
 	{
-		size_t len, wrote;
-
 		buffer = talloc_asprintf(pool,
 					 "%s"	/* colourise */
 					 "%s"	/* location */
@@ -590,9 +588,23 @@ void _fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int lin
 				 	 fmt_msg,
 				 	 colourise ? VTC_RESET : "");
 
-		len = talloc_strlen(buffer);
-		wrote = write(log->fd, buffer, len);
-		if (wrote < len) return;
+		/*
+		 *	This function is in a utility library, and can't do anything about write errors,
+		 *	except for writes to stdout().  We can't recover from those, so we might as well exit
+		 *	rather than continue to write to a place which doesn't exist.
+		 */
+		if (write(log->fd, buffer, talloc_strlen(buffer)) < 0) {
+			if (log->dst == L_DST_STDOUT) {
+				switch (errno) {
+				case EPIPE:
+				case EBADF:
+					fr_exit_now(EXIT_FAILURE);
+
+				default:
+					break;
+				}
+			}
+		}
 	}
 		break;
 
