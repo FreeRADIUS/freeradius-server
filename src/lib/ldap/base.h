@@ -105,7 +105,6 @@ ldap_create_session_tracking_control LDAP_P((
 							//!< to name.  If more than this require resolving, the
 							//!< module returns invalid.
 
-#define LDAP_MAX_GROUP_NAME_LEN		128		//!< Maximum name of a group name.
 #define LDAP_MAX_ATTR_STR_LEN		256		//!< Maximum length of an xlat expanded LDAP attribute.
 #define LDAP_MAX_FILTER_STR_LEN		1024		//!< Maximum length of an xlat expanded filter.
 #define LDAP_MAX_DN_STR_LEN		1024		//!< Maximum length of an xlat expanded DN.
@@ -762,11 +761,9 @@ unlang_action_t fr_ldap_trunk_extended(TALLOC_CTX *ctx,
 void		fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 				      fr_time_delta_t timeout, char const *prefix);
 
-size_t		fr_ldap_dn_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
-		CC_HINT(nonnull(2,4));
+fr_slen_t	fr_ldap_dn_escape(fr_sbuff_t *out, fr_sbuff_t *in) CC_HINT(nonnull);
 
-size_t		fr_ldap_filter_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
-		CC_HINT(nonnull(2,4));
+fr_slen_t	fr_ldap_filter_escape(fr_sbuff_t *out, fr_sbuff_t *in) CC_HINT(nonnull);
 
 size_t		fr_ldap_uri_unescape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 		CC_HINT(nonnull(2,4));
@@ -1009,6 +1006,14 @@ void		fr_ldap_entry_dump(LDAPMessage *entry);
 int		fr_ldap_dn_box_escape(fr_value_box_t *vb, UNUSED void *uctx);
 
 int		fr_ldap_filter_box_escape(fr_value_box_t *vb, UNUSED void *uctx);
+
+/** Marks a value box as already escaped for use as a DN attribute value
+ */
+#define LDAP_DN_SAFE_FOR	((fr_value_box_safe_for_t)fr_ldap_dn_box_escape)
+
+/** Marks a value box as already escaped for use as a filter assertion value
+ */
+#define LDAP_FILTER_SAFE_FOR	((fr_value_box_safe_for_t)fr_ldap_filter_box_escape)
 
 char		*fr_ldap_filter_afrom_dn_list(TALLOC_CTX *ctx, char const *dn_attr, char const *filter,
 					  char const * const *dn_list);

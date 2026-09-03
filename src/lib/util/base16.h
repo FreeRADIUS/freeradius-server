@@ -50,6 +50,23 @@ static inline bool fr_is_base16_nstd(char c, uint8_t const alphabet[static SBUFF
 	return alphabet[(uint8_t)c] < 16;
 }
 
+/** Encode a single byte as two hex digits
+ *
+ * @param[out] out	Where to write the two digits.
+ * @param[in] byte	to encode.
+ * @param[in] alphabet	to use.
+ * @return
+ *	- 2 on success.
+ *	- < 0 the number of additional bytes out needed.
+ */
+static inline fr_slen_t fr_base16_encode_byte_nstd(fr_sbuff_t *out, uint8_t byte,
+						   char const alphabet[static SBUFF_CHAR_CLASS])
+{
+	return fr_sbuff_in_char(out, alphabet[(uint8_t)(byte >> 4)], alphabet[(uint8_t)(byte & 0x0f)]);
+}
+#define		fr_base16_encode_byte(_out, _byte) \
+		fr_base16_encode_byte_nstd(_out, _byte, fr_base16_alphabet_encode_lc)
+
 fr_slen_t	fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static SBUFF_CHAR_CLASS]);
 #define		fr_base16_encode(_out, _in) \
 		fr_base16_encode_nstd(_out, _in, fr_base16_alphabet_encode_lc)

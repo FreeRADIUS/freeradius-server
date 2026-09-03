@@ -689,6 +689,9 @@ int fr_value_box_escape_in_place_erules(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_
 
 int fr_value_box_escape_erules(fr_value_box_t *vb, void *uctx) CC_HINT(nonnull);
 
+int fr_value_box_escape_in_place_func(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_sbuff_escape_func_t escape)
+	CC_HINT(nonnull);
+
 /** @} */
 
 /** @name Convenience functions
@@ -1183,6 +1186,9 @@ void		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enu
 
 void 		fr_value_box_strdup_shallow_replace(fr_value_box_t *vb, char const *src, ssize_t len)
 		CC_HINT(nonnull);
+
+int		fr_value_box_bstrndup_replace(TALLOC_CTX *ctx, fr_value_box_t *vb, char const *src, ssize_t len)
+		CC_HINT(nonnull(2,3));
 /** @} */
 
 /** @name Assign and manipulate binary-safe strings

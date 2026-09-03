@@ -118,9 +118,7 @@ fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alph
 	fr_dbuff_t	our_in = FR_DBUFF(in);
 
 	while (fr_dbuff_extend(&our_in)) {
-		uint8_t a = *fr_dbuff_current(&our_in);
-
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, alphabet[us(a >> 4)], (alphabet[us(a & 0x0f)]));
+		FR_SBUFF_RETURN(fr_base16_encode_byte_nstd, &our_out, *fr_dbuff_current(&our_in), alphabet);
 		fr_dbuff_advance(&our_in, 1);
 	}
 

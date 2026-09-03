@@ -196,9 +196,6 @@ static const conf_parser_t module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-#define LDAP_DN_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_dn_escape_func
-#define LDAP_FILTER_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_filter_escape_func
-
 #define LDAP_DN_CALL_ENV_ESCAPE \
 	.pair.escape = { \
 		.box_escape = { \
@@ -443,38 +440,22 @@ static xlat_arg_parser_t const ldap_safe_xlat_arg[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t ldap_dn_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t ldap_dn_escape_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  UNUSED xlat_ctx_t const *xctx,
 					  request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t		*vb, *in_vb, *in_group = fr_value_box_list_head(in);
-	fr_sbuff_t		sbuff;
-	fr_sbuff_uctx_talloc_t	sbuff_ctx;
-	size_t			len;
+	fr_value_box_t	*in_vb, *in_group = fr_value_box_list_head(in);
 
 	fr_assert(in_group->type == FR_TYPE_GROUP);
 
 	while ((in_vb = fr_value_box_list_pop_head(&in_group->vb_group))) {
-		if (fr_value_box_is_safe_for_only(in_vb, LDAP_DN_SAFE_FOR)) {
-			fr_dcursor_append(out, in_vb);
-			continue;
-		}
-
-		MEM(vb = fr_value_box_alloc_null(ctx));
-
-		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length * 3, in_vb->vb_length * 3)) {
-			REDEBUG("Failed to allocate buffer for escaped string");
-			talloc_free(vb);
+		if (!fr_value_box_is_safe_for_only(in_vb, LDAP_DN_SAFE_FOR) && (fr_ldap_dn_box_escape(in_vb, NULL) < 0)) {
+			RPEDEBUG("Failed escaping DN attribute value");
+			talloc_free(in_vb);
 			return XLAT_ACTION_FAIL;
 		}
 
-		len = fr_ldap_dn_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
-
-		fr_sbuff_trim_talloc(&sbuff, len);
-		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
-		talloc_free(in_vb);
-
-		fr_dcursor_append(out, vb);
+		fr_dcursor_append(out, in_vb);
 	}
 	return XLAT_ACTION_DONE;
 }
@@ -483,38 +464,22 @@ static xlat_action_t ldap_dn_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t ldap_filter_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					      UNUSED xlat_ctx_t const *xctx,
-					      request_t *request, fr_value_box_list_t *in)
+static xlat_action_t ldap_filter_escape_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+					  UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t		*vb, *in_vb, *in_group = fr_value_box_list_head(in);
-	fr_sbuff_t		sbuff;
-	fr_sbuff_uctx_talloc_t	sbuff_ctx;
-	size_t			len;
+	fr_value_box_t	*in_vb, *in_group = fr_value_box_list_head(in);
 
 	fr_assert(in_group->type == FR_TYPE_GROUP);
 
 	while ((in_vb = fr_value_box_list_pop_head(&in_group->vb_group))) {
-		if (fr_value_box_is_safe_for_only(in_vb, LDAP_FILTER_SAFE_FOR)) {
-			fr_dcursor_append(out, in_vb);
-			continue;
-		}
-
-		MEM(vb = fr_value_box_alloc_null(ctx));
-
-		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length * 3, in_vb->vb_length * 3)) {
-			REDEBUG("Failed to allocate buffer for escaped string");
-			talloc_free(vb);
+		if (!fr_value_box_is_safe_for_only(in_vb, LDAP_FILTER_SAFE_FOR) && (fr_ldap_filter_box_escape(in_vb, NULL) < 0)) {
+			RPEDEBUG("Failed escaping filter assertion value");
+			talloc_free(in_vb);
 			return XLAT_ACTION_FAIL;
 		}
 
-		len = fr_ldap_filter_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
-
-		fr_sbuff_trim_talloc(&sbuff, len);
-		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
-		talloc_free(in_vb);
-
-		fr_dcursor_append(out, vb);
+		fr_dcursor_append(out, in_vb);
 	}
 	return XLAT_ACTION_DONE;
 }
@@ -565,35 +530,6 @@ static xlat_action_t ldap_uri_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	return XLAT_ACTION_DONE;
-}
-
-/** Escape function for a part of an LDAP URI
- *
- */
-static int ldap_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
-{
-	fr_sbuff_t		sbuff;
-	fr_sbuff_uctx_talloc_t	sbuff_ctx;
-	size_t			len;
-
-	/*
-	 *	Maximum space needed for output would be 3 times the input if every
-	 *	char needed escaping
-	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->vb_length * 3, vb->vb_length * 3)) {
-		fr_strerror_printf_push("Failed to allocate buffer for escaped argument");
-		return -1;
-	}
-
-	/*
-	 *	Call the escape function, including the space for the trailing NULL
-	 */
-	len = fr_ldap_dn_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
-
-	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
-
-	return 0;
 }
 
 /** Callback when LDAP query times out
@@ -790,16 +726,16 @@ static fr_uri_part_t const ldap_uri_parts[] = {
 	{ .name = "scheme", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 }, .extra_skip = 2 },
 	{ .name = "host", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 } },
 	{ .name = "port", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 } },
-	{ .name = "dn", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = ldap_uri_part_escape },
+	{ .name = "dn", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = fr_ldap_dn_box_escape },
 	{ .name = "attrs", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }},
-	{ .name = "scope", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = ldap_uri_part_escape },
-	{ .name = "filter", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1}, .func = ldap_uri_part_escape },
-	{ .name = "exts", .safe_for = LDAP_DN_SAFE_FOR, .func = ldap_uri_part_escape },
+	{ .name = "scope", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = fr_ldap_dn_box_escape },
+	{ .name = "filter", .safe_for = LDAP_DN_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1}, .func = fr_ldap_dn_box_escape },
+	{ .name = "exts", .safe_for = LDAP_DN_SAFE_FOR, .func = fr_ldap_dn_box_escape },
 	XLAT_URI_PART_TERMINATOR
 };
 
 static fr_uri_part_t const ldap_dn_parts[] = {
-	{ .name = "dn", .safe_for = LDAP_DN_SAFE_FOR , .func = ldap_uri_part_escape },
+	{ .name = "dn", .safe_for = LDAP_DN_SAFE_FOR , .func = fr_ldap_dn_box_escape },
 	XLAT_URI_PART_TERMINATOR
 };
 

@@ -50,6 +50,12 @@ $(foreach x,$(SUBMAKEFILES), \
 	$(eval $(call LIB_INCLUDE,$(subst /all.mk,,$(subst ${top_srcdir}/src/lib/,,$x)))) \
 )
 
+#
+#  Unit tests for libraries that have them.  Added after the include
+#  rules above so no header symlink is created for the test directory.
+#
+SUBMAKEFILES += $(wildcard ${top_srcdir}/src/lib/ldap/test/all.mk)
+
 
 #
 #  Add protocol-specific rules to link include files, etc.

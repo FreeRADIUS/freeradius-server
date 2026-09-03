@@ -1027,7 +1027,113 @@ static void test_round_trip_network_uint32(void)
 	TEST_CHECK(dst.vb_uint32 == 0xdeadbeef);
 }
 
+/** Escape function for the in-place escape tests, writes '%' as "%25"
+ */
+static fr_slen_t test_percent_escape(fr_sbuff_t *out, fr_sbuff_t *in)
+{
+	fr_sbuff_t	our_out = FR_SBUFF(out);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+
+	while (fr_sbuff_extend(&our_in)) {
+		char c = *fr_sbuff_current(&our_in);
+
+		if (c == '%') {
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "%25");
+		} else {
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, c);
+		}
+		fr_sbuff_advance(&our_in, 1);
+	}
+
+	fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(out, &our_out);
+}
+
+static void test_bstrndup_replace(void)
+{
+	fr_value_box_t	*vb;
+	char const	*old;
+
+	TEST_CASE("Replacing a string value copies the new bytes and keeps the flags");
+	vb = fr_value_box_alloc(NULL, FR_TYPE_STRING, NULL);
+	TEST_ASSERT(vb != NULL);
+	TEST_ASSERT(fr_value_box_bstrndup(vb, vb, NULL, "before", 6, true) == 0);
+	fr_value_box_mark_safe_for(vb, (fr_value_box_safe_for_t)test_bstrndup_replace);
+	old = vb->vb_strvalue;
+
+	TEST_CHECK_RET(fr_value_box_bstrndup_replace(vb, vb, "af\0ter", 6), 0);
+	TEST_CHECK(vb->vb_strvalue != old);
+	TEST_CHECK_LEN(vb->vb_length, 6);
+	TEST_CHECK(memcmp(vb->vb_strvalue, "af\0ter", 6) == 0);
+	TEST_CHECK(vb->vb_strvalue[6] == '\0');
+	TEST_CHECK(vb->tainted == true);
+	TEST_CHECK(fr_value_box_is_safe_for_only(vb, test_bstrndup_replace));
+
+	TEST_CASE("Replacing from an aliased source copies before freeing");
+	TEST_CHECK_RET(fr_value_box_bstrndup_replace(vb, vb, vb->vb_strvalue + 2, 4), 0);
+	TEST_CHECK_LEN(vb->vb_length, 4);
+	TEST_CHECK(memcmp(vb->vb_strvalue, "\0ter", 4) == 0);
+
+	talloc_free(vb);
+}
+
+static void test_escape_in_place_func_string(void)
+{
+	fr_value_box_t *vb;
+
+	TEST_CASE("String with escapable characters and an embedded NUL");
+	vb = fr_value_box_alloc(NULL, FR_TYPE_STRING, NULL);
+	TEST_ASSERT(vb != NULL);
+	TEST_ASSERT(fr_value_box_bstrndup(vb, vb, NULL, "a%b\0c", 5, true) == 0);
+
+	TEST_CHECK_RET(fr_value_box_escape_in_place_func(vb, vb, test_percent_escape), 0);
+	TEST_CHECK_LEN(vb->vb_length, 7);
+	TEST_CHECK(memcmp(vb->vb_strvalue, "a%25b\0c", 7) == 0);
+	TEST_CHECK(vb->vb_strvalue[7] == '\0');
+	TEST_CHECK(vb->tainted == true);
+
+	talloc_free(vb);
+}
+
+static void test_escape_in_place_func_unchanged(void)
+{
+	fr_value_box_t *vb;
+
+	TEST_CASE("String with nothing to escape is copied as is");
+	vb = fr_value_box_alloc(NULL, FR_TYPE_STRING, NULL);
+	TEST_ASSERT(vb != NULL);
+	TEST_ASSERT(fr_value_box_strdup(vb, vb, NULL, "plain", false) == 0);
+
+	TEST_CHECK_RET(fr_value_box_escape_in_place_func(vb, vb, test_percent_escape), 0);
+	TEST_CHECK_STRCMP(vb->vb_strvalue, "plain");
+	TEST_CHECK_LEN(vb->vb_length, 5);
+
+	talloc_free(vb);
+}
+
+static void test_escape_in_place_func_cast(void)
+{
+	fr_value_box_t *vb;
+
+	TEST_CASE("Non-string input is cast to a string before escaping");
+	vb = fr_value_box_alloc(NULL, FR_TYPE_UINT32, NULL);
+	TEST_ASSERT(vb != NULL);
+	vb->vb_uint32 = 100;
+
+	TEST_CHECK_RET(fr_value_box_escape_in_place_func(vb, vb, test_percent_escape), 0);
+	TEST_CHECK(vb->type == FR_TYPE_STRING);
+	TEST_CHECK_STRCMP(vb->vb_strvalue, "100");
+
+	talloc_free(vb);
+}
+
 TEST_LIST = {
+	/* Value replacement and in place escaping */
+	{ "bstrndup_replace",			test_bstrndup_replace },
+	{ "escape_in_place_func_string",	test_escape_in_place_func_string },
+	{ "escape_in_place_func_unchanged",	test_escape_in_place_func_unchanged },
+	{ "escape_in_place_func_cast",		test_escape_in_place_func_cast },
+
 	/* Comparison tests */
 	{ "cmp_uint32_equal",			test_cmp_uint32_equal },
 	{ "cmp_uint32_less",			test_cmp_uint32_less },

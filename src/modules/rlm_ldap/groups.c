@@ -113,8 +113,9 @@ static unlang_action_t ldap_group_name2dn_start(unlang_result_t *p_result, reque
 	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
 	char				**name = group_ctx->group_name;
-	char				buffer[LDAP_MAX_GROUP_NAME_LEN + 1];
-	char				*filter;
+	bool				has_multiple = group_ctx->group_name[0] && group_ctx->group_name[1];
+	fr_sbuff_t			sbuff;
+	fr_sbuff_uctx_talloc_t		sbuff_ctx;
 
 	if (!inst->group.obj_name_attr) {
 		REDEBUG("Told to convert group names to DNs but missing 'group.name_attribute' directive");
@@ -131,22 +132,22 @@ static unlang_action_t ldap_group_name2dn_start(unlang_result_t *p_result, reque
 	 *	It'll probably only save a few ms in network latency, but it means we can send a query
 	 *	for the entire group list at once.
 	 */
-	filter = talloc_typed_asprintf(group_ctx, "%s%s%s",
-				 inst->group.obj_filter ? "(&" : "",
-				 inst->group.obj_filter ? inst->group.obj_filter : "",
-				 group_ctx->group_name[0] && group_ctx->group_name[1] ? "(|" : "");
-	while (*name) {
-		fr_ldap_filter_escape_func(request, buffer, sizeof(buffer), *name++, NULL);
-		filter = talloc_asprintf_append_buffer(filter, "(%s=%s)", inst->group.obj_name_attr, buffer);
+	MEM(fr_sbuff_init_talloc(group_ctx, &sbuff, &sbuff_ctx, 256, SIZE_MAX));
+
+	if (inst->group.obj_filter) MEM(fr_sbuff_in_sprintf(&sbuff, "(&%s", inst->group.obj_filter) >= 0);
+	if (has_multiple) MEM(fr_sbuff_in_strcpy_literal(&sbuff, "(|") >= 0);
+	for (; *name; name++) {
+		MEM(fr_sbuff_in_sprintf(&sbuff, "(%s=", inst->group.obj_name_attr) >= 0);
+		MEM(fr_ldap_filter_escape(&sbuff, &FR_SBUFF_IN_STR(*name)) >= 0);
+		MEM(fr_sbuff_in_char(&sbuff, ')') >= 0);
 
 		group_ctx->name_cnt++;
 	}
-	filter = talloc_asprintf_append_buffer(filter, "%s%s",
-					       inst->group.obj_filter ? ")" : "",
-					       group_ctx->group_name[0] && group_ctx->group_name[1] ? ")" : "");
+	if (has_multiple) MEM(fr_sbuff_in_char(&sbuff, ')') >= 0);
+	if (inst->group.obj_filter) MEM(fr_sbuff_in_char(&sbuff, ')') >= 0);
 
 	return fr_ldap_trunk_search(group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
-				    group_ctx->base_dn->vb_strvalue, inst->group.obj_scope, filter,
+				    group_ctx->base_dn->vb_strvalue, inst->group.obj_scope, fr_sbuff_buff(&sbuff),
 				    null_attrs, NULL, NULL);
 }
 
@@ -988,11 +989,11 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, reque
 			.at_runtime = true,
 			.escape.box_escape = (fr_value_box_escape_t) {
 				.func = fr_ldap_filter_box_escape,
-				.safe_for = (fr_value_box_safe_for_t)fr_ldap_filter_box_escape,
+				.safe_for = LDAP_FILTER_SAFE_FOR,
 				.always_escape = false,
 			},
 			.escape.mode = TMPL_ESCAPE_PRE_CONCAT,
-			.literals_safe_for = (fr_value_box_safe_for_t)fr_ldap_filter_box_escape,
+			.literals_safe_for = LDAP_FILTER_SAFE_FOR,
 			.cast = FR_TYPE_STRING,
 		};
 

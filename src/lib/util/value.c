@@ -4773,6 +4773,38 @@ void fr_value_box_strdup_shallow_replace(fr_value_box_t *vb, char const *src, ss
 	vb->vb_length = len < 0 ? strlen(src) : (size_t)len;
 }
 
+/** Free the existing buffer (if talloced) associated with the valuebox, and replace it with a copy of a new one
+ *
+ * The box's flags are left as they were.  src may alias the existing value,
+ * the copy is taken before the existing value is freed.
+ *
+ * @param[in] ctx	to allocate the copy in.
+ * @param[in] vb	to replace string in.
+ * @param[in] src	to copy string from.
+ * @param[in] len	of src.  If negative, src must be NUL terminated.
+ * @return
+ *	- 0 on success.
+ *	- -1 on allocation failure.
+ */
+int fr_value_box_bstrndup_replace(TALLOC_CTX *ctx, fr_value_box_t *vb, char const *src, ssize_t len)
+{
+	char	*str;
+
+	if (len < 0) len = strlen(src);
+
+	str = talloc_bstrndup(ctx, src, (size_t)len);
+	if (unlikely(!str)) {
+		fr_strerror_const("Failed allocating string buffer");
+		return -1;
+	}
+
+	fr_value_box_clear_value(vb);
+	vb->vb_strvalue = str;
+	vb->vb_length = (size_t)len;
+
+	return 0;
+}
+
 /** Alloc and assign an empty \0 terminated string to a #fr_value_box_t
  *
  * @param[in] ctx 	to allocate any new buffers in.
@@ -6974,6 +7006,38 @@ set_value:
 int fr_value_box_escape_erules(fr_value_box_t *vb, void *uctx)
 {
 	return fr_value_box_escape_in_place_erules(vb, vb, uctx);
+}
+
+/** Escape a value box in place using an sbuff escape function
+ *
+ *  If the input type isn't a string, then it is converted to a string.
+ *
+ *  The output type is always #FR_TYPE_STRING.  The safe_for and tainted
+ *  flags are left as they were.  The caller marks the box once it knows
+ *  which dialect the escape function produced.
+ *
+ * @param[in] ctx	to allocate the escaped string in.
+ * @param[in] vb	which will be escaped.  Must be a leaf type.
+ * @param[in] escape	function to run over the string value.
+ * @return
+ *	- <0 for error, generally OOM.
+ *	- 0 for success.
+ */
+int fr_value_box_escape_in_place_func(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_sbuff_escape_func_t escape)
+{
+	fr_sbuff_t	*escaped = NULL;
+
+	fr_assert(fr_type_is_leaf(vb->type));
+
+	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(ctx, vb, FR_TYPE_STRING, NULL) < 0)) {
+		return -1;
+	}
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&escaped, 256, SIZE_MAX);
+
+	if (escape(escaped, &FR_SBUFF_IN(vb->vb_strvalue, vb->vb_length)) < 0) return -1;
+
+	return fr_value_box_bstrndup_replace(ctx, vb, fr_sbuff_start(escaped), (ssize_t)fr_sbuff_used(escaped));
 }
 
 

@@ -50,163 +50,130 @@ static const bool escapes[SBUFF_CHAR_CLASS] = {
 	['\''] = true
 };
 
-/* RFC 4515 filter assertion value special characters */
-static const char filter_specials[] = "*()\\";
-;
 
-/** Escape a string for use as an RFC 4514 DN attribute value
+/** Copy in to out, hex escaping every byte flagged in escape_chars
  *
- * Escapes characters that have special meaning in DNs.  Leading space and
- * '#' are also escaped as required by RFC 4514.
- * Escape sequence is @verbatim \<hex><hex> @endverbatim.
- *
- * @param request The current request.
- * @param out Pointer to output buffer.
- * @param outlen Size of the output buffer.
- * @param in Raw unescaped string.
- * @param arg Any additional arguments (unused).
+ * @param[out] out		Where to write the escaped value.
+ * @param[in] in		Value to escape.  Consumed on success.
+ * @param[in] escape_chars	Bytes to escape, indexed by byte value.
+ * @return
+ *	- >= 0 the number of bytes written to out.
+ *	- < 0 the number of additional bytes out needed.  Neither sbuff is advanced.
  */
-size_t fr_ldap_dn_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+static inline CC_HINT(always_inline) fr_slen_t ldap_escape(fr_sbuff_t *out, fr_sbuff_t *in, bool const *escape_chars)
 {
-	size_t left = outlen;
+	fr_sbuff_t	our_out = FR_SBUFF(out);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 
-	if ((*in == ' ') || (*in == '#')) goto encode;
+	while (fr_sbuff_extend(&our_in)) {
+		uint8_t c = (uint8_t)*fr_sbuff_current(&our_in);
 
-	while (*in) {
-		/*
-		 *	Encode unsafe characters.
-		 */
-		if (memchr(dn_specials, *in, sizeof(dn_specials) - 1)) {
-		encode:
-			/*
-			 *	Only 3 or less bytes available.
-			 */
-			if (left <= 3) break;
-
-			*out++ = '\\';
-			*out++ = hextab[(*in >> 4) & 0x0f];
-			*out++ = hextab[*in & 0x0f];
-			in++;
-			left -= 3;
-
-			continue;
+		if (escape_chars[c]) {
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '\\');
+			FR_SBUFF_RETURN(fr_base16_encode_byte, &our_out, c);
+		} else {
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, (char)c);
 		}
-
-		if (left <= 1) break;
-
-		/*
-		 *	Doesn't need encoding
-		 */
-		*out++ = *in++;
-		left--;
+		fr_sbuff_advance(&our_in, 1);
 	}
 
-	*out = '\0';
-
-	return outlen - left;
+	fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
-int fr_ldap_dn_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
+/** Escape a value for use as an RFC 4514 DN attribute value
+ *
+ * Escapes the characters that have special meaning in a DN, and a leading
+ * space or '#', as @verbatim \<hex><hex> @endverbatim sequences.
+ *
+ * @param[out] out	Where to write the escaped value.
+ * @param[in] in	Value to escape.  Consumed on success.
+ * @return
+ *	- >= 0 the number of bytes written to out.
+ *	- < 0 the number of additional bytes out needed.  Neither sbuff is advanced.
+ */
+fr_slen_t fr_ldap_dn_escape(fr_sbuff_t *out, fr_sbuff_t *in)
 {
-	fr_sbuff_t		sbuff;
-	fr_sbuff_uctx_talloc_t 	sbuff_ctx;
-	size_t			len;
+	static const bool dn_escape_chars[SBUFF_CHAR_CLASS] = {
+		['\0'] = true,
+		[','] = true,
+		['+'] = true,
+		['"'] = true,
+		['\\'] = true,
+		['<'] = true,
+		['>'] = true,
+		[';'] = true,
+		['*'] = true,
+		['='] = true,
+		['('] = true,
+		[')'] = true
+	};
 
-	fr_assert(!fr_value_box_is_safe_for(vb, fr_ldap_dn_box_escape));
-
-	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) {
-		return -1;
-	}
-
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->vb_length * 3, vb->vb_length * 3)) {
-		fr_strerror_printf_push("Failed to allocate buffer for escaped DN");
-		return -1;
-	}
-
-	len = fr_ldap_dn_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
+	fr_sbuff_t	our_out = FR_SBUFF(out);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 
 	/*
-	 *	If the returned length is unchanged, the value was already safe
+	 *	Space and '#' only need escaping at the start of the value.
 	 */
-	if (len == vb->vb_length) {
-		talloc_free(fr_sbuff_buff(&sbuff));
-	} else {
-		fr_sbuff_trim_talloc(&sbuff, len);
-		fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
+	if (fr_sbuff_is_char(&our_in, ' ') || fr_sbuff_is_char(&our_in, '#')) {
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '\\');
+		FR_SBUFF_RETURN(fr_base16_encode_byte, &our_out, (uint8_t)*fr_sbuff_current(&our_in));
+		fr_sbuff_advance(&our_in, 1);
 	}
 
-	return 0;
+	FR_SBUFF_RETURN(ldap_escape, &our_out, &our_in, dn_escape_chars);
+
+	fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
-/** Escape a string for use as an RFC 4515 filter assertion value
+/** Escape a value for use as an RFC 4515 filter assertion value
  *
  * Escapes only the characters that MUST be escaped in filter assertion values
- * per RFC 4515: '*', '(', ')', '\'.  Other characters (including ',', '+',
- * '=') must NOT be escaped -- some LDAP implementations do not decode
- * non-required \HH sequences in assertion values and will fail to match.
- * Escape sequence is @verbatim \<hex><hex> @endverbatim.
+ * per RFC 4515: '*', '(', ')', '\', and NUL.  Other characters (including ',',
+ * '+', '=') must NOT be escaped.  Some LDAP implementations do not decode
+ * non-required @verbatim \<hex><hex> @endverbatim sequences in assertion
+ * values and will fail to match.
  *
- * @param request The current request.
- * @param out Pointer to output buffer.
- * @param outlen Size of the output buffer.
- * @param in Raw unescaped string.
- * @param arg Any additional arguments (unused).
+ * @param[out] out	Where to write the escaped value.
+ * @param[in] in	Value to escape.  Consumed on success.
+ * @return
+ *	- >= 0 the number of bytes written to out.
+ *	- < 0 the number of additional bytes out needed.  Neither sbuff is advanced.
  */
-size_t fr_ldap_filter_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+fr_slen_t fr_ldap_filter_escape(fr_sbuff_t *out, fr_sbuff_t *in)
 {
-	size_t left = outlen;
+	static const bool filter_escape_chars[SBUFF_CHAR_CLASS] = {
+		['\0'] = true,
+		['*'] = true,
+		['('] = true,
+		[')'] = true,
+		['\\'] = true
+	};
 
-	while (*in) {
-		if (memchr(filter_specials, *in, sizeof(filter_specials) - 1)) {
-			if (left <= 3) break;
-
-			*out++ = '\\';
-			*out++ = hextab[(*in >> 4) & 0x0f];
-			*out++ = hextab[*in & 0x0f];
-			in++;
-			left -= 3;
-
-			continue;
-		}
-
-		if (left <= 1) break;
-
-		*out++ = *in++;
-		left--;
-	}
-
-	*out = '\0';
-
-	return outlen - left;
+	return ldap_escape(out, in, filter_escape_chars);
 }
 
+/** Escape a value box for use as an RFC 4514 DN attribute value
+ *
+ * Suitable as a #fr_value_box_escape_func_t.
+ */
+int fr_ldap_dn_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
+{
+	fr_assert(!fr_value_box_is_safe_for_only(vb, LDAP_DN_SAFE_FOR));
+
+	return fr_value_box_escape_in_place_func(vb, vb, fr_ldap_dn_escape);
+}
+
+/** Escape a value box for use as an RFC 4515 filter assertion value
+ *
+ * Suitable as a #fr_value_box_escape_func_t.
+ */
 int fr_ldap_filter_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
-	fr_sbuff_t		sbuff;
-	fr_sbuff_uctx_talloc_t	sbuff_ctx;
-	size_t			len;
+	fr_assert(!fr_value_box_is_safe_for_only(vb, LDAP_FILTER_SAFE_FOR));
 
-	fr_assert(!fr_value_box_is_safe_for(vb, fr_ldap_filter_box_escape));
-
-	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) {
-		return -1;
-	}
-
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->vb_length * 3, vb->vb_length * 3)) {
-		fr_strerror_printf_push("Failed to allocate buffer for escaped filter");
-		return -1;
-	}
-
-	len = fr_ldap_filter_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
-
-	if (len == vb->vb_length) {
-		talloc_free(fr_sbuff_buff(&sbuff));
-	} else {
-		fr_sbuff_trim_talloc(&sbuff, len);
-		fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
-	}
-
-	return 0;
+	return fr_value_box_escape_in_place_func(vb, vb, fr_ldap_filter_escape);
 }
 
 /** Converts escaped DNs and filter strings into normal
@@ -907,33 +874,28 @@ size_t fr_ldap_common_dn(char const *full, char const *part)
  * @return The filter string.
  */
 char *fr_ldap_filter_afrom_dn_list(TALLOC_CTX *ctx, char const *dn_attr, char const *filter,
-			       char const * const *dn_list)
+				   char const * const *dn_list)
 {
-	char			*out;
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	char const * const	*dn_p;
+	bool			has_filter = filter && *filter;
 
-	MEM(out = talloc_typed_strdup(ctx, "(|"));
+	MEM(fr_sbuff_init_talloc(ctx, &sbuff, &sbuff_ctx, 256, SIZE_MAX));
+
+	if (has_filter) MEM(fr_sbuff_in_sprintf(&sbuff, "(&%s", filter) >= 0);
+	MEM(fr_sbuff_in_strcpy_literal(&sbuff, "(|") >= 0);
 	for (dn_p = dn_list; *dn_p; dn_p++) {
-		char	*escaped;
-		size_t	len;
-
-		len = (strlen(*dn_p) * 3) + 1;
-		MEM(escaped = talloc_array(ctx, char, len));
-		fr_ldap_filter_escape_func(NULL, escaped, len, *dn_p, NULL);
-		MEM(out = talloc_asprintf_append_buffer(out, "(%s=%s)", dn_attr, escaped));
-		talloc_free(escaped);
+		MEM(fr_sbuff_in_sprintf(&sbuff, "(%s=", dn_attr) >= 0);
+		MEM(fr_ldap_filter_escape(&sbuff, &FR_SBUFF_IN_STR(*dn_p)) >= 0);
+		MEM(fr_sbuff_in_char(&sbuff, ')') >= 0);
 	}
-	MEM(out = talloc_strdup_append_buffer(out, ")"));
+	MEM(fr_sbuff_in_char(&sbuff, ')') >= 0);
+	if (has_filter) MEM(fr_sbuff_in_char(&sbuff, ')') >= 0);
 
-	if (filter && *filter) {
-		char *combined;
+	MEM(fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) == 0);
 
-		MEM(combined = talloc_typed_asprintf(ctx, "(&%s%s)", filter, out));
-		talloc_free(out);
-		return combined;
-	}
-
-	return out;
+	return fr_sbuff_buff(&sbuff);
 }
 
 /** Combine filters and tokenize to a tmpl

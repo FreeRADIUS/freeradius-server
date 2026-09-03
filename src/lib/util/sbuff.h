@@ -244,6 +244,16 @@ typedef struct {
 							///< @verbatim\<oct><oct><oct>@endvertbatim
 } fr_sbuff_escape_rules_t;
 
+/** Escape the contents of one sbuff into another
+ *
+ * @param[out] out	Where to write the escaped value.
+ * @param[in] in	Value to escape.  Consumed on success.
+ * @return
+ *	- >= 0 the number of bytes written to out.
+ *	- < 0 the number of additional bytes out needed.  Neither sbuff is advanced.
+ */
+typedef fr_slen_t (*fr_sbuff_escape_func_t)(fr_sbuff_t *out, fr_sbuff_t *in);
+
 /** A set of terminal sequences, and escape rules
  *
  */
