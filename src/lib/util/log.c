@@ -480,7 +480,38 @@ void _fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int lin
 			 *	the colors indicate the debug level (info, warning, error), and we don't need
 			 *	any prefix.
 			 */
-			if (log->print_level && !log->colourise) fmt_type = fr_table_str_by_value(fr_log_levels, type, ": ");
+			if (!log->print_level || log->colourise) break;
+
+			if (fmt_time[0] != '\0') {
+				fmt_type = fr_table_str_by_value(fr_log_levels, type, ": ");
+				break;
+			}
+
+			/*
+			 *	The mixed-case "Debug", "Info", "Warn", and "Error" prefixes are
+			 *	only useful when the messages are timestamped, i.e. when the server
+			 *	runs as a daemon, or at high debug levels.  A "radiusd -X" session
+			 *	has no timestamps, so print no prefix at all for "Debug" and
+			 *	"Info", and use the all-caps prefixes of the equivalent debug
+			 *	levels for warnings and errors.
+			 */
+			switch (type) {
+			case L_DBG:
+			case L_INFO:
+				break;
+
+			case L_WARN:
+				fmt_type = fr_table_str_by_value(fr_log_levels, L_DBG_WARN, NULL);
+				break;
+
+			case L_ERR:
+				fmt_type = fr_table_str_by_value(fr_log_levels, L_DBG_ERR, NULL);
+				break;
+
+			default:
+				fmt_type = fr_table_str_by_value(fr_log_levels, type, ": ");
+				break;
+			}
 			break;
 		}
 	}
