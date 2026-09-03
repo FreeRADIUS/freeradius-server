@@ -763,12 +763,20 @@ static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static void ldap_xlat_signal(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_signal_t action)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(xctx->rctx, fr_ldap_query_t);
+	trunk_request_t		*treq = query->treq;
 
-	if (!query->treq)	return;
+	if (!treq)	return;
 
 	RDEBUG2("Forcefully cancelling pending LDAP query");
 
-	trunk_request_signal_cancel(query->treq);
+	/*
+	 *	The LDAP query needs to persist until the trunk
+	 *	request cancellation is complete.
+	 */
+	talloc_steal(treq, query);
+	query->treq = NULL;
+
+	trunk_request_signal_cancel(treq);
 }
 
 /*
