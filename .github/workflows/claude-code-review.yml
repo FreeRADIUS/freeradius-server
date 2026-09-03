@@ -1,38 +1,28 @@
 name: Claude Code Review
 
 #
-#  The workflow uses `pull_request_target` rather than `pull_request`.  GitHub
-#  never grants the `id-token` permission to a fork's `pull_request` run, so the
-#  Anthropic authentication failed on every pull request from a fork.  The
-#  target event runs in the base repository's context with real permissions.
-#  The checkout below stays on the base branch, and the review reads the
-#  pull request through the GitHub application programming interface (API).
-#  No code from the fork therefore runs here.  The job condition below
-#  limits automatic review to pull requests whose author has an
-#  `author_association` of `OWNER`, `MEMBER`, `COLLABORATOR`, or
-#  `CONTRIBUTOR`, or whose branch is in the FreeRADIUS repository.  The
-#  workflow reviews any other pull request only when a maintainer adds
-#  the 'claude-review' label.
+#  The workflow reviews pull requests whose branch is in the FreeRADIUS
+#  repository.  Only a person with write access can push such a branch.
+#
+#  A pull request from a fork gets no review here, for two reasons:
+#
+#    1. GitHub grants no `id-token` permission to a fork's `pull_request`
+#       run, and the Claude Code action needs the token for authentication.
+#    2. A `pull_request_target` run has the permission, but Anthropic's
+#       GitHub App token exchange rejects the OpenID Connect (OIDC) token
+#       of that event.  See anthropics/claude-code-action issue 713.
+#
+#  To review a pull request from a fork, a maintainer comments `@claude`
+#  on the pull request.  The 'Claude Code' workflow in `claude.yml` runs
+#  the review from the maintainer's comment.
 #
 on:
-  pull_request_target:
-    types: [opened, synchronize, ready_for_review, reopened, labeled]
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
 
 jobs:
   claude-review:
-    # Review pull requests from authors with previous contributions (or write
-    # access) automatically.
-    # `author_association` only reports `MEMBER` when the membership is public, so
-    # a branch pushed to the organisation's own repository also qualifies.
-    # Only someone with write access to the organisation can create such a
-    # branch.
-    # For first-time contributors and one-off pull requests, a maintainer must
-    # add the 'claude-review' label to trigger a review.
-    if: |
-      (github.event.action != 'labeled' &&
-       (contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association) ||
-        github.event.pull_request.head.repo.owner.login == 'FreeRADIUS')) ||
-      (github.event.action == 'labeled' && github.event.label.name == 'claude-review')
+    if: github.event.pull_request.head.repo.full_name == github.repository
 
     runs-on: ubuntu-latest
     permissions:
