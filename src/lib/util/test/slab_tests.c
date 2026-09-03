@@ -429,6 +429,35 @@ static int test_element_reserve(test_element_t *elem, void *uctx)
 	return 0;
 }
 
+/** How many times each callback has run
+ */
+typedef struct {
+	int	alloc;		//!< Calls to the alloc callback.
+	int	reserve;	//!< Calls to the reserve callback.
+} test_count_t;
+
+static int test_element_count_alloc(test_element_t *elem, void *uctx)
+{
+	test_count_t	*count = uctx;
+
+	count->alloc++;
+
+	/*
+	 *	Record which initialisation this element got, so a second one
+	 *	can be seen in the element itself and not just in the counter.
+	 */
+	elem->num = count->alloc;
+	return 0;
+}
+
+static int test_element_count_reserve(UNUSED test_element_t *elem, void *uctx)
+{
+	test_count_t	*count = uctx;
+
+	count->reserve++;
+	return 0;
+}
+
 /** Test that reserve callback runs after init callback
  *
  */
@@ -462,6 +491,77 @@ static void test_init_reserve(void)
 	TEST_CHECK(test_elements[1] != NULL);
 	TEST_CHECK(test_elements[1] == test_elements[0]);
 	if (test_elements[1]) TEST_CHECK(test_elements[1]->num == 20);
+
+	talloc_free(test_slab_list);
+}
+
+/** Count the callbacks across a reserve, release, reserve cycle
+ *
+ * Releasing an element hands it back to the slab, and reserving again hands
+ * back the same element with whatever the alloc callback set up still in place.
+ * Callers rely on that.  rlm_ftp, rlm_imap, rlm_rest and rlm_smtp create a CURL
+ * handle in their alloc callback, and rlm_krb5 creates a Kerberos context.
+ * None of those should be built again for every request.
+ *
+ * So the alloc callback runs once per element, and the reserve callback runs
+ * once per reserve.  Nothing else in this file measures the difference: a
+ * change which turned the slab into a plain memory recycler, freeing each
+ * element on release and building a new one on the next reserve, would still
+ * pass every other test here.  The counts below are what notices.
+ */
+static void test_alloc_reserve_count(void)
+{
+	test_slab_list_t	*test_slab_list;
+	test_element_t		*element, *first;
+	test_count_t		count = {};
+	fr_slab_config_t	slab_config = def_slab_config;
+	unsigned int		i;
+
+	/*
+	 *	One element per slab and one element allowed, so every reserve
+	 *	after the first has to hand back the element already made.
+	 */
+	slab_config.elements_per_slab = 1;
+	slab_config.min_elements = 1;
+	slab_config.max_elements = 1;
+
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config,
+					      test_element_count_alloc, test_element_count_reserve,
+					      &count, false, false);
+	TEST_ASSERT(test_slab_list != NULL);
+
+	TEST_CASE("Neither callback runs before the first reserve");
+	TEST_CHECK_RET(count.alloc, 0);
+	TEST_CHECK_RET(count.reserve, 0);
+
+	TEST_CASE("The first reserve makes one element and initialises it once");
+	first = test_slab_reserve(test_slab_list);
+	TEST_ASSERT(first != NULL);
+	TEST_CHECK_RET(count.alloc, 1);
+	TEST_CHECK_RET(count.reserve, 1);
+	TEST_CHECK_RET(first->num, 1);
+
+	TEST_CASE("Reserve, release, reserve does not initialise the element again");
+	element = first;
+	for (i = 0; i < 5; i++) {
+		test_slab_release(element);
+
+		element = test_slab_reserve(test_slab_list);
+		TEST_ASSERT(element != NULL);
+		TEST_CHECK(element == first);
+		TEST_MSG("cycle %u was handed a different element", i);
+	}
+
+	TEST_CHECK_RET(count.alloc, 1);
+	TEST_MSG("the alloc callback ran once per reserve rather than once per "
+		 "element, so released elements are being rebuilt instead of reused");
+
+	TEST_CHECK_RET(count.reserve, 6);
+
+	/*
+	 *	num still holds what the alloc callback wrote the one time it ran.
+	 */
+	TEST_CHECK_RET(element->num, 1);
 
 	talloc_free(test_slab_list);
 }
@@ -967,6 +1067,7 @@ TEST_LIST = {
 	{ "test_init",		test_init },
 	{ "test_reserve",	test_reserve },
 	{ "test_init_reserve",	test_init_reserve },
+	{ "test_alloc_reserve_count",	test_alloc_reserve_count },
 	{ "test_clearup_1",	test_clearup_1 },
 	{ "test_clearup_2",	test_clearup_2 },
 	{ "test_clearup_3",	test_clearup_3 },
