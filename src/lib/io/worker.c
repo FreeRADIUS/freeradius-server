@@ -1584,7 +1584,7 @@ void fr_worker(fr_worker_t *worker)
 		 */
 		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
 		if (wait_for_event) {
-			if (worker->exiting && (worker_num_requests(worker) == 0)) break;
+			if (unlikely(worker->exiting && (worker_num_requests(worker) == 0))) break;
 
 			DEBUG4("Ready to process requests");
 		}
