@@ -7281,6 +7281,10 @@ void fr_value_box_list_untaint(fr_value_box_list_t *head)
 	}
 }
 
+#ifdef WITH_VERIFY_PTR
+#define VB_NAME  "fr_value_box_t %p (from %s:%d)"
+#define VB_NAME_LOCATION(_x) (void const *) (_x), (_x)->file ? (_x)->file : "", (_x)->line
+
 /** Validation function to check that a fr_value_box_t is correctly initialised
  *
  */
@@ -7298,32 +7302,40 @@ DIAG_ON(nonnull-compare)
 	if (vb->talloced) vb = talloc_get_type_abort_const(vb, fr_value_box_t);
 
 #ifndef NDEBUG
-	fr_fatal_assert_msg(vb->magic == FR_VALUE_BOX_MAGIC, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t magic "
-			    "incorrect, expected %" PRIx64 ", got %" PRIx64, file, line, FR_VALUE_BOX_MAGIC, vb->magic);
+	fr_fatal_assert_msg(vb->magic == FR_VALUE_BOX_MAGIC, "CONSISTENCY CHECK FAILED %s[%i]: " VB_NAME " magic "
+			    "incorrect, expected %" PRIx64 ", got %" PRIx64,
+			    file, line,
+			    VB_NAME_LOCATION(vb),
+			    FR_VALUE_BOX_MAGIC, vb->magic);
 #endif
 	switch (vb->type) {
 	case FR_TYPE_STRING:
 		if (!vb->vb_length) {
 #if 0
-			fr_fatal_assert_msg(!vb->vb_strvalue || (talloc_array_length(vb->vb_strvalue) == 1), "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t strvalue field "
-					    "wasn non-NULL, but length was %u", file, line, vb->vb_length);
+			fr_fatal_assert_msg(!vb->vb_strvalue || (talloc_array_length(vb->vb_strvalue) == 1), "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME " strvalue field "
+					    "wasn non-NULL, but length was %u",
+					    file, line,
+					    VB_NAME_LOCATION(vb),
+					    vb->vb_length);
 #endif
 			break;
 		}
 
-		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t strvalue field "
-				    "was NULL", file, line);
+		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME " strvalue field "
+				    "was NULL", file, line, VB_NAME_LOCATION(vb));
 		fr_fatal_assert_msg(vb->vb_strvalue[vb->vb_length] == '\0',
-				    "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
-				    "not null terminated", file, line);
+				    "CONSISTENCY CHECK FAILED %s[%i]: " VB_NAME " strvalue field "
+				    "not null terminated", file, line, VB_NAME_LOCATION(vb));
 		if (vb->talloced) {
 			size_t len = talloc_array_length(vb->vb_strvalue);
 
 			/* We always \0 terminate to be safe, even though most things should use the len field */
 			if (len <= vb->vb_length) {
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: Expected fr_value_box_t->vb_strvalue talloc buffer "
-						    "len >= %zu, got %zu",
-						    file, line, vb->vb_length + 1, len);
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: Expected " VB_NAME " strvalue talloc buffer "
+						     "len >= %zu, got %zu",
+						     file, line,
+						     VB_NAME_LOCATION(vb),
+						     vb->vb_length + 1, len);
 			}
 		}
 		break;
@@ -7331,19 +7343,22 @@ DIAG_ON(nonnull-compare)
 	case FR_TYPE_OCTETS:
 		if (!vb->vb_length) {
 #if 0
-			fr_fatal_assert_msg(!vb->vb_octets || (talloc_array_length(vb->vb_octets) == 0), "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t octets field "
-					    "wasn non-NULL, but length was %u", file, line, vb->vb_length);
+			fr_fatal_assert_msg(!vb->vb_octets || (talloc_array_length(vb->vb_octets) == 0), "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME " octets field "
+					    "wasn non-NULL, but length was %u",
+					    file, line,
+					    VB_NAME_LOCATION(vb).
+					    vb->vb_length);
 #endif
 			break;
 		}
 
-		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t octets field "
-				    "was NULL", file, line);
+		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME "octets field "
+				    "was NULL", file, line, VB_NAME_LOCATION(vb));
 		break;
 
 	case FR_TYPE_VOID:
-		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t ptr field "
-				    "was NULL", file, line);
+		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME "ptr field "
+				    "was NULL", file, line, VB_NAME_LOCATION(vb));
 		break;
 
 	case FR_TYPE_GROUP:
@@ -7351,13 +7366,13 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_ATTR:
-		fr_fatal_assert_msg(vb->vb_attr, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_attr field "
-				    "was NULL", file, line);
+		fr_fatal_assert_msg(vb->vb_attr, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME "vb_attr field "
+				    "was NULL", file, line, VB_NAME_LOCATION(vb));
 		break;
 
 	case FR_TYPE_BOOL:
-		fr_fatal_assert_msg(vb->vb_uint8 <= 1, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_bool field "
-				    "was not boolean!", file, line);
+		fr_fatal_assert_msg(vb->vb_uint8 <= 1, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME "vb_bool field "
+				    "was not boolean!", file, line, VB_NAME_LOCATION(vb));
 		break;
 
 	default:
