@@ -3039,13 +3039,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		       }
 
 		       ci = cf_reference_item(parentcs, templatecs, buf2);
-		       if (!ci || (ci->type != CONF_ITEM_SECTION)) {
+		       if (!ci || (ci->type != CONF_ITEM_SECTION) || !this) {
 				ERROR("%s[%d]: Reference \"%s\" not found", filename, *lineno, buf2);
-				return -1;
-		       }
-
-		       if (!this) {
-				ERROR("%s[%d]: Internal sanity check error in template reference", filename, *lineno);
 				return -1;
 		       }
 
