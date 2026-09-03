@@ -112,37 +112,8 @@ server kafka-producer {
 
 	namespace = radius
 
-	#
-	#  proto_load based synthetic Access-Request generator.  Lives in
-	#  the same virtual server as the rlm_kafka call path so generated
-	#  packets flow straight into `recv Access-Request` without going
-	#  over the wire - no separate load-generator container, no
-	#  inter-container RADIUS hop.
-	#
-	#  Profile parameters come from the per-test env vars set on this
-	#  container by the compose file (which pulls them from the test's
-	#  loadgen: {} block).
-	#
-	listen load {
-		handler = load
-		type = Access-Request
-		transport = step
-
-		step {
-			filename = ${confdir}/load-generator-packets/packet.conf
-
-			max_attributes = 64
-
-			start_pps    = $ENV{TEST_LOADGEN_START_PPS}
-			max_pps      = $ENV{TEST_LOADGEN_MAX_PPS}
-			duration     = $ENV{TEST_LOADGEN_DURATION}
-			step         = $ENV{TEST_LOADGEN_STEP}
-			max_backlog  = $ENV{TEST_LOADGEN_MAX_BACKLOG}
-			parallel     = $ENV{TEST_LOADGEN_PARALLEL}
-			max_requests = $ENV{TEST_LOADGEN_MAX_REQUESTS}
-			on_complete  = stop
-		}
-	}
+	# proto_load listen config
+	{% include "freeradius/common/listen/load" %}
 
 	listen authentication {
 		type = Access-Request

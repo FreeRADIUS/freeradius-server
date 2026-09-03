@@ -58,34 +58,8 @@ server load-generator {
 
 	namespace = radius
 
-	listen load {
-		handler = load
-		type = Access-Request
-		transport = step
-
-		step {
-
-			# Default packet config to use by the load-generator
-			filename = ${confdir}/load-generator-packets/packet.conf
-
-			csv = ${confdir}/stats/load-generator-client-stats.csv
-
-			max_attributes = 64
-
-			#
-			# The load profile is configured via environment variables set
-			# in the testcase configuration files.
-			#
-			start_pps = $ENV{TEST_LOADGEN_START_PPS}
-			max_pps   = $ENV{TEST_LOADGEN_MAX_PPS}
-			duration  = $ENV{TEST_LOADGEN_DURATION}
-			step = $ENV{TEST_LOADGEN_STEP}
-			max_backlog = $ENV{TEST_LOADGEN_MAX_BACKLOG}
-			parallel = $ENV{TEST_LOADGEN_PARALLEL}
-			max_requests = $ENV{TEST_LOADGEN_MAX_REQUESTS}
-			on_complete = stop
-		}
-	}
+	# proto_load listen config
+	{% include "freeradius/common/listen/load" %}
 
 	listen authentication {
 		type = Access-Request
