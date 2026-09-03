@@ -680,6 +680,8 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 
 #ifndef NDEBUG
 	dst->magic = FR_VALUE_BOX_MAGIC;
+#endif
+#if defined(WITH_VERIFY_PTR) || !defined(NDEBUG)
 	dst->file = src->file;
 	dst->line = src->line;
 #endif
@@ -7281,7 +7283,7 @@ void fr_value_box_list_untaint(fr_value_box_list_t *head)
 	}
 }
 
-#ifdef WITH_VERIFY_PTR
+#if defined(WITH_VERIFY_PTR) || !defined(NDEBUG)
 #define VB_NAME  "fr_value_box_t %p (from %s:%d)"
 #define VB_NAME_LOCATION(_x) (void const *) (_x), (_x)->file ? (_x)->file : "", (_x)->line
 
@@ -7384,6 +7386,7 @@ void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t co
 {
 	fr_value_box_list_foreach(list, vb) fr_value_box_verify(file, line, vb);
 }
+#endif
 
 /** Mark a value-box as "safe", of a particular type.
  *

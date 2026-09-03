@@ -84,7 +84,7 @@ struct value_pair_s {
 		fr_value_box_t		data;			//!< The value of this pair.
 
 		struct {
-			/** Force children field to come _after_ the type field in the fr_value_box_t
+			/** Force children field to come _after_ the safe_for field in the fr_value_box_t
 			 *
 			 * This works no matter where type appears in fr_value_box_t, whereas just
 			 * listing another fr_type_t field here does not.
@@ -104,11 +104,6 @@ struct value_pair_s {
 	struct {
 		fr_token_t		op;			//!< Operator to use when moving or inserting
 	};
-
-#ifdef WITH_VERIFY_PTR
-	char const		*filename;			//!< Where the pair was defined
-	int			line;				//!< Line number where the attribute was defined.
-#endif
 };
 
 #define vp_strvalue		data.vb_strvalue
@@ -176,7 +171,7 @@ void		fr_pair_list_verify(char const *file, int line,
  *	where it was allocated.  Also have a wrapper for fr_pair_append(), so that before we put it into a
  *	list, we mark the pair with where it was allocated, and then also verify it.
  */
-#  define PAIR_ALLOCED(_x) do { (_x)->filename = __FILE__; (_x)->line = __LINE__; } while (0)
+#  define PAIR_ALLOCED(_x) do { (_x)->data.file = __FILE__; (_x)->data.line = __LINE__; } while (0)
 #  define FR_PAIR_APPEND(_list, _x) do { PAIR_ALLOCED(_x); PAIR_VERIFY(_x); fr_pair_append(_list, _x); } while (0)
 #else
 DIAG_OFF(nonnull-compare)

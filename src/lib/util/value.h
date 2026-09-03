@@ -190,6 +190,19 @@ struct value_box_s {
 	 */
 	fr_type_t		_CONST		type;			//!< Type of this value-box, at the start, see pair.h
 
+#ifndef NDEBUG
+	uint64_t				magic;			//!< Value to verify that the structure was allocated or initialised properly.
+#endif
+	/*
+	 *	The value-box code adds "file" and "line" for NDEBUG, but the #fr_pair_t needs the fields only
+	 *	when using WITH_VERIFY_PTR.  Since the fields overlap, ensure that these fields exist when the
+	 *	#fr_pair_t needs them, too.
+	 */
+#if defined(WITH_VERIFY_PTR) || !defined(NDEBUG)
+	char const				*file;			//!< File where the box was allocated or initialised.
+	int					line;			//!< Line where the box was allocated or initialised.
+#endif
+
 	unsigned int   				tainted : 1;		//!< i.e. did it come from an untrusted source
 	unsigned int   				secret : 1;		//!< Same as #fr_dict_attr_flags_t secret
 	unsigned int				immutable : 1;		//!< once set, the value cannot be changed
@@ -204,17 +217,17 @@ struct value_box_s {
 									///< escaping function, and checked by a #fr_value_box_escape_t
 									///< to see if it needs to operate.
 
+	/*
+	 *	The fields before this point overlap with #fr_pair_t, so that we can get efficiency in memory
+	 *	packing.
+	 */
+
 	fr_value_box_entry_t			entry;			//!< Doubly linked list entry.
 
 	fr_dict_attr_t const			*enumv;			//!< Enumeration values.
 
 	fr_value_box_datum_t			datum;			//!< The value held by the value box.  Should appear
 									///< last for packing efficiency.
-#ifndef NDEBUG
-	uint64_t				magic;			//!< Value to verify that the structure was allocated or initialised properly.
-	char const				*file;			//!< File where the box was allocated or initialised.
-	int					line;			//!< Line where the box was allocated or initialised.
-#endif
 };
 
 /** @name List and cursor function definitions
@@ -1359,12 +1372,12 @@ uint32_t	fr_value_box_hash(fr_value_box_t const *vb);
 
 /** @} */
 
+#if defined(WITH_VERIFY_PTR) || !defined(NDEBUG)
 void		fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb)
 		CC_HINT(nonnull(3));
 void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list)
 		CC_HINT(nonnull(3));
 
-#ifdef WITH_VERIFY_PTR
 #  define VALUE_BOX_VERIFY(_x) fr_value_box_verify(__FILE__, __LINE__, _x)
 #  define VALUE_BOX_LIST_VERIFY(_x) fr_value_box_list_verify(__FILE__, __LINE__, _x)
 #else

@@ -510,7 +510,6 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	if (!n) return NULL;
 
 	n->op = vp->op;
-	PAIR_ALLOCED(n);
 
 	/*
 	 *	Groups are special.
@@ -525,6 +524,7 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	} else {
 		if (unlikely(fr_value_box_copy(n, &n->data, &vp->data) < 0)) goto error;
 	}
+	PAIR_ALLOCED(n);
 
 	return n;
 }
@@ -2590,6 +2590,11 @@ void fr_pair_value_clear(fr_pair_t *vp)
  */
 int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 {
+#ifdef WITH_VERIFY_PTR
+	char const *file = dst->data.file; /* copying the value-box also copies these fields */
+	int line = dst->data.line;
+#endif
+
 	if (!fr_cond_assert(src->data.type != FR_TYPE_NULL)) return -1;
 
 	fr_value_box_clear_value(&dst->data);
@@ -2599,6 +2604,10 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 	 *	If either source or destination is secret, then this value is secret.
 	 */
 	dst->data.secret |= src->da->flags.secret | dst->da->flags.secret | src->data.secret;
+#ifdef WITH_VERIFY_PTR
+	dst->data.file = file;
+	dst->data.line = line;
+#endif
 	return 0;
 }
 
@@ -3105,7 +3114,7 @@ int fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp)
 
 #ifdef WITH_VERIFY_PTR
 #define PAIR_NAME  "fr_pair_t %s (from %s:%d)"
-#define PAIR_NAME_LOCATION(_x) (_x)->da->name, (_x)->filename ? (_x)->filename : "", (_x)->line
+#define PAIR_NAME_LOCATION(_x) (_x)->da->name, (_x)->data.file ? (_x)->data.file : "", (_x)->data.line
 
 /*
  *	Verify a fr_pair_t
