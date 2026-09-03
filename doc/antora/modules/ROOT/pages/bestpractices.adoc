@@ -123,7 +123,7 @@ your records. When this happens (and it will), a backup of your
 database will make recovery trivial. If you don't have a backup, it
 can be almost impossible to recover from a catastrophic failure.
 
-== minimise the admin queries against your production database
+== Minimise the admin queries against your production database
 
 We often see clients running into problems when they run complex
 billing queries against the "live" production database. These queries
@@ -137,7 +137,7 @@ against the secondary database. If you only have a single primary
 database, we recommend exporting the data to a backup system and
 running the complex queries on the backup.
 
-Need more help? Network RADIUS has been helping clients around the
+Need more help? InkBridge Networks has been helping clients around the
 world design and deploy their RADIUS infrastructure for 20 years. We
 specialize in complex systems and have seen pretty much every
 variation and problem out there. If you want help from the people who

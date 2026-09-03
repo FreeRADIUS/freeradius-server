@@ -5,10 +5,10 @@ Please see the following for a description of the FreeRADIUS mailing lists. For 
 |===
 |Mailing List|Description
 
-|[freeradius-users](https://lists.freeradius.org/mailman/listinfo/freeradius-users)
+|https://lists.freeradius.org/mailman/listinfo/freeradius-users[freeradius-users]
 |This list is for all users of FreeRADIUS and deals with general questions related to FreeRADIUS.
 
-|[freeradius-devel](https://lists.freeradius.org/mailman/listinfo/freeradius-devel)
+|https://lists.freeradius.org/mailman/listinfo/freeradius-devel[freeradius-devel]
 |This list is for developers who are writing code for FreeRADIUS. The content is highly technical and is not suited to the average user. If you looking to contribute code, please join this list.
 
 |https://lists.freeradius.org/pipermail/freeradius-users/[User Mailing List Archive]

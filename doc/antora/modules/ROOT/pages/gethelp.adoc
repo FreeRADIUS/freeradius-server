@@ -13,7 +13,7 @@ InkBridge Networks as follows:
 ## What Email list do I use?
 
 There are several mailing lists associated with the FreeRADIUS server
-project. The lists are on the http://freeradius.org/list/[freeRADIUS]
+project. The lists are on the http://freeradius.org/list/[FreeRADIUS]
 website.
 
 include::partial$mailinglist.adoc[]
