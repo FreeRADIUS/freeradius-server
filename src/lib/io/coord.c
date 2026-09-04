@@ -294,7 +294,7 @@ static void coord_worker_detach(void const *data, NDEBUG_UNUSED size_t data_size
 	fr_coord_t				*coord = talloc_get_type_abort(uctx, fr_coord_t);
 	fr_coord_worker_detach_msg_t const	*msg = data;
 	fr_coord_msg_t				ack;
-	uint32_t				thread_id;
+	uint32_t				thread_id, i;
 
 	fr_assert(data_size == sizeof(fr_coord_worker_detach_msg_t));
 	fr_assert((msg->worker >= MIN_WORKER_ID) && (msg->worker < (int32_t)coord->max_workers));
@@ -302,6 +302,19 @@ static void coord_worker_detach(void const *data, NDEBUG_UNUSED size_t data_size
 
 	DEBUG2("Worker %d detached from %s", msg->worker, coord->coord_reg->name);
 	coord->num_workers--;
+	if (msg->exiting) coord->exiting = true;
+
+	/*
+	 *	If all workers have detached, and we're exiting, run any exit callbacks.
+	 */
+	if (coord->exiting && (coord->num_workers == 0)) {
+		fr_coord_cb_inst_t *cb_inst;
+		for (i = 0; i < coord->num_callbacks; i++) {
+			cb_inst = coord->cb_inst[i];
+			if (!cb_inst || !cb_inst->exit_cb) continue;
+			cb_inst->exit_cb(coord, coord->el, cb_inst->inst_data);
+		}
+	}
 
 	ack.worker = msg->worker;
 	fr_control_message_send(coord->coord_send_control[thread_id], coord->coord_send_rb[thread_id],
@@ -309,7 +322,6 @@ static void coord_worker_detach(void const *data, NDEBUG_UNUSED size_t data_size
 
 	coord->coord_send_control[thread_id] = NULL;
 	coord->coord_send_aq[thread_id] = NULL;
-	if (msg->exiting) coord->exiting = true;
 }
 
 /** Create a coordinator from its registration

@@ -41,9 +41,11 @@ typedef struct {
 } fr_coord_data_t;
 
 typedef void (*fr_coord_inst_event_cb_t)(fr_event_list_t *el, void *uctx);
+typedef void (*fr_coord_inst_exit_cb_t)(fr_coord_t *coord, fr_event_list_t *el, void *uctx);
 struct fr_coord_cb_inst_s {
 	void				*inst_data;		//!< Instance data.
 	fr_event_status_cb_t		event_pre_cb;		//!< Pre-event callback in single thread mode.
 	fr_event_post_cb_t		event_post_cb;		//!< Post-event callback in single thread mode.
 	fr_coord_inst_event_cb_t	event_cb;		//!< Event callback in multi thread mode.
+	fr_coord_inst_exit_cb_t		exit_cb;		//!< Callback run when coordinator is asked to exit.
 };
