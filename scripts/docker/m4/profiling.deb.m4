@@ -3,7 +3,7 @@ FROM ${from}
 
 #
 #  Per-commit profiling image. The slow toolchain layer (valgrind /
-#  kcachegrind / dbgsym / FlameGraph / inferno) lives in profiling-deps
+#  kcachegrind / dbgsym / FlameGraph / inferno / pprof) lives in profiling-deps
 #  and is refreshed periodically by docker-freeradius-images-refresh.yml; this layer just
 #  compiles FreeRADIUS with profiling-friendly CFLAGS on top of it.
 #  See common.freeradius-profile-build.m4 for the CFLAGS rationale.
