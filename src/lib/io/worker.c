@@ -232,17 +232,13 @@ static inline int worker_cancelled_run(fr_worker_t *worker)
 static void worker_requests_cancel(fr_worker_t *worker, fr_worker_channel_t *ch)
 {
 	fr_async_t *async = NULL;
-	int cancelled;
+	int cancelled = 0;
 
 	while ((async = fr_dlist_next(&ch->dlist, async)) != NULL) {
 		unlang_interpret_signal(async->request, FR_SIGNAL_CANCEL);
+		cancelled++;
 	}
 
-	/*
-	 *	Signalled requests will now be at the top of the runnable heap.
-	 *	Run all cancelled requests at the top of the heap to conclusion.
-	 */
-	cancelled = worker_cancelled_run(worker);
 	DEBUG("%d requests cancelled", cancelled);
 }
 
