@@ -7354,12 +7354,12 @@ DIAG_ON(nonnull-compare)
 			break;
 		}
 
-		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME "octets field "
+		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME " octets field "
 				    "was NULL", file, line, VB_NAME_LOCATION(vb));
 		break;
 
 	case FR_TYPE_VOID:
-		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME "ptr field "
+		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME " ptr field "
 				    "was NULL", file, line, VB_NAME_LOCATION(vb));
 		break;
 
@@ -7368,12 +7368,12 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_ATTR:
-		fr_fatal_assert_msg(vb->vb_attr, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME "vb_attr field "
+		fr_fatal_assert_msg(vb->vb_attr, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME " vb_attr field "
 				    "was NULL", file, line, VB_NAME_LOCATION(vb));
 		break;
 
 	case FR_TYPE_BOOL:
-		fr_fatal_assert_msg(vb->vb_uint8 <= 1, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME "vb_bool field "
+		fr_fatal_assert_msg(vb->vb_uint8 <= 1, "CONSISTENCY CHECK FAILED %s[%d]: " VB_NAME " vb_bool field "
 				    "was not boolean!", file, line, VB_NAME_LOCATION(vb));
 		break;
 
