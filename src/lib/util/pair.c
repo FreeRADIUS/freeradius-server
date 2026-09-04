@@ -268,8 +268,8 @@ fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		return NULL;
 	}
 
-	PAIR_ALLOCED(vp);
 	pair_init_from_da(vp, da);
+	PAIR_ALLOCED(vp);
 
 	return vp;
 }
@@ -313,8 +313,8 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		da = unknown;
 	}
 
-	PAIR_ALLOCED(vp);
 	pair_init_from_da(vp, da);
+	PAIR_ALLOCED(vp);
 
 	return vp;
 }
@@ -401,8 +401,8 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 		da = unknown;
 	}
 
-	PAIR_ALLOCED(vp);
 	pair_init_from_da(vp, da);
+	PAIR_ALLOCED(vp);
 
 	return vp;
 }
