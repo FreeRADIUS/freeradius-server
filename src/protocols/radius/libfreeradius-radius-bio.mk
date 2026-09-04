@@ -14,4 +14,4 @@ SOURCES		:= client.c \
 		   server.c \
 		   server_udp.c
 
-TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-radius$(L) libfreeradius-bio$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL) libfreeradius-radius$(L) libfreeradius-bio$(L)

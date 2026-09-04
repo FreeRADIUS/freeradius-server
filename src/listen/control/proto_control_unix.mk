@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= proto_control_unix.c
 
-TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-control$(L) libfreeradius-bio$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL) libfreeradius-control$(L) libfreeradius-bio$(L)

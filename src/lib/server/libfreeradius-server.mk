@@ -59,7 +59,7 @@ endif
 
 # RADIUS linkage is only required because we don't have a protocol agnostic
 # way of building clients.  Once that's fixed we can remove the dependency.
-TGT_PREREQS	+= libfreeradius-util$(L) libfreeradius-radius$(L)
+TGT_PREREQS	+= $(LIBFREERADIUS_UTIL) libfreeradius-radius$(L)
 
 ifneq ($(MAKECMDGOALS),scan)
 SRC_CFLAGS	+= -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLAGS)\" -DBUILT_WITH_LDFLAGS=\"$(LDFLAGS)\" -DBUILT_WITH_LIBS=\"$(LIBS)\"

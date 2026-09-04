@@ -46,7 +46,7 @@ SOURCES	:=	base.c \
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/unlang/*.h))
 
-TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-server$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL) libfreeradius-server$(L)
 
 ifneq ($(MAKECMDGOALS),scan)
 SRC_CFLAGS	+= -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLAGS)\" -DBUILT_WITH_LDFLAGS=\"$(LDFLAGS)\" -DBUILT_WITH_LIBS=\"$(LIBS)\"

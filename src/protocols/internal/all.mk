@@ -9,4 +9,4 @@ TGT_CATEGORY	:= lib-protocol
 SOURCES		:= decode.c \
 		   encode.c
 
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)

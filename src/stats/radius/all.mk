@@ -8,7 +8,7 @@ TGT_CATEGORY	:= lib-util
 
 SOURCES		:= base.c
 
-TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-radius$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL) libfreeradius-radius$(L)
 
 TGT_POSTCLEAN	:= rm -f $(wildcard src/stats/radius/*.cache)
 

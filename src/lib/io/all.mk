@@ -18,7 +18,7 @@ SOURCES	:= \
 	thread.c \
 	worker.c
 
-TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-internal$(L) $(LIBFREERADIUS_SERVER)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL) libfreeradius-internal$(L) $(LIBFREERADIUS_SERVER)
 TGT_LDLIBS	:= $(LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS)
 

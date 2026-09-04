@@ -8,5 +8,5 @@ TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= proto_arp_ethernet.c
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)
 TGT_LDLIBS	:= $(PCAP_LIBS)

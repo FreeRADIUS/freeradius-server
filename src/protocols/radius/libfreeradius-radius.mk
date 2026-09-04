@@ -14,4 +14,4 @@ SOURCES		:= base.c \
 		   tcp.c \
 		   abinary.c
 
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)

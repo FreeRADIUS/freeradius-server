@@ -16,4 +16,4 @@ SOURCES	:=		\
 	dedup.c		\
 	retry.c
 
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)

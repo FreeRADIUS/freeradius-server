@@ -12,5 +12,5 @@ ifneq (${OPENSSL_LIBS},)
 SOURCES		+= tls.c crypto.c
 endif
 
-TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-radius$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL) libfreeradius-radius$(L)
 SRC_CFLAGS	:= -DEAPLIB

@@ -11,4 +11,4 @@ SOURCES		:= base.c \
 		   encode.c
 
 SRC_CFLAGS	:= -DNO_ASSERT
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)

@@ -3,5 +3,5 @@ TARGETNAME	:= rlm_dpsk
 TARGET		:= $(TARGETNAME)$(L)
 SOURCES		:= $(TARGETNAME).c
 
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)
 LOG_ID_LIB	= 63

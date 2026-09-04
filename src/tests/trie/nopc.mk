@@ -3,7 +3,7 @@ TARGET		:= nopc$(E)
 SRC_CFLAGS	:= -DTESTING -DNO_PATH_COMPRESSION -DDEFAULT_BITS=1
 SOURCES		:= nopc.c
 TGT_LDLIBS	:= $(LIBS)
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)
 
 #
 #  The build system maps one source file to one object file.  So in

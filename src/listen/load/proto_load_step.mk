@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= proto_load_step.c
 
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)

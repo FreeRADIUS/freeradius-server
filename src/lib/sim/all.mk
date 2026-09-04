@@ -8,4 +8,4 @@ SOURCES	:= \
 	milenage.c \
 	ts_34_108.c
 
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)

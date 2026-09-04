@@ -7,4 +7,4 @@ TARGET      := libfreeradius-tftp$(L)
 TGT_CATEGORY	:= lib-protocol
 SOURCES     := base.c encode.c decode.c
 SRC_CFLAGS  := -I$(top_builddir)/src -DNO_ASSERT
-TGT_PREREQS := libfreeradius-util$(L)
+TGT_PREREQS := $(LIBFREERADIUS_UTIL)
