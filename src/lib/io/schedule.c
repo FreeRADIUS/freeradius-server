@@ -195,7 +195,7 @@ static void *fr_schedule_worker_thread(void *arg)
 
 fail:
 	if (sw->worker) {
-		fr_worker_destroy(sw->worker);
+		fr_worker_exit(sw->worker);
 		sw->worker = NULL;
 	}
 
@@ -378,7 +378,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx,
 				if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
 					PERROR("Failed destroying network");
 				}
-				fr_worker_destroy(sc->single_worker);
+				fr_worker_exit(sc->single_worker);
 				goto pre_instantiate_st_fail;
 			}
 		}

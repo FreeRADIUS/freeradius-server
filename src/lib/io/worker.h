@@ -85,6 +85,8 @@ fr_worker_t	*fr_worker_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *n
 
 void		fr_worker_destroy(fr_worker_t *worker) CC_HINT(nonnull);
 
+void		fr_worker_exit(fr_worker_t *worker);
+
 void		fr_worker(fr_worker_t *worker) CC_HINT(nonnull);
 
 void		fr_worker_debug(fr_worker_t *worker, FILE *fp) CC_HINT(nonnull);
