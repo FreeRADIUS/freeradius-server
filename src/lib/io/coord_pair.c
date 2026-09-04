@@ -557,17 +557,9 @@ static fr_cmp_ret_t coord_pair_runnable_cmp(void const *one, void const *two)
 
 void fr_coord_pair_inst_destroy(UNUSED fr_coord_t *coord, fr_coord_cb_inst_t *inst, bool single_thread, UNUSED void *uctx) {
 	fr_coord_pair_t	*coord_pair = talloc_get_type_abort(inst->inst_data, fr_coord_pair_t);
-	int		ret, count = 0;
 	request_t	*request;
 
 	if (!single_thread) unlang_interpret_set_thread_default(NULL);
-
-	ret = fr_timer_list_force_run(coord_pair->timeout);
-	if (unlikely(ret < 0)) {
-		fr_assert_msg(0, "Failed to force run the timeout list");
-	} else {
-		count += ret;
-	}
 
 	while ((request = fr_heap_peek(coord_pair->runnable)) && (unlang_request_is_cancelled(request))) {
 		fr_heap_extract(&coord_pair->runnable, request);
@@ -577,8 +569,6 @@ void fr_coord_pair_inst_destroy(UNUSED fr_coord_t *coord, fr_coord_cb_inst_t *in
 
 		(void)unlang_interpret(request, UNLANG_REQUEST_RESUME);
 	}
-
-	DEBUG("Coordinator %s is exiting - stopped %u requests", fr_coord_name(coord), count);
 }
 
 /** Create the coord_pair coord instance data
@@ -684,6 +674,19 @@ static void fr_coord_pair_event(UNUSED fr_event_list_t *el, void *uctx)
 	fr_coord_pair_t *coord_pair = talloc_get_type_abort(uctx, fr_coord_pair_t);
 
 	coord_run_request(coord_pair, fr_time());
+}
+
+static void fr_coord_pair_exit(fr_coord_t *coord, UNUSED fr_event_list_t *el, void *uctx)
+{
+	fr_coord_pair_t *coord_pair = talloc_get_type_abort(uctx, fr_coord_pair_t);
+	int		ret;
+
+	ret = fr_timer_list_force_run(coord_pair->timeout);
+	if (unlikely(ret < 0)) {
+		fr_assert_msg(0, "Failed to force run the timeout list");
+	} else {
+		DEBUG("Coordinator %s is exiting - stopped %u requests", fr_coord_name(coord), ret);
+	}
 }
 
 /** Callback run when a coordinator receives pair list data
@@ -867,7 +870,8 @@ fr_coord_cb_inst_t *fr_coord_pair_inst_create(TALLOC_CTX *ctx, fr_coord_t *coord
 	*cb_inst = (fr_coord_cb_inst_t) {
 		.event_pre_cb = fr_coord_pair_pre_event,
 		.event_post_cb = fr_coord_pair_post_event,
-		.event_cb = fr_coord_pair_event
+		.event_cb = fr_coord_pair_event,
+		.exit_cb = fr_coord_pair_exit,
 	};
 
 	coord_pair = fr_coord_pair_create(ctx, coord, el, single_thread, uctx);
