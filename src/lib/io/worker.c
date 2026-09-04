@@ -105,6 +105,7 @@ struct fr_worker_s {
 	fr_event_list_t		*el;		//!< our event list
 
 	int			num_channels;	//!< actual number of channels
+	int			num_closing;	//!< number of channels closing
 
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
 
@@ -230,10 +231,10 @@ static inline int worker_cancelled_run(fr_worker_t *worker)
 
 static void worker_requests_cancel(fr_worker_t *worker, fr_worker_channel_t *ch)
 {
-	fr_async_t *async;
+	fr_async_t *async = NULL;
 	int cancelled;
 
-	while ((async = fr_dlist_pop_head(&ch->dlist)) != NULL) {
+	while ((async = fr_dlist_next(&ch->dlist, async)) != NULL) {
 		unlang_interpret_signal(async->request, FR_SIGNAL_CANCEL);
 	}
 
@@ -357,9 +358,6 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 
 			ms = worker->channel[i].ms;
 
-			fr_assert_msg(fr_dlist_num_elements(&worker->channel[i].dlist) == 0,
-				      "Network added messages to channel after sending FR_CHANNEL_CLOSE");
-
 			/*
 			 *	Should be nothing left: the network is not supposed
 			 *	to enqueue anything once it has signalled the close,
@@ -374,14 +372,11 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 
 			fr_assert(ms != NULL);
 			fr_message_set_gc(ms);
-			fr_channel_responder_ack_close(ch);
 
-			worker->channel[i].ch = NULL;
-
-			fr_assert(fr_dlist_num_elements(&worker->channel[i].dlist) == 0);
 			fr_assert(worker->num_channels > 0);
 
 			worker->num_channels--;
+			worker->num_closing++;
 			ok = true;
 			break;
 		}
@@ -1540,6 +1535,26 @@ nomem:
 	return worker;
 }
 
+/** Acknowledge channel close after requests are completed
+ *
+ * When the channel close is acknowledged, the network frees the channel
+ * which then causes issues with any requests still referencing the channel.
+ */
+static inline void worker_channel_close_ack(fr_worker_t *worker)
+{
+	if (unlikely(worker->num_closing > 0)) {
+		int i;
+		for (i = 0; i < worker->config.max_channels; i++) {
+			if (!worker->channel[i].ch) continue;
+			if (fr_channel_active(worker->channel[i].ch)) continue;
+			if (fr_dlist_num_elements(&worker->channel[i].dlist) > 0) continue;
+
+			fr_channel_responder_ack_close(worker->channel[i].ch);
+			worker->channel[i].ch = NULL;
+			worker->num_closing--;
+		}
+	}
+}
 
 /** The main loop and entry point of the stand-alone worker thread.
  *
@@ -1565,6 +1580,8 @@ void fr_worker(fr_worker_t *worker)
 		 */
 		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
 		if (wait_for_event) {
+			worker_channel_close_ack(worker);
+
 			if (unlikely(worker->exiting && (worker_num_requests(worker) == 0))) break;
 
 			DEBUG4("Ready to process requests");
