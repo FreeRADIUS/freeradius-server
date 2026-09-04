@@ -20,6 +20,7 @@ loadgen:
   parallel: 1
   max_backlog: 1000
   repeat: "no"
+  complete: "exit"
 
 # Test framework
 test_timeout: 50

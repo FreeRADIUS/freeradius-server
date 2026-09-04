@@ -29,6 +29,7 @@ loadgen:
   step: 10
   parallel: 1
   max_backlog: 1000
+  complete: "stop"
 
 #  30s x 10pps = 300, but num_messages caps at 200 so proto_load
 #  stops at 200 emitted.  Consumer expects exactly 200.  If the

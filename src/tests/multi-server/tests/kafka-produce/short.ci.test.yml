@@ -19,6 +19,7 @@ loadgen:
   #
   parallel: 5
   max_backlog: 1000
+  complete: "stop"
 
 #
 #  Expected message count at the consumer.  Must equal the total
