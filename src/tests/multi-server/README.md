@@ -46,6 +46,18 @@ Profiling results land under
 `PROFILING_RESULT_MODE=dev` to use a flat per-suite layout that overwrites
 each run.
 
+Each profiling test runs once per profiler, valgrind first then gperftools,
+into the same result directory. Set `TOOL` to run a single profiler:
+
+```bash
+make test.multi-server.profiling.ci TOOL=valgrind
+make test.multi-server.accept.short_ci MODE=profiling TOOL=gperftools
+```
+
+Every run gets its own `logs/<run>/` and `listener/<run>/` subdirectory
+under the test output dir, where `<run>` is the profiler name, or `service`
+in service mode.
+
 ### A specific test
 
 ```bash
@@ -92,8 +104,11 @@ variable, exporting the SHA-tagged image name directly:
 - `MODE=service` (default) selects `freeradius4-service/<image>:<sha>`,
   the test template `exec`s the server directly.
 - `MODE=profiling` selects `freeradius4-profiling/<image>:<sha>`, sets
-  `PROFILING=yes`, and the test template sources `start_valgrind_profiling.sh`
-  instead so the run is captured by callgrind.
+  `PROFILING=yes` and `PROFILING_TOOL=<tool>`, and the test template sources
+  `start_<tool>_profiling.sh` instead so the run is captured by the profiler.
+  The makefile copies `scripts/profiling/start_<tool>_profiling.sh` into the
+  test output dir for every known tool, in every mode, and fails early when
+  one is missing.
 
 The profiling image is the standard `freeradius4-profiling/<image>:<sha>`
 output, built by `scripts/docker/m4/profiling.deb.m4` /

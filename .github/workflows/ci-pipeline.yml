@@ -1,5 +1,14 @@
 name: CI Pipeline
 
+#
+#  BRANCH-ONLY CUT: the build and test legs (ci, ci-deb, ci-rpm,
+#  ci-sanitizers, ci-freebsd, ci-macos, docs, docker-crossbuild,
+#  docker-service, merge) are removed while the gperftools multi-server
+#  work is developed on this branch. Only the image refresh chain and
+#  the multi-server leg run. Restore the full pipeline from master
+#  before this branch is proposed for merge.
+#
+
 on:
   workflow_dispatch:
   push:
@@ -189,60 +198,6 @@ jobs:
     uses: ./.github/workflows/docker-freeradius-images-refresh.yml
     secrets: inherit
 
-  ci:
-    needs: [docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI
-    uses: ./.github/workflows/ci.yml
-    secrets: inherit
-
-  ci-deb:
-    needs: [docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI DEB
-    uses: ./.github/workflows/ci-deb.yml
-    secrets: inherit
-
-  ci-rpm:
-    needs: [docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI RPM
-    uses: ./.github/workflows/ci-rpm.yml
-    secrets: inherit
-
-  ci-sanitizers:
-    needs: [docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI-Sanitizers
-    uses: ./.github/workflows/ci-sanitizers.yml
-    secrets: inherit
-
-  #
-  #  `ci-freebsd` and `ci-macos` run on every commit but are absent
-  #  from the `needs` list of the `merge` job, because both legs are too unreliable.  Both legs run
-  #  on virtual machines and read no docker images, so neither leg waits
-  #  for a refresh.
-  #
-  ci-freebsd:
-    needs: [ci_prev_run]
-    if: ${{ !cancelled()
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI FreeBSD
-    uses: ./.github/workflows/ci-freebsd.yml
-    secrets: inherit
-
-  ci-macos:
-    needs: [ci_prev_run]
-    if: ${{ !cancelled()
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI macOS
-    uses: ./.github/workflows/ci-macos.yml
-    secrets: inherit
-
   #
   #  `docker_freeradius_images_refresh` skips whenever `docker_ci_images_refresh` skips or fails,
   #  so the legs that read the 'freeradius4' images check both results.
@@ -257,66 +212,3 @@ jobs:
     name: Multi-Server CI Tests
     uses: ./.github/workflows/ci-multi-server-tests.yml
     secrets: inherit
-
-  docker-crossbuild:
-    name: Docker crossbuild images
-    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.docker_freeradius_images_refresh.result != 'failure'
-            && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
-    uses: ./.github/workflows/docker-crossbuild.yml
-    secrets: inherit
-
-  docker-service:
-    name: Docker service images
-    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.docker_freeradius_images_refresh.result != 'failure'
-            && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
-    uses: ./.github/workflows/docker-service.yml
-    secrets: inherit
-
-  #
-  #  `docs` only runs when the commit changes a file that the
-  #  documentation build reads.  `docs` is absent from the `needs` list of the `merge` job,
-  #  because a failed documentation build should not hold up a merge.
-  #
-  docs:
-    name: Documentation
-    needs: [common_vars, docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true'
-            && needs.common_vars.outputs.docs_changed == 'true' }}
-    uses: ./.github/workflows/documentation.yml
-    secrets: inherit
-
-  #
-  #  `merge` runs when every gating leg passed.  The `needs` list holds only
-  #  the gating legs.  The other legs are too unreliable to block a
-  #  merge on.
-  #
-  #  By default GitHub skips a job unless every job in the job's `needs`
-  #  succeeds.  The docker refresh skips on commits that do not modify
-  #  packaging.  A skipped refresh would skip the merge step, unless the
-  #  merge step carries an explicit condition.
-  #
-  #  A skipped pipeline still merges.  The duplicate check only reports
-  #  a skip once an earlier run of the 'CI Pipeline' workflow finished
-  #  successfully on the same tree.  The merged content has therefore
-  #  already passed.  Requiring the legs to report `success` in the merge
-  #  condition would strand a developer who amends a commit message and
-  #  force pushes.  The reworded commit carries the tree that just
-  #  passed, so every leg skips.
-  #
-  merge:
-    name: Merge
-    needs: [ci_prev_run, ci, ci-deb, ci-rpm, ci-sanitizers]
-    if: ${{ !cancelled()
-            && (needs.ci_prev_run.outputs.should_skip == 'true'
-                || (needs.ci.result == 'success'
-                    && needs.ci-deb.result == 'success'
-                    && needs.ci-rpm.result == 'success'
-                    && needs.ci-sanitizers.result == 'success')) }}
-    uses: ./.github/workflows/merge-upstream.yml
-    secrets:
-      GH_APP_PRIVATE_KEY_CI_MERGE: ${{ secrets.GH_APP_PRIVATE_KEY_CI_MERGE }}
