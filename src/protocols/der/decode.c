@@ -435,7 +435,7 @@ static ssize_t fr_der_decode_null(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_
 		return -1;
 	}
 
-	fr_pair_append(out, vp);
+	FR_PAIR_APPEND(out, vp);
 
 	return fr_dbuff_set(in, &our_in);
 }
@@ -541,7 +541,7 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 
 	if (unlikely(!vp)) goto oom;
 
-	fr_pair_append(decode_ctx->parent_list, vp);
+	FR_PAIR_APPEND(decode_ctx->parent_list, vp);
 
 	decode_ctx->ctx		= vp;
 	decode_ctx->parent_da	= vp->da;
@@ -2401,6 +2401,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	}
 
 	if (fr_pair_list_num_elements(&vp2->children) > 0) {
+		PAIR_VERIFY(vp2);
 		fr_pair_prepend(&vp->vp_group, vp2);
 	} else {
 		talloc_free(vp2);
