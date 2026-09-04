@@ -248,16 +248,6 @@ static void worker_requests_cancel(fr_worker_t *worker, fr_worker_channel_t *ch)
 static void worker_exit(fr_worker_t *worker)
 {
 	worker->exiting = true;
-
-	/*
-	 *	Don't allow the post event to run
-	 *	any more requests.  They'll be
-	 *	signalled to stop before we exit.
-	 *
-	 *	This only has an effect in single
-	 *	threaded mode.
-	 */
-	(void)fr_event_post_delete(worker->el, fr_worker_post_event, worker);
 }
 
 /** Handle a control plane message sent to the worker via a channel
