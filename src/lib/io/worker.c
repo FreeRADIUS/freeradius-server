@@ -519,14 +519,15 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 /** Signal the unlang interpreter that it needs to stop running the request
  *
  * Signalling is a synchronous operation.  Whatever I/O requests the request
- * is currently performing are immediately cancelled, and all the frames are
- * popped off the unlang stack.
+ * is currently performing are signalled to be cancelled.  Depending on the
+ * specific back end, the actual cancellation may be asynchronously handled
+ * by the trunk code.
  *
  * Modules and unlang keywords explicitly register signal handlers to deal
  * with their yield points being cancelled/interrupted via this function.
  *
- * The caller should assume the request is no longer viable after calling
- * this function.
+ * Following this, the request still needs to be run through the interpreter
+ * to tidy up and potentially run a `finally` section.
  *
  * @param[in] request	request to cancel.  The request may still run to completion.
  */
