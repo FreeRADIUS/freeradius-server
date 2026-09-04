@@ -48,7 +48,7 @@ jobs:
   #                      FreeRADIUS build-deps
   #    profiling-deps    `FROM` `crossbuild:latest`, toolchain layer
   #                      (valgrind / kcachegrind / dbgsym / FlameGraph /
-  #                      inferno)
+  #                      inferno / pprof)
   #    service           `FROM` the same upstream OS base as 'crossbuild'
   #                      (NOT from 'crossbuild') - the FreeRADIUS
   #                      debian/rpm package build apt-installs build
