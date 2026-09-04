@@ -1659,6 +1659,35 @@ void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 	worker_run_request(worker, fr_time());	/* Event loop time can be too old, and trigger asserts */
 }
 
+static int fr_worker_pre_close_event(UNUSED fr_time_t now, UNUSED fr_time_delta_t wake, void *uctx)
+{
+	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
+
+	return worker->num_closing;
+}
+
+static void fr_worker_post_close_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
+
+	worker_channel_close_ack(worker);
+}
+
+/** Add events to the loop which will send close ack to the network
+ */
+int fr_worker_close_event_insert(fr_worker_t *worker)
+{
+	if (fr_event_pre_insert(worker->el, fr_worker_pre_close_event, worker) < 0) {
+		fr_strerror_const("Failed adding close pre-event to event list");
+		return -1;
+	}
+	if (fr_event_post_insert(worker->el, fr_worker_post_close_event, worker) < 0) {
+		fr_strerror_const("Failed adding close post-event to event list");
+		return -1;
+	}
+	return 0;
+}
+
 /** Print debug information about the worker structure
  *
  * @param[in] worker the worker

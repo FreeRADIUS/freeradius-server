@@ -1815,6 +1815,35 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 	}
 }
 
+static int fr_network_pre_close_event(UNUSED fr_time_t now, UNUSED fr_time_delta_t wake, void *uctx)
+{
+	fr_network_t *nr = talloc_get_type_abort(uctx, fr_network_t);
+
+	return (nr->num_workers == 0) ? 1 : 0;
+}
+
+static void fr_network_post_close_event(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_network_t *nr = talloc_get_type_abort(uctx, fr_network_t);
+
+	if (nr->num_workers == 0) fr_event_loop_exit(el, SIGINT);
+}
+
+/** Add events to the loop which will exit when the number of workers has reached zero
+ */
+int fr_network_close_event_insert(fr_network_t *nr)
+{
+	if (fr_event_pre_insert(nr->el, fr_network_pre_close_event, nr) < 0) {
+		fr_strerror_const("Failed adding close pre-event to event list");
+		return -1;
+	}
+	if (fr_event_post_insert(nr->el, fr_network_post_close_event, nr) < 0) {
+		fr_strerror_const("Failed adding close post-event to event list");
+		return -1;
+	}
+	return 0;
+}
+
 /** Stop a network thread in an orderly way
  *
  * @param[in] nr the network to stop

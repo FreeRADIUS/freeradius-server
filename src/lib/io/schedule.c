@@ -618,7 +618,22 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
 			ERROR("Failed destroying network");
 		}
-		fr_worker_destroy(sc->single_worker);
+
+		/*
+		 *	Add events to handle close down gracefully.
+		 */
+		if (unlikely((fr_network_close_event_insert(sc->single_network) < 0) ||
+			     (fr_worker_close_event_insert(sc->single_worker) < 0))) {
+			ERROR("Failed setting up close events");
+		}
+
+		/*
+		 *	Run the event loop so the worker gets the signal from
+		 *	the network and shuts down gracefully.
+		 */
+		fr_event_loop(sc->el);
+
+		fr_worker_exit(sc->single_worker);
 		fr_coords_destroy();
 
 		goto done;
