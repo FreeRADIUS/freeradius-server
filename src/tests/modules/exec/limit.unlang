@@ -1,0 +1,30 @@
+#
+#  "limit exec" is set (see security.conf) to allow only "/bin"
+#  and this test directory. Only programs in this directory must
+#  run, any others must fail.
+#
+exec_limit_allowed
+
+if ((!control.Filter-Id) || (control.Filter-Id != 'allowed')) {
+	test_fail
+}
+
+control -= Filter-Id[*]
+
+#
+#  A refused exec returns "fail", which by default unwinds the
+#  section, so it has to be caught here.
+#
+try {
+	exec_limit_denied
+	test_fail
+}
+catch fail {
+	ok
+}
+
+if control.Filter-Id {
+	test_fail
+}
+
+test_pass

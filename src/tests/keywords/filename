@@ -44,6 +44,31 @@ if %file.escape("${confdir}") != "src/tests/keywords/" {
 #}
 
 #
+#  These files are inside the "limit files" sub section of the "security"
+#  configuration, so access to them must succeed.
+#
+if !%file.exists("${confdir}/filename") {
+	test_fail
+}
+
+head = %file.head("${confdir}/filename")
+if (head != "#") {
+	test_fail
+}
+
+if !%file.mkdir("${confdir}/.limit-files-test-dir") {
+	test_fail
+}
+
+if !%file.exists("${confdir}/.limit-files-test-dir") {
+	test_fail
+}
+
+if !%file.rmdir("${confdir}/.limit-files-test-dir") {
+	test_fail
+}
+
+#
 #  These files are outside of the "limit files" sub section of the "security" configuration.
 #
 if %file.mkdir("/tmp/radiusd/") {
@@ -54,7 +79,7 @@ if %file.touch("~/radiusd") {
 	test_fail
 }
 
-head = %file.head("/etc/passwd")
+head := %file.head("/etc/passwd")
 if head {
 	test_fail
 }
