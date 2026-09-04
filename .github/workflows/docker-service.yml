@@ -183,13 +183,21 @@ jobs:
     #  instead of rebuilding the base image, per the pull-through
     #  fallback in `scripts/docker/docker.mk`.
     #
+    #  The registry also holds a published 'service' image, so the
+    #  same pull-through would satisfy `docker.service.$OS` without
+    #  building anything and the smoke build would prove nothing.
+    #  `NOPULL=1` on that call forces the build from the checkout.
+    #  The 'profiling' call keeps the pull so the toolchain layers
+    #  come from the registry.  Nothing publishes a 'profiling'
+    #  image, so the 'profiling' layer itself builds locally.
+    #
     - name: Build docker images
       env:
         DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
         DOCKER_REMOTE_PREFIX: ${{ needs.common_vars.outputs.image_prefix }}
         DOCKER_REMOTE_TAG: ${{ needs.common_vars.outputs.image_tag }}
       run: |
-        make docker.service.$OS
+        NOPULL=1 make docker.service.$OS
         make docker.profiling.$OS
 
     #

@@ -51,8 +51,15 @@ PROFILING_RESULT_MODE  ?= ci
 #
 #  Compose envs reference ${FREERADIUS_IMAGE}; the per-test recipe
 #  exports the right one based on MODE. We use the SHA-tagged image
-#  directly so the source-of-truth is the docker.<type>.<image> build
-#  output, no intermediate :latest aliases to keep in sync.
+#  that the docker.<type>.<image> rule writes, so there are no
+#  intermediate :latest aliases to keep in sync.
+#
+#  The SHA tag does not by itself prove the image holds this commit.
+#  When DOCKER_REGISTRY is set, the docker.mk build rule pulls the
+#  published image and retags the pull as :<sha>.  A caller that needs
+#  the image built from the checkout must pass NOPULL=1 to the
+#  docker.<type>.<image> build, as ci-multi-server-tests.yml does for
+#  the service image.
 #
 FREERADIUS_SERVICE_IMAGE     := freeradius4-service/ubuntu24:$(GIT_COMMIT)
 FREERADIUS_PROFILING_IMAGE   := freeradius4-profiling/ubuntu24:$(GIT_COMMIT)

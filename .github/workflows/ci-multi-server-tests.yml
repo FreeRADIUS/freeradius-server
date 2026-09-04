@@ -5,18 +5,17 @@ on:
   #  `ci-pipeline.yml` calls the multi-server workflow and decides the entry
   #  point:
   #
-  #    `push`: per-commit run. The run pulls the 'crossbuild', 'profiling-deps',
-  #    'service' and 'profiling' images from the internal registry, under
-  #    whichever tag `common_vars.yml` picks for the pushed ref.
-  #    `docker-ci-images-refresh.yml` refreshes the images in the registry.
-  #    For the multi-server tests' purposes, the FreeRADIUS runtime in
-  #    the pulled images is recent enough to validate multi-server
-  #    topology, compose and `proto_load` changes per commit. The `push`
-  #    run runs the CI subset.
+  #    `push`: per-commit run. The run builds the 'service' and 'profiling'
+  #    images from the checked-out commit, so the radiusd under test is
+  #    the pushed code. The run pulls only the toolchain layers
+  #    ('crossbuild' and 'profiling-deps') from the internal registry,
+  #    under whichever tag `common_vars.yml` picks for the pushed ref.
+  #    `docker-ci-images-refresh.yml` refreshes the toolchain layers in
+  #    the registry. The `push` run runs the CI subset.
   #
   #    `schedule`: nightly full-suite run, from the pipeline's own cron.
-  #    The run falls back to a local layer rebuild if the registry no
-  #    longer holds a needed image.
+  #    The run rebuilds a toolchain layer locally if the registry no
+  #    longer holds the layer.
   #
   workflow_call:
 
@@ -159,13 +158,25 @@ jobs:
       #  suited to callgrind via
       #  `scripts/docker/m4/common.freeradius-profile-build.m4`).
       #
+      #  Both images must hold the radiusd built from the checked-out
+      #  commit, otherwise the tests exercise whatever code the registry
+      #  copy was built from.
+      #
       #  `DOCKER_REGISTRY` tells `scripts/docker/docker.mk` to try pulling
-      #  `freeradius4-<type>/<image>:<sha>` from the internal registry
-      #  before rebuilding locally.  When the `crossbuild` workflow has
-      #  already pushed a matching 'crossbuild' image, the build skips
-      #  the slow `crossbuild` stage. `docker.mk` pulls the 'crossbuild'
-      #  image the same way whenever a previous `docker-crossbuild.yml`
-      #  run published a matching image.
+      #  `freeradius4-<type>/<image>:<tag>` from the internal registry
+      #  before building locally, and to retag a pulled image as
+      #  `:<sha>`.  That is wanted for the toolchain layers ('crossbuild'
+      #  and 'profiling-deps'), which the 'profiling' build sits on top
+      #  of and which `docker-freeradius-images-refresh.yml` publishes.
+      #
+      #  The 'service' image is also published by the refresh workflow,
+      #  so without `NOPULL=1` the service leg would pull the refresh's
+      #  copy and test the code from the last refresh, not this commit.
+      #  `NOPULL=1` forces the local build.  The 'service' Dockerfile
+      #  `FROM`s the upstream OS base, so the build needs no pulled layer.
+      #
+      #  Nothing publishes a 'profiling' image, so the 'profiling' pull
+      #  misses and `docker.mk` builds the layer from the checkout.
       #
       - name: Build FreeRADIUS image (${{ matrix.mode }})
         env:
@@ -175,7 +186,7 @@ jobs:
         run: |
           case "${{ matrix.mode }}" in
             service)
-              make docker.service.ubuntu24
+              NOPULL=1 make docker.service.ubuntu24
               ;;
             profiling)
               make docker.profiling.ubuntu24
