@@ -900,7 +900,7 @@ static xlat_action_t xlat_func_file_mkdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
 
-	dst->vb_bool = (fr_mkdir(NULL, dirname, -1, 0700, NULL, NULL) == 0);
+	dst->vb_bool = (fr_mkdir(NULL, dirname, -1, 0700, NULL, NULL) > 0);
 	if (!dst->vb_bool) {
 		REDEBUG3("Failed creating directory %s - %s", dirname, fr_syserror(errno));
 	}
