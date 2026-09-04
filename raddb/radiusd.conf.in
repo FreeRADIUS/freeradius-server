@@ -556,49 +556,56 @@ security {
 #	chdir = ${confdir}
 
 	#
-	#  limit files:: Limit the directories for function calls
+	#  limit:: Limit access certain file paths
 	#
 	#  The server provides functions such as %file.touch() to read files,
-	#  write files, make directories, etc. For security, this ability can
-	#  be limited to specific directories.
-	#
-	#  If this section is missing, then the server allows the %file...()
-	#  APIs to read and write any directory.
-	#
-	#  If the section exists but is empty, then the server does not allow
-	#  the %file...() APIs to read and write any directory.
-	#
-	#  Note that you should NOT list ${confdir} here. The configuration
-	#  files should NEVER be writable by the server.
-	#
-	#  If this section is configured, then these limits are always
-	#  applied, even if the filename comes from the configuration files,
-	#  and would normally be considered "safe".
-	#
-	limit files {
-		allow = ${logdir}
-		allow = ${radacctdir}
-	}
-
-	#
-	#  limit exec:: Limit the programs which can be executed
-	#
-	#  The server provides functions such as %exec() to run external
-	#  programs. For security, this ability can be limited to specific
+	#  write files, make directories, etc. and %exec() to run external
+	#  programs. For security, these abilities can be limited to specific
 	#  directories.
 	#
-	#  If this section is missing, then the server allows the %exec()
-	#  APIs to run any program on the system.
-	#
-	#  If this section exists but is empty, then the server does not
-	#  allow the %exec() APIs to run any program.
-	#
-	limit exec {
+	limit {
+
 		#
-		#  The entries here can be directories or specific programs.
+		#  files:: Restrict paths for xlat file functions
 		#
-		allow = "/bin"
-		allow = "/usr/bin"
+		#  If this section is missing, then the server allows the %file...()
+		#  APIs to read and write any directory.
+		#
+		#  If the section exists but is empty, then the server does not allow
+		#  the %file...() APIs to read and write any directory.
+		#
+		#  Note that you should NOT list ${confdir} here. The configuration
+		#  files should NEVER be writable by the server.
+		#
+		#  If this section is configured, then these limits are always
+		#  applied, even if the filename comes from the configuration files,
+		#  and would normally be considered "safe".
+		#
+		files {
+			allow = ${logdir}
+			allow = ${radacctdir}
+		}
+
+		#
+		#  exec:: Limit the programs which can be executed
+		#
+		#  The server provides functions such as %exec() to run external
+		#  programs. For security, this ability can be limited to specific
+		#  directories.
+		#
+		#  If this section is missing, then the server allows the %exec()
+		#  APIs to run any program on the system.
+		#
+		#  If this section exists but is empty, then the server does not
+		#  allow the %exec() APIs to run any program.
+		#
+		exec {
+			#
+			#  The entries here can be directories or specific programs.
+			#
+			allow = "/bin"
+			allow = "/usr/bin"
+		}
 	}
 
 	#
