@@ -7,9 +7,9 @@ removed or renamed in FreeRADIUS v4.
 |===
 | Old Attribute Name or Function        | Replace with
 |                                       |
-| `Module-Return-Code`                  | `%interpreter(rcode)`
+| `Module-Return-Code`                  | `%interpreter('rcode')`
 | `Response-Packet-Type`                | `reply.Packet-Type`
-| `Virtual-Server`                      | `%interpreter(server)`
+| `Virtual-Server`                      | `%interpreter('server')`
 |                                       |
 | `Packet-Authentication-Vector`        | `%radius.packet.vector()`
 | `Packet-Dst-IP-Address`               | `Net.Dst.IP`
