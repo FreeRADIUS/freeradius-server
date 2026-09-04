@@ -437,6 +437,17 @@ static bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
 	num_files = talloc_array_length(main_config->limit_files);
 	if (!num_files) goto fail;
 
+	/*
+	 *	Check for directory traversal attacks.
+	 */
+	if ((vb->vb_length == 2) && (memcmp(vb->vb_strvalue, "..", 2) == 0)) goto fail;
+
+	if ((vb->vb_length > 2) &&
+		((memcmp(vb->vb_strvalue, "../", 3) == 0) ||
+		 (memcmp(vb->vb_strvalue + vb->vb_length - 3, "/..", 3) == 0))) goto fail;
+
+	if (strstr(vb->vb_strvalue, "/../")) goto fail;
+
 	for (i = 0; i < num_files; i++) {
 		/*
 		 *	Get length of config entry, not including terminating NUL
@@ -457,6 +468,12 @@ static bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
 		 *	Exact match, it is allowed.
 		 */
 		if (alen == vb->vb_length) return true;
+
+		/*
+		 *	"allow = foo/bar/" (trailing slash) is already
+		 *	at a directory boundary.
+		 */
+		if (alen && (main_config->limit_files[i][alen - 1] == '/')) return true;
 
 		/*
 		 *	Setting "allow = foo/bar" does NOT mean that

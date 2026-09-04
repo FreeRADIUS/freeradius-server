@@ -3,6 +3,8 @@
 #  and this test directory. Only programs in this directory must
 #  run, any others must fail.
 #
+string test_string
+
 exec_limit_allowed
 
 if ((!control.Filter-Id) || (control.Filter-Id != 'allowed')) {
@@ -24,6 +26,14 @@ catch fail {
 }
 
 if control.Filter-Id {
+	test_fail
+}
+
+#
+#  A ".." component must not be able to escape the allowed directory.
+#
+test_string := %exec_sync("$ENV{MODULE_TEST_DIR}/../../../../../../../../../../../usr/bin/whoami")
+if test_string {
 	test_fail
 }
 

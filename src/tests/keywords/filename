@@ -84,4 +84,13 @@ if head {
 	test_fail
 }
 
+#
+#  A ".." component must not be able to escape the "limit files"
+#  directory, even though the path starts with the allowed prefix.
+#
+head := %file.head("${confdir}/../all.mk")
+if head {
+	test_fail
+}
+
 success

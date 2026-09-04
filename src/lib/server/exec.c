@@ -456,6 +456,17 @@ static bool fr_exec_allowed(char const *filename)
 
 	len = strlen(filename);
 
+	/*
+	 *	Check for directory traversal attacks.
+	 */
+	if ((len == 2) && (memcmp(filename, "..", 2) == 0)) goto fail;
+
+	if ((len > 2) &&
+		((memcmp(filename, "../", 3) == 0) ||
+		 (memcmp(filename + len - 3, "/..", 3) == 0))) goto fail;
+
+	if (strstr(filename, "/../")) goto fail;
+
 	for (i = 0; i < num_files; i++) {
 		/*
 		 *	Get length of config entry, not including terminating NUL
@@ -473,6 +484,12 @@ static bool fr_exec_allowed(char const *filename)
 		if (memcmp(filename, main_config->limit_exec[i], alen) != 0) continue;
 
 		if (alen == len) return true;
+
+		/*
+		 *	"allow = foo/bar/" (trailing slash) is already
+		 *	at a directory boundary.
+		 */
+		if (alen && (main_config->limit_exec[i][alen - 1] == '/')) return true;
 
 		/*
 		 *	Setting "allow = foo/bar" does NOT mean that
