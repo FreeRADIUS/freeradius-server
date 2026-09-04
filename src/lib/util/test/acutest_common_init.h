@@ -45,7 +45,6 @@ static void acutest_common_init(void);
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <talloc.h>
 
 static void acutest_common_init(void)
 {
