@@ -290,17 +290,13 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 			}
 		}
 	} else {
-		fr_pair_t *child;
-		fr_dcursor_t cursor;
-
 		fr_assert(fr_type_is_structural(vp->vp_type));
 
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
-		for (child = fr_pair_dcursor_init(&cursor, &vp->vp_group);
-		     child != NULL;
-		     child = fr_dcursor_next(&cursor)) {
+
+		fr_pair_list_foreach(&vp->vp_group, child) {
 			FR_SBUFF_RETURN(fr_pair_print_secure, &our_out, vp->da, child);
-			if (fr_dcursor_next_peek(&cursor)) FR_SBUFF_IN_CHAR_RETURN(&our_out, ',', ' ');
+			if (_nextchild) FR_SBUFF_IN_CHAR_RETURN(&our_out, ',', ' ');
 		}
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
 	}

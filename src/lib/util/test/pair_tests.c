@@ -1343,6 +1343,229 @@ static void test_fr_dict_by_protocol_substr_no_overflow(void)
 	TEST_MSG("Expected out_dict==test_dict; OOB read of sentinel byte made the buggy code early-return with dict_def (NULL)");
 }
 
+/*
+ *	Printing
+ */
+
+/** Print one pair into a buffer, and compare it against what we expect
+ *
+ */
+#define TEST_PRINT_PAIR(_func, _parent, _vp, _expected) \
+do { \
+	char		buffer[1024]; \
+	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer)); \
+	ssize_t		slen; \
+\
+	slen = _func(&sbuff, _parent, _vp); \
+	TEST_CHECK(slen > 0); \
+	TEST_MSG(#_func " returned %zd: %s", slen, fr_strerror()); \
+\
+	TEST_CHECK(strcmp(buffer, _expected) == 0); \
+	TEST_MSG("expected: %s", _expected); \
+	TEST_MSG("got     : %s", buffer); \
+} while (0)
+
+static void test_fr_pair_print(void)
+{
+	fr_pair_t	*vp;
+
+	TEST_CASE("Print one leaf pair");
+	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
+	if (!vp) return;
+	TEST_CHECK(fr_pair_value_strdup(vp, test_string, false) == 0);
+
+	TEST_PRINT_PAIR(fr_pair_print, NULL, vp, "Test-String-0 = \"We love testing!\"");
+
+	TEST_CASE("Print one leaf pair, relative to its own parent");
+	TEST_PRINT_PAIR(fr_pair_print, fr_dict_root(test_dict), vp, "Test-String-0 = \"We love testing!\"");
+
+	talloc_free(vp);
+}
+
+static void test_fr_pair_print_name(void)
+{
+	fr_pair_list_t	list;
+	fr_pair_t	*leaf, *top;
+	fr_pair_t const	*name_vp;
+	char		buffer[1024];
+	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
+
+	fr_pair_list_init(&list);
+
+	TEST_CASE("Build Test-Nested-Top-TLV.Child-TLV.Leaf-String");
+	TEST_CHECK(fr_pair_append_by_da_parent(autofree, &leaf, &list, fr_dict_attr_test_nested_leaf_string) == 0);
+	if (!leaf) return;
+
+	TEST_CHECK((top = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_nested_top_tlv)) != NULL);
+
+	TEST_CASE("The full name is printed when there is no parent");
+	name_vp = leaf;
+	TEST_CHECK(fr_pair_print_name(&sbuff, NULL, &name_vp) > 0);
+	TEST_CHECK(strcmp(buffer, "Test-Nested-Top-TLV-0.Child-TLV.Leaf-String = ") == 0);
+	TEST_MSG("got: %s", buffer);
+
+	TEST_CASE("Naming a parent trims that much off the front");
+	fr_sbuff_set_to_start(&sbuff);
+	name_vp = leaf;
+	TEST_CHECK(fr_pair_print_name(&sbuff, fr_dict_attr_test_nested_child_tlv, &name_vp) > 0);
+	TEST_CHECK(strcmp(buffer, "Leaf-String = ") == 0);
+	TEST_MSG("got: %s", buffer);
+
+	fr_pair_list_free(&list);
+}
+
+static void test_fr_pair_print_value_quoted(void)
+{
+	fr_pair_t	*vp;
+	char		buffer[1024];
+	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
+
+	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
+	if (!vp) return;
+	TEST_CHECK(fr_pair_value_strdup(vp, test_string, false) == 0);
+
+	TEST_CASE("A bare word is printed without quotes");
+	TEST_CHECK(fr_pair_print_value_quoted(&sbuff, vp, T_BARE_WORD) > 0);
+	TEST_CHECK(strcmp(buffer, test_string) == 0);
+	TEST_MSG("got: %s", buffer);
+
+	TEST_CASE("A double quoted string keeps its quotes");
+	fr_sbuff_set_to_start(&sbuff);
+	TEST_CHECK(fr_pair_print_value_quoted(&sbuff, vp, T_DOUBLE_QUOTED_STRING) > 0);
+	TEST_CHECK(strcmp(buffer, "\"We love testing!\"") == 0);
+	TEST_MSG("got: %s", buffer);
+
+	talloc_free(vp);
+}
+
+static void test_fr_pair_print_secure(void)
+{
+	fr_pair_t	*vp;
+
+	TEST_CASE("A pair which holds no secret prints its value");
+	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
+	if (!vp) return;
+	TEST_CHECK(fr_pair_value_strdup(vp, test_string, false) == 0);
+
+	TEST_PRINT_PAIR(fr_pair_print_secure, NULL, vp, "Test-String-0 = \"We love testing!\"");
+
+	TEST_CASE("A pair which holds a secret prints a placeholder instead");
+	vp->data.secret = true;
+	TEST_PRINT_PAIR(fr_pair_print_secure, NULL, vp, "Test-String-0 = <<< secret >>>");
+
+	talloc_free(vp);
+}
+
+/** fr_pair_print_secure() walks the children of a structural pair
+ *
+ *  Each child but the last is followed by a separator, so the interesting
+ *  cases are no children, one child, and more than one.
+ */
+static void test_fr_pair_print_secure_children(void)
+{
+	fr_pair_t	*tlv, *child;
+
+	TEST_CASE("A structural pair with no children");
+	TEST_CHECK((tlv = fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv)) != NULL);
+	if (!tlv) return;
+
+	TEST_PRINT_PAIR(fr_pair_print_secure, NULL, tlv, "Test-TLV-0 = {  }");
+
+	TEST_CASE("A structural pair with one child, which needs no separator");
+	TEST_CHECK(fr_pair_append_by_da(tlv, &child, &tlv->vp_group, fr_dict_attr_test_tlv_string) == 0);
+	TEST_CHECK(fr_pair_value_strdup(child, "one", false) == 0);
+
+	TEST_PRINT_PAIR(fr_pair_print_secure, NULL, tlv, "Test-TLV-0 = { String = \"one\" }");
+
+	TEST_CASE("A structural pair with two children, separated by a comma");
+	TEST_CHECK(fr_pair_append_by_da(tlv, &child, &tlv->vp_group, fr_dict_attr_test_tlv_string) == 0);
+	TEST_CHECK(fr_pair_value_strdup(child, "two", false) == 0);
+
+	TEST_PRINT_PAIR(fr_pair_print_secure, NULL, tlv,
+			"Test-TLV-0 = { String = \"one\", String = \"two\" }");
+
+	TEST_CASE("Secrets are hidden inside structural pairs, too");
+	child->data.secret = true;
+	TEST_PRINT_PAIR(fr_pair_print_secure, NULL, tlv,
+			"Test-TLV-0 = { String = \"one\", String = <<< secret >>> }");
+
+	talloc_free(tlv);
+}
+
+static void test_fr_pair_list_print(void)
+{
+	fr_pair_list_t	list;
+	fr_pair_t	*vp;
+	char		buffer[1024] = "";
+	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
+
+	fr_pair_list_init(&list);
+
+	TEST_CASE("An empty list prints nothing");
+	TEST_CHECK(fr_pair_list_print(&sbuff, NULL, &list) >= 0);
+	TEST_CHECK(buffer[0] == '\0');
+
+	TEST_CASE("Two pairs are separated by a comma");
+	TEST_CHECK(fr_pair_append_by_da(autofree, &vp, &list, fr_dict_attr_test_string) == 0);
+	TEST_CHECK(fr_pair_value_strdup(vp, "one", false) == 0);
+
+	TEST_CHECK(fr_pair_append_by_da(autofree, &vp, &list, fr_dict_attr_test_uint32) == 0);
+	vp->vp_uint32 = 2;
+
+	fr_sbuff_set_to_start(&sbuff);
+	TEST_CHECK(fr_pair_list_print(&sbuff, NULL, &list) > 0);
+	TEST_CHECK(strcmp(buffer, "Test-String-0 = \"one\", Test-Uint32-0 = 2") == 0);
+	TEST_MSG("got: %s", buffer);
+
+	fr_pair_list_free(&list);
+}
+
+/** fr_pair_debug() and fr_pair_list_debug() write to a FILE, not to an sbuff
+ *
+ */
+static void test_fr_pair_debug(void)
+{
+	fr_pair_list_t	list;
+	fr_pair_t	*vp;
+	FILE		*fp;
+	char		buffer[1024];
+	size_t		len;
+
+	fr_pair_list_init(&list);
+
+	TEST_CHECK(fr_pair_append_by_da(autofree, &vp, &list, fr_dict_attr_test_string) == 0);
+	TEST_CHECK(fr_pair_value_strdup(vp, "one", false) == 0);
+
+	TEST_CASE("fr_pair_debug() writes one pair");
+	TEST_CHECK((fp = tmpfile()) != NULL);
+	if (!fp) return;
+
+	fr_pair_debug(fp, vp);
+	rewind(fp);
+	len = fread(buffer, 1, sizeof(buffer) - 1, fp);
+	buffer[len] = '\0';
+	fclose(fp);
+
+	TEST_CHECK(strstr(buffer, "Test-String") != NULL);
+	TEST_MSG("got: %s", buffer);
+	TEST_CHECK(strstr(buffer, "one") != NULL);
+
+	TEST_CASE("fr_pair_list_debug() writes the whole list");
+	TEST_CHECK((fp = tmpfile()) != NULL);
+	if (!fp) return;
+
+	fr_pair_list_debug(fp, &list);
+	rewind(fp);
+	len = fread(buffer, 1, sizeof(buffer) - 1, fp);
+	buffer[len] = '\0';
+	fclose(fp);
+
+	TEST_CHECK(strstr(buffer, "Test-String") != NULL);
+	TEST_MSG("got: %s", buffer);
+
+	fr_pair_list_free(&list);
+}
+
 TEST_LIST = {
 	/*
 	 *	Regression tests
@@ -1374,6 +1597,15 @@ TEST_LIST = {
 	{ "fr_pair_delete",                       test_fr_pair_delete },
 	{ "fr_pair_delete_by_da",                 test_fr_pair_delete_by_da },
 	{ "fr_pair_delete_by_da_nested",          test_fr_pair_delete_by_da_nested },
+
+	/* Printing */
+	{ "fr_pair_print",                        test_fr_pair_print },
+	{ "fr_pair_print_name",                   test_fr_pair_print_name },
+	{ "fr_pair_print_value_quoted",           test_fr_pair_print_value_quoted },
+	{ "fr_pair_print_secure",                 test_fr_pair_print_secure },
+	{ "fr_pair_print_secure children",        test_fr_pair_print_secure_children },
+	{ "fr_pair_list_print",                   test_fr_pair_list_print },
+	{ "fr_pair_debug",                        test_fr_pair_debug },
 
 	/* Compare */
 	{ "fr_pair_cmp",                          test_fr_pair_cmp },
