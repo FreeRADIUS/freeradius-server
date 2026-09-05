@@ -424,6 +424,28 @@ static ssize_t fr_der_decode_null(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_
 	}
 
 	/*
+	 *	der 'null' maps to our 'bool'.  If we see that, then we create a boolean pair with value
+	 *	`false`.
+	 *
+	 *	For structural types, there are situations where a field MUST be present, and MUST be NULL.
+	 *	e.g. RFC 3370 has repeated text like:
+	 *
+	 *	"When id-md2 and id-md5 are used in an AlgorithmIdentifier the parameters MUST be present and
+	 *	MUST be NULL."
+	 *
+	 *	RFC 5280 defines AlgorithmIdentifier as a SEQUENCE.
+	 *
+	 *	Therefore we allow 'null' for both 'bool' and structural types, but not for any other leaf
+	 *	types, or for internal data types.
+	 *
+	 *	@todo - perhaps we want to allow 'null' for string and octets, too?  Or what about other data
+	 *	types?
+	 */
+	if ((parent->type != FR_TYPE_BOOL) && (!fr_type_is_structurral(parent->type))) {
+		return 0;
+	}
+
+	/*
 	 *	ISO/IEC 8825-1:2021
 	 *	8.8 Encoding of a null value 8.8.1 The encoding of a null value shall be primitive. 8.8.2 The contents
 	 *	    octets shall not contain any octets. NOTE - The length octet is zero.
@@ -2480,6 +2502,11 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	uint8_t	     	     tag;
 	size_t		     len;
 	fr_der_attr_flags_t const *flags = fr_der_attr_flags(parent);
+
+	/*
+	 *	We can't do DER decoding of internal data types such as value-box, void, cursors, etc.
+	 */
+	fr_assert(fr_type_is_leaf(parent->type) || fr_type_is_structural(parent->type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
