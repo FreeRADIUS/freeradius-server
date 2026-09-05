@@ -733,7 +733,13 @@ int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t
 	}
 
 	while (vp) {
-		next = fr_pair_find_by_da_nested(list, vp, da); /* could be deleted in the loop*/
+		/*
+		 *	The tmpl calls above use map->lhs to get to both the
+		 *	correct list, and da.  So from now on, we don't need
+		 *	to do any more nested finds.
+		 */
+		fr_assert(vp->da == da);
+		next = fr_pair_find_by_da(list, vp, da); /* could be deleted in the loop*/
 
 		switch (map->op) {
 		case T_OP_LE:		/* replace if not <= */
