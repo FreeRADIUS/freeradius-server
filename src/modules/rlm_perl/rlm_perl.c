@@ -932,7 +932,7 @@ static XS(XS_pairs_POP)
 	parent = pair_data->parent;
 	if (!parent->vp) XSRETURN(0);
 
-	vp = fr_pair_find_last_by_da(&parent->vp->vp_group, NULL, pair_data->da);
+	vp = fr_pair_find_last_by_da(&parent->vp->vp_group, pair_data->da);
 	if (!vp) XSRETURN(0);
 
 	if (perl_value_marshal(vp, &ST(0)) < 0) XSRETURN(0);

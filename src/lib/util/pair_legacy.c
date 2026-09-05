@@ -1042,7 +1042,7 @@ redo:
 		 */
 		if (fr_type_is_structural(da->type)) {
 			if (append) {
-				vp = fr_pair_find_last_by_da(my.list, NULL, da);
+				vp = fr_pair_find_last_by_da(my.list, da);
 				if (vp) goto update_relative;
 			}
 

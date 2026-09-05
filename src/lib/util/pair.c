@@ -720,17 +720,16 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_pair_t const *prev,
 /** Find the last pair with a matching da
  *
  * @param[in] list	to search in.
- * @param[in] prev	the previous attribute in the list.
- * @param[in] da	the previous da to find.
+ * @param[in] da	the da to find
  * @return
- *	- first matching fr_pair_t.
- *	- NULL if no fr_pair_ts match.
+ *	- first matching #fr_pair_t.
+ *	- NULL if no #fr_pair_t's match.
  *
  * @hidecallergraph
  */
-fr_pair_t *fr_pair_find_last_by_da(fr_pair_list_t const *list, fr_pair_t const *prev, fr_dict_attr_t const *da)
+fr_pair_t *fr_pair_find_last_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da)
 {
-	fr_pair_t *vp = UNCONST(fr_pair_t *, prev);
+	fr_pair_t *vp = NULL;
 
 	if (fr_pair_list_empty(list)) return NULL;
 
@@ -865,32 +864,6 @@ fr_pair_t *fr_pair_find_by_da_nested(fr_pair_list_t const *list, fr_pair_t const
 	 *	Compatibility with flat attributes
 	 */
 	if (fr_pair_parent_list(prev) != list) prev = NULL;
-	return fr_pair_find_by_da(list, prev, da);
-}
-
-/** Find the pair with the matching child attribute
- *
- * @param[in] list	in which to search.
- * @param[in] prev	attribute to start search from.
- * @param[in] parent	attribute in which to lookup child.
- * @param[in] attr	id of child.
- * @return
- *	- first matching value pair.
- *	- NULL if no pair found.
- */
-fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t const *list, fr_pair_t const *prev,
-				     fr_dict_attr_t const *parent, unsigned int attr)
-{
-	fr_dict_attr_t const	*da;
-
-	/* List head may be NULL if it contains no VPs */
-	if (fr_pair_list_empty(list)) return NULL;
-
-	PAIR_LIST_VERIFY(list);
-
-	da = fr_dict_attr_child_by_num(parent, attr);
-	if (!da) return NULL;
-
 	return fr_pair_find_by_da(list, prev, da);
 }
 
