@@ -479,7 +479,6 @@ static void test_fr_pair_find_by_da_nested(void)
 
 static void test_fr_pair_append(void)
 {
-	fr_dcursor_t   cursor;
 	fr_pair_t      *vp;
 	fr_pair_list_t	local_pairs;
 	size_t         count = 0;
@@ -496,9 +495,7 @@ static void test_fr_pair_append(void)
 	fr_pair_append(&local_pairs, vp);
 
 	/* lets' count */
-	for (vp = fr_pair_dcursor_init(&cursor, &local_pairs);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) count++;
+	fr_pair_list_foreach(&local_pairs, pair) count++;
 
 	TEST_CASE("Expected (count == 3)");
 	TEST_CHECK(count == 3);
@@ -571,8 +568,6 @@ static void test_fr_pair_delete_by_child_num(void)
 
 static void test_fr_pair_prepend_by_da(void)
 {
-	fr_dcursor_t   cursor;
-	fr_pair_t      *vp;
 	fr_pair_list_t	local_pairs;
 	TALLOC_CTX     *ctx = talloc_null_ctx();
 
@@ -582,9 +577,7 @@ static void test_fr_pair_prepend_by_da(void)
 	TEST_CHECK(fr_pair_prepend_by_da(ctx, NULL, &local_pairs, fr_dict_attr_test_string) == 0);
 
 	/* lets' count */
-	for (vp = fr_pair_dcursor_init(&cursor, &local_pairs);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
+	fr_pair_list_foreach(&local_pairs, vp) {
 		TEST_CASE("Expected (vp->da == fr_dict_attr_test_string)");
 		TEST_CHECK(vp->da == fr_dict_attr_test_string);
 	}
@@ -705,8 +698,6 @@ static void test_fr_pair_list_copy(void)
 
 static void test_fr_pair_list_copy_by_da(void)
 {
-	fr_dcursor_t   cursor;
-	fr_pair_t      *vp;
 	fr_pair_list_t	local_pairs;
 
 	fr_pair_list_init(&local_pairs);
@@ -715,9 +706,7 @@ static void test_fr_pair_list_copy_by_da(void)
 	TEST_CHECK(fr_pair_list_copy_by_da(autofree, &local_pairs, &test_pairs, fr_dict_attr_test_string, 0) > 0);
 
 	TEST_CASE("The 'local_pairs' should have only fr_dict_attr_test_string");
-	for (vp = fr_pair_dcursor_init(&cursor, &local_pairs);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
+	fr_pair_list_foreach(&local_pairs, vp) {
 		TEST_CASE("Validating PAIR_VERIFY()");
 		PAIR_VERIFY(vp);
 

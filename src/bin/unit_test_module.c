@@ -304,20 +304,18 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	}
 
 	if (fr_debug_lvl) {
-		for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
-		     vp;
-		     vp = fr_dcursor_next(&cursor)) {
+		fr_pair_list_foreach(&request->request_pairs, child) {
 			/*
 			 *	Take this opportunity to verify all the fr_pair_ts are still valid.
 			 */
-			if (!talloc_get_type(vp, fr_pair_t)) {
-				ERROR("Expected fr_pair_t pointer got \"%s\"", talloc_get_name(vp));
+			if (!talloc_get_type(child, fr_pair_t)) {
+				ERROR("Expected fr_pair_t pointer got \"%s\"", talloc_get_name(child));
 
-				fr_log_talloc_report(vp);
+				fr_log_talloc_report(child);
 				fr_assert(0);
 			}
 
-			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
+			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", child);
 		}
 	}
 
