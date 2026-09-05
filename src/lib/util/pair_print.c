@@ -459,7 +459,7 @@ void fr_pair_debug(FILE *fp, fr_pair_t const *pair)
 
 	(void) fr_pair_print(&sbuff, NULL, pair);
 
-	fprintf(fp, "%pV\n", fr_box_strvalue_len(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff)));
+	fr_fprintf(fp, "%pV\n", fr_box_strvalue_len(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff)));
 }
 
 static const char spaces[] = "                                                                                                                                ";
