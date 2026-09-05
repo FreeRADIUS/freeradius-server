@@ -64,6 +64,7 @@ static fr_dict_attr_t const *attr_wimax_mn_nai;
 
 static fr_dict_attr_t const *attr_calling_station_id;
 
+static fr_dict_attr_t const *attr_wimax;
 static fr_dict_attr_t const *attr_wimax_msk;
 static fr_dict_attr_t const *attr_wimax_ip_technology;
 static fr_dict_attr_t const *attr_wimax_mn_hha_mip4_key;
@@ -90,9 +91,9 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
 	{ .out = &attr_calling_station_id, .name = "Calling-Station-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	/*
-	 *	Load this, but we don't use it.
+	 *	Load the WiMAX VSA.  The children are all found under this root.
 	 */
-	{ .out = NULL, .name = "Vendor-Specific.WiMAX", .type = FR_TYPE_VENDOR, .dict = &dict_radius },
+	{ .out = &attr_wimax, .name = "Vendor-Specific.WiMAX", .type = FR_TYPE_VENDOR, .dict = &dict_radius },
 
 	/*
 	 *	Relative names are shorter.
@@ -173,6 +174,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 	rlm_wimax_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_wimax_t);
 	fr_pair_t		*msk, *emsk, *vp;
 	fr_pair_t		*mn_nai, *ip, *fa_rk;
+	fr_pair_t		*vsa_request, *vsa_reply;
 	EVP_MD_CTX		*hmac_ctx;
 	EVP_PKEY		*hmac_pkey;
 	uint32_t		mip_spi;
@@ -185,6 +187,16 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 	emsk = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_eap_emsk);
 	if (!msk || !emsk) {
 		REDEBUG2("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
+		RETURN_UNLANG_NOOP;
+	}
+
+	/*
+	 *	If there's no WiMAX VSAs on input or output, we do nothing.
+	 */
+	vsa_request = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_wimax);
+	vsa_reply = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_wimax);
+	if (!vsa_request && !vsa_reply) {
+		RWDEBUG("Vendor-Specific.WiMAX not found in request or reply list, skipping all WiMAX calculations");
 		RETURN_UNLANG_NOOP;
 	}
 
@@ -267,11 +279,16 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 		RWDEBUG("We cannot calculate MN-HA keys");
 	}
 
+	if (!vsa_reply) {
+		RWDEBUG("reply.Vendor-Specific.WiMAX was not found - not calculating WiMAX keys");
+		goto check_request;
+	}
+
 	/*
 	 *	WiMAX-IP-Technology
 	 */
 	vp = NULL;
-	if (mn_nai) vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_wimax_ip_technology);
+	if (mn_nai) vp = fr_pair_find_by_da(&vsa_reply->vp_group, NULL, attr_wimax_ip_technology);
 	if (!vp) {
 		RWDEBUG("%s not found in reply", attr_wimax_ip_technology->name);
 		RWDEBUG("Not calculating MN-HA keys");
@@ -282,7 +299,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP4
 		 */
-		ip = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_wimax_hha_ip_mip4);
+		ip = fr_pair_find_by_da(&vsa_reply->vp_group, NULL, attr_wimax_hha_ip_mip4);
 		if (!ip) {
 			RWDEBUG("%s not found.  Cannot calculate MN-HA-PMIP4 key", attr_wimax_hha_ip_mip4->name);
 			break;
@@ -317,7 +334,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP4
 		 */
-		ip = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_wimax_hha_ip_mip4);
+		ip = fr_pair_find_by_da(&vsa_reply->vp_group, NULL, attr_wimax_hha_ip_mip4);
 		if (!ip) {
 			RWDEBUG("%s not found.  Cannot calculate MN-HA-CMIP4 key", attr_wimax_hha_ip_mip4->name);
 			break;
@@ -352,7 +369,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP6
 		 */
-		ip = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_wimax_hha_ip_mip6);
+		ip = fr_pair_find_by_da(&vsa_reply->vp_group, NULL, attr_wimax_hha_ip_mip6);
 		if (!ip) {
 			RWDEBUG("%s not found.  Cannot calculate MN-HA-CMIP6 key", attr_wimax_hha_ip_mip6->name);
 			break;
@@ -392,7 +409,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 	 *
 	 *	FA-RK= H(MIP-RK, "FA-RK")
 	 */
-	fa_rk = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_wimax_fa_rk_key);
+	fa_rk = fr_pair_find_by_da(&vsa_reply->vp_group, NULL, attr_wimax_fa_rk_key);
 	if (fa_rk && (fa_rk->vp_length <= 1)) {
 		EVP_MD_CTX_reset(hmac_ctx);
 		EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha1(), NULL, hmac_pkey);
@@ -418,26 +435,29 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 	 *
 	 *	WiMAX-RRQ-MN-HA-SPI
 	 */
-	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_wimax_rrq_mn_ha_spi);
-	if (vp) {
-		REDEBUG2("Client requested MN-HA key: Should use SPI to look up key from storage");
-		if (!mn_nai) {
-			RWDEBUG("MN-NAI was not found!");
-		}
+check_request:
+	if (vsa_request) {
+		vp = fr_pair_find_by_da(&vsa_request->vp_group, NULL, attr_wimax_rrq_mn_ha_spi);
+		if (vp) {
+			REDEBUG2("Client requested MN-HA key: Should use SPI to look up key from storage");
+			if (!mn_nai) {
+				RWDEBUG("MN-NAI was not found!");
+			}
 
-		/*
-		 *	WiMAX-RRQ-HA-IP
-		 */
-		if (!fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_wimax_rrq_ha_ip)) {
-			RWDEBUG("HA-IP was not found!");
-		}
+			/*
+			 *	WiMAX-RRQ-HA-IP
+			 */
+			if (!fr_pair_find_by_da(&vsa_request->vp_group, NULL, attr_wimax_rrq_ha_ip)) {
+				RWDEBUG("HA-IP was not found!");
+			}
 
-		/*
-		 *	WiMAX-HA-RK-Key-Requested
-		 */
-		vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_wimax_ha_rk_key_requested);
-		if (vp && (vp->vp_uint32 == 1)) {
-			REDEBUG2("Client requested HA-RK: Should use IP to look it up from storage");
+			/*
+			 *	WiMAX-HA-RK-Key-Requested
+			 */
+			vp = fr_pair_find_by_da(&vsa_request->vp_group, NULL, attr_wimax_ha_rk_key_requested);
+			if (vp && (vp->vp_uint32 == 1)) {
+				REDEBUG2("Client requested HA-RK: Should use IP to look it up from storage");
+			}
 		}
 	}
 
