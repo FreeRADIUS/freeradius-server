@@ -98,7 +98,7 @@ RESUME_FLAG(recv_bfd, UNUSED,)
 			state = vp->vp_uint32;
 		} else {
 			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_bfd_packet);
-			if (vp) vp = fr_pair_find_by_da_nested(&vp->vp_group, NULL, attr_bfd_state);
+			if (vp) vp = fr_pair_find_by_da(&vp->vp_group, NULL, attr_bfd_state);
 			if (vp) {
 				if (!PROCESS_PACKET_CODE_VALID(vp->vp_uint8)) {
 					REDEBUG("Invalid BFD state %u", vp->vp_uint8);
