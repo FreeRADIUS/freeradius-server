@@ -331,7 +331,7 @@ check_list:
 		    (old->require_ma == client->require_ma) &&
 		    (old->limit_proxy_state == client->limit_proxy_state)) {
 			WARN("Ignoring duplicate client %s", client->longname);
-			client_free(client);
+			if (!client->dynamic) client_free(client);
 			return true;
 		}
 
@@ -768,13 +768,6 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 		goto error;
 	}
 
-	if (!client_add(clients, c)) {
-		ERROR("Cannot add client %s/%i: Internal error",
-		      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix);
-
-		goto error;
-	}
-
 	/*
 	 *	Initialize the remaining fields.
 	 */
@@ -782,6 +775,13 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 	c->lifetime = master->lifetime;
 	c->created = time(NULL);
 	c->longname = talloc_typed_strdup(c, c->shortname);
+
+	if (!client_add(clients, c)) {
+		ERROR("Cannot add client %s/%i: Internal error",
+		      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix);
+
+		goto error;
+	}
 
 	if (rad_debug_lvl <= 2) {
 		INFO("Adding client %s/%i",
