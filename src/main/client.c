@@ -166,14 +166,17 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
  *
  * @param clients list to add client to, may be NULL if global client list is being used.
  * @param client to add.
- * @return true on success, false on failure.
+ * @return
+ *	- NULL on failure
+ *	- pre-existing client if there's a duplicate
+ *	- newly added client if it was added
  */
-bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
+static RADCLIENT *client_find_or_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
 	RADCLIENT *old;
 	char buffer[INET6_ADDRSTRLEN + 3];
 
-	if (!client) return false;
+	if (!client) return NULL;
 
 	/*
 	 *	Initialize the global list, if not done already.
@@ -183,7 +186,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		if (!root_clients) root_clients = client_list_init(main_config.config);
 		if (!root_clients) {
 			ERROR("Cannot add client - failed creating client list");
-			return false;
+			return NULL;
 		}
 	}
 
@@ -214,7 +217,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	If the client also defines a server, do that now.
 	 */
-	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_home_server, false)) return false;
+	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_home_server, false)) return NULL;
 
 	/*
 	 *	If there's no client list, BUT there's a virtual
@@ -230,7 +233,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		cs = cf_section_sub_find_name2(main_config.config, "server", client->server);
 		if (!cs) {
 			ERROR("Cannot add client - virtual server %s does not exist", client->server);
-			return false;
+			return NULL;
 		}
 
 		/*
@@ -267,7 +270,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			cf_log_err_cs(cs,
 				   "Failed to find clients %s {...}",
 				   section_name);
-			return false;
+			return NULL;
 		}
 
 		DEBUG("Adding client to client list %s", section_name);
@@ -285,7 +288,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		if (!clients) {
 			ERROR("Cannot add client - failed creating client list %s for server %s", section_name,
 			      client->server);
-			return false;
+			return NULL;
 		}
 	}
 
@@ -299,7 +302,7 @@ check_list:
 	if (!clients->trees[client->ipaddr.prefix]) {
 		clients->trees[client->ipaddr.prefix] = rbtree_create(clients, client_ipaddr_cmp, NULL, 0);
 		if (!clients->trees[client->ipaddr.prefix]) {
-			return false;
+			return NULL;
 		}
 	}
 
@@ -320,7 +323,6 @@ check_list:
 		    namecmp(shortname) && namecmp(nas_type) &&
 		    namecmp(login) && namecmp(password) && namecmp(server) &&
 #ifdef WITH_DYNAMIC_CLIENTS
-		    (old->lifetime == client->lifetime) &&
 		    namecmp(client_server) &&
 #endif
 #ifdef WITH_COA
@@ -331,12 +333,11 @@ check_list:
 		    (old->require_ma == client->require_ma) &&
 		    (old->limit_proxy_state == client->limit_proxy_state)) {
 			WARN("Ignoring duplicate client %s", client->longname);
-			if (!client->dynamic) client_free(client);
-			return true;
+			return old;
 		}
 
 		ERROR("Failed to add duplicate client %s", client->shortname);
-		return false;
+		return NULL;
 	}
 #undef namecmp
 
@@ -344,7 +345,7 @@ check_list:
 	 *	Other error adding client: likely is fatal.
 	 */
 	if (!rbtree_insert(clients->trees[client->ipaddr.prefix], client)) {
-		return false;
+		return NULL;
 	}
 
 #ifdef WITH_STATS
@@ -385,6 +386,25 @@ check_list:
 
 	(void) talloc_steal(clients, client); /* reparent it */
 
+	return client;
+}
+
+/** Add a client to a RADCLIENT_LIST
+ *
+ * @param clients list to add client to, may be NULL if global client list is being used.
+ * @param client to add.
+ * @return true on success, false on failure.
+ */
+bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
+{
+	RADCLIENT *original;
+
+	original = client_find_or_add(clients, client);
+	if (!original) return false;
+
+	if (original == client) return true;
+
+	client_free(client);
 	return true;
 }
 
@@ -614,7 +634,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 		 */
 		if (tls_required != c->tls_required) {
 			cf_log_err_cs(cs, "Client does not have the same TLS configuration as the listener");
-			goto error;
+			return NULL;
 		}
 #endif
 
@@ -744,8 +764,9 @@ static const CONF_PARSER dynamic_config[] = {
 /** Add a dynamic client
  *
  */
-bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c, bool can_free)
+RADCLIENT *client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c, bool can_free)
 {
+	RADCLIENT *original;
 	char buffer[128];
 
 	/*
@@ -764,7 +785,6 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 	if (master->server && (strcmp(master->server, c->server) != 0)) {
 		ERROR("Cannot add client %s/%i: Virtual server %s is not the same as the virtual server for the network",
 		      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->server);
-
 		goto error;
 	}
 
@@ -776,11 +796,20 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 	c->created = time(NULL);
 	c->longname = talloc_typed_strdup(c, c->shortname);
 
-	if (!client_add(clients, c)) {
+	original = client_find_or_add(clients, c);
+	if (!original) {
 		ERROR("Cannot add client %s/%i: Internal error",
 		      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix);
+	error:
+		if (can_free) client_free(c);
+		return NULL;
+	}
 
-		goto error;
+	if (original != c) {
+		INFO("Found duplicate client %s/%i",
+		     ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix);
+		if (can_free) client_free(c);
+		c = original;
 	}
 
 	if (rad_debug_lvl <= 2) {
@@ -790,11 +819,8 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 		INFO("Adding client %s/%i with shared secret \"%s\"",
 		     ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->secret);
 	}
-	return true;
 
-error:
-	client_free(c);
-	return false;
+	return c;
 }
 
 /** Create a client CONF_SECTION using a mapping section to map values from a result set to client attributes
@@ -1367,7 +1393,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		error:
 			REXDENT();
 			talloc_free(vp);
-			client_free(c);
+			if (can_free) client_free(c);
 			return NULL;
 		}
 
@@ -1601,11 +1627,12 @@ validate:
 	 */
 	c->require_ma = (fr_bool_auto_t) c->dynamic_require_ma;
 
-	if (!client_add_dynamic(clients, request->client, c, can_free)) {
-		return NULL;
-	}
-
-	return c;
+	/*
+	 *	Note that this may free "c", and return a pre-existing
+	 *	client.  We therefore return the client which was
+	 *	added, and not the one we passed in.
+	 */
+	return client_add_dynamic(clients, request->client, c, can_free);
 }
 
 /*

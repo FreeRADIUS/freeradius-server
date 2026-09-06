@@ -360,9 +360,13 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	if (request->client == client) {
 		created = client_afrom_request(clients, request);
 	} else {
-		created = request->client;
+		created = client_add_dynamic(clients, client, request->client, false);
+		if (!created) goto unknown;
 
-		if (!client_add_dynamic(clients, client, created, false)) goto unknown;
+		if (created != request->client) {
+			client_free(request->client);
+			request->client = created;
+		}
 	}
 
 	request->server = client->server;
