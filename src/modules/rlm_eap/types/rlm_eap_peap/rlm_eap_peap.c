@@ -396,7 +396,7 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 		 *	Access-Challenge is ignored.
 		 */
 		fr_pair_list_init(&vps);
-		MEM(fr_pair_list_copy_by_da(t, &vps, &request->reply_pairs, attr_eap_message, 0) >= 0);
+		MEM(fr_pair_list_copy_by_da(t, &vps, &request->reply_pairs, attr_eap_message) >= 0);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply

@@ -826,7 +826,7 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 			 *	Tell the original request that it's going to be proxied.
 			 */
 			fr_pair_list_copy_by_da(request->control_ctx, &request->control_pairs,
-						&fake->control_pairs, attr_proxy_to_realm, 0);
+						&fake->control_pairs, attr_proxy_to_realm);
 
 			/*
 			 *	Seed the proxy packet with the tunneled request.

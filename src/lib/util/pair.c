@@ -2407,29 +2407,21 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
  * @param[in] to		where to copy attributes to.
  * @param[in] from		whence to copy #fr_pair_t (s).
  * @param[in] da		to match.
- * @param[in] count		How many instances to copy.
- *				Use 0 for all attributes.
  * @return
  *	- >0 the number of attributes copied.
  *	- 0 if no attributes copied.
  *	- -1 on error.
  */
 int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
-			    fr_pair_list_t const *from, fr_dict_attr_t const *da, unsigned int count)
+			    fr_pair_list_t const *from, fr_dict_attr_t const *da)
 {
-	fr_pair_t	*vp, *new_vp, *first_added = NULL;
+	fr_pair_t	*new_vp;
 	unsigned int	cnt = 0;
+	fr_pair_list_t	new_list;
 
-	if (count == 0) count = UINT_MAX;
+	fr_pair_list_init(&new_list);
 
-	if (unlikely(!da)) {
-		fr_strerror_printf("No search attribute provided");
-		return -1;
-	}
-
-	for (vp = fr_pair_list_head(from);
-	     vp && (cnt < count);
-	     vp = fr_pair_list_next(from, vp)) {
+	fr_pair_list_foreach(from, vp) {
 		PAIR_VERIFY_WITH_LIST(from, vp);
 
 		if (vp->da != da) continue;
@@ -2437,13 +2429,14 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 		cnt++;
 		new_vp = fr_pair_copy(ctx, vp);
 		if (!new_vp) {
-			fr_pair_order_list_talloc_free_to_tail(&to->order, first_added);
+			fr_pair_list_free(&new_list);
 			return -1;
 		}
 
-		if (!first_added) first_added = new_vp;
-		fr_pair_append(to, new_vp);
+		fr_pair_append(&new_list, new_vp);
 	}
+
+	fr_pair_list_append(to, &new_list);
 
 	return cnt;
 }

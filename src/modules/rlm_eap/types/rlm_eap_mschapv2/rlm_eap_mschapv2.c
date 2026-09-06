@@ -116,19 +116,19 @@ static void mppe_keys_store(request_t *request, mschapv2_opaque_t *data)
 
 	RINDENT();
 	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &parent->vp_group,
-				    attr_ms_mppe_encryption_policy, 0) > 0) {
+				    attr_ms_mppe_encryption_policy) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_policy->name);
 	}
 	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &parent->vp_group,
-				    attr_ms_mppe_encryption_type, 0) > 0) {
+				    attr_ms_mppe_encryption_type) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_type->name);
 	}
 	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &parent->vp_group,
-				    attr_ms_mppe_recv_key, 0) > 0) {
+				    attr_ms_mppe_recv_key) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_recv_key->name);
 	}
 	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &parent->vp_group,
-				    attr_ms_mppe_send_key, 0) > 0) {
+				    attr_ms_mppe_send_key) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_send_key->name);
 	}
 	REXDENT();
@@ -303,14 +303,14 @@ static unlang_action_t mschap_resume(unlang_result_t *p_result, module_ctx_t con
 	 *	return success or failure, depending on the result.
 	 */
 	if (rcode == RLM_MODULE_OK) {
-		if (fr_pair_list_copy_by_da(data, &response, &parent->vp_group, attr_ms_chap2_success, 0) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, &parent->vp_group, attr_ms_chap2_success) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap2_success->name);
 			RETURN_UNLANG_FAIL;
 		}
 
 		data->code = FR_EAP_MSCHAPV2_SUCCESS;
 	} else if (inst->send_error) {
-		if (fr_pair_list_copy_by_da(data, &response, &parent->vp_group, attr_ms_chap_error, 0) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, &parent->vp_group, attr_ms_chap_error) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap_error->name);
 			RETURN_UNLANG_FAIL;
 		}
