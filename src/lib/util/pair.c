@@ -1809,13 +1809,13 @@ int fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp)
 	return talloc_free(vp);
 }
 
-/** Order attributes by their da, and tag
+/** Order attributes by their da
  *
  * Useful where attributes need to be aggregated, but not necessarily
  * ordered by attribute number.
  *
- * @param[in] a		first dict_attr_t.
- * @param[in] b		second dict_attr_t.
+ * @param[in] a		first #fr_pair_t
+ * @param[in] b		second #fr_pair_t
  * @return
  *	- +1 if a > b
  *	- 0 if a == b
@@ -1831,6 +1831,34 @@ fr_cmp_ret_t fr_pair_cmp_by_da(void const *a, void const *b)
 
 	return CMP(my_a->da, my_b->da);
 }
+
+#ifdef WITH_VERIFY_PTR
+/** Order attributes by their da, with minimal checks.
+ *
+ * This is a variant of #fr_pair_cmp_by_da, which does NOT call
+ * talloc_get_type_abort(), or PAIR_VERIFY().  If the caller puts a
+ * #fr_pair_t onto the stack, then it doesn't have a talloc type, so
+ * we can't call talloc_get_type_abort().
+ *
+ * Alternatively, if the list is being modified, PAIR_VERIFY() walks
+ * the list being modified, which can end up with problems.  As a
+ * result, this code takes more chances than fr_pair_cmp_by_da().
+ *
+ * @param[in] a		first #fr_pair_t
+ * @param[in] b		second #fr_pair_t
+ * @return
+ *	- +1 if a > b
+ *	- 0 if a == b
+ *	- -1 if a < b
+ */
+fr_cmp_ret_t fr_pair_cmp_by_da_mutable(void const *a, void const *b)
+{
+	fr_pair_t const *my_a = a;
+	fr_pair_t const *my_b = b;
+
+	return CMP(my_a->da, my_b->da);
+}
+#endif
 
 /** Order attributes by their attribute number, and tag
  *

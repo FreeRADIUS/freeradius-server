@@ -676,6 +676,18 @@ fr_value_box_t	*fr_pair_dcursor_nested_init(fr_dcursor_t *cursor, fr_dcursor_t *
 
 fr_cmp_ret_t	fr_pair_cmp_by_da(void const *a, void const *b);
 
+/*
+ *	This lets us pass in a #fr_pair_t as a local structure.  At some point, we may add special flags to
+ *	indicate that this is pair an "on stack" variable.
+ */
+#define FR_PAIR_T_FROM_DA(_da) &(fr_pair_t) { .da = _da }
+
+#ifdef WITH_VERIFY_PTR
+fr_cmp_ret_t	fr_pair_cmp_by_da_mutable(void const *a, void const *b);
+#else
+#define		fr_pair_cmp_by_da_mutable fr_pair_cmp_by_da
+#endif
+
 fr_cmp_ret_t	fr_pair_cmp_by_parent_num(void const *a, void const *b);
 
 int		fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b);
