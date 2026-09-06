@@ -405,7 +405,7 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned
 	TEST_MSG_STATS;
 }
 
-static void do_test_fr_pair_find_by_da_idx(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
+static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
 {
 	fr_pair_list_t		test_vps;
 	unsigned int		i, j;
@@ -543,7 +543,7 @@ static void test_ ## _func ## _ ## _count ## _ ## _perc(void)\
 	test_funcs(_func, 100)
 
 all_test_funcs(fr_pair_append)
-all_test_funcs(fr_pair_find_by_da_idx)
+all_test_funcs(fr_pair_find_by_da)
 all_test_funcs(find_nth)
 all_test_funcs(fr_pair_list_free)
 
@@ -563,7 +563,7 @@ all_test_funcs(fr_pair_list_free)
 
 TEST_LIST = {
 	all_repetition_tests(fr_pair_append)
-	all_repetition_tests(fr_pair_find_by_da_idx)
+	all_repetition_tests(fr_pair_find_by_da)
 	all_repetition_tests(find_nth)
 	all_repetition_tests(fr_pair_list_free)
 
