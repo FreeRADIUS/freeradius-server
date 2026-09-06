@@ -362,10 +362,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	} else {
 		created = request->client;
 
-		/*
-		 *	This frees the client if it isn't valid.
-		 */
-		if (!client_add_dynamic(clients, client, created)) goto unknown;
+		if (!client_add_dynamic(clients, client, created, false)) goto unknown;
 	}
 
 	request->server = client->server;

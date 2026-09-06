@@ -689,7 +689,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 				/*
 				 *	Validate, and add to the list.
 				 */
-				if (!client_add_dynamic(clients, c, dc)) {
+				if (!client_add_dynamic(clients, c, dc, true)) {
 					closedir(dir);
 					goto error;
 				}
@@ -744,7 +744,7 @@ static const CONF_PARSER dynamic_config[] = {
 /** Add a dynamic client
  *
  */
-bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
+bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c, bool can_free)
 {
 	char buffer[128];
 
@@ -1316,6 +1316,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	static int	cnt;
 	int		i, *pi;
 	char		**p;
+	bool		can_free = true;
 	RADCLIENT	*c;
 	char		buffer[128];
 
@@ -1329,6 +1330,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	 */
 	if (request->client->dynamic) {
 		c = request->client;
+		can_free = false;
 		goto validate;
 	}
 
@@ -1599,7 +1601,7 @@ validate:
 	 */
 	c->require_ma = (fr_bool_auto_t) c->dynamic_require_ma;
 
-	if (!client_add_dynamic(clients, request->client, c)) {
+	if (!client_add_dynamic(clients, request->client, c, can_free)) {
 		return NULL;
 	}
 

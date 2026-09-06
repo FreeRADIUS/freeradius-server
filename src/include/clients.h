@@ -173,7 +173,7 @@ RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
 
 RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
 
-bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
+bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c, bool can_free);
 
 RADCLIENT	*client_read(char const *filename, int in_server, int flag);
 #endif	/* CLIENTS_H */
