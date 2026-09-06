@@ -1600,7 +1600,9 @@ static int mschap_cpw_prepare(request_t *request, mschap_auth_ctx_t *auth_ctx)
 {
 	mschap_auth_call_env_t	*env_data = auth_ctx->env_data;
 	mschap_cpw_ctx_t	*cpw_ctx;
+	fr_dict_attr_t const	*da;
 	fr_pair_t		*nt_enc = NULL;
+	fr_pair_list_t		*list;
 	int			seq, new_nt_enc_len;
 
 	/*
@@ -1626,6 +1628,15 @@ static int mschap_cpw_prepare(request_t *request, mschap_auth_ctx_t *auth_ctx)
 	MEM(auth_ctx->cpw_ctx = talloc_zero(auth_ctx, mschap_cpw_ctx_t));
 	cpw_ctx = auth_ctx->cpw_ctx;
 
+	da = tmpl_attr_tail_da(env_data->chap_nt_enc_pw);
+	nt_enc = fr_pair_find_by_da_nested(&request->request_pairs, NULL, da);
+	if (!nt_enc) {
+		REDEBUG("%s is missing", env_data->chap_nt_enc_pw->name);
+		return -1;
+	}
+	list = fr_pair_parent_list(nt_enc);
+	fr_assert(list != NULL);
+
 	/*
 	 *	Look for the new (encrypted) password.
 	 *
@@ -1639,8 +1650,7 @@ static int mschap_cpw_prepare(request_t *request, mschap_auth_ctx_t *auth_ctx)
 	for (seq = 1; seq < 4; seq++) {
 		int found = 0;
 
-		while ((nt_enc = fr_pair_find_by_da_nested(&request->request_pairs, nt_enc,
-							   tmpl_attr_tail_da(env_data->chap_nt_enc_pw)))) {
+		do {
 			if (nt_enc->vp_length < 4) {
 				REDEBUG("%s with invalid format", env_data->chap_nt_enc_pw->name);
 				return -1;
@@ -1655,7 +1665,7 @@ static int mschap_cpw_prepare(request_t *request, mschap_auth_ctx_t *auth_ctx)
 				found = 1;
 				break;
 			}
-		}
+		} while ((nt_enc = fr_pair_find_by_da(list, nt_enc, da)) != NULL);
 
 		if (!found) {
 			REDEBUG("Could not find %s with sequence number %d", env_data->chap_nt_enc_pw->name, seq);
