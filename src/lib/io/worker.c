@@ -490,7 +490,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	fr_assert(ms != NULL);
 
 	size = listen->app_io->default_reply_size;
-	if (!size) size = listen->app_io->default_message_size;
+	if (!size) size = listen->default_message_size;
 
 	/*
 	 *	Allocate a default message size.
@@ -652,7 +652,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 
 	if (send_reply) {
 		size = request->async->listen->app_io->default_reply_size;
-		if (!size) size = request->async->listen->app_io->default_message_size;
+		if (!size) size = request->async->listen->default_message_size;
 	}
 
 	/*
