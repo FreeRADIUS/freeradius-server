@@ -2502,52 +2502,6 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	return found;
 }
 
-/** Duplicate a list of pairs starting at a particular item
- *
- * Copy all pairs from 'from' regardless of tag, attribute or vendor, starting at 'item'.
- *
- * @param[in] ctx		for new #fr_pair_t (s) to be allocated in.
- * @param[in] to		where to copy attributes to.
- * @param[in] from		whence to copy #fr_pair_t (s).
- * @param[in] start		first pair to start copying from.
- * @param[in] count		How many instances to copy.
- *				Use 0 for all attributes.
- * @return
- *	- >0 the number of attributes copied.
- *	- 0 if no attributes copied.
- *	- -1 on error.
- */
-int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
-			 fr_pair_list_t const *from, fr_pair_t const *start, unsigned int count)
-{
-	fr_pair_t const	*vp;
-	fr_pair_t	*new_vp;
-	unsigned int	cnt = 0;
-	fr_pair_list_t	list;
-
-	fr_pair_list_init(&list);
-
-	if (!start) start = fr_pair_list_head(from);
-
-	for (vp = start;
-	     vp && ((count == 0) || (cnt < count));
-	     vp = fr_pair_list_next(from, vp), cnt++) {
-		PAIR_VERIFY_WITH_LIST(from, vp);
-
-		new_vp = fr_pair_copy(ctx, vp);
-		if (unlikely(!new_vp)) {
-			fr_pair_list_free(&list);
-			return -1;
-		}
-
-		fr_pair_append(&list, new_vp);
-	}
-
-	fr_pair_list_append(to, &list);
-
-	return cnt;
-}
-
 /** Free/zero out value (or children) of a given VP
  *
  * @param[in] vp to clear value from.

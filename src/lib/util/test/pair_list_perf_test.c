@@ -171,6 +171,50 @@ static fr_pair_t	**source_vps_50;	//!< List with 50% duplicate attributes.
 static fr_pair_t	**source_vps_75;	//!< List with 75% duplicate attributes.
 static fr_pair_t	**source_vps_100;	//!< List with 100% duplicate attributes, i.e. all the same.
 
+/** Duplicate a list of pairs starting at a particular item
+ *
+ * Copy all pairs from 'from' regardless of tag, attribute or vendor, starting at 'item'.
+ *
+ * @param[in] ctx		for new #fr_pair_t (s) to be allocated in.
+ * @param[in] to		where to copy attributes to.
+ * @param[in] from		whence to copy #fr_pair_t (s).
+ * @param[in] start		first pair to start copying from.
+ * @return
+ *	- >0 the number of attributes copied.
+ *	- 0 if no attributes copied.
+ *	- -1 on error.
+ */
+static int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
+				fr_pair_list_t const *from, fr_pair_t const *start)
+{
+	fr_pair_t const	*vp;
+	fr_pair_t	*new_vp;
+	unsigned int	cnt = 0;
+	fr_pair_list_t	list;
+
+	fr_pair_list_init(&list);
+
+	if (!start) start = fr_pair_list_head(from);
+
+	for (vp = start;
+	     vp != NULL;
+	     vp = fr_pair_list_next(from, vp), cnt++) {
+		PAIR_VERIFY_WITH_LIST(from, vp);
+
+		new_vp = fr_pair_copy(ctx, vp);
+		if (unlikely(!new_vp)) {
+			fr_pair_list_free(&list);
+			return -1;
+		}
+
+		fr_pair_append(&list, new_vp);
+	}
+
+	fr_pair_list_append(to, &list);
+
+	return cnt;
+}
+
 static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *dict, char const *pairs,
 			   int const perc, int const reps)
 {
@@ -246,7 +290,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 			 *  iteration to maintain the percentage of attribute repeats
 			 */
 			vp = fr_pair_list_head(&dups);
-			fr_pair_sublist_copy(ctx, &full_list, &dups, vp, 0);
+			fr_pair_sublist_copy(ctx, &full_list, &dups, vp);
 
 			/*
 			 *  Walk past equivalent pairs in new source list
@@ -257,7 +301,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 			/*
 			 *  Append copy remaining pairs from source list to destination
 			 */
-			fr_pair_sublist_copy(ctx, &full_list, &list, vp, 0);
+			fr_pair_sublist_copy(ctx, &full_list, &list, vp);
 
 			/*
 			 *  We copied pairs rather than moving, free the source
