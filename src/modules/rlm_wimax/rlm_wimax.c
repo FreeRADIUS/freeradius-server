@@ -193,8 +193,8 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 	/*
 	 *	If there's no WiMAX VSAs on input or output, we do nothing.
 	 */
-	vsa_request = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_wimax);
-	vsa_reply = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_wimax);
+	vsa_request = fr_pair_find_by_da_nested(&request->reply_pairs, attr_wimax);
+	vsa_reply = fr_pair_find_by_da_nested(&request->reply_pairs, attr_wimax);
 	if (!vsa_request && !vsa_reply) {
 		RWDEBUG("Vendor-Specific.WiMAX not found in request or reply list, skipping all WiMAX calculations");
 		RETURN_UNLANG_NOOP;

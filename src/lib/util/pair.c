@@ -774,13 +774,12 @@ fr_pair_t *fr_pair_find_by_da_idx(fr_pair_list_t const *list, fr_dict_attr_t con
  * The list should be the one containing the top level attributes.
  *
  * @param[in] list	to search in.
- * @param[in] prev	pair to start searching from.
  * @param[in] da	the next da to find.
  * @return
  *	- first matching fr_pair_t.
  *	- NULL if no fr_pair_ts match.
  */
-fr_pair_t *fr_pair_find_by_da_nested(fr_pair_list_t const *list, fr_pair_t const *prev, fr_dict_attr_t const *da)
+fr_pair_t *fr_pair_find_by_da_nested(fr_pair_list_t const *list, fr_dict_attr_t const *da)
 {
 	fr_pair_t		*vp;
 	fr_dict_attr_t const	**find;		/* DA currently being looked for */
@@ -794,22 +793,16 @@ fr_pair_t *fr_pair_find_by_da_nested(fr_pair_list_t const *list, fr_pair_t const
 	 *	the root (at level 1), so we just skip to a special
 	 *	function for that
 	 */
-	if (da->depth <= 1) return fr_pair_find_by_da(list, prev, da);
+	if (da->depth <= 1) return fr_pair_find_by_da(list, NULL, da);
 
 	fr_proto_da_stack_build(&da_stack, da);
 
 	/*
-	 *	Find the relevant starting point for `prev`
+	 *	Start at the top of the list, and at the top of the nesting.
 	 */
-	if (prev) {
-		cur_list = fr_pair_parent_list(prev);
-		find = &da_stack.da[prev->da->depth - 1];
-		vp = UNCONST(fr_pair_t *, prev);
-	} else {
-		cur_list = list;
-		find = &da_stack.da[0];
-		vp = NULL;
-	}
+	cur_list = list;
+	find = &da_stack.da[0];
+	vp = NULL;
 
 	/*
 	 *	Loop over the list at each level until we find a matching da.
@@ -861,10 +854,9 @@ fr_pair_t *fr_pair_find_by_da_nested(fr_pair_list_t const *list, fr_pair_t const
 	}
 
 	/*
-	 *	Compatibility with flat attributes
+	 *	We have the right list, go find the da.
 	 */
-	if (fr_pair_parent_list(prev) != list) prev = NULL;
-	return fr_pair_find_by_da(list, prev, da);
+	return fr_pair_find_by_da(list, NULL, da);
 }
 
 /** Find the pair with the matching child attribute at a given index

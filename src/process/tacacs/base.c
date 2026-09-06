@@ -216,12 +216,12 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 
 	if (!request->async->listen) return -1;
 
-	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_session_id);
+	vp = fr_pair_find_by_da_nested(&request->request_pairs, attr_tacacs_session_id);
 	if (!vp) return -1;
 
 	hash = fr_hash64(&vp->vp_uint32, sizeof(vp->vp_uint32));
 
-	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_sequence_number);
+	vp = fr_pair_find_by_da_nested(&request->request_pairs, attr_tacacs_sequence_number);
 	if (!vp) return -1;
 
 	/*

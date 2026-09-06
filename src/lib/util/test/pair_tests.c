@@ -405,17 +405,13 @@ static void test_fr_pair_find_by_da_nested(void)
 	MEM(vp2 = fr_pair_afrom_da(vp3, fr_dict_attr_test_nested_leaf_int32));
 	fr_pair_append(&vp3->vp_group, vp2);
 
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_string);
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find child node in first TLV");
 	TEST_CHECK_PAIR(vp_found, vp1);
 
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_int32);
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, fr_dict_attr_test_nested_leaf_int32);
 	TEST_CASE("Find child node in second TLV");
 	TEST_CHECK_PAIR(vp_found, vp2);
-
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
-	TEST_CASE("Look for child in first node after second");
-	TEST_CHECK_PAIR(vp_found, NULL);
 
 	/*
 	 *	Add third nested TLV with child of same type as first
@@ -428,19 +424,12 @@ static void test_fr_pair_find_by_da_nested(void)
 	fr_pair_append(&vp4->vp_group, vp3);
 
 	/*
-	 *	Repeat search 3 times to find both instances and then NULL
+	 *	A second attribute of the same type further down the list does
+	 *	not change which one is found.
 	 */
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_string);
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find child node in first TLV");
 	TEST_CHECK_PAIR(vp_found, vp1);
-
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
-	TEST_CASE("Find child node in third TLV");
-	TEST_CHECK_PAIR(vp_found, vp3);
-
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
-	TEST_CASE("Find child node after third TLV");
-	TEST_CHECK_PAIR(vp_found, NULL);
 
 	/*
 	 *	Add some "flat list" attributes
@@ -451,28 +440,31 @@ static void test_fr_pair_find_by_da_nested(void)
 	fr_pair_append(&local_pairs, vp5);
 
 	/*
-	 *	Repeat search 5 times to find all instances and then NULL
-	 *	fr_pair_find_by_da_nested searches nested first then flat
+	 *	The search looks in the nesting before it looks at the flat
+	 *	list, so the nested attribute wins even though vp4 was
+	 *	prepended, and therefore comes first in the top level list.
 	 */
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_string);
-	TEST_CASE("Find child node in first TLV");
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, fr_dict_attr_test_nested_leaf_string);
+	TEST_CASE("A nested attribute is found before a flat one");
 	TEST_CHECK_PAIR(vp_found, vp1);
 
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
-	TEST_CASE("Find child node in third TLV");
-	TEST_CHECK_PAIR(vp_found, vp3);
+	fr_pair_list_free(&local_pairs);
 
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
-	TEST_CASE("Find first entry in \"flat\" list");
-	TEST_CHECK_PAIR(vp_found, vp4);
+	/*
+	 *	With no nesting to search, the flat attribute is the answer.
+	 *	This is the fallback at the end of fr_pair_find_by_da_nested().
+	 */
+	fr_pair_list_init(&local_pairs);
 
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
-	TEST_CASE("Find second \"flat\" list entry");
+	MEM(vp5 = fr_pair_afrom_da(autofree, fr_dict_attr_test_nested_leaf_string));
+	fr_pair_append(&local_pairs, vp5);
+
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, fr_dict_attr_test_nested_leaf_string);
+	TEST_CASE("Find a flat attribute when there is no nesting");
 	TEST_CHECK_PAIR(vp_found, vp5);
 
-	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
-	TEST_CASE("Find NULL at end of list");
-	TEST_CHECK_PAIR(vp_found, NULL);
+	TEST_CASE("Find nothing when the attribute is not there at all");
+	TEST_CHECK_PAIR(fr_pair_find_by_da_nested(&local_pairs, fr_dict_attr_test_nested_leaf_int32), NULL);
 
 	fr_pair_list_free(&local_pairs);
 }

@@ -939,7 +939,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 		/*
 		 *	Look for the returned cookie.
 		 */
-		vp = fr_pair_find_by_da_nested(&tmp, NULL, attr_ldap_sync_cookie);
+		vp = fr_pair_find_by_da_nested(&tmp, attr_ldap_sync_cookie);
 		if (vp) cookie = talloc_memdup(inst, vp->vp_octets, vp->vp_length);
 
 		if (inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent, cookie) < 0) {

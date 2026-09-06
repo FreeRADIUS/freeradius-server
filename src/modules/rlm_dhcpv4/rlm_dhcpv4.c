@@ -182,7 +182,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	/*
 	 *	Set the destination port, defaulting to 67
 	 */
-	vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_dst_port);
+	vp = fr_pair_find_by_da_nested(&request->control_pairs, attr_net_dst_port);
 	if (vp) {
 		port = vp->vp_uint16;
 	} else {
@@ -192,7 +192,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	/*
 	 *	Get the destination address / port, and unicast it there.
 	 */
-	vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_dst_ip);
+	vp = fr_pair_find_by_da_nested(&request->control_pairs, attr_net_dst_ip);
 	if (!vp || (vp->vp_ip.af != AF_INET)) {
 		RDEBUG("No control.Net.Dst.IP, cannot relay packet");
 		RETURN_UNLANG_NOOP;

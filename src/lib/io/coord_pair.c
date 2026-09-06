@@ -740,7 +740,7 @@ void fr_coord_worker_pair_data_recv(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr
 		goto free;
 	}
 
-	vp = fr_pair_find_by_da_nested(&list, NULL, coord_pair_reg->attr_packet_type);
+	vp = fr_pair_find_by_da_nested(&list, coord_pair_reg->attr_packet_type);
 
 	if (!vp) {
 		ERROR("Message received without %s", coord_pair_reg->attr_packet_type->name);

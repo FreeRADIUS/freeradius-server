@@ -1860,7 +1860,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		/*
 		 *	We already have a Password.Cleartext.  Skip edir.
 		 */
-		if (fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_cleartext_password)) goto skip_edir;
+		if (fr_pair_find_by_da_nested(&request->control_pairs, attr_cleartext_password)) goto skip_edir;
 
 		/*
 		 *      Retrieve Universal Password if we use eDirectory

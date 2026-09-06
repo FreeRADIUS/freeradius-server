@@ -255,7 +255,7 @@ unlang_action_t od_mschap_auth(unlang_result_t *p_result, request_t *request, fr
 	unsigned int t;
 #endif
 
-	response = fr_pair_find_by_da_nested(&request->request_pairs, NULL, tmpl_attr_tail_da(env_data->chap2_response));
+	response = fr_pair_find_by_da_nested(&request->request_pairs,  tmpl_attr_tail_da(env_data->chap2_response));
 	if (!response) {
 		RERROR("No MS-CHAP2-Response in request");
 		RETURN_UNLANG_FAIL;

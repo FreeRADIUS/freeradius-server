@@ -145,14 +145,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	 *	We require access to the plain-text password, or to the
 	 *	Digest-Attributes.HA1 parameter.
 	 */
-	passwd = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_digest_ha1);
+	passwd = fr_pair_find_by_da_nested(&request->control_pairs, attr_digest_ha1);
 	if (passwd) {
 		if (passwd->vp_length != 32) {
 			REDEBUG("Digest-Attributes.HA1 has invalid length, authentication failed");
 			RETURN_UNLANG_INVALID;
 		}
 	} else {
-		passwd = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_cleartext_password);
+		passwd = fr_pair_find_by_da_nested(&request->control_pairs, attr_cleartext_password);
 	}
 	if (!passwd) {
 		REDEBUG("Password.Cleartext or Digest-Attributes.HA1 is required for authentication");
@@ -207,7 +207,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	 *	See which variant we calculate.
 	 *	Assume MD5 if no Digest-Algorithm attribute received
 	 */
-	algo = fr_pair_find_by_da_nested(list, NULL, attr_digest_algorithm);
+	algo = fr_pair_find_by_da_nested(list, attr_digest_algorithm);
 	if ((!algo) ||
 	    (strcasecmp(algo->vp_strvalue, "MD5") == 0)) {
 		/*

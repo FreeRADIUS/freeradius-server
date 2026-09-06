@@ -111,7 +111,7 @@ static void mppe_keys_store(request_t *request, mschapv2_opaque_t *data)
 
 	RDEBUG2("Storing attributes for final response");
 
-	parent = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_microsoft);
+	parent = fr_pair_find_by_da_nested(&request->reply_pairs, attr_microsoft);
 	if (!parent) parent = request->reply_ctx;
 
 	RINDENT();
@@ -295,7 +295,7 @@ static unlang_action_t mschap_resume(unlang_result_t *p_result, module_ctx_t con
 	 */
 	mppe_keys_store(request, data);
 
-	parent = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_microsoft);
+	parent = fr_pair_find_by_da_nested(&request->reply_pairs, attr_microsoft);
 	if (!parent) parent = request->reply_ctx;
 
 	/*
@@ -434,7 +434,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 			p[1] = mschap_id;
 			memcpy(p + 2, eap_round->response->type.data + 520, 66);
 
-			ms = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_microsoft);
+			ms = fr_pair_find_by_da_nested(&request->request_pairs, attr_microsoft);
 			if (!ms) ms = request->request_ctx;
 
 			/*
@@ -493,7 +493,7 @@ failure:
 			if (!fr_pair_list_empty(&data->mppe_keys)) {
 				fr_pair_t *ms;
 
-				ms = fr_pair_find_by_da_nested(&parent->reply_pairs, NULL, attr_microsoft);
+				ms = fr_pair_find_by_da_nested(&parent->reply_pairs, attr_microsoft);
 				if (!ms) {
 					MEM(ms = fr_pair_afrom_da_nested(parent->reply_ctx, &parent->reply_pairs, attr_microsoft));
 				}
@@ -668,13 +668,13 @@ static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t 
 	/*
 	 *	Allow the administrator to set the CHAP-Challenge and Peer-Challenge attributes.
 	 */
-	auth_challenge = fr_pair_find_by_da_nested(&parent->control_pairs, NULL, attr_ms_chap_challenge);
+	auth_challenge = fr_pair_find_by_da_nested(&parent->control_pairs, attr_ms_chap_challenge);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("parent.control.MS-CHAP-Challenge is incorrect length.  Ignoring it");
 		auth_challenge = NULL;
 	}
 
-	peer_challenge = fr_pair_find_by_da_nested(&parent->control_pairs, NULL, attr_ms_chap_peer_challenge);
+	peer_challenge = fr_pair_find_by_da_nested(&parent->control_pairs, attr_ms_chap_peer_challenge);
 	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 		peer_challenge = NULL;

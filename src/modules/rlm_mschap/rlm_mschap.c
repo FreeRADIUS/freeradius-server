@@ -384,7 +384,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	hash of MS-CHAPv2 challenge, and peer challenge.
 	 */
 	if (strncasecmp(arg->vb_strvalue, "Challenge", 9) == 0) {
-		chap_challenge = fr_pair_find_by_da_nested(&request->request_pairs, NULL,
+		chap_challenge = fr_pair_find_by_da_nested(&request->request_pairs,
 							   tmpl_attr_tail_da(env_data->chap_challenge));
 		if (!chap_challenge) {
 			REDEBUG("No MS-CHAP-Challenge in the request");
@@ -411,7 +411,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			char const	*username_str;
 			size_t		username_len;
 
-			response = fr_pair_find_by_da_nested(&request->request_pairs, NULL,
+			response = fr_pair_find_by_da_nested(&request->request_pairs,
 							     tmpl_attr_tail_da(env_data->chap2_response));
 			if (!response) {
 				REDEBUG("Vendor-Specific.Microsoft.CHAP2-Response is required to calculate MS-CHAPv1 challenge");
@@ -490,9 +490,9 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	response.
 	 */
 	} else if (strncasecmp(arg->vb_strvalue, "NT-Response", 11) == 0) {
-		response = fr_pair_find_by_da_nested(&request->request_pairs, NULL,
+		response = fr_pair_find_by_da_nested(&request->request_pairs,
 						     tmpl_attr_tail_da(env_data->chap_response));
-		if (!response) response = fr_pair_find_by_da_nested(&request->request_pairs, NULL,
+		if (!response) response = fr_pair_find_by_da_nested(&request->request_pairs,
 								    tmpl_attr_tail_da(env_data->chap2_response));
 		if (!response) {
 			REDEBUG("No MS-CHAP-Response or MS-CHAP2-Response was found in the request");
@@ -527,7 +527,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	in MS-CHAPv1, and not often there.
 	 */
 	} else if (strncasecmp(arg->vb_strvalue, "LM-Response", 11) == 0) {
-		response = fr_pair_find_by_da_nested(&request->request_pairs, NULL,
+		response = fr_pair_find_by_da_nested(&request->request_pairs,
 						     tmpl_attr_tail_da(env_data->chap_response));
 		if (!response) {
 			REDEBUG("No MS-CHAP-Response was found in the request");
@@ -1349,7 +1349,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	fr_pair_t		*challenge = NULL;
 	fr_pair_t		*parent;
 
-	challenge = fr_pair_find_by_da_nested(&request->request_pairs, NULL, tmpl_attr_tail_da(env_data->chap_challenge));
+	challenge = fr_pair_find_by_da_nested(&request->request_pairs, tmpl_attr_tail_da(env_data->chap_challenge));
 	if (!challenge) RETURN_UNLANG_NOOP;
 
 	/*
@@ -1629,7 +1629,7 @@ static int mschap_cpw_prepare(request_t *request, mschap_auth_ctx_t *auth_ctx)
 	cpw_ctx = auth_ctx->cpw_ctx;
 
 	da = tmpl_attr_tail_da(env_data->chap_nt_enc_pw);
-	nt_enc = fr_pair_find_by_da_nested(&request->request_pairs, NULL, da);
+	nt_enc = fr_pair_find_by_da_nested(&request->request_pairs, da);
 	if (!nt_enc) {
 		REDEBUG("%s is missing", env_data->chap_nt_enc_pw->name);
 		return -1;
@@ -1963,7 +1963,7 @@ static unlang_action_t mod_authenticate_resume(unlang_result_t *p_result, module
 		memcpy(p + 2, auth_ctx->cpw->vp_octets + 18, 48);
 	}
 
-	challenge = fr_pair_find_by_da_nested(&request->request_pairs, NULL, tmpl_attr_tail_da(env_data->chap_challenge));
+	challenge = fr_pair_find_by_da_nested(&request->request_pairs, tmpl_attr_tail_da(env_data->chap_challenge));
 	if (!challenge) {
 		REDEBUG("control.Auth-Type = %s set for a request that does not contain %s",
 			auth_ctx->name, env_data->chap_challenge->name);
@@ -1987,7 +1987,7 @@ static unlang_action_t mod_authenticate_resume(unlang_result_t *p_result, module
 					auth_ctx,
 					challenge, response);
 		if (p_result->rcode != RLM_MODULE_OK) goto finish;
-	} else if ((response = fr_pair_find_by_da_nested(&parent->vp_group, NULL, tmpl_attr_tail_da(env_data->chap2_response)))) {
+	} else if ((response = fr_pair_find_by_da_nested(&parent->vp_group, tmpl_attr_tail_da(env_data->chap2_response)))) {
 		mschap_process_v2_response(p_result,
 					   &mschap_version, nthashhash,
 					   inst, request,
@@ -2286,7 +2286,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	 *	Check to see if this is a change password request, and process
 	 *	it accordingly if so.
 	 */
-	if (env_data->chap2_cpw) auth_ctx->cpw = fr_pair_find_by_da_nested(&request->request_pairs, NULL,
+	if (env_data->chap2_cpw) auth_ctx->cpw = fr_pair_find_by_da_nested(&request->request_pairs,
 									   tmpl_attr_tail_da(env_data->chap2_cpw));
 	if (auth_ctx->cpw) {
 		/*

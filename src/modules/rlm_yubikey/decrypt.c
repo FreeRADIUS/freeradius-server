@@ -26,7 +26,7 @@ unlang_action_t rlm_yubikey_decrypt(unlang_result_t *p_result, module_ctx_t cons
 
 	fr_pair_t *key, *vp;
 
-	key = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_yubikey_key);
+	key = fr_pair_find_by_da_nested(&request->control_pairs,  attr_yubikey_key);
 	if (!key) {
 		REDEBUG("Yubikey-Key attribute not found in control list, can't decrypt OTP data");
 		RETURN_UNLANG_INVALID;
@@ -88,7 +88,7 @@ unlang_action_t rlm_yubikey_decrypt(unlang_result_t *p_result, module_ctx_t cons
 	/*
 	 *	Now we check for replay attacks
 	 */
-	vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_yubikey_counter);
+	vp = fr_pair_find_by_da_nested(&request->control_pairs, attr_yubikey_counter);
 	if (!vp) {
 		RWDEBUG("Yubikey-Counter not found in control list, skipping replay attack checks");
 		RETURN_UNLANG_OK;

@@ -657,10 +657,10 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		if ((vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_ms_chap2_success))) {
+		if ((vp = fr_pair_find_by_da_nested(&request->reply_pairs, attr_ms_chap2_success))) {
 			RDEBUG2("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 		} else {
-			vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_eap_channel_binding_message);
+			vp = fr_pair_find_by_da_nested(&request->reply_pairs, attr_eap_channel_binding_message);
 		}
 		if (vp) {
 			t->authenticated = true;

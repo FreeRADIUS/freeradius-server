@@ -624,7 +624,7 @@ static int encode(tcp_handle_t *h, request_t *request, tcp_request_t *req)
 	hdr = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_hdr);
 	if (!hdr) hdr = request->request_ctx;
 
-	vp = fr_pair_find_by_da_nested(&hdr->vp_group, NULL, attr_session_id);
+	vp = fr_pair_find_by_da_nested(&hdr->vp_group, attr_session_id);
 	if (!vp) {
 		MEM(vp = fr_pair_afrom_da(hdr, attr_session_id));
 

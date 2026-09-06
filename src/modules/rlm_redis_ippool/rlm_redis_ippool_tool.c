@@ -1092,14 +1092,14 @@ do { \
 			if (redis_ippool_get_stats(request, vb, pool_stats, el) < 0) EXIT_WITH_FAILURE;
 
 			INFO("pool                : %pV", vb);
-			stats = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_ippool_stats);
+			stats = fr_pair_find_by_da_nested(&request->control_pairs, attr_ippool_stats);
 			if (!stats) EXIT_WITH_FAILURE;
 
 			st = fr_pair_find_by_da(&stats->vp_group, NULL, attr_ippool_stats_static);
 			dyn = fr_pair_find_by_da(&stats->vp_group, NULL, attr_ippool_stats_dynamic);
 			if (!st || !dyn) EXIT_WITH_FAILURE;
 
-			total = fr_pair_find_by_da_nested(&stats->vp_group, NULL, attr_ippool_stats_total);
+			total = fr_pair_find_by_da_nested(&stats->vp_group, attr_ippool_stats_total);
 			if (!total) EXIT_WITH_FAILURE;
 			INFO("total               : %pV", &total->data);
 
@@ -1215,7 +1215,7 @@ do { \
 
 		if (redis_ippool_show(request, p, pool_show, el) < 0) EXIT_WITH_FAILURE;
 
-		vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_ippool_lease);
+		vp = fr_pair_find_by_da_nested(&request->control_pairs, attr_ippool_lease);
 		if (vp) {
 			ippool = fr_pair_parent(vp);
 		} else {

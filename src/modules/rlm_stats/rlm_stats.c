@@ -267,7 +267,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(unlang_result_t *p_result
 		RETURN_UNLANG_NOOP;
 	}
 
-	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_type);
+	vp = fr_pair_find_by_da_nested(&request->request_pairs, attr_freeradius_stats4_type);
 	if (!vp) {
 		stats_type = FR_TYPE_VALUE_GLOBAL;
 	} else {
@@ -299,8 +299,8 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(unlang_result_t *p_result
 		break;
 
 	case FR_TYPE_VALUE_CLIENT:			/* src */
-		vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv4_address);
-		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv6_address);
+		vp = fr_pair_find_by_da_nested(&request->request_pairs, attr_freeradius_stats4_ipv4_address);
+		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, attr_freeradius_stats4_ipv6_address);
 		if (!vp) RETURN_UNLANG_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
@@ -308,8 +308,8 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(unlang_result_t *p_result
 		break;
 
 	case FR_TYPE_VALUE_LISTENER:			/* dst */
-		vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv4_address);
-		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv6_address);
+		vp = fr_pair_find_by_da_nested(&request->request_pairs, attr_freeradius_stats4_ipv4_address);
+		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, attr_freeradius_stats4_ipv6_address);
 		if (!vp) RETURN_UNLANG_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;

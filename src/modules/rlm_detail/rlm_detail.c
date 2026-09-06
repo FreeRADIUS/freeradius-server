@@ -255,8 +255,8 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	if (inst->log_srcdst) {
 		fr_pair_t *src_vp, *dst_vp;
 
-		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_src_address);
-		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_dst_address);
+		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, attr_net_src_address);
+		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, attr_net_dst_address);
 
 		/*
 		 *	These pairs will exist, but Coverity doesn't know that
@@ -264,8 +264,8 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		if (src_vp) detail_fr_pair_fprint(request, out, src_vp);
 		if (dst_vp) detail_fr_pair_fprint(request, out, dst_vp);
 
-		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_src_port);
-		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_dst_port);
+		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, attr_net_src_port);
+		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, attr_net_dst_port);
 
 		if (src_vp) detail_fr_pair_fprint(request, out, src_vp);
 		if (dst_vp) detail_fr_pair_fprint(request, out, dst_vp);

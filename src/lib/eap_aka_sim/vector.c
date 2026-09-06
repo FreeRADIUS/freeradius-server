@@ -895,7 +895,7 @@ int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pa
 	 *	This is the *old* counter value increment
 	 *	by 1 to get the *new* counter value
 	 */
-	counter_vp = fr_pair_find_by_da_nested(vps, NULL, attr_eap_aka_sim_counter);
+	counter_vp = fr_pair_find_by_da_nested(vps, attr_eap_aka_sim_counter);
 	if (!counter_vp) {
 		RDEBUG2("No session-state.%s attribute found, can't calculate re-auth keys",
 			attr_eap_aka_sim_counter->name);
@@ -944,7 +944,7 @@ int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_l
 	 *	This is the *old* counter value increment
 	 *	by 1 to get the *new* counter value
 	 */
-	counter_vp = fr_pair_find_by_da_nested(vps, NULL, attr_eap_aka_sim_counter);
+	counter_vp = fr_pair_find_by_da_nested(vps, attr_eap_aka_sim_counter);
 	if (!counter_vp) {
 		RDEBUG2("No session-state.%s attribute found, can't calculate re-auth keys",
 			attr_eap_aka_sim_counter->name);

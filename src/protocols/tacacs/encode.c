@@ -508,7 +508,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 		 *	we allow setting the flag.  This lets the server tell the client that it supports "single
 		 *	connection" mode.
 		 */
-		vp = fr_pair_find_by_da_nested(vps, NULL, attr_tacacs_flags);
+		vp = fr_pair_find_by_da_nested(vps, attr_tacacs_flags);
 		if (vp) packet->hdr.flags |= (vp->vp_uint8 & FR_TAC_PLUS_SINGLE_CONNECT_FLAG);
 	}
 
@@ -574,7 +574,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	No explicit "Data" attribute, try to automatically determine what to do.
 			 */
-			if (fr_pair_find_by_da_nested(vps, NULL, attr_tacacs_data)) {
+			if (fr_pair_find_by_da_nested(vps, attr_tacacs_data)) {
 				ENCODE_FIELD_STRING8(packet->authen_start.data_len, attr_tacacs_data);
 
 			} else switch (packet->authen_start.authen_type) {
@@ -890,7 +890,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	If the caller didn't set a session ID, use a random one.
 			 */
-			if (!fr_pair_find_by_da_nested(vps, NULL, attr_tacacs_session_id)) {
+			if (!fr_pair_find_by_da_nested(vps, attr_tacacs_session_id)) {
 				packet->hdr.session_id = fr_rand();
 			}
 
