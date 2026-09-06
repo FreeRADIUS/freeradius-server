@@ -48,10 +48,22 @@ static void pair_list_perf_init(void);
 
 #include <freeradius-devel/util/dict_test.h>
 #include <freeradius-devel/server/base.h>
+
+
+#define TEST_MSG_STATS \
+	do { \
+		TEST_MSG_ALWAYS("\n"); \
+		TEST_MSG_ALWAYS("repetitions   = %u", reps); \
+		TEST_MSG_ALWAYS("%% repeated    = %u", perc); \
+		TEST_MSG_ALWAYS("list_length   = %u", len); \
+		TEST_MSG_ALWAYS("elapsed (ns)  = %" PRId64, fr_time_delta_unwrap(used)); \
+       		TEST_MSG_ALWAYS("calls/s       = %0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC)); \
+		TEST_MSG_ALWAYS("(ns) / call   = %0.0lf", (double) fr_time_delta_unwrap(used) / (double) reps); \
+	} while (0)
+
 /*
  *      Global variables
  */
-
 static fr_dict_t	*test_dict;
 static TALLOC_CTX	*autofree;
 
@@ -390,11 +402,7 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned
 		TEST_CHECK(fr_pair_list_num_elements(&test_vps) == len);
 		fr_pair_list_free(&test_vps);
 	}
-	TEST_MSG_ALWAYS("repetitions=%u", reps);
-	TEST_MSG_ALWAYS("perc_rep=%u", perc);
-	TEST_MSG_ALWAYS("list_length=%u", len);
-	TEST_MSG_ALWAYS("used=%"PRId64, fr_time_delta_unwrap(used));
-	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC));
+	TEST_MSG_STATS;
 }
 
 static void do_test_fr_pair_find_by_da_idx(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
@@ -436,11 +444,7 @@ static void do_test_fr_pair_find_by_da_idx(unsigned int len, unsigned int perc, 
 		}
 	}
 	fr_pair_list_free(&test_vps);
-	TEST_MSG_ALWAYS("repetitions=%u", reps);
-	TEST_MSG_ALWAYS("perc_rep=%u", perc);
-	TEST_MSG_ALWAYS("list_length=%u", len);
-	TEST_MSG_ALWAYS("used=%"PRId64, fr_time_delta_unwrap(used));
-	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC));
+	TEST_MSG_STATS;
 }
 
 static void do_test_find_nth(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
@@ -485,11 +489,7 @@ static void do_test_find_nth(unsigned int len, unsigned int perc, unsigned int r
 		}
 	}
 	fr_pair_list_free(&test_vps);
-	TEST_MSG_ALWAYS("repetitions=%u", reps);
-	TEST_MSG_ALWAYS("perc_rep=%u", perc);
-	TEST_MSG_ALWAYS("list_length=%u", len);
-	TEST_MSG_ALWAYS("used=%"PRId64, fr_time_delta_unwrap(used));
-	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC));
+	TEST_MSG_STATS;
 }
 
 static void do_test_fr_pair_list_free(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
@@ -519,11 +519,7 @@ static void do_test_fr_pair_list_free(unsigned int len, unsigned int perc, unsig
 		used = fr_time_delta_add(used, fr_time_sub(end, start));
 	}
 	fr_pair_list_free(&test_vps);
-	TEST_MSG_ALWAYS("repetitions=%u", reps);
-	TEST_MSG_ALWAYS("perc_rep=%u", perc);
-	TEST_MSG_ALWAYS("list_length=%u", len);
-	TEST_MSG_ALWAYS("used=%"PRId64, fr_time_delta_unwrap(used));
-	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC));
+	TEST_MSG_STATS;
 }
 
 #define test_func(_func, _count, _perc, _source_vps) \
