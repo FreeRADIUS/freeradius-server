@@ -18,8 +18,16 @@ on:
     - cron: '0 1 * * *'
 
 jobs:
+  #
+  #  Only the self-hosted runners have the certificate authority (CA) file
+  #  for the registry mirror.  A fork's scheduled refresh runs on GitHub's
+  #  runners, so the image build fails.  `docker_ci_images_refresh`
+  #  therefore runs a scheduled refresh only in
+  #  FreeRADIUS/freeradius-server.  A manual dispatch on a fork still runs.
+  #
   docker_ci_images_refresh:
     name: Docker CI images refresh
+    if: ${{ github.event_name != 'schedule' || github.repository == 'FreeRADIUS/freeradius-server' }}
     uses: ./.github/workflows/docker-ci-images-refresh.yml
     secrets: inherit
 

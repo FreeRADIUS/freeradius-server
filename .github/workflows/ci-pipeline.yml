@@ -56,8 +56,21 @@ jobs:
       actions: read
       contents: read
     outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+      should_skip: ${{ steps.fork_schedule.outcome == 'success' || steps.skip_check.outputs.should_skip == 'true' }}
     steps:
+      #
+      #  Only the self-hosted runners have the certificate authority (CA)
+      #  file for the registry mirror.  A fork's scheduled run builds every
+      #  image on GitHub's runners, so the image build fails before the run
+      #  tests anything.  `fork_schedule` therefore runs only for a
+      #  scheduled run outside FreeRADIUS/freeradius-server, the job
+      #  reports `should_skip` whenever `fork_schedule` ran, and every leg
+      #  reads `should_skip` and skips.
+      #
+      - id: fork_schedule
+        if: ${{ github.event_name == 'schedule' && github.repository != 'FreeRADIUS/freeradius-server' }}
+        run: echo "Scheduled run outside the main repository, every leg skips"
+
       #
       #  `concurrent_skipping` widens the duplicate check to runs still in
       #  flight. `same_content_newer` skips the current run when an older
@@ -71,6 +84,7 @@ jobs:
       #  an untested tree.
       #
       - id: skip_check
+        if: ${{ steps.fork_schedule.outcome == 'skipped' }}
         uses: fkirc/skip-duplicate-actions@v5.3.2
         with:
           concurrent_skipping: ${{ github.event_name == 'push' && !startsWith(github.ref_name, 'developer/') && 'same_content_newer' || 'never' }}
