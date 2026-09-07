@@ -95,6 +95,7 @@ define ADD_CLEAN_RULE
     .PHONY: clean.$(notdir ${1})
     clean.$(notdir ${1}):
 	$(Q)$(strip rm -f ${${1}_BUILD}/${1} $${${1}_OBJS} $${${1}_DEPS} $${${1}_OBJS:%.${OBJ_EXT}=%.[do]}) $(if ${TARGET_DIR},$${TARGET_DIR}/$(notdir ${1}))
+	$(Q)$(strip rm -rf ${${1}_BUILD}/.libs/$(basename ${1})* ${${1}_BUILD}/local/${1} ${${1}_BUILD}/local/.libs/$(basename ${1})*)
 	${Q}$${${1}_POSTCLEAN}
 
 endef
