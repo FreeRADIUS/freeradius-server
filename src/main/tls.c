@@ -5173,7 +5173,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 					}
 
 					if (conf->session_lifetime &&
-					    ((vp = fr_pair_find_by_num(vps,  PW_TLS_SESSION_EXPIRY, 0, TAG_ANY)) != NULL)) {
+					    (fr_pair_find_by_num(vps,  PW_TLS_SESSION_EXPIRY, 0, TAG_ANY) != NULL)) {
 						uint32_t when = time(NULL) + conf->session_lifetime;
 
 						if (prev) fprintf(vp_file, ",\n\t");
