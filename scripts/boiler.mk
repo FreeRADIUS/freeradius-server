@@ -91,7 +91,6 @@ endef
 #   USE WITH EVAL
 #
 define ADD_CLEAN_RULE
-    clean: clean.$(notdir ${1})
     .PHONY: clean.$(notdir ${1})
     clean.$(notdir ${1}):
 	$(Q)$(strip rm -f ${${1}_BUILD}/${1} $${${1}_OBJS} $${${1}_DEPS} $${${1}_OBJS:%.${OBJ_EXT}=%.[do]}) $(if ${TARGET_DIR},$${TARGET_DIR}/$(notdir ${1}))
@@ -754,8 +753,20 @@ ECHO = echo
 all:
 
 # Add "clean" rules to remove all build-generated files.
+#
+# Note that the "clean.foo" rule above in ADD_CLEAN_RULE does not add
+# that target to the dependency for "clean".  Having those
+# dependencies means that on a global "clean", "make" will then
+# laboriously walk through all of the libraries, binaries, etc. which
+# is very slow.
+#
+#  Instead, we just delete the entire build directory.  We also
+#  hard-code it, to prevent errors if the BUILD_DIR macro is
+#  accidentally empty.
+#
 .PHONY: clean
 clean:
+	@${Q}rm -rf ./build
 
 top_makedir := $(dir $(lastword ${MAKEFILE_LIST}))
 
