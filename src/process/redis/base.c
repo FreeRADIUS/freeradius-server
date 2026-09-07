@@ -819,6 +819,8 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 			break;
 
 		case CLUSTER_MAP_GOT_MAP:
+			(void) fr_timer_delete(&nrctx->ev);
+			TALLOC_FREE(nrctx->cmds);
 			if (fr_pair_list_num_elements(&nrctx->list) == 0) {
 				RWARN("Node %s:%d didn't return a cluster", nrctx->node->io_conf.hostname,
 				      nrctx->node->io_conf.port);
