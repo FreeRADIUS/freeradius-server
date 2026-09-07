@@ -76,6 +76,7 @@ $(foreach x,$(FILES),$(eval $(call KEYWORD_TEST,$x)))
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
 #
+ifeq "$(filter clean%,$(MAKECMDGOALS))" ""
 -include $(OUTPUT)/depends.mk
 
 export OPENSSL_LIBS
@@ -100,6 +101,7 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(sort $(FILES))) | $(OUTPUT)
 			echo "$$out: src/tests/keywords/radius.conf" >> $@; \
 		fi \
 	done
+endif
 
 #
 #  Cache the list of modules which are enabled, so that we don't run

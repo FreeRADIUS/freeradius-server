@@ -1,5 +1,6 @@
 TACACS_BUILD_DIR  := $(BUILD_DIR)/tests/tacacs
 
+ifeq "$(filter clean%,$(MAKECMDGOALS))" ""
 #
 #	We need the 'tacacs_plus' Python3 module to execute TACACS+ tests
 #	i.e: Needed by ./scripts/tacacs/tacacs_client
@@ -9,7 +10,7 @@ $(TACACS_BUILD_DIR)/depends.mk:
 	@(python3 -c "import tacacs_plus" 2>&- && echo WITH_TACACS=yes || echo WITH_TACACS=no) > $@
 
 -include $(TACACS_BUILD_DIR)/depends.mk
-
+endif
 
 
 #

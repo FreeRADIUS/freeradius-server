@@ -33,11 +33,12 @@ AUTH	 := $(subst $(DIR),$(OUTPUT),$(AUTH_NEEDS))
 AUTH_HAS	 := $(filter $(wildcard $(AUTH_EXISTS)),$(AUTH_EXISTS))
 AUTH_COPY	 := $(subst $(DIR),$(OUTPUT),$(AUTH_NEEDS))
 
+ifeq "$(filter clean%,$(MAKECMDGOALS))" ""
 #
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
 #
--include $(OUTPUT)/depends.mk
+-include $(BUILD_DIR)/depends.mk
 
 $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 	${Q}rm -f $@
@@ -50,6 +51,8 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 			echo "" >> $@; \
 		fi \
 	done
+endif
+
 #
 #  These ones get copied over from the default input
 #
@@ -74,9 +77,11 @@ $(OUTPUT)/%.attrs: $(DIR)/%.attrs | $(OUTPUT)
 #
 #  AUTH_MODULES := $(shell grep -- mods-enabled src/tests/auth/unit_test_module.conf | sed 's,.*/,,')
 #
+ifeq "$(filter clean%,$(MAKECMDGOALS))" ""
 $(OUTPUT)/enabled.mk: src/tests/auth/unit_test_module.conf | $(OUTPUT)
 	${Q}echo "auth_MODULES := " $$(grep -- mods-enabled src/tests/auth/unit_test_module.conf | sed 's,.*/,,' | tr '\n' ' ' ) > $@
 -include $(OUTPUT)/enabled.mk
+endif
 
 AUTH_RADDB	:= $(addprefix raddb/mods-enabled/,$(AUTH_MODULES))
 AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))

@@ -37,6 +37,7 @@ $(eval $(call RADIUSD_SERVICE,control-socket,$(OUTPUT)))
 #
 $(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/control-socket.conf,$(OUTPUT)/radiusd.pid))
 
+ifeq "$(filter clean%,$(MAKECMDGOALS))" ""
 #
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
@@ -53,6 +54,7 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 		fi \
 	done
 -include $(OUTPUT)/depends.mk
+endif
 
 #
 #	Run the radmin commands against the radiusd.

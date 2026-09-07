@@ -184,6 +184,7 @@ test.multi-server.%:
 #
 ######################################################################
 define TEST_CONFIG_LIBS
+ifeq "$(filter clean%,$(MAKECMDGOALS))" ""
 CACHE_DIR.$(TEST) := $$(subst src/,$(BUILD_DIR)/,$(DIR))
 
 -include $$(CACHE_DIR.$(TEST))/libs.mk
@@ -193,6 +194,7 @@ $$(CACHE_DIR.$(TEST))/libs.mk: $(DIR)/all.mk src/tests/all.mk scripts/build/conf
 	@echo "CONFIG_LIBS.$(TEST) := $$(filter $$(ALL_TGTS),$$(shell $(top_srcdir)/scripts/build/config-libs.sh ${1}))" > $$@
 
 ${2}: $$(addprefix $$(BUILD_DIR)/lib/local/,$$(CONFIG_LIBS.$(TEST)))
+endif
 endef
 
 ######################################################################
