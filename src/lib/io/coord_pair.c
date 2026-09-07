@@ -648,7 +648,7 @@ static inline CC_HINT(always_inline) void coord_run_request(fr_coord_pair_t *coo
 }
 
 /*
- *	Pre and post events used in single threaded mode
+ *	Pre and post events
  */
 
 static int fr_coord_pair_pre_event(UNUSED fr_time_t now, UNUSED fr_time_delta_t wake, void *uctx)
@@ -661,15 +661,6 @@ static int fr_coord_pair_pre_event(UNUSED fr_time_t now, UNUSED fr_time_delta_t 
 }
 
 static void fr_coord_pair_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
-{
-	fr_coord_pair_t *coord_pair = talloc_get_type_abort(uctx, fr_coord_pair_t);
-
-	coord_run_request(coord_pair, fr_time());
-}
-
-/** Event callback in multi threaded mode
- */
-static void fr_coord_pair_event(UNUSED fr_event_list_t *el, void *uctx)
 {
 	fr_coord_pair_t *coord_pair = talloc_get_type_abort(uctx, fr_coord_pair_t);
 
@@ -870,7 +861,6 @@ fr_coord_cb_inst_t *fr_coord_pair_inst_create(TALLOC_CTX *ctx, fr_coord_t *coord
 	*cb_inst = (fr_coord_cb_inst_t) {
 		.event_pre_cb = fr_coord_pair_pre_event,
 		.event_post_cb = fr_coord_pair_post_event,
-		.event_cb = fr_coord_pair_event,
 		.exit_cb = fr_coord_pair_exit,
 	};
 

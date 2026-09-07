@@ -451,6 +451,7 @@ static void fr_coordinate(fr_coord_t *coord)
 	 */
 	while (likely(!(coord->exiting && (coord->num_workers == 0)))) {
 		int num_events;
+		fr_time_t now = fr_time();
 
 		/*
 		 *	Check the event list.  If there's an error
@@ -475,7 +476,7 @@ static void fr_coordinate(fr_coord_t *coord)
 		 */
 		for (i = 0; i < coord->num_callbacks; i++) {
 			cb_inst = coord->cb_inst[i];
-			if (cb_inst && cb_inst->event_cb) cb_inst->event_cb(coord->el, cb_inst->inst_data);
+			if (cb_inst && cb_inst->event_post_cb) cb_inst->event_post_cb(coord->el, now, cb_inst->inst_data);
 		}
 	}
 
