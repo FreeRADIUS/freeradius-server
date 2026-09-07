@@ -997,6 +997,13 @@ int modules_rlm_coord_attach(fr_event_list_t *el)
 	return modules_coord_attach(rlm_modules_static, el);
 }
 
+/** Runs the coord_detach method of all registered backend modules
+ */
+int modules_rlm_coord_detach(void)
+{
+	return modules_coord_detach(rlm_modules_static);
+}
+
 /** Performs the instantiation phase for all backend modules
  *
  * @return

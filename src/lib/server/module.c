@@ -1214,6 +1214,34 @@ int modules_coord_attach(module_list_t const *ml, fr_event_list_t *el)
 	return 0;
 }
 
+/**  Call the coordinator detach callback for any modules using a coordinator
+ *
+ * @param ml	List of modules to check
+ */
+int modules_coord_detach(module_list_t const *ml)
+{
+	fr_rb_iter_inorder_t	iter;
+	void			*inst;
+	int			detached = 0;
+
+	for (inst = fr_rb_iter_init_inorder(ml->name_tree, &iter);
+	     inst;
+	     inst = fr_rb_iter_next_inorder(ml->name_tree, &iter)) {
+	     	module_instance_t		*mi = talloc_get_type_abort(inst, module_instance_t);
+		module_thread_instance_t	*thread;
+
+		if (!mi->exported->coord_detach) continue;
+
+		thread = ml->thread_data_get(mi);
+		if (!thread) continue;
+
+		mi->exported->coord_detach(MODULE_THREAD_INST_CTX(mi, thread->data, thread->el));
+		detached ++;
+	}
+
+	return detached;
+}
+
 /** Manually complete module setup by calling its instantiate function
  *
  * @param[in] instance	of module to complete instantiation for.

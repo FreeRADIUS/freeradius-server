@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/util/semaphore.h>
 
@@ -632,6 +633,12 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		 *	the network and shuts down gracefully.
 		 */
 		fr_event_loop(sc->el);
+
+		/*
+		 *	Detach worker from coordinators.  This needs to be done
+		 *	before the worker is freed.
+		 */
+		modules_rlm_coord_detach();
 
 		fr_worker_exit(sc->single_worker);
 		fr_coords_destroy();
