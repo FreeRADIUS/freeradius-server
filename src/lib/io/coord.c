@@ -881,6 +881,32 @@ int fr_coord_post_event_insert(fr_event_list_t *el)
 	return 0;
 }
 
+/** Event loop callback to exit the loop when all workers have detached from all coordinators
+ *
+ * Used during single threaded shut down to allow the event loop to run any
+ * tidy up needed by coordinators.
+ */
+static void fr_coord_close_post_event(fr_event_list_t *el, UNUSED fr_time_t now, UNUSED void *uctx)
+{
+	fr_coord_t		*coord;
+	fr_rb_iter_inorder_t	iter;
+
+	if (fr_rb_num_elements(&coords) == 0) return;
+
+	for (coord = fr_rb_iter_init_inorder(&coords, &iter);
+	     coord;
+	     coord = fr_rb_iter_next_inorder(&coords, &iter)) {
+		if (coord->num_workers > 0) return;
+	}
+
+	fr_event_loop_exit(el, SIGINT);
+}
+
+int fr_coord_close_event_insert(fr_event_list_t *el)
+{
+	return fr_event_post_insert(el, fr_coord_close_post_event, NULL);
+}
+
 /** Return the coordinator name
  */
 char const *fr_coord_name(fr_coord_t const *coord)

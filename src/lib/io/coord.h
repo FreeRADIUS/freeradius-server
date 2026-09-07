@@ -105,4 +105,6 @@ int		fr_coord_pre_event_insert(fr_event_list_t *el);
 
 int		fr_coord_post_event_insert(fr_event_list_t *el);
 
+int		fr_coord_close_event_insert(fr_event_list_t *el);
+
 char const	*fr_coord_name(fr_coord_t const *coord);
