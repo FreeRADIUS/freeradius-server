@@ -449,9 +449,25 @@ static void fr_coordinate(fr_coord_t *coord)
 	 *	all workers have detached and are no longer using
 	 *	the channel.
 	 */
-	while (likely(!(coord->exiting && (coord->num_workers == 0)))) {
+	while (true) {
+		bool wait_for_events = true;
 		int num_events;
 		fr_time_t now = fr_time();
+
+		/*
+		 *	Check if any coordinator instances report that they have
+		 *	events to process.
+		 */
+		for (i = 0; i < coord->num_callbacks; i++) {
+			cb_inst = coord->cb_inst[i];
+			if (!cb_inst || !cb_inst->event_pre_cb) continue;
+			wait_for_events = (cb_inst->event_pre_cb(now, fr_time_delta_wrap(0), cb_inst->inst_data) == 0);
+			if (!wait_for_events) break;
+		}
+
+		if (wait_for_events) {
+			if (unlikely(coord->exiting) && (coord->num_workers == 0)) break;
+		}
 
 		/*
 		 *	Check the event list.  If there's an error
