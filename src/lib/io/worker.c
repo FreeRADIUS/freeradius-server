@@ -236,6 +236,7 @@ static void worker_requests_cancel(fr_worker_t *worker, fr_worker_channel_t *ch)
 
 	while ((async = fr_dlist_next(&ch->dlist, async)) != NULL) {
 		unlang_interpret_signal(async->request, FR_SIGNAL_CANCEL);
+		async->request->rcode = RLM_MODULE_TIMEOUT;
 		cancelled++;
 	}
 
