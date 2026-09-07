@@ -1518,6 +1518,7 @@ static void test_fr_pair_debug(void)
 	TEST_CHECK(fr_pair_value_strdup(vp, "one", false) == 0);
 
 	TEST_CASE("fr_pair_debug() writes one pair");
+	/* coverity[secure_temp] */
 	TEST_CHECK((fp = tmpfile()) != NULL);
 	if (!fp) return;
 
@@ -1532,6 +1533,7 @@ static void test_fr_pair_debug(void)
 	TEST_CHECK(strstr(buffer, "one") != NULL);
 
 	TEST_CASE("fr_pair_list_debug() writes the whole list");
+	/* coverity[secure_temp] */
 	TEST_CHECK((fp = tmpfile()) != NULL);
 	if (!fp) return;
 
@@ -1627,7 +1629,7 @@ TEST_LIST = {
 	{ "fr_pair_value_memdup_buffer",          test_fr_pair_value_memdup_buffer },
 	{ "fr_pair_value_memdup_shallow",         test_fr_pair_value_memdup_shallow },
 	{ "fr_pair_value_memdup_buffer_shallow",  test_fr_pair_value_memdup_buffer_shallow },
-	
+
 	/* Enum functions */
 	{ "fr_pair_value_enum",                   test_fr_pair_value_enum },
 	{ "fr_pair_value_enum_box",               test_fr_pair_value_enum_box },
