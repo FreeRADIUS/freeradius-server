@@ -56,16 +56,6 @@ include $(TOP)/Make.inc
 #
 COMPILER	:= $(if $(TARGET_CC),$(TARGET_CC),$(CC))
 
-#
-#  The same two variables src/lib/alloc/all.mk sets.  Repeated rather
-#  than included, because all.mk is written for boilermake and does not
-#  stand on its own.
-#
-ifneq "$(WITH_LIBALLOC)" "no"
-FR_ALLOC_DEBUG	:= -DFR_ALLOC_DEBUG=1
-TALLOC_CFLAGS	:= -DTALLOC_EXTENSIONS="'<freeradius-devel/alloc/talloc.h>'" $(FR_ALLOC_DEBUG)
-endif
-
 ALIGNMENT	:= $(call here,scripts/build/alignment.py)
 SIZES		:= $(call here,build/bin/struct_sizes)
 SIZES_SRC	:= $(call here,src/lib/alloc/struct_sizes.c)
