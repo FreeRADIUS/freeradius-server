@@ -1289,7 +1289,7 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 			break;
 
 		case PW_TYPE_INTEGER64:
-			if (src->integer > INT_MAX) {
+			if (src->integer64 > INT_MAX) {
 				fr_strerror_printf("Invalid cast: From integer64 to signed.  integer64 value %" PRIu64
 						   " is larger than max signed int and would overflow", src->integer64);
 				return -1;
