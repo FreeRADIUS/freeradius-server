@@ -638,7 +638,18 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		 *	Detach worker from coordinators.  This needs to be done
 		 *	before the worker is freed.
 		 */
-		modules_rlm_coord_detach();
+		if (modules_rlm_coord_detach() > 0) {
+			/*
+			 *	Run the event loop again to handle coordinator detach
+			 *	messages, with different callbacks to determine when
+			 *	to exit the loop.
+			 */
+			fr_network_close_event_delete(sc->single_network);
+			if (unlikely(fr_coord_close_event_insert(sc->el) < 0)) {
+				ERROR("Failed setting up coordinator close events");
+			}
+			fr_event_loop(sc->el);
+		}
 
 		fr_worker_exit(sc->single_worker);
 		fr_coords_destroy();
