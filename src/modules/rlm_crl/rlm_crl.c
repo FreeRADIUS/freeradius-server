@@ -659,7 +659,7 @@ static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+static int mod_coord_detach(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_crl_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_crl_thread_t);
 
@@ -755,8 +755,8 @@ module_rlm_t rlm_crl = {
 		MODULE_THREAD_INST(rlm_crl_thread_t),
 #ifdef WITH_TLS
 		.thread_instantiate	= mod_thread_instantiate,
-		.thread_detach		= mod_thread_detach,
 		.coord_attach		= mod_coord_attach,
+		.coord_detach		= mod_coord_detach,
 		.bootstrap	= mod_bootstrap,
 		.detach		= mod_detach,
 #endif

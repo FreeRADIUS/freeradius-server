@@ -414,7 +414,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+static int mod_coord_detach(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_rediswho_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rediswho_thread_t);
 
@@ -491,10 +491,10 @@ module_rlm_t rlm_rediswho = {
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate,
 		.coord_attach	= mod_coord_attach,
+		.coord_detach	= mod_coord_detach,
 		.detach		= mod_detach,
 		MODULE_THREAD_INST(rlm_rediswho_thread_t),
 		.thread_instantiate	= mod_thread_instantiate,
-		.thread_detach		= mod_thread_detach,
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){

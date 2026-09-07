@@ -191,7 +191,7 @@ static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
 	return fr_redis_ct_map_bootstrap(t->rtcluster, t->cw, inst->coord_pair_reg);
 }
 
-static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+static int mod_coord_detach(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_cache_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_cache_redis_thread_t);
 
@@ -700,11 +700,11 @@ rlm_cache_driver_t rlm_cache_redis = {
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate,
 		.coord_attach	= mod_coord_attach,
+		.coord_detach	= mod_coord_detach,
 		.detach		= mod_detach,
 		.inst_size	= sizeof(rlm_cache_redis_t),
 		MODULE_THREAD_INST(rlm_cache_redis_thread_t),
 		.thread_instantiate	= mod_thread_instantiate,
-		.thread_detach		= mod_thread_detach,
 		.config		= driver_config,
 	},
 	.free		= cache_entry_free,
