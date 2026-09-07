@@ -94,7 +94,7 @@ static inline fr_slen_t fr_base16_aencode(TALLOC_CTX *ctx, char **out, fr_dbuff_
 
 	slen = fr_base16_encode(&sbuff, in);
 	if (slen < 0) {
-		fr_sbuff_trim_talloc(&sbuff, 0);
+		(void)fr_sbuff_trim_talloc(&sbuff, 0);
 		*out = sbuff.buff;
 		return slen;
 	}
