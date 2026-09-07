@@ -1,92 +1,119 @@
 = MS-CHAP
 
-include::ROOT:partial$v3_warning.adoc[]
-
-The mschap module provides support for `MS-CHAPv1` and `MS-CHAPv2`, which is
-a common authentication mechanisms for Microsoft clients.
-
-If you want to support mschap, there are only 3 possibilities:
-
-[arabic]
-. You have access to the users plaintext password, and you configure
-FreeRADIUS to read this, and set the `Password.Cleartext` control
-attribute.
-. You have access to the NT (MS-CHAPv2) or LM (MS-CHAPv1) hashes, and
-you configure FreeRADIUS to read this and set the Password.NT/LM control
-attribute.
-. You have Samba installed, joined into a windows domain, and use the
-ntlm_auth helper binary to pass authentication onwards to a domain
-controller.
-
-These are the ONLY possibilities; MS-CHAP is IMPOSSIBLE if you e.g. only
-have the unix/md5/sha crypt of your users password.
-
-See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatibility chart] for more information.
+The Microsoft Challenge Handshake Authentication Protocol (MS-CHAP) is a password-based authentication method created by Microsoft. It builds on the original CHAP protocol by adding mutual authentication and stronger encryption. MS-CHAP is often used in EAP-MSCHAPv2, PEAP, and PPP connections. The mods-available/mschap configuration file specifies the parameters used by the MS-CHAP module. FreeRADIUS supports MS-CHAPv1 and MS-CHAPv2 through its `mschap` module. This document explains how to configure and test the MS-CHAP authentication in FreeRADIUS.
 
 == EAP-MSCHAPv2
 
-The EAP module provides MS-CHAPv2 support as well. It simply passes the
-data through to the mschap module, so you must configure mschap
-properly.
+The xref:modules/eap/index.adoc[`eap`] module provides MS-CHAPv2 support as well. It simply passes the data through to the `mschap` module, so you must configure `mschap` module properly.
+
+== MS-CHAP Authentication Flow
+
+The mschap module in FreeRADIUS functions in two phases. First, it identifies the MS-CHAP attributes within an Access-Request to set the authentication type. Then, it performs a challenge-response exchange to verify the client's identity against a database or external source.
+
+*Phase 1*
+
+The initial phase starts when the server receives an Access-Request. The module checks the request for MS-CHAP attributes and sets Auth-Type to mschap if they are present. This action ensures the session will use MS-CHAP authentication. The mschap module uses a challenge-response mechanism, where the server sends a challenge, and the client responds with a calculated value. This exchange helps establish the client's identity and ensures only authorized users can proceed to the next phase.
+
+*Phase 2*
+
+In the second phase, the module retrieves the user's known-good password during the authenticate mschap step. It usually gets this information from another module that manages user credentials, such as files or SQL. Once the password is ready, the mschap module runs MS-CHAP calculations. It checks the user's credentials. This finishes the second phase of authentication.
+
+
+=== MSCHAP Authentication Flow Diagram
+
+image::mschap-flow-basic.svg[MSCHAP Flow, role=thumb]
+
+
+== Authentication Methods
+
+The `mschap` module supports *exactly* three methods of authenticating users:
+
+* *Cleartext password* (local) - FreeRADIUS reads the user's plaintext password and set the `Password.Cleartext` control attribute.
+*  *NT  or LM hashes* - FreeRADIUS reads the NT hash (MS-CHAPv2) or LM hash (MS-CHAPv1) and sets the `Password.NT` or `Password.LM` control attribute.
+* *Samba* - FreeRADIUS passes authentication requests to a Windows domain controller using the Samba `ntlm_auth` helper binary. The clients and server must have joined the domain already.
+
+These are the *only* possibilities. MS-CHAP is *impossible* when only a Unix crypt, MD5, or SHA hash of the password is available. MS-CHAP requires either a cleartext password or an NT/LM hash. No other password storage format is supported.
+
+See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatibility chart] for more information.
+
+=== Winbind
+
+You can connect to the `winbind` daemon using the libwbclient API instead of calling `ntlm_auth`. You need libwbclient from Samba 4.2.1 or later and FreeRADIUS compiled with `winbind` support. Within the `mschap` module, configure the winbind subsection and comment out the ntlm_auth lines.
+
+== Enable mods-available/mschap
+
+The `mschap` module is enabled by default in most installations. To enable it manually, create a soft link from the `mods-enabled/` directory to the `mods-available/` directory:
+
+[source,shell]
+----
+cd raddb/mods-enabled && ln -s ../mods-available/mschap
+----
+
+== Edit mods-available/mschap
+
+The xref:reference:raddb/mods-available/mschap.adoc[mods-available/mschap] module contains several configuration items. Many items are enabled by default, and several may need to be configured depending on your requirements and eco-system.
 
 == ntlm_auth
 
-Method 3 above involves configuring the mschap module to call the Samba
-ntlm_auth helper:
+When authenticating against a Windows domain controller via Samba (Method 3), the `mschap` module calls the Samba `ntlm_auth` helper. The `ntlm_auth` talks to the `winbindd` daemon to pass credentials to the domain controller and retrieve the NT session key.
+
+Before configuring FreeRADIUS to use `ntlm_auth`, ensure that xref:datastores/ad/samba.adoc[Samba] is installed and xref:datastores/ad/ntlm_mschap.adoc[configured] and that the system has xref:datastores/ad/winbind.adoc[joined the Active Directory] domain.
+
+[NOTE]
+====
+The `winbindd` and `nmbd` services must be running on the local machine for `ntlm_auth` to work.
+====
+
+=== Configure ntlm_auth in mods-available/mschap
+
+Uncomment and edit the `ntlm_auth` line in `mods-available/mschap`. Be very careful when editing the `ntlm_auth` line. There are several options for the arguments depending on your local needs. Update the `ntlm_auth` path to match your installation, and leave the argument format intact to avoid authentication failures.
+
+[source,unlang]
+----
+mschap {
+    ntlm_auth = "/path/to/ntlm_auth --request-nt-key --allow-mschapv2 \
+        --username=%{Stripped-User-Name || User-Name || 'None'} \
+        --challenge=%{%mschap('Challenge') || 00} \
+        --nt-response=%{%mschap('NT-Response') || 00}"
+}
+----
+
+The `%mschap('User-Name')` xlat expansion strips the domain prefix or suffix from `User-Name`, which handles clients that send `DOMAIN\user` or `user@domain`.
+
+=== Disable ntlm_auth for specific users
+
+You can have some users authenticate with the domain, while others authenticate locally using methods such as files or SQL. You can disable `ntlm-auth` for specific users so they authenticate locally. To do this, set the control attribute as follows:
 
 ```
-mschap { ntlm_auth = `/path/to/bin ,` }
+control.MS-CHAP-Use-NTLM-Auth := 0
 ```
 
-You need to be careful about setting this command line. There are
-several options for the arguments, in particular username and domain:
+This will disable ntlm_auth for that user or group. If you set this to 0, the `mschap` module will authenticate locally using Password.Cleartext or Password.NT, skipping ntlm_auth. If you set it to Auto, it will use a local password if available, and otherwise fall back to ntlm_auth. It also applies to <<Password changes,Password changes>> (see below).
 
-* `-username=%{User-Name}` - this will fail if you're using realms or
-host-based auth
-* `-username=%mschap(User-Name)` - this will fail if using using suffix
-i.e. user@domain
 
-You'll need to fit this to your local needs.
+== Password Changes
 
-=== Disable ntlm_auth for some users
-
-You might have some users in the domain, and others in files or SQL that
-you want to authenticate locally. To do this, set::
-
-```
-MS-CHAP-Use-NTLM-Auth := 0
-```
-
-This will disable ntlm_auth for that user/group. This is also obeyed for
-password changes (see below).
-
-== Password changes
-
-From FreeRADIUS version 3 the mschap module supports password
-changes.
-
-There are two options, ntlm_auth and local.
+The `mschap` module supports password changes. There are two options: ntlm_auth and local.
 
 === ntlm_auth
 
 If you are using ntlm_auth to check passwords, you must also use
-ntlm_auth to change passwords. In modules/mschap you should configure::
+ntlm_auth to change passwords. In modules/mschap you configure the following:
 
 ```
 mschap {
-  ntlm_auth = ,
   passchange {
-    # path to the binary
-    ntlm_auth = "/path/to/ntlm_auth --helper-protocol=ntlm-change-password-1"
+  # path to the binary
+  ntlm_auth = "/path/to/ntlm_auth --helper-protocol=ntlm-change-password-1"
 
-    # initial data to send
-    # this MUST be supplied
-    ntlm_auth_username = "username: %mschap(User-Name)"
-    ntlm_auth_domain = "nt-domain: %{%mschap(NT-Domain) || 'YOURDOMAIN'}"
+  # initial data to send
+  # this MUST be supplied
+  ntlm_auth_username = "username: %mschap(User-Name)"
+  ntlm_auth_domain = "nt-domain: %{%mschap(NT-Domain) || 'YOURDOMAIN'}"
 
-    # Or, you could try:
-    ntlm_auth_username = "full-username: %{User-Name}"
-    # ntlm_auth_domain - disabled
+  # Or, you could try:
+  ntlm_auth_username = "full-username: %{User-Name}"
+  # ntlm_auth_domain - disabled
   }
 }
 ```
@@ -96,13 +123,16 @@ expired` if the user password is valid but has expired; the mschap
 module will detect this and return error 648 to the client, instructing
 it to try a password change.
 
-Note: if you have disabled ntlm_auth for a user/group, this will apply
+[NOTE]
+====
+If you have disabled ntlm_auth for a user/group, this will apply
 for password changes too - they will fall through to using the Local
 method.
+====
 
 === Local
 
-If you are performing mschap locally with `Password.Cleartext/Password.NT`,
+If you are performing mschap locally with `Password.Cleartext or Password.NT`,
 you can decrypt and process the password change locally.
 To do this, you configure the `local_cpw` string:
 
@@ -137,7 +167,7 @@ mschap {
 }
 ```
 
-,and an example stored procedure for Postgres might be:
+.Example stored procedure for Postgres:
 
 ```
 CREATE FUNCTION change_password(raduser text, ntpassword text) RETURNS
@@ -160,7 +190,7 @@ text LANGUAGE plpgsql AS
 The local_cpw xlat has access to two variables:
 
 * MS-CHAP-New-NT-Password - the new value of Password.NT
-* MS-CHAP-New-Cleartext-PAssword - the new value of Password.Cleartext
+* MS-CHAP-New-Cleartext-Password - the new value of Password.Cleartext
 
 This allows you to do things like::
 
@@ -180,7 +210,7 @@ local_cpw = `%exec('/my/script', %{User-Name}, %{MS-CHAP-New-Cleartext-Password}
 
 [WARNING]
 ====
-Wherever possible, you should use `MS-CHAP-New-NT-Password`. The
+We recommed using the `MS-CHAP-New-NT-Password`. The
 reason is that cleartext passwords have undergone unicode transformation
 from the client encoding (utf-16) to the server encoding (utf-8) and the
 current code does this in a very ad-hoc way. The reverse transformation
@@ -189,25 +219,24 @@ files/database, it assumes US-ASCII and thus international characters
 will fail.
 ====
 
-N.B. this could be fixed, if we wanted to pull in something like iconv.
-
 In addition, you should beware of `Password.Cleartext` when using SQL; any
 password character not in safe_characters will be encoded as a hex
 number, e.g. =20.
 
-== Password changes over EAP
+=== EAP-MSCHAPv2
 
-You must set the following in eap.conf::
+To enable password changes over EAP-MSCHAPv2 (for example, when a user's password has expired), set the following in `mods-available/eap`:
 
-```
+[source,unlang]
+----
 eap {
   mschapv2 {
-    send_error = yes
+      send_error = yes
   }
 }
-```
+----
 
-Otherwise password changes for PEAP/MSCHAPv2 will not work.
+Otherwise password changes for PEAP/MSCHAPv2 will not work. Without this setting, password changes requests for PEAP/MSCHAPv2 are silently dropped and the client is not prompted to set a new password.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
