@@ -1844,6 +1844,14 @@ int fr_network_close_event_insert(fr_network_t *nr)
 	return 0;
 }
 
+/** Remove "close" events from the event loop.
+ */
+void fr_network_close_event_delete(fr_network_t *nr)
+{
+	fr_event_pre_delete(nr->el, fr_network_pre_close_event, nr);
+	fr_event_post_delete(nr->el, fr_network_post_close_event, nr);
+}
+
 /** Stop a network thread in an orderly way
  *
  * @param[in] nr the network to stop

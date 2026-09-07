@@ -80,6 +80,8 @@ int		fr_network_destroy(fr_network_t *nr) CC_HINT(nonnull) CC_HINT(warn_unused_r
 
 int		fr_network_close_event_insert(fr_network_t *nr);
 
+void		fr_network_close_event_delete(fr_network_t *nr);
+
 void		fr_network(fr_network_t *nr) CC_HINT(nonnull);
 
 int		fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats) CC_HINT(nonnull) CC_HINT(warn_unused_result);
