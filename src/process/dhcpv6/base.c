@@ -522,7 +522,7 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
 							       attr_module_failure_message)) &&
 			 (fr_sbuff_in_strcpy_literal(&sbuff, ". ") == 2));
 
-		fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);	/* Fix size */
+		if (unlikely(fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) < 0)) return;	/* Fix size */
 		fr_pair_value_bstrndup_shallow(vp, fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff), false);
 	}
 }
