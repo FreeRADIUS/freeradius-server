@@ -1419,10 +1419,10 @@ static void xlat_safe_for(xlat_exp_head_t *head, fr_value_box_safe_for_t safe_fo
 	xlat_exp_foreach(head, node) {
 		switch (node->type) {
 		case XLAT_BOX:
-			if (node->data.safe_for != safe_for) {
-				ERROR("FAILED %lx %lx - %s", node->data.safe_for, safe_for, node->fmt);
+			if (node->data.vb_safefor != safe_for) {
+				ERROR("FAILED %lx %lx - %s", node->data.vb_safefor, safe_for, node->fmt);
 			}
-			fr_assert(node->data.safe_for == safe_for);
+			fr_assert(node->data.vb_safefor == safe_for);
 			break;
 
 		case XLAT_GROUP:

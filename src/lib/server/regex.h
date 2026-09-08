@@ -40,7 +40,7 @@ extern "C" {
  */
 #  define REQUEST_MAX_REGEX 32
 
-void	regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **regmatch, fr_value_box_t const *in) CC_HINT(nonnull(1));
+void	regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **regmatch, fr_value_box_safety_t const *safety) CC_HINT(nonnull(1));
 
 int	regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *request, uint32_t num) CC_HINT(nonnull);
 

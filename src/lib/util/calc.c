@@ -2371,7 +2371,7 @@ int fr_value_calc_nary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t type, 
 
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&sbuff, 1024, (1 << 16));
 
-		if (fr_value_box_list_concat_as_string(dst, sbuff, UNCONST(fr_value_box_list_t *, &group->vb_group),
+		if (fr_value_box_list_concat_as_string(NULL, sbuff, UNCONST(fr_value_box_list_t *, &group->vb_group),
 						       NULL, 0, NULL, FR_VALUE_BOX_LIST_NONE, FR_VALUE_BOX_SAFE_FOR_ANY, false) < 0) return -1;
 
 		if (fr_value_box_bstrndup(ctx, dst, NULL, fr_sbuff_start(sbuff), fr_sbuff_used(sbuff), false) < 0) return -1;
@@ -2385,7 +2385,7 @@ int fr_value_calc_nary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t type, 
 
 		FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, (1 << 16));
 
-		if (fr_value_box_list_concat_as_octets(dst, dbuff, UNCONST(fr_value_box_list_t *, &group->vb_group), NULL, 0, FR_VALUE_BOX_LIST_NONE, false) < 0) return -1;
+		if (fr_value_box_list_concat_as_octets(NULL, dbuff, UNCONST(fr_value_box_list_t *, &group->vb_group), NULL, 0, FR_VALUE_BOX_LIST_NONE, false) < 0) return -1;
 
 		if (fr_value_box_memdup(ctx, dst, NULL, fr_dbuff_start(dbuff), fr_dbuff_used(dbuff), false) < 0) return -1;
 

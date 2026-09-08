@@ -39,8 +39,7 @@ typedef struct {
 #endif
 	fr_regmatch_t	*regmatch;	//!< Match vectors.
 
-	fr_value_box_safe_for_t	safe_for;
-	bool			secret;
+	fr_value_box_safety_t	safety;		//!< Safety of the subject the captures came from.
 } fr_regcapture_t;
 
 /** Adds subcapture values to request data
@@ -56,9 +55,9 @@ typedef struct {
  *				reparented to the regcapture struct.
  * @param[in,out] regmatch	Pointers into value. May be set to NULL if
  *				reparented to the regcapture struct.
- * @param[in] in		value-box which we matched against
+ * @param[in] safety	of the value which we matched against
  */
-void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **regmatch, fr_value_box_t const *in)
+void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **regmatch, fr_value_box_safety_t const *safety)
 {
 	fr_regcapture_t *old_rc, *new_rc;	/* lldb doesn't like bare new *sigh* */
 
@@ -77,7 +76,7 @@ void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **re
 
 	fr_assert(preg && *preg);
 	fr_assert(regmatch);
-	fr_assert(in);
+	fr_assert(safety);
 
 	DEBUG4("Adding %zu matches", (*regmatch)->used);
 
@@ -102,8 +101,7 @@ void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **re
 	 *	Steal match data
 	 */
 	new_rc->regmatch = talloc_steal(new_rc, *regmatch);
-	new_rc->safe_for = in->safe_for;
-	new_rc->secret = in->secret;
+	new_rc->safety = *safety;
 	*regmatch = NULL;
 
 	request_data_talloc_add(request, request, REQUEST_DATA_REGEX, fr_regcapture_t, new_rc, true, false, false);
@@ -160,8 +158,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *reques
 
 		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
 		fr_value_box_bstrndup_shallow(out, NULL, buff, len, false);
-		fr_value_box_mark_safe_for(out, rc->safe_for);
-		fr_value_box_set_secret(out, rc->secret);
+		fr_value_box_safety_set(out, &rc->safety);
 
 		RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
 		break;
@@ -218,8 +215,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *
 
 		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
 		fr_value_box_bstrndup_shallow(out, NULL, buff, len, false);
-		fr_value_box_mark_safe_for(out, rc->safe_for);
-		fr_value_box_set_secret(out, rc->secret);
+		fr_value_box_safety_set(out, &rc->safety);
 
 		RDEBUG4("Found \"%s\": %pV (%zu)", name, out, out->vb_length);
 		break;
@@ -278,8 +274,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *reques
 
 	fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
 	fr_value_box_bstrndup_shallow(out, NULL, buff, len, false);
-	fr_value_box_mark_safe_for(out, rc->safe_for);
-	fr_value_box_set_secret(out, rc->secret);
+	fr_value_box_safety_set(out, &rc->safety);
 
 	RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
 

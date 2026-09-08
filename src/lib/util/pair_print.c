@@ -273,7 +273,7 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 	FR_SBUFF_RETURN(fr_pair_print_name, &our_out, parent, &vp);
 
 	if (fr_type_is_leaf(vp->vp_type)) {
-		if (!vp->data.secret) {
+		if (!fr_value_box_is_secret(&vp->data)) {
 			FR_SBUFF_RETURN(fr_pair_print_value, &our_out, vp);
 
 		} else {

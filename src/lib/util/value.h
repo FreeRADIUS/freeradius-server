@@ -172,6 +172,22 @@ typedef uintptr_t fr_value_box_safe_for_t;
 #define FR_VALUE_BOX_SAFE_FOR_NONE ((uintptr_t) 0)
 #define FR_VALUE_BOX_SAFE_FOR_ANY (~((uintptr_t) 0))
 
+/** The safety of a value
+ *
+ * Which consumer the value has been escaped for, and whether the value is a secret.
+ * The struct also travels on its own, as the accumulator when the safety of several
+ * boxes is merged into one result.
+ */
+typedef struct {
+	fr_value_box_safe_for_t		safe_for;	//!< A unique value to indicate if that value box is safe
+							///< for consumption by a particular module for a particular
+							///< purpose.  e.g. LDAP, SQL, etc.
+							///< Usually set by the xlat framework on behalf of an xlat
+							///< escaping function, and checked by a #fr_value_box_escape_t
+							///< to see if it needs to operate.
+	unsigned int			secret : 1;	//!< Same as #fr_dict_attr_flags_t secret
+} fr_value_box_safety_t;
+
 /** Union containing all data types supported by the server
  *
  * This union contains all data types that can be represented by fr_pair_ts. It may also be used in other parts
@@ -181,7 +197,7 @@ typedef uintptr_t fr_value_box_safe_for_t;
  *
  * Don't change the order of the fields below without checking that the output of radsize doesn't change.
  *
- * The first few fields (before safe_for) are reused in the #fr_pair_t.  This allows structural
+ * The first few fields (before safety) are reused in the #fr_pair_t.  This allows structural
  * data types to have vp->vp_type, and to also use / set the various flags defined below.  Do NOT
  * change the order of the fields!
  */
@@ -204,18 +220,12 @@ struct value_box_s {
 #endif
 
 	unsigned int   				tainted : 1;		//!< i.e. did it come from an untrusted source
-	unsigned int   				secret : 1;		//!< Same as #fr_dict_attr_flags_t secret
 	unsigned int				immutable : 1;		//!< once set, the value cannot be changed
 	unsigned int				talloced : 1;		//!< Talloced, not stack or text allocated.
 
 	unsigned int				edit : 1;		//!< to control foreach / edits
 
-	fr_value_box_safe_for_t	_CONST		safe_for;		//!< A unique value to indicate if that value box is safe
-									///< for consumption by a particular module for a particular
-									///< purpose.  e.g. LDAP, SQL, etc.
-									///< Usually set by the xlat framework on behalf of an xlat
-									///< escaping function, and checked by a #fr_value_box_escape_t
-									///< to see if it needs to operate.
+	fr_value_box_safety_t	_CONST		safety;			//!< Safety of the value, see #fr_value_box_safety_t.
 
 	/*
 	 *	The fields before this point overlap with #fr_pair_t, so that we can get efficiency in memory
@@ -303,6 +313,8 @@ typedef enum {
 #define vb_time_delta				datum.time_delta
 
 #define vb_length				datum.length
+#define vb_safefor				safety.safe_for
+#define vb_secret				safety.secret
 
 #define vb_cursor				datum.cursor
 #define vb_cursor_name				datum.name
@@ -564,7 +576,7 @@ void _fr_value_box_init(NDEBUG_LOCATION_ARGS fr_value_box_t *vb, fr_type_t type,
 			.type = type,
 			.enumv = enumv,
 			.tainted = tainted,
-			.secret = enumv && enumv->flags.secret,
+			.safety = { .secret = enumv && enumv->flags.secret },
 			/* don't set the immutable flag.  The caller has to do it once he's finished editing the values */
 		}, sizeof(*vb));
 	fr_value_box_list_entry_init(vb);
@@ -1113,19 +1125,20 @@ void		_fr_value_box_mark_safe_for(fr_value_box_t *box, fr_value_box_safe_for_t s
 void		fr_value_box_mark_unsafe(fr_value_box_t *box)
 		CC_HINT(nonnull);
 
-#define		fr_value_box_is_safe_for(_box, _safe_for) (((_box)->safe_for == (fr_value_box_safe_for_t)_safe_for) || ((_box)->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY))
-#define		fr_value_box_is_safe_for_only(_box, _safe_for) ((_box)->safe_for == (fr_value_box_safe_for_t)_safe_for)
+#define		fr_value_box_is_safe_for(_box, _safe_for) (((_box)->vb_safefor == (fr_value_box_safe_for_t)_safe_for) || ((_box)->vb_safefor == FR_VALUE_BOX_SAFE_FOR_ANY))
+#define		fr_value_box_is_safe_for_only(_box, _safe_for) ((_box)->vb_safefor == (fr_value_box_safe_for_t)_safe_for)
 
 void		fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_safe_for_t safe_for);
 
 void		fr_value_box_safety_copy(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
 void		fr_value_box_safety_copy_changed(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
 void		fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
+void		fr_value_box_safety_set(fr_value_box_t *box, fr_value_box_safety_t const *safety) CC_HINT(nonnull);
 
 static inline CC_HINT(nonnull, always_inline)
 bool fr_value_box_is_secret(fr_value_box_t const *box)
 {
-	return box->secret;
+	return box->vb_secret;
 }
 
 static inline CC_HINT(nonnull)
@@ -1133,7 +1146,7 @@ bool fr_value_box_contains_secret(fr_value_box_t const *box)
 {
 	fr_value_box_t const *vb = NULL;
 
-	if (box->secret) return true;
+	if (box->vb_secret) return true;
 	if (box->type == FR_TYPE_GROUP) {
 		while ((vb = fr_value_box_list_next(&box->vb_group, vb))) {
 			if (fr_value_box_contains_secret(vb)) return true;
@@ -1142,11 +1155,7 @@ bool fr_value_box_contains_secret(fr_value_box_t const *box)
 	return false;
 }
 
-static inline CC_HINT(nonnull, always_inline)
-void fr_value_box_set_secret(fr_value_box_t *box, bool secret)
-{
-	box->secret = secret;
-}
+void		fr_value_box_set_secret(fr_value_box_t *box, bool secret) CC_HINT(nonnull);
 
 /** Decide if we need an enum prefix.
  *
@@ -1303,12 +1312,12 @@ fr_slen_t	fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  *
  * @{
  */
-ssize_t 	fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
+ssize_t 	fr_value_box_list_concat_as_string(fr_value_box_safety_t *safety, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   	  char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   	  fr_value_box_list_action_t proc_action, fr_value_box_safe_for_t safe_for, bool flatten)
 		CC_HINT(nonnull(2,3));
 
-ssize_t		fr_value_box_list_concat_as_octets(fr_value_box_t *safety, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+ssize_t		fr_value_box_list_concat_as_octets(fr_value_box_safety_t *safety, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
 						   uint8_t const *sep, size_t sep_len,
 						   fr_value_box_list_action_t proc_action, bool flatten)
 		CC_HINT(nonnull(2,3));

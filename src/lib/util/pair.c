@@ -94,12 +94,12 @@ static int _fr_pair_free(fr_pair_t *vp)
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
 		fr_assert(!vp->vp_edit);
-		if (vp->data.secret) memset_explicit(vp->vp_ptr, 0, vp->vp_length);
+		if (fr_value_box_is_secret(&vp->data)) memset_explicit(vp->vp_ptr, 0, vp->vp_length);
 		break;
 
 	default:
 		fr_assert(!vp->vp_edit);
-		if (vp->data.secret) memset_explicit(&vp->data, 0, sizeof(vp->data));
+		if (fr_value_box_is_secret(&vp->data)) memset_explicit(&vp->data, 0, sizeof(vp->data));
 		break;
 	}
 
@@ -2524,7 +2524,9 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 	/*
 	 *	If either source or destination is secret, then this value is secret.
 	 */
-	dst->data.secret |= src->da->flags.secret | dst->da->flags.secret | src->data.secret;
+	if (src->da->flags.secret || dst->da->flags.secret || fr_value_box_is_secret(&src->data)) {
+		fr_value_box_set_secret(&dst->data, true);
+	}
 #ifdef WITH_VERIFY_PTR
 	dst->data.file = file;
 	dst->data.line = line;
@@ -2572,7 +2574,7 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, size_t inlen,
 				  value, inlen,
 				  uerules) < 0) return -1;
 
-	fr_assert(vp->data.safe_for == FR_VALUE_BOX_SAFE_FOR_NONE);
+	fr_assert(fr_value_box_is_safe_for_only(&vp->data, FR_VALUE_BOX_SAFE_FOR_NONE));
 
 	PAIR_VERIFY(vp);
 

@@ -1431,7 +1431,7 @@ static void test_fr_pair_print_secure(void)
 	TEST_PRINT_PAIR(fr_pair_print_secure, NULL, vp, "Test-String-0 = \"We love testing!\"");
 
 	TEST_CASE("A pair which holds a secret prints a placeholder instead");
-	vp->data.secret = true;
+	fr_value_box_set_secret(&vp->data, true);
 	TEST_PRINT_PAIR(fr_pair_print_secure, NULL, vp, "Test-String-0 = <<< secret >>>");
 
 	talloc_free(vp);
@@ -1466,7 +1466,7 @@ static void test_fr_pair_print_secure_children(void)
 			"Test-TLV-0 = { String = \"one\", String = \"two\" }");
 
 	TEST_CASE("Secrets are hidden inside structural pairs, too");
-	child->data.secret = true;
+	fr_value_box_set_secret(&child->data, true);
 	TEST_PRINT_PAIR(fr_pair_print_secure, NULL, tlv,
 			"Test-TLV-0 = { String = \"one\", String = <<< secret >>> }");
 

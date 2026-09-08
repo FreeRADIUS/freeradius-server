@@ -689,8 +689,8 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	dst->enumv = src->enumv;
 	dst->type = src->type;
 	dst->tainted = src->tainted;
-	dst->safe_for = src->safe_for;
-	dst->secret = src->secret;
+	dst->vb_safefor = src->vb_safefor;
+	dst->vb_secret = src->vb_secret;
 	fr_value_box_list_entry_init(dst);
 
 	/*
@@ -772,7 +772,7 @@ fr_cmp_ret_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	switch (a->type) {
 	case FR_TYPE_VARIABLE_SIZE:
 		/*
-		 *	Note that we do NOT check a->secret or b->secret.  This function is used to sort pairs
+		 *	Note that we do NOT check a->vb_secret or b->vb_secret.  This function is used to sort pairs
 		 *	and sets of value-boxes.  The fr_digest_cmp() function returns 0..255 no matter what
 		 *	the two inputs are.  So it can't be used in a stable sort.
 		 */
@@ -4359,7 +4359,7 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 	switch (data->type) {
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-		if (data->secret) memset_explicit(data->datum.ptr, 0, data->vb_length);
+		if (data->vb_secret) memset_explicit(data->datum.ptr, 0, data->vb_length);
 		talloc_free(data->datum.ptr);
 		break;
 
@@ -6447,7 +6447,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
+ssize_t fr_value_box_list_concat_as_string(fr_value_box_safety_t *safety, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   fr_value_box_list_action_t proc_action, fr_value_box_safe_for_t safe_for, bool flatten)
 {
@@ -6457,7 +6457,7 @@ ssize_t fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *s
 	if (fr_value_box_list_empty(list)) return 0;
 
 	fr_value_box_list_foreach(list, vb) {
-		fr_value_box_safe_for_t box_safe_for = vb->safe_for;
+		fr_value_box_safe_for_t box_safe_for = vb->vb_safefor;
 
 		switch (vb->type) {
 		case FR_TYPE_GROUP:
@@ -6526,8 +6526,7 @@ ssize_t fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *s
 			}
 		}
 
-		safety->tainted |= vb->tainted;
-		safety->secret |= vb->secret;
+		safety->secret |= vb->vb_secret;
 	}
 
 	/*
@@ -6543,6 +6542,8 @@ ssize_t fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *s
 
 	FR_SBUFF_SET_RETURN(sbuff, &our_sbuff);
 }
+
+static void _value_box_safety_merge(fr_value_box_safety_t *out, fr_value_box_safety_t const *in);
 
 /** Concatenate a list of value boxes together
  *
@@ -6563,7 +6564,7 @@ ssize_t fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *s
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_octets(fr_value_box_t *safety, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+ssize_t fr_value_box_list_concat_as_octets(fr_value_box_safety_t *safety, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
 					   uint8_t const *sep, size_t sep_len,
 					   fr_value_box_list_action_t proc_action, bool flatten)
 {
@@ -6625,7 +6626,7 @@ ssize_t fr_value_box_list_concat_as_octets(fr_value_box_t *safety, fr_dbuff_t *d
 			if (slen < 0) goto error;
 		}
 
-		fr_value_box_safety_merge(safety, vb);
+		if (safety) _value_box_safety_merge(safety, &vb->safety);
 	}
 
 	talloc_free(tmp_ctx);
@@ -6724,7 +6725,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 *	Note that we don't convert 'octets' to a printable string
 			 *	here.  Doing so breaks the keyword tests.
 			 */
-			if (fr_value_box_list_concat_as_string(out, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(&out->safety, &sbuff, list,
 							       NULL, 0, NULL,
 							       FR_VALUE_BOX_LIST_REMOVE, FR_VALUE_BOX_SAFE_FOR_ANY, flatten) < 0) {
 				fr_strerror_printf("Concatenation exceeded max_size (%zu)", max_size);
@@ -6747,7 +6748,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			/*
 			 *	Concat the rest of the children...
 			 */
-			if (fr_value_box_list_concat_as_string(out, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(&out->safety, &sbuff, list,
 							       NULL, 0, NULL,
 							       proc_action, FR_VALUE_BOX_SAFE_FOR_ANY, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
@@ -6759,11 +6760,11 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (fr_value_box_list_concat_as_octets(out, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(&out->safety, &dbuff, list,
 							       NULL, 0,
 							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) goto error;
 
-			if (fr_value_box_list_concat_as_octets(out, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(&out->safety, &dbuff, list,
 							       NULL, 0,
 							       proc_action, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
@@ -6791,7 +6792,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	} else {
 		switch (type) {
 		case FR_TYPE_STRING:
-			if (fr_value_box_list_concat_as_string(out, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(&out->safety, &sbuff, list,
 							       NULL, 0, NULL,
 							       proc_action, FR_VALUE_BOX_SAFE_FOR_ANY, flatten) < 0) goto error;
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
@@ -6802,7 +6803,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (fr_value_box_list_concat_as_octets(out, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(&out->safety, &dbuff, list,
 							       NULL, 0,
 							       proc_action, flatten) < 0) goto error;
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
@@ -6868,7 +6869,7 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const
 	/*
 	 *	'1' means that the function mashed the safe_for value, so we don't need to.
 	 */
-	if (!ret) vb->safe_for = escape->safe_for;
+	if (!ret) vb->vb_safefor = escape->safe_for;
 	vb->tainted = false;
 
 	return 0;
@@ -7399,13 +7400,13 @@ void _fr_value_box_mark_safe_for(fr_value_box_t *vb, fr_value_box_safe_for_t saf
 	 *	Don't over-ride value-boxes which are already safe, unless we want to mark them as being
 	 *	completely unsafe.
 	 */
-	if ((vb->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) &&
+	if ((vb->vb_safefor == FR_VALUE_BOX_SAFE_FOR_ANY) &&
 	    (safe_for != FR_VALUE_BOX_SAFE_FOR_NONE)) {
 		fr_assert(!vb->tainted);
 		return;
 	}
 
-	vb->safe_for = safe_for;
+	vb->vb_safefor = safe_for;
 }
 
 /** Mark a value-box as "unsafe"
@@ -7414,7 +7415,7 @@ void _fr_value_box_mark_safe_for(fr_value_box_t *vb, fr_value_box_safe_for_t saf
  */
 void fr_value_box_mark_unsafe(fr_value_box_t *vb)
 {
-	vb->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
+	vb->vb_safefor = FR_VALUE_BOX_SAFE_FOR_NONE;
 }
 
 /** Set the escaped flag for all value boxes in a list
@@ -7430,11 +7431,11 @@ void fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_saf
 		/*
 		 *	Don't over-ride value-boxes which are already safe.
 		 */
-		if (vb->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) {
+		if (vb->vb_safefor == FR_VALUE_BOX_SAFE_FOR_ANY) {
 			fr_assert(!vb->tainted);
 
 		} else {
-			vb->safe_for = safe_for;
+			vb->vb_safefor = safe_for;
 		}
 	}
 }
@@ -7446,9 +7447,9 @@ void fr_value_box_safety_copy(fr_value_box_t *out, fr_value_box_t const *in)
 {
 	if (out == in) return;
 
-	out->safe_for = in->safe_for;
+	out->vb_safefor = in->vb_safefor;
 	out->tainted = in->tainted;
-	out->secret = in->secret;
+	out->vb_secret = in->vb_secret;
 }
 
 /** Copy the safety values from one box to another.
@@ -7457,14 +7458,17 @@ void fr_value_box_safety_copy(fr_value_box_t *out, fr_value_box_t const *in)
  */
 void fr_value_box_safety_copy_changed(fr_value_box_t *out, fr_value_box_t const *in)
 {
-	out->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
+	out->vb_safefor = FR_VALUE_BOX_SAFE_FOR_NONE;
 	out->tainted = in->tainted;
-	out->secret = in->secret;
+	out->vb_secret = in->vb_secret;
 }
 
-/** Merge safety results.
+/** Merge one safety into another
+ *
+ * @param[in,out] out	safety to narrow.
+ * @param[in] in	safety to merge in.
  */
-void fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in)
+static void _value_box_safety_merge(fr_value_box_safety_t *out, fr_value_box_safety_t const *in)
 {
 	if (out == in) return;
 
@@ -7489,8 +7493,38 @@ void fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in)
 		}
 	}
 
-	out->tainted |= in->tainted;
 	out->secret |= in->secret;
+}
+
+/** Merge safety results.
+ */
+void fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in)
+{
+	_value_box_safety_merge(&out->safety, &in->safety);
+	out->tainted |= in->tainted;
+}
+
+/** Replace the safety of a box
+ *
+ * @param[out] box	to update.
+ * @param[in] safety	to copy into the box.
+ */
+void fr_value_box_safety_set(fr_value_box_t *box, fr_value_box_safety_t const *safety)
+{
+	box->safety = *safety;
+}
+
+/** Mark a box as holding a secret, or not
+ *
+ * A structural value has no safety of its own, the children carry theirs.  In a
+ * #fr_pair_t the children list overlays the safety field, so a structural box is
+ * left alone rather than written to.
+ */
+void fr_value_box_set_secret(fr_value_box_t *box, bool secret)
+{
+	if (fr_type_is_structural(box->type)) return;
+
+	box->vb_secret = secret;
 }
 
 
@@ -7592,15 +7626,15 @@ static void _fr_value_box_debug(FILE *fp, fr_value_box_t const *vb, int depth, i
 	if (idx >= 0) {
 		INFO_INDENT("[%d] (%s) %s", idx, fr_type_to_str(vb->type), value);
 		INFO_INDENT("          %s %s %lx%s",
-			    vb->secret ? "s" : "-",
+			    vb->vb_secret ? "s" : "-",
 			    vb->tainted ? "t" : "-",
-			    vb->safe_for, buffer);
+			    vb->vb_safefor, buffer);
 	} else {
 		INFO_INDENT("(%s) %s", fr_type_to_str(vb->type), value);
 		INFO_INDENT("     %s %s %lx%s",
-			    vb->secret ? "s" : "-",
+			    vb->vb_secret ? "s" : "-",
 			    vb->tainted ? "t" : "-",
-			    vb->safe_for, buffer);
+			    vb->vb_safefor, buffer);
 	}
 	talloc_free(value);
 }

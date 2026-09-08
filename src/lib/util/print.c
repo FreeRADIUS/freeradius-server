@@ -685,7 +685,7 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 				 *	string need to occur in the NULL ctx so we don't fragment
 				 *	any pool associated with it.
 				 */
-				if (unlikely(in && in->secret && suppress_secrets)) {
+				if (unlikely(in && fr_value_box_is_secret(in) && suppress_secrets)) {
 					subst = talloc_strdup(NULL, "<<< secret >>>");
 
 				} else if (in) {

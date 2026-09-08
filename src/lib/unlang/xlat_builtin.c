@@ -2304,9 +2304,8 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, SIZE_MAX);
 
 		MEM(dst = fr_value_box_alloc_null(ctx));
-		fr_value_box_mark_safe_for(dst, FR_VALUE_BOX_SAFE_FOR_ANY);
 
-		if (fr_value_box_list_concat_as_string(dst, agg, args, NULL, 0, NULL,
+		if (fr_value_box_list_concat_as_string(NULL, agg, args, NULL, 0, NULL,
 						       FR_VALUE_BOX_LIST_FREE_BOX, FR_VALUE_BOX_SAFE_FOR_ANY, true) < 0) {
 			RPEDEBUG("Failed concatenating string");
 			return XLAT_ACTION_FAIL;
