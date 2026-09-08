@@ -979,20 +979,6 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dcursor_t *cursor, void *t
 	fr_pair_t *vp = to_remove;
 	fr_pair_list_t *parent = fr_pair_parent_list(vp);
 
-#ifndef NDEBUG
-	fr_tlist_head_t *tlist;
-
-	tlist = fr_tlist_head_from_dlist(fr_dcursor_list(cursor));
-
-	while (parent && (tlist != vp->order_entry.entry.list_head)) {
-		tlist = &parent->order.head;
-		parent = fr_pair_parent_list(fr_pair_list_parent(parent));
-	}
-
-	fr_assert(vp->order_entry.entry.list_head == tlist);
-	parent = fr_pair_parent_list(vp);
-#endif
-
 	/*
 	 *	Mark the pair as removed from the list.
 	 */
@@ -1000,7 +986,11 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dcursor_t *cursor, void *t
 
 	PAIR_VERIFY(vp);
 
-	if (&parent->order.head.dlist_head == fr_dcursor_list(cursor)) return 0;
+	/*
+	 *	If the VP is in the cursor, then the cursor code will
+	 *	take care of removing it.
+	 */
+	if (fr_pair_order_list_dlist_head(&parent->order) == fr_dcursor_list(cursor)) return 0;
 
 	fr_pair_remove(parent, vp);
 	return 1;
