@@ -1303,6 +1303,12 @@ cleanup:
 	/*
 	 *	The same clean up sequence as unit_test_module.c
 	 */
+	if (el && (modules_rlm_coord_detach() > 0)) {
+		if (unlikely(fr_coord_close_event_insert(el) < 0)) {
+			ERROR("Failed setting up coordinator close events");
+		}
+		fr_event_loop(el);
+	}
 	talloc_free(thread_ctx);
 	fr_coords_destroy();
 	fr_atexit_thread_trigger_all();
