@@ -2652,9 +2652,10 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 	 *	What we actually want here is the raw string
 	 */
 	case FR_TYPE_OCTETS:
-		fr_value_box_safety_copy(dst, src);
-		return fr_value_box_bstrndup(ctx, dst, dst_enumv,
-					     (char const *)src->vb_octets, src->vb_length, src->tainted);
+		if (fr_value_box_bstrndup(ctx, dst, dst_enumv,
+					  (char const *)src->vb_octets, src->vb_length, src->tainted) < 0) return -1;
+		fr_value_box_safety_copy(dst, src);	/* After bstrndup, which resets the safety */
+		return 0;
 
 	case FR_TYPE_GROUP:
 		return fr_value_box_list_concat_in_place(ctx,
@@ -2711,9 +2712,10 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 *	<string> (excluding terminating \0)
 	 */
 	case FR_TYPE_STRING:
-		fr_value_box_safety_copy(dst, src);
-		return fr_value_box_memdup(ctx, dst, dst_enumv,
-					   (uint8_t const *)src->vb_strvalue, src->vb_length, src->tainted);
+		if (fr_value_box_memdup(ctx, dst, dst_enumv,
+					(uint8_t const *)src->vb_strvalue, src->vb_length, src->tainted) < 0) return -1;
+		fr_value_box_safety_copy(dst, src);	/* After memdup, which resets the safety */
+		return 0;
 
 	case FR_TYPE_GROUP:
 		return fr_value_box_list_concat_in_place(ctx,
