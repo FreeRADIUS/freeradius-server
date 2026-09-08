@@ -40,6 +40,7 @@ services:
     image: ${FREERADIUS_IMAGE}
     environment:
       PROFILING: ${PROFILING:-no}
+      PROFILING_TOOL: ${PROFILING_TOOL:-}
     depends_on:
       openldap:
         condition: service_healthy
@@ -52,6 +53,7 @@ services:
     - ${DATA_PATH}/freeradius/common/proto-load/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
     # Profiling wrapper (no-op in service mode)
     - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
+    - ${DATA_PATH}/start_gperftools_profiling.sh:/etc/freeradius/start_gperftools_profiling.sh
     # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
     - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:/etc/prof-results/
     # Listener directory

@@ -34,7 +34,12 @@ states:
               printf "  MAX_REQUESTS:     %s\n" "$TEST_LOADGEN_MAX_REQUESTS"
 
               if [ "$PROFILING" = "yes" ]; then
-                source /etc/freeradius/start_valgrind_profiling.sh
+                START_SCRIPT="/etc/freeradius/start_$PROFILING_TOOL"_profiling.sh
+                if [ ! -r "$START_SCRIPT" ]; then
+                  echo "Profiling start script not found: $START_SCRIPT"
+                  exit 1
+                fi
+                source "$START_SCRIPT"
               else
                 exec freeradius -f -l stdout -S resources.talloc_skip_cleanup=yes
               fi
