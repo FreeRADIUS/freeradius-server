@@ -257,18 +257,11 @@ This plugin provides Python support for the FreeRADIUS server project.
 Summary: MySQL support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-%if 0%{?rhel} <= 7
-Requires: mysql
-%endif
-%if 0%{?rhel} >= 8 && 0%{?rhel} <= 9
-Requires: mysql-libs
-%endif
-%if 0%{rhel} >= 10
+%if 0%{?rhel} >= 8
 Requires: mariadb-connector-c
-%endif
-%if 0%{rhel} >= 10
 BuildRequires: mariadb-connector-c-devel
 %else
+Requires: mysql
 BuildRequires: mysql-devel
 %endif
 
