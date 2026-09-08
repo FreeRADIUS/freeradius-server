@@ -6521,7 +6521,7 @@ ssize_t fr_value_box_list_concat_as_string(fr_value_box_safety_t *safety, fr_sbu
 		    (safety->safe_for != box_safe_for)) {
 			if (safety->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) {
 				safety->safe_for = box_safe_for;
-			} else {
+			} else if (box_safe_for != FR_VALUE_BOX_SAFE_FOR_ANY) {
 				safety->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
 			}
 		}
@@ -6678,6 +6678,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	fr_value_box_t			*head_vb = fr_value_box_list_head(list);
 
 	fr_value_box_entry_t		entry;
+	fr_value_box_safety_t		safety = { .safe_for = FR_VALUE_BOX_SAFE_FOR_ANY };	/* Merged safety of every box, applied to out at the end */
 
 	if (fr_value_box_list_empty(list)) {
 		fr_strerror_const("Invalid arguments.  List contains no elements");
@@ -6689,6 +6690,12 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	 *	out points at that box.
 	 */
 	if ((fr_value_box_list_num_elements(list) == 1) && (head_vb == out) && (head_vb->type == type)) return 0;
+
+	/*
+	 *	The accumulator starts as "safe for anything", the identity for the merge,
+	 *	and each box narrows it.  The constructor below re-initialises out, so the
+	 *	merged safety is applied to out afterwards.
+	 */
 
 	switch (type) {
 	case FR_TYPE_STRING:
@@ -6725,7 +6732,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 *	Note that we don't convert 'octets' to a printable string
 			 *	here.  Doing so breaks the keyword tests.
 			 */
-			if (fr_value_box_list_concat_as_string(&out->safety, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(&safety, &sbuff, list,
 							       NULL, 0, NULL,
 							       FR_VALUE_BOX_LIST_REMOVE, FR_VALUE_BOX_SAFE_FOR_ANY, flatten) < 0) {
 				fr_strerror_printf("Concatenation exceeded max_size (%zu)", max_size);
@@ -6748,7 +6755,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			/*
 			 *	Concat the rest of the children...
 			 */
-			if (fr_value_box_list_concat_as_string(&out->safety, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(&safety, &sbuff, list,
 							       NULL, 0, NULL,
 							       proc_action, FR_VALUE_BOX_SAFE_FOR_ANY, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
@@ -6757,14 +6764,15 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
 			if (fr_value_box_bstrndup(ctx, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), out->tainted) < 0) goto error;
+			fr_value_box_safety_set(out, &safety);
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (fr_value_box_list_concat_as_octets(&out->safety, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(&safety, &dbuff, list,
 							       NULL, 0,
 							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) goto error;
 
-			if (fr_value_box_list_concat_as_octets(&out->safety, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(&safety, &dbuff, list,
 							       NULL, 0,
 							       proc_action, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
@@ -6773,6 +6781,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
 			if (fr_value_box_memdup(ctx, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), out->tainted) < 0) goto error;
+			fr_value_box_safety_set(out, &safety);
 			break;
 
 		default:
@@ -6792,7 +6801,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	} else {
 		switch (type) {
 		case FR_TYPE_STRING:
-			if (fr_value_box_list_concat_as_string(&out->safety, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(&safety, &sbuff, list,
 							       NULL, 0, NULL,
 							       proc_action, FR_VALUE_BOX_SAFE_FOR_ANY, flatten) < 0) goto error;
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
@@ -6800,10 +6809,11 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			entry = out->entry;
 			if (fr_value_box_bstrndup(ctx, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), out->tainted) < 0) goto error;
 			out->entry = entry;
+			fr_value_box_safety_set(out, &safety);
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (fr_value_box_list_concat_as_octets(&out->safety, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(&safety, &dbuff, list,
 							       NULL, 0,
 							       proc_action, flatten) < 0) goto error;
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
@@ -6811,6 +6821,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			entry = out->entry;
 			if (fr_value_box_memdup(ctx, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), out->tainted) < 0) goto error;
 			out->entry = entry;
+			fr_value_box_safety_set(out, &safety);
 			break;
 
 		default:
@@ -7482,13 +7493,16 @@ static void _value_box_safety_merge(fr_value_box_safety_t *out, fr_value_box_saf
 		/*
 		 *	If the output is anything, then the input is more restrictive, so we switch to that.
 		 *
+		 *	If the input is anything, then the output is already the more restrictive of the
+		 *	two, so we leave it alone.
+		 *
 		 *	Otherwise the values are different.  Either it's X/Y, or NONE/X, or X/NONE.  In which
 		 *	case the answer is always NONE.
 		 */
 		if (out->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) {
 			out->safe_for = in->safe_for;
 
-		} else {
+		} else if (in->safe_for != FR_VALUE_BOX_SAFE_FOR_ANY) {
 			out->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
 		}
 	}
@@ -7525,6 +7539,40 @@ void fr_value_box_set_secret(fr_value_box_t *box, bool secret)
 	if (fr_type_is_structural(box->type)) return;
 
 	box->vb_secret = secret;
+}
+
+/** Merge the safety of every leaf box in a list into out
+ *
+ * Recurses into group boxes, which carry no safety of their own.
+ */
+static void _value_box_list_safety_merge(fr_value_box_t *out, fr_value_box_list_t const *list)
+{
+	fr_value_box_list_foreach(list, vb) {
+		if (fr_type_is_group(vb->type)) {
+			_value_box_list_safety_merge(out, &vb->vb_group);
+			continue;
+		}
+
+		fr_value_box_safety_merge(out, vb);
+	}
+}
+
+/** Set the safety of out to the most restrictive safety of any leaf box in a list
+ *
+ * Use when a value is built from several boxes without going through
+ * #fr_value_box_list_concat_in_place, e.g. when a separator is inserted between them.
+ * A box safe for consumer X, joined with a box safe for X or for anything, is still
+ * safe for X.  Any other combination is safe for nothing.
+ *
+ * @param[out] out	Box whose safety is replaced.  Its value is left alone.
+ * @param[in] list	Boxes to merge.  Group boxes are descended into.
+ */
+void fr_value_box_list_safety_merge(fr_value_box_t *out, fr_value_box_list_t const *list)
+{
+	out->vb_safefor = FR_VALUE_BOX_SAFE_FOR_ANY;
+	out->vb_secret = false;
+
+	_value_box_list_safety_merge(out, list);
 }
 
 

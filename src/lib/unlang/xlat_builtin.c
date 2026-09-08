@@ -2297,7 +2297,8 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (type == FR_TYPE_STRING) {
 		fr_sbuff_t *agg;
-		fr_value_box_t *dst;
+		fr_value_box_t		*dst;
+		fr_value_box_safety_t	safety = { .safe_for = FR_VALUE_BOX_SAFE_FOR_ANY };
 
 		talloc_free(name);
 
@@ -2305,13 +2306,14 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		MEM(dst = fr_value_box_alloc_null(ctx));
 
-		if (fr_value_box_list_concat_as_string(NULL, agg, args, NULL, 0, NULL,
+		if (fr_value_box_list_concat_as_string(&safety, agg, args, NULL, 0, NULL,
 						       FR_VALUE_BOX_LIST_FREE_BOX, FR_VALUE_BOX_SAFE_FOR_ANY, true) < 0) {
 			RPEDEBUG("Failed concatenating string");
 			return XLAT_ACTION_FAIL;
 		}
 
 		fr_value_box_bstrndup(dst, dst, NULL, fr_sbuff_start(agg), fr_sbuff_used(agg), false);
+		fr_value_box_safety_set(dst, &safety);
 		fr_dcursor_append(out, dst);
 		VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)fr_dcursor_list(out));
 

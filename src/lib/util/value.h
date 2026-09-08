@@ -1134,6 +1134,7 @@ void		fr_value_box_safety_copy(fr_value_box_t *out, fr_value_box_t const *in) CC
 void		fr_value_box_safety_copy_changed(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
 void		fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
 void		fr_value_box_safety_set(fr_value_box_t *box, fr_value_box_safety_t const *safety) CC_HINT(nonnull);
+void		fr_value_box_list_safety_merge(fr_value_box_t *out, fr_value_box_list_t const *list) CC_HINT(nonnull);
 
 static inline CC_HINT(nonnull, always_inline)
 bool fr_value_box_is_secret(fr_value_box_t const *box)

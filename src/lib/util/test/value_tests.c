@@ -448,6 +448,222 @@ static void test_copy_preserves_tainted(void)
 }
 
 /*
+ *	Safety (safe_for) propagation tests
+ *
+ *	Tokens standing in for two different consumers.  Any two distinct values other
+ *	than FR_VALUE_BOX_SAFE_FOR_NONE and FR_VALUE_BOX_SAFE_FOR_ANY will do.
+ */
+#define SAFE_FOR_X	((fr_value_box_safe_for_t) 0x1000)
+#define SAFE_FOR_Y	((fr_value_box_safe_for_t) 0x2000)
+
+static void test_copy_preserves_safe_for(void)
+{
+	fr_value_box_t src, dst;
+
+	fr_value_box_strdup(autofree, &src, NULL, "copy me", false);
+	fr_value_box_mark_safe_for(&src, SAFE_FOR_X);
+	fr_value_box_init_null(&dst);
+
+	TEST_CHECK(fr_value_box_copy(autofree, &dst, &src) == 0);
+	TEST_CHECK(fr_value_box_is_safe_for_only(&dst, SAFE_FOR_X));
+
+	fr_value_box_clear(&src);
+	fr_value_box_clear(&dst);
+}
+
+static void test_cast_octets_to_string_preserves_safe_for(void)
+{
+	fr_value_box_t src, dst;
+
+	fr_value_box_memdup(autofree, &src, NULL, (uint8_t const *) "abc", 3, false);
+	fr_value_box_mark_safe_for(&src, SAFE_FOR_X);
+	fr_value_box_init_null(&dst);
+
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_STRING, NULL, &src) == 0);
+	TEST_CHECK(dst.type == FR_TYPE_STRING);
+	TEST_CHECK(fr_value_box_is_safe_for_only(&dst, SAFE_FOR_X));
+	TEST_MSG("Expected safe_for %#lx, got %#lx", (unsigned long) SAFE_FOR_X, (unsigned long) dst.vb_safefor);
+
+	fr_value_box_clear(&src);
+	fr_value_box_clear(&dst);
+}
+
+static void test_cast_string_to_octets_preserves_safe_for(void)
+{
+	fr_value_box_t src, dst;
+
+	fr_value_box_strdup(autofree, &src, NULL, "abc", false);
+	fr_value_box_mark_safe_for(&src, SAFE_FOR_X);
+	fr_value_box_init_null(&dst);
+
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_OCTETS, NULL, &src) == 0);
+	TEST_CHECK(dst.type == FR_TYPE_OCTETS);
+	TEST_CHECK(fr_value_box_is_safe_for_only(&dst, SAFE_FOR_X));
+	TEST_MSG("Expected safe_for %#lx, got %#lx", (unsigned long) SAFE_FOR_X, (unsigned long) dst.vb_safefor);
+
+	fr_value_box_clear(&src);
+	fr_value_box_clear(&dst);
+}
+
+static void test_cast_uint32_to_string_clears_safe_for(void)
+{
+	fr_value_box_t src, dst;
+
+	fr_value_box(&src, (uint32_t) 12345, false);
+	fr_value_box_mark_safe_for(&src, SAFE_FOR_X);
+	fr_value_box_init_null(&dst);
+
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_STRING, NULL, &src) == 0);
+	TEST_CHECK(dst.type == FR_TYPE_STRING);
+	TEST_CHECK(dst.vb_safefor == FR_VALUE_BOX_SAFE_FOR_NONE);
+	TEST_MSG("Expected safe_for NONE, got %#lx", (unsigned long) dst.vb_safefor);
+
+	fr_value_box_clear(&dst);
+}
+
+/** Build a list of single character string boxes, each marked with the matching token
+ */
+static void safe_for_list_build(fr_value_box_list_t *list, fr_value_box_safe_for_t const tokens[], size_t num)
+{
+	size_t i;
+
+	fr_value_box_list_init(list);
+	for (i = 0; i < num; i++) {
+		fr_value_box_t *vb;
+
+		vb = fr_value_box_alloc(autofree, FR_TYPE_STRING, NULL);
+		TEST_ASSERT(vb != NULL);
+		TEST_ASSERT(fr_value_box_strdup(vb, vb, NULL, "x", false) == 0);
+		fr_value_box_mark_safe_for(vb, tokens[i]);
+		fr_value_box_list_insert_tail(list, vb);
+	}
+}
+
+/** Concatenate a list into a separate output box and check the resulting safe_for
+ */
+static void safe_for_concat_check(fr_type_t type, fr_value_box_safe_for_t const tokens[], size_t num,
+				  fr_value_box_safe_for_t expect)
+{
+	fr_value_box_list_t	list;
+	fr_value_box_t		out;
+
+	safe_for_list_build(&list, tokens, num);
+	fr_value_box_init_null(&out);
+
+	TEST_CHECK(fr_value_box_list_concat_in_place(autofree, &out, &list, type,
+						     FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) == 0);
+	TEST_CHECK(out.type == type);
+	TEST_CHECK(out.vb_length == num);
+	TEST_CHECK(out.vb_safefor == expect);
+	TEST_MSG("Expected safe_for %#lx, got %#lx", (unsigned long) expect, (unsigned long) out.vb_safefor);
+
+	fr_value_box_clear(&out);
+}
+
+static void test_concat_any_any_is_any(void)
+{
+	fr_value_box_safe_for_t const tokens[] = { FR_VALUE_BOX_SAFE_FOR_ANY, FR_VALUE_BOX_SAFE_FOR_ANY };
+
+	safe_for_concat_check(FR_TYPE_STRING, tokens, NUM_ELEMENTS(tokens), FR_VALUE_BOX_SAFE_FOR_ANY);
+}
+
+static void test_concat_x_x_is_x(void)
+{
+	fr_value_box_safe_for_t const tokens[] = { SAFE_FOR_X, SAFE_FOR_X };
+
+	safe_for_concat_check(FR_TYPE_STRING, tokens, NUM_ELEMENTS(tokens), SAFE_FOR_X);
+}
+
+static void test_concat_x_any_is_x(void)
+{
+	fr_value_box_safe_for_t const tokens[] = { SAFE_FOR_X, FR_VALUE_BOX_SAFE_FOR_ANY };
+
+	safe_for_concat_check(FR_TYPE_STRING, tokens, NUM_ELEMENTS(tokens), SAFE_FOR_X);
+}
+
+static void test_concat_any_x_is_x(void)
+{
+	fr_value_box_safe_for_t const tokens[] = { FR_VALUE_BOX_SAFE_FOR_ANY, SAFE_FOR_X };
+
+	safe_for_concat_check(FR_TYPE_STRING, tokens, NUM_ELEMENTS(tokens), SAFE_FOR_X);
+}
+
+static void test_concat_x_y_is_none(void)
+{
+	fr_value_box_safe_for_t const tokens[] = { SAFE_FOR_X, SAFE_FOR_Y };
+
+	safe_for_concat_check(FR_TYPE_STRING, tokens, NUM_ELEMENTS(tokens), FR_VALUE_BOX_SAFE_FOR_NONE);
+}
+
+static void test_concat_x_none_is_none(void)
+{
+	fr_value_box_safe_for_t const tokens[] = { SAFE_FOR_X, FR_VALUE_BOX_SAFE_FOR_NONE };
+
+	safe_for_concat_check(FR_TYPE_STRING, tokens, NUM_ELEMENTS(tokens), FR_VALUE_BOX_SAFE_FOR_NONE);
+}
+
+static void test_concat_octets_x_x_is_x(void)
+{
+	fr_value_box_safe_for_t const tokens[] = { SAFE_FOR_X, SAFE_FOR_X };
+
+	safe_for_concat_check(FR_TYPE_OCTETS, tokens, NUM_ELEMENTS(tokens), SAFE_FOR_X);
+}
+
+/** The list head doubles as the output box
+ */
+static void test_concat_into_head_x_x_is_x(void)
+{
+	fr_value_box_safe_for_t const	tokens[] = { SAFE_FOR_X, SAFE_FOR_X };
+	fr_value_box_list_t		list;
+	fr_value_box_t			*head;
+
+	safe_for_list_build(&list, tokens, NUM_ELEMENTS(tokens));
+	head = fr_value_box_list_head(&list);
+
+	TEST_CHECK(fr_value_box_list_concat_in_place(autofree, head, &list, FR_TYPE_STRING,
+						     FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) == 0);
+	TEST_CHECK(head->vb_length == 2);
+	TEST_CHECK(fr_value_box_is_safe_for_only(head, SAFE_FOR_X));
+	TEST_MSG("Expected safe_for %#lx, got %#lx", (unsigned long) SAFE_FOR_X, (unsigned long) head->vb_safefor);
+
+	fr_value_box_list_talloc_free(&list);
+}
+
+static void test_list_safety_merge(void)
+{
+	fr_value_box_safe_for_t const	x_any[] = { SAFE_FOR_X, FR_VALUE_BOX_SAFE_FOR_ANY };
+	fr_value_box_safe_for_t const	x_y[] = { SAFE_FOR_X, SAFE_FOR_Y };
+	fr_value_box_safe_for_t const	x_only[] = { SAFE_FOR_X };
+	fr_value_box_list_t		list;
+	fr_value_box_t			out, *group;
+
+	TEST_CASE("X and ANY merge to X");
+	safe_for_list_build(&list, x_any, NUM_ELEMENTS(x_any));
+	fr_value_box_init_null(&out);
+	fr_value_box_list_safety_merge(&out, &list);
+	TEST_CHECK(fr_value_box_is_safe_for_only(&out, SAFE_FOR_X));
+	fr_value_box_list_talloc_free(&list);
+
+	TEST_CASE("X and Y merge to NONE");
+	safe_for_list_build(&list, x_y, NUM_ELEMENTS(x_y));
+	fr_value_box_init_null(&out);
+	fr_value_box_list_safety_merge(&out, &list);
+	TEST_CHECK(out.vb_safefor == FR_VALUE_BOX_SAFE_FOR_NONE);
+	fr_value_box_list_talloc_free(&list);
+
+	TEST_CASE("Group children are merged, the group box itself is not");
+	fr_value_box_list_init(&list);
+	group = fr_value_box_alloc(autofree, FR_TYPE_GROUP, NULL);
+	TEST_ASSERT(group != NULL);
+	safe_for_list_build(&group->vb_group, x_only, NUM_ELEMENTS(x_only));
+	fr_value_box_list_insert_tail(&list, group);
+	fr_value_box_init_null(&out);
+	fr_value_box_list_safety_merge(&out, &list);
+	TEST_CHECK(fr_value_box_is_safe_for_only(&out, SAFE_FOR_X));
+	fr_value_box_list_talloc_free(&list);
+}
+
+/*
  *	String operations
  */
 static void test_strdup(void)
@@ -1172,6 +1388,21 @@ TEST_LIST = {
 	{ "copy_string",			test_copy_string },
 	{ "copy_octets",			test_copy_octets },
 	{ "copy_preserves_tainted",		test_copy_preserves_tainted },
+
+	/* Safety propagation */
+	{ "copy_preserves_safe_for",		test_copy_preserves_safe_for },
+	{ "cast_octets_to_string_preserves_safe_for",	test_cast_octets_to_string_preserves_safe_for },
+	{ "cast_string_to_octets_preserves_safe_for",	test_cast_string_to_octets_preserves_safe_for },
+	{ "cast_uint32_to_string_clears_safe_for",	test_cast_uint32_to_string_clears_safe_for },
+	{ "concat_any_any_is_any",		test_concat_any_any_is_any },
+	{ "concat_x_x_is_x",			test_concat_x_x_is_x },
+	{ "concat_x_any_is_x",			test_concat_x_any_is_x },
+	{ "concat_any_x_is_x",			test_concat_any_x_is_x },
+	{ "concat_x_y_is_none",			test_concat_x_y_is_none },
+	{ "concat_x_none_is_none",		test_concat_x_none_is_none },
+	{ "concat_octets_x_x_is_x",		test_concat_octets_x_x_is_x },
+	{ "concat_into_head_x_x_is_x",		test_concat_into_head_x_x_is_x },
+	{ "list_safety_merge",			test_list_safety_merge },
 
 	/* String operations */
 	{ "strdup",				test_strdup },
