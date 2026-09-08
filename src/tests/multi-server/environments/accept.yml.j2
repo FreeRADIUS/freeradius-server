@@ -6,7 +6,7 @@
 #   Same compose serves both service and profiling modes. In profiling
 #   mode the make recipe sets FREERADIUS_IMAGE=freeradius4-profiling/<image>:<sha>
 #   and PROFILING=yes; the test template branches on $PROFILING and
-#   either exec's freeradius directly or sources the valgrind wrapper.
+#   either exec's freeradius directly or sources the wrapper for $PROFILING_TOOL.
 # ---------------------------------------------------------------
 x-common-config: &id001
   cap_add:
@@ -20,6 +20,7 @@ services:
     image: ${FREERADIUS_IMAGE}
     environment:
       PROFILING: ${PROFILING:-no}
+      PROFILING_TOOL: ${PROFILING_TOOL:-}
     volumes:
     # freeradius server config
     - ${DATA_PATH}/freeradius/accept/radiusd.conf:/etc/freeradius/radiusd.conf
@@ -29,6 +30,7 @@ services:
     - ${DATA_PATH}/freeradius/common/proto-load/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
     # Profiling wrapper (no-op in service mode)
     - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
+    - ${DATA_PATH}/start_gperftools_profiling.sh:/etc/freeradius/start_gperftools_profiling.sh
     # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
     - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:/etc/prof-results/
     # Listener directory
