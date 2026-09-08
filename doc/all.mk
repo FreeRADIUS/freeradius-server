@@ -226,7 +226,9 @@ $(DOC_RADDB)/radrelay.conf.adoc: raddb/radrelay.conf.in
 #  Simple rule for lazy people.
 #
 .PHONY: doc.raddb
-doc.raddb: $(patsubst raddb/%,$(DOC_RADDB)/%.adoc,$(CONF_FILES))
+doc.raddb: $(patsubst raddb/%,$(DOC_RADDB)/%.adoc,$(CONF_FILES)) \
+		$(DOC_RADDB)/radiusd.conf.adoc \
+		$(DOC_RADDB)/radrelay.conf.adoc
 
 #
 #  Remove the generated raddb files, so that we can forcibly regenerate them.
