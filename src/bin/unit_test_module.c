@@ -1259,6 +1259,19 @@ cleanup:
 	}
 #endif
 
+	/*
+	 *	Detach from coordinators.
+	 */
+	if (el && (modules_rlm_coord_detach() > 0)) {
+		/*
+		 *	Run the event loop to handle coordinator detach messages.
+		 */
+		if (unlikely(fr_coord_close_event_insert(el) < 0)) {
+			ERROR("Failed setting up coordinator close events");
+		}
+		fr_event_loop(el);
+	}
+
 	map_proc_unregister("test-fail");
 
 	/*
