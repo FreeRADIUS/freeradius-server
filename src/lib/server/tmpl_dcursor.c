@@ -106,7 +106,7 @@ void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 	 *	Iterates over all attributes at this level
 	 */
 	} else if (ar_is_unspecified(ar)) {
-		fr_dcursor_init(&ns->cursor, fr_pair_list_to_dlist(list));
+		fr_pair_dcursor_init(&ns->cursor, list);
 	} else {
 		fr_assert_msg(0, "Invalid attr reference type");
 	}
