@@ -20,7 +20,6 @@ jobs:
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
           - { NAME: "ubuntu-24.04", OS: "ubuntu:24.04" }
           - { NAME: "ubuntu-26.04", OS: "ubuntu:26.04" }
-          - { NAME: "debian-11",    OS: "debian:bullseye" }
           - { NAME: "debian-12",    OS: "debian:bookworm" }
           - { NAME: "debian-13",    OS: "debian:trixie" }
           - { NAME: "debian-sid",   OS: "debian:sid" }
@@ -145,7 +144,6 @@ jobs:
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
           - { NAME: "ubuntu-24.04", OS: "ubuntu:24.04" }
           - { NAME: "ubuntu-26.04", OS: "ubuntu:26.04" }
-          - { NAME: "debian-11", OS: "debian:bullseye" }
           - { NAME: "debian-12", OS: "debian:bookworm" }
           - { NAME: "debian-13", OS: "debian:trixie" }
           - { NAME: "debian-sid", OS: "debian:sid" }
