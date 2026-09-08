@@ -1161,6 +1161,10 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program, unsign
 			if ((fault_signals & (1UL << SIGSEGV)) &&
 			    (fr_set_signal(SIGSEGV, fr_fault) < 0)) return -1;
 #endif
+#ifdef SIGBUS
+			if ((fault_signals & (1UL << SIGBUS)) &&
+			    (fr_set_signal(SIGBUS, fr_fault) < 0)) return -1;
+#endif
 #ifdef SIGALRM
 			/*
 			 *  Used by jlibtool to terminate processes

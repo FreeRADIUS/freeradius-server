@@ -119,6 +119,11 @@ void			fr_disable_null_tracking_on_free(TALLOC_CTX *ctx);
 #else
 #  define _PANIC_ACTION_SIGSEGV	0
 #endif
+#ifdef SIGBUS
+#  define _PANIC_ACTION_SIGBUS	(1UL << SIGBUS)
+#else
+#  define _PANIC_ACTION_SIGBUS	0
+#endif
 #ifdef SIGALRM
 #  define _PANIC_ACTION_SIGALRM	(1UL << SIGALRM)
 #else
@@ -127,7 +132,7 @@ void			fr_disable_null_tracking_on_free(TALLOC_CTX *ctx);
 
 #define PANIC_ACTION_SIGNALS	(_PANIC_ACTION_SIGABRT | _PANIC_ACTION_SIGILL | \
 				 _PANIC_ACTION_SIGFPE | _PANIC_ACTION_SIGSEGV | \
-				 _PANIC_ACTION_SIGALRM)
+				 _PANIC_ACTION_SIGBUS | _PANIC_ACTION_SIGALRM)
 
 int			fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program,
 				       unsigned long fault_signals);
