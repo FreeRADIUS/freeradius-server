@@ -55,6 +55,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/finally.h>
 #include <freeradius-devel/util/minmax_heap.h>
 #include <freeradius-devel/util/timer.h>
 
@@ -235,6 +236,7 @@ static void worker_requests_cancel(fr_worker_t *worker, fr_worker_channel_t *ch)
 	int cancelled = 0;
 
 	while ((async = fr_dlist_next(&ch->dlist, async)) != NULL) {
+		if (unlang_finally_entered(async->request)) continue;
 		unlang_interpret_signal(async->request, FR_SIGNAL_CANCEL);
 		async->request->rcode = RLM_MODULE_TIMEOUT;
 		cancelled++;

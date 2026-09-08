@@ -37,6 +37,7 @@ typedef struct {
 	unlang_result_t				result;		//!< Result of the finally instruction.  We discard this.
 	rlm_rcode_t				original_rcode;	//!< The original request rcode when we entered.
 	unlang_t				*instruction;	//!< to run on timeout
+	bool					entered;	//!< Have we entered finally?
 } unlang_frame_state_finally_t;
 
 static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
@@ -72,6 +73,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 	unlang_frame_state_finally_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_finally_t);
 
 	state->original_rcode = request->rcode;
+	state->entered = true;
 
 	/*
 	 *	Ensure the request has at least min_time to continue
@@ -184,4 +186,23 @@ void unlang_finally_init(void)
 			.frame_state_size = sizeof(unlang_frame_state_finally_t),
 			.frame_state_type = "unlang_frame_state_finally_t",
 		});
+}
+
+bool unlang_finally_entered(request_t *request) {
+	unlang_stack_t	*stack = request->stack;
+	int		i;
+
+	/*
+	 *	Check if we're in a finally section which should not be
+	 *	cancelled during shutdown.
+	 */
+	for (i = stack->depth; i >= 1; i--) {
+		if (stack->frame[i].instruction->type == UNLANG_TYPE_FINALLY) {
+			unlang_frame_state_finally_t *state = talloc_get_type_abort(stack->frame[i].state,
+										    unlang_frame_state_finally_t);
+			return state->entered;
+		}
+	}
+
+	return false;
 }

@@ -31,6 +31,8 @@ extern "C" {
 
 int unlang_finally_push_instruction(request_t *request, void *instruction, fr_time_delta_t min_time, bool top_frame);
 
+bool unlang_finally_entered(request_t *request);
+
 #ifdef __cplusplus
 }
 #endif
