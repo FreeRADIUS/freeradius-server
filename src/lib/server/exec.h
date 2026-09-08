@@ -97,6 +97,8 @@ typedef struct {
 int	fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx,
 				       char ***argv_p, fr_value_box_list_t const *in);
 
+#define FR_EXEC_SAFE_FOR ((fr_value_box_safe_for_t) fr_exec_value_box_list_to_argv)
+
 char	**fr_exec_pair_to_env(request_t *request, fr_pair_list_t *env_pairs, bool env_escape);
 
 int	fr_exec_fork_nowait(fr_event_list_t *el,

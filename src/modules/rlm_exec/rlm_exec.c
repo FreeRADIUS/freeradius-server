@@ -68,7 +68,8 @@ typedef struct {
 static const call_env_method_t exec_method_env = {
 	FR_CALL_ENV_METHOD_OUT(exec_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("program", FR_TYPE_STRING, CALL_ENV_FLAG_FORCE_QUOTE, exec_call_env_t, program), .pair.dflt_quote = T_BACK_QUOTED_STRING },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("program", FR_TYPE_STRING, CALL_ENV_FLAG_FORCE_QUOTE, exec_call_env_t, program),
+		  .pair.dflt_quote = T_BACK_QUOTED_STRING, .pair.literals_safe_for = FR_EXEC_SAFE_FOR },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -116,7 +117,7 @@ static xlat_action_t exec_xlat_oneshot_wait_resume(TALLOC_CTX *ctx, fr_dcursor_t
 }
 
 static xlat_arg_parser_t const exec_xlat_args[] = {
-	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING, .safe_for = FR_EXEC_SAFE_FOR },	/* Literal program names are safe to run */
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID},
 	XLAT_ARG_PARSER_TERMINATOR
 };

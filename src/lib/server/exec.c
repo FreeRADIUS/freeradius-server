@@ -54,8 +54,9 @@ int fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 	fr_value_box_t const	*first;
 
 	/*
-	 *	Check that we're not trying to run a program from
-	 *	a tainted source.
+	 *	Only run a program named by a policy literal, or by a value which
+	 *	has been marked safe for exec.  A value from the network, or a
+	 *	string assembled from one, is safe for nothing.
 	 */
 	first = fr_value_box_list_head(in);
 	if (!first) {
@@ -65,8 +66,8 @@ int fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 	}
 	if (first->type == FR_TYPE_GROUP) first = fr_value_box_list_head(&first->vb_group);
 	if (!first) goto missing;
-	if (first->tainted) {
-		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
+	if (!fr_value_box_is_safe_for(first, FR_EXEC_SAFE_FOR)) {
+		fr_strerror_printf("Program to run comes from unsafe source - %pV", first);
 		return -1;
 	}
 

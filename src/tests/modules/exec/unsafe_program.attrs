@@ -1,0 +1,11 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "/bin/echo"
+User-Password = "taponi"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

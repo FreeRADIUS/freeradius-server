@@ -1,0 +1,65 @@
+#
+#  PRE: xlat-exec
+#
+#  The program to run must come from a source which is safe to execute:
+#  a literal in the policy, or an attribute whose value was copied from
+#  a literal.  A value from the network, or a value marked unsafe, is
+#  refused even when the value names a binary which exists.  Only the
+#  program is gated.  The arguments are passed through as given.
+#
+string out
+
+#
+#  Literal program, unsafe argument.  The argument is not gated.
+#
+out := %exec('/bin/echo', %unsafe('a b'))
+if (out != 'a b') {
+	test_fail
+}
+
+#
+#  Program name marked unsafe.
+#
+request -= Module-Failure-Message[*]
+out := %exec(%unsafe('/bin/echo'), 'x')
+if (out) {
+	test_fail
+}
+if (Module-Failure-Message !~ /Program to run comes from unsafe source/) {
+	test_fail
+}
+
+#
+#  Program name from the network.  User-Name is "/bin/echo".
+#
+request -= Module-Failure-Message[*]
+out := %exec(User-Name, 'x')
+if (out) {
+	test_fail
+}
+if (Module-Failure-Message !~ /Program to run comes from unsafe source/) {
+	test_fail
+}
+
+#
+#  Program name where only part of the string is unsafe.
+#
+request -= Module-Failure-Message[*]
+out := %exec("/bin/%unsafe('echo')", 'x')
+if (out) {
+	test_fail
+}
+if (Module-Failure-Message !~ /Program to run comes from unsafe source/) {
+	test_fail
+}
+
+#
+#  A policy literal copied through an attribute keeps its safety.
+#
+control.Tmp-String-0 := '/bin/echo'
+out := %exec(control.Tmp-String-0, 'y')
+if (out != 'y') {
+	test_fail
+}
+
+success

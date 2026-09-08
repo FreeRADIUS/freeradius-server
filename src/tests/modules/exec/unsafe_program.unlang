@@ -1,0 +1,24 @@
+#
+#  The program is taken from User-Name, which arrived from the network.
+#  The module must refuse to run it even though /bin/echo exists.
+#
+exec_unsafe_program {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
+if (control.Filter-Id) {
+	test_fail
+}
+
+#
+#  A literal program in the module configuration is safe to run.
+#
+exec_sync_mod
+if ((!control.Called-Station-Id) || (control.Called-Station-Id != 'welcome')) {
+	test_fail
+}
+
+test_pass
