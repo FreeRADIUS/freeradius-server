@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/regex.h>
 
 FR_TLIST_FUNCS(fr_pair_order_list, fr_pair_t, order_entry)
+FR_TLIST_PARENT_FUNCS(fr_pair_order_list, fr_pair_t, fr_pair_list_t, order)
 
 #include <freeradius-devel/util/pair_inline.c>
 
@@ -905,14 +906,7 @@ fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
  */
 fr_pair_list_t *fr_pair_parent_list(fr_pair_t const *vp)
 {
-	FR_TLIST_HEAD(fr_pair_order_list) *parent;
-
-	if (!vp) return NULL;
-
-	parent = fr_pair_order_list_parent(vp);
-	if (!parent) return NULL;
-
-	return (fr_pair_list_t *) (UNCONST(uint8_t *, parent) - offsetof(fr_pair_list_t, order));
+	return fr_pair_order_list_parent_list(vp);
 }
 
 /** Return a pointer to the parent pair.
@@ -952,14 +946,11 @@ fr_pair_t *fr_pair_list_parent(fr_pair_list_t const *list)
 static int _pair_list_dcursor_insert(fr_dcursor_t *cursor, void *to_insert, UNUSED void *uctx)
 {
 	fr_pair_t *vp = to_insert;
-	fr_tlist_head_t *tlist;
-
-	tlist = fr_tlist_head_from_dlist(fr_dcursor_list(cursor));
 
 	/*
 	 *	Mark the pair as inserted into the list.
 	 */
-	fr_pair_order_list_set_head(tlist, vp);
+	fr_pair_order_list_set_head_from_dlist(fr_dcursor_list(cursor), vp);
 
 	PAIR_VERIFY(vp);
 

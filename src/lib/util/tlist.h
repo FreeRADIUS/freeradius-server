@@ -917,7 +917,39 @@ DIAG_OFF(unused-function) \
 		{		return (FR_TLIST_HEAD(_name) *) fr_tlist_remove_children(&ptr->_element_entry.entry); } \
 \
 	static inline void _name ## _set_head(fr_tlist_head_t *list, _element_type *ptr) \
-		{		ptr->_element_entry.entry.list_head = list; }
+		{		ptr->_element_entry.entry.list_head = list; } \
+\
+	static inline void _name ## _set_head_from_dlist(fr_dlist_head_t *dlist_head, _element_type *ptr) \
+		{		ptr->_element_entry.entry.list_head = fr_tlist_head_from_dlist(dlist_head); }
+DIAG_ON(unused-function)
+
+/** Define a type specific function to find the structure which contains a tlist head
+ *
+ * A tlist head is normally a field in a larger structure, e.g. the "order" list is a
+ * field in a fr_pair_list_t.  This function goes from an item to that larger
+ * structure, so that the caller does not need to know how a tlist is laid out.
+ *
+ * @note This macro should be used inside the source file that will use the type
+ * specific function, after the matching FR_TLIST_FUNCS.
+ *
+ * @param[in] _name		Prefix we add to type-specific tlist functions.
+ * @param[in] _element_type	Type of structure that'll be inserted into the tlist.
+ * @param[in] _list_type	Type of structure which holds the tlist head.
+ * @param[in] _list_field	Field in the _list_type that holds the tlist head.
+ */
+#define FR_TLIST_PARENT_FUNCS(_name, _element_type, _list_type, _list_field) \
+DIAG_OFF(unused-function) \
+	static inline _list_type *_name ## _parent_list(_element_type const *ptr) \
+	{ \
+		FR_TLIST_HEAD(_name) *head; \
+\
+		if (!ptr) return NULL; \
+\
+		head = _name ## _parent(ptr); \
+		if (!head) return NULL; \
+\
+		return (_list_type *) (UNCONST(uint8_t *, head) - offsetof(_list_type, _list_field)); \
+	}
 DIAG_ON(unused-function)
 
 static inline void *fr_tlist_parent(fr_tlist_head_t *list_head, void const *ptr)
