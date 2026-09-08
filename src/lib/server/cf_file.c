@@ -1361,6 +1361,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		ERROR("%s[%d]: Filename globbing is not supported.", frame->filename, frame->lineno);
 		return -1;
 #else
+		int rcode;
+
 		stack->depth++;
 		frame = &stack->frame[stack->depth];
 		memset(frame, 0, sizeof(*frame));
@@ -1376,28 +1378,34 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame->filename = frame[-1].filename;
 		frame->lineno = frame[-1].lineno;
 
-		if (glob(value, GLOB_ERR | GLOB_NOESCAPE, NULL, &frame->glob) < 0) {
+		rcode = glob(value, GLOB_ERR | GLOB_NOESCAPE, NULL, &frame->glob);
+		switch (rcode) {
+		default:
+		case GLOB_NOSPACE:
+		case GLOB_ABORTED:
 			stack->depth--;
 			ERROR("%s[%d]: Failed expanding '%s' - %s", frame->filename, frame->lineno,
 				value, fr_syserror(errno));
 			return -1;
+
+		case 0:
+			/*
+			 *	"success" but "no match" is possible.
+			 */
+			if (frame->glob.gl_pathc != 0) return 1;
+			break;
+
+		case GLOB_NOMATCH:
+			break;
 		}
 
-		/*
-		 *	If nothing matches, that may be an error.
-		 */
-		if (frame->glob.gl_pathc == 0) {
-			if (!required) {
-				stack->depth--;
-				return 0;
-			}
+		globfree(&frame->glob);
+		stack->depth--;
+		if (!required) return 0;
 
-			ERROR("%s[%d]: Failed expanding '%s' - No matching files", frame->filename, frame->lineno,
-			      value);
-			return -1;
-		}
-
-		return 1;
+		ERROR("%s[%d]: Failed expanding '%s' - No matching files", frame->filename, frame->lineno,
+		      value);
+		return -1;
 #endif
 	}
 
