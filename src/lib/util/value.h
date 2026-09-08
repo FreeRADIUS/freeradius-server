@@ -1345,12 +1345,6 @@ int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value
 
 bool		fr_value_box_list_tainted(fr_value_box_list_t const *head)
 		CC_HINT(nonnull(1));
-
-void		fr_value_box_list_taint(fr_value_box_list_t *head)
-		CC_HINT(nonnull(1));
-
-void		fr_value_box_list_untaint(fr_value_box_list_t *head)
-		CC_HINT(nonnull(1));
 /** @} */
 
 /** @name Print the value of a value box as a string

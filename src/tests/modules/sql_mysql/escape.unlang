@@ -12,41 +12,41 @@
 #  (the connection's charset is set up by the driver).
 #
 #  String literals in unlang are marked "safe for any escape" so we wrap
-#  each input in %taint(...) to force the escape to actually run.
+#  each input in %unsafe(...) to force the escape to actually run.
 #
 
 #
 #  Plain ASCII passes through unchanged.
 #
-if (%sql.escape(%taint("Hello world")) != "Hello world") {
+if (%sql.escape(%unsafe("Hello world")) != "Hello world") {
 	test_fail
 }
 
 #
 #  Single quote -> \'
 #
-if (%sql.escape(%taint("it's")) != "it\\'s") {
+if (%sql.escape(%unsafe("it's")) != "it\\'s") {
 	test_fail
 }
 
 #
 #  Double quote -> \"
 #
-if (%sql.escape(%taint("say \"hi\"")) != "say \\\"hi\\\"") {
+if (%sql.escape(%unsafe("say \"hi\"")) != "say \\\"hi\\\"") {
 	test_fail
 }
 
 #
 #  Backslash -> \\  (input has one backslash, output has two)
 #
-if (%sql.escape(%taint("back\\slash")) != "back\\\\slash") {
+if (%sql.escape(%unsafe("back\\slash")) != "back\\\\slash") {
 	test_fail
 }
 
 #
 #  Newline -> two-byte `\n` literal.
 #
-if (%sql.escape(%taint("a\nb")) != "a\\nb") {
+if (%sql.escape(%unsafe("a\nb")) != "a\\nb") {
 	test_fail
 }
 
@@ -55,7 +55,7 @@ if (%sql.escape(%taint("a\nb")) != "a\\nb") {
 #  Before the byte-length fix the driver called strlen() on the input
 #  and the NUL truncated the rest of the value.
 #
-if (%sql.escape(%taint("a\000b")) != "a\\0b") {
+if (%sql.escape(%unsafe("a\000b")) != "a\\0b") {
 	test_fail
 }
 

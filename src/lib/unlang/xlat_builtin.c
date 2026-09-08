@@ -948,29 +948,28 @@ static xlat_action_t xlat_func_file_rmdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const xlat_func_taint_args[] = {
+static xlat_arg_parser_t const xlat_func_unsafe_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-static xlat_action_t xlat_func_untaint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       UNUSED xlat_ctx_t const *xctx,
-				       UNUSED request_t *request, fr_value_box_list_t *in)
-{
-	fr_value_box_t *vb;
-
-	fr_value_box_list_untaint(in);
-	while ((vb = fr_value_box_list_pop_head(in)) != NULL) {
-		fr_dcursor_append(out, vb);
-	}
-
-	return XLAT_ACTION_DONE;
-}
-
-static xlat_action_t xlat_func_taint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     UNUSED xlat_ctx_t const *xctx,
-				     UNUSED request_t *request, fr_value_box_list_t *in)
+/** Mark every argument as safe for nothing
+ *
+ * Literals in policy are safe for any consumer, so no escape function runs on
+ * a literal.  Wrapping a literal in this function forces every consumer to
+ * escape the literal.  The escaping tests use the function to exercise the
+ * escape functions with known input.
+ *
+@verbatim
+%unsafe(<value>, ...)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_unsafe(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      UNUSED xlat_ctx_t const *xctx,
+				      UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t *vb;
 
@@ -5065,13 +5064,9 @@ do { \
 
 	XLAT_REGISTER_ARGS("range", xlat_func_range, FR_TYPE_UINT64, xlat_func_range_arg);
 
-	if (unlikely((xlat = xlat_func_register(xlat_ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, "unsafe", xlat_func_unsafe, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
-	xlat_func_args_set(xlat, xlat_func_taint_args);
-
-	if (unlikely((xlat = xlat_func_register(xlat_ctx, "taint", xlat_func_taint, FR_TYPE_VOID)) == NULL)) return -1;
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
-	xlat_func_args_set(xlat, xlat_func_taint_args);
+	xlat_func_args_set(xlat, xlat_func_unsafe_args);
 
 	/*
 	 *	All of these functions are pure.

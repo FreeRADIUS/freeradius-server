@@ -425,7 +425,7 @@ Filter-Id := "\
 {\
 	\"foo.bar\": \"baz\" \
 }"
-test_string := "%taint('foo.bar')"
+test_string := "%unsafe('foo.bar')"
 
 map json Filter-Id {
 	Callback-Id := "$.%{test_string}"

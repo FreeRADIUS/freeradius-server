@@ -34,7 +34,7 @@ match yes
 xlat_expr %file.exists('src/tests/xlat/file/no-such-file')
 match no
 
-xlat_expr "foo/bar/" + %file.escape(%taint('..baz'))
+xlat_expr "foo/bar/" + %file.escape(%unsafe('..baz'))
 match foo/bar/_x2e_x2ebaz
 
 xlat_expr %file.mkdir('src/tests/xlat/file/new-dir')

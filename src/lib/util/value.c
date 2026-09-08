@@ -7268,35 +7268,6 @@ bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
 	return false;
 }
 
-/** Taint every list member (and their children)
- *
- * @param[in] head	of list.
- */
-void fr_value_box_list_taint(fr_value_box_list_t *head)
-{
-	fr_value_box_t *vb = NULL;
-
-	while ((vb = fr_value_box_list_next(head, vb))) {
-		if (fr_type_is_group(vb->type)) fr_value_box_list_taint(&vb->vb_group);
-		fr_value_box_mark_unsafe(vb);
-		vb->tainted = true;
-	}
-}
-
-/** Untaint every list member (and their children)
- *
- * @param[in] head	of list.
- */
-void fr_value_box_list_untaint(fr_value_box_list_t *head)
-{
-	fr_value_box_t *vb = NULL;
-
-	while ((vb = fr_value_box_list_next(head, vb))) {
-		if (fr_type_is_group(vb->type)) fr_value_box_list_untaint(&vb->vb_group);
-		vb->tainted = false;
-	}
-}
-
 #if defined(WITH_VERIFY_PTR) || !defined(NDEBUG)
 #define VB_NAME  "fr_value_box_t %p (from %s:%d)"
 #define VB_NAME_LOCATION(_x) (void const *) (_x), (_x)->file ? (_x)->file : "", (_x)->line

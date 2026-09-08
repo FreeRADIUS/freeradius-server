@@ -7,31 +7,31 @@
 #  invariant.
 #
 #  String literals in unlang are marked "safe for any escape" so we wrap
-#  each input in %taint(...) to force the escape to actually run.
+#  each input in %unsafe(...) to force the escape to actually run.
 #
 
 #
 #  Plain ASCII passes through unchanged.
 #
-if (%sql.escape(%taint("Hello world")) != "Hello world") {
+if (%sql.escape(%unsafe("Hello world")) != "Hello world") {
 	test_fail
 }
 
 #
 #  Single quote is doubled.
 #
-if (%sql.escape(%taint("it's")) != "it''s") {
+if (%sql.escape(%unsafe("it's")) != "it''s") {
 	test_fail
 }
 
-if (%sql.escape(%taint("''")) != "''''") {
+if (%sql.escape(%unsafe("''")) != "''''") {
 	test_fail
 }
 
 #
 #  Multi-byte UTF-8 is passed through unchanged.
 #
-if (%sql.escape(%taint("café")) != "café") {
+if (%sql.escape(%unsafe("café")) != "café") {
 	test_fail
 }
 
