@@ -1061,7 +1061,7 @@ static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 #endif
 
-	fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &rctx->list);
+	fr_value_box_list_move((fr_value_box_list_t *)fr_dcursor_list(out), &rctx->list);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1148,7 +1148,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		if ((node->type == XLAT_FUNC) && (node->call.func)) {
 			RDEBUG2("| --> %pR", fr_dcursor_current(out));
-			if (!xlat_process_return(request, node->call.func, (fr_value_box_list_t *)out->dlist,
+			if (!xlat_process_return(request, node->call.func, (fr_value_box_list_t *)fr_dcursor_list(out),
 					 fr_dcursor_current(out))) return XLAT_ACTION_FAIL;
 		}
 
@@ -1267,7 +1267,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			REXDENT();
 			xlat_debug_log_result(request, *in, fr_dcursor_current(out));
 			if (!xlat_process_return(request, node->call.func,
-						 (fr_value_box_list_t *)out->dlist,
+						 (fr_value_box_list_t *)fr_dcursor_list(out),
 						 fr_dcursor_current(out))) {
 				RINDENT();
 				return XLAT_ACTION_FAIL;
@@ -1352,7 +1352,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	First entry is the command to run.  Subsequent entries are the options to pass to the
 		 *	command.
 		 */
-		fr_value_box_list_move((fr_value_box_list_t *)out->dlist, result);
+		fr_value_box_list_move((fr_value_box_list_t *)fr_dcursor_list(out), result);
 		break;
 
 	default:
@@ -1445,7 +1445,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	for (node = *in; node; node = xlat_exp_next(head, node)) {
 	     	*in = node;		/* Update node in our caller */
 		fr_dcursor_tail(out);	/* Needed for debugging */
-		VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
+		VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)fr_dcursor_list(out));
 
 		fr_assert(fr_value_box_list_num_elements(&result) == 0);	/* Should all have been moved */
 
@@ -1483,7 +1483,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				goto finish;
 			}
 			xlat_debug_log_list_result(request, *in, &result);
-			fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &result);
+			fr_value_box_list_move((fr_value_box_list_t *)fr_dcursor_list(out), &result);
 			continue;
 
 		case XLAT_TMPL:
@@ -1509,7 +1509,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				 */
 				if (tmpl_eval_cast_in_place(&result, request, node->vpt) < 0) goto fail;
 
-				fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &result);
+				fr_value_box_list_move((fr_value_box_list_t *)fr_dcursor_list(out), &result);
 				continue;
 
 			} else if (tmpl_is_attr(node->vpt)) {
@@ -1559,7 +1559,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			}
 
 			xlat_debug_log_list_result(request, node, &result);
-			fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &result);
+			fr_value_box_list_move((fr_value_box_list_t *)fr_dcursor_list(out), &result);
 			continue;
 
 		case XLAT_FUNC:
@@ -1625,7 +1625,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	}
 
 finish:
-	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
+	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)fr_dcursor_list(out));
 	XLAT_DEBUG("** [%i] %s << %s", unlang_interpret_stack_depth(request),
 		   __FUNCTION__, fr_table_str_by_value(xlat_action_table, xa, "<INVALID>"));
 

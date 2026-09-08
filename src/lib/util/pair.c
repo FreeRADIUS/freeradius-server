@@ -642,7 +642,7 @@ static void *fr_pair_iter_next_by_da(fr_dcursor_t *cursor, void *current, void *
 	fr_pair_t	*c = current;
 	fr_dict_attr_t	*da = uctx;
 
-	while ((c = fr_dlist_next(cursor->dlist, c))) {
+	while ((c = fr_dcursor_list_next(cursor, c))) {
 		PAIR_VERIFY(c);
 		if (c->da == da) break;
 	}
@@ -665,7 +665,7 @@ static void *fr_pair_iter_next_by_ancestor(fr_dcursor_t *cursor, void *current, 
 	fr_pair_t	*c = current;
 	fr_dict_attr_t	*da = uctx;
 
-	while ((c = fr_dlist_next(cursor->dlist, c))) {
+	while ((c = fr_dcursor_list_next(cursor, c))) {
 		PAIR_VERIFY(c);
 		if (fr_dict_attr_common_parent(da, c->da, true)) break;
 	}
@@ -954,7 +954,7 @@ static int _pair_list_dcursor_insert(fr_dcursor_t *cursor, void *to_insert, UNUS
 	fr_pair_t *vp = to_insert;
 	fr_tlist_head_t *tlist;
 
-	tlist = fr_tlist_head_from_dlist(cursor->dlist);
+	tlist = fr_tlist_head_from_dlist(fr_dcursor_list(cursor));
 
 	/*
 	 *	Mark the pair as inserted into the list.
@@ -982,7 +982,7 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dcursor_t *cursor, void *t
 #ifndef NDEBUG
 	fr_tlist_head_t *tlist;
 
-	tlist = fr_tlist_head_from_dlist(cursor->dlist);
+	tlist = fr_tlist_head_from_dlist(fr_dcursor_list(cursor));
 
 	while (parent && (tlist != vp->order_entry.entry.list_head)) {
 		tlist = &parent->order.head;
@@ -1000,7 +1000,7 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dcursor_t *cursor, void *t
 
 	PAIR_VERIFY(vp);
 
-	if (&parent->order.head.dlist_head == cursor->dlist) return 0;
+	if (&parent->order.head.dlist_head == fr_dcursor_list(cursor)) return 0;
 
 	fr_pair_remove(parent, vp);
 	return 1;
@@ -1185,7 +1185,7 @@ static void *_fr_pair_iter_next_value(fr_dcursor_t *cursor, void *current, UNUSE
 		PAIR_VERIFY(vp);
 	}
 
-	while ((vp = fr_dlist_next(cursor->dlist, vp))) {
+	while ((vp = fr_dcursor_list_next(cursor, vp))) {
 		PAIR_VERIFY(vp);
 		if (fr_type_is_leaf(vp->vp_type)) return &vp->data;
 	}

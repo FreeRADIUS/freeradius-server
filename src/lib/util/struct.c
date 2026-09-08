@@ -537,7 +537,7 @@ static void *struct_next_encodable(fr_dcursor_t *cursor, void *current, void *uc
 	fr_pair_t	*c = current;
 	fr_dict_attr_t	*parent = talloc_get_type_abort(uctx, fr_dict_attr_t);
 
-	while ((c = fr_dlist_next(cursor->dlist, c))) {
+	while ((c = fr_dcursor_list_next(cursor, c))) {
 		PAIR_VERIFY(c);
 
 		if (c->da->dict != parent->dict || c->da->flags.internal) continue;

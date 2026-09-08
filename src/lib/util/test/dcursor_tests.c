@@ -13,7 +13,7 @@ typedef struct {
 
 static void *test_iter(fr_dcursor_t *cursor, void *current, UNUSED void *uctx)
 {
-	return fr_dlist_next(cursor->dlist, current);
+	return fr_dcursor_list_next(cursor, current);
 }
 
 /** @hidecallergraph */
@@ -35,7 +35,7 @@ static void test_init_null_item(void)
 
 	item_p = fr_dcursor_iter_init(&cursor, &list.head, test_iter, NULL, &cursor);
 	TEST_CHECK(!item_p);
-	TEST_CHECK((cursor.dlist) == &list.head);
+	TEST_CHECK(fr_dcursor_list(&cursor) == &list.head);
 	TEST_CHECK(!fr_dcursor_current(&cursor));
 	TEST_CHECK(!fr_dcursor_list_next_peek(&cursor));
 	TEST_CHECK(cursor.iter_uctx == &cursor);
@@ -53,7 +53,7 @@ static void test_init_1i_start(void)
 
 	item_p = fr_dcursor_init(&cursor, &list.head);
 	TEST_CHECK(item_p == &item1);
-	TEST_CHECK((cursor.dlist) == &list.head);
+	TEST_CHECK(fr_dcursor_list(&cursor) == &list.head);
 	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
 }
 
@@ -1585,7 +1585,7 @@ static void *iter_name_check(fr_dcursor_t *cursor, void *current, void *uctx)
 	test_item_t	*c = current;
 	item_filter	*f = uctx;
 
-	while((c = fr_dlist_next(cursor->dlist, c))) {
+	while((c = fr_dcursor_list_next(cursor, c))) {
 		if (c->name[f->pos] == f->val) break;
 	}
 

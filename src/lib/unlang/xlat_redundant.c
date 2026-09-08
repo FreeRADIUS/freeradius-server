@@ -116,7 +116,7 @@ static xlat_action_t xlat_redundant_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Push the next child...
 	 */
-	if (unlang_xlat_push(ctx, &rctx->last_result, (fr_value_box_list_t *)out->dlist,
+	if (unlang_xlat_push(ctx, &rctx->last_result, (fr_value_box_list_t *)fr_dcursor_list(out),
 			     request, *rctx->current, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -185,7 +185,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_assert(0);
 	}
 
-	if (unlang_xlat_push(ctx, &rctx->last_result, (fr_value_box_list_t *)out->dlist,
+	if (unlang_xlat_push(ctx, &rctx->last_result, (fr_value_box_list_t *)fr_dcursor_list(out),
 			     request, *rctx->current, UNLANG_SUB_FRAME) < 0) return XLAT_ACTION_FAIL;
 
 	return XLAT_ACTION_PUSH_UNLANG;

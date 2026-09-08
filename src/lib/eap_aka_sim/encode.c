@@ -75,7 +75,7 @@ static void *fr_eap_aka_sim_next_encodable(fr_dcursor_t *cursor, void *current, 
 	fr_pair_t	*c = current;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
 
-	while ((c = fr_dlist_next(cursor->dlist, c))) {
+	while ((c = fr_dcursor_list_next(cursor, c))) {
 		PAIR_VERIFY(c);
 
 		/*

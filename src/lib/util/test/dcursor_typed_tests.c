@@ -22,7 +22,7 @@ FR_DCURSOR_FUNCS(test_dcursor, test_list, test_item_t)
 
 static test_item_t *test_iter(fr_dcursor_t *cursor, test_item_t *current, UNUSED void *uctx)
 {
-	return test_list_next((FR_DLIST_HEAD(test_list) *) cursor->dlist, current);
+	return fr_dcursor_list_next(cursor, current);
 }
 
 static void test_init_null_item(void)
@@ -35,7 +35,7 @@ static void test_init_null_item(void)
 
 	item_p = test_dcursor_iter_init(&cursor, &list, test_iter, NULL, &cursor);
 	TEST_CHECK(!item_p);
-	TEST_CHECK((cursor.dcursor.dlist) == &list.head);
+	TEST_CHECK(fr_dcursor_list(&cursor.dcursor) == &list.head);
 	TEST_CHECK(!test_dcursor_current(&cursor));
 	TEST_CHECK(!test_dcursor_list_next_peek(&cursor));
 	TEST_CHECK(cursor.dcursor.iter_uctx == &cursor);
@@ -53,7 +53,7 @@ static void test_init_1i_start(void)
 
 	item_p = test_dcursor_init(&cursor, &list);
 	TEST_CHECK(item_p == &item1);
-	TEST_CHECK((cursor.dcursor.dlist) == &list.head);
+	TEST_CHECK(fr_dcursor_list(&cursor.dcursor) == &list.head);
 	TEST_CHECK(test_dcursor_current(&cursor) == &item1);
 }
 
@@ -1489,7 +1489,7 @@ static test_item_t *iter_name_check(fr_dcursor_t *cursor, test_item_t *current, 
 {
 	item_filter	*f = uctx;
 
-	while ((current = test_list_next((FR_DLIST_HEAD(test_list) *) cursor->dlist, current))) {
+	while ((current = fr_dcursor_list_next(cursor, current))) {
 		if (current->name[f->pos] == f->val) break;
 	}
 

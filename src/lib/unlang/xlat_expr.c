@@ -377,7 +377,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (enumv) dst->enumv = enumv;
 	fr_dcursor_append(out, dst);
 
-	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
+	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)fr_dcursor_list(out));
 	return XLAT_ACTION_DONE;
 }
 
@@ -495,7 +495,7 @@ static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	dst->enumv = attr_expr_bool_enum;
 
 	fr_dcursor_append(out, dst);
-	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
+	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)fr_dcursor_list(out));
 	return XLAT_ACTION_DONE;
 }
 

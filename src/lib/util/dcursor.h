@@ -807,6 +807,10 @@ static inline fr_dcursor_stack_t *fr_dcursor_stack_alloc(TALLOC_CTX *ctx, uint8_
 	return stack;
 }
 
+#define fr_dcursor_list_next(_cursor, _ptr) fr_dlist_next((_cursor)->dlist, _ptr)
+
+#define fr_dcursor_list(_cursor) ((_cursor)->dlist)
+
 void *fr_dcursor_intersect_head(fr_dcursor_t *a, fr_dcursor_t *b);
 
 void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b);

@@ -54,7 +54,7 @@ static void *_tmpl_cursor_child_next(fr_dcursor_t *cursor, void *curr, void *uct
 	tmpl_dcursor_nested_t	*ns = uctx;
 	fr_pair_t		*vp = curr;
 
-	while ((vp = fr_dlist_next(cursor->dlist, vp))) {
+	while ((vp = fr_dcursor_list_next(cursor, vp))) {
 		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) break;
 	}
 
