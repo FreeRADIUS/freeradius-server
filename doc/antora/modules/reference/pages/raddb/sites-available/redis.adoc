@@ -34,10 +34,10 @@ retry_interval:: Time between retrying a failed map fetch
 
 ----
 
-refresh_interval:: Time between refreshing a cluster map
+refresh_interval:: Time between refreshing the cluster map
 
-Defaults to not set.  When not set, cluster maps will only
-be refreshed following a request from a worker.
+Defaults to not set.  When not set, cluster maps will only be
+refreshed following a request from a worker.
 
 ----
 #		refresh_interval = 600s
@@ -46,30 +46,27 @@ be refreshed following a request from a worker.
 
 pool:: Connection pool settings
 
-The `redis` virtual server uses pool configuration
-with the same options as the rlm_redis module.
+The `redis` virtual server uses pool configuration with the same
+options as the rlm_redis module.
 
-The default values are reasonable for most settings
-thought the connect_timeout / reconnect_delay may
-need to be amended.
+The default values are reasonable for most settings thought the
+connection_timeout / reconnect_delay may need to be amended.
 ----
 		pool {
 			connection {
 ----
 
-connect_timeout:: How long to wait
-before giving up on a connection which is
-being opened.
+connection_timeout:: How long to wait before giving up on a connection
+which is being opened.
 
 ----
-#				connect_timeout = 3.0
+#				connection_timeout = 3.0
 
 ----
 
-reconnect_delay:: If opening a connection
-fails, or an open connection fails,
-we wait `reconnect_delay` seconds before
-attempting to open another connection.
+reconnect_delay:: If opening a connection fails, or an open connection
+fails, we wait `reconnect_delay` seconds before attempting to open
+another connection.
 
 ----
 #				reconnect_delay = 5
@@ -77,11 +74,6 @@ attempting to open another connection.
 		}
 	}
 }
-----
-
-== Default Configuration
-
-----
 ----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

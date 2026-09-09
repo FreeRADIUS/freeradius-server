@@ -111,14 +111,16 @@ or WPA enterprise.
 This module implements EAP-PSK
 (https://tools.ietf.org/html/rfc4764[RFC 4764]).
 
-The "known good" password must be in the Password.PSK attribute, which
-also must be 16 octets in length.
+The peer asserts an identity during authentication, and the pre-shared
+key for that identity is looked up by an "eap-psk" virtual server.
+See sites-available/eap-psk for a worked example, including how the
+key is set.
 
-The PSK should be generated from a secure source, e.g. a CSPRNG.
+To enable EAP-PSK, enable the "eap-psk" virtual server, then uncomment
+this section and the "type = psk" entry above.
 
-identity:: Server identifier (ID_S) This should generally be the host
-name of the RADIUS server. Or, some information to uniquely identify
-it.
+virtual_server:: The "eap-psk" virtual server which looks up the
+pre-shared key for a peer identity.
 
 === EAP-PWD (Secure password-based authentication)
 
@@ -1205,11 +1207,11 @@ TODO
 
 ----
 eap {
-#	require_identity_realm = nai
+	require_identity_realm = no
 #	default_eap_type = md5
 	ignore_unknown_eap_types = no
 	type = md5
-	type = psk
+#	type = psk
 	type = pwd
 	type = gtc
 	type = tls
@@ -1221,9 +1223,9 @@ eap {
 ##	type = sim
 	md5 {
 	}
-	psk {
-		identity = "FreeRADIUS"
-	}
+##	psk {
+##		virtual_server = eap-psk
+##	}
 	pwd {
 		group = 19
 		server_id = theserver@example.com
@@ -1252,8 +1254,8 @@ eap {
 ##			private_key_file = ${certdir}/ecc/server.key
 ##		}
 		ca_file = ${cadir}/rsa/ca.pem
-#		psk_identity = "test"
-#		psk_hexphrase = "036363823"
+##		psk_identity = "test"
+##		psk_hexphrase = "036363823"
 #		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
 #		cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 #		dh_file = ${certdir}/dh

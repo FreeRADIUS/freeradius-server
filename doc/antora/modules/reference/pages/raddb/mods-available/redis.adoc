@@ -46,9 +46,9 @@ the `eap` module for documentation on the `tls` section.
 
 virtual_server:: Virtual server used to fetch Redis cluster map
 
-Rather than each thread independently fetching the Redis cluster map
-a coordinator thread is used.  This requires a virtual server which
-uses the `redis` namespace.
+Rather than each thread independently fetching the Redis cluster map a
+coordinator thread is used.  This requires a virtual server which uses
+the `redis` namespace.
 
 use_cluster_map:: Use cluster map
 
@@ -98,19 +98,21 @@ body:: Lua code to send to redis nodes with SCRIPT LOAD
 
 pool { ... }::
 
-The connection pool is a set of per-thread parameters for connections to the redis cluster.
+The connection pool is a set of per-thread parameters for connections
+to the redis cluster.
 
 start:: Connections to create during module instantiation.
 
-Set to `0` to allow the server to start without immediately
-creating connections to the redis cluster.
+Set to `0` to allow the server to start without immediately creating
+connections to the redis cluster.
 
 min:: Minimum number of connections to keep open.
 
 max:: Maximum number of connections.
 
-If these connections are all in use and a new one is requested, the
-request will NOT get a connection.
+If these connections are all fully in use (refer to per_connection_max
+below) and a new one is requested, the request will NOT get a
+connection.
 
 uses:: Number of uses before the connection is closed.
 
@@ -122,48 +124,42 @@ NOTE: `0` means "infinite".
 
 open_delay:: Open delay (in seconds).
 
-How long must we be above the target utilisation for connections to be opened.
+How long must we be above the target utilisation for connections to be
+opened.
 
 close_delay:: Close delay (in seconds).
 
-How long we must be below the target utilisation for connections to be closed
+How long we must be below the target utilisation for connections to be
+closed
 
 manage_interval:: How often to manage the connection pool.
 
 connection { ... }:: Per-connection configuration.
 
-connect_timeout:: How long to wait
-before giving up on a connection which is
-being opened.
+connect_timeout:: How long to wait before giving up on a connection
+which is being opened.
 
-reconnect_delay:: If opening a connection
-fails, or an open connection fails,
-we wait `reconnect_delay` seconds before
-attempting to open another connection.
+reconnect_delay:: If opening a connection fails, or an open connection
+fails, we wait `reconnect_delay` seconds before attempting to open
+another connection.
 
 request:: Options specific to requests handled by this connection pool
 
-Note:  Due to the one outstanding query per connection limit, the settings
-`per_connection_max` and `per_connection_target` are forcibly set to 1 for
-SQL database connections.
+per_connection_max:: The maximum number of requests which are "live"
+on a particular connection.
 
-per_connection_max:: The maximum number of requests
-which are "live" on a particular connection.
+per_connection_target:: The target number of requests which are "live"
+on a particular connection.
 
-per_connection_target:: The target number
-of requests which are "live" on a
-particular connection.
-
-There can be a balance between overloading
-a connection, and under-utilizing it.  The
-default is to fill each connection before
+There can be a balance between overloading a connection, and
+under-utilizing it.  The default is to fill each connection before
 opening a new one.
 
-free_delay:: How long must a request in the unassigned (free) list not have been
-used for before it's cleaned up and actually freed.
+free_delay:: How long must a request in the unassigned (free) list not
+have been used for before it's cleaned up and actually freed.
 
-Unassigned requests can be re-used, multiple times, reducing memory allocation
-and freeing overheads.
+Unassigned requests can be re-used, multiple times, reducing memory
+allocation and freeing overheads.
 
 == Default Configuration
 

@@ -490,11 +490,16 @@ The directory here should either be "/", or ${confdir}
 
 
 
-limit files:: Limit the directories for function calls
+limit:: Limit access certain file paths
 
 The server provides functions such as %file.touch() to read files,
-write files, make directories, etc. For security, this ability can
-be limited to specific directories.
+write files, make directories, etc. and %exec() to run external
+programs. For security, these abilities can be limited to specific
+directories.
+
+
+
+files:: Restrict paths for xlat file functions
 
 If this section is missing, then the server allows the %file...()
 APIs to read and write any directory.
@@ -511,7 +516,7 @@ and would normally be considered "safe".
 
 
 
-limit exec:: Limit the programs which can be executed
+exec:: Limit the programs which can be executed
 
 The server provides functions such as %exec() to run external
 programs. For security, this ability can be limited to specific
@@ -799,13 +804,15 @@ security {
 #	user = radius
 #	group = radius
 #	chdir = ${confdir}
-	limit files {
-		allow = ${logdir}
-		allow = ${radacctdir}
-	}
-	limit exec {
-		allow = "/bin"
-		allow = "/usr/bin"
+	limit {
+		files {
+			allow = ${logdir}
+			allow = ${radacctdir}
+		}
+		exec {
+			allow = "/bin"
+			allow = "/usr/bin"
+		}
 	}
 	allow_core_dumps = @allow_core_dumps@
 	max_attributes = 200
