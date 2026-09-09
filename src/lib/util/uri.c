@@ -68,11 +68,19 @@ int fr_uri_escape(fr_value_box_t *uri_vb, void *uctx)
 			 *	has been done
 			 */
 			fr_value_box_entry_t entry = uri_vb->entry;
-			if (ctx->uri_part->func(uri_vb, ctx->uctx) < 0) {
+
+			switch (ctx->uri_part->func(uri_vb, ctx->uctx)) {
+			case 1:		/* The function set safe_for itself */
+				break;
+
+			case 0:
+				fr_value_box_mark_safe_for(uri_vb, ctx->uri_part->safe_for);
+				break;
+
+			default:
 				fr_strerror_printf_push("Unable to escape tainted input %pV", uri_vb);
 				return -1;
 			}
-			fr_value_box_mark_safe_for(uri_vb, ctx->uri_part->safe_for);
 			uri_vb->entry = entry;
 		} else {
 			fr_strerror_printf_push("Unsafe input \"%pV\" not allowed in URI part %s", uri_vb, ctx->uri_part->name);
