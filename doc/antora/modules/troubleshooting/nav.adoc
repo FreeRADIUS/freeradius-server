@@ -39,3 +39,4 @@
 ** xref:client.adoc[Client Configuration]
 ** xref:connect_nas.adoc[Connectivity]
 ** xref:datastore.adoc[Datastores]
+** xref:conditional_debug.adoc[Conditional Debugging]

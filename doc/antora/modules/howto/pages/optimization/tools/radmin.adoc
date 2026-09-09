@@ -4,6 +4,11 @@ The `radmin` tool can send commands to a running FreeRADIUS instance to set opti
 
 The xref:reference:raddb/sites-available/control-socket.adoc[control socket] virtual server must be enabled for `radmin` to be able to connect.
 
+[NOTE]
+====
+Debug conditions are no longer available in radmin. A more flexible method is available using the xref:reference:xlat/log.adoc[`%log.destination`] expansion xref:troubleshooting:conditional_debug.adoc[directly in unlang].
+====
+
 == Getting Started
 
 Enter the following command to launch radmin:
