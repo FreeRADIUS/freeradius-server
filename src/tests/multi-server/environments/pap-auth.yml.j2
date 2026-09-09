@@ -3,8 +3,8 @@
 #
 #   load-generator (proto_load, in-process) -> FreeRADIUS (files+pap)
 #
-#   Same compose serves both service and profiling modes; see
-#   environments/accept.yml.j2 for the FREERADIUS_IMAGE / PROFILING
+#   This compose file serves both service and profiling modes.
+#   environments/accept.yml.j2 documents the FREERADIUS_IMAGE / PROFILING
 #   convention.
 # ---------------------------------------------------------------
 x-common-config: &id001
@@ -29,10 +29,13 @@ services:
     - ${DATA_PATH}/freeradius/common/proto-load/proto_load_config.env:/etc/freeradius/proto_load_config.env
     - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
     - ${DATA_PATH}/freeradius/common/proto-load/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
-    # Profiling wrapper (no-op in service mode)
-    - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
-    - ${DATA_PATH}/start_gperftools_profiling.sh:/etc/freeradius/start_gperftools_profiling.sh
-    # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
+    # Container entry point and the per-profiler capture scripts. Service
+    # mode never runs the capture scripts, but compose turns a missing bind
+    # source into an empty directory, so every script must exist in every mode.
+    - ${DATA_PATH}/scripts/start_freeradius.sh:/usr/local/bin/start_freeradius.sh
+    - ${DATA_PATH}/scripts/start_valgrind_profiling.sh:/usr/local/bin/start_valgrind_profiling.sh
+    - ${DATA_PATH}/scripts/start_gperftools_profiling.sh:/usr/local/bin/start_gperftools_profiling.sh
+    # Profiling results directory, defaults to /tmp/prof-results in service mode (unused)
     - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:/etc/prof-results/
     # Listener directory
     - ${LISTENER_DIR}/:/var/run/multi-server/

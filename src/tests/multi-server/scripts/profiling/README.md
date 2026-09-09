@@ -28,3 +28,23 @@ for f in <path-to-prof-results>/callgrind.out.1004-{04..12}; do
     | dot -Tsvg -o "callgraph_thread${thread}.svg"
 done
 ```
+
+## gperftools results
+
+`start_gperftools_profiling.sh` converts the raw dumps in the container. To
+repeat the conversion by hand, run these commands from a container that
+holds the same build:
+
+```
+export PPROF_BINARY_PATH=/usr/lib
+pprof -text  /usr/sbin/radiusd freeradius_gperftools.prof.<pid>.*  > pprof_report.txt
+pprof -proto /usr/sbin/radiusd freeradius_gperftools.prof.<pid>.*  > pprof.out.<pid>.pb.gz
+```
+
+The `.pb.gz` file holds the resolved symbols, so pprof can read the
+`.pb.gz` file on any host without the build:
+
+```
+pprof -text pprof.out.<pid>.pb.gz
+pprof -http=:8080 pprof.out.<pid>.pb.gz
+```

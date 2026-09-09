@@ -10,36 +10,15 @@ states:
         - execute_command:
             command: |
               #
-              # proto_load configuration via environment variables
+              # proto_load configuration via TEST_LOADGEN_* environment variables.
+              # start_freeradius.sh derives TEST_LOADGEN_MAX_REQUESTS from the
+              # TEST_LOADGEN_* variables and starts the server, under the profiler
+              # named by PROFILING_TOOL when PROFILING=yes.
               #
               {%- for key, value in loadgen.items() %}
               export TEST_LOADGEN_{{ key | upper }}="{{ value }}"
               {%- endfor %}
-              TEST_LOADGEN_MAX_REQUESTS=0
-              for ((pps=$TEST_LOADGEN_START_PPS; pps<=$TEST_LOADGEN_MAX_PPS; pps+=$TEST_LOADGEN_STEP)); do
-                TEST_LOADGEN_MAX_REQUESTS=$((TEST_LOADGEN_MAX_REQUESTS + TEST_LOADGEN_DURATION * pps))
-              done
-              export TEST_LOADGEN_MAX_REQUESTS
-              #
-              # Starting load-generator server which will generate traffic based on env configuration
-              # from above.
-              #
-              printf "Starting load-generator with the following configuration:\n"
-              {%- for key, value in loadgen.items() %}
-              printf "  {{ key | upper }}:%s\n" "$TEST_LOADGEN_{{ key | upper }}"
-              {%- endfor %}
-              printf "  MAX_REQUESTS:     %s\n" "$TEST_LOADGEN_MAX_REQUESTS"
-
-              if [ "$PROFILING" = "yes" ]; then
-                START_SCRIPT="/etc/freeradius/start_$PROFILING_TOOL"_profiling.sh
-                if [ ! -r "$START_SCRIPT" ]; then
-                  echo "Profiling start script not found: $START_SCRIPT"
-                  exit 1
-                fi
-                source "$START_SCRIPT"
-              else
-                exec freeradius -f -l stdout -S resources.talloc_skip_cleanup=yes
-              fi
+              exec start_freeradius.sh
 
             detach: true
     verify:

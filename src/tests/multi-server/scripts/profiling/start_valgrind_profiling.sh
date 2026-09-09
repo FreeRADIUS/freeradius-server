@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# To be run inside the profiling container
+# Valgrind profiling script to be run inside the profiling container
 
 # Clear any stale marker from a previous run
 rm -f /etc/prof-results/.profiling_complete
-rm -f /etc/prof-results/valgrind_profiling.log
+rm -f /etc/prof-results/valgrind_profiling.log /etc/prof-results/freeradius_valgrind.log
 
 exec > /etc/prof-results/valgrind_profiling.log 2>&1
 
@@ -32,7 +32,7 @@ SEND_DURATION=$(( TEST_LOADGEN_MAX_REQUESTS / TEST_LOADGEN_START_PPS ))
 
 # Start freeradius under valgrind with instrumentation off.
 #
-# valgrind logs to --log-file; freeradius stdout/stderr go to freeradius.log.
+# valgrind logs to --log-file; freeradius stdout/stderr go to freeradius_valgrind.log.
 # No `| tee`: the fallback kill paths below need $! to be the valgrind PID,
 # not tee's.
 #
@@ -60,13 +60,13 @@ valgrind \
   --keep-debuginfo=yes \
   --instr-atstart=no \
   freeradius -f -l stdout -S resources.talloc_skip_cleanup=yes \
-  > /etc/prof-results/freeradius.log 2>&1 &
+  > /etc/prof-results/freeradius_valgrind.log 2>&1 &
 VALGRIND_PID=$!
 
 # Wait for server ready (bail out if freeradius fails to start under valgrind)
 STARTUP_TIMEOUT=300
 STARTUP_ELAPSED=0
-until grep -q "Ready to process requests" /etc/prof-results/freeradius.log; do
+until grep -q "Ready to process requests" /etc/prof-results/freeradius_valgrind.log; do
   sleep 1
   STARTUP_ELAPSED=$(( STARTUP_ELAPSED + 1 ))
   if [ ${STARTUP_ELAPSED} -ge ${STARTUP_TIMEOUT} ]; then
@@ -116,21 +116,17 @@ echo "INFO: disabling callgrind instrumentation"
 CTRL_OUT=$(callgrind_control --instr=off 2>/dev/null || true)
 printf '%s\n' "$CTRL_OUT"
 
-# Wait for valgrind to finish writing callgrind output. Record how it exited:
-# a run valgrind killed produces truncated callgrind output whose numbers are
-# not comparable with a clean run, so the status has to survive to the publish
-# step, which reads this file and refuses to upload an unclean run. The status
-# is recorded for clean runs too, so an absent file means "the wrapper did not
-# get this far" rather than "the run was fine".
+# Record how valgrind exited. A killed valgrind leaves truncated callgrind
+# output, so the publish step reads this file and refuses a non-zero run.
+# Clean runs write 0 too: an absent file means the wrapper never got here.
 echo "INFO: waiting for valgrind to exit"
 VALGRIND_STATUS=0
 wait ${VALGRIND_PID} 2>/dev/null || VALGRIND_STATUS=$?
 echo "${VALGRIND_STATUS}" > /etc/prof-results/valgrind-exit-status
 
 if [ "${VALGRIND_STATUS}" -ne 0 ]; then
-  #  Over 128 means a signal. 139 is SIGSEGV, which is how valgrind exiting on
-  #  its 8 MB brk segment ceiling presents; valgrind.log names the real reason
-  #  on the line above its backtrace.
+  # >128: killed by signal (128 + signal number)
+  #  139: SIGSEGV. not a real crash; see valgrind.log above its backtrace.
   if [ "${VALGRIND_STATUS}" -gt 128 ]; then
     echo "ERROR: valgrind was killed by signal $((VALGRIND_STATUS - 128)); profiling data is truncated" >&2
   else
