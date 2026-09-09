@@ -4,28 +4,34 @@
 # Makefile arguments:
 # - TEST_MULTI_SERVER_DEBUG=<0-2>   debug level for multi-server test framework
 # - TEST_MULTI_SERVER_VERBOSE=<0-4> verbosity level
-# - MODE=<service|profiling>        which FreeRADIUS image to drive the tests
-#                                   with. Default `service`. `profiling` swaps in
-#                                   freeradius4-profiling/<image>:<sha>, sets PROFILING=yes
-#                                   so the test template runs the server under
-#                                   the profiler selected by TOOL, and writes
-#                                   results to PROFILING_RESULT_PATH.
+# - MODE=<service|profiling>        which FreeRADIUS image runs the tests.
+#                                   Default `service`. `profiling` selects
+#                                   freeradius4-profiling/<image>:<sha> and sets
+#                                   PROFILING=yes, so start_freeradius.sh runs the
+#                                   server under the profiler that TOOL selects.
+#                                   The profiler writes results to
+#                                   PROFILING_RESULT_PATH.
 # - PROFILING_RESULT_MODE=<ci|dev>  Profiling output layout (only meaningful when
 #                                   MODE=profiling). Default `ci`.
-#                                     ci:  PROFILING_RESULT_ROOT/<suite>/<test>/<branch>/<commit>/<run-index>
+#                                     ci:  PROFILING_RESULT_ROOT/<branch>/<commit>/<run-index>/<suite>/<test>
 #                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>  (flat)
-# - TOOL=<valgrind|gperftools>      Profiler to run under MODE=profiling. Default `valgrind`.
+# - TOOL=<valgrind|gperftools>      Profiler(s) to run under MODE=profiling. Default: every
+#                                   known profiler, `valgrind gperftools`, in that order.
 #                                     valgrind:               only profiles with valgrind
 #                                     gperftools:             only profiles with gperftools
-#                                     "valgrind gperftools":  runs each test once per tool, in that order
+#                                     `valgrind gperftools`:  runs each test once per tool, in that order
+#
+# scripts/run_test.sh is the per-test recipe. scripts/start_freeradius.sh is
+# the container entry point, and exec's
+# scripts/profiling/start_<tool>_profiling.sh in profiling mode.
 #
 # Usage:
 #   make -f src/tests/multi-server/all.mk test.multi-server                                          # all suites, service image
 #   make -f src/tests/multi-server/all.mk test.multi-server.ci                                       # CI subset, service image
-#   make -f src/tests/multi-server/all.mk test.multi-server.profiling                                # all suites, profiling image
-#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci                             # CI subset, profiling image
-#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci TOOL=gperftools             # CI subset, gperftools instead of valgrind
-#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci TOOL="valgrind gperftools"  # CI subset, both profilers in turn
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling                                # all suites, profiling image, every profiler in turn
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci                             # CI subset, profiling image, every profiler in turn
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci TOOL=gperftools             # CI subset, gperftools only
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci TOOL=valgrind               # CI subset, valgrind only
 #   make -f src/tests/multi-server/all.mk test.multi-server.accept.short_ci                          # single test
 #   make -f src/tests/multi-server/all.mk clean.test.multi-server                                    # clean logs
 #
@@ -55,14 +61,13 @@ PROFILING_RESULT_MODE  ?= ci
 MODE ?= service
 
 #
-#  Known profilers. TOOL selects which of them a profiling run uses and
-#  defaults to valgrind alone; a space-separated list runs each in the
-#  order given. Each name must have a
-#  scripts/profiling/start_<tool>_profiling.sh and a matching branch in
-#  the test template.
+#  Known profilers. TOOL selects the profilers that a profiling run uses,
+#  and defaults to all of them. A space-separated TOOL list runs the test
+#  once per profiler, in the order given. Each name in PROFILING_TOOLS
+#  must have a scripts/profiling/start_<tool>_profiling.sh.
 #
 PROFILING_TOOLS := valgrind gperftools
-TOOL            ?= valgrind
+TOOL            ?= $(PROFILING_TOOLS)
 
 ifneq "$(filter-out $(PROFILING_TOOLS),$(TOOL))" ""
 $(error TOOL must be one of: $(PROFILING_TOOLS) (got "$(TOOL)"))
@@ -194,21 +199,26 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 endef
 
 #
-#  Profiling helper scripts, one per known tool, copied into each test's
-#  output dir regardless of MODE or TOOL so the compose bind-mounts always
-#  resolve to files. The scripts are only sourced when PROFILING=yes is
-#  exported into the container. A known tool without a script fails the
-#  build early with "No rule to make target .../start_<tool>_profiling.sh".
+#  Scripts that the freeradius container runs. start_freeradius.sh is the
+#  entry point that the test templates exec. start_freeradius.sh exec's
+#  start_<tool>_profiling.sh when PROFILING=yes. make copies every script
+#  into each test's output dir in every mode, because the compose files
+#  (environments/*.yml.j2) bind mount every script, and compose turns a
+#  missing bind source into an empty directory instead of an error. A tool in
+#  PROFILING_TOOLS without a script fails the build early with
+#  "No rule to make target .../start_<tool>_profiling.sh".
 #
-PROFILING_SCRIPT_DIR   := $(DIR)/scripts/profiling
-PROFILING_SCRIPT_NAMES := $(foreach t,$(PROFILING_TOOLS),start_$(t)_profiling.sh)
+TEST_MULTI_SERVER_SCRIPT_DIR   := $(DIR)/scripts
+TEST_MULTI_SERVER_SCRIPT_NAMES := start_freeradius.sh $(foreach t,$(PROFILING_TOOLS),start_$(t)_profiling.sh)
 
 #
 #  TEST_MULTI_SERVER_INSTANCE - define render + run targets for a single test.
 #
-#  Discovers all .j2 files in the suite directory, generates a render rule
-#  for each, and creates a test target that depends on all rendered outputs.
-#  Switches image / valgrind wiring based on MODE.
+#  The macro discovers all .j2 files in the suite directory, generates a
+#  render rule for each, and creates a test target that depends on all
+#  rendered outputs and on the container scripts. The test target runs
+#  scripts/run_test.sh, which selects the image and the profiling settings
+#  from MODE.
 #
 #  ${1} = suite dir name
 #  ${2} = test name
@@ -221,9 +231,13 @@ TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(patsubst $$(DIR)/tests/${1}/%.j2,
 
 $$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MULTI_SERVER_RENDER,${1},${2},${3},$$j)))
 
-TEST_MULTI_SERVER_SCRIPTS.${1}.${2}      := $$(addprefix ${4}/,$$(PROFILING_SCRIPT_NAMES))
+TEST_MULTI_SERVER_SCRIPTS.${1}.${2}      := $$(addprefix ${4}/scripts/,$$(TEST_MULTI_SERVER_SCRIPT_NAMES))
 
-$$(TEST_MULTI_SERVER_SCRIPTS.${1}.${2}): ${4}/%: $$(PROFILING_SCRIPT_DIR)/%
+${4}/scripts/start_freeradius.sh: $$(TEST_MULTI_SERVER_SCRIPT_DIR)/start_freeradius.sh
+	$${Q}mkdir -p $$(@D)
+	$${Q}cp $$< $$@
+
+${4}/scripts/start_%_profiling.sh: $$(TEST_MULTI_SERVER_SCRIPT_DIR)/profiling/start_%_profiling.sh
 	$${Q}mkdir -p $$(@D)
 	$${Q}cp $$< $$@
 
@@ -231,72 +245,25 @@ $$(TEST_MULTI_SERVER_SCRIPTS.${1}.${2}): ${4}/%: $$(PROFILING_SCRIPT_DIR)/%
 render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MULTI_SERVER_SCRIPTS.${1}.${2})
 
 #
-#  Image, PROFILING flag and result path are fixed once per test target;
-#  the run loop then drives radenv once per entry in TEST_MULTI_SERVER_RUNS
-#  so every profiler writes into the same PROFILING_RESULT_PATH. Logs and
-#  listener files sit in a per-run subdirectory. The first failing run
-#  stops the loop.
+#  scripts/run_test.sh is the recipe. make only resolves the make-side
+#  settings into the environment of the script. Every run in
+#  TEST_MULTI_SERVER_RUNS writes into the same PROFILING_RESULT_PATH, and
+#  writes logs and listener files into a per-run subdirectory.
 #
 .PHONY: test.multi-server.${1}.${2}
 test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MULTI_SERVER_SCRIPTS.${1}.${2})
-	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2} (MODE=$(MODE) RUNS=$(TEST_MULTI_SERVER_RUNS))"
-	${Q}if [ "$(MODE)" = "profiling" ]; then \
-		FREERADIUS_IMAGE=$(FREERADIUS_PROFILING_IMAGE); \
-		PROFILING=yes; \
-		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
-			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}"; \
-		else \
-			RUN_BASE="$(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
-			EXISTING=$$$$( find "$$$$RUN_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
-			RUN_INDEX=$$$$((EXISTING + 1)); \
-			PROFILING_RESULT_PATH="$$$$RUN_BASE/$$$$RUN_INDEX/${1}/${2}"; \
-		fi; \
-		mkdir -p "$$$$PROFILING_RESULT_PATH"; \
-		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \
-	else \
-		FREERADIUS_IMAGE=$(FREERADIUS_SERVICE_IMAGE); \
-		PROFILING=no; \
-		PROFILING_RESULT_PATH=/tmp/prof-results-unused; \
-	fi; \
-	for RUN in $(TEST_MULTI_SERVER_RUNS); do \
-	    if [ "$$$$PROFILING" = "yes" ]; then PROFILING_TOOL="$$$$RUN"; else PROFILING_TOOL=""; fi; \
-	    LOG_DIR="${4}/logs/$$$$RUN"; \
-	    LISTENER_DIR="${4}/listener/$$$$RUN"; \
-	    mkdir -p "$$$$LOG_DIR" "$$$$LISTENER_DIR"; \
-	    echo "MULTI-SERVER-TEST test.multi-server.${1}.${2} run=$$$$RUN"; \
-	    DATA_PATH="${4}" \
-	    TOP_SRCDIR="$(top_srcdir)" \
-	    FREERADIUS_IMAGE="$$$$FREERADIUS_IMAGE" \
-	    PROFILING="$$$$PROFILING" \
-	    PROFILING_TOOL="$$$$PROFILING_TOOL" \
-	    PROFILING_RESULT_PATH="$$$$PROFILING_RESULT_PATH" \
-	    $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/radenv $(TEST_MULTI_SERVER_FLAGS) \
-	        --project-name "${1}-${2}-$(MODE)" \
-	        --compose "${4}/environment.yml" \
-	        --test "${4}/template.yml" \
-	        --use-files \
-	        --listener-dir "$$$$LISTENER_DIR" \
-	        --log-dir "$$$$LOG_DIR" \
-	        --output "$$$$LOG_DIR/result.log" \
-	        > "$$$$LOG_DIR/stdout.log" 2> "$$$$LOG_DIR/stderr.log" || \
-	    { \
-	        echo "FAILED: test.multi-server.${1}.${2} (MODE=$(MODE) run=$$$$RUN)"; \
-	        for f in "$$$$LOG_DIR"/* "$$$$LISTENER_DIR"/*; do \
-	            [ -f "$$$$f" ] || continue; \
-	            echo ""; \
-	            echo "=== $$$$f ==="; \
-	            case "$$$$f" in \
-	                */listener/*) \
-	                    echo "-- line-type counts --"; \
-	                    awk '{print $$$$1}' "$$$$f" | sort | uniq -c; \
-	                    echo "-- last 200 lines --"; \
-	                    ;; \
-	            esac; \
-	            tail -200 "$$$$f"; \
-	        done; \
-	        exit 1; \
-	    }; \
-	done
+	${Q}MODE="$(MODE)" \
+	RUNS="$(TEST_MULTI_SERVER_RUNS)" \
+	FREERADIUS_SERVICE_IMAGE="$(FREERADIUS_SERVICE_IMAGE)" \
+	FREERADIUS_PROFILING_IMAGE="$(FREERADIUS_PROFILING_IMAGE)" \
+	PROFILING_RESULT_ROOT="$(PROFILING_RESULT_ROOT)" \
+	PROFILING_RESULT_MODE="$(PROFILING_RESULT_MODE)" \
+	GIT_BRANCH="$(GIT_BRANCH)" \
+	GIT_COMMIT="$(GIT_COMMIT)" \
+	TOP_SRCDIR="$(top_srcdir)" \
+	RADENV="$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/radenv" \
+	RADENV_FLAGS="$(TEST_MULTI_SERVER_FLAGS)" \
+	$(DIR)/scripts/run_test.sh "${1}" "${2}" "${4}"
 endef
 
 #
