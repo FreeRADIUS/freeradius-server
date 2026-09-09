@@ -267,7 +267,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 		/*
 		 *	The expression parser should not allow anything else here.
 		 */
-		fr_assert((node->type == XLAT_TMPL) || (node->type == XLAT_GROUP));
+		fr_assert((node->type == XLAT_TMPL) || (node->type == XLAT_GROUP) || (node->type == XLAT_FUNC));
 
 		/*
 		 *	Func, etc.
