@@ -325,7 +325,7 @@ static sql_fall_through_t fall_through(map_list_t *maps)
 /** Escape a tainted VB used as an xlat argument
  *
  */
-static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
+static int CC_HINT(nonnull) sql_box_escape(fr_value_box_t *vb, void *uctx)
 {
 	void				*arg = NULL;
 	rlm_sql_escape_uctx_t		*ctx = uctx;
@@ -397,7 +397,7 @@ check_escape_arg:
 	 */
 	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) goto error;
 
-	if (inst->sql_escape_func(request, vb, arg) < 0) goto error;
+	if (inst->sql_escape_func(vb, arg) < 0) goto error;
 
 	/*
 	 *	Different databases have slightly different ideas as
@@ -408,11 +408,6 @@ check_escape_arg:
 	fr_value_box_mark_safe_for(vb, inst->driver);
 
 	return 0;
-}
-
-static int sql_box_escape(fr_value_box_t *vb, void *uctx)
-{
-	return sql_xlat_escape(NULL, vb, uctx);
 }
 
 /** Escape a value to make it SQL safe.
@@ -923,7 +918,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
  * their backslash-escaped equivalents, and anything else outside
  * `allowed_chars` is replaced with `=XX` (mime-style hex).
  */
-static int sql_escape_func(UNUSED request_t *request, fr_value_box_t *vb, void *arg)
+static int sql_escape_func(fr_value_box_t *vb, void *arg)
 {
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(arg, rlm_sql_t);
 	char const		*in = vb->vb_strvalue;
@@ -2329,7 +2324,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		.type = FR_TYPE_STRING,
 		.required = true,
 		.concat = true,
-		.func = sql_xlat_escape,
+		.func = sql_box_escape,
 		.safe_for = SQL_SAFE_FOR,
 		.uctx = uctx
 	};

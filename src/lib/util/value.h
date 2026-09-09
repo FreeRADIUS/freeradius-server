@@ -690,11 +690,15 @@ fr_value_box_t *_fr_value_box_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, fr_typ
 
  /** Escape a value box
   *
+  * @note On failure the function reports the reason with fr_strerror_printf() or
+  *	 fr_strerror_const().
+  *
   * @param[in] vb	to escape.
   * @param[in] uctx	user context to pass to the escape function.
   * @return
-  *	- 0 on success.
-  *	- -1 on failure.
+  *	- 1 if the value was escaped and the function set safe_for itself.
+  *	- 0 if the value was escaped and the caller sets safe_for.
+  *	- -1 on failure, with the reason in fr_strerror.
   */
 typedef int (*fr_value_box_escape_func_t)(fr_value_box_t *vb, void *uctx);
 

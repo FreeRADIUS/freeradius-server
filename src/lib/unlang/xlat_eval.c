@@ -340,7 +340,7 @@ static int xlat_arg_stringify(request_t *request, xlat_arg_parser_t const *arg, 
 
 	if (fr_value_box_is_safe_for(vb, arg->safe_for) && !arg->always_escape) return 0;
 
-	rcode = arg->func(request, vb, arg->uctx);
+	rcode = arg->func(vb, arg->uctx);
 	if (rcode != 0) return rcode;
 
 	fr_value_box_mark_safe_for(vb, arg->safe_for);
@@ -1344,6 +1344,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_assert(tmpl_is_exec(node->vpt));
 
 		if (tmpl_eval_cast_in_place(result, request, node->vpt) < 0) {
+			RPEDEBUG("Failed casting output of %s", node->fmt);
 			fr_value_box_list_talloc_free(result);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1507,7 +1508,10 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				/*
 				 *	Cast the results if necessary.
 				 */
-				if (tmpl_eval_cast_in_place(&result, request, node->vpt) < 0) goto fail;
+				if (tmpl_eval_cast_in_place(&result, request, node->vpt) < 0) {
+					RPEDEBUG("Failed casting %s", node->fmt);
+					goto fail;
+				}
 
 				fr_value_box_list_move((fr_value_box_list_t *)fr_dcursor_list(out), &result);
 				continue;

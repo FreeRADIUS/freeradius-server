@@ -539,7 +539,7 @@ static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_
 	return 0;
 }
 
-static int xlat_config_escape(UNUSED request_t *request, fr_value_box_t *vb, UNUSED void *uctx)
+static int xlat_config_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
 	static char const	disallowed[] = "%{}\\'\"`";
 	size_t 			outmax = vb->vb_length * 3;

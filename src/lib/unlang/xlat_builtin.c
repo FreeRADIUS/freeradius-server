@@ -313,7 +313,7 @@ static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 
 #define FR_FILENAME_SAFE_FOR ((uintptr_t) filename_xlat_escape)
 
-static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request, fr_value_box_t *vb, UNUSED void *uctx)
+static int CC_HINT(nonnull(1)) filename_xlat_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
 	fr_sbuff_t			*out = NULL;
 	fr_value_box_entry_t		entry;
@@ -3209,7 +3209,7 @@ static xlat_action_t xlat_func_range(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static int CC_HINT(nonnull(2,3)) regex_xlat_escape(UNUSED request_t *request, fr_value_box_t *vb, UNUSED void *uctx)
+static int CC_HINT(nonnull(1)) regex_xlat_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
 	ssize_t				slen;
 	fr_sbuff_t			*out = NULL;

@@ -933,22 +933,21 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 	return mysql_affected_rows(conn->sock);
 }
 
-static int sql_escape_func(request_t *request, fr_value_box_t *vb, void *arg)
+static int sql_escape_func(fr_value_box_t *vb, void *arg)
 {
 	rlm_sql_mysql_esc_ctx_t	*esc_ctx = talloc_get_type_abort(arg, rlm_sql_mysql_esc_ctx_t);
 	char			*out;
 	size_t			inlen = vb->vb_length;
 	unsigned long		real_len;
-	char const		*log_prefix = esc_ctx->conn->name;
 
 	if (!esc_ctx->ready) {
-		ROPTIONAL(RERROR, ERROR, "Connection flags not available for escaping");
+		fr_strerror_const("Connection flags not available for escaping");
 		return -1;
 	}
 
 	/* Prevent integer overflow on (inlen * 2 + 1) */
 	if (inlen > (SIZE_MAX - 1) / 2) {
-		ROPTIONAL(RERROR, ERROR, "Input too large to escape");
+		fr_strerror_const("Input too large to escape");
 		return -1;
 	}
 
