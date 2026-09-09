@@ -1,0 +1,40 @@
+#
+#  Test: nested '@reference' sections.
+#
+#  This file is $INCLUDEd inside "modules { }", so '@..' names the root
+#  section of the configuration.  Each '@..' below sits at the top level of
+#  its own section, which is where an '@reference' is allowed.
+#
+#  cf_file.c keeps one frame->at_reference slot per stack frame.  An inner
+#  reference overwrites the outer one, so only the innermost is ever
+#  restored.  The closing braces after that walk up the reference target's
+#  ancestry instead of the file's own nesting.  Here that walk reaches the
+#  root section and reads its NULL parent, which used to trip the assertion
+#  at the top of parse_input().
+#
+#  This file must parse, and must leave the parser back inside
+#  "modules { }" where it started.
+#
+@.. cf_ref_outer {
+	d {
+	}
+
+	@.. cf_ref_middle {
+		e {
+		}
+
+		@.. cf_ref_inner {
+		}
+	}
+}
+
+#
+#  Sentinel for where the closing braces above left us.
+#
+#  "reverse_lookups" is a boolean in the root section, and "xyzzy" is not a
+#  boolean.  "modules { }" ignores pairs it does not recognise, so this line
+#  is harmless where it belongs, and is a parse error if the braces above
+#  moved us somewhere else.  Without it, a fix which stops the crash but
+#  still loses track of the current section would pass this test.
+#
+reverse_lookups = xyzzy

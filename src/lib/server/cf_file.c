@@ -3041,7 +3041,18 @@ alloc_section:
 		char const *name = &buff[1][1];
 
 		if (!value) {
-			ERROR("%s[%d]: Missing section name for reference", frame->filename, frame->lineno);
+			ERROR("%s[%d]: Missing section name for '@' reference", frame->filename, frame->lineno);
+			return -1;
+		}
+
+		/*
+		 *	We don't allow relative references.  In order to allow that, we would have to do the
+		 *	reference lookup starting at the current parent section, and not cf_root().
+		 *
+		 *	For now, we don't know what to do with relative references, so we just disallow them.
+		 */
+		if (*name == '.') {
+			ERROR("%s[%d]: '@' references must refer to an absolute path, starting at the top of the configuration", frame->filename, frame->lineno);
 			return -1;
 		}
 
@@ -3050,7 +3061,7 @@ alloc_section:
 		ci = cf_reference_item(root, parent, name);
 		if (!ci) {
 			if (name[1] == '.') {
-				PERROR("%s[%d]: Failed finding reference \"%s\"", frame->filename, frame->lineno, name);
+				PERROR("%s[%d]: Failed finding top-level section for '@' reference \"%s\"", frame->filename, frame->lineno, name);
 				return -1;
 			}
 
@@ -3077,7 +3088,7 @@ alloc_section:
 
 		} else {
 			if (!cf_item_is_section(ci)) {
-				ERROR("%s[%d]: Reference \"%s\" is not a section", frame->filename, frame->lineno, name);
+				ERROR("%s[%d]: '@' reference \"%s\" is not a section", frame->filename, frame->lineno, name);
 				return -1;
 			}
 
@@ -3088,7 +3099,7 @@ alloc_section:
 			parent = cf_item_to_section(ci);
 			css = cf_section_find(parent, value, NULL);
 			if (css) {
-				ERROR("%s[%d]: Reference \"%s\" already contains a \"%s\" section at %s[%d]",
+				ERROR("%s[%d]: '@' reference \"%s\" already contains a \"%s\" section at %s[%d]",
 				      frame->filename, frame->lineno, name, value,
 				      css->item.filename, css->item.lineno);
 				return -1;
@@ -4331,7 +4342,9 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 		 *	enclosing this section" (etc.)
 		 */
 		while (*p == '.') {
-			if (cs->item.parent) cs = cf_item_to_section(cs->item.parent);
+			if (!cs->item.parent) goto missing_parent;
+
+			cs = cf_item_to_section(cs->item.parent);
 
 			/*
 			 *	.. means the section
