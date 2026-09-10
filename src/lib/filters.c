@@ -1372,18 +1372,18 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 		p += i;
 		outlen -= i;
 
-		if (filter->u.ip.srcPortComp > RAD_NO_COMPARE) {
+		if (filter->u.ipv6.srcPortComp > RAD_NO_COMPARE) {
 			i = snprintf(p, outlen, " srcport %s %d",
 				     fr_int2str(filterCompare, filter->u.ipv6.srcPortComp, "??"),
-				     ntohs(filter->u.ip.srcport));
+				     ntohs(filter->u.ipv6.srcport));
 			p += i;
 			outlen -= i;
 		}
 
-		if (filter->u.ip.dstPortComp > RAD_NO_COMPARE) {
+		if (filter->u.ipv6.dstPortComp > RAD_NO_COMPARE) {
 			i = snprintf(p, outlen, " dstport %s %d",
 				     fr_int2str(filterCompare, filter->u.ipv6.dstPortComp, "??"),
-				     ntohs(filter->u.ip.dstport));
+				     ntohs(filter->u.ipv6.dstport));
 			p += i;
 			outlen -= i;
 		}
