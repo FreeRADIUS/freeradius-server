@@ -3,10 +3,10 @@
 #
 #   load-generator (proto_load, in-process) -> FreeRADIUS (Access-Accept)
 #
-#   Same compose serves both service and profiling modes. In profiling
-#   mode the make recipe sets FREERADIUS_IMAGE=freeradius4-profiling/<image>:<sha>
-#   and PROFILING=yes; the test template branches on $PROFILING and
-#   either exec's freeradius directly or sources the valgrind wrapper.
+#   This compose file serves both service and profiling modes. In profiling
+#   mode scripts/run_test.sh sets FREERADIUS_IMAGE=freeradius4-profiling/<image>:<sha>
+#   and PROFILING=yes. The test template exec's start_freeradius.sh, which
+#   starts the server directly or under the profiler named by $PROFILING_TOOL.
 # ---------------------------------------------------------------
 x-common-config: &id001
   cap_add:
@@ -20,6 +20,7 @@ services:
     image: ${FREERADIUS_IMAGE}
     environment:
       PROFILING: ${PROFILING:-no}
+      PROFILING_TOOL: ${PROFILING_TOOL:-}
     volumes:
     # freeradius server config
     - ${DATA_PATH}/freeradius/accept/radiusd.conf:/etc/freeradius/radiusd.conf
@@ -27,9 +28,13 @@ services:
     - ${DATA_PATH}/freeradius/common/proto-load/proto_load_config.env:/etc/freeradius/proto_load_config.env
     - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
     - ${DATA_PATH}/freeradius/common/proto-load/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
-    # Profiling wrapper (no-op in service mode)
-    - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
-    # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
+    # Container entry point and the per-profiler capture scripts. Service
+    # mode never runs the capture scripts, but compose turns a missing bind
+    # source into an empty directory, so every script must exist in every mode.
+    - ${DATA_PATH}/scripts/start_freeradius.sh:/usr/local/bin/start_freeradius.sh
+    - ${DATA_PATH}/scripts/start_valgrind_profiling.sh:/usr/local/bin/start_valgrind_profiling.sh
+    - ${DATA_PATH}/scripts/start_gperftools_profiling.sh:/usr/local/bin/start_gperftools_profiling.sh
+    # Profiling results directory, defaults to /tmp/prof-results in service mode (unused)
     - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:/etc/prof-results/
     # Listener directory
     - ${LISTENER_DIR}/:/var/run/multi-server/

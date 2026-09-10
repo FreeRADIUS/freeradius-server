@@ -1,12 +1,18 @@
 #!/bin/bash
 
-# To be run inside the profiling container
+# Common functions
+source "${0%/*}/common_profiling.sh"
+
+RESULTS=/etc/prof-results
+
+# Valgrind profiling script to be run inside the profiling container
 
 # Clear any stale marker from a previous run
-rm -f /etc/prof-results/.profiling_complete
-rm -f /etc/prof-results/valgrind_profiling.log
+rm -f "$RESULTS/.profiling_complete"
+rm -f "$RESULTS/valgrind_profiling.log"
+rm -f "$RESULTS/freeradius_valgrind.log"
 
-exec > /etc/prof-results/valgrind_profiling.log 2>&1
+exec > "$RESULTS/valgrind_profiling.log" 2>&1
 
 # Ignore SIGTERM — freeradius broadcasts it to the process group on shutdown,
 # which would otherwise kill this script before it can touch .profiling_complete.
@@ -32,9 +38,8 @@ SEND_DURATION=$(( TEST_LOADGEN_MAX_REQUESTS / TEST_LOADGEN_START_PPS ))
 
 # Start freeradius under valgrind with instrumentation off.
 #
-# valgrind logs to --log-file; freeradius stdout/stderr go to freeradius.log.
-# No `| tee`: the fallback kill paths below need $! to be the valgrind PID,
-# not tee's.
+# valgrind logs to --log-file
+# freeradius stdout/stderr logs to freeradius_valgrind.log
 #
 # --trace-children=yes    profile exec()'d children too (own callgrind.out.%p)
 # --separate-threads=no   one profile per process, not per thread
@@ -48,8 +53,8 @@ SEND_DURATION=$(( TEST_LOADGEN_MAX_REQUESTS / TEST_LOADGEN_START_PPS ))
 #                         is ready, keeping startup out of the profile
 valgrind \
   --tool=callgrind \
-  --log-file=/etc/prof-results/valgrind.log \
-  --callgrind-out-file=/etc/prof-results/callgrind.out.%p \
+  --log-file="$RESULTS/valgrind.log" \
+  --callgrind-out-file="$RESULTS/callgrind.out.%p" \
   --trace-children=yes \
   --separate-threads=no \
   --separate-callers=6 \
@@ -60,83 +65,65 @@ valgrind \
   --keep-debuginfo=yes \
   --instr-atstart=no \
   freeradius -f -l stdout -S resources.talloc_skip_cleanup=yes \
-  > /etc/prof-results/freeradius.log 2>&1 &
+  > "$RESULTS/freeradius_valgrind.log" 2>&1 &
 VALGRIND_PID=$!
 
-# Wait for server ready (bail out if freeradius fails to start under valgrind)
+# Wait for the server to be ready. Timeout is long by design since the server is expected
+# to startup
 STARTUP_TIMEOUT=300
 STARTUP_ELAPSED=0
-until grep -q "Ready to process requests" /etc/prof-results/freeradius.log; do
+until grep -q "Ready to process requests" "$RESULTS/freeradius_valgrind.log"; do
   sleep 1
   STARTUP_ELAPSED=$(( STARTUP_ELAPSED + 1 ))
   if [ ${STARTUP_ELAPSED} -ge ${STARTUP_TIMEOUT} ]; then
-    echo "ERROR: freeradius did not become ready within ${STARTUP_TIMEOUT}s, aborting"
+    echo "ERROR: freeradius still not ready to process requests after ${STARTUP_TIMEOUT} seconds, aborting"
     kill -SIGKILL ${VALGRIND_PID} 2>/dev/null
+    log_status
     exit 1
   fi
 done
+echo "INFO: freeradius ready after ${STARTUP_ELAPSED}s"
 
-# Enable instrumentation. callgrind_control auto-detects the running callgrind
-# instance and prints "PID <n>: freeradius ..." — capture that to get the PID
-# we need later for the graceful shutdown signal.
+# Start callgrind and get freeradius process PID to ensure a proper shutdown
 echo "INFO: enabling callgrind instrumentation"
 CTRL_OUT=$(callgrind_control --instr=on)
 printf '%s\n' "$CTRL_OUT"
 FR_PID=$(printf '%s\n' "$CTRL_OUT" | grep -oP 'PID \K\d+(?=: freeradius)' | head -1)
 echo "Freeradius PID: ${FR_PID}"
 
-# Wait for approximate send duration
+# Wait for the approximate duration of the test to ensure proto_load
+# has sent all of its packets
 sleep ${SEND_DURATION}
 
-# Graceful shutdown (equivalent to Ctrl+C) — keep instrumentation on so shutdown
-# transitions are captured before we stop profiling
-if [ -z "${FR_PID}" ]; then
-  echo "WARNING: could not determine freeradius PID from callgrind_control output, sending SIGINT to valgrind instead"
-  kill -SIGINT ${VALGRIND_PID} 2>/dev/null || true
-else
-  echo "INFO: killing freeradius process ${FR_PID} with SIGINT for graceful shutdown"
-  kill -SIGINT ${FR_PID}
+# Shutdown server
+shutdown_freeradius
 
-  # Wait for freeradius to finish its graceful shutdown before stopping instrumentation
-  SHUTDOWN_TIMEOUT=60
-  SHUTDOWN_ELAPSED=0
-  while kill -0 "${FR_PID}" 2>/dev/null; do
-    sleep 1
-    SHUTDOWN_ELAPSED=$(( SHUTDOWN_ELAPSED + 1 ))
-    if [ ${SHUTDOWN_ELAPSED} -ge ${SHUTDOWN_TIMEOUT} ]; then
-      echo "WARNING: freeradius did not exit within ${SHUTDOWN_TIMEOUT}s after SIGINT"
-      break
-    fi
-  done
-  echo "INFO: freeradius exited after ${SHUTDOWN_ELAPSED}s"
-fi
-
-# Stop instrumentation after graceful shutdown so all shutdown transitions are captured
+# Stop callgrind after freeradius has stopped
 echo "INFO: disabling callgrind instrumentation"
 CTRL_OUT=$(callgrind_control --instr=off 2>/dev/null || true)
 printf '%s\n' "$CTRL_OUT"
 
-# Wait for valgrind to finish writing callgrind output. Record how it exited:
-# a run valgrind killed produces truncated callgrind output whose numbers are
-# not comparable with a clean run, so the status has to survive to the publish
-# step, which reads this file and refuses to upload an unclean run. The status
-# is recorded for clean runs too, so an absent file means "the wrapper did not
-# get this far" rather than "the run was fine".
+# Save valgrind exit status that allows us to check if we have
+# partial profiling results from the run.
+# 0:        clean run
+# non-zero: valgrind exited with an error
+#
 echo "INFO: waiting for valgrind to exit"
-VALGRIND_STATUS=0
-wait ${VALGRIND_PID} 2>/dev/null || VALGRIND_STATUS=$?
-echo "${VALGRIND_STATUS}" > /etc/prof-results/valgrind-exit-status
+STATUS=0
+wait ${VALGRIND_PID} 2>/dev/null || STATUS=$?
 
-if [ "${VALGRIND_STATUS}" -ne 0 ]; then
-  #  Over 128 means a signal. 139 is SIGSEGV, which is how valgrind exiting on
-  #  its 8 MB brk segment ceiling presents; valgrind.log names the real reason
-  #  on the line above its backtrace.
-  if [ "${VALGRIND_STATUS}" -gt 128 ]; then
-    echo "ERROR: valgrind was killed by signal $((VALGRIND_STATUS - 128)); profiling data is truncated" >&2
-  else
-    echo "ERROR: valgrind exited ${VALGRIND_STATUS}; profiling data may be truncated" >&2
-  fi
-  echo "ERROR: see valgrind.log for the reason; these results will not be published" >&2
+# Write status to file
+log_status
+
+if [ "${STATUS}" -ne 0 ]; then
+    # >128: killed by signal (128 + signal number)
+    #  139: SIGSEGV. not a real crash; see valgrind.log above its backtrace.
+    if [ "${STATUS}" -gt 128 ]; then
+        echo "ERROR: valgrind was killed by signal $((STATUS - 128)); profiling data is truncated" >&2
+    else
+        echo "ERROR: valgrind exited ${STATUS}; profiling data may be truncated" >&2
+    fi
+    echo "ERROR: see valgrind.log for the reason; these results will not be published" >&2
 fi
 
 # Signal that valgrind has finished writing all profiling data
@@ -144,8 +131,8 @@ echo "INFO: Profiling complete at $(date)"
 
 echo "INFO: running callgrind_annotate to generate report"
 callgrind_annotate \
-  $(find /etc/prof-results -name "callgrind.out.*" -size +0c | sort) \
-  > /etc/prof-results/callgrind_report.txt
+  $(find "$RESULTS" -name "callgrind.out.*" -size +0c | sort) \
+  > "$RESULTS/callgrind_report.txt"
 
 # Restore stdout/stderr
 exec > /dev/null 2>&1
