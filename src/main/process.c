@@ -3219,7 +3219,7 @@ static const unsigned int reply2request[FR_MAX_PACKET_CODE] = {
 };
 
 
-int request_proxy_reply(RADIUS_PACKET *packet)
+int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 {
 	RADIUS_PACKET **proxy_p;
 	REQUEST *request;
@@ -3250,6 +3250,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 				 &packet->src_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
+		FR_PROXY_STATS_INC(listener, total_no_records);
 		return 0;
 	}
 
@@ -3261,6 +3262,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	if (!request->proxy_listener || (request->proxy_listener == proxy_null_listener) ||
 	    !request->proxy_listener->data) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		FR_PROXY_STATS_INC(listener, total_no_records);
 		proxy_reply_too_late(request);
 		return 0;
 	}
@@ -3277,6 +3279,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		bool require_ma;
 
 		if (!request->home_server) {
+			FR_PROXY_STATS_INC(listener, total_no_records);
 			proxy_reply_too_late(request);
 			return 0;
 		}
@@ -3294,12 +3297,14 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 			       (request->proxy->code == PW_CODE_STATUS_SERVER)));
 
 		if (!rad_packet_ok(packet, require_ma, &reason)) {
+			FR_PROXY_STATS_INC(listener, total_malformed_requests);
 			DEBUG("Ignoring invalid packet - %s", fr_strerror());
 			return 0;
 		}
 
 		if (rad_verify(packet, request->proxy,
 			       request->home_server->secret) != 0) {
+			FR_PROXY_STATS_INC(listener, total_bad_authenticators);
 			DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 			return 0;
 		}
@@ -3379,6 +3384,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	    (memcmp(request->proxy_reply->vector,
 		    packet->vector,
 		    sizeof(request->proxy_reply->vector)) != 0)) {
+		FR_PROXY_STATS_INC(listener, total_conflicts);
 		RDEBUG2("Ignoring conflicting proxy reply");
 		return 0;
 	}
@@ -3389,6 +3395,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 */
 	if (!request->proxy_listener  || (request->proxy_listener == proxy_null_listener) ||
 	    !request->proxy_listener->data) {
+		FR_PROXY_STATS_INC(listener, total_bad_authenticators);
 		proxy_reply_too_late(request);
 		return 0;
 	}

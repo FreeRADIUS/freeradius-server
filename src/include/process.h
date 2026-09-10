@@ -77,7 +77,7 @@ void request_inject(REQUEST *request);
 bool radius_event_fd_full(void);
 
 #ifdef WITH_PROXY
-int request_proxy_reply(RADIUS_PACKET *packet);
+int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet);
 #endif
 
 #ifdef WITH_TLS

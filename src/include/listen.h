@@ -211,5 +211,10 @@ typedef struct listen_socket_t {
 
 	RADCLIENT_LIST	*clients;
 } listen_socket_t;
+
+#ifdef WITH_PROXY
+void proxy_response_dropped_stats(rad_listen_t *listener, int code, size_t offset);
+#endif
+
 #endif /* LISTEN_H */
 

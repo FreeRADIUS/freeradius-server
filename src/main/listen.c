@@ -2697,8 +2697,73 @@ static int coa_socket_recv(rad_listen_t *listener)
 #endif
 
 #ifdef WITH_PROXY
+#ifdef WITH_STATS
+void proxy_response_dropped_stats(rad_listen_t *listener, int code, size_t offset)
+{
+	fr_stats_t *stats;
+	uint64_t *counter;
+	listen_socket_t *sock;
+
+	/*
+	 *	If the code is unknown, or the server is not built
+	 *	with the feature, it's an unknown type.
+	 */
+	switch (code) {
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_RESPONSE:
+		stats = &proxy_acct_stats;
+		break;
+#endif
+
+#ifdef WITH_COA
+	case PW_CODE_COA_ACK:
+	case PW_CODE_COA_NAK:
+	case PW_CODE_DISCONNECT_ACK:
+	case PW_CODE_DISCONNECT_NAK:
+		stats = &proxy_coa_stats;
+		break;
+#endif
+
+	case PW_CODE_ACCESS_ACCEPT:
+	case PW_CODE_ACCESS_REJECT:
+	case PW_CODE_ACCESS_CHALLENGE:
+		stats = &proxy_auth_stats;
+		break;
+
+	default:
+		stats = &proxy_auth_stats;
+		offset = offsetof(fr_stats_t, total_unknown_types);
+		break;
+	}
+
+	/*
+	 *	Update the global counters.
+	 */
+	counter = ((uint64_t *) stats) + offset;
+	(*counter)++;
+
+	if (!listener) return;
+
+	if (listener->parent) listener = listener->parent;
+
+	/*
+	 *	Update the listen counters
+	 */
+	stats = &listener->stats;
+	counter = ((uint64_t *) stats) + offset;
+	(*counter)++;
+
+	sock = listener->data;
+	if (sock->home) {
+		stats = &sock->home->stats;
+		counter = ((uint64_t *) stats) + offset;
+		(*counter)++;
+	}
+}
+#endif
+
 /*
- *	Recieve packets from a proxy socket.
+ *	Receive packets from a proxy socket.
  */
 static int proxy_socket_recv(rad_listen_t *listener)
 {
@@ -2743,9 +2808,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 		       packet->code,
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
-#ifdef WITH_STATS
-		listener->stats.total_unknown_types++;
-#endif
+		FR_PROXY_STATS_INC(listener, total_unknown_types);
 		rad_free(&packet);
 		return 0;
 	}
@@ -2755,10 +2818,10 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	packet->proto = sock->proto;
 #endif
 
-	if (!request_proxy_reply(packet)) {
-#ifdef WITH_STATS
-		listener->stats.total_packets_dropped++;
-#endif
+	if (!request_proxy_reply(listener, packet)) {
+		/*
+		 *	That function updates its own stats
+		 */
 		rad_free(&packet);
 		return 0;
 	}
@@ -2870,7 +2933,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	 *
 	 *	Close the socket on bad packets...
 	 */
-	if (!request_proxy_reply(packet)) {
+	if (!request_proxy_reply(listener, packet)) {
 		rad_free(&packet);
 		return 0;
 	}

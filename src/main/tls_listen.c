@@ -893,7 +893,7 @@ redo:
 
 #ifdef WITH_COA_TUNNEL
 	if (is_reply) {
-		if (!request_proxy_reply(packet)) {
+		if (!request_proxy_reply(listener, packet)) {
 			rad_free(&packet);
 			return 0;
 		}
@@ -1332,7 +1332,6 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	return length;
 }
 
-
 int proxy_tls_recv(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
@@ -1453,6 +1452,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 		       packet->code,
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
+		FR_PROXY_STATS_INC(listener, total_unknown_types);
 		rad_free(&packet);
 		return 0;
 	}
@@ -1460,13 +1460,13 @@ int proxy_tls_recv(rad_listen_t *listener)
 #ifdef WITH_COA_TUNNEL
 	if (is_request) {
 		if (!request_receive(NULL, listener, packet, client, rad_coa_recv)) {
-			FR_STATS_INC(auth, total_packets_dropped);
+			FR_PROXY_STATS_INC(listener, total_packets_dropped);
 			rad_free(&packet);
 			return 0;
 		}
 	} else
 #endif
-	if (!request_proxy_reply(packet)) {
+	if (!request_proxy_reply(listener, packet)) {
 		rad_free(&packet);
 		return 0;
 	}
