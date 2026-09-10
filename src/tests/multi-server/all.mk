@@ -44,6 +44,13 @@ OUTPUT := $(abspath $(BUILD_DIR)/tests/multi-server)
 GIT_BRANCH         := $(or $(shell git -C $(top_srcdir) rev-parse --abbrev-ref HEAD 2>/dev/null | tr '/' '_'),unknown-branch)
 GIT_COMMIT         := $(or $(shell git -C $(top_srcdir) rev-parse --short HEAD 2>/dev/null),unknown-commit)
 PROFILING_RESULT_ROOT  := $(abspath $(top_srcdir)/prof-results)
+#
+#  Path inside the freeradius container that receives the profiling output.
+#  The compose templates bind mount PROFILING_RESULT_PATH there and export
+#  the same path to the container as PROFILING_RESULT_DIR, which the
+#  valgrind wrapper reads.
+#
+PROFILING_RESULT_DIR   := /var/lib/prof-results
 PROFILING_RESULT_MODE  ?= ci
 
 #
@@ -154,6 +161,7 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 	    --process-volumes \
 	    --volume-src "$(DIR)/configs" \
 	    --define project="${1}-${2}-$(MODE)" \
+	    --define profiling_result_dir="$(PROFILING_RESULT_DIR)" \
 	    >> "$$(@D)/config_builder.log" 2>&1
 endef
 

@@ -17,8 +17,14 @@
 #  load generator signals the server to exit, and callgrind writes the
 #  profile dump when the process exits.
 #
+#  PROFILING_RESULT_DIR names the directory that receives every output
+#  file.  The compose environment sets the variable and bind mounts the
+#  host results directory at that path.
+#
 
-exec > "/etc/prof-results/valgrind_profiling.log" 2>&1
+: "${PROFILING_RESULT_DIR:?set PROFILING_RESULT_DIR to the directory that receives the profiling output}"
+
+exec > "$PROFILING_RESULT_DIR/valgrind_profiling.log" 2>&1
 
 #  On shutdown freeradius sends SIGTERM to the whole process group.  Without
 #  the trap, SIGTERM would kill this script before the script records the
@@ -56,8 +62,8 @@ echo "INFO: starting freeradius under callgrind at $(date)"
 VALGRIND_STATUS=0
 valgrind \
   --tool=callgrind \
-  --log-file="/etc/prof-results/valgrind.log" \
-  --callgrind-out-file="/etc/prof-results/callgrind.out.%p" \
+  --log-file="$PROFILING_RESULT_DIR/valgrind.log" \
+  --callgrind-out-file="$PROFILING_RESULT_DIR/callgrind.out.%p" \
   --trace-children=yes \
   --separate-threads=no \
   --separate-callers=6 \
@@ -71,7 +77,7 @@ valgrind \
     -S resources.talloc_skip_cleanup=yes \
     -S 'trigger.server.start=%callgrind.start()' \
     -S 'trigger.server.stop=%callgrind.stop()' \
-  > "/etc/prof-results/freeradius.log" 2>&1 || VALGRIND_STATUS=$?
+  > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || VALGRIND_STATUS=$?
 
 #
 #  Record how valgrind exited.  A run in which a signal killed valgrind
@@ -82,7 +88,7 @@ valgrind \
 #  an absent file means that the wrapper did not get this far, rather than
 #  that the run was fine.
 #
-echo "${VALGRIND_STATUS}" > "/etc/prof-results/valgrind-exit-status"
+echo "${VALGRIND_STATUS}" > "$PROFILING_RESULT_DIR/valgrind-exit-status"
 
 if [ "${VALGRIND_STATUS}" -ne 0 ]; then
   #  An exit status over 128 means that a signal killed valgrind.  139 is
@@ -101,8 +107,8 @@ echo "INFO: profiling complete at $(date)"
 
 echo "INFO: running callgrind_annotate to generate report"
 callgrind_annotate \
-  $(find /etc/prof-results -name "callgrind.out.*" -size +0c | sort) \
-  > "/etc/prof-results/callgrind_report.txt"
+  $(find "$PROFILING_RESULT_DIR" -name "callgrind.out.*" -size +0c | sort) \
+  > "$PROFILING_RESULT_DIR/callgrind_report.txt"
 
 #  Discard any output after this point
 exec > /dev/null 2>&1
