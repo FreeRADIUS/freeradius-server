@@ -289,7 +289,7 @@ void dependency_features_init(CONF_SECTION *cs)
 	}
 #endif
 
-#ifdef HAVE_VALGRIND_H
+#ifdef HAVE_VALGRIND_VALGRIND_H
 	/*
 	 *	Are we running under valgrind
 	 */
