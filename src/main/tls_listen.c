@@ -72,7 +72,7 @@ static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 }
 
 /*
- *	Called with the mutex held.
+ *	Called with the mutex held, and unlocks the mutex.
  */
 void tls_socket_close(rad_listen_t *listener);
 
@@ -92,6 +92,8 @@ void tls_socket_close(rad_listen_t *listener)
 	ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Closing connection");
 	rad_free(&sock->packet);
 	TALLOC_FREE(sock->request);
+	PTHREAD_MUTEX_UNLOCK(sock->mutex);
+
 	radius_update_listener(listener);
 
 	/*
@@ -110,7 +112,6 @@ void proxy_tls_close(rad_listen_t *listener)
 
 	PTHREAD_MUTEX_LOCK(sock->mutex);
 	tls_socket_close(listener);
-	PTHREAD_MUTEX_UNLOCK(sock->mutex);
 }
 
 static void tls_write_available(fr_event_list_t *el, int sock, void *ctx);
@@ -190,7 +191,6 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 		rcode = try_connect(listener);
 		if (rcode <= 0) {
 			tls_socket_close(listener);
-			PTHREAD_MUTEX_UNLOCK(sock->mutex);
 			return;
 		}
 
@@ -203,7 +203,6 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 
 	if (sock->ssn->dirty_out.used && (tls_socket_write(listener) < 0)) {
 		tls_socket_close(listener);
-		PTHREAD_MUTEX_UNLOCK(sock->mutex);
 		return;
 	}
 
@@ -803,7 +802,6 @@ redo:
 	if (rcode < 0) {
 		PTHREAD_MUTEX_LOCK(sock->mutex);
 		tls_socket_close(listener);
-		PTHREAD_MUTEX_UNLOCK(sock->mutex);
 		return -1;
 	}
 
@@ -1192,7 +1190,6 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 
 #ifdef WITH_RADIUSV11
 		if (!sock->alpn_checked && (fr_radiusv11_client_get_alpn(listener) < 0)) {
-			tls_socket_close(listener);
 			return -1;
 		}
 #endif
@@ -1354,7 +1351,6 @@ int proxy_tls_recv(rad_listen_t *listener)
 	if (data_len < 0) {
 	fail:
 		tls_socket_close(listener);
-		PTHREAD_MUTEX_UNLOCK(sock->mutex);
 		DEBUG("(TLS) Closing connection to home server");
 		return 0;
 	}
@@ -1504,7 +1500,6 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 		if (rcode <= 0) {
 		do_close:
 			tls_socket_close(listener);
-			PTHREAD_MUTEX_UNLOCK(sock->mutex);
 			return -1;
 		}
 
@@ -1664,7 +1659,6 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 			tls_error_log(NULL, "Failed in proxy send with OpenSSL error %d", err);
 			DEBUG("Closing TLS socket to home server");
 			tls_socket_close(listener);
-			PTHREAD_MUTEX_UNLOCK(sock->mutex);
 			return 0;
 		}
 	}
