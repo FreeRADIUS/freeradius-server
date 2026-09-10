@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/atexit.h>
+#include <freeradius-devel/util/sbuff.h>
 
 static inline fr_cmp_ret_t cf_ident2_cmp(void const *a, void const *b);
 static fr_cmp_ret_t _cf_ident1_cmp(void const *a, void const *b);
@@ -2554,6 +2555,9 @@ void _cf_canonicalize_error(CONF_ITEM *ci, ssize_t slen, char const *msg, char c
 	talloc_free(text);
 }
 
+static fr_sbuff_term_t const ref_char = FR_SBUFF_TERMS(L("."), L("["));
+static fr_sbuff_term_t const ref_char_end = FR_SBUFF_TERMS(L("]"));
+
 /*
  *	Create or find a CONF_PAIR, including parents.
  *
@@ -2561,56 +2565,85 @@ void _cf_canonicalize_error(CONF_ITEM *ci, ssize_t slen, char const *msg, char c
  */
 int cf_pair_replace_or_add(CONF_SECTION *cs, char const *ref, char const *value)
 {
-	char *name2;
-	CONF_PAIR *cp;
-	char buffer[256];
+	fr_sbuff_t	in = FR_SBUFF_IN(ref, strlen(ref));
 
-	while (*ref) {
-		char *p;
-		CONF_SECTION *subcs;
+	char		name1_buff[256];
+	char		name2_buff[256];
 
-		p = strchr(ref, '.');
-		if (!p) break;
+	fr_sbuff_t	name1_sbuff = FR_SBUFF_OUT(name1_buff, sizeof(name1_buff));
+	fr_sbuff_t	name2_sbuff = FR_SBUFF_OUT(name2_buff, sizeof(name2_buff));
 
-		p++;
-		if (*p == '[') {
-			size_t len;
+	char const	*name1 = name1_buff;
+	char const	*name2;
 
-			name2 = p + 1;
-			p = strchr(name2, ']'); /* doesn't support nesting, too bad */
-			if (!p) {
-				fr_strerror_printf("Missing ']' after %s", name2);
-				return -1;
-			}
+	CONF_PAIR	*cp;
+	CONF_SECTION	*subcs = cs;
 
-			len = (size_t) (p - name2);
-			if (len >= sizeof(buffer)) {
-				fr_strerror_printf("Reference in '[...]' is too long after %s", name2);
-				return -1;
-			}
-			memcpy(buffer, name2, len);
-			buffer[len] = '\0';
-			name2 = buffer;
+	/*
+	 *	Walk the dotted path, creating any section that does not
+	 *	exist.  Each segment is copied out so the lookup sees the
+	 *	segment alone, not the rest of the path.  The last segment
+	 *	is the pair name, and is stopped on by the trailing '\0'.
+	 */
+	while (fr_sbuff_out_bstrncpy_until(&name1_sbuff, &in, SIZE_MAX, &ref_char, NULL)) {
+		CONF_SECTION *found;
 
-		} else {
+		switch (*fr_sbuff_current(&in)) {
+		case '.':
 			name2 = NULL;
+			fr_sbuff_advance(&in, 1);		/* Skip the '.' */
+			break;
+
+		case '[':
+			fr_sbuff_advance(&in, 1);		/* Skip the '[' */
+			if (!fr_sbuff_out_bstrncpy_until(&name2_sbuff, &in, SIZE_MAX, &ref_char_end, NULL) ||
+			    !fr_sbuff_is_char(&in, ']')) {
+				fr_strerror_printf("Missing ']', or selector is empty or too long, in '%s'", ref);
+				return -1;
+			}
+			name2 = name2_buff;
+			fr_sbuff_advance(&in, 1);		/* Skip the ']' */
+			(void) fr_sbuff_next_if_char(&in, '.');	/* Skip the '.' in a[b].c */
+			break;
+
+		/*
+		 *	The final segment is the pair name.  Replace the
+		 *	pair if it exists, otherwise add it to the section
+		 *	the walk arrived at.
+		 */
+		case '\0':
+			cp = cf_pair_find(subcs, name1);
+			if (cp) return cf_pair_replace(subcs, cp, value);
+
+			cp = cf_pair_alloc(subcs, name1, value, T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+			if (!cp) return -1;
+			return 0;
+
+		/*
+		 *	The copy stopped on an ordinary character, which
+		 *	means the segment did not fit in the buffer.
+		 */
+		default:
+			fr_strerror_printf("Section name is too long in '%s'", ref);
+			return -1;
 		}
 
-		subcs = cf_section_find(cs, ref, name2);
-		if (!subcs) {
-			subcs = cf_section_alloc(cs, cs, ref, name2);
-			if (!subcs) return -1;
-		}
+		/*
+		 *	Find the named child section, creating it if it
+		 *	does not exist.  The parent is the section the walk
+		 *	has reached so far, never the result of the lookup,
+		 *	which is NULL on a miss.
+		 */
+		found = cf_section_find(subcs, name1, name2);
+		if (!found) found = cf_section_alloc(subcs, subcs, name1, name2);
+		if (!found) return -1;
+		subcs = found;
 
-		cs = subcs;
-		ref = p;
+		fr_sbuff_set_to_start(&name1_sbuff);
+		fr_sbuff_set_to_start(&name2_sbuff);
 	}
 
-	cp = cf_pair_find(cs, ref);
-	if (cp) return cf_pair_replace(cs, cp, value);
-
-	cp = cf_pair_alloc(cs, ref, value, T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-	if (!cp) return -1;
-
-	return 0;
+	fr_strerror_printf("Empty section or pair name in '%s'", ref);
+	return -1;
 }
+
