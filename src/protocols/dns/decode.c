@@ -259,7 +259,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	slen = fr_struct_from_network(ctx, out, attr_dns_packet, packet, DNS_HDR_LEN,
 				      packet_ctx, decode_value_trampoline, NULL); /* no TLVs in the header */
 	if (slen < 0) {
-		fr_strerror_printf("Failed decoding DNS header - %s", fr_strerror());
+		fr_strerror_printf_push("Failed decoding DNS header");
 		return slen;
 	}
 	fr_assert(slen == DNS_HDR_LEN);
@@ -270,7 +270,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 
 	slen = decode_record(ctx, out, attr_dns_question, p, end, packet_ctx, packet + 4);
 	if (slen < 0) {
-		fr_strerror_printf("Failed decoding questions - %s", fr_strerror());
+		fr_strerror_printf_push("Failed decoding questions");
 		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
@@ -279,7 +279,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 
 	slen = decode_record(ctx, out, attr_dns_rr, p, end, packet_ctx, packet + 6);
 	if (slen < 0) {
-		fr_strerror_printf("Failed decoding RRs - %s", fr_strerror());
+		fr_strerror_printf_push("Failed decoding RRs");
 		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
@@ -288,7 +288,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 
 	slen = decode_record(ctx, out, attr_dns_ns, p, end, packet_ctx, packet + 8);
 	if (slen < 0) {
-		fr_strerror_printf("Failed decoding NS - %s", fr_strerror());
+		fr_strerror_printf_push("Failed decoding NS");
 		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
@@ -297,7 +297,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 
 	slen = decode_record(ctx, out, attr_dns_ar, p, end, packet_ctx, packet + 10);
 	if (slen < 0) {
-		fr_strerror_printf("Failed decoding additional records - %s", fr_strerror());
+		fr_strerror_printf_push("Failed decoding additional records");
 		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
