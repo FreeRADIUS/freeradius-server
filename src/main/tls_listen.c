@@ -87,12 +87,11 @@ void tls_socket_close(rad_listen_t *listener)
 	listener->tls = NULL; /* parent owns this! */
 
 	/*
-	 *	Tell the event handler that an FD has disappeared.
+	 *	Calling function has to tell the event handler that an FD has disappeared.
 	 */
 	ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Closing connection");
 	rad_free(&sock->packet);
 	TALLOC_FREE(sock->request);
-	radius_update_listener(listener);
 
 	/*
 	 *	Do NOT free the listener here.  It may be in use by
@@ -111,6 +110,7 @@ void proxy_tls_close(rad_listen_t *listener)
 	PTHREAD_MUTEX_LOCK(sock->mutex);
 	tls_socket_close(listener);
 	PTHREAD_MUTEX_UNLOCK(sock->mutex);
+	radius_update_listener(listener);
 }
 
 static void tls_write_available(fr_event_list_t *el, int sock, void *ctx);
@@ -191,6 +191,7 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 		if (rcode <= 0) {
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(sock->mutex);
+			radius_update_listener(listener);
 			return;
 		}
 
@@ -204,6 +205,7 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 	if (sock->ssn->dirty_out.used && (tls_socket_write(listener) < 0)) {
 		tls_socket_close(listener);
 		PTHREAD_MUTEX_UNLOCK(sock->mutex);
+		radius_update_listener(listener);
 		return;
 	}
 
@@ -804,6 +806,7 @@ redo:
 		PTHREAD_MUTEX_LOCK(sock->mutex);
 		tls_socket_close(listener);
 		PTHREAD_MUTEX_UNLOCK(sock->mutex);
+		radius_update_listener(listener);
 		return -1;
 	}
 
@@ -1193,6 +1196,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 #ifdef WITH_RADIUSV11
 		if (!sock->alpn_checked && (fr_radiusv11_client_get_alpn(listener) < 0)) {
 			tls_socket_close(listener);
+			radius_update_listener(listener);
 			return -1;
 		}
 #endif
@@ -1356,6 +1360,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 	fail:
 		tls_socket_close(listener);
 		PTHREAD_MUTEX_UNLOCK(sock->mutex);
+		radius_update_listener(listener);
 		DEBUG("(TLS) Closing connection to home server");
 		return 0;
 	}
@@ -1505,6 +1510,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 		do_close:
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(sock->mutex);
+			radius_update_listener(listener);
 			return -1;
 		}
 
@@ -1665,6 +1671,7 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 			DEBUG("Closing TLS socket to home server");
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(sock->mutex);
+			radius_update_listener(listener);
 			return 0;
 		}
 	}
