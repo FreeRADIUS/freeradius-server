@@ -532,7 +532,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	 *	Note that the destination may already have children!
 	 */
 	if (dict_attr_acopy_children(dict, dst, src) < 0) {
-		fr_strerror_printf("Failed populating attribute '%s' with children of %s - %s", dst->name, src->name, fr_strerror());
+		fr_strerror_printf_push("Failed populating attribute '%s' with children of %s", dst->name, src->name);
 		return -1;
 	}
 
