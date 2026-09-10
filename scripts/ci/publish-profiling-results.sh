@@ -22,9 +22,9 @@ Core dumps are excluded; collect-core-dumps.sh keeps those instead. Run from
 the directory holding prof-results/. A missing prof-results/ tree, or one
 holding nothing publishable, is a quiet success.
 
-Fails without publishing when any test's valgrind-exit-status is non-zero,
-because a run valgrind killed has truncated callgrind output whose numbers are
-not comparable with previous runs.
+Fails without publishing when any test's exit-status is non-zero, because a
+capture the profiler did not finish cleanly has truncated output whose numbers
+are not comparable with previous runs.
 
   <url>  Where to POST. Its origin becomes the OIDC audience.
   -h     Show this help.
@@ -53,20 +53,20 @@ audience="${url%%://*}://${host_path%%/*}"
 
 [ -d prof-results ] || { echo "no prof-results/ tree; skipping"; exit 0; }
 
-#  Refuse to publish a run valgrind did not finish cleanly. start_valgrind_-
-#  profiling.sh drops a valgrind-exit-status file in each test's results dir; a
-#  non-zero status means valgrind was killed, which leaves callgrind output
-#  truncated at whatever point it died. Numbers from a truncated run are not
-#  comparable with a clean one, and publishing them silently poisons the
+#  Refuse to publish a capture the profiler did not finish cleanly. Each
+#  capture script drops an exit-status file in its result dir; a non-zero
+#  status means the profiler was killed, which leaves the output truncated at
+#  whatever point it died. Numbers from a truncated run are not comparable
+#  with a clean one, and publishing them silently poisons the
 #  per-suite history the regression gate compares against. Exits non-zero so
 #  the leg goes red rather than passing with nothing uploaded.
 unclean=""
-for status_file in $(find prof-results -type f -name valgrind-exit-status | sort); do
+for status_file in $(find prof-results -type f -name exit-status | sort); do
 	read -r status <"$status_file" || status="unreadable"
 	case $status in
 	0)	continue ;;
 	esac
-	unclean="${unclean} ${status_file%/valgrind-exit-status}:${status}"
+	unclean="${unclean} ${status_file%/exit-status}:${status}"
 done
 if [ -n "$unclean" ]; then
 	echo "ERROR: refusing to publish, valgrind exited uncleanly in:" >&2

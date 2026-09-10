@@ -24,7 +24,7 @@
 
 : "${PROFILING_RESULT_DIR:?set PROFILING_RESULT_DIR to the directory that receives the profiling output}"
 
-exec > "$PROFILING_RESULT_DIR/valgrind_profiling.log" 2>&1
+exec > "$PROFILING_RESULT_DIR/capture.log" 2>&1
 
 #  On shutdown freeradius sends SIGTERM to the whole process group.  Without
 #  the trap, SIGTERM would kill this script before the script records the
@@ -39,7 +39,7 @@ echo ""
 
 #
 #  valgrind logs to --log-file.  freeradius stdout and stderr go to
-#  freeradius.log.
+#  freeradius_valgrind.log.
 #
 #  --trace-children=yes    also profile child processes, each writes a
 #                          separate callgrind.out.%p
@@ -59,11 +59,11 @@ echo ""
 #                          instrumentation on and off
 #
 echo "INFO: starting freeradius under callgrind at $(date)"
-VALGRIND_STATUS=0
+STATUS=0
 valgrind \
   --tool=callgrind \
   --log-file="$PROFILING_RESULT_DIR/valgrind.log" \
-  --callgrind-out-file="$PROFILING_RESULT_DIR/callgrind.out.%p" \
+  --callgrind-out-file="$PROFILING_RESULT_DIR/profile.out.%p" \
   --trace-children=yes \
   --separate-threads=no \
   --separate-callers=6 \
@@ -77,7 +77,7 @@ valgrind \
     -S resources.talloc_skip_cleanup=yes \
     -S 'trigger.server.start=%callgrind.start()' \
     -S 'trigger.server.stop=%callgrind.stop()' \
-  > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || VALGRIND_STATUS=$?
+  > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || STATUS=$?
 
 #
 #  Record how valgrind exited.  A run in which a signal killed valgrind
@@ -88,17 +88,17 @@ valgrind \
 #  an absent file means that the wrapper did not get this far, rather than
 #  that the run was fine.
 #
-echo "${VALGRIND_STATUS}" > "$PROFILING_RESULT_DIR/valgrind-exit-status"
+echo "${STATUS}" > "$PROFILING_RESULT_DIR/exit-status"
 
-if [ "${VALGRIND_STATUS}" -ne 0 ]; then
+if [ "${STATUS}" -ne 0 ]; then
   #  An exit status over 128 means that a signal killed valgrind.  139 is
   #  SIGSEGV, which is how valgrind exits when the brk segment reaches the
   #  8 MB ceiling.  valgrind.log names the real reason on the line above
   #  the backtrace.
-  if [ "${VALGRIND_STATUS}" -gt 128 ]; then
-    echo "ERROR: valgrind was killed by signal $((VALGRIND_STATUS - 128)); profiling data is truncated" >&2
+  if [ "${STATUS}" -gt 128 ]; then
+    echo "ERROR: valgrind was killed by signal $((STATUS - 128)); profiling data is truncated" >&2
   else
-    echo "ERROR: valgrind exited ${VALGRIND_STATUS}; profiling data may be truncated" >&2
+    echo "ERROR: valgrind exited ${STATUS}; profiling data may be truncated" >&2
   fi
   echo "ERROR: see valgrind.log for the reason; these results will not be published" >&2
 fi
@@ -107,8 +107,8 @@ echo "INFO: profiling complete at $(date)"
 
 echo "INFO: running callgrind_annotate to generate report"
 callgrind_annotate \
-  $(find "$PROFILING_RESULT_DIR" -maxdepth 1 -name "callgrind.out.*" -size +0c | sort) \
-  > "$PROFILING_RESULT_DIR/callgrind_report.txt"
+  $(find "$PROFILING_RESULT_DIR" -maxdepth 1 -name "profile.out.*" -size +0c | sort) \
+  > "$PROFILING_RESULT_DIR/report.txt"
 
 #  Discard any output after this point
 exec > /dev/null 2>&1

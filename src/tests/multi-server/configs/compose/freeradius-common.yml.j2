@@ -22,8 +22,11 @@ services:
       # that needs an exact packet count sets TEST_LOADGEN_MAX_REQUESTS.
       TEST_LOADGEN_MAX_REQUESTS: ${TEST_LOADGEN_MAX_REQUESTS:-0}
     volumes:
-    # Capture script that RADIUSD_COMMAND runs in profiling mode
-    - ${DATA_PATH}/scripts/start_valgrind_profiling.sh:/usr/local/bin/start_valgrind_profiling.sh
+    # Capture scripts that RADIUSD_COMMAND runs in profiling mode, one per
+    # profiler in PROFILING_TOOLS.  Only the one PROFILING_TOOL names runs.
+{% for tool in profiling_tools.split() %}
+    - ${DATA_PATH}/scripts/start_{{ tool }}_profiling.sh:/usr/local/bin/start_{{ tool }}_profiling.sh
+{% endfor %}
     # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
     - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:{{ profiling_result_dir }}/
     # Directory the test framework watches for listener sockets

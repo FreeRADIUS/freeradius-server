@@ -52,10 +52,13 @@ PROFILING_RESULT_ROOT  := $(abspath $(top_srcdir)/prof-results)
 #
 PROFILING_RESULT_DIR   := /var/lib/prof-results
 #
-#  Profiler that a MODE=profiling run captures with.  RADIUSD_COMMAND runs
-#  scripts/profiling/start_$(PROFILING_TOOL)_profiling.sh.
+#  Profilers whose capture scripts are copied into the container and mounted
+#  at /usr/local/bin.  PROFILING_TOOL names the one a MODE=profiling run
+#  captures with; RADIUSD_COMMAND runs start_$(PROFILING_TOOL)_profiling.sh.
+#  Set PROFILING_TOOL on the command line to profile with another.
 #
-PROFILING_TOOL         := valgrind
+PROFILING_TOOLS        := valgrind gperftools
+PROFILING_TOOL         ?= valgrind
 PROFILING_RESULT_MODE  ?= ci
 
 #
@@ -167,6 +170,7 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 	    --volume-src "$(DIR)/configs" \
 	    --define project="${1}-${2}-$(MODE)" \
 	    --define profiling_result_dir="$(PROFILING_RESULT_DIR)" \
+	    --define profiling_tools="$(PROFILING_TOOLS)" \
 	    >> "$$(@D)/config_builder.log" 2>&1
 endef
 
@@ -178,7 +182,7 @@ endef
 #  the build early with "No rule to make target .../start_<tool>_profiling.sh".
 #
 TEST_MULTI_SERVER_SCRIPT_DIR     := $(DIR)/scripts
-TEST_MULTI_SERVER_SCRIPT_NAMES   := start_$(PROFILING_TOOL)_profiling.sh
+TEST_MULTI_SERVER_SCRIPT_NAMES   := $(foreach t,$(PROFILING_TOOLS),start_$(t)_profiling.sh)
 TEST_MULTI_SERVER_COMMON_COMPOSE := $(wildcard $(DIR)/configs/compose/*.yml.j2)
 
 #
@@ -222,12 +226,12 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MU
 		FREERADIUS_IMAGE=$(FREERADIUS_PROFILING_IMAGE); \
 		RADIUSD_COMMAND="bash /usr/local/bin/start_$(PROFILING_TOOL)_profiling.sh"; \
 		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
-			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}"; \
+			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}/$(PROFILING_TOOL)"; \
 		else \
 			RUN_BASE="$(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
 			EXISTING=$$$$( find "$$$$RUN_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
 			RUN_INDEX=$$$$((EXISTING + 1)); \
-			PROFILING_RESULT_PATH="$$$$RUN_BASE/$$$$RUN_INDEX/${1}/${2}"; \
+			PROFILING_RESULT_PATH="$$$$RUN_BASE/$$$$RUN_INDEX/${1}/${2}/$(PROFILING_TOOL)"; \
 		fi; \
 		mkdir -p "$$$$PROFILING_RESULT_PATH"; \
 		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \

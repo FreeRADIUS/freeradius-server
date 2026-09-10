@@ -34,17 +34,44 @@ make test.multi-server
 make test.multi-server.ci
 ```
 
-### Profiling pass (same suites, valgrind/callgrind wrapper)
+### Profiling pass (same suites, under a profiler)
 
 ```bash
 make test.multi-server.profiling       # all suites
 make test.multi-server.profiling.ci    # CI subset
+make test.multi-server.accept.short_ci MODE=profiling PROFILING_TOOL=gperftools
 ```
 
+A profiling run captures with one profiler, named by `PROFILING_TOOL`
+(default `valgrind`). `PROFILING_TOOLS` lists the profilers whose capture
+scripts are mounted into the container, so a run can select any of them
+without an image change.
+
 Profiling results land under
-`prof-results/<suite>/<test>/<branch>/<commit>/<run-index>/`. Set
-`PROFILING_RESULT_MODE=dev` to use a flat per-suite layout that overwrites
-each run.
+`prof-results/<branch>/<commit>/<run-index>/<suite>/<test>/<tool>/`, one
+directory per profiler.  Set `PROFILING_RESULT_MODE=dev` to use a flat
+`prof-results/<suite>/<test>/<tool>/` layout that overwrites each run.
+
+Each profiler writes the same set of files into its own result directory:
+
+| file             | contents                                              |
+|------------------|-------------------------------------------------------|
+| `capture.log`    | the capture script's own log                          |
+| `freeradius.log` | server stdout and stderr                              |
+| `profile.out`    | raw profile (callgrind writes `profile.out.<pid>`)    |
+| `report.txt`     | text report (`callgrind_annotate` or `pprof -text`)   |
+| `exit-status`    | 0 when the capture completed                          |
+
+callgrind also writes `valgrind.log`, valgrind's own engine log, which has
+no gperftools counterpart.
+
+Both captures switch sampling on and off from the `server.start` and
+`server.stop` triggers, callgrind through `%callgrind.start`/`stop` and
+gperftools through `%gperftools.start`/`stop`, so startup and shutdown stay
+out of the profile.  The gperftools capture needs `pprof` in the profiling
+image to convert the raw profile, and fails at startup without it.  The
+header of each `scripts/profiling/start_<tool>_profiling.sh` documents that
+capture.
 
 ### A specific test
 
