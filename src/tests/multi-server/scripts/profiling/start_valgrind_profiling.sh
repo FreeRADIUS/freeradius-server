@@ -42,7 +42,7 @@ echo ""
 #  freeradius_valgrind.log.
 #
 #  --trace-children=yes    also profile child processes, each writes a
-#                          separate callgrind.out.%p
+#                          separate profile.out.%p
 #  --separate-threads=no   one profile per process, not per thread
 #  --separate-callers=6    separate each function's costs by up to 6
 #                          callers in the call chain
