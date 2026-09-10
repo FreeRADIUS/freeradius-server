@@ -145,7 +145,7 @@ ifeq "$(WITH_BACKTRACE)" "yes"
 HEADERS         += backtrace/backtrace.h
 TGT_PREREQS	+= libbacktrace.la
 TGT_LDLIBS	+= '-lbacktrace'
-TGT_LDFLAGS	+= -L$(top_builddir)/build/lib/local/.libs
+TGT_LDFLAGS	+= -L$(BUILD_DIR)/lib/local/.libs
 
 #
 #  Our local backtrace.c file needs the soft link to be created.
@@ -153,7 +153,7 @@ TGT_LDFLAGS	+= -L$(top_builddir)/build/lib/local/.libs
 src/include/backtrace:
 	cd src/include && ln -s ../lib/backtrace
 
-build/objs/src/lib/util/backtrace.$(OBJ_EXT): | src/include/backtrace
+$(BUILD_DIR)/objs/src/lib/util/backtrace.$(OBJ_EXT): | src/include/backtrace
 
 # Actually call the 'sub'-make to build libbacktrace.
 #
@@ -169,19 +169,19 @@ src/lib/backtrace/libbacktrace.la src/lib/backtrace/.libs/libbacktrace.a &:
 	$(MAKE) -C $(top_srcdir)/src/lib/backtrace
 
 # We need to do this so jlibtool can find the library.
-build/lib/.libs/libbacktrace.a: src/lib/backtrace/.libs/libbacktrace.a
+$(BUILD_DIR)/lib/.libs/libbacktrace.a: src/lib/backtrace/.libs/libbacktrace.a
 	cp $< $@
 
 # Boilermake needs this target to exist
-build/lib/libbacktrace.la: src/lib/backtrace/libbacktrace.la build/lib/.libs/libbacktrace.a
+$(BUILD_DIR)/lib/libbacktrace.la: src/lib/backtrace/libbacktrace.la $(BUILD_DIR)/lib/.libs/libbacktrace.a
 	cp $< $@
 
 # We need to do this so jlibtool can find the library.
-build/lib/local/.libs/libbacktrace.a: src/lib/backtrace/.libs/libbacktrace.a
+$(BUILD_DIR)/lib/local/.libs/libbacktrace.a: src/lib/backtrace/.libs/libbacktrace.a
 	cp $< $@
 
 # Boilermake needs this target to exist
-build/lib/local/libbacktrace.la: src/lib/backtrace/libbacktrace.la build/lib/local/.libs/libbacktrace.a
+$(BUILD_DIR)/lib/local/libbacktrace.la: src/lib/backtrace/libbacktrace.la $(BUILD_DIR)/lib/local/.libs/libbacktrace.a
 	cp $< $@
 endif
 
