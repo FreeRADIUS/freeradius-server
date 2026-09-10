@@ -12,7 +12,7 @@
 #                                   PROFILING_RESULT_PATH.
 # - PROFILING_RESULT_MODE=<ci|dev>      Profiling output layout (only meaningful when
 #                                   MODE=profiling). Default `ci`.
-#                                     ci:  PROFILING_RESULT_ROOT/<suite>/<test>/<branch>/<commit>/<run-index>
+#                                     ci:  PROFILING_RESULT_ROOT/<branch>/<commit>/<run-index>/<suite>/<test>
 #                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>  (flat)
 #
 # Usage:
@@ -45,6 +45,18 @@ GIT_BRANCH         := $(or $(shell git -C $(top_srcdir) rev-parse --abbrev-ref H
 GIT_COMMIT         := $(or $(shell git -C $(top_srcdir) rev-parse --short HEAD 2>/dev/null),unknown-commit)
 PROFILING_RESULT_ROOT  := $(abspath $(top_srcdir)/prof-results)
 PROFILING_RESULT_MODE  ?= ci
+
+#
+#  One run index for the whole invocation, so every suite/test of a run lands
+#  under the same one. ':=' is evaluated once at parse time, before any recipe
+#  runs, so parallel recipes cannot each allocate their own index.
+#  CI uses the workflow run number; locally, the next number after the run
+#  dirs already under <branch>/<commit>.
+#
+PROFILING_RUN_BASE  := $(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)
+PROFILING_LAST_RUN   = $(shell find "$(PROFILING_RUN_BASE)" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | \
+			sed 's|.*/||' | grep -xE '[0-9]+' | sort -n | tail -1)
+PROFILING_RUN_INDEX := $(or $(GITHUB_RUN_NUMBER),$(shell expr $(or $(PROFILING_LAST_RUN),0) + 1))
 
 #
 #  Image plumbing.
@@ -199,10 +211,7 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start
 		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
 			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}"; \
 		else \
-			RUN_BASE="$(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
-			EXISTING=$$$$( find "$$$$RUN_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
-			RUN_INDEX=$$$$((EXISTING + 1)); \
-			PROFILING_RESULT_PATH="$$$$RUN_BASE/$$$$RUN_INDEX/${1}/${2}"; \
+			PROFILING_RESULT_PATH="$(PROFILING_RUN_BASE)/$(PROFILING_RUN_INDEX)/${1}/${2}"; \
 		fi; \
 		mkdir -p "$$$$PROFILING_RESULT_PATH"; \
 		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \
