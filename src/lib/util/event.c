@@ -1606,9 +1606,10 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 			*	Print this error here, so that the caller gets
 			*	the error from kevent(), and not waitpid().
 			*/
-			fr_strerror_printf("Failed adding waiter for PID %ld - kevent %s, waitid %s",
-					   (long) pid, fr_syserror(evset.flags), fr_syserror(errno));
-
+			fr_strerror_printf_push("Failed adding waiter for PID %ld - kevent %s",
+						(long) pid, fr_syserror(evset.data));
+			fr_strerror_printf_push("waitid() for PID %ld returned %s",
+						(long) pid, fr_syserror(errno));
 			goto error;
 		}
 	}
