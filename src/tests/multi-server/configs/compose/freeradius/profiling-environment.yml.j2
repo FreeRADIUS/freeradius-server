@@ -1,0 +1,4 @@
+# PROFILING selects the valgrind wrapper in the test template, and
+# PROFILING_RESULT_DIR is the directory the wrapper writes to.
+PROFILING: ${PROFILING:-no}
+PROFILING_RESULT_DIR: {{ profiling_result_dir }}

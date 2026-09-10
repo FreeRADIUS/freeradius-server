@@ -7,6 +7,7 @@
 #   environments/accept.yml.j2 for the FREERADIUS_IMAGE / PROFILING
 #   convention.
 # ---------------------------------------------------------------
+{% import "compose/macros.j2" as compose with context %}
 x-common-config: &id001
   cap_add:
   - NET_ADMIN
@@ -18,23 +19,15 @@ services:
   freeradius:
     image: ${FREERADIUS_IMAGE}
     environment:
-      PROFILING: ${PROFILING:-no}
-      PROFILING_RESULT_DIR: {{ profiling_result_dir }}
+{{ compose.include_at("compose/freeradius/profiling-environment.yml.j2", 6) }}
     volumes:
     # freeradius server config
     - ${DATA_PATH}/freeradius/pap-auth/radiusd.conf:/etc/freeradius/radiusd.conf
     # files module configuration
     - ${DATA_PATH}/freeradius/pap-auth/mods-config/files/authorize:/etc/freeradius/mods-config/files/authorize
-    # proto_load packet configuration and statistics output
-    - ${DATA_PATH}/freeradius/common/proto-load/proto_load_config.env:/etc/freeradius/proto_load_config.env
-    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
-    - ${DATA_PATH}/freeradius/common/proto-load/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
-    # Profiling wrapper (no-op in service mode)
-    - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
-    # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
-    - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:{{ profiling_result_dir }}/
-    # Listener directory
-    - ${LISTENER_DIR}/:/var/run/multi-server/
+{{ compose.include_at("compose/freeradius/load-generator-volumes.yml.j2", 4) }}
+{{ compose.include_at("compose/freeradius/profiling-volumes.yml.j2", 4) }}
+{{ compose.include_at("compose/freeradius/listener-volumes.yml.j2", 4) }}
     entrypoint:
     - bash
     - -lc
