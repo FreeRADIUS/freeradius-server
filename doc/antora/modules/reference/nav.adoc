@@ -83,6 +83,7 @@
 
 *** xref:xlat/interpreter.adoc[Interpreter State and Debugging]
 *** xref:xlat/log.adoc[Logging]
+*** xref:xlat/profiling.adoc[Profiling]
 *** xref:xlat/protocol.adoc[Protocol Encoding and Decoding]
 
 *** xref:xlat/misc/index.adoc[Miscellaneous]

@@ -407,7 +407,7 @@ static int CC_HINT(nonnull(1)) filename_xlat_escape(fr_value_box_t *vb, UNUSED v
 	return 0;
 }
 
-static xlat_arg_parser_t const xlat_func_file_name_args[] = {
+xlat_arg_parser_t const xlat_func_file_name_args[] = {
 	{ .required = true,  .concat = true, .type = FR_TYPE_STRING,
 	  .func = filename_xlat_escape, .safe_for = FR_FILENAME_SAFE_FOR, .always_escape = true },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -424,7 +424,7 @@ static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
 /*
  *	Limit the %file...() functions to a particular subset of directories.
  */
-static bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
+bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
 {
 	size_t i, num_files;
 
@@ -5176,6 +5176,8 @@ do { \
 	XLAT_NEW("url.unquote");
 
 	XLAT_REGISTER_PURE("eval", xlat_func_eval, FR_TYPE_VOID, xlat_func_eval_arg);
+
+	if (xlat_profiling_init() < 0) return -1;
 
 	return xlat_register_expressions();
 }

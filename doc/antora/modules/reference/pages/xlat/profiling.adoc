@@ -1,0 +1,109 @@
+= Profiling
+
+The following functions control a profiler attached to the running server.  The functions let a policy or a xref:reference:raddb/trigger.conf.adoc[trigger] choose which part of a run the profiler measures, instead of measuring from process start to process exit.
+
+The functions for a profiler are only available when the server was built on a system with the development headers for that profiler installed.  The `runtime-valgrind` and `runtime-gperftools` feature flags report whether the profiler is attached.  The server prints the feature flags at startup when run with `-x`.  A call to a function whose profiler is not attached fails the expansion and logs the reason.
+
+This page uses the terms of each profiler.  Callgrind counts costs (instruction fetches, cache misses, branch mispredictions) into one cost centre per function, and writes the cost centres as a profile dump.  gperftools records samples of the program counter on a timer, and writes the samples to a profile file.
+
+The usual way to use these functions is from the `server.start` and `server.stop` triggers.  The `server.start` trigger fires once the worker threads are running.  The `server.stop` trigger fires after the server receives a request to exit.  The `-S` option sets a trigger from the command line without editing the configuration:
+
+[source,shell]
+----
+radiusd -f -S 'trigger.server.start=%callgrind.start()' -S 'trigger.server.stop=%callgrind.stop()'
+----
+
+== Callgrind
+
+Callgrind is the call graph profiler in valgrind.  Start the server with instrumentation switched off, so that callgrind does not profile configuration parsing and module loading.  Then switch instrumentation on from a trigger:
+
+[source,shell]
+----
+valgrind --tool=callgrind --instr-atstart=no \
+    radiusd -f -S 'trigger.server.start=%callgrind.start()'
+----
+
+Instrumentation is process-wide, so the thread that runs the function does not matter.
+
+[[callgrind_start]]
+== %callgrind.start()
+
+Switch callgrind instrumentation on.  When cache simulation is enabled, callgrind flushes the simulated cache, so the first moments after the call show an artificial burst of cache misses.
+
+Use this function when the profile should begin later than process start.  The `server.start` trigger is the usual place to call this function, because configuration parsing and module loading have finished when the trigger fires.
+
+.Return: _bool_
+
+[[callgrind_stop]]
+== %callgrind.stop()
+
+Switch callgrind instrumentation off.  Callgrind keeps the costs already collected, and writes the costs when the process exits or when `%callgrind.dump()` runs.
+
+Use this function when the profile should end before process exit.  A call from the `server.stop` trigger keeps thread teardown out of the profile.  A call from a policy ends the profile after a chosen section of unlang.
+
+.Return: _bool_
+
+[[callgrind_dump]]
+== %callgrind.dump([<label>])
+
+Write the costs collected so far to a new profile dump, then zero the costs.  Callgrind records the optional label in the dump, so the reader can distinguish the dumps when one run produces several.
+
+Use this function when one run should produce several profile dumps, such as one dump per load step, or one dump for the load phase and one dump for shutdown.  Instrumentation stays on, and each dump holds only the costs counted since the previous dump.  `callgrind_annotate` accepts several dumps at once.
+
+.Return: _bool_
+
+.Example
+[source,unlang]
+----
+%callgrind.dump('load complete')
+----
+
+[[callgrind_zero]]
+== %callgrind.zero()
+
+Zero the costs collected so far without writing a dump.
+
+Use this function to discard the costs of a period that the profile should not include.  Examples are the cache warmup after `%callgrind.start()`, and a settling period after a load step changes the request rate.  Call this function when the period ends.  The next profile dump, or the dump at process exit, then holds only the costs counted after the call.
+
+.Return: _bool_
+
+== gperftools
+
+The gperftools CPU profiler samples the program counter on a timer and writes the samples to a file for `pprof` to read.  The profiler runs at close to native speed, so use the profiler to measure real timing.  The profiler does not count instructions or simulate caches.
+
+[[gperftools_start]]
+== %gperftools.start(<filename>)
+
+Start the profiler, writing samples to `filename`.  The function fails if the profiler is already running, so a second start never discards a running profile.  The `limit files { ... }` section restricts the filename in the same way as for the xref:xlat/file/index.adoc[file handling] functions.
+
+Use this function to measure where the server spends wall-clock time.  The `server.start` trigger is the usual place to call this function.
+
+.Return: _bool_
+
+.Example
+[source,shell]
+----
+radiusd -f -S 'trigger.server.start=%gperftools.start("/var/log/radius/cpu.prof")' \
+           -S 'trigger.server.stop=%gperftools.stop()'
+----
+
+[[gperftools_stop]]
+== %gperftools.stop()
+
+Write any buffered samples to the profile file, then stop the profiler.  The function fails if the profiler is not running.
+
+Use this function to end the profile at a known point, usually from the `server.stop` trigger.  `%gperftools.start()` starts a stopped profiler again with a new profile file.
+
+.Return: _bool_
+
+[[gperftools_flush]]
+== %gperftools.flush()
+
+Write any buffered samples to the profile file and keep the profiler running.  The function fails if the profiler is not running.
+
+Use this function during a long run, so that `pprof` can read a partial profile while the server keeps running.  Also use this function before a step that might crash the server.  The buffered samples then reach the profile file before the crash.
+
+.Return: _bool_
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -342,9 +342,21 @@ int 		xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					   request_t *request, void *decode_ctx, fr_pair_decode_t decode,
 					   fr_value_box_list_t *in);
 /*
+ *	xlat_builtin.c
+ */
+extern xlat_arg_parser_t const xlat_func_file_name_args[];
+
+bool		xlat_file_allowed(request_t *request, fr_value_box_t const *vb);
+
+/*
  *	xlat_expr.c
  */
 int		xlat_register_expressions(void);
+
+/*
+ *	xlat_profiling.c
+ */
+int		xlat_profiling_init(void);
 
 /*
  *	xlat_tokenize.c

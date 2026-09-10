@@ -560,6 +560,9 @@
 /* Define to 1 if you have the <utmp.h> header file. */
 #undef HAVE_UTMP_H
 
+/* Define to 1 if you have the <valgrind/callgrind.h> header file. */
+#undef HAVE_VALGRIND_CALLGRIND_H
+
 /* Define to 1 if you have the <valgrind/valgrind.h> header file. */
 #undef HAVE_VALGRIND_VALGRIND_H
 

@@ -8470,6 +8470,12 @@ then :
   printf '%s\n' "#define HAVE_VALGRIND_VALGRIND_H 1" >>confdefs.h
 
 fi
+ac_fn_c_check_header_compile "$LINENO" "valgrind/callgrind.h" "ac_cv_header_valgrind_callgrind_h" "$ac_includes_default"
+if test "x$ac_cv_header_valgrind_callgrind_h" = xyes
+then :
+  printf '%s\n' "#define HAVE_VALGRIND_CALLGRIND_H 1" >>confdefs.h
+
+fi
 
 
 ac_fn_c_check_header_compile "$LINENO" "net/if.h" "ac_cv_header_net_if_h" "
