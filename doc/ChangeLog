@@ -26,6 +26,7 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  &reply:Pairwise-Master-Key
 	* Clean up and normalize log messages and debug output.  These
 	  changes make the messages easier to read, and easier to understand.
+	* Add significantly more stats for outgoing proxy sockets.
 
 	Bug fixes
 	* Skip TLS PSK checks when OpenSSL does not support PSK.
@@ -36,10 +37,11 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Fix more corner cases in RadSec when sockets have errors.
 	* Tweaked module messages to be more consistent, so that messages
 	  associated with a request are printed with the correct request ID.
-	* Fix race conditions when adding multiple dynamic TLS clients at the
-	  same time.
+	* Fix race conditions when adding or deleting multiple dynamic TLS clients.
 	* Ethernet addresses which are cast to int64 are now in the low bits of
 	  the number, instead of the high bits.
+	* Remove redundant talloc_free in LDAP.  Fixes #5927.
+	* Add printing of prepend operator.  Fixes #5928.
 
 FreeRADIUS 3.2.10 Wed 03 Jun 2026 12:00:00 UTC urgency=high
 	Configuration changes
