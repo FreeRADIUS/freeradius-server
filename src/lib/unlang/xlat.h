@@ -121,17 +121,6 @@ typedef struct {
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
 
-/** A function used to escape an argument passed to an xlat
- *
- * @param[in] request		being processed.  Used mostly for debugging.
- * @param[in,out] vb		to escape
- * @param[in] uctx		a "context" for the escaping
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-typedef int (*xlat_escape_func_t)(request_t *request, fr_value_box_t *vb, void *uctx);
-
 typedef enum {
 	XLAT_ARG_VARIADIC_DISABLED	= 0,
 	XLAT_ARG_VARIADIC_EMPTY_SQUASH	= 1,	//!< Empty argument groups are removed.
@@ -154,7 +143,7 @@ typedef struct {
 	xlat_arg_parser_variadic_t	variadic;	//!< All additional boxes should be processed
 							///< using this definition.
 	fr_type_t			type;		//!< Type to cast argument to.
-	xlat_escape_func_t		func;		//!< Function to handle tainted values.
+	fr_value_box_escape_func_t	func;		//!< Function to escape unsafe values.
 	fr_value_box_safe_for_t		safe_for;	//!< Escaped value to set for boxes processed by
 							///< this escape function.
 	void				*uctx;		//!< Argument to pass to escape callback.
