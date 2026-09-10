@@ -303,6 +303,12 @@ static void fr_value_box_init_zero(fr_value_box_t *vb, fr_type_t type)
 	}
 }
 
+/*
+ *	While binary operations do require two arguments, handling that
+ *	with the xlat argument parser is too aggressive, and causes unlang like
+ *	`foo = bar + baz` to set the rcode to fail, rather than soft failing
+ *	as would be expected.
+ */
 static xlat_arg_parser_t const binary_op_xlat_args[] = {
 	{ .required = false, .type = FR_TYPE_VOID },
 	{ .required = false, .type = FR_TYPE_VOID },
@@ -400,6 +406,12 @@ XLAT_BINARY_FUNC(op_xor,  T_XOR)
 XLAT_BINARY_FUNC(op_rshift, T_RSHIFT)
 XLAT_BINARY_FUNC(op_lshift, T_LSHIFT)
 
+/*
+ *	While binary operations do require two arguments, handling that
+ *	with the xlat argument parser is too aggressive, and causes unlang like
+ *	`if (foo == bar)` to set the rcode to fail, rather than soft failing
+ *	as would be expected.
+ */
 static xlat_arg_parser_t const binary_cmp_xlat_args[] = {
 	{ .required = false, .type = FR_TYPE_VOID },
 	{ .required = false, .type = FR_TYPE_VOID },
