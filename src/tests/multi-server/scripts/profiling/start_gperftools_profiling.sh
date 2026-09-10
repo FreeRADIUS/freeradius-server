@@ -85,12 +85,14 @@ echo "INFO: profiling complete at $(date)"
 #  Convert in the container, where the build the addresses belong to still
 #  exists.  pprof takes the freeradius binary and finds the shared objects
 #  through PPROF_BINARY_PATH (libfreeradius-*.so and rlm_*.so install into
-#  /usr/lib).
+#  /usr/lib).  profile.pb.gz bakes the symbols in, so pprof reads it on any
+#  host without the build, the way kcachegrind reads callgrind's profile.out.
 #
-echo "INFO: running pprof to generate report"
-PPROF_BINARY_PATH=/usr/lib pprof -text -nodefraction=0 \
-  "$(readlink -f "$(command -v freeradius)")" "$PROFILE" \
-  > "$PROFILING_RESULT_DIR/report.txt"
+echo "INFO: running pprof to generate the report and the portable profile"
+export PPROF_BINARY_PATH=/usr/lib
+RADIUSD_BIN=$(readlink -f "$(command -v freeradius)")
+pprof -proto "$RADIUSD_BIN" "$PROFILE" > "$PROFILING_RESULT_DIR/profile.pb.gz"
+pprof -text -nodefraction=0 "$RADIUSD_BIN" "$PROFILE" > "$PROFILING_RESULT_DIR/report.txt"
 
 #  Discard any output after this point
 exec > /dev/null 2>&1

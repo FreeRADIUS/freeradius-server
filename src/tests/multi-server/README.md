@@ -62,8 +62,10 @@ Each profiler writes the same set of files into its own result directory:
 | `report.txt`     | text report (`callgrind_annotate` or `pprof -text`)   |
 | `exit-status`    | 0 when the capture completed                          |
 
-callgrind also writes `valgrind.log`, valgrind's own engine log, which has
-no gperftools counterpart.
+Each profiler also writes one file that the other profiler does not produce.
+callgrind writes `valgrind.log`, valgrind's own engine log.  gperftools
+writes `profile.pb.gz`, a portable profile with the symbols resolved, so pprof
+reads `profile.pb.gz` on any host without the build.
 
 Both captures switch sampling on and off from the `server.start` and
 `server.stop` triggers, callgrind through `%callgrind.start`/`stop` and
