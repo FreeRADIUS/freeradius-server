@@ -1282,6 +1282,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	bool do_glob = false;
 	char const *value;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	char p1 = '\0', p2 = '\0';	/* Last 2 characters parsed in the filename*/
 
 	/*
 	 *	Can't do this inside of update / map.
@@ -1309,7 +1310,19 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			return -1;
 		}
 
+		/*
+		 *	Disallow the pattern .* at the directory level since .* will also include the parent directory
+		 */
+		if ((*ptr == '*') && (p1 == '.') && ((p2 == '/') || (p2 == '\0'))) {
+			ERROR("%s[%d]: Invalid sequence \".*\" at directory level in $INCLUDE", frame->filename, frame->lineno);
+			return -1;
+		}
+
 		do_glob |= (*ptr == '*');
+
+		/* Capture the last 2 characters parsed */
+		p2 = p1;
+		p1 = *ptr;
 
 		ptr++;
 	}
