@@ -353,7 +353,7 @@ static unlang_action_t sql_get_map_list_resume(unlang_result_t *p_result, reques
 		if (map_afrom_fields(map_ctx->ctx, &map, &parent, request, row[2], row[4], row[3],
 				     &lhs_rules, &rhs_rules,
 				     !(inst->config.expand_rhs || map_ctx->expand_rhs)) < 0) {
-			RPEDEBUG("Data read from SQL cannot be parsed.");
+			REDEBUG("Data read from SQL cannot be parsed.");
 			REDEBUG("    %s", row[2]);
 			REDEBUG("    %s", row[4]);
 			REDEBUG("    %s", row[3]);

@@ -2468,7 +2468,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 
 	op = fr_table_value_by_str(fr_tokens_table, op_str, T_INVALID);
 	if (op == T_INVALID) {
-		fr_strerror_printf("Invalid operator '%s'", op_str);
+		RPEDEBUG("Invalid operator '%s'", op_str);
 		return -1;
 	}
 
@@ -2478,12 +2478,12 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	 */
 	if (!bare_word_only) {
 		if (!fr_assignment_op[op]) {
-			fr_strerror_printf("Invalid operator '%s' for assignment in reply item", op_str);
+			RPEDEBUG("Invalid operator '%s' for assignment in reply item", op_str);
 			return -1;
 		}
 
 	} else if (!fr_assignment_op[op] && !fr_comparison_op[op]) {
-		fr_strerror_printf("Invalid operator '%s' for check item", op_str);
+		RPEDEBUG("Invalid operator '%s' for check item", op_str);
 		return -1;
 	}
 
@@ -2507,7 +2507,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	if (*lhs == '.') {
 		if (!parent) {
 		no_parent:
-			fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
+			RPEDEBUG("Unexpected location for relative attribute - no parent attribute exists");
 			return -1;
 		}
 		lhs++;
@@ -2527,12 +2527,12 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 */
 		if (parent) {
 			if (fr_comparison_op[op]) {
-				fr_strerror_const("Comparison operators cannot be used inside of structural data types");
+				RPEDEBUG("Comparison operators cannot be used inside of structural data types");
 				return -1;
 			}
 
 			if (op != T_OP_EQ) {
-				fr_strerror_const("Invalid operator inside of structural data type - must be '='");
+				RPEDEBUG("Invalid operator inside of structural data type - must be '='");
 				return -1;
 			}
 		}
@@ -2572,7 +2572,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	}
 
 	if (tmpl_attr_tail_is_unknown(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
-		fr_strerror_printf("Failed creating attribute %s", map->lhs->name);
+		RPEDEBUG("Failed creating attribute %s", map->lhs->name);
 		goto error;
 	}
 
@@ -2597,7 +2597,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 *	These operators require a hard-coded string on the RHS.
 		 */
 		if (strcmp(rhs, "ANY") != 0) {
-			fr_strerror_printf("Invalid value %s for operator %s", rhs, fr_tokens[map->op]);
+			RPEDEBUG("Invalid value %s for operator %s", rhs, fr_tokens[map->op]);
 			goto error;
 		}
 
@@ -2643,13 +2643,13 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	parse_quoted:
 		len = strlen(rhs + 1);
 		if (len == 0) {
-			fr_strerror_const("Unclosed quote on right side");
+			RPEDEBUG("Unclosed quote on right side");
 			return -1;
 		}
 
 		if (len == 1) {
 			if (rhs[1] != rhs[0]) {
-				fr_strerror_const("Invalid string on right side");
+				RPEDEBUG("Invalid string on right side");
 				goto error;
 			}
 
@@ -2660,21 +2660,23 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs + 1, len),
 					 quote, value_parse_rules_quoted[quote], &my_rhs_rules);
 		if (slen < 0) {
-			REDEBUG3("Failed parsing right-hand side as quoted string.");
+			REDEBUG("Failed parsing right-hand side as quoted string.");
+			goto error;
+
 		fail_rhs:
-			fr_strerror_printf("Failed parsing right-hand side, %s", fr_strerror());
+			RPEDEBUG("Failed parsing right-hand side of assignment");
 			goto error;
 		}
 
 		fr_assert((size_t) slen <= (len + 1));
 
 		if (rhs[slen + 1] != rhs[0]) {
-			fr_strerror_printf("Failed parsing right-hand side, missing end quote in ... %s", rhs);
+			RPEDEBUG("Failed parsing right-hand side, missing end quote in ... %s", rhs);
 			goto error;
 		}
 
 		if (rhs[slen + 2]) {
-			fr_strerror_const("Failed parsing right-hand side, unexpected data after end quote");
+			RPEDEBUG("Failed parsing right-hand side, unexpected data after end quote");
 			goto error;
 		}
 
