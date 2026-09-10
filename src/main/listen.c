@@ -217,6 +217,13 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		 */
 		if ((client->created + client->lifetime) > now) return client;
 
+		/*
+		 *	Multiple TCP / TLS connections can be using
+		 *	the same client.  Keep it alive until such
+		 *	time as all of the connections have gone away.
+		 */
+		if (client->limit.num_connections > 0) return client;
+
 #ifdef HAVE_SYS_STAT_H
 		/*
 		 *	The client was read from a file, and the file
@@ -235,7 +242,6 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 			}
 		}
 #endif
-
 
 		/*
 		 *	Delete the client from the known list.
