@@ -2398,6 +2398,7 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 	cprintf(listener, "bad_authenticator\t%" PRIu64 "\n", stats->total_bad_authenticators);
 	cprintf(listener, "dropped\t\t%" PRIu64 "\n", stats->total_packets_dropped);
 	cprintf(listener, "unknown_types\t%" PRIu64 "\n", stats->total_unknown_types);
+	cprintf(listener, "no_records\t%" PRIu64 "\n", stats->total_no_records);
 
 	if (server) {
 		cprintf(listener, "timeouts\t%" PRIu64 "\n", stats->total_timeouts);
