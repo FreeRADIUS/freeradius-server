@@ -34,6 +34,7 @@ services:
     - ${DATA_PATH}/scripts/start_freeradius.sh:/usr/local/bin/start_freeradius.sh
     - ${DATA_PATH}/scripts/start_valgrind_profiling.sh:/usr/local/bin/start_valgrind_profiling.sh
     - ${DATA_PATH}/scripts/start_gperftools_profiling.sh:/usr/local/bin/start_gperftools_profiling.sh
+    - ${DATA_PATH}/scripts/common_profiling.sh:/usr/local/bin/common_profiling.sh
     # Profiling results directory, defaults to /tmp/prof-results in service mode (unused)
     - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:/etc/prof-results/
     # Listener directory
