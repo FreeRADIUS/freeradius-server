@@ -127,7 +127,7 @@ filter_inner_identity {
 	#
 	if (!&outer.request:User-Name || !&User-Name) {
 		update request {
-			Module-Failure-Message = "User-Name is required for tunneled authentication"
+			&Module-Failure-Message = "User-Name is required for tunneled authentication"
 		}
 		reject
 	}
@@ -145,7 +145,7 @@ filter_inner_identity {
 		#
 		if (&outer.request:User-Name =~ /@([^@]+)$/) {
 			update request {
-				Outer-Realm-Name = "%{1}"
+				&Outer-Realm-Name = "%{1}"
 			}
 
 			#
@@ -157,7 +157,7 @@ filter_inner_identity {
 			#
 			if (&outer.request:User-Name !~ /^(anon|@)/) {
 				update request {
-					Module-Failure-Message = "User-Name is not anonymized"
+					&Module-Failure-Message = "User-Name is not anonymized"
 				}
 				reject
 			}
@@ -172,7 +172,7 @@ filter_inner_identity {
 		#
 		elsif (&outer.request:User-Name !~ /^anon/) {
 			update request {
-				Module-Failure-Message = "User-Name is not anonymized"
+				&Module-Failure-Message = "User-Name is not anonymized"
 			}
 			reject
 		}
@@ -182,7 +182,7 @@ filter_inner_identity {
 		#
 		if (&User-Name =~ /@([^@]+)$/) {
 			update request {
-				Inner-Realm-Name = "%{1}"
+				&Inner-Realm-Name = "%{1}"
 			}
 
 			#
@@ -200,7 +200,7 @@ filter_inner_identity {
 			    (&Inner-Realm-Name != &Outer-Realm-Name) && \
 			    (&Inner-Realm-Name !~ /\.%{Outer-Realm-Name}$/)) {
 				update request {
-					Module-Failure-Message = "Inner realm '%{Inner-Realm-Name}' and outer realm '%{Outer-Realm-Name}' are not from the same domain."
+					&Module-Failure-Message = "Inner realm '%{Inner-Realm-Name}' and outer realm '%{Outer-Realm-Name}' are not from the same domain."
 				}
 				reject
 			}
