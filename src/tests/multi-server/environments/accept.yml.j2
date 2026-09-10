@@ -5,10 +5,9 @@
 #
 #   Same compose serves both service and profiling modes. In profiling
 #   mode the make recipe sets FREERADIUS_IMAGE=freeradius4-profiling/<image>:<sha>
-#   and PROFILING=yes; the test template branches on $PROFILING and
-#   either exec's freeradius directly or sources the valgrind wrapper.
+#   and RADIUSD_COMMAND to the capture script. The test template exec's
+#   RADIUSD_COMMAND, which is freeradius itself in service mode.
 # ---------------------------------------------------------------
-{% import "compose/macros.j2" as compose with context %}
 x-common-config: &id001
   cap_add:
   - NET_ADMIN
@@ -19,14 +18,12 @@ x-common-config: &id001
 services:
   freeradius:
     image: ${FREERADIUS_IMAGE}
-    environment:
-{{ compose.include_at("compose/freeradius/profiling-environment.yml.j2", 6) }}
+    extends:
+      file: freeradius-common.yml
+      service: freeradius-load-generator
     volumes:
     # freeradius server config
     - ${DATA_PATH}/freeradius/accept/radiusd.conf:/etc/freeradius/radiusd.conf
-{{ compose.include_at("compose/freeradius/load-generator-volumes.yml.j2", 4) }}
-{{ compose.include_at("compose/freeradius/profiling-volumes.yml.j2", 4) }}
-{{ compose.include_at("compose/freeradius/listener-volumes.yml.j2", 4) }}
     entrypoint:
     - bash
     - -lc

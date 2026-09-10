@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------
+# Partial services that the suite compose files extend.  Compose merges
+# an extended service with the suite's own definition: mappings such as
+# environment merge key by key, and lists such as volumes concatenate.
+#
+# The make rule renders this file next to every suite's environment.yml,
+# so `extends.file` resolves relative to the suite file.
+# ---------------------------------------------------------------
+services:
+  # A freeradius the test template exec's as RADIUSD_COMMAND.  make sets
+  # RADIUSD_COMMAND to the capture script for a profiling run and leaves it
+  # unset otherwise, so the template default (freeradius) runs a service
+  # run.  PROFILING_RESULT_DIR is the directory the capture script writes
+  # to.  Service mode never runs the capture script, but compose turns a
+  # missing bind source into an empty directory, so the script is mounted
+  # in every mode.
+  freeradius-profiled:
+    environment:
+      RADIUSD_COMMAND: ${RADIUSD_COMMAND:-}
+      PROFILING_RESULT_DIR: {{ profiling_result_dir }}
+      # proto_load ends the test when the max_pps step finishes.  A suite
+      # that needs an exact packet count sets TEST_LOADGEN_MAX_REQUESTS.
+      TEST_LOADGEN_MAX_REQUESTS: ${TEST_LOADGEN_MAX_REQUESTS:-0}
+    volumes:
+    # Capture script that RADIUSD_COMMAND runs in profiling mode
+    - ${DATA_PATH}/scripts/start_valgrind_profiling.sh:/usr/local/bin/start_valgrind_profiling.sh
+    # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
+    - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:{{ profiling_result_dir }}/
+    # Directory the test framework watches for listener sockets
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+
+  # A profiled freeradius that also runs proto_load against itself.
+  freeradius-load-generator:
+    extends:
+      service: freeradius-profiled
+    volumes:
+    # proto_load packet configuration and statistics output
+    - ${DATA_PATH}/freeradius/common/proto-load/proto_load_config.env:/etc/freeradius/proto_load_config.env
+    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
+    - ${DATA_PATH}/freeradius/common/proto-load/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv

@@ -7,7 +7,6 @@
 #   environments/accept.yml.j2 for the FREERADIUS_IMAGE / PROFILING
 #   convention.
 # ---------------------------------------------------------------
-{% import "compose/macros.j2" as compose with context %}
 x-common-config: &id001
   cap_add:
   - NET_ADMIN
@@ -41,8 +40,9 @@ services:
     <<: *id001
   freeradius:
     image: ${FREERADIUS_IMAGE}
-    environment:
-{{ compose.include_at("compose/freeradius/profiling-environment.yml.j2", 6) }}
+    extends:
+      file: freeradius-common.yml
+      service: freeradius-load-generator
     depends_on:
       mariadb:
         condition: service_healthy
@@ -50,9 +50,6 @@ services:
     # freeradius server config
     - ${DATA_PATH}/freeradius/mysql/radiusd.conf:/etc/freeradius/radiusd.conf
     # proto_load packet configuration, packets and statistics output
-{{ compose.include_at("compose/freeradius/load-generator-volumes.yml.j2", 4) }}
-{{ compose.include_at("compose/freeradius/profiling-volumes.yml.j2", 4) }}
-{{ compose.include_at("compose/freeradius/listener-volumes.yml.j2", 4) }}
     entrypoint:
     - bash
     - -lc

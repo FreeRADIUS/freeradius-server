@@ -6,7 +6,7 @@
 # - TEST_MULTI_SERVER_VERBOSE=<0-4>  verbosity level
 # - MODE=<service|profiling>        which FreeRADIUS image to drive the tests
 #                                   with. Default `service`. `profiling` swaps in
-#                                   freeradius4-profiling/<image>:<sha>, sets PROFILING=yes
+#                                   freeradius4-profiling/<image>:<sha>, sets RADIUSD_COMMAND
 #                                   so the test template runs the server under
 #                                   valgrind/callgrind, and writes results to
 #                                   PROFILING_RESULT_PATH.
@@ -51,6 +51,11 @@ PROFILING_RESULT_ROOT  := $(abspath $(top_srcdir)/prof-results)
 #  valgrind wrapper reads.
 #
 PROFILING_RESULT_DIR   := /var/lib/prof-results
+#
+#  Profiler that a MODE=profiling run captures with.  RADIUSD_COMMAND runs
+#  scripts/profiling/start_$(PROFILING_TOOL)_profiling.sh.
+#
+PROFILING_TOOL         := valgrind
 PROFILING_RESULT_MODE  ?= ci
 
 #
@@ -166,11 +171,15 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 endef
 
 #
-#  Profiling helper script. Always copied into each test's output dir
-#  so the compose bind-mount resolves regardless of MODE; the script
-#  is only sourced when PROFILING=yes is exported into the container.
+#  Capture script that RADIUSD_COMMAND runs in profiling mode.  make copies
+#  it into each test's output dir in every mode, because the common compose
+#  file bind mounts it, and compose turns a missing bind source into an
+#  empty directory instead of an error.  A profiler without a script fails
+#  the build early with "No rule to make target .../start_<tool>_profiling.sh".
 #
-PROFILING_SCRIPT_SRC := $(DIR)/scripts/profiling/start_valgrind_profiling.sh
+TEST_MULTI_SERVER_SCRIPT_DIR     := $(DIR)/scripts
+TEST_MULTI_SERVER_SCRIPT_NAMES   := start_$(PROFILING_TOOL)_profiling.sh
+TEST_MULTI_SERVER_COMMON_COMPOSE := $(wildcard $(DIR)/configs/compose/*.yml.j2)
 
 #
 #  TEST_MULTI_SERVER_INSTANCE - define render + run targets for a single test.
@@ -185,25 +194,33 @@ PROFILING_SCRIPT_SRC := $(DIR)/scripts/profiling/start_valgrind_profiling.sh
 #  ${4} = test output directory
 #
 define TEST_MULTI_SERVER_INSTANCE
-TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}  := $$(wildcard $$(DIR)/tests/${1}/*.j2)
-TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(patsubst $$(DIR)/tests/${1}/%.j2,${4}/%,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}))
+#
+#  The suite's own templates, plus the partial compose services that the
+#  suite's environment.yml.j2 extends.  The common file renders into the
+#  same directory, so `extends.file` resolves relative to environment.yml,
+#  and the render copies the ${DATA_PATH} sources the common file mounts.
+#
+TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}  := $$(wildcard $$(DIR)/tests/${1}/*.j2) $$(TEST_MULTI_SERVER_COMMON_COMPOSE)
+TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(addprefix ${4}/,$$(notdir $$(patsubst %.j2,%,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}))))
 
 $$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MULTI_SERVER_RENDER,${1},${2},${3},$$j)))
 
-${4}/start_valgrind_profiling.sh: $$(PROFILING_SCRIPT_SRC)
+TEST_MULTI_SERVER_SCRIPTS.${1}.${2}      := $$(addprefix ${4}/scripts/,$$(TEST_MULTI_SERVER_SCRIPT_NAMES))
+
+${4}/scripts/start_%_profiling.sh: $$(TEST_MULTI_SERVER_SCRIPT_DIR)/profiling/start_%_profiling.sh
 	$${Q}mkdir -p $$(@D)
 	$${Q}cp $$< $$@
 
 .PHONY: render.test.multi-server.${1}.${2}
-render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start_valgrind_profiling.sh
+render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MULTI_SERVER_SCRIPTS.${1}.${2})
 
 .PHONY: test.multi-server.${1}.${2}
-test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start_valgrind_profiling.sh
+test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MULTI_SERVER_SCRIPTS.${1}.${2})
 	${Q}mkdir -p "${4}/logs" "${4}/listener"
 	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2} (MODE=$(MODE))"
 	${Q}if [ "$(MODE)" = "profiling" ]; then \
 		FREERADIUS_IMAGE=$(FREERADIUS_PROFILING_IMAGE); \
-		PROFILING=yes; \
+		RADIUSD_COMMAND="bash /usr/local/bin/start_$(PROFILING_TOOL)_profiling.sh"; \
 		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
 			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}"; \
 		else \
@@ -216,13 +233,12 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start
 		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \
 	else \
 		FREERADIUS_IMAGE=$(FREERADIUS_SERVICE_IMAGE); \
-		PROFILING=no; \
 		PROFILING_RESULT_PATH=/tmp/prof-results-unused; \
 	fi; \
 	DATA_PATH="${4}" \
 	TOP_SRCDIR="$(top_srcdir)" \
 	FREERADIUS_IMAGE="$$$$FREERADIUS_IMAGE" \
-	PROFILING="$$$$PROFILING" \
+	RADIUSD_COMMAND="$$$$RADIUSD_COMMAND" \
 	PROFILING_RESULT_PATH="$$$$PROFILING_RESULT_PATH" \
 	$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/radenv $(TEST_MULTI_SERVER_FLAGS) \
 	    --project-name "${1}-${2}-$(MODE)" \

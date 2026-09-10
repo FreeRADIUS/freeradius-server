@@ -107,7 +107,7 @@ echo "INFO: profiling complete at $(date)"
 
 echo "INFO: running callgrind_annotate to generate report"
 callgrind_annotate \
-  $(find "$PROFILING_RESULT_DIR" -name "callgrind.out.*" -size +0c | sort) \
+  $(find "$PROFILING_RESULT_DIR" -maxdepth 1 -name "callgrind.out.*" -size +0c | sort) \
   > "$PROFILING_RESULT_DIR/callgrind_report.txt"
 
 #  Discard any output after this point

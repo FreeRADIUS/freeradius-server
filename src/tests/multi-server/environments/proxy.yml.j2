@@ -38,6 +38,9 @@ services:
 {% endfor %}
   load-generator:
     image: ${FREERADIUS_IMAGE}
+    extends:
+      file: freeradius-common.yml
+      service: freeradius-profiled
     depends_on:
 {% for i in range(1, (compose_num_of_home_servers + 1)) %}
       homeserver{{ i }}:
@@ -55,7 +58,6 @@ services:
     - ${DATA_PATH}/freeradius/load-generator/radiusd.conf:/etc/freeradius/radiusd.conf
 
     - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
-    - ${LISTENER_DIR}/:/var/run/multi-server/
     entrypoint:
     - bash
     - -lc

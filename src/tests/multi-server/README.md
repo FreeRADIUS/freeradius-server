@@ -89,11 +89,22 @@ Compose envs reference `${FREERADIUS_IMAGE}` and read `${PROFILING:-no}`.
 The per-test recipe in `all.mk` sets both based on the `MODE` makefile
 variable, exporting the SHA-tagged image name directly:
 
-- `MODE=service` (default) selects `freeradius4-service/<image>:<sha>`,
-  the test template `exec`s the server directly.
-- `MODE=profiling` selects `freeradius4-profiling/<image>:<sha>`, sets
-  `PROFILING=yes`, and the test template sources `start_valgrind_profiling.sh`
-  instead so the run is captured by callgrind.
+- `MODE=service` (default) selects `freeradius4-service/<image>:<sha>` and
+  leaves `RADIUSD_COMMAND` unset, so the template default (`freeradius -f -l
+  stdout`) runs the server directly.
+- `MODE=profiling` selects `freeradius4-profiling/<image>:<sha>` and sets
+  `RADIUSD_COMMAND` to `bash /usr/local/bin/start_valgrind_profiling.sh`,
+  which captures the run with callgrind.
+
+Every test template exports the `TEST_LOADGEN_*` variables from the params
+file and then runs `exec ${RADIUSD_COMMAND:-freeradius -f -l stdout}`.
+`configs/compose/freeradius-common.yml.j2`, which every suite's compose file
+extends, carries `RADIUSD_COMMAND` and defaults `TEST_LOADGEN_MAX_REQUESTS`
+to 0, so the test ends when the `max_pps` step finishes unless a suite sets
+an exact count. The makefile copies
+`scripts/profiling/start_<tool>_profiling.sh` into `<test output
+dir>/scripts/` in every mode, and the common compose file bind mounts it into
+`/usr/local/bin`.
 
 The profiling image is the standard `freeradius4-profiling/<image>:<sha>`
 output, built by `scripts/docker/m4/profiling.deb.m4` /
