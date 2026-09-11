@@ -150,12 +150,14 @@ fr_sbuff_err_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size
 	return result;
 }
 
-size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				     bool const allowed[static SBUFF_CHAR_CLASS])
+fr_sbuff_err_t fr_sbuff_out_bstrncpy_allowed(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max,
+					     bool const allowed[static SBUFF_CHAR_CLASS])
 {
-	size_t	result;
+	fr_sbuff_err_t	result;
+	size_t		copied;
 
-	__coverity_write_buffer_bytes__(out->p, result + 1);
+	__coverity_write_buffer_bytes__(out->p, copied + 1);
+	if (len) *len = copied;
 
 	return result;
 }
@@ -165,24 +167,28 @@ typedef struct {
 typedef struct {
 } 	fr_sbuff_unescape_rules_t;
 
-size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   fr_sbuff_term_t const *tt,
-				   fr_sbuff_unescape_rules_t const *u_rules)
+fr_sbuff_err_t fr_sbuff_out_bstrncpy_until(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max,
+					   fr_sbuff_term_t const *tt,
+					   fr_sbuff_unescape_rules_t const *u_rules)
 {
-	size_t	result;
+	fr_sbuff_err_t	result;
+	size_t		copied;
 
-	__coverity_write_buffer_bytes__(out->p, result + 1);
+	__coverity_write_buffer_bytes__(out->p, copied + 1);
+	if (len) *len = copied;
 
 	return result;
 }
 
-size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   fr_sbuff_term_t const *tt,
-				   fr_sbuff_unescape_rules_t const *u_rules)
+fr_sbuff_err_t fr_sbuff_out_unescape_until(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max,
+					   fr_sbuff_term_t const *tt,
+					   fr_sbuff_unescape_rules_t const *u_rules)
 {
-	size_t	result;
+	fr_sbuff_err_t	result;
+	size_t		copied;
 
-	__coverity_write_buffer_bytes__(out->p, result + 1);
+	__coverity_write_buffer_bytes__(out->p, copied + 1);
+	if (len) *len = copied;
 
 	return result;
 }

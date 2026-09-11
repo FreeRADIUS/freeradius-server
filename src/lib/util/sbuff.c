@@ -498,7 +498,14 @@ int fr_sbuff_reset_talloc(fr_sbuff_t *sbuff)
  * @param[in] _in	sbuff to copy from.
  * @param[in] _len	maximum amount to copy.
  */
-#define FILL_OR_GOTO_DONE(_out, _in, _len) if (fr_sbuff_move(_out, _in, _len) < (size_t)(_len)) goto done
+#define FILL_OR_GOTO_DONE(_out, _in, _len) \
+do { \
+	size_t _to_move = (_len);	/* Evaluated once, _len is usually relative to _in's position */ \
+	if (fr_sbuff_move(_out, _in, _to_move) < _to_move) { \
+		err = FR_SBUFF_ERR_NO_SPACE; \
+		goto done; \
+	} \
+} while (0)
 
 /** Constrain end pointer to prevent advancing more than the amount the caller specified
  *
@@ -725,28 +732,35 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 
 /** Copy as many bytes as possible from a sbuff to a sbuff
  *
- * Copy size is limited by available data in sbuff and space in output sbuff.
+ * The copy stops after max bytes, at the end of the input, or when out is full.
  *
+ * @param[out] len	Number of bytes copied.  May be NULL.
  * @param[out] out	Where to copy to.
- * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len	How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
+ * @param[in] in	Where to copy from.  Advanced by the number of bytes copied.
+ * @param[in] max	Maximum number of bytes to copy.  SIZE_MAX copies all remaining input.
  * @return
- *	- 0 no bytes copied.
- *	- >0 the number of bytes copied.
+ *	- FR_SBUFF_OK the copy stopped at max or at the end of the input.
+ *	- FR_SBUFF_ERR_NO_SPACE out filled first.  The partial copy is left in place.
+ *	- FR_SBUFF_ERR_EXTEND in's extend callback failed.  The partial copy is left in place.
  */
-size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
+fr_sbuff_err_t fr_sbuff_out_bstrncpy(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max)
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 	size_t		remaining;
+	fr_sbuff_err_t	err = FR_SBUFF_OK;
 
 	CHECK_SBUFF_INIT(in);
 
-	while (fr_sbuff_used_total(&our_in) < len) {
-		size_t chunk_len;
+	while (fr_sbuff_used_total(&our_in) < max) {
+		size_t				chunk_len;
+		fr_sbuff_extend_status_t	status;
 
-		remaining = (len - fr_sbuff_used_total(&our_in));
+		remaining = (max - fr_sbuff_used_total(&our_in));
 
-		if (!fr_sbuff_extend(&our_in)) break;
+		if (fr_sbuff_extend_lowat(&status, &our_in, 1) == 0) {
+			if (status & FR_SBUFF_FLAG_EXTEND_ERROR) err = FR_SBUFF_ERR_EXTEND;
+			break;
+		}
 
 		chunk_len = fr_sbuff_remaining(&our_in);
 		if (chunk_len > remaining) chunk_len = remaining;
@@ -756,7 +770,9 @@ size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 
 done:
 	*out->p = '\0';
-	return fr_sbuff_used_total(&our_in);
+	if (len) *len = fr_sbuff_used_total(&our_in);
+
+	return err;
 }
 
 /** Copy exactly len bytes from a sbuff to a sbuff or fail
@@ -827,34 +843,40 @@ fr_sbuff_err_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size
 
 /** Copy as many allowed characters as possible from a sbuff to a sbuff
  *
- * Copy size is limited by available data in sbuff and output buffer length.
+ * The copy stops at the first disallowed character, after max bytes, at the
+ * end of the input, or when out is full.  The input sbuff is left pointing at
+ * the first character not copied.
  *
- * As soon as a disallowed character is found the copy is stopped.
- * The input sbuff will be left pointing at the first disallowed character.
- *
+ * @param[out] len		Number of bytes copied.  May be NULL.
  * @param[out] out		Where to copy to.
- * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
+ * @param[in] in		Where to copy from.  Advanced by the number of bytes copied.
+ * @param[in] max		Maximum number of bytes to copy.  SIZE_MAX copies all remaining input.
  * @param[in] allowed		Characters to include the copy.
  * @return
- *	- 0 no bytes copied.
- *	- >0 the number of bytes copied.
+ *	- FR_SBUFF_OK the copy stopped at a disallowed character, at max, or at the end of the input.
+ *	- FR_SBUFF_ERR_NO_SPACE out filled first.  The partial copy is left in place.
+ *	- FR_SBUFF_ERR_EXTEND in's extend callback failed.  The partial copy is left in place.
  */
-size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				     bool const allowed[static SBUFF_CHAR_CLASS])
+fr_sbuff_err_t fr_sbuff_out_bstrncpy_allowed(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max,
+					     bool const allowed[static SBUFF_CHAR_CLASS])
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
+	fr_sbuff_err_t	err = FR_SBUFF_OK;
 
 	CHECK_SBUFF_INIT(in);
 
-	while (fr_sbuff_used_total(&our_in) < len) {
-		char	*p;
-		char	*end;
+	while (fr_sbuff_used_total(&our_in) < max) {
+		char				*p;
+		char				*end;
+		fr_sbuff_extend_status_t	status;
 
-		if (!fr_sbuff_extend(&our_in)) break;
+		if (fr_sbuff_extend_lowat(&status, &our_in, 1) == 0) {
+			if (status & FR_SBUFF_FLAG_EXTEND_ERROR) err = FR_SBUFF_ERR_EXTEND;
+			break;
+		}
 
 		p = fr_sbuff_current(&our_in);
-		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
+		end = CONSTRAINED_END(&our_in, max, fr_sbuff_used_total(&our_in));
 
 		while ((p < end) && allowed[(uint8_t)*p]) p++;
 
@@ -865,33 +887,37 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 
 done:
 	*out->p = '\0';
-	return fr_sbuff_used_total(&our_in);
+	if (len) *len = fr_sbuff_used_total(&our_in);
+
+	return err;
 }
 
-/** Copy as many allowed characters as possible from a sbuff to a sbuff
+/** Copy from a sbuff to a sbuff until a terminal sequence is found
  *
- * Copy size is limited by available data in sbuff and output buffer length.
+ * The copy stops before the first terminal, after max bytes, at the end of the
+ * input, or when out is full.  The input sbuff is left pointing at the first
+ * character not copied.
  *
- * As soon as a disallowed character is found the copy is stopped.
- * The input sbuff will be left pointing at the first disallowed character.
- *
+ * @param[out] len		Number of bytes copied.  May be NULL.
  * @param[out] out		Where to copy to.
- * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
+ * @param[in] in		Where to copy from.  Advanced by the number of bytes copied.
+ * @param[in] max		Maximum number of bytes to copy.  SIZE_MAX copies all remaining input.
  * @param[in] tt		Token terminals in the encompassing grammar.
  * @param[in] u_rules		If not NULL, ignore characters in the until set when
  *				prefixed with u_rules->chr. FIXME - Should actually evaluate
  *				u_rules fully.
  * @return
- *	- 0 no bytes copied.
- *	- >0 the number of bytes copied.
+ *	- FR_SBUFF_OK the copy stopped at a terminal, at max, or at the end of the input.
+ *	- FR_SBUFF_ERR_NO_SPACE out filled first.  The partial copy is left in place.
+ *	- FR_SBUFF_ERR_EXTEND in's extend callback failed.  The partial copy is left in place.
  */
-size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   fr_sbuff_term_t const *tt,
-				   fr_sbuff_unescape_rules_t const *u_rules)
+fr_sbuff_err_t fr_sbuff_out_bstrncpy_until(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max,
+					   fr_sbuff_term_t const *tt,
+					   fr_sbuff_unescape_rules_t const *u_rules)
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 	bool		do_escape = false;		/* Track state across extensions */
+	fr_sbuff_err_t	err = FR_SBUFF_OK;
 
 	uint8_t		idx[SBUFF_CHAR_CLASS];		/* Fast path index */
 	size_t		needle_len = 1;
@@ -905,14 +931,18 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	 */
 	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
 
-	while (fr_sbuff_used_total(&our_in) < len) {
-		char	*p;
-		char	*end;
+	while (fr_sbuff_used_total(&our_in) < max) {
+		char				*p;
+		char				*end;
+		fr_sbuff_extend_status_t	status;
 
-		if (fr_sbuff_extend_lowat(NULL, &our_in, needle_len) == 0) break;
+		if (fr_sbuff_extend_lowat(&status, &our_in, needle_len) == 0) {
+			if (status & FR_SBUFF_FLAG_EXTEND_ERROR) err = FR_SBUFF_ERR_EXTEND;
+			break;
+		}
 
 		p = fr_sbuff_current(&our_in);
-		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
+		end = CONSTRAINED_END(&our_in, max, fr_sbuff_used_total(&our_in));
 
 		if (p == end) break;
 
@@ -938,36 +968,39 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 
 done:
 	*out->p = '\0';
-	return fr_sbuff_used_total(&our_in);
+	if (len) *len = fr_sbuff_used_total(&our_in);
+
+	return err;
 }
 
-/** Copy as many allowed characters as possible from a sbuff to a sbuff
+/** Copy from a sbuff to a sbuff until a terminal sequence is found, unescaping as we go
  *
- * Copy size is limited by available data in sbuff and output buffer length.
+ * The copy stops before the first terminal, after max input bytes, at the end
+ * of the input, or when out is full.  The input sbuff is left pointing at the
+ * first character not copied.
  *
- * As soon as a disallowed character is found the copy is stopped.
- * The input sbuff will be left pointing at the first disallowed character.
- *
- * This de-escapes characters as they're copied out of the sbuff.
- *
+ * @param[out] len		Number of bytes written to out.  May be NULL.
  * @param[out] out		Where to copy to.
- * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
+ * @param[in] in		Where to copy from.  Advanced by the number of bytes consumed.
+ * @param[in] max		Maximum number of input bytes to consume.  SIZE_MAX consumes all remaining input.
  * @param[in] tt		Token terminal strings in the encompassing grammar.
  * @param[in] u_rules		for processing unescape sequences.
  * @return
- *	- 0 no bytes copied.
- *	- >0 the number of bytes written to out.
+ *	- FR_SBUFF_OK the copy stopped at a terminal, at max, or at the end of the input.
+ *	- FR_SBUFF_ERR_NO_SPACE out filled first.  The partial copy is left in place.
+ *	- FR_SBUFF_ERR_EXTEND in's extend callback failed.  The partial copy is left in place.
  */
-size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   fr_sbuff_term_t const *tt,
-				   fr_sbuff_unescape_rules_t const *u_rules)
+fr_sbuff_err_t fr_sbuff_out_unescape_until(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max,
+					   fr_sbuff_term_t const *tt,
+					   fr_sbuff_unescape_rules_t const *u_rules)
 {
 	fr_sbuff_t 			our_in;
 	bool				do_escape = false;			/* Track state across extensions */
 	fr_sbuff_marker_t		o_s;
 	fr_sbuff_marker_t		c_s;
 	fr_sbuff_marker_t		end;
+	fr_sbuff_err_t			err = FR_SBUFF_OK;
+	size_t				copied;
 
 	uint8_t				idx[SBUFF_CHAR_CLASS];			/* Fast path index */
 	size_t				needle_len = 1;
@@ -977,7 +1010,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	 *	If we don't need to do unescaping
 	 *	call a more suitable function.
 	 */
-	if (!u_rules || (u_rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(out, in, len, tt, u_rules);
+	if (!u_rules || (u_rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(len, out, in, max, tt, u_rules);
 
 	CHECK_SBUFF_INIT(in);
 
@@ -988,7 +1021,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	 */
 	fr_sbuff_marker(&c_s, &our_in);
 	fr_sbuff_marker(&end, &our_in);
-	fr_sbuff_marker_update_end(&end, len);
+	fr_sbuff_marker_update_end(&end, max);
 
 	fr_sbuff_marker(&o_s, out);
 
@@ -1001,8 +1034,12 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	/*
 	 *	...while we have remaining data
 	 */
-	while (fr_sbuff_extend_lowat(&status, &our_in, needle_len) > 0) {
-		if (fr_sbuff_was_extended(status)) fr_sbuff_marker_update_end(&end, len);
+	for (;;) {
+		if (fr_sbuff_extend_lowat(&status, &our_in, needle_len) == 0) {
+			if (status & FR_SBUFF_FLAG_EXTEND_ERROR) err = FR_SBUFF_ERR_EXTEND;
+			break;
+		}
+		if (fr_sbuff_was_extended(status)) fr_sbuff_marker_update_end(&end, max);
 		if (fr_sbuff_diff(&our_in, &end) >= 0) break;	/* Reached the end */
 
 		if (do_escape) {
@@ -1020,7 +1057,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				 *	We therefore check if there's enough room before trying to parse
 				 *	hexits.  If there's insufficient room, it's not a valid hex sequence.
 				 */
-				if ((len < 3) || (fr_sbuff_used_total(&our_in) > (len - 3))) goto check_subs;
+				if ((max < 3) || (fr_sbuff_used_total(&our_in) > (max - 3))) goto check_subs;
 
 				fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
 				fr_sbuff_advance(&our_in, 1);		/* skip over the 'x' */
@@ -1031,9 +1068,10 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 					goto check_subs;		/* allow sub for \x */
 				}
 
-				if (fr_sbuff_in_char(out, escape) <= 0) {
+				if (fr_sbuff_in_char(out, escape) < 0) {
 					fr_sbuff_set(&our_in, &m);	/* backtrack */
 					fr_sbuff_marker_release(&m);
+					err = FR_SBUFF_ERR_NO_SPACE;
 					break;
 				}
 				fr_sbuff_marker_release(&m);
@@ -1051,7 +1089,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				/*
 				 *	The octal digits have to fit, too.  See 'x' above.
 				 */
-				if ((len < 3) || (fr_sbuff_used_total(&our_in) > (len - 3))) goto check_subs;
+				if ((max < 3) || (fr_sbuff_used_total(&our_in) > (max - 3))) goto check_subs;
 
 				fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
 
@@ -1061,9 +1099,10 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 					goto check_subs;		/* allow sub for \<oct> */
 				}
 
-				if (fr_sbuff_in_char(out, escape) <= 0) {
+				if (fr_sbuff_in_char(out, escape) < 0) {
 					fr_sbuff_set(&our_in, &m);	/* backtrack */
 					fr_sbuff_marker_release(&m);
+					err = FR_SBUFF_ERR_NO_SPACE;
 					break;
 				}
 				fr_sbuff_marker_release(&m);
@@ -1091,7 +1130,10 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				 *	write the substituted char to
 				 *	the output buffer.
 				 */
-				if (fr_sbuff_in_char(out, u_rules->subs[c]) <= 0) break;
+				if (fr_sbuff_in_char(out, u_rules->subs[c]) < 0) {
+					err = FR_SBUFF_ERR_NO_SPACE;
+					break;
+				}
 
 				/*
 				 *	...and advance past the entire
@@ -1134,7 +1176,10 @@ done:
 	fr_sbuff_set(in, &c_s);	/* Only advance by as much as we copied */
 	*out->p = '\0';
 
-	return fr_sbuff_marker_release_behind(&o_s);
+	copied = fr_sbuff_marker_release_behind(&o_s);
+	if (len) *len = copied;
+
+	return err;
 }
 
 /** See if the string contains a truth value
@@ -1219,7 +1264,10 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_err_t *err, _type *out, fr_sbuff_t *in, 
 	_type		cast_num; \
 	fr_sbuff_t	our_in = FR_SBUFF(in); \
 	buff[0] = '\0'; /* clang scan */ \
-	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
+	if (fr_sbuff_out_bstrncpy(&len, &FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char) == FR_SBUFF_ERR_EXTEND) { \
+		if (err) *err = FR_SBUFF_ERR_EXTEND; \
+		return -1; \
+	} \
 	if (len == 0) { \
 		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
@@ -1286,7 +1334,10 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_err_t *err, _type *out, fr_sbuff_t *in, 
 	_type			cast_num; \
 	fr_sbuff_t		our_in = FR_SBUFF(in); \
 	buff[0] = '\0'; /* clang scan */ \
-	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
+	if (fr_sbuff_out_bstrncpy(&len, &FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char) == FR_SBUFF_ERR_EXTEND) { \
+		if (err) *err = FR_SBUFF_ERR_EXTEND; \
+		return -1; \
+	} \
 	if (len == 0) { \
 		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
@@ -1368,11 +1419,18 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_err_t *err, _type *out, fr_sbuff_t *in, 
 	fr_sbuff_t	our_in = FR_SBUFF(in); \
 	size_t		len; \
 	_type		res; \
-	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float); \
-	if (len == sizeof(buff)) { \
+	switch (fr_sbuff_out_bstrncpy_allowed(&len, &FR_SBUFF_OUT(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float)) { \
+	case FR_SBUFF_OK: \
+		break; \
+	case FR_SBUFF_ERR_NO_SPACE: \
+		/* Too many characters to be a float */ \
 		if (err) *err = FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
-	} else if (len == 0) { \
+	default: \
+		if (err) *err = FR_SBUFF_ERR_EXTEND; \
+		return -1; \
+	} \
+	if (len == 0) { \
 		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
 	} \

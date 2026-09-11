@@ -2739,8 +2739,9 @@ fr_slen_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 
 	fr_sbuff_t		our_name;
 	fr_dict_t		*dict;
-	fr_slen_t		slen;
-	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
+	size_t			len;
+	fr_sbuff_err_t		sberr;
+	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 
 	if (!dict_gctx || !name || !out) {
 		if (err) *err = FR_DICT_ATTR_EINVAL;
@@ -2755,16 +2756,16 @@ fr_slen_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
-					     &our_name, SIZE_MAX,
-					     fr_dict_attr_allowed_chars);
-	if (slen == 0) {
-		fr_strerror_const("Zero length attribute name");
+	sberr = fr_sbuff_out_bstrncpy_allowed(&len, &FR_SBUFF_OUT(buffer, sizeof(buffer)),
+					      &our_name, SIZE_MAX,
+					      fr_dict_attr_allowed_chars);
+	if (sberr < 0) {
+		fr_strerror_printf("Failed reading attribute name: %s", fr_sbuff_err_to_str(sberr));
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
-	if (slen > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_const("Attribute name too long");
+	if (len == 0) {
+		fr_strerror_const("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
@@ -3474,8 +3475,9 @@ fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 	size_t			len;
 	fr_dict_attr_t const	*ref;
 	char const		*p;
-	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
+	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 	fr_sbuff_t		our_name = FR_SBUFF(name);
+	fr_sbuff_err_t		sberr;
 	fr_hash_table_t		*namespace;
 
 	*out = NULL;
@@ -3484,16 +3486,16 @@ fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 	memset(buffer, 0, sizeof(buffer));
 #endif
 
-	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
-					    &our_name, SIZE_MAX,
-					    fr_dict_attr_allowed_chars);
-	if (len == 0) {
-		fr_strerror_const("Zero length attribute name");
+	sberr = fr_sbuff_out_bstrncpy_allowed(&len, &FR_SBUFF_OUT(buffer, sizeof(buffer)),
+					      &our_name, SIZE_MAX,
+					      fr_dict_attr_allowed_chars);
+	if (sberr < 0) {
+		fr_strerror_printf("Failed reading attribute name: %s", fr_sbuff_err_to_str(sberr));
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
-	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_const("Attribute name too long");
+	if (len == 0) {
+		fr_strerror_const("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}

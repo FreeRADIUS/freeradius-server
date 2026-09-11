@@ -881,7 +881,6 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 {
 	xlat_exp_t			*node = NULL;
 	xlat_exp_t			*prev = NULL;
-	fr_slen_t			slen;
 	fr_sbuff_term_t			terminals = FR_SBUFF_TERMS(
 						L("%"),
 					);
@@ -896,8 +895,9 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 			fr_sbuff_terminals_amerge(NULL, p_rules->terminals, &terminals) : &terminals;
 
 	for (;;) {
-		char *str;
-		fr_sbuff_marker_t m_s;
+		char			*str;
+		size_t			len;
+		fr_sbuff_marker_t	m_s;
 
 		/*
 		 *	pre-allocate the node so we don't have to steal it later.
@@ -909,9 +909,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 		 */
 	skip_alloc:
 		fr_sbuff_marker(&m_s, &our_in);
-		slen = fr_sbuff_out_aunescape_until(node, &str, &our_in, SIZE_MAX, tokens, escapes);
-
-		if (slen < 0) {
+		if (fr_sbuff_out_aunescape_until(node, &str, &len, &our_in, SIZE_MAX, tokens, escapes) < 0) {
 		error:
 			talloc_free(node);
 
@@ -926,7 +924,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 		/*
 		 *	It's a value box, create an appropriate node
 		 */
-		if (slen > 0) {
+		if (len > 0) {
 		do_value_box:
 			/*
 			 *	If the previous node was also a constant value-box, we can merge the new
@@ -1644,8 +1642,8 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 		node = xlat_exp_alloc(ctx, XLAT_BOX, NULL, 0);
 		node->quote = quote;
 
-		slen = fr_sbuff_out_aunescape_until(node, &str, &our_in, SIZE_MAX, p_rules->terminals, p_rules->escapes);
-		if (slen < 0) goto error;
+		if (fr_sbuff_out_aunescape_until(node, &str, NULL, &our_in, SIZE_MAX,
+						 p_rules->terminals, p_rules->escapes) < 0) goto error;
 
 		xlat_exp_set_name_shallow(node, str);
 		fr_value_box_strdup(node, &node->data, NULL, str, false);

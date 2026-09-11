@@ -618,8 +618,7 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 		fr_sbuff_marker(&s_end, &our_name);
 
 		fr_sbuff_set_to_start(&our_name);
-		len = fr_sbuff_ahead(&end);
-		if (fr_sbuff_out_bstrncpy(elem1, &our_name, len) < len) {
+		if (fr_sbuff_out_bstrncpy(NULL, elem1, &our_name, fr_sbuff_ahead(&end)) < 0) {
 			fr_strerror_const("Module method string too long");
 			goto error;
 		}
@@ -646,17 +645,12 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 
 		fr_sbuff_set_to_start(&our_name);
 
-		len = fr_sbuff_out_bstrncpy_until(elem1, &our_name, SIZE_MAX, dyn_tt, NULL);
-		if (len == 0) {
-			fr_strerror_const("Invalid module name");
+		if (fr_sbuff_out_bstrncpy_until(&len, elem1, &our_name, SIZE_MAX, dyn_tt, NULL) < 0) {
+			fr_strerror_const("Module method string too long");
 			goto error;
 		}
-
-		/*
-		 *	The copy stopped before a terminal, so elem1 filled.
-		 */
-		if (fr_sbuff_extend(&our_name) && !fr_sbuff_is_terminal(&our_name, dyn_tt)) {
-			fr_strerror_const("Module method string too long");
+		if (len == 0) {
+			fr_strerror_const("Invalid module name");
 			goto error;
 		}
 
@@ -714,8 +708,7 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 
 		fr_sbuff_set_to_start(elem1);	/* May have used this already for module lookups */
 
-		len = fr_sbuff_out_bstrncpy_until(elem1, &our_name, SIZE_MAX, elem_tt, NULL);
-		if (fr_sbuff_extend(&our_name) && !fr_sbuff_is_terminal(&our_name, elem_tt)) {
+		if (fr_sbuff_out_bstrncpy_until(&len, elem1, &our_name, SIZE_MAX, elem_tt, NULL) < 0) {
 			fr_strerror_const("Module method string too long");
 			return fr_sbuff_error(&our_name);
 		}
@@ -725,8 +718,7 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 
 		if (fr_sbuff_is_char(&our_name, '.')) {
 			fr_sbuff_advance(&our_name, 1);
-			if (fr_sbuff_out_bstrncpy_until(elem2, &our_name, SIZE_MAX,
-							elem_tt, NULL) == MODULE_INSTANCE_LEN_MAX) {
+			if (fr_sbuff_out_bstrncpy_until(NULL, elem2, &our_name, SIZE_MAX, elem_tt, NULL) < 0) {
 				fr_strerror_const("Module method string too long");
 				goto error;
 			}

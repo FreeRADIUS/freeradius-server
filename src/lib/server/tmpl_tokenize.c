@@ -1655,6 +1655,7 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 	tmpl_attr_t		*ar = NULL, *ar_curr;
 	fr_sbuff_t		our_name = FR_SBUFF(name);
 	fr_slen_t		slen;
+	size_t			len;
 	char			*unresolved;
 
 	/*
@@ -1669,12 +1670,11 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 		*
 		*	This will be resolved later (outside of this function).
 		*/
-		slen = fr_sbuff_out_abstrncpy_allowed(ar, &unresolved,
-						      &our_name, FR_DICT_ATTR_MAX_NAME_LEN + 1,
-						      fr_dict_attr_allowed_chars);
-		if (slen < 0) return -1;
+		if (fr_sbuff_out_abstrncpy_allowed(ar, &unresolved, &len,
+						   &our_name, FR_DICT_ATTR_MAX_NAME_LEN + 1,
+						   fr_dict_attr_allowed_chars) < 0) return -1;
 
-		if (slen == 0) {
+		if (len == 0) {
 			slen = tmpl_attr_ref_from_unspecified_substr(ar, err, vpt, &our_name, at_rules);
 			if (slen < 0) {
 				fr_sbuff_advance(&our_name, +slen);
@@ -1684,7 +1684,7 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 				return -1;
 			}
 			return fr_sbuff_set(name, &our_name);
-		} else if (slen > FR_DICT_ATTR_MAX_NAME_LEN) {
+		} else if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 			fr_strerror_const("Attribute name is too long");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 			goto error;
@@ -2747,7 +2747,10 @@ static fr_slen_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuf
 	 *      we could be less lazy and copy hex data in
 	 *      chunks, but never mind...
 	 */
-	len = fr_sbuff_out_abstrncpy_allowed(vpt, &hex, &our_in, SIZE_MAX, sbuff_char_class_hex);
+	if (fr_sbuff_out_abstrncpy_allowed(vpt, &hex, &len, &our_in, SIZE_MAX, sbuff_char_class_hex) < 0) {
+		fr_strerror_const("Failed copying hex string");
+		goto error;
+	}
 	if (len & 0x01) {
 		fr_strerror_const("Hex string not even length");
 	error:
@@ -3621,10 +3624,13 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 										    t_rules, false,
 										    p_rules);
 		vpt = tmpl_alloc_null(ctx);
-		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
-						    p_rules ? p_rules->terminals : NULL,
-						    p_rules ? p_rules->escapes : NULL);
-		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen, t_rules);
+		if (fr_sbuff_out_aunescape_until(vpt, &str, NULL, &our_in, SIZE_MAX,
+						 p_rules ? p_rules->terminals : NULL,
+						 p_rules ? p_rules->escapes : NULL) < 0) {
+			talloc_free(vpt);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 		vpt->data.unescaped = str;
 		break;
 

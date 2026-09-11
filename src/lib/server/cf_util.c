@@ -2585,8 +2585,15 @@ int cf_pair_replace_or_add(CONF_SECTION *cs, char const *ref, char const *value)
 	 *	segment alone, not the rest of the path.  The last segment
 	 *	is the pair name, and is stopped on by the trailing '\0'.
 	 */
-	while (fr_sbuff_out_bstrncpy_until(&name1_sbuff, &in, SIZE_MAX, &ref_char, NULL)) {
-		CONF_SECTION *found;
+	for (;;) {
+		CONF_SECTION	*found;
+		size_t		len;
+
+		if (fr_sbuff_out_bstrncpy_until(&len, &name1_sbuff, &in, SIZE_MAX, &ref_char, NULL) < 0) {
+			fr_strerror_printf("Section name is too long in '%s'", ref);
+			return -1;
+		}
+		if (len == 0) break;
 
 		switch (*fr_sbuff_current(&in)) {
 		case '.':
@@ -2596,8 +2603,8 @@ int cf_pair_replace_or_add(CONF_SECTION *cs, char const *ref, char const *value)
 
 		case '[':
 			fr_sbuff_advance(&in, 1);		/* Skip the '[' */
-			if (!fr_sbuff_out_bstrncpy_until(&name2_sbuff, &in, SIZE_MAX, &ref_char_end, NULL) ||
-			    !fr_sbuff_is_char(&in, ']')) {
+			if ((fr_sbuff_out_bstrncpy_until(&len, &name2_sbuff, &in, SIZE_MAX, &ref_char_end, NULL) < 0) ||
+			    (len == 0) || !fr_sbuff_is_char(&in, ']')) {
 				fr_strerror_printf("Missing ']', or selector is empty or too long, in '%s'", ref);
 				return -1;
 			}
@@ -2620,11 +2627,11 @@ int cf_pair_replace_or_add(CONF_SECTION *cs, char const *ref, char const *value)
 			return 0;
 
 		/*
-		 *	The copy stopped on an ordinary character, which
-		 *	means the segment did not fit in the buffer.
+		 *	The copy only stops on a terminal or the end
+		 *	of the input, so this cannot happen.
 		 */
 		default:
-			fr_strerror_printf("Section name is too long in '%s'", ref);
+			fr_assert_msg(0, "copy stopped on a non terminal character");
 			return -1;
 		}
 

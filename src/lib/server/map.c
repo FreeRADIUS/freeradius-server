@@ -221,13 +221,17 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	quote = cf_pair_value_quote(cp);
 	p_rules = value_parse_rules_unquoted[quote]; /* We're not searching for quotes */
 	if (quote == T_DOUBLE_QUOTED_STRING || quote == T_BACK_QUOTED_STRING) {
-		slen = fr_sbuff_out_aunescape_until(child_ctx, &unescaped_value,
-				&FR_SBUFF_IN(value, talloc_strlen(value)), SIZE_MAX, p_rules->terminals, p_rules->escapes);
-		if (slen < 0) {
+		size_t len;
+
+		if (fr_sbuff_out_aunescape_until(child_ctx, &unescaped_value, &len,
+						 &FR_SBUFF_IN(value, talloc_strlen(value)), SIZE_MAX,
+						 p_rules->terminals, p_rules->escapes) < 0) {
+			slen = -1;
 			marker_subject = value;
 			goto marker;
 		}
 		value = unescaped_value;
+		slen = (fr_slen_t)len;
 		p_rules = NULL;
 
 	} else if (edit && (quote == T_HASH)) {

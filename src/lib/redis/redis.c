@@ -535,6 +535,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 int fr_redis_parse_version(char *out, size_t out_len, redisReply *reply)
 {
 	fr_sbuff_t	sbuff;
+	size_t		len;
 
 	if (reply->type != REDIS_REPLY_STRING) {
 		fr_strerror_printf("Bad value type, expected string or integer, got %s",
@@ -551,7 +552,8 @@ int fr_redis_parse_version(char *out, size_t out_len, redisReply *reply)
 	}
 	fr_sbuff_advance(&sbuff, sizeof("redis_version:") -1);
 
-	if (fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, out_len), &sbuff, SIZE_MAX, &FR_SBUFF_TERMS(L("\r\n")), NULL) == 0) {
+	if ((fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(out, out_len), &sbuff, SIZE_MAX,
+					 &FR_SBUFF_TERMS(L("\r\n")), NULL) < 0) || (len == 0)) {
 		fr_strerror_printf("Failed extracting version string");
 		goto error;
 	}

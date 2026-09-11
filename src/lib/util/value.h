@@ -1050,17 +1050,17 @@ int		fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t 
 /*
  *	Conversion
  */
-size_t		fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
-		CC_HINT(nonnull);
+fr_sbuff_err_t	fr_value_str_unescape(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max, char quote)
+		CC_HINT(nonnull(2,3)) CC_HINT(warn_unused_result);
 
-size_t		fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
-		CC_HINT(nonnull);
+fr_sbuff_err_t	fr_value_substr_unescape(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max, char quote)
+		CC_HINT(nonnull(2,3)) CC_HINT(warn_unused_result);
 
-static inline size_t fr_value_str_aunescape(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t inlen, char quote)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_value_str_unescape, in, inlen, quote)
+static inline fr_sbuff_err_t fr_value_str_aunescape(TALLOC_CTX *ctx, char **out, size_t *len, fr_sbuff_t *in, size_t max, char quote)
+SBUFF_OUT_TALLOC_FUNC_ERR_LEN_DEF(fr_value_str_unescape, in, max, quote)
 
-static inline size_t fr_value_substr_aunescape(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t inlen, char quote)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_value_substr_unescape, in, inlen, quote)
+static inline fr_sbuff_err_t fr_value_substr_aunescape(TALLOC_CTX *ctx, char **out, size_t *len, fr_sbuff_t *in, size_t max, char quote)
+SBUFF_OUT_TALLOC_FUNC_ERR_LEN_DEF(fr_value_substr_unescape, in, max, quote)
 
 int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		CC_HINT(nonnull);

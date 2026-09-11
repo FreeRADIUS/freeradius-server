@@ -1208,43 +1208,38 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
  * @note Copying will stop early if an unescaped instance of the
  *	 quoting char is found in the input buffer.
  *
+ * @param[out] len	Number of bytes written to out.  May be NULL.
  * @param[out] out	Where to write the unescaped string.
  * @param[in] in	The string to unescape.
- * @param[in] inlen	Length of input string.  Pass SIZE_MAX to copy all data
- *			in the input buffer.
+ * @param[in] max	Maximum number of input bytes to consume.  Pass SIZE_MAX
+ *			to consume all data in the input buffer.
  * @param[in] quote	Character around the string, determines unescaping mode.
  *
  * @return
- *	- 0 if input string was empty.
- *	- >0 the number of bytes written to out.
+ *	- FR_SBUFF_OK on success, including when the input was empty.
+ *	- FR_SBUFF_ERR_NO_SPACE out filled before the input was consumed.
+ *	- FR_SBUFF_ERR_EXTEND in's extend callback failed.
  */
-size_t fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
+fr_sbuff_err_t fr_value_str_unescape(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max, char quote)
 {
 	switch (quote) {
 	default:
 		break;
 
 	case '"':
-	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_double);
-	}
+		return fr_sbuff_out_unescape_until(len, out, in, max, NULL, &fr_value_unescape_double);
+
 	case '\'':
-	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_single);
-	}
+		return fr_sbuff_out_unescape_until(len, out, in, max, NULL, &fr_value_unescape_single);
 
 	case '`':
-	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_backtick);
-	}
+		return fr_sbuff_out_unescape_until(len, out, in, max, NULL, &fr_value_unescape_backtick);
 
 	case '/':
-	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_solidus);
-	}
+		return fr_sbuff_out_unescape_until(len, out, in, max, NULL, &fr_value_unescape_solidus);
 	}
 
-	return fr_sbuff_out_bstrncpy(out, in, inlen);
+	return fr_sbuff_out_bstrncpy(len, out, in, max);
 }
 
 /** Convert a string value with escape sequences into its binary form
@@ -1281,36 +1276,38 @@ size_t fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char
  * @note Copying will stop early if an unescaped instance of the
  *	 quoting char is found in the input buffer.
  *
+ * @param[out] len	Number of bytes written to out.  May be NULL.
  * @param[out] out	Where to write the unescaped string.
  * @param[in] in	The string to unescape.
- * @param[in] inlen	Length of input string.  Pass SIZE_MAX to copy all data
- *			in the input buffer.
+ * @param[in] max	Maximum number of input bytes to consume.  Pass SIZE_MAX
+ *			to consume all data in the input buffer.
  * @param[in] quote	Character around the string, determines unescaping mode.
  *
  * @return
- *	- 0 if input string was empty.
- *	- >0 the number of bytes written to out.
+ *	- FR_SBUFF_OK on success, including when the input was empty.
+ *	- FR_SBUFF_ERR_NO_SPACE out filled before the input was consumed.
+ *	- FR_SBUFF_ERR_EXTEND in's extend callback failed.
  */
-size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
+fr_sbuff_err_t fr_value_substr_unescape(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max, char quote)
 {
 	switch (quote) {
 	default:
 		break;
 
 	case '"':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("\""), &fr_value_unescape_double);
+		return fr_sbuff_out_unescape_until(len, out, in, max, &FR_SBUFF_TERM("\""), &fr_value_unescape_double);
 
 	case '\'':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("'"), &fr_value_unescape_single);
+		return fr_sbuff_out_unescape_until(len, out, in, max, &FR_SBUFF_TERM("'"), &fr_value_unescape_single);
 
 	case '`':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("`"), &fr_value_unescape_backtick);
+		return fr_sbuff_out_unescape_until(len, out, in, max, &FR_SBUFF_TERM("`"), &fr_value_unescape_backtick);
 
 	case '/':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("/"), &fr_value_unescape_solidus);
+		return fr_sbuff_out_unescape_until(len, out, in, max, &FR_SBUFF_TERM("/"), &fr_value_unescape_solidus);
 	}
 
-	return fr_sbuff_out_bstrncpy(out, in, inlen);
+	return fr_sbuff_out_bstrncpy(len, out, in, max);
 }
 
 /** Performs byte order reversal for types that need it
@@ -5547,8 +5544,11 @@ fr_slen_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 *	As a result, when the user passes in "Framed-User", the output is "Framed-User -
 		 *	User", which is more than a bit surprising.
 		 */
-		name_len = fr_sbuff_out_unescape_until(unescaped, &our_in, SIZE_MAX,
-						       rules->terminals, rules->escapes);
+		if (fr_sbuff_out_unescape_until(&name_len, unescaped, &our_in, SIZE_MAX,
+						rules->terminals, rules->escapes) < 0) {
+			fr_strerror_const("Failed reading enumeration name");
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
 		if (!name_len) {
 			fr_sbuff_set_to_start(&our_in);
 			goto parse;	/* Zero length name can't match enum */
@@ -5582,7 +5582,7 @@ parse:
 		if (!dst_enumv || !unescaped) {
 			char *buff;
 
-			if (unlikely(fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX,
+			if (unlikely(fr_sbuff_out_aunescape_until(ctx, &buff, NULL, &our_in, SIZE_MAX,
 								  rules->terminals, rules->escapes) < 0)) {
 				return -1;
 			}
@@ -5612,12 +5612,15 @@ parse:
 			if (!dst_enumv || !unescaped) {
 				char	*buff = NULL;
 				uint8_t	*bin;
+				size_t	len;
 
 				if (fr_sbuff_extend(&our_in)) {
-					fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX,
-								     rules->terminals, rules->escapes);
+					if (fr_sbuff_out_aunescape_until(ctx, &buff, &len, &our_in, SIZE_MAX,
+									 rules->terminals, rules->escapes) < 0) {
+						return -1;
+					}
 
-					if (talloc_strlen(buff) == 0) {
+					if (len == 0) {
 						talloc_free(buff);
 						goto zero;
 					}
@@ -6063,11 +6066,15 @@ parse:
 	 *	We may have terminals.  If so, respect them.
 	 */
 	if (rules && rules->terminals) {
-		size_t len;
+		size_t		len;
+		fr_sbuff_err_t	sberr;
 
-		len = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(buffer, sizeof(buffer)), &our_in, SIZE_MAX,
-						  rules->terminals, rules->escapes);
-		if (len >= sizeof(buffer)) goto too_small;
+		sberr = fr_sbuff_out_unescape_until(&len, &FR_SBUFF_OUT(buffer, sizeof(buffer)), &our_in, SIZE_MAX,
+						    rules->terminals, rules->escapes);
+		if (sberr < 0) {
+			fr_strerror_printf("Failed reading value: %s", fr_sbuff_err_to_str(sberr));
+			return -1;
+		}
 
 		buffer[len] = '\0';
 
@@ -6080,7 +6087,6 @@ parse:
 		 *	is NOT advanced, and this function will return 0, even though it parsed data!
 		 */
 		if (fr_sbuff_remaining(in) >= sizeof(buffer)) {
-		too_small:
 			fr_strerror_const("Temporary buffer too small");
 			return -1;
 		}

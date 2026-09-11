@@ -1043,8 +1043,10 @@ do { \
 		fr_sbuff_uctx_talloc_t	tctx;
 
 		MEM(fr_sbuff_init_talloc(autofree, &out, &tctx, strlen(argv[1]) + 1, SIZE_MAX));
-		(void) fr_value_str_unescape(&out,
-					     &FR_SBUFF_IN_STR(argv[1]), SIZE_MAX, '"');
+		if (fr_value_str_unescape(NULL, &out, &FR_SBUFF_IN_STR(argv[1]), SIZE_MAX, '"') < 0) {
+			ERROR("Failed unescaping pool name");
+			fr_exit_now(EXIT_FAILURE);
+		}
 		talloc_realloc(autofree, out.buff, uint8_t, fr_sbuff_used(&out));
 		pool_arg = (uint8_t *)out.buff;
 	}
@@ -1054,8 +1056,10 @@ do { \
 		fr_sbuff_uctx_talloc_t	tctx;
 
 		MEM(fr_sbuff_init_talloc(autofree, &out, &tctx, strlen(argv[1]) + 1, SIZE_MAX));
-		(void) fr_value_str_unescape(&out,
-					     &FR_SBUFF_IN_STR(argv[2]), SIZE_MAX, '"');
+		if (fr_value_str_unescape(NULL, &out, &FR_SBUFF_IN_STR(argv[2]), SIZE_MAX, '"') < 0) {
+			ERROR("Failed unescaping range name");
+			fr_exit_now(EXIT_FAILURE);
+		}
 		talloc_realloc(autofree, out.buff, uint8_t, fr_sbuff_used(&out));
 		range_arg = (uint8_t *)out.buff;
 	}

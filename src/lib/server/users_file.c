@@ -352,7 +352,11 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 		/*
 		 *	Copy the name from the entry.
 		 */
-		len = fr_sbuff_out_abstrncpy_until(t, &q, &sbuff, SIZE_MAX, &name_terms, NULL);
+		if (fr_sbuff_out_abstrncpy_until(t, &q, &len, &sbuff, SIZE_MAX, &name_terms, NULL) < 0) {
+			ERROR_MARKER(&sbuff, "Failed reading entry name");
+			talloc_free(t);
+			goto fail;
+		}
 		if (len == 0) {
 			talloc_free(t);
 			break;

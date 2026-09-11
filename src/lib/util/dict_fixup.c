@@ -144,8 +144,9 @@ int fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const
 	 *	Are we resolving a foreign reference?
 	 */
 	if (fr_sbuff_next_if_char(in, '@')) {
-		char proto_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-		fr_sbuff_t proto_name_sbuff = FR_SBUFF_OUT(proto_name, sizeof(proto_name));
+		char		proto_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+		fr_sbuff_t	proto_name_sbuff = FR_SBUFF_OUT(proto_name, sizeof(proto_name));
+		size_t		len;
 
 		/*
 		 *	@.foo is "foo from the current root".
@@ -166,8 +167,8 @@ int fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const
 			fr_sbuff_terminate(&proto_name_sbuff);
 
 			/* Fixme, probably want to limit allowed chars */
-			if (fr_sbuff_out_bstrncpy_until(&proto_name_sbuff, in, SIZE_MAX,
-							&FR_SBUFF_TERMS(L(""), L(".")), NULL) <= 0) {
+			if ((fr_sbuff_out_bstrncpy_until(&len, &proto_name_sbuff, in, SIZE_MAX,
+							 &FR_SBUFF_TERMS(L(""), L(".")), NULL) < 0) || (len == 0)) {
 			invalid_name:
 				fr_strerror_const("Invalid protocol name");
 				return -1;

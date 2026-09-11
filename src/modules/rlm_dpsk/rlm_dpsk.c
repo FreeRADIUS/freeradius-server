@@ -488,6 +488,7 @@ stage2:
 		fr_sbuff_t		sbuff;
 		fr_sbuff_uctx_file_t	fctx;
 		size_t			len;
+		fr_sbuff_err_t		sberr;
 		fr_sbuff_term_t const	terms = FR_SBUFF_TERMS(L("\n"),L("\r"),L(","));
 		fr_sbuff_term_t const	quoted_terms = FR_SBUFF_TERMS(L("\""));
 		bool			quoted = false;
@@ -506,8 +507,12 @@ stage2a:
 		lineno++;
 		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 		quoted = fr_sbuff_next_if_char(&sbuff, '"');
-		len = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(token_identity, sizeof(token_identity)), &sbuff,
-						  sizeof(token_identity), quoted ? &quoted_terms : &terms, NULL);
+		sberr = fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(token_identity, sizeof(token_identity)), &sbuff,
+						    SIZE_MAX, quoted ? &quoted_terms : &terms, NULL);
+		if (sberr < 0) {
+			RERROR("%s[%d] Failed reading identity: %s", filename, lineno, fr_sbuff_err_to_str(sberr));
+			goto fail_file;
+		}
 		if (len == 0) {
 			RDEBUG("Failed to find matching PSK or MAC in %s", filename);
 		fail_file:
@@ -526,8 +531,12 @@ stage2a:
 
 		fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 		quoted = fr_sbuff_next_if_char(&sbuff, '"');
-		len = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(token_psk, sizeof(token_psk)), &sbuff,
-						  sizeof(token_identity), quoted ? &quoted_terms : &terms, NULL);
+		sberr = fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(token_psk, sizeof(token_psk)), &sbuff,
+						    SIZE_MAX, quoted ? &quoted_terms : &terms, NULL);
+		if (sberr < 0) {
+			RERROR("%s[%d] Failed reading PSK: %s", filename, lineno, fr_sbuff_err_to_str(sberr));
+			goto fail_file;
+		}
 		if (len == 0) {
 			RDEBUG("%s[%d] Failed parsing PSK", filename, lineno);
 			goto fail_file;
@@ -546,8 +555,12 @@ stage2a:
 
 			fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 			quoted = fr_sbuff_next_if_char(&sbuff, '"');
-			len = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(token_mac, sizeof(token_mac)), &sbuff,
-							  sizeof(token_identity), quoted ? &quoted_terms : &terms, NULL);
+			sberr = fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(token_mac, sizeof(token_mac)), &sbuff,
+							    SIZE_MAX, quoted ? &quoted_terms : &terms, NULL);
+			if (sberr < 0) {
+				RERROR("%s[%d] Failed reading MAC: %s", filename, lineno, fr_sbuff_err_to_str(sberr));
+				goto fail_file;
+			}
 			if (len == 0) {
 				RERROR("%s[%d] Failed parsing MAC", filename, lineno);
 				goto fail_file;

@@ -135,7 +135,10 @@ static fr_slen_t ldap_filter_parse_filter(ldap_filter_t *node, fr_sbuff_t *sbuff
 	 *	Extract the attribute name, blanking the buffer first.
 	 */
 	memset(attr_buffer, 0, FILTER_ATTR_MAX_LEN);
-	len = fr_sbuff_out_bstrncpy_allowed(&attr_sbuff, sbuff, FILTER_ATTR_MAX_LEN - 1, fr_ldap_attr_allowed_chars);
+	if (fr_sbuff_out_bstrncpy_allowed(&len, &attr_sbuff, sbuff, FILTER_ATTR_MAX_LEN - 1, fr_ldap_attr_allowed_chars) < 0) {
+		fr_strerror_const("Failed reading attribute name");
+		FR_SBUFF_ERROR_RETURN(sbuff);
+	}
 	if (len == 0) {
 		fr_strerror_const("Missing attribute name");
 		FR_SBUFF_ERROR_RETURN(sbuff);
@@ -201,8 +204,10 @@ static fr_slen_t ldap_filter_parse_filter(ldap_filter_t *node, fr_sbuff_t *sbuff
 	 *	Capture everything up to the next ')' as the value, blanking the buffer first.
 	 */
 	memset(val_buffer, 0, FILTER_VALUE_MAX_LEN);
-	len = fr_sbuff_out_bstrncpy_until(&val_sbuff, sbuff, FILTER_VALUE_MAX_LEN - 1, &FR_SBUFF_TERM(")"), NULL);
-
+	if (fr_sbuff_out_bstrncpy_until(&len, &val_sbuff, sbuff, FILTER_VALUE_MAX_LEN - 1, &FR_SBUFF_TERM(")"), NULL) < 0) {
+		fr_strerror_const("Failed reading filter value");
+		FR_SBUFF_ERROR_RETURN(sbuff);
+	}
 	if (len == 0) {
 		fr_strerror_const("Missing filter value");
 		FR_SBUFF_ERROR_RETURN(sbuff);

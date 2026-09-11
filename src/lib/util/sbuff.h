@@ -309,11 +309,18 @@ typedef enum {
 extern fr_table_num_ordered_t const sbuff_err_table[];
 extern size_t sbuff_err_table_len;
 
+/** Return the string representation of a result
+ */
+static inline char const *fr_sbuff_err_to_str(fr_sbuff_err_t result)
+{
+	return fr_table_str_by_value(sbuff_err_table, result, "<INVALID>");
+}
+
 /** Replace the contents of the thread local error stack with the string representation of a result
  */
 static inline void fr_sbuff_err_to_strerror(fr_sbuff_err_t result)
 {
-	fr_strerror_const(fr_table_str_by_value(sbuff_err_table, result, "<INVALID>"));
+	fr_strerror_const(fr_sbuff_err_to_str(result));
 }
 
 /** Return whether the sbuff is extendable
@@ -1540,20 +1547,24 @@ static inline void fr_sbuff_allowed_merge(bool out[static SBUFF_CHAR_CLASS], boo
 fr_sbuff_term_t	*fr_sbuff_terminals_amerge(TALLOC_CTX *ctx,
 					   fr_sbuff_term_t const *a, fr_sbuff_term_t const *b);
 
-size_t	fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
+fr_sbuff_err_t	fr_sbuff_out_bstrncpy(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max)
+		CC_HINT(warn_unused_result);
 
 fr_sbuff_err_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len) CC_HINT(warn_unused_result);
 
-size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				      bool const allowed[static SBUFF_CHAR_CLASS]);
+fr_sbuff_err_t	fr_sbuff_out_bstrncpy_allowed(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max,
+					      bool const allowed[static SBUFF_CHAR_CLASS])
+		CC_HINT(warn_unused_result);
 
-size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				    fr_sbuff_term_t const *tt,
-				    fr_sbuff_unescape_rules_t const *u_rules);
+fr_sbuff_err_t	fr_sbuff_out_bstrncpy_until(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max,
+					    fr_sbuff_term_t const *tt,
+					    fr_sbuff_unescape_rules_t const *u_rules)
+		CC_HINT(warn_unused_result);
 
-size_t	fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				    fr_sbuff_term_t const *tt,
-				    fr_sbuff_unescape_rules_t const *u_rules);
+fr_sbuff_err_t	fr_sbuff_out_unescape_until(size_t *len, fr_sbuff_t *out, fr_sbuff_t *in, size_t max,
+					    fr_sbuff_term_t const *tt,
+					    fr_sbuff_unescape_rules_t const *u_rules)
+		CC_HINT(warn_unused_result);
 
 /** Find the longest prefix in an sbuff
  *
@@ -1695,25 +1706,61 @@ do { \
 	return FR_SBUFF_OK; \
 }
 
-static inline fr_slen_t fr_sbuff_out_abstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy, in, len)
+/** Build a talloc wrapper function for a fr_sbuff_out_* function returning fr_sbuff_err_t and a length
+ *
+ * The wrapped function takes a `size_t *len` out argument first, which is
+ * passed through.  On any error the buffer is freed, *out is set to NULL
+ * and *len to 0.
+ *
+ * @param[in] _func	to call.
+ * @param[in] _in	input sbuff arg.
+ * @param[in] _max	maximum number of bytes to copy.
+ * @param[in] ...	additional arguments to pass to _func.
+ */
+#define SBUFF_OUT_TALLOC_FUNC_ERR_LEN_DEF(_func, _in, _max, ...) \
+{ \
+	fr_sbuff_t		sbuff; \
+	fr_sbuff_uctx_talloc_t	tctx; \
+	fr_sbuff_err_t		err; \
+	if (unlikely(fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
+					  ((_max) != SIZE_MAX) ? (_max) : 1024, \
+					  ((_max) != SIZE_MAX) ? (_max) : SIZE_MAX) == NULL)) { \
+		err = FR_SBUFF_ERR_NO_SPACE; \
+	error: \
+		TALLOC_FREE(sbuff.buff); \
+		*out = NULL; \
+		if (len) *len = 0; \
+		return err; \
+	} \
+	err = _func(len, &sbuff, _in, _max, ##__VA_ARGS__); \
+	if (err < 0) goto error; \
+	if (unlikely(fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) < 0)) { \
+		err = FR_SBUFF_ERR_NO_SPACE; \
+		goto error; \
+	} \
+	*out = sbuff.buff; \
+	return FR_SBUFF_OK; \
+}
+
+static inline fr_sbuff_err_t fr_sbuff_out_abstrncpy(TALLOC_CTX *ctx, char **out, size_t *len, fr_sbuff_t *in, size_t max)
+SBUFF_OUT_TALLOC_FUNC_ERR_LEN_DEF(fr_sbuff_out_bstrncpy, in, max)
 
 static inline fr_sbuff_err_t fr_sbuff_out_abstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
 SBUFF_OUT_TALLOC_FUNC_ERR_DEF(fr_sbuff_out_bstrncpy_exact, in, len)
 
-static inline fr_slen_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						       bool const allowed[static SBUFF_CHAR_CLASS])
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed)
+static inline fr_sbuff_err_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out, size_t *len, fr_sbuff_t *in, size_t max,
+							    bool const allowed[static SBUFF_CHAR_CLASS])
+SBUFF_OUT_TALLOC_FUNC_ERR_LEN_DEF(fr_sbuff_out_bstrncpy_allowed, in, max, allowed)
 
-static inline fr_slen_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						     fr_sbuff_term_t const *tt,
-						     fr_sbuff_unescape_rules_t const *u_rules)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, tt, u_rules)
+static inline fr_sbuff_err_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, size_t *len, fr_sbuff_t *in, size_t max,
+							  fr_sbuff_term_t const *tt,
+							  fr_sbuff_unescape_rules_t const *u_rules)
+SBUFF_OUT_TALLOC_FUNC_ERR_LEN_DEF(fr_sbuff_out_bstrncpy_until, in, max, tt, u_rules)
 
-static inline fr_slen_t fr_sbuff_out_aunescape_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						     fr_sbuff_term_t const *tt,
-						     fr_sbuff_unescape_rules_t const *u_rules)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, tt, u_rules)
+static inline fr_sbuff_err_t fr_sbuff_out_aunescape_until(TALLOC_CTX *ctx, char **out, size_t *len, fr_sbuff_t *in, size_t max,
+							  fr_sbuff_term_t const *tt,
+							  fr_sbuff_unescape_rules_t const *u_rules)
+SBUFF_OUT_TALLOC_FUNC_ERR_LEN_DEF(fr_sbuff_out_unescape_until, in, max, tt, u_rules)
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer

@@ -420,7 +420,15 @@ int kafka_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_
 		 */
 		ue_rules.subs[(uint8_t)kctx->string_sep[0]] = kctx->string_sep[0];
 
-		while (fr_sbuff_out_unescape_until(&value_elem, &value_in, SIZE_MAX, &tt, &ue_rules) > 0) {
+		for (;;) {
+			size_t len;
+
+			if (fr_sbuff_out_unescape_until(&len, &value_elem, &value_in, SIZE_MAX, &tt, &ue_rules) < 0) {
+				fr_strerror_printf("Value element exceeds %zu bytes", sizeof(tmp) - 1);
+				return -1;
+			}
+			if (len == 0) break;
+
 			if (kafka_config_dflt_single(out, parent, cs, fr_sbuff_start(&value_elem), quote, rule) < 0) return -1;
 
 			/*

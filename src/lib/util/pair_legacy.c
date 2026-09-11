@@ -149,7 +149,11 @@ static fr_slen_t fr_pair_value_from_substr(fr_pair_parse_t const *conf, fr_pair_
 		 *	Should only be used for trusted resources, so no artificial limits
 		 */
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&exec_in, 1024, SIZE_MAX);
-		(void)fr_sbuff_out_unescape_until(exec_in, &our_in, SIZE_MAX, &FR_SBUFF_TERMS(L("`")), &fr_value_unescape_backtick);
+		if (fr_sbuff_out_unescape_until(NULL, exec_in, &our_in, SIZE_MAX,
+						&FR_SBUFF_TERMS(L("`")), &fr_value_unescape_backtick) < 0) {
+			fr_strerror_const("Failed reading backtick string");
+			return 0;
+		}
 		/*
 		 *	Don't exec if we know we're going to fail
 		 */
