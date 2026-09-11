@@ -1542,7 +1542,7 @@ fr_sbuff_term_t	*fr_sbuff_terminals_amerge(TALLOC_CTX *ctx,
 
 size_t	fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
-ssize_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
+fr_sbuff_err_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len) CC_HINT(warn_unused_result);
 
 size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				      bool const allowed[static SBUFF_CHAR_CLASS]);
@@ -1662,11 +1662,44 @@ do { \
 	return slen; \
 }
 
+/** Build a talloc wrapper function for a fr_sbuff_out_* function returning fr_sbuff_err_t
+ *
+ * On any error the buffer is freed and *out is set to NULL.
+ *
+ * @param[in] _func	to call.
+ * @param[in] _in	input sbuff arg.
+ * @param[in] _len	expected output len.
+ * @param[in] ...	additional arguments to pass to _func.
+ */
+#define SBUFF_OUT_TALLOC_FUNC_ERR_DEF(_func, _in, _len, ...) \
+{ \
+	fr_sbuff_t		sbuff; \
+	fr_sbuff_uctx_talloc_t	tctx; \
+	fr_sbuff_err_t		err; \
+	if (unlikely(fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
+					  ((_len) != SIZE_MAX) ? (_len) : 1024, \
+					  ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX) == NULL)) { \
+		err = FR_SBUFF_ERR_NO_SPACE; \
+	error: \
+		TALLOC_FREE(sbuff.buff); \
+		*out = NULL; \
+		return err; \
+	} \
+	err = _func(&sbuff, _in, _len, ##__VA_ARGS__); \
+	if (err != FR_SBUFF_OK) goto error; \
+	if (unlikely(fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) < 0)) { \
+		err = FR_SBUFF_ERR_NO_SPACE; \
+		goto error; \
+	} \
+	*out = sbuff.buff; \
+	return FR_SBUFF_OK; \
+}
+
 static inline fr_slen_t fr_sbuff_out_abstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy, in, len)
 
-static inline fr_slen_t fr_sbuff_out_abstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_exact, in, len)
+static inline fr_sbuff_err_t fr_sbuff_out_abstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
+SBUFF_OUT_TALLOC_FUNC_ERR_DEF(fr_sbuff_out_bstrncpy_exact, in, len)
 
 static inline fr_slen_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
 						       bool const allowed[static SBUFF_CHAR_CLASS])

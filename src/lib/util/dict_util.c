@@ -3932,7 +3932,34 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_err_t *err,
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	if (out) return fr_sbuff_out_bstrncpy_exact(out, in, fr_sbuff_used(&our_in));
+	if (out) {
+		size_t len = fr_sbuff_used(&our_in);
+
+		switch (fr_sbuff_out_bstrncpy_exact(out, in, len)) {
+		case FR_SBUFF_OK:
+			break;
+
+		case FR_SBUFF_ERR_NO_SPACE:
+			fr_strerror_const("Output buffer too small for VALUE name");
+			if (err) *err = FR_SBUFF_ERR_NO_SPACE;
+			fr_sbuff_set_to_start(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+
+		default:
+			/*
+			 *	The name was scanned in the buffer shared with in,
+			 *	so the copy cannot run out of input or need to extend.
+			 */
+			fr_assert_msg(0, "fr_sbuff_out_bstrncpy_exact failed on data already in the buffer");
+			if (err) *err = FR_SBUFF_ERR_NOT_FOUND;
+			fr_sbuff_set_to_start(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
+		if (err) *err = FR_SBUFF_OK;
+
+		return (fr_slen_t)len;
+	}
 
 	if (err) *err = FR_SBUFF_OK;
 

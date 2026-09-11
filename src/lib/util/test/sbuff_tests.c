@@ -104,49 +104,68 @@ static void test_bstrncpy_exact(void)
 	char const	in[] = "i am a test string";
 	char const	in_long[] = "i am a longer test string";
 	char		out[18 + 1] = "";
+	char		out_long[32 + 1] = "";
 	fr_sbuff_t	sbuff;
-	ssize_t		slen;
+	fr_sbuff_err_t	ret;
 
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
 
 	TEST_CASE("Copy 5 bytes to out");
-	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5);
-	TEST_CHECK_SLEN_RETURN(slen, 5);
+	ret = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5);
+	TEST_CHECK_RET(ret, FR_SBUFF_OK);
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
 	TEST_CASE("Copy 13 bytes to out");
-	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13);
-	TEST_CHECK_SLEN(slen, 13);
+	ret = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13);
+	TEST_CHECK_RET(ret, FR_SBUFF_OK);
 	TEST_CHECK_STRCMP(out, "a test string");
 	TEST_CHECK_STRCMP(sbuff.p, "");
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
-	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1);
-	TEST_CHECK_SLEN(slen, 0);
+	out[0] = 'a';
+	ret = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1);
+	TEST_CHECK_RET(ret, FR_SBUFF_ERR_INPUT_SHORT);
+	TEST_CHECK(out[0] == '\0');	/* nothing left in out */
 	TEST_CHECK(sbuff.p == sbuff.end);
 
-	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
-	fr_sbuff_init_in(&sbuff, in_long, sizeof(in_long) - 1);
+	TEST_CASE("Copy would overrun input part way through");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	fr_sbuff_advance(&sbuff, 12);
+	out[0] = 'a';
+	ret = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 7);
+	TEST_CHECK_RET(ret, FR_SBUFF_ERR_INPUT_SHORT);
+	TEST_CHECK(out[0] == '\0');	/* partial copy removed */
+	TEST_CHECK_STRCMP(sbuff.p, "string");	/* input not advanced */
 
-	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX);
-	TEST_CHECK_SLEN(slen, -1);
+	TEST_CASE("Copy would overrun output");
+	fr_sbuff_init_in(&sbuff, in_long, sizeof(in_long) - 1);
+	ret = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX);
+	TEST_CHECK_RET(ret, FR_SBUFF_ERR_NO_SPACE);
+	TEST_CHECK(out[0] == '\0');	/* partial copy removed */
 	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("SIZE_MAX copies the whole input");
+	fr_sbuff_set_to_start(&sbuff);
+	ret = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out_long, sizeof(out_long)), &sbuff, SIZE_MAX);
+	TEST_CHECK_RET(ret, FR_SBUFF_OK);
+	TEST_CHECK_STRCMP(out_long, in_long);
+	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
-	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX);
-	TEST_CHECK_SLEN(slen, -1);
+	ret = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX);
+	TEST_CHECK_RET(ret, FR_SBUFF_ERR_NO_SPACE);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Zero length size");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
-	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, 0);
-	TEST_CHECK_SLEN(slen, 0);
+	ret = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, 0);
+	TEST_CHECK_RET(ret, FR_SBUFF_OK);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 }
@@ -1021,14 +1040,12 @@ static void test_no_advance(void)
 	char const	*in = "i am a test string";
 	char		out[18 + 1] = "";
 	fr_sbuff_t	sbuff;
-	ssize_t		slen;
 
 	fr_sbuff_init_in(&sbuff, in, strlen(in));
 
 	TEST_CASE("Copy 5 bytes to out - no advance");
 	TEST_CHECK(sbuff.p == sbuff.start);
-	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &FR_SBUFF(&sbuff), 5);
-	TEST_CHECK_SLEN_RETURN(slen, 5);
+	TEST_CHECK_RET(fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &FR_SBUFF(&sbuff), 5), FR_SBUFF_OK);
 	TEST_CHECK(strcmp(out, "i am ") == 0);
 	TEST_CHECK(sbuff.p == sbuff.start);
 }
@@ -1543,8 +1560,8 @@ static void test_file_extend(void)
 	TEST_CASE("Verify that we do not read shifted buffer past eof");
 	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_OUT(out, sizeof(out)), &our_sbuff, SIZE_MAX);
 	TEST_CHECK_SLEN(slen, 0);
-	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &our_sbuff, SIZE_MAX);
-	TEST_CHECK_SLEN(slen, 0);
+	TEST_CHECK_RET(fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &our_sbuff, SIZE_MAX), FR_SBUFF_OK);
+	TEST_CHECK_STRCMP(out, "");
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &our_sbuff, SIZE_MAX, NULL, NULL);
 	TEST_CHECK_SLEN(slen, 0);
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, sizeof(out)), &our_sbuff, SIZE_MAX, allow_lowercase_and_space);

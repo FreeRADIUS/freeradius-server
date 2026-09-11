@@ -141,11 +141,11 @@ typedef struct {
 typedef struct {
 }	fr_dict_attr_flags_t;
 
-ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
+fr_sbuff_err_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
-	ssize_t	result;
+	fr_sbuff_err_t	result;
 
-	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result);
+	if (result == FR_SBUFF_OK) __coverity_write_buffer_bytes__(out->p, len);
 
 	return result;
 }

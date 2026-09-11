@@ -761,53 +761,68 @@ done:
 
 /** Copy exactly len bytes from a sbuff to a sbuff or fail
  *
- * Copy size is limited by available data in sbuff, space in output sbuff, and length.
+ * On failure nothing is left in out and in is not advanced.
  *
  * @param[out] out	Where to copy to.
  * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len	How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @return
- *	- 0 no bytes copied, no token found of sufficient length in input buffer.
- *	- >0 the number of bytes copied.
- *	- -1 the copy would not fit in the output buffer.
+ *	- FR_SBUFF_OK len bytes were copied, and in was advanced by len.
+ *	- FR_SBUFF_ERR_INPUT_SHORT in held fewer than len bytes.
+ *	- FR_SBUFF_ERR_EXTEND in could not be extended because its extend callback failed.
+ *	- FR_SBUFF_ERR_NO_SPACE out could not hold len bytes.
  */
-ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
+fr_sbuff_err_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
 	fr_sbuff_t 		our_in = FR_SBUFF(in);
 	size_t			remaining;
 	fr_sbuff_marker_t	m;
+	fr_sbuff_err_t		err;
 
 	CHECK_SBUFF_INIT(in);
 
 	fr_sbuff_marker(&m, out);
 
 	do {
-		size_t chunk_len;
-		ssize_t copied;
+		size_t				chunk_len;
+		fr_sbuff_extend_status_t	status;
 
 		remaining = (len - fr_sbuff_used_total(&our_in));
-		if (remaining && !fr_sbuff_extend(&our_in)) {
-			fr_sbuff_marker_release(&m);
-			return 0;
+		if (remaining && (fr_sbuff_extend_lowat(&status, &our_in, 1) == 0)) {
+			if (status & FR_SBUFF_FLAG_EXTEND_ERROR) {
+				err = FR_SBUFF_ERR_EXTEND;
+				goto error;
+			}
+
+			/*
+			 *	SIZE_MAX means copy everything, so running
+			 *	out of input is how the copy completes.
+			 */
+			if (len == SIZE_MAX) break;
+
+			err = FR_SBUFF_ERR_INPUT_SHORT;
+			goto error;
 		}
 
 		chunk_len = fr_sbuff_remaining(&our_in);
 		if (chunk_len > remaining) chunk_len = remaining;
 
-		copied = fr_sbuff_in_bstrncpy(out, our_in.p, chunk_len);
-		if (copied < 0) {
+		if (fr_sbuff_in_bstrncpy(out, our_in.p, chunk_len) < 0) {
+			err = FR_SBUFF_ERR_NO_SPACE;
+		error:
 			fr_sbuff_set(out, &m);		/* Reset out */
 			*m.p = '\0';			/* Re-terminate */
-
 			fr_sbuff_marker_release(&m);
-			return -1;
+			return err;
 		}
-		fr_sbuff_advance(&our_in, copied);
+		fr_sbuff_advance(&our_in, chunk_len);
 	} while (fr_sbuff_used_total(&our_in) < len);
 
 	fr_sbuff_marker_release(&m);
 
-	FR_SBUFF_SET_RETURN(in, &our_in);	/* in was pinned, so this works */
+	fr_sbuff_set(in, &our_in);	/* in was pinned, so this works */
+
+	return FR_SBUFF_OK;
 }
 
 /** Copy as many allowed characters as possible from a sbuff to a sbuff
