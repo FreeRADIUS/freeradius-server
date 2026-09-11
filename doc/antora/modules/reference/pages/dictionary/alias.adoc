@@ -41,8 +41,8 @@ As such, we provide some ability to use names which are compatible
 with version 3 of FreeRADIUS.
 
 NOTE: The `ALIAS` names are not enabled by default.  They must be
-manually enabled on each system by editing the `raddb/dictionary`
-file.
+manually enabled on each system by editing the `dictionary`
+file in the FreeRADIUS configuration directory.
 
 == v3 Compatible names
 

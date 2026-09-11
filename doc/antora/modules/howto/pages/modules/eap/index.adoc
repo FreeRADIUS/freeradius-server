@@ -128,7 +128,7 @@ EAP-SIM, EAP-AKA, and EAP-AKA' do not require any additional packages.
 
 == Configuration
 
-EAP is configured in `raddb/mods-available/eap`. Enable each method with
+EAP is configured in `mods-available/eap`. Enable each method with
 a `type` entry. Each method also has a configuration sub-section with
 method-specific options.
 
@@ -216,7 +216,7 @@ The main open source EAP client is https://w1.fi/wpa_supplicant/[wpa_supplicant]
 
 === *EAP-MD5 Authentication*
 
-In `raddb/mods-available/eap`:
+In `mods-available/eap`:
 
 [source,unlang]
 ----
@@ -248,7 +248,7 @@ authenticate eap {
 
 === *EAP-MD5 authentication with LDAP*
 
-In `raddb/mods-available/eap`:
+In `mods-available/eap`:
 
 [source,unlang]
 ----
@@ -327,7 +327,7 @@ Proxying is handled only after an `EAP-Identity` response is received.
 
 === *Enable multiple EAP types*
 
-In `raddb/mods-available/eap`, list each type with a `type` entry:
+In `mods-available/eap`, list each type with a `type` entry:
 
 [source,unlang]
 ----

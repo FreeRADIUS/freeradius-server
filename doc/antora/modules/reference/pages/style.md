@@ -133,7 +133,7 @@ block-specific notes about how the body is processed.
 - Backticks for: keywords (`if`, `switch`), module names (`sql`,
   `ldap`), attribute names (`User-Name`), data types (`uint32`,
   `string`), operators (`:=`, `+=`), return codes (`fail`, `ok`,
-  `noop`), filenames and paths (`raddb/mods-enabled/`,
+  `noop`), filenames and paths (`mods-enabled/`,
   `radiusd.conf`), config section names (`recv Access-Request`).
 - Underscored placeholders: `_<condition>_`, `_<rhs>_`, `_<lhs>_`,
   `_<value>_`, `_<expansion>_`.  The italic markup carries the

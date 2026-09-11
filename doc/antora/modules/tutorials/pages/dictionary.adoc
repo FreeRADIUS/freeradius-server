@@ -11,9 +11,9 @@ a virtual server.
 
 *Files:*
 
-- `raddb/dictionary`
-- `raddb/dictionary.d/`
-- `raddb/mods-config/files/authorize`
+- `dictionary`
+- `dictionary.d/`
+- `mods-config/files/authorize`
 - `${prefix}/share/freeradius/`
 
 *Documentation Pages:*
@@ -51,11 +51,11 @@ the network. Clients and NAS devices never see dictionary names.
 The `share/` dictionaries are defined by the FreeRADIUS team, and are
 updated with every release.  This means that they are overwritten on
 every package update or upgrade.  If you need to define your own
-dictionary entries, they must go into `raddb/dictionary` or into
-`raddb/dictionary.d/`.
+dictionary entries, they must go into xref:raddb/dictionary.adoc[local
+dictionary] file or into `dictionary.d/`.
 
 In order to help you organize your own dictionaries, the
-`raddb/dictionary` file ends with:
+`dictionary` file ends with:
 
 [source]
 ----
@@ -78,7 +78,7 @@ xref:reference:dictionary/index.adoc[dictionary reference] describes
 hierarchical names in full.
 
 Old v3-style flat names are still available through alias
-dictionaries.  See `raddb/dictionary` for the `$INCLUDE` directives
+dictionaries.  See the sample `dictionary` for the `$INCLUDE` directives
 that enable v3 compatibility names.
 
 == DEFINE versus ATTRIBUTE
@@ -97,10 +97,10 @@ See the reference pages for the full syntax of each keyword.
 == Step 1: Local Attributes with DEFINE
 
 Local attributes are the simplest way to add custom data to a policy.
-They live in `raddb/dictionary`, never go into a packet, and do not
+They live in `dictionary`, never go into a packet, and do not
 need a number assigned to them.
 
-Open `raddb/dictionary` and add the following lines before the final
+Open `dictionary` and add the following lines before the final
 `$INCLUDE- dictionary.d/` line:
 
 [source]
@@ -129,7 +129,7 @@ RADIUS packet. For this exercise, use the example PEN `123456`.
 
 === Create the dictionary file
 
-Create the file `raddb/dictionary.d/dictionary.test` with the
+Create the file `dictionary.d/dictionary.test` with the
 following content:
 
 [source]
@@ -153,7 +153,7 @@ VALUE   Test-What-To-Eat    Beans    4
 END-VENDOR  Test
 ----
 
-The file is picked up automatically because the `raddb/dictionary`
+The file is picked up automatically because the `dictionary`
 file includes all files in the `dictionary.d/` directory.
 
 === Dictionary syntax reference
@@ -181,7 +181,7 @@ Start the server in debug mode:
 $ radiusd -X
 ----
 
-With `-X`, the server logs one line for the root `raddb/dictionary`
+With `-X`, the server logs one line for the root `dictionary`
 file (the leading path depends on your install prefix):
 
 [source]
@@ -207,7 +207,7 @@ server before continuing.
 
 === Add a test user
 
-Edit `raddb/mods-config/files/authorize` and add the following entry
+Edit `mods-config/files/authorize` and add the following entry
 for user `bob`:
 
 [source]
@@ -286,7 +286,7 @@ inside a virtual server. Attributes defined there are visible only
 within that virtual server and never go into a packet.  They behave
 like `DEFINE` attributes, but are scoped to only that one server.
 
-Open `raddb/sites-available/default` and look for the `dictionary { }`
+Open `sites-available/default` and look for the `dictionary { }`
 section.  It already contains commented-out examples. Add a local
 attribute:
 
@@ -303,8 +303,8 @@ dictionary {
 ----
 
 This attribute can be set and tested in policies within the `default`
-virtual server without adding anything to `raddb/dictionary` or
-`raddb/dictionary.d/`.
+virtual server without adding anything to the xref:raddb/dictionary.adoc[local dictionary] file or
+`dictionary.d/`.
 
 == Questions
 

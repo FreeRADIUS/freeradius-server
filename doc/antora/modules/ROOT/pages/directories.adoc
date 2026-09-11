@@ -35,13 +35,12 @@ and associated utilities.
 [width="100%",cols="50%,50%",options="header",]
 |===
 | Directory               | Description
-| `raddb/`                | Sample configuration files for the server.
-| `raddb/mods-available`  | Module configuration files.
-| `raddb/mods-enabled`    | Directory containing symlinks to `raddb/mods-available`.
+| `<root>/`               | Sample configuration files for the server.  Can be `/etc/freeradius/` or `/etc/raddb/`
+| `mods-available/`       | Module configuration files.
+| `mods-enabled/`         | Directory containing symlinks to `raddb/mods-available`.
 Controls which modules are enabled.
-| `raddb/sites-available` | Virtual servers.
-| `raddb/sites-enabled`   | Directory containing symlinks to `raddb/sites-available`.
-Control which virtual servers are enabled.
+| `sites-available/`      | Virtual servers.
+| `sites-enabled/`        | Directory containing symlinks to `raddb/sites-available`. Control which virtual servers are enabled.
 |===
 
 == Packaging

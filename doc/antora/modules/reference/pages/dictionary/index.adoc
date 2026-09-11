@@ -21,8 +21,8 @@ specific to each version of FreeRADIUS.
 The dictionary files in the `share` directory _should not be edited_.
 Editing those files will likely break the server.
 
-Instead, you can add local dictionary definitions in the
-xref:raddb/dictionary.adoc[raddb/dictionary] file.
+Instead, you can add site-specific dictionary definitions in the
+xref:raddb/dictionary.adoc[local dictionary] file.
 
 == Concepts and Background
 
@@ -98,8 +98,9 @@ For example, the previously mentioned `Cisco-AVPair` now becomes
 `Cisco.AVPair.`, or `Vendor-Specific.Cisco.AVPair`.
 
 If there is still a need to use the old names, the
-xref:dictionary/alias.adoc[ALIAS] keyword can help.  See
-`raddb/dictionary` for additional documentation.
+xref:dictionary/alias.adoc[ALIAS] keyword can help.  See the
+xref:raddb/dictionary.adoc[local dictionary] for additional
+documentation.
 
 === Names matter, not definitions
 
@@ -122,8 +123,9 @@ We reiterate that these dictionaries should not be edited.  These
 dictionaries ship with the server, and any new installation (or
 upgrade) will over-write local changes.
 
-Local edits should be kept to the `raddb/dictionary` file, which will
-not be overwritten on an upgrade.
+Site-specific edits should be kept to the
+xref:raddb/dictionary.adoc[local dictionary] file, which will not be
+overwritten on an upgrade.
 
 == File Syntax
 

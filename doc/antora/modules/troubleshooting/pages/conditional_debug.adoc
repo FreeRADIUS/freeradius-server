@@ -8,7 +8,7 @@ FreeRADIUS version 4 has no direct equivalent to the version 3 `radmin` filter, 
 
 FreeRADIUS can log to more than one destination at once. Each log destination has its own options including sending to a file or to syslog, adding a timestamp to each entry, or colourising the output. A running server can change a log destination's filename and log level at any time, using an unlang dynamic expansion.
 
-The following configuration adds a new log destination named `debug`. It should be added to xref:reference:raddb/radiusd.conf.adoc[`raddb/radiusd.conf`]. This `debug` destination writes timestamped entries to `default.log` and is only used when specified in unlang.
+The following configuration adds a new log destination named `debug`. It should be added to xref:reference:raddb/radiusd.conf.adoc[`radiusd.conf`]. This `debug` destination writes timestamped entries to `default.log` and is only used when specified in unlang.
 
 ```
 log debug {
@@ -28,7 +28,7 @@ Create the destination log directory before starting FreeRADIUS. FreeRADIUS does
 
 To send log messages to the new log destination, call the xref:reference:xlat/log.adoc#_log_destinationstring_uint32_filename[`%log.destination`] expansion. This expansion sets the destination name, and optionally also the log level and filename.
 
-To log all messages to the new log destination, edit a virtual server (such as the default virtual server, xref:reference:raddb/sites-available/default.adoc[`raddb/sites-enabled/default`]) as shown below.
+To log all messages to the new log destination, edit a virtual server (such as the default virtual server, xref:reference:raddb/sites-available/default.adoc[`sites-enabled/default`]) as shown below.
 
 ```
 ...
@@ -71,7 +71,7 @@ Combining the methods above with a few more dynamic expansions gives further opt
 
 Debug logs enabled for every user, all the time, rapidly use up disk space and can affect server performance. The xref:reference:raddb/mods-available/always.adoc[`always`] module provides one method to turn log collection on or off at runtime.
 
-Configure an instance of the `always` module that returns `noop` by default, for example in `raddb/mods-enabled/always`:
+Configure an instance of the `always` module that returns `noop` by default, for example in `mods-enabled/always`:
 
 ```
 always debug_logs {
@@ -126,7 +126,7 @@ Create a new file at `${logdir}/debug/condition`, containing, for example:
 User-Name == "bob"
 ```
 
-FreeRADIUS restricts which files dynamic expansions can read. Check that the xref:reference:raddb/radiusd.conf.adoc#_security_configuration[security limits] in `raddb/radiusd.conf` allow the server to read the new file:
+FreeRADIUS restricts which files dynamic expansions can read. Check that the xref:reference:raddb/radiusd.conf.adoc#_security_configuration[security limits] in the `radiusd.conf` allow the server to read the new file:
 
 ```
 ...
