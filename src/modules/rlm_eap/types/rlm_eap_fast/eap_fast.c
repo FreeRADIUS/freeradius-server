@@ -318,7 +318,7 @@ static int eap_fast_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 
 	while (remaining > 0) {
 		if (remaining < 4) {
-			RDEBUG2("EAP-FAST TLV is too small (%u) to contain a EAP-FAST TLV header", remaining);
+			REDEBUG2("EAP-FAST TLV is too small (%u) to contain a EAP-FAST TLV header", remaining);
 			return 0;
 		}
 
@@ -338,7 +338,7 @@ static int eap_fast_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 			present |= 1 << attr;
 
 			if (num[EAP_FAST_TLV_EAP_PAYLOAD] > 1) {
-				RDEBUG("Too many EAP-Payload TLVs");
+				REDEBUG("Too many EAP-Payload TLVs");
 unexpected:
 				for (int i = 0; i < EAP_FAST_TLV_MAX; i++)
 					if (present & (1 << i))
@@ -348,13 +348,13 @@ unexpected:
 			}
 
 			if (num[EAP_FAST_TLV_INTERMED_RESULT] > 1) {
-				RDEBUG("Too many Intermediate-Result TLVs");
+				REDEBUG("Too many Intermediate-Result TLVs");
 				goto unexpected;
 			}
 			break;
 		default:
 			if ((data[0] & 0x80) != 0) {
-				RDEBUG("Unknown mandatory TLV %02x", attr);
+				REDEBUG("Unknown mandatory TLV %02x", attr);
 				goto unexpected;
 			}
 
@@ -370,7 +370,7 @@ unexpected:
 		remaining -= 4;
 
 		if (length > remaining) {
-			RDEBUG2("EAP-FAST TLV %u is longer than room remaining in the packet (%u > %u).", attr,
+			REDEBUG2("EAP-FAST TLV %u is longer than room remaining in the packet (%u > %u).", attr,
 				length, remaining);
 			return 0;
 		}
@@ -383,7 +383,7 @@ unexpected:
 		 * of the TLCs, die.
 		 */
 		if (remaining < length) {
-			RDEBUG2("EAP-FAST TLV overflows packet!");
+			REDEBUG2("EAP-FAST TLV overflows packet!");
 			return 0;
 		}
 
@@ -396,7 +396,7 @@ unexpected:
 			uint16_t status;
 
 			if (length < 2) {
-				RDEBUG("EAP-FAST TLV %u is too short.  Expected 2, got %d.", attr, length);
+				REDEBUG("EAP-FAST TLV %u is too short.  Expected 2, got %d.", attr, length);
 				return 0;
 			}
 
@@ -404,12 +404,12 @@ unexpected:
 			status = ntohs(status);
 
 			if (status == EAP_FAST_TLV_RESULT_FAILURE) {
-				RDEBUG("EAP-FAST TLV %u indicates failure.  Rejecting request.", attr);
+				REDEBUG("EAP-FAST TLV %u indicates failure.  Rejecting request.", attr);
 				return 0;
 			}
 
 			if (status != EAP_FAST_TLV_RESULT_SUCCESS) {
-				RDEBUG("EAP-FAST TLV %u contains unknown value.  Rejecting request.", attr);
+				REDEBUG("EAP-FAST TLV %u contains unknown value.  Rejecting request.", attr);
 				goto unexpected;
 			}
 		}
@@ -425,12 +425,12 @@ unexpected:
 	 * Check if the peer mixed & matched TLVs.
 	 */
 	if ((num[EAP_FAST_TLV_NAK] > 0) && (num[EAP_FAST_TLV_NAK] != total)) {
-		RDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
+		REDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
 		goto unexpected;
 	}
 
 	if (num[EAP_FAST_TLV_INTERMED_RESULT] > 0 && num[EAP_FAST_TLV_RESULT]) {
-		RDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
+		REDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
 		goto unexpected;
 	}
 
@@ -440,13 +440,13 @@ unexpected:
 	switch (t->stage) {
 	case TLS_SESSION_HANDSHAKE:
 		if (present) {
-			RDEBUG("Unexpected TLVs in TLS Session Handshake stage");
+			REDEBUG("Unexpected TLVs in TLS Session Handshake stage");
 			goto unexpected;
 		}
 		break;
 	case AUTHENTICATION:
 		if (present != 1 << EAP_FAST_TLV_EAP_PAYLOAD) {
-			RDEBUG("Unexpected TLVs in authentication stage");
+			REDEBUG("Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
 		break;
@@ -456,25 +456,25 @@ unexpected:
 				? 1 << EAP_FAST_TLV_RESULT
 				: 1 << EAP_FAST_TLV_INTERMED_RESULT;
 		if (present & ~(bits | (1 << EAP_FAST_TLV_CRYPTO_BINDING) | (1 << EAP_FAST_TLV_PAC))) {
-			RDEBUG("Unexpected TLVs in cryptobind checking stage");
+			REDEBUG("Unexpected TLVs in cryptobind checking stage");
 			goto unexpected;
 		}
 		break;
 	}
 	case PROVISIONING:
 		if (present & ~((1 << EAP_FAST_TLV_PAC) | (1 << EAP_FAST_TLV_RESULT))) {
-			RDEBUG("Unexpected TLVs in provisioning stage");
+			REDEBUG("Unexpected TLVs in provisioning stage");
 			goto unexpected;
 		}
 		break;
 	case COMPLETE:
 		if (present) {
-			RDEBUG("Unexpected TLVs in complete stage");
+			REDEBUG("Unexpected TLVs in complete stage");
 			goto unexpected;
 		}
 		break;
 	default:
-		RDEBUG("Unexpected stage %d", t->stage);
+		REDEBUG("Unexpected stage %d", t->stage);
 		return 0;
 	}
 
@@ -503,6 +503,16 @@ static ssize_t eap_fast_decode_vp(TALLOC_CTX *request, DICT_ATTR const *parent,
 	 *	Silently ignore zero-length attributes.
 	 */
 	if (attr_len == 0) return 0;
+
+	if (attr_len < dict_attr_sizes[parent->type][0]) {
+		REDEBUG("TLV %s has invalid length %u < %u", parent->name, attr_len, dict_attr_sizes[parent->type][0]);
+		return -1;
+	}
+
+	if (attr_len > dict_attr_sizes[parent->type][1]) {
+		REDEBUG("TLV %s has invalid length %u > %u", parent->name, attr_len, dict_attr_sizes[parent->type][1]);
+		return -1;
+	}
 
 	/*
 	 *	And now that we've verified the basic type
@@ -629,9 +639,10 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 	VALUE_PAIR	*vp = NULL;
 	DICT_ATTR const *da;
 
-	if (!fast_da)
+	if (!fast_da) {
 		fast_da = dict_attrbyvalue(PW_FREERADIUS_EAP_FAST_TLV, VENDORPEC_FREERADIUS);
-	rad_assert(fast_da != NULL);
+		rad_assert(fast_da != NULL);
+	}
 
 	if (!out) {
 		out = talloc(request, vp_cursor_t);
@@ -645,6 +656,11 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 	while (data_left > 0) {
 		ssize_t decoded;
 
+		if (data_left < 4) {
+			RDEBUG2("Data is too short for TLV header");
+			return NULL;
+		}
+
 		/* FIXME do something with mandatory */
 
 		memcpy(&attr, data, sizeof(attr));
@@ -655,6 +671,11 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 
 		data += 4;
 		data_left -= 4;
+
+		if (length > data_left) {
+			RDEBUG2("TLV header Length field overflows available data");
+			return NULL;
+		}
 
 		/*
 		 * Look up the TLV.
@@ -668,7 +689,10 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 			goto next_attr;
 		}
 		if (da->type == PW_TYPE_TLV) {
-			eap_fast_fast2vp(request, ssl, data, length, da, out);
+			if (!eap_fast_fast2vp(request, ssl, data, length, da, out)) {
+				RDEBUG2("Contents of %s are malformed", da->name);
+				return NULL;
+			}
 			goto next_attr;
 		}
 		decoded = eap_fast_decode_vp(request, da, data, length, &vp);
@@ -1237,6 +1261,10 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 	}
 
 	fast_vps = eap_fast_fast2vp(request, tls_session->ssl, data, data_len, NULL, NULL);
+	if (!fast_vps) {
+		RDEBUG("Phase 2: Tunneled FAST data is malformed.");
+		return PW_CODE_ACCESS_REJECT;
+	}
 
 	RDEBUG("Got Tunneled FAST TLVs");
 	rdebug_pair_list(L_DBG_LVL_1, request, fast_vps, NULL);
