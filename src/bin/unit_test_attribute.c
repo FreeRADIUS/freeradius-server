@@ -1766,7 +1766,7 @@ static size_t command_count(command_result_t *result, command_file_ctx_t *cc,
 }
 
 static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *cc,
-				  char *data, size_t data_used, char *in, size_t inlen)
+				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_pair_decode_t	*tp = NULL;
 	void		*decode_ctx = NULL;
@@ -1806,12 +1806,14 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	}
 
 	/*
-	 *	Hack because we consume more of the command string
-	 *	so we need to check this again.
+	 *	If we are asked to re-use the previous output, then
+	 *	just copy the output to the input.  That way when this
+	 *	function writes to the output, the input data isn't
+	 *	over-written.
 	 */
 	if (*p == '-') {
-		p = data;
-		inlen = data_used;
+		strcpy(p, data);
+		inlen = strlen(data);
 	}
 
 	/*
@@ -1879,7 +1881,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 }
 
 static size_t command_decode_proto(command_result_t *result, command_file_ctx_t *cc,
-				  char *data, size_t data_used, char *in, size_t inlen)
+				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_proto_decode_t	*tp = NULL;
 	void		*decode_ctx = NULL;
@@ -1918,12 +1920,14 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	}
 
 	/*
-	 *	Hack because we consume more of the command string
-	 *	so we need to check this again.
+	 *	If we are asked to re-use the previous output, then
+	 *	just copy the output to the input.  That way when this
+	 *	function writes to the output, the input data isn't
+	 *	over-written.
 	 */
 	if (*p == '-') {
-		p = data;
-		inlen = data_used;
+		strcpy(in, data);
+		inlen = strlen(data);
 	}
 
 	/*
