@@ -576,6 +576,7 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 	bool				softfail;
 
 	fr_slen_t			slen;
+	size_t				len;
 	fr_sbuff_t 			our_name = FR_SBUFF(name);
 
 	mmc = mmc_out ? mmc_out : &mmc_tmp;
@@ -617,8 +618,8 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 		fr_sbuff_marker(&s_end, &our_name);
 
 		fr_sbuff_set_to_start(&our_name);
-		slen = fr_sbuff_out_bstrncpy(elem1, &our_name, fr_sbuff_ahead(&end));
-		if (slen < 0) {
+		len = fr_sbuff_ahead(&end);
+		if (fr_sbuff_out_bstrncpy(elem1, &our_name, len) < len) {
 			fr_strerror_const("Module method string too long");
 			goto error;
 		}
@@ -645,12 +646,16 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 
 		fr_sbuff_set_to_start(&our_name);
 
-		slen = fr_sbuff_out_bstrncpy_until(elem1, &our_name, SIZE_MAX, dyn_tt, NULL);
-		if (slen == 0) {
+		len = fr_sbuff_out_bstrncpy_until(elem1, &our_name, SIZE_MAX, dyn_tt, NULL);
+		if (len == 0) {
 			fr_strerror_const("Invalid module name");
 			goto error;
 		}
-		if (slen < 0) {
+
+		/*
+		 *	The copy stopped before a terminal, so elem1 filled.
+		 */
+		if (fr_sbuff_extend(&our_name) && !fr_sbuff_is_terminal(&our_name, dyn_tt)) {
 			fr_strerror_const("Module method string too long");
 			goto error;
 		}
@@ -674,7 +679,7 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 		if (!mmc->mi) {
 			if (softfail) return fr_sbuff_set(name, &our_name);
 
-			fr_strerror_printf("No such module '%pV'", fr_box_strvalue_len(our_name.start, slen));
+			fr_strerror_printf("No such module '%pV'", fr_box_strvalue_len(our_name.start, len));
 			return -1;
 		}
 
@@ -709,12 +714,12 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 
 		fr_sbuff_set_to_start(elem1);	/* May have used this already for module lookups */
 
-		slen = fr_sbuff_out_bstrncpy_until(elem1, &our_name, SIZE_MAX, elem_tt, NULL);
-		if (slen < 0) {
+		len = fr_sbuff_out_bstrncpy_until(elem1, &our_name, SIZE_MAX, elem_tt, NULL);
+		if (fr_sbuff_extend(&our_name) && !fr_sbuff_is_terminal(&our_name, elem_tt)) {
 			fr_strerror_const("Module method string too long");
 			return fr_sbuff_error(&our_name);
 		}
-		if (slen == 0) goto by_section;	/* This works for both dynamic and static modules */
+		if (len == 0) goto by_section;	/* This works for both dynamic and static modules */
 
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&elem2, MODULE_INSTANCE_LEN_MAX, MODULE_INSTANCE_LEN_MAX);
 

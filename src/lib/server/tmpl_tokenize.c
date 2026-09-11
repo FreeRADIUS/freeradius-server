@@ -2799,14 +2799,20 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	uint32_t	ipaddr;
 	uint8_t		addr[4] = {}, prefix = 32;
 
+	/*
+	 *	Each octet must parse.  After an octet either a '.' introduces
+	 *	the next octet, or a '/' ends the address early (192.0.2/24),
+	 *	leaving the remaining octets zero.
+	 */
 	for (count = 0; count < 4; count++) {
-		if (!fr_sbuff_out(NULL, &addr[count], &our_in)) FR_SBUFF_ERROR_RETURN(&our_in);
+		if (fr_sbuff_out(NULL, &addr[count], &our_in) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		if (count == 3) break;
 
 		if (fr_sbuff_next_if_char(&our_in, '.')) continue;
 
 		if (!fr_sbuff_is_char(&our_in, '/')) FR_SBUFF_ERROR_RETURN(&our_in);
+		break;
 	}
 
 	/*

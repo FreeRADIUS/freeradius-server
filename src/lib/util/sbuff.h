@@ -250,7 +250,7 @@ typedef struct {
  * @param[in] in	Value to escape.  Consumed on success.
  * @return
  *	- >= 0 the number of bytes written to out.
- *	- < 0 the number of additional bytes out needed.  Neither sbuff is advanced.
+ *	- -1 out did not have enough space for the escaped value.  Neither sbuff is advanced.
  */
 typedef fr_slen_t (*fr_sbuff_escape_func_t)(fr_sbuff_t *out, fr_sbuff_t *in);
 
@@ -1101,7 +1101,7 @@ static inline size_t _fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr
  *
  * @param[in] _sbuff	to extend.
  * @param[in] _len	The minimum amount the sbuff should be extended by.
- * @return The number of bytes we would need to satisfy _len as a negative integer.
+ * @return -1 if _len bytes are not available in the sbuff after attempting to extend it.
  */
 #define FR_SBUFF_EXTEND_LOWAT_OR_RETURN(_sbuff, _len) \
 do { \
@@ -1474,7 +1474,7 @@ bool	fr_sbuff_in_needs_escaping(char const *in, size_t inlen, fr_sbuff_escape_ru
 ssize_t	fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_escape_rules_t const *e_rules);
 #define	FR_SBUFF_IN_ESCAPE_BUFFER_RETURN(...)	FR_SBUFF_RETURN(fr_sbuff_in_escape_buffer, ##__VA_ARGS__)
 
-ssize_t fr_sbuff_in_array(fr_sbuff_t *sbuff, char const * const *array, char const *sep);
+fr_slen_t fr_sbuff_in_array(fr_sbuff_t *sbuff, char const * const *array, char const *sep);
 #define FR_SBUFF_IN_ARRAY(...) FR_SBUFF_RETURN(fr_sbuff_in_array, ##__VA_ARGS__)
 
 /** Lookup a string in a table using an integer value, and copy it to the sbuff

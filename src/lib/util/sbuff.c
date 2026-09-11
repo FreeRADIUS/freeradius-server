@@ -1542,7 +1542,15 @@ static int _sbuff_scratch_free(void *arg)
 	return talloc_free(arg);
 }
 
-static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
+/** Initialise a thread local scratch context
+ *
+ * The scratch pool is an optimisation.  When it is unavailable, because
+ * thread local allocation has been disabled at shutdown or the pool could
+ * not be allocated, out is set to NULL and callers allocate at top level.
+ *
+ * @param[out] out	the scratch context, or NULL.
+ */
+static inline CC_HINT(always_inline) void sbuff_scratch_init(TALLOC_CTX **out)
 {
 	TALLOC_CTX	*scratch;
 
@@ -1555,22 +1563,20 @@ static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
 	 */
 	if (sbuff_scratch_freed || fr_atexit_thread_local_alloc_disabled()) {
 		*out = NULL;
-		return 0;
+		return;
 	}
 
 	scratch = sbuff_scratch;
 	if (!scratch) {
 		scratch = talloc_pool(NULL, 4096);
 		if (unlikely(!scratch)) {
-			fr_strerror_const("Out of Memory");
-			return -1;
+			*out = NULL;
+			return;
 		}
 		fr_atexit_thread_local(sbuff_scratch, _sbuff_scratch_free, scratch);
 	}
 
 	*out = scratch;
-
-	return 0;
 }
 
 /** Print using a fmt string to an sbuff
@@ -1578,8 +1584,10 @@ static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
  * @param[in] sbuff	to print into.
  * @param[in] fmt	string.
  * @param[in] ap	arguments for format string.
-< * @return
- *	- >= 0 the number of bytes printed into the sbuff.
+ * @return
+ *	- >= 0 the number of bytes printed into the sbuff.  0 if the
+ *	  formatted string could not be allocated.  Nothing was printed
+ *	  and the error stack says why.
  *	- -1 the printed output would not fit in the output buffer.
  */
 ssize_t fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap)
@@ -1591,12 +1599,15 @@ ssize_t fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap)
 
 	CHECK_SBUFF_WRITEABLE(sbuff);
 
-	if (sbuff_scratch_init(&scratch) < 0) return 0;
+	sbuff_scratch_init(&scratch);
 
 	va_copy(ap_p, ap);
 	tmp = fr_vasprintf(scratch, fmt, ap_p);
 	va_end(ap_p);
-	if (!tmp) return 0;
+	if (unlikely(!tmp)) {
+		fr_strerror_const_push("Failed formatting string, nothing printed");	/* fr_vasprintf sets the cause */
+		return 0;
+	}
 
 	slen = fr_sbuff_in_bstrcpy_buffer(sbuff, tmp);
 	talloc_free(tmp);	/* Free the temporary buffer */

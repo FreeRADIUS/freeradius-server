@@ -1235,7 +1235,7 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 	fr_sbuff_t	our_in = FR_SBUFF_IN(in, inlen);
 	bool		res;
 
-	if (fr_sbuff_out_bool(&res, &our_in) == 0) {
+	if (fr_sbuff_out_bool(&res, &our_in) < 0) {
 		fr_strerror_printf("Invalid boolean value, must be \"yes\" or \"no\"");
 		RETURN_COMMAND_ERROR();
 	}
