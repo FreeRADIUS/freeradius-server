@@ -655,6 +655,16 @@ static ssize_t eap_teap_decode_vp(TALLOC_CTX *request, DICT_ATTR const *parent,
 	 */
 	if (attr_len == 0) return 0;
 
+	if (attr_len < dict_attr_sizes[parent->type][0]) {
+		REDEBUG("TLV %s has invalid length %u < %u", parent->name, attr_len, dict_attr_sizes[parent->type][0]);
+		return -1;
+	}
+
+	if (attr_len > dict_attr_sizes[parent->type][1]) {
+		REDEBUG("TLV %s has invalid length %u > %u", parent->name, attr_len, dict_attr_sizes[parent->type][1]);
+		return -1;
+	}
+
 	/*
 	 *	And now that we've verified the basic type
 	 *	information, decode the actual p.
@@ -767,7 +777,7 @@ static ssize_t eap_teap_decode_vp(TALLOC_CTX *request, DICT_ATTR const *parent,
 }
 
 
-VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, SSL *ssl, uint8_t const *data, size_t data_len,
+VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, UNUSED SSL *ssl, uint8_t const *data, size_t data_len,
                              DICT_ATTR const *teap_da, vp_cursor_t *out)
 {
 	uint16_t	attr;
@@ -777,9 +787,10 @@ VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 	VALUE_PAIR	*vp = NULL;
 	DICT_ATTR const *da;
 
-	if (!teap_da)
+	if (!teap_da) {
 		teap_da = dict_attrbyvalue(PW_FREERADIUS_EAP_TEAP_TLV, VENDORPEC_FREERADIUS);
-	rad_assert(teap_da != NULL);
+		rad_assert(teap_da != NULL);
+	}
 
 	if (!out) {
 		out = talloc(request, vp_cursor_t);
@@ -793,6 +804,11 @@ VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 	while (data_left > 0) {
 		ssize_t decoded;
 
+		if (data_left < 4) {
+			REDEBUG2("Data is too short for TLV header");
+			return NULL;
+		}
+
 		/* FIXME do something with mandatory */
 
 		memcpy(&attr, data, sizeof(attr));
@@ -803,6 +819,11 @@ VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 
 		data += 4;
 		data_left -= 4;
+
+		if (length > data_left) {
+			REDEBUG2("TLV header Length field overflows available data");
+			return NULL;
+		}
 
 		/*
 		 *	Look up the TLV.
@@ -815,7 +836,7 @@ VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 			goto next_attr;
 		}
 		if (da->type == PW_TYPE_TLV) {
-			eap_teap_teap2vp(request, ssl, data, length, da, out);
+			RDEBUG3("Phase 2: Skipping unsupported TLV %s", attr);
 			goto next_attr;
 		}
 		decoded = eap_teap_decode_vp(request, da, data, length, &vp);
@@ -1982,6 +2003,10 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 	if (verify == RLM_MODULE_INVALID) return PW_CODE_ACCESS_REJECT;
 
 	teap_vps = eap_teap_teap2vp(request, tls_session->ssl, data, data_len, NULL, NULL);
+	if (!teap_vps) {
+		RDEBUG("Phase 2: Tunneled TEAP data is malformed.");
+		return PW_CODE_ACCESS_REJECT;
+	}
 
 	RDEBUG("Phase 2: Got Tunneled TEAP TLVs");
 	rdebug_pair_list(L_DBG_LVL_1, request, teap_vps, NULL);
