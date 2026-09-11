@@ -116,7 +116,7 @@ int xlat_tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 {
 	uint8_t			num;
 	xlat_exp_t		*node;
-	fr_sbuff_parse_error_t	err;
+	fr_sbuff_err_t		err;
 
 	XLAT_DEBUG("REGEX <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
@@ -124,7 +124,7 @@ int xlat_tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 	 *	Not a number, ignore it.
 	 */
 	(void) fr_sbuff_out(&err, &num, in);
-	if (err != FR_SBUFF_PARSE_OK) return 0;
+	if (err != FR_SBUFF_OK) return 0;
 
 	/*
 	 *	Not %{\d+}, ignore it.

@@ -31,7 +31,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     fr_dbuff_t decode_dbuff, input_dbuff;
     fr_sbuff_t encode_sbuff, input_sbuff;
-    fr_sbuff_parse_error_t err;
+    fr_sbuff_err_t err;
 
     if (size == 0) return 0;
 

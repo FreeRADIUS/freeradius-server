@@ -2184,7 +2184,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char const		*p, *end;
 	uint8_t			*bin;
 	size_t			len, outlen;
-	fr_sbuff_parse_error_t	err;
+	fr_sbuff_err_t		err;
 	fr_value_box_t		*list, *hex;
 
 	XLAT_ARGS(args, &list);

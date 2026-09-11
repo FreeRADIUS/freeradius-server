@@ -398,7 +398,7 @@ ssize_t fr_base64_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
  *	- < 0 on failure.  The offset where the decoding error occurred as a negative integer.
  *	- Length of decoded data.
  */
-fr_slen_t fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
+fr_slen_t fr_base64_decode_nstd(fr_sbuff_err_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 				bool expect_padding, bool no_trailing, uint8_t const alphabet[static SBUFF_CHAR_CLASS])
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
@@ -425,7 +425,7 @@ fr_slen_t fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 			fr_strerror_printf("Output buffer too small, needed at least %zu bytes",
 					   fr_dbuff_used(&our_out) + 1);
 
-			if (err) *err = FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE;
+			if (err) *err = FR_SBUFF_ERR_NO_SPACE;
 
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -472,7 +472,7 @@ fr_slen_t fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 		fr_strerror_const("Invalid base64 padding data");
 
 	bad_format:
-		if (err) *err = FR_SBUFF_PARSE_ERROR_FORMAT;
+		if (err) *err = FR_SBUFF_ERR_FORMAT;
 
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
@@ -497,7 +497,7 @@ fr_slen_t fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 		fr_strerror_printf("Found trailing garbage '%c' at end of base64 string",
 				   fr_sbuff_char(&our_in, '\0'));
 
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
+		if (err) *err = FR_SBUFF_ERR_TRAILING;
 
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}

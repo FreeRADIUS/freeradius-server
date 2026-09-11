@@ -2548,7 +2548,7 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	uint32_t		num = 0;
-	fr_sbuff_parse_error_t	sberr;
+	fr_sbuff_err_t		sberr;
 	fr_dict_attr_t const	*child;
 
 	if (err) *err = FR_DICT_ATTR_OK;
@@ -2573,11 +2573,11 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	/*
 	 *	Lookup by number
 	 */
-	case FR_SBUFF_PARSE_OK:
+	case FR_SBUFF_OK:
 		if (!fr_sbuff_is_char(&our_in, '.') && !fr_sbuff_is_terminal(&our_in, tt)) {
 			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 			fr_strerror_printf("Invalid OID component (%s) \"%.*s\"",
-					   fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>"),
+					   fr_table_str_by_value(sbuff_err_table, sberr, "<INVALID>"),
 					   (int)fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 			goto fail;
 		}
@@ -2594,7 +2594,7 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		if (err) *err = FR_DICT_ATTR_OK;
 		break;
 
-	case FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW:
+	case FR_SBUFF_ERR_OVERFLOW:
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 
 		fr_sbuff_set_to_start(&our_in);
@@ -3899,7 +3899,7 @@ fr_slen_t fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t
  *	- <0 the offset at which the parse error occurred.
  *	- >1 the number of bytes parsed.
  */
-fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t *err,
+fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_err_t *err,
 					fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
 	fr_sbuff_t our_in = FR_SBUFF(in);
@@ -3913,12 +3913,12 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t 
 	if (!seen_alpha) {
 		if (fr_sbuff_used(&our_in) == 0) {
 			fr_strerror_const("VALUE name is empty");
-			if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
+			if (err) *err = FR_SBUFF_ERR_NOT_FOUND;
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		fr_strerror_const("VALUE name must contain at least one alpha character");
-		if (err) *err = FR_SBUFF_PARSE_ERROR_FORMAT;
+		if (err) *err = FR_SBUFF_ERR_FORMAT;
 		fr_sbuff_set_to_start(&our_in);	/* Marker should be at the start of the enum */
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
@@ -3928,13 +3928,13 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t 
 	 */
 	if (tt && !fr_sbuff_is_terminal(&our_in, tt)) {
 		fr_strerror_const("VALUE name has trailing text");
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
+		if (err) *err = FR_SBUFF_ERR_TRAILING;
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	if (out) return fr_sbuff_out_bstrncpy_exact(out, in, fr_sbuff_used(&our_in));
 
-	if (err) *err = FR_SBUFF_PARSE_OK;
+	if (err) *err = FR_SBUFF_OK;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }

@@ -1391,7 +1391,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	case '9':
 	{
 		ssize_t rcode;
-		fr_sbuff_parse_error_t	sberr = FR_SBUFF_PARSE_OK;
+		fr_sbuff_err_t	sberr = FR_SBUFF_OK;
 		fr_sbuff_t tmp = FR_SBUFF(&our_name);
 
 		/*
@@ -3000,37 +3000,37 @@ static fr_slen_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 	uint8_t			buff[6] = {};
 	fr_dbuff_t		dbuff;
 	fr_value_box_t		*vb;
-	fr_sbuff_parse_error_t	err;
+	fr_sbuff_err_t		err;
 
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
 	fr_base16_decode(&err, &dbuff, &our_in, true);
-	if (err != FR_SBUFF_PARSE_OK) return 0;
+	if (err != FR_SBUFF_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
 	fr_base16_decode(&err, &dbuff, &our_in, true);
-	if (err != FR_SBUFF_PARSE_OK) return 0;
+	if (err != FR_SBUFF_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
 	fr_base16_decode(&err, &dbuff, &our_in, true);
-	if (err != FR_SBUFF_PARSE_OK) return 0;
+	if (err != FR_SBUFF_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
 	fr_base16_decode(&err, &dbuff, &our_in, true);
-	if (err != FR_SBUFF_PARSE_OK) return 0;
+	if (err != FR_SBUFF_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
 	fr_base16_decode(&err, &dbuff, &our_in, true);
-	if (err != FR_SBUFF_PARSE_OK) return 0;
+	if (err != FR_SBUFF_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
 	fr_base16_decode(&err, &dbuff, &our_in, true);
-	if (err != FR_SBUFF_PARSE_OK) return 0;
+	if (err != FR_SBUFF_OK) return 0;
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 		fr_strerror_const("Unexpected text after mac address");
@@ -3217,7 +3217,7 @@ static fr_slen_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 			       tmpl_rules_t const *t_rules)
 {
 	tmpl_t		*vpt;
-	fr_sbuff_parse_error_t	sberr;
+	fr_sbuff_err_t	sberr;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	fr_sbuff_t	*enum_buff;
 
@@ -3266,12 +3266,12 @@ static fr_slen_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 		 *	more sense in the context of tmpls
 		 */
 		switch (sberr) {
-		case FR_SBUFF_PARSE_ERROR_NOT_FOUND:
+		case FR_SBUFF_ERR_NOT_FOUND:
 			fr_strerror_const("No operand found.  Expected &ref, literal, "
 					  "'quoted literal', \"%{expansion}\", or enum value");
 			break;
 
-		case FR_SBUFF_PARSE_ERROR_FORMAT:
+		case FR_SBUFF_ERR_FORMAT:
 			fr_strerror_const("enum values must contain at least one alpha character");
 			break;
 
@@ -3359,7 +3359,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 
 	fr_slen_t		slen;
-	fr_sbuff_parse_error_t	sberr;
+	fr_sbuff_err_t		sberr;
 	char			*str;
 
 	tmpl_t			*vpt = NULL;
@@ -3584,12 +3584,12 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			 *	more sense in the context of tmpls
 			 */
 			switch (sberr) {
-			case FR_SBUFF_PARSE_ERROR_NOT_FOUND:
+			case FR_SBUFF_ERR_NOT_FOUND:
 				fr_strerror_const("No operand found.  Expected &ref, literal, "
 						  "'quoted literal', \"%{expansion}\", or enum value");
 				break;
 
-			case FR_SBUFF_PARSE_ERROR_FORMAT:
+			case FR_SBUFF_ERR_FORMAT:
 				fr_strerror_const("enum values must contain at least one alpha character");
 				break;
 

@@ -139,7 +139,7 @@ fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alph
  *	- < 0 on failure.  The offset where the decoding error occurred as a negative integer.
  *	- Length of decoded data.
  */
-fr_slen_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
+fr_slen_t fr_base16_decode_nstd(fr_sbuff_err_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 				bool no_trailing, uint8_t const alphabet[static SBUFF_CHAR_CLASS])
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
@@ -153,7 +153,7 @@ fr_slen_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 		b = fr_is_base16_nstd(p[1], alphabet);
 		if (!a || !b) {
 			if (a && !b && no_trailing) {
-		   		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
+		   		if (err) *err = FR_SBUFF_ERR_TRAILING;
 		   		FR_SBUFF_ERROR_RETURN(&our_in);
 		   	}
 		   	break;
@@ -164,7 +164,7 @@ fr_slen_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 		fr_sbuff_advance(&our_in, 2);
 	}
 
-	if (err) *err = FR_SBUFF_PARSE_OK;
+	if (err) *err = FR_SBUFF_OK;
 
 	fr_sbuff_set(in, &our_in);
 	return fr_dbuff_set(out, &our_out);

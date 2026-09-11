@@ -104,7 +104,7 @@ static inline fr_slen_t fr_base16_aencode(TALLOC_CTX *ctx, char **out, fr_dbuff_
 	return (size_t)slen;
 }
 
-fr_slen_t	fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
+fr_slen_t	fr_base16_decode_nstd(fr_sbuff_err_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 				      bool no_trailing, uint8_t const alphabet[static SBUFF_CHAR_CLASS]);
 #define		fr_base16_decode(_err, _out, _in, _no_trailing) \
 		fr_base16_decode_nstd(_err, _out, _in, _no_trailing, fr_base16_alphabet_decode_mc)

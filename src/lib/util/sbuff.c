@@ -40,17 +40,19 @@ static _Thread_local bool sbuff_scratch_freed;
 static_assert(sizeof(long long) >= sizeof(int64_t), "long long must be as wide or wider than an int64_t");
 static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be as wide or wider than an uint64_t");
 
-fr_table_num_ordered_t const sbuff_parse_error_table[] = {
-	{ L("ok"),			FR_SBUFF_PARSE_OK				},
-	{ L("token not found"),		FR_SBUFF_PARSE_ERROR_NOT_FOUND			},
-	{ L("trailing data"),		FR_SBUFF_PARSE_ERROR_TRAILING			},
-	{ L("token format invalid"),	FR_SBUFF_PARSE_ERROR_FORMAT			},
-	{ L("out of space"),		FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE		},
-	{ L("integer overflow"),	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW		},
-	{ L("integer underflow"),	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW		},
-	{ L("empty input is invalid"),	FR_SBUFF_PARSE_ERROR_INPUT_EMPTY		},
+fr_table_num_ordered_t const sbuff_err_table[] = {
+	{ L("ok"),			FR_SBUFF_OK			},
+	{ L("out of space"),		FR_SBUFF_ERR_NO_SPACE		},
+	{ L("failed extending input"),	FR_SBUFF_ERR_EXTEND		},
+	{ L("empty input is invalid"),	FR_SBUFF_ERR_INPUT_EMPTY	},
+	{ L("input too short"),		FR_SBUFF_ERR_INPUT_SHORT	},
+	{ L("token not found"),		FR_SBUFF_ERR_NOT_FOUND		},
+	{ L("trailing data"),		FR_SBUFF_ERR_TRAILING		},
+	{ L("token format invalid"),	FR_SBUFF_ERR_FORMAT		},
+	{ L("integer overflow"),	FR_SBUFF_ERR_OVERFLOW		},
+	{ L("integer underflow"),	FR_SBUFF_ERR_UNDERFLOW		},
 };
-size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
+size_t sbuff_err_table_len = NUM_ELEMENTS(sbuff_err_table);
 
 #if defined(STATIC_ANALYZER) || !defined(NDEBUG)
 #  define CHECK_SBUFF_INIT(_sbuff)	do { if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return 0; } while (0)
@@ -1193,7 +1195,7 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
  * @param[in] _base	to use.
  */
 #define SBUFF_PARSE_INT_DEF(_name, _type, _min, _max, _max_char, _base) \
-fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+fr_slen_t fr_sbuff_out_##_name(fr_sbuff_err_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char		buff[_max_char + 1]; \
 	char		*end, *a_end; \
@@ -1204,26 +1206,26 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
-		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_PARSE_ERROR_INPUT_EMPTY : FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
 	} \
 	errno = 0; /* this is needed as strtoll doesn't reset errno */ \
 	num = strtoll(buff, &end, _base); \
 	cast_num = (_type)(num); \
 	if (end == buff) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
 	} \
 	if (num > cast_num) { \
 	overflow: \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
+		if (err) *err = FR_SBUFF_ERR_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
 	} \
 	if (((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == LLONG_MAX))) goto overflow; \
 	if (num < cast_num) { \
 	underflow: \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
+		if (err) *err = FR_SBUFF_ERR_UNDERFLOW; \
 		*out = (_type)(_min); \
 		return -1; \
 	} \
@@ -1231,13 +1233,13 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	if (no_trailing && ((a_end = in->p + (end - buff)) < in->end)) { \
 		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
-			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+			if (err) *err = FR_SBUFF_ERR_TRAILING; \
 			*out = (_type)(_max); \
 			FR_SBUFF_ERROR_RETURN(&our_in); \
 		} \
 		*out = cast_num; \
 	} else { \
-		if (err) *err = FR_SBUFF_PARSE_OK; \
+		if (err) *err = FR_SBUFF_OK; \
 		*out = cast_num; \
 	} \
 	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
@@ -1260,7 +1262,7 @@ SBUFF_PARSE_INT_DEF(ssize, ssize_t, SSIZE_MIN, SSIZE_MAX, 20, 0)
  * @param[in] _base	of the number being parsed, 8, 10, 16 etc...
  */
 #define SBUFF_PARSE_UINT_DEF(_name, _type, _max, _max_char, _base) \
-fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+fr_slen_t fr_sbuff_out_##_name(fr_sbuff_err_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char			buff[_max_char + 1]; \
 	char			*end, *a_end; \
@@ -1271,23 +1273,23 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
-		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_PARSE_ERROR_INPUT_EMPTY : FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
 	} \
 	if (buff[0] == '-') { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
+		if (err) *err = FR_SBUFF_ERR_UNDERFLOW; \
 		return -1; \
 	} \
 	errno = 0; /* this is needed as strtoull doesn't reset errno */ \
 	num = strtoull(buff, &end, _base); \
 	cast_num = (_type)(num); \
 	if (end == buff) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
 	} \
 	if (num > cast_num) { \
 	overflow: \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
+		if (err) *err = FR_SBUFF_ERR_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
 	} \
@@ -1295,14 +1297,14 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	if (no_trailing && ((a_end = in->p + (end - buff)) < in->end)) { \
 		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
-			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+			if (err) *err = FR_SBUFF_ERR_TRAILING; \
 			*out = (_type)(_max); \
 			FR_SBUFF_ERROR_RETURN(&our_in); \
 		} \
-		if (err) *err = FR_SBUFF_PARSE_OK; \
+		if (err) *err = FR_SBUFF_OK; \
 		*out = cast_num; \
 	} else { \
-		if (err) *err = FR_SBUFF_PARSE_OK; \
+		if (err) *err = FR_SBUFF_OK; \
 		*out = cast_num; \
 	} \
 	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
@@ -1344,7 +1346,7 @@ SBUFF_PARSE_UINT_DEF(size_hex, size_t, SIZE_MAX, 22, 16)
  *			used in <stdint.h>.
  */
 #define SBUFF_PARSE_FLOAT_DEF(_name, _type, _func, _max_char) \
-fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+fr_slen_t fr_sbuff_out_##_name(fr_sbuff_err_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char		buff[_max_char + 1] = ""; \
 	char		*end; \
@@ -1353,24 +1355,24 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	_type		res; \
 	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float); \
 	if (len == sizeof(buff)) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
 	} else if (len == 0) { \
-		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_PARSE_ERROR_INPUT_EMPTY : FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
 		return -1; \
 	} \
 	errno = 0; /* this is needed as parsing functions don't reset errno */ \
 	res = _func(buff, &end); \
 	if (errno == ERANGE) { \
 		if (res > 0) { \
-			if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
+			if (err) *err = FR_SBUFF_ERR_OVERFLOW; \
 		} else { \
-			if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
+			if (err) *err = FR_SBUFF_ERR_UNDERFLOW; \
 		} \
 		return -1; \
 	} \
 	if (no_trailing && (*end != '\0')) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+		if (err) *err = FR_SBUFF_ERR_TRAILING; \
 		FR_SBUFF_ERROR_RETURN(&our_in); \
 	} \
 	*out = res; \

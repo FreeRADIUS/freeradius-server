@@ -227,7 +227,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 	fr_time_res_t		res;
 	bool			do_float;
 	bool			negative;
-	fr_sbuff_parse_error_t	sberr;
+	fr_sbuff_err_t		sberr;
 	bool			overflow;
 	size_t			match_len;
 
@@ -245,8 +245,8 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 		char const *err;
 
 	num_error:
-		if (sberr != FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
-			err = fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>");
+		if (sberr != FR_SBUFF_ERR_NOT_FOUND) {
+			err = fr_table_str_by_value(sbuff_err_table, sberr, "<INVALID>");
 		} else {
 			err = "Invalid text, input should be a number";
 		}

@@ -644,10 +644,10 @@ static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_afrom_oid
 										     fr_sbuff_t *in, fr_type_t type)
 {
 	uint32_t		num;
-	fr_sbuff_parse_error_t	sberr;
+	fr_sbuff_err_t		sberr;
 
 	fr_sbuff_out(&sberr, &num, in);
-	if (sberr != FR_SBUFF_PARSE_OK) return NULL;
+	if (sberr != FR_SBUFF_OK) return NULL;
 
 	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, num, type, true);
 }
@@ -898,10 +898,10 @@ fr_dict_enum_value_t const *fr_dict_enum_by_name(fr_dict_attr_t const *da, char 
 
 fr_slen_t		fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in);
 
-fr_slen_t		fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t *err,
+fr_slen_t		fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_err_t *err,
 						      fr_sbuff_t *in, fr_sbuff_term_t const *tt);
 
-static inline fr_slen_t fr_dict_enum_name_afrom_substr(TALLOC_CTX *ctx, char **out, fr_sbuff_parse_error_t *err,
+static inline fr_slen_t fr_dict_enum_name_afrom_substr(TALLOC_CTX *ctx, char **out, fr_sbuff_err_t *err,
 						       fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_dict_enum_name_from_substr, err, in, tt)
 /** @} */

@@ -72,7 +72,7 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if ((data_vb->type == FR_TYPE_STRING) && (data_vb->vb_length > 1) &&
 	    (data_vb->vb_strvalue[0] == '0') && (data_vb->vb_strvalue[1] == 'x')) {
 		fr_slen_t slen;
-		fr_sbuff_parse_error_t err;
+		fr_sbuff_err_t err;
 
 		/*
 		 *	Hex data.

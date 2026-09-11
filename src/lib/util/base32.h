@@ -59,7 +59,7 @@ ssize_t		fr_base32_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
 #define		fr_base32_encode(_out, _in, _add_padding) \
 		fr_base32_encode_nstd(_out, _in, _add_padding, fr_base32_alphabet_encode)
 
-ssize_t		fr_base32_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
+ssize_t		fr_base32_decode_nstd(fr_sbuff_err_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 				      bool expect_padding, bool no_trailing, uint8_t const alphabet[static SBUFF_CHAR_CLASS])
 				      CC_HINT(nonnull(2,3,6));
 

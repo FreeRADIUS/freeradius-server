@@ -501,7 +501,7 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	 */
 	for (depth = 0; depth < FR_DICT_MAX_TLV_STACK; depth++) {
 		uint32_t		num;
-		fr_sbuff_parse_error_t	sberr;
+		fr_sbuff_err_t		sberr;
 
 		/*
 		 *	Cannot create attributes that are too deeply nested.
@@ -513,7 +513,7 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 
 		fr_sbuff_out(&sberr, &num, &our_in);
 		switch (sberr) {
-		case FR_SBUFF_PARSE_OK:
+		case FR_SBUFF_OK:
 			switch (our_parent->type) {
 			/*
 			 *	If the parent is a VSA, this component
@@ -574,7 +574,7 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			}
 			break;
 
-		case FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW:
+		case FR_SBUFF_ERR_OVERFLOW:
 		{
 			fr_sbuff_marker_t c_start;
 

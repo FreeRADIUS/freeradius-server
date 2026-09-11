@@ -5373,7 +5373,7 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 					   fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules, bool tainted)
 {
 	fr_slen_t		slen;
-	fr_sbuff_parse_error_t	err;
+	fr_sbuff_err_t		err;
 
 	fr_value_box_init(dst, dst_type, dst_enumv, tainted);
 
@@ -5433,7 +5433,7 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 		 *      don't find an integer, assume this is an enumv
 		 *      lookup fail, and produce a better error.
 		 */
-		if (dst_enumv && dst_enumv->flags.has_value && (err == FR_SBUFF_PARSE_ERROR_NOT_FOUND)) {
+		if (dst_enumv && dst_enumv->flags.has_value && (err == FR_SBUFF_ERR_NOT_FOUND)) {
 			fr_sbuff_t our_in = FR_SBUFF(in);
 			fr_sbuff_adv_until(&our_in, SIZE_MAX, rules->terminals,
 					   rules->escapes ? rules->escapes->chr : '\0');
@@ -5444,11 +5444,11 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 			return -1;
 		}
 
-		if (err == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
+		if (err == FR_SBUFF_ERR_NOT_FOUND) {
 			fr_strerror_printf("Failed parsing string as type '%s'",
 					   fr_type_to_str(dst_type));
 		} else {
-			fr_sbuff_parse_error_to_strerror(err);
+			fr_sbuff_err_to_strerror(err);
 		}
 	}
 
@@ -5863,7 +5863,7 @@ parse:
 		uint64_t 		num;
 		fr_ethernet_t		ether;
 		fr_dbuff_t		dbuff;
-		fr_sbuff_parse_error_t	err;
+		fr_sbuff_err_t		err;
 
 		fr_dbuff_init(&dbuff, ether.addr, sizeof(ether.addr));
 
@@ -5897,9 +5897,9 @@ parse:
 		fr_sbuff_set_to_start(&our_in);
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
-		if (err != FR_SBUFF_PARSE_OK) {
+		if (err != FR_SBUFF_OK) {
 		ether_error:
-			fr_sbuff_parse_error_to_strerror(err);
+			fr_sbuff_err_to_strerror(err);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
@@ -5910,27 +5910,27 @@ parse:
 		}
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
-		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+		if (err != FR_SBUFF_OK) goto ether_error;
 
 		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_sep_error;
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
-		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+		if (err != FR_SBUFF_OK) goto ether_error;
 
 		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_sep_error;
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
-		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+		if (err != FR_SBUFF_OK) goto ether_error;
 
 		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_sep_error;
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
-		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+		if (err != FR_SBUFF_OK) goto ether_error;
 
 		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_sep_error;
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
-		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+		if (err != FR_SBUFF_OK) goto ether_error;
 
 		fr_value_box_ethernet_addr(dst, dst_enumv, (fr_ethernet_t * const)fr_dbuff_start(&dbuff), false);
 
