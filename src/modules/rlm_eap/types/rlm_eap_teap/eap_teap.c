@@ -836,7 +836,7 @@ VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, UNUSED SSL *ssl, uint8_t const *d
 			goto next_attr;
 		}
 		if (da->type == PW_TYPE_TLV) {
-			RDEBUG3("Phase 2: Skipping unsupported TLV %s", attr);
+			RDEBUG3("Phase 2: Skipping unsupported TLV %s", da->name);
 			goto next_attr;
 		}
 		decoded = eap_teap_decode_vp(request, da, data, length, &vp);
