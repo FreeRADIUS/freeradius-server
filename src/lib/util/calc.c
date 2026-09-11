@@ -2291,8 +2291,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_RSHIFT:
 		if (b->type != FR_TYPE_UINT32) {
 			if (fr_value_box_cast(ctx, &two, FR_TYPE_UINT32, NULL, b) < 0) {
-				fr_strerror_printf("Cannot parse shift value as integer - %s",
-						   fr_strerror());
+				fr_strerror_const_push("Cannot parse shift value as integer");
 				goto done;
 			}
 			b = &two;
