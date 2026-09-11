@@ -4,6 +4,16 @@
 # Rebuild this file with `make dockerfile.profiling-deps`
 #
 ARG from=rockylinux/rockylinux:10
+
+#
+#  Build the Go pprof (github.com/google/pprof), which writes the
+#  `pprof -proto` output the profiling server ingests.
+#  Using pprof commit hash since there's no release tag available.
+#
+FROM golang:1.27 AS pprof
+ARG PPROF_COMMIT=d6c3cb2f37ec22719bbaf5eb031d9a46635cb5b2
+RUN CGO_ENABLED=0 GOBIN=/out go install "github.com/google/pprof@${PPROF_COMMIT}"
+
 FROM ${from}
 
 #
@@ -11,7 +21,8 @@ FROM ${from}
 #
 #    valgrind / cachegrind
 #    kcachegrind
-#    gperftools
+#    gperftools (the gperftools packages provide libprofiler)
+#    pprof (Go pprof)
 #    heaptrack
 #
 #  EPEL is enabled by common.rpm.toolchain.m4 in the crossbuild base
@@ -97,6 +108,8 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
     . "$HOME/.cargo/env" && \
     cargo install inferno --version 0.11.21 --locked --root /usr/local && \
     rm -rf "$HOME/.cargo" "$HOME/.rustup"
+
+COPY --from=pprof /out/pprof /usr/local/bin/pprof
 
 EXPOSE 1812/udp 1813/udp
 CMD ["/bin/sh", "-c", "while true; do sleep 60; done"]
