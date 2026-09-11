@@ -2707,8 +2707,8 @@ void proxy_stats(rad_listen_t *listener, home_server_t *home, int code, size_t o
 {
 	bool last_packet = when && (offset == offsetof(fr_stats_t, total_responses));
 	size_t response_offset = 0;
+	uint8_t *base;
 	uint64_t *counter;
-	fr_stats_t *stats;
 
 	/*
 	 *	If the code is unknown, or the server is not built
@@ -2717,7 +2717,7 @@ void proxy_stats(rad_listen_t *listener, home_server_t *home, int code, size_t o
 	switch (code) {
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_RESPONSE:
-		stats = &proxy_acct_stats;
+		base = (uint8_t *) &proxy_acct_stats;
 		break;
 #endif
 
@@ -2726,27 +2726,27 @@ void proxy_stats(rad_listen_t *listener, home_server_t *home, int code, size_t o
 	case PW_CODE_COA_NAK:
 	case PW_CODE_DISCONNECT_ACK:
 	case PW_CODE_DISCONNECT_NAK:
-		stats = &proxy_coa_stats;
+		base = (uint8_t *) &proxy_coa_stats;
 		break;
 #endif
 
 	case PW_CODE_ACCESS_ACCEPT:
-		stats = &proxy_auth_stats;
+		base = (uint8_t *) &proxy_auth_stats;
 		response_offset = offsetof(fr_stats_t, total_access_accepts);
 		break;
 
 	case PW_CODE_ACCESS_REJECT:		
-		stats = &proxy_auth_stats;
+		base = (uint8_t *) &proxy_auth_stats;
 		response_offset = offsetof(fr_stats_t, total_access_rejects);
 		break;
 
 	case PW_CODE_ACCESS_CHALLENGE:
-		stats = &proxy_auth_stats;
+		base = (uint8_t *) &proxy_auth_stats;
 		response_offset = offsetof(fr_stats_t, total_access_challenges);
 		break;
 
 	default:
-		stats = &proxy_auth_stats;
+		base = (uint8_t *) &proxy_auth_stats;
 		offset = offsetof(fr_stats_t, total_unknown_types);
 		break;
 	}
@@ -2754,11 +2754,11 @@ void proxy_stats(rad_listen_t *listener, home_server_t *home, int code, size_t o
 	/*
 	 *	Update the global counters.
 	 */
-	counter = ((uint64_t *) stats) + offset;
+	counter = (uint64_t *) (base + offset);
 	(*counter)++;
 
 	if (response_offset) {
-		counter = ((uint64_t *) stats) + response_offset;
+		counter =  (uint64_t *) (base + response_offset);
 		(*counter)++;
 	}
 
@@ -2769,12 +2769,12 @@ void proxy_stats(rad_listen_t *listener, home_server_t *home, int code, size_t o
 	/*
 	 *	Update the listen counters
 	 */
-	stats = &listener->stats;
-	counter = ((uint64_t *) stats) + offset;
+	base = (uint8_t *) &listener->stats;
+	counter = (uint64_t *) (base + offset);
 	(*counter)++;
 
 	if (response_offset) {
-		counter = ((uint64_t *) stats) + response_offset;
+		counter = (uint64_t *) (base + response_offset);
 		(*counter)++;
 	}
 
@@ -2790,12 +2790,12 @@ void proxy_stats(rad_listen_t *listener, home_server_t *home, int code, size_t o
 
 check_home:
 	if (home) {
-		stats = &home->stats;
-		counter = ((uint64_t *) stats) + offset;
+		base = (uint8_t *) &home->stats;
+		counter = (uint64_t *) (base + offset);
 		(*counter)++;
 
 		if (response_offset) {
-			counter = ((uint64_t *) stats) + response_offset;
+			counter = (uint64_t *) (base + response_offset);
 			(*counter)++;
 		}
 
