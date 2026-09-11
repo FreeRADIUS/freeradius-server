@@ -3,29 +3,29 @@
 In FreeRADIUS version 3, `radmin` allowed an administrator to gather
 debug log output for only the requests that matched a chosen
 condition. Filtering requests in this way can help diagnose specific
-problems without the noise be seeing all other requests in progress.
-logs. Debug logging with `radmin` does not require restarting the
+problems without the noise of seeing all of other requests in
+progress.  Debug logging with `radmin` does not require restarting the
 server into debug mode.
 
-FreeRADIUS version 4 has no direct equivalent to the version 3
-`radmin` filter, but the same results can be gathered in a different
-way. Conditional debugging is built directly into unlang and can be
-used in virtual servers with far more flexibility than the version 3
-`radmin` tool had.
+FreeRADIUS version 4 has no direct equivalent to the version 3 `radmin
+debug_condition` filter, but the same results can be gathered in a
+different way. Conditional debugging is built directly into `unlang`
+and can be used in virtual servers with far more flexibility than was
+available in the version 3 `radmin` tool.
 
 == Log destinations
 
 FreeRADIUS can log to more than one destination at once. Each log
-destination has its own options including sending to a file or to
-syslog, adding a timestamp to each entry, or colourising the output. A
-running server can change a log destination's filename and log level
-at any time, using an unlang dynamic expansion.
+destination has its own options, such as sending to a file, to syslog,
+adding a timestamp to each entry, or colourising the output. A running
+server can change a log destination's filename and log level at any
+time, using an `unlang` dynamic expansion, xref:xlat/interpreter.adoc[%debug()]
 
 The following configuration adds a new log destination named `debug`.
-It should be added to
-xref:reference:raddb/radiusd.conf.adoc[`radiusd.conf`]. This `debug`
-destination writes timestamped entries to `default.log` and is only
-used when specified in unlang.
+It should be added to the
+xref:reference:raddb/radiusd.conf.adoc[`radiusd.conf`] file. This
+`debug` destination writes timestamped entries to `default.log`, and
+is only used when an `unlang` policy tells the server to use it.
 
 ----
 log debug {
@@ -56,6 +56,7 @@ as shown below.
 ----
 ...
 recv Access-Request {
+    ...
     %log.destination("debug")
     %pairs.debug("request")
 ...
@@ -73,15 +74,13 @@ The `%log.destination` expansion can also change the log level or the
 log file. `%log.destination("debug", 3)` changes only the log level.
 `%log.destination("debug", 3, "${logdir}/debug/alternative.log")`
 changes the log level and writes to a different file than the one
-configured in `log debug {}`.
+which was configured in the `log debug {}` section.
 
-[NOTE]
-====
-The `%log.destination` call does not have to cover the whole request.
-Use it before the unlang commands of interest. Set the log level back
-to `0` with `%log.destination("debug", 0)` to stop the extra logging
-after the wrapped commands run.
-====
+Unlike v3, the `%log.destination()` call does not have to be used
+during entire request processing!  You can debug a portion of a policy
+by setting it at the start of a policy or `unlang` section.  Then, et
+the log level back via `%log.destination("debug", 0)` at the end of
+the policy, to stop the extra logging.
 
 == One log per user
 
@@ -98,12 +97,14 @@ recv Access-Request {
 
 The configuration above generates one log file for each `User-Name`
 value seen. Separate per-user log files may be convenient on a small
-system with only a few users. Delete the accumulated per-user log
-files regularly, or the log files will fill the disk.
+system with only a few users.  The default configuration of the server
+does not deleted these debug log files automatically.  You will need
+to manually delete the debug log files regularly, or else they could
+fill up the disk.
 
 == Conditional logs
 
-Combining the methods above with a few more dynamic expansions gives
+Combining the above methods with a few more dynamic expansions gives
 further options. An administrator can keep a full per-user log, as
 shown above, and turn logging on or off at runtime with `radmin`.
 Alternatively, the virtual server can create a log only when a chosen
@@ -156,9 +157,9 @@ radmin> set module debug_logs status noop
 
 == Debugging with dynamic conditions
 
-The examples above use conditions fixed in the server configuration.
-This is useful but still not as capable as the `debug condition`
-option in FreeRADIUS version 3's `radmin`.
+The above examples use conditions which are fixed in the server
+configuration.  This is useful but still not as capable as the `debug
+condition` option in FreeRADIUS version 3's `radmin`.
 
 An arbitrary condition needs three steps:
 
@@ -166,8 +167,8 @@ An arbitrary condition needs three steps:
 2. Evaluate the condition.
 3. Write debug logs only when the condition matches.
 
-An example is to write the condition to a file. The presence of the
-file determines whether the virtual server writes debug logs.
+One possibility is to write the condition to a file. The presence of
+the file determines whether the virtual server writes debug logs.
 
 Create a new file at `${logdir}/debug/condition`, containing, for
 example:
@@ -208,11 +209,16 @@ recv Access-Request {
 
        condition = %file.head("${logdir}/debug/condition")
 
-       if (condition != "" && %eval(condition)) {
+       if (condition && %eval(condition)) {
            %log.destination("debug", 2, "${logdir}/debug/debug.log")
            %pairs.debug("request")
        }
     }
+
+    ... policy to debug ...
+
+    # turn extra debugging off
+    %log.destination('')
 ...
 ----
 
@@ -220,8 +226,9 @@ The server will now write debug logs to `${logdir}/debug/debug.log`
 when `User-Name` matches `bob`. The `condition` file can be modified
 while the server is running to change the matching rule.
 
-To stop any matching, delete the `${logdir}/debug/condition` file.
-There is no need to restart the server.
+To stop the extra debugging, just delete the
+`${logdir}/debug/condition` file.  There is no need to restart the
+server.
 
 The above examples can be extended with arbitrary conditions to build
 debug logging tailored to any local requirements.
