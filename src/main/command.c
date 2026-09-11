@@ -2575,14 +2575,14 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 		}
 #endif
 
-#ifdef WITH_ACCOUNTING
+#ifdef WITH_COA
 		if (strcmp(argv[0], "coa") == 0) {
 			return command_print_stats(listener,
 						   &proxy_coa_stats, 0, 1);
 		}
 #endif
 
-#ifdef WITH_ACCOUNTING
+#ifdef WITH_COA
 		if (strcmp(argv[0], "disconnect") == 0) {
 			return command_print_stats(listener,
 						   &proxy_dsc_stats, 0, 1);
@@ -2926,8 +2926,8 @@ static fr_command_table_t command_table_set[] = {
 #ifdef WITH_STATS
 static fr_command_table_t command_table_stats[] = {
 	{ "client", FR_READ,
-	  "stats client [auth/acct/coa] <ipaddr> [udp|tcp] [listen <ipaddr> <port>] "
-	  "- show statistics for given client, or for all clients (auth or acct)",
+	  "stats client [auth/acct/coa/disconnect] <ipaddr> [udp|tcp] [listen <ipaddr> <port>] "
+	  "- show statistics for all clients (no ipaddr, etc.) or for a specific client (by ipaddr, etc.)",
 	  command_stats_client, NULL },
 
 #ifdef WITH_DETAIL
@@ -2938,7 +2938,8 @@ static fr_command_table_t command_table_stats[] = {
 
 #ifdef WITH_PROXY
 	{ "home_server", FR_READ,
-	  "stats home_server [<ipaddr>|auth|acct|coa|disconnect] <port> [udp|tcp] [src <ipaddr>] - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
+	  "stats home_server [auth|acct|coa|disconnect] <ipaddr> <port> [udp|tcp] [src <ipaddr>] "
+	  "- show statistics for all home servers (no ipaddr) or for a specific home server (by ipaddr, port, etc.)",
 	  command_stats_home_server, NULL },
 #endif
 
@@ -2958,7 +2959,7 @@ static fr_command_table_t command_table_stats[] = {
 
 	{ "socket", FR_READ,
 	  "stats socket <ipaddr> <port> [udp|tcp] "
-	  "- show statistics for given socket",
+	  "- show statistics for given socket (i.e 'listen' section)",
 	  command_stats_socket, NULL },
 
 #ifndef NDEBUG
