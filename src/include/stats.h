@@ -84,7 +84,7 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 
 #define FR_STATS_INC(_x, _y) do { radius_ ## _x ## _stats._y++;if (listener) listener->stats._y++;if (client) client->_x._y++; if (listener && listener->parent) { listener->parent->stats._y++; } } while (0)
 #ifdef WITH_PROXY
-#define FR_PROXY_STATS_INC(_x, _y) proxy_response_dropped_stats(_x, packet->code, offsetof(fr_stats_t, _y))
+#define FR_PROXY_STATS_INC(_x, _h, _y, _t) proxy_stats(_x, _h, packet->code, offsetof(fr_stats_t, _y), _t)
 #endif
 
 #define FR_STATS_TYPE_INC(_x) _x++
@@ -98,7 +98,7 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 #endif
 
 #ifndef FR_PROXY_STATS_INC
-#define FR_PROXY_STATS_INC(_x)
+#define FR_PROXY_STATS_INC(_x, _h, _y, _t)
 #endif
 
 #ifdef __cplusplus

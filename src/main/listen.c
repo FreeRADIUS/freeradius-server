@@ -2698,11 +2698,17 @@ static int coa_socket_recv(rad_listen_t *listener)
 
 #ifdef WITH_PROXY
 #ifdef WITH_STATS
-void proxy_response_dropped_stats(rad_listen_t *listener, int code, size_t offset)
+/*
+ *	Update proxy stats.
+ *
+ *	Called from the main thread for everything except "total_requests".
+ */
+void proxy_stats(rad_listen_t *listener, home_server_t *home, int code, size_t offset, time_t when)
 {
-	fr_stats_t *stats;
+	bool last_packet = when && (offset == offsetof(fr_stats_t, total_responses));
+	size_t response_offset = 0;
 	uint64_t *counter;
-	listen_socket_t *sock;
+	fr_stats_t *stats;
 
 	/*
 	 *	If the code is unknown, or the server is not built
@@ -2725,9 +2731,18 @@ void proxy_response_dropped_stats(rad_listen_t *listener, int code, size_t offse
 #endif
 
 	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCESS_REJECT:
+		stats = &proxy_auth_stats;
+		response_offset = offsetof(fr_stats_t, total_access_accepts);
+		break;
+
+	case PW_CODE_ACCESS_REJECT:		
+		stats = &proxy_auth_stats;
+		response_offset = offsetof(fr_stats_t, total_access_rejects);
+		break;
+
 	case PW_CODE_ACCESS_CHALLENGE:
 		stats = &proxy_auth_stats;
+		response_offset = offsetof(fr_stats_t, total_access_challenges);
 		break;
 
 	default:
@@ -2742,7 +2757,12 @@ void proxy_response_dropped_stats(rad_listen_t *listener, int code, size_t offse
 	counter = ((uint64_t *) stats) + offset;
 	(*counter)++;
 
-	if (!listener) return;
+	if (response_offset) {
+		counter = ((uint64_t *) stats) + response_offset;
+		(*counter)++;
+	}
+
+	if (!listener) goto check_home;
 
 	if (listener->parent) listener = listener->parent;
 
@@ -2753,11 +2773,35 @@ void proxy_response_dropped_stats(rad_listen_t *listener, int code, size_t offse
 	counter = ((uint64_t *) stats) + offset;
 	(*counter)++;
 
-	sock = listener->data;
-	if (sock->home) {
-		stats = &sock->home->stats;
+	if (response_offset) {
+		counter = ((uint64_t *) stats) + response_offset;
+		(*counter)++;
+	}
+
+	/*
+	 *	Listener last_packet was already updated
+	 */
+
+	if (!home) {
+		listen_socket_t *sock = listener->data;
+
+		home = sock->home;
+	}
+
+check_home:
+	if (home) {
+		stats = &home->stats;
 		counter = ((uint64_t *) stats) + offset;
 		(*counter)++;
+
+		if (response_offset) {
+			counter = ((uint64_t *) stats) + response_offset;
+			(*counter)++;
+		}
+
+		if (last_packet) {
+			home->stats.last_packet = when;
+		}
 	}
 }
 #endif
@@ -2808,7 +2852,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 		       packet->code,
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
-		FR_PROXY_STATS_INC(listener, total_unknown_types);
+		FR_PROXY_STATS_INC(listener, NULL, total_unknown_types, 0);
 		rad_free(&packet);
 		return 0;
 	}

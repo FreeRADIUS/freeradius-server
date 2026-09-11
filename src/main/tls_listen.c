@@ -1448,7 +1448,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 		       packet->code,
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
-		FR_PROXY_STATS_INC(listener, total_unknown_types);
+		FR_PROXY_STATS_INC(listener, NULL, total_unknown_types, 0);
 		rad_free(&packet);
 		return 0;
 	}
@@ -1456,7 +1456,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 #ifdef WITH_COA_TUNNEL
 	if (is_request) {
 		if (!request_receive(NULL, listener, packet, client, rad_coa_recv)) {
-			FR_PROXY_STATS_INC(listener, total_packets_dropped);
+			FR_PROXY_STATS_INC(listener, NULL, total_packets_dropped, 0);
 			rad_free(&packet);
 			return 0;
 		}
