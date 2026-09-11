@@ -71,7 +71,7 @@ static BN_CTX *pwd_get_bnctx(void)
 	bnctx = BN_CTX_new();
 	if (!bnctx) return NULL;
 
-	fr_thread_local_set(pwd_bnctx, bnctx);
+	(void) fr_thread_local_set(pwd_bnctx, bnctx);
 	return bnctx;
 }
 
