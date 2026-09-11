@@ -27,5 +27,29 @@ match User-Name[#]
 tmpl User-Name["foo"]
 match ERROR: ERROR offset 10: Invalid data type for array index
 
+#
+#  IPv4 addresses and prefixes.  A missing octet must not be parsed as zero.
+#
+tmpl 192.0.2.1
+match 192.0.2.1
+
+tmpl 192.0.2.1/24
+match 192.0.2.0/24
+
+#
+#  Prefixes may omit trailing octets
+#
+tmpl 192.0.2/24
+match 192.0.2.0/24
+
+tmpl 10/8
+match 10.0.0.0/8
+
+tmpl 192..2.1
+match ERROR: ERROR offset 0: Numerical attribute references are not allowed here
+
+tmpl 192.0..1/24
+match ERROR: ERROR offset 0: Numerical attribute references are not allowed here
+
 count
-match 15
+match 27
