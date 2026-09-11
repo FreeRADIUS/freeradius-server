@@ -1,9 +1,9 @@
 #
 #  Unit tests for the library APIs, using acutest.
 #
-SUBMAKEFILES := value_tests.mk pair_tests.mk
+SUBMAKEFILES := value_tests.mk pair_tests.mk conffile_tests.mk
 
-API_TESTS := value_tests pair_tests
+API_TESTS := value_tests pair_tests conffile_tests
 
 .PHONY: tests.api
 tests.api: $(addprefix $(BUILD_DIR)/tests/api/,$(API_TESTS))
