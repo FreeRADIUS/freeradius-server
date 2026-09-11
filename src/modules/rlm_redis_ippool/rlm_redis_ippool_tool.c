@@ -563,7 +563,7 @@ static int xlat_add_lease(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 			  request_t *request, ippool_tool_operation_t *op, fr_event_list_t *el)
 {
 	char	xlat[1024];
-	size_t	xlat_len;
+	ssize_t	xlat_len;
 
 	op->start.prefix = op->end.prefix = IPADDR_LEN(op->start.af);
 	if (op->range) {
@@ -575,61 +575,61 @@ static int xlat_add_lease(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 					       "%%redis_ippool.addresses.add('%s', '%pV', '%pV', %d)", op->pool,
 					       fr_box_ipaddr(op->start), fr_box_ipaddr(op->end), op->prefix);
 	}
-	if (xlat_len == 0) return -1;
+	if (xlat_len < 0) return -1;
 
-	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, xlat_len), el);
+	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, (size_t)xlat_len), el);
 }
 
 static int xlat_remove_lease(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 			     request_t *request, ippool_tool_operation_t *op, fr_event_list_t *el)
 {
 	char	xlat[1024];
-	size_t	xlat_len;
+	ssize_t	xlat_len;
 
 	op->start.prefix = op->end.prefix = IPADDR_LEN(op->start.af);
 	xlat_len = fr_sbuff_in_sprintf(&FR_SBUFF_OUT(xlat, sizeof(xlat)),
 				       "%%redis_ippool.addresses.remove('%s', '%pV', '%pV', %d)", op->pool,
 				       fr_box_ipaddr(op->start), fr_box_ipaddr(op->end), op->prefix);
-	if (xlat_len == 0) return -1;
+	if (xlat_len < 0) return -1;
 
-	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, xlat_len), el);
+	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, (size_t)xlat_len), el);
 }
 
 static int xlat_release_lease(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
 			      ippool_tool_operation_t *op, fr_event_list_t *el)
 {
 	char	xlat[1024];
-	size_t	xlat_len;
+	ssize_t	xlat_len;
 
 	op->start.prefix = op->end.prefix = IPADDR_LEN(op->start.af);
 	xlat_len = fr_sbuff_in_sprintf(&FR_SBUFF_OUT(xlat, sizeof(xlat)),
 				       "%%redis_ippool.addresses.release('%s', '%pV', '%pV', %d)", op->pool,
 				       fr_box_ipaddr(op->start), fr_box_ipaddr(op->end), op->prefix);
-	if (xlat_len == 0) return -1;
+	if (xlat_len < 0) return -1;
 
-	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, xlat_len), el);
+	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, (size_t)xlat_len), el);
 }
 
 static int xlat_modify_lease(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
 			     ippool_tool_operation_t *op, fr_event_list_t *el)
 {
 	char	xlat[1024];
-	size_t	xlat_len;
+	ssize_t	xlat_len;
 
 	op->start.prefix = op->end.prefix = IPADDR_LEN(op->start.af);
 	xlat_len = fr_sbuff_in_sprintf(&FR_SBUFF_OUT(xlat, sizeof(xlat)),
 				       "%%redis_ippool.addresses.modify('%s', '%pV', '%pV', '%s', %d)", op->pool,
 				       fr_box_ipaddr(op->start), fr_box_ipaddr(op->end), op->range, op->prefix);
-	if (xlat_len == 0) return -1;
+	if (xlat_len < 0) return -1;
 
-	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, xlat_len), el);
+	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, (size_t)xlat_len), el);
 }
 
 static int xlat_assign_lease(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
 			     ippool_tool_operation_t *op, char const *owner, fr_event_list_t *el)
 {
 	char	xlat[1024];
-	size_t	xlat_len;
+	ssize_t	xlat_len;
 
 	if (op->range) {
 		xlat_len = fr_sbuff_in_sprintf(&FR_SBUFF_OUT(xlat, sizeof(xlat)),
@@ -640,23 +640,23 @@ static int xlat_assign_lease(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 					       "%%redis_ippool.address.assign('%s', '%pV', '%s')", op->pool,
 					       fr_box_ipaddr(op->start), owner);
 	}
-	if (xlat_len == 0) return -1;
+	if (xlat_len < 0) return -1;
 
-	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, xlat_len), el);
+	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, (size_t)xlat_len), el);
 }
 
 static int xlat_unassign_lease(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
 			       ippool_tool_operation_t *op, char const *owner, fr_event_list_t *el)
 {
 	char	xlat[1024];
-	size_t	xlat_len;
+	ssize_t	xlat_len;
 
 	xlat_len = fr_sbuff_in_sprintf(&FR_SBUFF_OUT(xlat, sizeof(xlat)),
 				       "%%redis_ippool.address.unassign('%s', '%pV', '%s')", op->pool,
 				       fr_box_ipaddr(op->start), owner);
-	if (xlat_len == 0) return -1;
+	if (xlat_len < 0) return -1;
 
-	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, xlat_len), el);
+	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, (size_t)xlat_len), el);
 }
 
 /** Run the redis_ippool.pools.list xlat to fetch the list of pools across the cluster.
