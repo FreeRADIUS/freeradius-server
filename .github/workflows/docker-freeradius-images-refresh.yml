@@ -126,15 +126,17 @@ jobs:
           password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
       #
-      #  The read-only login covers any `DOCKER_REGISTRY` pull-through
-      #  misses during the build (the 'crossbuild' Dockerfile pulls the upstream
-      #  OS base with `FROM`, not the internal registry).
+      #  The registry serves the `freeradius-server/` images to the public
+      #  `anonymous` account, so the pulls from `DOCKER_REGISTRY` below do
+      #  not need a real account. The 'crossbuild' Dockerfile pulls the
+      #  upstream OS base image with `FROM`, and does not pull the base
+      #  image from the internal registry.
       #
       - name: Login to internal Docker registry (read, via dind)
         uses: docker/login-action@v4
         with:
-          username: ${{ secrets.DOCKER_REPO_USERNAME }}
-          password: ${{ secrets.DOCKER_REPO_PASSWORD }}
+          username: anonymous
+          password: anonymous
           registry: ${{ env.DOCKER_REGISTRY }}
 
       #

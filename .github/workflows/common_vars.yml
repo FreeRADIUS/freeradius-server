@@ -49,7 +49,7 @@ on:
         description: "'1' when the org's self-hosted runners and registry are available"
         value: ${{ jobs.common_vars.outputs.selfhosted }}
       docker_prefix:
-        description: "prefix that points a third-party image at the org's pull-through cache, empty elsewhere"
+        description: "prefix that points a third-party image at the repository's copy in the org's registry, empty elsewhere"
         value: ${{ jobs.common_vars.outputs.docker_prefix }}
       images_changed:
         description: "'true' when this ref changes something the CI images bake in"
@@ -204,9 +204,15 @@ jobs:
             registry="ghcr.io/$(printf '%s' "$owner" | tr 'A-Z' 'a-z')"
           fi
 
+          #
+          #  `docker-ci-images-refresh.yml` publishes the repository's copies
+          #  of third-party images under `$repo_name/`, the same path as the
+          #  CI images. One registry rule therefore serves both the CI images
+          #  and the copies to the public `anonymous` account.
+          #
           prefix=
           if [ "$selfhosted" = "1" ]; then
-            prefix="$registry/"
+            prefix="$registry/$repo_name/"
           fi
 
           image_tag=latest

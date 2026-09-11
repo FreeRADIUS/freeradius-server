@@ -154,17 +154,21 @@ jobs:
         password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
     #
-    #  Authenticate dind to the internal registry so the push steps
-    #  below can publish service + profiling images. The host docker
-    #  daemon is logged in via the runner's `job-started` hook, but
-    #  dind is a separate daemon with no auth config.
+    #  The dind sidecar runs a separate dockerd. The runner's `job-started`
+    #  hook passes credentials to the host dockerd only, so the dind dockerd
+    #  does not receive the credentials. Once the registry challenges for
+    #  authentication, the Docker client does not send a request without
+    #  credentials, so dind logs in as the public `anonymous` account. The
+    #  registry serves the `freeradius-server/` images to the `anonymous`
+    #  account, and requires a real account for every other path and for
+    #  every write. The 'freeradius4-crossbuild' pull below reads from
+    #  `freeradius-server/`, so the `anonymous` account can pull the image.
+    #  This workflow does not publish an image, so this workflow does not
+    #  need a real account.
     #
     - name: Login to internal Docker registry (via dind)
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
       run: |
-        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://${{ needs.common_vars.outputs.docker_registry }}/
+        echo anonymous | docker login -u anonymous --password-stdin https://${{ needs.common_vars.outputs.docker_registry }}/
 
     - name: Verify Dockerfiles match m4 templates
       run: |
