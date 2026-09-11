@@ -1,0 +1,16 @@
+#
+#  Reading an attribute out of the cache when there is no entry must not
+#  leave the cache locked.  The rbtree driver takes a global mutex in
+#  cache_acquire(), so a miss which returns without releasing it wedges
+#  every later request in the module.
+#
+#  Two lookups in one request is enough to show it: the second blocks on
+#  the mutex the first failed to drop.
+#
+update reply {
+	Filter-Id := "%{%{cache:Reply-Message}:-A}%{%{cache:Reply-Message}:-B}"
+}
+
+update control {
+	Cleartext-Password := "hello"
+}

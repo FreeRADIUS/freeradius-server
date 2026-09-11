@@ -1,0 +1,5 @@
+User-Name = "bob"
+User-Password = "hello"
+
+Response-Packet-Type == Access-Accept
+Filter-Id == "AB"

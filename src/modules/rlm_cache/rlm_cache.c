@@ -604,10 +604,11 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 
 	case RLM_MODULE_NOTFOUND:	/* not found */
 		*out = '\0';
-		return 0;
+		goto finish;
 
 	default:
-		return -1;
+		ret = -1;
+		goto finish;
 	}
 
 	switch (list) {
