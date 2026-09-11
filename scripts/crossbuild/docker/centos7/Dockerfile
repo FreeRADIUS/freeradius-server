@@ -65,12 +65,12 @@ ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 RUN git clone --depth 1 --no-single-branch ${source}
 
 #
-#  Install build dependencies for all branches from v3 onwards
+#  Install build dependencies for all branches from v3.2 onwards
 #  Nodesource has issues (no SRPMS in some repos) and is not needed here
 #  CentOS/RHEL 7 do not support "-D" for yum-builddep so do that separately below if needed
 #
 WORKDIR freeradius-server
-RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
+RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[2-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
 		[ -e redhat/freeradius.spec ] && yum-builddep --disablerepo="nodesource*" -y redhat/freeradius.spec; \
