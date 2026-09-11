@@ -656,12 +656,12 @@ static ssize_t eap_teap_decode_vp(TALLOC_CTX *request, DICT_ATTR const *parent,
 	if (attr_len == 0) return 0;
 
 	if (attr_len < dict_attr_sizes[parent->type][0]) {
-		REDEBUG("TLV %s has invalid length %u < %u", parent->name, attr_len, dict_attr_sizes[parent->type][0]);
+		REDEBUG("TLV %s has invalid length %lu < %lu", parent->name, attr_len, dict_attr_sizes[parent->type][0]);
 		return -1;
 	}
 
 	if (attr_len > dict_attr_sizes[parent->type][1]) {
-		REDEBUG("TLV %s has invalid length %u > %u", parent->name, attr_len, dict_attr_sizes[parent->type][1]);
+		REDEBUG("TLV %s has invalid length %lu > %lu", parent->name, attr_len, dict_attr_sizes[parent->type][1]);
 		return -1;
 	}
 
