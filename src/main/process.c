@@ -3260,7 +3260,7 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 							packet->proto);
 			}
 		}
-		
+
 		if (!home) {
 			PROXY("No outstanding request was found for %s packet from host %s port %d - ID %u",
 			      fr_packet_codes[packet->code],
@@ -4075,7 +4075,7 @@ add_proxy_state:
 #endif
 
 	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
-	if (!request->proxy_listener->filter_proxy_state) {
+	if (!request->proxy_listener || !request->proxy_listener->filter_proxy_state) {
 		fr_pair_value_sprintf(vp, "%u", request->packet->id);
 	} else {
 		/*
