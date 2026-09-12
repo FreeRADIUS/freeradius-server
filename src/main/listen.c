@@ -1486,11 +1486,9 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 
 	ADDSTRING(name);
 
-#ifdef WITH_TCP
 	if (this->dual) {
 		ADDSTRING("+acct");
 	}
-#endif
 
 #ifdef WITH_COA_TUNNEL
 	if (this->send_coa) {
@@ -4249,7 +4247,6 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	this->server = server;
 	this->fd = -1;
 
-#ifdef WITH_TCP
 	/*
 	 *	Add special flags '+' for "auth+acct".
 	 */
@@ -4257,16 +4254,21 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	if (p) {
 		if (strncmp(p + 1, "acct", 4) == 0) {
 			this->dual = true;
-#ifdef WITH_COA_TUNNEL
 			p += 5;
 		}
 
+#ifdef WITH_COA_TUNNEL
 		if (strcmp(p, "+coa") == 0) {
 			this->send_coa = true;
-#endif
 		}
-	}
 #endif
+
+		/*
+		 *	Else it has to be valid, because the table
+		 *	above at listen_compare[] limits the accepted
+		 *	types.
+		 */
+	}
 
 	/*
 	 *	Call per-type parser.

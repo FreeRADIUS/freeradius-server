@@ -76,11 +76,11 @@ struct rad_listen {
 	rbtree_t	*children;
 	rad_listen_t	*parent;
 
-	bool		dual;
 	bool		proxy_protocol;		//!< haproxy protocol
 	bool		listen;			//! just calls listen()
 	bool		nonblock;
 #endif
+	bool		dual;
 	bool		nodup;
 	bool		dead;
 
