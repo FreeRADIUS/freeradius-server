@@ -1740,10 +1740,9 @@ static void request_finish(REQUEST *request, int action)
 
 	/*
 	 *	Copy Proxy-State from the request to the reply, but
-	 *	only if we're responding, and only if it's not a
-	 *	Protocol-Error.
+	 *	only if we're responding.
 	 */
-	if (request->reply->code && (request->reply->code != PW_CODE_PROTOCOL_ERROR)) {
+	if (request->reply->code) {
 		vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps,
 					      PW_PROXY_STATE, 0, TAG_ANY);
 		if (vp) fr_pair_add(&request->reply->vps, vp);
@@ -4076,7 +4075,15 @@ add_proxy_state:
 #endif
 
 	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
-	fr_pair_value_sprintf(vp, "%u", request->packet->id);
+	if (!request->proxy_listener->filter_proxy_state) {
+		fr_pair_value_sprintf(vp, "%u", request->packet->id);
+	} else {
+		/*
+		 *	Add a random Proxy-State
+		 */
+		fr_pair_value_memcpy(vp, request->proxy_listener->proxy_state_random,
+				     sizeof(request->proxy_listener->proxy_state_random));
+	}
 
 	/*
 	 *	Should be done BEFORE inserting into proxy hash, as
@@ -4712,6 +4719,16 @@ static void ping_home_server(void *ctx)
 		rad_assert(request->ev == NULL);
 		talloc_free(request);
 		return;
+	}
+
+	/*
+	 *	If this listener expects to see a particular Proxy-State in the response, then we must also add
+	 *	it to each packet, even Status-Server ones.
+	 */
+	if (request->proxy_listener->filter_proxy_state) {
+		MEM(vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0));
+		fr_pair_value_memcpy(vp, request->proxy_listener->proxy_state_random,
+				     sizeof(request->proxy_listener->proxy_state_random));
 	}
 
 	/*

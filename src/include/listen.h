@@ -83,6 +83,8 @@ struct rad_listen {
 	bool		dual;
 	bool		nodup;
 	bool		dead;
+	bool		filter_proxy_state;	//!< Whether to filter Proxy-State
+	uint8_t		proxy_state_random[sizeof(uint32_t)];	//!< a random value for Proxy-State
 
 #ifdef WITH_TLS
 	fr_tls_server_conf_t *tls;

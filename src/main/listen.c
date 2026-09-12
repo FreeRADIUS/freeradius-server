@@ -1616,6 +1616,12 @@ static CONF_PARSER performance_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static CONF_PARSER security_config[] = {
+	{ "filter_proxy_state", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rad_listen_t, filter_proxy_state), NULL },
+
+	CONF_PARSER_TERMINATOR
+};
+
 
 static CONF_PARSER limit_config[] = {
 	{ "max_pps", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, max_rate), NULL },
@@ -1922,6 +1928,23 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 #endif
 		return 0;	/* don't do anything */
+	}
+
+	/*
+	 *	Some minor security against attacks.
+	 */
+	if ((this->type == RAD_LISTEN_PROXY) && (sock->proto == IPPROTO_UDP)) {
+		subcs = cf_section_sub_find(cs, "security");
+		if (subcs) {
+			rcode = cf_section_parse(subcs, this,
+						 security_config);
+			if (rcode < 0) return -1;
+		}
+
+		if (this->filter_proxy_state) {
+			uint32_t r = fr_rand();
+			memcpy(this->proxy_state_random, (uint8_t *) &r, sizeof(r));
+		}
 	}
 #endif
 
@@ -2819,6 +2842,37 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	if (!packet) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;
+	}
+
+	/*
+	 *	See if we have a matching Proxy-State
+	 */
+	if (listener->filter_proxy_state) {
+		bool found = false;
+		uint8_t const *attr, *end;
+
+		attr = packet->data + 20; /* RADIUS_HDR_LEN */
+		end = packet->data + packet->data_len;
+
+		while (attr < end) {
+			if ((attr[0] == PW_PROXY_STATE) &&
+			    (attr[1] == 2 + sizeof(listener->proxy_state_random)) &&
+			    (memcmp(attr + 2, listener->proxy_state_random, sizeof(listener->proxy_state_random)) == 0)) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
+			ERROR("Invalid response fails Proxy-State filter for packet code %d sent to a proxy port "
+			      "from home server %s port %d - ID %d : IGNORED",
+			      packet->code,
+			      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+			      packet->src_port, packet->id);
+			FR_PROXY_STATS_INC(listener, NULL, total_no_records, 0);
+			rad_free(&packet);
+			return 0;
+		}
 	}
 
 	switch (packet->code) {
