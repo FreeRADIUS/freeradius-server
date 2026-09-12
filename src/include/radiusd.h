@@ -122,6 +122,7 @@ typedef struct main_config {
 	bool		log_reject;			//!< Log Access-Reject
 	bool		log_auth_badpass;		//!< Log successful authentications.
 	bool		log_auth_goodpass;		//!< Log failed authentications.
+	bool		unauth_proxy_responses;		//!< log the names of home servers for unauthenticated responses
 	char const	*auth_badpass_msg;		//!< Additional text to append to successful auth messages.
 	char const	*auth_goodpass_msg;		//!< Additional text to append to failed auth messages.
 

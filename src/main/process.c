@@ -3244,13 +3244,41 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 
 	if (!proxy_p) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		PROXY("No outstanding request was found for %s packet from host %s port %d - ID %u",
-		       fr_packet_codes[packet->code],
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
+		home_server_t *home;
+		listen_socket_t *sock = listener->data;
+
+		/*
+		 *	Try to give better information and statistics.  This adds more lookups, and
+		 *	potentially more attacks because the packets are unauthenticated.  So we only do it if
+		 *	we're configured.
+		 */
+		home = sock->home;
+		if (!home && main_config.unauth_proxy_responses) {
+			home = home_server_find_bysrc(&packet->src_ipaddr, packet->src_port,
+						      packet->proto, &packet->dst_ipaddr);
+			if (!home) {
+				home = home_server_find(&packet->src_ipaddr, packet->src_port,
+							packet->proto);
+			}
+		}
+		
+		if (!home) {
+			PROXY("No outstanding request was found for %s packet from host %s port %d - ID %u",
+			      fr_packet_codes[packet->code],
+			      inet_ntop(packet->src_ipaddr.af,
+					&packet->src_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
-		       packet->src_port, packet->id);
-		FR_PROXY_STATS_INC(listener, NULL, total_no_records, 0);
+			      packet->src_port, packet->id);
+		} else {
+			PROXY("No outstanding request was found for %s packet from home_server %s (host %s port %d) - ID %u",
+			      fr_packet_codes[packet->code],
+			      home->name,
+			      inet_ntop(packet->src_ipaddr.af,
+					&packet->src_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+			      packet->src_port, packet->id);
+		}
+		FR_PROXY_STATS_INC(listener, home, total_no_records, 0);
 		return 0;
 	}
 
