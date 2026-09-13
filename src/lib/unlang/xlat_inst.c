@@ -599,7 +599,10 @@ int xlat_instance_register_func(xlat_exp_t *node)
 
 	fr_assert(node->type == XLAT_FUNC);
 	fr_assert(!call->id && !call->inst && !call->thread_inst);	/* Node cannot already have instance data */
-	if (!fr_cond_assert(!call->ephemeral)) return -1;		/* Can't bootstrap ephemeral calls */
+	if (!fr_cond_assert(!call->ephemeral)) {
+		fr_strerror_printf("Cannot register ephemeral calls for %s()", node->fmt);
+		return -1;		/* Can't bootstrap ephemeral calls */
+	}
 
 	call->inst = xlat_inst_alloc(node);
 	if (unlikely(!call->inst)) return -1;
