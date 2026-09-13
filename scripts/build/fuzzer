@@ -30,7 +30,7 @@ if [ "$1" = "-l" ]; then
     fi
 fi
 
-export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1"
+export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1 detect_stack_use_after_return=1"
 export LSAN_OPTIONS="fast_unwind_on_malloc=0:malloc_context_size=50"
 PROTOCOL="$(basename "$(dirname "$1")")"
 
