@@ -116,12 +116,14 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 	start = fmt;
 	prefix = suffix = 0;
 
+	if (offset == inlen + 1) offset = inlen;
+
 	/*
 	 *	Catch bad callers.
 	 */
 	if (offset > inlen) {
-		*sp = talloc_strdup(ctx, "");
-		*text = talloc_strdup(ctx, "");
+		*sp = talloc_asprintf(ctx, "Invalid offset %zu > %zu", offset, inlen);
+		*text = talloc_strdup(ctx, fmt);
 		return;
 	}
 
