@@ -697,11 +697,15 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 
 #ifdef HAVE_REGEX
 	ret = xlat_tokenize_regex(head, &node, in, &m_s);
-	if (ret < 0) return ret;
+	if (ret < 0) {
+		fr_sbuff_marker_release(&m_s);
+		return ret;
+	}
 
 	if (ret == 1) {
 		fr_assert(node != NULL);
 		xlat_exp_insert_tail(head, node);
+		fr_sbuff_marker_release(&m_s);
 		return 0;
 	}
 
@@ -717,11 +721,7 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 		goto check_for_attr;
 	}
 
-	if (!fr_sbuff_extend(in)) {
-		fr_strerror_const("Missing closing brace '}'");
-		fr_sbuff_marker_release(&m_s);
-		return -1;
-	}
+	if (!fr_sbuff_extend(in)) goto missing_brace;
 
 	/*
 	 *	It must be an expression.
@@ -745,13 +745,15 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 		ret = xlat_tokenize_expression(node, &node->group, in, &attr_p_rules, t_rules);
 		if (ret <= 0) {
 			talloc_free(node);
+			fr_sbuff_marker_release(&m_s);
 			return ret;
 		}
 
 		if (!fr_sbuff_is_char(in, '}')) {
 			talloc_free(node);
+		missing_brace:
 			fr_strerror_const("Missing closing brace '}'");
-			return -1;
+			goto release;
 		}
 
 		xlat_exp_set_name(node, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
@@ -766,6 +768,7 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 		xlat_exp_insert_tail(head, node);
 
 		(void) fr_sbuff_next(in); /* skip '}' */
+		fr_sbuff_marker_release(&m_s);
 		return ret;
 	}
 
@@ -781,7 +784,6 @@ check_for_attr:
 	/*
 	 *	Check for empty expressions %{} %{: %{[
 	 */
-	fr_sbuff_marker(&m_s, in);
 	len = fr_sbuff_adv_until(in, SIZE_MAX, &hint_tokens, '\0');
 
 	/*
@@ -792,8 +794,7 @@ check_for_attr:
 	 */
 	if (!fr_sbuff_extend(in)) {
 		fr_strerror_const("Missing closing brace '}'");
-		fr_sbuff_marker_release(&m_s);
-		return -1;
+		goto release;
 	}
 
 	hint = fr_sbuff_char(in, '\0');
@@ -804,11 +805,11 @@ check_for_attr:
 		case '}':
 		empty_disallowed:
 			fr_strerror_const("Empty expressions are invalid");
-			return -1;
+			goto release;
 
 		case '[':
 			fr_strerror_const("Missing attribute name");
-			return -1;
+			goto release;
 
 		default:
 			break;
@@ -849,6 +850,9 @@ check_for_attr:
 	 *	Box print is so we get \t \n etc..
 	 */
 	fr_strerror_printf("Invalid char '%pV' in expression", fr_box_strvalue_len(fr_sbuff_current(in), 1));
+
+release:
+	fr_sbuff_marker_release(&m_s);
 	return -1;
 }
 
