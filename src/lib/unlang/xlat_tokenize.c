@@ -1970,19 +1970,33 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	fr_strerror_clear();	/* Clear error buffer */
 
 	if (xlat_tokenize_input(head, &our_in, p_rules, t_rules) < 0) {
+		*out = NULL;
 		talloc_free(head);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
-	 *	Add nodes that need to be bootstrapped to
-	 *	the registry.
+	 *	Add nodes that need to be bootstrapped to the
+	 *	registry.  If we can't do that, then return "didn't
+	 *	parse it".
+	 *
+	 *	We can't return an error here, because this is called
+	 *	from the configuration file parser for modules.  Which
+	 *	doesn't pass in "allow_unresolved".  But (TBD later),
+	 *	it still gets resolved at run-time, and still works.
+	 *
+	 *	So 'test.modules.mschap' fails if we return an error.
+	 *
+	 *	@todo - fix this so that the call_envs are parsed at
+	 *	load time, and not at run time.
 	 */
 	if (xlat_finalize(head, t_rules->xlat.runtime_el) < 0) {
+		*out = NULL;
 		talloc_free(head);
 		return 0;
 	}
 
+	XLAT_HEAD_VERIFY(head);
 	*out = head;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
