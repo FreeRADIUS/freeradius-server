@@ -167,13 +167,11 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
 
 	child = xlat_exp_next(node->call.args, child);
-#ifdef WITH_VERIFY_PTR
-	if (!child) xlat_debug(node);
-#else
-	fr_assert(child != NULL);
-#endif
-
-	xlat_print_node(out, node->call.args, child, e_rules, 0);
+	if (child) {
+		xlat_print_node(out, node->call.args, child, e_rules, 0);
+	} else {
+		FR_SBUFF_IN_STRCPY_RETURN(out, "???");
+	}
 
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
 
