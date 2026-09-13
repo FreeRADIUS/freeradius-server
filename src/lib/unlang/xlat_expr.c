@@ -1081,6 +1081,8 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	i = 0;
 	j = -1;
 	while (i < (inst->argc - deleted)) {
+		if (j >= inst->argc) break;
+
 		if (inst->argv[i]) {
 			i++;
 			continue;
