@@ -1,0 +1,18 @@
+#
+#  Cisco Adaptive FT can split the FT-PSK EAPoL-Key message across
+#  multiple cisco-8021x-data AVPairs.  The non-FT implementation must
+#  reject that input explicitly instead of silently using one fragment.
+#
+User-Name = "8ab3a0ebd5e5"
+User-Password = "8ab3a0ebd5e5"
+NAS-IP-Address = 192.168.64.12
+Cisco-AVPair = "cisco-wlan-ssid=EasyPSK"
+Cisco-AVPair = "cisco-bssid=34-ef-b6-af-48-9e"
+Cisco-AVPair = "\143\151\163\143\157\055\141\156\157\156\143\145\075\115\367\012\102\205\305\306\037\027\174\333\374\051\327\343\312\311\101\147\366\020\037\033\312\264\040\335\120\304\370\200\235"
+Cisco-AVPair = "cisco-8021x-data=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+Cisco-AVPair = "cisco-8021x-data=B"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Reject
