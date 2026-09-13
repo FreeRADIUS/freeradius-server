@@ -451,10 +451,14 @@ void xlat_exp_verify(xlat_exp_t const *node)
 	switch (node->type) {
 	case XLAT_GROUP:
 		xlat_exp_head_verify(node->group);
+
+		if (!node->fmt) return;
 		(void)talloc_get_type_abort_const(node->fmt, char);
 		return;
 
 	case XLAT_FUNC:
+		if (!node->call.args) return;
+
 		fr_assert(node->call.args->is_argv);
 
 		xlat_exp_foreach(node->call.args, arg) {
@@ -468,6 +472,8 @@ void xlat_exp_verify(xlat_exp_t const *node)
 		}
 
 		xlat_exp_head_verify(node->call.args);
+
+		if (!node->fmt) return;
 		(void)talloc_get_type_abort_const(node->fmt, char);
 		return;
 

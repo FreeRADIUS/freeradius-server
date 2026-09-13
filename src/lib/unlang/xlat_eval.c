@@ -230,7 +230,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	we print the concatenated arguments list as
 	 *	well as the original fmt string.
 	 */
-	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->call.args)) {
+	if ((node->type == XLAT_FUNC) && node->call.args && !xlat_is_literal(node->call.args)) {
 		fr_token_t token = node->call.func->token;
 
 		if ((token == T_INVALID) || (!fr_comparison_op[token] && !fr_binary_op[token])) {
