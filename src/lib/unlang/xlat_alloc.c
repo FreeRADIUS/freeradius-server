@@ -490,7 +490,9 @@ void xlat_exp_verify(xlat_exp_t const *node)
 
 		if (tmpl_is_attr(vpt)) {
 			fr_dict_attr_t const *da;
+
 			da = tmpl_attr_tail_da(node->vpt);
+			fr_assert(da != NULL); /* otherwise we can't check casts */
 
 			if (tmpl_rules_cast(node->vpt) != FR_TYPE_NULL) {
 				/*
