@@ -5,7 +5,7 @@ on:
 
 env:
   M_PERTURB: "0x42"
-  PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+  PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p"
 # `DEBUGGER_ATTACHED` stops the utilities forking on every call to check
 # whether the utilities run under GDB/LLDB
   DEBUGGER_ATTACHED: no

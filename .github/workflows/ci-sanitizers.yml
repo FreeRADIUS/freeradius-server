@@ -8,7 +8,7 @@ env:
   LSAN_OPTIONS: fast_unwind_on_malloc=0:malloc_context_size=50
   UBSAN_OPTIONS: print_stacktrace=1
   M_PERTURB: "0x42"
-  PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+  PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p"
 # `DEBUGGER_ATTACHED` stops the utilities from forking on every call to check
 # whether the utilities are running under GDB/LLDB
   DEBUGGER_ATTACHED: no
