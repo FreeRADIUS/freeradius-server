@@ -3635,8 +3635,11 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
+		/*
+		 *	"" returns 0, which is allowed, but head has to be an empty string.
+		 */
 		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
-		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+		if ((slen < 0) || !head) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*
 		 *	If the string doesn't contain an xlat,
@@ -3690,11 +3693,19 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	This allows us to catch parse errors as early
 		 *	as possible.
 		 *
-		 *	FIXME - We need an ephemeral version of this
+		 *	@todo - We need an ephemeral version of this
 		 *	too.
+		 *
+		 *	`` returns 0, which is allowed for other strings, but not here.
 		 */
 		slen = xlat_tokenize_argv(vpt, &head, &our_in, NULL, p_rules, t_rules, true);
-		if ((slen <= 0) || !head) {
+		if ((slen < 0) || !head) {
+			talloc_free(vpt);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
+		if (slen == 0) {
+			fr_strerror_const("Back-quoted strings cannot be empty");
 			talloc_free(vpt);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -3733,7 +3744,13 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		vpt = tmpl_alloc_null(ctx);
 
 		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, &arg_t_rules);
-		if (slen < 0) {
+		if ((slen < 0) || !head) {
+			talloc_free(vpt);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
+		if (slen == 0) {
+			fr_strerror_const("Regular expressions cannot be empty");
 			talloc_free(vpt);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
