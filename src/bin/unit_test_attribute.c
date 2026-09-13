@@ -418,28 +418,6 @@ static inline CC_HINT(nonnull) size_t hex_print(char *out, size_t outlen, uint8_
 	return p - out;
 }
 
-/** Concatenate error stack
- */
-static inline size_t strerror_concat(char *out, size_t outlen)
-{
-	char *end = out + outlen;
-	char *p = out;
-	char const *err;
-
-	strcpy(out, "ERROR: ");
-	p += 7;
-
-	while ((p < end) && (err = fr_strerror_pop())) {
-		if (*fr_strerror_peek()) {
-			p += snprintf(p, end - p, "%s: ", err);
-		} else {
-			p += strlcpy(p, err, end - p);
-		}
-	}
-
-	return p - out;
-}
-
 static inline CC_HINT(nonnull) int dump_fuzzer_data(int fd_dir, char const *text, uint8_t const *data, size_t data_len)
 {
 	fr_sha1_ctx	ctx;
@@ -3787,6 +3765,7 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 	command_entry_t		*command;
 	size_t			match_len;
 	char			*p;
+	char const		*error;
 
 	p = in;
 	fr_skip_whitespace(p);
@@ -3837,10 +3816,15 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 	 *	This is then what's checked in
 	 *	subsequent match commands.
 	 */
-	if (result->error_to_data) data_used = strerror_concat(data, COMMAND_OUTPUT_MAX);
+	if (result->error_to_data) {
+		error = fr_strerror_concat("ERROR: ", ": ");
 
-	fr_assert((size_t)data_used < COMMAND_OUTPUT_MAX);
-	data[data_used] = '\0';			/* Ensure the data buffer is \0 terminated */
+		data_used = strlcpy(data, error, COMMAND_OUTPUT_MAX);
+		if (data_used >= (COMMAND_OUTPUT_MAX - 1)) {
+			data_used = COMMAND_OUTPUT_MAX - 1;
+			data[data_used] = '\0';
+		}
+	}
 
 	if (data_used) {
 		DEBUG2("%s[%d]: --> %s (%zu bytes in buffer)", cc->filename, cc->lineno,

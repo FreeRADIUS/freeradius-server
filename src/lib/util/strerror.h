@@ -263,6 +263,9 @@ void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));
 
 /** @hidecallergraph */
 char const	*fr_perror_to_str(char const *line_sep, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+
+/** @hidecallergraph */
+char const *fr_strerror_concat(char const *prefix, char const *line_sep) CC_HINT(nonnull(2));
 /** @} */
 
 #ifdef __cplusplus

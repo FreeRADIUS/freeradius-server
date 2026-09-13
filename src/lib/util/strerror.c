@@ -813,3 +813,35 @@ char const *fr_perror_to_str(char const *line_sep, char const *fmt, ...)
 
 	return fr_sbuff_start(agg);
 }
+
+/** Print the stack of string buffers to a thread local buffer
+ *
+ * So that the whole stack of messages ends up on one line.
+ *
+ * @hidecallergraph
+ *
+ * @param[in] prefix	fixed string at the sart of the line.
+ * @param[in] line_sep	to insert between the log messages.
+ * @return
+ *	- A thread local string buffer containing the concatenated messages.
+ */
+char const *fr_strerror_concat(char const *prefix, char const *line_sep)
+{
+	char const	*error;
+	fr_sbuff_t	*agg;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, SIZE_MAX);
+
+	if (prefix) fr_sbuff_in_strcpy(agg, prefix);
+
+	while ((error = fr_strerror_pop()) != NULL) {
+		fr_sbuff_in_strcpy(agg, error);
+		if (*fr_strerror_peek()) {
+			fr_sbuff_in_strcpy(agg, line_sep);
+		}
+	}
+
+	return fr_sbuff_start(agg);
+
+}
+
