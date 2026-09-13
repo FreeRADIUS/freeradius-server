@@ -413,13 +413,13 @@ bool		xlat_is_truthy(xlat_exp_head_t const *head, bool *out);
 
 int		xlat_validate_function_args(xlat_exp_t *node);
 
-void		xlat_debug(xlat_exp_t const *node);
+void		xlat_debug(xlat_exp_t const *node) CC_HINT(nonnull);
 
-void		xlat_debug_head(xlat_exp_head_t const *head);
+void		xlat_debug_head(xlat_exp_head_t const *head) CC_HINT(nonnull);
 
-bool		xlat_is_literal(xlat_exp_head_t const *head);
+bool		xlat_is_literal(xlat_exp_head_t const *head) CC_HINT(nonnull);
 
-bool		xlat_needs_resolving(xlat_exp_head_t const *head);
+bool		xlat_needs_resolving(xlat_exp_head_t const *head) CC_HINT(nonnull);
 
 bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head);
 

@@ -1053,7 +1053,9 @@ static size_t xlat_quote_table_len = NUM_ELEMENTS(xlat_quote_table);
 
 #define INFO_INDENT(_fmt, ...)  INFO("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
 
-static void _xlat_debug_head(xlat_exp_head_t const *head, int depth);
+static void _xlat_debug_head(xlat_exp_head_t const *head, int depth) CC_HINT(nonnull);
+static void _xlat_debug_node(xlat_exp_t const *node, int depth, bool print_flags) CC_HINT(nonnull);
+
 static void _xlat_debug_node(xlat_exp_t const *node, int depth, bool print_flags)
 {
 	INFO_INDENT("{ -- %s", node->fmt);
@@ -1180,8 +1182,6 @@ void xlat_debug(xlat_exp_t const *node)
 static void _xlat_debug_head(xlat_exp_head_t const *head, int depth)
 {
 	int i = 0;
-
-	fr_assert(head != NULL);
 
 	INFO_INDENT("head flags = %s %s %s %s %s %s",
 		    head->flags.needs_resolving ? "need_resolving," : "",
