@@ -182,7 +182,7 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 	 */
 	if (tmpl_is_attr(vpt)) {
 		if (tmpl_attr_unknown_add(vpt) < 0) {
-			fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
+			fr_strerror_printf("Failed defining attribute %s", vpt->name);
 			return -1;
 		}
 
