@@ -1318,6 +1318,15 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			return -1;
 		}
 
+		if (do_glob && (*ptr == FR_DIR_SEP)) {
+			ERROR("%s[%d]: Wildcard directory names not allowed in $INCLUDE", frame->filename, frame->lineno);
+			return -1;
+		}
+		if (do_glob && (*ptr == '*')) {
+			ERROR("%s[%d]: Multiple \"*\" not allowed in $INCLUDE", frame->filename, frame->lineno);
+			return -1;
+		}
+
 		do_glob |= (*ptr == '*');
 
 		/* Capture the last 2 characters parsed */
