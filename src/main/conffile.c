@@ -821,6 +821,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 	CONF_ITEM *ci;
 
 	new = cf_section_alloc(parent, name1, name2);
+	if (!new) return NULL;
 
 	if (copy_meta) {
 		new->template = cs->template;
