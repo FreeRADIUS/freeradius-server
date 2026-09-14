@@ -3818,6 +3818,8 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 			if (dst->enumv) res = fr_time_multiplier_by_res[dst->enumv->flags.flag_time_res];
 
 			sec = src->vb_float64;
+
+			if (unlikely((sec > INT64_MAX / res) || (sec < INT64_MIN / res))) goto overflow;
 			sec *= res;
 			nsec = ((src->vb_float64 * res) - ((double) sec));
 
