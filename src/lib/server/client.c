@@ -1055,7 +1055,10 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 		default:
 			attr = vp->da->name;
 			fr_sbuff_set_to_start(tmp);
-			fr_value_box_print(tmp, &vp->data, &fr_value_escape_single);
+			if (unlikely(fr_value_box_print(tmp, &vp->data, &fr_value_escape_single) < 0)) {
+				RERROR("Failed printing value for %s", attr);
+				goto error;
+			}
 			value = fr_sbuff_start(tmp);
 			v_token = T_SINGLE_QUOTED_STRING;
 			break;
