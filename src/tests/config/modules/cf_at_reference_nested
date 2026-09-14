@@ -15,7 +15,7 @@
 #  This file must parse, and must leave the parser back inside
 #  "modules { }" where it started.
 #
-@.. cf_ref_outer {
+@.. cf_ref_outer {	# ERROR
 	d {
 	}
 
