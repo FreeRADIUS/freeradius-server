@@ -21,6 +21,11 @@ concurrency:
 
 jobs:
   #
+  #  TEMPORARY, do not merge. Every leg except the multi-server tests and
+  #  the jobs they need is commented out, so a push to this branch runs
+  #  only ci-multi-server. Uncomment the blocks below to restore CI.
+  #
+  #
   #  An ad hoc continuous integration (CI) run needs the runners that a
   #  scheduled round (see `ci-scheduled.yml`) may be occupying.  Every
   #  pipeline run therefore cancels any scheduled round in flight before
@@ -29,25 +34,25 @@ jobs:
   #  therefore cancels nothing, and the fork pull request's legs wait
   #  until the scheduled round finishes.
   #
-  scheduled_ci_cancel:
-    name: Cancel scheduled CI rounds
-    if: github.repository == 'FreeRADIUS/freeradius-server'
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - name: Cancel any scheduled round in flight
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-        run: |
-          for status in queued in_progress; do
-            for id in $(gh run list --repo "$REPO" --workflow ci-scheduled.yml \
-                        --status "$status" --json databaseId --jq '.[].databaseId' 2>/dev/null); do
-              echo "Cancelling scheduled run $id, adhoc CI takes priority"
-              gh run cancel "$id" --repo "$REPO" || true
-            done
-          done
+#  scheduled_ci_cancel:
+#    name: Cancel scheduled CI rounds
+#    if: github.repository == 'FreeRADIUS/freeradius-server'
+#    runs-on: ubuntu-latest
+#    permissions:
+#      actions: write
+#    steps:
+#      - name: Cancel any scheduled round in flight
+#        env:
+#          GH_TOKEN: ${{ github.token }}
+#          REPO: ${{ github.repository }}
+#        run: |
+#          for status in queued in_progress; do
+#            for id in $(gh run list --repo "$REPO" --workflow ci-scheduled.yml \
+#                        --status "$status" --json databaseId --jq '.[].databaseId' 2>/dev/null); do
+#              echo "Cancelling scheduled run $id, adhoc CI takes priority"
+#              gh run cancel "$id" --repo "$REPO" || true
+#            done
+#          done
 
   ci_prev_run:
     name: "CI already run?"
@@ -203,37 +208,37 @@ jobs:
     uses: ./.github/workflows/docker-freeradius-images-refresh.yml
     secrets: inherit
 
-  ci:
-    needs: [docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI
-    uses: ./.github/workflows/ci.yml
-    secrets: inherit
+#  ci:
+#    needs: [docker_ci_images_refresh, ci_prev_run]
+#    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+#            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+#    name: CI
+#    uses: ./.github/workflows/ci.yml
+#    secrets: inherit
 
-  ci-deb:
-    needs: [docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI DEB
-    uses: ./.github/workflows/ci-deb.yml
-    secrets: inherit
+#  ci-deb:
+#    needs: [docker_ci_images_refresh, ci_prev_run]
+#    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+#            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+#    name: CI DEB
+#    uses: ./.github/workflows/ci-deb.yml
+#    secrets: inherit
 
-  ci-rpm:
-    needs: [docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI RPM
-    uses: ./.github/workflows/ci-rpm.yml
-    secrets: inherit
+#  ci-rpm:
+#    needs: [docker_ci_images_refresh, ci_prev_run]
+#    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+#            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+#    name: CI RPM
+#    uses: ./.github/workflows/ci-rpm.yml
+#    secrets: inherit
 
-  ci-sanitizers:
-    needs: [docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI-Sanitizers
-    uses: ./.github/workflows/ci-sanitizers.yml
-    secrets: inherit
+#  ci-sanitizers:
+#    needs: [docker_ci_images_refresh, ci_prev_run]
+#    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+#            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+#    name: CI-Sanitizers
+#    uses: ./.github/workflows/ci-sanitizers.yml
+#    secrets: inherit
 
   #
   #  `ci-freebsd` and `ci-macos` run on every commit but are absent
@@ -241,21 +246,21 @@ jobs:
   #  on virtual machines and read no docker images, so neither leg waits
   #  for a refresh.
   #
-  ci-freebsd:
-    needs: [ci_prev_run]
-    if: ${{ !cancelled()
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI FreeBSD
-    uses: ./.github/workflows/ci-freebsd.yml
-    secrets: inherit
+#  ci-freebsd:
+#    needs: [ci_prev_run]
+#    if: ${{ !cancelled()
+#            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+#    name: CI FreeBSD
+#    uses: ./.github/workflows/ci-freebsd.yml
+#    secrets: inherit
 
-  ci-macos:
-    needs: [ci_prev_run]
-    if: ${{ !cancelled()
-            && needs.ci_prev_run.outputs.should_skip != 'true' }}
-    name: CI macOS
-    uses: ./.github/workflows/ci-macos.yml
-    secrets: inherit
+#  ci-macos:
+#    needs: [ci_prev_run]
+#    if: ${{ !cancelled()
+#            && needs.ci_prev_run.outputs.should_skip != 'true' }}
+#    name: CI macOS
+#    uses: ./.github/workflows/ci-macos.yml
+#    secrets: inherit
 
   #
   #  `docker_freeradius_images_refresh` skips whenever `docker_ci_images_refresh` skips or fails,
@@ -272,37 +277,37 @@ jobs:
     uses: ./.github/workflows/ci-multi-server-tests.yml
     secrets: inherit
 
-  docker-crossbuild:
-    name: Docker crossbuild images
-    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.docker_freeradius_images_refresh.result != 'failure'
-            && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
-    uses: ./.github/workflows/docker-crossbuild.yml
-    secrets: inherit
+#  docker-crossbuild:
+#    name: Docker crossbuild images
+#    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
+#    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+#            && needs.docker_freeradius_images_refresh.result != 'failure'
+#            && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
+#    uses: ./.github/workflows/docker-crossbuild.yml
+#    secrets: inherit
 
-  docker-service:
-    name: Docker service images
-    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.docker_freeradius_images_refresh.result != 'failure'
-            && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
-    uses: ./.github/workflows/docker-service.yml
-    secrets: inherit
+#  docker-service:
+#    name: Docker service images
+#    needs: [docker_ci_images_refresh, docker_freeradius_images_refresh, ci]
+#    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+#            && needs.docker_freeradius_images_refresh.result != 'failure'
+#            && needs.ci.result == 'success' && github.repository_owner == 'FreeRADIUS' }}
+#    uses: ./.github/workflows/docker-service.yml
+#    secrets: inherit
 
   #
   #  `docs` only runs when the commit changes a file that the
   #  documentation build reads.  `docs` is absent from the `needs` list of the `merge` job,
   #  because a failed documentation build should not hold up a merge.
   #
-  docs:
-    name: Documentation
-    needs: [common_vars, docker_ci_images_refresh, ci_prev_run]
-    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true'
-            && needs.common_vars.outputs.docs_changed == 'true' }}
-    uses: ./.github/workflows/documentation.yml
-    secrets: inherit
+#  docs:
+#    name: Documentation
+#    needs: [common_vars, docker_ci_images_refresh, ci_prev_run]
+#    if: ${{ !cancelled() && needs.docker_ci_images_refresh.result != 'failure'
+#            && needs.ci_prev_run.outputs.should_skip != 'true'
+#            && needs.common_vars.outputs.docs_changed == 'true' }}
+#    uses: ./.github/workflows/documentation.yml
+#    secrets: inherit
 
   #
   #  `merge` runs when every gating leg passed.  The `needs` list holds only
@@ -322,15 +327,15 @@ jobs:
   #  force pushes.  The reworded commit carries the tree that just
   #  passed, so every leg skips.
   #
-  merge:
-    name: Merge
-    needs: [ci_prev_run, ci, ci-deb, ci-rpm, ci-sanitizers]
-    if: ${{ !cancelled()
-            && (needs.ci_prev_run.outputs.should_skip == 'true'
-                || (needs.ci.result == 'success'
-                    && needs.ci-deb.result == 'success'
-                    && needs.ci-rpm.result == 'success'
-                    && needs.ci-sanitizers.result == 'success')) }}
-    uses: ./.github/workflows/merge-upstream.yml
-    secrets:
-      GH_APP_PRIVATE_KEY_CI_MERGE: ${{ secrets.GH_APP_PRIVATE_KEY_CI_MERGE }}
+#  merge:
+#    name: Merge
+#    needs: [ci_prev_run, ci, ci-deb, ci-rpm, ci-sanitizers]
+#    if: ${{ !cancelled()
+#            && (needs.ci_prev_run.outputs.should_skip == 'true'
+#                || (needs.ci.result == 'success'
+#                    && needs.ci-deb.result == 'success'
+#                    && needs.ci-rpm.result == 'success'
+#                    && needs.ci-sanitizers.result == 'success')) }}
+#    uses: ./.github/workflows/merge-upstream.yml
+#    secrets:
+#      GH_APP_PRIVATE_KEY_CI_MERGE: ${{ secrets.GH_APP_PRIVATE_KEY_CI_MERGE }}
