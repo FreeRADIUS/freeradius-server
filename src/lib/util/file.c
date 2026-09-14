@@ -1008,49 +1008,91 @@ done:
 /** See if a filename is OK.
  *
  * @param[in] filename	to check
+ * @param[in] end	of the filename to check
+ * @param[in] allow_dir allow trailing '/' on filenames, but not './' or '../'
  * @return
  *	- false - filename is invalid or insecure
  *	- true - filename is sane and OK
  */
-bool fr_filename_ok(char const *filename)
+bool fr_filename_ok(char const *filename, char const *end, bool allow_dir)
 {
 	char const *p = filename;
+	bool isdir;
 
-	if (*p == '/') {
-		fr_strerror_const("Invalid filename - leading '/' is forbidden");
+	if (end == filename) {
+		fr_strerror_const("invalid zero-length (empty) filename");
 		return false;
 	}
 
-	if (*p == '.') {
-		fr_strerror_const("Invalid filename - leading '.' is forbidden");
-		return false;
+	isdir = true;
+
+	/*
+	 *	See if the filename is doing anything funky.  If so, disallow it.
+	 *
+	 *	.     - current directory, not allowed
+	 *	./    - ditto
+	 *	.foo  - allowed
+	 *	foo   - allowed
+	 *	foo/  - disallowed
+	 */
+	while (p < end) {
+		if (!isdir) goto next;
+
+		/*
+		 *	"foo/bar" is OK.
+		 *
+		 *	@todo - do we care about repeated "/", such as foo//// ?
+		 *	Likely not, but perhaps we want to normalize it.
+		 */
+		if (*p != '.') goto next;
+
+		/*
+		 *	"foo/." might be a problem.
+		 */
+		p++;
+		if (p == end) {
+			fr_strerror_const("ends with '/.'");
+			return false;
+		}
+
+		/*
+		 *	"foo/./" is stupid, and is disallowed.  Otherwise people could do 'foo/./././'
+		 */
+		if (*p == '/') {
+			fr_strerror_const("ends with './'");
+			return false;
+		}
+
+		/*
+		 *	"foo/.foo" is allowed.
+		 */
+		if (*p != '.') goto next;
+
+		/*
+		 *	"foo/../ is disallowed.
+		 */
+		p++;
+		if ((p == end) || (*p == '/')) {
+			fr_strerror_const("contains '/../'");
+			return false;
+		}
+
+	next:
+		if (*(uint8_t const *) p < ' ') {
+			fr_strerror_const("contains control character");
+			return false;
+		}
+
+		isdir = (*p == '/');
+		p++;
 	}
 
-	while (*p) {
-		if (*p < ' ') {
-			fr_strerror_const("Invalid filename - control characters are forbidden");
-			return false;
-		}
-
-		if (*p == '\\') {
-			fr_strerror_const("Invalid filename - backslashes are forbidden");
-			return false;
-		}
-
-		if (*p != '/') {
-			p++;
-			continue;
-		}
-
-		if (p[1] == '/') {
-			fr_strerror_const("Invalid filename - multiple '/' are forbidden");
-			return false;
-		}
-
-		if (p[1] == '.') {
-			fr_strerror_const("Invalid filename - 'dot' files cannot be accessed");
-			return false;
-		}
+	/*
+	 *	The last character was a '/', we may (or may not) allow it.
+	 */
+	if (isdir && !allow_dir) {
+		fr_strerror_const("ends with '/'");
+		return false;
 	}
 
 	return true;
