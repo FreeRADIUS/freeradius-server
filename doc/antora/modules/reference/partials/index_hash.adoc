@@ -1,0 +1,26 @@
+.Hash/digest functions
+[options="header"]
+[cols="30%,70%"]
+|===
+| *Function*					| *Description*
+| %hash.blake2b_512				| BLAKE2b-512
+| %hash.blake2s_256				| BLAKE2s-256
+| %hash.md4					| MD4
+| %hash.md5					| MD5
+| %hash.sha1					| SHA1
+| %hash.sha224					| SHA224
+| %hash.sha256					| SHA256
+| %hash.sha384					| SHA384
+| %hash.sha512					| SHA512
+| %hash.sha2_224				| SHA2-224
+| %hash.sha2_256				| SHA2-256
+| %hash.sha2_384				| SHA2-384
+| %hash.sha2_512				| SHA2-512
+| %hash.sha3_224				| SHA3-224
+| %hash.sha3_256				| SHA3-256
+| %hash.sha3_384				| SHA3-384
+| %hash.sha3_512				| SHA3-512
+|===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

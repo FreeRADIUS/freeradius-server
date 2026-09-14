@@ -1,0 +1,14 @@
+.Logging functions
+[options="header"]
+[cols="30%,70%"]
+|===
+| *Function*						| *Description*
+| xref:xlat/log.adoc#_log_debugstring[%log.debug]	| Log message at DEBUG level
+| xref:xlat/log.adoc#_log_destinationstring_uint32_filename[%log.destination]	| Add new debug log destination to current request
+| xref:xlat/log.adoc#_log_errstring[%log.err]		| Log message at ERROR level
+| xref:xlat/log.adoc#_log_infostring[%log.info]		| Log message at INFO level
+| xref:xlat/log.adoc#_log_warnstring[%log.warn]		| Log message at WARN level
+|===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

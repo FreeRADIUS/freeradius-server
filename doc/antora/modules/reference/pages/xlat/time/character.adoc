@@ -2,7 +2,7 @@
 
 The following are single letter expansions related to time functions.
 
-The other `%time(...)` functions and the
+The other `+%time(...)+` functions and the
 xref:reference:raddb/mods-available/date.adoc[date] module should be
 used instead of these expansions.
 

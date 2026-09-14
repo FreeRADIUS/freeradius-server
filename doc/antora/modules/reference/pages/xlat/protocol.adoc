@@ -22,9 +22,9 @@ turned back into attributes via `%internal.decode(...)`.
 
 == %PROTO.decode(_octets_)
 
-Decodes the input octers as the named protocol.  The input can also be
+Decodes the input octets as the named protocol.  The input can also be
 an attribute reference, which is usually a reference to an attribute
-of type `octets.
+of type `octets`.
 
 Each `PROTO.decode` function is automatically registered for every
 protocol which is used by the server.

@@ -58,6 +58,7 @@
 *** xref:unlang/attr.adoc[Attribute References]
 *** xref:unlang/return_codes.adoc[Return Codes]
 
+
 ** xref:type/index.adoc[Data Types]
 *** xref:type/all_types.adoc[List of Data Types]
 *** xref:type/cast.adoc[Casts]
@@ -68,58 +69,31 @@
 *** xref:type/string/backticks.adoc[Backtick Quoted Strings]
 *** xref:type/string/unquoted.adoc[Unquoted Strings]
 
+
 ** xref:xlat/index.adoc[Dynamic Expansions]
 *** xref:xlat/function.adoc[Function Syntax]
-*** xref:xlat/all.adoc[Built-in Functions]
 *** xref:xlat/alternation.adoc[Alternation]
 *** xref:xlat/attribute.adoc[Attribute References]
-*** xref:xlat/conversion.adoc[Data Conversion]
-*** xref:xlat/deprecated.adoc[Deprecated Functions]
-*** xref:xlat/dict.adoc[Dictionary Handling]
-*** xref:xlat/file/index.adoc[File Handling]
 
-*** xref:xlat/hash.adoc[Hash / Digest]
-*** xref:xlat/hmac.adoc[HMAC]
+*** xref:xlat/all.adoc[Built-in Functions]
+**** xref:xlat/pairs/index.adoc[Attribute-Value Pairs]
+**** xref:xlat/conversion.adoc[Data Conversion]
+**** xref:xlat/file/index.adoc[File Handling]
+**** xref:xlat/hash.adoc[Hash / Digest]
+**** xref:xlat/hmac.adoc[HMAC]
+**** xref:xlat/interpreter.adoc[Interpreter State and Debugging]
+**** xref:xlat/log.adoc[Logging]
+**** xref:xlat/misc/index.adoc[Miscellaneous]
+**** xref:xlat/net/index.adoc[Network Addresses]
+**** xref:xlat/profiling.adoc[Profiling]
+**** xref:xlat/protocol.adoc[Protocol Encoding and Decoding]
+**** xref:xlat/str/index.adoc[Strings]
+**** xref:xlat/time/index.adoc[Time Management]
+**** xref:xlat/deprecated.adoc[Deprecated Functions]
 
-*** xref:xlat/interpreter.adoc[Interpreter State and Debugging]
-*** xref:xlat/log.adoc[Logging]
-*** xref:xlat/profiling.adoc[Profiling]
-*** xref:xlat/protocol.adoc[Protocol Encoding and Decoding]
+*** xref:xlat/module.adoc[Module Functions]
+**** xref:xlat/modules/dict.adoc[Dictionary Handling]
 
-*** xref:xlat/misc/index.adoc[Miscellaneous]
-**** xref:xlat/misc/config.adoc[Server Configuration]
-**** xref:xlat/misc/length.adoc[Attribute length]
-**** xref:xlat/misc/regex.adoc[Regex search]
-**** xref:xlat/misc/module_call.adoc[Call a virtual module]
-**** xref:xlat/misc/rand.adoc[Random number]
-
-*** xref:xlat/pairs/index.adoc[Pairs]
-**** xref:xlat/pairs/debug.adoc[Write to debug output]
-**** xref:xlat/pairs/immutable.adoc[Mark as immutable]
-**** xref:xlat/pairs/print.adoc[Print to string]
-
-*** xref:xlat/str/index.adoc[Strings]
-**** xref:xlat/str/concat.adoc[Concatenation]
-**** xref:xlat/str/split.adoc[Split Strings]
-**** xref:xlat/misc/length.adoc[Length]
-**** xref:xlat/str/lpad.adoc[Left Pad]
-**** xref:xlat/str/rpad.adoc[Right Pad]
-**** xref:xlat/str/rand.adoc[Random Strings]
-**** xref:xlat/str/lower.adoc[Convert to Lowercase]
-**** xref:xlat/str/upper.adoc[Convert to Uppercase]
-
-*** xref:xlat/time/index.adoc[Time Management]
-**** xref:xlat/time/character.adoc[Single Character]
-**** xref:xlat/time/generic.adoc[Generic]
-**** xref:xlat/time/is_dst.adoc[Daylight Savings]
-**** xref:xlat/time/next.adoc[Next]
-**** xref:xlat/time/now.adoc[Now]
-**** xref:xlat/time/offset.adoc[UTC Offset]
-**** xref:xlat/time/request.adoc[Request Time]
-
-*** xref:xlat/ipv4/index.adoc[IPv4]
-**** xref:xlat/ipv4/broadcast.adoc[Broadcast Address]
-**** xref:xlat/ipv4/netmask.adoc[Subnet Mask]
 
 ** xref:dictionary/index.adoc[Dictionaries]
 *** xref:dictionary/alias.adoc[ALIAS]
@@ -139,6 +113,7 @@
 *** xref:dictionary/end.adoc[END]
 *** xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]
 *** xref:dictionary/end-vendor.adoc[END-VENDOR]
+
 
 ** xref:raddb/index.adoc[Configuration Files]
 *** xref:raddb/format.adoc[Format of the Configuration Files]
@@ -220,7 +195,6 @@
 **** xref:raddb/mods-available/linelog.adoc[Linelog]
 **** xref:raddb/mods-available/logtee.adoc[Logtee]
 
-
 *** xref:raddb/mods-available/doc/policy.adoc[Policy]
 **** xref:raddb/mods-available/always.adoc[Always]
 **** xref:raddb/mods-available/attr_filter.adoc[Attr_filter]
@@ -248,6 +222,7 @@
 **** xref:policy/different.adoc[Why FreeRADIUS is different]
 **** xref:raddb/policy.d/at_reference.adoc[@policy]
 **** xref:raddb/policy.d/method.adoc[Method Override]
+
 
 ** xref:raddb/sites-available/index.adoc[Virtual Servers]
 *** xref:raddb/sites-available/arp.adoc[ARP]

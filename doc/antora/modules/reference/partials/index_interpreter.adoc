@@ -1,0 +1,18 @@
+.Interpreter functions
+[options="header"]
+[cols="30%,70%"]
+|===
+| *Function*									| *Description*
+| xref:xlat/interpreter.adoc#_debuglevel[%debug]				| Dynamically change the debug level
+| xref:xlat/interpreter.adoc#_interpreterfilename[%interpreter('filename')]	| Current file being executed
+| xref:xlat/interpreter.adoc#_interpreterline[%interpreter('line')]		| Line number in the current file
+| xref:xlat/interpreter.adoc#_interpretermodule[%interpreter('module')]		| Current module being executed
+| xref:xlat/interpreter.adoc#_interpreterprocessing_stage[%interpreter('processing_stage')]	| Section processing the request
+| xref:xlat/interpreter.adoc#_interpreterrcode[%interpreter('rcode')]		| Return current rcode (`noop`, `ok`, etc)
+| xref:xlat/interpreter.adoc#_interpreterserver[%interpreter('server')]		| Name of current virtual server
+| xref:xlat/interpreter.adoc#_interpreter_module_forcename_noop[%interpreter.module.force]	| Force rcode for a module
+| xref:xlat/interpreter.adoc#_clientkey[%client]				| Variable defined in a client definition
+|===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

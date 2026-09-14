@@ -1,0 +1,15 @@
+.Conversion functions
+[options="header"]
+[cols="30%,70%"]
+|===
+| *Function*							| *Description*
+| xref:xlat/conversion.adoc#_base64_encode[%base64_encode]	| Encode a string using Base64
+| xref:xlat/conversion.adoc#_base64_decode[%base64_decode]	| Decode a Base64 string
+| xref:xlat/conversion.adoc#_bin[%bin]				| Convert string to binary
+| xref:xlat/conversion.adoc#_hex[%hex]				| Convert to hex
+| xref:xlat/conversion.adoc#_url_quote[%url.quote]		| Quote URL special characters
+| xref:xlat/conversion.adoc#_url_unquote[%url.unquote]		| Unquote URL special characters
+|===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

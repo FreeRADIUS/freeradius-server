@@ -2,34 +2,20 @@
 
 The following functions perform hashing.
 
-Note that the server supports insecure hashing methods such as MD4,
-MD5 and SHA1.  These functions are here for historical compatibility
-and completeness.  They should not be used.
+[WARNING]
+====
+The server supports insecure hashing methods such as MD4, MD5 and SHA1. These
+functions are here for historical compatibility and completeness. They should
+not be used.
+====
 
-All of the hash functions take arbitrary data, and turn binary data as
-`octet`s.
+All of the hash functions take arbitrary data, and return binary data as ``octet``s.
 
 == List of Hash Functions
 
 The following hashes are supported:
 
-* `%hash.blake2b_512( ... )`
-* `%hash.blake2s_256( ... )`
-* `%hash.md4(...)`
-* `%hash.md5(...)`
-* `%hash.sha1( ... }`
-* `%hash.sha224( ... }`
-* `%hash.sha256( ... }`
-* `%hash.sha384( ... }`
-* `%hash.sha512( ... }`
-* `%hash.sha2_224( ... )`
-* `%hash.sha2_256( ... )`
-* `%hash.sha2_384( ... )`
-* `%hash.sha2_512( ... )`
-* `%hash.sha3_224( ... )`
-* `%hash.sha3_256( ... )`
-* `%hash.sha3_384( ... )`
-* `%hash.sha3_512( ... )`
+include::partial$index_hash.adoc[]
 
 .Return: _octets_
 

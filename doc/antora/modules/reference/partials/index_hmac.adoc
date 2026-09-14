@@ -1,0 +1,11 @@
+.HMAC functions
+[options="header"]
+[cols="30%,70%"]
+|===
+| *Function*						| *Description*
+| xref:xlat/hmac.adoc#_hmac_md5shared_key_string[%hmac.md5]		| Generate HMAC-MD5 of string
+| xref:xlat/hmac.adoc#_hmac_sha1shared_key_string[%hmac.sha1]		| Generate HMAC-SHA1 of string
+|===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

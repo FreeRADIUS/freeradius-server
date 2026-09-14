@@ -1,0 +1,14 @@
+.Deprecated functions
+[options="header"]
+[cols="30%,70%"]
+|===
+| *Function*								| *Replacement*
+| xref:xlat/deprecated.adoc#_expr[%expr]				| `+%{...}+`
+| xref:xlat/deprecated.adoc#_integer[%integer]				| `+%{(integer) ...}+`
+| xref:xlat/deprecated.adoc#_packattribute_nameattribute_name[%pack]	| `+(octets) Attr + (octets) Attr+`
+| xref:xlat/deprecated.adoc#_string[%string]				| `+%{(string) ...}+`
+| xref:xlat/deprecated.adoc#_strlen[%strlen]				| `+%length(...)+`
+|===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

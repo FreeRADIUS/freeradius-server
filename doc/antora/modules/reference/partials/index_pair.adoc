@@ -1,0 +1,12 @@
+.Attribute-Value Pair manipulation
+[options="header"]
+[cols="30%,70%"]
+|===
+| *Function*						| *Description*
+| xref:xlat/interpreter.adoc#debug_xlat[%debug]		| Print attributes to the debug output
+| xref:xlat/pairs/immutable.adoc[%immutable]		| Mark attributes as immutable (cannot be changed)
+| xref:xlat/pairs/print.adoc[%print]			| Print attribute name and value to string
+|===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

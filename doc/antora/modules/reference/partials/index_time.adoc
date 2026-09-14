@@ -1,0 +1,16 @@
+.Time management functions
+[options="header"]
+[cols="30%,70%"]
+|=====
+| *Function*						| *Description*
+| xref:xlat/time/character.adoc[Single Character]	| Single character expansions (`%c`, `%D` etc.)
+| xref:xlat/time/generic.adoc[%time]			| Generic (too complex) time function
+| xref:xlat/time/is_dst.adoc[%time.is_dst]		| Is the system running in DST?
+| xref:xlat/time/next.adoc[%time.next]			| Number of seconds until next hour, day, etc
+| xref:xlat/time/now.adoc[%time.now]			| Return the current time
+| xref:xlat/time/offset.adoc[%time.offset]		| Return UTC offset
+| xref:xlat/time/request.adoc[%time.request]		| Return the time when the request was received
+|=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

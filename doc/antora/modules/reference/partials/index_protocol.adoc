@@ -1,0 +1,11 @@
+.Protocol encoding and decoding
+[options="header"]
+[cols="30%,70%"]
+|=====
+| *Function*							| *Description*
+| xref:xlat/protocol.adoc#_proto_decodeoctets[%PROTO.decode]	| Decodes as the named protocol
+| xref:xlat/protocol.adoc#_proto_encodelist[%PROTO.encode]	| Encodes as the named protocol
+|=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

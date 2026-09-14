@@ -1,0 +1,11 @@
+.Network address handling
+[options="header"]
+[cols="30%,70%"]
+|=====
+| *Function*						| *Description*
+| xref:xlat/net/broadcast.adoc[%ip.v4.broadcast]	| Get the broadcast address from an IPv4 prefix
+| xref:xlat/net/netmask.adoc[%ip.v4.netmask]		| Get the netmask from an IPv4 prefix
+|=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -3,6 +3,7 @@
 The following functions allow inspection and/or manipulation of the `unlang` interpreter as it is running.
 
 <<debug_xlat>>
+
 == Debug Functions
 
 The following functions allow changing the debug level, or printing out specific lists of attributes.
@@ -65,11 +66,6 @@ Which filename is currently being executed.
 
 The line number in the current file being executed.
 
-== %interpreter('processing_stage')
-
-Which section of a virtual server is processing the request.
-
-
 == %interpreter('module')
 
 The current module being executed.  If the expansions is done in an
@@ -94,7 +90,7 @@ Force a module xref:unlang/return_codes.adoc[rcode], e.g. `handled` or `ok`, etc
 
 A module can be "un-forced" by not passing a second argument.
 
-=== %client(<key>)
+== %client(<key>)
 
 Refers to a variable that was defined in the client section for the
 current client. See the sections `client { ... }` in `clients.conf`.

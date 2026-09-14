@@ -1,0 +1,8 @@
+= Network Address Handling
+
+The following functions perform manipulation of IPv4 addresses / subnets.
+
+include::partial$index_net.adoc[]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

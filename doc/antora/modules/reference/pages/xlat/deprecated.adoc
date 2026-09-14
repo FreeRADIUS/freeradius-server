@@ -41,9 +41,10 @@ This expansion has been removed.  Instead, just use `%{(string) ...}` with an ex
 reply.Reply-Message := "The printable version of Class is %{(string) Class}"
 ----
 
-== %strlen( ... )
+== %strlen(...)
 
-This expansion is deprecated and has been be removed.  Just use `%length(...)` instead.
+This expansion is deprecated.  Just use `%length(...)` instead.
+
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

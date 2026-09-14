@@ -1,0 +1,16 @@
+.Profiling functions
+[options="header"]
+[cols="30%,70%"]
+|===
+| *Function*							| *Description*
+| xref:xlat/profiling.adoc#callgrind_start[%callgrind.start]	| Switch callgrind instrumentation on
+| xref:xlat/profiling.adoc#callgrind_stop[%callgrind.stop]	| Switch callgrind instrumentation off
+| xref:xlat/profiling.adoc#callgrind_dump[%callgrind.dump]	| Write a callgrind profile dump, then zero the costs
+| xref:xlat/profiling.adoc#callgrind_zero[%callgrind.zero]	| Zero the callgrind costs without writing a dump
+| xref:xlat/profiling.adoc#gperftools_start[%gperftools.start]	| Start the gperftools CPU profiler, writing samples to a file
+| xref:xlat/profiling.adoc#gperftools_stop[%gperftools.stop]	| Write buffered gperftools samples, then stop the profiler
+| xref:xlat/profiling.adoc#gperftools_flush[%gperftools.flush]	| Write buffered gperftools samples and keep the profiler running
+|===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
