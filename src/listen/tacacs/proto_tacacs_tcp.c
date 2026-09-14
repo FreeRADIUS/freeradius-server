@@ -297,7 +297,8 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	/*
 	 *	If we're supposed to close the socket, then go do that.
 	 */
-	if ((data_size + written) == buffer_len) {
+	if (((data_size + written) == buffer_len) &&
+	    !packet_is_encrypted((fr_tacacs_packet_t const *) buffer)) {
 		fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *) buffer;
 
 		switch (pkt->hdr.type) {
