@@ -832,12 +832,12 @@ char const *fr_strerror_concat(char const *prefix, char const *line_sep)
 
 	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, SIZE_MAX);
 
-	if (prefix) fr_sbuff_in_strcpy(agg, prefix);
+	if (prefix) (void) fr_sbuff_in_strcpy(agg, prefix);
 
 	while ((error = fr_strerror_pop()) != NULL) {
-		fr_sbuff_in_strcpy(agg, error);
+		(void) fr_sbuff_in_strcpy(agg, error);
 		if (*fr_strerror_peek()) {
-			fr_sbuff_in_strcpy(agg, line_sep);
+			(void) fr_sbuff_in_strcpy(agg, line_sep);
 		}
 	}
 
