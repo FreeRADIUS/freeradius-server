@@ -492,7 +492,9 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 	 *	but those changes don't match the search.
 	 */
 	case LDAP_TAG_SYNC_NEW_COOKIE:
-		if (sync_new_cookie(&new_cookie, sync, ber) == -1) {
+		ret = sync_new_cookie(&new_cookie, sync, ber);
+		if (ret == -2) break; /* it's an identical cookie, not an error */
+		if (ret < 0) {
 		error:
 			if (sync_uuids) ber_bvarray_free(sync_uuids);
 			if (ber) ber_free(ber, 1);
