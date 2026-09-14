@@ -19,7 +19,8 @@ FreeRADIUS can log to more than one destination at once. Each log
 destination has its own options, such as sending to a file, to syslog,
 adding a timestamp to each entry, or colourising the output. A running
 server can change a log destination's filename and log level at any
-time, using an `unlang` dynamic expansion, xref:xlat/interpreter.adoc[%debug()]
+time, using an `unlang` dynamic expansion,
+xref:reference:xlat/interpreter.adoc[%debug()]
 
 The following configuration adds a new log destination named `debug`.
 It should be added to the

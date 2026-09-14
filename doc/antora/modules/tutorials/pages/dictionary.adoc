@@ -51,8 +51,9 @@ the network. Clients and NAS devices never see dictionary names.
 The `share/` dictionaries are defined by the FreeRADIUS team, and are
 updated with every release.  This means that they are overwritten on
 every package update or upgrade.  If you need to define your own
-dictionary entries, they must go into xref:raddb/dictionary.adoc[local
-dictionary] file or into `dictionary.d/`.
+dictionary entries, they must go into
+xref:reference:raddb/dictionary.adoc[local dictionary] file or into
+`dictionary.d/`.
 
 In order to help you organize your own dictionaries, the
 `dictionary` file ends with:
@@ -303,8 +304,8 @@ dictionary {
 ----
 
 This attribute can be set and tested in policies within the `default`
-virtual server without adding anything to the xref:raddb/dictionary.adoc[local dictionary] file or
-`dictionary.d/`.
+virtual server without adding anything to the
+xref:reference:raddb/dictionary.adoc[local dictionary] file or `dictionary.d/`.
 
 == Questions
 
