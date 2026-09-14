@@ -5015,6 +5015,11 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt)
 			(void) xlat_print(&our_out, ar->ar_cond, NULL);
 			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "]");
 
+		} else if (ar_filter_is_expr(ar)) {
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "[");
+			(void) xlat_print(&our_out, ar->ar_expr, NULL);
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "]");
+
 		} else {
 			fr_assert(0);
 		}
