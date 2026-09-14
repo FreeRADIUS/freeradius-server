@@ -160,5 +160,33 @@ match %regex.match(3)
 xlat_expr %{'foo'}
 match %{'foo'}
 
+#
+#  Empty back-quoted strings are invalid, as they're supposed to refer
+#  to a string which is expanded.
+#
+xlat_expr ``
+match ERROR: ERROR offset 3: Back-quoted strings cannot be empty
+
+#
+#  A non-empty one still parses, so the check above is not too greedy.
+#
+xlat_expr `echo hello`
+match `echohello`
+
+#
+#  Empty regular expressions are invalid.
+#
+xlat_expr Filter-Id =~ //
+match ERROR: ERROR offset 15: Regular expressions cannot be empty
+
+xlat_expr Filter-Id =~ m''
+match ERROR: ERROR offset 16: Regular expressions cannot be empty
+
+xlat_expr Filter-Id =~ /foo/
+match (Filter-Id =~ /foo/)
+
+xlat_expr Filter-Id =~ /foo/i
+match (Filter-Id =~ /foo/i)
+
 count
-match 75
+match 87

@@ -203,6 +203,15 @@ match ERROR: ERROR offset 2: Missing attribute name
 xlat %{[baz}
 match ERROR: ERROR offset 2: Missing attribute name
 
+#
+#  A valid expression, but the braces aren't closed.
+#
+xlat %{1 + 2
+match ERROR: ERROR offset 7: Missing closing brace '}'
+
+xlat %{(1 + 2)
+match ERROR: ERROR offset 9: Missing closing brace '}'
+
 xlat %{ }
 match ERROR: ERROR offset 3: Unexpected input '}' when trying to read an attribute name
 
@@ -371,4 +380,4 @@ xlat %hash.md5('arg"')
 match %hash.md5(0x61726722)
 
 count
-match 191
+match 195

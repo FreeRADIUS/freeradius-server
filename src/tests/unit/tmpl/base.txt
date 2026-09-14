@@ -51,5 +51,37 @@ match ERROR: ERROR offset 0: Numerical attribute references are not allowed here
 tmpl 192.0..1/24
 match ERROR: ERROR offset 0: Numerical attribute references are not allowed here
 
+#
+#  Bare words which begin with '%' are handed to xlat_tokenize(), and the
+#  result is hoisted back into the tmpl.
+#
+tmpl %{User-Name}
+match User-Name
+
+tmpl %{Filter-Id}
+match Filter-Id
+
+#
+#  An expression does not hoist to an attribute, so the tmpl keeps the
+#  xlat.
+#
+tmpl %{(1 + 2)}
+match %{(1 + 2)}
+
+#
+#  Parse errors in xlats get hoisted to tmpls.
+#
+tmpl %{
+match ERROR: ERROR offset 2: Missing closing brace '}'
+
+tmpl %{}
+match ERROR: ERROR offset 2: Empty expressions are invalid
+
+tmpl %{User-Name
+match ERROR: ERROR offset 11: Missing closing brace '}'
+
+tmpl %{1 + 2
+match ERROR: ERROR offset 7: Missing closing brace '}'
+
 count
-match 27
+match 41
