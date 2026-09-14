@@ -1,14 +1,14 @@
 = Server Configuration
 
-== %config(<key>)
+== `+%config(<key>)+`
 
 Refers to a variable in the configuration file. See the documentation
 on configuration file references.
 
 .Return: _string_
 
-.Example
-
+.Pulling variables from the server config
+====
 [source,unlang]
 ----
 "Server installed in %config('prefix')"
@@ -21,6 +21,7 @@ on configuration file references.
 Server installed in /opt/freeradius
 Module rlm_exec.shell_escape = yes
 ```
+====
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1,0 +1,67 @@
+= `%eval()`
+
+Evaluates the string as an expansion, and returns the result. The main difference between using this expansion and just using `%{...}` is that the string being evaluated can be dynamically changed.
+
+[#syntax]
+== Syntax
+
+`%eval(_string_)`
+
+.Return: _data_
+
+.Evaluate an attribute or a string directly
+====
+[source,unlang]
+----
+if (User-Name == "bob") {
+    control.Filter-Id := "User-Name"
+} else {
+    control.Filter-Id := "not bob!"
+}
+
+reply.Reply-Message := "%eval(control.Filter-Id}"
+----
+
+.Output when `User-Name == bob`
+
+```
+bob
+```
+
+.Output when `User-Name == jim`
+
+```
+not bob!
+```
+====
+
+.Evalute an expression
+====
+[source,unlang]
+----
+control.Filter-Id := 'User-Name == "bob"'
+
+if (%eval(control.Filter-Id)) {
+        reply.Reply-Message := "yes it's bob"
+} else {
+        reply.Reply-Message := "not bob!"
+}
+----
+
+.Output when `User-Name == bob`
+
+```
+yes it's bob
+```
+
+.Output when `User-Name == jim`
+
+```
+not bob!
+```
+====
+
+
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

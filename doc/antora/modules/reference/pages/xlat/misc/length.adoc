@@ -1,11 +1,11 @@
-= %length( ... )
+= `+%length(...)+`
 
 The `length` function returns the size of the input as an integer.
 When the input is a string, then the output is identical to the
 `strlen` expansion.
 
 When the input is an attribute reference, the output is the size of
-the attributes data as encoded "on the wire".
+the attribute's data as encoded "on the wire".
 
 .Return: _size_
 

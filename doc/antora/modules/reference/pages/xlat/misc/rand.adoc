@@ -1,4 +1,4 @@
-= %rand(<number>)
+= `+%rand(<number>)+`
 
 Generate random number from `0` to `<number>-1`.
 

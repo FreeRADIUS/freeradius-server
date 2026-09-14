@@ -1,6 +1,8 @@
 = Summary of Built-in Functions
 
 
+== File Handling Functions
+
 .File Handling Functions
 [options="headers, autowidth]
 |===
@@ -17,18 +19,22 @@
 | xref:xlat/file/touch.adoc[file.touch]			| Create a file if it does not already exist.
 |===
 
+
 == Miscellaneous Functions
 
 .Miscellaneous Functions
 [options="headers, autowidth]
 |===
 | *Function*						| *Description*
-| xref:xlat/misc/config.adoc[Server Configuration]	| Examine configuration items.
-| xref:xlat/misc/length.adoc[length]			| Get the length of data.
-| xref:xlat/misc/misc.adoc[Miscellaneous]		| Functions to execute. regular expression search on string, using pattern.
-| xref:xlat/misc/module_call.adoc[module.call]		| Call a virtual module
+| xref:xlat/misc/config.adoc[config]			| Examine server configuration items.
+| xref:xlat/misc/eval.adoc[eval]			| Evalute a string as an xlat expansion.
+| xref:xlat/misc/length.adoc[length]			| Get the length of data in octets.
+| xref:xlat/misc/module_call.adoc[module.call]		| Call a virtual module.
 | xref:xlat/misc/rand.adoc[rand]			| Generate random integers.
+| xref:xlat/misc/regex.adoc[regex.*]			| Perform regular expression search.
+| xref:xlat/misc/uuid.adoc[uuid]			| Generation of UUIDs.
 |===
+
 
 == Pair Manipulation
 
@@ -40,6 +46,9 @@
 | xref:xlat/pairs/immutable.adoc[immutable]		| Mark attributes as immutable (cannot be changed).
 | xref:xlat/pairs/print.adoc[print]			| Print attribute name and value to string.
 |===
+
+
+== Profiling Functions
 
 .Profiling Functions
 [options="header, autowidth"]
@@ -54,6 +63,7 @@
 | xref:xlat/profiling.adoc#gperftools_flush[gperftools.flush]	| Write buffered gperftools samples and keep the profiler running.
 |===
 
+
 == String Manipulation
 
 .String manipulation
@@ -62,13 +72,14 @@
 | *Function*						| *Description*
 | xref:xlat/str/concat.adoc[concat]			| Concatenate strings with delimiters.
 | xref:xlat/str/split.adoc[split]			| Split a string based on delimiters.
-| xref:xlat/misc/misc.adoc#length[length]		| Returns the size of the data.
+| xref:xlat/misc/length.adoc[length]			| Returns the size of the data.
 | xref:xlat/str/lpad.adoc[lpad]				| Left pad a string.
 | xref:xlat/str/rpad.adoc[rpad]				| Right pad a string.
-| xref:xlat/str/rand.adoc[rand]				| Return a random string .based on input format
+| xref:xlat/str/rand.adoc[rand]				| Return a random string based on input format.
 | xref:xlat/str/lower.adoc[lower]			| Convert the input string. to lowercase.
 | xref:xlat/str/upper.adoc[upper]			| Convert the input string. to uppercase
 |===
+
 
 == Time Management
 
@@ -85,7 +96,9 @@
 | xref:xlat/time/request.adoc[request]			| Return the time when the request was received.
 |=====
 
+
 == IPv4 Handling
+
 .IPv4 handling
 [options="header"]
 [cols="30%,70%"]

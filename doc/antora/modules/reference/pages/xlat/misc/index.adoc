@@ -7,12 +7,14 @@ which operate on inputs, and produce an output.
 .Builtin Functions
 [options="headers, autowidth]
 |===
-| *Function*				            | *Description*
-| xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items
-| xref:xlat/misc/length.adoc[length]	            | Get the length of data
-| xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute regular expression search on string, using pattern.
-| xref:xlat/misc/rand.adoc[rand]	            | random integers
-| xref:xlat/misc/uuid.adoc[UUID]                    | Generation of UUIDs
+| *Function*						| *Description*
+| xref:xlat/misc/config.adoc[config]			| Examine server configuration items.
+| xref:xlat/misc/eval.adoc[eval]			| Evalute a string as an xlat expansion.
+| xref:xlat/misc/length.adoc[length]			| Get the length of data in octets.
+| xref:xlat/misc/module_call.adoc[module.call]		| Call a virtual module.
+| xref:xlat/misc/rand.adoc[rand]			| Generate random integers.
+| xref:xlat/misc/regex.adoc[regex.*]			| Perform regular expression search.
+| xref:xlat/misc/uuid.adoc[uuid]			| Generation of UUIDs.
 |===
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

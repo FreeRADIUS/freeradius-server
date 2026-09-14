@@ -88,10 +88,10 @@
 
 *** xref:xlat/misc/index.adoc[Miscellaneous]
 **** xref:xlat/misc/config.adoc[Server Configuration]
-**** xref:xlat/misc/length.adoc[length]
-**** xref:xlat/misc/misc.adoc[Miscellaneous]
+**** xref:xlat/misc/length.adoc[Attribute length]
+**** xref:xlat/misc/regex.adoc[Regex search]
 **** xref:xlat/misc/module_call.adoc[Call a virtual module]
-**** xref:xlat/misc/rand.adoc[rand]
+**** xref:xlat/misc/rand.adoc[Random number]
 
 *** xref:xlat/pairs/index.adoc[Pairs]
 **** xref:xlat/pairs/debug.adoc[Write to debug output]
@@ -101,7 +101,7 @@
 *** xref:xlat/str/index.adoc[Strings]
 **** xref:xlat/str/concat.adoc[Concatenation]
 **** xref:xlat/str/split.adoc[Split Strings]
-**** xref:xlat/misc/misc.adoc#length[Length]
+**** xref:xlat/misc/length.adoc[Length]
 **** xref:xlat/str/lpad.adoc[Left Pad]
 **** xref:xlat/str/rpad.adoc[Right Pad]
 **** xref:xlat/str/rand.adoc[Random Strings]

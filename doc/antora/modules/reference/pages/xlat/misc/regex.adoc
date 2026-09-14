@@ -1,18 +1,18 @@
-= Miscellaneous Expansions
+= Regular Expression Expansions
 
-== %regex.search(pattern, string)
+== `+%regex.search(pattern, string)+`
 
 Performs a regular expression search on _string_, using _pattern_.  If
 there are subgroups in _pattern_, the subgroups are available via a
 subsequent `%regex.match()`.  Each regular expression search (or
-xref:unlang/condition/regex.adoc[=~] operator) clears and list of
+xref:unlang/condition/regex.adoc[`=~`] operator) clears and refreshes the list of
 matches in `%regex.match()`.
 
 This function is the same as using `%{string =~ /pattern/}`.  However,
 this function is included for completeness.
 
 [#regex_0_32]
-== %regex.match(0)+..+%regex.match(32)
+== `+%regex.match(0)+`..`+%regex.match(32)+`
 
 `%regex.match(0)` expands to the portion of the subject that matched the last regular
 expression evaluated. `%regex.match(1)`..`%regex.match(32)` expand to the contents of any capture
@@ -21,13 +21,13 @@ groups in the pattern.
 Every time a regular expression is evaluated, whether it matches or not,
 the numbered capture group values will be cleared.
 
-== +%regex.match(<named capture group>}+
+== `+%regex.match(<named capture group>}+`
 
 Return named subcapture value from the last regular expression evaluated.
 
 Results of named capture groups are available using the `%regex.match(<named capture
 group>}` expansion. They will also be accessible using the numbered expansions
-described xref:xlat/misc/misc.adoc#regex_0_32[above].
+described xref:xlat/misc/regex.adoc#regex_0_32[above].
 
 Every time a regular expression is evaluated, whether it matches or not,
 the named capture group values will be cleared.
@@ -48,36 +48,39 @@ Debug :   pcre2                    : 10.33 (2019-04-16) - retrieved at build tim
 ....
 ====
 
-== +%eval(<string>)+
 
-Evaluates the string as an expansion, and returns the result.  The main difference between using this expansion and just using `%{...}` is that the string being evaluated can be dynamically changed.
-
-.Return: _data_
-
-.Example
-
+.Using a numbered subpattern after a search
+====
 [source,unlang]
 ----
-if (User-Name == "bob") {
-    control.Filter-Id := "User-Name"
-} else {
-    control.Filter-Id := "not bob!"
+if (%regex.search("(j)(i(m))", User-Name)) {
+    reply.Reply-Message := %regex.match(2)
 }
-
-reply.Reply-Message := "%eval(control.Filter-Id}"
 ----
 
-.Output when `User-Name == bob`
+.Output when `User-Name == "jim"`
 
 ```
-bob
+im
 ```
+====
 
-.Output when `User-Name == not bob`
+
+.Using a named subpattern after a search
+====
+[source,unlang]
+----
+if (%regex.search("(?<first>b.*)b", User-Name)) {
+    reply.Reply-Message := %regex.match("first")
+}
+----
+
+.Output when `User-Name == "bob"`
 
 ```
-not bob!
+bo
 ```
+====
 
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
