@@ -752,6 +752,7 @@ int main(int argc, char *argv[])
 	FILE				*conf_file;
 
 	fr_value_box_list_t		vb_list;			// To store results of xlat calls.
+	fr_value_box_t			*changed;
 
 	virtual_server_t const		*vs;
 	module_instance_t		*mi;
@@ -1192,21 +1193,24 @@ do { \
 		fr_value_box_list_talloc_free(&vb_list);
 		if (xlat_add_lease(autofree, &vb_list, request, p, el) < 0) EXIT_WITH_FAILURE;
 
-		INFO("Added %pV address(es)/prefix(es)", fr_value_box_list_head(&vb_list));
+		changed = fr_value_box_list_head(&vb_list);
+		INFO("Added %pV address(es)/prefix(es), %pV unchanged", changed, fr_value_box_list_next(&vb_list, changed));
 		continue;
 
 	case IPPOOL_TOOL_REMOVE:
 		fr_value_box_list_talloc_free(&vb_list);
 		if (xlat_remove_lease(autofree, &vb_list, request, p, el) < 0) EXIT_WITH_FAILURE;
 
-		INFO("Removed %pV address(es)/prefix(es)", fr_value_box_list_head(&vb_list));
+		changed = fr_value_box_list_head(&vb_list);
+		INFO("Removed %pV address(es)/prefix(es), %pV unchanged", changed, fr_value_box_list_next(&vb_list, changed));
 		continue;
 
 	case IPPOOL_TOOL_RELEASE:
 		fr_value_box_list_talloc_free(&vb_list);
 		if (xlat_release_lease(autofree, &vb_list, request, p, el) < 0) EXIT_WITH_FAILURE;
 
-		INFO("Released %pV address(es)/prefix(es)", fr_value_box_list_head(&vb_list));
+		changed = fr_value_box_list_head(&vb_list);
+		INFO("Released %pV address(es)/prefix(es). %pV unchanged", changed, fr_value_box_list_next(&vb_list, changed));
 		continue;
 
 	case IPPOOL_TOOL_SHOW:
@@ -1261,7 +1265,8 @@ do { \
 		fr_value_box_list_talloc_free(&vb_list);
 		if (xlat_modify_lease(autofree, &vb_list, request, p, el) < 0) EXIT_WITH_FAILURE;
 
-		INFO("Modified %pV address(es)/prefix(es)", fr_value_box_list_head(&vb_list));
+		changed = fr_value_box_list_head(&vb_list);
+		INFO("Modified %pV address(es)/prefix(es), %pV unchanged", changed, fr_value_box_list_next(&vb_list, changed));
 		continue;
 
 	case IPPOOL_TOOL_ASSIGN:
