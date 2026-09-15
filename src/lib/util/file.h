@@ -105,6 +105,7 @@ int		fr_globdir_iter_next(char const **filename, fr_globdir_iter_t *iter);
 int		fr_globdir_iter_free(fr_globdir_iter_t *iter);
 
 bool		fr_filename_ok(char const *filename, char const *end, bool allow_dir) CC_HINT(nonnull);
+bool		fr_filename_allowed_by_list(char const *filename, char const *end, char const * const *array) CC_HINT(nonnull);
 char const	*fr_filename(char const *path);
 char const	*fr_filename_common_trim(char const *path, char const *common);
 

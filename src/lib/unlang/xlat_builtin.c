@@ -422,68 +422,6 @@ static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
 
 
 /*
- *	Check if a file matches an entry on a list.
- */
-static bool xlat_file_allowed_by_list(request_t *request, fr_value_box_t const *vb, char const * const *array)
-{
-	size_t i, num_files;
-
-	num_files = talloc_array_length(array);
-	if (!num_files) return false;
-
-	for (i = 0; i < num_files; i++) {
-		/*
-		 *	Get length of config entry, not including terminating NUL
-		 */
-		size_t alen = talloc_array_length(array[i]) - 1;
-
-		if (!alen) {
-			RWDEBUG("Ignoring empty filename in files { ... }");
-			continue;
-		}
-
-		/*
-		 *	Disallow '/' for security reasons.
-		 */
-		if ((alen == 1) && (main_config->limit.exec[i][0] == '/')) {
-			RWDEBUG("Ignoring wildcard '/' in files { ... }");
-			continue;
-		}
-
-		/*
-		 *	The allowed directory is longer than the filename, it's not allowed.
-		 */
-		if (alen > vb->vb_length) continue;
-
-		/*
-		 *	No leading match, it's not allowed.
-		 */
-		if (memcmp(vb->vb_strvalue, array[i], alen) != 0) continue;
-
-		/*
-		 *	Exact match, it is allowed.
-		 */
-		if (alen == vb->vb_length) return true;
-
-		/*
-		 *	"allow = foo/bar/" (trailing slash) is already
-		 *	at a directory boundary.
-		 */
-		if (alen && (array[i][alen - 1] == '/')) return true;
-
-		/*
-		 *	Setting "allow = foo/bar" does NOT mean that
-		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
-		 */
-		if (vb->vb_strvalue[alen] != '/') continue;
-
-		return true;
-	}
-
-	return false;
-}
-
-/*
  *	Limit the %file...() functions to a particular subset of directories.
  */
 bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb, int oflags)
@@ -522,7 +460,8 @@ bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb, int oflags)
 	 *	the caller is trying to write.
 	 */
 	if (main_config->limit.allowed_files) {
-		if (xlat_file_allowed_by_list(request, vb, main_config->limit.allowed_files)) return true;
+		if (fr_filename_allowed_by_list(vb->vb_strvalue, vb->vb_strvalue + vb->vb_length,
+						main_config->limit.allowed_files)) return true;
 
 		if (!main_config->limit.readonly_files || ((oflags & O_ACCMODE) != O_RDONLY)) {
 			REDEBUG("Failed accessing file %pV - it is outside of allowed access for 'limit files { ... }'", vb);
@@ -536,7 +475,8 @@ bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb, int oflags)
 	 */
 	if (main_config->limit.readonly_files) {
 		if (((oflags & O_ACCMODE) != O_RDONLY) ||
-		    !xlat_file_allowed_by_list(request, vb, main_config->limit.readonly_files)) {
+		    !fr_filename_allowed_by_list(vb->vb_strvalue, vb->vb_strvalue + vb->vb_length,
+						 main_config->limit.readonly_files)) {
 			REDEBUG("Failed accessing file %pV - it is outside of read-only access for 'limit files { ... }'", vb);
 			return false;
 		}

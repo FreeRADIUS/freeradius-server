@@ -1051,16 +1051,26 @@ bool fr_filename_ok(char const *filename, char const *end, bool allow_dir)
 		 */
 		p++;
 		if (p == end) {
-			fr_strerror_const("ends with '/.'");
+			fr_strerror_const("invalid attempt to access current directory via '/.'");
 			return false;
 		}
 
 		/*
-		 *	"foo/./" is stupid, and is disallowed.  Otherwise people could do 'foo/./././'
+		 *	"./foo" is allowed.  But "foo/./" is not allowed.
 		 */
 		if (*p == '/') {
-			fr_strerror_const("ends with './'");
-			return false;
+			p++;
+
+			if (p == end) {
+				fr_strerror_const("invalid attempt to access current directory via './'");
+				return false;
+			}
+
+			/*
+			 *	@todo - do we care about "foo/./././" ?
+			 */
+			isdir = true;
+			continue;
 		}
 
 		/*
@@ -1073,13 +1083,13 @@ bool fr_filename_ok(char const *filename, char const *end, bool allow_dir)
 		 */
 		p++;
 		if ((p == end) || (*p == '/')) {
-			fr_strerror_const("contains '/../'");
+			fr_strerror_const("invald attempt to go to parent directory via '/../'");
 			return false;
 		}
 
 	next:
 		if (*(uint8_t const *) p < ' ') {
-			fr_strerror_const("contains control character");
+			fr_strerror_const("invalid filename contains control character");
 			return false;
 		}
 
@@ -1091,11 +1101,76 @@ bool fr_filename_ok(char const *filename, char const *end, bool allow_dir)
 	 *	The last character was a '/', we may (or may not) allow it.
 	 */
 	if (isdir && !allow_dir) {
-		fr_strerror_const("ends with '/'");
+		fr_strerror_const("invalid attempt to access current directory by '/'");
 		return false;
 	}
 
 	return true;
+}
+
+/** See if a filename is allowed by a list.
+ *
+ * @param[in] filename	to check
+ * @param[in] end	of the filename to check
+ * @param[in] array	list to check
+ * @return
+ *	- false - filename is not allowed by the list
+ *	- true - filename is allowed by the list
+ */
+bool fr_filename_allowed_by_list(char const *filename, char const *end, char const * const *array)
+{
+	size_t i, num_files;
+	size_t len = end - filename;
+
+	num_files = talloc_array_length(array);
+	if (!num_files) return false;
+
+	for (i = 0; i < num_files; i++) {
+		/*
+		 *	Get length of config entry, not including terminating NUL
+		 */
+		size_t alen = talloc_array_length(array[i]) - 1;
+
+		if (!alen) continue;
+
+		/*
+		 *	Disallow '/' for security reasons.
+		 */
+		if ((alen == 1) && (array[i][0] == '/')) {
+			continue;
+		}
+
+		/*
+		 *	The allowed directory is longer than the filename, it's not allowed.
+		 */
+		if (alen > len) continue;
+
+		/*
+		 *	No leading match, it's not allowed.
+		 */
+		if (memcmp(filename, array[i], alen) != 0) continue;
+
+		/*
+		 *	Exact match, it is allowed.
+		 */
+		if (alen == len) return true;
+
+		/*
+		 *	"allow = foo/bar/" (trailing slash) is already
+		 *	at a directory boundary.
+		 */
+		if (array[i][alen - 1] == '/') return true;
+
+		/*
+		 *	Setting "allow = foo/bar" does NOT mean that
+		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
+		 */
+		if (filename[alen] != '/') continue;
+
+		return true;
+	}
+
+	return false;
 }
 
 /** Get the filename from a path
