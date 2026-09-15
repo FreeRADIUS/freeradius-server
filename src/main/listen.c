@@ -103,6 +103,10 @@ static int command_write_magic(int newfd, listen_socket_t *sock);
 static int listen_coa_init(void);
 #endif
 
+#ifdef WITH_PROXY
+static rad_listen_t *proxy_default = NULL;
+#endif
+
 extern fr_protocol_t master_listen[];
 
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -1760,11 +1764,19 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	UDP doesn't, so it's allowed.
 		 */
 #ifdef WITH_PROXY
-		if ((this->type == RAD_LISTEN_PROXY) &&
-		    (sock->proto != IPPROTO_UDP)) {
-			cf_log_err_cs(cs,
-				   "Proxy listeners can only listen on proto = udp");
-			return -1;
+		if (this->type == RAD_LISTEN_PROXY) {
+			if (sock->proto != IPPROTO_UDP) {
+				cf_log_err_cs(cs,
+					      "Proxy listeners can only listen on proto = udp");
+				return -1;
+			}
+
+			/*
+			 *	Cache this for the various security configurations.
+			 */
+			if (!proxy_default && fr_inaddr_any(&sock->my_ipaddr) && !sock->my_port) {
+				proxy_default = this;
+			}
 		}
 #endif	/* WITH_PROXY */
 
@@ -3936,6 +3948,19 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	sock->my_ipaddr = home->src_ipaddr;
 	sock->my_port = src_port;
 	sock->proto = home->proto;
+
+	/*
+	 *	Use the default proxy listener as a template for the others.
+	 */
+	if (proxy_default && (sock->proto == IPPROTO_UDP)) {
+		if (proxy_default->filter_proxy_state) {
+			this->filter_proxy_state = true;
+			this->proxy_state_random[0] = fr_rand();
+			this->proxy_state_random[1] = fr_rand();
+		}
+
+		this->cs = proxy_default->cs;
+	}
 
 	/*
 	 *	For error messages.
