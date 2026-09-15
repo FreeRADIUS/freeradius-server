@@ -343,7 +343,7 @@ typedef struct {
 	char 				**cmd_str;	//!< Formatted redis commands for this xlat
 	fr_redis_command_set_t		*cmds;		//!< Redis command set to run
 	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
-	uint32_t			changes;	//!< Number of changes reported by redis.
+	uint32_t			changed;	//!< Number of changes reported by redis.
 } redis_ippool_tool_rctx_t;
 
 /** Resume context for pool list module method
@@ -2541,7 +2541,7 @@ static xlat_action_t redis_ippool_common_resume(TALLOC_CTX *ctx, fr_dcursor_t *o
 	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
-	vb->vb_uint32 = rctx->changes;
+	vb->vb_uint32 = rctx->changed;
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -2560,7 +2560,7 @@ static void redis_xlat_common_results(request_t *request, UNUSED fr_redis_comman
 		return;
 	}
 
-	xlat_rctx->changes += reply->integer;
+	xlat_rctx->changed += reply->integer;
 	return;
 }
 
@@ -2582,7 +2582,7 @@ static void redis_xlat_array_results(request_t *request, UNUSED fr_redis_command
 	}
 
 	if ((reply->elements > 0) && (reply->element[0]->type == REDIS_REPLY_INTEGER)) {
-		xlat_rctx->changes += reply->element[0]->integer;
+		xlat_rctx->changed += reply->element[0]->integer;
 	} else {
 		goto error;
 	}
