@@ -1,9 +1,0 @@
-= Module Expansions
-
-Many of the server modules provide dynamic xlat expansions, and many of
-these are dynamically created depending on the module configuration. Refer
-to the documentation of each module to see the expansions that are provided.
-
-
-// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// This documentation was developed by Network RADIUS SAS.

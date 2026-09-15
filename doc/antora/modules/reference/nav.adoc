@@ -75,9 +75,10 @@
 *** xref:xlat/alternation.adoc[Alternation]
 *** xref:xlat/attribute.adoc[Attribute References]
 
-*** xref:xlat/all.adoc[Built-in Functions]
+*** xref:xlat/all.adoc[Function Reference Guide]
 **** xref:xlat/pairs/index.adoc[Attribute-Value Pairs]
 **** xref:xlat/conversion.adoc[Data Conversion]
+**** xref:xlat/modules/dict.adoc[Dictionary Handling]
 **** xref:xlat/file/index.adoc[File Handling]
 **** xref:xlat/hash.adoc[Hash / Digest]
 **** xref:xlat/hmac.adoc[HMAC]
@@ -90,9 +91,6 @@
 **** xref:xlat/str/index.adoc[Strings]
 **** xref:xlat/time/index.adoc[Time Management]
 **** xref:xlat/deprecated.adoc[Deprecated Functions]
-
-*** xref:xlat/module.adoc[Module Functions]
-**** xref:xlat/modules/dict.adoc[Dictionary Handling]
 
 
 ** xref:dictionary/index.adoc[Dictionaries]
