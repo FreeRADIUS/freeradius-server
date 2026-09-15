@@ -175,14 +175,15 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 endef
 
 #
-#  Capture script that RADIUSD_COMMAND runs in profiling mode.  make copies
-#  it into each test's output dir in every mode, because the common compose
+#  Capture script that RADIUSD_COMMAND runs in profiling mode
+#  and write_run_stats.sh which collects additional runtime statistics.
+#  make copies theh scripts into each test's output dir in every mode, because the common compose
 #  file bind mounts it, and compose turns a missing bind source into an
 #  empty directory instead of an error.  A profiler without a script fails
 #  the build early with "No rule to make target .../start_<tool>_profiling.sh".
 #
 TEST_MULTI_SERVER_SCRIPT_DIR     := $(DIR)/scripts
-TEST_MULTI_SERVER_SCRIPT_NAMES   := $(foreach t,$(PROFILING_TOOLS),start_$(t)_profiling.sh)
+TEST_MULTI_SERVER_SCRIPT_NAMES   := $(foreach t,$(PROFILING_TOOLS),start_$(t)_profiling.sh) write_run_stats.sh
 TEST_MULTI_SERVER_COMMON_COMPOSE := $(wildcard $(DIR)/configs/compose/*.yml.j2)
 
 #
@@ -211,7 +212,7 @@ $$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MU
 
 TEST_MULTI_SERVER_SCRIPTS.${1}.${2}      := $$(addprefix ${4}/scripts/,$$(TEST_MULTI_SERVER_SCRIPT_NAMES))
 
-${4}/scripts/start_%_profiling.sh: $$(TEST_MULTI_SERVER_SCRIPT_DIR)/profiling/start_%_profiling.sh
+${4}/scripts/%.sh: $$(TEST_MULTI_SERVER_SCRIPT_DIR)/profiling/%.sh
 	$${Q}mkdir -p $$(@D)
 	$${Q}cp $$< $$@
 

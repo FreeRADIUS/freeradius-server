@@ -60,19 +60,26 @@ echo ""
 #
 echo "INFO: starting freeradius under callgrind at $(date)"
 STATUS=0
+
+#  Callgrind options saved in an array so that we can save the options
+#  in a .json file based on the array
+CALLGRIND_OPTIONS=(
+  --tool=callgrind
+  --trace-children=yes
+  --separate-threads=no
+  --separate-callers=6
+  --dump-instr=yes
+  --collect-jumps=yes
+  --cache-sim=yes
+  --branch-sim=yes
+  --keep-debuginfo=yes
+  --instr-atstart=no
+)
+
 valgrind \
-  --tool=callgrind \
+  "${CALLGRIND_OPTIONS[@]}" \
   --log-file="$PROFILING_RESULT_DIR/valgrind.log" \
   --callgrind-out-file="$PROFILING_RESULT_DIR/profile.out.%p" \
-  --trace-children=yes \
-  --separate-threads=no \
-  --separate-callers=6 \
-  --dump-instr=yes \
-  --collect-jumps=yes \
-  --cache-sim=yes \
-  --branch-sim=yes \
-  --keep-debuginfo=yes \
-  --instr-atstart=no \
   freeradius -f -l stdout \
     -S resources.talloc_skip_cleanup=yes \
     -S 'trigger.server.start=%callgrind.start()' \
@@ -89,6 +96,12 @@ valgrind \
 #  that the run was fine.
 #
 echo "${STATUS}" > "$PROFILING_RESULT_DIR/exit-status"
+
+#  Record the load-generator totals and what produced the profile which
+#  captures additional profiling information for the run.
+METRIC_KIND=cest EXIT_STATUS="$STATUS" DURATION_S="$SECONDS" \
+PROFILER_OPTIONS="valgrind ${CALLGRIND_OPTIONS[*]}" \
+  bash "$(dirname "$0")/write_run_stats.sh" valgrind
 
 if [ "${STATUS}" -ne 0 ]; then
   #  An exit status over 128 means that a signal killed valgrind.  139 is
