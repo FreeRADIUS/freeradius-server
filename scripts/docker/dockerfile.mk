@@ -116,7 +116,7 @@ define DOCKER_HELP_TYPES
 	@echo "    service         production runtime image"
 	@echo "    ci              slim toolchain base for ci-deb.yml / ci-rpm.yml"
 	@echo "    crossbuild      full toolchain for docker-crossbuild.yml"
-	@echo "    profiling-deps  crossbuild + valgrind / gperftools / heaptrack / kcachegrind / debug symbols"
+	@echo "    profiling-deps  crossbuild + valgrind / gperftools / pprof / heaptrack / kcachegrind / debug symbols"
 	@echo "    profiling       profiling-deps + FreeRADIUS compiled with callgrind-friendly CFLAGS"
 endef
 
