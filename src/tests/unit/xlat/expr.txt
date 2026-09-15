@@ -164,11 +164,15 @@ match %{'foo'}
 #  Empty back-quoted strings are invalid, as they're supposed to refer
 #  to a string which is expanded.
 #
+#  @todo - ssize_t vs fr_slen_t offsets :(
+#
 xlat_expr ``
 match ERROR: ERROR offset 3: Back-quoted strings cannot be empty
 
 #
 #  A non-empty one still parses, so the check above is not too greedy.
+#
+#  @todo - this seems to be converted to %exec(), and then the spaces mashed?
 #
 xlat_expr `echo hello`
 match `echohello`
