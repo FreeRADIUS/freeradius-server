@@ -6951,7 +6951,7 @@ static void create_default_proxy_listener(int af)
 	/*
 	 *	Insert the FD into list of FDs to listen on.
 	 */
-	radius_update_listener(this);
+	event_new_fd(this);
 }
 
 /*
@@ -6959,8 +6959,7 @@ static void create_default_proxy_listener(int af)
  */
 static void check_proxy(rad_listen_t *head)
 {
-	bool		defined_proxy;
-	bool		has_v4, has_v6;
+	bool		defined_proxy, has_v4, has_v6;
 	rad_listen_t	*this;
 
 	if (check_config) return;
@@ -6969,9 +6968,6 @@ static void check_proxy(rad_listen_t *head)
 		return;
 	}
 	if (!head) return;
-#ifdef WITH_TCP
-	if (!home_servers_udp) return;
-#endif
 
 	/*
 	 *	We passed "-i" on the command line.  Use that address
@@ -6993,8 +6989,32 @@ static void check_proxy(rad_listen_t *head)
 
 		switch (this->type) {
 		case RAD_LISTEN_PROXY:
+			sock = this->data;
+
+			if (sock->proto != IPPROTO_UDP) continue;
+
+			if (!home_servers_udp) {
+				ERROR("No home servers defined with `proto = udp`, but there is a proxy listener with `proto = udp` at %s[%d]", cf_section_filename(this->cs), cf_section_lineno(this->cs));
+				exit(1);
+			}
+
+			/*
+			 *	Add the proxy socket to the packet list.
+			 */
+			if (!fr_packet_list_socket_add(proxy_list, this->fd,
+						       sock->proto,
+#ifdef WITH_RADIUSV11
+						       sock->radiusv11,
+#endif
+						       &sock->other_ipaddr, sock->other_port,
+						       this)) {
+				ERROR("Fatal error adding proxy socket: %s", fr_strerror());
+				fr_exit(1);
+			}
+
 			defined_proxy = true;
-			break;
+			event_new_fd(this);
+			continue;
 
 		case RAD_LISTEN_AUTH:
 #ifdef WITH_ACCT
@@ -7013,9 +7033,6 @@ static void check_proxy(rad_listen_t *head)
 		}
 	}
 
-	/*
-	 *	Assume they know what they're doing.
-	 */
 	if (defined_proxy) return;
 
 	if (has_v4) create_default_proxy_listener(AF_INET);
