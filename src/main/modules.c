@@ -1000,7 +1000,7 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 		list = server->mc[comp];
 		if (!list) {
 			if (server->name) {
-				RDEBUG3("Empty %s section in virtual server \"%s\".  Using default return values.",
+				RDEBUG3("Empty %s section in virtual server '%s'.  Using default return values.",
 					section_type_value[comp].section, server->name);
 			} else {
 				RDEBUG3("Empty %s section.  Using default return values.", section_type_value[comp].section);
@@ -1013,7 +1013,30 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 		if (this) {
 			list = this->modulelist;
 		} else {
-			RDEBUG2("%s sub-section not found.  Ignoring.", section_type_value[comp].typename);
+			DICT_VALUE *dval;
+
+			dval = dict_valbyattr(section_type_value[comp].attr, 0, idx);
+
+			/*
+			 *	Failed to find "Auth-Type foo" is an error, not a warning
+			 */
+			if (comp == MOD_AUTHENTICATE) {
+				if (dval) {
+					REDEBUG2("%s %s sub-section not found in virtual server '%s'.  Ignoring.",
+						 section_type_value[comp].typename, dval->name, server->name);
+				} else {
+					REDEBUG2("%s %d sub-section not found in virtual server '%s'.  Ignoring.",
+						 section_type_value[comp].typename, idx, server->name);
+				}
+			} else {
+				if (dval) {
+					RWDEBUG2("%s = %s sub-section not found in virtual server '%s'.  Ignoring.",
+						 section_type_value[comp].typename, dval->name, server->name);
+				} else {
+					RWDEBUG2("%s = %d sub-section not found in virtual server '%s'.  Ignoring.",
+						 section_type_value[comp].typename, idx, server->name);
+				}
+			}
 		}
 	}
 
