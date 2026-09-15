@@ -4074,17 +4074,6 @@ do_home:
 add_proxy_state:
 #endif
 
-	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
-	if (!request->proxy_listener || !request->proxy_listener->filter_proxy_state) {
-		fr_pair_value_sprintf(vp, "%u", request->packet->id);
-	} else {
-		/*
-		 *	Add a random Proxy-State
-		 */
-		fr_pair_value_memcpy(vp, request->proxy_listener->proxy_state_random,
-				     sizeof(request->proxy_listener->proxy_state_random));
-	}
-
 	/*
 	 *	Should be done BEFORE inserting into proxy hash, as
 	 *	pre-proxy may use this information, or change it.
@@ -4250,6 +4239,7 @@ static int request_proxy(REQUEST *request)
 #ifdef WITH_STATS
 	RADIUS_PACKET *packet;
 #endif
+	VALUE_PAIR *vp;
 	char buffer[128];
 
 	VERIFY_REQUEST(request);
@@ -4331,6 +4321,18 @@ static int request_proxy(REQUEST *request)
 
 	gettimeofday(&request->proxy->timestamp, NULL);
 	request->home_server->last_packet_sent = request->proxy->timestamp.tv_sec;
+
+	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
+	if (!request->proxy_listener || !request->proxy_listener->filter_proxy_state) {
+		fr_pair_value_sprintf(vp, "%u", request->packet->id);
+	} else {
+		uint32_t hash;
+
+		hash = proxy_state_hash(request->proxy_listener->proxy_state_random,
+					&request->proxy->dst_ipaddr, request->proxy->dst_port);
+
+		fr_pair_value_memcpy(vp, (void *) &hash, sizeof(hash));
+	}
 
 	/*
 	 *	Encode the packet before we do anything else.
@@ -4726,9 +4728,13 @@ static void ping_home_server(void *ctx)
 	 *	it to each packet, even Status-Server ones.
 	 */
 	if (request->proxy_listener->filter_proxy_state) {
+		uint32_t hash;
+
+		hash = proxy_state_hash(request->proxy_listener->proxy_state_random,
+					&request->proxy->dst_ipaddr, request->proxy->dst_port);
+
 		MEM(vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0));
-		fr_pair_value_memcpy(vp, request->proxy_listener->proxy_state_random,
-				     sizeof(request->proxy_listener->proxy_state_random));
+		fr_pair_value_memcpy(vp, (void *) &hash, sizeof(hash));
 	}
 
 	/*

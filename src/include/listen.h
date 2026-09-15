@@ -84,7 +84,7 @@ struct rad_listen {
 	bool		nodup;
 	bool		dead;
 	bool		filter_proxy_state;	//!< Whether to filter Proxy-State
-	uint8_t		proxy_state_random[sizeof(uint32_t)];	//!< a random value for Proxy-State
+	uint32_t	proxy_state_random[2];	//!< seed for Proxy-State
 
 #ifdef WITH_TLS
 	fr_tls_server_conf_t *tls;
@@ -216,6 +216,7 @@ typedef struct listen_socket_t {
 
 #ifdef WITH_PROXY
 void proxy_stats(rad_listen_t *listener, home_server_t *home, int code, size_t offset, time_t when);
+uint32_t proxy_state_hash(uint32_t seed[static 2], fr_ipaddr_t const *home_ip, int home_port);
 #endif
 
 #endif /* LISTEN_H */

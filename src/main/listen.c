@@ -1942,8 +1942,8 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 
 		if (this->filter_proxy_state) {
-			uint32_t r = fr_rand();
-			memcpy(this->proxy_state_random, (uint8_t *) &r, sizeof(r));
+			this->proxy_state_random[0] = fr_rand();
+			this->proxy_state_random[1] = fr_rand();
 		}
 	}
 #endif
@@ -2827,6 +2827,28 @@ check_home:
 }
 #endif
 
+uint32_t proxy_state_hash(uint32_t seed[static 2], fr_ipaddr_t const *home_ip, int home_port)
+{
+	uint32_t hash;
+
+	hash = seed[0];
+	switch (home_ip->af) {
+	case AF_INET:
+		hash = fr_hash_update(&home_ip->ipaddr.ip4addr.s_addr, sizeof(home_ip->ipaddr.ip4addr.s_addr), hash);
+		break;
+
+	case AF_INET6:
+		hash = fr_hash_update(&home_ip->ipaddr.ip6addr.s6_addr, sizeof(home_ip->ipaddr.ip6addr.s6_addr), hash);
+		break;
+
+	default:
+		return hash;
+	}
+
+	hash = fr_hash_update(&home_port, sizeof(home_port), hash);
+	return fr_hash_update(&seed[1], sizeof(seed[1]), hash);
+}
+
 /*
  *	Receive packets from a proxy socket.
  */
@@ -2855,12 +2877,26 @@ static int proxy_socket_recv(rad_listen_t *listener)
 		end = packet->data + packet->data_len;
 
 		while (attr < end) {
+			/*
+			 *	Paranoia, just in case.
+			 */
+			if ((size_t) (end - attr) < 2) break;
+			if (attr[1] < 2) break;
+
 			if ((attr[0] == PW_PROXY_STATE) &&
-			    (attr[1] == 2 + sizeof(listener->proxy_state_random)) &&
-			    (memcmp(attr + 2, listener->proxy_state_random, sizeof(listener->proxy_state_random)) == 0)) {
-				found = true;
-				break;
+			    (attr[1] == 2 + sizeof(uint32_t))) {
+				uint32_t hash;
+
+				hash = proxy_state_hash(listener->proxy_state_random,
+							&packet->src_ipaddr, packet->src_port);
+
+				if (memcmp(&hash, attr + 2, sizeof(hash)) == 0) {
+					found = true;
+					break;
+				}
 			}
+
+			attr += attr[1];
 		}
 
 		if (!found) {
