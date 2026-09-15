@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec_priv.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/util.h>
+#include <freeradius-devel/util/file.h>
 
 #define MAX_ENVP 1024
 
@@ -450,29 +451,54 @@ static bool fr_exec_allowed(char const *filename)
 {
 	size_t i, num_files, len;
 
-	if (!main_config->limit.exec) return true;
+	/*
+	 *	No exec { ... } section, allow everything.
+	 */
+	if (!main_config->limit.exec_is_set) return true;
+
+	/*
+	 *	Empty exec { ... } section, allow nothing.
+	 */
+	if (!main_config->limit.exec) goto no_allow;
 
 	num_files = talloc_array_length(main_config->limit.exec);
-	if (!num_files) goto fail;
+	if (!num_files) {
+	no_allow:
+		EDEBUG("Not allowed to run program %s - exec { ... } section is empty", filename);
+		return false;
+	}
 
 	len = strlen(filename);
 
-	/*
-	 *	Check for directory traversal attacks.
-	 */
-	if ((len == 2) && (memcmp(filename, "..", 2) == 0)) goto fail;
+	if (!fr_filename_ok(filename, filename + len, false)) {
+		if (!DEBUG_ENABLED) return false;
 
-	if ((len > 2) &&
-		((memcmp(filename, "../", 3) == 0) ||
-		 (memcmp(filename + len - 3, "/..", 3) == 0))) goto fail;
-
-	if (strstr(filename, "/../")) goto fail;
+		PERROR("Invalid program %s", filename);
+		return false;
+	}
 
 	for (i = 0; i < num_files; i++) {
 		/*
 		 *	Get length of config entry, not including terminating NUL
 		 */
 		size_t alen = talloc_array_length(main_config->limit.exec[i]) - 1;
+
+		if (!alen) {
+			if (!DEBUG_ENABLED) continue;
+
+			WARN("Ignoring empty filename in exec { ... }");
+			continue;
+		}
+
+		/*
+		 *	Disallow '/' for security reasons.
+		 */
+		if ((alen == 1) && (main_config->limit.exec[i][0] == '/')) {
+			if (!DEBUG_ENABLED) return false;
+
+			WARN("Ignoring wildcard '/' in exec { ... }");
+			continue;
+		}
 
 		/*
 		 *	The allowed directory is longer than the filename, it's not allowed.
@@ -488,7 +514,7 @@ static bool fr_exec_allowed(char const *filename)
 
 		/*
 		 *	"allow = foo/bar/" (trailing slash) is already
-		 *	at a directory boundary.
+		 *	at a directory boundary.  Allow all binaries under that.
 		 */
 		if (alen && (main_config->limit.exec[i][alen - 1] == '/')) return true;
 
@@ -496,13 +522,12 @@ static bool fr_exec_allowed(char const *filename)
 		 *	Setting "allow = foo/bar" does NOT mean that
 		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
 		 */
-		if (filename[alen] != '/') break;
+		if (filename[alen] != '/') continue;
 
 		return true;
 	}
 
-fail:
-	EDEBUG("Failed running program %s - it is outside of 'limit exec { ... }'", filename);
+	EDEBUG("Not allowed to run program %s - it is outside of allowed list in exec { ... }", filename);
 	return false;
 }
 

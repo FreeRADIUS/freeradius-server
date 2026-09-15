@@ -1,0 +1,88 @@
+#
+#  PRE: xlat-exec
+#
+#  Tests for the "limit exec" section of the "security" configuration.
+#
+#  See src/tests/keywords/unit_test_module.conf, which sets:
+#
+#	allow = "/bin/e"	- prefix, but not at a directory boundary
+#	allow = "/bin/echo"
+#	allow = "/bin/sh"
+#
+#  The "filename" and "filename-readonly" tests cover the matching rules
+#  for "limit files".  The rules here are nearly the same, but a program
+#  name is checked with fr_filename_ok() and is never allowed to name a
+#  directory.
+#
+string out
+
+#
+#  An exact match is allowed.
+#
+#  This also checks that a non-matching entry does not stop the search.
+#  "/bin/e" is a prefix of "/bin/echo", but the match does not end at a
+#  directory boundary, so the scan has to carry on to the next entry.
+#
+out := %exec('/bin/echo', 'hello')
+if (out != 'hello') {
+	test_fail
+}
+
+#
+#  A second allowed program, so that the list is known to hold more than
+#  one usable entry.
+#
+out := %exec('/bin/sh', '-c', '/bin/echo world')
+if (out != 'world') {
+	test_fail
+}
+
+#
+#  A program which exists, and which would run, but which is not on the
+#  list.  The failure is the limit, not a missing file.
+#
+out := %exec('/bin/ls', '/bin/echo')
+if (out) {
+	test_fail
+}
+
+#
+#  The program name goes through fr_filename_ok() before the list is
+#  consulted.  These all name /bin/echo once the path is resolved, and
+#  are refused anyway, because the check is textual.
+#
+#  "/../" is refused.
+#
+out := %exec('/bin/../bin/echo', 'dotdot')
+if (out) {
+	test_fail
+}
+
+#
+#  "./" is refused.
+#
+out := %exec('/bin/./echo', 'dot')
+if (out) {
+	test_fail
+}
+
+#
+#  A trailing '/' is refused.  A program is never a directory, so unlike
+#  %file.mkdir() there is no case where it is allowed to end with '/'.
+#
+out := %exec('/bin/echo/', 'slash')
+if (out) {
+	test_fail
+}
+
+#
+#  A name which merely begins with dots is not a "." or ".." component,
+#  so it reaches the list, and is refused there rather than by
+#  fr_filename_ok().
+#
+out := %exec('/bin/..echo', 'dots')
+if (out) {
+	test_fail
+}
+
+success

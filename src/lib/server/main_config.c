@@ -274,7 +274,7 @@ static const conf_parser_t limit_files_config[] = {
 };
 
 static const conf_parser_t limit_exec_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("allow", CONF_FLAG_REQUIRED | CONF_FLAG_MULTI, main_config_t, limit.exec) },
+	{ FR_CONF_OFFSET_FLAGS("allow", CONF_FLAG_REQUIRED | CONF_FLAG_MULTI, main_config_limit_t, exec) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -288,7 +288,13 @@ static const conf_parser_t limit_config[] = {
 		.subcs = (void const *) limit_files_config
 	},
 
-	{ FR_CONF_POINTER("exec", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = (void const *) limit_exec_config },
+	{ /* there's no macro for FR_CONF_OFFSET_SUBSECTION_IS_SET(_name, _flags, _struct, _field, _is_set_field, _subcs) */
+		.name1 = "exec",
+		.flags = CONF_FLAG_SUBSECTION | CONF_FLAG_IS_SET | CONF_FLAG_OK_MISSING,
+		.offset = offsetof(main_config_t, limit),
+		.is_set_offset = offsetof(main_config_t, limit.exec_is_set),
+		.subcs = (void const *) limit_exec_config
+	},
 
 	CONF_PARSER_TERMINATOR
 };

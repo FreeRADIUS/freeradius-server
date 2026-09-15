@@ -46,6 +46,7 @@ extern main_config_t const *main_config;		//!< Global configuration singleton.
 
 typedef struct {
 	bool		files_is_set;			//!< if we have a limit { files { ... } } section.
+	bool		exec_is_set;			//!< if we have a limit { exec { ... } } section.
 	char const	**allowed_files;		//!< where %file....() is limited to for read / write
 	char const	**readonly_files;      		//!< where %file....() is limited to for read
 	char const	**exec;				//!< where %exec() is limited to
