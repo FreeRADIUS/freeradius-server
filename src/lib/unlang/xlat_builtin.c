@@ -438,7 +438,15 @@ static bool xlat_file_allowed_by_list(request_t *request, fr_value_box_t const *
 		size_t alen = talloc_array_length(array[i]) - 1;
 
 		if (!alen) {
-			RWDEBUG("Ignoring empty filename in 'limit files { ... }'");
+			RWDEBUG("Ignoring empty filename in files { ... }");
+			continue;
+		}
+
+		/*
+		 *	Disallow '/' for security reasons.
+		 */
+		if ((alen == 1) && (main_config->limit.exec[i][0] == '/')) {
+			RWDEBUG("Ignoring wildcard '/' in files { ... }");
 			continue;
 		}
 
