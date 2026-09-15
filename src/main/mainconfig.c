@@ -1257,6 +1257,8 @@ do {\
 			return -1;
 		}
 
+		main_config.home_servers_require_ma = (main_config.require_ma == FR_BOOL_TRUE);
+
 		cp = NULL;
 		if (subcs) cp = cf_pair_find(subcs, "limit_proxy_state");
 		if (fr_bool_auto_parse(cp, &main_config.limit_proxy_state, limit_proxy_state) < 0) {

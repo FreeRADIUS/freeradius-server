@@ -938,10 +938,6 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	 */
 	if (cf_section_parse(cs, home, home_server_config) < 0) goto error;
 
-	if (fr_bool_auto_parse(cf_pair_find(cs, "require_message_authenticator"), &home->require_ma, require_message_authenticator) < 0) {
-		goto error;
-	}
-
 	if (soft_fail) *soft_fail = home->dns_soft_fail | rc->dns_soft_fail;
 
 	af = AF_UNSPEC;
@@ -1162,6 +1158,22 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		goto error;
 	}
 #endif
+
+	/*
+	 *	Allow a local 'require_message_authenticator' to over-ride a global setting.
+	 */
+	if (!home->virtual_server && !tls && ((home->type == HOME_TYPE_AUTH) || home->dual)) {
+		cp = cf_pair_find(cs, "require_message_authenticator");
+
+		if (cp && (fr_bool_auto_parse(cp, &home->require_ma, require_message_authenticator) < 0)) {
+			goto error;
+		}
+
+		if ((home->require_ma != FR_BOOL_TRUE) && main_config.home_servers_require_ma) {
+			main_config.home_servers_require_ma = false;
+			cf_log_info(cs, "Cannot set the global flag 'require_message_authenticator = yes' for proxied packets because this home server has that flag set to 'false'");
+		}
+	}
 
 	/*
 	 *	Check the reverse CoA configuration.
@@ -2957,6 +2969,10 @@ int realms_init(CONF_SECTION *config)
 		closedir(dir);
 	}
 #endif
+
+	if (main_config.home_servers_require_ma) {
+		INFO("All home servers set 'require_message_authenticator = yes'");
+	}
 
 	return 1;
 }

@@ -2870,9 +2870,17 @@ static int proxy_socket_recv(rad_listen_t *listener)
 #ifdef WITH_TCP
 	listen_socket_t *sock;
 #endif
+	int		flags;
 	char		buffer[128];
 
-	packet = rad_recv(NULL, listener->fd, 0);
+	/*
+	 *	If all home servers have `require_message_authenticator = yes`, or it's set globally, then set
+	 *	the flag here.  This allows us to discard invalid packets before we do much additional work.
+	 */
+	flags = main_config.home_servers_require_ma;
+	flags <<= 8;
+
+	packet = rad_recv(NULL, listener->fd, flags);
 	if (!packet) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;

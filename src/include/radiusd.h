@@ -180,6 +180,8 @@ typedef struct main_config {
 
 	bool		exiting;			//!< are we exiting?
 
+	bool		home_servers_require_ma;	//!< do all home servers require Message-Authenticator?
+
 	fr_bool_auto_t 	require_ma;			//!< global configuration for all clients and home servers
 
 	fr_bool_auto_t 	limit_proxy_state;     		//!< global configuration for all clients
