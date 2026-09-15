@@ -4323,7 +4323,7 @@ static int request_proxy(REQUEST *request)
 	request->home_server->last_packet_sent = request->proxy->timestamp.tv_sec;
 
 	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
-	if (!request->proxy_listener || !request->proxy_listener->filter_proxy_state) {
+	if (!request->proxy_listener->filter_proxy_state) {
 		fr_pair_value_sprintf(vp, "%u", request->packet->id);
 	} else {
 		uint32_t hash;
