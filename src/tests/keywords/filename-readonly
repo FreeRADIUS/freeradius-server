@@ -1,0 +1,137 @@
+#
+#  PRE: filename
+#
+#  Tests for the "limit files" section of the "security" configuration.
+#
+#  See src/tests/keywords/unit_test_module.conf, which sets:
+#
+#	allow = "${tmp}"	- read and write
+#	read  = "${raddb}"	- read only
+#
+#  The "filename" test covers %file.escape() and the "allow" list.  This
+#  test covers the "read" list, the read versus write split, and the
+#  filename checks which run before either list is consulted.
+#
+string head
+
+if !%file.touch("${tmp}/.tmp-rw") {
+	test_fail
+}
+
+if !%file.exists("${tmp}/.tmp-rw") {
+	test_fail
+}
+
+if !%file.rm("${tmp}/.tmp-rw") {
+	test_fail
+}
+
+if %file.exists("${tmp}/.tmp-rw") {
+	test_fail
+}
+
+#
+#  A directory operation may end with '/'.  Other operations may not.
+#
+if !%file.mkdir("${tmp}/.tmp-dir/") {
+	test_fail
+}
+
+if !%file.rmdir("${tmp}/.tmp-dir/") {
+	test_fail
+}
+
+if %file.exists("${tmp}/") {
+	test_fail
+}
+
+#
+#  "read" grants read, and nothing else.
+#
+if !%file.exists("${raddb}/radiusd.conf") {
+	test_fail
+}
+
+head = %file.head("${raddb}/radiusd.conf")
+if !head {
+	test_fail
+}
+
+#
+#  Writes to the "read" list must be refused.
+#
+#  %file.touch(), %file.rm(), %file.mkdir() and %file.rmdir() all ask for
+#  O_RDWR permissions, and should fail the "read" permissions checks.
+#
+#  We first check that the call failed, and then that the file wasn't
+#  created.
+#
+if %file.touch("${raddb}/.keywords-filename-limit-no-write") {
+	test_fail
+}
+
+if %file.exists("${raddb}/.keywords-filename-limit-no-write") {
+	test_fail
+}
+
+if %file.mkdir("${raddb}/.keywords-filename-limit-no-dir/") {
+	test_fail
+}
+
+if %file.exists("${raddb}/.keywords-filename-limit-no-dir") {
+	test_fail
+}
+
+if %file.touch("/tmp/.keywords-filename-limit-no-write") {
+	test_fail
+}
+
+#
+#  These are rejected by fr_filename_ok(), before either list is
+#  consulted, so they fail even though the path begins with an allowed
+#  prefix.
+#
+#  "." on its own is a directory.
+#
+if %file.exists("${tmp}/.") {
+	test_fail
+}
+
+#
+#  "./" adds nothing, and is refused so that "a/./././b" cannot be used
+#  to pad a name out.
+#
+if %file.exists("${tmp}/./keywords-filename-limit") {
+	test_fail
+}
+
+#
+#  ".." is refused even when it stays inside the allowed directory.  The
+#  check is textual, so it cannot tell the difference between a ".." that
+#  escapes and one that does not.
+#
+if %file.exists("${tmp}/../keywords/keywords-filename-limit") {
+	test_fail
+}
+
+#
+#  ... and of course when it does escape.
+#
+head := %file.head("${tmp}/../all.mk")
+if head {
+	test_fail
+}
+
+#
+#  A name which merely begins with dots is fine.  Only a component which
+#  is exactly "." or ".." is refused.
+#
+if !%file.touch("${tmp}/..tmp-limit-dots") {
+	test_fail
+}
+
+if !%file.rm("${tmp}/..tmp-limit-dots") {
+	test_fail
+}
+
+success

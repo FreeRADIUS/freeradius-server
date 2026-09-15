@@ -346,7 +346,7 @@ int 		xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
  */
 extern xlat_arg_parser_t const xlat_func_file_name_args[];
 
-bool		xlat_file_allowed(request_t *request, fr_value_box_t const *vb);
+bool		xlat_file_allowed(request_t *request, fr_value_box_t const *vb, int oflag) CC_HINT(nonnull);
 
 /*
  *	xlat_expr.c

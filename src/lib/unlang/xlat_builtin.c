@@ -422,37 +422,25 @@ static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
 
 
 /*
- *	Limit the %file...() functions to a particular subset of directories.
+ *	Check if a file matches an entry on a list.
  */
-bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
+static bool xlat_file_allowed_by_list(request_t *request, fr_value_box_t const *vb, char const * const *array)
 {
 	size_t i, num_files;
 
-	/*
-	 *	Note that we do *not* allow SAFE_FOR_ANY here.  We
-	 *	want to have "defense in depth".
-	 */
-	if (!main_config->limit_files) return true;
-
-	num_files = talloc_array_length(main_config->limit_files);
-	if (!num_files) goto fail;
-
-	/*
-	 *	Check for directory traversal attacks.
-	 */
-	if ((vb->vb_length == 2) && (memcmp(vb->vb_strvalue, "..", 2) == 0)) goto fail;
-
-	if ((vb->vb_length > 2) &&
-		((memcmp(vb->vb_strvalue, "../", 3) == 0) ||
-		 (memcmp(vb->vb_strvalue + vb->vb_length - 3, "/..", 3) == 0))) goto fail;
-
-	if (strstr(vb->vb_strvalue, "/../")) goto fail;
+	num_files = talloc_array_length(array);
+	if (!num_files) return false;
 
 	for (i = 0; i < num_files; i++) {
 		/*
 		 *	Get length of config entry, not including terminating NUL
 		 */
-		size_t alen = talloc_array_length(main_config->limit_files[i]) - 1;
+		size_t alen = talloc_array_length(array[i]) - 1;
+
+		if (!alen) {
+			RWDEBUG("Ignoring empty filename in 'limit files { ... }'");
+			continue;
+		}
 
 		/*
 		 *	The allowed directory is longer than the filename, it's not allowed.
@@ -462,7 +450,7 @@ bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
 		/*
 		 *	No leading match, it's not allowed.
 		 */
-		if (memcmp(vb->vb_strvalue, main_config->limit_files[i], alen) != 0) continue;
+		if (memcmp(vb->vb_strvalue, array[i], alen) != 0) continue;
 
 		/*
 		 *	Exact match, it is allowed.
@@ -473,23 +461,83 @@ bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
 		 *	"allow = foo/bar/" (trailing slash) is already
 		 *	at a directory boundary.
 		 */
-		if (alen && (main_config->limit_files[i][alen - 1] == '/')) return true;
+		if (alen && (array[i][alen - 1] == '/')) return true;
 
 		/*
 		 *	Setting "allow = foo/bar" does NOT mean that
 		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
 		 */
-		if (vb->vb_strvalue[alen] != '/') break;
+		if (vb->vb_strvalue[alen] != '/') continue;
 
 		return true;
 	}
 
-fail:
-	REDEBUG("Failed accessing file %s - it is outside of 'limit files { ... }'", vb->vb_strvalue);
 	return false;
 }
 
-#define XLAT_FILE_ALLOWED(_vb) xlat_file_allowed(request, vb)
+/*
+ *	Limit the %file...() functions to a particular subset of directories.
+ */
+bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb, int oflags)
+{
+	/*
+	 *	Note that we do *not* bypass these checks even if a file is SAFE_FOR_ANY here.  We want to
+	 *	have "defense in depth".
+	 */
+
+	/*
+	 *	The filename contains a directory traversal attack, opens a directory, etc.
+	 */
+	if (!fr_filename_ok(vb->vb_strvalue, vb->vb_strvalue + vb->vb_length, (oflags & O_DIRECTORY) != 0)) {
+		RPEDEBUG("Invalid filename %pV", vb);
+		return false;
+	}
+
+	/*
+	 *	No "limit files" section.  We allow everything.
+	 */
+	if (!main_config->limit.files_is_set) return true;
+
+	/*
+	 *	If there are no read/write limits, then check if the section exists.  A missing section is
+	 *	"allow all".  An empty section is "forbid all".
+	 */
+	if (!main_config->limit.allowed_files && !main_config->limit.readonly_files) {
+		REDEBUG("Failed accessing file %pV - all %%file() access is forbidden by the 'limit files { ... }' section", vb);
+		return false;
+	}
+
+	/*
+	 *	If it's in the "allowed" list, then we allow it for both read and write.
+	 *
+	 *	If it's not in the "allowed" list, then we complain if there's no "read-only" list, or if
+	 *	the caller is trying to write.
+	 */
+	if (main_config->limit.allowed_files) {
+		if (xlat_file_allowed_by_list(request, vb, main_config->limit.allowed_files)) return true;
+
+		if (!main_config->limit.readonly_files || ((oflags & O_ACCMODE) != O_RDONLY)) {
+			REDEBUG("Failed accessing file %pV - it is outside of allowed access for 'limit files { ... }'", vb);
+			return false;
+		}
+	} /* else there MUST be a read-only list, otherwise the check above for both being empty would have fired. */
+
+	/*
+	 *	We have a "read-only" list.  Fail if the caller is trying to write, or if the filename doesn't
+	 *	match the "read-only" list.
+	 */
+	if (main_config->limit.readonly_files) {
+		if (((oflags & O_ACCMODE) != O_RDONLY) ||
+		    !xlat_file_allowed_by_list(request, vb, main_config->limit.readonly_files)) {
+			REDEBUG("Failed accessing file %pV - it is outside of read-only access for 'limit files { ... }'", vb);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+#define XLAT_FILE_ALLOWED(_vb, _p) xlat_file_allowed(request, _vb, _p)
 
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
@@ -503,7 +551,7 @@ static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
-	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+	if (!XLAT_FILE_ALLOWED(vb, O_RDONLY)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -528,7 +576,7 @@ static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
-	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+	if (!XLAT_FILE_ALLOWED(vb, O_RDONLY)) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -586,7 +634,7 @@ static xlat_action_t xlat_func_file_size(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
-	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+	if (!XLAT_FILE_ALLOWED(vb, O_RDONLY)) return XLAT_ACTION_FAIL;
 
 	if (stat(filename, &buf) < 0) {
 		REDEBUG3("Failed checking file %s - %s", filename, fr_syserror(errno));
@@ -618,7 +666,7 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
-	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+	if (!XLAT_FILE_ALLOWED(vb, O_RDONLY)) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -807,7 +855,7 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
-	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+	if (!XLAT_FILE_ALLOWED(vb, O_RDONLY)) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -860,7 +908,7 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
-	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+	if (!XLAT_FILE_ALLOWED(vb, O_RDWR)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -884,7 +932,7 @@ static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
-	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+	if (!XLAT_FILE_ALLOWED(vb, O_RDWR)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -912,7 +960,7 @@ static xlat_action_t xlat_func_file_mkdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	fr_assert(vb->type == FR_TYPE_STRING);
 	dirname = vb->vb_strvalue;
 
-	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+	if (!XLAT_FILE_ALLOWED(vb, O_RDWR | O_DIRECTORY)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -935,7 +983,7 @@ static xlat_action_t xlat_func_file_rmdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	fr_assert(vb->type == FR_TYPE_STRING);
 	dirname = vb->vb_strvalue;
 
-	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+	if (!XLAT_FILE_ALLOWED(vb, O_RDWR | O_DIRECTORY)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);

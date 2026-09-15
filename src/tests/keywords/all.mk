@@ -146,6 +146,7 @@ export IF_ENV_CONDITION := !test || (test != 'if-env')
 #
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
 	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx )
+	$(eval export OUTPUT=$(BUILD_DIR)/tests/keywords)
 	@echo "KEYWORD-TEST $(notdir $@)"
 	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \

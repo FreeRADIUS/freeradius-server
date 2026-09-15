@@ -450,9 +450,9 @@ static bool fr_exec_allowed(char const *filename)
 {
 	size_t i, num_files, len;
 
-	if (!main_config->limit_exec) return true;
+	if (!main_config->limit.exec) return true;
 
-	num_files = talloc_array_length(main_config->limit_exec);
+	num_files = talloc_array_length(main_config->limit.exec);
 	if (!num_files) goto fail;
 
 	len = strlen(filename);
@@ -472,7 +472,7 @@ static bool fr_exec_allowed(char const *filename)
 		/*
 		 *	Get length of config entry, not including terminating NUL
 		 */
-		size_t alen = talloc_array_length(main_config->limit_exec[i]) - 1;
+		size_t alen = talloc_array_length(main_config->limit.exec[i]) - 1;
 
 		/*
 		 *	The allowed directory is longer than the filename, it's not allowed.
@@ -482,7 +482,7 @@ static bool fr_exec_allowed(char const *filename)
 		/*
 		 *	No leading match, it's not allowed.
 		 */
-		if (memcmp(filename, main_config->limit_exec[i], alen) != 0) continue;
+		if (memcmp(filename, main_config->limit.exec[i], alen) != 0) continue;
 
 		if (alen == len) return true;
 
@@ -490,7 +490,7 @@ static bool fr_exec_allowed(char const *filename)
 		 *	"allow = foo/bar/" (trailing slash) is already
 		 *	at a directory boundary.
 		 */
-		if (alen && (main_config->limit_exec[i][alen - 1] == '/')) return true;
+		if (alen && (main_config->limit.exec[i][alen - 1] == '/')) return true;
 
 		/*
 		 *	Setting "allow = foo/bar" does NOT mean that

@@ -32,6 +32,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
+#include <fcntl.h>
 
 #ifdef HAVE_VALGRIND_CALLGRIND_H
 #  include <valgrind/callgrind.h>
@@ -227,7 +228,7 @@ static xlat_action_t xlat_func_gperftools_start(TALLOC_CTX *ctx, fr_dcursor_t *o
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 
-	if (!xlat_file_allowed(request, vb)) return XLAT_ACTION_FAIL;
+	if (!xlat_file_allowed(request, vb, O_RDWR)) return XLAT_ACTION_FAIL;
 
 	ProfilerGetCurrentState(&state);
 	if (state.enabled) {

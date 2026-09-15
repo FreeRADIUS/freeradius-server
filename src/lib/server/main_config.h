@@ -44,6 +44,13 @@ extern main_config_t const *main_config;		//!< Global configuration singleton.
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/io/worker.h>
 
+typedef struct {
+	bool		files_is_set;			//!< if we have a limit { files { ... } } section.
+	char const	**allowed_files;		//!< where %file....() is limited to for read / write
+	char const	**readonly_files;      		//!< where %file....() is limited to for read
+	char const	**exec;				//!< where %exec() is limited to
+} main_config_limit_t;
+
 /** Main server configuration
  *
  * The parsed version of the main server config.
@@ -102,9 +109,7 @@ struct main_config_s {
 	char const	*chdir;				//!< where to chdir() to when we start.
 	bool		chdir_is_set;
 
-	char const	**limit_files;			//!< where %file....() is limited to
-
-	char const	**limit_exec;			//!< where %exec() is limited to
+	main_config_limit_t limit;			//!< limit files, exec, etc.
 
 	/*
 	 *	OpenSSL configuration

@@ -28,18 +28,18 @@ if %file.escape(prefix) != "192.0.2.0_x2f24" {
 #
 #  This file doesn't exist, and we should not succeed in deleting it.
 #
-if %file.rm("${confdir}/.nosuchfile") {
+if %file.rm("${tmp}/.nosuchfile") {
 	test_fail
 }
 
-if %file.escape("${confdir}") != "src/tests/keywords/" {
+if %file.escape("${tmp}") != "${tmp}" {
 	test_fail
 }
 
 #
 #  @todo -this fails due to API issues.  It outputs src_x2ftests_x2fkeywords_x2f_x2ffoo :(
 #
-#if %file.safe("${confdir}" + %unsafe('/foo')) != "src/tests/keywords/_x2ffoo" {
+#if %file.safe("${tmp}" + %unsafe('/foo')) != "src/tests/keywords/_x2ffoo" {
 #	test_fail
 #}
 
@@ -47,29 +47,29 @@ if %file.escape("${confdir}") != "src/tests/keywords/" {
 #  These files are inside the "limit files" sub section of the "security"
 #  configuration, so access to them must succeed.
 #
-if !%file.exists("${confdir}/filename") {
+if !%file.exists("${tmp}/filename.attrs") {
 	test_fail
 }
 
-head = %file.head("${confdir}/filename")
+head = %file.head("${tmp}/filename.attrs")
 if (head != "#") {
 	test_fail
 }
 
-if !%file.mkdir("${confdir}/.limit-files-test-dir") {
+if !%file.mkdir("${tmp}/.limit-files-test-dir") {
 	test_fail
 }
 
-if !%file.exists("${confdir}/.limit-files-test-dir") {
+if !%file.exists("${tmp}/.limit-files-test-dir") {
 	test_fail
 }
 
-if !%file.rmdir("${confdir}/.limit-files-test-dir") {
+if !%file.rmdir("${tmp}/.limit-files-test-dir") {
 	test_fail
 }
 
 #
-#  These files are outside of the "limit files" sub section of the "security" configuration.
+#  These files are outside of the "limit files" subsection of the "security" configuration.
 #
 if %file.mkdir("/tmp/radiusd/") {
 	test_fail
@@ -88,7 +88,7 @@ if head {
 #  A ".." component must not be able to escape the "limit files"
 #  directory, even though the path starts with the allowed prefix.
 #
-head := %file.head("${confdir}/../all.mk")
+head := %file.head("${tmp}/../all.mk")
 if head {
 	test_fail
 }
