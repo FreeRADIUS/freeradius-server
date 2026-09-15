@@ -30,6 +30,9 @@
 
 #include <unistd.h>
 #include <dirent.h>
+#ifdef __linux__
+#  include <sys/prctl.h>
+#endif
 #include <errno.h>
 #include <assert.h>
 #include <signal.h>
@@ -878,309 +881,79 @@ static void external_spawn_timeout(__attribute__((unused)) int pid)
 	timeout = true;
 }
 
-#ifdef __linux__
-/** Print the name, state, and kernel wait of one process
+/** Run the panic action against a process that timed out
  *
- * The dump runs when a spawned command times out, so the dumped
- * processes are blocked in the kernel.  `wchan` holds the kernel
- * function that the process is blocked in, and `syscall` holds the
- * number and arguments of the blocked system call.  `wchan` and
- * `syscall` provide the wait information without a debugger on the
- * build host.  `stack` is root-only on most kernels, so the function
- * attempts the read and skips the file on failure.
- */
-static void proc_dump(pid_t pid)
-{
-	static char const	*files[] = { "wchan", "syscall", "stack" };
-	char			path[128];
-	char			buf[1024];
-	FILE			*fp;
-	size_t			i;
-
-	snprintf(path, sizeof(path), "/proc/%d/status", (int)pid);
-	fp = fopen(path, "r");
-	if (fp) {
-		while (fgets(buf, sizeof(buf), fp)) {
-			if ((strncmp(buf, "Name:", 5) == 0) || (strncmp(buf, "State:", 6) == 0)) {
-				ERROR("timeout: pid %d %s", (int)pid, buf);
-			}
-		}
-		fclose(fp);
-	}
-
-	for (i = 0; i < sizeof(files) / sizeof(files[0]); i++) {
-		size_t len;
-
-		snprintf(path, sizeof(path), "/proc/%d/%s", (int)pid, files[i]);
-		fp = fopen(path, "r");
-		if (!fp) {
-			continue;
-		}
-
-		ERROR("timeout: pid %d %s: ", (int)pid, files[i]);
-		while ((len = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
-			buf[len] = '\0';
-			ERROR("%s", buf);
-		}
-		ERROR("\n");
-		fclose(fp);
-	}
-}
-
-/** Print the kernel wait of a process and every descendant
+ * The panic action follows the server's PANIC_ACTION, and comes from
+ * the environment variable of that name.  `%e` expands to the program
+ * that was spawned and `%p` to the pid of the process, so an action of
+ * `gdb -batch -x raddb/panic.gdb %e %p` prints the arguments, the
+ * locals, and the stack of every thread of the hung process.
  *
- * Descendants come from `/proc/<pid>/task/<pid>/children`, which needs
- * `CONFIG_PROC_CHILDREN`.  A kernel without the `children` file limits
- * the dump to the direct child.
+ * The process is still running when the action runs, because the
+ * caller kills the process after the action returns.  A build host
+ * with no PANIC_ACTION in the environment records the timeout alone.
  */
-static void proc_tree_dump(pid_t pid, int depth)
+static void panic_action_run(char const *program, pid_t pid)
 {
-	char	path[128];
-	FILE	*fp;
-	int	child;
+	char const	*action = getenv("PANIC_ACTION");
+	char const	*p;
+	char		cmd[1024];
+	char		*out = cmd;
+	size_t		left = sizeof(cmd);
+	int		code;
 
-	proc_dump(pid);
-
-	if (depth >= 8) {
+	if (!action || (*action == '\0')) {
+		ERROR("timeout: PANIC_ACTION is not set, so the timeout records no stack\n");
 		return;
 	}
 
-	snprintf(path, sizeof(path), "/proc/%d/task/%d/children", (int)pid, (int)pid);
-	fp = fopen(path, "r");
-	if (!fp) {
-		return;
-	}
+	p = action;
+	while (*p != '\0') {
+		char const	*q = strchr(p, '%');
+		int		ret;
 
-	while (fscanf(fp, "%d", &child) == 1) {
-		proc_tree_dump((pid_t)child, depth + 1);
-	}
-	fclose(fp);
-}
-#elif defined(__APPLE__)
-#include <libproc.h>
-#include <sys/proc_info.h>
+		if (!q) {
+			ret = snprintf(out, left, "%s", p);
+			p += strlen(p);
 
-/** Print the name, state, and thread stacks of one process
- *
- * libproc provides the name and state.  sample prints the stack of
- * every thread, and works unprivileged on a process owned by the user
- * running jlibtool.  `-mayDie` makes sample read the symbol information
- * immediately, because the caller kills the sampled process after the
- * dump.
- */
-static void proc_dump(pid_t pid)
-{
-	struct proc_bsdinfo	info;
-	char			sample_cmd[80];
+		} else if (q[1] == 'e') {
+			ret = snprintf(out, left, "%.*s%s", (int)(q - p), p, program);
+			p = q + 2;
 
-	if (proc_pidinfo((int)pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) == (int)sizeof(info)) {
-		ERROR("timeout: pid %d Name:\t%s\n", (int)pid, info.pbi_comm);
-		ERROR("timeout: pid %d State:\t%u\n", (int)pid, info.pbi_status);
-	}
+		} else if (q[1] == 'p') {
+			ret = snprintf(out, left, "%.*s%d", (int)(q - p), p, (int)pid);
+			p = q + 2;
 
-	fflush(stderr);
-	snprintf(sample_cmd, sizeof(sample_cmd), "/usr/bin/sample %d 1 -mayDie -file /dev/stderr", (int)pid);
-	if (system(sample_cmd) != 0) {
-		ERROR("timeout: pid %d sample failed\n", (int)pid);
-	}
-}
-
-/** Print the state of a process and every descendant
- *
- * Descendants come from `proc_listpids()`, one generation per call.
- */
-static void proc_tree_dump(pid_t pid, int depth)
-{
-	int	children[64];
-	int	count;
-	int	i;
-
-	proc_dump(pid);
-
-	if (depth >= 8) {
-		return;
-	}
-
-	count = proc_listpids(PROC_PPID_ONLY, (uint32_t)pid, children, (int)sizeof(children));
-	if (count <= 0) {
-		return;
-	}
-	count /= (int)sizeof(int);
-
-	for (i = 0; i < count; i++) {
-		if (children[i] == 0) {
-			continue;
+		} else {
+			/*
+			 *	A percent that names neither expansion is
+			 *	part of the command, so it is copied over.
+			 */
+			ret = snprintf(out, left, "%.*s", (int)((q - p) + 1), p);
+			p = q + 1;
 		}
-		proc_tree_dump((pid_t)children[i], depth + 1);
-	}
-}
-#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/sysctl.h>
-#if defined(__FreeBSD__)
-#include <sys/user.h>
-#endif
 
-/*
- *	Each BSD returns the process table through sysctl, and names the
- *	same information differently.  FreeBSD returns struct kinfo_proc
- *	with ki_ fields through a three level mib.  NetBSD returns struct
- *	kinfo_proc2 with p_ fields through KERN_PROC2, and OpenBSD struct
- *	kinfo_proc with p_ fields through KERN_PROC.  NetBSD and OpenBSD
- *	take a six level mib carrying the structure size and count.
- */
-#if defined(__FreeBSD__)
-#  define KINFO_ENTRY		struct kinfo_proc
-#  define KINFO_PID(_k)		((pid_t)(_k)->ki_pid)
-#  define KINFO_PPID(_k)	((pid_t)(_k)->ki_ppid)
-#  define KINFO_COMM(_k)	((_k)->ki_comm)
-#  define KINFO_STAT(_k)	((int)(_k)->ki_stat)
-#  define KINFO_WMESG(_k)	((_k)->ki_wmesg)
-#elif defined(__NetBSD__)
-#  define KINFO_ENTRY		struct kinfo_proc2
-#  define KINFO_PID(_k)		((pid_t)(_k)->p_pid)
-#  define KINFO_PPID(_k)	((pid_t)(_k)->p_ppid)
-#  define KINFO_COMM(_k)	((_k)->p_comm)
-#  define KINFO_STAT(_k)	((int)(_k)->p_stat)
-#  define KINFO_WMESG(_k)	((_k)->p_wmesg)
-#elif defined(__OpenBSD__)
-#  define KINFO_ENTRY		struct kinfo_proc
-#  define KINFO_PID(_k)		((pid_t)(_k)->p_pid)
-#  define KINFO_PPID(_k)	((pid_t)(_k)->p_ppid)
-#  define KINFO_COMM(_k)	((_k)->p_comm)
-#  define KINFO_STAT(_k)	((int)(_k)->p_stat)
-#  define KINFO_WMESG(_k)	((_k)->p_wmesg)
-#endif
-
-/** Print the name, state, and wait channel of one process
- *
- * The wmesg field holds the message for the kernel wait channel.  On
- * FreeBSD `KERN_PROC_KSTACK` also holds the kernel stack of every
- * thread, and needs a kernel built with `options STACK`.  The function
- * skips the stacks when the `KERN_PROC_KSTACK` sysctl fails.
- */
-static void proc_dump(KINFO_ENTRY const *kp)
-{
-	ERROR("timeout: pid %d Name:\t%s\n", (int)KINFO_PID(kp), KINFO_COMM(kp));
-	ERROR("timeout: pid %d State:\t%d\n", (int)KINFO_PID(kp), KINFO_STAT(kp));
-	ERROR("timeout: pid %d wchan:\t%s\n", (int)KINFO_PID(kp), KINFO_WMESG(kp));
-
-#if defined(__FreeBSD__)
-	{
-		int			mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_KSTACK, (int)KINFO_PID(kp) };
-		struct kinfo_kstack	*kstack;
-		size_t			len = 0;
-
-		if (sysctl(mib, 4, NULL, &len, NULL, 0) < 0) {
+		if ((size_t)ret >= left) {
+			ERROR("timeout: panic action is longer than %zu bytes\n", sizeof(cmd));
 			return;
 		}
-
-		kstack = malloc(len);
-		if (!kstack) {
-			return;
-		}
-
-		if (sysctl(mib, 4, kstack, &len, NULL, 0) == 0) {
-			size_t i;
-
-			for (i = 0; i < len / sizeof(*kstack); i++) {
-				ERROR("timeout: pid %d kstack:\n%s\n", (int)KINFO_PID(kp), kstack[i].kkst_trace);
-			}
-		}
-		free(kstack);
+		out += ret;
+		left -= ret;
 	}
-#endif
-}
 
-/** Fetch the process table
- *
- */
-static KINFO_ENTRY *proc_table_fetch(size_t *count_out)
-{
-#if defined(__FreeBSD__)
-	int	mib[3] = { CTL_KERN, KERN_PROC, KERN_PROC_PROC };
-	u_int	mib_len = 3;
-#elif defined(__NetBSD__)
-	int	mib[6] = { CTL_KERN, KERN_PROC2, KERN_PROC_ALL, 0, (int)sizeof(KINFO_ENTRY), 0 };
-	u_int	mib_len = 6;
-#elif defined(__OpenBSD__)
-	int	mib[6] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0, (int)sizeof(KINFO_ENTRY), 0 };
-	u_int	mib_len = 6;
-#endif
-	KINFO_ENTRY	*procs;
-	size_t		len = 0;
-
-	if (sysctl(mib, mib_len, NULL, &len, NULL, 0) < 0) {
-		return NULL;
-	}
+	ERROR("timeout: calling: %s\n", cmd);
 
 	/*
-	 *	Processes can start between the size query and the fetch,
-	 *	so the fetch gets a buffer an eighth larger than the
-	 *	queried size.
+	 *	The action writes to stderr, so anything jlibtool has
+	 *	buffered goes out ahead of it.
 	 */
-	len += len / 8;
+	fflush(stderr);
 
-#if !defined(__FreeBSD__)
-	mib[5] = (int)(len / sizeof(KINFO_ENTRY));
-#endif
-
-	procs = malloc(len);
-	if (!procs) {
-		return NULL;
-	}
-
-	if (sysctl(mib, mib_len, procs, &len, NULL, 0) < 0) {
-		free(procs);
-		return NULL;
-	}
-
-	*count_out = len / sizeof(KINFO_ENTRY);
-
-	return procs;
-}
-
-/** Print the state of a process and every descendant found in the process table
- *
- */
-static void proc_tree_walk(KINFO_ENTRY const *procs, size_t count, pid_t pid, int depth)
-{
-	size_t i;
-
-	for (i = 0; i < count; i++) {
-		if (KINFO_PID(&procs[i]) == pid) {
-			proc_dump(&procs[i]);
-			break;
-		}
-	}
-
-	if (depth >= 8) {
-		return;
-	}
-
-	for (i = 0; i < count; i++) {
-		if (KINFO_PPID(&procs[i]) == pid) {
-			proc_tree_walk(procs, count, KINFO_PID(&procs[i]), depth + 1);
-		}
+	code = system(cmd);
+	if (code != 0) {
+		ERROR("timeout: panic action exited with %d\n", code);
 	}
 }
-
-/** Print the state of a process and every descendant
- *
- */
-static void proc_tree_dump(pid_t pid, int depth)
-{
-	KINFO_ENTRY	*procs;
-	size_t		count;
-
-	procs = proc_table_fetch(&count);
-	if (!procs) {
-		return;
-	}
-
-	proc_tree_walk(procs, count, pid, depth);
-	free(procs);
-}
-#endif
 
 static int external_spawn(command_t *cmd, __attribute__((unused)) char const *file, char const **argv)
 {
@@ -1216,6 +989,16 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 		 */
 		spawn_pid = fork();
 		if (spawn_pid == 0) {
+#ifdef PR_SET_PTRACER
+			/*
+			 *	The panic action runs from the parent of this
+			 *	process, so the debugger it starts is a sibling
+			 *	of this process, and a kernel that restricts
+			 *	tracing to descendants refuses the attach
+			 *	without this.
+			 */
+			prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
+#endif
 			return execvp(argv[0], UNCONST(char **, argv));
 		}
 		else if (spawn_pid < 0) {
@@ -1283,17 +1066,17 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 			 */
 			if (timeout) {
 				NOTICE("exec timeout\n");
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+
 				/*
-				 *	proc_tree_dump() prints where each
+				 *	The panic action prints where the
 				 *	process is blocked, so the log records
 				 *	a diagnosis of an intermittent hang.
-				 *	The dump must run before the kill,
+				 *	The action must run before the kill,
 				 *	because the kill terminates the
-				 *	processes that the dump reads.
+				 *	process that the action reads.
 				 */
-				proc_tree_dump(spawn_pid, 0);
-#endif
+				panic_action_run(argv[0], spawn_pid);
+
 				kill(spawn_pid, SIGALRM);
 
 				waitpid(spawn_pid, &status, 0); /* Cleanup child state */
