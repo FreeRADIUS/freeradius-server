@@ -111,8 +111,15 @@ RUN PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install tacacs_plus
 #  scripts/ci/redis-setup.sh looks here first, and only downloads when this
 #  copy is missing.
 #
+#  The fetch names a commit, not the unstable branch.  The script passes the
+#  server options that start each cluster node, and unstable adds options that
+#  the packaged server does not know, which stops every node from starting.
+#  redis/redis@b78a80bd1f added --cluster-bus-port-protected-mode on
+#  2026-09-15 and broke the redis tests on Ubuntu 24.04, which packages
+#  redis-server 7.0.15.  71f31da66f is the revision before that commit.
+#
 RUN curl -fsSL -o /usr/local/bin/redis-create-cluster \
-	https://raw.githubusercontent.com/redis/redis/unstable/utils/create-cluster/create-cluster && \
+	https://raw.githubusercontent.com/redis/redis/71f31da66f26f38f87dbc435779d3b53cbba8aec/utils/create-cluster/create-cluster && \
 	chmod 0755 /usr/local/bin/redis-create-cluster
 
 #

@@ -48,9 +48,14 @@ fi
 # The various Redis setup scripts and instances put their data here
 cd "${TMP_REDIS_DIR}"
 
-# Download the latest versions of the cluster test utilities
+# Download the cluster test utilities
 # these are only available via the Redis repo, and it seems more sensible to download
 # two short scripts, than to maintain a local copy, or clone the whole repo.
+#
+# The create-cluster URL names a commit, not the unstable branch.  The script
+# passes the server options that start each cluster node, and unstable adds
+# options that an older packaged server does not know, which stops every node
+# from starting.
 if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
     if [ -e /usr/local/bin/redis-create-cluster ]; then
         #  The CI images bake a copy in, so no test-time download is needed.
@@ -60,7 +65,7 @@ if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
         #  Download to a temporary name and move into place on success only.
         #  A failed download must not leave an empty create-cluster behind,
         #  because the file's existence is what skips this block next run.
-        curl -f -o "${TMP_REDIS_DIR}/create-cluster.dl" https://raw.githubusercontent.com/redis/redis/unstable/utils/create-cluster/create-cluster
+        curl -f -o "${TMP_REDIS_DIR}/create-cluster.dl" https://raw.githubusercontent.com/redis/redis/71f31da66f26f38f87dbc435779d3b53cbba8aec/utils/create-cluster/create-cluster
         chmod +x "${TMP_REDIS_DIR}/create-cluster.dl"
         mv "${TMP_REDIS_DIR}/create-cluster.dl" "${TMP_REDIS_DIR}/create-cluster"
     fi
@@ -96,9 +101,25 @@ if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
 fi
 
 if [ "$TLS" -eq 1 ]; then
-    if [ ! -e "${TMP_REDIS_DIR}/tests/tls " ]; then
-        curl https://raw.githubusercontent.com/antirez/redis/unstable/utils/gen-test-certs.sh > "${TMP_REDIS_DIR}/gen-test-certs.sh"
-        chmod +x "${TMP_REDIS_DIR}/gen-test-certs.sh"
+    #  gen-test-certs.sh writes tests/tls/redis.dh after every certificate, so
+    #  the file is there only when a previous run produced the whole set.  The
+    #  script creates tests/tls before it writes anything into the directory,
+    #  which leaves the directory behind when a run stops part way, so the
+    #  directory does not say the certificates are usable.
+    if [ ! -e "${TMP_REDIS_DIR}/tests/tls/redis.dh" ]; then
+        #  The URL names a commit in redis/redis for the same reason the
+        #  create-cluster URL above does.  The certificates this script writes
+        #  are the ones the server and redis-cli are told to use, so a change
+        #  to the script changes what the tests run against.  cc0091f0f9 is the
+        #  revision that antirez/redis, the address this fetch used to name,
+        #  serves today.
+        #
+        #  Download to a temporary name and move into place on success only.
+        #  Without -f, curl writes the body of an error response to the output
+        #  file, and the lines below then make that page executable and run it.
+        curl -f -o "${TMP_REDIS_DIR}/gen-test-certs.sh.dl" https://raw.githubusercontent.com/redis/redis/cc0091f0f9fe321948c544911b3ea71837cf86e3/utils/gen-test-certs.sh
+        chmod +x "${TMP_REDIS_DIR}/gen-test-certs.sh.dl"
+        mv "${TMP_REDIS_DIR}/gen-test-certs.sh.dl" "${TMP_REDIS_DIR}/gen-test-certs.sh"
         gen-test-certs.sh
     fi
 fi
@@ -113,6 +134,13 @@ if [ "${REDIS_MAJOR_VERSION}" -lt 7 ]; then
     # Fix cleanup to match option change above
     sed -ie "s#appendonlydir-\*#appendonly\*.aof#" "${TMP_REDIS_DIR}/create-cluster"
 fi
+
+# cluster-bus-port-protected-mode was added to the unstable branch by
+# redis/redis@b78a80bd1f, and servers built before that commit reject the
+# option as a bad directive.  The pinned copy downloaded above never carries
+# the option, so this only rewrites a copy baked into a CI image that predates
+# the pin.
+sed -ie "s# --cluster-bus-port-protected-mode \$BUS_PROTECTED_MODE##" "${TMP_REDIS_DIR}/create-cluster"
 
 #
 #  Reset for the next test.  A healthy cluster only needs its data flushed,
@@ -146,10 +174,29 @@ if [ "$1" == "reset" ] || [ "$1" == "rebuild" ]; then
         echo "flushed"
         exit 0
     fi
-    "$SELF" -p "$PORT" stop
-    "$SELF" -p "$PORT" clean
-    "$SELF" -p "$PORT" start
-    "$SELF" -p "$PORT" create
+    #  A recursive call runs the script from scratch, so it has to repeat the
+    #  options this call is running with.  A child that misses -t leaves
+    #  TLS_CLIENT_OPTIONS empty and its redis-cli speaks plaintext to a TLS
+    #  listener, and a child that misses -n or -r waits on the wrong ports.
+    #  The options are built here, not at the top, because config.sh above
+    #  supplies the port, node and replica counts the cluster was created with.
+    #
+    #  The test suites call this script as "-p PORT reset", with no -t, so the
+    #  TLS_CLIENT_OPTIONS config.sh recorded at creation is what says the
+    #  cluster speaks TLS.  A password needs no such treatment, because
+    #  config.sh exports REDISCLI_AUTH and the child inherits it.
+    SELF_OPTS=(-p "$PORT" -n "$NODES" -r "$REPLICAS")
+    if [ "$TLS" -eq 1 ] || [ "x${TLS_CLIENT_OPTIONS}" != "x" ]; then
+        SELF_OPTS+=(-t)
+    fi
+    if [ "x$PASSWORD" != "x" ]; then
+        SELF_OPTS+=(-a "$PASSWORD")
+    fi
+
+    "$SELF" "${SELF_OPTS[@]}" stop
+    "$SELF" "${SELF_OPTS[@]}" clean
+    "$SELF" "${SELF_OPTS[@]}" start
+    "$SELF" "${SELF_OPTS[@]}" create
 
     #  create returns before the nodes agree on the cluster state, and a
     #  cluster answering cluster_state:fail fails every command sent to it,
