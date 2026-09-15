@@ -343,6 +343,7 @@ typedef struct {
 	char 				**cmd_str;	//!< Formatted redis commands for this xlat
 	fr_redis_command_set_t		*cmds;		//!< Redis command set to run
 	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
+	uint32_t			changes;	//!< How many changes are submitted.
 	uint32_t			changed;	//!< Number of changes reported by redis.
 } redis_ippool_tool_rctx_t;
 
@@ -2544,6 +2545,10 @@ static xlat_action_t redis_ippool_common_resume(TALLOC_CTX *ctx, fr_dcursor_t *o
 	vb->vb_uint32 = rctx->changed;
 	fr_dcursor_append(out, vb);
 
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
+	vb->vb_uint32 = rctx->changes - rctx->changed;
+	fr_dcursor_append(out, vb);
+
 	return XLAT_ACTION_DONE;
 }
 
@@ -2659,6 +2664,7 @@ static xlat_action_t redis_ippool_add_common(request_t *request, rlm_redis_ippoo
 							      redis_xlat_common_results,
 							      rctx) != FR_REDIS_PIPELINE_OK) goto error;
 		}
+		rctx->changes++;
 
 		ipaddr_inc(&curr_addr.vb_ip, step);
 	} while (fr_ipaddr_cmp(&curr_addr.vb_ip, &end->vb_ip) != 1);
@@ -2764,6 +2770,7 @@ static xlat_action_t redis_ippool_remove_common(request_t *request, rlm_redis_ip
 			talloc_free(rctx);
 			return XLAT_ACTION_FAIL;
 		};
+		rctx->changes++;
 
 		ipaddr_inc(&curr_addr.vb_ip, step);
 	} while (fr_ipaddr_cmp(&curr_addr.vb_ip, &end->vb_ip) != 1);
@@ -2867,6 +2874,7 @@ static xlat_action_t redis_ippool_release_common(request_t *request, rlm_redis_i
 			talloc_free(rctx);
 			return XLAT_ACTION_FAIL;
 		}
+		rctx->changes++;
 
 		ipaddr_inc(&curr_addr.vb_ip, step);
 	} while (fr_ipaddr_cmp(&curr_addr.vb_ip, &end->vb_ip) != 1);
@@ -2975,6 +2983,7 @@ static xlat_action_t redis_ippool_modify_common(request_t *request, rlm_redis_ip
 			talloc_free(rctx);
 			return XLAT_ACTION_FAIL;
 		}
+		rctx->changes++;
 
 		ipaddr_inc(&curr_addr.vb_ip, step);
 	} while (fr_ipaddr_cmp(&curr_addr.vb_ip, &end->vb_ip) != 1);
@@ -3086,6 +3095,7 @@ static xlat_action_t redis_ippool_assign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
 	}
+	rctx->changes++;
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, t->rtcluster, (uint8_t const *)pool->vb_strvalue,
 					     pool->vb_length, rctx->cmds, false, NULL);
@@ -3135,6 +3145,7 @@ static xlat_action_t redis_ippool_unassign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED f
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
 	}
+	rctx->changes++;
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, t->rtcluster, (uint8_t const *)pool->vb_strvalue,
 					     pool->vb_length, rctx->cmds, false, NULL);
