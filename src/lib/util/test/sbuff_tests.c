@@ -1730,6 +1730,118 @@ static void test_file_extend_error(void)
 	fclose(fp);
 }
 
+static void test_out_int(void)
+{
+	fr_sbuff_t	sbuff;
+	int8_t		i8 = 0;
+
+	TEST_CASE("In range, input advanced past the number");
+	fr_sbuff_init_in(&sbuff, "-12,", 4);
+	TEST_CHECK_RET(fr_sbuff_out(&i8, &sbuff), FR_SBUFF_OK);
+	TEST_CHECK(i8 == -12);
+	TEST_CHECK_STRCMP(sbuff.p, ",");
+
+	TEST_CASE("Overflow, out is the maximum and input is not advanced");
+	fr_sbuff_init_in(&sbuff, "300", 3);
+	TEST_CHECK_RET(fr_sbuff_out(&i8, &sbuff), FR_SBUFF_ERR_OVERFLOW);
+	TEST_CHECK(i8 == INT8_MAX);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Underflow, out is the minimum");
+	fr_sbuff_init_in(&sbuff, "-300", 4);
+	TEST_CHECK_RET(fr_sbuff_out(&i8, &sbuff), FR_SBUFF_ERR_UNDERFLOW);
+	TEST_CHECK(i8 == INT8_MIN);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Not a number");
+	fr_sbuff_init_in(&sbuff, "xyz", 3);
+	TEST_CHECK_RET(fr_sbuff_out(&i8, &sbuff), FR_SBUFF_ERR_NOT_FOUND);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Empty input");
+	fr_sbuff_init_in(&sbuff, "", 0);
+	TEST_CHECK_RET(fr_sbuff_out(&i8, &sbuff), FR_SBUFF_ERR_INPUT_EMPTY);
+}
+
+static void test_out_uint(void)
+{
+	fr_sbuff_t	sbuff;
+	uint8_t		u8 = 0;
+
+	TEST_CASE("In range");
+	fr_sbuff_init_in(&sbuff, "255,", 4);
+	TEST_CHECK_RET(fr_sbuff_out(&u8, &sbuff), FR_SBUFF_OK);
+	TEST_CHECK(u8 == 255);
+	TEST_CHECK_STRCMP(sbuff.p, ",");
+
+	TEST_CASE("Leading minus is underflow");
+	fr_sbuff_init_in(&sbuff, "-1", 2);
+	TEST_CHECK_RET(fr_sbuff_out(&u8, &sbuff), FR_SBUFF_ERR_UNDERFLOW);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Hex, more digits than the type can hold is trailing data");
+	fr_sbuff_init_in(&sbuff, "1234", 4);
+	TEST_CHECK_RET(fr_sbuff_out_uint8_hex(&u8, &sbuff, true), FR_SBUFF_ERR_TRAILING);
+	TEST_CHECK(u8 == UINT8_MAX);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Hex, trailing digits allowed, input advanced past the two consumed");
+	fr_sbuff_init_in(&sbuff, "1234", 4);
+	TEST_CHECK_RET(fr_sbuff_out_uint8_hex(&u8, &sbuff, false), FR_SBUFF_OK);
+	TEST_CHECK(u8 == 0x12);
+	TEST_CHECK_STRCMP(sbuff.p, "34");
+}
+
+static void test_out_float(void)
+{
+	fr_sbuff_t	sbuff;
+	float		f = 0;
+
+	TEST_CASE("In range");
+	fr_sbuff_init_in(&sbuff, "1.5,", 4);
+	TEST_CHECK_RET(fr_sbuff_out(&f, &sbuff), FR_SBUFF_OK);
+	TEST_CHECK(f == 1.5f);
+	TEST_CHECK_STRCMP(sbuff.p, ",");
+
+	TEST_CASE("Not a number");
+	fr_sbuff_init_in(&sbuff, "xyz", 3);
+	TEST_CHECK_RET(fr_sbuff_out(&f, &sbuff), FR_SBUFF_ERR_NOT_FOUND);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Empty input");
+	fr_sbuff_init_in(&sbuff, "", 0);
+	TEST_CHECK_RET(fr_sbuff_out(&f, &sbuff), FR_SBUFF_ERR_INPUT_EMPTY);
+}
+
+static void test_out_bool(void)
+{
+	fr_sbuff_t	sbuff;
+	bool		b = false;
+
+	TEST_CASE("True, input advanced past the value");
+	fr_sbuff_init_in(&sbuff, "yes,", 4);
+	TEST_CHECK_RET(fr_sbuff_out(&b, &sbuff), FR_SBUFF_OK);
+	TEST_CHECK(b == true);
+	TEST_CHECK_STRCMP(sbuff.p, ",");
+
+	TEST_CASE("False");
+	fr_sbuff_init_in(&sbuff, "False", 5);
+	TEST_CHECK_RET(fr_sbuff_out(&b, &sbuff), FR_SBUFF_OK);
+	TEST_CHECK(b == false);
+	TEST_CHECK(sbuff.p == sbuff.end);
+
+	TEST_CASE("Not a truth value, out is false and input is not advanced");
+	b = true;
+	fr_sbuff_init_in(&sbuff, "maybe", 5);
+	TEST_CHECK_RET(fr_sbuff_out(&b, &sbuff), FR_SBUFF_ERR_NOT_FOUND);
+	TEST_CHECK(b == false);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Empty input");
+	fr_sbuff_init_in(&sbuff, "", 0);
+	TEST_CHECK_RET(fr_sbuff_out(&b, &sbuff), FR_SBUFF_ERR_INPUT_EMPTY);
+}
+
 static void test_adv_past_str(void)
 {
 	fr_sbuff_t	sbuff;
@@ -2207,6 +2319,14 @@ TEST_LIST = {
 	{ "fr_sbuff_file_extend",		test_file_extend },
 	{ "fr_sbuff_file_extend_max",		test_file_extend_max },
 	{ "fr_sbuff_file_extend_error",		test_file_extend_error },
+
+	/*
+	 *	Typed parsing
+	 */
+	{ "fr_sbuff_out_int",			test_out_int },
+	{ "fr_sbuff_out_uint",			test_out_uint },
+	{ "fr_sbuff_out_float",			test_out_float },
+	{ "fr_sbuff_out_bool",			test_out_bool },
 
 	{ "fr_sbuff_no_advance",		test_no_advance },
 

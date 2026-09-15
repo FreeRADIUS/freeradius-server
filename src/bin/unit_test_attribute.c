@@ -4165,7 +4165,6 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 	static bool		tokens[SBUFF_CHAR_CLASS] = { [','] = true , ['-'] = true };
 	uint32_t		max = 0;
 	command_line_range_t	*lr;
-	fr_sbuff_err_t		err;
 
 	while (fr_sbuff_extend(in)) {
 		fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
@@ -4173,8 +4172,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 		MEM(lr = talloc_zero(ctx, command_line_range_t));
 		fr_dlist_insert_tail(out, lr);
 
-		fr_sbuff_out(&err, &lr->start, in);
-		if (err != FR_SBUFF_OK) {
+		if (fr_sbuff_out(&lr->start, in) < 0) {
 			ERROR("Invalid line start number");
 		error:
 			fr_dlist_talloc_free(out);
@@ -4223,8 +4221,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 				return 0;
 			}
 
-			fr_sbuff_out(&err, &lr->end, in);
-			if (err != FR_SBUFF_OK) {
+			if (fr_sbuff_out(&lr->end, in) < 0) {
 				ERROR("Invalid line end number");
 				goto error;
 			}

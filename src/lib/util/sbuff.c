@@ -51,15 +51,24 @@ fr_table_num_ordered_t const sbuff_err_table[] = {
 	{ L("token format invalid"),	FR_SBUFF_ERR_FORMAT		},
 	{ L("integer overflow"),	FR_SBUFF_ERR_OVERFLOW		},
 	{ L("integer underflow"),	FR_SBUFF_ERR_UNDERFLOW		},
+	{ L("sbuff not initialised"),	FR_SBUFF_ERR_UNINITIALISED	},
 };
 size_t sbuff_err_table_len = NUM_ELEMENTS(sbuff_err_table);
 
 #if defined(STATIC_ANALYZER) || !defined(NDEBUG)
-#  define CHECK_SBUFF_INIT(_sbuff)	do { if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return 0; } while (0)
+#  define _CHECK_SBUFF_INIT(_sbuff, _ret) do { if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return _ret; } while (0)
+#  define CHECK_SBUFF_INIT(_sbuff)	_CHECK_SBUFF_INIT(_sbuff, 0)
+/*
+ *	A function that reports failure as an fr_sbuff_err_t reads a 0 return as
+ *	FR_SBUFF_OK, and leaves any out argument unwritten when it returns here,
+ *	so the uninitialised sbuff needs a code of its own.
+ */
+#  define CHECK_SBUFF_INIT_ERR(_sbuff)	_CHECK_SBUFF_INIT(_sbuff, FR_SBUFF_ERR_UNINITIALISED)
 #  define CHECK_SBUFF_WRITEABLE(_sbuff) do { CHECK_SBUFF_INIT(_sbuff); if (unlikely((_sbuff)->is_const)) return 0; } while (0)
 
 #else
 #  define CHECK_SBUFF_INIT(_sbuff)
+#  define CHECK_SBUFF_INIT_ERR(_sbuff)
 #  define CHECK_SBUFF_WRITEABLE(_sbuff)
 #endif
 
@@ -749,7 +758,7 @@ fr_sbuff_err_t fr_sbuff_out_bstrncpy(size_t *len, fr_sbuff_t *out, fr_sbuff_t *i
 	size_t		remaining;
 	fr_sbuff_err_t	err = FR_SBUFF_OK;
 
-	CHECK_SBUFF_INIT(in);
+	CHECK_SBUFF_INIT_ERR(in);
 
 	while (fr_sbuff_used_total(&our_in) < max) {
 		size_t				chunk_len;
@@ -795,7 +804,7 @@ fr_sbuff_err_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size
 	fr_sbuff_marker_t	m;
 	fr_sbuff_err_t		err;
 
-	CHECK_SBUFF_INIT(in);
+	CHECK_SBUFF_INIT_ERR(in);
 
 	fr_sbuff_marker(&m, out);
 
@@ -863,7 +872,7 @@ fr_sbuff_err_t fr_sbuff_out_bstrncpy_allowed(size_t *len, fr_sbuff_t *out, fr_sb
 	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 	fr_sbuff_err_t	err = FR_SBUFF_OK;
 
-	CHECK_SBUFF_INIT(in);
+	CHECK_SBUFF_INIT_ERR(in);
 
 	while (fr_sbuff_used_total(&our_in) < max) {
 		char				*p;
@@ -923,7 +932,7 @@ fr_sbuff_err_t fr_sbuff_out_bstrncpy_until(size_t *len, fr_sbuff_t *out, fr_sbuf
 	size_t		needle_len = 1;
 	char		escape_chr = u_rules ? u_rules->chr : '\0';
 
-	CHECK_SBUFF_INIT(in);
+	CHECK_SBUFF_INIT_ERR(in);
 
 	/*
 	 *	Initialise the fastpath index and
@@ -1012,7 +1021,7 @@ fr_sbuff_err_t fr_sbuff_out_unescape_until(size_t *len, fr_sbuff_t *out, fr_sbuf
 	 */
 	if (!u_rules || (u_rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(len, out, in, max, tt, u_rules);
 
-	CHECK_SBUFF_INIT(in);
+	CHECK_SBUFF_INIT_ERR(in);
 
 	our_in = FR_SBUFF(in);
 
@@ -1062,7 +1071,10 @@ fr_sbuff_err_t fr_sbuff_out_unescape_until(size_t *len, fr_sbuff_t *out, fr_sbuf
 				fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
 				fr_sbuff_advance(&our_in, 1);		/* skip over the 'x' */
 
-				if (fr_sbuff_out_uint8_hex(NULL, &escape, &our_in, false) != 2) {
+				/*
+				 *	Exactly two hex digits must follow the 'x'
+				 */
+				if ((fr_sbuff_out_uint8_hex(&escape, &our_in, false) < 0) || (fr_sbuff_behind(&m) != 3)) {
 					fr_sbuff_set(&our_in, &m);	/* backtrack */
 					fr_sbuff_marker_release(&m);
 					goto check_subs;		/* allow sub for \x */
@@ -1093,7 +1105,10 @@ fr_sbuff_err_t fr_sbuff_out_unescape_until(size_t *len, fr_sbuff_t *out, fr_sbuf
 
 				fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
 
-				if (fr_sbuff_out_uint8_oct(NULL, &escape, &our_in, false) != 3) {
+				/*
+				 *	Exactly three octal digits must follow the escape char
+				 */
+				if ((fr_sbuff_out_uint8_oct(&escape, &our_in, false) < 0) || (fr_sbuff_behind(&m) != 3)) {
 					fr_sbuff_set(&our_in, &m);	/* backtrack */
 					fr_sbuff_marker_release(&m);
 					goto check_subs;		/* allow sub for \<oct> */
@@ -1185,12 +1200,13 @@ done:
 /** See if the string contains a truth value
  *
  * @param[out] out	Where to write boolean value.
- * @param[in] in	Where to search for a truth value.
+ * @param[in] in	Where to search for a truth value.  Advanced past the value on success.
  * @return
- *	- >0 the number of bytes consumed.
- *	- -1 no bytes copied, was not a truth value.
+ *	- FR_SBUFF_OK a truth value was found.
+ *	- FR_SBUFF_ERR_INPUT_EMPTY no input.
+ *	- FR_SBUFF_ERR_NOT_FOUND input does not start with a truth value.
  */
-fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
+fr_sbuff_err_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 {
 	fr_sbuff_t our_in = FR_SBUFF(in);
 
@@ -1209,28 +1225,30 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 		case 't':
 			if (fr_sbuff_adv_past_strcase_literal(&our_in, "true")) {
 				*out = true;
-				FR_SBUFF_SET_RETURN(in, &our_in);
+				goto done;
 			}
 			break;
 
 		case 'f':
 			if (fr_sbuff_adv_past_strcase_literal(&our_in, "false")) {
 				*out = false;
-				FR_SBUFF_SET_RETURN(in, &our_in);
+				goto done;
 			}
 			break;
 
 		case 'y':
 			if (fr_sbuff_adv_past_strcase_literal(&our_in, "yes")) {
 				*out = true;
-				FR_SBUFF_SET_RETURN(in, &our_in);
+				goto done;
 			}
 			break;
 
 		case 'n':
 			if (fr_sbuff_adv_past_strcase_literal(&our_in, "no")) {
 				*out = false;
-				FR_SBUFF_SET_RETURN(in, &our_in);
+			done:
+				fr_sbuff_set(in, &our_in);
+				return FR_SBUFF_OK;
 			}
 			break;
 		}
@@ -1240,7 +1258,7 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 
 	fr_strerror_const("Not a valid boolean value.  Accepted values are 'yes', 'no', 'true', 'false'");
 
-	return -1;
+	return (fr_sbuff_extend(&our_in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND;
 }
 
 /** Used to define a number parsing functions for signed integers
@@ -1255,57 +1273,45 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
  * @param[in] _base	to use.
  */
 #define SBUFF_PARSE_INT_DEF(_name, _type, _min, _max, _max_char, _base) \
-fr_slen_t fr_sbuff_out_##_name(fr_sbuff_err_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+fr_sbuff_err_t fr_sbuff_out_##_name(_type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char		buff[_max_char + 1]; \
 	char		*end, *a_end; \
 	size_t		len; \
+	fr_sbuff_err_t	err; \
 	long long	num; \
 	_type		cast_num; \
 	fr_sbuff_t	our_in = FR_SBUFF(in); \
 	buff[0] = '\0'; /* clang scan */ \
-	if (fr_sbuff_out_bstrncpy(&len, &FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char) == FR_SBUFF_ERR_EXTEND) { \
-		if (err) *err = FR_SBUFF_ERR_EXTEND; \
-		return -1; \
-	} \
-	if (len == 0) { \
-		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
-		return -1; \
-	} \
+	err = fr_sbuff_out_bstrncpy(&len, &FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
+	if (err != FR_SBUFF_OK) return err; \
+	if (len == 0) return (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
 	errno = 0; /* this is needed as strtoll doesn't reset errno */ \
 	num = strtoll(buff, &end, _base); \
 	cast_num = (_type)(num); \
-	if (end == buff) { \
-		if (err) *err = FR_SBUFF_ERR_NOT_FOUND; \
-		return -1; \
-	} \
+	if (end == buff) return FR_SBUFF_ERR_NOT_FOUND; \
 	if (num > cast_num) { \
 	overflow: \
-		if (err) *err = FR_SBUFF_ERR_OVERFLOW; \
 		*out = (_type)(_max); \
-		return -1; \
+		return FR_SBUFF_ERR_OVERFLOW; \
 	} \
 	if (((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == LLONG_MAX))) goto overflow; \
 	if (num < cast_num) { \
 	underflow: \
-		if (err) *err = FR_SBUFF_ERR_UNDERFLOW; \
 		*out = (_type)(_min); \
-		return -1; \
+		return FR_SBUFF_ERR_UNDERFLOW; \
 	} \
 	if ((errno == ERANGE) && (num == LLONG_MIN)) goto underflow; \
 	if (no_trailing && ((a_end = in->p + (end - buff)) < in->end)) { \
 		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
-			if (err) *err = FR_SBUFF_ERR_TRAILING; \
 			*out = (_type)(_max); \
-			FR_SBUFF_ERROR_RETURN(&our_in); \
+			return FR_SBUFF_ERR_TRAILING; \
 		} \
-		*out = cast_num; \
-	} else { \
-		if (err) *err = FR_SBUFF_OK; \
-		*out = cast_num; \
 	} \
-	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
+	*out = cast_num; \
+	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
+	return FR_SBUFF_OK; \
 }
 
 SBUFF_PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 4, 0)
@@ -1325,55 +1331,40 @@ SBUFF_PARSE_INT_DEF(ssize, ssize_t, SSIZE_MIN, SSIZE_MAX, 20, 0)
  * @param[in] _base	of the number being parsed, 8, 10, 16 etc...
  */
 #define SBUFF_PARSE_UINT_DEF(_name, _type, _max, _max_char, _base) \
-fr_slen_t fr_sbuff_out_##_name(fr_sbuff_err_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+fr_sbuff_err_t fr_sbuff_out_##_name(_type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char			buff[_max_char + 1]; \
 	char			*end, *a_end; \
 	size_t			len; \
+	fr_sbuff_err_t		err; \
 	unsigned long long	num; \
 	_type			cast_num; \
 	fr_sbuff_t		our_in = FR_SBUFF(in); \
 	buff[0] = '\0'; /* clang scan */ \
-	if (fr_sbuff_out_bstrncpy(&len, &FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char) == FR_SBUFF_ERR_EXTEND) { \
-		if (err) *err = FR_SBUFF_ERR_EXTEND; \
-		return -1; \
-	} \
-	if (len == 0) { \
-		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
-		return -1; \
-	} \
-	if (buff[0] == '-') { \
-		if (err) *err = FR_SBUFF_ERR_UNDERFLOW; \
-		return -1; \
-	} \
+	err = fr_sbuff_out_bstrncpy(&len, &FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
+	if (err != FR_SBUFF_OK) return err; \
+	if (len == 0) return (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
+	if (buff[0] == '-') return FR_SBUFF_ERR_UNDERFLOW; \
 	errno = 0; /* this is needed as strtoull doesn't reset errno */ \
 	num = strtoull(buff, &end, _base); \
 	cast_num = (_type)(num); \
-	if (end == buff) { \
-		if (err) *err = FR_SBUFF_ERR_NOT_FOUND; \
-		return -1; \
-	} \
+	if (end == buff) return FR_SBUFF_ERR_NOT_FOUND; \
 	if (num > cast_num) { \
 	overflow: \
-		if (err) *err = FR_SBUFF_ERR_OVERFLOW; \
 		*out = (_type)(_max); \
-		return -1; \
+		return FR_SBUFF_ERR_OVERFLOW; \
 	} \
 	if (((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) goto overflow; \
 	if (no_trailing && ((a_end = in->p + (end - buff)) < in->end)) { \
 		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
-			if (err) *err = FR_SBUFF_ERR_TRAILING; \
 			*out = (_type)(_max); \
-			FR_SBUFF_ERROR_RETURN(&our_in); \
+			return FR_SBUFF_ERR_TRAILING; \
 		} \
-		if (err) *err = FR_SBUFF_OK; \
-		*out = cast_num; \
-	} else { \
-		if (err) *err = FR_SBUFF_OK; \
-		*out = cast_num; \
 	} \
-	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
+	*out = cast_num; \
+	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
+	return FR_SBUFF_OK; \
 }
 
 /* max chars here is the octal string value with prefix */
@@ -1412,44 +1403,31 @@ SBUFF_PARSE_UINT_DEF(size_hex, size_t, SIZE_MAX, 22, 16)
  *			used in <stdint.h>.
  */
 #define SBUFF_PARSE_FLOAT_DEF(_name, _type, _func, _max_char) \
-fr_slen_t fr_sbuff_out_##_name(fr_sbuff_err_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+fr_sbuff_err_t fr_sbuff_out_##_name(_type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char		buff[_max_char + 1] = ""; \
 	char		*end; \
 	fr_sbuff_t	our_in = FR_SBUFF(in); \
+	fr_sbuff_err_t	err; \
 	size_t		len; \
 	_type		res; \
-	switch (fr_sbuff_out_bstrncpy_allowed(&len, &FR_SBUFF_OUT(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float)) { \
+	err = fr_sbuff_out_bstrncpy_allowed(&len, &FR_SBUFF_OUT(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float); \
+	switch (err) { \
 	case FR_SBUFF_OK: \
 		break; \
 	case FR_SBUFF_ERR_NO_SPACE: \
-		/* Too many characters to be a float */ \
-		if (err) *err = FR_SBUFF_ERR_NOT_FOUND; \
-		return -1; \
+		return FR_SBUFF_ERR_NOT_FOUND;	/* Too many characters to be a float */ \
 	default: \
-		if (err) *err = FR_SBUFF_ERR_EXTEND; \
-		return -1; \
+		return err; \
 	} \
-	if (len == 0) { \
-		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
-		return -1; \
-	} \
+	if (len == 0) return (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_ERR_INPUT_EMPTY : FR_SBUFF_ERR_NOT_FOUND; \
 	errno = 0; /* this is needed as parsing functions don't reset errno */ \
 	res = _func(buff, &end); \
-	if (errno == ERANGE) { \
-		if (res > 0) { \
-			if (err) *err = FR_SBUFF_ERR_OVERFLOW; \
-		} else { \
-			if (err) *err = FR_SBUFF_ERR_UNDERFLOW; \
-		} \
-		return -1; \
-	} \
-	if (no_trailing && (*end != '\0')) { \
-		if (err) *err = FR_SBUFF_ERR_TRAILING; \
-		FR_SBUFF_ERROR_RETURN(&our_in); \
-	} \
+	if (errno == ERANGE) return (res > 0) ? FR_SBUFF_ERR_OVERFLOW : FR_SBUFF_ERR_UNDERFLOW; \
+	if (no_trailing && (*end != '\0')) return FR_SBUFF_ERR_TRAILING; \
 	*out = res; \
-	return fr_sbuff_advance(in, end - buff); \
+	fr_sbuff_advance(in, end - buff); \
+	return FR_SBUFF_OK; \
 }
 
 SBUFF_PARSE_FLOAT_DEF(float32, float, strtof, 100)

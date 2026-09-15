@@ -5369,54 +5369,54 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 					   fr_dict_attr_t const *dst_enumv,
 					   fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules, bool tainted)
 {
-	fr_slen_t		slen;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_sbuff_err_t		err;
 
 	fr_value_box_init(dst, dst_type, dst_enumv, tainted);
 
 	switch (dst_type) {
 	case FR_TYPE_UINT8:
-		slen = fr_sbuff_out(&err, &dst->vb_uint8, in);
+		err = fr_sbuff_out(&dst->vb_uint8, &our_in);
 		break;
 
 	case FR_TYPE_UINT16:
-		slen = fr_sbuff_out(&err, &dst->vb_uint16, in);
+		err = fr_sbuff_out(&dst->vb_uint16, &our_in);
 		break;
 
 	case FR_TYPE_UINT32:
-		slen = fr_sbuff_out(&err, &dst->vb_uint32, in);
+		err = fr_sbuff_out(&dst->vb_uint32, &our_in);
 		break;
 
 	case FR_TYPE_UINT64:
-		slen = fr_sbuff_out(&err, &dst->vb_uint64, in);
+		err = fr_sbuff_out(&dst->vb_uint64, &our_in);
 		break;
 
 	case FR_TYPE_INT8:
-		slen = fr_sbuff_out(&err, &dst->vb_int8, in);
+		err = fr_sbuff_out(&dst->vb_int8, &our_in);
 		break;
 
 	case FR_TYPE_INT16:
-		slen = fr_sbuff_out(&err, &dst->vb_int16, in);
+		err = fr_sbuff_out(&dst->vb_int16, &our_in);
 		break;
 
 	case FR_TYPE_INT32:
-		slen = fr_sbuff_out(&err, &dst->vb_int32, in);
+		err = fr_sbuff_out(&dst->vb_int32, &our_in);
 		break;
 
 	case FR_TYPE_INT64:
-		slen = fr_sbuff_out(&err, &dst->vb_int64, in);
+		err = fr_sbuff_out(&dst->vb_int64, &our_in);
 		break;
 
 	case FR_TYPE_SIZE:
-		slen = fr_sbuff_out(&err, &dst->vb_size, in);
+		err = fr_sbuff_out(&dst->vb_size, &our_in);
 		break;
 
 	case FR_TYPE_FLOAT32:
-		slen = fr_sbuff_out(&err, &dst->vb_float32, in);
+		err = fr_sbuff_out(&dst->vb_float32, &our_in);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		slen = fr_sbuff_out(&err, &dst->vb_float64, in);
+		err = fr_sbuff_out(&dst->vb_float64, &our_in);
 		break;
 
 	default:
@@ -5424,14 +5424,13 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 		return -1;
 	}
 
-	if (slen < 0) {
+	if (err < 0) {
 		/*
 		 *	If an enumeration attribute is provided and we
 		 *      don't find an integer, assume this is an enumv
 		 *      lookup fail, and produce a better error.
 		 */
 		if (dst_enumv && dst_enumv->flags.has_value && (err == FR_SBUFF_ERR_NOT_FOUND)) {
-			fr_sbuff_t our_in = FR_SBUFF(in);
 			fr_sbuff_adv_until(&our_in, SIZE_MAX, rules->terminals,
 					   rules->escapes ? rules->escapes->chr : '\0');
 
@@ -5447,9 +5446,10 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 		} else {
 			fr_sbuff_err_to_strerror(err);
 		}
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	return slen;
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Convert string value to a fr_value_box_t type
@@ -5827,13 +5827,15 @@ parse:
 		goto finish;
 
 	case FR_TYPE_BOOL:
+	{
+		fr_sbuff_t bool_in = FR_SBUFF(in);
+
 		fr_value_box_init(dst, dst_type, dst_enumv, false);
 
 		/*
 		 *	Quoted boolean values are "yes", "no", "true", "false"
 		 */
-		slen = fr_sbuff_out(NULL, &dst->vb_bool, in);
-		if (slen > 0) return slen;
+		if (fr_sbuff_out(&dst->vb_bool, &bool_in) >= 0) FR_SBUFF_SET_RETURN(in, &bool_in);
 
 		/*
 		 *	For barewords we also allow 0 for false and any other
@@ -5843,23 +5845,22 @@ parse:
 			int64_t	stmp;
 			uint64_t utmp;
 
-			slen = fr_sbuff_out(NULL, &stmp, in);
-			if (slen >= 0) {
+			if (fr_sbuff_out(&stmp, &bool_in) >= 0) {
 				dst->vb_bool = (stmp != 0);
-				return slen;
+				FR_SBUFF_SET_RETURN(in, &bool_in);
 			}
 
-			slen = fr_sbuff_out(NULL, &utmp, in);
-			if (slen >= 0) {
+			if (fr_sbuff_out(&utmp, &bool_in) >= 0) {
 				dst->vb_bool = (utmp != 0);
-				return slen;
+				FR_SBUFF_SET_RETURN(in, &bool_in);
 			}
 		}
 
 		fr_strerror_const("Invalid boolean value.  Accepted values are "
 				 "\"yes\", \"no\", \"true\", \"false\" or any unquoted integer");
 
-		return slen;	/* Just whatever the last error offset was */
+		FR_SBUFF_ERROR_RETURN(&bool_in);
+	}
 
 	case FR_TYPE_ETHERNET:
 	{
@@ -5888,7 +5889,7 @@ parse:
 		 *
 		 *	i.e. 1c:00:00:00:00 -> 1
 		 */
-		if ((fr_sbuff_out(NULL, &num, &our_in) > 0) && fr_sbuff_is_terminal(&our_in, rules->terminals)) {
+		if ((fr_sbuff_out(&num, &our_in) >= 0) && fr_sbuff_is_terminal(&our_in, rules->terminals)) {
 			num = htonll(num);
 
 			FR_DBUFF_IN_MEMCPY_RETURN(&dbuff, ((uint8_t *) &num) + 2, sizeof(dst->vb_ether));

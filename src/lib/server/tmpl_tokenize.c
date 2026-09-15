@@ -1390,15 +1390,12 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	case '8':
 	case '9':
 	{
-		ssize_t rcode;
-		fr_sbuff_err_t	sberr = FR_SBUFF_OK;
 		fr_sbuff_t tmp = FR_SBUFF(&our_name);
 
 		/*
 		 *	All digits (not hex).
 		 */
-		rcode = fr_sbuff_out(&sberr, &ar->ar_num, &tmp);
-		if ((rcode < 0) || !fr_sbuff_is_char(&tmp, ']')) goto parse_tmpl;
+		if ((fr_sbuff_out(&ar->ar_num, &tmp) < 0) || !fr_sbuff_is_char(&tmp, ']')) goto parse_tmpl;
 
 		if ((ar->ar_num > 1000) || (ar->ar_num < 0)) {
 			fr_strerror_printf("Invalid array index '%hi' (should be between 0-1000)", ar->ar_num);
@@ -1965,7 +1962,7 @@ static int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *
 	 *	.<oid>
 	 */
-	if (fr_sbuff_out(NULL, &oid, name) > 0) {
+	if (fr_sbuff_out(&oid, name) >= 0) {
 		if (!at_rules->allow_oid) {
 			uint8_t c = fr_sbuff_uint8(name, '\0');
 
@@ -2697,7 +2694,7 @@ static fr_slen_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	bool		a_bool;
 	tmpl_t		*vpt;
 
-	if (fr_sbuff_out(NULL, &a_bool, &our_in) < 0) {
+	if (fr_sbuff_out(&a_bool, &our_in) < 0) {
 		fr_strerror_const("Not a boolean value");
 		return 0;
 	}
@@ -2808,7 +2805,7 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	 *	leaving the remaining octets zero.
 	 */
 	for (count = 0; count < 4; count++) {
-		if (fr_sbuff_out(NULL, &addr[count], &our_in) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+		if (fr_sbuff_out(&addr[count], &our_in) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		if (count == 3) break;
 
@@ -2822,7 +2819,7 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	 *	If it has a trailing '/' then it's an IP prefix.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '/')) {
-		if (fr_sbuff_out(NULL, &prefix, &our_in) < 0) {
+		if (fr_sbuff_out(&prefix, &our_in) < 0) {
 			fr_strerror_const("IPv4 CIDR mask malformed");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -2951,7 +2948,7 @@ static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	if (fr_sbuff_next_if_char(&our_in, '/')) {
 		uint8_t		mask;
 
-		if (fr_sbuff_out(NULL, &mask, &our_in) < 0) {
+		if (fr_sbuff_out(&mask, &our_in) < 0) {
 			fr_strerror_const("IPv6 CIDR mask malformed");
 			goto error;
 		}
@@ -3068,7 +3065,6 @@ static fr_slen_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbu
 {
 	tmpl_t		*vpt;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
-	ssize_t		slen;
 	fr_value_box_t	*vb;
 
 	/*
@@ -3077,8 +3073,7 @@ static fr_slen_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbu
 	if (fr_sbuff_is_char(&our_in, '-')) {
 		int64_t		a_int;
 
-		slen = fr_sbuff_out(NULL, &a_int, &our_in);
-		if (slen <= 0) return 0;
+		if (fr_sbuff_out(&a_int, &our_in) < 0) return 0;
 
 		if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 			fr_strerror_const("Unexpected text after signed integer");
@@ -3108,8 +3103,7 @@ static fr_slen_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbu
 	} else {
 		uint64_t	a_uint;
 
-		slen = fr_sbuff_out(NULL, &a_uint, &our_in);
-		if (slen <= 0) return slen;
+		if (fr_sbuff_out(&a_uint, &our_in) < 0) return -1;
 
 		if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 			fr_strerror_const("Unexpected text after unsigned integer");
@@ -3146,11 +3140,9 @@ static fr_slen_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 	tmpl_t		*vpt;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	double		a_float;
-	ssize_t		slen;
 	fr_value_box_t	*vb;
 
-	slen = fr_sbuff_out(NULL, &a_float, &our_in);
-	if (slen <= 0) return 0;
+	if (fr_sbuff_out(&a_float, &our_in) < 0) return 0;
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 		fr_strerror_const("Unexpected text after float");

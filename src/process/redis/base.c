@@ -620,7 +620,7 @@ static void redis_cluster_info_results(request_t *request, UNUSED fr_redis_comma
 	}
 	fr_sbuff_advance(&sbuff, sizeof("cluster_current_epoch:") -1);
 
-	if (fr_sbuff_out_uint64(NULL, &nrctx->node->current_epoch, &sbuff, false) < 0) {
+	if (fr_sbuff_out_uint64(&nrctx->node->current_epoch, &sbuff, false) < 0) {
 		RERROR("Failed parsing current_cluster_epoch");
 		goto error;
 	}

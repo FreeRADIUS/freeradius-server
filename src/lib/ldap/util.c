@@ -417,11 +417,11 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 
 			vlvinfo.ldvlv_context = NULL;
 
-			if (fr_sbuff_out(NULL, &ext_value, &sbuff) <= 0) goto vlv_error;
+			if (fr_sbuff_out(&ext_value, &sbuff) < 0) goto vlv_error;
 			if (!fr_sbuff_next_if_char(&sbuff, '/')) goto vlv_error;
 			vlvinfo.ldvlv_before_count = ext_value;
 
-			if (fr_sbuff_out(NULL, &ext_value, &sbuff) <= 0) goto vlv_error;
+			if (fr_sbuff_out(&ext_value, &sbuff) < 0) goto vlv_error;
 			vlvinfo.ldvlv_after_count = ext_value;
 
 			/* offset/count syntax */
@@ -429,11 +429,11 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 				/* Ensure attrvalue is null - this is how the type of vlv control is determined */
 				vlvinfo.ldvlv_attrvalue = NULL;
 
-				if (fr_sbuff_out(NULL, &ext_value, &sbuff) <= 0) goto vlv_error;
+				if (fr_sbuff_out(&ext_value, &sbuff) < 0) goto vlv_error;
 				if (!fr_sbuff_next_if_char(&sbuff, '/')) goto error;
 				vlvinfo.ldvlv_offset = ext_value;
 
-				if (fr_sbuff_out(NULL, &ext_value, &sbuff) <= 0) goto vlv_error;
+				if (fr_sbuff_out(&ext_value, &sbuff) < 0) goto vlv_error;
 				vlvinfo.ldvlv_count = ext_value;
 
 			/* greaterThanOrEqual attribute syntax*/

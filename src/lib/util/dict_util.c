@@ -2568,7 +2568,7 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 
 	if (fr_dict_attr_by_name_substr(err, &child, parent, &our_in, tt) > 0) goto done;
 
-	fr_sbuff_out(&sberr, &num, &our_in);
+	sberr = fr_sbuff_out(&num, &our_in);
 	switch (sberr) {
 	/*
 	 *	Lookup by number

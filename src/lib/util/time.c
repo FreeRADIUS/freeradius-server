@@ -241,7 +241,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 	 *
 	 *	<integer>[scale]
 	 */
-	if (fr_sbuff_out(&sberr, &integer, &our_in) < 0) {
+	if ((sberr = fr_sbuff_out(&integer, &our_in)) < 0) {
 		char const *err;
 
 	num_error:
@@ -269,7 +269,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 		our_in = FR_SBUFF(in);
 
 	is_float:
-		if (fr_sbuff_out(&sberr, &f, &our_in) < 0) goto num_error;
+		if ((sberr = fr_sbuff_out(&f, &our_in)) < 0) goto num_error;
 
 		do_float = true;
 	}
@@ -354,7 +354,7 @@ do_timestamp:
 
 		fr_sbuff_marker(&m1, &our_in);
 
-		if (fr_sbuff_out(&sberr, &seconds, &our_in) < 0) goto num_error;
+		if ((sberr = fr_sbuff_out(&seconds, &our_in)) < 0) goto num_error;
 
 		/*
 		 *	minutes:seconds
@@ -376,7 +376,7 @@ do_timestamp:
 			hours = negative ? -integer : integer;
 			minutes = seconds;
 
-			if (fr_sbuff_out(&sberr, &seconds, &our_in) < 0) goto num_error;
+			if ((sberr = fr_sbuff_out(&seconds, &our_in)) < 0) goto num_error;
 		}
 
 		if (minutes >= 60) {

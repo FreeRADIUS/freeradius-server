@@ -511,7 +511,7 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			goto error;
 		}
 
-		fr_sbuff_out(&sberr, &num, &our_in);
+		sberr = fr_sbuff_out(&num, &our_in);
 		switch (sberr) {
 		case FR_SBUFF_OK:
 			switch (our_parent->type) {

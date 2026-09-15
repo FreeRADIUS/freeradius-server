@@ -52,7 +52,8 @@ typedef enum {
 	FR_SBUFF_ERR_TRAILING		= -6,
 	FR_SBUFF_ERR_FORMAT		= -7,
 	FR_SBUFF_ERR_OVERFLOW		= -8,
-	FR_SBUFF_ERR_UNDERFLOW		= -9
+	FR_SBUFF_ERR_UNDERFLOW		= -9,
+	FR_SBUFF_ERR_UNINITIALISED	= -10
 } fr_sbuff_err_t;
 
 fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static SBUFF_CHAR_CLASS])
