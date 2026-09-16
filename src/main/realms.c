@@ -45,6 +45,7 @@ bool home_servers_udp = false;
 typedef struct realm_regex realm_regex_t;
 
 static uint32_t affinity_id = 0;
+static home_server_t const *affinity_array[256] = {};
 
 /** Regular expression associated with a realm
  *
@@ -561,6 +562,9 @@ static CONF_PARSER home_server_config[] = {
 #ifdef HOMESERVER_VIOLATES_RFC
 	{ "no_auto_ma", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, no_auto_ma), NULL },
 #endif
+
+	{ "affinity_id", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, affinity_id), NULL},
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -992,6 +996,25 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 			home->log_name = talloc_asprintf(home, "%s:%i", buffer, home->port);
 		}
+
+		cp = cf_pair_find(cs, "affinity_id");
+		if (cp) {
+			home->affinity_id_is_set = true;
+
+			if (home->affinity_id > UINT8_MAX) {
+				cf_log_err_cp(cp, "Invalid value - affinity_id must be 0..255");
+				goto error;
+			}
+
+			if (affinity_array[home->affinity_id] != NULL) {
+				cf_log_err_cp(cp, "Invalid value - affinity_id was already used by home server %s",
+					      affinity_array[home->affinity_id]->name);
+				goto error;
+			}
+
+			affinity_array[home->affinity_id] = home;
+		}
+
 	/*
 	 *	If it has a 'virtual_Server' config item, it's
 	 *	a loopback into a virtual server.
@@ -1921,13 +1944,26 @@ static int server_pool_add(realm_config_t *rc,
 			}
 
 			if (!home->affinity_id_is_set) {
-				if (affinity_id >= 256) {
+				if (affinity_id > UINT8_MAX) {
+				too_many_home_servers:
 					ERROR("Too many home servers (> 256) used in pools with track_home_server=true");
 					goto error;
 				}
 
+				/*
+				 *	The home_server may have manually configured the affinity_id.
+				 */
+				while (affinity_array[affinity_id] != NULL) {
+					affinity_id++;
+					if (affinity_id > UINT8_MAX) goto too_many_home_servers;
+				}
+
 				home->affinity_id_is_set = true;
-				home->affinity_id = affinity_id++;
+				home->affinity_id = affinity_id;
+
+				affinity_array[home->affinity_id] = home;
+			} else {
+				rad_assert(affinity_array[home->affinity_id] == home);
 			}
 
 			pool->affinity_group[home->affinity_id] = home;
