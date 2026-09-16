@@ -22,6 +22,12 @@
 #
 WORKDIR /usr/local/src/repositories/freeradius-server
 COPY . .
+
+# CFLAGS and LDFLAGS env variables. Setting these env variables allows
+# us to then use them in various profiling statistic scripts for logging.
+ENV PROFILING_CFLAGS="-g3 -O1 -fno-omit-frame-pointer -fno-inline -Dalways_inline= -fno-optimize-sibling-calls -fno-plt -fno-builtin"
+ENV PROFILING_LDFLAGS="-fno-omit-frame-pointer"
+
 # Wipe any host build artefacts that survived the COPY before invoking
 # autoconf/make so the container builds from a clean state. The
 # libbacktrace submodule in particular tends to carry host-absolute
@@ -42,8 +48,8 @@ RUN ./configure \
         --enable-developer \
         --disable-verify-ptr \
         --with-raddbdir=/etc/freeradius \
-        CFLAGS="-g3 -O1 -fno-omit-frame-pointer -fno-inline -Dalways_inline= -fno-optimize-sibling-calls -fno-plt -fno-builtin" \
-        LDFLAGS="-fno-omit-frame-pointer" \
+        CFLAGS="$PROFILING_CFLAGS" \
+        LDFLAGS="$PROFILING_LDFLAGS" \
     && make -j$(nproc) \
     && make install
 
