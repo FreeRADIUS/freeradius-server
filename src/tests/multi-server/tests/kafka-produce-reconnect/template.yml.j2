@@ -23,6 +23,7 @@ states:
             loss: 100
     verify:
       timeout: {{ outage_seconds }}
+      timeout_mode: window
       trigger_mode: unordered
 
   #
