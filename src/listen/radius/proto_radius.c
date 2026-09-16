@@ -340,8 +340,14 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	/*
 	 *	Do BlastRADIUS checks for Access-Request and Message-Authenticator
+	 *
+	 *	Skip the fake packet which defines a dynamic client.  There is no
+	 *	secret yet, and the client it would complain about is a placeholder
+	 *	which update_client() overwrites once the client is defined.  The
+	 *	limit_proxy_state checks below already skip that packet.
 	 */
 	if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
+	    client->active &&
 	    !client->blastradius_complaint &&
 	    (require_message_authenticator != FR_RADIUS_REQUIRE_MA_YES)) {
 		bool has_ma = (fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator) != NULL);
