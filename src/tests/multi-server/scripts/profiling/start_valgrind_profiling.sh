@@ -4,6 +4,11 @@
 #
 #  Instrumentation starts switched off (--instr-atstart=no), so
 #  configuration parsing and module instantiation stay out of the profile.
+#  A -S override replaces the value that radiusd.conf gives a trigger, so a
+#  suite that also wants server.start or server.stop puts its own expansion
+#  in TRIGGER_SERVER_START_APPEND or TRIGGER_SERVER_STOP_APPEND.  The script
+#  appends that expansion to the callgrind expansion, and both run.
+#
 #  The server.start trigger switches instrumentation on once the worker
 #  threads are running, and the server.stop trigger switches
 #  instrumentation off before the worker threads are torn down, so
@@ -75,8 +80,8 @@ valgrind \
   --instr-atstart=no \
   freeradius -f -l stdout \
     -S resources.talloc_skip_cleanup=yes \
-    -S 'trigger.server.start=%callgrind.start()' \
-    -S 'trigger.server.stop=%callgrind.stop()' \
+    -S "trigger.server.start=%callgrind.start()${TRIGGER_SERVER_START_APPEND:-}" \
+    -S "trigger.server.stop=%callgrind.stop()${TRIGGER_SERVER_STOP_APPEND:-}" \
   > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || STATUS=$?
 
 #

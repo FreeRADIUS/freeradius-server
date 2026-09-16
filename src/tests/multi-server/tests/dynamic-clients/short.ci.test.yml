@@ -1,0 +1,88 @@
+# Type of the test framework listener that the servers write triggers to
+listener_type: file
+
+# `dynamic` is the port of the server listener that defines clients
+# dynamically.  `nas_coa` is the port of the Change of Authorization (CoA)
+# and Disconnect-Request listener on the nas.  Both ports are private to
+# the compose network.
+ports:
+  dynamic: 1812
+  nas_coa: 3799
+
+# Last octet of each alias on the client container.  Each case sends from
+# a separate alias, so the first packet of each case arrives from an
+# address that the server has not seen.  The template gives the aliases to
+# the cases in this order.
+client_addresses:
+  - 201
+  - 202
+  - 203
+  - 204
+  - 205
+  - 206
+  - 207
+  - 208
+  - 209
+  - 210
+
+# Secret that the server assigns to each client that the server defines,
+# until the `case7_rotate_secret` state rotates the secret
+initial_secret: testing123
+rotated_secret: changed456
+
+# Secret shared by the server and the nas for CoA-Request and Disconnect-Request
+coa_secret: coa-secret
+
+# Value for the `cleanup_delay` listener limit.  One second is the minimum
+# that the server accepts.
+cleanup_delay: 1.0
+
+# Timings per mode.  A server that runs under a profiler starts and answers slowly,
+# so the profiling values are a multiple of the service values.
+#
+#   reply_timeout    seconds that radclient waits for a reply.  A dropped
+#                    packet costs `reply_timeout` seconds
+#   start_window     seconds that the `start` state allows for the server
+#                    and the nas to open the listeners
+#   margin           seconds added to every verify window for docker exec
+#                    overhead and the delay before the framework reads the
+#                    listener file
+#   nak_lifetime     negative cache lifetime on the dynamic listener.  A
+#                    dropped packet holds the client for `reply_timeout`
+#                    seconds, so `nak_lifetime` is longer than
+#                    `reply_timeout`, and the second packet of
+#                    `case2_nak_cache` still meets the entry
+#   nak_attempts     resends in `case3_nak_cache_expiry`, once per
+#                    `reply_timeout`, until the negative cache entry has
+#                    expired.  `nak_attempts * reply_timeout` is longer than
+#                    `nak_lifetime + reply_timeout`, so the resends outlast
+#                    the entry
+#   dynamic_timeout  dynamic client lifetime on the dynamic listener.  The
+#                    server deletes a dynamic client `2 * dynamic_timeout`
+#                    after the server cleans up the last packet of the
+#                    dynamic client
+#   idle_gap         seconds that a case waits for a dynamic client to
+#                    expire: `2 * dynamic_timeout + cleanup_delay` plus a
+#                    few seconds of allowance, separate from `margin`
+timing:
+  service:
+    reply_timeout: 1
+    start_window: 6
+    margin: 4
+    nak_lifetime: 3.0
+    nak_attempts: 8
+    dynamic_timeout: 2.0
+    idle_gap: 8
+  profiling:
+    reply_timeout: 10
+    start_window: 40
+    margin: 6
+    nak_lifetime: 30.0
+    nak_attempts: 5
+    dynamic_timeout: 20.0
+    idle_gap: 50
+
+# Timeout for the whole test, in seconds, in both modes.  The `profiling`
+# timings are longer than the `service` timings, so the value covers a
+# `profiling` run.
+test_timeout: 900

@@ -1,0 +1,125 @@
+#
+#  The nas stands in for the Network Access Server (NAS) that the server
+#  sends CoA-Request and Disconnect-Request packets to.  The `coa` listener
+#  defines clients dynamically, so the first packet from the server runs the
+#  `new client` section on the nas.
+#
+name       = nas
+
+raddbdir   = /etc/freeradius
+confdir    = ${raddbdir}
+modconfdir = ${confdir}/mods-config
+logdir     = /var/log/freeradius
+radacctdir = ${logdir}/radacct
+
+security {
+	allow_core_dumps = yes
+}
+
+trigger {
+	server {
+		start = "%linelog_test_framework('nas-start {}')"
+	}
+}
+
+log {
+	destination = files
+	file = ${logdir}/radius.log
+	syslog_facility = daemon
+	stripped_names = no
+	auth = yes
+	auth_badpass = yes
+	auth_goodpass = yes
+}
+
+modules {
+{% include "freeradius/common/mods-available/linelog" %}
+
+{%- if listener_type == "unix" %}
+{%   include "freeradius/common/mods-available/linelog_socket" %}
+{%- elif listener_type == "file" %}
+{%   include "freeradius/common/mods-available/linelog_file" %}
+{%- endif %}
+
+{% include "freeradius/common/mods-available/json" %}
+
+{% include "freeradius/common/mods-available/always" %}
+}
+
+server nas {
+	namespace = radius
+
+	listen coa {
+		type = CoA-Request
+		type = Disconnect-Request
+		transport = udp
+
+		limit {
+			max_clients = 16
+			max_connections = 16
+			idle_timeout = 300.0
+			dynamic_timeout = 300.0
+			nak_lifetime = 300.0
+			cleanup_delay = {{ cleanup_delay }}
+		}
+
+		udp {
+			ipaddr = *
+			port = {{ ports.nas_coa }}
+			dynamic_clients = true
+			networks {
+				allow = 0.0.0.0/0
+			}
+		}
+	}
+
+	new client {
+		control.FreeRADIUS-Client-IP-Address := Net.Src.IP
+		control.FreeRADIUS-Client-Shortname := 'server'
+		control.FreeRADIUS-Client-NAS-Type := 'other'
+		control.FreeRADIUS-Client-Secret := '{{ coa_secret }}'
+
+{%- raw %}
+		%linelog_test_framework("nas-new-client-%{NAS-Identifier} {\"src\": %json.quote("%{Net.Src.IP}"), \"packet_type\": %json.quote("%{Packet-Type}"), \"tunnel_password\": %json.quote("%{Tunnel-Password}")}")
+{%- endraw %}
+		ok
+	}
+
+	add client {
+		ok
+	}
+
+	deny client {
+		ok
+	}
+
+	recv CoA-Request {
+{%- raw %}
+		%linelog_test_framework("nas-recv-coa-%{NAS-Identifier} {\"user\": %json.quote("%{User-Name}"), \"tunnel_password\": %json.quote("%{Tunnel-Password}")}")
+{%- endraw %}
+		ok
+	}
+
+	send CoA-ACK {
+		ok
+	}
+
+	send CoA-NAK {
+		ok
+	}
+
+	recv Disconnect-Request {
+{%- raw %}
+		%linelog_test_framework("nas-recv-disconnect-%{NAS-Identifier} {\"user\": %json.quote("%{User-Name}")}")
+{%- endraw %}
+		ok
+	}
+
+	send Disconnect-ACK {
+		ok
+	}
+
+	send Disconnect-NAK {
+		ok
+	}
+}

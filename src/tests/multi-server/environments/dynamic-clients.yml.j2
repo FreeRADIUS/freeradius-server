@@ -1,0 +1,99 @@
+# ---------------------------------------------------------------
+# Docker Compose Test Environment:
+#
+#   client (radclient, one alias per case) --> server (the `dynamic` listener)
+#                                                 |
+#                                                 +--> nas (Change of
+#                                                      Authorization (CoA) and
+#                                                      Disconnect-Request
+#                                                      listener, defines the
+#                                                      server as a dynamic
+#                                                      client)
+#
+#   Each case sends from a separate alias of the client container, so the
+#   first packet of each case arrives from an address that the server has
+#   not seen.  The `dynamic` listener runs the new client section on the
+#   first packet of each case.  The nas container acts as the Network
+#   Access Server (NAS) that receives CoA-Request and Disconnect-Request
+#   packets from the server.
+#
+#   The entrypoint of the client container adds the aliases and then keeps
+#   the container alive, and the server and nas containers start once the
+#   client reports healthy.  The `start` state of the test template,
+#   `tests/dynamic-clients/template.yml.j2`, starts FreeRADIUS in the
+#   server and nas containers, so the entrypoint of each only keeps the
+#   container alive.  FreeRADIUS in each container writes a debug log into
+#   the `logs/` directory of the test.  The make rule that runs the test
+#   prints the debug logs when the test fails.
+# ---------------------------------------------------------------
+x-common-config: &id001
+  cap_add:
+  - NET_ADMIN
+  - SYS_PTRACE
+  environment:
+    TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+services:
+  server:
+    image: ${FREERADIUS_IMAGE}
+    extends:
+      file: freeradius-common.yml
+      service: freeradius-profiled
+    depends_on:
+      client:
+        condition: service_healthy
+    # The profiling wrapper overrides trigger.server.start to switch callgrind
+    # on, which would drop the `server-start` trigger that radiusd.conf writes,
+    # so the suite hands the wrapper the same expansion to append.  A service
+    # `environment` replaces the one from the anchor rather than merging with
+    # it, so the common variable is repeated here.
+    environment:
+      TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      TRIGGER_SERVER_START_APPEND: "%linelog_test_framework('server-start {}')"
+    volumes:
+    - ${DATA_PATH}/freeradius/dynamic-clients/server.conf:/etc/freeradius/radiusd.conf
+    # The server writes the debug log into the same directory as the framework logs
+    - ${DATA_PATH}/logs/:/var/log/freeradius/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      # Keep the container alive.  The test framework starts FreeRADIUS
+      # and runs commands with `docker exec`, so the test framework controls
+      # the timing.
+      sleep infinity
+    <<: *id001
+  nas:
+    image: ${FREERADIUS_IMAGE}
+    depends_on:
+      client:
+        condition: service_healthy
+    volumes:
+    - ${DATA_PATH}/freeradius/dynamic-clients/nas.conf:/etc/freeradius/radiusd.conf
+    - ${DATA_PATH}/logs/:/var/log/freeradius/
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      sleep infinity
+    <<: *id001
+  client:
+    image: ${FREERADIUS_IMAGE}
+    # A service `environment` replaces the one from the anchor rather than
+    # merging with it, so the common variable is repeated here.
+    environment:
+      TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      CLIENT_ADDRESSES: {{ client_addresses | join(' ') }}
+    volumes:
+    - ${DATA_PATH}/freeradius/dynamic-clients/client-setup.sh:/usr/local/bin/client-setup.sh
+    - ${DATA_PATH}/freeradius/dynamic-clients/send.sh:/usr/local/bin/send.sh
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    entrypoint:
+    - bash
+    - /usr/local/bin/client-setup.sh
+    healthcheck:
+      test: ["CMD", "test", "-f", "/run/client-ready"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+    <<: *id001

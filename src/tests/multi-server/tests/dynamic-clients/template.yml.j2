@@ -1,0 +1,420 @@
+{#
+  The test covers the dynamic client lifecycle.  Each case sends from a
+  separate alias of the client container, so the first packet of each
+  case arrives from an address that the server has not seen.  The first packet of the
+  case does not match an entry in the client table, so the server runs
+  the new client section and defines the client.  The server, nas, and
+  client containers each report the outcome of a step as a trigger.
+  Every state lists the triggers that must fire and the triggers that
+  must not fire.
+
+  `send()` calls the shared `radclient()` macro in `templates/macros.j2`,
+  and `radclient()` runs `send.sh` in the client container.  The `source`
+  argument of `send()` is the alias that radclient binds to, taken from
+  `client_addresses`, one per case.
+  `templates/macros.j2` also holds the macros that write trigger rules.
+  `radclient()` sets `NAS-Identifier` in the packet to the step name.
+  The step name is also the suffix of every trigger that the server and
+  the client write for the packet, for example `new-client-<step>` on the
+  server and `client-<step>` on the client.  The `attempts` argument
+  makes `send.sh` send an unanswered packet up to `attempts` times.  A
+  case uses the resends to wait for a condition on the server, such as
+  the expiry of a negative cache entry, without a sleep in the test.
+  radclient exits after `reply_timeout` seconds without a reply, so
+  consecutive attempts are `reply_timeout` seconds apart.
+
+  A state waits for the rules of the `verify:` block of the state to
+  match, and the `timeout` of the `verify:` block is the longest time
+  that the state waits.  `timeout_mode` selects how the timeout applies.
+  A `bound` state, the default, completes as soon as every rule that
+  requires a trigger to fire has matched.  A `bound` state also completes
+  at the timeout when a rule has not matched, so the timeout only affects
+  a state whose trigger never fires.  A `window` state runs for the whole
+  timeout.  A `never_fire` rule does not match any trigger, so only the
+  whole timeout proves that the trigger did not fire.  Every state that
+  has a `never_fire` rule therefore declares `timeout_mode: window`.
+
+  `timing[mode]` holds the timings for the mode that the test runs in.  A
+  server that runs under a profiler starts and answers slowly, so the
+  `profiling` timings are longer than the `service` timings.
+  `send_timeout()` computes the `timeout` of the `verify:` block of a
+  state from the number of packets that the state sends.
+#}
+{%- set t = timing[mode] %}
+{#
+  `send_timeout()` computes the `timeout` of the `verify:` block of a
+  state from `sends`, the number of packets that the state sends.
+  radclient waits up to `reply_timeout` seconds for a reply to each
+  packet, so the packets take at most `sends * reply_timeout` seconds.
+  `extra` adds the seconds that the server spends before answering, for
+  example the CoA-Request and Disconnect-Request round trips to the nas
+  in `case9_coa_and_disconnect_to_dynamic_client`.  `margin` covers the
+  docker exec overhead and the delay before the framework reads the file
+  that the framework watches.
+#}
+{%- macro send_timeout(sends, extra=0) -%}
+{{-   sends * t.reply_timeout + extra + t.margin }}
+{%- endmacro %}
+{%- from "macros.j2" import event_recv, event_absent, event_field_match, server_answered, server_dropped, radclient %}
+{#
+  `send()` calls `radclient()` with the listener on `ports.dynamic` as the
+  target, `t.reply_timeout` as the reply timeout, and `source` as the last
+  octet of the alias that radclient binds to.  The listener on `ports.dynamic` defines
+  dynamic clients.
+#}
+{%- macro send(step, source, command, secret, attrs, options='', attempts=1) %}
+{{-   radclient(step, 'server:' ~ ports.dynamic, command, secret, attrs, options, attempts, t.reply_timeout, source) }}
+{%- endmacro %}
+{%- set auth_attrs = ['User-Name = "bob"', 'User-Password = "hello"'] %}
+{%- set no_ma_attrs = auth_attrs + ['Message-Authenticator !* ANY'] %}
+timeout: {{ test_timeout }}
+state_order: sequence
+states:
+  start:
+    description: >
+      Write `initial_secret` to `/tmp/dynamic-secret` on the server, and
+      start FreeRADIUS in the server and nas containers.  The server
+      reports `server-start` and the nas reports `nas-start` once the
+      listeners are open.
+    host:
+      server:
+        actions:
+        - execute_command:
+            command: printf '%s' '{{ initial_secret }}' > /tmp/dynamic-secret
+        - execute_command:
+            command: exec ${RADIUSD_COMMAND:-freeradius -fxx -l /var/log/freeradius/server-debug.log}
+            detach: true
+      nas:
+        actions:
+        - execute_command:
+            command: exec freeradius -fxx -l /var/log/freeradius/nas-debug.log
+            detach: true
+    verify:
+      timeout: {{ t.start_window }}
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('server-start') }}
+{{ event_recv('nas-start') }}
+
+  case1a_new_client:
+    description: >
+      An Access-Request with Message-Authenticator arrives from an unknown
+      source.  The request does not carry an internal attribute when the
+      new client section runs.  The server then adds the client and
+      processes the packet.
+    host:
+      client:
+        actions:
+{{ send('case1a', client_addresses[0], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(1) }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('new-client-case1a', 'failure_messages', '^$') }}
+{{ event_recv('add-client-case1a') }}
+{{ event_field_match('recv-access-request-case1a', 'user', '^bob$') }}
+{{ server_answered('case1a', 'Access-Accept') }}
+
+  case1b_new_client_without_message_authenticator:
+    description: >
+      An Access-Request without Message-Authenticator arrives from an
+      unknown source.  The BlastRADIUS check (the check for a missing
+      Message-Authenticator) does not run on the packet that defines the
+      client, so the new client section does not see a Module-Failure-Message.
+      The check runs once the server processes the packet as the defined
+      client, so the recv Access-Request section sees the message.  The
+      server answers the packet and a second packet.
+    host:
+      client:
+        actions:
+{{ send('case1b', client_addresses[1], 'auth', initial_secret, no_ma_attrs) }}
+{{ send('case1b-after', client_addresses[1], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(2) }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('new-client-case1b', 'failure_messages', '^$') }}
+{{ event_recv('add-client-case1b') }}
+      - recv-access-request-case1b:
+          json:
+            user:
+              pattern:
+                reg_pattern: '^bob$'
+            failure_messages:
+              pattern:
+                reg_pattern: '.*does not contain a Message-Authenticator'
+{{ server_answered('case1b', 'Access-Accept') }}
+{{ event_recv('recv-access-request-case1b-after') }}
+{{ server_answered('case1b-after', 'Access-Accept') }}
+
+  case1c_require_message_authenticator_auto:
+    description: >
+      The new client section defines the client with
+      `require_message_authenticator = auto`.  The defining packet carries
+      Message-Authenticator, so the server marks the client as requiring
+      Message-Authenticator.  The server then drops a second packet from
+      the client that does not carry Message-Authenticator.
+    host:
+      client:
+        actions:
+{{ send('auto-case1c-first', client_addresses[2], 'auth', initial_secret, auth_attrs) }}
+{{ send('auto-case1c-second', client_addresses[2], 'auth', initial_secret, no_ma_attrs) }}
+    verify:
+      timeout: {{ send_timeout(2) }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('new-client-auto-case1c-first') }}
+{{ event_recv('recv-access-request-auto-case1c-first') }}
+{{ server_answered('auto-case1c-first', 'Access-Accept') }}
+{{ event_absent('new-client-auto-case1c-second') }}
+{{ event_absent('recv-access-request-auto-case1c-second') }}
+{{ server_dropped('auto-case1c-second') }}
+
+  case2_nak_cache:
+    description: >
+      The new client section rejects the client, so the server does not
+      reply to the packet.  The negative cache entry then makes the server
+      drop a second packet from the same source.  The new client section
+      does not run again, even though the new client section would accept
+      the second packet.
+    host:
+      client:
+        actions:
+{{ send('nak-case2-first', client_addresses[3], 'auth', initial_secret, auth_attrs) }}
+{{ send('case2-second', client_addresses[3], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(2) }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('new-client-nak-case2-first') }}
+{{ event_recv('deny-client-nak-case2-first') }}
+{{ event_absent('recv-access-request-nak-case2-first') }}
+{{ server_dropped('nak-case2-first') }}
+{{ event_absent('new-client-case2-second') }}
+{{ event_absent('recv-access-request-case2-second') }}
+{{ server_dropped('case2-second') }}
+
+  case3_nak_cache_expiry:
+    description: >
+      The first packet has a `nak-` step name, so the new client section
+      rejects the client and the server creates a negative cache entry.
+      The negative cache entry expires after `nak_lifetime`.  The client
+      then resends a second packet that the new client section would
+      accept, once per reply timeout.  The server drops each resend until
+      the negative cache entry expires.  The new client section then runs
+      again for the same source, and the server answers the packet.
+    host:
+      client:
+        actions:
+{{ send('nak-case3-first', client_addresses[4], 'auth', initial_secret, auth_attrs) }}
+{{ send('case3-second', client_addresses[4], 'auth', initial_secret, auth_attrs, attempts=t.nak_attempts) }}
+    verify:
+      timeout: {{ send_timeout(1 + t.nak_attempts) }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('new-client-nak-case3-first') }}
+{{ event_recv('deny-client-nak-case3-first') }}
+{{ server_dropped('nak-case3-first') }}
+{{ event_recv('new-client-case3-second') }}
+{{ event_recv('recv-access-request-case3-second') }}
+      - client-case3-second:
+          json:
+            exit_code:
+              pattern:
+                reg_pattern: '^0$'
+            replies:
+              pattern:
+                reg_pattern: '^Access-Accept$'
+            attempts:
+              pattern:
+                reg_pattern: '^([2-9]|1[0-9])$'
+
+  case8_status_server:
+    description: >
+      A Status-Server packet defines the client, and a second Status-Server
+      packet arrives once the client is defined.  Both packets follow
+      RFC 5997, so each packet carries Message-Authenticator and does not
+      carry User-Name.
+    host:
+      client:
+        actions:
+{{ send('case8-first', client_addresses[5], 'status', initial_secret, ['Message-Authenticator = 0x00']) }}
+{{ send('case8-second', client_addresses[5], 'status', initial_secret, ['Message-Authenticator = 0x00']) }}
+    verify:
+      timeout: {{ send_timeout(2) }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('new-client-case8-first') }}
+{{ event_field_match('recv-status-server-case8-first', 'user', '^$') }}
+{{ server_answered('case8-first', 'Access-Accept') }}
+{{ event_absent('new-client-case8-second') }}
+{{ event_recv('recv-status-server-case8-second') }}
+{{ server_answered('case8-second', 'Access-Accept') }}
+
+  case9_coa_and_disconnect_to_dynamic_client:
+    description: >
+      The server originates a CoA-Request and then a Disconnect-Request
+      to the nas.  The nas defines the server as a dynamic client on the
+      CoA-Request and answers both packets.  The CoA-Request carries a
+      Tunnel-Password.  The nas has no secret for the server while the nas
+      defines the client, so the decoder either keeps Tunnel-Password raw,
+      which the server blanks to one zero byte, or decodes the garbage as
+      a string, which the server blanks to an empty string.  The new
+      client section sees one of the two blanked values and never the
+      real one.  Once the nas processes the packet, the recv CoA-Request
+      section sees the real value.
+    host:
+      client:
+        actions:
+{{ send('coa-case9', client_addresses[6], 'auth', initial_secret, auth_attrs) }}
+{{ send('disc-case9', client_addresses[6], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(2, extra=2 * t.reply_timeout) }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('new-client-coa-case9') }}
+{{ event_field_match('nas-new-client-coa-case9', 'tunnel_password', '^\\x00?$') }}
+{{ event_field_match('nas-recv-coa-coa-case9', 'tunnel_password', '^tunnelsecret$') }}
+{{ event_field_match('coa-sent-coa-case9', 'result', '^ok$') }}
+{{ server_answered('coa-case9', 'Access-Accept') }}
+{{ event_absent('nas-new-client-disc-case9') }}
+{{ event_recv('nas-recv-disconnect-disc-case9') }}
+{{ event_field_match('disconnect-sent-disc-case9', 'result', '^ok$') }}
+{{ server_answered('disc-case9', 'Access-Accept') }}
+
+  case10_encrypted_attributes:
+    description: >
+      The defining packet carries User-Password, the one encrypted
+      attribute that an Access-Request may hold.  The new client section
+      sees User-Password blanked, because the server does not yet know
+      the secret.  The processed packet carries the real value.
+    host:
+      client:
+        actions:
+{{ send('case10', client_addresses[7], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(1) }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('new-client-case10', 'user_password', '^$') }}
+      - recv-access-request-case10:
+          json:
+            user:
+              pattern:
+                reg_pattern: '^bob$'
+            user_password:
+              pattern:
+                reg_pattern: '^hello$'
+{{ server_answered('case10', 'Access-Accept') }}
+
+  case6_define:
+    description: >
+      Define a client.  The dynamic client lifetime on the dynamic
+      listener is short, so the `case6_idle` and `case6_readd` states can
+      wait for the client to expire.
+    host:
+      client:
+        actions:
+{{ send('case6-first', client_addresses[8], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(1) }}
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('new-client-case6-first') }}
+{{ event_recv('recv-access-request-case6-first') }}
+{{ server_answered('case6-first', 'Access-Accept') }}
+
+  case6_idle:
+    description: >
+      The client container does not send a packet for longer than the
+      dynamic client takes to expire.  The server does not report a
+      trigger until the next packet arrives, so the state only waits for
+      `idle_gap` seconds.
+    verify:
+      timeout: {{ t.idle_gap }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_absent('recv-access-request-case6-first') }}
+
+  case6_readd:
+    description: >
+      The dynamic client has expired, so the next packet from the same
+      source runs the new client section again.  The server then
+      processes the packet.
+    host:
+      client:
+        actions:
+{{ send('case6-second', client_addresses[8], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(1) }}
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('new-client-case6-second') }}
+{{ event_recv('recv-access-request-case6-second') }}
+{{ server_answered('case6-second', 'Access-Accept') }}
+
+  case7_define:
+    description: >
+      Define a client with the initial secret.
+    host:
+      client:
+        actions:
+{{ send('case7-first', client_addresses[9], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(1) }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('new-client-case7-first', 'secret', '^' ~ initial_secret ~ '$') }}
+{{ event_recv('recv-access-request-case7-first') }}
+{{ server_answered('case7-first', 'Access-Accept') }}
+
+  case7_rotate_secret:
+    description: >
+      Change the secret that the new client section assigns, then leave
+      the dynamic client idle until the dynamic client expires.
+    host:
+      server:
+        actions:
+        - execute_command:
+            command: printf '%s' '{{ rotated_secret }}' > /tmp/dynamic-secret
+    verify:
+      timeout: {{ t.idle_gap }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_absent('recv-access-request-case7-first') }}
+
+  case7_after_rotate:
+    description: >
+      The dynamic client has expired.  A packet signed with the initial
+      secret defines the dynamic client again, and the new client section
+      now assigns the rotated secret.  The packet therefore fails
+      verification, and the server does not reply.  The server answers a
+      packet signed with the rotated secret and drops a further packet
+      signed with the initial secret.  All three packets arrive inside
+      one expiry window.
+    host:
+      client:
+        actions:
+{{ send('case7-old', client_addresses[9], 'auth', initial_secret, auth_attrs) }}
+{{ send('case7-new', client_addresses[9], 'auth', rotated_secret, auth_attrs) }}
+{{ send('case7-old-again', client_addresses[9], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(3) }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('new-client-case7-old', 'secret', '^' ~ rotated_secret ~ '$') }}
+{{ event_absent('recv-access-request-case7-old') }}
+{{ server_dropped('case7-old') }}
+{{ event_absent('new-client-case7-new') }}
+{{ event_recv('recv-access-request-case7-new') }}
+{{ server_answered('case7-new', 'Access-Accept') }}
+{{ event_absent('recv-access-request-case7-old-again') }}
+{{ server_dropped('case7-old-again') }}

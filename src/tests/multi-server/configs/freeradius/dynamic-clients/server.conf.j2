@@ -1,0 +1,244 @@
+#
+#  The server under test.  One listener defines clients dynamically.  Each
+#  case sends from a separate alias of the client container, so the first
+#  packet of each case arrives from an address that the server has not seen.  The first
+#  packet of the case defines the client.
+#
+#  Each unlang section reports, as a test framework trigger, the
+#  attributes that the section sees.  The trigger name ends with the
+#  `NAS-Identifier` of the packet.  The test sets `NAS-Identifier` to the
+#  step name, so the test can tell the packets of one step from the
+#  packets of another step.
+#
+name       = server
+
+raddbdir   = /etc/freeradius
+confdir    = ${raddbdir}
+modconfdir = ${confdir}/mods-config
+logdir     = /var/log/freeradius
+radacctdir = ${logdir}/radacct
+
+security {
+	allow_core_dumps = yes
+}
+
+#
+#  The server runs `server.start` once the listeners are open, and
+#  `server.start` writes the `server-start` trigger.  The `start` state of
+#  the test waits for `server-start`, so no case sends a packet before the
+#  server can answer.
+#
+trigger {
+	server {
+		start = "%linelog_test_framework('server-start {}')"
+	}
+}
+
+log {
+	destination = files
+	file = ${logdir}/radius.log
+	syslog_facility = daemon
+	stripped_names = no
+	auth = yes
+	auth_badpass = yes
+	auth_goodpass = yes
+}
+
+modules {
+{% include "freeradius/common/mods-available/linelog" %}
+
+{%- if listener_type == "unix" %}
+{%   include "freeradius/common/mods-available/linelog_socket" %}
+{%- elif listener_type == "file" %}
+{%   include "freeradius/common/mods-available/linelog_file" %}
+{%- endif %}
+
+{% include "freeradius/common/mods-available/json" %}
+
+{% include "freeradius/common/mods-available/always" %}
+
+	#
+	#  The new client section calls `reject` to deny a client.
+	#
+	always reject {
+		rcode = reject
+	}
+
+	#
+	#  The `coa` module originates Change of Authorization (CoA) requests and
+	#  Disconnect-Request packets to the nas container.  The nas container
+	#  defines the server as a dynamic client when the first packet arrives.
+	#
+	radius coa {
+		mode = client
+
+		type = CoA-Request
+		type = Disconnect-Request
+
+		transport = udp
+		udp {
+			ipaddr = nas
+			port = {{ ports.nas_coa }}
+			secret = '{{ coa_secret }}'
+		}
+	}
+}
+
+policy {
+{% include "freeradius/common/policy.d/control" %}
+}
+
+{%- set t = timing[mode] %}
+server dynamic-clients {
+	namespace = radius
+
+	#
+	#  The client and negative cache lifetimes are short, so the expiry cases
+	#  finish inside the test timeout.  The lifetimes scale with the mode,
+	#  because a server under the profiler answers more slowly than a server
+	#  without the profiler.
+	#
+	listen dynamic {
+		type = Access-Request
+		type = Status-Server
+		transport = udp
+		require_message_authenticator = no
+
+		limit {
+			max_clients = 16
+			max_connections = 16
+			idle_timeout = {{ t.dynamic_timeout }}
+			dynamic_timeout = {{ t.dynamic_timeout }}
+			nak_lifetime = {{ t.nak_lifetime }}
+			cleanup_delay = {{ cleanup_delay }}
+		}
+
+		udp {
+			ipaddr = *
+			port = {{ ports.dynamic }}
+			dynamic_clients = true
+			networks {
+				allow = 0.0.0.0/0
+			}
+		}
+	}
+
+	#
+	#  The secret comes from `/tmp/dynamic-secret`, a file that the test
+	#  rewrites between client definitions, the way a client database changes
+	#  under a running server.
+	#
+	#  A `NAS-Identifier` starting with `nak-` makes the section reject the
+	#  client, so the test can exercise the negative cache.  A
+	#  `NAS-Identifier` starting with `auto-` defines the client with
+	#  `require_message_authenticator = auto`.  The listener sets
+	#  `require_message_authenticator = no`, so the test exercises the `auto`
+	#  setting on one client.
+	#
+	#  The trigger reports the `Module-Failure-Message` values and the
+	#  `User-Password` that the section sees.  `Module-Failure-Message` shows
+	#  whether an internal attribute was in the request when the server defined
+	#  the client.  The test asserts that the request does not carry an
+	#  internal attribute.  `User-Password` shows that the server blanked an
+	#  encrypted attribute because the server has no secret for the client
+	#  until the section assigns one.
+	#
+	new client {
+		control.FreeRADIUS-Client-IP-Address := Net.Src.IP
+		control.FreeRADIUS-Client-Shortname := "dynamic-%{Net.Src.IP}-%{Net.Dst.Port}"
+		control.FreeRADIUS-Client-NAS-Type := 'other'
+		control.FreeRADIUS-Client-Secret := %file.head('/tmp/dynamic-secret')
+
+{%- raw %}
+		%linelog_test_framework("new-client-%{NAS-Identifier} {\"src\": %json.quote("%{Net.Src.IP}"), \"port\": %json.quote("%{Net.Dst.Port}"), \"secret\": %json.quote("%{control.FreeRADIUS-Client-Secret}"), \"failure_messages\": %json.quote("%{Module-Failure-Message[*]}"), \"user_password\": %json.quote("%{User-Password}")}")
+{%- endraw %}
+
+		if (NAS-Identifier =~ /^nak-/) {
+			reject
+		}
+
+		if (NAS-Identifier =~ /^auto-/) {
+			control.FreeRADIUS-Client-Require-MA := ::Auto
+		}
+
+		ok
+	}
+
+	add client {
+{%- raw %}
+		%linelog_test_framework("add-client-%{NAS-Identifier} {\"src\": %json.quote("%{Net.Src.IP}"), \"port\": %json.quote("%{Net.Dst.Port}")}")
+{%- endraw %}
+		ok
+	}
+
+	deny client {
+{%- raw %}
+		%linelog_test_framework("deny-client-%{NAS-Identifier} {\"src\": %json.quote("%{Net.Src.IP}"), \"port\": %json.quote("%{Net.Dst.Port}")}")
+{%- endraw %}
+		ok
+	}
+
+	#
+	#  A `NAS-Identifier` starting with `coa-` or `disc-` makes the server
+	#  originate a CoA-Request or a Disconnect-Request to the nas container.
+	#  The server sends the CoA-Request or Disconnect-Request before the server
+	#  accepts the Access-Request.  The CoA-Request carries a `Tunnel-Password`,
+	#  an encrypted attribute that the nas blanks while the nas defines the
+	#  server as a client.
+	#
+	recv Access-Request {
+{%- raw %}
+		%linelog_test_framework("recv-access-request-%{NAS-Identifier} {\"user\": %json.quote("%{User-Name}"), \"user_password\": %json.quote("%{User-Password}"), \"failure_messages\": %json.quote("%{Module-Failure-Message[*]}")}")
+{%- endraw %}
+
+		if (NAS-Identifier =~ /^coa-/) {
+			subrequest ::CoA-Request {
+				request.User-Name := parent.request.User-Name
+				request.NAS-Identifier := parent.request.NAS-Identifier
+				request.Tunnel-Password := 'tunnelsecret'
+				coa
+				if (ok) {
+{%- raw %}
+					%linelog_test_framework("coa-sent-%{NAS-Identifier} {\"result\": \"ok\"}")
+{%- endraw %}
+				} else {
+{%- raw %}
+					%linelog_test_framework("coa-sent-%{NAS-Identifier} {\"result\": \"fail\"}")
+{%- endraw %}
+				}
+			}
+		}
+
+		if (NAS-Identifier =~ /^disc-/) {
+			subrequest ::Disconnect-Request {
+				request.User-Name := parent.request.User-Name
+				request.NAS-Identifier := parent.request.NAS-Identifier
+				coa
+				if (ok) {
+{%- raw %}
+					%linelog_test_framework("disconnect-sent-%{NAS-Identifier} {\"result\": \"ok\"}")
+{%- endraw %}
+				} else {
+{%- raw %}
+					%linelog_test_framework("disconnect-sent-%{NAS-Identifier} {\"result\": \"fail\"}")
+{%- endraw %}
+				}
+			}
+		}
+
+		accept
+	}
+
+	recv Status-Server {
+{%- raw %}
+		%linelog_test_framework("recv-status-server-%{NAS-Identifier} {\"user\": %json.quote("%{User-Name}"), \"src\": %json.quote("%{Net.Src.IP}")}")
+{%- endraw %}
+		ok
+	}
+
+	send Access-Accept {
+	}
+
+	send Access-Reject {
+	}
+}

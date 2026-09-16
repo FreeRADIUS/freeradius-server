@@ -139,16 +139,20 @@ $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured: | $(OUTPUT)
 ######################################################################
 
 #
-#  All config source files (templates and static).
-#  Used as prerequisites so that changes to any config file
-#  trigger re-rendering.
+#  TEST_MULTI_SERVER_CONFIG_FILES lists every configuration source file
+#  under $(DIR)/configs (rendered templates and static files), and every
+#  macro file under $(DIR)/templates that a suite template imports.
+#  TEST_MULTI_SERVER_RENDER uses the list as prerequisites, so a change to
+#  any listed file re-renders every template.
 #
-TEST_MULTI_SERVER_CONFIG_FILES := $(shell find $(DIR)/configs -type f)
+TEST_MULTI_SERVER_CONFIG_FILES := $(shell find $(DIR)/configs -type f) $(wildcard $(DIR)/templates/*.j2)
 
 #
 #  TEST_MULTI_SERVER_RENDER - render a single .j2 template into the build dir.
 #
 #  Re-renders only when the .j2 source, params file, or any config file changes.
+#  The output path includes the mode.  The comment above TEST_MULTI_SERVER
+#  gives the reason.
 #
 #  ${1} = suite dir name
 #  ${2} = test name (basename of params file)
@@ -156,7 +160,7 @@ TEST_MULTI_SERVER_CONFIG_FILES := $(shell find $(DIR)/configs -type f)
 #  ${4} = .j2 source path
 #
 define TEST_MULTI_SERVER_RENDER
-$(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured
+$(OUTPUT)/$(MODE)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured
 	${Q}mkdir -p $$(@D)
 	${Q}echo "RENDER ${4} -> $$@"
 	${Q}set -e; \
@@ -165,10 +169,12 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 	    --vars-file "${3}" \
 	    --aux-file \
 	    --include-path "$(DIR)/configs" \
+	    --include-path "$(DIR)/templates" \
 	    --output-path "$$@" \
 	    --process-volumes \
 	    --volume-src "$(DIR)/configs" \
 	    --define project="${1}-${2}-$(MODE)" \
+	    --define mode="$(MODE)" \
 	    --define profiling_result_dir="$(PROFILING_RESULT_DIR)" \
 	    --define profiling_tools="$(PROFILING_TOOLS)" \
 	    >> "$$(@D)/config_builder.log" 2>&1
@@ -275,8 +281,13 @@ endef
 #
 #  TEST_MULTI_SERVER - define all test instances for a suite.
 #
-#  Discovers *.yml param files in the suite directory and generates
+#  Discovers *.test.yml param files in the suite directory and generates
 #  render + test targets for each.
+#
+#  The output directory path includes the mode for two reasons:
+#    1. A template may render differently per mode, because the render
+#       receives `mode` as a variable.
+#    2. A profiling run must not overwrite the logs of a service run.
 #
 #  ${1} = suite dir name (e.g. accept)
 #
@@ -284,7 +295,7 @@ define TEST_MULTI_SERVER
 TEST_MULTI_SERVER_PARAM_FILES.${1} := $$(wildcard $$(DIR)/tests/${1}/*.test.yml)
 TEST_MULTI_SERVER_TESTS.${1}       := $$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),test.multi-server.${1}.$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))
 
-$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
+$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/$(MODE)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
 endef
 
 ######################################################################

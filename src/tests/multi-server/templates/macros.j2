@@ -1,0 +1,97 @@
+{#
+  `macros.j2` holds the macros that a suite template imports to write the
+  `triggers:` list of a state and to drive radclient from a client
+  container.  A template imports the macros with:
+
+    {% from "macros.j2" import event_recv, event_absent, event_field_match,
+                               server_answered, server_dropped, radclient %}
+
+  A trigger is a line that a container appends to the file that the test
+  framework watches.  The first word of the line is the trigger name, and
+  the rest of the line is the value that the rules of the state check.
+
+  Every macro writes list items at the indentation of a `triggers:` list
+  under `verify:` or of an `actions:` list under a host.  A template
+  therefore places each macro call on a line of its own, and the framework
+  reads the rendered YAML unchanged.
+#}
+{#
+  `event_recv()` writes a rule that passes when the trigger named `name`
+  fires at least once during the state.
+#}
+{%- macro event_recv(name) %}
+      - {{ name }}:
+          pass:
+            msg: fired
+{%- endmacro %}
+{#
+  `event_absent()` writes a rule that fails the state when the trigger
+  named `name` fires.
+#}
+{%- macro event_absent(name) %}
+      - {{ name }}:
+          never_fire:
+            msg: must not fire
+{%- endmacro %}
+{#
+  `event_field_match()` writes a rule that passes when the trigger named
+  `name` fires with a JSON value whose field `key` matches the regular
+  expression `pattern`.  The framework anchors the match at the start of
+  the field.
+#}
+{%- macro event_field_match(name, key, pattern) %}
+      - {{ name }}:
+          json:
+            {{ key }}:
+              pattern:
+                reg_pattern: '{{ pattern }}'
+{%- endmacro %}
+{#
+  `radclient()` writes an action that runs `send.sh` in the client
+  container.  `send.sh` passes `attrs` to radclient and sends one `command`
+  request to `target` with the shared secret `secret` and the extra
+  radclient options in `options`.  `send.sh` then appends the trigger
+  `client-<step>`.  The value of the trigger is a JSON object that holds
+  the exit code of radclient (`exit_code`), the number of attempts
+  (`attempts`), the reply count (`reply_count`), and the reply codes
+  (`replies`).  The macro adds `NAS-Identifier = "<step>"` to the request,
+  so a server configuration can name the server's triggers after the step.
+  `send.sh` sends the request up to `attempts` times and stops at the first
+  answered attempt.  `timeout` is the reply timeout of radclient in
+  seconds.  `source` is the last octet of the interface alias that radclient binds
+  to, and 0 binds to the container address.
+#}
+{%- macro radclient(step, target, command, secret, attrs, options='', attempts=1, timeout=1, source=0) %}
+        - execute_command:
+            command: >-
+              bash /usr/local/bin/send.sh --attempts {{ attempts }} --timeout {{ timeout }} --source {{ source }} {{ step }} {{ target }} {{ command }} {{ secret }} {{ options }} --
+              {%- for attr in attrs %} '{{ attr }}'{%- endfor %} 'NAS-Identifier = "{{ step }}"'
+{%- endmacro %}
+{#
+  `server_answered()` and `server_dropped()` write rules that check the
+  `client-<step>` trigger that `radclient()` produces.  When the server
+  answers the request, radclient exits 0 and the `replies` field of the
+  trigger holds the reply code.  `server_answered()` passes when `replies`
+  matches `reply`.  When the server drops the request, radclient exits 1
+  and the `reply_count` field of the trigger is 0.
+#}
+{%- macro server_answered(step, reply) %}
+      - client-{{ step }}:
+          json:
+            exit_code:
+              pattern:
+                reg_pattern: '^0$'
+            replies:
+              pattern:
+                reg_pattern: '^{{ reply }}$'
+{%- endmacro %}
+{%- macro server_dropped(step) %}
+      - client-{{ step }}:
+          json:
+            exit_code:
+              pattern:
+                reg_pattern: '^1$'
+            reply_count:
+              pattern:
+                reg_pattern: '^0$'
+{%- endmacro %}

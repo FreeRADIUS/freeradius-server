@@ -98,9 +98,16 @@ make test.multi-server TEST_MULTI_SERVER_FLAGS="-xx -vvv"
 
 ## How It Works
 
+A trigger is a line that a container appends to the file that the test
+framework watches.  The first word of the line is the trigger name, and
+the rest of the line is the value that the rules of a state check.
+
 Each test suite is a directory under `tests/` containing:
 
-- `template.yml.j2` - Jinja2 template for test steps (state machine)
+- `template.yml.j2` - Jinja2 template for test steps (state machine).
+  `templates/macros.j2` holds macros that write trigger rules and
+  radclient actions.  A template imports the macros with
+  `{% from "macros.j2" import ... %}`.
 - `environment.yml.j2` - Symlink to a Docker Compose template in `environments/`
 - `*.test.yml` - Parameter files (one per test variant)
 
@@ -110,7 +117,10 @@ these parameters.  The rendered compose file's `${DATA_PATH}` volume
 mounts are scanned and the corresponding config files are copied or
 rendered into the build directory.
 
-Build outputs go to `build/tests/multi-server/<suite>/<test>/`.
+make writes the build outputs to
+`build/tests/multi-server/<mode>/<suite>/<test>/`.  The templates receive
+the mode (`service` or `profiling`) as the variable `mode`, so a suite can
+lengthen the timings of the suite for a server that runs under a profiler.
 
 ### Service vs profiling mode
 
@@ -173,3 +183,4 @@ finding `*.test.yml` files within them.
 | `proxy-multihop-accept` | Two-hop proxy chain |
 | `kafka-produce` | `rlm_kafka` producer against an Apache Kafka broker |
 | `kafka-produce-reconnect` | Producer reconnection behaviour |
+| `dynamic-clients` | Dynamic client lifecycle: definition, negative cache, expiry, secret rotation, Status-Server, and originating CoA-Request and Disconnect-Request to a dynamic client |
