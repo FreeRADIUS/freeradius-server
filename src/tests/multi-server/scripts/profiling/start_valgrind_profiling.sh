@@ -95,6 +95,17 @@ valgrind \
 #
 echo "${STATUS}" > "$PROFILING_RESULT_DIR/exit-status"
 
+#  Save the proto_load stats CSV file to the results directory
+#  if it exists.  Hardcoded to same path set in the docker compose file
+#  for the container.
+LOADGEN_CSV=/etc/freeradius/stats/load-generator-stats.csv
+if [ -s "$LOADGEN_CSV" ]; then
+  cp "$LOADGEN_CSV" "$PROFILING_RESULT_DIR/load-stats.csv"
+  echo "INFO: wrote load-stats.csv"
+else
+  echo "WARNING: no load-generator statistics at ${LOADGEN_CSV}"
+fi
+
 if [ "${STATUS}" -ne 0 ]; then
   #  An exit status over 128 means that a signal killed valgrind.  139 is
   #  SIGSEGV, which is how valgrind exits when the brk segment reaches the
