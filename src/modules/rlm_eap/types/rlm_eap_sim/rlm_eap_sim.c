@@ -313,25 +313,31 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	newvp->vp_integer = ess->sim_id++;
 	fr_pair_replace(outvps, newvp);
 
-	/*
-	 *	Make a copy of the identity
-	 */
-	ess->keys.identitylen = strlen(handler->identity);
-	memcpy(ess->keys.identity, handler->identity, ess->keys.identitylen);
+	TALLOC_FREE(ess->keys.identity);
 
 	/*
 	 *	Use the SIM identity, if available
 	 */
 	newvp = fr_pair_find_by_num(*invps, PW_EAP_SIM_IDENTITY, 0, TAG_ANY);
-	if (newvp && newvp->vp_length > 2) {
+	if (newvp && (newvp->vp_length > 2)) {
 		uint16_t len;
 
 		memcpy(&len, newvp->vp_octets, sizeof(uint16_t));
 		len = ntohs(len);
-		if (len <= newvp->vp_length - 2 && len <= MAX_STRING_LEN) {
+		if (len <= newvp->vp_length - 2) {
+			MEM(ess->keys.identity = talloc_memdup(handler, newvp->vp_octets + 2, len));
 			ess->keys.identitylen = len;
-			memcpy(ess->keys.identity, newvp->vp_octets + 2, ess->keys.identitylen);
 		}
+	}
+
+	/*
+	 *	There was no AT_IDENTITY, the above checks found it to
+	 *	be malformed.  Fall back to using the EAP identity.
+	 */
+	if (!ess->keys.identity) {
+		ess->keys.identitylen = strlen(handler->identity);
+		MEM(ess->keys.identity = talloc_memdup(handler, handler->identity,
+						       ess->keys.identitylen));
 	}
 
 	/*

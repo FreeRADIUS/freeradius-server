@@ -82,6 +82,7 @@ typedef struct rc_transaction rc_transaction_t;
  */
 typedef struct rc_eap_sim_context {
 	struct eapsim_keys keys;
+	uint8_t *identity;
 } rc_eap_sim_context_t;
 
 typedef struct rc_eap_md5_context {
@@ -922,7 +923,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		}
 		newvp = fr_pair_afrom_num(rep, PW_EAP_SIM_IDENTITY, 0);
 
-		idlen = strlen(vp->vp_strvalue);
+		idlen = vp->vp_length;
 		p = talloc_zero_array(newvp, uint8_t, idlen + 2);
 		no_idlen = htons(idlen);
 		memcpy(p, &no_idlen, 2);
@@ -931,8 +932,13 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 
 		fr_pair_replace(&(rep->vps), newvp);
 
-		/* record it */
-		memcpy(eap_context->eap.sim.keys.identity, vp->vp_strvalue, idlen);
+		/*
+		 *	Record it.  The keys are used in a later round
+		 *	trip, by which time this packet is gone, so the
+		 *	identity has to be copied and not referenced.
+		 */
+		MEM(eap_context->eap.sim.identity = talloc_memdup(eap_context, vp->vp_strvalue, vp->vp_length));
+		eap_context->eap.sim.keys.identity = eap_context->eap.sim.identity;
 		eap_context->eap.sim.keys.identitylen = idlen;
 	}
 

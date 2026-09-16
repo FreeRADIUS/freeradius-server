@@ -38,52 +38,21 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 {
 	fr_sha1_ctx context;
 	uint8_t fk[160];
-	unsigned char buf[MAX_STRING_LEN + 3 * EAPSIM_KC_SIZE + EAPSIM_NONCEMT_SIZE + MAX_STRING_LEN + 2];
-	unsigned char *p;
-	unsigned int  blen;
 
-	p = buf;
-	memcpy(p, ek->identity, ek->identitylen);   p = p+ek->identitylen;
-	memcpy(p, ek->Kc[0], EAPSIM_KC_SIZE);       p = p+EAPSIM_KC_SIZE;
-	memcpy(p, ek->Kc[1], EAPSIM_KC_SIZE);       p = p+EAPSIM_KC_SIZE;
-	memcpy(p, ek->Kc[2], EAPSIM_KC_SIZE);       p = p+EAPSIM_KC_SIZE;
-	memcpy(p, ek->nonce_mt, sizeof(ek->nonce_mt)); p=p+sizeof(ek->nonce_mt);
-	memcpy(p, ek->versionlist, ek->versionlistlen);p=p+ek->versionlistlen;
-	memcpy(p, ek->versionselect, sizeof(ek->versionselect)); p=p+sizeof(ek->versionselect);
-	/* *p++ = ek->versionselect[1]; */
-
-	blen = p - buf;
-
-#if defined(TEST_CASE) || defined(DUMP_EAPSIM_KEYS)
-	{
-	  unsigned int i, j, k;
-
-	  j=0; k=0;
-
-	  printf("SHA1buffer was: ");
-	  for (i = 0; i < blen; i++) {
-	    if(j==4) {
-	      printf("_");
-	      j=0;
-	    }
-	    if(k==20) {
-	      printf("\n		");
-	      k=0;
-	      j=0;
-	    }
-	    j++;
-	    k++;
-
-	    printf("%02x", buf[i]);
-	  }
-	  printf("\n");
-	}
-#endif
-
-
-	/* do the master key first */
+	/*
+	 *	Hash the inputs as they are walked, rather than packing
+	 *	them into one buffer first.  The identity is caller
+	 *	supplied and has no length limit, so any such buffer
+	 *	would have to be bounds checked, or it would overflow.
+	 */
 	fr_sha1_init(&context);
-	fr_sha1_update(&context, buf, blen);
+	fr_sha1_update(&context, ek->identity, ek->identitylen);
+	fr_sha1_update(&context, ek->Kc[0], EAPSIM_KC_SIZE);
+	fr_sha1_update(&context, ek->Kc[1], EAPSIM_KC_SIZE);
+	fr_sha1_update(&context, ek->Kc[2], EAPSIM_KC_SIZE);
+	fr_sha1_update(&context, ek->nonce_mt, sizeof(ek->nonce_mt));
+	fr_sha1_update(&context, ek->versionlist, ek->versionlistlen);
+	fr_sha1_update(&context, ek->versionselect, sizeof(ek->versionselect));
 	fr_sha1_final(ek->master_key, &context);
 
 	/*
@@ -225,7 +194,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 #include <assert.h>
 
 struct eapsim_keys inputkey1 = {
-	{'e', 'a', 'p', 's','i','m' },
+	(uint8_t *) "eapsim",
 	6,
 	  0x4d, 0x6c, 0x40, 0xde, 0x48, 0x3a, 0xdd, 0x99,   /* nonce_mt */
 	  0x50, 0x90, 0x2c, 0x40, 0x24, 0xce, 0x76, 0x5e,
@@ -247,7 +216,7 @@ struct eapsim_keys inputkey1 = {
 };
 
 struct eapsim_keys inputkey2 = {
-  {'1','2','4','4','0','7','0','1','0','0','0','0','0','0','0','1','@','e','a','p','s','i','m','.','f','o','o'},
+  (uint8_t *) "1244070100000001@eapsim.foo",
   27,
   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,   /* nonce_mt */
   0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,

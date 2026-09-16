@@ -85,7 +85,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r, uint8_t *attr, unsigned int attrle
 
 struct eapsim_keys {
 	/* inputs */
-	uint8_t identity[MAX_STRING_LEN];
+	uint8_t *identity;
 	unsigned int  identitylen;
 	uint8_t nonce_mt[EAPSIM_NONCEMT_SIZE];
 	uint8_t rand[3][EAPSIM_RAND_SIZE];
