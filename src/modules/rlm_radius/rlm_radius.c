@@ -45,8 +45,18 @@ static conf_parser_t const status_check_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	"update" is not required.
+ *
+ *	RFC 5997 Section 3 does not require the administrator provide anything:
+ *	a Status-Server MUST carry Message-Authenticator, which the module adds
+ *	to every packet, MAY carry NAS-Identifier and a NAS address, and SHOULD
+ *	NOT carry anything else.  status_check_alloc() supplies the
+ *	NAS-Identifier when the map is empty, so a conformant packet does not
+ *	need additional attributes.
+ */
 static conf_parser_t const status_check_update_config[] = {
-	{ FR_CONF_OFFSET_TYPE_FLAGS("update", FR_TYPE_VOID, CONF_FLAG_SUBSECTION | CONF_FLAG_REQUIRED, rlm_radius_t, status_check_map),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("update", FR_TYPE_VOID, CONF_FLAG_SUBSECTION, rlm_radius_t, status_check_map),
 	  .name2 = CF_IDENT_ANY,
 	  .func = status_check_update_parse },
 	{ FR_CONF_OFFSET("num_answers_to_alive", rlm_radius_t, num_answers_to_alive), .dflt = STRINGIFY(3) },
@@ -497,10 +507,11 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, void *parent,
 
 		rcode = map_afrom_cs(ctx, head, cs, &parse_rules, &parse_rules, status_check_verify, parent, 128);
 		if (rcode < 0) return -1; /* message already printed */
-		if (map_list_empty(head)) {
-			cf_log_err(cs, "Invalid configuration - status check packets cannot be empty");
-			return -1;
-		}
+
+		/*
+		 *	status_check_alloc() supplies a NAS-Identifier when the
+		 *	map is empty, so an empty map needs no error here.
+		 */
 	}
 
 	/*
