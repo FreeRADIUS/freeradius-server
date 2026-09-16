@@ -18,10 +18,21 @@ on:
   delete:
 
 jobs:
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
+  #
+  #  The organisation's registry answers on an internal name, so only the
+  #  organisation's own build machines resolve it.  A fork has no self-hosted
+  #  runner and no shared registry, so a fork runs on a GitHub-hosted runner
+  #  and the first step below skips.
+  #
   delete-branch-images:
     name: Delete branch images
+    needs: common_vars
     if: ${{ github.event.ref_type == 'branch' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     steps:
       #
