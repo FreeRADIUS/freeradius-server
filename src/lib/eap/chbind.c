@@ -94,8 +94,13 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	while ((vp = fr_dcursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
+		 *
+		 *	reply_pairs holds more than RADIUS attributes, and
+		 *	fr_radius_encode_pair() reads RADIUS flags from every
+		 *	attribute it is given.
 		 */
-		if (vp->da->flags.internal || (!vp->da->flags.extra && vp->da->flags.subtype) ||
+		if ((fr_dict_by_da(vp->da) != dict_radius) ||
+		    vp->da->flags.internal || (!vp->da->flags.extra && vp->da->flags.subtype) ||
 		    (vp->da == attr_message_authenticator)) {
 			fr_dcursor_next(&cursor);
 			continue;
