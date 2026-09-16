@@ -102,6 +102,18 @@ A trigger is a line that a container appends to the file that the test
 framework watches.  The first word of the line is the trigger name, and
 the rest of the line is the value that the rules of a state check.
 
+The `verify:` block of a state holds a `timeout` and a `timeout_mode`.
+`timeout_mode` is `bound` by default.  A `bound` state completes as soon
+as every rule that requires a trigger to fire has matched.  The timeout
+is the longest time that a `bound` state waits.  A `window` state runs
+for the whole timeout.
+
+Declare `timeout_mode: window` on a state that has a `never_fire` rule.
+A `never_fire` rule does not match any trigger, so only the whole
+timeout proves that the trigger did not fire.  Also declare
+`timeout_mode: window` on a state that has no rules, such as a load
+generator that runs for the whole timeout.
+
 Each test suite is a directory under `tests/` containing:
 
 - `template.yml.j2` - Jinja2 template for test steps (state machine).
