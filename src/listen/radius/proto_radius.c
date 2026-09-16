@@ -421,6 +421,15 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp != NULL;
 		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
+			/*
+			 *	The BlastRADIUS complaint above logs with RERROR(), which
+			 *	appends Module-Failure-Message to the request.  That attribute
+			 *	is in the internal dictionary, and fr_radius_flag_encrypted()
+			 *	reads RADIUS protocol flags which an internal attribute does
+			 *	not have.
+			 */
+			if (fr_dict_by_da(vp->da) != dict_radius) continue;
+
 			if (fr_radius_flag_encrypted(vp->da)) {
 				switch (vp->vp_type) {
 				default:
