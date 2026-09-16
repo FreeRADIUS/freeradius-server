@@ -3161,7 +3161,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 	 *	server (see realms.c).
 	 */
 	if (reply && request->home_pool && request->home_pool->affinity_group &&
-	    request->home_server && request->home_server->affinity_assigned &&
+	    request->home_server && request->home_server->affinity_id_is_set &&
 	    (reply->code == PW_CODE_ACCESS_CHALLENGE) &&
 	    ((vp = fr_pair_find_by_num(request->reply->vps, PW_STATE, 0, TAG_ANY)) != NULL)) {
 		uint8_t *src;

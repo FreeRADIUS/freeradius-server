@@ -1920,13 +1920,13 @@ static int server_pool_add(realm_config_t *rc,
 				goto error;
 			}
 
-			if (!home->affinity_assigned) {
+			if (!home->affinity_id_is_set) {
 				if (affinity_id >= 256) {
 					ERROR("Too many home servers (> 256) used in pools with track_home_server=true");
 					goto error;
 				}
 
-				home->affinity_assigned = true;
+				home->affinity_id_is_set = true;
 				home->affinity_id = affinity_id++;
 			}
 
@@ -1934,7 +1934,7 @@ static int server_pool_add(realm_config_t *rc,
 		}
 
 		if (do_print) {
-			if (home->affinity_assigned && rad_debug_lvl > 2) {
+			if (home->affinity_id_is_set && rad_debug_lvl > 2) {
 				cf_log_info(cs, "\thome_server = %s [affinity_id = %u]", home->name, home->affinity_id);
 			} else {
 				cf_log_info(cs, "\thome_server = %s", home->name);

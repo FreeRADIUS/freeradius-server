@@ -94,7 +94,7 @@ typedef struct home_server {
 	uint16_t		port;
 
 	uint32_t		affinity_id;		//!< for home server fail-over groups and EAP.
-	bool			affinity_assigned;     	//!< did we assign an affinity_id?
+	bool			affinity_id_is_set;    	//!< is there an affinity_id set?
 
 	char const		*type_str;		//!< String representation of type.
 	home_type_t		type;			//!< Auth, Acct, CoA etc.
