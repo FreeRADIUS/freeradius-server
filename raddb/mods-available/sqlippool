@@ -71,6 +71,9 @@ sqlippool {
 	#
 #	allow_duplicates = no
 
+	#  To fail on all query errors instead of returning noop, set to yes.
+#	fail_on_errors = no
+
 	#  The attribute in which an IP address hint may be supplied
 	req_attribute_name = Framed-IP-Address
 
