@@ -56,6 +56,8 @@ typedef enum {
 	FR_SBUFF_ERR_UNINITIALISED	= -10
 } fr_sbuff_err_t;
 
+#define SBUFF_CHAR_CLASS UINT8_MAX + 1
+
 fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static SBUFF_CHAR_CLASS])
 {
 	fr_slen_t	result;
