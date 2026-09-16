@@ -421,6 +421,14 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp != NULL;
 		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
+			/*
+			 *	request_pairs holds more than RADIUS attributes.  RERROR()
+			 *	above appends Module-Failure-Message, which is in the internal
+			 *	dictionary, and the RADIUS flag accessors are only meaningful
+			 *	for RADIUS attributes.
+			 */
+			if (fr_dict_by_da(vp->da) != dict_radius) continue;
+
 			if (fr_radius_flag_encrypted(vp->da)) {
 				switch (vp->vp_type) {
 				default:
