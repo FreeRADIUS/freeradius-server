@@ -3062,6 +3062,11 @@ alloc_section:
 		CONF_SECTION *root;
 		char const *name = &buff[1][1];
 
+		if (frame->at_reference) {
+			ERROR("%s[%d]: Cannot nest '@' reference sections", frame->filename, frame->lineno);
+			return -1;
+		}
+
 		if (!value) {
 			ERROR("%s[%d]: Missing section name for '@' reference", frame->filename, frame->lineno);
 			return -1;
