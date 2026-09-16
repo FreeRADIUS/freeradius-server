@@ -195,26 +195,63 @@ typedef struct {
 } fr_radius_attr_flags_t;
 
 DIAG_OFF(unused-function)
+extern fr_dict_protocol_t libfreeradius_radius_dict_protocol;
+
 /** Return RADIUS-specific flags for a given attribute
+ *
+ * Assert in debug builds when the attribute belongs to another dictionary, as
+ * the flags of one protocol say nothing about an attribute of another.
+ *
+ * If the attribute does not carry the protocol-specific extension, then assert.
+ * Other builds log the error and return zeroed flags instead of NULL.
  */
 static inline fr_radius_attr_flags_t const * fr_radius_attr_flags(fr_dict_attr_t const *da)
 {
-	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	static fr_radius_attr_flags_t const	no_flags = {};
+	fr_radius_attr_flags_t const		*flags;
+
+	fr_assert_msg(fr_dict_protocol(da->dict) == &libfreeradius_radius_dict_protocol,
+		      "%s is not a RADIUS attribute, it is from the \"%s\" dictionary",
+		      da->name, fr_dict_root(da->dict)->name);
+
+	flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (!fr_cond_assert_msg(flags, "%s is not a RADIUS attribute, it has no protocol extension",
+				da->name)) return &no_flags;
+
+	return flags;
 }
 
-#define fr_radius_flag_has_tag(_da)		fr_radius_attr_flags(_da)->has_tag
-#define fr_radius_flag_concat(_da)		fr_radius_attr_flags(_da)->concat
-#define fr_radius_flag_abinary(_da)		fr_radius_attr_flags(_da)->abinary
-#define fr_radius_flag_encrypted(_da)		fr_radius_attr_flags(_da)->encrypt
+static inline bool fr_radius_flag_has_tag(fr_dict_attr_t const *da)
+{
+	return fr_radius_attr_flags(da)->has_tag;
+}
 
-static bool fr_radius_flag_extended(fr_dict_attr_t const *da)
+static inline bool fr_radius_flag_concat(fr_dict_attr_t const *da)
+{
+	return fr_radius_attr_flags(da)->concat;
+}
+
+static inline bool fr_radius_flag_abinary(fr_dict_attr_t const *da)
+{
+	return fr_radius_attr_flags(da)->abinary;
+}
+
+static inline fr_radius_attr_flags_encrypt_t fr_radius_flag_encrypted(fr_dict_attr_t const *da)
+{
+	return fr_radius_attr_flags(da)->encrypt;
+}
+
+static inline bool fr_radius_flag_extended(fr_dict_attr_t const *da)
 {
 	fr_radius_attr_flags_t const *flags = fr_radius_attr_flags(da);
 
 	return flags->extended || flags->long_extended;
 }
 
-#define fr_radius_flag_long_extended(_da)	fr_radius_attr_flags(_da)->long_extended
+static inline bool fr_radius_flag_long_extended(fr_dict_attr_t const *da)
+{
+	return fr_radius_attr_flags(da)->long_extended;
+}
 DIAG_ON(unused-function)
 
 extern fr_table_num_sorted_t const fr_radius_require_ma_table[];

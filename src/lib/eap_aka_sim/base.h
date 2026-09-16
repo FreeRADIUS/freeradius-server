@@ -266,12 +266,36 @@ typedef struct {
 	fr_aka_sim_attr_flags_encrypt_t	encrypt;		//!< Attribute has a tag and is encrypted
 } fr_aka_sim_attr_flags_t;
 
+extern fr_dict_protocol_t libfreeradius_eap_aka_sim_dict_protocol;
+
+/** Return AKA/SIM-specific flags for a given attribute
+ *
+ * Assert in debug builds when the attribute belongs to another dictionary, as
+ * the flags of one protocol say nothing about an attribute of another.
+ *
+ * If the attribute does not carry the protocol-specific extension, then assert.
+ * Other builds log the error and return zeroed flags instead of NULL.
+ */
 static inline fr_aka_sim_attr_flags_t const * fr_aka_sim_attr_flags(fr_dict_attr_t const *da)
 {
-	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	static fr_aka_sim_attr_flags_t const	no_flags = {};
+	fr_aka_sim_attr_flags_t const		*flags;
+
+	fr_assert_msg(fr_dict_protocol(da->dict) == &libfreeradius_eap_aka_sim_dict_protocol,
+		      "%s is not an AKA/SIM attribute, it is from the \"%s\" dictionary",
+		      da->name, fr_dict_root(da->dict)->name);
+
+	flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (!fr_cond_assert_msg(flags, "%s is not an AKA/SIM attribute, it has no protocol extension",
+				da->name)) return &no_flags;
+
+	return flags;
 }
 
-#define fr_aka_sim_flag_encrypted(_da)		fr_aka_sim_attr_flags(_da)->encrypt
+static inline fr_aka_sim_attr_flags_encrypt_t fr_aka_sim_flag_encrypted(fr_dict_attr_t const *da)
+{
+	return fr_aka_sim_attr_flags(da)->encrypt;
+}
 
 /*
  *	decode.c

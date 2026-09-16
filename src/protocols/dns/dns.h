@@ -138,9 +138,30 @@ typedef struct {
 	bool			dns_label_uncompressed;
 } fr_dns_attr_flags_t;
 
+extern fr_dict_protocol_t libfreeradius_dns_dict_protocol;
+
+/** Return DNS-specific flags for a given attribute
+ *
+ * Assert in debug builds when the attribute belongs to another dictionary, as
+ * the flags of one protocol say nothing about an attribute of another.
+ *
+ * If the attribute does not carry the protocol-specific extension, then assert.
+ * Other builds log the error and return zeroed flags instead of NULL.
+ */
 static inline fr_dns_attr_flags_t const *fr_dns_attr_flags(fr_dict_attr_t const *da)
 {
-	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	static fr_dns_attr_flags_t const	no_flags = {};
+	fr_dns_attr_flags_t const		*flags;
+
+	fr_assert_msg(fr_dict_protocol(da->dict) == &libfreeradius_dns_dict_protocol,
+		      "%s is not a DNS attribute, it is from the \"%s\" dictionary",
+		      da->name, fr_dict_root(da->dict)->name);
+
+	flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (!fr_cond_assert_msg(flags, "%s is not a DNS attribute, it has no protocol extension",
+				da->name)) return &no_flags;
+
+	return flags;
 }
 
 static inline bool fr_dns_flag_dns_label_any(fr_dict_attr_t const *da)
@@ -150,8 +171,15 @@ static inline bool fr_dns_flag_dns_label_any(fr_dict_attr_t const *da)
 	return flags->dns_label || flags->dns_label_uncompressed;
 }
 
-#define fr_dns_flag_dns_label(_da)			(fr_dns_attr_flags(_da)->dns_label)
-#define fr_dns_flag_dns_label_uncompressed(_da)		(fr_dns_attr_flags(_da)->dns_label_uncompressed)
+static inline bool fr_dns_flag_dns_label(fr_dict_attr_t const *da)
+{
+	return fr_dns_attr_flags(da)->dns_label;
+}
+
+static inline bool fr_dns_flag_dns_label_uncompressed(fr_dict_attr_t const *da)
+{
+	return fr_dns_attr_flags(da)->dns_label_uncompressed;
+}
 
 extern fr_table_num_ordered_t fr_dns_reason_fail_table[];
 extern char const *fr_dns_packet_names[FR_DNS_CODE_MAX];

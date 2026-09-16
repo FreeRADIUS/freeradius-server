@@ -149,17 +149,56 @@ typedef struct {
 	fr_dhcpv4_attr_flags_prefix_t	prefix;
 } fr_dhcpv4_attr_flags_t;
 
+extern fr_dict_protocol_t libfreeradius_dhcpv4_dict_protocol;
+
+/** Return DHCPv4-specific flags for a given attribute
+ *
+ * Assert in debug builds when the attribute belongs to another dictionary, as
+ * the flags of one protocol say nothing about an attribute of another.
+ *
+ * If the attribute does not carry the protocol-specific extension, then assert.
+ * Other builds log the error and return zeroed flags instead of NULL.
+ */
 static inline fr_dhcpv4_attr_flags_t const *fr_dhcpv4_attr_flags(fr_dict_attr_t const *da)
 {
-	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	static fr_dhcpv4_attr_flags_t const	no_flags = {};
+	fr_dhcpv4_attr_flags_t const		*flags;
+
+	fr_assert_msg(fr_dict_protocol(da->dict) == &libfreeradius_dhcpv4_dict_protocol,
+		      "%s is not a DHCPv4 attribute, it is from the \"%s\" dictionary",
+		      da->name, fr_dict_root(da->dict)->name);
+
+	flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (!fr_cond_assert_msg(flags, "%s is not a DHCPv4 attribute, it has no protocol extension",
+				da->name)) return &no_flags;
+
+	return flags;
 }
 
-#define fr_dhcpv4_flag_dns_label(_da)		(fr_dhcpv4_attr_flags(_da)->dns_label)
-#define fr_dhcpv4_flag_exists(_da)		(fr_dhcpv4_attr_flags(_da)->exists)
+static inline bool fr_dhcpv4_flag_dns_label(fr_dict_attr_t const *da)
+{
+	return fr_dhcpv4_attr_flags(da)->dns_label;
+}
 
-#define fr_dhcpv4_flag_prefix(_da)		fr_dhcpv4_attr_flags(_da)->prefix
-#define fr_dhcpv4_flag_prefix_bits(_da)		(fr_dhcpv4_attr_flags(_da)->prefix == DHCPV4_FLAG_PREFIX_BITS)
-#define fr_dhcpv4_flag_prefix_split(_da)	(fr_dhcpv4_attr_flags(_da)->prefix == DHCPV4_FLAG_PREFIX_SPLIT)
+static inline bool fr_dhcpv4_flag_exists(fr_dict_attr_t const *da)
+{
+	return fr_dhcpv4_attr_flags(da)->exists;
+}
+
+static inline fr_dhcpv4_attr_flags_prefix_t fr_dhcpv4_flag_prefix(fr_dict_attr_t const *da)
+{
+	return fr_dhcpv4_attr_flags(da)->prefix;
+}
+
+static inline bool fr_dhcpv4_flag_prefix_bits(fr_dict_attr_t const *da)
+{
+	return fr_dhcpv4_attr_flags(da)->prefix == DHCPV4_FLAG_PREFIX_BITS;
+}
+
+static inline bool fr_dhcpv4_flag_prefix_split(fr_dict_attr_t const *da)
+{
+	return fr_dhcpv4_attr_flags(da)->prefix == DHCPV4_FLAG_PREFIX_SPLIT;
+}
 
 /*
  *	base.c

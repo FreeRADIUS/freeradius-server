@@ -120,25 +120,101 @@ typedef struct {
 	fr_dict_attr_t const *root;		//!< where to start decoding from
 } fr_der_decode_ctx_t;
 
+extern fr_dict_protocol_t libfreeradius_der_dict_protocol;
+
+/** Return DER-specific flags for a given attribute
+ *
+ * Assert in debug builds when the attribute belongs to another dictionary, as
+ * the flags of one protocol say nothing about an attribute of another.
+ *
+ * If the attribute does not carry the protocol-specific extension, then assert.
+ * Other builds log the error and return zeroed flags instead of NULL.
+ */
 static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const *da)
 {
-	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	static fr_der_attr_flags_t const	no_flags = {};
+	fr_der_attr_flags_t const		*flags;
+
+	fr_assert_msg(fr_dict_protocol(da->dict) == &libfreeradius_der_dict_protocol,
+		      "%s is not a DER attribute, it is from the \"%s\" dictionary",
+		      da->name, fr_dict_root(da->dict)->name);
+
+	flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (!fr_cond_assert_msg(flags, "%s is not a DER attribute, it has no protocol extension",
+				da->name)) return &no_flags;
+
+	return flags;
 }
 
-#define fr_der_flag_option(_da) 	(fr_der_attr_flags(_da)->option)
-#define fr_der_flag_optional(_da) 	(fr_der_attr_flags(_da)->optional)
-#define fr_der_flag_class(_da)		(fr_der_attr_flags(_da)->class)
-#define fr_der_flag_der_type(_da) 	(fr_der_attr_flags(_da)->der_type)
-#define fr_der_flag_sequence_of(_da) 	(fr_der_attr_flags(_da)->sequence_of)
-#define fr_der_flag_is_sequence_of(_da) (fr_der_attr_flags(_da)->is_sequence_of)
-#define fr_der_flag_set_of(_da) 	(fr_der_attr_flags(_da)->set_of)
-#define fr_der_flag_is_set_of(_da) 	(fr_der_attr_flags(_da)->is_set_of)
-#define fr_der_flag_max(_da) 		(fr_der_attr_flags(_da)->max)
-#define fr_der_flag_is_oid_and_value(_da) (fr_der_attr_flags(_da)->is_oid_and_value)
-#define fr_der_flag_is_extensions(_da) 	(fr_der_attr_flags(_da)->is_extensions)
-#define fr_der_flag_has_default_value(_da) 	(fr_der_attr_flags(_da)->has_default_value)
-#define fr_der_flag_leaf(_da) 		(fr_der_attr_flags(_da)->leaf)
-#define fr_der_flag_is_choice(_da) 	(fr_der_attr_flags(_da)->is_choice)
+static inline uint8_t fr_der_flag_option(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->option;
+}
+
+static inline bool fr_der_flag_optional(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->optional;
+}
+
+static inline fr_der_tag_class_t fr_der_flag_class(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->class;
+}
+
+static inline fr_der_tag_t fr_der_flag_der_type(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->der_type;
+}
+
+static inline fr_der_tag_t fr_der_flag_sequence_of(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->sequence_of;
+}
+
+static inline bool fr_der_flag_is_sequence_of(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->is_sequence_of;
+}
+
+static inline fr_der_tag_t fr_der_flag_set_of(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->set_of;
+}
+
+static inline bool fr_der_flag_is_set_of(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->is_set_of;
+}
+
+static inline uint64_t fr_der_flag_max(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->max;
+}
+
+static inline bool fr_der_flag_is_oid_and_value(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->is_oid_and_value;
+}
+
+static inline bool fr_der_flag_is_extensions(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->is_extensions;
+}
+
+static inline bool fr_der_flag_has_default_value(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->has_default_value;
+}
+
+static inline bool fr_der_flag_leaf(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->leaf;
+}
+
+static inline bool fr_der_flag_is_choice(fr_dict_attr_t const *da)
+{
+	return fr_der_attr_flags(da)->is_choice;
+}
 
 /*
  * 	base.c

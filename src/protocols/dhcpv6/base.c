@@ -1058,7 +1058,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 	return true;
 }
 
-extern fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol;
 fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 	.name = "dhcpv6",
 	.default_type_size = 2,

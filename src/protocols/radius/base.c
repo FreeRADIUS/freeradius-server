@@ -1486,7 +1486,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 	return true;
 }
 
-extern fr_dict_protocol_t libfreeradius_radius_dict_protocol;
 fr_dict_protocol_t libfreeradius_radius_dict_protocol = {
 	.name = "radius",
 	.default_type_size = 1,
