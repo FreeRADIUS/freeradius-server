@@ -881,19 +881,27 @@ static void external_spawn_timeout(__attribute__((unused)) int pid)
 	timeout = true;
 }
 
-/** Run the panic action against a process that timed out
+/** Run the timeout action on a process that timed out
  *
- * The panic action follows the server's PANIC_ACTION, and comes from
- * the environment variable of that name.  `%e` expands to the program
- * that was spawned and `%p` to the pid of the process, so an action of
- * `gdb -batch -x raddb/panic.gdb %e %p` prints the arguments, the
- * locals, and the stack of every thread of the hung process.
+ * The timeout action comes from the `PANIC_ACTION` environment variable.
+ * The FreeRADIUS server's binaries read the same variable for their own
+ * panic action, so one setting in the CI environment covers both jlibtool
+ * and the FreeRADIUS server's binaries.  `%e` expands to the program that
+ * the process is running, and `%p` expands to the pid of the process.  An
+ * action of `gdb -batch -x raddb/panic.gdb %e %p` therefore prints the
+ * arguments, the locals, and the stack of every thread of the process
+ * that timed out.
  *
- * The process is still running when the action runs, because the
- * caller kills the process after the action returns.  A build host
- * with no PANIC_ACTION in the environment records the timeout alone.
+ * The process is still running when the action runs, because
+ * `external_spawn()` kills the process after the action returns.  When
+ * `PANIC_ACTION` is not set, jlibtool logs the timeout and does not run
+ * an action, so the log holds no stack.
+ *
+ * @param[in] exe	the program that the process is running, from which
+ *			the action reads symbols.
+ * @param[in] pid	of the process that timed out.
  */
-static void panic_action_run(char const *program, pid_t pid)
+static void timeout_action_run(char const *exe, pid_t pid)
 {
 	char const	*action = getenv("PANIC_ACTION");
 	char const	*p;
@@ -903,7 +911,7 @@ static void panic_action_run(char const *program, pid_t pid)
 	int		code;
 
 	if (!action || (*action == '\0')) {
-		ERROR("timeout: PANIC_ACTION is not set, so the timeout records no stack\n");
+		ERROR("timeout: Not running a timeout action, PANIC_ACTION is not set. Set PANIC_ACTION to a command that prints the stack\n");
 		return;
 	}
 
@@ -917,7 +925,7 @@ static void panic_action_run(char const *program, pid_t pid)
 			p += strlen(p);
 
 		} else if (q[1] == 'e') {
-			ret = snprintf(out, left, "%.*s%s", (int)(q - p), p, program);
+			ret = snprintf(out, left, "%.*s%s", (int)(q - p), p, exe);
 			p = q + 2;
 
 		} else if (q[1] == 'p') {
@@ -934,14 +942,14 @@ static void panic_action_run(char const *program, pid_t pid)
 		}
 
 		if ((size_t)ret >= left) {
-			ERROR("timeout: panic action is longer than %zu bytes\n", sizeof(cmd));
+			ERROR("timeout: Not running the timeout action, the expanded PANIC_ACTION does not fit in %zu bytes. Shorten PANIC_ACTION\n", sizeof(cmd));
 			return;
 		}
 		out += ret;
 		left -= ret;
 	}
 
-	ERROR("timeout: calling: %s\n", cmd);
+	ERROR("timeout: Running the timeout action: %s\n", cmd);
 
 	/*
 	 *	The action writes to stderr, so anything jlibtool has
@@ -951,11 +959,20 @@ static void panic_action_run(char const *program, pid_t pid)
 
 	code = system(cmd);
 	if (code != 0) {
-		ERROR("timeout: panic action exited with %d\n", code);
+		ERROR("timeout: Timeout action failed, system() returned %d\n", code);
 	}
 }
 
-static int external_spawn(command_t *cmd, __attribute__((unused)) char const *file, char const **argv)
+/** Fork and exec a command, and run the timeout action if the command times out
+ *
+ * @param[in] cmd	being processed, which holds the timeout.
+ * @param[in] exe	the program that the command runs.  When `argv` starts
+ *			a shell that runs the program, pass the program, not
+ *			the shell, so that the timeout action reads the
+ *			symbols of the program.
+ * @param[in] argv	to exec.
+ */
+static int external_spawn(command_t *cmd, char const *exe, char const **argv)
 {
 	if (!cmd->options.silent) {
 		char const **argument = argv;
@@ -991,11 +1008,12 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 		if (spawn_pid == 0) {
 #ifdef PR_SET_PTRACER
 			/*
-			 *	The panic action runs from the parent of this
-			 *	process, so the debugger it starts is a sibling
-			 *	of this process, and a kernel that restricts
-			 *	tracing to descendants refuses the attach
-			 *	without this.
+			 *	A kernel that restricts tracing to descendants
+			 *	of the tracer refuses an attach from a sibling.
+			 *	The timeout action runs in the parent of the
+			 *	child process, so the debugger that the action
+			 *	starts is a sibling of the child process.
+			 *	`PR_SET_PTRACER_ANY` lets any process attach.
 			 */
 			prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
 #endif
@@ -1068,14 +1086,14 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 				NOTICE("exec timeout\n");
 
 				/*
-				 *	The panic action prints where the
+				 *	The timeout action prints where the
 				 *	process is blocked, so the log records
 				 *	a diagnosis of an intermittent hang.
-				 *	The action must run before the kill,
-				 *	because the kill terminates the
-				 *	process that the action reads.
+				 *	The action must run before `kill()`,
+				 *	because `kill()` ends the process that
+				 *	the action reads.
 				 */
-				panic_action_run(argv[0], spawn_pid);
+				timeout_action_run(exe, spawn_pid);
 
 				kill(spawn_pid, SIGALRM);
 
@@ -1112,6 +1130,7 @@ static int run_command(command_t *cmd, count_chars *cc)
 	char *tmp;
 	char const *raw;
 	char const *spawn_args[4];
+	char const *exe;
 	count_chars cctmp;
 
 	init_count_chars(&cctmp);
@@ -1124,6 +1143,25 @@ static int run_command(command_t *cmd, count_chars *cc)
 
 	append_count_chars(&cctmp, cc);
 
+	/*
+	 *	The first word of the assembled command is the program that
+	 *	the shell runs, and `%e` in the timeout action expands to the
+	 *	first word.
+	 */
+	exe = cctmp.vals[0];
+
+	/*
+	 *	When the shell forks the program and waits for the program,
+	 *	`external_spawn()` holds the pid of the shell.  A timeout
+	 *	would then signal the shell and leave the program running.
+	 *	With `exec`, the shell replaces itself with the program, so
+	 *	the pid that `external_spawn()` holds is the pid of the
+	 *	program.
+	 */
+	if (cmd->mode == MODE_EXECUTE) {
+		insert_count_chars(&cctmp, "exec", 0);
+	}
+
 	raw = flatten_count_chars(&cctmp, ' ');
 	command = shell_esc(raw);
 
@@ -1134,7 +1172,7 @@ static int run_command(command_t *cmd, count_chars *cc)
 	spawn_args[1] = "-c";
 	spawn_args[2] = command;
 	spawn_args[3] = NULL;
-	ret = external_spawn(cmd, spawn_args[0], spawn_args);
+	ret = external_spawn(cmd, exe, spawn_args);
 
 	free(command);
 	free(cctmp.vals);
