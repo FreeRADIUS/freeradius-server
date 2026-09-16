@@ -24,16 +24,32 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/master.h>
 
-
-#include <freeradius-devel/util/debug.h>
-
 #include <freeradius-devel/util/syserror.h>
+
+FR_DLIST_TYPES(fr_io_nak_list)
+FR_DLIST_TYPEDEFS(fr_io_nak_list, fr_io_nak_list_head_t, fr_io_nak_list_entry_t)
+
+/** A negative cache entry.
+ *
+ *  This is smaller and simpler than using a #fr_io_client_t.  Plus, it doesn't affect the lifetime,
+ *  ownership, or parenting of a #fr_io_client_t.
+ */
+typedef struct {
+	fr_ipaddr_t			src_ipaddr;			//!< the address which was NAK'd
+	fr_time_t			expires;			//!< when this entry stops being used
+	fr_io_nak_list_entry_t		entry;
+} fr_io_nak_entry_t;
+
+FR_DLIST_FUNCS(fr_io_nak_list, fr_io_nak_entry_t, entry)
 
 typedef struct {
 	fr_event_list_t			*el;				//!< event list, for the master socket.
 	fr_network_t			*nr;				//!< network for the master socket
 
 	fr_trie_t			*trie;				//!< trie of clients
+	fr_trie_t			*nak_trie;			//!< trie of NAK clients
+	fr_io_nak_list_head_t		nak_list;			//!< time ordered list of NAK entries.
+
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
 	fr_heap_t			*alive_clients;			//!< heap of active dynamic clients
 
@@ -41,7 +57,6 @@ typedef struct {
 	fr_listen_t			*child;				//!< The child (app_io) IO path
 	fr_schedule_t			*sc;				//!< the scheduler
 
-	// @todo - count num_nak_clients, and num_nak_connections, too
 	uint32_t			num_connections;		//!< number of dynamic connections
 	uint32_t			num_pending_packets;   		//!< number of pending packets
 	uint64_t			client_id;			//!< Unique client identifier.
@@ -451,12 +466,121 @@ error:
 #undef COPY_FIELD
 #undef DUP_FIELD
 
+/** Expire entries in the cache.
+ *
+ *  Remove old entries from the head of the queue if they have expired, OR if the NAK list is large.
+ *
+ *  @todo - make the size of the NAK list configurable.  For now, a hard-coded limit of 1000 isn't terrible.
+ *  If there are more NAK IPs than that, the admin should set up firewall rules to block traffic.
+ */
+static void fr_io_nak_expire(fr_io_thread_t *thread, fr_time_t now)
+{
+	fr_io_nak_entry_t *nak;
+
+	while ((nak = fr_io_nak_list_head(&thread->nak_list)) != NULL) {
+		if (fr_time_gt(nak->expires, now) &&
+		    (fr_io_nak_list_num_elements(&thread->nak_list) <= 1000)) {
+			break;
+		}
+
+		/*
+		 *	@todo - if the cache is full because we're expiring entries too quickly, then that's
+		 *	likely a firewall issue for the admin to resolve.
+		 */
+
+		(void) fr_trie_remove_by_key(thread->nak_trie, &nak->src_ipaddr.addr, nak->src_ipaddr.prefix);
+		fr_io_nak_list_remove(&thread->nak_list, nak);
+		talloc_free(nak);
+	}
+
+}
+
+/** Add a negative cache entry.
+ *
+ *  The new entry is either added, or it has its expiry updated.  Deleting the existing entry would cause
+ *  problems for the lifetime of the NAK entry.
+ *
+ * @param[in] thread		thread instance
+ * @param[in] src_ipaddr	to look add
+ * @param[in] lifetime		how long the entry lives for.
+ */
+static void fr_io_nak_insert(fr_io_thread_t *thread, fr_ipaddr_t const *src_ipaddr, fr_time_delta_t lifetime)
+{
+	fr_time_t now = fr_time();
+	fr_io_nak_entry_t *nak;
+
+	fr_io_nak_expire(thread, now);
+
+	nak = fr_trie_match_by_key(thread->nak_trie, &src_ipaddr->addr, src_ipaddr->prefix);
+	if (nak) {
+		fr_io_nak_list_remove(&thread->nak_list, nak);
+		goto do_insert;
+	}
+
+	/*
+	 *	@todo - rate limited warnings if the NAK cache is full.
+	 */
+	if (fr_io_nak_list_num_elements(&thread->nak_list) > 1000) {
+		return;
+	}
+
+	/*
+	 *	No match, allocate and insert a new entry.
+	 */
+	MEM(nak = talloc_zero(thread->nak_trie, fr_io_nak_entry_t));
+	nak->src_ipaddr = *src_ipaddr;
+	fr_io_nak_list_entry_init(nak);
+
+	if (fr_trie_insert_by_key(thread->nak_trie, &src_ipaddr->addr, src_ipaddr->prefix, nak)) {
+		talloc_free(nak);
+		return;
+	}
+
+do_insert:
+	/*
+	 *	This assumes that the lifetime is constant.  If it varies per IP, we will need to move the
+	 *	dlist to an RB tree.
+	 */
+	nak->expires = fr_time_add(now, lifetime);
+	fr_io_nak_list_insert_tail(&thread->nak_list, nak);
+}
+
+/** Look up a negative cache entry.
+ *
+ *  Entries are expired lazily, to avoid yet another timer.  An expired entry is removed and freed,
+ *  and the lookup returns "no entry".
+ *
+ * @param[in] thread		thread instance
+ * @param[in] src_ipaddr	to look up.
+ * @return
+ *	- true if the address is NAK'd, and the caller must refuse it.
+ *	- false if it is not NAK'd, or if the entry has expired.
+ */
+static bool fr_io_nak_find(fr_io_thread_t *thread, fr_ipaddr_t const *src_ipaddr)
+{
+	fr_time_t now = fr_time();
+	fr_io_nak_entry_t *nak;
+
+	fr_io_nak_expire(thread, now);
+
+	nak = fr_trie_lookup_by_key(thread->nak_trie, &src_ipaddr->addr, src_ipaddr->prefix);
+	if (!nak) return false;
+
+	if (fr_time_gt(nak->expires, now)) return true;
+
+	/*
+	 *	Remove it by its own address.  The lookup above is a longest-prefix match, so the entry
+	 *	may be for a shorter prefix than the address we were given.
+	 */
+	(void) fr_trie_remove_by_key(thread->nak_trie, &nak->src_ipaddr.addr, nak->src_ipaddr.prefix);
+	fr_io_nak_list_remove(&thread->nak_list, nak);
+	talloc_free(nak);
+
+	return false;
+}
+
 
 /** Count the number of connections used by active clients.
- *
- *  Unfortunately, we also count NAK'd connections, too, even if they
- *  are closed.  The alternative is to walk through all connections
- *  for each client, which would be a long time.
  */
 static int count_connections(UNUSED uint8_t const *key, UNUSED size_t keylen, void *data, void *ctx)
 {
@@ -1035,6 +1159,15 @@ static int _client_live_free(fr_io_client_t *client)
 
 	(void) fr_trie_remove_by_key(client->thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
 
+	/*
+	 *	A client with pending packets is also in the thread's heap of pending clients.  Nothing
+	 *	else takes it out of that heap, so do it here, or the heap is left holding a pointer to
+	 *	freed memory.
+	 */
+	if (client->thread->pending_clients && fr_heap_entry_inserted(client->pending_id)) {
+		(void) fr_heap_extract(&client->thread->pending_clients, client);
+	}
+
 	if (client->thread->alive_clients) {
 		fr_assert(fr_heap_num_elements(client->thread->alive_clients) > 0);
 		(void) fr_heap_extract(&client->thread->alive_clients, client);
@@ -1528,11 +1661,6 @@ redo:
 			return 0;
 		}
 
-		/*
-		 *	Set the new descriptor to be non-blocking.
-		 */
-		(void) fr_nonblock(accept_fd);
-
 #ifdef STATIC_ANALYZER
 		saremote.ss_family = AF_INET; /* static analyzer doesn't know that accept() initializes this */
 #endif
@@ -1544,17 +1672,37 @@ redo:
 			memset(&address.socket, 0, sizeof(address.socket));
 			(void) fr_ipaddr_from_sockaddr(&address.socket.inet.src_ipaddr, &address.socket.inet.src_port,
 						       &saremote, salen);
-			salen = sizeof(saremote);
+
+			/*
+			 *	If the IP is in the NAK cache, then ignore the new socket.
+			 *
+			 *	An entry which has passed its expiry time is removed here, and the
+			 *	connection is accepted as normal.
+			 */
+			if (fr_io_nak_find(thread, &address.socket.inet.src_ipaddr)) {
+				RATE_LIMIT_LOCAL(&thread->rate_limit.accept_failed,
+						 INFO, "proto_%s - ignoring connection request from address %pV due to NAK cache",
+						 inst->app->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				close(accept_fd);
+				return 0;
+			}
 
 			/*
 			 *	@todo - only if the local listen address is "*".
 			 */
+			salen = sizeof(saremote);
 			(void) getsockname(accept_fd, (struct sockaddr *) &saremote, &salen);
 			(void) fr_ipaddr_from_sockaddr(&address.socket.inet.dst_ipaddr, &address.socket.inet.dst_port,
 						       &saremote, salen);
 			address.socket.type = (inst->ipproto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 			address.socket.fd = accept_fd;
 		}
+
+		/*
+		 *	Set the new descriptor to be non-blocking.
+		 */
+		(void) fr_nonblock(accept_fd);
+
 
 	} else {
 		fr_io_address_t *local_address;
@@ -2824,6 +2972,21 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
 
 		client->state = PR_CLIENT_NAK;
+
+		/*
+		 *	Insert the address into the NAK cache.  This call either inserts a new entry, or
+		 *	(for paranoia) extends the lifetime of an existing one.
+		 */
+		fr_io_nak_insert(client->thread, &client->src_ipaddr, inst->nak_lifetime);
+
+		/*
+		 *	Remove the client from the pending list, so that a call to pending_packet_pop()
+		 *	doesn't return a client which doesn't exist.
+		 */
+		if (client->thread->pending_clients && fr_heap_entry_inserted(client->pending_id)) {
+			(void) fr_heap_extract(&client->thread->pending_clients, client);
+		}
+
 		if (!connection) {
 			client_pending_free(client);
 		} else {
@@ -3424,9 +3587,11 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	thread->sc = sc;
 
 	/*
-	 *	Create the trie of clients for this socket.
+	 *	Create the trie of clients and NAK clients.
 	 */
 	MEM(thread->trie = fr_trie_alloc(thread, NULL, NULL));
+	MEM(thread->nak_trie = fr_trie_alloc(thread, NULL, NULL));
+	fr_io_nak_list_init(&thread->nak_list);
 
 	if (inst->dynamic_clients) {
 		MEM(thread->alive_clients = fr_heap_alloc(thread, alive_client_cmp,
