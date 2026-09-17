@@ -903,8 +903,7 @@ void request_done(REQUEST *request, int original)
 			for (i = 0; i < request->home_pool->num_home_servers; i++) {
 				home_server_t *home = request->home_pool->servers[i];
 
-				if ((home->state == HOME_STATE_CONNECTION_FAIL) ||
-				    (home->state == HOME_STATE_CERTIFICATE_FAIL)) {
+				if (home->state == HOME_STATE_CONNECTION_FAIL) {
 					mark_home_server_dead(home, &now, false);
 				}
 			}
@@ -4952,10 +4951,6 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 
 	if (previous_state == HOME_STATE_CONNECTION_FAIL) {
 		revive_interval = home->limit.connect_fail_interval;
-		goto do_wait;
-
-	} else if (previous_state == HOME_STATE_CERTIFICATE_FAIL) {
-		revive_interval = home->limit.certificate_fail_interval;
 		goto do_wait;
 	}
 

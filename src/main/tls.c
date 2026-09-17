@@ -1543,11 +1543,15 @@ void tls_session_information(tls_session_t *tls_session)
 	}
 
 	/*
-	 *	We have a home server, but its certificate is expired,
-	 *	etc.  Remember that the TLS connection is not appropriate.
+	 *	TLS negotiation to the home server failed.  Remember
+	 *	that.  Other connections may still be open, so we
+	 *	don't mark the home server as dead.
 	 */
 	if (home) {
-		if (certificate_fail) home->state = HOME_STATE_CERTIFICATE_FAIL;
+		if (certificate_fail) {
+			home->tls_failed_time = time(NULL);
+			home->tls_failed = true;
+		}
 		if (!rad_debug_lvl) return;
 	}
 

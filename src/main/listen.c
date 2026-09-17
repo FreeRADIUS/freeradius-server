@@ -3946,6 +3946,22 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		return NULL;
 	}
 
+#ifdef WITH_TLS
+	/*
+	 *	A previous connection has failed due to a TLS negotiation issue.  Don't open a new connection
+	 *	until the configured time interval has passed.
+	 */
+	if (home->tls_failed) {
+		if ((home->tls_failed_time + (time_t) home->limit.certificate_fail_interval) > now) {
+			RATE_LIMIT(INFO("Suppressing attempt to open socket to home server %s, as TLS negotiation failed %u seconds ago",
+					home->log_name, (unsigned int) (now - home->tls_failed_time)));
+			return NULL;
+		}
+
+		home->tls_failed = false;
+	}
+#endif
+
 	this = listen_alloc(ctx, RAD_LISTEN_PROXY);
 
 	sock = this->data;
