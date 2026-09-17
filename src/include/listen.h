@@ -184,6 +184,8 @@ typedef struct listen_socket_t {
 	fr_ipaddr_t	haproxy_dst_ipaddr;
 	uint16_t	haproxy_src_port;
 	uint16_t	haproxy_dst_port;
+
+	bool		connection_counted;	//!< this connection is counted in home->active_connections
 #endif
 
 #ifdef WITH_TLS
@@ -217,6 +219,11 @@ typedef struct listen_socket_t {
 #ifdef WITH_PROXY
 void proxy_stats(rad_listen_t *listener, home_server_t *home, int code, size_t offset, time_t when);
 uint32_t proxy_state_hash(uint32_t seed[static 2], fr_ipaddr_t const *home_ip, int home_port);
+
+#ifdef WITH_TCP
+void		home_server_active_connections_increment(rad_listen_t *listener);
+void		home_server_active_connections_decrement(rad_listen_t *listener);
+#endif
 #endif
 
 #endif /* LISTEN_H */

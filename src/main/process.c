@@ -666,6 +666,7 @@ void tls_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_han
 	}
 
 	listener->blocked = true;
+	home_server_active_connections_decrement(listener);
 
 	/*
 	 *	@todo - we really shouldn't be doing this from the child thread.
@@ -730,6 +731,7 @@ void tls_listener_thaw(rad_listen_t *listener)
 	}
 
 	listener->blocked = false;
+	home_server_active_connections_increment(listener);
 
 	/*
 	 *	@todo - we really shouldn't be doing this from the child thread.
@@ -6427,6 +6429,16 @@ static void event_new_fd(void *ctx)
 			if (this->count > 0) {
 				fr_packet_list_walk(proxy_list, this, proxy_eol_cb);
 			}
+
+#ifdef WITH_TCP
+			/*
+			 *	The socket is dead, so remove it from
+			 *	the list of active connections.  Do
+			 *	this now instead of ~30s later when
+			 *	the socket is freed.
+			 */
+			if (this->type == RAD_LISTEN_PROXY) home_server_active_connections_decrement(this);
+#endif
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		}
 #endif	/* WITH_PROXY */
@@ -6477,6 +6489,9 @@ static void event_new_fd(void *ctx)
 		this->dead = true;
 
 	remove_now:
+#if defined(WITH_PROXY) && defined(WITH_TCP)
+		if (this->type == RAD_LISTEN_PROXY) home_server_active_connections_decrement(this);
+#endif
 #ifdef WITH_TLS
 		/*
 		 *	Close it.  Which sets the status to EOL, so we

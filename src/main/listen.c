@@ -1472,9 +1472,14 @@ static void common_socket_free(rad_listen_t *this)
 	if (sock->client && sock->client->limit.num_connections > 0) {
 		sock->client->limit.num_connections--;
 	}
-	if (sock->home && sock->home->limit.num_connections > 0) {
+
+#ifdef WITH_PROXY
+	if (sock->home && (sock->home->limit.num_connections > 0)) {
 		sock->home->limit.num_connections--;
+
+		home_server_active_connections_decrement(this);
 	}
+#endif
 }
 #else
 #define common_socket_free NULL
@@ -4090,7 +4095,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) < 0) {
 			ERROR("(TLS) Failed to set SO_KEEPALIVE: %s", fr_syserror(errno));
 			goto error;
-		}
+		}		
 	}
 #endif
 
@@ -4240,6 +4245,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		DEBUG("Opened new proxy socket '%s'", buffer);
 	}
 
+	home->limit.num_connections++;
+
 	/*
 	 *	The connect() was successful. Mark the home server as
 	 *	having no connection failures.
@@ -4248,14 +4255,23 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	 *	that negotiation fails, then the TCP code will set the
 	 *	tls_failed flag, along with a new time.
 	 */
-#ifdef WITH_TCP
-	home->tcp_failed = false;
-#endif
 #ifdef WITH_TLS
 	home->tls_failed = false;
 #endif
 
-	home->limit.num_connections++;
+#ifdef WITH_TCP
+	home->tcp_failed = false;
+
+	/*
+	 *	Count the connection as open.  For non-blocking TCP,
+	 *	we allow a connection to be marked open, even if the
+	 *	connect() later fails.
+	 *
+	 *	For TLS, this only increments the active connections
+	 *	if the TLS handshake has finished.
+	 */
+	home_server_active_connections_increment(this);
+#endif
 
 	return this;
 }
@@ -5185,4 +5201,82 @@ static void listener_coa_update(rad_listen_t *this, VALUE_PAIR *vps)
 		}
 	}
 }
+#endif
+
+#ifdef WITH_PROXY
+#ifdef WITH_TCP
+void home_server_active_connections_increment(rad_listen_t *this)
+{
+	listen_socket_t *sock = this->data;
+	home_server_t *home;
+
+	fr_assert(this->type == RAD_LISTEN_PROXY);
+
+	if (sock->proto != IPPROTO_TCP) return;
+
+	/*
+	 *	Already counted.  Do nothing, so that callers don't have
+	 *	to track which transitions they have already done.
+	 */
+	if (sock->connection_counted) return;
+
+#ifdef WITH_TLS
+	/*
+	 *	The TCP connection is up, but the TLS session isn't
+	 *	usable until the handshake has finished.  We are called
+	 *	again from try_connect() when that happens.
+	 */
+	if (sock->ssn && !sock->ssn->connected) return;
+#endif
+
+	fr_assert(sock->home);
+	home = sock->home;
+
+	sock->connection_counted = true;
+	home->active_connections++;
+
+#ifdef WITH_RADIUSV11
+	if (sock->radiusv11) {
+		home->limit_outstanding = UINT32_MAX;
+		return;
+	}
+#endif
+
+	home->limit_outstanding = home->active_connections * 256;
+}
+
+void home_server_active_connections_decrement(rad_listen_t *this)
+{
+	listen_socket_t *sock = this->data;
+	home_server_t *home;
+
+	fr_assert(this->type == RAD_LISTEN_PROXY);
+
+	if (sock->proto != IPPROTO_TCP) return;
+
+	/*
+	 *	Never counted, or already un-counted.  A connection
+	 *	can be frozen or closed before the TLS handshake
+	 *	finishes, in which case it was never added to the
+	 *	active_connections count.
+	 */
+	if (!sock->connection_counted) return;
+
+	fr_assert(sock->home);
+	home = sock->home;
+
+	sock->connection_counted = false;
+	fr_assert(home->active_connections > 0);
+	home->active_connections--;
+
+#ifdef WITH_RADIUSV11
+	if (sock->radiusv11) {
+		home->limit_outstanding = (home->active_connections > 0) ? UINT32_MAX : 0;
+		return;
+	}
+#endif
+
+	home->limit_outstanding = home->active_connections * 256;
+}
+#endif
 #endif

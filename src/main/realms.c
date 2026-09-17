@@ -3266,7 +3266,7 @@ static bool home_server_active(REQUEST *request, home_server_t *home)
 	 *	open connections which have free space.
 	 */
 	if (home_server_connect_blocked(home, request->packet->timestamp.tv_sec)) {
-		return (home->currently_outstanding < (home->limit.num_connections * 256));
+		return (home->currently_outstanding < home->limit_outstanding);
 	}
 #endif
 

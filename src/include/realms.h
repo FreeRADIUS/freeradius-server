@@ -118,6 +118,10 @@ typedef struct home_server {
 	uint32_t		max_response_timeouts;
 	uint32_t		max_outstanding;	//!< Maximum outstanding requests.
 	uint32_t		currently_outstanding;
+#ifdef WITH_TCP
+	uint32_t		limit_outstanding;	//!< calculated from the number of live connections
+	uint32_t		active_connections;	//!< some may be frozen
+#endif
 
 	time_t			last_packet_sent;
 	time_t			last_packet_recv;

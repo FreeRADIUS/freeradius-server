@@ -1193,6 +1193,15 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 			return -1;
 		}
 #endif
+
+#ifdef WITH_TCP
+		/*
+		 *	The TLS handshake is finished, so mark the
+		 *	connection as active.  Do this after ALPN, so
+		 *	that we can correctly set limit_outstanding.
+		 */
+		home_server_active_connections_increment(listener);
+#endif
 	}
 
 	if (sock->ssn->clean_out.used) {
@@ -1530,6 +1539,10 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 		if (!sock->alpn_checked && (fr_radiusv11_client_get_alpn(listener) < 0)) {
 			goto do_close;
 		}
+#endif
+
+#ifdef WITH_TCP
+		home_server_active_connections_increment(listener);
 #endif
 	}
 
