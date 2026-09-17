@@ -94,7 +94,6 @@ typedef struct {
 typedef enum {
 	PR_CLIENT_INVALID = 0,
 	PR_CLIENT_STATIC,				//!< static / global clients
-	PR_CLIENT_NAK,					//!< negative cache entry
 	PR_CLIENT_DYNAMIC,				//!< dynamically defined client
 	PR_CLIENT_CONNECTED,				//!< dynamically defined client in a connected socket
 	PR_CLIENT_PENDING,				//!< dynamic client pending definition
@@ -646,8 +645,7 @@ static int connection_free(fr_io_connection_t *connection)
 static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 						  fr_io_thread_t *thread,
 						  fr_io_client_t *client, int fd,
-						  fr_io_address_t *address,
-						  fr_io_connection_t *nak)
+						  fr_io_address_t *address)
 {
 	int ret;
 	fr_io_connection_t *connection;
@@ -665,7 +663,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	the original.  It also means that detach should be
 	 *	called when the instance data is freed.
 	 */
-	if (!nak) {
+	{
 		CONF_SECTION *cs;
 		char *inst_name;
 
@@ -737,8 +735,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 *	FIXME - Instantiate the new module?!
 		 */
 		fr_assert(mi != NULL);
-	} else {
-		mi = talloc_init_const("nak");
 	}
 
 	MEM(connection = talloc_zero(mi, fr_io_connection_t));
@@ -840,13 +836,12 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		break;
 
 	case PR_CLIENT_INVALID:
-	case PR_CLIENT_NAK:
 	case PR_CLIENT_CONNECTED:
 		fr_assert(0 == 1);
 		goto cleanup;
 	}
 
-	if (!nak) {
+	{
 		/*
 		 *	Get the child listener.
 		 */
@@ -1004,10 +999,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	if (client->ht) {
 		size_t pre_size = fr_hash_table_num_elements(client->ht);
 
-		if (nak) {
-			(void) fr_hash_table_delete(client->ht, nak);
-			nak->in_parent_hash = false;
-		}
 		ret = fr_hash_table_insert(client->ht, connection);
 		client->ready_to_delete = false;
 		connection->in_parent_hash = true;
@@ -1023,9 +1014,9 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		/*
 		 *	The first connection for a PENDING parent runs the dynamic client definition.  All
 		 *	later connections will be scheduled by fr_io_connection_allow(), once the parent is
-		 *	defined (or not).  nak placeholders are never scheduled, so they don't count.
+		 *	defined (or not).
 		 */
-		if (!nak && (client->state == PR_CLIENT_PENDING) && (pre_size > 0)) {
+		if ((client->state == PR_CLIENT_PENDING) && (pre_size > 0)) {
 			pthread_mutex_unlock(&client->mutex);
 			DEBUG("proto_%s - deferring scheduling of connection %s until parent client %pV is defined",
 			      inst->app_io->common.name, connection->name, fr_box_ipaddr(client->src_ipaddr));
@@ -1034,20 +1025,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		}
 	}
 	pthread_mutex_unlock(&client->mutex);
-
-	/*
-	 *	It's a NAK client.  Set the state to NAK, and don't
-	 *	add it to the scheduler.
-	 */
-	if (nak) {
-		INFO("proto_%s - Verification failed for packet from dynamic client %pV - adding IP address to the NAK cache",
-		     inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
-
-		connection->name = talloc_strdup(connection, nak->name);
-		connection->client->state = PR_CLIENT_NAK;
-		connection->el = nak->el;
-		return connection;
-	}
 
 	DEBUG("proto_%s - starting connection %s", inst->app_io->common.name, connection->name);
 	connection->nr = fr_schedule_listen_add(thread->sc, connection->listen);
@@ -1803,14 +1780,6 @@ do_read:
 	}
 
 	/*
-	 *	Negative cache entry.  Drop the packet.
-	 */
-	if (client && client->state == PR_CLIENT_NAK) {
-		if (accept_fd >= 0) close(accept_fd);
-		return 0;
-	}
-
-	/*
 	 *	No client was found, and we don't have a connection.  Check the NAK cache before defining a
 	 *	dynamic client.
 	 *
@@ -1917,14 +1886,13 @@ do_read:
 
 have_client:
 	fr_assert(client->state != PR_CLIENT_INVALID);
-	fr_assert(client->state != PR_CLIENT_NAK);
 
 	/*
 	 *	We've accepted a new connection.  Go allocate it, and
 	 *	let it read from the socket.
 	 */
 	if (accept_fd >= 0) {
-		connection = fr_io_connection_alloc(inst, thread, client, accept_fd, &address, NULL);
+		connection = fr_io_connection_alloc(inst, thread, client, accept_fd, &address);
 		if (!connection) {
 			static fr_rate_limit_t alloc_failed;
 
@@ -2121,34 +2089,17 @@ have_client:
 	 *	the state, the child socket will take care of handling
 	 *	the packet.  e.g. dynamic clients, etc.
 	 */
-	{
-		bool nak = false;
+	my_connection.address = &address;
 
-		my_connection.address = &address;
-
-		pthread_mutex_lock(&client->mutex);
-		fr_hash_table_find((void **)&connection, client->ht, &my_connection);
-		if (connection) nak = (connection->client->state == PR_CLIENT_NAK);
-		pthread_mutex_unlock(&client->mutex);
-
-		/*
-		 *	The connection is in NAK state, ignore packets
-		 *	for it.
-		 */
-		if (nak) {
-			RATE_LIMIT_LOCAL(&thread->rate_limit.repeat_nak, ERROR, "proto_%s - Discarding repeated packet from NAK'd dynamic client %pV",
-					 inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
-
-			DEBUG("Discarding packet to NAKed connection %s", connection->name);
-			return 0;
-		}
-	}
+	pthread_mutex_lock(&client->mutex);
+	fr_hash_table_find((void **)&connection, client->ht, &my_connection);
+	pthread_mutex_unlock(&client->mutex);
 
 	/*
 	 *	No existing connection, create one.
 	 */
 	if (!connection) {
-		connection = fr_io_connection_alloc(inst, thread, client, -1, &address, NULL);
+		connection = fr_io_connection_alloc(inst, thread, client, -1, &address);
 		if (!connection) {
 			RATE_LIMIT_LOCAL(&thread->rate_limit.conn_alloc_failed,
 					 ERROR, "Failed to allocate connection from client %s.  Discarding packet.", client->radclient->shortname);
@@ -2318,6 +2269,34 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 }
 
 
+/** Delete a client and any connection it belongs to.
+ *
+ *  A connected socket owns a client, so we have to remove the connection from the parent "accept" connection.
+ *  We also mark the connection as dead, and tell the network side to read from the connection, which then
+ *  closes it.
+ */
+static void fr_io_client_delete(fr_io_client_t *client)
+{
+	fr_io_connection_t *connection = client->connection;
+
+	fr_assert(client->packets == 0);
+
+	if (connection) {
+		pthread_mutex_lock(&connection->parent->mutex);
+		if (connection->in_parent_hash) {
+			connection->in_parent_hash = false;
+			(void) fr_hash_table_delete(connection->parent->ht, connection);
+		}
+		pthread_mutex_unlock(&connection->parent->mutex);
+
+		connection->dead = true;
+		fr_network_listen_read(connection->nr, connection->listen);
+		return;
+	}
+
+	talloc_free(client);
+}
+
 static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	fr_io_client_t		*client = talloc_get_type_abort(uctx, fr_io_client_t);
@@ -2361,10 +2340,6 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 			delay = inst->dynamic_timeout;
 			break;
 
-		case PR_CLIENT_NAK:
-			delay = inst->nak_lifetime;
-			break;
-
 		default:
 			fr_assert(0 == 1);
 			return;
@@ -2373,42 +2348,6 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		DEBUG("TIMER - setting idle timeout to %pVs for connection from client %s", fr_box_time_delta(delay), client->radclient->shortname);
 
 		goto reset_timer;
-	}
-
-	/*
-	 *	It's a negative cache entry.  Just delete it.
-	 */
-	if (client->state == PR_CLIENT_NAK) {
-		INFO("proto_%s - Expiring NAK'd dynamic client %pV - permitting new packets to be verified",
-		     inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
-
-	delete_client:
-		fr_assert(client->packets == 0);
-
-		/*
-		 *	It's a connected socket.  Remove it from the
-		 *	parents list of connections, and delete it.
-		 */
-		if (connection) {
-			pthread_mutex_lock(&connection->parent->mutex);
-			if (connection->in_parent_hash) {
-				connection->in_parent_hash = false;
-				(void) fr_hash_table_delete(connection->parent->ht, connection);
-			}
-			pthread_mutex_unlock(&connection->parent->mutex);
-
-			/*
-			 *	Mark the connection as dead, and tell
-			 *	the network side to stop reading from
-			 *	it.
-			 */
-			connection->dead = true;
-			fr_network_listen_read(connection->nr, connection->listen);
-			return;
-		}
-
-		talloc_free(client);
-		return;
 	}
 
 	DEBUG2("TIMER - checking status of dynamic client %s %pV", client->radclient->shortname, fr_box_ipaddr(client->src_ipaddr));
@@ -2447,7 +2386,8 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	if (!client->use_connected) {
 		if (!client->packets) {
 			DEBUG("proto_%s - No packets are using unconnected socket", inst->app_io->common.name);
-			goto delete_client;
+			fr_io_client_delete(client);
+			return;
 		}
 
 		/*
@@ -2493,7 +2433,8 @@ idle_timeout:
 			} else {
 				DEBUG("proto_%s - idle timeout for client %s", inst->app_io->common.name, client->radclient->shortname);
 			}
-			goto delete_client;
+			fr_io_client_delete(client);
+			return;
 		}
 
 		/*
@@ -2586,7 +2527,6 @@ static void packet_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	 */
 	if (client->state == PR_CLIENT_STATIC) return;
 
-	fr_assert(client->state != PR_CLIENT_NAK);
 	fr_assert(client->state != PR_CLIENT_PENDING);
 
 	/*
@@ -2915,11 +2855,18 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	fr_assert(client->pending != NULL);
 
 	/*
-	 *	The request failed trying to define the dynamic
-	 *	client.  Discard the client and all pending packets.
+	 *	We have a response that indicates the dynamic client creation failed.  Delete the client, and
+	 *	all pending packets.  Then, add the connection to the NAK cache.
 	 */
-	if ((buffer_len == 1) && (*buffer == true)) {
-		DEBUG("Request failed trying to define a new client.  Discarding client and pending packets.");
+	if (buffer_len == 1) {
+		if (*buffer == true) {
+			DEBUG("Request failed trying to define a new client.  Discarding client and pending packets.");
+		} else {
+			INFO("proto_%s - Verification failed for packet from dynamic client %pV - adding IP address to the NAK cache",
+			     inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
+
+			fr_io_nak_insert(client->thread, &client->src_ipaddr, inst->nak_lifetime);
+		}
 
 		if (!connection) {
 			talloc_free(client);
@@ -2961,77 +2908,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		connection->dead = true;
 		fr_network_listen_read(connection->nr, connection->listen);
 
-		return buffer_len;
-	}
-
-	/*
-	 *	The dynamic client was NOT defined.  Set it's state to
-	 *	NAK, delete all pending packets, and close the
-	 *	tracking table.
-	 */
-	if (buffer_len == 1) {
-		INFO("proto_%s - Verification failed for packet from dynamic client %pV - adding IP address to the NAK cache",
-		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
-
-		client->state = PR_CLIENT_NAK;
-
-		/*
-		 *	Insert the address into the NAK cache.  This call either inserts a new entry, or
-		 *	(for paranoia) extends the lifetime of an existing one.
-		 */
-		fr_io_nak_insert(client->thread, &client->src_ipaddr, inst->nak_lifetime);
-
-		/*
-		 *	Remove the client from the pending list, so that a call to pending_packet_pop()
-		 *	doesn't return a client which doesn't exist.
-		 */
-		if (client->thread->pending_clients && fr_heap_entry_inserted(client->pending_id)) {
-			(void) fr_heap_extract(&client->thread->pending_clients, client);
-		}
-
-		if (!connection) {
-			client_pending_free(client);
-		} else {
-			TALLOC_FREE(client->pending);
-		}
-		if (client->table) TALLOC_FREE(client->table);
-		fr_assert(client->packets == 0);
-
-		/*
-		 *	Tear down any sibling connections that were
-		 *	deferred waiting on this verification.  Only
-		 *	relevant for the connection case — the !connection
-		 *	path never has deferred siblings.
-		 */
-		if (connection) fr_io_connection_deny(connection->parent);
-
-		/*
-		 *	If we're a connected UDP socket, allocate a
-		 *	new connection which is the place-holder for
-		 *	the NAK.  We will reject packets from from the
-		 *	src/dst IP/port.
-		 *
-		 *	The timer will take care of deleting the NAK
-		 *	connection (which doesn't have any FDs
-		 *	associated with it).  The network side will
-		 *	call mod_close() when the original connection
-		 *	is done, which will then free that connection,
-		 *	too.
-		 */
-		if (connection && (inst->ipproto == IPPROTO_UDP)) {
-			MEM(connection = fr_io_connection_alloc(inst, thread, client, -1, connection->address, connection));
-			client_expiry_timer(el->tl, fr_time_wrap(0), connection->client);
-
-			errno = ECONNREFUSED;
-			return -1;
-		}
-
-		/*
-		 *	For connected TCP sockets, we just call the
-		 *	expiry timer, which will close and free the
-		 *	connection.
-		 */
-		client_expiry_timer(el->tl, fr_time_wrap(0), client);
 		return buffer_len;
 	}
 
