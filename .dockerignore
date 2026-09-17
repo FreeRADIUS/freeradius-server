@@ -5,3 +5,18 @@ scripts/docker/m4/
 # absolute host paths into the in-container install rules.
 build/
 prof-results/
+
+# The libbacktrace submodule builds beside the libbacktrace sources, not
+# into build/, so the build/ entry in this file misses those artefacts.
+# Host-built objects and headers break the container link on
+# backtrace_full.  The sources must still be copied, because configure
+# enables libbacktrace only when src/lib/backtrace/configure exists.
+src/lib/backtrace/.libs/
+src/lib/backtrace/autom4te.cache/
+src/lib/backtrace/*.o
+src/lib/backtrace/*.lo
+src/lib/backtrace/Makefile
+src/lib/backtrace/config.h
+src/lib/backtrace/config.log
+src/lib/backtrace/config.status
+src/lib/backtrace/backtrace-supported.h
