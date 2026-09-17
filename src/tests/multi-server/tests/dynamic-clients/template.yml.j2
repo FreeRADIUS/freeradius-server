@@ -119,11 +119,10 @@ states:
     description: >
       An Access-Request without Message-Authenticator arrives from an
       unknown source.  The BlastRADIUS check (the check for a missing
-      Message-Authenticator) does not run on the packet that defines the
-      client, so the new client section does not see a Module-Failure-Message.
-      The check runs once the server processes the packet as the defined
-      client, so the recv Access-Request section sees the message.  The
-      server answers the packet and a second packet.
+      Message-Authenticator) logs a warning and adds no attribute to the
+      request, so the new client section does not see a
+      Module-Failure-Message.  The server still defines the client, answers
+      the packet, and answers a second packet.
     host:
       client:
         actions:
@@ -135,14 +134,7 @@ states:
       triggers:
 {{ event_field_match('new-client-case1b', 'failure_messages', '^$') }}
 {{ event_recv('add-client-case1b') }}
-      - recv-access-request-case1b:
-          json:
-            user:
-              pattern:
-                reg_pattern: '^bob$'
-            failure_messages:
-              pattern:
-                reg_pattern: '.*does not contain a Message-Authenticator'
+{{ event_field_match('recv-access-request-case1b', 'user', '^bob$') }}
 {{ server_answered('case1b', 'Access-Accept') }}
 {{ event_recv('recv-access-request-case1b-after') }}
 {{ server_answered('case1b-after', 'Access-Accept') }}
