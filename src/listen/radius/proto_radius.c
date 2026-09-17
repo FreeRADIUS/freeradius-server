@@ -381,11 +381,11 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 				}
 			}
 		} else {
-			RERROR("Packet from client %pV (%s) does not contain a Message-Authenticator.",
-			       fr_box_ipaddr(client->ipaddr),
-			       client->shortname);
-			RERROR("Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
-			RERROR("Then set \"require_message_authenticator = yes\"");
+			RWARN("Packet from client %pV (%s) does not contain a Message-Authenticator.",
+			      fr_box_ipaddr(client->ipaddr),
+			      client->shortname);
+			RWARN("Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
+			RWARN("Then set \"require_message_authenticator = yes\"");
 		}
 
 		/*
@@ -428,11 +428,11 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		     vp != NULL;
 		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 			/*
-			 *	The BlastRADIUS complaint above logs with RERROR(), which
-			 *	appends Module-Failure-Message to the request.  That attribute
-			 *	is in the internal dictionary, and fr_radius_flag_encrypted()
-			 *	reads RADIUS protocol flags which an internal attribute does
-			 *	not have.
+			 *	request_pairs holds more than RADIUS attributes.  A module
+			 *	that failed leaves Module-Failure-Message behind, which is in
+			 *	the internal dictionary, and fr_radius_flag_encrypted() reads
+			 *	RADIUS protocol flags which an internal attribute does not
+			 *	have.
 			 */
 			if (fr_dict_by_da(vp->da) != dict_radius) continue;
 
