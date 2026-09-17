@@ -750,15 +750,19 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (rcode == -1) {	/* error reading packet */
+	if (rcode < 0) {	/* error or connection reset */
 		char buffer[256];
 
-		ERROR("Invalid packet from %s port %d, closing socket: %s",
-		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
-		       packet->src_port, fr_strerror());
-	}
+		if (rcode == -2) {
+			ERROR("Error reading from %s port %d, closing socket: %s",
+			      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+			      packet->src_port, fr_syserror(errno));
+		} else {
+			ERROR("Invalid packet from %s port %d, closing socket: %s",
+			      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+			      packet->src_port, fr_strerror());
+		}
 
-	if (rcode < 0) {	/* error or connection reset */
 		rad_free(&sock->packet);
 		TLS_FREE(sock->request);
 		listener->status = RAD_LISTEN_STATUS_EOL;
@@ -3917,6 +3921,26 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 #ifdef WITH_PROXY
 
 /*
+ *	We tried opening a connection to a home server, and failed.
+ */
+static void proxy_failed_open(home_server_t *home, time_t now)
+{
+	home->last_failed_open = now;
+
+#ifdef WITH_TCP
+	if (home->proto != IPPROTO_TCP) return;
+
+	/*
+	 *	Set the time first, so that a reader which sees the flag
+	 *	always sees a valid time.
+	 */
+	home->tcp_failed_time = now;
+	home->tcp_failed = true;
+#endif
+}
+
+
+/*
  *	Externally visible function for creating a new proxy LISTENER.
  *
  *	Not thread-safe, but all calls to it are protected by the
@@ -3946,19 +3970,17 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		return NULL;
 	}
 
-#ifdef WITH_TLS
-	/*
-	 *	A previous connection has failed due to a TLS negotiation issue.  Don't open a new connection
-	 *	until the configured time interval has passed.
-	 */
-	if (home->tls_failed) {
-		if ((home->tls_failed_time + (time_t) home->limit.certificate_fail_interval) > now) {
-			RATE_LIMIT(INFO("Suppressing attempt to open socket to home server %s, as TLS negotiation failed %u seconds ago",
-					home->log_name, (unsigned int) (now - home->tls_failed_time)));
-			return NULL;
-		}
 
-		home->tls_failed = false;
+#ifdef WITH_TCP
+	/*
+	 *	If we had TCP or TLS connection failures, then don't
+	 *	open new connections until after the relevant time
+	 *	period has passed.
+	 */
+	if (home_server_connect_blocked(home, now)) {
+		RATE_LIMIT(INFO("Suppressing attempt to open new connection to home server %s, due to a previous connection failure",
+				home->log_name));
+		return NULL;
 	}
 #endif
 
@@ -4044,7 +4066,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		this->print(this, buffer,sizeof(buffer));
 		ERROR("Failed opening new proxy socket '%s' : %s",
 		      buffer, fr_strerror());
-		home->last_failed_open = now;
+		proxy_failed_open(home, now);
 		listen_free(&this);
 		return NULL;
 	}
@@ -4054,7 +4076,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		this->print(this, buffer,sizeof(buffer));
 		ERROR("Failed opening new proxy socket '%s' : FD %d is larger than maximum %u",
 		      buffer, this->fd, FD_SETSIZE);
-		home->last_failed_open = now;
+		proxy_failed_open(home, now);
 		listen_free(&this);
 		return NULL;
 	}
@@ -4197,7 +4219,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			      buffer, fr_syserror(errno));
 		error:
 			close(this->fd);
-			home->last_failed_open = now;
+			proxy_failed_open(home, now);
 #ifdef WITH_TLS
 			if (home->listeners) rbtree_deletebydata(home->listeners, this);
 #endif
@@ -4217,6 +4239,21 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	if (rad_debug_lvl >= 3) {
 		DEBUG("Opened new proxy socket '%s'", buffer);
 	}
+
+	/*
+	 *	The connect() was successful. Mark the home server as
+	 *	having no connection failures.
+	 *
+	 *	Note that the TCP handshake has not yet completed.  If
+	 *	that negotiation fails, then the TCP code will set the
+	 *	tls_failed flag, along with a new time.
+	 */
+#ifdef WITH_TCP
+	home->tcp_failed = false;
+#endif
+#ifdef WITH_TLS
+	home->tls_failed = false;
+#endif
 
 	home->limit.num_connections++;
 

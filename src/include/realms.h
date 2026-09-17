@@ -51,10 +51,9 @@ typedef enum {
 	HOME_STATE_IS_DEAD,
 	HOME_STATE_UNKNOWN,
 	HOME_STATE_ADMIN_DOWN,
-	HOME_STATE_CONNECTION_FAIL,
 } home_state_t;
 
-#define HOME_SERVER_IS_DEAD(_x) (((_x)->state == HOME_STATE_IS_DEAD) || ((_x)->state == HOME_STATE_ADMIN_DOWN) || ((_x)->state == HOME_STATE_CONNECTION_FAIL))
+#define HOME_SERVER_IS_DEAD(_x) (((_x)->state == HOME_STATE_IS_DEAD) || ((_x)->state == HOME_STATE_ADMIN_DOWN))
 
 typedef struct fr_socket_limit_t {
 	uint32_t	max_connections;
@@ -164,6 +163,11 @@ typedef struct home_server {
 	time_t			tls_failed_time;	//!< New connections are blocked for "certificate_fail_interval"
 #endif
 
+#ifdef WITH_TCP
+	bool			tcp_failed;		//!< TCP connection failed, but old connections might still be active
+	time_t			tcp_failed_time;	//!< New connections are blocked for "connection_fail_interval"
+#endif
+
 #ifdef WITH_STATS
 	int			number;
 
@@ -204,7 +208,6 @@ typedef struct home_pool_t {
 	home_server_t		*fallback;
 	int			in_fallback;
 	time_t			time_all_dead;
-	time_t			last_serviced;
 
 	home_server_t		**affinity_group;
 
@@ -240,6 +243,9 @@ int		realm_realm_add( REALM *r, CONF_SECTION *cs);
 
 void		home_server_update_request(home_server_t *home, REQUEST *request);
 home_server_t	*home_server_ldb(char const *realmname, home_pool_t *pool, REQUEST *request);
+#ifdef WITH_TCP
+bool		home_server_connect_blocked(home_server_t const *home, time_t now);
+#endif
 home_server_t	*home_server_find(fr_ipaddr_t *ipaddr, uint16_t port, int proto);
 home_server_t	*home_server_find_bysrc(fr_ipaddr_t *ipaddr, uint16_t port, int proto, fr_ipaddr_t *src_ipaddr);
 home_server_t	*home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs, bool *soft_fail);

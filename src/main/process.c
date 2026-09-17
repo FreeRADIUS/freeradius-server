@@ -888,29 +888,6 @@ void request_done(REQUEST *request, int original)
 	 */
 	request->master_state = REQUEST_STOP_PROCESSING;
 
-#ifdef WITH_PROXY
-	/*
-	 *	Walk through the server pool to see if we need to mark
-	 *	connections as dead.
-	 */
-	if (request->home_pool) {
-		fr_event_now(el, &now);
-		if (request->home_pool->last_serviced < now.tv_sec) {
-			int i;
-
-			request->home_pool->last_serviced = now.tv_sec;
-
-			for (i = 0; i < request->home_pool->num_home_servers; i++) {
-				home_server_t *home = request->home_pool->servers[i];
-
-				if (home->state == HOME_STATE_CONNECTION_FAIL) {
-					mark_home_server_dead(home, &now, false);
-				}
-			}
-		}
-	}
-#endif
-
 	switch (action) {
 		/*
 		 *	If it was administratively canceled, then it's done.
@@ -2794,7 +2771,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
 		if (!this) {
-			request->home_server->state = HOME_STATE_CONNECTION_FAIL;
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			goto fail;
 		}
@@ -4883,7 +4859,6 @@ static int eol_home_listener(void *ctx, void *data)
 void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 {
 	int previous_state = home->state;
-	uint32_t revive_interval;
 	char buffer[128];
 
 	PROXY( "Marking home server %s port %d as dead.",
@@ -4947,13 +4922,6 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 		return;
 	}
 
-	revive_interval = home->revive_interval;
-
-	if (previous_state == HOME_STATE_CONNECTION_FAIL) {
-		revive_interval = home->limit.connect_fail_interval;
-		goto do_wait;
-	}
-
 	/*
 	 *	Ping it if configured, AND we can ping it.
 	 */
@@ -4970,15 +4938,14 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 		}
 
 	} else {
-	do_wait:
 		/*
 		 *	Revive it after a fixed period of time.  This
 		 *	is very, very, bad.
 		 */
 		home->when = *when;
-		home->when.tv_sec += revive_interval;
+		home->when.tv_sec += home->revive_interval;
 
-		DEBUG("PING: Reviving home server %s in %u seconds", home->log_name, revive_interval);
+		DEBUG("PING: Reviving home server %s in %u seconds", home->log_name, home->revive_interval);
 		ASSERT_MASTER;
 		INSERT_EVENT(revive_home_server, home);
 	}
@@ -5030,14 +4997,6 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	Ignore the retransmit.
 		 */
 		if (request->home_server->virtual_server) return;
-
-		/*
-		 *	Failed connections get the home server marked
-		 *	as dead.
-		 */
-		if (home->state == HOME_STATE_CONNECTION_FAIL) {
-			mark_home_server_dead(home, &now, false);
-		}
 
 		/*
 		 *	We have a reply, ignore the retransmit.
@@ -5132,14 +5091,6 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	We don't time it out, or check the status of the home server.  It's always up.
 		 */
 		if (request->home_server->virtual_server) return;
-
-		/*
-		 *	Failed connections get the home server marked
-		 *	as dead.
-		 */
-		if (home->state == HOME_STATE_CONNECTION_FAIL) {
-			mark_home_server_dead(home, &now, false);
-		}
 
 		response_window = request_response_window(request);
 

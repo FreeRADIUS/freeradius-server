@@ -289,10 +289,6 @@ static ssize_t xlat_home_server(UNUSED void *instance, REQUEST *request,
 			state = "dead";
 			break;
 
-		case HOME_STATE_CONNECTION_FAIL:
-			state = "fail";
-			break;
-
 		case HOME_STATE_ADMIN_DOWN:
 			state = "down";
 			break;
@@ -3170,6 +3166,37 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	}
 }
 
+#ifdef WITH_TCP
+/** Check if connections to home servers are blocked for policy reasons.
+ *
+ *  i.e. a TCP connect() failed, or there was a TLS negotiation
+ *  failure.
+ *
+ *  If connections are blocked, then we wait until the relevant
+ *  timeout before opening a new connection.
+ *
+ * @param home		the home server to check
+ * @param now		the current time
+ * @return
+ *	- true if new connections must not be opened.
+ *	- false if we can try to open a new connection.
+ */
+bool home_server_connect_blocked(home_server_t const *home, time_t now)
+{
+	if (home->proto != IPPROTO_TCP) return false;
+
+	if (home->tcp_failed &&
+	    ((home->tcp_failed_time + (time_t) home->limit.connect_fail_interval) > now)) return true;
+
+#ifdef WITH_TLS
+	if (home->tls_failed &&
+	    ((home->tls_failed_time + (time_t) home->limit.certificate_fail_interval) > now)) return true;
+#endif
+
+	return false;
+}
+#endif
+
 static bool home_server_active(REQUEST *request, home_server_t *home)
 {
 	/*
@@ -3189,6 +3216,34 @@ static bool home_server_active(REQUEST *request, home_server_t *home)
 		return false;
 	}
 
+	/*
+	 *	The home_server is within a "server foo" block.
+	 */
+	if (home->parent_server) {
+		/*
+		 *	Default virtual: ignore homes tied to a
+		 *	virtual.
+		 */
+		if (!request->server) {
+			return false;
+		}		
+
+		/*
+		 *	A virtual AND home is tied to virtual, ignore ones
+		 *	which don't match.
+		 */
+		if (strcmp(request->server, home->parent_server) != 0) {
+			return false;
+		}
+	}
+
+	/*
+	 *	Allow request->server && !home->parent_server
+	 *
+	 *	i.e. virtuals can proxy to globally defined
+	 *	homes.
+	 */
+
 #ifdef WITH_DETAIL
 	/*
 	 *	We read the packet from a detail file, AND it
@@ -3203,29 +3258,17 @@ static bool home_server_active(REQUEST *request, home_server_t *home)
 	}
 #endif
 
-	/*
-	 *	Default virtual: ignore homes tied to a
-	 *	virtual.
-	 */
-	if (!request->server && home->parent_server) {
-		return false;
-	}
+#ifdef WITH_TCP
+	if (home->proto != IPPROTO_TCP) return true;
 
 	/*
-	 *	A virtual AND home is tied to virtual,
-	 *	ignore ones which don't match.
+	 *	New connections are blocked, but there may be existing
+	 *	open connections which have free space.
 	 */
-	if (request->server && home->parent_server &&
-	    strcmp(request->server, home->parent_server) != 0) {
-		return false;
+	if (home_server_connect_blocked(home, request->packet->timestamp.tv_sec)) {
+		return (home->currently_outstanding < (home->limit.num_connections * 256));
 	}
-
-	/*
-	 *	Allow request->server && !home->parent_server
-	 *
-	 *	i.e. virtuals can proxy to globally defined
-	 *	homes.
-	 */
+#endif
 
 	return true;
 }
