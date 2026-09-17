@@ -105,6 +105,7 @@ load-balance pool1 {
 #  configuration.
 #
 radius home1 {
+	mode = proxy
 	transport = udp
 
 	type = Access-Request
