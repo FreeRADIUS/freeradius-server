@@ -91,6 +91,12 @@ RADENV_INDEX_URL                := https://pypi.inkbridge.io/
 TEST_MULTI_SERVER_FRAMEWORK_DIR := $(abspath $(BUILD_DIR)/radenv)
 
 #
+#  The stamp carries the version, so a build directory that installed an
+#  earlier version does not keep the earlier version after the pin moves.
+#
+TEST_MULTI_SERVER_FRAMEWORK_STAMP := $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured-$(RADENV_VERSION)
+
+#
 #  Suppress command echo unless VERBOSE is set
 #
 ifeq "$(VERBOSE)" ""
@@ -116,7 +122,7 @@ $(OUTPUT):
 #  Install the multi-server test framework into a per-build virtualenv.
 #  Shared prerequisite for every test target.
 #
-$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured: | $(OUTPUT)
+$(TEST_MULTI_SERVER_FRAMEWORK_STAMP): | $(OUTPUT)
 	$(Q)set -e; \
 	mkdir -p $(TEST_MULTI_SERVER_FRAMEWORK_DIR); \
 	if [ ! -d $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv ]; then \
@@ -125,6 +131,7 @@ $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured: | $(OUTPUT)
 	$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/pip install --quiet \
 		--extra-index-url $(RADENV_INDEX_URL) \
 		$(RADENV_PACKAGE)==$(RADENV_VERSION); \
+	rm -f $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured*; \
 	touch $@
 
 ######################################################################
@@ -160,7 +167,7 @@ TEST_MULTI_SERVER_CONFIG_FILES := $(shell find $(DIR)/configs -type f) $(wildcar
 #  ${4} = .j2 source path
 #
 define TEST_MULTI_SERVER_RENDER
-$(OUTPUT)/$(MODE)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured
+$(OUTPUT)/$(MODE)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_STAMP)
 	${Q}mkdir -p $$(@D)
 	${Q}echo "RENDER ${4} -> $$@"
 	${Q}set -e; \
