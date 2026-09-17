@@ -305,9 +305,11 @@ jobs:
     secrets: inherit
 
   #
-  #  `merge` runs when every gating leg passed.  The `needs` list holds only
-  #  the gating legs.  The other legs are too unreliable to block a
-  #  merge on.
+  #  The `needs` list of the `merge` job holds only the legs whose failure
+  #  must block a merge.  `merge` runs when every leg in the `needs` list
+  #  has passed.  The `ci-multi-server` leg passes reliably, so the
+  #  `ci-multi-server` leg is in the `needs` list.  A leg absent from the
+  #  `needs` list fails spuriously too often to block a merge.
   #
   #  By default GitHub skips a job unless every job in the job's `needs`
   #  succeeds.  The docker refresh skips on commits that do not modify
@@ -324,13 +326,14 @@ jobs:
   #
   merge:
     name: Merge
-    needs: [ci_prev_run, ci, ci-deb, ci-rpm, ci-sanitizers]
+    needs: [ci_prev_run, ci, ci-deb, ci-rpm, ci-sanitizers, ci-multi-server]
     if: ${{ !cancelled()
             && (needs.ci_prev_run.outputs.should_skip == 'true'
                 || (needs.ci.result == 'success'
                     && needs.ci-deb.result == 'success'
                     && needs.ci-rpm.result == 'success'
-                    && needs.ci-sanitizers.result == 'success')) }}
+                    && needs.ci-sanitizers.result == 'success'
+                    && needs.ci-multi-server.result == 'success')) }}
     uses: ./.github/workflows/merge-upstream.yml
     secrets:
       GH_APP_PRIVATE_KEY_CI_MERGE: ${{ secrets.GH_APP_PRIVATE_KEY_CI_MERGE }}
