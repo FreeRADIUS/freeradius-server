@@ -1811,6 +1811,21 @@ do_read:
 	}
 
 	/*
+	 *	No client was found, and we don't have a connection.  Check the NAK cache before defining a
+	 *	dynamic client.
+	 *
+	 *	The NAK cache has already been checked on the TCP path above, after the accept().
+	 */
+	if (!client && !connection &&
+	    fr_io_nak_find(thread, &address.socket.inet.src_ipaddr)) {
+		RATE_LIMIT_LOCAL(&thread->rate_limit.repeat_nak, ERROR,
+				 "proto_%s - Discarding packet from NAK'd dynamic client %pV",
+				 inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+		if (accept_fd >= 0) close(accept_fd);
+		return 0;
+	}
+
+	/*
 	 *	If there's no client, try to pull one from the global
 	 *	/ static client list.  Or if dynamic clients are
 	 *	allowed, try to define a dynamic client.
