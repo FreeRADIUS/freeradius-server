@@ -977,6 +977,34 @@ decode-pair 30 06 87 04 0a 00 05 04
 match Test-GeneralNames = { iPAddress = 10.0.5.4 }
 
 #
+#  An option which is not in the dictionary is decoded as raw octets.  Any
+#  class is accepted, and the constructed flag is ignored.
+#
+decode-pair 30 09 83 07 66 6f 6f 2e 62 61 72
+match Test-GeneralNames = { raw.3 = 0x666f6f2e626172 }
+
+decode-pair 30 09 a3 07 66 6f 6f 2e 62 61 72
+match Test-GeneralNames = { raw.3 = 0x666f6f2e626172 }
+
+decode-pair 30 03 c3 01 ff
+match Test-GeneralNames = { raw.3 = 0xff }
+
+#
+#  A zero-length unknown option.
+#
+decode-pair 30 02 88 00
+match Test-GeneralNames = { raw.8 = 0x }
+
+#
+#  Unknown options are decoded in place, before and after known ones.
+#
+decode-pair 30 12 82 07 66 6f 6f 2e 62 61 72 83 07 66 6f 6f 2e 62 61 7a
+match Test-GeneralNames = { dNSName = "foo.bar", raw.3 = 0x666f6f2e62617a }
+
+decode-pair 30 12 83 07 66 6f 6f 2e 62 61 72 82 07 66 6f 6f 2e 62 61 7a
+match Test-GeneralNames = { raw.3 = 0x666f6f2e626172, dNSName = "foo.baz" }
+
+#
 #  private / application class
 #
 proto-dictionary-root Test-Choice
@@ -1046,4 +1074,4 @@ encode-pair Test-Enumerated = -1
 match 0a 01 ff
 
 count
-match 608
+match 620

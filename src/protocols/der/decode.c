@@ -1976,6 +1976,12 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 			fr_strerror_const_push("No parent attribute to resolve tag to class");
 			return -1;
 		}
+
+		/*
+		 *	Raw / unknown attributes have no DER flags.
+		 */
+		if (parent->flags.is_unknown) goto decode_len;
+
 		flags = fr_der_attr_flags(parent);
 
 		if (tag_class != flags->class) {
@@ -2025,6 +2031,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		return -1;
 	}
 
+decode_len:
 	if (fr_dbuff_out(&len_byte, &our_in) < 0) goto error;
 
 	/*

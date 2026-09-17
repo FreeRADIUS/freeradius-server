@@ -248,5 +248,33 @@ match ERROR: Length field too large (9): Failed decoding Test-Boolean header
 decode-pair 01 04 ff ff ff
 match ERROR: Insufficient data for length field (4): Failed decoding Test-Boolean header
 
+#
+#  ----  Unknown option errors  ----
+#
+
+#
+#  An option which is not in the dictionary is decoded as raw octets, but the
+#  DER rules for the length field still apply.
+#
+proto-dictionary-root Test-GeneralNames
+
+#
+#  Indefinite length form
+#
+decode-pair 30 04 83 80 ff ff
+match ERROR: Indefinite-length form is forbidden in DER: Failed decoding 3 header: Failed decoding Test-GeneralNames
+
+#
+#  Long form used for a length which fits into the short form
+#
+decode-pair 30 05 83 81 02 ff ff
+match ERROR: Non-minimal DER length encoding (long form used for length 2): Failed decoding 3 header: Failed decoding Test-GeneralNames
+
+#
+#  The option says 5 bytes of data, the enclosing sequence has 2
+#
+decode-pair 30 04 83 05 ff ff
+match ERROR: Insufficient data for length field (5): Failed decoding 3 header: Failed decoding Test-GeneralNames
+
 count
-match 72
+match 79
