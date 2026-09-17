@@ -547,8 +547,7 @@ do_insert:
 
 /** Look up a negative cache entry.
  *
- *  Entries are expired lazily, to avoid yet another timer.  An expired entry is removed and freed,
- *  and the lookup returns "no entry".
+ *  Entries are expired first, and then looked up.
  *
  * @param[in] thread		thread instance
  * @param[in] src_ipaddr	to look up.
@@ -564,19 +563,7 @@ static bool fr_io_nak_find(fr_io_thread_t *thread, fr_ipaddr_t const *src_ipaddr
 	fr_io_nak_expire(thread, now);
 
 	nak = fr_trie_lookup_by_key(thread->nak_trie, &src_ipaddr->addr, src_ipaddr->prefix);
-	if (!nak) return false;
-
-	if (fr_time_gt(nak->expires, now)) return true;
-
-	/*
-	 *	Remove it by its own address.  The lookup above is a longest-prefix match, so the entry
-	 *	may be for a shorter prefix than the address we were given.
-	 */
-	(void) fr_trie_remove_by_key(thread->nak_trie, &nak->src_ipaddr.addr, nak->src_ipaddr.prefix);
-	fr_io_nak_list_remove(&thread->nak_list, nak);
-	talloc_free(nak);
-
-	return false;
+	return (nak != NULL);
 }
 
 
