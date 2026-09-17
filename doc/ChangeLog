@@ -42,6 +42,9 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  the number, instead of the high bits.
 	* Remove redundant talloc_free in LDAP.  Fixes #5927.
 	* Add printing of prepend operator.  Fixes #5928.
+	* Failed TCP / TLS connections no longer mark the home server as "dead".
+	  Existing connections (if any) continue to be used.  New connection are
+	  blocked for "connect_fail_interval" or "certificate_fail_interval".
 
 FreeRADIUS 3.2.10 Wed 03 Jun 2026 12:00:00 UTC urgency=high
 	Configuration changes
