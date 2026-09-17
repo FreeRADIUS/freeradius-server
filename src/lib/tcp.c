@@ -71,13 +71,17 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 			   4 - packet->data_len, 0);
 		if (len == 0) return -2; /* clean close */
 
+		if (len < 0) {
 #ifdef ECONNRESET
-		if ((len < 0) && (errno == ECONNRESET)) { /* forced */
-			return -2;
-		}
+			if (errno == ECONNRESET) return -2;
+#endif
+#ifdef ENOTCONN
+			if (errno == ENOTCONN) return -2;
+#endif
+#ifdef ETIMEDOUT
+			if (errno == ETIMEDOUT) return -2;
 #endif
 
-		if (len < 0) {
 			fr_strerror_printf("Error receiving packet: %s",
 				   fr_syserror(errno));
 			return -1;
