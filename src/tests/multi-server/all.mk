@@ -86,7 +86,7 @@ FREERADIUS_PROFILING_IMAGE   := freeradius4-profiling/ubuntu24:$(GIT_COMMIT)
 #  falls back to PyPI proper for transitive deps not hosted there.
 #
 RADENV_PACKAGE                  := radenv
-RADENV_VERSION                  := 1.1.0
+RADENV_VERSION                  := 1.1.1
 RADENV_INDEX_URL                := https://pypi.inkbridge.io/
 TEST_MULTI_SERVER_FRAMEWORK_DIR := $(abspath $(BUILD_DIR)/radenv)
 
