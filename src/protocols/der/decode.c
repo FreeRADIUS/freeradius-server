@@ -491,6 +491,69 @@ static ssize_t fr_der_decode_oid_to_stack(uint64_t subidentifier, void *uctx, UN
 	return 1;
 }
 
+/** Create an unknown DER attribute
+ *
+ *  The decoder needs do a number of DER-specific things for unknown / raw attributes.
+ *
+ *  * grouped attributes with refs are dereferenced, so that the unknown one is created with the
+ *    correct parent
+ *  * the der type / tag need to be associated with the new da, so that it can be encoded correctly.
+ *  * we also need to remember the option numver and class, so they can be encoded, too.
+ *
+ * @param[in] ctx	allocation context.  For #FR_TYPE_ATTR should be the parent #fr_pair_t
+ * @param[in] parent	Parent da.  If it has a ref, the ref is resolved.
+ * @param[in] type	of the unknown attribute.
+ * @param[in] attr	number of the unknown attribute: an OID component, or a DER tag / option.
+ * @param[in] tag_byte	the DER header byte the attribute was created from, or 0 when it was
+ *			created from an OID component.
+ * @param[in] raw	should we create a "raw" da versus an "unknown" one.
+ * @return
+ *	- the unknown attribute on success.
+ *	- NULL on failure.
+ */
+static fr_dict_attr_t *fr_der_unknown_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
+						fr_type_t type, unsigned int attr, uint8_t tag_byte, bool raw)
+{
+	fr_dict_attr_t	     *da;
+	fr_dict_attr_t const *ref;
+	fr_der_attr_flags_t  *flags;
+
+	/*
+	 *	Create the unknown from the ref of the parent.  The parent might have actual children, or it
+	 *      might be a ref to something else such as deep in the OID tree.  We want to create the child in
+	 *      the right context.
+	 */
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
+
+	da = fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, attr, type, raw);
+	if (unlikely(!da)) return NULL;
+
+	/*
+	 *	Ensure that all DER attributes have protocol-specific flags.
+	 */
+	flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (!fr_cond_assert_msg(flags, "Unknown attribute %s has no DER flags extension", da->name)) {
+		talloc_free(da);
+		return NULL;
+	}
+
+	/*
+	 *	Any class other than UNIVERSAL means that the number in the tag is an option, and not a
+	 *	DER type.  Save the option and the class, so that we can encode it later.
+	 */
+	if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_UNIVERSAL) {
+		fr_assert(attr == (unsigned int) (tag_byte & DER_TAG_CONTINUATION));
+
+		flags->is_option = true;
+		flags->option	 = attr;
+		flags->class	 = tag_byte & DER_TAG_CLASS_MASK;
+	}
+
+	return da;
+}
+
+
 typedef struct {
 	TALLOC_CTX	     *ctx; 		//!< Allocation context
 	fr_dict_attr_t const *parent_da; 	//!< Parent dictionary attribute
@@ -524,8 +587,8 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 
 	if (is_last) {
 		if (unlikely(da == NULL)) {
-			decode_ctx->parent_da = fr_dict_attr_unknown_typed_afrom_num(decode_ctx->ctx, parent_da,
-										     subidentifier, FR_TYPE_OCTETS);
+			decode_ctx->parent_da = fr_der_unknown_afrom_num(decode_ctx->ctx, parent_da,
+									 FR_TYPE_OCTETS, subidentifier, 0, false);
 
 			if (unlikely(decode_ctx->parent_da == NULL)) {
 				return -1;
@@ -545,8 +608,8 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 		/*
 		 *	We need to create an unknown attribute for this subidentifier so we can store the raw data
 		 */
-		fr_dict_attr_t *unknown_da =
-			fr_dict_attr_unknown_typed_afrom_num(decode_ctx->ctx, parent_da, subidentifier, FR_TYPE_TLV);
+		fr_dict_attr_t *unknown_da = fr_der_unknown_afrom_num(decode_ctx->ctx, parent_da, FR_TYPE_TLV,
+								      subidentifier, 0, false);
 
 		if (unlikely(unknown_da == NULL)) {
 		oom:
@@ -820,28 +883,9 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 				child = fr_dict_attr_child_by_num(parent, current_tag);
 				if (!child) {
-					fr_der_attr_flags_t  *child_flags;
-					fr_dict_attr_t const *ref;
-
-					/*
-					 *	Create the unknown from the ref of the parent.  The parent
-					 *	might have actual children, or it might be a ref to something
-					 *	else such as deep in the OID tree.  We want to create the
-					 *	child in the right context.
-					 */
-					ref = fr_dict_attr_ref(parent);
-					if (!ref) ref = parent;
-
-					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, ref, current_tag);
+					child = fr_der_unknown_afrom_num(decode_ctx->tmp_ctx, parent,
+									 FR_TYPE_OCTETS, current_tag, tag_byte, true);
 					if (!child) goto error;
-
-					/*
-					 *	Save the option and class, so that we can encode it later.
-					 */
-					child_flags = fr_dict_attr_ext(child, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-					child_flags->is_option = true;
-					child_flags->option = current_tag;
-					child_flags->class = tag_byte & DER_TAG_CLASS_MASK;
 				}
 
 			} else if (unlikely(current_tag != flags->sequence_of)) {
@@ -1765,7 +1809,7 @@ static ssize_t fr_der_decode_oid_wrapper(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 
 		type = (i < (stack.depth - 1)) ? FR_TYPE_TLV : FR_TYPE_BOOL;
 
-		da = fr_dict_attr_unknown_typed_afrom_num(vp, da, stack.oid[i], type);
+		da = fr_der_unknown_afrom_num(vp, da, type, stack.oid[i], 0, false);
 		if (!da) {
 			talloc_free(vp);
 			goto oom;
