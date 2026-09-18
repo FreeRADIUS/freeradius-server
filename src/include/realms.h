@@ -125,6 +125,9 @@ typedef struct home_server {
 
 	time_t			last_packet_sent;
 	time_t			last_packet_recv;
+	time_t			first_unanswered_sent;	//!< When the current run of unanswered packets
+							//!< started.  Zero when everything we sent has been
+							//!< answered.
 	time_t			last_failed_open;
 	struct timeval		revive_time;
 	struct timeval		zombie_period_start;

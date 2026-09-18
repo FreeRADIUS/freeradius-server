@@ -3179,6 +3179,7 @@ static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 
 	home->state = HOME_STATE_ALIVE;
 	home->response_timeouts = 0;
+	home->first_unanswered_sent = 0;
 	exec_trigger(request, home->cs, "home_server.alive", false);
 	home->currently_outstanding = 0;
 	home->num_sent_pings = 0;
@@ -3446,6 +3447,7 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 		 *	accumulated, and eventually an active home server could be marked as zombie.
 		 */
 		request->home_server->response_timeouts = 0;
+		request->home_server->first_unanswered_sent = 0;
 	}
 
 	request->num_proxied_responses++;
@@ -4342,6 +4344,15 @@ static int request_proxy(REQUEST *request)
 	request->home_server->last_packet_sent = request->proxy->timestamp.tv_sec;
 
 	/*
+	 *	Note when the current run of unanswered packets started.
+	 *	If a run is already in progress, leave it alone.  The run
+	 *	ends only when the home server answers us.
+	 */
+	if (request->home_server->first_unanswered_sent == 0) {
+		request->home_server->first_unanswered_sent = request->proxy->timestamp.tv_sec;
+	}
+
+	/*
 	 *	Always create a Proxy-State with our value.  This
 	 *	helps us produce better error messages.
 	 */
@@ -4825,6 +4836,19 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 		return;
 	}
 
+	/*
+	 *	At some time in the past, we sent the home server a request which wasn't answered.  If that is
+	 *	too far in the past (i.e. with an idle server), then the home server might not be zombie.
+	 *
+	 *	Home servers should be marked as zombie only if we're continuously sending them packets, and
+	 *	they don't respond.  At low packet rates, a single missing response doesn't mean a lot.
+	 */
+	if ((home->first_unanswered_sent + home->zombie_period) >= now->tv_sec) {
+		DEBUG("Home server has been unresponsive for %d seconds, which is less than zombie_period.  Might not be zombie.",
+		      (int) (now->tv_sec - home->first_unanswered_sent));
+		return;
+	}
+
 	home->state = HOME_STATE_ZOMBIE;
 	home_trigger(home, "home_server.zombie");
 
@@ -4856,6 +4880,7 @@ void revive_home_server(void *ctx)
 
 	home->state = HOME_STATE_ALIVE;
 	home->response_timeouts = 0;
+	home->first_unanswered_sent = 0;
 	home_trigger(home, "home_server.alive");
 	home->currently_outstanding = 0;
 	gettimeofday(&home->revive_time, NULL);
