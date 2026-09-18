@@ -1620,6 +1620,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 	fr_der_tag_encode_t const *func;
 	fr_der_tag_t         tag;
 	fr_der_tag_class_t   tag_class;
+	fr_der_tag_constructed_t constructed;
 	fr_der_encode_ctx_t *uctx = encode_ctx;
 	ssize_t		     slen = 0;
 	fr_der_attr_flags_t const *flags;
@@ -1644,8 +1645,12 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 
 	/*
 	 *	Raw things get encoded as-is, so that we can encode the correct tag and class.
+	 *
+	 *	The exception is an unknown option, where the attribute number is the tag number, and
+	 *	the class and the constructed flag were saved when it was decoded.  We have everything
+	 *	we need to write the header, so the value is encoded normally, below.
 	 */
-	if (unlikely(vp->da->flags.is_raw)) {
+	if (unlikely(vp->da->flags.is_raw) && !flags->is_option) {
 		fr_assert(vp->vp_type == FR_TYPE_OCTETS);
 
 		slen = fr_der_encode_octetstring(dbuff, cursor, encode_ctx);
@@ -1742,9 +1747,22 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 	 *	tag, but we might need to encode an option value
 	 *	instead of a tag.
 	 */
-	if (flags->is_option) tag = flags->option;
+	constructed = func->constructed;
 
-	slen = fr_der_encode_tag(&our_dbuff, tag, tag_class, func->constructed);
+	if (flags->is_option) {
+		tag = flags->option;
+
+		/*
+		 *	Raw attributes save the constructed flag in the flags.  This lets us re-encode
+		 *	constructed data from the raw octets, which means it can be structural.  Without the
+		 *	constructed flag, the raw data would be encoded as octets.
+		 */
+		if (vp->da->flags.is_raw) {
+			constructed = flags->is_constructed ? FR_DER_TAG_CONSTRUCTED : FR_DER_TAG_PRIMITIVE;
+		}
+	}
+
+	slen = fr_der_encode_tag(&our_dbuff, tag, tag_class, constructed);
 	if (slen < 0) return slen;
 
 	/*

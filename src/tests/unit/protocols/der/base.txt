@@ -977,8 +977,9 @@ decode-pair 30 06 87 04 0a 00 05 04
 match Test-GeneralNames = { iPAddress = 10.0.5.4 }
 
 #
-#  An option which is not in the dictionary is decoded as raw octets.  Any
-#  class is accepted, and the constructed flag is ignored.
+#  An option which is not in the dictionary is decoded as raw octets.  Any class is accepted, and
+#  the constructed flag is ignored.  The octets are the value, as the header is remembered in the
+#  attribute number and in the DER flags.
 #
 decode-pair 30 09 83 07 66 6f 6f 2e 62 61 72
 match Test-GeneralNames = { raw.3 = 0x666f6f2e626172 }
@@ -1005,7 +1006,7 @@ decode-pair 30 12 83 07 66 6f 6f 2e 62 61 72 82 07 66 6f 6f 2e 62 61 7a
 match Test-GeneralNames = { raw.3 = 0x666f6f2e626172, dNSName = "foo.baz" }
 
 #
-#  Decode the data, and then encode it again.  A known option round trips exactly.
+#  Decode the data, and then encode it again.  Known options round trip exactly.
 #
 de-encode-pair 30 09 82 07 66 6f 6f 2e 62 61 72
 match 30 09 82 07 66 6f 6f 2e 62 61 72
@@ -1014,11 +1015,20 @@ de-encode-pair 30 06 87 04 0a 00 05 04
 match 30 06 87 04 0a 00 05 04
 
 #
-#  @todo - an unknown option loses its tag, class and length.  The value of a raw attribute is
-#  written back out as-is, but the decoder saved only the value, and not the whole encoding.
+#  Unknown options round trip too.  The tag number is the attribute number, the class and the
+#  constructed bit are in the DER flags, and the length is recalculated from the value.
 #
 de-encode-pair 30 09 83 07 66 6f 6f 2e 62 61 72
-match 30 07 66 6f 6f 2e 62 61 72
+match 30 09 83 07 66 6f 6f 2e 62 61 72
+
+de-encode-pair 30 09 a3 07 66 6f 6f 2e 62 61 72
+match 30 09 a3 07 66 6f 6f 2e 62 61 72
+
+de-encode-pair 30 03 c3 01 ff
+match 30 03 c3 01 ff
+
+de-encode-pair 30 12 82 07 66 6f 6f 2e 62 61 72 83 07 66 6f 6f 2e 62 61 7a
+match 30 12 82 07 66 6f 6f 2e 62 61 72 83 07 66 6f 6f 2e 62 61 7a
 
 #
 #  private / application class
@@ -1090,4 +1100,4 @@ encode-pair Test-Enumerated = -1
 match 0a 01 ff
 
 count
-match 626
+match 632

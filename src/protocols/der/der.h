@@ -121,6 +121,8 @@ typedef struct {
 	fr_der_attr_flag_type_t	flag_type : 3;		//!< which member of the union is in use
 	unsigned int		is_option : 1;		//!< has an option defined
 	unsigned int		optional : 1;		//!< optional, we MUST already have set 'option'
+	unsigned int		is_constructed : 1;	//!< for raw attributes, the data said that the
+							///< value was constructed
 	unsigned int   		is_oid_and_value : 1;	//!< is OID+value
 	unsigned int   		is_extensions : 1;	//!< a list of X.509 extensions
 	unsigned int   		leaf : 1;		//!< encode this OID along with its value
