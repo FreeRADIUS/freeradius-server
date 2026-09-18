@@ -2016,6 +2016,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (listen_bind(this) < 0) {
 		char buffer[128];
+
 		cf_log_err_cs(cs,
 			   "Error binding to port for %s port %d",
 			   ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
@@ -3437,10 +3438,7 @@ static int listen_bind(rad_listen_t *this)
 	/*
 	 *	Don't open sockets if we're checking the config.
 	 */
-	if (check_config) {
-		this->fd = -1;
-		return 0;
-	}
+	if (check_config) return 0;
 
 	/*
 	 *	Copy fr_socket() here, as we may need to bind to a device.
@@ -3463,7 +3461,6 @@ static int listen_bind(rad_listen_t *this)
 	rcode = fcntl(this->fd, F_GETFD);
 	if (rcode >= 0) {
 		if (fcntl(this->fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
-			close(this->fd);
 			ERROR("Failed setting close on exec: %s", fr_syserror(errno));
 			return -1;
 		}
@@ -3488,7 +3485,6 @@ static int listen_bind(rad_listen_t *this)
 				   (char *)&ifreq, sizeof(ifreq));
 		rad_suid_down();
 		if (rcode < 0) {
-			close(this->fd);
 			ERROR("Failed binding to interface %s: %s",
 			      sock->interface, fr_syserror(errno));
 			return -1;
@@ -3500,8 +3496,7 @@ static int listen_bind(rad_listen_t *this)
 		 */
 		int idx = if_nametoindex(sock->interface);
 
-		if (idx == 0) {
-			close(this->fd);
+		if (idx == 0) {			
 			ERROR("Failed finding interface %s: %s",
 			      sock->interface, fr_syserror(errno));
 			return -1;
@@ -3516,7 +3511,6 @@ static int listen_bind(rad_listen_t *this)
 			rcode = setsockopt(this->fd, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof(idx));
 			rad_suid_down();
 			if (rcode < 0) {
-				close(this->fd);
 				ERROR("Failed binding to interface %s: %s",
 				      sock->interface, fr_syserror(errno));
 				return -1;
@@ -3533,7 +3527,6 @@ static int listen_bind(rad_listen_t *this)
 			rcode = setsockopt(this->fd, IPPROTO_IPV6, IPV6_BOUND_IF, &idx, sizeof(idx));
 			rad_suid_down();
 			if (rcode < 0) {
-				close(this->fd);
 				ERROR("Failed binding to interface %s: %s",
 				      sock->interface, fr_syserror(errno));
 				return -1;
@@ -3560,7 +3553,6 @@ static int listen_bind(rad_listen_t *this)
 		 *	IPv4, or no socket options to bind to interface.
 		 */
 		{
-			close(this->fd);
 			ERROR("Failed binding to interface %s: \"bind to device\" is unsupported", sock->interface);
 			return -1;
 		}
@@ -3572,7 +3564,6 @@ static int listen_bind(rad_listen_t *this)
 		int on = 1;
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			close(this->fd);
 			ERROR("Failed to reuse address: %s", fr_syserror(errno));
 			return -1;
 		}
@@ -3590,7 +3581,6 @@ static int listen_bind(rad_listen_t *this)
 	if (udpfromto_init(this->fd) != 0) {
 		ERROR("Failed initializing udpfromto: %s",
 		       fr_syserror(errno));
-		close(this->fd);
 		return -1;
 	}
 #endif
@@ -3599,7 +3589,6 @@ static int listen_bind(rad_listen_t *this)
 	 *	Set up sockaddr stuff.
 	 */
 	if (!fr_ipaddr2sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
-		close(this->fd);
 		return -1;
 	}
 
@@ -3619,9 +3608,7 @@ static int listen_bind(rad_listen_t *this)
 			if (setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
 				       (char *)&on, sizeof(on)) < 0) {
 				ERROR("Failed setting socket to IPv6 "
-				       "only: %s", fr_syserror(errno));
-
-				close(this->fd);
+				       "only: %s", fr_syserror(errno));				
 				return -1;
 			}
 		}
@@ -3646,8 +3633,6 @@ static int listen_bind(rad_listen_t *this)
 			       &flag, sizeof(flag)) < 0) {
 			ERROR("Failed disabling PMTU discovery: %s",
 			       fr_syserror(errno));
-
-			close(this->fd);
 			return -1;
 		}
 #endif
@@ -3661,8 +3646,6 @@ static int listen_bind(rad_listen_t *this)
 			       &flag, sizeof(flag)) < 0) {
 			ERROR("Failed setting don't fragment flag: %s",
 			       fr_syserror(errno));
-
-			close(this->fd);
 			return -1;
 		}
 #endif
@@ -3674,7 +3657,6 @@ static int listen_bind(rad_listen_t *this)
 		int on = 1;
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-			close(this->fd);
 			ERROR("Can't set broadcast option: %s",
 			       fr_syserror(errno));
 			return -1;
@@ -3703,7 +3685,6 @@ static int listen_bind(rad_listen_t *this)
 		rad_suid_down();
 		if (rcode < 0) {
 			char buffer[256];
-			close(this->fd);
 
 			this->print(this, buffer, sizeof(buffer));
 			ERROR("Failed binding to %s: %s\n",
@@ -3723,7 +3704,6 @@ static int listen_bind(rad_listen_t *this)
 			memset(&src, 0, sizeof_src);
 			if (getsockname(this->fd, (struct sockaddr *) &src,
 					&sizeof_src) < 0) {
-				close(this->fd);
 				ERROR("Failed getting socket name: %s",
 				       fr_syserror(errno));
 				return -1;
@@ -3731,7 +3711,6 @@ static int listen_bind(rad_listen_t *this)
 
 			if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 						&sock->my_ipaddr, &sock->my_port)) {
-				close(this->fd);
 				ERROR("Socket has unsupported address family");
 				return -1;
 			}
@@ -3746,7 +3725,6 @@ static int listen_bind(rad_listen_t *this)
 		 *	Otherwise, all input TCP sockets are non-blocking.
 		 */
 		if (fr_nonblock(this->fd) < 0) {
-			close(this->fd);
 			ERROR("Failed setting non-blocking on socket: %s",
 			      fr_syserror(errno));
 			return -1;
@@ -3759,7 +3737,6 @@ static int listen_bind(rad_listen_t *this)
 		if (this->type != RAD_LISTEN_PROXY)
 #endif
 		if (listen(this->fd, sock->backlog) < 0) {
-			close(this->fd);
 			ERROR("Failed in listen(): %s", fr_syserror(errno));
 			return -1;
 		}
@@ -3903,6 +3880,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 
 	this = talloc_zero(ctx, rad_listen_t);
 
+	this->fd = -1;
 	this->type = type;
 	this->recv = master_listen[this->type].recv;
 	this->send = master_listen[this->type].send;
@@ -3993,80 +3971,93 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 
 	this = listen_alloc(ctx, RAD_LISTEN_PROXY);
 
-	this->proxy_state_random[0] = fr_rand();
-	this->proxy_state_random[1] = fr_rand();
-
 	sock = this->data;
 	sock->other_ipaddr = home->ipaddr;
-	sock->other_port = home->port;
-	sock->home = home;
+	sock->other_port = 0;
 
 	sock->my_ipaddr = home->src_ipaddr;
 	sock->my_port = 0;
 	sock->proto = home->proto;
+	sock->opened = sock->last_packet = now;
 
 	/*
 	 *	Use the default proxy listener as a template for the others.
 	 */
-	if (proxy_default && (sock->proto == IPPROTO_UDP)) {
-		proxy_default->filter_proxy_state = this->filter_proxy_state;
-		this->cs = proxy_default->cs;
+	if (sock->proto == IPPROTO_UDP) {
+		if (proxy_default) {
+			listen_socket_t *sock2 = proxy_default->data;
+
+			this->filter_proxy_state = proxy_default->filter_proxy_state;
+			this->cs = proxy_default->cs;
+
+			sock->interface = sock2->interface;
+			sock->recv_buff = sock2->recv_buff;
+		}
+
+		if (listen_bind(this) < 0) {
+			listen_free(&this);
+			home->last_failed_open = now;
+			return NULL;
+		}
+
+		return this;
 	}
 
 	/*
 	 *	For error messages.
 	 */
 	this->print(this, buffer, sizeof(buffer));
+	this->proxy_state_random[0] = fr_rand();
+	this->proxy_state_random[1] = fr_rand();
 
 #ifdef WITH_TCP
-	sock->opened = sock->last_packet = now;
 
-	if (home->proto == IPPROTO_TCP) {
-		this->recv = proxy_socket_tcp_recv;
+	/*
+	 *	Only TCP sockets are connected to a destination port.
+	 */
+	sock->other_port = home->port;
+	sock->home = home;
 
-		/*
-		 *	Our limit is the smaller of the socket config and this home server config.
-		 */
-		if (home->limit.lifetime && (home->limit.lifetime < sock->limit.lifetime)) {
-			sock->limit.lifetime = home->limit.lifetime;
+	this->recv = proxy_socket_tcp_recv;
+
+	/*
+	 *	Our limit is the smaller of the socket config and this home server config.
+	 */
+	if (home->limit.lifetime && (home->limit.lifetime < sock->limit.lifetime)) {
+		sock->limit.lifetime = home->limit.lifetime;
+	}
+
+	if (home->limit.idle_timeout && (home->limit.idle_timeout < sock->limit.idle_timeout)) {
+		sock->limit.idle_timeout = home->limit.idle_timeout;
+
+		if (sock->limit.lifetime && (sock->limit.idle_timeout > sock->limit.lifetime)) {
+			sock->limit.idle_timeout = 0;
 		}
+	}
 
-		if (home->limit.idle_timeout && (home->limit.idle_timeout < sock->limit.idle_timeout)) {
-			sock->limit.idle_timeout = home->limit.idle_timeout;
-
-			if (sock->limit.lifetime && (sock->limit.idle_timeout > sock->limit.lifetime)) {
-				sock->limit.idle_timeout = 0;
-			}
-
-		}
-
-		if (!sock->limit.lifetime && !sock->limit.idle_timeout) sock->limit.idle_timeout = 30;
+	if (!sock->limit.lifetime && !sock->limit.idle_timeout) sock->limit.idle_timeout = 30;
 
 #ifdef WITH_TLS
-		this->nonblock |= home->nonblock;
-		this->nonblock |= (this->tls != NULL);		// incoming TLS connections are always nonblocking.
-		this->nonblock |= (home->tls != NULL);		// outgoing TLS connections are always nonblocking
+	this->nonblock |= home->nonblock;
+	this->nonblock |= (this->tls != NULL);		// incoming TLS connections are always nonblocking.
+	this->nonblock |= (home->tls != NULL);		// outgoing TLS connections are always nonblocking
 #endif
 
-		/*
-		 *	connect() is blocking for TCP.  The administrator has to manually set "nonblock" in
-		 *	the configuration to make it non-blocking.
-		 *
-		 *	Due to the way that TLS works, TLS sockets are always non blocking.
-		 *
-		 *	FIXME: setting nonblock=true for TCP (not TLS) means that any subsequence read() will
-		 *	return ENOTCONN, and the reader has to call connect() again.  But doing this also
-		 *	means that we need to update fr_socket_client_tcp() to return a flag which indicates
-		 *	whether or not the connection attempt was successful.  And then we need to store that
-		 *	somewhere, etc.
-		 */
-		this->fd = fr_socket_client_tcp(&home->src_ipaddr,
-						&home->ipaddr, home->port,
-						this->nonblock);
-	} else
-#endif
-		this->fd = fr_socket(&home->src_ipaddr, 0);
-
+	/*
+	 *	connect() is blocking for TCP.  The administrator has to manually set "nonblock" in
+	 *	the configuration to make it non-blocking.
+	 *
+	 *	Due to the way that TLS works, TLS sockets are always non blocking.
+	 *
+	 *	FIXME: setting nonblock=true for TCP (not TLS) means that any subsequence read() will
+	 *	return ENOTCONN, and the reader has to call connect() again.  But doing this also
+	 *	means that we need to update fr_socket_client_tcp() to return a flag which indicates
+	 *	whether or not the connection attempt was successful.  And then we need to store that
+	 *	somewhere, etc.
+	 */
+	this->fd = fr_socket_client_tcp(&home->src_ipaddr,
+					&home->ipaddr, home->port,
+					this->nonblock);
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
 		ERROR("Failed opening new proxy socket '%s' : %s",
@@ -4086,9 +4077,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 		return NULL;
 	}
 #endif
-
-#ifdef WITH_TCP
-	if (home->proto != IPPROTO_TCP) goto find_port;
 
 #ifdef SO_KEEPALIVE
 	{
@@ -4214,7 +4202,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 #endif	/* WITH_TLS */
 
 find_port:
-#endif	/* WITH_TCP */
 
 	/*
 	 *	Figure out which port we were bound to.
@@ -4250,13 +4237,6 @@ find_port:
 	if (rad_debug_lvl >= 3) {
 		DEBUG("Opened new proxy socket '%s'", buffer);
 	}
-
-#ifdef WITH_TCP
-	/*
-	 *	UDP sockets aren't connected, so we don't count the
-	 *	number of connections for them.
-	 */
-	if (home->proto != IPPROTO_TCP) return this;
 
 	home->limit.num_connections++;
 
@@ -4449,7 +4429,6 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	 */
 	this = listen_alloc(cs, type);
 	this->server = server;
-	this->fd = -1;
 
 	/*
 	 *	Add special flags '+' for "auth+acct".

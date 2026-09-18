@@ -6914,9 +6914,6 @@ static void create_default_proxy_listener(int af)
 	}
 
 	sock = this->data;
-	MEM(sock->home = talloc_memdup(sock, sock->home, sizeof(*sock->home)));
-	talloc_set_type(sock->home, home_server_t);
-	MEM(sock->home->name = talloc_strdup(sock->home, "internal home server"));
 
 	if (!fr_packet_list_socket_add(proxy_list, this->fd,
 				       sock->proto,
@@ -6928,7 +6925,7 @@ static void create_default_proxy_listener(int af)
 		ERROR("Failed adding proxy socket");
 		fr_exit_now(1);
 	}
-
+	
 	/*
 	 *	Insert the FD into list of FDs to listen on.
 	 */
