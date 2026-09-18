@@ -12,8 +12,8 @@
 #                                   PROFILING_RESULT_PATH.
 # - PROFILING_RESULT_MODE=<ci|dev>      Profiling output layout (only meaningful when
 #                                   MODE=profiling). Default `ci`.
-#                                     ci:  PROFILING_RESULT_ROOT/<suite>/<test>/<branch>/<commit>/<run-index>
-#                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>  (flat)
+#                                     ci:  PROFILING_RESULT_ROOT/<branch>/<commit>/<run-index>/<suite>/<test>/<tool>
+#                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>/<tool>  (flat)
 #
 # Usage:
 #   make -f src/tests/multi-server/all.mk test.multi-server                       # all suites, service image
@@ -60,6 +60,24 @@ PROFILING_RESULT_DIR   := /var/lib/prof-results
 PROFILING_TOOLS        := valgrind gperftools
 PROFILING_TOOL         ?= valgrind
 PROFILING_RESULT_MODE  ?= ci
+
+#
+#  PROFILING_RUN_INDEX is the <run-index> that a MODE=profiling run uses.
+#  make computes it once based off of the number of directories under
+#  PROFILING_RESULT_ROOT/<branch>/<commit>.
+#
+#  All results are saved under the same <run-index>.
+#
+ifeq "$(PROFILING_RUN_INDEX)" ""
+  # Path containing the run directories for this commit
+  PROFILING_RUN_BASE := $(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)
+
+  # Count existing run directories and set new index accordingly; num of directories + 1
+  PROFILING_RUN_INDEX := $(shell \
+    count=$$(find "$(PROFILING_RUN_BASE)" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l); \
+    echo $$((count + 1)) \
+  )
+endif
 
 #
 #  Image plumbing.
@@ -241,10 +259,7 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MU
 		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
 			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}/$(PROFILING_TOOL)"; \
 		else \
-			RUN_BASE="$(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
-			EXISTING=$$$$( find "$$$$RUN_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
-			RUN_INDEX=$$$$((EXISTING + 1)); \
-			PROFILING_RESULT_PATH="$$$$RUN_BASE/$$$$RUN_INDEX/${1}/${2}/$(PROFILING_TOOL)"; \
+			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)/$(PROFILING_RUN_INDEX)/${1}/${2}/$(PROFILING_TOOL)"; \
 		fi; \
 		mkdir -p "$$$$PROFILING_RESULT_PATH"; \
 		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \
@@ -343,16 +358,20 @@ TEST_MULTI_SERVER_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_ALL_TESTS))
 test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
 
 #
-#  Profiling pass: same suites, profiling image, valgrind wrapper. Forces
-#  MODE=profiling via a recursive sub-make so the per-test recipes pick up
-#  the right image / env without needing the operator to set MODE manually.
+#  Profiling pass: same suites, profiling image, valgrind then gperftools.
+#  Forces MODE=profiling via recursive sub-makes so the per-test recipes
+#  pick up the right image / env without needing the operator to set MODE
+#  manually. The profiling passes share PROFILING_RUN_INDEX and run one
+#  after another.
 #
 .PHONY: test.multi-server.profiling test.multi-server.profiling.ci
 test.multi-server.profiling: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=valgrind PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=gperftools PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
 
 test.multi-server.profiling.ci: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=valgrind PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=gperftools PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
 
 #
 #  Profiling image: build the standard freeradius4-profiling/<image>:<sha>
