@@ -820,9 +820,19 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 				child = fr_dict_attr_child_by_num(parent, current_tag);
 				if (!child) {
-					fr_der_attr_flags_t *child_flags;
+					fr_der_attr_flags_t  *child_flags;
+					fr_dict_attr_t const *ref;
 
-					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
+					/*
+					 *	Create the unknown from the ref of the parent.  The parent
+					 *	might have actual children, or it might be a ref to something
+					 *	else such as deep in the OID tree.  We want to create the
+					 *	child in the right context.
+					 */
+					ref = fr_dict_attr_ref(parent);
+					if (!ref) ref = parent;
+
+					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, ref, current_tag);
 					if (!child) goto error;
 
 					/*
