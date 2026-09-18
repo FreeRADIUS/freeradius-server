@@ -2887,7 +2887,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	 *	the flag here.  This allows us to discard invalid packets before we do much additional work.
 	 */
 	flags = main_config.home_servers_require_ma;
-	flags <<= 8;
+	flags <<= 3;
 
 	packet = rad_recv(NULL, listener->fd, flags);
 	if (!packet) {
