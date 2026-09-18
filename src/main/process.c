@@ -2063,6 +2063,20 @@ static void request_running(REQUEST *request, int action)
 		}
 		break;
 
+#ifdef WITH_PROXY
+	case FR_ACTION_PROXY_REPLY:
+		if (request->proxy_reply) {
+			RDEBUG2("Ignoring signal to process proxy reply - we have already processed a proxy reply");
+
+		} else if (request->proxy) {
+			RDEBUG2("Ignoring signal to process proxy reply - we never received a proxy reply");
+
+		} else {
+			RDEBUG2("Ignoring signal to process proxy reply - we never sent a proxied request");
+		}
+		break;
+#endif
+
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
