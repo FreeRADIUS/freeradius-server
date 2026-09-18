@@ -190,7 +190,7 @@ char const *fr_der_dict_attr_to_shortname(fr_dict_attr_t const *da)
 	if (da->dict != dict_der) return NULL;
 
 	flags = fr_der_attr_flags(da);
-	if (!flags || (flags->flag_type != FR_DER_ATTR_FLAG_SHORTNAME)) return NULL;
+	if (!flags || !fr_der_flag_has_shortname(flags)) return NULL;
 
 	return flags->shortname;
 }
@@ -279,7 +279,7 @@ static int dict_flag_default_value(fr_dict_attr_t **da_p, char const *value, UNU
 		return -1;
 	}
 
-	if (flags->flag_type == FR_DER_ATTR_FLAG_SHORTNAME) {
+	if (fr_der_flag_has_shortname(flags)) {
 		fr_strerror_const("Cannot set 'default=...' when there is already a 'shortname=...'");
 		return -1;
 	}
@@ -359,7 +359,7 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_t     type;
 
-	if (flags->flag_type == FR_DER_ATTR_FLAG_SETOF) {
+	if (fr_der_flag_has_set_of(flags)) {
 		fr_strerror_const("Cannot be both 'sequence_of=...' and 'set_of=...'");
 		return -1;
 	}
@@ -390,7 +390,7 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_t     type;
 
-	if (flags->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF) {
+	if (fr_der_flag_has_sequence_of(flags)) {
 		fr_strerror_const("Cannot be both 'sequence_of=...' and 'set_of=...'");
 		return -1;
 	}
@@ -442,9 +442,9 @@ static int dict_flag_leaf(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSE
 	 *	OIDs until we hit one which has the "leaf" property set.  We then encode the OID of this
 	 *	attribute, along with its value.
 	 */
-	if (fr_der_flag_der_type((*da_p)->parent) != FR_DER_TAG_SEQUENCE) {
+	if (fr_der_attr_der_type((*da_p)->parent) != FR_DER_TAG_SEQUENCE) {
 		fr_strerror_printf("Cannot set 'leaf' for parent %s of DER type %s",
-				   (*da_p)->parent->name, fr_der_tag_to_str(fr_der_flag_der_type((*da_p)->parent)));
+				   (*da_p)->parent->name, fr_der_tag_to_str(fr_der_attr_der_type((*da_p)->parent)));
 		return -1;
 	}
 
@@ -463,7 +463,7 @@ static int dict_flag_shortname(fr_dict_attr_t **da_p, char const *value, UNUSED 
 		return -1;
 	}
 
-	if (flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE) {
+	if (fr_der_flag_has_value(flags)) {
 		fr_strerror_const("Cannot set 'shortname=...' when there is already a 'default=...'");
 		return -1;
 	}
@@ -969,11 +969,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 	/*
 	 *	Set the restriction types, which make the run-time decoding a lot easier.
 	 */
-	if (flags->flag_type == FR_DER_ATTR_FLAG_SETOF) {
+	if (fr_der_flag_has_set_of(flags)) {
 		flags->restrictions = (1 << flags->set_of);
 	}
 
-	if (flags->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF) {
+	if (fr_der_flag_has_sequence_of(flags)) {
 		/*
 		 *	If the sequence isn't a choice, it has to be a sequence of one thing.
 		 *
@@ -990,7 +990,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 			ref = fr_dict_attr_ref(da);
 			if (ref) {
-				fr_assert(fr_der_flag_der_type(ref) == FR_DER_TAG_SEQUENCE);
+				fr_assert(fr_der_attr_der_type(ref) == FR_DER_TAG_SEQUENCE);
 			}
 #endif
 
@@ -1037,7 +1037,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 		parent->restrictions |= (1 << flags->option);
 
-	} else if ((parent->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF) && (parent->sequence_of == FR_DER_TAG_CHOICE)) {
+	} else if (fr_der_flag_has_sequence_of(parent) && (parent->sequence_of == FR_DER_TAG_CHOICE)) {
 		fr_assert(flags->der_type < FR_DER_TAG_VALUE_MAX);
 
 		flags->class = FR_DER_CLASS_CONTEXT;
@@ -1051,7 +1051,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 		parent->restrictions |= (1 << flags->der_type);
 
-	} else if (parent->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF) {
+	} else if (fr_der_flag_has_sequence_of(parent)) {
 		if (flags->der_type != parent->sequence_of) {
 			fr_strerror_printf("Parent %s is a sequence_of=%s - a child cannot be %s",
 					   da->parent->name, fr_der_tag_to_str(parent->sequence_of),
@@ -1064,7 +1064,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 		 */
 		fr_assert(!flags->is_option);
 
-	} else if (parent->flag_type == FR_DER_ATTR_FLAG_SETOF) {
+	} else if (fr_der_flag_has_set_of(parent)) {
 		if (flags->der_type != parent->set_of) {
 			fr_strerror_printf("Parent %s is a set_of=%s - a child cannot be %s",
 					   da->parent->name, fr_der_tag_to_str(parent->set_of),

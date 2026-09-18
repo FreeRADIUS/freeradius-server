@@ -127,6 +127,16 @@ typedef struct {
 	unsigned int		is_choice : 1;		//!< DER name "choice".
 } fr_der_attr_flags_t;
 
+/*
+ *	Which member of the union is in use.  These take a fr_der_attr_flags_t, where the
+ *	fr_der_attr_*() functions below take a fr_dict_attr_t.
+ */
+#define fr_der_flag_has_none(_flags)		((_flags)->flag_type == FR_DER_ATTR_FLAG_NONE)
+#define fr_der_flag_has_sequence_of(_flags)	((_flags)->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF)
+#define fr_der_flag_has_set_of(_flags)		((_flags)->flag_type == FR_DER_ATTR_FLAG_SETOF)
+#define fr_der_flag_has_value(_flags)		((_flags)->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE)
+#define fr_der_flag_has_shortname(_flags)	((_flags)->flag_type == FR_DER_ATTR_FLAG_SHORTNAME)
+
 typedef struct {
 	TALLOC_CTX	*tmp_ctx;		//!< ctx under which temporary data will be allocated
 	fr_dict_attr_t const *root;		//!< where to start decoding from
@@ -158,84 +168,84 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 	return flags;
 }
 
-static inline uint8_t fr_der_flag_option(fr_dict_attr_t const *da)
+static inline uint8_t fr_der_attr_option(fr_dict_attr_t const *da)
 {
 	return fr_der_attr_flags(da)->option;
 }
 
-static inline bool fr_der_flag_optional(fr_dict_attr_t const *da)
+static inline bool fr_der_attr_optional(fr_dict_attr_t const *da)
 {
 	return fr_der_attr_flags(da)->optional;
 }
 
-static inline fr_der_tag_class_t fr_der_flag_class(fr_dict_attr_t const *da)
+static inline fr_der_tag_class_t fr_der_attr_class(fr_dict_attr_t const *da)
 {
 	return fr_der_attr_flags(da)->class;
 }
 
-static inline fr_der_tag_t fr_der_flag_der_type(fr_dict_attr_t const *da)
+static inline fr_der_tag_t fr_der_attr_der_type(fr_dict_attr_t const *da)
 {
 	return fr_der_attr_flags(da)->der_type;
 }
 
-static inline fr_der_tag_t fr_der_flag_sequence_of(fr_dict_attr_t const *da)
+static inline fr_der_tag_t fr_der_attr_sequence_of(fr_dict_attr_t const *da)
 {
 	fr_der_attr_flags_t const *flags = fr_der_attr_flags(da);
 
-	fr_assert_msg(flags->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF,
+	fr_assert_msg(fr_der_flag_has_sequence_of(flags),
 		      "%s is not a 'sequence_of=...' attribute, so the union does not hold 'sequence_of'",
 		      da->name);
 
 	return flags->sequence_of;
 }
 
-static inline bool fr_der_flag_is_sequence_of(fr_dict_attr_t const *da)
+static inline bool fr_der_attr_is_sequence_of(fr_dict_attr_t const *da)
 {
-	return fr_der_attr_flags(da)->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF;
+	return fr_der_flag_has_sequence_of(fr_der_attr_flags(da));
 }
 
-static inline fr_der_tag_t fr_der_flag_set_of(fr_dict_attr_t const *da)
+static inline fr_der_tag_t fr_der_attr_set_of(fr_dict_attr_t const *da)
 {
 	fr_der_attr_flags_t const *flags = fr_der_attr_flags(da);
 
-	fr_assert_msg(flags->flag_type == FR_DER_ATTR_FLAG_SETOF,
+	fr_assert_msg(fr_der_flag_has_set_of(flags),
 		      "%s is not a 'set_of=...' attribute, so the union does not hold 'set_of'",
 		      da->name);
 
 	return flags->set_of;
 }
 
-static inline bool fr_der_flag_is_set_of(fr_dict_attr_t const *da)
+static inline bool fr_der_attr_is_set_of(fr_dict_attr_t const *da)
 {
-	return fr_der_attr_flags(da)->flag_type == FR_DER_ATTR_FLAG_SETOF;
+	return fr_der_flag_has_set_of(fr_der_attr_flags(da));
 }
 
-static inline uint64_t fr_der_flag_max(fr_dict_attr_t const *da)
+static inline uint64_t fr_der_attr_max(fr_dict_attr_t const *da)
 {
 	return fr_der_attr_flags(da)->max;
 }
 
-static inline bool fr_der_flag_is_oid_and_value(fr_dict_attr_t const *da)
+static inline bool fr_der_attr_is_oid_and_value(fr_dict_attr_t const *da)
 {
 	return fr_der_attr_flags(da)->is_oid_and_value;
 }
 
-static inline bool fr_der_flag_is_extensions(fr_dict_attr_t const *da)
+static inline bool fr_der_attr_is_extensions(fr_dict_attr_t const *da)
 {
 	return fr_der_attr_flags(da)->is_extensions;
 }
 
-static inline bool fr_der_flag_has_default_value(fr_dict_attr_t const *da)
+static inline bool fr_der_attr_has_default_value(fr_dict_attr_t const *da)
 {
-	return fr_der_attr_flags(da)->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE;
+	return fr_der_flag_has_value(fr_der_attr_flags(da));
 }
 
-static inline bool fr_der_flag_leaf(fr_dict_attr_t const *da)
+static inline bool fr_der_attr_leaf(fr_dict_attr_t const *da)
 {
 	return fr_der_attr_flags(da)->leaf;
 }
 
-static inline bool fr_der_flag_is_choice(fr_dict_attr_t const *da)
+static inline bool fr_der_attr_is_choice(fr_dict_attr_t const *da)
 {
 	return fr_der_attr_flags(da)->is_choice;
 }
