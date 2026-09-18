@@ -2554,6 +2554,45 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	return fr_dbuff_set(in, &our_in);
 }
 
+/** Decode an unknown attribute
+ *
+ *  We have a da, but it is unknown.  So we don't know how to decode the DER data it contains.  We save the
+ *  DER class, tag, etc. in the protocol flags, and then decode the data as raw octets.
+ *
+ * @param[in] ctx		Talloc context
+ * @param[out] out		Output list
+ * @param[in] parent		Unknown attribute.  Its DER flags are updated from the tag byte.
+ * @param[in] tag_byte		First byte of the header which the data was decoded from.
+ * @param[in] in		Input buffer, which starts at the value.
+ * @param[in] decode_ctx	Decode context
+ * @return
+ *	- the number of bytes decoded on success.
+ *	- < 0 on error.
+ */
+static ssize_t fr_der_decode_unknown(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				     uint8_t tag_byte, fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
+{
+	fr_der_attr_flags_t *flags;
+
+	fr_assert(parent->flags.is_unknown);
+
+	flags = fr_dict_attr_ext(parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (!fr_cond_assert_msg(flags, "Unknown attribute %s has no DER flags", parent->name)) return -1;
+
+	/*
+	 *	Any class other than UNIVERSAL means that the number in the tag is an option, and not a
+	 *	DER type.  The encoder writes the option and the class back out.
+	 *
+	 *	@todo - For the UNIVERSAL class there is nowhere to put the tag.  The 'der_type' chooses the
+	 *	encoder, so the value is always encoded as octets, no matter what the tag said.
+	 */
+	flags->class	 = tag_byte & DER_TAG_CLASS_MASK;
+	flags->is_option = (flags->class != FR_DER_CLASS_UNIVERSAL);
+	if (flags->is_option) flags->option = tag_byte & DER_TAG_CONTINUATION;
+
+	return fr_der_decode_octetstring(ctx, out, parent, in, decode_ctx);
+}
+
 ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
 {
@@ -2676,17 +2715,27 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
 
 	/*
-	 *	Unknown attributes have no defaults, and can be zero
-	 *	length.  We also ignore whatever tag and class is
-	 *	being used.
+	 *	Unknown attributes have no defaults, and can be zero length.  There is no definition to
+	 *	check the tag and class against, so we take both from the data, and store the value as
+	 *	raw octets.  Encoding the pair again produces the same tag and class.
 	 *
-	 *	@todo - we need to store the tag and class somewhere,
-	 *	so that re-encoding the "raw" data type will result in
-	 *	the same data.
+	 *	@todo - the "constructed" bit is not saved.  The value is encoded as octets, which is
+	 *	primitive, so a constructed unknown attribute is encoded again as primitive.
 	 */
 	if (unlikely(parent->flags.is_unknown)) {
-		func = &tag_funcs[FR_DER_TAG_OCTETSTRING];
-		goto decode_it;
+		uint8_t tag_byte;
+
+		/*
+		 *	Only our copy of the input has been advanced past the header, so the tag byte is
+		 *	still the first byte of 'in'.  There are at least two bytes there, as the header
+		 *	was decoded from them.
+		 */
+		tag_byte = fr_dbuff_current(in)[0];
+
+		slen = fr_der_decode_unknown(ctx, out, parent, tag_byte, &our_in, decode_ctx);
+		if (unlikely(slen < 0)) return slen;
+
+		return fr_dbuff_set(in, &our_in);
 	}
 
 	/*
