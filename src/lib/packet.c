@@ -933,7 +933,11 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 	if (yank && !fr_packet_list_yank(pl, request)) return false;
 
 	ps = fr_socket_find(pl, request->sockfd);
-	if (!ps) return false;
+	if (!ps) {
+		request->id = -1;
+		request->src_port = 0;
+		return false;
+	}
 
 #ifdef WITH_RADIUSV11
 	/*
