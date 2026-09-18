@@ -1005,6 +1005,22 @@ decode-pair 30 12 83 07 66 6f 6f 2e 62 61 72 82 07 66 6f 6f 2e 62 61 7a
 match Test-GeneralNames = { raw.3 = 0x666f6f2e626172, dNSName = "foo.baz" }
 
 #
+#  Decode the data, and then encode it again.  A known option round trips exactly.
+#
+de-encode-pair 30 09 82 07 66 6f 6f 2e 62 61 72
+match 30 09 82 07 66 6f 6f 2e 62 61 72
+
+de-encode-pair 30 06 87 04 0a 00 05 04
+match 30 06 87 04 0a 00 05 04
+
+#
+#  @todo - an unknown option loses its tag, class and length.  The value of a raw attribute is
+#  written back out as-is, but the decoder saved only the value, and not the whole encoding.
+#
+de-encode-pair 30 09 83 07 66 6f 6f 2e 62 61 72
+match 30 07 66 6f 6f 2e 62 61 72
+
+#
 #  private / application class
 #
 proto-dictionary-root Test-Choice
@@ -1074,4 +1090,4 @@ encode-pair Test-Enumerated = -1
 match 0a 01 ff
 
 count
-match 620
+match 626
