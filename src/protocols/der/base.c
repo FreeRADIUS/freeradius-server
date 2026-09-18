@@ -190,7 +190,7 @@ char const *fr_der_dict_attr_to_shortname(fr_dict_attr_t const *da)
 	if (da->dict != dict_der) return NULL;
 
 	flags = fr_der_attr_flags(da);
-	if (!flags || !flags->has_shortname) return NULL;
+	if (!flags || (flags->flag_type != FR_DER_ATTR_FLAG_SHORTNAME)) return NULL;
 
 	return flags->shortname;
 }
@@ -279,7 +279,7 @@ static int dict_flag_default_value(fr_dict_attr_t **da_p, char const *value, UNU
 		return -1;
 	}
 
-	if (flags->has_shortname) {
+	if (flags->flag_type == FR_DER_ATTR_FLAG_SHORTNAME) {
 		fr_strerror_const("Cannot set 'default=...' when there is already a 'shortname=...'");
 		return -1;
 	}
@@ -297,7 +297,7 @@ static int dict_flag_default_value(fr_dict_attr_t **da_p, char const *value, UNU
 		return -1;
 	}
 
-	flags->has_default_value = true;
+	flags->flag_type = FR_DER_ATTR_FLAG_DEFAULT_VALUE;
 
 	return 0;
 }
@@ -336,7 +336,7 @@ static int dict_flag_der_type(fr_dict_attr_t **da_p, char const *value, UNUSED f
 static int dict_flag_set_oid_and_value(fr_dict_attr_t **da_p, fr_der_attr_flags_t *flags)
 {
 	flags->is_oid_and_value = true;
-	flags->is_sequence_of = true;
+	flags->flag_type = FR_DER_ATTR_FLAG_SEQUENCE_OF;
 	flags->sequence_of = FR_DER_TAG_SEQUENCE;
 
 	/*
@@ -359,7 +359,7 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_t     type;
 
-	if (flags->is_set_of) {
+	if (flags->flag_type == FR_DER_ATTR_FLAG_SETOF) {
 		fr_strerror_const("Cannot be both 'sequence_of=...' and 'set_of=...'");
 		return -1;
 	}
@@ -380,7 +380,7 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 	}
 
 	flags->sequence_of = type;
-	flags->is_sequence_of = true;
+	flags->flag_type = FR_DER_ATTR_FLAG_SEQUENCE_OF;
 
 	return 0;
 }
@@ -390,7 +390,7 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_t     type;
 
-	if (flags->is_sequence_of) {
+	if (flags->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF) {
 		fr_strerror_const("Cannot be both 'sequence_of=...' and 'set_of=...'");
 		return -1;
 	}
@@ -419,7 +419,7 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	}
 
 	flags->set_of = type;
-	flags->is_set_of = true;
+	flags->flag_type = FR_DER_ATTR_FLAG_SETOF;
 
 	return 0;
 }
@@ -463,7 +463,7 @@ static int dict_flag_shortname(fr_dict_attr_t **da_p, char const *value, UNUSED 
 		return -1;
 	}
 
-	if (flags->has_default_value) {
+	if (flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE) {
 		fr_strerror_const("Cannot set 'shortname=...' when there is already a 'default=...'");
 		return -1;
 	}
@@ -475,7 +475,7 @@ static int dict_flag_shortname(fr_dict_attr_t **da_p, char const *value, UNUSED 
 	flags->shortname = talloc_strdup(fr_dict_unconst((*da_p)->dict), value);
 	if (!flags->shortname) return -1;
 
-	flags->has_shortname = true;
+	flags->flag_type = FR_DER_ATTR_FLAG_SHORTNAME;
 
 	return 0;
 }
@@ -969,11 +969,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 	/*
 	 *	Set the restriction types, which make the run-time decoding a lot easier.
 	 */
-	if (flags->is_set_of) {
+	if (flags->flag_type == FR_DER_ATTR_FLAG_SETOF) {
 		flags->restrictions = (1 << flags->set_of);
 	}
 
-	if (flags->is_sequence_of) {
+	if (flags->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF) {
 		/*
 		 *	If the sequence isn't a choice, it has to be a sequence of one thing.
 		 *
@@ -1037,7 +1037,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 		parent->restrictions |= (1 << flags->option);
 
-	} else if (parent->is_sequence_of && (parent->sequence_of == FR_DER_TAG_CHOICE)) {
+	} else if ((parent->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF) && (parent->sequence_of == FR_DER_TAG_CHOICE)) {
 		fr_assert(flags->der_type < FR_DER_TAG_VALUE_MAX);
 
 		flags->class = FR_DER_CLASS_CONTEXT;
@@ -1051,10 +1051,10 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 		parent->restrictions |= (1 << flags->der_type);
 
-	} else if (parent->is_sequence_of) {
+	} else if (parent->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF) {
 		if (flags->der_type != parent->sequence_of) {
 			fr_strerror_printf("Parent %s is a sequence_of=%s - a child cannot be %s",
-					   da->parent->name, fr_der_tag_to_str(parent->set_of),
+					   da->parent->name, fr_der_tag_to_str(parent->sequence_of),
 					   fr_der_tag_to_str(flags->der_type));
 			return false;
 		}
@@ -1064,7 +1064,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 		 */
 		fr_assert(!flags->is_option);
 
-	} else if (parent->is_set_of) {
+	} else if (parent->flag_type == FR_DER_ATTR_FLAG_SETOF) {
 		if (flags->der_type != parent->set_of) {
 			fr_strerror_printf("Parent %s is a set_of=%s - a child cannot be %s",
 					   da->parent->name, fr_der_tag_to_str(parent->set_of),

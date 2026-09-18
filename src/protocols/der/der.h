@@ -90,9 +90,24 @@ typedef enum {
 #define DER_BOOLEAN_FALSE 0x00	 //!< DER encoded boolean false value.
 #define DER_BOOLEAN_TRUE 0xff	 //!< DER encoded boolean true value.
 
+/** Which member of the fr_der_attr_flags_t union is in use
+ *
+ */
+typedef enum {
+	FR_DER_ATTR_FLAG_NONE = 0,		//!< no member is in use
+	FR_DER_ATTR_FLAG_SEQUENCE_OF,		//!< sequence_of has been defined
+	FR_DER_ATTR_FLAG_SETOF,			//!< set_of has been defined
+	FR_DER_ATTR_FLAG_DEFAULT_VALUE,		//!< a default value exists
+	FR_DER_ATTR_FLAG_SHORTNAME		//!< has a short name
+} fr_der_attr_flag_type_t;
+
 typedef struct {
 	fr_der_tag_class_t 	class;		//!< tag Class
 	fr_der_tag_t 		der_type;	//!< the DER type, which is different from the FreeRADIUS type
+
+	/*
+	 *	The member which is in use is given by 'flag_type'.
+	 */
 	union {
 		fr_der_tag_t 		sequence_of;
 		fr_der_tag_t 		set_of;
@@ -103,16 +118,13 @@ typedef struct {
 	uint32_t		restrictions;		//!< for choice of options and tags - no dups allowed
 	uint8_t			min;			//!< mininum count
 	uint8_t 		option;			//!< an "attribute number" encoded in the tag field.
-	bool			is_option : 1;		//!< has an option defined
-	bool			optional : 1;		//!< optional, we MUST already have set 'option'
-	bool			is_sequence_of : 1;	//!< sequence_of has been defined
-	bool 			is_set_of : 1;		//!< set_of has been defined
-	bool 			is_oid_and_value : 1;	//!< is OID+value
-	bool 			is_extensions : 1;	//!< a list of X.509 extensions
-	bool			has_default_value : 1;	//!< a default value exists
-	bool			has_shortname : 1;	//!< has a short name
-	bool 			leaf : 1;		//!< encode this OID along with its value
-	bool			is_choice : 1;		//!< DER name "choice".
+	fr_der_attr_flag_type_t	flag_type : 3;		//!< which member of the union is in use
+	unsigned int		is_option : 1;		//!< has an option defined
+	unsigned int		optional : 1;		//!< optional, we MUST already have set 'option'
+	unsigned int   		is_oid_and_value : 1;	//!< is OID+value
+	unsigned int   		is_extensions : 1;	//!< a list of X.509 extensions
+	unsigned int   		leaf : 1;		//!< encode this OID along with its value
+	unsigned int		is_choice : 1;		//!< DER name "choice".
 } fr_der_attr_flags_t;
 
 typedef struct {
@@ -168,22 +180,34 @@ static inline fr_der_tag_t fr_der_flag_der_type(fr_dict_attr_t const *da)
 
 static inline fr_der_tag_t fr_der_flag_sequence_of(fr_dict_attr_t const *da)
 {
-	return fr_der_attr_flags(da)->sequence_of;
+	fr_der_attr_flags_t const *flags = fr_der_attr_flags(da);
+
+	fr_assert_msg(flags->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF,
+		      "%s is not a 'sequence_of=...' attribute, so the union does not hold 'sequence_of'",
+		      da->name);
+
+	return flags->sequence_of;
 }
 
 static inline bool fr_der_flag_is_sequence_of(fr_dict_attr_t const *da)
 {
-	return fr_der_attr_flags(da)->is_sequence_of;
+	return fr_der_attr_flags(da)->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF;
 }
 
 static inline fr_der_tag_t fr_der_flag_set_of(fr_dict_attr_t const *da)
 {
-	return fr_der_attr_flags(da)->set_of;
+	fr_der_attr_flags_t const *flags = fr_der_attr_flags(da);
+
+	fr_assert_msg(flags->flag_type == FR_DER_ATTR_FLAG_SETOF,
+		      "%s is not a 'set_of=...' attribute, so the union does not hold 'set_of'",
+		      da->name);
+
+	return flags->set_of;
 }
 
 static inline bool fr_der_flag_is_set_of(fr_dict_attr_t const *da)
 {
-	return fr_der_attr_flags(da)->is_set_of;
+	return fr_der_attr_flags(da)->flag_type == FR_DER_ATTR_FLAG_SETOF;
 }
 
 static inline uint64_t fr_der_flag_max(fr_dict_attr_t const *da)
@@ -203,7 +227,7 @@ static inline bool fr_der_flag_is_extensions(fr_dict_attr_t const *da)
 
 static inline bool fr_der_flag_has_default_value(fr_dict_attr_t const *da)
 {
-	return fr_der_attr_flags(da)->has_default_value;
+	return fr_der_attr_flags(da)->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE;
 }
 
 static inline bool fr_der_flag_leaf(fr_dict_attr_t const *da)

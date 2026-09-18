@@ -1697,7 +1697,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 	 *
 	 */
 
-	if (flags->has_default_value) {
+	if (flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE) {
 		/*
 		 *	Skip encoding the default value, as per ISO/IEC 8825-1:2021 11.5
 		 */
