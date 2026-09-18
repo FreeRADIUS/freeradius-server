@@ -520,7 +520,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "src_ipaddr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, src_ipaddr_str), NULL },
 
 	{ "response_window", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, home_server_t, response_window), "30" },
-	{ "response_timeouts", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_response_timeouts), "1" },
+	{ "response_timeouts", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_response_timeouts), "3" },
 	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_outstanding), "65536" },
 
 	{ "zombie_period", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, zombie_period), "40" },
