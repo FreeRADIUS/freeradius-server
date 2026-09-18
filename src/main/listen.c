@@ -4088,128 +4088,134 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 #endif
 
 #ifdef WITH_TCP
+	if (home->proto != IPPROTO_TCP) goto find_port;
+
 #ifdef SO_KEEPALIVE
-	if (home->proto == IPPROTO_TCP) {
+	{
 		int on = 1;
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) < 0) {
 			ERROR("(TLS) Failed to set SO_KEEPALIVE: %s", fr_syserror(errno));
 			goto error;
-		}		
+		}
+	}
+#endif
+
+#ifdef TCP_NODELAY
+	/*
+	 *	Also set TCP_NODELAY, to force the data to be written quickly.
+	 */
+	{
+		int on = 1;
+
+		if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
+			ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
+			goto error;
+		}
 	}
 #endif
 
 #ifdef WITH_TLS
-	if ((home->proto == IPPROTO_TCP) && home->tls) {
-		DEBUG("(TLS) Trying new outgoing proxy connection to %s", buffer);
+	if (!home->tls) goto find_port;
+
+	DEBUG("(TLS) Trying new outgoing proxy connection to %s", buffer);
 
 #ifdef WITH_RADIUSV11
-		this->radiusv11 = home->tls->radiusv11;
+	this->radiusv11 = home->tls->radiusv11;
 #endif
 
-#ifdef TCP_NODELAY
-		/*
-		 *	Also set TCP_NODELAY, to force the data to be written quickly.
-		 */
-		{
-			int on = 1;
+	rad_assert(home->listeners != NULL);
 
-			if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
-				ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
-				goto error;
-			}
-		}
-#endif
-		rad_assert(home->listeners != NULL);
+	if (!rbtree_insert(home->listeners, this)) {
+		ERROR("(TLS) Failed adding tracking information for proxy socket '%s'", buffer);
+		goto error;
+	}
 
-		if (!rbtree_insert(home->listeners, this)) {
-			ERROR("(TLS) Failed adding tracking information for proxy socket '%s'", buffer);
-			goto error;
-		}
+	/*
+	 *	Start a new client connection.
+	 */
+	sock->ssn = tls_new_client_session(sock, home->tls, this->fd, &sock->certs);
+	if (!sock->ssn) {
+		ERROR("(TLS) Failed opening connection on proxy socket '%s'", buffer);
+		goto error;
+	}
 
-		/*
-		 *	Start a new client connection.
-		 */
-		sock->ssn = tls_new_client_session(sock, home->tls, this->fd, &sock->certs);
-		if (!sock->ssn) {
-			ERROR("(TLS) Failed opening connection on proxy socket '%s'", buffer);
-			goto error;
-		}
+	/*
+	 *	MTU limits don't apply to RadSec - just use 32k so there's plenty of headroom
+	 */
+	sock->ssn->mtu = 1 << 15;
 
-		/*
-		 *	MTU limits don't apply to RadSec - just use 32k so there's plenty of headroom
-		 */
-		sock->ssn->mtu = 1 << 15;
-
-		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_HOME, sock->home);
+	SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_HOME, sock->home);
 
 #ifdef WITH_RADIUSV11
-		/*
-		 *	Must not have alpn_checked yet.  This code only runs for blocking sockets.
-		 */
-		if (sock->ssn->connected && (fr_radiusv11_client_get_alpn(this) < 0)) {
-			goto error;
-		}
-#endif
-
-		sock->connect_timeout = home->connect_timeout;
-
-		this->recv = proxy_tls_recv;
-		this->proxy_send = proxy_tls_send;
-
-#ifdef HAVE_PTHREAD_H
-		sock->mutex = talloc_zero(sock, pthread_mutex_t);
-		if (!sock->mutex) goto error;
-
-		if (pthread_mutex_init(sock->mutex, NULL) < 0) goto error;
-#endif
-
-		/*
-		 *	Make sure that this listener is associated with the home server.
-		 *
-		 *	Since it's TCP+TLS, this socket can only be associated with one home server.
-		 */
-
-#ifdef WITH_COA_TUNNEL
-		if (home->recv_coa) {
-			RADCLIENT *client;
-
-			this->send_coa = true;
-
-			/*
-			 *	Don't set this->send_coa, as we are
-			 *	not sending CoA-Request packets to
-			 *	this home server.  Instead, we are
-			 *	receiving CoA packets from this home
-			 *	server.
-			 */
-			this->send = proxy_tls_send_reply;
-			this->encode = master_listen[RAD_LISTEN_AUTH].encode;
-			this->decode = master_listen[RAD_LISTEN_AUTH].decode;
-
-			/*
-			 *	Automatically create a client for this
-			 *	home server.  There MAY be one already
-			 *	one for that IP in the configuration
-			 *	files, but there's no guarantee that
-			 *	it exists.
-			 *
-			 *	The only real reason to use an
-			 *	existing client is to track various
-			 *	statistics.
-			 */
-			sock->client = client = talloc_zero(sock, RADCLIENT);
-			client->ipaddr = sock->other_ipaddr;
-			client->src_ipaddr = sock->my_ipaddr;
-			client->longname = client->shortname = talloc_typed_strdup(client, home->name);
-			client->secret = talloc_typed_strdup(client, home->secret);
-			client->nas_type = "none";
-			client->server = talloc_typed_strdup(client, home->recv_coa_server);
-		}
-#endif
+	/*
+	 *	Must not have alpn_checked yet.  This code only runs for blocking sockets.
+	 */
+	if (sock->ssn->connected && (fr_radiusv11_client_get_alpn(this) < 0)) {
+		goto error;
 	}
 #endif
+
+	sock->connect_timeout = home->connect_timeout;
+
+	this->recv = proxy_tls_recv;
+	this->proxy_send = proxy_tls_send;
+
+#ifdef HAVE_PTHREAD_H
+	sock->mutex = talloc_zero(sock, pthread_mutex_t);
+	if (!sock->mutex) goto error;
+
+	if (pthread_mutex_init(sock->mutex, NULL) < 0) goto error;
 #endif
+
+	/*
+	 *	Make sure that this listener is associated with the home server.
+	 *
+	 *	Since it's TCP+TLS, this socket can only be associated with one home server.
+	 */
+
+#ifdef WITH_COA_TUNNEL
+	if (home->recv_coa) {
+		RADCLIENT *client;
+
+		this->send_coa = true;
+
+		/*
+		 *	Don't set this->send_coa, as we are
+		 *	not sending CoA-Request packets to
+		 *	this home server.  Instead, we are
+		 *	receiving CoA packets from this home
+		 *	server.
+		 */
+		this->send = proxy_tls_send_reply;
+		this->encode = master_listen[RAD_LISTEN_AUTH].encode;
+		this->decode = master_listen[RAD_LISTEN_AUTH].decode;
+
+		/*
+		 *	Automatically create a client for this
+		 *	home server.  There MAY be one already
+		 *	one for that IP in the configuration
+		 *	files, but there's no guarantee that
+		 *	it exists.
+		 *
+		 *	The only real reason to use an
+		 *	existing client is to track various
+		 *	statistics.
+		 */
+		sock->client = client = talloc_zero(sock, RADCLIENT);
+		client->ipaddr = sock->other_ipaddr;
+		client->src_ipaddr = sock->my_ipaddr;
+		client->longname = client->shortname = talloc_typed_strdup(client, home->name);
+		client->secret = talloc_typed_strdup(client, home->secret);
+		client->nas_type = "none";
+		client->server = talloc_typed_strdup(client, home->recv_coa_server);
+	}
+#endif	/* WITH_COA_TUNNEL */
+#endif	/* WITH_TLS */
+
+find_port:
+#endif	/* WITH_TCP */
+
 	/*
 	 *	Figure out which port we were bound to.
 	 */
@@ -4245,6 +4251,13 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 		DEBUG("Opened new proxy socket '%s'", buffer);
 	}
 
+#ifdef WITH_TCP
+	/*
+	 *	UDP sockets aren't connected, so we don't count the
+	 *	number of connections for them.
+	 */
+	if (home->proto != IPPROTO_TCP) return this;
+
 	home->limit.num_connections++;
 
 	/*
@@ -4259,7 +4272,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	home->tls_failed = false;
 #endif
 
-#ifdef WITH_TCP
 	home->tcp_failed = false;
 
 	/*
@@ -4271,11 +4283,11 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	 *	if the TLS handshake has finished.
 	 */
 	home_server_active_connections_increment(this);
-#endif
 
 	return this;
+#endif	/* WITH_TCP */
 }
-#endif
+#endif	/* WITH_PROXY */
 
 static const FR_NAME_NUMBER listen_compare[] = {
 #ifdef WITH_STATS
