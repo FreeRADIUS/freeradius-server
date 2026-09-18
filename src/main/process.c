@@ -2785,7 +2785,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
 
-		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
+		this = proxy_new_listener(proxy_ctx, request->home_server);
 		if (!this) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			goto fail;
@@ -6885,7 +6885,6 @@ static int packet_entry_cmp(void const *one, void const *two)
  */
 static void create_default_proxy_listener(int af)
 {
-	uint16_t	port = 0;
 	home_server_t	home;
 	listen_socket_t *sock;
 	rad_listen_t	*this;
@@ -6896,7 +6895,6 @@ static void create_default_proxy_listener(int af)
 	 *	Open a default UDP port
 	 */
 	home.proto = IPPROTO_UDP;
-	port = 0;
 
 	/*
 	 *	Set the address family.
@@ -6907,7 +6905,7 @@ static void create_default_proxy_listener(int af)
 	/*
 	 *	Get the correct listener.
 	 */
-	this = proxy_new_listener(proxy_ctx, &home, port);
+	this = proxy_new_listener(proxy_ctx, &home);
 	if (!this) {
 		fr_exit_now(1);
 	}

@@ -3951,7 +3951,7 @@ static void proxy_failed_open(home_server_t *home, time_t now)
  *	Not thread-safe, but all calls to it are protected by the
  *	proxy mutex in event.c
  */
-rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t src_port)
+rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 {
 	time_t now;
 	rad_listen_t *this;
@@ -3997,7 +3997,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	sock->home = home;
 
 	sock->my_ipaddr = home->src_ipaddr;
-	sock->my_port = src_port;
+	sock->my_port = 0;
 	sock->proto = home->proto;
 
 	/*
@@ -4065,7 +4065,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 						this->nonblock);
 	} else
 #endif
-		this->fd = fr_socket(&home->src_ipaddr, src_port);
+		this->fd = fr_socket(&home->src_ipaddr, 0);
 
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
