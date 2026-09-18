@@ -844,7 +844,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	 * 	This is a sequence-of, which means it either has only one child, or it's a sequence_of=choice,
 	 * 	and all of the children are numbered options.
 	 */
-	if (unlikely(flags->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF)) {
+	if (unlikely(fr_der_flag_has_sequence_of(flags))) {
 		if (flags->sequence_of != FR_DER_TAG_CHOICE) {
 			child = fr_dict_attr_iterate_children(parent, &child);
 			if (!child) {
@@ -995,7 +995,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		return -1;
 	}
 
-	if (flags->flag_type == FR_DER_ATTR_FLAG_SETOF) {
+	if (fr_der_flag_has_set_of(flags)) {
 		fr_dbuff_marker_t current_value_marker;
 
 		/*
@@ -2312,7 +2312,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	}
 	PAIR_ALLOCED(vp2);
 
-	max = fr_der_flag_max(parent); /* Maximum number of extensions which can be used here */
+	max = fr_der_attr_max(parent); /* Maximum number of extensions which can be used here */
 
 	/*
 	 *	Each extension is composed of a sequence containing the following objects:
@@ -2671,10 +2671,10 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	if (unlikely(slen == 0)) {
 		fr_pair_t	     *vp;
 
-		if (likely(flags->flag_type != FR_DER_ATTR_FLAG_DEFAULT_VALUE)) return 0;
+		if (likely(!fr_der_flag_has_value(flags))) return 0;
 
 	create_default:
-		fr_assert(flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE);
+		fr_assert(fr_der_flag_has_value(flags));
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (unlikely(!vp)) {
@@ -2745,7 +2745,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	 *	NULL.
 	 */
 	if (unlikely(fr_dbuff_remaining(&our_in) == 0)) {
-		if (flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE) goto create_default;
+		if (fr_der_flag_has_value(flags)) goto create_default;
 
 		if (tag == FR_DER_TAG_NULL) {
 			func = &tag_funcs[FR_DER_TAG_NULL];
@@ -2779,7 +2779,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		/*
 		 *	Optional or not, if we can create a default value, then do so.
 		 */
-		if (flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE) goto create_default;
+		if (fr_der_flag_has_value(flags)) goto create_default;
 
 		/*
 		 *	Optional means "decoded nothing".  Otherwise it's a hard failure.

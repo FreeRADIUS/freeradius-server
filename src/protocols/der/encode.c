@@ -84,7 +84,7 @@ static inline CC_HINT(always_inline) fr_cmp_ret_t fr_der_pair_cmp_by_da_tag(void
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
 
-	return CMP_PREFER_SMALLER(fr_der_flag_der_type(my_a->da), fr_der_flag_der_type(my_b->da));
+	return CMP_PREFER_SMALLER(fr_der_attr_der_type(my_a->da), fr_der_attr_der_type(my_b->da));
 }
 
 static ssize_t encode_pair(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, UNUSED unsigned int depth, fr_dcursor_t *cursor,
@@ -736,7 +736,7 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 	 *		The encoding of a set value or sequence value shall not include an encoding for any component
 	 *		value which is equal to its default value.
 	 */
-	if (fr_type_is_group(vp->vp_type) && fr_der_flag_is_oid_and_value(vp->da)) {
+	if (fr_type_is_group(vp->vp_type) && fr_der_attr_is_oid_and_value(vp->da)) {
 		return fr_der_encode_oid_and_value(dbuff, cursor, encode_ctx);
 	}
 
@@ -799,7 +799,7 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	 *			encodings.
 	 */
 
-	if (fr_der_flag_is_set_of(vp->da)) {
+	if (fr_der_attr_is_set_of(vp->da)) {
 		/*
 		 *	Set-of items will all have the same tag, so we need to sort them lexicographically
 		 */
@@ -1156,7 +1156,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	 *	Note: If the boolean value is false, it is not included in the encoding.
 	 */
 
-	max = fr_der_flag_max(vp->da); /* Maximum number of extensions specified in the dictionary */
+	max = fr_der_attr_max(vp->da); /* Maximum number of extensions specified in the dictionary */
 	num = 0;
 
 	slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_SEQUENCE, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_CONSTRUCTED);
@@ -1236,7 +1236,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			 *	If we find a normal leaf data type, we don't encode it.  But we do encode leaf data
 			 *	types which are marked up as needing OID leaf encoding.
 			 */
-			if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_leaf(child->da) && !child->da->flags.is_raw) {
+			if (!fr_type_is_structural(child->vp_type) && !fr_der_attr_leaf(child->da) && !child->da->flags.is_raw) {
 				FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
 
 				fr_dcursor_copy(&child_cursor, &parent_cursor);
@@ -1258,7 +1258,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			if (fr_pair_list_num_elements(&child->children) > 1) break;
 
 		next:
-			if (fr_der_flag_leaf(child->da)) break;
+			if (fr_der_attr_leaf(child->da)) break;
 
 			fr_pair_dcursor_child_iter_init(&child_cursor, &child->children, &child_cursor);
 		}
@@ -1382,7 +1382,7 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 		 *	If we find a normal leaf data type, we don't encode it.  But we do encode leaf data
 		 *	types which are marked up as needing OID leaf encoding.
 		 */
-		if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_leaf(child->da) && !child->da->flags.is_raw) {
+		if (!fr_type_is_structural(child->vp_type) && !fr_der_attr_leaf(child->da) && !child->da->flags.is_raw) {
 			FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
 
 			fr_dcursor_copy(&child_cursor, &parent_cursor);
@@ -1400,7 +1400,7 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 		/*
 		 *	Some structural types can be marked as a leaf for the purposes of OID encoding.
 		 */
-		if (fr_der_flag_leaf(child->da)) break;
+		if (fr_der_attr_leaf(child->da)) break;
 
 		/*
 		 *	Unless this was the last child (marked as an oid leaf), there should only be one child
@@ -1697,7 +1697,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 	 *
 	 */
 
-	if (flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE) {
+	if (fr_der_flag_has_value(flags)) {
 		/*
 		 *	Skip encoding the default value, as per ISO/IEC 8825-1:2021 11.5
 		 */
