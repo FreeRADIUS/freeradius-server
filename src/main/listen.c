@@ -3514,7 +3514,7 @@ static int listen_bind(rad_listen_t *this)
 		/*
 		 *	OSX / ?BSD / Solaris: bind to interface by index for IPv4
 		 */
-		if (sock->my_ipaddr.af == AF_INET) {
+		else if (sock->my_ipaddr.af == AF_INET) {
 			rad_suid_up();
 			rcode = setsockopt(this->fd, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof(idx));
 			rad_suid_down();
@@ -3524,14 +3524,14 @@ static int listen_bind(rad_listen_t *this)
 				      sock->interface, fr_syserror(errno));
 				return -1;
 			}
-		} else
+		}
 #endif
 
 #ifdef IPV6_BOUND_IF
 		/*
 		 *	OSX / ?BSD / Solaris: bind to interface by index for IPv6
 		 */
-		if (sock->my_ipaddr.af == AF_INET6) {
+		else if (sock->my_ipaddr.af == AF_INET6) {
 			rad_suid_up();
 			rcode = setsockopt(this->fd, IPPROTO_IPV6, IPV6_BOUND_IF, &idx, sizeof(idx));
 			rad_suid_down();
@@ -3541,7 +3541,7 @@ static int listen_bind(rad_listen_t *this)
 				      sock->interface, fr_syserror(errno));
 				return -1;
 			}
-		} else
+		}
 #endif
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
@@ -3551,7 +3551,7 @@ static int listen_bind(rad_listen_t *this)
 		 *	interface, and hope that all of the read/write
 		 *	routines respect that.
 		 */
-		if (sock->my_ipaddr.af == AF_INET6) {
+		else if (sock->my_ipaddr.af == AF_INET6) {
 			if (sock->my_ipaddr.scope == 0) {
 				sock->my_ipaddr.scope = idx;
 			} /* else scope was already defined */
