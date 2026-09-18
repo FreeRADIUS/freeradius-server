@@ -3313,17 +3313,18 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 		require_ma = ((request->home_server->require_ma == FR_BOOL_TRUE) &&
 			      ((request->proxy->code == PW_CODE_ACCESS_REQUEST) ||
 			       (request->proxy->code == PW_CODE_STATUS_SERVER)));
-
-		if (!rad_packet_ok(packet, require_ma, &reason)) {
-			FR_PROXY_STATS_INC(listener, request->home_server, total_malformed_requests, 0);
-			DEBUG("Ignoring invalid packet - %s", fr_strerror());
-			return 0;
+		if (require_ma && !packet->message_authenticator) {
+			if (!rad_packet_ok(packet, require_ma, &reason)) {
+				FR_PROXY_STATS_INC(listener, request->home_server, total_malformed_requests, 0);
+				DEBUG("Ignoring invalid packet - %s", fr_strerror());
+				return 0;
+			}
 		}
 
 		if (rad_verify(packet, request->proxy,
 			       request->home_server->secret) != 0) {
 			FR_PROXY_STATS_INC(listener, request->home_server, total_bad_authenticators, 0);
-			DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
+			REDEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 			return 0;
 		}
 
@@ -3382,13 +3383,13 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 				/*
 				 *	If it's "no" AND we don't have a Message-Authenticator, then complain on every packet.
 				 */
-				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-				RDEBUG("BlastRADIUS check: Received packet without Message-Authenticator from home_server %s", request->home_server->name);
-				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-				RDEBUG("The packet does not contain Message-Authenticator, which is a security issue");
-				RDEBUG("UPGRADE THE HOME SERVER AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
-				RDEBUG("Once the home server is upgraded, set \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
-				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				RWDEBUG("BlastRADIUS check: Received packet without Message-Authenticator from home_server %s", request->home_server->name);
+				RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				RWDEBUG("The packet does not contain Message-Authenticator, which is a security issue");
+				RWDEBUG("UPGRADE THE HOME SERVER AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+				RWDEBUG("Once the home server is upgraded, set \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
+				RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			}
 		}
 	}
@@ -3403,7 +3404,7 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 		    packet->vector,
 		    sizeof(request->proxy_reply->vector)) != 0)) {
 		FR_PROXY_STATS_INC(listener, request->home_server, total_conflicts, 0);
-		RDEBUG2("Ignoring conflicting proxy reply");
+		REDEBUG2("Ignoring conflicting proxy reply");
 		return 0;
 	}
 
@@ -3439,7 +3440,7 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 	 *	duplicate.
 	 */
 	if (request->proxy_reply) {
-		RDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d",
+		RWDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d",
 			inet_ntop(packet->src_ipaddr.af,
 				  &packet->src_ipaddr.ipaddr,
 				  buffer, sizeof(buffer)),
