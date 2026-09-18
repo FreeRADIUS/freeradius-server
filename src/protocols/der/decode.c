@@ -844,7 +844,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	 * 	This is a sequence-of, which means it either has only one child, or it's a sequence_of=choice,
 	 * 	and all of the children are numbered options.
 	 */
-	if (unlikely(flags->is_sequence_of)) {
+	if (unlikely(flags->flag_type == FR_DER_ATTR_FLAG_SEQUENCE_OF)) {
 		if (flags->sequence_of != FR_DER_TAG_CHOICE) {
 			child = fr_dict_attr_iterate_children(parent, &child);
 			if (!child) {
@@ -995,7 +995,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		return -1;
 	}
 
-	if (flags->is_set_of) {
+	if (flags->flag_type == FR_DER_ATTR_FLAG_SETOF) {
 		fr_dbuff_marker_t current_value_marker;
 
 		/*
@@ -2671,9 +2671,11 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	if (unlikely(slen == 0)) {
 		fr_pair_t	     *vp;
 
-		if (likely(!flags->has_default_value)) return 0;
+		if (likely(flags->flag_type != FR_DER_ATTR_FLAG_DEFAULT_VALUE)) return 0;
 
 	create_default:
+		fr_assert(flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE);
+
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (unlikely(!vp)) {
 			fr_strerror_const_push("Out of memory");
@@ -2743,7 +2745,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	 *	NULL.
 	 */
 	if (unlikely(fr_dbuff_remaining(&our_in) == 0)) {
-		if (flags->has_default_value) goto create_default;
+		if (flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE) goto create_default;
 
 		if (tag == FR_DER_TAG_NULL) {
 			func = &tag_funcs[FR_DER_TAG_NULL];
@@ -2777,7 +2779,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		/*
 		 *	Optional or not, if we can create a default value, then do so.
 		 */
-		if (flags->has_default_value) goto create_default;
+		if (flags->flag_type == FR_DER_ATTR_FLAG_DEFAULT_VALUE) goto create_default;
 
 		/*
 		 *	Optional means "decoded nothing".  Otherwise it's a hard failure.
