@@ -4199,9 +4199,9 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 		client->server = talloc_typed_strdup(client, home->recv_coa_server);
 	}
 #endif	/* WITH_COA_TUNNEL */
-#endif	/* WITH_TLS */
 
 find_port:
+#endif	/* WITH_TLS */
 
 	/*
 	 *	Figure out which port we were bound to.
