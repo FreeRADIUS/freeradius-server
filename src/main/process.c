@@ -2648,14 +2648,16 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 			/*
 			 *	last_packet + response_window
 			 *
-			 *	We *administratively* mark the home
-			 *	server as "unknown" state, because we
+			 *	We *administratively* mark the home server as "unknown" state, because we
 			 *	haven't seen a packet for a while.
+			 *
+			 *	Do NOT reset last_packet_sent and last_packet_recv, as their values are still
+			 *	correct.  mark_home_server_zombie() uses last_packet_recv to avoid marking a
+			 *	responsive home server as zombie, and the radmin statistics report the value
+			 *	of both fields.
 			 */
 			if (timercmp(&now, &when, >)) {
 				request->home_server->state = HOME_STATE_UNKNOWN;
-				request->home_server->last_packet_sent = 0;
-				request->home_server->last_packet_recv = 0;
 			}
 		}
 	}
@@ -3437,6 +3439,13 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 		sock->last_packet = now.tv_sec;
 #endif
 		request->home_server->last_packet_recv = now.tv_sec;
+
+		/*
+		 *	We have a reply from this home server, so we can can reset response_timeouts, which
+		 *	track consecutive failures.  If we don't reset it, then unrelated timeouts
+		 *	accumulated, and eventually an active home server could be marked as zombie.
+		 */
+		request->home_server->response_timeouts = 0;
 	}
 
 	request->num_proxied_responses++;
@@ -3480,13 +3489,24 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 
 
 	/*
-	 *	If we hadn't been sending the home server packets for
-	 *	a while, just mark it alive.  Or, if it was zombie,
-	 *	it's now responded, and is therefore alive.
+	 *	It was zombie, and has now responded.  That is a real recovery, so run the triggers and stop
+	 *	the pings.
 	 */
-	if ((request->home_server->state == HOME_STATE_UNKNOWN) ||
-	    (request->home_server->state == HOME_STATE_ZOMBIE)) {
+	if (request->home_server->state == HOME_STATE_ZOMBIE) {
 		mark_home_server_alive(request, request->home_server);
+
+		/*
+		 *	The server had just started, or the home server hadn't been sent packets in a long
+		 *	time.  It wasn't zombie, but it was in an unknown state.  We've now seen a response,
+		 *	so we can mark it as "alive".
+		 *
+		 *	Don't do anything else (such as run triggers), as the home server hasn't really
+		 *	changed state.  Most notably, don't reset currently_outstanding, as there may be
+		 *	multiple requests sent to the server!  Resetting that breaks the max_outstanding
+		 *	checks in home_server_active().
+		 */
+	} else if (request->home_server->state == HOME_STATE_UNKNOWN) {
+		request->home_server->state = HOME_STATE_ALIVE;
 	}
 
 	/*
