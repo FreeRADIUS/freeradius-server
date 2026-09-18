@@ -8,6 +8,9 @@ listener_type: file
 ports:
   dynamic: 1812
   nas_coa: 3799
+  # A second listener which defines clients dynamically, with a small
+  # `max_clients`, used by `case11_nak_does_not_hold_client_slot`.
+  nak_limit: 1814
 
 # Last octet of each alias on the client container.  Each case sends from
 # a separate alias, so the first packet of each case arrives from an
@@ -24,6 +27,12 @@ client_addresses:
   - 208
   - 209
   - 210
+  # case11_nak_does_not_hold_client_slot: three rejected clients and one
+  # accepted client, all on the `nak_limit` listener.
+  - 211
+  - 212
+  - 213
+  - 214
 
 # Secret that the server assigns to each client that the server defines,
 # until the `case7_rotate_secret` state rotates the secret

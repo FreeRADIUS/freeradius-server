@@ -124,6 +124,39 @@ server dynamic-clients {
 	}
 
 	#
+	#  A second listener which defines clients dynamically, with a small
+	#  `max_clients`, for `case11_nak_does_not_hold_client_slot`.
+	#
+	#  A client which the `new client` section rejects must not hold a slot
+	#  against `max_clients`.  The limit is two, and the case rejects three
+	#  clients in a row, so the third rejection only happens if the first two
+	#  released their slots.  The listener is separate from `dynamic` so that
+	#  the small limit does not affect the other cases.
+	#
+	listen nak_limit {
+		type = Access-Request
+		transport = udp
+		require_message_authenticator = no
+
+		limit {
+			max_clients = 2
+			idle_timeout = {{ t.dynamic_timeout }}
+			dynamic_timeout = {{ t.dynamic_timeout }}
+			nak_lifetime = {{ t.nak_lifetime }}
+			cleanup_delay = {{ cleanup_delay }}
+		}
+
+		udp {
+			ipaddr = *
+			port = {{ ports.nak_limit }}
+			dynamic_clients = true
+			networks {
+				allow = 0.0.0.0/0
+			}
+		}
+	}
+
+	#
 	#  The secret comes from `/tmp/dynamic-secret`, a file that the test
 	#  rewrites between client definitions, the way a client database changes
 	#  under a running server.

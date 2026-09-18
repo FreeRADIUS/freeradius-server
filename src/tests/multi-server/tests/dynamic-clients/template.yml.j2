@@ -65,6 +65,14 @@
 {%- macro send(step, source, command, secret, attrs, options='', attempts=1) %}
 {{-   radclient(step, 'server:' ~ ports.dynamic, command, secret, attrs, options, attempts, t.reply_timeout, source) }}
 {%- endmacro %}
+{#
+  `send_nak_limit()` is `send()` aimed at the `nak_limit` listener, which
+  defines clients dynamically with `max_clients = 2`.  Only
+  `case11_nak_does_not_hold_client_slot` uses it.
+#}
+{%- macro send_nak_limit(step, source, command, secret, attrs, options='', attempts=1) %}
+{{-   radclient(step, 'server:' ~ ports.nak_limit, command, secret, attrs, options, attempts, t.reply_timeout, source) }}
+{%- endmacro %}
 {%- set auth_attrs = ['User-Name = "bob"', 'User-Password = "hello"'] %}
 {%- set no_ma_attrs = auth_attrs + ['Message-Authenticator !* ANY'] %}
 timeout: {{ test_timeout }}
@@ -223,6 +231,46 @@ states:
             attempts:
               pattern:
                 reg_pattern: '^([2-9]|1[0-9])$'
+
+  case11_nak_does_not_hold_client_slot:
+    description: >
+      A client which the new client section rejects must not hold a slot
+      against `max_clients`.  The `nak_limit` listener allows two clients,
+      and the case rejects three clients from three separate sources, one
+      after another.  The third source only reaches the new client section
+      if the first two released their slots when they were rejected.  A
+      fourth source is then accepted, so the listener still admits a real
+      client after the three rejections.
+
+      A rejected client that stays in the client table holds its slot until
+      `nak_lifetime`, and the whole case runs well inside that, so the
+      third rejection is the assertion that matters.  Without it the server
+      refuses the third packet before the new client section runs, and
+      neither `new-client-nak-case11-third` nor `deny-client-nak-case11-third`
+      fires.
+    host:
+      client:
+        actions:
+{{ send_nak_limit('nak-case11-first', client_addresses[10], 'auth', initial_secret, auth_attrs) }}
+{{ send_nak_limit('nak-case11-second', client_addresses[11], 'auth', initial_secret, auth_attrs) }}
+{{ send_nak_limit('nak-case11-third', client_addresses[12], 'auth', initial_secret, auth_attrs) }}
+{{ send_nak_limit('case11-fourth', client_addresses[13], 'auth', initial_secret, auth_attrs) }}
+    verify:
+      timeout: {{ send_timeout(4) }}
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('new-client-nak-case11-first') }}
+{{ event_recv('deny-client-nak-case11-first') }}
+{{ server_dropped('nak-case11-first') }}
+{{ event_recv('new-client-nak-case11-second') }}
+{{ event_recv('deny-client-nak-case11-second') }}
+{{ server_dropped('nak-case11-second') }}
+{{ event_recv('new-client-nak-case11-third') }}
+{{ event_recv('deny-client-nak-case11-third') }}
+{{ server_dropped('nak-case11-third') }}
+{{ event_recv('new-client-case11-fourth') }}
+{{ event_recv('recv-access-request-case11-fourth') }}
+{{ server_answered('case11-fourth', 'Access-Accept') }}
 
   case8_status_server:
     description: >
