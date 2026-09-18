@@ -70,6 +70,17 @@ freeradius -f -l stdout \
 #
 echo "${STATUS}" > "$PROFILING_RESULT_DIR/exit-status"
 
+#  Save the proto_load stats CSV file to the results directory
+#  if it exists.  Hardcoded to same path set in the docker compose file
+#  for the container.
+LOADGEN_CSV=/etc/freeradius/stats/load-generator-stats.csv
+if [ -s "$LOADGEN_CSV" ]; then
+  cp "$LOADGEN_CSV" "$PROFILING_RESULT_DIR/load-stats.csv"
+  echo "INFO: wrote load-stats.csv"
+else
+  echo "WARNING: no load-generator statistics at ${LOADGEN_CSV}"
+fi
+
 if [ "${STATUS}" -ne 0 ]; then
   if [ "${STATUS}" -gt 128 ]; then
     echo "ERROR: freeradius was killed by signal $((STATUS - 128)); the profile may be truncated" >&2
