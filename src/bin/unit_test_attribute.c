@@ -1743,8 +1743,26 @@ static size_t command_count(command_result_t *result, command_file_ctx_t *cc,
 	RETURN_OK(len);
 }
 
-static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *cc,
-				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
+/** Decode hex data into a list of pairs
+ *
+ * Shared by "decode-pair" and "de-encode-pair".  The decoded pairs are the children of *head_p,
+ * and are allocated in cc->tmp_ctx.  The caller has to clear that context once it is finished
+ * with them.
+ *
+ * @param[out] result	of the command, when this function fails.
+ * @param[in] cc	command file context.
+ * @param[in,out] data	data buffer, which holds the input hex, and is then used as scratch space.
+ * @param[in] in	text of the command, which starts with the test point.
+ * @param[in] inlen	length of "in".
+ * @param[out] head_p	pair which holds the decoded pairs.
+ * @param[out] hex_p	where the hex data started in "in".  The caller needs it in order to look
+ *			for a second test point.  May be NULL.
+ * @return
+ *	- >0 the number of bytes of input which were decoded.
+ *	- 0 on failure, where "result" has been filled in, and the caller has to return 0.
+ */
+static size_t decode_pair(command_result_t *result, command_file_ctx_t *cc,
+			  char *data, char *in, size_t inlen, fr_pair_t **head_p, char **hex_p)
 {
 	fr_test_point_pair_decode_t	*tp = NULL;
 	void		*decode_ctx = NULL;
@@ -1845,6 +1863,20 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_COMMAND_ERROR();
 	}
 
+	if (hex_p) *hex_p = p;
+	*head_p = head;
+
+	return to_dec - to_dec_start;
+}
+
+static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *cc,
+				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_pair_t	*head;
+	ssize_t		slen;
+
+	if (decode_pair(result, cc, data, in, inlen, &head, NULL) == 0) return 0;
+
 	/*
 	 *	Output may be an error, and we ignore
 	 *	it if so.
@@ -1854,7 +1886,11 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_OK_WITH_ERROR();
 	}
 
-	CLEAR_TEST_POINT(cc);
+	/*
+	 *	As CLEAR_TEST_POINT(), but the test point is a local variable of decode_pair().
+	 */
+	talloc_free_children(cc->tmp_ctx);
+
 	RETURN_OK(slen);
 }
 
@@ -2127,23 +2163,144 @@ static size_t command_decode_dns_label(command_result_t *result, command_file_ct
 	RETURN_OK(out - data);
 }
 
+/** Encode a list of pairs, writing the result to the data buffer as hex
+ *
+ * Shared by "encode-pair" and "de-encode-pair".  The pair list and the test point context are
+ * freed here, which means that the caller cannot use either one afterwards.
+ *
+ * @param[out] result		of the command.  It is always filled in, so the caller returns
+ *				whatever this function returns.
+ * @param[in] cc		command file context.
+ * @param[out] data		data buffer, where the hex output is written.
+ * @param[in] tp		encoder test point.
+ * @param[in] encode_ctx	context for the encoder test point.
+ * @param[in] head		pairs to encode.
+ * @param[in] truncate		run the truncate torture test.
+ * @param[in] fuzzer_text	name the corpus seed file after this text, or NULL to write no
+ *				seed file.
+ * @return the number of characters written to the data buffer.
+ */
+static size_t encode_pair(command_result_t *result, command_file_ctx_t *cc, char *data,
+			  fr_test_point_pair_encode_t *tp, void *encode_ctx,
+			  fr_pair_list_t *head, bool truncate, char const *fuzzer_text)
+{
+	fr_dcursor_t	cursor;
+	fr_pair_t	*vp;
+	uint8_t		*enc_p, *enc_end;
+	ssize_t		slen = 0;
+	size_t		iterations = 0;
+
+	/*
+	 *	Outer loop implements truncate test
+	 */
+	do {
+		enc_p = cc->buffer_start;
+		enc_end = truncate ? cc->buffer_start + iterations++ : cc->buffer_end;
+
+		if (truncate) {
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+			/*
+			 *	Poison the region between the subset of the buffer
+			 *	we're using and the end of the buffer.
+			 */
+			ASAN_POISON_MEMORY_REGION(enc_end, (cc->buffer_end) - enc_end);
+
+			DEBUG("%s[%d]: Iteration %zu - Safe region %p-%p (%zu bytes), "
+			      "poisoned region %p-%p (%zu bytes)", cc->filename, cc->lineno, iterations - 1,
+			      enc_p, enc_end, enc_end - enc_p, enc_end, cc->buffer_end, cc->buffer_end - enc_end);
+#else
+			DEBUG("%s[%d]: Iteration %zu - Allowed region %p-%p (%zu bytes)",
+			      cc->filename, cc->lineno, iterations - 1, enc_p, enc_end, enc_end - enc_p);
+#endif
+		}
+
+		for (vp = fr_pair_dcursor_iter_init(&cursor, head,
+						    tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
+						    dictionary_current(cc));
+		     vp;
+		     vp = fr_dcursor_current(&cursor)) {
+			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encode_ctx);
+			cc->last_ret = slen;
+
+			if (truncate) DEBUG("%s[%d]: Iteration %zu - Result %zd%s%s",
+					    cc->filename, cc->lineno, iterations - 1, slen,
+					    *fr_strerror_peek() != '\0' ? " - " : "",
+					    *fr_strerror_peek() != '\0' ? fr_strerror_peek() : "");
+			if (slen < 0) break;
+
+			/*
+			 *	Encoder indicated it encoded too much data
+			 */
+			if (slen > (enc_end - enc_p)) {
+				fr_strerror_printf("Expected returned encoded length <= %zu bytes, got %zu bytes",
+						   (enc_end - enc_p), (size_t)slen);
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+				if (truncate) ASAN_UNPOISON_MEMORY_REGION(enc_end, (cc->buffer_end) - enc_end);
+#endif
+				fr_pair_list_free(head);
+				CLEAR_TEST_POINT(cc);
+				RETURN_OK_WITH_ERROR();
+			}
+
+			enc_p += slen;
+
+			if (slen == 0) break;
+
+		}
+
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+		/*
+		 *	un-poison the region between the subset of the buffer
+		 *	we're using and the end of the buffer.
+		 */
+		if (truncate) ASAN_UNPOISON_MEMORY_REGION(enc_end, (cc->buffer_end) - enc_end);
+#endif
+		/*
+		 *	We consumed all the VPs, so presumably encoded the
+		 *	complete pair list.
+		 */
+		if (!vp) break;
+	} while (truncate && (enc_end < cc->buffer_end));
+
+	/*
+	 *	Last iteration result in an error
+	 */
+	if (slen < 0) {
+		fr_pair_list_free(head);
+		CLEAR_TEST_POINT(cc);
+		RETURN_OK_WITH_ERROR();
+	}
+
+	/*
+	 *	Clear any spurious errors
+	 */
+	fr_strerror_clear();
+
+	fr_pair_list_free(head);
+
+	CLEAR_TEST_POINT(cc);
+
+	if (fuzzer_text && (cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, fuzzer_text, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
+		RETURN_COMMAND_ERROR();
+	}
+
+	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, cc->buffer_start, enc_p - cc->buffer_start));
+}
+
 static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *cc,
 				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_pair_encode_t	*tp = NULL;
 
-	fr_dcursor_t			cursor;
 	void				*encode_ctx = NULL;
 	fr_slen_t			parse_len;
 	ssize_t				slen;
 	char				*p = in;
 
-	uint8_t				*enc_p, *enc_end;
 	fr_pair_list_t			head;
-	fr_pair_t			*vp;
 	bool				truncate = false;
 
-	size_t				iterations = 0;
 	fr_pair_parse_t			root, relative;
 
 	fr_pair_list_init(&head);
@@ -2198,102 +2355,46 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 	 PAIR_LIST_VERIFY_WITH_CTX(cc->tmp_ctx, &head);
 
-	/*
-	 *	Outer loop implements truncate test
-	 */
-	do {
-		enc_p = cc->buffer_start;
-		enc_end = truncate ? cc->buffer_start + iterations++ : cc->buffer_end;
+	return encode_pair(result, cc, data, tp, encode_ctx, &head, truncate, p);
+}
 
-		if (truncate) {
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-			/*
-			 *	Poison the region between the subset of the buffer
-			 *	we're using and the end of the buffer.
-			 */
-			ASAN_POISON_MEMORY_REGION(enc_end, (cc->buffer_end) - enc_end);
+/** Decode hex data into pairs, and then encode the pairs again
+ *
+ * The test point for the decoder can be given as "de-encode-pair.<symbol>".  The encoder always
+ * uses the default test point of the protocol, as there is only one place to name a test point.
+ */
+static size_t command_de_encode_pair(command_result_t *result, command_file_ctx_t *cc,
+				     char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_test_point_pair_encode_t	*tp = NULL;
+	void				*encode_ctx = NULL;
+	fr_pair_t			*head;
+	char				*p;
 
-			DEBUG("%s[%d]: Iteration %zu - Safe region %p-%p (%zu bytes), "
-			      "poisoned region %p-%p (%zu bytes)", cc->filename, cc->lineno, iterations - 1,
-			      enc_p, enc_end, enc_end - enc_p, enc_end, cc->buffer_end, cc->buffer_end - enc_end);
-#else
-			DEBUG("%s[%d]: Iteration %zu - Allowed region %p-%p (%zu bytes)",
-			      cc->filename, cc->lineno, iterations - 1, enc_p, enc_end, enc_end - enc_p);
-#endif
-		}
-
-		for (vp = fr_pair_dcursor_iter_init(&cursor, &head,
-						    tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
-						    dictionary_current(cc));
-		     vp;
-		     vp = fr_dcursor_current(&cursor)) {
-			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encode_ctx);
-			cc->last_ret = slen;
-
-			if (truncate) DEBUG("%s[%d]: Iteration %zu - Result %zd%s%s",
-					    cc->filename, cc->lineno, iterations - 1, slen,
-					    *fr_strerror_peek() != '\0' ? " - " : "",
-					    *fr_strerror_peek() != '\0' ? fr_strerror_peek() : "");
-			if (slen < 0) break;
-
-			/*
-			 *	Encoder indicated it encoded too much data
-			 */
-			if (slen > (enc_end - enc_p)) {
-				fr_strerror_printf("Expected returned encoded length <= %zu bytes, got %zu bytes",
-						   (enc_end - enc_p), (size_t)slen);
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-				if (truncate) ASAN_UNPOISON_MEMORY_REGION(enc_end, (cc->buffer_end) - enc_end);
-#endif
-				fr_pair_list_free(&head);
-				CLEAR_TEST_POINT(cc);
-				RETURN_OK_WITH_ERROR();
-			}
-
-			enc_p += slen;
-
-			if (slen == 0) break;
-
-		}
-
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-		/*
-		 *	un-poison the region between the subset of the buffer
-		 *	we're using and the end of the buffer.
-		 */
-		if (truncate) ASAN_UNPOISON_MEMORY_REGION(enc_end, (cc->buffer_end) - enc_end);
-#endif
-		/*
-		 *	We consumed all the VPs, so presumably encoded the
-		 *	complete pair list.
-		 */
-		if (!vp) break;
-	} while (truncate && (enc_end < cc->buffer_end));
+	if (decode_pair(result, cc, data, in, inlen, &head, &p) == 0) return 0;
 
 	/*
-	 *	Last iteration result in an error
+	 *	"p" points to the hex data, and not to a test point name, so this always finds the
+	 *	default encoder for the protocol.
 	 */
-	if (slen < 0) {
-		fr_pair_list_free(&head);
+	(void) load_test_point_by_command((void **)&tp, p, "tp_encode_pair");
+	if (!tp) {
+		fr_strerror_const_push("Failed locating encode testpoint");
 		CLEAR_TEST_POINT(cc);
-		RETURN_OK_WITH_ERROR();
-	}
-
-	/*
-	 *	Clear any spurious errors
-	 */
-	fr_strerror_clear();
-
-	fr_pair_list_free(&head);
-
-	CLEAR_TEST_POINT(cc);
-
-	if ((cc->fuzzer_fd >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_fd, p, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
-	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, cc->buffer_start, enc_p - cc->buffer_start));
+	if (tp->test_ctx && (tp->test_ctx(&encode_ctx, cc->tmp_ctx, dictionary_current(cc), NULL) < 0)) {
+		fr_strerror_const_push("Failed initialising encoder testpoint");
+		CLEAR_TEST_POINT(cc);
+		RETURN_COMMAND_ERROR();
+	}
+
+	/*
+	 *	The data which was decoded has already been written to the corpus seed directory, so we
+	 *	do not write it again here.
+	 */
+	return encode_pair(result, cc, data, tp, encode_ctx, &head->vp_group, false, NULL);
 }
 
 /** Encode a RADIUS attribute writing the result to the data buffer as space separated hexits
@@ -3558,6 +3659,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_count,
 					.usage = "count",
 					.description = "Write the number of executed tests to the data buffer.  A test is any command that should return 'ok'"
+				}},
+	{ L("de-encode-pair"),	&(command_entry_t){
+					.func = command_de_encode_pair,
+					.usage = "de-encode-pair[.<testpoint_symbol>] (-|<hex_string>)",
+					.description = "Decode a binary value into attribute value pairs, encode the pairs again, and write the result to the data buffer as hex.  Protocol must be loaded with \"load <protocol>\" first",
 				}},
 	{ L("decode-dns-label "), &(command_entry_t){
 					.func = command_decode_dns_label,
