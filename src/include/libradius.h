@@ -426,6 +426,7 @@ typedef struct radius_packet {
 	bool			message_authenticator;
 	bool			proxy_state;
 	bool			eap_message;
+	bool			filter_proxy_state;	//!< matches the Proxy-State filter
 } RADIUS_PACKET;
 
 typedef enum {

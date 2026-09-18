@@ -1961,11 +1961,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 						 security_config);
 			if (rcode < 0) return -1;
 		}
-
-		if (this->filter_proxy_state) {
-			this->proxy_state_random[0] = fr_rand();
-			this->proxy_state_random[1] = fr_rand();
-		}
 	}
 #endif
 
@@ -2898,7 +2893,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	/*
 	 *	See if we have a matching Proxy-State
 	 */
-	if (listener->filter_proxy_state) {
+	if (1) {
 		bool found = false;
 		uint8_t const *attr, *end;
 
@@ -2928,7 +2923,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 			attr += attr[1];
 		}
 
-		if (!found) {
+		if (!found && listener->filter_proxy_state) {
 			ERROR("Invalid response fails Proxy-State filter for packet code %d sent to a proxy port "
 			      "from home server %s port %d - ID %d : IGNORED",
 			      packet->code,
@@ -2938,6 +2933,8 @@ static int proxy_socket_recv(rad_listen_t *listener)
 			rad_free(&packet);
 			return 0;
 		}
+
+		packet->filter_proxy_state = found;
 	}
 
 	switch (packet->code) {
@@ -3776,6 +3773,11 @@ static int listen_bind(rad_listen_t *this)
 	 */
 	sock->other_ipaddr.af = sock->my_ipaddr.af;
 
+	if (this->type == RAD_LISTEN_PROXY) {
+		this->proxy_state_random[0] = fr_rand();
+		this->proxy_state_random[1] = fr_rand();
+	}
+
 /*
  *	Don't screw up other people.
  */
@@ -3991,6 +3993,9 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 
 	this = listen_alloc(ctx, RAD_LISTEN_PROXY);
 
+	this->proxy_state_random[0] = fr_rand();
+	this->proxy_state_random[1] = fr_rand();
+
 	sock = this->data;
 	sock->other_ipaddr = home->ipaddr;
 	sock->other_port = home->port;
@@ -4004,12 +4009,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	 *	Use the default proxy listener as a template for the others.
 	 */
 	if (proxy_default && (sock->proto == IPPROTO_UDP)) {
-		if (proxy_default->filter_proxy_state) {
-			this->filter_proxy_state = true;
-			this->proxy_state_random[0] = fr_rand();
-			this->proxy_state_random[1] = fr_rand();
-		}
-
+		proxy_default->filter_proxy_state = this->filter_proxy_state;
 		this->cs = proxy_default->cs;
 	}
 
