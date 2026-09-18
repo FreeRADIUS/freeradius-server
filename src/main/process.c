@@ -2721,6 +2721,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	rad_assert(request->proxy != NULL);
 	rad_assert(request->home_server != NULL);
 	rad_assert(proxy_list != NULL);
+	rad_assert(!request->in_proxy_hash);
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	proxy_listener = request->proxy_listener; /* may or may not be NULL */
