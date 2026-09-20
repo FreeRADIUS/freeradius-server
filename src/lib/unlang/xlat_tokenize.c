@@ -166,6 +166,8 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 
 	XLAT_VERIFY(node);
 
+	fr_assert(!tmpl_contains_regex(vpt));
+
 	if (tmpl_is_attr_unresolved(node->vpt)) {
 		return 0;
 	}
@@ -183,27 +185,36 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 		 *	The caller should have omitted duplicate casts.
 		 */
 		fr_assert((tmpl_rules_cast(vpt) == FR_TYPE_NULL) ||
-			  ((tmpl_attr_tail_da(vpt) != NULL) && 
+			  ((tmpl_attr_tail_da(vpt) != NULL) &&
 			   tmpl_attr_tail_da(vpt)->type != tmpl_rules_cast(vpt)));
-			  
-
 		return 0;
 	}
 
-	if (!tmpl_contains_data(vpt)) {
-		/*
-		 *	@todo - if tmpl is xlat, check the return type of the xlat function.
-		 */
-		fr_assert(!tmpl_contains_regex(vpt));
+	/*
+	 *	@todo - In most circumstances, the caller should probably hoist each tmpl _without_ a cast to
+	 *	just an xlat node.  This call avoids the xlat -> tmpl -> xlat bounce.  But we need to be
+	 *	careful about tmpls which are inside of quoted strings, because the output data has to be cast
+	 *	to a string.
+	 */
+	if (tmpl_is_xlat(vpt)) {
+		fr_assert((tmpl_rules_cast(vpt) == FR_TYPE_NULL) ||
+			  (xlat_data_type(tmpl_xlat(vpt)) != tmpl_rules_cast(vpt)));
+		return 0;
+	}
+
+	/*
+	 *	@todo - check what `exec` returns.  Arguably we should convert `exec` to %exec(...)
+	 */
+	if (tmpl_is_exec(vpt)) {
 		return 0;
 	}
 
 	if (tmpl_is_data_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) return -1;
 
 	/*
-	 *	Hoist data to an XLAT_BOX instead of an XLAT_TMPL
+	 *	If we don't have data, then don't do anything with it.
 	 */
-	fr_assert(tmpl_is_data(vpt));
+	if (!tmpl_is_data(vpt)) return 0;
 
 	/*
 	 *	The caller should have cast the data to the correct data type.
@@ -2255,7 +2266,7 @@ fr_type_t xlat_data_type(xlat_exp_head_t const *head)
 	xlat_exp_t *node;
 
 	node = xlat_exp_head(head);
-	fr_assert(node);
+	if (!fr_cond_assert(node)) return FR_TYPE_NULL;
 
 	if (xlat_exp_next(head, node)) return FR_TYPE_NULL;
 
