@@ -2227,9 +2227,9 @@ static xlat_arg_parser_t const xlat_func_cast_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    UNUSED xlat_ctx_t const *xctx,
-				    request_t *request, fr_value_box_list_t *args)
+xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			     UNUSED xlat_ctx_t const *xctx,
+			     request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t	*name;
 	fr_value_box_t	*arg;

@@ -2310,7 +2310,19 @@ fr_type_t xlat_data_type(xlat_exp_head_t const *head)
 	if (node->quote != T_BARE_WORD) return FR_TYPE_STRING;
 
 	if (node->type == XLAT_FUNC) {
-		return node->call.func->return_type;
+		if (node->call.func->func != xlat_func_cast) {
+			return node->call.func->return_type;
+		}
+
+		/*
+		 *	"cast" is special.  It nominally returns VOID, but only because the first argument is
+		 *	the actual type.
+		 */
+		node = xlat_exp_head(node->call.args);
+		fr_assert(node != NULL);
+		fr_assert(node->type == XLAT_BOX);
+		fr_assert(node->data.type == FR_TYPE_UINT8);
+		return node->data.vb_uint8;
 	}
 
 	if (node->type == XLAT_TMPL) {

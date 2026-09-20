@@ -348,6 +348,11 @@ extern xlat_arg_parser_t const xlat_func_file_name_args[];
 
 bool		xlat_file_allowed(request_t *request, fr_value_box_t const *vb, int oflag) CC_HINT(nonnull);
 
+/* for xlat_data_type */
+xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			     UNUSED xlat_ctx_t const *xctx,
+			     request_t *request, fr_value_box_list_t *args);
+
 /*
  *	xlat_expr.c
  */
