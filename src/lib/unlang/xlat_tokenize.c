@@ -2294,19 +2294,10 @@ bool xlat_impure_func(xlat_exp_head_t const *head)
 }
 
 /*
- *	Try to determine the output data type of an expansion.
- *
- *	This is only a best guess for now.
+ *	Return output data type of an expansionm node.
  */
-fr_type_t xlat_data_type(xlat_exp_head_t const *head)
+fr_type_t xlat_node_data_type(xlat_exp_t const *node)
 {
-	xlat_exp_t *node;
-
-	node = xlat_exp_head(head);
-	if (!fr_cond_assert(node)) return FR_TYPE_NULL;
-
-	if (xlat_exp_next(head, node)) return FR_TYPE_NULL;
-
 	if (node->quote != T_BARE_WORD) return FR_TYPE_STRING;
 
 	if (node->type == XLAT_FUNC) {
@@ -2320,6 +2311,9 @@ fr_type_t xlat_data_type(xlat_exp_head_t const *head)
 		 */
 		node = xlat_exp_head(node->call.args);
 		fr_assert(node != NULL);
+		fr_assert(node->type == XLAT_GROUP);
+		node = xlat_exp_head(node->group);
+		fr_assert(node != NULL);
 		fr_assert(node->type == XLAT_BOX);
 		fr_assert(node->data.type == FR_TYPE_UINT8);
 		return node->data.vb_uint8;
@@ -2330,4 +2324,23 @@ fr_type_t xlat_data_type(xlat_exp_head_t const *head)
 	}
 
 	return FR_TYPE_NULL;
+}
+
+/*
+ *	Return output data type of an expansion list.
+ */
+fr_type_t xlat_data_type(xlat_exp_head_t const *head)
+{
+	xlat_exp_t const *node;
+
+	node = xlat_exp_head(head);
+	if (!fr_cond_assert(node)) return FR_TYPE_NULL;
+
+	/*
+	 *	There are multiple things in this expansion.  We don't want to return only the data type of
+	 *	the first one.
+	 */
+	if (xlat_exp_next(head, node)) return FR_TYPE_NULL;
+
+	return xlat_node_data_type(node);
 }

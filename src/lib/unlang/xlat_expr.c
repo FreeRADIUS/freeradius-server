@@ -2973,13 +2973,13 @@ redo:
 			break;
 
 		default:
-			/*
-			 *	@todo - a function LHS has the same problem as the hoisted group above, and
-			 *	needs the same cast.  Note that a double-quoted xlat string hoists to a _list_
-			 *	of xlats, and we expect the LHS here to be one node.
-			 */
+			type = xlat_node_data_type(lhs);
+			if ((type != FR_TYPE_NULL) && (type != FR_TYPE_STRING)) {
+				fr_strerror_const("Function (or cast) needs to return data type 'string' in order to be used with regular expressions");
+				fr_sbuff_set(&our_in, &m_lhs);
+				FR_SBUFF_ERROR_RETURN(&our_in);
+			}
 			break;
-
 		}
 
 		slen = tokenize_regex_rhs(head, &rhs, &our_in, t_rules, bracket_rules);

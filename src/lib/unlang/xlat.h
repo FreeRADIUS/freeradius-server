@@ -436,6 +436,8 @@ tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *xlat);
 
 bool		xlat_impure_func(xlat_exp_head_t const *head) CC_HINT(nonnull);
 
+fr_type_t	xlat_node_data_type(xlat_exp_t const *node) CC_HINT(nonnull);
+
 fr_type_t	xlat_data_type(xlat_exp_head_t const *head);
 
 /*
