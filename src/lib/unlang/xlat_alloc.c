@@ -76,7 +76,9 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 		break;
 
 	case XLAT_TMPL:
-		if (node->vpt && (node->fmt == node->vpt->name)) (void) talloc_steal(node, node->fmt);
+		if (!node->vpt) break;
+
+		if (node->fmt == node->vpt->name) (void) talloc_steal(node, node->fmt);
 
 		/*
 		 *	Converting a tmpl to a box.  If the tmpl is data, we can then just steal the contents
@@ -85,12 +87,13 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 		if (type == XLAT_BOX) {
 			tmpl_t *vpt = node->vpt;
 
-			if (!vpt) break;
-
 			fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
 
+			/*
+			 *	Why is someone converting an XLAT_TMPL to an XLAT_BOX, when the content isn't data?
+			 */
 			if (!tmpl_is_data(vpt)) {
-				talloc_free(vpt);
+				TALLOC_FREE(node->vpt);
 				break;
 			}
 
@@ -104,6 +107,29 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 			goto done;
 		}
 
+		/*
+		 *	Converting a tmpl to a group.  If the tmpl contains an xlat, we hoist that xlat out
+		 *	of the tmpl, instead of throwing it away and then allocating an empty group.
+		 */
+		if ((type == XLAT_GROUP) && tmpl_is_xlat(node->vpt)) {
+			tmpl_t		*vpt = node->vpt;
+			xlat_exp_head_t	*group;
+
+			/*
+			 *	"group" and "vpt" share a union, so we have to be done with the tmpl before
+			 *	we set the group.
+			 */
+			group = talloc_steal(node, tmpl_xlat(vpt));
+			talloc_free(vpt);
+
+			node->group = group;
+			node->flags = group->flags;
+			goto done;
+		}
+
+		/*
+		 *	Why is someone converting an XLAT_TMPL to ???
+		 */
 		TALLOC_FREE(node->vpt);
 		break;
 

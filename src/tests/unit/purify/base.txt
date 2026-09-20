@@ -220,7 +220,7 @@ match "3"
 #  This is a different code path than the above.
 #
 xlat_purify (string)%{1 + 2}
-match (string)3
+match "3"
 
 xlat_purify "hello"
 match "hello"

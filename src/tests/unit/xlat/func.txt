@@ -33,7 +33,7 @@ xlat %hex((uint32) 'echo hi')
 match ERROR: ERROR offset 14: Failed parsing string as type 'uint32'
 
 xlat %hex((uint32)%hex(1))
-match %hex((uint32)%hex(0x01))
+match %hex(%cast(uint32, %hex(0x01)))
 
 xlat %hex((uint32)"a%{User-Name}b")
 match %hex(%cast(uint32, "a%{User-Name}b"))

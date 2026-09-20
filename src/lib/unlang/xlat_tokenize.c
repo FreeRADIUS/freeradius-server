@@ -1562,10 +1562,6 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 	}
 
 	switch (quote) {
-		/*
-		 *	`foo` is a tmpl, and is NOT a group.
-		 */
-	case T_BACK_QUOTED_STRING:
 	case T_BARE_WORD:
 		MEM(node = xlat_exp_alloc(ctx, XLAT_TMPL, NULL, 0));
 		node->quote = quote;
@@ -1588,9 +1584,50 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 
 		if (xlat_tmpl_normalize(node) < 0) goto error;
 
-		if (quote == T_BARE_WORD) goto done;
+		/*
+		 *	A bare word which turns out to be an xlat does not need a tmpl to wrap it.
+		 *	Hoist the xlat out of the tmpl, which avoids an xlat -> tmpl -> xlat bounce at
+		 *	run time.
+		 *
+		 *	If there's a cast, it has to stay on the tmpl.  The case applies to the result of the
+		 *	expansion, and not to any one node inside of it.  Quoted strings are other cases in
+		 *	this switch, and never get here.
+		 */
+		if ((node->type == XLAT_TMPL) && tmpl_is_xlat(node->vpt) && (tmpl_rules_cast(node->vpt) == FR_TYPE_NULL)) {
+			xlat_exp_set_type(node, XLAT_GROUP);
 
-		break;		/* exec - look for closing quote */
+			/*
+			 *	The group is one expansion, and not a value in its own right.  Pass the
+			 *	children's boxes straight out, instead of wrapping them in a group box.
+			 */
+			node->hoist = true;
+		}
+
+		goto done;
+
+		/*
+		 *	`foo` is a tmpl, and is NOT a group.
+		 */
+	case T_BACK_QUOTED_STRING:
+		MEM(node = xlat_exp_alloc(ctx, XLAT_TMPL, NULL, 0));
+		node->quote = quote;
+
+		/*
+		 *	tmpl_afrom_substr does pretty much all the work of
+		 *	parsing the operand.  It pays attention to the cast on
+		 *	our_t_rules, and will try to parse any data there as
+		 *	of the correct type.
+		 */
+		slen = tmpl_afrom_substr(node, &node->vpt, &our_in, quote, p_rules, t_rules);
+		if (slen <= 0) {
+			fr_sbuff_advance(&our_in, -slen - 1); /* point to the correct offset */
+			goto error;
+		}
+		xlat_exp_set_vpt(node, node->vpt); /* sets flags */
+
+		if (xlat_tmpl_normalize(node) < 0) goto error;
+
+		break;		/* look for closing quote */
 
 		/*
 		 *	"Double quoted strings may contain %{expansions}"

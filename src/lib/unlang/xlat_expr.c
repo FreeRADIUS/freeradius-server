@@ -2963,17 +2963,20 @@ redo:
 			}
 			break;
 
+		case XLAT_GROUP:
+			/*
+			 *	A hoisted xlat has no tmpl to hang a cast on, so wrap it in an explicit cast
+			 *	to a string.  Without this, %hash.md5(...) =~ /foo/ would match the regex
+			 *	against octets rather than against a string.
+			 */
+			MEM(lhs = expr_cast_alloc(head, FR_TYPE_STRING, lhs));
+			break;
+
 		default:
 			/*
-			 *	@todo - if we hoist the LHS to a function instead of an xlat->tmpl->xlat, then
-			 *	we can't cast the LHS to a string.  OR, we have to manually add a lHS cast to
-			 *	a string.  Maybe we need to delay the LHS hoisting until such time as we know
-			 *	it's safe.
-			 *
-			 *	Also, hoisting a double-quoted xlat string to a _list_ of xlats is hard,
-			 *	because we expect the LHS here to be one node.  So perhaps the hoisting has to
-			 *	be from an XLAT_TMPL to an XLAT_GROUP, which is still perhaps a bit of an
-			 *	improvement.
+			 *	@todo - a function LHS has the same problem as the hoisted group above, and
+			 *	needs the same cast.  Note that a double-quoted xlat string hoists to a _list_
+			 *	of xlats, and we expect the LHS here to be one node.
 			 */
 			break;
 
