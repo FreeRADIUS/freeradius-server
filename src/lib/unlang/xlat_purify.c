@@ -268,7 +268,10 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			 */
 
 			(void) unlang_interpret_synchronous(NULL, request);
-			if (!XLAT_RESULT_SUCCESS(&result)) return -1;
+			if (!XLAT_RESULT_SUCCESS(&result)) {
+				fr_strerror_const_push_head("Failed purifying expansion");
+				return -1;
+			}
 
 			/*
 			 *	The function call becomes a GROUP of boxes

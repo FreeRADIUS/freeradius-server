@@ -37,7 +37,7 @@ match ERROR: ERROR offset 3: Unexpected text after return code
 #  to the unit tests
 #
 xlat_purify (Service-Type == 000-111)
-match ERROR: ERROR purifying node - 
+match ERROR: ERROR purifying node - Failed purifying expansion
 
 #
 #  @todo - this should really be hoisted
@@ -434,7 +434,7 @@ match ("foo" == User-Name)
 #  ERROR: Failed casting 0x002ade8665c69219ca16bd108d92c8d5 to data type uint32: Invalid cast from octets to uint32.  Source length 16 is greater than destination type size 4
 #
 xlat_purify_cond (integer)"%hash.md4(' 1 + 1')" < NAS-Port
-match ERROR: ERROR purifying node - 
+match ERROR: ERROR purifying node - Failed purifying expansion
 
 #
 #  The string gets parsed as an IP address.

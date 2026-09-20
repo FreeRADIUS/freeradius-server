@@ -1,0 +1,15 @@
+#
+#  This file tests the new parser for the xlat functions.
+#
+proto-dictionary radius
+
+migrate xlat_new_functions = yes
+
+xlat_purify %hex((uint32)%)
+match ERROR: ERROR purifying node - Failed purifying expansion
+
+xlat_purify %hex((date)%
+match ERROR: ERROR offset 12: Missing ')' after argument 1
+
+count
+match 6
