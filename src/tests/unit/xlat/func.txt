@@ -17,5 +17,26 @@ match %str.split("a,b,c,d", ',')
 #xlat %hash.md5(foo)
 #match foo
 
+xlat %hex((date)%
+match ERROR: ERROR offset 12: Missing ')' after argument 1
+
+xlat %hex((uint32)%{User-Name})
+match %hex((uint32)%{User-Name})
+
+xlat %hex((uint32)&User-Name)
+match %hex((uint32)User-Name)
+
+xlat %hex((uint32)echo hi)
+match ERROR: ERROR offset 13: Attribute 'echo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+
+xlat %hex((uint32) 'echo hi')
+match ERROR: ERROR offset 14: Failed parsing string as type 'uint32'
+
+xlat %hex((uint32)%hex(1))
+match %hex((uint32)%hex(0x01))
+
+xlat %hex((uint32)"a%{User-Name}b")
+match %hex(%cast(uint32, "a%{User-Name}b"))
+
 count
-match 6
+match 20

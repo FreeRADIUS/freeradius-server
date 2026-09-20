@@ -166,11 +166,6 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 
 	XLAT_VERIFY(node);
 
-	/*
-	 *	Any casting, etc. has to be taken care of in the xlat expression parser, and not here.
-	 */
-	fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
-
 	if (tmpl_is_attr_unresolved(node->vpt)) {
 		return 0;
 	}
@@ -184,10 +179,21 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 			return -1;
 		}
 
+		/*
+		 *	The caller should have omitted duplicate casts.
+		 */
+		fr_assert((tmpl_rules_cast(vpt) == FR_TYPE_NULL) ||
+			  ((tmpl_attr_tail_da(vpt) != NULL) && 
+			   tmpl_attr_tail_da(vpt)->type != tmpl_rules_cast(vpt)));
+			  
+
 		return 0;
 	}
 
 	if (!tmpl_contains_data(vpt)) {
+		/*
+		 *	@todo - if tmpl is xlat, check the return type of the xlat function.
+		 */
 		fr_assert(!tmpl_contains_regex(vpt));
 		return 0;
 	}
@@ -198,6 +204,11 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 	 *	Hoist data to an XLAT_BOX instead of an XLAT_TMPL
 	 */
 	fr_assert(tmpl_is_data(vpt));
+
+	/*
+	 *	The caller should have cast the data to the correct data type.
+	 */
+	fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
 
 	/*
 	 *	Print "true" and "false" instead of "yes" and "no".
