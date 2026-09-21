@@ -3297,7 +3297,6 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 	 *	we should fix later.
 	 */
 	if (!request->proxy_reply) {
-		decode_fail_t reason;
 		bool require_ma;
 
 		if (!request->home_server) {
@@ -3318,11 +3317,10 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 			      ((request->proxy->code == PW_CODE_ACCESS_REQUEST) ||
 			       (request->proxy->code == PW_CODE_STATUS_SERVER)));
 		if (require_ma && !packet->message_authenticator) {
-			if (!rad_packet_ok(packet, require_ma, &reason)) {
-				FR_PROXY_STATS_INC(listener, request->home_server, total_malformed_requests, 0);
-				DEBUG("Ignoring invalid packet - %s", fr_strerror());
-				return 0;
-			}
+			FR_PROXY_STATS_INC(listener, request->home_server, total_bad_authenticators, 0);
+			RATE_LIMIT(ERROR("Ignoring %s packet due to 'require_message_authenticator = true' - response packet is missing Message-Authenticator",
+					   fr_packet_codes[packet->code]));
+			return 0;
 		}
 
 		if (rad_verify(packet, request->proxy,

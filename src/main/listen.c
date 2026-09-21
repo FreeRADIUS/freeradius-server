@@ -2879,13 +2879,12 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	char		buffer[128];
 
 	/*
-	 *	If all home servers have `require_message_authenticator = yes`, or it's set globally, then set
-	 *	the flag here.  This allows us to discard invalid packets before we do much additional work.
+	 *	We don't drop packets here due to `require_message_authenticator`.
+	 *
+	 *	While doing that would be useful for DoS issues, it also means that the server can't complain
+	 *	about missing Message-Authenticator.
 	 */
-	flags = main_config.home_servers_require_ma;
-	flags <<= 3;
-
-	packet = rad_recv(NULL, listener->fd, flags);
+	packet = rad_recv(NULL, listener->fd, 0);
 	if (!packet) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;
