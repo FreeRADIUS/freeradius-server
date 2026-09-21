@@ -659,8 +659,6 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		SSL_CTX_set_mode(ctx, mode);
 		goto post_ca;
 	}
-#else
-	(void) client;	/* -Wunused */
 #endif
 
 	/*
@@ -671,7 +669,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *
 	 *	It's better just to have users specify the complete
 	 *	chains.
-		 */
+	 */
 	mode |= SSL_MODE_NO_AUTO_CHAIN;
 
 	if (client) {
@@ -716,11 +714,14 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 *	These set the default parameters of the store when the
 		 *      store is involved in building chains.
 		 *
-		 *	- X509_PURPOSE_SSL_CLIENT ensure the purpose of the
-		 *	  client certificate is for peer authentication as
-		 *	  a client.
+		 *	The store validates the peer's certificate, so
+		 *	the certificate purpose is the _peer's_
+		 *	certificate purpose, which the opposite of us.
+		 *
+		 *	If we're a server, then we check that the peer is a client.
+		 *	If we're a client, then we check the peer is a server.
 		 */
-		X509_STORE_set_purpose(verify_store, X509_PURPOSE_SSL_CLIENT);
+		X509_STORE_set_purpose(verify_store, client ? X509_PURPOSE_SSL_SERVER : X509_PURPOSE_SSL_CLIENT);
 
 		/*
 		 *	Sets the list of CAs we send to the peer if we're
