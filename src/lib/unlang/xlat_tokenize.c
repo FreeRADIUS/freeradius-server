@@ -191,12 +191,9 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 	}
 
 	/*
-	 *	@todo - In most circumstances, the caller should probably hoist each tmpl _without_ a cast to
-	 *	just an xlat node.  This call avoids the xlat -> tmpl -> xlat bounce.  But we need to be
-	 *	careful about tmpls which are inside of quoted strings, because the output data has to be cast
-	 *	to a string.
+	 *	Most callers should hoist xlat -> tmpl -> xlat to just an xlat.
 	 */
-	if (tmpl_is_xlat(vpt)) {
+	if (tmpl_contains_xlat(vpt)) {
 		fr_assert((tmpl_rules_cast(vpt) == FR_TYPE_NULL) ||
 			  (xlat_data_type(tmpl_xlat(vpt)) != tmpl_rules_cast(vpt)));
 		return 0;
