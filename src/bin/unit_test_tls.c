@@ -62,6 +62,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/thread.h>
 
 #include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/tls/version.h>
 
 #include <freeradius-devel/unlang/base.h>
@@ -101,17 +102,18 @@ fr_dict_autoload_t unit_test_tls_dict[] = {
  * fr_tls_conf_parse_server() understands.
  */
 typedef struct {
-	fr_ipaddr_t	ipaddr;				//!< Address of the listening socket.
-	uint16_t	port;				//!< Port of the listening socket.
+	fr_ipaddr_t	ipaddr;				//!< Address of the listening socket.  Server mode only.
+	uint16_t	port;				//!< Port of the listening socket, and the default
+							///< port for -s.
 	bool		require_client_certificate;	//!< Whether the client has to present a certificate.
 } unit_test_tls_conf_t;
 
 static const conf_parser_t unit_test_tls_config[] = {
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, CONF_FLAG_REQUIRED, unit_test_tls_conf_t, ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, unit_test_tls_conf_t, ipaddr) },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, unit_test_tls_conf_t, ipaddr) },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, unit_test_tls_conf_t, ipaddr) },
 
-	{ FR_CONF_OFFSET_FLAGS("port", CONF_FLAG_REQUIRED, unit_test_tls_conf_t, port) },
+	{ FR_CONF_OFFSET("port", unit_test_tls_conf_t, port) },
 
 	{ FR_CONF_OFFSET("require_client_certificate", unit_test_tls_conf_t, require_client_certificate),
 	  .dflt = "no" },
@@ -138,8 +140,12 @@ typedef struct {
 	fr_tls_session_t	*tls_session;		//!< State of the handshake.
 	request_t		*request;		//!< Request the handshake runs under.
 
+	bool			client;			//!< Connect out, rather than accept in.
+	fr_ipaddr_t		server_ipaddr;		//!< Server named by -s.
+	uint16_t		server_port;		//!< Port from -s, or from the configuration.
+
 	int			sockfd;			//!< Listening socket.
-	int			fd;			//!< Accepted connection.
+	int			fd;			//!< Accepted or connected socket.
 	fr_event_fd_t		*ef;			//!< Read event for fd.
 
 	bool			pending;		//!< A record is waiting to be fed to OpenSSL.
@@ -481,6 +487,16 @@ static int tls_socket_open(unit_test_tls_t *utt)
 	fr_ipaddr_t	ipaddr = utt->conf.ipaddr;
 	uint16_t	port = utt->conf.port;
 
+	/*
+	 *	The items are not marked as required, because a client has no
+	 *	listening socket, and so needs neither of them.
+	 */
+	if ((ipaddr.af == AF_UNSPEC) || !port) {
+		ERROR("Both 'ipaddr' and 'port' must be set in the 'unit_test_tls' section "
+		      "when listening for a connection");
+		return -1;
+	}
+
 	sockfd = fr_socket_server_tcp(&ipaddr, &port, NULL, false);
 	if (sockfd < 0) {
 		PERROR("Failed opening TCP socket");
@@ -502,6 +518,82 @@ static int tls_socket_open(unit_test_tls_t *utt)
 	INFO("Listening on %pV port %u", fr_box_ipaddr(ipaddr), port);
 
 	utt->sockfd = sockfd;
+
+	return 0;
+}
+
+/** Connect to the server named by -s
+ *
+ */
+static int tls_socket_connect(unit_test_tls_t *utt)
+{
+	int	fd;
+	char	buffer[FR_IPADDR_STRLEN];
+
+	fr_inet_ntop(buffer, sizeof(buffer), &utt->server_ipaddr);
+
+	fd = fr_socket_client_tcp(NULL, NULL, &utt->server_ipaddr, utt->server_port, false);
+	if (fd < 0) {
+		PERROR("Failed connecting to %s port %u", buffer, utt->server_port);
+		return -1;
+	}
+
+	INFO("Connected to %s port %u", buffer, utt->server_port);
+
+	utt->fd = fd;
+
+	return 0;
+}
+
+/** Run the handshake as the client
+ *
+ * The client side does not use the anchor frame and the record pump which
+ * drive the server side, because fr_tls_session_alloc_client() builds a
+ * different kind of session.  It creates no memory BIOs and no record
+ * callbacks, so fr_tls_session_async_handshake_push() cannot drive it.  The
+ * one other caller, src/lib/redis/io.c:173, hands the raw SSL * to hiredis
+ * and lets hiredis own the socket, which is the same shape as this.
+ *
+ * Nothing is lost by the difference.  fr_tls_client_config has no
+ * "virtual_server" item and no session cache, so a client has no policy
+ * sections to run, and fr_tls_session_alloc_client() deliberately passes a
+ * NULL verify callback so that OpenSSL does the validating.
+ */
+static int tls_client_handshake(unit_test_tls_t *utt)
+{
+	SSL *ssl;
+
+	utt->tls_session = fr_tls_session_alloc_client(utt, utt->ssl_ctx);
+	if (!utt->tls_session) {
+		PERROR("Failed creating the TLS session");
+		return -1;
+	}
+
+	ssl = utt->tls_session->ssl;
+
+	/*
+	 *	fr_tls_ctx_alloc() asks for SSL_MODE_ASYNC, because the server
+	 *	drives its handshakes from the event loop.  This handshake is
+	 *	synchronous, so the mode is cleared.
+	 */
+	SSL_clear_mode(ssl, SSL_MODE_ASYNC);
+
+	if (SSL_set_fd(ssl, utt->fd) != 1) {
+		fr_tls_strerror_printf(NULL);
+		PERROR("Failed giving the connection to the TLS session");
+		return -1;
+	}
+
+	if (SSL_connect(ssl) != 1) {
+		fr_tls_strerror_printf(NULL);
+		PERROR("TLS handshake failed");
+		return -1;
+	}
+
+	INFO("TLS handshake completed");
+	INFO("  version    : %s", SSL_get_version(ssl));
+	INFO("  cipher     : %s", SSL_get_cipher(ssl));
+	INFO("  resumed    : %s", SSL_session_reused(ssl) ? "yes" : "no");
 
 	return 0;
 }
@@ -626,6 +718,7 @@ int main(int argc, char *argv[])
 	int			ret = EXIT_SUCCESS;
 	int			c;
 	char const		*receipt_file = NULL;
+	char const		*server = NULL;
 
 	TALLOC_CTX		*autofree;
 	TALLOC_CTX		*thread_ctx;
@@ -689,7 +782,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Cd:D:hMn:r:xX")) != -1) {
+	while ((c = getopt(argc, argv, "Cd:D:hMn:r:s:xX")) != -1) {
 		switch (c) {
 			case 'C':
 				check_config = true;
@@ -717,6 +810,10 @@ int main(int argc, char *argv[])
 
 			case 'r':
 				receipt_file = optarg;
+				break;
+
+			case 's':
+				server = optarg;
 				break;
 
 			case 'X':
@@ -853,6 +950,31 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	-s turns the program around: instead of listening for a
+	 *	connection, it makes one.
+	 */
+	if (server) {
+		utt->client = true;
+
+		if (fr_inet_pton_port(&utt->server_ipaddr, &utt->server_port, server,
+				      -1, AF_UNSPEC, true, false) < 0) {
+			PERROR("Invalid value \"%s\" for -s", server);
+			EXIT_WITH_FAILURE;
+		}
+
+		/*
+		 *	fr_inet_pton_port() clears the port before it starts,
+		 *	so a missing port is zero here, and not the default.
+		 */
+		if (!utt->server_port) utt->server_port = utt->conf.port;
+
+		if (!utt->server_port) {
+			ERROR("No port given in -s, and no 'port' in the 'unit_test_tls' section");
+			EXIT_WITH_FAILURE;
+		}
+	}
+
+	/*
 	 *	Bootstrap and instantiate the virtual servers and the modules
 	 *	the virtual servers use.  The "tls" section names a virtual
 	 *	server, so server_init() has to run before that section is
@@ -881,19 +1003,39 @@ int main(int argc, char *argv[])
 	 *	item in the section is resolved by virtual_server_cf_parse(),
 	 *	which needs the virtual servers to exist already.
 	 */
-	tls_cs = cf_section_find(config->root_cs, "tls", NULL);
-	if (!tls_cs) {
-		ERROR("Cannot find a top-level 'tls { ... }' section in %s.conf", config->name);
-		EXIT_WITH_FAILURE;
+	if (utt->client) {
+		tls_cs = cf_section_find(config->root_cs, "tls", "client");
+		if (!tls_cs) {
+			ERROR("Cannot find a top-level 'tls client { ... }' section in %s.conf",
+			      config->name);
+			EXIT_WITH_FAILURE;
+		}
+
+		utt->tls_conf = fr_tls_conf_parse_client(tls_cs);
+	} else {
+		/*
+		 *	Prefer 'tls server', so that one file can hold the
+		 *	configuration for both roles.  Fall back to a plain
+		 *	'tls' section, which is what a file with only a
+		 *	server in it will have.
+		 */
+		tls_cs = cf_section_find(config->root_cs, "tls", "server");
+		if (!tls_cs) tls_cs = cf_section_find(config->root_cs, "tls", NULL);
+		if (!tls_cs) {
+			ERROR("Cannot find a top-level 'tls server { ... }' or 'tls { ... }' section in %s.conf",
+			      config->name);
+			EXIT_WITH_FAILURE;
+		}
+
+		utt->tls_conf = fr_tls_conf_parse_server(tls_cs);
 	}
 
-	utt->tls_conf = fr_tls_conf_parse_server(tls_cs);
 	if (!utt->tls_conf) {
-		cf_log_perr(tls_cs, "Failed parsing the 'tls' section");
+		cf_log_perr(tls_cs, "Failed parsing the TLS configuration");
 		EXIT_WITH_FAILURE;
 	}
 
-	utt->ssl_ctx = fr_tls_ctx_alloc(utt->tls_conf, false);
+	utt->ssl_ctx = fr_tls_ctx_alloc(utt->tls_conf, utt->client);
 	if (!utt->ssl_ctx) {
 		cf_log_perr(tls_cs, "Failed creating the TLS context");
 		EXIT_WITH_FAILURE;
@@ -904,6 +1046,18 @@ int main(int argc, char *argv[])
 	 */
 	if (check_config) {
 		DEBUG("Configuration appears to be OK");
+		goto cleanup;
+	}
+
+	/*
+	 *	A client connects, shakes hands, and is done.  None of the
+	 *	machinery below is needed, see tls_client_handshake().
+	 */
+	if (utt->client) {
+		if (tls_socket_connect(utt) < 0) EXIT_WITH_FAILURE;
+
+		if (tls_client_handshake(utt) < 0) EXIT_WITH_FAILURE;
+
 		goto cleanup;
 	}
 
@@ -1150,6 +1304,9 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "  -M                 Enable talloc leak reporting.\n");
 	fprintf(output, "  -n <name>          Read ${confdir}/name.conf instead of ${confdir}/unit_test_tls.conf.\n");
 	fprintf(output, "  -r <receipt_file>  Create <receipt_file> when the program exits successfully.\n");
+	fprintf(output, "  -s <server[:port]> Connect to <server> as a TLS client, instead of listening\n");
+	fprintf(output, "                     for a connection.  Reads the 'tls client' section.  The port\n");
+	fprintf(output, "                     defaults to 'port' from the 'unit_test_tls' section.\n");
 	fprintf(output, "  -X                 Turn on full debugging.\n");
 	fprintf(output, "  -x                 Turn on additional debugging. (-xx gives more debugging).\n");
 
