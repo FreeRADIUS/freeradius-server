@@ -4,10 +4,10 @@
 #  container.
 #
 #  Sampling starts switched off.  The server.start trigger begins sampling
-#  once the worker threads are running, and the server.stop trigger ends it
-#  before the worker threads are torn down, so startup and shutdown stay out
-#  of the profile.  The script passes both triggers as -S overrides, so the
-#  shared radiusd.conf is the same in service mode and in profiling mode.
+#  once the server is running, and the server.stop trigger ends it before
+#  the server shuts down, so startup and shutdown stay out of the profile.
+#  The script passes both triggers as -S overrides, so the shared
+#  radiusd.conf is the same in service mode and in profiling mode.
 #
 #  The load generator ends the run.  The test configuration sets
 #  on_complete = exit on the load listener.  Once the load generator has
@@ -52,13 +52,22 @@ echo ""
 #  server.stop trigger stops the profiler, which flushes the file, before
 #  the process exits.
 #
+#  The -S overrides below replace the trigger values from radiusd.conf
+#  so a suite that also needs server.start or server.stop, puts its own
+#  expansion in TRIGGER_SERVER_START_APPEND and TRIGGER_SERVER_STOP_APPEND and
+#  this script appends those values to the triggers.  dynamic-clients relies on
+#  this for its server-start event.
+#
 echo "INFO: starting freeradius under gperftools at $(date)"
 STATUS=0
+#  -s must be used instead of -f with gperftools because gperftools only
+#  samples the main thread.  FreeRADIUS request processing functions
+#  must run on the main thread for proper profiling.
 CPUPROFILE_FREQUENCY=1000 \
-freeradius -f -l stdout \
+freeradius -s -l stdout \
   -S resources.talloc_skip_cleanup=yes \
-  -S "trigger.server.start=%gperftools.start('$PROFILE')" \
-  -S 'trigger.server.stop=%gperftools.stop()' \
+  -S "trigger.server.start=%gperftools.start('$PROFILE')${TRIGGER_SERVER_START_APPEND:-}" \
+  -S "trigger.server.stop=%gperftools.stop()${TRIGGER_SERVER_STOP_APPEND:-}" \
   > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || STATUS=$?
 
 #
