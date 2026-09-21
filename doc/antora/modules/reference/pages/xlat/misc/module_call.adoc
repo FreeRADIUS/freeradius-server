@@ -2,9 +2,16 @@
 
 Call a named virtual module.
 
-If you have a virtual module, then you can call it based on a
-dynamically expanded string.  See `mods-available/home_server_pool`
-for a worked example.
+A "virtual module" is a configuration block of one of the following types, defined in the `+modules {...}+` section of the configuration:
+
+- `group`
+- `redundant`
+- `redundant-load-balance`
+- `load-balance`
+
+The name of the virtual module is the section's second name, for example `+load-balance sqlpool {...}+` would be named `sqlpool`.
+
+If a virtual module has been defined then it can be called based on a dynamically expanded string. See `mods-available/home_server_pool` for a worked example.
 
 .The virtual module in mods-enabled/pool1
 ====
@@ -38,9 +45,7 @@ if (User-Name =~ /@example.com$) {
 }
 ----
 
-The argument to the function is a string, which can be taken from
-anywhere.  e.g. an SQL query, LDAP query, or created dynamically by
-concatenating string values.
+The argument to the function is a string, which can be taken from anywhere, e.g. an SQL query, LDAP query, or created dynamically by concatenating string values.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
