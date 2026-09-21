@@ -343,11 +343,14 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 
 	/*
 	 *	Enforce that the protocol process configuration is in
-	 *	a subsection named for the protocol.
+	 *	a subsection named for the protocol.  We don't know if
+	 *	the process code needs this, so we just mark it as
+	 *	parsed, in order to avoid spurious complaints.
 	 */
 	process_cs = cf_section_find(server_cs, namespace, NULL);
 	if (!process_cs) {
-		process_cs = cf_section_alloc(server_cs, server_cs, namespace, NULL);
+		MEM(process_cs = cf_section_alloc(server_cs, server_cs, namespace, NULL));
+		cf_item_mark_parsed(process_cs);
 	}
 
 	if (module_instance_conf_parse(mi, process_cs) < 0) {
