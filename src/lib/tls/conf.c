@@ -488,10 +488,6 @@ static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
 			return NULL;
 		}
 
-#ifdef X509_V_FLAG_CRL_CHECK_ALL
-	if (conf->verify.check_crl) X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-#endif
-
 	return store;
 }
 #endif
