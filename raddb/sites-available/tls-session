@@ -57,6 +57,12 @@ server tls-session {
 ##		}
 
 		#
+		#  The `crl` module can be used to perform CRL checks.
+		#  See `mods-available/crl` for details.
+		#
+##		crl
+
+		#
 		#  This is a convenient place to call LDAP, for example, when using
 		#  EAP-TLS, as it will only be called once, after all certificates
 		#  as part of the EAP-TLS challenge process have been verified.
