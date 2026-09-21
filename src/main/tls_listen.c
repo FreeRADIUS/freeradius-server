@@ -744,7 +744,7 @@ read_application_data:
 #endif
 	packet->tls = true;
 
-	if (!rad_packet_ok(packet, 0, NULL)) {
+	if (!rad_packet_ok(packet, RAD_RECV_FLAG_NONE, NULL)) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		DEBUG("(TLS) Closing TLS socket from client");
 		return -1;

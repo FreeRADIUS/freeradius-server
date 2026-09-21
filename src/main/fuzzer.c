@@ -155,7 +155,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	memcpy(&packet->data, &buf, sizeof(buf)); /* const issues */
 	packet->data_len = len;
 
-	if (rad_packet_ok(packet, 0, NULL)) {
+	if (rad_packet_ok(packet, RAD_RECV_FLAG_NONE, NULL)) {
 		(void) rad_decode(packet, NULL, "testing123");
 		if (fr_debug_lvl > 3) vp_printlist(stdout, packet->vps);
 	}

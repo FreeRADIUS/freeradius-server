@@ -1164,7 +1164,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	current->src_port = ntohs(udp->src);
 	current->dst_port = ntohs(udp->dst);
 
-	if (!rad_packet_ok(current, 0, &reason)) {
+	if (!rad_packet_ok(current, RAD_RECV_FLAG_NONE, &reason)) {
 		REDEBUG("%s", fr_strerror());
 		if (conf->event_flags & RS_ERROR) {
 			rs_packet_print(NULL, count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);

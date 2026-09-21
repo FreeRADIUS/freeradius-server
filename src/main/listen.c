@@ -740,7 +740,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	 */
 	packet = sock->packet;
 
-	rcode = fr_tcp_read_packet(packet, 0);
+	rcode = fr_tcp_read_packet(packet, RAD_RECV_FLAG_NONE);
 
 	/*
 	 *	Still only a partial packet.  Put it back, and return,
@@ -793,7 +793,10 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		/*
 		 *	Enforce BlastRADIUS checks on TCP, too.
 		 */
-		if (!rad_packet_ok(packet, (client->require_ma == FR_BOOL_TRUE) | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2), NULL)) {
+		if (!rad_packet_ok(packet,
+				   ((client->require_ma == FR_BOOL_TRUE) ? RAD_RECV_FLAG_REQUIRE_MA : 0) |
+				   ((client->limit_proxy_state == FR_BOOL_TRUE) ? RAD_RECV_FLAG_LIMIT_PROXY_STATE : 0),
+				   NULL)) {
 			FR_STATS_INC(auth, total_malformed_requests);
 			rad_free(&sock->packet);
 			return 0;
@@ -2222,7 +2225,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(NULL, listener->fd, 1); /* require message authenticator */
+	packet = rad_recv(NULL, listener->fd, RAD_RECV_FLAG_REQUIRE_MA);
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -2314,7 +2317,9 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, (client->require_ma == FR_BOOL_TRUE) | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2));
+	packet = rad_recv(ctx, listener->fd,
+			  ((client->require_ma == FR_BOOL_TRUE) ? RAD_RECV_FLAG_REQUIRE_MA : 0) |
+			  ((client->limit_proxy_state == FR_BOOL_TRUE) ? RAD_RECV_FLAG_LIMIT_PROXY_STATE : 0));
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -2435,7 +2440,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, 0);
+	packet = rad_recv(ctx, listener->fd, RAD_RECV_FLAG_NONE);
 	if (!packet) {
 		FR_STATS_INC(acct, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -2715,7 +2720,8 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, (client->require_ma == FR_BOOL_TRUE));
+	packet = rad_recv(ctx, listener->fd,
+			  (client->require_ma == FR_BOOL_TRUE) ? RAD_RECV_FLAG_REQUIRE_MA : RAD_RECV_FLAG_NONE);
 	if (!packet) {
 		FR_STATS_INC(coa, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -2875,7 +2881,6 @@ static int proxy_socket_recv(rad_listen_t *listener)
 #ifdef WITH_TCP
 	listen_socket_t *sock;
 #endif
-	int		flags;
 	char		buffer[128];
 
 	/*
@@ -2884,7 +2889,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	 *	While doing that would be useful for DoS issues, it also means that the server can't complain
 	 *	about missing Message-Authenticator.
 	 */
-	packet = rad_recv(NULL, listener->fd, 0);
+	packet = rad_recv(NULL, listener->fd, RAD_RECV_FLAG_NONE);
 	if (!packet) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;
@@ -3014,7 +3019,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 
 	packet = sock->packet;
 
-	rcode = fr_tcp_read_packet(packet, 0);
+	rcode = fr_tcp_read_packet(packet, RAD_RECV_FLAG_NONE);
 
 	/*
 	 *	Still only a partial packet.  Put it back, and return,

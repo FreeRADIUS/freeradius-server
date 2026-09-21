@@ -543,15 +543,28 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 #endif
 
 /* radius.c */
+
+/** Flags passed to rad_recv() and rad_packet_ok()
+ *
+ */
+typedef enum {
+	RAD_RECV_FLAG_NONE		= 0,
+	RAD_RECV_FLAG_REQUIRE_MA	= (1 << 0),	//!< Require Message-Authenticator in the packet.
+	RAD_RECV_FLAG_MSG_PEEK		= (1 << 1),	//!< Peek at the packet, leaving it in the socket buffer.
+	RAD_RECV_FLAG_LIMIT_PROXY_STATE	= (1 << 2),	//!< Forbid Proxy-State unless Message-Authenticator
+							//!< is present.
+	RAD_RECV_FLAG_REQUIRE_MA_REPLY	= (1 << 3)	//!< Require Message-Authenticator in Access-* replies,
+							//!< and in Protocol-Error.
+} rad_recv_flags_t;
+
+/** Check whether a rad_recv() flag is set
+ *
+ */
+#define RAD_RECV_FLAG_IS_SET(_flags, _flag) (((_flags) & (_flag)) != 0)
+
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
 
-/*
- *	1 == require_ma
- *	2 == msg_peek
- *	4 == limit_proxy_state
- *	8 == require_ma for Access-* replies and Protocol-Error
- */
 RADIUS_PACKET	*rad_recv(TALLOC_CTX *ctx, int fd, int flags);
 ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, int *code);
 void		rad_recv_discard(int sockfd);

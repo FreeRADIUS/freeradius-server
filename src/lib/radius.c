@@ -2636,13 +2636,15 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	require Message-Authenticator for Access-* replies,
 	 *	and for Protocol-Error.
 	 */
-	require_ma = ((flags & 0x01) != 0) || (hdr->code == PW_CODE_STATUS_SERVER) || (((flags & 0x08) != 0) && code2ma[hdr->code]);
+	require_ma = RAD_RECV_FLAG_IS_SET(flags, RAD_RECV_FLAG_REQUIRE_MA) ||
+		(hdr->code == PW_CODE_STATUS_SERVER) ||
+		(RAD_RECV_FLAG_IS_SET(flags, RAD_RECV_FLAG_REQUIRE_MA_REPLY) && code2ma[hdr->code]);
 
 	/*
 	 *	We only limit Proxy-State if we're not requiring
 	 *	Message-Authenticator.
 	 */
-	limit_proxy_state = ((flags & 0x04) != 0) && !require_ma;
+	limit_proxy_state = RAD_RECV_FLAG_IS_SET(flags, RAD_RECV_FLAG_LIMIT_PROXY_STATE) && !require_ma;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -2969,9 +2971,9 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 		return NULL;
 	}
 
-	if (flags & 0x02) {
+	if (RAD_RECV_FLAG_IS_SET(flags, RAD_RECV_FLAG_MSG_PEEK)) {
 		sock_flags = MSG_PEEK;
-		flags &= ~0x02;
+		flags &= ~RAD_RECV_FLAG_MSG_PEEK;
 	}
 
 	data_len = rad_recvfrom(fd, packet, sock_flags,
