@@ -72,7 +72,7 @@ cache cache_ocsp {
 	#
 	#  key:: `cache` key.
 	#
-	key = %{session-state.TLS-Client-Cert-Serial}
+	key = %{session-state.TLS-Certificate.Serial}
 
 	#
 	#  update { ... }::
