@@ -286,8 +286,26 @@ static unlang_action_t unlang_subrequest_init(unlang_result_t *p_result, request
  */
 void unlang_subrequest_detach_and_free(request_t **child)
 {
-	request_detach(*child);
-	talloc_free(*child);
+	request_t *request = *child;
+
+	/*
+	 *	The interpeter is told about this subrequest via interpret_child_init() in
+	 *	unlang_subrequest_child_push_and_detach() etc.  The subrequest is managed by the interpreter,
+	 *	and we therefore have to remove it from the interpreter.  Otherwise, simply calling
+	 *	talloc_free() will leave a dangling pointer in the interpreter scheduler.
+	 *
+	 *	If the request is detached, then the interpreter sees that it's done, and de-schedules it.
+	 *
+	 *	unlang_interpret_request_done() isn't idempotent, so we have to check for the DONE state
+	 *	before calling it again.  unlang_interpret_request_done() then calls the "done_internal"
+	 *	callback, which informs the application of that fact.
+	 */
+	if (!request_is_detached(request) && (request->master_state != REQUEST_DONE)) {
+		unlang_interpret_request_done(request);
+	}
+
+	request_detach(request);
+	talloc_free(request);
 	*child = NULL;
 }
 
