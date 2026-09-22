@@ -48,8 +48,8 @@
  * @param[in] tls_session	The current tls_session.
  * @param[in] cache_required	Does this action require the tls cache
  * @return
- *      - 0 on success.
- *	- -1 on failure.
+ *      - UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_FAIL on failure.
  */
 unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t resume,
 				 fr_tls_conf_t *conf, fr_tls_session_t *tls_session,
