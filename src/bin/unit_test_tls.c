@@ -190,55 +190,6 @@ static void tls_round_start(unit_test_tls_t *utt);
  * already on the heap puts it there twice, and popping it then returns a
  * request which the heap still holds, which the interpreter refuses to run.
  */
-/** Schedule a request, once
- *
- * A request reaches the heap from two directions: the interpreter creating it,
- * and the interpreter marking it runnable again.  Inserting a request which is
- * already on the heap puts it there twice, and popping it then returns a
- * request which the heap still holds, which the interpreter refuses to run.
- */
-/** Schedule a request, once
- *
- * A request reaches the heap from two directions: the interpreter creating it,
- * and the interpreter marking it runnable again.  Inserting a request which is
- * already on the heap puts it there twice, and popping it then returns a
- * request which the heap still holds, which the interpreter refuses to run.
- */
-/** Schedule a request, once
- *
- * A request reaches the heap from two directions: the interpreter creating it,
- * and the interpreter marking it runnable again.  Inserting a request which is
- * already on the heap puts it there twice, and popping it then returns a
- * request which the heap still holds, which the interpreter refuses to run.
- */
-/** Schedule a request, once
- *
- * A request reaches the heap from two directions: the interpreter creating it,
- * and the interpreter marking it runnable again.  Inserting a request which is
- * already on the heap puts it there twice, and popping it then returns a
- * request which the heap still holds, which the interpreter refuses to run.
- */
-/** Schedule a request, once
- *
- * A request reaches the heap from two directions: the interpreter creating it,
- * and the interpreter marking it runnable again.  Inserting a request which is
- * already on the heap puts it there twice, and popping it then returns a
- * request which the heap still holds, which the interpreter refuses to run.
- */
-/** Schedule a request, once
- *
- * A request reaches the heap from two directions: the interpreter creating it,
- * and the interpreter marking it runnable again.  Inserting a request which is
- * already on the heap puts it there twice, and popping it then returns a
- * request which the heap still holds, which the interpreter refuses to run.
- */
-/** Schedule a request, once
- *
- * A request reaches the heap from two directions: the interpreter creating it,
- * and the interpreter marking it runnable again.  Inserting a request which is
- * already on the heap puts it there twice, and popping it then returns a
- * request which the heap still holds, which the interpreter refuses to run.
- */
 static void tls_runnable_insert(unit_test_tls_t *utt, request_t *request)
 {
 	if (fr_heap_entry_inserted(request->runnable)) return;
