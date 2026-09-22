@@ -170,7 +170,7 @@ static void _redis_connected_nc(redisAsyncContext *ac, UNUSED int status)
 
 #ifdef HAVE_REDIS_SSL
 	if (io_conf->use_tls) {
-		fr_tls_session_t *tls_session = fr_tls_session_alloc_client(conn, conn_uctx->ssl_ctx);
+		fr_tls_session_t *tls_session = fr_tls_session_alloc_client(conn, conn_uctx->ssl_ctx, NULL);
 		DEBUG2("%s - Using tls", io_conf->log_prefix);
 		if (!tls_session) {
 			fr_tls_strerror_printf("%s - [%s]", io_conf->log_prefix, conn->name);

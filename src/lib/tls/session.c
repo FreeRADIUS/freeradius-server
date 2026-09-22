@@ -1728,14 +1728,27 @@ static void session_init(fr_tls_session_t *session)
  *
  * Configures a new client TLS session, configuring options, setting callbacks etc...
  *
+ * If request is not passed, the caller gets a bare SSL*, and owns
+ * the transport itself.  The session has no memory BIOs, and OpenSSL
+ * does the certificate validation on its own.  This API is used by
+ * hiredis, which needs direct access to the bare SSL*
+ *
+ * If a request is passed, the session management follows the server
+ * session path.  Data goes through memory BIOs,
+ * fr_tls_session_async_handshake_push() is run for each round, and
+ * certificate verification calls the `verify certificate` section of
+ * the configured virtual_server.
+ *
  * @param[in] ctx 	to alloc session data in. Should usually be NULL unless the lifetime of the
  *			session is tied to another talloc'd object.
  * @param[in] ssl_ctx	containing the base configuration for this session.
+ * @param[in] request	which the handshake runs under, or NULL for a session whose transport
+ *			is owned by the caller.
  * @return
  *	- A new session on success.
  *	- NULL on error.
  */
-fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
+fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request)
 {
 	int			verify_mode;
 	fr_tls_session_t	*tls_session = NULL;
@@ -1744,7 +1757,9 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 	MEM(tls_session = talloc_zero(ctx, fr_tls_session_t));
 	talloc_set_destructor(tls_session, _fr_tls_session_free);
 	fr_pair_list_init(&tls_session->extra_pairs);
+	session_init(tls_session);
 
+	tls_session->ctx = ssl_ctx;
 	tls_session->ssl = SSL_new(ssl_ctx);
 	if (!tls_session->ssl) {
 		talloc_free(tls_session);
@@ -1760,7 +1775,7 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 	SSL_set_info_callback(tls_session->ssl, fr_tls_session_info_cb);
 
 	/*
-	 *	In Client mode we only accept.
+	 *	In Client mode we only connect.
 	 *
 	 *	This sets up the SSL session to work correctly with
 	 *	fr_tls_session_handshake.
@@ -1770,20 +1785,43 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 	/*
 	 *	Always verify the peer certificate.
 	 */
-	DEBUG2("Requiring Server certificate");
+	ROPTIONAL(RDEBUG2, DEBUG2, "Requiring Server certificate");
 	verify_mode = SSL_VERIFY_PEER;
 	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 
-	/*
-	 *	Callback should be fr_tls_verify_cert_cb but this
-	 *	requires support around SSL_connect for dealing
-	 *	with async.
-	 *
-	 *	If the callback is NULL OpenSSL uses its own validation
-	 *	function, and the flags modifies that function's
-	 *	behaviour.
-	 */
-	SSL_set_verify(tls_session->ssl, verify_mode, NULL);
+	if (request) {
+		/*
+		 *	All of the session IO is done to and from memory, so
+		 *	that the caller can move records between these buffers
+		 *	and whatever transport it is using.
+		 */
+		tls_session->record_init = record_init;
+		tls_session->record_close = record_close;
+		tls_session->record_from_buff = record_from_buff;
+		tls_session->record_to_buff = record_to_buff;
+
+		MEM(tls_session->into_ssl = BIO_new(BIO_s_mem()));
+		MEM(tls_session->from_ssl = BIO_new(BIO_s_mem()));
+		SSL_set_bio(tls_session->ssl, tls_session->into_ssl, tls_session->from_ssl);
+
+		/*
+		 *	fr_tls_verify_cert_cb() pauses the handshake and runs
+		 *	the `verify certificate` section.  It needs a request,
+		 *	and it needs to be called from inside
+		 *	tls_session_async_handshake_cont().
+		 */
+		tls_session->verify_peer_cert = true;
+		SSL_set_verify(tls_session->ssl, verify_mode, fr_tls_verify_cert_cb);
+	} else {
+		/*
+		 *	With no request there is nowhere to run a policy, so
+		 *	OpenSSL does the validating.  When the callback is
+		 *	NULL OpenSSL uses its own validation function, and the
+		 *	flags modify that function's behaviour.
+		 */
+		SSL_set_verify(tls_session->ssl, verify_mode, NULL);
+	}
+
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 

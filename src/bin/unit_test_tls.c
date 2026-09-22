@@ -154,6 +154,7 @@ typedef struct {
 } unit_test_tls_t;
 
 static void usage(main_config_t const *config, int status);
+static void tls_round_start(unit_test_tls_t *utt);
 
 /*
  *	Interpreter callbacks.
@@ -430,13 +431,9 @@ static void _tls_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 
 	/*
 	 *	Hand the round over to the anchor frame, which is sitting
-	 *	yielded, waiting for exactly this.  Marking the request
-	 *	runnable is how a yielded request is resumed, and the
-	 *	interpreter is then run from _tls_runnable(), the one place
-	 *	which runs it.
+	 *	yielded, waiting for exactly this.
 	 */
-	utt->pending = true;
-	unlang_interpret_mark_runnable(utt->request);
+	tls_round_start(utt);
 }
 
 /** The connection failed at the socket level
@@ -450,16 +447,14 @@ static void _tls_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	tls_finished(utt, EXIT_FAILURE);
 }
 
-/** Resume any request the interpreter has marked runnable
+/** Run every request the interpreter has marked runnable
  *
  * A handshake round yields whenever the round runs a virtual server section.
  * When that section finishes, unlang_interpret_mark_runnable() puts the
- * request on the runnable heap, and _tls_runnable pops the request off again
- * on the next pass of the event loop.
+ * request on the runnable heap, and this drains the heap again.
  */
-static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void tls_runnable_drain(unit_test_tls_t *utt)
 {
-	unit_test_tls_t	*utt = uctx;
 	request_t	*request;
 
 	while (fr_heap_pop((void **)&request, &utt->runnable) == 0) {
@@ -476,6 +471,28 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 
 		if (utt->done) return;
 	}
+}
+
+/** Start a handshake round, and run it as far as it will go
+ *
+ * The anchor frame is yielded between rounds, so marking the request runnable
+ * is what wakes it.  The drain is called here rather than left to the
+ * post-event handler, because a client starts the first round with no event
+ * pending, and the event loop would block before servicing anything.
+ */
+static void tls_round_start(unit_test_tls_t *utt)
+{
+	utt->pending = true;
+	unlang_interpret_mark_runnable(utt->request);
+	tls_runnable_drain(utt);
+}
+
+/** Drain the runnable heap once per pass of the event loop
+ *
+ */
+static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	tls_runnable_drain(uctx);
 }
 
 /** Open the listening socket described by the "unit_test_tls" section
@@ -541,59 +558,6 @@ static int tls_socket_connect(unit_test_tls_t *utt)
 	INFO("Connected to %s port %u", buffer, utt->server_port);
 
 	utt->fd = fd;
-
-	return 0;
-}
-
-/** Run the handshake as the client
- *
- * The client side does not use the anchor frame and the record pump which
- * drive the server side, because fr_tls_session_alloc_client() builds a
- * different kind of session.  It creates no memory BIOs and no record
- * callbacks, so fr_tls_session_async_handshake_push() cannot drive it.  The
- * one other caller, src/lib/redis/io.c:173, hands the raw SSL * to hiredis
- * and lets hiredis own the socket, which is the same shape as this.
- *
- * Nothing is lost by the difference.  fr_tls_client_config has no
- * "virtual_server" item and no session cache, so a client has no policy
- * sections to run, and fr_tls_session_alloc_client() deliberately passes a
- * NULL verify callback so that OpenSSL does the validating.
- */
-static int tls_client_handshake(unit_test_tls_t *utt)
-{
-	SSL *ssl;
-
-	utt->tls_session = fr_tls_session_alloc_client(utt, utt->ssl_ctx);
-	if (!utt->tls_session) {
-		PERROR("Failed creating the TLS session");
-		return -1;
-	}
-
-	ssl = utt->tls_session->ssl;
-
-	/*
-	 *	fr_tls_ctx_alloc() asks for SSL_MODE_ASYNC, because the server
-	 *	drives its handshakes from the event loop.  This handshake is
-	 *	synchronous, so the mode is cleared.
-	 */
-	SSL_clear_mode(ssl, SSL_MODE_ASYNC);
-
-	if (SSL_set_fd(ssl, utt->fd) != 1) {
-		fr_tls_strerror_printf(NULL);
-		PERROR("Failed giving the connection to the TLS session");
-		return -1;
-	}
-
-	if (SSL_connect(ssl) != 1) {
-		fr_tls_strerror_printf(NULL);
-		PERROR("TLS handshake failed");
-		return -1;
-	}
-
-	INFO("TLS handshake completed");
-	INFO("  version    : %s", SSL_get_version(ssl));
-	INFO("  cipher     : %s", SSL_get_cipher(ssl));
-	INFO("  resumed    : %s", SSL_session_reused(ssl) ? "yes" : "no");
 
 	return 0;
 }
@@ -1049,18 +1013,6 @@ int main(int argc, char *argv[])
 		goto cleanup;
 	}
 
-	/*
-	 *	A client connects, shakes hands, and is done.  None of the
-	 *	machinery below is needed, see tls_client_handshake().
-	 */
-	if (utt->client) {
-		if (tls_socket_connect(utt) < 0) EXIT_WITH_FAILURE;
-
-		if (tls_client_handshake(utt) < 0) EXIT_WITH_FAILURE;
-
-		goto cleanup;
-	}
-
 	utt->el = main_loop_event_list();
 	fr_assert(utt->el != NULL);
 
@@ -1139,14 +1091,21 @@ int main(int argc, char *argv[])
 	 */
 	unlang_interpret_set_thread_default(utt->intp);
 
-	if (tls_socket_open(utt) < 0) EXIT_WITH_FAILURE;
+	/*
+	 *	Get a connection, one way or the other.
+	 */
+	if (utt->client) {
+		if (tls_socket_connect(utt) < 0) EXIT_WITH_FAILURE;
+	} else {
+		if (tls_socket_open(utt) < 0) EXIT_WITH_FAILURE;
 
-	INFO("Waiting for a connection");
+		INFO("Waiting for a connection");
 
-	utt->fd = accept(utt->sockfd, NULL, NULL);
-	if (utt->fd < 0) {
-		ERROR("Failed accepting connection: %s", fr_syserror(errno));
-		EXIT_WITH_FAILURE;
+		utt->fd = accept(utt->sockfd, NULL, NULL);
+		if (utt->fd < 0) {
+			ERROR("Failed accepting connection: %s", fr_syserror(errno));
+			EXIT_WITH_FAILURE;
+		}
 	}
 
 	utt->request = tls_request_alloc(utt, utt->fd);
@@ -1154,11 +1113,22 @@ int main(int argc, char *argv[])
 
 	unlang_interpret_set(utt->request, utt->intp);
 
-	INFO("Accepted connection from %pV",
-	     fr_box_ipaddr(utt->request->packet->socket.inet.src_ipaddr));
+	/*
+	 *	Both roles run the same handshake driver.  Passing the request
+	 *	to fr_tls_session_alloc_client() is what gives a client the
+	 *	memory BIOs and the certificate validation callback which the
+	 *	driver needs, see src/lib/tls/session.c.
+	 */
+	if (utt->client) {
+		utt->tls_session = fr_tls_session_alloc_client(utt->request, utt->ssl_ctx, utt->request);
+	} else {
+		INFO("Accepted connection from %pV",
+		     fr_box_ipaddr(utt->request->packet->socket.inet.src_ipaddr));
 
-	utt->tls_session = fr_tls_session_alloc_server(utt->request, utt->ssl_ctx, utt->request,
-						       0, utt->conf.require_client_certificate);
+		utt->tls_session = fr_tls_session_alloc_server(utt->request, utt->ssl_ctx, utt->request,
+							       0, utt->conf.require_client_certificate);
+	}
+
 	if (!utt->tls_session) {
 		PERROR("Failed creating the TLS session");
 		EXIT_WITH_FAILURE;
@@ -1191,7 +1161,12 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (main_loop_start() < 0) {
+	/*
+	 *	A server waits for the ClientHello.  A client has to send it.
+	 */
+	if (utt->client) tls_round_start(utt);
+
+	if (!utt->done && (main_loop_start() < 0)) {
 		PERROR("Failed running the event loop");
 		EXIT_WITH_FAILURE;
 	}

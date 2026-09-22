@@ -208,8 +208,19 @@ conf_parser_t fr_tls_server_config[] = {
 };
 
 conf_parser_t fr_tls_client_config[] = {
+	/*
+	 *	Optional.  Without it a client validates the server certificate
+	 *	with OpenSSL alone, which is what a caller that owns its own
+	 *	transport wants.  With it, fr_tls_session_alloc_client() runs
+	 *	the `verify certificate` section of the named virtual server.
+	 */
+	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_OK_MISSING, fr_tls_conf_t, virtual_server),
+	  .func = tls_virtual_server_cf_parse },
+
 	{ FR_CONF_OFFSET_SUBSECTION("chain", CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI, fr_tls_conf_t, chains, tls_chain_config),
 	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t" },
+
+	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },
 
 	{ FR_CONF_DEPRECATED("pem_file_type", fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("certificate_file", fr_tls_conf_t, NULL) },
