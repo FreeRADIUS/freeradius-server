@@ -291,6 +291,8 @@ jobs:
 
     - name: Generate app token to push corpus
       id: app-token
+      env:
+        NODE_USE_ENV_PROXY: 1
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') && steps.corpusparams.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
       uses: actions/create-github-app-token@v3
       with:
