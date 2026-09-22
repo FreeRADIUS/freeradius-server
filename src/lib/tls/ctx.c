@@ -968,7 +968,7 @@ post_ca:
 	/*
 	 *	Setup session caching
 	 */
-	if (fr_tls_cache_ctx_init(ctx, &conf->cache) < 0) goto error;
+	if (fr_tls_cache_ctx_init(ctx, &conf->cache, client) < 0) goto error;
 
 	/*
 	 *	Set the keylog file if the admin requested it.

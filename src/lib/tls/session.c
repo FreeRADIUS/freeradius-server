@@ -1827,6 +1827,16 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 	tls_session->mtu = conf->fragment_size;
 
+	/*
+	 *	Session resumption needs somewhere to keep its state, and is
+	 *	driven by the caller.  See fr_tls_cache_load_client_push() and
+	 *	fr_tls_cache_pending_push().
+	 */
+	if (request && (conf->cache.mode != FR_TLS_CACHE_DISABLED)) {
+		tls_session->allow_session_resumption = true;	/* otherwise it's false */
+		fr_tls_cache_session_alloc(tls_session);
+	}
+
 	return tls_session;
 }
 

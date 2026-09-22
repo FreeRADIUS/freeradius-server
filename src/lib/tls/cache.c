@@ -670,6 +670,101 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	return ua;
 }
 
+/** Process the result of a client's `load session { ... }` call
+ *
+ * A client hands the session to OpenSSL before the handshake starts.  The
+ * server path differs: OpenSSL hands a server the session ID part way through
+ * a handshake, and the server returns the matching session.
+ */
+static unlang_action_t tls_cache_load_client_result(request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	fr_tls_cache_t		*tls_cache = tls_session->cache;
+
+	(void) tls_cache_load_result(request, uctx);
+
+	if (tls_cache->load.state != FR_TLS_CACHE_LOAD_RETRIEVED) {
+		RDEBUG2("No session to resume");
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	if (SSL_set_session(tls_session->ssl, tls_cache->load.sess) != 1) {
+		fr_tls_log(request, "Failed setting the session to resume");
+		tls_cache_load_state_reset(request, tls_cache);
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	RDEBUG2("Offering the cached session for resumption");
+
+	/*
+	 *	SSL_set_session() takes its own reference, and nothing else
+	 *	consumes this one, unlike the server path where the session is
+	 *	handed back to OpenSSL from tls_cache_load_cb.
+	 */
+	tls_cache_load_state_reset(request, tls_cache);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Ask the virtual server for a session to resume, as a client
+ *
+ * Call this before the handshake starts.  A client chooses which session to
+ * offer, so the client looks a session up under a key the client already
+ * knows, the expansion of `session { name = ... }`.  A server makes no such
+ * choice.  OpenSSL hands the server the session ID the peer asked for, so the
+ * server path lives in tls_cache_load_cb().
+ *
+ * The policy decides what the key means.  `TLS-Session-Id` holds the expanded
+ * name, and the `load session { ... }` section may look the session up by
+ * `TLS-Session-Id`, or by any other attribute in the request.
+ *
+ * @param[in] request		The current request.
+ * @param[in] tls_session	The current TLS session.
+ * @return
+ *	- UNLANG_ACTION_CALCULATE_RESULT if there is nothing to do.
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_FAIL on failure.
+ */
+unlang_action_t fr_tls_cache_load_client_push(request_t *request, fr_tls_session_t *tls_session)
+{
+	fr_tls_cache_t		*tls_cache = tls_session->cache;
+	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	char			*name;
+	request_t		*child;
+	fr_pair_t		*vp;
+	unlang_action_t		ua;
+
+	if (!tls_cache || !tls_session->allow_session_resumption) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (!conf->virtual_server) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (!(conf->cache.mode & FR_TLS_CACHE_STATEFUL)) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	fr_assert(conf->cache.id_name);
+
+	if (tmpl_aexpand(tls_session, &name, request, conf->cache.id_name, NULL, NULL) < 0) {
+		RPEDEBUG("Failed expanding the session name");
+		return UNLANG_ACTION_FAIL;
+	}
+
+	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	request = child;	/* the pairs below belong to the child, as in tls_cache_load_push() */
+
+	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
+	vp->vp_uint32 = enum_tls_packet_type_load_session->vb_uint32;
+
+	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
+	fr_pair_value_memdup(vp, (uint8_t const *)name, talloc_strlen(name), true);
+
+	talloc_free(name);
+
+	ua = fr_tls_call_push(child, tls_cache_load_client_result, conf, tls_session, true);
+	if (ua < 0) {
+		talloc_free(child);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	return ua;
+}
+
 /** Push a `store session { ... }` or `clear session { ... }` or `load session { ... }` depending on what operations are pending
  *
  * @param[in] request		The current request.
@@ -1386,7 +1481,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
+int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf, bool client)
 {
 	switch (cache_conf->mode) {
 	case FR_TLS_CACHE_DISABLED:
@@ -1409,8 +1504,13 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		 *
 		 *      Here we disable internal lookups, and rely on the
 		 *	callbacks above.
+		 *
+		 *	OpenSSL calls the store callback only for the role the
+		 *	mode names, so a client context sets
+		 *	SSL_SESS_CACHE_CLIENT rather than SSL_SESS_CACHE_SERVER.
 		 */
-		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+		SSL_CTX_set_session_cache_mode(ctx, (client ? SSL_SESS_CACHE_CLIENT : SSL_SESS_CACHE_SERVER) |
+						    SSL_SESS_CACHE_NO_INTERNAL);
 
 		/*
 		 *	Controls the validity period of the stateful cache.

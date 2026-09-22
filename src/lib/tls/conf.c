@@ -222,6 +222,8 @@ conf_parser_t fr_tls_client_config[] = {
 
 	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },
 
+	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_cache_config) },
+
 	{ FR_CONF_DEPRECATED("pem_file_type", fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("certificate_file", fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("private_key_password", fr_tls_conf_t, NULL) },

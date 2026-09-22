@@ -121,6 +121,19 @@ static const conf_parser_t unit_test_tls_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/** What the anchor frame does next
+ *
+ * A connection is more than a handshake.  Policy runs before the handshake
+ * and after the handshake.  Every part of a connection runs under the one
+ * anchor frame, so the step records which part runs next.
+ */
+typedef enum {
+	TLS_STEP_NEW_SESSION = 0,			//!< Run `new session { ... }`.
+	TLS_STEP_LOAD_SESSION,				//!< Ask the virtual server for a session to resume.
+	TLS_STEP_HANDSHAKE,				//!< Run handshake rounds until the handshake ends.
+	TLS_STEP_FLUSH					//!< Run the cache operations the handshake queued.
+} tls_step_t;
+
 /** Everything needed to drive one TLS connection
  *
  * The interpreter, the runnable heap and the request all live for the whole
@@ -141,6 +154,7 @@ typedef struct {
 	request_t		*request;		//!< Request the handshake runs under.
 
 	bool			client;			//!< Connect out, rather than accept in.
+	unsigned int		count;			//!< How many connections to run.
 	fr_ipaddr_t		server_ipaddr;		//!< Server named by -s.
 	uint16_t		server_port;		//!< Port from -s, or from the configuration.
 
@@ -148,7 +162,10 @@ typedef struct {
 	int			fd;			//!< Accepted or connected socket.
 	fr_event_fd_t		*ef;			//!< Read event for fd.
 
+	tls_step_t		step;			//!< What the anchor frame does next.
+	bool			idle;			//!< The anchor is yielded with nothing in flight.
 	bool			pending;		//!< A record is waiting to be fed to OpenSSL.
+	bool			failed;			//!< The handshake did not succeed.
 	bool			done;			//!< Set once we have a verdict.
 	int			ret;			//!< Exit status.
 } unit_test_tls_t;
@@ -166,10 +183,77 @@ static void tls_round_start(unit_test_tls_t *utt);
  *	each request runs.
  */
 
+/** Schedule a request, once
+ *
+ * A request reaches the heap from two directions: the interpreter creating it,
+ * and the interpreter marking it runnable again.  Inserting a request which is
+ * already on the heap puts it there twice, and popping it then returns a
+ * request which the heap still holds, which the interpreter refuses to run.
+ */
+/** Schedule a request, once
+ *
+ * A request reaches the heap from two directions: the interpreter creating it,
+ * and the interpreter marking it runnable again.  Inserting a request which is
+ * already on the heap puts it there twice, and popping it then returns a
+ * request which the heap still holds, which the interpreter refuses to run.
+ */
+/** Schedule a request, once
+ *
+ * A request reaches the heap from two directions: the interpreter creating it,
+ * and the interpreter marking it runnable again.  Inserting a request which is
+ * already on the heap puts it there twice, and popping it then returns a
+ * request which the heap still holds, which the interpreter refuses to run.
+ */
+/** Schedule a request, once
+ *
+ * A request reaches the heap from two directions: the interpreter creating it,
+ * and the interpreter marking it runnable again.  Inserting a request which is
+ * already on the heap puts it there twice, and popping it then returns a
+ * request which the heap still holds, which the interpreter refuses to run.
+ */
+/** Schedule a request, once
+ *
+ * A request reaches the heap from two directions: the interpreter creating it,
+ * and the interpreter marking it runnable again.  Inserting a request which is
+ * already on the heap puts it there twice, and popping it then returns a
+ * request which the heap still holds, which the interpreter refuses to run.
+ */
+/** Schedule a request, once
+ *
+ * A request reaches the heap from two directions: the interpreter creating it,
+ * and the interpreter marking it runnable again.  Inserting a request which is
+ * already on the heap puts it there twice, and popping it then returns a
+ * request which the heap still holds, which the interpreter refuses to run.
+ */
+/** Schedule a request, once
+ *
+ * A request reaches the heap from two directions: the interpreter creating it,
+ * and the interpreter marking it runnable again.  Inserting a request which is
+ * already on the heap puts it there twice, and popping it then returns a
+ * request which the heap still holds, which the interpreter refuses to run.
+ */
+/** Schedule a request, once
+ *
+ * A request reaches the heap from two directions: the interpreter creating it,
+ * and the interpreter marking it runnable again.  Inserting a request which is
+ * already on the heap puts it there twice, and popping it then returns a
+ * request which the heap still holds, which the interpreter refuses to run.
+ */
+static void tls_runnable_insert(unit_test_tls_t *utt, request_t *request)
+{
+	if (fr_heap_entry_inserted(request->runnable)) return;
+
+	fr_heap_insert(&utt->runnable, request);
+}
+
 /** An internal request created by the interpreter has to run on ours
  *
  * The subrequests created for the "verify certificate" section and for the
  * session cache sections reach this callback.
+ *
+ * fr_tls_call_push() pushes each of them as a detachable subrequest, which
+ * the parent waits on rather than running inline, so the subrequest has to be
+ * scheduled here or nothing ever runs it.
  */
 static void _request_init_internal(request_t *request, void *uctx)
 {
@@ -178,7 +262,13 @@ static void _request_init_internal(request_t *request, void *uctx)
 	RDEBUG3("Initialising internal request");
 
 	unlang_interpret_set(request, utt->intp);
-	fr_heap_insert(&utt->runnable, request);
+
+	/*
+	 *	interpret_child_init() calls this, and nothing else schedules
+	 *	the child, so a subrequest which is not put on the heap here
+	 *	never runs at all.
+	 */
+	tls_runnable_insert(utt, request);
 }
 
 static void _request_done_external(request_t *request, UNUSED rlm_rcode_t rcode, UNUSED void *uctx)
@@ -238,12 +328,30 @@ static void _request_runnable(request_t *request, void *uctx)
 	fr_assert(utt->yielded > 0);
 	utt->yielded--;
 
-	fr_heap_insert(&utt->runnable, request);
+	tls_runnable_insert(utt, request);
 }
 
 static bool _request_scheduled(request_t const *request, UNUSED void *uctx)
 {
 	return fr_heap_entry_inserted(request->runnable);
+}
+
+/** Wake the connection's request, if the request is waiting for a record
+ *
+ * The request yields in two places: the anchor frame waiting for a record,
+ * and a policy section running underneath the anchor frame.  Only a request
+ * yielded in the anchor frame may be woken from outside.  Waking a request
+ * during a policy section resumes the request ahead of the subrequest, and
+ * strands the subrequest on the runnable heap.  A subrequest wakes the
+ * request when the subrequest finishes.  See unlang_child_request_done() in
+ * src/lib/unlang/child_request.c.
+ */
+static void tls_wake(unit_test_tls_t *utt)
+{
+	if (!utt->idle) return;
+
+	utt->idle = false;
+	unlang_interpret_mark_runnable(utt->request);
 }
 
 /** Stop the event loop, recording why
@@ -306,10 +414,12 @@ static void tls_session_check(unit_test_tls_t *utt)
 {
 	fr_tls_session_t *tls_session = utt->tls_session;
 
+	if (utt->step != TLS_STEP_HANDSHAKE) return;
+
 	if (tls_session->result == FR_TLS_RESULT_ERROR) {
 		ERROR("TLS handshake failed");
-		tls_finished(utt, EXIT_FAILURE);
-		return;
+		utt->failed = true;
+		goto flush;
 	}
 
 	if (!SSL_is_init_finished(tls_session->ssl)) return;
@@ -320,7 +430,15 @@ static void tls_session_check(unit_test_tls_t *utt)
 	INFO("  cipher     : %s", SSL_get_cipher(tls_session->ssl));
 	INFO("  resumed    : %s", SSL_session_reused(tls_session->ssl) ? "yes" : "no");
 
-	tls_finished(utt, EXIT_SUCCESS);
+flush:
+	/*
+	 *	The cache callbacks only queue work.  Something has to run it,
+	 *	and the caller is what decides that the session is worth
+	 *	keeping.  src/modules/rlm_eap/types/rlm_eap_tls does the same
+	 *	thing at the end of its handshake.
+	 */
+	utt->step = TLS_STEP_FLUSH;
+	tls_wake(utt);
 }
 
 /** Write out any pending records, then re-check the handshake state
@@ -350,7 +468,8 @@ static void tls_session_pump(unit_test_tls_t *utt)
  */
 static unlang_action_t tls_anchor(request_t *request, void *uctx)
 {
-	unit_test_tls_t *utt = uctx;
+	unit_test_tls_t	*utt = uctx;
+	unlang_action_t	ua;
 
 	/*
 	 *	The interpreter clears the repeat function before calling the
@@ -362,25 +481,88 @@ static unlang_action_t tls_anchor(request_t *request, void *uctx)
 	}
 
 	/*
-	 *	No record is waiting for OpenSSL, so yield until the next
-	 *	record arrives.
+	 *	The anchor is running, so the request is not sitting idle.
+	 *	Only the TLS_STEP_HANDSHAKE case below sets `idle` again, when
+	 *	that case yields waiting for a record.  Leaving `idle` set lets
+	 *	a record which arrives during a policy section wake the request
+	 *	while a subrequest is still in flight, and that wake strands the
+	 *	subrequest on the runnable heap.
 	 */
-	if (!utt->pending) return UNLANG_ACTION_YIELD;
+	utt->idle = false;
 
-	utt->pending = false;
+	switch (utt->step) {
+	/*
+	 *	Before the handshake: `new session { ... }`, and for a client
+	 *	the chance to pick a session to resume.
+	 */
+	case TLS_STEP_NEW_SESSION:
+		utt->step = TLS_STEP_LOAD_SESSION;
+
+		if (utt->tls_conf->new_session) {
+			ua = fr_tls_new_session_push(request, utt->tls_conf);
+			if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
+			if (ua < 0) goto error;
+		}
+		FALL_THROUGH;
+
+	case TLS_STEP_LOAD_SESSION:
+		utt->step = TLS_STEP_HANDSHAKE;
+
+		/*
+		 *	A server is asked for a session by OpenSSL, part way
+		 *	through the handshake.  A client has to choose one
+		 *	before the handshake starts.
+		 */
+		if (utt->client) {
+			ua = fr_tls_cache_load_client_push(request, utt->tls_session);
+			if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
+			if (ua < 0) goto error;
+		}
+		FALL_THROUGH;
+
+	case TLS_STEP_HANDSHAKE:
+		/*
+		 *	No record is waiting for OpenSSL, so yield until the
+		 *	next record arrives.
+		 */
+		if (!utt->pending) {
+			utt->idle = true;
+			return UNLANG_ACTION_YIELD;
+		}
+
+		utt->pending = false;
+
+		/*
+		 *	fr_tls_session_async_handshake_push() binds the request
+		 *	to the SSL * itself, and unbinds the request when the
+		 *	round ends, so tls_anchor must not bind the request.
+		 */
+		ua = fr_tls_session_async_handshake_push(request, utt->tls_session);
+		if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
+
+		ERROR("Failed starting a TLS handshake round");
+		goto error;
 
 	/*
-	 *	fr_tls_session_async_handshake_push() binds the request to the
-	 *	SSL * itself, and unbinds the request when the round ends, so
-	 *	tls_anchor must not bind the request.
+	 *	After the handshake: run whatever the cache callbacks queued.
+	 *	fr_tls_cache_pending_push() does one operation per call, so it
+	 *	is called until it has nothing left.
 	 */
-	if (fr_tls_session_async_handshake_push(request, utt->tls_session) < 0) {
-		ERROR("Failed starting a TLS handshake round");
-		tls_finished(utt, EXIT_FAILURE);
+	case TLS_STEP_FLUSH:
+		if (utt->failed) fr_tls_cache_deny(request, utt->tls_session);
+
+		ua = fr_tls_cache_pending_push(request, utt->tls_session);
+		if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
+		if (ua < 0) goto error;
+
+		tls_finished(utt, utt->failed ? EXIT_FAILURE : EXIT_SUCCESS);
 		return UNLANG_ACTION_YIELD;
 	}
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+error:
+	utt->failed = true;
+	tls_finished(utt, EXIT_FAILURE);
+	return UNLANG_ACTION_YIELD;
 }
 
 /** A record arrived on the connection, so run another handshake round
@@ -483,8 +665,16 @@ static void tls_runnable_drain(unit_test_tls_t *utt)
 static void tls_round_start(unit_test_tls_t *utt)
 {
 	utt->pending = true;
-	unlang_interpret_mark_runnable(utt->request);
-	tls_runnable_drain(utt);
+
+	tls_wake(utt);
+
+	/*
+	 *	The draining is left to _tls_runnable().  Doing it here would
+	 *	run the interpreter from inside a read event, which can happen
+	 *	while the interpreter is already running higher up the stack.
+	 *	Every caller of this function runs inside the event loop, so
+	 *	the post-event handler picks the work up in the same pass.
+	 */
 }
 
 /** Drain the runnable heap once per pass of the event loop
@@ -677,12 +867,171 @@ static request_t *tls_request_alloc(TALLOC_CTX *ctx, int fd)
 	return request;
 }
 
+/** Add the connection to the event loop, and get it moving
+ *
+ * Runs from inside the event loop, see tls_connection_run().
+ */
+static void _tls_connection_start(fr_event_list_t *el, void *uctx)
+{
+	unit_test_tls_t *utt = uctx;
+
+	/*
+	 *	Nothing polls.  A handshake round starts when a record arrives,
+	 *	and a yielded round resumes when the interpreter marks the
+	 *	request runnable.
+	 */
+	if (fr_event_fd_insert(utt, &utt->ef, el, utt->fd, _tls_read, NULL, _tls_error, utt) < 0) {
+		PERROR("Failed adding the connection to the event loop");
+		tls_finished(utt, EXIT_FAILURE);
+		return;
+	}
+
+	/*
+	 *	Run `new session { ... }` and, for a client, `load session`.
+	 *	A server then waits for the ClientHello.  A client has to send
+	 *	it.
+	 */
+	tls_round_start(utt);
+}
+
+/** Run one connection from the first byte to the last
+ *
+ * Everything which belongs to a single connection is allocated here and freed
+ * again at the end, so that the next connection starts clean.  What survives
+ * is what the cache needs: the interpreter, the modules, and so the sessions
+ * a policy stored.
+ */
+static int tls_connection_run(unit_test_tls_t *utt)
+{
+	int		ret = -1;
+	fr_event_user_t	*ev = NULL;
+	request_t	*stale;
+
+	utt->step = TLS_STEP_NEW_SESSION;
+	utt->pending = utt->failed = utt->done = utt->idle = false;
+	utt->ret = EXIT_SUCCESS;
+	utt->fd = -1;
+	utt->ef = NULL;
+	utt->request = NULL;
+	utt->tls_session = NULL;
+
+	/*
+	 *	Get a connection, one way or the other.
+	 */
+	if (utt->client) {
+		if (tls_socket_connect(utt) < 0) return -1;
+	} else {
+		INFO("Waiting for a connection");
+
+		utt->fd = accept(utt->sockfd, NULL, NULL);
+		if (utt->fd < 0) {
+			ERROR("Failed accepting connection: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+
+	utt->request = tls_request_alloc(utt, utt->fd);
+	if (!utt->request) goto finish;
+
+	unlang_interpret_set(utt->request, utt->intp);
+
+	/*
+	 *	Both roles run the same handshake driver.  Passing the request
+	 *	to fr_tls_session_alloc_client() is what gives a client the
+	 *	memory BIOs and the certificate validation callback which the
+	 *	driver needs, see src/lib/tls/session.c.
+	 */
+	if (utt->client) {
+		utt->tls_session = fr_tls_session_alloc_client(utt->request, utt->ssl_ctx, utt->request);
+	} else {
+		INFO("Accepted connection from %pV",
+		     fr_box_ipaddr(utt->request->packet->socket.inet.src_ipaddr));
+
+		utt->tls_session = fr_tls_session_alloc_server(utt->request, utt->ssl_ctx, utt->request,
+							       0, utt->conf.require_client_certificate);
+	}
+
+	if (!utt->tls_session) {
+		PERROR("Failed creating the TLS session");
+		goto finish;
+	}
+
+	/*
+	 *	Anchor the request's stack, then run the interpreter once so
+	 *	that the anchor frame yields.  unlang_interpret_mark_runnable()
+	 *	acts only on a yielded frame.
+	 */
+	if (unlang_function_push(utt->request, tls_anchor, tls_anchor, NULL, 0, UNLANG_TOP_FRAME, utt) < 0) {
+		PERROR("Failed anchoring the connection's request");
+		goto finish;
+	}
+
+	(void) unlang_interpret(utt->request, UNLANG_REQUEST_RESUME);
+
+	if (fr_event_post_insert(utt->el, _tls_runnable, utt) < 0) {
+		PERROR("Failed adding the runnable handler to the event loop");
+		goto finish;
+	}
+
+	/*
+	 *	The connection is started from inside the event loop rather
+	 *	than here.  Ending the previous connection left the loop
+	 *	flagged as exiting, and fr_event_fd_insert() refuses to add a
+	 *	socket to a loop in that state.  fr_event_loop() clears the
+	 *	flag as it starts, so a user event which fires immediately is
+	 *	the first point at which the socket can be added.
+	 */
+	if (fr_event_user_insert(utt, utt->el, &ev, true, _tls_connection_start, utt) < 0) {
+		PERROR("Failed scheduling the start of the connection");
+		goto finish;
+	}
+
+	(void) fr_event_loop(utt->el);
+
+	ret = 0;
+
+finish:
+	if (utt->ef) {
+		(void) fr_event_fd_delete(utt->el, utt->fd, FR_EVENT_FILTER_IO);
+		utt->ef = NULL;
+	}
+	(void) fr_event_post_delete(utt->el, _tls_runnable, utt);
+
+	/*
+	 *	The anchor frame is still yielded, so cancel the request to
+	 *	unwind the stack before the request is freed.
+	 */
+	if (utt->request) unlang_interpret_signal(utt->request, FR_SIGNAL_CANCEL);
+
+	/*
+	 *	Empty the heap before the requests on it are freed.  Popping
+	 *	clears each entry's index, so nothing is left pointing at
+	 *	memory the request pool is about to hand out again.
+	 */
+	while (fr_heap_pop((void **)&stale, &utt->runnable) == 0) {
+		if (!stale) break;
+	}
+	utt->yielded = 0;
+
+	TALLOC_FREE(utt->tls_session);
+	TALLOC_FREE(utt->request);
+
+	if (utt->fd >= 0) {
+		close(utt->fd);
+		utt->fd = -1;
+	}
+
+	return ret;
+}
+
 int main(int argc, char *argv[])
 {
 	int			ret = EXIT_SUCCESS;
 	int			c;
 	char const		*receipt_file = NULL;
 	char const		*server = NULL;
+	unsigned int		count = 1;
+	unsigned int		i;
 
 	TALLOC_CTX		*autofree;
 	TALLOC_CTX		*thread_ctx;
@@ -746,8 +1095,16 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Cd:D:hMn:r:s:xX")) != -1) {
+	while ((c = getopt(argc, argv, "c:Cd:D:hMn:r:s:xX")) != -1) {
 		switch (c) {
+			case 'c':
+				count = (unsigned int) atoi(optarg);
+				if (!count) {
+					fprintf(stderr, "Invalid value \"%s\" for -c\n", optarg);
+					fr_exit_now(EXIT_FAILURE);
+				}
+				break;
+
 			case 'C':
 				check_config = true;
 				break;
@@ -890,6 +1247,7 @@ int main(int argc, char *argv[])
 	MEM(utt = talloc_zero(autofree, unit_test_tls_t));
 	utt->sockfd = utt->fd = -1;
 	utt->ret = EXIT_SUCCESS;
+	utt->count = count;
 
 	/*
 	 *	The settings which steer the test program, and which are
@@ -1092,104 +1450,28 @@ int main(int argc, char *argv[])
 	unlang_interpret_set_thread_default(utt->intp);
 
 	/*
-	 *	Get a connection, one way or the other.
+	 *	A server has one listening socket for every connection it
+	 *	accepts, so it is opened once, here.
 	 */
-	if (utt->client) {
-		if (tls_socket_connect(utt) < 0) EXIT_WITH_FAILURE;
-	} else {
-		if (tls_socket_open(utt) < 0) EXIT_WITH_FAILURE;
+	if (!utt->client && (tls_socket_open(utt) < 0)) EXIT_WITH_FAILURE;
 
-		INFO("Waiting for a connection");
+	for (i = 0; i < utt->count; i++) {
+		if (tls_connection_run(utt) < 0) EXIT_WITH_FAILURE;
 
-		utt->fd = accept(utt->sockfd, NULL, NULL);
-		if (utt->fd < 0) {
-			ERROR("Failed accepting connection: %s", fr_syserror(errno));
-			EXIT_WITH_FAILURE;
-		}
-	}
-
-	utt->request = tls_request_alloc(utt, utt->fd);
-	if (!utt->request) EXIT_WITH_FAILURE;
-
-	unlang_interpret_set(utt->request, utt->intp);
-
-	/*
-	 *	Both roles run the same handshake driver.  Passing the request
-	 *	to fr_tls_session_alloc_client() is what gives a client the
-	 *	memory BIOs and the certificate validation callback which the
-	 *	driver needs, see src/lib/tls/session.c.
-	 */
-	if (utt->client) {
-		utt->tls_session = fr_tls_session_alloc_client(utt->request, utt->ssl_ctx, utt->request);
-	} else {
-		INFO("Accepted connection from %pV",
-		     fr_box_ipaddr(utt->request->packet->socket.inet.src_ipaddr));
-
-		utt->tls_session = fr_tls_session_alloc_server(utt->request, utt->ssl_ctx, utt->request,
-							       0, utt->conf.require_client_certificate);
-	}
-
-	if (!utt->tls_session) {
-		PERROR("Failed creating the TLS session");
-		EXIT_WITH_FAILURE;
-	}
-
-	/*
-	 *	Anchor the request's stack, then run the interpreter once so
-	 *	that the anchor frame yields.  unlang_interpret_mark_runnable()
-	 *	acts only on a yielded frame.
-	 */
-	if (unlang_function_push(utt->request, tls_anchor, tls_anchor, NULL, 0, UNLANG_TOP_FRAME, utt) < 0) {
-		PERROR("Failed anchoring the connection's request");
-		EXIT_WITH_FAILURE;
-	}
-
-	(void) unlang_interpret(utt->request, UNLANG_REQUEST_RESUME);
-
-	/*
-	 *	Nothing polls.  A handshake round starts when a record arrives,
-	 *	and a yielded round resumes when the interpreter marks the
-	 *	request runnable.
-	 */
-	if (fr_event_fd_insert(utt, &utt->ef, utt->el, utt->fd, _tls_read, NULL, _tls_error, utt) < 0) {
-		PERROR("Failed adding the connection to the event loop");
-		EXIT_WITH_FAILURE;
-	}
-
-	if (fr_event_post_insert(utt->el, _tls_runnable, utt) < 0) {
-		PERROR("Failed adding the runnable handler to the event loop");
-		EXIT_WITH_FAILURE;
-	}
-
-	/*
-	 *	A server waits for the ClientHello.  A client has to send it.
-	 */
-	if (utt->client) tls_round_start(utt);
-
-	if (!utt->done && (main_loop_start() < 0)) {
-		PERROR("Failed running the event loop");
-		EXIT_WITH_FAILURE;
+		if (utt->ret != EXIT_SUCCESS) break;
 	}
 
 	ret = utt->ret;
 
 cleanup:
 	if (utt) {
-		if (utt->ef) (void) fr_event_fd_delete(utt->el, utt->fd, FR_EVENT_FILTER_IO);
-		if (utt->el) (void) fr_event_post_delete(utt->el, _tls_runnable, utt);
-
 		/*
-		 *	The anchor frame is still yielded, so cancel the request
-		 *	to unwind the stack before the request is freed.
+		 *	tls_connection_run() cleans up everything which belongs
+		 *	to one connection.  What is left here is what outlives
+		 *	them.
 		 */
-		if (utt->request) unlang_interpret_signal(utt->request, FR_SIGNAL_CANCEL);
-
-		TALLOC_FREE(utt->tls_session);
-		TALLOC_FREE(utt->request);
-
 		if (utt->ssl_ctx) SSL_CTX_free(utt->ssl_ctx);
 
-		if (utt->fd >= 0) close(utt->fd);
 		if (utt->sockfd >= 0) close(utt->sockfd);
 	}
 
@@ -1272,6 +1554,8 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 
 	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
+	fprintf(output, "  -c <count>         Run <count> connections, one after another.  Session resumption\n");
+	fprintf(output, "                     needs two: one to fill the cache, one to resume from it.\n");
 	fprintf(output, "  -C                 Check configuration and exit.\n");
 	fprintf(output, "  -d <confdir>       Configuration file directory. (defaults to " CONFDIR ").\n");
 	fprintf(output, "  -D <dict_dir>      Dictionary files are in \"dict_dir/*\".\n");
