@@ -507,7 +507,7 @@ static unlang_action_t tls_verify_peer_cert_push(request_t *request, fr_tls_sess
 	 *      the TLS virtual server.
 	 */
 	ua = fr_tls_call_push(child, tls_verify_peer_cert_result, conf, tls_session, false);
-	if (ua < 0) {
+	if (ua == UNLANG_ACTION_FAIL) {
 	        PERROR("Failed calling TLS virtual server");
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
