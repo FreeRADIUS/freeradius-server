@@ -446,7 +446,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	 *      the TLS virtual server.
 	 */
 	ua = fr_tls_call_push(child, tls_cache_load_result, conf, tls_session, true);
-	if (ua < 0) {
+	if (ua == UNLANG_ACTION_FAIL) {
 		talloc_free(child);
 		tls_cache_load_state_reset(request, tls_cache);
 		return UNLANG_ACTION_FAIL;
@@ -593,7 +593,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *      the TLS virtual server.
 	 */
 	ua = fr_tls_call_push(child, tls_cache_store_result, conf, tls_session, true);
-	if (ua < 0) goto error;
+	if (ua == UNLANG_ACTION_FAIL) goto error;
 
 	return ua;
 }
@@ -661,7 +661,7 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *      the TLS virtual server.
 	 */
 	ua = fr_tls_call_push(child, tls_cache_clear_result, conf, tls_session, true);
-	if (ua < 0) {
+	if (ua == UNLANG_ACTION_FAIL) {
 		talloc_free(child);
 		tls_cache_clear_state_reset(request, tls_cache);
 		return UNLANG_ACTION_FAIL;
@@ -757,7 +757,7 @@ unlang_action_t fr_tls_cache_load_client_push(request_t *request, fr_tls_session
 	talloc_free(name);
 
 	ua = fr_tls_call_push(child, tls_cache_load_client_result, conf, tls_session, true);
-	if (ua < 0) {
+	if (ua == UNLANG_ACTION_FAIL) {
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
