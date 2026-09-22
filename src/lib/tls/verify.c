@@ -286,7 +286,7 @@ done:
 	 *	have been added by this point.
 	 */
 	if (my_ok && (depth == 0)) {
-		if (conf->verify_certificate && tls_session->verify_client_cert) {
+		if (conf->verify_certificate && tls_session->verify_peer_cert) {
 			RDEBUG2("Requesting certificate validation");
 
 			/*
@@ -330,7 +330,7 @@ done:
 		}
 	}
 
-	tls_session->client_cert_ok = (my_ok > 0);
+	tls_session->peer_cert_ok = (my_ok > 0);
 	RDEBUG2("[verify] = %s", my_ok ? "ok" : "invalid");
 
 	return my_ok;
@@ -421,7 +421,7 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 /** Process the result of `verify certificate { ... }`
  *
  */
-static unlang_action_t tls_verify_client_cert_result(request_t *request, void *uctx)
+static unlang_action_t tls_verify_peer_cert_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_pair_t		*vp, *next;
@@ -464,7 +464,7 @@ static unlang_action_t tls_verify_client_cert_result(request_t *request, void *u
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  *      - UNLANG_ACTION_FAIL on failure.
  */
-static unlang_action_t tls_verify_client_cert_push(request_t *request, fr_tls_session_t *tls_session)
+static unlang_action_t tls_verify_peer_cert_push(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
 	request_t		*child;
@@ -506,7 +506,7 @@ static unlang_action_t tls_verify_client_cert_push(request_t *request, fr_tls_se
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	ua = fr_tls_call_push(child, tls_verify_client_cert_result, conf, tls_session, false);
+	ua = fr_tls_call_push(child, tls_verify_peer_cert_result, conf, tls_session, false);
 	if (ua < 0) {
 	        PERROR("Failed calling TLS virtual server");
 		talloc_free(child);
@@ -570,7 +570,7 @@ void fr_tls_verify_cert_request(fr_tls_session_t *tls_session, bool session_resu
 unlang_action_t fr_tls_verify_cert_pending_push(request_t *request, fr_tls_session_t *tls_session)
 {
 	if (tls_session->validate.state == FR_TLS_VALIDATION_REQUESTED) {
-		return tls_verify_client_cert_push(request, tls_session);
+		return tls_verify_peer_cert_push(request, tls_session);
 	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;

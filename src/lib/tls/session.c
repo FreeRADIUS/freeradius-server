@@ -1973,7 +1973,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
 	}
-	tls_session->verify_client_cert = client_cert;
+	tls_session->verify_peer_cert = client_cert;
 
 	SSL_set_verify(tls_session->ssl, verify_mode, fr_tls_verify_cert_cb);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);

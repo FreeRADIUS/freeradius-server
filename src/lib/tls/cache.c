@@ -1322,7 +1322,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}
 
-	if (conf->virtual_server && tls_session->verify_client_cert) {
+	if (conf->virtual_server && tls_session->verify_peer_cert) {
 		RDEBUG2("Requesting certificate re-validation for session-ticket");
 		/*
 		 *	This sets the validation state of the tls_session

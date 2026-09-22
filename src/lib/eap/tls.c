@@ -861,7 +861,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	 *		  the client cert
 	 */
 	if ((tls_session->info.version == TLS1_3_VERSION) &&
-	    (tls_session->client_cert_ok || eap_tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
+	    (tls_session->peer_cert_ok || eap_tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
 		if ((eap_session->type == FR_EAP_METHOD_TLS) || SSL_session_reused(tls_session->ssl)) {
 			eap_tls_session->authentication_success = true;
 

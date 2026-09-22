@@ -129,13 +129,14 @@ struct fr_tls_session_s {
 
 	fr_tls_cache_t		*cache;				//!< Current session resumption state.
 	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
-	bool			verify_client_cert;		//!< Whether client cert verification has been requested.
+	bool			verify_peer_cert;		//!< Whether verification of the peer's certificate
+								///< has been requested.
 
 	fr_tls_verify_t		validate;			//!< Current session certificate validation state.
 
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 
-	bool			client_cert_ok;			//!< whether or not the client certificate was validated
+	bool			peer_cert_ok;			//!< Whether the peer's certificate was validated
 	bool			can_pause;			//!< If true, it's ok to pause the request
 								///< using the OpenSSL async API.
 
