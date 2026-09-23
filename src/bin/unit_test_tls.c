@@ -64,6 +64,7 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/tls/version.h>
+#include <freeradius-devel/tls/connection.h>
 
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/function.h>
@@ -121,68 +122,6 @@ static const conf_parser_t unit_test_tls_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/** Which part of a connection is running
- *
- * A connection is more than a handshake.  Policy runs before the handshake
- * and after the handshake.  tls_connection_run() pushes one connection frame,
- * and every part of a connection runs under the connection frame: the policy
- * sections and the handshake rounds are all pushed under the connection
- * frame.  Each state arms the next state as the repeat function of the
- * connection frame, so the repeat function records which part runs next.
- *
- * The `state` field of fr_tls_connection_t records the same part for
- * tls_connection_check(), which runs outside of the connection frame and cannot
- * read a repeat function.  tls_connection_check() acts only while `state` is
- * TLS_CONNECTION_HANDSHAKE.  tls_connection_check() sets `state` to
- * TLS_CONNECTION_COMPLETE to record that the handshake has ended.
- */
-typedef enum {
-	TLS_CONNECTION_NEW_SESSION = 0,			//!< Run `new session { ... }`.
-	TLS_CONNECTION_LOAD_SESSION,			//!< Ask the virtual server for a session to resume.
-	TLS_CONNECTION_HANDSHAKE,			//!< Run handshake rounds until the handshake ends.
-	TLS_CONNECTION_COMPLETE				//!< Run the cache operations the handshake queued.
-} tls_connection_state_t;
-
-/** Everything the TLS connection state machine needs
- *
- * The state machine is the tls_connection_* functions.  Every field the state
- * machine reads or writes lives here, so that the structure and the functions
- * can move to src/lib/tls/connection.c together.
- *
- * The state machine needs to perform a few actions which are outside of
- * TLS state management:
- *
- * - informing the calling application that the TLS connection is finished (good or bad)
- * - write OpenSSL data to the peer
- */
-typedef struct fr_tls_connection_s fr_tls_connection_t;
-
-struct fr_tls_connection_s {
-	fr_tls_conf_t		*tls_conf;		//!< Parsed "tls" section.
-	fr_tls_session_t	*tls_session;		//!< State of the handshake.
-	request_t		*request;		//!< Request the handshake runs under.
-
-	tls_connection_state_t	state;			//!< Which part of the connection is running.
-	bool			client;			//!< Connect to a server, rather than accept a
-							///< connection.
-	bool			idle;			//!< The connection frame is yielded, waiting
-							///< for a record.
-	bool			pending;		//!< A record is waiting for OpenSSL.
-	bool			failed;			//!< A state or the handshake failed, so the cache
-							///< denies the session.
-
-	void			*uctx;			//!< Context for the callback functions below.
-
-	void			(*finished)(void *uctx, fr_tls_connection_t *conn);
-							//!< Stop running the connection.  Read the
-							///< result from conn->failed, and anything
-							///< else needed from conn->tls_conf or
-							///< conn->tls_session.
-	int			(*write)(void *uctx, fr_tls_connection_t *conn);
-							//!< Write what OpenSSL produced out to the
-							///< peer.  Returns < 0 on failure.
-};
-
 /** State of the test program
  *
  * The interpreter and the runnable heap live for the whole of the connection.
@@ -214,7 +153,6 @@ typedef struct {
 } unit_test_tls_t;
 
 static void usage(main_config_t const *config, int status);
-static void tls_connection_wake(fr_tls_connection_t *conn);
 
 /*
  *	Interpreter callbacks.
@@ -330,24 +268,6 @@ static bool _request_scheduled(request_t const *request, UNUSED void *uctx)
 	return fr_heap_entry_inserted(request->runnable);
 }
 
-/** Wake the connection's request, if the request is waiting for a record
- *
- * The request yields in two places: the connection frame waiting for a
- * record, and a policy section pushed under the connection frame.  Only a
- * request yielded in the connection frame may be woken from outside.  Waking
- * a request during a policy section resumes the request ahead of the
- * subrequest, and strands the subrequest on the runnable heap.  A subrequest
- * wakes the request when the subrequest finishes.  See
- * unlang_child_request_done() in src/lib/unlang/child_request.c.
- */
-static void tls_request_wake(fr_tls_connection_t *conn)
-{
-	if (!conn->idle) return;
-
-	conn->idle = false;
-	unlang_interpret_mark_runnable(conn->request);
-}
-
 /** Stop the event loop, recording why
  *
  * The connection carries the result, so the exit status is decided here
@@ -416,253 +336,6 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 	return 0;
 }
 
-/** Decide whether the handshake is over, and whether the handshake succeeded
- *
- * The handshake is complete only when SSL_is_init_finished() returns true and
- * every record OpenSSL produced has reached the peer.  The EAP code in
- * src/lib/eap/tls.c tests the same condition.
- */
-static void tls_connection_check(fr_tls_connection_t *conn)
-{
-	fr_tls_session_t *tls_session = conn->tls_session;
-
-	/*
-	 *	A guard, not an assert.  The cache operations which
-	 *	run after the handshake each wake the connection's
-	 *	request, and every wake brings the request back here
-	 *	with the state already moved on.
-	 */
-	if (conn->state != TLS_CONNECTION_HANDSHAKE) return;
-
-	if (tls_session->result == FR_TLS_RESULT_ERROR) {
-		ERROR("TLS handshake failed");
-		conn->failed = true;
-		goto finish;
-	}
-
-	if (!SSL_is_init_finished(tls_session->ssl)) return;
-	if (tls_session->dirty_out.used > 0) return;
-
-	INFO("TLS handshake completed");
-	INFO("  version    : %s", SSL_get_version(tls_session->ssl));
-	INFO("  cipher     : %s", SSL_get_cipher(tls_session->ssl));
-	INFO("  resumed    : %s", SSL_session_reused(tls_session->ssl) ? "yes" : "no");
-
-finish:
-	/*
-	 *	The cache callbacks push work onto the stack, so something
-	 *	has to wake the request to run that work.
-	 *
-	 *	tls_connection_check() runs outside of the connection frame and
-	 *	so cannot arm a repeat function.  Moving the state to
-	 *	TLS_CONNECTION_COMPLETE tells tls_connection_handshake() that the handshake
-	 *	has ended.  Without the move, tls_connection_handshake() yields
-	 *	waiting for a record which never comes, tls_request_wake()
-	 *	wakes the request again, and the connection loops without
-	 *	making progress.
-	 */
-	conn->state = TLS_CONNECTION_COMPLETE;
-	tls_request_wake(conn);
-}
-
-/** Write out any pending records, then re-check the handshake state
- *
- */
-static void tls_connection_process(fr_tls_connection_t *conn)
-{
-	if (conn->write(conn->uctx, conn) < 0) {
-		conn->failed = true;
-		conn->finished(conn->uctx, conn);
-		return;
-	}
-
-	tls_connection_check(conn);
-}
-
-/** The connection reached a state it cannot recover from
- *
- * The state functions have no way to report a failure to the interpreter.  A
- * function frame which returns UNLANG_ACTION_FAIL trips an assertion in
- * src/lib/unlang/function.c.  So a failed state records the exit status and
- * yields.  tls_request_finished() then stops the event loop.
- */
-static unlang_action_t tls_connection_error(fr_tls_connection_t *conn)
-{
-	conn->failed = true;
-	conn->finished(conn->uctx, conn);
-	return UNLANG_ACTION_YIELD;
-}
-
-#define TLS_CONNECTION_ERROR_RETURN \
-	do { \
-		if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua; \
-		if (ua == UNLANG_ACTION_FAIL) return tls_connection_error(conn); \
-	} while (0)
-
-#define TLS_CONNECTION_REPEAT(_func) \
-	do { \
-		if (unlang_function_repeat_set(request, _func) < 0) { \
-			return tls_connection_error(conn); \
-		} \
-	} while (0)
-
-/** Run the cache operations the handshake queued, then stop
- *
- * The cache callbacks only queue work, and tls_connection_check() says why
- * something has to run the queued work.  fr_tls_cache_pending_push() pushes
- * one operation per call, so this state arms itself and runs again for each
- * operation, until no operation is left.
- */
-static unlang_action_t tls_connection_cache(request_t *request, void *uctx)
-{
-	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
-	unlang_action_t	ua;
-
-	conn->idle = false;
-
-	TLS_CONNECTION_REPEAT(tls_connection_cache);
-
-	ua = fr_tls_cache_pending_push(request, conn->tls_session);
-	TLS_CONNECTION_ERROR_RETURN;
-
-	conn->finished(conn->uctx, conn);
-	return UNLANG_ACTION_YIELD;
-}
-
-/** Deny a failed session, then run the queued cache operations
- *
- * fr_tls_cache_deny() is meant to run once.  The comment on
- * fr_tls_cache_deny() in src/lib/tls/cache.c says the call frees the memory
- * used by the session, and the call leaves tls_session->session set, so a
- * second call is at best redundant.
- *
- * tls_connection_cache() arms tls_connection_cache(), and so runs once per
- * queued operation.  The deny cannot live in tls_connection_cache().  This
- * state runs once instead.  tls_connection_handshake() calls this state, and
- * this state arms nothing, so a resumed operation comes back to
- * tls_connection_cache().
- */
-static unlang_action_t tls_connection_complete(request_t *request, void *uctx)
-{
-	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
-
-	if (conn->failed) fr_tls_cache_deny(request, conn->tls_session);
-
-	return tls_connection_cache(request, conn);
-}
-
-/** Run handshake rounds until the handshake ends
- *
- * A handshake round is pushed as a sub-frame, so some other frame has to sit
- * below it on the stack.  With nothing below the round, popping the round
- * empties the stack, and the interpreter marks a request with an empty stack
- * as done.  The connection frame is the frame below the round on the stack.
- * The request has to survive every round of the connection, so this state
- * yields between rounds rather than returning.
- *
- * The rest of the server puts the same kind of frame directly below a
- * handshake round on the stack.  In EAP that frame belongs to the module
- * which called fr_tls_session_async_handshake_push().
- */
-static unlang_action_t tls_connection_handshake(request_t *request, void *uctx)
-{
-	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
-	unlang_action_t	ua;
-
-	conn->idle = false;
-
-	/*
-	 *	tls_connection_check() runs outside of this frame, so
-	 *	it cannot arm a repeat function.  Instead, it sets
-	 *	`conn->state` to TLS_CONNECTION_COMPLETE to record that
-	 *	the handshake has ended, and this state reads
-	 *	`conn->state` here.
-	 */
-	if (conn->state == TLS_CONNECTION_COMPLETE) return tls_connection_complete(request, conn);
-
-	/*
-	 *	Set the repeat before we push anything else.
-	 */
-	TLS_CONNECTION_REPEAT(tls_connection_handshake);
-
-	/*
-	 *	No record is waiting for OpenSSL, yield until the next
-	 *	record arrives.
-	 */
-	if (!conn->pending) {
-		conn->idle = true;
-		return UNLANG_ACTION_YIELD;
-	}
-
-	conn->pending = false;
-
-	/*
-	 *	fr_tls_session_async_handshake_push() binds the request to
-	 *	the SSL* itself, and unbinds the request when the round
-	 *	ends, so this state must not bind the request.
-	 */
-	ua = fr_tls_session_async_handshake_push(request, conn->tls_session);
-	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
-
-	ERROR("Failed in TLS handshake");
-	return tls_connection_error(conn);
-}
-
-/** Ask the virtual server for a session to resume
- *
- * A server is asked for a session by OpenSSL, part way through the handshake.
- * A client has to choose one before the handshake starts.
- */
-static unlang_action_t tls_connection_load_session(request_t *request, void *uctx)
-{
-	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
-	unlang_action_t	ua;
-
-	conn->idle = false;
-	conn->state = TLS_CONNECTION_HANDSHAKE;
-
-	if (!conn->client) return tls_connection_handshake(request, conn);
-
-	TLS_CONNECTION_REPEAT(tls_connection_handshake);
-
-	ua = fr_tls_cache_load_client_push(request, conn->tls_session);
-	TLS_CONNECTION_ERROR_RETURN;
-
-	return tls_connection_handshake(request, conn);
-}
-
-/** Run `new session { ... }`, the first state of a connection
- *
- * tls_connection_run() pushes the connection frame with this state as both
- * the function and the repeat function.  Each later state arms the state which runs
- * next.  See tls_connection_state_t.
- */
-static unlang_action_t tls_connection_new_session(request_t *request, void *uctx)
-{
-	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
-	unlang_action_t	ua;
-
-	/*
-	 *	A state is running, so the request is not sitting idle.  Only
-	 *	tls_connection_handshake() sets `conn->idle` again, when that state
-	 *	yields waiting for a record.  Leaving `conn->idle` set lets a
-	 *	record which arrives during a policy section wake the
-	 *	request while a subrequest is still in flight, and that wake
-	 *	strands the subrequest on the runnable heap.
-	 */
-	conn->idle = false;
-	conn->state = TLS_CONNECTION_LOAD_SESSION;
-
-	if (conn->tls_conf->new_session) {
-		TLS_CONNECTION_REPEAT(tls_connection_load_session);
-
-		ua = fr_tls_new_session_push(request, conn->tls_conf);
-		TLS_CONNECTION_ERROR_RETURN;
-	}
-
-	return tls_connection_load_session(request, conn);
-}
-
 /** A record arrived on the connection, so run another handshake round
  *
  */
@@ -713,7 +386,7 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 	 *	Hand the round over to the connection frame, which is sitting
 	 *	yielded, waiting for exactly that record.
 	 */
-	tls_connection_wake(utt->conn);
+	fr_tls_connection_wake(utt->conn);
 }
 
 /** The connection failed at the socket level
@@ -725,28 +398,6 @@ static void _tls_connection_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 
 	ERROR("Error on connection: %s", fr_syserror(fd_errno));
 	tls_request_failed(utt);
-}
-
-/** Start a handshake round, and run it as far as it will go
- *
- * The connection frame is yielded between rounds, so marking the request
- * runnable wakes the request.  The drain is called here rather than left to
- * the post-event handler, because a client starts the first round with no
- * event pending, and the event loop would block before servicing anything.
- */
-static void tls_connection_wake(fr_tls_connection_t *conn)
-{
-	conn->pending = true;
-
-	tls_request_wake(conn);
-
-	/*
-	 *	The draining is left to _tls_runnable().  Doing it here would
-	 *	run the interpreter from inside a read event, which can happen
-	 *	while the interpreter is already running higher up the stack.
-	 *	Every caller of this function runs inside the event loop, so
-	 *	the post-event handler picks the work up in the same pass.
-	 */
 }
 
 /** Drain the runnable heap once per pass of the event loop
@@ -770,7 +421,7 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 		 *	handshake.  A subrequest returns the subrequest's
 		 *	result through the interpreter.
 		 */
-		if (request == utt->conn->request) tls_connection_process(utt->conn);
+		if (request == utt->conn->request) fr_tls_connection_process(utt->conn);
 
 		if (utt->done) return;
 	}
@@ -982,7 +633,7 @@ static void _tls_connection_start(fr_event_list_t *el, void *uctx)
 	 *	A server then waits for the ClientHello.  A client has to send
 	 *	it.
 	 */
-	tls_connection_wake(utt->conn);
+	fr_tls_connection_wake(utt->conn);
 }
 
 /** Run one connection from the first byte to the last
@@ -1055,8 +706,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	 *	unlang_interpret_mark_runnable() acts only on a
 	 *	yielded frame.
 	 */
-	if (unlang_function_push(utt->conn->request, tls_connection_new_session, tls_connection_new_session,
-				 NULL, 0, UNLANG_TOP_FRAME, utt->conn) < 0) {
+	if (fr_tls_connection_push(utt->conn) < 0) {
 		PERROR("Failed starting new TLS connection");
 		goto finish;
 	}

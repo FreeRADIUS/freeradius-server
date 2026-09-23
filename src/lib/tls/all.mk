@@ -11,6 +11,7 @@ SOURCES	:= \
 	cache.c \
 	cert.c \
 	conf.c \
+	connection.c \
 	ctx.c \
 	log.c \
 	pairs.c \
