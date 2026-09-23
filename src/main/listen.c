@@ -402,6 +402,9 @@ static void listener_coa_update(rad_listen_t *this, VALUE_PAIR *vps);
 #  define TLS_FREE(_x)
 #endif
 
+/*
+ *	Called with the mutex held, and unlocks the mutex.
+ */
 void tls_socket_close(rad_listen_t *listener);
 
 /*
