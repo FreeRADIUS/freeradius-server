@@ -189,15 +189,6 @@ inline static void record_init(fr_tls_record_t *record)
 	record->used = 0;
 }
 
-/** Destroy a record buffer
- *
- * @param record buffer to destroy clear.
- */
-inline static void record_close(fr_tls_record_t *record)
-{
-	record->used = 0;
-}
-
 /** Copy data to the intermediate buffer, before we send it somewhere
  *
  * @param[in] record	buffer to write to.
@@ -1721,19 +1712,72 @@ static int _fr_tls_session_free(fr_tls_session_t *session)
 	return 0;
 }
 
-static void session_init(fr_tls_session_t *session)
+/** Allocate a new #fr_tls_session_t and initialize it
+ *
+ */
+static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, SSL_CTX *ssl_ctx)
 {
-	session->ssl = NULL;
-	session->into_ssl = session->from_ssl = NULL;
-	record_init(&session->clean_in);
-	record_init(&session->clean_out);
-	record_init(&session->dirty_in);
-	record_init(&session->dirty_out);
+	fr_tls_session_t *tls_session;
 
-	memset(&session->info, 0, sizeof(session->info));
+	tls_session = talloc_zero(ctx, fr_tls_session_t);
+	if (!tls_session) return NULL;
 
-	session->mtu = 0;
-	session->opaque = NULL;
+	tls_session->ctx = ssl_ctx;
+
+	tls_session->ssl = SSL_new(ssl_ctx);
+	if (!tls_session->ssl) {
+		talloc_free(tls_session);
+		fr_tls_log(request, "Error creating new TLS session");
+		return NULL;
+	}
+
+	talloc_set_destructor(tls_session, _fr_tls_session_free);
+	fr_pair_list_init(&tls_session->extra_pairs);
+
+	/*
+	 *	Add the message callback to identify what type of
+	 *	message/handshake is passed
+	 */
+	SSL_set_msg_callback(tls_session->ssl, fr_tls_session_msg_cb);
+	SSL_set_msg_callback_arg(tls_session->ssl, tls_session);
+	SSL_set_info_callback(tls_session->ssl, fr_tls_session_info_cb);
+
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
+
+	/*
+	 *	The client sometimes doesn't have a request.  The server always has one.
+	 */
+	if (!request) return tls_session;
+
+	/*
+	 *	If there is a request, then initialize the buffers and set up the function pointers.
+	 *	Otherwise leave the function pointers and bio handles as NULL, so that any accidental use
+	 *	causes problems.
+	 */
+	record_init(&tls_session->clean_in);
+	record_init(&tls_session->clean_out);
+	record_init(&tls_session->dirty_in);
+	record_init(&tls_session->dirty_out);
+
+	tls_session->record_init = record_init;
+	tls_session->record_from_buff = record_from_buff;
+	tls_session->record_to_buff = record_to_buff;
+
+	/*
+	 *	Create & hook the BIOs to handle the dirty side of the
+	 *	SSL.  This is *very important* as we want to handle
+	 *	the transmission part.  Now the only IO interface
+	 *	that SSL is aware of, is our defined BIO buffers.
+	 *
+	 *	This means that all SSL IO is done to/from memory,
+	 *	and we can update those BIOs from the packets we've
+	 *	received.
+	 */
+	MEM(tls_session->into_ssl = BIO_new(BIO_s_mem()));
+	MEM(tls_session->from_ssl = BIO_new(BIO_s_mem()));
+	SSL_set_bio(tls_session->ssl, tls_session->into_ssl, tls_session->from_ssl);
+
+	return tls_session;
 }
 
 /** Create a new client TLS session
@@ -1763,28 +1807,11 @@ static void session_init(fr_tls_session_t *session)
 fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request)
 {
 	int			verify_mode;
-	fr_tls_session_t	*tls_session = NULL;
+	fr_tls_session_t	*tls_session;
 	fr_tls_conf_t		*conf = fr_tls_ctx_conf(ssl_ctx);
 
-	MEM(tls_session = talloc_zero(ctx, fr_tls_session_t));
-	talloc_set_destructor(tls_session, _fr_tls_session_free);
-	fr_pair_list_init(&tls_session->extra_pairs);
-	session_init(tls_session);
-
-	tls_session->ctx = ssl_ctx;
-	tls_session->ssl = SSL_new(ssl_ctx);
-	if (!tls_session->ssl) {
-		talloc_free(tls_session);
-		return NULL;
-	}
-
-	/*
-	 *	Add the message callback to identify what type of
-	 *	message/handshake is passed
-	 */
-	SSL_set_msg_callback(tls_session->ssl, fr_tls_session_msg_cb);
-	SSL_set_msg_callback_arg(tls_session->ssl, tls_session);
-	SSL_set_info_callback(tls_session->ssl, fr_tls_session_info_cb);
+	tls_session = tls_session_alloc(ctx, request, ssl_ctx);
+	if (!tls_session) return NULL;
 
 	/*
 	 *	In Client mode we only connect.
@@ -1802,20 +1829,6 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 
 	if (request) {
-		/*
-		 *	All of the session IO is done to and from memory, so
-		 *	that the caller can move records between these buffers
-		 *	and whatever transport it is using.
-		 */
-		tls_session->record_init = record_init;
-		tls_session->record_close = record_close;
-		tls_session->record_from_buff = record_from_buff;
-		tls_session->record_to_buff = record_to_buff;
-
-		MEM(tls_session->into_ssl = BIO_new(BIO_s_mem()));
-		MEM(tls_session->from_ssl = BIO_new(BIO_s_mem()));
-		SSL_set_bio(tls_session->ssl, tls_session->into_ssl, tls_session->from_ssl);
-
 		/*
 		 *	fr_tls_verify_cert_cb() pauses the handshake and runs
 		 *	the `verify certificate` section.  It needs a request,
@@ -1835,7 +1848,6 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	}
 
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 
 	tls_session->mtu = conf->fragment_size;
 
@@ -1869,60 +1881,17 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
  */
 fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, size_t dynamic_mtu, bool client_cert)
 {
-	fr_tls_session_t	*tls_session = NULL;
-	SSL			*ssl = NULL;
+	fr_tls_session_t	*tls_session;
 	int			verify_mode = 0;
 	fr_pair_t		*vp;
 	fr_tls_conf_t		*conf = fr_tls_ctx_conf(ssl_ctx);
 
 	RDEBUG2("Initiating new TLS session");
 
-	MEM(tls_session = talloc_zero(ctx, fr_tls_session_t));
-
-	ssl = SSL_new(ssl_ctx);
-	if (ssl == NULL) {
-		talloc_free(tls_session);
-		fr_tls_log(request, "Error creating new TLS session");
-		return NULL;
-	}
-	fr_pair_list_init(&tls_session->extra_pairs);
-
-	session_init(tls_session);
-	tls_session->ctx = ssl_ctx;
-	tls_session->ssl = ssl;
-	talloc_set_destructor(tls_session, _fr_tls_session_free);
+	tls_session = tls_session_alloc(ctx, request, ssl_ctx);
+	if (!tls_session) return NULL;
 
 	fr_tls_session_request_bind(tls_session->ssl, request);	/* Is unbound in this function */
-
-	/*
-	 *	Initialize callbacks
-	 */
-	tls_session->record_init = record_init;
-	tls_session->record_close = record_close;
-	tls_session->record_from_buff = record_from_buff;
-	tls_session->record_to_buff = record_to_buff;
-
-	/*
-	 *	Create & hook the BIOs to handle the dirty side of the
-	 *	SSL.  This is *very important* as we want to handle
-	 *	the transmission part.  Now the only IO interface
-	 *	that SSL is aware of, is our defined BIO buffers.
-	 *
-	 *	This means that all SSL IO is done to/from memory,
-	 *	and we can update those BIOs from the packets we've
-	 *	received.
-	 */
-	MEM(tls_session->into_ssl = BIO_new(BIO_s_mem()));
-	MEM(tls_session->from_ssl = BIO_new(BIO_s_mem()));
-	SSL_set_bio(tls_session->ssl, tls_session->into_ssl, tls_session->from_ssl);
-
-	/*
-	 *	Add the message callback to identify what type of
-	 *	message/handshake is passed
-	 */
-	SSL_set_msg_callback(ssl, fr_tls_session_msg_cb);
-	SSL_set_msg_callback_arg(ssl, tls_session);
-	SSL_set_info_callback(ssl, fr_tls_session_info_cb);
 
 	/*
 	 *	This sets the context sessions can be resumed in.
@@ -2037,7 +2006,6 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 	SSL_set_verify(tls_session->ssl, verify_mode, fr_tls_verify_cert_cb);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 
 	if (conf->client_hello_parse) {
 		SSL_CTX_set_client_hello_cb(ssl_ctx, fr_tls_session_client_hello_cb, NULL);

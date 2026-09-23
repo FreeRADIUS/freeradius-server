@@ -136,7 +136,6 @@ struct fr_tls_session_s {
 	uint32_t		rounds;				//!< Handshake round trips.
 
 	void 			(*record_init)(fr_tls_record_t *buf);
-	void 			(*record_close)(fr_tls_record_t *buf);
 	unsigned int 		(*record_from_buff)(fr_tls_record_t *buf, void const *ptr, unsigned int size);
 	unsigned int 		(*record_to_buff)(fr_tls_record_t *buf, void *ptr, unsigned int size);
 
