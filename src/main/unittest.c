@@ -77,6 +77,14 @@ void request_inject(UNUSED REQUEST *request)
  */
 void request_free(REQUEST *request) CC_HINT(nonnull);
 void request_done(REQUEST *request, int original) CC_HINT(nonnull);
+#ifdef WITH_STATS
+void request_stat_final(REQUEST *request) CC_HINT(nonnull);
+
+void request_stats_final(UNUSED REQUEST *request)
+{
+	/* do nothing */
+}
+#endif
 
 void request_free(UNUSED REQUEST *request)
 {
