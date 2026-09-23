@@ -180,7 +180,7 @@ int			eap_tls_request(request_t *request, eap_session_t *eap_session) CC_HINT(no
 
 int			eap_tls_compose(request_t *request, eap_session_t *eap_session,
 					eap_tls_status_t status, uint8_t flags,
-		    			fr_tls_record_t *record, size_t record_len, size_t frag_len);
+					fr_dbuff_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
 void			eap_crypto_prf_label_init(eap_tls_prf_label_t *prf_label, eap_session_t *eap_session,

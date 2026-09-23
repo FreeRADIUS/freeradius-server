@@ -139,7 +139,7 @@ static int eap_peap_failure(request_t *request, eap_session_t *eap_session, fr_t
 	tlv_packet[9] = 0;
 	tlv_packet[10] = EAP_TLV_FAILURE;
 
-	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 11);
+	(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, tlv_packet, 11);
 
 	return fr_tls_session_send(request, tls_session);
 }
@@ -167,7 +167,7 @@ static int eap_peap_success(request_t *request, eap_session_t *eap_session, fr_t
 	tlv_packet[9] = 0;
 	tlv_packet[10] = EAP_TLV_SUCCESS;
 
-	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 11);
+	(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, tlv_packet, 11);
 
 	return fr_tls_session_send(request, tls_session);
 }
@@ -183,7 +183,7 @@ static int eap_peap_identity(request_t *request, eap_session_t *eap_session, fr_
 	eap_packet.length[1] = EAP_HEADER_LEN + 1;
 	eap_packet.data[0] = FR_EAP_METHOD_IDENTITY;
 
-	(tls_session->record_from_buff)(&tls_session->clean_in, &eap_packet, sizeof(eap_packet));
+	(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, (uint8_t const *) &eap_packet, sizeof(eap_packet));
 	return fr_tls_session_send(request, tls_session);
 }
 
@@ -301,7 +301,7 @@ static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_s
 	this = fr_pair_list_head(vps);
 	if (this->vp_length <= EAP_HEADER_LEN) return 1;
 
-	(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets + EAP_HEADER_LEN,
+	(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, this->vp_octets + EAP_HEADER_LEN,
 					this->vp_length - EAP_HEADER_LEN);
 
 	/*
@@ -310,7 +310,7 @@ static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_s
 	for (this = fr_pair_list_next(vps, this);
 	     this;
 	     this = fr_pair_list_next(vps, this)) {
-		(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets, this->vp_length);
+		(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, this->vp_octets, this->vp_length);
 	}
 
 	fr_tls_session_send(request, tls_session);
@@ -458,12 +458,12 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 	rlm_eap_peap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_peap_t);
 
 	/*
-	 *	Just look at the buffer directly, without doing
-	 *	record_to_buff.  This lets us avoid another data copy.
+	 *	Read the buffer directly, rather than copying the octets
+	 *	out of it.  That avoids another data copy.
 	 */
-	data_len = tls_session->clean_out.used;
-	tls_session->clean_out.used = 0;
-	data = tls_session->clean_out.data;
+	data_len = fr_dbuff_used(&tls_session->clean_out);
+	data = fr_dbuff_start(&tls_session->clean_out);
+	fr_tls_record_init(&tls_session->clean_out);
 
 	RDEBUG2("PEAP state %s", peap_state(t));
 

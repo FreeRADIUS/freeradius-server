@@ -85,7 +85,7 @@ static void tls_connection_check(fr_tls_connection_t *conn)
 	 *	there's still data to push to the peer.
 	 */
 	if (!SSL_is_init_finished(tls_session->ssl)) return;
-	if (tls_session->dirty_out.used > 0) return;
+	if (fr_dbuff_remaining(&tls_session->dirty_out) > 0) return;
 
 	INFO("TLS handshake completed");
 	INFO("  version    : %s", SSL_get_version(tls_session->ssl));
@@ -333,7 +333,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 
 	RDEBUG3("Read %zu bytes from the connection", data_len);
 
-	if (tls_session->record_from_buff(&tls_session->dirty_in, data, data_len) != data_len) {
+	if (fr_dbuff_in_memcpy_partial(&tls_session->dirty_in, data, data_len) != data_len) {
 		RERROR("Failed buffering %zu bytes of TLS record data", data_len);
 	error:
 		conn->failed = true;

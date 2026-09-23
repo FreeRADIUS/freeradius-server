@@ -111,11 +111,9 @@ size_t eap_tls_status_table_len = NUM_ELEMENTS(eap_tls_status_table);
  *	- -1 on failure.
  */
 int eap_tls_compose(request_t *request, eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
-		    fr_tls_record_t *record, size_t record_len, size_t frag_len)
+		    fr_dbuff_t *record, size_t record_len, size_t frag_len)
 {
 	eap_round_t		*eap_round = eap_session->this_round;
-	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 	uint8_t			*p;
 	size_t			len = 1;	/* Flags */
 
@@ -187,7 +185,7 @@ int eap_tls_compose(request_t *request, eap_session_t *eap_session, eap_tls_stat
 		p += sizeof(net_record_len);
 	}
 
-	if (record) tls_session->record_to_buff(record, p, frag_len);
+	if (record) (void) fr_tls_record_to_buff(record, p, frag_len);
 
 	switch (status) {
 	case EAP_TLS_ACK_SEND:
@@ -388,14 +386,14 @@ int eap_tls_request(request_t *request, eap_session_t *eap_session)
 	 *	TLS record length.
 	 */
 	if (eap_tls_session->record_out_started  == false) {
-		eap_tls_session->record_out_total_len = tls_session->dirty_out.used;
+		eap_tls_session->record_out_total_len = fr_dbuff_remaining(&tls_session->dirty_out);
 	}
 
 	/*
 	 *	If the data we're sending is greater than the MTU
 	 *	then we need to fragment it.
 	 */
-	if ((tls_session->dirty_out.used +
+	if ((fr_dbuff_remaining(&tls_session->dirty_out) +
 	    (length_included ? TLS_HEADER_LENGTH_FIELD_LEN : 0)) > tls_session->mtu) {
 		if (eap_tls_session->record_out_started == false) length_included = true;
 
@@ -412,10 +410,10 @@ int eap_tls_request(request_t *request, eap_session_t *eap_session)
 			RDEBUG2("Complete TLS record (%zu bytes) larger than MTU (%zu bytes), will fragment",
 				eap_tls_session->record_out_total_len, frag_len);	/* frag_len is correct here */
 			RDEBUG2("Sending first TLS record fragment (%zu bytes), %zu bytes remaining",
-				frag_len, tls_session->dirty_out.used - frag_len);
+				frag_len, fr_dbuff_remaining(&tls_session->dirty_out) - frag_len);
 		} else {
 			RDEBUG2("Sending additional TLS record fragment (%zu bytes), %zu bytes remaining",
-				frag_len, tls_session->dirty_out.used - frag_len);
+				frag_len, fr_dbuff_remaining(&tls_session->dirty_out) - frag_len);
 		}
 		eap_tls_session->record_out_started  = true;	/* Start a new series of fragments */
 	/*
@@ -423,7 +421,7 @@ int eap_tls_request(request_t *request, eap_session_t *eap_session)
 	 *	than the MTU or this is the final fragment.
 	 */
 	} else {
-		frag_len = tls_session->dirty_out.used;	/* Remaining data to drain */
+		frag_len = fr_dbuff_remaining(&tls_session->dirty_out);	/* Remaining data to drain */
 
 		if (eap_tls_session->record_out_started  == false) {
 			RDEBUG2("Sending complete TLS record (%zu bytes)", frag_len);
@@ -506,7 +504,7 @@ static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t
 		return EAP_TLS_FAIL;
 
 	case SSL3_RT_HANDSHAKE:
-		if (SSL_is_init_finished(tls_session->ssl) && (tls_session->dirty_out.used == 0)) {
+		if (SSL_is_init_finished(tls_session->ssl) && (fr_dbuff_remaining(&tls_session->dirty_out) == 0)) {
 			RDEBUG2("Peer ACKed our handshake fragment.  handshake is finished");
 
 			/*
@@ -866,7 +864,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 			eap_tls_session->authentication_success = true;
 
 			RDEBUG("(TLS) EAP Sending final Commitment Message.");
-			tls_session->record_from_buff(&tls_session->clean_in, "\0", 1);
+			(void) fr_dbuff_in_bytes(&tls_session->clean_in, (uint8_t) 0x00);
 		} else {
 
 			/*
@@ -886,7 +884,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	 *
 	 *	TLS proper can decide what to do, then.
 	 */
-	if (tls_session->dirty_out.used > 0) {
+	if (fr_dbuff_remaining(&tls_session->dirty_out) > 0) {
 		if (eap_tls_request(request, eap_session) < 0) {
 			REDEBUG("TLS failed composing a response");
 			goto fail;
@@ -896,7 +894,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	}
 
 	/*
-	 *	If there is no data to send i.e dirty_out.used <=0 and
+	 *	If there is no data to send, and
 	 *	if the SSL handshake is finished, then return
 	 *	EAP_TLS_ESTABLISHED.
 	 *
@@ -1047,7 +1045,7 @@ unlang_action_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 		 *	This buffer will contain partial data when M bit is set, and should
 		 * 	should only be reinitialized when M bit is not set.
 		 */
-		if ((tls_session->record_from_buff)(&tls_session->dirty_in, data, data_len) != data_len) {
+		if (fr_dbuff_in_memcpy_partial(&tls_session->dirty_in, data, data_len) != data_len) {
 			REDEBUG("Exceeded maximum record size");
 			eap_tls_session->state = EAP_TLS_FAIL;
 			goto done;
@@ -1104,7 +1102,7 @@ unlang_action_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 		 *	Return a "yes we're done" if there's no more data to send,
 		 *	and we've just managed to finish the SSL session initialization.
 		 */
-		if (!eap_tls_session->phase2 && (tls_session->dirty_out.used == 0) &&
+		if (!eap_tls_session->phase2 && (fr_dbuff_remaining(&tls_session->dirty_out) == 0) &&
 		    SSL_is_init_finished(tls_session->ssl)) {
 			eap_tls_session->phase2 = true;
 			eap_tls_session->state = EAP_TLS_ESTABLISHED;

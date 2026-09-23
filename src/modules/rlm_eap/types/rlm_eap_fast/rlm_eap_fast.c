@@ -261,8 +261,8 @@ static void eap_fast_tlv_append(fr_tls_session_t *tls_session, fr_dict_attr_t co
 	hdr[0] = (mandatory) ? htons(tlv->attr | EAP_FAST_TLV_MANDATORY) : htons(tlv->attr);
 	hdr[1] = htons(length);
 
-	tls_session->record_from_buff(&tls_session->clean_in, &hdr, 4);
-	tls_session->record_from_buff(&tls_session->clean_in, data, length);
+	(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, (uint8_t const *) &hdr, (size_t) 4);
+	(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, (uint8_t const *) data, (size_t) length);
 }
 
 static void eap_fast_send_error(fr_tls_session_t *tls_session, int error)
@@ -1048,12 +1048,12 @@ static fr_radius_packet_code_t eap_fast_process(request_t *request, module_ctx_t
 
 	fr_pair_list_init(&fast_vps);
 	/*
-	 * Just look at the buffer directly, without doing
-	 * record_to_buff.
+	 * Read the buffer directly, rather than copying the
+	 * octets out of it.
 	 */
-	data_len = tls_session->clean_out.used;
-	tls_session->clean_out.used = 0;
-	data = tls_session->clean_out.data;
+	data_len = fr_dbuff_used(&tls_session->clean_out);
+	data = fr_dbuff_start(&tls_session->clean_out);
+	fr_tls_record_init(&tls_session->clean_out);
 
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
@@ -1583,13 +1583,21 @@ static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t 
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
+	/*
+	 *	eap_tls_compose() reads from clean_in, so clean_in stops
+	 *	filling and starts draining for the duration of the call.
+	 */
+	fr_tls_record_drain(&tls_session->clean_in);
+
 	if (eap_tls_compose(request, eap_session, EAP_TLS_START_SEND,
 			    SET_START(eap_tls_session->base_flags) | EAP_FAST_VERSION,
-			    &tls_session->clean_in, tls_session->clean_in.used,
-			    tls_session->clean_in.used) < 0) {
+			    &tls_session->clean_in, fr_dbuff_remaining(&tls_session->clean_in),
+			    fr_dbuff_remaining(&tls_session->clean_in)) < 0) {
 		talloc_free(tls_session);
 		RETURN_UNLANG_FAIL;
 	}
+
+	fr_tls_record_init(&tls_session->clean_in);	/* done draining, fill it again */
 
 	tls_session->opaque = eap_fast_alloc(tls_session, inst);
 	eap_session->process = mod_handshake_process;

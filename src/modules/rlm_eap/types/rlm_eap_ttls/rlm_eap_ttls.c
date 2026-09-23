@@ -563,7 +563,7 @@ static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pai
 	 *	Write the data in the buffer to the SSL session.
 	 */
 	if (total > 0) {
-		(tls_session->record_from_buff)(&tls_session->clean_in, buffer, total);
+		(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, buffer, total);
 
 		/*
 		 *	FIXME: Check the return code.
@@ -740,12 +740,12 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 	rlm_eap_ttls_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_ttls_t);
 
 	/*
-	 *	Just look at the buffer directly, without doing
-	 *	record_to_buff.
+	 *	Read the buffer directly, rather than copying the
+	 *	octets out of it.
 	 */
-	data_len = tls_session->clean_out.used;
-	tls_session->clean_out.used = 0;
-	data = tls_session->clean_out.data;
+	data_len = fr_dbuff_used(&tls_session->clean_out);
+	data = fr_dbuff_start(&tls_session->clean_out);
+	fr_tls_record_init(&tls_session->clean_out);
 
 	t = (ttls_tunnel_t *) tls_session->opaque;
 

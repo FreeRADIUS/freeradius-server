@@ -33,6 +33,7 @@ RCSIDH(session_h, "$Id$")
 typedef struct fr_tls_session_s fr_tls_session_t;
 
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/util/dbuff.h>
 
 #include "cache.h"
 #include "conf.h"
@@ -77,11 +78,75 @@ extern "C" {
 /*
  * FIXME: Dynamic allocation of buffer to overcome FR_TLS_MAX_RECORD_SIZE overflows.
  * 	or configure TLS not to exceed FR_TLS_MAX_RECORD_SIZE.
+ *
+ * The record buffers below are dbuffs over a fixed FR_TLS_MAX_RECORD_SIZE
+ * allocation.  See src/lib/tls/dbuff.md for why the buffers cannot simply be
+ * made extensible.
  */
-typedef struct {
-	uint8_t		data[FR_TLS_MAX_RECORD_SIZE];
-	size_t 		used;
-} fr_tls_record_t;
+
+/** Reset a record buffer so that it can be filled again
+ *
+ * A record buffer is filled, then drained.  While the buffer is filling, the
+ * dbuff runs from the start of the buffer to the end of the memory, the
+ * current position is where the next octet is written, and fr_dbuff_used()
+ * says how many octets are in the buffer.
+ *
+ * Resetting returns the buffer to the filling state, and discards whatever
+ * the buffer held.
+ *
+ * @param[in] record	to reset.
+ */
+static inline void fr_tls_record_init(fr_dbuff_t *record)
+{
+	fr_dbuff_init(record, fr_dbuff_start(record), (size_t) FR_TLS_MAX_RECORD_SIZE);
+}
+
+/** Take octets from a draining record buffer
+ *
+ * The record stays in the draining state, even when every octet has been
+ * taken.  fr_dbuff_remaining() therefore keeps answering 'how much is left to
+ * read' until the caller calls fr_tls_record_init(), which is what makes
+ * 'while (fr_dbuff_remaining(record))' terminate.
+ *
+ * @param[in] record	to read from.
+ * @param[out] out	where to write the octets, or NULL to discard them.
+ * @param[in] outlen	how many octets to take, at most.
+ * @return the number of octets taken.
+ */
+static inline size_t fr_tls_record_to_buff(fr_dbuff_t *record, void *out, size_t outlen)
+{
+	size_t taken = fr_dbuff_remaining(record);
+
+	if (taken > outlen) taken = outlen;
+	if (taken == 0) return 0;
+
+	if (out) {
+		(void) fr_dbuff_out_memcpy((uint8_t *) out, record, taken);
+	} else {
+		(void) fr_dbuff_advance(record, taken);
+	}
+
+	return taken;
+}
+
+/** Stop filling a record buffer, and start draining it
+ *
+ * While the buffer is draining, the dbuff runs from the start of the buffer
+ * to the end of the data which was written, the current position is where the
+ * next octet is read, and fr_dbuff_remaining() says how many octets are left
+ * to read.
+ *
+ * The buffer must not be written to while it is draining.  Call
+ * fr_tls_record_init() to fill it again.
+ *
+ * @param[in] record	to start draining.
+ */
+static inline void fr_tls_record_drain(fr_dbuff_t *record)
+{
+	size_t used = fr_dbuff_used(record);
+
+	fr_dbuff_init(record, fr_dbuff_start(record), used);
+}
 
 typedef enum {
 	TLS_INFO_ORIGIN_RECORD_RECEIVED,
@@ -127,17 +192,13 @@ struct fr_tls_session_s {
 
 	BIO 			*into_ssl;			//!< Basic I/O input to OpenSSL.
 	BIO 			*from_ssl;			//!< Basic I/O output from OpenSSL.
-	fr_tls_record_t 	clean_in;			//!< Cleartext data that needs to be encrypted.
-	fr_tls_record_t 	clean_out;			//!< Cleartext data that's been encrypted.
-	fr_tls_record_t 	dirty_in;			//!< Encrypted data to decrypt.
-	fr_tls_record_t 	dirty_out;			//!< Encrypted data that's been decrypted.
+	fr_dbuff_t 		clean_in;			//!< Cleartext data that needs to be encrypted.
+	fr_dbuff_t 		clean_out;			//!< Decrypted cleartext, for the caller to read.
+	fr_dbuff_t 		dirty_in;			//!< Encrypted data to decrypt.
+	fr_dbuff_t 		dirty_out;			//!< Encrypted data, ready to send.
 	int			last_ret;			//!< Last result returned by SSL_read().
 
 	uint32_t		rounds;				//!< Handshake round trips.
-
-	void 			(*record_init)(fr_tls_record_t *buf);
-	unsigned int 		(*record_from_buff)(fr_tls_record_t *buf, void const *ptr, unsigned int size);
-	unsigned int 		(*record_to_buff)(fr_tls_record_t *buf, void *ptr, unsigned int size);
 
 	size_t 			mtu;				//!< Maximum record fragment size.
 

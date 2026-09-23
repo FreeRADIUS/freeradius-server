@@ -180,60 +180,6 @@ static char const *tls_handshake_type_str[] = {
 #endif
 };
 
-/** Clear a record buffer
- *
- * @param record buffer to clear.
- */
-inline static void record_init(fr_tls_record_t *record)
-{
-	record->used = 0;
-}
-
-/** Copy data to the intermediate buffer, before we send it somewhere
- *
- * @param[in] record	buffer to write to.
- * @param[in] in	data to write.
- * @param[in] inlen	Length of data to write.
- * @return the amount of data written to the record buffer.
- */
-inline static unsigned int record_from_buff(fr_tls_record_t *record, void const *in, unsigned int inlen)
-{
-	unsigned int added = FR_TLS_MAX_RECORD_SIZE - record->used;
-
-	if (added > inlen) added = inlen;
-	if (added == 0) return 0;
-
-	memcpy(record->data + record->used, in, added);
-	record->used += added;
-
-	return added;
-}
-
-/** Take data from the buffer, and give it to the caller
- *
- * @param[in] record	buffer to read from.
- * @param[out] out	where to write data from record buffer.
- * @param[in] outlen	The length of the output buffer.
- * @return the amount of data written to the output buffer.
- */
-inline static unsigned int record_to_buff(fr_tls_record_t *record, void *out, unsigned int outlen)
-{
-	unsigned int taken = record->used;
-
-	if (taken > outlen) taken = outlen;
-	if (taken == 0) return 0;
-	if (out) memcpy(out, record->data, taken);
-
-	record->used -= taken;
-
-	/*
-	 *	This is pretty bad...
-	 */
-	if (record->used > 0) memmove(record->data, record->data + taken, record->used);
-
-	return taken;
-}
-
 /** Return the static private key password we have configured
  *
  * @param[out] buf	Where to write the password to.
@@ -953,22 +899,24 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 	/*
 	 *	Decrypt the complete record.
 	 */
-	if (tls_session->dirty_in.used) {
-		ret = BIO_write(tls_session->into_ssl, tls_session->dirty_in.data, tls_session->dirty_in.used);
-		if (ret != (int) tls_session->dirty_in.used) {
-			REDEBUG("Failed writing %zu bytes to SSL BIO: %d", tls_session->dirty_in.used, ret);
-			record_init(&tls_session->dirty_in);
+	if (fr_dbuff_used(&tls_session->dirty_in)) {
+		size_t used = fr_dbuff_used(&tls_session->dirty_in);
+
+		ret = BIO_write(tls_session->into_ssl, fr_dbuff_start(&tls_session->dirty_in), used);
+		if (ret != (int) used) {
+			REDEBUG("Failed writing %zu bytes to SSL BIO: %d", used, ret);
+			fr_tls_record_init(&tls_session->dirty_in);
 			goto error;
 		}
 
-		record_init(&tls_session->dirty_in);
+		fr_tls_record_init(&tls_session->dirty_in);
 	}
 
 	/*
 	 *      Clear the dirty buffer now that we are done with it
 	 *      and init the clean_out buffer to store decrypted data
 	 */
-	record_init(&tls_session->clean_out);
+	fr_tls_record_init(&tls_session->clean_out);
 
 	/*
 	 *	Prevent spurious errors on the thread local error
@@ -982,7 +930,8 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 	 *      SSL session, and put it into the decrypted
 	 *      data buffer.
 	 */
-	ret = SSL_read(tls_session->ssl, tls_session->clean_out.data, sizeof(tls_session->clean_out.data));
+	ret = SSL_read(tls_session->ssl, fr_dbuff_current(&tls_session->clean_out),
+		       fr_dbuff_remaining(&tls_session->clean_out));
 	if (ret < 0) {
 		int code;
 
@@ -1013,14 +962,14 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 	/*
 	 *	Passed all checks, successfully decrypted data
 	 */
-	tls_session->clean_out.used = ret;
+	fr_dbuff_advance(&tls_session->clean_out, (size_t) ret);
 	ret = 0;
 
 	if (RDEBUG_ENABLED3) {
-		RHEXDUMP3(tls_session->clean_out.data, tls_session->clean_out.used,
-			 "Decrypted TLS application data (%zu bytes)", tls_session->clean_out.used);
+		RHEXDUMP3(fr_dbuff_start(&tls_session->clean_out), fr_dbuff_used(&tls_session->clean_out),
+			 "Decrypted TLS application data (%zu bytes)", fr_dbuff_used(&tls_session->clean_out));
 	} else {
-		RDEBUG2("Decrypted TLS application data (%zu bytes)", tls_session->clean_out.used);
+		RDEBUG2("Decrypted TLS application data (%zu bytes)", fr_dbuff_used(&tls_session->clean_out));
 	}
 finish:
 	fr_tls_session_request_unbind(tls_session->ssl);
@@ -1062,26 +1011,36 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 	 *	Based on Server's logic this clean_in is expected to
 	 *	contain the data to send to the client.
 	 */
-	if (tls_session->clean_in.used > 0) {
+	if (fr_dbuff_used(&tls_session->clean_in) > 0) {
+		size_t used = fr_dbuff_used(&tls_session->clean_in);
+
 		/*
 		 *	Ensure spurious errors aren't printed
 		 */
 		ERR_clear_error();
 
 		if (RDEBUG_ENABLED3) {
-			RHEXDUMP3(tls_session->clean_in.data, tls_session->clean_in.used,
-				 "TLS application data to encrypt (%zu bytes)", tls_session->clean_in.used);
+			RHEXDUMP3(fr_dbuff_start(&tls_session->clean_in), used,
+				 "TLS application data to encrypt (%zu bytes)", used);
 		} else {
-			RDEBUG2("TLS application data to encrypt (%zu bytes)", tls_session->clean_in.used);
+			RDEBUG2("TLS application data to encrypt (%zu bytes)", used);
 		}
 
-		ret = SSL_write(tls_session->ssl, tls_session->clean_in.data, tls_session->clean_in.used);
+		ret = SSL_write(tls_session->ssl, fr_dbuff_start(&tls_session->clean_in), used);
 		if (ret < 0) goto log_io_error;
-		record_to_buff(&tls_session->clean_in, NULL, ret);
+
+		/*
+		 *	SSL_MODE_ENABLE_PARTIAL_WRITE is not set, so SSL_write()
+		 *	either takes everything or fails.  The whole buffer is
+		 *	therefore consumed.
+		 */
+		fr_assert((size_t) ret == used);
+		fr_tls_record_init(&tls_session->clean_in);
 
 		/* Get the dirty data from Bio to send it */
-		ret = BIO_read(tls_session->from_ssl, tls_session->dirty_out.data,
-			       sizeof(tls_session->dirty_out.data));
+		fr_tls_record_init(&tls_session->dirty_out);
+		ret = BIO_read(tls_session->from_ssl, fr_dbuff_current(&tls_session->dirty_out),
+			       fr_dbuff_remaining(&tls_session->dirty_out));
 		if (ret < 0) {
 		log_io_error:
 			ret = fr_tls_log_io_error(request, SSL_get_error(tls_session->ssl, ret),
@@ -1092,7 +1051,8 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 			 *	ret=0 means the "error" is SSL_WANT_READ, SSL_WANT_WRITE, etc.
 			 */
 		} else {
-			tls_session->dirty_out.used = ret;
+			fr_dbuff_advance(&tls_session->dirty_out, (size_t) ret);
+			fr_tls_record_drain(&tls_session->dirty_out);
 			ret = 0;
 		}
 	}
@@ -1124,6 +1084,10 @@ int fr_tls_session_alert(UNUSED request_t *request, fr_tls_session_t *session, u
 
 static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *session)
 {
+#ifndef NDEBUG
+	ssize_t slen;
+#endif
+
 	/*
 	 *	Update our internal view of the session
 	 */
@@ -1132,22 +1096,34 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 	session->info.alert_level = session->pending_alert_level;
 	session->info.alert_description = session->pending_alert_description;
 
-	session->dirty_out.data[0] = session->info.content_type;
-	session->dirty_out.data[1] = 3;
-	session->dirty_out.data[2] = 1;
-	session->dirty_out.data[3] = 0;
-	session->dirty_out.data[4] = 2;
-	session->dirty_out.data[5] = session->pending_alert_level;
-	session->dirty_out.data[6] = session->pending_alert_description;
+	/*
+	 *	dirty_out is normally draining, and a draining record has
+	 *	no room to write into.  An alert replaces whatever was
+	 *	waiting to go out, which is what the old code did by
+	 *	writing at the start of the buffer, so reset the record
+	 *	before writing the alert into it.
+	 */
+	fr_tls_record_init(&session->dirty_out);
 
-	session->dirty_out.used = 7;
+#ifndef NDEBUG
+	slen =			/* only used for the assert below */
+#endif
+		fr_dbuff_in_bytes(&session->dirty_out,
+				  (uint8_t) session->info.content_type,
+				  (uint8_t) 3, (uint8_t) 1, (uint8_t) 0, (uint8_t) 2,
+				  session->pending_alert_level,
+				  session->pending_alert_description);
+	fr_assert(slen == 7);
 
 	session->pending_alert = false;
 	session->alerts_sent++;
 
 	SSL_clear(session->ssl);	/* Reset the SSL *, to allow the client to restart the session */
 
-	session_msg_log(request, session, session->dirty_out.data, session->dirty_out.used);
+	session_msg_log(request, session, fr_dbuff_start(&session->dirty_out),
+			fr_dbuff_used(&session->dirty_out));
+
+	fr_tls_record_drain(&session->dirty_out);
 }
 
 /** Process the result of `establish session { ... }`
@@ -1309,22 +1285,24 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 	 */
 	ret = BIO_ctrl_pending(tls_session->from_ssl);
 	if (ret > 0) {
-		ret = BIO_read(tls_session->from_ssl, tls_session->dirty_out.data,
-			       sizeof(tls_session->dirty_out.data));
+		fr_tls_record_init(&tls_session->dirty_out);
+		ret = BIO_read(tls_session->from_ssl, fr_dbuff_current(&tls_session->dirty_out),
+			       fr_dbuff_remaining(&tls_session->dirty_out));
 		if (ret > 0) {
-			tls_session->dirty_out.used = ret;
+			fr_dbuff_advance(&tls_session->dirty_out, (size_t) ret);
+			fr_tls_record_drain(&tls_session->dirty_out);
 		} else if (BIO_should_retry(tls_session->from_ssl)) {
-			record_init(&tls_session->dirty_in);
+			fr_tls_record_init(&tls_session->dirty_in);
 			RDEBUG2("Asking for more data in tunnel");
 
 		} else {
 			fr_tls_log(NULL, NULL);
-			record_init(&tls_session->dirty_in);
+			fr_tls_record_init(&tls_session->dirty_in);
 			goto error;
 		}
 	} else {
 		/* Its clean application data, do whatever we want */
-		record_init(&tls_session->clean_out);
+		fr_tls_record_init(&tls_session->clean_out);
 	}
 
 	/*
@@ -1338,7 +1316,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 	if (tls_session->pending_alert) fr_tls_session_alert_send(request, tls_session);
 
 	/* We are done with dirty_in, reinitialize it */
-	record_init(&tls_session->dirty_in);
+	fr_tls_record_init(&tls_session->dirty_in);
 
 	tls_session->result = FR_TLS_RESULT_SUCCESS;
 	fr_tls_session_request_unbind(tls_session->ssl);
@@ -1382,8 +1360,8 @@ static void tls_session_async_handshake_signal(UNUSED request_t *request, UNUSED
 	 */
 	for (ret = tls_session->last_ret;
 	     SSL_get_error(tls_session->ssl, ret) == SSL_ERROR_WANT_ASYNC;
-	     ret = SSL_read(tls_session->ssl, tls_session->clean_out.data + tls_session->clean_out.used,
-        		    sizeof(tls_session->clean_out.data) - tls_session->clean_out.used));
+	     ret = SSL_read(tls_session->ssl, fr_dbuff_current(&tls_session->clean_out),
+			    fr_dbuff_remaining(&tls_session->clean_out)));
 
 	/*
 	 *	Unbind the cancelled request from the SSL *
@@ -1448,11 +1426,11 @@ static unlang_action_t tls_session_async_handshake_cont(request_t *request, void
 	 *	been called before this function.
 	 */
 	tls_session->can_pause = true;
-	tls_session->last_ret = SSL_read(tls_session->ssl, tls_session->clean_out.data + tls_session->clean_out.used,
-					 sizeof(tls_session->clean_out.data) - tls_session->clean_out.used);
+	tls_session->last_ret = SSL_read(tls_session->ssl, fr_dbuff_current(&tls_session->clean_out),
+					 fr_dbuff_remaining(&tls_session->clean_out));
 	tls_session->can_pause = false;
 	if (tls_session->last_ret > 0) {
-		tls_session->clean_out.used += tls_session->last_ret;
+		fr_dbuff_advance(&tls_session->clean_out, (size_t) tls_session->last_ret);
 
 		/*
 		 *	Round successful, and we don't need to do any
@@ -1635,14 +1613,16 @@ static unlang_action_t tls_session_async_handshake(request_t *request, void *uct
 	 *	process it as Application data (decrypting it)
 	 *	or continue the TLS handshake.
 	 */
-	if (tls_session->dirty_in.used) {
-		ret = BIO_write(tls_session->into_ssl, tls_session->dirty_in.data, tls_session->dirty_in.used);
-		if (ret != (int)tls_session->dirty_in.used) {
-			REDEBUG("Failed writing %zu bytes to TLS BIO: %d", tls_session->dirty_in.used, ret);
-			record_init(&tls_session->dirty_in);
+	if (fr_dbuff_used(&tls_session->dirty_in)) {
+		size_t used = fr_dbuff_used(&tls_session->dirty_in);
+
+		ret = BIO_write(tls_session->into_ssl, fr_dbuff_start(&tls_session->dirty_in), used);
+		if (ret != (int) used) {
+			REDEBUG("Failed writing %zu bytes to TLS BIO: %d", used, ret);
+			fr_tls_record_init(&tls_session->dirty_in);
 			goto error;
 		}
-		record_init(&tls_session->dirty_in);
+		fr_tls_record_init(&tls_session->dirty_in);
 	}
 
 	return tls_session_async_handshake_cont(request, uctx);	/* Must unbind request, possibly asynchronously */
@@ -1750,18 +1730,31 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 	if (!request) return tls_session;
 
 	/*
-	 *	If there is a request, then initialize the buffers and set up the function pointers.
-	 *	Otherwise leave the function pointers and bio handles as NULL, so that any accidental use
+	 *	If there is a request, then allocate the record buffers and
+	 *	create the BIOs.  Otherwise leave the record buffers empty and
+	 *	the bio handles as NULL, so that any accidental use
 	 *	causes problems.
 	 */
-	record_init(&tls_session->clean_in);
-	record_init(&tls_session->clean_out);
-	record_init(&tls_session->dirty_in);
-	record_init(&tls_session->dirty_out);
+	{
+		fr_dbuff_t	*record[] = { &tls_session->clean_in, &tls_session->clean_out,
+					      &tls_session->dirty_in, &tls_session->dirty_out };
+		size_t		i;
 
-	tls_session->record_init = record_init;
-	tls_session->record_from_buff = record_from_buff;
-	tls_session->record_to_buff = record_to_buff;
+		for (i = 0; i < NUM_ELEMENTS(record); i++) {
+			uint8_t *buff;
+
+			MEM(buff = talloc_array(tls_session, uint8_t, FR_TLS_MAX_RECORD_SIZE));
+			fr_dbuff_init(record[i], buff, (size_t) FR_TLS_MAX_RECORD_SIZE);
+		}
+
+		/*
+		 *	Everything asks dirty_out how much is left to send,
+		 *	with fr_dbuff_remaining().  A filling record answers
+		 *	that question with the room it has left, so dirty_out
+		 *	starts out drained and empty instead.
+		 */
+		fr_tls_record_drain(&tls_session->dirty_out);
+	}
 
 	/*
 	 *	Create & hook the BIOs to handle the dirty side of the
