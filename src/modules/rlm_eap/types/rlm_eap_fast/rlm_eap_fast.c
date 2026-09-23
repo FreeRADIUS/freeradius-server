@@ -1591,7 +1591,6 @@ static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t 
 		RETURN_UNLANG_FAIL;
 	}
 
-	tls_session->record_init(&tls_session->clean_in);
 	tls_session->opaque = eap_fast_alloc(tls_session, inst);
 	eap_session->process = mod_handshake_process;
 
