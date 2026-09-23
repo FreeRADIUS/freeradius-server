@@ -448,6 +448,8 @@ int rad_status_server(REQUEST *request)
 				rad_assert(sock->request->packet != request->packet);
 
 				sock->state = LISTEN_TLS_SETUP;
+				PTHREAD_MUTEX_UNLOCK(sock->mutex);
+				radius_update_listener(listener);
 
 			} else {
 				RWDEBUG("(TLS) Connection is not authorized - closing TCP socket.");
@@ -456,8 +458,6 @@ int rad_status_server(REQUEST *request)
 				tls_socket_close(listener);
 			}
 
-			PTHREAD_MUTEX_UNLOCK(sock->mutex);
-			radius_update_listener(listener);
 			return 0;
 		}
 		PTHREAD_MUTEX_UNLOCK(sock->mutex);
