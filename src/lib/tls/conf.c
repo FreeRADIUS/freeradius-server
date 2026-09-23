@@ -466,32 +466,6 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 }
 #endif
 
-#ifdef HAVE_OPENSSL_OCSP_H
-/*
- * 	Create Global X509 revocation store and use it to verify
- * 	OCSP responses
- *
- * 	- Load the trusted CAs
- * 	- Load the trusted issuer certificates
- */
-static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
-{
-	X509_STORE *store = NULL;
-
-	store = X509_STORE_new();
-
-	/* Load the CAs we trust */
-	if (conf->ca_file || conf->ca_path)
-		if (!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
-			fr_tls_log(NULL, "Error reading Trusted root CA list \"%s\"", conf->ca_file);
-			X509_STORE_free(store);
-			return NULL;
-		}
-
-	return store;
-}
-#endif
-
 /*
  *	Free TLS client/server config
  *	Should not be called outside this code, as a callback is
