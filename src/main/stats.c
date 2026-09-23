@@ -111,6 +111,7 @@ static void stats_time(fr_stats_t *stats, REQUEST *request,
 
 void request_stats_final(REQUEST *request)
 {
+	int code;
 	rad_listen_t *listener;
 	RADCLIENT *client;
 
@@ -183,7 +184,9 @@ void request_stats_final(REQUEST *request)
 	 *	deleted, because only the main server thread calls
 	 *	this function, which makes it thread-safe.
 	 */
-	if (request->reply) switch (request->reply->code) {
+	code = request->reply ? request->reply->code : 0;
+
+	switch (code) {
 	case PW_CODE_ACCESS_ACCEPT:
 		INC_AUTH(total_access_accepts);
 
@@ -267,18 +270,41 @@ void request_stats_final(REQUEST *request)
 		 *	This packet then isn't counted in the statistics for overall response times. :(
 		 */
 	case 0:
-		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-			if (request->reply->offset == -2) {
+		switch (request->packet->code) {
+		case PW_CODE_ACCESS_REQUEST:
+			if (!request->reply || request->reply->offset == -2) {
 				INC_AUTH(total_bad_authenticators);
 			} else {
 				INC_AUTH(total_packets_dropped);
 			}
-		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
-			if (request->reply->offset == -2) {
+			break;
+
+		case PW_CODE_ACCOUNTING_REQUEST:
+			if (!request->reply || request->reply->offset == -2) {
 				INC_ACCT(total_bad_authenticators);
 			} else {
 				INC_ACCT(total_packets_dropped);
 			}
+			break;
+
+		case PW_CODE_COA_REQUEST:
+			if (!request->reply || request->reply->offset == -2) {
+				INC_COA(total_bad_authenticators);
+			} else {
+				INC_COA(total_packets_dropped);
+			}
+			break;
+
+		case PW_CODE_DISCONNECT_REQUEST:
+			if (!request->reply || request->reply->offset == -2) {
+				INC_DSC(total_bad_authenticators);
+			} else {
+				INC_DSC(total_packets_dropped);
+			}
+			break;
+
+		default:
+			break;
 		}
 		break;
 
