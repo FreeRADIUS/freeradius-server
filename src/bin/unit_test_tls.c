@@ -141,6 +141,7 @@ typedef struct {
 	fr_tls_connection_t	*conn;			//!< State of the connection being run.
 
 	unsigned int		count;			//!< How many connections to run.
+	bool			alert;			//!< Reject the peer with a TLS alert, see -A.
 	fr_ipaddr_t		server_ipaddr;		//!< Server named by -s.
 	uint16_t		server_port;		//!< Port from -s, or from the configuration.
 
@@ -362,6 +363,25 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 		ERROR("Connection closed by the peer before the handshake completed");
 		tls_request_failed(utt);
 		return;
+	}
+
+	/*
+	 *	Reject the peer now that a record has arrived, so that the
+	 *	alert goes out in place of the first record this end would
+	 *	otherwise have sent.  Raising the alert any earlier races the
+	 *	peer: the round which sends the alert can run before the
+	 *	peer's first record has arrived, and the alert is then sent
+	 *	into an empty handshake and lost.
+	 */
+	if (utt->alert) {
+		utt->alert = false;
+
+		if (fr_tls_session_alert(utt->conn->request, utt->conn->tls_session,
+					 SSL3_AL_FATAL, SSL_AD_ACCESS_DENIED) < 0) {
+			ERROR("Failed raising the TLS alert");
+			tls_request_failed(utt);
+			return;
+		}
 	}
 
 	fr_tls_connection_recv(utt->conn, buf, (size_t) slen);
@@ -754,6 +774,7 @@ int main(int argc, char *argv[])
 	char const		*receipt_file = NULL;
 	char const		*server = NULL;
 	unsigned int		count = 1;
+	bool			alert = false;
 	unsigned int		i;
 
 	TALLOC_CTX		*autofree;
@@ -818,8 +839,12 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "c:Cd:D:hMn:r:s:xX")) != -1) {
+	while ((c = getopt(argc, argv, "Ac:Cd:D:hMn:r:s:xX")) != -1) {
 		switch (c) {
+			case 'A':
+				alert = true;
+				break;
+
 			case 'c':
 				count = (unsigned int) atoi(optarg);
 				if (!count) {
@@ -971,6 +996,7 @@ int main(int argc, char *argv[])
 	utt->sockfd = utt->fd = -1;
 	utt->ret = EXIT_SUCCESS;
 	utt->count = count;
+	utt->alert = alert;
 
 	/*
 	 *	`utt` is the argument both callbacks take, so the state
@@ -1288,6 +1314,8 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 
 	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
+	fprintf(output, "  -A                 Reject the peer with a fatal TLS alert, rather than completing\n");
+	fprintf(output, "                     the handshake.  Used to test the alert path.\n");
 	fprintf(output, "  -c <count>         Run <count> connections, one after another.  Session resumption\n");
 	fprintf(output, "                     needs two: one to fill the cache, one to resume from it.\n");
 	fprintf(output, "  -C                 Check configuration and exit.\n");
