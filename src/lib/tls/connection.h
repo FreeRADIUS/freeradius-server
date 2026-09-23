@@ -113,6 +113,8 @@ int		fr_tls_connection_push(fr_tls_connection_t *conn);
 
 void		fr_tls_connection_wake(fr_tls_connection_t *conn);
 
+void		fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size_t data_len);
+
 void		fr_tls_connection_process(fr_tls_connection_t *conn);
 
 #ifdef __cplusplus

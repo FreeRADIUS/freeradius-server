@@ -314,6 +314,50 @@ void fr_tls_connection_wake(fr_tls_connection_t *conn)
 	tls_connection_request_wake(conn);
 }
 
+/** Hand a record which arrived on the connection to OpenSSL
+ *
+ * The caller reads from whatever transport the caller uses, and passes the
+ * octets here.  Nothing in the TLS library reads a socket, so the transport
+ * stays entirely with the caller.  The EAP code in src/lib/eap/tls.c fills
+ * dirty_in the same way, from EAP packets rather than from a socket.
+ *
+ * @param[in] conn	the record arrived on.
+ * @param[in] data	which arrived.
+ * @param[in] data_len	how many octets arrived.  Must be greater than zero,
+ *			and no more than FR_TLS_MAX_RECORD_SIZE.
+ */
+void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size_t data_len)
+{
+	fr_tls_session_t *tls_session = conn->tls_session;
+	request_t *request = conn->request;
+
+	RDEBUG3("Read %zu bytes from the connection", data_len);
+
+	if (tls_session->record_from_buff(&tls_session->dirty_in, data, data_len) != data_len) {
+		RERROR("Failed buffering %zu bytes of TLS record data", data_len);
+	error:
+		conn->failed = true;
+		conn->finished(conn->uctx, conn);
+		return;
+	}
+
+	/*
+	 *	Pushing a handshake round after the handshake has finished is
+	 *	a logic error.  See src/lib/tls/session.c.  Application data
+	 *	is not handled yet, so a record arriving now is an error.
+	 */
+	if (SSL_is_init_finished(tls_session->ssl)) {
+		RERROR("Received %zu bytes of application data, which is not supported", data_len);
+		goto error;
+	}
+
+	/*
+	 *	Hand the round over to the connection frame, which is sitting
+	 *	yielded, waiting for exactly that record.
+	 */
+	fr_tls_connection_wake(conn);
+}
+
 /** Write out any pending records, then re-check the handshake state
  *
  * Write the data to the IO layer, then check if the connection is

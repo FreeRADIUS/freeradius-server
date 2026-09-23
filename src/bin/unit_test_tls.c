@@ -336,13 +336,14 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 	return 0;
 }
 
-/** A record arrived on the connection, so run another handshake round
+/** A record arrived on the connection, so hand the record to the connection
  *
+ * Reading the socket is all this program does here.  Everything the record
+ * means to TLS is fr_tls_connection_recv()'s business.
  */
 static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	unit_test_tls_t		*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
-	fr_tls_session_t	*tls_session = utt->conn->tls_session;
 	uint8_t			buf[FR_TLS_MAX_RECORD_SIZE];
 	ssize_t			slen;
 
@@ -363,30 +364,7 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 		return;
 	}
 
-	DEBUG3("Read %zd bytes from the connection", slen);
-
-	if (tls_session->record_from_buff(&tls_session->dirty_in, buf, slen) != (unsigned int) slen) {
-		ERROR("Failed buffering %zd bytes of TLS record data", slen);
-		tls_request_failed(utt);
-		return;
-	}
-
-	/*
-	 *	Pushing a handshake round after the handshake has finished is
-	 *	a logic error.  See src/lib/tls/session.c.  Application data
-	 *	is not handled yet, so a record arriving now is an error.
-	 */
-	if (SSL_is_init_finished(tls_session->ssl)) {
-		ERROR("Received %zd bytes of application data, which is not supported", slen);
-		tls_request_failed(utt);
-		return;
-	}
-
-	/*
-	 *	Hand the round over to the connection frame, which is sitting
-	 *	yielded, waiting for exactly that record.
-	 */
-	fr_tls_connection_wake(utt->conn);
+	fr_tls_connection_recv(utt->conn, buf, (size_t) slen);
 }
 
 /** The connection failed at the socket level
