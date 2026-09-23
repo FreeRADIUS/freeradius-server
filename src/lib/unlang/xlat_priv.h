@@ -65,6 +65,8 @@ typedef struct xlat_s {
 	xlat_func_t		func;			//!< async xlat function (async unsafe).
 
 	bool			internal;		//!< If true, cannot be redefined.
+	bool			private;		//!< If true, can only be created by the parser,
+							///< and is invisible to %func() in the input.
 	bool			deprecated;		//!< this function was deprecated
 	char const		*replaced_with;		//!< this function was replaced with something else
 	fr_token_t		token;			//!< for expressions

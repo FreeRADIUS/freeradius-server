@@ -402,6 +402,7 @@ void xlat_func_flags_set(xlat_t *x, xlat_func_flags_t flags)
 {
 	x->flags.pure = flags & XLAT_FUNC_FLAG_PURE;
 	x->internal = flags & XLAT_FUNC_FLAG_INTERNAL;
+	x->private = flags & XLAT_FUNC_FLAG_PRIVATE;
 	x->flags.impure_func = !x->flags.pure;
 	x->flags.use_module_status = flags & XLAT_FUNC_FLAG_MODULE_STATUS ? 1 : 0;
 }

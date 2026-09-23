@@ -134,12 +134,12 @@ xlat_purify (4 + 3) + 6
 match 13
 
 #
-#  xlat_tokenize() parses it's arguments as XLAT_BOX,
-#  of FR_TYPE_STRING.  The binary op instantiation function
-#  fixes those up via tmpl_afrom_substr().
+#  The operator xlats are private.  Only the expression parser can create
+#  them, because only it builds arguments which match what their print,
+#  resolve, and instantiate callbacks expect.  Naming one is an error.
 #
 xlat_purify %op_add(4, 3) + 6
-match 13
+match ERROR: ERROR offset 1: Unknown expansion function "op_add"
 
 #
 #  useless casts are omitted.

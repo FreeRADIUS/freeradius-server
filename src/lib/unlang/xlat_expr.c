@@ -617,6 +617,7 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, rhs);
 
 	regex = xlat_exp_head(rhs->group);
+	fr_assert(regex->type == XLAT_TMPL);
 	fr_assert(tmpl_contains_regex(regex->vpt));
 
 	inst->op = xctx->ex->call.func->token;
@@ -1824,7 +1825,7 @@ static xlat_action_t xlat_func_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 do { \
 	if (unlikely((xlat = xlat_func_register(NULL, "op_" STRINGIFY(_name), xlat_func_op_ ## _name, FR_TYPE_VOID)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, binary_op_xlat_args); \
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL | XLAT_FUNC_FLAG_PRIVATE); \
 	xlat_func_print_set(xlat, xlat_expr_print_binary); \
 	xlat->token = _op; \
 } while (0)
@@ -1834,7 +1835,7 @@ do { \
 do { \
 	if (unlikely((xlat = xlat_func_register(NULL, "cmp_" STRINGIFY(_name), xlat_func_cmp_ ## _name, FR_TYPE_BOOL)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, binary_cmp_xlat_args); \
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL | XLAT_FUNC_FLAG_PRIVATE); \
 	xlat_func_print_set(xlat, xlat_expr_print_binary); \
 	xlat_func_resolve_set(xlat, xlat_expr_resolve_binary); \
 	xlat->token = _op; \
@@ -1845,7 +1846,7 @@ do { \
 do { \
 	if (unlikely((xlat = xlat_func_register(NULL, STRINGIFY(_name), xlat_func_ ## _func_name, FR_TYPE_VOID)) == NULL)) return -1; \
 	xlat_func_instantiate_set(xlat, xlat_instantiate_ ## _func_name, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL | XLAT_FUNC_FLAG_PRIVATE); \
 	xlat_func_print_set(xlat, xlat_expr_print_nary); \
 	xlat_purify_func_set(xlat, xlat_expr_logical_purify); \
 	xlat->token = _op; \
@@ -1856,7 +1857,7 @@ do { \
 do { \
 	if (unlikely((xlat = xlat_func_register(NULL, STRINGIFY(_name), xlat_func_ ## _name, FR_TYPE_BOOL)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, regex_op_xlat_args); \
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL | XLAT_FUNC_FLAG_PRIVATE); \
 	xlat_func_instantiate_set(xlat, xlat_instantiate_regex, xlat_regex_inst_t, NULL, NULL); \
 	xlat_func_print_set(xlat, xlat_expr_print_regex); \
 	xlat->token = _op; \
@@ -1873,7 +1874,7 @@ do { \
 do { \
 	if (unlikely((xlat = xlat_func_register(NULL, _xlat, _func, FR_TYPE_VOID)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, unary_op_xlat_args); \
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL | XLAT_FUNC_FLAG_PRIVATE); \
 	xlat_func_print_set(xlat, xlat_expr_print_unary); \
 	xlat->token = _op; \
 } while (0)
@@ -1930,7 +1931,7 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_BOOL("exists", xlat_func_exists, xlat_func_exists_arg, FR_TYPE_BOOL);
 	xlat_func_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
 	xlat_func_print_set(xlat, xlat_expr_print_exists);
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL | XLAT_FUNC_FLAG_PRIVATE);
 
 	if (unlikely((xlat = xlat_func_register(NULL, "rcode", xlat_func_rcode, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, xlat_func_rcode_arg);

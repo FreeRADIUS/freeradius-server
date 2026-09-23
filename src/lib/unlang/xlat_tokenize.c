@@ -546,6 +546,19 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 
 	func = xlat_func_find(fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 
+	/*
+	 *	Private functions are created by the parser as part of expanding operators, and are not
+	 *	callable by name.  Their arguments are built to invariants which only the parser knows, so
+	 *	pretend that they don't exist.
+	 */
+	if (func && func->private) {
+		fr_strerror_printf("Unknown expansion function \"%.*s\"",
+				   (int) fr_sbuff_behind(&m_s), fr_sbuff_current(&m_s));
+		fr_sbuff_set(in, &m_s);		/* backtrack */
+		fr_sbuff_marker_release(&m_s);
+		return -1;
+	}
+
 	if (!fr_sbuff_is_char(in, '(')) {
 		fr_strerror_printf("Missing '('");
 		return -1;

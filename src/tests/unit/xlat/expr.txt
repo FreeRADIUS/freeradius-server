@@ -96,9 +96,9 @@ match Filter-Id
 xlat_expr %hash.md5('foo') + "foo"
 match (%hash.md5(0x666f6f) + "foo")
 
-#  We can name the xlat's, tho we don't need to
+#  The operator xlats are private, and cannot be named
 xlat_expr %op_add(4, 3) + 6
-match ((4 + 3) + 6)
+match ERROR: ERROR offset 2: Unknown expansion function "op_add"
 
 
 #
