@@ -583,7 +583,19 @@ static void request_list_free(fr_dlist_t *head)
 		 *	due to a slow back-end database.
 		 */
 		request->child_state = REQUEST_DONE;
+
 		if (request->master_state == REQUEST_TO_FREE) {
+#ifdef WITH_STATS
+			/*
+			 *	The packet was not fully processed, so we
+			 *	increase the "dropped" count.  Since the
+			 *	request might be freed immediately below, we
+			 *	can't rely on request_done() calling
+			 *	request_stats_final().
+			 */
+			request_stats_final(request);
+#endif
+
 			request_free(request);
 		} else {
 			request_done(request, REQUEST_DONE);
