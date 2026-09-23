@@ -204,6 +204,7 @@ static bool tls_session_pairs_from_aia(fr_pair_list_t *pair_list, TALLOC_CTX *ct
  * @param[in] ctx		to allocate attributes in.
  * @param[in] request		the current request.
  * @param[in] cert		to validate.
+ * @param[in] issuer		of the certificate.
  * @param[in] der_decode	should the certificate be parsed with the DER decoder.
  * @return
  *	- 1 already exists.
@@ -211,6 +212,7 @@ static bool tls_session_pairs_from_aia(fr_pair_list_t *pair_list, TALLOC_CTX *ct
  *	- < 0 on failure.
  */
 int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, request_t *request, X509 *cert,
+					X509 *issuer,
 #if OPENSSL_VERSION_NUMBER >= 0x30400000L
 					bool der_decode
 #else
@@ -394,6 +396,23 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	if (loc >= 0) {
 		X509_EXTENSION	*ext = X509_get_ext(cert, loc);
 		if (ext) crl_found = tls_session_pairs_from_crl(pair_list, ctx, request, ext);
+	}
+
+	if (issuer) {
+		OCSP_CERTID	*certid;
+		int		len;
+		uint8_t		*ocsp_certid = NULL;
+
+		certid = OCSP_cert_to_id(NULL, cert, issuer);
+		if (unlikely(!certid)) goto error;
+		len = i2d_OCSP_CERTID(certid, &ocsp_certid);
+		if (len < 0) goto error;
+		if (ocsp_certid != NULL) {
+			MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_ocsp_cert_id) == 0);
+			fr_value_box_memdup(vp, &vp->data, NULL, ocsp_certid, len, false);
+			OPENSSL_free(ocsp_certid);
+		}
+		OCSP_CERTID_free(certid);
 	}
 
 	/*
