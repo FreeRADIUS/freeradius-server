@@ -60,6 +60,21 @@ extern "C" {
 #define FR_TLS_MAX_RECORD_SIZE 16384
 
 /*
+ *	Cap the maximum number of handshakes that we receive in a row.
+ *	If we don't make progress, then either the certificates are
+ *	enormous, or the TLS chunks are deliberately small, or the
+ *	other end is trying to catch us in an infinite ACK / ACK loop.
+ *
+ *	The EAP code also caps the number of rounds it does, but there
+ *	are non-TLS EAP methods which can use multiple rounds.  We
+ *	need both limits in order to catch all corner cases.  Note
+ *	also that TLS-based EAP methods will ACK each _fragment_ of a
+ *	TLS record.  So one TLS "round" could map to multple EAP
+ *	"rounds".
+ */
+#define FR_TLS_MAX_ROUNDS 50
+
+/*
  * FIXME: Dynamic allocation of buffer to overcome FR_TLS_MAX_RECORD_SIZE overflows.
  * 	or configure TLS not to exceed FR_TLS_MAX_RECORD_SIZE.
  */
@@ -117,6 +132,8 @@ struct fr_tls_session_s {
 	fr_tls_record_t 	dirty_in;			//!< Encrypted data to decrypt.
 	fr_tls_record_t 	dirty_out;			//!< Encrypted data that's been decrypted.
 	int			last_ret;			//!< Last result returned by SSL_read().
+
+	uint32_t		rounds;				//!< Handshake round trips.
 
 	void 			(*record_init)(fr_tls_record_t *buf);
 	void 			(*record_close)(fr_tls_record_t *buf);

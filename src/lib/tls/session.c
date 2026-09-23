@@ -1628,6 +1628,18 @@ static unlang_action_t tls_session_async_handshake(request_t *request, void *uct
 	}
 
 	/*
+	 *	This function runs once per handshake message, and
+	 *	only for handshake messages.  Count the number of
+	 *	handshakes, and if there are too many, then forcibly
+	 *	stop the TLS negotiation.
+	 */
+	tls_session->rounds++;
+	if (tls_session->rounds >= FR_TLS_MAX_ROUNDS) {
+		REDEBUG("Failing TLS session due to too many handshake rounds (limit %u)", FR_TLS_MAX_ROUNDS);
+		goto error;
+	}
+
+	/*
 	 *	Feed dirty data into OpenSSL, so that is can either
 	 *	process it as Application data (decrypting it)
 	 *	or continue the TLS handshake.
