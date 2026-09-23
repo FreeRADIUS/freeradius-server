@@ -131,15 +131,15 @@ static const conf_parser_t unit_test_tls_config[] = {
  *
  * `utt->step` records the same part for tls_session_check(), which runs
  * outside of the anchor frame and cannot read a repeat function.
- * tls_session_check() acts only while `utt->step` is TLS_STEP_HANDSHAKE, and
- * sets `utt->step` to TLS_STEP_FLUSH to record that the handshake has ended.
+ * tls_session_check() acts only while `utt->step` is TLS_CONNECTION_HANDSHAKE, and
+ * sets `utt->step` to TLS_CONNECTION_COMPLETE to record that the handshake has ended.
  */
 typedef enum {
-	TLS_STEP_NEW_SESSION = 0,			//!< Run `new session { ... }`.
-	TLS_STEP_LOAD_SESSION,				//!< Ask the virtual server for a session to resume.
-	TLS_STEP_HANDSHAKE,				//!< Run handshake rounds until the handshake ends.
-	TLS_STEP_FLUSH					//!< Run the cache operations the handshake queued.
-} tls_step_t;
+	TLS_CONNECTION_NEW_SESSION = 0,			//!< Run `new session { ... }`.
+	TLS_CONNECTION_LOAD_SESSION,		       	//!< Ask the virtual server for a session to resume.
+	TLS_CONNECTION_HANDSHAKE,	       		//!< Run handshake rounds until the handshake ends.
+	TLS_CONNECTION_COMPLETE	       			//!< Run the cache operations the handshake queued.
+} tls_connection_t;
 
 /** Everything needed to drive one TLS connection
  *
@@ -169,7 +169,7 @@ typedef struct {
 	int			fd;			//!< Accepted or connected socket.
 	fr_event_fd_t		*ef;			//!< Read event for fd.
 
-	tls_step_t		step;			//!< Which part of the connection is running.
+	tls_connection_t		step;			//!< Which part of the connection is running.
 	bool			idle;			//!< The anchor is yielded with nothing in flight.
 	bool			pending;		//!< A record is waiting to be fed to OpenSSL.
 	bool			failed;			//!< The handshake did not succeed.
@@ -215,7 +215,7 @@ static void tls_runnable_insert(unit_test_tls_t *utt, request_t *request)
  */
 static void _request_init_internal(request_t *request, void *uctx)
 {
-	unit_test_tls_t *utt = uctx;
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
 	RDEBUG3("Initialising internal request");
 
@@ -267,7 +267,7 @@ static void _request_detach(request_t *request, UNUSED void *uctx)
 
 static void _request_yield(request_t *request, void *uctx)
 {
-	unit_test_tls_t *utt = uctx;
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
 	utt->yielded++;
 
@@ -281,7 +281,7 @@ static void _request_resume(request_t *request, UNUSED void *uctx)
 
 static void _request_runnable(request_t *request, void *uctx)
 {
-	unit_test_tls_t *utt = uctx;
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
 	fr_assert(utt->yielded > 0);
 	utt->yielded--;
@@ -304,7 +304,7 @@ static bool _request_scheduled(request_t const *request, UNUSED void *uctx)
  * request when the subrequest finishes.  See unlang_child_request_done() in
  * src/lib/unlang/child_request.c.
  */
-static void tls_wake(unit_test_tls_t *utt)
+static void tls_request_wake(unit_test_tls_t *utt)
 {
 	if (!utt->idle) return;
 
@@ -315,7 +315,7 @@ static void tls_wake(unit_test_tls_t *utt)
 /** Stop the event loop, recording why
  *
  */
-static void tls_finished(unit_test_tls_t *utt, int ret)
+static void tls_request_finished(unit_test_tls_t *utt, int ret)
 {
 	if (utt->done) return;
 
@@ -378,12 +378,12 @@ static void tls_session_check(unit_test_tls_t *utt)
 	 *	every wake brings tls_runnable_drain() back here with the
 	 *	step already moved on.
 	 */
-	if (utt->step != TLS_STEP_HANDSHAKE) return;
+	if (utt->step != TLS_CONNECTION_HANDSHAKE) return;
 
 	if (tls_session->result == FR_TLS_RESULT_ERROR) {
 		ERROR("TLS handshake failed");
 		utt->failed = true;
-		goto flush;
+		goto finish;
 	}
 
 	if (!SSL_is_init_finished(tls_session->ssl)) return;
@@ -394,7 +394,7 @@ static void tls_session_check(unit_test_tls_t *utt)
 	INFO("  cipher     : %s", SSL_get_cipher(tls_session->ssl));
 	INFO("  resumed    : %s", SSL_session_reused(tls_session->ssl) ? "yes" : "no");
 
-flush:
+finish:
 	/*
 	 *	The cache callbacks push work onto the stack.  The
 	 *	request then needs to be signalled to wake up, and
@@ -402,22 +402,22 @@ flush:
 	 *
 	 *	tls_session_check() runs outside of the anchor frame and so
 	 *	cannot arm a repeat function.  Moving the step to
-	 *	TLS_STEP_FLUSH tells tls_step_handshake() that the handshake
-	 *	has ended.  Without the move, tls_step_handshake() yields
-	 *	waiting for a record which never comes, tls_wake() wakes it
+	 *	TLS_CONNECTION_FINISH tells tls_connection_handshake() that the handshake
+	 *	has ended.  Without the move, tls_connection_handshake() yields
+	 *	waiting for a record which never comes, tls_request_wake() wakes it
 	 *	again, and the connection spins.
 	 */
-	utt->step = TLS_STEP_FLUSH;
-	tls_wake(utt);
+	utt->step = TLS_CONNECTION_COMPLETE;
+	tls_request_wake(utt);
 }
 
 /** Write out any pending records, then re-check the handshake state
  *
  */
-static void tls_session_pump(unit_test_tls_t *utt)
+static void tls_session_process(unit_test_tls_t *utt)
 {
 	if (tls_session_write(utt) < 0) {
-		tls_finished(utt, EXIT_FAILURE);
+		tls_request_finished(utt, EXIT_FAILURE);
 		return;
 	}
 
@@ -429,25 +429,25 @@ static void tls_session_pump(unit_test_tls_t *utt)
  * The step functions have no way to report a failure to the interpreter.  A
  * function frame which returns UNLANG_ACTION_FAIL trips an assertion in
  * src/lib/unlang/function.c.  So a failed step records the exit status and
- * yields.  tls_finished() then stops the event loop.
+ * yields.  tls_request_finished() then stops the event loop.
  */
-static unlang_action_t tls_step_error(unit_test_tls_t *utt)
+static unlang_action_t tls_connection_error(unit_test_tls_t *utt)
 {
 	utt->failed = true;
-	tls_finished(utt, EXIT_FAILURE);
+	tls_request_finished(utt, EXIT_FAILURE);
 	return UNLANG_ACTION_YIELD;
 }
 
-#define TLS_STEP_ERROR_RETURN \
+#define TLS_CONNECTION_ERROR_RETURN \
 	do { \
 		if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua; \
-		if (ua == UNLANG_ACTION_FAIL) return tls_step_error(utt); \
+		if (ua == UNLANG_ACTION_FAIL) return tls_connection_error(utt); \
 	} while (0)
 
-#define TLS_STEP_REPEAT(_func) \
+#define TLS_CONNECTION_REPEAT(_func) \
 	do { \
 		if (unlang_function_repeat_set(request, _func) < 0) { \
-			return tls_step_error(utt); \
+			return tls_connection_error(utt); \
 		} \
 	} while (0)
 
@@ -455,24 +455,44 @@ static unlang_action_t tls_step_error(unit_test_tls_t *utt)
  *
  * The cache callbacks only queue work, and tls_session_check() says why
  * something has to run the queued work.  fr_tls_cache_pending_push() pushes
- * one operation per call, so this step repeats until no operation is left.
+ * one operation per call, so this step arms itself and runs again for each
+ * operation, until no operation is left.
  */
-static unlang_action_t tls_step_flush(request_t *request, void *uctx)
+static unlang_action_t tls_connection_cache(request_t *request, void *uctx)
 {
-	unit_test_tls_t	*utt = uctx;
+	unit_test_tls_t	*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 	unlang_action_t	ua;
 
 	utt->idle = false;
 
-	if (utt->failed) fr_tls_cache_deny(request, utt->tls_session);
-
-	TLS_STEP_REPEAT(tls_step_flush);
+	TLS_CONNECTION_REPEAT(tls_connection_cache);
 
 	ua = fr_tls_cache_pending_push(request, utt->tls_session);
-	TLS_STEP_ERROR_RETURN;
+	TLS_CONNECTION_ERROR_RETURN;
 
-	tls_finished(utt, utt->failed ? EXIT_FAILURE : EXIT_SUCCESS);
+	tls_request_finished(utt, utt->failed ? EXIT_FAILURE : EXIT_SUCCESS);
 	return UNLANG_ACTION_YIELD;
+}
+
+/** Deny a failed session, then run the queued cache operations
+ *
+ * fr_tls_cache_deny() is meant to run once.  The comment on
+ * fr_tls_cache_deny() in src/lib/tls/cache.c says the call frees the memory
+ * used by the session, and the call leaves tls_session->session set, so a
+ * second call is at best redundant.
+ *
+ * tls_connection_pending() arms itself and so runs once per queued operation, which
+ * is why the deny cannot live there.  This step runs once instead.
+ * tls_connection_handshake() calls it, and it arms tls_connection_pending() rather than
+ * itself, so a resumed operation comes back to tls_connection_pending().
+ */
+static unlang_action_t tls_connection_complete(request_t *request, void *uctx)
+{
+	unit_test_tls_t	*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
+
+	if (utt->failed) fr_tls_cache_deny(request, utt->tls_session);
+
+	return tls_connection_cache(request, utt);
 }
 
 /** Run handshake rounds until the handshake ends
@@ -487,9 +507,9 @@ static unlang_action_t tls_step_flush(request_t *request, void *uctx)
  * handshake round.  In EAP that frame belongs to the module which called
  * fr_tls_session_async_handshake_push().
  */
-static unlang_action_t tls_step_handshake(request_t *request, void *uctx)
+static unlang_action_t tls_connection_handshake(request_t *request, void *uctx)
 {
-	unit_test_tls_t	*utt = uctx;
+	unit_test_tls_t	*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 	unlang_action_t	ua;
 
 	utt->idle = false;
@@ -497,16 +517,16 @@ static unlang_action_t tls_step_handshake(request_t *request, void *uctx)
 	/*
 	 *	tls_session_check() runs outside of this frame, so
 	 *	tls_session_check() cannot arm a repeat function.  Instead
-	 *	tls_session_check() sets `utt->step` to TLS_STEP_FLUSH to
+	 *	tls_session_check() sets `utt->step` to TLS_CONNECTION_FINISH to
 	 *	record that the handshake has ended, and this step reads
 	 *	`utt->step` here.
 	 */
-	if (utt->step == TLS_STEP_FLUSH) return tls_step_flush(request, utt);
+	if (utt->step == TLS_CONNECTION_COMPLETE) return tls_connection_complete(request, utt);
 
 	/*
 	 *	Set the repeat before we push anything else.
 	 */
-	TLS_STEP_REPEAT(tls_step_handshake);
+	TLS_CONNECTION_REPEAT(tls_connection_handshake);
 
 	/*
 	 *	No record is waiting for OpenSSL, yield until the next
@@ -528,7 +548,7 @@ static unlang_action_t tls_step_handshake(request_t *request, void *uctx)
 	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
 
 	ERROR("Failed in TLS handshake");
-	return tls_step_error(utt);
+	return tls_connection_error(utt);
 }
 
 /** Ask the virtual server for a session to resume
@@ -536,54 +556,54 @@ static unlang_action_t tls_step_handshake(request_t *request, void *uctx)
  * A server is asked for a session by OpenSSL, part way through the handshake.
  * A client has to choose one before the handshake starts.
  */
-static unlang_action_t tls_step_load_session(request_t *request, void *uctx)
+static unlang_action_t tls_connection_load_session(request_t *request, void *uctx)
 {
-	unit_test_tls_t	*utt = uctx;
+	unit_test_tls_t	*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 	unlang_action_t	ua;
 
 	utt->idle = false;
-	utt->step = TLS_STEP_HANDSHAKE;
+	utt->step = TLS_CONNECTION_HANDSHAKE;
 
-	if (!utt->client) return tls_step_handshake(request, utt);
+	if (!utt->client) return tls_connection_handshake(request, utt);
 
-	TLS_STEP_REPEAT(tls_step_handshake);
+	TLS_CONNECTION_REPEAT(tls_connection_handshake);
 
 	ua = fr_tls_cache_load_client_push(request, utt->tls_session);
-	TLS_STEP_ERROR_RETURN;
+	TLS_CONNECTION_ERROR_RETURN;
 
-	return tls_step_handshake(request, utt);
+	return tls_connection_handshake(request, utt);
 }
 
 /** Run `new session { ... }`, the first step of a connection
  *
  * tls_connection_run() pushes the anchor frame with this step as both the
  * function and the repeat function.  Each later step arms the step which runs
- * next, see tls_step_t.
+ * next, see tls_connection_t.
  */
-static unlang_action_t tls_step_new_session(request_t *request, void *uctx)
+static unlang_action_t tls_connection_new_session(request_t *request, void *uctx)
 {
-	unit_test_tls_t	*utt = uctx;
+	unit_test_tls_t	*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 	unlang_action_t	ua;
 
 	/*
 	 *	A step is running, so the request is not sitting idle.  Only
-	 *	tls_step_handshake() sets `utt->idle` again, when that step
+	 *	tls_connection_handshake() sets `utt->idle` again, when that step
 	 *	yields waiting for a record.  Leaving `utt->idle` set lets a
 	 *	record which arrives during a policy section wake the
 	 *	request while a subrequest is still in flight, and that wake
 	 *	strands the subrequest on the runnable heap.
 	 */
 	utt->idle = false;
-	utt->step = TLS_STEP_LOAD_SESSION;
+	utt->step = TLS_CONNECTION_LOAD_SESSION;
 
 	if (utt->tls_conf->new_session) {
-		TLS_STEP_REPEAT(tls_step_load_session);
+		TLS_CONNECTION_REPEAT(tls_connection_load_session);
 
 		ua = fr_tls_new_session_push(request, utt->tls_conf);
-		TLS_STEP_ERROR_RETURN;
+		TLS_CONNECTION_ERROR_RETURN;
 	}
 
-	return tls_step_load_session(request, utt);
+	return tls_connection_load_session(request, utt);
 }
 
 /** A record arrived on the connection, so run another handshake round
@@ -591,7 +611,7 @@ static unlang_action_t tls_step_new_session(request_t *request, void *uctx)
  */
 static void _tls_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
-	unit_test_tls_t		*utt = uctx;
+	unit_test_tls_t		*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 	fr_tls_session_t	*tls_session = utt->tls_session;
 	uint8_t			buf[FR_TLS_MAX_RECORD_SIZE];
 	ssize_t			slen;
@@ -603,13 +623,13 @@ static void _tls_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 		if ((errno == EINTR) || (errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
 
 		ERROR("Failed reading from connection: %s", fr_syserror(errno));
-		tls_finished(utt, EXIT_FAILURE);
+		tls_request_finished(utt, EXIT_FAILURE);
 		return;
 	}
 
 	if (slen == 0) {
 		ERROR("Connection closed by the peer before the handshake completed");
-		tls_finished(utt, EXIT_FAILURE);
+		tls_request_finished(utt, EXIT_FAILURE);
 		return;
 	}
 
@@ -617,7 +637,7 @@ static void _tls_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 
 	if (tls_session->record_from_buff(&tls_session->dirty_in, buf, slen) != (unsigned int) slen) {
 		ERROR("Failed buffering %zd bytes of TLS record data", slen);
-		tls_finished(utt, EXIT_FAILURE);
+		tls_request_finished(utt, EXIT_FAILURE);
 		return;
 	}
 
@@ -628,7 +648,7 @@ static void _tls_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 	 */
 	if (SSL_is_init_finished(tls_session->ssl)) {
 		ERROR("Received %zd bytes of application data, which is not supported", slen);
-		tls_finished(utt, EXIT_FAILURE);
+		tls_request_finished(utt, EXIT_FAILURE);
 		return;
 	}
 
@@ -644,10 +664,10 @@ static void _tls_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
  */
 static void _tls_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
-	unit_test_tls_t *utt = uctx;
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
 	ERROR("Error on connection: %s", fr_syserror(fd_errno));
-	tls_finished(utt, EXIT_FAILURE);
+	tls_request_finished(utt, EXIT_FAILURE);
 }
 
 /** Run every request the interpreter has marked runnable
@@ -670,7 +690,7 @@ static void tls_runnable_drain(unit_test_tls_t *utt)
 		 *	handshake.  A subrequest returns the subrequest's
 		 *	result through the interpreter.
 		 */
-		if (request == utt->request) tls_session_pump(utt);
+		if (request == utt->request) tls_session_process(utt);
 
 		if (utt->done) return;
 	}
@@ -687,7 +707,7 @@ static void tls_round_start(unit_test_tls_t *utt)
 {
 	utt->pending = true;
 
-	tls_wake(utt);
+	tls_request_wake(utt);
 
 	/*
 	 *	The draining is left to _tls_runnable().  Doing it here would
@@ -703,7 +723,9 @@ static void tls_round_start(unit_test_tls_t *utt)
  */
 static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	tls_runnable_drain(uctx);
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
+
+	tls_runnable_drain(utt);
 }
 
 /** Open the listening socket described by the "unit_test_tls" section
@@ -894,7 +916,7 @@ static request_t *tls_request_alloc(TALLOC_CTX *ctx, int fd)
  */
 static void _tls_connection_start(fr_event_list_t *el, void *uctx)
 {
-	unit_test_tls_t *utt = uctx;
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
 	/*
 	 *	Nothing polls.  A handshake round starts when a record arrives,
@@ -903,7 +925,7 @@ static void _tls_connection_start(fr_event_list_t *el, void *uctx)
 	 */
 	if (fr_event_fd_insert(utt, &utt->ef, el, utt->fd, _tls_read, NULL, _tls_error, utt) < 0) {
 		PERROR("Failed adding the connection to the event loop");
-		tls_finished(utt, EXIT_FAILURE);
+		tls_request_finished(utt, EXIT_FAILURE);
 		return;
 	}
 
@@ -928,7 +950,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	fr_event_user_t	*ev = NULL;
 	request_t	*stale;
 
-	utt->step = TLS_STEP_NEW_SESSION;
+	utt->step = TLS_CONNECTION_NEW_SESSION;
 	utt->pending = utt->failed = utt->done = utt->idle = false;
 	utt->ret = EXIT_SUCCESS;
 	utt->fd = -1;
@@ -983,7 +1005,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	 *	unlang_interpret_mark_runnable() acts only on a
 	 *	yielded frame.
 	 */
-	if (unlang_function_push(utt->request, tls_step_new_session, tls_step_new_session,
+	if (unlang_function_push(utt->request, tls_connection_new_session, tls_connection_new_session,
 				 NULL, 0, UNLANG_TOP_FRAME, utt) < 0) {
 		PERROR("Failed anchoring the connection's request");
 		goto finish;
