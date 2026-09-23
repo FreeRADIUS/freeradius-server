@@ -42,6 +42,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <openssl/x509v3.h>
 #include <openssl/ssl.h>
+#include <openssl/ocsp.h>
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
@@ -158,6 +159,45 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 	return true;
 }
 
+/** Extract session pairs from the Authority Key Identifier extension - specifically OCSP URI
+ *
+ */
+static bool tls_session_pairs_from_aia(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, UNUSED request_t *request, X509_EXTENSION *ext)
+{
+	ASN1_STRING		*s = X509_EXTENSION_get_data(ext);
+	char unsigned const	*data = ASN1_STRING_get0_data(s);
+	fr_pair_t		*vp;
+	AUTHORITY_INFO_ACCESS	*aia;
+	ACCESS_DESCRIPTION	*ad;
+	char			*host = NULL, *path = NULL;
+	int			i, port, is_https;
+
+	if (!(aia = d2i_AUTHORITY_INFO_ACCESS(NULL, &data, ASN1_STRING_length(s)))) return false;
+
+	for (i = 0; i < sk_ACCESS_DESCRIPTION_num(aia); i++) {
+		ad = sk_ACCESS_DESCRIPTION_value(aia, i);
+		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
+		if (ad->location->type != GEN_URI) continue;
+
+		/*
+		 *	Use OpenSSL URL parsing to check that the URL is valid
+		 */
+		if (OSSL_HTTP_parse_url((char *) ad->location->d.ia5->data, &is_https, NULL, &host,
+					NULL, &port, &path, NULL, NULL)){
+			OPENSSL_free(host);
+			OPENSSL_free(path);
+			MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
+						 attr_tls_certificate_ocsp_uri) == 0);
+			MEM(fr_pair_value_strdup(vp,
+						 (char const *)ad->location->d.ia5->data,
+						 true) == 0);
+		}
+	}
+	AUTHORITY_INFO_ACCESS_free(aia);
+
+	return true;
+}
+
 /** Extract attributes from an X509 certificate
  *
  * @param[out] pair_list	to copy attributes to.
@@ -188,7 +228,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 	fr_pair_t	*vp = NULL;
 	ssize_t		slen;
-	bool		san_found = false, crl_found = false;
+	bool		san_found = false, crl_found = false, aia_found = false;
 
 	/*
 	 *	We require OpenSSL >= 3.4 to call the DER decoder due to the stack size
@@ -404,6 +444,11 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 			if (OBJ_obj2nid(obj) == NID_crl_distribution_points) {
 				if (!crl_found) crl_found = tls_session_pairs_from_crl(pair_list, ctx, request, ext);
+				goto again;
+			}
+
+			if (OBJ_obj2nid(obj) == NID_info_access) {
+				if (!aia_found) aia_found = tls_session_pairs_from_aia(pair_list, ctx, request, ext);
 				goto again;
 			}
 
