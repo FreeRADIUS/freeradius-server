@@ -1,0 +1,35 @@
+#
+# PRE: try
+#
+#  Redundant virtual modules.  The modules are defined in radius.conf.
+#
+string marker
+
+#
+#  The first child fails, so the second one is used.
+#
+vm_red_failover
+if (!ok) {
+	test_fail
+}
+
+#
+#  All children fail, so the virtual module fails.
+#
+try {
+	vm_red_allfail
+
+	#
+	#  Should not reach here
+	#
+	test_fail
+}
+catch fail {
+	marker := "caught"
+}
+
+if (marker != "caught") {
+	test_fail
+}
+
+success

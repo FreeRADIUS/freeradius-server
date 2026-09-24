@@ -1,0 +1,16 @@
+#
+# PRE: redundant load-balance
+#
+#  A virtual module containing nested sections.  The module is defined in
+#  radius.conf.  The load-balance section fails, so the group runs.
+#
+vm_nested
+if (!ok) {
+	test_fail
+}
+
+if (control.Filter-Id != 'fallback') {
+	test_fail
+}
+
+success

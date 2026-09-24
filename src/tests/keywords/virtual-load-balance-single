@@ -1,0 +1,21 @@
+#
+# PRE: load-balance-single
+#
+#  Load-balance virtual modules with only one child always run that child.
+#  The modules are defined in radius.conf.
+#
+foreach i (%range(50)) {
+	vm_lb_one
+	if (!ok) {
+		test_fail
+		return
+	}
+
+	vm_rlb_one
+	if (!ok) {
+		test_fail
+		return
+	}
+}
+
+success

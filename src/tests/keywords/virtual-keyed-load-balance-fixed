@@ -1,0 +1,23 @@
+#
+# PRE: virtual-keyed-load-balance
+#
+#  A keyed load-balance virtual module always picks the same child for
+#  the same key.  The module is defined in radius.conf, and is keyed on
+#  Calling-Station-Id.
+#
+string first
+
+Calling-Station-Id := "00-11-22-33-44-55"
+
+keyed-virtual
+first := control.Filter-Id
+
+foreach i (%range(50)) {
+	keyed-virtual
+	if (control.Filter-Id != first) {
+		test_fail
+		return
+	}
+}
+
+success

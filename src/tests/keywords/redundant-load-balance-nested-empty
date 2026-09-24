@@ -1,0 +1,31 @@
+#
+# PRE: try redundant-load-balance
+#
+#  A redundant-load-balance block whose only child is an empty group.
+#
+#  The section is not empty in the configuration, so it is not ignored
+#  when compiled.  After compilation it has no children, so running it
+#  fails the request.
+#
+string marker
+
+try {
+	redundant-load-balance {
+		group {
+		}
+	}
+
+	#
+	#  Should not reach here
+	#
+	test_fail
+}
+catch fail {
+	marker := "caught"
+}
+
+if (marker != "caught") {
+	test_fail
+}
+
+success

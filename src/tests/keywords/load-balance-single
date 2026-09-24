@@ -1,0 +1,23 @@
+#
+# PRE: load-balance
+#
+#  A load-balance block with only one child always runs that child.
+#
+uint32 count
+
+count := 0
+
+foreach i (%range(50)) {
+	load-balance {
+		group {
+			count += 1
+			ok
+		}
+	}
+}
+
+if (count != 50) {
+	test_fail
+}
+
+success

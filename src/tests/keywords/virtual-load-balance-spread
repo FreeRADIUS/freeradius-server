@@ -1,0 +1,34 @@
+#
+# PRE: load-balance
+#
+#  A load-balance virtual module should use every child.  The module is
+#  defined in radius.conf, and returns either "ok" or "updated".
+#
+uint32 count_ok
+uint32 count_updated
+
+count_ok := 0
+count_updated := 0
+
+foreach i (%range(50)) {
+	vm_lb_two
+	if (ok) {
+		count_ok += 1
+	}
+	elsif (updated) {
+		count_updated += 1
+	}
+}
+
+#
+#  The chance of one child being picked 50 times in a row is small.
+#
+if ((count_ok == 0) || (count_updated == 0)) {
+	test_fail
+}
+
+if (count_ok + count_updated != 50) {
+	test_fail
+}
+
+success

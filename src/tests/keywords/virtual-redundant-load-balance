@@ -1,0 +1,15 @@
+#
+# PRE: redundant-load-balance
+#
+#  A redundant-load-balance virtual module fails over to the other child,
+#  whichever child it starts with.  The module is defined in radius.conf.
+#
+foreach i (%range(50)) {
+	vm_rlb_failover
+	if (!ok) {
+		test_fail
+		return
+	}
+}
+
+success
