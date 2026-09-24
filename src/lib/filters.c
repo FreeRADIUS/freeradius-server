@@ -571,6 +571,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 	 */
 	count = 0;
 	while (*str && (count < 4) && (netmask == 0)) {
+	next:
 		while (*str) {
 			switch (*str) {
 			case '0': case '1': case '2': case '3':
@@ -628,8 +629,6 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 				return -1;
 			}
 		} /* loop over one character */
-
-	next:
 	} /* loop until the count hits 4 */
 
 	if (octet < 0) {
