@@ -288,13 +288,10 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
  *
  * @param[in] sess to be deleted.
  */
-static void tls_cache_delete_request(SSL_SESSION *sess)
+static void tls_cache_delete_request(fr_tls_session_t *tls_session, SSL_SESSION *sess)
 {
-	fr_tls_session_t	*tls_session;
 	fr_tls_cache_t		*tls_cache;
 	request_t		*request;
-
-	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
 
 	if (!tls_session->cache) return;
 
@@ -322,13 +319,17 @@ static void tls_cache_delete_request(SSL_SESSION *sess)
 	tls_cache->clear.state = FR_TLS_CACHE_CLEAR_REQUESTED;
 
 	/*
-	 *	We store a copy of the pointer for the session
-	 *	in tls_session->session.  If the session is
-	 *	being freed then this pointer must be invalid
-	 *	so clear it to prevent crashes in other areas
-	 *	of the code.
+	 *	We _usually_ store a copy of the SSL_SESSION in tls_session->session.  If the
+	 *	session is being freed, then we invalidate the cached SSL_SESSION.  Note that
+	 *	tls_session->session can be NULL sometimes, see tls_cache_delete_cb().
+	 *
+	 *	In any case, if the SSL_SESSION pointer exists, we clear it here to avoid leaving a dangling
+	 *	pointer.
 	 */
-	if (tls_session->session == sess) tls_session->session = NULL;
+	if (tls_session->session) {
+		fr_assert(tls_session->session == sess);
+		tls_session->session = NULL;
+	}
 
 	/*
 	 *	Previously the code called ASYNC_pause_job();
@@ -846,6 +847,9 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 */
 	tls_session = fr_tls_session(ssl);
 
+	fr_assert(!tls_session->session);
+	tls_session->session = sess;
+
 	/*
 	 *	If the session is TLS 1.3, then resumption will be handled by a
 	 *	session ticket.  However, if this callback is defined, it still
@@ -997,7 +1001,7 @@ again:
 			 *	Request the session be deleted the next
 			 *	time something calls cache action pending.
 			 */
-			tls_cache_delete_request(tls_cache->load.sess);
+			tls_cache_delete_request(tls_session, tls_cache->load.sess);
 			tls_cache_load_state_reset(request, tls_session->cache);	/* Free the session */
 			return NULL;
 		}
@@ -1080,14 +1084,25 @@ again:
  */
 static void tls_cache_delete_cb(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 {
+	fr_tls_session_t *tls_session;
+
 	/*
 	 *	Not sure why this happens, but sometimes SSL_SESSION *s
 	 *	make it here without the correct ex data.
 	 *
 	 *	Maybe it's one OpenSSL created internally?
 	 */
-	if (!SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION)) return;
-	tls_cache_delete_request(sess);
+	tls_session = SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION);
+	if (!tls_session) return;
+
+	(void) talloc_get_type_abort(tls_session, fr_tls_session_t);
+
+	/*
+	 *	Note that tls_session->session CAN be NULL here.  That's because that field is set during the
+	 *	TLS negotiation.  If we get a rejection part way though the TLS negotiation, then the field
+	 *	isn't set.  But OpenSSL passes the SSL_SESSION to us here, so we use that.
+	 */
+	tls_cache_delete_request(tls_session, sess);
 }
 
 /** Prevent a TLS session from being resumed in future
@@ -1200,23 +1215,30 @@ void fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session)
 	}
 
 	/*
-	 *	SSL_CTX_remove_session frees the previously loaded
-	 *	session in tls_session. If the reference count reaches zero
-	 *	the SSL_CTX_sess_remove_cb is called, which in our code is
-	 *	tls_cache_delete_cb.
+	 *	SSL_CTX_remove_session() frees the previously loaded session in tls_session. If the reference
+	 *	count reaches zero the SSL_CTX_sess_remove_cb is called, which in our code is
+	 *	tls_cache_delete_cb.  HOWEVER, we've already set SSL_SESS_CACHE_NO_INTERNAL, which means that
+	 *	SSL_CTX_remove_session() largely does nothing, including skipping our callback.
 	 *
-	 *	tls_cache_delete_cb calls tls_cache_delete_request
-	 *	to record the ID of tls_session->session
-	 *	in our pending cache state structure.
+	 *	tls_cache_delete_cb calls tls_cache_delete_request to record the ID of tls_session->session in
+	 *	our pending cache state structure.
 	 *
-	 *	tls_cache_delete_request does NOT immediately call the
-	 *	`cache clear {}` section as that must be done in a code area
-	 *	which is prepared to yield.
+	 *	tls_cache_delete_request does NOT immediately call the `cache clear {}` section as that must
+	 *	be done in a code area which is prepared to yield.
 	 *
-	 *	#fr_tls_cache_pending_push MUST be called to actually
-	 *	clear external data.
+	 *	#fr_tls_cache_pending_push MUST be called to actually clear external data.
 	 */
-	if (tls_session->session) SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
+	if (tls_session->session) {
+		SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
+
+		/*
+		 *	Manually call tls_cache_delete_request(), just in case.  That function clears
+		 *	tls_session->session, so it's idempotent.  It clears tls_session->session, so it's
+		 *	safe to call twice.  If it's called via the above path, then it clears the session
+		 *	pointer, which means that we don't call it again.
+		 */
+		if (tls_session->session) tls_cache_delete_request(tls_session, tls_session->session);
+	}
 	tls_session->allow_session_resumption = false;
 
 	/*
