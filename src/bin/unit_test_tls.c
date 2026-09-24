@@ -142,6 +142,7 @@ typedef struct {
 
 	unsigned int		count;			//!< How many connections to run.
 	bool			alert;			//!< Reject the peer with a TLS alert, see -A.
+	unsigned int		connections;		//!< How many connections have been run so far.
 	fr_ipaddr_t		server_ipaddr;		//!< Server named by -s.
 	uint16_t		server_port;		//!< Port from -s, or from the configuration.
 
@@ -373,7 +374,7 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 	 *	peer's first record has arrived, and the alert is then sent
 	 *	into an empty handshake and lost.
 	 */
-	if (utt->alert) {
+	if (utt->alert && (utt->connections == utt->count)) {
 		utt->alert = false;
 
 		if (fr_tls_session_alert(utt->conn->request, utt->conn->tls_session,
@@ -646,6 +647,8 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	int		ret = -1;
 	fr_event_user_t	*ev = NULL;
 	request_t	*stale;
+
+	utt->connections++;
 
 	utt->conn->state = TLS_CONNECTION_NEW_SESSION;
 	utt->conn->pending = utt->conn->failed = utt->conn->idle = false;
@@ -1314,8 +1317,10 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 
 	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
-	fprintf(output, "  -A                 Reject the peer with a fatal TLS alert, rather than completing\n");
-	fprintf(output, "                     the handshake.  Used to test the alert path.\n");
+	fprintf(output, "  -A                 Reject the peer with a fatal TLS alert on the last connection,\n");
+	fprintf(output, "                     rather than completing the handshake.  With -c 2 the first\n");
+	fprintf(output, "                     connection fills the session cache, so the alert then has a\n");
+	fprintf(output, "                     session to clear.  Used to test the alert and clear paths.\n");
 	fprintf(output, "  -c <count>         Run <count> connections, one after another.  Session resumption\n");
 	fprintf(output, "                     needs two: one to fill the cache, one to resume from it.\n");
 	fprintf(output, "  -C                 Check configuration and exit.\n");

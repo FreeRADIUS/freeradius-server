@@ -91,6 +91,27 @@ typedef struct {
 	} clear;
 } fr_tls_cache_t;
 
+/** Is any cache operation still waiting to run?
+ *
+ * fr_tls_cache_pending_push() pushes one operation per call, and a load, a
+ * clear and a store can all be queued at the same time.  A caller which drives
+ * it therefore has to keep calling until nothing is left.  This says whether
+ * anything is left.
+ *
+ * @param[in] tls_cache	to check, which may be NULL when caching is disabled.
+ * @return
+ *	- true if at least one operation is still queued.
+ *	- false if there is nothing left to do.
+ */
+static inline bool fr_tls_cache_pending(fr_tls_cache_t const *tls_cache)
+{
+	if (!tls_cache) return false;
+
+	return (tls_cache->load.state == FR_TLS_CACHE_LOAD_REQUESTED) ||
+	       (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) ||
+	       (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED);
+}
+
 #ifdef __cplusplus
 }
 #endif
