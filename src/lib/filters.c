@@ -562,6 +562,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 {
 	int		count = 0;
+	bool		have_octet = false;
 	int		ip[4];
 	int	     	masklen;
 	uint32_t	netmask = 0;
@@ -572,22 +573,36 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 	count = 0;
 	while (*str && (count < 4) && (netmask == 0)) {
 	next:
+		if (count >= (int) (sizeof(ip) / sizeof(*ip))) {
+			fr_strerror_printf("Too many components in IP address");
+			return -1;
+		}
+
 		ip[count] = 0;
+		have_octet = false;
 
 		while (*str) {
 			switch (*str) {
 			case '0': case '1': case '2': case '3':
 			case '4': case '5': case '6': case '7':
 			case '8': case '9':
+				have_octet = true;
 				ip[count] *= 10;
 				ip[count] += (*str) - '0';
+				if (ip[count] > 255) {
+					fr_strerror_printf("IP address component is too large");
+					return -1;
+				}
 				str++;
 				break;
 
 
 			case '.': /* dot between IP numbers. */
+				if (!have_octet) {
+					fr_strerror_printf("Empty component in IP address");
+					return -1;
+				}
 				str++;
-				if (ip[count] > 255) return -1;
 
 				/*
 				 *	24, 16, 8, 0, done.
@@ -597,6 +612,10 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 				goto next;
 
 			case '/': /* netmask  */
+				if ((count > 0) && !have_octet) {
+					fr_strerror_printf("Empty component in IP address");
+					return -1;
+				}
 				str++;
 				masklen = atoi(str);
 				if ((masklen < 0) || (masklen > 32)) return -1;
@@ -611,8 +630,18 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 		} /* loop over one character */
 	} /* loop until the count hits 4 */
 
+	if ((count > 0) && !have_octet) {
+		fr_strerror_printf("Empty component in IP address");
+		return -1;
+	}
+
 	if (count == 3) {
 	finalize:
+		if (count >= (int) (sizeof(ip) / sizeof(*ip))) {
+			fr_strerror_printf("Too many components in IP address");
+			return -1;
+		}
+
 		/*
 		 *	Do the last one, too.
 		 */

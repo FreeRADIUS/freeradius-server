@@ -8,3 +8,61 @@ data 1a 28 00 00 02 11 f2 22 01 00 01 00 00 00 00 00 00 00 00 00 00 00 06 00 00 
 #
 decode 1a 38 00 00 02 11 f2 32 03 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 06 00 03 ff 00 35 03 04 00 00
 data Ascend-Data-Filter = "?? in drop tcp srcport > 1023 dstport != 53"
+
+#
+#  Valid IPv4 addresses, including abbreviated forms with explicit masks.
+#
+encode Ascend-Data-Filter = "ip in drop srcip 1.2.3.4"
+decode -
+data Ascend-Data-Filter = "ip in drop srcip 1.2.3.4/8 0"
+
+encode Ascend-Data-Filter = "ip in drop srcip 1.2.3.4/24"
+decode -
+data Ascend-Data-Filter = "ip in drop srcip 1.2.3.4/24 0"
+
+encode Ascend-Data-Filter = "ip in drop srcip 10/8"
+decode -
+data Ascend-Data-Filter = "ip in drop srcip 10.0.0.0/8 0"
+
+encode Ascend-Data-Filter = "ip in drop srcip 10.20/16"
+decode -
+data Ascend-Data-Filter = "ip in drop srcip 10.20.0.0/16 0"
+
+encode Ascend-Data-Filter = "ip in drop srcip 10.20.30/24"
+decode -
+data Ascend-Data-Filter = "ip in drop srcip 10.20.30.0/24 0"
+
+#
+#  Malformed IPv4 addresses must not reach outside the four-element array.
+#
+encode Ascend-Data-Filter = "ip in drop srcip 1.2.3.4.5"
+data Too many components in IP address
+
+encode Ascend-Data-Filter = "ip in drop srcip 1.2.3.4./24"
+data Too many components in IP address
+
+encode Ascend-Data-Filter = "ip in drop srcip 1..2.3"
+data Empty component in IP address
+
+encode Ascend-Data-Filter = "ip in drop srcip 1.2.3."
+data Empty component in IP address
+
+encode Ascend-Data-Filter = "ip in drop srcip 1.2.3.256"
+data IP address component is too large
+
+encode Ascend-Data-Filter = "ip in drop srcip 1.2.3.99999999999999999999"
+data IP address component is too large
+
+encode Ascend-Data-Filter = "ip in drop srcip 1.2.3./24"
+data Empty component in IP address
+
+#
+#  A netmask without an address is still accepted as 0.0.0.0/nn.
+#  The mask survives only in the binary form (srcmask = 0x18),
+#  the text form does not print a zero srcip.
+#
+encode Ascend-Data-Filter = "ip in drop srcip /24"
+data 1a 28 00 00 02 11 f2 22 01 00 01 00 00 00 00 00 00 00 00 00 18 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+decode -
+data Ascend-Data-Filter = "ip in drop 0"
