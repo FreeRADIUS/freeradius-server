@@ -562,7 +562,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 {
 	int		count = 0;
-	int		ip[4];
+	int		octet = -1;
 	int	     	masklen;
 	uint32_t	netmask = 0;
 
@@ -571,35 +571,54 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 	 */
 	count = 0;
 	while (*str && (count < 4) && (netmask == 0)) {
-	next:
-		ip[count] = 0;
-
 		while (*str) {
 			switch (*str) {
 			case '0': case '1': case '2': case '3':
 			case '4': case '5': case '6': case '7':
 			case '8': case '9':
-				ip[count] *= 10;
-				ip[count] += (*str) - '0';
+				if (octet < 0) octet = 0;
+
+				octet *= 10;
+				octet += (*str) - '0';
+
+				if (octet > 255) {
+					fr_strerror_printf("invalid octet in IP address is >255");
+					return -1;
+				}
+
 				str++;
 				break;
 
-
 			case '.': /* dot between IP numbers. */
+				if (octet < 0) goto empty_component;
+
+				if (count == 3) {
+					fr_strerror_printf("Too many components in IP address");
+					return -1;
+				}
+
 				str++;
-				if (ip[count] > 255) return -1;
 
 				/*
 				 *	24, 16, 8, 0, done.
 				 */
-				*ipaddr |= (ip[count] << (8 * (3 - count)));
+				*ipaddr |= (octet << (8 * (3 - count)));
+				octet = -1;
 				count++;
 				goto next;
 
 			case '/': /* netmask  */
+				if (octet < 0) {
+					if (count > 0) goto empty_component;
+					octet = 0;
+				}
+
 				str++;
 				masklen = atoi(str);
-				if ((masklen < 0) || (masklen > 32)) return -1;
+				if ((masklen < 0) || (masklen > 32)) {
+					fr_strerror_printf("Invalid mask value in IP address");
+					return -1;
+				}
 				str += strspn(str, "0123456789");
 				netmask = masklen;
 				goto finalize;
@@ -609,26 +628,32 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 				return -1;
 			}
 		} /* loop over one character */
+
+	next:
 	} /* loop until the count hits 4 */
+
+	if (octet < 0) {
+	empty_component:
+		fr_strerror_printf("Empty component in IP address");
+		return -1;
+	}
 
 	if (count == 3) {
 	finalize:
 		/*
-		 *	Do the last one, too.
-		 */
-		if (ip[count] > 255) return -1;
-
-		/*
 		 *	24, 16, 8, 0, done.
 		 */
-		*ipaddr |= (ip[count] << (8 * (3 - count)));
+		*ipaddr |= (octet << (8 * (3 - count)));
 	}
 
 	/*
 	 *	We've hit the end of the IP address, and there's something
 	 *	else left over: die.
 	 */
-	if (*str) return -1;
+	if (*str) {
+		fr_strerror_printf("Unexpected text '%s' after IP address", str);
+		return -1;
+	}
 
 	/*
 	 *	Set the default netmask.
@@ -672,7 +697,10 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 		token = fr_str2int(filterPortType, str, -1);
 	}
 
-	if ((token < 0) || (token > 65535)) return -1;
+	if ((token < 0) || (token > 65535)) {
+		fr_strerror_printf("Invalid port value in IP filter");
+		return -1;
+	}
 
 	*port = token;
 	*port = htons(*port);
