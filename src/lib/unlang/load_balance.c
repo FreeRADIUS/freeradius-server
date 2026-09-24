@@ -217,6 +217,18 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 		goto selected_child;
 	}
 
+	/*
+	 *	Short circuit if there's only a single child element.
+	 */
+	if (unlang_list_num_elements(&g->children) == 1) {
+		RWDEBUG3("load-balance section only has single element");
+
+		redundant->start = gext->children[0];
+		redundant->num = 0;
+
+		goto selected_child;
+	}
+
 	if (gext->vpt) {
 		uint32_t start;
 		size_t num;
@@ -272,6 +284,8 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 		/*
 		 *	Leverage the "power of two".  See src/lib/io/network.c for more information.
 		 */
+		fr_assert(unlang_list_num_elements(&g->children) > 1);
+
 		one = fr_rand() % unlang_list_num_elements(&g->children);
 		do {
 			two = fr_rand() % unlang_list_num_elements(&g->children);
