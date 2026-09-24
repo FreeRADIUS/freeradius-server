@@ -562,10 +562,10 @@ static int process_redis_cluster_node_add(TALLOC_CTX *ctx, process_redis_cluster
 		module_trigger_args_build(node, &node->trigger_args, NULL,
 					&(module_trigger_args_t) {
 						.module = "process_redis",
-						.name = inst->inst_name, \
-						.server = buff, \
-						.port = node->io_conf.port \
-					}); \
+						.name = inst->inst_name,
+						.server = buff,
+						.port = node->io_conf.port
+					});
 	}
 	fr_dlist_insert_tail(&cluster->nodes, node);
 	return 0;
