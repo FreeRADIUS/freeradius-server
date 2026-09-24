@@ -1490,7 +1490,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			mi = module_rlm_static_by_name(NULL, cf_pair_attr(cp));
 			if (!mi) {
 				cf_log_perr(sub_ci, "Failed resolving module reference '%s' in %s block",
-					    cf_pair_attr(cp), cf_section_name1(cs));
+					    cf_pair_attr(cp), cf_section_name1(vm->cs));
 				return -1;
 			}
 
