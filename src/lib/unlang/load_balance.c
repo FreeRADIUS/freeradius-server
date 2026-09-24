@@ -180,8 +180,12 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	if (!g || unlang_list_empty(&g->children)) return UNLANG_ACTION_FAIL;
 #else
 	fr_assert(g != NULL);
-	fr_assert(!unlang_list_empty(&g->children));
 #endif
+
+	if (unlang_list_empty(&g->children)) {
+		REDEBUG("load-balance section must not be empty");
+		return UNLANG_ACTION_FAIL;
+	}
 
 	gext = unlang_group_to_load_balance(g);
 	fr_assert(gext != NULL);

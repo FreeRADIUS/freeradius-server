@@ -1684,7 +1684,19 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_ctx_t *unlang
 				    policy ? UNLANG_TYPE_POLICY : UNLANG_TYPE_GROUP);
 	}
 	if (!c) return NULL;
-	fr_assert(c != UNLANG_IGNORE);
+
+	/*
+	 *	Only a virtual module can get here empty, e.g. "group foo { }".
+	 *	An empty policy compiles to an empty group, and runs as a no-op.
+	 *
+	 *	Report the error at the call, and point to the definition.
+	 */
+	if (c == UNLANG_IGNORE) {
+		fr_assert(!policy);
+		cf_log_err(ci, "Cannot call virtual module '%s', as it is empty", cf_section_name2(subcs));
+		cf_log_err(subcs, "Empty section is defined here");
+		return NULL;
+	}
 
 	/*
 	 *	Return the compiled thing if we can.
