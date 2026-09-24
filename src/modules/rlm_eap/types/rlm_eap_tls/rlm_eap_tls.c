@@ -136,9 +136,8 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 	 */
 	case EAP_TLS_RECORD_RECV_COMPLETE:
 		REDEBUG("Received unexpected tunneled data after successful handshake");
-		eap_tls_fail(request, eap_session);
-
-		RETURN_UNLANG_INVALID;
+		p_result->rcode = RLM_MODULE_INVALID;
+		return eap_tls_fail(request, eap_session);
 
 	/*
 	 *	Anything else: fail.

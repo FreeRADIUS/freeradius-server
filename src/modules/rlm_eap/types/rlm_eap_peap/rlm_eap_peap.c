@@ -744,8 +744,8 @@ static unlang_action_t process_rcode(unlang_result_t *p_result, module_ctx_t con
 
 	switch (eap_session->submodule_result.rcode) {
 	case RLM_MODULE_REJECT:
-		eap_tls_fail(request, eap_session);
-		break;
+		p_result->rcode = eap_session->submodule_result.rcode;
+		return eap_tls_fail(request, eap_session);
 
 	case RLM_MODULE_HANDLED:
 		eap_tls_request(request, eap_session);
@@ -790,8 +790,8 @@ static unlang_action_t process_rcode(unlang_result_t *p_result, module_ctx_t con
 		break;
 
 	default:
-		eap_tls_fail(request, eap_session);
-		break;
+		p_result->rcode = eap_session->submodule_result.rcode;
+		return eap_tls_fail(request, eap_session);
 	}
 
 	RETURN_UNLANG_RCODE(eap_session->submodule_result.rcode);

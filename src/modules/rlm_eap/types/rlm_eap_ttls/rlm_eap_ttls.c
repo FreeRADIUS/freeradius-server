@@ -676,8 +676,8 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 		return eap_ttls_success(p_result, request, eap_session);
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
-		eap_tls_fail(request, eap_session);
-		RETURN_UNLANG_REJECT;
+		p_result->rcode = RLM_MODULE_REJECT;
+		return eap_tls_fail(request, eap_session);
 
 	/*
 	 *	Handle Access-Challenge, but only if we
@@ -704,8 +704,8 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 
 	default:
 		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
-		eap_tls_fail(request, eap_session);
-		RETURN_UNLANG_INVALID;
+		p_result->rcode = RLM_MODULE_INVALID;
+		return eap_tls_fail(request, eap_session);
 	}
 
 

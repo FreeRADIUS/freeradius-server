@@ -310,13 +310,15 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session, eap_tls_prf_
  *
  * In addition to sending the failure, will destroy any cached session data.
  *
+ * The caller MUST set p_result->rcode = ... before calling this function.
+ *
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	that failed.
  * @return
  *	- 0 on success.
  *	- -1 on failure (to compose a valid packet).
  */
-int eap_tls_fail(request_t *request, eap_session_t *eap_session)
+unlang_action_t eap_tls_fail(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
@@ -326,13 +328,25 @@ int eap_tls_fail(request_t *request, eap_session_t *eap_session)
 	eap_session->finished = true;
 
 	/*
-	 *	Destroy any cached session data
+	 *	Queue the "clear session" work.
 	 */
 	fr_tls_cache_deny(request, tls_session);
 
 	if (eap_tls_compose(request, eap_session, EAP_TLS_FAIL,
-			    eap_tls_session->base_flags, NULL, 0, 0) < 0) return -1;
-	return 0;
+			    eap_tls_session->base_flags, NULL, 0, 0) < 0) {
+		REDEBUG("Failed composing EAP-Failure");
+	}
+
+	/*
+	 *	Push any pending cache work (which might be none).
+	 *	This allows the interpeter to run the "clear session"
+	 *	section.
+	 *
+	 *	The caller MUST set the unlang "p_result" before
+	 *	calling us.  A pushed child then returns to the
+	 *	caller's caller with that result already in place.
+	 */
+	return fr_tls_cache_pending_push(request, tls_session);
 }
 
 /** Frames the OpenSSL data that needs to be sent to the client in an EAP-Request
