@@ -88,6 +88,9 @@ typedef struct {
 	fr_coord_pair_t			*coord_pair;		//!< The coord_pair which requested this cluster map.
 	bool				failed;			//!< Has the cluster failed.
 	fr_timer_t			*ev;			//!< Timer event for retry / refresh.
+	fr_pair_list_t			trigger_args;		//!< Pair list to pass to cluster triggers.
+	CONF_PAIR			*trigger_cp[FR_REDIS_CODE_MAX];	//!< Cached trigger conf pairs;
+	bool				no_trigger[FR_REDIS_CODE_MAX];	//!< Cached trigger conf status;
 } process_redis_cluster_t;
 
 typedef struct {
@@ -131,6 +134,7 @@ typedef struct {
 	fr_time_delta_t			retry_interval;
 	fr_time_delta_t			refresh_interval;
 	char const			*inst_name;
+	CONF_SECTION			*conf;
 } process_redis_t;
 
 typedef struct {
@@ -847,6 +851,13 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 				false, redis_cluster_map_get_refetch, cluster) < 0) {
 			RERROR("Failed setting up retry event");
 		};
+		if (!cluster->no_trigger[FR_REDIS_CLUSTER_MAP_FAIL]) {
+			trigger(unlang_interpret_get_thread_default(), rctx->inst->conf,
+				&cluster->trigger_cp[FR_REDIS_CLUSTER_MAP_FAIL], "modules.redis.cluster_fail", true,
+				&cluster->trigger_args, cluster);
+			if (!cluster->trigger_cp[FR_REDIS_CLUSTER_MAP_FAIL])
+				cluster->no_trigger[FR_REDIS_CLUSTER_MAP_FAIL] = true;
+		}
 		return process_redis_return_failed(request, cluster, rctx->worker_id);
 	}
 
@@ -925,6 +936,19 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 
 	MEM(fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_packet_type) >= 0);
 	vp->vp_uint32 = FR_REDIS_CLUSTER_MAP_UPDATE;
+
+	if (!cluster->no_trigger[FR_REDIS_CLUSTER_MAP_UPDATE]) {
+		fr_pair_list_t	trigger_args;
+		fr_pair_list_init(&trigger_args);
+		fr_pair_list_copy(NULL, &trigger_args, &cluster->trigger_args);
+		fr_pair_list_copy(NULL, &trigger_args, list);
+		trigger(unlang_interpret_get_thread_default(), rctx->inst->conf,
+			&cluster->trigger_cp[FR_REDIS_CLUSTER_MAP_UPDATE], "modules.redis.cluster_update", true,
+			&trigger_args, cluster);
+		if (!cluster->trigger_cp[FR_REDIS_CLUSTER_MAP_UPDATE])
+			cluster->no_trigger[FR_REDIS_CLUSTER_MAP_UPDATE] = true;
+		fr_pair_list_free(&trigger_args);
+	}
 
 	fr_coord_to_worker_reply_broadcast(request);
 
@@ -1010,6 +1034,7 @@ RECV(cluster_map_bootstrap)
 	process_redis_cluster_t	find, *cluster;
 	fr_redis_conf_t		*conf;
 	CONF_SECTION		*tls_conf = NULL;
+	char			bootstrap_ip[FR_IPADDR_STRLEN];
 
 	rctx->worker_id = vp ? vp->vp_int32 : 0;
 
@@ -1091,6 +1116,15 @@ RECV(cluster_map_bootstrap)
 	cluster->port = find.port;
 	cluster->coord_pair = fr_coord_pair_request_coord_pair(request);
 	fr_rb_inline_init(&cluster->pending, process_redis_pending_t, node, process_redis_pending_cmp, NULL);
+	fr_pair_list_init(&cluster->trigger_args);
+
+	module_trigger_args_build(cluster, &cluster->trigger_args, NULL,
+		&(module_trigger_args_t) {
+			.module = "process_redis",
+			.name = inst->inst_name,
+			.server = fr_inet_ntop(bootstrap_ip, sizeof(bootstrap_ip), &cluster->addr),
+			.port = cluster->port
+		});
 
 	fr_dlist_talloc_init(&cluster->nodes, process_redis_node_t, entry);
 	fr_pair_list_init(&cluster->cluster_pairs);
@@ -1132,6 +1166,10 @@ RECV(cluster_map_bootstrap)
 	fr_rb_insert(&thread->cluster_by_id, cluster);
 	talloc_set_destructor(cluster, _process_redis_cluster_free);
 
+	trigger(unlang_interpret_get_thread_default(), rctx->inst->conf,
+		&cluster->trigger_cp[FR_REDIS_CLUSTER_MAP_BOOTSTRAP],
+		"modules.redis.cluster_bootstrap", true, &cluster->trigger_args, cluster);
+
 	rctx->cluster = cluster;
 	return unlang_function_push_with_result(p_result, request, redis_cluster_map_get, redis_cluster_map_get_resume,
 						redis_cluster_map_get_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, rctx);
@@ -1165,6 +1203,14 @@ RECV(cluster_map_get)
 	if ((fr_time_to_sec(fr_time()) == fr_time_to_sec(rctx->cluster->last_update)) && (!vp || !vp->vp_bool)) {
 		RWARN("Cluster was updated less than a second ago, returning last response");
 		return process_redis_return_existing(request, rctx->cluster, rctx->worker_id);
+	}
+
+	if (!rctx->cluster->no_trigger[FR_REDIS_CLUSTER_MAP_GET]) {
+		trigger(unlang_interpret_get_thread_default(), rctx->inst->conf,
+			&rctx->cluster->trigger_cp[FR_REDIS_CLUSTER_MAP_GET], "modules.redis.cluster_get", true,
+			&rctx->cluster->trigger_args, rctx->cluster);
+		if (!rctx->cluster->trigger_cp[FR_REDIS_CLUSTER_MAP_GET])
+			rctx->cluster->no_trigger[FR_REDIS_CLUSTER_MAP_GET] = true;
 	}
 
 	return unlang_function_push_with_result(p_result, request, redis_cluster_map_get, redis_cluster_map_get_resume,
@@ -1215,6 +1261,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	process_redis_t *inst = talloc_get_type_abort(mctx->mi->data, process_redis_t);
 
 	inst->inst_name = mctx->mi->name;
+	inst->conf = mctx->mi->conf;
 	return 0;
 }
 
