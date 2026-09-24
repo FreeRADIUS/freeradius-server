@@ -22,7 +22,7 @@ foreach i (%range(50)) {
 	}
 }
 
-if ((count1 == 0) || (count2 == 2)) {
+if ((count1 == 0) || (count2 == 0)) {
 	test_fail
 
 } else {

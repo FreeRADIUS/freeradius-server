@@ -8,5 +8,5 @@ redundant {
 if (noop || (NAS-Port == 4294967295)) {
 	success
 } else {
-	fail
+	test_fail
 }

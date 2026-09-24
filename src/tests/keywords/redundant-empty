@@ -1,5 +1,5 @@
 #
-#  Redundant blocks can be empry, and don't do anything
+#  Redundant blocks can be empty, and don't do anything
 #
 redundant {
 

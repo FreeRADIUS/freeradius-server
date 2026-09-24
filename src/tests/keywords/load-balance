@@ -12,7 +12,7 @@ count1 := 0
 count2 := 0
 
 #
-#  Loop 0..9
+#  Loop 0..49
 #
 foreach i (%range(50)) {
 	load-balance {
