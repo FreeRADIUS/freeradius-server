@@ -1,0 +1,8 @@
+#
+#  Calling an empty virtual module is an error.
+#
+#  The module is defined in radius.conf.
+#
+empty_group_vm	# ERROR
+
+success

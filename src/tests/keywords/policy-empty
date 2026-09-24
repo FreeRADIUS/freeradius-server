@@ -1,0 +1,23 @@
+#
+#  Calling an empty policy does nothing.
+#
+#  The policies are defined in policy.conf.
+#
+uint32 count
+
+count := 0
+
+empty_policy
+count += 1
+
+empty_policy.recv
+count += 1
+
+nested_empty_policy
+count += 1
+
+if (count != 3) {
+	test_fail
+}
+
+success
