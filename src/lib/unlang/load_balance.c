@@ -161,6 +161,11 @@ static unlang_action_t unlang_redundant(unlang_result_t *p_result, request_t *re
 									   unlang_frame_state_redundant_t);
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 
+	if (unlang_list_empty(&g->children)) {
+		REDEBUG("redundant section must not be empty");
+		return UNLANG_ACTION_FAIL;
+	}
+
 	/*
 	 *	Start at the first child, and then continue from there.
 	 */
