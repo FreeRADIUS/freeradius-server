@@ -191,7 +191,7 @@ void fr_thread_detach(void)
 {
 	xlat_thread_detach();
 	virtual_servers_thread_detach();
-	modules_rlm_coord_detach();
+	(void) modules_rlm_coord_detach();
 	modules_rlm_thread_detach();
 }
 
