@@ -228,29 +228,6 @@ static unlang_action_t tls_connection_handshake(request_t *request, void *uctx)
 	return tls_connection_error(conn);
 }
 
-/** Load a cached session via a virtual server.
- *
- * OpenSSL asks a server for a session part way through the handshake.  A
- * client chooses a session before the handshake starts.
- */
-static unlang_action_t tls_connection_load_session(request_t *request, void *uctx)
-{
-	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
-	unlang_action_t	ua;
-
-	conn->idle = false;
-	conn->state = TLS_CONNECTION_HANDSHAKE;
-
-	if (!conn->client) return tls_connection_handshake(request, conn);
-
-	TLS_CONNECTION_REPEAT(tls_connection_handshake);
-
-	ua = fr_tls_cache_load_client_push(request, conn->tls_session);
-	TLS_CONNECTION_ERROR_RETURN;
-
-	return tls_connection_handshake(request, conn);
-}
-
 /** Run `new session { ... }`, the first state of a connection
  *
  */
@@ -266,16 +243,16 @@ static unlang_action_t tls_connection_new_session(request_t *request, void *uctx
 	 *	finish.
 	 */
 	conn->idle = false;
-	conn->state = TLS_CONNECTION_LOAD_SESSION;
+	conn->state = TLS_CONNECTION_HANDSHAKE;
 
 	if (conn->tls_conf->new_session) {
-		TLS_CONNECTION_REPEAT(tls_connection_load_session);
+		TLS_CONNECTION_REPEAT(tls_connection_handshake);
 
 		ua = fr_tls_new_session_push(request, conn->tls_conf);
 		TLS_CONNECTION_ERROR_RETURN;
 	}
 
-	return tls_connection_load_session(request, conn);
+	return tls_connection_handshake(request, conn);
 }
 
 /** Push the connection frame onto the request's stack

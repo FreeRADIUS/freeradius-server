@@ -58,7 +58,6 @@ extern "C" {
  */
 typedef enum {
 	TLS_CONNECTION_NEW_SESSION = 0,			//!< Run `new session { ... }`.
-	TLS_CONNECTION_LOAD_SESSION,			//!< Ask the virtual server for a session to resume.
 	TLS_CONNECTION_HANDSHAKE,			//!< Run handshake rounds until the handshake ends.
 	TLS_CONNECTION_COMPLETE				//!< Run the cache operations the handshake queued.
 } fr_tls_connection_state_t;

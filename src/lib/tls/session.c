@@ -1566,7 +1566,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
  *	- UNLANG_ACTION_CALCULATE_RESULT - We're done with this round.
  *	- UNLANG_ACTION_PUSHED_CHILD - Need to perform more asynchronous actions.
  */
-static unlang_action_t tls_session_async_handshake(request_t *request, void *uctx)
+static unlang_action_t tls_session_handshake_round(request_t *request, void *uctx)
 {
 	fr_tls_session_t *tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int ret;
@@ -1626,6 +1626,64 @@ static unlang_action_t tls_session_async_handshake(request_t *request, void *uct
 	}
 
 	return tls_session_async_handshake_cont(request, uctx);	/* Must unbind request, possibly asynchronously */
+}
+
+/** Ask the virtual server for a session to resume, then start the handshake
+ *
+ * Only a client picks a session to resume before the handshake starts.  A
+ * server is asked for one by OpenSSL, part way through the handshake, and
+ * answers from tls_cache_load_cb().
+ *
+ * Nothing is bound to the SSL * yet, so the `load session { ... }` section can
+ * push a subrequest without the handshake holding the SSL * while that
+ * subrequest runs.
+ */
+static unlang_action_t tls_session_load_session(request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	unlang_action_t		ua;
+
+	/*
+	 *	The round runs next whatever happens here, so arm it before
+	 *	pushing anything.  unlang_function_repeat_set() only works
+	 *	while this frame is on top of the stack, and pushing a child
+	 *	puts another frame on top.
+	 */
+	if (unlikely(unlang_function_repeat_set(request, tls_session_handshake_round) < 0)) {
+	error:
+		tls_session->result = FR_TLS_RESULT_ERROR;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	ua = fr_tls_cache_load_client_push(request, tls_session);
+	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
+	if (ua == UNLANG_ACTION_FAIL) goto error;
+
+	return tls_session_handshake_round(request, uctx);
+}
+
+/** Run one round of the handshake, and the policy which precedes the first one
+ *
+ * The caller pushes this once per round, so the work which happens only once
+ * is keyed off the round counter.  `tls_session->rounds` is incremented by
+ * tls_session_handshake_round(), so a zero here means no round has run yet.
+ *
+ * `new session { ... }` is not run here.  That section runs before the
+ * session is allocated, so that it can set control attributes which decide how
+ * the session is allocated, such as EAP-TLS-Require-Client-Cert.  By the time
+ * a handshake round runs, the session already exists and the decision has been
+ * taken.  Running `new session { ... }` from here would be too late, so the
+ * caller runs it.
+ */
+static unlang_action_t tls_session_async_handshake(request_t *request, void *uctx)
+{
+	fr_tls_session_t *tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+
+	if ((tls_session->rounds == 0) && !SSL_is_server(tls_session->ssl)) {
+		return tls_session_load_session(request, uctx);
+	}
+
+	return tls_session_handshake_round(request, uctx);
 }
 
 /** Push a handshake call onto the stack
