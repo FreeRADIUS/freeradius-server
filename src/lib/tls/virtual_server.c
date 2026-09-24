@@ -61,6 +61,13 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 	fr_assert(tls_session->cache || !cache_required);
 
 	/*
+	 *	The caller MUST have checked if a virtual server is
+	 *	available.  If not, then the 'child' request has been
+	 *	built and allocated for no purpose.
+	 */
+	fr_assert(fr_tls_session_conf(tls_session->ssl)->virtual_server != NULL);
+
+	/*
 	 *	Sets up a dispatch frame in the parent
 	 *	and a result processing frame in the child.
 	 */

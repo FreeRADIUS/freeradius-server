@@ -46,6 +46,25 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ssl.h>
 #include <openssl/kdf.h>
 
+/** Check if TLS caching is disabled.
+ *
+ * The TLS cache can eb disabled for a host of reasons.  Using a macro
+ * lets us check all of them at once:
+ *
+ * - there is no cache configuration
+ * - there is no virtual_server to run when poking the cache
+ * - the session tickets are not stateful, so we don't need to store anything
+ *   Note that conf.c also checks for !virtual_server, and sets the cache
+ *   mode to STATELESS.
+ *
+ * This check is only for static configuration.  A particular session
+ * can still be marked as !tls_session->allow_session_resumption.  In
+ * which case we don't load any cache entries, but we may still clear
+ * them.
+ */
+#define TLS_CACHE_DISABLED  (!tls_cache ||  !conf->virtual_server || !(conf->cache.mode & FR_TLS_CACHE_STATEFUL))
+
+
 /** Retrieve session ID (in binary form) from the session
  *
  * @param[in] ctx	Where to allocate the array to hold the session id.
@@ -424,6 +443,8 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 
 	if (tls_cache->load.state != FR_TLS_CACHE_LOAD_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
 
+	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
+
 	fr_assert(tls_cache->load.id);
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
@@ -506,6 +527,8 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_time_t		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time(sess) + SSL_get_timeout(sess)));
 #endif
 	fr_time_t		now = fr_time();
+
+	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	fr_assert(tls_cache->store.sess);
 	fr_assert(tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED);
@@ -641,6 +664,8 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED);
 	fr_assert(tls_cache->clear.id);
 
+	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
+
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
 
@@ -735,9 +760,8 @@ unlang_action_t fr_tls_cache_load_client_push(request_t *request, fr_tls_session
 	fr_pair_t		*vp;
 	unlang_action_t		ua;
 
-	if (!tls_cache || !tls_session->allow_session_resumption) return UNLANG_ACTION_CALCULATE_RESULT;
-	if (!conf->virtual_server) return UNLANG_ACTION_CALCULATE_RESULT;
-	if (!(conf->cache.mode & FR_TLS_CACHE_STATEFUL)) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (!tls_session->allow_session_resumption) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	fr_assert(conf->cache.id_name);
 
@@ -779,7 +803,25 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 	fr_tls_cache_t *tls_cache = tls_session->cache;
 	fr_tls_conf_t *conf = fr_tls_session_conf(tls_session->ssl);
 
-	if (!tls_cache) return UNLANG_ACTION_CALCULATE_RESULT;	/* No caching allowed */
+	if (!tls_cache) return UNLANG_ACTION_CALCULATE_RESULT;	/* No caching allowed, nothing to discard */
+
+	/*
+	 *	The caller is asking us to push load / store / etc.  Since the cache is disabled, we just
+	 *	reset the state (and free resources), then return.  The callers can then check
+	 *	fr_tls_cache_pending(), which will now return "nope".
+	 */
+	if (TLS_CACHE_DISABLED) {
+		if (tls_cache->load.state == FR_TLS_CACHE_LOAD_REQUESTED) {
+			tls_cache_load_state_reset(request, tls_cache);
+		}
+		if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
+			tls_cache_clear_state_reset(request, tls_cache);
+		}
+		if (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED) {
+			tls_cache_store_state_reset(request, tls_cache);
+		}
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	/*
 	 *	Load stateful session data
@@ -1198,6 +1240,8 @@ void fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_cache_t *tls_cache = tls_session->cache;
 	bool tmp_bind = !fr_tls_session_request_bound(tls_session->ssl);
+
+	if (!tls_cache) return;		/* No caching allowed, so nothing to deny */
 
 	/*
 	 *	This is necessary to allow this function to
