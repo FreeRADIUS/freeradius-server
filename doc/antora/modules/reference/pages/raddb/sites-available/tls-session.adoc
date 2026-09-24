@@ -61,6 +61,15 @@ Check the client certificate common name against the supplied identity
 
 ----
 
+The `crl` module can be used to perform CRL checks. See
+xref:reference:raddb/mods-available/crl.adoc[mods-available/crl] for
+details.
+
+----
+##		crl
+
+----
+
 This is a convenient place to call LDAP, for example, when using
 EAP-TLS, as it will only be called once, after all certificates as
 part of the EAP-TLS challenge process have been verified.
@@ -183,43 +192,6 @@ cipher suite.
 ----
 ##	establish session {
 ##	}
-
-----
-
-This section is run after certificate attributes are added to the
-request list, and before performing OCSP validation.
-
-It should read the attribute control.TLS-OCSP-Cert-Valid from the
-cache.
-
-On success it should return 'ok', 'updated', 'noop' or 'notfound' To
-force OCSP validation failure, it should return 'reject'.
-
-----
-	load ocsp-state {
-		control.Cache-Allow-Insert := no
-
-		cache_ocsp
-	}
-
-----
-
-This section is run after OCSP validation has completed.
-
-It should write the attribute reply.TLS-OCSP-Cert-Valid to the cache.
-
-On success it should return 'ok' or 'updated'.
-
-The return code has no real effect on session processing and will just
-cause the server to emit a warning.
-
-----
-	store ocsp-state {
-		control.Cache-TTL := "%{reply.TLS-OCSP-Next-Update * -1}"
-		control.Cache-Allow-Merge := no
-
-		cache_ocsp
-	}
 }
 ----
 

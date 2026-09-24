@@ -55,7 +55,7 @@ cache cache_tls_session {
 }
 cache cache_ocsp {
 	driver = "rbtree"
-	key = %{session-state.TLS-Client-Cert-Serial}
+	key = %{session-state.TLS-Certificate.Serial}
 	update {
 		control.TLS-OCSP-Cert-Valid := TLS-OCSP-Cert-Valid
 		control.TLS-OCSP-Response := TLS-OCSP-Response

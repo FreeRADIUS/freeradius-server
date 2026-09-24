@@ -121,6 +121,7 @@ The following modules use trunk connections:
 
 - ldap
 - sql
+- redis
 - radius
 - tacacs
 
