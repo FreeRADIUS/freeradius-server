@@ -1217,6 +1217,7 @@ int modules_coord_attach(module_list_t const *ml, fr_event_list_t *el)
 /**  Call the coordinator detach callback for any modules using a coordinator
  *
  * @param ml	List of modules to check
+ * @return	Number of coordinators sent a detach signal.
  */
 int modules_coord_detach(module_list_t const *ml)
 {
