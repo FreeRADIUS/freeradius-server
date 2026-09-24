@@ -3800,6 +3800,8 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 			int64_t sec, nsec;
 
 			sec = src->vb_float64;
+
+			if (unlikely((sec > INT64_MAX / NSEC) || (sec < INT64_MIN / NSEC))) goto overflow;
 			sec *= NSEC;
 			nsec = ((src->vb_float64 * NSEC) - ((double) sec));
 
