@@ -68,5 +68,48 @@ server redis {
 #				reconnect_delay = 5
 			}
 		}
+
+		#
+		#  trigger:: Cluster state triggers
+		#
+		#  The standard trunk connection triggers can be used with
+		#  Redis, either with a trigger section inside `pool` or
+		#  global triggers.  See `trigger.conf` for details.  with
+		#  a Redis cluster, such triggers will apply to the individual
+		#  node connections.
+		#
+		#  Separately, triggers can be enabled from cluster state
+		#  changes.
+		#
+		#  These triggers use the IP address and port of the first
+		#  bootstrap server for the value of `Connection-Pool-Server`
+		#  and `Connection-Pool-Port`.
+		#
+		trigger {
+
+			#
+			#  cluster_bootstrap:: The coordinator is fetching the
+			#  cluster map for the first time.
+			#
+#			cluster_bootstrap = ...
+
+			#
+			#  cluster_get:: The coordinator is fetching the latest
+			#  cluster map.
+			#
+#			cluster_get = ...
+
+			#
+			#  cluster_update:: The coordinator has fetched a valid
+			#  cluster map.
+			#
+#			cluster_update = ...
+
+			#
+			#  cluster_fail:: The coordinator could not fetch a
+			#  valid cluster map.
+			#
+#			cluster_fail = ...
+		}
 	}
 }
