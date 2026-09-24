@@ -1097,7 +1097,13 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
 		}
 
 		len -= sublen;
-		memmove(ptr + 255 + hdr_len, ptr + 255, sublen);
+
+		/*
+		 *	Move "len" bytes of data "hdr" bytes ahead.
+		 *
+		 *	The resulting fragment is "sublen" in size.
+		 */
+		memmove(ptr + 255 + hdr_len, ptr + 255, len);
 		memmove(ptr + 255, ptr, hdr_len);
 		ptr[1] += sublen;
 		if (vsa_offset) ptr[vsa_offset] += sublen;
