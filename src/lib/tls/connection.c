@@ -277,6 +277,8 @@ static unlang_action_t tls_connection_new_session(request_t *request, void *uctx
 	conn->state = TLS_CONNECTION_HANDSHAKE;
 
 	if (conn->tls_conf->new_session) {
+		fr_assert(conn->tls_conf->virtual_server);
+
 		TLS_CONNECTION_REPEAT(tls_connection_handshake);
 
 		ua = fr_tls_new_session_push(request, conn->tls_conf);

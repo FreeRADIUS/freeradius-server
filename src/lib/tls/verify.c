@@ -287,6 +287,8 @@ done:
 	 */
 	if (my_ok && (depth == 0)) {
 		if (conf->verify_certificate && tls_session->verify_peer_cert) {
+			fr_assert(conf->virtual_server);
+
 			RDEBUG2("Requesting certificate validation");
 
 			/*
@@ -470,6 +472,8 @@ static unlang_action_t tls_verify_peer_cert_push(request_t *request, fr_tls_sess
 	request_t		*child;
 	fr_pair_t		*vp;
 	unlang_action_t		ua;
+
+	fr_assert(conf->virtual_server);
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;

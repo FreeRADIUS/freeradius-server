@@ -64,8 +64,16 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 	 *	The caller MUST have checked if a virtual server is
 	 *	available.  If not, then the 'child' request has been
 	 *	built and allocated for no purpose.
+	 *
+	 *	unlang_call_push() below is nonnull, so a NULL
+	 *	virtual_server must not reach it.  Every caller frees the
+	 *	child when this function fails, so returning here leaks
+	 *	nothing.
 	 */
-	fr_assert(fr_tls_session_conf(tls_session->ssl)->virtual_server != NULL);
+	if (!fr_cond_assert_msg(conf->virtual_server != NULL,
+				"TLS configuration has no virtual_server, so no policy section can run")) {
+		return UNLANG_ACTION_FAIL;
+	}
 
 	/*
 	 *	Sets up a dispatch frame in the parent

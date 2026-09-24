@@ -1153,6 +1153,8 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	uint8_t const	*session_id;
 	unsigned int	len;
 
+	fr_assert(conf->virtual_server);
+
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
 
