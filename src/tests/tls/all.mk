@@ -50,10 +50,12 @@ TLS_OUTPUT  := $(OUTPUT)
 TLS_SCRIPT  := $(DIR)/unit_test_tls.sh
 TLS_CACHE   := $(DIR)/session_cache.sh
 TLS_ALERT   := $(DIR)/alert.sh
+TLS_REJECT  := $(DIR)/reject.sh
 TLS_CONF    := $(DIR)/unit_test_tls.conf
 TLS_RECEIPT := $(OUTPUT)/unit_test_tls.receipt
 TLS_CACHE_RECEIPT := $(OUTPUT)/session_cache_client.receipt
 TLS_ALERT_RECEIPT := $(OUTPUT)/alert.receipt
+TLS_REJECT_RECEIPT := $(OUTPUT)/reject.receipt
 
 #
 #  The script and the configuration have to agree on the port, so the script
@@ -111,12 +113,26 @@ $(TLS_ALERT_RECEIPT): $(TLS_CONF) $(TLS_ALERT) $(TEST_BIN_DIR)/unit_test_tls $(G
 	    $(SHELL) $(TLS_ALERT)
 
 #
-#  The three tests share a port, so they must not run at the same time.
+#  A session which is rejected after the handshake succeeded.
+#
+$(TLS_REJECT_RECEIPT): $(TLS_CONF) $(TLS_REJECT) $(TEST_BIN_DIR)/unit_test_tls $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+	@echo "TLS-TEST reject"
+	${Q}OUTPUT="$(TLS_OUTPUT)" \
+	    CONFDIR="$(top_srcdir)/$(TLS_DIR)" \
+	    CERTDIR="$(top_srcdir)/raddb/certs/rsa" \
+	    DICT_PATH="$(DICT_PATH)" \
+	    PORT="$(TLS_PORT)" \
+	    UNIT_TEST_TLS="$(TEST_BIN)/unit_test_tls" \
+	    $(SHELL) $(TLS_REJECT)
+
+#
+#  The four tests share a port, so they must not run at the same time.
 #
 $(TLS_CACHE_RECEIPT): $(TLS_RECEIPT)
 $(TLS_ALERT_RECEIPT): $(TLS_CACHE_RECEIPT)
+$(TLS_REJECT_RECEIPT): $(TLS_ALERT_RECEIPT)
 
-$(BUILD_DIR)/tests/$(TEST): $(TLS_RECEIPT) $(TLS_CACHE_RECEIPT) $(TLS_ALERT_RECEIPT)
+$(BUILD_DIR)/tests/$(TEST): $(TLS_RECEIPT) $(TLS_CACHE_RECEIPT) $(TLS_ALERT_RECEIPT) $(TLS_REJECT_RECEIPT)
 
 $(TEST).help:
 	@echo make $(TLS_TEST)

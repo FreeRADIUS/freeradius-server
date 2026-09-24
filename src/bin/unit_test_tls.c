@@ -142,6 +142,8 @@ typedef struct {
 
 	unsigned int		count;			//!< How many connections to run.
 	bool			alert;			//!< Reject the peer with a TLS alert, see -A.
+	bool			reject;			//!< Reject the session once the handshake
+							///< succeeds, see -R.
 	unsigned int		connections;		//!< How many connections have been run so far.
 	fr_ipaddr_t		server_ipaddr;		//!< Server named by -s.
 	uint16_t		server_port;		//!< Port from -s, or from the configuration.
@@ -420,7 +422,25 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 		 *	handshake.  A subrequest returns the subrequest's
 		 *	result through the interpreter.
 		 */
-		if (request == utt->conn->request) fr_tls_connection_process(utt->conn);
+		if (request == utt->conn->request) {
+			fr_tls_connection_process(utt->conn);
+
+			/*
+			 *	Stand in for an application which rejects a
+			 *	session after the handshake succeeded.  The
+			 *	handshake has finished, so OpenSSL has asked
+			 *	for the session to be cached, and the
+			 *	connection is about to run its cache
+			 *	operations.  Failing it here makes those
+			 *	operations a deny and a clear rather than a
+			 *	store, which is what rlm_eap_tls does when
+			 *	policy rejects.
+			 */
+			if (utt->reject && SSL_is_init_finished(utt->conn->tls_session->ssl)) {
+				INFO("Rejecting the session after a successful handshake");
+				utt->conn->failed = true;
+			}
+		}
 
 		if (utt->done) return;
 	}
@@ -778,6 +798,7 @@ int main(int argc, char *argv[])
 	char const		*server = NULL;
 	unsigned int		count = 1;
 	bool			alert = false;
+	bool			reject = false;
 	unsigned int		i;
 
 	TALLOC_CTX		*autofree;
@@ -842,10 +863,14 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Ac:Cd:D:hMn:r:s:xX")) != -1) {
+	while ((c = getopt(argc, argv, "Ac:Cd:D:hMn:r:Rs:xX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
+				break;
+
+			case 'R':
+				reject = true;
 				break;
 
 			case 'c':
@@ -1000,6 +1025,7 @@ int main(int argc, char *argv[])
 	utt->ret = EXIT_SUCCESS;
 	utt->count = count;
 	utt->alert = alert;
+	utt->reject = reject;
 
 	/*
 	 *	`utt` is the argument both callbacks take, so the state
@@ -1321,6 +1347,8 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "                     rather than completing the handshake.  With -c 2 the first\n");
 	fprintf(output, "                     connection fills the session cache, so the alert then has a\n");
 	fprintf(output, "                     session to clear.  Used to test the alert and clear paths.\n");
+	fprintf(output, "  -R                 Reject the session once the handshake has succeeded, as policy\n");
+	fprintf(output, "                     would.  The cached session is then cleared rather than stored.\n");
 	fprintf(output, "  -c <count>         Run <count> connections, one after another.  Session resumption\n");
 	fprintf(output, "                     needs two: one to fill the cache, one to resume from it.\n");
 	fprintf(output, "  -C                 Check configuration and exit.\n");
