@@ -1,0 +1,6 @@
+#
+#  Test: a virtual module must have a second name.
+#
+redundant {	# ERROR
+	ok
+}

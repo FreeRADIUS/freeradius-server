@@ -1,0 +1,5 @@
+#
+#  Test: an empty load-balance virtual module fails at startup.
+#
+load-balance empty_pool {	# ERROR
+}

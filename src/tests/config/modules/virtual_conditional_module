@@ -1,0 +1,6 @@
+#
+#  Test: a virtual module cannot contain a conditionally loaded module.
+#
+redundant cond_pool {
+	-ok	# ERROR
+}

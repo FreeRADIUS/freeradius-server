@@ -1,0 +1,14 @@
+#
+#  Test: virtual modules with only one child start.
+#
+redundant red_one {
+	ok
+}
+
+load-balance lb_one {
+	ok
+}
+
+redundant-load-balance rlb_one {
+	ok
+}

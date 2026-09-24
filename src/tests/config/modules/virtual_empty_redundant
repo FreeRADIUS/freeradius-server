@@ -1,0 +1,5 @@
+#
+#  Test: an empty redundant virtual module fails at startup.
+#
+redundant empty_pool {	# ERROR
+}

@@ -1,0 +1,7 @@
+#
+#  Test: every child of a virtual module must be a known module.
+#
+redundant unknown_pool {
+	ok
+	no_such_module	# ERROR
+}

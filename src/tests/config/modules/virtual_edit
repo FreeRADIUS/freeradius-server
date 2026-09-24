@@ -1,0 +1,7 @@
+#
+#  Test: a virtual module cannot contain an attribute edit.
+#
+redundant edit_pool {
+	ok
+	Reply-Message := 'x'	# ERROR
+}
