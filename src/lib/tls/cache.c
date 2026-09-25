@@ -556,6 +556,21 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_assert(tls_cache->store.sess);
 	fr_assert(tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED);
 
+	/*
+	 *	If there's a pending clear, then don't push any load /
+	 *	save / etc.  This isn't strictly necessary, but is
+	 *	good "defense in depth" for any future code changes.
+	 *	It also documents / enforces our expectations.
+	 */
+	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
+		fr_value_box_t	id;
+		fr_tls_cache_id_to_box_shallow(&id, sess);
+
+		RWDEBUG("Session ID %pV - Clear is pending, not storing", &id);
+		tls_cache_store_state_reset(request, tls_cache);
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
 	if (fr_time_lteq(expires, now)) {
 		fr_value_box_t	id;
  		fr_tls_cache_id_to_box_shallow(&id, sess);
@@ -866,27 +881,11 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 	 */
 	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
 		/*
-		 *	Abort any pending store operations if they
-		 *	were for the same ID that we're trying to
-		 *	clear.
+		 *	Enforce that there's no queued store, as it
+		 *	should have been cancelled.
 		 */
-		if (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED) {
-			unsigned int	len;
-			uint8_t const	*id;
-
-			/*
-			 *	@todo - this is perhaps not
-			 *	technically needed, but doing this
-			 *	will catch any future issue which
-			 *	accidentally runs a store after a
-			 *	clear has been requested.
-			 */
-			id = SSL_SESSION_get_id(tls_cache->store.sess, &len);
-			if ((len == talloc_array_length(tls_cache->clear.id)) &&
-			    (memcmp(tls_cache->clear.id, id, len) == 0)) {
-				tls_cache_store_state_reset(request, tls_cache);
-			}
-		}
+		fr_assert(tls_cache->store.state != FR_TLS_CACHE_STORE_REQUESTED);
+		tls_cache_store_state_reset(request, tls_cache);
 
 		return tls_cache_clear_push(request, conf, tls_session);
 	}
