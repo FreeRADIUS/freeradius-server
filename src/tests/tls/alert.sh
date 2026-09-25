@@ -6,22 +6,29 @@
 #
 #  The alert record is built by hand, in fr_tls_session_alert_send() in
 #  src/lib/tls/session.c, rather than by OpenSSL.  That makes it the one place
-#  which writes octets straight into a record buffer, and the only place whose
-#  failure mode is silence: a record with no room takes the write, drops it,
-#  and the handshake simply ends with nothing sent.  Neither of the other two
-#  TLS tests makes a handshake fail, so without this test nothing exercises
-#  that code.
+#  which writes octets straight into a record buffer, so it is the one place
+#  where a mistake sends nothing at all rather than sending something wrong.
+#
+#  That function resets dirty_out before writing, so the record always has
+#  room, and it asserts that the write was the full seven octets.  Neither
+#  guard says the octets reached the peer, which is what this test is for.
+#
+#  This is the only TLS test where the handshake itself fails.  The reject
+#  test fails a session, but only after the handshake has succeeded.
 #
 #  The check is what the client saw, not what the server logged.  Only the
 #  client can tell us the octets left the machine.
 #
 #  Environment:
-#    UNIT_TEST_TLS  command which runs unit_test_tls, possibly several words
+#    UNIT_TEST_TLS  command that runs unit_test_tls, possibly several words
 #    OUTPUT         directory for the log file and the receipt file
 #    CONFDIR        directory holding unit_test_tls.conf
 #    CERTDIR        directory holding the client certificate
 #    DICT_PATH      dictionary directory
 #    PORT           port unit_test_tls listens on
+#
+#  "make test.tls" sets every variable above and runs this script.  The recipe
+#  is in src/tests/tls/all.mk.
 #
 #  $Id$
 #
