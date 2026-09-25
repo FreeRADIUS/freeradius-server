@@ -93,8 +93,8 @@ typedef struct {
 
 /** Is any cache operation still waiting to run?
  *
- * The TLS library pushes one cache operation per call, and a load, a
- * clear and a store can all be queued at the same time.  Return
+ * The TLS library pushes one cache operation per call, but pushing a
+ * clear will (eventually) cancel any pending load or store.  Return
  * whether any of those are queued.
  *
  * @param[in] tls_cache	to check, which may be NULL when caching is disabled.

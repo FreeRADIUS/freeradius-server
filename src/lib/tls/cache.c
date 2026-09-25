@@ -339,6 +339,12 @@ static void tls_cache_delete_request(fr_tls_session_t *tls_session, SSL_SESSION 
 	tls_cache->clear.state = FR_TLS_CACHE_CLEAR_REQUESTED;
 
 	/*
+	 *	Reset any pending `store session`, so that we skip
+	 *	unnecessary work.
+	 */
+	tls_cache_store_state_reset(request, tls_cache);
+
+	/*
 	 *	We _usually_ store a copy of the SSL_SESSION in tls_session->session.  If the
 	 *	session is being freed, then we invalidate the cached SSL_SESSION.  Note that
 	 *	tls_session->session can be NULL sometimes, see tls_cache_delete_cb().
@@ -445,6 +451,22 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	if (tls_cache->load.state != FR_TLS_CACHE_LOAD_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	/*
+	 *	Reset any pending `load session` if there is also a
+	 *	pending `clear session`, and mark up the load as failed.
+	 *
+	 *	The load is stuck in an async callback via
+	 *	ASYNC_pause_job(), so we can't reset the load state
+	 *	here.  When it runs, the callback checks for load
+	 *	failed, and then nukes the connection.
+	 */
+	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
+		RDEBUG3("Session ID %pV - Clear is pending, skipping `load session { ... }`",
+			fr_box_octets_buffer(tls_cache->load.id));
+		tls_cache->load.state = FR_TLS_CACHE_LOAD_FAILED;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	fr_assert(tls_cache->load.id);
 
@@ -803,6 +825,7 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 {
 	fr_tls_cache_t *tls_cache = tls_session->cache;
 	fr_tls_conf_t *conf = fr_tls_session_conf(tls_session->ssl);
+	unlang_action_t ua;
 
 	if (!tls_cache) return UNLANG_ACTION_CALCULATE_RESULT;	/* No caching allowed, nothing to discard */
 
@@ -825,10 +848,16 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 	}
 
 	/*
-	 *	Load stateful session data
+	 *	Load stateful session data.
+	 *
+	 *	tls_cache_load_push() may return
+	 *	UNLANG_ACTION_CALCULATE_RESULT there's a pending
+	 *	`clear session`.  When that happens, we skip the load,
+	 *	and run the clear instead.
 	 */
 	if (tls_cache->load.state == FR_TLS_CACHE_LOAD_REQUESTED) {
-		return tls_cache_load_push(request, tls_session);
+		ua = tls_cache_load_push(request, tls_session);
+		if (ua != UNLANG_ACTION_CALCULATE_RESULT) return ua;
 	}
 
 	/*
@@ -845,6 +874,13 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 			unsigned int	len;
 			uint8_t const	*id;
 
+			/*
+			 *	@todo - this is perhaps not
+			 *	technically needed, but doing this
+			 *	will catch any future issue which
+			 *	accidentally runs a store after a
+			 *	clear has been requested.
+			 */
 			id = SSL_SESSION_get_id(tls_cache->store.sess, &len);
 			if ((len == talloc_array_length(tls_cache->clear.id)) &&
 			    (memcmp(tls_cache->clear.id, id, len) == 0)) {
