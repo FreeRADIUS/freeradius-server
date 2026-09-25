@@ -610,7 +610,7 @@ static unlang_action_t eap_ttls_success(unlang_result_t *p_result, request_t *re
 	 *	could resume the session (and get access) even if phase2
 	 *	never completed.
 	 */
-	return fr_tls_cache_pending_push(request, tls_session);
+	return fr_tls_cache_store_session(request, tls_session);
 }
 
 

@@ -310,13 +310,14 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session, eap_tls_prf_
  *
  * In addition to sending the failure, will destroy any cached session data.
  *
- * The caller MUST set p_result->rcode = ... before calling this function.
+ * The caller MUST set the caller's own p_result->rcode before calling this function.
  *
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	that failed.
  * @return
- *	- 0 on success.
- *	- -1 on failure (to compose a valid packet).
+ *	- UNLANG_ACTION_PUSHED_CHILD	- cache sections are running.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - there was no cache work to do.
+ *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
  */
 unlang_action_t eap_tls_fail(request_t *request, eap_session_t *eap_session)
 {
@@ -327,26 +328,17 @@ unlang_action_t eap_tls_fail(request_t *request, eap_session_t *eap_session)
 
 	eap_session->finished = true;
 
-	/*
-	 *	Queue the "clear session" work.
-	 */
-	fr_tls_cache_deny(request, tls_session);
-
 	if (eap_tls_compose(request, eap_session, EAP_TLS_FAIL,
 			    eap_tls_session->base_flags, NULL, 0, 0) < 0) {
 		REDEBUG("Failed composing EAP-Failure");
 	}
 
 	/*
-	 *	Push any pending cache work (which might be none).
-	 *	This allows the interpeter to run the "clear session"
-	 *	section.
-	 *
-	 *	The caller MUST set the unlang "p_result" before
-	 *	calling us.  A pushed child then returns to the
-	 *	caller's caller with that result already in place.
+	 *	Authentication failed, discard any session tickets.  Cancel any
+	 *	queued "store session", and then run the "clear session", if
+	 *	that's configured.
 	 */
-	return fr_tls_cache_pending_push(request, tls_session);
+	return fr_tls_cache_clear_session(request, tls_session);
 }
 
 /** Frames the OpenSSL data that needs to be sent to the client in an EAP-Request
@@ -932,10 +924,15 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	 */
 	REDEBUG("TLS failed during operation");
 fail:
-	fr_tls_cache_deny(request, tls_session);
 	eap_tls_session->state = EAP_TLS_FAIL;
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	/*
+	 *	The handshake failed, so we clear the cache eap_tls_fail().  We discard the session here
+	 *	rather than queuing a clear.  Not every caller of eap_tls_handshake_resume() ends up at
+	 *	eap_tls_fail() (@todo - fix that!).  A queued clear that doesn't run might leave the peer able
+	 *	to resume the session.
+	 */
+	return fr_tls_cache_clear_session(request, tls_session);
 }
 
 /** Push functions to continue the handshake asynchronously

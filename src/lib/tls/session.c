@@ -26,6 +26,7 @@
  */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
+#define _TLS_CACHE_PRIVATE 1
 
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/log.h>
@@ -1721,6 +1722,17 @@ unlang_action_t fr_tls_session_async_handshake_push(request_t *request, fr_tls_s
  */
 static int _fr_tls_session_free(fr_tls_session_t *session)
 {
+	/*
+	 *	Ensure that there are no pending cache operations
+	 *	before we free the session.  Leaving a pending cache
+	 *	operation might mean that the session ticket isn't
+	 *	cleared, and the TLS peer can then use it to resume
+	 *	the session.
+	 */
+	fr_assert_msg(!fr_tls_cache_pending(session->cache),
+		      "Session freed with cache work outstanding, the caller called neither "
+		      "fr_tls_cache_store_session() nor fr_tls_cache_clear_session()");
+
 	if (session->ssl) {
 		/*
 		 *  The OpenSSL docs state:

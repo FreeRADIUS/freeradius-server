@@ -1481,7 +1481,7 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 		 *	could resume the session (and get access) even if phase2
 		 *	never completed.
 		 */
-		return fr_tls_cache_pending_push(request, tls_session);
+		return fr_tls_cache_store_session(request, tls_session);
 
 	/*
 	 *	No response packet, MUST be proxying it.

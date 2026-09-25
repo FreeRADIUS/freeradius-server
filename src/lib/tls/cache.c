@@ -28,6 +28,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
+#define _TLS_CACHE_PRIVATE 1
 
 #include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/server/pair.h>
@@ -48,7 +49,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 /** Check if TLS caching is disabled.
  *
- * The TLS cache can eb disabled for a host of reasons.  Using a macro
+ * The TLS cache can be disabled for a host of reasons.  Using a macro
  * lets us check all of them at once:
  *
  * - there is no cache configuration
@@ -836,9 +837,9 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 	 */
 	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
 		/*
-		 *	Abort any pending store operations
-		 *	if they were for the same ID as
-		 *	we're now trying to clear.
+		 *	Abort any pending store operations if they
+		 *	were for the same ID that we're trying to
+		 *	clear.
 		 */
 		if (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED) {
 			unsigned int	len;
@@ -859,6 +860,112 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Run all queued cache operations
+ *
+ * Multiple operations may be pushed at the same time.  We set
+ * ourselves as the resume function before each push, so that when the
+ * queued operation is done, we can check for another one, and run it.
+ *
+ * @param[in] request		to run the cache sections in.
+ * @param[in] uctx		the #fr_tls_session_t whose queued operations to run.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- a cache section is running.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - no operation is left.
+ */
+static unlang_action_t tls_cache_drain(request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	unlang_action_t		ua;
+
+	if (!fr_tls_cache_pending(tls_session->cache)) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	/*
+	 *	Set our repeat before any child is pushed.
+	 */
+	if (unlikely(unlang_function_repeat_set(request, tls_cache_drain) < 0)) return UNLANG_ACTION_FAIL;
+
+	ua = fr_tls_cache_pending_push(request, tls_session);
+	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
+
+	/*
+	 *	We didn't push anything.  Clear the repeat.
+	 */
+	IGNORE(unlang_function_clear(request), int);
+
+	/*
+	  *	On error, log the failure and continue.
+	 */
+	if (ua == UNLANG_ACTION_FAIL) {
+		RERROR("Failed running session cache operations");
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	return ua;
+}
+
+/** Push a frame which runs every queued cache operation
+ *
+ * @param[in] request		to run the cache sections in.
+ * @param[in] tls_session	whose queued operations to run.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- the queued operations are running.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - no operation was queued.
+ *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
+ */
+static unlang_action_t tls_cache_drain_push(request_t *request, fr_tls_session_t *tls_session)
+{
+	if (!fr_tls_cache_pending(tls_session->cache)) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	return unlang_function_push(request, tls_cache_drain, NULL, NULL, 0, UNLANG_SUB_FRAME, tls_session);
+}
+
+/** Store a session after a successful authentication
+ *
+ * Remember to run `store session { ... }`.
+ *
+ * Just finishing the TLS handshake is not always enough.  EAP runs
+ * inner methods inside of the TLS tunnel which can fail.  So we only
+ * run `store session` after the inner method succeeds.
+ *
+ * @note The caller MUST set the caller's own unlang result before calling
+ *	 fr_tls_cache_store_session().  A pushed child returns to the caller's
+ *	 caller with that result already in place.
+ *
+ * @param[in] request		to run the cache sections in.
+ * @param[in] tls_session	to keep.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- cache sections are running.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - there was nothing to do.
+ *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
+ */
+unlang_action_t fr_tls_cache_store_session(request_t *request, fr_tls_session_t *tls_session)
+{
+	return tls_cache_drain_push(request, tls_session);
+}
+
+/** Clear a session after a failed authentication
+ *
+ * Cancels any pending `store session`, and runs `clear session { ... }`
+ * as the session might already be in the cache.
+ *
+ * @note The caller MUST set the caller's own unlang result before calling
+ *	 fr_tls_cache_clear_session().  A pushed child returns to the
+ *	 caller's caller with that result already in place.
+ *
+ * @param[in] request		to run the cache sections in.
+ * @param[in] tls_session	to discard.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- cache sections are running.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - there was nothing to do.
+ *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
+ */
+unlang_action_t fr_tls_cache_clear_session(request_t *request, fr_tls_session_t *tls_session)
+{
+	fr_tls_cache_deny(request, tls_session);
+
+	return tls_cache_drain_push(request, tls_session);
 }
 
 /** Write a newly created session data to the tls_session->cache structure
@@ -1227,11 +1334,12 @@ int fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
  *
  * @note Calling this function will immediately free the memory used
  *   by the session, but not the external persisted copy of the
- *   session.  To clear the persisted copy #fr_tls_cache_pending_push
- *   must be called in a place where the caller is prepared to yield.
- *   In most cases this means whether the handshake is a success or
- *   failure, the last thing the caller of the TLS code should do
- *   is set the result, and call #fr_tls_cache_pending_push.
+ *   session.  fr_tls_cache_deny() only queues the clear.
+ *   fr_tls_cache_clear_session() runs the queued clear afterwards,
+ *   from a frame which can yield.  fr_tls_cache_deny() is therefore
+ *   private to the TLS library.  Callers outside the TLS library call
+ *   fr_tls_cache_clear_session(), which queues the clear and runs the
+ *   queued clear.
  *
  * @param[in] request		to use for running any async cache actions.
  * @param[in] tls_session	on which to prevent resumption.
@@ -1239,22 +1347,25 @@ int fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
 void fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_cache_t *tls_cache = tls_session->cache;
-	bool tmp_bind = !fr_tls_session_request_bound(tls_session->ssl);
+	bool bound;
 
 	if (!tls_cache) return;		/* No caching allowed, so nothing to deny */
+
+	bound = fr_tls_session_request_bound(tls_session->ssl);
 
 	/*
 	 *	This is necessary to allow this function to
 	 *	be called inside and outside of OpenSSL handshake
 	 *	code.
 	 */
-	if (tmp_bind) {
+	if (!bound) {
 		fr_tls_session_request_bind(tls_session->ssl, request);
-	/*
-	 *	If there's already a request bound, it better be
-	 *      the one passed to this function.
-	 */
+
 	} else {
+		/*
+		 *	If there's already a request bound, it better be
+		 *      the one passed to this function.
+		 */
 		fr_assert(fr_tls_session_request(tls_session->ssl) == request);
 	}
 
@@ -1270,7 +1381,7 @@ void fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session)
 	 *	tls_cache_delete_request does NOT immediately call the `cache clear {}` section as that must
 	 *	be done in a code area which is prepared to yield.
 	 *
-	 *	#fr_tls_cache_pending_push MUST be called to actually clear external data.
+	 *	The queue MUST be run afterwards to actually clear external data.
 	 */
 	if (tls_session->session) {
 		SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
@@ -1293,7 +1404,7 @@ void fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session)
 	/*
 	 *	Unbind the request last...
 	 */
-	if (tmp_bind) fr_tls_session_request_unbind(tls_session->ssl);
+	if (!bound) fr_tls_session_request_unbind(tls_session->ssl);
 }
 
 /** Cleanup any memory allocated by OpenSSL

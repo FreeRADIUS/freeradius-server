@@ -1,33 +1,39 @@
 #!/bin/sh
 #
-#  Run unit_test_tls with -R, so that it rejects the session after the
-#  handshake has succeeded, the way policy does.  Then check that the session
-#  was not cached.
+#  Run unit_test_tls with -R, so that unit_test_tls rejects the session after
+#  the handshake has succeeded, the way policy rejects a session.  Then check
+#  that unit_test_tls did not cache the session.
 #
-#  This covers fr_tls_cache_deny(), which is what a caller runs when it decides
-#  a session is not worth keeping.  rlm_eap_tls does the same thing when policy
-#  returns reject.  Before this test nothing exercised that path: the other TLS
-#  tests either complete the handshake and cache the session, or fail before a
-#  session exists.
+#  A caller runs fr_tls_cache_clear_session() when the caller decides that a
+#  session is not worth keeping.  rlm_eap_tls calls the same function when
+#  policy returns reject.  No other TLS test reaches that function.  The other
+#  TLS tests either complete the handshake and cache the session, or fail
+#  before a session exists.
 #
-#  It also covers the cache drain in tls_connection_cache_session(), which runs
-#  fr_tls_cache_pending_push() until nothing is left.  A build with assertions
-#  enabled checks that nothing was left queued, see
-#  tls_connection_application_data().
+#  fr_tls_cache_clear_session() runs every queued cache operation before
+#  fr_tls_cache_clear_session() returns.  In a build with assertions enabled,
+#  tls_connection_application_data() and _fr_tls_session_free() both check
+#  that no cache operation is left queued.
 #
-#  It is the only coverage of `clear session { ... }`.  That section used to be
-#  unreachable: fr_tls_cache_deny() asked for the clear by calling
-#  SSL_CTX_remove_session(), but cache.c sets SSL_SESS_CACHE_NO_INTERNAL, so
-#  OpenSSL held no session for that call to find and never ran the remove
-#  callback.  fr_tls_cache_deny() now calls tls_cache_delete_request() itself.
+#  This test is the only coverage of the clear session { ... } section.  That
+#  section was unreachable while fr_tls_cache_deny() asked for the clear by
+#  calling SSL_CTX_remove_session().  cache.c sets SSL_SESS_CACHE_NO_INTERNAL,
+#  so OpenSSL holds no session for that call to find, and OpenSSL never runs
+#  the remove callback.  fr_tls_cache_deny() now calls
+#  tls_cache_delete_request() itself.
 #
 #  Environment:
-#    UNIT_TEST_TLS  command which runs unit_test_tls, possibly several words
+#    UNIT_TEST_TLS  command that runs unit_test_tls, possibly several words
 #    OUTPUT         directory for the log file and the receipt file
 #    CONFDIR        directory holding unit_test_tls.conf
 #    CERTDIR        directory holding the client certificate
 #    DICT_PATH      dictionary directory
 #    PORT           port unit_test_tls listens on
+#
+#  "make test.tls" sets every variable above and runs this script.  The recipe
+#  is in src/tests/tls/all.mk.
+#
+#  $Id$
 #
 
 LOG="$OUTPUT/reject.log"
@@ -90,35 +96,38 @@ echo | openssl s_client -connect "127.0.0.1:$PORT" \
 wait "$SERVER_PID" 2> /dev/null
 
 #
-#  The rejection only means anything if the handshake got far enough for
+#  The rejection proves nothing unless the handshake got far enough for
 #  OpenSSL to offer a session to cache.
 #
 grep -q "TLS handshake completed" "$LOG" || \
-	fail "the handshake did not complete, so there was no session to reject"
+	fail "the handshake did not complete, no session to reject"
 
 grep -q "Rejecting the session after a successful handshake" "$LOG" || \
-	fail "the server did not reject the session, so -R did nothing"
+	fail "the server did not reject the session, -R had no effect"
 
 #
-#  fr_tls_cache_deny() cancels the pending store, so the `store session`
-#  section must not run.  If it does, a rejected session is being cached.
+#  fr_tls_cache_clear_session() cancels the pending store, so the
+#  store session { ... } section must not run.  If that section runs, the
+#  server cached a rejected session.
 #
 if grep -q "# store session" "$LOG"; then
-	fail "the rejected session was cached, so fr_tls_cache_deny() did not cancel the store"
+	fail "store session ran, fr_tls_cache_clear_session() did not cancel the store"
 fi
 
 #
-#  fr_tls_cache_deny() also asks for the session to be cleared, and the cache
-#  drain runs the section.  Nothing else in the test suite reaches this.
+#  fr_tls_cache_clear_session() also requests the clear, and runs the
+#  clear session { ... } section itself.  Nothing else in the test suite
+#  reaches that section.
 #
 grep -q "# clear session" "$LOG" || \
-	fail "the clear session section did not run, so fr_tls_cache_deny() did not request the clear"
+	fail "clear session did not run, fr_tls_cache_clear_session() did not request the clear"
 
 #
-#  An assertion failure would mean the cache drain left an operation queued.
+#  Any assertion failure fails this test.  The assertion this test can trip is
+#  the one which catches a cache operation that tls_cache_drain() left queued.
 #
 if grep -q "ASSERT FAILED" "$LOG"; then
-	fail "an assertion failed, most likely the cache drain left work queued"
+	fail "an assertion failed, check whether tls_cache_drain() left a cache operation queued"
 fi
 
 touch "$RECEIPT"

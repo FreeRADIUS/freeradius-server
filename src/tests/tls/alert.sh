@@ -23,6 +23,8 @@
 #    DICT_PATH      dictionary directory
 #    PORT           port unit_test_tls listens on
 #
+#  $Id$
+#
 
 LOG="$OUTPUT/alert.log"
 RECEIPT="$OUTPUT/alert.receipt"

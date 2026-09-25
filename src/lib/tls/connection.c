@@ -28,6 +28,7 @@
  */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
+#define _TLS_CACHE_PRIVATE 1
 
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
@@ -146,10 +147,11 @@ static unlang_action_t tls_connection_application_data(UNUSED request_t *request
 	conn->idle = false;
 
 	/*
-	 *	tls_connection_cache_session() runs until
-	 *	fr_tls_cache_pending_push() has nothing left to push.  An
-	 *	operation still queued here would never run at all, and the
-	 *	session would silently not be cached or not be cleared.
+	 *	fr_tls_cache_store_session() and fr_tls_cache_clear_session()
+	 *	run every queued cache operation before either function
+	 *	returns.  An operation still queued here would never run at
+	 *	all, and the session would silently not be cached, or would
+	 *	silently not be cleared.
 	 */
 	fr_assert(!fr_tls_cache_pending(conn->tls_session->cache));
 
@@ -157,53 +159,32 @@ static unlang_action_t tls_connection_application_data(UNUSED request_t *request
 	return UNLANG_ACTION_YIELD;
 }
 
-/** Run cache operations, and then finish the connection
+/** Decide whether to keep the session once the handshake has stopped
  *
- * The cache callbacks queue the work work, and tls_connection_check() says why
- * something has to run the queued work.  fr_tls_cache_pending_push() pushes
- * one operation per call, so tls_connection_cache() arms
- * tls_connection_cache() and runs once for each operation, until no operation
- * is left.
- */
-static unlang_action_t tls_connection_cache_session(request_t *request, void *uctx)
-{
-	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
-	unlang_action_t	ua;
-
-	conn->idle = false;
-
-	/*
-	 *	fr_tls_cache_pending_push() pushes one operation per call,
-	 *	and a load, a clear and a store can all be queued at the same
-	 *	time.  Arm this function again so that every queued operation
-	 *	runs, and move on only once there is nothing left.
-	 */
-	TLS_CONNECTION_REPEAT(tls_connection_cache_session);
-
-	ua = fr_tls_cache_pending_push(request, conn->tls_session); /* never returns YIELD */
-	TLS_CONNECTION_ERROR_RETURN;
-
-	return tls_connection_application_data(request, conn);
-}
-
-/** SSL_is_init_finished(), check for connection status.
- *
- * If anything failed during negotiation (TLS or policy), then remove
- * the pending cache entry and fail the connection.  Otherwise, cache
- * the session information (if needed), and finish the connection.
+ * The handshakes are done, either due to success or failure.  On
+ * failure, we discard any cached session.  On success, we store the
+ * session before processing application data.
  */
 static unlang_action_t tls_connection_init_finished(request_t *request, void *uctx)
 {
 	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
+	unlang_action_t		ua;
+
+	conn->idle = false;
 
 	/*
-	 *	If the connection failed, forcibly remove the cached
-	 *	session, update the cache, and then run the clear
-	 *	session policy.
+	 *	Arm the repeat before any push.
 	 */
-	if (conn->failed) fr_tls_cache_deny(request, conn->tls_session);
+	TLS_CONNECTION_REPEAT(tls_connection_application_data);
 
-	return tls_connection_cache_session(request, conn);
+	if (conn->failed) {
+		ua = fr_tls_cache_clear_session(request, conn->tls_session);
+	} else {
+		ua = fr_tls_cache_store_session(request, conn->tls_session);
+	}
+	TLS_CONNECTION_ERROR_RETURN;
+
+	return tls_connection_application_data(request, conn);
 }
 
 /** Run handshake rounds until the handshakes finish.

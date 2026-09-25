@@ -93,14 +93,13 @@ typedef struct {
 
 /** Is any cache operation still waiting to run?
  *
- * fr_tls_cache_pending_push() pushes one operation per call, and a load, a
- * clear and a store can all be queued at the same time.  A caller which drives
- * it therefore has to keep calling until nothing is left.  This says whether
- * anything is left.
+ * The TLS library pushes one cache operation per call, and a load, a
+ * clear and a store can all be queued at the same time.  Return
+ * whether any of those are queued.
  *
  * @param[in] tls_cache	to check, which may be NULL when caching is disabled.
  * @return
- *	- true if at least one operation is still queued.
+ *	- true if at least one operation is queued.
  *	- false if there is nothing left to do.
  */
 static inline bool fr_tls_cache_pending(fr_tls_cache_t const *tls_cache)
@@ -124,9 +123,25 @@ extern "C" {
 #endif
 uint8_t		*fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess);
 
-unlang_action_t	fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *tls_session);
+/** @name Keep or discard the session once the caller knows the outcome
+ *
+ * Just finishing the TLS handshake is not always enough.  EAP runs
+ * inner methods inside of the TLS tunnel which can fail.  These
+ * functions mark the operations as pending, but don't actually do
+ * anything.  Once the application makes a decision, the various
+ * operations are run.
+ *
+ * Each of these functions runs all queued cache operations before they
+ * return.  If the application skips these functions, any cached
+ * session is left in place, and the TLS peer can still use the
+ * session ticket to resume the session.
+ *
+ * @{
+ */
+unlang_action_t	fr_tls_cache_store_session(request_t *request, fr_tls_session_t *tls_session);
 
-void		fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session);
+unlang_action_t	fr_tls_cache_clear_session(request_t *request, fr_tls_session_t *tls_session);
+/** @} */
 
 int		fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
 
@@ -135,6 +150,23 @@ void		fr_tls_cache_session_alloc(fr_tls_session_t *tls_session);
 int		fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf, bool client);
 
 unlang_action_t	fr_tls_cache_load_client_push(request_t *request, fr_tls_session_t *tls_session);
+
+/*
+ *	Queueing cache work without running the work leaves a session in the
+ *	cache which should not stay in the cache.  Running cache work without
+ *	first deciding what the work should be leaves the same session in the
+ *	cache.  Only the TLS library itself may queue work or run work, so both
+ *	prototypes below need _TLS_CACHE_PRIVATE defined before any include.
+ *	Callers outside the library call fr_tls_cache_store_session() or
+ *	fr_tls_cache_clear_session(), declared earlier in this file, which
+ *	pair the decision with running the cache operations that the decision
+ *	queues.
+ */
+#ifdef _TLS_CACHE_PRIVATE
+unlang_action_t	fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *tls_session);
+
+void		fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session);
+#endif
 
 #ifdef __cplusplus
 }

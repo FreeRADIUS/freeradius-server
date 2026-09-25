@@ -119,7 +119,7 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 		 *	could resume the session (and get access) even if phase2
 		 *	never completed.
 		 */
-		return fr_tls_cache_pending_push(request, tls_session);
+		return fr_tls_cache_store_session(request, tls_session);
 	}
 
 	/*
@@ -146,7 +146,6 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 	 *	the client can't reuse it.
 	 */
 	default:
-		fr_tls_cache_deny(request, tls_session);
 		p_result->rcode = RLM_MODULE_REJECT;
 
 		/*
@@ -154,7 +153,7 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 		 *	in the unlang stack if this
 		 *	fails.
 		 */
-		return fr_tls_cache_pending_push(request, tls_session);	/* Run any pending cache clear operations */
+		return fr_tls_cache_clear_session(request, tls_session);
 	}
 }
 
