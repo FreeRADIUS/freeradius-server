@@ -109,31 +109,91 @@ finish:
 	tls_connection_request_wake(conn);
 }
 
+static unlang_action_t tls_connection_application_data(request_t *request, void *uctx);
+
+/** Record a fatal error, and tell the application the connection is done
+ *
+ * The IO callbacks run outside of the interpreter, and so have no stack
+ * frame of their own.  They can neither run policy nor clear a repeat, so
+ * this is as much as they can do.  tls_connection_error() does the rest.
+ *
+ * @param[in] conn	which failed.
+ */
+static void tls_connection_failed(fr_tls_connection_t *conn)
+{
+	conn->failed = true;
+	conn->idle = false;
+
+	conn->finished(conn->uctx, conn);
+}
+
 /** There is a fatal connection error.
  *
  * The state functions have no way to report a failure to the
  * interpreter, because we're pushing functions onto the stack with
  * unlang_function_push(), instead of unlang_function_push_with_result().
  *
- * We therefore record the failure, and return yield.
+ * We therefore record the failure, discard the session, and return yield.
+ *
+ * @param[in] request	running the connection frame.
+ * @param[in] conn	which failed.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- `clear session { ... }` is running.
+ *	- UNLANG_ACTION_YIELD		- the application has been told.
  */
-static unlang_action_t tls_connection_error(fr_tls_connection_t *conn)
+static unlang_action_t tls_connection_error(request_t *request, fr_tls_connection_t *conn)
 {
+	unlang_action_t	ua;
+
 	conn->failed = true;
-	conn->finished(conn->uctx, conn);
+	conn->idle = false;
+
+	/*
+	 *	Clear any pending repeat, so that the TLS state machine functions aren't used.
+	 */
+	IGNORE(unlang_function_clear(request), int);
+
+	/*
+	 *	Set our own repeat, which closes the connection, as is
+	 *	done in tls_connection_init_finished().  We have to
+	 *	set a repeat function to a "connection done" function,
+	 *	as the `clear session` code may push a child.
+	 *
+	 *	@todo - have a separate "run thing on connection
+	 *	fail".
+	 */
+	if (unlang_function_repeat_set(request, tls_connection_application_data) < 0) goto finished;
+
+	ua = fr_tls_cache_clear_session(request, conn->tls_session);
+	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
+
+	/*
+	 *	Nothing was pushed, so we clear our repeat and return
+	 *	that the TLS connection failed.
+	 *
+	 *	If the push failed, then nothing should have been
+	 *	pushed onto the stack.  The cache operations are
+	 *	marked as "need to be run", but we can't do anything
+	 *	else.  So we just return, and potentially leave any
+	 *	cache entries behind.
+	 */
+	IGNORE(unlang_function_clear(request), int);
+
+finished:
+	tls_connection_failed(conn);
 	return UNLANG_ACTION_YIELD;
 }
 
 #define TLS_CONNECTION_ERROR_RETURN \
 	do { \
 		if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua; \
-		if (ua == UNLANG_ACTION_FAIL) return tls_connection_error(conn); \
+		if (ua == UNLANG_ACTION_FAIL) return tls_connection_error(request, conn); \
 	} while (0)
 
 #define TLS_CONNECTION_REPEAT(_func) \
 	do { \
 		if (unlang_function_repeat_set(request, _func) < 0) { \
-			return tls_connection_error(conn); \
+			return tls_connection_error(request, conn); \
 		} \
 	} while (0)
 
@@ -237,7 +297,7 @@ static unlang_action_t tls_connection_handshake(request_t *request, void *uctx)
 	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
 
 	fr_tls_log(conn->request, "Failed pushing a TLS handshake round");
-	return tls_connection_error(conn);
+	return tls_connection_error(request, conn);
 }
 
 /** Run `new session { ... }`, the first state of a connection
@@ -327,8 +387,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	if (fr_dbuff_in_memcpy_partial(&tls_session->dirty_in, data, data_len) != data_len) {
 		RERROR("Failed buffering %zu bytes of TLS record data", data_len);
 	error:
-		conn->failed = true;
-		conn->finished(conn->uctx, conn);
+		tls_connection_failed(conn);
 		return;
 	}
 
@@ -361,8 +420,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 void fr_tls_connection_process(fr_tls_connection_t *conn)
 {
 	if (conn->write(conn->uctx, conn) < 0) {
-		conn->failed = true;
-		conn->finished(conn->uctx, conn);
+		tls_connection_failed(conn);
 		return;
 	}
 
