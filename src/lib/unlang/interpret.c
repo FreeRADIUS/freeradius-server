@@ -362,7 +362,7 @@ int unlang_interpret_force_result(unlang_t const *instruction, unlang_result_t *
 	}
 
 	if (tl && fr_time_delta_ispos(expire)) {
-		if (fr_timer_in(tl, tl, &thread_data->ev, expire,
+		if (fr_timer_in(unlang_thread_array, tl, &thread_data->ev, expire,
 				false, forced_result_expiry_handler, thread_data) < 0) {
 			return -1;
 		}
