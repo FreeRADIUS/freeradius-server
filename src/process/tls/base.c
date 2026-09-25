@@ -63,6 +63,47 @@ typedef struct {
 
 #include <freeradius-devel/server/process.h>
 
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	process_tls_t const *inst = talloc_get_type_abort_const(mctx->mi->data, process_tls_t);
+	CONF_SECTION	*server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
+
+	/*
+	 *	We have to define both load and save.
+	 */
+	if (inst->sections.load_session && !inst->sections.store_session) {
+		cf_log_err(server_cs, "Virtual server defines 'load session', but no 'store session'");
+		return -1;
+	}
+
+	if (inst->sections.store_session && !inst->sections.load_session) {
+		cf_log_err(server_cs, "Virtual server defines 'store session', but no 'load session'");
+		return -1;
+	}
+
+	/*
+	 *	If 'load' is set, then 'store' is set.  And we must also have 'clear'
+	 */
+	if (inst->sections.load_session && !inst->sections.clear_session) {
+		cf_log_err(server_cs, "Virtual server defines 'load session' and 'store session', but no 'clear session'");
+		return -1;
+	}
+
+	if (inst->sections.clear_session) {
+		if (!inst->sections.load_session) {
+			cf_log_err(server_cs, "Virtual server defines 'clear session' but no 'load session'");
+			return -1;
+		}
+
+		if (!inst->sections.store_session) {
+			cf_log_err(server_cs, "Virtual server defines 'clear session' but no 'store session'");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static fr_process_state_t const process_state[] = {
 	[FR_PACKET_TYPE_VALUE_LOAD_SESSION] = {
 		.packet_type = {
@@ -242,7 +283,9 @@ fr_process_module_t process_tls = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "tls",
 		MODULE_INST(process_tls_t),
-		MODULE_RCTX(process_rctx_t)
+		MODULE_RCTX(process_rctx_t),
+
+		.instantiate	= mod_instantiate,
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
