@@ -679,23 +679,34 @@ authenticate {
 
 	#
 	#  Allow EAP authentication.
-	eap
+	Auth-Type eap {
+		#
+		#  Note that some EAP methods allow "fast resumption",
+		#  i.e. TLS session tickets.  This means that once a
+		#  user has a session ticket, they can use it to
+		#  resume the session.  See mods-available/eap, and
+		#  the "cache" subsection.
+		#
+		#  This behavior has some surprising consequences.  If
+		#  the user is deleted from a database, then they
+		#  still have a session ticket, and can resume their
+		#  session, up to the cache "lifetime".
+		#
+		#  The fix is to either delete the cache entry when
+		#  the user is deleted from the database, or add a
+		#  database lookup here.
+		#
+#		if (user not found in database) {
+#			reject
+#		}
+#
+		eap
 
-	#
-	#  The older configurations sent a number of attributes in
-	#  Access-Challenge packets, which wasn't strictly correct.
-	#  If you want to filter out these attributes, uncomment
-	#  the following lines.
-	#
-#	Auth-Type eap {
-#		eap {
-#			handled = 1
-#		}
-#		if (handled && (Response-Packet-Type == Access-Challenge)) {
-#			attr_filter.access_challenge.post-auth
-#			handled  # override the "updated" code from attr_filter
-#		}
-#	}
+		#
+		#  If you want to filter attributes in the Access-Challenge,
+		#  see the Post-Auth-Type Challenge section below.
+		#
+	}
 }
 
 

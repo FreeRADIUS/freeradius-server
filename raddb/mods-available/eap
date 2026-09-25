@@ -623,7 +623,13 @@ eap {
 			enable = no
 
 			#  Lifetime of the cached entries, in hours. The sessions will be
-			#  deleted/invalidated after this time.
+			#  deleted/invalidated after this time, and the user will be
+			#  required to re-authenticate.  This limit applies even across
+			#  multiple session resumptions.
+			#
+			#  i.e. once every 24 hours, the user is required to go through
+			#  a full re-authentication, even if their session ticket is still
+			#  valid.
 			#
 			lifetime = 24 # hours
 
@@ -654,6 +660,13 @@ eap {
 			#    find ${logdir}/tlscache -mtime +2 -exec rm -f {} \;
 			#
 			#  This feature REQUIRES "name" option be set above.
+			#
+			#  Note that the TLS session cache is independent of any
+			#  underlying user credentials!  i.e. if the users name
+			#  / password are stored in a database, then deleting
+			#  the users credentials from the database will NOT
+			#  remove any cached session information.  You MUST ALSO
+			#  delete the cached entry.
 			#
 		#	persist_dir = "${logdir}/tlscache"
 
