@@ -935,7 +935,8 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 	 *	Anything else: fail.
 	 */
 	default:
-		RETURN_UNLANG_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
+		return eap_tls_fail(request, eap_session);
 	}
 
 	/*

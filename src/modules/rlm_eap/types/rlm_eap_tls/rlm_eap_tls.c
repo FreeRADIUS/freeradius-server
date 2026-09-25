@@ -141,19 +141,16 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 
 	/*
 	 *	Anything else: fail.
-	 *
-	 *	Also, remove the session from the cache so that
-	 *	the client can't reuse it.
 	 */
 	default:
 		p_result->rcode = RLM_MODULE_REJECT;
 
 		/*
-		 *	We'll jump back to the caller
-		 *	in the unlang stack if this
-		 *	fails.
+		 *	eap_tls_fail() clears the cached session for us, and
+		 *	composes the EAP-Failure.  We'll jump back to the
+		 *	caller in the unlang stack if that pushes a child.
 		 */
-		return fr_tls_cache_clear_session(request, tls_session);
+		return eap_tls_fail(request, eap_session);
 	}
 }
 
