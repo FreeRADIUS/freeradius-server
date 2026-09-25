@@ -436,7 +436,9 @@ int rad_status_server(REQUEST *request)
 
 			dval = dict_valbyname(autz_type, 0, "New-TLS-Connection");
 			if (dval) {
+				PTHREAD_MUTEX_UNLOCK(sock->mutex);
 				rcode = process_authorize(dval->value, request);
+				PTHREAD_MUTEX_LOCK(sock->mutex);
 			} else {
 				rcode = RLM_MODULE_OK;
 				RWDEBUG("(TLS) Did not find '%s New-TLS-Connection' - defaulting to accept", name);
