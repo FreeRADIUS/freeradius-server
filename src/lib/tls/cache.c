@@ -415,6 +415,45 @@ static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 	}
 
 	/*
+	 *	Enforce session timeouts.  We don't resume sessions which have exceeded their lifetime.
+	 *
+	 *	The lifetime is already enforced for `store session`.  The session may exist on disk (or in a
+	 *	DB) for long enough that it expires.
+	 *
+	 *	We clamp the lifetime to the lower of the configured `lifetime` and the session's lifetime.
+	 *	This allows policy updates to apply to pre-existing sessions.
+	 */
+	{
+		fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
+		time_t		timeout = SSL_get_timeout(sess);
+		time_t		lifetime = (time_t) fr_time_delta_to_sec(conf->cache.lifetime);
+		fr_time_t	expires;
+
+		if (lifetime && (lifetime < timeout)) timeout = lifetime;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time_ex(sess) + timeout));
+#else
+		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time(sess) + timeout));
+#endif
+
+		if (fr_time_lteq(expires, fr_time())) {
+			fr_value_box_t	id;
+			fr_tls_cache_id_to_box_shallow(&id, sess);
+
+			RWDEBUG("Session ID %pV - Cached session has expired, not resuming", &id);
+
+			/*
+			 *	The session was allocated by d2i_SSL_SESSION(), and it is not yet saved in
+			 *	tls_cache->load.sess.  We're the only one who knows about it, so we have to
+			 *	free it.
+			 */
+			SSL_SESSION_free(sess);
+			goto error;
+		}
+	}
+
+	/*
 	 *	OpenSSL's API is very inconsistent.
 	 *
 	 *	We need to set external data here, so it can be

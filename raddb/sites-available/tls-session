@@ -146,8 +146,16 @@ server tls-session {
 	#  The return code has no real effect on session processing and will
 	#  just cause the server to emit a warning.
 	#
+	#  The session's TTL is stored in `request.Session-TTL`.  It is
+	#  initially derived from the `lifetime` setting of the
+	#  `cache` section, of the `tls` configuration.
+	#
+	#  Setting the `cache` module expiration to be the same as
+	#  `Session-TTL` means that the two agree.  There is no reason
+	#  for the cache entry to live longer than the session's TTL.
+	#
 	store session {
-		control.Cache-TTL := 0
+		control.Cache-TTL := Session-TTL
 
 		cache_tls_session
 	}
