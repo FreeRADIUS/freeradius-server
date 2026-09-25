@@ -1,0 +1,40 @@
+server fail-tls-verify {
+	namespace = tls
+
+	load session {
+		control.Cache-Allow-Insert := no
+
+		cache_tls_session
+	}
+
+	store session {
+		cache_tls_session
+	}
+
+	clear session {
+		control.Cache-Allow-Insert := no
+		control.Cache-Allow-Merge := no
+		control.Cache-TTL := 0
+
+		cache_tls_session
+	}
+
+	#
+	#  Runs whenever the TLS session fails, whether or not anything
+	#  was cached.  In this test the handshake fails before a session
+	#  exists, so `clear session { ... }` has nothing to do, and this
+	#  section still runs.
+	#
+	fail session {
+		ok
+	}
+
+	#
+	#  Reject every certificate, which fails the handshake itself.
+	#  That is the path this test exists for.  See the comment in
+	#  fail-tls-verify.conf.
+	#
+	verify certificate {
+		reject
+	}
+}
