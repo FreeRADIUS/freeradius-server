@@ -1,6 +1,7 @@
 string test_string
 string page_size
 string ret
+bool mount_ok
 
 #  Remove old log files
 %file.rm("$ENV{MODULE_TEST_DIR}/test_batch.log")
@@ -57,8 +58,20 @@ parallel {
 #  Remove the file
 %file.rm("$ENV{MODULE_TEST_DIR}/test_batch.log")
 
+# We can only mount things if a) sudo can run non-interactive or b) we're root.
+mount_ok := yes
+if (%file.exists('/usr/bin/sudo')) {
+	if (`/usr/bin/sudo -n echo yes` != 'yes') {
+		mount_ok := no
+	}
+} else {
+	if (`/usr/bin/whoami` != "root") {
+		mount_ok := no
+	}
+}
+
 # Only run the rest of the test if we are on Linux, since it relies on tmpfs
-if (`/usr/bin/uname` == 'Linux') {
+if (`/usr/bin/uname` == 'Linux' && mount_ok == yes) {
         %file.rm("$ENV{MODULE_TEST_DIR}/mnt/test_batch_partial.log")
         %file.rmdir("$ENV{MODULE_TEST_DIR}/mnt")
 
