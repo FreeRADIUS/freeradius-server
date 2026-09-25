@@ -497,8 +497,9 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	 *
 	 *	The load is stuck in an async callback via
 	 *	ASYNC_pause_job(), so we can't reset the load state
-	 *	here.  When it runs, the callback checks for load
-	 *	failed, and then nukes the connection.
+	 *	here.  When it runs, the callback sees that the load
+	 *	failed, tells OpenSSL that there is no session, and the
+	 *	peer does a full handshake instead.
 	 */
 	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
 		RDEBUG3("Session ID %pV - Clear is pending, skipping `load session { ... }`",
