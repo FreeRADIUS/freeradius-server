@@ -1891,7 +1891,11 @@ char	*fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *in, size_t len, char const *chr);
 
 char	*fr_sbuff_adv_to_chr(fr_sbuff_t *in, size_t len, char c);
 
+char	*fr_sbuff_find_chr(fr_sbuff_t *in, size_t len, char c);
+
 char	*fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len);
+
+char	*fr_sbuff_find_str(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len);
 
 #define fr_sbuff_adv_to_str_literal(_sbuff, _len, _needle) fr_sbuff_adv_to_str(_sbuff, _len, _needle, sizeof(_needle) - 1)
 
