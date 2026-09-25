@@ -1185,6 +1185,115 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	return ua;
 }
 
+/** Process the result of `fail session { ... }`
+ *
+ * As this is just a logging section, its result doesn't affect the parent.
+ */
+static unlang_action_t tls_fail_session_result(UNUSED request_t *request, UNUSED void *uctx)
+{
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Push a `fail session { ... }` call into the current request, using a subrequest
+ *
+ * @param[in] request		The current request.
+ * @param[in] conf		TLS configuration.
+ * @param[in] tls_session	The session which failed.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *      - UNLANG_ACTION_FAIL on failure.
+ */
+static unlang_action_t tls_fail_session_push(request_t *request, fr_tls_conf_t *conf,
+					     fr_tls_session_t *tls_session)
+{
+	request_t	*child;
+	fr_pair_t	*vp;
+	unlang_action_t	ua;
+	uint8_t const	*session_id;
+	unsigned int	len;
+
+	fr_assert(conf->virtual_server);
+
+	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	request = child;
+
+	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
+	vp->vp_uint32 = enum_tls_packet_type_fail_session->vb_uint32;
+
+	/*
+	 *	A session which failed before OpenSSL established one has
+	 *	no ID to report.
+	 */
+	if (tls_session->session) {
+		session_id = SSL_SESSION_get_id(tls_session->session, &len);
+		if (session_id && (len > 0)) {
+			MEM(pair_append_request(&vp, attr_tls_session_id) >= 0);
+			fr_pair_value_memdup(vp, session_id, len, false);
+		}
+	}
+
+	ua = fr_tls_call_push(child, tls_fail_session_result, conf, tls_session, false);
+	if (ua == UNLANG_ACTION_FAIL) {
+		talloc_free(child);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	return ua;
+}
+
+/** Run `fail session { ... }`, if the section exists
+ *
+ * Runs whether or not sessions are being cached.  The section is a place for
+ * policy to record that a TLS session failed, which is useful to an admin
+ * whether or not session resumption is configured.
+ */
+static unlang_action_t tls_session_fail_start(request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+
+	if (!conf->fail_session) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	return tls_fail_session_push(request, conf, tls_session);
+}
+
+/** Discard the session, once `fail session { ... }` has run
+ *
+ */
+static unlang_action_t tls_session_fail_clear(request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+
+	return fr_tls_cache_clear_session(request, tls_session);
+}
+
+/** The TLS session failed
+ *
+ * Runs `fail session { ... }`, so that the admin can run policies on
+ * TLS connection failure.  Once that's done, run `clear session` to
+ * remove any cached session information.
+ *
+ * We can fail sessions without using session tickets and we can
+ * remove session tickets without failing TLS negotiation.
+ *
+ * @note The caller MUST set the caller's own unlang result before calling
+ *	 fr_tls_session_fail_session().  A pushed child returns to the caller's
+ *	 caller with that result already in place.
+ *
+ * @param[in] request		to run the sections in.
+ * @param[in] tls_session	which failed.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- the sections are running.
+ *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
+ */
+unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t *tls_session)
+{
+	return unlang_function_push(request,
+				    tls_session_fail_start,
+				    tls_session_fail_clear,
+				    NULL, 0, UNLANG_SUB_FRAME, tls_session);
+}
+
 /** Finish off a handshake round, possibly adding attributes to the request
  *
  */

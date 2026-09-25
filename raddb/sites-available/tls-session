@@ -169,12 +169,30 @@ server tls-session {
 	}
 
 	#
-	#  This section is run after the TLS session is established.
+	#  This section is run after the TLS session is established, and all
+	#  TLS negotiation has finished.
 	#
 	#  It is intended for logging session details such as TLS version or
 	#  cipher suite.
 	#
 ##	establish session {
+##
+##	}
+
+	#
+	#  This section is run when a TLS session has failed.
+	#  i.e. it is run instead of "establish session".
+	#
+	#  It is intended for logging session failure details.
+	#
+	#  If session caching is enabled, this section is run before
+	#  "clear session".
+	#
+	#  Otherwise if session caching is disabled, then this section
+	#  is run on any TLS connection failure, and "clear session"
+	#  is not run.
+	#
+##	fail session {
 ##
 ##	}
 }

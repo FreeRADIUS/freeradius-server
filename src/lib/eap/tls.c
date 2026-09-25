@@ -334,11 +334,11 @@ unlang_action_t eap_tls_fail(request_t *request, eap_session_t *eap_session)
 	}
 
 	/*
-	 *	Authentication failed, discard any session tickets.  Cancel any
-	 *	queued "store session", and then run the "clear session", if
-	 *	that's configured.
+	 *	Authentication failed.  Run "fail session", cancel
+	 *	any queued "store session", and then run "clear
+	 *	session".
 	 */
-	return fr_tls_cache_clear_session(request, tls_session);
+	return fr_tls_session_fail_session(request, tls_session);
 }
 
 /** Frames the OpenSSL data that needs to be sent to the client in an EAP-Request
@@ -927,12 +927,15 @@ fail:
 	eap_tls_session->state = EAP_TLS_FAIL;
 
 	/*
-	 *	The handshake failed, so we clear the cache eap_tls_fail().  We discard the session here
-	 *	rather than queuing a clear.  Not every caller of eap_tls_handshake_resume() ends up at
-	 *	eap_tls_fail() (@todo - fix that!).  A queued clear that doesn't run might leave the peer able
-	 *	to resume the session.
+	 *	Record that the handshake failed, and let the caller deal
+	 *	with it.
+	 *
+	 *	Every caller reaches eap_tls_fail(), which runs
+	 *	"fail session" and discards the session.  Doing either of
+	 *	those here as well would run the policy twice for one
+	 *	failure.
 	 */
-	return fr_tls_cache_clear_session(request, tls_session);
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** Push functions to continue the handshake asynchronously

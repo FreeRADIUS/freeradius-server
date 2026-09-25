@@ -111,20 +111,53 @@ finish:
 
 static unlang_action_t tls_connection_application_data(request_t *request, void *uctx);
 
-/** Record a fatal error, and tell the application the connection is done
+/** Tell the application that the connection is over
+ *
+ * Only for a caller which has already run whatever policy the failure
+ * needs.  A caller which has not should use tls_connection_failed(), which
+ * hands the failure to the connection frame instead.
+ *
+ * @param[in] conn	which failed.
+ */
+static void tls_connection_finished(fr_tls_connection_t *conn)
+{
+	conn->failed = true;
+	conn->idle = false;
+
+	conn->finished(conn->uctx, conn);
+}
+
+/** Record a fatal error found outside of the interpreter
  *
  * The IO callbacks run outside of the interpreter, and so have no stack
- * frame of their own.  They can neither run policy nor clear a repeat, so
- * this is as much as they can do.  tls_connection_error() does the rest.
+ * frame of their own.  They cannot run policy.  So they do what
+ * tls_connection_check() does for a failed handshake: record the failure,
+ * change the state, and wake the request.  The connection frame then runs
+ * `fail session { ... }`, discards the session, and tells the application.
+ *
+ * The wake is not always possible, and does not have to be.  A request
+ * which is running a policy subrequest is deliberately not woken, see
+ * tls_connection_request_wake().  The state change still stands, and the
+ * connection frame acts on the state change when the subrequest finishes.
  *
  * @param[in] conn	which failed.
  */
 static void tls_connection_failed(fr_tls_connection_t *conn)
 {
 	conn->failed = true;
-	conn->idle = false;
 
-	conn->finished(conn->uctx, conn);
+	/*
+	 *	The connection frame has already run the last of its
+	 *	states, so there is no policy left for it to run, and
+	 *	nothing would act on a state change.  Say so directly.
+	 */
+	if (conn->state != TLS_CONNECTION_HANDSHAKE) {
+		tls_connection_finished(conn);
+		return;
+	}
+
+	conn->state = TLS_CONNECTION_COMPLETE;
+	tls_connection_request_wake(conn);
 }
 
 /** There is a fatal connection error.
@@ -157,14 +190,13 @@ static unlang_action_t tls_connection_error(request_t *request, fr_tls_connectio
 	 *	Set our own repeat, which closes the connection, as is
 	 *	done in tls_connection_init_finished().  We have to
 	 *	set a repeat function to a "connection done" function,
-	 *	as the `clear session` code may push a child.
-	 *
-	 *	@todo - have a separate "run thing on connection
-	 *	fail".
+	 *	as fr_tls_session_fail_session() may push a child.  That runs
+	 *	`fail session { ... }`, and then the `clear session`
+	 *	code.
 	 */
 	if (unlang_function_repeat_set(request, tls_connection_application_data) < 0) goto finished;
 
-	ua = fr_tls_cache_clear_session(request, conn->tls_session);
+	ua = fr_tls_session_fail_session(request, conn->tls_session);
 	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
 
 	/*
@@ -180,7 +212,7 @@ static unlang_action_t tls_connection_error(request_t *request, fr_tls_connectio
 	IGNORE(unlang_function_clear(request), int);
 
 finished:
-	tls_connection_failed(conn);
+	tls_connection_finished(conn);
 	return UNLANG_ACTION_YIELD;
 }
 
@@ -238,7 +270,7 @@ static unlang_action_t tls_connection_init_finished(request_t *request, void *uc
 	TLS_CONNECTION_REPEAT(tls_connection_application_data);
 
 	if (conn->failed) {
-		ua = fr_tls_cache_clear_session(request, conn->tls_session);
+		ua = fr_tls_session_fail_session(request, conn->tls_session);
 	} else {
 		ua = fr_tls_cache_store_session(request, conn->tls_session);
 	}
