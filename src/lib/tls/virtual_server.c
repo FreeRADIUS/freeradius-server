@@ -82,8 +82,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 	if (unlang_subrequest_child_push(NULL, child,
 					 tls_session,
 					 true, UNLANG_SUB_FRAME) < 0) {
-	error:
-		request_detach(child);
+		fr_assert(!request_is_detached(child));
 		return UNLANG_ACTION_FAIL;
 	}
 
@@ -96,7 +95,20 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 				 resume,
 				 NULL,
 				 0, UNLANG_SUB_FRAME,
-				 tls_session) < 0) goto error;
+				 tls_session) < 0) {
+		/*
+		 *	A frame was pushed onto the stack, and that frame points to the subrequest we just
+		 *	allocated.  We therefore have to discard the frame on error, rather than just
+		 *	returning (which would process the subrequest), or freeing the subrequest (which would
+		 *	still have its frame processed, leading to a crash).
+		 *
+		 *	See also fr_tls_new_session_push(), which has the same requirement.
+		 */
+	error:
+		unlang_interpet_frame_discard(child->parent);
+		fr_assert(!request_is_detached(child));
+		return UNLANG_ACTION_FAIL;
+	}
 
 	/*
 	 *	Now the child and parent stacks are both

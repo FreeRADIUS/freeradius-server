@@ -39,6 +39,7 @@
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/subrequest.h>
 
 #include <sys/stat.h>
@@ -2117,6 +2118,11 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 	vp->vp_uint32 = enum_tls_packet_type_new_session->vb_uint32;
 
 	if (unlang_subrequest_child_push(NULL, child, request, true, UNLANG_SUB_FRAME) < 0) {
+		/*
+		 *	The child hasn't run, so we shouldn't call
+		 *	unlang_subrequest_detach_and_free().
+		 */
+		fr_assert(!request_is_detached(child));
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -2126,14 +2132,25 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 				 tls_new_session_result,
 				 NULL, 0,
 				 UNLANG_SUB_FRAME, NULL) < 0) {
+		/*
+		 *	A frame was pushed onto the stack, and that frame points to the subrequest we just
+		 *	allocated.  We therefore have to discard the frame on error, rather than just
+		 *	returning (which would process the subrequest), or freeing the subrequest (which would
+		 *	still have its frame processed, leading to a crash).
+		 */
+	error:
+		unlang_interpet_frame_discard(request);
+		fr_assert(!request_is_detached(child));
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
 
-	if (unlang_call_push(NULL, child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
-		talloc_free(child);
-		return UNLANG_ACTION_FAIL;
-	}
+	/*
+	 *	unlang_call_push() fails when the virtual server was never
+	 *	compiled, not only when memory runs out.  So this is a
+	 *	configuration error, and is reachable.
+	 */
+	if (unlang_call_push(NULL, child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
