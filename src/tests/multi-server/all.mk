@@ -185,7 +185,7 @@ TEST_MULTI_SERVER_CONFIG_FILES := $(shell find $(DIR)/configs -type f) $(wildcar
 #  ${4} = .j2 source path
 #
 define TEST_MULTI_SERVER_RENDER
-$(OUTPUT)/$(MODE)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_STAMP)
+$(OUTPUT)/$(TEST_MULTI_SERVER_MODE_DIR)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_STAMP)
 	${Q}mkdir -p $$(@D)
 	${Q}echo "RENDER ${4} -> $$@"
 	${Q}set -e; \
@@ -310,6 +310,8 @@ endef
 #    1. A template may render differently per mode, because the render
 #       receives `mode` as a variable.
 #    2. A profiling run must not overwrite the logs of a service run.
+#    3. In profiling mode, the path also includes the tool, so the second
+#       tool's pass doesn't overwrite the previous one's logs.
 #
 #  ${1} = suite dir name (e.g. accept)
 #
@@ -317,7 +319,7 @@ define TEST_MULTI_SERVER
 TEST_MULTI_SERVER_PARAM_FILES.${1} := $$(wildcard $$(DIR)/tests/${1}/*.test.yml)
 TEST_MULTI_SERVER_TESTS.${1}       := $$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),test.multi-server.${1}.$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))
 
-$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/$(MODE)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
+$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/$(TEST_MULTI_SERVER_MODE_DIR)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
 endef
 
 ######################################################################
@@ -327,6 +329,11 @@ endef
 ######################################################################
 
 MODE ?= service
+
+#  Mode directory to support multiple profiling tools and allows
+#  separate output directories per mode which ensures logs from one
+#  tool aren't overwritten by another.
+TEST_MULTI_SERVER_MODE_DIR = $(MODE)$(if $(filter profiling,$(MODE)),/$(PROFILING_TOOL))
 
 #
 #  A suite is any subdirectory containing a template.yml.j2 file.
