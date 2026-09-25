@@ -91,6 +91,12 @@ typedef enum {
 				  FR_TLS_CACHE_STATELESS	///< configuration.
 } fr_tls_cache_mode_t;
 
+/** Maximum lifetime of a TLS session ticket.
+ *
+ * RFC 8446 mandates this for TLS.  RFC 9190 mandates it for EAP-TLS.
+ */
+#define FR_TLS_MAX_SESSION_LIFETIME (7 * 86400)
+
 /** Cache configuration
  *
  */

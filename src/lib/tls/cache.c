@@ -654,6 +654,21 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	vp->vp_time_delta = fr_time_sub(expires, now);
 
 	/*
+	 *	Enforce the RFC requirements on maximum session lifetime.  The value we have here is from the
+	 *	ticket.  A malicious or misconfigured server might give us a wrong value.
+	 */
+	if (fr_time_delta_gt(vp->vp_time_delta, fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME))) {
+		fr_value_box_t	id;
+		fr_tls_cache_id_to_box_shallow(&id, sess);
+
+		RWDEBUG("Session ID %pV - Session lifetime %pV is longer than the maximum of %pV, limiting it",
+			&id, fr_box_time_delta(vp->vp_time_delta),
+			fr_box_time_delta(fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME)));
+
+		vp->vp_time_delta = fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME);
+	}
+
+	/*
 	 *	Serialize the session
 	 */
 	ret = i2d_SSL_SESSION(sess, NULL);	/* find out what length data we need */

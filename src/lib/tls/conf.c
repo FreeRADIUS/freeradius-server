@@ -523,6 +523,9 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 
 	FR_INTEGER_BOUND_CHECK("padding", conf->padding_block_size, <=, SSL3_RT_MAX_PLAIN_LENGTH);
 
+	FR_TIME_DELTA_BOUND_CHECK("session.lifetime", conf->cache.lifetime, <=,
+				  fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME));
+
 #ifdef __APPLE__
 	if (conf_cert_admin_password(conf) < 0) goto error;
 #endif
@@ -562,6 +565,9 @@ fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
 	 *	Save people from their own stupidity.
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
+
+	FR_TIME_DELTA_BOUND_CHECK("session.lifetime", conf->cache.lifetime, <=,
+				  fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME));
 
 	/*
 	 *	Initialize TLS
