@@ -81,6 +81,11 @@ void tls_socket_close(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 	REQUEST *request = sock->request;
 
+	if (listener->status >= RAD_LISTEN_STATUS_EOL) {
+		PTHREAD_MUTEX_UNLOCK(sock->mutex);
+		return;
+	}
+
 	if (!sock->client_closed && sock->ssn) SSL_shutdown(sock->ssn->ssl);
 
 	listener->status = RAD_LISTEN_STATUS_EOL;
@@ -433,6 +438,10 @@ static int tls_socket_recv(rad_listen_t *listener)
 	REQUEST *request;
 	listen_socket_t *sock = listener->data;
 	fr_tls_status_t status;
+
+	if (listener->status >= RAD_LISTEN_STATUS_EOL) {
+		return 0;
+	}
 
 	if (!sock->packet) {
 		sock->packet = rad_alloc(sock, false);
@@ -983,7 +992,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	The code in rad_status_server() looks for this state,
 	 *	and either swaps it to LISTEN_TLS_SETUP, or else
-	 *	changes listener->status to EOL.  As a result, this
+	 *	listener->status is EOL.  As a result, this
 	 *	state should never be reachable in the send() routine.
 	 */
 	fr_assert(sock->state != LISTEN_TLS_CHECKING);

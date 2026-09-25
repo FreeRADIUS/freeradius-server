@@ -444,6 +444,11 @@ int rad_status_server(REQUEST *request)
 				RWDEBUG("(TLS) Did not find '%s New-TLS-Connection' - defaulting to accept", name);
 			}
 
+			if (listener->status >= RAD_LISTEN_STATUS_EOL) {
+				PTHREAD_MUTEX_UNLOCK(sock->mutex);
+				return 0;
+			}
+
 			if ((rcode == RLM_MODULE_OK) || (rcode == RLM_MODULE_UPDATED)) {
 				RDEBUG("(TLS) Connection is authorized");
 				request->reply->code = PW_CODE_ACCESS_ACCEPT;
