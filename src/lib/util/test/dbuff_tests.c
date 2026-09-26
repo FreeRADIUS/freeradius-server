@@ -936,6 +936,256 @@ static void test_dbuff_extend(void)
 	fr_dbuff_free_talloc(&dbuff);
 }
 
+/** A const dbuff must never extend
+ *
+ * A dbuff extends to make room to write.  A const dbuff cannot be written to,
+ * so a request to extend one is always a caller asking to read more than the
+ * dbuff holds.  _fr_dbuff_extend_lowat() answers with what is there, rather
+ * than reallocating the buffer.
+ */
+static void test_dbuff_const_no_extend(void)
+{
+	fr_dbuff_t			dbuff;
+	fr_dbuff_uctx_talloc_t		tctx;
+	fr_dbuff_extend_status_t	status;
+	uint8_t				*buff_before;
+
+	TEST_CASE("a writable talloc dbuff extends");
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 64) == &dbuff);
+	fr_dbuff_advance(&dbuff, 4);				/* remaining now 0 */
+	status = FR_DBUFF_EXTENDABLE;
+	TEST_CHECK(fr_dbuff_extend_lowat(&status, &dbuff, 8) >= 8);
+	TEST_CHECK(fr_dbuff_was_extended(status));
+	fr_dbuff_free_talloc(&dbuff);
+
+	TEST_CASE("the same dbuff marked const does not");
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 64) == &dbuff);
+	fr_dbuff_advance(&dbuff, 4);				/* remaining now 0 */
+	buff_before = dbuff.buff;
+	dbuff.is_const = 1;
+	status = FR_DBUFF_EXTENDABLE;
+	TEST_CHECK(fr_dbuff_extend_lowat(&status, &dbuff, 8) == 0);
+	TEST_CHECK(fr_dbuff_was_extended(status) == 0);
+	TEST_CHECK(fr_dbuff_is_extendable(status) == 0);
+	TEST_CHECK(dbuff.buff == buff_before);			/* no realloc happened */
+	TEST_CHECK(fr_dbuff_len(&dbuff) == 4);			/* and no growth */
+
+	dbuff.is_const = 0;					/* so the free below is honest */
+	fr_dbuff_free_talloc(&dbuff);
+}
+
+/** A producer and a consumer sharing one talloc buffer
+ *
+ * fr_tls_bio_dbuff_t in src/lib/tls/bio.c builds its two cursors this way, so
+ * that OpenSSL and the caller share one allocation per direction.  The
+ * consumer is the parent and the producer is the child.
+ *
+ * Only the producer may extend.  fr_dbuff_update() repairs the dbuff which was
+ * extended and that dbuff's ancestors, and never its children, so extending
+ * through the consumer would leave the producer addressing the old buffer.
+ * Marking the consumer const is what stops that, which is what this test
+ * pins.
+ */
+static void test_dbuff_producer_consumer(void)
+{
+	fr_dbuff_t			consumer, producer;
+	fr_dbuff_uctx_talloc_t		tctx;
+	fr_dbuff_extend_status_t	status;
+	uint8_t				*buff_before;
+	uint8_t				out[8];
+	uint8_t const			expected[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+
+	TEST_CASE("the consumer starts empty, the producer holds the whole buffer");
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 4, 64) == &consumer);
+	producer = FR_DBUFF_BIND_END_ABS(&consumer);		/* the bind marks the consumer const */
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 0);
+	TEST_CHECK(fr_dbuff_remaining(&producer) == 4);
+
+	TEST_CASE("a write through the producer is what the consumer reads");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x01, 0x02, 0x03) == 3);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 3);
+
+	TEST_CASE("extending through the producer repairs both cursors");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x04, 0x05, 0x06, 0x07, 0x08) == 5);
+	TEST_CHECK(producer.buff == consumer.buff);		/* the consumer followed the realloc */
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 8);
+
+	TEST_CASE("an over-large read on the consumer extends nothing");
+	buff_before = consumer.buff;
+	status = FR_DBUFF_EXTENDABLE;
+	TEST_CHECK(fr_dbuff_extend_lowat(&status, &consumer, 64) == 8);
+	TEST_CHECK(fr_dbuff_was_extended(status) == 0);
+	TEST_CHECK(consumer.buff == buff_before);
+	TEST_CHECK(producer.buff == consumer.buff);		/* the producer is still valid */
+
+	TEST_CASE("the consumer reads back what the producer wrote");
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &consumer, sizeof(out)) == (ssize_t) sizeof(out));
+	TEST_CHECK(memcmp(out, expected, sizeof(expected)) == 0);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 0);
+
+	consumer.is_const = 0;					/* so the free below is honest */
+	fr_dbuff_free_talloc(&consumer);
+}
+
+/** Draining a buffer without knowing in advance how much is in it
+ *
+ * fr_tls_record_to_buff() used to clamp a request to what the record held.
+ * Callers now reach for a dbuff primitive instead, and the two differ:
+ * fr_dbuff_move() copies what both sides allow and advances both, while
+ * fr_dbuff_out_memcpy() advances only the source and reports a shortfall.
+ */
+static void test_dbuff_drain(void)
+{
+	uint8_t const	src_buff[8] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+	uint8_t		small[4];
+	uint8_t		out[8];
+	fr_dbuff_t	src, dst;
+
+	TEST_CASE("fr_dbuff_move: a request larger than the source copies what is there");
+	fr_dbuff_init(&src, src_buff, sizeof(src_buff));
+	fr_dbuff_init(&dst, out, sizeof(out));
+	TEST_CHECK(fr_dbuff_move(&dst, &src, 64) == sizeof(src_buff));
+	TEST_CHECK(fr_dbuff_used(&src) == sizeof(src_buff));	/* the source advanced */
+	TEST_CHECK(fr_dbuff_used(&dst) == sizeof(src_buff));	/* so did the destination */
+	TEST_CHECK(fr_dbuff_remaining(&src) == 0);		/* a drain loop therefore ends */
+	TEST_CHECK(memcmp(out, src_buff, sizeof(src_buff)) == 0);
+
+	TEST_CASE("fr_dbuff_move: the destination clamps the copy too");
+	fr_dbuff_init(&src, src_buff, sizeof(src_buff));
+	fr_dbuff_init(&dst, small, sizeof(small));
+	TEST_CHECK(fr_dbuff_move(&dst, &src, sizeof(src_buff)) == sizeof(small));
+	TEST_CHECK(fr_dbuff_used(&src) == sizeof(small));
+	TEST_CHECK(memcmp(small, src_buff, sizeof(small)) == 0);
+
+	TEST_CASE("fr_dbuff_out_memcpy: an exact request advances the source");
+	fr_dbuff_init(&src, src_buff, sizeof(src_buff));
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &src, 4) == 4);
+	TEST_CHECK(fr_dbuff_used(&src) == 4);
+	TEST_CHECK(memcmp(out, src_buff, 4) == 0);
+
+	TEST_CASE("fr_dbuff_out_memcpy: an over-large request copies, then reports the shortfall");
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &src, 8) == -4);	/* 4 octets short */
+	TEST_CHECK(fr_dbuff_remaining(&src) == 0);		/* the 4 which were there moved */
+	TEST_CHECK(memcmp(out, src_buff + 4, 4) == 0);
+}
+
+/** FR_DBUFF_BIND_END_ABS hands the extend function to the producer
+ *
+ * The bind is what creates the producer/consumer relationship, so the bind is
+ * where the rule belongs.  Only the producer may extend, because
+ * fr_dbuff_update() repairs the dbuff which was extended and that dbuff's
+ * ancestors, and never its children.  Extending through the consumer would
+ * leave the producer addressing the old buffer.
+ *
+ * The producer's fields are copied out of the consumer while the consumer is
+ * still writable, because the compound literal is a function argument and so
+ * is evaluated before the bind runs.  These checks pin that ordering, which
+ * the whole scheme rests on.
+ */
+static void test_dbuff_bind_end_abs_extend(void)
+{
+	fr_dbuff_t			consumer, producer;
+	fr_dbuff_t			fixed, fixed_child;
+	fr_dbuff_uctx_talloc_t		tctx;
+	fr_dbuff_extend_status_t	status;
+	uint8_t				buff[8];
+	uint8_t				*buff_before;
+
+	TEST_CASE("the bind marks the consumer const and non-extendable");
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 4, 64) == &consumer);
+	TEST_CHECK(consumer.is_const == 0);			/* before the bind */
+	TEST_CHECK(consumer.extend != NULL);
+	producer = FR_DBUFF_BIND_END_ABS(&consumer);
+	TEST_CHECK(consumer.is_const == 1);
+	TEST_CHECK(consumer.extend == NULL);
+
+	TEST_CASE("the producer keeps what the consumer had");
+	TEST_CHECK(producer.is_const == 0);			/* copied before the bind cleared it */
+	TEST_CHECK(producer.extend != NULL);
+	TEST_CHECK(producer.uctx == consumer.uctx);
+	TEST_CHECK(producer.parent == &consumer);
+
+	TEST_CASE("the producer can still extend, and the consumer follows");
+	buff_before = consumer.buff;
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x01, 0x02, 0x03, 0x04, 0x05) == 5);
+	TEST_CHECK(fr_dbuff_len(&producer) > 4);		/* grew past the initial size */
+	TEST_CHECK(producer.buff == consumer.buff);		/* the consumer was repaired */
+	TEST_CHECK(consumer.start == producer.buff);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 5);
+	(void) buff_before;
+
+	TEST_CASE("the consumer refuses to extend however much is asked for");
+	buff_before = consumer.buff;
+	status = FR_DBUFF_EXTENDABLE;
+	TEST_CHECK(fr_dbuff_extend_lowat(&status, &consumer, 1024) == 5);
+	TEST_CHECK(fr_dbuff_is_extendable(status) == 0);
+	TEST_CHECK(consumer.buff == buff_before);		/* nothing was reallocated */
+	TEST_CHECK(producer.buff == consumer.buff);		/* so the producer is still valid */
+
+	consumer.is_const = 0;					/* so the free below is honest */
+	fr_dbuff_free_talloc(&consumer);
+
+	TEST_CASE("binding a fixed buffer leaves the producer writable and extendless");
+	fr_dbuff_init(&fixed, buff, sizeof(buff));
+	fixed_child = FR_DBUFF_BIND_END_ABS(&fixed);
+	TEST_CHECK(fixed.is_const == 1);
+	TEST_CHECK(fixed.extend == NULL);
+	TEST_CHECK(fixed_child.is_const == 0);
+	TEST_CHECK(fixed_child.extend == NULL);			/* the parent had none to give */
+	TEST_CHECK(fr_dbuff_in_bytes(&fixed_child, 0xaa, 0xbb) == 2);
+	TEST_CHECK(fr_dbuff_remaining(&fixed) == 2);
+}
+
+/** A consumer which is drained, refilled, and drained again
+ *
+ * fr_tls_bio_dbuff_t is used this way for a whole TLS handshake, so the
+ * cursors have to survive more than one round.  A read leaves the consumer
+ * empty without any reset, which is what lets a caller loop on
+ * fr_dbuff_remaining() rather than tracking a fill and drain phase.
+ */
+static void test_dbuff_producer_consumer_rounds(void)
+{
+	fr_dbuff_t		consumer, producer;
+	fr_dbuff_uctx_talloc_t	tctx;
+	uint8_t			out[4] = {};
+
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 8, 64) == &consumer);
+	producer = FR_DBUFF_BIND_END_ABS(&consumer);
+
+	TEST_CASE("first round");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x11, 0x22) == 2);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 2);
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &consumer, 2) == 2);
+	TEST_CHECK(out[0] == 0x11 && out[1] == 0x22);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 0);		/* empty without a reset */
+
+	TEST_CASE("second round: a write after a full read is visible");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x33, 0x44, 0x55) == 3);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 3);
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &consumer, 3) == 3);
+	TEST_CHECK(out[0] == 0x33 && out[1] == 0x44 && out[2] == 0x55);
+
+	TEST_CASE("a partial read leaves the rest for the next pass");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x66, 0x77, 0x88) == 3);
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &consumer, 1) == 1);
+	TEST_CHECK(out[0] == 0x66);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 2);
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &consumer, 2) == 2);
+	TEST_CHECK(out[0] == 0x77 && out[1] == 0x88);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 0);
+
+	TEST_CASE("fr_dbuff_shift through the producer reclaims what was read");
+	TEST_CHECK(fr_dbuff_used(&consumer) == 8);		/* 2 + 3 + 3 read so far */
+	TEST_CHECK(fr_dbuff_shift(&producer, fr_dbuff_used(&consumer)) == 8);
+	TEST_CHECK(fr_dbuff_used(&consumer) == 0);		/* consumer back at the start */
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 0);		/* and still empty */
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x99) == 1);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 1);
+
+	consumer.is_const = 0;					/* so the free below is honest */
+	fr_dbuff_free_talloc(&consumer);
+}
+
 TEST_LIST = {
 	/*
 	 *	Basic tests
@@ -968,6 +1218,11 @@ TEST_LIST = {
 	{ "fr_dbuff_trim_reset_talloc",			test_dbuff_trim_reset_talloc },
 	{ "fr_dbuff_tmp",				test_dbuff_tmp },
 	{ "fr_dbuff_extend",				test_dbuff_extend },
+	{ "fr_dbuff_const_no_extend",			test_dbuff_const_no_extend },
+	{ "fr_dbuff_producer_consumer",			test_dbuff_producer_consumer },
+	{ "fr_dbuff_drain",				test_dbuff_drain },
+	{ "fr_dbuff_bind_end_abs_extend",		test_dbuff_bind_end_abs_extend },
+	{ "fr_dbuff_producer_consumer_rounds",		test_dbuff_producer_consumer_rounds },
 
 	TEST_TERMINATOR
 };

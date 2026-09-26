@@ -277,10 +277,16 @@ do { \
  * childs current.  Writes to the child at "current" will then
  * increase the parents "end", which is how the parent knows that more
  * data is available.
+ *
+ * The producer might be extendable.  The consumers buffer points to
+ * the producers buffer, and is there is not extendable.  The consumer
+ * also can't write to the buffer.
  */
 static inline fr_dbuff_t _fr_dbuff_bind_end_abs(fr_dbuff_t child, fr_dbuff_t *parent)
 {
 	parent->end = UNCONST(uint8_t *, child.p);
+	parent->is_const = true;
+	parent->extend = NULL;
 
 	return child;
 }
@@ -648,7 +654,13 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
 {
 	size_t extended = 0;
 
-	if (status && !fr_dbuff_is_extendable(*status)) {
+	/*
+	 *	A 'const' dbuff cannot be extended.  A dbuff without
+	 *	an 'extend' function cannot be extended.
+	 *
+	 *	Return how many bytes remain in the buffer.
+	 */
+	if (in->is_const || !in->extend) {
 	not_extendable:
 		if (status) *status = FR_DBUFF_NOT_EXTENDABLE;
 		return remaining;
@@ -659,7 +671,11 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
 		return remaining;
 	}
 
-	if (!in->extend || !(extended = in->extend(in, lowat - remaining))) goto not_extendable;
+	/*
+	 *	If we can't extend the buffer, return that it's not extendible.
+	 */
+	extended = in->extend(in, lowat - remaining);
+	if (!extended) goto not_extendable;
 
 	if (status) *status = FR_DBUFF_EXTENDABLE_EXTENDED;
 
