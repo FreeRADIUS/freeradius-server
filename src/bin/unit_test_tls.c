@@ -315,11 +315,11 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 	fr_tls_session_t	*tls_session = conn->tls_session;
 	uint8_t			buf[FR_TLS_MAX_RECORD_SIZE];
 
-	while (fr_dbuff_remaining(&tls_session->dirty_out) > 0) {
+	while (fr_dbuff_remaining(tls_session->dirty_out) > 0) {
 		size_t		len;
 		size_t		written = 0;
 
-		len = fr_tls_record_to_buff(&tls_session->dirty_out, buf, sizeof(buf));
+		len = fr_tls_record_to_buff(tls_session->dirty_out, buf, sizeof(buf));
 
 		while (written < (size_t) len) {
 			ssize_t slen;

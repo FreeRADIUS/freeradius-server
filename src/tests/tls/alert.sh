@@ -9,7 +9,7 @@
 #  which writes octets straight into a record buffer, so it is the one place
 #  where a mistake sends nothing at all rather than sending something wrong.
 #
-#  That function resets dirty_out before writing, so the record always has
+#  That function clears from_ssl before writing, so the record always has
 #  room, and it asserts that the write was the full seven octets.  Neither
 #  guard says the octets reached the peer, which is what this test is for.
 #

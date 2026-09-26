@@ -899,24 +899,12 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 	}
 
 	/*
-	 *	Decrypt the complete record.
-	 */
-	if (fr_dbuff_used(&tls_session->dirty_in)) {
-		size_t used = fr_dbuff_used(&tls_session->dirty_in);
-
-		ret = BIO_write(tls_session->into_ssl, fr_dbuff_start(&tls_session->dirty_in), used);
-		if (ret != (int) used) {
-			REDEBUG("Failed writing %zu bytes to SSL BIO: %d", used, ret);
-			fr_tls_record_init(&tls_session->dirty_in);
-			goto error;
-		}
-
-		fr_tls_record_init(&tls_session->dirty_in);
-	}
-
-	/*
-	 *      Clear the dirty buffer now that we are done with it
-	 *      and init the clean_out buffer to store decrypted data
+	 *	Nothing is copied here.  The caller filled dirty_in, which
+	 *	is into_ssl's producer cursor, so OpenSSL can already see
+	 *	the record, and the BIO read callback reclaims the space as
+	 *	OpenSSL consumes it.
+	 *
+	 *	Init the clean_out buffer to store the decrypted data.
 	 */
 	fr_tls_record_init(&tls_session->clean_out);
 
@@ -1029,7 +1017,16 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 		}
 
 		ret = SSL_write(tls_session->ssl, fr_dbuff_start(&tls_session->clean_in), used);
-		if (ret < 0) goto log_io_error;
+		if (ret < 0) {
+			/*
+			 *	ret<0 means that we have a real error.
+			 *
+			 *	ret=0 means the "error" is SSL_WANT_READ, SSL_WANT_WRITE, etc.
+			 */
+			ret = fr_tls_log_io_error(request, SSL_get_error(tls_session->ssl, ret),
+						  "SSL_write (%s)", __FUNCTION__);
+			goto finish;
+		}
 
 		/*
 		 *	SSL_MODE_ENABLE_PARTIAL_WRITE is not set, so SSL_write()
@@ -1039,24 +1036,13 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 		fr_assert((size_t) ret == used);
 		fr_tls_record_init(&tls_session->clean_in);
 
-		/* Get the dirty data from Bio to send it */
-		fr_tls_record_init(&tls_session->dirty_out);
-		ret = BIO_read(tls_session->from_ssl, fr_dbuff_current(&tls_session->dirty_out),
-			       fr_dbuff_remaining(&tls_session->dirty_out));
-		if (ret < 0) {
-		log_io_error:
-			ret = fr_tls_log_io_error(request, SSL_get_error(tls_session->ssl, ret),
-						  "SSL_write (%s)", __FUNCTION__);
-			/*
-			 *	ret<0 means that we have a real error.
-			 *
-			 *	ret=0 means the "error" is SSL_WANT_READ, SSL_WANT_WRITE, etc.
-			 */
-		} else {
-			fr_dbuff_advance(&tls_session->dirty_out, (size_t) ret);
-			fr_tls_record_drain(&tls_session->dirty_out);
-			ret = 0;
-		}
+		/*
+		 *	SSL_write() passes the encrypted record in
+		 *	dirty_in to the BIO callback, which put the
+		 *	output data into from_ssl.  We're therefore
+		 *	done here.
+		 */
+		ret = 0;
 	}
 
 finish:
@@ -1099,18 +1085,19 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 	session->info.alert_description = session->pending_alert_description;
 
 	/*
-	 *	dirty_out is normally draining, and a draining record has
-	 *	no room to write into.  An alert replaces whatever was
-	 *	waiting to go out, which is what the old code did by
-	 *	writing at the start of the buffer, so reset the record
-	 *	before writing the alert into it.
+	 *	Sending an alert over-rides whatever was in the
+	 *	buffer, waiting to be sent.  But for nearly all cases,
+	 *	the from_ssl buffer will already be empty.
+	 *
+	 *	The application then sees the data, and writes it to
+	 *	the peer.
 	 */
-	fr_tls_record_init(&session->dirty_out);
+	fr_tls_bio_dbuff_clear(session->from_ssl);
 
 #ifndef NDEBUG
 	slen =			/* only used for the assert below */
 #endif
-		fr_dbuff_in_bytes(&session->dirty_out,
+		fr_dbuff_in_bytes(fr_tls_bio_dbuff_in(session->from_ssl),
 				  (uint8_t) session->info.content_type,
 				  (uint8_t) 3, (uint8_t) 1, (uint8_t) 0, (uint8_t) 2,
 				  session->pending_alert_level,
@@ -1122,10 +1109,8 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 
 	SSL_clear(session->ssl);	/* Reset the SSL *, to allow the client to restart the session */
 
-	session_msg_log(request, session, fr_dbuff_start(&session->dirty_out),
-			fr_dbuff_used(&session->dirty_out));
-
-	fr_tls_record_drain(&session->dirty_out);
+	session_msg_log(request, session, fr_dbuff_current(session->dirty_out),
+			fr_dbuff_remaining(session->dirty_out));
 }
 
 /** Process the result of `establish session { ... }`
@@ -1300,7 +1285,6 @@ unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t
 static unlang_action_t tls_session_async_handshake_done_round(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
-	int			ret;
 
 	RDEBUG3("entered state %s", __FUNCTION__);
 
@@ -1367,7 +1351,6 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 			tls_session->session = SSL_get_session(tls_session->ssl);
 			if (!tls_session->session) {
 				REDEBUG("Failed getting TLS session");
-			error:
 				tls_session->result = FR_TLS_RESULT_ERROR;
 				fr_tls_session_request_unbind(tls_session->ssl);
 				return UNLANG_ACTION_CALCULATE_RESULT;
@@ -1394,26 +1377,13 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 	}
 
 	/*
-	 *	Get data to pack and send back to the TLS peer.
+	 *	Get the data to send to the peer.  OpenSSL already did
+	 *	it's magic, so we can just do ours here.
+	 *
+	 *	No encrypted data means that OpenSSL produced no TLS
+	 *	content, so the output is likely application data.
 	 */
-	ret = BIO_ctrl_pending(tls_session->from_ssl);
-	if (ret > 0) {
-		fr_tls_record_init(&tls_session->dirty_out);
-		ret = BIO_read(tls_session->from_ssl, fr_dbuff_current(&tls_session->dirty_out),
-			       fr_dbuff_remaining(&tls_session->dirty_out));
-		if (ret > 0) {
-			fr_dbuff_advance(&tls_session->dirty_out, (size_t) ret);
-			fr_tls_record_drain(&tls_session->dirty_out);
-		} else if (BIO_should_retry(tls_session->from_ssl)) {
-			fr_tls_record_init(&tls_session->dirty_in);
-			RDEBUG2("Asking for more data in tunnel");
-
-		} else {
-			fr_tls_log(NULL, NULL);
-			fr_tls_record_init(&tls_session->dirty_in);
-			goto error;
-		}
-	} else {
+	if (fr_dbuff_remaining(tls_session->dirty_out) == 0) {
 		/* Its clean application data, do whatever we want */
 		fr_tls_record_init(&tls_session->clean_out);
 	}
@@ -1427,9 +1397,6 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 	 *	RFC 5216, so this is our only option.
 	 */
 	if (tls_session->pending_alert) fr_tls_session_alert_send(request, tls_session);
-
-	/* We are done with dirty_in, reinitialize it */
-	fr_tls_record_init(&tls_session->dirty_in);
 
 	tls_session->result = FR_TLS_RESULT_SUCCESS;
 	fr_tls_session_request_unbind(tls_session->ssl);
@@ -1682,7 +1649,6 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 static unlang_action_t tls_session_handshake_round(request_t *request, void *uctx)
 {
 	fr_tls_session_t *tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
-	int ret;
 
 	RDEBUG3("entered state %s", __FUNCTION__);
 
@@ -1722,22 +1688,9 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 	}
 
 	/*
-	 *	Feed dirty data into OpenSSL, so that is can either
-	 *	process it as Application data (decrypting it)
-	 *	or continue the TLS handshake.
+	 *	OpenSSL does it's magic to convert the encrypted
+	 *	dirty_in data to clean_out application data.
 	 */
-	if (fr_dbuff_used(&tls_session->dirty_in)) {
-		size_t used = fr_dbuff_used(&tls_session->dirty_in);
-
-		ret = BIO_write(tls_session->into_ssl, fr_dbuff_start(&tls_session->dirty_in), used);
-		if (ret != (int) used) {
-			REDEBUG("Failed writing %zu bytes to TLS BIO: %d", used, ret);
-			fr_tls_record_init(&tls_session->dirty_in);
-			goto error;
-		}
-		fr_tls_record_init(&tls_session->dirty_in);
-	}
-
 	return tls_session_async_handshake_cont(request, uctx);	/* Must unbind request, possibly asynchronously */
 }
 
@@ -1918,8 +1871,7 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 	 *	causes problems.
 	 */
 	{
-		fr_dbuff_t	*record[] = { &tls_session->clean_in, &tls_session->clean_out,
-					      &tls_session->dirty_in, &tls_session->dirty_out };
+		fr_dbuff_t	*record[] = { &tls_session->clean_in, &tls_session->clean_out };
 		size_t		i;
 
 		for (i = 0; i < NUM_ELEMENTS(record); i++) {
@@ -1928,14 +1880,6 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 			MEM(buff = talloc_array(tls_session, uint8_t, FR_TLS_MAX_RECORD_SIZE));
 			fr_dbuff_init(record[i], buff, (size_t) FR_TLS_MAX_RECORD_SIZE);
 		}
-
-		/*
-		 *	Everything asks dirty_out how much is left to send,
-		 *	with fr_dbuff_remaining().  A filling record answers
-		 *	that question with the room it has left, so dirty_out
-		 *	starts out drained and empty instead.
-		 */
-		fr_tls_record_drain(&tls_session->dirty_out);
 	}
 
 	/*
@@ -1947,10 +1891,49 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 	 *	This means that all SSL IO is done to/from memory,
 	 *	and we can update those BIOs from the packets we've
 	 *	received.
+	 *
+	 *	The caller shares the buffers with OpenSSL, one in
+	 *	each direction.  Each buffer has an encrypted
+	 *	(i.e. "dirty") side, and a "clean" application-layer
+	 *	side.
+	 *
+	 *	We allocate a fixed size buffer going into_ssl,
+	 *	because an extensible buffer could allow the peer to
+	 *	send us unbounded data.  A fixed size buffer allows
+	 *	this code to limit that usage.
+	 *
+	 *	We don't limit the data coming out of from_ssl,
+	 *	because OpenSSL decides how much it writes.  Multiple
+	 *	handshakes could carry a long certificate chain, which
+	 *	exceeds one record in size.
 	 */
-	MEM(tls_session->into_ssl = BIO_new(BIO_s_mem()));
-	MEM(tls_session->from_ssl = BIO_new(BIO_s_mem()));
-	SSL_set_bio(tls_session->ssl, tls_session->into_ssl, tls_session->from_ssl);
+	{
+		BIO	*rbio, *wbio;
+
+		/*
+		 *	free_buff is false because tls_session is the talloc
+		 *	parent of the buffer as well as of the
+		 *	fr_tls_bio_dbuff_t.  talloc frees the buffer with the
+		 *	session, and a destructor which freed it too would
+		 *	free it twice.
+		 */
+		MEM(rbio = fr_tls_bio_dbuff_alloc(&tls_session->into_ssl, tls_session, tls_session,
+						  FR_TLS_MAX_RECORD_SIZE, FR_TLS_MAX_RECORD_SIZE, false));
+		MEM(wbio = fr_tls_bio_dbuff_alloc(&tls_session->from_ssl, tls_session, tls_session,
+						  FR_TLS_MAX_RECORD_SIZE, 0, false));
+
+		tls_session->dirty_in = fr_tls_bio_dbuff_in(tls_session->into_ssl);
+		tls_session->dirty_out = fr_tls_bio_dbuff_out(tls_session->from_ssl);
+
+		/*
+		 *	SSL_set_bio() takes ownership of both BIOs, and the
+		 *	fr_tls_bio_dbuff_t destructor frees its own BIO.  Give
+		 *	each owner a reference to drop.
+		 */
+		BIO_up_ref(rbio);
+		BIO_up_ref(wbio);
+		SSL_set_bio(tls_session->ssl, rbio, wbio);
+	}
 
 	return tls_session;
 }

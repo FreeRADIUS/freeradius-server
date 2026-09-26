@@ -231,9 +231,28 @@ char *fr_tls_bio_dbuff_finalise_bstr(fr_tls_bio_dbuff_t *bd)
 /* Reset pointer positions for in/out
  *
  * Leaves the underlying buffer intact to avoid useless free/malloc.
+ *
+ * Only the producer is reset, as the the consumer has taken nothing.
+ * Use fr_tls_bio_dbuff_clear() when the consumer has already read
+ * part of the buffer.
  */
 void fr_tls_bio_dbuff_reset(fr_tls_bio_dbuff_t *bd)
 {
+	fr_dbuff_set_to_start(&bd->dbuff_in);
+}
+
+/** Discard the contents, and return both cursors to the start
+ *
+ * When the producer writes more data, the consumers end pointer is
+ * updated.  Resetting the the producer would mean leaving the
+ * consumers end pointer dangling.  We therefore reset the consumer
+ * first, and then the producer.
+ *
+ * Leave the underlying buffer intact to avoid useless free/malloc.
+ */
+void fr_tls_bio_dbuff_clear(fr_tls_bio_dbuff_t *bd)
+{
+	fr_dbuff_set_to_start(&bd->dbuff_out);
 	fr_dbuff_set_to_start(&bd->dbuff_in);
 }
 

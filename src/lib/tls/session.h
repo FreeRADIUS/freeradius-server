@@ -35,6 +35,7 @@ typedef struct fr_tls_session_s fr_tls_session_t;
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/dbuff.h>
 
+#include "bio.h"
 #include "cache.h"
 #include "conf.h"
 #include "index.h"
@@ -79,9 +80,15 @@ extern "C" {
  * FIXME: Dynamic allocation of buffer to overcome FR_TLS_MAX_RECORD_SIZE overflows.
  * 	or configure TLS not to exceed FR_TLS_MAX_RECORD_SIZE.
  *
- * The record buffers below are dbuffs over a fixed FR_TLS_MAX_RECORD_SIZE
- * allocation.  See src/lib/tls/dbuff.md for why the buffers cannot simply be
- * made extensible.
+ * clean_in and clean_out are dbuffs over a fixed
+ * FR_TLS_MAX_RECORD_SIZE allocation.  The buffers should not be
+ * extensible, as doing so could allow the peer to send unlimited data.
+ *
+ * dirty_in and dirty_out are fr_tls_bio_dbuff_t, which allow for
+ * extensions.  We therefore can't call the fill/drain helpers below
+ * on those buffers.  Calling fr_tls_record_init() on one would
+ * re-init the dbuff and lose the talloc context which lets the buffer
+ * extend.
  */
 
 /** Reset a record buffer so that it can be filled again
@@ -190,12 +197,14 @@ struct fr_tls_session_s {
 	fr_tls_result_t		result;				//!< Result of the last handshake round.
 	fr_tls_info_t		info;				//!< Information about the state of the TLS session.
 
-	BIO 			*into_ssl;			//!< Basic I/O input to OpenSSL.
-	BIO 			*from_ssl;			//!< Basic I/O output from OpenSSL.
+	fr_tls_bio_dbuff_t	*into_ssl;			//!< Encrypted data from the peer, which OpenSSL reads.
+	fr_tls_bio_dbuff_t	*from_ssl;			//!< Encrypted data OpenSSL wrote, waiting to be sent.
 	fr_dbuff_t 		clean_in;			//!< Cleartext data that needs to be encrypted.
 	fr_dbuff_t 		clean_out;			//!< Decrypted cleartext, for the caller to read.
-	fr_dbuff_t 		dirty_in;			//!< Encrypted data to decrypt.
-	fr_dbuff_t 		dirty_out;			//!< Encrypted data, ready to send.
+	fr_dbuff_t		*dirty_in;			//!< Encrypted data to decrypt.  The producer
+								///< cursor of into_ssl, which the caller fills.
+	fr_dbuff_t		*dirty_out;			//!< Encrypted data, ready to send.  The consumer
+								///< cursor of from_ssl, which the caller drains.
 	int			last_ret;			//!< Last result returned by SSL_read().
 
 	uint32_t		rounds;				//!< Handshake round trips.

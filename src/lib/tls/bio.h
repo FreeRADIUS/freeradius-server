@@ -30,6 +30,26 @@ RCSIDH(bio_h, "$Id$")
 #include <openssl/bio.h>
 #include <freeradius-devel/util/dbuff.h>
 
+/** An OpenSSL BIO whose backing store is a (possibly) talloc-extendable buffer
+ *
+ * The BIO has two dbuffs, a producer and a consumer.  They have
+ * different start pointers, but share an end pointer.  The producer
+ * writes more data to the memory buffer via fr_tls_bio_dbuff_in(),
+ * which updates it's end pointer.  The end pointer is shared with the
+ * consumer, which sees that data is available, and reads it via
+ * fr_tls_bio_dbuff_out().
+ *
+ * This design allows the producer and consumer to share an underlying
+ * memory block, which reduces copies.
+ *
+ * The dbuff can shift its memory contents around/ A read shifts the
+ * data down to reclaim the space which was consumed, and a write
+ * shifts the data down in the same way.  A write may also extend the
+ * buffer, and talloc extends a buffer by moving the buffer to a new
+ * address.  Callers must therefore not cache any pointers, and
+ * instead always call the dbuff wrapper functions to get the current
+ * values.
+ */
 typedef struct fr_tls_bio_dbuff_s fr_tls_bio_dbuff_t;
 
 uint8_t		*fr_tls_bio_dbuff_finalise(fr_tls_bio_dbuff_t *bd);
@@ -41,6 +61,8 @@ fr_dbuff_t	*fr_tls_bio_dbuff_out(fr_tls_bio_dbuff_t *bd);
 fr_dbuff_t	*fr_tls_bio_dbuff_in(fr_tls_bio_dbuff_t *bd);
 
 void		fr_tls_bio_dbuff_reset(fr_tls_bio_dbuff_t *bd);
+
+void		fr_tls_bio_dbuff_clear(fr_tls_bio_dbuff_t *bd);
 
 BIO		*fr_tls_bio_dbuff_alloc(fr_tls_bio_dbuff_t **out, TALLOC_CTX *bio_ctx, TALLOC_CTX *buff_ctx,
 					 size_t init, size_t max, bool free_buff);
