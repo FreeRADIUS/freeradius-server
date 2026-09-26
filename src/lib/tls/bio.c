@@ -96,6 +96,15 @@ static int _tls_bio_talloc_read_cb(BIO *bio, char *buf, int size)
 
 	fr_assert_msg(bd->dbuff_out.buff, "BIO not initialised");
 
+	/*
+	 *	An empty buffer means "nothing yet", not "end of stream".
+	 */
+	if (fr_dbuff_remaining(&bd->dbuff_out) == 0) {
+		BIO_set_retry_read(bio);
+		return -1;
+	}
+	BIO_clear_retry_flags(bio);
+
 	to_copy = fr_dbuff_remaining(&bd->dbuff_out);
 	if (to_copy > (size_t)size) to_copy = (size_t)size;
 
@@ -369,6 +378,38 @@ BIO *fr_tls_bio_dbuff_thread_local(TALLOC_CTX *ctx, size_t init, size_t max)
 	return tls_bio_talloc_agg->bio;
 }
 
+/** Respond to BIO queries about ctrl cmds.
+ *
+ * A handshake driven through this BIO asks only BIO_CTRL_PUSH and
+ * BIO_CTRL_POP.  The data controls are answered anyway, because it
+ * costs nothing to do so, and a caller could request them.
+ */
+static long _tls_bio_talloc_ctrl_cb(BIO *bio, int cmd, UNUSED long num, UNUSED void *ptr)
+{
+	fr_tls_bio_dbuff_t	*bd = talloc_get_type_abort(BIO_get_data(bio), fr_tls_bio_dbuff_t);
+
+	switch (cmd) {
+	case BIO_CTRL_PENDING:
+		return (long) fr_dbuff_remaining(&bd->dbuff_out);
+
+	case BIO_CTRL_WPENDING:
+		return 0;
+
+	case BIO_CTRL_FLUSH:
+		return 1;
+
+	case BIO_CTRL_RESET:
+		fr_tls_bio_dbuff_reset(bd);
+		return 1;
+
+	case BIO_CTRL_EOF:
+		return 0;
+
+	default:
+		return 0;
+	}
+}
+
 /** Initialise the BIO logging meths which are used to create thread local logging BIOs
  *
  */
@@ -396,6 +437,7 @@ int fr_tls_bio_init(void)
 	BIO_meth_set_puts(tls_bio_talloc_meth, _tls_bio_talloc_puts_cb);
 	BIO_meth_set_read(tls_bio_talloc_meth, _tls_bio_talloc_read_cb);
 	BIO_meth_set_gets(tls_bio_talloc_meth, _tls_bio_talloc_gets_cb);
+	BIO_meth_set_ctrl(tls_bio_talloc_meth, _tls_bio_talloc_ctrl_cb);
 
 	return 0;
 }
