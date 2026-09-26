@@ -265,7 +265,26 @@ do { \
  *
  * @param[in] _dbuff_or_marker	to make an ephemeral copy of.
  */
-#define FR_DBUFF_BIND_END_ABS(_dbuff_or_marker) _FR_DBUFF(_dbuff_or_marker, fr_dbuff_start(_dbuff_or_marker), FR_DBUFF_ADV_PARENT_END)
+#define FR_DBUFF_BIND_END_ABS(_dbuff_or_marker) \
+	_fr_dbuff_bind_end_abs(_FR_DBUFF(_dbuff_or_marker, fr_dbuff_start(_dbuff_or_marker), FR_DBUFF_ADV_PARENT_END), \
+			       fr_dbuff_ptr(_dbuff_or_marker))
+
+/** @cond */
+/** Bind a producer to a consumer, and start the consumer empty
+ *
+ * The parent consumes data from child.start to child.current.  So the
+ * parents start is the childs start, and the parents end is the
+ * childs current.  Writes to the child at "current" will then
+ * increase the parents "end", which is how the parent knows that more
+ * data is available.
+ */
+static inline fr_dbuff_t _fr_dbuff_bind_end_abs(fr_dbuff_t child, fr_dbuff_t *parent)
+{
+	parent->end = UNCONST(uint8_t *, child.p);
+
+	return child;
+}
+/** @endcond */
 
 /** @cond */
 /** Limit available bytes in the dbuff to _max when passing it to another function

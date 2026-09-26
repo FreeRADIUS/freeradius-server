@@ -560,7 +560,9 @@ static void test_dbuff_child(void)
 	TEST_CASE("FR_DBUFF_BIND_END_ABS: writes advance parent 'end' (producer side)");
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 	child = FR_DBUFF_BIND_END_ABS(&dbuff);
-	TEST_CHECK(fr_dbuff_end(&dbuff) == buff + sizeof(buff));
+	TEST_CHECK(fr_dbuff_end(&dbuff) == buff);		/* consumer starts empty */
+	TEST_CHECK(fr_dbuff_remaining(&dbuff) == 0);		/* nothing produced yet */
+	TEST_CHECK(fr_dbuff_remaining(&child) == sizeof(buff));	/* producer has the whole buffer */
 	TEST_CHECK(fr_dbuff_in_bytes(&child, 0x01, 0x02, 0x03, 0x04, 0x05) == 5);
 	TEST_CHECK(fr_dbuff_end(&dbuff) == buff + 5);		/* parent 'end' pulled back to producer position */
 	TEST_CHECK(fr_dbuff_remaining(&dbuff) == 5);		/* consumer can now read what was produced */
