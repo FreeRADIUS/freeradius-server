@@ -313,28 +313,38 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 {
 	unit_test_tls_t		*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 	fr_tls_session_t	*tls_session = conn->tls_session;
-	uint8_t			buf[FR_TLS_MAX_RECORD_SIZE];
 
+	/*
+	 *	dirty_out is a cursor over the BIO's own buffer, so the
+	 *	octets waiting to go out are already contiguous, and write()
+	 *	takes them where they lie.  Nothing here touches the BIO
+	 *	between taking the pointer and using it, which is what the
+	 *	pointer rule in src/lib/tls/bio.h asks of a caller.
+	 */
 	while (fr_dbuff_remaining(tls_session->dirty_out) > 0) {
-		size_t		len;
-		size_t		written = 0;
+		ssize_t slen;
 
-		len = fr_tls_record_to_buff(tls_session->dirty_out, buf, sizeof(buf));
+		slen = write(utt->fd, fr_dbuff_current(tls_session->dirty_out),
+			     fr_dbuff_remaining(tls_session->dirty_out));
+		if (slen < 0) {
+			if (errno == EINTR) continue;
 
-		while (written < (size_t) len) {
-			ssize_t slen;
-
-			slen = write(utt->fd, buf + written, len - written);
-			if (slen < 0) {
-				if (errno == EINTR) continue;
-
-				ERROR("Failed writing to connection: %s", fr_syserror(errno));
-				return -1;
-			}
-			written += (size_t) slen;
+			ERROR("Failed writing to connection: %s", fr_syserror(errno));
+			return -1;
 		}
 
-		DEBUG3("Wrote %zu bytes to the connection", len);
+		if (slen == 0) {
+			ERROR("Wrote no data to connection");
+			return -1;
+		}
+
+		/*
+		 *	A short write leaves the rest where it is, and the
+		 *	next pass takes a fresh pointer for what is left.
+		 */
+		fr_dbuff_advance(tls_session->dirty_out, (size_t) slen);
+
+		DEBUG3("Wrote %zd bytes to the connection", slen);
 	}
 
 	return 0;

@@ -84,11 +84,10 @@ extern "C" {
  * FR_TLS_MAX_RECORD_SIZE allocation.  The buffers should not be
  * extensible, as doing so could allow the peer to send unlimited data.
  *
- * dirty_in and dirty_out are fr_tls_bio_dbuff_t, which allow for
- * extensions.  We therefore can't call the fill/drain helpers below
- * on those buffers.  Calling fr_tls_record_init() on one would
- * re-init the dbuff and lose the talloc context which lets the buffer
- * extend.
+ * dirty_in and dirty_out allow for extensions.  We therefore can't
+ * call the fill/drain helpers below on those buffers.  Calling
+ * fr_tls_record_init() on one would re-init the dbuff and lose the
+ * talloc context which lets the buffer extend.
  */
 
 /** Reset a record buffer so that it can be filled again
@@ -106,34 +105,6 @@ extern "C" {
 static inline void fr_tls_record_init(fr_dbuff_t *record)
 {
 	fr_dbuff_init(record, fr_dbuff_start(record), (size_t) FR_TLS_MAX_RECORD_SIZE);
-}
-
-/** Take octets from a draining record buffer
- *
- * The record stays in the draining state, even when every octet has been
- * taken.  fr_dbuff_remaining() therefore keeps answering 'how much is left to
- * read' until the caller calls fr_tls_record_init(), which is what makes
- * 'while (fr_dbuff_remaining(record))' terminate.
- *
- * @param[in] record	to read from.
- * @param[out] out	where to write the octets, or NULL to discard them.
- * @param[in] outlen	how many octets to take, at most.
- * @return the number of octets taken.
- */
-static inline size_t fr_tls_record_to_buff(fr_dbuff_t *record, void *out, size_t outlen)
-{
-	size_t taken = fr_dbuff_remaining(record);
-
-	if (taken > outlen) taken = outlen;
-	if (taken == 0) return 0;
-
-	if (out) {
-		(void) fr_dbuff_out_memcpy((uint8_t *) out, record, taken);
-	} else {
-		(void) fr_dbuff_advance(record, taken);
-	}
-
-	return taken;
 }
 
 /** Stop filling a record buffer, and start draining it

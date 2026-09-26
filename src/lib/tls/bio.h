@@ -33,16 +33,16 @@ RCSIDH(bio_h, "$Id$")
 /** An OpenSSL BIO whose backing store is a (possibly) talloc-extendable buffer
  *
  * The BIO has two dbuffs, a producer and a consumer.  They have
- * different start pointers, but share an end pointer.  The producer
+ * the same start pointers, but different end pointers.  The producer
  * writes more data to the memory buffer via fr_tls_bio_dbuff_in(),
- * which updates it's end pointer.  The end pointer is shared with the
+ * which updates its end pointer.  The end pointer is shared with the
  * consumer, which sees that data is available, and reads it via
  * fr_tls_bio_dbuff_out().
  *
  * This design allows the producer and consumer to share an underlying
  * memory block, which reduces copies.
  *
- * The dbuff can shift its memory contents around/ A read shifts the
+ * The dbuff can shift its memory contents around.  A read shifts the
  * data down to reclaim the space which was consumed, and a write
  * shifts the data down in the same way.  A write may also extend the
  * buffer, and talloc extends a buffer by moving the buffer to a new

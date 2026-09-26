@@ -185,7 +185,12 @@ int eap_tls_compose(request_t *request, eap_session_t *eap_session, eap_tls_stat
 		p += sizeof(net_record_len);
 	}
 
-	if (record) (void) fr_tls_record_to_buff(record, p, frag_len);
+	/*
+	 *	Limit the dbuff call to "frag_len".  If we ask for
+	 *	more, then the dbuff code will try to extend the
+	 *	buffer, and we don't want that.
+	 */
+	if (record) (void) fr_dbuff_out_memcpy(p, record, frag_len);
 
 	switch (status) {
 	case EAP_TLS_ACK_SEND:
