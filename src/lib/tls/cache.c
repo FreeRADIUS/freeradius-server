@@ -487,10 +487,10 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	fr_pair_t		*vp;
 	unlang_action_t		ua;
 
-	if (tls_cache->load.state != FR_TLS_CACHE_LOAD_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
-
 	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
 
+	if (tls_cache->load.state != FR_TLS_CACHE_LOAD_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
+       
 	/*
 	 *	Reset any pending `load session` if there is also a
 	 *	pending `clear session`, and mark up the load as failed.
@@ -754,10 +754,10 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_tls_cache_t	*tls_cache = tls_session->cache;
 	unlang_action_t	ua;
 
+	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
+
 	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED);
 	fr_assert(tls_cache->clear.id);
-
-	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
