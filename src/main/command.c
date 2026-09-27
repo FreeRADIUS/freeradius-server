@@ -1820,18 +1820,18 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 /*
  *	For encode/decode stuff
  */
-static int null_socket_dencode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+static int command_socket_dencode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
 {
 	return 0;
 }
 
-static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
+static int command_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	vp_cursor_t cursor;
 	char *output_file;
 	FILE *fp;
 
-	output_file = request_data_reference(request, (void *)null_socket_send, 0);
+	output_file = request_data_reference(request, (void *)command_socket_send, 0);
 	if (!output_file) {
 		ERROR("No output file for injected packet %d", request->number);
 		return 0;
@@ -2047,9 +2047,9 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	/*
 	 *	Re-write the IO for the listener.
 	 */
-	fake->encode = null_socket_dencode;
-	fake->decode = null_socket_dencode;
-	fake->send = null_socket_send;
+	fake->encode = command_socket_dencode;
+	fake->decode = command_socket_dencode;
+	fake->send = command_socket_send;
 
 	packet = rad_alloc(NULL, false);
 	packet->src_ipaddr = sock->src_ipaddr;
@@ -2106,8 +2106,8 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	 *	Remember what the output file is, and remember to
 	 *	delete the fake listener when done.
 	 */
-	request_data_add(request, null_socket_send, 0, talloc_typed_strdup(NULL, buffer), true);
-	request_data_add(request, null_socket_send, 1, fake, true);
+	request_data_add(request, command_socket_send, 0, talloc_typed_strdup(NULL, buffer), true);
+	request_data_add(request, command_socket_send, 1, fake, true);
 
 #endif
 
