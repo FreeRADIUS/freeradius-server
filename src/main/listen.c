@@ -1142,6 +1142,107 @@ int fr_radiusv11_client_get_alpn(rad_listen_t *listener)
 #endif
 
 
+/*
+ *	Initialize a newly accepted listener from the parent
+ *	listener that accepted the connection.
+ *
+ *	The child shares the *configuration* of the parent.  The
+ *	child does not share the *state* of the parent.  We
+ *	therefore copy the configuration field by field, instead
+ *	of copying the entire structure.  Copying the whole
+ *	structure would also copy the run-time state of the
+ *	parent: request counts, statistics, and the shut-down
+ *	state.
+ *
+ *	The caller sets the fields that describe the child: fd,
+ *	status, data, and recv.
+ */
+static void listen_init_from_parent(rad_listen_t *this, rad_listen_t *parent)
+{
+	/*
+	 *	Which parent accepted the child, and which virtual
+	 *	server processes the packets.
+	 */
+	this->parent = parent;
+	this->server = parent->server;
+	this->cs = parent->cs;
+
+	/*
+	 *	How the child writes and prints the packets.  The
+	 *	caller sets recv, because recv depends on whether the
+	 *	connection uses TLS.
+	 */
+	this->send = parent->send;
+	this->encode = parent->encode;
+	this->decode = parent->decode;
+	this->print = parent->print;
+
+	this->proxy_send = parent->proxy_send;
+	this->proxy_encode = parent->proxy_encode;
+	this->proxy_decode = parent->proxy_decode;
+
+	/*
+	 *	Configuration that applies to every connection that
+	 *	the parent accepts.
+	 */
+	this->dual = parent->dual;
+	this->nodup = parent->nodup;
+	this->nonblock = parent->nonblock;
+	this->proxy_protocol = parent->proxy_protocol;
+
+	this->filter_proxy_state = parent->filter_proxy_state;
+	this->proxy_state_random[0] = fr_rand();
+	this->proxy_state_random[1] = fr_rand();
+
+#ifdef WITH_TLS
+	/*
+	 *	The parent owns the TLS configuration.  The caller may
+	 *	replace this->tls with the TLS configuration of the
+	 *	client.
+	 */
+	this->tls = parent->tls;
+	this->check_client_connections = parent->check_client_connections;
+
+#ifdef WITH_RADIUSV11
+	this->radiusv11 = parent->radiusv11;
+#endif
+
+#ifdef WITH_COA_TUNNEL
+	this->key = parent->key;
+	this->send_coa = parent->send_coa;
+
+	this->coa_irt = parent->coa_irt;
+	this->coa_mrc = parent->coa_mrc;
+	this->coa_mrt = parent->coa_mrt;
+	this->coa_mrd = parent->coa_mrd;
+#endif
+#endif
+
+	/*
+	 *	Fields that we deliberately do NOT copy, because
+	 *	each field below holds state of the parent, and not
+	 *	configuration of the parent:
+	 *
+	 *	next, fd_updating	the list of listeners waiting for
+	 *				the main thread to update the
+	 *				listeners.
+	 *	count			the number of requests using the
+	 *				parent.
+	 *	children, listen	only the parent listens, and only
+	 *				the parent has children.
+	 *	dead, blocked		the parent may have been shut
+	 *				down.  The child has not been
+	 *				shut down.
+	 *	entry			the place of the parent in the
+	 *				home server free list.
+	 *	num_ids_used		the number of CoA IDs that the
+	 *				parent uses.
+	 *	stats			the child has not yet received
+	 *				any packets.
+	 */
+}
+
+
 static int dual_tcp_accept(rad_listen_t *listener)
 {
 	int newfd;
@@ -1281,20 +1382,23 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	sock->limit.num_connections++;
 
 	/*
-	 *	Copy everything, including the pointer to the socket
-	 *	information.
+	 *	Copy the socket information from the parent, and then
+	 *	copy the listener configuration.  listen_alloc() zeroed
+	 *	every other field.  Zero is the correct value for the
+	 *	child.  Only the parent listens, only the parent has
+	 *	children, and the child has not yet received any
+	 *	packets.
 	 */
 	sock = this->data;
-	memcpy(this->data, listener->data, sizeof(*sock));
-	memcpy(this, listener, sizeof(*this));
+	memcpy(sock, listener->data, sizeof(*sock));
 
+	listen_init_from_parent(this, listener);
+
+	/*
+	 *	Fields that describe the child.
+	 */
 	this->fd = newfd;
 	this->status = RAD_LISTEN_STATUS_INIT;
-	this->parent = listener;
-	this->next = NULL;
-	this->children = NULL;
-	this->data = sock;	/* fix it back */
-	this->listen = false;
 
 #ifdef WITH_TLS
 	sock->mutex = NULL;	/* we're not using our parents mutex */
