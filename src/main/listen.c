@@ -718,6 +718,34 @@ static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 }
 
 #ifdef WITH_TCP
+/*
+ *	Close a TCP socket.
+ *
+ *	We do NOT free the listener here.  Requests may still be using
+ *	the listener.  The listener is instead freed when all of the
+ *	requests using it are done.
+ */
+static void tcp_socket_close(rad_listen_t *listener)
+{
+	listen_socket_t *sock = listener->data;
+
+	listener->status = RAD_LISTEN_STATUS_EOL;
+
+	/*
+	 *	Remove the packet and request.  No other thread is
+	 *	accessing the socket data, unlike TLS.  So we don't
+	 *	need a mutex, and we can delete these data structures.
+	 */
+	rad_free(&sock->packet);
+	TLS_FREE(sock->request);
+
+	/*
+	 *	Tell the event handler that an FD has disappeared.
+	 */
+	radius_update_listener(listener);
+}
+
+
 static int dual_tcp_recv(rad_listen_t *listener)
 {
 	int rcode;
@@ -773,23 +801,8 @@ static int dual_tcp_recv(rad_listen_t *listener)
 			      packet->src_port, fr_strerror());
 		}
 
-		rad_free(&sock->packet);
-		TLS_FREE(sock->request);
-		listener->status = RAD_LISTEN_STATUS_EOL;
-
-		/*
-		 *	Tell the event handler that an FD has disappeared.
-		 */
 		DEBUG("Client has closed connection");
-		radius_update_listener(listener);
-
-		/*
-		 *	Do NOT free the listener here.  It's in use by
-		 *	a request, and will need to hang around until
-		 *	all of the requests are done.
-		 *
-		 *	It is instead free'd in remove_from_request_hash()
-		 */
+		tcp_socket_close(listener);
 		return 0;
 	}
 
@@ -3150,25 +3163,11 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	}
 
 	if (rcode < 0) {	/* error or connection reset */
-		/*
-		 *	Tell the event handler that an FD has disappeared.
-		 */
 		DEBUG("Home server %s port %d has closed connection",
 		      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		      packet->src_port);
 
-		rad_free(&sock->packet);
-		TLS_FREE(sock->request);
-		listener->status = RAD_LISTEN_STATUS_EOL;
-		radius_update_listener(listener);
-
-		/*
-		 *	Do NOT free the listener here.  It's in use by
-		 *	a request, and will need to hang around until
-		 *	all of the requests are done.
-		 *
-		 *	It is instead free'd in remove_from_request_hash()
-		 */
+		tcp_socket_close(listener);
 		return 0;
 	}
 
