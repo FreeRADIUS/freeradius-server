@@ -46,9 +46,10 @@ extern "C" {
 #endif
 
 /*
- *	A single TLS record may be up to 16384 octets in length, but a
- *	TLS message may span multiple TLS records, and a TLS
- *	certificate message may in principle be as long as 16MB.
+ *	A single TLS record carries at most SSL3_RT_MAX_PLAIN_LENGTH
+ *	octets of plaintext, which OpenSSL defines as 16384.  A TLS
+ *	message may span multiple TLS records, and a TLS certificate
+ *	message may in principle be as long as 16MB.
  *
  *	However, note that in order to protect against reassembly
  *	lockup and denial of service attacks, it may be desirable for
@@ -57,9 +58,19 @@ extern "C" {
  *
  *	The TLS Message Length field is four octets, and provides the
  *	total length of the TLS message or set of messages that is
- *	being fragmented; this simplifies buffer allocation.
+ *	being fragmented, which simplifies buffer allocation.
+ *
+ *	A TLS record adds data on top of the application-layer
+ *	plaintext: the TLS header (5 octets); encryption overhead
+ *	(SSL3_RT_MAX_ENCRYPTED_OVERHEAD which is 256 octets of padding
+ *	plus a 64 octet MAC); where OpenSSL was built with
+ *	compression 1024 octets.
+ *
+ *	SSL3_RT_MAX_PACKET_SIZE therefore depends on the local OpenSSL
+ *	build, and build flags.  Generally 17733 with compression,
+ *	16709 without.  We round up on general principle.
  */
-#define FR_TLS_MAX_RECORD_SIZE 16384
+#define FR_TLS_MAX_PACKET_SIZE ((SSL3_RT_MAX_PACKET_SIZE + 255) & ~255)
 
 /*
  *	Cap the maximum number of handshakes that we receive in a row.
@@ -77,11 +88,11 @@ extern "C" {
 #define FR_TLS_MAX_ROUNDS 50
 
 /*
- * FIXME: Dynamic allocation of buffer to overcome FR_TLS_MAX_RECORD_SIZE overflows.
- * 	or configure TLS not to exceed FR_TLS_MAX_RECORD_SIZE.
+ * FIXME: Dynamic allocation of buffer to overcome SSL3_RT_MAX_PLAIN_LENGTH overflows.
+ * 	or configure TLS not to exceed SSL3_RT_MAX_PLAIN_LENGTH.
  *
  * clean_in and clean_out are dbuffs over a fixed
- * FR_TLS_MAX_RECORD_SIZE allocation.  The buffers should not be
+ * SSL3_RT_MAX_PLAIN_LENGTH allocation.  The buffers should not be
  * extensible, as doing so could allow the peer to send unlimited data.
  *
  * dirty_in and dirty_out allow for extensions.  We therefore can't
@@ -104,7 +115,7 @@ extern "C" {
  */
 static inline void fr_tls_record_init(fr_dbuff_t *record)
 {
-	fr_dbuff_init(record, fr_dbuff_start(record), (size_t) FR_TLS_MAX_RECORD_SIZE);
+	fr_dbuff_init(record, fr_dbuff_start(record), (size_t) SSL3_RT_MAX_PLAIN_LENGTH);
 }
 
 /** Stop filling a record buffer, and start draining it

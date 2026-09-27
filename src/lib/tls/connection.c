@@ -397,17 +397,31 @@ void fr_tls_connection_wake(fr_tls_connection_t *conn)
 	tls_connection_request_wake(conn);
 }
 
-/** Hand a record which arrived on the connection to OpenSSL
+/** Hand octets which arrived on the connection to OpenSSL.
  *
- * The caller reads from whatever transport the caller uses, and passes the
- * octets here.  Nothing in the TLS library reads a socket, so the transport
- * stays entirely with the caller.  The EAP code in src/lib/eap/tls.c fills
- * dirty_in the same way, from EAP packets rather than from a socket.
+ * The caller reads from whatever transport the caller uses, and
+ * passes the data to OpenSSL.  Nothing else in the TLS library
+ * (currentl) reads a socket, so the transport stays entirely with the
+ * caller.  EAP does the same thing, except the contents are taken
+ * from the EAP packets.
  *
- * @param[in] conn	the record arrived on.
+ * The data doesn't have to be an entire record, and can be more than
+ * one record.  The application doesn't parse TLS, it just reads raw
+ * data and hands it to OpenSSL.  OpenSSL reads some or all of it.
+ * Any unread data is left in the buffer, as it generally means we
+ * read an incomplete TLS record from the wire.
+ *
+ * We therefore append the received data to the buffer.  The
+ * "into_openssl" buffer size is capped at FR_TLS_MAX_PACKET_SIZE, so
+ * if a caller tries to overfill the buffer, this function marks the
+ * connection as failed.
+ *
+ * @todo - perhaps make the "into_ssl" dbuff extensable, but with
+ * limits.  See tls_session_alloc() for caveats.
+ *
+ * @param[in] conn	the octets arrived on.
  * @param[in] data	which arrived.
- * @param[in] data_len	how many octets arrived.  Must be greater than zero,
- *			and no more than FR_TLS_MAX_RECORD_SIZE.
+ * @param[in] data_len	how many octets arrived.  Must be greater than zero.
  */
 void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size_t data_len)
 {

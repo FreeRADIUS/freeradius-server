@@ -358,7 +358,7 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	unit_test_tls_t		*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
-	uint8_t			buf[FR_TLS_MAX_RECORD_SIZE];
+	uint8_t			buf[SSL3_RT_MAX_PLAIN_LENGTH];
 	ssize_t			slen;
 
 	if (utt->done) return;

@@ -690,9 +690,9 @@ static eap_tls_status_t eap_tls_verify(request_t *request, eap_session_t *eap_se
 			return EAP_TLS_INVALID;
 		}
 
-		if (total_len > FR_TLS_MAX_RECORD_SIZE) {
+		if (total_len > SSL3_RT_MAX_PLAIN_LENGTH) {
 			REDEBUG("Reassembled TLS record will be %zu bytes, "
-				"greater than our maximum record size (" STRINGIFY(FR_TLS_MAX_RECORD_SIZE) " bytes)",
+				"greater than our maximum record size (" STRINGIFY(SSL3_RT_MAX_PLAIN_LENGTH) " bytes)",
 				total_len);
 			return EAP_TLS_INVALID;
 		}
@@ -1061,8 +1061,9 @@ unlang_action_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 		/*
 		 *	Update the dirty_in buffer (data for reading by OpenSSL)
 		 *
-		 *	This buffer will contain partial data when M bit is set, and should
-		 * 	should only be reinitialized when M bit is not set.
+		 *	OpenSSL reads this, and writes clean data out.
+		 *	The dirty_in buffer may contain partial TLS
+		 *	records on exit.
 		 */
 		if (fr_dbuff_in_memcpy_partial(tls_session->dirty_in, data, data_len) != data_len) {
 			REDEBUG("Exceeded maximum record size");
@@ -1358,7 +1359,7 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs)
 	 *	Maximum size for a TLS record is 16K, so little point in
 	 *	setting it higher than that.
 	 */
-	FR_INTEGER_BOUND_CHECK("fragment_size", tls_conf->fragment_size, <=, FR_TLS_MAX_RECORD_SIZE);
+	FR_INTEGER_BOUND_CHECK("fragment_size", tls_conf->fragment_size, <=, SSL3_RT_MAX_PLAIN_LENGTH);
 
 	/*
 	 *	Account for the EAP header (4), and the EAP-TLS header

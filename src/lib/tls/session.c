@@ -1877,30 +1877,41 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 		for (i = 0; i < NUM_ELEMENTS(record); i++) {
 			uint8_t *buff;
 
-			MEM(buff = talloc_array(tls_session, uint8_t, FR_TLS_MAX_RECORD_SIZE));
-			fr_dbuff_init(record[i], buff, (size_t) FR_TLS_MAX_RECORD_SIZE);
+			MEM(buff = talloc_array(tls_session, uint8_t, SSL3_RT_MAX_PLAIN_LENGTH));
+			fr_dbuff_init(record[i], buff, (size_t) SSL3_RT_MAX_PLAIN_LENGTH);
 		}
 	}
 
 	/*
 	 *	Create & hook the BIOs to handle the dirty side of the
-	 *	SSL.  This is *very important* as we want to handle
-	 *	the transmission part.  Now the only IO interface
-	 *	that SSL is aware of, is our defined BIO buffers.
+	 *	SSL.  The caller writes encrypted data into the
+	 *	"dirty_in" side via some external mechanism, and
+	 *	writes encrypted data out of the "dirty_out" side via
+	 *	an external mechanism.  This design allows us to use
+	 *	the same TLS code for both RadSec, and for all
+	 *	TLS-enabled EAP methods.
 	 *
-	 *	This means that all SSL IO is done to/from memory,
-	 *	and we can update those BIOs from the packets we've
-	 *	received.
-	 *
-	 *	The caller shares the buffers with OpenSSL, one in
-	 *	each direction.  Each buffer has an encrypted
-	 *	(i.e. "dirty") side, and a "clean" application-layer
-	 *	side.
+	 *	OpenSSL either reads "dirty_in" and writes
+	 *	"clean_out", or reads "clean_in" and writes
+	 *	"dirty_out".
 	 *
 	 *	We allocate a fixed size buffer going into_ssl,
 	 *	because an extensible buffer could allow the peer to
 	 *	send us unbounded data.  A fixed size buffer allows
 	 *	this code to limit that usage.
+	 *
+	 *	@todo - make the input buffer extendable, but with
+	 *	a maximum limit, and only after all TLS negotiation
+	 *	has completed, and the session is fully authenticated.
+	 *
+	 *	The size is FR_TLS_MAX_PACKET_SIZE and not
+	 *	SSL3_RT_MAX_PLAIN_LENGTH.  Data OpenSSL has not used
+	 *	stay in the buffer, as they are generally partial TLS
+	 *	records.  But the buffer has to be large enough to
+	 *	hold an entire TLS record.
+	 *
+	 *	init and max are the same, so the buffer is allocated
+	 *	once and never moves.
 	 *
 	 *	We don't limit the data coming out of from_ssl,
 	 *	because OpenSSL decides how much it writes.  Multiple
@@ -1918,9 +1929,9 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 		 *	free it twice.
 		 */
 		MEM(rbio = fr_tls_bio_dbuff_alloc(&tls_session->into_ssl, tls_session, tls_session,
-						  FR_TLS_MAX_RECORD_SIZE, FR_TLS_MAX_RECORD_SIZE, false));
+						  FR_TLS_MAX_PACKET_SIZE, FR_TLS_MAX_PACKET_SIZE, false));
 		MEM(wbio = fr_tls_bio_dbuff_alloc(&tls_session->from_ssl, tls_session, tls_session,
-						  FR_TLS_MAX_RECORD_SIZE, 0, false));
+						  SSL3_RT_MAX_PLAIN_LENGTH, 0, false));
 
 		tls_session->dirty_in = fr_tls_bio_dbuff_in(tls_session->into_ssl);
 		tls_session->dirty_out = fr_tls_bio_dbuff_out(tls_session->from_ssl);
