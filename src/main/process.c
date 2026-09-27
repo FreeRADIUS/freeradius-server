@@ -6556,12 +6556,13 @@ static void event_new_fd(void *ctx)
 #endif
 #ifdef WITH_TLS
 		/*
-		 *	Close it.  Which sets the status to EOL, so we
-		 *	have to update that, too.
+		 *	Close the socket.  proxy_tls_close() sets
+		 *	this->status to EOL, so we have to set it back to
+		 *	REMOVE_NOW.
 		 *
-		 *	proxy_tls_close also clears this->tls, so it's
-		 *	safe run this check multiple times, as the
-		 *	second time it won't close the same socket.
+		 *	tls_socket_close() does nothing if the socket is
+		 *	already at EOL, so it is safe to run this check
+		 *	multiple times.
 		 */
 		if ((this->type == RAD_LISTEN_PROXY) && this->tls) {
 			proxy_tls_close(this);

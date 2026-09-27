@@ -72,6 +72,29 @@ static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 }
 
 /*
+ *	Reads and writes for a socket that tls_socket_close() closed.
+ *
+ *	The listener can outlive the connection, because requests may
+ *	still be using the listener.  The event loop may also call
+ *	recv() after tls_socket_close() ran.
+ *
+ *	Checking listener->status is not enough.  We read the status
+ *	without the mutex that protects tls_socket_close(), so another
+ *	thread can close the socket after the check, but before the
+ *	read.
+ */
+static int null_socket_recv(UNUSED rad_listen_t *listener)
+{
+	return 0;
+}
+
+static int null_socket_send(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+{
+	return 0;
+}
+
+
+/*
  *	Called with the mutex held, and unlocks the mutex.
  */
 void tls_socket_close(rad_listen_t *listener);
@@ -89,14 +112,33 @@ void tls_socket_close(rad_listen_t *listener)
 	if (!sock->client_closed && sock->ssn) SSL_shutdown(sock->ssn->ssl);
 
 	listener->status = RAD_LISTEN_STATUS_EOL;
-	listener->tls = NULL; /* parent owns this! */
+
+	/*
+	 *	We do NOT clear listener->tls.  The TLS configuration
+	 *	belongs to the parent listener, or to the client, so
+	 *	there is nothing for us to free.  Clearing listener->tls
+	 *	makes a thread that is already reading from the socket
+	 *	dereference a NULL pointer.
+	 *
+	 *	Instead, we stop the reads and the writes.
+	 */
+	listener->recv = null_socket_recv;
+	listener->send = null_socket_send;
+	listener->proxy_send = null_socket_send;
 
 	/*
 	 *	Tell the event handler that an FD has disappeared.
+	 *
+	 *	We do NOT free sock->packet or sock->request.  Both are
+	 *	allocated from sock, so freeing the listener frees both
+	 *	of them.
+	 *
+	 *	Freeing sock->request is leaves sock->ssn->ssl
+	 *	pointing at a free'd REQUEST, which is bad.  It also
+	 *	means that tls_socket_recv() sees the next read as the
+	 *	first read of a new connection.
 	 */
 	ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Closing connection");
-	rad_free(&sock->packet);
-	TALLOC_FREE(sock->request);
 	PTHREAD_MUTEX_UNLOCK(sock->mutex);
 
 	radius_update_listener(listener);
@@ -1359,12 +1401,20 @@ int proxy_tls_recv(rad_listen_t *listener)
 	RADCLIENT *client = sock->client;
 #endif
 
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+	/*
+	 *	Lock the mutex before checking listener->status.
+	 *	Otherwise another thread can close the socket after the
+	 *	check, but before the read.
+	 */
+	PTHREAD_MUTEX_LOCK(sock->mutex);
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) {
+		PTHREAD_MUTEX_UNLOCK(sock->mutex);
+		return 0;
+	}
 
 	rad_assert(sock->ssn != NULL);
 
 	DEBUG3("(TLS) Proxy socket has data to read");
-	PTHREAD_MUTEX_LOCK(sock->mutex);
 	data_len = proxy_tls_read(listener);
 	if (data_len < 0) {
 	fail:
