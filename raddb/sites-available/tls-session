@@ -57,6 +57,22 @@ server tls-session {
 ##		}
 
 		#
+		#  The `ocsp` module can be used to check for certificate revocation.
+		#  See `mods-available/ocsp` for details.
+		#
+		#  To reduce the number of calls to OCSP endpoints an instance
+		#  of rlm_cache can be used to store responses.
+		#  A example instance - cache_ocsp - is provided in
+		#  `mods-available/cache_tls`.
+		#
+##		cache_ocsp.load
+##		ocsp
+##		if (ok && TLS-OCSP-Next-Update) {
+##			control.Cache-TTL := TLS-OCSP-Next-Update
+##			cache_ocsp.store
+##		}
+
+		#
 		#  The `crl` module can be used to perform CRL checks.
 		#  See `mods-available/crl` for details.
 		#
