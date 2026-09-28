@@ -1259,12 +1259,9 @@ static NEVER_RETURNS void usage(int status)
 	fprintf(output, "  -M            Enable talloc memory debugging, and issue a memory report when the server terminates\n");
 #endif
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
-	fprintf(output, "  -s            Do not spawn child processes to handle requests (same as -ft).\n");
+	fprintf(output, "  -s            Disable threads and run in the foreground (same as -ft).\n");
 
-	/*
-	 *	Place-holder in case we need it.  Should be removed before the release.
-	 */
-//	fprintf(output, "  -S <flag>     Set migration flags to assist with upgrades from version 3.\n");
+	fprintf(output, "  -S <flag>     Set a value in the configuration if the form '<path>=<value>'.  Useful for overriding specific config values at launch.\n");
 	fprintf(output, "  -t            Disable threads.\n");
 	fprintf(output, "  -T            Prepend timestamps to  log messages.\n");
 	fprintf(output, "  -v            Print server version information.\n");
