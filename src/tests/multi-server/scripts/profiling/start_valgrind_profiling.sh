@@ -80,8 +80,8 @@ valgrind \
   --instr-atstart=no \
   freeradius -f -l stdout \
     -S resources.talloc_skip_cleanup=yes \
-    -S "trigger.server.start=%callgrind.start()${TRIGGER_SERVER_START_APPEND:-}" \
-    -S "trigger.server.stop=%callgrind.stop()${TRIGGER_SERVER_STOP_APPEND:-}" \
+    -S "trigger.server.start=%callgrind.start() && ${TRIGGER_SERVER_START_APPEND:-true}" \
+    -S "trigger.server.stop=%callgrind.stop() && ${TRIGGER_SERVER_STOP_APPEND:-true}" \
   > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || STATUS=$?
 
 #

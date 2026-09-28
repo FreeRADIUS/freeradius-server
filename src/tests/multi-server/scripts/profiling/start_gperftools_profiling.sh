@@ -57,8 +57,8 @@ STATUS=0
 CPUPROFILE_FREQUENCY=1000 \
 freeradius -f -l stdout \
   -S resources.talloc_skip_cleanup=yes \
-  -S "trigger.server.start=%gperftools.start('$PROFILE')" \
-  -S 'trigger.server.stop=%gperftools.stop()' \
+  -S "trigger.server.start=%gperftools.start('$PROFILE') && ${TRIGGER_SERVER_START_APPEND:-true}" \
+  -S "trigger.server.stop=%gperftools.stop() && ${TRIGGER_SERVER_STOP_APPEND:-true}" \
   > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || STATUS=$?
 
 #

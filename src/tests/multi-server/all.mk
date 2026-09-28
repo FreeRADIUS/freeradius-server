@@ -23,8 +23,12 @@
 #   make -f src/tests/multi-server/all.mk test.multi-server.ci                    # CI subset, radenv image
 #   make -f src/tests/multi-server/all.mk test.multi-server.profiling             # all suites, profiling image
 #   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci          # CI subset, profiling image
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.<tool>      # all suites, one profiler
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.<tool>.ci   # CI subset, one profiler
 #   make -f src/tests/multi-server/all.mk test.multi-server.accept.short_ci       # single test
 #   make -f src/tests/multi-server/all.mk clean.test.multi-server                 # clean logs
+#
+# <tool> is one of PROFILING_TOOLS (valgrind, gperftools).
 #
 
 SHELL := /bin/bash
@@ -193,7 +197,7 @@ TEST_MULTI_SERVER_CONFIG_FILES := $(shell find $(DIR)/configs -type f) $(wildcar
 #  ${4} = .j2 source path
 #
 define TEST_MULTI_SERVER_RENDER
-$(OUTPUT)/$(MODE)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_STAMP)
+$(OUTPUT)/$(TEST_MULTI_SERVER_MODE_DIR)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_STAMP)
 	${Q}mkdir -p $$(@D)
 	${Q}echo "RENDER ${4} -> $$@"
 	${Q}set -e; \
@@ -325,7 +329,7 @@ define TEST_MULTI_SERVER
 TEST_MULTI_SERVER_PARAM_FILES.${1} := $$(wildcard $$(DIR)/tests/${1}/*.test.yml)
 TEST_MULTI_SERVER_TESTS.${1}       := $$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),test.multi-server.${1}.$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))
 
-$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/$(MODE)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
+$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/$(TEST_MULTI_SERVER_MODE_DIR)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
 endef
 
 ######################################################################
@@ -335,6 +339,8 @@ endef
 ######################################################################
 
 MODE ?= service
+
+TEST_MULTI_SERVER_MODE_DIR = $(MODE)$(if $(filter profiling,$(MODE)),/$(PROFILING_TOOL))
 
 #
 #  A suite is any subdirectory containing a template.yml.j2 file.
@@ -366,16 +372,33 @@ TEST_MULTI_SERVER_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_ALL_TESTS))
 test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
 
 #
-#  Profiling pass: same suites, profiling image, valgrind wrapper. Forces
-#  MODE=profiling via a recursive sub-make so the per-test recipes pick up
-#  the right image / env without needing the operator to set MODE manually.
+#  Profiling pass: same suites, profiling image, one target per tool in
+#  PROFILING_TOOLS.  Forces MODE=profiling via a recursive sub-make so the
+#  per-test recipes pick up the right image / env without needing the
+#  operator to set MODE manually.
+#
+#  ${1} = profiling tool (e.g. valgrind)
+#
+define TEST_MULTI_SERVER_PROFILING
+.PHONY: test.multi-server.profiling.${1} test.multi-server.profiling.${1}.ci
+test.multi-server.profiling.${1}: freeradius-prof.image
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=${1} PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+
+test.multi-server.profiling.${1}.ci: freeradius-prof.image
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=${1} PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+endef
+$(foreach t,$(PROFILING_TOOLS),$(eval $(call TEST_MULTI_SERVER_PROFILING,$t)))
+
+#
+#  The compose project name is <suite>-<test>-<mode>, so the tool passes
+#  run one after another rather than as parallel prerequisites.
 #
 .PHONY: test.multi-server.profiling test.multi-server.profiling.ci
 test.multi-server.profiling: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling
+	$(Q)$(foreach t,$(PROFILING_TOOLS),$(MAKE) -f $(DIR)/all.mk test.multi-server.profiling.$t && ) true
 
 test.multi-server.profiling.ci: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling
+	$(Q)$(foreach t,$(PROFILING_TOOLS),$(MAKE) -f $(DIR)/all.mk test.multi-server.profiling.$t.ci && ) true
 
 #
 #  Profiling image: build the standard freeradius4-radenv-profiling/<image>:<sha>
