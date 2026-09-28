@@ -197,6 +197,13 @@ Description: SMTP module for FreeRADIUS server
  The FreeRADIUS server can make calls to SMTP servers to authenticate users
  or send emails, and this module is necessary for that.
 
+Package: freeradius-ocsp
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, libfreeradius-curl (= ${binary:Version})
+Description: OCSP module for FreeRADIUS server
+ The FreeRADIUS server can make calls OCSP responders to validate certificates,
+ and this module is necessary for that.
+
 Package: freeradius-postgresql
 Architecture: any
 Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}

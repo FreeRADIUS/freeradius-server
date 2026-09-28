@@ -531,6 +531,15 @@ Requires: freeradius-libfreeradius-curl = %{version}
 %description rest
 This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
 
+%package ocsp
+Summary: OCSP support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-curl = %{version}
+
+%description ocsp
+This plugin provides the ability to validate certificates against OCSP endpoints for the FreeRADIUS server project.
+
 %if %{with rlm_unbound}
 %package unbound
 Summary: Unbound DNS support for FreeRADIUS
@@ -1378,6 +1387,10 @@ fi
 %files rest
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_rest.so
+
+%files ocsp
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_ocsp.so
 
 %if %{with rlm_unbound}
 %files unbound
