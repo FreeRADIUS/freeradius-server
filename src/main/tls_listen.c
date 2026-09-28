@@ -88,9 +88,11 @@ static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
  */
 static int null_socket_recv(rad_listen_t *listener)
 {
+	ssize_t slen;
 	uint8_t buffer[1024];
 
-	(void) read(listener->fd, buffer, sizeof(buffer));
+	slen = read(listener->fd, buffer, sizeof(buffer));
+	if (slen < 0) return -1;
 
 	return 0;
 }
