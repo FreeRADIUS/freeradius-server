@@ -202,6 +202,7 @@ conf_parser_t fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },
 
+	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_cache_config) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
@@ -257,6 +258,7 @@ conf_parser_t fr_tls_client_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
+	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_cache_config) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
@@ -301,31 +303,31 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 
 	case FR_TLS_CACHE_STATEFUL:
 		if (!conf->virtual_server) {
-			cf_log_err(ci, "A virtual_server must be set when cache.mode = \"stateful\"");
+			cf_log_err(ci, "A virtual_server must be set when session.mode = \"stateful\"");
 		error:
 			return -1;
 		}
 
 		if (!cf_section_find(conf->virtual_server, "load", "session")) {
 			cf_log_err(ci, "Specified virtual_server must contain a \"load session { ... }\" section "
-				   "when cache.mode = \"stateful\"");
+				   "when session.mode = \"stateful\"");
 			goto error;
 		}
 
 		if (!cf_section_find(conf->virtual_server, "store", "session")) {
 			cf_log_err(ci, "Specified virtual_server must contain a \"store session { ... }\" section "
-				   "when cache.mode = \"stateful\"");
+				   "when session.mode = \"stateful\"");
 			goto error;
 		}
 
 		if (!cf_section_find(conf->virtual_server, "clear", "session")) {
 			cf_log_err(ci, "Specified virtual_server must contain a \"clear session { ... }\" section "
-			           "when cache.mode = \"stateful\"");
+			           "when session.mode = \"stateful\"");
 			goto error;
 		}
 
 		if (conf->tls_min_version >= (float)1.3) {
-			cf_log_err(ci, "cache.mode = \"stateful\" is not supported with tls_min_version >= 1.3");
+			cf_log_err(ci, "session.mode = \"stateful\" is not supported with tls_min_version >= 1.3");
 			goto error;
 		}
 		break;
@@ -333,7 +335,7 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 	case FR_TLS_CACHE_AUTO:
 		if (!conf->virtual_server) {
 			WARN("A virtual_server must be provided for stateful caching. "
-			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+			     "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
 		cache_stateless:
 			cache_mode = FR_TLS_CACHE_STATELESS;
 			break;
@@ -341,25 +343,25 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 
 		if (!cf_section_find(conf->virtual_server, "load", "session")) {
 			cf_log_warn(ci, "Specified virtual_server missing \"load session { ... }\" section. "
-			            "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+			            "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
 			goto cache_stateless;
 		}
 
 		if (!cf_section_find(conf->virtual_server, "store", "session")) {
 			cf_log_warn(ci, "Specified virtual_server missing \"store session { ... }\" section. "
-			            "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+			            "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
 			goto cache_stateless;
 		}
 
 		if (!cf_section_find(conf->virtual_server, "clear", "session")) {
 			cf_log_warn(ci, "Specified virtual_server missing \"clear cache { ... }\" section. "
-				    "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+				    "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
 			goto cache_stateless;
 		}
 
 		if (conf->tls_min_version >= (float)1.3) {
 			cf_log_err(ci, "stateful session-resumption is not supported with tls_min_version >= 1.3. "
-			           "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+			           "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
 			goto cache_stateless;
 		}
 		break;
