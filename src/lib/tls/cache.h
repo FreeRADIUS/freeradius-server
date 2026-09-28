@@ -89,8 +89,17 @@ typedef struct {
 		fr_tls_cache_clear_state_t	state;		//!< Tracks delete requests from OpenSSL.
 		uint8_t				*id;		//!< Session ID to be deleted.
 	} clear;
+
+	bool		loaded;				//!< Whether `load session` ever returned a session.
+							///< The load state above is reset as the handshake
+							///< moves on, so it cannot answer this later.  A
+							///< failed session is only worth clearing when a
+							///< session was loaded, because `store session` is
+							///< not run on failure, and `load session` does not
+							///< remove what it read.
 } fr_tls_cache_t;
 
+#ifdef _TLS_PRIVATE
 /** Is any cache operation still waiting to run?
  *
  * The TLS library pushes one cache operation per call, but pushing a
@@ -110,6 +119,7 @@ static inline bool fr_tls_cache_pending(fr_tls_cache_t const *tls_cache)
 	       (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) ||
 	       (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED);
 }
+#endif
 
 #ifdef __cplusplus
 }
@@ -121,27 +131,35 @@ static inline bool fr_tls_cache_pending(fr_tls_cache_t const *tls_cache)
 #ifdef __cplusplus
 extern "C" {
 #endif
-uint8_t		*fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess);
-
-/** @name Keep or discard the session once the caller knows the outcome
+/** Cache the session now that the application has decided it's OK.
  *
  * Just finishing the TLS handshake is not always enough.  EAP runs
- * inner methods inside of the TLS tunnel which can fail.  These
- * functions mark the operations as pending, but don't actually do
- * anything.  Once the application makes a decision, the various
- * operations are run.
+ * inner methods inside of the TLS tunnel, and those methods can fail.
+ * The cache operations are marked as pending during the handshake.
+ * Calling this function tells the TLS state machine to actually store
+ * the session.
  *
- * Each of these functions runs all queued cache operations before they
- * return.  If the application skips these functions, any cached
- * session is left in place, and the TLS peer can still use the
- * session ticket to resume the session.
+ * All queued cache operations run before this returns.  An
+ * application MUST either call this function, or
+ * fr_tls_session_fail_session().  Skipping these functions means that
+ * either a good session isn't cached, or a bad session isn't cleared.
+ * The TLS peer might then be able to resume the session.
  *
- * @{
+ * We don't allow applications to call any cache fail function.  That
+ * is instead handled by fr_tls_session_fail_session().  That function
+ * both calls `fail session`, and then (if needed) `clear session`.
  */
 unlang_action_t	fr_tls_cache_store_session(request_t *request, fr_tls_session_t *tls_session);
 
+/*
+ *	The only public function is fr_tls_cache_store_session(),
+ *	which is needed for EAP.  Other applications MUST instead call
+ *	the various fr_session_*() functions.
+ */
+#ifdef _TLS_PRIVATE
+uint8_t		*fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess);
+
 unlang_action_t	fr_tls_cache_clear_session(request_t *request, fr_tls_session_t *tls_session);
-/** @} */
 
 int		fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
 
@@ -151,21 +169,7 @@ int		fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf, 
 
 unlang_action_t	fr_tls_cache_load_client_push(request_t *request, fr_tls_session_t *tls_session);
 
-/*
- *	Queueing cache work without running the work leaves a session in the
- *	cache which should not stay in the cache.  Running cache work without
- *	first deciding what the work should be leaves the same session in the
- *	cache.  Only the TLS library itself may queue work or run work, so both
- *	prototypes below need _TLS_CACHE_PRIVATE defined before any include.
- *	Callers outside the library call fr_tls_cache_store_session() or
- *	fr_tls_cache_clear_session(), declared earlier in this file, which
- *	pair the decision with running the cache operations that the decision
- *	queues.
- */
-#ifdef _TLS_CACHE_PRIVATE
 unlang_action_t	fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *tls_session);
-
-void		fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session);
 #endif
 
 #ifdef __cplusplus

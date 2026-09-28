@@ -28,7 +28,7 @@
  */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
-#define _TLS_CACHE_PRIVATE 1
+#define _TLS_PRIVATE 1
 
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>

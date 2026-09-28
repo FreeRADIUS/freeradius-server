@@ -446,7 +446,8 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 			 *	store, which is what rlm_eap_tls does when
 			 *	policy rejects.
 			 */
-			if (utt->reject && SSL_is_init_finished(utt->conn->tls_session->ssl)) {
+			if (utt->reject && (utt->connections == utt->count) &&
+			    SSL_is_init_finished(utt->conn->tls_session->ssl)) {
 				INFO("Rejecting the session after a successful handshake");
 				utt->conn->failed = true;
 			}
@@ -1357,8 +1358,11 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "                     rather than completing the handshake.  With -c 2 the first\n");
 	fprintf(output, "                     connection fills the session cache, so the alert then has a\n");
 	fprintf(output, "                     session to clear.  Used to test the alert and clear paths.\n");
-	fprintf(output, "  -R                 Reject the session once the handshake has succeeded, as policy\n");
-	fprintf(output, "                     would.  The cached session is then cleared rather than stored.\n");
+	fprintf(output, "  -R                 Reject the session once the handshake has succeeded on the last\n");
+	fprintf(output, "                     connection, as policy would.  The cached session is then cleared\n");
+	fprintf(output, "                     rather than stored.  With -c 2 the first connection fills the\n");
+	fprintf(output, "                     cache and the second resumes from it before being rejected, so\n");
+	fprintf(output, "                     the clear then has a loaded session to remove.\n");
 	fprintf(output, "  -c <count>         Run <count> connections, one after another.  Session resumption\n");
 	fprintf(output, "                     needs two: one to fill the cache, one to resume from it.\n");
 	fprintf(output, "  -C                 Check configuration and exit.\n");

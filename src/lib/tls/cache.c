@@ -28,7 +28,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
-#define _TLS_CACHE_PRIVATE 1
+#define _TLS_PRIVATE 1
 
 #include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/server/pair.h>
@@ -466,6 +466,13 @@ static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 
 	tls_cache->load.state = FR_TLS_CACHE_LOAD_RETRIEVED;
 	tls_cache->load.sess = sess;	/* This is consumed in tls_cache_load_cb */
+
+	/*
+	 *	Remember that we loaded an entry from the session
+	 *	cache.  If the session eventually fails, we then know
+	 *	that we have to remove the failed cache entry.
+	 */
+	tls_cache->loaded = true;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -1037,8 +1044,8 @@ unlang_action_t fr_tls_cache_store_session(request_t *request, fr_tls_session_t 
 
 /** Clear a session after a failed authentication
  *
- * Cancels any pending `store session`, and runs `clear session { ... }`
- * as the session might already be in the cache.
+ * Cancels any pending `store session`, and if necessary, remember to run `clear session { ... }` as the
+ * session might have been loaded from the cache.
  *
  * @note The caller MUST set the caller's own unlang result before calling
  *	 fr_tls_cache_clear_session().  A pushed child returns to the
@@ -1053,7 +1060,68 @@ unlang_action_t fr_tls_cache_store_session(request_t *request, fr_tls_session_t 
  */
 unlang_action_t fr_tls_cache_clear_session(request_t *request, fr_tls_session_t *tls_session)
 {
-	fr_tls_cache_deny(request, tls_session);
+	fr_tls_cache_t *tls_cache = tls_session->cache;
+	bool bound;
+
+	/*
+	 *	No caching allowed, so there is nothing to deny, and
+	 *	nothing to clear.
+	 */
+	if (!tls_cache) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	bound = fr_tls_session_request_bound(tls_session->ssl);
+
+	/*
+	 *	This is necessary to allow this function to
+	 *	be called inside and outside of OpenSSL handshake
+	 *	code.
+	 */
+	if (!bound) {
+		fr_tls_session_request_bind(tls_session->ssl, request);
+
+	} else {
+		/*
+		 *	If there's already a request bound, it better be
+		 *      the one passed to this function.
+		 */
+		fr_assert(fr_tls_session_request(tls_session->ssl) == request);
+	}
+
+	/*
+	 *	SSL_CTX_remove_session() frees the previously loaded session in tls_session. If the reference
+	 *	count reaches zero the SSL_CTX_sess_remove_cb is called, which in our code is
+	 *	tls_cache_delete_cb.  HOWEVER, we've already set SSL_SESS_CACHE_NO_INTERNAL, which means that
+	 *	SSL_CTX_remove_session() largely does nothing, and skips our callback.  These checks are
+	 *	largely for paranoia, just in case the internal OpenSSL cache is somehow re-enabled.
+	 *
+	 *	tls_cache_delete_cb calls tls_cache_delete_request to record the ID of tls_session->session in
+	 *	our pending cache state structure.
+	 *
+	 *	tls_cache_delete_request does NOT immediately call `clear session {}` as that must
+	 *	be done in a code area which can return a yield to the interpreter.
+	 */
+	if (tls_session->session) {
+		SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
+
+		/*
+		 *	Manually call tls_cache_delete_request(), just in case.  That function clears
+		 *	tls_session->session, so it's idempotent.  It clears tls_session->session, so it's
+		 *	safe to call twice.  If it's called via the above path, then it clears the session
+		 *	pointer, which means that we don't call it again.
+		 */
+		if (tls_session->session && tls_cache->loaded) tls_cache_delete_request(tls_session, tls_session->session);
+	}
+	tls_session->allow_session_resumption = false;
+
+	/*
+	 *	Clear any pending store requests.
+	 */
+	tls_cache_store_state_reset(request, tls_cache);
+
+	/*
+	 *	The request wasn't bound when we were called, so unbind it now.
+	 */
+	if (!bound) fr_tls_session_request_unbind(tls_session->ssl);
 
 	return tls_cache_drain_push(request, tls_session);
 }
@@ -1413,88 +1481,6 @@ int fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
 	RDEBUG2("Allowing future session-resumption");
 
 	return 0;
-}
-
-/** Prevent a pending TLS session being persisted, and clear any resumed sessions
- *
- * Usually called if authentication has failed for some reason.
- *
- * Will clear any serialized data out of the tls_session structure
- * and should result in tls_cache_delete_cb being called.
- *
- * @note Calling this function will immediately free the memory used
- *   by the session, but not the external persisted copy of the
- *   session.  fr_tls_cache_deny() only queues the clear.
- *   fr_tls_cache_clear_session() runs the queued clear afterwards,
- *   from a frame which can yield.  fr_tls_cache_deny() is therefore
- *   private to the TLS library.  Callers outside the TLS library call
- *   fr_tls_cache_clear_session(), which queues the clear and runs the
- *   queued clear.
- *
- * @param[in] request		to use for running any async cache actions.
- * @param[in] tls_session	on which to prevent resumption.
- */
-void fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session)
-{
-	fr_tls_cache_t *tls_cache = tls_session->cache;
-	bool bound;
-
-	if (!tls_cache) return;		/* No caching allowed, so nothing to deny */
-
-	bound = fr_tls_session_request_bound(tls_session->ssl);
-
-	/*
-	 *	This is necessary to allow this function to
-	 *	be called inside and outside of OpenSSL handshake
-	 *	code.
-	 */
-	if (!bound) {
-		fr_tls_session_request_bind(tls_session->ssl, request);
-
-	} else {
-		/*
-		 *	If there's already a request bound, it better be
-		 *      the one passed to this function.
-		 */
-		fr_assert(fr_tls_session_request(tls_session->ssl) == request);
-	}
-
-	/*
-	 *	SSL_CTX_remove_session() frees the previously loaded session in tls_session. If the reference
-	 *	count reaches zero the SSL_CTX_sess_remove_cb is called, which in our code is
-	 *	tls_cache_delete_cb.  HOWEVER, we've already set SSL_SESS_CACHE_NO_INTERNAL, which means that
-	 *	SSL_CTX_remove_session() largely does nothing, including skipping our callback.
-	 *
-	 *	tls_cache_delete_cb calls tls_cache_delete_request to record the ID of tls_session->session in
-	 *	our pending cache state structure.
-	 *
-	 *	tls_cache_delete_request does NOT immediately call the `cache clear {}` section as that must
-	 *	be done in a code area which is prepared to yield.
-	 *
-	 *	The queue MUST be run afterwards to actually clear external data.
-	 */
-	if (tls_session->session) {
-		SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
-
-		/*
-		 *	Manually call tls_cache_delete_request(), just in case.  That function clears
-		 *	tls_session->session, so it's idempotent.  It clears tls_session->session, so it's
-		 *	safe to call twice.  If it's called via the above path, then it clears the session
-		 *	pointer, which means that we don't call it again.
-		 */
-		if (tls_session->session) tls_cache_delete_request(tls_session, tls_session->session);
-	}
-	tls_session->allow_session_resumption = false;
-
-	/*
-	 *	Clear any pending store requests.
-	 */
-	tls_cache_store_state_reset(fr_tls_session_request(tls_session->ssl), tls_cache);
-
-	/*
-	 *	Unbind the request last...
-	 */
-	if (!bound) fr_tls_session_request_unbind(tls_session->ssl);
 }
 
 /** Cleanup any memory allocated by OpenSSL

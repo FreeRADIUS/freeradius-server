@@ -29,6 +29,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
+#define _TLS_PRIVATE 1
 
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/tls/strerror.h>

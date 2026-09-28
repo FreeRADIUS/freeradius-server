@@ -115,12 +115,18 @@ if grep -q "# store session" "$LOG"; then
 fi
 
 #
-#  fr_tls_cache_clear_session() also requests the clear, and runs the
-#  clear session { ... } section itself.  Nothing else in the test suite
-#  reaches that section.
+#  clear session { ... } must not run either.  Nothing was loaded from the
+#  cache on this connection, the handshake is the first one, and the store
+#  was cancelled just above.  There is therefore no cache entry to remove,
+#  and fr_tls_cache_clear_session() drops the queued clear rather than
+#  running policy against an entry which does not exist.
 #
-grep -q "# clear session" "$LOG" || \
-	fail "clear session did not run, fr_tls_cache_clear_session() did not request the clear"
+#  The case where the clear does run is a session which was loaded and then
+#  failed, which is what fail_resumed.sh covers.
+#
+if grep -q "# clear session" "$LOG"; then
+	fail "clear session ran, although no session was ever loaded from the cache"
+fi
 
 #
 #  Any assertion failure fails this test.  The assertion this test can trip is
