@@ -660,7 +660,7 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
 	 *
 	 *	Return how many bytes remain in the buffer.
 	 */
-	if (in->is_const || !in->extend) {
+	if (in->is_const || !in->extend || (status && (*status = FR_DBUFF_NOT_EXTENDABLE))) {
 	not_extendable:
 		if (status) *status = FR_DBUFF_NOT_EXTENDABLE;
 		return remaining;
