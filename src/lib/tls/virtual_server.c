@@ -82,7 +82,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 	if (unlang_subrequest_child_push(NULL, child,
 					 tls_session,
 					 true, UNLANG_SUB_FRAME) < 0) {
-		fr_assert(!request_is_detached(child));
+		fr_assert(!request_is_detachable(child));
 		return UNLANG_ACTION_FAIL;
 	}
 
@@ -106,7 +106,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 		 */
 	error:
 		unlang_interpet_frame_discard(child->parent);
-		fr_assert(!request_is_detached(child));
+		fr_assert(!request_is_detachable(child));
 		return UNLANG_ACTION_FAIL;
 	}
 

@@ -2217,7 +2217,7 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 		 *	The child hasn't run, so we shouldn't call
 		 *	unlang_subrequest_detach_and_free().
 		 */
-		fr_assert(!request_is_detached(child));
+		fr_assert(!request_is_detachable(child));
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -2235,7 +2235,7 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 		 */
 	error:
 		unlang_interpet_frame_discard(request);
-		fr_assert(!request_is_detached(child));
+		fr_assert(!request_is_detachable(child));
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
