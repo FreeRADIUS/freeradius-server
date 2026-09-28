@@ -34,6 +34,7 @@ extern "C" {
  */
 typedef enum {
 	UNLANG_ACTION_FAIL = -1,		//!< Encountered an unexpected error.
+						/* 0 interntionally left unused to avoid initialisation errors */
 	UNLANG_ACTION_CALCULATE_RESULT = 1,	//!< Calculate a new section #rlm_rcode_t value.
 	UNLANG_ACTION_EXECUTE_NEXT,    		//!< Execute the next #unlang_t.
 	UNLANG_ACTION_PUSHED_CHILD,		//!< #unlang_t pushed a new child onto the stack,
