@@ -26,6 +26,9 @@
 
 SHELL := /bin/bash
 
+# Set default mode
+MODE ?= service
+
 #
 #  Allow for stand-alone builds from the local directory.
 #
@@ -51,6 +54,17 @@ PROFILING_RESULT_ROOT  := $(abspath $(top_srcdir)/prof-results)
 #  valgrind wrapper reads.
 #
 PROFILING_RESULT_DIR   := /var/lib/prof-results
+#
+#  Path inside the freeradius container that the proto_load writes its
+#  statistics CSV to.  A profiling run keeps the file with the profiling
+#  results, otherwise it is saved in the server configuration
+#  directory mounted by the container.
+#
+ifeq "$(MODE)" "profiling"
+LOADGEN_STATS_DIR      := $(PROFILING_RESULT_DIR)
+else
+LOADGEN_STATS_DIR      := /etc/freeradius/stats
+endif
 #
 #  Profilers whose capture scripts are copied into the container and mounted
 #  at /usr/local/bin.  PROFILING_TOOL names the one a MODE=profiling run
@@ -176,6 +190,7 @@ $(OUTPUT)/$(MODE)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_
 	    --define project="${1}-${2}-$(MODE)" \
 	    --define mode="$(MODE)" \
 	    --define profiling_result_dir="$(PROFILING_RESULT_DIR)" \
+	    --define loadgen_stats_dir="$(LOADGEN_STATS_DIR)" \
 	    --define profiling_tools="$(PROFILING_TOOLS)" \
 	    >> "$$(@D)/config_builder.log" 2>&1
 endef
@@ -303,8 +318,6 @@ endef
 #  Discover suites and generate targets
 #
 ######################################################################
-
-MODE ?= service
 
 #
 #  A suite is any subdirectory containing a template.yml.j2 file.
