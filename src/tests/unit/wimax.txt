@@ -1,3 +1,7 @@
+encode WiMAX-PFDv2-Packet-Data-Flow-Id = 513, WiMAX-PFDv2-Classifier-Id = 9, WiMAX-PFDv2-Src-IP-Address = 198.51.100.7, WiMAX-PFDv2-Src-Port = 8080, WiMAX-PFDv2-Src-MAC-Address = 02:04:06:08:0a:0c, WiMAX-PFDv2-Eth-VLAN-Id-S-VID = 100
+data 1a 30 00 00 60 b5 54 2a 00 01 04 02 01 09 23 01 03 09 05 14 01 06 c6 33 64 07 04 04 1f 90 08 08 02 04 06 08 0a 0c 09 0a 02 08 01 06 00 00 00 64
+
+
 #
 #  Test vectors for WiMAX attributes.
 #
@@ -169,3 +173,9 @@ data 1a 14 00 00 14 cb 01 0e 00 03 0b 04 09 67 61 72 62 61 67 65
 
 decode -
 data Telrad-Reference-QOS-Profile-Name = "garbage"
+
+encode WiMAX-PFDv2-Packet-Data-Flow-Id = 513, WiMAX-PFDv2-Classifier-Id = 9, WiMAX-PFDv2-Src-IP-Address = 198.51.100.7, WiMAX-PFDv2-Src-Port = 8080, WiMAX-PFDv2-Src-MAC-Address = 02:04:06:08:0a:0c, WiMAX-PFDv2-Eth-VLAN-Id-S-VID = 100
+data 1a 30 00 00 60 b5 54 2a 00 01 04 02 01 09 23 01 03 09 05 14 01 06 c6 33 64 07 04 04 1f 90 08 08 02 04 06 08 0a 0c 09 0a 02 08 01 06 00 00 00 64
+
+decode -
+data WiMAX-PFDv2-Packet-Data-Flow-Id = 513, WiMAX-PFDv2-Classifier-Id = 9, WiMAX-PFDv2-Src-IP-Address = 198.51.100.7, WiMAX-PFDv2-Src-Port = 8080, WiMAX-PFDv2-Src-MAC-Address = 02:04:06:08:0a:0c, WiMAX-PFDv2-Eth-VLAN-Id-S-VID = 100

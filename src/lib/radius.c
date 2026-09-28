@@ -3478,7 +3478,7 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 			fr_pair_list_free(&head);
 			return -1;
 		}
-		if (*tail) tail = &((*tail)->next);
+		while (*tail) tail = &((*tail)->next);
 		data += data[1];
 	}
 
@@ -4016,7 +4016,7 @@ create_attrs:
 		/*
 		 *	Vendors can send zero-length VSAs.
 		 */
-		if (*tail) tail = &((*tail)->next);
+		while (*tail) tail = &((*tail)->next);
 
 		data += vsa_len;
 		attrlen -= vsa_len;
@@ -4556,6 +4556,8 @@ alloc_raw:
 
 done:
 	vp->type = VT_DATA;
+	VERIFY_VP(vp);
+
 	*pvp = vp;
 
 	return attrlen;
