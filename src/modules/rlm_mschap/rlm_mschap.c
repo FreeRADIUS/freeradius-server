@@ -124,9 +124,9 @@ static const conf_parser_t module_config[] = {
 	/*
 	 *	These are now in a subsection above.
 	 */
-	{ FR_CONF_DEPRECATED("winbind_username", rlm_mschap_t, wb_username) },
+	{ FR_CONF_V3_DEPRECATED("winbind_username", rlm_mschap_t, wb_username) },
 #ifdef WITH_AUTH_WINBIND
-	{ FR_CONF_DEPRECATED("winbind_retry_with_normalised_username", rlm_mschap_t, wb_retry_with_normalised_username) },
+	{ FR_CONF_V3_DEPRECATED("winbind_retry_with_normalised_username", rlm_mschap_t, wb_retry_with_normalised_username) },
 #endif
 	CONF_PARSER_TERMINATOR
 };

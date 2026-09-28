@@ -259,8 +259,8 @@ static const conf_parser_t server_config[] = {
 	{ FR_CONF_POINTER("interpret", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) interpret_config, .name2 = CF_IDENT_ANY },
 #endif
 
-	{ FR_CONF_DEPRECATED("max_requests", main_config_t, worker.max_requests) },
-	{ FR_CONF_DEPRECATED("max_request_time", main_config_t, worker.max_request_time) },
+	{ FR_CONF_V3_DEPRECATED("max_requests", main_config_t, worker.max_requests) },
+	{ FR_CONF_V3_DEPRECATED("max_request_time", main_config_t, worker.max_request_time) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -350,11 +350,11 @@ static const conf_parser_t switch_users_config[] = {
 	 *	For backwards compatibility.
 	 */
 #ifdef HAVE_SETUID
-	{ FR_CONF_DEPRECATED("user", main_config_t, uid) },
-	{ FR_CONF_DEPRECATED("group", main_config_t, gid) },
+	{ FR_CONF_V3_DEPRECATED("user", main_config_t, uid) },
+	{ FR_CONF_V3_DEPRECATED("group", main_config_t, gid) },
 #endif
-	{ FR_CONF_DEPRECATED("chroot", main_config_t, NULL) },
-	{ FR_CONF_DEPRECATED("allow_core_dumps", main_config_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("chroot", main_config_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("allow_core_dumps", main_config_t, NULL) },
 	CONF_PARSER_TERMINATOR
 };
 

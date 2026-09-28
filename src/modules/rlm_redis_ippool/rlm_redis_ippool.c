@@ -163,9 +163,9 @@ static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", rlm_redis_ippool_t, wait_timeout), .dflt = "1s" },
 
-	{ FR_CONF_DEPRECATED("ip_address", rlm_redis_ippool_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("ip_address", rlm_redis_ippool_t, NULL) },
 
-	{ FR_CONF_DEPRECATED("reply_attr", rlm_redis_ippool_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("reply_attr", rlm_redis_ippool_t, NULL) },
 
 	{ FR_CONF_OFFSET("ipv4_integer", rlm_redis_ippool_t, ipv4_integer) },
 	{ FR_CONF_OFFSET("copy_on_update", rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },

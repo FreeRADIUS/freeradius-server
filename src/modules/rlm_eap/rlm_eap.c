@@ -69,10 +69,10 @@ static const conf_parser_t module_config[] = {
 
 	{ FR_CONF_OFFSET("ignore_unknown_eap_types", rlm_eap_t, ignore_unknown_types), .dflt = "no" },
 
-	{ FR_CONF_DEPRECATED("timer_expire", rlm_eap_t, timer_limit), .dflt = "60" },
-	{ FR_CONF_DEPRECATED("cisco_accounting_username_bug", rlm_eap_t,
+	{ FR_CONF_V3_DEPRECATED("timer_expire", rlm_eap_t, timer_limit), .dflt = "60" },
+	{ FR_CONF_V3_DEPRECATED("cisco_accounting_username_bug", rlm_eap_t,
 			     cisco_accounting_username_bug), .dflt = "no" },
-	{ FR_CONF_DEPRECATED("max_sessions", rlm_eap_t, max_sessions), .dflt = "2048" },
+	{ FR_CONF_V3_DEPRECATED("max_sessions", rlm_eap_t, max_sessions), .dflt = "2048" },
 	CONF_PARSER_TERMINATOR
 };
 

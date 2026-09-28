@@ -132,11 +132,11 @@ static const conf_parser_t module_config[] = {
 	/*
 	 *	Deprecated config items
 	 */
-	{ FR_CONF_DEPRECATED("permissions", rlm_linelog_t, file.permissions) },
-	{ FR_CONF_DEPRECATED("group", rlm_linelog_t, file.group_str) },
+	{ FR_CONF_V3_DEPRECATED("permissions", rlm_linelog_t, file.permissions) },
+	{ FR_CONF_V3_DEPRECATED("group", rlm_linelog_t, file.group_str) },
 
-	{ FR_CONF_DEPRECATED("syslog_facility", rlm_linelog_t, syslog.facility) },
-	{ FR_CONF_DEPRECATED("syslog_severity", rlm_linelog_t, syslog.severity) },
+	{ FR_CONF_V3_DEPRECATED("syslog_facility", rlm_linelog_t, syslog.facility) },
+	{ FR_CONF_V3_DEPRECATED("syslog_severity", rlm_linelog_t, syslog.severity) },
 	CONF_PARSER_TERMINATOR
 };
 

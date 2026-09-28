@@ -171,7 +171,7 @@ static const conf_parser_t xlat_config[] = {
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_DEPRECATED("connect_timeout", rlm_rest_t, connect_timeout) },
+	{ FR_CONF_V3_DEPRECATED("connect_timeout", rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", rlm_rest_t, connect_proxy), .func = rest_proxy_parse },
 	{ FR_CONF_OFFSET("http_negotiation", rlm_rest_t, http_negotiation),
 	  .func = cf_table_parse_int,

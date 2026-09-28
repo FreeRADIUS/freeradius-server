@@ -71,8 +71,8 @@ typedef struct {
 
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", rlm_eap_ttls_t, tls_conf_name) },
-	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", rlm_eap_ttls_t, NULL), .dflt = "no" },
-	{ FR_CONF_DEPRECATED("use_tunneled_reply", rlm_eap_ttls_t, NULL), .dflt = "no" },
+	{ FR_CONF_V3_DEPRECATED("copy_request_to_tunnel", rlm_eap_ttls_t, NULL), .dflt = "no" },
+	{ FR_CONF_V3_DEPRECATED("use_tunneled_reply", rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_ttls_t, virtual_server),
 				    .func = virtual_server_cf_parse,
 				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "radius"} },

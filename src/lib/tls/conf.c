@@ -101,9 +101,9 @@ static conf_parser_t tls_cache_config[] = {
 	/*
 	 *	Deprecated
 	 */
-	{ FR_CONF_DEPRECATED("enable", fr_tls_cache_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("max_entries", fr_tls_cache_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("persist_dir", fr_tls_cache_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("enable", fr_tls_cache_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("max_entries", fr_tls_cache_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("persist_dir", fr_tls_cache_conf_t, NULL) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -158,10 +158,10 @@ conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET_SUBSECTION("chain", CONF_FLAG_MULTI, fr_tls_conf_t, chains, tls_chain_config),
 	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t", .name2 = CF_IDENT_ANY },
 
-	{ FR_CONF_DEPRECATED("pem_file_type", fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("certificate_file", fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("private_key_password", fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("private_key_file", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("pem_file_type", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("certificate_file", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("private_key_password", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("private_key_file", fr_tls_conf_t, NULL) },
 
 	{ FR_CONF_OFFSET("verify_depth", fr_tls_conf_t, verify_depth), .dflt = "0" },
 	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, ca_path) },
@@ -202,8 +202,8 @@ conf_parser_t fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },
 
-	{ FR_CONF_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
-	{ FR_CONF_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
+	{ FR_CONF_V3_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
+	{ FR_CONF_V3_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -224,10 +224,10 @@ conf_parser_t fr_tls_client_config[] = {
 
 	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_cache_config) },
 
-	{ FR_CONF_DEPRECATED("pem_file_type", fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("certificate_file", fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("private_key_password", fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("private_key_file", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("pem_file_type", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("certificate_file", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("private_key_password", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("private_key_file", fr_tls_conf_t, NULL) },
 
 #ifdef PSK_MAX_IDENTITY_LEN
 	{ FR_CONF_OFFSET("psk_identity", fr_tls_conf_t, psk_identity) },
@@ -257,8 +257,8 @@ conf_parser_t fr_tls_client_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
-	{ FR_CONF_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
-	{ FR_CONF_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
+	{ FR_CONF_V3_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
+	{ FR_CONF_V3_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
 };
 

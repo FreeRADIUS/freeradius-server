@@ -21,7 +21,6 @@
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2000,2006 The FreeRADIUS server project
- * @copyright 2000 Miquel van Smoorenburg (miquels@cistron.nl)
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
@@ -528,7 +527,7 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, void *base,
 						        CONF_SECTION *cs, conf_parser_t const *rule)
 {
-	bool		required, deprecated, was_dflt = false;
+	bool		required, v3_deprecated, was_dflt = false;
 	size_t		count = 0;
 	CONF_PAIR	*cp = NULL, *dflt_cp = NULL;
 
@@ -552,7 +551,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 	}
 
 	required = fr_rule_required(rule);
-	deprecated = fr_rule_deprecated(rule);
+	v3_deprecated = fr_rule_v3_deprecated(rule);
 
 	cp = cf_pair_find(cs, rule->name1);
 	if (cp && cp->item.parsed) {
@@ -578,7 +577,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		 *	default pair.
 		 */
 		if (!count) {
-			if (deprecated) return 0;
+			if (v3_deprecated) return 0;
 
 			if (!fr_rule_dflt(rule)) {
 				if (required) {
@@ -600,7 +599,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			}
 		}
 
-		if (deprecated) {
+		if (v3_deprecated) {
 			/*
 			 *	Emit the deprecated warning in the
 			 *	context of the first pair.
@@ -608,8 +607,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			cp = cf_pair_find(cs, rule->name1);
 			fr_assert(cp);
 
-		deprecated:
-			cf_log_err(cp, "Configuration pair \"%s\" is deprecated", cp->attr);
+		v3_deprecated:
+			cf_log_err(cp, "Configuration pair \"%s\" is from v3, and cannot be used in v4", cp->attr);
 			return -2;
 		}
 
@@ -682,7 +681,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		cp = cf_pair_find(cs, rule->name1);
 		if (!cp) {
-			if (deprecated) return 0;
+			if (v3_deprecated) return 0;
 
 			if (!fr_rule_dflt(rule)) {
 				if (required) goto need_value;
@@ -709,7 +708,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			cf_log_err(cf_pair_to_item(next), "Invalid duplicate configuration item '%s'", rule->name1);
 			return -1;
 		}
-		if (deprecated) goto deprecated;
+		if (v3_deprecated) goto v3_deprecated;
 
 		cf_pair_debug_log(cs, cp, rule);
 
@@ -774,7 +773,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  *	- ``flag`` #CONF_FLAG_TMPL		- @copybrief CONF_FLAG_TMPL
  *					  	  Feeds the value into #tmpl_afrom_substr. Value can be
  *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
- *	- ``flag`` #FR_TYPE_DEPRECATED		- @copybrief FR_TYPE_DEPRECATED
+ *	- ``flag`` #CONF_FLAG_V3_DEPRECATED	- @copybrief CONF_FLAG_V3_DEPRECATED
  *	- ``flag`` #CONF_FLAG_REQUIRED		- @copybrief CONF_FLAG_REQUIRED
  *	- ``flag`` #CONF_FLAG_ATTRIBUTE		- @copybrief CONF_FLAG_ATTRIBUTE
  *	- ``flag`` #CONF_FLAG_SECRET		- @copybrief CONF_FLAG_SECRET
@@ -1209,7 +1208,7 @@ static int cf_section_parse_rule(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, 
 		sub_base += rule->offset;
 
 		for (rule_p = rule->subcs; rule_p->name1; rule_p++) {
-			if (rule_p->flags & CONF_FLAG_DEPRECATED) continue;	/* Skip deprecated */
+			if (fr_rule_v3_deprecated(rule_p)) continue;	/* Skip v3 deprecated */
 
 			ret = cf_section_parse_rule(ctx, sub_base, cs, rule_p);
 			if (ret < 0) return ret;
@@ -1702,7 +1701,7 @@ int _cf_section_rules_push(CONF_SECTION *cs, conf_parser_t const *rules, char co
 	if (!cs || !rules) return 0;
 
 	for (rule_p = rules; rule_p->name1; rule_p++) {
-		if (rule_p->flags & CONF_FLAG_DEPRECATED) continue;	/* Skip deprecated */
+		if (fr_rule_v3_deprecated(rule_p)) continue;	/* Skip v3 deprecated */
 		if (_cf_section_rule_push(cs, rule_p, filename, lineno) < 0) return -1;
 	}
 
@@ -1849,7 +1848,7 @@ int cf_null_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *paren
  */
 static fr_table_num_indexed_bit_pos_t const cf_parser_flag_table[] = {
 	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_SUBSECTION),
-	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_DEPRECATED),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_V3_DEPRECATED),
 	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_REQUIRED),
 	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_ATTRIBUTE),
 	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_SECRET),

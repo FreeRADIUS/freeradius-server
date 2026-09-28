@@ -400,15 +400,19 @@ _Generic(&(_ct), \
 	.flags = CONF_FLAG_SUBSECTION | CONF_FLAG_NO_OUTPUT | (_flags), \
 	.subcs = _subcs
 
-/** conf_parser_t entry which raises an error if a matching CONF_PAIR is found
+/** conf_parser_t entry which raises an error if a deprecated v3 item is found
+ *
+ * We don't want to include v3 compatibility support forever.  But we do want to
+ * catch the cases where people use the v3 config.  So we add CONF_PARSER entries
+ * for the old config, and then produce errors when they're seen.
  *
  * @param[in] _name		of pair to search for.
  * @param[in] _struct		where the result was previously written.
  * @param[in] _field		in the struct where the result was previously written.
  */
-#define FR_CONF_DEPRECATED(_name, _struct, _field) \
+#define FR_CONF_V3_DEPRECATED(_name, _struct, _field) \
 	.name1 = _name, \
-	.flags = CONF_FLAG_DEPRECATED
+	.flags = CONF_FLAG_V3_DEPRECATED
 
 /** @name #conf_parser_t type flags
  *
@@ -424,7 +428,7 @@ typedef enum CC_HINT(flag_enum) {
 									///< configuration structure, the configuration
 									///< file routines MAY just parse it directly into
 									///< user-supplied variables.
-	CONF_FLAG_DEPRECATED 		= (1 << 10), 			//!< If a matching #CONF_PAIR is found,
+	CONF_FLAG_V3_DEPRECATED 	= (1 << 10), 			//!< If a matching #CONF_PAIR is found,
 									//!< error out with a deprecated message.
 	CONF_FLAG_REQUIRED		= (1 << 11), 			//!< Error out if no matching #CONF_PAIR
 									//!< is found, and no dflt value is set.
@@ -477,7 +481,7 @@ DIAG_ON(attributes)
  *
  * @{
  */
-#define fr_rule_deprecated(_rule)	((_rule)->flags & CONF_FLAG_DEPRECATED)
+#define fr_rule_v3_deprecated(_rule)	((_rule)->flags & CONF_FLAG_V3_DEPRECATED)
 
 #define fr_rule_required(_rule)		((_rule)->flags & CONF_FLAG_REQUIRED)
 
