@@ -82,9 +82,16 @@ static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
  *	without the mutex that protects tls_socket_close(), so another
  *	thread can close the socket after the check, but before the
  *	read.
+ *
+ *	The read function discards the read data, until such time as the
+ *	event loop is updated to remove the socket from the select() loop.
  */
-static int null_socket_recv(UNUSED rad_listen_t *listener)
+static int null_socket_recv(rad_listen_t *listener)
 {
+	uint8_t buffer[1024];
+
+	(void) read(listener->fd, buffer, sizeof(buffer));
+
 	return 0;
 }
 
