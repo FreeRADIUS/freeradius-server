@@ -1288,7 +1288,6 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 {
 	ssize_t ret;
 	PW_TYPE type;
-	VERIFY_VP(vp);
 
 	if (!value) return -1;
 
