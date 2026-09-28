@@ -1136,8 +1136,6 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	request_t	*child;
 	fr_pair_t	*vp;
 	unlang_action_t	ua;
-	uint8_t const	*session_id;
-	unsigned int	len;
 
 	fr_assert(conf->virtual_server);
 
@@ -1150,10 +1148,10 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
 	vp->vp_uint32 = enum_tls_packet_type_establish_session->vb_uint32;
 
-	session_id = SSL_SESSION_get_id(tls_session->session, &len);
-	if (session_id && (len > 0)) {
+	if (!fr_type_is_null(tls_session->session_id.type)) {
 		MEM(pair_append_request(&vp, attr_tls_session_id) >= 0);
-		fr_pair_value_memdup(vp, session_id, len, false);
+		fr_pair_value_memdup(vp, tls_session->session_id.vb_octets,
+				     tls_session->session_id.vb_length, false);
 	}
 
 	/*
@@ -1193,8 +1191,6 @@ static unlang_action_t tls_fail_session_push(request_t *request, fr_tls_conf_t *
 	request_t	*child;
 	fr_pair_t	*vp;
 	unlang_action_t	ua;
-	uint8_t const	*session_id;
-	unsigned int	len;
 
 	fr_assert(conf->virtual_server);
 
@@ -1208,12 +1204,10 @@ static unlang_action_t tls_fail_session_push(request_t *request, fr_tls_conf_t *
 	 *	A session which failed before OpenSSL established one has
 	 *	no ID to report.
 	 */
-	if (tls_session->session) {
-		session_id = SSL_SESSION_get_id(tls_session->session, &len);
-		if (session_id && (len > 0)) {
-			MEM(pair_append_request(&vp, attr_tls_session_id) >= 0);
-			fr_pair_value_memdup(vp, session_id, len, false);
-		}
+	if (!fr_type_is_null(tls_session->session_id.type)) {
+		MEM(pair_append_request(&vp, attr_tls_session_id) >= 0);
+		fr_pair_value_memdup(vp, tls_session->session_id.vb_octets,
+				     tls_session->session_id.vb_length, false);
 	}
 
 	ua = fr_tls_call_push(child, tls_fail_session_result, conf, tls_session, false);
@@ -1348,6 +1342,9 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 		 */
 		if (!tls_session->session) {
 			tls_session->session = SSL_get_session(tls_session->ssl);
+			if (tls_session->session) {
+				tls_session_id_cache(tls_session, tls_session->session);
+			}
 			if (!tls_session->session) {
 				REDEBUG("Failed getting TLS session");
 				tls_session->result = FR_TLS_RESULT_ERROR;
@@ -1847,6 +1844,8 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 
 	talloc_set_destructor(tls_session, _fr_tls_session_free);
 	fr_pair_list_init(&tls_session->extra_pairs);
+
+	fr_value_box_init_null(&tls_session->session_id);
 
 	/*
 	 *	Add the message callback to identify what type of

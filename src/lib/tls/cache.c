@@ -83,35 +83,32 @@ uint8_t *fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess)
 	return talloc_typed_memdup(ctx, id, len);
 }
 
-/** Retrieve session ID (in binary form), and assign it to a box
+/** Cache the ID of a session, if it is not cached already
  *
- * @note Box will be reinitialised
+ * A session ID is fixed for the life of the session, so whichever code path
+ * sees the session first records the ID, and everything after that logs the
+ * cached copy instead of asking OpenSSL again.
  *
- * @param[out] out	Where to write the session ID.
- * @param[in] sess	to retrieve the ID for.
+ * @param[in] tls_session	to cache the ID in.
+ * @param[in] sess		to take the ID from.  May be NULL.
  */
-static inline CC_HINT(always_inline, nonnull)
-int fr_tls_cache_id_to_box_shallow(fr_value_box_t *out, SSL_SESSION *sess)
+void tls_session_id_cache(fr_tls_session_t *tls_session, SSL_SESSION *sess)
 {
 	unsigned int	len;
 	uint8_t const	*id;
 
+	if (!sess || !fr_type_is_null(tls_session->session_id.type)) return;
+
 	id = SSL_SESSION_get_id(sess, &len);
-	if (unlikely(!id)) return -1;
+	if (unlikely(!id)) return;
 
-	fr_value_box_memdup_shallow(out, NULL, id, len, true);
+	MEM(fr_value_box_memdup(tls_session, &tls_session->session_id, NULL, id, len, true) == 0);
 
-	return 0;
+	/*
+	 *	Copy the ID to the cache, instead of pointing the cache at the session.
+	 */
+	if (tls_session->cache) tls_session->cache->session_id = &tls_session->session_id;
 }
-
-/** Create a temporary boxed version of the session ID
- *
- * @param[out] _box to place on the stack.
- * @param[in] _sess to write to box.
- */
-#define SESSION_ID(_box, _sess) \
-fr_value_box_t _box; \
-if (unlikely(fr_tls_cache_id_to_box_shallow(&_box, _sess) < 0)) fr_value_box_init_null(&_box)
 
 
 /** Add an attribute specifying the session id for the operation to be performed with.
@@ -139,8 +136,7 @@ void _tls_cache_load_state_reset(request_t *request, fr_tls_cache_t *cache, char
 {
 	if (cache->load.sess) {
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
-			SESSION_ID(sess_id, cache->load.sess);
-			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing loaded session in %s", &sess_id, func);
+			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing loaded session in %s", cache->session_id, func);
 		}
 
 		SSL_SESSION_free(cache->load.sess);
@@ -155,8 +151,7 @@ void _tls_cache_store_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 {
 	if (cache->store.sess) {
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
-			SESSION_ID(sess_id, cache->store.sess);
-			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing session to store in %s", &sess_id, func);
+			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing session to store in %s", cache->session_id, func);
 		}
 		SSL_SESSION_free(cache->store.sess);
 		cache->store.sess = NULL;
@@ -182,7 +177,8 @@ void _tls_cache_clear_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 /** Serialize the session-state list and store it in the SSL_SESSION *
  *
  */
-static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_t resumption_type)
+static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess,
+				  fr_value_box_t const *session_id, uint32_t resumption_type)
 {
 	fr_dbuff_t		dbuff;
 	fr_dbuff_uctx_talloc_t	tctx;
@@ -198,9 +194,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_
 	type_vp->vp_uint32 = resumption_type;
 
 	if (RDEBUG_ENABLED2) {
-		SESSION_ID(sess_id, sess);
-
-		RDEBUG2("Session ID %pV - Adding session-state[*] to data", &sess_id);
+		RDEBUG2("Session ID %pV - Adding session-state[*] to data", session_id);
 		RINDENT();
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, NULL);
 		REXDENT();
@@ -222,9 +216,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_
 	     vp = fr_dcursor_current(&dcursor)) {
 		slen = fr_internal_encode_pair(&dbuff, &dcursor, NULL);
 		if (slen < 0) {
-			SESSION_ID(sess_id, sess);
-
-			RPERROR("Session ID %pV - Failed serialising session-state list", &sess_id);
+			RPERROR("Session ID %pV - Failed serialising session-state list", session_id);
 			fr_dbuff_free_talloc(&dbuff);
 			fr_pair_delete(&request->session_state_pairs, type_vp);
 			return 0; /* didn't store data */
@@ -242,16 +234,15 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_
 	ret = SSL_SESSION_set1_ticket_appdata(sess, fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff));
 	fr_dbuff_free_talloc(&dbuff);	/* OpenSSL memdups the data */
 	if (ret != 1) {
-		SESSION_ID(sess_id, sess);
-
-		fr_tls_log(request, "Session ID %pV - Failed setting application data", &sess_id);
+		fr_tls_log(request, "Session ID %pV - Failed setting application data", session_id);
 		return -1;
 	}
 
 	return 1;		/* successfully stored data */
 }
 
-static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
+static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess,
+				  fr_value_box_t const *session_id)
 {
 	uint8_t			*data;
 	size_t			data_len;
@@ -262,9 +253,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 	 *	Extract the session-state list from the ticket.
 	 */
 	if (SSL_SESSION_get0_ticket_appdata(sess, (void **)&data, &data_len) != 1) {
-		SESSION_ID(sess_id, sess);
-
-		fr_tls_log(request, "Session ID %pV - Failed retrieving application data", &sess_id);
+		fr_tls_log(request, "Session ID %pV - Failed retrieving application data", session_id);
 		return -1;
 	}
 
@@ -282,18 +271,14 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 	while (fr_dbuff_remaining(&dbuff) > 0) {
 		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &tmp,
 						  fr_dict_root(request->proto_dict), &dbuff, NULL) < 0) {
-			SESSION_ID(sess_id, sess);
-
 			fr_pair_list_free(&tmp);
-			RPEDEBUG("Session-ID %pV - Failed decoding session-state", &sess_id);
+			RPEDEBUG("Session-ID %pV - Failed decoding session-state", session_id);
 			return -1;
 		}
 	}
 
 	if (RDEBUG_ENABLED2) {
-		SESSION_ID(sess_id, sess);
-
-		RDEBUG2("Session-ID %pV - Restoring session-state[*]", &sess_id);
+		RDEBUG2("Session-ID %pV - Restoring session-state[*]", session_id);
 		RINDENT();
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "session-state.");
 		REXDENT();
@@ -406,11 +391,11 @@ static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 		goto error;
 	}
 
-	if (RDEBUG_ENABLED3) {
-		SESSION_ID(sess_id, sess);
+	tls_session_id_cache(tls_session, sess);		/* the client path has no ID until now */
 
+	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Session ID %pV - Read %zu bytes of data.  "
-			"Session de-serialized successfully", &sess_id, vp->vp_length);
+			"Session de-serialized successfully", &tls_session->session_id, vp->vp_length);
 		SSL_SESSION_print(fr_tls_request_log_bio(request, L_DBG, L_DBG_LVL_3), sess);
 	}
 
@@ -438,10 +423,7 @@ static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 #endif
 
 		if (fr_time_lteq(expires, fr_time())) {
-			fr_value_box_t	id;
-			fr_tls_cache_id_to_box_shallow(&id, sess);
-
-			RWDEBUG("Session ID %pV - Cached session has expired, not resuming", &id);
+			RWDEBUG("Session ID %pV - Cached session has expired, not resuming", &tls_session->session_id);
 
 			/*
 			 *	The session was allocated by d2i_SSL_SESSION(), and it is not yet saved in
@@ -610,19 +592,13 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	It also documents / enforces our expectations.
 	 */
 	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
-		fr_value_box_t	id;
-		fr_tls_cache_id_to_box_shallow(&id, sess);
-
-		RWDEBUG("Session ID %pV - Clear is pending, not storing", &id);
+		RWDEBUG("Session ID %pV - Clear is pending, not storing", &tls_session->session_id);
 		tls_cache_store_state_reset(request, tls_cache);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	if (fr_time_lteq(expires, now)) {
-		fr_value_box_t	id;
- 		fr_tls_cache_id_to_box_shallow(&id, sess);
-
-		RWDEBUG("Session ID %pV - Session has already expired, not storing", &id);
+		RWDEBUG("Session ID %pV - Session has already expired, not storing", &tls_session->session_id);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -630,7 +606,8 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Add the current session-state list
 	 *	contents to the ssl-data
 	 */
-	rcode = tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateful->vb_uint32);
+	rcode = tls_cache_app_data_set(request, sess, &tls_session->session_id,
+				       enum_tls_session_resumed_stateful->vb_uint32);
 	if (rcode < 0) {
 		tls_cache_store_state_reset(request, tls_cache);
 		return UNLANG_ACTION_FAIL;
@@ -666,11 +643,8 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	ticket.  A malicious or misconfigured server might give us a wrong value.
 	 */
 	if (fr_time_delta_gt(vp->vp_time_delta, fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME))) {
-		fr_value_box_t	id;
-		fr_tls_cache_id_to_box_shallow(&id, sess);
-
 		RWDEBUG("Session ID %pV - Session lifetime %pV is longer than the maximum of %pV, limiting it",
-			&id, fr_box_time_delta(vp->vp_time_delta),
+			&tls_session->session_id, fr_box_time_delta(vp->vp_time_delta),
 			fr_box_time_delta(fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME)));
 
 		vp->vp_time_delta = fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME);
@@ -681,13 +655,10 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 */
 	ret = i2d_SSL_SESSION(sess, NULL);	/* find out what length data we need */
 	if (ret < 1) {
-		fr_value_box_t	id;
- 		fr_tls_cache_id_to_box_shallow(&id, sess);
-
 		/* something went wrong */
 		fr_tls_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
 		RPWDEBUG("Session ID %pV - Serialisation failed, couldn't determine "
-			 "required buffer length", &id);
+			 "required buffer length", &tls_session->session_id);
 	error:
 		tls_cache_store_state_reset(request, tls_cache);
 		talloc_free(child);
@@ -702,11 +673,8 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	p = data;
 	ret = i2d_SSL_SESSION(sess, &p);	/* Serialize as ASN.1 */
 	if (ret != len) {
-		fr_value_box_t	id;
- 		fr_tls_cache_id_to_box_shallow(&id, sess);
-
 		fr_tls_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
-		RPWDEBUG("Session ID %pV - Serialisation failed", &id);
+		RPWDEBUG("Session ID %pV - Serialisation failed", &tls_session->session_id);
 		talloc_free(data);
 		goto error;
 	}
@@ -1144,8 +1112,6 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	request_t		*request;
 	fr_tls_session_t	*tls_session;
 	fr_tls_cache_t		*tls_cache;
-	unsigned int		id_len;
-	uint8_t const		*id;
 
 	/*
 	 *	This functions should only be called once during the lifetime
@@ -1156,6 +1122,7 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 
 	fr_assert(!tls_session->session);
 	tls_session->session = sess;
+	tls_session_id_cache(tls_session, sess);
 
 	/*
 	 *	If the session is TLS 1.3, then resumption will be handled by a
@@ -1174,11 +1141,13 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 */
 	if (unlang_request_is_cancelled(request)) return 0;
 
-	id = SSL_SESSION_get_id(sess, &id_len);
-	RDEBUG3("Session ID %pV - Requested store", fr_box_octets(id, id_len));
+	RDEBUG3("Session ID %pV - Requested store", &tls_session->session_id);
 	/*
 	 *	Store the session blob and session id for writing
 	 *	later, once all the authentication phases have completed.
+	 *
+	 *	The session being stored is tls_session->session, set
+	 *	above, so the ID is the one already cached there.
 	 */
 	tls_cache->store.sess = sess;
 	tls_cache->store.state = FR_TLS_CACHE_STORE_REQUESTED;
@@ -1242,6 +1211,18 @@ again:
 		tls_cache->load.state = FR_TLS_CACHE_LOAD_REQUESTED;
 		MEM(tls_cache->load.id = talloc_typed_memdup(tls_cache, (uint8_t const *)key, key_len));
 
+		/*
+		 *	This is the session the peer is asking to resume, so
+		 *	it is the session ID for the rest of the handshake.
+		 *	Caching it here means the many places which log the
+		 *	ID keep working after load.id has been released.
+		 */
+		if (fr_type_is_null(tls_session->session_id.type)) {
+			MEM(fr_value_box_memdup(tls_session, &tls_session->session_id, NULL,
+						(uint8_t const *)key, key_len, true) == 0);
+			if (tls_cache) tls_cache->session_id = &tls_session->session_id;
+		}
+
 		RDEBUG3("Requested session load - ID %pV", fr_box_octets_buffer(tls_cache->load.id));
 
 		/*
@@ -1287,9 +1268,16 @@ again:
 	{
 		SSL_SESSION	*sess;
 
-		TALLOC_FREE(tls_cache->load.id);
+		/*
+		 *	The loaded session becomes the session, so cache
+		 *	its ID now.  load.id is freed below, once nothing
+		 *	else needs it.
+		 */
+		tls_session_id_cache(tls_session, tls_cache->load.sess);
 
 		RDEBUG3("Setting session data");
+
+		TALLOC_FREE(tls_cache->load.id);
 
 		/*
 		 *	This restores the contents of &session-state[*]
@@ -1301,7 +1289,7 @@ again:
 		 *	peer's certificate chain, and so isn't reliable
 		 *	for performing re-validation.
 		 */
-		if (tls_cache_app_data_get(request, tls_cache->load.sess) < 0) {
+		if (tls_cache_app_data_get(request, tls_cache->load.sess, &tls_session->session_id) < 0) {
 			REDEBUG("Denying session resumption via session-id");
 		verify_error:
 			/*
@@ -1363,9 +1351,7 @@ again:
 		 *	on cleanup.
 		 */
 		{
-			SESSION_ID(sess_id, tls_cache->load.sess);
-
-			RDEBUG3("Session ID %pV - Session ownership transferred to libssl", &sess_id);
+			RDEBUG3("Session ID %pV - Session ownership transferred to libssl", &tls_session->session_id);
 			*copy = 0;
 			tls_cache->load.sess = NULL;
 		}
@@ -1603,7 +1589,8 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 		return 0;
 	}
 
-	if (tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateless->vb_uint32) < 0) return 0;
+	if (tls_cache_app_data_set(request, sess, &tls_session->session_id,
+				   enum_tls_session_resumed_stateless->vb_uint32) < 0) return 0;
 
 	return 1;
 }
@@ -1665,7 +1652,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	 *	peer's certificate chain, and so isn't reliable
 	 *	for performing re-validation.
 	 */
-	if (tls_cache_app_data_get(request, sess) < 0) {
+	if (tls_cache_app_data_get(request, sess, &tls_session->session_id) < 0) {
 		REDEBUG("Denying session resumption via session-ticket");
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}

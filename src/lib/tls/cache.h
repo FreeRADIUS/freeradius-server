@@ -90,6 +90,8 @@ typedef struct {
 		uint8_t				*id;		//!< Session ID to be deleted.
 	} clear;
 
+	fr_value_box_t const *session_id;      		//!< if set, points to tls_session->session_id
+
 	bool		loaded;				//!< Whether `load session` ever returned a session.
 							///< The load state above is reset as the handshake
 							///< moves on, so it cannot answer this later.  A
@@ -158,6 +160,8 @@ unlang_action_t	fr_tls_cache_store_session(request_t *request, fr_tls_session_t 
  */
 #ifdef _TLS_PRIVATE
 uint8_t		*fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess);
+
+void		tls_session_id_cache(fr_tls_session_t *tls_session, SSL_SESSION *sess);
 
 unlang_action_t	fr_tls_cache_clear_session(request_t *request, fr_tls_session_t *tls_session);
 

@@ -177,6 +177,8 @@ struct fr_tls_session_s {
 	SSL 			*ssl;				//!< This SSL session.
 	SSL_SESSION		*session;			//!< Session resumption data.
 	fr_tls_result_t		result;				//!< Result of the last handshake round.
+	fr_value_box_t		session_id;			//!< ID of the session
+
 	fr_tls_info_t		info;				//!< Information about the state of the TLS session.
 
 	fr_tls_bio_dbuff_t	*into_ssl;			//!< Encrypted data from the peer, which OpenSSL reads.
