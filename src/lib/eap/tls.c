@@ -1222,8 +1222,17 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	 *	these data structures when we get the response.
 	 */
 	eap_tls_session->tls_session = tls_session = fr_tls_session_alloc_server(eap_tls_session, ssl_ctx,
-										 request, vp ? vp->vp_uint32 : 0, client_cert);
+										 request, client_cert);
 	if (unlikely(!tls_session)) return NULL;
+
+	/*
+	 *	Set our MTU, and enforce dynamic MTU
+	 */
+	tls_session->mtu = conf->fragment_size;
+	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < tls_session->mtu)) {
+		RDEBUG2("Setting fragment_len from %pP", vp);
+		tls_session->mtu = vp->vp_uint32;
+	}
 
 	/*
 	 *	Add the EAP-Identity value to the TLS session so

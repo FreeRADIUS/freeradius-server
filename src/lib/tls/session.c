@@ -20,7 +20,6 @@
  * @file tls/session.c
  * @brief Initialise OpenSSL sessions, and read/write data to/from them.
  *
- * @copyright 2001 hereUare Communications, Inc. (raghud@hereuare.com)
  * @copyright 2003 Alan DeKok (aland@freeradius.org)
  * @copyright 2006-2016 The FreeRADIUS server project
  */
@@ -2042,13 +2041,12 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
  *				talloc'd object.
  * @param[in] ssl_ctx		containing the base configuration for this session.
  * @param[in] request		The current #request_t.
- * @param[in] dynamic_mtu	If greater than 100, overrides the MTU configured for the SSL_CTX.
  * @param[in] client_cert	Whether to require a client_cert.
  * @return
  *	- A new session on success.
  *	- NULL on error.
  */
-fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, size_t dynamic_mtu, bool client_cert)
+fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, bool client_cert)
 {
 	fr_tls_session_t	*tls_session;
 	int			verify_mode = 0;
@@ -2178,12 +2176,6 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 	if (conf->client_hello_parse) {
 		SSL_CTX_set_client_hello_cb(ssl_ctx, fr_tls_session_client_hello_cb, NULL);
-	}
-
-	tls_session->mtu = conf->fragment_size;
-	if (dynamic_mtu > 100 && dynamic_mtu < tls_session->mtu) {
-		RDEBUG2("Setting fragment_len to %zu from dynamic_mtu", dynamic_mtu);
-		tls_session->mtu = dynamic_mtu;
 	}
 
 	if (conf->cache.mode != FR_TLS_CACHE_DISABLED) {

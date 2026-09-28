@@ -723,7 +723,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 		     fr_box_ipaddr(utt->conn->request->packet->socket.inet.src_ipaddr));
 
 		utt->conn->tls_session = fr_tls_session_alloc_server(utt->conn->request, utt->ssl_ctx, utt->conn->request,
-							       0, utt->conf.require_client_certificate);
+							       utt->conf.require_client_certificate);
 	}
 
 	if (!utt->conn->tls_session) {
