@@ -940,8 +940,8 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 	if (!cluster->no_trigger[FR_REDIS_CLUSTER_MAP_UPDATE]) {
 		fr_pair_list_t	trigger_args;
 		fr_pair_list_init(&trigger_args);
-		fr_pair_list_copy(NULL, &trigger_args, &cluster->trigger_args);
-		fr_pair_list_copy(NULL, &trigger_args, list);
+		(void) fr_pair_list_copy(NULL, &trigger_args, &cluster->trigger_args);
+		(void) fr_pair_list_copy(NULL, &trigger_args, list);
 		trigger(unlang_interpret_get_thread_default(), rctx->inst->conf,
 			&cluster->trigger_cp[FR_REDIS_CLUSTER_MAP_UPDATE], "modules.redis.cluster_update", true,
 			&trigger_args, cluster);
