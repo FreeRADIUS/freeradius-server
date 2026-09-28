@@ -129,6 +129,10 @@ Description: FreeRADIUS shared library
  The FreeRADIUS projects' libfreeradius-util, libfreeradius-radius and libfreeradius-eap, used by
  the FreeRADIUS server and some of the utilities.
 
+Package: libfreeradius-curl
+Architecture: any
+Description: curl wrapper library for FreeRADIUS
+
 Package: libfreeradius-dev
 Architecture: any
 Section: libdevel
@@ -174,7 +178,7 @@ Description: LDAP module for FreeRADIUS server
 
 Package: freeradius-rest
 Architecture: any
-Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, libfreeradius-curl (= ${binary:Version})
 Description: REST module for FreeRADIUS server
  The FreeRADIUS server can make calls to remote web APIs, and this module
  is necessary for that.
