@@ -12,8 +12,8 @@
 #                                   PROFILING_RESULT_PATH.
 # - PROFILING_RESULT_MODE=<ci|dev>      Profiling output layout (only meaningful when
 #                                   MODE=profiling). Default `ci`.
-#                                     ci:  PROFILING_RESULT_ROOT/<suite>/<test>/<branch>/<commit>/<run-index>
-#                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>  (flat)
+#                                     ci:  PROFILING_RESULT_ROOT/<branch>/<commit>/<run-index>/<suite>/<test>/<tool>
+#                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>/<tool>  (flat)
 #
 # Usage:
 #   make -f src/tests/multi-server/all.mk test.multi-server                       # all suites, service image
