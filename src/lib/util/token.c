@@ -391,9 +391,9 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 		if ((buflen >= 3) && (p[1] == quote) && (p[2] == quote)) {
 			p += 3;
 			triple = true;
+		} else {
+			p++;
 		}
-
-		p++;
 	}
 	s = buf;
 
@@ -457,6 +457,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 */
 		if (!p[1]) {
 			fr_strerror_const("Unterminated string");
+			*s = '\0';
 			return T_INVALID;
 		}
 
@@ -495,6 +496,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 			} else {
 				if (buflen < 2) {
 					fr_strerror_const("Truncated input");
+					*s = '\0';
 					return T_INVALID;
 				}
 
