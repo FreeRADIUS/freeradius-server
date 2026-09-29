@@ -2045,10 +2045,17 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 
 		/*
-		 *	Force no duplicate detection for TCP sockets.
+		 *	Default to no duplicate detection for TCP sockets.
+		 *
+		 *	But for broken systems, allow it to be done.
 		 */
 		if (sock->proto == IPPROTO_TCP) {
-			this->nodup = true;
+			bool dedup = false;
+
+			rcode = cf_item_parse(cs, "dedup", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &dedup), NULL);
+			if (rcode < 0) return -1;
+
+			this->nodup = !dedup;
 		}
 
 	} else {
