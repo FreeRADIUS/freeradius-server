@@ -192,5 +192,29 @@ match (Filter-Id =~ /foo/)
 xlat_expr Filter-Id =~ /foo/i
 match (Filter-Id =~ /foo/i)
 
+#
+#  The parsers call each other, so a nested input grows the C stack.  tmpl_rules_t.depth
+#  counts the nesting, and TMPL_MAX_NESTING bounds the count.
+#
+#  Brackets recurse through tokenize_expression, tokenize_unary, and tokenize_field.
+#
+xlat_expr ((((((((((((((((((((((((((((((1))))))))))))))))))))))))))))))
+match 1
+
+#
+#  A filter recurses through xlat_tokenize_condition and back into the attribute parser.
+#  tmpl_attr_parse_filter builds fresh rules for the filter, and has to carry the count
+#  across, or the count restarts at every filter.
+#
+xlat_expr request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(1)])])])])])])])])])])])])])])])])])])])])])])])])])])])])])]
+match ERROR: ERROR offset 25: The input is too deeply nested to be parsed
+
+#
+#  A quoted string inside an expansion recurses from tmpl_afrom_substr through
+#  xlat_tokenize and back.
+#
+xlat_expr "%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{1}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"
+match ERROR: ERROR offset 64: The input is too deeply nested to be parsed
+
 count
-match 87
+match 93

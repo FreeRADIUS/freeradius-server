@@ -2112,8 +2112,13 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	xlat_t			*func = NULL;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	char			c = '\0';
+	tmpl_rules_t		our_t_rules;
 
 	XLAT_DEBUG("UNARY <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+
+	tmpl_rules_copy_depth(&our_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&our_t_rules)) FR_SBUFF_ERROR_RETURN(&our_in);
+	t_rules = &our_t_rules;
 
 	/*
 	 *	Handle !-~ by adding a unary function to the xlat
@@ -2314,8 +2319,13 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 	fr_sbuff_marker_t	opand_m, flag;
 	tmpl_t			*vpt;
 	fr_token_t		quote = T_SOLIDUS_QUOTED_STRING;
+	tmpl_rules_t		our_t_rules;
 
 	XLAT_DEBUG("REGEX_RHS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+
+	tmpl_rules_copy_depth(&our_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&our_t_rules)) FR_SBUFF_ERROR_RETURN(&our_in);
+	t_rules = &our_t_rules;
 
 	fr_sbuff_skip_whitespace(&our_in);
 
@@ -2481,7 +2491,9 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *	Do NOT pass the cast down to the next set of parsing routines.  Instead, let the next data be
 	 *	parsed as whatever, and then add a cast, or cast in place as necessary.
 	 */
-	our_t_rules = *t_rules;
+	tmpl_rules_copy_depth(&our_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&our_t_rules)) FR_SBUFF_ERROR_RETURN(&our_in);
+
 	if (cast_type == FR_TYPE_NULL) {
 		cast_type = our_t_rules.cast;
 		enumv = our_t_rules.enumv;
@@ -2813,8 +2825,13 @@ static fr_slen_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr
 	fr_sbuff_marker_t  m_lhs, m_op, m_rhs;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	char c = '\0';
+	tmpl_rules_t	our_t_rules;
 
 	XLAT_DEBUG("EXPRESSION <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+
+	tmpl_rules_copy_depth(&our_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&our_t_rules)) FR_SBUFF_ERROR_RETURN(&our_in);
+	t_rules = &our_t_rules;
 
 	fr_sbuff_skip_whitespace(&our_in);
 
@@ -2985,7 +3002,7 @@ redo:
 
 		slen = tokenize_regex_rhs(head, &rhs, &our_in, t_rules, bracket_rules);
 	} else {
-		tmpl_rules_t our_t_rules = *t_rules;
+		tmpl_rules_t rhs_t_rules = *t_rules;
 
 		/*
 		 *	Pass the enumv down ONLY if the RHS name begins with "::".
@@ -2996,10 +3013,10 @@ redo:
 		 */
 		if ((lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) &&
 		    fr_sbuff_is_str_literal(&our_in, "::")) {
-			our_t_rules.enumv = tmpl_attr_tail_da(lhs->vpt);
+			rhs_t_rules.enumv = tmpl_attr_tail_da(lhs->vpt);
 		}
 
-		slen = tokenize_expression(head, &rhs, &our_in, p_rules, &our_t_rules, op, bracket_rules, input_rules, cond);
+		slen = tokenize_expression(head, &rhs, &our_in, p_rules, &rhs_t_rules, op, bracket_rules, input_rules, cond);
 	}
 	if (slen <= 0) {
 		talloc_free(lhs);

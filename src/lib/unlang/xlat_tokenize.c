@@ -476,6 +476,10 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 	fr_sbuff_marker_t m_s;
 	tmpl_rules_t my_t_rules;
 
+	tmpl_rules_copy_depth(&my_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&my_t_rules)) return -1;
+	t_rules = &my_t_rules;
+
 	fr_sbuff_marker(&m_s, in);
 
 	XLAT_DEBUG("NEW <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
@@ -593,11 +597,7 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 	 *	The caller might want the _output_ cast to something.  But that doesn't mean we cast each
 	 *	_argument_ to the xlat function.
 	 */
-	if (t_rules->cast != FR_TYPE_NULL) {
-		my_t_rules = *t_rules;
-		my_t_rules.cast = FR_TYPE_NULL;
-		t_rules = &my_t_rules;
-	}
+	my_t_rules.cast = FR_TYPE_NULL;
 
 	/*
 	 *	Now parse the child nodes that form the
@@ -640,7 +640,8 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 	/*
 	 *	We are called from %{foo}.  So we don't use attribute prefixes.
 	 */
-	our_t_rules = *t_rules;
+	tmpl_rules_copy_depth(&our_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&our_t_rules)) return -1;
 	our_t_rules.attr.allow_wildcard = true;
 
 	fr_sbuff_marker(&m_s, in);
@@ -765,12 +766,14 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 
 		MEM(node = xlat_exp_alloc(head, XLAT_GROUP, NULL, 0));
 
-		if (t_rules) {
-			my_rules = *t_rules;
-			my_rules.enumv = NULL;
-			my_rules.cast = FR_TYPE_NULL;
-			t_rules = &my_rules;
+		tmpl_rules_copy_depth(&my_rules, t_rules);
+		if (tmpl_rules_depth_exceeded(&my_rules)) {
+			talloc_free(node);
+			goto release;
 		}
+		my_rules.enumv = NULL;
+		my_rules.cast = FR_TYPE_NULL;
+		t_rules = &my_rules;
 
 		ret = xlat_tokenize_expression(node, &node->group, in, &attr_p_rules, t_rules);
 		if (ret <= 0) {
@@ -917,8 +920,13 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 	fr_sbuff_term_t			*tokens;
 	fr_sbuff_unescape_rules_t const	*escapes;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
+	tmpl_rules_t			our_t_rules;
 
 	XLAT_DEBUG("STRING <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
+
+	tmpl_rules_copy_depth(&our_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&our_t_rules)) return -1;
+	t_rules = &our_t_rules;
 
 	escapes = p_rules ? p_rules->escapes : NULL;
 	tokens = p_rules && p_rules->terminals ?
@@ -1483,6 +1491,11 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_t	*node;
 	fr_sbuff_marker_t m;
+	tmpl_rules_t	our_t_rules;
+
+	tmpl_rules_copy_depth(&our_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&our_t_rules)) FR_SBUFF_ERROR_RETURN(&our_in);
+	t_rules = &our_t_rules;
 
 	/*
 	 *	Triple-quoted strings have different terminal conditions.
@@ -1781,7 +1794,8 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 								  XLAT_ARG_PARSER_TERMINATOR };
 		arg_start = arg = &default_arg[0];
 	}
-	arg_t_rules = *t_rules;
+	tmpl_rules_copy_depth(&arg_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&arg_t_rules)) FR_SBUFF_ERROR_RETURN(&our_in);
 
 	if (unlikely(spaces)) {
 		fr_assert(p_rules != &xlat_function_arg_rules);
@@ -2028,8 +2042,15 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t	*head;
+	tmpl_rules_t	default_rules = { .attr = { .list_def = request_attr_request }};
 
 	fr_assert(!t_rules || !t_rules->at_runtime || (t_rules->xlat.runtime_el != NULL));
+
+	/*
+	 *	We need to track parse depth, which means using a
+	 *	default set of rules, even if we weren't passed any.
+	 */
+	if (!t_rules) t_rules = &default_rules;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 	fr_strerror_clear();	/* Clear error buffer */

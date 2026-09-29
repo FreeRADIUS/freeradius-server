@@ -379,5 +379,20 @@ match %hash.md5(0x617267)
 xlat %hash.md5('arg"')
 match %hash.md5(0x61726722)
 
+#
+#  The parsers call each other, so a nested input grows the C stack.  tmpl_rules_t.depth
+#  counts the nesting, and TMPL_MAX_NESTING bounds the count.
+#
+#  An expansion inside an expansion recurses through xlat_tokenize_expansion.
+#
+xlat %{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{%{User-Name}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+match ERROR: ERROR offset 38: The input is too deeply nested to be parsed
+
+#
+#  A function argument recurses through xlat_tokenize_argv.
+#
+xlat %str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower(%str.lower("x"))))))))))))))))))))))))))))))
+match ERROR: ERROR offset 176: The input is too deeply nested to be parsed
+
 count
-match 195
+match 199

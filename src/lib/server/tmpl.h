@@ -84,6 +84,13 @@ extern "C" {
  */
 #define TMPL_MAX_REQUEST_REF_NESTING	10
 
+/** The maximum number of nested calls between the tmpl, xlat, and expression parsers.
+ *
+ *  The parsers can call each other recursively, which means that we need to limit the
+ *  nesting depth.  If we don't do this, then we can blow out the local C stack.
+ */
+#define TMPL_MAX_NESTING		128
+
 extern fr_table_num_ordered_t const pair_list_table[];
 extern size_t pair_list_table_len;
 
@@ -345,6 +352,8 @@ struct tmpl_rules_s {
 								///< Used to determine if barewords or other values
 								///< should be converted to an internal data type.
 
+	unsigned int			depth;			//!< to catch nested calls.
+
 	bool				at_runtime;		//!< Produce an ephemeral/runtime tmpl.
 								///< Instantiated xlats are not added to the global
 								///< trees, regexes are not JIT'd.
@@ -352,6 +361,20 @@ struct tmpl_rules_s {
 								///< xlats, execs, and data.
 	tmpl_escape_t			escape;			//!< How escaping should be handled during evaluation.
 };
+
+/** Copy parse rules for a nested parse, and increment the depth field.
+ *
+ *  The `parent` field points at a parent with different rules.  A
+ *  nested parse does not the rules, so it does not change the parent.
+ *
+ * @param[out] _out	rules to use for the nested parse.
+ * @param[in] _in	rules of the parse which is already running.
+ */
+#define tmpl_rules_copy_depth(_out, _in) \
+do { \
+	*(_out) = *(_in); \
+	(_out)->depth++; \
+} while (0)
 
 /** Similar to tmpl_rules_t, but used to specify parameters that may change during subsequent resolution passes
  *
@@ -1330,6 +1353,8 @@ int			tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *vb,
 void			tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t const *parent, tmpl_t *vpt) CC_HINT(nonnull);
 
 void			tmpl_rules_debug(tmpl_rules_t const *rules) CC_HINT(nonnull);
+
+bool			tmpl_rules_depth_exceeded(tmpl_rules_t const *t_rules) CC_HINT(nonnull);
 
 int			tmpl_global_init(void);
 

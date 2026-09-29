@@ -118,12 +118,20 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	fr_token_t	quote;
 	fr_dict_attr_t const *da;
 	tmpl_rules_t	my_rhs_rules = {};
+	tmpl_rules_t	our_lhs_rules;
 	tmpl_rules_t const *rhs_rules = input_rhs_rules;
 	TALLOC_CTX	*child_ctx = NULL;
 
 	*out = NULL;
 
 	if (!cp) return -1;
+
+	tmpl_rules_copy_depth(&our_lhs_rules, lhs_rules);
+	if (tmpl_rules_depth_exceeded(&our_lhs_rules)) {
+		cf_log_perr(cp, "Failed parsing configuration item");
+		return -1;
+	}
+	lhs_rules = &our_lhs_rules;
 
 	MEM(map = map_alloc(ctx, parent));
 	map->op = cf_pair_operator(cp);
@@ -855,9 +863,15 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	map_t		*map;
 	TALLOC_CTX	*parent_ctx;
 
-	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
+	tmpl_rules_t	our_lhs_rules;
 	tmpl_rules_t	child_rhs_rules = *rhs_rules;
 	tmpl_rules_t const  *our_rhs_rules;
+
+	tmpl_rules_copy_depth(&our_lhs_rules, lhs_rules);	/* Mutable copy of the destination */
+	if (tmpl_rules_depth_exceeded(&our_lhs_rules)) {
+		cf_log_perr(cs, "Failed parsing configuration section");
+		return -1;
+	}
 
 	/*
 	 *	The first map has ctx as the parent context.

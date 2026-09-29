@@ -903,6 +903,7 @@ tmpl_t *tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
 	tmpl_type_init(vpt, type);
 	tmpl_set_name_shallow(vpt, quote, name, len);
 	if (t_rules) vpt->rules = *t_rules;
+	vpt->rules.depth = 0;
 
 	return vpt;
 }
@@ -925,6 +926,7 @@ tmpl_t *tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
 	tmpl_type_init(vpt, type);
 	tmpl_set_name(vpt, quote, name, len);
 	if (t_rules) vpt->rules = *t_rules;
+	vpt->rules.depth = 0;
 
 	return vpt;
 }
@@ -1344,15 +1346,16 @@ static inline CC_HINT(always_inline) void tmpl_attr_insert(tmpl_t *vpt, tmpl_att
  * @param[out] err	Parse error code.
  * @param[in] ar	to populate filter for.
  * @param[in] name	containing more attribute ref data.
- * @param[in] at_rules	see tmpl_attr_afrom_attr_substr.
+ * @param[in] t_rules	see tmpl_attr_afrom_attr_substr.
  * @return
  *	- >0 if a filter was parsed.
  *	- 0 if no filter was available.
  *	- <0 on filter parse error.
  */
 static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
-					fr_sbuff_t *name, tmpl_attr_rules_t const *at_rules)
+					fr_sbuff_t *name, tmpl_rules_t const *t_rules)
 {
+	tmpl_attr_rules_t const	*at_rules = &t_rules->attr;
 	fr_sbuff_t our_name = FR_SBUFF(name);
 
 	/*
@@ -1426,14 +1429,23 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	{
 		fr_sbuff_t tmp = FR_SBUFF(&our_name);
 		fr_slen_t slen;
-		tmpl_rules_t t_rules;
+		tmpl_rules_t our_t_rules;
 		fr_sbuff_parse_rules_t p_rules;
 		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
 
 
 		tmp = FR_SBUFF(&our_name);
-		t_rules = (tmpl_rules_t) {};
-		t_rules.attr = *at_rules;
+
+		/*
+		 *	A filter does not inherit the cast or the enumv of the attribute which holds the
+		 *	filter, so the rules start empty.  The nesting count is the one field which has to
+		 *	cross, or "foo[(bar[(baz[(...)])])]" restarts the count at every filter.
+		 */
+		our_t_rules = (tmpl_rules_t) {};
+		our_t_rules.attr = *at_rules;
+		our_t_rules.depth = t_rules->depth + 1;
+
+		if (tmpl_rules_depth_exceeded(&our_t_rules)) goto error;
 
 		/*
 		 *	Unspecified child, we can create a filter starting from the children.
@@ -1442,7 +1454,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		 *	reference to the current cursor, and we need to decide what that syntax is.
 		 */
 		if (ar->type == TMPL_ATTR_TYPE_UNSPEC) {
-			if (at_rules->dict_def) t_rules.attr.namespace = fr_dict_root(at_rules->dict_def);
+			if (at_rules->dict_def) our_t_rules.attr.namespace = fr_dict_root(at_rules->dict_def);
 
 		} else {
 			if (!ar->ar_da || !fr_type_is_structural(ar->ar_da->type)) {
@@ -1450,7 +1462,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 				ar->ar_num = 0;
 				goto error;
 			}
-			t_rules.attr.namespace = ar->ar_da;
+			our_t_rules.attr.namespace = ar->ar_da;
 		}
 
 		p_rules = (fr_sbuff_parse_rules_t) {
@@ -1461,7 +1473,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		/*
 		 *	Check if it's a condition.
 		 */
-		slen = xlat_tokenize_condition(ar, &ar->ar_cond, &tmp, &p_rules, &t_rules);
+		slen = xlat_tokenize_condition(ar, &ar->ar_cond, &tmp, &p_rules, &our_t_rules);
 		if (slen < 0) goto error;
 
 		if (xlat_impure_func(ar->ar_cond)) {
@@ -1478,7 +1490,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	{
 		fr_sbuff_t tmp = FR_SBUFF(&our_name);
 		fr_slen_t slen;
-		tmpl_rules_t t_rules;
+		tmpl_rules_t our_t_rules;
 		fr_sbuff_parse_rules_t p_rules;
 		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
 
@@ -1488,8 +1500,11 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		}
 
 		tmp = FR_SBUFF(&our_name);
-		t_rules = (tmpl_rules_t) {};
-		t_rules.attr = *at_rules;
+		our_t_rules = (tmpl_rules_t) {};
+		our_t_rules.attr = *at_rules;
+		our_t_rules.depth = t_rules->depth + 1;
+
+		if (tmpl_rules_depth_exceeded(&our_t_rules)) goto error;
 
 		p_rules = (fr_sbuff_parse_rules_t) {
 			.terminals = &filter_terminals,
@@ -1499,7 +1514,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		/*
 		 *	Check if it's an expression.
 		 */
-		slen = xlat_tokenize_expression(ar, &ar->ar_expr, &tmp, &p_rules, &t_rules);
+		slen = xlat_tokenize_expression(ar, &ar->ar_expr, &tmp, &p_rules, &our_t_rules);
 		if (slen < 0) goto error;
 
 		if (xlat_impure_func(ar->ar_expr)) {
@@ -1531,13 +1546,16 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	{
 		fr_sbuff_t tmp = FR_SBUFF(&our_name);
 		fr_slen_t slen;
-		tmpl_rules_t t_rules;
+		tmpl_rules_t our_t_rules;
 		fr_sbuff_parse_rules_t p_rules;
 		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
 
 		tmp = FR_SBUFF(&our_name);
-		t_rules = (tmpl_rules_t) {};
-		t_rules.attr = *at_rules;
+		our_t_rules = (tmpl_rules_t) {};
+		our_t_rules.attr = *at_rules;
+		our_t_rules.depth = t_rules->depth + 1;
+
+		if (tmpl_rules_depth_exceeded(&our_t_rules)) goto error;
 
 		/*
 		 *	Don't reset namespace, we always want to start searching from the top level of the
@@ -1554,7 +1572,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		 *	vs protocol vs local attributes, whereas the tmpl function only accepts
 		 *	internal ones.
 		 */
-		slen = tmpl_afrom_substr(ar, &ar->ar_tmpl, &tmp, T_BARE_WORD, &p_rules, &t_rules);
+		slen = tmpl_afrom_substr(ar, &ar->ar_tmpl, &tmp, T_BARE_WORD, &p_rules, &our_t_rules);
 		if (slen <= 0) goto error;
 
 		if (!tmpl_is_attr(ar->ar_tmpl)) {
@@ -1593,7 +1611,7 @@ extern fr_dict_attr_t const *tmpl_attr_unspec;
 static inline CC_HINT(nonnull(3,4))
 fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error_t *err,
 						tmpl_t *vpt,
-						fr_sbuff_t *name, tmpl_attr_rules_t const *at_rules)
+						fr_sbuff_t *name, tmpl_rules_t const *t_rules)
 {
 	fr_slen_t	slen;
 
@@ -1603,7 +1621,7 @@ fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error
 		.ar_da = tmpl_attr_unspec,
 	};
 
-	slen = tmpl_attr_parse_filter(err, ar, name, at_rules);
+	slen = tmpl_attr_parse_filter(err, ar, name, t_rules);
 	if (slen < 0) {
 		return slen;
 
@@ -1638,7 +1656,7 @@ fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error
  * @param[in] parent		Last known parent.
  * @param[in] namespace		in which the attribute will be resolved.
  * @param[in] name		to parse.
- * @param[in] at_rules		see tmpl_attr_afrom_attr_substr.
+ * @param[in] t_rules		see tmpl_attr_afrom_attr_substr.
  * @return
  *	- <0 on error.
  *	- 0 on success.
@@ -1647,7 +1665,7 @@ static inline CC_HINT(nonnull(3,6))
 fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 						tmpl_t *vpt,
 						fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
-						fr_sbuff_t *name, tmpl_attr_rules_t const *at_rules)
+						fr_sbuff_t *name, tmpl_rules_t const *t_rules)
 {
 	tmpl_attr_t		*ar = NULL, *ar_curr;
 	fr_sbuff_t		our_name = FR_SBUFF(name);
@@ -1672,7 +1690,7 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 						   fr_dict_attr_allowed_chars) < 0) return -1;
 
 		if (len == 0) {
-			slen = tmpl_attr_ref_from_unspecified_substr(ar, err, vpt, &our_name, at_rules);
+			slen = tmpl_attr_ref_from_unspecified_substr(ar, err, vpt, &our_name, t_rules);
 			if (slen < 0) {
 				fr_sbuff_advance(&our_name, +slen);
 			error:
@@ -1695,7 +1713,7 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 			.ar_parent = parent
 		};
 
-		if (tmpl_attr_parse_filter(err, ar, &our_name, at_rules) < 0) goto error;
+		if (tmpl_attr_parse_filter(err, ar, &our_name, t_rules) < 0) goto error;
 
 		/*
 		 *	Insert the ar into the list of attribute references
@@ -1757,7 +1775,7 @@ static void tmpl_attr_ref_fixup(TALLOC_CTX *ctx, tmpl_t *vpt, fr_dict_attr_t con
  * @param[in] namespace		Where the child attribute will be parsed from (dict root, struct member, TLV child, etc)
  * @param[in] name		to parse.
  * @param[in] p_rules		Formatting rules used to check for trailing garbage.
- * @param[in] at_rules		which places constraints on attribute reference parsing.
+ * @param[in] t_rules		which places constraints on attribute reference parsing.
  *				Rules interpreted by this function is:
  *				- allow_unknown - If false unknown OID components
  *				  result in a parse error.
@@ -1776,9 +1794,10 @@ static int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 				       tmpl_t *vpt,
 				       fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
 				       fr_sbuff_t *name,
-				       fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *at_rules,
+				       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				       unsigned int depth)
 {
+	tmpl_attr_rules_t const	*at_rules = &t_rules->attr;
 	uint32_t		oid = 0;
 	tmpl_attr_t		*ar = NULL;
 	fr_dict_attr_t const	*da;
@@ -2066,7 +2085,7 @@ static int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	Once we hit one unresolved attribute we have to treat
 	 *	the rest of the components are unresolved as well.
 	 */
-	return tmpl_attr_ref_afrom_unresolved_substr(ctx, err, vpt, our_parent, namespace, name, at_rules);
+	return tmpl_attr_ref_afrom_unresolved_substr(ctx, err, vpt, our_parent, namespace, name, t_rules);
 
 alloc_ar:
 	/*
@@ -2096,7 +2115,7 @@ do_suffix:
 	 *	- The type of attribute.
 	 *	- If this is the leaf attribute reference.
 	 */
-	if (tmpl_attr_parse_filter(err, ar, name, at_rules) < 0) goto error;
+	if (tmpl_attr_parse_filter(err, ar, name, t_rules) < 0) goto error;
 
 	/*
 	 *	Local variables are always unitary.
@@ -2176,7 +2195,7 @@ do_suffix:
 
 		if (ar) tmpl_attr_insert(vpt, ar);
 
-		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, our_parent, namespace, name, p_rules, at_rules, depth + 1) < 0) {
+		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, our_parent, namespace, name, p_rules, t_rules, depth + 1) < 0) {
 			if (ar) {
 				tmpl_attr_list_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 				ar = NULL;
@@ -2290,12 +2309,19 @@ fr_slen_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	fr_sbuff_t			our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
 	bool				is_raw = false;
 	tmpl_attr_rules_t const		*at_rules;
-	tmpl_attr_rules_t		my_attr_rules;
+	tmpl_rules_t			our_t_rules;
 	fr_sbuff_marker_t		m_l;
 	fr_dict_attr_t const		*namespace;
 	DEFAULT_RULES;
 
 	CHECK_T_RULES;
+
+	tmpl_rules_copy_depth(&our_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&our_t_rules)) {
+		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
+		FR_SBUFF_ERROR_RETURN(&our_name);
+	}
+	t_rules = &our_t_rules;
 
 	at_rules = &t_rules->attr;
 
@@ -2332,9 +2358,7 @@ fr_slen_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	a value.
 	 */
 	if (fr_sbuff_adv_past_strcase_literal(&our_name, "raw.")) {
-		my_attr_rules = *at_rules;
-		my_attr_rules.allow_oid = true;
-		at_rules = &my_attr_rules;
+		our_t_rules.attr.allow_oid = true;
 
 		is_raw = true;
 	}
@@ -2362,7 +2386,7 @@ fr_slen_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	ret = tmpl_attr_afrom_attr_substr(vpt, err,
 					  vpt,
 					  namespace, namespace,
-					  &our_name, p_rules, at_rules, 0);
+					  &our_name, p_rules, t_rules, 0);
 	if (ret < 0) goto error;
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
@@ -2397,6 +2421,7 @@ fr_slen_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
 	vpt->rules = *t_rules;	/* Record the rules */
+	vpt->rules.depth = 0;	/* The parse is finished, so the nesting count means nothing */
 
 	/*
 	 *	Check to see if the user wants the leaf
@@ -3358,9 +3383,14 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	char			*str;
 
 	tmpl_t			*vpt = NULL;
+	tmpl_rules_t		our_t_rules;
 	DEFAULT_RULES;
 
 	CHECK_T_RULES;
+
+	tmpl_rules_copy_depth(&our_t_rules, t_rules);
+	if (tmpl_rules_depth_exceeded(&our_t_rules)) FR_SBUFF_ERROR_RETURN(&our_in);
+	t_rules = &our_t_rules;
 
 	*out = NULL;
 
@@ -6056,6 +6086,21 @@ void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t cons
 	 *	alone, and leave things as-is.  This allows internal
 	 *	grouping attributes to appear anywhere.
 	 */
+}
+
+/** True when a parse has nested past the point where the stack is safe
+ *
+ * @param[in] t_rules	to check.
+ * @return
+ *	- true if the parse has nested too deeply.  fr_strerror() is set.
+ *	- false if the parse may continue.
+ */
+bool tmpl_rules_depth_exceeded(tmpl_rules_t const *t_rules)
+{
+	if (t_rules->depth < TMPL_MAX_NESTING) return false;
+
+	fr_strerror_const("The input is too deeply nested to be parsed");
+	return true;
 }
 
 static void tmpl_attr_rules_debug(tmpl_attr_rules_t const *at_rules)
