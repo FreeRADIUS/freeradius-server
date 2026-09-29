@@ -871,6 +871,54 @@ void fr_tls_session_keylog_cb(const SSL *ssl, const char *line)
 	close(fd);
 }
 
+/** Check if all TLS initialization has finished.
+ *
+ * SSL_is_init_finished() tells us if the TLS handshake has finished,
+ * which is enough for TLS 1.2, or TLS 1.3 without session tickets, or
+ * TLS 1.3 with stateful session tickets.
+ *
+ * For TLS 1.3 with stateless session tickets, the ticket is sent
+ * after the handshake has completed.  The application gets to
+ * send/recv its application data only after the handshake has
+ * finished, the stateless session ticket has been received, and after
+ * the `load session` has been run.
+ *
+ * Callers outside this library MUST use this function rather than
+ * SSL_is_init_finished().
+ *
+ * @param[in] tls_session	to check.
+ * @return
+ *	- true if every part of the setup has finished.
+ *	- false if OpenSSL is still handshaking, or a `load session` which
+ *	  the caller has to wait for has not run yet.
+ */
+bool fr_tls_session_is_init_finished(fr_tls_session_t *tls_session)
+{
+	fr_tls_conf_t *conf;
+
+	if (!SSL_is_init_finished(tls_session->ssl)) return false;
+
+	/*
+	 *	Stateless session tickets are what add a step after
+	 *	OpenSSL is done, and only TLS 1.3 uses them here.  Without
+	 *	them there is nothing else to wait for.
+	 */
+	if (tls_session->info.version != TLS1_3_VERSION) return true;
+
+	if (!tls_session->cache) return true;
+
+	conf = fr_tls_session_conf(tls_session->ssl);
+	if (!(conf->cache.mode & FR_TLS_CACHE_STATELESS)) return true;
+
+	/*
+	 *	Something has requested `load session`, but it hasn't
+	 *	yet been run.  Once that section completes, its state
+	 *	returns to INIT.  A session which never sends a ticket
+	 *	is therefore also marked as finished.
+	 */
+	return (tls_session->cache->load.state != FR_TLS_CACHE_LOAD_REQUESTED);
+}
+
 /** Decrypt application data
  *
  * @note Handshake must have completed before this function may be called.

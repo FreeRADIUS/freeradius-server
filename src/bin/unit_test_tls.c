@@ -447,7 +447,7 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 			 *	policy rejects.
 			 */
 			if (utt->reject && (utt->connections == utt->count) &&
-			    SSL_is_init_finished(utt->conn->tls_session->ssl)) {
+			    fr_tls_session_is_init_finished(utt->conn->tls_session)) {
 				INFO("Rejecting the session after a successful handshake");
 				utt->conn->failed = true;
 			}

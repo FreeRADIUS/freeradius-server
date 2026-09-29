@@ -515,7 +515,7 @@ static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t
 		return EAP_TLS_FAIL;
 
 	case SSL3_RT_HANDSHAKE:
-		if (SSL_is_init_finished(tls_session->ssl) && (fr_dbuff_remaining(tls_session->dirty_out) == 0)) {
+		if (fr_tls_session_is_init_finished(tls_session) && (fr_dbuff_remaining(tls_session->dirty_out) == 0)) {
 			RDEBUG2("Peer ACKed our handshake fragment.  handshake is finished");
 
 			/*
@@ -912,7 +912,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	 *	For EAP-TLS this translates to an EAP-Success, for others
 	 *	this begins phase2.
 	 */
-	if (eap_tls_session->phase2 || SSL_is_init_finished(tls_session->ssl)) {
+	if (eap_tls_session->phase2 || fr_tls_session_is_init_finished(tls_session)) {
 		eap_tls_session->phase2 = true;
 
 		/*
@@ -1088,7 +1088,7 @@ unlang_action_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 		 *	process it as application data, otherwise continue
 		 *	the handshake.
 		 */
-		if (eap_tls_session->phase2 || SSL_is_init_finished(tls_session->ssl)) {
+		if (eap_tls_session->phase2 || fr_tls_session_is_init_finished(tls_session)) {
 			int ret;
 
 			eap_tls_session->phase2 = true;
@@ -1123,7 +1123,7 @@ unlang_action_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 		 *	and we've just managed to finish the SSL session initialization.
 		 */
 		if (!eap_tls_session->phase2 && (fr_dbuff_remaining(tls_session->dirty_out) == 0) &&
-		    SSL_is_init_finished(tls_session->ssl)) {
+		    fr_tls_session_is_init_finished(tls_session)) {
 			eap_tls_session->phase2 = true;
 			eap_tls_session->state = EAP_TLS_ESTABLISHED;
 			goto done;

@@ -61,8 +61,10 @@ static void tls_connection_request_wake(fr_tls_connection_t *conn)
 
 /** Decide whether the handshake is over, and whether the handshake succeeded
  *
- * The handshake is complete only when SSL_is_init_finished() returns
- * true and every record produced by OpenSSL has reached the peer.
+ * The handshake is complete only when fr_tls_session_is_init_finished()
+ * returns true and every record produced by OpenSSL has reached the peer.
+ * That is not the same as OpenSSL's own SSL_is_init_finished(): with a
+ * TLS 1.3 stateless ticket there is a `load session` still to run.
  */
 static void tls_connection_check(fr_tls_connection_t *conn)
 {
@@ -85,7 +87,7 @@ static void tls_connection_check(fr_tls_connection_t *conn)
 	 *	The TLS handshake is continuing, OR it's done but
 	 *	there's still data to push to the peer.
 	 */
-	if (!SSL_is_init_finished(tls_session->ssl)) return;
+	if (!fr_tls_session_is_init_finished(tls_session)) return;
 	if (fr_dbuff_remaining(tls_session->dirty_out) > 0) return;
 
 	INFO("TLS handshake completed");
@@ -442,7 +444,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	 *	a logic error.  See src/lib/tls/session.c.  Application data
 	 *	is not handled yet, so a record arriving now is an error.
 	 */
-	if (SSL_is_init_finished(tls_session->ssl)) {
+	if (fr_tls_session_is_init_finished(tls_session)) {
 		RERROR("Received %zu bytes of application data, which is not supported", data_len);
 		goto error;
 	}

@@ -383,6 +383,8 @@ int		fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *
 
 int		fr_tls_session_client_hello_cb(SSL *ssl, int *al, void *arg);
 
+bool		fr_tls_session_is_init_finished(fr_tls_session_t *tls_session);
+
 int		fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session);
 
 int 		fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session);
