@@ -8,12 +8,17 @@
 #                                   with. Default `service`. `profiling` swaps in
 #                                   freeradius4-profiling/<image>:<sha>, sets RADIUSD_COMMAND
 #                                   so the test template runs the server under
-#                                   valgrind/callgrind, and writes results to
-#                                   PROFILING_RESULT_PATH.
+#                                   valgrind/gperftools, and writes results to
+#                                   PROFILING_RESULT_PATH.  MODE=profiling is only
+#                                   valid on a single test target.  Use
+#                                   test.multi-server.profiling[.ci] to profile the suites.
 # - PROFILING_RESULT_MODE=<ci|dev>      Profiling output layout (only meaningful when
 #                                   MODE=profiling). Default `ci`.
 #                                     ci:  PROFILING_RESULT_ROOT/<branch>/<commit>/<run-index>/<suite>/<test>/<tool>
 #                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>/<tool>  (flat)
+# - PROFILING_RUN_INDEX=<n>         <run-index> of the `ci` layout.  CI passes
+#                                   github.run_number.  Unset, the next free index
+#                                   under <branch>/<commit> is used.
 #
 # Usage:
 #   make -f src/tests/multi-server/all.mk test.multi-server                       # all suites, service image
@@ -377,12 +382,12 @@ test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
 #
 .PHONY: test.multi-server.profiling test.multi-server.profiling.ci
 test.multi-server.profiling: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=valgrind
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=gperftools
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=valgrind   PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=gperftools PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
 
 test.multi-server.profiling.ci: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=valgrind
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=gperftools
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=valgrind   PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=gperftools PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
 
 #
 #  Profiling image: build the standard freeradius4-profiling/<image>:<sha>
