@@ -88,6 +88,7 @@ jobs:
         uses: fkirc/skip-duplicate-actions@v5.3.2
         with:
           concurrent_skipping: ${{ github.event_name == 'push' && !startsWith(github.ref_name, 'developer/') && 'same_content_newer' || 'never' }}
+          skip_after_successful_duplicate: false
 
   #
   #  `common_vars` determines which registry holds the images and which
