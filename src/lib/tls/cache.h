@@ -57,6 +57,24 @@ typedef enum {
 	FR_TLS_CACHE_FAILED,			//!< The operation did not complete.
 } fr_tls_cache_state_t;
 
+/** The current state of calling `encode session` or `decode session`
+ *
+ * A stateless session ticket encodes the contents of the `session-state` list.
+ *
+ * The `encode session` policy allows the admin to change the list
+ * before the ticket is created.
+ *
+ * The `decode session` policy allows the admin to check the list
+ * after a ticket has been received.
+ */
+typedef enum {
+	FR_TLS_TICKET_INIT = 0,				//!< Nothing requested.
+	FR_TLS_TICKET_ENCODE_REQUESTED,			//!< `encode session` needs to run.
+	FR_TLS_TICKET_DECODE_REQUESTED,			//!< `decode session` needs to run.
+	FR_TLS_TICKET_SUCCESS,				//!< The section ran and returned success.
+	FR_TLS_TICKET_FAILED				//!< The section ran and did not.
+} fr_tls_ticket_state_t;
+
 /** This structure holds the current cache state for the session
  *
  */
@@ -165,6 +183,8 @@ int		fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf, 
 unlang_action_t	fr_tls_cache_load_client_push(request_t *request, fr_tls_session_t *tls_session);
 
 unlang_action_t	fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *tls_session);
+
+unlang_action_t	fr_tls_cache_stateless_pending_push(request_t *request, fr_tls_session_t *tls_session);
 #endif
 
 #ifdef __cplusplus

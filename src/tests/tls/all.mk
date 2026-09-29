@@ -53,15 +53,21 @@ TLS_ALERT   := $(DIR)/alert.sh
 TLS_REJECT  := $(DIR)/reject.sh
 TLS_NOCACHE := $(DIR)/no_cache.sh
 TLS_FAILRES := $(DIR)/fail_resumed.sh
+TLS_STATELESS := $(DIR)/stateless.sh
+TLS_NOTICKET := $(DIR)/no_ticket.sh
 TLS_CONF    := $(DIR)/unit_test_tls.conf
 TLS_COMMON  := $(DIR)/common.conf
 TLS_NC_CONF := $(DIR)/no_cache.conf
+TLS_SL_CONF := $(DIR)/stateless.conf
+TLS_NT_CONF := $(DIR)/no_ticket.conf
 TLS_RECEIPT := $(OUTPUT)/unit_test_tls.receipt
 TLS_CACHE_RECEIPT := $(OUTPUT)/session_cache_client.receipt
 TLS_ALERT_RECEIPT := $(OUTPUT)/alert.receipt
 TLS_REJECT_RECEIPT := $(OUTPUT)/reject.receipt
 TLS_NOCACHE_RECEIPT := $(OUTPUT)/no_cache_client.receipt
 TLS_FAILRES_RECEIPT := $(OUTPUT)/fail_resumed.receipt
+TLS_STATELESS_RECEIPT := $(OUTPUT)/stateless_client.receipt
+TLS_NOTICKET_RECEIPT := $(OUTPUT)/no_ticket_client.receipt
 
 #
 #  The script and the configuration have to agree on the port, so the script
@@ -161,15 +167,45 @@ $(TLS_FAILRES_RECEIPT): $(TLS_CONF) $(TLS_COMMON) $(TLS_FAILRES) $(TEST_BIN_DIR)
 	    $(SHELL) $(TLS_FAILRES)
 
 #
-#  The six tests share a port, so they must not run at the same time.
+#  Stateless session resumption over TLS 1.3.  The only test here which runs
+#  `encode session` and `decode session`, and the only one which negotiates
+#  1.3, because stateful resumption is not defined above 1.2.
+#
+$(TLS_STATELESS_RECEIPT): $(TLS_SL_CONF) $(TLS_COMMON) $(TLS_STATELESS) $(TEST_BIN_DIR)/unit_test_tls $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+	@echo "TLS-TEST stateless"
+	${Q}OUTPUT="$(TLS_OUTPUT)" \
+	    CONFDIR="$(top_srcdir)/$(TLS_DIR)" \
+	    DICT_PATH="$(DICT_PATH)" \
+	    PORT="$(TLS_PORT)" \
+	    UNIT_TEST_TLS="$(TEST_BIN)/unit_test_tls" \
+	    $(SHELL) $(TLS_STATELESS)
+
+#
+#  A server which issues no ticket, talking to a client which expects one.
+#  The only test which pins the application-data signal, because it is the
+#  only one where nothing else can release the client.
+#
+$(TLS_NOTICKET_RECEIPT): $(TLS_NT_CONF) $(TLS_COMMON) $(TLS_NOTICKET) $(TEST_BIN_DIR)/unit_test_tls $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+	@echo "TLS-TEST no-ticket"
+	${Q}OUTPUT="$(TLS_OUTPUT)" \
+	    CONFDIR="$(top_srcdir)/$(TLS_DIR)" \
+	    DICT_PATH="$(DICT_PATH)" \
+	    PORT="$(TLS_PORT)" \
+	    UNIT_TEST_TLS="$(TEST_BIN)/unit_test_tls" \
+	    $(SHELL) $(TLS_NOTICKET)
+
+#
+#  The eight tests share a port, so they must not run at the same time.
 #
 $(TLS_CACHE_RECEIPT): $(TLS_RECEIPT)
 $(TLS_ALERT_RECEIPT): $(TLS_CACHE_RECEIPT)
 $(TLS_REJECT_RECEIPT): $(TLS_ALERT_RECEIPT)
 $(TLS_NOCACHE_RECEIPT): $(TLS_REJECT_RECEIPT)
 $(TLS_FAILRES_RECEIPT): $(TLS_NOCACHE_RECEIPT)
+$(TLS_STATELESS_RECEIPT): $(TLS_FAILRES_RECEIPT)
+$(TLS_NOTICKET_RECEIPT): $(TLS_STATELESS_RECEIPT)
 
-$(BUILD_DIR)/tests/$(TEST): $(TLS_RECEIPT) $(TLS_CACHE_RECEIPT) $(TLS_ALERT_RECEIPT) $(TLS_REJECT_RECEIPT) $(TLS_NOCACHE_RECEIPT) $(TLS_FAILRES_RECEIPT)
+$(BUILD_DIR)/tests/$(TEST): $(TLS_RECEIPT) $(TLS_CACHE_RECEIPT) $(TLS_ALERT_RECEIPT) $(TLS_REJECT_RECEIPT) $(TLS_NOCACHE_RECEIPT) $(TLS_FAILRES_RECEIPT) $(TLS_STATELESS_RECEIPT) $(TLS_NOTICKET_RECEIPT)
 
 $(TEST).help:
 	@echo make $(TLS_TEST)

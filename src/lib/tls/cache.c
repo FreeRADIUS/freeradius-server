@@ -378,7 +378,7 @@ static void tls_cache_delete_request(fr_tls_session_t *tls_session, SSL_SESSION 
 
 /** Process the result of `load session { ... }`
  */
-static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
+static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -523,7 +523,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	ua = fr_tls_call_push(child, tls_cache_load_result, conf, tls_session, true);
+	ua = fr_tls_call_push(child, tls_cache_load_resume, conf, tls_session, true);
 	if (ua == UNLANG_ACTION_FAIL) {
 		talloc_free(child);
 		tls_cache_load_state_reset(request, tls_cache);
@@ -535,7 +535,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 
 /** Process the result of `store session { ... }`
  */
-static unlang_action_t tls_cache_store_result(request_t *request, void *uctx)
+static unlang_action_t tls_cache_store_resume(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -675,7 +675,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	ua = fr_tls_call_push(child, tls_cache_store_result, conf, tls_session, true);
+	ua = fr_tls_call_push(child, tls_cache_store_resume, conf, tls_session, true);
 	if (ua == UNLANG_ACTION_FAIL) goto error;
 
 	return ua;
@@ -683,7 +683,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 
 /** Process the result of `clear session { ... }`
  */
-static unlang_action_t tls_cache_clear_result(request_t *request, void *uctx)
+static unlang_action_t tls_cache_clear_resume(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -731,7 +731,7 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	ua = fr_tls_call_push(child, tls_cache_clear_result, conf, tls_session, true);
+	ua = fr_tls_call_push(child, tls_cache_clear_resume, conf, tls_session, true);
 	if (ua == UNLANG_ACTION_FAIL) {
 		talloc_free(child);
 		tls_cache_clear_state_reset(request, tls_cache);
@@ -747,12 +747,12 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
  * server path differs: OpenSSL hands a server the session ID part way through
  * a handshake, and the server returns the matching session.
  */
-static unlang_action_t tls_cache_load_client_result(request_t *request, void *uctx)
+static unlang_action_t tls_cache_load_client_resume(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
 
-	(void) tls_cache_load_result(request, uctx);
+	(void) tls_cache_load_resume(request, uctx);
 
 	if (tls_cache->load.state != FR_TLS_CACHE_SUCCESS) {
 		RDEBUG2("No session to resume");
@@ -819,7 +819,7 @@ unlang_action_t fr_tls_cache_load_client_push(request_t *request, fr_tls_session
 
 	talloc_free(name);
 
-	ua = fr_tls_call_push(child, tls_cache_load_client_result, conf, tls_session, true);
+	ua = fr_tls_call_push(child, tls_cache_load_client_resume, conf, tls_session, true);
 	if (ua == UNLANG_ACTION_FAIL) {
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
@@ -828,7 +828,146 @@ unlang_action_t fr_tls_cache_load_client_push(request_t *request, fr_tls_session
 	return ua;
 }
 
-/** Push a `store session { ... }` or `clear session { ... }` or `load session { ... }` depending on what operations are pending
+/** Resume after processing `encode session { ... }` or `decode session { ... }`
+ *
+ * Check the result and return success / fail depending.
+ */
+static unlang_action_t tls_cache_stateless_resume(request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	fr_pair_t		*vp;
+
+	fr_assert((tls_session->ticket == FR_TLS_TICKET_ENCODE_REQUESTED) ||
+		  (tls_session->ticket == FR_TLS_TICKET_DECODE_REQUESTED));
+
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
+	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
+		tls_session->ticket = FR_TLS_TICKET_FAILED;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	tls_session->ticket = FR_TLS_TICKET_SUCCESS;
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Push `encode session { ... }` or `decode session { ... }`
+ *
+ * @param[in] request		The current request.
+ * @param[in] tls_session	The current TLS session.
+ * @param[in] packet_type	Which of the two sections to run.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_FAIL on failure.
+ */
+static unlang_action_t tls_cache_stateless_push(request_t *request, fr_tls_session_t *tls_session,
+					     uint32_t packet_type)
+{
+	fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
+	request_t	*child;
+	unlang_action_t	ua;
+
+	fr_assert(conf->virtual_server);
+
+	MEM(child = tls_subrequest_alloc(request, packet_type, &tls_session->session_id));
+
+	fr_tls_session_extra_pairs_copy_to_child(child, tls_session);
+
+	ua = fr_tls_call_push(child, tls_cache_stateless_resume, conf, tls_session, false);
+	if (ua == UNLANG_ACTION_FAIL) {
+		PERROR("Failed calling TLS virtual server");
+		talloc_free(child);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	return ua;
+}
+
+/** Push `encode session` or `decode session`, depending on what's needed.
+ *
+ * @param[in] request		The current request.
+ * @param[in] tls_session	The current TLS session.
+ * @return
+ *	- UNLANG_ACTION_CALCULATE_RESULT	- nothing was pending.
+ *	- UNLANG_ACTION_PUSHED_CHILD		- a section is running.
+ *	- UNLANG_ACTION_FAIL			- the frame could not be pushed.
+ */
+unlang_action_t fr_tls_cache_stateless_pending_push(request_t *request, fr_tls_session_t *tls_session)
+{
+	switch (tls_session->ticket) {
+	case FR_TLS_TICKET_ENCODE_REQUESTED:
+		return tls_cache_stateless_push(request, tls_session,
+					     enum_tls_packet_type_encode_session->vb_uint32);
+
+	case FR_TLS_TICKET_DECODE_REQUESTED:
+		return tls_cache_stateless_push(request, tls_session,
+					     enum_tls_packet_type_decode_session->vb_uint32);
+
+	default:
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+}
+
+/** Set up `encode session { ... }` or `decode session { ... }` from inside an OpenSSL callback
+ *
+ * We can't run the interpreter inside of a callback, so record what
+ * we want to do, and tell OpenSSL to pause its processing.  We then
+ * return to session.c, which determines that there's work to do,
+ * pushes the section, runs it, and calls us again.  That resumes
+ * after the ASYNC_pause_job() call.
+ *
+ * @param[in] request		bound to the session.
+ * @param[in] tls_session	the ticket belongs to.
+ * @param[in] decode		true to run `decode session`, false for `encode session`.
+ * @return
+ *	- true if the section ran and approved the session-state list.
+ *	- false if it did not, or if it could not be run at all.
+ */
+static bool tls_cache_stateless_section_setup(request_t *request, fr_tls_session_t *tls_session, bool decode)
+{
+	char const *name = decode ? "decode session" : "encode session";
+
+	fr_assert(tls_session->ticket == FR_TLS_TICKET_INIT);
+
+	tls_session->ticket = decode ? FR_TLS_TICKET_DECODE_REQUESTED : FR_TLS_TICKET_ENCODE_REQUESTED;
+
+	/*
+	 *	Sections are only allowed during the handshake, as
+	 *	with certificate re-validation.  See the FIXME in
+	 *	tls_cache_session_ticket_app_data_get().
+	 */
+	if (unlikely(!tls_session->can_pause)) {
+		fr_assert_msg("Unexpected call to %s. "
+			      "tls_session_async_handshake_cont must be in call stack", __FUNCTION__);
+		tls_session->ticket = FR_TLS_TICKET_INIT;
+		return false;
+	}
+
+	ASYNC_pause_job();
+
+	/*
+	 *	If the request was cancelled, reset the ticket state
+	 *	so that we don't do anything.
+	 */
+	if (unlang_request_is_cancelled(request)) {
+		tls_session->ticket = FR_TLS_TICKET_INIT;
+		return false;
+	}
+
+	if (tls_session->ticket != FR_TLS_TICKET_SUCCESS) {
+		REDEBUG("`%s` did not return success", name);
+		tls_session->ticket = FR_TLS_TICKET_INIT;
+		return false;
+	}
+
+	tls_session->ticket = FR_TLS_TICKET_INIT;
+
+	return true;
+}
+
+/** Push a `store session { ... }` or `clear session { ... }` or `load session { ... }`
+ *
+ * Depending on what operation is needed.
  *
  * @param[in] request		The current request.
  * @param[in] tls_session	The current TLS session.
@@ -1089,7 +1228,23 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	resumption.
 	 */
 	tls_session = fr_tls_session(ssl);
-	fr_assert(!tls_session->session);
+
+	/*
+	 *	We have a session ticket.  See fr_tls_session_is_init_finished()
+	 */
+	tls_session->session_ticket_received = true;
+
+	/*
+	 *	A server sees this callback once, before anything else has
+	 *	recorded a session.
+	 *
+	 *	A client has already recorded one: SSL_get_session() runs
+	 *	when OpenSSL finishes the handshake, which is before the
+	 *	NewSessionTicket arrives here.  The ticket's session is the
+	 *	one worth keeping, because it is what the client offers
+	 *	back, so it supersedes.
+	 */
+	fr_assert(!tls_session->session || !SSL_is_server(ssl));
 	tls_session->session = sess;
 	tls_session_id_cache(tls_session, sess);
 
@@ -1530,6 +1685,7 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 	fr_tls_cache_conf_t	*tls_cache_conf = arg;	/* Not talloced */
 	SSL_SESSION		*sess;
 	request_t		*request;
+	fr_tls_conf_t		*conf;
 
 	/*
 	 *	Check to see if we have a request bound
@@ -1566,6 +1722,18 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 	sess = SSL_get_session(ssl);
 	if (!sess) {
 		REDEBUG("Failed retrieving session in session generation callback");
+		return 0;
+	}
+
+	/*
+	 *	Run `encode session` to allow the admin to update the
+	 *	`session-state` list, before we encode it into a
+	 *	stateless session ticket.
+	 */
+	conf = fr_tls_session_conf(ssl);
+
+	if (conf->encode_session && !tls_cache_stateless_section_setup(request, tls_session, false)) {
+		REDEBUG("Not generating a session-ticket");
 		return 0;
 	}
 
@@ -1633,6 +1801,16 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	 *	for performing re-validation.
 	 */
 	if (tls_cache_app_data_get(request, sess, &tls_session->session_id) < 0) {
+		REDEBUG("Denying session resumption via session-ticket");
+		return SSL_TICKET_RETURN_IGNORE_RENEW;
+	}
+
+	/*
+	 *	The session-state list is back.  Give policy the chance to
+	 *	look at what the ticket carried before anything relies on
+	 *	it, certificate re-validation below included.
+	 */
+	if (conf->decode_session && !tls_cache_stateless_section_setup(request, tls_session, true)) {
 		REDEBUG("Denying session resumption via session-ticket");
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}
@@ -1752,7 +1930,33 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf, b
 		uint8_t *key_buff;
 		EVP_PKEY_CTX *pkey_ctx = NULL;
 
-		if (!(cache_conf->mode & FR_TLS_CACHE_STATEFUL)) tls_cache_disable_statefull_resumption(ctx);
+		/*
+		 *	For stateless session tickets, the server
+		 *	doesn't call `load session` or `store
+		 *	session`.  Don't register those callbacks.
+		 *
+		 *	For stateless session tickets, the client has
+		 *	to store the ticket somewhere, so that it's
+		 *	read back on the next session.
+		 *
+		 *	The client therefore runs the `store session`
+		 *	and `load session` policies, even for
+		 *	stateless session resumption.
+		 */
+		if (!(cache_conf->mode & FR_TLS_CACHE_STATEFUL)) {
+			if (!client) {
+				tls_cache_disable_statefull_resumption(ctx);
+			} else {
+				SSL_CTX_sess_set_new_cb(ctx, tls_cache_store_cb);
+				SSL_CTX_sess_set_get_cb(ctx, tls_cache_load_cb);
+				SSL_CTX_sess_set_remove_cb(ctx, tls_cache_delete_cb);
+
+				SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT |
+								    SSL_SESS_CACHE_NO_INTERNAL);
+
+				SSL_CTX_set_timeout(ctx, fr_time_delta_to_sec(cache_conf->lifetime));
+			}
+		}
 
 		/*
 		 *	If keys is NULL, then OpenSSL returns the expected

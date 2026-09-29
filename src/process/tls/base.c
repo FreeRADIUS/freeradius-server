@@ -293,7 +293,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 	/*
 	 *	Success, failure, and notfound are not TLS packets that we handle.
 	 */
-	if (!request->packet->code || (request->packet->code > FR_PACKET_TYPE_VALUE_FAIL_SESSION)) {
+	if (!request->packet->code || (request->packet->code > FR_PACKET_TYPE_VALUE_DECODE_SESSION)) {
 		REDEBUG("Invalid packet code %u", request->packet->code);
 		RETURN_UNLANG_FAIL;
 	}

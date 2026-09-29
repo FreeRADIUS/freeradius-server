@@ -52,6 +52,12 @@ extern "C" {
  */
 extern int fr_tls_session_ex_index;
 
+/*
+ *	Attached to an SSL_CTX, which OpenSSL never duplicates, so a
+ *	hard-coded index is safe here.
+ */
+#define FR_TLS_EX_CTX_INDEX_VERIFY_STORE	(20)
+
 #define FR_TLS_EX_INDEX_CURL_CONF		(30)
 #ifdef __cplusplus
 }

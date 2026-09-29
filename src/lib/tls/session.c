@@ -911,6 +911,19 @@ bool fr_tls_session_is_init_finished(fr_tls_session_t *tls_session)
 	if (!(conf->cache.mode & FR_TLS_CACHE_STATELESS)) return true;
 
 	/*
+	 *	If we're not a server, then we're a client, and we
+	 *	need to receive a ticket.  For TLS 1.3 with stateless
+	 *	session tickets, the TLS handshake is finished, and
+	 *	then we get a ticket.  So we're not done until we see
+	 *	a ticket.
+	 *
+	 *	@todo - a peer which sends no ticket leaves a client waiting
+	 *	here forever.  Waiting on a timer rather than on the ticket
+	 *	is the fix, see the note in src/bin/unit_test_tls.c.
+	 */
+	if (!SSL_is_server(tls_session->ssl)) return tls_session->session_ticket_received;
+
+	/*
 	 *	Something has requested `load session`, but it hasn't
 	 *	yet been run.  Once that section completes, its state
 	 *	returns to INIT.  A session which never sends a ticket
@@ -1623,6 +1636,23 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		}
 
 		/*
+		 *	Service any pending `encode session` or `decode session`, for stateless session
+		 *	tickets.
+		 */
+		ua = fr_tls_cache_stateless_pending_push(request, tls_session);
+		switch (ua) {
+		case UNLANG_ACTION_FAIL:
+			IGNORE(unlang_function_clear(request), int);
+			goto error;
+
+		case UNLANG_ACTION_PUSHED_CHILD:
+			return ua;
+
+		default:
+			break;
+		}
+
+		/*
 		 *	Next service any pending certificate
 		 *	validation actions.
 		 */
@@ -1678,12 +1708,16 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 	fr_tls_session_request_bind(tls_session->ssl, request);		/* May be unbound in this function or asynchronously */
 
 	/*
-	 *	This is a logic error.  fr_tls_session_async_handshake
-	 *	must not be called if the handshake is
-	 *	complete fr_tls_session_recv must be
-	 *	called instead.
+	 *	This is a logic error.
+	 *	fr_tls_session_async_handshake() must not be called if
+	 *	the handshake is complete.  fr_tls_session_recv() must
+	 *	be called instead.
+	 *
+	 *	Check for full init finished, including TLS 1.3 for a
+	 *	client with stateless session tickets.  Those arrive
+	 *	after the TLS handshake has completed.
 	 */
-	if (SSL_is_init_finished(tls_session->ssl)) {
+	if (fr_tls_session_is_init_finished(tls_session)) {
 		REDEBUG("Attempted to continue TLS handshake, but handshake has completed");
 	error:
 		tls_session->result = FR_TLS_RESULT_ERROR;

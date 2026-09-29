@@ -152,11 +152,16 @@ typedef struct {
 	int			fd;			//!< Accepted or connected socket.
 	fr_event_fd_t		*ef;			//!< Read event for fd.
 
+	fr_timer_t		*post_handshake_ev;	//!< Bounds the wait for anything which arrives
+							///< after the handshake, see
+							///< tls_post_handshake_timeout().
+
 	bool			done;			//!< Set once the connection has a result.
 	int			ret;			//!< Exit status.
 } unit_test_tls_t;
 
 static void usage(main_config_t const *config, int status);
+static void tls_request_failed(unit_test_tls_t *utt);
 
 /*
  *	Interpreter callbacks.
@@ -272,6 +277,39 @@ static bool _request_scheduled(request_t const *request, UNUSED void *uctx)
 	return fr_heap_entry_inserted(request->runnable);
 }
 
+/** How long to wait after the handshake
+ *
+ * For a TLS 1.3 client with statefull session tickets, the tickets
+ * arrive after the last TLS handshake message.
+ * fr_tls_session_is_init_finished() therefore holds the session in an
+ * "unfinished" state until tls_cache_store_cb() reports a ticket.
+ *
+ * Nothing distinguishes "the ticket is still on its way" from "there was
+ * never going to be one", so the wait has to be bounded.  Both ends of this
+ * test are on the same machine, so two seconds is many times what a ticket
+ * needs, and anything slower than that is a fault rather than a slow link.
+ *
+ * On a real server, this timeout should be configurable, *and* a real
+ * server would send application data.  The stateless tickets needs to
+ * be sent before application data.  So if there's application data,
+ * that's an indication that there are no stateless session tickets.
+ */
+#define TLS_POST_HANDSHAKE_TIMEOUT	fr_time_delta_from_sec(2)
+
+/** Nothing arrived after the handshake, so give up on the connection
+ *
+ * Reaching here means the peer owed us something, a session ticket or
+ * application data, and never sent it.
+ */
+static void tls_post_handshake_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
+
+	ERROR("Timed out waiting for data after the handshake completed");
+
+	tls_request_failed(utt);
+}
+
 /** Stop the event loop, recording why
  *
  * The connection carries the result, so the exit status is decided here
@@ -284,6 +322,8 @@ static void tls_request_finished(void *uctx, fr_tls_connection_t *conn)
 	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
 	if (utt->done) return;
+
+	FR_TIMER_DISARM(utt->post_handshake_ev);
 
 	utt->done = true;
 	utt->ret = conn->failed ? EXIT_FAILURE : EXIT_SUCCESS;
@@ -446,6 +486,24 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 			 *	store, which is what rlm_eap_tls does when
 			 *	policy rejects.
 			 */
+			/*
+			 *	OpenSSL is done, but the connection is not:
+			 *	a TLS 1.3 client is still owed its session
+			 *	ticket.  Bound that wait, because nothing
+			 *	else will.
+			 */
+			if (!utt->done && !utt->post_handshake_ev &&
+			    SSL_is_init_finished(utt->conn->tls_session->ssl) &&
+			    !fr_tls_session_is_init_finished(utt->conn->tls_session)) {
+				if (fr_timer_in(utt, utt->el->tl, &utt->post_handshake_ev,
+						TLS_POST_HANDSHAKE_TIMEOUT, false,
+						tls_post_handshake_timeout, utt) < 0) {
+					ERROR("Failed arming the post-handshake timer");
+					tls_request_failed(utt);
+					return;
+				}
+			}
+
 			if (utt->reject && (utt->connections == utt->count) &&
 			    fr_tls_session_is_init_finished(utt->conn->tls_session)) {
 				INFO("Rejecting the session after a successful handshake");
@@ -685,6 +743,8 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	utt->conn->pending = utt->conn->failed = utt->conn->idle = false;
 	utt->conn->request = NULL;
 	utt->conn->tls_session = NULL;
+
+	TALLOC_FREE(utt->post_handshake_ev);
 
 	utt->done = false;
 	utt->ret = EXIT_SUCCESS;

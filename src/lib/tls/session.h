@@ -204,9 +204,15 @@ struct fr_tls_session_s {
 
 	fr_tls_verify_t		validate;			//!< Current session certificate validation state.
 
+	fr_tls_ticket_state_t	ticket;				//!< Whether `encode session` or `decode session`
+								///< is waiting to run, and what it returned.
+
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 
 	bool			peer_cert_ok;			//!< Whether the peer's certificate was validated
+	bool			session_ticket_received;	//!< A client has seen the NewSessionTicket which
+								///< a TLS 1.3 server sends after the handshake.
+
 	bool			can_pause;			//!< If true, it's ok to pause the request
 								///< using the OpenSSL async API.
 
