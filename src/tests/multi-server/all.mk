@@ -63,10 +63,15 @@ PROFILING_RESULT_MODE  ?= ci
 
 #
 #  PROFILING_RUN_INDEX is the <run-index> that a MODE=profiling run uses.
-#  make computes it once based off of the number of directories under
+#  CI passes it in from github.run_number, because a job's runner and
+#  working directory do not persist between runs.  For a local run, make
+#  computes it once based off of the number of directories under
 #  PROFILING_RESULT_ROOT/<branch>/<commit>.
 #
 #  All results are saved under the same <run-index>.
+#
+#
+#  Fallback for local runs, where nothing sets PROFILING_RUN_INDEX.
 #
 ifeq "$(PROFILING_RUN_INDEX)" ""
   # Path containing the run directories for this commit
