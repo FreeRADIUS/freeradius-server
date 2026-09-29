@@ -302,6 +302,8 @@ static inline CC_HINT(nonnull) void _fr_tls_session_request_unbind(char const *f
 	request_t	*request = fr_tls_session_request(ssl);
 	int		ret;
 
+	if (!request) return;
+
 #ifndef NDEBUG
 	(void)talloc_get_type_abort(request, request_t);
 #endif
