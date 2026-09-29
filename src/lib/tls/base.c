@@ -466,6 +466,8 @@ static void fr_openssl_stack_free(void *stack)
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
+int fr_tls_session_ex_index = -1;
+
 int fr_openssl_init(void)
 {
 	int rcode;
@@ -551,6 +553,21 @@ int fr_openssl_init(void)
 	 *	certificates.
 	 */
 	EVP_add_digest(EVP_sha256());
+
+	/*
+	 *	Allocate an index via the OpenSSL API.  This tells
+	 *	OpenSSL that the ex_data pointer can be duplicated
+	 *	when the SSL_SESSION is duplicated.
+	 *
+	 *	No callbacks are needed: the default is to copy the
+	 *	pointer, which is what we need.  The #fr_tls_session_t
+	 *	outlives every SSL_SESSION which points to it.
+	 */
+	fr_tls_session_ex_index = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+	if (fr_tls_session_ex_index < 0) {
+		fr_tls_log(NULL, "Failed allocating an SSL_SESSION ex_data index");
+		return -1;
+	}
 
 	fr_tls_log_init();
 

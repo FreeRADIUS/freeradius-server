@@ -462,7 +462,7 @@ static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 	 *	ex_data is not serialised in i2d_SSL_SESSION
 	 *	so we don't have to bother unsetting it.
 	 */
-	SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION, fr_tls_session(tls_session->ssl));
+	SSL_SESSION_set_ex_data(sess, fr_tls_session_ex_index, fr_tls_session(tls_session->ssl));
 
 	tls_cache->load.state = FR_TLS_CACHE_SUCCESS;
 	tls_cache->load.sess = sess;	/* This is consumed in tls_cache_load_cb */
@@ -1365,7 +1365,7 @@ static void tls_cache_delete_cb(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 	 *
 	 *	Maybe it's one OpenSSL created internally?
 	 */
-	tls_session = SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION);
+	tls_session = SSL_SESSION_get_ex_data(sess, fr_tls_session_ex_index);
 	if (!tls_session) return;
 
 	(void) talloc_get_type_abort(tls_session, fr_tls_session_t);
