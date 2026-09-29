@@ -63,7 +63,7 @@ STATUS=0
 #  samples the main thread.  FreeRADIUS request processing functions
 #  must run on the main thread for proper profiling.
 CPUPROFILE_FREQUENCY=1000 \
-freeradius -s -l stdout \
+freeradius -f -l stdout \
   -S resources.talloc_skip_cleanup=yes \
   -S "trigger.server.start=%gperftools.start('$PROFILE') && ${TRIGGER_SERVER_START_APPEND:-true}" \
   -S "trigger.server.stop=%gperftools.stop() && ${TRIGGER_SERVER_STOP_APPEND:-true}" \
