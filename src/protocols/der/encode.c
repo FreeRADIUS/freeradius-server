@@ -1568,7 +1568,7 @@ static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_st
 	 *	'length_start' in a temporary dbuff, so that it
 	 *	doesn't get updated by the move.
 	 */
-	fr_dbuff_move(dbuff, &FR_DBUFF(length_start), datalen);
+	(void) fr_dbuff_move(dbuff, &FR_DBUFF(length_start), datalen);
 
 	/*
 	 *	Encode high bits first, but only the non-zero ones.
