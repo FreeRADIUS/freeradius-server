@@ -17,8 +17,8 @@
 #  then magically turns into different fuzzers.
 #
 
-TARGET			:= fuzzer_$(PROTOCOL)$(E)
-SOURCES			:= fuzzer_$(PROTOCOL).c common.c
+TARGET			:= $(FUZZER_NAME)_$(PROTOCOL)$(E)
+SOURCES			:= $(FUZZER_NAME)_$(PROTOCOL).c common.c
 
 TGT_PREREQS		:= libfreeradius-$(PROTOCOL)$(L) $(FUZZER_PROTO_LIBS)
 

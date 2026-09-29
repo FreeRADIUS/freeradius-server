@@ -3,7 +3,7 @@
 #  decoding (see src/protocols/radius/decode.c for an example) and
 #  a libfreeradius-<name> library to load. The per-protocol fuzzer
 #  source / makefile are generated from src/fuzzer/fuzzer.c and
-#  src/fuzzer/fuzzer.mk via FUZZ_PROTOCOL below.
+#  src/fuzzer/fuzzer_dec.mk via FUZZ_PROTOCOL below.
 #
 FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp bfd cbor arp
 
@@ -58,7 +58,7 @@ src/fuzzer/fuzzer_${1}.c: src/fuzzer/fuzzer.c | src/freeradius-devel/fuzzer
 	$${Q}sed 's/XX_PROTOCOL_XX/${1}/g' < $$^ > $$@
 
 
-src/fuzzer/fuzzer_${1}.mk: src/fuzzer/fuzzer.mk
+src/fuzzer/fuzzer_${1}.mk: src/fuzzer/fuzzer_dec.mk
 	$${Q}sed 's/$$$$(PROTOCOL)/${1}/g' < $$^ > $$@
 
 SUBMAKEFILES += fuzzer_${1}.mk
