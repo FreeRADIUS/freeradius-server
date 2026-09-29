@@ -1092,21 +1092,15 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	resumption.
 	 */
 	tls_session = fr_tls_session(ssl);
-
 	fr_assert(!tls_session->session);
 	tls_session->session = sess;
 	tls_session_id_cache(tls_session, sess);
 
-	/*
-	 *	If the session is TLS 1.3, then resumption will be handled by a
-	 *	session ticket.  However, if this callback is defined, it still
-	 *	gets called.
-	 *	To avoid unnecessary entries in the stateful cache just return.
-	 */
-	if (tls_session->info.version == TLS1_3_VERSION) return 0;
-
 	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
+
+	fr_assert(tls_cache);
+	fr_assert(fr_tls_session_conf(tls_session->ssl)->virtual_server);
 
 	/*
 	 *	Request was cancelled, just get OpenSSL to
@@ -1115,16 +1109,27 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	if (unlang_request_is_cancelled(request)) return 0;
 
 	/*
-	 *	Record the ID of the session being stored.  It is not
-	 *	always tls_session->session_id: a peer offers an ID in its
-	 *	ClientHello whether or not anything is resumable, so the
-	 *	session which ends up being stored can have a different ID
-	 *	from the one sent in the handshake.
+	 *	Take a copy of the ID, because "return 0" tells
+	 *	OpenSSL that it can delete the session.  Which means
+	 *	that the cached pointer to the session ID could be
+	 *	freed.
+	 *
+	 *	We may need to use the ID in the `store session` even
+	 *	after the session is gone.
 	 */
 	if (tls_cache_id_to_box(tls_cache, &tls_cache->store.id, sess) < 0) {
 		RDEBUG3("No Session ID to store");
 		return 0;
 	}
+
+	/*
+	 *	If the session is TLS 1.3, then resumption will be handled by a
+	 *	session ticket.  However, if this callback is defined, it still
+	 *	gets called.
+	 *
+	 *	To avoid unnecessary entries in the stateful cache just return.
+	 */
+	if (tls_session->info.version == TLS1_3_VERSION) return 0;
 
 	RDEBUG3("Session ID %pV - Requested store", &tls_cache->store.id);
 
@@ -1161,6 +1166,9 @@ static SSL_SESSION *tls_cache_load_cb(SSL *ssl,
 	tls_session = fr_tls_session(ssl);
 	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
+
+	fr_assert(tls_cache);
+	fr_assert(fr_tls_session_conf(tls_session->ssl)->virtual_server);
 
 	/*
 	 *	Request was cancelled, don't return any session and hopefully
