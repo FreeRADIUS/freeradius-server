@@ -76,26 +76,25 @@ typedef enum {
 typedef struct {
 	struct {
 		fr_tls_cache_store_state_t	state;		//!< Tracks store state.
-		fr_value_box_t			id;		//!< ID of the session being stored, which may be
-								///< different from tls_session->session_id, which is
-								///< sent by the peer in ClientHello.
-								///< If we're doing resumption, we store a different ID
-								///< for that.
+		fr_value_box_t			id;		//!< ID of the session being stored
 		SSL_SESSION			*sess;		//!< Session to store.
 	} store;
 
 	struct {
 		fr_tls_cache_load_state_t	state;		//!< Tracks load requests from OpenSSL.
-		uint8_t				*id;		//!< Session ID to load.
+		fr_value_box_t			id;		//!< Session ID that the peer asked to resume
 		SSL_SESSION			*sess;		//!< Deserialized session.
 	} load;
 
 	struct {
 		fr_tls_cache_clear_state_t	state;		//!< Tracks delete requests from OpenSSL.
-		uint8_t				*id;		//!< Session ID to be deleted.
+		fr_value_box_t			id;		//!< Session ID to clear
 	} clear;
 
 	fr_value_box_t const *session_id;      		//!< if set, points to tls_session->session_id
+							///< sent by the peer in ClientHello.
+							///< The various IDs above are _usually_ the same, but
+							///< are not _always_ the same.
 
 	bool		loaded;				//!< Whether `load session` ever returned a session.
 							///< The load state above is reset as the handshake
@@ -164,8 +163,6 @@ unlang_action_t	fr_tls_cache_store_session(request_t *request, fr_tls_session_t 
  *	the various fr_session_*() functions.
  */
 #ifdef _TLS_PRIVATE
-uint8_t		*fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess);
-
 void		tls_session_id_cache(fr_tls_session_t *tls_session, SSL_SESSION *sess);
 
 unlang_action_t	fr_tls_cache_clear_session(request_t *request, fr_tls_session_t *tls_session);

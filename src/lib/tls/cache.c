@@ -66,21 +66,27 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define TLS_CACHE_DISABLED  (!tls_cache ||  !conf->virtual_server || !(conf->cache.mode & FR_TLS_CACHE_STATEFUL))
 
 
-/** Retrieve session ID (in binary form) from the session
+/** Copy the ID of a session into a box
  *
- * @param[in] ctx	Where to allocate the array to hold the session id.
- * @param[in] sess	to retrieve the ID for.
- * @return A copy of the session id.
+ * @param[in] ctx	to allocate the ID in.
+ * @param[out] out	box to fill.  Left as-is when the session has no ID.
+ * @param[in] sess	to retrieve the ID from.
+ * @return
+ *	- 0 on success.
+ *	- -1 if the session had no ID.
  */
-uint8_t *fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess)
+static inline CC_HINT(always_inline, nonnull)
+int tls_cache_id_to_box(TALLOC_CTX *ctx, fr_value_box_t *out, SSL_SESSION *sess)
 {
 	unsigned int	len;
 	uint8_t const	*id;
 
 	id = SSL_SESSION_get_id(sess, &len);
-	if (unlikely(!id)) return NULL;
+	if (unlikely(!id)) return -1;
 
-	return talloc_typed_memdup(ctx, id, len);
+	MEM(fr_value_box_memdup(ctx, out, NULL, id, len, true) == 0);
+
+	return 0;
 }
 
 /** Cache the ID of a session, if it is not cached already
@@ -94,15 +100,9 @@ uint8_t *fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess)
  */
 void tls_session_id_cache(fr_tls_session_t *tls_session, SSL_SESSION *sess)
 {
-	unsigned int	len;
-	uint8_t const	*id;
-
 	if (!sess || !fr_type_is_null(tls_session->session_id.type)) return;
 
-	id = SSL_SESSION_get_id(sess, &len);
-	if (unlikely(!id)) return;
-
-	MEM(fr_value_box_memdup(tls_session, &tls_session->session_id, NULL, id, len, true) == 0);
+	if (tls_cache_id_to_box(tls_session, &tls_session->session_id, sess) < 0) return;
 
 	/*
 	 *	Copy the ID to the cache, instead of pointing the cache at the session.
@@ -124,11 +124,11 @@ void tls_session_id_cache(fr_tls_session_t *tls_session, SSL_SESSION *sess)
  * @param[in] session_id	Identifier for the session.
  */
 static inline CC_HINT(always_inline, nonnull(2))
-void tls_cache_session_id_to_vp(request_t *request, uint8_t const *session_id)
+void tls_cache_session_id_to_vp(request_t *request, fr_value_box_t const *session_id)
 {
 	fr_pair_t	*vp;
 	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
-	fr_pair_value_memdup_buffer(vp, session_id, true);
+	fr_pair_value_memdup(vp, session_id->vb_octets, session_id->vb_length, false);
 }
 
 static inline CC_HINT(always_inline, nonnull(2))
@@ -164,12 +164,12 @@ void _tls_cache_store_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 static inline CC_HINT(always_inline)
 void _tls_cache_clear_state_reset(request_t *request, fr_tls_cache_t *cache, char const *func)
 {
-	if (cache->clear.id) {
+	if (!fr_type_is_null(cache->clear.id.type)) {
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
 			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing session ID to clear in %s",
-				  fr_box_octets_buffer(cache->clear.id), func);
+				  &cache->clear.id, func);
 		}
-		TALLOC_FREE(cache->clear.id);
+		fr_value_box_clear(&cache->clear.id);
 	}
 	cache->clear.state = FR_TLS_CACHE_CLEAR_INIT;
 }
@@ -314,13 +314,12 @@ static void tls_cache_delete_request(fr_tls_session_t *tls_session, SSL_SESSION 
 	/*
 	 *	Record the session to delete
 	 */
-	tls_cache->clear.id = fr_tls_cache_id(tls_cache, sess);
-	if (!tls_cache->clear.id) {
+	if (tls_cache_id_to_box(tls_cache, &tls_cache->clear.id, sess) < 0) {
 		RWDEBUG("Error retrieving Session ID");
 		return;
 	}
 
-	RDEBUG3("Session ID %pV - Requested session clear", fr_box_octets_buffer(tls_cache->clear.id));
+	RDEBUG3("Session ID %pV - Requested session clear", &tls_cache->clear.id);
 
 	tls_cache->clear.state = FR_TLS_CACHE_CLEAR_REQUESTED;
 
@@ -493,12 +492,12 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	 */
 	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
 		RDEBUG3("Session ID %pV - Clear is pending, skipping `load session { ... }`",
-			fr_box_octets_buffer(tls_cache->load.id));
+			&tls_cache->load.id);
 		tls_cache->load.state = FR_TLS_CACHE_LOAD_FAILED;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	fr_assert(tls_cache->load.id);
+	fr_assert(!fr_type_is_null(tls_cache->load.id.type));
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
@@ -514,7 +513,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	 *	Add the session identifier we're
 	 *	trying to load.
 	 */
-	tls_cache_session_id_to_vp(child, tls_cache->load.id);
+	tls_cache_session_id_to_vp(child, &tls_cache->load.id);
 
 	/*
 	 *	Allocate a child, and set it up to call
@@ -733,7 +732,7 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED);
-	fr_assert(tls_cache->clear.id);
+	fr_assert(!fr_type_is_null(tls_cache->clear.id.type));
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
@@ -749,7 +748,7 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Add the session identifier we're
 	 *	trying to load.
 	 */
-	tls_cache_session_id_to_vp(child, tls_cache->clear.id);
+	tls_cache_session_id_to_vp(child, &tls_cache->clear.id);
 
 	/*
 	 *	Allocate a child, and set it up to call
@@ -1149,13 +1148,7 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	session which ends up being stored can have a different ID
 	 *	from the one the handshake first saw.
 	 */
-	{
-		unsigned int	id_len;
-		uint8_t const	*id = SSL_SESSION_get_id(sess, &id_len);
-
-		if (id) MEM(fr_value_box_memdup(tls_cache, &tls_cache->store.id, NULL,
-						id, id_len, true) == 0);
-	}
+	(void) tls_cache_id_to_box(tls_cache, &tls_cache->store.id, sess);
 
 	RDEBUG3("Session ID %pV - Requested store", &tls_cache->store.id);
 
@@ -1220,10 +1213,11 @@ static SSL_SESSION *tls_cache_load_cb(SSL *ssl,
 again:
 	switch (tls_cache->load.state) {
 	case FR_TLS_CACHE_LOAD_INIT:
-		fr_assert(!tls_cache->load.id);
+		fr_assert(fr_type_is_null(tls_cache->load.id.type));
 
 		tls_cache->load.state = FR_TLS_CACHE_LOAD_REQUESTED;
-		MEM(tls_cache->load.id = talloc_typed_memdup(tls_cache, (uint8_t const *)key, key_len));
+		MEM(fr_value_box_memdup(tls_cache, &tls_cache->load.id, NULL,
+					(uint8_t const *)key, key_len, true) == 0);
 
 		/*
 		 *	This is the session the peer is asking to resume, so
@@ -1237,7 +1231,7 @@ again:
 			if (tls_cache) tls_cache->session_id = &tls_session->session_id;
 		}
 
-		RDEBUG3("Requested session load - ID %pV", fr_box_octets_buffer(tls_cache->load.id));
+		RDEBUG3("Requested session load - ID %pV", &tls_cache->load.id);
 
 		/*
 		 *	Cache functions are only allowed during the handshake
@@ -1291,7 +1285,7 @@ again:
 
 		RDEBUG3("Setting session data");
 
-		TALLOC_FREE(tls_cache->load.id);
+		fr_value_box_clear(&tls_cache->load.id);
 
 		/*
 		 *	This restores the contents of &session-state[*]
@@ -1378,7 +1372,7 @@ again:
 		break;
 	}
 
-	TALLOC_FREE(tls_cache->load.id);
+	fr_value_box_clear(&tls_cache->load.id);
 	fr_assert(!tls_cache->load.sess);
 
 	return NULL;
