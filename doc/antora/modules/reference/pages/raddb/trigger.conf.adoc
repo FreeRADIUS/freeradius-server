@@ -1,4 +1,3 @@
-
 = Triggers
 
 Triggers are events in the server can cause a hook to be executed.
@@ -29,21 +28,21 @@ the default installation, so that step *must* be done manually.
 The global MIB directory can be found by running the following
 command:
 
-snmptranslate -Dinit_mib .1.3 2>&1 | grep MIBDIR | \ sed "s/'
-.*//;s/.* '//;s/.*://"
+ snmptranslate -Dinit_mib .1.3 2>&1 | grep MIBDIR | \
+   sed "s/' .*//;s/.* '//;s/.*://"
 
 Or maybe just:
 
-snmptranslate -Dinit_mib .1.3 2>&1 | grep MIBDIR
+ snmptranslate -Dinit_mib .1.3 2>&1 | grep MIBDIR
 
 If you have copied the MIBs to that directory, you can test the
 FreeRADIUS MIBs by running the following command:
 
-snmptranslate -m +FREERADIUS-NOTIFICATION-MIB -IR -On serverStart
+ snmptranslate -m +FREERADIUS-NOTIFICATION-MIB -IR -On serverStart
 
 It should print out:
 
-    = 1.3.6.1.4.1.11344.4.1.1
+ .1.3.6.1.4.1.11344.4.1.1
 
 As always, run the server in debugging mode after enabling the traps.
 You will see the `snmptrap` command being run, and it will print out

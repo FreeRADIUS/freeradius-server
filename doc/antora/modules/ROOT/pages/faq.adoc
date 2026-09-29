@@ -160,7 +160,7 @@ Yes. There are several methods to manage login time for groups.
 |Limit logons between 08:00am and 08:00pm for the Unix group "daysonly"
 |DEFAULT Group == "daysonly", Login-Time := "0800-2000"
 
-DEFAULT Group == "daysonly", Login-Time := "Any0800-2000"
+ DEFAULT Group == "daysonly", Login-Time := "Any0800-2000"
 
 |Limit logons between 08:00am and 08:00pm, from Monday to Friday for Unix group "weekdays"
 |DEFAULT Group == "weekdays", Login-Time := "Wk0800-2000"
@@ -174,9 +174,9 @@ DEFAULT Group == "daysonly", Login-Time := "Any0800-2000"
 Yes. Edit the `users` file with the following entry on the first line
 (top of the file). This entry accepts everybody on to the network.
 
-DEFAULT Auth-Type := Accept
+ DEFAULT Auth-Type := Accept
 
-If you want this to apply to a single user replace DEFAULT with
+If you want this to apply to a single user replace `DEFAULT` with
 username. You can also add Auth-Type Accept to radcheck or
 radgroupcheck entries in order to accept that user/group. This only
 works for PAP, and does NOT work for EAP-TLS, CHAP,  MSCHAP, or WIMAX
@@ -191,9 +191,23 @@ Yes. There are several ways to bind the IP address.
 * The deprecated way is to specify an IP address with the `_-i {IP}`
   command-line option.
 * The recommended way is to use the `listen` directive in
-  radiusd.conf. Multiple `listen` directives can be added to this
-  file. listen { ipaddr = 192.168.1.250 port = 1817 type = auth }
-* The third way bind_address = 192.168.1.250 port = 1817
+  `radiusd.conf`. Multiple `listen` directives can be added to this
+  file.
++
+----
+   listen {
+     ipaddr = 192.168.1.250
+     port = 1817
+     type = auth
+   }
+----
++
+* The third way
++
+----
+bind_address = 192.168.1.250
+port = 1817
+----
 
 === Can I enable FreeRADIUS to log accounting attribute type X?
 
@@ -213,26 +227,29 @@ are documented via the:
 * xref:reference:unlang/edit.adoc[attribute editing].
 
 [NOTE]
-=== The xref:reference:unlang/update.adoc[update] is no longer
-necessary.  The new xref:reference:unlang/edit.adoc[attribute editing]
-is much simpler, and is more powerful. ===
+====
+The xref:reference:unlang/update.adoc[update] statement is no longer
+necessary. The new xref:reference:unlang/edit.adoc[attribute editing]
+is much simpler and more powerful.
+====
 
 === Can I send multiple values for an attribute ?
 
 Yes. use the following example to configure multiple values on an
 attribute.
 
-Framed-Route := "10.130.1.252/32 0.0.0.0  5", Framed-Route +=
-"10.130.0.252/32 0.0.0.0 10",
+ Framed-Route := "10.130.1.252/32 0.0.0.0  5",
+ Framed-Route += "10.130.0.252/32 0.0.0.0 10",
 
 .Check your changes with a tcpdump. See the sample output and verify your configuration.
 [%collapsible]
 ====
-Framed Route Attribute (22), length: 28, Value: 10.130.1.252/32
-0.0.0.0  5 0x0000:  3130 2e31 3330 2e31 2e32 3532 2f33 3220 0x0010:
-302e 302e 302e 3020 2035 Framed Route Attribute (22), length: 28,
-Value: 10.130.0.252/32 0.0.0.0 10 0x0000:  3130 2e31 3330 2e30 2e32
-3532 2f33 3220 0x0010:  302e 302e 302e 3020 3130
+ Framed Route Attribute (22), length: 28, Value: 10.130.1.252/32 0.0.0.0  5
+   0x0000:  3130 2e31 3330 2e31 2e32 3532 2f33 3220
+   0x0010:  302e 302e 302e 3020 2035
+ Framed Route Attribute (22), length: 28, Value: 10.130.0.252/32 0.0.0.0 10
+   0x0000:  3130 2e31 3330 2e30 2e32 3532 2f33 3220
+   0x0010:  302e 302e 302e 3020 3130
 ====
 
 === Isn't CHAP more secure?
@@ -272,19 +289,23 @@ do anything besides SMTP and POP3 within your network, you'll have to
 set up ACLs on your dialup interfaces allowing only ports 25 and 110
 through.
 
-User entry in `users` file example
+.User entry in `users` file example
 [%collapsible]
 ====
-
-foo Auth-Type := System Framed-Filter-Id += "160.in" Framed-Filter-Id
-+= "161.out" Fall-Through = Yes
+ foo Auth-Type := System
+     Framed-Filter-Id += "160.in"
+     Framed-Filter-Id += "161.out"
+     Fall-Through = Yes
 ====
 
-.CISCO configuration example
+.Cisco configuration example
 [%collapsible]
 ====
-aaa authorisation network default radius ip access-list extended 160
-permit ip ... ip access-list extended 161 permit ip ...
+ aaa authorisation network default radius
+ ip access-list extended 160
+ permit ip ...
+ ip access-list extended 161
+ permit ip ...
 
 The access list 160 gets applied on inbound packets and 161 on
 outbound packets.
@@ -305,19 +326,18 @@ says:
 
 Now I can emulate group behaviour using just PAM and some tricks, like
 
-auth required /lib/security/pam_userdb.so crypt
-db=/etc/raddb/data/users auth required /lib/security/pam_listfile.so
-item=user sense=allow file=/etc/raddb/data/somehunt.allow onerr=fail
-auth required /lib/security/pam_nologin.so account required
-/lib/security/pam_userdb.so
+ auth required /lib/security/pam_userdb.so crypt db=/etc/raddb/data/users
+ auth required /lib/security/pam_listfile.so item=user sense=allow file=/etc/raddb/data/somehunt.allow onerr=fail
+ auth required /lib/security/pam_nologin.so
+ account required /lib/security/pam_userdb.so
 
 and
 
-DEFAULT Huntgroup-Name ="somehunt", Auth-Type=PAM, Pam-Auth="radhunt",
-Simultaneous-Use=1 Fall-Through = Yes
+ DEFAULT Huntgroup-Name ="somehunt", Auth-Type=PAM, Pam-Auth="radhunt", Simultaneous-Use=1
+         Fall-Through = Yes
 
-With this method, I have NO users on /etc/password and NO need for
-lots of lines on `users`. time to search for a db enabled pam_listfile
+With this method, I have NO users on /etc/passwd and NO need for lots
+of lines on `users`. time to search for a db enabled pam_listfile
 module
 
 === Is the RADIUS server broken after an upgrade?

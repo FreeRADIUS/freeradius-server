@@ -28,9 +28,7 @@ instead of `/etc/raddb/`.
 Once the server has been downloaded and installed, start the server in
 debugging mode (as user `root`) by issuing the command:
 
-```
-radiusd -X
-```
+ radiusd -X
 
 If the message on your screen says *Ready to process requests*, the
 server is installed and configured properly.  For help decoding the
@@ -43,17 +41,13 @@ Test basic authentication by editing the
 xref:reference:raddb/mods-config/files/users.adoc[users] file and add
 the following line at the top of the file:
 
-```
-testing Password.Cleartext := "password"
-```
+ testing Password.Cleartext := "password"
 
 Save the file and restart the server in
 xref:debugging/radiusd_X.adoc[debugging mode] (`radiusd -X`). Open a
 second terminal window and run radtest by issuing the command:
 
-```
-radtest testing password 127.0.0.1 0 testing123
-```
+ radtest testing password 127.0.0.1 0 testing123
 
 The expected result is that the server responds with an
 `Access-Accept`. If it doesn't, the debug log will show why.
@@ -77,12 +71,12 @@ The above test runs `radtest` from localhost. It is useful to add a
 new client, which can be done by editing the clients.conf file. Add
 the following content:
 
-```
+----
 client new {
     ipaddr = 192.0.2.1
     secret = testing123
 }
-```
+----
 
 You should change the IP address from `192.0.2.1` to be the address of
 the client which will be sending `Access-Request` packets.
