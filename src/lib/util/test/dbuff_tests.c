@@ -716,7 +716,7 @@ static void test_dbuff_in_memcpy(void)
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
 	/*
-	 *	Note _fr_dbuff_in_memcpy(), to avoid false positive complaints with -Werror=stringop-overread 
+	 *	Note _fr_dbuff_in_memcpy(), to avoid false positive complaints with -Werror=stringop-overread
 	 *
 	 *	We could suppress the warn
 	 */
@@ -1037,8 +1037,8 @@ static void test_dbuff_producer_consumer(void)
 static void test_dbuff_drain(void)
 {
 	uint8_t const	src_buff[8] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
-	uint8_t		small[4];
-	uint8_t		out[8];
+	uint8_t		small[4] = { 0x00 };
+	uint8_t		out[8] = { 0x00 } ;
 	fr_dbuff_t	src, dst;
 
 	TEST_CASE("fr_dbuff_move: a request larger than the source copies what is there");
