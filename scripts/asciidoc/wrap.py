@@ -13,16 +13,36 @@ Rules:
     blank line.
   - Inline block titles are lines beginning with "." and are left
     unchanged.
-  - Inline code blocks delimited by lines equal to "----" are left
-    unchanged (including the delimiters themselves).
+  - Block delimiters are four or more of the same character, and a
+    block is closed only by a line identical to the opening delimiter
+    of the block.  A longer delimiter (e.g. "--------" or "========")
+    is rewritten to four characters, unless the block contains a
+    nested delimiter of the same character.  Shortening the outer
+    delimiter would let the nested delimiter close the block early.
+  - The contents of code blocks delimited by lines of "----" are left
+    unchanged.
   - Code blocks delimited by lines equal to "```" are treated exactly
     like "----" blocks: the contents are passed through verbatim, but
-    the "```" delimiters themselves are rewritten to "----".
+    the "```" delimiters themselves are rewritten to "----".  As with
+    a long "-" delimiter, a "```" block containing a nested "-"
+    delimiter keeps its "```" delimiters.
+  - Indented blocks are left unchanged, including the indent.  An
+    indented block starts at a line indented by one or more spaces or
+    tabs, when no paragraph or list entry is in progress.  The
+    indented block runs until a blank line followed by a line that is
+    not indented, or until a block delimiter or title.  Blank lines
+    inside the block are kept, and blank lines at the end of the block
+    collapse to one.  An indented line inside a paragraph or list
+    entry is a continuation line, and is wrapped.
+  - A one-line paragraph underlined with five or more "-" (within two
+    characters of the text length) is a two-line section title.  The
+    title is rewritten as "== Title".
   - Admonition text blocks: a label line of the form "[" + one or more
     uppercase letters + "]" (e.g. "[NOTE]", "[WARNING]", "[INFO]") that
     is immediately followed by a "====" line starts a text block.  The
-    block runs until the next "====".  The "====" delimiters stay on
-    their own lines, and the block contents are word-wrapped as text:
+    block runs until the "=" line identical to the opening delimiter.
+    The "====" delimiters stay on their own lines, and the block
+    contents are word-wrapped as text:
     paragraphs are wrapped, and list entries ("* ", "- ", "N. ") are
     wrapped with their continuation lines aligned after the marker.
     A label containing any lowercase letter (e.g. "[source]") does not
@@ -44,6 +64,8 @@ Rules:
   - When the filename ends with "nav.adoc", every "*" list entry
     (regardless of marker depth) is emitted verbatim, so the nav
     parser sees one entry per line.
+  - Lines containing a single '+' are left alone; they are used to join
+    different Asciidoc blocks together.
 
 	$Id$
 """
@@ -93,7 +115,10 @@ def wrap_paragraph(text):
 def wrap_list_entry(text, indent):
     """Wrap a list entry.  The first line keeps its marker ("* ", "- ",
     or "N. "); continuation lines are indented to align with the text."""
-    return "\n".join(textwrap.wrap(text, width=WIDTH,
+    marker = text[:indent]
+    body = text.expandtabs()[len(marker.expandtabs()):]
+    return "\n".join(textwrap.wrap(body, width=WIDTH,
+                                   initial_indent=marker,
                                    subsequent_indent=" " * indent,
                                    break_long_words=False,
                                    break_on_hyphens=False))
@@ -139,22 +164,37 @@ def is_list_start(line):
     return list_marker_len(line) is not None
 
 
-BLOCK_DELIMS = ("----", "```")
+#
+#  Asciidoc delimiters are four or more of the same character, and the
+#  closing delimiter must be identical to the opening delimiter.
+#
+_DASH_DELIM_RE = re.compile(r"-{4,}")
+_EQUALS_DELIM_RE = re.compile(r"={4,}")
 
 
 def block_delim(line):
-    """Return the matched block delimiter, or None."""
+    """Return line, minus trailing whitespace, if line is a verbatim block
+    delimiter ("```" or four or more "-").  Otherwise return None."""
     s = line.rstrip()
-    if s in BLOCK_DELIMS:
+    if s == "```" or _DASH_DELIM_RE.fullmatch(s):
         return s
     return None
 
 
-def render_delim(delim):
-    """Render a block delimiter for output.  A "```" fence is rewritten
-    to "----"; other delimiters are emitted unchanged.  The block's
-    contents are always passed through verbatim regardless."""
-    return "----" if delim == "```" else delim
+def delim_render(lines, i, delim, short, nested_re):
+    """Render the opening delimiter at lines[i] for output.
+
+    The delimiter is shortened to `short` ("----" or "====") unless the
+    block contains a nested delimiter matching `nested_re`.  Shortening
+    the outer delimiter would let the nested delimiter close the block
+    early.  An unclosed block runs to the end of the file."""
+    for j in range(i + 1, len(lines)):
+        s = lines[j].rstrip()
+        if s == delim:
+            break
+        if nested_re.fullmatch(s):
+            return delim
+    return short
 
 
 def is_table(line):
@@ -181,9 +221,31 @@ def is_admonition_label(line):
 
 
 def is_text_block_delim(line):
-    """Text block delimiter "====".  Contents are still wrapped, but the
-    delimiter itself stays on its own line."""
-    return line.rstrip() == "===="
+    """Text block delimiter, four or more "=".  The block contents are
+    wrapped, and the delimiter stays on a line by itself."""
+    return _EQUALS_DELIM_RE.fullmatch(line.rstrip()) is not None
+
+
+def setext_title(buf, buf_list_indent, line):
+    """A one-line paragraph underlined with five or more "-" is a
+    two-line section title.  Return the title rewritten as "== Title",
+    or None.  A list entry is never a title.  Exactly "----" is always
+    a verbatim block delimiter, and the underline must be within two
+    characters of the title length."""
+    if len(buf) != 1 or buf_list_indent is not None:
+        return None
+    s = line.rstrip()
+    title = buf[0].strip()
+    if len(s) < 5 or not _DASH_DELIM_RE.fullmatch(s):
+        return None
+    if abs(len(s) - len(title)) > 2:
+        return None
+    return "== " + title
+
+
+def is_indented(line):
+    """Line starts with a space or tab, and is not blank."""
+    return line[:1] in (" ", "\t") and line.strip() != ""
 
 
 def is_star_list(line):
@@ -194,13 +256,20 @@ def is_star_list(line):
 
 
 def process(lines, nav_mode=False):
+    lines = list(lines)   # a list, so delim_render() can look ahead
     out = []
     block_open = None     # delimiter string (e.g. "----" or "```") if inside a block
+    block_render = None   # delimiter written for block_open, e.g. "----"
     buf = []
     buf_list_indent = None  # marker length if buf holds a list entry, else None
     need_blank_after_title = False
-    text_block_open = False   # inside a "[LABEL]" + "====" admonition block
+    equals_open = []      # stack of open "=" blocks, as
+                          # (input, output) delimiters
+    text_block_depth = None  # len(equals_open) when a "[LABEL]" + "===="
+                             # block opened, else None
     pending_admonition = False  # previous line was an uppercase "[LABEL]"
+    indented_open = False  # inside an indented block
+    indented_blanks = 0    # blank lines since the last indented-block line
 
     def emit_blank():
         # Collapse runs of blank lines down to one.
@@ -220,40 +289,94 @@ def process(lines, nav_mode=False):
         buf = []
         buf_list_indent = None
 
-    for line in lines:
+    def equals_delim(i, line):
+        # An "=" delimiter identical to the opening delimiter of the
+        # innermost open "=" block closes that block.  Any other "="
+        # delimiter opens a new block.  Returns True if a block was opened.
+        if equals_open and equals_open[-1][0] == line:
+            out.append(equals_open.pop()[1])
+            return False
+        equals_open.append((line, delim_render(lines, i, line, "====",
+                                               _EQUALS_DELIM_RE)))
+        out.append(equals_open[-1][1])
+        return True
+
+    def indented_close():
+        # Close an indented block.  Blank lines held back at the end of
+        # the block become a single blank line.
+        nonlocal indented_open, indented_blanks
+        if indented_blanks:
+            emit_blank()
+        indented_open = False
+        indented_blanks = 0
+
+    for i, line in enumerate(lines):
         # Strip just the trailing newline; keep the rest of the line
         # exactly as-is so we can preserve block contents verbatim.
         raw = line.rstrip("\n")
 
+        if indented_open:
+            # Inside an indented block.  After a blank line, only an
+            # indented line continues the block.  Directly after a non-blank
+            # line, every line continues the block, except a block delimiter
+            # or title.  Blank lines are held back until the next line shows
+            # whether the block continues.
+            s = raw.rstrip()
+            if s == "":
+                indented_blanks += 1
+                continue
+            if is_indented(raw) or (indented_blanks == 0
+                                    and not block_delim(s)
+                                    and not is_text_block_delim(s)
+                                    and not is_title(s)):
+                out.extend([""] * indented_blanks)
+                indented_blanks = 0
+                out.append(s)
+                continue
+            indented_close()
+
         if block_open is not None:
-            # Inside a "----" or "```" block, the only line we look at
-            # is the matching closing delimiter.  Everything else,
-            # including lines that resemble titles, lists, etc., is
-            # passed through verbatim.  The closing delimiter is
-            # rewritten (a "```" fence becomes "----"); the contents are
-            # untouched.
+            # Inside a "----" or "```" block, only a line identical to
+            # block_open ends the block.  Every other line, including lines
+            # that resemble titles or lists, is passed through verbatim.
+            # The closing delimiter is written as block_render, the same as
+            # the opening delimiter.
             if block_delim(raw) == block_open:
-                out.append(render_delim(block_open))
+                out.append(block_render)
                 block_open = None
             else:
                 out.append(raw)
+            continue
+
+        # A line indented by one or more spaces or tabs opens an
+        # indented block when no paragraph or list entry is in progress.
+        # An indented block also opens inside a "====" block.  An
+        # indented line inside a paragraph or list entry is a
+        # continuation line.
+        if is_indented(raw) and not buf:
+            if need_blank_after_title:
+                emit_blank()
+                need_blank_after_title = False
+            pending_admonition = False
+            out.append(raw.rstrip())
+            indented_open = True
             continue
 
         # Outside any block: convert known non-ASCII characters to ASCII
         # equivalents and strip trailing whitespace.
         line = to_ascii(raw).rstrip()
 
-        if text_block_open:
-            # Inside a "[LABEL]" + "====" admonition block.  The contents
-            # are text: paragraphs are word-wrapped (blank lines separate
-            # paragraphs) and list entries are wrapped with their
-            # continuation lines aligned after the marker, just as in the
-            # normal document flow.  The block ends at the next "====",
-            # which stays on its own line.
+        if text_block_depth is not None:
+            # Inside a "[LABEL]" + "====" admonition block.  Paragraphs are
+            # word-wrapped, and list entries are wrapped with continuation
+            # lines aligned after the marker, as in the normal document flow.
+            # The block ends at the "=" delimiter identical to the opening
+            # delimiter.  The delimiter stays on a line by itself.
             if is_text_block_delim(line):
                 flush()
-                out.append(line)
-                text_block_open = False
+                equals_delim(i, line)
+                if len(equals_open) < text_block_depth:
+                    text_block_depth = None
                 continue
             if line == "":
                 flush()
@@ -282,14 +405,26 @@ def process(lines, nav_mode=False):
         was_pending = pending_admonition
         pending_admonition = False
 
+        # A "-----" underline also matches block_delim(), so check for a
+        # "Title" + "-----" section title first and rewrite the title as
+        # "== Title".
+        title = setext_title(buf, buf_list_indent, line)
+        if title is not None:
+            buf = []
+            out.append(title)
+            need_blank_after_title = True
+            continue
+
         delim = block_delim(line)
         if delim is not None:
             flush()
-            # Rewrite the opening "```" fence to "----", but keep
-            # block_open set to the delimiter we actually saw so the
-            # matching closing "```" is still recognised.
-            out.append(render_delim(delim))
+            # block_render is "----" unless the block holds a nested "-"
+            # delimiter.  block_open keeps the input delimiter, because the
+            # closing delimiter must be identical to the input delimiter.
             block_open = delim
+            block_render = delim_render(lines, i, delim, "----",
+                                        _DASH_DELIM_RE)
+            out.append(block_render)
             continue
 
         if is_title(line):
@@ -300,12 +435,12 @@ def process(lines, nav_mode=False):
 
         if is_text_block_delim(line):
             flush()
-            out.append(line)
+            opened = equals_delim(i, line)
             # "[LABEL]" immediately followed by "====" opens a text block
-            # whose contents are wrapped, until the next "====".  A bare
-            # "====" is just a delimiter on its own line, as before.
-            if was_pending:
-                text_block_open = True
+            # whose contents are wrapped, until the identical "=" delimiter.
+            # A bare "====" is only a delimiter on a line by itself.
+            if was_pending and opened:
+                text_block_depth = len(equals_open)
             continue
 
         if is_attribute(line):
@@ -318,6 +453,11 @@ def process(lines, nav_mode=False):
             continue
 
         if is_comment(line) or is_block_title(line) or is_table(line):
+            flush()
+            out.append(line)
+            continue
+
+        if line == "+":
             flush()
             out.append(line)
             continue
@@ -344,6 +484,8 @@ def process(lines, nav_mode=False):
         buf.append(line)
 
     flush()
+    if indented_open:
+        indented_close()
     if need_blank_after_title:
         emit_blank()
     return "\n".join(out) + "\n"
