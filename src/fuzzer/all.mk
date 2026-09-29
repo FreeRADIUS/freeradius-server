@@ -6,6 +6,7 @@
 #  src/fuzzer/fuzzer_dec.mk via FUZZ_PROTOCOL below.
 #
 FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp bfd cbor arp
+FUZZER_ENCODER_TARGETS = $(addprefix enc_,$(FUZZER_PROTOCOLS))
 
 #
 #  Standalone fuzzer targets - each has a hand-written fuzzer_<name>.c
@@ -64,9 +65,20 @@ src/fuzzer/fuzzer_${1}.mk: src/fuzzer/fuzzer_dec.mk
 SUBMAKEFILES += fuzzer_${1}.mk
 endef
 
+define FUZZ_ENCODE_PROTOCOL
+src/fuzzer/fuzzer_enc_${1}.c: src/fuzzer/fuzzer_enc.c | src/freeradius-devel/fuzzer
+	$${Q}sed 's/XX_PROTOCOL_XX/${1}/g' < $$^ > $$@
+
+
+src/fuzzer/fuzzer_enc_${1}.mk: src/fuzzer/fuzzer_enc.mk
+	$${Q}sed 's/$$$$(PROTOCOL)/${1}/g' < $$^ > $$@
+
+SUBMAKEFILES += fuzzer_enc_${1}.mk
+endef
+
 .PHONY: clean.fuzzer
 clean.fuzzer:
-	@rm -f $(foreach X,${FUZZER_PROTOCOLS},$(subst FUZZER,${X},src/fuzzer/FUZZER.c src/fuzzer/FUZZER.mk))
+	@rm -f $(foreach X,${FUZZER_PROTOCOLS},src/fuzzer/fuzzer_$(X).c src/fuzzer/fuzzer_$(X).mk src/fuzzer/fuzzer_enc_$(X).c src/fuzzer/fuzzer_enc_$(X).mk)
 
 clean: clean.fuzzer
 
@@ -76,6 +88,7 @@ clean: clean.fuzzer
 SUBMAKEFILES += fuzzer_json.mk fuzzer_value.mk fuzzer_xlat.mk fuzzer_cf.mk fuzzer_base16_32_64.mk fuzzer_tmpl.mk fuzzer_der.mk
 
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
+$(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_ENCODE_PROTOCOL,${X})))
 
 $(eval $(call FUZZ_PROTOCOL,util))
 
@@ -149,11 +162,11 @@ fuzzer.help:
 	@for _p in $(PROTOCOLS); do echo "    make fuzzer.$$_p"; done
 	@echo
 
-test.fuzzer: $(addprefix test.fuzzer., $(filter-out $(FUZZER_NO_TEST),$(FUZZER_PROTOCOLS) $(FUZZER_NON_PROTOCOL_TARGETS)))
+test.fuzzer: $(addprefix test.fuzzer., $(filter-out $(FUZZER_NO_TEST),$(FUZZER_PROTOCOLS) $(FUZZER_ENCODER_TARGETS) $(FUZZER_NON_PROTOCOL_TARGETS)))
 
-test.fuzzer.crash: $(addsuffix .crash,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS)))
+test.fuzzer.crash: $(addsuffix .crash,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS) $(FUZZER_ENCODER_TARGETS)))
 
-test.fuzzer.merge: $(addsuffix .merge,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS) $(FUZZER_NON_PROTOCOL_TARGETS)))
+test.fuzzer.merge: $(addsuffix .merge,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS) $(FUZZER_ENCODER_TARGETS) $(FUZZER_NON_PROTOCOL_TARGETS)))
 
 else
 .PHONY: fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X})
