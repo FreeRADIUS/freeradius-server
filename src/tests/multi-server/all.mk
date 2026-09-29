@@ -62,6 +62,24 @@ PROFILING_TOOL         ?= valgrind
 PROFILING_RESULT_MODE  ?= ci
 
 #
+#  PROFILING_RUN_INDEX is the <run-index> that a MODE=profiling run uses.
+#  make computes it once based off of the number of directories under
+#  PROFILING_RESULT_ROOT/<branch>/<commit>.
+#
+#  All results are saved under the same <run-index>.
+#
+ifeq "$(PROFILING_RUN_INDEX)" ""
+  # Path containing the run directories for this commit
+  PROFILING_RUN_BASE := $(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)
+
+  # Count existing run directories and set new index accordingly; num of directories + 1
+  PROFILING_RUN_INDEX := $(shell \
+    count=$$(find "$(PROFILING_RUN_BASE)" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l); \
+    echo $$((count + 1)) \
+  )
+endif
+
+#
 #  Image plumbing.
 #
 #  Compose envs reference ${FREERADIUS_IMAGE}; the per-test recipe
@@ -241,10 +259,7 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MU
 		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
 			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}/$(PROFILING_TOOL)"; \
 		else \
-			RUN_BASE="$(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
-			EXISTING=$$$$( find "$$$$RUN_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
-			RUN_INDEX=$$$$((EXISTING + 1)); \
-			PROFILING_RESULT_PATH="$$$$RUN_BASE/$$$$RUN_INDEX/${1}/${2}/$(PROFILING_TOOL)"; \
+			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)/$(PROFILING_RUN_INDEX)/${1}/${2}/$(PROFILING_TOOL)"; \
 		fi; \
 		mkdir -p "$$$$PROFILING_RESULT_PATH"; \
 		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \
