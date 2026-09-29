@@ -17,6 +17,9 @@
 #                                   MODE=profiling). Default `ci`.
 #                                     ci:  PROFILING_RESULT_ROOT/<branch>/<commit>/<run-index>/<suite>/<test>/<tool>
 #                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>/<tool>  (flat)
+# - PROFILING_RUN_INDEX=<n>         <run-index> of the `ci` layout.  CI passes
+#                                   github.run_number.  Unset, the next free index
+#                                   under <branch>/<commit> is used.
 #
 # Usage:
 #   make -f src/tests/multi-server/all.mk test.multi-server                       # all suites, radenv image
@@ -380,12 +383,12 @@ test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
 #
 .PHONY: test.multi-server.profiling test.multi-server.profiling.ci
 test.multi-server.profiling: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=valgrind
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=gperftools
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=valgrind   PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=gperftools PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
 
 test.multi-server.profiling.ci: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=valgrind
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=gperftools
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=valgrind   PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=gperftools PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
 
 #
 #  Profiling image: build the standard freeradius4-radenv-profiling/<image>:<sha>
