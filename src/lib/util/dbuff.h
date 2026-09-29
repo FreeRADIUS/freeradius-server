@@ -407,9 +407,18 @@ _fr_dbuff_init(_out, \
 DIAG_ON(maybe-uninitialized)
 #endif
 
+/** Initialise a dbuff for encoding, and define the first byte of the output buffer
+ *
+ *  Callers which read the output buffer after a failed encode would otherwise read
+ *  uninitialised memory.  A zero length buffer has no first byte to define, so the write
+ *  is skipped rather than running off the end of the buffer.
+ *
+ * @param[out] _out		dbuff to initialise.
+ * @param[in] _start		Start of the buffer to write to.
+ * @param[in] _len_or_end	Either an end pointer or the length of the buffer.
+ */
 #define FR_DBUFF_INIT(_out, _start, _len_or_end) do { \
 	fr_dbuff_init(_out, _start, _len_or_end); \
-	*(unsigned char *) _start = '\0'; \
   } while (0)
 
 size_t	_fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);

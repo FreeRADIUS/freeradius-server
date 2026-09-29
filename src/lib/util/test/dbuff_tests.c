@@ -4,6 +4,9 @@
 
 #include <freeradius-devel/util/dbuff.h>
 
+#include <sys/mman.h>
+#include <unistd.h>
+
 /*
  *	Type for a function with the internals of a test of fd flavored dbuffs.
  */
@@ -34,6 +37,40 @@ static void test_dbuff_init(void)
 	TEST_CHECK(dbuff.start == in);
 	TEST_CHECK(dbuff.p == in);
 	TEST_CHECK(dbuff.end == in + sizeof(in));
+}
+
+/** A zero length output buffer accepts nothing, and nothing is written to the buffer
+ *
+ *  The buffer sits against an unwritable page, so a write of even one byte past the end
+ *  faults rather than landing on whatever follows the buffer.
+ */
+static void test_dbuff_init_zero_length(void)
+{
+	fr_dbuff_t	dbuff;
+	size_t		pagesz = (size_t) sysconf(_SC_PAGESIZE);
+	uint8_t		*base, *data;
+
+	base = mmap(NULL, pagesz * 2, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+	TEST_ASSERT(base != MAP_FAILED);
+	TEST_ASSERT(mprotect(base + pagesz, pagesz, PROT_NONE) == 0);
+
+	data = base + pagesz;			/* zero bytes, and the next byte is unwritable */
+
+	TEST_CASE("FR_DBUFF_INIT on a zero length buffer");
+	FR_DBUFF_INIT(&dbuff, data, (size_t) 0);
+
+	TEST_CHECK(fr_dbuff_remaining(&dbuff) == 0);
+	TEST_CHECK(fr_dbuff_extend_lowat(NULL, &dbuff, 1) == 0);
+
+	TEST_CASE("Every write to a zero length buffer fails");
+	TEST_CHECK(fr_dbuff_in_bytes(&dbuff, 0x01) == -1);
+	TEST_CHECK(fr_dbuff_in_memcpy(&dbuff, (uint8_t const *)"ab", (size_t) 2) == -2);
+	TEST_CHECK(fr_dbuff_in(&dbuff, (uint16_t) 0x1234) == -2);
+	TEST_CHECK(fr_dbuff_memset(&dbuff, 0x00, 1) == -1);
+
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 0);
+
+	munmap(base, pagesz * 2);
 }
 
 static void test_dbuff_init_no_parent(void)
@@ -1223,6 +1260,7 @@ TEST_LIST = {
 	{ "fr_dbuff_drain",				test_dbuff_drain },
 	{ "fr_dbuff_bind_end_abs_extend",		test_dbuff_bind_end_abs_extend },
 	{ "fr_dbuff_producer_consumer_rounds",		test_dbuff_producer_consumer_rounds },
+	{ "fr_dbuff_init_zero_length",			test_dbuff_init_zero_length },
 
 	TEST_TERMINATOR
 };
