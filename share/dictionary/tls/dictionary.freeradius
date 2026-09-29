@@ -17,6 +17,8 @@ VALUE	Packet-Type			Verify-Certificate	4
 VALUE	Packet-Type			New-Session		5
 VALUE	Packet-Type			Establish-Session	6
 VALUE	Packet-Type			Fail-Session		7
+VALUE	Packet-Type			Encode-Session		8
+VALUE	Packet-Type			Decode-Session		9
 
 #
 #  We use response packet types instead of rcodes so that

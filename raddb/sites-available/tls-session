@@ -219,4 +219,47 @@ server tls-session {
 ##	fail session {
 ##
 ##	}
+
+	#
+	#  This section is run for stateless session resumption, before the
+	#  session ticket is handed to the peer.
+	#
+	#  A stateless session ticket encodes all of the attributes in
+	#  the `session-state` list.  The contents are encrypted by
+	#  OpenSSL before they are sent to the client.
+	#
+	#  If you want to store data across session resumptions, then
+	#  add it to the `session-state` list here.
+	#
+	#  NOTE: The session tickets should be small, at most 512
+	#  bytes.  Anything larger is not likely to work.
+	#
+	#  This section is run _instead of_ `store session`.
+	#
+	#  The section is optional. If it is not used, then the
+	#  session ticket contains default information.
+	#
+##	encode session {
+##
+##	}
+
+	#
+	#  This section is run for stateless session resumption, after the
+	#  peer has handed us the session ticket.
+	#
+	#  The session ticket contents are decrypted and placed into
+	#  the `session-state` list before this section is run.
+	#
+	#  If you want to look at data which was saved across session
+	#  resumptions, then it will be in the `session-state` list
+	#  here.
+	#
+	#  This section is run _instead of_ `load session`.
+	#
+	#  The section is optional. If it is not used, then the
+	#  `session-state` list contains default information.
+	#
+##	decode session {
+##
+##	}
 }

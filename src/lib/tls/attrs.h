@@ -95,6 +95,8 @@ extern fr_value_box_t const *enum_tls_packet_type_verify_certificate;
 extern fr_value_box_t const *enum_tls_packet_type_new_session;
 extern fr_value_box_t const *enum_tls_packet_type_establish_session;
 extern fr_value_box_t const *enum_tls_packet_type_fail_session;
+extern fr_value_box_t const *enum_tls_packet_type_encode_session;
+extern fr_value_box_t const *enum_tls_packet_type_decode_session;
 
 extern fr_value_box_t const *enum_tls_packet_type_success;
 extern fr_value_box_t const *enum_tls_packet_type_failure;

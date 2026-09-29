@@ -281,6 +281,8 @@ static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	conf->new_session = cf_section_find(conf->virtual_server, "new", "session") ? true : false;
 	conf->establish_session = cf_section_find(conf->virtual_server, "establish", "session") ? true : false;
 	conf->fail_session = cf_section_find(conf->virtual_server, "fail", "session") ? true : false;
+	conf->encode_session = cf_section_find(conf->virtual_server, "encode", "session") ? true : false;
+	conf->decode_session = cf_section_find(conf->virtual_server, "decode", "session") ? true : false;
 	return 0;
 }
 

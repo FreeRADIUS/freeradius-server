@@ -187,6 +187,9 @@ struct fr_tls_conf_s {
 	bool		new_session;			//!< Does the "new session" section exist.
 	bool		establish_session;		//!< Does the "establish session" section exist.
 	bool		fail_session;			//!< Does the "fail session" section exist.
+
+	bool		encode_session;			//!< Does the "encode session" section exist.
+	bool		decode_session;			//!< Does the "decode session" section exist.
 	bool		client_hello_parse;		//!< Should attributes be extracted from Client Hello.
 };
 
