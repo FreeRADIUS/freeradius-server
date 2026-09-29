@@ -160,7 +160,7 @@ void _tls_cache_load_state_reset(request_t *request, fr_tls_cache_t *cache, char
 		SSL_SESSION_free(cache->load.sess);
 		cache->load.sess = NULL;
 	}
-	cache->load.state = FR_TLS_CACHE_LOAD_INIT;
+	cache->load.state = FR_TLS_CACHE_INIT;
 }
 #define tls_cache_load_state_reset(_request, _cache) _tls_cache_load_state_reset(_request, _cache, __FUNCTION__)
 
@@ -175,7 +175,7 @@ void _tls_cache_store_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 		cache->store.sess = NULL;
 		fr_value_box_clear(&cache->store.id);
 	}
-	cache->store.state = FR_TLS_CACHE_STORE_INIT;
+	cache->store.state = FR_TLS_CACHE_INIT;
 }
 #define tls_cache_store_state_reset(_request, _cache) _tls_cache_store_state_reset(_request, _cache, __FUNCTION__)
 
@@ -189,7 +189,7 @@ void _tls_cache_clear_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 		}
 		fr_value_box_clear(&cache->clear.id);
 	}
-	cache->clear.state = FR_TLS_CACHE_CLEAR_INIT;
+	cache->clear.state = FR_TLS_CACHE_INIT;
 }
 #define tls_cache_clear_state_reset(_request, _cache) _tls_cache_clear_state_reset(_request, _cache, __FUNCTION__)
 
@@ -327,7 +327,7 @@ static void tls_cache_delete_request(fr_tls_session_t *tls_session, SSL_SESSION 
 	 */
 	if (unlang_request_is_cancelled(request)) return;
 
-	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_INIT);
+	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_INIT);
 
 	/*
 	 *	Record the session to delete
@@ -339,7 +339,7 @@ static void tls_cache_delete_request(fr_tls_session_t *tls_session, SSL_SESSION 
 
 	RDEBUG3("Session ID %pV - Requested session clear", &tls_cache->clear.id);
 
-	tls_cache->clear.state = FR_TLS_CACHE_CLEAR_REQUESTED;
+	tls_cache->clear.state = FR_TLS_CACHE_REQUESTED;
 
 	/*
 	 *	Reset any pending `store session`, so that we skip
@@ -390,7 +390,7 @@ static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
 		RWDEBUG("Failed acquiring session data");
 	error:
-		tls_cache->load.state = FR_TLS_CACHE_LOAD_FAILED;
+		tls_cache->load.state = FR_TLS_CACHE_FAILED;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -464,7 +464,7 @@ static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 	 */
 	SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION, fr_tls_session(tls_session->ssl));
 
-	tls_cache->load.state = FR_TLS_CACHE_LOAD_RETRIEVED;
+	tls_cache->load.state = FR_TLS_CACHE_SUCCESS;
 	tls_cache->load.sess = sess;	/* This is consumed in tls_cache_load_cb */
 
 	/*
@@ -495,7 +495,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 
 	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	if (tls_cache->load.state != FR_TLS_CACHE_LOAD_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (tls_cache->load.state != FR_TLS_CACHE_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
        
 	/*
 	 *	Reset any pending `load session` if there is also a
@@ -507,10 +507,10 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	 *	failed, tells OpenSSL that there is no session, and the
 	 *	peer does a full handshake instead.
 	 */
-	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
+	if (tls_cache->clear.state == FR_TLS_CACHE_REQUESTED) {
 		RDEBUG3("Session ID %pV - Clear is pending, skipping `load session { ... }`",
 			&tls_cache->load.id);
-		tls_cache->load.state = FR_TLS_CACHE_LOAD_FAILED;
+		tls_cache->load.state = FR_TLS_CACHE_FAILED;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -545,10 +545,10 @@ static unlang_action_t tls_cache_store_result(request_t *request, void *uctx)
 
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (vp && (vp->vp_uint32 == enum_tls_packet_type_success->vb_uint32)) {
-		tls_cache->store.state = FR_TLS_CACHE_STORE_PERSISTED;	/* Avoid spurious clear calls */
+		tls_cache->store.state = FR_TLS_CACHE_SUCCESS;	/* Avoid spurious clear calls */
 	} else {
 		RWDEBUG("Failed storing session data");
-		tls_cache->store.state = FR_TLS_CACHE_STORE_INIT;
+		tls_cache->store.state = FR_TLS_CACHE_INIT;
 	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
@@ -587,7 +587,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	fr_assert(tls_cache->store.sess);
-	fr_assert(tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED);
+	fr_assert(tls_cache->store.state == FR_TLS_CACHE_REQUESTED);
 
 	/*
 	 *	If there's a pending clear, then don't push any load /
@@ -595,7 +595,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	good "defense in depth" for any future code changes.
 	 *	It also documents / enforces our expectations.
 	 */
-	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
+	if (tls_cache->clear.state == FR_TLS_CACHE_REQUESTED) {
 		RWDEBUG("Session ID %pV - Clear is pending, not storing", &tls_cache->store.id);
 		tls_cache_store_state_reset(request, tls_cache);
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -721,7 +721,7 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 
 	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED);
+	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_REQUESTED);
 	fr_assert(!fr_type_is_null(tls_cache->clear.id.type));
 
 	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_clear_session->vb_uint32,
@@ -754,7 +754,7 @@ static unlang_action_t tls_cache_load_client_result(request_t *request, void *uc
 
 	(void) tls_cache_load_result(request, uctx);
 
-	if (tls_cache->load.state != FR_TLS_CACHE_LOAD_RETRIEVED) {
+	if (tls_cache->load.state != FR_TLS_CACHE_SUCCESS) {
 		RDEBUG2("No session to resume");
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -850,13 +850,13 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 	 *	fr_tls_cache_pending(), which will now return "nope".
 	 */
 	if (TLS_CACHE_DISABLED) {
-		if (tls_cache->load.state == FR_TLS_CACHE_LOAD_REQUESTED) {
+		if (tls_cache->load.state == FR_TLS_CACHE_REQUESTED) {
 			tls_cache_load_state_reset(request, tls_cache);
 		}
-		if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
+		if (tls_cache->clear.state == FR_TLS_CACHE_REQUESTED) {
 			tls_cache_clear_state_reset(request, tls_cache);
 		}
-		if (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED) {
+		if (tls_cache->store.state == FR_TLS_CACHE_REQUESTED) {
 			tls_cache_store_state_reset(request, tls_cache);
 		}
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -870,7 +870,7 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 	 *	`clear session`.  When that happens, we skip the load,
 	 *	and run the clear instead.
 	 */
-	if (tls_cache->load.state == FR_TLS_CACHE_LOAD_REQUESTED) {
+	if (tls_cache->load.state == FR_TLS_CACHE_REQUESTED) {
 		ua = tls_cache_load_push(request, tls_session);
 		if (ua != UNLANG_ACTION_CALCULATE_RESULT) return ua;
 	}
@@ -879,18 +879,18 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 	 *	We only support a single session
 	 *	ticket currently...
 	 */
-	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
+	if (tls_cache->clear.state == FR_TLS_CACHE_REQUESTED) {
 		/*
 		 *	Enforce that there's no queued store, as it
 		 *	should have been cancelled.
 		 */
-		fr_assert(tls_cache->store.state != FR_TLS_CACHE_STORE_REQUESTED);
+		fr_assert(tls_cache->store.state != FR_TLS_CACHE_REQUESTED);
 		tls_cache_store_state_reset(request, tls_cache);
 
 		return tls_cache_clear_push(request, conf, tls_session);
 	}
 
-	if (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED) {
+	if (tls_cache->store.state == FR_TLS_CACHE_REQUESTED) {
 		return tls_cache_store_push(request, conf, tls_session);
 	}
 
@@ -1126,7 +1126,7 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	later, once all the authentication phases have completed.
 	 */
 	tls_cache->store.sess = sess;
-	tls_cache->store.state = FR_TLS_CACHE_STORE_REQUESTED;
+	tls_cache->store.state = FR_TLS_CACHE_REQUESTED;
 
 	return 1;
 }
@@ -1184,10 +1184,10 @@ static SSL_SESSION *tls_cache_load_cb(SSL *ssl,
 	 */
 again:
 	switch (tls_cache->load.state) {
-	case FR_TLS_CACHE_LOAD_INIT:
+	case FR_TLS_CACHE_INIT:
 		fr_assert(fr_type_is_null(tls_cache->load.id.type));
 
-		tls_cache->load.state = FR_TLS_CACHE_LOAD_REQUESTED;
+		tls_cache->load.state = FR_TLS_CACHE_REQUESTED;
 		MEM(fr_value_box_memdup(tls_cache, &tls_cache->load.id, NULL,
 					(uint8_t const *)key, key_len, true) == 0);
 
@@ -1239,12 +1239,12 @@ again:
 		}
 		goto again;
 
-	case FR_TLS_CACHE_LOAD_REQUESTED:
+	case FR_TLS_CACHE_REQUESTED:
 		fr_assert(0);				/* Called twice without attempting the load?! */
-		tls_cache->load.state = FR_TLS_CACHE_LOAD_FAILED;
+		tls_cache->load.state = FR_TLS_CACHE_FAILED;
 		break;
 
-	case FR_TLS_CACHE_LOAD_RETRIEVED:
+	case FR_TLS_CACHE_SUCCESS:
 	{
 		SSL_SESSION	*sess;
 
@@ -1339,7 +1339,7 @@ again:
 	}
 
 
-	case FR_TLS_CACHE_LOAD_FAILED:
+	case FR_TLS_CACHE_FAILED:
 		RDEBUG3("Session data load failed");
 		break;
 	}

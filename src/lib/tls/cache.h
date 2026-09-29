@@ -34,60 +34,47 @@ RCSIDH(cache_h, "$Id$")
 extern "C" {
 #endif
 
-/** Current store state
+/** State of one cache operation
  *
- * This tracks what session-resumption data has been provided by
- * OpenSSL so that we can persist it asynchronously at the
- * appropriate time.
+ * All policy operations are run the same way.  OpenSSL asks us for
+ * something via a callback, and the callback remembers to do it.
+ * OpenSSL then returns to us, where then see that there's a policy to
+ * be run, and run it.
+ *
+ * We can't run the interpreter from an OpenSSL callback, so we have
+ * to do it via this "back and forth" bounce.
+ *
+ * Not every operation reaches every state.  A clear has nothing to report
+ * back, so it only ever moves between INIT and REQUESTED.
  */
 typedef enum {
-	FR_TLS_CACHE_STORE_INIT = 0,		//!< OpenSSL hasn't passed any cache data over.
-	FR_TLS_CACHE_STORE_REQUESTED,		//!< OpenSSL passed us cache data, but we haven't
-						///< persisted it yet.
-	FR_TLS_CACHE_STORE_PERSISTED,		//!< We've persisted the cached data.
-} fr_tls_cache_store_state_t;
-
-/** Current load state
- *
- * This tracks what session-resumption data has been requested
- * by OpenSSL, so that was can load it asynchronously at the
- * appropriate time.
- */
-typedef enum {
-	FR_TLS_CACHE_LOAD_INIT = 0,		//!< Initial state.
-	FR_TLS_CACHE_LOAD_REQUESTED,		//!< OpenSSL has requested session data.
-	FR_TLS_CACHE_LOAD_RETRIEVED,		//!< We got the cache data from an external data store.
-	FR_TLS_CACHE_LOAD_FAILED,		//!< Loading cache data failed.
-} fr_tls_cache_load_state_t;
-
-/** Current delete-state
- *
- * This tracks whether OpenSSL has requested that session data
- * be deleted.
- */
-typedef enum {
-	FR_TLS_CACHE_CLEAR_INIT = 0,		//!< Initial state.
-	FR_TLS_CACHE_CLEAR_REQUESTED,		//!< OpenSSL has requested we delete a cache entry.
-} fr_tls_cache_clear_state_t;
+	FR_TLS_CACHE_INIT = 0,			//!< Nothing has been asked for.
+	FR_TLS_CACHE_REQUESTED,			//!< OpenSSL has asked for the operation, and the
+						///< section which does the work has not run yet.
+	FR_TLS_CACHE_SUCCESS,			//!< The operation completed.  For a load that means
+						///< the session came back from the data store, and for
+						///< a store it means the session was persisted.
+	FR_TLS_CACHE_FAILED,			//!< The operation did not complete.
+} fr_tls_cache_state_t;
 
 /** This structure holds the current cache state for the session
  *
  */
 typedef struct {
 	struct {
-		fr_tls_cache_store_state_t	state;		//!< Tracks store state.
+		fr_tls_cache_state_t		state;		//!< Tracks store state.
 		fr_value_box_t			id;		//!< ID of the session being stored
 		SSL_SESSION			*sess;		//!< Session to store.
 	} store;
 
 	struct {
-		fr_tls_cache_load_state_t	state;		//!< Tracks load requests from OpenSSL.
+		fr_tls_cache_state_t		state;		//!< Tracks load requests from OpenSSL.
 		fr_value_box_t			id;		//!< Session ID that the peer asked to resume
 		SSL_SESSION			*sess;		//!< Deserialized session.
 	} load;
 
 	struct {
-		fr_tls_cache_clear_state_t	state;		//!< Tracks delete requests from OpenSSL.
+		fr_tls_cache_state_t		state;		//!< Tracks delete requests from OpenSSL.
 		fr_value_box_t			id;		//!< Session ID to clear
 	} clear;
 
@@ -121,9 +108,9 @@ static inline bool fr_tls_cache_pending(fr_tls_cache_t const *tls_cache)
 {
 	if (!tls_cache) return false;
 
-	return (tls_cache->load.state == FR_TLS_CACHE_LOAD_REQUESTED) ||
-	       (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) ||
-	       (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED);
+	return (tls_cache->load.state == FR_TLS_CACHE_REQUESTED) ||
+	       (tls_cache->clear.state == FR_TLS_CACHE_REQUESTED) ||
+	       (tls_cache->store.state == FR_TLS_CACHE_REQUESTED);
 }
 #endif
 

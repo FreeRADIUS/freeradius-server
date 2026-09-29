@@ -916,7 +916,7 @@ bool fr_tls_session_is_init_finished(fr_tls_session_t *tls_session)
 	 *	returns to INIT.  A session which never sends a ticket
 	 *	is therefore also marked as finished.
 	 */
-	return (tls_session->cache->load.state != FR_TLS_CACHE_LOAD_REQUESTED);
+	return (tls_session->cache->load.state != FR_TLS_CACHE_REQUESTED);
 }
 
 /** Decrypt application data
