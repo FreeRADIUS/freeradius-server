@@ -1134,25 +1134,12 @@ static inline CC_HINT(always_inline)
 unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *conf, fr_tls_session_t *tls_session)
 {
 	request_t	*child;
-	fr_pair_t	*vp;
 	unlang_action_t	ua;
 
 	fr_assert(conf->virtual_server);
 
-	MEM(child = unlang_subrequest_alloc(request, dict_tls));
-	request = child;
-
-	/*
-	 *	Setup the child request for reporting session
-	 */
-	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_establish_session->vb_uint32;
-
-	if (!fr_type_is_null(tls_session->session_id.type)) {
-		MEM(pair_append_request(&vp, attr_tls_session_id) >= 0);
-		fr_pair_value_memdup(vp, tls_session->session_id.vb_octets,
-				     tls_session->session_id.vb_length, false);
-	}
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_establish_session->vb_uint32,
+					 &tls_session->session_id));
 
 	/*
 	 *	Allocate a child, and set it up to call
@@ -1189,26 +1176,16 @@ static unlang_action_t tls_fail_session_push(request_t *request, fr_tls_conf_t *
 					     fr_tls_session_t *tls_session)
 {
 	request_t	*child;
-	fr_pair_t	*vp;
 	unlang_action_t	ua;
 
 	fr_assert(conf->virtual_server);
 
-	MEM(child = unlang_subrequest_alloc(request, dict_tls));
-	request = child;
-
-	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_fail_session->vb_uint32;
-
 	/*
 	 *	A session which failed before OpenSSL established one has
-	 *	no ID to report.
+	 *	no ID to report, which tls_subrequest_alloc() handles.
 	 */
-	if (!fr_type_is_null(tls_session->session_id.type)) {
-		MEM(pair_append_request(&vp, attr_tls_session_id) >= 0);
-		fr_pair_value_memdup(vp, tls_session->session_id.vb_octets,
-				     tls_session->session_id.vb_length, false);
-	}
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_fail_session->vb_uint32,
+					 &tls_session->session_id));
 
 	ua = fr_tls_call_push(child, tls_fail_session_result, conf, tls_session, false);
 	if (ua == UNLANG_ACTION_FAIL) {
@@ -2204,12 +2181,14 @@ static unlang_action_t tls_new_session_result(request_t *request, UNUSED void *u
 unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const *tls_conf)
 {
 	request_t	*child;
-	fr_pair_t	*vp;
+	fr_value_box_t	id;
 
-	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	/*
+	 *	There is no session yet, so there is no ID to report.
+	 */
+	fr_value_box_init_null(&id);
 
-	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_new_session->vb_uint32;
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_new_session->vb_uint32, &id));
 
 	if (unlang_subrequest_child_push(NULL, child, request, true, UNLANG_SUB_FRAME) < 0) {
 		/*

@@ -111,24 +111,45 @@ void tls_session_id_cache(fr_tls_session_t *tls_session, SSL_SESSION *sess)
 }
 
 
-/** Add an attribute specifying the session id for the operation to be performed with.
+/** Allocate and initialize a subrequest for one of the TLS policy sections
  *
- * Adds the following attributes to the request:
+ * - allocate a subrequest
+ * - set the packet type
+ * - set the session ID
  *
- *	- &request.Session-Id
- *
- * Session identity will contain the binary session key used to create, retrieve
- * and delete cache entries related to the SSL session.
- *
- * @param[in] request		The current request.
- * @param[in] session_id	Identifier for the session.
+ * @param[in] parent		both allocation context and holds the subrequest stack frame
+ * @param[in] packet_type	which section to run, as an
+ *				enum_tls_packet_type_* value.
+ * @param[in] id		of the session, or #FR_TYPE_NULL when there is none.
+ * @return the child request.
  */
-static inline CC_HINT(always_inline, nonnull(2))
-void tls_cache_session_id_to_vp(request_t *request, fr_value_box_t const *session_id)
+request_t *tls_subrequest_alloc(request_t *parent, uint32_t packet_type, fr_value_box_t const *id)
 {
-	fr_pair_t	*vp;
-	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
-	fr_pair_value_memdup(vp, session_id->vb_octets, session_id->vb_length, false);
+	request_t *request;
+	fr_pair_t *vp;
+
+	MEM(request = unlang_subrequest_alloc(parent, dict_tls));
+
+	/*
+	 *	Setup the child request for the section being called.
+	 */
+	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
+	vp->vp_uint32 = packet_type;
+
+	/*
+	 *	Add the session ID, if it exists.  A session gets an
+	 *	ID only after it's established.  And it can fail
+	 *	before then.  So the ID might not exist.
+	 *
+	 *	The ID is supplied by the peer, and is therefore
+	 *	tainted.
+	 */
+	if (!fr_type_is_null(id->type)) {
+		MEM(pair_append_request(&vp, attr_tls_session_id) >= 0);
+		fr_pair_value_memdup(vp, id->vb_octets, id->vb_length, true);
+	}
+
+	return request;
 }
 
 static inline CC_HINT(always_inline, nonnull(2))
@@ -473,7 +494,6 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
 	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
 	request_t		*child;
-	fr_pair_t		*vp;
 	unlang_action_t		ua;
 
 	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
@@ -499,21 +519,8 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 
 	fr_assert(!fr_type_is_null(tls_cache->load.id.type));
 
-	MEM(child = unlang_subrequest_alloc(request, dict_tls));
-	request = child;
-
-	/*
-	 *	Setup the child request for loading
-	 *	session resumption data.
-	 */
-	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_load_session->vb_uint32;
-
-	/*
-	 *	Add the session identifier we're
-	 *	trying to load.
-	 */
-	tls_cache_session_id_to_vp(child, &tls_cache->load.id);
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_load_session->vb_uint32,
+					 &tls_cache->load.id));
 
 	/*
 	 *	Allocate a child, and set it up to call
@@ -615,22 +622,9 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 
 	if (rcode == 0) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_store_session->vb_uint32,
+					 &tls_cache->store.id));
 	request = child;
-
-	/*
-	 *	Setup the child request for storing
-	 *	session resumption data.
-	 */
-	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_store_session->vb_uint32;
-
-	/*
-	 *	Add the session identifier we're trying
-	 *	to store.
-	 */
-	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
-	fr_pair_value_memdup(vp, tls_cache->store.id.vb_octets, tls_cache->store.id.vb_length, false);
 
 	/*
 	 *	How long the session has to live
@@ -725,7 +719,6 @@ static inline CC_HINT(always_inline)
 unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr_tls_session_t *tls_session)
 {
 	request_t	*child;
-	fr_pair_t	*vp;
 	fr_tls_cache_t	*tls_cache = tls_session->cache;
 	unlang_action_t	ua;
 
@@ -734,21 +727,8 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED);
 	fr_assert(!fr_type_is_null(tls_cache->clear.id.type));
 
-	MEM(child = unlang_subrequest_alloc(request, dict_tls));
-	request = child;
-
-	/*
-	 *	Setup the child request for loading
-	 *	session resumption data.
-	 */
-	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_clear_session->vb_uint32;
-
-	/*
-	 *	Add the session identifier we're
-	 *	trying to load.
-	 */
-	tls_cache_session_id_to_vp(child, &tls_cache->clear.id);
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_clear_session->vb_uint32,
+					 &tls_cache->clear.id));
 
 	/*
 	 *	Allocate a child, and set it up to call
@@ -825,7 +805,6 @@ unlang_action_t fr_tls_cache_load_client_push(request_t *request, fr_tls_session
 	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
 	char			*name;
 	request_t		*child;
-	fr_pair_t		*vp;
 	unlang_action_t		ua;
 
 	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
@@ -838,14 +817,8 @@ unlang_action_t fr_tls_cache_load_client_push(request_t *request, fr_tls_session
 		return UNLANG_ACTION_FAIL;
 	}
 
-	MEM(child = unlang_subrequest_alloc(request, dict_tls));
-	request = child;	/* the pairs below belong to the child, as in tls_cache_load_push() */
-
-	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_load_session->vb_uint32;
-
-	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
-	fr_pair_value_memdup(vp, (uint8_t const *)name, talloc_strlen(name), true);
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_load_session->vb_uint32,
+					 fr_box_octets((uint8_t const *) name, talloc_strlen(name))));
 
 	talloc_free(name);
 
@@ -1146,9 +1119,12 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	always tls_session->session_id: a peer offers an ID in its
 	 *	ClientHello whether or not anything is resumable, so the
 	 *	session which ends up being stored can have a different ID
-	 *	from the one the handshake first saw.
+	 *	from the one sent in the handshake.
 	 */
-	(void) tls_cache_id_to_box(tls_cache, &tls_cache->store.id, sess);
+	if (tls_cache_id_to_box(tls_cache, &tls_cache->store.id, sess) < 0) {
+		RDEBUG3("No Session ID to store");
+		return 0;
+	}
 
 	RDEBUG3("Session ID %pV - Requested store", &tls_cache->store.id);
 

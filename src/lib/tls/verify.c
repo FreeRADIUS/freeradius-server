@@ -28,6 +28,8 @@
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
 
+#define _TLS_PRIVATE 1
+
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/tls/log.h>
@@ -477,20 +479,14 @@ static unlang_action_t tls_verify_peer_cert_push(request_t *request, fr_tls_sess
 
 	fr_assert(conf->virtual_server);
 
-	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_verify_certificate->vb_uint32,
+					 &tls_session->session_id));
 	request = child;
 
 	/*
 	 *	Add extra pairs to the subrequest
 	 */
 	fr_tls_session_extra_pairs_copy_to_child(child, tls_session);
-
-	/*
-	 *	Setup the child request for loading
-	 *	session resumption data.
-	 */
-	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_verify_certificate->vb_uint32;
 
 	/*
 	 *	Copy certificate pairs to the child session state

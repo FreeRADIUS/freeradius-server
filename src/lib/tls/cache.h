@@ -165,6 +165,8 @@ unlang_action_t	fr_tls_cache_store_session(request_t *request, fr_tls_session_t 
 #ifdef _TLS_PRIVATE
 void		tls_session_id_cache(fr_tls_session_t *tls_session, SSL_SESSION *sess);
 
+request_t	*tls_subrequest_alloc(request_t *parent, uint32_t packet_type, fr_value_box_t const *id);
+
 unlang_action_t	fr_tls_cache_clear_session(request_t *request, fr_tls_session_t *tls_session);
 
 int		fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
