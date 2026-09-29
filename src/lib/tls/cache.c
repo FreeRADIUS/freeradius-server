@@ -151,10 +151,11 @@ void _tls_cache_store_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 {
 	if (cache->store.sess) {
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
-			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing session to store in %s", cache->session_id, func);
+			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing session to store in %s", &cache->store.id, func);
 		}
 		SSL_SESSION_free(cache->store.sess);
 		cache->store.sess = NULL;
+		fr_value_box_clear(&cache->store.id);
 	}
 	cache->store.state = FR_TLS_CACHE_STORE_INIT;
 }
@@ -592,13 +593,13 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	It also documents / enforces our expectations.
 	 */
 	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
-		RWDEBUG("Session ID %pV - Clear is pending, not storing", &tls_session->session_id);
+		RWDEBUG("Session ID %pV - Clear is pending, not storing", &tls_cache->store.id);
 		tls_cache_store_state_reset(request, tls_cache);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	if (fr_time_lteq(expires, now)) {
-		RWDEBUG("Session ID %pV - Session has already expired, not storing", &tls_session->session_id);
+		RWDEBUG("Session ID %pV - Session has already expired, not storing", &tls_cache->store.id);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -606,7 +607,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Add the current session-state list
 	 *	contents to the ssl-data
 	 */
-	rcode = tls_cache_app_data_set(request, sess, &tls_session->session_id,
+	rcode = tls_cache_app_data_set(request, sess, &tls_cache->store.id,
 				       enum_tls_session_resumed_stateful->vb_uint32);
 	if (rcode < 0) {
 		tls_cache_store_state_reset(request, tls_cache);
@@ -630,7 +631,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	to store.
 	 */
 	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
-	fr_pair_value_memdup_buffer_shallow(vp, fr_tls_cache_id(vp, sess), true);
+	fr_pair_value_memdup(vp, tls_cache->store.id.vb_octets, tls_cache->store.id.vb_length, false);
 
 	/*
 	 *	How long the session has to live
@@ -644,7 +645,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 */
 	if (fr_time_delta_gt(vp->vp_time_delta, fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME))) {
 		RWDEBUG("Session ID %pV - Session lifetime %pV is longer than the maximum of %pV, limiting it",
-			&tls_session->session_id, fr_box_time_delta(vp->vp_time_delta),
+			&tls_cache->store.id, fr_box_time_delta(vp->vp_time_delta),
 			fr_box_time_delta(fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME)));
 
 		vp->vp_time_delta = fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME);
@@ -658,7 +659,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 		/* something went wrong */
 		fr_tls_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
 		RPWDEBUG("Session ID %pV - Serialisation failed, couldn't determine "
-			 "required buffer length", &tls_session->session_id);
+			 "required buffer length", &tls_cache->store.id);
 	error:
 		tls_cache_store_state_reset(request, tls_cache);
 		talloc_free(child);
@@ -674,7 +675,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	ret = i2d_SSL_SESSION(sess, &p);	/* Serialize as ASN.1 */
 	if (ret != len) {
 		fr_tls_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
-		RPWDEBUG("Session ID %pV - Serialisation failed", &tls_session->session_id);
+		RPWDEBUG("Session ID %pV - Serialisation failed", &tls_cache->store.id);
 		talloc_free(data);
 		goto error;
 	}
@@ -1141,13 +1142,26 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 */
 	if (unlang_request_is_cancelled(request)) return 0;
 
-	RDEBUG3("Session ID %pV - Requested store", &tls_session->session_id);
+	/*
+	 *	Record the ID of the session being stored.  It is not
+	 *	always tls_session->session_id: a peer offers an ID in its
+	 *	ClientHello whether or not anything is resumable, so the
+	 *	session which ends up being stored can have a different ID
+	 *	from the one the handshake first saw.
+	 */
+	{
+		unsigned int	id_len;
+		uint8_t const	*id = SSL_SESSION_get_id(sess, &id_len);
+
+		if (id) MEM(fr_value_box_memdup(tls_cache, &tls_cache->store.id, NULL,
+						id, id_len, true) == 0);
+	}
+
+	RDEBUG3("Session ID %pV - Requested store", &tls_cache->store.id);
+
 	/*
 	 *	Store the session blob and session id for writing
 	 *	later, once all the authentication phases have completed.
-	 *
-	 *	The session being stored is tls_session->session, set
-	 *	above, so the ID is the one already cached there.
 	 */
 	tls_cache->store.sess = sess;
 	tls_cache->store.state = FR_TLS_CACHE_STORE_REQUESTED;

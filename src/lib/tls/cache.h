@@ -76,6 +76,11 @@ typedef enum {
 typedef struct {
 	struct {
 		fr_tls_cache_store_state_t	state;		//!< Tracks store state.
+		fr_value_box_t			id;		//!< ID of the session being stored, which may be
+								///< different from tls_session->session_id, which is
+								///< sent by the peer in ClientHello.
+								///< If we're doing resumption, we store a different ID
+								///< for that.
 		SSL_SESSION			*sess;		//!< Session to store.
 	} store;
 
