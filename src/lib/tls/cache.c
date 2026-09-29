@@ -54,16 +54,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *
  * - there is no cache configuration
  * - there is no virtual_server to run when poking the cache
- * - the session tickets are not stateful, so we don't need to store anything
- *   Note that conf.c also checks for !virtual_server, and sets the cache
- *   mode to STATELESS.
  *
  * This check is only for static configuration.  A particular session
  * can still be marked as !tls_session->allow_session_resumption.  In
  * which case we don't load any cache entries, but we may still clear
  * them.
  */
-#define TLS_CACHE_DISABLED  (!tls_cache ||  !conf->virtual_server || !(conf->cache.mode & FR_TLS_CACHE_STATEFUL))
+#define TLS_CACHE_DISABLED  (!tls_cache || !conf->virtual_server)
 
 
 /** Copy the ID of a session into a box
@@ -1121,15 +1118,6 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 		RDEBUG3("No Session ID to store");
 		return 0;
 	}
-
-	/*
-	 *	If the session is TLS 1.3, then resumption will be handled by a
-	 *	session ticket.  However, if this callback is defined, it still
-	 *	gets called.
-	 *
-	 *	To avoid unnecessary entries in the stateful cache just return.
-	 */
-	if (tls_session->info.version == TLS1_3_VERSION) return 0;
 
 	RDEBUG3("Session ID %pV - Requested store", &tls_cache->store.id);
 
