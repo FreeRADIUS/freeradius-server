@@ -67,6 +67,41 @@ proto-dictionary-root Test-Set-Of
 decode-pair 31 06 02 01 01 01 01 FF
 match ERROR: Invalid tag boolean. Expected tag integer: Failed decoding Test-Set-Of
 
+#
+#  A zero-length element in a sequence_of, whose attribute has a default
+#  value.  The element stands in for its own two header bytes, so decoding
+#  it reports a length of two.  Reporting zero used to leave the
+#  sequence_of loop rewound onto the same two bytes forever.
+#
+proto-dictionary-root Test-Seq-Of-Default
+
+decode-pair 30 02 02 00
+match Test-Seq-Of-Default = { Test-Default-Integer = 0 }
+
+#
+#  An element which carries a value still decodes, and an empty
+#  sequence_of is still an empty sequence.
+#
+decode-pair 30 03 02 01 05
+match Test-Seq-Of-Default = { Test-Default-Integer = 5 }
+
+decode-pair 30 00
+match Test-Seq-Of-Default = { }
+
+#
+#  The same zero-length default in a plain sequence, where the loop walks
+#  the dictionary's children rather than the input.  If the zero-length
+#  member does not report the header it consumed, the next member is
+#  offered those two bytes and reads an integer where it wants a boolean.
+#
+proto-dictionary-root Test-Seq-Default-Member
+
+decode-pair 30 05 02 00 01 01 FF
+match Test-Seq-Default-Member = { Test-Default-Member = 7, Test-Bool-Member = yes }
+
+decode-pair 30 06 02 01 03 01 01 FF
+match Test-Seq-Default-Member = { Test-Default-Member = 3, Test-Bool-Member = yes }
+
 proto-dictionary-root Test-String-Max
 
 decode-pair 0c 02 68 69
@@ -1100,4 +1135,4 @@ encode-pair Test-Enumerated = -1
 match 0a 01 ff
 
 count
-match 632
+match 644

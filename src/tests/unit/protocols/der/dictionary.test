@@ -26,6 +26,23 @@ BEGIN Test-Set-Of
 DEFINE	Test-First-Integer				integer
 END Test-Set-Of
 
+#
+#  A zero-length element whose attribute carries a default value.  The
+#  element occupies its own header on the wire, so decoding it has to
+#  report that length, whether the caller walks the input (sequence_of)
+#  or the dictionary's children (a plain sequence).
+#
+DEFINE	Test-Seq-Of-Default				sequence sequence_of=integer
+BEGIN Test-Seq-Of-Default
+DEFINE	Test-Default-Integer				integer default=0
+END Test-Seq-Of-Default
+
+DEFINE	Test-Seq-Default-Member				sequence
+BEGIN Test-Seq-Default-Member
+DEFINE	Test-Default-Member				integer default=7
+DEFINE	Test-Bool-Member				bool
+END Test-Seq-Default-Member
+
 DEFINE	Test-Boolean					bool
 
 DEFINE	Test-Integer					integer

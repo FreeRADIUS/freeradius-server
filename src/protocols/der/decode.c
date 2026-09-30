@@ -905,10 +905,15 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			fr_dbuff_set(&our_in, current_marker);
 
 			/*
-			 *	A child could have been encoded with zero bytes if it has a default value.
+			 *	The sequence has data, so it must decode something.
+			 *	fr_der_decode_pair_dbuff() returns zero when it can't find anything to decode,
+			 *	which is therefore an error.
+			 *
+			 *	fr_der_decode_set() also rejects a zero return, because the set loop also walks
+			 *	the input.
 			 */
 			slen = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
-			if (unlikely(slen < 0)) {
+			if (unlikely(slen <= 0)) {
 				fr_strerror_printf_push("Failed decoding %s", vp->da->name);
 				goto error;
 			}
@@ -2594,6 +2599,47 @@ static ssize_t fr_der_decode_unknown(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	return fr_der_decode_octetstring(ctx, out, parent, in, decode_ctx);
 }
 
+/** Create a default value.
+ *
+ *  Some sequences are encoded with no data, and that can mean "use a default value".  We create that default
+ *  value here.
+ *
+ * @param[in] ctx	to allocate the pair in.
+ * @param[out] out	list to append the pair to.
+ * @param[in] parent	attribute to take the default value from.
+ * @param[in] flags	DER flags of parent.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int fr_der_decode_default(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				 fr_der_attr_flags_t const *flags)
+{
+	fr_pair_t *vp;
+
+	/*
+	 *	The caller MUST check this.
+	 */
+	fr_assert(fr_der_flag_has_value(flags));
+
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (unlikely(!vp)) {
+		fr_strerror_const_push("Out of memory");
+		return -1;
+	}
+
+	if (unlikely(fr_value_box_copy(vp, &vp->data, flags->default_value) < 0)) {
+		talloc_free(vp);
+		return -1;
+	}
+
+	vp->data.enumv = vp->da;
+
+	FR_PAIR_APPEND(out, vp);
+
+	return 0;
+}
+
 ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
 {
@@ -2670,29 +2716,12 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	 *	No header, we may need to create a default value.
 	 */
 	if (unlikely(slen == 0)) {
-		fr_pair_t	     *vp;
-
 		if (likely(!fr_der_flag_has_value(flags))) return 0;
 
-	create_default:
-		fr_assert(fr_der_flag_has_value(flags));
-
-		vp = fr_pair_afrom_da(ctx, parent);
-		if (unlikely(!vp)) {
-			fr_strerror_const_push("Out of memory");
-			return -1;
-		}
-
-		if (unlikely(fr_value_box_copy(vp, &vp->data, flags->default_value) < 0)) {
-			talloc_free(vp);
-			return -1;
-		}
-
-		vp->data.enumv = vp->da;
-
-		FR_PAIR_APPEND(out, vp);
-
-		return 0;
+		/*
+		 *	There is no member, so we return the default value.
+		 */
+		return fr_der_decode_default(ctx, out, parent, flags);
 	}
 
 	if (unlikely(flags->is_choice)) {
@@ -2743,13 +2772,20 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	 *	NULL.
 	 */
 	if (unlikely(fr_dbuff_remaining(&our_in) == 0)) {
-		if (fr_der_flag_has_value(flags)) goto create_default;
+		if (fr_der_flag_has_value(flags)) {
+			if (unlikely(fr_der_decode_default(ctx, out, parent, flags) < 0)) return -1;
+
+			/*
+			 *	We've decoded a default value because the _contents_ are empty.  But we've
+			 *	consumed bytes from the header, so return that.
+			 */
+			return fr_dbuff_set(in, &our_in);
+		}
 
 		if (tag == FR_DER_TAG_NULL) {
 			func = &tag_funcs[FR_DER_TAG_NULL];
 			goto decode_it;
-		}
-
+		}		
 	}
 
 	/*
@@ -2776,8 +2812,15 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		     (!fr_type_to_der_tag_valid(parent->type, tag) || !fr_der_tags_compatible(tag, flags->der_type)))) {
 		/*
 		 *	Optional or not, if we can create a default value, then do so.
+		 *
+		 *	The tag isn't the one that we expect, which means that the child wer're looking for
+		 *	hasn't been encoded.  Check for a default value, and return that.
+		 *
+		 *	our_in is left alone, and points to the next child in sequence.
 		 */
-		if (fr_der_flag_has_value(flags)) goto create_default;
+		if (fr_der_flag_has_value(flags)) {
+			return fr_der_decode_default(ctx, out, parent, flags);
+		}
 
 		/*
 		 *	Optional means "decoded nothing".  Otherwise it's a hard failure.
