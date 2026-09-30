@@ -35,3 +35,63 @@ DEFINE		Session-TTL					time_delta
 
 DEFINE		Min-Version					float32
 DEFINE		Max-Version					float32
+
+#
+#  `Alert` carries a TLS alert.
+#
+#  Note that we're not decoding TLS here, so we don't need to define
+#  any attribute numbers.  We just want to be able to use the TLS
+#  alerts in a policy.
+#
+DEFINE		Alert						struct
+
+MEMBER		Level						uint8
+
+#
+#  The TLS RFCs define only two alert levels.
+#
+VALUE	Level				Warning			1
+VALUE	Level				Fatal			2
+
+MEMBER		Description					uint8
+
+#
+#  The alert names are taken from the IANA "TLS Alerts" registry.
+#
+VALUE	Description			Close-Notify		0
+VALUE	Description			Unexpected-Message	10
+VALUE	Description			Bad-Record-MAC		20
+VALUE	Description			Decryption-Failed	21	# reserved
+VALUE	Description			Record-Overflow		22
+VALUE	Description			Decompression-Failure	30	# reserved
+VALUE	Description			Handshake-Failure	40
+VALUE	Description			No-Certificate		41	# reserved
+VALUE	Description			Bad-Certificate		42
+VALUE	Description			Unsupported-Certificate	43
+VALUE	Description			Certificate-Revoked	44
+VALUE	Description			Certificate-Expired	45
+VALUE	Description			Certificate-Unknown	46
+VALUE	Description			Illegal-Parameter	47
+VALUE	Description			Unknown-CA		48
+VALUE	Description			Access-Denied		49
+VALUE	Description			Decode-Error		50
+VALUE	Description			Decrypt-Error		51
+VALUE	Description			Too-Many-CIDs-Requested	52
+VALUE	Description			Export-Restriction	60	# reserved
+VALUE	Description			Protocol-Version	70
+VALUE	Description			Insufficient-Security	71
+VALUE	Description			Internal-Error		80
+VALUE	Description			Inappropriate-Fallback	86
+VALUE	Description			User-Canceled		90
+VALUE	Description			No-Renegotiation	100	# reserved
+VALUE	Description			Missing-Extension	109
+VALUE	Description			Unsupported-Extension	110
+VALUE	Description			Certificate-Unobtainable	111	# reserved
+VALUE	Description			Unrecognized-Name	112
+VALUE	Description			Bad-Certificate-Status-Response	113
+VALUE	Description			Bad-Certificate-Hash-Value	114	# reserved
+VALUE	Description			Unknown-PSK-Identity	115
+VALUE	Description			Certificate-Required	116
+VALUE	Description			General-Error		117
+VALUE	Description			No-Application-Protocol	120
+VALUE	Description			ECH-Required		121

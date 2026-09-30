@@ -462,7 +462,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		 *	We got an alert...
 		 */
 		if (where & SSL_CB_READ) {
-			fr_pair_t *vp;
+			fr_pair_t *alert, *vp;
 
 			ROPTIONAL(REDEBUG, ERROR, "Client sent %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
 			          ret & 0xff, SSL_alert_desc_string_long(ret));
@@ -481,9 +481,29 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			}
 
 			if (request) {
-				MEM(pair_update_request(&vp, attr_tls_client_error_code) >= 0);
+				/*
+				 *	The alert level is packed into the high octet of `ret`.  The alert
+				 *	description is packed into the low octet.
+				 *
+				 *	A peer can send alerts are multiple points in the handshake, so
+				 *	earlier alerts are removed before the latest one is added.
+				 *
+				 *	We could just find an earlier alert and update its members, but that's
+				 *	more code.
+				 */
+				pair_delete_request(attr_tls_alert);
+
+				MEM(pair_append_request(&alert, attr_tls_alert) >= 0);
+
+				MEM(fr_pair_append_by_da(alert, &vp, &alert->vp_group,
+							 attr_tls_alert_level) >= 0);
+				vp->vp_uint8 = (ret >> 8) & 0xff;
+
+				MEM(fr_pair_append_by_da(alert, &vp, &alert->vp_group,
+							 attr_tls_alert_description) >= 0);
 				vp->vp_uint8 = ret & 0xff;
-				ROPTIONAL(RDEBUG2, DEBUG2, "TLS-Client-Error-Code := %pV", &vp->data);
+
+				ROPTIONAL(RDEBUG2, DEBUG2, "%pP", alert);
 			}
 		/*
 		 *	We're sending the client an alert.
