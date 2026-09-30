@@ -54,15 +54,9 @@ static char const *tls_version_str[] = {
 	[SSL2_VERSION]				= "SSL 2.0",
 	[SSL3_VERSION]				= "SSL 3.0",
 	[TLS1_VERSION]				= "TLS 1.0",
-#ifdef TLS1_1_VERSION
 	[TLS1_1_VERSION]			= "TLS 1.1",
-#endif
-#ifdef TLS1_2_VERSION
 	[TLS1_2_VERSION]			= "TLS 1.2",
-#endif
-#ifdef TLS1_3_VERSION
 	[TLS1_3_VERSION]			= "TLS 1.3",
-#endif
 #ifdef TLS1_4_VERSION
 	[TLS1_4_VERSION]			= "TLS 1.4",
 #endif

@@ -846,14 +846,14 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 		break;
 	}
 
-#ifdef TLS1_3_VERSION
 	/*
-	 *	https://tools.ietf.org/html/draft-ietf-emu-eap-tls13#section-2.5
+	 *	RFC 9190 Section 2.5
 	 *
 	 *	We need to signal the other end that TLS negotiation
 	 *	is done.  We can't send a zero-length application data
 	 *	message, so we send application data which is one byte
-	 *	of zero.
+	 *	of zero.  This also pushes out any stateless session
+	 *	tickets to the peer.
 	 *
 	 *	Note this is only done for when there is no application
 	 *	data to be sent. So this is done always for EAP-TLS but
@@ -888,7 +888,6 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 			goto fail;
 		}
 	}
-#endif
 
 	/*
 	 *	FIXME: return success/fail.

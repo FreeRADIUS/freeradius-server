@@ -479,9 +479,7 @@ int tls_ctx_version_set(
 #  ifdef TLS1_4_VERSION
 		else if (conf->tls_max_version >= (float) 1.4) max_version = TLS1_4_VERSION;
 #  endif
-#  ifdef TLS1_3_VERSION
 		else if (conf->tls_max_version >= (float) 1.3) max_version = TLS1_3_VERSION;
-#  endif
 		else if (conf->tls_max_version >= (float) 1.2) max_version = TLS1_2_VERSION;
 		else if (conf->tls_max_version >= (float) 1.1) max_version = TLS1_1_VERSION;
 		else max_version = TLS1_VERSION;
@@ -510,9 +508,7 @@ int tls_ctx_version_set(
 #  ifdef TLS1_4_VERSION
 		else if (conf->tls_min_version >= (float) 1.4) min_version = TLS1_4_VERSION;
 #  endif
-#  ifdef TLS1_3_VERSION
 		else if (conf->tls_min_version >= (float) 1.3) min_version = TLS1_3_VERSION;
-#  endif
 		else if (conf->tls_min_version >= (float) 1.2) min_version = TLS1_2_VERSION;
 		else if (conf->tls_min_version >= (float) 1.1) min_version = TLS1_1_VERSION;
 		else min_version = TLS1_VERSION;
@@ -909,7 +905,6 @@ post_ca:
 		}
 	}
 
-#ifdef TLS1_3_VERSION
 	/*
 	 *	Set the TLS 1.3 cipher suites if we were told to.
 	 *
@@ -923,7 +918,6 @@ post_ca:
 			goto error;
 		}
 	}
-#endif
 
 	/*
 	 *	Print the actual cipher list

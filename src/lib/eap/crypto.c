@@ -48,7 +48,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 void eap_crypto_prf_label_init(eap_tls_prf_label_t *prf_label, eap_session_t *eap_session,
 			      char const *keying_prf_label, size_t keying_prf_label_len)
 {
-#ifdef TLS1_3_VERSION
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
 	if (eap_tls_session->tls_session->info.version == TLS1_3_VERSION) {
@@ -63,7 +62,6 @@ void eap_crypto_prf_label_init(eap_tls_prf_label_t *prf_label, eap_session_t *ea
 		prf_label->use_context = 1;
 		return;
 	}
-#endif
 
 	prf_label->keying_prf_label = keying_prf_label;
 	prf_label->keying_prf_label_len = keying_prf_label_len;
