@@ -102,4 +102,60 @@ if (Filter-Id[1]) {
 	test_fail
 }
 
+request += { Vendor-Specific.Cisco.AVPair = "foo" }
+
+#
+#  Test removal of a child of a structural attribute
+#
+request.Vendor-Specific -= Cisco
+
+if (request.Vendor-Specific.Cisco) {
+	test_fail
+}
+
+#
+#  Check the empty parent has been removed
+#
+if (request.Vendor-Specific) {
+	test_fail
+}
+
+#
+#  The same thing, but with the RHS written out in full.
+#
+request += { Vendor-Specific.Cisco.AVPair = "foo" }
+
+request.Vendor-Specific -= request.Vendor-Specific.Cisco
+
+if (request.Vendor-Specific.Cisco) {
+       test_fail
+}
+
+#
+#  Test removal of a member of a child of a structural attribute
+#
+request += { Vendor-Specific.Cisco.AVPair = "foo" }
+
+request.Vendor-Specific -= Cisco.AVPair
+
+if (request.Vendor-Specific) {
+       test_fail
+}
+
+#
+#  Removing one child will leave the other and parent
+#
+request += { Vendor-Specific.Cisco.AVPair = "foo" }
+request.Vendor-Specific += { Nokia.AVPair = "baa" }
+
+request -= Vendor-Specific.Cisco.AVPair
+
+if (request.Vendor-Specific.Cisco) {
+	test_fail
+}
+
+if (!request.Vendor-Specific.Nokia) {
+	test_fail
+}
+
 success
