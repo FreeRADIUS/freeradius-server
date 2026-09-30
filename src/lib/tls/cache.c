@@ -376,6 +376,50 @@ static void tls_cache_delete_request(fr_tls_session_t *tls_session, SSL_SESSION 
 	if (tls_session->can_pause) ASYNC_pause_job();
 }
 
+/** Enforce lifetime on a TLS session ticket.
+ *
+ * There are three limits, and we pick the lowest one.
+ *
+ * - the lifetime OpenSSL recorded in the session itself,
+ * - `lifetime` from the configuration, so that a policy change reaches
+ *   sessions which were stored before it,
+ * - FR_TLS_MAX_SESSION_LIFETIME(7 days), which os required by RFC 8446 for TLS and
+ *   by RFC 9190 for EAP-TLS.
+ *
+ * @param[in] request		for logging.
+ * @param[in] session_id	of the session, for logging.
+ * @param[in] conf		holding the configured lifetime.
+ * @param[in] sess		to examine.
+ * @return
+ *	- how long the session has left, if it is still live.
+ *	- <= 0 if the session has expired.
+ */
+static fr_time_delta_t tls_cache_session_lifetime(request_t *request, fr_value_box_t const *session_id,
+						  fr_tls_conf_t const *conf, SSL_SESSION *sess)
+{
+	time_t		timeout = SSL_get_timeout(sess);
+	time_t		lifetime = (time_t) fr_time_delta_to_sec(conf->cache.lifetime);
+	fr_time_t	expires;
+
+	if (lifetime && (lifetime < timeout)) timeout = lifetime;
+
+	if (timeout > FR_TLS_MAX_SESSION_LIFETIME) {
+		RWDEBUG("Session ID %pV - Session lifetime %pV is longer than the maximum of %pV, limiting it",
+			session_id, fr_box_time_delta(fr_time_delta_from_sec(timeout)),
+			fr_box_time_delta(fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME)));
+
+		timeout = FR_TLS_MAX_SESSION_LIFETIME;
+	}
+
+#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+	expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time_ex(sess) + timeout));
+#else
+	expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time(sess) + timeout));
+#endif
+
+	return fr_time_sub(expires, fr_time());
+}
+
 /** Process the result of `load session { ... }`
  */
 static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
@@ -423,24 +467,15 @@ static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
 	 *	The lifetime is already enforced for `store session`.  The session may exist on disk (or in a
 	 *	DB) for long enough that it expires.
 	 *
-	 *	We clamp the lifetime to the lower of the configured `lifetime` and the session's lifetime.
-	 *	This allows policy updates to apply to pre-existing sessions.
+	 *	tls_cache_session_lifetime() clamps to the lowest of the session's own lifetime, the
+	 *	configured `lifetime`, and the RFC maximum.  Clamping to the configured value is what lets
+	 *	a policy update reach sessions which were stored before it.
 	 */
 	{
 		fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
-		time_t		timeout = SSL_get_timeout(sess);
-		time_t		lifetime = (time_t) fr_time_delta_to_sec(conf->cache.lifetime);
-		fr_time_t	expires;
 
-		if (lifetime && (lifetime < timeout)) timeout = lifetime;
-
-#if OPENSSL_VERSION_NUMBER >= 0x30400000L
-		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time_ex(sess) + timeout));
-#else
-		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time(sess) + timeout));
-#endif
-
-		if (fr_time_lteq(expires, fr_time())) {
+		if (!fr_time_delta_ispos(tls_cache_session_lifetime(request, &tls_session->session_id,
+								    conf, sess))) {
 			RWDEBUG("Session ID %pV - Cached session has expired, not resuming", &tls_session->session_id);
 
 			/*
@@ -577,12 +612,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_pair_t		*vp;
 	SSL_SESSION		*sess = tls_session->cache->store.sess;
 	unlang_action_t		ua;
-#if OPENSSL_VERSION_NUMBER >= 0x30400000L
-	fr_time_t		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time_ex(sess) + SSL_get_timeout(sess)));
-#else
-	fr_time_t		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time(sess) + SSL_get_timeout(sess)));
-#endif
-	fr_time_t		now = fr_time();
+	fr_time_delta_t		ttl;
 
 	if (TLS_CACHE_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -601,7 +631,8 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	if (fr_time_lteq(expires, now)) {
+	ttl = tls_cache_session_lifetime(request, &tls_cache->store.id, conf, sess);
+	if (!fr_time_delta_ispos(ttl)) {
 		RWDEBUG("Session ID %pV - Session has already expired, not storing", &tls_cache->store.id);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -624,22 +655,11 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	request = child;
 
 	/*
-	 *	How long the session has to live
+	 *	How long the session has to live.  Already clamped, the RFC
+	 *	maximum included, by tls_cache_session_lifetime() above.
 	 */
 	MEM(pair_update_request(&vp, attr_tls_session_ttl) >= 0);
-	vp->vp_time_delta = fr_time_sub(expires, now);
-
-	/*
-	 *	Enforce the RFC requirements on maximum session lifetime.  The value we have here is from the
-	 *	ticket.  A malicious or misconfigured server might give us a wrong value.
-	 */
-	if (fr_time_delta_gt(vp->vp_time_delta, fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME))) {
-		RWDEBUG("Session ID %pV - Session lifetime %pV is longer than the maximum of %pV, limiting it",
-			&tls_cache->store.id, fr_box_time_delta(vp->vp_time_delta),
-			fr_box_time_delta(fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME)));
-
-		vp->vp_time_delta = fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME);
-	}
+	vp->vp_time_delta = ttl;
 
 	/*
 	 *	Serialize the session
@@ -1799,7 +1819,17 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	 *	the peer's certificate, it does not contain the
 	 *	peer's certificate chain, and so isn't reliable
 	 *	for performing re-validation.
+	 *
+	 *	The session ticket includes a lifetime.  But we didn't
+	 *	generate it, so we don't trust it.  If the ticket has
+	 *	passed its lifetime, then we reject it and force full
+	 *	reauthentication.
 	 */
+	if (!fr_time_delta_ispos(tls_cache_session_lifetime(request, &tls_session->session_id, conf, sess))) {
+		REDEBUG("Session-ticket has expired, denying session resumption");
+		return SSL_TICKET_RETURN_IGNORE_RENEW;
+	}
+
 	if (tls_cache_app_data_get(request, sess, &tls_session->session_id) < 0) {
 		REDEBUG("Denying session resumption via session-ticket");
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
