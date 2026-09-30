@@ -311,6 +311,20 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		goto error;
 	}
 
+	/*
+	 *      RHS was resolved in the context of the LHS.  If the LHS is not
+	 *	just a list, e.g.
+	 *
+	 *              request.Vendor-Specific -= Cisco
+	 *
+	 * 	this results in an RHS tmpl with references starting from the
+	 *	first parsed child attribute.  Fix this up to create full paths.
+	 */
+	if (!input_rhs_rules && (tmpl_attr_rebase(map->rhs, map->lhs) < 0)) {
+		cf_log_perr(cp, "Failed resolving %s in the context of %s", map->rhs->name, map->lhs->name);
+		goto error;
+	}
+
 	if (tmpl_is_attr(map->rhs) && (tmpl_attr_unknown_add(map->rhs) < 0)) {
 		cf_log_perr(cp, "Failed creating attribute %s", map->rhs->name);
 		goto error;
