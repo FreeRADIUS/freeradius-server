@@ -1202,6 +1202,9 @@ void			tmpl_attr_debug(FILE *fp, tmpl_t const *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src) CC_HINT(nonnull);
 
+int			tmpl_attr_rebase(tmpl_t *vpt, tmpl_t const *parent) CC_HINT(nonnull);
+//int			tmpl_attr_rebase(tmpl_t *dst, tmpl_t const *src) CC_HINT(nonnull);
+
 int			tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 int			tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);

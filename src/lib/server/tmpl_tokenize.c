@@ -1118,6 +1118,74 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	return 0;
 }
 
+/** Rewrite an attribute reference, filling in missing references.
+ *
+ * When an attribute is parsed within a namespace, the resulting attribute reference starts
+ * with the list reference but then skips the references which lead to the namespace within
+ * which the parsing was done, so the tmpl describes a path which does not exist.
+ *
+ * This function fixes up the attribute reference to include the missing references.
+ *
+ * @param[in] vpt      to rewrite.
+ * @param[in] parent   whose references are copied in front of the ones in vpt.
+ * @return
+ *     - 0 on success, whether or not vpt was rewritten.
+ *     - -1 on error.
+ */
+int tmpl_attr_rebase(tmpl_t *vpt, tmpl_t const *parent)
+{
+	tmpl_attr_t		*ar;
+	tmpl_t			*child;
+	tmpl_rules_t		rules;
+	fr_dict_attr_t const	*namespace;
+
+	if (!tmpl_is_attr(vpt) || !tmpl_is_attr(parent)) return 0;
+
+	/*
+	 *	If the parent is just a list, there is nothing to do.
+	 */
+	namespace = tmpl_attr_tail_da(parent);
+	if (!fr_type_is_structural(namespace->type) || request_attr_is_list(namespace)) return 0;
+
+	/*
+	 *	Skip over the list reference, to find the first attribute.
+	 *	If it wasn't resolved against the parent, then a full path was parsed.
+	 */
+	ar = tmpl_attr_list_head(tmpl_attr(vpt));
+	if (ar && tmpl_attr_is_list_attr(ar)) ar = tmpl_attr_list_next(tmpl_attr(vpt), ar);
+	if (!ar || (ar->ar_parent != namespace)) return 0;
+
+	/*
+	 *	Save a copy of the existing references, and then replace them with the ones from the parent.
+	 *	Rules get overwritten by tmpl_attr_copy, so a safe copy is kept.
+	 */
+	MEM(child = tmpl_alloc(vpt, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0));
+	rules = vpt->rules;
+
+	if (unlikely((tmpl_attr_copy(child, vpt) < 0) || (tmpl_attr_copy(vpt, parent) < 0))) {
+	error:
+		talloc_free(child);
+		return -1;
+	}
+	vpt->rules = rules;
+
+	/*
+	 *      Append the original references, skipping the list
+	 */
+	ar = tmpl_attr_list_head(tmpl_attr(child));
+	if (ar && tmpl_attr_is_list_attr(ar)) ar = tmpl_attr_list_next(tmpl_attr(child), ar);
+
+	for ( ; ar != NULL; ar = tmpl_attr_list_next(tmpl_attr(child), ar)) {
+		if (unlikely(tmpl_attr_ref_copy(vpt, ar) < 0)) goto error;
+	}
+
+	talloc_free(child);
+
+	TMPL_VERIFY(vpt);
+
+	return 0;
+}
+
 /** Replace the current attribute reference
  *
  */
