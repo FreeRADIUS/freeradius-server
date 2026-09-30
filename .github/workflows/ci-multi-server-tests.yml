@@ -215,6 +215,8 @@ jobs:
       #  extra input.
       #
       - name: Run multi-server tests (${{ matrix.mode }})
+        env:
+          PROFILING_RUN_INDEX: ${{ github.run_number }}
         run: |
           case "${{ matrix.mode }}-${{ github.event_name }}" in
             service-schedule)
