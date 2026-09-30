@@ -20,9 +20,7 @@
  * @file src/lib/tls/base.c
  * @brief Initialise OpenSSL
  *
- * @copyright 2001 hereUare Communications, Inc. (raghud@hereuare.com)
- * @copyright 2003 Alan DeKok (aland@freeradius.org)
- * @copyright 2006-2016 The FreeRADIUS server project
+ * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */

@@ -22,6 +22,7 @@
  * @brief Structures for session-resumption management.
  *
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSIDH(session_h, "$Id$")
 

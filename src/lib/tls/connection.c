@@ -24,7 +24,7 @@
  * pushes.  Each state sets up frame->repeat as the next state, and which then
  * lets the current state push children.
  *
- * @copyright 2026 The FreeRADIUS server project
+ * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"

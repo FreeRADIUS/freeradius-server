@@ -20,8 +20,8 @@
  * @file tls/cache.c
  * @brief Functions to support TLS session resumption
  *
- * @copyright 2015-2016 The FreeRADIUS server project
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
@@ -383,8 +383,8 @@ static void tls_cache_delete_request(fr_tls_session_t *tls_session, SSL_SESSION 
  * - the lifetime OpenSSL recorded in the session itself,
  * - `lifetime` from the configuration, so that a policy change reaches
  *   sessions which were stored before it,
- * - FR_TLS_MAX_SESSION_LIFETIME(7 days), which os required by RFC 8446 for TLS and
- *   by RFC 9190 for EAP-TLS.
+ * - FR_TLS_MAX_SESSION_LIFETIME (7 days), which is required by RFC
+ *   8446 for TLS and by RFC 9190 for EAP-TLS.
  *
  * @param[in] request		for logging.
  * @param[in] session_id	of the session, for logging.

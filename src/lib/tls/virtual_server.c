@@ -21,6 +21,7 @@
  * @brief Calls a section in the TLS policy virtual server.
  *
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"

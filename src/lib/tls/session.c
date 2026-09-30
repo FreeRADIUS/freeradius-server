@@ -20,8 +20,7 @@
  * @file tls/session.c
  * @brief Initialise OpenSSL sessions, and read/write data to/from them.
  *
- * @copyright 2003 Alan DeKok (aland@freeradius.org)
- * @copyright 2006-2016 The FreeRADIUS server project
+ * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"

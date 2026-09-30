@@ -26,7 +26,7 @@
  * the handshake queues.  fr_tls_session_t holds the handshake.
  * fr_tls_connection_t holds the connection, and drives fr_tls_session_t.
  *
- * @copyright 2026 The FreeRADIUS server project
+ * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSIDH(tls_connection_h, "$Id$")
 
