@@ -42,15 +42,18 @@
 #
 
 LOG="$OUTPUT/alert_recv.log"
+CLIENT_LOG="$OUTPUT/alert_recv_client.log"
 RECEIPT="$OUTPUT/alert_recv.receipt"
 
 mkdir -p "$OUTPUT"
-rm -f "$LOG" "$RECEIPT"
+rm -f "$LOG" "$CLIENT_LOG" "$RECEIPT"
 
 fail() {
 	echo "alert_recv.sh: $1"
 	echo "--- $LOG ---"
 	cat "$LOG"
+	echo "--- $CLIENT_LOG ---"
+	cat "$CLIENT_LOG"
 	exit 1
 }
 
@@ -91,8 +94,10 @@ while [ "$TRIES" -gt 0 ]; do
 	$SNOOZE
 done
 
-echo "--- openssl s_client ---" >> "$LOG"
-
+#
+#  s_client writes to its own file.  unit_test_tls is still writing to $LOG
+#  at this point, and two programs writing to one file overwrite each other,
+#  which loses whichever lines land in the gap.
 #
 #  s_client rejects the server certificate, so s_client exits non-zero on a
 #  successful run of this test.  The script ignores the exit status of
@@ -102,7 +107,7 @@ echo | openssl s_client -connect "127.0.0.1:$PORT" \
 	-cert "$CERTDIR/client.pem" \
 	-key "$CERTDIR/client.key" -pass pass:whatever \
 	-CAfile "$CERTDIR/client.pem" \
-	-verify_return_error >> "$LOG" 2>&1
+	-verify_return_error > "$CLIENT_LOG" 2>&1
 
 wait "$SERVER_PID" 2> /dev/null
 

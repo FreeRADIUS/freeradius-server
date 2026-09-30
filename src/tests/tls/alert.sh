@@ -34,15 +34,18 @@
 #
 
 LOG="$OUTPUT/alert.log"
+CLIENT_LOG="$OUTPUT/alert_client.log"
 RECEIPT="$OUTPUT/alert.receipt"
 
 mkdir -p "$OUTPUT"
-rm -f "$LOG" "$RECEIPT"
+rm -f "$LOG" "$CLIENT_LOG" "$RECEIPT"
 
 fail() {
 	echo "alert.sh: $1"
 	echo "--- $LOG ---"
 	cat "$LOG"
+	echo "--- $CLIENT_LOG ---"
+	cat "$CLIENT_LOG"
 	exit 1
 }
 
@@ -83,8 +86,10 @@ while [ "$TRIES" -gt 0 ]; do
 	$SNOOZE
 done
 
-echo "--- openssl s_client ---" >> "$LOG"
-
+#
+#  s_client writes to its own file.  unit_test_tls is still writing to $LOG
+#  at this point, and two programs writing to one file overwrite each other,
+#  which loses whichever lines land in the gap.
 #
 #  s_client exits non-zero because the handshake failed, which is the point,
 #  so its exit status says nothing and is ignored.
@@ -92,7 +97,7 @@ echo "--- openssl s_client ---" >> "$LOG"
 echo | openssl s_client -connect "127.0.0.1:$PORT" \
 	-cert "$CERTDIR/client.pem" \
 	-key "$CERTDIR/client.key" -pass pass:whatever \
-	-CAfile "$CERTDIR/ca.pem" >> "$LOG" 2>&1
+	-CAfile "$CERTDIR/ca.pem" > "$CLIENT_LOG" 2>&1
 
 wait "$SERVER_PID" 2> /dev/null
 
@@ -101,10 +106,10 @@ wait "$SERVER_PID" 2> /dev/null
 #  the number, and both are checked: the name alone would also match a log
 #  line about some other alert, and the number alone is easy to misread.
 #
-grep -q "alert access denied" "$LOG" || \
+grep -q "alert access denied" "$CLIENT_LOG" || \
 	fail "the client did not report the alert, so fr_tls_session_alert_send() sent nothing"
 
-grep -q "SSL alert number 49" "$LOG" || \
+grep -q "SSL alert number 49" "$CLIENT_LOG" || \
 	fail "the client reported an alert, but not SSL_AD_ACCESS_DENIED (49)"
 
 #

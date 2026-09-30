@@ -343,7 +343,7 @@ static void tls_request_finished(void *uctx, fr_tls_connection_t *conn)
  */
 static void tls_request_failed(unit_test_tls_t *utt)
 {
-	utt->conn->failed = true;
+	utt->conn->failed = TLS_CONNECTION_FAIL_APPLICATION;
 	tls_request_finished(utt, utt->conn);
 }
 
@@ -374,10 +374,19 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 		if (slen < 0) {
 			if (errno == EINTR) continue;
 
+			/*
+			 *	Ensure that the connection records why the connection failed.
+			 */
+			fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
+
 			ERROR("Failed writing to connection: %s", fr_syserror(errno));
 			return -1;
 		}
 
+		/*
+		 *	 fr_tls_connection_process() will call fr_tls_connection_failed() when the write()
+		 *	 function fails.
+		 */
 		if (slen == 0) {
 			ERROR("Wrote no data to connection");
 			return -1;
@@ -413,13 +422,14 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 		if ((errno == EINTR) || (errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
 
 		ERROR("Failed reading from connection: %s", fr_syserror(errno));
-		tls_request_failed(utt);
+		fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
 		return;
 	}
 
 	if (slen == 0) {
 		ERROR("Connection closed by the peer before the handshake completed");
-		tls_request_failed(utt);
+		errno = 0;			/* a clean close is not an error */
+		fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
 		return;
 	}
 
@@ -448,12 +458,14 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 /** The connection failed at the socket level
  *
  */
-static void _tls_connection_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
+static void _tls_connection_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno,
+				  void *uctx)
 {
 	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
+
 	ERROR("Error on connection: %s", fr_syserror(fd_errno));
-	tls_request_failed(utt);
+	fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
 }
 
 /** Drain the runnable heap once per pass of the event loop
@@ -540,7 +552,25 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 			if (utt->reject && (utt->connections == utt->count) &&
 			    fr_tls_session_is_init_finished(utt->conn->tls_session)) {
 				INFO("Rejecting the session after a successful handshake");
-				utt->conn->failed = true;
+
+				/*
+				 *	Record the reason, and nothing else.
+				 *	The handshake has finished, so OpenSSL
+				 *	has asked for the session to be cached,
+				 *	and the connection frame is about to run
+				 *	that cache work.  The frame reads
+				 *	`failed` to decide whether the work is a
+				 *	store or a deny and a clear, which is
+				 *	what rlm_eap_tls does when policy
+				 *	rejects.
+				 *
+				 *	fr_tls_connection_failed() would instead
+				 *	report the connection finished here, and
+				 *	the queued cache work would never be
+				 *	drained.  src/lib/tls/session.c asserts
+				 *	on exactly that.
+				 */
+				utt->conn->failed = TLS_CONNECTION_FAIL_APPLICATION;
 			}
 		}
 
@@ -773,7 +803,8 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	utt->connections++;
 
 	utt->conn->state = TLS_CONNECTION_NEW_SESSION;
-	utt->conn->pending = utt->conn->failed = utt->conn->idle = false;
+	utt->conn->pending = utt->conn->idle = utt->conn->fail_pending = false;
+	utt->conn->failed = TLS_CONNECTION_FAIL_NONE;
 	utt->conn->request = NULL;
 	utt->conn->tls_session = NULL;
 

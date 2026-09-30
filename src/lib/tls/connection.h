@@ -62,6 +62,16 @@ typedef enum {
 	TLS_CONNECTION_COMPLETE				//!< Run the cache operations the handshake queued.
 } fr_tls_connection_state_t;
 
+/** Give the reason why the connection failed
+ *
+ */
+typedef enum {
+	TLS_CONNECTION_FAIL_NONE = 0,			//!< no failure as of yet
+	TLS_CONNECTION_FAIL_TLS,			//!< failure inside of TLS
+	TLS_CONNECTION_FAIL_SYSCALL,			//!< system call, usually IO layer
+	TLS_CONNECTION_FAIL_APPLICATION,		//!< other application error
+} fr_tls_connection_fail_t;
+
 /** Everything the TLS connection state machine needs
  *
  * The state machine is the set of functions in src/lib/tls/connection.c.
@@ -88,13 +98,19 @@ struct fr_tls_connection_s {
 	request_t		*request;		//!< Request the handshake runs under.
 
 	fr_tls_connection_state_t state;       		//!< Which part of the connection is running.
+
+	fr_tls_connection_fail_t failed;	       	//!< why the connection failed
+	int			error;			//!< for system call errors
+
 	bool			client;			//!< Act as the client and connect to a server,
 							///< rather than accept a connection.
 	bool			idle;			//!< The connection frame has yielded, and waits
 							///< for a record.
 	bool			pending;		//!< A record is waiting for OpenSSL.
-	bool			failed;			//!< A state or the handshake failed, so the cache
-							///< denies the session.
+	bool			fail_pending;		//!< fr_tls_connection_failed() was called while a
+							///< record was still waiting for OpenSSL.  The
+							///< connection ends later, once OpenSSL has processed
+							///< any pending TLS alerts.
 
 	void			*uctx;			//!< Context for the callback functions below.
 
@@ -111,6 +127,8 @@ struct fr_tls_connection_s {
 int		fr_tls_connection_push(fr_tls_connection_t *conn);
 
 void		fr_tls_connection_wake(fr_tls_connection_t *conn);
+
+void		fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_t reason);
 
 void		fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size_t data_len);
 

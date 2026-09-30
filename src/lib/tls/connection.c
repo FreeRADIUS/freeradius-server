@@ -77,10 +77,29 @@ static void tls_connection_check(fr_tls_connection_t *conn)
 	 */
 	if (conn->state != TLS_CONNECTION_HANDSHAKE) return;
 
+	/*
+	 *	fr_tls_connection_failed() was called while a record was
+	 *	still waiting for OpenSSL.  `idle` says the frame has read
+	 *	everything and is waiting for a record which is not coming,
+	 *	so the failure can be acted on now.
+	 */
+	if (conn->fail_pending) {
+		if (!conn->idle) return;
+
+		conn->fail_pending = false;
+		goto finish;
+	}
+
 	if (tls_session->result == FR_TLS_RESULT_ERROR) {
 		fr_tls_log(conn->request, "TLS handshake failed");
-		conn->failed = true;
-		goto finish;
+
+		/*
+		 *	This sets the state and wakes the request, which is
+		 *	what the code under `finish` does for the success
+		 *	path.  Doing both would do the same work twice.
+		 */
+		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_TLS);
+		return;
 	}
 
 	/*
@@ -115,15 +134,20 @@ static unlang_action_t tls_connection_application_data(request_t *request, void 
 
 /** Tell the application that the connection is over
  *
- * Only for a caller which has already run whatever policy the failure
- * needs.  A caller which has not should use tls_connection_failed(), which
- * hands the failure to the connection frame instead.
+ * This function should be used after all policies have been run.  A caller which needs to run policies should
+ * use fr_tls_connection_failed() instead.
  *
  * @param[in] conn	which failed.
  */
 static void tls_connection_finished(fr_tls_connection_t *conn)
 {
-	conn->failed = true;
+	/*
+	 *	Both callers record why the connection failed before calling
+	 *	this function, so recording a reason here would overwrite the
+	 *	one the caller knew.
+	 */
+	fr_assert(conn->failed != TLS_CONNECTION_FAIL_NONE);
+
 	conn->idle = false;
 
 	conn->finished(conn->uctx, conn);
@@ -142,22 +166,54 @@ static void tls_connection_finished(fr_tls_connection_t *conn)
  * tls_connection_request_wake().  The state change still stands, and the
  * connection frame acts on the state change when the subrequest finishes.
  *
+ * Typically this means that the connection frame runs the `fail connection` policy.
+ *
+ * An application should call this function to indicate a socket or other connection failure during TLS
+ * negotiation.  The handshake stops, `fail session { ... }` runs, and the `finished` callback reports the
+ * failure once the policy is done.
+ *
+ * The rule is, inside of a frame which is checking the TLS parameters, set conn->failed; outside the frame,
+ * call fr_tls_connection_failed().
+ *
  * @param[in] conn	which failed.
  */
-static void tls_connection_failed(fr_tls_connection_t *conn)
+void fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_t reason)
 {
-	conn->failed = true;
+	fr_assert(reason != TLS_CONNECTION_FAIL_NONE);
+
+	if (conn->failed) return;
+
+	conn->failed = reason;
+	if (conn->failed == TLS_CONNECTION_FAIL_SYSCALL) conn->error = errno;
 
 	/*
-	 *	The connection frame has already run the last of its
-	 *	states, so there is no policy left for it to run, and
-	 *	nothing would act on a state change.  Say so directly.
+	 *	The connection frame is either initializing, or has finished all TLS negotiation, and has
+	 *	received application data.  Just run the callback, and not any policies.
 	 */
 	if (conn->state != TLS_CONNECTION_HANDSHAKE) {
 		tls_connection_finished(conn);
 		return;
 	}
 
+	/*
+	 *	We were called while there's pending data for OpenSSL.  Likely from an IO callback.
+	 *
+	 *	The connection may be dead (after a read), but the buffer is likely to contain a TLS Alert.
+	 *	Keep the TLS state machine alive until we've read and processed any pending TLS alerts
+	 *
+	 *	Let the handshake read the record.  tls_connection_check() ends the connection once the frame
+	 *	has finished it's state machine, and gone idle.
+	 */
+	if (conn->pending) {
+		conn->fail_pending = true;
+		tls_connection_request_wake(conn);
+		return;
+	}
+
+	/*
+	 *	We failed during TLS negotiation, we're done with the connection.  Wake up the request so that
+	 *	it can run `fail connection`.
+	 */
 	conn->state = TLS_CONNECTION_COMPLETE;
 	tls_connection_request_wake(conn);
 }
@@ -180,7 +236,19 @@ static unlang_action_t tls_connection_error(request_t *request, fr_tls_connectio
 {
 	unlang_action_t	ua;
 
-	conn->failed = true;
+	/*
+	 *	Record the reason, and nothing else.  This function runs
+	 *	inside the connection frame, and runs the failure policy
+	 *	itself, a few lines below.  fr_tls_connection_failed() is for
+	 *	a caller outside the frame which needs the frame to run that
+	 *	policy, so calling it here would ask the frame to do what the
+	 *	frame is already doing.  Worse, the macros below are also used
+	 *	while the cache operations run, and at that point
+	 *	fr_tls_connection_failed() tells the application that the
+	 *	connection is over, leaving the push below to run against a
+	 *	connection which has already reported its result.
+	 */
+	conn->failed = TLS_CONNECTION_FAIL_TLS;
 	conn->idle = false;
 
 	/*
@@ -435,7 +503,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	if (fr_dbuff_in_memcpy_partial(tls_session->dirty_in, data, data_len) != data_len) {
 		RERROR("Failed buffering %zu bytes of TLS record data", data_len);
 	error:
-		tls_connection_failed(conn);
+		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_TLS);
 		return;
 	}
 
@@ -467,10 +535,11 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
  */
 void fr_tls_connection_process(fr_tls_connection_t *conn)
 {
-	if (conn->write(conn->uctx, conn) < 0) {
-		tls_connection_failed(conn);
-		return;
-	}
+	/*
+	 *	Record a failure on error, but keep processing the TLS state machine, so that we can run `fail
+	 *	connection`.
+	 */
+	if (conn->write(conn->uctx, conn) < 0) fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
 
 	tls_connection_check(conn);
 }
