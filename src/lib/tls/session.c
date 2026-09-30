@@ -2056,11 +2056,17 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	SSL_set_connect_state(tls_session->ssl);
 
 	/*
-	 *	Always verify the peer certificate.
+	 *	Always verify the peer, but only require a certificate
+	 *	when we're doing certificate authentication.
+	 *
+	 *	PSK doesn't use certs, so we can't require certs if
+	 *	we're using PSK.
 	 */
-	ROPTIONAL(RDEBUG2, DEBUG2, "Requiring Server certificate");
 	verify_mode = SSL_VERIFY_PEER;
-	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+	if (!conf->psk_identity) {
+		ROPTIONAL(RDEBUG2, DEBUG2, "Requiring Server certificate");
+		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+	}
 
 	if (request) {
 		/*
