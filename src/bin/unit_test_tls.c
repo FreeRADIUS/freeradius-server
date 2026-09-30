@@ -142,6 +142,11 @@ typedef struct {
 
 	unsigned int		count;			//!< How many connections to run.
 	bool			alert;			//!< Reject the peer with a TLS alert, see -A.
+	bool			app_data;		//!< Send one byte of application data once the
+							///< handshake is done, see -P.
+	bool			app_data_sent;		//!< Whether that byte has gone out on this
+							///< connection.
+
 	bool			reject;			//!< Reject the session once the handshake
 							///< succeeds, see -R.
 	unsigned int		connections;		//!< How many connections have been run so far.
@@ -504,6 +509,34 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 				}
 			}
 
+			/*
+			 *	Send one byte of application data, which
+			 *	tells the peer that every session ticket we
+			 *	were going to send has already gone.
+			 */
+			if (utt->app_data && !utt->app_data_sent && !utt->conn->client &&
+			    utt->conn->tls_session &&
+			    fr_tls_session_is_init_finished(utt->conn->tls_session)) {
+				fr_tls_session_t *tls_session = utt->conn->tls_session;
+
+				utt->app_data_sent = true;
+
+				fr_dbuff_in_bytes(&tls_session->clean_in, 0x00);
+				if (fr_tls_session_send(utt->conn->request, tls_session) < 0) {
+					ERROR("Failed encrypting the application data");
+					tls_request_failed(utt);
+					return;
+				}
+
+				if (tls_connection_write(utt, utt->conn) < 0) {
+					ERROR("Failed sending the application data");
+					tls_request_failed(utt);
+					return;
+				}
+
+				DEBUG("Sent one byte of application data");
+			}
+
 			if (utt->reject && (utt->connections == utt->count) &&
 			    fr_tls_session_is_init_finished(utt->conn->tls_session)) {
 				INFO("Rejecting the session after a successful handshake");
@@ -746,6 +779,8 @@ static int tls_connection_run(unit_test_tls_t *utt)
 
 	TALLOC_FREE(utt->post_handshake_ev);
 
+	utt->app_data_sent = false;
+
 	utt->done = false;
 	utt->ret = EXIT_SUCCESS;
 	utt->fd = -1;
@@ -870,6 +905,7 @@ int main(int argc, char *argv[])
 	unsigned int		count = 1;
 	bool			alert = false;
 	bool			reject = false;
+	bool			app_data = false;
 	unsigned int		i;
 
 	TALLOC_CTX		*autofree;
@@ -934,7 +970,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Ac:Cd:D:hMn:r:Rs:xX")) != -1) {
+	while ((c = getopt(argc, argv, "Ac:Cd:D:hMn:Pr:Rs:xX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
@@ -974,6 +1010,10 @@ int main(int argc, char *argv[])
 
 			case 'n':
 				config->name = optarg;
+				break;
+
+			case 'P':
+				app_data = true;
 				break;
 
 			case 'r':
@@ -1096,6 +1136,7 @@ int main(int argc, char *argv[])
 	utt->ret = EXIT_SUCCESS;
 	utt->count = count;
 	utt->alert = alert;
+	utt->app_data = app_data;
 	utt->reject = reject;
 
 	/*
@@ -1431,6 +1472,10 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "  -h                 Print this help message.\n");
 	fprintf(output, "  -M                 Enable talloc leak reporting.\n");
 	fprintf(output, "  -n <name>          Read ${confdir}/name.conf instead of ${confdir}/unit_test_tls.conf.\n");
+	fprintf(output, "  -P                 Server only.  Send one byte of application data, 0x00, once the\n");
+	fprintf(output, "                     handshake is done.  A server sends every session ticket before\n");
+	fprintf(output, "                     its first byte of application data, so this tells a client that\n");
+	fprintf(output, "                     no ticket is still on its way.\n");
 	fprintf(output, "  -r <receipt_file>  Create <receipt_file> when the program exits successfully.\n");
 	fprintf(output, "  -s <server[:port]> Connect to <server> as a TLS client, instead of listening\n");
 	fprintf(output, "                     for a connection.  Reads the 'tls client' section.  The port\n");

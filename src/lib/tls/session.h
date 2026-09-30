@@ -210,6 +210,9 @@ struct fr_tls_session_s {
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 
 	bool			peer_cert_ok;			//!< Whether the peer's certificate was validated
+	bool			application_data_received;	//!< The peer has sent application data, which
+								///< indicates that all session tickets have been sent.
+
 	bool			session_ticket_received;	//!< A client has seen the NewSessionTicket which
 								///< a TLS 1.3 server sends after the handshake.
 

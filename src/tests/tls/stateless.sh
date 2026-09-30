@@ -19,6 +19,12 @@
 #  Two connections are the smallest number that can show resumption.  The first
 #  issues a ticket, the second presents it.
 #
+#  The server also sends one byte of application data, 0x00, once each
+#  handshake is done, which is what -P does.  Tickets precede application data,
+#  so the byte is a positive signal to the client that no ticket is still
+#  coming.  Without it a client which is never going to get a ticket has
+#  nothing to wait on but a timer.
+#
 #  This is also the only test which negotiates TLS 1.3.  Every other
 #  configuration here pins tls_max_version to 1.2, because stateful resumption
 #  is not defined above that.
@@ -61,7 +67,7 @@ else
 	SETSID=""
 fi
 
-$SETSID $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n stateless -xx -c 2 \
+$SETSID $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n stateless -xx -c 2 -P \
 	-r "$SERVER_RECEIPT" > "$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 
@@ -155,6 +161,16 @@ count=$(grep -c "# encode session" "$SERVER_LOG")
 #
 count=$(grep -c "# decode session" "$SERVER_LOG")
 [ "$count" = "1" ] || fail "expected one decode session on the server, found $count"
+
+#
+#  -P makes the server send one byte of application data once the handshake is
+#  done.  A server sends every session ticket before its first byte of
+#  application data, so a client which has seen application data knows that no
+#  ticket is still on its way.  That is what lets a client stop waiting without
+#  guessing, and it is what fr_tls_session_is_init_finished() reads.
+#
+count=$(grep -c "Sent one byte of application data" "$SERVER_LOG")
+[ "$count" = "2" ] || fail "expected the server to send application data twice, found $count"
 
 #
 #  The client is where the ticket is kept, so the client does use the cache.

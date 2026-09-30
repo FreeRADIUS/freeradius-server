@@ -917,11 +917,13 @@ bool fr_tls_session_is_init_finished(fr_tls_session_t *tls_session)
 	 *	then we get a ticket.  So we're not done until we see
 	 *	a ticket.
 	 *
-	 *	@todo - a peer which sends no ticket leaves a client waiting
-	 *	here forever.  Waiting on a timer rather than on the ticket
-	 *	is the fix, see the note in src/bin/unit_test_tls.c.
+	 *	We can either wait forever for a ticket, or notice
+	 *	that receiption of application data means that the
+	 *	ticket was sent (or not).
 	 */
-	if (!SSL_is_server(tls_session->ssl)) return tls_session->session_ticket_received;
+	if (!SSL_is_server(tls_session->ssl)) {
+		return tls_session->session_ticket_received || tls_session->application_data_received;
+	}
 
 	/*
 	 *	Something has requested `load session`, but it hasn't
@@ -1545,6 +1547,13 @@ static unlang_action_t tls_session_async_handshake_cont(request_t *request, void
 	tls_session->can_pause = false;
 	if (tls_session->last_ret > 0) {
 		fr_dbuff_advance(&tls_session->clean_out, (size_t) tls_session->last_ret);
+
+		/*
+		 *	We've received application data.  This is a positive
+		 *	signal that all session tickets have been sent.
+		 *	This flag informs fr_tls_session_is_init_finished().
+		 */
+		tls_session->application_data_received = true;
 
 		/*
 		 *	Round successful, and we don't need to do any
