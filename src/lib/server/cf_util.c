@@ -403,6 +403,7 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	if (!parent->ident1) parent->ident1 = fr_rb_inline_alloc(parent, CONF_ITEM, ident1_node,
 								 _cf_ident1_cmp, NULL);
 	fr_rb_insert(parent->ident1, child);
+	fr_assert(!fr_dlist_entry_in_list(&child->entry));
 	fr_dlist_insert_tail(&parent->children, child);	/* Append to the list of children */
 
 	if (parent->type != CONF_ITEM_SECTION) return;	/* Only sections can have ident2 trees */

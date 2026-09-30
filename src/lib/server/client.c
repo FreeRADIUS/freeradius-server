@@ -718,7 +718,6 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
 			return -1;
 		}
 		talloc_free(value);
-		cf_item_add(out, cf_pair_to_item(cp));
 	}
 
 	return 0;
