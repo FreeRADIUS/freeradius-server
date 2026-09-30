@@ -1050,12 +1050,47 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bo
 	return 0;
 }
 
+/** Append a copy of one attribute reference to a tmpl
+ *
+ */
+static inline int tmpl_attr_ref_copy(tmpl_t *dst, tmpl_attr_t const *src_ar)
+{
+	tmpl_attr_t *dst_ar;
+
+	dst_ar = tmpl_attr_add(dst, src_ar->type);
+
+	switch (src_ar->type) {
+	case TMPL_ATTR_TYPE_NORMAL:
+		dst_ar->ar_da = src_ar->ar_da;
+		break;
+
+	case TMPL_ATTR_TYPE_UNSPEC:     /* Nothing to copy */
+		break;
+
+	case TMPL_ATTR_TYPE_UNKNOWN:
+		dst_ar->ar_unknown = fr_dict_attr_unknown_copy(dst_ar, src_ar->ar_unknown);
+		break;
+
+	case TMPL_ATTR_TYPE_UNRESOLVED:
+		dst_ar->ar_unresolved = talloc_bstrdup(dst_ar, src_ar->ar_unresolved);
+		break;
+
+	default:
+		if (!fr_cond_assert(0)) return -1;
+	}
+	dst_ar->ar_num = src_ar->ar_num;
+	dst_ar->ar_filter_type = src_ar->ar_filter_type;
+	dst_ar->parent = src_ar->parent;
+
+	return 0;
+}
+
 /** Copy a list of attribute and request references from one tmpl to another
  *
  */
 int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 {
-	tmpl_attr_t *src_ar = NULL, *dst_ar;
+	tmpl_attr_t *src_ar = NULL;
 
 	/*
 	 *	Clear any existing attribute references
@@ -1063,30 +1098,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	if (tmpl_attr_list_num_elements(tmpl_attr(dst)) > 0) tmpl_attr_list_talloc_reverse_free(tmpl_attr(dst));
 
 	while ((src_ar = tmpl_attr_list_next(tmpl_attr(src), src_ar))) {
-		dst_ar = tmpl_attr_add(dst, src_ar->type);
-
-		switch (src_ar->type) {
-	 	case TMPL_ATTR_TYPE_NORMAL:
-	 		dst_ar->ar_da = src_ar->ar_da;
-	 		break;
-
-		case TMPL_ATTR_TYPE_UNSPEC:	/* Nothing to copy */
-			break;
-
-	 	case TMPL_ATTR_TYPE_UNKNOWN:
-	 		dst_ar->ar_unknown = fr_dict_attr_unknown_copy(dst_ar, src_ar->ar_unknown);
-	 		break;
-
-	 	case TMPL_ATTR_TYPE_UNRESOLVED:
-	 		dst_ar->ar_unresolved = talloc_bstrdup(dst_ar, src_ar->ar_unresolved);
-	 		break;
-
-	 	default:
-	 		if (!fr_cond_assert(0)) return -1;
-	 	}
-	 	dst_ar->ar_num = src_ar->ar_num;
-		dst_ar->ar_filter_type = src_ar->ar_filter_type;
-		dst_ar->parent = src_ar->parent;
+		if (tmpl_attr_ref_copy(dst, src_ar) < 0) return -1;
 	}
 
 	/*
