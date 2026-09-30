@@ -560,7 +560,10 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
-		da = tmpl_attr_tail_da(map->lhs);
+	{
+		tmpl_attr_t *ar = tmpl_attr_list_head(tmpl_attr(map->lhs));
+		if (tmpl_attr_is_list_attr(ar)) ar = tmpl_attr_list_next(tmpl_attr(map->lhs), ar);
+		da = ar->da;
 		if (!da->flags.internal && parent && (parent->type != FR_TYPE_GROUP) &&
 		    (da->parent != parent)) {
 			/* FIXME - Broken check, doesn't work for key attributes */
@@ -568,6 +571,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 				   da->name, parent->name);
 			return -1;
 		}
+	}
 		break;
 
 	case TMPL_TYPE_XLAT_UNRESOLVED:
