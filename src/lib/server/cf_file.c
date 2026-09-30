@@ -3642,8 +3642,25 @@ read_continuation:
 	 *	Get data, and remember if we are at EOF.
 	 */
 	at_eof = (fgets(stack->fill, stack->bufsize - (stack->fill - stack->buff[0]), frame->fp) == NULL);
-	cf_md5_update(stack->fill);
 	frame->lineno++;
+
+	/*
+	 *	If fgets() returns NULL (i.e. EOF), then the buffer is not
+	 *	terminated.  Ensure that we do the EOF check before looking
+	 *	at the buffer.
+	 */
+	if (at_eof) {
+		/*
+		 *	A pending continuation would have advanced
+		 *	stack->fill, so the file ends cleanly here.
+		 */
+		if (stack->fill == stack->buff[0]) return 0;
+
+		ERROR("%s[%d]: Continuation at EOF is illegal", frame->filename, frame->lineno);
+		return -1;
+	}
+
+	cf_md5_update(stack->fill);
 
 	/*
 	 *	We read the entire 8k worth of data: complain.
@@ -3669,6 +3686,19 @@ read_continuation:
 		if (ptr > stack->fill) {
 			memmove(stack->fill, ptr, len - (ptr - stack->fill));
 			len -= (ptr - stack->fill);
+
+			/*
+			 *	The move copies the text but not the nul
+			 *	terminator, which leaves a copy of the last
+			 *	few characters after the new end of the
+			 *	line.  The CR/LF strip below and the
+			 *	continuation check after it both write a
+			 *	terminator, but only when the line ends with
+			 *	CR/LF or with '\\'.  A continuation line
+			 *	which ends the file without a newline ends
+			 *	here, so terminate the line now.
+			 */
+			stack->fill[len] = '\0';
 		}
 	}
 
@@ -3677,14 +3707,12 @@ read_continuation:
 	 *	the read buffer.
 	 */
 	if (stack->fill == stack->buff[0]) {
-		if (at_eof) return 0;
-
 		ptr = stack->buff[0];
 		fr_skip_whitespace(ptr);
 
 		if (!*ptr || (*ptr == '#')) goto read_more;
 
-	} else if (at_eof || (len == 0)) {
+	} else if (len == 0) {
 		ERROR("%s[%d]: Continuation at EOF is illegal", frame->filename, frame->lineno);
 		return -1;
 	}

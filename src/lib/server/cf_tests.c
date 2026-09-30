@@ -1175,6 +1175,113 @@ static void test_pair_in_table_invalid(void)
 }
 
 
+/*
+ *	Reading a configuration from a file or a buffer
+ */
+
+/** Count the pairs and sections in a section, ignoring CONF_DATA
+ *
+ * cf_file_read() and cf_file_read_buffer() both attach the file dedup tree to
+ * the section as CONF_DATA, so an "empty" configuration is never childless.
+ */
+static unsigned int test_config_item_count(CONF_SECTION *cs)
+{
+	unsigned int count = 0;
+
+	cf_item_foreach(cf_section_to_item(cs), ci) {
+		if (cf_item_is_pair(ci) || cf_item_is_section(ci)) count++;
+	}
+
+	return count;
+}
+
+static void test_file_read_empty_file(void)
+{
+	CONF_SECTION	*cs;
+	char		filename[] = "/tmp/cf_tests.XXXXXX";
+	int		fd;
+
+	fd = mkstemp(filename);
+	TEST_ASSERT(fd >= 0);
+	close(fd);
+
+	cs = cf_section_alloc(autofree, NULL, "main", NULL);
+	TEST_ASSERT(cs != NULL);
+
+	/*
+	 *	A file with no content is an empty configuration, not an
+	 *	error.  cf_file_fill() has read no line at this point, so
+	 *	its buffer holds no terminator, and anything which measures
+	 *	the buffer before checking for EOF runs off the end of it.
+	 */
+	TEST_CHECK(cf_file_read(cs, filename, false) == 0);
+	TEST_CHECK(test_config_item_count(cs) == 0);
+
+	talloc_free(cs);
+	unlink(filename);
+}
+
+static void test_file_read_buffer_comment_only(void)
+{
+	CONF_SECTION	*cs;
+	char const	*input = "# nothing but a comment\n";
+
+	cs = cf_section_alloc(autofree, NULL, "main", NULL);
+	TEST_ASSERT(cs != NULL);
+
+	TEST_CHECK(cf_file_read_buffer(cs, input, strlen(input), "<test>") == 0);
+	TEST_CHECK(test_config_item_count(cs) == 0);
+
+	talloc_free(cs);
+}
+
+static void test_file_read_buffer_pair(void)
+{
+	CONF_SECTION	*cs;
+	CONF_PAIR	*cp;
+	char const	*input = "foo = bar\n";
+
+	cs = cf_section_alloc(autofree, NULL, "main", NULL);
+	TEST_ASSERT(cs != NULL);
+
+	TEST_CHECK(cf_file_read_buffer(cs, input, strlen(input), "<test>") == 0);
+
+	cp = cf_pair_find(cs, "foo");
+	TEST_ASSERT(cp != NULL);
+	TEST_CHECK(strcmp(cf_pair_value(cp), "bar") == 0);
+
+	talloc_free(cs);
+}
+
+static void test_file_read_buffer_continuation_no_newline(void)
+{
+	CONF_SECTION	*cs, *subcs;
+	CONF_PAIR	*cp;
+
+	/*
+	 *	The '"' before the trailing '\\' turns on suppression of
+	 *	the leading whitespace on the continuation line.  The
+	 *	continuation line ends the file without a newline, so
+	 *	neither the CR/LF strip nor the continuation check rewrites
+	 *	the end of the line after the whitespace is moved out.
+	 */
+	char const	*input = "s {\nfoo = \"a\"\\\n   }";
+
+	cs = cf_section_alloc(autofree, NULL, "main", NULL);
+	TEST_ASSERT(cs != NULL);
+
+	TEST_CHECK(cf_file_read_buffer(cs, input, strlen(input), "<test>") == 0);
+
+	subcs = cf_section_find(cs, "s", NULL);
+	TEST_ASSERT(subcs != NULL);
+
+	cp = cf_pair_find(subcs, "foo");
+	TEST_ASSERT(cp != NULL);
+	TEST_CHECK(strcmp(cf_pair_value(cp), "a") == 0);
+
+	talloc_free(cs);
+}
+
 TEST_LIST = {
 	/* Section allocation and accessors */
 	{ "test_section_alloc_name1_only",	test_section_alloc_name1_only },
@@ -1247,6 +1354,12 @@ TEST_LIST = {
 	/* cf_pair_in_table */
 	{ "test_pair_in_table_found",		test_pair_in_table_found },
 	{ "test_pair_in_table_invalid",		test_pair_in_table_invalid },
+
+	/* Reading a configuration from a file or a buffer */
+	{ "test_file_read_empty_file",		test_file_read_empty_file },
+	{ "test_file_read_buffer_comment_only",	test_file_read_buffer_comment_only },
+	{ "test_file_read_buffer_pair",		test_file_read_buffer_pair },
+	{ "test_file_read_buffer_continuation_no_newline",	test_file_read_buffer_continuation_no_newline },
 
 	TEST_TERMINATOR
 };
