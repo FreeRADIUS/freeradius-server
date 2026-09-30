@@ -1214,6 +1214,16 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_framed_mtu);
 
 	/*
+	 *	TLS 1.3 introduces the concept of early data (also known as zero
+	 *	round trip data or 0-RTT data). Early data allows a client to send
+	 *	data to a server in the first round trip of a connection, without
+	 *	waiting for the TLS handshake to complete if the client has spoken
+	 *	to the same server recently. This doesn't work for EAP, so we
+	 *	disable early data.
+	 */
+	SSL_CTX_set_max_early_data(ssl_ctx, 0);
+
+	/*
 	 *	Every new session is started only from EAP-TLS-START.
 	 *	Before Sending our initial EAP-TLS start open a new
 	 *	SSL session.
