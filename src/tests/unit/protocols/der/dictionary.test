@@ -43,6 +43,11 @@ DEFINE	Test-Default-Member				integer default=7
 DEFINE	Test-Bool-Member				bool
 END Test-Seq-Default-Member
 
+DEFINE	Test-Set-Of-Default				set set_of=integer
+BEGIN Test-Set-Of-Default
+DEFINE	Test-Default-Set-Integer			integer default=0
+END Test-Set-Of-Default
+
 DEFINE	Test-Boolean					bool
 
 DEFINE	Test-Integer					integer

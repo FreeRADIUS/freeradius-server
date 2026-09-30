@@ -1029,11 +1029,10 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
 
 			if (unlikely(fr_der_decode_hdr(NULL, &our_in, &current_tag, &len, flags->set_of) <= 0)) {
-				ret = -1;
 			error:
 				talloc_free(vp);
 				fr_strerror_printf_push("Failed decoding %s", parent->name);
-				return ret;
+				return -1;
 			}
 
 			fr_dbuff_set(&current_value_marker, &our_in);
@@ -1053,7 +1052,6 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 					if (prev_byte > curr_byte) {
 						fr_strerror_const_push("Set tags are not in ascending order");
-						ret = -1;
 						goto error;
 					}
 
@@ -1066,7 +1064,6 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 				if (prev_byte > curr_byte && fr_dbuff_remaining(&previous_item) > 0) {
 					fr_strerror_const_push(
 						"Set tags are not in ascending order. Previous item has more data");
-					ret = -1;
 					goto error;
 				}
 			}

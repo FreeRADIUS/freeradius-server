@@ -102,6 +102,27 @@ match Test-Seq-Default-Member = { Test-Default-Member = 7, Test-Bool-Member = ye
 decode-pair 30 06 02 01 03 01 01 FF
 match Test-Seq-Default-Member = { Test-Default-Member = 3, Test-Bool-Member = yes }
 
+#
+#  set_of walks the input the same way sequence_of does, so a zero-length
+#  element has to report the header it stands in for here too.
+#
+proto-dictionary-root Test-Set-Of-Default
+
+decode-pair 31 02 02 00
+match Test-Set-Of-Default = { Test-Default-Set-Integer = 0 }
+
+decode-pair 31 03 02 01 05
+match Test-Set-Of-Default = { Test-Default-Set-Integer = 5 }
+
+#
+#  A malformed set has to reach the caller as a failure.  fr_der_decode_set()
+#  reports an error by returning a negative length, and a zero length reads
+#  as an empty set which decoded successfully, so the error is dropped and
+#  the input is skipped.
+#
+decode-pair 31 07 02 01 02 02 02 00 80
+match ERROR: Set tags are not in ascending order: Failed decoding Test-Set-Of-Default
+
 proto-dictionary-root Test-String-Max
 
 decode-pair 0c 02 68 69
@@ -1135,4 +1156,4 @@ encode-pair Test-Enumerated = -1
 match 0a 01 ff
 
 count
-match 644
+match 651
