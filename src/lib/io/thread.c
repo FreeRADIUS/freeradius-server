@@ -125,7 +125,6 @@ int fr_thread_setup(fr_thread_t *out, char const *name)
 		sigset_t sigset;
 
 		sigfillset(&sigset);
-		pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 
 		/*
 		 *	In debug builds, remove SIGPROF from the set
@@ -138,6 +137,7 @@ int fr_thread_setup(fr_thread_t *out, char const *name)
 #if !defined(NDEBUG) && defined(HAVE_GPERFTOOLS_PROFILER_H)
 		sigdelset(&sigset, SIGPROF);
 #endif
+		pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 	}
 #endif
 
