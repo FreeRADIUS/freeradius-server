@@ -984,7 +984,7 @@ bool fr_tls_session_is_init_finished(fr_tls_session_t *tls_session)
 	 *	ticket was sent (or not).
 	 */
 	if (!SSL_is_server(tls_session->ssl)) {
-		return tls_session->session_ticket_received || tls_session->application_data_received;
+		return tls_session->session_ticket_received || tls_session->seen_application_data;
 	}
 
 	/*
@@ -1013,15 +1013,23 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 {
 	int ret;
 
-	fr_tls_session_request_bind(tls_session->ssl, request);
+	if (!tls_session->seen_application_data) {
+		if (!SSL_is_init_finished(tls_session->ssl)) {
+			REDEBUG("Attempted to read application data before handshake completed");
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_APPLICATION_DATA_TOO_EARLY);
+			return -1;
+		}
 
-	if (!SSL_is_init_finished(tls_session->ssl)) {
-		REDEBUG("Attempted to read application data before handshake completed");
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_APPLICATION_DATA_TOO_EARLY);
-	error:
-		ret = -1;
-		goto finish;
+		/*
+		 *	The handshake is over and we are about to move application
+		 *	data, so we are past the point where a session ticket is
+		 *	wanted.  tls_cache_store_cb() refuses any which arrive from
+		 *	here on.
+		 */
+		tls_session->seen_application_data = true;
 	}
+
+	fr_tls_session_request_bind(tls_session->ssl, request);
 
 	/*
 	 *	Nothing is copied here.  The caller filled dirty_in, which
@@ -1060,7 +1068,9 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 
 		case SSL_ERROR_WANT_WRITE:
 			REDEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
-			goto error;
+		error:
+			ret = -1;
+			goto finish;
 
 		case SSL_ERROR_NONE:
 			RDEBUG2("No application data received.  Assuming handshake is continuing...");
@@ -1109,14 +1119,17 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 {
 	int ret = 0;
 
-	fr_tls_session_request_bind(tls_session->ssl, request);
+	if (!tls_session->seen_application_data) {
+		if (!SSL_is_init_finished(tls_session->ssl)) {
+			REDEBUG("Attempted to write application data before handshake completed");
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_APPLICATION_DATA_TOO_EARLY);
+			return -1;
+		}
 
-	if (!SSL_is_init_finished(tls_session->ssl)) {
-		REDEBUG("Attempted to write application data before handshake completed");
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_APPLICATION_DATA_TOO_EARLY);
-		ret = -1;
-		goto finish;
+		tls_session->seen_application_data = true;
 	}
+
+	fr_tls_session_request_bind(tls_session->ssl, request);
 
 	/*
 	 *	If there's un-encrypted data in 'clean_in', then write
@@ -1657,7 +1670,7 @@ static unlang_action_t tls_session_async_handshake_cont(request_t *request, void
 		 *	signal that all session tickets have been sent.
 		 *	This flag informs fr_tls_session_is_init_finished().
 		 */
-		tls_session->application_data_received = true;
+		tls_session->seen_application_data = true;
 
 		/*
 		 *	Round successful, and we don't need to do any

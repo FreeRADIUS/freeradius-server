@@ -1271,6 +1271,36 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	resumption.
 	 */
 	tls_session = fr_tls_session(ssl);
+	request = fr_tls_session_request(tls_session->ssl);
+
+	/*
+	 *	RFC 8446 Section 4.6.1 lets a TLS 1.3 server send NewSessionTicket at any point after its
+	 *	Finished message, including part way through application data.  We do not support that.
+	 *
+	 *	Once application data is moving, we discard any session tickets that we receive.  TLS doesn't
+	 *	require us to do this, but we don't know what else to do.  The application is processing it's
+	 *	data, and we do not (as yet) have the code to pause the application, and run a subrequest to
+	 *	store the new ticket.
+	 *
+	 *	The current implementation runs the cache sections from the handshake, which is the only place
+	 *	the interpreter can yield.  tls_cache_store_cb() reaches them through ASYNC_pause_job(), and
+	 *	that is only legal while tls_session->can_pause is set.  Fixing this is an issue for the
+	 *	future.
+	 *
+	 *	One possible solution is to spawn a _detached_ subrequest which processes the ticket, and only
+	 *	the ticket.  This has to be a subrequest in order to avoid confusing the main application
+	 *	request (and state machine) with TLS data.  We don't care if the `store session` succeeded or
+	 *	failed, because there's nothing we can really do with that result.  The connection is likely
+	 *	to stay up, so we might as well just ignore errors on `store session`.
+	 *
+	 *	For those reasons and more, we just discard the session ticket.  All this means is that the
+	 *	peer (client here) is unable to use that ticket for session resumption.
+	 */
+	if (tls_session->seen_application_data) {
+		ROPTIONAL(RDEBUG2, DEBUG2,
+			  "Ignoring session ticket received after application data started");
+		return 0;
+	}
 
 	/*
 	 *	We have a session ticket.  See fr_tls_session_is_init_finished()
@@ -1291,7 +1321,6 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	tls_session->session = sess;
 	tls_session_id_cache(tls_session, sess);
 
-	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
 
 	fr_assert(tls_cache);
