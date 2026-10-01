@@ -126,6 +126,18 @@ int fr_thread_setup(fr_thread_t *out, char const *name)
 
 		sigfillset(&sigset);
 		pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+
+		/*
+		 *	In debug builds, remove SIGPROF from the set
+		 *	if we're planning on using gperftools.
+		 *
+		 *	SIGPROF is using during profiling, and must
+		 *	reach the thread in order for profiling to
+		 *	work.
+		 */
+#if !defined(NDEBUG) && defined(HAVE_GPERFTOOLS_PROFILER_H)
+		sigdelset(&sigset, SIGPROF);
+#endif
 	}
 #endif
 
