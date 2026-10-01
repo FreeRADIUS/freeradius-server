@@ -696,6 +696,8 @@ static void fr_bio_fd_set_open(fr_bio_fd_t *my)
 	my->info.read_blocked = false;
 	my->info.write_blocked = false;
 
+	if (my->connect.el) (void) fr_event_fd_delete(my->connect.el, my->info.socket.fd, FR_EVENT_FILTER_IO);
+
 	/*
 	 *	Run the connect success callback if defined.
 	 */
