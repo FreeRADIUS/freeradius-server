@@ -92,6 +92,17 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float32) == 4,
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) == 8,
 	      "vb_float64 has unexpected length");
 
+
+#if defined(WITH_VERIFY_PTR) || !defined(NDEBUG)
+#define VERIFY_IS_SET(_vb) UNCONST(fr_value_box_t *, _vb)->verified
+#define VERIFY_SET(_vb) UNCONST(fr_value_box_t *, _vb)->verified = true
+#define VERIFY_CLEAR(_vb) UNCONST(fr_value_box_t *, _vb)->verified = false
+#else
+#define VERIFY_IS_SET(_vb) (0)
+#define VERIFY_SET(_vb) do { } while (0)
+#define VERIFY_CLEAR(_vb) do { } while (0)
+#endif
+
 /** How many bytes on-the-wire would a #fr_value_box_t value consume
  *
  * This is for the generic NETWORK format.  For field sizes in the in-memory
@@ -4357,6 +4368,8 @@ int fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src)
  */
 void fr_value_box_clear_value(fr_value_box_t *data)
 {
+	VERIFY_CLEAR(data);
+
 	switch (data->type) {
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
@@ -4382,7 +4395,7 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 		return;
 
 	case FR_TYPE_NULL:
-		return;
+		break;
 
 	case FR_TYPE_PAIR_CURSOR:
 		talloc_free(data->vb_cursor);
@@ -4528,6 +4541,8 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		return -1;
 	}
 
+	VERIFY_CLEAR(dst);
+
 	return 0;
 }
 
@@ -4565,6 +4580,8 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		fr_value_box_copy_meta(dst, src);
 		break;
 	}
+
+	VERIFY_CLEAR(dst);
 }
 
 /** Copy value data verbatim moving any buffers to the specified context
@@ -4598,7 +4615,7 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src
 		fr_value_box_copy_meta(dst, src);
 		memset(&src->datum, 0, sizeof(src->datum));
 	}
-		return 0;
+		break;
 
 	case FR_TYPE_OCTETS:
 	{
@@ -4615,7 +4632,7 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src
 		fr_value_box_copy_meta(dst, src);
 		memset(&src->datum, 0, sizeof(src->datum));
 	}
-		return 0;
+		break;
 
 	case FR_TYPE_GROUP:
 	{
@@ -4628,10 +4645,16 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src
 				return -1;
 			}
 			fr_value_box_list_insert_tail(&dst->vb_group, child);
+
+			VERIFY_CLEAR(child);
 		}
 	}
-		return 0;
+		break;
 	}
+
+	VERIFY_CLEAR(dst);
+
+	return 0;
 }
 
 /** Copy a nul terminated string to a #fr_value_box_t
@@ -7297,6 +7320,8 @@ DIAG_OFF(nonnull-compare)
 	fr_fatal_assert_msg(vb, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t pointer was NULL", file, line);
 DIAG_ON(nonnull-compare)
 
+	if (VERIFY_IS_SET(vb)) return;
+
 	if (vb->talloced) vb = talloc_get_type_abort_const(vb, fr_value_box_t);
 
 #ifndef NDEBUG
@@ -7376,6 +7401,8 @@ DIAG_ON(nonnull-compare)
 	default:
 		break;
 	}
+
+	VERIFY_SET(vb);
 }
 
 void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list)

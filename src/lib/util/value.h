@@ -217,6 +217,7 @@ struct value_box_s {
 #if defined(WITH_VERIFY_PTR) || !defined(NDEBUG)
 	char const				*file;			//!< File where the box was allocated or initialised.
 	int					line;			//!< Line where the box was allocated or initialised.
+	unsigned int				verified : 1;		//!< whether this value has been verified
 #endif
 
 	unsigned int   				tainted : 1;		//!< i.e. did it come from an untrusted source

@@ -361,6 +361,9 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 		fr_pair_append(list, vp);
 	}
 
+#ifdef WITH_VERIFY_PTR
+	vp->verified = false;
+#endif
 	return 0;
 }
 
@@ -545,6 +548,9 @@ int fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
 		return -1;
 	}
 
+#ifdef WITH_VERIFY_PTR
+	vp->verified = false;
+#endif
 	return 0;
 }
 
@@ -2283,6 +2289,10 @@ void fr_pair_list_steal(TALLOC_CTX *ctx, fr_pair_list_t *list)
 	fr_pair_list_foreach(list, vp) {
 		(void) fr_pair_steal(ctx, vp);
 	}
+
+#ifdef WITH_VERIFY_PTR
+	list->verified = false;
+#endif
 }
 
 /** Duplicate a list of pairs
@@ -3047,12 +3057,21 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 {
 	(void) talloc_get_type_abort_const(vp, fr_pair_t);
 
+	if (vp->verified) {
+		if (fr_type_is_structural(vp->vp_type)) {
+			if (vp->vp_group.verified) return;
+		} else {
+			if (vp->data.verified) return;
+		}
+
+		UNCONST(fr_pair_t *, vp)->verified = false;
+	}
+
 	if (!vp->da) {
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t da pointer was NULL", file, line);
 	}
 
 	fr_dict_attr_verify(file, line, vp->da);
-
 
 	/*
 	 *	Enforce correct parentage.  If the parent exists, AND it's not a group (because groups break
@@ -3311,6 +3330,9 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 				     fr_table_str_by_value(fr_type_table, vp->vp_type, data_type_int),
 				     fr_table_str_by_value(fr_type_table, vp->da->type, da_type_int));
 	}
+
+	UNCONST(fr_pair_t *, vp)->verified = true;
+	/* leave vp->data.verified alone */
 }
 
 /** Verify a pair list
@@ -3336,7 +3358,9 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 	for (slow = fr_pair_list_head(list), fast = fr_pair_list_head(list);
 	     slow && fast;
 	     slow = fr_pair_list_next(list, slow), fast = fr_pair_list_next(list, fast)) {
-		fr_pair_verify(__FILE__, __LINE__, NULL, list, slow, verify_values);
+		if (!slow->da) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t da pointer was NULL", file, line);
+		}
 
 		/*
 		 *	Advances twice as fast as slow...
@@ -3346,6 +3370,10 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 				    "CONSISTENCY CHECK FAILED %s[%d]:  Looping list found.  Fast pointer hit "
 				    "slow pointer at \"%s\"",
 				    file, line, slow->da->name);
+
+		if (slow->verified) continue;
+
+		fr_pair_verify(__FILE__, __LINE__, NULL, list, slow, verify_values);
 
 		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) {
@@ -3366,6 +3394,8 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 	 *	Check the remaining pairs
 	 */
 	for (; slow; slow = fr_pair_list_next(list, slow)) {
+		if (slow->verified) continue;
+
 		fr_pair_verify(__FILE__, __LINE__, NULL, list, slow, verify_values);
 
 		parent = talloc_parent(slow);

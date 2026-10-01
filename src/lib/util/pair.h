@@ -98,6 +98,10 @@ struct value_pair_s {
 		};
 	};
 
+#ifdef WITH_VERIFY_PTR
+	bool	verified;				       //!< whether or not this pair was verified
+#endif
+
 	/*
 	 *	Legacy stuff that needs to die.
 	 */
