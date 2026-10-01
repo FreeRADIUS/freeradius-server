@@ -1020,7 +1020,7 @@ static inline fr_slen_t _fr_sbuff_error(fr_sbuff_t *sbuff, char const *err)
 
 	slen = -((err - fr_sbuff_start(sbuff)) + 1);
 
-#ifdef __clang_analyzer__
+#if defined(__clang_analyzer__) || defined (__COVERITY__)
 	/*
 	 *	Convince clang that the return value
 	 *	is always negative. It never can be
