@@ -697,6 +697,11 @@ static void fr_bio_fd_set_open(fr_bio_fd_t *my)
 	my->info.write_blocked = false;
 
 	/*
+	 *	Run the connect success callback if defined.
+	 */
+	if (my->connect.success) my->connect.success(&my->bio);
+
+	/*
 	 *	Tell the caller that the socket is ready for application data.
 	 */
 	if (my->cb.connected) my->cb.connected(&my->bio);
