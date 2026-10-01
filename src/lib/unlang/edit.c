@@ -418,6 +418,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 
 		for ( ; vp != NULL; vp = next) {
 			fr_pair_list_t *list;
+			fr_pair_t *parent;
 
 			next = fr_dcursor_next(&cursor);
 
@@ -438,10 +439,35 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 				continue;
 			}
 
+			parent = fr_pair_parent(vp);
+
 			if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
 				RPEDEBUG("Failed deleting attribute");
 				tmpl_dcursor_clear(&cc);
 				return -1;
+			}
+
+			/*
+			 *	If removing the pair has left an empty structural attribute, remove it also.
+			 */
+			while (fr_pair_list_empty(&parent->vp_group) && !request_attr_is_list(parent->da)) {
+				vp = parent;
+
+				if (vp->vp_edit) {
+					RWDEBUG2("Empty attribute %pP cannot be removed - it is being used in a 'foreach' loop",
+				        	 vp);
+				        break;
+				}
+
+				parent = fr_pair_parent(vp);
+				list = fr_pair_parent_list(parent);
+				fr_assert(list != NULL);
+
+				if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
+				        RPEDEBUG("Failed deleting attribute");
+				        tmpl_dcursor_clear(&cc);
+				        return -1;
+				}
 			}
 		}
 
