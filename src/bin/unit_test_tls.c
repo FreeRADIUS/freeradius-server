@@ -433,25 +433,6 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 		return;
 	}
 
-	/*
-	 *	Reject the peer now that a record has arrived, so that the
-	 *	alert goes out in place of the first record this end would
-	 *	otherwise have sent.  Raising the alert any earlier races the
-	 *	peer: the round which sends the alert can run before the
-	 *	peer's first record has arrived, and the alert is then sent
-	 *	into an empty handshake and lost.
-	 */
-	if (utt->alert && (utt->connections == utt->count)) {
-		utt->alert = false;
-
-		if (fr_tls_session_alert(utt->conn->request, utt->conn->tls_session,
-					 SSL3_AL_FATAL, SSL_AD_ACCESS_DENIED) < 0) {
-			ERROR("Failed raising the TLS alert");
-			tls_request_failed(utt);
-			return;
-		}
-	}
-
 	fr_tls_connection_recv(utt->conn, buf, (size_t) slen);
 }
 
@@ -478,6 +459,34 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 {
 	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 	request_t	*request;
+
+	/*
+	 *	Stand in for an application which rejects a peer outright.
+	 *
+	 *	`pending` says a record has arrived and the handshake has not
+	 *	read it yet.  This hook used to live in _tls_connection_read(),
+	 *	where its position said the same thing, and the comment there
+	 *	warned that raising the alert before a record arrives sends it
+	 *	into an empty handshake, where it is lost.  The test cannot
+	 *	tell: removing this test passes six suite runs out of six,
+	 *	because a server runs no handshake round until a record
+	 *	arrives.  A client runs one straight away, so keep the test.
+	 *
+	 *	Raising the alert later, with the other two hooks below, is
+	 *	too late.  Those run after the round, and the round which
+	 *	would have carried the alert has gone.
+	 */
+	if (utt->alert && utt->conn->tls_session && utt->conn->pending &&
+	    (utt->connections == utt->count)) {
+		utt->alert = false;
+
+		if (fr_tls_session_alert(utt->conn->request, utt->conn->tls_session,
+					 SSL3_AL_FATAL, SSL_AD_ACCESS_DENIED) < 0) {
+			ERROR("Failed raising the TLS alert");
+			tls_request_failed(utt);
+			return;
+		}
+	}
 
 	while (fr_heap_pop((void **)&request, &utt->runnable) == 0) {
 		if (!request) break;
