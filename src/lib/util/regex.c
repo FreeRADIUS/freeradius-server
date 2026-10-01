@@ -36,6 +36,31 @@ RCSID("$Id$")
 #endif
 #endif
 
+/*
+ *	pcre2_set_max_pattern_compiled_length() arrived in PCRE2 10.41.
+ */
+#if defined(HAVE_REGEX_PCRE2) && defined(PCRE2_MAJOR) && \
+	((PCRE2_MAJOR > 10) || ((PCRE2_MAJOR == 10) && (PCRE2_MINOR >= 41)))
+#  define FR_PCRE2_HAVE_MAX_PATTERN_LENGTH 1
+
+/*
+ *	The largest a single pattern may compile to.
+ *
+ *	A bounded repeat is expanded by the engine, and nesting them
+ *	multiplies: "((((a){40}){40}){40}){40}" is 25 characters, and expands
+ *	to around 40^4 nodes.  With no limit, a pattern of a few dozen bytes
+ *	compiles to gigabytes.  That matters because regex_compile() runs at
+ *	runtime as well as at config time, see xlat_func_regex_search().
+ *
+ *	Hand-written patterns compile to a few KB at most, so this bound is
+ *	orders of magnitude above anything legitimate, and only fires on
+ *	patterns built to exhaust memory.
+ */
+#  ifndef FR_PCRE2_MAX_PATTERN_LENGTH
+#    define FR_PCRE2_MAX_PATTERN_LENGTH (1024 * 1024)
+#  endif
+#endif
+
 const fr_sbuff_escape_rules_t regex_escape_rules = {
 	.name = "regex",
 	.chr = '\\',
@@ -174,6 +199,14 @@ static int fr_pcre2_tls_init(void)
 		_pcre2_tls_free(tls);
 		return -1;
 	}
+
+#ifdef FR_PCRE2_HAVE_MAX_PATTERN_LENGTH
+	/*
+	 *	Cap memory usage.  Patterns over this limit will fail
+	 *	with an error in pcre2_compile() or regex_compile().
+	 */
+	pcre2_set_max_pattern_length(tls->ccontext, FR_PCRE2_MAX_PATTERN_LENGTH);
+#endif
 
 	tls->mcontext = pcre2_match_context_create(tls->gcontext);
 	if (!tls->mcontext) {
