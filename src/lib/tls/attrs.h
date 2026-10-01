@@ -65,7 +65,6 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_session_cert_file;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_require_client_cert;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_cipher_suite;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_version;
-extern HIDDEN fr_dict_attr_t const *attr_tls_session_resume_type;
 
 extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello;
 extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello_tls_version;
