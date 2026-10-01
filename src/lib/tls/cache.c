@@ -229,12 +229,16 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess,
 	MEM(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 1024, 1024 * 62));
 
 	/*
-	 *	Encode the session-state contents and
-	 *	add it to the ticket.
+	 *	Encode the session-state contents and add it to the ticket.
+	 *
+	 *	But don't encode any Error attributes.  Those are informational for the admin, and aren't
+	 *	included in a session ticket.
 	 */
 	for (vp = fr_pair_dcursor_init(&dcursor, &request->session_state_pairs);
 	     vp;
 	     vp = fr_dcursor_current(&dcursor)) {
+		if (vp->da == attr_tls_error) continue;
+
 		slen = fr_internal_encode_pair(&dbuff, &dcursor, NULL);
 		if (slen < 0) {
 			RPERROR("Session ID %pV - Failed serialising session-state list", session_id);
