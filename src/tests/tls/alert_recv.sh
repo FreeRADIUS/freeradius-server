@@ -128,8 +128,31 @@ grep -q "Client sent fatal TLS alert (48)" "$LOG" || \
 grep -q "Alert = { Level = ::Fatal, Description = ::Unknown-CA }" "$LOG" || \
 	fail "the alert was logged but not added to the request list as Alert"
 
-count=$(grep -c "Alert = {" "$LOG")
+count=$(grep -c "Adding Alert = {" "$LOG")
 [ "$count" = "1" ] || fail "expected one Alert in the request list, found $count"
 
+#
+#  A received alert must not appear in the reply list.  The list which holds
+#  the alert is the only thing which says which end sent the alert, so a
+#  received alert showing up in both lists would make the signal useless.
+#
+if grep -q "reply.Alert = {" "$LOG"; then
+	fail "a received alert was also put in the reply list"
+fi
+
+#
+#  `Error` says what went wrong.  `Received-Alert` is the value which tells
+#  an administrator to look in the request list.
+#
+grep -q "session-state.Error = ::Received-Alert" "$LOG" || \
+	fail "the Received-Alert error was not added to the session-state list"
+
+#
+#  What `fail session { ... }` can read is checked in reject.sh rather than
+#  here.  Both scripts reach the section now that fr_tls_connection_failed()
+#  defers a failure while a record is still waiting for OpenSSL, but reject.sh
+#  runs unit_test_tls at both ends, so it keeps the check away from whatever
+#  openssl s_client does when it closes.
+#
 touch "$RECEIPT"
 exit 0

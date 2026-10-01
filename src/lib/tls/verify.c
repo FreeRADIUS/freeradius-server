@@ -38,6 +38,8 @@
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 
+#include <freeradius-devel/protocol/tls/freeradius.h>
+
 #include "attrs.h"
 #include "base.h"
 
@@ -221,6 +223,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			X509_STORE_CTX_set_error(x509_ctx, 0);
 		} else {
 			RERROR("Verification error - %s (%i)", p, err);
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_CERTIFICATE_VERIFY_FAILED);
 			tls_verify_error_detail(request, ssl_ctx, err);
 			goto done;
 		}
@@ -271,6 +274,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			if (conf->verify.der_decode) {
 				fr_pair_delete_by_da(&request->session_state_pairs, attr_der_certificate);
 			}
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_CERTIFICATE_ATTRIBUTES_FAILED);
 			my_ok = 0;
 			goto done;
 		}
@@ -414,6 +418,7 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 
 		if (err != X509_V_OK) {
 			REDEBUG("Failed re-validating resumed session: %s", X509_verify_cert_error_string(err));
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_CERTIFICATE_REVALIDATION_FAILED);
 			ret = 0;
 		}
 	}
@@ -436,6 +441,7 @@ static unlang_action_t tls_verify_peer_cert_result(request_t *request, void *uct
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
 		REDEBUG("Failed (re-)validating certificates");
+		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_VERIFY_CERTIFICATE_FAILED);
 
 		/*
 		 *	Hoist any instances of Module-Failure-Message from the subrequest

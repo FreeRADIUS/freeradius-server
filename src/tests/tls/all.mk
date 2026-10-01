@@ -51,6 +51,7 @@ TLS_SCRIPT  := $(DIR)/unit_test_tls.sh
 TLS_CACHE   := $(DIR)/session_cache.sh
 TLS_ALERT   := $(DIR)/alert.sh
 TLS_ALERT_RECV := $(DIR)/alert_recv.sh
+TLS_ALERT_SEND := $(DIR)/alert_send.sh
 TLS_REJECT  := $(DIR)/reject.sh
 TLS_NOCACHE := $(DIR)/no_cache.sh
 TLS_FAILRES := $(DIR)/fail_resumed.sh
@@ -65,6 +66,7 @@ TLS_RECEIPT := $(OUTPUT)/unit_test_tls.receipt
 TLS_CACHE_RECEIPT := $(OUTPUT)/session_cache_client.receipt
 TLS_ALERT_RECEIPT := $(OUTPUT)/alert.receipt
 TLS_ALERT_RECV_RECEIPT := $(OUTPUT)/alert_recv.receipt
+TLS_ALERT_SEND_RECEIPT := $(OUTPUT)/alert_send.receipt
 TLS_REJECT_RECEIPT := $(OUTPUT)/reject.receipt
 TLS_NOCACHE_RECEIPT := $(OUTPUT)/no_cache_client.receipt
 TLS_FAILRES_RECEIPT := $(OUTPUT)/fail_resumed.receipt
@@ -143,6 +145,21 @@ $(TLS_ALERT_RECV_RECEIPT): $(TLS_CONF) $(TLS_COMMON) $(TLS_ALERT_RECV) $(TEST_BI
 	    $(SHELL) $(TLS_ALERT_RECV)
 
 #
+#  A handshake where FreeRADIUS rejects the peer, and OpenSSL sends the fatal
+#  TLS alert.  alert.sh covers the other way of sending one, where the record
+#  is built by hand.
+#
+$(TLS_ALERT_SEND_RECEIPT): $(TLS_CONF) $(TLS_COMMON) $(TLS_ALERT_SEND) $(TEST_BIN_DIR)/unit_test_tls $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+	@echo "TLS-TEST alert-send"
+	${Q}OUTPUT="$(TLS_OUTPUT)" \
+	    CONFDIR="$(top_srcdir)/$(TLS_DIR)" \
+	    CERTDIR="$(top_srcdir)/raddb/certs/rsa" \
+	    DICT_PATH="$(DICT_PATH)" \
+	    PORT="$(TLS_PORT)" \
+	    UNIT_TEST_TLS="$(TEST_BIN)/unit_test_tls" \
+	    $(SHELL) $(TLS_ALERT_SEND)
+
+#
 #  A session which is rejected after the handshake succeeded.
 #
 $(TLS_REJECT_RECEIPT): $(TLS_CONF) $(TLS_COMMON) $(TLS_REJECT) $(TEST_BIN_DIR)/unit_test_tls $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
@@ -211,18 +228,19 @@ $(TLS_NOTICKET_RECEIPT): $(TLS_NT_CONF) $(TLS_COMMON) $(TLS_NOTICKET) $(TEST_BIN
 	    $(SHELL) $(TLS_NOTICKET)
 
 #
-#  The nine tests share a port, so they must not run at the same time.
+#  The ten tests share a port, so they must not run at the same time.
 #
 $(TLS_CACHE_RECEIPT): $(TLS_RECEIPT)
 $(TLS_ALERT_RECEIPT): $(TLS_CACHE_RECEIPT)
 $(TLS_ALERT_RECV_RECEIPT): $(TLS_ALERT_RECEIPT)
-$(TLS_REJECT_RECEIPT): $(TLS_ALERT_RECV_RECEIPT)
+$(TLS_ALERT_SEND_RECEIPT): $(TLS_ALERT_RECV_RECEIPT)
+$(TLS_REJECT_RECEIPT): $(TLS_ALERT_SEND_RECEIPT)
 $(TLS_NOCACHE_RECEIPT): $(TLS_REJECT_RECEIPT)
 $(TLS_FAILRES_RECEIPT): $(TLS_NOCACHE_RECEIPT)
 $(TLS_STATELESS_RECEIPT): $(TLS_FAILRES_RECEIPT)
 $(TLS_NOTICKET_RECEIPT): $(TLS_STATELESS_RECEIPT)
 
-$(BUILD_DIR)/tests/$(TEST): $(TLS_RECEIPT) $(TLS_CACHE_RECEIPT) $(TLS_ALERT_RECEIPT) $(TLS_ALERT_RECV_RECEIPT) $(TLS_REJECT_RECEIPT) $(TLS_NOCACHE_RECEIPT) $(TLS_FAILRES_RECEIPT) $(TLS_STATELESS_RECEIPT) $(TLS_NOTICKET_RECEIPT)
+$(BUILD_DIR)/tests/$(TEST): $(TLS_RECEIPT) $(TLS_CACHE_RECEIPT) $(TLS_ALERT_RECEIPT) $(TLS_ALERT_RECV_RECEIPT) $(TLS_ALERT_SEND_RECEIPT) $(TLS_REJECT_RECEIPT) $(TLS_NOCACHE_RECEIPT) $(TLS_FAILRES_RECEIPT) $(TLS_STATELESS_RECEIPT) $(TLS_NOTICKET_RECEIPT)
 
 $(TEST).help:
 	@echo make $(TLS_TEST)

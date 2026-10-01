@@ -33,6 +33,8 @@
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
 
+#include <freeradius-devel/protocol/tls/freeradius.h>
+
 #include "base.h"
 #include "cache.h"
 #include "connection.h"
@@ -185,6 +187,29 @@ void fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_
 
 	conn->failed = reason;
 	if (conn->failed == TLS_CONNECTION_FAIL_SYSCALL) conn->error = errno;
+
+	/*
+	 *	Record the reason where `fail session { ... }` reads it.
+	 *
+	 *	A failure inside TLS gets no value here.  Either one of the
+	 *	rules in src/lib/tls/alerts.md already recorded a value which
+	 *	says what the rule was, or OpenSSL raised the error and
+	 *	fr_tls_log() has already reported what OpenSSL said.  A value
+	 *	meaning "something in TLS went wrong" would displace neither
+	 *	and add nothing.
+	 */
+	switch (reason) {
+	case TLS_CONNECTION_FAIL_SYSCALL:
+		fr_tls_session_error_add(conn->request, FR_ERROR_VALUE_SYSTEM_CALL_FAILED);
+		break;
+
+	case TLS_CONNECTION_FAIL_APPLICATION:
+		fr_tls_session_error_add(conn->request, FR_ERROR_VALUE_APPLICATION_FAILED);
+		break;
+
+	default:
+		break;
+	}
 
 	/*
 	 *	The connection frame is either initializing, or has finished all TLS negotiation, and has
@@ -502,6 +527,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 
 	if (fr_dbuff_in_memcpy_partial(tls_session->dirty_in, data, data_len) != data_len) {
 		RERROR("Failed buffering %zu bytes of TLS record data", data_len);
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_RECORD_TOO_LARGE);
 	error:
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_TLS);
 		return;
@@ -514,6 +540,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	 */
 	if (fr_tls_session_is_init_finished(tls_session)) {
 		RERROR("Received %zu bytes of application data, which is not supported", data_len);
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_RECORD_AFTER_HANDSHAKE);
 		goto error;
 	}
 

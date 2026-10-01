@@ -402,6 +402,7 @@ int		fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session);
 int 		fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session);
 
 int 		fr_tls_session_alert(request_t *request, fr_tls_session_t *tls_session, uint8_t level, uint8_t description);
+void		fr_tls_session_error_add(request_t *request, uint32_t error);
 
 unlang_action_t	fr_tls_session_async_handshake_push(request_t *request, fr_tls_session_t *tls_session);
 

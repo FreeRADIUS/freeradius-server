@@ -43,6 +43,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <freeradius-devel/protocol/tls/freeradius.h>
+
 #include "attrs.h"
 #include "base.h"
 #include "log.h"
@@ -296,6 +298,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		 */
 		if (!session_psk_identity_is_safe(identity)) {
 			RWDEBUG("Invalid characters in PSK identity %s", identity);
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_PSK_IDENTITY_INVALID);
 			return 0;
 		}
 
@@ -309,6 +312,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		hex_len = xlat_eval(buffer, sizeof(buffer), request, conf->psk_query, NULL, NULL);
 		if (!hex_len) {
 			RWDEBUG("PSK expansion returned an empty string.");
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_PSK_EMPTY);
 			return 0;
 		}
 
@@ -319,6 +323,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		 */
 		if (hex_len > (2 * max_psk_len)) {
 			RWDEBUG("Returned PSK is too long (%u > %u)", (unsigned int) hex_len, 2 * max_psk_len);
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_PSK_TOO_LONG);
 			return 0;
 		}
 
@@ -344,6 +349,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	if (strcmp(identity, conf->psk_identity) != 0) {
 		ERROR("Supplied PSK identity %s does not match configuration.  Rejecting.",
 		      identity);
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_PSK_IDENTITY_UNKNOWN);
 		return 0;
 	}
 
@@ -355,6 +361,49 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 			  &FR_SBUFF_IN(conf->psk_password, psk_len), false);
 }
 #endif /* PSK_MAX_IDENTITY_LEN */
+
+/** Record a TLS alert in a pair list
+ *
+ * A TLS Alert says why the handshake ended, so we only keep the last one.
+ *
+ * A peer can send multiple alerts, and if we left earlier `Alert` in
+ * the list, the policies would be looking at the wrong one.
+ *
+ * When we receive a TLS Alert, it gets copied into the `request`
+ * list.  When we send a TLS Alert, it gets copied into the `reply`
+ * list.
+ *
+ * We also update `session-state.Error` to describe the TLS Alert.
+ * See fr_tls_session_error_add().
+ *
+ * @param[in] request		to log through.  A NULL request is ignored,
+ *				because several OpenSSL callbacks run without one.
+ * @param[in] list_ctx		the pair which holds the list, either
+ *				`request->request_ctx` or `request->reply_ctx`.
+ * @param[in] prefix		names the list in the log line.
+ * @param[in] level		of the alert, warning or fatal.
+ * @param[in] description	of the alert.
+ */
+static void tls_session_alert_pair_add(request_t *request, fr_pair_t *list_ctx, char const *prefix,
+				       uint8_t level, uint8_t description)
+{
+	fr_pair_t *alert, *vp;
+
+	if (!request) return;
+
+	fr_pair_delete_by_da(&list_ctx->vp_group, attr_tls_alert);
+
+	MEM(fr_pair_append_by_da(list_ctx, &alert, &list_ctx->vp_group, attr_tls_alert) >= 0);
+
+	MEM(fr_pair_append_by_da(alert, &vp, &alert->vp_group, attr_tls_alert_level) >= 0);
+	vp->vp_uint8 = level;
+
+	MEM(fr_pair_append_by_da(alert, &vp, &alert->vp_group, attr_tls_alert_description) >= 0);
+	vp->vp_uint8 = description;
+
+	RDEBUG2("Adding %s%pP", prefix, alert);
+}
+
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* Fix spurious warnings for sk_ macros */
@@ -462,8 +511,6 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		 *	We got an alert...
 		 */
 		if (where & SSL_CB_READ) {
-			fr_pair_t *alert, *vp;
-
 			ROPTIONAL(REDEBUG, ERROR, "Client sent %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
 			          ret & 0xff, SSL_alert_desc_string_long(ret));
 
@@ -480,31 +527,19 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 				break;
 			}
 
-			if (request) {
-				/*
-				 *	The alert level is packed into the high octet of `ret`.  The alert
-				 *	description is packed into the low octet.
-				 *
-				 *	A peer can send alerts are multiple points in the handshake, so
-				 *	earlier alerts are removed before the latest one is added.
-				 *
-				 *	We could just find an earlier alert and update its members, but that's
-				 *	more code.
-				 */
-				pair_delete_request(attr_tls_alert);
-
-				MEM(pair_append_request(&alert, attr_tls_alert) >= 0);
-
-				MEM(fr_pair_append_by_da(alert, &vp, &alert->vp_group,
-							 attr_tls_alert_level) >= 0);
-				vp->vp_uint8 = (ret >> 8) & 0xff;
-
-				MEM(fr_pair_append_by_da(alert, &vp, &alert->vp_group,
-							 attr_tls_alert_description) >= 0);
-				vp->vp_uint8 = ret & 0xff;
-
-				ROPTIONAL(RDEBUG2, DEBUG2, "%pP", alert);
-			}
+			/*
+			 *      The alert level is packed into the high octet of `ret`.  The alert
+			 *      description is packed into the low octet.
+			 *
+			 *      A peer can send alerts are multiple points in the handshake, so
+			 *      earlier alerts are removed before the latest one is added.
+			 *
+			 *      We could just find an earlier alert and update its members, but that's
+			 *      more code.
+			 */
+			tls_session_alert_pair_add(request, request->request_ctx, "",
+						   (ret >> 8) & 0xff, ret & 0xff);
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_RECEIVED_ALERT);
 		/*
 		 *	We're sending the client an alert.
 		 */
@@ -526,6 +561,15 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			default:
 				break;
 			}
+
+			/*
+			 *	A sent alert goes in the reply list, where a received one
+			 *	goes in the request list.  `ret` packs the two octets the
+			 *	same way in both directions.
+			 */
+			tls_session_alert_pair_add(request, request->reply_ctx, "reply.",
+						   (ret >> 8) & 0xff, ret & 0xff);
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_SENT_ALERT);
 		}
 		return;
 	}
@@ -702,6 +746,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 */
 	if (!fr_cond_assert(tls_session->ssl == ssl)) {
 		ROPTIONAL(REDEBUG, ERROR, "fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_MISMATCH);
 		tls_session->invalid = true;
 		return;
 	}
@@ -714,6 +759,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 #ifdef SSL2_VERSION
 	if (!fr_cond_assert(msg_version != SSL2_VERSION)) {
 		ROPTIONAL(REDEBUG, ERROR, "Invalid version (SSLv2) in handshake");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_INVALID_VERSION_SSLV2);
 		tls_session->invalid = true;
 		return;
 	}
@@ -722,6 +768,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 #ifdef SSL3_VERSION
 	if (!fr_cond_assert(msg_version != SSL3_VERSION)) {
 		ROPTIONAL(REDEBUG, ERROR, "Invalid version (SSLv3) in handshake");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_INVALID_VERSION_SSLV3);
 		tls_session->invalid = true;
 		return;
 	}
@@ -758,6 +805,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		if (len < 2) {
 		invalid_alert:
 			ROPTIONAL(REDEBUG, ERROR, "Invalid TLS Alert.  Closing connection");
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_INVALID_RECORD_LENGTH);
 			tls_session->invalid = true;
 			return;
 		}
@@ -786,6 +834,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 			if ((payload_len + 3) > len) {
 				tls_session->invalid = true;
 				ROPTIONAL(REDEBUG, ERROR, "OpenSSL Heartbeat attack detected.  Closing connection");
+				fr_tls_session_error_add(request, FR_ERROR_VALUE_HEARTBEAT_OVERFLOW);
 				return;
 			}
 		}
@@ -968,6 +1017,7 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 
 	if (!SSL_is_init_finished(tls_session->ssl)) {
 		REDEBUG("Attempted to read application data before handshake completed");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_APPLICATION_DATA_TOO_EARLY);
 	error:
 		ret = -1;
 		goto finish;
@@ -1063,6 +1113,7 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 
 	if (!SSL_is_init_finished(tls_session->ssl)) {
 		REDEBUG("Attempted to write application data before handshake completed");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_APPLICATION_DATA_TOO_EARLY);
 		ret = -1;
 		goto finish;
 	}
@@ -1126,6 +1177,37 @@ finish:
 	return ret;
 }
 
+/** Record a failure which FreeRADIUS itself decided
+ *
+ * The `session-state` list is where these go, because the list is what
+ * survives from one round of the handshake to the next, and because it is
+ * the list which `fail session { ... }` is given.
+ *
+ * Errors append rather than replace.  A record which FreeRADIUS refuses
+ * marks the session invalid, and the round after that reports
+ * `Session-Invalid`.  Replacing would keep that second report and lose the
+ * refusal which caused it, which is the part an administrator needs.
+ *
+ * `src/lib/tls/alerts.md` lists every error and where the code decides it.
+ *
+ * @param[in] request	to add the error to.  A NULL request is ignored,
+ *			because several OpenSSL callbacks run without one.
+ * @param[in] error	an `FR_ERROR_VALUE_*` value from
+ *			`protocol/tls/freeradius.h`, which is generated from
+ *			`share/dictionary/tls/dictionary.freeradius`.
+ */
+void fr_tls_session_error_add(request_t *request, uint32_t error)
+{
+	fr_pair_t *vp;
+
+	if (!request) return;
+
+	MEM(pair_append_session_state(&vp, attr_tls_error) >= 0);
+	vp->vp_uint32 = error;
+
+	RDEBUG2("session-state.%pP", vp);
+}
+
 /** Instruct fr_tls_session_async_handshake to create a synthesised TLS alert record and send it to the peer
  *
  */
@@ -1178,6 +1260,14 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 				  session->pending_alert_level,
 				  session->pending_alert_description);
 	fr_assert(slen == 7);
+
+	/*
+	 *	We're building the TLS Alert manually, so we have to
+	 *	manually record it here.
+	 */
+	tls_session_alert_pair_add(request, request->reply_ctx, "reply.",
+				   session->pending_alert_level, session->pending_alert_description);
+	fr_tls_session_error_add(request, FR_ERROR_VALUE_SENT_ALERT);
 
 	session->pending_alert = false;
 	session->alerts_sent++;
@@ -1400,6 +1490,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 			}
 			if (!tls_session->session) {
 				REDEBUG("Failed getting TLS session");
+				fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_MISSING);
 				tls_session->result = FR_TLS_RESULT_ERROR;
 				fr_tls_session_request_unbind(tls_session->ssl);
 				return UNLANG_ACTION_CALCULATE_RESULT;
@@ -1741,6 +1832,7 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 	 */
 	if (fr_tls_session_is_init_finished(tls_session)) {
 		REDEBUG("Attempted to continue TLS handshake, but handshake has completed");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_HANDSHAKE_FINISHED);
 	error:
 		tls_session->result = FR_TLS_RESULT_ERROR;
 		fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
@@ -1749,6 +1841,7 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 
 	if (tls_session->invalid) {
 		REDEBUG("Preventing invalid session from continuing");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_INVALID);
 		goto error;
 	}
 
@@ -1761,6 +1854,7 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 	tls_session->rounds++;
 	if (tls_session->rounds >= FR_TLS_MAX_ROUNDS) {
 		REDEBUG("Failing TLS session due to too many handshake rounds (limit %u)", FR_TLS_MAX_ROUNDS);
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_TOO_MANY_ROUNDS);
 		goto error;
 	}
 
@@ -2221,11 +2315,13 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	} else {
 		if (!conf->chains || !conf->chains[0]->private_key_file) {
 			ERROR("TLS Server requires a private key file");
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_NO_SERVER_PRIVATE_KEY);
 			goto error;
 		}
 
 		if (!conf->chains || !conf->chains[0]->certificate_file) {
 			ERROR("TLS Server requires a certificate file");
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_NO_SERVER_CERTIFICATE);
 			goto error;
 		}
 	}

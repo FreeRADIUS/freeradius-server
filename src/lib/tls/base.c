@@ -134,6 +134,7 @@ fr_dict_attr_t const *attr_tls_client_hello_psk_key_mode;
 
 fr_dict_attr_t const *attr_module_failure_message;
 
+fr_dict_attr_t const *attr_tls_error;
 fr_dict_attr_t const *attr_tls_alert;
 fr_dict_attr_t const *attr_tls_alert_level;
 fr_dict_attr_t const *attr_tls_alert_description;
@@ -199,6 +200,7 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	/*
 	 *	Eventually all TLS attributes will be in the TLS dictionary
 	 */
+	{ .out = &attr_tls_error, .name = "Error", .type = FR_TYPE_UINT32, .dict = &dict_tls },
 	{ .out = &attr_tls_alert, .name = "Alert", .type = FR_TYPE_STRUCT, .dict = &dict_tls },
 	{ .out = &attr_tls_alert_level, .name = "Alert.Level", .type = FR_TYPE_UINT8, .dict = &dict_tls },
 	{ .out = &attr_tls_alert_description, .name = "Alert.Description", .type = FR_TYPE_UINT8, .dict = &dict_tls },

@@ -120,5 +120,19 @@ if grep -q "TLS handshake completed" "$LOG"; then
 	fail "the handshake completed, so the alert did not stop it"
 fi
 
+#
+#  The server sends the alert and then waits.  openssl s_client reads the
+#  fatal alert and closes, so the dead socket is the only thing which ends
+#  this connection.  fr_tls_connection_failed() records that as
+#  `System-Call-Failed`, separately from the alert itself, which is what lets
+#  a policy tell "we rejected the peer" from "the peer went away".
+#
+#  alert_recv.sh cannot check this.  There the server fails the handshake on
+#  the peer's alert and usually finishes before it notices the socket, so the
+#  value appears in roughly two runs out of five.
+#
+grep -q "session-state.Error = ::System-Call-Failed" "$LOG" || \
+	fail "the dead socket did not record System-Call-Failed"
+
 touch "$RECEIPT"
 exit 0

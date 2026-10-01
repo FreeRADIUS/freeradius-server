@@ -37,6 +37,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/util/debug.h>
 
+#include <freeradius-devel/protocol/tls/freeradius.h>
+
 #include "attrs.h"
 #include "base.h"
 #include "cache.h"
@@ -292,6 +294,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess,
 						  fr_dict_root(request->proto_dict), &dbuff, NULL) < 0) {
 			fr_pair_list_free(&tmp);
 			RPEDEBUG("Session-ID %pV - Failed decoding session-state", session_id);
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_DATA_DECODE_FAILED);
 			return -1;
 		}
 	}
@@ -433,6 +436,17 @@ static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
 		RWDEBUG("Failed acquiring session data");
+
+		/*
+		 *	A cache miss answers `notfound`, and a miss is the
+		 *	normal answer on a first connection.  Recording it as
+		 *	a failure would put an `Error` in the session-state
+		 *	list of every healthy handshake.
+		 */
+		fr_tls_session_error_add(request->parent,
+					 (vp && (vp->vp_uint32 == enum_tls_packet_type_notfound->vb_uint32)) ?
+					 FR_ERROR_VALUE_LOAD_SESSION_NOT_FOUND :
+					 FR_ERROR_VALUE_LOAD_SESSION_FAILED);
 	error:
 		tls_cache->load.state = FR_TLS_CACHE_FAILED;
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -441,6 +455,7 @@ static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_session_data);
 	if (!vp) {
 		RWDEBUG("No cached session found");
+		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_LOAD_SESSION_NOT_FOUND);
 		goto error;
 	}
 
@@ -450,6 +465,7 @@ static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
 	sess = d2i_SSL_SESSION(NULL, p, vp->vp_length);
 	if (!sess) {
 		fr_tls_log(request, "Failed loading persisted session");
+		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_LOAD_SESSION_MALFORMED);
 		goto error;
 	}
 
@@ -477,6 +493,7 @@ static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
 		if (!fr_time_delta_ispos(tls_cache_session_lifetime(request, &tls_session->session_id,
 								    conf, sess))) {
 			RWDEBUG("Session ID %pV - Cached session has expired, not resuming", &tls_session->session_id);
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_LOAD_SESSION_EXPIRED);
 
 			/*
 			 *	The session was allocated by d2i_SSL_SESSION(), and it is not yet saved in
@@ -583,6 +600,7 @@ static unlang_action_t tls_cache_store_resume(request_t *request, void *uctx)
 		tls_cache->store.state = FR_TLS_CACHE_SUCCESS;	/* Avoid spurious clear calls */
 	} else {
 		RWDEBUG("Failed storing session data");
+		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_STORE_SESSION_FAILED);
 		tls_cache->store.state = FR_TLS_CACHE_INIT;
 	}
 
@@ -627,6 +645,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 */
 	if (tls_cache->clear.state == FR_TLS_CACHE_REQUESTED) {
 		RWDEBUG("Session ID %pV - Clear is pending, not storing", &tls_cache->store.id);
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_STORE_CANCELLED_BY_CLEAR);
 		tls_cache_store_state_reset(request, tls_cache);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -634,6 +653,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	ttl = tls_cache_session_lifetime(request, &tls_cache->store.id, conf, sess);
 	if (!fr_time_delta_ispos(ttl)) {
 		RWDEBUG("Session ID %pV - Session has already expired, not storing", &tls_cache->store.id);
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_STORE_SESSION_EXPIRED);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -719,6 +739,7 @@ static unlang_action_t tls_cache_clear_resume(request_t *request, void *uctx)
 	}
 
 	RWDEBUG("Failed deleting session data - security may be compromised");
+	fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_CLEAR_SESSION_FAILED);
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -976,6 +997,8 @@ static bool tls_cache_stateless_section_setup(request_t *request, fr_tls_session
 
 	if (tls_session->ticket != FR_TLS_TICKET_SUCCESS) {
 		REDEBUG("`%s` did not return success", name);
+		fr_tls_session_error_add(request, decode ? FR_ERROR_VALUE_DECODE_SESSION_FAILED :
+					  FR_ERROR_VALUE_ENCODE_SESSION_FAILED);
 		tls_session->ticket = FR_TLS_TICKET_INIT;
 		return false;
 	}
@@ -1736,6 +1759,7 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 	if (!tls_session->allow_session_resumption ||
 	    (!(tls_cache_conf->mode & FR_TLS_CACHE_STATELESS))) {
 		REDEBUG("Generating session-tickets is not allowed");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_TICKET_NOT_ALLOWED);
 		return 0;
 	}
 
@@ -1827,6 +1851,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	 */
 	if (!fr_time_delta_ispos(tls_cache_session_lifetime(request, &tls_session->session_id, conf, sess))) {
 		REDEBUG("Session-ticket has expired, denying session resumption");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_TICKET_EXPIRED);
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}
 

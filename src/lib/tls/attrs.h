@@ -77,6 +77,7 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello_psk_key_mode;
 
 extern HIDDEN fr_dict_attr_t const *attr_module_failure_message;
 
+extern HIDDEN fr_dict_attr_t const *attr_tls_error;
 extern HIDDEN fr_dict_attr_t const *attr_tls_alert;
 extern HIDDEN fr_dict_attr_t const *attr_tls_alert_level;
 extern HIDDEN fr_dict_attr_t const *attr_tls_alert_description;

@@ -136,5 +136,35 @@ if grep -q "ASSERT FAILED" "$LOG"; then
 	fail "an assertion failed, check whether tls_cache_drain() left a cache operation queued"
 fi
 
+#
+#  `fail session { ... }` reads the request which ran the handshake, through
+#  `parent`, because the section itself runs as a subrequest.  This is the
+#  test which pins that, rather than alert_recv.sh or alert_send.sh: here
+#  unit_test_tls is at both ends, neither end closes the connection abruptly,
+#  and the section therefore always runs.
+#
+#  Until `fail` was added to server_unlang_section in
+#  src/lib/server/cf_file.c, `fail session { ... }` could not hold an `if` at
+#  all, so these checks also pin that fix.  Reverting the fix stops the
+#  configuration parsing, which fails every test in this directory.
+#
+#  `Error` is set because `load session { ... }` answered `notfound` earlier
+#  in this handshake, which is the normal answer on a first connection.  No
+#  alert is sent or received here, the handshake succeeds and the session is
+#  rejected afterwards, so both alert lists must be empty.  alert_recv.sh and
+#  alert_send.sh are where a populated alert list is checked.
+#
+grep -q "session-state.Error = ::Load-Session-Not-Found" "$LOG" || \
+	fail "the cache miss did not record Load-Session-Not-Found"
+
+grep -A2 "| parent.session-state.Error" "$LOG" | grep -q -- "--> true" || \
+	fail "fail session could not read parent.session-state.Error"
+
+grep -A2 "| parent.request.Alert" "$LOG" | grep -q -- "--> false" || \
+	fail "fail session saw a request.Alert, although no alert was received"
+
+grep -A2 "| parent.reply.Alert" "$LOG" | grep -q -- "--> false" || \
+	fail "fail session saw a reply.Alert, although no alert was sent"
+
 touch "$RECEIPT"
 exit 0
