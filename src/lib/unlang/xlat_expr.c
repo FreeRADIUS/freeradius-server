@@ -656,7 +656,12 @@ static xlat_arg_parser_t const regex_op_xlat_args[] = {
 };
 
 static xlat_arg_parser_t const regex_search_xlat_args[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },  /* regex string */
+	/*
+	 *	A pattern to be compiled has to be escaped, unless it
+	 *	is marked as REGEX_SAFE_FOR.
+	 */
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING,
+	  .func = xlat_regex_escape, .safe_for = FR_REGEX_SAFE_FOR },  /* regex string */
 	{ .required = true, .concat = false, .type = FR_TYPE_STRING }, /* broken out things to match */
 	{ .required = false, .concat = true, .type = FR_TYPE_STRING }, /* flags */
 	XLAT_ARG_PARSER_TERMINATOR

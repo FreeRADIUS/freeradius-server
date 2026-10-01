@@ -3205,7 +3205,9 @@ static xlat_action_t xlat_func_range(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static int CC_HINT(nonnull(1)) regex_xlat_escape(fr_value_box_t *vb, UNUSED void *uctx)
+/** Escape a value box so that it is safe to use as a regular expression
+ */
+int xlat_regex_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
 	ssize_t				slen;
 	fr_sbuff_t			*out = NULL;
@@ -5100,7 +5102,7 @@ do { \
 
 		static xlat_arg_parser_t const xlat_regex_escape_args[] = {
 			{ .type = FR_TYPE_STRING,
-			  .func = regex_xlat_escape, .safe_for = FR_REGEX_SAFE_FOR, .always_escape = true,
+			  .func = xlat_regex_escape, .safe_for = FR_REGEX_SAFE_FOR, .always_escape = true,
 			  .variadic = true, .concat = true },
 			XLAT_ARG_PARSER_TERMINATOR
 		};

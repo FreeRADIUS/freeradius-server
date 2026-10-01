@@ -355,6 +355,8 @@ xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			     UNUSED xlat_ctx_t const *xctx,
 			     request_t *request, fr_value_box_list_t *args);
 
+int		xlat_regex_escape(fr_value_box_t *vb, void *uctx) CC_HINT(nonnull(1));
+
 /*
  *	xlat_expr.c
  */
