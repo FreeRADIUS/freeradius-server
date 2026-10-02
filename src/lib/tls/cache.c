@@ -224,9 +224,6 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess,
 
 	/*
 	 *	Encode the session-state contents and add it to the ticket.
-	 *
-	 *	But don't encode any Error attributes.  Those are informational for the admin, and aren't
-	 *	included in a session ticket.
 	 */
 	for (vp = fr_pair_dcursor_init(&dcursor, &request->session_state_pairs);
 	     vp;
@@ -237,6 +234,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess,
 			fr_dbuff_free_talloc(&dbuff);
 			return 0; /* didn't store data */
 		}
+		if (slen == 0) (void) fr_dcursor_next(&dcursor);
 	}
 
 	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "session-ticket application data");
