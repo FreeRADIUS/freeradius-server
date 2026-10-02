@@ -143,7 +143,7 @@ RUN curl -fsSL -o /usr/local/bin/redis-create-cluster \
 COPY scripts/ci/eapol_test-build.sh /tmp/eapol_test-build/
 COPY scripts/ci/eapol_test/ /tmp/eapol_test-build/eapol_test/
 RUN apt-get install -y --no-install-recommends libnl-3-dev libnl-genl-3-dev && \
-	FORCE_BUILD=1 HOSTAPD_GIT_TAG=hostap_2_11 /tmp/eapol_test-build/eapol_test-build.sh && \
+	FORCE_BUILD=1 HOSTAPD_GIT_TAG=hostap_2_12 /tmp/eapol_test-build/eapol_test-build.sh && \
 	install -m 0755 /tmp/eapol_test-build/eapol_test/eapol_test /usr/local/bin/eapol_test && \
 	rm -rf /tmp/eapol_test-build
 

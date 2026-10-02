@@ -5,7 +5,7 @@ on:
 
 env:
   HOSTAPD_BUILD_DIR: eapol_test.ci
-  HOSTAPD_GIT_TAG: hostap_2_11
+  HOSTAPD_GIT_TAG: hostap_2_12
   NO_PERFORMANCE_TESTS: yes
 
 jobs:
