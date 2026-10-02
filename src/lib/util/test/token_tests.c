@@ -50,8 +50,16 @@ typedef struct {
 static char *guard_alloc(char **base, char const *in)
 {
 	size_t	len = strlen(in);
-	size_t	pagesz = (size_t) sysconf(_SC_PAGESIZE);
+	long	sc_pagesize = sysconf(_SC_PAGESIZE);
+	size_t	pagesz;
 	char	*p;
+
+	/* Coverity hasn't read the sysconf man page */
+	if (sc_pagesize <= 0) {
+		*base = MAP_FAILED;
+		return NULL;
+	}
+	pagesz = (size_t)sc_pagesize;
 
 	*base = mmap(NULL, pagesz * 2, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if (*base == MAP_FAILED) return NULL;
@@ -66,7 +74,11 @@ static char *guard_alloc(char **base, char const *in)
 
 static void guard_free(char *base)
 {
-	munmap(base, (size_t) sysconf(_SC_PAGESIZE) * 2);
+	long	sc_pagesize = sysconf(_SC_PAGESIZE);
+
+	/* Coverity hasn't read the sysconf man page */
+	if (sc_pagesize <= 0) return;
+	munmap(base, (size_t) sc_pagesize * 2);
 }
 
 /** Run gettoken() over a guarded copy of the input
