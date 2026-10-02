@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 560" width="1040" height="560">
+  <defs>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-7 -4 8 8" markerWidth="8" markerHeight="8" color="#243447">
+      <g>
+        <path d="M -5.6 0 L 0 2.1 L 0 -2.1 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_2" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 8 8" markerWidth="8" markerHeight="8" color="#243447">
+      <g>
+        <path d="M 5.6 0 L 0 -2.1 L 0 2.1 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_3" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 8 8" markerWidth="8" markerHeight="8" color="#243447">
+      <g>
+        <path d="M 5.6 0 L 0 -2.1 L 0 2.1 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g id="Canvas_1" fill-opacity="1" stroke-opacity="1" fill="none" stroke="none" stroke-dasharray="none">
+    <title>Canvas 1</title>
+    <rect fill="white" x="0" y="0" width="1040" height="560"/>
+    <g id="Canvas_1_Layer_1">
+      <title>Layer 1</title>
+      <g id="Group_2">
+        <g id="Graphic_12">
+          <path d="M 21.114665 40 L 201.11467 40 C 206.63751 40 211.11467 44.47715 211.11467 50 L 211.11467 150 C 211.11467 155.52285 206.63751 160 201.11467 160 L 21.114665 160 C 15.591818 160 11.114665 155.52285 11.114665 150 L 11.114665 50 C 11.114665 44.47715 15.591818 40 21.114665 40 Z" fill="white"/>
+          <path d="M 21.114665 40 L 201.11467 40 C 206.63751 40 211.11467 44.47715 211.11467 50 L 211.11467 150 C 211.11467 155.52285 206.63751 160 201.11467 160 L 21.114665 160 C 15.591818 160 11.114665 155.52285 11.114665 150 L 11.114665 50 C 11.114665 44.47715 15.591818 40 21.114665 40 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.2"/>
+        </g>
+        <g id="Graphic_11">
+          <path d="M 21.114665 40 L 201.11467 40 C 206.63751 40 211.11467 44.47715 211.11467 50 L 211.11467 62 C 211.11467 67.52285 206.63751 72 201.11467 72 L 21.114665 72 C 15.591818 72 11.114665 67.52285 11.114665 62 L 11.114665 50 C 11.114665 44.47715 15.591818 40 21.114665 40 Z" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_10">
+          <rect x="11.114665" y="62" width="200" height="10" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_9">
+          <title>Text</title>
+          <text transform="translate(25.114665 51.299805)" fill="white">
+            <tspan font-family="Helvetica" font-size="10" fill="white" x="0" y="10" xml:space="preserve">USER</tspan>
+          </text>
+        </g>
+        <g id="Group_6">
+          <g id="Graphic_8">
+            <circle cx="35.114665" cy="96" r="6.00001258741617" fill="#0e1a2b"/>
+          </g>
+          <g id="Graphic_7">
+            <path d="M 26.114665 114 C 26.114665 104 44.114665 104 44.114665 114 Z" fill="#0e1a2b"/>
+          </g>
+        </g>
+        <g id="Graphic_5">
+          <title>Text</title>
+          <text transform="translate(59.114665 86.67969)" fill="#0e1a2b">
+            <tspan font-family="Helvetica" font-size="16" fill="#0e1a2b" x="0" y="15" xml:space="preserve">Supplicant</tspan>
+          </text>
+        </g>
+        <g id="Graphic_4">
+          <title>Text</title>
+          <text transform="translate(59.114665 105.67969)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#6b7a8c" x="0" y="13" xml:space="preserve">Laptop, phone, VPN client</tspan>
+          </text>
+        </g>
+        <g id="Graphic_3">
+          <title>Text</title>
+          <text transform="translate(25.114665 134.87476)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#6b7a8c" x="0" y="13" xml:space="preserve">Types username &amp; password.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_13">
+        <g id="Graphic_26">
+          <path d="M 291.12648 40 L 471.1265 40 C 476.6493 40 481.1265 44.47715 481.1265 50 L 481.1265 150 C 481.1265 155.52285 476.6493 160 471.1265 160 L 291.12648 160 C 285.60363 160 281.12648 155.52285 281.12648 150 L 281.12648 50 C 281.12648 44.47715 285.60363 40 291.12648 40 Z" fill="white"/>
+          <path d="M 291.12648 40 L 471.1265 40 C 476.6493 40 481.1265 44.47715 481.1265 50 L 481.1265 150 C 481.1265 155.52285 476.6493 160 471.1265 160 L 291.12648 160 C 285.60363 160 281.12648 155.52285 281.12648 150 L 281.12648 50 C 281.12648 44.47715 285.60363 40 291.12648 40 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.2"/>
+        </g>
+        <g id="Graphic_25">
+          <path d="M 291.12648 40 L 471.1265 40 C 476.6493 40 481.1265 44.47715 481.1265 50 L 481.1265 62 C 481.1265 67.52285 476.6493 72 471.1265 72 L 291.12648 72 C 285.60363 72 281.12648 67.52285 281.12648 62 L 281.12648 50 C 281.12648 44.47715 285.60363 40 291.12648 40 Z" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_24">
+          <rect x="281.12648" y="62" width="200" height="10" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_23">
+          <title>Text</title>
+          <text transform="translate(295.12648 51.299805)" fill="white">
+            <tspan font-family="Helvetica" font-size="10" fill="white" x="0" y="10" xml:space="preserve">NETWORK DEVICE</tspan>
+          </text>
+        </g>
+        <g id="Group_17">
+          <g id="Graphic_22">
+            <path d="M 298.12648 96 L 318.12648 96 C 319.23105 96 320.12648 96.89543 320.12648 98 L 320.12648 108 C 320.12648 109.10457 319.23105 110 318.12648 110 L 298.12648 110 C 297.0219 110 296.12648 109.10457 296.12648 108 L 296.12648 98 C 296.12648 96.89543 297.0219 96 298.12648 96 Z" stroke="#0e1a2b" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+          </g>
+          <g id="Line_21">
+            <line x1="301.12648" y1="104" x2="301.12648" y2="104.5" stroke="#0e1a2b" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+          </g>
+          <g id="Line_20">
+            <line x1="307.12648" y1="104" x2="307.12648" y2="104.5" stroke="#0e1a2b" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+          </g>
+          <g id="Line_19">
+            <line x1="313.12648" y1="104" x2="313.12648" y2="104.5" stroke="#0e1a2b" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+          </g>
+          <g id="Graphic_18">
+            <path d="M 308.12648 96 L 308.12648 90 M 308.12648 90 L 304.12648 94 M 308.12648 90 L 312.12648 94" stroke="#0e1a2b" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+          </g>
+        </g>
+        <g id="Graphic_16">
+          <title>Text</title>
+          <text transform="translate(329.12648 86.67969)" fill="#0e1a2b">
+            <tspan font-family="Helvetica" font-size="16" fill="#0e1a2b" x="0" y="15" xml:space="preserve">NAS</tspan>
+          </text>
+        </g>
+        <g id="Graphic_15">
+          <title>Text</title>
+          <text transform="translate(329.12648 106.87476)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#6b7a8c" x="0" y="13" xml:space="preserve">Access point / VPN / router</tspan>
+          </text>
+        </g>
+        <g id="Graphic_14">
+          <title>Text</title>
+          <text transform="translate(295.12648 134.87476)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#6b7a8c" x="0" y="13" xml:space="preserve">Relays between user &amp; server.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_27">
+        <g id="Graphic_39">
+          <path d="M 551.67495 40 L 731.67495 40 C 737.1978 40 741.67495 44.47715 741.67495 50 L 741.67495 150 C 741.67495 155.52285 737.1978 160 731.67495 160 L 551.67495 160 C 546.1521 160 541.67495 155.52285 541.67495 150 L 541.67495 50 C 541.67495 44.47715 546.1521 40 551.67495 40 Z" fill="white"/>
+          <path d="M 551.67495 40 L 731.67495 40 C 737.1978 40 741.67495 44.47715 741.67495 50 L 741.67495 150 C 741.67495 155.52285 737.1978 160 731.67495 160 L 551.67495 160 C 546.1521 160 541.67495 155.52285 541.67495 150 L 541.67495 50 C 541.67495 44.47715 546.1521 40 551.67495 40 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.2"/>
+        </g>
+        <g id="Graphic_38">
+          <path d="M 551.67495 40 L 731.67495 40 C 737.1978 40 741.67495 44.47715 741.67495 50 L 741.67495 62 C 741.67495 67.52285 737.1978 72 731.67495 72 L 551.67495 72 C 546.1521 72 541.67495 67.52285 541.67495 62 L 541.67495 50 C 541.67495 44.47715 546.1521 40 551.67495 40 Z" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_37">
+          <rect x="541.67495" y="62" width="200" height="10" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_36">
+          <title>Text</title>
+          <text transform="translate(555.67495 51.299805)" fill="white">
+            <tspan font-family="Helvetica" font-size="10" fill="white" x="0" y="10" xml:space="preserve">RADIUS SERVER</tspan>
+          </text>
+        </g>
+        <g id="Group_31">
+          <g id="Graphic_35">
+            <path d="M 557.67495 85 L 579.67495 85 C 580.22724 85 580.67495 85.44772 580.67495 86 L 580.67495 92 C 580.67495 92.55228 580.22724 93 579.67495 93 L 557.67495 93 C 557.12267 93 556.67495 92.55228 556.67495 92 L 556.67495 86 C 556.67495 85.44772 557.12267 85 557.67495 85 Z" stroke="#0e1a2b" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+          </g>
+          <g id="Graphic_34">
+            <path d="M 557.67495 96 L 579.67495 96 C 580.22724 96 580.67495 96.44772 580.67495 97 L 580.67495 103 C 580.67495 103.55228 580.22724 104 579.67495 104 L 557.67495 104 C 557.12267 104 556.67495 103.55228 556.67495 103 L 556.67495 97 C 556.67495 96.44772 557.12267 96 557.67495 96 Z" stroke="#0e1a2b" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+          </g>
+          <g id="Graphic_33">
+            <circle cx="560.67495" cy="89" r="1.00000209790278" fill="#4da8d9"/>
+          </g>
+          <g id="Graphic_32">
+            <circle cx="560.67495" cy="100" r="1.00000209790278" fill="#4da8d9"/>
+          </g>
+        </g>
+        <g id="Graphic_30">
+          <title>Text</title>
+          <text transform="translate(589.67495 86.67969)" fill="#0e1a2b">
+            <tspan font-family="Helvetica" font-size="16" fill="#0e1a2b" x="0" y="15" xml:space="preserve">FreeRADIUS</tspan>
+          </text>
+        </g>
+        <g id="Graphic_29">
+          <title>Text</title>
+          <text transform="translate(589.67495 106.87476)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#6b7a8c" x="0" y="13" xml:space="preserve">Authentication server</tspan>
+          </text>
+        </g>
+        <g id="Graphic_28">
+          <title>Text</title>
+          <text transform="translate(555.67495 134.87476)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#6b7a8c" x="0" y="13" xml:space="preserve">Relays to &amp; from Active Directory.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Line_40">
+        <line x1="99.51575" y1="164.99705" x2="99.51575" y2="494.99705" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="2.4,2.4" stroke-width="1.2"/>
+      </g>
+      <g id="Line_41">
+        <line x1="380.62648" y1="164.99705" x2="380.62648" y2="494.99705" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="2.4,2.4" stroke-width="1.2"/>
+      </g>
+      <g id="Line_42">
+        <line x1="900" y1="170" x2="900" y2="500" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="2.4,2.4" stroke-width="1.2"/>
+      </g>
+      <g id="Group_43">
+        <g id="Line_49">
+          <line x1="369.92648" y1="197.93738" x2="101.41486" y2="197.93738" marker-start="url(#FilledArrow_Marker)" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+        </g>
+        <g id="Group_46">
+          <g id="Graphic_48">
+            <ellipse cx="78.36959" cy="196.66737" rx="13.1507533998366" ry="13.0000272727351" fill="#4da8d9"/>
+          </g>
+          <g id="Graphic_47">
+            <title>Text</title>
+            <text transform="translate(74.71268 186.14001)" fill="white">
+              <tspan font-family="Helvetica" font-size="13" fill="white" x="0" y="13" xml:space="preserve">1</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Graphic_45">
+          <title>Text</title>
+          <text transform="translate(110.55105 180.55237)" fill="#243447">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#243447" x="0" y="13" xml:space="preserve">Request to join the network</tspan>
+          </text>
+        </g>
+        <g id="Graphic_44">
+          <title>Text</title>
+          <text transform="translate(110.3039 198.32239)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="11.5" fill="#6b7a8c" x="0" y="11" xml:space="preserve">The user enters their Windows credentials into their</tspan>
+            <tspan font-family="Helvetica" font-size="11.5" fill="#6b7a8c" x="0" y="25" xml:space="preserve"> devices network prompt.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_50">
+        <g id="Line_56">
+          <line x1="380.62648" y1="255.64478" x2="619.4797" y2="255.9834" marker-end="url(#FilledArrow_Marker_2)" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+        </g>
+        <g id="Group_53">
+          <g id="Graphic_55">
+            <circle cx="361.1107" cy="253.0108" r="13.000027272735" fill="#4da8d9"/>
+          </g>
+          <g id="Graphic_54">
+            <title>Text</title>
+            <text transform="translate(357.4957 245.0108)" fill="white">
+              <tspan font-family="Helvetica" font-size="13" fill="white" x="0" y="13" xml:space="preserve">2</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Graphic_52">
+          <title>Text</title>
+          <text transform="translate(389.31333 236)" fill="#243447">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#243447" x="0" y="13" xml:space="preserve">Forward to Authentication server</tspan>
+          </text>
+        </g>
+        <g id="Graphic_51">
+          <title>Text</title>
+          <text transform="translate(389.31333 256.0216)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="11.5" fill="#6b7a8c" x="0" y="11" xml:space="preserve">NAS wraps it into a RADIUS request.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_57">
+        <g id="Graphic_59">
+          <title>Text</title>
+          <text transform="translate(643.90625 285.74605)" fill="#243447">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#243447" x="0" y="13" xml:space="preserve">Ask Active Directory to verify the password</tspan>
+          </text>
+        </g>
+        <g id="Graphic_58">
+          <title>Text</title>
+          <text transform="translate(643.90625 305.78473)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="11.5" fill="#6b7a8c" x="0" y="11" xml:space="preserve">Via a Windows domain or locally.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_64">
+        <g id="Graphic_66">
+          <title>Text</title>
+        </g>
+        <g id="Graphic_65">
+          <title>Text</title>
+        </g>
+      </g>
+      <g id="Group_71">
+        <g id="Group_74">
+          <g id="Graphic_76">
+            <ellipse cx="362.7792" cy="466.20844" rx="12.9600283116417" ry="13.3083558104949" fill="#4da8d9"/>
+          </g>
+          <g id="Graphic_75">
+            <title>Text</title>
+            <text transform="translate(359.17535 457.17423)" fill="white">
+              <tspan font-family="Helvetica" font-size="13" fill="white" x="0" y="13" xml:space="preserve">5</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Graphic_72">
+          <title>Text</title>
+          <text transform="translate(117.82715 469.4632)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="11.5" fill="#6b7a8c" x="0" y="11" xml:space="preserve">NAS opens the port for the user or returns</tspan>
+            <tspan font-family="Helvetica" font-size="11.5" fill="#6b7a8c" x="0" y="25" xml:space="preserve">an error message.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_78">
+        <g id="Graphic_90">
+          <path d="M 810.5 40 L 990.5 40 C 996.0228 40 1000.5 44.47715 1000.5 50 L 1000.5 150 C 1000.5 155.52285 996.0228 160 990.5 160 L 810.5 160 C 804.9772 160 800.5 155.52285 800.5 150 L 800.5 50 C 800.5 44.47715 804.9772 40 810.5 40 Z" fill="white"/>
+          <path d="M 810.5 40 L 990.5 40 C 996.0228 40 1000.5 44.47715 1000.5 50 L 1000.5 150 C 1000.5 155.52285 996.0228 160 990.5 160 L 810.5 160 C 804.9772 160 800.5 155.52285 800.5 150 L 800.5 50 C 800.5 44.47715 804.9772 40 810.5 40 Z" stroke="#d4d1c2" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.2"/>
+        </g>
+        <g id="Graphic_89">
+          <path d="M 810.5 40 L 990.5 40 C 996.0228 40 1000.5 44.47715 1000.5 50 L 1000.5 62 C 1000.5 67.52285 996.0228 72 990.5 72 L 810.5 72 C 804.9772 72 800.5 67.52285 800.5 62 L 800.5 50 C 800.5 44.47715 804.9772 40 810.5 40 Z" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_88">
+          <rect x="800.5" y="62" width="200" height="10" fill="#0e1a2b"/>
+        </g>
+        <g id="Graphic_87">
+          <title>Text</title>
+          <text transform="translate(814.5 51.299805)" fill="white">
+            <tspan font-family="Helvetica" font-size="10" fill="white" x="0" y="10" xml:space="preserve">DOMAIN</tspan>
+            <tspan font-family="Helvetica" font-size="10" fill="#6b7a8c" y="10" xml:space="preserve"> </tspan>
+            <tspan font-family="Helvetica" font-size="10" fill="white" y="10" xml:space="preserve">CONTROLLER</tspan>
+          </text>
+        </g>
+        <g id="Group_82">
+          <g id="Graphic_86">
+            <path d="M 816.5 85 L 838.5 85 C 839.0523 85 839.5 85.44772 839.5 86 L 839.5 92 C 839.5 92.55228 839.0523 93 838.5 93 L 816.5 93 C 815.9477 93 815.5 92.55228 815.5 92 L 815.5 86 C 815.5 85.44772 815.9477 85 816.5 85 Z" stroke="#0e1a2b" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+          </g>
+          <g id="Graphic_85">
+            <path d="M 816.5 96 L 838.5 96 C 839.0523 96 839.5 96.44772 839.5 97 L 839.5 103 C 839.5 103.55228 839.0523 104 838.5 104 L 816.5 104 C 815.9477 104 815.5 103.55228 815.5 103 L 815.5 97 C 815.5 96.44772 815.9477 96 816.5 96 Z" stroke="#0e1a2b" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+          </g>
+          <g id="Graphic_84">
+            <circle cx="819.5" cy="89" r="1.00000209790278" fill="#4da8d9"/>
+          </g>
+          <g id="Graphic_83">
+            <circle cx="819.5" cy="100" r="1.00000209790278" fill="#4da8d9"/>
+          </g>
+        </g>
+        <g id="Graphic_81">
+          <title>Text</title>
+          <text transform="translate(848.5 86.67969)" fill="#0e1a2b">
+            <tspan font-family="Helvetica" font-size="16" fill="#0e1a2b" x="0" y="15" xml:space="preserve">Active Directory</tspan>
+          </text>
+        </g>
+        <g id="Graphic_80">
+          <title>Text</title>
+          <text transform="translate(848.5 106.87476)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#6b7a8c" x="0" y="13" xml:space="preserve">Checks the password</tspan>
+          </text>
+        </g>
+        <g id="Graphic_79">
+          <title>Text</title>
+          <text transform="translate(814.5 134.87476)" fill="#6b7a8c">
+            <tspan font-family="Helvetica" font-size="12.5" fill="#6b7a8c" x="0" y="13" xml:space="preserve">Decides yes or no.</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Line_91">
+        <line x1="631.1797" y1="164.99705" x2="631.1797" y2="494.99705" stroke="#e2e0d6" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="2.4,2.4" stroke-width="1.2"/>
+      </g>
+      <g id="Group_92">
+        <g id="Graphic_94">
+          <circle cx="617.35936" cy="302.69922" r="13.000027272735" fill="#4da8d9"/>
+        </g>
+        <g id="Graphic_93">
+          <title>Text</title>
+          <text transform="translate(613.7444 293.68896)" fill="white">
+            <tspan font-family="Helvetica" font-size="13" fill="white" x="0" y="13" xml:space="preserve">3</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_95">
+        <g id="Graphic_97">
+          <circle cx="615.82716" cy="400.7599" r="13.0000272727351" fill="#4da8d9"/>
+        </g>
+        <g id="Graphic_96">
+          <title>Text</title>
+          <text transform="translate(612.2122 391.74963)" fill="white">
+            <tspan font-family="Helvetica" font-size="13" fill="white" x="0" y="13" xml:space="preserve">4</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Line_98">
+        <path d="M 633 303.71874 L 886.6875 304.71874 L 889.3119 304.6005" marker-end="url(#FilledArrow_Marker_3)" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+      </g>
+      <g id="Line_101">
+        <line x1="899.1797" y1="334.85522" x2="642.8797" y2="334.5155" marker-end="url(#FilledArrow_Marker_3)" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+      </g>
+      <g id="Graphic_102">
+        <text transform="translate(646.4219 334.7617)" fill="#6b7a8c">
+          <tspan font-family="Helvetica" font-size="11.5" fill="#6b7a8c" x="0" y="11" xml:space="preserve">Only Active Directory ever see the password.</tspan>
+        </text>
+      </g>
+      <g id="Line_105">
+        <line x1="603.82715" y1="404.39636" x2="390.52713" y2="404.0596" marker-end="url(#FilledArrow_Marker_3)" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+      </g>
+      <g id="Graphic_106">
+        <title>Text</title>
+        <text transform="translate(395.1543 384.4375)" fill="#243447">
+          <tspan font-family="Helvetica" font-size="12.5" fill="#243447" x="0" y="13" xml:space="preserve">Decision returned to the network</tspan>
+        </text>
+      </g>
+      <g id="Graphic_107">
+        <text transform="translate(394.00637 410.04114)" fill="#6b7a8c">
+          <tspan font-family="Helvetica" font-size="11.5" fill="#6b7a8c" x="0" y="11" xml:space="preserve">FreeRADIUS tells the NAS to allow or deny </tspan>
+          <tspan font-family="Helvetica" font-size="11.5" fill="#6b7a8c" x="0" y="25" xml:space="preserve">the user, along with any session settings.</tspan>
+        </text>
+      </g>
+      <g id="Line_108">
+        <line x1="351" y1="467.22436" x2="112.69999" y2="466.88577" marker-end="url(#FilledArrow_Marker_3)" stroke="#243447" stroke-linecap="butt" stroke-linejoin="round" stroke-width="1.6"/>
+      </g>
+      <g id="Graphic_109">
+        <title>Text</title>
+        <text transform="translate(117.82715 450.86914)" fill="#243447">
+          <tspan font-family="Helvetica" font-size="12.5" fill="#243447" x="0" y="13" xml:space="preserve">The user is on the network</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>
