@@ -41,6 +41,7 @@ RCSIDH(tls_h, "$Id$")
 #include "conf.h"
 #include "index.h"
 #include "session.h"
+#include "alpn.h"
 
 #ifdef __cplusplus
 extern "C" {

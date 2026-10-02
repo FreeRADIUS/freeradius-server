@@ -161,7 +161,11 @@ typedef struct {
 							///< after the handshake, see
 							///< tls_post_handshake_timeout().
 
-	bool			done;			//!< Set once the connection has a result.
+unsigned char		*alpn;			//!< Protocol list built by -L, in the wire format
+							///< fr_tls_conf_t expects.  NULL means no ALPN.
+	bool			alpn_required;		//!< Set by -l.
+
+		bool			done;			//!< Set once the connection has a result.
 	int			ret;			//!< Exit status.
 } unit_test_tls_t;
 
@@ -936,6 +940,56 @@ finish:
 	return ret;
 }
 
+/** Turn a comma separated list of names into the wire format ALPN uses
+ *
+ * Each name becomes one length octet followed by the name.  There is no
+ * terminator, so the caller takes the length from the array itself.
+ *
+ * @param[in] ctx	to allocate in.
+ * @param[in] names	comma separated, in order of preference.
+ * @return
+ *	- the list, whose talloc array length is the length of the list.
+ *	- NULL if a name is empty or longer than 255 octets.
+ */
+static unsigned char *tls_alpn_build(TALLOC_CTX *ctx, char const *names)
+{
+	unsigned char	*alpn, *p;
+	char const	*q;
+	size_t		len;
+
+	/*
+	 *	One length octet per name, and the names themselves.  The
+	 *	separators become those length octets, and the first name has
+	 *	no separator before it, so one more octet than the string.
+	 */
+	MEM(alpn = talloc_zero_array(ctx, unsigned char, strlen(names) + 1));
+	p = alpn;
+
+	for (q = names; *q != '\0'; q += len) {
+		len = strcspn(q, ",");
+		if ((len == 0) || (len > 255)) {
+			ERROR("Each ALPN protocol name must be between 1 and 255 characters");
+			talloc_free(alpn);
+			return NULL;
+		}
+
+		*p++ = (unsigned char) len;
+		memcpy(p, q, len);
+		p += len;
+
+		if (q[len] == ',') len++;		/* step over the separator */
+	}
+
+	/*
+	 *	A trailing separator, or a repeated one, leaves the array
+	 *	longer than what was written into it.  Shrink it so the array
+	 *	length is the length of the list.
+	 */
+	MEM(alpn = talloc_realloc(ctx, alpn, unsigned char, (size_t) (p - alpn)));
+
+	return alpn;
+}
+
 int main(int argc, char *argv[])
 {
 	int			ret = EXIT_SUCCESS;
@@ -946,6 +1000,8 @@ int main(int argc, char *argv[])
 	bool			alert = false;
 	bool			reject = false;
 	bool			app_data = false;
+	char const		*alpn_names = NULL;
+	bool			alpn_required = false;
 	unsigned int		i;
 
 	TALLOC_CTX		*autofree;
@@ -1010,7 +1066,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Ac:Cd:D:hMn:Pr:Rs:xX")) != -1) {
+	while ((c = getopt(argc, argv, "Ac:Cd:D:hlL:Mn:Pr:Rs:xX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
@@ -1042,6 +1098,14 @@ int main(int argc, char *argv[])
 
 			case 'h':
 				usage(config, EXIT_SUCCESS);
+				break;
+
+			case 'l':
+				alpn_required = true;
+				break;
+
+			case 'L':
+				alpn_names = optarg;
 				break;
 
 			case 'M':
@@ -1297,6 +1361,21 @@ int main(int argc, char *argv[])
 		cf_log_perr(tls_cs, "Failed parsing the TLS configuration");
 		EXIT_WITH_FAILURE;
 	}
+
+	/*
+	 *	ALPN is not parsed from the configuration file.  The library
+	 *	leaves the protocol list to the application, so set it here,
+	 *	after the TLS configuration is parsed and before the context
+	 *	is built from it.  See src/lib/tls/alpn.c.
+	 */
+	if (alpn_names) {
+		utt->alpn = tls_alpn_build(utt, alpn_names);
+		if (!utt->alpn) EXIT_WITH_FAILURE;
+
+		UNCONST(fr_tls_conf_t *, utt->conn->tls_conf)->alpn = utt->alpn;
+		UNCONST(fr_tls_conf_t *, utt->conn->tls_conf)->sizeof_alpn = talloc_array_length(utt->alpn);
+	}
+	UNCONST(fr_tls_conf_t *, utt->conn->tls_conf)->alpn_required = alpn_required;
 
 	utt->ssl_ctx = fr_tls_ctx_alloc(utt->conn->tls_conf, utt->conn->client);
 	if (!utt->ssl_ctx) {

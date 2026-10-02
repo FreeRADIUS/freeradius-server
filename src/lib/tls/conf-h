@@ -191,6 +191,23 @@ struct fr_tls_conf_s {
 	bool		encode_session;			//!< Does the "encode session" section exist.
 	bool		decode_session;			//!< Does the "decode session" section exist.
 	bool		client_hello_parse;		//!< Should attributes be extracted from Client Hello.
+
+	/** Application Layer Protocol Negotiation
+	 *
+	 *  The ALPN strings (for now) must be set by the application.  Only the application knows what the
+	 *  ALPN strings mean, and how to interpret them.  Plus, the ALPN format used by OpenSSL is the raw
+	 *  wire format, which has a "length" prefix followed by the actual data.  That's not trivially
+	 *  supportable by the configuration file parser.
+	 *
+	 *  What we'd like to do is for the application to provide some kind of array of allowed ALPN
+	 *  strings, and then use that.  The TLS code can then set a flag indicating which string was
+	 *  negotiated.
+	 */
+	unsigned char const	*alpn;			//!< Protocol names, in the wire format ALPN uses: each
+							///< name is one length octet followed by that many
+							///< octets.  NULL means we don't use ALPN.
+	size_t			sizeof_alpn;		//!< Length of `alpn`, which carries no terminator.
+	bool			alpn_required;		//!< Fail if no ALPN was negotiated.
 };
 
 fr_tls_conf_t	*fr_tls_conf_alloc(TALLOC_CTX *ctx);

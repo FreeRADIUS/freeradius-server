@@ -214,3 +214,13 @@ VALUE	Error				Application-Failed		38
 #  nothing to cache and nothing to resume.
 #
 VALUE	Error				Session-Missing			39
+
+#
+#  ALPN was used, and there was an unresolveable discrepancy between the two ends.
+#
+VALUE	Error				ALPN-Failed			40
+
+#
+#  The name of the ALPN string which was negotiated.
+#
+DEFINE	ALPN							string

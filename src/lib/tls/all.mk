@@ -6,6 +6,7 @@ endif
 TGT_CATEGORY	:= lib-util
 
 SOURCES	:= \
+	alpn.c \
 	base.c \
 	bio.c \
 	cache.c \

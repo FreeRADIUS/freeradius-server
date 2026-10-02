@@ -1454,6 +1454,17 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 		char cipher_desc[256], cipher_desc_clean[256];
 		char *p = cipher_desc, *q = cipher_desc_clean;
 
+		/*
+		 *	Check if ALPN was successfully negotiated.  We
+		 *	can do this without caring about session
+		 *	tickets.
+		 */
+		if (fr_tls_session_alpn_check(request, tls_session) < 0) {
+			tls_session->result = FR_TLS_RESULT_ERROR;
+			fr_tls_session_request_unbind(tls_session->ssl);
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
 		cipher = SSL_get_current_cipher(tls_session->ssl);
 		SSL_CIPHER_description(cipher, cipher_desc, sizeof(cipher_desc));
 
@@ -1463,8 +1474,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 		 */
 		while (*p != '\0') {
 			if (isspace((uint8_t) *p)) {
-				*q++ = *p;
-				fr_skip_whitespace(p);
+				*q++ = *p++;
 				continue;
 			}
 			*q++ = *p++;

@@ -964,6 +964,11 @@ post_ca:
 	if (fr_tls_cache_ctx_init(ctx, &conf->cache, client) < 0) goto error;
 
 	/*
+	 *	Set the ALPN context.
+	 */
+	if (fr_tls_ctx_alpn_set(ctx, conf, client) < 0) goto error;
+
+	/*
 	 *	Set the keylog file if the admin requested it.
 	 */
 	if ((getenv("SSLKEYLOGFILE") != NULL) || (conf->keylog_file && *conf->keylog_file)) {

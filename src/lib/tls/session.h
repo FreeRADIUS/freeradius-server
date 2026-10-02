@@ -198,6 +198,11 @@ struct fr_tls_session_s {
 
 	void			*opaque;			//!< Used to store module specific data.
 
+	unsigned char		*alpn;				//!< Protocol name both ends agreed on, as
+								///< SSL_get0_alpn_selected() gives it: the name
+								///< alone, with no leading length octet.
+	size_t			sizeof_alpn;			//!< Length of `alpn`.
+
 	fr_tls_cache_t		*cache;				//!< Current session resumption state.
 	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
 	bool			verify_peer_cert;		//!< Whether verification of the peer's certificate
@@ -371,7 +376,6 @@ void fr_tls_session_extra_pair_add_shallow(fr_tls_session_t *tls_session, fr_pai
 	fr_assert(talloc_parent(vp) == tls_session);
 	fr_pair_append(&tls_session->extra_pairs, vp);
 }
-
 
 int 		fr_tls_session_password_cb(char *buf, int num, int rwflag, void *userdata);
 
