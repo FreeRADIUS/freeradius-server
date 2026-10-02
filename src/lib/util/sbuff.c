@@ -2103,6 +2103,39 @@ char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, size_t len, char const *chr)
 	return NULL;
 }
 
+/** Internal function - do not call directly
+ *
+ * @private
+ */
+static inline char *_fr_sbuff_find_chr(fr_sbuff_t *sbuff, size_t len, char c, bool advance)
+{
+	fr_sbuff_t	our_sbuff = FR_SBUFF(sbuff);
+	size_t		total = 0;
+
+	CHECK_SBUFF_INIT(sbuff);
+
+	while (total < len) {
+		char	*found;
+		char	*end;
+
+		if (!fr_sbuff_extend(&our_sbuff)) break;
+
+		end = CONSTRAINED_END(&our_sbuff, len, total);
+		found = memchr(our_sbuff.p, c, end - our_sbuff.p);
+		if (found) {
+			if (advance) {
+				(void)fr_sbuff_set(sbuff, found);
+				return sbuff->p;
+			}
+			return found;
+		}
+
+		total += fr_sbuff_set(&our_sbuff, end);
+	}
+
+	return NULL;
+}
+
 /** Wind position to first instance of specified char
  *
  * @param[in,out] sbuff		to search in.
@@ -2114,25 +2147,68 @@ char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, size_t len, char const *chr)
  */
 char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, size_t len, char c)
 {
+	return _fr_sbuff_find_chr(sbuff, len, c, true);
+}
+
+/** Locate the first instance of specified char, without advancing
+ *
+ * @param[in] sbuff		to search in.
+ * @param[in] len		Maximum amount to search. Unconstrained if SIZE_MAX.
+ * @param[in] c			to search for.
+ * @return
+ *	- NULL, no instances found.
+ *	- The position of the first character.
+ */
+char *fr_sbuff_find_chr(fr_sbuff_t *sbuff, size_t len, char c)
+{
+	return _fr_sbuff_find_chr(sbuff, len, c, false);
+}
+
+/** Internal function - do not call directly
+ *
+ * @private
+ */
+static inline char *_fr_sbuff_find_str(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len, bool advance)
+{
 	fr_sbuff_t	our_sbuff = FR_SBUFF(sbuff);
 	size_t		total = 0;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	while (total < len) {
-		char const	*found;
-		char		*end;
+	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
+	if (!needle_len) return NULL;
 
-		if (!fr_sbuff_extend(&our_sbuff)) break;
+	/*
+	 *	Needle bigger than haystack
+	 */
+	if (len < needle_len) return NULL;
+
+	while (total <= (len - needle_len)) {
+		char	*found;
+		char	*end;
+
+		/*
+		 *	If the needle is longer than
+		 *	the remaining buffer, return.
+		 */
+		if (fr_sbuff_extend_lowat(NULL, &our_sbuff, needle_len) < needle_len) break;
 
 		end = CONSTRAINED_END(&our_sbuff, len, total);
-		found = memchr(our_sbuff.p, c, end - our_sbuff.p);
+		found = memmem(our_sbuff.p, end - our_sbuff.p, needle, needle_len);
 		if (found) {
-			(void)fr_sbuff_set(sbuff, found);
-			return sbuff->p;
+			if (advance) {
+				(void)fr_sbuff_set(sbuff, found);
+				return sbuff->p;
+			}
+			return found;
 		}
 
-		total += fr_sbuff_set(&our_sbuff, end);
+		/*
+		 *	Partial needle may be in
+		 *      the end of the buffer so
+		 *	don't advance too far.
+		 */
+		total += fr_sbuff_set(&our_sbuff, (end - needle_len) + 1);
 	}
 
 	return NULL;
@@ -2150,45 +2226,22 @@ char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, size_t len, char c)
  */
 char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len)
 {
-	fr_sbuff_t	our_sbuff = FR_SBUFF(sbuff);
-	size_t		total = 0;
+	return _fr_sbuff_find_str(sbuff, len, needle, needle_len, true);
+}
 
-	CHECK_SBUFF_INIT(sbuff);
-
-	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
-	if (!needle_len) return NULL;
-
-	/*
-	 *	Needle bigger than haystack
-	 */
-	if (len < needle_len) return NULL;
-
-	while (total <= (len - needle_len)) {
-		char const	*found;
-		char		*end;
-
-		/*
-		 *	If the needle is longer than
-		 *	the remaining buffer, return.
-		 */
-		if (fr_sbuff_extend_lowat(NULL, &our_sbuff, needle_len) < needle_len) break;
-
-		end = CONSTRAINED_END(&our_sbuff, len, total);
-		found = memmem(our_sbuff.p, end - our_sbuff.p, needle, needle_len);
-		if (found) {
-			(void)fr_sbuff_set(sbuff, found);
-			return sbuff->p;
-		}
-
-		/*
-		 *	Partial needle may be in
-		 *      the end of the buffer so
-		 *	don't advance too far.
-		 */
-		total += fr_sbuff_set(&our_sbuff, (end - needle_len) + 1);
-	}
-
-	return NULL;
+/** Locate the first instance of specified needle, without advancing
+ *
+ * @param[in] sbuff		to search in.
+ * @param[in] len		Maximum amount to search. Unconstrained if SIZE_MAX.
+ * @param[in] needle		to search for.
+ * @param[in] needle_len	Length of the needle. SIZE_MAX to used strlen.
+ * @return
+ *	- NULL, no instances found.
+ *	- The position of the first character.
+ */
+char *fr_sbuff_find_str(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len)
+{
+	return _fr_sbuff_find_str(sbuff, len, needle, needle_len, false);
 }
 
 /** Wind position to the first instance of the specified needle

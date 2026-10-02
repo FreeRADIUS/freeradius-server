@@ -2119,6 +2119,68 @@ static void test_adv_to_chr(void)
 	TEST_CHECK(sbuff.p == sbuff.start);
 }
 
+static void test_find_chr(void)
+{
+	fr_sbuff_t	sbuff;
+	char const	in[] = "AAAAbC";
+	char		*p;
+
+	TEST_CASE("Check for token at beginning of string, sbuff not advanced");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_chr(&sbuff, SIZE_MAX, 'A');
+	TEST_CHECK(p == sbuff.start);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token not at beginning of string, sbuff not advanced");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_chr(&sbuff, SIZE_MAX, 'b');
+	TEST_CHECK(p == (sbuff.start + (sizeof("AAAA") - 1)));
+	TEST_CHECK_STRCMP(p, "bC");
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token with zero length string");
+	fr_sbuff_init_in(&sbuff, in, 0);
+	TEST_CHECK(!fr_sbuff_find_chr(&sbuff, SIZE_MAX, 'b'));
+	TEST_CHECK(sbuff.start == sbuff.p);
+
+	TEST_CASE("Check for token at the end of the string, sbuff not advanced");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_chr(&sbuff, SIZE_MAX, 'C');
+	TEST_CHECK(p == sbuff.start + (sizeof("AAAAb") - 1));
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token not in the string");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_chr(&sbuff, SIZE_MAX, 'D');
+	TEST_CHECK(p == NULL);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token not at beginning of string within length constraints");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_chr(&sbuff, 5, 'b');
+	TEST_CHECK(p == (sbuff.start + (sizeof("AAAA") - 1)));
+	TEST_CHECK_STRCMP(p, "bC");
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token not at beginning of string outside length constraints");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	TEST_CHECK(!fr_sbuff_find_chr(&sbuff, 4, 'b'));
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Repeated calls find the same match each time (no side effects to accumulate)");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_chr(&sbuff, SIZE_MAX, 'b');
+	TEST_CHECK(p == fr_sbuff_find_chr(&sbuff, SIZE_MAX, 'b'));
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("fr_sbuff_adv_to_chr can still be used afterwards to actually advance to what find_chr located");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_chr(&sbuff, SIZE_MAX, 'b');
+	TEST_CHECK(sbuff.p == sbuff.start);
+	TEST_CHECK(fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, 'b') == p);
+	TEST_CHECK(sbuff.p == p);
+}
+
 static void test_adv_to_str(void)
 {
 	fr_sbuff_t	sbuff;
@@ -2178,6 +2240,79 @@ static void test_adv_to_str(void)
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
 	TEST_CHECK(!fr_sbuff_adv_to_str(&sbuff, 10, "test", SIZE_MAX));
 	TEST_CHECK(sbuff.p == sbuff.start);
+}
+
+static void test_find_str(void)
+{
+	fr_sbuff_t	sbuff;
+	char const	in[] = "i am a test string";
+	char		*p;
+
+	TEST_CASE("Check for token at beginning of string, sbuff not advanced");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_str(&sbuff, SIZE_MAX, "i am a test", SIZE_MAX);
+	TEST_CHECK(p == sbuff.start);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token not at beginning of string, sbuff not advanced");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_str(&sbuff, SIZE_MAX, "test", SIZE_MAX);
+	TEST_CHECK_STRCMP(p, "test string");
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token at the end of string, sbuff not advanced");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_str(&sbuff, SIZE_MAX, "ing", SIZE_MAX);
+	TEST_CHECK_STRCMP(p, "ing");
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token larger than the string");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_str(&sbuff, SIZE_MAX, "i am a test string ", SIZE_MAX);
+	TEST_CHECK(p == NULL);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token shorter than string, not in the string");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_str(&sbuff, SIZE_MAX, "ng ", SIZE_MAX);
+	TEST_CHECK(p == NULL);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token with zero length string");
+	fr_sbuff_init_in(&sbuff, in, 0);
+	p = fr_sbuff_find_str(&sbuff, SIZE_MAX, "i am a", SIZE_MAX);
+	TEST_CHECK(p == NULL);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token that is the string");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_str(&sbuff, SIZE_MAX, "i am a test string", SIZE_MAX);
+	TEST_CHECK(p == sbuff.start);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token not at beginning of string within length constraints");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_str(&sbuff, 11, "test", SIZE_MAX);
+	TEST_CHECK_STRCMP(p, "test string");
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token not at beginning of string outside length constraints");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	TEST_CHECK(!fr_sbuff_find_str(&sbuff, 10, "test", SIZE_MAX));
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Repeated calls find the same match each time (no side effects to accumulate)");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_str(&sbuff, SIZE_MAX, "test", SIZE_MAX);
+	TEST_CHECK(p == fr_sbuff_find_str(&sbuff, SIZE_MAX, "test", SIZE_MAX));
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("fr_sbuff_adv_to_str can still be used afterwards to actually advance to what find_str located");
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	p = fr_sbuff_find_str(&sbuff, SIZE_MAX, "test", SIZE_MAX);
+	TEST_CHECK(sbuff.p == sbuff.start);
+	TEST_CHECK(fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "test", SIZE_MAX) == p);
+	TEST_CHECK(sbuff.p == p);
 }
 
 static void test_adv_to_strcase(void)
@@ -2344,7 +2479,9 @@ TEST_LIST = {
 	 */
 	{ "fr_sbuff_adv_to_utf8",		test_adv_to_utf8 },
 	{ "fr_sbuff_adv_to_chr",		test_adv_to_chr },
+	{ "fr_sbuff_find_chr",			test_find_chr },
 	{ "fr_sbuff_adv_to_str",		test_adv_to_str },
+	{ "fr_sbuff_find_str",			test_find_str },
 	{ "fr_sbuff_adv_to_strcase",		test_adv_to_strcase },
 
 	/*
