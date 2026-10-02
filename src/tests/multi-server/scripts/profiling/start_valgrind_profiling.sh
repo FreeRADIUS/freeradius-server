@@ -63,6 +63,11 @@ echo ""
 #                          server.start and server.stop triggers switch
 #                          instrumentation on and off
 #
+#  The -S overrides below for the triggers also use
+#  TRIGGER_SERVER_START_APPEND and TRIGGER_SERVER_STOP_APPEND environment variables,
+#  when set and non-empty. These env variables are optionally set by a test suite's
+#  compose environment if needed.
+#
 echo "INFO: starting freeradius under callgrind at $(date)"
 STATUS=0
 valgrind \
@@ -80,8 +85,8 @@ valgrind \
   --instr-atstart=no \
   freeradius -f -l stdout \
     -S resources.talloc_skip_cleanup=yes \
-    -S "trigger.server.start=%callgrind.start()${TRIGGER_SERVER_START_APPEND:-}" \
-    -S "trigger.server.stop=%callgrind.stop()${TRIGGER_SERVER_STOP_APPEND:-}" \
+    -S "trigger.server.start=%callgrind.start() && ${TRIGGER_SERVER_START_APPEND:-true}" \
+    -S "trigger.server.stop=%callgrind.stop() && ${TRIGGER_SERVER_STOP_APPEND:-true}" \
   > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || STATUS=$?
 
 #
