@@ -496,7 +496,7 @@ AC_ARG_WITH(radiusv11,
     ;;
   esac ]
 )
-if test "x$WITH_RADIUSCV11" = "xyes"; then
+if test "x$WITH_RADIUSV11" = "xyes"; then
   AC_DEFINE(WITH_RADIUSV11, [1], [define if you want RADIUSv11 support (For RADSec et al)])
 fi
 
