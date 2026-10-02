@@ -1,58 +1,53 @@
 = SQL Module
 
-The SQL module is composed of two parts: a generic SQL front-end
+The SQL module has two parts: a generic SQL front-end
 (rlm_sql), and a series of database-dependent back-end drivers,
 (rlm_sql_mysql, rlm_sql_postgresql, etc.)
 
-In order to build the drivers, you MUST ALSO install the development
-versions of the database. That is, you must have the appropriate header
-files and client libraries for (say) MySQL. The rlm_sql_mysql driver is
-NOT a complete MySQL client implementation. Instead, it is a small
-"shim" between the FreeRADIUS rlm_sql module, and the MySQL client
+To build the drivers, you MUST ALSO install the development
+versions of the database. This means you need the header
+files and client libraries for the database, such as MySQL.
+
+The rlm_sql_mysql driver is NOT a complete MySQL client. Instead, it is a small
+"shim" between the FreeRADIUS rlm_sql module and the MySQL client
 libraries.
 
-In general, the SQL schemas mirror the layout of the "users" file. So
-for configuring check items and reply items, see `man 5 users`, and the
-examples in the users file.
-
+The SQL schemas mirror the layout of the "users" file. To configure check items and reply items, see `man 5 users`, and the
+examples in this file.
 
 == Schema and usage
 
 The schemas are available in `sql/*`, where is the name of the
 database (mysql, postgresql, etc.)
 
-The SQL module employs two sets of check and reply item tables for
-processing in the authorization stage: One set of tables (radcheck and
-radreply) are specific to a single user. The other set of tables
-(radgroupcheck and radgroupreply) is used to apply check and reply items
+The SQL module uses two sets of check and reply item tables for
+processing in the authorization stage: One set (radcheck and
+radreply) are specific to a single user. The other set
+(radgroupcheck and radgroupreply) applies check and reply items
 to users that are members of a certain SQL group. The usergroup table
-provides the list of groups each user is a member of along with a
-priority field to control the order in which groups are processed.
+lists the groups each user is a member of, along with a
+priority field to control the order of group processing.
 
-When a request comes into the server and is processed by the SQL module, first
-user attribute processing is performed:
+When the SQL module processes a request, it first performs user attribute processing:
 
-. The radcheck table is searched for any "check" attributes specific to the
+. It searches the radcheck table any "check" attributes specific to the
 user
-. If check attributes are found for the user, and they match the request:
+. If check attributes are found and they match the request:
 .. "Control" attributes from the radcheck table for this user are added to the control list, then
-.. "Reply" attributes from the radreply table for this user are added to the reply
+.. "Reply" attributes from the radreply table for this user are added to the reply list.
 
-Next, group attribute processing is performed if any of the following
+Next, it performs group attribute processing if any of the following
 conditions are met:
 
-- The user IS NOT found in radcheck
-- The user IS found in radcheck, but the check items DO NOT match
+- The user IS NOT found in radcheck.
+- The user IS found in radcheck, but the check items DO NOT match.
 - The user IS found in radcheck, the check items DO match AND
-Fall-Through is set in the radreply table
+Fall-Through is set in the radreply table.
 - The user IS found in radcheck, the check items DO match AND the
-read_groups configuration item for the sql module is set to `yes`
+read_groups configuration item for the sql module is set to `yes`.
 
-If groups are to be processed for this user, the first thing that is
-done is the list of groups this user is a member of is pulled from the
-radusergroup table, ordered by the priority field. The priority field of the
-radusergroup table provides control over the order in which groups are
-processed, emulating the ordering in the layout of the users file.
+If groups are processed for the user, it pulls the list of groups the user is a member of from the radusergroup table, ordered by priority.
+The priority field of the radusergroup table controls the order in which groups are processed, emulating the ordering in the layout of the users file.
 
 Considering the groups in order of priority:
 
@@ -119,7 +114,7 @@ might have the following setup:
 |===
 
 
-== What NOT to do!
+== The `op` field
 
 One of the fields of the SQL schema is named "op". This is for the "operator"
 used when evaluating the attributes, e.g.
@@ -144,158 +139,81 @@ Without the operator, the server simply doesn't know, so always put a
 value in the field. The value is the string form of the operator: "=",
 ">=", etc. See below for more details.
 
-== Authentication versus Authorization
-
-Many people ask if they can "authenticate" users to their SQL
-database. The answer to this question is "You're asking the wrong
-question."
-
-An SQL database stores information. An SQL database is NOT an
-authentication server. The ONLY users who should be able to authenticate
-themselves to the database are the people who administer it. Most
-administrators do NOT want every user to be able to access the database,
-which means that most users will not be able to "authenticate"
-themselves to the database.
-
-Instead, the users will have their authorization information (name,
-password, configuration) stored in the database's tables. The
-configuration files for FreeRADIUS contain a username and password used
-to authenticate FreeRADIUS to the SQL server. (See raddb/sql.conf). Once
-the FreeRADIUS authentication server is connected to the SQL database
-server, then FreeRADIUS can pull user names and passwords out of the
-database, and use that information to perform the authentication.
-
-
 == Operators
 
-The list of operators is given here.
+The list of operators is given below.  Each row shows the operator, an
+example of its use, and its meaning when used as a check item and as a
+reply item.
 
-=== =
+[options="header",cols="1,2,4,4"]
+|=====
+| Operator | Example | As a check item | As a reply item
 
-e.g.: `Attribute = Value`
+| `=`
+| `Attribute = Value`
+| Not allowed for RADIUS protocol attributes.  Allowed for server configuration attributes (`Auth-Type`, etc.); sets the value of an attribute only if there is no other item of the same attribute.
+| Adds the item to the reply list, but only if there is no other item of the same attribute.
 
-Not allowed as a check item for RADIUS protocol attributes.  It is
-allowed for server configuration attributes (Auth-Type, etc), and sets
-the value of an attribute, only if there is no other item of the
-same attribute.
+| `:=`
+| `Attribute := Value`
+| Always matches.  Replaces any configuration item of the same name; if no attribute of that name appears in the request, the attribute is added.
+| Identical meaning, but applied to the reply items instead of the request items.
 
-As a reply item, it means "add the item to the reply list, but
-only if there is no other item of the same attribute."
+| `==`
+| `Attribute == Value`
+| Matches if the named attribute is present in the request, AND has the given value.
+| Not allowed.
 
-=== :=
+| `+=`
+| `Attribute += Value`
+| Always matches.  Adds the current attribute with value to the list of configuration items.
+| Identical meaning, but the attribute is added to the reply items.
 
-e.g: `Attribute := Value`
+| `!=`
+| `Attribute != Value`
+| Matches if the given attribute is in the request, AND does not have the given value.
+| Not allowed.
 
-Always matches as a check item, and replaces in the
-configuration items any attribute of the same name.  If no
-attribute of that name appears in the request, then this
-attribute is added.
+| `>`
+| `Attribute > Value`
+| Matches if the request contains an attribute with a value greater than the one given.
+| Not allowed.
 
-As a reply item, it has an identical meaning, but for the
-reply items, instead of the request items.
+| `>=`
+| `Attribute >= Value`
+| Matches if the request contains an attribute with a value greater than, or equal to, the one given.
+| Not allowed.
 
-=== ==
+| `<`
+| `Attribute < Value`
+| Matches if the request contains an attribute with a value less than the one given.
+| Not allowed.
 
-e.g: `Attribute == Value`
+| `\<=`
+| `Attribute \<= Value`
+| Matches if the request contains an attribute with a value less than, or equal to, the one given.
+| Not allowed.
 
-As a check item, it matches if the named attribute is present
-in the request, AND has the given value.
+| `=~`
+| `Attribute =~ Expression`
+| Matches if the request contains an attribute which matches the given regular expression.  May only be applied to string attributes.
+| Not allowed.
 
-Not allowed as a reply item.
+| `!~`
+| `Attribute !~ Expression`
+| Matches if the request contains an attribute which does not match the given regular expression.  May only be applied to string attributes.
+| Not allowed.
 
-=== +=
+| `=*`
+| `Attribute =* ANY`
+| Matches if the request contains the named attribute.  The right-hand side must be the word `ANY`.
+| Not allowed.
 
-e.g: `Attribute += Value`
-
-Always matches as a check item, and adds the current attribute
-with value to the list of configuration items.
-
-As a reply item, it has an identical meaning, but the
-attribute is added to the reply items.
-
-=== !=
-
-e.g: `Attribute != Value`
-
-As a check item, matches if the given attribute is in the
-request, AND does not have the given value.
-
-Not allowed as a reply item.
-
-=== >
-
-e.g: `Attribute > Value`
-
-As a check item, it matches if the request contains an
-attribute with a value greater than the one given.
-
-Not allowed as a reply item.
-
-=== >=
-
-e.g: `Attribute >= Value`
-
-As a check item, it matches if the request contains an
-attribute with a value greater than, or equal to the one
-given.
-
-Not allowed as a reply item.
-
-=== <
-
-e.g: `Attribute < Value`
-
-As a check item, it matches if the request contains an
-attribute with a value less than the one given.
-
-Not allowed as a reply item.
-
-=== \<=
-
-e.g: `Attribute \<= Value`
-
-As a check item, it matches if the request contains an
-attribute with a value less than, or equal to the one given.
-
-Not allowed as a reply item.
-
-=== =~
-
-e.g: `Attribute =~ Expression`
-
-As a check item, it matches if the request contains an
-attribute which matches the given regular expression.  This
-operator may only be applied to string attributes.
-
-Not allowed as a reply item.
-
-=== !~
-
-e.g: `Attribute !~ Expression`
-
-As a check item, it matches if the request contains an
-attribute which does not match the given regular expression.
-This operator may only be applied to string attributes.
-
-Not allowed as a reply item.
-
-=== =*
-
-e.g: `Attribute =* ANY`
-
-As a check item, it matches if the request contains the named
-attribute.  The right-hand side must be the word `ANY`.
-
-Not allowed as a reply item.
-
-=== !*
-
-e.g: `Attribute !* ANY`
-
-As a check item, it matches if the request does not contain
-the named attribute.  The right-hand side must be the word `ANY`.
-
-Not allowed as a reply item.
+| `!*`
+| `Attribute !* ANY`
+| Matches if the request does not contain the named attribute.  The right-hand side must be the word `ANY`.
+| Not allowed.
+|=====
 
 
 == Module instances
