@@ -93,7 +93,7 @@ int eap_crypto_mppe_keys(request_t *request, SSL *ssl, eap_tls_prf_label_t *prf_
 				       prf_label->context,
 				       prf_label->context_len,
 				       prf_label->use_context) != 1) {
-		fr_tls_log(request, "Failed generating MPPE keys");
+		fr_tls_log_perror(request, "Failed generating MPPE keys");
 		return -1;
 	}
 
@@ -170,7 +170,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 					       prf_label->context_len,
 					       prf_label->use_context) != 1) {
 			talloc_free(buff);
-			fr_tls_log(request, "Failed generating TLS session ID");
+			fr_tls_log_perror(request, "Failed generating TLS session ID");
 			return -1;
 		}
 	}

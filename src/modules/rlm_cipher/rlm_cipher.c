@@ -569,7 +569,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	RHEXDUMP3((uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
 	if (EVP_PKEY_encrypt(t->evp_encrypt_ctx, NULL, &ciphertext_len,
 			     (unsigned char const *)plaintext, plaintext_len) <= 0) {
-		fr_tls_log(request, "Failed getting length of encrypted plaintext");
+		RPERROR_SSL("Failed getting length of encrypted plaintext");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -577,7 +577,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(fr_value_box_mem_alloc(vb, &ciphertext, vb, NULL, ciphertext_len, false) == 0);
 	if (EVP_PKEY_encrypt(t->evp_encrypt_ctx, ciphertext, &ciphertext_len,
 			     (unsigned char const *)plaintext, plaintext_len) <= 0) {
-		fr_tls_log(request, "Failed encrypting plaintext");
+		RPERROR_SSL("Failed encrypting plaintext");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -631,17 +631,17 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	First produce a digest of the message
 	 */
 	if (unlikely(EVP_DigestInit_ex(t->evp_md_ctx, inst->rsa->sig_digest, NULL) <= 0)) {
-		fr_tls_log(request, "Failed initialising message digest");
+		RPERROR_SSL("Failed initialising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestUpdate(t->evp_md_ctx, msg, msg_len) <= 0) {
-		fr_tls_log(request, "Failed ingesting message");
+		RPERROR_SSL("Failed ingesting message");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestFinal_ex(t->evp_md_ctx, t->digest_buff, &digest_len) <= 0) {
-		fr_tls_log(request, "Failed finalising message digest");
+		RPERROR_SSL("Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 	fr_assert((size_t)digest_len == talloc_array_length(t->digest_buff));
@@ -650,14 +650,14 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Then sign the digest
 	 */
 	if (EVP_PKEY_sign(t->evp_sign_ctx, NULL, &sig_len, t->digest_buff, (size_t)digest_len) <= 0) {
-		fr_tls_log(request, "Failed getting length of digest");
+		RPERROR_SSL("Failed getting length of digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	MEM(fr_value_box_mem_alloc(vb, &sig, vb, NULL, sig_len, false) == 0);
 	if (EVP_PKEY_sign(t->evp_sign_ctx, sig, &sig_len, t->digest_buff, (size_t)digest_len) <= 0) {
-		fr_tls_log(request, "Failed signing message digest");
+		RPERROR_SSL("Failed signing message digest");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -707,7 +707,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	RHEXDUMP3(ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
 	if (EVP_PKEY_decrypt(t->evp_decrypt_ctx, NULL, &plaintext_len, ciphertext, ciphertext_len) <= 0) {
-		fr_tls_log(request, "Failed getting length of cleartext");
+		RPERROR_SSL("Failed getting length of cleartext");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -715,7 +715,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(fr_value_box_bstr_alloc(vb, &plaintext, vb, NULL, plaintext_len, true) == 0);
 	if (EVP_PKEY_decrypt(t->evp_decrypt_ctx, (unsigned char *)plaintext, &plaintext_len,
 			     ciphertext, ciphertext_len) <= 0) {
-		fr_tls_log(request, "Failed decrypting ciphertext");
+		RPERROR_SSL("Failed decrypting ciphertext");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -805,17 +805,17 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	First produce a digest of the message
 	 */
 	if (unlikely(EVP_DigestInit_ex(t->evp_md_ctx, inst->rsa->sig_digest, NULL) <= 0)) {
-		fr_tls_log(request, "Failed initialising message digest");
+		RPERROR_SSL("Failed initialising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestUpdate(t->evp_md_ctx, msg, msg_len) <= 0) {
-		fr_tls_log(request, "Failed ingesting message");
+		RPERROR_SSL("Failed ingesting message");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestFinal_ex(t->evp_md_ctx, t->digest_buff, &digest_len) <= 0) {
-		fr_tls_log(request, "Failed finalising message digest");
+		RPERROR_SSL("Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 	fr_assert((size_t)digest_len == talloc_array_length(t->digest_buff));
@@ -837,7 +837,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		break;
 
 	default:
-		fr_tls_log(request, "Failed validating signature");
+		RPERROR_SSL("Failed validating signature");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -895,7 +895,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(fr_value_box_mem_alloc(vb, &digest, vb, NULL, md_len, false) == 0);
 
 	if (X509_digest(inst->rsa->x509_certificate_file, md, digest, (unsigned int *)&md_len) != 1) {
-		fr_tls_log(request, "Failed calculating certificate fingerprint");
+		RPERROR_SSL("Failed calculating certificate fingerprint");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -923,7 +923,7 @@ static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	serial = X509_get0_serialNumber(inst->rsa->x509_certificate_file);
 	if (!serial) {
-		fr_tls_log(request, "Failed retrieving certificate serial");
+		RPERROR_SSL("Failed retrieving certificate serial");
 		return XLAT_ACTION_FAIL;
 	}
 

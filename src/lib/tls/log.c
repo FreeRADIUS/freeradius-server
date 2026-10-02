@@ -224,7 +224,7 @@ int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
 			msg = fr_vasprintf(NULL, fmt, ap);
 			va_end(ap);
 
-			ROPTIONAL(RDEBUG2, DEBUG2, "%s - %s (%i)",
+			ROPTIONAL(RDEBUG2, DEBUG2, "(TLS) %s - %s (%i)",
 				  msg, fr_table_str_by_value(ssl_io_error_table, err, "<UNKNOWN>"), err);
 			talloc_free(msg);
 		}
@@ -240,7 +240,7 @@ int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
 		msg = fr_vasprintf(NULL, fmt, ap);
 		va_end(ap);
 
-		ROPTIONAL(REDEBUG, ERROR, "%s - System call (I/O) error - %s (%i)",
+		ROPTIONAL(REDEBUG, ERROR, "(TLS) %s - System call (I/O) error - %s (%i)",
 			  msg, fr_table_str_by_value(ssl_io_error_table, err, "<UNKNOWN>"), err);
 
 		talloc_free(msg);
@@ -269,7 +269,7 @@ int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
 		msg = fr_vasprintf(NULL, fmt, ap);
 		va_end(ap);
 
-		ROPTIONAL(REDEBUG, ERROR, "%s - TLS session error - %s (%i)",
+		ROPTIONAL(REDEBUG, ERROR, "(TLS) %s - TLS session error - %s (%i)",
 			  msg, fr_table_str_by_value(ssl_io_error_table, err, "<UNKNOWN>"), err);
 
 		talloc_free(msg);
@@ -281,25 +281,74 @@ int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
 }
 
 
-/** Print errors in the TLS thread local error stack
+/** Drain the error stack and print it, under a caller supplied prefix
  *
- * Drains the thread local OpenSSL error queue, and prints out errors.
+ * The prefix is what separates the two callers below, and nothing else does,
+ * so they share this.
+ *
+ * @param[in] request	to log through, or NULL for the global log.
+ * @param[in] prefix	printed ahead of the drained stack.
+ * @param[in] msg	describing the operation which failed.
+ * @param[in] ap	arguments for msg.
+ * @return the number of errors drained from the stack.
+ */
+static int tls_log_vperror(request_t *request, char const *prefix, char const *msg, va_list ap)
+{
+	int ret;
+
+	ret = fr_tls_strerror_vprintf(msg, ap);
+
+	ROPTIONAL(RPERROR, PERROR, "%s", prefix);
+
+	return ret;
+}
+
+/** Print errors in the TLS thread local error stack, for a TLS connection
+ *
+ * Drains the thread local OpenSSL error queue, and prints out errors under a
+ * `(TLS) ` prefix.
+ *
+ * Use fr_openssl_log_perror() for an OpenSSL call which has nothing to do
+ * with a TLS connection.
  *
  * @param[in] request	The current request (may be NULL).
  * @param[in] msg	Error message describing the operation being attempted.
  * @param[in] ...	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-int fr_tls_log(request_t *request, char const *msg, ...)
+int fr_tls_log_perror(request_t *request, char const *msg, ...)
 {
 	va_list ap;
 	int ret;
 
 	va_start(ap, msg);
-	ret = fr_tls_strerror_vprintf(msg, ap);
+	ret = tls_log_vperror(request, "(TLS) ", msg, ap);
 	va_end(ap);
 
-	ROPTIONAL(RPERROR, PERROR, " ");
+	return ret;
+}
+
+/** Print the OpenSSL error stack, for a call which has nothing to do with a TLS connection
+ *
+ * The same as fr_tls_log_perror(), without the `(TLS) ` prefix.  A module
+ * which signs a value, hashes a password, or reads a certificate from disk is
+ * calling OpenSSL without a TLS connection anywhere in sight, and marking
+ * those messages as TLS sends a reader looking for a connection which does
+ * not exist.
+ *
+ * @param[in] request	to log through, or NULL for the global log.
+ * @param[in] msg	describing the operation which failed.
+ * @param[in] ...	arguments for msg.
+ * @return the number of errors drained from the stack.
+ */
+int fr_openssl_log_perror(request_t *request, char const *msg, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, msg);
+	ret = tls_log_vperror(request, " ", msg, ap);
+	va_end(ap);
 
 	return ret;
 }
@@ -358,7 +407,7 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
 		 *	We failed to copy the data into the buffer
 		 *	so we can't do anything with it.
 		 */
-		REDEBUG2("Failed copying %u bytes into TLS log aggregation buffer - buffer is too small.", len);
+		REDEBUG2("(TLS) Failed copying %u bytes into TLS log aggregation buffer - buffer is too small.", len);
 		return 0;
 	}
 

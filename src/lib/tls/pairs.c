@@ -246,7 +246,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 		der_len = i2d_X509(cert, NULL);
 		if (der_len < 0) {
-			fr_tls_log(request, "Failed retrieving certificate");
+			fr_tls_log_perror(request, "Failed retrieving certificate");
 			return -1;
 		}
 		der_ctx = (fr_der_decode_ctx_t) {
@@ -260,7 +260,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 						attr_der_certificate, &FR_DBUFF_TMP(cert_der, (size_t)der_len), &der_ctx);
 		talloc_free(der_ctx.tmp_ctx);
 		if (slen < 0) {
-			fr_tls_log(request, "Failed decoding certificate");
+			fr_tls_log_perror(request, "Failed decoding certificate");
 			fr_pair_list_free(&tmp_list);
 			return -1;
 		}
@@ -279,7 +279,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	if (unlikely(X509_NAME_print_ex(fr_tls_bio_dbuff_thread_local(vp, 256, 0),
 					X509_get_subject_name(cert), 0, XN_FLAG_ONELINE) < 0)) {
 		fr_tls_bio_dbuff_thread_local_clear();
-		fr_tls_log(request, "Failed retrieving certificate subject");
+		fr_tls_log_perror(request, "Failed retrieving certificate subject");
 	error:
 		fr_pair_list_free(pair_list);
 		return -1;
@@ -301,7 +301,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 		slen = X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, cn, (size_t)slen + 1);
 		if (slen < 0) {
-			fr_tls_log(request, "Failed retrieving certificate common name");
+			fr_tls_log_perror(request, "Failed retrieving certificate common name");
 			goto error;
 		}
 	}
@@ -332,7 +332,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	if (unlikely(X509_NAME_print_ex(fr_tls_bio_dbuff_thread_local(vp, 256, 0),
 					X509_get_issuer_name(cert), 0, XN_FLAG_ONELINE) < 0)) {
 		fr_tls_bio_dbuff_thread_local_clear();
-		fr_tls_log(request, "Failed retrieving certificate issuer");
+		fr_tls_log_perror(request, "Failed retrieving certificate issuer");
 		goto error;
 	}
 	fr_pair_value_bstrdup_buffer_shallow(vp, fr_tls_bio_dbuff_thread_local_finalise_bstr(), true);
@@ -347,7 +347,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 		serial = X509_get0_serialNumber(cert);
 		if (!serial) {
-			fr_tls_log(request, "Failed retrieving certificate serial");
+			fr_tls_log_perror(request, "Failed retrieving certificate serial");
 			goto error;
 		}
 

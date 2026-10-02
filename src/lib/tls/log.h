@@ -75,7 +75,60 @@ void		_fr_tls_x509_objects_log(char const *file, int line,
 int		fr_tls_log_io_error(request_t *request, int err, char const *msg, ...)
 				    CC_HINT(format (printf, 3, 4));
 
-int		fr_tls_log(request_t *request, char const *msg, ...)  CC_HINT(format (printf, 2, 3));
+/** Print the OpenSSL error stack, under a message of our own
+ *
+ * For a failure which an OpenSSL call reported.  The stack holds why, and
+ * this drains it, so use it whenever an OpenSSL call has just returned an
+ * error.  Draining also keeps a stale entry from surfacing under some later,
+ * unrelated message.
+ *
+ * Use fr_tls_log_error() instead for a failure the server found for itself,
+ * where the stack holds nothing to drain.
+ */
+int		fr_tls_log_perror(request_t *request, char const *msg, ...)  CC_HINT(format (printf, 2, 3));
+
+/** Print the OpenSSL error stack, for a call unrelated to any TLS connection
+ *
+ * The same as fr_tls_log_perror(), without the `(TLS) ` prefix.  Use it
+ * wherever OpenSSL is called for something which is not a TLS connection:
+ * signing a value, hashing a password, reading a key from disk.  Calling
+ * those TLS would send a reader looking for a connection which is not there.
+ *
+ * RPERROR_SSL() is how a module reaches this.
+ */
+int		fr_openssl_log_perror(request_t *request, char const *msg, ...)  CC_HINT(format (printf, 2, 3));
+
+/** Print the OpenSSL error stack for the current request
+ *
+ * For a module which called an OpenSSL function unrelated to any TLS
+ * connection.  Takes `request` from the enclosing scope, as every R* macro
+ * does, and a NULL `request` logs globally.
+ *
+ * @param[in] _fmt	printf style format string.
+ * @param[in] ...	printf arguments.
+ */
+#define		RPERROR_SSL(_fmt, ...) fr_openssl_log_perror(request, _fmt, ## __VA_ARGS__)
+
+/** Log an error which the server found for itself
+ *
+ * For a check the server made, rather than something an OpenSSL call
+ * reported: a configuration which cannot work, a policy section which could
+ * not be pushed, a peer which offered the wrong thing.  The OpenSSL error
+ * stack holds nothing for these, so there is nothing to drain, and
+ * fr_tls_log_perror() would print an empty line where the reason should be.
+ *
+ * Every message carries a `(TLS) ` prefix.  LOG_PREFIX supplies `tls - ` only
+ * when there is no request, so without this prefix the messages which matter
+ * most, the ones attached to a request, are the ones with nothing to say
+ * where they came from.
+ *
+ * Needs a `request` in scope, as every R* macro does.  A NULL `request` logs
+ * globally.
+ *
+ * @param[in] _fmt	printf style format string.
+ * @param[in] ...	printf arguments.
+ */
+#define		fr_tls_log_error(_fmt, ...) ROPTIONAL(RERROR, ERROR, "(TLS) " _fmt, ## __VA_ARGS__)
 
 void		fr_tls_log_clear(void);
 

@@ -347,8 +347,8 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	 *	static identity.
 	 */
 	if (strcmp(identity, conf->psk_identity) != 0) {
-		ERROR("Supplied PSK identity %s does not match configuration.  Rejecting.",
-		      identity);
+		fr_tls_log_error("Supplied PSK identity %s does not match configuration.  Rejecting.",
+				 identity);
 		fr_tls_session_error_add(request, FR_ERROR_VALUE_PSK_IDENTITY_UNKNOWN);
 		return 0;
 	}
@@ -2036,7 +2036,7 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 	tls_session->ssl = SSL_new(ssl_ctx);
 	if (!tls_session->ssl) {
 		talloc_free(tls_session);
-		fr_tls_log(request, "Error creating new TLS session");
+		fr_tls_log_perror(request, "Error creating new TLS session");
 		return NULL;
 	}
 
@@ -2315,19 +2315,19 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 		RDEBUG2("Loading TLS session certificate \"%pV\"", &vp->data);
 
 		if (SSL_use_certificate_file(tls_session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			fr_tls_log(request, "Failed loading TLS session certificate \"%s\"",
+			fr_tls_log_perror(request, "Failed loading TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}
 
 		if (SSL_use_PrivateKey_file(tls_session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			fr_tls_log(request, "Failed loading TLS session certificate \"%s\"",
+			fr_tls_log_perror(request, "Failed loading TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}
 
 		if (SSL_check_private_key(tls_session->ssl) != 1) {
-			fr_tls_log(request, "Failed validating TLS session certificate \"%s\"",
+			fr_tls_log_perror(request, "Failed validating TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}
@@ -2337,13 +2337,13 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 */
 	} else {
 		if (!conf->chains || !conf->chains[0]->private_key_file) {
-			ERROR("TLS Server requires a private key file");
+			fr_tls_log_error("Server requires a private key file");
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_NO_SERVER_PRIVATE_KEY);
 			goto error;
 		}
 
 		if (!conf->chains || !conf->chains[0]->certificate_file) {
-			ERROR("TLS Server requires a certificate file");
+			fr_tls_log_error("Server requires a certificate file");
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_NO_SERVER_CERTIFICATE);
 			goto error;
 		}

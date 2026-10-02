@@ -134,7 +134,7 @@ static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **sel
 	}
 
 	if (!SSL_CTX_get0_chain_certs(ctx, &chain)) {
-		fr_tls_log(NULL, "Failed retrieving chain certificates");
+		fr_tls_log_perror(NULL, "Failed retrieving chain certificates");
 		return -1;
 	}
 
@@ -257,7 +257,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 	switch (chain->file_format) {
 	case SSL_FILETYPE_PEM:
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, chain->certificate_file))) {
-			fr_tls_log(NULL, "Failed reading certificate file \"%s\"",
+			fr_tls_log_perror(NULL, "Failed reading certificate file \"%s\"",
 				      chain->certificate_file);
 			return -1;
 		}
@@ -265,7 +265,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 
 	case SSL_FILETYPE_ASN1:
 		if (!(SSL_CTX_use_certificate_file(ctx, chain->certificate_file, chain->file_format))) {
-			fr_tls_log(NULL, "Failed reading certificate file \"%s\"",
+			fr_tls_log_perror(NULL, "Failed reading certificate file \"%s\"",
 				      chain->certificate_file);
 			return -1;
 		}
@@ -277,7 +277,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 	}
 
 	if (!(SSL_CTX_use_PrivateKey_file(ctx, chain->private_key_file, chain->file_format))) {
-		fr_tls_log(NULL, "Failed reading private key file \"%s\"",
+		fr_tls_log_perror(NULL, "Failed reading private key file \"%s\"",
 			      chain->private_key_file);
 		return -1;
 	}
@@ -322,12 +322,12 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 			fclose(fp);
 
 			if (!cert) {
-				fr_tls_log(NULL, "Failed reading certificate file \"%s\"", filename);
+				fr_tls_log_perror(NULL, "Failed reading certificate file \"%s\"", filename);
 				return -1;
 			}
 
 			if (SSL_CTX_add0_chain_cert(ctx, cert) != 1) {
-				fr_tls_log(NULL, "Failed adding certificate to chain for \"%s\"", filename);
+				fr_tls_log_perror(NULL, "Failed adding certificate to chain for \"%s\"", filename);
 				X509_free(cert);
 				return -1;
 			}
@@ -365,7 +365,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 						chain->verify_mode) < 0) return -1;
 
 		if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
-			fr_tls_log(NULL, "Failed retrieving chain certificates");
+			fr_tls_log_perror(NULL, "Failed retrieving chain certificates");
 			return -1;
 		}
 
@@ -493,7 +493,7 @@ int tls_ctx_version_set(
 		}
 
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
-			fr_tls_log(NULL, "Failed setting TLS maximum version");
+			fr_tls_log_perror(NULL, "Failed setting TLS maximum version");
 			goto error;
 		}
 	}
@@ -522,7 +522,7 @@ int tls_ctx_version_set(
 		}
 
 		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
-			fr_tls_log(NULL, "Failed setting TLS minimum version");
+			fr_tls_log_perror(NULL, "Failed setting TLS minimum version");
 			goto error;
 		}
 	}
@@ -551,7 +551,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 
 	ctx = SSL_CTX_new(TLS_method());
 	if (!ctx) {
-		fr_tls_log(NULL, "Failed creating TLS context");
+		fr_tls_log_perror(NULL, "Failed creating TLS context");
 		return NULL;
 	}
 
@@ -700,7 +700,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 *      It's also possible to add extra virtual server lookups
 		 */
 		if (!X509_STORE_load_locations(verify_store, conf->ca_file, conf->ca_path)) {
-			fr_tls_log(NULL, "Failed reading Trusted root CA list \"%s\"",
+			fr_tls_log_perror(NULL, "Failed reading Trusted root CA list \"%s\"",
 				      conf->ca_file ? conf->ca_file : conf->ca_path);
 			goto error;
 		}
@@ -800,7 +800,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 				 */
 				DEBUG3("%s chain", fr_tls_utils_x509_pkey_type(our_cert));
 				if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
-					fr_tls_log(NULL, "Failed retrieving chain certificates");
+					fr_tls_log_perror(NULL, "Failed retrieving chain certificates");
 					goto error;
 				}
 
@@ -900,7 +900,7 @@ post_ca:
 	 */
 	if (conf->cipher_list) {
 		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			fr_tls_log(NULL, "Failed setting cipher list");
+			fr_tls_log_perror(NULL, "Failed setting cipher list");
 			goto error;
 		}
 	}
@@ -914,7 +914,7 @@ post_ca:
 	 */
 	if (conf->cipher_suites) {
 		if (!SSL_CTX_set_ciphersuites(ctx, conf->cipher_suites)) {
-			fr_tls_log(NULL, "Failed setting cipher suites");
+			fr_tls_log_perror(NULL, "Failed setting cipher suites");
 			goto error;
 		}
 	}
@@ -929,7 +929,7 @@ post_ca:
 
 		ssl = SSL_new(ctx);
 		if (!ssl) {
-			fr_tls_log(NULL, "Failed creating temporary SSL session");
+			fr_tls_log_perror(NULL, "Failed creating temporary SSL session");
 			goto error;
 		}
 

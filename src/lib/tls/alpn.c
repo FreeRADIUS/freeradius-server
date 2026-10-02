@@ -149,7 +149,7 @@ int fr_tls_ctx_alpn_set(SSL_CTX *ctx, fr_tls_conf_t const *conf, bool client)
 	 */
 	if (!conf->alpn) {
 		if (conf->alpn_required) {
-			fr_tls_log(NULL, "ALPN is required, but no protocols were set");
+			ERROR("ALPN is required, but no protocols were set");
 			return -1;
 		}
 
@@ -157,8 +157,8 @@ int fr_tls_ctx_alpn_set(SSL_CTX *ctx, fr_tls_conf_t const *conf, bool client)
 	}
 
 	if (!tls_alpn_valid(conf->alpn, conf->sizeof_alpn)) {
-		fr_tls_log(NULL, "ALPN protocol list is malformed, or does not match sizeof_alpn (%zu)",
-			   conf->sizeof_alpn);
+		ERROR("ALPN protocol list is malformed, or does not match sizeof_alpn (%zu)",
+		      conf->sizeof_alpn);
 		return -1;
 	}
 
@@ -168,7 +168,7 @@ int fr_tls_ctx_alpn_set(SSL_CTX *ctx, fr_tls_conf_t const *conf, bool client)
 		 *	most of the SSL_CTX_set_* calls around it.
 		 */
 		if (SSL_CTX_set_alpn_protos(ctx, conf->alpn, (unsigned int) conf->sizeof_alpn) != 0) {
-			fr_tls_log(NULL, "Failed setting the ALPN protocol list");
+			fr_tls_log_perror(NULL, "Failed setting the ALPN protocol list");
 			return -1;
 		}
 	} else {

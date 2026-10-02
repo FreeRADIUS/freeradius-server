@@ -93,7 +93,7 @@ static void tls_connection_check(fr_tls_connection_t *conn)
 	}
 
 	if (tls_session->result == FR_TLS_RESULT_ERROR) {
-		fr_tls_log(conn->request, "TLS handshake failed");
+		fr_tls_log_perror(conn->request, "TLS handshake failed");
 
 		/*
 		 *	This sets the state and wakes the request, which is
@@ -194,7 +194,7 @@ void fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_
 	 *	A failure inside TLS gets no value here.  Either one of the
 	 *	rules in src/lib/tls/alerts.md already recorded a value which
 	 *	says what the rule was, or OpenSSL raised the error and
-	 *	fr_tls_log() has already reported what OpenSSL said.  A value
+	 *	fr_tls_log_perror() has already reported what OpenSSL said.  A value
 	 *	meaning "something in TLS went wrong" would displace neither
 	 *	and add nothing.
 	 */
@@ -423,7 +423,7 @@ static unlang_action_t tls_connection_handshake(request_t *request, void *uctx)
 	ua = fr_tls_session_async_handshake_push(request, conn->tls_session);
 	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
 
-	fr_tls_log(conn->request, "Failed pushing a TLS handshake round");
+	fr_tls_log_error("Failed pushing a TLS handshake round");
 	return tls_connection_error(request, conn);
 }
 

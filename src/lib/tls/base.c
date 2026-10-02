@@ -389,7 +389,7 @@ int fr_openssl_thread_init(size_t async_pool_size_init, size_t async_pool_size_m
 		bool *init = talloc_zero(NULL, bool);
 
 		if (ASYNC_init_thread(async_pool_size_max, async_pool_size_init) != 1) {
-			fr_tls_log(NULL, "Failed initialising OpenSSL async context pool");
+			fr_openssl_log_perror(NULL, "Failed initialising OpenSSL async context pool");
 			return -1;
 		}
 
@@ -421,12 +421,12 @@ void fr_openssl_free(void)
 static void _openssl_provider_free(void)
 {
 	if (openssl_default_provider && !OSSL_PROVIDER_unload(openssl_default_provider)) {
-		fr_tls_log(NULL, "Failed unloading default provider");
+		fr_openssl_log_perror(NULL, "Failed unloading default provider");
 	}
 	openssl_default_provider = NULL;
 
 	if (openssl_legacy_provider && !OSSL_PROVIDER_unload(openssl_legacy_provider)) {
-		fr_tls_log(NULL, "Failed unloading legacy provider");
+		fr_openssl_log_perror(NULL, "Failed unloading legacy provider");
 	}
 	openssl_legacy_provider = NULL;
 }
@@ -452,7 +452,7 @@ static void *fr_openssl_stack_alloc(size_t *len)
 	stack = mmap(NULL, openssl_stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 #endif
 	if (stack == MAP_FAILED) {
-		fr_tls_log(NULL, "Failed allocating OpenSSL stack: %s", fr_syserror(errno));
+		fr_openssl_log_perror(NULL, "Failed allocating OpenSSL stack: %s", fr_syserror(errno));
 		return NULL;
 	}
 	*len = openssl_stack_size;
@@ -488,7 +488,7 @@ int fr_openssl_init(void)
 	pthread_attr_destroy(&tattr);
 
 	if (rcode != 0) {
-		fr_tls_log(NULL, "Failed getting stack size");
+		fr_openssl_log_perror(NULL, "Failed getting stack size");
 		return -1;
 	}
 
@@ -497,7 +497,7 @@ int fr_openssl_init(void)
 	 *	by OpenSSL.
 	 */
 	if (CRYPTO_set_mem_functions(fr_openssl_talloc, fr_openssl_talloc_realloc, fr_openssl_talloc_free) != 1) {
-		fr_tls_log(NULL, "Failed to set OpenSSL memory allocation functions.  fr_openssl_init() called too late");
+		fr_openssl_log_perror(NULL, "Failed to set OpenSSL memory allocation functions.  fr_openssl_init() called too late");
 		return -1;
 	}
 
@@ -507,7 +507,7 @@ int fr_openssl_init(void)
 	 */
 #if OPENSSL_VERSION_NUMBER >= 0x30400000L
 	if (ASYNC_set_mem_functions(fr_openssl_stack_alloc, fr_openssl_stack_free) != 1) {
-		fr_tls_log(NULL, "Failed to set OpenSSL async stack allocation functions");
+		fr_openssl_log_perror(NULL, "Failed to set OpenSSL async stack allocation functions");
 		return -1;
 	}
 #endif
@@ -521,7 +521,7 @@ int fr_openssl_init(void)
 	 *	the contexts have been cleaned up.
 	 */
 	if (OPENSSL_init_ssl(OPENSSL_INIT_NO_ATEXIT | OPENSSL_INIT_LOAD_CONFIG, NULL) != 1) {
-		fr_tls_log(NULL, "Failed calling OPENSSL_init_crypto()");
+		fr_openssl_log_perror(NULL, "Failed calling OPENSSL_init_crypto()");
 		return -1;
 	}
 
@@ -530,7 +530,7 @@ int fr_openssl_init(void)
 	 */
 	openssl_default_provider = OSSL_PROVIDER_load(NULL, "default");
 	if (!openssl_default_provider) {
-		fr_tls_log(NULL, "Failed loading default provider");
+		fr_openssl_log_perror(NULL, "Failed loading default provider");
 		return -1;
 	}
 
@@ -541,7 +541,7 @@ int fr_openssl_init(void)
 	 */
 	openssl_legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 	if (!openssl_legacy_provider) {
-		fr_tls_log(NULL, "Failed loading legacy provider");
+		fr_openssl_log_perror(NULL, "Failed loading legacy provider");
 		return -1;
 	}
 
@@ -570,7 +570,7 @@ int fr_openssl_init(void)
 	 */
 	fr_tls_session_ex_index = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 	if (fr_tls_session_ex_index < 0) {
-		fr_tls_log(NULL, "Failed allocating an SSL_SESSION ex_data index");
+		fr_openssl_log_perror(NULL, "Failed allocating an SSL_SESSION ex_data index");
 		return -1;
 	}
 
@@ -606,7 +606,7 @@ int fr_openssl_init(void)
 int fr_openssl_fips_mode(bool enabled)
 {
 	if (!EVP_set_default_properties(NULL, enabled ? "fips=yes" : "-fips")) {
-		fr_tls_log(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
+		fr_openssl_log_perror(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
 		return -1;
 	}
 

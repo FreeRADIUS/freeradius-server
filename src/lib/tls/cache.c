@@ -253,7 +253,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess,
 	ret = SSL_SESSION_set1_ticket_appdata(sess, fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff));
 	fr_dbuff_free_talloc(&dbuff);	/* OpenSSL memdups the data */
 	if (ret != 1) {
-		fr_tls_log(request, "Session ID %pV - Failed setting application data", session_id);
+		fr_tls_log_perror(request, "Session ID %pV - Failed setting application data", session_id);
 		return -1;
 	}
 
@@ -272,7 +272,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess,
 	 *	Extract the session-state list from the ticket.
 	 */
 	if (SSL_SESSION_get0_ticket_appdata(sess, (void **)&data, &data_len) != 1) {
-		fr_tls_log(request, "Session ID %pV - Failed retrieving application data", session_id);
+		fr_tls_log_perror(request, "Session ID %pV - Failed retrieving application data", session_id);
 		return -1;
 	}
 
@@ -462,7 +462,7 @@ static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
 
 	sess = d2i_SSL_SESSION(NULL, p, vp->vp_length);
 	if (!sess) {
-		fr_tls_log(request, "Failed loading persisted session");
+		fr_tls_log_perror(request, "Failed loading persisted session");
 		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_LOAD_SESSION_MALFORMED);
 		goto error;
 	}
@@ -798,7 +798,7 @@ static unlang_action_t tls_cache_load_client_resume(request_t *request, void *uc
 	}
 
 	if (SSL_set_session(tls_session->ssl, tls_cache->load.sess) != 1) {
-		fr_tls_log(request, "Failed setting the session to resume");
+		fr_tls_log_perror(request, "Failed setting the session to resume");
 		tls_cache_load_state_reset(request, tls_cache);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -913,7 +913,7 @@ static unlang_action_t tls_cache_stateless_push(request_t *request, fr_tls_sessi
 
 	ua = fr_tls_call_push(child, tls_cache_stateless_resume, conf, tls_session, false);
 	if (ua == UNLANG_ACTION_FAIL) {
-		PERROR("Failed calling TLS virtual server");
+		fr_tls_log_error("Failed calling TLS virtual server");
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}

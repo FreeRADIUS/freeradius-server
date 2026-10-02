@@ -666,7 +666,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(unla
 			      (int)iterations,
 			      evp_md,
 			      (int)digest_len, (unsigned char *)digest) == 0) {
-		fr_tls_log(request, "PBKDF2 digest failure");
+		RPERROR_SSL("PBKDF2 digest failure");
 		goto finish;
 	}
 
@@ -938,7 +938,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(unl
 			      (int)pbkdf2_buf.iterations,
 			      evp_md,
 			      (int)digest_len, (unsigned char *)digest) == 0) {
-		fr_tls_log(request, "PBKDF2_SHA256 digest failure");
+		RPERROR_SSL("PBKDF2_SHA256 digest failure");
 		RETURN_UNLANG_INVALID;
 	}
 

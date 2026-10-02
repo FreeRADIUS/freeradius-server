@@ -197,7 +197,7 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 	cert = SSL_get_certificate(ssl);
 	if (!cert) {
-		fr_tls_log(request, "No server certificate found in SSL session");
+		RPERROR_SSL("No server certificate found in SSL session");
 	error:
 		X509_STORE_CTX_free(server_store_ctx);
 		X509_STORE_free(server_store);
@@ -207,7 +207,7 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 	server_store = SSL_CTX_get_cert_store(SSL_get_SSL_CTX(ssl));
 	if (!server_store) {
-		fr_tls_log(request, "Failed retrieving SSL session cert store");
+		RPERROR_SSL("Failed retrieving SSL session cert store");
 		goto error;
 	}
 
@@ -222,7 +222,7 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 	(void)SSL_get0_chain_certs(ssl, &our_chain);
 	if (!our_chain) {
 #endif
-		fr_tls_log(request, "Failed retrieving chain certificates from current SSL session");
+		RPERROR_SSL("Failed retrieving chain certificates from current SSL session");
 		goto error;
 	}
 
@@ -252,7 +252,7 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 		for (i = 0; i < num; i++) {
 			if (X509_STORE_add_cert(server_store, sk_X509_value(our_chain, i)) != 1) {
-				fr_tls_log(request, "Failed adding certificate to trusted store");
+				RPERROR_SSL("Failed adding certificate to trusted store");
 				goto error;
 			}
 		}
@@ -265,7 +265,7 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 	 */
 	MEM(server_store_ctx = X509_STORE_CTX_new());
 	if (X509_STORE_CTX_init(server_store_ctx, server_store, NULL, NULL) == 0) {
-		fr_tls_log(request, "Failed initialising SSL session cert store ctx");
+		RPERROR_SSL("Failed initialising SSL session cert store ctx");
 		goto error;
 	}
 
@@ -278,14 +278,14 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 
  		subject = X509_get_subject_name(cert);
 		if (!subject) {
-			fr_tls_log(request, "Couldn't retrieve subject name of SSL session cert");
+			RPERROR_SSL("Couldn't retrieve subject name of SSL session cert");
 			goto error;
 		}
 		MEM(subject_str = X509_NAME_oneline(subject, NULL, 0));
 
 		issuer = X509_get_issuer_name(cert);
 		if (!issuer) {
-			fr_tls_log(request, "Couldn't retrieve issuer name of SSL session cert");
+			RPERROR_SSL("Couldn't retrieve issuer name of SSL session cert");
 			OPENSSL_free(subject_str);
 			goto error;
 		}
@@ -293,11 +293,11 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 		switch (ret) {
 		case 0:
-			fr_tls_log(request, "Issuer \"%s\" of \"%s\" not found in certificate store",
+			RPERROR_SSL("Issuer \"%s\" of \"%s\" not found in certificate store",
 				      issuer_str, subject_str);
 			break;
 		default:
-			fr_tls_log(request, "Error retrieving issuer \"%s\" of \"%s\" from certificate store",
+			RPERROR_SSL("Error retrieving issuer \"%s\" of \"%s\" from certificate store",
 				      issuer_str, subject_str);
 			break;
 		}
