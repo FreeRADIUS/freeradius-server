@@ -4,10 +4,10 @@
 #  container.
 #
 #  Sampling starts switched off.  The server.start trigger begins sampling
-#  once the worker threads are running, and the server.stop trigger ends it
-#  before the worker threads are torn down, so startup and shutdown stay out
-#  of the profile.  The script passes both triggers as -S overrides, so the
-#  shared radiusd.conf is the same in service mode and in profiling mode.
+#  once the server is running, and the server.stop trigger ends it before
+#  the server shuts down, so startup and shutdown stay out of the profile.
+#  The script passes both triggers as -S overrides, so the shared
+#  radiusd.conf is the same in service mode and in profiling mode.
 #
 #  The load generator ends the run.  The test configuration sets
 #  on_complete = exit on the load listener.  Once the load generator has
@@ -59,8 +59,11 @@ echo ""
 #
 echo "INFO: starting freeradius under gperftools at $(date)"
 STATUS=0
+#  -s must be used instead of -f with gperftools because gperftools only
+#  samples the main thread.  FreeRADIUS request processing functions
+#  must run on the main thread for proper profiling.
 CPUPROFILE_FREQUENCY=1000 \
-freeradius -f -l stdout \
+freeradius -s -l stdout \
   -S resources.talloc_skip_cleanup=yes \
   -S "trigger.server.start=%gperftools.start('$PROFILE') && ${TRIGGER_SERVER_START_APPEND:-true}" \
   -S "trigger.server.stop=%gperftools.stop() && ${TRIGGER_SERVER_STOP_APPEND:-true}" \
@@ -74,6 +77,17 @@ freeradius -f -l stdout \
 #  script did not get this far, rather than that the run was fine.
 #
 echo "${STATUS}" > "$PROFILING_RESULT_DIR/exit-status"
+
+#  Save the proto_load stats CSV file to the results directory
+#  if it exists.  Hardcoded to same path set in the docker compose file
+#  for the container.
+LOADGEN_CSV=/etc/freeradius/stats/load-generator-stats.csv
+if [ -s "$LOADGEN_CSV" ]; then
+  cp "$LOADGEN_CSV" "$PROFILING_RESULT_DIR/load-stats.csv"
+  echo "INFO: wrote load-stats.csv"
+else
+  echo "WARNING: no load-generator statistics at ${LOADGEN_CSV}"
+fi
 
 if [ "${STATUS}" -ne 0 ]; then
   if [ "${STATUS}" -gt 128 ]; then
