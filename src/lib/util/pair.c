@@ -3180,6 +3180,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     PAIR_NAME_LOCATION(vp), vp->vp_length, len);
 		}
 
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 		parent = talloc_parent(vp->vp_ptr);
 		if (parent != vp) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: " PAIR_NAME " char buffer is not "
@@ -3188,6 +3189,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     PAIR_NAME_LOCATION(vp), vp,
 					     parent, parent ? talloc_get_name(parent) : "NULL");
 		}
+#endif
 	}
 		break;
 
@@ -3220,6 +3222,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     PAIR_NAME_LOCATION(vp));
 		}
 
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 		parent = talloc_parent(vp->vp_ptr);
 		if (parent != vp) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: " PAIR_NAME " char buffer is not "
@@ -3228,6 +3231,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     PAIR_NAME_LOCATION(vp), vp,
 					     parent, parent ? talloc_get_name(parent) : "NULL");
 		}
+#endif
 	}
 		break;
 
@@ -3278,6 +3282,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 	       if (vp->vp_group.verified) break;
 
 	       fr_pair_list_foreach(&vp->vp_group, child) {
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 			TALLOC_CTX *parent = talloc_parent(child);
 
 			fr_fatal_assert_msg(parent == vp,
@@ -3287,6 +3292,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					    PAIR_NAME_LOCATION(child), PAIR_NAME_LOCATION(vp),
 					    vp, talloc_get_name(vp),
 					    parent, talloc_get_name(parent));
+#endif
 
 			/*
 			 *	Check if the child can be in the parent.
@@ -3346,7 +3352,9 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_list_t const *list, bool verify_values)
 {
 	fr_pair_t		*slow, *fast;
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	TALLOC_CTX		*parent;
+#endif
 
 	if (fr_pair_list_empty(list)) return;	/* Fast path */
 
@@ -3375,6 +3383,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 
 		fr_pair_verify(__FILE__, __LINE__, NULL, list, slow, verify_values);
 
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) {
 		bad_parent:
@@ -3388,6 +3397,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 					     expected, talloc_get_name(expected),
 					     parent, parent ? talloc_get_name(parent) : "NULL");
 		}
+#endif
 	}
 
 	/*
@@ -3398,8 +3408,10 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 
 		fr_pair_verify(__FILE__, __LINE__, NULL, list, slow, verify_values);
 
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) goto bad_parent;
+#endif
 	}
 
 	UNCONST(fr_pair_list_t *, list)->verified = true;
