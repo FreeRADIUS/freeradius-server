@@ -1321,7 +1321,8 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	fr_assert((size_t) packet_len <= u->packet_len);
 
 	/*
-	 *	Add Proxy-State to the tail end of the packet.
+	 *	Add Proxy-State to the "extra" list.  It has been added
+	 *	to the encoded packet by `fr_radius_encode`.
 	 *
 	 *	We need to add it here, and NOT in
 	 *	request->request_pairs, because multiple modules
@@ -1333,7 +1334,6 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 		MEM(vp = fr_pair_afrom_da(u, attr_proxy_state));
 		fr_pair_value_memdup(vp, (uint8_t const *) &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
 		fr_pair_append(&u->extra, vp);
-		packet_len += 2 + sizeof(inst->common_ctx.proxy_state);
 	}
 
 	/*
