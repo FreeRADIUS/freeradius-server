@@ -52,19 +52,18 @@ echo ""
 #  server.stop trigger stops the profiler, which flushes the file, before
 #  the process exits.
 #
-#  The -S overrides below replace the trigger values from radiusd.conf
-#  so a suite that also needs server.start or server.stop, puts its own
-#  expansion in TRIGGER_SERVER_START_APPEND and TRIGGER_SERVER_STOP_APPEND and
-#  this script appends those values to the triggers.  dynamic-clients relies on
-#  this for its server-start event.
+#  The -S overrides below replace for the triggers also use
+#  TRIGGER_SERVER_START_APPEND and TRIGGER_SERVER_STOP_APPEND environment variables,
+#  when set and non-empty. These env variables are optionally set by a test suite's
+#  compose environment if needed.
 #
 echo "INFO: starting freeradius under gperftools at $(date)"
 STATUS=0
 CPUPROFILE_FREQUENCY=1000 \
 freeradius -f -l stdout \
   -S resources.talloc_skip_cleanup=yes \
-  -S "trigger.server.start=%gperftools.start('$PROFILE')${TRIGGER_SERVER_START_APPEND:-}" \
-  -S "trigger.server.stop=%gperftools.stop()${TRIGGER_SERVER_STOP_APPEND:-}" \
+  -S "trigger.server.start=%gperftools.start('$PROFILE') && ${TRIGGER_SERVER_START_APPEND:-true}" \
+  -S "trigger.server.stop=%gperftools.stop() && ${TRIGGER_SERVER_STOP_APPEND:-true}" \
   > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || STATUS=$?
 
 #
