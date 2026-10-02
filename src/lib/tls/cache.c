@@ -231,11 +231,6 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess,
 	for (vp = fr_pair_dcursor_init(&dcursor, &request->session_state_pairs);
 	     vp;
 	     vp = fr_dcursor_current(&dcursor)) {
-		if (vp->da == attr_tls_error) {
-			(void) fr_dcursor_next(&dcursor);
-			continue;
-		}
-
 		slen = fr_internal_encode_pair(&dbuff, &dcursor, NULL);
 		if (slen < 0) {
 			RPERROR("Session ID %pV - Failed serialising session-state list", session_id);

@@ -134,7 +134,7 @@ fi
 #  `Error` says what went wrong.  `Sent-Alert` is the value which tells an
 #  administrator to look in the reply list.
 #
-grep -q "session-state.Error = ::Sent-Alert" "$LOG" || \
+grep -q "request.Error = ::Sent-Alert" "$LOG" || \
 	fail "the Sent-Alert error was not added to the session-state list"
 
 #

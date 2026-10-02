@@ -1215,10 +1215,10 @@ void fr_tls_session_error_add(request_t *request, uint32_t error)
 
 	if (!request) return;
 
-	MEM(pair_append_session_state(&vp, attr_tls_error) >= 0);
+	MEM(pair_append_request(&vp, attr_tls_error) >= 0);
 	vp->vp_uint32 = error;
 
-	RDEBUG2("session-state.%pP", vp);
+	RDEBUG2("request.%pP", vp);
 }
 
 /** Instruct fr_tls_session_async_handshake to create a synthesised TLS alert record and send it to the peer

@@ -198,7 +198,7 @@ tls_pair required -L 'radius/1.1' -l --
 grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
 	fail "the server did not refuse a session which agreed on no protocol"
 
-grep -q "session-state.Error = ::ALPN-Failed" "$SERVER_LOG" || \
+grep -q "request.Error = ::ALPN-Failed" "$SERVER_LOG" || \
 	fail "the refusal did not record ALPN-Failed"
 
 if grep -q "TLS handshake completed" "$SERVER_LOG"; then

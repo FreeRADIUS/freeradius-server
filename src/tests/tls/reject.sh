@@ -154,11 +154,11 @@ fi
 #  rejected afterwards, so both alert lists must be empty.  alert_recv.sh and
 #  alert_send.sh are where a populated alert list is checked.
 #
-grep -q "session-state.Error = ::Load-Session-Not-Found" "$LOG" || \
+grep -q "request.Error = ::Load-Session-Not-Found" "$LOG" || \
 	fail "the cache miss did not record Load-Session-Not-Found"
 
-grep -A2 "| parent.session-state.Error" "$LOG" | grep -q -- "--> true" || \
-	fail "fail session could not read parent.session-state.Error"
+grep -A2 "| parent.request.Error" "$LOG" | grep -q -- "--> true" || \
+	fail "fail session could not read parent.request.Error"
 
 grep -A2 "| parent.request.Alert" "$LOG" | grep -q -- "--> false" || \
 	fail "fail session saw a request.Alert, although no alert was received"

@@ -131,7 +131,7 @@ fi
 #  the peer's alert and usually finishes before it notices the socket, so the
 #  value appears in roughly two runs out of five.
 #
-grep -q "session-state.Error = ::System-Call-Failed" "$LOG" || \
+grep -q "request.Error = ::System-Call-Failed" "$LOG" || \
 	fail "the dead socket did not record System-Call-Failed"
 
 touch "$RECEIPT"

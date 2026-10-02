@@ -144,7 +144,7 @@ fi
 #  `Error` says what went wrong.  `Received-Alert` is the value which tells
 #  an administrator to look in the request list.
 #
-grep -q "session-state.Error = ::Received-Alert" "$LOG" || \
+grep -q "request.Error = ::Received-Alert" "$LOG" || \
 	fail "the Received-Alert error was not added to the session-state list"
 
 #
