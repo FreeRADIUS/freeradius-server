@@ -63,6 +63,12 @@ echo ""
 #                          server.start and server.stop triggers switch
 #                          instrumentation on and off
 #
+#  The -S overrides below replace for the triggers also use
+#  TRIGGER_SERVER_START_APPEND and TRIGGER_SERVER_STOP_APPEND environment variables,
+#  which are optionally set by a test suite's compose environment if needed.
+#  These env variables are only needed if the testcases define and use their
+#  own server.start and server.stop actions.
+#
 echo "INFO: starting freeradius under callgrind at $(date)"
 STATUS=0
 valgrind \
@@ -80,8 +86,8 @@ valgrind \
   --instr-atstart=no \
   freeradius -f -l stdout \
     -S resources.talloc_skip_cleanup=yes \
-    -S "trigger.server.start=%callgrind.start()${TRIGGER_SERVER_START_APPEND:-}" \
-    -S "trigger.server.stop=%callgrind.stop()${TRIGGER_SERVER_STOP_APPEND:-}" \
+    -S "trigger.server.start=%callgrind.start()${TRIGGER_SERVER_START_APPEND}" \
+    -S "trigger.server.stop=%callgrind.stop()${TRIGGER_SERVER_STOP_APPEND}" \
   > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || STATUS=$?
 
 #
@@ -94,6 +100,17 @@ valgrind \
 #  that the run was fine.
 #
 echo "${STATUS}" > "$PROFILING_RESULT_DIR/exit-status"
+
+#  Save the proto_load stats CSV file to the results directory
+#  if it exists.  Hardcoded to same path set in the docker compose file
+#  for the container.
+LOADGEN_CSV=/etc/freeradius/stats/load-generator-stats.csv
+if [ -s "$LOADGEN_CSV" ]; then
+  cp "$LOADGEN_CSV" "$PROFILING_RESULT_DIR/load-stats.csv"
+  echo "INFO: wrote load-stats.csv"
+else
+  echo "WARNING: no load-generator statistics at ${LOADGEN_CSV}"
+fi
 
 if [ "${STATUS}" -ne 0 ]; then
   #  An exit status over 128 means that a signal killed valgrind.  139 is
