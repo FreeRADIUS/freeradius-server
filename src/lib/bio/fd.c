@@ -1085,14 +1085,19 @@ static void fr_bio_fd_el_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 
 	my->info.connect_errno = fd_errno;
 
-	if (my->connect.error) {
-		my->connect.error(&my->bio);
-	}
-
 	/*
 	 *	The entire bio is unusable.
 	 */
 	(void) fr_bio_shutdown(&my->bio);
+
+	/*
+	 *	It's possible that the bio may be freed in the error callback,
+	 *	especially if it signals a connection to reconnect, potentially
+	 *	feeing the original connection handle.
+	 */
+	if (my->connect.error) {
+		my->connect.error(&my->bio);
+	}
 }
 
 /** Connect callback for when the socket is writable.
