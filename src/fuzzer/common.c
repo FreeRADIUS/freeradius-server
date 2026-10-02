@@ -30,6 +30,7 @@ TALLOC_CTX		*autofree = NULL;
 
 fr_dict_t		*dict = NULL;
 fr_dict_attr_t const	*root_da = NULL;
+char const		*fuzzer_protocol = NULL;
 
 fr_dict_protocol_t	*dl_proto = NULL;
 
@@ -208,6 +209,8 @@ int fuzzer_common_init(int *argc, char ***argv, bool load_proto)
 		fr_perror("Failed to find protocol for fuzzer");
 		return -1;
 	}
+
+	fuzzer_protocol = proto;
 
 	if (root_attr) {
 		root_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict), root_attr);
