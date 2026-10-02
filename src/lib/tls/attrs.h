@@ -39,6 +39,7 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_serial;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_signature;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_signature_algorithm;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_issuer;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_serial_number_and_issuer;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_not_before;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_not_after;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_subject;
