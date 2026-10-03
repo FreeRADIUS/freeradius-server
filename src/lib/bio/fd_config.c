@@ -54,13 +54,18 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CO
 	return 0;
 }
 
+/** Parse a socket buffer size, and check that it fits into the "int" taken by setsockopt()
+ *
+ *  Note that this function parses a plain integer.  cf_table_parse_uint32() looks the value up in
+ *  a table taken from rule->uctx, and these rules have no uctx.
+ */
 static int send_recv_buf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
-	uint32_t size;
+	int		ret;
+	uint32_t	size;
 
-	if (cf_table_parse_uint32(ctx, out, parent, ci, rule) < 0) {
-		return -1;
-	}
+	ret = cf_pair_parse_value(ctx, out, parent, ci, rule);
+	if (ret < 0) return ret;
 
 	size = *(uint32_t *) out;
 	if (size > INT_MAX) {
