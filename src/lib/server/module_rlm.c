@@ -1383,7 +1383,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			 *	section for backwards compatibility.
 			 */
 			prev = cf_item_remove(modules, mod_cs);
-			cf_item_add(static_cs, mod_cs);
+			(void) cf_item_add(static_cs, mod_cs);
 
 			/*
 			 *	Find the previous item that's a section
@@ -1395,7 +1395,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			 */
 			mod_cs = cf_item_to_section(prev);
 		}
-		cf_item_add(modules, static_cs);
+		(void) cf_item_add(modules, static_cs);
 	}
 	DEBUG2("#### Bootstrapping static modules ####");
 	cf_log_debug(modules, " modules {");

@@ -123,7 +123,31 @@ struct cf_section {
 
 	CONF_SECTION		*template;
 };
+
+/** Limit the nesting depth.
+ *
+ *  256 is way past what any human being would create, and way past
+ *  anything that's reasonable.
+ */
 #define CONF_SECTION_MAX_DEPTH 256
+
+/**  Limit the number of children that a section can have.
+ *
+ *  This limit is largely for the fuzzers, which find pathological
+ *  cases of copying references.  When copying a ${name} that resolves
+ *  to a section, cf_expand_variables() copies that section into the
+ *  enclosing one. Two references per section double the item count at
+ *  each level, so each extra pair of lines quadruples the memory.
+ *
+ *  Instead of having a limit just for references, we instead limit
+ *  the total number of children that a section can have.
+ *
+ *  The number 1024 here is picked arbitrarily.  It's large enough to
+ *  not affect most cases, including the "cheat" of using the
+ *  configuration as a read-only key-value store.  However, if you're
+ *  storing more than 1024 things, you should really use a database.
+ */
+#define CF_SECTION_MAX_CHILDREN (1024)
 
 /*
  *	Private getter for cf_file.c's parser hook - the public API is the

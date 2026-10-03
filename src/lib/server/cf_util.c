@@ -391,27 +391,36 @@ static fr_cmp_ret_t _cf_ident2_cmp(void const *a, void const *b)
  * @param[in] parent	to add child to.
  * @param[in] child	to add.
  */
-void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
+int _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 {
 	fr_assert(parent != child);
 
-	if (!parent || !child) return;
+	if (!parent || !child) return -1;
+
+	if (fr_dlist_num_elements(&parent->children) > CF_SECTION_MAX_CHILDREN) {
+		ERROR("%s[%d]: There are too many (%u) entries in this configuration section. "
+		      "There is likely some structural issue with the configuration files",
+		      parent->filename, parent->lineno, CF_SECTION_MAX_CHILDREN);
+		return -1;
+	}
 
 	/*
 	 *	New child, add child trees.
 	 */
 	if (!parent->ident1) parent->ident1 = fr_rb_inline_alloc(parent, CONF_ITEM, ident1_node,
 								 _cf_ident1_cmp, NULL);
+
 	fr_rb_insert(parent->ident1, child);
 	fr_assert(!fr_dlist_entry_in_list(&child->entry));
 	fr_dlist_insert_tail(&parent->children, child);	/* Append to the list of children */
 
-	if (parent->type != CONF_ITEM_SECTION) return;	/* Only sections can have ident2 trees */
+	if (parent->type != CONF_ITEM_SECTION) return 0; /* Only sections can have ident2 trees */
 
 	if (!parent->ident2) parent->ident2 = fr_rb_inline_alloc(parent, CONF_ITEM, ident2_node,
 								 _cf_ident2_cmp, NULL);
 
 	fr_rb_insert(parent->ident2, child);		/* NULL ident2 is still a value */
+	return 0;
 }
 
 /** Remove item from parent and fixup trees
@@ -954,7 +963,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 
 	done:
 		cs->depth = parent->depth + 1;
-		cf_item_add(parent, &(cs->item));
+		if (cf_item_add(parent, &(cs->item)) < 0) goto error;
 	}
 
 	return cs;
@@ -1437,7 +1446,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 		if (!cp->value) goto error;
 	}
 
-	cf_item_add(parent, &(cp->item));
+	if (parent && (cf_item_add(parent, &(cp->item)) < 0)) goto error;
 	return cp;
 }
 
@@ -1771,7 +1780,11 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
 
 	if (do_free) talloc_set_destructor(cd, _cd_free);
 
-	cf_item_add(parent, cd);
+	if (cf_item_add(parent, cd) < 0) {
+		talloc_free(cd);
+		return NULL;
+	}
+
 	return cd;
 }
 
