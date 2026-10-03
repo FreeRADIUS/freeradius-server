@@ -412,6 +412,7 @@ static int mod_open(fr_listen_t *li)
 	cfg = (fr_bio_fd_config_t) {
 		.type = FR_BIO_FD_LISTEN,
 		.socket_type = SOCK_STREAM,
+		.transport_type = FR_BIO_FD_TRANSPORT_UNIX,
 		.path = inst->filename,
 		.uid = inst->uid,
 		.gid = inst->gid,

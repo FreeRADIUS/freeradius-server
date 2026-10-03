@@ -65,6 +65,23 @@ typedef enum {
 					// updates #fr_bio_fd_packet_ctx_t on successful FD read.
 } fr_bio_fd_type_t;
 
+/** The type of transport used by a FD BIO.
+ *
+ *  The transport defines where the data goes (files, socket, etc), not the format of the transport (datagram
+ *  or stream).  It also is largely independent of connected vs unconnected.  A TCP socket can be connected or
+ *  listening, and a UDP socket can be connected or unconnected.
+ *
+ *  This field is set automatically when parsing the configuration.
+ */
+typedef enum {
+	FR_BIO_FD_TRANSPORT_INVALID = 0, //!< not set
+	FR_BIO_FD_TRANSPORT_FILE,	//!< regular file, named by 'filename'
+	FR_BIO_FD_TRANSPORT_TCP,	//!< TCP over IPv4 or IPv6
+	FR_BIO_FD_TRANSPORT_UDP,	//!< UDP over IPv4 or IPv6
+	FR_BIO_FD_TRANSPORT_UNIX,	//!< Unix domain socket, named by 'path'
+} fr_bio_fd_transport_t;
+#define FR_BIO_FD_TRANSPORT_SIZE (FR_BIO_FD_TRANSPORT_UNIX + 1)
+
 /** Configuration for sockets
  *
  *  Each piece of information is broken out into a separate field, so that the configuration file parser can
@@ -77,6 +94,7 @@ typedef struct {
 
 	int		socket_type;   	//!< SOCK_STREAM or SOCK_DGRAM
 	char const	*transport;	//!< name of the transport protocol
+	fr_bio_fd_transport_t transport_type;	//!< which transport, as a number instead of a name
 	bool		server;		//!< is this a client or a server?
 	bool		reuse_port;	//!< whether or not we re-use the same destination port for datagram sockets
 

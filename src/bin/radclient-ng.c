@@ -1386,6 +1386,7 @@ int main(int argc, char **argv)
 	fd_config = (fr_bio_fd_config_t) {
 		.type = FR_BIO_FD_CONNECTED,
 		.socket_type = SOCK_DGRAM,
+		.transport_type = FR_BIO_FD_TRANSPORT_UDP,
 
 		.src_ipaddr = (fr_ipaddr_t) {
 			.af = AF_INET,
@@ -1538,9 +1539,11 @@ int main(int argc, char **argv)
 		case 'P':
 			if (!strcmp(optarg, "tcp")) {
 				fd_config.socket_type = SOCK_STREAM;
+				fd_config.transport_type = FR_BIO_FD_TRANSPORT_TCP;
 				ipproto = IPPROTO_TCP;
 			} else if (!strcmp(optarg, "udp")) {
 				fd_config.socket_type = SOCK_DGRAM;
+				fd_config.transport_type = FR_BIO_FD_TRANSPORT_UDP;
 				ipproto = IPPROTO_UDP;
 			} else {
 				usage();

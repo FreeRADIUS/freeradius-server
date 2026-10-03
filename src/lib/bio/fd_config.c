@@ -76,22 +76,41 @@ static int send_recv_buf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_IT
 	return 0;
 }
 
+/** Mapping table of transport names to the transport types/
+ */
+static fr_table_num_sorted_t transport_types[] = {
+	{ L("file"),		FR_BIO_FD_TRANSPORT_FILE	},
+	{ L("tcp"),		FR_BIO_FD_TRANSPORT_TCP		},
+	{ L("udp"),		FR_BIO_FD_TRANSPORT_UDP		},
+	{ L("unix"),		FR_BIO_FD_TRANSPORT_UNIX	},
+};
+static size_t transport_types_len = NUM_ELEMENTS(transport_types);
+
 /** Parse "transport" and then set the subconfig
  *
  */
-static int common_transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule, fr_table_ptr_sorted_t const *transport_table, size_t transport_table_len)
+static int common_transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule,
+				  conf_parser_t const *transport_table[FR_BIO_FD_TRANSPORT_SIZE])
 {
 	int socket_type = SOCK_STREAM;
 	conf_parser_t const *rules;
 	char const *name = cf_pair_value(cf_item_to_pair(ci));
 	fr_bio_fd_config_t *fd_config = parent;
 	CONF_SECTION *cs, *subcs;
+	fr_bio_fd_transport_t transport_type;
 
-	rules = fr_table_value_by_str(transport_table, name, NULL);
-	if (!rules) {
+	transport_type = fr_table_value_by_str(transport_types, name, FR_BIO_FD_TRANSPORT_INVALID);
+	if (transport_type == FR_BIO_FD_TRANSPORT_INVALID) {
+	invalid:
 		cf_log_err(ci, "Invalid transport name \"%s\"", name);
 		return -1;
 	}
+
+	/*
+	 *	A NULL entry means that this side does not allow that transport.
+	 */
+	rules = transport_table[transport_type];
+	if (!rules) goto invalid;
 
 	cs = cf_item_to_section(cf_parent(ci));
 
@@ -114,12 +133,13 @@ static int common_transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *paren
 		return -1;
 	}
 
-	if (strcmp(name, "udp") == 0) socket_type = SOCK_DGRAM;
+	if (transport_type == FR_BIO_FD_TRANSPORT_UDP) socket_type = SOCK_DGRAM;
 
 	/*
 	 *	Client sockets are always connected.
 	 */
 	fd_config->socket_type = socket_type;
+	fd_config->transport_type = transport_type;
 	*(char const **) out = name;
 
 	return 0;
@@ -245,13 +265,12 @@ static conf_parser_t const client_unix_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_table_ptr_sorted_t client_transport_names[] = {
-	{ L("file"),		client_file_config },
-	{ L("tcp"),		client_tcp_config },
-	{ L("udp"),		client_udp_config },
-	{ L("unix"),		client_unix_config },
+static conf_parser_t const *client_transport_configs[FR_BIO_FD_TRANSPORT_SIZE] = {
+	[FR_BIO_FD_TRANSPORT_FILE] = client_file_config,
+	[FR_BIO_FD_TRANSPORT_TCP]  = client_tcp_config,
+	[FR_BIO_FD_TRANSPORT_UDP]  = client_udp_config,
+	[FR_BIO_FD_TRANSPORT_UNIX] = client_unix_config,
 };
-static size_t client_transport_names_len = NUM_ELEMENTS(client_transport_names);
 
 /** Parse "transport" and then set the subconfig
  *
@@ -278,6 +297,7 @@ static int client_transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 		}
 
 		fd_config->socket_type = SOCK_DGRAM;
+		fd_config->transport_type = FR_BIO_FD_TRANSPORT_UDP;
 		*(char const **) out = name;
 
 		return 0;
@@ -285,8 +305,7 @@ static int client_transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 
 	if (fd_config->type == FR_BIO_FD_INVALID) fd_config->type = FR_BIO_FD_CONNECTED;
 
-	return common_transport_parse(ctx, out, parent, ci, rule,
-				      client_transport_names, client_transport_names_len);
+	return common_transport_parse(ctx, out, parent, ci, rule, client_transport_configs);
 }
 
 /*
@@ -405,13 +424,12 @@ static conf_parser_t const server_unix_config[] = {
 /*
  *	@todo - move this to client/server config in the same struct?
  */
-static fr_table_ptr_sorted_t server_transport_names[] = {
-	{ L("file"),		server_file_config },
-	{ L("tcp"),		server_tcp_config },
-	{ L("udp"),		server_udp_config },
-	{ L("unix"),		server_unix_config },
+static conf_parser_t const *server_transport_configs[FR_BIO_FD_TRANSPORT_SIZE] = {
+	[FR_BIO_FD_TRANSPORT_FILE] = server_file_config,
+	[FR_BIO_FD_TRANSPORT_TCP]  = server_tcp_config,
+	[FR_BIO_FD_TRANSPORT_UDP]  = server_udp_config,
+	[FR_BIO_FD_TRANSPORT_UNIX] = server_unix_config,
 };
-static size_t server_transport_names_len = NUM_ELEMENTS(server_transport_names);
 
 /** Parse "transport" and then set the subconfig
  *
@@ -423,17 +441,32 @@ static int server_transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 
 	fd_config->server = true;
 
-	rcode = common_transport_parse(ctx, out, parent, ci, rule,
-				       server_transport_names, server_transport_names_len);
+	rcode = common_transport_parse(ctx, out, parent, ci, rule, server_transport_configs);
 	if (rcode < 0) return rcode;
 
 	/*
 	 *	Automatically set the BIO type, too.
+	 *
+	 *	A server reads datagrams from anyone, and listens for new stream connections.  A file is
+	 *	neither: it is opened and then read or written, which is what a connected bio does.
 	 */
-	if (fd_config->socket_type == SOCK_DGRAM) {
+	switch (fd_config->transport_type) {
+	case FR_BIO_FD_TRANSPORT_UDP:
 		fd_config->type = FR_BIO_FD_UNCONNECTED;
-	} else {
+		break;
+
+	case FR_BIO_FD_TRANSPORT_TCP:
+	case FR_BIO_FD_TRANSPORT_UNIX:
 		fd_config->type = FR_BIO_FD_LISTEN;
+		break;
+
+	case FR_BIO_FD_TRANSPORT_FILE:
+		fd_config->type = FR_BIO_FD_CONNECTED;
+		break;
+
+	case FR_BIO_FD_TRANSPORT_INVALID:
+		fr_assert(0);
+		return -1;
 	}
 
 	return 0;
