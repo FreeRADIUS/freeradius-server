@@ -244,28 +244,12 @@ static int fr_bio_fd_server_tcp(int fd, UNUSED fr_socket_t const *sock)
 	return 0;
 }
 
-/** Initialize an IPv4 server socket.
+/** Stop a wildcard IPv6 listener from accepting IPv4 packets.
  *
  */
-static int fr_bio_fd_server_ipv4(int fd, fr_socket_t const *sock, fr_bio_fd_config_t const *cfg)
-{
-	/*
-	 *	And set up any UDP / TCP specific information.
-	 */
-	if (sock->type == SOCK_DGRAM) return fr_bio_fd_common_udp(fd, sock, cfg);
-
-	return fr_bio_fd_server_tcp(fd, sock);
-}
-
-/** Initialize an IPv6 server socket.
- *
- */
-static int fr_bio_fd_server_ipv6(int fd, fr_socket_t const *sock, fr_bio_fd_config_t const *cfg)
+static int fr_bio_fd_server_v6only(UNUSED int fd, UNUSED fr_socket_t const *sock)
 {
 #ifdef IPV6_V6ONLY
-	/*
-	 *	Don't allow v4 packets on v6 connections.
-	 */
 	if (IN6_IS_ADDR_UNSPECIFIED(UNCONST(struct in6_addr *, &sock->inet.src_ipaddr.addr.v6))) {
 		int on = 1;
 
@@ -276,12 +260,7 @@ static int fr_bio_fd_server_ipv6(int fd, fr_socket_t const *sock, fr_bio_fd_conf
 	}
 #endif /* IPV6_V6ONLY */
 
-	/*
-	 *	And set up any UDP / TCP specific information.
-	 */
-	if (sock->type == SOCK_DGRAM) return fr_bio_fd_common_udp(fd, sock, cfg);
-
-	return fr_bio_fd_server_tcp(fd, sock);
+	return 0;
 }
 
 /** Verify or clean up a pre-existing domain socket.
@@ -1351,11 +1330,12 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	my->info.type = cfg->type;
 
 	/*
-	 *	Do sanity checks, bootstrap common socket options, bind to the socket, and initialize the read
-	 *	/ write functions.
+	 *	Check that the bio type makes sense for the socket which was opened.
 	 */
 	switch (cfg->type) {
 	case FR_BIO_FD_INVALID:
+		fr_strerror_const("No connection type was specified");
+		rcode = -1;
 		goto fail;
 
 		/*
@@ -1364,75 +1344,13 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	case FR_BIO_FD_UNCONNECTED:
 		if (my->info.socket.type != SOCK_DGRAM) {
 			fr_strerror_const("Failed configuring socket: unconnected sockets must be UDP");
+			rcode = -1;
 			goto fail;
 		}
-
-		switch (my->info.socket.af) {
-		case AF_INET:
-		case AF_INET6:
-			if ((rcode = fr_bio_fd_common_udp(fd, &my->info.socket, cfg)) < 0) goto fail;
-			break;
-
-		case AF_LOCAL:
-			if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
-			break;
-
-		case AF_FR_FILENAME:
-			fr_strerror_const("Filenames must use the connected API");
-			goto fail;
-
-		default:
-			fr_strerror_const("Unsupported address family for unconnected sockets");
-			goto fail;
-		}
-
-		if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
-
-		if ((rcode = fr_bio_fd_init_common(my)) < 0) goto fail;
 		break;
 
 		/*
-		 *	A connected client: UDP, TCP, AF_LOCAL, or AF_FR_FILENAME
-		 */
-	case FR_BIO_FD_CONNECTED:
-		if (my->info.socket.type == SOCK_DGRAM) {
-			switch (my->info.socket.af) {
-			case AF_INET:
-			case AF_INET6:
-				if ((rcode = fr_bio_fd_common_udp(fd, &my->info.socket, cfg)) < 0) goto fail;
-				break;
-			default:
-				if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
-				break;
-			}
-
-		} else if ((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6)) {
-			rcode = fr_bio_fd_common_tcp(fd, &my->info.socket, cfg);
-			if (rcode < 0) goto fail;
-		}
-
-		switch (my->info.socket.af) {
-		case AF_LOCAL:
-			if ((rcode = fr_bio_fd_socket_unix_bind(my, cfg)) < 0) goto fail;
-			break;
-
-		case AF_FR_FILENAME:
-			break;
-
-		case AF_INET:
-		case AF_INET6:
-			if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
-			break;
-
-		default:
-			goto fail;
-		}
-
-		if ((rcode = fr_bio_fd_init_connected(my)) < 0) goto fail;
-		break;
-
-		/*
-		 *	Server socket which listens for new stream connections
+		 *	Server socket which listens for new connections.
 		 */
 	case FR_BIO_FD_LISTEN:
 		if ((my->info.socket.type == SOCK_DGRAM) && !cfg->reuse_port) {
@@ -1440,33 +1358,87 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			rcode = -1;
 			goto fail;
 		}
+		break;
 
-		switch (my->info.socket.af) {
-		case AF_INET:
-			if ((rcode = fr_bio_fd_server_ipv4(fd, &my->info.socket, cfg)) < 0) goto fail;
-
-			if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
-			break;
-
-		case AF_INET6:
-			if ((rcode = fr_bio_fd_server_ipv6(fd, &my->info.socket, cfg)) < 0) goto fail;
-
-			if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
-			break;
-
-		case AF_LOCAL:
-			if ((rcode = fr_bio_fd_socket_unix_bind(my, cfg)) < 0) goto fail;
-			break;
-
-		default:
-			fr_strerror_const("Unsupported address family for accept() socket");
-			rcode = -1;
-			goto fail;
-		}
-
-		if ((rcode = fr_bio_fd_init_listen(my)) < 0) goto fail;
+		/*
+		 *	A connected client: UDP, TCP, AF_LOCAL, or AF_FR_FILENAME.
+		 */
+	case FR_BIO_FD_CONNECTED:
 		break;
 	}
+
+	/*
+	 *	Set the socket options, and then bind the socket.  Which options to set, and how to bind,
+	 *	depend on the address family.
+	 */
+	switch (my->info.socket.af) {
+	case AF_INET:
+	case AF_INET6:
+		/*
+		 *	A wildcard IPv6 listener should not also accept IPv4 packets.
+		 */
+		if ((cfg->type == FR_BIO_FD_LISTEN) && (my->info.socket.af == AF_INET6) &&
+		    ((rcode = fr_bio_fd_server_v6only(fd, &my->info.socket)) < 0)) goto fail;
+
+		if (my->info.socket.type == SOCK_DGRAM) {
+			if ((rcode = fr_bio_fd_common_udp(fd, &my->info.socket, cfg)) < 0) goto fail;
+
+		} else if (cfg->type == FR_BIO_FD_LISTEN) {
+			/*
+			 *	A listening socket is never read or written, so it needs only the one
+			 *	option which lets us re-bind to the same address.
+			 */
+			if ((rcode = fr_bio_fd_server_tcp(fd, &my->info.socket)) < 0) goto fail;
+
+		} else {
+			if ((rcode = fr_bio_fd_common_tcp(fd, &my->info.socket, cfg)) < 0) goto fail;
+		}
+
+		if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
+		break;
+
+	case AF_LOCAL:
+		if (my->info.socket.type == SOCK_DGRAM) {
+			if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
+		}
+
+		if ((rcode = fr_bio_fd_socket_unix_bind(my, cfg)) < 0) goto fail;
+		break;
+
+		/*
+		 *	A file is opened by name, so there is nothing to set and nothing to bind.
+		 */
+	case AF_FR_FILENAME:
+		break;
+
+	default:
+		fr_strerror_const("Unsupported address family");
+		rcode = -1;
+		goto fail;
+	}
+
+	/*
+	 *	Initialize the read / write functions.
+	 */
+	switch (cfg->type) {
+	case FR_BIO_FD_UNCONNECTED:
+		rcode = fr_bio_fd_init_common(my);
+		break;
+
+	case FR_BIO_FD_CONNECTED:
+		rcode = fr_bio_fd_init_connected(my);
+		break;
+
+	case FR_BIO_FD_LISTEN:
+		rcode = fr_bio_fd_init_listen(my);
+		break;
+
+	case FR_BIO_FD_INVALID:	/* checked above */
+		fr_assert(0);
+		rcode = -1;
+		break;
+	}
+	if (rcode < 0) goto fail;
 
 	/*
 	 *	Set the name of the BIO.
