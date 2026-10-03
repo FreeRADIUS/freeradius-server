@@ -95,6 +95,7 @@
  */
 static int fr_bio_fd_shutdown(fr_bio_t *bio)
 {
+	int rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	if (my->info.state == FR_BIO_FD_STATE_CLOSED) return 0;
@@ -105,7 +106,18 @@ static int fr_bio_fd_shutdown(fr_bio_t *bio)
 		my->connect.el = NULL;
 	}
 
-	return fr_bio_fd_close(&my->bio);
+	rcode = fr_bio_fd_close(&my->bio);
+	if (rcode < 0) return rcode;
+
+	/*
+	 *	A Unix domain socket has a path in the file system, which has to be removed.
+	 *
+	 *	This is done on shutdown rather than in fr_bio_fd_close(), because a close leaves the bio
+	 *	alive and able to be re-opened, and a shutdown destroys it.
+	 */
+	if (my->info.socket.af == AF_LOCAL) return fr_bio_fd_unix_shutdown(&my->bio);
+
+	return 0;
 }
 
 static int fr_bio_fd_eof(fr_bio_t *bio)

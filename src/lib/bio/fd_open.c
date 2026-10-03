@@ -485,14 +485,16 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	return 0;
 }
 
-static int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
+/** Remove the Unix domain socket which this bio created.
+ *
+ *  Called from fr_bio_fd_shutdown() for every Unix domain bio.
+ */
+int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	/*
-	 *	This is called after fr_bio_fd_close() - which marks the bio state as closed
-	 *
-	 *	Unix domain sockets are deleted when the bio is closed.
+	 *	Called after fr_bio_fd_close(), which marks the bio state as closed.
 	 *
 	 *	Unix domain sockets are never in the "connecting" state, because connect() always returns
 	 *	immediately.
@@ -500,16 +502,17 @@ static int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 	fr_assert(my->info.state == FR_BIO_FD_STATE_CLOSED);
 
 	/*
-	 *	Run the user shutdown before we run ours.
+	 *	The master socket (FR_BIO_FD_LISTEN) is the one which opens / creates the path, so it's
+	 *	respinsible for removing it.  Child sockets (FR_BIO_FD_CONNECTED) still point to the path, but
+	 *	they don't own it.
 	 */
-	if (my->user_shutdown) {
-		int rcode;
+	if (my->info.type != FR_BIO_FD_LISTEN) return 0;
 
-		rcode = my->user_shutdown(bio);
-		if (rcode < 0) return rcode;
+	if (unlink(my->info.socket.unix.path) < 0) {
+		fr_strerror_printf("Failed removing domain socket %s: %s",
+				   my->info.socket.unix.path, fr_syserror(errno));
+		return fr_bio_error(GENERIC);
 	}
-
-	if (unlink(my->info.socket.unix.path) < 0) return fr_bio_error(GENERIC);
 
 	return 0;
 }
@@ -627,11 +630,6 @@ static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 
 #endif
 
-	/*
-	 *	Socket is open.  We need to clean it up on shutdown.
-	 */
-	if (my->cb.shutdown) my->user_shutdown = my->cb.shutdown;
-	my->cb.shutdown = fr_bio_fd_unix_shutdown;
 	if (dirfd != AT_FDCWD) close(dirfd);
 
 	return 0;
