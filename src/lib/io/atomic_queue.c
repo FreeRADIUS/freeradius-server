@@ -152,6 +152,7 @@ struct fr_atomic_queue_s {
 									///< it can end up directly after tail in memory
 									///< and share a cache line.
 
+
 	size_t						line_mask;	//!< Low bits of a slot index give its line:
 									///< `line[slot & line_mask]`.  Set at init to
 									///< num_lines - 1.
@@ -296,19 +297,18 @@ fr_atomic_queue_t *fr_atomic_queue_talloc(TALLOC_CTX *ctx, size_t size)
 
 /** Create fixed-size atomic queue outside any talloc hierarchy
  *
- * Backed by `posix_memalign`; the resulting queue is released with
- * #fr_atomic_queue_free (which detects the raw allocation via a NULL
- * `chunk` field) or plain `free()` on the queue pointer.
+ * Backed by `posix_memalign`.  The queue has no owner: `chunk` is NULL
+ * and the caller releases it with #fr_atomic_queue_free or plain `free()`.
  *
- * Intended for callers that push or pop from threads where talloc is
- * not safe (for example, library-owned callback threads).
+ * For callers that allocate from threads where talloc is not safe (for
+ * example, library-owned callback threads).
  *
  * @param[in] size	The number of entries in the queue.
  * @return
  *	- NULL on error.
  *	- fr_atomic_queue_t *, a pointer to the allocated and initialized queue.
  */
-fr_atomic_queue_t *fr_atomic_queue_malloc(size_t size)
+static fr_atomic_queue_t *atomic_queue_malloc_raw(size_t size)
 {
 	fr_atomic_queue_t	*aq;
 
@@ -318,17 +318,70 @@ fr_atomic_queue_t *fr_atomic_queue_malloc(size_t size)
 
 	if (posix_memalign((void **)&aq, CACHE_LINE_SIZE, atomic_queue_bytes(size)) != 0) return NULL;
 
-	aq->chunk = NULL;	/* sentinel: raw allocation, free with free() */
+	aq->chunk = NULL;
 	atomic_queue_init(aq, size);
+
+	return aq;
+}
+
+/** Owner handle for a raw queue allocation
+ *
+ * The queue memory stays outside the talloc hierarchy.  This handle is
+ * the only talloc'd part, so freeing the context the handle lives in
+ * frees the queue.
+ */
+typedef struct {
+	fr_atomic_queue_t	*aq;		//!< The raw allocation to release.
+} fr_atomic_queue_owner_t;
+
+static int _atomic_queue_owner_free(fr_atomic_queue_owner_t *owner)
+{
+	free(owner->aq);
+
+	return 0;
+}
+
+/** Create fixed-size atomic queue outside the talloc hierarchy, owned by a talloc context
+ *
+ * The queue itself is a raw `posix_memalign` allocation, so it can be
+ * pushed to and popped from by threads where talloc is not safe, and
+ * can later be placed in memory talloc does not manage.  A small owner
+ * handle allocated in `ctx` frees the queue when `ctx` is freed, or
+ * when the caller calls #fr_atomic_queue_free.
+ *
+ * @param[in] ctx	The talloc ctx which owns the queue.
+ * @param[in] size	The number of entries in the queue.
+ * @return
+ *	- NULL on error.
+ *	- fr_atomic_queue_t *, a pointer to the allocated and initialized queue.
+ */
+fr_atomic_queue_t *fr_atomic_queue_malloc(TALLOC_CTX *ctx, size_t size)
+{
+	fr_atomic_queue_t	*aq;
+	fr_atomic_queue_owner_t	*owner;
+
+	aq = atomic_queue_malloc_raw(size);
+	if (!aq) return NULL;
+
+	owner = talloc(ctx, fr_atomic_queue_owner_t);
+	if (!owner) {
+		free(aq);
+		return NULL;
+	}
+	owner->aq = aq;
+	talloc_set_destructor(owner, _atomic_queue_owner_free);
+	aq->chunk = owner;
 
 	return aq;
 }
 
 /** Free an atomic queue if it's not freed by ctx
  *
- * This function is needed because the atomic queue memory
- * must be cache line aligned, and may live either in a talloc chunk
- * or a raw `posix_memalign` allocation (`aq->chunk == NULL`).
+ * The queue memory must be cache line aligned, so it lives in one of
+ * three places: a talloc aligned array (`chunk` is the array), a raw
+ * allocation owned by a talloc handle (`chunk` is the handle, whose
+ * destructor frees the queue), or a raw allocation with no owner
+ * (`chunk` is NULL).
  */
 void fr_atomic_queue_free(fr_atomic_queue_t **aq)
 {
@@ -581,7 +634,7 @@ static fr_atomic_ring_segment_t *atomic_ring_segment_alloc(size_t seg_size)
 	s = malloc(sizeof(*s));
 	if (!s) return NULL;
 
-	s->q = fr_atomic_queue_malloc(seg_size);
+	s->q = atomic_queue_malloc_raw(seg_size);
 	if (!s->q) {
 		free(s);
 		return NULL;

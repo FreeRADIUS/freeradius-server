@@ -40,7 +40,7 @@ extern "C" {
 typedef struct fr_atomic_queue_s fr_atomic_queue_t;
 
 fr_atomic_queue_t	*fr_atomic_queue_talloc(TALLOC_CTX *ctx, size_t size);
-fr_atomic_queue_t	*fr_atomic_queue_malloc(size_t size);
+fr_atomic_queue_t	*fr_atomic_queue_malloc(TALLOC_CTX *ctx, size_t size);
 void			fr_atomic_queue_free(fr_atomic_queue_t **aq);
 bool			fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data);
 bool			fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data);

@@ -24,6 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/table.h>
 #include <string.h>
 #include <sys/time.h>
 
@@ -34,6 +35,20 @@ RCSID("$Id$")
 #define OFFSET	(1024)
 
 static int		debug_lvl = 0;
+
+/** Which allocator the queue under test comes from
+ */
+typedef enum {
+	QUEUE_TYPE_TALLOC = 0,		//!< #fr_atomic_queue_talloc, queue lives in the talloc hierarchy.
+	QUEUE_TYPE_MALLOC,		//!< #fr_atomic_queue_malloc, raw queue owned by a talloc handle.
+	QUEUE_TYPE_MAX
+} queue_type_t;
+
+static fr_table_num_sorted_t const queue_type_table[] = {
+	{ L("malloc"),	QUEUE_TYPE_MALLOC	},
+	{ L("talloc"),	QUEUE_TYPE_TALLOC	}
+};
+static size_t queue_type_table_len = NUM_ELEMENTS(queue_type_table);
 
 
 /**********************************************************************/
@@ -50,41 +65,21 @@ static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: atomic_queue_test [OPTS]\n");
 	fprintf(stderr, "  -s size                set queue size.\n");
+	fprintf(stderr, "  -t type                queue type to test, 'talloc' or 'malloc' (default: both).\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
 	fr_exit_now(EXIT_SUCCESS);
 }
 
-int main(int argc, char *argv[])
+/** Fill the queue to capacity, check it refuses one more, then drain it
+ *
+ * Exits the process on the first wrong answer.
+ */
+static void queue_exercise(fr_atomic_queue_t *aq, int size)
 {
-	int			c, i, ret = 0;
-	int			size;
-	intptr_t		val;
-	void			*data;
-	fr_atomic_queue_t	*aq;
-	TALLOC_CTX		*autofree = talloc_autofree_context();
-
-	size = 4;
-
-	while ((c = getopt(argc, argv, "hs:tx")) != -1) switch (c) {
-		case 's':
-			size = atoi(optarg);
-			break;
-
-		case 'x':
-			debug_lvl++;
-			break;
-
-		case 'h':
-		default:
-			usage();
-	}
-#if 0
-	argc -= (optind - 1);
-	argv += (optind - 1);
-#endif
-
-	aq = fr_atomic_queue_talloc(autofree, size);
+	int		i;
+	intptr_t	val;
+	void		*data;
 
 #ifndef NDEBUG
 	if (debug_lvl) {
@@ -172,7 +167,105 @@ int main(int argc, char *argv[])
 		fr_atomic_queue_debug(stdout, aq);
 	}
 #endif
+}
 
-	return ret;
+/** Queue allocated inside the talloc hierarchy
+ */
+static void test_talloc(TALLOC_CTX *ctx, int size)
+{
+	fr_atomic_queue_t	*aq;
+
+	aq = fr_atomic_queue_talloc(ctx, size);
+	if (!aq) {
+		fprintf(stderr, "Failed allocating talloc queue\n");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	queue_exercise(aq, size);
+	fr_atomic_queue_free(&aq);
+}
+
+/** Queue allocated outside talloc, but owned by a talloc context
+ *
+ * The only talloc'd block is the owner handle, so the context holds
+ * exactly one child, and freeing the context releases the raw queue
+ * through the handle.
+ */
+static void test_malloc(TALLOC_CTX *ctx, int size)
+{
+	fr_atomic_queue_t	*aq;
+	TALLOC_CTX		*owner_ctx;
+
+	owner_ctx = talloc_new(ctx);
+	aq = fr_atomic_queue_malloc(owner_ctx, size);
+	if (!aq) {
+		fprintf(stderr, "Failed allocating raw queue\n");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	if (talloc_total_blocks(owner_ctx) != 2) {
+		fprintf(stderr, "Expected owner handle to be the only child of ctx, found %zu blocks\n",
+			talloc_total_blocks(owner_ctx));
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	queue_exercise(aq, size);
+	talloc_free(owner_ctx);
+}
+
+typedef void (*queue_test_t)(TALLOC_CTX *ctx, int size);
+
+static queue_test_t const queue_tests[QUEUE_TYPE_MAX] = {
+	[QUEUE_TYPE_TALLOC]	= test_talloc,
+	[QUEUE_TYPE_MALLOC]	= test_malloc
+};
+
+int main(int argc, char *argv[])
+{
+	int			c;
+	int			size;
+	int			type;
+	bool			selected[QUEUE_TYPE_MAX] = {};
+	bool			any_selected = false;
+	TALLOC_CTX		*autofree = talloc_autofree_context();
+
+	size = 4;
+
+	while ((c = getopt(argc, argv, "hs:t:x")) != -1) switch (c) {
+		case 's':
+			size = atoi(optarg);
+			break;
+
+		case 't':
+			type = fr_table_value_by_str(queue_type_table, optarg, -1);
+			if (type < 0) {
+				fprintf(stderr, "Unknown queue type '%s'\n", optarg);
+				usage();
+			}
+			selected[type] = true;
+			any_selected = true;
+			break;
+
+		case 'x':
+			debug_lvl++;
+			break;
+
+		case 'h':
+		default:
+			usage();
+	}
+#if 0
+	argc -= (optind - 1);
+	argv += (optind - 1);
+#endif
+
+	for (type = 0; type < QUEUE_TYPE_MAX; type++) {
+		if (any_selected && !selected[type]) continue;
+
+		if (debug_lvl) printf("Testing %s queue\n", fr_table_str_by_value(queue_type_table, type, "<INVALID>"));
+		queue_tests[type](autofree, size);
+	}
+
+	return 0;
 }
 
