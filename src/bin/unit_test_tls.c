@@ -155,7 +155,10 @@ typedef struct {
 
 	int			sockfd;			//!< Listening socket.
 	int			fd;			//!< Accepted or connected socket.
-	fr_event_fd_t		*ef;			//!< Read event for fd.
+	fr_event_fd_t		*ef;			//!< Read and write events for fd.
+	bool			write_blocked;		//!< True while the socket has no room for a
+							///< record and the write event is active, see
+							///< tls_connection_write_wait().
 
 	fr_timer_t		*post_handshake_ev;	//!< Bounds the wait for anything which arrives
 							///< after the handshake, see
@@ -351,6 +354,93 @@ static void tls_request_failed(unit_test_tls_t *utt)
 	tls_request_finished(utt, utt->conn);
 }
 
+/** What a failed read() or write() on the connection means
+ *
+ * The classification repeats the classification in src/lib/bio/fd_errno.h,
+ * where the server decides whether a socket error ends a connection.  This
+ * program reads and writes the socket itself rather than through an FD bio,
+ * so the classification has to be repeated here.
+ *
+ * The classification here leaves out EMSGSIZE, ENETDOWN, and ENETUNREACH.
+ * fd_errno.h reports those three errors but leaves the socket open, because
+ * an unconnected socket can still send to a different address, and a datagram
+ * which exceeded the PMTU says nothing about the next datagram.  The
+ * connection socket here is a connected TCP socket with one peer, so neither
+ * reason applies, and all three errors are fatal.
+ */
+typedef enum {
+	UNIT_TEST_TLS_IO_FATAL = 0,			//!< The connection cannot continue.
+	UNIT_TEST_TLS_IO_RETRY,				//!< A signal interrupted the call.  Run the
+							///< call again.
+	UNIT_TEST_TLS_IO_BLOCKED,			//!< The call would block.  Wait for the socket
+							///< to become ready.
+	UNIT_TEST_TLS_IO_EOF				//!< The peer closed the connection.  A read()
+							///< which returns zero means the same thing.
+} unit_test_tls_io_t;
+
+static unit_test_tls_io_t tls_connection_io_error(void)
+{
+	switch (errno) {
+	case EINTR:
+		return UNIT_TEST_TLS_IO_RETRY;
+
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+	case EWOULDBLOCK:
+#endif
+	case EAGAIN:
+		return UNIT_TEST_TLS_IO_BLOCKED;
+
+	/*
+	 *	The peer closed the connection, or reset the connection, or
+	 *	went away while the connection was being written to.
+	 */
+	case ECONNRESET:
+	case ENOTCONN:
+	case EPIPE:
+		return UNIT_TEST_TLS_IO_EOF;
+
+	default:
+		return UNIT_TEST_TLS_IO_FATAL;
+	}
+}
+
+static fr_event_update_t const pause_write[] = {
+	FR_EVENT_SUSPEND(fr_event_io_func_t, write),
+	{ 0 }
+};
+
+static fr_event_update_t const resume_write[] = {
+	FR_EVENT_RESUME(fr_event_io_func_t, write),
+	{ 0 }
+};
+
+/** Start or stop waiting for the socket to have room for more records
+ *
+ * _tls_connection_start() inserts the write event with the socket and then
+ * suspends the write event, because a socket which has room fires the write
+ * event on every pass of the event loop.  tls_connection_write_wait() resumes
+ * the write event only while a record is waiting for room.
+ *
+ * A suspend reads the active callback and a resume reads the suspended
+ * callback, so a suspend and a resume have to alternate.  `write_blocked`
+ * records whether the write event is active, so a suspend never follows a
+ * suspend.
+ */
+static int tls_connection_write_wait(unit_test_tls_t *utt, bool wait)
+{
+	if (!utt->ef || (utt->write_blocked == wait)) return 0;
+
+	if (fr_event_filter_update(utt->el, utt->fd, FR_EVENT_FILTER_IO,
+				   wait ? resume_write : pause_write) < 0) {
+		PERROR("Failed updating the write event for the connection");
+		return -1;
+	}
+
+	utt->write_blocked = wait;
+
+	return 0;
+}
+
 /** Write whatever OpenSSL has produced out to the connection
  *
  * The TLS session reads and writes memory BIOs, which are OpenSSL's in-memory
@@ -376,7 +466,42 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 		slen = write(utt->fd, fr_dbuff_current(tls_session->dirty_out),
 			     fr_dbuff_remaining(tls_session->dirty_out));
 		if (slen < 0) {
-			if (errno == EINTR) continue;
+			switch (tls_connection_io_error()) {
+			case UNIT_TEST_TLS_IO_RETRY:
+				continue;
+
+			case UNIT_TEST_TLS_IO_BLOCKED:
+				/*
+				 *	The rest of the record stays in
+				 *	`dirty_out`, and
+				 *	_tls_connection_write() writes the rest
+				 *	of the record once the socket has room.
+				 *	A blocked write loses nothing and is not
+				 *	a failure, so report that the write
+				 *	succeeded.
+				 *
+				 *	The connection cannot complete while a
+				 *	record is still queued.
+				 *	tls_connection_check() in
+				 *	src/lib/tls/connection.c reads
+				 *	`dirty_out`, and does not complete a
+				 *	connection while `dirty_out` holds a
+				 *	record.
+				 */
+				DEBUG3("Blocked writing %zu bytes to the connection",
+				       fr_dbuff_remaining(tls_session->dirty_out));
+
+				return tls_connection_write_wait(utt, true);
+
+			case UNIT_TEST_TLS_IO_EOF:
+				ERROR("Connection closed by the peer while writing to it");
+				errno = 0;	/* a close is not a system call error */
+				fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
+				return -1;
+
+			case UNIT_TEST_TLS_IO_FATAL:
+				break;
+			}
 
 			/*
 			 *	Ensure that the connection records why the connection failed.
@@ -405,7 +530,32 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 		DEBUG3("Wrote %zd bytes to the connection", slen);
 	}
 
-	return 0;
+	/*
+	 *	Everything which was queued has gone out, so stop waiting for
+	 *	the socket to have room.
+	 */
+	return tls_connection_write_wait(utt, false);
+}
+
+/** The socket has room again, so write the rest of the records to the socket
+ *
+ * The event loop calls _tls_connection_write() only after a write blocked,
+ * see tls_connection_write_wait().
+ */
+static void _tls_connection_write(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
+
+	if (utt->done) return;
+
+	/*
+	 *	fr_tls_connection_process() writes the rest of `dirty_out` and
+	 *	then re-checks the connection.  The re-check ends a connection
+	 *	whose handshake finished while a record was still queued.
+	 *	Calling tls_connection_write() alone would not end the
+	 *	connection.
+	 */
+	fr_tls_connection_process(utt->conn);
 }
 
 /** A record arrived on the connection, so hand the record to the connection
@@ -423,11 +573,26 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 
 	slen = read(fd, buf, sizeof(buf));
 	if (slen < 0) {
-		if ((errno == EINTR) || (errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
+		switch (tls_connection_io_error()) {
+		/*
+		 *	An interrupted read and a blocked read both wait
+		 *	for the next read event.  A socket which still
+		 *	holds a record fires the read event again, so
+		 *	returning here loses no data.
+		 */
+		case UNIT_TEST_TLS_IO_RETRY:
+		case UNIT_TEST_TLS_IO_BLOCKED:
+			return;
 
-		ERROR("Failed reading from connection: %s", fr_syserror(errno));
-		fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
-		return;
+		case UNIT_TEST_TLS_IO_EOF:
+			slen = 0;
+			break;
+
+		case UNIT_TEST_TLS_IO_FATAL:
+			ERROR("Failed reading from connection: %s", fr_syserror(errno));
+			fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
+			return;
+		}
 	}
 
 	if (slen == 0) {
@@ -785,9 +950,27 @@ static void _tls_connection_start(fr_event_list_t *el, void *uctx)
 	 *	Nothing polls.  A handshake round starts when a record arrives,
 	 *	and a yielded round resumes when the interpreter marks the
 	 *	request runnable.
+	 *
+	 *	fr_event_fd_insert() below adds the write event along with the
+	 *	socket, and the call to tls_connection_write_wait() then
+	 *	suspends the write event, for the reason
+	 *	tls_connection_write_wait() gives.
 	 */
-	if (fr_event_fd_insert(utt, &utt->ef, el, utt->fd, _tls_connection_read, NULL, _tls_connection_error, utt) < 0) {
+	if (fr_event_fd_insert(utt, &utt->ef, el, utt->fd,
+			       _tls_connection_read, _tls_connection_write, _tls_connection_error, utt) < 0) {
 		PERROR("Failed adding the connection to the event loop");
+		tls_request_failed(utt);
+		return;
+	}
+
+	/*
+	 *	fr_event_fd_insert() added the socket with the write event
+	 *	active, which is the state `write_blocked` records, so set
+	 *	`write_blocked` to true and then suspend the write event.  No
+	 *	record is waiting for room yet.
+	 */
+	utt->write_blocked = true;
+	if (tls_connection_write_wait(utt, false) < 0) {
 		tls_request_failed(utt);
 		return;
 	}
@@ -829,6 +1012,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	utt->ret = EXIT_SUCCESS;
 	utt->fd = -1;
 	utt->ef = NULL;
+	utt->write_blocked = false;
 
 	/*
 	 *	Get a connection, one way or the other.
