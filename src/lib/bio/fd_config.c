@@ -462,6 +462,13 @@ static int server_transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 
 	case FR_BIO_FD_TRANSPORT_FILE:
 		fd_config->type = FR_BIO_FD_CONNECTED;
+
+		/*
+		 *	A server reads and writes its file.  There is no "mode" item for a server file, so
+		 *	the default is the only mode, and 'flags' would otherwise be left as O_RDONLY, which
+		 *	is zero.
+		 */
+		fd_config->flags = O_RDWR;
 		break;
 
 	case FR_BIO_FD_TRANSPORT_INVALID:
