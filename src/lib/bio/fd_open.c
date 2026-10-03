@@ -546,7 +546,7 @@ static int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
  *  Note that the listeners generally call these functions with wrappers of fr_suid_up() and fr_suid_down().
  *  So these functions are running as "root", and will create files owned as "root".
  */
-static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
+static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 {
 	int dirfd, rcode;
 	char const *filename, *p;
@@ -1069,6 +1069,208 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 	return 0;
 }
 
+/** Open a TCP or UDP socket
+ *
+ *  The IP addresses and ports come from the configuration.  The socket is not bound or connected
+ *  here, as that depends on the #fr_bio_fd_type_t.
+ *
+ * @param my		the FD bio
+ * @param cfg		the configuration
+ * @return
+ *	- <0 on error
+ *	- the file descriptor
+ */
+static int fr_bio_fd_socket_open(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
+{
+	int fd;
+	int protocol;
+
+	if (fr_bio_fd_check_config(cfg) < 0) return -1;
+
+	my->info.socket.af = cfg->src_ipaddr.af;
+	my->info.socket.inet.src_ipaddr = cfg->src_ipaddr;
+	my->info.socket.inet.dst_ipaddr = cfg->dst_ipaddr;
+	my->info.socket.inet.src_port = cfg->src_port;
+	my->info.socket.inet.dst_port = cfg->dst_port;
+
+	/*
+	 *	Sanitize the IP addresses.
+	 *
+	 */
+	switch (cfg->type) {
+	case FR_BIO_FD_INVALID:
+		return -1;
+
+	case FR_BIO_FD_CONNECTED:
+		/*
+		 *	No source specified, just bootstrap it from the destination.
+		 */
+		if (my->info.socket.inet.src_ipaddr.af == AF_UNSPEC) {
+			my->info.socket.inet.src_ipaddr = (fr_ipaddr_t) {
+				.af = my->info.socket.inet.dst_ipaddr.af,
+				.prefix = (my->info.socket.inet.dst_ipaddr.af == AF_INET) ? 32 : 128,
+			};
+
+			/*
+			 *	Set the main socket AF too.
+			 */
+			my->info.socket.af = my->info.socket.inet.dst_ipaddr.af;
+		}
+
+#ifdef SO_REUSEPORT
+		/*
+		 *	Connected UDP sockets really only matter when writing packets.  They allow the
+		 *	system to use write() instead of sendto().
+		 *
+		 *	However for reading packets, POSIX says that the OS does NOT check the source
+		 *	IP.  Instead, it just delivers any packet with the correct dst IP/port.  Even
+		 *	worse, if multiple sockets re-use the same dst IP/port, packets are delivered
+		 *	to a _random_ socket.
+		 *
+		 *	As a result, we cannot use wildcard sockets with SO_REUSEPORT, and UDP.
+		 *
+		 *	However, recent OS (macOS 24.6.0 (Sequoia) and Linux 6.12, and FreeBSD) all
+		 *	support connected UDP sockets, and check the 4-tuple, so that only packets for
+		 *	the connection get delivered to the socket.
+		 *
+		 *	For now, we leave this check alone.  The caller should really be passing in a
+		 *	specific source IP address, and not a wildcard for connected UDP sockets.
+		 */
+		if (cfg->reuse_port && (cfg->transport_type == FR_BIO_FD_TRANSPORT_UDP) &&
+		    fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) { /* checks AF, so we're OK */
+			fr_strerror_const("Cannot set 'reuse_port' for connected UDP sockets with wildcard IP");
+			return -1;
+		}
+#endif
+		break;
+
+	case FR_BIO_FD_UNCONNECTED:
+	case FR_BIO_FD_LISTEN:
+		fr_assert(my->info.socket.inet.src_ipaddr.af != AF_UNSPEC);
+		break;
+	}
+
+	if (cfg->transport_type == FR_BIO_FD_TRANSPORT_TCP) {
+		protocol = IPPROTO_TCP;
+	} else {
+		protocol = IPPROTO_UDP;
+	}
+
+	if (cfg->interface) {
+		my->info.socket.inet.ifindex = if_nametoindex(cfg->interface);
+
+		if (!my->info.socket.inet.ifindex) {
+			fr_strerror_printf_push("Failed finding interface %s: %s", cfg->interface, fr_syserror(errno));
+			return -1;
+		}
+	}
+
+	fd = socket(my->info.socket.af, my->info.socket.type, protocol);
+	if (fd < 0) {
+		fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
+		return fr_bio_error(GENERIC);
+	}
+
+	return fd;
+}
+
+/** Open a file
+ *
+ *  The names /dev/stdout, /dev/stderr, and /dev/stdin are duplicates of the matching file
+ *  descriptor, and are not opened by name.
+ *
+ * @param my		the FD bio
+ * @param cfg		the configuration
+ * @return
+ *	- <0 on error
+ *	- the file descriptor
+ */
+static int fr_bio_fd_file_open(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
+{
+	int fd;
+
+	if (cfg->type != FR_BIO_FD_CONNECTED) {
+		fr_strerror_printf("Can only use connected sockets for file IO");
+		return -1;
+	}
+
+	/*
+	 *	Filenames overload the #fr_socket_t for now.
+	 */
+	my->info.socket.af = AF_FR_FILENAME;
+	my->info.socket.type = SOCK_STREAM;
+	my->info.socket.file.path = cfg->filename;
+
+	/*
+	 *	Allow hacks for stdout and stderr
+	 */
+	if (strcmp(cfg->filename, "/dev/stdout") == 0) {
+		if (cfg->flags != O_WRONLY) {
+		fail_dev:
+			fr_strerror_printf("Cannot read from %s", cfg->filename);
+			return -1;
+		}
+
+		fd = dup(STDOUT_FILENO);
+
+	} else if (strcmp(cfg->filename, "/dev/stderr") == 0) {
+		if (cfg->flags != O_WRONLY) goto fail_dev;
+
+		fd = dup(STDERR_FILENO);
+
+	} else if (strcmp(cfg->filename, "/dev/stdin") == 0) {
+		if (cfg->flags != O_RDONLY) {
+			fr_strerror_printf("Cannot write to %s", cfg->filename);
+			return -1;
+		}
+
+		fd = dup(STDIN_FILENO);
+
+	} else {
+		/*
+		 *	Minor hacks so that we have only _one_ source of open / mkdir
+		 */
+		my->info.socket.fd = -1;
+
+		fd = fr_bio_fd_reopen(&my->bio);
+	}
+	if (fd < 0) {
+		fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
+		return fr_bio_error(GENERIC);
+	}
+
+	return fd;
+}
+
+/** Open a Unix domain socket
+ *
+ *  The socket is not bound or connected here, as that depends on the #fr_bio_fd_type_t.
+ *
+ *  Permissions are 
+ *
+ * @param my		the FD bio
+ * @param cfg		the configuration
+ * @return
+ *	- <0 on error
+ *	- the file descriptor
+ */
+static int fr_bio_fd_unix_open(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
+{
+	int fd;
+
+	my->info.socket.af = AF_LOCAL;
+	my->info.socket.type = SOCK_STREAM;
+	my->info.socket.unix.path = cfg->path;
+
+	fd = socket(my->info.socket.af, my->info.socket.type, 0);
+	if (fd < 0) {
+		fr_strerror_printf("Failed opening domain socket %s: %s", cfg->path, fr_syserror(errno));
+		return fr_bio_error(GENERIC);
+	}
+
+	return fd;
+}
+
 /** Opens a socket and updates sock->fd
  *
  *  If the socket is asynchronous, it also calls connect()
@@ -1100,161 +1302,19 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 	case FR_BIO_FD_TRANSPORT_TCP:
 	case FR_BIO_FD_TRANSPORT_UDP:
-			int protocol;
-
-			if (fr_bio_fd_check_config(cfg) < 0) return -1;
-
-			my->info.socket.af = cfg->src_ipaddr.af;
-			my->info.socket.inet.src_ipaddr = cfg->src_ipaddr;
-			my->info.socket.inet.dst_ipaddr = cfg->dst_ipaddr;
-			my->info.socket.inet.src_port = cfg->src_port;
-			my->info.socket.inet.dst_port = cfg->dst_port;
-
-			/*
-			 *	Sanitize the IP addresses.
-			 *
-			 */
-			switch (cfg->type) {
-			case FR_BIO_FD_INVALID:
-				return -1;
-
-			case FR_BIO_FD_CONNECTED:
-				/*
-				 *	No source specified, just bootstrap it from the destination.
-				 */
-				if (my->info.socket.inet.src_ipaddr.af == AF_UNSPEC) {
-					my->info.socket.inet.src_ipaddr = (fr_ipaddr_t) {
-						.af = my->info.socket.inet.dst_ipaddr.af,
-						.prefix = (my->info.socket.inet.dst_ipaddr.af == AF_INET) ? 32 : 128,
-					};
-
-					/*
-					 *	Set the main socket AF too.
-					 */
-					my->info.socket.af = my->info.socket.inet.dst_ipaddr.af;
-				}
-
-	#ifdef SO_REUSEPORT
-				/*
-				 *	Connected UDP sockets really only matter when writing packets.  They allow the
-				 *	system to use write() instead of sendto().
-				 *
-				 *	However for reading packets, POSIX says that the OS does NOT check the source
-				 *	IP.  Instead, it just delivers any packet with the correct dst IP/port.  Even
-				 *	worse, if multiple sockets re-use the same dst IP/port, packets are delivered
-				 *	to a _random_ socket.
-				 *
-				 *	As a result, we cannot use wildcard sockets with SO_REUSEPORT, and UDP.
-				 *
-				 *	However, recent OS (macOS 24.6.0 (Sequoia) and Linux 6.12, and FreeBSD) all
-				 *	support connected UDP sockets, and check the 4-tuple, so that only packets for
-				 *	the connection get delivered to the socket.
-				 *
-				 *	For now, we leave this check alone.  The caller should really be passing in a
-				 *	specific source IP address, and not a wildcard for connected UDP sockets.
-				 */
-				if (cfg->reuse_port && (cfg->transport_type == FR_BIO_FD_TRANSPORT_UDP) &&
-				    fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) { /* checks AF, so we're OK */
-					fr_strerror_const("Cannot set 'reuse_port' for connected UDP sockets with wildcard IP");
-					return -1;
-				}
-	#endif
-				break;
-
-			case FR_BIO_FD_UNCONNECTED:
-			case FR_BIO_FD_LISTEN:
-				fr_assert(my->info.socket.inet.src_ipaddr.af != AF_UNSPEC);
-				break;
-			}
-
-			if (cfg->transport_type == FR_BIO_FD_TRANSPORT_TCP) {
-				protocol = IPPROTO_TCP;
-			} else {
-				protocol = IPPROTO_UDP;
-			}
-
-			if (cfg->interface) {
-				my->info.socket.inet.ifindex = if_nametoindex(cfg->interface);
-
-				if (!my->info.socket.inet.ifindex) {
-					fr_strerror_printf_push("Failed finding interface %s: %s", cfg->interface, fr_syserror(errno));
-					return -1;
-				}
-			}
-
-			fd = socket(my->info.socket.af, my->info.socket.type, protocol);
-			if (fd < 0) {
-				fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
-				return fr_bio_error(GENERIC);
-			}
-
+		fd = fr_bio_fd_socket_open(my, cfg);
 		break;
 
 	case FR_BIO_FD_TRANSPORT_UNIX:
-			my->info.socket.af = AF_LOCAL;
-			my->info.socket.type = SOCK_STREAM;
-			my->info.socket.unix.path = cfg->path;
-
-			fd = socket(my->info.socket.af, my->info.socket.type, 0);
-			if (fd < 0) {
-				fr_strerror_printf("Failed opening domain socket %s: %s", cfg->path, fr_syserror(errno));
-				return fr_bio_error(GENERIC);
-			}
-
+		fd = fr_bio_fd_unix_open(my, cfg);
 		break;
 
 	case FR_BIO_FD_TRANSPORT_FILE:
-			if (cfg->type != FR_BIO_FD_CONNECTED) {
-				fr_strerror_printf("Can only use connected sockets for file IO");
-				return -1;
-			}
-
-			/*
-			 *	Filenames overload the #fr_socket_t for now.
-			 */
-			my->info.socket.af = AF_FR_FILENAME;
-			my->info.socket.type = SOCK_STREAM;
-			my->info.socket.file.path = cfg->filename;
-
-			/*
-			 *	Allow hacks for stdout and stderr
-			 */
-			if (strcmp(cfg->filename, "/dev/stdout") == 0) {
-				if (cfg->flags != O_WRONLY) {
-				fail_dev:
-					fr_strerror_printf("Cannot read from %s", cfg->filename);
-					return -1;
-				}
-
-				fd = dup(STDOUT_FILENO);
-
-			} else if (strcmp(cfg->filename, "/dev/stderr") == 0) {
-				if (cfg->flags != O_WRONLY) goto fail_dev;
-
-				fd = dup(STDERR_FILENO);
-
-			} else if (strcmp(cfg->filename, "/dev/stdin") == 0) {
-				if (cfg->flags != O_RDONLY) {
-					fr_strerror_printf("Cannot write to %s", cfg->filename);
-					return -1;
-				}
-
-				fd = dup(STDIN_FILENO);
-
-			} else {
-				/*
-				 *	Minor hacks so that we have only _one_ source of open / mkdir
-				 */
-				my->info.socket.fd = -1;
-
-				fd = fr_bio_fd_reopen(bio);
-			}
-			if (fd < 0) {
-				fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
-				return fr_bio_error(GENERIC);
-			}
+		fd = fr_bio_fd_file_open(my, cfg);
 		break;
 	}
+
+	if (fd < 0) return fd;
 
 	/*
 	 *	Set it to be non-blocking if required.
@@ -1353,7 +1413,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 		switch (my->info.socket.af) {
 		case AF_LOCAL:
-			if ((rcode = fr_bio_fd_socket_bind_unix(my, cfg)) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_unix_bind(my, cfg)) < 0) goto fail;
 			break;
 
 		case AF_FR_FILENAME:
@@ -1395,7 +1455,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			break;
 
 		case AF_LOCAL:
-			if ((rcode = fr_bio_fd_socket_bind_unix(my, cfg)) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_unix_bind(my, cfg)) < 0) goto fail;
 			break;
 
 		default:
