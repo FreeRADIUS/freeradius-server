@@ -1586,11 +1586,15 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 int _cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char const *filename, int lineno)
 {
 	char const *name1, *name2;
+	CONF_DATA const *cd;
 
 	if (!cs || !rule) return 0;
 
 	name1 = rule->name1 == CF_IDENT_ANY ? "__any__" : rule->name1;
 	name2 = rule->name2 == CF_IDENT_ANY ? "__any__" : rule->name2;
+
+	cd = cf_data_find(CF_TO_ITEM(cs), conf_parser_t, name1);
+	if (cd && cd->data == rule) return 0;
 
 	if (DEBUG_ENABLED4) {
 		cf_log_debug(cs, "Pushed parse rule to %s section: %s %s",
@@ -1604,7 +1608,6 @@ int _cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char cons
 	 *	Fixme maybe?.. Can't have a section and pair with the same name.
 	 */
 	if (!_cf_data_add_static(CF_TO_ITEM(cs), rule, "conf_parser_t", name1, filename, lineno)) {
-		CONF_DATA const *cd;
 		conf_parser_t *old;
 
 		cd = cf_data_find(CF_TO_ITEM(cs), conf_parser_t, name1);
