@@ -991,6 +991,47 @@ void _cf_lineno_set(CONF_ITEM *ci, int lineno)
 	ci->lineno = lineno;
 }
 
+/** Count the items in a section, giving up once the count reaches a limit
+ *
+ *  `total` is the running count, shared by every level of the walk.  Each
+ *  level adds its own children to it, so the caller reads the whole subtree
+ *  from one variable rather than from a return value which each level would
+ *  have to add up by hand.
+ *
+ *  Stopping early is what keeps this cheap.  The answer only has to be good
+ *  enough to compare against the limit, so the walk never costs more than the
+ *  limit itself, however large the section is.
+ *
+ * @param[in] cs	to count, including everything nested inside it.  NULL
+ *			counts as nothing, because cf_section_dup() is called
+ *			with a NULL parent.
+ * @param[in,out] total	the running count, which the caller sets to 0.
+ * @return `*total`, so that a caller which wants only the answer can take it
+ *	   from here.
+ */
+static int cf_section_item_count(CONF_SECTION const *cs, int *total)
+{
+	CONF_ITEM const	*ci = NULL;
+
+	if (!cs || !total) return 0;
+
+	/*
+	 *	Every item at this level counts, and the list knows how many
+	 *	there are without being walked.  Only the sections need
+	 *	walking, for what is nested inside them.
+	 */
+	*total += fr_dlist_num_elements(&cs->item.children);
+	if (*total >= CF_SECTION_MAX_DUP_ITEMS) return *total;
+
+	while ((ci = fr_dlist_next(&cs->item.children, ci)) != NULL) {
+		if (ci->type != CONF_ITEM_SECTION) continue;
+
+		if (cf_section_item_count(cf_item_to_section(ci), total) >= CF_SECTION_MAX_DUP_ITEMS) return *total;
+	}
+
+	return *total;
+}
+
 /** Duplicate a configuration section
  *
  * @note recursively duplicates any child sections.
@@ -1014,6 +1055,20 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 	CONF_SECTION	   *out, *dst;
 	CONF_SECTION const *src;
 	CONF_ITEM const	   *ci;
+	int		   parent_count = 0, cs_count = 0;
+
+	/*
+	 *	Disallow exponential explosion.  See the definition of CF_SECTION_MAX_DUP_ITEMS
+	 */
+	(void) cf_section_item_count(parent, &parent_count);
+	(void) cf_section_item_count(cs, &cs_count);
+
+	if ((parent_count + cs_count) >= CF_SECTION_MAX_DUP_ITEMS) {
+		ERROR("%s[%d]: Copying section %s would create more than %u items in one section.  "
+		      "There is likely some structural issue with the configuration files",
+		      cs->item.filename, cs->item.lineno, name1, CF_SECTION_MAX_DUP_ITEMS);
+		return NULL;
+	}
 
 	/*
 	 *	Create the new output section.

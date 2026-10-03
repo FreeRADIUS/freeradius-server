@@ -131,7 +131,7 @@ struct cf_section {
  */
 #define CONF_SECTION_MAX_DEPTH 256
 
-/**  Limit the number of children that a section can have.
+/** Limit the number of direct children that a section can have.
  *
  *  This limit is largely for the fuzzers, which find pathological
  *  cases of copying references.  When copying a ${name} that resolves
@@ -148,6 +148,21 @@ struct cf_section {
  *  storing more than 1024 things, you should really use a database.
  */
 #define CF_SECTION_MAX_CHILDREN (1024)
+
+/** Limit the number of indirect children that a section can have.
+ *
+ *  In a pathological case, a configuration can copy sections via:
+ *
+ *	a1 = { a, b }			2 children
+ *	a2 = { a = ${a1}, b = ${a1} }	4 children
+ *	a3 = { a = ${a2}, b = ${a2} }	8 children
+ *	...
+ *
+ *  Therefore before we duplicate a section, we check if the copy will
+ *  result in too many children.  The limit of 1024 is unrelated to
+ *  CF_SECTION_MAX_CHILDREN, but is chosen for similar reasons.
+ */
+#define CF_SECTION_MAX_DUP_ITEMS (1024)
 
 /*
  *	Private getter for cf_file.c's parser hook - the public API is the
