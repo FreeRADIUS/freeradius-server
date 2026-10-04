@@ -795,6 +795,12 @@ retry:
                 break;
         }
 
+	/*
+	 *	There was a fatal error in connect().
+	 */
+	my->info.connect_errno = errno;
+	fr_strerror_printf("Failed connecting socket: %s", fr_syserror(errno));
+
 fail:
 	(void) fr_bio_shutdown(&my->bio);
         return fr_bio_error(IO);
@@ -880,18 +886,22 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 #endif
 
 	/*
-	 *	Don't call connect() if the socket is synchronous, it will block.
+	 *	Call connect() for both synchronous and asynchronous sockets.
+	 *
+	 *	A synchronous socket blocks until the connection succeeds or fails.
+	 *
+	 *	An asynchronous socket kicks off the TCP side of connect(), and the answer will eventually
+	 *	come back.
 	 */
-	if (!my->info.cfg->async) return 0;
-
 	rcode = fr_bio_fd_try_connect(my);
 	if (rcode == 0) return 0;
 
 	if (rcode != fr_bio_error(IO_WOULD_BLOCK)) return rcode;
 
 	/*
-	 *	The socket is blocked, and should be selected for writing.
+	 *	We got here via EINPROGRESS, so we must be blocked, and in the connecting state.
 	 */
+	fr_assert(my->info.cfg->async);
 	fr_assert(my->info.write_blocked);
 	fr_assert(my->info.state == FR_BIO_FD_STATE_CONNECTING);
 
