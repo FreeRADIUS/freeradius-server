@@ -414,6 +414,35 @@ static fr_time_delta_t tls_cache_session_lifetime(request_t *request, fr_value_b
 	return fr_time_sub(expires, fr_time());
 }
 
+/** Is the session ticket resumable?
+ *
+ * If the ticket is close to expiry, then we just force a full
+ * re-authentication.
+ *
+ * @param[in] request		to log through.
+ * @param[in] session_id	of the session, for the log message.
+ * @param[in] conf		holding `lifetime` and `min_lifetime`.
+ * @param[in] sess		to examine.
+ * @return
+ *	- true if the session has at least `min_lifetime` left.
+ *	- false if it has less, or has expired.
+ */
+static bool tls_cache_session_resumable(request_t *request, fr_value_box_t const *session_id,
+					fr_tls_conf_t const *conf, SSL_SESSION *sess)
+{
+	fr_time_delta_t left = tls_cache_session_lifetime(request, session_id, conf, sess);
+
+	if (!fr_time_delta_ispos(left)) return false;
+
+	if (fr_time_delta_lt(left, conf->cache.min_lifetime)) {
+		RDEBUG2("Session ID %pV - %pV left is less than min_lifetime of %pV",
+			session_id, fr_box_time_delta(left), fr_box_time_delta(conf->cache.min_lifetime));
+		return false;
+	}
+
+	return true;
+}
+
 /** Process the result of `load session { ... }`
  */
 static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
@@ -481,9 +510,9 @@ static unlang_action_t tls_cache_load_resume(request_t *request, void *uctx)
 	{
 		fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
 
-		if (!fr_time_delta_ispos(tls_cache_session_lifetime(request, &tls_session->session_id,
-								    conf, sess))) {
-			RWDEBUG("Session ID %pV - Cached session has expired, not resuming", &tls_session->session_id);
+		if (!tls_cache_session_resumable(request, &tls_session->session_id, conf, sess)) {
+			RWDEBUG("Session ID %pV - Cached session has too little life left, not resuming",
+				&tls_session->session_id);
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_LOAD_SESSION_EXPIRED);
 
 			/*
@@ -1865,8 +1894,8 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	 *	passed its lifetime, then we reject it and force full
 	 *	reauthentication.
 	 */
-	if (!fr_time_delta_ispos(tls_cache_session_lifetime(request, &tls_session->session_id, conf, sess))) {
-		REDEBUG("Session-ticket has expired, denying session resumption");
+	if (!tls_cache_session_resumable(request, &tls_session->session_id, conf, sess)) {
+		REDEBUG("Session-ticket has too little life left, denying session resumption");
 		fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_TICKET_EXPIRED);
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}

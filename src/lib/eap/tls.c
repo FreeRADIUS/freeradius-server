@@ -1386,5 +1386,23 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs)
 	 */
 	tls_conf->fragment_size -= 10;
 
+	/*
+	 *	There isn't any point to having EAP sessions cache
+	 *	lifetimes which are very low.  Arguably, the minimum
+	 *	lifetime should be a few hours.  We only limit it here
+	 *	to 15min, because anything lower is pretty much
+	 *	ridiculous.
+	 *
+	 *	If the administrator also sets it too low, then we
+	 *	raise it.
+	 */
+	if (!tls_conf->cache.min_lifetime_is_set ||
+	    fr_time_delta_lt(tls_conf->cache.min_lifetime, fr_time_delta_from_sec(15 * 60))) {
+		tls_conf->cache.min_lifetime = fr_time_delta_from_sec(15 * 60);
+
+		cf_log_warn(tls_cs, "Raising EAP session.min_lifetime to %pV",
+			    fr_box_time_delta(tls_conf->cache.min_lifetime));
+	}
+
 	return tls_conf;
 }
