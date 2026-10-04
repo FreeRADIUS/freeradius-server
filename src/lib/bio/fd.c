@@ -980,8 +980,11 @@ int fr_bio_fd_init_listen(fr_bio_fd_t *my)
  *
  *  If a read returns EOF, then the FD remains open until talloc_free(bio) or fr_bio_fd_close() is called.
  *
+ *  The bio caches the cfg pointer, so the configuration has to live at least as long as the bio does.
+ *  See fr_bio_fd_open().
+ *
  *  @param ctx		the talloc ctx
- *  @param cfg		structure holding configuration information
+ *  @param cfg		structure holding the configuration information
  *  @param offset	only for unconnected datagram sockets, where #fr_bio_fd_packet_ctx_t is stored
  *  @return
  *	- NULL on error, memory allocation failed

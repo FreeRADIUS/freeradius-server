@@ -1251,6 +1251,15 @@ static int fr_bio_fd_unix_open(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 /** Opens a socket and updates sock->fd
  *
  *  If the socket is asynchronous, it also calls connect()
+ *
+ *  The caller must supply a cfg pointer which is long-lived.  The FD BIO doesn't copy it, or its contents.
+ *  fr_bio_fd_accept() uses the same pointer for accepted sockets.
+ *
+ *  @param bio	the FD bio
+ *  @param cfg	configuration for the socket, which the caller owns and must keep alive
+ *  @return
+ *	- <0 on error
+ *	- 0 on success
  */
 int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 {

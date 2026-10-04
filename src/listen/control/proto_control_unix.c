@@ -88,6 +88,7 @@ typedef struct {
 	uid_t				peer_uid;		//!< UID value
 	gid_t				peer_gid;		//!< GID value
 
+	fr_bio_fd_config_t		fd_config;		//!< FD BIO configuration
 } proto_control_unix_t;
 
 static const conf_parser_t peercred_config[] = {
@@ -405,24 +406,13 @@ static int mod_open(fr_listen_t *li)
 	CONF_SECTION			*server_cs;
 
 	fr_bio_fd_info_t const		*info;
-	fr_bio_fd_config_t     		cfg;
 
 	fr_assert(!thread->connection);
 
-	cfg = (fr_bio_fd_config_t) {
-		.type = FR_BIO_FD_LISTEN,
-		.socket_type = SOCK_STREAM,
-		.transport_type = FR_BIO_FD_TRANSPORT_UNIX,
-		.path = inst->filename,
-		.uid = inst->uid,
-		.gid = inst->gid,
-		.perm = 0600,
-		.async = true,
-		.backlog = SOMAXCONN,
-		.backlog_is_set = true,
-	};
-
-	thread->fd_bio = fr_bio_fd_alloc(thread, &cfg, 0);
+	/*
+	 *	Point the FD BIO to out long-lived configuration structure.
+	 */
+	thread->fd_bio = fr_bio_fd_alloc(thread, &inst->fd_config, 0);
 	if (!thread->fd_bio) {
 		cf_log_err(li->cs, "Failed opening UNIX path %s - %s", inst->filename, fr_strerror());
 		return -1;
@@ -689,6 +679,23 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 20);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
+
+	/*
+	 *	Initialize the configuration from static information we know now.  It will be used across
+	 *	multiple connections.
+	 */
+	inst->fd_config = (fr_bio_fd_config_t) {
+		.type = FR_BIO_FD_LISTEN,
+		.socket_type = SOCK_STREAM,
+		.transport_type = FR_BIO_FD_TRANSPORT_UNIX,
+		.path = inst->filename,
+		.uid = inst->uid,
+		.gid = inst->gid,
+		.perm = 0600,
+		.async = true,
+		.backlog = SOMAXCONN,
+		.backlog_is_set = true,
+	};
 
 	return 0;
 }
