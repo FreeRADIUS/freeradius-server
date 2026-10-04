@@ -804,8 +804,6 @@ fail:
  */
 static int fr_bio_fd_init_file(fr_bio_fd_t *my)
 {
-	fr_bio_fd_set_open(my);
-
 	/*
 	 *	Other flags may be O_CREAT, etc.
 	 */
@@ -829,6 +827,8 @@ static int fr_bio_fd_init_file(fr_bio_fd_t *my)
 		fr_strerror_const("Invalid flag for opening file");
 		return -1;
 	}
+
+	fr_bio_fd_set_open(my);
 
 	return 0;
 }
