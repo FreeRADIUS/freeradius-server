@@ -1236,8 +1236,12 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 
 	/*
 	 *	Set our MTU, and enforce dynamic MTU
+	 *
+	 *	Account for the EAP header (4), and the EAP-TLS header
+	 *	(6), as per Section 4.2 of RFC 2716.  What's left is
+	 *	the maximum amount of data we read from a TLS buffer.
 	 */
-	tls_session->mtu = conf->fragment_size;
+	tls_session->mtu = conf->fragment_size - 10;
 	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < tls_session->mtu)) {
 		RDEBUG2("Setting fragment_len from %pP", vp);
 		tls_session->mtu = vp->vp_uint32;
@@ -1378,13 +1382,6 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs)
 	 *	setting it higher than that.
 	 */
 	FR_INTEGER_BOUND_CHECK("fragment_size", tls_conf->fragment_size, <=, SSL3_RT_MAX_PLAIN_LENGTH);
-
-	/*
-	 *	Account for the EAP header (4), and the EAP-TLS header
-	 *	(6), as per Section 4.2 of RFC 2716.  What's left is
-	 *	the maximum amount of data we read from a TLS buffer.
-	 */
-	tls_conf->fragment_size -= 10;
 
 	/*
 	 *	There isn't any point to having EAP sessions cache
