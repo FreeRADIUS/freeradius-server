@@ -1042,8 +1042,6 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
  */
 int fr_bio_fd_close(fr_bio_t *bio)
 {
-	int rcode;
-	int tries = 0;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	if (my->info.state == FR_BIO_FD_STATE_CLOSED) return 0;
@@ -1066,23 +1064,7 @@ int fr_bio_fd_close(fr_bio_t *bio)
 		(void) shutdown(my->info.socket.fd, SHUT_RDWR);
 	}
 
-retry:
-	rcode = close(my->info.socket.fd);
-	if (rcode < 0) {
-		switch (errno) {
-		case EINTR:
-		case EIO:
-			tries++;
-			if (tries < my->max_tries) goto retry;
-			return fr_bio_error(IO);
-
-		default:
-			/*
-			 *	EBADF, or other unrecoverable error.  We just call it closed, and continue.
-			 */
-			break;
-		}
-	}
+	(void) close(my->info.socket.fd);
 
 	my->info.state = FR_BIO_FD_STATE_CLOSED;
 	my->info.read_blocked = true;
