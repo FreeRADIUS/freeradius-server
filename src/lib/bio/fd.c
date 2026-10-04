@@ -757,9 +757,11 @@ retry:
 		 */
 		if (fr_bio_fd_socket_name(my) < 0) goto fail;
 
+		/*
+		 *	Install the read / write routines, and then call fr_bio_fd_set_open().
+		 */
                 if (fr_bio_fd_init_common(my) < 0) goto fail;
 
-		fr_bio_fd_set_open(my);
                 return 0;
         }
 
