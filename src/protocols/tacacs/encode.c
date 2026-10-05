@@ -990,7 +990,10 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	fr_assert(packet_len >= sizeof(fr_tacacs_packet_hdr_t));
 
 	body_len = (packet_len - sizeof(fr_tacacs_packet_hdr_t));
-	fr_assert(packet_len < FR_MAX_PACKET_SIZE);
+	if (packet_len >= FR_MAX_PACKET_SIZE) {
+		fr_strerror_printf("encode: too big packet");
+		return -1;
+	}
 	packet->hdr.length = htonl(body_len);
 
 	/*
