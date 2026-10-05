@@ -27,7 +27,7 @@ jobs:
   #
   gen-matrix:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.repository_owner == 'FreeRADIUS' && 'self-hosted' || 'ubuntu-latest' }}
 
     outputs:
       matrix: ${{ steps.gen-matrix.outputs.matrix }}
@@ -42,7 +42,13 @@ jobs:
       name: Generate matrix based on docker targets
       run: |
         cd scripts/docker/build
-        M=$(ls | perl -n -e '{chomp; push @L,"\"$_\""} END{print "{\"env\":[{\"OS\":",join("},{\"OS\":",@L),"}]}"}')
+        M='{"env":['
+        sep=
+        for os in *; do
+          M="$M$sep{\"OS\":\"$os\"}"
+          sep=,
+        done
+        M="$M]}"
         echo "Matrix: $M"
         echo matrix=$M >> $GITHUB_OUTPUT
 
