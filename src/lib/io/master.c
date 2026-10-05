@@ -701,6 +701,11 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 				    cf_section_name1(inst->submodule->conf),
 				    cf_section_name2(inst->submodule->conf), false);
 
+		if (!cs) {
+			cf_log_err(inst->server_cs, "Failed duplicating module config");
+			goto cleanup;
+		}
+
 		/*
 		 *	Clear the "dynamic_clients" flag, so that the child instantiate routines don't check
 		 *	the network allow / deny list when instantiating child connections.
