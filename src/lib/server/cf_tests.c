@@ -1201,6 +1201,7 @@ static void test_file_read_empty_file(void)
 	char		filename[] = "/tmp/cf_tests.XXXXXX";
 	int		fd;
 
+	/* coverity[secure_temp] */
 	fd = mkstemp(filename);
 	TEST_ASSERT(fd >= 0);
 	close(fd);
