@@ -93,9 +93,10 @@ static inline CC_HINT(always_inline) bool fr_bio_fd_errno_retry(fr_bio_fd_t *my,
 		 */
 	case EPIPE:
 		/*
-		 *	The connection is no longer usable, close it.
+		 *	The connection is no longer usable, so we call shutdown, rather than just marking it
+		 *	as being at EOF.
 		 */
-		fr_bio_eof(&my->bio);
+		(void) fr_bio_shutdown(&my->bio);
 		*rcode_p = 0;
 		return false;
 

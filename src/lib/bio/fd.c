@@ -126,8 +126,14 @@ static int fr_bio_fd_eof(fr_bio_t *bio)
 
 	my->info.eof = true;
 
+	/*
+	 *	A read returns zero, which is what EOF means to the caller.
+	 *
+	 *	A write returns "this BIO was shutdown", which is true for both BIOs at EOF, and BIOs which
+	 *	were shut down due to an error.
+	 */
 	bio->read = fr_bio_null_read;
-	bio->write = fr_bio_fail_write;
+	bio->write = fr_bio_shutdown_write;
 
 	/*
 	 *	Nothing more for us to do, tell fr_bio_eof() that it can continue with poking other BIOs.
