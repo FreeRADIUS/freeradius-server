@@ -373,16 +373,10 @@ int _request_init(char const *file, int line,
 	return 0;
 }
 
-/** Callback for slabs to deinitialise the request
+/** Check for common things on "request free".
  *
- * Does not need to be called for local requests.
- *
- * @param[in] request		deinitialise
- * @return
- *	- 0 in the request was deinitialised.
- *	- -1 if the request is in an unexpected state.
  */
-int request_slab_deinit(request_t *request)
+static void request_common_deinit(request_t *request)
 {
 	fr_assert_msg(!fr_timer_armed(request->timeout),
 		      "alloced %s:%i: %s still in the  timeout sublist",
@@ -395,12 +389,32 @@ int request_slab_deinit(request_t *request)
 		      request->alloc_line,
 		      request->name ? request->name : "(null)", request->runnable);
 
+	fr_assert_msg(!fr_dlist_entry_in_list(&request->listen_entry),
+		      "alloced %s:%i: %s still tracked by the listener",
+		      request->alloc_file,
+		      request->alloc_line,
+		      request->name ? request->name : "(null)");
+
 	RDEBUG3("Request deinitialising (%p)", request);
 
 	/*
 	 *	state_ctx is parented separately.
 	 */
 	if (request->session_state_ctx) TALLOC_FREE(request->session_state_ctx);
+}
+
+/** Callback for slabs to deinitialise the request
+ *
+ * Does not need to be called for local requests.
+ *
+ * @param[in] request		deinitialise
+ * @return
+ *	- 0 in the request was deinitialised.
+ *	- -1 if the request is in an unexpected state.
+ */
+int request_slab_deinit(request_t *request)
+{
+	request_common_deinit(request);
 
 	/*
 	 *	Zero out everything.
@@ -442,12 +456,6 @@ static int _request_local_free(request_t *request)
 	RDEBUG4("Local request freed (%p)", request);
 
 	/*
-	 *	Ensure anything that might reference the request is
-	 *	freed before it is.
-	 */
-	talloc_free_children(request);
-
-	/*
 	 *	state_ctx is parented separately.
 	 *
 	 *	The reason why it's OK to do this, is if the state attributes
@@ -466,13 +474,15 @@ static int _request_local_free(request_t *request)
 	 */
 	if (request->session_state_ctx) {
 		fr_assert(!request->parent || (request->session_state_ctx != request->parent->session_state_ctx));
-
-		talloc_free(request->session_state_ctx);
 	}
 
-#ifndef NDEBUG
-	request->magic = 0x01020304;	/* set the request to be nonsense */
-#endif
+	/*
+	 *	Ensure anything that might reference the request is
+	 *	freed before it is.
+	 */
+	talloc_free_children(request);
+
+	request_common_deinit(request);
 
 	return 0;
 }
