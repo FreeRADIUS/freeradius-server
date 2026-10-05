@@ -72,16 +72,18 @@ static ssize_t fr_bio_queue_write_buffer(fr_bio_t *bio, void *packet_ctx, void c
 
 /** Forcibly cancel all outstanding packets.
  *
- *  Even partially written ones.  This function is called from
- *  shutdown(), when the destructor is called, or on fatal read / write
- *  errors.
+ *  The cancel includes partially written packets.  The shutdown and
+ *  destructor functions call us.  If there is no cancel callback,
+ *  the packets are left on the pending list.
+ *
+ *  This function does not change the read and write routines.
+ *  fr_bio_shutdown() owns the read and write routines, and may leave
+ *  the read routine in place so that the application can drain data
+ *  which has already been received.
  */
 static void fr_bio_queue_list_cancel(fr_bio_queue_t *my)
 {
 	fr_bio_queue_entry_t *item;
-
-	my->bio.read = fr_bio_fail_read;
-	my->bio.write = fr_bio_fail_write;
 
 	if (!my->cancel) return;
 
@@ -161,19 +163,7 @@ static ssize_t fr_bio_queue_write_next(fr_bio_t *bio, void *packet_ctx, void con
 	 *	Write the data out.  If we write all of it, we're done.
 	 */
 	rcode = next->write(next, packet_ctx, buffer, size);
-
-	if (rcode < 0) {
-		/*
-		 *	IO would block, return it back up the chain.
-		 */
-		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
-
-		/*
-		 *	All other errors are fatal.
-		 */
-		fr_bio_queue_list_cancel(my);
-		return rcode;
-	}
+	if (rcode < 0) return rcode;
 
 	if ((size_t) rcode == size) return rcode;
 
@@ -241,6 +231,9 @@ static ssize_t fr_bio_queue_write_flush(fr_bio_queue_t *my, size_t size)
 		if (rcode < 0) {
 			if (rcode == fr_bio_error(IO_WOULD_BLOCK)) break;
 
+			/*
+			 *	The next bio decides whether the error is fatal.  See fr_bio_queue_write_next().
+			 */
 			return rcode;
 		}
 
@@ -296,40 +289,6 @@ static ssize_t fr_bio_queue_write_buffer(fr_bio_t *bio, void *packet_ctx, void c
 	 *	This can only error out if the free list has no more entries.
 	 */
 	return fr_bio_queue_list_push(my, packet_ctx, buffer, size, 0);
-}
-
-/**  Read one packet from next bio.
- *  
- *  This function does NOT respect packet boundaries.  The caller should use other APIs to determine how big
- *  the "next" packet is.
- *
- *  The caller may buffer the output data itself, or it may use other APIs to do checking.
- *
- *  The main
- */
-static ssize_t fr_bio_queue_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
-{
-	ssize_t rcode;
-	fr_bio_queue_t *my = talloc_get_type_abort(bio, fr_bio_queue_t);
-	fr_bio_t *next;
-
-	next = fr_bio_next(&my->bio);
-	fr_assert(next != NULL);
-
-	rcode = next->read(next, packet_ctx, buffer, size);
-	if (rcode >= 0) return rcode;
-
-	/*
-	 *	We didn't read anything, return that.
-	 */
-	if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
-
-	/*
-	 *	Error reading, which means that we can't write to it, either.  We don't care if the error is
-	 *	EOF or anything else.  We just cancel the outstanding packets, and shut ourselves down.
-	 */
-	fr_bio_queue_list_cancel(my);
-	return rcode;
 }
 
 /** Shutdown
@@ -422,9 +381,9 @@ fr_bio_t *fr_bio_queue_alloc(TALLOC_CTX *ctx, size_t max_saved,
 		fr_bio_queue_list_insert_tail(&my->free, &my->array[i]);
 	}
 
-	my->bio.read = fr_bio_queue_read;
+	my->bio.read = fr_bio_next_read; /* the queue bio only changes the write path */
 	my->bio.write = fr_bio_queue_write_next;
-	my->cb.shutdown = fr_bio_queue_shutdown;
+	my->priv_cb.shutdown = fr_bio_queue_shutdown;
 
 	fr_bio_chain(&my->bio, next);
 
@@ -468,7 +427,7 @@ int fr_bio_queue_cancel(fr_bio_t *bio, fr_bio_queue_entry_t *item)
 	 *	If the item has been partially written, AND we have a working write function, see if we can
 	 *	cancel it.
 	 */
-	if (item->already_written && (my->bio.write != fr_bio_null_write)) {
+	if (item->already_written && (my->bio.write != fr_bio_shutdown_write)) {
 		ssize_t rcode;
 		fr_bio_t *next;
 

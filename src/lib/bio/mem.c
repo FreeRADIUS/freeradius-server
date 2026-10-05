@@ -688,7 +688,7 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 	 */
 	if (!read_size) {
 		my->type = FR_BIO_MEM_VERIFY;
-		my->bio.read = fr_bio_null_read; /* can't read anything until the verify routine is put in place */
+		my->bio.read = fr_bio_fail_read; /* can't read anything until the verify routine is put in place */
 		my->bio.write = fr_bio_next_write;
 
 		if (write_size > 0) {
@@ -762,7 +762,7 @@ fr_bio_t *fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t write_size, fr_bio_t *
 	}
 
 	my->type = FR_BIO_MEM_SOURCE;
-	my->bio.read = fr_bio_null_read; /* reading FROM this bio is not possible */
+	my->bio.read = fr_bio_fail_read; /* reading FROM this bio is not possible */
 	my->bio.write = fr_bio_mem_write_next;
 
 	/*

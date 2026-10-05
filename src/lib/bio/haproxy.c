@@ -239,7 +239,7 @@ fr_bio_t *fr_bio_haproxy_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_bio_t 
 	}
 
 	my->bio.read = fr_bio_haproxy_read;
-	my->bio.write = fr_bio_null_write; /* can't write to this bio */
+	my->bio.write = fr_bio_fail_write; /* can't write to this bio */
 	my->cb = *cb;
 
 	fr_bio_chain(&my->bio, next);

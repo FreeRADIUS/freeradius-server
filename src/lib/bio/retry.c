@@ -95,7 +95,6 @@ struct fr_bio_retry_s {
 
 	fr_retry_config_t	retry_config;
 
-	ssize_t			error;
 	bool			all_used;	//!< blocked due to no free entries
 
 	/*
@@ -485,20 +484,6 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 	return fr_bio_retry_save_write(my, item, rcode);
 }
 
-/** A previous timer write had a fatal error, so we forbid further writes.
- *
- */
-static ssize_t fr_bio_retry_write_fatal(fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void const *buffer, UNUSED size_t size)
-{
-	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
-	ssize_t rcode = my->error;
-
-	my->error = 0;
-	my->bio.write = fr_bio_null_write;
-
-	return rcode;
-}
-
 /** Run an expiry timer event.
  *
  */
@@ -524,7 +509,6 @@ static void fr_bio_retry_expiry_timer(UNUSED fr_timer_list_t *tl, UNUSED fr_time
  */
 static void fr_bio_retry_next_timer(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
-	ssize_t rcode;
 	fr_bio_retry_entry_t *item = talloc_get_type_abort(uctx, fr_bio_retry_entry_t);
 	fr_bio_retry_t *my = item->my;
 
@@ -533,15 +517,14 @@ static void fr_bio_retry_next_timer(UNUSED fr_timer_list_t *tl, fr_time_t now, v
 
 	/*
 	 *	Retry one item.
+	 *
+	 *	A timer has no caller to return an error to.  On error, fr_bio_retry_write_item() has
+	 *	already released the item with FR_BIO_RETRY_WRITE_ERROR, and the release callback tells
+	 *	the application about the failure.  The next bio decides whether the error is fatal.  For
+	 *	a fatal error, the next bio has already shut the chain down, so fr_bio_retry_next_timer()
+	 *	has nothing more to do.
 	 */
-	rcode = fr_bio_retry_write_item(my, item, now);
-	if (rcode < 0) {
-		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return;
-
-		my->error = rcode;
-		my->bio.write = fr_bio_retry_write_fatal;
-		return;
-	}	
+	(void) fr_bio_retry_write_item(my, item, now);
 }
 
 /** Write a request, and see if we have a reply.
