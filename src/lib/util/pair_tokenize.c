@@ -188,7 +188,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	fr_token_t op;
 
 	slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent, &FR_SBUFF_IN(p, end), NULL);
-	if (slen <= 0) return slen - (in - start);
+	if (slen <= 0) return slen < SSIZE_MIN + (in - start) ? SSIZE_MIN : slen - (in - start);
 
 	if (da->parent != pair_ctx->parent) {
 		fr_strerror_printf("Unexpected attribute %s is not a child of %s",
@@ -302,7 +302,7 @@ static fr_slen_t fr_pair_ctx_set(fr_pair_ctx_t *pair_ctx, char const *in, size_t
 	 */
 	while (p < end) {
 		slen = fr_dict_attr_by_name_substr(NULL, &da, parent, &FR_SBUFF_IN(p, end), NULL);
-		if (slen <= 0) return slen - (p - in);
+		if (slen <= 0) return slen < SSIZE_MIN + (p - in) ? SSIZE_MIN : slen - (p - in);
 
 		if (da->parent != parent) {
 			fr_strerror_printf("Unexpected attribute %s is not a child of %s",
@@ -437,7 +437,7 @@ ssize_t fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t in
 		 *	We allow a leaf OR a reference here.
 		 */
 		slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent, &FR_SBUFF_IN(p, end), NULL);
-		if (slen <= 0) return slen - (p - in);
+		if (slen <= 0) return slen < SSIZE_MIN + (p - in) ? SSIZE_MIN : slen - (p - in);
 
 		/*
 		 *	Structural types do not have values.  So a
