@@ -237,6 +237,9 @@ char const *fr_bio_strerror(ssize_t error)
 	case fr_bio_error(GENERIC):
 		return fr_strerror();
 
+	case fr_bio_error(OOM):
+		return "Out of memory";
+
 	case fr_bio_error(VERIFY):
 		return "Packet fails verification";
 
