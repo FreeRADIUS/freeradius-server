@@ -65,49 +65,12 @@ server load-generator {
 		type = Access-Request
 		type = Status-Server
 		transport = udp
-		require_message_authenticator = auto
+		require_message_authenticator = yes
 		limit_proxy_state = auto
-
-		limit {
-			max_clients = 256
-			max_connections = 256
-			idle_timeout = 60.0
-			dynamic_timeout = 600.0
-			nak_lifetime = 30.0
-			cleanup_delay = 5.0
-		}
 
 		udp {
 			ipaddr = *
 			port = 1812
-			networks {
-				allow = 127/8
-				allow = 192.0.2/24
-			}
-		}
-
-		tcp {
-			ipaddr = *
-			port = 1812
-			networks {
-				allow = 127/8
-				allow = 192.0.2/24
-			}
-		}
-	}
-
-	listen authentication {
-		type = Access-Request
-		type = Status-Server
-		transport = tcp
-
-		tcp {
-			ipaddr = *
-			port = 1812
-			networks {
-				allow = 127/8
-				allow = 192.0.2/24
-			}
 		}
 	}
 
