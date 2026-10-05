@@ -27,7 +27,6 @@ jobs:
   #
   gen-matrix:
 
-    #  shell.  Run it on the org's runners when they are available rather
     runs-on: ${{ github.repository_owner == 'FreeRADIUS' && 'self-hosted' || 'ubuntu-latest' }}
 
     outputs:

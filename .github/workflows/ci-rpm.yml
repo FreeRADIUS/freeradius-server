@@ -26,7 +26,6 @@ jobs:
   set-matrix:
     needs: common_vars
     name: Setup build matrix
-    runs-on: ubuntu-latest
     runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
