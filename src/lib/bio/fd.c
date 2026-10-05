@@ -127,7 +127,7 @@ static int fr_bio_fd_eof(fr_bio_t *bio)
 	my->info.eof = true;
 
 	bio->read = fr_bio_null_read;
-	bio->write = fr_bio_null_write;
+	bio->write = fr_bio_fail_write;
 
 	/*
 	 *	Nothing more for us to do, tell fr_bio_eof() that it can continue with poking other BIOs.
