@@ -176,6 +176,7 @@ static fr_slen_t fr_pair_value_from_substr(fr_pair_parse_t const *conf, fr_pair_
 			fr_strerror_printf("Cannot read output from command `%pV`: %s",
 					   fr_box_strvalue_len(fr_sbuff_start(exec_in), fr_sbuff_used(exec_in)),
 					   fr_syserror(errno));
+			free(exec_out);	/* getline(3): the buffer must be freed even when it fails */
 			pclose(fp);
 			return 0;
 		}
