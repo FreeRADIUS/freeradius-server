@@ -200,7 +200,7 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 {
 	size_t prf_size = strlen(prf_label);
 	size_t pos;
-	uint16_t net_len = htons(out_len);	
+	uint16_t net_len = htons(out_len);
 	uint8_t	*buf;
 
 	if (prf_size > 128) prf_size = 128;
@@ -289,7 +289,7 @@ void eaptls_gen_keys_only(UNUSED REQUEST *request, SSL *s, char const *label, ui
 /*
  *	Generate keys according to RFC 5216 (section 2.3) and add to reply
  */
-void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, uint8_t const *context, UNUSED size_t context_size)
+void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, uint8_t const *context, size_t context_size)
 {
 	uint8_t out[4 * EAPTLS_MPPE_KEY_LEN];
 	uint8_t *p;
