@@ -161,7 +161,6 @@ static ssize_t fr_bio_queue_write_next(fr_bio_t *bio, void *packet_ctx, void con
 	 *	Write the data out.  If we write all of it, we're done.
 	 */
 	rcode = next->write(next, packet_ctx, buffer, size);
-	if ((size_t) rcode == size) return rcode;
 
 	if (rcode < 0) {
 		/*
@@ -175,6 +174,8 @@ static ssize_t fr_bio_queue_write_next(fr_bio_t *bio, void *packet_ctx, void con
 		fr_bio_queue_list_cancel(my);
 		return rcode;
 	}
+
+	if ((size_t) rcode == size) return rcode;
 
 	/*
 	 *	We were flushing the next buffer, return any data which was written.
