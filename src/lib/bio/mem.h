@@ -56,6 +56,9 @@ fr_bio_t	*fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t buffer_size, fr_bio_t 
 
 fr_bio_t	*fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t buffer_size) CC_HINT(nonnull);
 
+/*
+ *	Peek at the data.  Any activity on the BIO will invalidate the returned pointer.
+ */
 uint8_t const	*fr_bio_mem_read_peek(fr_bio_t *bio, size_t *size) CC_HINT(nonnull);
 
 void		fr_bio_mem_read_discard(fr_bio_t *bio, size_t size) CC_HINT(nonnull);
