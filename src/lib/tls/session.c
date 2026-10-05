@@ -1474,7 +1474,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 		 */
 		while (*p != '\0') {
 			if (isspace((uint8_t) *p)) {
-				*q++ = *p++;
+				p++;
 				continue;
 			}
 			*q++ = *p++;
