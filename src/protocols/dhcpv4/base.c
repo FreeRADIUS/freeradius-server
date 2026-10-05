@@ -342,8 +342,6 @@ void *fr_dhcpv4_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
 		 */
 		if (c->da->flags.is_raw && c->da->parent && (c->da->parent->type == FR_TYPE_VSA)) continue;
 
-		fr_assert_msg((c->da->type != FR_TYPE_VENDOR) || (c->da->attr <= 255), "Cursor found unencodable attribute");
-
 		break;
 	}
 
