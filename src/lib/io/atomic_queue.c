@@ -21,8 +21,10 @@
  * @file io/atomic_queue.c
  *
  * This is an implementation of a bounded MPMC ring buffer with per-slot
- * sequence numbers, described by Dmitry Vyukov.
+ * sequence numbers, as described by Dmitry Vyukov, and independently
+ * discovered/implemented by Alister Winfield.
  *
+ * @copyright 2026 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  * @copyright 2016 Alister Winfield
  */
@@ -51,27 +53,86 @@ RCSID("$Id$")
 #define acquire(_var)        	atomic_load_explicit(&_var, memory_order_acquire)
 #define store(_store, _var)  	atomic_store_explicit(&_store, _var, memory_order_release)
 
-#define CACHE_LINE_SIZE	64
-
-/** Entry in the queue
- *
- * @note This structure is cache line aligned for modern AMD/Intel CPUs.
- * This is to avoid contention when the producer and consumer are executing
- * on different CPU cores.
+/*
+ *	The distance two addresses need to be apart so that one core
+ *	writing does not slow another core reading. On Apple silicon
+ *      the hardware line is 128 bytes.  On x86 the hardware line is
+ *      64 bytes but the adjacent line prefetcher fetches lines in
+ *      128 byte pairs, so neighbouring 64 byte lines still appear to
+ *      contend in benchmarks.
  */
-typedef struct CC_HINT(packed, aligned(CACHE_LINE_SIZE)) {
+#define CACHE_LINE_SIZE	128
+
+/** One slot in the queue, holding one queued pointer
+ *
+ * Must not be packed.  Packing drops the struct's alignment to 1
+ * (same as an array of uint8_t), so the compiler has to treat `seq`
+ * as possibly unaligned.  The native atomic instructions require an
+ * aligned address, so clang stops emitting them and calls the
+ * libatomic fallback instead, which takes a mutex.  That turns every
+ * push and pop on this lock free queue into a locked operation.
+ * (gcc emits the native instruction regardless and relies on the
+ * address being aligned at runtime).  Packing saves nothing here
+ * anyway, the two 8 byte fields have no padding between them.
+ */
+typedef struct {
 	atomic_int64_t					seq;		//!< Must be seq then data to ensure
 									///< seq is 64bit aligned for 32bit address
 									///< spaces.
 	void						*data;
-} fr_atomic_queue_entry_t;
+} fr_atomic_queue_slot_t;
+
+/** How many stripes a line contains
+ *
+ */
+#define STRIPES_PER_LINE	(CACHE_LINE_SIZE / sizeof(fr_atomic_queue_slot_t))
+
+/** One cache line of stripes
+ *
+ * A line is padded and aligned to span exactly ONE cache line.
+ * A stripe is the set of slots at the same offset in every line, so
+ * it runs the complete length of the queue memory.
+ *
+ * Stripes let a line hold several slots without the slots sharing a
+ * cache line with their neighbours in queue order.  Padding each slot
+ * out to a full cache line instead would waste the majority of queue
+ * memory for no gain.
+ *
+ * Slot `i` translates to `line[i % num_lines].stripe[i / num_lines]`, i.e.
+ * for stripe 0, slot positions match line positions (slot 0 at line 0),
+ * and once the slot number exceeds the number of entries in the array we wrap,
+ * and use the next stripe.
+ *
+ @verbatim
+                 stripe[0]  stripe[1]  stripe[2]  ...  stripe[7]
+               +----------+----------+----------+     +----------+
+     line[0]   |  slot 0  |  slot 4  |  slot 8  | ... |  slot 28 |  <- one cache line
+               +----------+----------+----------+     +----------+
+     line[1]   |  slot 1  |  slot 5  |  slot 9  | ... |  slot 29 |
+               +----------+----------+----------+     +----------+
+     line[2]   |  slot 2  |  slot 6  |  slot 10 | ... |  slot 30 |
+               +----------+----------+----------+     +----------+
+     line[3]   |  slot 3  |  slot 7  |  slot 11 | ... |  slot 31 |
+               +----------+----------+----------+     +----------+
+                    ^
+                    one stripe: slots 0..3, one per line
+ @endverbatim
+ *
+ * A producer at position `p` and a consumer at position `c` share a
+ * line only when `p` and `c` are congruent modulo the number of lines,
+ * this happens rarely enough that there's not a noticeable impact on
+ * performance.
+ */
+typedef struct CC_HINT(aligned(CACHE_LINE_SIZE)) {
+	fr_atomic_queue_slot_t				stripe[STRIPES_PER_LINE];
+} fr_atomic_queue_line_t;
 
 /** Structure to hold the atomic queue
  *
  * @note DO NOT redorder these fields without understanding how alignas works
  * and maintaining separation. The head and tail must be in different cache lines
  * to reduce contention between producers and consumers. Cold data (size, chunk)
- * can share a line, but must be separated from head and tail and entry.
+ * can share a cache line, but must be separated from head, tail and the line array.
  */
 struct fr_atomic_queue_s {
 	alignas(CACHE_LINE_SIZE) atomic_int64_t		head;		//!< Position of the producer.
@@ -91,38 +152,101 @@ struct fr_atomic_queue_s {
 									///< it can end up directly after tail in memory
 									///< and share a cache line.
 
+	size_t						line_mask;	//!< Low bits of a slot index give its line:
+									///< `line[slot & line_mask]`.  Set at init to
+									///< num_lines - 1.
+
+	uint8_t						line_shift;	//!< High bits of a slot index give its stripe
+									///< within that line:
+									///< `.stripe[slot >> line_shift]`.  Equal to
+									///< log2(num_lines).  Set at init,
+									///< so a lookup is a mask and a shift, no
+									///< division and no modulo!
+
 	void						*chunk;		//!< The start of the talloc chunk to pass to free,
 									///< or NULL if this queue was allocated raw via
 									///< #fr_atomic_queue_malloc.  We need to play
 									///< tricks to get aligned memory with talloc.
 
-	alignas(CACHE_LINE_SIZE) fr_atomic_queue_entry_t entry[];	//!< The entry array, also aligned
-									///< to ensure it's not in the same cache
-									///< line as tail and size.
+	alignas(CACHE_LINE_SIZE) fr_atomic_queue_line_t line[];	        //!< The line array, aligned with cache lines
+									///< to ensure producer and consumers don't conflict.
 };
+
+/** Number of cache lines needed to hold `size` slots
+ *
+ * A queue smaller than one line uses a single, partly filled line.
+ *
+ * @param[in] size	Slot count, already rounded up to a power of 2.
+ */
+static inline CC_HINT(always_inline) size_t atomic_queue_num_lines(size_t size)
+{
+	if (size < STRIPES_PER_LINE) return 1;
+
+	return size / STRIPES_PER_LINE;
+}
+
+/** Bytes needed for a queue of `size` slots, header included
+ *
+ * @param[in] size	Slot count, already rounded up to a power of 2.
+ */
+static inline CC_HINT(always_inline) size_t atomic_queue_bytes(size_t size)
+{
+	return sizeof(fr_atomic_queue_t) + (atomic_queue_num_lines(size) * sizeof(fr_atomic_queue_line_t));
+}
+
+/** Map a queue position to its slot
+ *
+ * Positions wrap at `size`.  Within one stripe, consecutive positions increment
+ * one line at a time, and move to the next stripe once every line has been
+ * visited.
+ *
+ * @param[in] aq	The queue.
+ * @param[in] pos	The head or tail position, unmasked.
+ */
+static inline CC_HINT(always_inline) fr_atomic_queue_slot_t *atomic_queue_slot(fr_atomic_queue_t *aq, int64_t pos)
+{
+	size_t	idx = (size_t)pos & (aq->size - 1);
+
+	return &aq->line[idx & aq->line_mask].stripe[idx >> aq->line_shift];
+}
 
 /** Initialise the sequence numbers and head/tail on a fresh queue buffer
  *
  * Shared between the talloc and raw allocators.  The buffer must already
- * be cache-line aligned and sized to hold `size` entries.
+ * be cache-line aligned and sized to hold `size` slots.
  *
  * @param[in] aq	The queue buffer to initialise.
- * @param[in] size	Entry count, already rounded up to a power of 2.
+ * @param[in] size	Slot count, already rounded up to a power of 2.
  */
 static void atomic_queue_init(fr_atomic_queue_t *aq, size_t size)
 {
-	size_t	i;
+	size_t	i, num_lines;
 
-	/*
-	 *	Initialize the array.  Data is NULL, and indexes are
-	 *	the array entry number.
-	 */
-	for (i = 0; i < size; i++) {
-		aq->entry[i].data = NULL;
-		store(aq->entry[i].seq, (int64_t)i);
-	}
+	num_lines = atomic_queue_num_lines(size);
 
 	aq->size = size;
+	aq->line_mask = num_lines - 1;
+	/*
+	 *	num_lines is a power of two, so the shift is its log2.
+	 *	The check here is mostly to quiet clang scan, which
+	 *	complained about the potential underflow.
+	 */
+	if (num_lines > 1) {
+		aq->line_shift = fr_high_bit_pos(num_lines) - 1;
+	} else {
+		aq->line_shift = 0;
+	}
+
+	/*
+	 *	Initialize the slots.  Data is NULL, and the sequence
+	 *	number is the position of the slot.
+	 */
+	for (i = 0; i < size; i++) {
+		fr_atomic_queue_slot_t	*slot = atomic_queue_slot(aq, (int64_t)i);
+
+		slot->data = NULL;
+		store(slot->seq, (int64_t)i);
+	}
 
 	store(aq->head, 0);
 	store(aq->tail, 0);
@@ -159,8 +283,7 @@ fr_atomic_queue_t *fr_atomic_queue_talloc(TALLOC_CTX *ctx, size_t size)
 	 *	Since we're allocating a blob, we should also set the
 	 *	name of the data, too.
 	 */
-	chunk = talloc_aligned_array(ctx, (void **)&aq, CACHE_LINE_SIZE,
-				     sizeof(*aq) + (size) * sizeof(aq->entry[0]));
+	chunk = talloc_aligned_array(ctx, (void **)&aq, CACHE_LINE_SIZE, atomic_queue_bytes(size));
 	if (!chunk) return NULL;
 	aq->chunk = chunk;
 
@@ -188,14 +311,12 @@ fr_atomic_queue_t *fr_atomic_queue_talloc(TALLOC_CTX *ctx, size_t size)
 fr_atomic_queue_t *fr_atomic_queue_malloc(size_t size)
 {
 	fr_atomic_queue_t	*aq;
-	size_t			bytes;
 
 	if (size == 0) return NULL;
 
 	size = (size_t)fr_roundup_pow2_uint64((uint64_t)size);
-	bytes = sizeof(*aq) + (size) * sizeof(aq->entry[0]);
 
-	if (posix_memalign((void **)&aq, CACHE_LINE_SIZE, bytes) != 0) return NULL;
+	if (posix_memalign((void **)&aq, CACHE_LINE_SIZE, atomic_queue_bytes(size)) != 0) return NULL;
 
 	aq->chunk = NULL;	/* sentinel: raw allocation, free with free() */
 	atomic_queue_init(aq, size);
@@ -232,7 +353,7 @@ void fr_atomic_queue_free(fr_atomic_queue_t **aq)
 bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 {
 	int64_t head;
-	fr_atomic_queue_entry_t *entry;
+	fr_atomic_queue_slot_t *slot;
 
 	if (!data) return false;
 
@@ -242,20 +363,20 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 	 *
 	 *	1. Load the current head (which may be incremented
 	 *	   by another producer before we enter the loop).
-	 *	2. Find the head entry, which is head modulo the
+	 *	2. Find the head slot, which is head modulo the
 	 *	   queue size (keeps head looping through the queue).
-	 *	3. Read the sequence number of the entry.
+	 *	3. Read the sequence number of the slot.
 	 *	   The sequence numbers are initialised to the index
-	 *	   of the entries in the queue.  Each pass of the
+	 *	   of the slots in the queue.  Each pass of the
 	 *	   producer increments the sequence number by one.
 	 *	4.
 	 *	   a. If the sequence number is equal to the head,
-	 *	   then we can use the entry. Increment the head
+	 *	   then we can use the slot. Increment the head
 	 *	   so other producers know we've used it.
 	 *	   b. If it's greater than head, the producer has
-	 *         already written to this entry, so we need to re-load
+	 *         already written to this slot, so we need to re-load
 	 *	   the head and race other producers again.
-	 *	   c. If it's less than the head, the entry has not yet
+	 *	   c. If it's less than the head, the slot has not yet
 	 *	   been consumed, and the queue is full.
 	 */
 	head = load(aq->head);
@@ -271,14 +392,14 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 		 *	of 2, so we can use this hack to avoid
 		 *	modulo.
 		 */
-		entry = &aq->entry[head & (aq->size - 1)];
-		seq = acquire(entry->seq);
+		slot = atomic_queue_slot(aq, head);
+		seq = acquire(slot->seq);
 		diff = (seq - head);
 
 		/*
-		 *	head is larger than the current entry, the
+		 *	head is larger than the current slot, the
 		 *	queue is full.
-		 *	The consumer will set entry seq to entry +
+		 *	The consumer will set slot seq to slot +
 		 *	queue size, marking it as free for the
 		 *	producer to use.
 		 */
@@ -290,7 +411,7 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 		}
 
 		/*
-		 *	Someone else has already written to this entry
+		 *	Someone else has already written to this slot
 		 *	we lost the race, try again.
 		 */
 		if (diff > 0) {
@@ -303,7 +424,7 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 		 *	(and check it's still at its old value).
 		 *
 		 *	This means no two producers can have the same
-		 *	entry in the queue, because they can't exit
+		 *	slot in the queue, because they can't exit
 		 *	the loop until they've incremented the head
 		 *	successfully.
 		 *
@@ -317,11 +438,11 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 	}
 
 	/*
-	 *	Store the data in the queue, and increment the entry
+	 *	Store the data in the queue, and increment the slot
 	 *	with the new index, and make the write visible to
 	 *	other CPUs.
 	 */
-	entry->data = data;
+	slot->data = data;
 
 	/*
 	 *	Technically head can overflow.  Practically, with a
@@ -336,10 +457,10 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 #endif
 
 	/*
-	 *	Mark up the entry as written to.  Any other producer
+	 *	Mark up the slot as written to.  Any other producer
 	 *	attempting to write will see (diff > 0) and retry.
 	 */
-	store(entry->seq, head + 1);
+	store(slot->seq, head + 1);
 	return true;
 }
 
@@ -355,7 +476,7 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 {
 	int64_t			tail, seq;
-	fr_atomic_queue_entry_t	*entry;
+	fr_atomic_queue_slot_t	*slot;
 
 	if (!p_data) return false;
 
@@ -364,13 +485,13 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 	for (;;) {
 		int64_t diff;
 
-		entry = &aq->entry[tail & (aq->size - 1)];
-		seq = acquire(entry->seq);
+		slot = atomic_queue_slot(aq, tail);
+		seq = acquire(slot->seq);
 
 		diff = (seq - (tail + 1));
 
 		/*
-		 *	Tail is smaller than the current entry,
+		 *	Tail is smaller than the current slot,
 		 *	the queue is empty.
 		 *
 		 *	Tail should now be equal to the head.
@@ -391,7 +512,7 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 
 		/*
 		 *	Same deal as push.
-		 *	After this point we own the entry.
+		 *	After this point we own the slot.
 		 */
 		if (cas_incr(aq->tail, tail)) {
 			break;
@@ -400,16 +521,16 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 
 	/*
 	 *	Copy the pointer to the caller BEFORE updating the
-	 *	queue entry.
+	 *	queue slot.
 	 */
-	*p_data = entry->data;
+	*p_data = slot->data;
 
 	/*
-	 *	Set the current entry to past the end of the queue.
+	 *	Set the current slot to past the end of the queue.
 	 *	This is equal to what head will be on its next pass
-	 *	through the queue.  This marks the entry as free.
+	 *	through the queue.  This marks the slot as free.
 	 */
-	store(entry->seq, tail + aq->size);
+	store(slot->seq, tail + aq->size);
 
 	return true;
 }
@@ -431,21 +552,21 @@ size_t fr_atomic_queue_size(fr_atomic_queue_t *aq)
  *	`tail->next != NULL`.
  */
 
-typedef struct fr_atomic_ring_entry_s fr_atomic_ring_entry_t;
+typedef struct fr_atomic_ring_segment_s fr_atomic_ring_segment_t;
 
-struct fr_atomic_ring_entry_s {
+struct fr_atomic_ring_segment_s {
 	fr_atomic_queue_t		*q;		//!< Per-segment MPMC ring (used SPSC here).
-	_Atomic(fr_atomic_ring_entry_t *)	next;		//!< NULL until the producer seals this segment
+	_Atomic(fr_atomic_ring_segment_t *)	next;		//!< NULL until the producer seals this segment
 							///< because it filled up and moved on to a
 							///< fresh one.
 };
 
 struct fr_atomic_ring_s {
 	size_t				seg_size;	//!< Capacity of each segment.
-	_Atomic(fr_atomic_ring_entry_t *)	head;		//!< Producer end.  Writer is the single producer,
+	_Atomic(fr_atomic_ring_segment_t *)	head;		//!< Producer end.  Writer is the single producer,
 							///< reader is also the producer - the consumer
 							///< never loads this.
-	fr_atomic_ring_entry_t		*tail;		//!< Consumer end.  Touched only by the consumer.
+	fr_atomic_ring_segment_t		*tail;		//!< Consumer end.  Touched only by the consumer.
 };
 
 /** Allocate a fresh segment and its embedded queue
@@ -453,9 +574,9 @@ struct fr_atomic_ring_s {
  * Uses the raw (non-talloc) allocator so this function is safe to call
  * from the producer thread even when that thread cannot safely use talloc.
  */
-static fr_atomic_ring_entry_t *atomic_ring_entry_alloc(size_t seg_size)
+static fr_atomic_ring_segment_t *atomic_ring_segment_alloc(size_t seg_size)
 {
-	fr_atomic_ring_entry_t	*s;
+	fr_atomic_ring_segment_t	*s;
 
 	s = malloc(sizeof(*s));
 	if (!s) return NULL;
@@ -470,7 +591,7 @@ static fr_atomic_ring_entry_t *atomic_ring_entry_alloc(size_t seg_size)
 	return s;
 }
 
-static void atomic_ring_entry_free(fr_atomic_ring_entry_t *s)
+static void atomic_ring_segment_free(fr_atomic_ring_segment_t *s)
 {
 	fr_atomic_queue_free(&s->q);
 	free(s);
@@ -479,12 +600,12 @@ static void atomic_ring_entry_free(fr_atomic_ring_entry_t *s)
 /** talloc destructor for #fr_atomic_ring_t: walk the chain and free segments */
 static int _atomic_ring_free(fr_atomic_ring_t *ring)
 {
-	fr_atomic_ring_entry_t	*s = ring->tail;
+	fr_atomic_ring_segment_t	*s = ring->tail;
 
 	while (s) {
-		fr_atomic_ring_entry_t *next = atomic_load_explicit(&s->next, memory_order_acquire);
+		fr_atomic_ring_segment_t *next = atomic_load_explicit(&s->next, memory_order_acquire);
 
-		atomic_ring_entry_free(s);
+		atomic_ring_segment_free(s);
 		s = next;
 	}
 
@@ -504,14 +625,14 @@ static int _atomic_ring_free(fr_atomic_ring_t *ring)
 fr_atomic_ring_t *fr_atomic_ring_alloc(TALLOC_CTX *ctx, size_t seg_size)
 {
 	fr_atomic_ring_t	*ring;
-	fr_atomic_ring_entry_t	*seg;
+	fr_atomic_ring_segment_t	*seg;
 
 	if (seg_size == 0) return NULL;
 
 	ring = talloc(ctx, fr_atomic_ring_t);
 	if (!ring) return NULL;
 
-	seg = atomic_ring_entry_alloc(seg_size);
+	seg = atomic_ring_segment_alloc(seg_size);
 	if (!seg) {
 		talloc_free(ring);
 		return NULL;
@@ -551,14 +672,14 @@ void fr_atomic_ring_free(fr_atomic_ring_t **ring_p)
  */
 bool fr_atomic_ring_push(fr_atomic_ring_t *ring, void *data)
 {
-	fr_atomic_ring_entry_t	*h;
-	fr_atomic_ring_entry_t	*n;
+	fr_atomic_ring_segment_t	*h;
+	fr_atomic_ring_segment_t	*n;
 
 	h = atomic_load_explicit(&ring->head, memory_order_relaxed);
 
 	if (likely(fr_atomic_queue_push(h->q, data))) return true;
 
-	n = atomic_ring_entry_alloc(ring->seg_size);
+	n = atomic_ring_segment_alloc(ring->seg_size);
 	if (unlikely(!n)) return false;
 
 	/*
@@ -575,7 +696,7 @@ bool fr_atomic_ring_push(fr_atomic_ring_t *ring, void *data)
 	 *	flags it as leaked.  It isn't: the two atomic stores
 	 *	above have published `n` into both `h->next` and
 	 *	`ring->head`, and the consumer will free it via
-	 *	atomic_ring_entry_free() once it advances past.
+	 *	atomic_ring_segment_free() once it advances past.
 	 */
 	/* coverity[leaked_storage] */
 	return fr_atomic_queue_push(n->q, data);
@@ -593,9 +714,9 @@ bool fr_atomic_ring_push(fr_atomic_ring_t *ring, void *data)
  */
 bool fr_atomic_ring_pop(fr_atomic_ring_t *ring, void **p_data)
 {
-	fr_atomic_ring_entry_t	*cur;
-	fr_atomic_ring_entry_t	*n;
-	fr_atomic_ring_entry_t	*old;
+	fr_atomic_ring_segment_t	*cur;
+	fr_atomic_ring_segment_t	*n;
+	fr_atomic_ring_segment_t	*old;
 
 	for (;;) {
 		cur = ring->tail;
@@ -621,7 +742,7 @@ bool fr_atomic_ring_pop(fr_atomic_ring_t *ring, void **p_data)
 
 		old = cur;
 		ring->tail = n;
-		atomic_ring_entry_free(old);
+		atomic_ring_segment_free(old);
 		/* loop to pop from the new tail */
 	}
 }
@@ -669,17 +790,17 @@ void fr_atomic_queue_debug(FILE * fp, fr_atomic_queue_t *aq)
 		aq, aq->size, head, tail);
 
 	for (i = 0; i < aq->size; i++) {
-		fr_atomic_queue_entry_t *entry;
+		fr_atomic_queue_slot_t *slot;
 
-		entry = &aq->entry[i];
+		slot = atomic_queue_slot(aq, (int64_t)i);
 
 		fprintf(fp, "\t[%zu] = { %p, %" PRId64 " }",
-			i, entry->data, load(entry->seq));
+			i, slot->data, load(slot->seq));
 #if 0
-		if (entry->data) {
+		if (slot->data) {
 			fr_control_message_t *c;
 
-			c = entry->data;
+			c = slot->data;
 
 			fprintf(fp, "\tstatus %d, data_size %zd, signal %d, ack %zd, ch %p",
 				c->status, c->data_size, c->signal, c->ack, c->ch);
