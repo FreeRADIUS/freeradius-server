@@ -152,28 +152,26 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	 */
 	if (item->reserved) return;
 
+	item->packet_ctx = NULL;
+
+	fr_bio_retry_list_insert_head(&my->free, item);
+
 	/*
-	 *	If we were blocked due to having no free entries, then we can resume writes, since we now have
-	 *	a free entry.
+	 *	If all entries are in use, then freeing an item lets the application write another entry.
+	 *
+	 *	The item has to be on the free list before the resume callback runs, because the application
+	 *	may write a new packet from inside the resume callback.
+	 *
+	 *	If the IO is also blocked, then fr_bio_retry_release() does not call the resume callback.
+	 *	fr_bio_retry_write_resume() resumes writes once the socket becomes writable.
 	 */
 	if (my->all_used) {
-		fr_assert(fr_bio_retry_list_num_elements(&my->free) == 0);
+		fr_assert(fr_bio_retry_list_num_elements(&my->free) == 1);
 
-		/*
-		 *	The application MUST call fr_bio_retry_write_resume(), which will check if IO is
-		 *	actually blocked.
-		 *
-		 *	@todo - make this function return a failure, OR update the ctx with a failure?  OR
-		 *	call a bio error function on failure?  That way we can just call write_resume() from here.
-		 */
 		my->all_used = false;
 
 		if (!my->info.write_blocked && my->cb.write_resume) (void) my->cb.write_resume(&my->bio);
 	}
-
-	item->packet_ctx = NULL;
-
-	fr_bio_retry_list_insert_head(&my->free, item);
 }
 
 /** Writes are blocked.
@@ -205,7 +203,8 @@ static int fr_bio_retry_write_blocked(fr_bio_t *bio)
 /** Write one item.
  *
  * @return
- *	- <0 on error
+ *	- <0 on error.  When the next bio returns an error other than IO_WOULD_BLOCK,
+ *	  fr_bio_retry_rewrite() has already released the item.
  *	- 0 for "can't write any more"
  *	- 1 for "wrote a packet"
  */
@@ -249,30 +248,31 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	(void) fr_timer_uctx_insert(my->next_tl, item);
 
 	/*
-	 *	Write out the packet.  On failure release this item.
+	 *	Write out the packet.
 	 *
-	 *	If there's an error, we hope that the next "real" write will find the error, and do any
-	 *	necessary cleanups.  Note that we can't call bio shutdown here, as the bio is controlled by the
-	 *	application, and not by us.
+	 *	The rewrite callback (item->rewrite or my->rewrite) is either fr_bio_retry_rewrite(), or a
+	 *	callback which calls fr_bio_retry_rewrite(), or a callback which releases the item itself.  When
+	 *	the next bio returns an error other than IO_WOULD_BLOCK, the item has therefore already been
+	 *	released, and we return the error without releasing the item.  The application controls the
+	 *	bio chain, so we do not call fr_bio_shutdown() here.  The next bio decides whether the error is
+	 *	fatal.
 	 */
 	if (item->rewrite) {
 		rcode = item->rewrite(&my->bio, item, item->buffer, item->size);
 	} else {
 		rcode = my->rewrite(&my->bio, item, item->buffer, item->size);
 	}
-	if (rcode < 0) {
-		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
-
-		fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
-		return rcode;
-	}
+	if (rcode < 0) return rcode;
 
 	/*
-	 *	We didn't write the whole packet, we're blocked.
+	 *	We did not write the whole packet, so we are blocked.
+	 *
+	 *	On a partial write, fr_bio_retry_rewrite() has already saved the rest of the packet and has
+	 *	blocked writes.  On a zero-length write, there is nothing to save.  In both cases, we must not
+	 *	save the rest of the packet a second time.
 	 */
 	if ((size_t) rcode < item->size) {
-		if (fr_bio_retry_save_write(my, item, rcode) < 0) return fr_bio_error(OOM);
-
+		fr_assert((rcode == 0) || (my->partial == item));
 		return 0;
 	}
 
@@ -385,7 +385,14 @@ static ssize_t fr_bio_retry_save_write(fr_bio_retry_t *my, fr_bio_retry_entry_t 
 	 */
 	if (!my->buffer.start ||
 	    (item->size > fr_bio_buf_size(&my->buffer))) {
-		if (fr_bio_buf_alloc(my, &my->buffer, item->size)) return fr_bio_error(OOM);
+		if (fr_bio_buf_alloc(my, &my->buffer, item->size)) {
+			/*
+			 *	We failed to save the item, and the only thing that we can do is release it.  This
+			 *	lets the application stop tracking it, along with the timers.
+			 */
+			fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
+			return fr_bio_error(OOM);
+		}
 	}
 
 	fr_assert(fr_bio_buf_used(&my->buffer) == 0);
@@ -415,6 +422,11 @@ static ssize_t fr_bio_retry_save_write(fr_bio_retry_t *my, fr_bio_retry_entry_t 
 /**  Resend a packet.
  *
  *  This function should be called by the rewrite() callback, after (possibly) re-encoding the packet.
+ *
+ *  If the next bio returns an error other than IO_WOULD_BLOCK, fr_bio_retry_rewrite() releases the item
+ *  with FR_BIO_RETRY_WRITE_ERROR before returning the error.  A rewrite() callback which does not call
+ *  fr_bio_retry_rewrite() must release the item itself when the next bio returns an error, because
+ *  fr_bio_retry_write_item() does not release the item.
  *
  *  @param bio		the binary IO handler
  *  @param item		the retry context from #fr_bio_retry_sent_t
@@ -466,10 +478,11 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 	if (rcode == 0) return 0;
 
 	/*
-	 *	There's an error writing the packet.  Release it, and move the item to the free list.
+	 *	The next bio returned an error.  We return IO_WOULD_BLOCK without releasing the item.  For any
+	 *	other error, we release the item with FR_BIO_RETRY_WRITE_ERROR.  fr_bio_retry_release() removes
+	 *	an unreserved item from the timer lists, and moves the unreserved item to the free list.
 	 *
-	 *	Note that we don't bother resetting the timer.  There's no point in changing the timer when
-	 *	the bio is likely dead.
+	 *	The next bio decides whether the error is fatal, so we return the error.
 	 */
 	if (rcode < 0) {
 		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
@@ -518,9 +531,9 @@ static void fr_bio_retry_next_timer(UNUSED fr_timer_list_t *tl, fr_time_t now, v
 	/*
 	 *	Retry one item.
 	 *
-	 *	A timer has no caller to return an error to.  On error, fr_bio_retry_write_item() has
-	 *	already released the item with FR_BIO_RETRY_WRITE_ERROR, and the release callback tells
-	 *	the application about the failure.  The next bio decides whether the error is fatal.  For
+	 *	A timer has no caller to return an error to.  On error, the rewrite function has already
+	 *	released the item with FR_BIO_RETRY_WRITE_ERROR, and the release callback tells the
+	 *	application about the failure.  The next bio decides whether the error is fatal.  For
 	 *	a fatal error, the next bio has already shut the chain down, so fr_bio_retry_next_timer()
 	 *	has nothing more to do.
 	 */
@@ -573,10 +586,15 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 		 */
 		if (!item || !item->retry.replies || (fr_bio_retry_entry_cancel(bio, item) < 0)) {
 			/*
-			 *	Note that we're blocked BEFORE running the callback, so that calls to
-			 *	fr_bio_retry_write_blocked() doesn't delete timers and stop retrying packets.
+			 *	write_blocked means "the IO is blocked", and the timers depend on that
+			 *	meaning.  fr_bio_retry_next_timer() asserts that my->info.write_blocked is
+			 *	clear.  fr_bio_retry_write_blocked() does not switch from the retry timers to
+			 *	the expiry timers if my->info.write_blocked is already set.  Running out of
+			 *	entries then only sets all_used, and leaves write_blocked clear.
+			 *
+			 *	When an entry is released, then all_used is reset, and if we don't have
+			 *	write_blocked, then we can resume.
 			 */
-			my->info.write_blocked = true;
 			my->all_used = true;
 
 			/*

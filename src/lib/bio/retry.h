@@ -63,6 +63,9 @@ typedef struct {
 
 typedef struct fr_bio_retry_entry_s fr_bio_retry_entry_t;
 
+/*
+ *	This function has to either fr_bio_retry_rewrite(), to release the item on error.
+ */
 typedef ssize_t	(*fr_bio_retry_rewrite_t)(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, const void *buffer, size_t size);
 
 #ifndef _BIO_RETRY_PRIVATE
