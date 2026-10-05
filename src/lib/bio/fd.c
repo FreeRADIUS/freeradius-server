@@ -1422,7 +1422,14 @@ static int inline accept4(int fd, struct sockaddr *sockaddr, socklen_t *salen, U
 	fd = accept(fd, sockaddr, salen);
 	if (fd >= 0) {
 		if ((fr_nonblock(fd) < 0) || (fr_cloexec(fd) < 0)) {
+			int our_errno = errno;
+
+			/*
+			 *	The caller reads errno to decide whether to
+			 *	retry, and close() may overwrite it.
+			 */
 			close(fd);
+			errno = our_errno;
 			return -1;
 		}
 	}
