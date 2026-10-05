@@ -251,7 +251,8 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 	}
 
 	ROPTIONAL(REDEBUG, ERROR, "ALPN - Failure, no protocols in common");
-	fr_tls_session_error_add(request, FR_ERROR_VALUE_ALPN_FAILED);
+	fr_tls_session_error_alert(request, tls_session,
+				   FR_ERROR_VALUE_ALPN_FAILED, SSL_AD_NO_APPLICATION_PROTOCOL);
 
 	return -1;
 }

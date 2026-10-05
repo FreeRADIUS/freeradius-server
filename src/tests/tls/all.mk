@@ -58,6 +58,8 @@ TLS_FAILRES := $(DIR)/fail_resumed.sh
 TLS_STATELESS := $(DIR)/stateless.sh
 TLS_NOTICKET := $(DIR)/no_ticket.sh
 TLS_ALPN     := $(DIR)/alpn.sh
+TLS_INVALID  := $(DIR)/invalid.sh
+TLS_CLOSE    := $(DIR)/close_notify.sh
 TLS_CONF    := $(DIR)/unit_test_tls.conf
 TLS_COMMON  := $(DIR)/common.conf
 TLS_NC_CONF := $(DIR)/no_cache.conf
@@ -74,6 +76,8 @@ TLS_FAILRES_RECEIPT := $(OUTPUT)/fail_resumed.receipt
 TLS_STATELESS_RECEIPT := $(OUTPUT)/stateless_client.receipt
 TLS_NOTICKET_RECEIPT := $(OUTPUT)/no_ticket_client.receipt
 TLS_ALPN_RECEIPT := $(OUTPUT)/alpn.receipt
+TLS_INVALID_RECEIPT := $(OUTPUT)/invalid.receipt
+TLS_CLOSE_RECEIPT := $(OUTPUT)/close_notify.receipt
 
 #
 #  The script and the configuration have to agree on the port, so the script
@@ -243,7 +247,32 @@ $(TLS_ALPN_RECEIPT): $(TLS_CONF) $(TLS_COMMON) $(TLS_ALPN) $(TEST_BIN_DIR)/unit_
 	    $(SHELL) $(TLS_ALPN)
 
 #
-#  The eleven tests share a port, so they must not run at the same time.
+#  A session which FreeRADIUS itself refuses, rather than OpenSSL.
+#
+$(TLS_INVALID_RECEIPT): $(TLS_CONF) $(TLS_COMMON) $(TLS_INVALID) $(TEST_BIN_DIR)/unit_test_tls $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+	@echo "TLS-TEST invalid"
+	${Q}OUTPUT="$(TLS_OUTPUT)" \
+	    CONFDIR="$(top_srcdir)/$(TLS_DIR)" \
+	    DICT_PATH="$(DICT_PATH)" \
+	    PORT="$(TLS_PORT)" \
+	    UNIT_TEST_TLS="$(TEST_BIN)/unit_test_tls" \
+	    $(SHELL) $(TLS_INVALID)
+
+#
+#  A peer which FreeRADIUS refuses after the handshake has finished.
+#
+$(TLS_CLOSE_RECEIPT): $(TLS_CONF) $(TLS_COMMON) $(TLS_CLOSE) $(TEST_BIN_DIR)/unit_test_tls $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+	@echo "TLS-TEST close-notify"
+	${Q}OUTPUT="$(TLS_OUTPUT)" \
+	    CONFDIR="$(top_srcdir)/$(TLS_DIR)" \
+	    CERTDIR="$(top_srcdir)/raddb/certs/rsa" \
+	    DICT_PATH="$(DICT_PATH)" \
+	    PORT="$(TLS_PORT)" \
+	    UNIT_TEST_TLS="$(TEST_BIN)/unit_test_tls" \
+	    $(SHELL) $(TLS_CLOSE)
+
+#
+#  The thirteen tests share a port, so they must not run at the same time.
 #
 $(TLS_CACHE_RECEIPT): $(TLS_RECEIPT)
 $(TLS_ALERT_RECEIPT): $(TLS_CACHE_RECEIPT)
@@ -255,8 +284,10 @@ $(TLS_FAILRES_RECEIPT): $(TLS_NOCACHE_RECEIPT)
 $(TLS_STATELESS_RECEIPT): $(TLS_FAILRES_RECEIPT)
 $(TLS_NOTICKET_RECEIPT): $(TLS_STATELESS_RECEIPT)
 $(TLS_ALPN_RECEIPT): $(TLS_NOTICKET_RECEIPT)
+$(TLS_INVALID_RECEIPT): $(TLS_ALPN_RECEIPT)
+$(TLS_CLOSE_RECEIPT): $(TLS_INVALID_RECEIPT)
 
-$(BUILD_DIR)/tests/$(TEST): $(TLS_RECEIPT) $(TLS_CACHE_RECEIPT) $(TLS_ALERT_RECEIPT) $(TLS_ALERT_RECV_RECEIPT) $(TLS_ALERT_SEND_RECEIPT) $(TLS_REJECT_RECEIPT) $(TLS_NOCACHE_RECEIPT) $(TLS_FAILRES_RECEIPT) $(TLS_STATELESS_RECEIPT) $(TLS_NOTICKET_RECEIPT) $(TLS_ALPN_RECEIPT)
+$(BUILD_DIR)/tests/$(TEST): $(TLS_RECEIPT) $(TLS_CACHE_RECEIPT) $(TLS_ALERT_RECEIPT) $(TLS_ALERT_RECV_RECEIPT) $(TLS_ALERT_SEND_RECEIPT) $(TLS_REJECT_RECEIPT) $(TLS_NOCACHE_RECEIPT) $(TLS_FAILRES_RECEIPT) $(TLS_STATELESS_RECEIPT) $(TLS_NOTICKET_RECEIPT) $(TLS_ALPN_RECEIPT) $(TLS_INVALID_RECEIPT) $(TLS_CLOSE_RECEIPT)
 
 $(TEST).help:
 	@echo make $(TLS_TEST)

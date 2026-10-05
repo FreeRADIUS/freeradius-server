@@ -746,7 +746,8 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 */
 	if (!fr_cond_assert(tls_session->ssl == ssl)) {
 		ROPTIONAL(REDEBUG, ERROR, "fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_MISMATCH);
+		fr_tls_session_error_alert(request, tls_session,
+					   FR_ERROR_VALUE_SESSION_MISMATCH, SSL_AD_INTERNAL_ERROR);
 		tls_session->invalid = true;
 		return;
 	}
@@ -759,7 +760,8 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 #ifdef SSL2_VERSION
 	if (!fr_cond_assert(msg_version != SSL2_VERSION)) {
 		ROPTIONAL(REDEBUG, ERROR, "Invalid version (SSLv2) in handshake");
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_INVALID_VERSION_SSLV2);
+		fr_tls_session_error_alert(request, tls_session,
+					   FR_ERROR_VALUE_INVALID_VERSION_SSLV2, SSL_AD_PROTOCOL_VERSION);
 		tls_session->invalid = true;
 		return;
 	}
@@ -768,7 +770,8 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 #ifdef SSL3_VERSION
 	if (!fr_cond_assert(msg_version != SSL3_VERSION)) {
 		ROPTIONAL(REDEBUG, ERROR, "Invalid version (SSLv3) in handshake");
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_INVALID_VERSION_SSLV3);
+		fr_tls_session_error_alert(request, tls_session,
+					   FR_ERROR_VALUE_INVALID_VERSION_SSLV3, SSL_AD_PROTOCOL_VERSION);
 		tls_session->invalid = true;
 		return;
 	}
@@ -805,7 +808,8 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		if (len < 2) {
 		invalid_alert:
 			ROPTIONAL(REDEBUG, ERROR, "Invalid TLS Alert.  Closing connection");
-			fr_tls_session_error_add(request, FR_ERROR_VALUE_INVALID_RECORD_LENGTH);
+			fr_tls_session_error_alert(request, tls_session,
+						   FR_ERROR_VALUE_INVALID_RECORD_LENGTH, SSL_AD_DECODE_ERROR);
 			tls_session->invalid = true;
 			return;
 		}
@@ -834,7 +838,8 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 			if ((payload_len + 3) > len) {
 				tls_session->invalid = true;
 				ROPTIONAL(REDEBUG, ERROR, "OpenSSL Heartbeat attack detected.  Closing connection");
-				fr_tls_session_error_add(request, FR_ERROR_VALUE_HEARTBEAT_OVERFLOW);
+				fr_tls_session_error_alert(request, tls_session,
+							   FR_ERROR_VALUE_HEARTBEAT_OVERFLOW, SSL_AD_DECODE_ERROR);
 				return;
 			}
 		}
@@ -1224,20 +1229,68 @@ void fr_tls_session_error_add(request_t *request, uint32_t error)
 /** Instruct fr_tls_session_async_handshake to create a synthesised TLS alert record and send it to the peer
  *
  */
-int fr_tls_session_alert(UNUSED request_t *request, fr_tls_session_t *session, uint8_t level, uint8_t description)
+int fr_tls_session_alert(request_t *request, fr_tls_session_t *session, uint8_t level, uint8_t description)
 {
 	if (session->alerts_sent > 3) return -1;		/* Some kind of state machine brokenness */
 
 	/*
-	 *	Ignore less severe alerts
+	 *	Once the initialization is finished, then all data is encrypted, and we can't send a manually
+	 *	created TLS alert.  Just shutdown the socket, which sends a close_notify instead.
+	 *
+	 *	Note that in TLS 1.3, the data is encrypted before SSL_is_init_finished(), because pretty much
+	 *	the entire handshake is encrypted.
+	 *
+	 *	The caller still records the error, so `fail session { ... }` reports the same reason either
+	 *	way.  However, the peer never gets the alert.
 	 */
-	if (session->pending_alert && (level < session->pending_alert_level)) return 0;
+	if (SSL_is_init_finished(session->ssl)) {
+		ROPTIONAL(RDEBUG2, DEBUG2,
+			  "Not sending TLS alert (%u), the handshake has finished and the record layer is encrypted",
+			  description);
+		return -1;
+	}
+
+	/*
+	 *	Ignore an alert which has lower severity than the one already queued.
+	 *
+	 *	Two alerts of the same severity means the first one is the cause, and the second one is a
+	 *	later round noticing the damage.  fr_tls_session_msg_cb() refuses a record and marks the
+	 *	session invalid, and the round after that reports FR_ERROR_VALUE_SESSION_INVALID.  The first
+	 *	alert says what was wrong with the record, which is the part the peer can act on.
+	 */
+	if (session->pending_alert && (level <= session->pending_alert_level)) return 0;
 
 	session->pending_alert = true;
 	session->pending_alert_level = level;
 	session->pending_alert_description = description;
 
 	return 0;
+}
+
+/** Record an application error, and queue a fatal TLS alert for sending to the peer.
+ *
+ * We can refuse handshakes for a number of policy or application-layer reasons.  RFC9846 Section 6.2 says
+ * that we should send an alert to the peer, and then close the connection.
+ *
+ * This function should be used only when OpenSSL hasn't already sent an alert of its own.
+ *
+ * fr_tls_session_alert_send() builds the alert by hand, and overwrites whatever OpenSSL left in
+ * the buffer.
+ *
+ * @param[in] request		to add the error to.
+ * @param[in] session		to queue the alert on.
+ * @param[in] error		an `FR_ERROR_VALUE_*` value, as for
+ *				fr_tls_session_error_add().
+ * @param[in] description	the TLS alert description to send.  Pass
+ *				`SSL_AD_INTERNAL_ERROR` where no more specific
+ *				description fits the rule which was broken.
+ */
+void fr_tls_session_error_alert(request_t *request, fr_tls_session_t *session,
+				uint32_t error, uint8_t description)
+{
+	fr_tls_session_error_add(request, error);
+
+	(void) fr_tls_session_alert(request, session, SSL3_AL_FATAL, description);
 }
 
 static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *session)
@@ -1253,6 +1306,17 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 	session->info.content_type = SSL3_RT_ALERT;
 	session->info.alert_level = session->pending_alert_level;
 	session->info.alert_description = session->pending_alert_description;
+
+	/*
+	 *	session_msg_log() reads both of these, and decodes the
+	 *	level and the description only when the length says two.
+	 *	Without them the log line reports whatever record came
+	 *	before this one, which is not the alert it claims to
+	 *	describe.  They have to agree with the record written
+	 *	below.
+	 */
+	session->info.version = TLS1_VERSION;
+	session->info.record_len = 2;
 
 	/*
 	 *	Sending an alert over-rides whatever was in the
@@ -1289,6 +1353,82 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 
 	session_msg_log(request, session, fr_dbuff_current(session->dirty_out),
 			fr_dbuff_remaining(session->dirty_out));
+}
+
+/** Tell the peer about any pending errors before we close the connection.
+ *
+ * A connection which is about to close sends a `close_notify`, as RFC 9846 Section 6.1 says "Each party MUST
+ * send a 'close_notify' alert before closing its write side of the connection, unless it has already sent
+ * some error alert."  If there's an error alert, then don't send that.
+ *
+ * - A queued fatal alert is an error, and we send that.  The end of a handshake round sends any queued alert.
+ *   An error path does not reach the end of the round, so the "send alert" function has to be called
+ *   explicitly.
+ *
+ * - if there's no queued alert, then we just send a close_notify alert.  OpenSSL doesn't provide any other
+ *   way to send a TLS alert to the peer.
+ *
+ * - If the handshake doesn't finish, then we can't send anything.  The connection is likely not TLS, and
+ *   sending a TLS alert won't help.
+ *
+ * The application should send the remaining data, and then close the socket.
+ *
+ * @param[in] request	to log against, and to bind while OpenSSL runs.
+ * @param[in] session	which is closing.
+ */
+void fr_tls_session_close_send(request_t *request, fr_tls_session_t *session)
+{
+	bool	bound;
+	int	ret;
+
+	if (session->pending_alert) {
+		fr_tls_session_alert_send(request, session);
+		return;
+	}
+
+	/*
+	 *	We've already sent an error alert, and RFC 9846 Section 6.1 says we don't need to follow that
+	 *	with a close_notify.  OpenSSL alerts don't need to be counted, because they result in
+	 *	handshake failures, and this function is never reached.
+	 */
+	if (session->alerts_sent > 0) return;
+
+	if (!SSL_is_init_finished(session->ssl)) return;
+
+	/*
+	 *	Make this function idempotent.  The source of the fatal error calls us, and we might be called
+	 *	again after `fail sessions { ... }` finishes.  The application doesn't know what's up, so it
+	 *	calls us just to be safe.
+	 */
+	if (SSL_get_shutdown(session->ssl) & SSL_SENT_SHUTDOWN) return;
+
+	/*
+	 *	A failure inside of a handshake results in fr_tls_session_msg_cb() being called, and it needs
+	 *	the request bound.  Do that here, if it wasn't already done/
+	 */
+	bound = (fr_tls_session_request(session->ssl) != NULL);
+	if (!bound) fr_tls_session_request_bind(session->ssl, request);
+
+	/*
+	 *	Disable the OpenSSL quiet shutdown, so it sends close_notify.  We need to do that on our
+	 *	timeframe, so the quiet shutdown is on by default.
+	 */
+	SSL_set_quiet_shutdown(session->ssl, 0);
+
+	ret = SSL_shutdown(session->ssl);
+
+	/*
+	 *	We're non-blocking, so a zero return is "we sent it, but we didn't see a response from the
+	 *	peer", which is expected.
+	 */
+	if (ret < 0) {
+		RDEBUG2("Failed sending close_notify");
+		ERR_clear_error();
+	} else {
+		RDEBUG2("Sending close_notify");
+	}
+
+	if (!bound) fr_tls_session_request_unbind(session->ssl);
 }
 
 /** Process the result of `establish session { ... }`
@@ -1460,6 +1600,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 		 *	tickets.
 		 */
 		if (fr_tls_session_alpn_check(request, tls_session) < 0) {
+			fr_tls_session_close_send(request, tls_session);
 			tls_session->result = FR_TLS_RESULT_ERROR;
 			fr_tls_session_request_unbind(tls_session->ssl);
 			return UNLANG_ACTION_CALCULATE_RESULT;
@@ -1513,7 +1654,9 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 			}
 			if (!tls_session->session) {
 				REDEBUG("Failed getting TLS session");
-				fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_MISSING);
+				fr_tls_session_error_alert(request, tls_session,
+							   FR_ERROR_VALUE_SESSION_MISSING, SSL_AD_INTERNAL_ERROR);
+				fr_tls_session_close_send(request, tls_session);
 				tls_session->result = FR_TLS_RESULT_ERROR;
 				fr_tls_session_request_unbind(tls_session->ssl);
 				return UNLANG_ACTION_CALCULATE_RESULT;
@@ -1855,8 +1998,16 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 	 */
 	if (fr_tls_session_is_init_finished(tls_session)) {
 		REDEBUG("Attempted to continue TLS handshake, but handshake has completed");
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_HANDSHAKE_FINISHED);
+		fr_tls_session_error_alert(request, tls_session,
+					   FR_ERROR_VALUE_HANDSHAKE_FINISHED, SSL_AD_INTERNAL_ERROR);
 	error:
+		/*
+		 *	The end of the round is what normally sends a
+		 *	queued alert, and this exit does not reach it.
+		 *	EAP has no other chance: it pushes the handshake
+		 *	itself and never touches fr_tls_connection_t.
+		 */
+		fr_tls_session_close_send(request, tls_session);
 		tls_session->result = FR_TLS_RESULT_ERROR;
 		fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -1864,7 +2015,8 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 
 	if (tls_session->invalid) {
 		REDEBUG("Preventing invalid session from continuing");
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_INVALID);
+		fr_tls_session_error_alert(request, tls_session,
+					   FR_ERROR_VALUE_SESSION_INVALID, SSL_AD_INTERNAL_ERROR);
 		goto error;
 	}
 
@@ -1877,7 +2029,8 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 	tls_session->rounds++;
 	if (tls_session->rounds >= FR_TLS_MAX_ROUNDS) {
 		REDEBUG("Failing TLS session due to too many handshake rounds (limit %u)", FR_TLS_MAX_ROUNDS);
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_TOO_MANY_ROUNDS);
+		fr_tls_session_error_alert(request, tls_session,
+					   FR_ERROR_VALUE_TOO_MANY_ROUNDS, SSL_AD_INTERNAL_ERROR);
 		goto error;
 	}
 

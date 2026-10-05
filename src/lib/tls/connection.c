@@ -527,7 +527,8 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 
 	if (fr_dbuff_in_memcpy_partial(tls_session->dirty_in, data, data_len) != data_len) {
 		RERROR("Failed buffering %zu bytes of TLS record data", data_len);
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_RECORD_TOO_LARGE);
+		fr_tls_session_error_alert(request, tls_session,
+					   FR_ERROR_VALUE_RECORD_TOO_LARGE, SSL_AD_RECORD_OVERFLOW);
 	error:
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_TLS);
 		return;
@@ -540,7 +541,8 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	 */
 	if (fr_tls_session_is_init_finished(tls_session)) {
 		RERROR("Received %zu bytes of application data, which is not supported", data_len);
-		fr_tls_session_error_add(request, FR_ERROR_VALUE_RECORD_AFTER_HANDSHAKE);
+		fr_tls_session_error_alert(request, tls_session,
+					   FR_ERROR_VALUE_RECORD_AFTER_HANDSHAKE, SSL_AD_UNEXPECTED_MESSAGE);
 		goto error;
 	}
 
@@ -562,6 +564,20 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
  */
 void fr_tls_connection_process(fr_tls_connection_t *conn)
 {
+	/*
+	 *	fr_tls_connection_recv() refuses some records without handing them to a handshake round at
+	 *	all, so for those there is no round to put the closing record into the outgoing buffer.  Do
+	 *	it here instead, before the write below, so the peer gets the record rather than a socket
+	 *	which stops answering.
+	 *
+	 *	Only a failure inside TLS reaches this.  TLS_CONNECTION_FAIL_SYSCALL and
+	 *	TLS_CONNECTION_FAIL_APPLICATION both mean the socket has been closed, and we can't write a
+	 *	close notify.
+	 *
+	 *	Any error inside of a handshake has been handled by OpenSSL, and this call does nothing more.
+	 */
+	if (conn->failed == TLS_CONNECTION_FAIL_TLS) fr_tls_session_close_send(conn->request, conn->tls_session);
+
 	/*
 	 *	Record a failure on error, but keep processing the TLS state machine, so that we can run `fail
 	 *	connection`.

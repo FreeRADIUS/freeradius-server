@@ -113,8 +113,10 @@ grep -q "SSL alert number 49" "$CLIENT_LOG" || \
 	fail "the client reported an alert, but not SSL_AD_ACCESS_DENIED (49)"
 
 #
-#  The handshake must not have completed.  If it did, the alert was sent but
-#  ignored, which is a different bug wearing the same clothes.
+#  The server must not record a completed handshake.  When the server records
+#  a completed handshake, the client received the alert and ignored the alert.
+#  A client which ignores an alert is a different bug, and the two bugs
+#  produce the same log lines.
 #
 if grep -q "TLS handshake completed" "$LOG"; then
 	fail "the handshake completed, so the alert did not stop it"

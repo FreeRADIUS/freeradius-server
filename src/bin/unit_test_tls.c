@@ -65,6 +65,7 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/tls/version.h>
 #include <freeradius-devel/tls/connection.h>
+#include <freeradius-devel/util/misc.h>
 
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/function.h>
@@ -142,6 +143,8 @@ typedef struct {
 
 	unsigned int		count;			//!< How many connections to run.
 	bool			alert;			//!< Reject the peer with a TLS alert, see -A.
+	bool			invalid;		//!< Mark the session invalid mid-handshake, see -I.
+	bool			nonblock;		//!< Put the connection socket in non-blocking mode, see -B.
 	bool			app_data;		//!< Send one byte of application data once the
 							///< handshake is done, see -P.
 	bool			app_data_sent;		//!< Whether that byte has gone out on this
@@ -582,6 +585,7 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 		 */
 		case UNIT_TEST_TLS_IO_RETRY:
 		case UNIT_TEST_TLS_IO_BLOCKED:
+			DEBUG3("Blocked reading from the connection");
 			return;
 
 		case UNIT_TEST_TLS_IO_EOF:
@@ -645,6 +649,25 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 	 *	too late.  Those run after the round, and the round which
 	 *	would have carried the alert has gone.
 	 */
+	/*
+	 *	Stand in for a record which FreeRADIUS itself refuses.
+	 *
+	 *	fr_tls_session_msg_cb() marks such a session invalid and
+	 *	lets the round finish.  The round after that refuses to
+	 *	continue, records FR_ERROR_VALUE_SESSION_INVALID, and sends
+	 *	the peer a fatal alert.  Setting the flag here reaches that
+	 *	second round without having to feed the handshake a
+	 *	malformed record.
+	 *
+	 *	`pending` places this before a round, for the same reason
+	 *	the alert hook below is placed there.
+	 */
+	if (utt->invalid && utt->conn->tls_session && utt->conn->pending &&
+	    (utt->connections == utt->count)) {
+		utt->invalid = false;
+		utt->conn->tls_session->invalid = true;
+	}
+
 	if (utt->alert && utt->conn->tls_session && utt->conn->pending &&
 	    (utt->connections == utt->count)) {
 		utt->alert = false;
@@ -1029,6 +1052,16 @@ static int tls_connection_run(unit_test_tls_t *utt)
 		}
 	}
 
+	/*
+	 *	One place for both roles: the client has just connected,
+	 *	and the server has just accepted.  Neither socket inherits
+	 *	the flag from the listening socket, so both are set here.
+	 */
+	if (utt->nonblock && (fr_nonblock(utt->fd) < 0)) {
+		PERROR("Failed setting the connection socket non-blocking");
+		return -1;
+	}
+
 	utt->conn->request = tls_request_alloc(utt, utt->fd);
 	if (!utt->conn->request) goto finish;
 
@@ -1182,6 +1215,8 @@ int main(int argc, char *argv[])
 	char const		*server = NULL;
 	unsigned int		count = 1;
 	bool			alert = false;
+	bool			invalid = false;
+	bool			nonblock = false;
 	bool			reject = false;
 	bool			app_data = false;
 	char const		*alpn_names = NULL;
@@ -1250,10 +1285,14 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Ac:Cd:D:hlL:Mn:Pr:Rs:xX")) != -1) {
+	while ((c = getopt(argc, argv, "ABc:Cd:D:hIlL:Mn:Pr:Rs:xX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
+				break;
+
+			case 'B':
+				nonblock = true;
 				break;
 
 			case 'R':
@@ -1282,6 +1321,10 @@ int main(int argc, char *argv[])
 
 			case 'h':
 				usage(config, EXIT_SUCCESS);
+				break;
+
+			case 'I':
+				invalid = true;
 				break;
 
 			case 'l':
@@ -1424,6 +1467,8 @@ int main(int argc, char *argv[])
 	utt->ret = EXIT_SUCCESS;
 	utt->count = count;
 	utt->alert = alert;
+	utt->invalid = invalid;
+	utt->nonblock = nonblock;
 	utt->app_data = app_data;
 	utt->reject = reject;
 
@@ -1762,6 +1807,14 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "                     rather than completing the handshake.  With -c 2 the first\n");
 	fprintf(output, "                     connection fills the session cache, so the alert then has a\n");
 	fprintf(output, "                     session to clear.  Used to test the alert and clear paths.\n");
+	fprintf(output, "  -B                 Put the connection socket in non-blocking mode, so that a read()\n");
+	fprintf(output, "                     or a write() which would wait returns EAGAIN instead.  The event\n");
+	fprintf(output, "                     loop already waits for the socket to be readable or writable, so\n");
+	fprintf(output, "                     this exercises the EAGAIN paths rather than changing what runs.\n");
+	fprintf(output, "  -I                 Mark the session invalid part way through the handshake on the\n");
+	fprintf(output, "                     last connection, the way fr_tls_session_msg_cb() marks a record\n");
+	fprintf(output, "                     FreeRADIUS refuses.  The next round then refuses to continue, and\n");
+	fprintf(output, "                     sends the peer a fatal alert saying so.\n");
 	fprintf(output, "  -R                 Reject the session once the handshake has succeeded on the last\n");
 	fprintf(output, "                     connection, as policy would.  The cached session is then cleared\n");
 	fprintf(output, "                     rather than stored.  With -c 2 the first connection fills the\n");
