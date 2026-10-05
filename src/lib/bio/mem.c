@@ -150,25 +150,50 @@ static ssize_t fr_bio_mem_read(fr_bio_t *bio, void *packet_ctx, void *buffer, si
 	fr_assert(p != NULL);	/* otherwise room would be zero */
 
 	rcode = next->read(next, packet_ctx, p, room);
+	if (rcode < 0) return rcode;
 
 	/*
-	 *	Ensure that whatever data we have read is marked as "used" in the buffer, and then return
-	 *	whatever data is available back to the caller.
+	 *	Ensure that whatever data we have read (zero or more) is marked as "used" in the buffer, and
+	 *	then return whatever data is available back to the caller.
 	 */
-	if (rcode >= 0) {
-		if (rcode > 0) (void) fr_bio_buf_write_alloc(&my->read_buffer, (size_t) rcode);
+	(void) fr_bio_buf_write_alloc(&my->read_buffer, (size_t) rcode);
 
-		return fr_bio_buf_read(&my->read_buffer, buffer, size);
-	}
+	return fr_bio_buf_read(&my->read_buffer, buffer, size);
+}
+
+/** See is there's a full packet in the buffer.
+ *
+ */
+static ssize_t fr_bio_mem_read_packet(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
+{
+	ssize_t rcode;
+	size_t want;
+	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
 
 	/*
-	 *	The next bio returned an error.  Whatever it is, it's fatal.  We can read from the memory
-	 *	buffer until it's empty, but we can no longer write to the memory buffer.  Any data written to
-	 *	the buffer is lost.
+	 *	See if there are valid packets in the buffer.
 	 */
-	bio->read = fr_bio_mem_read_eof;
-	bio->write = fr_bio_null_write;
-	return rcode;
+	rcode = fr_bio_mem_call_verify(bio, packet_ctx, &want);
+	if (rcode < 0) return fr_bio_error(VERIFY);
+
+	/*
+	 *	No valid packet.
+	 */
+	if (rcode == 0) return 0;
+
+	/*
+	 *	There's at least one valid packet, return it.
+	 *
+	 *	Not enough room isn't a fatal error.  The caller should check how much room is needed by
+	 *	calling fr_bio_mem_call_verify(), and retry.
+	 *
+	 *	But in general, the caller should make sure that the output buffer has enough room for at
+	 *	least one packet.  The verify() function should also ensure that the packet is no larger than
+	 *	our application maximum, even if the protocol allows for it to be larger.
+	 */
+	if (want > size) return fr_bio_error(BUFFER_TOO_SMALL);
+
+	return fr_bio_buf_read(&my->read_buffer, buffer, want);
 }
 
 /** Return data only if we have a complete packet.
@@ -177,7 +202,7 @@ static ssize_t fr_bio_mem_read(fr_bio_t *bio, void *packet_ctx, void *buffer, si
 static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {
 	ssize_t rcode;
-	size_t used, room, want;
+	size_t used, room;
 	uint8_t *p;
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
 	fr_bio_t *next;
@@ -187,33 +212,13 @@ static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, vo
 	 */
 	used = fr_bio_buf_used(&my->read_buffer);
 	if (used) {
-		/*
-		 *	See if there are valid packets in the buffer.
-		 */
-		rcode = fr_bio_mem_call_verify(bio, packet_ctx, &want);
-		if (rcode < 0) return fr_bio_error(VERIFY);
+		rcode = fr_bio_mem_read_packet(bio, packet_ctx, buffer, size);
 
 		/*
-		 *	There's at least one valid packet, return it.
+		 *	A packet, or an error.  Zero means that the buffer holds only part of a packet, and
+		 *	we need to read more data before we can return anything.
 		 */
-		if (rcode == 1) {
-			/*
-			 *	This isn't a fatal error.  The caller should check how much room is needed by calling
-			 *	fr_bio_mem_call_verify(), and retry.
-			 *
-			 *	But in general, the caller should make sure that the output buffer has enough
-			 *	room for at least one packet.  The verify() function should also ensure that
-			 *	the packet is no larger than our application maximum, even if the protocol
-			 *	allows for it to be larger.
-			 */
-			if (want > size) return fr_bio_error(BUFFER_TOO_SMALL);
-
-			return fr_bio_buf_read(&my->read_buffer, buffer, want);
-		}
-
-		/*
-		 *	Else we need to read more data to have a complete packet.
-		 */
+		if (rcode != 0) return rcode;
 	}
 
 	/*
@@ -248,48 +253,13 @@ static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, vo
 	fr_assert(p != NULL);	/* otherwise room would be zero */
 
 	rcode = next->read(next, packet_ctx, p, room);
+	if (rcode <= 0) return rcode;
 
 	/*
-	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 *	The next bio returned some data.  Bump up what's used in the buffer, and see if it's a valid packet.
 	 */
-	if (rcode == 0) return 0;
-
-	/*
-	 *	The next bio returned some data.  See if it's a valid packet.
-	 */
-	if (rcode > 0) {
-		(void) fr_bio_buf_write_alloc(&my->read_buffer, (size_t) rcode);
-
-		want = fr_bio_buf_used(&my->read_buffer);
-
-		if (want > size) return fr_bio_error(BUFFER_TOO_SMALL);
-
-		want = size;
-
-		/*
-		 *	See if there are valid packets in the buffer.
-		 */
-		rcode = fr_bio_mem_call_verify(bio, packet_ctx, &want);
-		if (rcode < 0) return fr_bio_error(VERIFY);
-
-		/*
-		 *	There's at least one valid packet, return it.
-		 */
-		if (rcode == 1) return fr_bio_buf_read(&my->read_buffer, buffer, want);
-
-		/*
-		 *	No valid packets.  The next call to read will call verify again, which will return a
-		 *	partial packet.  And then it will try to fill the buffer from the next bio.
-		 */
-		return 0;
-	}
-
-	/*
-	 *	The other BIO returned an error.  It could be transient or permanent.  Return that to the
-	 *	application.  If the error is permanent, then the other BIO is responsible for shutting down
-	 *	the BIO chain.
-	 */
-	return rcode;
+	(void) fr_bio_buf_write_alloc(&my->read_buffer, (size_t) rcode);
+	return fr_bio_mem_read_packet(bio, packet_ctx, buffer, size);
 }
 
 /** Return data only if we have a complete packet.
@@ -298,6 +268,7 @@ static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, vo
 static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {
 	ssize_t rcode;
+	size_t want;
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
 	fr_bio_t *next;
 
@@ -308,61 +279,50 @@ static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, 
 	fr_assert(next != NULL);
 
 	rcode = next->read(next, packet_ctx, buffer, size);
-
-	/*
-	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
-	 */
-	if (rcode == 0) return 0;
+	if (rcode <= 0) return rcode;
 
 	/*
 	 *	We have some data.
 	 */
-	if (rcode > 0) {
-		size_t want = rcode;
-
-		/*
-		 *	It's a datagram socket, there can only be one packet in the buffer.
-		 *
-		 *	@todo - if we're allowed more than one packet in the buffer, we should just call
-		 *	fr_bio_mem_read_verify(), or this function should call fr_bio_mem_call_verify().
-		 */
-		switch (my->verify((fr_bio_t *) my, my->verify_ctx, packet_ctx, buffer, &want)) {
-			/*
-			 *	The data in the buffer is exactly a packet.  Return that.
-			 *
-			 *	@todo - if there are multiple packets, return the total size of packets?
-			 */
-		case FR_BIO_VERIFY_OK:
-			fr_assert(want <= (size_t) rcode);
-			return want;
-
-			/*
-			 *	The data in the buffer doesn't make up a complete packet, discard it.  The
-			 *	called verify function should take care of logging.
-			 */
-		case FR_BIO_VERIFY_WANT_MORE:
-			return 0;
-
-		case FR_BIO_VERIFY_DISCARD:
-			return 0;
-
-			/*
-			 *	Some kind of fatal validation error.
-			 */
-		case FR_BIO_VERIFY_ERROR_CLOSE:
-			break;
-		}
-
-		(void) fr_bio_shutdown(bio);
-		return fr_bio_error(VERIFY);
-	}
+	want = rcode;
 
 	/*
-	 *	The other BIO returned an error.  It could be transient or permanent.  Return that to the
-	 *	application.  If the error is permanent, then the other BIO is responsible for shutting down
-	 *	the BIO chain.
+	 *	It's a datagram socket, there can only be one packet in the buffer.
+	 *
+	 *	@todo - if we're allowed more than one packet in the buffer, we should just call
+	 *	fr_bio_mem_read_verify(), or this function should call fr_bio_mem_call_verify().
 	 */
-	return rcode;
+	switch (my->verify((fr_bio_t *) my, my->verify_ctx, packet_ctx, buffer, &want)) {
+		/*
+		 *	The data in the buffer is exactly a packet.  Return that.
+		 *
+		 *	@todo - if there are multiple packets, return the total size of packets?
+		 */
+	case FR_BIO_VERIFY_OK:
+		fr_assert(want <= (size_t) rcode);
+		return want;
+
+		/*
+		 *	The data in the buffer doesn't make up a complete packet, discard it.  The
+		 *	called verify function should take care of logging.
+		 */
+	case FR_BIO_VERIFY_WANT_MORE:
+		return 0;
+
+	case FR_BIO_VERIFY_DISCARD:
+		return 0;
+
+		/*
+		 *	The verification routine told us to close the socket, so we do that.
+		 *
+		 *	This is typically because the application-layer got something which is invalid.
+		 */
+	case FR_BIO_VERIFY_ERROR_CLOSE:
+		break;
+	}
+
+	(void) fr_bio_shutdown(bio);
+	return fr_bio_error(VERIFY);
 }
 
 
@@ -389,23 +349,13 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
 
+	rcode = next->write(next, packet_ctx, buffer, size);
+	if (rcode < 0) return rcode;
+
 	/*
 	 *	The next bio may write all of the data.  If so, we return that,
 	 */
-	rcode = next->write(next, packet_ctx, buffer, size);
 	if ((size_t) rcode == size) return rcode;
-
-	/*
-	 *	The next bio returned an error.  Anything other than WOULD BLOCK is fatal.  We can read from
-	 *	the memory buffer until it's empty, but we can no longer write to the memory buffer.
-	 */
-	if (rcode < 0) {
-		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
-
-		bio->read = fr_bio_mem_read_eof;
-		bio->write = fr_bio_null_write;
-		return rcode;
-	}
 
 	/*
 	 *	We were flushing the BIO, return however much data we managed to write.
@@ -419,8 +369,6 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 	 */
 	error = fr_bio_write_blocked(bio);
 	if (error < 0) return error;
-
-	fr_assert(error != 0); /* what to do? */
 
 	/*
 	 *	We had WOULD BLOCK, or wrote partial bytes.  Save the data to the memory buffer, and ensure
@@ -459,10 +407,12 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 
 /** Flush the memory buffer.
  *
+ *  Note that this can't be used for unconnected FD sockets, as we
+ *  don't have a packet_ctx to pass to the next write function!
  */
 static ssize_t fr_bio_mem_write_flush(fr_bio_mem_t *my, size_t size)
 {
-	int rcode;
+	ssize_t rcode;
 	size_t used;
 	fr_bio_t *next;
 
@@ -494,14 +444,10 @@ static ssize_t fr_bio_mem_write_flush(fr_bio_mem_t *my, size_t size)
 	rcode = next->write(next, NULL, my->write_buffer.read, size);
 
 	/*
-	 *	We didn't write anything, the bio is blocked.
+	 *	No write, or a "would block" error, that's a "would block" error.
 	 */
 	if ((rcode == 0) || (rcode == fr_bio_error(IO_WOULD_BLOCK))) return fr_bio_error(IO_WOULD_BLOCK);
 
-	/*
-	 *	All other errors are fatal.  We can read from the memory buffer until it's empty, but we can
-	 *	no longer write to the memory buffer.
-	 */
 	if (rcode < 0) return rcode;
 
 	/*
@@ -526,6 +472,8 @@ static ssize_t fr_bio_mem_write_flush(fr_bio_mem_t *my, size_t size)
  *
  *  The special buffer pointer of NULL means flush().  On flush, we call next->read(), and if that succeeds,
  *  go back to "pass through" mode for the buffers.
+ *
+ *  This can only be called for streams, not for datagrams.
  */
 static ssize_t fr_bio_mem_write_buffer(fr_bio_t *bio, UNUSED void *packet_ctx, void const *buffer, size_t size)
 {
@@ -619,7 +567,7 @@ void fr_bio_mem_read_discard(fr_bio_t *bio, size_t size)
  *  @param	packet_ctx the packet ctx
  *  @param[out]	size	how big the verified packet is
  *  @return
- *	- <0 for FR_BIO_VERIFY_ERROR_CLOSE, the caller should close the bio.
+ *	- <0 for a fatal error
  *	- 0 for "we have a partial packet", the size to read is in *size
  *	- 1 for "we have at least one good packet", the size of it is in *size
  */
@@ -690,6 +638,8 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 }
 
 /** Allocate a memory buffer bio for either reading or writing.
+ *
+ *  Frees "my" on failure, so that we don't need to put that in all of the callers.
  */
 static bool fr_bio_mem_buf_alloc(fr_bio_mem_t *my, fr_bio_buf_t *buf, size_t size)
 {
@@ -720,8 +670,8 @@ static bool fr_bio_mem_buf_alloc(fr_bio_mem_t *my, fr_bio_buf_t *buf, size_t siz
  *  returns EOF.  See fr_bio_fd_eof() for details.
  *
  *  @param ctx		the talloc ctx
- *  @param read_size	size of the read buffer.  Must be 1024..1^20
- *  @param write_size	size of the write buffer.  Can be zero. If non-zero, must be 1024..1^20
+ *  @param read_size	size of the read buffer.  Must be 1024..2^20
+ *  @param write_size	size of the write buffer.  Can be zero. If non-zero, must be 1024..2^20
  *  @param next		the next bio which will perform the underlying reads and writes.
  *	- NULL on error, memory allocation failed
  *	- !NULL the bio
@@ -982,9 +932,19 @@ int fr_bio_mem_write_resume(fr_bio_t *bio)
 	 *	Flush the buffer, and then reset the write routine if we were successful.
 	 */
 	rcode = fr_bio_mem_write_flush(my, SIZE_MAX);
-	if (rcode <= 0) return rcode;
+	if (rcode < 0) {
+		/*
+		 *	Still blocked, can't resume.
+		 */
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return 0;
 
-	if (fr_bio_buf_used(&my->write_buffer) > 0) return 0;
+		return rcode;
+	}
+
+	/*
+	 *	There's no EWOULDBLOCK, so we try to resume.
+	 */
+	fr_assert((rcode == 0) || (fr_bio_buf_used(&my->write_buffer) == 0));
 
 	/*
 	 *	Check for an application hook to check if we can resume writes.
@@ -1005,6 +965,11 @@ int fr_bio_mem_write_pause(fr_bio_t *bio)
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
 
 	if (my->bio.write == fr_bio_mem_write_buffer) return 0;
+
+	if (!my->bio.write || !fr_bio_buf_initialized(&my->write_buffer)) {
+		fr_strerror_const("Cannot pause writes on a BIO with no write buffer");
+		return fr_bio_error(GENERIC);
+	}
 
 	/*
 	 *	Sink only, can't pause.
