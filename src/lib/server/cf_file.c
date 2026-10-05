@@ -1027,23 +1027,31 @@ cf_file_check_err_t cf_file_check_open_read(char const *filename, void *uctx)
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
+		int our_errno;
+
 	error:
+		/*
+		 *	Capture errno before close(), which may overwrite
+		 *	it.  The fstat() failure below arrives here with
+		 *	the file still open.
+		 */
+		our_errno = errno;
 		if (fd >= 0) close(fd);
 
-		switch (errno) {
+		switch (our_errno) {
 		case ENOENT:
 			fr_strerror_printf("File \"%s\" does not exist", filename);
 			return CF_FILE_NO_EXIST;
 
 		case EPERM:
 		case EACCES:
-			fr_perm_file_error(errno);
+			fr_perm_file_error(our_errno);
 			fr_strerror_printf_push("File \"%s\" exists but is not accessible: %s",
-						filename, fr_syserror(errno));
+						filename, fr_syserror(our_errno));
 			return CF_FILE_NO_PERMISSION;
 
 		default:
-			fr_strerror_printf("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
+			fr_strerror_printf("Unable to open file \"%s\": %s", filename, fr_syserror(our_errno));
 			return CF_FILE_OTHER_ERROR;
 
 		}
