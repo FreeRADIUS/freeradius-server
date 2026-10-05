@@ -963,8 +963,12 @@ int fr_bio_fd_init_listen(fr_bio_fd_t *my)
 {
 	fr_assert(my->info.socket.type == SOCK_STREAM);
 
-	my->bio.read = fr_bio_null_read;
-	my->bio.write = fr_bio_null_write;
+	/*
+	 *	A listening socket supports neither read nor write, so both routines return an error.  The
+	 *	caller calls fr_bio_fd_accept() to get each new connection.
+	 */
+	my->bio.read = fr_bio_fail_read;
+	my->bio.write = fr_bio_fail_write;
 
 	if (listen(my->info.socket.fd, my->info.cfg->backlog_is_set ? my->info.cfg->backlog : 8) < 0) {
 		fr_strerror_printf("Failed calling listen() %s", fr_syserror(errno));

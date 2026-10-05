@@ -61,8 +61,8 @@ typedef enum {
 					// updates #fr_bio_fd_packet_ctx_t for reads,
 					// uses #fr_bio_fd_packet_ctx_t for writes
 	FR_BIO_FD_CONNECTED,		//!< connected client sockets (UDP or TCP)
-	FR_BIO_FD_LISTEN,		//!< returns new fd in buffer on fr_bio_read() or fr_bio_fd_accept()
-					// updates #fr_bio_fd_packet_ctx_t on successful FD read.
+	FR_BIO_FD_LISTEN,		//!< call fr_bio_fd_accept() for each new connection
+					// fr_bio_read() and fr_bio_write() return an error.
 } fr_bio_fd_type_t;
 
 /** The type of transport used by a FD BIO.
