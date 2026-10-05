@@ -210,11 +210,11 @@ static void _batch_write(rlm_linelog_file_t *file)
 
 		written = stat_buf.st_size - file_size - header_len;
 
-		if ((errno == ENOSPC) && (written > 0)) {
+		if ((write_error == ENOSPC) && (written > 0)) {
 			ERROR("No space left on device when writing to \"%s\". Not all data was written",
 			      file->filename);
 		} else {
-			ERROR("Failed writing to \"%s\" - %s", file->filename, fr_syserror(errno));
+			ERROR("Failed writing to \"%s\" - %s", file->filename, fr_syserror(write_error));
 			goto error;
 		}
 	}
