@@ -50,7 +50,8 @@ typedef struct {
 #define FR_BIO_COMMON \
 	fr_bio_t		bio; \
 	fr_bio_cb_funcs_t	cb; \
-	fr_bio_priv_callback_t	priv_cb
+	fr_bio_priv_callback_t	priv_cb; \
+	bool			shutdown_pending	/*!< only meaningful on the head bio, see fr_bio_shutdown() */
 
 struct fr_bio_common_s {
 	FR_BIO_COMMON;
@@ -63,11 +64,15 @@ struct fr_bio_common_s {
  */
 #define FR_BIO_DESTRUCTOR_COMMON \
 do { \
-	if (my->priv_cb.shutdown) {		   \
-		int rcode;			   \
-		rcode = fr_bio_shutdown(&my->bio); \
-		if (rcode < 0) return rcode;	   \
-	}					   \
+	if (my->priv_cb.shutdown) {			   \
+		int rcode;				   \
+		/*					   \
+		 *	A free cannot wait for the application to drain any buffered data, so this \
+		 *	tears the chain down now even if a shutdown was deferred.		   \
+		 */					   \
+		rcode = fr_bio_shutdown_discard(&my->bio); \
+		if (rcode < 0) return rcode;		   \
+	}						   \
 	if (fr_bio_prev(&my->bio) || fr_bio_next(&my->bio)) \
 		fr_bio_unchain(&my->bio);	   \
 } while (0)
@@ -112,6 +117,12 @@ static inline void CC_HINT(nonnull) fr_bio_unchain(fr_bio_t *bio)
 	bio->entry.prev = bio->entry.next = NULL;
 }
 
-void	fr_bio_eof(fr_bio_t *bio) CC_HINT(nonnull);
+/** Tell the chain that a bio is at EOF, and let the application drain whatever is buffered.
+ *
+ *  @return
+ *	- NULL if every bio in the chain is at EOF
+ *	- the bio which still holds data, and which therefore stopped the walk
+ */
+fr_bio_t *fr_bio_eof(fr_bio_t *bio) CC_HINT(nonnull);
 
 int	fr_bio_write_blocked(fr_bio_t *bio) CC_HINT(nonnull);

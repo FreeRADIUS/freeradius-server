@@ -81,41 +81,18 @@ ssize_t fr_bio_shutdown_write(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNU
 	return fr_bio_error(SHUTDOWN);
 }
 
-/** Shut down a set of BIOs
+/** Tear down every bio from "first" to the end of the chain.
  *
- *  We shut down the BIOs from the top to the bottom.  This gives the
- *  TLS BIO an opportunity to call the SSL_shutdown() routine, which
- *  should then write to the FD BIO.  Once that write is completed,
- *  the FD BIO can then close its socket.
- *
- *  Any shutdown is "stop read / write", but is not "free all
- *  resources".  A shutdown can happen when one of the intermediary
- *  BIOs hits a fatal error.  It can't free the BIO, but it has to
- *  mark the entire BIO chain as being unusable.
- *
- *  A destructor will first shutdown the BIOs, and then free all resources.
+ *  Running a bio's own shutdown routine twice is harmless, because the routine is cleared once it
+ *  has run.
  */
-int fr_bio_shutdown(fr_bio_t *bio)
+static int fr_bio_shutdown_chain(fr_bio_t *first)
 {
 	int rcode;
-	fr_bio_t *head, *this;
+	fr_bio_t *this;
 	fr_bio_common_t *my;
 
-	/*
-	 *	Find the first bio in the chain.
-	 */
-	head = fr_bio_head(bio);
-
-	/*
-	 *	We're in the process of shutting down, don't call ourselves recursively.
-	 */
-	my = (fr_bio_common_t *) head;
-	if (my->bio.read == fr_bio_shutdown_read) return 0;
-
-	/*
-	 *	Walk back down the chain, calling the shutdown functions.
-	 */
-	for (this = head; this != NULL; this = fr_bio_next(this)) {
+	for (this = first; this != NULL; this = fr_bio_next(this)) {
 		my = (fr_bio_common_t *) this;
 
 		if (my->priv_cb.shutdown) {
@@ -129,12 +106,30 @@ int fr_bio_shutdown(fr_bio_t *bio)
 		talloc_set_destructor(my, NULL);
 	}
 
-	/*
-	 *	Call the application shutdown routine to tell it that
-	 *	the BIO has been successfully shut down.
-	 */
-	my = (fr_bio_common_t *) head;
+	return 0;
+}
 
+/** Finish a shutdown: tear down the whole chain, and tell the application.
+ *
+ *  Called either from fr_bio_shutdown() when nothing was buffered, or from fr_bio_eof() once the
+ *  application has drained everything which had already been received.
+ */
+static int fr_bio_shutdown_final(fr_bio_t *bio)
+{
+	int rcode;
+	fr_bio_t *head = fr_bio_head(bio);
+	fr_bio_common_t *my = (fr_bio_common_t *) head;
+
+	my->shutdown_pending = false;
+
+	rcode = fr_bio_shutdown_chain(head);
+	if (rcode < 0) return rcode;
+
+	/*
+	 *	Call the application shutdown routine to tell it that the BIO has been successfully shut
+	 *	down.  The read and write routines above are already dead, so a shutdown routine which
+	 *	calls back into us does nothing.
+	 */
 	if (my->cb.shutdown) {
 		rcode = my->cb.shutdown(head);
 		if (rcode < 0) return rcode;
@@ -144,17 +139,86 @@ int fr_bio_shutdown(fr_bio_t *bio)
 	return 0;
 }
 
+/** Shut down a set of BIOs
+ *
+ *  We shut down the BIOs from the top to the bottom.  This gives the TLS BIO an opportunity to call
+ *  the SSL_shutdown() routine, which should then write to the FD BIO.  Once that write is
+ *  completed, the FD BIO can then close its socket.
+ *
+ *  Any shutdown is "stop read / write", but is not "free all resources".  A shutdown can happen
+ *  when one of the intermediary BIOs hits a fatal error.  It can't free the BIO, but it has to mark
+ *  the entire BIO chain as being unusable.
+ *
+ *  Writes stop at once.  Reads do not: a bio which still holds data which the application has not
+ *  collected keeps its read routine, and the rest of the shutdown waits until that data has been
+ *  drained.  fr_bio_shutdown_discard() is the version which does not wait.
+ *
+ *  A destructor will first shutdown the BIOs, and then free all resources.
+ */
+int fr_bio_shutdown(fr_bio_t *bio)
+{
+	fr_bio_t *head, *this, *stopped;
+	fr_bio_common_t *my;
+
+	/*
+	 *	Find the first bio in the chain.
+	 */
+	head = fr_bio_head(bio);
+	my = (fr_bio_common_t *) head;
+
+	/*
+	 *	We're in the process of shutting down, or we have already shut down.  Don't call ourselves
+	 *	recursively.
+	 */
+	if (my->shutdown_pending || (my->bio.read == fr_bio_shutdown_read)) return 0;
+
+	/*
+	 *	Writes die immediately, everywhere.  Whatever killed the transport means that no write can
+	 *	ever succeed, and the application must not be told "nothing written, try again later".
+	 *
+	 *	Reads are left alone, so that the application can still collect data which arrived before
+	 *	the transport went away.
+	 */
+	for (this = head; this != NULL; this = fr_bio_next(this)) {
+		((fr_bio_common_t *) this)->bio.write = fr_bio_shutdown_write;
+	}
+
+	my->shutdown_pending = true;
+
+	/*
+	 *	Walk back up the chain from the bio which failed.  If nothing is holding data,
+	 *	fr_bio_eof() runs the teardown itself and returns NULL.
+	 */
+	stopped = fr_bio_eof(bio);
+	if (!stopped) return 0;
+
+	/*
+	 *	Something upstream still has data for the application.  Everything downstream of it is
+	 *	finished with, so tear that down now, and leave the rest until the drain completes.
+	 */
+	return fr_bio_shutdown_chain(fr_bio_next(stopped));
+}
+
+/** Shut down the chain now, discarding anything which is still buffered.
+ *
+ *  For a caller which has decided that the buffered data is the problem, such as a verify failure,
+ *  and for a free, which cannot wait for the application to drain anything.
+ */
+int fr_bio_shutdown_discard(fr_bio_t *bio)
+{
+	fr_bio_common_t *my = (fr_bio_common_t *) fr_bio_head(bio);
+
+	if (my->bio.read == fr_bio_shutdown_read) return 0;
+
+	return fr_bio_shutdown_final(&my->bio);
+}
+
 /** Like fr_bio_shutdown(), but can be called by anyone in the chain.
  *
+ *  fr_bio_shutdown() finds the head itself, so this is now the same function.
  */
 int fr_bio_shutdown_intermediate(fr_bio_t *bio)
 {
-	fr_bio_common_t *prev;
-
-	while ((prev = (fr_bio_common_t *) fr_bio_prev(bio)) != NULL) {
-		bio = (fr_bio_t *) prev;
-	}
-
 	return fr_bio_shutdown(bio);
 }
 
@@ -209,7 +273,7 @@ void fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb)
  *
  *  Once all of the BIOs have been marked as blocked, it will call the application EOF callback.
  */
-void fr_bio_eof(fr_bio_t *bio)
+fr_bio_t *fr_bio_eof(fr_bio_t *bio)
 {
 	fr_bio_common_t *this = (fr_bio_common_t *) bio;
 
@@ -240,7 +304,14 @@ void fr_bio_eof(fr_bio_t *bio)
 				this->cb.eof(&this->bio);
 				this->cb.eof = NULL;
 			}
-			break;
+
+			/*
+			 *	A shutdown was deferred so that the application could drain whatever had
+			 *	already been received.  There is nothing left to drain, so finish it.
+			 */
+			if (this->shutdown_pending) (void) fr_bio_shutdown_final(&this->bio);
+
+			return NULL;
 		}
 
 		/*
@@ -253,7 +324,7 @@ void fr_bio_eof(fr_bio_t *bio)
 		/*
 		 *	The EOF handler said it's an error or NOT at EOF, so we stop processing here.
 		 */
-		if (this->priv_cb.eof((fr_bio_t *) this) <= 0) break;
+		if (this->priv_cb.eof((fr_bio_t *) this) <= 0) return (fr_bio_t *) this;
 
 		/*
 		 *	Don't run the EOF callback multiple times, and continue the loop.

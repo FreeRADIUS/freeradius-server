@@ -321,7 +321,7 @@ static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, 
 		break;
 	}
 
-	(void) fr_bio_shutdown(bio);
+	(void) fr_bio_shutdown_discard(bio); /* the buffered data is what failed */
 	return fr_bio_error(VERIFY);
 }
 
@@ -622,7 +622,7 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 			 *	Some kind of fatal validation error.
 			 */
 		case FR_BIO_VERIFY_ERROR_CLOSE:
-			(void) fr_bio_shutdown(bio);
+			(void) fr_bio_shutdown_discard(bio); /* the buffered data is what failed */
 			return -1;
 		}
 	}

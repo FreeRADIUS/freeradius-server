@@ -65,7 +65,7 @@ static ssize_t fr_bio_haproxy_v1(fr_bio_haproxy_t *my)
 	 */
 	if (memcmp(my->buffer.read, "PROXY TCP", 9) != 0) {
 	fail:
-		(void) fr_bio_shutdown(&my->bio);
+		(void) fr_bio_shutdown_discard(&my->bio); /* the buffered data is what failed */
 		return fr_bio_error(VERIFY);
 	}
 	p += 9;

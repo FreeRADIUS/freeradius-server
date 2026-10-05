@@ -173,10 +173,14 @@ static ssize_t fr_bio_fd_read_stream(fr_bio_t *bio, UNUSED void *packet_ctx, voi
 
 			(void) fr_bio_write(head, NULL, NULL, SIZE_MAX);
 
-			rcode = fr_bio_shutdown(head);
+			/*
+			 *	Shut down through this bio, not through the head.  fr_bio_shutdown() walks
+			 *	back up from here, so that any bio holding data can hand it to the
+			 *	application before the chain is torn down.
+			 */
+			rcode = fr_bio_shutdown(bio);
 			if (rcode < 0) return rcode;
 
-			fr_bio_eof(bio);
 			return 0;
 		}
 	} while (fr_bio_fd_read_retry(my, &rcode, &tries));

@@ -70,14 +70,15 @@ static ssize_t fr_bio_pipe_read(fr_bio_t *bio, UNUSED void *packet_ctx, void *bu
 	}
 	pthread_mutex_unlock(&my->mutex);
 
-	if (size > 0) {
-		if (eof) {
-			my->cb.eof(&my->bio);
-			my->cb.eof = NULL;
+	/*
+	 *	IF we're at EOF, then don't read anything and there's nothing to wait for.
+	 */
+	if (eof) {
+		my->priv_cb.eof = NULL;
+		(void) fr_bio_eof(&my->bio);
 
-		} else {
-			(void) my->cb.write_resume(&my->bio);
-		}
+	} else if (size > 0) {
+		(void) my->cb.write_resume(&my->bio);
 
 	} else {
 		(void) my->cb.read_blocked(&my->bio);
@@ -117,14 +118,15 @@ static ssize_t fr_bio_pipe_write(fr_bio_t *bio, UNUSED void *packet_ctx, void co
 
 /** Shutdown callback.
  *
+ *  We just set the EOF flag, which means that the other end stops using it.  fr_bio_shutdown() mangles the
+ *  read and write callbacks, so we don't need to do that here.
  */
 static int fr_bio_pipe_shutdown(fr_bio_t *bio)
 {
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
 
 	pthread_mutex_lock(&my->mutex);
-	my->bio.read = fr_bio_fail_read;
-	my->bio.write = fr_bio_fail_write;
+	my->eof = true;
 	pthread_mutex_unlock(&my->mutex);
 
 	return 0;
@@ -147,17 +149,21 @@ static int fr_bio_pipe_eof(fr_bio_t *bio)
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
 
 	/*
-	 *	@todo - fr_bio_eof() sets our read to NULL read before this callback is run.  That has to be
-	 *	addressed.
+	 *	The return value is what fr_bio_eof() uses to decide whether to keep walking back up the
+	 *	chain, so it has to match fr_bio_mem_eof(): 1 for "nothing here, keep going", and 0 for
+	 *	"the application still has data to collect from me, stop".
+	 *
+	 *	fr_bio_eof() only sets the read routine of the bio it was given, which is the bio which
+	 *	hit EOF, so ours is left alone and fr_bio_pipe_read() keeps draining the buffer.
 	 */
 	pthread_mutex_lock(&my->mutex);
 	my->eof = true;	
 	my->bio.write = fr_bio_pipe_shutdown_write;
 	if (fr_bio_buf_used(&my->buf) == 0) {
 		my->bio.read = fr_bio_null_read;
-		rcode = 0;
+		rcode = 1;
 	} else {
-		rcode = -1;	/* can't close this BIO yet */
+		rcode = 0;	/* can't close this BIO yet */
 	}
 	pthread_mutex_unlock(&my->mutex);
 
@@ -207,7 +213,11 @@ fr_bio_t *fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, size_t buffe
 
 	my->bio.read = fr_bio_pipe_read;
 	my->bio.write = fr_bio_pipe_write;
-	my->cb.shutdown = fr_bio_pipe_shutdown;
+
+	/*
+	 *	We need a pipe-specific shutdown, which is separate from the application callback.
+	 */
+	my->priv_cb.shutdown = fr_bio_pipe_shutdown;
 	my->priv_cb.eof = fr_bio_pipe_eof;
 
 	talloc_set_destructor(my, fr_bio_pipe_destructor);

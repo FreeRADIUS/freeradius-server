@@ -201,6 +201,8 @@ int	fr_bio_destructor(fr_bio_t *bio);
 
 int	fr_bio_shutdown(fr_bio_t *bio) CC_HINT(nonnull);
 
+int	fr_bio_shutdown_discard(fr_bio_t *bio) CC_HINT(nonnull);
+
 char const *fr_bio_strerror(ssize_t error);
 
 void	fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb) CC_HINT(nonnull(1));
