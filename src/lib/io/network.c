@@ -488,7 +488,10 @@ static void fr_network_suspend(fr_network_t *nr)
 	for (s = fr_rb_iter_init_inorder(nr->sockets, &iter);
 	     s != NULL;
 	     s = fr_rb_iter_next_inorder(nr->sockets, &iter)) {
-		fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, pause_read);
+		if (fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, pause_read) < 0) {
+			PERROR("Failed removing read callback from event loop");
+			fr_network_socket_dead(nr, s);
+		}
 	}
 	nr->suspended = true;
 }
@@ -503,7 +506,10 @@ static void fr_network_unsuspend(fr_network_t *nr)
 	for (s = fr_rb_iter_init_inorder(nr->sockets, &iter);
 	     s != NULL;
 	     s = fr_rb_iter_next_inorder(nr->sockets, &iter)) {
-		fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, resume_read);
+		if (fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, resume_read) < 0) {
+			PERROR("Failed adding read callback to event loop");
+			fr_network_socket_dead(nr, s);
+		}
 	}
 	nr->suspended = false;
 }
