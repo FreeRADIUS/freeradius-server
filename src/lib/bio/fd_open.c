@@ -541,8 +541,7 @@ static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	}
 
 	/*
-	 *	The UID and GID should be taken automatically from the "user" and "group" settings in
-	 *	mainconfig.  There is no reason to set them to anything else.
+	 *	The UID and GID are takeb from the configuration.
 	 */
 	if (cfg->uid == (uid_t) -1) {
 		fr_strerror_printf("Failed opening domain socket %s: no UID specified", cfg->path);
@@ -917,11 +916,11 @@ void fr_bio_fd_name(fr_bio_fd_t *my)
 		case AF_FR_FILENAME:
 			fr_assert(cfg->socket_type == SOCK_STREAM);
 
-			if (cfg->flags == O_RDONLY) {
+			if ((cfg->flags & O_ACCMODE) == O_RDONLY) {
 				my->info.name = fr_asprintf(my, "proto file (read-only) filename %s ",
 							    cfg->filename);
 
-			} else if (cfg->flags == O_WRONLY) {
+			} else if ((cfg->flags & O_ACCMODE) == O_WRONLY) {
 				my->info.name = fr_asprintf(my, "proto file (write-only) filename %s",
 							    cfg->filename);
 			} else {
@@ -1458,6 +1457,8 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 /** Reopen a file BIO
  *
  *  e.g. for log files.
+ *
+ *  This will change the FD which is in the BIO.
  */
 int fr_bio_fd_reopen(fr_bio_t *bio)
 {
@@ -1518,12 +1519,12 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 	 *	We're boot-strapping, just set the new FD and return.
 	 */
 	if (my->info.socket.fd < 0) {
+		my->info.socket.fd = fd;
 		return fd;
 	}
 
 	/*
-	 *	Replace the FD rather than swapping it out with a new one.  This is potentially more
-	 *	thread-safe.
+	 *	Close the previous my->info.socket.fd, and make it instead a duplicate of our new FD.
 	 */
 	if (dup2(fd, my->info.socket.fd) < 0) {
 		close(fd);
@@ -1531,6 +1532,9 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 		return -1;
 	}
 
+	/*
+	 *	Close our duplicate FD, and leave the old one as a duplicate of the new one.
+	 */
 	close(fd);
 	return my->info.socket.fd;
 }
