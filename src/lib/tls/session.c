@@ -849,6 +849,41 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		break;
 	}
 
+	/*
+	 *	Manually track when records are encrypted.  Once records are encrypted, we can't manually
+	 *	create a TLS alert.  OpenSSL doesn't have an API to send alerts.  And it doesn't have an API
+	 *	to tell us when the records are encrypted.
+	 */
+	switch (content_type) {
+	/*
+	 *	Everything after ChangeCipherSpec is encrypted.
+	 */
+	case SSL3_RT_CHANGE_CIPHER_SPEC:
+		if (write_p != TLS_INFO_ORIGIN_RECORD_SENT) break;
+		if (tls_session->write_encrypted) break;
+
+		tls_session->write_encrypted = true;
+		ROPTIONAL(RDEBUG3, DEBUG3, "The records we write are encrypted, from the ChangeCipherSpec onwards");
+		break;
+
+	/*
+	 *	For TLS 1.3, everything after ServerHello is encrypted.  After ServerHello, SSL_version()
+	 *	finally returns the correct TLS version number which was negotiated.  Before ServerHello,
+	 *	SSL_version() returns the highest allowed TLS version.
+	 */
+	case SSL3_RT_HANDSHAKE:
+		if (tls_session->info.handshake_type != SSL3_MT_SERVER_HELLO) break;
+		if (SSL_version(ssl) < TLS1_3_VERSION) break;
+		if (tls_session->write_encrypted) break;
+
+		tls_session->write_encrypted = true;
+		ROPTIONAL(RDEBUG3, DEBUG3, "The records we write are encrypted, from the ServerHello onwards");
+		break;
+
+	default:
+		break;
+	}
+
 	session_msg_log(request, tls_session, (uint8_t const *)inbuf, len);
 
 #ifndef OPENSSL_NO_SSL_TRACE
@@ -1234,23 +1269,6 @@ int fr_tls_session_alert(request_t *request, fr_tls_session_t *session, uint8_t 
 	if (session->alerts_sent > 3) return -1;		/* Some kind of state machine brokenness */
 
 	/*
-	 *	Once the initialization is finished, then all data is encrypted, and we can't send a manually
-	 *	created TLS alert.  Just shutdown the socket, which sends a close_notify instead.
-	 *
-	 *	Note that in TLS 1.3, the data is encrypted before SSL_is_init_finished(), because pretty much
-	 *	the entire handshake is encrypted.
-	 *
-	 *	The caller still records the error, so `fail session { ... }` reports the same reason either
-	 *	way.  However, the peer never gets the alert.
-	 */
-	if (SSL_is_init_finished(session->ssl)) {
-		ROPTIONAL(RDEBUG2, DEBUG2,
-			  "Not sending TLS alert (%u), the handshake has finished and the record layer is encrypted",
-			  description);
-		return -1;
-	}
-
-	/*
 	 *	Ignore an alert which has lower severity than the one already queued.
 	 *
 	 *	Two alerts of the same severity means the first one is the cause, and the second one is a
@@ -1259,6 +1277,23 @@ int fr_tls_session_alert(request_t *request, fr_tls_session_t *session, uint8_t 
 	 *	alert says what was wrong with the record, which is the part the peer can act on.
 	 */
 	if (session->pending_alert && (level <= session->pending_alert_level)) return 0;
+
+	/*
+	 *	Check our internal flag is write_encrypted.  We track that above in fr_tls_session_msg_cb()
+	 *
+	 *	Refusing here rather than when the alert is sent lets the caller act on the refusal.  A caller
+	 *	which queued the alert in order to reject the session has to fail the session some other way,
+	 *	and both callers outside this file already check the return code.
+	 *
+	 *	The caller still records the error, so `fail session { ... }` reports the same reason either
+	 *	way.  However, the peer never gets the alert.
+	 */
+	if (session->write_encrypted) {
+		ROPTIONAL(RDEBUG2, DEBUG2,
+			  "Not sending TLS alert (%u), the records we write are already encrypted",
+			  description);
+		return -1;
+	}
 
 	session->pending_alert = true;
 	session->pending_alert_level = level;
@@ -1412,6 +1447,9 @@ void fr_tls_session_close_send(request_t *request, fr_tls_session_t *session)
 	/*
 	 *	Disable the OpenSSL quiet shutdown, so it sends close_notify.  We need to do that on our
 	 *	timeframe, so the quiet shutdown is on by default.
+	 *
+	 *	OpenSSL drops a session from its internal cache (and maybe ours) when a connection closes
+	 *	without seeing a `close_notify`.
 	 */
 	SSL_set_quiet_shutdown(session->ssl, 0);
 

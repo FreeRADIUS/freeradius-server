@@ -215,6 +215,9 @@ struct fr_tls_session_s {
 
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 
+	bool			write_encrypted;		//!< Whether the records we write are encrypted.
+								///< which lets us track if we can send an alert
+
 	bool			peer_cert_ok;			//!< Whether the peer's certificate was validated
 	bool			seen_application_data;		//!< Application data has started moving, which
 								///< indicates that all session tickets have been sent.
