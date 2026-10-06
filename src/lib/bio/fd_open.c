@@ -1535,8 +1535,8 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 
 		if (fr_mkdir(&dir_fd, cfg->filename, (size_t) (p - cfg->filename), dir_perm, fr_mkdir_chown,
 			      &(fr_mkdir_chown_t) {
-				      .uid = cfg->uid,
-				      .gid = cfg->gid,
+				      .uid = cfg->uid != (uid_t) -1 ? cfg->uid : getuid(),
+				      .gid = cfg->gid != (gid_t) -1 ? cfg->gid : getgid(),
 			      }) < 0) {
 			return -1;
 		}
