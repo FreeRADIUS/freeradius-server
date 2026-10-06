@@ -524,8 +524,12 @@ print_fmt:
 
 	/*
 	 *	Logging everywhere else
+	 *
+	 *	Add the WARN / ERROR message after the request number, so it's clearer to the user that the
+	 *	message is associated with the request.  Set the type too, which lets fr_vlog() know that it
+	 *	shouldn't add the prefix.
 	 */
-	if (!DEBUG_ENABLED3) switch (type) {
+	switch (type) {
 	case L_DBG_WARN:
 		extra = "WARNING: ";
 		type = L_DBG_WARN_REQ;

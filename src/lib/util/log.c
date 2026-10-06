@@ -475,6 +475,13 @@ void _fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int lin
 			fmt_type = fr_table_str_by_value(fr_log_levels, type, NULL);
 			break;
 
+		/*
+		 *	vlog_request() adds an error prefix, so we won't need to a duplicate one here.
+		 */
+		case L_DBG_WARN_REQ:
+		case L_DBG_ERR_REQ:
+			break;
+
 		default:
 			/*
 			 *	Otherwise, print the other info levels only if we're asked to print the level,
