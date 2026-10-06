@@ -9,9 +9,27 @@ env:
   NO_PERFORMANCE_TESTS: yes
 
 jobs:
+  #
+  #  The `common_vars` job provides the compiler version.  See
+  #  `.github/workflows/common_vars.yml`.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
   freebsd-build:
+    needs: common_vars
 
     runs-on: ubuntu-latest
+
+    #
+    #  The base system's clang on FreeBSD 14 is LLVM 19, which does not
+    #  build C23.  The job therefore installs the LLVM release the other
+    #  legs build with from packages, and names the versioned clang
+    #  binary when configuring.
+    #
+    env:
+      LLVM_VERSION: ${{ needs.common_vars.outputs.llvm_version }}
 
     name: "FreeBSD build"
 
@@ -55,7 +73,7 @@ jobs:
         version: '14.3'
         sync_files: runner-to-vm
         memory: 4G
-        environment_variables: HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG NO_PERFORMANCE_TESTS
+        environment_variables: HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG NO_PERFORMANCE_TESTS LLVM_VERSION
 
     #
     #  The virtual machine (VM) stays up after the step above, and
@@ -82,6 +100,7 @@ jobs:
           libmemcached         \
           libpcap              \
           libyubikey           \
+          llvm$LLVM_VERSION    \
           lua52                \
           mariadb-connector-c  \
           net-snmp             \
@@ -105,7 +124,7 @@ jobs:
       shell: cpa.sh {0}
       run: |
         cd freeradius
-        ./configure
+        CC=clang$LLVM_VERSION ./configure
         gmake -j `nproc`
 
     - name: Run tests (FreeBSD)
