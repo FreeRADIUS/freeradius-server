@@ -75,10 +75,10 @@ RUN apt-get update && \
     printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
         > /etc/apt/sources.list.d/ddebs.list
 
-RUN attempt=1; until apt-get update; do \
-	if test "$attempt" -ge 3; then echo "ERROR: Giving up on apt-get update after $attempt attempts, the ddebs mirror may be syncing" >&2; exit 1; fi; \
-	attempt=$((attempt + 1)); \
-	echo "WARNING: Retrying apt-get update, attempt $attempt"; \
+RUN for attempt in 1 2 3; do \
+	apt-get update && break; \
+	test "$attempt" -lt 3 || exit 1; \
+	echo "WARNING: Retrying apt-get update, attempt $attempt failed, the ddebs mirror may be syncing"; \
     done && \
     for pkg in \
         libc6-dbg \

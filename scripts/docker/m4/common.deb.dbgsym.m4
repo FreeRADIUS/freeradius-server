@@ -43,10 +43,10 @@ RUN printf 'deb http://debug.mirrors.debian.org/debian-debug OS_CODENAME-debug m
        [errprint([common.deb.dbgsym.m4: unsupported OS_NAME=]OS_NAME[
 ])m4exit(1)])
 
-RUN attempt=1; until apt-get update; do \
-	if test "$attempt" -ge 3; then echo "ERROR: Giving up on apt-get update after $attempt attempts, the ddebs mirror may be syncing" >&2; exit 1; fi; \
-	attempt=$((attempt + 1)); \
-	echo "WARNING: Retrying apt-get update, attempt $attempt"; \
+RUN for attempt in 1 2 3; do \
+	apt-get update && break; \
+	test "$attempt" -lt 3 || exit 1; \
+	echo "WARNING: Retrying apt-get update, attempt $attempt failed, the ddebs mirror may be syncing"; \
     done && \
     for pkg in \
         libc6-dbg \
