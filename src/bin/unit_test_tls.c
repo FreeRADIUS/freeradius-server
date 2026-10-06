@@ -1606,7 +1606,7 @@ int main(int argc, char *argv[])
 	}
 	UNCONST(fr_tls_conf_t *, utt->conn->tls_conf)->alpn_required = alpn_required;
 
-	utt->ssl_ctx = fr_tls_ctx_alloc(utt->conn->tls_conf, utt->conn->client);
+	utt->ssl_ctx = fr_tls_ctx_alloc(utt->conn->tls_conf, utt->conn->client, true);
 	if (!utt->ssl_ctx) {
 		cf_log_perr(tls_cs, "Failed creating the TLS context");
 		EXIT_WITH_FAILURE;
