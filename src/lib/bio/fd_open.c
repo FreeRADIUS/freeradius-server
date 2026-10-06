@@ -1408,6 +1408,11 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
 		}
 
+		/*
+		 *	Don't call bind for clients.
+		 */
+		if (cfg->type != FR_BIO_FD_LISTEN) break;
+
 		if ((rcode = fr_bio_fd_socket_unix_bind(my, cfg)) < 0) goto fail;
 		break;
 

@@ -864,7 +864,8 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 	/*
 	 *	All connected sockets must have a destination IP.
 	 */
-	if (fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) {
+	if (((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6)) &&
+	    fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) {
 		fr_strerror_const("Destination IP address cannot be wildcard");
 		return -1;
 	}
