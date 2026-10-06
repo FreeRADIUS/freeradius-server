@@ -43,6 +43,31 @@
 #include "base.h"
 #include "log.h"
 
+/*
+ *	@todo - for automatically configured ALPN.
+ *
+ *	1) The application should define an enumerated data type which contains the list of ALPNs which it
+ *	knows about.
+ *
+ *	2) alpn.h should define a data structure of 3 elements: enum value (int), ALPN string (without leading
+ *	length), and configuration item name (or a CONF_PAIR)
+ *
+ *	3) We likely have to pass that data structure to fr_tls_conf_parse_server() and
+ *	fr_tls_conf_parse_client()
+ *
+ *	4) the TLS conf parser should allow an `alpn { ... }` section to be defined.  But its contents should
+ *	be parsed by a callback. e.g. `radius_v1_1 = true`
+ *
+ *	5) the callback walks through the entries of the structure, and compares them to the CONF_PAIRs.  Any
+ *	mismatch is an error.  Duplicates are an error.  If there's a match, we update tls_session->alpn with
+ *	one octet of the length of the ALPN string, plus the string.  This allows the administrator to list
+ *	the ALPN strings in preferred order.
+ *
+*	6) when ALPN is negotiated, the TLS code should use the cached stucture (above) to determine which
+*	enum value to place into a field in tls_session.  That way the application doesn't have to do any
+*	string comparisons itself.
+ */
+
 /** Validate the ALPN list.
  *
  * The client has not necessarily been authenticated, so we don't trust the data that they sent.
