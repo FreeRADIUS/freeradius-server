@@ -1,0 +1,38 @@
+name: llvm-homebrew
+description: Install from Homebrew the LLVM release that CI builds with, and put the LLVM binaries on PATH ahead of the Apple compiler
+
+inputs:
+  llvm_version:
+    description: Major version of LLVM to install
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install LLVM ${{ inputs.llvm_version }}
+      shell: bash
+      env:
+        LLVM_VERSION: ${{ inputs.llvm_version }}
+        HOMEBREW_NO_AUTO_UPDATE: 1
+        HOMEBREW_NO_INSTALL_CLEANUP: 1
+      run: |
+        #
+        #  Homebrew only creates a versioned `llvm@N` formula once N+1 is
+        #  released, so the requested release is either the versioned formula
+        #  or the unversioned `llvm`.  The action installs the unversioned
+        #  formula only when the major version of the unversioned formula is
+        #  the requested version.
+        #
+        if brew info "llvm@${LLVM_VERSION}" > /dev/null 2>&1; then
+          llvm_formula="llvm@${LLVM_VERSION}"
+        else
+          llvm_formula=llvm
+          llvm_major=$(brew info --json=v2 llvm \
+                       | python3 -c 'import sys, json; print(json.load(sys.stdin)["formulae"][0]["versions"]["stable"].split(".")[0])')
+          if [ "$llvm_major" != "$LLVM_VERSION" ]; then
+            echo "Refusing to install Homebrew llvm ${llvm_major}, LLVM ${LLVM_VERSION} requested and no llvm@${LLVM_VERSION} formula exists" >&2
+            exit 1
+          fi
+        fi
+        brew install "$llvm_formula"
+        echo "PATH=$(brew --prefix "$llvm_formula")/bin:$PATH" >> "$GITHUB_ENV"

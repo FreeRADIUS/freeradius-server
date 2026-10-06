@@ -21,7 +21,16 @@ env:
   GH_ACTIONS: 1
 
 jobs:
+  #
+  #  The `common_vars` job provides the compiler versions.  See
+  #  `.github/workflows/common_vars.yml`.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
   ci:
+    needs: common_vars
     timeout-minutes: 90
 
     runs-on: ${{ matrix.env.OS }}
@@ -86,7 +95,6 @@ jobs:
           libidn \
           libmemcached \
           libyubikey \
-          llvm@18 \
           luajit \
           mariadb \
           make \
@@ -107,13 +115,10 @@ jobs:
       run: |
         PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install tacacs_plus
 
-    #
-    #  Ensure that we run the Homebrew version of clang rather than the Apple
-    #  compiler.
-    #
-    - name: Set path for clang
-      run: |
-        echo "PATH=`brew --prefix`/opt/llvm@18/bin/:$PATH" >> $GITHUB_ENV
+    - name: Install LLVM from Homebrew
+      uses: ./.github/actions/llvm-homebrew
+      with:
+        llvm_version: ${{ needs.common_vars.outputs.llvm_version }}
 
     #
     #  Ensure that we use Python 3.10

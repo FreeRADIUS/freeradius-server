@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v6
 
       #
-      #  The CI image has clang only under a versioned name, `clang-18`,
+      #  The CI image has clang only under a versioned name, `clang-N`,
       #  and nothing in the image makes plain `clang` resolve to the
       #  versioned binary.  The build step below sets `CC=clang`.  Without
       #  runner-prep, configure looks for a compiler named `clang`, finds
@@ -43,6 +43,8 @@ jobs:
           packaging_changed: ${{ needs.common_vars.outputs.images_changed }}
           use_docker: true
           cc: clang
+          llvm_ver: ${{ needs.common_vars.outputs.llvm_version }}
+          gcc_ver: ${{ needs.common_vars.outputs.gcc_version }}
 
       - name: Download coverity tool MD5
         run: |

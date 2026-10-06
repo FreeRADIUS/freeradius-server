@@ -136,6 +136,8 @@ jobs:
         env:
           DOCKER_IMAGE_NAME: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
+          LLVM_VERSION: ${{ needs.common_vars.outputs.llvm_version }}
+          GCC_VERSION: ${{ needs.common_vars.outputs.gcc_version }}
           #  Reused layers hide new upstream packages, and fetching new
           #  packages is why the nightly run exists, so only the nightly
           #  run discards the layers.  Every other run rebuilds because a file
@@ -150,6 +152,11 @@ jobs:
           DOCKER_BUILDKIT: 1
         run: |
           build_args=()
+          #  Only `scripts/ci/docker/Dockerfile` reads the compiler build
+          #  arguments, so the builds of the other Dockerfiles print a Docker
+          #  warning about unconsumed build arguments.
+          build_args+=(--build-arg "llvm_ver=$LLVM_VERSION")
+          build_args+=(--build-arg "gcc_ver=$GCC_VERSION")
           if [ -n "$REGISTRY_MIRROR" ]; then
             build_args+=(--build-arg "registry_mirror_stage=configured")
             build_args+=(--build-arg "registry_mirror=$REGISTRY_MIRROR")

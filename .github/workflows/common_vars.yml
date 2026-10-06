@@ -15,6 +15,8 @@ name: Common vars
 #                      documentation uses
 #    image_prefix      registry and path that the CI images sit under
 #    image_tag         which tag of the CI images this ref should use
+#    llvm_version      major version of LLVM every job builds with
+#    gcc_version       major version of GCC every job builds with
 #
 #  `docker_registry`, `selfhosted` and `docker_prefix` follow from whether the
 #  run happens in the FreeRADIUS organisation or in somebody else's fork.
@@ -39,6 +41,15 @@ name: Common vars
 #  To add another value: add an output below, and add a line to the `evaluate`
 #  step that writes the value.
 #
+#
+#  `common_vars.yml` sets the compiler versions so that the CI image,
+#  `runner-prep`, and the macOS job all install the same release.  Change
+#  the versions here only.
+#
+env:
+  LLVM_VERSION: 23
+  GCC_VERSION: 14
+
 on:
   workflow_call:
     outputs:
@@ -63,6 +74,12 @@ on:
       image_tag:
         description: "tag of the CI images this ref should build against"
         value: ${{ jobs.common_vars.outputs.image_tag }}
+      llvm_version:
+        description: "major version of LLVM every job builds with"
+        value: ${{ jobs.common_vars.outputs.llvm_version }}
+      gcc_version:
+        description: "major version of GCC every job builds with"
+        value: ${{ jobs.common_vars.outputs.gcc_version }}
 
 jobs:
   common_vars:
@@ -84,6 +101,8 @@ jobs:
       docs_changed: ${{ steps.changed.outputs.docs_changed }}
       image_prefix: ${{ steps.evaluate.outputs.image_prefix }}
       image_tag: ${{ steps.evaluate.outputs.image_tag }}
+      llvm_version: ${{ steps.evaluate.outputs.llvm_version }}
+      gcc_version: ${{ steps.evaluate.outputs.gcc_version }}
 
     steps:
       #  paths-filter diffs a push locally, so paths-filter needs a checkout.
@@ -230,4 +249,6 @@ jobs:
             echo "docker_prefix=$prefix"
             echo "image_prefix=$registry/$repo_name/"
             echo "image_tag=$image_tag"
+            echo "llvm_version=$LLVM_VERSION"
+            echo "gcc_version=$GCC_VERSION"
           } >> "$GITHUB_OUTPUT"

@@ -1,7 +1,14 @@
 FROM ubuntu:24.04
 
-ARG llvm_ver=18
-ARG gcc_ver=14
+#
+#  The compiler versions come from `.github/workflows/common_vars.yml`.
+#  `docker-ci-images-refresh.yml` passes the versions as build arguments,
+#  so the image installs the same release that `runner-prep` selects.  The
+#  arguments have no default, so a build without the arguments fails on
+#  the empty version in `clang-`.
+#
+ARG llvm_ver
+ARG gcc_ver
 ARG openssl_ver=3.0.2
 
 ENV DEBIAN_FRONTEND=noninteractive

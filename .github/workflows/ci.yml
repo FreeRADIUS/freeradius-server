@@ -156,6 +156,8 @@ jobs:
           packaging_changed: ${{ needs.common_vars.outputs.images_changed }}
           use_docker: true
           cc: ${{ matrix.env.CC }}
+          llvm_ver: ${{ needs.common_vars.outputs.llvm_version }}
+          gcc_ver: ${{ needs.common_vars.outputs.gcc_version }}
           fuzzing: ${{ matrix.env.TEST_TYPE == 'fuzzing' }}
 
       - name: Install alternative dependencies

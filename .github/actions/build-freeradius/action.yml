@@ -71,7 +71,6 @@ runs:
           json-c \
           libidn \
           libmemcached \
-          llvm@18 \
           luajit \
           mariadb \
           make \

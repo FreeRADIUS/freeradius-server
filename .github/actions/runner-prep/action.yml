@@ -5,11 +5,11 @@ inputs:
     description: True if running in a Docker container
     default: false
   llvm_ver:
-    description: Version of LLVM to use
-    default: 18
+    description: Major version of LLVM to use, from common_vars
+    required: true
   gcc_ver:
-    description: Version of GCC to use
-    default: 14
+    description: Major version of GCC to use, from common_vars
+    required: true
   fuzzing:
     description: True if fuzzing is enabled
     default: false
@@ -80,11 +80,8 @@ runs:
       run: |
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ inputs.gcc_ver }} 60 && sudo update-alternatives --set gcc /usr/bin/gcc-${{ inputs.gcc_ver }}
 
-    #
-    #  Ensure the homebrew version of clang is run rather than the Apple compiler.
-    #
-    - name: Set path for clang
+    - name: Install LLVM ${{ inputs.llvm_ver }} from Homebrew
       if: ${{ runner.os == 'macOS' }}
-      shell: bash
-      run: |
-        echo "PATH=`brew --prefix`/opt/llvm@18/bin/:$PATH" >> $GITHUB_ENV
+      uses: ./.github/actions/llvm-homebrew
+      with:
+        llvm_version: ${{ inputs.llvm_ver }}
