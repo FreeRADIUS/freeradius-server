@@ -1320,6 +1320,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	}
 
 	if (fd < 0) return fd;
+	my->info.socket.fd = fd;
 
 	/*
 	 *	Set it to be non-blocking if required.
@@ -1329,12 +1330,13 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		rcode = fr_bio_error(GENERIC);
 
 	fail:
+		if (my->info.socket.fd >= 0) close(fd);
+
 		my->info.socket = (fr_socket_t) {
 			.fd = -1,
 		};
 		my->info.state = FR_BIO_FD_STATE_CLOSED;
 		my->info.cfg = NULL;
-		close(fd);
 		return rcode;
 	}
 
