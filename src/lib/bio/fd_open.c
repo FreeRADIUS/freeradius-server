@@ -333,16 +333,12 @@ static int fr_bio_fd_socket_unix_verify(int dirfd, char const *filename, fr_bio_
  *	We normally can't call fchmod() or fchown() on sockets, as they don't really exist in the file system.
  *	Instead, we enforce those permissions on the parent directory of the socket.
  */
-static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio_fd_config_t const *cfg)
+static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio_fd_config_t const *cfg, mode_t dir_perm)
 {
-	mode_t perm;
 	int parent_fd, fd;
 	char const *path = cfg->path;
 	char *p, *dir = NULL;
 	char *slashes[2];
-
-	perm = S_IREAD | S_IWRITE | S_IEXEC;
-	perm |= S_IRGRP | S_IWGRP | S_IXGRP;
 
 	/*
 	 *	The parent directory exists.  Ensure that it has the correct ownership and permissions.
@@ -379,7 +375,7 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 		 *
 		 *	@todo - allow for "other" to read/write if we do authentication on the socket?
 		 */
-		if (fchmod(*dirfd, perm) < 0) {
+		if (fchmod(*dirfd, dir_perm) < 0) {
 			fr_strerror_printf("Failed setting parent directory permissions for file %s: %s", path, fr_syserror(errno));
 			goto fail;
 		}
@@ -456,7 +452,7 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 		goto close_parent;
 	}
 
-	if (fchmod(fd, perm) < 0) {
+	if (fchmod(fd, dir_perm) < 0) {
 		fr_strerror_printf("Failed changing permission for domain socket %s: %s", cfg->path, fr_syserror(errno));
 	close_fd:
 		close(fd);
@@ -517,6 +513,25 @@ int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 	return 0;
 }
 
+/*
+ *	The socket is readable and writable by the owner and the group.  When cfg->perm is non-zero,
+ *	the socket keeps only those read and write bits that cfg->perm also sets.  Any other bit in
+ *	cfg->perm has no effect.  A cfg->perm of zero leaves the socket readable and writable by the
+ *	owner and the group.
+ *
+ *	The user is always able to read and write the files.
+ */
+#define FILE_PERMS(_cfg) \
+	do { \
+		file_perm = (_cfg)->perm ? (_cfg)->perm : S_IRGRP | S_IWGRP; \
+		file_perm |= S_IRUSR | S_IWUSR; \
+		dir_perm = file_perm & (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_ISGID | S_ISVTX); \
+		file_perm &= (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP); \
+		if ((dir_perm & (S_IRUSR | S_IWUSR)) != 0) dir_perm |= S_IXUSR; \
+		if ((dir_perm & (S_IRGRP | S_IWGRP)) != 0) dir_perm |= S_IXGRP; \
+	} while (0)
+
+
 /** Bind to a Unix domain socket.
  *
  *  @todo - this function only does a tiny bit of what fr_server_domain_socket_peercred() and
@@ -531,6 +546,7 @@ int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 {
 	int dirfd, rcode;
+	mode_t file_perm, dir_perm;
 	char const *filename, *p;
 	socklen_t sunlen;
 	struct sockaddr_un sun;
@@ -553,6 +569,8 @@ static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 		return -1;
 	}
 
+	FILE_PERMS(cfg);
+
 	/*
 	 *	Opening 'foo.sock' is OK.
 	 */
@@ -568,7 +586,7 @@ static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 		fr_strerror_printf("Failed opening domain socket %s: cannot exist at file system root", p);
 		return -1;
 
-	} else if (fr_bio_fd_socket_unix_mkdir(&dirfd, &filename, cfg) < 0) {
+	} else if (fr_bio_fd_socket_unix_mkdir(&dirfd, &filename, cfg, dir_perm) < 0) {
 		return -1;
 	}
 
@@ -612,7 +630,7 @@ static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	/*
 	 *	Linux supports chown && chmod for sockets.
 	 */
-	if (fchmod(my->info.socket.fd, S_IREAD | S_IWRITE | S_IEXEC | S_IRGRP | S_IWGRP | S_IXGRP) < 0) {
+	if (fchmod(my->info.socket.fd, file_perm) < 0) {
 		fr_strerror_printf("Failed changing permission for domain socket %s: %s", cfg->path, fr_syserror(errno));
 		goto fail;
 	}
@@ -1181,7 +1199,7 @@ static int fr_bio_fd_file_open(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	 *	Allow hacks for stdout and stderr
 	 */
 	if (strcmp(cfg->filename, "/dev/stdout") == 0) {
-		if (cfg->flags != O_WRONLY) {
+		if ((cfg->flags & O_ACCMODE) != O_WRONLY) {
 		fail_dev:
 			fr_strerror_printf("Cannot read from %s", cfg->filename);
 			return -1;
@@ -1190,12 +1208,12 @@ static int fr_bio_fd_file_open(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 		fd = dup(STDOUT_FILENO);
 
 	} else if (strcmp(cfg->filename, "/dev/stderr") == 0) {
-		if (cfg->flags != O_WRONLY) goto fail_dev;
+		if ((cfg->flags & O_ACCMODE) != O_WRONLY) goto fail_dev;
 
 		fd = dup(STDERR_FILENO);
 
 	} else if (strcmp(cfg->filename, "/dev/stdin") == 0) {
-		if (cfg->flags != O_RDONLY) {
+		if ((cfg->flags & O_ACCMODE) != O_RDONLY) {
 			fr_strerror_printf("Cannot write to %s", cfg->filename);
 			return -1;
 		}
@@ -1470,6 +1488,7 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 	fr_bio_fd_config_t const *cfg = my->info.cfg;
 	int fd, flags;
+	mode_t file_perm, dir_perm;
 
 	if (my->info.socket.af != AF_FR_FILENAME) {
 		fr_strerror_const("Cannot reopen a non-file BIO");
@@ -1480,14 +1499,16 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 	 *	Create it if necessary.
 	 */
 	flags = cfg->flags;
-	if (flags != O_RDONLY) flags |= O_CREAT;
+	if ((flags & O_ACCMODE) != O_RDONLY) flags |= O_CREAT;
+
+	FILE_PERMS(cfg);
 
 	if (!cfg->mkdir) {
 		/*
 		 *	Client BIOs writing to a file, and therefore need to create it.
 		 */
 	do_open:
-		fd = open(cfg->filename, flags, cfg->perm);
+		fd = open(cfg->filename, flags, file_perm);
 		if (fd < 0) {
 		failed_open:
 			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
@@ -1503,7 +1524,7 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 
 		if (!p) goto do_open;
 
-		if (fr_mkdir(&dir_fd, cfg->filename, (size_t) (p - cfg->filename), cfg->perm, fr_mkdir_chown,
+		if (fr_mkdir(&dir_fd, cfg->filename, (size_t) (p - cfg->filename), dir_perm, fr_mkdir_chown,
 			      &(fr_mkdir_chown_t) {
 				      .uid = cfg->uid,
 				      .gid = cfg->gid,
@@ -1511,7 +1532,7 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 			return -1;
 		}
 
-		fd = openat(dir_fd, p + 1, flags, cfg->perm);
+		fd = openat(dir_fd, p + 1, flags, file_perm);
 		if (fd < 0) {
 			close(dir_fd);
 			goto failed_open;
