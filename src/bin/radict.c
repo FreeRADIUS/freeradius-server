@@ -677,7 +677,16 @@ static void da_print_stats_h(FILE *fp, fr_dict_attr_t const *parent)
 }
 
 
-static void _raddict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
+/** Totals gathered while exporting a dictionary
+ */
+typedef struct {
+	uint64_t	count;		//!< Attributes exported.
+	uintptr_t	low;		//!< Lowest attribute address seen.
+	uintptr_t	high;		//!< Highest attribute address seen.
+	bool		found;		//!< `low` and `high` hold an address.
+} raddict_stats_t;
+
+static void raddict_export(raddict_stats_t *stats, fr_dict_t const *dict, fr_dict_attr_t const *da)
 {
 	unsigned int		i;
 	size_t			len;
@@ -692,17 +701,20 @@ static void _raddict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 	 *	so it's not helpful to include them in the calculation.
 	 */
 	if (!da->flags.is_root) {
-		if (low && ((uintptr_t)da < *low)) {
-			*low = (uintptr_t)da;
+		uintptr_t addr = (uintptr_t)da;
+
+		if (!stats->found || (addr < stats->low)) {
+			stats->low = addr;
 		}
-		if (high && ((uintptr_t)da > *high)) {
-			*high = (uintptr_t)da;
+		if (!stats->found || (addr > stats->high)) {
+			stats->high = addr;
 		}
+		stats->found = true;
 
 		da_print_info(fr_dict_by_da(da), da, 0);
 	}
 
-	if (count) (*count)++;
+	stats->count++;
 
 	/*
 	 *	Todo - Should be fixed to use attribute walking API
@@ -712,19 +724,10 @@ static void _raddict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 		len = talloc_array_length(children);
 		for (i = 0; i < len; i++) {
 			for (p = children[i]; p; p = p->next) {
-				_raddict_export(dict, count, low, high, p, lvl + 1);
+				raddict_export(stats, dict, p);
 			}
 		}
 	}
-}
-
-static void raddict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_t *dict)
-{
-	if (count) *count = 0;
-	if (low) *low = UINTPTR_MAX;
-	if (high) *high = 0;
-
-	_raddict_export(dict, count, low, high, fr_dict_root(dict), 0);
 }
 
 static fr_table_num_ordered_t const format_table[] = {
@@ -915,14 +918,12 @@ int main(int argc, char *argv[])
 		fr_dict_t	**dict_p = dicts;
 
 		do {
-			uint64_t	count;
-			uintptr_t	high;
-			uintptr_t	low;
+			raddict_stats_t	stats = {};
 
-			raddict_export(&count, &low, &high, *dict_p);
-			DEBUG2("Attribute count %" PRIu64, count);
+			raddict_export(&stats, *dict_p, fr_dict_root(*dict_p));
+			DEBUG2("Attribute count %" PRIu64, stats.count);
 			DEBUG2("Memory allocd %zu (bytes)", talloc_total_size(*dict_p));
-			DEBUG2("Memory spread %zu (bytes)", (size_t) (high - low));
+			DEBUG2("Memory spread %zu (bytes)", (size_t) (stats.high - stats.low));
 		} while (++dict_p < dict_end);
 
 		goto finish;
