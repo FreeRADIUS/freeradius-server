@@ -901,7 +901,7 @@ fr_slen_t		fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_err_t *err,
 
 static inline fr_slen_t fr_dict_enum_name_afrom_substr(TALLOC_CTX *ctx, char **out, fr_sbuff_err_t *err,
 						       fr_sbuff_t *in, fr_sbuff_term_t const *tt)
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_dict_enum_name_from_substr, err, in, tt)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_ERR_DEF(fr_dict_enum_name_from_substr, err, in, tt)
 /** @} */
 
 /** @name Dictionary and protocol loading

@@ -3698,6 +3698,14 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 				fr_strerror_const("enum values must contain at least one alpha character");
 				break;
 
+			case FR_SBUFF_ERR_NO_SPACE:
+				/*
+				 *	fr_dict_enum_name_afrom_substr() could not
+				 *	allocate the output buffer, and has already
+				 *	set the error string.
+				 */
+				break;
+
 			default:
 				fr_strerror_const("Unexpected text after enum value.");
 				break;

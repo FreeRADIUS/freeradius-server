@@ -1681,6 +1681,39 @@ do { \
 	return slen; \
 }
 
+/** Build a talloc wrapper function for a fr_sbuff_out_* function that reports an fr_sbuff_err_t through an argument
+ *
+ * The wrapper sets the error to #FR_SBUFF_ERR_NO_SPACE when the output buffer
+ * cannot be allocated or trimmed, so the caller always receives an error code
+ * with a negative return.
+ *
+ * @param[in] _func	to call.
+ * @param[in] _err	fr_sbuff_err_t pointer argument of the wrapper, may be NULL.
+ * @param[in] ...	additional arguments to pass to _func after _err.
+ */
+#define SBUFF_OUT_TALLOC_FUNC_NO_LEN_ERR_DEF(_func, _err, ...) \
+{ \
+	fr_sbuff_t		sbuff; \
+	fr_sbuff_uctx_talloc_t	tctx; \
+	fr_slen_t		slen = -1; \
+	if (unlikely(fr_sbuff_init_talloc(ctx, &sbuff, &tctx, 0, SIZE_MAX) == NULL)) { \
+		if (_err) *(_err) = FR_SBUFF_ERR_NO_SPACE; \
+	error: \
+		TALLOC_FREE(sbuff.buff); \
+		*out = NULL; \
+		return slen; \
+	} \
+	slen = _func(&sbuff, _err, ##__VA_ARGS__); \
+	if (slen < 0) goto error; \
+	if (unlikely(fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) < 0)) { \
+		if (_err) *(_err) = FR_SBUFF_ERR_NO_SPACE; \
+		slen = -1; \
+		goto error; \
+	} \
+	*out = sbuff.buff; \
+	return slen; \
+}
+
 /** Build a talloc wrapper function for a fr_sbuff_out_* function returning fr_sbuff_err_t
  *
  * On any error the buffer is freed and *out is set to NULL.
