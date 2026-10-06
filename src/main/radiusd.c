@@ -765,8 +765,8 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "Usage: %s [options]\n", main_config.name);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
-	fprintf(stderr, "  -d <raddb>    Set configuration directory (defaults to " RADDBDIR ").\n");
-	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(output, "  -d <raddb>    Set configuration directory (defaults to " RADDBDIR ").\n");
+	fprintf(output, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -f            Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h            Print this help message.\n");
 	fprintf(output, "  -i <ipaddr>   Listen on ipaddr ONLY.\n");
