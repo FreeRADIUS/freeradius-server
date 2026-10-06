@@ -15,7 +15,9 @@ changequote([,])dnl
 #  unmet dependencies. Install one package at a time so a skewed
 #  entry is logged as a WARNING and the rest still go through; ddebs
 #  catches up within hours-to-days, so the next refresh picks the
-#  missing one up.
+#  missing one up.  While the ddebs mirror syncs, apt-get update fails
+#  with "File has unexpected size", so the index fetch is tried three
+#  times before the build fails.
 #
 #  Glibc-linked libs gained the t64 suffix in ubuntu 24.04 and debian
 #  13. T64 expands to "t64" on those releases. The same boundary also
@@ -41,7 +43,11 @@ RUN printf 'deb http://debug.mirrors.debian.org/debian-debug OS_CODENAME-debug m
        [errprint([common.deb.dbgsym.m4: unsupported OS_NAME=]OS_NAME[
 ])m4exit(1)])
 
-RUN apt-get update && \
+RUN attempt=1; until apt-get update; do \
+	if test "$attempt" -ge 3; then echo "ERROR: Giving up on apt-get update after $attempt attempts, the ddebs mirror may be syncing" >&2; exit 1; fi; \
+	attempt=$((attempt + 1)); \
+	echo "WARNING: Retrying apt-get update, attempt $attempt"; \
+    done && \
     for pkg in \
         libc6-dbg \
         zlib1g-dbgsym \
