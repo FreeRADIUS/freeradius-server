@@ -172,17 +172,22 @@ jobs:
   #  and an image change is exactly when the refresh has to run.  The
   #  condition therefore checks each prerequisite's result itself.
   #
+  #  The refresh depends only on whether the images of this ref are out of
+  #  date, never on whether the tests skip.  `should_skip` is true when a
+  #  run on another ref is testing the same tree, as when a branch is
+  #  fast-forwarded to `master`.  That run publishes under the tag of the
+  #  other ref, so `master` still has to publish the images under
+  #  `latest`.
+  #
   docker_ci_images_refresh:
     name: Docker CI images refresh
-    needs: [common_vars, images_present, ci_prev_run]
+    needs: [common_vars, images_present]
     if: ${{ !cancelled()
             && needs.common_vars.result == 'success'
-            && needs.ci_prev_run.result == 'success'
             && needs.images_present.result != 'failure'
-            && needs.ci_prev_run.outputs.should_skip != 'true'
-            && ((github.event_name == 'push'
-                 && (needs.common_vars.outputs.images_changed == 'true'
-                     || needs.images_present.outputs.missing == 'true'))
+            && github.event_name == 'push'
+            && (needs.common_vars.outputs.images_changed == 'true'
+                || needs.images_present.outputs.missing == 'true'
                 || github.repository_owner != 'FreeRADIUS') }}
     uses: ./.github/workflows/docker-ci-images-refresh.yml
     secrets: inherit
