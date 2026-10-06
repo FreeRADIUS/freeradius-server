@@ -681,7 +681,7 @@ fr_redis_ct_t *fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event
 			goto error;
 		}
 
-		rtcluster->ssl_ctx = fr_tls_ctx_alloc(tls_conf, true, false);
+		rtcluster->ssl_ctx = fr_tls_ctx_alloc(tls_conf, true);
 		if (!rtcluster->ssl_ctx) {
 			ERROR("%s - Failed to allocate SSL context", conf->log_prefix);
 			goto error;

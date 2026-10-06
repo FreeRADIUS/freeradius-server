@@ -538,12 +538,11 @@ int tls_ctx_version_set(
  *
  * @param conf to read settings from.
  * @param client If true SSL_CTX will be configured as a client context.
- * @param no_early_data If true SSL_CTX will be configured to
  * @return
  *	- A new SSL_CTX on success.
  *	- NULL on failure.
  */
-SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client, bool no_early_data)
+SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
 	X509_STORE	*verify_store = NULL;
@@ -852,15 +851,6 @@ post_ca:
 	if (conf->cipher_server_preference) ctx_options |= SSL_OP_CIPHER_SERVER_PREFERENCE;
 
 	SSL_CTX_set_options(ctx, ctx_options);
-
-	/*
-	 *	TLS 1.3 introduces the concept of early data (also known as zero
-	 *	round trip data or 0-RTT data). Early data allows a client to send
-	 *	data to a server in the first round trip of a connection, without
-	 *	waiting for the TLS handshake to complete if the client has spoken
-	 *	to the same server recently.
-	 */
-	if (no_early_data) SSL_CTX_set_max_early_data(ctx, 0);
 
 	/*
 	 *	TODO: Set the RSA & DH
