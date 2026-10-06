@@ -616,7 +616,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			fr_slen_t parse_len;
 
 			fr_assert(tmp_ctx != NULL);
-			fr_assert(str != NULL);
+			if (!fr_cond_assert(str != NULL)) goto error;
 			fr_assert(dst_type != FR_TYPE_STRING); /* exec / xlat returned string in 'str' */
 
 			datalen = talloc_strlen(str);
