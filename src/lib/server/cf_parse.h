@@ -354,23 +354,22 @@ _Generic(&(_ct), \
 	.is_set_ptr = _res_p ## _is_set
 #  define FR_ITEM_POINTER(_type, _res_p) _type, FR_CONF_FLAG_CHECK((_type), 0, (_res_p), _res_p)
 
-/** A conf_parser_t multi-subsection
+/** conf_parser_t which allocates one struct for each instance of a subsection
  *
- * Parse multiple instance of a subsection, allocating an array of structs
- * to hold the result.
+ * The parser allocates an array of pointers with one struct per matching
+ * subsection, so `_field` is a pointer to a pointer to the struct.
+ * Set `.subcs_type` on the rule to name the talloc chunks.
  *
  * @param[in] _name	name of subsection to search for.
- * @param[in] _type	the output type.
  * @param[in] _flags	flags controlling parsing behaviour.
  * @param[in] _struct	instance data struct.
- * @param[in] _field	field in instance data struct.
+ * @param[in] _field	array field in instance data struct.
  * @param[in] _subcs	conf_parser_t array to use to parse subsection data.
  */
-#  define FR_CONF_SUBSECTION_ALLOC(_name, _type, _flags, _struct, _field, _subcs) \
+#  define FR_CONF_SUBSECTION_ALLOC_MULTI(_name, _flags, _struct, _field, _subcs) \
 	.name1 = _name, \
-	.type = (_type), \
-	.flags = (_flags), \
-	.offset = FR_CONF_FLAG_CHECK((_type), (_flags), &(((_struct *)NULL)->_field), offsetof(_struct, _field)), \
+	.flags = CONF_FLAG_SUBSECTION | CONF_FLAG_MULTI | (_flags), \
+	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs, \
 	.subcs_size = sizeof(**(((_struct *)0)->_field))
 

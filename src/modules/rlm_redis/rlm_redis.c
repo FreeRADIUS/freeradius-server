@@ -138,8 +138,7 @@ static conf_parser_t module_lua_func[] = {
 };
 
 static conf_parser_t module_lua[] = {
-	{ FR_CONF_SUBSECTION_ALLOC("function", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI,
-				   rlm_redis_lua_t, funcs, module_lua_func),
+	{ FR_CONF_SUBSECTION_ALLOC_MULTI("function", CONF_FLAG_OK_MISSING, rlm_redis_lua_t, funcs, module_lua_func),
 				   .subcs_type = "redis_lua_func_t", .name2 = CF_IDENT_ANY },
 	CONF_PARSER_TERMINATOR
 };

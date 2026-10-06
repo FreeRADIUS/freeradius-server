@@ -60,7 +60,7 @@ static conf_parser_t const proto_ldap_sync_config[] = {
 	/*
 	 *	Areas of the DIT to listen on
 	 */
-	{ FR_CONF_SUBSECTION_ALLOC("sync", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, proto_ldap_sync_t, sync_config, ldap_sync_search_config) },
+	{ FR_CONF_SUBSECTION_ALLOC_MULTI("sync", CONF_FLAG_REQUIRED, proto_ldap_sync_t, sync_config, ldap_sync_search_config) },
 
 	CONF_PARSER_TERMINATOR
 };
