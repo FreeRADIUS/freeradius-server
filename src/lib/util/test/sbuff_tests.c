@@ -25,6 +25,16 @@
 
 #include <freeradius-devel/util/sbuff.h>
 
+/*
+ *	The clang static analyser does not inline acutest_check_(), which
+ *	is variadic and large, so the analyser cannot see that TEST_ASSERT()
+ *	aborts the test.  The analyser then follows the path where the
+ *	allocation failed into the rest of the test and reports arithmetic
+ *	on the zeroed buffer.  MEM() exits through a function that the
+ *	analyser models as never returning, so MEM() wraps the talloc
+ *	buffer inits below instead of TEST_ASSERT().
+ */
+
 #define TEST_SBUFF_LEN(_sbuff, _num) \
 do { \
 	size_t _len; \
@@ -1136,7 +1146,7 @@ static void test_talloc_extend(void)
 	fr_sbuff_uctx_talloc_t	tctx;
 
 	TEST_CASE("Initial allocation");
-	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 32, 50) == &sbuff);
+	MEM(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 32, 50));
 	TEST_SBUFF_USED(&sbuff, 0);
 	TEST_SBUFF_LEN(&sbuff, 33);
 
@@ -1216,7 +1226,7 @@ static void test_talloc_extend_init_zero(void)
 	fr_sbuff_uctx_talloc_t	tctx;
 
 	TEST_CASE("Initial allocation");
-	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 0, 50) == &sbuff);
+	MEM(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 0, 50));
 	TEST_SBUFF_USED(&sbuff, 0);
 	TEST_SBUFF_LEN(&sbuff, 1);
 
@@ -1247,7 +1257,7 @@ static void test_talloc_extend_multi_level(void)
 	fr_sbuff_uctx_talloc_t	tctx;
 
 	TEST_CASE("Initial allocation");
-	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff_0, &tctx, 0, 50) == &sbuff_0);
+	MEM(fr_sbuff_init_talloc(NULL, &sbuff_0, &tctx, 0, 50));
 	TEST_SBUFF_USED(&sbuff_0, 0);
 	TEST_SBUFF_LEN(&sbuff_0, 1);
 
@@ -1281,7 +1291,7 @@ static void test_talloc_extend_with_marker(void)
 	fr_sbuff_uctx_talloc_t	tctx;
 
 	TEST_CASE("Initial allocation");
-	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff_0, &tctx, 0, 50) == &sbuff_0);
+	MEM(fr_sbuff_init_talloc(NULL, &sbuff_0, &tctx, 0, 50));
 	TEST_SBUFF_USED(&sbuff_0, 0);
 	TEST_SBUFF_LEN(&sbuff_0, 1);
 
@@ -1329,7 +1339,7 @@ static void test_talloc_extend_with_shift(void)
 	fr_sbuff_uctx_talloc_t	tctx;
 
 	TEST_CASE("Intermix shift and extend");
-	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 4, 8) == &sbuff);
+	MEM(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 4, 8));
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "0123") == 4);
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "5678") == 4);
 	TEST_CHECK(fr_sbuff_shift(&sbuff, 4, false) == 4);
@@ -1354,7 +1364,7 @@ static void test_shift_used_accounting(void)
 	fr_sbuff_uctx_talloc_t	tctx;
 
 	TEST_CASE("Before any shift, used() and used_total() agree");
-	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 8, 32) == &sbuff);
+	MEM(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 8, 32));
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "01234567") == 8);
 
 	TEST_CHECK_LEN(fr_sbuff_used(&sbuff), 8);
@@ -1546,7 +1556,7 @@ static void test_marker_update_end_after_shift(void)
 	 *	same position, and the overspend cannot be seen.
 	 */
 	TEST_CASE("Set up a buffer which has shifted, and which has room left");
-	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 16, 32) == &sbuff);
+	MEM(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 16, 32));
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "01234567") == 8);
 	TEST_CHECK_LEN(fr_sbuff_shift(&sbuff, 4, true), 4);
 

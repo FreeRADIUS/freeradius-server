@@ -8,6 +8,16 @@
 #include <unistd.h>
 
 /*
+ *	The clang static analyser does not inline acutest_check_(), which
+ *	is variadic and large, so the analyser cannot see that TEST_ASSERT()
+ *	aborts the test.  The analyser then follows the path where the
+ *	allocation failed into the rest of the test and reports arithmetic
+ *	on the zeroed buffer.  MEM() exits through a function that the
+ *	analyser models as never returning, so MEM() wraps the talloc
+ *	buffer inits below instead of TEST_ASSERT().
+ */
+
+/*
  *	Type for a function with the internals of a test of fd flavored dbuffs.
  */
 typedef void (*fr_dbuff_fd_test_body)(fr_dbuff_t *dbuff, uint8_t const data[]);
@@ -313,7 +323,7 @@ static void test_dbuff_talloc_extend(void)
 	uint8_t const		value[] = {0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0};
 
 	TEST_CASE("Initial allocation");
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff1, &tctx1, 4, 14) == &dbuff1);
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff1, &tctx1, 4, 14));
 	TEST_CHECK(fr_dbuff_used(&dbuff1) == 0);
 	TEST_CHECK(fr_dbuff_remaining(&dbuff1) == 4);
 	fr_dbuff_marker(&marker1, &dbuff1);
@@ -327,7 +337,7 @@ static void test_dbuff_talloc_extend(void)
 	TEST_CASE("Refuse to extend past specified maximum");
 	TEST_CHECK(fr_dbuff_in(&dbuff1, (uint64_t) 0x123456789abcdef0) == -2);
 	TEST_CASE("Extend move destination if possible and input length demands");
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff2, &tctx2, 4, 14) == &dbuff2);
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff2, &tctx2, 4, 14));
 	fr_dbuff_set_to_start(&dbuff1);
 	TEST_CHECK(fr_dbuff_move(&dbuff2, &dbuff1, sizeof(value)) == sizeof(value));
 	TEST_CHECK(fr_dbuff_used(&dbuff2) == sizeof(value));
@@ -345,7 +355,7 @@ static void test_dbuff_talloc_extend_multi_level(void)
 	fr_dbuff_uctx_talloc_t	tctx;
 
 	TEST_CASE("Initial allocation");
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff1, &tctx, 0, 32) == &dbuff1);
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff1, &tctx, 0, 32));
 	TEST_CHECK(fr_dbuff_used(&dbuff1) == 0);
 	TEST_CHECK(fr_dbuff_remaining(&dbuff1) == 0);
 
@@ -709,7 +719,7 @@ static void test_dbuff_advance_extend(void)
 	fr_dbuff_t		dbuff;
 	fr_dbuff_uctx_talloc_t	tctx;
 
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 16) == &dbuff);
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 16));
 
 	TEST_CASE("advance within the initial allocation");
 	TEST_CHECK(fr_dbuff_advance_extend(&dbuff, 2) == 2);
@@ -908,7 +918,7 @@ static void test_dbuff_trim_reset_talloc(void)
 	fr_dbuff_t		dbuff;
 	fr_dbuff_uctx_talloc_t	tctx;
 
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 32, 128) == &dbuff);
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 32, 128));
 	TEST_CHECK(talloc_array_length(dbuff.buff) == 32);
 	TEST_CHECK(fr_dbuff_in_bytes(&dbuff, 0x01, 0x02, 0x03, 0x04) == 4);
 
@@ -968,7 +978,7 @@ static void test_dbuff_extend(void)
 	TEST_CHECK(fr_dbuff_was_extended(status) == 0);
 
 	TEST_CASE("talloc buffer: extend grows and flags report it");
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 64) == &dbuff);
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 64));
 	status = FR_DBUFF_EXTENDABLE;
 	fr_dbuff_advance(&dbuff, 4);				/* remaining now 0 */
 	TEST_CHECK(fr_dbuff_extend_lowat(&status, &dbuff, 8) >= 8);
@@ -993,7 +1003,7 @@ static void test_dbuff_const_no_extend(void)
 	uint8_t				*buff_before;
 
 	TEST_CASE("a writable talloc dbuff extends");
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 64) == &dbuff);
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 64));
 	fr_dbuff_advance(&dbuff, 4);				/* remaining now 0 */
 	status = FR_DBUFF_EXTENDABLE;
 	TEST_CHECK(fr_dbuff_extend_lowat(&status, &dbuff, 8) >= 8);
@@ -1001,7 +1011,7 @@ static void test_dbuff_const_no_extend(void)
 	fr_dbuff_free_talloc(&dbuff);
 
 	TEST_CASE("the same dbuff marked const does not");
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 64) == &dbuff);
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 64));
 	fr_dbuff_advance(&dbuff, 4);				/* remaining now 0 */
 	buff_before = dbuff.buff;
 	dbuff.is_const = 1;
@@ -1038,7 +1048,7 @@ static void test_dbuff_producer_consumer(void)
 	uint8_t const			expected[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
 
 	TEST_CASE("the consumer starts empty, the producer holds the whole buffer");
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 4, 64) == &consumer);
+	MEM(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 4, 64));
 	producer = FR_DBUFF_BIND_END_ABS(&consumer);		/* the bind marks the consumer const */
 	TEST_CHECK(fr_dbuff_remaining(&consumer) == 0);
 	TEST_CHECK(fr_dbuff_remaining(&producer) == 4);
@@ -1134,7 +1144,7 @@ static void test_dbuff_bind_end_abs_extend(void)
 	uint8_t				*buff_before;
 
 	TEST_CASE("the bind marks the consumer const and non-extendable");
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 4, 64) == &consumer);
+	MEM(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 4, 64));
 	TEST_CHECK(consumer.is_const == 0);			/* before the bind */
 	TEST_CHECK(consumer.extend != NULL);
 	producer = FR_DBUFF_BIND_END_ABS(&consumer);
@@ -1191,7 +1201,7 @@ static void test_dbuff_producer_consumer_rounds(void)
 	fr_dbuff_uctx_talloc_t	tctx;
 	uint8_t			out[4] = {};
 
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 8, 64) == &consumer);
+	MEM(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 8, 64));
 	producer = FR_DBUFF_BIND_END_ABS(&consumer);
 
 	TEST_CASE("first round");
