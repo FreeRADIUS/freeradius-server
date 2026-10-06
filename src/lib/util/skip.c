@@ -150,7 +150,7 @@ static fr_slen_t skip_brackets(char const *start, char const *end, char end_quot
 		next:
 			if (slen <= 0) return slen - (p - start);
 
-			fr_assert((size_t) slen <= (size_t) (end - p));
+			fr_assert(!end || ((size_t) slen <= (size_t) (end - p)));
 			p += slen;
 			continue;
 		}
