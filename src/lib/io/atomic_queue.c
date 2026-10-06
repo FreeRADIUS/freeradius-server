@@ -70,10 +70,10 @@ RCSID("$Id$")
  * as possibly unaligned.  The native atomic instructions require an
  * aligned address, so clang stops emitting them and calls the
  * libatomic fallback instead, which takes a mutex.  That turns every
- * push and pop on this lock free queue into a locked operation.
- * (gcc emits the native instruction regardless and relies on the
- * address being aligned at runtime).  Packing saves nothing here
- * anyway, the two 8 byte fields have no padding between them.
+ * push and pop on this lock free queue into a locked operation.  gcc
+ * emits the native instruction regardless, and relies on the address
+ * being aligned at runtime.  Packing saves nothing here anyway, as the
+ * two 8 byte fields have no padding between them.
  */
 typedef struct {
 	atomic_int64_t					seq;		//!< Must be seq then data to ensure
