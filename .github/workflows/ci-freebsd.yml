@@ -85,12 +85,17 @@ jobs:
         #
         #  A release's default package repository is the quarterly branch,
         #  and the quarterly branch for FreeBSD 15 stops at llvm22.  The
-        #  latest branch carries the release that common_vars names.  pkg
+        #  latest branch carries the release that common_vars names.  The
+        #  two blocks repeat the shape of the shipped /etc/pkg/FreeBSD.conf,
+        #  because an override replaces a repository's whole block.  pkg
         #  expands ${ABI} itself, so the single quotes keep the shell away
         #  from the variable.
         #
         sudo mkdir -p /usr/local/etc/pkg/repos
-        printf 'FreeBSD: { url: "pkg+https://pkg.FreeBSD.org/${ABI}/latest" }\n' | sudo tee /usr/local/etc/pkg/repos/FreeBSD.conf > /dev/null
+        printf '%s\n' \
+          'FreeBSD-ports: { url: "pkg+https://pkg.FreeBSD.org/${ABI}/latest", mirror_type: "srv", signature_type: "fingerprints", fingerprints: "/usr/share/keys/pkg", enabled: yes }' \
+          'FreeBSD-ports-kmods: { url: "pkg+https://pkg.FreeBSD.org/${ABI}/kmods_latest", mirror_type: "srv", signature_type: "fingerprints", fingerprints: "/usr/share/keys/pkg", enabled: yes }' \
+          | sudo tee /usr/local/etc/pkg/repos/FreeBSD.conf > /dev/null
         sudo pkg update
         sudo pkg upgrade -y
         sudo pkg install -y    \
