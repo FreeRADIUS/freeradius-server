@@ -54,6 +54,7 @@ $(foreach x,$(SUBMAKEFILES), \
 #  Unit tests for libraries that have them.  Added after the include
 #  rules above so no header symlink is created for the test directory.
 #
+SUBMAKEFILES += $(wildcard ${top_srcdir}/src/lib/bio/test/all.mk)
 SUBMAKEFILES += $(wildcard ${top_srcdir}/src/lib/ldap/test/all.mk)
 
 

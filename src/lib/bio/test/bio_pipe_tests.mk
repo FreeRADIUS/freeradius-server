@@ -1,0 +1,8 @@
+TARGET		:= bio_pipe_tests$(E)
+SOURCES		:= bio_pipe_tests.c
+
+TGT_LDLIBS	:= $(LIBS) $(GPERFTOOLS_LIBS)
+TGT_LDFLAGS	:= $(LDFLAGS) $(GPERFTOOLS_LDFLAGS)
+TGT_PREREQS	:= libfreeradius-bio$(L) $(LIBFREERADIUS_UTIL)
+
+TGT_INSTALLDIR	:=
