@@ -481,6 +481,7 @@ static int coa_init(rc_request_t *parent,
 static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 {
 	FILE		*packets, *filters = NULL;
+	bool		read_from_stdin;
 
 	fr_pair_t	*vp;
 	rc_request_t	*request = NULL;
@@ -497,7 +498,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	/*
 	 *	Determine where to read the VP's from.
 	 */
-	if (strcmp(files->packets, "-") != 0) {
+	read_from_stdin = (strcmp(files->packets, "-") == 0);
+	if (!read_from_stdin) {
 		packets = fopen(files->packets, "r");
 		if (!packets) {
 			ERROR("Error opening %s: %s", files->packets, fr_syserror(errno));
@@ -863,7 +865,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		talloc_set_destructor(request, _rc_request_free);
 	} while (!packets_done); /* loop until the file is done. */
 
-	if (packets != stdin) fclose(packets);
+	if (!read_from_stdin) fclose(packets);
 	if (filters) fclose(filters);
 	if (coa_reply) fclose(coa_reply);
 	if (coa_filter) fclose(coa_filter);
@@ -876,7 +878,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 error:
 	talloc_free(request);
 
-	if (packets != stdin) fclose(packets);
+	if (!read_from_stdin) fclose(packets);
 	if (filters) fclose(filters);
 	if (coa_reply) fclose(coa_reply);
 	if (coa_filter) fclose(coa_filter);
