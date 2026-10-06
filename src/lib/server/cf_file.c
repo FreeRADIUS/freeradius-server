@@ -1513,7 +1513,11 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 
 #ifdef S_IWOTH
 		my_fd = dirfd(dir);
-		fr_assert(my_fd >= 0);
+		if (unlikely(my_fd < 0)) {
+			ERROR("%s[%d]: Failed getting a descriptor for directory %s: %s", frame->filename, frame->lineno,
+			      directory, fr_syserror(errno));
+			goto error;
+		}
 
 		/*
 		 *	Security checks.
