@@ -184,7 +184,7 @@ conf_parser_t fr_tls_server_config[] = {
 #ifdef PSK_MAX_IDENTITY_LEN
 	{ FR_CONF_OFFSET("psk_identity", fr_tls_conf_t, psk_identity) },
 	{ FR_CONF_OFFSET_FLAGS("psk_hexphrase", CONF_FLAG_SECRET, fr_tls_conf_t, psk_password) },
-	{ FR_CONF_OFFSET("psk_query", fr_tls_conf_t, psk_query) },
+	{ FR_CONF_V3_DEPRECATED("psk_query", fr_tls_conf_t, NULL) },
 #endif
 	{ FR_CONF_OFFSET("keylog_file", fr_tls_conf_t, keylog_file) },
 
@@ -293,6 +293,15 @@ static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	conf->fail_session = cf_section_find(conf->virtual_server, "fail", "session") ? true : false;
 	conf->encode_session = cf_section_find(conf->virtual_server, "encode", "session") ? true : false;
 	conf->decode_session = cf_section_find(conf->virtual_server, "decode", "session") ? true : false;
+#ifdef PSK_MAX_IDENTITY_LEN
+	conf->load_psk = cf_section_find(conf->virtual_server, "load", "psk") ? true : false;
+#else
+	if (cf_section_find(conf->virtual_server, "load", "psk")) {
+		cf_log_err(ci, "Specified virtual_server has a \"load psk { ... }\" section, "
+			   "but OpenSSL was built without PSK support");
+		return -1;
+	}
+#endif
 	return 0;
 }
 

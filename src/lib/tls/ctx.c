@@ -464,29 +464,22 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 */
 #ifdef PSK_MAX_IDENTITY_LEN
 	/*
-	 *	A dynamic query exists.  There MUST NOT be a
-	 *	statically configured identity and password.
+	 *	The virtual server has a `load psk` section, so the
+	 *	configuration MUST NOT also set `psk_identity` or
+	 *	`psk_hexphrase`.
 	 */
-	if (conf->psk_query) {
-		if (!*conf->psk_query) {
-			ERROR("Invalid PSK Configuration: psk_query cannot be empty");
+	if (conf->load_psk) {
+		if (conf->psk_identity && *conf->psk_identity) {
+			ERROR("Invalid PSK Configuration: psk_identity is set and the virtual server "
+			      "has a \"load psk\" section.  Remove one of the two");
 		error:
 			SSL_CTX_free(ctx);
 			return NULL;
 		}
 
-		if (conf->psk_identity && *conf->psk_identity) {
-			ERROR("Invalid PSK Configuration: psk_identity and psk_query cannot be used at the same time.");
-			goto error;
-		}
-
 		if (conf->psk_password && *conf->psk_password) {
-			ERROR("Invalid PSK Configuration: psk_hexphrase and psk_query cannot be used at the same time.");
-			goto error;
-		}
-
-		if (client) {
-			ERROR("Invalid PSK Configuration: psk_query cannot be used for outgoing connections");
+			ERROR("Invalid PSK Configuration: psk_hexphrase is set and the virtual server "
+			      "has a \"load psk\" section.  Remove one of the two");
 			goto error;
 		}
 
@@ -513,7 +506,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	/*
 	 *	Set the server PSK callback if necessary.
 	 */
-	if (!client && (conf->psk_identity || conf->psk_query)) {
+	if (!client && (conf->psk_identity || conf->load_psk)) {
 		SSL_CTX_set_psk_server_callback(ctx, fr_tls_session_psk_server_cb);
 	}
 

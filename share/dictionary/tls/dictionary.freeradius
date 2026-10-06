@@ -19,14 +19,15 @@ VALUE	Packet-Type			Establish-Session	6
 VALUE	Packet-Type			Fail-Session		7
 VALUE	Packet-Type			Encode-Session		8
 VALUE	Packet-Type			Decode-Session		9
+VALUE	Packet-Type			Load-PSK		10
 
 #
 #  We use response packet types instead of rcodes so that
 #  the virtual server can be tested in isolation.
 #
-VALUE	Packet-Type			success			10
-VALUE	Packet-Type			failure			11
-VALUE	Packet-Type			notfound		12
+VALUE	Packet-Type			success			11
+VALUE	Packet-Type			failure			12
+VALUE	Packet-Type			notfound		13
 
 DEFINE		Session-Id					octets
 DEFINE		Session-Data					octets
@@ -169,6 +170,11 @@ VALUE	Error				Store-Cancelled-By-Clear	22
 #  Pre-shared keys.  Each of these returns a key of length zero, and
 #  OpenSSL then fails the handshake by itself.
 #
+#  The server records `PSK-Identity-Unknown` when `psk_identity` does not
+#  match the identity that the peer sent, and when `load psk` returns
+#  `notfound`.  `PSK-Empty` and `PSK-Too-Long` describe the `TLS-PSK-Key`
+#  that `load psk` returned.
+#
 VALUE	Error				PSK-Identity-Invalid		23
 VALUE	Error				PSK-Empty			24
 VALUE	Error				PSK-Too-Long			25
@@ -199,6 +205,7 @@ VALUE	Error				Store-Session-Failed		33
 VALUE	Error				Clear-Session-Failed		34
 VALUE	Error				Encode-Session-Failed		35
 VALUE	Error				Decode-Session-Failed		36
+VALUE	Error				Load-PSK-Failed			41
 
 #
 #  Something in connection failed, rather than the handshake.

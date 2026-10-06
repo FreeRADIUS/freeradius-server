@@ -262,4 +262,26 @@ server tls-session {
 ##	decode session {
 ##
 ##	}
+
+	#
+	#  This section is run when a client authenticates with a pre-shared
+	#  key (TLS-PSK), to find the key for the identity that the client
+	#  sent.
+	#
+	#  The identity is in `request.TLS-PSK-Identity`.  Provide the key, as
+	#  binary data, in `reply.TLS-PSK-Key`.  If the key is stored as hex,
+	#  convert the key with `%bin()`.
+	#
+	#  Returning `notfound` means that the identity is unknown.  Returning
+	#  `fail`, `reject`, `invalid`, `disallow`, or `timeout` means that the
+	#  lookup failed.  Any other return code means that the key was found,
+	#  and the section must then have set `reply.TLS-PSK-Key`.  An unknown
+	#  identity, a failed lookup, and a missing key all fail the handshake.
+	#
+	#  When this section exists, a `tls` configuration that uses this
+	#  virtual server must not set `psk_identity` or `psk_hexphrase`.
+	#
+##	load psk {
+##		reply.TLS-PSK-Key := %bin(%sql("SELECT hex(key) FROM psk_keys WHERE keyid = '%{TLS-PSK-Identity}'"))
+##	}
 }

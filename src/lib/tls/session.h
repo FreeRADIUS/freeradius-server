@@ -167,6 +167,31 @@ typedef enum {
 	FR_TLS_RESULT_SUCCESS		= 0x02		//!< Handshake round succeed.
 } fr_tls_result_t;
 
+#ifdef PSK_MAX_IDENTITY_LEN
+/** State of the `load psk` call that the PSK callback requested
+ *
+ */
+typedef enum {
+	FR_TLS_PSK_INIT = 0,				//!< No call is pending.
+	FR_TLS_PSK_REQUESTED,				//!< `load psk` needs to run.  The PSK callback has
+							///< paused the handshake until the section finishes.
+	FR_TLS_PSK_SUCCESS,				//!< `load psk` returned a key, and `key` holds the key.
+	FR_TLS_PSK_FAILED				//!< `load psk` failed, or did not return a usable key.
+} fr_tls_psk_state_t;
+
+/** The `load psk` call that the PSK callback requested, and the key that the section returned
+ *
+ */
+typedef struct {
+	fr_tls_psk_state_t	state;				//!< Whether the call is pending, finished, or failed.
+	unsigned int		max_psk_len;			//!< The longest key that OpenSSL accepts, copied from
+								///< the `max_psk_len` argument of the PSK callback.
+	uint8_t			*key;				//!< The key from `reply.TLS-PSK-Key`, copied out of the
+								///< subrequest before the subrequest is freed.
+	size_t			key_len;			//!< Length of `key`.
+} fr_tls_psk_t;
+#endif
+
 /** Tracks the state of a TLS session
  *
  * Currently used for RADSEC and EAP-TLS + dependents (EAP-TTLS, EAP-PEAP etc...).
@@ -213,6 +238,11 @@ struct fr_tls_session_s {
 
 	fr_tls_ticket_state_t	ticket;				//!< Whether `encode session` or `decode session`
 								///< is waiting to run, and what it returned.
+
+#ifdef PSK_MAX_IDENTITY_LEN
+	fr_tls_psk_t		psk;				//!< Whether `load psk` is waiting to run, and what
+								///< `load psk` returned.
+#endif
 
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 
@@ -389,6 +419,10 @@ unsigned int	fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 
 unsigned int	fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 					     unsigned char *psk, unsigned int max_psk_len);
+
+#ifdef PSK_MAX_IDENTITY_LEN
+unlang_action_t	fr_tls_session_psk_pending_push(request_t *request, fr_tls_session_t *tls_session);
+#endif
 
 void 		fr_tls_session_info_cb(SSL const *s, int where, int ret);
 

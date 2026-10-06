@@ -237,6 +237,73 @@ any TLS connection failure, and "clear session" is not run.
 ----
 ##	fail session {
 ##	}
+
+----
+
+This section is run for stateless session resumption, before the
+session ticket is handed to the peer.
+
+A stateless session ticket encodes all of the attributes in the
+`session-state` list.  The contents are encrypted by OpenSSL before
+they are sent to the client.
+
+If you want to store data across session resumptions, then add it to
+the `session-state` list here.
+
+NOTE: The session tickets should be small, at most 512 bytes.
+Anything larger is not likely to work.
+
+This section is run _instead of_ `store session`.
+
+The section is optional. If it is not used, then the session ticket
+contains default information.
+
+----
+##	encode session {
+##	}
+
+----
+
+This section is run for stateless session resumption, after the peer
+has handed us the session ticket.
+
+The session ticket contents are decrypted and placed into the
+`session-state` list before this section is run.
+
+If you want to look at data which was saved across session
+resumptions, then it will be in the `session-state` list here.
+
+This section is run _instead of_ `load session`.
+
+The section is optional. If it is not used, then the `session-state`
+list contains default information.
+
+----
+##	decode session {
+##	}
+
+----
+
+This section is run when a client authenticates with a pre-shared key
+(TLS-PSK), to find the key for the identity that the client sent.
+
+The identity is in `request.TLS-PSK-Identity`.  Provide the key, as
+binary data, in `reply.TLS-PSK-Key`.  If the key is stored as hex,
+convert the key with `%bin()`.
+
+Returning `notfound` means that the identity is unknown.  Returning
+`fail`, `reject`, `invalid`, `disallow`, or `timeout` means that the
+lookup failed.  Any other return code means that the key was found,
+and the section must then have set `reply.TLS-PSK-Key`.  An unknown
+identity, a failed lookup, and a missing key all fail the handshake.
+
+When this section exists, a `tls` configuration that uses this virtual
+server must not set `psk_identity` or `psk_hexphrase`.
+
+----
+##	load psk {
+##		reply.TLS-PSK-Key := %bin(%sql("SELECT hex(key) FROM psk_keys WHERE keyid = '%{TLS-PSK-Identity}'"))
+##	}
 }
 ----
 

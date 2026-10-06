@@ -60,6 +60,7 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_ocsp_cert_valid;
 extern HIDDEN fr_dict_attr_t const *attr_tls_ocsp_next_update;
 extern HIDDEN fr_dict_attr_t const *attr_tls_ocsp_response;
 extern HIDDEN fr_dict_attr_t const *attr_tls_psk_identity;
+extern HIDDEN fr_dict_attr_t const *attr_tls_psk_key;
 
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_cert_file;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_require_client_cert;
@@ -102,6 +103,7 @@ extern fr_value_box_t const *enum_tls_packet_type_establish_session;
 extern fr_value_box_t const *enum_tls_packet_type_fail_session;
 extern fr_value_box_t const *enum_tls_packet_type_encode_session;
 extern fr_value_box_t const *enum_tls_packet_type_decode_session;
+extern fr_value_box_t const *enum_tls_packet_type_load_psk;
 
 extern fr_value_box_t const *enum_tls_packet_type_success;
 extern fr_value_box_t const *enum_tls_packet_type_failure;

@@ -57,6 +57,7 @@ typedef struct {
 	CONF_SECTION	*encode_session;
 	CONF_SECTION	*decode_session;
 
+	CONF_SECTION	*load_psk;
 } process_tls_sections_t;
 
 typedef struct {
@@ -276,6 +277,24 @@ static fr_process_state_t const process_state[] = {
 		.resume = resume_recv_no_send,
 		.section_offset = PROCESS_CONF_OFFSET(decode_session),
 	},
+	[FR_PACKET_TYPE_VALUE_LOAD_PSK] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+
+			[RLM_MODULE_REJECT] =  	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
+		},
+		.default_rcode = RLM_MODULE_NOOP,
+		.recv = recv_generic,
+		.resume = resume_recv_no_send,
+		.section_offset = PROCESS_CONF_OFFSET(load_psk),
+	},
 };
 
 static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -293,7 +312,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 	/*
 	 *	Success, failure, and notfound are not TLS packets that we handle.
 	 */
-	if (!request->packet->code || (request->packet->code > FR_PACKET_TYPE_VALUE_DECODE_SESSION)) {
+	if (!request->packet->code || (request->packet->code >= FR_PACKET_TYPE_VALUE_SUCCESS)) {
 		REDEBUG("Invalid packet code %u", request->packet->code);
 		RETURN_UNLANG_FAIL;
 	}
@@ -350,6 +369,11 @@ static const virtual_server_compile_t compile_list[] = {
 		.section = SECTION_NAME("decode", "session"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(decode_session)
+	},
+	{
+		.section = SECTION_NAME("load", "psk"),
+		.actions = &mod_actions_authorize,
+		.offset = PROCESS_CONF_OFFSET(load_psk)
 	},
 	COMPILE_TERMINATOR
 };

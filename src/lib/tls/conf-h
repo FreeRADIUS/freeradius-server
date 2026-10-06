@@ -187,7 +187,6 @@ struct fr_tls_conf_s {
 #ifdef PSK_MAX_IDENTITY_LEN
 	char const		*psk_identity;
 	char const		*psk_password;
-	char const		*psk_query;
 #endif
 
 	char const		*keylog_file;		//!< for SSLKEYLOGFILE functionality.
@@ -202,6 +201,9 @@ struct fr_tls_conf_s {
 
 	bool		encode_session;			//!< Does the "encode session" section exist.
 	bool		decode_session;			//!< Does the "decode session" section exist.
+#ifdef PSK_MAX_IDENTITY_LEN
+	bool		load_psk;			//!< Does the "load psk" section exist.
+#endif
 	bool		client_hello_parse;		//!< Should attributes be extracted from Client Hello.
 
 	/** Application Layer Protocol Negotiation

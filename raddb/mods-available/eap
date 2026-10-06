@@ -352,23 +352,16 @@
 ##		psk_hexphrase = "036363823"
 
 	#
-	#  WARNING: Dynamic queries for the `PSK`. If `TLS-PSK` is used, and
-	#  `psk_query` is set, then you MUST NOT use `psk_identity` or
-	#  `psk_hexphrase`.
+	#  To look the key up at runtime instead of setting a fixed
+	#  `psk_identity` and `psk_hexphrase`, add a `load psk` section to
+	#  the virtual server named by `virtual_server`.  The section
+	#  receives the identity that the client sent as
+	#  `request.TLS-PSK-Identity`, and returns the key in
+	#  `reply.TLS-PSK-Key`.  `sites-available/tls-session` has an example.
 	#
-
+	#  WARNING: When the virtual server has a `load psk` section, you
+	#  MUST NOT set `psk_identity` or `psk_hexphrase`.
 	#
-	#  psk_query:: Dynamically obtain the PSK from a query.
-	#
-	#  Instead, use a dynamic expansion similar to the one below. It
-	#  keys off of TLS-PSK-Identity. It should return a of string no
-	#  more than 512 hex characters. That string will be converted to
-	#  binary, and will be used as the dynamic PSK hexphrase.
-	#
-	#  Note that this query is just an example. You will need to
-	#  customize it for your installation.
-	#
-#		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
 
 	#
 	#  cipher_suites:: TLS 1.3 cipher suites.

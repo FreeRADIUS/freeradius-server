@@ -267,7 +267,24 @@ unsigned int fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 			  &FR_SBUFF_IN(conf->psk_password, (size_t)psk_len), false);
 }
 
+/** Forget the result of `load psk`, so that the next handshake starts with no pending call
+ *
+ * @param[in] tls_session	The TLS session that the section ran for.
+ */
+static void tls_session_psk_reset(fr_tls_session_t *tls_session)
+{
+	TALLOC_FREE(tls_session->psk.key);
+	tls_session->psk.key_len = 0;
+	tls_session->psk.state = FR_TLS_PSK_INIT;
+}
+
 /** Determine the PSK to use for an incoming connection
+ *
+ * When the virtual server has a `load psk` section, the callback pauses
+ * the handshake.  tls_session_async_handshake_cont() then pushes the
+ * section with fr_tls_session_psk_pending_push().  Once the section has
+ * finished, the callback returns the key that the section placed in
+ * `reply.TLS-PSK-Key`.
  *
  * @param[in] ssl		session.
  * @param[in] identity		The identity of the PSK to search for.
@@ -288,10 +305,9 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	if (!conf) return 0;
 
 	request = fr_tls_session_request(ssl);
-	if (request && conf->psk_query) {
-		size_t hex_len;
-		fr_pair_t *vp;
-		char buffer[2 * PSK_MAX_PSK_LEN + 4]; /* allow for too-long keys */
+	if (request && conf->load_psk) {
+		fr_tls_session_t	*tls_session = fr_tls_session(ssl);
+		fr_pair_t		*vp;
 
 		/*
 		 *	The passed identity is weird.  Deny it.
@@ -302,6 +318,11 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 			return 0;
 		}
 
+		/*
+		 *	The `TLS-PSK-Identity` pair stays in the request after the handshake,
+		 *	so that policies can read the identity.  fr_tls_session_psk_pending_push()
+		 *	copies the pair into the `load psk` subrequest.
+		 */
 		MEM(pair_update_request(&vp, attr_tls_psk_identity) >= 0);
 		if (fr_pair_value_from_str(vp, identity, strlen(identity), NULL, true) < 0) {
 			RPWDEBUG2("Failed parsing TLS PSK Identity");
@@ -309,32 +330,67 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 			return 0;
 		}
 
-		hex_len = xlat_eval(buffer, sizeof(buffer), request, conf->psk_query, NULL, NULL);
-		if (!hex_len) {
-			RWDEBUG("PSK expansion returned an empty string.");
-			fr_tls_session_error_add(request, FR_ERROR_VALUE_PSK_EMPTY);
+		/*
+		 *	OpenSSL runs the handshake, including the PSK callback, on a fibre whose
+		 *	stack OpenSSL sizes.  The unlang interpreter never runs on that stack, so
+		 *	the section runs on the request's own stack:
+		 *
+		 *	1. The callback records that `load psk` needs to run, and pauses the
+		 *	   handshake.
+		 *	2. Control returns to tls_session_async_handshake_cont(), which pushes the
+		 *	   section with fr_tls_session_psk_pending_push().
+		 *	3. Once the section has finished, tls_session_async_handshake_cont() resumes
+		 *	   the handshake.
+		 *	4. Execution continues after the ASYNC_pause_job() call below.
+		 *
+		 *	The `verify certificate` and session cache sections pause the handshake the
+		 *	same way.
+		 */
+		if (!fr_cond_assert_msg(tls_session->can_pause,
+					"Unexpected call to %s. tls_session_async_handshake_cont must be in call stack",
+					__FUNCTION__)) return 0;
+
+		fr_assert(tls_session->psk.state == FR_TLS_PSK_INIT);
+		tls_session->psk.state = FR_TLS_PSK_REQUESTED;
+		tls_session->psk.max_psk_len = max_psk_len;
+
+		ASYNC_pause_job();
+
+		/*
+		 *	If the request was cancelled while the handshake was paused,
+		 *	the section may not have run.
+		 */
+		if (unlang_request_is_cancelled(request)) {
+			tls_session_psk_reset(tls_session);
+			return 0;
+		}
+
+		switch (tls_session->psk.state) {
+		case FR_TLS_PSK_SUCCESS:
+			break;
+
+		case FR_TLS_PSK_FAILED:
+			tls_session_psk_reset(tls_session);
+			return 0;
+
+		case FR_TLS_PSK_INIT:
+		case FR_TLS_PSK_REQUESTED:
+			fr_assert_msg(0, "Handshake resumed with `load psk` in state %u",
+				      tls_session->psk.state);
+			tls_session_psk_reset(tls_session);
 			return 0;
 		}
 
 		/*
-		 *	The returned key is truncated at MORE than
-		 *	OpenSSL can handle.  That way we can detect
-		 *	the truncation, and complain about it.
+		 *	_tls_session_psk_load_resume() checked the key, so the
+		 *	callback only copies the key into the `psk` buffer that
+		 *	OpenSSL passed.
 		 */
-		if (hex_len > (2 * max_psk_len)) {
-			RWDEBUG("Returned PSK is too long (%u > %u)", (unsigned int) hex_len, 2 * max_psk_len);
-			fr_tls_session_error_add(request, FR_ERROR_VALUE_PSK_TOO_LONG);
-			return 0;
-		}
+		psk_len = tls_session->psk.key_len;
+		memcpy(psk, tls_session->psk.key, psk_len);
+		tls_session_psk_reset(tls_session);
 
-		/*
-		 *	Leave the TLS-PSK-Identity in the request, and
-		 *	convert the expansion from printable string
-		 *	back to hex.
-		 */
-		return fr_base16_decode(NULL,
-				  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
-				  &FR_SBUFF_IN(buffer, hex_len), false);
+		return (unsigned int)psk_len;
 	}
 
 	if (!conf->psk_identity) {
@@ -343,8 +399,8 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	}
 
 	/*
-	 *	No request_t, or no dynamic query.  Just look for a
-	 *	static identity.
+	 *	Compare the identity against the static `psk_identity`, then
+	 *	decode the static `psk_password`.
 	 */
 	if (strcmp(identity, conf->psk_identity) != 0) {
 		fr_tls_log_error("Supplied PSK identity %s does not match configuration.  Rejecting.",
@@ -359,6 +415,124 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	return fr_base16_decode(NULL,
 			  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
 			  &FR_SBUFF_IN(conf->psk_password, psk_len), false);
+}
+
+/** Process the result of `load psk`
+ *
+ * The function runs in the subrequest, once the section has finished.
+ * The interpreter frees the subrequest when the function returns, so the
+ * function copies the key out of the reply and into the session.  The
+ * function logs every error, because the function runs on the request's
+ * own stack rather than on the OpenSSL fibre.  fr_tls_session_psk_server_cb()
+ * then only copies the key into the `psk` buffer that OpenSSL passed.
+ *
+ * @param[in] request		The subrequest that ran the section.
+ * @param[in] uctx		The #fr_tls_session_t that the section ran for.
+ * @return UNLANG_ACTION_CALCULATE_RESULT
+ */
+static unlang_action_t _tls_session_psk_load_resume(request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	fr_pair_t		*vp;
+
+	fr_assert(tls_session->psk.state == FR_TLS_PSK_REQUESTED);
+
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
+	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
+		RWDEBUG("Failed loading the pre-shared key, `load psk` did not return success");
+
+		/*
+		 *	`notfound` says that the policy does not know the
+		 *	identity, and an unknown identity is the peer's error.
+		 *	Any other failure is the policy's error.
+		 */
+		fr_tls_session_error_add(request->parent,
+					 (vp && (vp->vp_uint32 == enum_tls_packet_type_notfound->vb_uint32)) ?
+					 FR_ERROR_VALUE_PSK_IDENTITY_UNKNOWN :
+					 FR_ERROR_VALUE_LOAD_PSK_FAILED);
+	failed:
+		tls_session->psk.state = FR_TLS_PSK_FAILED;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_psk_key);
+	if (!vp || (vp->vp_length == 0)) {
+		RWDEBUG("`load psk` returned success, but reply.TLS-PSK-Key is missing or empty");
+		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_PSK_EMPTY);
+		goto failed;
+	}
+
+	if (vp->vp_length > tls_session->psk.max_psk_len) {
+		RWDEBUG("Rejecting reply.TLS-PSK-Key of %zu bytes, OpenSSL accepts at most %u bytes", vp->vp_length,
+			tls_session->psk.max_psk_len);
+		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_PSK_TOO_LONG);
+		goto failed;
+	}
+
+	MEM(tls_session->psk.key = talloc_memdup(tls_session, vp->vp_octets, vp->vp_length));
+	tls_session->psk.key_len = vp->vp_length;
+	tls_session->psk.state = FR_TLS_PSK_SUCCESS;
+
+	RDEBUG2("Loaded a %zu-byte pre-shared key", vp->vp_length);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Push a `load psk` call into the current request, using a subrequest
+ *
+ * tls_session_async_handshake_cont() calls the function once the
+ * handshake has paused, after the pushes for pending session cache
+ * sections and before the push for a pending `verify certificate`
+ * section.
+ *
+ * @param[in] request		The current request.
+ * @param[in] tls_session	The current TLS session.
+ * @return
+ *	- UNLANG_ACTION_CALCULATE_RESULT on noop.
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_FAIL on failure.
+ */
+unlang_action_t fr_tls_session_psk_pending_push(request_t *request, fr_tls_session_t *tls_session)
+{
+	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	request_t		*child;
+	fr_pair_t		*identity;
+	unlang_action_t		ua;
+
+	if (tls_session->psk.state != FR_TLS_PSK_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	fr_assert(conf->virtual_server);
+
+	/*
+	 *	fr_tls_session_psk_server_cb() added the `TLS-PSK-Identity` pair to
+	 *	the request before pausing the handshake.
+	 */
+	identity = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tls_psk_identity);
+	fr_assert(identity);
+
+	RDEBUG2("Loading the pre-shared key for identity \"%pV\"", &identity->data);
+
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_load_psk->vb_uint32,
+					 &tls_session->session_id));
+
+	/*
+	 *	Add extra pairs to the subrequest
+	 */
+	fr_tls_session_extra_pairs_copy_to_child(child, tls_session);
+
+	fr_pair_append(&child->request_pairs, fr_pair_copy(child->request_ctx, identity));
+
+	/*
+	 *	Push the call to the TLS virtual server into the child.
+	 */
+	ua = fr_tls_call_push(child, _tls_session_psk_load_resume, conf, tls_session, false);
+	if (ua == UNLANG_ACTION_FAIL) {
+		fr_tls_log_error("Failed calling TLS virtual server");
+		talloc_free(child);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	return ua;
 }
 #endif /* PSK_MAX_IDENTITY_LEN */
 
@@ -1968,6 +2142,24 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		default:
 			break;
 		}
+
+#ifdef PSK_MAX_IDENTITY_LEN
+		/*
+		 *	Service a pending `load psk`.
+		 */
+		ua = fr_tls_session_psk_pending_push(request, tls_session);
+		switch (ua) {
+		case UNLANG_ACTION_FAIL:
+			IGNORE(unlang_function_clear(request), int);
+			goto error;
+
+		case UNLANG_ACTION_PUSHED_CHILD:
+			return ua;
+
+		default:
+			break;
+		}
+#endif
 
 		/*
 		 *	Next service any pending certificate
