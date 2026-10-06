@@ -298,7 +298,7 @@ and the section must then have set `reply.TLS-PSK-Key`.  An unknown
 identity, a failed lookup, and a missing key all fail the handshake.
 
 When this section exists, a `tls` configuration that uses this virtual
-server must not set `psk_identity` or `psk_hexphrase`.
+server must not set a fixed key in a `psk` section.
 
 ----
 ##	load psk {

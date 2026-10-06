@@ -166,6 +166,14 @@ static conf_parser_t tls_verify_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#ifdef PSK_MAX_IDENTITY_LEN
+static conf_parser_t tls_psk_config[] = {
+	{ FR_CONF_OFFSET("identity", fr_tls_psk_conf_t, identity) },
+	{ FR_CONF_OFFSET_FLAGS("key", CONF_FLAG_SECRET, fr_tls_psk_conf_t, key) },
+	CONF_PARSER_TERMINATOR
+};
+#endif
+
 conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, 0, fr_tls_conf_t, virtual_server), .func = tls_virtual_server_cf_parse },
 
@@ -182,8 +190,9 @@ conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, ca_file) },
 
 #ifdef PSK_MAX_IDENTITY_LEN
-	{ FR_CONF_OFFSET("psk_identity", fr_tls_conf_t, psk_identity) },
-	{ FR_CONF_OFFSET_FLAGS("psk_hexphrase", CONF_FLAG_SECRET, fr_tls_conf_t, psk_password) },
+	{ FR_CONF_OFFSET_SUBSECTION("psk", 0, fr_tls_conf_t, psk, tls_psk_config) },
+	{ FR_CONF_V3_DEPRECATED("psk_identity", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("psk_hexphrase", fr_tls_conf_t, NULL) },
 	{ FR_CONF_V3_DEPRECATED("psk_query", fr_tls_conf_t, NULL) },
 #endif
 	{ FR_CONF_OFFSET("keylog_file", fr_tls_conf_t, keylog_file) },
@@ -243,8 +252,9 @@ conf_parser_t fr_tls_client_config[] = {
 	{ FR_CONF_V3_DEPRECATED("private_key_file", fr_tls_conf_t, NULL) },
 
 #ifdef PSK_MAX_IDENTITY_LEN
-	{ FR_CONF_OFFSET("psk_identity", fr_tls_conf_t, psk_identity) },
-	{ FR_CONF_OFFSET_FLAGS("psk_hexphrase", CONF_FLAG_SECRET, fr_tls_conf_t, psk_password) },
+	{ FR_CONF_OFFSET_SUBSECTION("psk", 0, fr_tls_conf_t, psk, tls_psk_config) },
+	{ FR_CONF_V3_DEPRECATED("psk_identity", fr_tls_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("psk_hexphrase", fr_tls_conf_t, NULL) },
 #endif
 
 	{ FR_CONF_OFFSET("keylog_file", fr_tls_conf_t, keylog_file) },

@@ -170,10 +170,10 @@ VALUE	Error				Store-Cancelled-By-Clear	22
 #  Pre-shared keys.  Each of these returns a key of length zero, and
 #  OpenSSL then fails the handshake by itself.
 #
-#  The server records `PSK-Identity-Unknown` when `psk_identity` does not
-#  match the identity that the peer sent, and when `load psk` returns
-#  `notfound`.  `PSK-Empty` and `PSK-Too-Long` describe the `TLS-PSK-Key`
-#  that `load psk` returned.
+#  The server records `PSK-Identity-Unknown` when the fixed `psk.identity`
+#  does not match the identity that the peer sent, and when `load psk`
+#  returns `notfound`.  `PSK-Empty` and `PSK-Too-Long` describe the
+#  `TLS-PSK-Key` that `load psk` returned.
 #
 VALUE	Error				PSK-Identity-Invalid		23
 VALUE	Error				PSK-Empty			24

@@ -146,6 +146,19 @@ typedef struct {
 	bool		der_decode;			//!< Should certificates be passed to the DER decoder.
 } fr_tls_verify_conf_t;
 
+#ifdef PSK_MAX_IDENTITY_LEN
+/** A fixed pre-shared key
+ *
+ * A client sends the identity and uses the key.  A server does not
+ * accept any other identity, and uses the key.
+ */
+typedef struct {
+	char const	*identity;			//!< The identity that selects the key.
+	uint8_t const	*key;				//!< The key as raw bytes.  talloc_array_length()
+							///< gives the length.
+} fr_tls_psk_conf_t;
+#endif
+
 /* configured values goes right here */
 struct fr_tls_conf_s {
 	CONF_SECTION	*virtual_server;		//!< The virtual server containing certificate validation
@@ -185,8 +198,8 @@ struct fr_tls_conf_s {
 #endif
 
 #ifdef PSK_MAX_IDENTITY_LEN
-	char const		*psk_identity;
-	char const		*psk_password;
+	fr_tls_psk_conf_t	psk;			//!< A fixed pre-shared key.  Both fields are NULL when the
+							///< configuration sets neither `identity` nor `key`.
 #endif
 
 	char const		*keylog_file;		//!< for SSLKEYLOGFILE functionality.

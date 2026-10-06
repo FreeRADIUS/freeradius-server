@@ -280,24 +280,27 @@ NOTE: You should not use a public CA here. This should either be set
 to a certificate chain for your institution's CA, or to a self signed
 Root CA.
 
-psk_identity:: Default identity to present for PSK.
+psk { ... }:: A fixed pre-shared key (TLS-PSK).
 
-If OpenSSL supports TLS-PSK, then we can use a PSK identity and (hex)
-password.
+If OpenSSL supports TLS-PSK, a client can authenticate with a
+pre-shared key instead of a certificate.
 
-If using a fixed identity, it must be the same on the client. The
-passphrase must be a hex value, and can be up to 256 hex characters.
+identity:: The identity that selects the key.  The server rejects a
+client that sends any other identity.
 
-To look the key up at runtime instead of setting a fixed
-`psk_identity` and `psk_hexphrase`, add a `load psk` section to the
-virtual server named by `virtual_server`.  The section receives the
-identity that the client sent as `request.TLS-PSK-Identity`, and
-returns the key in `reply.TLS-PSK-Key`.
+key:: The pre-shared key.  May be set as a binary key using a `0x`
+prefixed string, or a quoted string.  OpenSSL accepts a key of up to
+512 bytes.
+
+A `load psk` section looks the key up at runtime, in place of a fixed
+key.  Add the section to the virtual server named by `virtual_server`.
+The identity that the client sent is in `request.TLS-PSK-Identity`.
+The section returns the key in `reply.TLS-PSK-Key`.
 xref:reference:raddb/sites-available/tls-session.adoc[sites-available/tls-session]
 has an example.
 
 WARNING: When the virtual server has a `load psk` section, you MUST
-NOT set `psk_identity` or `psk_hexphrase`.
+NOT set a fixed key in a `psk` section.
 
 cipher_suites:: TLS 1.3 cipher suites.
 
@@ -1230,8 +1233,10 @@ TODO
 ##			private_key_file = ${certdir}/ecc/server.key
 ##		}
 	ca_file = ${cadir}/rsa/ca.pem
-##		psk_identity = "test"
-##		psk_hexphrase = "036363823"
+##		psk {
+##			identity = "test"
+##			key = 0x0123456789abcdef0123456789abcdef
+##		}
 #		cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 #		dh_file = ${certdir}/dh
 #		fragment_size = 1024

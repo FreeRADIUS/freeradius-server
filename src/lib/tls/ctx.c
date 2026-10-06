@@ -465,81 +465,58 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 #ifdef PSK_MAX_IDENTITY_LEN
 	/*
 	 *	The virtual server has a `load psk` section, so the
-	 *	configuration MUST NOT also set `psk_identity` or
-	 *	`psk_hexphrase`.
+	 *	configuration MUST NOT also set a fixed key in a `psk` section.
 	 */
 	if (conf->load_psk) {
-		if (conf->psk_identity && *conf->psk_identity) {
-			ERROR("Invalid PSK Configuration: psk_identity is set and the virtual server "
+		if (conf->psk.identity || conf->psk.key) {
+			ERROR("Invalid PSK Configuration: a fixed key is set in the psk section and the virtual server "
 			      "has a \"load psk\" section.  Remove one of the two");
 		error:
 			SSL_CTX_free(ctx);
 			return NULL;
 		}
 
-		if (conf->psk_password && *conf->psk_password) {
-			ERROR("Invalid PSK Configuration: psk_hexphrase is set and the virtual server "
-			      "has a \"load psk\" section.  Remove one of the two");
+	/*
+	 *	A fixed key requires both `psk.identity` and `psk.key`.
+	 */
+	} else if (conf->psk.identity) {
+		size_t key_len = conf->psk.key ? talloc_array_length(conf->psk.key) : 0;
+
+		if (!*conf->psk.identity) {
+			ERROR("Invalid PSK Configuration: psk.identity is empty");
 			goto error;
 		}
 
-		/*
-		 *	Now check that if PSK is being used, that the config is valid.
-		 */
-	} else if (conf->psk_identity) {
-		if (!*conf->psk_identity) {
-			ERROR("Invalid PSK Configuration: psk_identity is empty");
+		if (key_len == 0) {
+			ERROR("Invalid PSK Configuration: psk.identity is set but psk.key is missing or empty");
 			goto error;
 		}
 
-
-		if (!conf->psk_password || !*conf->psk_password) {
-			ERROR("Invalid PSK Configuration: psk_identity is set, but there is no psk_hexphrase");
+		if (key_len > PSK_MAX_PSK_LEN) {
+			ERROR("Invalid PSK Configuration: psk.key is %zu bytes, OpenSSL accepts at most %d bytes",
+			      key_len, PSK_MAX_PSK_LEN);
 			goto error;
 		}
 
-	} else if (conf->psk_password) {
-		ERROR("Invalid PSK Configuration: psk_hexphrase is set, but there is no psk_identity");
+	} else if (conf->psk.key) {
+		ERROR("Invalid PSK Configuration: psk.key is set but psk.identity is not set");
 		goto error;
 	}
 
 	/*
 	 *	Set the server PSK callback if necessary.
 	 */
-	if (!client && (conf->psk_identity || conf->load_psk)) {
+	if (!client && (conf->psk.identity || conf->load_psk)) {
 		SSL_CTX_set_psk_server_callback(ctx, fr_tls_session_psk_server_cb);
 	}
 
 	/*
-	 *	Do more sanity checking if we have a PSK identity.  We
-	 *	check the password, and convert it to it's final form.
+	 *	A fixed key takes the place of the certificate chain, so a
+	 *	configuration with a fixed key skips the chain loading below.
 	 */
-	if (conf->psk_identity && *conf->psk_identity) {
-		size_t psk_len, hex_len;
-		uint8_t buffer[PSK_MAX_PSK_LEN];
-
+	if (conf->psk.identity) {
 		if (client) {
 			SSL_CTX_set_psk_client_callback(ctx, fr_tls_session_psk_client_cb);
-		}
-
-		if (!conf->psk_password) goto error; /* clang is too dumb to catch the above checks */
-
-		psk_len = strlen(conf->psk_password);
-		if (strlen(conf->psk_password) > (2 * PSK_MAX_PSK_LEN)) {
-			ERROR("psk_hexphrase is too long (max %d)", PSK_MAX_PSK_LEN);
-			goto error;
-		}
-
-		/*
-		 *	Check the password now, so that we don't have
-		 *	errors at run-time.
-		 */
-		hex_len = fr_base16_decode(NULL,
-				     &FR_DBUFF_TMP(buffer, sizeof(buffer)),
-				     &FR_SBUFF_IN(conf->psk_password, psk_len), false);
-		if (psk_len != (2 * hex_len)) {
-			ERROR("psk_hexphrase is not all hex");
-			goto error;
 		}
 
 		SSL_CTX_set_mode(ctx, mode);

@@ -257,14 +257,13 @@ unsigned int fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 	conf = (fr_tls_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) return 0;
 
-	psk_len = strlen(conf->psk_password);
-	if (psk_len > (2 * max_psk_len)) return 0;
+	psk_len = talloc_array_length(conf->psk.key);
+	if (psk_len > max_psk_len) return 0;
 
-	strlcpy(identity, conf->psk_identity, max_identity_len);
+	strlcpy(identity, conf->psk.identity, max_identity_len);
+	memcpy(psk, conf->psk.key, psk_len);
 
-	return fr_base16_decode(NULL,
-			  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
-			  &FR_SBUFF_IN(conf->psk_password, (size_t)psk_len), false);
+	return psk_len;
 }
 
 /** Forget the result of `load psk`, so that the next handshake starts with no pending call
@@ -393,28 +392,29 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		return (unsigned int)psk_len;
 	}
 
-	if (!conf->psk_identity) {
-		DEBUG("No static PSK identity set.  Rejecting the user");
+	if (!conf->psk.identity) {
+		DEBUG("Rejecting the client, no fixed psk.identity set");
 		return 0;
 	}
 
 	/*
-	 *	Compare the identity against the static `psk_identity`, then
-	 *	decode the static `psk_password`.
+	 *	Compare the identity against the fixed `psk.identity`, then
+	 *	copy the fixed `psk.key` into the `psk` buffer that OpenSSL
+	 *	passed.
 	 */
-	if (strcmp(identity, conf->psk_identity) != 0) {
+	if (strcmp(identity, conf->psk.identity) != 0) {
 		fr_tls_log_error("Supplied PSK identity %s does not match configuration.  Rejecting.",
 				 identity);
 		fr_tls_session_error_add(request, FR_ERROR_VALUE_PSK_IDENTITY_UNKNOWN);
 		return 0;
 	}
 
-	psk_len = strlen(conf->psk_password);
-	if (psk_len > (2 * max_psk_len)) return 0;
+	psk_len = talloc_array_length(conf->psk.key);
+	if (psk_len > max_psk_len) return 0;
 
-	return fr_base16_decode(NULL,
-			  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
-			  &FR_SBUFF_IN(conf->psk_password, psk_len), false);
+	memcpy(psk, conf->psk.key, psk_len);
+
+	return (unsigned int)psk_len;
 }
 
 /** Process the result of `load psk`
@@ -2577,7 +2577,7 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 *	we're using PSK.
 	 */
 	verify_mode = SSL_VERIFY_PEER;
-	if (!conf->psk_identity) {
+	if (!conf->psk.identity) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Requiring Server certificate");
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 	}
