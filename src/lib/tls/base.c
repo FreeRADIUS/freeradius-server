@@ -437,7 +437,7 @@ static int fr_openssl_cleanup(UNUSED void *uctx)
 	return 0;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+#ifdef HAVE_ASYNC_SET_MEM_FUNCTIONS
 
 static void *fr_openssl_stack_alloc(size_t *len)
 {
@@ -505,7 +505,7 @@ int fr_openssl_init(void)
 	 *	Setup custom memory allocators for allocating greenthread
 	 *	stacks, so we can add guard pages.
 	 */
-#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+#ifdef HAVE_ASYNC_SET_MEM_FUNCTIONS
 	if (ASYNC_set_mem_functions(fr_openssl_stack_alloc, fr_openssl_stack_free) != 1) {
 		fr_openssl_log_perror(NULL, "Failed to set OpenSSL async stack allocation functions");
 		return -1;
