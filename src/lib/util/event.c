@@ -2522,6 +2522,8 @@ static int _event_kqueue_logging_stop(UNUSED void *uctx)
 {
 	struct kevent kev, receipt;
 
+	if (log_conf_kq < 0) return 0;
+
 	EV_SET(&kev, 0, EVFILT_LIBKQUEUE, EV_ADD, NOTE_DEBUG_FUNC, 0, NULL);
 	(void)kevent(log_conf_kq, &kev, 1, &receipt, 1, &(struct timespec){});
 
