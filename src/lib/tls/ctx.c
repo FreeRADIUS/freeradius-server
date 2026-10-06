@@ -118,8 +118,7 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
-static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **self_signed,
-				       SSL_CTX *ctx, X509 *to_verify,
+static int tls_ctx_verify_chain_member(X509 **self_signed, SSL_CTX *ctx, X509 *to_verify,
 				       fr_tls_chain_verify_mode_t verify_mode)
 {
 	fr_unix_time_t	not_after;
@@ -222,127 +221,40 @@ static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **sel
 		break;
 	}
 
-	/*
-	 *	Record the time the first certificate in
-	 *	the chain expires so we can use it for
-	 *	runtime checks.
-	 */
-	if (!fr_unix_time_ispos(*expires_first) ||
-	    (fr_unix_time_gt(*expires_first, not_after))) *expires_first = not_after;
-
-	 return 0;
+	return 0;
 }
 
 static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, bool allow_multi_self_signed)
 {
-	char		*password;
+	int		i;
 
 	/*
-	 *	Conf parser should ensure they're both populated
+	 *	The parse hook of the `chain { ... }` section loads `leaf`,
+	 *	`extra`, and `private_key` once, or the parse fails.  Each
+	 *	`SSL_CTX` takes a reference to the objects, so this function
+	 *	does not read the files.
 	 */
-	fr_assert(chain->certificate_file && chain->private_key_file);
+	fr_assert(chain->leaf && chain->private_key);
 
-	/*
-	 *	Set the password (this should have been retrieved earlier)
-	 */
-	memcpy(&password, &chain->password, sizeof(password));
-	SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
-
-	/*
-	 *	Always set the callback as it provides useful debug
-	 *	output if the certificate isn't set.
-	 */
-	SSL_CTX_set_default_passwd_cb(ctx, fr_tls_session_password_cb);
-
-	switch (chain->file_format) {
-	case SSL_FILETYPE_PEM:
-		if (!(SSL_CTX_use_certificate_chain_file(ctx, chain->certificate_file))) {
-			fr_tls_log_perror(NULL, "Failed reading certificate file \"%s\"",
-				      chain->certificate_file);
-			return -1;
-		}
-		break;
-
-	case SSL_FILETYPE_ASN1:
-		if (!(SSL_CTX_use_certificate_file(ctx, chain->certificate_file, chain->file_format))) {
-			fr_tls_log_perror(NULL, "Failed reading certificate file \"%s\"",
-				      chain->certificate_file);
-			return -1;
-		}
-		break;
-
-	default:
-		fr_assert(0);
-		break;
-	}
-
-	if (!(SSL_CTX_use_PrivateKey_file(ctx, chain->private_key_file, chain->file_format))) {
-		fr_tls_log_perror(NULL, "Failed reading private key file \"%s\"",
-			      chain->private_key_file);
+	if (SSL_CTX_use_certificate(ctx, chain->leaf) != 1) {
+		fr_tls_log_perror(NULL, "Failed setting certificate from \"%s\"", chain->certificate_file);
 		return -1;
 	}
 
-	{
-		size_t		extra_cnt, i;
-		/*
-		 *	Load additional chain certificates from other files
-		 *	This allows us to specify chains in DER format as
-		 *	well as PEM, and means we can keep the intermediaries
-		 *	CAs and client/server certs in separate files.
-		 */
-		extra_cnt = talloc_array_length(chain->ca_files);
-		for (i = 0; i < extra_cnt; i++) {
-			FILE		*fp;
-			X509		*cert;
-			char const	*filename = chain->ca_files[i];
-
-			fp = fopen(filename, "r");
-			if (!fp) {
-				ERROR("Failed opening ca_file \"%s\": %s", filename, fr_syserror(errno));
-				return -1;
-			}
-
-			/*
-			 *	Load the PEM encoded X509 certificate
-			 */
-			switch (chain->file_format) {
-			case SSL_FILETYPE_PEM:
-				cert = PEM_read_X509(fp, NULL, NULL, NULL);
-				break;
-
-			case SSL_FILETYPE_ASN1:
-				cert = d2i_X509_fp(fp, NULL);
-				break;
-
-			default:
-				fr_assert(0);
-				fclose(fp);
-				return -1;
-			}
-			fclose(fp);
-
-			if (!cert) {
-				fr_tls_log_perror(NULL, "Failed reading certificate file \"%s\"", filename);
-				return -1;
-			}
-
-			if (SSL_CTX_add0_chain_cert(ctx, cert) != 1) {
-				fr_tls_log_perror(NULL, "Failed adding certificate to chain for \"%s\"", filename);
-				X509_free(cert);
-				return -1;
-			}
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+	for (i = 0; i < sk_X509_num(chain->extra); i++) {
+		if (SSL_CTX_add1_chain_cert(ctx, sk_X509_value(chain->extra, i)) != 1) {
+			fr_tls_log_perror(NULL, "Failed adding certificate %d to the chain for \"%s\"",
+					  i + 1, chain->certificate_file);
+			return -1;
 		}
 	}
+DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
-	/*
-	 *	Check if the last loaded private key matches the last
-	 *	loaded certificate.
-	 *
-	 *	Note: The call to SSL_CTX_use_certificate_chain_file
-	 *	can load in a private key too.
-	 */
-	if (!SSL_CTX_check_private_key(ctx)) {
-		ERROR("Private key does not match the certificate public key");
+	if (SSL_CTX_use_PrivateKey(ctx, chain->private_key) != 1) {
+		fr_tls_log_perror(NULL, "Failed setting private key from \"%s\"", chain->private_key_file);
 		return -1;
 	}
 
@@ -350,18 +262,12 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 	 *	Loop over the certificates checking validity periods.
 	 *	SSL_CTX_build_cert_chain does this too, but we can
 	 *	produce significantly better errors here.
-	 *
-	 *	After looping over all the certs we figure out when
-	 *      the chain will next need refreshing.
 	 */
 	{
-		fr_unix_time_t  expires_first = fr_unix_time_wrap(0);
 		X509		*self_signed = NULL;
 		STACK_OF(X509)	*our_chain;
-		int		i;
 
-		if (tls_ctx_verify_chain_member(&expires_first, &self_signed,
-						ctx, SSL_CTX_get0_certificate(ctx),
+		if (tls_ctx_verify_chain_member(&self_signed, ctx, SSL_CTX_get0_certificate(ctx),
 						chain->verify_mode) < 0) return -1;
 
 		if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
@@ -379,21 +285,13 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 			 *	current cert to be the one loaded from
 			 *	that pem file.
 			 */
-			if (tls_ctx_verify_chain_member(&expires_first, &self_signed,
-							ctx, sk_X509_value(our_chain, i - 1),
+			if (tls_ctx_verify_chain_member(&self_signed, ctx, sk_X509_value(our_chain, i - 1),
 							chain->verify_mode) < 0) return -1;
 
 			if (allow_multi_self_signed) self_signed = NULL;
 		}
 DIAG_ON(used-but-marked-unused)	/* fix spurious warnings for sk macros */
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
-		/*
-		 *	Record this as a unix timestamp as
-		 *	internal time might not progress at
-		 *	the same rate as wallclock time.
-		 */
-		chain->valid_until = expires_first;
-	}
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)	}
 
 	{
 		int mode = SSL_BUILD_CHAIN_FLAG_CHECK;

@@ -32,6 +32,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include <sys/stat.h>
 #endif
 #include <openssl/conf.h>
+#include <openssl/pem.h>
 
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/virtual_servers.h>
@@ -41,18 +42,15 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "base.h"
 #include "log.h"
+#include "strerror.h"
+#include "utils.h"
 
 static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_fragment_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_padding_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_cache_lifetime_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
-#ifdef __APPLE__
-static int tls_chain_password_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
-#  define TLS_CHAIN_PASSWORD_PARSE	.func = tls_chain_password_parse
-#else
-#  define TLS_CHAIN_PASSWORD_PARSE
-#endif
+static int tls_chain_private_key_file_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /** Certificate formats
  *
@@ -125,16 +123,18 @@ static conf_parser_t tls_chain_config[] = {
 			 	.len = &certificate_format_table_len
 			 },
 			 .dflt = "pem" },
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, certificate_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, private_key_file) },
 	/*
-	 *	The parser reads `private_key_password` after
-	 *	`private_key_file`, because the password lookup in
-	 *	tls_chain_password_parse() needs `private_key_file`.
+	 *	The parse hook for `private_key_file`,
+	 *	`tls_chain_private_key_file_parse()`, loads every file that the
+	 *	rows above name, so the parser must read the rows above first.
+	 *	The `private_key_file` row therefore follows every row that
+	 *	names a file or the password.
 	 */
-	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, fr_tls_chain_conf_t, password), TLS_CHAIN_PASSWORD_PARSE },
-
 	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_MULTI, fr_tls_chain_conf_t, ca_files) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, fr_tls_chain_conf_t, password) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, private_key_file),
+			 .func = tls_chain_private_key_file_parse },
 
 	{ FR_CONF_OFFSET("verify_mode", fr_tls_chain_conf_t, verify_mode),
 			 .func = cf_table_parse_int,
@@ -463,31 +463,30 @@ static int tls_cache_lifetime_parse(TALLOC_CTX *ctx, void *out, void *parent, CO
 
 #ifdef __APPLE__
 /*
- *	We don't want to put the private key password in eap.conf, so check
- *	for our special string which indicates we should get the password
- *	programmatically.
+ *	An operator who does not want the private key password in the
+ *	server configuration sets `private_key_password` to this marker,
+ *	and the parse hook then reads the password from certadmin instead.
  */
 static char const *special_string = "Apple:UsecertAdmin";
 
-/** Use certadmin to retrieve the password for the private key
+/** Read the private key password from certadmin
  *
- * tls_chain_password_parse() is the parse hook for `private_key_password`,
- * so the lookup runs once, while the parser reads the `chain { ... }`
- * section.
+ * @param[in,out] chain		section whose `password` the function replaces with the
+ *				certadmin output when `password` holds `special_string`.
+ * @param[in] ci		the `private_key_file` pair, named in error messages.
+ * @return
+ *	- 0 on success, or when `password` does not hold `special_string`.
+ *	- -1 if certadmin failed.
  */
-static int tls_chain_password_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+static int tls_chain_password_certadmin(fr_tls_chain_conf_t *chain, CONF_ITEM *ci)
 {
-	fr_tls_chain_conf_t	*chain = talloc_get_type_abort(parent, fr_tls_chain_conf_t);
-	char const		**password_p = out;
-	char			cmd[256];
-	char			*password, *buf;
-	long const		max_password_len = 128;
-	FILE			*cmd_pipe;
+	char		cmd[256];
+	char		*password, *buf;
+	long const	max_password_len = 128;
+	FILE		*cmd_pipe;
 
-	if (cf_pair_parse_value(ctx, out, parent, ci, rule) < 0) return -1;
-
-	if (!*password_p) return 0;
-	if (strncmp(*password_p, special_string, strlen(special_string)) != 0) return 0;
+	if (!chain->password) return 0;
+	if (strncmp(chain->password, special_string, strlen(special_string)) != 0) return 0;
 
 	snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
 		 chain->private_key_file);
@@ -501,7 +500,7 @@ static int tls_chain_password_parse(TALLOC_CTX *ctx, void *out, void *parent, CO
 		return -1;
 	}
 
-	MEM(password = talloc_array(ctx, char, max_password_len));
+	MEM(password = talloc_array(chain, char, max_password_len));
 
 	buf = fgets(password, max_password_len, cmd_pipe);
 	if (!buf || ferror(cmd_pipe)) {
@@ -528,10 +527,217 @@ static int tls_chain_password_parse(TALLOC_CTX *ctx, void *out, void *parent, CO
 
 found:
 	DEBUG3("Password from command = \"%s\"", password);
-	talloc_const_free(*password_p);
-	*password_p = password;
+	talloc_const_free(chain->password);
+	chain->password = password;
 
 	return 0;
 }
 #endif
+
+/** Free the OpenSSL objects that a chain section holds
+ *
+ */
+static int _tls_chain_conf_free(fr_tls_chain_conf_t *chain)
+{
+	if (chain->leaf) X509_free(chain->leaf);
+	if (chain->extra) sk_X509_pop_free(chain->extra, X509_free);
+	if (chain->private_key) EVP_PKEY_free(chain->private_key);
+
+	return 0;
+}
+
+/** Read one certificate from a file, in the format that the chain section names
+ *
+ * @param[in] ci		the `private_key_file` pair, named in error messages.
+ * @param[in] fp		stream positioned at the next certificate in the file.
+ * @param[in] format		`SSL_FILETYPE_PEM` or `SSL_FILETYPE_ASN1`.
+ * @param[in] aux		when true and the format is PEM, read the certificate with the
+ *				auxiliary trust data (`PEM_read_X509_AUX()`), as
+ *				`SSL_CTX_use_certificate_chain_file()` reads the leaf.
+ * @return
+ *	- The certificate.
+ *	- NULL at the end of a PEM file.  The function leaves the OpenSSL error queue empty.
+ *	- NULL on error.  The function leaves the OpenSSL error on the queue.
+ */
+static X509 *tls_chain_cert_read(CONF_ITEM *ci, FILE *fp, int format, bool aux)
+{
+	X509 *cert;
+
+	switch (format) {
+	case SSL_FILETYPE_PEM:
+		cert = aux ? PEM_read_X509_AUX(fp, NULL, NULL, NULL) : PEM_read_X509(fp, NULL, NULL, NULL);
+		if (!cert) {
+			unsigned long err = ERR_peek_last_error();
+
+			/*
+			 *	A PEM file ends when no BEGIN block remains, and
+			 *	OpenSSL reports the end by queueing `PEM_R_NO_START_LINE`.
+			 *	Clear the error, as `SSL_CTX_use_certificate_chain_file()`
+			 *	does, so an error left on the queue means that a read failed.
+			 */
+			if ((ERR_GET_LIB(err) == ERR_LIB_PEM) && (ERR_GET_REASON(err) == PEM_R_NO_START_LINE)) {
+				ERR_clear_error();
+			}
+		}
+		return cert;
+
+	case SSL_FILETYPE_ASN1:
+		return d2i_X509_fp(fp, NULL);
+
+	default:
+		cf_log_err(ci, "Unknown certificate format %d", format);
+		return NULL;
+	}
+}
+
+/** Load the certificates and the private key of a `chain { ... }` section
+ *
+ * `tls_chain_private_key_file_parse()` is the parse hook for `private_key_file`,
+ * the last row in the `chain { ... }` section that names a file.  The hook
+ * reads the files in this order:
+ *
+ *  1. The leaf, then the remaining certificates, from `certificate_file`.
+ *  2. One certificate from each `ca_file`.
+ *  3. The private key from `private_key_file`.  OpenSSL decrypts the key
+ *     with `private_key_password` when the configuration sets a password.
+ *
+ * The hook stores the loaded objects in `leaf`, `extra`, and `private_key`,
+ * and records the earliest notAfter of the certificates in `valid_until`.
+ */
+static int tls_chain_private_key_file_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	fr_tls_chain_conf_t	*chain = talloc_get_type_abort(parent, fr_tls_chain_conf_t);
+	FILE			*fp;
+	X509			*cert;
+	size_t			i, ca_cnt;
+	int			n;
+
+	if (cf_pair_parse_value(ctx, out, parent, ci, rule) < 0) return -1;
+
+#ifdef __APPLE__
+	if (tls_chain_password_certadmin(chain, ci) < 0) return -1;
+#endif
+
+	talloc_set_destructor(chain, _tls_chain_conf_free);
+
+	/*
+	 *	`certificate_file` holds the leaf first, then the rest of the chain.
+	 */
+	fp = fopen(chain->certificate_file, "r");
+	if (!fp) {
+		cf_log_err(ci, "Failed opening certificate_file \"%s\": %s", chain->certificate_file, fr_syserror(errno));
+		return -1;
+	}
+
+	chain->leaf = tls_chain_cert_read(ci, fp, chain->file_format, true);
+	if (!chain->leaf) {
+		fr_tls_strerror_printf("No certificate found");
+		cf_log_perr(ci, "Failed reading certificate_file \"%s\"", chain->certificate_file);
+		fclose(fp);
+		return -1;
+	}
+
+	MEM(chain->extra = sk_X509_new_null());
+	while ((cert = tls_chain_cert_read(ci, fp, chain->file_format, false))) {
+		if (chain->file_format != SSL_FILETYPE_PEM) {
+			X509_free(cert);
+			break;		/* A DER file holds exactly one certificate */
+		}
+		MEM(sk_X509_push(chain->extra, cert) > 0);
+	}
+	fclose(fp);
+	if (ERR_peek_error()) {
+		fr_tls_strerror_printf(NULL);
+		cf_log_perr(ci, "Failed reading certificate_file \"%s\"", chain->certificate_file);
+		return -1;
+	}
+
+	/*
+	 *	Each `ca_file` holds one certificate, in the same format as
+	 *	`certificate_file`.  A DER file holds only one certificate, so
+	 *	a DER chain needs one `ca_file` per intermediate certificate.
+	 */
+	ca_cnt = chain->ca_files ? talloc_array_length(chain->ca_files) : 0;
+	for (i = 0; i < ca_cnt; i++) {
+		fp = fopen(chain->ca_files[i], "r");
+		if (!fp) {
+			cf_log_err(ci, "Failed opening ca_file \"%s\": %s", chain->ca_files[i], fr_syserror(errno));
+			return -1;
+		}
+		cert = tls_chain_cert_read(ci, fp, chain->file_format, false);
+		fclose(fp);
+		if (!cert) {
+			fr_tls_strerror_printf("No certificate found");
+			cf_log_perr(ci, "Failed reading ca_file \"%s\"", chain->ca_files[i]);
+			return -1;
+		}
+		MEM(sk_X509_push(chain->extra, cert) > 0);
+	}
+
+	/*
+	 *	Read the private key.  `fr_tls_session_password_cb()` passes
+	 *	`private_key_password` to OpenSSL.  When the key is encrypted
+	 *	and the configuration does not set a password, the callback
+	 *	fails the read, so OpenSSL does not prompt for a password on
+	 *	stdin.
+	 */
+	fp = fopen(chain->private_key_file, "r");
+	if (!fp) {
+		cf_log_err(ci, "Failed opening private_key_file \"%s\": %s", chain->private_key_file, fr_syserror(errno));
+		return -1;
+	}
+	switch (chain->file_format) {
+	case SSL_FILETYPE_PEM:
+		chain->private_key = PEM_read_PrivateKey(fp, NULL, fr_tls_session_password_cb,
+							 UNCONST(char *, chain->password));
+		break;
+
+	case SSL_FILETYPE_ASN1:
+		chain->private_key = d2i_PrivateKey_fp(fp, NULL);
+		break;
+
+	default:
+		fr_assert(0);
+		break;
+	}
+	fclose(fp);
+	if (!chain->private_key) {
+		fr_tls_strerror_printf(NULL);
+		cf_log_perr(ci, "Failed reading private_key_file \"%s\"", chain->private_key_file);
+		return -1;
+	}
+
+	if (X509_check_private_key(chain->leaf, chain->private_key) != 1) {
+		fr_tls_strerror_printf(NULL);
+		cf_log_perr(ci, "Private key does not match the certificate public key");
+		return -1;
+	}
+
+	/*
+	 *	Record the earliest notAfter of the leaf and the extra
+	 *	certificates in `valid_until`.
+	 */
+	chain->valid_until = fr_unix_time_wrap(0);
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+	for (n = -1; n < sk_X509_num(chain->extra); n++) {
+		time_t not_after;
+
+		cert = (n < 0) ? chain->leaf : sk_X509_value(chain->extra, n);
+		if (fr_tls_utils_asn1time_to_epoch(&not_after, X509_get0_notAfter(cert)) < 0) {
+			cf_log_perr(ci, "Failed parsing notAfter time of certificate %d in the chain", n + 2);
+			return -1;
+		}
+		if (!fr_unix_time_ispos(chain->valid_until) ||
+		    fr_unix_time_gt(chain->valid_until, fr_unix_time_from_time(not_after))) {
+			chain->valid_until = fr_unix_time_from_time(not_after);
+		}
+	}
+DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+
+	cf_log_debug(ci, "Certificate chain valid until %pV", fr_box_date(chain->valid_until));
+
+	return 0;
+}
 #endif	/* WITH_TLS */

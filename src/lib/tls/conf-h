@@ -75,7 +75,17 @@ typedef struct {
 									///< chain.
 	bool				include_root_ca;		//!< Include the root ca in the chain we built.
 
-	fr_unix_time_t			valid_until;			//!< The certificate in the chain which expires the earliest.
+	/** @name Certificate data
+	 *
+	 * @{
+	 */
+	X509				*leaf;				//!< The certificate that we present to the peer, the
+									///< first certificate in `certificate_file`.
+	STACK_OF(X509)			*extra;				//!< The remaining certificates in `certificate_file`,
+									///< then one certificate from each `ca_file`.
+	EVP_PKEY			*private_key;			//!< The private key from `private_key_file`.
+	fr_unix_time_t			valid_until;			//!< The earliest notAfter of any certificate in `leaf` or `extra`.
+	/** @} */
 } fr_tls_chain_conf_t;
 
 /** Control what types of session resumption we allow
