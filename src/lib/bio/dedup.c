@@ -64,7 +64,6 @@
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/null.h>
 #include <freeradius-devel/bio/buf.h>
-#include <freeradius-devel/util/rb.h>
 
 #define _BIO_DEDUP_PRIVATE
 #include <freeradius-devel/bio/dedup.h>
@@ -292,6 +291,7 @@ ssize_t fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 	rcode = next->write(next, item->reply_ctx, item->reply, item->reply_size);
 	if ((size_t) rcode == item->reply_size) {
 		fr_bio_dedup_replied(my, item);
+		(void) fr_bio_dedup_timer_reset(my);
 		return rcode;
 	}
 
@@ -834,7 +834,10 @@ static ssize_t fr_bio_dedup_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	item = NULL;
 	if (my->get_item) item = my->get_item(bio, packet_ctx);
 	if ((size_t) rcode == size) {
-		if (item) fr_bio_dedup_replied(my, item);
+		if (item) {
+			fr_bio_dedup_replied(my, item);
+			(void) fr_bio_dedup_timer_reset(my);
+		}
 		return rcode;
 	}
 
@@ -917,11 +920,20 @@ static fr_cmp_ret_t _entry_cmp(void const *one, void const *two)
 {
 	fr_bio_dedup_entry_t const *a = one;
 	fr_bio_dedup_entry_t const *b = two;
+	int ret;
 
 	fr_assert(a->packet);
 	fr_assert(b->packet);
 
-	return fr_time_cmp(a->expires, b->expires);
+	ret = fr_time_cmp(a->expires, b->expires);
+	if (ret != 0) return ret;
+
+	/*
+	 *	Technically two timestamps can be equal, even at nanosecond resolution.  We pick something
+	 *	else to make the entries unique.  All we care is that (a) the entries are ordered, and (b)
+	 *	that they are unique.
+	 */
+	return CMP(a, b);
 }
 
 /** Cancel one item.

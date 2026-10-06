@@ -32,6 +32,7 @@
 RCSIDH(lib_bio_dedup_h, "$Id$")
 
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/rb.h>
 
 typedef struct {
 	fr_event_list_t		*el;		//!< event list
