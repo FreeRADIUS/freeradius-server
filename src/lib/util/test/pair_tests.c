@@ -1523,7 +1523,7 @@ static void test_fr_pair_debug(void)
 	if (!fp) return;
 
 	fr_pair_debug(fp, vp);
-	rewind(fp);
+	TEST_CHECK(fseek(fp, 0, SEEK_SET) == 0);
 	len = fread(buffer, 1, sizeof(buffer) - 1, fp);
 	buffer[len] = '\0';
 	fclose(fp);
@@ -1538,7 +1538,7 @@ static void test_fr_pair_debug(void)
 	if (!fp) return;
 
 	fr_pair_list_debug(fp, &list);
-	rewind(fp);
+	TEST_CHECK(fseek(fp, 0, SEEK_SET) == 0);
 	len = fread(buffer, 1, sizeof(buffer) - 1, fp);
 	buffer[len] = '\0';
 	fclose(fp);
