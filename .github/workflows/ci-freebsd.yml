@@ -83,6 +83,16 @@ jobs:
     - name: Install dependencies (FreeBSD)
       shell: cpa.sh {0}
       run: |
+        #
+        #  A release's default package repository is the quarterly branch,
+        #  and the quarterly branch for FreeBSD 14 stops at llvm22.  The
+        #  latest branch carries the release that common_vars names.  pkg
+        #  expands ${ABI} itself, so the single quotes keep the shell away
+        #  from the variable.
+        #
+        sudo mkdir -p /usr/local/etc/pkg/repos
+        printf 'FreeBSD: { url: "pkg+https://pkg.FreeBSD.org/${ABI}/latest" }\n' | sudo tee /usr/local/etc/pkg/repos/FreeBSD.conf > /dev/null
+        sudo pkg update
         sudo pkg upgrade -y
         sudo pkg install -y    \
           bash                 \
