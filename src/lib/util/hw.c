@@ -84,7 +84,12 @@ uint32_t fr_hw_num_cores_active(void)
 		cpu = fopen(path, "r");
 		if (!cpu) break;
 
-		while (fscanf(cpu, "%[0-9]", buff)) {
+		/*
+		 *	Each number is a sibling.  EOF is non-zero, so a
+		 *	test against zero does not stop at the end of the
+		 *	file.  Test for the one requested conversion.
+		 */
+		while (fscanf(cpu, "%31[0-9]", buff) == 1) {
 			tsibs++;
 			if (fgetc(cpu) != ',') break;
 		}
