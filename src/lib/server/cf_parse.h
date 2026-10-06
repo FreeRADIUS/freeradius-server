@@ -489,6 +489,10 @@ typedef enum CC_HINT(flag_enum) {
 									///< that offset.  Set automatically by `FR_CONF_PAIR_GLOBAL`
 									///< so its default `offset = 0` doesn't clobber the
 									///< first field of `base`.
+	CONF_FLAG_STATIC		= (1 << 29),			//!< The #tmpl_t must hold a fixed value.  The code
+									///< that reads the value does not expand the tmpl
+									///< at runtime, so an expansion, an attribute
+									///< reference or an exec is a configuration error.
 } conf_parser_flags_t;
 DIAG_ON(attributes)
 
@@ -527,6 +531,8 @@ DIAG_ON(attributes)
 #define fr_rule_is_xlat(_rule)		((_rule)->flags & CONF_FLAG_XLAT)
 
 #define fr_rule_is_tmpl(_rule)		((_rule)->flags & CONF_FLAG_TMPL)
+
+#define fr_rule_is_static(_rule)	((_rule)->flags & CONF_FLAG_STATIC)
 /** @} */
 
 #define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\

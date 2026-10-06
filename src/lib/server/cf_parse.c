@@ -323,6 +323,16 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			}
 		}
 
+		/*
+		 *	The code that reads the value never expands the tmpl, so
+		 *	only a fixed value can be used.
+		 */
+		if (fr_rule_is_static(rule) && !tmpl_contains_data(vpt)) {
+			cf_log_err(cp, "Invalid value for \"%s\".  The value must be fixed, as it is not expanded at runtime",
+				   cp->attr);
+			goto error;
+		}
+
 		*(tmpl_t **)out = vpt;
 		goto finish;
 	}
@@ -1896,6 +1906,7 @@ static fr_table_num_indexed_bit_pos_t const cf_parser_flag_table[] = {
 	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_OPTIONAL),
 	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_ALWAYS_PARSE),
 	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_NO_OUTPUT),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CONF_FLAG_STATIC),
 };
 static size_t cf_parser_flag_table_len = NUM_ELEMENTS(cf_parser_flag_table);
 
