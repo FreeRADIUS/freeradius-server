@@ -268,7 +268,7 @@ static int fr_bio_fd_server_v6only(UNUSED int fd, UNUSED fr_socket_t const *sock
 /** Verify or clean up a pre-existing domain socket.
  *
  */
-static int fr_bio_fd_socket_unix_verify(int dirfd, char const *filename, fr_bio_fd_config_t const *cfg)
+static int fr_bio_fd_socket_unix_verify(int dirfd, char const *filename, fr_bio_fd_config_t const *cfg, uid_t uid)
 {
 	int fd;
 	struct stat buf;
@@ -299,8 +299,9 @@ static int fr_bio_fd_socket_unix_verify(int dirfd, char const *filename, fr_bio_
 	 *	Refuse to open sockets not owned by us.  This prevents configurations from stomping on each
 	 *	other.
 	 */
-	if (buf.st_uid != cfg->uid) {
-		fr_strerror_printf("Failed opening domain socket %s: incorrect UID", cfg->path);
+	if (buf.st_uid != uid) {
+		fr_strerror_printf("Failed opening domain socket %s: incorrect UID (have %u, expected %u)",
+				   cfg->path, buf.st_uid, uid);
 		return -1;
 	}
 
@@ -335,7 +336,8 @@ static int fr_bio_fd_socket_unix_verify(int dirfd, char const *filename, fr_bio_
  *	We normally can't call fchmod() or fchown() on sockets, as they don't really exist in the file system.
  *	Instead, we enforce those permissions on the parent directory of the socket.
  */
-static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio_fd_config_t const *cfg, mode_t dir_perm)
+static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio_fd_config_t const *cfg,
+				       mode_t dir_perm, uid_t uid)
 {
 	int parent_fd, fd;
 	char const *path = cfg->path;
@@ -362,13 +364,15 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 			return -1;
 		}
 
-		if (buf.st_uid != cfg->uid) {
-			fr_strerror_printf("Failed reading parent directory for file %s: Incorrect UID", path);
+		if (buf.st_uid != uid) {
+			fr_strerror_printf("Failed reading parent directory for file %s: Incorrect UID (have %u, expected %u)",
+					   path, buf.st_uid, uid);
 			goto fail;
 		}
 
 		if (buf.st_gid != cfg->gid) {
-			fr_strerror_printf("Failed reading parent directory for file %s: Incorrect GID", path);
+			fr_strerror_printf("Failed reading parent directory for file %s: Incorrect GID (have %u, expected %u)",
+					   path, buf.st_gid, cfg->gid);
 			goto fail;
 		}
 
@@ -462,11 +466,11 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	}
 
 	/*
-	 *	This is a NOOP if we're chowning a file owned by ourselves to our own UID / GID.
+	 *	This is a NOOP if we're chowning a file owned by ourselves to the correct uid / gid
 	 *
 	 *	Otherwise if we're running as root, it will set ownership to the correct user.
 	 */
-	if (fchown(fd, cfg->uid, cfg->gid) < 0) {
+	if (fchown(fd, uid, cfg->gid) < 0) {
 		fr_strerror_printf("Failed changing ownership for domain socket %s: %s", dir, fr_syserror(errno));
 		goto close_fd;
 	}
@@ -551,6 +555,7 @@ static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	mode_t file_perm, dir_perm;
 	char const *filename, *p;
 	socklen_t sunlen;
+	uid_t uid;
 	struct sockaddr_un sun;
 
 	if (!cfg->path) {
@@ -559,11 +564,11 @@ static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	}
 
 	/*
-	 *	The UID and GID are takeb from the configuration.
+	 *	The UID and GID are taken from the configuration.
 	 */
-	if (cfg->uid == (uid_t) -1) {
-		fr_strerror_printf("Failed opening domain socket %s: no UID specified", cfg->path);
-		return -1;
+	uid = cfg->uid;
+	if (uid == (uid_t) -1) {
+		uid = getuid();
 	}
 
 	if (cfg->gid == (gid_t) -1) {
@@ -588,14 +593,14 @@ static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 		fr_strerror_printf("Failed opening domain socket %s: cannot exist at file system root", p);
 		return -1;
 
-	} else if (fr_bio_fd_socket_unix_mkdir(&dirfd, &filename, cfg, dir_perm) < 0) {
+	} else if (fr_bio_fd_socket_unix_mkdir(&dirfd, &filename, cfg, dir_perm, uid) < 0) {
 		return -1;
 	}
 
 	/*
 	 *	Verify and/or clean up the domain socket.
 	 */
-	if (fr_bio_fd_socket_unix_verify(dirfd, filename, cfg) < 0) {
+	if (fr_bio_fd_socket_unix_verify(dirfd, filename, cfg, uid) < 0) {
 	fail:
 		if (dirfd != AT_FDCWD) close(dirfd);
 		return -1;
@@ -642,7 +647,7 @@ static int fr_bio_fd_socket_unix_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	 *
 	 *	Otherwise if we're running as root, it will set ownership to the correct user.
 	 */
-	if (fchown(my->info.socket.fd, cfg->uid, cfg->gid) < 0) {
+	if (fchown(my->info.socket.fd, uid, cfg->gid) < 0) {
 		fr_strerror_printf("Failed changing ownership for domain socket %s: %s", cfg->path, fr_syserror(errno));
 		goto fail;
 	}
