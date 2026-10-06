@@ -37,7 +37,6 @@ RCSID("$Id$")
 #endif
 
 
-static int		debug_lvl = 0;
 
 static NEVER_RETURNS void usage(void)
 {
@@ -73,7 +72,6 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'x':
-			debug_lvl++;
 			fr_debug_lvl++;
 			break;
 

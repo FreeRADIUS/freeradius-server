@@ -88,7 +88,6 @@ static fr_bio_packet_t *client_bio = NULL;
 
 static fr_radius_client_bio_info_t const *client_info = NULL;
 
-static int ipproto = IPPROTO_UDP;
 
 static bool do_coa = false;
 //static int coafd;
@@ -1542,11 +1541,9 @@ int main(int argc, char **argv)
 			if (!strcmp(optarg, "tcp")) {
 				fd_config.socket_type = SOCK_STREAM;
 				fd_config.transport_type = FR_BIO_FD_TRANSPORT_TCP;
-				ipproto = IPPROTO_TCP;
 			} else if (!strcmp(optarg, "udp")) {
 				fd_config.socket_type = SOCK_DGRAM;
 				fd_config.transport_type = FR_BIO_FD_TRANSPORT_UDP;
-				ipproto = IPPROTO_UDP;
 			} else {
 				usage();
 			}

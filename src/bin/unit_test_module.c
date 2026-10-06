@@ -54,7 +54,6 @@ do { \
  *  Global variables.
  */
 static bool filedone = false;
-static int my_debug_lvl = 0;
 
 char const *radiusd_version = RADIUSD_VERSION_BUILD("unit_test_module");
 
@@ -778,7 +777,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "c:Cd:D:f:hi:I:mMn:o:p:r:xXz")) != -1) {
+	while ((c = getopt(argc, argv, "c:Cd:D:f:hi:I:mMn:o:p:r:xX")) != -1) {
 		switch (c) {
 			case 'c':
 				count = atoi(optarg);
@@ -841,10 +840,6 @@ int main(int argc, char *argv[])
 			case 'x':
 				fr_debug_lvl++;
 				if (fr_debug_lvl > 2) default_log.print_level = true;
-				break;
-
-			case 'z':
-				my_debug_lvl++;
 				break;
 
 			default:
