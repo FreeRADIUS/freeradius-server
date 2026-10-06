@@ -354,6 +354,24 @@ _Generic(&(_ct), \
 	.is_set_ptr = _res_p ## _is_set
 #  define FR_ITEM_POINTER(_type, _res_p) _type, FR_CONF_FLAG_CHECK((_type), 0, (_res_p), _res_p)
 
+/** conf_parser_t which allocates a struct and populates it from a subsection
+ *
+ * The parser allocates the struct, so `_field` is a pointer to the struct.
+ * Set `.subcs_type` on the rule to name the talloc chunk.
+ *
+ * @param[in] _name	name of subsection to search for.
+ * @param[in] _flags	flags controlling parsing behaviour.
+ * @param[in] _struct	instance data struct.
+ * @param[in] _field	pointer field in instance data struct.
+ * @param[in] _subcs	conf_parser_t array to use to parse subsection data.
+ */
+#  define FR_CONF_SUBSECTION_ALLOC(_name, _flags, _struct, _field, _subcs) \
+	.name1 = _name, \
+	.flags = CONF_FLAG_SUBSECTION | (_flags), \
+	.offset = offsetof(_struct, _field), \
+	.subcs = _subcs, \
+	.subcs_size = sizeof(*(((_struct *)0)->_field))
+
 /** conf_parser_t which allocates one struct for each instance of a subsection
  *
  * The parser allocates an array of pointers with one struct per matching

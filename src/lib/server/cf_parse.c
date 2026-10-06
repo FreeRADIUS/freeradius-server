@@ -1444,7 +1444,8 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 			/*
 			 *	Select base by whether this is a nested struct,
-			 *	or a pointer to another struct.
+			 *	an array of pointers to structs, or a pointer to
+			 *	one struct.
 			 */
 			if (!base || (flags & CONF_FLAG_NO_OUTPUT)) {
 				subcs_base = NULL;
@@ -1457,6 +1458,9 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 				for (j = 0; j < len; j++) if (cf_section_parse_pass2(array[j], subcs) < 0) return -1;
 				continue;
+			} else if (rule->subcs_size) {
+				subcs_base = *(uint8_t **)(((uint8_t *)base) + rule->offset);
+				if (!subcs_base) continue;	/* The subsection was absent, or a rule func stored nothing */
 			} else {
 				subcs_base = (uint8_t *)base + rule->offset;
 			}
