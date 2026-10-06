@@ -50,7 +50,7 @@ void eap_crypto_prf_label_init(eap_tls_prf_label_t *prf_label, eap_session_t *ea
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
-	if (eap_tls_session->tls_session->info.version == TLS1_3_VERSION) {
+	if (SSL_version(eap_tls_session->tls_session->ssl) == TLS1_3_VERSION) {
 		prf_label->keying_prf_label = "EXPORTER_EAP_TLS_Key_Material";
 		prf_label->keying_prf_label_len = sizeof("EXPORTER_EAP_TLS_Key_Material") - 1;
 
