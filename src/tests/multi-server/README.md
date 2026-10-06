@@ -6,14 +6,15 @@ the radenv test framework.
 
 ## Prerequisites
 
-A standard `freeradius4-service/<image>:<sha>` Docker image must be
-available locally for the service-mode pass:
+Build the `freeradius4-radenv/<image>:<sha>` Docker image before a
+service mode run.  The 'radenv' image holds a developer build of
+FreeRADIUS from the checkout, on top of the 'crossbuild' image:
 
 ```bash
-make docker.service.ubuntu24
+make docker.radenv.ubuntu24
 ```
 
-For profiling-mode runs, the standard `freeradius4-profiling/<image>:<sha>`
+For profiling-mode runs, the `freeradius4-radenv-profiling/<image>:<sha>`
 image is what gets used directly:
 
 ```bash
@@ -140,10 +141,10 @@ Compose envs reference `${FREERADIUS_IMAGE}` and read `${PROFILING:-no}`.
 The per-test recipe in `all.mk` sets both based on the `MODE` makefile
 variable, exporting the SHA-tagged image name directly:
 
-- `MODE=service` (default) selects `freeradius4-service/<image>:<sha>` and
+- `MODE=service` (default) selects `freeradius4-radenv/<image>:<sha>` and
   leaves `RADIUSD_COMMAND` unset, so the template default (`freeradius -f -l
   stdout`) runs the server directly.
-- `MODE=profiling` selects `freeradius4-profiling/<image>:<sha>` and sets
+- `MODE=profiling` selects `freeradius4-radenv-profiling/<image>:<sha>` and sets
   `RADIUSD_COMMAND` to `bash /usr/local/bin/start_valgrind_profiling.sh`,
   which captures the run with callgrind.
 
@@ -157,12 +158,14 @@ an exact count. The makefile copies
 dir>/scripts/` in every mode, and the common compose file bind mounts it into
 `/usr/local/bin`.
 
-The profiling image is the standard `freeradius4-profiling/<image>:<sha>`
-output, built by `scripts/docker/m4/profiling.deb.m4` /
-`profiling.rpm.m4`. The configure + make + install pass with
-callgrind-friendly CFLAGS is in
-`scripts/docker/m4/common.freeradius-profile-build.m4` and is included
-into both deb and rpm flavours.
+The radenv images exist for ubuntu24 only.  The m4 template
+`scripts/docker/m4/radenv.deb.m4` generates the Dockerfile of the
+'radenv' image, and `scripts/docker/m4/radenv-profiling.deb.m4`
+generates the Dockerfile of the 'radenv-profiling' image.  Both image
+builds run configure, make, and make install from
+`scripts/docker/m4/common.radenv-build.m4`.  The 'radenv-profiling' build
+also passes the callgrind `CFLAGS` from
+`scripts/docker/m4/common.radenv-profiling-flags.m4` to configure.
 
 ## Adding a New Test
 

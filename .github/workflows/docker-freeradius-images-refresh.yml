@@ -2,7 +2,7 @@ name: Docker FreeRADIUS images refresh
 
 #
 #  This workflow rebuilds and publishes the
-#  `freeradius4-{crossbuild,profiling-deps,service}` images.  Only the
+#  `freeradius4-{crossbuild,radenv-profiling-deps,service}` images.  Only the
 #  multi-server tests, `docker-crossbuild.yml` and `docker-service.yml` read
 #  the 'freeradius4' images.  The pipeline's build legs never read the
 #  'freeradius4' images.  Keeping this stage in a separate workflow lets the
@@ -46,9 +46,11 @@ jobs:
   #
   #    crossbuild        `FROM` the upstream OS base, full toolchain +
   #                      FreeRADIUS build-deps
-  #    profiling-deps    `FROM` `crossbuild:latest`, toolchain layer
+  #    radenv-profiling-deps
+  #                      `FROM` `crossbuild:latest`, toolchain layer
   #                      (valgrind / kcachegrind / dbgsym / FlameGraph /
-  #                      inferno / pprof)
+  #                      inferno / pprof).  ubuntu24 only, because only
+  #                      the multi-server tests use the radenv images.
   #    service           `FROM` the same upstream OS base as 'crossbuild'
   #                      (NOT from 'crossbuild') - the FreeRADIUS
   #                      debian/rpm package build apt-installs build
@@ -60,12 +62,15 @@ jobs:
   #  tagged for the ref being built: `latest` on the default branch, the
   #  branch's own tag elsewhere.  `common_vars.yml` decides the tag.
   #
-  #  This job deliberately does NOT publish the 'profiling' layer
-  #  (FreeRADIUS compiled with callgrind-friendly `CFLAGS` on top of
-  #  'profiling-deps').  The 'profiling' layer is per-commit by design.  We
-  #  want to profile specific commits, not whatever `master` HEAD was at
-  #  refresh time.  Multi-server profiling tests pull 'profiling-deps' and
-  #  build the 'profiling' layer locally per commit.
+  #  The `process-freeradius-images` job does NOT publish the 'radenv'
+  #  layer (a developer build of FreeRADIUS on top of 'crossbuild') or the
+  #  'radenv-profiling' layer (FreeRADIUS compiled with the callgrind
+  #  `CFLAGS` on top of 'radenv-profiling-deps').  The multi-server tests
+  #  must run the radiusd built from the commit under test, not the
+  #  radiusd built from the 'master' HEAD at refresh time.  The
+  #  multi-server tests therefore pull 'crossbuild' and
+  #  'radenv-profiling-deps', then build the 'radenv' and
+  #  'radenv-profiling' layers locally for each commit.
   #
   process-freeradius-images:
     needs: common_vars
@@ -108,7 +113,7 @@ jobs:
         shell: bash
         working-directory: /workspace
 
-    name: "freeradius4-{crossbuild,profiling-deps,service}-${{ matrix.os }}"
+    name: "freeradius4-{crossbuild,radenv-profiling-deps,service}-${{ matrix.os }}"
 
     steps:
 
@@ -140,15 +145,15 @@ jobs:
           registry: ${{ env.DOCKER_REGISTRY }}
 
       #
-      #  Build 'crossbuild' + 'profiling-deps' + 'service'. 'crossbuild'
+      #  Build 'crossbuild' + 'radenv-profiling-deps' + 'service'. 'crossbuild'
       #  and 'service' both pull the upstream OS base with `FROM`. The
-      #  'profiling-deps' Dockerfile pulls `crossbuild:latest`, which `DOCKER_BUILD` writes locally
+      #  'radenv-profiling-deps' Dockerfile pulls `crossbuild:latest`, which `DOCKER_BUILD` writes locally
       #  as part of the 'crossbuild' build, so the chain resolves in
       #  order without a registry pull between layers.
       #
       #  `docker.mk` encodes the chain as stamp prerequisites, so one
       #  make run with `-j` builds the independent 'service' image
-      #  alongside the 'crossbuild' > 'profiling-deps' chain.
+      #  alongside the 'crossbuild' > 'radenv-profiling-deps' chain.
       #
       #  `NOPULL=1` forces `docker.mk` to build from the local
       #  `Dockerfile` instead of pulling whatever the registry already
@@ -156,20 +161,33 @@ jobs:
       #  retags whatever the registry already published, which defeats
       #  the point of the workflow.
       #
-      - name: Build crossbuild + profiling-deps + service images
+      #  `make docker.types.$OS` prints the types that exist for the
+      #  distro.  'radenv-profiling-deps' exists for ubuntu24 only, so the
+      #  step adds 'radenv-profiling-deps' to the list of images to
+      #  publish only when the distro has the type.  The push step reads
+      #  the same list from `$GITHUB_ENV`.
+      #
+      - name: Build crossbuild + radenv-profiling-deps + service images
         env:
           OS: ${{ matrix.os }}
           NOPULL: 1
         run: |
           make dockerfile.check
-          make -j$(nproc) docker.profiling-deps.$OS docker.service.$OS
+          publish="crossbuild service"
+          case " $(make -s docker.types.$OS) " in
+            *" radenv-profiling-deps "*)
+              publish="$publish radenv-profiling-deps"
+              ;;
+          esac
+          echo "PUBLISH_TYPES=$publish" >> "$GITHUB_ENV"
+          make -j$(nproc) $(for type in $publish; do echo "docker.$type.$OS"; done)
 
       - name: Show docker build logs
         if: failure()
         env:
           OS: ${{ matrix.os }}
         run: |
-          for type in crossbuild profiling-deps service; do
+          for type in crossbuild radenv-profiling-deps service; do
             log="build/docker/build.$OS.$type"
             if [ -f "$log" ]; then
               echo "===== $log ====="
@@ -179,8 +197,8 @@ jobs:
 
       #
       #  Switch to push-capable credentials and publish the 'crossbuild',
-      #  'profiling-deps' and 'service' images under this ref's tag. The
-      #  per-commit 'profiling' layer stays local.
+      #  'radenv-profiling-deps' and 'service' images under this ref's tag.
+      #  The per-commit 'radenv' and 'radenv-profiling' layers stay local.
       #
       - name: Login to internal Docker registry for push (via dind)
         uses: docker/login-action@v4
@@ -189,11 +207,11 @@ jobs:
           password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
 
-      - name: Push freeradius4-{crossbuild,profiling-deps,service}
+      - name: Push freeradius4-{crossbuild,radenv-profiling-deps,service}
         env:
           OS: ${{ matrix.os }}
         run: |
-          for type in crossbuild profiling-deps service; do
+          for type in $PUBLISH_TYPES; do
             #  `docker.mk` always builds the local tag as `:latest`.
             local_tag="freeradius4-${type}/${OS}:latest"
             remote_tag="${IMAGE_PREFIX}freeradius4-${type}/${OS}:${IMAGE_TAG}"

@@ -2,20 +2,23 @@ name: Multi-Server CI Tests
 
 on:
   #
-  #  `ci-pipeline.yml` calls the multi-server workflow and decides the entry
-  #  point:
+  #  `ci-pipeline.yml` calls the 'Multi-Server CI Tests' workflow on two
+  #  events:
   #
-  #    `push`: per-commit run. The run builds the 'service' and 'profiling'
-  #    images from the checked-out commit, so the radiusd under test is
-  #    the pushed code. The run pulls only the toolchain layers
-  #    ('crossbuild' and 'profiling-deps') from the internal registry,
-  #    under whichever tag `common_vars.yml` picks for the pushed ref.
-  #    `docker-ci-images-refresh.yml` refreshes the toolchain layers in
-  #    the registry. The `push` run runs the CI subset.
+  #    `push`: A push starts a run for the pushed commit.  The run builds
+  #    the 'radenv' and 'radenv-profiling' images from the checked-out
+  #    commit, so the tests run the radiusd built from the pushed code.
+  #    The run pulls only the toolchain layers ('crossbuild' and
+  #    'radenv-profiling-deps') from the internal registry.
+  #    `common_vars.yml` picks the tag of the toolchain layers from the
+  #    pushed ref.  `docker-freeradius-images-refresh.yml` refreshes the
+  #    toolchain layers in the registry.  A `push` run runs the CI subset
+  #    of the tests (`test.multi-server.ci` or
+  #    `test.multi-server.profiling.ci`).
   #
-  #    `schedule`: nightly full-suite run, from the pipeline's own cron.
-  #    The run rebuilds a toolchain layer locally if the registry no
-  #    longer holds the layer.
+  #    `schedule`: The cron schedule in `ci-pipeline.yml` starts a nightly
+  #    run of every test suite.  The run rebuilds a toolchain layer
+  #    locally if the registry no longer holds the layer.
   #
   workflow_call:
 
@@ -156,31 +159,29 @@ jobs:
           echo anonymous | docker login -u anonymous --password-stdin https://${{ needs.common_vars.outputs.docker_registry }}/
 
       #
-      #  Build the FreeRADIUS image for the matrix leg. `service` mode
-      #  uses the standard 'service' image. `profiling` mode uses the
-      #  standard 'profiling' image (FreeRADIUS compiled with `CFLAGS`
-      #  suited to callgrind via
-      #  `scripts/docker/m4/common.freeradius-profile-build.m4`).
+      #  Build the FreeRADIUS image for the matrix leg.  The `service` leg
+      #  uses the 'radenv' image, a developer build of FreeRADIUS.  The
+      #  `profiling` leg uses the 'radenv-profiling' image, which compiles
+      #  FreeRADIUS with the callgrind `CFLAGS` from
+      #  `scripts/docker/m4/common.radenv-profiling-flags.m4`.
       #
       #  Both images must hold the radiusd built from the checked-out
-      #  commit, otherwise the tests exercise whatever code the registry
-      #  copy was built from.
+      #  commit.  An image built from an older commit would make the tests
+      #  run the code of the older commit.
       #
       #  `DOCKER_REGISTRY` tells `scripts/docker/docker.mk` to try pulling
       #  `freeradius4-<type>/<image>:<tag>` from the internal registry
-      #  before building locally, and to retag a pulled image as
-      #  `:<sha>`.  That is wanted for the toolchain layers ('crossbuild'
-      #  and 'profiling-deps'), which the 'profiling' build sits on top
-      #  of and which `docker-freeradius-images-refresh.yml` publishes.
+      #  before building locally, and to retag a pulled image as `:<sha>`.
+      #  The pull serves the toolchain layers ('crossbuild' and
+      #  'radenv-profiling-deps').  The 'radenv' and 'radenv-profiling'
+      #  images build on the toolchain layers, and
+      #  `docker-freeradius-images-refresh.yml` publishes the toolchain
+      #  layers.  A build of either image from the pulled layers compiles
+      #  the checkout and does not fetch anything from a package mirror.
       #
-      #  The 'service' image is also published by the refresh workflow,
-      #  so without `NOPULL=1` the service leg would pull the refresh's
-      #  copy and test the code from the last refresh, not this commit.
-      #  `NOPULL=1` forces the local build.  The 'service' Dockerfile
-      #  `FROM`s the upstream OS base, so the build needs no pulled layer.
-      #
-      #  Nothing publishes a 'profiling' image, so the 'profiling' pull
-      #  misses and `docker.mk` builds the layer from the checkout.
+      #  No workflow publishes a 'radenv' or 'radenv-profiling' image to the
+      #  internal registry, so the pull of either image fails and
+      #  `docker.mk` builds the image from the checkout.
       #
       - name: Build FreeRADIUS image (${{ matrix.mode }})
         env:
@@ -190,17 +191,17 @@ jobs:
         run: |
           case "${{ matrix.mode }}" in
             service)
-              NOPULL=1 make docker.service.ubuntu24
+              make docker.radenv.ubuntu24
               ;;
             profiling)
-              make docker.profiling.ubuntu24
+              make docker.radenv-profiling.ubuntu24
               ;;
           esac
 
       - name: Show docker build logs
         if: failure()
         run: |
-          for type in crossbuild profiling-deps profiling service; do
+          for type in crossbuild radenv radenv-profiling-deps radenv-profiling; do
             log="build/docker/build.ubuntu24.$type"
             if [ -f "$log" ]; then
               echo "===== $log ====="

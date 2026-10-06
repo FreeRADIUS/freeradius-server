@@ -1,7 +1,7 @@
 # Auto generated for ubuntu24
-# from scripts/docker/m4/profiling-deps.deb.m4
+# from scripts/docker/m4/radenv-profiling-deps.deb.m4
 #
-# Rebuild this file with `make dockerfile.profiling-deps`
+# Rebuild this file with `make dockerfile.radenv-profiling-deps`
 #
 ARG from=ubuntu:24.04
 

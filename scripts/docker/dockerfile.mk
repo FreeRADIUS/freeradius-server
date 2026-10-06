@@ -41,7 +41,7 @@ endif
 #  Per-image Dockerfile target rule.
 #
 #  $(1) image name (e.g. debian13, ubuntu24)
-#  $(2) type (service / ci / crossbuild / profiling)
+#  $(2) type (service / ci / crossbuild / radenv / radenv-profiling-deps / radenv-profiling)
 #  $(3) type-specific m4 prerequisites (the .deb.m4 / .rpm.m4 files)
 #
 define DOCKERFILE_RULE
@@ -90,19 +90,31 @@ endef
 #  <type>.rpm.m4 naming convention so DOCKERFILE_RULE picks them up
 #  from $(T) alone.
 #
-DOCKERFILE_TYPES := ci crossbuild profiling-deps profiling service
+DOCKERFILE_TYPES := ci crossbuild radenv radenv-profiling-deps radenv-profiling service
+
+#
+#  Images that each type is generated for.  A type without an entry is
+#  generated for every image.  The radenv types exist only for the
+#  multi-server tests, which run on ubuntu24 alone, so the radenv types
+#  have deb templates only.
+#
+DOCKERFILE_IMAGES_radenv                 := ubuntu24
+DOCKERFILE_IMAGES_radenv-profiling-deps  := ubuntu24
+DOCKERFILE_IMAGES_radenv-profiling       := ubuntu24
+
+DOCKERFILE_TYPE_IMAGES = $(or $(DOCKERFILE_IMAGES_$(1)),$(IMAGES))
 
 #
 #  Wire each (image, type) Dockerfile rule plus the per-type regen
 #  and drift-check umbrellas.
 #
-$(foreach IMG,$(IMAGES), \
-  $(foreach T,$(DOCKERFILE_TYPES), \
-    $(eval $(call DOCKERFILE_RULE,$(IMG),$(T),$(CB_DIR)/m4/$(T).deb.m4 $(CB_DIR)/m4/$(T).rpm.m4))))
+$(foreach T,$(DOCKERFILE_TYPES), \
+  $(foreach IMG,$(call DOCKERFILE_TYPE_IMAGES,$(T)), \
+    $(eval $(call DOCKERFILE_RULE,$(IMG),$(T),$(wildcard $(CB_DIR)/m4/$(T).deb.m4 $(CB_DIR)/m4/$(T).rpm.m4)))))
 
 $(foreach T,$(DOCKERFILE_TYPES), \
-  $(eval $(call DOCKERFILE_ALL,dockerfile.$(T),$(T),$(IMAGES))) \
-  $(eval $(call DOCKERFILE_CHECK,dockerfile.$(T).check,$(T),$(IMAGES),dockerfile.$(T))))
+  $(eval $(call DOCKERFILE_ALL,dockerfile.$(T),$(T),$(call DOCKERFILE_TYPE_IMAGES,$(T)))) \
+  $(eval $(call DOCKERFILE_CHECK,dockerfile.$(T).check,$(T),$(call DOCKERFILE_TYPE_IMAGES,$(T)),dockerfile.$(T))))
 
 .PHONY: dockerfile dockerfile.check
 dockerfile:       $(foreach T,$(DOCKERFILE_TYPES),dockerfile.$(T))
@@ -116,8 +128,9 @@ define DOCKER_HELP_TYPES
 	@echo "    service         production runtime image"
 	@echo "    ci              slim toolchain base for ci-deb.yml / ci-rpm.yml"
 	@echo "    crossbuild      full toolchain for docker-crossbuild.yml"
-	@echo "    profiling-deps  crossbuild + valgrind / gperftools / pprof / heaptrack / kcachegrind / debug symbols"
-	@echo "    profiling       profiling-deps + FreeRADIUS compiled with callgrind-friendly CFLAGS"
+	@echo "    radenv                 crossbuild + FreeRADIUS developer build, for the multi-server tests (ubuntu24)"
+	@echo "    radenv-profiling-deps  crossbuild + valgrind / gperftools / pprof / heaptrack / kcachegrind / debug symbols (ubuntu24)"
+	@echo "    radenv-profiling       radenv-profiling-deps + FreeRADIUS compiled with callgrind-friendly CFLAGS (ubuntu24)"
 endef
 
 .PHONY: dockerfile.help

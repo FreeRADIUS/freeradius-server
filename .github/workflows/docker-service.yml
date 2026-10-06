@@ -179,27 +179,35 @@ jobs:
     - name: Verify Dockerfiles match m4 templates
       run: |
         make dockerfile.service.check
-        make dockerfile.profiling.check
+        make dockerfile.radenv.check
+        make dockerfile.radenv-profiling.check
 
     #
-    #  Build service + profiling images for this distro. Profiling
-    #  `FROM`s the crossbuild image of the same distro, so the
-    #  profiling build rule depends on the crossbuild stamp, which
-    #  the 'freeradius4-crossbuild' push in `docker-crossbuild.yml`
-    #  covers.
+    #  Build the 'service' image for the distribution in `$OS`, and the
+    #  'radenv-profiling' image when `make docker.types.$OS` lists the
+    #  type.  The radenv types exist for ubuntu24 only.  The
+    #  'radenv-profiling' image builds on the 'radenv-profiling-deps'
+    #  image, which builds on the crossbuild image of the same
+    #  distribution.  `docker-freeradius-images-refresh.yml` publishes both
+    #  base images, so the build pulls both base images from the registry.
+    #  The 'radenv' build includes the same `common.radenv-build.m4` with
+    #  different configure arguments.  The smoke build (a build that only
+    #  proves that the Dockerfiles still build) therefore only checks that
+    #  `Dockerfile.radenv` matches the templates.  The multi-server tests
+    #  build the 'radenv' image for each commit.
     #
-    #  Setting `DOCKER_REGISTRY` makes `docker.mk` pull from the
-    #  registry any base image (crossbuild) that is not yet local,
-    #  instead of rebuilding the base image, per the pull-through
-    #  fallback in `scripts/docker/docker.mk`.
+    #  Setting `DOCKER_REGISTRY` makes `scripts/docker/docker.mk` pull a
+    #  missing base image, such as the crossbuild image, from the registry
+    #  instead of building the base image locally.
     #
-    #  The registry also holds a published 'service' image, so the
-    #  same pull-through would satisfy `docker.service.$OS` without
-    #  building anything and the smoke build would prove nothing.
-    #  `NOPULL=1` on that call forces the build from the checkout.
-    #  The 'profiling' call keeps the pull so the toolchain layers
-    #  come from the registry.  Nothing publishes a 'profiling'
-    #  image, so the 'profiling' layer itself builds locally.
+    #  The registry also holds a published 'service' image.  The same pull
+    #  would provide `docker.service.$OS` without building anything, and
+    #  the smoke build would then prove nothing.  `NOPULL=1` on the
+    #  `docker.service.$OS` call forces a build from the checkout.  The
+    #  `docker.radenv-profiling.$OS` call keeps the pull, so the toolchain
+    #  layers come from the registry.  No workflow publishes a
+    #  'radenv-profiling' image, so `docker.mk` builds the
+    #  'radenv-profiling' image locally.
     #
     - name: Build docker images
       env:
@@ -208,11 +216,15 @@ jobs:
         DOCKER_REMOTE_TAG: ${{ needs.common_vars.outputs.image_tag }}
       run: |
         NOPULL=1 make docker.service.$OS
-        make docker.profiling.$OS
+        case " $(make -s docker.types.$OS) " in
+          *" radenv-profiling "*)
+            make docker.radenv-profiling.$OS
+            ;;
+        esac
 
     #
-    #  No push step here. `docker-ci-images-refresh.yml` publishes
-    #  the service + profiling images on a periodic schedule. This
+    #  No push step here. `docker-freeradius-images-refresh.yml` publishes
+    #  the service image and the toolchain layers on a periodic schedule. This
     #  workflow is a per-commit smoke build only, and confirms that
     #  the `Dockerfile` chain still builds. The built `:<sha>` tags
     #  disappear when the runner tears down the per-job dind sidecar.
@@ -221,7 +233,7 @@ jobs:
       if: failure()
       run: |
         cat build/docker/build.$OS.service 2>/dev/null || true
-        cat build/docker/build.$OS.profiling 2>/dev/null || true
+        cat build/docker/build.$OS.radenv-profiling 2>/dev/null || true
 
     #
     #  If the CI has failed and the branch is `ci-debug` then the workflow starts

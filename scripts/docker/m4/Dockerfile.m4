@@ -8,7 +8,8 @@ dnl  they use are different - see the m4 directories for each.
 dnl
 dnl  Two macros must be defined for this template:
 dnl    D_NAME - the OS codename, see the table below, e.g. debian11
-dnl    D_TYPE - the type of template: 'service', 'ci' or 'crossbuild'
+dnl    D_TYPE - the type of template, one of the types in DOCKERFILE_TYPES
+dnl             in scripts/docker/dockerfile.mk
 dnl
 divert(`-1')
 changequote(`[', `]')

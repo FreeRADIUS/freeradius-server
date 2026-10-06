@@ -4,20 +4,23 @@
 # Makefile arguments:
 # - TEST_MULTI_SERVER_DEBUG=<0-2>   debug level for multi-server test framework
 # - TEST_MULTI_SERVER_VERBOSE=<0-4>  verbosity level
-# - MODE=<service|profiling>        which FreeRADIUS image to drive the tests
-#                                   with. Default `service`. `profiling` swaps in
-#                                   freeradius4-profiling/<image>:<sha>, sets RADIUSD_COMMAND
-#                                   so the test template runs the server under
-#                                   valgrind/callgrind, and writes results to
-#                                   PROFILING_RESULT_PATH.
+# - MODE=<service|profiling>        the FreeRADIUS image that the tests
+#                                   run.  Default `service`, which uses
+#                                   `freeradius4-radenv/<image>:<sha>`.
+#                                   `profiling` uses
+#                                   `freeradius4-radenv-profiling/<image>:<sha>`,
+#                                   sets `RADIUSD_COMMAND` so that the
+#                                   test template runs the server under
+#                                   valgrind/callgrind, and writes the
+#                                   results to `PROFILING_RESULT_PATH`.
 # - PROFILING_RESULT_MODE=<ci|dev>      Profiling output layout (only meaningful when
 #                                   MODE=profiling). Default `ci`.
 #                                     ci:  PROFILING_RESULT_ROOT/<branch>/<commit>/<run-index>/<suite>/<test>/<tool>
 #                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>/<tool>  (flat)
 #
 # Usage:
-#   make -f src/tests/multi-server/all.mk test.multi-server                       # all suites, service image
-#   make -f src/tests/multi-server/all.mk test.multi-server.ci                    # CI subset, service image
+#   make -f src/tests/multi-server/all.mk test.multi-server                       # all suites, radenv image
+#   make -f src/tests/multi-server/all.mk test.multi-server.ci                    # CI subset, radenv image
 #   make -f src/tests/multi-server/all.mk test.multi-server.profiling             # all suites, profiling image
 #   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci          # CI subset, profiling image
 #   make -f src/tests/multi-server/all.mk test.multi-server.accept.short_ci       # single test
@@ -85,22 +88,22 @@ ifeq "$(PROFILING_RUN_INDEX)" ""
 endif
 
 #
-#  Image plumbing.
+#  FreeRADIUS image selection.
 #
-#  Compose envs reference ${FREERADIUS_IMAGE}; the per-test recipe
-#  exports the right one based on MODE. We use the SHA-tagged image
-#  that the docker.<type>.<image> rule writes, so there are no
-#  intermediate :latest aliases to keep in sync.
+#  The compose environments reference `${FREERADIUS_IMAGE}`.  The per-test
+#  recipe sets `FREERADIUS_IMAGE` to the image that `MODE` selects.  Both
+#  images are the SHA-tagged images that the `docker.<type>.<image>` rule
+#  writes, so the build does not keep intermediate `:latest` aliases in
+#  sync.
 #
-#  The SHA tag does not by itself prove the image holds this commit.
-#  When DOCKER_REGISTRY is set, the docker.mk build rule pulls the
-#  published image and retags the pull as :<sha>.  A caller that needs
-#  the image built from the checkout must pass NOPULL=1 to the
-#  docker.<type>.<image> build, as ci-multi-server-tests.yml does for
-#  the service image.
+#  The SHA tag alone does not prove that the image holds the checked-out
+#  commit.  When `DOCKER_REGISTRY` is set, the `docker.mk` build rule
+#  pulls the published image and retags the pulled image as `:<sha>`.  No
+#  workflow publishes a 'radenv' or 'radenv-profiling' image, so the pull
+#  fails and `docker.mk` builds both images from the checkout.
 #
-FREERADIUS_SERVICE_IMAGE     := freeradius4-service/ubuntu24:$(GIT_COMMIT)
-FREERADIUS_PROFILING_IMAGE   := freeradius4-profiling/ubuntu24:$(GIT_COMMIT)
+FREERADIUS_RADENV_IMAGE            := freeradius4-radenv/ubuntu24:$(GIT_COMMIT)
+FREERADIUS_RADENV_PROFILING_IMAGE  := freeradius4-radenv-profiling/ubuntu24:$(GIT_COMMIT)
 
 #
 #  Multi-server test framework is published as a PEP 503 simple index
@@ -259,7 +262,7 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MU
 	${Q}mkdir -p "${4}/logs" "${4}/listener"
 	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2} (MODE=$(MODE))"
 	${Q}if [ "$(MODE)" = "profiling" ]; then \
-		FREERADIUS_IMAGE=$(FREERADIUS_PROFILING_IMAGE); \
+		FREERADIUS_IMAGE=$(FREERADIUS_RADENV_PROFILING_IMAGE); \
 		RADIUSD_COMMAND="bash /usr/local/bin/start_$(PROFILING_TOOL)_profiling.sh"; \
 		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
 			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}/$(PROFILING_TOOL)"; \
@@ -269,7 +272,7 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MU
 		mkdir -p "$$$$PROFILING_RESULT_PATH"; \
 		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \
 	else \
-		FREERADIUS_IMAGE=$(FREERADIUS_SERVICE_IMAGE); \
+		FREERADIUS_IMAGE=$(FREERADIUS_RADENV_IMAGE); \
 		PROFILING_RESULT_PATH=/tmp/prof-results-unused; \
 	fi; \
 	DATA_PATH="${4}" \
@@ -375,17 +378,17 @@ test.multi-server.profiling.ci: freeradius-prof.image
 	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling
 
 #
-#  Profiling image: build the standard freeradius4-profiling/<image>:<sha>
-#  via the top-level docker.profiling target. Stops short of any retag;
+#  Profiling image: build the standard freeradius4-radenv-profiling/<image>:<sha>
+#  via the top-level docker.radenv-profiling target. Stops short of any retag;
 #  the compose envs read the SHA-tagged image name directly out of
 #  FREERADIUS_IMAGE.
 #
 .PHONY: freeradius-prof.image
 freeradius-prof.image:
-	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ] || [ -z "$$(docker images -q $(FREERADIUS_PROFILING_IMAGE) 2>/dev/null)" ]; then \
-		$(MAKE) -C $(top_srcdir) docker.profiling.ubuntu24; \
+	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ] || [ -z "$$(docker images -q $(FREERADIUS_RADENV_PROFILING_IMAGE) 2>/dev/null)" ]; then \
+		$(MAKE) -C $(top_srcdir) docker.radenv-profiling.ubuntu24; \
 	else \
-		echo "$(FREERADIUS_PROFILING_IMAGE) available, skipping profiling image build"; \
+		echo "$(FREERADIUS_RADENV_PROFILING_IMAGE) available, skipping profiling image build"; \
 	fi
 
 .PHONY: clean.test.multi-server

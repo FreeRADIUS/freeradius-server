@@ -121,10 +121,11 @@ services:
       timeout: 5s
       retries: 10
       start_period: 45s
-    #  The env-setup source installs iproute2 so tests that need to
-    #  apply netem qdiscs (e.g. the reconnect test's packet_loss
-    #  action) have `tc` available inside the container.  Harmless
-    #  no-op for tests that don't.
+    #  `env-setup.sh` exports `TEST_SUBNET`, the subnet of the container
+    #  address.  The entrypoint sources `env-setup.sh` before the `exec` of
+    #  `/docker-entrypoint.sh`, so radiusd inherits `TEST_SUBNET`.  The
+    #  client `ipaddr` in the `radiusd.conf` of kafka-producer1 reads
+    #  `$ENV{TEST_SUBNET}`.
     entrypoint:
     - bash
     - -c

@@ -19,7 +19,7 @@ else
 #
 DOCKER_COMMON := ubuntu24
 
-# dockerfile.mk owns CB_DIR / DT / IMAGES / PROFILING_IMAGES / Q.
+# dockerfile.mk owns CB_DIR / DT / IMAGES / DOCKERFILE_TYPE_IMAGES / Q.
 include scripts/docker/dockerfile.mk
 
 #
@@ -247,37 +247,46 @@ $(DOCKER_STATE):
 #  foreach below, so each image sees its own substituted form.
 #
 #  Layer chain:
-#    service          FROMs the upstream OS base (the m4 template's
-#                     default ARG from=ubuntu:24.04 / debian:bookworm /
-#                     rockylinux:9 etc.). Independent of crossbuild -
-#                     it does its own apt-install of build deps.
-#    profiling-deps   FROMs crossbuild/<image>:latest
-#    profiling        FROMs profiling-deps/<image>:latest
+#    service                builds on the upstream OS image that the m4
+#                           template's `ARG from` names, such as
+#                           `ubuntu:24.04`, `debian:bookworm`, or
+#                           `rockylinux:9`.  The service build installs
+#                           the build dependencies itself, so service
+#                           does not depend on crossbuild.
+#    radenv                 builds on `crossbuild/<image>:latest`
+#    radenv-profiling-deps  builds on `crossbuild/<image>:latest`
+#    radenv-profiling       builds on `radenv-profiling-deps/<image>:latest`
 #
-#  Those two FROMs name local tags, which docker.mk always writes as
-#  :latest whatever the published copy is called. docker-ci-images-refresh.yml
-#  publishes the copies periodically.
+#  The radenv types exist for ubuntu24 only, see DOCKERFILE_IMAGES_* in
+#  dockerfile.mk.
 #
-DOCKER_TYPES := ci crossbuild profiling-deps profiling service
+#  The `FROM` lines name local tags.  docker.mk always tags a local image
+#  as `:latest`, whatever tag the registry image carries.
+#  `docker-freeradius-images-refresh.yml` publishes the crossbuild and
+#  radenv-profiling-deps images on a schedule.
+#
+DOCKER_TYPES := ci crossbuild radenv radenv-profiling-deps radenv-profiling service
 
-DOCKER_BUILD_ARGS_service        :=
-DOCKER_BUILD_ARGS_ci             :=
-DOCKER_BUILD_ARGS_crossbuild      = $(if $(CB_FROM_$(IMG)),--build-arg=from=$(CB_FROM_$(IMG)))
-DOCKER_BUILD_ARGS_profiling-deps  = --build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):latest
-DOCKER_BUILD_ARGS_profiling       = --build-arg=from=$(DOCKER_IMAGE_PREFIX)-profiling-deps/$(IMG):latest
+DOCKER_BUILD_ARGS_service                :=
+DOCKER_BUILD_ARGS_ci                     :=
+DOCKER_BUILD_ARGS_crossbuild             = $(if $(CB_FROM_$(IMG)),--build-arg=from=$(CB_FROM_$(IMG)))
+DOCKER_BUILD_ARGS_radenv                 = --build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):latest
+DOCKER_BUILD_ARGS_radenv-profiling-deps  = --build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):latest
+DOCKER_BUILD_ARGS_radenv-profiling       = --build-arg=from=$(DOCKER_IMAGE_PREFIX)-radenv-profiling-deps/$(IMG):latest
 
-DOCKER_BUILD_DEPS_service        :=
-DOCKER_BUILD_DEPS_ci             :=
-DOCKER_BUILD_DEPS_crossbuild     :=
-DOCKER_BUILD_DEPS_profiling-deps  = $(DOCKER_STATE)/stamp-image.$(IMG).crossbuild
-DOCKER_BUILD_DEPS_profiling       = $(DOCKER_STATE)/stamp-image.$(IMG).profiling-deps
+DOCKER_BUILD_DEPS_service                :=
+DOCKER_BUILD_DEPS_ci                     :=
+DOCKER_BUILD_DEPS_crossbuild             :=
+DOCKER_BUILD_DEPS_radenv                 = $(DOCKER_STATE)/stamp-image.$(IMG).crossbuild
+DOCKER_BUILD_DEPS_radenv-profiling-deps  = $(DOCKER_STATE)/stamp-image.$(IMG).crossbuild
+DOCKER_BUILD_DEPS_radenv-profiling       = $(DOCKER_STATE)/stamp-image.$(IMG).radenv-profiling-deps
 
 #
 #  Wire build + phony + clean + lifecycle + test for every (image,
 #  type) combo.
 #
-$(foreach IMG,$(IMAGES), \
-  $(foreach T,$(DOCKER_TYPES), \
+$(foreach T,$(DOCKER_TYPES), \
+  $(foreach IMG,$(call DOCKERFILE_TYPE_IMAGES,$(T)), \
     $(eval $(call DOCKER_BUILD,$(IMG),$(T),$(DOCKER_BUILD_ARGS_$(T)),$(DOCKER_BUILD_DEPS_$(T)))) \
     $(eval $(call DOCKER_PHONY,$(IMG),$(T))) \
     $(eval $(call DOCKER_CLEAN,$(IMG),$(T))) \
@@ -297,7 +306,20 @@ docker.${1}.down:  $(foreach IMG,${2},docker.${1}.$(IMG).down)
 docker.${1}.reset: $(foreach IMG,${2},docker.${1}.$(IMG).reset)
 endef
 
-$(foreach T,$(DOCKER_TYPES),$(eval $(call DOCKER_TYPE_UMBRELLAS,$(T),$(IMAGES))))
+$(foreach T,$(DOCKER_TYPES),$(eval $(call DOCKER_TYPE_UMBRELLAS,$(T),$(call DOCKERFILE_TYPE_IMAGES,$(T)))))
+
+#
+#  docker.types.<image> prints the types that exist for one image, so a
+#  workflow that builds or pushes per image reads the per-type image lists
+#  in dockerfile.mk instead of repeating them.
+#
+define DOCKER_IMAGE_TYPES
+.PHONY: docker.types.${1}
+docker.types.${1}:
+	@echo $(foreach T,$(DOCKER_TYPES),$(if $(filter ${1},$(call DOCKERFILE_TYPE_IMAGES,$(T))),$(T)))
+endef
+
+$(foreach IMG,$(IMAGES),$(eval $(call DOCKER_IMAGE_TYPES,$(IMG))))
 
 #
 #  Across-type umbrellas. 'docker' is an alias for the service set.

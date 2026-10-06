@@ -141,6 +141,30 @@ RUN apt-get install $APT_OPTS \
         vim \
         oathtool
 
+#
+#  The multi-server tests in `src/tests/multi-server` run their FreeRADIUS
+#  containers from the 'radenv' and 'radenv-profiling' images, which build
+#  on the crossbuild image.  The tests need two packages:
+#
+#    iproute2  `configs/freeradius/dynamic-clients/client-setup.sh` and
+#              `configs/freeradius/dynamic-clients/send.sh` run `ip` to
+#              add and read source address aliases.
+#              `configs/freeradius/env-setup.sh` runs `ip` to read the
+#              container address.  The `packet_loss` action of the
+#              multi-server test framework (the `radenv` Python package)
+#              runs `tc`, and the `kafka-produce-reconnect` test uses the
+#              `packet_loss` action.
+#    ipcalc    `configs/freeradius/env-setup.sh` runs `ipcalc -n` to
+#              compute `TEST_SUBNET` from the container address.
+#
+#  The crossbuild image build installs the packages, so a test container
+#  does not run `apt-get` when the container starts.  A package mirror
+#  that fails during a test run therefore cannot stop the test.
+#
+RUN apt-get install $APT_OPTS \
+        iproute2 \
+        ipcalc
+
 
 #
 #  Setup a src dir in /usr/local

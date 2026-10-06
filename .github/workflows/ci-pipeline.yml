@@ -189,7 +189,7 @@ jobs:
 
   #
   #  Only the multi-server tests, `docker-crossbuild` and `docker-service`
-  #  read the `freeradius4-{crossbuild,profiling-deps,service}` images,
+  #  read the `freeradius4-{crossbuild,radenv-profiling-deps,service}` images,
   #  and the 'freeradius4' images take the longest to build.  The
   #  'freeradius4' refresh therefore runs as a separate job, and only the
   #  legs that read the 'freeradius4' images wait for the refresh.  The

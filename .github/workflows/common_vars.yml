@@ -142,7 +142,7 @@ jobs:
               - 'scripts/ci/ubuntu-mirrors-setup.sh'
               - 'scripts/docker/build/*/Dockerfile.ci'
               - 'scripts/docker/build/*/Dockerfile.crossbuild'
-              - 'scripts/docker/build/*/Dockerfile.profiling-deps'
+              - 'scripts/docker/build/*/Dockerfile.radenv-profiling-deps'
               - 'scripts/docker/build/*/Dockerfile.service'
               #  These two decide what gets built and where it is published,
               #  so a change to either has to rebuild before anything reads
