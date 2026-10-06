@@ -508,11 +508,11 @@ int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 	 */
 	if (my->info.type != FR_BIO_FD_LISTEN) return 0;
 
-	if (unlink(my->info.socket.unix.path) < 0) {
-		fr_strerror_printf("Failed removing domain socket %s: %s",
-				   my->info.socket.unix.path, fr_syserror(errno));
-		return fr_bio_error(GENERIC);
-	}
+	/*
+	 *	We should already own this file, so we can remove it.  If we can't remove it, then we can't
+	 *	recover.  We might as well return success, so the application can run its own shutdown routine.
+	 */
+	(void) unlink(my->info.socket.unix.path);
 
 	return 0;
 }
