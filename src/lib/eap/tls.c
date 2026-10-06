@@ -876,6 +876,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 
 			RDEBUG("(TLS) EAP Sending final Commitment Message.");
 			(void) fr_dbuff_in_bytes(&tls_session->clean_in, (uint8_t) 0x00);
+			fr_tls_session_send(request, tls_session);
 		} else {
 
 			/*
