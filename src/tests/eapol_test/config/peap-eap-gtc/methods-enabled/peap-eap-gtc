@@ -1,7 +1,9 @@
 type = peap
 type = gtc
 peap {
-	tls = tls-common
+	tls {
+		$template tls-common
+	}
 	default_eap_type = gtc
 	virtual_server = "inner-tunnel"
 }

@@ -202,7 +202,7 @@ The last step is to configure FreeRADIUS to use the new LetsEncrypt
 certificates. In the default configuration this is in the
 `/etc/freeradius/mods-enabled/eap` file.
 
-Find the `tls-config tls-common` section. The default will have:
+Find the `tls-common` template at the top of `mods-enabled/eap`. The default template contains:
 
 ----
 certificate_file = ${certdir}/rsa/server.pem

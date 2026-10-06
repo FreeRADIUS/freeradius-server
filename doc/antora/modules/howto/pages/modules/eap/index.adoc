@@ -136,6 +136,15 @@ For example, to enable EAP-TLS, EAP-TTLS, and PEAP:
 
 [source,unlang]
 ----
+@templates tls-common {
+    chain rsa {
+        certificate_file     = ${certdir}/rsa/server.pem
+        private_key_file     = ${certdir}/rsa/server.key
+        private_key_password = whatever
+        ca_file              = ${certdir}/rsa/ca.pem
+    }
+}
+
 eap {
     default_eap_type = tls
 
@@ -143,26 +152,23 @@ eap {
     type = ttls
     type = peap
 
-    tls-config tls-common {
-        chain rsa {
-            certificate_file     = ${certdir}/rsa/server.pem
-            private_key_file     = ${certdir}/rsa/server.key
-            private_key_password = whatever
-            ca_file              = ${certdir}/rsa/ca.pem
+    tls {
+        tls {
+            $template tls-common
         }
     }
 
-    tls {
-        tls = tls-common
-    }
-
     ttls {
-        tls            = tls-common
+        tls {
+            $template tls-common
+        }
         virtual_server = "inner-tunnel"
     }
 
     peap {
-        tls              = tls-common
+        tls {
+            $template tls-common
+        }
         default_eap_type = mschapv2
         virtual_server   = "inner-tunnel"
     }
@@ -331,6 +337,15 @@ In `mods-available/eap`, list each type with a `type` entry:
 
 [source,unlang]
 ----
+@templates tls-common {
+    chain rsa {
+        certificate_file     = ${certdir}/rsa/server.pem
+        private_key_file     = ${certdir}/rsa/server.key
+        private_key_password = whatever
+        ca_file              = ${certdir}/rsa/ca.pem
+    }
+}
+
 eap {
     default_eap_type = tls
 
@@ -340,17 +355,10 @@ eap {
     md5 {
     }
 
-    tls-config tls-common {
-        chain rsa {
-            certificate_file     = ${certdir}/rsa/server.pem
-            private_key_file     = ${certdir}/rsa/server.key
-            private_key_password = whatever
-            ca_file              = ${certdir}/rsa/ca.pem
-        }
-    }
-
     tls {
-        tls = tls-common
+        tls {
+            $template tls-common
+        }
     }
 }
 ----

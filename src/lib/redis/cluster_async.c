@@ -176,7 +176,6 @@ struct fr_redis_ct_s {
 	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
 	bool				delay_start;	//!< Prevent connections from spawning immediately.
 	fr_redis_conf_t const		*conf;		//!< Redis configuration for the cluster.
-	CONF_SECTION const		*tls_cs;	//!< TLS CONF_SECTION
 
 	fr_redis_trunk_active_t		active;		//!< Callback to run when the trunk becomes active.
 	void				*active_uctx;	//!< Uctx to pass to active callback.
@@ -614,7 +613,7 @@ static int _redis_cluster_thread_free(fr_redis_ct_t *rtcluster)
  * The structures holds the trunk connections to talk to each cluster member.
  *
  */
-fr_redis_ct_t *fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event_list_t *el, fr_redis_conf_t *conf,
+fr_redis_ct_t *fr_redis_ct_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_conf_t *conf,
 				 fr_redis_trunk_active_t active, void *active_uctx, bool active_oneshot)
 {
 	fr_redis_ct_t	*rtcluster;
@@ -626,7 +625,6 @@ fr_redis_ct_t *fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event
 	*rtcluster = (fr_redis_ct_t) {
 		.el = el,
 		.conf = conf,
-		.tls_cs = tls_cs,
 		.active = active,
 		.active_uctx = active_uctx,
 		.active_oneshot = active_oneshot
@@ -669,19 +667,12 @@ fr_redis_ct_t *fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event
 
 	if (conf->use_tls) {
 #ifdef HAVE_REDIS_SSL
-		fr_tls_conf_t *tls_conf;
-		if (!tls_cs) {
+		if (!conf->tls) {
 			ERROR("%s - Missing TLS configuration", conf->log_prefix);
 			goto error;
 		}
 
-		tls_conf = fr_tls_conf_parse_client(tls_cs);
-		if (!tls_conf) {
-			ERROR("%s - Failed to parse TLS configuration", conf->log_prefix);
-			goto error;
-		}
-
-		rtcluster->ssl_ctx = fr_tls_ctx_alloc(tls_conf, true);
+		rtcluster->ssl_ctx = fr_tls_ctx_alloc(conf->tls, true);
 		if (!rtcluster->ssl_ctx) {
 			ERROR("%s - Failed to allocate SSL context", conf->log_prefix);
 			goto error;
@@ -1081,13 +1072,14 @@ int fr_redis_ct_map_bootstrap(fr_redis_ct_t *rtcluster, fr_coord_worker_t *cw, f
 		}
 	}
 
+#ifdef HAVE_REDIS_SSL
 	if (conf->use_tls) {
-		uintptr_t tls_conf = (uintptr_t)rtcluster->tls_cs;
 		fr_pair_list_append_by_da(local, vp, &list, attr_redis_use_tls, false, false);
 		if (!vp) goto error;
-		fr_pair_list_append_by_da(local, vp, &list, attr_redis_tls_conf, (uint64_t)tls_conf, false);
+		fr_pair_list_append_by_da(local, vp, &list, attr_redis_tls_conf, (uint64_t)(uintptr_t)conf->tls, false);
 		if (!vp) goto error;
 	}
+#endif
 
 	ret = fr_worker_to_coord_pair_send(cw, coord_pair_reg, &list);
 	talloc_free(local);

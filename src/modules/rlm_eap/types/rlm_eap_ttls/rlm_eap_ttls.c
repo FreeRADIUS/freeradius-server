@@ -38,7 +38,6 @@ typedef struct {
 	/*
 	 *	TLS configuration
 	 */
-	char const		*tls_conf_name;
 	fr_tls_conf_t		*tls_conf;
 
 	/*
@@ -70,7 +69,8 @@ typedef struct {
 } ttls_tunnel_t;
 
 static conf_parser_t submodule_config[] = {
-	{ FR_CONF_OFFSET("tls", rlm_eap_ttls_t, tls_conf_name) },
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_REQUIRED, rlm_eap_ttls_t, tls_conf, fr_tls_server_config),
+	  .subcs_type = "fr_tls_conf_t" },
 	{ FR_CONF_V3_DEPRECATED("copy_request_to_tunnel", rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_V3_DEPRECATED("use_tunneled_reply", rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_ttls_t, virtual_server),
@@ -1062,15 +1062,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->server_cs = virtual_server_cs(inst->virtual_server);
 
-	/*
-	 *	Read tls configuration, either from group given by 'tls'
-	 *	option, or from the eap-tls configuration.
-	 */
-	inst->tls_conf = eap_tls_conf_parse(conf);
-	if (!inst->tls_conf) {
-		cf_log_err(conf, "Failed initializing SSL context");
-		return -1;
-	}
+	eap_tls_conf_check(conf, inst->tls_conf);
 
 	return 0;
 }

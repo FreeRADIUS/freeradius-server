@@ -1033,7 +1033,6 @@ RECV(cluster_map_bootstrap)
 	fr_pair_t		*port_vp;
 	process_redis_cluster_t	find, *cluster;
 	fr_redis_conf_t		*conf;
-	CONF_SECTION		*tls_conf = NULL;
 	char			bootstrap_ip[FR_IPADDR_STRLEN];
 
 	rctx->worker_id = vp ? vp->vp_int32 : 0;
@@ -1147,10 +1146,17 @@ RECV(cluster_map_bootstrap)
 		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_tls_conf);
 		fr_fatal_assert_msg(vp, "Missing %s when TLS is enabled", attr_redis_tls_conf->name);
 		conf->use_tls = true;
-		tls_conf = (CONF_SECTION *)(uintptr_t)vp->vp_uint64;
+#ifdef HAVE_REDIS_SSL
+		/*
+		 *	The worker sent the address of the `tls { ... }` section
+		 *	that the worker parsed.  The section exists for as long as
+		 *	the module instance, so the address stays valid.
+		 */
+		conf->tls = (fr_tls_conf_t *)(uintptr_t)vp->vp_uint64;
+#endif
 	}
 
-	MEM(cluster->rtcluster = fr_redis_ct_alloc(cluster, tls_conf, thread->el, conf, NULL, NULL, false));
+	MEM(cluster->rtcluster = fr_redis_ct_alloc(cluster, thread->el, conf, NULL, NULL, false));
 
 	/*
 	 *	Add all the bootstrap nodes to the cluster.

@@ -41,8 +41,7 @@ typedef struct {
  *	An instance of EAP-FAST
  */
 typedef struct {
-	char const		*tls_conf_name;				//!< Name of shared TLS config.
-	fr_tls_conf_t		*tls_conf;				//!< TLS config pointer.
+	fr_tls_conf_t		*tls_conf;				//!< Parsed from the `tls { ... }` subsection.
 
 	char const		*default_provisioning_method_name;
 	int			default_provisioning_method;
@@ -63,7 +62,8 @@ typedef struct {
 
 
 static conf_parser_t submodule_config[] = {
-	{ FR_CONF_OFFSET("tls", rlm_eap_fast_t, tls_conf_name) },
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_REQUIRED, rlm_eap_fast_t, tls_conf, fr_tls_server_config),
+	  .subcs_type = "fr_tls_conf_t" },
 
 	{ FR_CONF_OFFSET("default_provisioning_eap_type", rlm_eap_fast_t, default_provisioning_method_name), .dflt = "mschapv2" },
 
@@ -1647,16 +1647,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	/*
-	 *	Read tls configuration, either from group given by 'tls'
-	 *	option, or from the eap-tls configuration.
-	 */
-	inst->tls_conf = eap_tls_conf_parse(conf);
-
-	if (!inst->tls_conf) {
-		cf_log_err_by_child(conf, "tls", "Failed initializing SSL context");
-		return -1;
-	}
+	eap_tls_conf_check(conf, inst->tls_conf);
 
 	if (talloc_strlen(inst->pac_opaque_key) != 32) {
 		cf_log_err_by_child(conf, "pac_opaque_key", "Must be 32 bytes long");

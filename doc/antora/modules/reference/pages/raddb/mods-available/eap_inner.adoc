@@ -11,6 +11,37 @@ xref:reference:raddb/sites-available/inner-tunnel.adoc[sites-available/inner-tun
 See the `eap` module for full documentation on the meaning of these
 configuration entries.
 
+== TLS configuration for the inner EAP-TLS method
+
+`tls-peer` is a template, used by the `tls { ... }` section of the
+`tls` method below.  See the `eap` module for how templates share a
+TLS configuration between methods.
+
+auto_chain:: See the `eap` module for common configuration
+explanation.
+
+chain { ... }:: See the `eap` module for common configuration
+explanation.
+
+ca_file:: See the `eap` module for common configuration explanation.
+
+dh_file:: See
+xref:reference:raddb/mods-available/eap.adoc[mods-available/eap]
+
+random_file:: See the `eap` module for common configuration
+explanation.
+
+fragment_size:: See the `eap` module for common configuration
+explanation.
+
+ca_path:: See the `eap` module for common configuration explanation.
+
+check_cert_issuer:: See the `eap` module for common configuration
+explanation.
+
+check_cert_cn:: See the `eap` module for common configuration
+explanation.
+
 == Configuration Settings
 
 eap inner-eap { ... }::
@@ -58,33 +89,6 @@ See the `eap` module for common configuration explanation.
 
 WARNING: No TTLS or PEAP configuration should be listed here.
 
-== tls-config tls-peer { ... }
-
-auto_chain:: See the `eap` module for common configuration
-explanation.
-
-chain { ... }:: See the `eap` module for common configuration
-explanation.
-
-ca_file:: See the `eap` module for common configuration explanation.
-
-dh_file:: See
-xref:reference:raddb/mods-available/eap.adoc[mods-available/eap]
-
-random_file:: See the `eap` module for common configuration
-explanation.
-
-fragment_size:: See the `eap` module for common configuration
-explanation.
-
-ca_path:: See the `eap` module for common configuration explanation.
-
-check_cert_issuer:: See the `eap` module for common configuration
-explanation.
-
-check_cert_cn:: See the `eap` module for common configuration
-explanation.
-
 == EAP-TLS
 
 We RECOMMEND using different certificates for the inner and outer EAP
@@ -92,7 +96,9 @@ configuration!
 
 You can create the `inner-server.pem` file by doing:
 
-cd _confdir_/certs vi inner-server.cnf make inner-server
+     cd _confdir_/certs
+     vi inner-server.cnf
+     make inner-server
 
 NOTE: The inner certificate MUST be different from the `server.cnf`
 file.
@@ -100,6 +106,22 @@ file.
 == Default Configuration
 
 ----
+@templates tls-peer {
+#		auto_chain = yes
+	chain {
+		certificate_file = ${certdir}/rsa/server.pem
+		ca_file = ${certdir}/rsa/ca.pem
+		private_key_password = whatever
+		private_key_file = ${certdir}/rsa/server.key
+	}
+	ca_file = ${cadir}/rsa/ca.pem
+#		dh_file = ${certdir}/dh
+#		random_file = /dev/urandom
+	fragment_size = 16384
+	ca_path = ${cadir}
+#		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
+#		check_cert_cn = %{User-Name}
+}
 eap inner-eap {
 	default_eap_type = mschapv2
 	type = md5
@@ -125,24 +147,10 @@ eap inner-eap {
 		server_id = theserver@example.com
 		fragment_size = 1020
 	}
-	tls-config tls-peer {
-#		auto_chain = yes
-		chain {
-			certificate_file = ${certdir}/rsa/server.pem
-			ca_file = ${certdir}/rsa/ca.pem
-			private_key_password = whatever
-			private_key_file = ${certdir}/rsa/server.key
-		}
-		ca_file = ${cadir}/rsa/ca.pem
-#		dh_file = ${certdir}/dh
-#		random_file = /dev/urandom
-		fragment_size = 16384
-		ca_path = ${cadir}
-#		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
-#		check_cert_cn = %{User-Name}
-	}
 	tls {
-		tls = tls-peer
+		tls {
+			$template tls-peer
+		}
 		require_client_cert = yes
 	}
 }

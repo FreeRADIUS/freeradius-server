@@ -108,13 +108,15 @@ using one server certificate and EAP-TLS using another) then generate and add th
 Certificate settings for EAP are found in the eap module configuration
 located in the `mods-enabled/eap` directory.
 
-If a common set of certificates is used by all EAP methods then it will
-be set in a `tls-config` section called `tls-common`. This section is referenced
-within each EAP method that's enabled.
+When all EAP methods use one set of certificates, the `tls-common`
+template at the top of `mods-enabled/eap` holds the certificate
+settings. The `tls { ... }` section of each enabled EAP method starts
+with `$template tls-common`. The section therefore takes every setting
+from the template that the section does not set.
 
-This section contains at least the following:
+The template contains at least the following:
 
-    tls-config tls-common {
+    @templates tls-common {
     #    private_key_password = whatever
         private_key_file = ${certdir}/server.key
         certificate_file = ${certidir}/server.pem
@@ -158,11 +160,10 @@ Many supplicants won't send a client certificate unless its issuer (or one of th
 The `tls_min_version` and `tls_max_version` items control which TLS versions
 are acceptable.
 
-In order to allow supplicants to connect using TLS versions 1.0 or
-1.1 the option `cipher_list` within the `tls-config` may need to be set as
-follows
+To allow supplicants to connect with TLS 1.0 or TLS 1.1, you may need to
+set `cipher_list` in the `tls-common` template as follows:
 ```
-    tls-config tls-common {
+    @templates tls-common {
         ...
         cipher_list = "DEFAULT@SECLEVEL=1"
         ...
@@ -175,24 +176,20 @@ For strong security we recommend setting `tls_min_version` to `1.2` or `1.3`.How
 
 === Different certificates for different EAP methods
 
-If different certificates are required for different EAP methods then create
-additional `tls-config` sections with distinct names. Reference the
-corresponding `tls-config` section in the configuration section for each EAP
-method
+If one EAP method needs different certificates from the other methods,
+set the certificate items in the `tls { ... }` section of that method. A
+setting in the method's `tls { ... }` section overrides the same setting
+in the template.
 
-Example 'tls-config' section
+Example `tls { ... }` section for PEAP
 ```
-
-    tls-config eap-peap-tls-config {
-        ...
-        private_key_file = ${certdir}/server-peap.key
-        certificate_file = ${certdir}/server-peap.pem
-        ...
-    }
-
     peap {
        ...
-       tls = eap-peap-tls-config
+       tls {
+           $template tls-common
+           private_key_file = ${certdir}/server-peap.key
+           certificate_file = ${certdir}/server-peap.pem
+       }
        ...
     }
 ```

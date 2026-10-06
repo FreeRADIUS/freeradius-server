@@ -82,6 +82,26 @@ do {\
 	FR_OPENSSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue); \
 } while (0)
 
+/** Parse rules for a `tls { ... }` section, in the server role and in the client role
+ *
+ * A caller adds a row to its own table that names one of the arrays, and
+ * the parser allocates and fills a #fr_tls_conf_t.  `.subcs_type` names
+ * the talloc chunk, which the parse hooks inside the rules check.
+ *
+ @code{.c}
+ typedef struct {
+	fr_tls_conf_t	*tls_conf;
+ } my_module_t;
+
+ static conf_parser_t module_config[] = {
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_REQUIRED, my_module_t, tls_conf, fr_tls_server_config),
+	  .subcs_type = "fr_tls_conf_t" },
+	CONF_PARSER_TERMINATOR
+ };
+ @endcode
+ *
+ * The module then passes `inst->tls_conf` to fr_tls_ctx_alloc().
+ */
 extern conf_parser_t fr_tls_server_config[];
 extern conf_parser_t fr_tls_client_config[];
 

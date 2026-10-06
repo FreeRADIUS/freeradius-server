@@ -1,7 +1,9 @@
 type = peap
 type = mschapv2
 peap {
-	tls = tls-common
+	tls {
+		$template tls-common
+	}
 	default_eap_type = mschapv2
 	virtual_server = "inner-tunnel"
 }

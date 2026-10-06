@@ -43,7 +43,8 @@ typedef struct {
 } rlm_eap_tls_thread_t;
 
 static conf_parser_t submodule_config[] = {
-	{ FR_CONF_OFFSET("tls", rlm_eap_tls_t, tls_conf_name) },
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_REQUIRED, rlm_eap_tls_t, tls_conf, fr_tls_server_config),
+	  .subcs_type = "fr_tls_conf_t" },
 
 	{ FR_CONF_OFFSET("require_client_cert", rlm_eap_tls_t, req_client_cert), .dflt = "yes" },
 	{ FR_CONF_OFFSET("include_length", rlm_eap_tls_t, include_length), .dflt = "yes" },
@@ -262,11 +263,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_eap_tls_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_tls_t);
 	CONF_SECTION	*conf = mctx->mi->conf;
 
-	inst->tls_conf = eap_tls_conf_parse(conf);
-	if (!inst->tls_conf) {
-		cf_log_err(conf, "Failed initializing SSL context");
-		return -1;
-	}
+	eap_tls_conf_check(conf, inst->tls_conf);
 
 	return 0;
 }

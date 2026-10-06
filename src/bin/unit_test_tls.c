@@ -99,15 +99,20 @@ fr_dict_autoload_t unit_test_tls_dict[] = {
 
 /** The "unit_test_tls" section
  *
- * These items steer the test program, and have nothing to do with TLS itself.
- * Keeping them out of the "tls" section leaves that section holding only what
- * fr_tls_conf_parse_server() understands.
+ * The items at the top level steer the test program and do not configure
+ * TLS.  The TLS configuration for each role is a subsection.
+ * `fr_tls_server_config` and `fr_tls_client_config` parse the subsections,
+ * so each subsection takes exactly the items that a `tls { ... }` section
+ * takes anywhere else in the server.
  */
 typedef struct {
 	fr_ipaddr_t	ipaddr;				//!< Address of the listening socket.  Server mode only.
 	uint16_t	port;				//!< Port of the listening socket, and the default
 							///< port for -s.
 	bool		require_client_certificate;	//!< Whether the client has to present a certificate.
+
+	fr_tls_conf_t	*server;			//!< The `server { ... }` subsection.
+	fr_tls_conf_t	*client;			//!< The `client { ... }` subsection, used with `-s`.
 } unit_test_tls_conf_t;
 
 static const conf_parser_t unit_test_tls_config[] = {
@@ -119,6 +124,15 @@ static const conf_parser_t unit_test_tls_config[] = {
 
 	{ FR_CONF_OFFSET("require_client_certificate", unit_test_tls_conf_t, require_client_certificate),
 	  .dflt = "no" },
+
+	/*
+	 *	A test file may hold only the role that the test runs, so
+	 *	either subsection may be missing.
+	 */
+	{ FR_CONF_SUBSECTION_ALLOC("server", CONF_FLAG_OK_MISSING, unit_test_tls_conf_t, server, fr_tls_server_config),
+	  .subcs_type = "fr_tls_conf_t" },
+	{ FR_CONF_SUBSECTION_ALLOC("client", CONF_FLAG_OK_MISSING, unit_test_tls_conf_t, client, fr_tls_client_config),
+	  .subcs_type = "fr_tls_conf_t" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1233,7 +1247,6 @@ int main(int argc, char *argv[])
 	fr_dict_t const		*dict_check;
 
 	virtual_server_t const	*vs;
-	CONF_SECTION		*tls_cs;
 	CONF_SECTION		*utt_cs;
 
 	unit_test_tls_t		*utt = NULL;
@@ -1484,13 +1497,32 @@ int main(int argc, char *argv[])
 	utt->conn->write = tls_connection_write;
 
 	/*
-	 *	The settings which steer the test program, and which are
-	 *	nothing to do with TLS.
-	 *
-	 *	These are parsed before server_init(), so that a mistake in
-	 *	them is reported before the modules and virtual servers are
-	 *	brought up.  The "tls" section cannot be parsed this early,
-	 *	see below.
+	 *	Bootstrap and instantiate the virtual servers and the modules
+	 *	that the virtual servers use.  The TLS subsections name a
+	 *	virtual server, so server_init() has to run before
+	 *	cf_section_parse() reads the `unit_test_tls` section.
+	 */
+	if (server_init(config->root_cs, config->confdir, dict) < 0) EXIT_WITH_FAILURE;
+
+	vs = virtual_server_find("tls");
+	if (!vs) {
+		ERROR("Cannot find virtual server 'tls'");
+		EXIT_WITH_FAILURE;
+	}
+
+	dict_check = virtual_server_dict_by_name("tls");
+	if (!dict_check || !fr_dict_compatible(dict_check, dict_tls)) {
+		ERROR("Virtual server 'tls' must have 'namespace = tls'");
+		EXIT_WITH_FAILURE;
+	}
+
+	/*
+	 *	Parse the settings that steer the test program, with the TLS
+	 *	configuration for each role as a subsection.  The TLS rows
+	 *	resolve the `virtual_server` item through
+	 *	virtual_server_cf_parse(), so server_init() had to run first.
+	 *	cf_section_parse_pass2() then resolves the expansions in the
+	 *	TLS subsections.
 	 */
 	utt_cs = cf_section_find(config->root_cs, "unit_test_tls", NULL);
 	if (!utt_cs) {
@@ -1500,7 +1532,8 @@ int main(int argc, char *argv[])
 
 	if (cf_section_rules_push(utt_cs, unit_test_tls_config) < 0) EXIT_WITH_FAILURE;
 
-	if (cf_section_parse(utt, &utt->conf, utt_cs) < 0) {
+	if ((cf_section_parse(utt, &utt->conf, utt_cs) < 0) ||
+	    (cf_section_parse_pass2(&utt->conf, utt_cs) < 0)) {
 		cf_log_perr(utt_cs, "Failed parsing the 'unit_test_tls' section");
 		EXIT_WITH_FAILURE;
 	}
@@ -1530,64 +1563,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/*
-	 *	Bootstrap and instantiate the virtual servers and the modules
-	 *	the virtual servers use.  The "tls" section names a virtual
-	 *	server, so server_init() has to run before that section is
-	 *	parsed.
-	 */
-	if (server_init(config->root_cs, config->confdir, dict) < 0) EXIT_WITH_FAILURE;
-
-	vs = virtual_server_find("tls");
-	if (!vs) {
-		ERROR("Cannot find virtual server 'tls'");
-		EXIT_WITH_FAILURE;
-	}
-
-	dict_check = virtual_server_dict_by_name("tls");
-	if (!dict_check || !fr_dict_compatible(dict_check, dict_tls)) {
-		ERROR("Virtual server 'tls' must have 'namespace = tls'");
-		EXIT_WITH_FAILURE;
-	}
-
-	/*
-	 *	The TLS configuration is a top-level section, not part of a
-	 *	"listen" section.  A "listen" section would need a transport
-	 *	and a proto_tls module, and there is no proto_tls.
-	 *
-	 *	This has to run after server_init().  The "virtual_server"
-	 *	item in the section is resolved by virtual_server_cf_parse(),
-	 *	which needs the virtual servers to exist already.
-	 */
-	if (utt->conn->client) {
-		tls_cs = cf_section_find(config->root_cs, "tls", "client");
-		if (!tls_cs) {
-			ERROR("Cannot find a top-level 'tls client { ... }' section in %s.conf",
-			      config->name);
-			EXIT_WITH_FAILURE;
-		}
-
-		utt->conn->tls_conf = fr_tls_conf_parse_client(tls_cs);
-	} else {
-		/*
-		 *	Prefer 'tls server', so that one file can hold the
-		 *	configuration for both roles.  Fall back to a plain
-		 *	'tls' section, which is what a file with only a
-		 *	server in it will have.
-		 */
-		tls_cs = cf_section_find(config->root_cs, "tls", "server");
-		if (!tls_cs) tls_cs = cf_section_find(config->root_cs, "tls", NULL);
-		if (!tls_cs) {
-			ERROR("Cannot find a top-level 'tls server { ... }' or 'tls { ... }' section in %s.conf",
-			      config->name);
-			EXIT_WITH_FAILURE;
-		}
-
-		utt->conn->tls_conf = fr_tls_conf_parse_server(tls_cs);
-	}
-
+	utt->conn->tls_conf = utt->conn->client ? utt->conf.client : utt->conf.server;
 	if (!utt->conn->tls_conf) {
-		cf_log_perr(tls_cs, "Failed parsing the TLS configuration");
+		cf_log_err(utt_cs, "Cannot run as %s, the 'unit_test_tls' section has no '%s { ... }' subsection",
+			   utt->conn->client ? "client" : "server", utt->conn->client ? "client" : "server");
 		EXIT_WITH_FAILURE;
 	}
 
@@ -1608,7 +1587,7 @@ int main(int argc, char *argv[])
 
 	utt->ssl_ctx = fr_tls_ctx_alloc(utt->conn->tls_conf, utt->conn->client);
 	if (!utt->ssl_ctx) {
-		cf_log_perr(tls_cs, "Failed creating the TLS context");
+		cf_log_perr(utt_cs, "Failed creating the TLS context");
 		EXIT_WITH_FAILURE;
 	}
 

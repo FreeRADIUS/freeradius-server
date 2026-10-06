@@ -710,7 +710,7 @@ modules.
 ----
 Instantiating rlm_eap_mschapv2 "eap.mschapv2"
 Instantiating rlm_eap_peap "eap.peap"
-      tls-config tls-common {
+      tls {
         chain rsa {
           format = pem
           certificate_file = /etc/freeradius/certs/rsa/server.pem

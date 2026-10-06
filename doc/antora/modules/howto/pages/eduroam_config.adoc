@@ -230,6 +230,31 @@ This is a stripped down EAP configuration that'll allow:
 #### ``mods-available/eap``
 
 ----
+@templates tls-common {
+	# The public certificate that your server will present
+	certificate_file = ${certdir}/server.pem
+
+	# The private key for the public certificate
+	private_key_file = ${certdir}/server.key
+
+	# The password to decrypt 'private_key_file'
+	private_key_password = whatever
+
+	# The certificate of the authority that issued 'certificate_file'
+	ca_file = ${cadir}/ca.pem
+
+	# If your AP drops packets towards the client, try reducing this.
+	fragment_size = 1024
+
+	# When issuing client certificates embed the OCSP URL in the
+	# certificate if you want to be able to revoke them later.
+	ocsp {
+		enable = yes
+		override_cert_url = no
+		use_nonce = yes
+	}
+}
+
 eap {
 	# The initial EAP type requested.  Change this to peap if you're
 	# using peap, or tls if you're using EAP-TLS.
@@ -241,43 +266,24 @@ eap {
 	# The maximum number of ongoing EAP sessions
 	max_sessions = ${max_requests}
 
-	tls-config tls-common {
-		# The public certificate that your server will present
-		certificate_file = ${certdir}/server.pem
-
-		# The private key for the public certificate
-		private_key_file = ${certdir}/server.key
-
-		# The password to decrypt 'private_key_file'
-		private_key_password = whatever
-
-		# The certificate of the authority that issued 'certificate_file'
-		ca_file = ${cadir}/ca.pem
-
-		# If your AP drops packets towards the client, try reducing this.
-		fragment_size = 1024
-
-		# When issuing client certificates embed the OCSP URL in the
-		# certificate if you want to be able to revoke them later.
-		ocsp {
-			enable = yes
-			override_cert_url = no
-			use_nonce = yes
+	tls {
+		tls {
+			$template tls-common
 		}
 	}
 
-	tls {
-		tls = tls-common
-	}
-
 	ttls {
-		tls = tls-common
+		tls {
+			$template tls-common
+		}
 		default_eap_type = mschapv2
 		virtual_server = "eduroam-inner"
 	}
 
 	peap {
-		tls = tls-common
+		tls {
+			$template tls-common
+		}
 		default_eap_type = mschapv2
 		virtual_server = "eduroam-inner"
 	}

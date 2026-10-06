@@ -116,7 +116,7 @@ char const			*fr_redis_ct_ipaddr(fr_redis_ct_node_t const *node);
 
 int				fr_redis_ct_port(uint16_t *out, fr_redis_ct_node_t const *node);
 
-fr_redis_ct_t			*fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_conf, fr_event_list_t *el,
+fr_redis_ct_t			*fr_redis_ct_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 						   fr_redis_conf_t *conf, fr_redis_trunk_active_t active,
 						   void *active_uctx, bool active_oneshot);
 

@@ -44,6 +44,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int tls_fragment_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int tls_padding_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int tls_cache_lifetime_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 #ifdef __APPLE__
 static int tls_chain_password_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 #  define TLS_CHAIN_PASSWORD_PARSE	.func = tls_chain_password_parse
@@ -95,7 +98,7 @@ static conf_parser_t tls_cache_config[] = {
 			 .dflt = "auto" },
 	{ FR_CONF_OFFSET_HINT_TYPE("name", FR_TYPE_STRING, fr_tls_cache_conf_t, id_name),
 			 .dflt = "%{EAP-Type}%interpreter('server')", .quote = T_DOUBLE_QUOTED_STRING },
-	{ FR_CONF_OFFSET("lifetime", fr_tls_cache_conf_t, lifetime), .dflt = "1d" },
+	{ FR_CONF_OFFSET("lifetime", fr_tls_cache_conf_t, lifetime), .func = tls_cache_lifetime_parse, .dflt = "1d" },
 	{ FR_CONF_OFFSET_IS_SET("min_lifetime", FR_TYPE_TIME_DELTA, 0, fr_tls_cache_conf_t, min_lifetime),
 			 .dflt = "10s" },
 
@@ -166,8 +169,8 @@ static conf_parser_t tls_verify_config[] = {
 conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, 0, fr_tls_conf_t, virtual_server), .func = tls_virtual_server_cf_parse },
 
-	{ FR_CONF_OFFSET_SUBSECTION("chain", CONF_FLAG_MULTI, fr_tls_conf_t, chains, tls_chain_config),
-	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t", .name2 = CF_IDENT_ANY },
+	{ FR_CONF_SUBSECTION_ALLOC_MULTI("chain", 0, fr_tls_conf_t, chains, tls_chain_config),
+	  .subcs_type = "fr_tls_chain_conf_t", .name2 = CF_IDENT_ANY },
 
 	{ FR_CONF_V3_DEPRECATED("pem_file_type", fr_tls_conf_t, NULL) },
 	{ FR_CONF_V3_DEPRECATED("certificate_file", fr_tls_conf_t, NULL) },
@@ -186,8 +189,8 @@ conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("keylog_file", fr_tls_conf_t, keylog_file) },
 
 	{ FR_CONF_OFFSET_FLAGS("dh_file", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, dh_file) },
-	{ FR_CONF_OFFSET("fragment_size", fr_tls_conf_t, fragment_size), .dflt = "1024" },
-	{ FR_CONF_OFFSET("padding", fr_tls_conf_t, padding_block_size), },
+	{ FR_CONF_OFFSET("fragment_size", fr_tls_conf_t, fragment_size), .func = tls_fragment_size_parse, .dflt = "1024" },
+	{ FR_CONF_OFFSET("padding", fr_tls_conf_t, padding_block_size), .func = tls_padding_parse },
 
 	{ FR_CONF_OFFSET("disable_single_dh_use", fr_tls_conf_t, disable_single_dh_use) },
 
@@ -227,8 +230,8 @@ conf_parser_t fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_OK_MISSING, fr_tls_conf_t, virtual_server),
 	  .func = tls_virtual_server_cf_parse },
 
-	{ FR_CONF_OFFSET_SUBSECTION("chain", CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI, fr_tls_conf_t, chains, tls_chain_config),
-	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t" },
+	{ FR_CONF_SUBSECTION_ALLOC_MULTI("chain", CONF_FLAG_OK_MISSING, fr_tls_conf_t, chains, tls_chain_config),
+	  .subcs_type = "fr_tls_chain_conf_t" },
 
 	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },
 
@@ -252,7 +255,7 @@ conf_parser_t fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, ca_file) },
 	{ FR_CONF_OFFSET("dh_file", fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("random_file", fr_tls_conf_t, random_file) },
-	{ FR_CONF_OFFSET("fragment_size",  fr_tls_conf_t, fragment_size), .dflt = "1024" },
+	{ FR_CONF_OFFSET("fragment_size", fr_tls_conf_t, fragment_size), .func = tls_fragment_size_parse, .dflt = "1024" },
 
 	{ FR_CONF_OFFSET("cipher_list", fr_tls_conf_t, cipher_list) },
 	{ FR_CONF_OFFSET("cipher_suites", fr_tls_conf_t, cipher_suites) },
@@ -396,6 +399,68 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 	return 0;
 }
 
+/** Keep `fragment_size` between 100 and the TLS record limit
+ *
+ * A TLS record holds at most SSL3_RT_MAX_PLAIN_LENGTH bytes, so a larger
+ * fragment size gains nothing.  The EAP RFCs ask for fragments of at least
+ * 1020 bytes, but the server accepts down to 100.
+ */
+static int tls_fragment_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	uint32_t *fragment_size = out;
+
+	if (cf_pair_parse_value(ctx, out, parent, ci, rule) < 0) return -1;
+
+	if (*fragment_size < 100) {
+		cf_log_warn(ci, "Ignoring \"fragment_size = %u\", forcing to \"fragment_size = 100\"", *fragment_size);
+		*fragment_size = 100;
+	}
+	if (*fragment_size > SSL3_RT_MAX_PLAIN_LENGTH) {
+		cf_log_warn(ci, "Ignoring \"fragment_size = %u\", forcing to \"fragment_size = %u\"",
+			    *fragment_size, (unsigned int)SSL3_RT_MAX_PLAIN_LENGTH);
+		*fragment_size = SSL3_RT_MAX_PLAIN_LENGTH;
+	}
+
+	return 0;
+}
+
+/** Keep `padding` at or below the TLS record limit
+ *
+ */
+static int tls_padding_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	uint32_t *padding = out;
+
+	if (cf_pair_parse_value(ctx, out, parent, ci, rule) < 0) return -1;
+
+	if (*padding > SSL3_RT_MAX_PLAIN_LENGTH) {
+		cf_log_warn(ci, "Ignoring \"padding = %u\", forcing to \"padding = %u\"",
+			    *padding, (unsigned int)SSL3_RT_MAX_PLAIN_LENGTH);
+		*padding = SSL3_RT_MAX_PLAIN_LENGTH;
+	}
+
+	return 0;
+}
+
+/** Keep `session.lifetime` at or below #FR_TLS_MAX_SESSION_LIFETIME
+ *
+ */
+static int tls_cache_lifetime_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	fr_time_delta_t		*lifetime = out;
+	fr_time_delta_t const	max = fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME);
+
+	if (cf_pair_parse_value(ctx, out, parent, ci, rule) < 0) return -1;
+
+	if (fr_time_delta_gt(*lifetime, max)) {
+		cf_log_warn(ci, "Ignoring \"lifetime = %pV\", forcing to \"lifetime = %pV\"",
+			    fr_box_time_delta(*lifetime), fr_box_time_delta(max));
+		*lifetime = max;
+	}
+
+	return 0;
+}
+
 #ifdef __APPLE__
 /*
  *	We don't want to put the private key password in eap.conf, so check
@@ -469,101 +534,4 @@ found:
 	return 0;
 }
 #endif
-
-/*
- *	Free TLS client/server config
- *	Should not be called outside this code, as a callback is
- *	added to automatically free the data when the CONF_SECTION
- *	is freed.
- */
-static int _conf_server_free(fr_tls_conf_t *conf)
-{
-	memset(conf, 0, sizeof(*conf));
-	return 0;
-}
-
-fr_tls_conf_t *fr_tls_conf_alloc(TALLOC_CTX *ctx)
-{
-	fr_tls_conf_t *conf;
-
-	MEM(conf = talloc_zero(ctx, fr_tls_conf_t));
-	talloc_set_destructor(conf, _conf_server_free);
-
-	return conf;
-}
-
-fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
-{
-	fr_tls_conf_t *conf;
-
-	/*
-	 *	If cs has already been parsed there should be a cached copy
-	 *	of conf already stored, so just return that.
-	 */
-	conf = cf_data_value(cf_data_find(cs, fr_tls_conf_t, NULL));
-	if (conf) {
-		DEBUG("Using cached TLS configuration from previous invocation");
-		return conf;
-	}
-
-	if (cf_section_rules_push(cs, fr_tls_server_config) < 0) return NULL;
-
-	conf = fr_tls_conf_alloc(cs);
-
-	if ((cf_section_parse(conf, conf, cs) < 0) ||
-	    (cf_section_parse_pass2(conf, cs) < 0)) {
-		talloc_free(conf);
-		return NULL;
-	}
-
-	/*
-	 *	Save people from their own stupidity.
-	 */
-	if (conf->fragment_size < 100) conf->fragment_size = 100;
-
-	FR_INTEGER_BOUND_CHECK("padding", conf->padding_block_size, <=, SSL3_RT_MAX_PLAIN_LENGTH);
-
-	FR_TIME_DELTA_BOUND_CHECK("session.lifetime", conf->cache.lifetime, <=,
-				  fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME));
-
-	/*
-	 *	Cache conf in cs in case we're asked to parse this again.
-	 */
-	cf_data_add(cs, conf, NULL, false);
-
-	return conf;
-}
-
-fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
-{
-	fr_tls_conf_t *conf;
-
-	conf = cf_data_value(cf_data_find(cs, fr_tls_conf_t, NULL));
-	if (conf) {
-		DEBUG2("Using cached TLS configuration from previous invocation");
-		return conf;
-	}
-
-	if (cf_section_rules_push(cs, fr_tls_client_config) < 0) return NULL;
-
-	conf = fr_tls_conf_alloc(cs);
-
-	if ((cf_section_parse(conf, conf, cs) < 0) ||
-	    (cf_section_parse_pass2(conf, cs) < 0)) {
-		talloc_free(conf);
-		return NULL;
-	}
-
-	/*
-	 *	Save people from their own stupidity.
-	 */
-	if (conf->fragment_size < 100) conf->fragment_size = 100;
-
-	FR_TIME_DELTA_BOUND_CHECK("session.lifetime", conf->cache.lifetime, <=,
-				  fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME));
-
-	cf_data_add(cs, conf, NULL, false);
-
-	return conf;
-}
 #endif	/* WITH_TLS */

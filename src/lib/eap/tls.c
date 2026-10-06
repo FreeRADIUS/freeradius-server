@@ -1314,76 +1314,20 @@ skip_tls_version:
 	return eap_tls_session;
 }
 
-/** Parse TLS configuration
+/** Apply the limits that EAP puts on a parsed `tls { ... }` section
  *
- * If the option given by 'attr' is set, we find the config section of that name and use
- * that for the TLS configuration. If not, we fall back to compatibility mode and read
- * the TLS options from the 'tls' section.
+ * The submodule's own rules parse the section, through the
+ * `FR_CONF_SUBSECTION_ALLOC` row that names `fr_tls_server_config`.
  *
- * @param cs to derive the configuration from.
- * @return
- *	- NULL on error.
- *	- A new fr_tls_conf_t on success.
+ * @param[in] cs		the submodule's section.  cf_log_warn_by_child() logs the
+ *				`session.min_lifetime` warning against the `tls` child of
+ *				this section.
+ * @param[in,out] tls_conf	parsed from the `tls { ... }` subsection.  The function
+ *				raises `cache.min_lifetime` to the EAP minimum when the
+ *				value is lower.
  */
-fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs)
+void eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf)
 {
-	char const 		*tls_conf_name;
-	CONF_PAIR		*cp;
-	CONF_SECTION		*parent;
-	CONF_SECTION		*tls_cs;
-	fr_tls_conf_t		*tls_conf;
-
-	parent = cf_item_to_section(cf_parent(cs));
-
-	/*
-	 *	tls = tls-common is a reference to the "tls-common" section in the parent EAP module configuration.
-	 */
-	cp = cf_pair_find(cs, "tls");
-	if (cp) {
-		tls_conf_name = cf_pair_value(cp);
-
-		tls_cs = cf_section_find(parent, TLS_CONFIG_SECTION, tls_conf_name);
-		if (!tls_cs) {
-			CONF_ITEM *ci;
-
-			ci = cf_reference_item(cf_root(parent), parent, tls_conf_name);
-			if (!ci) {
-				cf_log_perr(cp, "Cannot find tls configuration section from reference '%s'",
-					   tls_conf_name);
-				return NULL;
-			}
-
-			if (!cf_item_is_section(ci)) {
-				cf_log_err(cp, "Invalid tls configuration reference '%s' - the result is not a configuration section",
-					tls_conf_name);
-				return NULL;
-			}
-
-			tls_cs = cf_item_to_section(ci);
-		}
-	} else {
-		cf_log_err(cs, "Cannot do TLS-based EAP method %s - missing 'tls = ...' configuration item",
-			   cf_section_name1(cs));
-		return NULL;
-	}
-
-	tls_conf = fr_tls_conf_parse_server(tls_cs);
-	if (!tls_conf) return NULL;
-
-	/*
-	 *	The EAP RFC's say 1020, but we're less picky.
-	 */
-	FR_INTEGER_BOUND_CHECK("fragment_size", tls_conf->fragment_size, >=, 100);
-
-	/*
-	 *	The maximum size for a RADIUS packet is 4096, but we're
-	 *	not just a RADIUS server.
-	 *
-	 *	Maximum size for a TLS record is 16K, so little point in
-	 *	setting it higher than that.
-	 */
-	FR_INTEGER_BOUND_CHECK("fragment_size", tls_conf->fragment_size, <=, SSL3_RT_MAX_PLAIN_LENGTH);
-
 	/*
 	 *	There isn't any point to having EAP sessions cache
 	 *	lifetimes which are very low.  Arguably, the minimum
@@ -1397,10 +1341,7 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs)
 	if (!tls_conf->cache.min_lifetime_is_set ||
 	    fr_time_delta_lt(tls_conf->cache.min_lifetime, fr_time_delta_from_sec(15 * 60))) {
 		tls_conf->cache.min_lifetime = fr_time_delta_from_sec(15 * 60);
-
-		cf_log_warn(tls_cs, "Raising EAP session.min_lifetime to %pV",
-			    fr_box_time_delta(tls_conf->cache.min_lifetime));
+		cf_log_warn_by_child(cs, "tls", "Raising EAP session.min_lifetime to %pV",
+				     fr_box_time_delta(tls_conf->cache.min_lifetime));
 	}
-
-	return tls_conf;
 }

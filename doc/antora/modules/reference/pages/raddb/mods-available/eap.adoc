@@ -13,149 +13,17 @@ The most common side effect of setting 'Auth-Type := ::EAP' is that
 the users then cannot use ANY other authentication method.
 ====
 
-== Configuration Settings
-
-require_identity_realm:: Require that the EAP Identity contains a
-realm, as per https://tools.ietf.org/html/rfc7542[RFC 7542].
-
-If `require_identity_realm` is `nai`, the EAP identity MUST end with
-`@`, followed by a DNS name. In
-https://tools.ietf.org/html/rfc7542[RFC 7542] syntax,
-
-----
-@<label0>.<label1>[.<labelN>]
-----
-
-So `@foo` does not match, because it is not a valid name in DNS. The
-identity `@example.com` is allowed, as it is a valid name in DNS.
-
-If `require_identity_realm` is `yes`, the EAP identity provided must
-either match the NAI format described above, or a
-`Stripped-User-Domain` attribute must be present in the request list.
-This validation mode is intended to be user where Windows machine
-authentication is intermixed with user authentication.
-
-If `require_identity_realm` is `no`, no identity format checks are
-performed. It is NOT RECOMMENDED to use this value. Future security
-standards will key off the NAI realm to validate the certificate that
-FreeRADIUS presents. If you disable the NAI checks, your users will be
-vulnerable to attackers who create fake certificate.
-
-In addition, disabling the realm checks means that the EAP packets
-will not be able to be proxied through a roaming federation such as
-eduroam or OpenRoaming.
-
-The default value is `nai`.
-
-Session tracking has been moved to the `session` section of a virtual
-server.
-
-* timer_expire --> timeout
-* max_sessions --> max
-* dedup_key    --> dedup_key
-
-default_eap_type:: The default EAP submodule to invoke when an
-`EAP-Identity` response is received.
-
-If a `default_eap_type` value is not provided, enabled EAP submodules
-will be queried to determine if they recognise the provided
-EAP-Identity. If no submodules recognise the identity, the first
-`type` value listed below will be used.
-
-If the `control.EAP-Type` attribute is set, then that EAP type takes
-precedence over any configured or inferred EAP-Type.
-
-It is generally recommended to NOT set `default_eap_type`, and instead
-order the `type` configuration items, below.
-
-ignore_unknown_eap_types::
-
-There are many EAP types, but the server has support for only a
-limited subset. If the server receives a request for an EAP type it
-does not support, then it normally rejects the request. By setting
-this configuration to `yes`, you can tell the server to instead keep
-processing the request. Another module MUST then be configured to
-proxy the request to another RADIUS server which supports that EAP
-type.
-
-NOTE: If another module is NOT configured to handle the request, then
-the request will still end up being rejected.
-
-== Allowed EAP-types
-
-type:: Only EAP types listed below with a `type = <EAP-Type>` pair
-will be allowed.
-
-In addition, setting `type = md5` will load the configuration section
-`md5 { ... }`. There is no need to "comment out" the entire
-configuration section for EAP types which are not used. Instead,
-simply comment out or delete the `type = ..` entry for that EAP
-method, and the entire configuration section will be ignored.
-
-If the `control.EAP-Type` attribute is set, then that is used to form
-the list of allowed EAP types, with the first instance being the
-default type and others also being allowed.
-
-If `control.EAP-Type` is set to an EAP type which is not listed below
-, then that setting will be ignored. The list here determines which
-methods are loaded and available.
-
-=== EAP-MD5
-
-WARNING: EAP-MD5 authentication cannot be used for wireless
-connections. It is insecure, and does not provide for dynamic WEP keys
-or WPA enterprise.
-
-=== EAP-PSK
-
-This module implements EAP-PSK
-(https://tools.ietf.org/html/rfc4764[RFC 4764]).
-
-The peer asserts an identity during authentication, and the pre-shared
-key for that identity is looked up by an "eap-psk" virtual server.
-See sites-available/eap-psk for a worked example, including how the
-key is set.
-
-To enable EAP-PSK, enable the "eap-psk" virtual server, then uncomment
-this section and the "type = psk" entry above.
-
-virtual_server:: The "eap-psk" virtual server which looks up the
-pre-shared key for a peer identity.
-
-=== EAP-PWD (Secure password-based authentication)
-
-In v4, the "known good" password is taken from the
-`request.control.Password.Cleartext` list, as is done by other
-modules. The change from v3 is that the `inner-tunnel` virtual server
-is not used.
-
-fragment_size:: This has the same meaning as for TLS.
-
-=== Generic Token Card
-
-Currently, this is only permitted inside of `EAP-TTLS`, or `EAP-PEAP`.
-The module `challenges` the user with text, and the response from the
-user is taken to be the
-`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`.
-
-WARNING: Proxying the tunneled `EAP-GTC` session is a bad idea, the
-users password will go over the wire in plain-text, for anyone to see.
-
-challenge:: The default challenge, which many clients ignore.
-
-auth_type::
-
-The plain-text response which comes back is put into a
-`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
-attribute, and passed to another module for authentication. This
-allows the `EAP-GTC` response to be checked against plain-text, or
-crypt'd passwords.
-
-If you say "Local" instead of "PAP", then the module will look for a
-`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
-configured for the request, and do the authentication itself.
-
 == Common TLS configuration for TLS-based EAP types
+
+`tls-common` is a template.  Each TLS-based EAP method below has a
+`tls { ... }` section which starts with `$template tls-common`, and so
+takes every setting here that the method does not set itself.  To
+change a setting for one method only, set it in that method's `tls {
+... }` section.
+
+The `@templates` prefix adds `tls-common` to the server's `templates`
+section, so the template can be defined here, beside the methods that
+use it.
 
 See `certs/index.adoc` for additional comments on certificates.
 
@@ -168,7 +36,8 @@ may use the 'snakeoil' certificates. Included with the server in
 
 If these certificates have not been auto-generated:
 
-cd _confdir_/certs make
+  cd _confdir_/certs
+  make
 
 These test certificates *SHOULD NOT* be used in a normal deployment.
 They are created only to make it easier to install the server, and to
@@ -355,12 +224,12 @@ including them in the chain.
 
 [NOTE]
 ====
-* Depending on the value of `auto_chain` we may still be able to build
-  a complete chain, but this will be done at runtime.
+  * Depending on the value of `auto_chain` we may still be able to
+  build a complete chain, but this will be done at runtime.
 
-* `auto_chain` has no effect on which certificates are considered for
-  pre-compilation. Only those listed in this `chain {}` section will
-  be used.
+  * `auto_chain` has no effect on which certificates are considered
+for pre-compilation. Only those listed in this `chain {}`
+section will be used.
 ====
 
 include_root_ca:: Whether or not the root CA is included in the
@@ -392,7 +261,7 @@ password.
 
 The file should be provided as the attribute:
 
-control.TLS-Session-Cert-File
+    control.TLS-Session-Cert-File
 
 If there are any errors loading or verifying the certificate, then
 authentication will fail.
@@ -503,10 +372,11 @@ tls_max_version:: Maximum TLS version we allow.
 
 [NOTE]
 ====
-* SSLv2 and SSLv3 are permanently disabled due to security issues.
+  * SSLv2 and SSLv3 are permanently disabled due to security
+issues.
 
-* We STRONGLY RECOMMEND that TLS 1.0 and TLS 1.1 be disabled. They are
-  insecure and SHOULD NOT BE USED.
+  * We STRONGLY RECOMMEND that TLS 1.0 and TLS 1.1 be disabled.
+They are insecure and SHOULD NOT BE USED.
 ====
 
 tls_min_version:: Minimum TLS version we allow.
@@ -569,8 +439,8 @@ have expired.
 
 | `untrusted`
 | Verify all untrusted certificates,
-i.e. those which were presented by the client and not loaded on
-startup.
+  i.e. those which were presented by the client
+  and not loaded on startup.
 
 | `client-and-issuer`
 | Verify the client certificate and its issuer.
@@ -601,20 +471,20 @@ stateless resumption.
 
 | `all`
 | Create attributes for all certificates from
-the root, to the presented client certificate.
+  the root, to the presented client certificate.
 
 | `untrusted`
 | Create attributes for untrusted certificates,
-i.e. those which were presented by the client and not loaded on
-startup.
+  i.e. those which were presented by the client
+  and not loaded on startup.
 
 | `client-and-issuer`
 | Create attributes for the client certificate
-and its issuer.
+  and its issuer.
 
 | `client`
 | Only create attributes for the client
-certificate.
+  certificate.
 |===
 
 [NOTE]
@@ -685,22 +555,25 @@ mode:: What type of session caching should be allowed.
 
 | `stateful`
 | Use <= TLS 1.2 style stateful session resumption.
-A unique session-identifier is provided to the client. The client
-provides this identifier during the next authentication attempt, and
-we lookup session information based on this identifier. A
-`virtual_server` with `load session { ... }`, `store session { ... }`
-and `clear session { ... }` sections must be configured.
+  A unique session-identifier is provided to the client.
+  The client provides this identifier during the next
+  authentication attempt, and we lookup session information
+  based on this identifier.
+  A `virtual_server` with `load session { ... }`,
+  `store session { ... }` and `clear session { ... }`
+  sections must be configured.
 
 | `stateless`
 | Allow session-ticket based resumption.  This requires no
-external support.  All information required for resumption is sent to
-the TLS client in an encrypted session-ticket. The client returns this
-ticket during the next authentication attempt.
+  external support.  All information required for resumption
+  is sent to the TLS client in an encrypted session-ticket.
+  The client returns this ticket during the next
+  authentication attempt.
 
 | `auto`
 | Choose an appropriate session resumption type based on
-the TLS version used and whether a `virtual_server` is configured and
-has the required `session` sections.
+  the TLS version used and whether a `virtual_server` is
+  configured and has the required `session` sections.
 |===
 
 It is recommended to set `mode = auto` *and* to provide a correctly
@@ -782,17 +655,162 @@ session caching is now handled by FreeRADIUS either using
 session-tickets (stateless), or using TLS `virtual_server` and
 storing/retrieving sessions to/from an external datastore (stateful).
 
-* `enable`
-* `persist_dir`
-* `max_entries`
+  * `enable`
+  * `persist_dir`
+  * `max_entries`
 ====
+
+== Configuration Settings
+
+require_identity_realm:: Require that the EAP Identity contains a
+realm, as per https://tools.ietf.org/html/rfc7542[RFC 7542].
+
+If `require_identity_realm` is `nai`, the EAP identity MUST end with
+`@`, followed by a DNS name. In
+https://tools.ietf.org/html/rfc7542[RFC 7542] syntax,
+
+----
+@<label0>.<label1>[.<labelN>]
+----
+
+So `@foo` does not match, because it is not a valid name in DNS. The
+identity `@example.com` is allowed, as it is a valid name in DNS.
+
+If `require_identity_realm` is `yes`, the EAP identity provided must
+either match the NAI format described above, or a
+`Stripped-User-Domain` attribute must be present in the request list.
+This validation mode is intended to be user where Windows machine
+authentication is intermixed with user authentication.
+
+If `require_identity_realm` is `no`, no identity format checks are
+performed. It is NOT RECOMMENDED to use this value. Future security
+standards will key off the NAI realm to validate the certificate that
+FreeRADIUS presents. If you disable the NAI checks, your users will be
+vulnerable to attackers who create fake certificate.
+
+In addition, disabling the realm checks means that the EAP packets
+will not be able to be proxied through a roaming federation such as
+eduroam or OpenRoaming.
+
+The default value is `nai`.
+
+Session tracking has been moved to the `session` section of a virtual
+server.
+
+  * timer_expire --> timeout
+  * max_sessions --> max
+  * dedup_key    --> dedup_key
+
+default_eap_type:: The default EAP submodule to invoke when an
+`EAP-Identity` response is received.
+
+If a `default_eap_type` value is not provided, enabled EAP submodules
+will be queried to determine if they recognise the provided
+EAP-Identity. If no submodules recognise the identity, the first
+`type` value listed below will be used.
+
+If the `control.EAP-Type` attribute is set, then that EAP type takes
+precedence over any configured or inferred EAP-Type.
+
+It is generally recommended to NOT set `default_eap_type`, and instead
+order the `type` configuration items, below.
+
+ignore_unknown_eap_types::
+
+There are many EAP types, but the server has support for only a
+limited subset. If the server receives a request for an EAP type it
+does not support, then it normally rejects the request. By setting
+this configuration to `yes`, you can tell the server to instead keep
+processing the request. Another module MUST then be configured to
+proxy the request to another RADIUS server which supports that EAP
+type.
+
+NOTE: If another module is NOT configured to handle the request, then
+the request will still end up being rejected.
+
+== Allowed EAP-types
+
+type:: Only EAP types listed below with a `type = <EAP-Type>` pair
+will be allowed.
+
+In addition, setting `type = md5` will load the configuration section
+`md5 { ... }`. There is no need to "comment out" the entire
+configuration section for EAP types which are not used. Instead,
+simply comment out or delete the `type = ..` entry for that EAP
+method, and the entire configuration section will be ignored.
+
+If the `control.EAP-Type` attribute is set, then that is used to form
+the list of allowed EAP types, with the first instance being the
+default type and others also being allowed.
+
+If `control.EAP-Type` is set to an EAP type which is not listed below
+, then that setting will be ignored. The list here determines which
+methods are loaded and available.
+
+=== EAP-MD5
+
+WARNING: EAP-MD5 authentication cannot be used for wireless
+connections. It is insecure, and does not provide for dynamic WEP keys
+or WPA enterprise.
+
+=== EAP-PSK
+
+This module implements EAP-PSK
+(https://tools.ietf.org/html/rfc4764[RFC 4764]).
+
+The peer asserts an identity during authentication, and the pre-shared
+key for that identity is looked up by an "eap-psk" virtual server.
+See sites-available/eap-psk for a worked example, including how the
+key is set.
+
+To enable EAP-PSK, enable the "eap-psk" virtual server, then uncomment
+this section and the "type = psk" entry above.
+
+virtual_server:: The "eap-psk" virtual server which looks up the
+pre-shared key for a peer identity.
+
+=== EAP-PWD (Secure password-based authentication)
+
+In v4, the "known good" password is taken from the
+`request.control.Password.Cleartext` list, as is done by other
+modules. The change from v3 is that the `inner-tunnel` virtual server
+is not used.
+
+fragment_size:: This has the same meaning as for TLS.
+
+=== Generic Token Card
+
+Currently, this is only permitted inside of `EAP-TTLS`, or `EAP-PEAP`.
+The module `challenges` the user with text, and the response from the
+user is taken to be the
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`.
+
+WARNING: Proxying the tunneled `EAP-GTC` session is a bad idea, the
+users password will go over the wire in plain-text, for anyone to see.
+
+challenge:: The default challenge, which many clients ignore.
+
+auth_type::
+
+The plain-text response which comes back is put into a
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
+attribute, and passed to another module for authentication. This
+allows the `EAP-GTC` response to be checked against plain-text, or
+crypt'd passwords.
+
+If you say "Local" instead of "PAP", then the module will look for a
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
+configured for the request, and do the authentication itself.
 
 === EAP-TLS
 
-The common TLS configuration for TLS-based EAP types is given above in
-the `tls-config { ... }` section.
+The TLS configuration for TLS-based EAP types is given in the
+`tls-common` template at the top of this file.
 
-Point to the common TLS configuration
+tls { ... }:: The TLS configuration for this method.
+
+The settings come from the `tls-common` template.  Set an item here to
+override the template's value for this method only.
 
 require_client_cert:: Whether we require a client certificate.
 
@@ -837,10 +855,8 @@ is only secure if the supplicant validates the server certificate
 presented. If the client disables certificate validation, then an
 attacker can pretend to be the server, and collect user credentials.
 
-tls:: Point to the common TLS configuration
-
-Which `tls-config` section the TLS negotiation parameters are in
-- see `EAP-TLS` above for an explanation.
+tls { ... }:: The TLS configuration for this method, from the
+`tls-common` template.  See `EAP-TLS` above.
 
 [WARNING]
 ====
@@ -894,34 +910,29 @@ certificate. See the comments above for EAP-TTLS about this topic.
 
 [IMPORTANT]
 ====
-* If you see the server send an
-  `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]`,
-  and the client never sends another
-  `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`,
-  then *STOP*!
+  * If you see the server send an `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]`, and the client never
+sends another `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`, then *STOP*!
 
-* The server certificate has to have special OID's in it, or else the
-  Microsoft clients will silently fail. See the `scripts/xpextensions`
-  file for details, and the following page
-  http://support.microsoft.com/kb/814394/en-us
+  * The server certificate has to have special OID's in it, or else the
+Microsoft clients will silently fail. See the
+`scripts/xpextensions` file for details, and the following page
+http://support.microsoft.com/kb/814394/en-us
 
-* If is still doesn't work, and you're using Samba, you may be
-  encountering a Samba bug.
+  * If is still doesn't work, and you're using Samba, you may be
+encountering a Samba bug.
 
 For further information, see
 https://bugzilla.samba.org/show_bug.cgi?id=6563
 
-* Note that we do not necessarily agree with their explanation. but
-  the fix does appear to work.
+  * Note that we do not necessarily agree with their explanation. but
+the fix does appear to work.
 ====
 
 NOTE: To use `PEAP` you must also configure an inner method in
 `mods-enabled/eap_inner`.
 
-tls:: Point to the common TLS configuration
-
-Which `tls-config` section the TLS negotiation parameters are in
-- see `EAP-TLS` above for an explanation.
+tls { ... }:: The TLS configuration for this method, from the
+`tls-common` template.  See `EAP-TLS` above.
 
 default_eap_type:: The default EAP type proposed by the server inside
 of the tunnel.
@@ -1023,7 +1034,8 @@ The FAST module implements the EAP-FAST protocol.
 NOTE: To use `EAP-FAST` you must also configure an `inner` method in
 `mods-enabled/eap_inner`.
 
-tls:: Point to the common TLS configuration
+tls { ... }:: The TLS configuration for this method, from the
+`tls-common` template.  See `EAP-TLS` above.
 
 cipher_list:: Set the list of allowed TLS cipher suites.
 
@@ -1206,6 +1218,51 @@ TODO
 == Default Configuration
 
 ----
+@templates tls-common {
+#		virtual_server = tls-session
+#		auto_chain = no
+	chain rsa {
+#			format = "PEM"
+		certificate_file = ${certdir}/rsa/server.pem
+		ca_file = ${certdir}/rsa/ca.pem
+		private_key_password = whatever
+		private_key_file = ${certdir}/rsa/server.key
+#			verify_mode = "hard"
+		include_root_ca = no
+	}
+##		chain ecc {
+##			certificate_file = ${certdir}/ecc/server.pem
+##			ca_file = ${certdir}/ecc/ca.pem
+##			private_key_password = whatever
+##			private_key_file = ${certdir}/ecc/server.key
+##		}
+	ca_file = ${cadir}/rsa/ca.pem
+##		psk_identity = "test"
+##		psk_hexphrase = "036363823"
+#		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
+#		cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+#		dh_file = ${certdir}/dh
+#		fragment_size = 1024
+	ca_path = ${cadir}
+	cipher_list = "DEFAULT"
+	cipher_server_preference = yes
+#		tls_max_version = 1.2
+#		tls_min_version = 1.2
+	ecdh_curve = prime256v1
+#		client_hello_parse = no
+	verify {
+#			mode = all
+#			attribute_mode = client-and-issuer
+	}
+	session {
+#			mode = auto
+#			name = "%{EAP-Type}%interpreter('server')"
+#			lifetime = 86400
+#			require_extended_master_secret = yes
+#			require_perfect_forward_secrecy = no
+#			session_ticket_key = "super-secret-key"
+	}
+}
 eap {
 	require_identity_realm = no
 #	default_eap_type = md5
@@ -1235,64 +1292,25 @@ eap {
 #		challenge = "Password: "
 		auth_type = PAP
 	}
-	tls-config tls-common {
-#		virtual_server = tls-session
-#		auto_chain = no
-		chain rsa {
-#			format = "PEM"
-			certificate_file = ${certdir}/rsa/server.pem
-			ca_file = ${certdir}/rsa/ca.pem
-			private_key_password = whatever
-			private_key_file = ${certdir}/rsa/server.key
-#			verify_mode = "hard"
-			include_root_ca = no
-		}
-##		chain ecc {
-##			certificate_file = ${certdir}/ecc/server.pem
-##			ca_file = ${certdir}/ecc/ca.pem
-##			private_key_password = whatever
-##			private_key_file = ${certdir}/ecc/server.key
-##		}
-		ca_file = ${cadir}/rsa/ca.pem
-##		psk_identity = "test"
-##		psk_hexphrase = "036363823"
-#		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
-#		cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
-#		dh_file = ${certdir}/dh
-#		fragment_size = 1024
-		ca_path = ${cadir}
-		cipher_list = "DEFAULT"
-		cipher_server_preference = yes
-#		tls_max_version = 1.2
-#		tls_min_version = 1.2
-		ecdh_curve = prime256v1
-#		client_hello_parse = no
-		verify {
-#			mode = all
-#			attribute_mode = client-and-issuer
-		}
-		session {
-#			mode = auto
-#			name = "%{EAP-Type}%interpreter('server')"
-#			lifetime = 86400
-#			require_extended_master_secret = yes
-#			require_perfect_forward_secrecy = no
-#			session_ticket_key = "super-secret-key"
-		}
-	}
 	tls {
-		tls = tls-common
+		tls {
+			$template tls-common
+		}
 #		require_client_cert = yes
 #		include_length = yes
 	}
 	ttls {
-		tls = tls-common
+		tls {
+			$template tls-common
+		}
 		virtual_server = "inner-tunnel"
 #		include_length = yes
 #		require_client_cert = yes
 	}
 	peap {
-		tls = tls-common
+		tls {
+			$template tls-common
+		}
 		default_eap_type = mschapv2
 		virtual_server = "inner-tunnel"
 #		require_client_cert = yes
@@ -1304,7 +1322,9 @@ eap {
 #		with_ntdomain_hack = yes
 	}
 	fast {
-		tls = tls-common
+		tls {
+			$template tls-common
+		}
 		cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
 		pac_lifetime = 604800
 		authority_identity = "1234"

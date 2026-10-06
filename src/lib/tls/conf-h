@@ -141,8 +141,6 @@ struct fr_tls_conf_s {
 	CONF_SECTION	*virtual_server;		//!< The virtual server containing certificate validation
 							///< policies, and cache control sections.
 
-	CONF_SECTION	*cs;				//!< configuration section this tls config is based on.
-
 	fr_tls_chain_conf_t	**chains;		//!< One or more certificates
 
 	char const	*random_file;			//!< If set, we read 10K of data (or the complete file)
@@ -213,12 +211,6 @@ struct fr_tls_conf_s {
 	size_t			sizeof_alpn;		//!< Length of `alpn`, which carries no terminator.
 	bool			alpn_required;		//!< Fail if no ALPN was negotiated.
 };
-
-fr_tls_conf_t	*fr_tls_conf_alloc(TALLOC_CTX *ctx);
-
-fr_tls_conf_t	*fr_tls_conf_parse_server(CONF_SECTION *cs);
-
-fr_tls_conf_t	*fr_tls_conf_parse_client(CONF_SECTION *cs);
 
 #ifdef __cplusplus
 }

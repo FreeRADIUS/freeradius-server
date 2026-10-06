@@ -39,8 +39,7 @@ typedef struct {
 	/*
 	 *	TLS configuration
 	 */
-	char const		*tls_conf_name;		//!< The name of the shared TLS configuration.
-	fr_tls_conf_t		*tls_conf;		//!< Shared TLS configuration structure.
+	fr_tls_conf_t		*tls_conf;		//!< Parsed from the `tls { ... }` subsection.
 
 	bool			include_length;
 

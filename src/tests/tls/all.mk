@@ -84,7 +84,7 @@ TLS_CLOSE_RECEIPT := $(OUTPUT)/close_notify.receipt
 #  is told what the configuration says.  The port is in common.conf, which
 #  every configuration here includes, so one port serves them all.
 #
-TLS_PORT := $(shell sed -n 's/^[ 	]*port[ 	]*=[ 	]*\([0-9][0-9]*\).*/\1/p' $(TLS_COMMON))
+TLS_PORT := $(shell sed -n 's/^[ 	]*port[ 	]*=[ 	]*\([0-9][0-9]*\).*/\1/p' $(TLS_CONF))
 
 #
 #  unit_test_tls loads its process module and its rlm_* modules at run time,

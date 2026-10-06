@@ -33,6 +33,16 @@ RCSIDH(redis_h, "$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/trunk.h>
 
+#include "config.h"
+
+#ifndef WITH_TLS
+#  undef HAVE_REDIS_SSL
+#endif
+
+#ifdef HAVE_REDIS_SSL
+#  include <freeradius-devel/tls/base.h>
+#endif
+
 //DIAG_OFF(extra-semi-stmt)
 #include <hiredis/hiredis.h>
 //DIAG_ON(extra-semi-stmt)
@@ -138,9 +148,28 @@ typedef struct {
 	char const		*inst_name;	//!< Instance name for triggers.
 
 	trunk_conf_t		trunk_conf;	//!< Configuration for trunk connections.
+#ifdef HAVE_REDIS_SSL
+	fr_tls_conf_t		*tls;		//!< Parsed from the `tls { ... }` subsection.  NULL when
+						///< the section is absent.  An absent section is an error
+						///< when `use_tls` is set.
+#endif
 } fr_redis_conf_t;
 
+/*
+ *	`REDIS_TLS_CONFIG` comes first in `REDIS_COMMON_CONFIG`, so
+ *	`REDIS_COMMON_CONFIG` never ends with a comma, whether or not
+ *	`REDIS_TLS_CONFIG` expands to a row.
+ */
+#ifdef HAVE_REDIS_SSL
+#  define REDIS_TLS_CONFIG \
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, fr_redis_conf_t, tls, fr_tls_client_config), \
+	  .subcs_type = "fr_tls_conf_t" },
+#else
+#  define REDIS_TLS_CONFIG
+#endif
+
 #define REDIS_COMMON_CONFIG \
+	REDIS_TLS_CONFIG \
 	{ FR_CONF_OFFSET_FLAGS("server", CONF_FLAG_REQUIRED | CONF_FLAG_MULTI, fr_redis_conf_t, hostname) }, \
 	{ FR_CONF_OFFSET("port", fr_redis_conf_t, port), .dflt = "6379" }, \
 	{ FR_CONF_OFFSET("database", fr_redis_conf_t, database), .dflt = "0" }, \

@@ -18,6 +18,73 @@
 #
 
 #
+#  == TLS configuration for the inner EAP-TLS method
+#
+#  `tls-peer` is a template.  The `tls { ... }` section of the `tls`
+#  method below uses the template.  See `mods-available/eap` for how
+#  methods share one TLS configuration through a template.
+#
+@templates tls-peer {
+	#
+	#  auto_chain:: See the `eap` module for common configuration
+	#  explanation.
+	#
+#		auto_chain = yes
+
+	#
+	#  chain { ... }:: See the `eap` module for common configuration
+	#  explanation.
+	#
+	chain {
+		certificate_file = ${certdir}/rsa/server.pem
+		ca_file = ${certdir}/rsa/ca.pem
+		private_key_password = whatever
+		private_key_file = ${certdir}/rsa/server.key
+	}
+
+	#
+	#  ca_file:: See the `eap` module for common configuration
+	#  explanation.
+	#
+	ca_file = ${cadir}/rsa/ca.pem
+
+	#
+	#  dh_file:: See `mods-available/eap`
+	#
+#		dh_file = ${certdir}/dh
+
+	#
+	#  random_file:: See the `eap` module for common configuration
+	#  explanation.
+	#
+#		random_file = /dev/urandom
+
+	#
+	#  fragment_size:: See the `eap` module for common configuration
+	#  explanation.
+	#
+	fragment_size = 16384
+
+	#
+	#  ca_path:: See the `eap` module for common configuration
+	#  explanation.
+	#
+	ca_path = ${cadir}
+
+	#
+	#  check_cert_issuer:: See the `eap` module for common configuration
+	#  explanation.
+	#
+#		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
+
+	#
+	#  check_cert_cn:: See the `eap` module for common configuration
+	#  explanation.
+	#
+#		check_cert_cn = %{User-Name}
+}
+
+#
 #  == Configuration Settings
 #
 #  eap inner-eap { ... }::
@@ -108,69 +175,6 @@ eap inner-eap {
 	#
 
 	#
-	#  == tls-config tls-peer { ... }
-	#
-	tls-config tls-peer {
-		#
-		#  auto_chain:: See the `eap` module for common configuration
-		#  explanation.
-		#
-#		auto_chain = yes
-
-		#
-		#  chain { ... }:: See the `eap` module for common configuration
-		#  explanation.
-		#
-		chain {
-			certificate_file = ${certdir}/rsa/server.pem
-			ca_file = ${certdir}/rsa/ca.pem
-			private_key_password = whatever
-			private_key_file = ${certdir}/rsa/server.key
-		}
-
-		#
-		#  ca_file:: See the `eap` module for common configuration
-		#  explanation.
-		#
-		ca_file = ${cadir}/rsa/ca.pem
-
-		#
-		#  dh_file:: See `mods-available/eap`
-		#
-#		dh_file = ${certdir}/dh
-
-		#
-		#  random_file:: See the `eap` module for common configuration
-		#  explanation.
-		#
-#		random_file = /dev/urandom
-
-		#
-		#  fragment_size:: See the `eap` module for common configuration
-		#  explanation.
-		#
-		fragment_size = 16384
-
-		#
-		#  ca_path:: See the `eap` module for common configuration
-		#  explanation.
-		#
-		ca_path = ${cadir}
-
-		#
-		#  check_cert_issuer:: See the `eap` module for common configuration
-		#  explanation.
-		#
-#		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
-
-		#
-		#  check_cert_cn:: See the `eap` module for common configuration
-		#  explanation.
-		#
-#		check_cert_cn = %{User-Name}
-	}
-
-	#
 	#  == EAP-TLS
 	#
 	#  We RECOMMEND using different certificates for the inner and outer
@@ -186,7 +190,9 @@ eap inner-eap {
 	#  `server.cnf` file.
 	#
 	tls {
-		tls = tls-peer
+		tls {
+			$template tls-peer
+		}
 		require_client_cert = yes
 	}
 }

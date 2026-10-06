@@ -82,7 +82,6 @@ typedef struct {
 	fr_redis_conf_t		conf;					//!< Connection parameters for the Redis server.
 									//!< Must be first field in this struct.
 
-	CONF_SECTION 		*tls_conf;				//!< TLS CONF_SECTION
 
 	rlm_redis_lua_t		lua;					//!< Array of functions to register.
 
@@ -882,9 +881,9 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
 
 	if (talloc_array_length(inst->lua.funcs) == 0) {
-		t->rtcluster = fr_redis_ct_alloc(t, inst->tls_conf, mctx->el, &inst->conf, NULL, NULL, false);
+		t->rtcluster = fr_redis_ct_alloc(t, mctx->el, &inst->conf, NULL, NULL, false);
 	} else {
-		t->rtcluster = fr_redis_ct_alloc(t, inst->tls_conf, mctx->el, &inst->conf, lua_script_load, t, true);
+		t->rtcluster = fr_redis_ct_alloc(t, mctx->el, &inst->conf, lua_script_load, t, true);
 	}
 	if (!t->rtcluster) return -1;
 	t->inst = inst;
@@ -921,14 +920,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->conf.module_name = mctx->mi->module->name;
 	inst->conf.inst_name = mctx->mi->name;
 
-	if (inst->conf.use_tls) {
-		inst->tls_conf = cf_section_find(mctx->mi->conf, "tls", CF_IDENT_ANY);
-
-		if (!inst->tls_conf) {
-			cf_log_err(mctx->mi->conf, "Missing tls section");
-			return -1;
-		}
+#ifdef HAVE_REDIS_SSL
+	if (inst->conf.use_tls && !inst->conf.tls) {
+		cf_log_err(mctx->mi->conf, "Missing tls section");
+		return -1;
 	}
+#endif
 
 	if (!inst->conf.use_cluster_map) return 0;
 
