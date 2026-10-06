@@ -397,7 +397,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 	int		lineno = 0;
 	ssize_t		len;
 	char		line_buff[8192];
-	char		output_buff[8192];
+	char		output_buff[8192] = "";	/* A match before any expansion compares against the empty string, not stack garbage */
 	char		unescaped[sizeof(output_buff)];
 	fr_sbuff_t	line;
 	fr_sbuff_t	out;
