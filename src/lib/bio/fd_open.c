@@ -47,6 +47,37 @@
  *	- in fd_open.c, if enum is FR_BIO_FD_IP_UNSET, do DNS lookup, and fail if there's no DNS.
  */
 
+static int fr_bio_fd_common_rcvsndbuf(int fd, fr_bio_fd_config_t const *cfg)
+{
+#ifdef SO_RCVBUF
+	if (cfg->recv_buff && cfg->recv_buff <= INT_MAX) {
+		int opt;
+
+		opt = (int) cfg->recv_buff;
+
+		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
+			fr_strerror_printf("Failed setting SO_RCVBUF: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+#endif
+
+#ifdef SO_SNDBUF
+	if (cfg->send_buff && cfg->send_buff <= INT_MAX) {
+		int opt;
+
+		opt = (int) cfg->send_buff;
+
+		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0) {
+			fr_strerror_printf("Failed setting SO_SNDBUF: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+#endif
+
+	return 0;
+}
+
 /** Initialize common datagram information
  *
  */
@@ -87,7 +118,7 @@ static int fr_bio_fd_common_tcp(int fd, UNUSED fr_socket_t const *sock, fr_bio_f
 	}
 #endif
 
-	return 0;
+	return fr_bio_fd_common_rcvsndbuf(fd, cfg);
 }
 
 
@@ -121,36 +152,7 @@ static int fr_bio_fd_common_datagram(int fd, UNUSED fr_socket_t const *sock, fr_
 	}
 #endif
 
-
-#ifdef SO_RCVBUF
-	if (cfg->recv_buff) {
-		int opt;
-
-		fr_assert(cfg->recv_buff <= INT_MAX);
-		opt = (int) cfg->recv_buff;
-
-		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-			fr_strerror_printf("Failed setting SO_RCVBUF: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-#endif
-
-#ifdef SO_SNDBUF
-	if (cfg->send_buff) {
-		int opt;
-
-		fr_assert(cfg->send_buff <= INT_MAX);
-		opt = (int) cfg->send_buff;
-
-		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0) {
-			fr_strerror_printf("Failed setting SO_SNDBUF: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-#endif
-
-	return 0;
+	return fr_bio_fd_common_rcvsndbuf(fd, cfg);
 }
 
 /** Initialize a UDP socket.
