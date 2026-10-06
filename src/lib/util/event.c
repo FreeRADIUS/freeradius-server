@@ -760,8 +760,18 @@ static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
 	 */
 	if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &ef->sock_type, &opt_len) == 0) {
 #ifdef SO_GET_FILTER
+		uint8_t unused_filter;
+
+		/*
+		 *	With a zero length the kernel reports the length of
+		 *	the attached filter in opt_len and does not write
+		 *	the buffer.  See sk_get_filter() in
+		 *	github.com/torvalds/linux/blob/4a4852376e3a2727ea40e61143d6d7c22bb6dfad/net/core/filter.c#L11668-L11669
+		 *	The call below passes a buffer anyway, because the
+		 *	static analyser's model of getsockopt() rejects NULL.
+		 */
 		opt_len = 0;
-		if (unlikely(getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, NULL, &opt_len) < 0)) {
+		if (unlikely(getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &unused_filter, &opt_len) < 0)) {
 			fr_strerror_printf("Failed determining PF status: %s", fr_syserror(errno));
 			return -1;
 		}
