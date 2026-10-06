@@ -151,9 +151,10 @@ typedef struct {
 	uint8_t		alert_description;
 	bool		initialized;
 
-	char 		info_description[256];
 	size_t		record_len;
-	int		version;
+	int		version;			//!< NOT to be trusted!  Use SSL_version(), see session.c
+
+	char 		info_description[256];
 } fr_tls_info_t;
 
 /** Result of the last operation on the session
