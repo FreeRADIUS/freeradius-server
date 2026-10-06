@@ -89,14 +89,13 @@ jobs:
         #  block repeats the shape of the shipped /etc/pkg/FreeBSD.conf,
         #  because an override replaces a repository's whole block.  pkg
         #  expands ${ABI} itself, so the single quotes keep the shell away
-        #  from the variable.  The build installs no kernel modules, and
-        #  the kernel module repository is built for a newer patch level
-        #  than the image, so that repository is disabled.
+        #  from the variable.  The kernel module repository stays on the
+        #  shipped quarterly branch, because the build installs no kernel
+        #  modules.
         #
         sudo mkdir -p /usr/local/etc/pkg/repos
         printf '%s\n' \
           'FreeBSD-ports: { url: "pkg+https://pkg.FreeBSD.org/${ABI}/latest", mirror_type: "srv", signature_type: "fingerprints", fingerprints: "/usr/share/keys/pkg", enabled: yes }' \
-          'FreeBSD-ports-kmods: { enabled: no }' \
           | sudo tee /usr/local/etc/pkg/repos/FreeBSD.conf > /dev/null
         sudo pkg update
         sudo pkg upgrade -y
