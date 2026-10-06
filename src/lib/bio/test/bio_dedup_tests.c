@@ -63,9 +63,31 @@ static ssize_t stub_read(UNUSED fr_bio_t *bio, UNUSED void *pctx, void *buffer, 
 	return sizeof(request);
 }
 
-static ssize_t stub_write_all(UNUSED fr_bio_t *bio, UNUSED void *pctx, UNUSED void const *buffer, size_t size)
+static size_t			stub_bytes;		//!< bytes of reply data which the stub transport has accepted
+
+static ssize_t stub_write_all(UNUSED fr_bio_t *bio, UNUSED void *pctx, void const *buffer, size_t size)
 {
+	if (!buffer) return 0;		/* nothing to flush */
+
+	stub_bytes += size;
 	return size;
+}
+
+/** A stub transport write function which always returns IO_WOULD_BLOCK.
+ */
+static ssize_t stub_write_block(UNUSED fr_bio_t *bio, UNUSED void *pctx, UNUSED void const *buffer, UNUSED size_t size)
+{
+	return fr_bio_error(IO_WOULD_BLOCK);
+}
+
+/** A stub transport write function which accepts one byte of each write.
+ */
+static ssize_t stub_write_one(UNUSED fr_bio_t *bio, UNUSED void *pctx, void const *buffer, UNUSED size_t size)
+{
+	if (!buffer) return 0;
+
+	stub_bytes++;
+	return 1;
 }
 
 static fr_bio_t *stub_alloc(TALLOC_CTX *ctx)
@@ -89,6 +111,7 @@ static fr_bio_t *test_dedup_alloc(TALLOC_CTX *ctx, fr_bio_dedup_config_t *cfg)
 
 	expired_count = 0;
 	saved_item = NULL;
+	stub_bytes = 0;
 
 	cfg->el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!cfg->el) return NULL;
@@ -256,10 +279,124 @@ done:
 	talloc_free(ctx);
 }
 
+/** Call the dedup bio's write_resume callback, as fr_bio_packet_write_resume() does.
+ */
+static int test_write_resume(fr_bio_t *dedup)
+{
+	fr_bio_common_t *my = (fr_bio_common_t *) dedup;
+
+	if (!my->priv_cb.write_resume) return -1;
+
+	return my->priv_cb.write_resume(dedup);
+}
+
+/** Read a request, and respond while the stub transport is blocked, so that the reply goes on the
+ *  pending list.
+ */
+static bool test_pending_reply(fr_bio_t *dedup, fr_bio_t *stub, uint8_t *buffer, size_t size)
+{
+	if (!test_read_request(dedup, buffer, size)) return false;
+
+	stub->write = stub_write_block;
+	return (fr_bio_dedup_respond(dedup, saved_item) == sizeof(reply));
+}
+
+/** write_resume sends a pending reply, and the dedup entry then expires once the lifetime is over.
+ */
+static void test_resume_sends_pending(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_dedup_config_t	cfg;
+	fr_bio_t		*dedup, *stub;
+	uint8_t			buffer[64];
+
+	dedup = test_dedup_alloc(ctx, &cfg);
+	TEST_CHECK(dedup != NULL);
+	if (!dedup) goto done;
+	stub = fr_bio_next(dedup);
+
+	TEST_CASE("a reply written while the stub transport is blocked goes on the pending list");
+	TEST_CHECK(test_pending_reply(dedup, stub, buffer, sizeof(buffer)));
+	TEST_CHECK_RET((int) stub_bytes, 0);
+
+	TEST_CASE("write_resume sends the pending reply");
+	stub->write = stub_write_all;
+	TEST_CHECK_RET(test_write_resume(dedup), 1);
+	TEST_CHECK_RET((int) stub_bytes, (int) sizeof(reply));
+
+	TEST_CASE("the dedup entry then expires once the lifetime is over");
+	test_run_timers(&cfg);
+	TEST_CHECK_RET(expired_count, 1);
+
+done:
+	talloc_free(ctx);
+}
+
+/** write_resume keeps the pending reply when the stub transport is still blocked.
+ */
+static void test_resume_still_blocked(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_dedup_config_t	cfg;
+	fr_bio_t		*dedup, *stub;
+	uint8_t			buffer[64];
+
+	dedup = test_dedup_alloc(ctx, &cfg);
+	TEST_CHECK(dedup != NULL);
+	if (!dedup) goto done;
+	stub = fr_bio_next(dedup);
+
+	TEST_CHECK(test_pending_reply(dedup, stub, buffer, sizeof(buffer)));
+
+	TEST_CASE("write_resume reports that writes are still blocked");
+	TEST_CHECK_RET(test_write_resume(dedup), 0);
+
+	TEST_CASE("write_resume kept the pending reply, and the next write_resume call sends the pending reply");
+	stub->write = stub_write_all;
+	TEST_CHECK_RET(test_write_resume(dedup), 1);
+	TEST_CHECK_RET((int) stub_bytes, (int) sizeof(reply));
+
+done:
+	talloc_free(ctx);
+}
+
+/** When the stub transport writes only part of a pending reply, the next resume writes the rest.
+ */
+static void test_resume_partial(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_dedup_config_t	cfg;
+	fr_bio_t		*dedup, *stub;
+	uint8_t			buffer[64];
+
+	dedup = test_dedup_alloc(ctx, &cfg);
+	TEST_CHECK(dedup != NULL);
+	if (!dedup) goto done;
+	stub = fr_bio_next(dedup);
+
+	TEST_CHECK(test_pending_reply(dedup, stub, buffer, sizeof(buffer)));
+
+	TEST_CASE("the stub transport accepts one byte, so write_resume reports that writes are still blocked");
+	stub->write = stub_write_one;
+	TEST_CHECK_RET(test_write_resume(dedup), 0);
+	TEST_CHECK_RET((int) stub_bytes, 1);
+
+	TEST_CASE("the next write_resume call sends the rest of the reply exactly once");
+	stub->write = stub_write_all;
+	TEST_CHECK_RET(test_write_resume(dedup), 1);
+	TEST_CHECK_RET((int) stub_bytes, (int) sizeof(reply));
+
+done:
+	talloc_free(ctx);
+}
+
 TEST_LIST = {
 	{ "respond_expires",		test_respond_expires },
 	{ "write_expires",		test_write_expires },
 	{ "entries_are_reused",		test_entries_are_reused },
 	{ "equal_expiry",		test_equal_expiry },
+	{ "resume_sends_pending",	test_resume_sends_pending },
+	{ "resume_still_blocked",	test_resume_still_blocked },
+	{ "resume_partial",		test_resume_partial },
 	TEST_TERMINATOR
 };

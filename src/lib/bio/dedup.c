@@ -301,6 +301,7 @@ ssize_t fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 	if ((rcode == 0) || (rcode == fr_bio_error(IO_WOULD_BLOCK))) {
 		if (item->state == FR_BIO_DEDUP_STATE_ACTIVE) {
 			(void) fr_bio_dedup_list_remove(&my->active, item);
+			item->expires = fr_time_add_time_delta(fr_time(), my->config.lifetime);
 			goto save_in_pending;
 		}
 
@@ -472,7 +473,27 @@ static ssize_t fr_bio_dedup_flush_pending(fr_bio_dedup_t *my)
 		 *	Write the entry to the next bio.
 		 */
 		rcode = next->write(next, item->reply_ctx, item->reply, item->reply_size);
-		if (rcode <= 0) return rcode; /* @todo - update timer if we've written one packet */
+
+		/*
+		 *	The next bio is blocked.  Put the entry back at the head of the pending list, so that we write
+		 *	the entry first when writes resume.
+		 */
+		if ((rcode == 0) || (rcode == fr_bio_error(IO_WOULD_BLOCK))) {
+			fr_bio_dedup_list_insert_head(&my->pending, item);
+			out_rcode = fr_bio_error(IO_WOULD_BLOCK);
+			break;
+		}
+
+		/*
+		 *	The next bio returned an error other than IO_WOULD_BLOCK.  Release the entry, and return the
+		 *	error.  The next bio has already decided whether the error is fatal, and has shut the chain
+		 *	down if the error is fatal.
+		 */
+		if (rcode < 0) {
+			fr_bio_dedup_release(my, item, FR_BIO_DEDUP_WRITE_ERROR);
+			out_rcode = rcode;
+			break;
+		}
 
 		/*
 		 *	We've written the entire packet, move it to the expiry list.
@@ -621,6 +642,13 @@ static ssize_t fr_bio_dedup_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	}
 
 	/*
+	 *	We have written all of the partial entry, so we restore fr_bio_dedup_write() as the write
+	 *	function.  If the next bio writes only part of a pending reply, fr_bio_dedup_blocked() installs
+	 *	fr_bio_dedup_write_partial() again.
+	 */
+	my->bio.write = fr_bio_dedup_write;
+
+	/*
 	 *	Flush any packets which were pending during the blocking period.
 	 */
 	rcode = fr_bio_dedup_flush_pending(my);
@@ -634,7 +662,6 @@ static ssize_t fr_bio_dedup_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	/*
 	 *	Try to write the packet which we were given.
 	 */
-	my->bio.write = fr_bio_dedup_write;
 	return fr_bio_dedup_write(bio, packet_ctx, buffer, size);
 }
 
@@ -669,11 +696,10 @@ static ssize_t fr_bio_dedup_blocked(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *it
 		break;
 
 		/*
-		 *	We tried to write a pending packet and got blocked.
+		 *	The next bio wrote only part of a pending reply.  fr_bio_dedup_flush_pending() has already
+		 *	removed the entry from the pending list.
 		 */
 	case FR_BIO_DEDUP_STATE_PENDING:
-		fr_assert(fr_bio_dedup_list_head(&my->pending) == item);
-		(void) fr_bio_dedup_list_remove(&my->pending, item);
 		break;
 
 		/*
@@ -713,6 +739,13 @@ static ssize_t fr_bio_dedup_write_data(fr_bio_t *bio, void *packet_ctx, const vo
 	if (rcode <= 0) return rcode;
 
 	/*
+	 *	We have written all of the partial data, so we restore fr_bio_dedup_write() as the write
+	 *	function.  If the next bio writes only part of a pending reply, fr_bio_dedup_blocked() installs
+	 *	fr_bio_dedup_write_partial().
+	 */
+	my->bio.write = fr_bio_dedup_write;
+
+	/*
 	 *	Flush any packets which were pending during the blocking period.
 	 */
 	rcode = fr_bio_dedup_flush_pending(my);
@@ -721,7 +754,6 @@ static ssize_t fr_bio_dedup_write_data(fr_bio_t *bio, void *packet_ctx, const vo
 	/*
 	 *	Try to write the packet which we were given.
 	 */
-	my->bio.write = fr_bio_dedup_write;
 	return fr_bio_dedup_write(bio, packet_ctx, buffer, size);
 }
 
@@ -753,6 +785,43 @@ static ssize_t fr_bio_dedup_blocked_data(fr_bio_dedup_t *my, uint8_t const *buff
 /*
  *	There is no fr_bio_dedup_rewrite(), packets are never re-written by this bio.
  */
+
+/** Resume writes.
+ *
+ *  Write the rest of any partly written reply or data, and then write the replies on the pending list.
+ *
+ * @return
+ *	- <0 on error
+ *	- 0 for "still blocked"
+ *	- 1 for "can resume"
+ */
+static int fr_bio_dedup_write_resume(fr_bio_t *bio)
+{
+	ssize_t rcode;
+	fr_bio_dedup_t *my = talloc_get_type_abort(bio, fr_bio_dedup_t);
+
+	if (my->bio.write == fr_bio_dedup_write) {
+		rcode = fr_bio_dedup_flush_pending(my);
+
+	} else {
+		/*
+		 *	fr_bio_dedup_write_partial() or fr_bio_dedup_write_data() writes the rest of the partial
+		 *	data, and then writes the replies on the pending list.  The NULL buffer tells
+		 *	fr_bio_dedup_write() to flush the next bio.
+		 */
+		rcode = my->bio.write(bio, NULL, NULL, SIZE_MAX);
+	}
+
+	if ((rcode < 0) && (rcode != fr_bio_error(IO_WOULD_BLOCK))) return rcode;
+
+	/*
+	 *	We are still blocked if there is partial data, or a pending reply.  A flush of the next bio may
+	 *	also return IO_WOULD_BLOCK, but the write_resume callback of the next bio resumes the next bio.
+	 */
+	if (my->bio.write != fr_bio_dedup_write) return 0;
+
+	return (fr_bio_dedup_list_num_elements(&my->pending) == 0);
+}
 
 /** Expire an entry when its timer fires.
  *
@@ -1106,6 +1175,7 @@ fr_bio_t *fr_bio_dedup_alloc(TALLOC_CTX *ctx, size_t max_saved,
 	fr_bio_chain(&my->bio, next);
 
 	my->priv_cb.shutdown = fr_bio_dedup_shutdown;
+	my->priv_cb.write_resume = fr_bio_dedup_write_resume;
 
 	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 
