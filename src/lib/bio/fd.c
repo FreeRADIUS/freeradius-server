@@ -1085,7 +1085,7 @@ int fr_bio_fd_close(fr_bio_t *bio)
 	 *	This shouldn't strictly be necessary, as no other processes should be sharing this file
 	 *	descriptor.  But it's the safe (and polite) thing to do.
 	 */
-	if (my->info.type == FR_BIO_FD_CONNECTED) {
+	if (my->info.cfg->transport_type == FR_BIO_FD_TRANSPORT_TCP) {
 		(void) shutdown(my->info.socket.fd, SHUT_RDWR);
 	}
 
@@ -1112,7 +1112,9 @@ static void fr_bio_fd_el_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	/*
 	 *	The entire bio is unusable.
 	 */
-	(void) fr_bio_shutdown(&my->bio);
+	if (my->info.cfg->transport_type == FR_BIO_FD_TRANSPORT_TCP) {
+		(void) fr_bio_shutdown(&my->bio);
+	}
 
 	/*
 	 *	It's possible that the bio may be freed in the error callback,
@@ -1394,6 +1396,8 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 		/*
 		 *	Further reads are disallowed.  However, this likely has no effect for UDP sockets.
 		 */
+		if (my->info.cfg->transport_type != FR_BIO_FD_TRANSPORT_TCP) break;
+
 		if (shutdown(my->info.socket.fd, SHUT_RD) < 0) {
 			fr_strerror_printf("Failed shutting down connected socket - %s", fr_syserror(errno));
 			return -1;
