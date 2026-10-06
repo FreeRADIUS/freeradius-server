@@ -25,7 +25,7 @@ tmpl User-Name[#]
 match User-Name[#]
 
 tmpl User-Name["foo"]
-match ERROR: ERROR offset 10: Invalid data type for array index
+match ERROR: offset 10: Invalid data type for array index
 
 #
 #  IPv4 addresses and prefixes.  A missing octet must not be parsed as zero.
@@ -46,10 +46,10 @@ tmpl 10/8
 match 10.0.0.0/8
 
 tmpl 192..2.1
-match ERROR: ERROR offset 0: Numerical attribute references are not allowed here
+match ERROR: offset 0: Numerical attribute references are not allowed here
 
 tmpl 192.0..1/24
-match ERROR: ERROR offset 0: Numerical attribute references are not allowed here
+match ERROR: offset 0: Numerical attribute references are not allowed here
 
 #
 #  Bare words which begin with '%' are handed to xlat_tokenize(), and the
@@ -72,16 +72,16 @@ match %{(1 + 2)}
 #  Parse errors in xlats get hoisted to tmpls.
 #
 tmpl %{
-match ERROR: ERROR offset 2: Missing closing brace '}'
+match ERROR: offset 2: Missing closing brace '}'
 
 tmpl %{}
-match ERROR: ERROR offset 2: Empty expressions are invalid
+match ERROR: offset 2: Empty expressions are invalid
 
 tmpl %{User-Name
-match ERROR: ERROR offset 11: Missing closing brace '}'
+match ERROR: offset 11: Missing closing brace '}'
 
 tmpl %{1 + 2
-match ERROR: ERROR offset 7: Missing closing brace '}'
+match ERROR: offset 7: Missing closing brace '}'
 
 count
 match 41

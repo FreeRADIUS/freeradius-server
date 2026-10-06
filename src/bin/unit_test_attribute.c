@@ -1621,7 +1621,7 @@ static size_t command_radmin_add(command_result_t *result, command_file_ctx_t *c
 	table->read_only = true;
 
 	if (fr_command_add(table, &command_head, NULL, NULL, table) < 0) {
-		fr_strerror_const_push("ERROR: Failed adding command");
+		fr_strerror_const_push("Failed adding command");
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1705,13 +1705,13 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 
 	slen = xlat_tokenize_condition(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, inlen), NULL, &cc->tmpl_rules);
 	if (slen == 0) {
-		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		fr_strerror_printf_push_head("failed to parse any input");
 		talloc_free(cs);
 		RETURN_OK_WITH_ERROR();
 	}
 
 	if (slen < 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
+		fr_strerror_printf_push_head("offset %d", (int) -slen - 1);
 		talloc_free(cs);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -2902,7 +2902,7 @@ static size_t command_pair_common(command_result_t *result, command_file_ctx_t *
 
 	slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(in, inlen));
 	if (slen <= 0) {
-//		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
+//		fr_strerror_printf_push_head("offset %d", (int) -slen);
 		fr_pair_list_free(&head);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -3023,12 +3023,12 @@ static size_t command_tmpl(command_result_t *result, command_file_ctx_t *cc,
 					 .xlat = cc->tmpl_rules.xlat,
 				 });
 	if (slen == 0) {
-		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		fr_strerror_printf_push_head("failed to parse any input");
 		RETURN_OK_WITH_ERROR();
 	}
 
 	if (slen < 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
+		fr_strerror_printf_push_head("offset %d", (int) -slen - 1);
 
 	return_error:
 		RETURN_OK_WITH_ERROR();
@@ -3228,7 +3228,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	 *	They MUST be identical
 	 */
 	if (fr_value_box_cmp(box, box2) != 0) {
-		fr_strerror_const("ERROR value box reparsing failed.  Results not identical");
+		fr_strerror_const("value box reparsing failed.  Results not identical");
 		fr_strerror_printf_push("out: %pV (as string %.*s)", box2, (int) slen, data);
 		fr_strerror_printf_push("in: %pV (from string %s)", box, value);
 		talloc_free(box2);
@@ -3314,7 +3314,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
 	if (allow_purify) {
-		fr_strerror_printf_push_head("ERROR cannot run 'xlat' when running with command-line argument '-p'");
+		fr_strerror_printf_push_head("cannot run 'xlat' when running with command-line argument '-p'");
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -3328,12 +3328,12 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 				     .xlat = cc->tmpl_rules.xlat,
 			     });
 	if (slen == 0) {
-		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		fr_strerror_printf_push_head("failed to parse any input");
 		RETURN_OK_WITH_ERROR();
 	}
 
 	if (slen < 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
+		fr_strerror_printf_push_head("offset %d", (int) -slen - 1);
 
 	return_error:
 		RETURN_OK_WITH_ERROR();
@@ -3368,7 +3368,7 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 						}
 					   });
 	if (dec_len <= 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
+		fr_strerror_printf_push_head("offset %d", (int) -dec_len);
 
 	return_error:
 		RETURN_OK_WITH_ERROR();
@@ -3410,12 +3410,12 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 
 	slen = xlat_tokenize_expression(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL, &t_rules);
 	if (slen == 0) {
-		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		fr_strerror_printf_push_head("failed to parse any input");
 		RETURN_OK_WITH_ERROR();
 	}
 
 	if (slen < 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
+		fr_strerror_printf_push_head("offset %d", (int) -slen - 1);
 	return_error:
 		RETURN_OK_WITH_ERROR();
 	}
@@ -3431,7 +3431,7 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 	}
 
 	if (xlat_purify(head, NULL) < 0) {
-		fr_strerror_printf_push_head("ERROR purifying node - %s", fr_strerror());
+		fr_strerror_printf_push_head("purifying node - %s", fr_strerror());
 		goto return_error;
 	}
 
@@ -3472,12 +3472,12 @@ static size_t command_xlat_purify_condition(command_result_t *result, command_fi
 
 	slen = xlat_tokenize_condition(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL, &t_rules);
 	if (slen == 0) {
-		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		fr_strerror_printf_push_head("failed to parse any input");
 		RETURN_OK_WITH_ERROR();
 	}
 
 	if (slen < 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
+		fr_strerror_printf_push_head("offset %d", (int) -slen - 1);
 	return_error:
 		RETURN_OK_WITH_ERROR();
 	}
@@ -3493,7 +3493,7 @@ static size_t command_xlat_purify_condition(command_result_t *result, command_fi
 	}
 
 	if (xlat_purify(head, NULL) < 0) {
-		fr_strerror_printf_push_head("ERROR purifying node - %s", fr_strerror());
+		fr_strerror_printf_push_head("purifying node - %s", fr_strerror());
 		goto return_error;
 	}
 
@@ -3523,7 +3523,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 	char		buff[1024];
 
 	if (allow_purify) {
-		fr_strerror_printf_push_head("ERROR cannot run 'xlat_argv' when running with command-line argument '-p'");
+		fr_strerror_printf_push_head("cannot run 'xlat_argv' when running with command-line argument '-p'");
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -3537,13 +3537,13 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 					  },
 				  }, true);
 	if (slen <= 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
+		fr_strerror_printf_push_head("offset %d", (int) -slen);
 		RETURN_OK_WITH_ERROR();
 	}
 
 	argc = xlat_flatten_to_argv(cc->tmp_ctx, &argv, head);
 	if (argc <= 0) {
-		fr_strerror_printf_push("ERROR in argument %d", (int) -argc);
+		fr_strerror_printf_push("in argument %d", (int) -argc);
 		RETURN_OK_WITH_ERROR();
 	}
 

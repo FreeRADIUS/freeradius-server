@@ -98,7 +98,7 @@ match (%hash.md5(0x666f6f) + "foo")
 
 #  The operator xlats are private, and cannot be named
 xlat_expr %op_add(4, 3) + 6
-match ERROR: ERROR offset 2: Unknown expansion function "op_add"
+match ERROR: offset 2: Unknown expansion function "op_add"
 
 
 #
@@ -146,7 +146,7 @@ xlat_expr (uint32) (Service-Type)
 match %cast(uint32, Service-Type)
 
 xlat_expr 5 + ()
-match ERROR: ERROR offset 6: Empty expressions are invalid
+match ERROR: offset 6: Empty expressions are invalid
 
 xlat_expr %regex.match(3)
 match %regex.match(3)
@@ -167,7 +167,7 @@ match %{'foo'}
 #  @todo - ssize_t vs fr_slen_t offsets :(
 #
 xlat_expr ``
-match ERROR: ERROR offset 3: Back-quoted strings cannot be empty
+match ERROR: offset 3: Back-quoted strings cannot be empty
 
 #
 #  A non-empty one still parses, so the check above is not too greedy.
@@ -181,10 +181,10 @@ match `echohello`
 #  Empty regular expressions are invalid.
 #
 xlat_expr Filter-Id =~ //
-match ERROR: ERROR offset 15: Regular expressions cannot be empty
+match ERROR: offset 15: Regular expressions cannot be empty
 
 xlat_expr Filter-Id =~ m''
-match ERROR: ERROR offset 16: Regular expressions cannot be empty
+match ERROR: offset 16: Regular expressions cannot be empty
 
 xlat_expr Filter-Id =~ /foo/
 match (Filter-Id =~ /foo/)
@@ -207,14 +207,14 @@ match 1
 #  across, or the count restarts at every filter.
 #
 xlat_expr request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(request.Vendor-Specific[(1)])])])])])])])])])])])])])])])])])])])])])])])])])])])])])]
-match ERROR: ERROR offset 25: The input is too deeply nested to be parsed
+match ERROR: offset 25: The input is too deeply nested to be parsed
 
 #
 #  A quoted string inside an expansion recurses from tmpl_afrom_substr through
 #  xlat_tokenize and back.
 #
 xlat_expr "%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{"%{1}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"}"
-match ERROR: ERROR offset 64: The input is too deeply nested to be parsed
+match ERROR: offset 64: The input is too deeply nested to be parsed
 
 count
 match 93
