@@ -1084,6 +1084,10 @@ static inline int fr_dlist_sort(fr_dlist_head_t *list, fr_cmp_t cmp)
 	if (fr_dlist_num_elements(list) <= 1) return 0;
 
 	head = fr_dlist_head(list);
+#ifdef __clang_analyzer__
+	if (!fr_cond_assert(head)) return -1;	/* The element count and the entry pointers agree */
+#endif
+
 	/* NULL terminate existing list */
 	list->entry.prev->next = NULL;
 
