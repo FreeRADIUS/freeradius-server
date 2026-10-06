@@ -2707,10 +2707,10 @@ fr_slen_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
  *	- <0 on error
  *	- >=0 on success.
  */
-static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
-					 fr_token_t quote,
-					 tmpl_rules_t const *t_rules, bool allow_enum,
-					 fr_sbuff_parse_rules_t const *p_rules)
+fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+				  fr_token_t quote,
+				  tmpl_rules_t const *t_rules, bool allow_enum,
+				  fr_sbuff_parse_rules_t const *p_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	fr_value_box_t	tmp;

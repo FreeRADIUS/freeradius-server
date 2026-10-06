@@ -27,6 +27,8 @@ static void test_init(void);
 #include <freeradius-devel/util/test/acutest.h>
 #include <freeradius-devel/util/test/acutest_helpers.h>
 #include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/cf_priv.h>
 
 static TALLOC_CTX	*autofree;
@@ -1283,6 +1285,71 @@ static void test_file_read_buffer_continuation_no_newline(void)
 	talloc_free(cs);
 }
 
+/*
+ *	Parsing a pair's value to the type of a rule
+ */
+
+typedef struct {
+	uint8_t const	*bare;
+	uint8_t const	*quoted_hex;
+	uint8_t const	*quoted_text;
+	uint8_t const	*quoted_escape;
+} test_octets_t;
+
+static conf_parser_t const test_octets_rules[] = {
+	{ FR_CONF_OFFSET("bare", test_octets_t, bare) },
+	{ FR_CONF_OFFSET("quoted_hex", test_octets_t, quoted_hex) },
+	{ FR_CONF_OFFSET("quoted_text", test_octets_t, quoted_text) },
+	{ FR_CONF_OFFSET("quoted_escape", test_octets_t, quoted_escape) },
+	CONF_PARSER_TERMINATOR
+};
+
+/** The quotes around a value are the type hint for an octets item
+ *
+ * The parser reads a bare word that starts with 0x as hexadecimal
+ * bytes.  A quoted value is text, even when the text starts with 0x,
+ * so "0xff" is the four characters of the text and not one byte.  The
+ * parser processes escape sequences in the text.
+ */
+static void test_pair_parse_octets_quote(void)
+{
+	CONF_SECTION	*cs;
+	test_octets_t	out = {};
+	char const	*input = "bare = 0xff\n"
+				 "quoted_hex = \"0xff\"\n"
+				 "quoted_text = \"password123\"\n"
+				 "quoted_escape = \"a\\\"b\\n\"\n";
+
+	cs = cf_section_alloc(autofree, NULL, "main", NULL);
+	TEST_ASSERT(cs != NULL);
+
+	TEST_CHECK(cf_file_read_buffer(cs, input, strlen(input), "<test>") == 0);
+	TEST_CHECK(cf_section_rules_push(cs, test_octets_rules) == 0);
+	TEST_CHECK(cf_section_parse(cs, &out, cs) == 0);
+
+	TEST_ASSERT(out.bare != NULL);
+	TEST_CHECK(talloc_array_length(out.bare) == 1);
+	TEST_MSG("Expected bare to be 1 byte, got %zu", talloc_array_length(out.bare));
+	TEST_CHECK(out.bare[0] == 0xff);
+
+	TEST_ASSERT(out.quoted_hex != NULL);
+	TEST_CHECK(talloc_array_length(out.quoted_hex) == 4);
+	TEST_MSG("Expected quoted_hex to be 4 bytes, got %zu", talloc_array_length(out.quoted_hex));
+	TEST_CHECK(memcmp(out.quoted_hex, "0xff", 4) == 0);
+
+	TEST_ASSERT(out.quoted_text != NULL);
+	TEST_CHECK(talloc_array_length(out.quoted_text) == 11);
+	TEST_MSG("Expected quoted_text to be 11 bytes, got %zu", talloc_array_length(out.quoted_text));
+	TEST_CHECK(memcmp(out.quoted_text, "password123", 11) == 0);
+
+	TEST_ASSERT(out.quoted_escape != NULL);
+	TEST_CHECK(talloc_array_length(out.quoted_escape) == 4);
+	TEST_MSG("Expected quoted_escape to be 4 bytes, got %zu", talloc_array_length(out.quoted_escape));
+	TEST_CHECK(memcmp(out.quoted_escape, "a\"b\n", 4) == 0);
+
+	talloc_free(cs);
+}
+
 TEST_LIST = {
 	/* Section allocation and accessors */
 	{ "test_section_alloc_name1_only",	test_section_alloc_name1_only },
@@ -1361,6 +1428,9 @@ TEST_LIST = {
 	{ "test_file_read_buffer_comment_only",	test_file_read_buffer_comment_only },
 	{ "test_file_read_buffer_pair",		test_file_read_buffer_pair },
 	{ "test_file_read_buffer_continuation_no_newline",	test_file_read_buffer_continuation_no_newline },
+
+	/* Parsing a pair's value to the type of a rule */
+	{ "test_pair_parse_octets_quote",	test_pair_parse_octets_quote },
 
 	TEST_TERMINATOR
 };

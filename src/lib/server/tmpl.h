@@ -1235,6 +1235,11 @@ ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 					  fr_sbuff_parse_rules_t const *p_rules,
 					  tmpl_rules_t const *t_rules) CC_HINT(nonnull(2,3));
 
+fr_slen_t		tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+						fr_token_t quote,
+						tmpl_rules_t const *t_rules, bool allow_enum,
+						fr_sbuff_parse_rules_t const *p_rules) CC_HINT(nonnull(2,3,5));
+
 tmpl_t			*tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in) CC_HINT(nonnull);
 
 ssize_t			tmpl_cast_from_substr(tmpl_rules_t *t_rules, fr_sbuff_t *in) CC_HINT(nonnull(2));		/* Parses cast string */

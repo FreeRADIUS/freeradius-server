@@ -126,12 +126,52 @@ void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t cons
  */
 int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, conf_parser_t const *rule)
 {
-	if (fr_value_box_from_str(ctx, out, rule->type, NULL, cp->value, talloc_strlen(cp->value), NULL) < 0) {
-		cf_log_perr(cp, "Invalid value \"%s\" for config item %s (data type %s)",
-			    cp->value, cp->attr, fr_type_to_str(rule->type));
+	tmpl_t		*vpt;
+	fr_slen_t	slen;
+	size_t		len = talloc_strlen(cp->value);
+	tmpl_rules_t	rules = {
+				.cast = rule->type,
+				.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
+			};
 
+	/*
+	 *	The tmpl value parser reads the quotes around the value as
+	 *	the type hint.  The parser reads a bare word as the type of
+	 *	the rule, and reads a quoted value as text.  For an octets
+	 *	rule, 0xff is one byte and "0xff" is the four characters of
+	 *	the text.
+	 *
+	 *	The value of a pair is never an expansion, so a '%' in the
+	 *	text is text.  The value parser therefore replaces the full
+	 *	tokenizer here.
+	 */
+	slen = tmpl_afrom_value_substr(cp, &vpt, &FR_SBUFF_IN(cp->value, len), cp->rhs_quote,
+				       &rules, false, value_parse_rules_unquoted[cp->rhs_quote]);
+	if (slen < 0) {
+	parse_error:
+		cf_canonicalize_error(cp, slen, fr_strerror(), cp->value);
 		return -1;
 	}
+
+	if ((size_t)slen != len) {
+		fr_strerror_const("Unexpected text after value");
+		slen = -slen;
+		talloc_free(vpt);
+		goto parse_error;
+	}
+
+	/*
+	 *	fr_value_box_memcpy_out() writes the field by the type of
+	 *	the box, so the box must be the type of the rule.
+	 */
+	fr_assert(tmpl_is_data(vpt) && (tmpl_value_type(vpt) == rule->type));
+
+	if (unlikely(fr_value_box_copy(ctx, out, tmpl_value(vpt)) < 0)) {
+		cf_log_perr(cp, "Failed copying the value of \"%s\"", cp->attr);
+		talloc_free(vpt);
+		return -1;
+	}
+	talloc_free(vpt);
 
 	/*
 	 *	Strings can be file paths...
