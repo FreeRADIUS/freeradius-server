@@ -23,10 +23,9 @@ jobs:
     runs-on: ubuntu-latest
 
     #
-    #  The base system's clang on FreeBSD 14 is LLVM 19, which does not
-    #  build C23.  The job therefore installs the LLVM release the other
-    #  legs build with from packages, and names the versioned clang
-    #  binary when configuring.
+    #  The base system's clang on FreeBSD 15.1 is LLVM 19, so the job
+    #  installs the LLVM release the other legs build with from packages,
+    #  and names the versioned clang binary when configuring.
     #
     env:
       LLVM_VERSION: ${{ needs.common_vars.outputs.llvm_version }}
@@ -64,13 +63,13 @@ jobs:
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
-        key: hostapd-freebsd-${{ env.HOSTAPD_GIT_TAG }}-v4
+        key: hostapd-freebsd-${{ env.HOSTAPD_GIT_TAG }}-v5
 
     - name: Start a FreeBSD VirtualBox VM
       uses: cross-platform-actions/action@v1.4.0
       with:
         operating_system: freebsd
-        version: '14.3'
+        version: '15.1'
         sync_files: runner-to-vm
         memory: 4G
         environment_variables: HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG NO_PERFORMANCE_TESTS LLVM_VERSION
@@ -85,7 +84,7 @@ jobs:
       run: |
         #
         #  A release's default package repository is the quarterly branch,
-        #  and the quarterly branch for FreeBSD 14 stops at llvm22.  The
+        #  and the quarterly branch for FreeBSD 15 stops at llvm22.  The
         #  latest branch carries the release that common_vars names.  pkg
         #  expands ${ABI} itself, so the single quotes keep the shell away
         #  from the variable.
