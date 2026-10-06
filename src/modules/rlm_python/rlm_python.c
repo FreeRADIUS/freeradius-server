@@ -130,7 +130,6 @@ static void			*python_dlhandle;
 static PyThreadState		*global_interpreter;	//!< Our first interpreter.
 
 static rlm_python_t const	*current_inst = NULL;	//!< Used for communication with inittab functions.
-static CONF_SECTION		*current_conf;		//!< Used for communication with inittab functions.
 static rlm_python_thread_t	*current_t;		//!< Used for communicating with object init function.
 
 static PyObject *py_freeradius_log(UNUSED PyObject *self, PyObject *args, PyObject *kwds);
@@ -1615,13 +1614,12 @@ static int python_interpreter_init(module_inst_ctx_t const *mctx)
 	PyObject	*module;
 
 	/*
-	 *	python_module_init takes no args, so we need
-	 *	to set these globals so that when it's
-	 *	called during interpreter initialisation
-	 *	it can get at the current instance config.
+	 *	python_module_init() takes no arguments, so the
+	 *	current_inst global passes the module instance to
+	 *	python_module_init() when the interpreter
+	 *	initialisation calls python_module_init().
 	 */
 	current_inst = inst;
-	current_conf = conf;
 
 	PyEval_RestoreThread(global_interpreter);
 	LSAN_DISABLE(inst->interpreter = Py_NewInterpreter());
