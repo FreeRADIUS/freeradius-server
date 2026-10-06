@@ -133,7 +133,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *start, char *path, mode_t mode, fr_m
 	*p = '\0';
 	if (_fr_mkdir(fd_out, start, path, mode, func, uctx) <= 0) return start - p;
 
-	fr_assert_msg((*fd_out) >= 0, "Logic error - Bad FD %i", *fd_out);
+	if (!fr_cond_assert_msg((*fd_out) >= 0, "Logic error - Bad FD %i", *fd_out)) return start - p;
 
 	/*
 	 *	At this point *fd_out, should be an FD
