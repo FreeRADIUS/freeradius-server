@@ -44,6 +44,12 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+#ifdef __APPLE__
+static int tls_chain_password_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+#  define TLS_CHAIN_PASSWORD_PARSE	.func = tls_chain_password_parse
+#else
+#  define TLS_CHAIN_PASSWORD_PARSE
+#endif
 
 /** Certificate formats
  *
@@ -117,8 +123,13 @@ static conf_parser_t tls_chain_config[] = {
 			 },
 			 .dflt = "pem" },
 	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, certificate_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, fr_tls_chain_conf_t, password) },
 	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, private_key_file) },
+	/*
+	 *	The parser reads `private_key_password` after
+	 *	`private_key_file`, because the password lookup in
+	 *	tls_chain_password_parse() needs `private_key_file`.
+	 */
+	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, fr_tls_chain_conf_t, password), TLS_CHAIN_PASSWORD_PARSE },
 
 	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_MULTI, fr_tls_chain_conf_t, ca_files) },
 
@@ -393,75 +404,67 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
  */
 static char const *special_string = "Apple:UsecertAdmin";
 
-/** Use cert_admin to retrieve the password for the private key
+/** Use certadmin to retrieve the password for the private key
  *
+ * tls_chain_password_parse() is the parse hook for `private_key_password`,
+ * so the lookup runs once, while the parser reads the `chain { ... }`
+ * section.
  */
-static int conf_cert_admin_password(fr_tls_conf_t *conf)
+static int tls_chain_password_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
-	size_t i, cnt;
+	fr_tls_chain_conf_t	*chain = talloc_get_type_abort(parent, fr_tls_chain_conf_t);
+	char const		**password_p = out;
+	char			cmd[256];
+	char			*password, *buf;
+	long const		max_password_len = 128;
+	FILE			*cmd_pipe;
 
-	if (!conf->chains) return 0;
+	if (cf_pair_parse_value(ctx, out, parent, ci, rule) < 0) return -1;
 
-	cnt = talloc_array_length(conf->chains);
-	for (i = 0; i < cnt; i++) {
-		char		cmd[256];
-		char		*password, *buf;
-		long const	max_password_len = 128;
-		FILE		*cmd_pipe;
+	if (!*password_p) return 0;
+	if (strncmp(*password_p, special_string, strlen(special_string)) != 0) return 0;
 
-		if (!conf->chains[i]->password) continue;
+	snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
+		 chain->private_key_file);
 
-		if (strncmp(conf->chains[i]->password, special_string, strlen(special_string)) != 0) continue;
+	DEBUG2("Getting private key passphrase using command \"%s\"", cmd);
 
-		snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
-			 conf->chains[i]->private_key_file);
-
-		DEBUG2("Getting private key passphrase using command \"%s\"", cmd);
-
-		cmd_pipe = popen(cmd, "r");
-		if (!cmd_pipe) {
-			ERROR("%s command failed: Unable to get private_key_password", cmd);
-			ERROR("Error reading private_key_file %s", conf->chains[i]->private_key_file);
-			return -1;
-		}
-
-		password = talloc_array(conf, char, max_password_len);
-		if (!password) {
-			ERROR("Can't allocate space for private_key_password");
-			ERROR("Error reading private_key_file %s", conf->chains[i]->private_key_file);
-			pclose(cmd_pipe);
-			return -1;
-		}
-
-		buf = fgets(password, max_password_len, cmd_pipe);
-
-		if (!buf || ferror(cmd_pipe)) {
-			pclose(cmd_pipe);
-			talloc_free(password);
-			ERROR("%s command failed: Unable to get private_key_password", cmd);
-			ERROR("Error reading private_key_file %s", conf->chains[i]->private_key_file);
-			return -1;
-		}
-		pclose(cmd_pipe);
-
-		/* Get rid of newline at end of password. */
-		for (buf = password; buf < (password + max_password_len); buf++) {
-			if ((unsigned char)*buf < ' ') {
-				*buf = '\0';
-				goto found;
-			}
-		}
-
-		talloc_free(password);
-		ERROR("%s command failed: Unable to get private_key_password", cmd);
-		ERROR("Error reading private_key_file %s - password is too long", conf->chains[i]->private_key_file);
+	cmd_pipe = popen(cmd, "r");
+	if (!cmd_pipe) {
+		cf_log_err(ci, "%s command failed: Unable to get private_key_password", cmd);
+		cf_log_err(ci, "Error reading private_key_file %s", chain->private_key_file);
 		return -1;
-
-	found:
-		DEBUG3("Password from command = \"%s\"", password);
-		talloc_const_free(conf->chains[i]->password);
-		conf->chains[i]->password = password;
 	}
+
+	MEM(password = talloc_array(ctx, char, max_password_len));
+
+	buf = fgets(password, max_password_len, cmd_pipe);
+	if (!buf || ferror(cmd_pipe)) {
+		pclose(cmd_pipe);
+		talloc_free(password);
+		cf_log_err(ci, "%s command failed: Unable to get private_key_password", cmd);
+		cf_log_err(ci, "Error reading private_key_file %s", chain->private_key_file);
+		return -1;
+	}
+	pclose(cmd_pipe);
+
+	/* Get rid of newline at end of password. */
+	for (buf = password; buf < (password + max_password_len); buf++) {
+		if ((unsigned char)*buf < ' ') {
+			*buf = '\0';
+			goto found;
+		}
+	}
+
+	talloc_free(password);
+	cf_log_err(ci, "%s command failed: Unable to get private_key_password", cmd);
+	cf_log_err(ci, "Error reading private_key_file %s - password is too long", chain->private_key_file);
+	return -1;
+
+found:
+	DEBUG3("Password from command = \"%s\"", password);
+	talloc_const_free(*password_p);
+	*password_p = password;
 
 	return 0;
 }
@@ -509,9 +512,6 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 
 	if ((cf_section_parse(conf, conf, cs) < 0) ||
 	    (cf_section_parse_pass2(conf, cs) < 0)) {
-#ifdef __APPLE__
-	error:
-#endif
 		talloc_free(conf);
 		return NULL;
 	}
@@ -525,10 +525,6 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 
 	FR_TIME_DELTA_BOUND_CHECK("session.lifetime", conf->cache.lifetime, <=,
 				  fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME));
-
-#ifdef __APPLE__
-	if (conf_cert_admin_password(conf) < 0) goto error;
-#endif
 
 	/*
 	 *	Cache conf in cs in case we're asked to parse this again.
@@ -554,9 +550,6 @@ fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
 
 	if ((cf_section_parse(conf, conf, cs) < 0) ||
 	    (cf_section_parse_pass2(conf, cs) < 0)) {
-#ifdef __APPLE__
-	error:
-#endif
 		talloc_free(conf);
 		return NULL;
 	}
@@ -568,13 +561,6 @@ fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
 
 	FR_TIME_DELTA_BOUND_CHECK("session.lifetime", conf->cache.lifetime, <=,
 				  fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME));
-
-	/*
-	 *	Initialize TLS
-	 */
-#ifdef __APPLE__
-	if (conf_cert_admin_password(conf) < 0) goto error;
-#endif
 
 	cf_data_add(cs, conf, NULL, false);
 
