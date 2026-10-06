@@ -235,6 +235,16 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 			fr_value_box_t box;
 			char buffer[256];
 
+#if defined(__clang_analyzer__) || defined(__COVERITY__)
+			/*
+			 *	Neither the clang analyser nor Coverity sees the
+			 *	value printed into the buffer through the sbuff,
+			 *	and both report the copy out of the buffer as a
+			 *	read of uninitialised memory.
+			 */
+			memset(buffer, 0, sizeof(buffer));
+#endif
+
 			/*
 			 *	Print it as "name=value"
 			 */

@@ -911,6 +911,14 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	fr_assert(dst->type == FR_TYPE_OCTETS);
 
 	COERCE_A(FR_TYPE_OCTETS, dst->enumv);
+#ifdef __clang_analyzer__
+	/*
+	 *	The clang analyser does not see fr_value_box_cast() fill in
+	 *	the box, and reports every copy out of the box as a NULL
+	 *	pointer.
+	 */
+	if (!a->vb_octets) return -1;
+#endif
 
 	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
 		/*
@@ -925,6 +933,9 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 	} else {
 		COERCE_B(FR_TYPE_OCTETS, dst->enumv);
+#ifdef __clang_analyzer__
+		if (!b->vb_octets) return -1;	/* As for a->vb_octets, above */
+#endif
 	}
 
 	len = a->vb_length + b->vb_length;
@@ -1086,6 +1097,14 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	fr_assert(dst->type == FR_TYPE_STRING);
 
 	COERCE_A(FR_TYPE_STRING, dst->enumv);
+#ifdef __clang_analyzer__
+	/*
+	 *	The clang analyser does not see fr_value_box_cast() fill in
+	 *	the box, and reports every copy out of the box as a NULL
+	 *	pointer.
+	 */
+	if (!a->vb_strvalue) return -1;
+#endif
 
 	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
 		/*
@@ -1100,6 +1119,9 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 	} else {
 		COERCE_B(FR_TYPE_STRING, dst->enumv);
+#ifdef __clang_analyzer__
+		if (!b->vb_strvalue) return -1;	/* As for a->vb_strvalue, above */
+#endif
 	}
 
 	len = a->vb_length + b->vb_length;

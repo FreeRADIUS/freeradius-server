@@ -71,6 +71,14 @@ ssize_t fr_radius_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 		.id = packet->id,
 	};
 
+#if defined(__clang_analyzer__) || defined(__COVERITY__)
+	/*
+	 *	Neither the clang analyser nor Coverity sees fr_radius_encode()
+	 *	fill the buffer through the dbuff, and both report the
+	 *	memcpy() below as a read of uninitialised memory.
+	 */
+	memset(data, 0, sizeof(data));
+#endif
 	slen = fr_radius_encode(&FR_DBUFF_TMP(data, sizeof(data)), list, &packet_ctx);
 	if (slen < 0) return slen;
 

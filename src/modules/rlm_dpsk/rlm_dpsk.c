@@ -342,9 +342,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	 *	update the database with the PSK which was found.
 	 */
 
-#ifdef __COVERITY__
+#if defined(__clang_analyzer__) || defined(__COVERITY__)
 	/*
-	 * Coverity doesn't see that fr_base16_decode will populate s_mac
+	 *	Neither the clang analyser nor Coverity sees fr_base16_decode()
+	 *	fill s_mac through the dbuff, and both report the memcmp()
+	 *	below as a read of uninitialised memory.
 	 */
 	memset(s_mac, 0, 6);
 #endif
@@ -492,6 +494,16 @@ stage2:
 		fr_sbuff_term_t const	terms = FR_SBUFF_TERMS(L("\n"),L("\r"),L(","));
 		fr_sbuff_term_t const	quoted_terms = FR_SBUFF_TERMS(L("\""));
 		bool			quoted = false;
+
+#if defined(__clang_analyzer__) || defined(__COVERITY__)
+		/*
+		 *	Neither the clang analyser nor Coverity sees the MAC
+		 *	copied into token_mac through the sbuff, and both report
+		 *	the memcmp() against s_mac as a read of uninitialised
+		 *	memory.
+		 */
+		memset(token_mac, 0, sizeof(token_mac));
+#endif
 
 		RDEBUG3("Looking for PSK in file %s", filename);
 
