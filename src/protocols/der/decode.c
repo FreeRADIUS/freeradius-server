@@ -2840,8 +2840,10 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 	func = &type_funcs[parent->type];
 	if (!func->decode) func = &tag_funcs[tag];
-	fr_assert(func != NULL);
-	fr_assert(func->decode != NULL);
+	if (unlikely(func->decode == NULL)) {
+		fr_strerror_printf_push("No decode function for tag %u", tag);
+		return -1;
+	}
 
 	/*
 	 *	Enforce limits on min/max.
