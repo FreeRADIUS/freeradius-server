@@ -39,7 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - { CC: clang, BUILD_CFLAGS: "",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-15,     NAME: macos-clang         }
+          - { CC: clang, BUILD_CFLAGS: "",         LIBS_OPTIONAL: yes, TEST_TYPE: macos,    OS: macos-15,     NAME: macos-clang         }
 
     env: ${{ matrix.env }}
 
@@ -133,21 +133,6 @@ jobs:
     - name: Set path for OpenSSL
       run: |
         echo "PATH=`brew --prefix openssl`/bin/:$PATH" >> $GITHUB_ENV
-
-    #
-    #  Build using some alternative libraries
-    #
-    #    PCRE 2       -> PCRE 1
-    #    MIT Kerberos -> HEIMDAL Kerberos
-    #
-    - name: Use alternative libraries
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      run: |
-        sudo ldconfig
-        sudo apt-get install -y --no-install-recommends libpcre3-dev  # "PCRE 1"
-        sudo apt-get purge -y libpcre2-dev  # Remove default PCRE 2, leaving only PCRE 1
-        sudo apt-get install -y --no-install-recommends heimdal-dev
-
 
     - name: Show versions
       run: |
