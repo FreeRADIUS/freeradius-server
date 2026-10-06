@@ -804,6 +804,28 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
 	return cf_pair_parse_internal(ctx, data, NULL, cs, &rule);
 }
 
+/** Find where a rule records whether the rule's config item was present
+ *
+ * @param base		Struct the rule writes into, or NULL if the rule only
+ *			writes through the rule's own pointers.
+ * @param rule		Rule whose flags include #CONF_FLAG_IS_SET.
+ * @return
+ *	- The bool that records whether the item was present.
+ *	- NULL if the rule has no bool to record the presence in.
+ */
+static inline CC_HINT(always_inline) bool *cf_rule_is_set_ptr(void *base, conf_parser_t const *rule)
+{
+	if (rule->data) {
+		return rule->is_set_ptr;
+	}
+
+	if (base) {
+		return (bool *)(((uint8_t *)base) + rule->is_set_offset);
+	}
+
+	return NULL;
+}
+
 /** Pre-allocate a config section structure to allow defaults to be set
  *
  * @param cs		The parent subsection.
@@ -839,7 +861,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t con
 		if (rule->flags & CONF_FLAG_IS_SET) {
 			bool *is_set;
 
-			is_set = rule->data ? rule->is_set_ptr : ((uint8_t *)base) + rule->is_set_offset;
+			is_set = cf_rule_is_set_ptr(base, rule);
 			if (is_set) *is_set = (subcs != NULL);
 		}
 
@@ -1242,7 +1264,7 @@ static int cf_section_parse_rule(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, 
 	 *	whether the pointer was set.
 	 */
 	if (rule->flags & CONF_FLAG_IS_SET) {
-		is_set = rule->data ? rule->is_set_ptr : ((uint8_t *)base) + rule->is_set_offset;
+		is_set = cf_rule_is_set_ptr(base, rule);
 	}
 
 	/*
