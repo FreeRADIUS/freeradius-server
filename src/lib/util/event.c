@@ -482,7 +482,7 @@ static void event_fd_func_index_build(fr_event_func_map_t *map)
  *	- NULL there are no more callbacks to call.
  *	- The next callback to call.
  */
-static inline CC_HINT(always_inline) fr_event_fd_cb_t event_fd_func(fr_event_fd_t *ef, int *filter, int *fflags)
+static inline CC_HINT(always_inline) fr_event_fd_cb_t event_fd_func(fr_event_fd_t *ef, int *filter, uint32_t *fflags)
 {
 	fr_event_func_map_t const *map = ef->map;
 
@@ -507,13 +507,13 @@ static inline CC_HINT(always_inline) fr_event_fd_cb_t event_fd_func(fr_event_fd_
 
 	case FR_EVENT_FUNC_IDX_FFLAGS:
 	{
-		int			our_fflags = *fflags;
+		uint32_t		our_fflags = *fflags;
 		uint8_t			pos = fr_high_bit_pos(our_fflags);
 
 		if (!pos) return NULL;			/* No more fflags to consume */
 		pos -= 1;				/* Saves an array element */
 
-		*fflags = our_fflags & ~(1 << pos);	/* Consume the knote */
+		*fflags = our_fflags & ~(UINT32_C(1) << pos);	/* Consume the knote */
 
 		return GET_FUNC(ef, map->ev_to_func[pos]->offset);
 	}
@@ -1278,7 +1278,7 @@ fr_event_fd_t *fr_event_fd_handle(fr_event_list_t *el, int fd, fr_event_filter_t
  *	- NULL if no event it associated with the given ef/kq_filter or kq_fflags combo.
  *	- The callback that would be called if an event with this filter/fflag combo was received.
  */
-fr_event_fd_cb_t fr_event_fd_cb(fr_event_fd_t *ef, int kq_filter, int kq_fflags)
+fr_event_fd_cb_t fr_event_fd_cb(fr_event_fd_t *ef, int kq_filter, uint32_t kq_fflags)
 {
 	return event_fd_func(ef, &kq_filter, &kq_fflags);
 }
@@ -2205,7 +2205,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_event_list_t trips --fsanitize=function*/
 static inline CC_HINT(always_inline)
-void event_callback(fr_event_list_t *el, fr_event_fd_t *ef, int *filter, int flags, int *fflags)
+void event_callback(fr_event_list_t *el, fr_event_fd_t *ef, int *filter, int flags, uint32_t *fflags)
 {
 	fr_event_fd_cb_t	fd_cb;
 
@@ -2258,7 +2258,7 @@ void fr_event_service(fr_event_list_t *el)
 			fr_event_fd_t		*ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
 			int			fd_errno = 0;
 
-			int			fflags = el->events[i].fflags;	/* mutable */
+			uint32_t		fflags = el->events[i].fflags;	/* mutable */
 			int			filter = el->events[i].filter;
 			int			flags = el->events[i].flags;
 

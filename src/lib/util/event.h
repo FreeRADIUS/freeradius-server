@@ -252,7 +252,7 @@ int		fr_event_fd_delete_handle(fr_event_fd_t *ef);
 
 fr_event_fd_t	*fr_event_fd_handle(fr_event_list_t *el, int fd, fr_event_filter_t filter);
 
-fr_event_fd_cb_t fr_event_fd_cb(fr_event_fd_t *ef, int filter, int fflags);
+fr_event_fd_cb_t fr_event_fd_cb(fr_event_fd_t *ef, int filter, uint32_t fflags);
 
 void		*fr_event_fd_uctx(fr_event_fd_t *ef);
 
