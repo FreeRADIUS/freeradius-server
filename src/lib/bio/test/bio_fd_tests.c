@@ -33,93 +33,121 @@ static int	error_count;
 static void	cb_connected(fr_bio_t *bio)	{ (void) bio; connected_count++; }
 static void	cb_error(fr_bio_t *bio)		{ (void) bio; error_count++; }
 
-/** Connect to a port which nothing is listening on
+/** Open a TCP socket listening on loopback
  *
- *  A connect() to a closed port on loopback returns EINPROGRESS on a non-blocking socket, and fails
- *  afterwards with ECONNREFUSED.  That is the deferred connect path, and it is the one path which has
- *  to tell the application that the connection failed.
+ *  The test only needs the kernel to complete the handshake, which it does for any listening socket.
+ *  No one calls accept(), and the connection waits in the backlog.
+ *
+ * @param[out] port	the port which the kernel picked.
+ * @return
+ *	- >=0 the listening socket.
+ *	- <0 on error.
  */
-static fr_bio_t *fd_bio_to_closed_port(TALLOC_CTX *ctx, fr_bio_fd_config_t *cfg)
+static int loopback_listen(uint16_t *port)
 {
-	memset(cfg, 0, sizeof(*cfg));
+	struct sockaddr_in	sin = {
+					.sin_family = AF_INET,
+					.sin_addr.s_addr = htonl(INADDR_LOOPBACK),
+				};
+	socklen_t		len = sizeof(sin);
+	int			fd;
 
-	cfg->type = FR_BIO_FD_CONNECTED;
-	cfg->socket_type = SOCK_STREAM;
-	cfg->transport_type = FR_BIO_FD_TRANSPORT_TCP;
-	cfg->async = true;
+	fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (fd < 0) return -1;
 
-	cfg->src_ipaddr = (fr_ipaddr_t) {
-		.af = AF_INET,
-		.addr.v4.s_addr = htonl(INADDR_LOOPBACK),
-		.prefix = 32,
-	};
-	cfg->dst_ipaddr = cfg->src_ipaddr;
+	if ((bind(fd, (struct sockaddr *) &sin, sizeof(sin)) < 0) ||
+	    (listen(fd, 5) < 0) ||
+	    (getsockname(fd, (struct sockaddr *) &sin, &len) < 0)) {
+		close(fd);
+		return -1;
+	}
 
-	/*
-	 *	Port 1 is reserved, and nothing listens on it.  A connect() there is refused rather
-	 *	than left hanging, which is what makes the failure arrive quickly and reliably.
-	 */
-	cfg->dst_port = 1;
-
-	return fr_bio_fd_alloc(ctx, cfg, 0);
+	*port = ntohs(sin.sin_port);
+	return fd;
 }
 
-/** A deferred connect which fails has to call the error callback
+/** A deferred connect which succeeds has to call the connected callback
  *
+ *  An async connect() on loopback returns EINPROGRESS, so fr_bio_fd_connect_full() defers the connect,
+ *  and the event loop calls fr_bio_fd_el_connect() once the socket is writeable.  That function calls
+ *  connect() a second time.  The second connect() fails with EISCONN when the first one has finished,
+ *  and fr_bio_fd_try_connect() has to treat EISCONN as success.
+ *
+ *  A connect which fails does not test fr_bio_fd_el_connect().  The event loop reports a failed connect
+ *  as EV_EOF, and calls fr_bio_fd_el_error() instead.
  */
-static void test_deferred_connect_failure_calls_error_cb(void)
+static void test_deferred_connect_success_calls_connected_cb(void)
 {
 	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_bio_fd_config_t	cfg;
 	fr_bio_t		*bio;
 	fr_event_list_t		*el;
+	uint16_t		port;
+	int			listen_fd;
 	int			rcode;
 	int			i;
 
 	connected_count = 0;
 	error_count = 0;
 
+	listen_fd = loopback_listen(&port);
+	TEST_CHECK(listen_fd >= 0);
+	if (listen_fd < 0) goto done;
+
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	TEST_CHECK(el != NULL);
 	if (!el) goto done;
 
-	bio = fd_bio_to_closed_port(ctx, &cfg);
+	cfg = (fr_bio_fd_config_t) {
+		.type = FR_BIO_FD_CONNECTED,
+		.socket_type = SOCK_STREAM,
+		.transport_type = FR_BIO_FD_TRANSPORT_TCP,
+		.async = true,
+		.src_ipaddr = {
+			.af = AF_INET,
+			.addr.v4.s_addr = htonl(INADDR_LOOPBACK),
+			.prefix = 32,
+		},
+		.dst_port = port,
+	};
+	cfg.dst_ipaddr = cfg.src_ipaddr;
+
+	bio = fr_bio_fd_alloc(ctx, &cfg, 0);
 	TEST_CHECK(bio != NULL);
 	if (!bio) goto done;
 
-	/*
-	 *	Either the connect fails here, or it is deferred.  Both have to reach the error
-	 *	callback, which is the whole point of the test.
-	 */
 	rcode = fr_bio_fd_connect_full(bio, el, cb_connected, cb_error, NULL, NULL);
 
-	TEST_CASE("a connect to a closed port does not succeed");
-	TEST_CHECK(rcode <= 0);
-	TEST_MSG("connect_full returned %d (0 means deferred, <0 means it failed here)", rcode);
+	TEST_CASE("the connect is deferred");
+	TEST_CHECK(rcode == 0);
+	TEST_MSG("connect_full returned %d.  0 means deferred, 1 means connected at once, <0 means failed", rcode);
+	if (rcode != 0) goto done;
 
 	/*
-	 *	Service the event loop until the connect resolves.  A refused connect on loopback
-	 *	needs only one pass, and the bound loop keeps a failure from hanging the test.
+	 *	Service the event loop until the connect resolves.  The handshake on loopback finishes
+	 *	at once, and the bound on the loop keeps a failure from hanging the test.
 	 */
-	for (i = 0; (i < 20) && !error_count; i++) {
-		fr_time_t when = fr_time_wrap(0);
-
+	for (i = 0; (i < 20) && !connected_count && !error_count; i++) {
 		if (fr_event_corral(el, fr_time(), false) > 0) fr_event_service(el);
-		(void) when;
 	}
 
-	TEST_CASE("the error callback ran");
-	TEST_CHECK(error_count == 1);
-	TEST_MSG("error_count = %d, connected_count = %d", error_count, connected_count);
+	TEST_CASE("the connected callback ran");
+	TEST_CHECK(connected_count == 1);
+	TEST_MSG("connected_count = %d, error_count = %d, connect_errno = %d",
+		 connected_count, error_count, fr_bio_fd_info(bio)->connect_errno);
 
-	TEST_CASE("the connected callback did not run");
-	TEST_CHECK(connected_count == 0);
+	TEST_CASE("the error callback did not run");
+	TEST_CHECK(error_count == 0);
+
+	TEST_CASE("the bio is open");
+	TEST_CHECK(fr_bio_fd_info(bio)->state == FR_BIO_FD_STATE_OPEN);
 
 done:
+	if (listen_fd >= 0) close(listen_fd);
 	talloc_free(ctx);
 }
 
 TEST_LIST = {
-	{ "deferred_connect_failure_calls_error_cb",	test_deferred_connect_failure_calls_error_cb },
+	{ "deferred_connect_success_calls_connected_cb",	test_deferred_connect_success_calls_connected_cb },
 	TEST_TERMINATOR
 };

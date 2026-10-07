@@ -762,6 +762,7 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
 
 retry:
         if (connect(my->info.socket.fd, (struct sockaddr *) &my->remote_sockaddr, my->remote_sockaddr_len) == 0) {
+	connected:
 		/*
 		 *	The source IP may have changed, so get the new one.
 		 */
@@ -776,6 +777,13 @@ retry:
         }
 
         switch (errno) {
+		/*
+		 *	A deferred connect calls us again once the socket is writeable.  If the connect
+		 *	has finished, then this second connect() fails with EISCONN, which means success.
+		 */
+	case EISCONN:
+		goto connected;
+
         case EINTR:
                 tries++;
                 if (tries <= my->max_tries) goto retry;
