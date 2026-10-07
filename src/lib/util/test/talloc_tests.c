@@ -23,6 +23,7 @@
 #include "acutest_common_init.h"
 #include "acutest_helpers.h"
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/math.h>
 
 /*
  *	=== Core talloc (samba) tests ===
@@ -1100,6 +1101,61 @@ static void test_talloc_aligned_array(void)
 	talloc_free(ctx);
 }
 
+/*
+ *	talloc_pool_used - bytes used, live bytes, and overflow of a talloc pool
+ */
+static size_t pool_chunk_footprint(size_t size)
+{
+	return ROUND_UP_POW2((size_t)talloc_hdr_size() + size, 16);
+}
+
+static void test_talloc_pool_used(void)
+{
+	TALLOC_CTX	*pool;
+	void		*a, *b, *c, *big;
+	size_t		used, live;
+	bool		overflowed;
+
+	TEST_CASE("An empty pool uses nothing");
+	pool = talloc_pool(NULL, 4096);
+	TEST_ASSERT(pool != NULL);
+	used = talloc_pool_used(&overflowed, &live, pool, 4096);
+	TEST_CHECK(used == 0);
+	TEST_CHECK(live == 0);
+	TEST_CHECK(!overflowed);
+
+	TEST_CASE("With no frees, used and live are the sum of the chunk footprints");
+	a = talloc_size(pool, 10);
+	b = talloc_size(pool, 100);
+	c = talloc_size(pool, 20);
+	TEST_ASSERT(a && b && c);
+	used = talloc_pool_used(&overflowed, &live, pool, 4096);
+	TEST_CHECK(used == pool_chunk_footprint(10) + pool_chunk_footprint(100) + pool_chunk_footprint(20));
+	TEST_MSG("used %zu", used);
+	TEST_CHECK(live == used);
+	TEST_MSG("live %zu", live);
+	TEST_CHECK(!overflowed);
+
+	TEST_CASE("Freeing a chunk below the highest leaves a hole: used stays, live drops");
+	talloc_free(b);
+	used = talloc_pool_used(&overflowed, &live, pool, 4096);
+	TEST_CHECK(used == pool_chunk_footprint(10) + pool_chunk_footprint(100) + pool_chunk_footprint(20));
+	TEST_MSG("used %zu", used);
+	TEST_CHECK(live == pool_chunk_footprint(10) + pool_chunk_footprint(20));
+	TEST_MSG("live %zu", live);
+	TEST_CHECK(!overflowed);
+
+	TEST_CASE("A chunk too large for the pool overflows, and is not live in the pool");
+	big = talloc_size(pool, 8192);
+	TEST_ASSERT(big != NULL);
+	used = talloc_pool_used(&overflowed, &live, pool, 4096);
+	TEST_CHECK(overflowed);
+	TEST_CHECK(live == pool_chunk_footprint(10) + pool_chunk_footprint(20));
+	TEST_MSG("live %zu", live);
+
+	talloc_free(pool);
+}
+
 TEST_LIST = {
 	/* Core talloc (samba) tests */
 	{ "talloc_basic",			test_talloc_basic },
@@ -1142,6 +1198,7 @@ TEST_LIST = {
 	{ "talloc_realloc_zero",		test_talloc_realloc_zero },
 	{ "talloc_decrease_ref_count",		test_talloc_decrease_ref_count },
 	{ "talloc_aligned_array",		test_talloc_aligned_array },
+	{ "talloc_pool_used",			test_talloc_pool_used },
 
 	TEST_TERMINATOR
 };

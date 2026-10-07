@@ -405,12 +405,14 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_
 	return pool;
 }
 
-/** Address range of a talloc pool, the bytes used, and whether the pool overflowed
+/** Address range of a talloc pool, the bytes used and live, and whether the pool overflowed
  */
 typedef struct {
 	uint8_t const	*start;			//!< First byte of the pool.
 	uint8_t const	*end;			//!< First byte after the pool.
+	size_t		hdr;			//!< Size of a talloc chunk header, from talloc_hdr_size().
 	size_t		used;			//!< Bytes from start to the end of the highest chunk found so far.
+	size_t		live;			//!< Bytes of the pool that the live chunks found so far take up.
 	bool		overflowed;		//!< A chunk under the pool, in the talloc hierarchy, lies outside the
 						///< pool's address range.
 } talloc_pool_walk_t;
@@ -418,41 +420,62 @@ typedef struct {
 /** Record the end of a chunk inside the pool, or record that a chunk is outside the pool
  *
  */
-static void _talloc_pool_chunk_walk(void const *ptr, UNUSED int depth, UNUSED int max_depth, int is_ref, void *uctx)
+static void _talloc_pool_chunk_walk(void const *ptr, int depth, UNUSED int max_depth, int is_ref, void *uctx)
 {
 	talloc_pool_walk_t	*walk = uctx;
 	uint8_t const		*chunk = ptr;
-	size_t			used;
+	size_t			used, footprint;
 
-	if (is_ref) return;
+	/*
+	 *	Depth 0 is the pool itself, which is not a chunk in the pool.
+	 */
+	if (is_ref || (depth == 0)) return;
 
 	if ((chunk < walk->start) || (chunk >= walk->end)) {
 		walk->overflowed = true;
 		return;
 	}
 
-	used = (size_t)(chunk - walk->start) + talloc_get_size(ptr);
+	/*
+	 *	talloc places each chunk's header directly before the chunk,
+	 *	and rounds the header and the chunk up to 16 bytes together.
+	 */
+	footprint = ROUND_UP_POW2(walk->hdr + talloc_get_size(ptr), 16);
+	walk->live += footprint;
+
+	used = (size_t)(chunk - walk->start) - walk->hdr + footprint;
 	if (used > walk->used) walk->used = used;
 }
 
-/** Measure how many bytes of a talloc pool are used, and whether the pool overflowed
+/** Measure how many bytes of a talloc pool are used and live, and whether the pool overflowed
  *
  * @param[out] overflowed	true if a chunk under the pool lies outside the pool.
+ * @param[out] live		Bytes of the pool that the live chunks take up, each chunk with
+ *				its talloc header, rounded up to 16 bytes.  used - live is the
+ *				space freed below the highest live chunk.
  * @param[in] pool		returned by talloc_pool().
  * @param[in] pool_size		passed to talloc_pool().
  * @return Bytes from the start of the pool to the end of the highest live
  *	   chunk in the pool
  */
-size_t talloc_pool_used(bool *overflowed, TALLOC_CTX const *pool, size_t pool_size)
+size_t talloc_pool_used(bool *overflowed, size_t *live, TALLOC_CTX const *pool, size_t pool_size)
 {
-	talloc_pool_walk_t walk = {
+	ssize_t			hdr = talloc_hdr_size();
+	talloc_pool_walk_t	walk = {
 		.start = (uint8_t const *)pool,
 		.end = (uint8_t const *)pool + pool_size
 	};
 
+	/*
+	 *	talloc_hdr_size() only fails if it cannot allocate a small pool.
+	 */
+	if (!fr_cond_assert_msg(hdr > 0, "Failed finding the talloc header size")) hdr = 0;
+	walk.hdr = (size_t)hdr;
+
 	talloc_report_depth_cb(pool, 0, -1, _talloc_pool_chunk_walk, &walk);
 
 	*overflowed = walk.overflowed;
+	*live = walk.live;
 
 	return walk.used;
 }
