@@ -287,9 +287,11 @@ static int exfile_open_mkdir(char const *filename, mode_t permissions, int flags
 }
 
 /*
- * Experience appears to show that coverity models of functions can't use incoming parameters
- * to influence whether and which __coverity*__() functions are called. We therefore create a
- * separate function for the locking case which we *can* model.
+ * exfile_open() calls exfile_open_lock() when ef->locking is true.
+ * exfile_open_lock() returns holding ef->mutex on success, and returns
+ * without holding ef->mutex on failure.  The Coverity model in
+ * src/coverity-model/merged_model.c applies the same ef->mutex contract
+ * to exfile_open() and exfile_close().
  */
 static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissions, int flags, off_t *offset)
 {
@@ -507,7 +509,6 @@ try_lock:
 
 	exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_RESERVE);
 
-	/* coverity[missing_unlock] */
 	return ef->entries[i].fd;
 }
 
@@ -542,12 +543,12 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flag
 		return found;
 	}
 
-	/* coverity[missing_unlock] */
 	return exfile_open_lock(ef, filename, permissions, flags, offset);
 }
 
 /*
- * Same split for exfile_close().
+ * exfile_close() calls exfile_close_lock() when ef->locking is true.
+ * exfile_close_lock() releases ef->mutex on every return path.
  */
 static int exfile_close_lock(exfile_t *ef, int fd)
 {

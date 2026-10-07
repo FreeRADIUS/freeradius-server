@@ -325,7 +325,6 @@ static unlang_action_t CC_HINT(nonnull) detail_do(unlang_result_t *p_result, mod
 	if (outfd < 0) {
 		RPERROR("Couldn't open file %pV", &env->filename);
 
-		/* coverity[missing_unlock] */
 		RETURN_UNLANG_FAIL;
 	}
 

@@ -411,7 +411,6 @@ void rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *
 	if (fd < 0) {
 		ERROR("Couldn't open logfile '%s': %s", filename, fr_syserror(errno));
 
-		/* coverity[missing_unlock] */
 		return;
 	}
 
