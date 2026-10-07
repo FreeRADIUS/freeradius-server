@@ -884,13 +884,16 @@ void		fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				       fr_dict_t const *dict, fr_value_box_t *box) CC_HINT(nonnull);
 
 /* Tokenization */
+extern fr_table_num_sorted_t const fr_pair_comparison_op_table[];
+extern size_t fr_pair_comparison_op_table_len;
+
 typedef struct {
 	TALLOC_CTX		*ctx;			//!< to allocate VPs in
 	fr_dict_attr_t	const	*parent;	       	//!< current attribute to allocate VPs in
 	fr_pair_list_t		*list;			//!< of VPs to add
 } fr_pair_ctx_t;
 
-ssize_t		fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen) CC_HINT(nonnull);
+fr_slen_t	fr_pair_ctx_afrom_substr(fr_pair_ctx_t *pair_ctx, fr_sbuff_t *in) CC_HINT(nonnull);
 void		fr_pair_ctx_reset(fr_pair_ctx_t *pair_ctx, fr_dict_t const *dict) CC_HINT(nonnull);
 
 void		fr_fprintf_pair(FILE *fp, char const *msg, fr_pair_t const *vp);

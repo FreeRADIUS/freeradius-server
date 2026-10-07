@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** AVP parsing
+/** Parse attribute value pairs from text
  *
  * @file src/lib/util/pair_tokenize.c
  *
@@ -22,476 +22,300 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/regex.h>
+#include <freeradius-devel/util/value.h>
 
-#include <freeradius-devel/protocol/radius/rfc2865.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-
-
-static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
-{
-	char const *p = op;
-
-	if (!token || !op || !oplen) return 0;
-
-	switch (*p) {
-	default:
-		fr_strerror_const("Invalid text. Expected comparison operator");
-		return -(p - op);
-
-	case '!':
-		if (oplen < 2) goto invalid_operator;
-
-		if (p[1] == '=') {
-			*token = T_OP_NE;
-			p += 2;
-
-#ifdef HAVE_REGEX
-		} else if (p[1] == '~') {
-			*token = T_OP_REG_NE;
-			p += 2;
-#endif
-
-		} else if (p[1] == '*') {
-			*token = T_OP_CMP_FALSE;
-			p += 2;
-
-		} else {
-		invalid_operator:
-			fr_strerror_const("Invalid operator");
-			return -(p - op);
-		}
-		break;
-
-	case '=':
-		/*
-		 *	Bare '=' is allowed.
-		 */
-		if (oplen == 1) {
-			*token = T_OP_EQ;
-			p++;
-			break;
-		}
-
-		if (p[1] == '=') {
-			*token = T_OP_CMP_EQ;
-			p += 2;
-
-#ifdef HAVE_REGEX
-		} else if (p[1] == '~') {
-			*token = T_OP_REG_EQ;
-			p += 2;
-#endif
-
-		} else if (p[1] == '*') {
-			*token = T_OP_CMP_TRUE;
-			p += 2;
-
-		} else {
-			/*
-			 *	Ignore whatever is after the '=' sign.
-			 */
-			*token = T_OP_EQ;
-			p++;
-		}
-		break;
-
-	case '<':
-		if ((oplen > 1) && (p[1] == '=')) {
-			*token = T_OP_LE;
-			p += 2;
-
-		} else {
-			*token = T_OP_LT;
-			p++;
-		}
-		break;
-
-	case '>':
-		if ((oplen > 1) && (p[1] == '=')) {
-			*token = T_OP_GE;
-			p += 2;
-
-		} else {
-			*token = T_OP_GT;
-			p++;
-		}
-		break;
-	}
-
-	return p - op;
-}
-
-/** Allocate a fr_pair_t based on pre-parsed fields.
+/** Operators that may appear between an attribute name and a value
  *
- * @param ctx	the talloc ctx
- * @param da	the da for the vp
- * @param op	the operator
- * @param value the value to parse
- * @param value_len length of the value string
- * @param uerules used for unescaping.
- * @return
- *	- fr_pair_t* on success
- *	- NULL on error
- *
- *  It's just better for this function to take the broken-out /
- *  pre-parsed fields.  That way the caller can do any necessary
- *  parsing.
+ * fr_table_num_sorted_t requires the entries in sorted order, so keep the entries sorted.
  */
-static fr_pair_t *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
-					fr_token_t op,
-					char const *value, size_t value_len,
-					fr_sbuff_unescape_rules_t const *uerules)
-{
-	fr_pair_t *vp;
+fr_table_num_sorted_t const fr_pair_comparison_op_table[] = {
+	{ L("!*"),	T_OP_CMP_FALSE		},
+	{ L("!="),	T_OP_NE			},
+	{ L("!~"),	T_OP_REG_NE		},
+	{ L("+="),	T_OP_ADD_EQ		},
+	{ L(":="),	T_OP_SET		},
+	{ L("<"),	T_OP_LT			},
+	{ L("<="),	T_OP_LE			},
+	{ L("="),	T_OP_EQ			},
+	{ L("=*"),	T_OP_CMP_TRUE		},
+	{ L("=="),	T_OP_CMP_EQ		},
+	{ L("=~"),	T_OP_REG_EQ		},
+	{ L(">"),	T_OP_GT			},
+	{ L(">="),	T_OP_GE			}
+};
+size_t fr_pair_comparison_op_table_len = NUM_ELEMENTS(fr_pair_comparison_op_table);
 
-	if (!da || !value || (value_len == 0)) return NULL;
-
-	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) return NULL;
-
-	vp->op = op;
-	PAIR_ALLOCED(vp);
-
-	if (fr_pair_value_from_str(vp, value, value_len, uerules, false) < 0) {
-		talloc_free(vp);
-		return NULL;
-	}
-
-	return vp;
-}
-
-
-/** Allocate one fr_pair_t from a string, and add it to the pair_ctx cursor.
+/** A bare word value ends at whitespace or at the comma before the next pair
  *
- * @param[in,out] pair_ctx	the parsing context
- * @param[in] start		Where to create relative error offsets in relation to.
- * @param in	String to parse
- * @param inlen	length of string to parse
- * @return
- *	- <= 0 on error (offset as negative integer)
- *	- > 0 on success (number of bytes parsed).
  */
-static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, char const *in, size_t inlen)
-{
-	char const *end = in + inlen;
-	char const *p = in;
-	fr_slen_t slen;
-	fr_dict_attr_t const *da;
-	char quote;
-	char const *value;
-	size_t value_len;
-	fr_pair_t *vp;
-	fr_token_t op;
+static fr_sbuff_parse_rules_t const pair_value_bareword_rules = {
+	.terminals = &FR_SBUFF_TERMS(
+		L("\t"),
+		L("\n"),
+		L("\r"),
+		L(" "),
+		L(",")
+	)
+};
 
-	slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent, &FR_SBUFF_IN(p, end), NULL);
-	if (slen <= 0) return slen < SSIZE_MIN + (in - start) ? SSIZE_MIN : slen - (in - start);
+/** Parse `Attribute op value` and append the pair to pair_ctx->list
+ *
+ * The function looks the attribute name up under pair_ctx->parent, and the
+ * attribute must be a direct child of pair_ctx->parent.
+ *
+ * @param[in,out] pair_ctx	the parsing context.
+ * @param[in,out] in		to parse.  Advanced past the value on success.
+ * @return
+ *	- >0 the number of bytes parsed.
+ *	- <0 the negative offset of the error.
+ */
+static fr_slen_t pair_afrom_substr(fr_pair_ctx_t *pair_ctx, fr_sbuff_t *in)
+{
+	fr_sbuff_t			our_in = FR_SBUFF(in);
+	fr_sbuff_marker_t		name_m;
+	fr_dict_attr_t const		*da;
+	fr_token_t			op;
+	size_t				op_len;
+	char				quote;
+	fr_sbuff_parse_rules_t const	*rules;
+	fr_pair_t			*vp;
+	fr_slen_t			slen;
+
+	fr_sbuff_marker(&name_m, &our_in);
+	if (fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent, &our_in, NULL) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 	if (da->parent != pair_ctx->parent) {
-		fr_strerror_printf("Unexpected attribute %s is not a child of %s",
-				   da->name, pair_ctx->parent->name);
-		return -(in - start);
+		fr_strerror_printf("Unexpected attribute %s is not a child of %s", da->name, pair_ctx->parent->name);
+		FR_SBUFF_ERROR_RETURN(&name_m);
 	}
 
-	p = in + slen;
-	if (p >= end) {
-		fr_strerror_const("Attribute name overflows the input buffer");
-		return -(in - start);
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
+	fr_sbuff_out_by_longest_prefix(&op_len, &op, fr_pair_comparison_op_table, &our_in, T_INVALID);
+	if (op == T_INVALID) {
+		fr_strerror_const("Expected operator");
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	while ((p < end) && isspace((uint8_t) *p)) p++;
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
-	if (p >= end) {
-		fr_strerror_const("No operator found in the input buffer");
-		return -(p - start);
-	}
-
-	/*
-	 *	For now, the only allowed operator is equals.
-	 */
-	slen = op_to_token(&op, p, (end - p));
-	if (slen <= 0) {
-		fr_strerror_const("Syntax error: expected '='");
-		return slen - (p - start);
-	}
-	p += slen;
-
-	while ((p < end) && isspace((uint8_t) *p)) p++;
-
-	if (p >= end) {
-		fr_strerror_const("No value found in the input buffer");
-		return -(p - start);
-	}
-
-	if (*p == '`') {
+	if (fr_sbuff_next_if_char(&our_in, '"')) {
+		quote = '"';
+		rules = &value_parse_rules_double_quoted;
+	} else if (fr_sbuff_next_if_char(&our_in, '\'')) {
+		quote = '\'';
+		rules = &value_parse_rules_single_quoted;
+	} else if (fr_sbuff_is_char(&our_in, '`')) {
 		fr_strerror_const("Invalid string quotation");
-		return -(p - start);
-	}
-
-	if ((*p == '"') || (*p == '\'')) {
-		quote = *p;
-		value = p + 1;
-
-		slen = fr_skip_string(p, end);
-		if (slen <= 0) return slen - (p - start);
-		p += slen;
-		value_len = slen - 2; /* account for two "" */
-
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	} else {
-		quote = 0;
-		value = p;
-
-		/*
-		 *	Skip bare words, but end at comma or end-of-buffer.
-		 */
-		while (!isspace((uint8_t) *p) && (*p != ',') && (p < end)) p++;
-
-		value_len = p - value;
+		quote = '\0';
+		rules = &pair_value_bareword_rules;
 	}
 
-	if (p > end) {
-		fr_strerror_const("Value overflows the input buffer");
-		return -(p - start);
+	vp = fr_pair_afrom_da(pair_ctx->ctx, da);
+	if (unlikely(!vp)) FR_SBUFF_ERROR_RETURN(&name_m);
+	vp->op = op;
+
+	slen = fr_value_box_from_substr(vp, &vp->data, da->type, da, &our_in, rules);
+	if (slen < 0) {
+	error:
+		talloc_free(vp);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	vp = fr_pair_afrom_fields(pair_ctx->ctx, da, op, value, value_len, fr_value_unescape_by_char[(uint8_t)quote]);
-	if (!vp) return -(in - start);
+	if (quote && !fr_sbuff_next_if_char(&our_in, quote)) {
+		fr_strerror_const("Unterminated string");
+		goto error;
+	}
 
 	FR_PAIR_APPEND(pair_ctx->list, vp);
 
-	return p - start;
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
-/** Set a new DA context based on the input string
+/** Set a new parent from a dotted attribute reference
  *
- * @param[in,out] pair_ctx	the parsing context
- * @param[in] in	String to parse
- * @param[in] inlen	length of string to parse
+ * The first component must be a direct child of pair_ctx->parent, and each
+ * later component must be a direct child of the component before.  The last
+ * component becomes the new pair_ctx->parent.  The function stops at the end
+ * of the input or at a comma.  The comma remains in the buffer for the caller.
+ *
+ * @param[in,out] pair_ctx	the parsing context.
+ * @param[in,out] in		to parse.  Advanced past the reference on success.
  * @return
- *	- <= 0 on error (offset as negative integer)
- *	- > 0 on success (number of bytes parsed).
+ *	- >0 the number of bytes parsed.
+ *	- <0 the negative offset of the error.
  *
- *  pair_ctx->da is set to the new parsing context.
+ *  @todo - allow for child contexts, so that the parser can parse TLVs into vp->vp_children.
+ *	    The change requires nested cursors, but not necessarily nested contexts.
+ *	    One design is a `fr_dlist_t` of pair_ctx, where the parser always operates
+ *	    on the last pair_ctx in the list.  When the context changes to the parent of
+ *	    an attribute, pair_ctx also changes to a parent context.  The list resembles
+ *	    the da stack, but with child cursors as well.
  *
- *  @todo - allow for child contexts, so that we can parse TLVs into vp->vp_children.
- *	    This change requires nested cursors, but not necessarily nested contexts.
- *	    We probably want to have a `fr_dlist_t` of pair_ctx, and we always
- *	    operate on the last one.  When we change contexts to an attributes parent,
- *	    we also change pair_ctx to a parent context.  This is like the da stack,
- *	    but with child cursors, too.
- *
- *	    We also want to emulate the previous behavior of group attributes based
- *	    on parent, and increasing child_num.  i.e. if we're parsing a series of
- *	    "attr-foo = bar", then we watch the parent context, and create a new
- *	    parent VP if this child has a SMALLER attribute number than the previous
- *	    child.  This allows the previous configurations to "just work".
+ *	    The parser also needs to emulate the previous behavior of group attributes,
+ *	    based on the parent and an increasing child_num.  When the parser reads a
+ *	    series of "attr-foo = bar" pairs, the parser watches the parent context, and
+ *	    creates a new parent VP when a child has a SMALLER attribute number than the
+ *	    previous child.  Emulating the previous behavior keeps existing configurations
+ *	    working.
  */
-static fr_slen_t fr_pair_ctx_set(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen)
+static fr_slen_t pair_ctx_set_from_substr(fr_pair_ctx_t *pair_ctx, fr_sbuff_t *in)
 {
-	char const *end = in + inlen;
-	char const *p = in;
-	fr_slen_t slen;
-	fr_dict_attr_t const *da;
-	fr_dict_attr_t const *parent = pair_ctx->parent;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+	fr_sbuff_marker_t	name_m;
+	fr_dict_attr_t const	*da;
+	fr_dict_attr_t const	*parent = pair_ctx->parent;
 
-	/*
-	 *	Parse the attribute name.
-	 */
-	while (p < end) {
-		slen = fr_dict_attr_by_name_substr(NULL, &da, parent, &FR_SBUFF_IN(p, end), NULL);
-		if (slen <= 0) return slen < SSIZE_MIN + (p - in) ? SSIZE_MIN : slen - (p - in);
+	for (;;) {
+		fr_sbuff_marker(&name_m, &our_in);
+		if (fr_dict_attr_by_name_substr(NULL, &da, parent, &our_in, NULL) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		if (da->parent != parent) {
-			fr_strerror_printf("Unexpected attribute %s is not a child of %s",
-					   da->name, parent->name);
-			return -(p - in);
+			fr_strerror_printf("Unexpected attribute %s is not a child of %s", da->name, parent->name);
+			FR_SBUFF_ERROR_RETURN(&name_m);
 		}
-
-		if ((p + slen) > end) {
-			fr_strerror_const("Attribute name overflows the input buffer");
-			return -(p - in);
-		}
-
-		/*
-		 *	Check for ending conditions.
-		 */
-		p += slen;
 		parent = da;
 
-		if ((p >= end) || (*p == ',')) {
-			break;
-		}
+		if (!fr_sbuff_extend(&our_in) || fr_sbuff_is_char(&our_in, ',')) break;
 
-		/*
-		 *	We now MUST have FOO.BAR
-		 */
-		if (*p != '.') {
+		if (!fr_sbuff_next_if_char(&our_in, '.')) {
 			fr_strerror_const("Unexpected text after attribute");
-			return -(p - in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
-		p++;
 	}
 
 	pair_ctx->parent = parent;
-	return p - in;
+
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
-
-/** Parse a pair context from a string.
+/** Parse one pair, or one context change, from a string
  *
- * @param pair_ctx	the parsing context
- * @param in	String to parse
- * @param inlen	length of string to parse
+ * The function stops at the end of the input or at a comma.  The comma remains
+ * in the buffer for the caller.
+ *
+ * The syntax is:
+ *
+ *  - `Attribute = value`
+ *	The function resets the context to the parent of Attribute, a top level
+ *	attribute, then parses the attribute and the value.
+ *
+ *  - `Attribute`
+ *	The function resets the context to Attribute, a top level structural
+ *	attribute (a group, a TLV, or a struct).
+ *
+ *  - `Attribute.Child`
+ *	The function resets the context to Child, where each component is a
+ *	structural attribute and a direct child of the component before.
+ *
+ *  - `.Attribute = value`, `.Attribute` and `.Attribute.Child`
+ *	As above, with the lookup starting at the current context.
+ *
+ *  - `..Attribute = value`, `..Attribute` and `..Attribute.Child`
+ *	As above, with the lookup starting at the parent of the current
+ *	context.  Each further '.' starts one level further up, and a
+ *	reference of dots alone only moves the context up.
+ *
+ * @param[in,out] pair_ctx	the parsing context.
+ * @param[in,out] in		to parse.  Advanced past what was parsed on success.
  * @return
- *	- <= 0 on error (offset as negative integer)
- *	- > 0 on success (number of bytes parsed).
- *
- *  This function will parse fr_pair_ts, or context changes, up to
- *  end of string, or a trailing ','.  The caller is responsible for
- *  parsing the comma.
- *
- *  It accepts the following syntax:
- *
- *  - Attribute = value
- *	* reset to a new top-level context according to the parent of Attribute
- *	* parse the attribute and the value
- *
- *  - .Attribute = value
- *	* parse the attribute and the value in the CURRENT top-level context
- *
- *  - .Attribute
- *	* reset to a new context according to Attribute, relative to the current context
- *
- *  - ..Attribute
- *	* reset to a new context according to Attribute, relative to the current context
- *	* more '.' will walk back up the context tree.
- *
- *  - Attribute
- *	* reset to a new top-level context according to Attribute
- *
+ *	- >=0 the number of bytes parsed.
+ *	- <0 the negative offset of the error.
  */
-ssize_t fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen)
+fr_slen_t fr_pair_ctx_afrom_substr(fr_pair_ctx_t *pair_ctx, fr_sbuff_t *in)
 {
-	char const *end = in + inlen;
-	char const *p = in;
-	fr_slen_t slen;
-	fr_dict_attr_t const *da;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+	fr_sbuff_marker_t	name_m;
+	fr_dict_attr_t const	*parent;
+	fr_dict_attr_t const	*da;
+	fr_slen_t		slen;
 
-	while (isspace((uint8_t) *p) && (p < end)) p++;
-	if (p >= end) return end - in;
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+	if (!fr_sbuff_extend(&our_in)) FR_SBUFF_SET_RETURN(in, &our_in);
 
 	/*
-	 *	There may be one or more leading '.'
+	 *	The reference has no leading '.', so the lookup
+	 *	starts at the dictionary root.
 	 */
-	if (*p == '.') {
-
-		/*
-		 *	.ATTRIBUTE = VALUE
-		 */
-		if (p[1] != '.') {
-			p++;
-			return fr_pair_afrom_str(pair_ctx, in, p, end - p);
-		}
-
-		/*
-		 *	'.' is our parent.
-		 */
-		da = pair_ctx->parent;
-
-		/*
-		 *	Loop until we find the end of the '.', resetting parent each time.
-		 */
-		while (p < end) {
-			if (*p == '.') {
-				pair_ctx->parent = da;
-				da = da->parent;
-				p++;
-				continue;
-			}
-
-			/*
-			 *	Comma is the end of a reference.
-			 */
-			if (*p == ',') {
-				return p - in;
-			}
-
-			/*
-			 *	.FOO, must be a reference.
-			 */
-			break;
-		}
-
-		if (p == end) return p - in;
-
+	if (!fr_sbuff_is_char(&our_in, '.')) {
+		parent = fr_dict_root(pair_ctx->parent->dict);
+	/*
+	 *	The first '.' starts the lookup at the current
+	 *	context, and each further '.' walks one level up.
+	 */
 	} else {
-		/*
-		 *	No leading '.', the reference MUST be from the root.
-		 */
-		pair_ctx->parent = fr_dict_root(pair_ctx->parent->dict);
+		fr_sbuff_advance(&our_in, 1);
+		parent = pair_ctx->parent;
 
-		/*
-		 *	We allow a leaf OR a reference here.
-		 */
-		slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent, &FR_SBUFF_IN(p, end), NULL);
-		if (slen <= 0) return slen < SSIZE_MIN + (p - in) ? SSIZE_MIN : slen - (p - in);
-
-		/*
-		 *	Structural types do not have values.  So a
-		 *	bare "Foo-Group" string MUST be changing the
-		 *	reference to that da.
-		 */
-		switch (da->type) {
-		case FR_TYPE_GROUP:
-		case FR_TYPE_TLV:
-		case FR_TYPE_STRUCT:
-			pair_ctx->parent = da;
-			p += slen;
-
-			if ((p >= end) || (*p == ',')) return p - in;
-
-			if (*p != '.') {
-				fr_strerror_const("Unexpected text");
-				return - (p - in);
+		while (fr_sbuff_is_char(&our_in, '.')) {
+			if (!parent->parent) {
+				fr_strerror_const("No parent above the dictionary root");
+				FR_SBUFF_ERROR_RETURN(&our_in);
 			}
+			parent = parent->parent;
+			fr_sbuff_advance(&our_in, 1);
+		}
 
-			p++;
-			break;
-
-		default:
-			/*
-			 *	Non-structural types MUST have values.
-			 *	So change the parent to its parent,
-			 *	and parse the leaf pair.
-			 */
-			pair_ctx->parent = da->parent;
-			return fr_pair_afrom_str(pair_ctx, in, p, end - in);
+		if (!fr_sbuff_extend(&our_in) || fr_sbuff_is_char(&our_in, ',')) {
+			pair_ctx->parent = parent;
+			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 	}
 
-	/*
-	 *	Set the new context based on the attribute
-	 */
-	slen = fr_pair_ctx_set(pair_ctx, p, end - p);
-	if (slen <= 0) return slen - (p - in);
+	fr_sbuff_marker(&name_m, &our_in);
+	if (fr_dict_attr_by_name_substr(NULL, &da, parent, &our_in, NULL) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
-	p += slen;
-	return p - in;
+	switch (da->type) {
+	/*
+	 *	Structural types have no values, so a bare
+	 *	structural attribute changes the context.
+	 */
+	case FR_TYPE_GROUP:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+		pair_ctx->parent = da;
+
+		if (!fr_sbuff_extend(&our_in) || fr_sbuff_is_char(&our_in, ',')) FR_SBUFF_SET_RETURN(in, &our_in);
+
+		if (!fr_sbuff_next_if_char(&our_in, '.')) {
+			fr_strerror_const("Unexpected text after attribute");
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
+		slen = pair_ctx_set_from_substr(pair_ctx, &our_in);
+		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+		break;
+
+	/*
+	 *	Leaf types have values, so the context becomes
+	 *	the parent of the leaf, and pair_afrom_substr()
+	 *	parses the leaf again from the start of the name.
+	 */
+	default:
+		pair_ctx->parent = parent;
+		fr_sbuff_set(&our_in, &name_m);
+
+		slen = pair_afrom_substr(pair_ctx, &our_in);
+		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+		break;
+	}
+
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
-/** Reset a pair_ctx to the dictionary root.
+/** Reset a pair_ctx to the dictionary root
  *
- * @param pair_ctx	the parsing context
- * @param dict		the dictionary to reset to the root
+ * Callers reset the context when the parsed text switches to a different
+ * attribute list, for example from request.foo to reply.bar.
  *
- *  This function is used in order to reset contexts when parsing
- *  strings that change attribute lists. i.e. &request.foo, &reply.bar
+ * The function will need to reset child contexts once pairs store children
+ * in vp->vp_children.
  *
- *  This function is simple for now, but will get complex once we
- *  start using vp->vp_children
+ * @param[in,out] pair_ctx	the parsing context.
+ * @param[in] dict		whose root becomes the parent.
  */
 void fr_pair_ctx_reset(fr_pair_ctx_t *pair_ctx, fr_dict_t const *dict)
 {

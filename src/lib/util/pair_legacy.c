@@ -64,23 +64,6 @@ static fr_table_num_sorted_t const pair_assignment_op_table[] = {
 };
 static ssize_t pair_assignment_op_table_len = NUM_ELEMENTS(pair_assignment_op_table);
 
-static fr_table_num_sorted_t const pair_comparison_op_table[] = {
-	{ L("!*"),	T_OP_CMP_FALSE		},
-	{ L("!="),	T_OP_NE			},
-	{ L("!~"),	T_OP_REG_NE		},
-	{ L("+="),	T_OP_ADD_EQ		},
-	{ L(":="),	T_OP_SET		},
-	{ L("<"),	T_OP_LT			},
-	{ L("<="),	T_OP_LE			},
-	{ L("="),	T_OP_EQ			},
-	{ L("=*"),	T_OP_CMP_TRUE		},
-	{ L("=="),	T_OP_CMP_EQ		},
-	{ L("=~"),	T_OP_REG_EQ		},
-	{ L(">"),	T_OP_GT			},
-	{ L(">="),	T_OP_GE			}
-};
-static size_t pair_comparison_op_table_len = NUM_ELEMENTS(pair_comparison_op_table);
-
 /*
  *	Stop parsing bare words at whitespace, comma, or end of list.
  *
@@ -501,7 +484,7 @@ redo:
 	 *	Look for the operator.
 	 */
 	if (relative->allow_compare) {
-		fr_sbuff_out_by_longest_prefix(&slen, &op, pair_comparison_op_table, &our_in, T_INVALID);
+		fr_sbuff_out_by_longest_prefix(&slen, &op, fr_pair_comparison_op_table, &our_in, T_INVALID);
 		if (op == T_INVALID) {
 			fr_strerror_const("Expecting operator");
 			goto error;

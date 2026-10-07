@@ -20,6 +20,7 @@ SUBMAKEFILES := \
 	pair_list_perf_test.mk \
 	pair_nested_tests.mk \
 	pair_tests.mk \
+	pair_tokenize_tests.mk \
 	rbmonkey.mk \
 	rb_tests.mk \
 	retry_tests.mk \
