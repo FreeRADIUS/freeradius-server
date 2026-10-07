@@ -516,6 +516,9 @@ try_lock:
  * When multithreaded, the FD is locked via a mutex.  This way we're
  * sure that no other thread is writing to the file.
  *
+ * On success the mutex is held until exfile_close() is called.  On
+ * failure the mutex is not held.
+ *
  * @param ef The logfile context returned from exfile_init().
  * @param filename the file to open.
  * @param permissions to use.
@@ -539,6 +542,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flag
 		return found;
 	}
 
+	/* coverity[missing_unlock] */
 	return exfile_open_lock(ef, filename, permissions, flags, offset);
 }
 
