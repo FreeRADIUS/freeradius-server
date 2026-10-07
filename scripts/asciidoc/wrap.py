@@ -30,6 +30,11 @@ Rules:
     (e.g. "```text", "```bash") is closed only by a line equal to "```".
     The contents are passed through verbatim, and both delimiters are
     left unchanged.
+  - Verbatim blocks (delimited by "-", "```", or "```" followed by
+    text) inside admonition text blocks ("[LABEL]" followed by a
+    "====" block) are treated exactly as outside them: the block
+    contents are passed through verbatim, and the delimiters are
+    rewritten or left unchanged as described above.
   - Indented blocks are left unchanged, including the indent.  An
     indented block starts at a line indented by one or more spaces or
     tabs, when no paragraph or list entry is in progress.  The
@@ -436,6 +441,30 @@ def process(lines, nav_mode=False):
         buf_hang = False
         return True
 
+    def verbatim_open(i, line):
+        # Open a verbatim block if line is a "-" or "```" block
+        # delimiter.  Lines inside the block are handled at the top of
+        # the main loop in process().  Returns True if a block was opened.
+        nonlocal block_open, block_render
+        delim = block_delim(line)
+        if delim is None:
+            return False
+        flush()
+        # For a bare "```" or "-" delimiter, block_render is "----" unless
+        # the block holds a nested "-" delimiter.  block_open keeps the
+        # input delimiter, because the closing delimiter must be identical
+        # to the input delimiter.
+        block_open = delim
+        if line != delim:
+            # An opening delimiter such as "```text" is left unchanged,
+            # and the closing "```" is also left unchanged.
+            block_render = delim
+            out.append(line)
+            return True
+        block_render = delim_render(lines, i, delim, "----", _DASH_DELIM_RE)
+        out.append(block_render)
+        return True
+
     def equals_delim(i, line):
         # An "=" delimiter identical to the opening delimiter of the
         # innermost open "=" block closes that block.  Any other "="
@@ -537,6 +566,8 @@ def process(lines, nav_mode=False):
                 if len(equals_open) < text_block_depth:
                     text_block_depth = None
                 continue
+            if verbatim_open(i, line):
+                continue
             if line == "":
                 flush()
                 emit_blank()
@@ -580,23 +611,7 @@ def process(lines, nav_mode=False):
             need_blank_after_title = True
             continue
 
-        delim = block_delim(line)
-        if delim is not None:
-            flush()
-            # For a bare "```" or "-" delimiter, block_render is "----"
-            # unless the block holds a nested "-" delimiter.  block_open
-            # keeps the input delimiter, because the closing delimiter must
-            # be identical to the input delimiter.
-            block_open = delim
-            if line != delim:
-                # An opening delimiter such as "```text" is left unchanged,
-                # and the closing "```" is also left unchanged.
-                block_render = delim
-                out.append(line)
-                continue
-            block_render = delim_render(lines, i, delim, "----",
-                                        _DASH_DELIM_RE)
-            out.append(block_render)
+        if verbatim_open(i, line):
             continue
 
         if is_title(line):
