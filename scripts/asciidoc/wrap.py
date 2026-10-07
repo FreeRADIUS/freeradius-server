@@ -58,6 +58,16 @@ Rules:
     (e.g. "1.").  Each entry is wrapped on its own; continuation lines
     are indented so they align with the text after the marker.  For
     numbered entries the leading number is preserved as-is.
+  - Description list entries begin with a term followed by "::",
+    ":::", "::::", or ";;", and then whitespace or the end of the line
+    (e.g. "name:: The name").  Each entry is wrapped on its own, and
+    the term is never split.  Continuation lines start in the first
+    column.  A line holding only a term and its delimiter (e.g.
+    "name::") is left unchanged.  A line beginning with a term inside a
+    paragraph is a continuation line, not a new entry.  Directly after
+    a list entry, the same line starts a new entry.  A term beginning
+    with "[" (e.g. "[ statements ]::") is a description list entry, not
+    a "[" line left unchanged.
   - List entries containing an "xref:" macro are left unwrapped.
     Antora's nav parser requires each "* xref:..." entry to occupy a
     single line; splitting it breaks the nav tree.
@@ -66,6 +76,22 @@ Rules:
     parser sees one entry per line.
   - Lines containing a single '+' are left alone; they are used to join
     different Asciidoc blocks together.
+  - The document header is left unchanged.  The header exists when
+    the first line that is neither blank nor a comment is a document
+    title ("= " followed by text).  The header runs from the title to
+    the next blank line.  The author, revision, and attribute entry
+    lines must stay directly after the title.  The lines after the
+    title belong to the header only if one of the lines is an
+    attribute entry.  At most two lines (author and revision) may come
+    before the first attribute entry, and only attribute entries and
+    comments may follow the first attribute entry.  Otherwise, the
+    title is followed by a blank line, like any other section title.
+  - Attribute entries (":name: value", ":name:", ":name!:", ":!name:")
+    are left unchanged on their own line.
+  - Block macros (e.g. "include::file.adoc[]", "image::foo.png[]",
+    "ifdef::attr[]", "endif::[]") are left unchanged on their own
+    line.  A block macro is a lowercase name, "::", a target (possibly
+    empty) with no whitespace, and "[...]" ending the line.
 
 	$Id$
 """
@@ -112,14 +138,20 @@ def wrap_paragraph(text):
                                    break_on_hyphens=False))
 
 
-def wrap_list_entry(text, indent):
-    """Wrap a list entry.  The first line keeps its marker ("* ", "- ",
-    or "N. "); continuation lines are indented to align with the text."""
+def wrap_list_entry(text, indent, hang=True):
+    """Wrap a list entry.  The first line keeps the marker ("* ", "- ",
+    "N. ", or "term:: "), and the marker is never split.  If `hang` is
+    True, continuation lines are indented to align with the text after
+    the marker.  Otherwise, continuation lines start in the first
+    column."""
     marker = text[:indent]
     body = text.expandtabs()[len(marker.expandtabs()):]
+    if not body:
+        return marker.rstrip()
     return "\n".join(textwrap.wrap(body, width=WIDTH,
                                    initial_indent=marker,
-                                   subsequent_indent=" " * indent,
+                                   subsequent_indent=" " * indent if hang
+                                   else "",
                                    break_long_words=False,
                                    break_on_hyphens=False))
 
@@ -147,6 +179,58 @@ def is_comment(line):
     return line.lstrip().startswith("//")
 
 
+_ATTRIBUTE_ENTRY_RE = re.compile(r"^:!?[^:\s][^:]*:(?:\s|$)")
+
+
+def is_attribute_entry(line):
+    """Attribute entry, e.g. ":doctype: manpage" or ":name!:"."""
+    return _ATTRIBUTE_ENTRY_RE.match(line) is not None
+
+
+_BLOCK_MACRO_RE = re.compile(r"^[a-z][a-z0-9_-]*::\S*\[.*\]$")
+
+
+def is_block_macro(line):
+    """Block macro, e.g. "include::file.adoc[]" or "endif::[]"."""
+    return _BLOCK_MACRO_RE.match(line) is not None
+
+
+def header_end(lines):
+    """Return the index of the first line after the document header, or
+    0 if there is no header.  The header starts at a document title
+    ("= Title") that is the first line neither blank nor a comment.
+    The header runs until the next blank line.
+
+    The lines after the title belong to the header only if one of the
+    lines is an attribute entry.  At most two lines (the author and
+    revision lines) may come before the first attribute entry, and only
+    attribute entries and comments may follow the first attribute entry.
+    Otherwise, e.g. when a paragraph or "== Section" directly follows
+    the title, the title is treated like any other title, and a blank
+    line is added after the title."""
+    for i, line in enumerate(lines):
+        s = line.strip()
+        if s == "" or is_comment(s):
+            continue
+        if not (s.startswith("= ") and s[2:].strip()):
+            return 0
+        end = len(lines)
+        for j in range(i + 1, len(lines)):
+            if lines[j].strip() == "":
+                end = j
+                break
+        body = [b.strip() for b in lines[i + 1:end]]
+        first = next((k for k, b in enumerate(body)
+                      if is_attribute_entry(b)), None)
+        if first is None or first > 2:
+            return 0
+        if not all(is_attribute_entry(b) or is_comment(b)
+                   for b in body[first:]):
+            return 0
+        return end
+    return 0
+
+
 _LIST_MARKER_RE = re.compile(r"^(?:\*+|-|\d+\.)\s+")
 
 
@@ -162,6 +246,30 @@ def list_marker_len(line):
 
 def is_list_start(line):
     return list_marker_len(line) is not None
+
+
+#
+#  A description list marker is a term that does not start with
+#  whitespace, followed by "::", ":::", "::::", or ";;", and then
+#  whitespace or the end of the line.  The term does not end in ":" or
+#  ";", so that a run of five or more ":" never matches.
+#
+_DLIST_MARKER_RE = re.compile(r"^\S(?:.*?[^:;])?(?:::::|:::|::|;;)(?:\s+|$)")
+
+
+def dlist_marker_len(line):
+    """If line begins a description list entry ("term:: definition"),
+    return the length of the term, the delimiter, and any whitespace
+    after the delimiter.  Otherwise return None.  Return None for a
+    comment, a block title, a table row, or a list entry, even when the
+    line matches the marker pattern."""
+    if (is_comment(line) or is_block_title(line) or is_table(line)
+            or is_list_start(line)):
+        return None
+    m = _DLIST_MARKER_RE.match(line)
+    if m:
+        return m.end()
+    return None
 
 
 #
@@ -262,6 +370,7 @@ def process(lines, nav_mode=False):
     block_render = None   # delimiter written for block_open, e.g. "----"
     buf = []
     buf_list_indent = None  # marker length if buf holds a list entry, else None
+    buf_hang = True       # False: continuation lines start in column 1
     need_blank_after_title = False
     equals_open = []      # stack of open "=" blocks, as
                           # (input, output) delimiters
@@ -270,6 +379,7 @@ def process(lines, nav_mode=False):
     pending_admonition = False  # previous line was an uppercase "[LABEL]"
     indented_open = False  # inside an indented block
     indented_blanks = 0    # blank lines since the last indented-block line
+    header = header_end(lines)  # lines before this index are the header
 
     def emit_blank():
         # Collapse runs of blank lines down to one.
@@ -278,16 +388,41 @@ def process(lines, nav_mode=False):
         out.append("")
 
     def flush():
-        nonlocal buf, buf_list_indent
+        nonlocal buf, buf_list_indent, buf_hang
         if not buf:
             return
         text = " ".join(s.strip() for s in buf)
         if buf_list_indent is not None:
-            out.append(wrap_list_entry(text, buf_list_indent))
+            out.append(wrap_list_entry(text, buf_list_indent, buf_hang))
         else:
             out.append(wrap_paragraph(text))
         buf = []
         buf_list_indent = None
+        buf_hang = True
+
+    def dlist_entry(line):
+        # Start a description list entry.  A term on a line by itself is
+        # left unchanged, so the definition stays on the lines after the
+        # term.  Otherwise the definition is wrapped, and the continuation
+        # lines of the definition start in the first column.  Inside a
+        # paragraph, a line such as "To do this, set::" is a continuation
+        # line, not a new entry.  After a list entry, the line starts a
+        # new entry.  Returns True if line starts an entry.  Returns False,
+        # without flushing buf, otherwise.
+        nonlocal buf, buf_list_indent, buf_hang
+        if buf and buf_list_indent is None:
+            return False
+        marker_len = dlist_marker_len(line)
+        if marker_len is None:
+            return False
+        flush()
+        if marker_len >= len(line):
+            out.append(line)
+            return True
+        buf = [line]
+        buf_list_indent = marker_len
+        buf_hang = False
+        return True
 
     def equals_delim(i, line):
         # An "=" delimiter identical to the opening delimiter of the
@@ -314,6 +449,18 @@ def process(lines, nav_mode=False):
         # Strip just the trailing newline; keep the rest of the line
         # exactly as-is so we can preserve block contents verbatim.
         raw = line.rstrip("\n")
+
+        if i < header:
+            # Header lines: any blank lines or comments, the document
+            # title, then the author, revision, and attribute entries.
+            # A blank line after the title would end the header early, so
+            # no blank line is added after the title, and nothing is wrapped.
+            line = to_ascii(raw).rstrip()
+            if line == "":
+                emit_blank()
+            else:
+                out.append(line)
+            continue
 
         if indented_open:
             # Inside an indented block.  After a blank line, only an
@@ -382,6 +529,12 @@ def process(lines, nav_mode=False):
                 flush()
                 emit_blank()
                 continue
+            if is_attribute_entry(line) or is_block_macro(line):
+                flush()
+                out.append(line)
+                continue
+            if dlist_entry(line):
+                continue
             marker_len = list_marker_len(line)
             if marker_len is not None:
                 flush()
@@ -443,6 +596,12 @@ def process(lines, nav_mode=False):
                 text_block_depth = len(equals_open)
             continue
 
+        # A line such as "[ statements ]:: text" starts a description list
+        # entry.  is_attribute() matches any "[" line, so check for an
+        # entry first.
+        if dlist_entry(line):
+            continue
+
         if is_attribute(line):
             flush()
             out.append(line)
@@ -452,7 +611,8 @@ def process(lines, nav_mode=False):
                 pending_admonition = True
             continue
 
-        if is_comment(line) or is_block_title(line) or is_table(line):
+        if (is_comment(line) or is_block_title(line) or is_table(line)
+                or is_attribute_entry(line) or is_block_macro(line)):
             flush()
             out.append(line)
             continue
