@@ -344,6 +344,9 @@ static int dump_module(struct json_object *modules, char const *bare_name)
 						bare_name, fr_syserror(errno));
 					_exit(1);
 				}
+				if (!fr_cond_assert((size_t) n <= remaining)) {
+					_exit(1);
+				}
 				s += n;
 				remaining -= n;
 			}
@@ -359,6 +362,13 @@ static int dump_module(struct json_object *modules, char const *bare_name)
 		size_t	used = 0;
 		ssize_t n;
 		while ((n = read(fds[0], buf + used, sizeof(buf) - 1 - used)) > 0) {
+			/*
+			 *	read() never returns more than it was asked to read.
+			 */
+			if (!fr_cond_assert((size_t) n <= (sizeof(buf) - 1 - used))) {
+				close(fds[0]);
+				return -1;
+			}
 			used += n;
 			if (used >= sizeof(buf) - 1) break;
 		}
