@@ -269,6 +269,14 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 
 	/*
+	 *	fr_dhcpv4_ok() rejects message types outside dhcp_message_types.
+	 */
+	if (!fr_cond_assert_msg(FR_DHCP_PACKET_CODE_VALID(message_type),
+				"fr_dhcpv4_ok() accepted invalid message type %d", message_type)) {
+		return 0;
+	}
+
+	/*
 	 *	Print out what we received.
 	 */
 	DEBUG2("Received %s XID %08x length %d %s", dhcp_message_types[message_type], xid,
