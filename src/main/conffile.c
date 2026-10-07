@@ -2978,7 +2978,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					 	continue;
 					}
 					if ((len > 9) && (strncmp(&dp->d_name[len - 9], ".dpkg-old", 9) == 0)) goto pkg_file;
-					if ((len > 7) && (strncmp(&dp->d_name[len - 7], ".rpmnew", 9) == 0)) goto pkg_file;
+					if ((len > 7) && (strncmp(&dp->d_name[len - 7], ".rpmnew", 7) == 0)) goto pkg_file;
 					if ((len > 8) && (strncmp(&dp->d_name[len - 8], ".rpmsave", 10) == 0)) goto pkg_file;
 
 					slen = snprintf(buf2, sizeof(buf2), "%s%s",
