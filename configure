@@ -14455,6 +14455,45 @@ printf '%s\n' "#define HAVE_BUILTIN_CLZLL 1" >>confdefs.h
 fi
 
 
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for __builtin_ctzll support in compiler" >&5
+printf %s "checking for __builtin_ctzll support in compiler... " >&6; }
+if test ${ax_cv_cc_builtin_ctzll+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e)
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+        int main(int argc, char **argv) {
+          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+          return __builtin_ctzll(1);
+        }
+
+
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  ax_cv_cc_builtin_ctzll=yes
+else case e in #(
+  e) ax_cv_cc_builtin_ctzll=no
+   ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+ ;;
+esac
+fi
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_builtin_ctzll" >&5
+printf '%s\n' "$ax_cv_cc_builtin_ctzll" >&6; }
+if test "x$ax_cv_cc_builtin_ctzll" = "xyes"; then
+
+printf '%s\n' "#define HAVE_BUILTIN_CTZLL 1" >>confdefs.h
+
+fi
+
+
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for _Generic support in compiler" >&5
 printf %s "checking for _Generic support in compiler... " >&6; }
 if test ${ax_cv_cc_c11_generic+y}

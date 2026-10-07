@@ -56,6 +56,9 @@
 /* Define if the compiler supports __builtin_clzll */
 #undef HAVE_BUILTIN_CLZLL
 
+/* Define if the compiler supports __builtin_ctzll */
+#undef HAVE_BUILTIN_CTZLL
+
 /* Define if the compiler supports __builtin_types_compatible_p */
 #undef HAVE_BUILTIN_TYPES_COMPATIBLE_P
 

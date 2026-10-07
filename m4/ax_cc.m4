@@ -445,6 +445,30 @@ fi
 ])
 
 dnl #
+dnl #  Check if we have the ctzll builtin
+dnl #
+AC_DEFUN([AX_CC_BUILTIN_CTZLL],
+[
+AC_CACHE_CHECK([for __builtin_ctzll support in compiler], [ax_cv_cc_builtin_ctzll],[
+  AC_COMPILE_IFELSE(
+    [
+      AC_LANG_SOURCE([
+        int main(int argc, char **argv) {
+          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+          return __builtin_ctzll(1);
+        }
+      ])
+    ],
+    [ax_cv_cc_builtin_ctzll=yes],
+    [ax_cv_cc_builtin_ctzll=no]
+  )
+])
+if test "x$ax_cv_cc_builtin_ctzll" = "xyes"; then
+  AC_DEFINE([HAVE_BUILTIN_CTZLL],1,[Define if the compiler supports __builtin_ctzll])
+fi
+])
+
+dnl #
 dnl #  Check if size_t and int64_t are identical
 dnl #
 AC_DEFUN([AX_CC_SIZE_SAME_AS_UINT64],

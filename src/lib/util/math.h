@@ -114,7 +114,7 @@ static inline uint8_t fr_low_bit_pos(uint64_t num)
 {
 	if (num == 0) return 0;
 
-#ifdef HAVE_BUILTIN_CLZLL
+#ifdef HAVE_BUILTIN_CTZLL
 	return __builtin_ctzll(num) + 1;
 #else
 	uint8_t ret = 1;
