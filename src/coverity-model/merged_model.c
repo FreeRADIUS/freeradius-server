@@ -360,3 +360,22 @@ void acutest_abort_(void)
 {
 	__coverity_panic__();
 }
+
+/*
+ * from src/lib/io/atomic_queue.c
+ *
+ * atomic_ring_segment_publish() stores the new segment into h->next and
+ * ring->head with atomic stores, which the analyser does not treat as
+ * publishing the pointer, so it reports the segment as leaked when the
+ * caller returns.  The consumer frees the segment once it advances past.
+ */
+typedef struct {
+} fr_atomic_ring_t;
+
+typedef struct {
+} fr_atomic_ring_segment_t;
+
+void atomic_ring_segment_publish(fr_atomic_ring_t *ring, fr_atomic_ring_segment_t *h, fr_atomic_ring_segment_t *n)
+{
+	__coverity_escape__(n);
+}

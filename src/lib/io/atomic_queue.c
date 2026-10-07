@@ -712,6 +712,26 @@ void fr_atomic_ring_free(fr_atomic_ring_t **ring_p)
 	*ring_p = NULL;
 }
 
+/** Link a new segment after the current head and make it the head
+ *
+ * The consumer only inspects `h->next` and advances past `h` once it
+ * sees a non-NULL value there, so `h->next` is published with release
+ * ordering, which pairs with the acquire in fr_atomic_ring_pop().
+ *
+ * Modelled for Coverity in src/coverity-model/merged_model.c, as the
+ * analyser does not treat an atomic store as publishing the pointer.
+ *
+ * @param[in] ring	the segment belongs to.
+ * @param[in] h		Current head segment.
+ * @param[in] n		New segment to publish.
+ */
+static inline CC_HINT(always_inline) void atomic_ring_segment_publish(fr_atomic_ring_t *ring, fr_atomic_ring_segment_t *h,
+					fr_atomic_ring_segment_t *n)
+{
+	atomic_store_explicit(&h->next, n, memory_order_release);
+	atomic_store_explicit(&ring->head, n, memory_order_relaxed);
+}
+
 /** Push a pointer into the ring; allocate a new segment on overflow
  *
  * Single-producer only.  Must not be called concurrently with itself.
@@ -735,23 +755,8 @@ bool fr_atomic_ring_push(fr_atomic_ring_t *ring, void *data)
 	n = atomic_ring_segment_alloc(ring->seg_size);
 	if (unlikely(!n)) return false;
 
-	/*
-	 *	Publish ordering matters: the consumer only inspects `h->next`
-	 *	and advances past `h` once it sees a non-NULL value there.
-	 *	Release here pairs with acquire in fr_atomic_ring_pop.
-	 */
-	atomic_store_explicit(&h->next, n, memory_order_release);
-	atomic_store_explicit(&ring->head, n, memory_order_relaxed);
+	atomic_ring_segment_publish(ring, h, n);
 
-	/*
-	 *	Coverity doesn't track atomic stores as reference
-	 *	publication, so it sees `n` going out of scope and
-	 *	flags it as leaked.  It isn't: the two atomic stores
-	 *	above have published `n` into both `h->next` and
-	 *	`ring->head`, and the consumer will free it via
-	 *	atomic_ring_segment_free() once it advances past.
-	 */
-	/* coverity[leaked_storage] */
 	return fr_atomic_queue_push(n->q, data);
 }
 
