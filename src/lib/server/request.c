@@ -477,12 +477,18 @@ static int _request_local_free(request_t *request)
 	}
 
 	/*
+	 *	The log destinations and the request name are talloc
+	 *	children of the request, and request_common_deinit() logs
+	 *	through the log destinations, so the checks run before the
+	 *	children are freed.
+	 */
+	request_common_deinit(request);
+
+	/*
 	 *	Ensure anything that might reference the request is
 	 *	freed before it is.
 	 */
 	talloc_free_children(request);
-
-	request_common_deinit(request);
 
 	return 0;
 }

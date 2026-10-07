@@ -1156,6 +1156,7 @@ int main(int argc, char *argv[])
 	if (count == 1) {
 		fr_timer_in(request, el->tl, &request->timeout, config->worker.max_request_time, false, cancel_request, request);
 		unlang_interpret_synchronous(el, request);
+		TALLOC_FREE(request->timeout);	/* Disarm the request timer */
 
 	} else {
 		int i;
@@ -1189,6 +1190,7 @@ int main(int argc, char *argv[])
 
 			fr_timer_in(request, el->tl, &request->timeout, config->worker.max_request_time, false, cancel_request, request);
 			unlang_interpret_synchronous(el, request);
+			TALLOC_FREE(request->timeout);	/* Disarm the request timer */
 			talloc_free(request);
 
 #ifndef NDEBUG
