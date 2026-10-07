@@ -26,6 +26,7 @@
 #define _BIO_PRIVATE 1
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/fd.h>
+#include <freeradius-devel/util/syserror.h>
 
 static int	connected_count;
 static int	error_count;
@@ -168,6 +169,28 @@ done:
  *  messages.  If cbuf in fr_bio_fd_t is too small for both control messages, then the bio drops every
  *  packet.
  */
+/** See if the IPv6 loopback address can be used
+ *
+ *  Some hosts and containers turn IPv6 off.  The bind() fails there, and errno says why.
+ */
+static bool ipv6_loopback_usable(void)
+{
+	struct sockaddr_in6	sin6 = {
+					.sin6_family = AF_INET6,
+					.sin6_addr = IN6ADDR_LOOPBACK_INIT,
+				};
+	int			fd;
+	bool			usable;
+
+	fd = socket(AF_INET6, SOCK_DGRAM, 0);
+	if (fd < 0) return false;
+
+	usable = (bind(fd, (struct sockaddr *) &sin6, sizeof(sin6)) == 0);
+	close(fd);
+
+	return usable;
+}
+
 static void recvfromto_test(int af)
 {
 	TALLOC_CTX		*ctx = talloc_init_const("test");
@@ -181,6 +204,13 @@ static void recvfromto_test(int af)
 	uint8_t			buffer[16];
 	ssize_t			rcode;
 	int			fd = -1;
+	struct timeval		recv_timeout = { .tv_sec = 5 };
+
+	if ((af == AF_INET6) && !ipv6_loopback_usable()) {
+		TEST_SKIP("the IPv6 loopback address is not available: %s", fr_syserror(errno));
+		talloc_free(ctx);
+		return;
+	}
 
 	cfg = (fr_bio_fd_config_t) {
 		.type = FR_BIO_FD_UNCONNECTED,
@@ -216,12 +246,17 @@ static void recvfromto_test(int af)
 	TEST_CHECK(fd >= 0);
 	if (fd < 0) goto done;
 
-	TEST_CHECK(sendto(fd, "x", 1, 0, (struct sockaddr *) &to, to_len) == 1);
+	rcode = sendto(fd, "x", 1, 0, (struct sockaddr *) &to, to_len);
+	TEST_CHECK(rcode == 1);
+	TEST_MSG("sendto failed: %s", fr_syserror(errno));
+	if (rcode != 1) goto done;
 
 	/*
-	 *	The socket of the bio is blocking, so fr_bio_read() waits until the packet arrives,
-	 *	and cannot return early with nothing read.
+	 *	The socket of the bio is blocking, so fr_bio_read() waits until the packet arrives.  The
+	 *	receive timeout stops the test from waiting forever if the packet never arrives.
 	 */
+	TEST_CHECK(setsockopt(info->socket.fd, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(recv_timeout)) == 0);
+
 	rcode = fr_bio_read(bio, &packet_ctx, buffer, sizeof(buffer));
 
 	TEST_CASE("the packet is read, not dropped");
