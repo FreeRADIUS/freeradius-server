@@ -87,17 +87,17 @@ static void test_is_char(void)
 	fr_sbuff_marker_t	marker;
 
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
-	TEST_CHECK(fr_sbuff_is_char(&sbuff, 'i'));
+	TEST_CHECK(fr_sbuff_is_char(&sbuff, 'i') == true);
 	TEST_CHECK(!fr_sbuff_is_char(&sbuff, 'z'));
 
 	fr_sbuff_advance(&sbuff, 2);
 	TEST_CHECK(!fr_sbuff_is_char(&sbuff, 'i'));
-	TEST_CHECK(fr_sbuff_is_char(&sbuff, 'a'));
+	TEST_CHECK(fr_sbuff_is_char(&sbuff, 'a') == true);
 
 	fr_sbuff_advance(&sbuff, 15);
-	TEST_CHECK(fr_sbuff_is_char(&sbuff, 'g'));
+	TEST_CHECK(fr_sbuff_is_char(&sbuff, 'g') == true);
 	fr_sbuff_marker(&marker, &sbuff);
-	TEST_CHECK(fr_sbuff_is_char(&marker, 'g'));
+	TEST_CHECK(fr_sbuff_is_char(&marker, 'g') == true);
 
 	/*
 	 *	Ensure that after advancing the buffer past
@@ -106,7 +106,7 @@ static void test_is_char(void)
 	 */
 	fr_sbuff_advance(&sbuff, 1);
 	TEST_CHECK(!fr_sbuff_is_char(&sbuff, 'g'));
-	TEST_CHECK(fr_sbuff_is_char(&marker, 'g'));
+	TEST_CHECK(fr_sbuff_is_char(&marker, 'g') == true);
 }
 
 static void test_bstrncpy_exact(void)
