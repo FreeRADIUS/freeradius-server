@@ -54,6 +54,9 @@ Rules:
     contents are word-wrapped as text:
     paragraphs are wrapped, and list entries ("* ", "- ", "N. ") are
     wrapped with their continuation lines aligned after the marker.
+    Lines that are left unchanged on their own line outside the block
+    ("[" lines, comments, block titles, table rows, attribute entries,
+    block macros, and "+") are also left unchanged inside the block.
     A label containing any lowercase letter (e.g. "[source]") does not
     qualify.
   - A bare "====" (not opened by such a label) is still treated as a
@@ -558,8 +561,11 @@ def process(lines, nav_mode=False):
             # Inside a "[LABEL]" + "====" admonition block.  Paragraphs are
             # word-wrapped, and list entries are wrapped with continuation
             # lines aligned after the marker, as in the normal document flow.
-            # The block ends at the "=" delimiter identical to the opening
-            # delimiter.  The delimiter stays on a line by itself.
+            # Attribute lines, comments, block titles, table rows, attribute
+            # entries, block macros, and "+" are left unchanged on their own
+            # line, also as in the normal document flow.  The block ends at
+            # the "=" delimiter identical to the opening delimiter.  The
+            # delimiter stays on a line by itself.
             if is_text_block_delim(line):
                 flush()
                 equals_delim(i, line)
@@ -572,11 +578,14 @@ def process(lines, nav_mode=False):
                 flush()
                 emit_blank()
                 continue
-            if is_attribute_entry(line) or is_block_macro(line):
+            if dlist_entry(line):
+                continue
+            if (is_attribute(line) or is_comment(line)
+                    or is_block_title(line) or is_table(line)
+                    or is_attribute_entry(line) or is_block_macro(line)
+                    or line == "+"):
                 flush()
                 out.append(line)
-                continue
-            if dlist_entry(line):
                 continue
             marker_len = list_marker_len(line)
             if marker_len is not None:
