@@ -1535,7 +1535,7 @@ again:
 		 *	the code there knows what job it needs to push onto
 		 *	the unlang stack.
 		 */
-		fr_tls_verify_cert_request(tls_session, true);
+		fr_tls_verify_resumed_request(tls_session);
 
 		if (unlikely(!tls_session->can_pause)) goto cant_pause;
 		/*
@@ -1925,7 +1925,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 *	the code there knows what job it needs to push onto
 		 *	the unlang stack.
 		 */
-		fr_tls_verify_cert_request(tls_session, true);
+		fr_tls_verify_resumed_request(tls_session);
 
 		/*
 		 *	Cache functions are only allowed during the handshake

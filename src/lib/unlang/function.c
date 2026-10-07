@@ -94,6 +94,19 @@ static void unlang_function_signal(request_t *request,
 #define RESTORE_CALLER \
 	request->module = caller;
 
+/** Drop the repeat function of a frame
+ *
+ * @param[out] frame		to clear the repeatable flag on.
+ * @param[out] state		to clear the repeat function in.
+ */
+static inline CC_HINT(always_inline)
+void function_repeat_disarm(unlang_stack_frame_t *frame, unlang_frame_state_func_t *state)
+{
+	REPEAT(state) = NULL;
+	state->repeat_name = NULL;
+	repeatable_clear(frame);
+}
+
 /** Call a generic function that produces a result
  *
  * @param[out] p_result		The frame result.
@@ -292,6 +305,31 @@ int unlang_function_clear(request_t *request)
 	state->signal = NULL;
 
 	repeatable_clear(frame);
+
+	return 0;
+}
+
+/** Clear the pending repeat function, and keep the signal handler
+ *
+ * For a function which armed a repeat before a push, and then found nothing
+ * to push.  The function frame being modified must be at the top of the stack.
+ *
+ * @param[in] request	The current request.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int unlang_function_repeat_clear(request_t *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+
+	if (frame->instruction->type != UNLANG_TYPE_FUNCTION) {
+		RERROR("Can't clear repeat function on non-function frame");
+		return -1;
+	}
+
+	function_repeat_disarm(frame, talloc_get_type_abort(frame->state, unlang_frame_state_func_t));
 
 	return 0;
 }

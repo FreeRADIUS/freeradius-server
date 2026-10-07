@@ -2171,9 +2171,19 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 			IGNORE(unlang_function_clear(request), int);
 			goto error;
 
-		default:
+		case UNLANG_ACTION_PUSHED_CHILD:
 			return ua;
+
+		default:
+			break;
 		}
+
+		/*
+		 *	Nothing was pushed, so the repeat armed above never runs.
+		 *	Clear the repeat and resume the handshake now.
+		 */
+		IGNORE(unlang_function_repeat_clear(request), int);
+		return tls_session_async_handshake_cont(request, uctx);
 	}
 
 	case SSL_ERROR_WANT_ASYNC_JOB:

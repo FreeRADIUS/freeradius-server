@@ -64,6 +64,10 @@ typedef struct {
 							///< certificate validation.
 
 	bool				resumed;	//!< Whether we're validating a resumed session.
+
+	X509_STORE_CTX			*x509_ctx;	//!< Chain OpenSSL is verifying.  Set while the
+							///< handshake is paused in fr_tls_verify_cert_cb(),
+							///< NULL for a resumed session, which has no chain.
 } fr_tls_verify_t;
 
 #ifdef __cplusplus
@@ -84,7 +88,9 @@ bool		fr_tls_verify_cert_result(fr_tls_session_t *tls_session);
 
 void		fr_tls_verify_cert_reset(fr_tls_session_t *tls_session);
 
-void		fr_tls_verify_cert_request(fr_tls_session_t *tls_session, bool resumed);
+void		fr_tls_verify_cert_request(fr_tls_session_t *tls_session, X509_STORE_CTX *x509_ctx);
+
+void		fr_tls_verify_resumed_request(fr_tls_session_t *tls_session);
 
 unlang_action_t fr_tls_verify_cert_pending_push(request_t *request, fr_tls_session_t *tls_session);
 

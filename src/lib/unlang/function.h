@@ -79,6 +79,8 @@ typedef void (*unlang_function_signal_t)(request_t *request, fr_signal_t action,
 
 int		unlang_function_clear(request_t *request) CC_HINT(warn_unused_result);
 
+int		unlang_function_repeat_clear(request_t *request) CC_HINT(warn_unused_result);
+
 /** Set a new signal function for an existing function frame
  *
  * The function frame being modified must be at the top of the stack.

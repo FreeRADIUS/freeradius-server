@@ -40,6 +40,8 @@
 
 #include <freeradius-devel/protocol/tls/freeradius.h>
 
+#include <openssl/x509v3.h>
+
 #include "attrs.h"
 #include "base.h"
 
@@ -120,8 +122,11 @@ static void tls_verify_error_detail(request_t *request, SSL_CTX *ctx, int err)
  * @note This callback will be called multiple times based on the depth of the root
  *	certificate chain.
  *
- * @note As a byproduct of validation, various OIDs will be extracted from the
- *	certificates, and inserted into the session-state list as fr_pair_t.
+ * @note OpenSSL runs the handshake (including this callback) on a fibre with a
+ *	limited stack (32 KB on OpenSSL releases without ASYNC_set_mem_functions()).
+ *	Because of that limited stack, we need to perform all certificate decoding
+ *	outside of the fibre on the main stack, i.e. after OpenSSL has yielded and
+ *	the handshake has paused.  See fr_tls_verify_cert_pending_push().
  *
  * @param ok		preverify ok.  1 if true, 0 if false.
  * @param x509_ctx	containing certs to verify.
@@ -142,7 +147,6 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	int			untrusted;
 
 	request_t		*request;
-	fr_pair_t		*container = NULL;
 	fr_pair_t		*depth_pair;
 
 	cert = X509_STORE_CTX_get_current_cert(x509_ctx);
@@ -229,88 +233,21 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		}
 	}
 
-	if (verify_applies(conf->verify.attribute_mode, depth, untrusted) &&
-	    (!(container = fr_pair_find_by_da_idx(&request->session_state_pairs, attr_tls_certificate, depth)) ||
-	     fr_pair_list_empty(&container->vp_group))) {
-	     	if (!container) {
-	    	     	unsigned int i;
-
-			/*
-			 *	Build a stack of container attributes.
-			 *
-			 *	OpenSSL passes us the deepest certificate
-			 *      first, so we need to build out sufficient
-			 *      TLS-Certificate container TLVs so the TLS-Certificate
-			 *	indexes match the attribute depth.
-			 */
-			for (i = fr_pair_count_by_da(&request->session_state_pairs, attr_tls_certificate);
-			     i <= (unsigned int)depth;
-			     i++) {
-				MEM(container = fr_pair_afrom_da(request->session_state_ctx, attr_tls_certificate));
-				fr_pair_append(&request->session_state_pairs, container);
-			}
-	     	}
-
-#ifdef STATIC_ANALYZER
-		/*
-		 *	Container can never be NULL, because if container
-		 *	was previously NULL, i will be <= depth.
-		 */
-		if (!fr_cond_assert(container)) {
-			my_ok = 0;
-			goto done;
-		}
-#endif
-		/*
-		 *	If we fail to populate the cert attributes,
-		 *	trash all instances in the session-state list
-		 *	and cause validation to fail.
-		 */
-		if (fr_tls_session_pairs_from_x509_cert(&container->vp_group, container,
-							request, cert,
-							X509_STORE_CTX_get0_current_issuer(x509_ctx),
-							conf->verify.der_decode) < 0) {
-			fr_pair_delete_by_da(&request->session_state_pairs, attr_tls_certificate);
-			if (conf->verify.der_decode) {
-				fr_pair_delete_by_da(&request->session_state_pairs, attr_der_certificate);
-			}
-			fr_tls_session_error_add(request, FR_ERROR_VALUE_CERTIFICATE_ATTRIBUTES_FAILED);
-			my_ok = 0;
-			goto done;
-		}
-
-		log_request_pair(L_DBG_LVL_2, request, NULL, container, "session-state.");
-	}
 done:
 	/*
-	 *	If verification hasn't already failed
-	 *	and we're meant to verify this cert
-	 *	then call the virtual server.
-	 *
-	 *	We only call the virtual server for
-	 *      the certificate at depth 0 as all
-	 *      other certificate attributes should
-	 *	have been added by this point.
+	 *	The chain is complete once OpenSSL reaches depth 0.  Pause the handshake
+	 *	here so that fr_tls_verify_cert_pending_push() can decode the chain and run
+	 *	the `verify certificate` section on the main stack.  Execution continues
+	 *	after the ASYNC_pause_job() call below once the section has run.
 	 */
 	if (my_ok && (depth == 0)) {
-		if (conf->verify_certificate && tls_session->verify_peer_cert) {
-			fr_assert(conf->virtual_server);
+		bool want_pairs = conf->verify.attribute_mode != FR_TLS_VERIFY_MODE_DISABLED;
+		bool want_verify = conf->verify_certificate && tls_session->verify_peer_cert;
 
-			RDEBUG2("Requesting certificate validation");
-
-			/*
-			 *	This sets the validation state of the tls_session
-			 *	so that when we call ASYNC_pause_job(), and execution
-			 *	jumps back to tls_session_async_handshake_cont
-			 *	(just under SSL_read())
-			 *	the code there knows what job it needs to push onto
-			 *	the unlang stack.
-			 */
-			fr_tls_verify_cert_request(tls_session, SSL_session_reused(tls_session->ssl));
+		if (want_pairs || want_verify) {
+			fr_tls_verify_cert_request(tls_session, x509_ctx);
 
 			/*
-			 *	Jumps back to SSL_read() in session.c
-			 *
 			 *	Be aware that if the request is cancelled
 			 *	whatever was meant to be done during the
 			 *	time we yielded may not have been completed.
@@ -326,9 +263,9 @@ done:
 				return 1;
 			}
 
-
 			/*
-			 *	If we couldn't validate the certificate
+			 *	If we couldn't decode the chain, or the
+			 *	`verify certificate` section rejected it,
 			 *	then validation overall fails.
 			 */
 			if (!fr_tls_verify_cert_result(tls_session)) {
@@ -552,34 +489,173 @@ bool fr_tls_verify_cert_result(fr_tls_session_t *tls_session)
 void fr_tls_verify_cert_reset(fr_tls_session_t *tls_session)
 {
 	tls_session->validate.state = FR_TLS_VALIDATION_INIT;
-	tls_session->validate.resumed  = false;
+	tls_session->validate.resumed = false;
+	tls_session->validate.x509_ctx = NULL;
 }
 
-/** Setup a verification request
+/** Request validation of the chain OpenSSL is verifying
  *
+ * Called by fr_tls_verify_cert_cb() before it pauses the handshake.
+ *
+ * @param[in] tls_session	The current TLS session.
+ * @param[in] x509_ctx		holding the chain.  Only valid while the
+ *				handshake is paused inside the callback.
  */
-void fr_tls_verify_cert_request(fr_tls_session_t *tls_session, bool session_resumed)
+void fr_tls_verify_cert_request(fr_tls_session_t *tls_session, X509_STORE_CTX *x509_ctx)
 {
 	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_INIT);
 
 	tls_session->validate.state = FR_TLS_VALIDATION_REQUESTED;
-	tls_session->validate.resumed = session_resumed;
+	tls_session->validate.resumed = false;
+	tls_session->validate.x509_ctx = x509_ctx;
 }
 
-/** Push a `verify certificate { ... }` section
+/** Request re-validation of the certificate pairs restored with a resumed session
+ *
+ * Called by the session cache code before it pauses the handshake.  A resumed
+ * session has no chain to decode, the `TLS-Certificate` pairs came back with
+ * the session.
+ *
+ * @param[in] tls_session	The current TLS session.
+ */
+void fr_tls_verify_resumed_request(fr_tls_session_t *tls_session)
+{
+	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_INIT);
+
+	tls_session->validate.state = FR_TLS_VALIDATION_REQUESTED;
+	tls_session->validate.resumed = true;
+	tls_session->validate.x509_ctx = NULL;
+}
+
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+/** Decode the chain OpenSSL is verifying into `session-state.TLS-Certificate` pairs
+ *
+ * Runs on the request's own stack while the handshake is paused in
+ * fr_tls_verify_cert_cb().  The certificate at depth 0 is the peer's, and
+ * `TLS-Certificate[n]` holds the certificate at depth n.
+ *
+ * @param[in] request		The current request.
+ * @param[in] tls_session	The current TLS session.
+ * @param[in] conf		The TLS configuration.
+ * @return
+ *	- 0 on success.
+ *	- -1 if a certificate could not be decoded.  No `TLS-Certificate`
+ *	  pairs remain in the session-state list.
+ */
+static int tls_verify_chain_pairs_add(request_t *request, fr_tls_session_t *tls_session, fr_tls_conf_t const *conf)
+{
+	X509_STORE_CTX	*x509_ctx = tls_session->validate.x509_ctx;
+	STACK_OF(X509)	*chain = X509_STORE_CTX_get0_chain(x509_ctx);
+	int		untrusted = X509_STORE_CTX_get_num_untrusted(x509_ctx);
+	int		num = sk_X509_num(chain);
+	int		depth;
+
+	/*
+	 *	Deepest first, so each DER decoded certificate is prepended ahead
+	 *	of its issuer and `DER-Certificate[0]` is the peer's.
+	 */
+	for (depth = num - 1; depth >= 0; depth--) {
+		X509		*cert = sk_X509_value(chain, depth);
+		X509		*issuer;
+		fr_pair_t	*container;
+		unsigned int	i;
+
+		if (!verify_applies(conf->verify.attribute_mode, depth, untrusted)) continue;
+
+		/*
+		 *	Already decoded, the pairs came back with a resumed session.
+		 */
+		container = fr_pair_find_by_da_idx(&request->session_state_pairs, attr_tls_certificate, depth);
+		if (container && !fr_pair_list_empty(&container->vp_group)) continue;
+
+		/*
+		 *	Build out sufficient TLS-Certificate containers so the
+		 *	TLS-Certificate indexes match the chain depth.
+		 */
+		for (i = fr_pair_count_by_da(&request->session_state_pairs, attr_tls_certificate);
+		     i <= (unsigned int)depth;
+		     i++) {
+			MEM(container = fr_pair_afrom_da(request->session_state_ctx, attr_tls_certificate));
+			fr_pair_append(&request->session_state_pairs, container);
+		}
+
+		/*
+		 *	The issuer is the next certificate up the chain.  The last
+		 *	certificate is its own issuer when it is self-issued, which
+		 *	is what OpenSSL reports as the current issuer when it calls
+		 *	the verify callback for that certificate.
+		 */
+		if ((depth + 1) < num) {
+			issuer = sk_X509_value(chain, depth + 1);
+		} else if (X509_check_issued(cert, cert) == X509_V_OK) {
+			issuer = cert;
+		} else {
+			issuer = NULL;
+		}
+
+		/*
+		 *	If we fail to populate the cert attributes,
+		 *	trash all instances in the session-state list
+		 *	and cause validation to fail.
+		 */
+		if (fr_tls_session_pairs_from_x509_cert(&container->vp_group, container,
+							request, cert, issuer, conf->verify.der_decode) < 0) {
+			fr_pair_delete_by_da(&request->session_state_pairs, attr_tls_certificate);
+			if (conf->verify.der_decode) {
+				fr_pair_delete_by_da(&request->session_state_pairs, attr_der_certificate);
+			}
+			fr_tls_session_error_add(request, FR_ERROR_VALUE_CERTIFICATE_ATTRIBUTES_FAILED);
+			return -1;
+		}
+
+		log_request_pair(L_DBG_LVL_2, request, NULL, container, "session-state.");
+	}
+
+	return 0;
+}
+DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+
+/** Decode the chain, then push a `verify certificate { ... }` section
+ *
+ * tls_session_async_handshake_cont() calls the function once the handshake
+ * has paused, after the pushes for the session cache and `load psk` sections.
  *
  * @param[in] request		The current request.
  * @param[in] tls_session	The current TLS session.
  * @return
- *	- UNLANG_ACTION_CALCULATE_RESULT	- No pending actions
- *	- UNLANG_ACTION_PUSHED_CHILD		- Pending operations to evaluate.
+ *	- UNLANG_ACTION_CALCULATE_RESULT	- Nothing to push, resume the handshake.
+ *	- UNLANG_ACTION_PUSHED_CHILD		- The section is running.
+ *	- UNLANG_ACTION_FAIL			- The section could not be pushed.
  */
 unlang_action_t fr_tls_verify_cert_pending_push(request_t *request, fr_tls_session_t *tls_session)
 {
-	if (tls_session->validate.state == FR_TLS_VALIDATION_REQUESTED) {
-		return tls_verify_peer_cert_push(request, tls_session);
+	fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
+
+	if (tls_session->validate.state != FR_TLS_VALIDATION_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	/*
+	 *	A resumed session has no chain, its pairs came back with the session.
+	 */
+	if (!tls_session->validate.resumed) {
+		RDEBUG2("Decoding certificate chain");
+		if (tls_verify_chain_pairs_add(request, tls_session, conf) < 0) {
+			tls_session->validate.state = FR_TLS_VALIDATION_FAILED;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
 	}
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	/*
+	 *	Pairs were all that was wanted.
+	 */
+	if (!conf->verify_certificate || !tls_session->verify_peer_cert) {
+		tls_session->validate.state = FR_TLS_VALIDATION_SUCCESS;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	RDEBUG2("Requesting certificate validation");
+
+	return tls_verify_peer_cert_push(request, tls_session);
 }
 #endif /* WITH_TLS */
