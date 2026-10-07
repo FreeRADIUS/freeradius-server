@@ -367,7 +367,7 @@ static void test_bstrncpy_until(void)
 {
 	char const	in[] = "i am a test string";
 	char const	in_long[] = "i am a longer test string";
-	char		out[18 + 1];
+	char		out[18 + 1] = "";
 	fr_sbuff_t	sbuff;
 	fr_sbuff_err_t	ret;
 	size_t		len;
@@ -933,7 +933,7 @@ static void test_unescape_multi_char_terminals(void)
 					L("food"),
 					L("nyi")
 				);
-	char			out[100];
+	char			out[100] = "";
 
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
 
@@ -970,7 +970,7 @@ static void test_eof_terminal(void)
 	fr_sbuff_term_t		tt = FR_SBUFF_TERMS(
 					L(",")
 				);
-	char			out[100];
+	char			out[100] = "";
 
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
 
@@ -1610,7 +1610,7 @@ static void test_file_extend(void)
 	fr_sbuff_uctx_file_t	fctx;
 	FILE		*fp;
 	char		buff[5];
-	char		out[24];
+	char		out[24] = "not written";	/* Not empty, so the checks for "" test the copy */
 	char		fbuff[24];
 	const char	PATTERN[] = "xyzzy";
 #define PATTERN_LEN (sizeof(PATTERN) - 1)
@@ -1713,7 +1713,7 @@ static void test_file_extend_error(void)
 	fr_sbuff_uctx_file_t	fctx;
 	FILE			*fp;
 	char			buff[16];
-	char			out[16];
+	char			out[16] = "not written";	/* Not empty, so the checks for "" test the copy */
 	size_t			len = 1;
 
 	TEST_CASE("Initialization");
