@@ -97,15 +97,18 @@ static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 	char read_buffer[256];
 	uint8_t	data[256];
 	ssize_t message_size;
+	ssize_t slen;
 	uint32_t id = 0;
 
 	/*
-	 *  The presence of data on the pipe fd is just a trigger to pop all
-	 *  available messages from the atomic queue, so the number of bytes
-	 *  read is not important.
+	 *	Each byte on the pipe announces one message, and the loop
+	 *	below pops every message in the atomic queue, so empty the
+	 *	pipe.  The queue is popped even when the read fails, as a
+	 *	full read of the last bytes ends with EAGAIN.
 	 */
-	/* coverity[check_return] */
-	if (read(fd, read_buffer, sizeof(read_buffer)) <= 0) return;
+	do {
+		slen = read(fd, read_buffer, sizeof(read_buffer));
+	} while ((slen == (ssize_t) sizeof(read_buffer)) || ((slen < 0) && (errno == EINTR)));
 
 	now = fr_time();
 
