@@ -1510,7 +1510,6 @@ static void test_fr_pair_debug(void)
 	fr_pair_t	*vp;
 	FILE		*fp;
 	char		buffer[1024];
-	size_t		len;
 
 	fr_pair_list_init(&list);
 
@@ -1518,14 +1517,11 @@ static void test_fr_pair_debug(void)
 	TEST_CHECK(fr_pair_value_strdup(vp, "one", false) == 0);
 
 	TEST_CASE("fr_pair_debug() writes one pair");
-	/* coverity[secure_temp] */
-	TEST_CHECK((fp = tmpfile()) != NULL);
+	memset(buffer, 0, sizeof(buffer));
+	TEST_CHECK((fp = fmemopen(buffer, sizeof(buffer) - 1, "w")) != NULL);
 	if (!fp) return;
 
 	fr_pair_debug(fp, vp);
-	TEST_CHECK(fseek(fp, 0, SEEK_SET) == 0);
-	len = fread(buffer, 1, sizeof(buffer) - 1, fp);
-	buffer[len] = '\0';
 	fclose(fp);
 
 	TEST_CHECK(strstr(buffer, "Test-String") != NULL);
@@ -1533,14 +1529,11 @@ static void test_fr_pair_debug(void)
 	TEST_CHECK(strstr(buffer, "one") != NULL);
 
 	TEST_CASE("fr_pair_list_debug() writes the whole list");
-	/* coverity[secure_temp] */
-	TEST_CHECK((fp = tmpfile()) != NULL);
+	memset(buffer, 0, sizeof(buffer));
+	TEST_CHECK((fp = fmemopen(buffer, sizeof(buffer) - 1, "w")) != NULL);
 	if (!fp) return;
 
 	fr_pair_list_debug(fp, &list);
-	TEST_CHECK(fseek(fp, 0, SEEK_SET) == 0);
-	len = fread(buffer, 1, sizeof(buffer) - 1, fp);
-	buffer[len] = '\0';
 	fclose(fp);
 
 	TEST_CHECK(strstr(buffer, "Test-String") != NULL);
