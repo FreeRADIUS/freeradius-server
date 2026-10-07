@@ -26,6 +26,10 @@ Rules:
     the "```" delimiters themselves are rewritten to "----".  As with
     a long "-" delimiter, a "```" block containing a nested "-"
     delimiter keeps its "```" delimiters.
+  - A code block opened by "```" followed by a language or other text
+    (e.g. "```text", "```bash") is closed only by a line equal to "```".
+    The contents are passed through verbatim, and both delimiters are
+    left unchanged.
   - Indented blocks are left unchanged, including the indent.  An
     indented block starts at a line indented by one or more spaces or
     tabs, when no paragraph or list entry is in progress.  The
@@ -280,12 +284,20 @@ _DASH_DELIM_RE = re.compile(r"-{4,}")
 _EQUALS_DELIM_RE = re.compile(r"={4,}")
 
 
+_FENCE_INFO_RE = re.compile(r"```[^`]+")
+
+
 def block_delim(line):
-    """Return line, minus trailing whitespace, if line is a verbatim block
-    delimiter ("```" or four or more "-").  Otherwise return None."""
+    """Return the closing delimiter if line opens a verbatim block.  For
+    "```" or four or more "-", the closing delimiter is line minus
+    trailing whitespace.  For "```" followed by a language or other text
+    (e.g. "```text"), the closing delimiter is "```".  Otherwise return
+    None."""
     s = line.rstrip()
     if s == "```" or _DASH_DELIM_RE.fullmatch(s):
         return s
+    if _FENCE_INFO_RE.fullmatch(s):
+        return "```"
     return None
 
 
@@ -486,9 +498,9 @@ def process(lines, nav_mode=False):
             # Inside a "----" or "```" block, only a line identical to
             # block_open ends the block.  Every other line, including lines
             # that resemble titles or lists, is passed through verbatim.
-            # The closing delimiter is written as block_render, the same as
-            # the opening delimiter.
-            if block_delim(raw) == block_open:
+            # The closing delimiter is written as block_render.  A line such
+            # as "```text" opens a block, but never ends a block.
+            if raw.rstrip() == block_open:
                 out.append(block_render)
                 block_open = None
             else:
@@ -571,10 +583,17 @@ def process(lines, nav_mode=False):
         delim = block_delim(line)
         if delim is not None:
             flush()
-            # block_render is "----" unless the block holds a nested "-"
-            # delimiter.  block_open keeps the input delimiter, because the
-            # closing delimiter must be identical to the input delimiter.
+            # For a bare "```" or "-" delimiter, block_render is "----"
+            # unless the block holds a nested "-" delimiter.  block_open
+            # keeps the input delimiter, because the closing delimiter must
+            # be identical to the input delimiter.
             block_open = delim
+            if line != delim:
+                # An opening delimiter such as "```text" is left unchanged,
+                # and the closing "```" is also left unchanged.
+                block_render = delim
+                out.append(line)
+                continue
             block_render = delim_render(lines, i, delim, "----",
                                         _DASH_DELIM_RE)
             out.append(block_render)
