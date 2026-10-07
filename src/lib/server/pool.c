@@ -321,18 +321,18 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
  * adding to the connection list.
  *
  * @note Will call the 'open' trigger.
- * @note Must be called with the mutex free.
+ * @note Must be called with the mutex held.  Returns with the mutex held.
+ *	 The mutex is released while the create callback runs.
  *
  * @param[in] pool	to modify.
  * @param[in] request	The current request.
  * @param[in] now	Current time.
  * @param[in] in_use	whether the new connection should be "in_use" or not
- * @param[in] unlock	whether we should unlock the mutex before returning
  * @return
  *	- New connection struct.
  *	- NULL on error.
  */
-static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *request, fr_time_t now, bool in_use, bool unlock)
+static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *request, fr_time_t now, bool in_use)
 {
 	uint64_t		number;
 	uint32_t		pending_window;
@@ -342,8 +342,6 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	void			*conn;
 
 	fr_assert(pool != NULL);
-
-	pthread_mutex_lock(&pool->mutex);
 	fr_assert(pool->state.num <= pool->max);
 
 	/*
@@ -354,7 +352,6 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	if ((pool->state.num == 0) &&
 	    pool->state.pending &&
 	    fr_time_gt(pool->state.last_failed, fr_time_wrap(0))) {
-		pthread_mutex_unlock(&pool->mutex);
 		return NULL;
 	}
 
@@ -362,8 +359,6 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 *	Don't spawn too many connections at the same time.
 	 */
 	if ((pool->state.num + pool->state.pending) >= pool->max) {
-		pthread_mutex_unlock(&pool->mutex);
-
 		ERROR("Cannot open new connection, already at max");
 		return NULL;
 	}
@@ -383,8 +378,6 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 			pool->state.last_throttled = now;
 		}
 
-		pthread_mutex_unlock(&pool->mutex);
-
 		if (!fr_rate_limit_enabled() || complain) {
 			ERROR("Last connection attempt failed, waiting %pV seconds before retrying",
 			      fr_box_time_delta(retry_in));
@@ -397,8 +390,6 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 *	We limit the rate of new connections after a failed attempt.
 	 */
 	if (pool->state.pending > pool->pending_window) {
-		pthread_mutex_unlock(&pool->mutex);
-
 		RATE_LIMIT_GLOBAL_ROPTIONAL(RWARN, WARN,
 					    "Cannot open a new connection due to rate limit after failure");
 
@@ -459,7 +450,6 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 		 */
 		fr_pool_trigger(pool, "fail");
 		pthread_cond_broadcast(&pool->done_spawn);
-		pthread_mutex_unlock(&pool->mutex);
 
 		talloc_free(ctx);
 
@@ -478,7 +468,6 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 		pool->state.pending--;
 
 		pthread_cond_broadcast(&pool->done_spawn);
-		pthread_mutex_unlock(&pool->mutex);
 
 		ERROR("Memory allocation failed for new connection (%" PRIu64 ")", number);
 
@@ -535,9 +524,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	fr_pool_trigger(pool, "open");
 
 	pthread_cond_broadcast(&pool->done_spawn);
-	if (unlock) pthread_mutex_unlock(&pool->mutex);
 
-	/* coverity[missing_unlock] */
 	return this;
 }
 
@@ -804,9 +791,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 		 *	Only try to open spares if we're not already attempting to open
 		 *	a connection. Avoids spurious log messages.
 		 */
-		pthread_mutex_unlock(&pool->mutex);
-		(void) connection_spawn(pool, request, now, false, true);
-		pthread_mutex_lock(&pool->mutex);
+		(void) connection_spawn(pool, request, now, false);
 		goto manage_connections;
 	}
 
@@ -894,18 +879,19 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 		return NULL;
 	}
 
-	pthread_mutex_unlock(&pool->mutex);
-
-	if (!spawn) return NULL;
+	if (!spawn) {
+		pthread_mutex_unlock(&pool->mutex);
+		return NULL;
+	}
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "%i of %u connections in use.  You may need to increase \"spare\"",
 	       pool->state.active, pool->state.num);
 
-	/*
-	 *	Returns unlocked on failure, or locked on success
-	 */
-	this = connection_spawn(pool, request, now, true, false);
-	if (!this) return NULL;
+	this = connection_spawn(pool, request, now, true);
+	if (!this) {
+		pthread_mutex_unlock(&pool->mutex);
+		return NULL;
+	}
 
 do_return:
 	pool->state.active++;
@@ -1134,17 +1120,20 @@ int fr_pool_start(fr_pool_t *pool)
 	 *	Create all of the connections, unless the admin says
 	 *	not to.
 	 */
+	pthread_mutex_lock(&pool->mutex);
 	for (i = 0; i < pool->start; i++) {
 		/*
 		 *	Call time() once for each spawn attempt as there
 		 *	could be a significant delay.
 		 */
-		this = connection_spawn(pool, NULL, fr_time(), false, true);
+		this = connection_spawn(pool, NULL, fr_time(), false);
 		if (!this) {
+			pthread_mutex_unlock(&pool->mutex);
 			ERROR("Failed spawning initial connections");
 			return -1;
 		}
 	}
+	pthread_mutex_unlock(&pool->mutex);
 
 	fr_pool_trigger(pool, "start");
 
@@ -1308,7 +1297,6 @@ int fr_pool_reconnect(fr_pool_t *pool, request_t *request)
 	 */
 	pool->state.reconnecting = false;
 	pthread_cond_broadcast(&pool->done_reconnecting);
-	pthread_mutex_unlock(&pool->mutex);
 
 	now = fr_time();
 
@@ -1316,9 +1304,13 @@ int fr_pool_reconnect(fr_pool_t *pool, request_t *request)
 	 *	Now attempt to spawn 'start' connections.
 	 */
 	for (i = 0; i < pool->start; i++) {
-		this = connection_spawn(pool, request, now, false, true);
-		if (!this) return -1;
+		this = connection_spawn(pool, request, now, false);
+		if (!this) {
+			pthread_mutex_unlock(&pool->mutex);
+			return -1;
+		}
 	}
+	pthread_mutex_unlock(&pool->mutex);
 
 	return 0;
 }
