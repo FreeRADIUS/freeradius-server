@@ -189,12 +189,16 @@ static int fr_bio_retry_write_blocked(fr_bio_t *bio)
 	 *	Disarm the retry timer, and enable the expiry timer.
 	 *
 	 *	i.e. we won't retry packets, but we will expire them when their timer runs out.
+	 *
+	 *	Arming the expiry timer runs any expiry events which are already due, and
+	 *	fr_bio_retry_expiry_timer() requires that writes are marked as blocked.  We therefore set the
+	 *	flag before arming the expiry timer.
 	 */
+	my->info.write_blocked = true;
+
 	if (fr_timer_list_disarm(my->next_tl) < 0) return fr_bio_error(GENERIC);
 
 	if (fr_timer_list_arm(my->expiry_tl) < 0) return fr_bio_error(GENERIC);
-
-	my->info.write_blocked = true;
 
 	return 1;
 }
