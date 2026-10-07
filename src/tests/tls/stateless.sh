@@ -50,9 +50,10 @@ SERVER_LOG="$OUTPUT/stateless_server.log"
 CLIENT_LOG="$OUTPUT/stateless_client.log"
 SERVER_RECEIPT="$OUTPUT/stateless_server.receipt"
 CLIENT_RECEIPT="$OUTPUT/stateless_client.receipt"
+RECEIPT="$OUTPUT/stateless.receipt"
 
 mkdir -p "$OUTPUT"
-rm -f "$SERVER_LOG" "$CLIENT_LOG" "$SERVER_RECEIPT" "$CLIENT_RECEIPT"
+rm -f "$SERVER_LOG" "$CLIENT_LOG" "$SERVER_RECEIPT" "$CLIENT_RECEIPT" "$RECEIPT"
 
 #
 #  setsid puts the server in a new session and process group, so that
@@ -180,4 +181,9 @@ count=$(grep -c "Sent one byte of application data" "$SERVER_LOG")
 count=$(grep -c "# store session" "$CLIENT_LOG")
 [ "$count" = "2" ] || fail "expected two store session on the client, found $count"
 
+#
+#  The test writes out the receipt itself, so that if a crash causes an
+#  early exit the error is flagged by the make framework.
+#
+touch "$RECEIPT"
 exit 0

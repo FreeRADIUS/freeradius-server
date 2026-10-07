@@ -46,9 +46,10 @@ SERVER_LOG="$OUTPUT/no_ticket_server.log"
 CLIENT_LOG="$OUTPUT/no_ticket_client.log"
 SERVER_RECEIPT="$OUTPUT/no_ticket_server.receipt"
 CLIENT_RECEIPT="$OUTPUT/no_ticket_client.receipt"
+RECEIPT="$OUTPUT/no_ticket.receipt"
 
 mkdir -p "$OUTPUT"
-rm -f "$SERVER_LOG" "$CLIENT_LOG" "$SERVER_RECEIPT" "$CLIENT_RECEIPT"
+rm -f "$SERVER_LOG" "$CLIENT_LOG" "$SERVER_RECEIPT" "$CLIENT_RECEIPT" "$RECEIPT"
 
 #
 #  setsid puts the server in a new session and process group, so that
@@ -153,4 +154,9 @@ if grep -q "Timed out waiting for data after the handshake" "$CLIENT_LOG"; then
 	fail "the client timed out, so the application data did not release it"
 fi
 
+#
+#  The test writes out the receipt itself, so that if a crash causes an
+#  early exit the error is flagged by the make framework.
+#
+touch "$RECEIPT"
 exit 0

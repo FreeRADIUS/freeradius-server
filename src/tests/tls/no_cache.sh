@@ -46,9 +46,10 @@ SERVER_LOG="$OUTPUT/no_cache_server.log"
 CLIENT_LOG="$OUTPUT/no_cache_client.log"
 SERVER_RECEIPT="$OUTPUT/no_cache_server.receipt"
 CLIENT_RECEIPT="$OUTPUT/no_cache_client.receipt"
+RECEIPT="$OUTPUT/no_cache.receipt"
 
 mkdir -p "$OUTPUT"
-rm -f "$SERVER_LOG" "$CLIENT_LOG" "$SERVER_RECEIPT" "$CLIENT_RECEIPT"
+rm -f "$SERVER_LOG" "$CLIENT_LOG" "$SERVER_RECEIPT" "$CLIENT_RECEIPT" "$RECEIPT"
 
 #
 #  setsid puts the server in a new session and process group, so that
@@ -155,4 +156,9 @@ for log in "$SERVER_LOG" "$CLIENT_LOG"; do
 	fi
 done
 
+#
+#  The test writes out the receipt itself, so that if a crash causes an
+#  early exit the error is flagged by the make framework.
+#
+touch "$RECEIPT"
 exit 0

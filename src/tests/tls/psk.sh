@@ -9,9 +9,8 @@
 #
 #  The server and the client each write a receipt file only on a
 #  successful exit, so a receipt records that the connection worked.  The
-#  script writes the receipt that `make test.tls` waits for only once
-#  every check below has passed.  A failed check therefore does not leave
-#  a receipt for the next run to mistake for a pass.
+#  test writes out the receipt itself, so that if a crash causes an early
+#  exit the error is flagged by the make framework.
 #
 #  Environment:
 #    UNIT_TEST_TLS  command that runs unit_test_tls, possibly several words
