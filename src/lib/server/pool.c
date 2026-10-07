@@ -343,6 +343,9 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 
 	fr_assert(pool != NULL);
 
+	pthread_mutex_lock(&pool->mutex);
+	fr_assert(pool->state.num <= pool->max);
+
 	/*
 	 *	If we have NO connections, and we've previously failed
 	 *	opening connections, don't open multiple connections until
@@ -350,10 +353,10 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 */
 	if ((pool->state.num == 0) &&
 	    pool->state.pending &&
-	    fr_time_gt(pool->state.last_failed, fr_time_wrap(0))) return NULL;
-
-	pthread_mutex_lock(&pool->mutex);
-	fr_assert(pool->state.num <= pool->max);
+	    fr_time_gt(pool->state.last_failed, fr_time_wrap(0))) {
+		pthread_mutex_unlock(&pool->mutex);
+		return NULL;
+	}
 
 	/*
 	 *	Don't spawn too many connections at the same time.
@@ -372,6 +375,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	if (fr_time_gt(pool->state.last_failed, fr_time_wrap(0)) &&
 	    fr_time_gt(fr_time_add(pool->state.last_failed, pool->retry_delay), now)) {
 		bool complain = false;
+		fr_time_delta_t retry_in = fr_time_sub(fr_time_add(pool->state.last_failed, pool->retry_delay), now);
 
 		if (fr_time_delta_gteq(fr_time_sub(now, pool->state.last_throttled), fr_time_delta_from_sec(1))) {
 			complain = true;
@@ -383,7 +387,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 
 		if (!fr_rate_limit_enabled() || complain) {
 			ERROR("Last connection attempt failed, waiting %pV seconds before retrying",
-			      fr_box_time_delta(fr_time_sub(fr_time_add(pool->state.last_failed, pool->retry_delay), now)));
+			      fr_box_time_delta(retry_in));
 		}
 
 		return NULL;
