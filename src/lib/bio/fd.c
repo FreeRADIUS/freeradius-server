@@ -1525,12 +1525,23 @@ retry:
 	fd = accept4(parent->info.socket.fd, (struct sockaddr *) &my->remote_sockaddr, &my->remote_sockaddr_len,
 		     SOCK_NONBLOCK | SOCK_CLOEXEC);
 	if (fd < 0) {
+		switch (errno) {
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+		case EWOULDBLOCK:
+#endif
+		case EAGAIN:
+			return 0;
+
 		/*
 		 *	Try a few times before giving up.
 		 */
-		if (errno == EINTR) {
+		case EINTR:
 			tries++;
 			if (tries <= my->max_tries) goto retry;
+			break;
+
+		default:
+			break;
 		}
 
 		return fr_bio_error(IO);
