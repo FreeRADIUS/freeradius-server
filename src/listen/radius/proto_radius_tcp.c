@@ -304,6 +304,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 */
 	if (data_size <= 0) return data_size;
 
+	/*
+	 *	write() never returns more than it was asked to write.
+	 */
+	if (!fr_cond_assert((size_t) data_size <= (buffer_len - written))) return -1;
+
 #if 0
 	/*
 	 *	If we're not tracking duplicates, then track->packet is NULL.

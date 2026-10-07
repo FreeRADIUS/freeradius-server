@@ -292,7 +292,10 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	data_size = write(thread->sockfd, buffer + written, buffer_len - written);
 	if (data_size <= 0) return data_size;
 
-	fr_assert((size_t) data_size <= buffer_len); /* shut up coverity */
+	/*
+	 *	write() never returns more than it was asked to write.
+	 */
+	if (!fr_cond_assert((size_t) data_size <= (buffer_len - written))) return -1;
 
 	/*
 	 *	If we're supposed to close the socket, then go do that.
@@ -329,7 +332,6 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 *	Return the packet we wrote, plus any bytes previously
 	 *	left over from previous packets.
 	 */
-	/* coverity[return_overflow] */
 	return data_size + written;
 }
 

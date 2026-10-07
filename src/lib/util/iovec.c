@@ -75,6 +75,11 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t tim
 
 		wrote = writev(fd, vector_p, iovcnt);
 		if (wrote > 0) {
+			/*
+			 *	total never exceeds the sum of the iov_len values,
+			 *	and writev() rejects a vector whose sum overflows.
+			 */
+			if (!fr_cond_assert(wrote <= (SSIZE_MAX - total))) return -1;
 			total += wrote;
 			while (wrote > 0) {
 				/*
@@ -96,7 +101,6 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t tim
 			}
 			continue;
 		} else if (wrote == 0) {
-			/* coverity[return_overflow] */
 			return total;
 		}
 
