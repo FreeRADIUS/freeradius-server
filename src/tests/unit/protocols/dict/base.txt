@@ -112,5 +112,12 @@ match ERROR: The 'secret' flag can only be used with data types 'string' or 'oct
 dictionary-read error-end-vendor-mismatch.dict
 match ERROR: END-VENDOR Vendor-B does not match previous BEGIN-VENDOR Vendor-A: Failed parsing dictionary at src/tests/unit/protocols/dict/error-end-vendor-mismatch.dict[7]
 
+#
+#  Error: duplicate attribute name.  The error gives the line of the
+#  original definition.
+#
+dictionary-read error-duplicate-name.dict
+match ERROR: Duplicate attribute name 'foo' in namespace 'Test-Err-17'.  Originally defined src/tests/unit/protocols/dict/error-duplicate-name.dict[2]: Failed parsing dictionary at src/tests/unit/protocols/dict/error-duplicate-name.dict[3]
+
 count
-match 40
+match 42

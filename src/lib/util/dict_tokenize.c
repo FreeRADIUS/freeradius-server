@@ -107,8 +107,11 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 
 #define CURRENT_FRAME(_dctx)	(&(_dctx)->stack[(_dctx)->stack_depth])
 #define CURRENT_DA(_dctx)	(CURRENT_FRAME(_dctx)->da)
-#define CURRENT_FILENAME(_dctx)	(CURRENT_FRAME(_dctx)->filename)
-#define CURRENT_LINE(_dctx)	(CURRENT_FRAME(_dctx)->line)
+/*
+ * No CURRENT_FILENAME or CURRENT_LINE they're NOT what you usually want.
+ * A frame (CURRENT_FRAME) holds where its block started
+ * dctx->filename and dctx->line hold the actual line being read.
+ */
 
 #define ASSERT_CURRENT_NEST(_dctx, _nest) fr_assert_msg(CURRENT_FRAME(_dctx)->nest == (_nest), "Expected frame type %s, got %s", \
 						fr_table_str_by_value(dict_nest_table, (_nest), "<INVALID>"), fr_table_str_by_value(dict_nest_table, CURRENT_FRAME(_dctx)->nest, "<INVALID>"))
@@ -952,7 +955,7 @@ static int dict_finalise(dict_tokenize_ctx_t *dctx)
 static inline CC_HINT(always_inline)
 void dict_attr_location_set(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 {
-	dict_attr_location_init(dctx->dict, da, CURRENT_FILENAME(dctx), CURRENT_LINE(dctx));
+	dict_attr_location_init(dctx->dict, da, dctx->filename, dctx->line);
 }
 
 /** Add an attribute to the dictionary, or add it to a list of attributes to clone later
@@ -1497,7 +1500,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 		 *
 		 *	@todo - we likely just want to forbid this.
 		 */
-		return dict_fixup_alias_enqueue(&dctx->fixup, CURRENT_FILENAME(dctx), CURRENT_LINE(dctx),
+		return dict_fixup_alias_enqueue(&dctx->fixup, dctx->filename, dctx->line,
 					fr_dict_attr_unconst(parent), argv[0],
 					fr_dict_attr_unconst(parent), argv[1]);
 	}
@@ -1792,9 +1795,9 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 
 	frame = dict_dctx_find_frame(dctx, NEST_TOP | NEST_PROTOCOL | NEST_ATTRIBUTE);
 	if (!fr_cond_assert_msg(frame, "Context stack doesn't have an attribute or dictionary "
-				"root to begin searching from %s[%d]", CURRENT_FILENAME(dctx), CURRENT_LINE(dctx)) ||
+				"root to begin searching from %s[%d]", dctx->filename, dctx->line) ||
 	    !fr_cond_assert_msg(fr_type_is_structural(frame->da->type), "Context attribute is not structural %s[%d]",
-	    			CURRENT_FILENAME(dctx), CURRENT_LINE(dctx))) {
+				dctx->filename, dctx->line)) {
 		return -1;
 	}
 
@@ -2759,7 +2762,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 		if (!fr_cond_assert_msg(dctx->fixup.pool, "fixup pool context invalid")) return -1;
 
 		if (dict_fixup_enumv_enqueue(&dctx->fixup,
-				     CURRENT_FILENAME(dctx), CURRENT_LINE(dctx),
+				     dctx->filename, dctx->line,
 				     argv[0], strlen(argv[0]),
 				     argv[1], strlen(argv[1]),
 				     argv[2], strlen(argv[2]), parent) < 0) {
