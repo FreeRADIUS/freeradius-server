@@ -45,10 +45,11 @@ Rules:
     indented block starts at a line indented by one or more spaces or
     tabs, when no paragraph or list entry is in progress.  The
     indented block runs until a blank line followed by a line that is
-    not indented, or until a block delimiter or title.  Blank lines
-    inside the block are kept, and blank lines at the end of the block
-    collapse to one.  An indented line inside a paragraph or list
-    entry is a continuation line, and is wrapped.
+    not indented, or until a block delimiter, an open block delimiter,
+    or a title.  Blank lines inside the block are kept, and blank
+    lines at the end of the block collapse to one.  An indented line
+    inside a paragraph or list entry is a continuation line, and is
+    wrapped.
   - A one-line paragraph underlined with five or more "-" (within two
     characters of the text length) is a two-line section title.  The
     title is rewritten as "== Title".
@@ -62,11 +63,15 @@ Rules:
     wrapped with their continuation lines aligned after the marker.
     Lines that are left unchanged on their own line outside the block
     ("[" lines, comments, block titles, table rows, attribute entries,
-    block macros, and "+") are also left unchanged inside the block.
+    block macros, "+", and "--") are also left unchanged inside the
+    block.
     A label containing any lowercase letter (e.g. "[source]") does not
     qualify.
   - A bare "====" (not opened by such a label) is still treated as a
     text-block delimiter on its own line, with the contents wrapped as
+    normal paragraphs.
+  - An open block delimiter, a line equal to "--", is left unchanged
+    on its own line.  The contents of the open block are wrapped as
     normal paragraphs.
   - Lines that start with "[" (e.g. "[NOTE]", "[source,c]") are left
     unchanged on their own line.
@@ -362,6 +367,12 @@ def is_text_block_delim(line):
     return _EQUALS_DELIM_RE.fullmatch(line.rstrip()) is not None
 
 
+def is_open_block_delim(line):
+    """Open block delimiter, a line equal to "--".  The block contents are
+    wrapped, and the delimiter stays on a line by itself."""
+    return line.rstrip() == "--"
+
+
 def setext_title(buf, buf_list_indent, line):
     """A one-line paragraph underlined with five or more "-" is a
     two-line section title.  Return the title rewritten as "== Title",
@@ -523,9 +534,10 @@ def process(lines, nav_mode=False):
         if indented_open:
             # Inside an indented block.  After a blank line, only an
             # indented line continues the block.  Directly after a non-blank
-            # line, every line continues the block, except a block delimiter
-            # or title.  Blank lines are held back until the next line shows
-            # whether the block continues.
+            # line, every line continues the block, except a block delimiter,
+            # an open block delimiter ("--"), or a title.  Blank lines are
+            # held back until the next line shows whether the block
+            # continues.
             s = raw.rstrip()
             if s == "":
                 indented_blanks += 1
@@ -533,6 +545,7 @@ def process(lines, nav_mode=False):
             if is_indented(raw) or (indented_blanks == 0
                                     and not block_delim(s)
                                     and not is_text_block_delim(s)
+                                    and not is_open_block_delim(s)
                                     and not is_title(s)):
                 out.extend([""] * indented_blanks)
                 indented_blanks = 0
@@ -598,7 +611,7 @@ def process(lines, nav_mode=False):
             if (is_attribute(line) or is_comment(line)
                     or is_block_title(line) or is_table(line)
                     or is_attribute_entry(line) or is_block_macro(line)
-                    or line == "+"):
+                    or line == "+" or is_open_block_delim(line)):
                 flush()
                 out.append(line)
                 continue
@@ -675,7 +688,7 @@ def process(lines, nav_mode=False):
             out.append(line)
             continue
 
-        if line == "+":
+        if line == "+" or is_open_block_delim(line):
             flush()
             out.append(line)
             continue
