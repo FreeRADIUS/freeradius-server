@@ -1196,7 +1196,11 @@ static inline ssize_t _fr_dbuff_advance_extend(uint8_t **pos_p, fr_dbuff_t *dbuf
 			  	int : (size_t)(_len) \
 			  )))
 
-#define FR_DBUFF_BIND_EXTEND_RETURN(_dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_advance_extend, _dbuff_or_marker, _len)
+/** Advance the 'current' position in dbuff or marker by _len bytes (extending if necessary) returning if _len is out of range
+ *
+ * @copydetails fr_dbuff_advance_extend
+ */
+#define FR_DBUFF_ADVANCE_EXTEND_RETURN(_dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_advance_extend, _dbuff_or_marker, _len)
 
 /** Reset the 'current' position of the dbuff or marker to the 'start' of the buffer
  *
