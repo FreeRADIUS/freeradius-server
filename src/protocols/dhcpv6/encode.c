@@ -467,8 +467,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff,
 	/*
 	 *	Make space for the header...
 	 */
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
-	fr_dbuff_advance(&work_dbuff, DHCPV6_OPT_HDR_LEN);
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
 
 	/*
 	 *	Write out the option's value
@@ -580,8 +579,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
-	fr_dbuff_advance(&work_dbuff, DHCPV6_OPT_HDR_LEN);
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
 	FR_DBUFF_IN_RETURN(&work_dbuff, dv->attr);
 
 	/*

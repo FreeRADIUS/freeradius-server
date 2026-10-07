@@ -187,8 +187,7 @@ static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
 	if (unlikely(fr_dbuff_start(&work_dbuff) != in)) {
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, in, inlen);
 	} else {
-		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, inlen);
-		fr_dbuff_advance(&work_dbuff, inlen);
+		FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, inlen);
 	}
 
 	/*
@@ -530,8 +529,7 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_assert(da->flags.array);
 
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, 2);
-	fr_dbuff_advance(&work_dbuff, 2);
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, 2);
 
 	if (unlikely(da->type == FR_TYPE_OCTETS)) {
 		if (!da->flags.length) {
@@ -626,8 +624,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 	 */
 	da = da_stack->da[depth];
 
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, 2);
-	fr_dbuff_advance(&work_dbuff, 2);
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, 2);
 
 	if (da->flags.array) {
 		slen = encode_array(&FR_DBUFF_MAX_BIND_CURRENT(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN - 2),
@@ -729,8 +726,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 		 */
 		if (value_len < 0) return -1;
 #endif
-		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, (size_t)slen - value_len);
-		fr_dbuff_advance(&work_dbuff, (size_t)slen - value_len);
+		FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, (size_t)slen - value_len);
 	}
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done TLV");
@@ -787,8 +783,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	}
 	tl_dbuff = FR_DBUFF(&work_dbuff);
 
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, 2);
-	fr_dbuff_advance(&work_dbuff, 2);
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, 2);
 
 	da = da_stack->da[depth];
 	len = encode_tlv_internal(&FR_DBUFF_MAX_BIND_CURRENT(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN - 2),
