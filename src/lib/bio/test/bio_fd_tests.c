@@ -131,7 +131,7 @@ static void test_deferred_connect_success_calls_connected_cb(void)
 	 */
 	TEST_MSG("connect_full returned %d.  0 means deferred, 1 means connected at once, <0 means failed", rcode);
 	TEST_CHECK(rcode >= 0);
-	if (rcode != 0) goto done;
+	if (rcode < 0) goto done;
 
 	/*
 	 *	Wait in the event loop until one of the three callbacks runs.  The connect timeout
