@@ -130,7 +130,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	so we needn't move the encoded data.
 	 */
 	fr_dbuff_marker(&len_field, &work_dbuff);
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, 1);
 
 	/*
 	 *	Create dbuff to hold encoded data--the fr_dbuff_move() done

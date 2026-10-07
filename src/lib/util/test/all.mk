@@ -12,6 +12,7 @@ SUBMAKEFILES := \
 	heap_tests.mk \
 	hmac_tests.mk \
 	inet_tests.mk \
+	internal_encode_tests.mk \
 	lst_tests.mk \
 	minmax_heap_tests.mk \
 	misc_tests.mk \
