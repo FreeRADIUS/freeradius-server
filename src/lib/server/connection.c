@@ -114,11 +114,6 @@ struct connection_s {
 							///< a handler.
 
 
-
-	connection_watch_entry_t *on_halted;		//!< Used by the deferred signal processor to learn
-							///< if a function deeper in the call stack freed
-							///< the connection.
-
 	unsigned int		signals_pause;		//!< Temporarily stop processing of signals.
 
 	CONF_SECTION		*trigger_cs;		//!< Where to search locally for triggers.
@@ -231,36 +226,23 @@ static inline void connection_deferred_signal_add(connection_t *conn, connection
 //	DEBUG4("Adding deferred signal - %s", fr_table_str_by_value(connection_dsignals, signal, "<INVALID>"));
 }
 
-/** Notification function to tell connection_deferred_signal_process that the connection has been freed
- *
- */
-static void _deferred_signal_connection_on_halted(UNUSED connection_t *conn,
-						  UNUSED connection_state_t prev,
-						  UNUSED connection_state_t state, void *uctx)
-{
-	bool *freed = uctx;
-	*freed = true;
-}
-
 /** Process any deferred signals
  *
  */
 static void connection_deferred_signal_process(connection_t *conn)
 {
 	connection_dsignal_entry_t	*dsignal;
-	bool				freed = false;
 
 	/*
 	 *	We're inside and an instance of this function
 	 *	higher in the call stack.  Don't do anything.
+	 *
+	 *	Every callback runs inside a handler, so a
+	 *	talloc_free() of the connection from a callback
+	 *	queues CONNECTION_DSIGNAL_FREE here instead of
+	 *	freeing it.
 	 */
 	if (conn->processing_signals) return;
-
-	/*
-	 *	Get notified if the connection gets freed
-	 *	out from under us...
-	 */
-	connection_watch_enable_set_uctx(conn->on_halted, &freed);
 	conn->processing_signals = true;
 
 	while ((dsignal = fr_dlist_head(&conn->deferred_signals))) {
@@ -301,16 +283,9 @@ static void connection_deferred_signal_process(connection_t *conn)
 			talloc_free(conn);
 			return;
 		}
-
-		/*
-		 *	One of the signal handlers freed the connection,
-		 *	reset the processing signals and return.
-		 */
-		if (freed) break;
 	}
 
 	conn->processing_signals = false;
-	connection_watch_disable(conn->on_halted);
 }
 
 /** Pause processing of deferred signals
@@ -1613,16 +1588,6 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		fr_dlist_talloc_init(&conn->watch_post[i], connection_watch_entry_t, entry);
 	}
 	fr_dlist_talloc_init(&conn->deferred_signals, connection_dsignal_entry_t, entry);
-
-	/*
-	 *	Pre-allocate a on_halt watcher for deferred signal processing
-	 *
-	 *	Note that we do NOT set "oneshot".  This lets the watcher remain valid after the oneshot
-	 *	watcher fires.  Otherwise the connection is freed out from under the watcher.
-	 */
-	conn->on_halted = connection_add_watch_post(conn, CONNECTION_STATE_HALTED,
-						    _deferred_signal_connection_on_halted, false, NULL);
-	connection_watch_disable(conn->on_halted);	/* Start disabled */
 
 	return conn;
 }
