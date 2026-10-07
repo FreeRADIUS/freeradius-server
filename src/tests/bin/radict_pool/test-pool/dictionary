@@ -1,0 +1,12 @@
+#
+#  Test dictionary for radict -P.  The dictionary overflows pool=1KB, so
+#  radict -P must reload the dictionary with a larger pool before radict
+#  measures the bytes that the dictionary uses.  radict -P then replaces
+#  pool= on the PROTOCOL line below, and keeps format=2 and the trailing
+#  comment.
+#
+BEGIN PROTOCOL	Test-Pool	250	format=2,pool=1KB	# keep this comment
+
+ATTRIBUTE	Test-Attr	1	uint32
+
+END PROTOCOL	Test-Pool

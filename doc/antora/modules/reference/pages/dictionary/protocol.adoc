@@ -28,12 +28,8 @@ Terminal Access Controller Access-Control System Plus (TACACS+) is one such prot
 `pool=<size>`::: The size of the memory pool that FreeRADIUS allocates for the protocol dictionary, before FreeRADIUS reads any attribute of the protocol.
 The default is `2MiB`.
 When the protocol dictionary needs more memory than the pool holds, the protocol dictionary still loads, but loads more slowly.
-+
-The size takes an optional unit.
-`KiB` and `MiB` count in powers of 2, so `1KiB` is 1024 bytes.
-`KB` and `MB` count in powers of 10, so `1KB` is 1000 bytes.
-A number without a unit is a size in bytes.
-For example: `512KiB`, `4MiB`, or `4000000`.
+To set `pool` from a measurement, run `radict -P <percent>`.
+radict measures the memory that each protocol dictionary uses, then sets `pool` on the `PROTOCOL` line of the dictionary to the measured size plus _<percent>_ percent.
 +
 Set `pool` only on the first `PROTOCOL` line for a protocol.
 FreeRADIUS allocates the pool when FreeRADIUS reads the first `PROTOCOL` line for the protocol.
@@ -52,7 +48,7 @@ This page documents the `PROTOCOL` keyword for completeness.
 ----
 PROTOCOL RADIUS 1 verify=lib
 PROTOCOL VMPS 6 format=2
-PROTOCOL Example 200 verify=lib,pool=4MiB
+PROTOCOL Example 200 verify=lib,pool=4MB
 ----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

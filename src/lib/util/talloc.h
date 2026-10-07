@@ -176,6 +176,7 @@ int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 
 ssize_t		talloc_hdr_size(void);
 TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_len, unsigned int headers, size_t size);
+size_t		talloc_pool_used(bool *overflowed, TALLOC_CTX const *pool, size_t pool_size) CC_HINT(nonnull);
 TALLOC_CTX	*talloc_aligned_array(TALLOC_CTX *ctx, void **start, size_t alignment, size_t size);
 
 /*

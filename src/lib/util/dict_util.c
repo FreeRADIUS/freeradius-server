@@ -4334,11 +4334,13 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx, size_t pool_size)
 	 *	As that's the working memory required during
 	 *	dictionary initialisation.
 	 */
+	if (pool_size < dict_gctx->pool_size_min) pool_size = dict_gctx->pool_size_min;
 	dict->pool = talloc_pool(dict, pool_size);
 	if (!dict->pool) {
 		fr_strerror_const("Failed allocating talloc pool for dictionary");
 		goto error;
 	}
+	dict->pool_size = pool_size;
 
 	/*
 	 *	Create the table of vendor by name.   There MAY NOT

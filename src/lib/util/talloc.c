@@ -405,6 +405,58 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_
 	return pool;
 }
 
+/** Address range of a talloc pool, the bytes used, and whether the pool overflowed
+ */
+typedef struct {
+	uint8_t const	*start;			//!< First byte of the pool.
+	uint8_t const	*end;			//!< First byte after the pool.
+	size_t		used;			//!< Bytes from start to the end of the highest chunk found so far.
+	bool		overflowed;		//!< A chunk under the pool, in the talloc hierarchy, lies outside the
+						///< pool's address range.
+} talloc_pool_walk_t;
+
+/** Record the end of a chunk inside the pool, or record that a chunk is outside the pool
+ *
+ */
+static void _talloc_pool_chunk_walk(void const *ptr, UNUSED int depth, UNUSED int max_depth, int is_ref, void *uctx)
+{
+	talloc_pool_walk_t	*walk = uctx;
+	uint8_t const		*chunk = ptr;
+	size_t			used;
+
+	if (is_ref) return;
+
+	if ((chunk < walk->start) || (chunk >= walk->end)) {
+		walk->overflowed = true;
+		return;
+	}
+
+	used = (size_t)(chunk - walk->start) + talloc_get_size(ptr);
+	if (used > walk->used) walk->used = used;
+}
+
+/** Measure how many bytes of a talloc pool are used, and whether the pool overflowed
+ *
+ * @param[out] overflowed	true if a chunk under the pool lies outside the pool.
+ * @param[in] pool		returned by talloc_pool().
+ * @param[in] pool_size		passed to talloc_pool().
+ * @return Bytes from the start of the pool to the end of the highest live
+ *	   chunk in the pool
+ */
+size_t talloc_pool_used(bool *overflowed, TALLOC_CTX const *pool, size_t pool_size)
+{
+	talloc_pool_walk_t walk = {
+		.start = (uint8_t const *)pool,
+		.end = (uint8_t const *)pool + pool_size
+	};
+
+	talloc_report_depth_cb(pool, 0, -1, _talloc_pool_chunk_walk, &walk);
+
+	*overflowed = walk.overflowed;
+
+	return walk.used;
+}
+
 /** Version of talloc_realloc which zeroes out freshly allocated memory
  *
  * @param[in] ctx	talloc ctx to allocate in.

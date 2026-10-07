@@ -127,6 +127,9 @@ struct fr_dict_s {
 
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce allocs.
 							///< in the dictionary.
+	size_t			pool_size;		//!< Size of the talloc pool in bytes.  talloc has no
+							///< function that returns the size of a pool, so
+							///< dict_alloc() records the size.
 
 	fr_hash_table_t		*autoref;		//!< other dictionaries that we loaded via references
 
@@ -153,6 +156,10 @@ struct fr_dict_gctx_s {
 
 	char			*dict_dir_default;	//!< The default location for loading dictionaries if one
 							///< wasn't provided.
+
+	size_t			pool_size_min;		//!< Smallest pool, in bytes, that dict_alloc() creates.
+							///< dict_alloc() uses pool_size_min in place of any
+							///< smaller pool= on a PROTOCOL line.
 
 	dl_loader_t		*dict_loader;		//!< for protocol validation
 

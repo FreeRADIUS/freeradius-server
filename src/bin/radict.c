@@ -29,8 +29,12 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/dict_priv.h>
+#include <freeradius-devel/util/hash.h>
+#include <ctype.h>
 #include <dirent.h>
+#include <stdlib.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -75,7 +79,11 @@ static void usage(void)
 	fprintf(stderr, "  -h               Print help text.\n");
 	fprintf(stderr, "  -H               Show the headers of each field.\n");
 	fprintf(stderr, "  -M <name>        Mangle names for MIB, and set MIB root.\n");
+	fprintf(stderr, "  -O               Print the pool size and the bytes used for each protocol dictionary,\n");
+	fprintf(stderr, "                   and exit with an error if any protocol dictionary overflows its pool.\n");
 	fprintf(stderr, "  -p <protocol>    Set protocol by name\n");
+	fprintf(stderr, "  -P <percent>     Measure the memory that each protocol dictionary uses, then set pool= on\n");
+	fprintf(stderr, "                   the PROTOCOL line of the dictionary to the measured size plus <percent> percent.\n");
 	fprintf(stderr, "  -r               Write out attributes recursively.\n");
 	fprintf(stderr, "  -V               Write out all attribute values.\n");
 	fprintf(stderr, "  -x               Debugging mode.\n");
@@ -757,6 +765,469 @@ static size_t function_table_len = NUM_ELEMENTS(function_table);
 typedef void (*da_print_func_t)(FILE *fp, fr_dict_attr_t const *da);
 
 
+/** Largest pool that radict -P loads a dictionary with
+ *
+ * radict -P reports an error, rather than reloading, when the next pool would
+ * be larger than RADICT_POOL_MAX_SIZE.
+ */
+#define RADICT_POOL_MAX_SIZE	((size_t)64 * 1000 * 1000)
+
+/** Bytes that radict -P adds to the largest overflowed pool to set the minimum pool size for the next reload
+ */
+#define RADICT_POOL_STEP_SIZE	((size_t)10 * 1000 * 1000)
+
+/** Find the size of the largest overflowed pool among the loaded protocol dictionaries
+ *
+ * @param[in] gctx	holding the loaded dictionaries.
+ * @return
+ *	- 0 if no dictionary overflowed the dictionary's pool.
+ *	- The pool size, in bytes, of the largest pool that overflowed.
+ */
+static size_t dicts_overflow_max(fr_dict_gctx_t *gctx)
+{
+	fr_hash_iter_t	iter;
+	fr_dict_t	*dict;
+	size_t		overflow_max = 0;
+
+	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
+	     dict;
+	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
+		bool overflowed;
+
+		(void) talloc_pool_used(&overflowed, dict->pool, dict->pool_size);
+		if (!overflowed) continue;
+
+		DEBUG("%s overflowed a %zu byte pool", fr_dict_root(dict)->name, dict->pool_size);
+		if (dict->pool_size > overflow_max) overflow_max = dict->pool_size;
+	}
+
+	return overflow_max;
+}
+
+/** Find the next whitespace-separated field on a dictionary line
+ *
+ * @param[out] field_end	First byte after the field.
+ * @param[in] p			Position on the line to start the search from.
+ * @param[in] end		End of the line.
+ * @return
+ *	- The start of the field.
+ *	- NULL if no field remains before end or before a comment.
+ */
+static char const *line_field_next(char const **field_end, char const *p, char const *end)
+{
+	while ((p < end) && isspace((uint8_t)*p)) {
+		p++;
+	}
+	if ((p == end) || (*p == '#')) return NULL;
+
+	*field_end = p;
+	while ((*field_end < end) && !isspace((uint8_t)**field_end)) {
+		(*field_end)++;
+	}
+
+	return p;
+}
+
+/** Check whether a field is a dictionary keyword
+ */
+static bool line_field_is(char const *field, char const *field_end, char const *keyword)
+{
+	size_t len = strlen(keyword);
+
+	return ((size_t)(field_end - field) == len) && (strncasecmp(field, keyword, len) == 0);
+}
+
+/** Write data to a temporary file, then rename the temporary file over filename
+ */
+static int file_replace(char const *filename, mode_t mode, char const *data, size_t len)
+{
+	char	*tmp;
+	int	fd;
+
+	MEM(tmp = talloc_asprintf(NULL, "%s.XXXXXX", filename));
+	fd = mkstemp(tmp);
+	if (fd < 0) {
+		fr_strerror_printf("Failed creating \"%s\": %s", tmp, fr_syserror(errno));
+		talloc_free(tmp);
+		return -1;
+	}
+
+	if (fchmod(fd, mode & 07777) < 0) {
+		fr_strerror_printf("Failed setting the mode of \"%s\": %s", tmp, fr_syserror(errno));
+	error:
+		close(fd);
+		unlink(tmp);
+		talloc_free(tmp);
+		return -1;
+	}
+
+	while (len > 0) {
+		ssize_t slen;
+
+		slen = write(fd, data, len);
+		if (slen < 0) {
+			if (errno == EINTR) continue;
+			fr_strerror_printf("Failed writing \"%s\": %s", tmp, fr_syserror(errno));
+			goto error;
+		}
+		data += slen;
+		len -= slen;
+	}
+
+	if (close(fd) < 0) {
+		fr_strerror_printf("Failed writing \"%s\": %s", tmp, fr_syserror(errno));
+		unlink(tmp);
+		talloc_free(tmp);
+		return -1;
+	}
+
+	if (rename(tmp, filename) < 0) {
+		fr_strerror_printf("Failed renaming \"%s\" to \"%s\": %s", tmp, filename, fr_syserror(errno));
+		unlink(tmp);
+		talloc_free(tmp);
+		return -1;
+	}
+
+	talloc_free(tmp);
+	return 0;
+}
+
+/** Set pool=<size> on the PROTOCOL line that defines a dictionary
+ *
+ * protocol_line_pool_set() replaces any pool= option already on the PROTOCOL
+ * line, and keeps every other option, the whitespace between fields, and
+ * any comment.
+ *
+ * Worked example: BEGIN PROTOCOL	RADIUS		1	verify=lib
+ * keyword: BEGIN PROTOCOL, name: RADIUS, number: 1, options: verify=lib
+ * The line becomes: BEGIN PROTOCOL	RADIUS		1	verify=lib,pool=12MB
+ *
+ * @param[in] dict	whose PROTOCOL line to rewrite.
+ * @param[in] pool_mb	New pool size in megabytes (MB) of 1,000,000 bytes.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int protocol_line_pool_set(fr_dict_t const *dict, size_t pool_mb)
+{
+	fr_dict_attr_t const	*root = fr_dict_root(dict);
+	char const		*filename = fr_dict_attr_filename(root);
+	FILE			*fp;
+	struct stat		st;
+	char			*buf;
+	size_t			len;
+	char const		*buf_end, *line, *line_end;
+	char const		*field, *field_end, *number_end, *opts, *opts_end = NULL;
+	char			*new_opts, *out;
+	unsigned int		i;
+	int			ret = -1;
+
+	fp = fopen(filename, "r");
+	if (!fp) {
+		fr_strerror_printf("Failed opening \"%s\": %s", filename, fr_syserror(errno));
+		return -1;
+	}
+	if (fstat(fileno(fp), &st) < 0) {
+		fr_strerror_printf("Failed reading \"%s\": %s", filename, fr_syserror(errno));
+		fclose(fp);
+		return -1;
+	}
+
+	MEM(buf = talloc_array(NULL, char, st.st_size + 1));
+	len = fread(buf, 1, st.st_size, fp);
+	if (ferror(fp) || (len != (size_t)st.st_size)) {
+		fr_strerror_printf("Failed reading \"%s\"", filename);
+		fclose(fp);
+		goto finish;
+	}
+	fclose(fp);
+	buf[len] = '\0';
+	buf_end = buf + len;
+
+	/*
+	 *	1.  Find the PROTOCOL line.  The dictionary loader records the number of
+	 *	    the PROTOCOL line in root->line.
+	 */
+	line = buf;
+	for (i = 1; i < root->line; i++) {
+		char const *nl;
+
+		nl = memchr(line, '\n', buf_end - line);
+		if (!nl) {
+			fr_strerror_printf("Failed finding the PROTOCOL line, \"%s\" has fewer than %u lines",
+					   filename, root->line);
+			goto finish;
+		}
+		line = nl + 1;
+	}
+	line_end = memchr(line, '\n', buf_end - line);
+	if (!line_end) line_end = buf_end;
+
+	/*
+	 *	2.  Check that the line from step 1 has the form [BEGIN] PROTOCOL <name> <number>.
+	 */
+	field = line_field_next(&field_end, line, line_end);
+	if (field && line_field_is(field, field_end, "BEGIN")) field = line_field_next(&field_end, field_end, line_end);
+	if (!field || !line_field_is(field, field_end, "PROTOCOL") ||
+	    !line_field_next(&field_end, field_end, line_end) ||		/* name */
+	    !line_field_next(&field_end, field_end, line_end)) {		/* number */
+		fr_strerror_printf("Failed finding the PROTOCOL line for %s, %s[%u] does not match "
+				   "[BEGIN] PROTOCOL <name> <number>", root->name, filename, root->line);
+		goto finish;
+	}
+	number_end = field_end;
+
+	/*
+	 *	3.  Copy every option except pool= from the line from step 1, then append pool=<pool_mb>MB.
+	 */
+	MEM(new_opts = talloc_strdup(buf, ""));
+	opts = line_field_next(&opts_end, number_end, line_end);
+	if (opts) {
+		char const *p, *q;
+
+		for (p = opts; p < opts_end; p = q + 1) {
+			q = memchr(p, ',', opts_end - p);
+			if (!q) q = opts_end;
+
+			if (((q - p) >= 5) && (strncmp(p, "pool=", 5) == 0)) continue;
+
+			MEM(new_opts = talloc_asprintf_append_buffer(new_opts, "%s%.*s",
+								      new_opts[0] ? "," : "", (int)(q - p), p));
+		}
+	}
+	MEM(new_opts = talloc_asprintf_append_buffer(new_opts, "%spool=%zuMB", new_opts[0] ? "," : "", pool_mb));
+
+	/*
+	 *	4.  Replace the options field of the line with the options from step 3.
+	 *	    When the line has no options field, insert the options from step 3
+	 *	    after the number from step 2.  Then write the result over the file.
+	 */
+	if (opts) {
+		MEM(out = talloc_asprintf(buf, "%.*s%s%s",
+					  (int)(opts - buf), buf, new_opts, opts_end));
+	} else {
+		MEM(out = talloc_asprintf(buf, "%.*s\t%s%s",
+					  (int)(number_end - buf), buf, new_opts, number_end));
+	}
+
+	ret = file_replace(filename, st.st_mode, out, talloc_strlen(out));
+
+finish:
+	talloc_free(buf);
+	return ret;
+}
+
+/** Set pool= on the PROTOCOL line of every loaded protocol dictionary
+ *
+ * The new pool= is the measured size plus overhead percent, rounded up to
+ * whole megabytes (MB) of 1,000,000 bytes.  The overhead covers space that
+ * loading used at the top of the pool and freed again, which
+ * talloc_pool_used() does not count.
+ *
+ * Call protocol_lines_pool_set() only after dicts_pool_grow() returns 0, so
+ * that no pool has overflowed.
+ *
+ * @param[in] gctx	holding the loaded dictionaries.
+ * @param[in] overhead	Percentage to add to the measured size.
+ * @return
+ *	- 0 on success.
+ *	- -1 if radict failed to rewrite any dictionary.
+ */
+static int protocol_lines_pool_set(fr_dict_gctx_t *gctx, unsigned int overhead)
+{
+	fr_hash_iter_t	iter;
+	fr_dict_t	*dict;
+	int		ret = 0;
+
+	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
+	     dict;
+	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
+		fr_dict_attr_t const	*root = fr_dict_root(dict);
+		size_t			used, pool_mb;
+		bool			overflowed;
+
+		/*
+		 *	Skip any dictionary that no PROTOCOL line defines, such as the
+		 *	internal dictionary.  radict has no line to set pool= on.
+		 */
+		if (root->file == 0) continue;
+
+		/*
+		 *	dicts_pool_grow() reloaded the dictionaries until no pool
+		 *	overflowed, so used is the number of bytes that the
+		 *	dictionary needs.
+		 */
+		used = talloc_pool_used(&overflowed, dict->pool, dict->pool_size);
+		if (!fr_cond_assert_msg(!overflowed, "%s overflowed its pool", root->name)) {
+			ret = -1;
+			continue;
+		}
+
+		pool_mb = ((used + (used * overhead) / 100) + (1000 * 1000) - 1) / (1000 * 1000);
+
+		printf("%s\t%s[%u]\tused %zu bytes\tpool=%zuMB\n",
+		       root->name, fr_dict_attr_filename(root), root->line, used, pool_mb);
+
+		if (protocol_line_pool_set(dict, pool_mb) < 0) {
+			fr_perror("radict");
+			ret = -1;
+		}
+	}
+
+	return ret;
+}
+
+/** Print the pool size and the bytes used for every loaded protocol dictionary
+ *
+ * @param[in] gctx	holding the loaded dictionaries.
+ * @return
+ *	- 0 if no protocol dictionary overflowed its pool.
+ *	- -1 if any protocol dictionary overflowed its pool.
+ */
+static int protocol_pools_check(fr_dict_gctx_t *gctx)
+{
+	fr_hash_iter_t	iter;
+	fr_dict_t	*dict;
+	int		ret = 0;
+
+	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
+	     dict;
+	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
+		fr_dict_attr_t const	*root = fr_dict_root(dict);
+		size_t			used;
+		bool			overflowed;
+
+		/*
+		 *	Skip any dictionary that no PROTOCOL line defines, such as the
+		 *	internal dictionary.  pool= cannot resize its pool.
+		 */
+		if (root->file == 0) continue;
+
+		used = talloc_pool_used(&overflowed, dict->pool, dict->pool_size);
+		if (!overflowed) {
+			printf("%s\t%s[%u]\tpool %zu bytes\tused %zu bytes\n",
+			       root->name, fr_dict_attr_filename(root), root->line, dict->pool_size, used);
+			continue;
+		}
+
+		printf("%s\t%s[%u]\tpool %zu bytes\toverflowed\n",
+		       root->name, fr_dict_attr_filename(root), root->line, dict->pool_size);
+		fr_strerror_printf("%s overflowed its %zu byte pool, run radict -P to set a larger pool= on %s[%u]",
+				   root->name, dict->pool_size, fr_dict_attr_filename(root), root->line);
+		fr_perror("radict");
+		ret = -1;
+	}
+
+	return ret;
+}
+
+/** Load the internal dictionary, then the protocol dictionaries
+ *
+ * @param[out] gctx_out		The new global dictionary context.
+ * @param[in] dict_dir		to load the dictionaries from.
+ * @param[in] protocol		to load, or NULL to load every protocol.
+ * @param[in] pool_size_min	Smallest pool, in bytes, that dict_alloc() creates.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dicts_load(fr_dict_gctx_t **gctx_out, char const *dict_dir, char const *protocol, size_t pool_size_min)
+{
+	fr_dict_gctx_t *gctx;
+
+	gctx = fr_dict_global_ctx_init(NULL, true, dict_dir);
+	if (!gctx) {
+		fr_perror("radict - Global context init failed");
+		return -1;
+	}
+	gctx->pool_size_min = pool_size_min;
+	*gctx_out = gctx;
+
+	DEBUG("Loading dictionary: %s/%s", dict_dir, FR_DICTIONARY_FILE);
+
+	if (fr_dict_internal_afrom_file(dict_end++, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
+		fr_perror("radict - Loading internal dictionary failed");
+		return -1;
+	}
+
+	/*
+	 *	Don't emit spurious errors...
+	 */
+	fr_strerror_clear();
+	if (load_dicts(dict_dir, protocol) < 0) {
+		fr_perror("radict - Loading dictionaries failed");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Release radict's references to the dictionaries, then free the global dictionary context
+ *
+ * fr_dict_free() does not set the entry to NULL, so dicts_free() does.  The
+ * release at the end of main() always visits dicts[0], even after a failed
+ * reload, and fr_dict_free() ignores a NULL entry.
+ *
+ * @param[in] gctx	to free.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dicts_free(fr_dict_gctx_t *gctx)
+{
+	fr_dict_t **dict_p;
+
+	for (dict_p = dicts; dict_p < dict_end; dict_p++) {
+		fr_dict_free(dict_p, __FILE__);
+		*dict_p = NULL;
+	}
+	dict_end = dicts;
+
+	if (fr_dict_global_ctx_free(gctx) < 0) {
+		fr_perror("radict - Error freeing dictionaries");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Reload the dictionaries with larger pools until no pool overflows
+ *
+ * Each reload sets the minimum pool size to the size of the largest
+ * overflowed pool plus RADICT_POOL_STEP_SIZE bytes.
+ *
+ * @param[in,out] gctx_p	Global dictionary context.  dicts_pool_grow() replaces
+ *				*gctx_p on each reload.
+ * @param[in] dict_dir		to load the dictionaries from.
+ * @param[in] protocol		to load, or NULL to load every protocol.
+ * @return
+ *	- 0 when no pool overflows.
+ *	- -1 if the next pool would be larger than RADICT_POOL_MAX_SIZE, or if a
+ *	  reload fails.
+ */
+static int dicts_pool_grow(fr_dict_gctx_t **gctx_p, char const *dict_dir, char const *protocol)
+{
+	size_t overflow_max;
+
+	while ((overflow_max = dicts_overflow_max(*gctx_p)) > 0) {
+		size_t pool_size_min = overflow_max + RADICT_POOL_STEP_SIZE;
+
+		if (pool_size_min > RADICT_POOL_MAX_SIZE) {
+			fr_strerror_printf("Stopping, a dictionary overflowed a %zu byte pool and the next pool would be "
+					   "larger than RADICT_POOL_MAX_SIZE (%zu bytes)", overflow_max, RADICT_POOL_MAX_SIZE);
+			fr_perror("radict");
+			return -1;
+		}
+
+		DEBUG("Reloading the dictionaries with pools of at least %zu bytes", pool_size_min);
+
+		if (dicts_free(*gctx_p) < 0) return -1;
+		if (dicts_load(gctx_p, dict_dir, protocol, pool_size_min) < 0) return -1;
+	}
+
+	return 0;
+}
+
 /**
  *
  * @hidecallgraph
@@ -772,6 +1243,10 @@ int main(int argc, char *argv[])
 	bool			alias = false;
 	char const		*protocol = NULL;
 	da_print_func_t	func = NULL;
+	fr_dict_gctx_t		*gctx;
+	bool			pool_set = false;
+	bool			pool_check = false;
+	unsigned int		pool_overhead = 0;
 
 	TALLOC_CTX		*autofree;
 
@@ -792,7 +1267,7 @@ int main(int argc, char *argv[])
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
 
-	while ((c = getopt(argc, argv, "AcfF:ED:M:p:rVxhH")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "AcfF:ED:M:Op:P:rVxhH")) != -1) switch (c) {
 		case 'A':
 			alias = true;
 			break;
@@ -831,8 +1306,27 @@ int main(int argc, char *argv[])
 			mib = optarg;
 			break;
 
+		case 'O':
+			pool_check = true;
+			break;
+
 		case 'p':
 			protocol = optarg;
+			break;
+
+		case 'P':
+		{
+			char		*q;
+			unsigned long	overhead;
+
+			overhead = strtoul(optarg, &q, 10);
+			if ((q == optarg) || (*q != '\0') || (overhead > 1000)) {
+				fprintf(stderr, "Invalid -P percentage '%s', expected an integer from 0 to 1000\n", optarg);
+				fr_exit(EXIT_FAILURE);
+			}
+			pool_overhead = overhead;
+			pool_set = true;
+		}
 			break;
 
 		case 'r':
@@ -864,26 +1358,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (!fr_dict_global_ctx_init(NULL, true, dict_dir)) {
-		fr_perror("radict - Global context init failed");
-		ret = 1;
-		goto finish;
-	}
-
-	DEBUG("Loading dictionary: %s/%s", dict_dir, FR_DICTIONARY_FILE);
-
-	if (fr_dict_internal_afrom_file(dict_end++, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
-		fr_perror("radict - Loading internal dictionary failed");
-		ret = 1;
-		goto finish;
-	}
-
-	/*
-	 *	Don't emit spurious errors...
-	 */
-	fr_strerror_clear();
-	if (load_dicts(dict_dir, protocol) < 0) {
-		fr_perror("radict - Loading dictionaries failed");
+	if (dicts_load(&gctx, dict_dir, protocol, 0) < 0) {
 		ret = 1;
 		goto finish;
 	}
@@ -891,6 +1366,17 @@ int main(int argc, char *argv[])
 	if (dict_end == dicts) {
 		fr_perror("radict - No dictionaries loaded");
 		ret = 1;
+		goto finish;
+	}
+
+	if (pool_check) {
+		if (protocol_pools_check(gctx) < 0) ret = 1;
+		goto finish;
+	}
+
+	if (pool_set) {
+		if ((dicts_pool_grow(&gctx, dict_dir, protocol) < 0) ||
+		    (protocol_lines_pool_set(gctx, pool_overhead) < 0)) ret = 1;
 		goto finish;
 	}
 
@@ -919,11 +1405,20 @@ int main(int argc, char *argv[])
 
 		do {
 			raddict_stats_t	stats = {};
+			bool		overflowed;
+			size_t		used;
 
 			raddict_export(&stats, *dict_p, fr_dict_root(*dict_p));
+			used = talloc_pool_used(&overflowed, (*dict_p)->pool, (*dict_p)->pool_size);
 			DEBUG2("Attribute count %" PRIu64, stats.count);
 			DEBUG2("Memory allocd %zu (bytes)", talloc_total_size(*dict_p));
 			DEBUG2("Memory spread %zu (bytes)", (size_t) (stats.high - stats.low));
+			DEBUG2("Pool size %zu (bytes)", (*dict_p)->pool_size);
+			if (overflowed) {
+				DEBUG2("Pool used overflowed");
+			} else {
+				DEBUG2("Pool used %zu (bytes)", used);
+			}
 		} while (++dict_p < dict_end);
 
 		goto finish;
