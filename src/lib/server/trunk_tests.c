@@ -108,17 +108,11 @@ static void test_demux(UNUSED fr_event_list_t *el, UNUSED trunk_connection_t *tc
 		if (acutest_verbose_level_ >= 3) printf("%s - Read %p (%zu)\n", __FUNCTION__, preq, (size_t)slen);
 
 		/*
-		 * 	Coverity considers data read from a file to be tainted,
-		 * 	and considers its use to be a defect--but almost all the
-		 * 	rest of the loop validates the pointer to the extent
-		 * 	possible--all of the pointer should be read, its talloc
-		 * 	"dynamic type" had better be right, and it should either
-		 * 	be freed or have a statethe demuxer can handle or ignore.
-		 * 	This isn't like a range check on a numeric value;
-		 * 	Coverity doesn't recognize it as validation.
+		 *	The pointer came from test_mux() or test_cancel_mux() through
+		 *	the socket pair, so use the type checked copy.
 		 */
 		TEST_CHECK(slen == sizeof(preq));
-		talloc_get_type_abort(preq, test_proto_request_t);
+		preq = talloc_get_type_abort(preq, test_proto_request_t);
 
 		if (preq->freed) continue;
 
@@ -130,12 +124,10 @@ static void test_demux(UNUSED fr_event_list_t *el, UNUSED trunk_connection_t *tc
 			break;		/* Hack - just ignore it */
 
 		case TRUNK_REQUEST_STATE_CANCEL_SENT:
-			/* coverity[tainted_data] */
 			trunk_request_signal_cancel_complete(preq->treq);
 			break;
 
 		case TRUNK_REQUEST_STATE_SENT:
-			/* coverity[tainted_data] */
 			trunk_request_signal_complete(preq->treq);
 			break;
 

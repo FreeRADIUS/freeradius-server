@@ -284,3 +284,13 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	__coverity_writeall__(out);
 	return result;
 }
+
+/*
+ * talloc_get_type_abort() aborts unless ptr is a talloc chunk of the named
+ * type, so the pointer it returns is checked, even if ptr came from a read().
+ */
+void *_talloc_get_type_abort(const void *ptr, const char *name, const char *location)
+{
+	__coverity_mark_pointee_as_sanitized__(&ptr, TAINTED_SCALAR_GENERIC);
+	return (void *)ptr;
+}
