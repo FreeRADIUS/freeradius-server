@@ -754,6 +754,7 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
 	}
 
 	if (rcode < 0) {
+		my->info.connect_errno = errno;
 		(void) fr_bio_shutdown(&my->bio);
 		return fr_bio_error(GENERIC);
 	}
@@ -801,6 +802,8 @@ retry:
                  *      to call fr_bio_fd_connect() before calling write()
                  */
         case EINPROGRESS:
+		my->info.connect_errno = errno;
+
 		if (!my->info.write_blocked) {
 			my->info.write_blocked = true;
 
@@ -860,6 +863,16 @@ static int fr_bio_fd_init_file(fr_bio_fd_t *my)
 	return 0;
 }
 
+/** This FD isn't connected.
+ *
+ */
+static ssize_t fr_bio_fd_notconn_read(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void *buffer, UNUSED size_t size)
+{
+	errno = ENOTCONN;
+
+	return fr_bio_error(IO);
+}
+
 int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 {
 	int rcode;
@@ -882,7 +895,7 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 	/*
 	 *	Don't do any reads until we're connected.
 	 */
-	my->bio.read = fr_bio_null_read;
+	my->bio.read = fr_bio_fd_notconn_read;
 	my->bio.write = fr_bio_null_write;
 
 	my->info.eof = false;
