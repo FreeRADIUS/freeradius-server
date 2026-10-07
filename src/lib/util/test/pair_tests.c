@@ -951,7 +951,7 @@ static void test_fr_pair_value_bstr_alloc(void)
 	PAIR_VERIFY(vp);
 
 	TEST_CASE("Pre-allocate a memory buffer using fr_pair_value_bstr_alloc()");
-	TEST_CHECK(fr_pair_value_bstr_alloc(vp, &out, test_string_len, false) == 0);
+	MEM(fr_pair_value_bstr_alloc(vp, &out, test_string_len, false) == 0);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -978,10 +978,10 @@ static void test_fr_pair_value_bstr_realloc(void)
 	PAIR_VERIFY(vp);
 
 	TEST_CASE("Pre-allocate 1 byte of memory buffer using fr_pair_value_bstr_alloc()");
-	TEST_CHECK(fr_pair_value_bstr_alloc(vp, &out, 1, false) == 0);
+	MEM(fr_pair_value_bstr_alloc(vp, &out, 1, false) == 0);
 
 	TEST_CASE("Re-allocate (test_string_len-1) byte of memory buffer using fr_pair_value_bstr_realloc()");
-	TEST_CHECK(fr_pair_value_bstr_realloc(vp, &out, (test_string_len - 1)) == 0);
+	MEM(fr_pair_value_bstr_realloc(vp, &out, (test_string_len - 1)) == 0);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -1094,7 +1094,7 @@ static void test_fr_pair_value_mem_alloc(void)
 	PAIR_VERIFY(vp);
 
 	TEST_CASE("Pre-allocate a memory buffer using fr_pair_value_bstr_alloc()");
-	TEST_CHECK(fr_pair_value_mem_alloc(vp, &out, NUM_ELEMENTS(test_octets), false) == 0);
+	MEM(fr_pair_value_mem_alloc(vp, &out, NUM_ELEMENTS(test_octets), false) == 0);
 
 	TEST_CASE("Copy 'test_octets' to the pre-allocated pointer");
 	TEST_CHECK(memcpy(out, test_octets, NUM_ELEMENTS(test_octets)) != NULL);
@@ -1118,13 +1118,13 @@ static void test_fr_pair_value_mem_realloc(void)
 	PAIR_VERIFY(vp);
 
 	TEST_CASE("Pre-allocate a memory buffer using fr_pair_value_bstr_alloc()");
-	TEST_CHECK(fr_pair_value_mem_alloc(vp, &out, NUM_ELEMENTS(test_octets), false) == 0);
+	MEM(fr_pair_value_mem_alloc(vp, &out, NUM_ELEMENTS(test_octets), false) == 0);
 
 	TEST_CASE("Copy 'test_octets' to the pre-allocated pointer");
 	TEST_CHECK(memcpy(out, test_octets, NUM_ELEMENTS(test_octets)) != NULL);
 
 	TEST_CASE("Realloc pre-allocated pointer to fit extra 'test_octets' copy");
-	TEST_CHECK(fr_pair_value_mem_realloc(vp, &out, NUM_ELEMENTS(test_octets)*2) == 0);
+	MEM(fr_pair_value_mem_realloc(vp, &out, NUM_ELEMENTS(test_octets)*2) == 0);
 
 	TEST_CASE("Copy 'test_octets' into the tail");
 	TEST_CHECK(memcpy(out+NUM_ELEMENTS(test_octets), test_octets, NUM_ELEMENTS(test_octets)) != NULL);
