@@ -1149,6 +1149,13 @@ finish:
 	(void) fr_event_post_delete(utt->el, _tls_runnable, utt);
 
 	/*
+	 *	The user event is allocated in utt, which outlives the event
+	 *	list.  The destructor of the user event removes it from the
+	 *	event list, so free it while the event list still exists.
+	 */
+	TALLOC_FREE(ev);
+
+	/*
 	 *	The connection frame is still yielded, so cancel the request to
 	 *	unwind the stack before the request is freed.
 	 */
