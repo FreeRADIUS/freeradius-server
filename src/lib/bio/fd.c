@@ -399,10 +399,11 @@ DIAG_ON(sign-compare)
 		if ((cmsg->cmsg_level == SOL_IP) &&
 		    (cmsg->cmsg_type == IP_PKTINFO)) {
 			struct in_pktinfo *i = (struct in_pktinfo *) CMSG_DATA(cmsg);
-			struct sockaddr_in to;
-
-			to.sin_family = AF_INET;
-			to.sin_addr = i->ipi_addr;
+			struct sockaddr_in to = {
+				.sin_family = AF_INET,
+				.sin_addr = i->ipi_addr,
+				.sin_port = htons(my->info.socket.inet.src_port),
+			};
 
 			(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.dst_ipaddr, &addr->socket.inet.dst_port,
 						       (struct sockaddr_storage *) &to, sizeof(struct sockaddr_in));
@@ -415,10 +416,12 @@ DIAG_ON(sign-compare)
 		if ((cmsg->cmsg_level == IPPROTO_IP) &&
 		    (cmsg->cmsg_type == IP_RECVDSTADDR)) {
 			struct in_addr *i = (struct in_addr *) CMSG_DATA(cmsg);
-			struct sockaddr_in to;
+			struct sockaddr_in to = {
+				.sin_family = AF_INET,
+				.sin_addr = *i,
+				.sin_port = htons(my->info.socket.inet.src_port),
+			};
 
-			to.sin_family = AF_INET;
-			to.sin_addr = *i;
 			(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.dst_ipaddr, &addr->socket.inet.dst_port,
 						       (struct sockaddr_storage *) &to, sizeof(struct sockaddr_in));
 			break;
@@ -564,10 +567,12 @@ DIAG_ON(sign-compare)
 		if ((cmsg->cmsg_level == IPPROTO_IPV6) &&
 		    (cmsg->cmsg_type == IPV6_PKTINFO)) {
 			struct in6_pktinfo *i = (struct in6_pktinfo *) CMSG_DATA(cmsg);
-			struct sockaddr_in6 to;
-
-			to.sin6_family = AF_INET6;
-			to.sin6_addr = i->ipi6_addr;
+			struct sockaddr_in6 to = {
+				.sin6_family = AF_INET6,
+				.sin6_addr = i->ipi6_addr,
+				.sin6_port = htons(my->info.socket.inet.src_port),
+				.sin6_scope_id = my->info.socket.inet.src_ipaddr.scope_id,
+			};
 
 			(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.dst_ipaddr, &addr->socket.inet.dst_port,
 						       (struct sockaddr_storage *) &to, sizeof(struct sockaddr_in6));

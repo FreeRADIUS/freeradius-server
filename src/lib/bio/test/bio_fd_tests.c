@@ -156,7 +156,102 @@ done:
 	talloc_free(ctx);
 }
 
+/** Read one packet through an unconnected UDP bio bound to the wildcard address
+ *
+ *  The local address of a bio bound to the wildcard address does not identify the address that a
+ *  packet was sent to.  fr_bio_fd_init_common() therefore installs fr_bio_fd_recvfromto4() or
+ *  fr_bio_fd_recvfromto6().  Those two functions read the destination address from a control message
+ *  (data which recvmsg() returns beside the packet), and copy the destination port from the port of
+ *  the bio.
+ *
+ *  fr_bio_fd_common_datagram() also enables receive timestamps, so each packet carries two control
+ *  messages.  If cbuf in fr_bio_fd_t is too small for both control messages, then the bio drops every
+ *  packet.
+ */
+static void recvfromto_test(int af)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_fd_config_t	cfg;
+	fr_bio_t		*bio;
+	fr_bio_fd_info_t const	*info;
+	fr_bio_fd_packet_ctx_t	packet_ctx = {};
+	fr_ipaddr_t		loopback;
+	struct sockaddr_storage	to;
+	socklen_t		to_len;
+	uint8_t			buffer[16];
+	ssize_t			rcode;
+	int			fd = -1;
+
+	cfg = (fr_bio_fd_config_t) {
+		.type = FR_BIO_FD_UNCONNECTED,
+		.socket_type = SOCK_DGRAM,
+		.transport_type = FR_BIO_FD_TRANSPORT_UDP,
+		.src_ipaddr = {
+			.af = af,
+			.prefix = (af == AF_INET) ? 32 : 128,
+		},
+	};
+
+	bio = fr_bio_fd_alloc(ctx, &cfg, 0);
+	TEST_CHECK(bio != NULL);
+	TEST_MSG("fr_bio_fd_alloc failed: %s", fr_strerror());
+	if (!bio) goto done;
+
+	info = fr_bio_fd_info(bio);
+	TEST_CHECK(info->socket.inet.src_port != 0);
+	TEST_MSG("the bio did not learn the port which the kernel picked");
+
+	/*
+	 *	Send one packet to the loopback address and the port of the bio.
+	 */
+	if (af == AF_INET) {
+		loopback = (fr_ipaddr_t) { .af = AF_INET, .prefix = 32, .addr.v4.s_addr = htonl(INADDR_LOOPBACK) };
+	} else {
+		loopback = (fr_ipaddr_t) { .af = AF_INET6, .prefix = 128, .addr.v6 = in6addr_loopback };
+	}
+
+	TEST_CHECK(fr_ipaddr_to_sockaddr(&to, &to_len, &loopback, info->socket.inet.src_port) == 0);
+
+	fd = socket(af, SOCK_DGRAM, 0);
+	TEST_CHECK(fd >= 0);
+	if (fd < 0) goto done;
+
+	TEST_CHECK(sendto(fd, "x", 1, 0, (struct sockaddr *) &to, to_len) == 1);
+
+	/*
+	 *	The socket of the bio is blocking, so fr_bio_read() waits until the packet arrives,
+	 *	and cannot return early with nothing read.
+	 */
+	rcode = fr_bio_read(bio, &packet_ctx, buffer, sizeof(buffer));
+
+	TEST_CASE("the packet is read, not dropped");
+	TEST_CHECK(rcode == 1);
+	TEST_MSG("fr_bio_read returned %zd", rcode);
+	if (rcode != 1) goto done;
+
+	TEST_CASE("the destination is the loopback address and the port of the bio");
+	TEST_CHECK(fr_ipaddr_cmp(&packet_ctx.socket.inet.dst_ipaddr, &loopback) == 0);
+	TEST_CHECK(packet_ctx.socket.inet.dst_port == info->socket.inet.src_port);
+	TEST_MSG("dst_port = %u, expected %u", packet_ctx.socket.inet.dst_port, info->socket.inet.src_port);
+
+done:
+	if (fd >= 0) close(fd);
+	talloc_free(ctx);
+}
+
+static void test_recvfromto4(void)
+{
+	recvfromto_test(AF_INET);
+}
+
+static void test_recvfromto6(void)
+{
+	recvfromto_test(AF_INET6);
+}
+
 TEST_LIST = {
 	{ "deferred_connect_success_calls_connected_cb",	test_deferred_connect_success_calls_connected_cb },
+	{ "recvfromto4",					test_recvfromto4 },
+	{ "recvfromto6",					test_recvfromto6 },
 	TEST_TERMINATOR
 };

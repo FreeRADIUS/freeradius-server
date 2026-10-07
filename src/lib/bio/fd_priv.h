@@ -54,7 +54,15 @@ typedef struct fr_bio_fd_s {
 #if defined(IP_PKTINFO) || defined(IP_RECVDSTADDR) || defined(IPV6_PKTINFO)
 	struct iovec	iov;			//!< for recvfromto
 	struct msghdr	msgh;			//!< for recvfromto
-	uint8_t		cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo))]; //!< for recvfromto and sendfromto
+
+	/*
+	 *	A received packet can carry two control messages: the destination address, and the
+	 *	receive timestamp that fr_bio_fd_common_datagram() enables.  If cbuf is too small for
+	 *	both control messages, then the kernel sets MSG_CTRUNC, and fd_fd_recvfromto_common()
+	 *	drops the packet.
+	 */
+	uint8_t		cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo)) +
+			     CMSG_SPACE(sizeof(union { struct timespec ts; struct timeval tv; }))]; //!< for recvfromto and sendfromto
 #endif
 } fr_bio_fd_t;
 
