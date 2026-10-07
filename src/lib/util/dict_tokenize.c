@@ -312,11 +312,15 @@ static bool dict_read_sscanf_i(unsigned int *pvalue, char const *str)
  * @param[in] name		of dictionary root.
  * @param[in] proto_number	The artificial (or IANA allocated) number for the protocol.
  *				This is only used for
+ * @param[in] filename		of the PROTOCOL line that defines the protocol, or NULL if
+ *				no dictionary file defines the protocol.
+ * @param[in] line		of the PROTOCOL line in filename.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_number)
+static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_number,
+			 char const *filename, int line)
 {
 	fr_dict_attr_t *da;
 
@@ -336,6 +340,12 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 
 	dict->root = da;
 	dict->root->dict = dict;
+
+	/*
+	 *	The root has no parent to take a dictionary from, so
+	 *	the location is set once the root belongs to dict.
+	 */
+	dict_attr_location_init(dict, da, filename, line);
 	DA_VERIFY(dict->root);
 
 	return 0;
@@ -3047,7 +3057,7 @@ post_option:
 	/*
 	 *	Set the root attribute with the protocol name
 	 */
-	if (dict_root_set(dict, argv[0], value) < 0) goto error;
+	if (dict_root_set(dict, argv[0], value, dctx->filename, dctx->line) < 0) goto error;
 
 	if (dict_protocol_add(dict) < 0) goto error;
 
@@ -3656,7 +3666,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 	/*
 	 *	Set the root name of the dictionary
 	 */
-	if (dict_root_set(dict, "internal", 0) < 0) goto error;
+	if (dict_root_set(dict, "internal", 0, NULL, 0) < 0) goto error;
 
 	if (dict_path && dict_from_file(dict, dict_path, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
 
@@ -3879,7 +3889,7 @@ fr_dict_t *fr_dict_alloc(char const *proto_name, unsigned int proto_number)
 	/*
 	 *	Set the root name of the dictionary
 	 */
-	if (dict_root_set(dict, proto_name, proto_number) < 0) {
+	if (dict_root_set(dict, proto_name, proto_number, NULL, 0) < 0) {
 		talloc_free(dict);
 		return NULL;
 	}
