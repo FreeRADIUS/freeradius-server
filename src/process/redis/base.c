@@ -1147,11 +1147,6 @@ RECV(cluster_map_bootstrap)
 		fr_fatal_assert_msg(vp, "Missing %s when TLS is enabled", attr_redis_tls_conf->name);
 		conf->use_tls = true;
 #ifdef HAVE_REDIS_SSL
-		/*
-		 *	The worker sent the address of the `tls { ... }` section
-		 *	that the worker parsed.  The section exists for as long as
-		 *	the module instance, so the address stays valid.
-		 */
 		conf->tls = (fr_tls_conf_t *)(uintptr_t)vp->vp_uint64;
 #endif
 	}

@@ -1319,12 +1319,8 @@ skip_tls_version:
  * The submodule's own rules parse the section, through the
  * `FR_CONF_SUBSECTION_ALLOC` row that names `fr_tls_server_config`.
  *
- * @param[in] cs		the submodule's section.  cf_log_warn_by_child() logs the
- *				`session.min_lifetime` warning against the `tls` child of
- *				this section.
- * @param[in,out] tls_conf	parsed from the `tls { ... }` subsection.  The function
- *				raises `cache.min_lifetime` to the EAP minimum when the
- *				value is lower.
+ * @param[in] cs		the submodule's section.
+ * @param[in,out] tls_conf	parsed from the `tls { ... }` subsection.
  */
 void eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf)
 {

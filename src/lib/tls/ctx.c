@@ -229,10 +229,8 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 	int		i;
 
 	/*
-	 *	The parse hook of the `chain { ... }` section loads `leaf`,
-	 *	`extra`, and `private_key` once, or the parse fails.  Each
-	 *	`SSL_CTX` takes a reference to the objects, so this function
-	 *	does not read the files.
+	 *	The chain section loaded the files when it was parsed,
+	 *	each SSL_CTX just takes references.
 	 */
 	fr_assert(chain->leaf && chain->private_key);
 
