@@ -1923,7 +1923,7 @@ int _fr_event_user_insert(NDEBUG_LOCATION_ARGS
 	};
 
 	EV_SET(&evset, (uintptr_t)ev,
-	       EVFILT_USER, EV_ADD | EV_DISPATCH, (trigger * NOTE_TRIGGER), 0, ev);
+	       EVFILT_USER, EV_ADD | EV_DISPATCH, 0, 0, ev);
 
 	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed adding user event - kevent %s", fr_syserror(evset.flags));
@@ -1932,6 +1932,18 @@ int _fr_event_user_insert(NDEBUG_LOCATION_ARGS
 	}
 	ev->is_registered = true;
 	talloc_set_destructor(ev, _event_user_delete);
+
+	/*
+	 *	NOTE_TRIGGER passed with EV_ADD is not delivered everywhere.
+	 *	FreeBSD clears fflags before attaching a new knote, and
+	 *	libkqueue on Linux never raises the eventfd when it creates
+	 *	the knote.  So the initial trigger is a separate change,
+	 *	made once the event exists.
+	 */
+	if (trigger && (unlikely(fr_event_user_trigger(ev) < 0))) {
+		talloc_free(ev);
+		return -1;
+	}
 
 	if (ev_p) *ev_p = ev;
 
