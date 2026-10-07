@@ -24,11 +24,5 @@ tls {
 
 		cipher_list = "DEFAULT"
 		ecdh_curve = "prime256v1"
-
-		verify {
-		}
-
-		ocsp {
-		}
 	}
 }
