@@ -46,10 +46,10 @@ Rules:
     tabs, when no paragraph or list entry is in progress.  The
     indented block runs until a blank line followed by a line that is
     not indented, or until a block delimiter, an open block delimiter,
-    or a title.  Blank lines inside the block are kept, and blank
-    lines at the end of the block collapse to one.  An indented line
-    inside a paragraph or list entry is a continuation line, and is
-    wrapped.
+    a line containing only three or more "*", or a title.  Blank lines
+    inside the block are kept, and blank lines at the end of the block
+    collapse to one.  An indented line inside a paragraph or list entry
+    is a continuation line, and is wrapped.
   - A one-line paragraph underlined with five or more "-" (within two
     characters of the text length) is a two-line section title.  The
     title is rewritten as "== Title".
@@ -64,8 +64,8 @@ Rules:
     after the marker.
     Lines that are left unchanged on their own line outside the block
     ("[" lines, comments, block titles, table rows, attribute entries,
-    block macros, "+", and "--") are also left unchanged inside the
-    block.
+    block macros, "+", "--", and lines containing only three or more
+    "*") are also left unchanged inside the block.
     A label containing any lowercase letter (e.g. "[source]") does not
     qualify.
   - A bare "====" (not opened by such a label) is still treated as a
@@ -74,6 +74,9 @@ Rules:
   - An open block delimiter, a line equal to "--", is left unchanged
     on its own line.  The contents of the open block are wrapped as
     normal paragraphs.
+  - A line containing only three or more "*" is left unchanged on its
+    own line.  A line of four or more "*" is a sidebar delimiter, and
+    the contents of the sidebar are wrapped as normal paragraphs.
   - Lines that start with "[" (e.g. "[NOTE]", "[source,c]") are left
     unchanged on their own line.
   - Lines starting with "|" (tables) are left unchanged.
@@ -370,6 +373,16 @@ def is_text_block_delim(line):
     return _EQUALS_DELIM_RE.fullmatch(line.rstrip()) is not None
 
 
+_STAR_DELIM_RE = re.compile(r"\*{3,}")
+
+
+def is_star_delim(line):
+    """A line containing only three or more "*", e.g. a sidebar
+    delimiter (four or more "*").  The sidebar contents are wrapped, and
+    the line is left unchanged on its own line."""
+    return _STAR_DELIM_RE.fullmatch(line.rstrip()) is not None
+
+
 def is_open_block_delim(line):
     """Open block delimiter, a line equal to "--".  The block contents are
     wrapped, and the delimiter stays on a line by itself."""
@@ -538,9 +551,9 @@ def process(lines, nav_mode=False):
             # Inside an indented block.  After a blank line, only an
             # indented line continues the block.  Directly after a non-blank
             # line, every line continues the block, except a block delimiter,
-            # an open block delimiter ("--"), or a title.  Blank lines are
-            # held back until the next line shows whether the block
-            # continues.
+            # an open block delimiter ("--"), a line containing only three
+            # or more "*", or a title.  Blank lines are held back until the
+            # next line shows whether the block continues.
             s = raw.rstrip()
             if s == "":
                 indented_blanks += 1
@@ -549,6 +562,7 @@ def process(lines, nav_mode=False):
                                     and not block_delim(s)
                                     and not is_text_block_delim(s)
                                     and not is_open_block_delim(s)
+                                    and not is_star_delim(s)
                                     and not is_title(s)):
                 out.extend([""] * indented_blanks)
                 indented_blanks = 0
@@ -614,7 +628,8 @@ def process(lines, nav_mode=False):
             if (is_attribute(line) or is_comment(line)
                     or is_block_title(line) or is_table(line)
                     or is_attribute_entry(line) or is_block_macro(line)
-                    or line == "+" or is_open_block_delim(line)):
+                    or line == "+" or is_open_block_delim(line)
+                    or is_star_delim(line)):
                 flush()
                 out.append(line)
                 continue
@@ -691,7 +706,7 @@ def process(lines, nav_mode=False):
             out.append(line)
             continue
 
-        if line == "+" or is_open_block_delim(line):
+        if line == "+" or is_open_block_delim(line) or is_star_delim(line):
             flush()
             out.append(line)
             continue
