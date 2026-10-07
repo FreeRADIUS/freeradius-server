@@ -1,40 +1,50 @@
+= Operating Systems
 
-# Operating Systems
-## Officially supported
-The following platforms are officially supported by the FreeRADIUS project, if FreeRADIUS fails to build or compile correctly of these platforms we consider this a bug, and you should [report it](http://bugs.freeradius.org).
+== Officially supported
 
-If you are not constrained in your choice of operating systems, for maximum performance and reliability the FreeRADIUS core team recommend [FreeBSD](http://www.freebsd.org/).
+The following platforms are officially supported by the FreeRADIUS
+project, if FreeRADIUS fails to build or compile correctly of these
+platforms we consider this a bug, and you should
+http://bugs.freeradius.org[report it].
 
-* [FreeBSD](http://www.freebsd.org/)
-* [Linux](http://www.kernel.org/)
-  * [CentOS](http://www.centos.org/)
-  * [Red Hat](http://www.redhat.com/)
-  * [Debian](http://www.debian.org/)
-  * [Ubuntu](http://www.ubuntu.com/)
-* [macOS](http://www.apple.com/)
-* [Solaris](http://www.oracle.com/technetwork/server-storage/solaris11/overview/index.html)
+If you are not constrained in your choice of operating systems, for
+maximum performance and reliability the FreeRADIUS core team recommend
+http://www.freebsd.org/[FreeBSD].
 
-## Reported to work by the community
+* http://www.freebsd.org/[FreeBSD]
+* http://www.kernel.org/[Linux]
+* http://www.centos.org/[CentOS]
+* http://www.redhat.com/[Red Hat]
+* http://www.debian.org/[Debian]
+* http://www.ubuntu.com/[Ubuntu]
+* http://www.apple.com/[macOS]
+* http://www.oracle.com/technetwork/server-storage/solaris11/overview/index.html[Solaris]
+
+== Reported to work by the community
+
 FreeRADIUS is reported to run on the following Operating Systems:
-* [AIX](http://www.ibm.com/aix)
-* [Cygwin](http://www.cygwin.com/)
-* [FreeBSD](http://www.freebsd.org/)
-* [HP-UX](http://www.hp.com/products1/unix/)
-* [Linux](http://www.kernel.org/)
-  * [CentOS](http://www.centos.org/)
-  * [Debian](http://www.debian.org/)
-  * [Open Mandriva](https://www.openmandriva.org/)
-  * [Red Hat](http://www.redhat.com/)
-  * [SUSE](http://www.opensuse.org/)
-  * [Turbolinux](http://www.turbolinux.com/)
-  * [Ubuntu](http://www.ubuntu.com/)
-* [macOS](http://www.apple.com/)
-* [NetBSD](http://www.netbsd.org/)
-* [OpenBSD](http://www.openbsd.org/)
+
+* http://www.ibm.com/aix[AIX]
+* http://www.cygwin.com/[Cygwin]
+* http://www.freebsd.org/[FreeBSD]
+* http://www.hp.com/products1/unix/[HP-UX]
+* http://www.kernel.org/[Linux]
+* http://www.centos.org/[CentOS]
+* http://www.debian.org/[Debian]
+* https://www.openmandriva.org/[Open Mandriva]
+* http://www.redhat.com/[Red Hat]
+* http://www.opensuse.org/[SUSE]
+* http://www.turbolinux.com/[Turbolinux]
+* http://www.ubuntu.com/[Ubuntu]
+* http://www.apple.com/[macOS]
+* http://www.netbsd.org/[NetBSD]
+* http://www.openbsd.org/[OpenBSD]
 * OSF/Unix
-* [Solaris](http://www.oracle.com/technetwork/server-storage/solaris11/overview/index.html)
+* http://www.oracle.com/technetwork/server-storage/solaris11/overview/index.html[Solaris]
 
-Porting to other unix-like platforms should be easy. Due to the limited resources of the FreeRADIUS development team, we are not able to test each version on all platforms before release.
+Porting to other unix-like platforms should be easy. Due to the limited
+resources of the FreeRADIUS development team, we are not able to test
+each version on all platforms before release.
 
-// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS. Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
