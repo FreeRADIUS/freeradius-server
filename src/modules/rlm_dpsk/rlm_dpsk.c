@@ -94,13 +94,12 @@ typedef struct {
 	fr_time_t		expires;
 
 	fr_dlist_t		dlist;
-	rlm_dpsk_t const	*inst;
 } rlm_dpsk_cache_t;
 
 typedef struct {
 	fr_rb_tree_t			cache;
 
-	pthread_mutex_t			mutex;
+	pthread_mutex_t			mutex;		//!< Held for every operation on cache, head, and the entries.
 	fr_dlist_head_t			head;
 } rlm_dpsk_mutable_t;
 
@@ -243,14 +242,23 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	RETURN_UNLANG_UPDATED;
 }
 
+static void dpsk_cache_key_set(rlm_dpsk_cache_t *key, fr_value_box_t const *ssid, uint8_t const *mac)
+{
+	memcpy(key->mac, mac, sizeof(key->mac));
+	memcpy(&key->ssid, &ssid->vb_octets, sizeof(key->ssid)); /* const issues */
+	key->ssid_len = ssid->vb_length;
+}
+
+/** Find an unexpired cache entry, and copy its PMK to buffer
+ *
+ * The caller must hold inst->mutable->mutex.
+ */
 static rlm_dpsk_cache_t *dpsk_cache_find(request_t *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen,
 					 fr_value_box_t *ssid, uint8_t const *mac)
 {
 	rlm_dpsk_cache_t *entry, my_entry;
 
-	memcpy(my_entry.mac, mac, sizeof(my_entry.mac));
-	memcpy(&my_entry.ssid, &ssid->vb_octets, sizeof(my_entry.ssid)); /* const issues */
-	my_entry.ssid_len = ssid->vb_length;
+	dpsk_cache_key_set(&my_entry, ssid, mac);
 
 	fr_rb_find((void **)&entry, &inst->mutable->cache, &my_entry);
 	if (entry) {
@@ -288,7 +296,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 {
 	rlm_dpsk_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_dpsk_t);
 	dpsk_auth_call_env_t	*env = talloc_get_type_abort(mctx->env_data, dpsk_auth_call_env_t);
-	rlm_dpsk_cache_t	*entry = NULL;
 	int			lineno = 0;
 	int			stage = 0;
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
@@ -416,11 +423,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	 *	expensive.
 	 */
 	if (inst->cache_size) {
+		rlm_dpsk_cache_t *entry;
+
 		pthread_mutex_lock(&inst->mutable->mutex);
 		entry = dpsk_cache_find(request, inst, pmk, sizeof(pmk), &env->ssid, s_mac);
 		if (entry) {
-			psk_identity = entry->identity;
-			psk = entry->psk;
+			/*
+			 *	Another thread can free the entry once the mutex is released.
+			 */
+			MEM(psk_identity = talloc_bstrndup(env, entry->identity, entry->identity_len));
+			MEM(psk = talloc_bstrndup(env, entry->psk, entry->psk_len));
 			psk_len = entry->psk_len;
 			pthread_mutex_unlock(&inst->mutable->mutex);
 			goto make_digest;
@@ -668,9 +680,20 @@ make_digest:
 		 *	check external PMK / PSK.
 		 */
 		if (stage == 0) {
-			fr_assert(entry != NULL);
-			fr_rb_delete(&inst->mutable->cache, entry); /* locks and unlinks the entry */
-			entry = NULL;
+			rlm_dpsk_cache_t *entry, my_entry;
+
+			dpsk_cache_key_set(&my_entry, &env->ssid, s_mac);
+
+			/*
+			 *	Another thread may have replaced the entry, so only delete
+			 *	it if it still holds the PMK which failed.
+			 */
+			pthread_mutex_lock(&inst->mutable->mutex);
+			fr_rb_find((void **)&entry, &inst->mutable->cache, &my_entry);
+			if (entry && (memcmp(entry->pmk, pmk, sizeof(entry->pmk)) == 0)) {
+				fr_rb_delete(&inst->mutable->cache, entry);
+			}
+			pthread_mutex_unlock(&inst->mutable->mutex);
 			goto stage1;
 		}
 
@@ -732,21 +755,17 @@ make_digest:
 	 *	If the caller gave us only a PMK, then don't cache anything.
 	 */
 	if (inst->cache_size && psk && psk_identity) {
-		rlm_dpsk_cache_t my_entry;
+		rlm_dpsk_cache_t	*entry, my_entry;
+		tmpl_t			psk_rhs;
+		map_t			psk_map = {
+						.lhs = env->psk_dest_tmpl,
+						.op = T_OP_SET,
+						.rhs = &psk_rhs
+					};
 
-		/*
-		 *	We've found an entry. Just update it.
-		 */
-		if (entry) goto update_entry;
+		dpsk_cache_key_set(&my_entry, &env->ssid, s_mac);
 
-		/*
-		 *	No cached entry, or the PSK in the cached
-		 *	entry didn't match.  We need to create one.
-		 */
-		memcpy(my_entry.mac, s_mac, sizeof(my_entry.mac));
-		memcpy(&my_entry.ssid, env->ssid.vb_octets, sizeof(my_entry.ssid)); /* const ptr issues */
-		my_entry.ssid_len = env->ssid.vb_length;
-
+		pthread_mutex_lock(&inst->mutable->mutex);
 		fr_rb_find((void **)&entry, &inst->mutable->cache, &my_entry);
 		if (!entry) {
 			/*
@@ -754,19 +773,13 @@ make_digest:
 			 *	cache.  If so, delete the oldest one.
 			 */
 			if (fr_rb_num_elements(&inst->mutable->cache) > inst->cache_size) {
-				pthread_mutex_lock(&inst->mutable->mutex);
-				entry = fr_dlist_head(&inst->mutable->head);
-				pthread_mutex_unlock(&inst->mutable->mutex);
-
-				fr_rb_delete(&inst->mutable->cache, entry); /* locks and unlinks the entry */
+				fr_rb_delete(&inst->mutable->cache, fr_dlist_head(&inst->mutable->head));
 			}
 
 			MEM(entry = talloc_zero(&inst->mutable->cache, rlm_dpsk_cache_t));
 
 			memcpy(entry->mac, s_mac, sizeof(entry->mac));
 			memcpy(entry->pmk, pmk, sizeof(entry->pmk));
-
-			entry->inst = inst;
 
 			/*
 			 *	Save the SSID, PSK, and PSK identity in the cache entry.
@@ -785,34 +798,23 @@ make_digest:
 			 */
 			if (fr_rb_insert(&inst->mutable->cache, entry) != 0) {
 				TALLOC_FREE(entry);
+				pthread_mutex_unlock(&inst->mutable->mutex);
 				goto update_attributes;
 			}
 			RDEBUG3("Cache entry saved");
 		}
 
-	update_entry:
 		entry->expires = fr_time_add(fr_time(), inst->cache_lifetime);
-		pthread_mutex_lock(&inst->mutable->mutex);
 		if (fr_dlist_entry_in_list(&entry->dlist)) fr_dlist_remove(&inst->mutable->head, entry);
 		fr_dlist_insert_tail(&inst->mutable->head, entry);
 		pthread_mutex_unlock(&inst->mutable->mutex);
 
 		/*
-		 *	Add the PSK to the reply items, if it was cached.
+		 *	Add the PSK to the reply items.
 		 */
-		if (entry->psk) {
-			tmpl_t psk_rhs;
-			map_t psk_map = {
-				.lhs = env->psk_dest_tmpl,
-				.op = T_OP_SET,
-				.rhs = &psk_rhs
-			};
-
-			tmpl_init_shallow(&psk_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0, NULL);
-			fr_value_box_bstrndup_shallow(&psk_map.rhs->data.literal,
-						      NULL, entry->psk, entry->psk_len, true);
-			if (map_to_request(request, &psk_map, map_to_vp, NULL) < 0) RETURN_UNLANG_FAIL;
-		}
+		tmpl_init_shallow(&psk_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0, NULL);
+		fr_value_box_bstrndup_shallow(&psk_map.rhs->data.literal, NULL, psk, psk_len, true);
+		if (map_to_request(request, &psk_map, map_to_vp, NULL) < 0) RETURN_UNLANG_FAIL;
 	}
 
 update_attributes:
@@ -913,13 +915,15 @@ static fr_cmp_ret_t cache_entry_cmp(void const *one, void const *two)
 	return CMP(memcmp(a->ssid, b->ssid, a->ssid_len), 0);
 }
 
+/** Unlink and free a cache entry
+ *
+ * Only called from fr_rb_delete(), whose caller holds inst->mutable->mutex.
+ */
 static void cache_entry_free(void *data)
 {
 	rlm_dpsk_cache_t *entry = (rlm_dpsk_cache_t *) data;
 
-	pthread_mutex_lock(&entry->inst->mutable->mutex);
 	fr_dlist_entry_unlink(&entry->dlist);
-	pthread_mutex_unlock(&entry->inst->mutable->mutex);
 
 	talloc_free(entry);
 }
