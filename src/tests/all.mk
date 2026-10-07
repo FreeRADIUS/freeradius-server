@@ -78,6 +78,7 @@ TEST_SUITES := \
 		test.digest	\
 		test.radmin	\
 		test.eap	\
+		test.tls	\
 		test.tacacs	\
 		test.vmps	\
 		test.ldap_sync
