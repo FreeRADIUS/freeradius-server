@@ -387,6 +387,86 @@ static void ordered_nested(void)
 	talloc_free(tl_outer);
 }
 
+/** A callback which disarms the list which the callback runs in
+ */
+typedef struct {
+	fr_timer_list_t	*tl;		//!< list to disarm
+	bool		fired;
+} disarm_ctx_t;
+
+static void timer_cb_disarm(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
+	disarm_ctx_t *ctx = uctx;
+
+	ctx->fired = true;
+	TEST_CHECK(fr_timer_list_disarm(ctx->tl) == 0);
+}
+
+/** A callback which disarms the list stops the rest of the run.  Arming the list runs the rest.
+ */
+static void disarm_test(fr_timer_list_t *tl_outer, fr_timer_list_t *tl_inner)
+{
+	fr_timer_t	*event1 = NULL, *event2 = NULL;
+	disarm_ctx_t	ctx = { .tl = tl_inner };
+	bool		event2_fired = false;
+	fr_time_t	now;
+
+	/*
+	 *	The events are due at different times, because an lst does not order events which are due
+	 *	at the same time.  Both events free themselves when they fire, so that no event is left
+	 *	pointing to the local variables of this function.
+	 */
+	TEST_CHECK(fr_timer_in(NULL, tl_inner, &event1, fr_time_delta_from_sec(1), true, timer_cb_disarm, &ctx) == 0);
+	TEST_CHECK(fr_timer_in(NULL, tl_inner, &event2, fr_time_delta_from_sec(2), true, timer_cb, &event2_fired) == 0);
+
+	now = fr_time_from_sec(2);
+
+	TEST_CASE("the first event disarms the list, so the second event does not run");
+	(void) fr_timer_list_run(tl_outer, &now);
+	TEST_CHECK(ctx.fired == true);
+	TEST_CHECK(event2_fired == false);
+
+	TEST_CASE("arming the list again runs the second event");
+	TEST_CHECK(fr_timer_list_arm(tl_inner) == 0);
+	TEST_CHECK(event2_fired == true);
+}
+
+static void lst_disarm_in_callback(void)
+{
+	fr_timer_list_t *tl_outer, *tl_inner;
+
+	tl_outer = fr_timer_list_lst_alloc(NULL, NULL);
+	TEST_ASSERT(tl_outer != NULL);
+
+	tl_inner = fr_timer_list_lst_alloc(tl_outer, tl_outer);
+	TEST_ASSERT(tl_inner != NULL);
+
+	fr_timer_list_set_time_func(tl_outer, basic_time);
+	fr_timer_list_set_time_func(tl_inner, basic_time);
+
+	disarm_test(tl_outer, tl_inner);
+
+	talloc_free(tl_outer);
+}
+
+static void ordered_disarm_in_callback(void)
+{
+	fr_timer_list_t *tl_outer, *tl_inner;
+
+	tl_outer = fr_timer_list_ordered_alloc(NULL, NULL);
+	TEST_ASSERT(tl_outer != NULL);
+
+	tl_inner = fr_timer_list_ordered_alloc(tl_outer, tl_outer);
+	TEST_ASSERT(tl_inner != NULL);
+
+	fr_timer_list_set_time_func(tl_outer, basic_time);
+	fr_timer_list_set_time_func(tl_inner, basic_time);
+
+	disarm_test(tl_outer, tl_inner);
+
+	talloc_free(tl_outer);
+}
+
 TEST_LIST = {
 	{ "lst_basic",		lst_basic_test },
 	{ "ordered_basic",		ordered_basic_test },
@@ -395,5 +475,7 @@ TEST_LIST = {
 	{ "ordered_bad_inserts",	ordered_bad_inserts_test },
 	{ "lst_nested",		lst_nested },
 	{ "ordered_nested",		ordered_nested },
+	{ "lst_disarm_in_callback",	lst_disarm_in_callback },
+	{ "ordered_disarm_in_callback",	ordered_disarm_in_callback },
 	TEST_TERMINATOR
 };

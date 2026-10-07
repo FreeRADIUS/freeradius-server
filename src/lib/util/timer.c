@@ -116,6 +116,27 @@ FR_DLIST_FUNCS(timer, fr_timer_t, entry)
 
 #define TIMER_UCTX_TO_TIME(_tl, _x) ((fr_time_t *)(((uintptr_t) (_x)) + (_tl)->shared.time_offset))
 
+/*
+ *	When looping over a timer list, stop if the entry in the list is in the future.
+ *
+ *	OR stop if a callback disarmed the list.  When the list is re-armed with fr_timer_list_arm(), that
+ *	function will take care of running any pending timer events.
+ */
+#define TIMER_STOP_IF_DONE(_next) \
+	do { \
+		if (fr_time_gt(_next, *when) || tl->disarmed) { \
+			*when = _next; \
+			goto done; \
+		} \
+	} while (0)
+
+#define TIMER_RETURN_DONE \
+	do { \
+		*when = fr_time_wrap(0); \
+	done: \
+		return fired; \
+	} while (0)
+
 /** Specialisation function to insert a timer
  *
  * @param[in] tl	Timer list to insert into.
@@ -767,14 +788,7 @@ static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
 		fr_lst_peek(&item, tl->lst);
 		ev = talloc_get_type_abort(item, fr_timer_t);
 
-		/*
-		 *	See if it's time to do this one.
-		 */
-		if (fr_time_gt(ev->when, *when)) {
-			*when = ev->when;
-		done:
-			return fired;
-		}
+		TIMER_STOP_IF_DONE(ev->when);
 
 		callback = ev->callback;
 		memcpy(&uctx, &ev->uctx, sizeof(uctx));
@@ -799,9 +813,7 @@ static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
 		fired++;
 	}
 
-	*when = fr_time_wrap(0);
-
-	goto done;
+	TIMER_RETURN_DONE;
 }
 
 /** Run all scheduled events in an ordered list
@@ -826,14 +838,7 @@ static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 	while ((ev = timer_head(&tl->ordered))) {
 		(void)talloc_get_type_abort(ev, fr_timer_t);
 
-		/*
-		 *	See if it's time to do this one.
-		 */
-		if (fr_time_gt(ev->when, *when)) {
-			*when = ev->when;
-		done:
-			return fired;
-		}
+		TIMER_STOP_IF_DONE(ev->when);
 
 		callback = ev->callback;
 		memcpy(&uctx, &ev->uctx, sizeof(uctx));
@@ -858,9 +863,7 @@ static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 		fired++;
 	}
 
-	*when = fr_time_wrap(0);
-
-	goto done;
+	TIMER_RETURN_DONE;
 }
 
 /** Run all scheduled events in an ordered list
@@ -885,14 +888,7 @@ static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when)
 
 		next = TIMER_UCTX_TO_TIME(tl, uctx);
 
-		/*
-		 *	See if it's time to do this one.
-		 */
-		if (fr_time_gt(*next, *when)) {
-			*when = *next;
-		done:
-			return fired;
-		}
+		TIMER_STOP_IF_DONE(*next);
 
 		fr_rb_remove(NULL, tl->shared.rb, uctx);
 
@@ -901,9 +897,7 @@ static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when)
 		fired++;
 	}
 
-	*when = fr_time_wrap(0);
-
-	goto done;
+	TIMER_RETURN_DONE;
 }
 
 
