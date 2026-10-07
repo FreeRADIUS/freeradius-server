@@ -56,11 +56,16 @@ extern "C" {
 
 /*
  *	Allow public and private versions of the same structures
+ *
+ *	Coverity reports every write that initialises a value box as a write
+ *	to a const field.  Coverity builds define `__COVERITY__`, so Coverity
+ *	analyses the private version.  The compiler still enforces the public
+ *	version outside `value.c`.
  */
 #ifdef _CONST
 #  error _CONST can only be defined in the local header
 #endif
-#ifndef _VALUE_PRIVATE
+#if !defined(_VALUE_PRIVATE) && !defined(__COVERITY__)
 #  define _CONST const
 #else
 #  define _CONST
@@ -562,17 +567,10 @@ static inline CC_HINT(nonnull(1), always_inline)
 void _fr_value_box_init(NDEBUG_LOCATION_ARGS fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
 	/*
-	 *	Initializes an fr_value_box_t pointed at by vb appropriately for a given type.
-	 * 	Coverity gets involved here because an fr_value_box_t has members with const-
-	 * 	qualified type (and members that have members with const-qualified type), so an
-	 *	attempt to assign to *vb or any of its cosnt-qualified members will give an error.
-	 *
-	 * 	C compilers, at least currently, let one get around the issue. See the memcpy()
-	 * 	below. Coverity, though, isn't faked out, and reports the store_writes_const_field
-	 * 	defect annotated here. Anything we do has to eventually assign to the whole of *vb
-	 * 	and thus will raise the issue.
+	 *	Outside `value.c`, `fr_value_box_t` has `_CONST` fields, so the
+	 *	compiler rejects an assignment to `*vb`.  `memcpy()` writes the
+	 *	fields instead.
 	 */
-	/* coverity[store_writes_const_field] */
 	memcpy((void *) vb, &(fr_value_box_t){
 			.type = type,
 			.enumv = enumv,
