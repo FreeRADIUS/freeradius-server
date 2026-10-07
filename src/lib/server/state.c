@@ -903,7 +903,7 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 		 *  Coverity doesn't see that state_entry_create releases
 		 *  the lock on failure
 		 */
-		PTHREAD_MUTEX_UNLOCK(&state->mutex)
+		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 #endif
 		return -1;
 	}
