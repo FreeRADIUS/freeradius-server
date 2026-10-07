@@ -341,3 +341,22 @@ int exfile_close(exfile_t *ef, int fd)
 
 	return result;
 }
+
+/*
+ * from src/lib/util/test/acutest.h
+ *
+ * acutest_check_() returns the condition it was passed, so TEST_ASSERT()
+ * only reaches the noreturn acutest_abort_() when the condition is false.
+ * Without the model the analyser does not carry the condition through the
+ * call, and follows the failure path past the assertion into the code the
+ * assertion guards.
+ */
+int acutest_check_(int cond, char const *file, int line, char const *fmt, ...)
+{
+	return cond;
+}
+
+void acutest_abort_(void)
+{
+	__coverity_panic__();
+}
