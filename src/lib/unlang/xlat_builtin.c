@@ -53,6 +53,14 @@ typedef struct {
 	fr_dict_t const			*dict;		//!< Restrict xlat to this namespace
 } xlat_pair_decode_uctx_t;
 
+typedef struct {
+	xlat_pair_decode_uctx_t const	*decode_uctx;
+} xlat_pair_decode_inst_t;
+
+typedef struct {
+	fr_test_point_pair_encode_t const	*tp_encode;
+} xlat_pair_encode_inst_t;
+
 /** Copy an argument from the input list to the output cursor.
  *
  *  For now we just move it.  This utility function will let us have
@@ -4498,7 +4506,8 @@ static xlat_action_t xlat_pair_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	int					decoded;
 	fr_value_box_t				*vb, *in_head, *root_da;
 	void					*decode_ctx = NULL;
-	xlat_pair_decode_uctx_t const	*decode_uctx = talloc_get_type_abort(*(void * const *)xctx->inst, xlat_pair_decode_uctx_t);
+	xlat_pair_decode_inst_t const	*inst = talloc_get_type_abort_const(xctx->inst, xlat_pair_decode_inst_t);
+	xlat_pair_decode_uctx_t const	*decode_uctx = inst->decode_uctx;
 	fr_test_point_pair_decode_t const	*tp_decode = decode_uctx->tp_decode;
 	fr_pair_t				*vp = NULL;
 	bool					created = false;
@@ -4619,9 +4628,19 @@ static xlat_action_t xlat_func_subnet_broadcast(TALLOC_CTX *ctx, fr_dcursor_t *o
 	return XLAT_ACTION_DONE;
 }
 
-static int xlat_pair_dencode_instantiate(xlat_inst_ctx_t const *mctx)
+static int xlat_pair_decode_instantiate(xlat_inst_ctx_t const *xctx)
 {
-	*(void **) mctx->inst = mctx->uctx;
+	xlat_pair_decode_inst_t *inst = talloc_get_type_abort(xctx->inst, xlat_pair_decode_inst_t);
+
+	inst->decode_uctx = talloc_get_type_abort_const(xctx->uctx, xlat_pair_decode_uctx_t);
+	return 0;
+}
+
+static int xlat_pair_encode_instantiate(xlat_inst_ctx_t const *xctx)
+{
+	xlat_pair_encode_inst_t *inst = talloc_get_type_abort(xctx->inst, xlat_pair_encode_inst_t);
+
+	inst->tp_encode = xctx->uctx;
 	return 0;
 }
 
@@ -4655,13 +4674,12 @@ static xlat_action_t xlat_pair_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	ssize_t		len = 0;
 	fr_value_box_t	*in_head, *root_da;
 	void		*encode_ctx = NULL;
-	fr_test_point_pair_encode_t const *tp_encode;
+	xlat_pair_encode_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_pair_encode_inst_t);
+	fr_test_point_pair_encode_t const *tp_encode = inst->tp_encode;
 
 	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 2048, SIZE_MAX);
 
 	XLAT_ARGS(args, &in_head, &root_da);
-
-	memcpy(&tp_encode, xctx->inst, sizeof(tp_encode)); /* const issues */
 
 	cursor = fr_value_box_get_cursor(in_head);
 
@@ -4792,8 +4810,7 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name, fr_dict_t 
 		decode_uctx = talloc(xlat, xlat_pair_decode_uctx_t);
 		decode_uctx->tp_decode = tp_decode;
 		decode_uctx->dict = dict;
-		/* coverity[suspicious_sizeof] */
-		xlat_func_instantiate_set(xlat, xlat_pair_dencode_instantiate, xlat_pair_decode_uctx_t *, NULL, decode_uctx);
+		xlat_func_instantiate_set(xlat, xlat_pair_decode_instantiate, xlat_pair_decode_inst_t, NULL, decode_uctx);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	}
 
@@ -4809,8 +4826,7 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name, fr_dict_t 
 
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, xlat_pair_encode, FR_TYPE_OCTETS)) == NULL)) return -1;
 		xlat_func_args_set(xlat, xlat_pair_encode_args);
-		/* coverity[suspicious_sizeof] */
-		xlat_func_instantiate_set(xlat, xlat_pair_dencode_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
+		xlat_func_instantiate_set(xlat, xlat_pair_encode_instantiate, xlat_pair_encode_inst_t, NULL, tp_encode);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	}
 
