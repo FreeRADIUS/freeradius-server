@@ -1,0 +1,3 @@
+BEGIN PROTOCOL Test-Err-12 211 pool=0
+ATTRIBUTE	foo	1	uint32
+END PROTOCOL Test-Err-12

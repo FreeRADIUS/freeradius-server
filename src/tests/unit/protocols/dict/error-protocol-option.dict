@@ -1,0 +1,3 @@
+BEGIN PROTOCOL Test-Err-13 212 bogus=1
+ATTRIBUTE	foo	1	uint32
+END PROTOCOL Test-Err-13

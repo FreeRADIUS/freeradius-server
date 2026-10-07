@@ -2,32 +2,57 @@
 
 .Syntax
 ----
-PROTOCOL <name> <value> [<option>]
+PROTOCOL <name> <number> [<option>[,<option>...]]
 ----
 
 .Description
 
-The `PROTOCOL` keyword defines a new top-level protocol such as `RADIUS`, `DHCPv4`, etc.
+The `PROTOCOL` keyword defines a new top-level protocol, such as `RADIUS` or `DHCPv4`.
 
 
-<name>:: The name of the protocol
+<name>:: The name of the protocol.
 
-<value>:: A number associated with the protocol.
+<number>:: The number of the protocol.
 +
-These numbers have no meaning outside of FreeRADIUS, and are assigned by the FreeRADIUS developers.
+The FreeRADIUS developers assign the protocol numbers.
+The protocol numbers have no meaning outside of FreeRADIUS.
 
-<option>:: The only supported option is `verify=lib`.
+<option>:: One option, or a comma-separated list of options.
+Every option takes a value, written as `<option>=<value>`.
 +
-The option tells the server to load a dynamic library
-``libfreeradius-``_<name>_.  It then uses special callbacks in that
-library to verify the contents of the protocol dictionary.
+`format=<length>`::: The size in octets of the 'type' field in each attribute of the protocol.
++
+`format=string`::: The protocol identifies each attribute by name instead of by number.
+Terminal Access Controller Access-Control System Plus (TACACS+) is one such protocol.
++
+`pool=<size>`::: The size of the memory pool that FreeRADIUS allocates for the protocol dictionary, before FreeRADIUS reads any attribute of the protocol.
+The default is `2MiB`.
+When the protocol dictionary needs more memory than the pool holds, the protocol dictionary still loads, but loads more slowly.
++
+The size takes an optional unit.
+`KiB` and `MiB` count in powers of 2, so `1KiB` is 1024 bytes.
+`KB` and `MB` count in powers of 10, so `1KB` is 1000 bytes.
+A number without a unit is a size in bytes.
+For example: `512KiB`, `4MiB`, or `4000000`.
++
+Set `pool` only on the first `PROTOCOL` line for a protocol.
+FreeRADIUS allocates the pool when FreeRADIUS reads the first `PROTOCOL` line for the protocol.
+A later `PROTOCOL` line for the same protocol that sets `pool` causes an error, because the pool already exists.
++
+`verify=lib`::: The protocol dictionary fails to load when FreeRADIUS cannot load the dynamic library ``libfreeradius-``_<name>_.
++
+FreeRADIUS tries to load ``libfreeradius-``_<name>_ for every protocol, with _<name>_ in lower case.
+The library holds functions that verify the contents of the protocol dictionary.
+Without `verify=lib`, the protocol dictionary loads even when the library is missing.
 
-The `PROTOCOL` keyword is documented for completeness, but it should
-only be used by the FreeRADIUS developers.
+Only the FreeRADIUS developers should use the `PROTOCOL` keyword.
+This page documents the `PROTOCOL` keyword for completeness.
 
 .Examples
 ----
 PROTOCOL RADIUS 1 verify=lib
+PROTOCOL VMPS 6 format=2
+PROTOCOL Example 200 verify=lib,pool=4MiB
 ----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

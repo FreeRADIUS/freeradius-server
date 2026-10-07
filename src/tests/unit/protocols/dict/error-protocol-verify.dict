@@ -1,0 +1,3 @@
+BEGIN PROTOCOL Test-Err-16 215 verify=yes
+ATTRIBUTE	foo	1	uint32
+END PROTOCOL Test-Err-16

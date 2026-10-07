@@ -105,6 +105,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			   char const *dir_name, char const *filename,
 			   char const *src_file, int src_line);
 
+
 #define CURRENT_FRAME(_dctx)	(&(_dctx)->stack[(_dctx)->stack_depth])
 #define CURRENT_DA(_dctx)	(CURRENT_FRAME(_dctx)->da)
 /*
@@ -857,6 +858,63 @@ FLAG_FUNC(unsafe)
 static TABLE_TYPE_NAME_FUNC_RPTR(table_sorted_value_by_str, fr_dict_flag_parser_t const *,
 				 fr_dict_attr_flag_to_parser, fr_dict_flag_parser_rule_t const *, fr_dict_flag_parser_rule_t const *)
 
+/** Split the next key[=value] entry off a comma-separated list of options
+ *
+ * dict_option_split() overwrites the '=' after the key, and the ',' after
+ * the entry, with NUL bytes.  key and value then point at NUL-terminated
+ * strings inside the list.
+ *
+ * @param[out] key	The name of the option.
+ * @param[out] value	The value of the option, or NULL if the entry has no '='.
+ * @param[out] next	Start of the next entry, or the NUL that ends the list.
+ * @param[in] p		Start of the entry to split.
+ * @return
+ *	- 0 on success.
+ *	- -1 if an '=' follows the key without a value.
+ */
+static int dict_option_split(char **key, char **value, char **next, char *p)
+{
+	char *q;
+
+	*key = p;
+
+	/*
+	 *	Search for the first '=' or ','
+	 */
+	for (q = p + 1; *q && (*q != '=') && (*q != ','); q++) {
+		/* do nothing */
+	}
+
+	/*
+	 *	We have a value, zero out the '=' and point to the value.
+	 */
+	if (*q == '=') {
+		*(q++) = '\0';
+		*value = q;
+
+		if (!*q || (*q == ',')) {
+			fr_strerror_printf("Missing value after '%s='", *key);
+			return -1;
+		}
+	} else {
+		*value = NULL;
+	}
+
+	/*
+	 *	Skip any trailing text in the value.
+	 */
+	for (/* nothing */; *q; q++) {
+		if (*q == ',') {
+			*(q++) = '\0';
+			break;
+		}
+	}
+
+	*next = q;
+
+	return 0;
+}
+
 static int CC_HINT(nonnull) dict_process_flag_field(dict_tokenize_ctx_t *dctx, char *name, fr_dict_attr_t **da_p)
 {
 	static fr_dict_flag_parser_t dict_common_flags[] = {
@@ -888,39 +946,7 @@ static int CC_HINT(nonnull) dict_process_flag_field(dict_tokenize_ctx_t *dctx, c
 		char *key, *value;
 		fr_dict_flag_parser_rule_t const *parser;
 
-		key = p;
-
-		/*
-		 *	Search for the first '=' or ','
-		 */
-		for (next = p + 1; *next && (*next != '=') && (*next != ','); next++) {
-			/* do nothing */
-		}
-
-		/*
-		 *	We have a value, zero out the '=' and point to the value.
-		 */
-		if (*next == '=') {
-			*(next++) = '\0';
-			value = next;
-
-			if (!*value || (*value == ',')) {
-				fr_strerror_printf("Missing value after '%s='", key);
-				return -1;
-			}
-		} else {
-			value = NULL;
-		}
-
-		/*
-		 *	Skip any trailing text in the value.
-		 */
-		for (/* nothing */; *next; next++) {
-			if (*next == ',') {
-				*(next++) = '\0';
-				break;
-			}
-		}
+		if (dict_option_split(&key, &value, &next, p) < 0) return -1;
 
 		/*
 		 *	Search the protocol table, then the main table.
@@ -2893,19 +2919,130 @@ static fr_table_num_ordered_t const dict_proto_table[] = {
 };
 static size_t const dict_proto_table_len = NUM_ELEMENTS(dict_proto_table);
 
+/** Options that can appear in the last field of a PROTOCOL line
+ */
+typedef enum {
+	DICT_PROTOCOL_OPT_INVALID = 0,			//!< Returned by the dict_protocol_opt_table lookup for an unknown name.
+	DICT_PROTOCOL_OPT_FORMAT,			//!< format=<n> or format=string.
+	DICT_PROTOCOL_OPT_POOL,				//!< pool=<size>.
+	DICT_PROTOCOL_OPT_VERIFY			//!< verify=lib.
+} dict_protocol_opt_t;
+
+static fr_table_num_sorted_t const dict_protocol_opt_table[] = {
+	{ L("format"),	DICT_PROTOCOL_OPT_FORMAT },
+	{ L("pool"),	DICT_PROTOCOL_OPT_POOL },
+	{ L("verify"),	DICT_PROTOCOL_OPT_VERIFY }
+};
+static size_t dict_protocol_opt_table_len = NUM_ELEMENTS(dict_protocol_opt_table);
+
+/** Settings parsed from the options of a PROTOCOL line
+ */
+typedef struct {
+	unsigned int	type_size;			//!< Size in octets of the 'type' field, from format=<n>.
+							///< format=string sets 4.  0 if not set.
+	bool		string_based;			//!< true for format=string.
+	bool		require_dl;			//!< true for verify=lib.  A missing protocol library then fails the load.
+	size_t		pool_size;			//!< Pool size in bytes, from pool=<size>.  0 selects DICT_POOL_SIZE.
+} dict_protocol_opts_t;
+
+/** Parse the comma-separated options of a PROTOCOL line
+ *
+ * dict_protocol_opts_parse() sets only the fields of opts for the options
+ * present.  Zero opts before the call.
+ *
+ * @param[out] opts	Settings to fill in.
+ * @param[in] options	The last field of the PROTOCOL line.  dict_protocol_opts_parse()
+ *			overwrites each separating '=' and ',' with a NUL byte.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dict_protocol_opts_parse(dict_protocol_opts_t *opts, char *options)
+{
+	char *p, *next = NULL;
+
+	for (p = options; *p != '\0'; p = next) {
+		char			*key, *value;
+		dict_protocol_opt_t	opt;
+
+		if (dict_option_split(&key, &value, &next, p) < 0) return -1;
+
+		/*
+		 *	Every option takes a value.
+		 */
+		opt = fr_table_value_by_str(dict_protocol_opt_table, key, DICT_PROTOCOL_OPT_INVALID);
+		if ((opt != DICT_PROTOCOL_OPT_INVALID) && !value) {
+			fr_strerror_printf("Missing value for PROTOCOL option '%s', write '%s=<value>'", key, key);
+			return -1;
+		}
+
+		switch (opt) {
+		case DICT_PROTOCOL_OPT_INVALID:
+			fr_strerror_printf("Unknown PROTOCOL option '%s'", key);
+			return -1;
+
+		case DICT_PROTOCOL_OPT_FORMAT:
+		{
+			char *q;
+
+			if (strcmp(value, "string") == 0) {
+				opts->type_size = 4;
+				opts->string_based = true;
+				break;
+			}
+
+			opts->type_size = strtoul(value, &q, 10);
+			if (*q != '\0') {
+				fr_strerror_printf("Found trailing garbage '%s' after format specifier", value);
+				return -1;
+			}
+		}
+			break;
+
+		case DICT_PROTOCOL_OPT_POOL:
+		{
+			fr_value_box_t size;
+
+			if (fr_value_box_from_str(NULL, &size, FR_TYPE_SIZE, NULL, value, strlen(value), NULL) < 0) {
+				fr_strerror_printf_push_head("Invalid value '%s' for PROTOCOL option 'pool'", value);
+				return -1;
+			}
+
+			if (size.vb_size == 0) {
+				fr_strerror_printf("Invalid value '%s' for PROTOCOL option 'pool', "
+						   "expected a size greater than zero", value);
+				return -1;
+			}
+
+			opts->pool_size = size.vb_size;
+		}
+			break;
+
+		case DICT_PROTOCOL_OPT_VERIFY:
+			if (strcmp(value, "lib") != 0) {
+				fr_strerror_printf("Invalid value '%s' for PROTOCOL option 'verify', expected 'lib'", value);
+				return -1;
+			}
+
+			opts->require_dl = true;
+			break;
+		}
+	}
+
+	return 0;
+}
+
 /** Register the specified dictionary as a protocol dictionary
  *
  * Allows vendor and TLV context to persist across $INCLUDEs
  */
 static int dict_read_process_protocol(dict_tokenize_ctx_t *dctx, char **argv, int argc, UNUSED fr_dict_attr_flags_t *base_flag)
 {
-	unsigned int	value;
-	unsigned int	type_size = 0;
-	fr_dict_t	*dict;
-	unsigned int	required_value;
-	char const	*required_name;
-	bool		require_dl = false;
-	bool		string_based = false;
+	unsigned int		value;
+	fr_dict_t		*dict;
+	unsigned int		required_value;
+	char const		*required_name;
+	dict_protocol_opts_t	opts = { 0 };
 
 	/*
 	 *	We cannot define a PROTOCOL inside of another protocol.
@@ -2959,43 +3096,8 @@ static int dict_read_process_protocol(dict_tokenize_ctx_t *dctx, char **argv, in
 		return -1;
 	}
 
-	/*
-	 *	Look for a format statement.  This may specify the
-	 *	type length of the protocol's types.
-	 */
-	if (argc == 3) {
-		char const *p;
-		char *q;
+	if ((argc == 3) && (dict_protocol_opts_parse(&opts, argv[2]) < 0)) return -1;
 
-		/*
-		 *	For now, we don't allow multiple options here.
-		 *
-		 *	@todo - allow multiple options.
-		 */
-		if (strcmp(argv[2], "verify=lib") == 0) {
-			require_dl = true;
-			goto post_option;
-		}
-
-		if (strcmp(argv[2], "format=string") == 0) {
-			type_size = 4;
-			string_based = true;
-			goto post_option;
-		}
-
-		if (strncasecmp(argv[2], "format=", 7) != 0) {
-			fr_strerror_printf("Invalid format for PROTOCOL.  Expected 'format=', got '%s'", argv[2]);
-			return -1;
-		}
-		p = argv[2] + 7;
-
-		type_size = strtoul(p, &q, 10);
-		if (q != (p + strlen(p))) {
-			fr_strerror_printf("Found trailing garbage '%s' after format specifier", p);
-			return -1;
-		}
-	}
-post_option:
 
 	/*
 	 *	Cross check name / number.
@@ -3028,9 +3130,21 @@ post_option:
 	 *	And check types no matter what.
 	 */
 	if (dict) {
-		if (type_size && (dict->root->flags.type_size != type_size)) {
+		if (opts.type_size && (dict->root->flags.type_size != opts.type_size)) {
 			fr_strerror_printf("Conflicting flags for PROTOCOL \"%s\" (current %d versus new %u)",
-					   dict->root->name, dict->root->flags.type_size, type_size);
+					   dict->root->name, dict->root->flags.type_size, opts.type_size);
+			return -1;
+		}
+
+		/*
+		 *	dict_alloc() sized the pool when the first PROTOCOL line
+		 *	created the dictionary, so a later PROTOCOL line cannot
+		 *	set the pool size.
+		 */
+		if (opts.pool_size) {
+			fr_strerror_printf("Cannot set PROTOCOL option 'pool', PROTOCOL '%s' is already defined.  "
+					   "Move 'pool' to the first PROTOCOL line for '%s'",
+					   dict->root->name, dict->root->name);
 			return -1;
 		}
 
@@ -3040,7 +3154,7 @@ post_option:
 		return dict_dctx_push(dctx, dict->root, NEST_NONE);
 	}
 
-	dict = dict_alloc(dict_gctx);
+	dict = dict_alloc(dict_gctx, opts.pool_size ? opts.pool_size : DICT_POOL_SIZE);
 	if (!dict) return -1;
 
 	/*
@@ -3048,7 +3162,7 @@ post_option:
 	 *	Some protocols don't need them, so it's OK if the
 	 *	validation routines don't exist.
 	 */
-	if ((dict_dlopen(dict, argv[0]) < 0) && require_dl) {
+	if ((dict_dlopen(dict, argv[0]) < 0) && opts.require_dl) {
 	error:
 		talloc_free(dict);
 		return -1;
@@ -3061,12 +3175,12 @@ post_option:
 
 	if (dict_protocol_add(dict) < 0) goto error;
 
-	dict->string_based = string_based;
-	if (type_size) {
+	dict->string_based = opts.string_based;
+	if (opts.type_size) {
 		fr_dict_attr_t	*mutable;
 
 		mutable = UNCONST(fr_dict_attr_t *, dict->root);
-		mutable->flags.type_size = type_size;
+		mutable->flags.type_size = opts.type_size;
 		mutable->flags.length = 1; /* who knows... */
 	}
 
@@ -3655,7 +3769,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 
 	fr_strerror_clear();	/* Ensure we don't report spurious errors */
 
-	dict = dict_alloc(dict_gctx);
+	dict = dict_alloc(dict_gctx, DICT_POOL_SIZE);
 	if (!dict) {
 	error:
 		if (!dict_gctx->internal) talloc_free(dict);
@@ -3883,7 +3997,7 @@ fr_dict_t *fr_dict_alloc(char const *proto_name, unsigned int proto_number)
 	/*
 	 *	Alloc dict instance.
 	 */
-	dict = dict_alloc(dict_gctx);
+	dict = dict_alloc(dict_gctx, DICT_POOL_SIZE);
 	if (!dict) return NULL;
 
 	/*
@@ -4035,7 +4149,7 @@ int fr_dict_afrom_file(fr_dict_t **out, char const *dir, char const *filename)
 
 	fr_strerror_clear();	/* Ensure we don't report spurious errors */
 
-	dict = dict_alloc(dict_gctx);
+	dict = dict_alloc(dict_gctx, DICT_POOL_SIZE);
 	if (!dict) return -1;
 
 	if (dict_from_file(dict, dir, filename, NULL, 0) < 0) {

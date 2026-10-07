@@ -4295,11 +4295,12 @@ static int8_t dict_filename_cmp(void const *one, void const *two)
 
 /** Allocate a new dictionary
  *
- * @param[in] ctx to allocate dictionary in.
+ * @param[in] ctx		to allocate dictionary in.
+ * @param[in] pool_size		of the talloc pool that holds the dictionary's attributes, in bytes.
  * @return
  *	- NULL on memory allocation error.
  */
-fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
+fr_dict_t *dict_alloc(TALLOC_CTX *ctx, size_t pool_size)
 {
 	fr_dict_t *dict;
 
@@ -4333,7 +4334,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 *	As that's the working memory required during
 	 *	dictionary initialisation.
 	 */
-	dict->pool = talloc_pool(dict, DICT_POOL_SIZE);
+	dict->pool = talloc_pool(dict, pool_size);
 	if (!dict->pool) {
 		fr_strerror_const("Failed allocating talloc pool for dictionary");
 		goto error;
@@ -4407,7 +4408,7 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 		.length = parent->root->flags.length,
 	};
 
-	dict = dict_alloc(UNCONST(fr_dict_t *, parent));
+	dict = dict_alloc(UNCONST(fr_dict_t *, parent), DICT_POOL_SIZE);
 	if (!dict) return NULL;
 
 	/*

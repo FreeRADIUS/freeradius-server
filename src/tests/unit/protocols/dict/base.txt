@@ -113,6 +113,48 @@ dictionary-read error-end-vendor-mismatch.dict
 match ERROR: END-VENDOR Vendor-B does not match previous BEGIN-VENDOR Vendor-A: Failed parsing dictionary at src/tests/unit/protocols/dict/error-end-vendor-mismatch.dict[7]
 
 #
+#  PROTOCOL with several options, including a pool size with units
+#
+dictionary-read protocol-options.dict
+match ok
+
+#
+#  Error: PROTOCOL pool size with an unknown unit
+#
+dictionary-read error-protocol-pool-unit.dict
+match ERROR: Invalid value '4q' for PROTOCOL option 'pool': Unknown unit 'q': Failed parsing dictionary at src/tests/unit/protocols/dict/error-protocol-pool-unit.dict[1]
+
+#
+#  Error: PROTOCOL pool size of zero
+#
+dictionary-read error-protocol-pool-zero.dict
+match ERROR: Invalid value '0' for PROTOCOL option 'pool', expected a size greater than zero: Failed parsing dictionary at src/tests/unit/protocols/dict/error-protocol-pool-zero.dict[1]
+
+#
+#  Error: PROTOCOL with an unknown option
+#
+dictionary-read error-protocol-option.dict
+match ERROR: Unknown PROTOCOL option 'bogus': Failed parsing dictionary at src/tests/unit/protocols/dict/error-protocol-option.dict[1]
+
+#
+#  Error: PROTOCOL pool size on a protocol which already exists
+#
+dictionary-read error-protocol-pool-redefine.dict
+match ERROR: Cannot set PROTOCOL option 'pool', PROTOCOL 'Test-Err-14' is already defined.  Move 'pool' to the first PROTOCOL line for 'Test-Err-14': Failed parsing dictionary at src/tests/unit/protocols/dict/error-protocol-pool-redefine.dict[5]
+
+#
+#  Error: PROTOCOL option without a value
+#
+dictionary-read error-protocol-option-no-value.dict
+match ERROR: Missing value for PROTOCOL option 'pool', write 'pool=<value>': Failed parsing dictionary at src/tests/unit/protocols/dict/error-protocol-option-no-value.dict[1]
+
+#
+#  Error: PROTOCOL verify option with a value other than 'lib'
+#
+dictionary-read error-protocol-verify.dict
+match ERROR: Invalid value 'yes' for PROTOCOL option 'verify', expected 'lib': Failed parsing dictionary at src/tests/unit/protocols/dict/error-protocol-verify.dict[1]
+
+#
 #  Error: duplicate attribute name.  The error gives the line of the
 #  original definition.
 #
@@ -120,4 +162,4 @@ dictionary-read error-duplicate-name.dict
 match ERROR: Duplicate attribute name 'foo' in namespace 'Test-Err-17'.  Originally defined src/tests/unit/protocols/dict/error-duplicate-name.dict[2]: Failed parsing dictionary at src/tests/unit/protocols/dict/error-duplicate-name.dict[3]
 
 count
-match 42
+match 56

@@ -1,0 +1,3 @@
+BEGIN PROTOCOL Test-Options 107 format=2,pool=64KiB
+ATTRIBUTE	foo	1000	uint32
+END PROTOCOL Test-Options

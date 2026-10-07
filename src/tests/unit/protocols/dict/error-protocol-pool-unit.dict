@@ -1,0 +1,3 @@
+BEGIN PROTOCOL Test-Err-11 210 pool=4q
+ATTRIBUTE	foo	1	uint32
+END PROTOCOL Test-Err-11

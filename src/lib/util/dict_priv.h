@@ -199,7 +199,7 @@ int			dict_dependent_add(fr_dict_t *dict, char const *dependent);
 
 int			dict_dependent_remove(fr_dict_t *dict, char const *dependent);
 
-fr_dict_t		*dict_alloc(TALLOC_CTX *ctx);
+fr_dict_t		*dict_alloc(TALLOC_CTX *ctx, size_t pool_size);
 
 int			dict_dlopen(fr_dict_t *dict, char const *name);
 
