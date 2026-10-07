@@ -1202,9 +1202,11 @@ static void test_file_read_empty_file(void)
 	CONF_SECTION	*cs;
 	char		filename[] = "/tmp/cf_tests.XXXXXX";
 	int		fd;
+	mode_t		old_umask;
 
-	/* coverity[secure_temp] */
+	old_umask = umask(S_IRWXG | S_IRWXO);
 	fd = mkstemp(filename);
+	umask(old_umask);
 	TEST_ASSERT(fd >= 0);
 	close(fd);
 
