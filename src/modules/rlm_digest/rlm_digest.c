@@ -428,7 +428,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	}
 
 	if (fr_base16_decode(NULL, &FR_DBUFF_TMP(&digest[0], sizeof(digest)),
-		       &FR_SBUFF_IN(vp->vp_strvalue, vp->vp_length), false) != (ssize_t)(vp->vp_length >> 1)) {
+		       &FR_SBUFF_IN(vp->vp_strvalue, vp->vp_length), false) != (fr_slen_t)sizeof(digest)) {
 		RDEBUG2("Invalid text in Digest-Response");
 		RETURN_UNLANG_INVALID;
 	}

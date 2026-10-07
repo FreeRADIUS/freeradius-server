@@ -34,11 +34,20 @@ typedef unsigned int uint32_t;
 
 typedef ssize_t	fr_slen_t;
 
+/*
+ * Field order matches the real structs, so p is at the same offset.
+ */
 typedef struct {
+	char	*buff;
+	char	*start;
+	char	*end;
 	char	*p;
 }	fr_sbuff_t;
 
 typedef struct {
+	uint8_t	*buff;
+	uint8_t	*start;
+	uint8_t	*end;
 	uint8_t	*p;
 }	fr_dbuff_t;
 
@@ -62,7 +71,8 @@ fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alph
 {
 	fr_slen_t	result;
 
-	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result);
+	/* result hex characters, plus the terminating '\0' */
+	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result + 1);
 
 	return result;
 }
@@ -72,7 +82,8 @@ fr_slen_t fr_base16_decode_nstd(fr_sbuff_err_t *err, fr_dbuff_t *out, fr_sbuff_t
 {
 	fr_slen_t	result;
 
-	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result + 1);
+	/* result decoded bytes, no terminator */
+	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result);
 
 	return result;
 }
