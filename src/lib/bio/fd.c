@@ -778,8 +778,9 @@ retry:
 
         switch (errno) {
 		/*
-		 *	A deferred connect calls us again once the socket is writeable.  If the connect
-		 *	has finished, then this second connect() fails with EISCONN, which means success.
+		 *	When a connect is deferred, the event loop eventually calls us again when the socket
+		 *	is writable.  If the handshake has finished, the second connect() returns EISCONN,
+		 *	which means that the socket is already connected.  That indicates a success.
 		 */
 	case EISCONN:
 		goto connected;

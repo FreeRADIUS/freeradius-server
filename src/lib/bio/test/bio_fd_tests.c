@@ -29,14 +29,17 @@
 
 static int	connected_count;
 static int	error_count;
+static int	timeout_count;
 
 static void	cb_connected(fr_bio_t *bio)	{ (void) bio; connected_count++; }
 static void	cb_error(fr_bio_t *bio)		{ (void) bio; error_count++; }
+static void	cb_timeout(fr_bio_t *bio)	{ (void) bio; timeout_count++; }
 
 /** Open a TCP socket listening on loopback
  *
- *  The test only needs the kernel to complete the handshake, which it does for any listening socket.
- *  No one calls accept(), and the connection waits in the backlog.
+ *  The kernel completes the TCP handshake for any listening socket, and the test needs only the
+ *  handshake.  The test never calls accept(), so the kernel holds the new connection in the backlog of
+ *  the listening socket.
  *
  * @param[out] port	the port which the kernel picked.
  * @return
@@ -68,13 +71,15 @@ static int loopback_listen(uint16_t *port)
 
 /** A deferred connect which succeeds has to call the connected callback
  *
- *  An async connect() on loopback returns EINPROGRESS, so fr_bio_fd_connect_full() defers the connect,
- *  and the event loop calls fr_bio_fd_el_connect() once the socket is writeable.  That function calls
- *  connect() a second time.  The second connect() fails with EISCONN when the first one has finished,
- *  and fr_bio_fd_try_connect() has to treat EISCONN as success.
+ *  A non-blocking connect() to a listening loopback port can return EINPROGRESS.  On EINPROGRESS,
+ *  fr_bio_fd_connect_full() defers the connect, and the event loop calls fr_bio_fd_el_connect() once
+ *  the socket is writable.  fr_bio_fd_el_connect() then calls connect() a second time.  If the
+ *  handshake has finished, the second connect() can fail with EISCONN, so fr_bio_fd_try_connect() has
+ *  to treat EISCONN as success.
  *
- *  A connect which fails does not test fr_bio_fd_el_connect().  The event loop reports a failed connect
- *  as EV_EOF, and calls fr_bio_fd_el_error() instead.
+ *  The test needs a connect which succeeds, because a connect which fails may not reach
+ *  fr_bio_fd_el_connect().  kqueue can report a refused connect with EV_EOF, and event.c passes EV_EOF
+ *  to the error callback, fr_bio_fd_el_error().
  */
 static void test_deferred_connect_success_calls_connected_cb(void)
 {
@@ -82,13 +87,14 @@ static void test_deferred_connect_success_calls_connected_cb(void)
 	fr_bio_fd_config_t	cfg;
 	fr_bio_t		*bio;
 	fr_event_list_t		*el;
+	fr_time_delta_t		timeout = fr_time_delta_from_sec(5);
 	uint16_t		port;
 	int			listen_fd;
 	int			rcode;
-	int			i;
 
 	connected_count = 0;
 	error_count = 0;
+	timeout_count = 0;
 
 	listen_fd = loopback_listen(&port);
 	TEST_CHECK(listen_fd >= 0);
@@ -116,7 +122,7 @@ static void test_deferred_connect_success_calls_connected_cb(void)
 	TEST_CHECK(bio != NULL);
 	if (!bio) goto done;
 
-	rcode = fr_bio_fd_connect_full(bio, el, cb_connected, cb_error, NULL, NULL);
+	rcode = fr_bio_fd_connect_full(bio, el, cb_connected, cb_error, &timeout, cb_timeout);
 
 	TEST_CASE("the connect is deferred");
 	TEST_CHECK(rcode == 0);
@@ -124,20 +130,23 @@ static void test_deferred_connect_success_calls_connected_cb(void)
 	if (rcode != 0) goto done;
 
 	/*
-	 *	Service the event loop until the connect resolves.  The handshake on loopback finishes
-	 *	at once, and the bound on the loop keeps a failure from hanging the test.
+	 *	Wait in the event loop until one of the three callbacks runs.  The connect timeout
+	 *	is a timer, so a wait always ends, and a connect which never finishes cannot hang
+	 *	the test.
 	 */
-	for (i = 0; (i < 20) && !connected_count && !error_count; i++) {
-		if (fr_event_corral(el, fr_time(), false) > 0) fr_event_service(el);
+	while (!connected_count && !error_count && !timeout_count) {
+		if (fr_event_corral(el, fr_time(), true) < 0) break;
+		fr_event_service(el);
 	}
 
 	TEST_CASE("the connected callback ran");
 	TEST_CHECK(connected_count == 1);
-	TEST_MSG("connected_count = %d, error_count = %d, connect_errno = %d",
-		 connected_count, error_count, fr_bio_fd_info(bio)->connect_errno);
+	TEST_MSG("connected_count = %d, error_count = %d, timeout_count = %d, connect_errno = %d",
+		 connected_count, error_count, timeout_count, fr_bio_fd_info(bio)->connect_errno);
 
-	TEST_CASE("the error callback did not run");
+	TEST_CASE("neither the error callback nor the timeout callback ran");
 	TEST_CHECK(error_count == 0);
+	TEST_CHECK(timeout_count == 0);
 
 	TEST_CASE("the bio is open");
 	TEST_CHECK(fr_bio_fd_info(bio)->state == FR_BIO_FD_STATE_OPEN);
