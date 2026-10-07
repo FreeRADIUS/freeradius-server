@@ -125,9 +125,12 @@ static void test_deferred_connect_success_calls_connected_cb(void)
 
 	rcode = fr_bio_fd_connect_full(bio, el, cb_connected, cb_error, &timeout, cb_timeout);
 
-	TEST_CASE("the connect is deferred");
-	TEST_CHECK(rcode == 0);
+	/*
+	 *	FreeBSD completes a loopback TCP handshake inside connect(), so the connect can
+	 *	finish at once (rcode 1).  Linux and macOS return EINPROGRESS and defer it (rcode 0).
+	 */
 	TEST_MSG("connect_full returned %d.  0 means deferred, 1 means connected at once, <0 means failed", rcode);
+	TEST_CHECK(rcode >= 0);
 	if (rcode != 0) goto done;
 
 	/*
