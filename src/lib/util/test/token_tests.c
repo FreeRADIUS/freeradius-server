@@ -21,11 +21,11 @@
  * @copyright 2026 The FreeRADIUS server project
  */
 #include "acutest_common_init.h"
+#include "acutest_helpers.h"
 
 #include <freeradius-devel/util/token.h>
 
 #include <sys/mman.h>
-#include <unistd.h>
 
 /** Where a parse ran, and what the parse produced
  *
@@ -50,16 +50,8 @@ typedef struct {
 static char *guard_alloc(char **base, char const *in)
 {
 	size_t	len = strlen(in);
-	long	sc_pagesize = sysconf(_SC_PAGESIZE);
-	size_t	pagesz;
+	size_t	pagesz = test_page_size();
 	char	*p;
-
-	/* Coverity hasn't read the sysconf man page */
-	if (sc_pagesize <= 0) {
-		*base = MAP_FAILED;
-		return NULL;
-	}
-	pagesz = (size_t)sc_pagesize;
 
 	*base = mmap(NULL, pagesz * 2, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if (*base == MAP_FAILED) return NULL;
@@ -74,11 +66,7 @@ static char *guard_alloc(char **base, char const *in)
 
 static void guard_free(char *base)
 {
-	long	sc_pagesize = sysconf(_SC_PAGESIZE);
-
-	/* Coverity hasn't read the sysconf man page */
-	if (sc_pagesize <= 0) return;
-	munmap(base, (size_t) sc_pagesize * 2);
+	munmap(base, test_page_size() * 2);
 }
 
 /** Run gettoken() over a guarded copy of the input

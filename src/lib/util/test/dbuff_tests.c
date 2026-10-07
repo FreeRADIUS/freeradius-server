@@ -57,13 +57,8 @@ static void test_dbuff_init(void)
 static void test_dbuff_init_zero_length(void)
 {
 	fr_dbuff_t	dbuff;
-	long		sc_pagesize = sysconf(_SC_PAGESIZE);
-	size_t		pagesz;
+	size_t		pagesz = test_page_size();
 	uint8_t		*base, *data;
-
-	/* Coverity hasn't read the sysconf man page */
-	TEST_ASSERT(sc_pagesize > 0);
-	pagesz = (size_t)sc_pagesize;
 
 	base = mmap(NULL, pagesz * 2, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	TEST_ASSERT(base != MAP_FAILED);

@@ -23,6 +23,8 @@
  */
 RCSIDH(acutest_helpers_h, "$Id$")
 
+#include <unistd.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -67,6 +69,23 @@ do { \
 	TEST_MSG("Expected : \"%s\"", _exp); \
 	TEST_MSG("Got      : \"%s\"", _our_got); \
 } while(0)
+
+/** Return the system page size, aborting the test if sysconf() fails
+ *
+ * The upper bound means callers can map a small multiple of the page size
+ * without the length overflowing.
+ *
+ * @return the page size in bytes.
+ */
+static inline size_t test_page_size(void)
+{
+	long	sc_page_size = sysconf(_SC_PAGESIZE);
+
+	TEST_ASSERT(sc_page_size > 0);
+	TEST_ASSERT(sc_page_size <= (1L << 30));
+
+	return (size_t)sc_page_size;
+}
 
 #ifdef __cplusplus
 }
