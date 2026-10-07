@@ -83,8 +83,15 @@ jobs:
       #  the older run, and skipping against a cancelled run would merge
       #  an untested tree.
       #
+      #  `skip_check` does not run for a push to `ci-debug`.  A developer
+      #  debugs a failing leg by force-pushing the commit under test to
+      #  `ci-debug`, often while the original run of the same tree is still
+      #  in flight, so `same_content_newer` would skip every leg.  A leg on
+      #  `ci-debug` starts a tmate debug session only when the leg runs and
+      #  fails.
+      #
       - id: skip_check
-        if: ${{ steps.fork_schedule.outcome == 'skipped' }}
+        if: ${{ steps.fork_schedule.outcome == 'skipped' && github.ref != 'refs/heads/ci-debug' }}
         uses: fkirc/skip-duplicate-actions@v5.3.2
         with:
           concurrent_skipping: ${{ github.event_name == 'push' && !startsWith(github.ref_name, 'developer/') && 'same_content_newer' || 'never' }}
