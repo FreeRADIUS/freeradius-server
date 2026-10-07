@@ -105,6 +105,14 @@ Rules:
     parser sees one entry per line.
   - Lines containing a single '+' are left alone; they are used to join
     different Asciidoc blocks together.
+  - A line ending in " +" is a hard line break.  The paragraph or list
+    entry is wrapped up to and including that line, and the " +" stays
+    at the end of the last wrapped line.  The text after the hard line
+    break is wrapped separately, starting on a new line.  In a list
+    entry, that text gets the continuation indent.  An indented line
+    containing only "+" (e.g. " +") is also a hard line break, and is
+    left unchanged.  Wrapping never ends a line with a "+" that was in
+    the middle of the text, so wrapping does not add hard line breaks.
   - The document header is left unchanged.  The header exists when
     the first line that is neither blank nor a comment is a document
     title ("= " followed by text).  The header runs from the title to
@@ -158,13 +166,43 @@ def to_ascii(line):
     return line.translate(ASCII_REPLACEMENTS)
 
 
+#
+#  A line ending in " +" is a hard line break.  Wrapping must not move
+#  the "+" to the start of the next line, and must not end a line with a
+#  "+" that was in the middle of the text, e.g. "0x31000000 + 452".
+#  Before wrapping, the space before a trailing "+", and both spaces of
+#  each " + " in the middle of the text, are replaced with GLUE (a
+#  Unicode private-use character), which textwrap does not break on.
+#  After wrapping, GLUE is replaced with a space again.
+#
+GLUE = "\ue000"
+
+
+def glue_plus(text):
+    """Replace the spaces in each " + ", and the space before a trailing
+    " +", with GLUE."""
+    if text.endswith(" +"):
+        text = text[:-2] + GLUE + "+"
+    return text.replace(" + ", GLUE + "+" + GLUE)
+
+
+def unglue(text):
+    return text.replace(GLUE, " ")
+
+
+def is_hard_break(line):
+    """Return True if line, ignoring trailing whitespace, ends in " +"
+    (a hard line break)."""
+    return line.rstrip().endswith(" +")
+
+
 def wrap_paragraph(text):
     """Wrap a paragraph of plain text at WIDTH columns."""
     if not text.strip():
         return ""
-    return "\n".join(textwrap.wrap(text, width=WIDTH,
-                                   break_long_words=False,
-                                   break_on_hyphens=False))
+    return unglue("\n".join(textwrap.wrap(glue_plus(text), width=WIDTH,
+                                          break_long_words=False,
+                                          break_on_hyphens=False)))
 
 
 def wrap_list_entry(text, indent, hang=True):
@@ -177,12 +215,12 @@ def wrap_list_entry(text, indent, hang=True):
     body = text.expandtabs()[len(marker.expandtabs()):]
     if not body:
         return marker.rstrip()
-    return "\n".join(textwrap.wrap(body, width=WIDTH,
-                                   initial_indent=marker,
-                                   subsequent_indent=" " * indent if hang
-                                   else "",
-                                   break_long_words=False,
-                                   break_on_hyphens=False))
+    return unglue("\n".join(textwrap.wrap(glue_plus(body), width=WIDTH,
+                                          initial_indent=marker,
+                                          subsequent_indent=" " * indent
+                                          if hang else "",
+                                          break_long_words=False,
+                                          break_on_hyphens=False)))
 
 
 def is_title(line):
@@ -443,14 +481,30 @@ def process(lines, nav_mode=False):
         out.append("")
 
     def flush():
+        # A line ending in " +" (a hard line break) ends a segment of the
+        # paragraph or list entry.  Each segment is wrapped separately, and
+        # keeps the " +" at the end of the last line of the segment, so the
+        # line after a hard line break is never joined to the line before.
+        # In a list entry, segments after the first are indented as
+        # continuation lines.
         nonlocal buf, buf_list_indent, buf_hang
         if not buf:
             return
-        text = " ".join(s.strip() for s in buf)
-        if buf_list_indent is not None:
-            out.append(wrap_list_entry(text, buf_list_indent, buf_hang))
-        else:
-            out.append(wrap_paragraph(text))
+        segments = [[]]
+        for b in buf:
+            segments[-1].append(b.strip())
+            if is_hard_break(b):
+                segments.append([])
+        for n, seg in enumerate(g for g in segments if g):
+            text = " ".join(seg)
+            if buf_list_indent is None:
+                out.append(wrap_paragraph(text))
+            elif n == 0:
+                out.append(wrap_list_entry(text, buf_list_indent, buf_hang))
+            else:
+                indent = " " * buf_list_indent if buf_hang else ""
+                out.append(wrap_list_entry(indent + text, len(indent),
+                                           buf_hang))
         buf = []
         buf_list_indent = None
         buf_hang = True
@@ -582,6 +636,16 @@ def process(lines, nav_mode=False):
                 block_open = None
             else:
                 out.append(raw)
+            continue
+
+        # An indented line containing only "+" (e.g. " +", a hard line
+        # break) is left unchanged, apart from trailing whitespace.  The
+        # paragraph or list entry before the line is flushed first.  The
+        # line is neither a continuation line nor the start of an indented
+        # block.
+        if is_indented(raw) and raw.strip() == "+":
+            flush()
+            out.append(raw.rstrip())
             continue
 
         # A line indented by one or more spaces or tabs opens an
