@@ -71,6 +71,7 @@ static void tls_connection_request_wake(fr_tls_connection_t *conn)
 static void tls_connection_check(fr_tls_connection_t *conn)
 {
 	fr_tls_session_t *tls_session = conn->tls_session;
+	request_t *request = conn->request;
 
 	/*
 	 *	The cache load / save operations can wake the parent
@@ -90,6 +91,22 @@ static void tls_connection_check(fr_tls_connection_t *conn)
 
 		conn->fail_pending = false;
 		goto finish;
+	}
+
+	/*
+	 *	The peer closed the connection, and the handshake has read
+	 *	every record it was given and now needs another one.  No
+	 *	more records will arrive, so the handshake cannot complete.
+	 *
+	 *	If the last record completed the handshake instead, the
+	 *	frame may be idle as well, but fr_tls_session_is_init_finished()
+	 *	is true, and the completion is reported below.
+	 */
+	if (conn->eof && conn->idle && !fr_tls_session_is_init_finished(tls_session)) {
+		RERROR("Peer closed the connection before the handshake completed");
+		errno = 0;		/* fr_tls_connection_failed() records errno, and no call set one */
+		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
+		return;
 	}
 
 	if (tls_session->result == FR_TLS_RESULT_ERROR) {
@@ -241,6 +258,35 @@ void fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_
 	 */
 	conn->state = TLS_CONNECTION_COMPLETE;
 	tls_connection_request_wake(conn);
+}
+
+/** Record that the peer closed the connection
+ *
+ * The peer may have sent a record just before closing.  If that record is
+ * still pending, it may be the one that completes the handshake, so the
+ * request is woken to process it.  tls_connection_check() then fails the
+ * connection only if the handshake reads the record and determines it
+ * needs another one.
+ *
+ * If nothing is pending, the handshake is waiting for a record that will
+ * never arrive, so the connection fails immediately.
+ *
+ * @param[in] conn	the peer closed.
+ */
+void fr_tls_connection_eof(fr_tls_connection_t *conn)
+{
+	request_t *request = conn->request;
+
+	conn->eof = true;
+
+	if (conn->pending) {
+		tls_connection_request_wake(conn);
+		return;
+	}
+
+	RERROR("Peer closed the connection before the handshake completed");
+	errno = 0;		/* fr_tls_connection_failed() records errno, and no call set one */
+	fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 }
 
 /** There is a fatal connection error.

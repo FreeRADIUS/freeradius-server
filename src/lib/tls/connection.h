@@ -111,6 +111,11 @@ struct fr_tls_connection_s {
 							///< record was still waiting for OpenSSL.  The
 							///< connection ends later, once OpenSSL has processed
 							///< any pending TLS alerts.
+	bool			eof;			//!< The peer closed the connection.  A record the peer
+							///< sent before closing may still be pending, and may
+							///< complete the handshake.  The connection fails only
+							///< if the handshake reads that record and then
+							///< determines it needs another record.
 
 	void			*uctx;			//!< Context for the callback functions below.
 
@@ -129,6 +134,8 @@ int		fr_tls_connection_push(fr_tls_connection_t *conn);
 void		fr_tls_connection_wake(fr_tls_connection_t *conn);
 
 void		fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_t reason);
+
+void		fr_tls_connection_eof(fr_tls_connection_t *conn);
 
 void		fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size_t data_len);
 

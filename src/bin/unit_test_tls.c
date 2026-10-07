@@ -614,9 +614,8 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 	}
 
 	if (slen == 0) {
-		ERROR("Connection closed by the peer before the handshake completed");
-		errno = 0;			/* a clean close is not an error */
-		fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
+		DEBUG2("Peer closed the connection on fd %d, read returned EOF", fd);
+		fr_tls_connection_eof(utt->conn);
 		return;
 	}
 
@@ -626,11 +625,16 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 /** The connection failed at the socket level
  *
  */
-static void _tls_connection_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno,
+static void _tls_connection_error(UNUSED fr_event_list_t *el, int fd, int flags, int fd_errno,
 				  void *uctx)
 {
 	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
+	if (fd_errno == 0) {
+		DEBUG2("Peer closed the connection on fd %d, event loop reported EOF (flags 0x%x)", fd, flags);
+		fr_tls_connection_eof(utt->conn);
+		return;
+	}
 
 	ERROR("Error on connection: %s", fr_syserror(fd_errno));
 	fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
@@ -853,7 +857,7 @@ static int tls_socket_connect(unit_test_tls_t *utt)
 		return -1;
 	}
 
-	INFO("Connected to %s port %u", buffer, utt->server_port);
+	INFO("Connected to %s port %u on fd %d", buffer, utt->server_port, fd);
 
 	utt->fd = fd;
 
@@ -1036,7 +1040,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	utt->connections++;
 
 	utt->conn->state = TLS_CONNECTION_NEW_SESSION;
-	utt->conn->pending = utt->conn->idle = utt->conn->fail_pending = false;
+	utt->conn->pending = utt->conn->idle = utt->conn->fail_pending = utt->conn->eof = false;
 	utt->conn->failed = TLS_CONNECTION_FAIL_NONE;
 	utt->conn->request = NULL;
 	utt->conn->tls_session = NULL;
@@ -1090,8 +1094,8 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	if (utt->conn->client) {
 		utt->conn->tls_session = fr_tls_session_alloc_client(utt->conn->request, utt->ssl_ctx, utt->conn->request);
 	} else {
-		INFO("Accepted connection from %pV",
-		     fr_box_ipaddr(utt->conn->request->packet->socket.inet.src_ipaddr));
+		INFO("Accepted connection from %pV on fd %d",
+		     fr_box_ipaddr(utt->conn->request->packet->socket.inet.src_ipaddr), utt->fd);
 
 		utt->conn->tls_session = fr_tls_session_alloc_server(utt->conn->request, utt->ssl_ctx, utt->conn->request,
 							       utt->conf.require_client_certificate);
