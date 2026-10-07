@@ -8,7 +8,7 @@
 # Version:	$Id$
 #
 
-BEGIN PROTOCOL	TFTP		9
+BEGIN PROTOCOL	TFTP		9	pool=1MB
 
 $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc1350

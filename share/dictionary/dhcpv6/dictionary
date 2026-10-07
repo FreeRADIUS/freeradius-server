@@ -10,7 +10,7 @@
 #
 ##############################################################################
 
-BEGIN PROTOCOL	DHCPv6		3	verify=lib
+BEGIN PROTOCOL	DHCPv6		3	verify=lib,pool=1MB
 
 $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc3315

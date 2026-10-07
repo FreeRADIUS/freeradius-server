@@ -7,7 +7,7 @@
 #
 # Version:	$Id$
 #
-BEGIN PROTOCOL DER      11354911
+BEGIN PROTOCOL DER      11354911	pool=1MB
 
 #
 #  Note that the data types for DER are local to DER!

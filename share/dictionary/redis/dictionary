@@ -8,7 +8,7 @@
 # Version:	$Id$
 #
 
-BEGIN PROTOCOL	REDIS		15
+BEGIN PROTOCOL	REDIS		15	pool=1MB
 
 $INCLUDE dictionary.freeradius
 

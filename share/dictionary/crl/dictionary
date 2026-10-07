@@ -8,7 +8,7 @@
 # Version:	$Id$
 #
 
-BEGIN PROTOCOL	CRL		14
+BEGIN PROTOCOL	CRL		14	pool=1MB
 
 $INCLUDE dictionary.freeradius
 

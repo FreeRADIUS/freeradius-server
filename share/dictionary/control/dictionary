@@ -10,7 +10,7 @@
 #
 ##############################################################################
 
-PROTOCOL	Control		255
+PROTOCOL	Control		255	pool=1MB
 
 #
 #  For now there are no attributes in the control socket space.

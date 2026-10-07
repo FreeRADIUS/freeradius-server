@@ -4,7 +4,7 @@
 # Version $Id$
 #
 
-BEGIN PROTOCOL	RADIUS		1	verify=lib
+BEGIN PROTOCOL	RADIUS		1	verify=lib,pool=14MB
 
 #
 #	These are mostly ALIASes

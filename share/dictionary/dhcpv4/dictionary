@@ -16,7 +16,7 @@
 #
 ##############################################################################
 
-BEGIN PROTOCOL	DHCPv4		2	verify=lib
+BEGIN PROTOCOL	DHCPv4		2	verify=lib,pool=1MB
 
 $INCLUDE dictionary.freeradius.internal
 
