@@ -729,14 +729,19 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			goto done;
 		}
 
-		while (*p >= ' ') {
+		while (p > buffer) {
+			if (*p < ' ') {
+				break;
+			}
+
 			found = p;
 			p--;
-			if (p == buffer) {
-				found = buffer;
-				goto done;
-			}
 		}
+		if (p == buffer) {
+			found = buffer;
+			goto done;
+		}
+
 		if (crlf == stop) {
 			break;
 		}
