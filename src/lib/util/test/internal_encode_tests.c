@@ -78,7 +78,7 @@ static void test_encode_talloc_extend(void)
 	fr_pair_list_t		list;
 	fr_pair_t		*vp;
 	fr_dcursor_t		cursor;
-	uint8_t			ref[64];
+	uint8_t			ref[64] = { 0 };
 	ssize_t			ref_len, slen;
 	size_t			init;
 
