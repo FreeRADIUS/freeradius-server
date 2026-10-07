@@ -456,19 +456,12 @@ static void event_fd_func_index_build(fr_event_func_map_t *map)
 
 			/*
 			 *	Multiple notes can be associated
-			 *	with the same function.
+			 *	with the same function.  fflags & (fflags - 1)
+			 *	clears the lowest set bit.
 			 */
-			while ((pos = fr_high_bit_pos(fflags))) {
-				pos -= 1;
-				map->ev_to_func[pos] = entry;
-				/*
-				 * 	Coverity thinks that after this decrement, pos
-				 * 	can be 255 even though the loop condition precludes
-				 * 	it. Adding a Coverity-only check won't change that,
-				 * 	so we're stuck with annotation.
-				 */
-				/* coverity[overflow_const] */
-				fflags &= ~(1 << pos);
+			while (fflags) {
+				map->ev_to_func[fr_low_bit_pos(fflags) - 1] = entry;
+				fflags &= fflags - 1;
 			}
 		}
 	}
