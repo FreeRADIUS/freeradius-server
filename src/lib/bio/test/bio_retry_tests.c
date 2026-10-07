@@ -118,7 +118,7 @@ static fr_bio_t *stub_alloc(TALLOC_CTX *ctx)
  *
  *  Only test_partial_retransmit() runs the timer list, so no timer fires in the other tests.
  */
-static fr_bio_t *test_retry_alloc(TALLOC_CTX *ctx, fr_bio_retry_config_t *cfg)
+static fr_bio_t *test_retry_alloc_full(TALLOC_CTX *ctx, fr_bio_retry_config_t *cfg, fr_time_delta_t mrd, size_t max_saved)
 {
 	fr_bio_t	*retry, *stub;
 
@@ -134,19 +134,29 @@ static fr_bio_t *test_retry_alloc(TALLOC_CTX *ctx, fr_bio_retry_config_t *cfg)
 	cfg->retry_config = (fr_retry_config_t) {
 		.irt = fr_time_delta_from_sec(2),
 		.mrt = fr_time_delta_from_sec(16),
-		.mrd = fr_time_delta_from_sec(30),
+		.mrd = mrd,
 		.mrc = 5,
 	};
 
 	stub = stub_alloc(ctx);
 	if (!stub) return NULL;
 
-	retry = fr_bio_retry_alloc(ctx, 1, retry_sent, retry_response, NULL, retry_release, cfg, stub);
+	retry = fr_bio_retry_alloc(ctx, max_saved, retry_sent, retry_response, NULL, retry_release, cfg, stub);
 	if (!retry) return NULL;
 
 	fr_bio_cb_set(retry, &test_cb);
 
 	return retry;
+}
+
+static fr_bio_t *test_retry_alloc_mrd(TALLOC_CTX *ctx, fr_bio_retry_config_t *cfg, fr_time_delta_t mrd)
+{
+	return test_retry_alloc_full(ctx, cfg, mrd, 1);
+}
+
+static fr_bio_t *test_retry_alloc(TALLOC_CTX *ctx, fr_bio_retry_config_t *cfg)
+{
+	return test_retry_alloc_mrd(ctx, cfg, fr_time_delta_from_sec(30));
 }
 
 /** Running out of entries blocks writes, and freeing an entry resumes writes.
@@ -303,10 +313,97 @@ done:
 	talloc_free(ctx);
 }
 
+/** Blocking writes expires an overdue entry, and the expiry sees writes as blocked.
+ *
+ *  See finding 1 in retry.md.  Arming the expiry list runs any expiry which is already due, and
+ *  fr_bio_retry_expiry_timer() asserts that writes are blocked.  fr_bio_retry_write_blocked() used to
+ *  set the flag only after arming the list.
+ */
+static void test_block_expires_overdue(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_retry_config_t	cfg;
+	fr_bio_t		*retry;
+	fr_bio_common_t		*common;
+	fr_time_t		until;
+
+	/*
+	 *	A maximum duration of one microsecond makes the entry overdue as soon as the entry is
+	 *	written.  fr_bio_retry_alloc() copies the retry configuration, so the duration has to be set
+	 *	before the bio is allocated.
+	 */
+	retry = test_retry_alloc_mrd(ctx, &cfg, fr_time_delta_from_usec(1));
+	TEST_CHECK(retry != NULL);
+	if (!retry) goto done;
+
+	TEST_CASE("the packet is written");
+	TEST_CHECK_RET((int) fr_bio_write(retry, NULL, packet1, sizeof(packet1)), (int) sizeof(packet1));
+
+	/*
+	 *	Make sure that the maximum duration has passed.  The wait is a few microseconds, so a busy
+	 *	loop is enough, and the result does not depend on how fast the test runs.
+	 */
+	until = fr_time_add(fr_time(), fr_time_delta_from_usec(10));
+	while (fr_time_lt(fr_time(), until)) { /* nothing */ }
+
+	TEST_CASE("blocking writes runs the overdue expiry, which releases the entry");
+	common = (fr_bio_common_t *) retry;
+	TEST_CHECK(common->priv_cb.write_blocked != NULL);
+	if (!common->priv_cb.write_blocked) goto done;
+
+	TEST_CHECK_RET(common->priv_cb.write_blocked(retry), 1);
+	TEST_CHECK_RET(release_count, 1);
+	TEST_CHECK(fr_bio_retry_info(retry)->write_blocked);
+
+	TEST_CASE("a released entry while blocked does not resume writes");
+	TEST_CHECK_RET(resume_count, 0);
+
+done:
+	talloc_free(ctx);
+}
+
+/** When one retransmission blocks writes, the other retransmissions due in the same pass wait.
+ *
+ *  See finding 1 in retry.md.  fr_bio_retry_write_blocked() disarms the retry list, and the timer
+ *  list used to keep running the other entries which were due in the same pass.
+ */
+static void test_block_stops_retries(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_retry_config_t	cfg;
+	fr_bio_t		*retry, *stub;
+	fr_time_t		when;
+
+	retry = test_retry_alloc_full(ctx, &cfg, fr_time_delta_from_sec(30), 2);
+	TEST_CHECK(retry != NULL);
+	if (!retry) goto done;
+
+	stub = fr_bio_next(retry);
+
+	TEST_CASE("two packets are written in full");
+	TEST_CHECK_RET((int) fr_bio_write(retry, NULL, packet1, sizeof(packet1)), (int) sizeof(packet1));
+	TEST_CHECK_RET((int) fr_bio_write(retry, NULL, packet2, sizeof(packet2)), (int) sizeof(packet2));
+
+	TEST_CASE("both retransmissions are due, and the first one blocks writes");
+	TEST_MSG("irt is 2s, so running the timer list 3s ahead makes both retransmissions due");
+	stub->write = stub_write_one;
+	when = fr_time_add(fr_time(), fr_time_delta_from_sec(3));
+	(void) fr_timer_list_run(cfg.el->tl, &when);
+
+	TEST_CASE("only the first retransmission was written, and writes are blocked");
+	TEST_CHECK_RET((int) stub_bytes, (int) (sizeof(packet1) + sizeof(packet2) + 1));
+	TEST_CHECK(fr_bio_retry_info(retry)->write_blocked);
+
+done:
+	talloc_free(ctx);
+}
+
 TEST_LIST = {
 	{ "all_used_resumes",		test_all_used_resumes },
 	{ "resume_can_write",		test_resume_can_write },
 	{ "partial_retransmit",		test_partial_retransmit },
 	{ "partial_oom_releases",	test_partial_oom_releases },
+	{ "block_expires_overdue",	test_block_expires_overdue },
+	{ "block_stops_retries",	test_block_stops_retries },
 	TEST_TERMINATOR
 };

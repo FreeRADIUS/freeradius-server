@@ -502,8 +502,8 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
  */
 static void fr_bio_retry_expiry_timer(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
-	fr_bio_retry_entry_t *item = talloc_get_type_abort(uctx, fr_bio_retry_entry_t);
-	fr_bio_retry_t *my = item->my;
+	fr_bio_retry_entry_t *item = uctx;	/* an element of a talloc array, so it has no talloc header */
+	fr_bio_retry_t *my = talloc_get_type_abort(item->my, fr_bio_retry_t);
 
 	/*
 	 *	We only expire entries if writing is blocked.
@@ -522,8 +522,8 @@ static void fr_bio_retry_expiry_timer(UNUSED fr_timer_list_t *tl, UNUSED fr_time
  */
 static void fr_bio_retry_next_timer(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
-	fr_bio_retry_entry_t *item = talloc_get_type_abort(uctx, fr_bio_retry_entry_t);
-	fr_bio_retry_t *my = item->my;
+	fr_bio_retry_entry_t *item = uctx;	/* an element of a talloc array, so it has no talloc header */
+	fr_bio_retry_t *my = talloc_get_type_abort(item->my, fr_bio_retry_t);
 
 	fr_assert(my->partial == NULL);
 	fr_assert(!my->info.write_blocked);
