@@ -1191,6 +1191,23 @@ static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSE
 	if (rcode < 0) {
 		FR_TIMER_DELETE(&my->connect.ev);
 		my->connect.el = NULL;
+
+		/*
+		 *	Tell the application that the connect failed.
+		 *
+		 *	fr_bio_fd_try_connect() has already recorded connect_errno and shut the bio down,
+		 *	and the shutdown deleted the timer and the FD event.  Reporting the failure is all
+		 *	that is left, and without it a failed connect here is silent: the synchronous path
+		 *	in fr_bio_fd_connect_full() reports it, and this path did not.
+		 *
+		 *	Whether this runs depends on which event the event loop delivers.  A connect which
+		 *	fails usually arrives as EV_EOF, which event.c turns into the error callback, and
+		 *	fr_bio_fd_el_error() reports it.  This function runs when the socket is merely
+		 *	writeable, and nothing else reports the failure for us.
+		 *
+		 *	The callback may free the bio, so nothing below touches `my`.
+		 */
+		if (my->connect.error) my->connect.error(&my->bio);
 		return;
 	}
 
