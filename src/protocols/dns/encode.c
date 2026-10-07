@@ -341,7 +341,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DNS_OPT_HDR_LEN);	/* Make room for option header */
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, DNS_OPT_HDR_LEN);	/* Make room for option header */
 
 	len = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_child);
 	if (len < 0) return len;

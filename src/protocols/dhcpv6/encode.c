@@ -514,7 +514,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);	/* Make room for option header */
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);	/* Make room for option header */
 
 	len = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_child);
 	if (len < 0) return len;
@@ -650,7 +650,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	 */
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t)da->attr);	/* Write out the option header */
 	fr_dbuff_marker(&len_m, &work_dbuff);			/* Mark where we'll need to put the length field */
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 2);		/* Advanced past the length field */
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, 2);		/* Advanced past the length field */
 
 	vp = fr_dcursor_current(cursor);
 	slen = fr_dhcpv6_encode(&work_dbuff, NULL, 0, 0, &vp->vp_group);

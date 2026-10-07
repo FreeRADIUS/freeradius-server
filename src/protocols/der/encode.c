@@ -265,7 +265,7 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 		uint8_t		  last_byte = 0;
 
 		fr_dbuff_marker(&unused_bits_marker, &work_dbuff);
-		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
+		FR_DBUFF_ADVANCE_EXTEND_RETURN(&work_dbuff, 1);
 
 		fr_proto_da_stack_build(&da_stack, vp->da);
 
@@ -1163,7 +1163,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	if (slen < 0) return slen;
 
 	fr_dbuff_marker(&outer_seq_len_start, &our_dbuff);
-	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&our_dbuff, 1);
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&our_dbuff), fr_dbuff_used(&our_dbuff),"BEFORE encoded X509 extension");
 
@@ -1195,7 +1195,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		if (slen < 0) return slen;
 
 		fr_dbuff_set(&inner_seq_len_start, &our_dbuff);
-		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
+		FR_DBUFF_ADVANCE_EXTEND_RETURN(&our_dbuff, 1);
 
 		/*
 		 *	Encode the OID portion of the extension
@@ -1204,7 +1204,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		if (slen < 0) return slen;
 
 		fr_dbuff_set(&length_start, &our_dbuff);
-		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
+		FR_DBUFF_ADVANCE_EXTEND_RETURN(&our_dbuff, 1);
 
 		/*
 		 *	Walk through the children until we find either an attribute marked as an extension, or one with
@@ -1288,7 +1288,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		if (slen < 0) return slen;
 
 		fr_dbuff_set(&length_start, &our_dbuff);
-		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
+		FR_DBUFF_ADVANCE_EXTEND_RETURN(&our_dbuff, 1);
 
 		/*
 		 *	Encode the data
@@ -1363,7 +1363,7 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 	if (slen < 0) return slen;
 
 	fr_dbuff_marker(&length_start, &our_dbuff);
-	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&our_dbuff, 1);
 
 	/*
 	 *	Walk through the children until we find either an attribute marked as an oid leaf, or one with
@@ -1769,7 +1769,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 	 *	Mark and reserve space in the buffer for the length field
 	 */
 	fr_dbuff_marker(&marker, &our_dbuff);
-	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
+	FR_DBUFF_ADVANCE_EXTEND_RETURN(&our_dbuff, 1);
 
 	if (flags->is_extensions) {
 		slen = fr_der_encode_X509_extensions(&our_dbuff, cursor, uctx);

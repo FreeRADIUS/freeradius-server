@@ -742,7 +742,7 @@ static ssize_t attr_fragment(fr_dbuff_t *data, size_t data_len, fr_dbuff_marker_
 		i++;
 
 		fr_dbuff_set(&frag_hdr, &frag_data);		/* Remember where the header should be */
-		fr_dbuff_advance(&frag_data, hdr_len);		/* Advance past the header */
+		FR_DBUFF_ADVANCE_EXTEND_RETURN(&frag_data, hdr_len);	/* Advance past the header */
 
 		/*
 		 *	Shift remaining data by hdr_len.
