@@ -59,8 +59,9 @@ Rules:
     block runs until the "=" line identical to the opening delimiter.
     The "====" delimiters stay on their own lines, and the block
     contents are word-wrapped as text:
-    paragraphs are wrapped, and list entries ("* ", "- ", "N. ") are
-    wrapped with their continuation lines aligned after the marker.
+    paragraphs are wrapped, and list entries ("* ", "- ", "N. ",
+    "<N> ", "<.> ") are wrapped with their continuation lines aligned
+    after the marker.
     Lines that are left unchanged on their own line outside the block
     ("[" lines, comments, block titles, table rows, attribute entries,
     block macros, "+", and "--") are also left unchanged inside the
@@ -77,10 +78,12 @@ Rules:
     unchanged on their own line.
   - Lines starting with "|" (tables) are left unchanged.
   - List entries begin with any number of "*" markers ("* ", "** ",
-    "*** ", etc.), with "- ", or with a number followed by "."
-    (e.g. "1.").  Each entry is wrapped on its own; continuation lines
-    are indented so they align with the text after the marker.  For
-    numbered entries the leading number is preserved as-is.
+    "*** ", etc.), with "- ", with a number followed by "."
+    (e.g. "1."), or with a callout ("<", one or more digits or a ".",
+    then ">", e.g. "<1> " or "<.> ").  Each entry is wrapped on its
+    own; continuation lines are indented so they align with the text
+    after the marker.  For numbered entries and callouts, the marker is
+    preserved as-is.
   - Description list entries begin with a term followed by "::",
     ":::", "::::", or ";;", and then whitespace or the end of the line
     (e.g. "name:: The name").  Each entry is wrapped on its own, and
@@ -254,7 +257,7 @@ def header_end(lines):
     return 0
 
 
-_LIST_MARKER_RE = re.compile(r"^(?:\*+|-|\d+\.)\s+")
+_LIST_MARKER_RE = re.compile(r"^(?:\*+|-|\d+\.|<(?:\d+|\.)>)\s+")
 
 
 def list_marker_len(line):
