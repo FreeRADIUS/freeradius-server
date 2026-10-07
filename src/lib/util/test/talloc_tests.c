@@ -1150,6 +1150,8 @@ static void test_talloc_pool_used(void)
 	TEST_ASSERT(big != NULL);
 	used = talloc_pool_used(&overflowed, &live, pool, 4096);
 	TEST_CHECK(overflowed);
+	TEST_CHECK(used == pool_chunk_footprint(10) + pool_chunk_footprint(100) + pool_chunk_footprint(20));
+	TEST_MSG("used %zu", used);
 	TEST_CHECK(live == pool_chunk_footprint(10) + pool_chunk_footprint(20));
 	TEST_MSG("live %zu", live);
 
