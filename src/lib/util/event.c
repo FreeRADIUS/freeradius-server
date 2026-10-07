@@ -1629,6 +1629,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 /** Saves some boilerplate...
  *
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of fr_event_list_t trips -fsanitize=function */
 static inline CC_HINT(always_inline)
 void event_list_reap_run_callback(fr_event_pid_reap_t *reap, pid_t pid, int status)
 {
@@ -1871,6 +1872,7 @@ static int _event_user_delete(fr_event_user_t *ev)
 	return 0;
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of fr_event_list_t trips -fsanitize=function */
 static inline CC_HINT(always_inline)
 void event_user_eval(fr_event_list_t *el, struct kevent *kev)
 {
