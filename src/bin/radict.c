@@ -62,9 +62,9 @@ static radict_out_t output_format = RADICT_OUT_FANCY;
 static fr_dict_t **dict_end = dicts;
 
 DIAG_OFF(unused-macros)
-#define DEBUG2(fmt, ...)	if (fr_log_fp && (fr_debug_lvl > 2)) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
-#define DEBUG(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 1)) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
-#define INFO(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 0)) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
+#define DEBUG2(fmt, ...)	if (fr_log_fp && (fr_debug_lvl > 2)) fr_fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
+#define DEBUG(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 1)) fr_fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
+#define INFO(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 0)) fr_fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 DIAG_ON(unused-macros)
 
 static void usage(void)
@@ -792,12 +792,13 @@ static size_t dicts_overflow_max(fr_dict_gctx_t *gctx)
 	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
-		bool overflowed;
+		bool	overflowed;
+		size_t	live;
 
-		(void) talloc_pool_used(&overflowed, dict->pool, dict->pool_size);
+		(void) talloc_pool_used(&overflowed, &live, dict->pool, dict->pool_size);
 		if (!overflowed) continue;
 
-		DEBUG("%s overflowed a %zu byte pool", fr_dict_root(dict)->name, dict->pool_size);
+		DEBUG("%s overflowed a %pV pool", fr_dict_root(dict)->name, fr_box_size(dict->pool_size));
 		if (dict->pool_size > overflow_max) overflow_max = dict->pool_size;
 	}
 
@@ -1043,7 +1044,7 @@ static int protocol_lines_pool_set(fr_dict_gctx_t *gctx, unsigned int overhead)
 	     dict;
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
 		fr_dict_attr_t const	*root = fr_dict_root(dict);
-		size_t			used, pool_mb;
+		size_t			used, live, pool_mb;
 		bool			overflowed;
 
 		/*
@@ -1057,7 +1058,7 @@ static int protocol_lines_pool_set(fr_dict_gctx_t *gctx, unsigned int overhead)
 		 *	overflowed, so used is the number of bytes that the
 		 *	dictionary needs.
 		 */
-		used = talloc_pool_used(&overflowed, dict->pool, dict->pool_size);
+		used = talloc_pool_used(&overflowed, &live, dict->pool, dict->pool_size);
 		if (!fr_cond_assert_msg(!overflowed, "%s overflowed its pool", root->name)) {
 			ret = -1;
 			continue;
@@ -1065,8 +1066,8 @@ static int protocol_lines_pool_set(fr_dict_gctx_t *gctx, unsigned int overhead)
 
 		pool_mb = ((used + (used * overhead) / 100) + (1000 * 1000) - 1) / (1000 * 1000);
 
-		printf("%s\t%s[%u]\tused %zu bytes\tpool=%zuMB\n",
-		       root->name, fr_dict_attr_filename(root), root->line, used, pool_mb);
+		fr_fprintf(stdout, "%s\t%s[%u]\tused %pV\tpool=%zuMB\n",
+			   root->name, fr_dict_attr_filename(root), root->line, fr_box_size(used), pool_mb);
 
 		if (protocol_line_pool_set(dict, pool_mb) < 0) {
 			fr_perror("radict");
@@ -1094,7 +1095,7 @@ static int protocol_pools_check(fr_dict_gctx_t *gctx)
 	     dict;
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
 		fr_dict_attr_t const	*root = fr_dict_root(dict);
-		size_t			used;
+		size_t			used, live;
 		bool			overflowed;
 
 		/*
@@ -1103,17 +1104,19 @@ static int protocol_pools_check(fr_dict_gctx_t *gctx)
 		 */
 		if (root->file == 0) continue;
 
-		used = talloc_pool_used(&overflowed, dict->pool, dict->pool_size);
+		used = talloc_pool_used(&overflowed, &live, dict->pool, dict->pool_size);
 		if (!overflowed) {
-			printf("%s\t%s[%u]\tpool %zu bytes\tused %zu bytes\n",
-			       root->name, fr_dict_attr_filename(root), root->line, dict->pool_size, used);
+			fr_fprintf(stdout, "%s\t%s[%u]\tpool %pV\tused %pV\tlive %pV\tholes %pV\ttail %pV\n",
+				   root->name, fr_dict_attr_filename(root), root->line, fr_box_size(dict->pool_size),
+				   fr_box_size(used), fr_box_size(live), fr_box_size(used - live),
+				   fr_box_size(dict->pool_size - used));
 			continue;
 		}
 
-		printf("%s\t%s[%u]\tpool %zu bytes\toverflowed\n",
-		       root->name, fr_dict_attr_filename(root), root->line, dict->pool_size);
-		fr_strerror_printf("%s overflowed its %zu byte pool, run radict -P to set a larger pool= on %s[%u]",
-				   root->name, dict->pool_size, fr_dict_attr_filename(root), root->line);
+		fr_fprintf(stdout, "%s\t%s[%u]\tpool %pV\toverflowed\n",
+			   root->name, fr_dict_attr_filename(root), root->line, fr_box_size(dict->pool_size));
+		fr_strerror_printf("%s overflowed its %pV pool, run radict -P to set a larger pool= on %s[%u]",
+				   root->name, fr_box_size(dict->pool_size), fr_dict_attr_filename(root), root->line);
 		fr_perror("radict");
 		ret = -1;
 	}
@@ -1213,13 +1216,14 @@ static int dicts_pool_grow(fr_dict_gctx_t **gctx_p, char const *dict_dir, char c
 		size_t pool_size_min = overflow_max + RADICT_POOL_STEP_SIZE;
 
 		if (pool_size_min > RADICT_POOL_MAX_SIZE) {
-			fr_strerror_printf("Stopping, a dictionary overflowed a %zu byte pool and the next pool would be "
-					   "larger than RADICT_POOL_MAX_SIZE (%zu bytes)", overflow_max, RADICT_POOL_MAX_SIZE);
+			fr_strerror_printf("Stopping, a dictionary overflowed a %pV pool and the next pool would be "
+					   "larger than RADICT_POOL_MAX_SIZE (%pV)",
+					   fr_box_size(overflow_max), fr_box_size(RADICT_POOL_MAX_SIZE));
 			fr_perror("radict");
 			return -1;
 		}
 
-		DEBUG("Reloading the dictionaries with pools of at least %zu bytes", pool_size_min);
+		DEBUG("Reloading the dictionaries with pools of at least %pV", fr_box_size(pool_size_min));
 
 		if (dicts_free(*gctx_p) < 0) return -1;
 		if (dicts_load(gctx_p, dict_dir, protocol, pool_size_min) < 0) return -1;
@@ -1406,18 +1410,21 @@ int main(int argc, char *argv[])
 		do {
 			raddict_stats_t	stats = {};
 			bool		overflowed;
-			size_t		used;
+			size_t		used, live;
 
 			raddict_export(&stats, *dict_p, fr_dict_root(*dict_p));
-			used = talloc_pool_used(&overflowed, (*dict_p)->pool, (*dict_p)->pool_size);
+			used = talloc_pool_used(&overflowed, &live, (*dict_p)->pool, (*dict_p)->pool_size);
 			DEBUG2("Attribute count %" PRIu64, stats.count);
-			DEBUG2("Memory allocd %zu (bytes)", talloc_total_size(*dict_p));
-			DEBUG2("Memory spread %zu (bytes)", (size_t) (stats.high - stats.low));
-			DEBUG2("Pool size %zu (bytes)", (*dict_p)->pool_size);
+			DEBUG2("Memory allocd %pV", fr_box_size(talloc_total_size(*dict_p)));
+			DEBUG2("Memory spread %pV", fr_box_size((size_t) (stats.high - stats.low)));
+			DEBUG2("Pool size %pV", fr_box_size((*dict_p)->pool_size));
 			if (overflowed) {
 				DEBUG2("Pool used overflowed");
 			} else {
-				DEBUG2("Pool used %zu (bytes)", used);
+				DEBUG2("Pool used %pV", fr_box_size(used));
+				DEBUG2("Pool live %pV", fr_box_size(live));
+				DEBUG2("Pool holes %pV", fr_box_size(used - live));
+				DEBUG2("Pool tail %pV", fr_box_size((*dict_p)->pool_size - used));
 			}
 		} while (++dict_p < dict_end);
 
