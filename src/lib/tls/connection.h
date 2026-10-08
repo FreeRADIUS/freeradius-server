@@ -72,12 +72,56 @@ typedef enum {
 	TLS_CONNECTION_FAIL_APPLICATION,		//!< other application error
 } fr_tls_connection_fail_t;
 
+/** IO state.  Did the read / write succeed, etc?
+ *
+ * An application does IO, as the TLS library should not do any IO.
+ *
+ * The application still needs to inform the TLS library as to the state
+ * of the underlying connection.  This enum does that.
+ *
+ * The values here should be the same for all applications.  If
+ * they're not, we can add new values.
+ *
+ * New connections start off with state 0 (FR_TLS_CONNECTION_IO_OK).
+ */
+typedef enum {
+	FR_TLS_CONNECTION_IO_OK = 0,			//!< The call succeeded, or no call has been
+							///< made yet.
+	FR_TLS_CONNECTION_IO_RETRY,			//!< A signal interrupted the call.  Run the
+							///< call again.
+	FR_TLS_CONNECTION_IO_BLOCKED,			//!< The call would block.  Wait for the socket
+							///< to become ready.
+	FR_TLS_CONNECTION_IO_EOF,			//!< The peer closed the connection.  On a stream
+							///< a read() which returns zero means the same
+							///< thing.
+	FR_TLS_CONNECTION_IO_FATAL			//!< The connection cannot continue.
+} fr_tls_connection_io_state_t;
+
+/** Tables which map enumeration values to names.
+ *
+ @verbatim
+   DEBUG("%s - connection failed: %s", conn->name,
+	 fr_table_str_by_value(fr_tls_connection_fail_table, conn->failed, "<INVALID>"));
+ @endverbatim
+ */
+extern fr_table_num_indexed_t const	fr_tls_connection_state_table[];
+extern size_t				fr_tls_connection_state_table_len;
+
+extern fr_table_num_indexed_t const	fr_tls_connection_fail_table[];
+extern size_t				fr_tls_connection_fail_table_len;
+
+extern fr_table_num_indexed_t const	fr_tls_connection_io_state_table[];
+extern size_t				fr_tls_connection_io_state_table_len;
+
 /** Everything the TLS connection state machine needs
  *
  * The state machine is the set of functions in src/lib/tls/connection.c.
  * Every field the state machine reads or writes lives in fr_tls_connection_t,
- * and the state machine reads no other structure, so the caller may keep
- * fr_tls_connection_t in whatever structure the caller chooses.
+ * and the state machine reads no other structure.
+ *
+ * fr_tls_connection_t must be talloc'd, and must not be embedded in another
+ * structure.  `name` is allocated from the connection, so the connection has
+ * to be a talloc chunk of its own.
  *
  * The state machine performs two actions which are outside of TLS state
  * management:
@@ -93,6 +137,8 @@ typedef enum {
 typedef struct fr_tls_connection_s fr_tls_connection_t;
 
 struct fr_tls_connection_s {
+	char const		*name;			//!< What to call this connection in log messages,
+
 	fr_tls_conf_t		*tls_conf;		//!< Parsed "tls" section.
 	fr_tls_session_t	*tls_session;		//!< State of the handshake.
 	request_t		*request;		//!< Request the handshake runs under.
@@ -101,6 +147,8 @@ struct fr_tls_connection_s {
 
 	fr_tls_connection_fail_t failed;	       	//!< why the connection failed
 	int			error;			//!< for system call errors
+
+	fr_tls_connection_io_state_t io_state;		//!< IO state, set by the application
 
 	bool			client;			//!< Act as the client and connect to a server,
 							///< rather than accept a connection.

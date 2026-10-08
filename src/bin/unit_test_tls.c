@@ -193,11 +193,11 @@ typedef struct {
 							///< after the handshake, see
 							///< tls_post_handshake_timeout().
 
-unsigned char		*alpn;			//!< Protocol list built by -L, in the wire format
+	unsigned char		*alpn;			//!< Protocol list built by -L, in the wire format
 							///< fr_tls_conf_t expects.  NULL means no ALPN.
 	bool			alpn_required;		//!< Set by -l.
 
-		bool			done;			//!< Set once the connection has a result.
+	bool			done;			//!< Set once the connection has a result.
 	int			ret;			//!< Exit status.
 } unit_test_tls_t;
 
@@ -397,27 +397,17 @@ static void tls_request_failed(unit_test_tls_t *utt)
  * connection socket here is a connected TCP socket with one peer, so neither
  * reason applies, and all three errors are fatal.
  */
-typedef enum {
-	UNIT_TEST_TLS_IO_FATAL = 0,			//!< The connection cannot continue.
-	UNIT_TEST_TLS_IO_RETRY,				//!< A signal interrupted the call.  Run the
-							///< call again.
-	UNIT_TEST_TLS_IO_BLOCKED,			//!< The call would block.  Wait for the socket
-							///< to become ready.
-	UNIT_TEST_TLS_IO_EOF				//!< The peer closed the connection.  A read()
-							///< which returns zero means the same thing.
-} unit_test_tls_io_t;
-
-static unit_test_tls_io_t tls_connection_io_error(void)
+static fr_tls_connection_io_state_t tls_connection_io_error(void)
 {
 	switch (errno) {
 	case EINTR:
-		return UNIT_TEST_TLS_IO_RETRY;
+		return FR_TLS_CONNECTION_IO_RETRY;
 
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
 	case EWOULDBLOCK:
 #endif
 	case EAGAIN:
-		return UNIT_TEST_TLS_IO_BLOCKED;
+		return FR_TLS_CONNECTION_IO_BLOCKED;
 
 	/*
 	 *	The peer closed the connection, or reset the connection, or
@@ -426,10 +416,10 @@ static unit_test_tls_io_t tls_connection_io_error(void)
 	case ECONNRESET:
 	case ENOTCONN:
 	case EPIPE:
-		return UNIT_TEST_TLS_IO_EOF;
+		return FR_TLS_CONNECTION_IO_EOF;
 
 	default:
-		return UNIT_TEST_TLS_IO_FATAL;
+		return FR_TLS_CONNECTION_IO_FATAL;
 	}
 }
 
@@ -496,10 +486,10 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 			     fr_dbuff_remaining(tls_session->dirty_out));
 		if (slen < 0) {
 			switch (tls_connection_io_error()) {
-			case UNIT_TEST_TLS_IO_RETRY:
+			case FR_TLS_CONNECTION_IO_RETRY:
 				continue;
 
-			case UNIT_TEST_TLS_IO_BLOCKED:
+			case FR_TLS_CONNECTION_IO_BLOCKED:
 				/*
 				 *	The rest of the record stays in
 				 *	`dirty_out`, and
@@ -522,13 +512,19 @@ static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
 
 				return tls_connection_write_wait(utt, true);
 
-			case UNIT_TEST_TLS_IO_EOF:
+			case FR_TLS_CONNECTION_IO_EOF:
 				ERROR("Connection closed by the peer while writing to it");
 				errno = 0;	/* a close is not a system call error */
 				fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 				return -1;
 
-			case UNIT_TEST_TLS_IO_FATAL:
+			/*
+			 *	write() failed, so the classification cannot
+			 *	be "no error".  Treat the impossible value as
+			 *	fatal rather than carrying on.
+			 */
+			case FR_TLS_CONNECTION_IO_OK:
+			case FR_TLS_CONNECTION_IO_FATAL:
 				break;
 			}
 
@@ -609,16 +605,22 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 		 *	holds a record fires the read event again, so
 		 *	returning here loses no data.
 		 */
-		case UNIT_TEST_TLS_IO_RETRY:
-		case UNIT_TEST_TLS_IO_BLOCKED:
+		case FR_TLS_CONNECTION_IO_RETRY:
+		case FR_TLS_CONNECTION_IO_BLOCKED:
 			DEBUG3("Blocked reading from the connection");
 			return;
 
-		case UNIT_TEST_TLS_IO_EOF:
+		case FR_TLS_CONNECTION_IO_EOF:
 			slen = 0;
 			break;
 
-		case UNIT_TEST_TLS_IO_FATAL:
+		/*
+		 *	read() failed, so the classification cannot be "no
+		 *	error".  Treat the impossible value as fatal rather
+		 *	than carrying on.
+		 */
+		case FR_TLS_CONNECTION_IO_OK:
+		case FR_TLS_CONNECTION_IO_FATAL:
 			ERROR("Failed reading from connection: %s", fr_syserror(errno));
 			fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
 			return;
@@ -1263,6 +1265,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	utt->conn->state = TLS_CONNECTION_NEW_SESSION;
 	utt->conn->pending = utt->conn->idle = utt->conn->fail_pending = utt->conn->eof = false;
 	utt->conn->failed = TLS_CONNECTION_FAIL_NONE;
+	utt->conn->io_state = FR_TLS_CONNECTION_IO_OK;
 	utt->conn->request = NULL;
 	utt->conn->tls_session = NULL;
 

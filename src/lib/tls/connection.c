@@ -40,6 +40,30 @@
 #include "connection.h"
 #include "log.h"
 
+fr_table_num_indexed_t const fr_tls_connection_state_table[] = {
+	[TLS_CONNECTION_NEW_SESSION]	= { L("new_session"),	TLS_CONNECTION_NEW_SESSION },
+	[TLS_CONNECTION_HANDSHAKE]	= { L("handshake"),	TLS_CONNECTION_HANDSHAKE },
+	[TLS_CONNECTION_COMPLETE]	= { L("complete"),	TLS_CONNECTION_COMPLETE }
+};
+size_t fr_tls_connection_state_table_len = NUM_ELEMENTS(fr_tls_connection_state_table);
+
+fr_table_num_indexed_t const fr_tls_connection_fail_table[] = {
+	[TLS_CONNECTION_FAIL_NONE]	= { L("none"),		TLS_CONNECTION_FAIL_NONE },
+	[TLS_CONNECTION_FAIL_TLS]	= { L("tls"),		TLS_CONNECTION_FAIL_TLS },
+	[TLS_CONNECTION_FAIL_SYSCALL]	= { L("syscall"),	TLS_CONNECTION_FAIL_SYSCALL },
+	[TLS_CONNECTION_FAIL_APPLICATION] = { L("application"),	TLS_CONNECTION_FAIL_APPLICATION }
+};
+size_t fr_tls_connection_fail_table_len = NUM_ELEMENTS(fr_tls_connection_fail_table);
+
+fr_table_num_indexed_t const fr_tls_connection_io_state_table[] = {
+	[FR_TLS_CONNECTION_IO_OK]	= { L("ok"),		FR_TLS_CONNECTION_IO_OK },
+	[FR_TLS_CONNECTION_IO_RETRY]	= { L("retry"),		FR_TLS_CONNECTION_IO_RETRY },
+	[FR_TLS_CONNECTION_IO_BLOCKED]	= { L("blocked"),	FR_TLS_CONNECTION_IO_BLOCKED },
+	[FR_TLS_CONNECTION_IO_EOF]	= { L("eof"),		FR_TLS_CONNECTION_IO_EOF },
+	[FR_TLS_CONNECTION_IO_FATAL]	= { L("fatal"),		FR_TLS_CONNECTION_IO_FATAL }
+};
+size_t fr_tls_connection_io_state_table_len = NUM_ELEMENTS(fr_tls_connection_io_state_table);
+
 /** Wake the connection's request, if the request is waiting for a record
  *
  * The request yields in two places: the connection frame waiting for
@@ -509,13 +533,26 @@ static unlang_action_t tls_connection_new_session(request_t *request, void *uctx
  * a yielded frame, and so fr_tls_connection_wake() does nothing until the
  * connection frame has yielded at least once.
  *
- * @param[in] conn	to run.  `conn->request` must be set.
+ * @param[in] conn	to run.  `conn->request` must be set, and `conn` must be
+ *			a talloc chunk, as `conn->name` is allocated from it.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int fr_tls_connection_push(fr_tls_connection_t *conn)
 {
+	/*
+	 *	Give the connection a name for the log, so that nothing has
+	 *	to check for NULL before printing one.  The application knows
+	 *	what identifies a connection and the library does not, so a
+	 *	name the application set is left alone.
+	 *
+	 *	The name is a child of the connection, so it cannot outlive
+	 *	the connection, and an application which sets its own name
+	 *	frees this one first.
+	 */
+	if (!conn->name) MEM(conn->name = talloc_strdup(conn, "(TLS)"));
+
 	return unlang_function_push(conn->request,
 				    tls_connection_new_session,
 				    tls_connection_new_session,
