@@ -382,10 +382,10 @@ test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
 define TEST_MULTI_SERVER_PROFILING
 .PHONY: test.multi-server.profiling.${1} test.multi-server.profiling.${1}.ci
 test.multi-server.profiling.${1}: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=${1} PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+	$(Q)$$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling PROFILING_TOOL=${1} PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
 
 test.multi-server.profiling.${1}.ci: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=${1} PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
+	$(Q)$$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling PROFILING_TOOL=${1} PROFILING_RUN_INDEX=$(PROFILING_RUN_INDEX)
 endef
 $(foreach t,$(PROFILING_TOOLS),$(eval $(call TEST_MULTI_SERVER_PROFILING,$t)))
 
