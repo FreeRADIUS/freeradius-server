@@ -310,7 +310,7 @@ static unlang_action_t tls_ticket_stateful_load_push(request_t *request, fr_tls_
 	if (TLS_TICKET_STATEFUL_DISABLED) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	if (tls_cache->load.state != FR_TLS_TICKET_STATEFUL_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
-       
+
 	/*
 	 *	Reset any pending `load session` if there is also a
 	 *	pending `clear session`, and mark up the load as failed.
@@ -993,8 +993,8 @@ static int tls_ticket_stateful_store_cb(SSL *ssl, SSL_SESSION *sess)
  *	- NULL on error.
  */
 static SSL_SESSION *tls_ticket_stateful_load_cb(SSL *ssl,
-				      unsigned char const *key,
-				      int key_len, int *copy)
+						unsigned char const *key,
+						int key_len, int *copy)
 {
 	fr_tls_session_t	*tls_session;
 	fr_tls_ticket_stateful_t		*tls_cache;
@@ -1008,28 +1008,41 @@ static SSL_SESSION *tls_ticket_stateful_load_cb(SSL *ssl,
 	fr_assert(fr_tls_session_conf(tls_session->ssl)->virtual_server);
 
 	/*
-	 *	Request was cancelled, don't return any session and hopefully
-	 *      OpenSSL will return back to SSL_read() soon.
+	 *	The request was cancelled.  Do not return a session, and
+	 *	let OpenSSL fall back to a full handshake.
 	 */
 	if (unlang_request_is_cancelled(request)) return NULL;
 
 	/*
-	 *	Ensure if session resumption is disallowed this callback
-	 *	will never return session data.
+	 *	Never return a session when session resumption is
+	 *	disallowed.
 	 */
 	if (!tls_cache || !tls_session->allow_session_resumption) return NULL;
 
 	/*
-	 *	1. On the first call we return SSL_magic_pending_session_ptr.
-	 *	   This causes the current SSL_read() call to error out and
-	 *	   for SSL_get_error() to return SSL_ERROR_PENDING_SESSION.
-	 *	2. On receiving SSL_ERROR_PENDING_SESSION we asynchronously
-	 *	   load session information from a datastore and associated
-	 *         it with the SSL session.
-	 *	3. We asynchronously validate the certificate information
-	 *	   retrieved during the session session load.
-	 *	3. We call SSL_read() again, which in turn calls this callback
-	 *	   again.
+	 *	OpenSSL runs the handshake, including this callback, on
+	 *	one of its fibers (a 32K micro stack by default).
+	 *
+	 *	So that we don't have silent memory corruption we ensure
+	 *	all the heavy lifting and unlang execution occurs on the
+	 *	main thread, and never on the fiber.
+	 *
+	 *	1. On the first call, the callback records the session
+	 *	   ID, marks the section as pending, and pauses the
+	 *	   handshake.
+	 *	2. Control returns to
+	 *	   tls_session_async_handshake_cont(), which pushes the
+	 *	   section with fr_tls_ticket_stateful_pending_push().
+	 *	3. Once the section has finished,
+	 *	   tls_session_async_handshake_cont() resumes the
+	 *	   handshake, and execution continues after the first
+	 *	   ASYNC_pause_job() call below.
+	 *	4. The callback jumps back to the switch, where the load
+	 *	   state records whether the section found a session.
+	 *	   When the section found a session, the callback pauses
+	 *	   the handshake a second time, and
+	 *	   `verify certificate { ... }` re-validates the peer
+	 *	   certificate.
 	 */
 again:
 	switch (tls_cache->load.state) {
@@ -1041,10 +1054,11 @@ again:
 					(uint8_t const *)key, key_len, true) == 0);
 
 		/*
-		 *	This is the session the peer is asking to resume, so
-		 *	it is the session ID for the rest of the handshake.
-		 *	Caching it here means the many places which log the
-		 *	ID keep working after load.id has been released.
+		 *	The key is the ID of the session that the peer
+		 *	asks to resume, and the key stays the session ID
+		 *	for the rest of the handshake.  Caching the key
+		 *	here keeps the log lines that print the ID
+		 *	working after load.id is cleared.
 		 */
 		if (fr_type_is_null(tls_session->session_id.type)) {
 			MEM(fr_value_box_memdup(tls_session, &tls_session->session_id, NULL,
@@ -1055,9 +1069,11 @@ again:
 		RDEBUG3("Requested session load - ID %pV", &tls_cache->load.id);
 
 		/*
-		 *	Cache functions are only allowed during the handshake
+		 *	Cache functions are only allowed during the
+		 *	handshake.
+		 *
 		 *	FIXME: With TLS 1.3 session tickets can be sent
-		 *	later... Technically every point where we call
+		 *	later.  Technically every point where we call
 		 *	SSL_read() may need to be a yield point.
 		 */
 		if (unlikely(!tls_session->can_pause)) {
@@ -1067,19 +1083,19 @@ again:
 			return NULL;
 		}
 		/*
-		 *	Jumps back to SSL_read() in session.c
+		 *	Jumps back to SSL_read() in session.c.
 		 *
-		 *	Be aware that if the request is cancelled
-		 *	whatever was meant to be done during the
-		 *	time we yielded may not have been completed.
+		 *	If the request is cancelled, whatever was meant
+		 *	to be done while the handshake was paused may
+		 *	not have been completed.
 		 */
 		ASYNC_pause_job();
 
 		/*
-		 *	load cache { ... } returned, but the parent
-		 *      request was cancelled, try and get everything
-		 *	back into a consistent state and tell OpenSSL
-		 *	we failed to load the session.
+		 *	`load session { ... }` finished, but the request
+		 *	was cancelled.  Free any loaded session, reset
+		 *	the load state, and tell OpenSSL that the load
+		 *	failed.
 		 */
 		if (unlang_request_is_cancelled(request)) {
 			tls_ticket_stateful_load_state_reset(request, tls_cache);	/* Clears any loaded session data */
@@ -1098,9 +1114,10 @@ again:
 		SSL_SESSION	*sess;
 
 		/*
-		 *	The loaded session becomes the session, so cache
-		 *	its ID now.  load.id is freed below, once nothing
-		 *	else needs it.
+		 *	The handshake continues with the loaded session.
+		 *	Cache the ID of the loaded session in
+		 *	tls_session->session_id now.  load.id is cleared
+		 *	below.
 		 */
 		tls_session_id_cache(tls_session, tls_cache->load.sess);
 
@@ -1109,21 +1126,21 @@ again:
 		fr_value_box_clear(&tls_cache->load.id);
 
 		/*
-		 *	This restores the contents of &session-state[*]
-		 *	which hopefully still contains all the certificate
-		 *	pairs.
-		 *
-		 *	Although the SSL_SESSION does contain a copy of
-		 *	the peer's certificate, it does not contain the
-		 *	peer's certificate chain, and so isn't reliable
-		 *	for performing re-validation.
+		 *	The SSL_SESSION holds a copy of the peer's
+		 *	certificate, but not the peer's certificate
+		 *	chain.  Re-validation needs the chain.
+		 *	tls_ticket_app_data_get() therefore restores the
+		 *	session-state list, which holds the certificate
+		 *	pairs, from the application data stored with the
+		 *	session.
 		 */
 		if (tls_ticket_app_data_get(request, tls_cache->load.sess, &tls_session->session_id) < 0) {
 			REDEBUG("Denying session resumption via session-id");
 		verify_error:
 			/*
-			 *	Request the session be deleted the next
-			 *	time something calls cache action pending.
+			 *	Request the `delete session { ... }`
+			 *	section, which runs the next time the
+			 *	handshake pauses.
 			 */
 			tls_ticket_stateful_delete_request(tls_session, tls_cache->load.sess);
 			tls_ticket_stateful_load_state_reset(request, tls_session->cache);	/* Free the session */
@@ -1131,30 +1148,27 @@ again:
 		}
 
 		/*
-		 *	This sets the validation state of the tls_session
-		 *	so that when we call ASYNC_pause_job(), and execution
-		 *	jumps back to tls_session_async_handshake_cont
-		 *	(just under SSL_read())
-		 *	the code there knows what job it needs to push onto
-		 *	the unlang stack.
+		 *	Mark `verify certificate { ... }` as pending,
+		 *	for tls_session_async_handshake_cont() to push
+		 *	once the handshake pauses below.
 		 */
 		fr_tls_verify_resumed_request(tls_session);
 
 		if (unlikely(!tls_session->can_pause)) goto cant_pause;
 		/*
-		 *	Jumps back to SSL_read() in session.c
+		 *	Jumps back to SSL_read() in session.c.
 		 *
-		 *	Be aware that if the request is cancelled
-		 *	whatever was meant to be done during the
-		 *	time we yielded may not have been completed.
+		 *	If the request is cancelled, whatever was meant
+		 *	to be done while the handshake was paused may
+		 *	not have been completed.
 		 */
 		ASYNC_pause_job();
 
 		/*
-		 *	Certificate validation returned but the request
-		 *	was cancelled.  Free any data we have so far
-		 *	and reset the states, then let OpenSSL know
-		 *	we failed to load the session.
+		 *	`verify certificate { ... }` finished, but the
+		 *	request was cancelled.  Free any loaded session,
+		 *	reset the load and verify states, and tell
+		 *	OpenSSL that the load failed.
 		 */
 		if (unlang_request_is_cancelled(request)) {
 			tls_ticket_stateful_load_state_reset(request, tls_cache);	/* Clears any loaded session data */
@@ -1164,8 +1178,8 @@ again:
 		}
 
 		/*
-		 *	If we couldn't validate the client certificate
-		 *	then validation overall fails.
+		 *	The callback denies resumption when the peer
+		 *	certificate fails re-validation.
 		 */
 		if (!fr_tls_verify_cert_result(tls_session)) {
 			RDEBUG2("Certificate re-validation failed, denying session resumption via session-id");
