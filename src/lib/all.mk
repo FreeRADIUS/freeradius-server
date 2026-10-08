@@ -56,6 +56,7 @@ $(foreach x,$(SUBMAKEFILES), \
 #
 SUBMAKEFILES += $(wildcard ${top_srcdir}/src/lib/bio/test/all.mk)
 SUBMAKEFILES += $(wildcard ${top_srcdir}/src/lib/ldap/test/all.mk)
+SUBMAKEFILES += $(wildcard ${top_srcdir}/src/lib/tls/test/all.mk)
 
 
 #

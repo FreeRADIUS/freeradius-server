@@ -40,7 +40,42 @@ struct fr_tls_bio_dbuff_s {
 	fr_dbuff_t		dbuff_out;	//!< dbuff used to read data from our talloced buffer.
 	fr_dbuff_uctx_talloc_t	tctx;		//!< extra talloc information for the dbuff.
 	bool			free_buff;	//!< Free the talloced buffer when this structure is freed.
+
+	size_t			*datagram;	//!< array of lengths of the datagrams to be sent.
+	size_t			datagram_head;	//!< Index of the next datagram to send
+	size_t			datagram_used;	//!< How many datagrams need to be sent after "head".
 };
+
+/** Record where a write ended
+ *
+ * @param[in] bd	to record the boundary on.
+ * @param[in] len	of the write.
+ * @return
+ *	- 0 on success, or when datagram mode is not enabled.
+ *	- -1 when the queue is full.
+ */
+static int tls_bio_dbuff_datagram_push(fr_tls_bio_dbuff_t *bd, size_t len)
+{
+	if (!bd->datagram) return 0;
+
+	/*
+	 *	Empty queues always start at zero.
+	 */
+	fr_assert((bd->datagram_used > 0) || (bd->datagram_head == 0));
+
+	if ((bd->datagram_head + bd->datagram_used) == FR_TLS_MAX_DATAGRAMS) {
+		if (bd->datagram_head == 0) return -1;
+
+		memmove(&bd->datagram[0], &bd->datagram[bd->datagram_head],
+			bd->datagram_used * sizeof(bd->datagram[0]));
+		bd->datagram_head = 0;
+	}
+
+	bd->datagram[bd->datagram_head + bd->datagram_used] = len;
+	bd->datagram_used++;
+
+	return 0;
+}
 
 /** Template for the thread local request log BIOs
  */
@@ -59,6 +94,7 @@ static _Thread_local	fr_tls_bio_dbuff_t		*tls_bio_talloc_agg;
 static int _tls_bio_talloc_write_cb(BIO *bio, char const *in, int len)
 {
 	fr_tls_bio_dbuff_t	*bd = talloc_get_type_abort(BIO_get_data(bio), fr_tls_bio_dbuff_t);
+	ssize_t			slen;
 
 	fr_assert_msg(bd->dbuff_in.buff, "BIO not initialised");
 
@@ -68,7 +104,20 @@ static int _tls_bio_talloc_write_cb(BIO *bio, char const *in, int len)
 	 */
 	fr_dbuff_shift(&bd->dbuff_in, fr_dbuff_used(&bd->dbuff_out));
 
-	return fr_dbuff_in_memcpy_partial(&bd->dbuff_in, (uint8_t const *)in, (size_t)len);
+	slen = fr_dbuff_in_memcpy_partial(&bd->dbuff_in, (uint8_t const *)in, (size_t)len);
+	if (!bd->datagram) return (int) slen;
+
+	/*
+	 *	We buffer either all of a datagram, or none of it.
+	 *
+	 *	The buffer extends on demand, so a short copy here means the
+	 *	allocation failed.
+	 */
+	if (slen != (ssize_t) len) return -1;
+
+	if (tls_bio_dbuff_datagram_push(bd, (size_t) len) < 0) return -1;
+
+	return (int) slen;
 }
 
 /** Aggregates BIO_puts() calls into a talloc'd buffer
@@ -239,6 +288,76 @@ char *fr_tls_bio_dbuff_finalise_bstr(fr_tls_bio_dbuff_t *bd)
 void fr_tls_bio_dbuff_reset(fr_tls_bio_dbuff_t *bd)
 {
 	fr_dbuff_set_to_start(&bd->dbuff_in);
+
+	bd->datagram_head = bd->datagram_used = 0;
+}
+
+/** Do datagram-specific initialization of a TLS BIO.
+ *
+ * The dbuff is a byte stream, which is fine for stream transport.  In
+ * contrast, datagram transport has to send each "chunk" of text
+ * separately.  Each chunk is limited by the configured MTU.
+ *
+ * Once this is enabled, every write records its length, and the caller walks
+ * the lengths with fr_tls_bio_dbuff_datagram_len() and
+ * fr_tls_bio_dbuff_datagram_sent().
+ *
+ * Datagram mode cannot be turned off again.  Nothing needs to, and a buffer
+ * which already holds boundaries has no sensible way to discard them while
+ * keeping the data they describe.
+ *
+ * @param[in] bd	to record boundaries on.
+ * @return
+ *	- 0 on success, including when datagram mode was already enabled.
+ *	- -1 on failure.
+ */
+int fr_tls_bio_dbuff_datagram_init(fr_tls_bio_dbuff_t *bd)
+{
+	if (bd->datagram) return 0;
+
+	bd->datagram = talloc_array(bd, size_t, FR_TLS_MAX_DATAGRAMS);
+	if (unlikely(!bd->datagram)) return -1;
+
+	/*
+	 *	fr_tls_bio_dbuff_alloc() talloc_zero()s the structure, and
+	 *	datagram mode cannot be turned off again, so the indices are
+	 *	already zero on the one call which gets this far.
+	 */
+	fr_assert((bd->datagram_head == 0) && (bd->datagram_used == 0));
+
+	return 0;
+}
+
+/** Return the size of the datagram at the start of the dbuff.
+ *
+ * @param[in] bd	to read.
+ * @return
+ *	- the length of the next datagram.
+ *	- 0 if no whole datagram is waiting, or datagram mode is not enabled.
+ */
+size_t fr_tls_bio_dbuff_datagram_len(fr_tls_bio_dbuff_t *bd)
+{
+	if (!bd->datagram || (bd->datagram_used == 0)) return 0;
+
+	return bd->datagram[bd->datagram_head];
+}
+
+/** The datagram was sent, discard the data.
+ *
+ * @param[in] bd	to advance.
+ */
+void fr_tls_bio_dbuff_datagram_sent(fr_tls_bio_dbuff_t *bd)
+{
+	if (!bd->datagram || (bd->datagram_used == 0)) return;
+
+	bd->datagram_head++;
+	bd->datagram_used--;
+
+	/*
+	 *	Nothing is left, so the next write starts from the beginning
+	 *	rather than from wherever the last one finished.
+	 */
+	if (bd->datagram_used == 0) bd->datagram_head = 0;
 }
 
 /** Discard the contents, and return both cursors to the start
@@ -254,6 +373,8 @@ void fr_tls_bio_dbuff_clear(fr_tls_bio_dbuff_t *bd)
 {
 	fr_dbuff_set_to_start(&bd->dbuff_out);
 	fr_dbuff_set_to_start(&bd->dbuff_in);
+
+	bd->datagram_head = bd->datagram_used = 0;
 }
 
 /** Free the underlying BIO, and the buffer if it wasn't finalised

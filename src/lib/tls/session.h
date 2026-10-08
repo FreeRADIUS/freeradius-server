@@ -445,6 +445,33 @@ void fr_tls_session_extra_pair_add_shallow(fr_tls_session_t *tls_session, fr_pai
 	fr_pair_append(&tls_session->extra_pairs, vp);
 }
 
+/** How many octets the datagram at the head of `dirty_out` holds
+ *
+ * Only meaningful for a datagram session.  A stream session writes everything
+ * which is waiting, and never asks.
+ *
+ * @param[in] tls_session	to read.
+ * @return
+ *	- the length of the next datagram.
+ *	- 0 if no whole datagram is waiting.
+ */
+static inline CC_HINT(nonnull) size_t fr_tls_session_datagram_len(fr_tls_session_t *tls_session)
+{
+	return fr_tls_bio_dbuff_datagram_len(tls_session->from_ssl);
+}
+
+/** Discard the datagram at the head of `dirty_out`, which has now been sent
+ *
+ * The caller advances `dirty_out` itself, so the cursor and the boundary move
+ * together.
+ *
+ * @param[in] tls_session	to advance.
+ */
+static inline CC_HINT(nonnull) void fr_tls_session_datagram_sent(fr_tls_session_t *tls_session)
+{
+	fr_tls_bio_dbuff_datagram_sent(tls_session->from_ssl);
+}
+
 int 		fr_tls_session_password_cb(char *buf, int num, int rwflag, void *userdata);
 
 unsigned int	fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,

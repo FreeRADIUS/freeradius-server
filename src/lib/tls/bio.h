@@ -52,6 +52,16 @@ RCSIDH(bio_h, "$Id$")
  */
 typedef struct fr_tls_bio_dbuff_s fr_tls_bio_dbuff_t;
 
+/** Window of datagrams which can be in a TLS BIO, but not yet written.
+ *
+ * The cap serves the same purpose as FR_TLS_MAX_ROUNDS in session.h:
+ * it stops the server from holding unbounded state.  A handshake
+ * flight is a handful of datagrams even at the smallest possible MTU.
+ * Any write which would exceed this limit fails, rather than growing
+ * the queue.
+ */
+#define FR_TLS_MAX_DATAGRAMS (256)
+
 uint8_t		*fr_tls_bio_dbuff_finalise(fr_tls_bio_dbuff_t *bd);
 
 char		*fr_tls_bio_dbuff_finalise_bstr(fr_tls_bio_dbuff_t *bd);
@@ -74,6 +84,12 @@ char		*fr_tls_bio_dbuff_thread_local_finalise_bstr(void);
 void		fr_tls_bio_dbuff_thread_local_clear(void);
 
 BIO		*fr_tls_bio_dbuff_thread_local(TALLOC_CTX *ctx, size_t init, size_t max);
+
+int		fr_tls_bio_dbuff_datagram_init(fr_tls_bio_dbuff_t *bd);
+
+size_t		fr_tls_bio_dbuff_datagram_len(fr_tls_bio_dbuff_t *bd);
+
+void		fr_tls_bio_dbuff_datagram_sent(fr_tls_bio_dbuff_t *bd);
 
 int		fr_tls_bio_init(void);
 
