@@ -172,9 +172,11 @@ struct fr_tls_connection_s {
 							///< result from `conn->failed`, and anything
 							///< else needed from `conn->tls_conf` or
 							///< `conn->tls_session`.
-	int			(*write)(void *uctx, fr_tls_connection_t *conn);
-							//!< Write what OpenSSL produced out to the
-							///< peer.  Returns < 0 on failure.
+	ssize_t			(*write)(void *uctx, fr_tls_connection_t *conn,
+					 uint8_t const *data, size_t size);
+							//!< Write `size` octets at `data` to the
+							///< peer.  Returns <0 on failure, or the
+							///< amount of data written >=0.
 };
 
 int		fr_tls_connection_push(fr_tls_connection_t *conn);
@@ -186,6 +188,8 @@ void		fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail
 void		fr_tls_connection_eof(fr_tls_connection_t *conn);
 
 void		fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size_t data_len);
+
+int		fr_tls_connection_write(fr_tls_connection_t *conn);
 
 void		fr_tls_connection_process(fr_tls_connection_t *conn);
 

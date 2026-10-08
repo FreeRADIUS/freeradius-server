@@ -526,6 +526,20 @@ static unlang_action_t tls_connection_new_session(request_t *request, void *uctx
 	return tls_connection_handshake(request, conn);
 }
 
+/** Return how many bytes should be written.
+ *
+ * This is a function in preparation for adding DTLS.
+ *
+ * @param[in] conn	to read.
+ * @return the number of octets to write, or 0 when nothing is waiting.
+ */
+static size_t tls_connection_write_len(fr_tls_connection_t *conn)
+{
+	fr_tls_session_t *tls_session = conn->tls_session;
+
+	return fr_dbuff_remaining(tls_session->dirty_out);
+}
+
 /** Push the connection frame onto the request's stack
  *
  * Run the interpreter once after fr_tls_connection_push() returns, so that
@@ -636,6 +650,43 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	fr_tls_connection_wake(conn);
 }
 
+/** Write all pending data to the peer.
+ *
+ * Runs the application `write()` callback with the data.  For stream sockets, we try to write all of the data
+ * in one swell foop.  For datagram sockets, we write the data one datagram at a time
+ *
+ * A write which reports zero means it wrote no data.  All data left stays in the buffer, and the application
+ * calls us again when the socket becomes writable.
+ *
+ * @param[in] conn	to write from.
+ * @return
+ *	- 0 on success, including when the socket filled.
+ *	- -1 if the application's write failed.
+ */
+int fr_tls_connection_write(fr_tls_connection_t *conn)
+{
+	size_t size;
+
+	while ((size = tls_connection_write_len(conn)) > 0) {
+		uint8_t const	*data = fr_dbuff_current(conn->tls_session->dirty_out);
+		ssize_t		slen;
+
+		slen = conn->write(conn->uctx, conn, data, size);
+		if (slen < 0) return -1;
+
+		/*
+		 *	The socket is full.  Nothing was lost, so this is not a failure.
+		 */
+		if (slen == 0) break;
+
+		fr_assert((size_t) slen <= size);
+
+		fr_dbuff_advance(conn->tls_session->dirty_out, (size_t) slen);
+	}
+
+	return 0;
+}
+
 /** Write out any pending records, then re-check the handshake state
  *
  * Write the data to the IO layer, then check if the connection is
@@ -665,7 +716,7 @@ void fr_tls_connection_process(fr_tls_connection_t *conn)
 	 *	Record a failure on error, but keep processing the TLS state machine, so that we can run `fail
 	 *	connection`.
 	 */
-	if (conn->write(conn->uctx, conn) < 0) fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
+	if (fr_tls_connection_write(conn) < 0) fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
 
 	tls_connection_check(conn);
 }

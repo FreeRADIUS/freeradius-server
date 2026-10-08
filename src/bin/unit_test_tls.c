@@ -467,99 +467,75 @@ static int tls_connection_write_wait(unit_test_tls_t *utt, bool wait)
  * therefore the caller's job.  The EAP code in src/lib/eap/tls.c writes
  * records the same way.
  */
-static int tls_connection_write(void *uctx, fr_tls_connection_t *conn)
+static ssize_t tls_connection_write(void *uctx, fr_tls_connection_t *conn, uint8_t const *data, size_t size)
 {
 	unit_test_tls_t		*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
-	fr_tls_session_t	*tls_session = conn->tls_session;
+	ssize_t			slen;
 
 	/*
-	 *	dirty_out is a cursor over the BIO's own buffer, so the
-	 *	octets waiting to go out are already contiguous, and write()
-	 *	takes them where they lie.  Nothing here touches the BIO
-	 *	between taking the pointer and using it, which is what the
-	 *	pointer rule in src/lib/tls/bio.h asks of a caller.
+	 *	EINTR means the write never happened, so the same octets are
+	 *	written again.  Every other error leaves this loop.
 	 */
-	while (fr_dbuff_remaining(tls_session->dirty_out) > 0) {
-		ssize_t slen;
+	for (;;) {
+		slen = write(utt->fd, data, size);
+		if (slen >= 0) break;
 
-		slen = write(utt->fd, fr_dbuff_current(tls_session->dirty_out),
-			     fr_dbuff_remaining(tls_session->dirty_out));
-		if (slen < 0) {
-			switch (tls_connection_io_error()) {
-			case FR_TLS_CONNECTION_IO_RETRY:
-				continue;
+		switch (tls_connection_io_error()) {
+		case FR_TLS_CONNECTION_IO_RETRY:
+			continue;
 
-			case FR_TLS_CONNECTION_IO_BLOCKED:
-				/*
-				 *	The rest of the record stays in
-				 *	`dirty_out`, and
-				 *	_tls_connection_write() writes the rest
-				 *	of the record once the socket has room.
-				 *	A blocked write loses nothing and is not
-				 *	a failure, so report that the write
-				 *	succeeded.
-				 *
-				 *	The connection cannot complete while a
-				 *	record is still queued.
-				 *	tls_connection_check() in
-				 *	src/lib/tls/connection.c reads
-				 *	`dirty_out`, and does not complete a
-				 *	connection while `dirty_out` holds a
-				 *	record.
-				 */
-				DEBUG3("Blocked writing %zu bytes to the connection",
-				       fr_dbuff_remaining(tls_session->dirty_out));
-
-				return tls_connection_write_wait(utt, true);
-
-			case FR_TLS_CONNECTION_IO_EOF:
-				ERROR("Connection closed by the peer while writing to it");
-				errno = 0;	/* a close is not a system call error */
-				fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
-				return -1;
-
+		case FR_TLS_CONNECTION_IO_BLOCKED:
 			/*
-			 *	write() failed, so the classification cannot
-			 *	be "no error".  Treat the impossible value as
-			 *	fatal rather than carrying on.
+			 *	The octets stay in the connection's buffer, and
+			 *	_tls_connection_write() asks the connection to
+			 *	write them again once the socket has room.
+			 *	Nothing was lost, so this is not a failure.
 			 */
-			case FR_TLS_CONNECTION_IO_OK:
-			case FR_TLS_CONNECTION_IO_FATAL:
-				break;
-			}
+			DEBUG3("Blocked writing %zu bytes to the connection", size);
 
-			/*
-			 *	Ensure that the connection records why the connection failed.
-			 */
+			if (tls_connection_write_wait(utt, true) < 0) return -1;
+			return 0;
+
+		case FR_TLS_CONNECTION_IO_EOF:
+			ERROR("Connection closed by the peer while writing to it");
+			errno = 0;	/* a close is not a system call error */
 			fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
-
-			ERROR("Failed writing to connection: %s", fr_syserror(errno));
 			return -1;
+
+		/*
+		 *	write() failed, so the classification cannot be "no
+		 *	error".  Treat the impossible value as fatal rather
+		 *	than carrying on.
+		 */
+		case FR_TLS_CONNECTION_IO_OK:
+		case FR_TLS_CONNECTION_IO_FATAL:
+			break;
 		}
 
 		/*
-		 *	 fr_tls_connection_process() will call fr_tls_connection_failed() when the write()
-		 *	 function fails.
+		 *	Ensure that the connection records why the connection failed.
 		 */
-		if (slen == 0) {
-			ERROR("Wrote no data to connection");
-			return -1;
-		}
+		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 
-		/*
-		 *	A short write leaves the rest where it is, and the
-		 *	next pass takes a fresh pointer for what is left.
-		 */
-		fr_dbuff_advance(tls_session->dirty_out, (size_t) slen);
+		ERROR("Failed writing to connection: %s", fr_syserror(errno));
+		return -1;
+	}
 
-		DEBUG3("Wrote %zd bytes to the connection", slen);
+	if (slen == 0) {
+		ERROR("Wrote no data to connection");
+		return -1;
 	}
 
 	/*
-	 *	Everything which was queued has gone out, so stop waiting for
-	 *	the socket to have room.
+	 *	Something went out, so the socket had room.  Stop waiting for
+	 *	room, which is a no-op when we were not waiting.  Whether more
+	 *	is queued behind this is the connection's business, not ours.
 	 */
-	return tls_connection_write_wait(utt, false);
+	if (tls_connection_write_wait(utt, false) < 0) return -1;
+
+	DEBUG3("Wrote %zd bytes to the connection", slen);
+
+	return slen;
 }
 
 /** The socket has room again, so write the rest of the records to the socket
@@ -773,7 +749,7 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 					return;
 				}
 
-				if (tls_connection_write(utt, utt->conn) < 0) {
+				if (fr_tls_connection_write(utt->conn) < 0) {
 					ERROR("Failed sending the application data");
 					tls_request_failed(utt);
 					return;
