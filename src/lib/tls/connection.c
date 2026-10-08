@@ -152,7 +152,7 @@ static void tls_connection_check(fr_tls_connection_t *conn)
 	if (!fr_tls_session_is_init_finished(tls_session)) return;
 	if (fr_dbuff_remaining(tls_session->dirty_out) > 0) return;
 
-	INFO("TLS handshake completed");
+	INFO("%s - TLS handshake completed", conn->name);
 	INFO("  version    : %s", SSL_get_version(tls_session->ssl));
 	INFO("  cipher     : %s", SSL_get_cipher(tls_session->ssl));
 	INFO("  resumed    : %s", SSL_session_reused(tls_session->ssl) ? "yes" : "no");
@@ -222,12 +222,17 @@ static void tls_connection_finished(fr_tls_connection_t *conn)
  */
 void fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_t reason)
 {
+	request_t *request = conn->request;
+
 	fr_assert(reason != TLS_CONNECTION_FAIL_NONE);
 
 	if (conn->failed) return;
 
 	conn->failed = reason;
 	if (conn->failed == TLS_CONNECTION_FAIL_SYSCALL) conn->error = errno;
+
+	ROPTIONAL(RDEBUG2, DEBUG2, "%s - connection failed: %s", conn->name,
+		  fr_table_str_by_value(fr_tls_connection_fail_table, conn->failed, "<INVALID>"));
 
 	/*
 	 *	Record the reason where `fail session { ... }` reads it.
@@ -332,7 +337,8 @@ void fr_tls_connection_eof(fr_tls_connection_t *conn)
  */
 fr_tls_connection_io_state_t fr_tls_connection_io_error(fr_tls_connection_t *conn, ssize_t slen)
 {
-	int error = errno;
+	request_t	*request = conn->request;
+	int		error = errno;
 
 	/*
 	 *	Nothing failed, so there is nothing to classify.
@@ -412,6 +418,9 @@ act:
 	 *	otherwise discard what the socket reported.
 	 */
 	conn->error = error;
+
+	ROPTIONAL(RDEBUG3, DEBUG3, "%s - IO state is now %s", conn->name,
+		  fr_table_str_by_value(fr_tls_connection_io_state_table, conn->io_state, "<INVALID>"));
 
 	return conn->io_state;
 }

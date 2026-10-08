@@ -1241,6 +1241,26 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	unlang_interpret_set(utt->conn->request, utt->intp);
 
 	/*
+	 *	Name the connection for the log, now that the socket is known.
+	 *	The library gives every connection a name of its own, so the
+	 *	old one is freed rather than leaked.  Only the application
+	 *	knows what identifies a connection, which is why the library
+	 *	does not do this itself.
+	 */
+	{
+		fr_socket_t *socket = &utt->conn->request->packet->socket;
+
+		talloc_const_free(utt->conn->name);
+		utt->conn->name = fr_asprintf(utt->conn, "%s from %pV:%u to %pV:%u",
+					      (socket->type == SOCK_DGRAM) ? "DTLS" : "TLS",
+					      fr_box_ipaddr(socket->inet.src_ipaddr), socket->inet.src_port,
+					      fr_box_ipaddr(socket->inet.dst_ipaddr), socket->inet.dst_port);
+		if (!utt->conn->name) goto finish;
+
+		DEBUG2("Connection is %s", utt->conn->name);
+	}
+
+	/*
 	 *	Both roles run the same handshake driver.  Passing the request
 	 *	to fr_tls_session_alloc_client() is what gives a client the
 	 *	memory BIOs and the certificate validation callback which the
