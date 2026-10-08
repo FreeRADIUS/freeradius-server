@@ -506,6 +506,7 @@ void fr_tls_verify_cert_request(fr_tls_session_t *tls_session, X509_STORE_CTX *x
 	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_INIT);
 
 	tls_session->validate.state = FR_TLS_VALIDATION_REQUESTED;
+	TLS_PENDING_SET(tls_session, FR_TLS_PENDING_VERIFY);
 	tls_session->validate.resumed = false;
 	tls_session->validate.x509_ctx = x509_ctx;
 }
@@ -523,6 +524,7 @@ void fr_tls_verify_resumed_request(fr_tls_session_t *tls_session)
 	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_INIT);
 
 	tls_session->validate.state = FR_TLS_VALIDATION_REQUESTED;
+	TLS_PENDING_SET(tls_session, FR_TLS_PENDING_VERIFY);
 	tls_session->validate.resumed = true;
 	tls_session->validate.x509_ctx = NULL;
 }

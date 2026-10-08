@@ -93,6 +93,30 @@ void _tls_ticket_stateful_clear_state_reset(request_t *request, fr_tls_ticket_st
 }
 #define tls_ticket_stateful_clear_state_reset(_request, _cache) _tls_ticket_stateful_clear_state_reset(_request, _cache, __FUNCTION__)
 
+/** Request `load session { ... }`, and tell the handshake a cache section is pending
+ */
+static inline CC_HINT(always_inline) void tls_ticket_stateful_load_state_request(fr_tls_session_t *tls_session)
+{
+	tls_session->cache->load.state = FR_TLS_TICKET_STATEFUL_REQUESTED;
+	TLS_PENDING_SET(tls_session, FR_TLS_PENDING_STATEFUL_TICKET);
+}
+
+/** Request `store session { ... }`, and tell the handshake a cache section is pending
+ */
+static inline CC_HINT(always_inline) void tls_ticket_stateful_store_state_request(fr_tls_session_t *tls_session)
+{
+	tls_session->cache->store.state = FR_TLS_TICKET_STATEFUL_REQUESTED;
+	TLS_PENDING_SET(tls_session, FR_TLS_PENDING_STATEFUL_TICKET);
+}
+
+/** Request `clear session { ... }`, and tell the handshake a cache section is pending
+ */
+static inline CC_HINT(always_inline) void tls_ticket_stateful_clear_state_request(fr_tls_session_t *tls_session)
+{
+	tls_session->cache->clear.state = FR_TLS_TICKET_STATEFUL_REQUESTED;
+	TLS_PENDING_SET(tls_session, FR_TLS_PENDING_STATEFUL_TICKET);
+}
+
 /** Delete session data be deleted from the cache
  *
  * @param[in] sess to be deleted.
@@ -124,7 +148,7 @@ static void tls_ticket_stateful_delete_request(fr_tls_session_t *tls_session, SS
 
 	RDEBUG3("Session ID %pV - Requested session clear", &tls_cache->clear.id);
 
-	tls_cache->clear.state = FR_TLS_TICKET_STATEFUL_REQUESTED;
+	tls_ticket_stateful_clear_state_request(tls_session);
 
 	/*
 	 *	Reset any pending `store session`, so that we skip
@@ -951,7 +975,7 @@ static int tls_ticket_stateful_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	later, once all the authentication phases have completed.
 	 */
 	tls_cache->store.sess = sess;
-	tls_cache->store.state = FR_TLS_TICKET_STATEFUL_REQUESTED;
+	tls_ticket_stateful_store_state_request(tls_session);
 
 	return 1;
 }
@@ -1012,7 +1036,7 @@ again:
 	case FR_TLS_TICKET_STATEFUL_INIT:
 		fr_assert(fr_type_is_null(tls_cache->load.id.type));
 
-		tls_cache->load.state = FR_TLS_TICKET_STATEFUL_REQUESTED;
+		tls_ticket_stateful_load_state_request(tls_session);
 		MEM(fr_value_box_memdup(tls_cache, &tls_cache->load.id, NULL,
 					(uint8_t const *)key, key_len, true) == 0);
 

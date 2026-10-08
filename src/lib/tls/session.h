@@ -192,6 +192,37 @@ typedef struct {
 } fr_tls_psk_t;
 #endif
 
+/** Policy sections that an OpenSSL callback has asked the handshake to run
+ *
+ * A callback cannot run the unlang interpreter, so the callback raises a bit
+ * in `pending`, and pauses the handshake.  tls_session_async_handshake_cont()
+ * pushes the section for each raised bit, lowest bit first, and only resumes
+ * the handshake once no bit is raised.  Each bit is one shot, cleared before
+ * the push function for the bit is called.  Each section writes the result
+ * of the section to the state for that section (`cache`, `ticket`, `psk`, or
+ * `validate`), not to `pending`.
+ */
+DIAG_OFF(attributes)
+typedef enum CC_HINT(flag_enum) : uint64_t {
+	FR_TLS_PENDING_STATEFUL_TICKET	= 0x01,		//!< `load session { ... }`, `store session { ... }`
+							///< or `clear session { ... }`, for the session cache.
+	FR_TLS_PENDING_STATELESS_TICKET	= 0x02,		//!< `encode session { ... }` or `decode session { ... }`,
+							///< for a stateless session ticket.
+	FR_TLS_PENDING_PSK		= 0x04,		//!< `load psk { ... }`
+	FR_TLS_PENDING_VERIFY		= 0x08		//!< `verify certificate { ... }`
+} fr_tls_pending_t;
+DIAG_ON(attributes)
+
+#ifdef _TLS_PRIVATE
+/** Ask the handshake to run a section once the handshake has paused
+ */
+#define TLS_PENDING_SET(_tls_session, _bit)	((_tls_session)->pending |= (_bit))
+
+/** Clear a bit before the push function for the bit is called
+ */
+#define TLS_PENDING_CLEAR(_tls_session, _bit)	((_tls_session)->pending &= ~(_bit))
+#endif
+
 /** Tracks the state of a TLS session
  *
  * Currently used for RADSEC and EAP-TLS + dependents (EAP-TTLS, EAP-PEAP etc...).
@@ -233,6 +264,9 @@ struct fr_tls_session_s {
 	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
 	bool			verify_peer_cert;		//!< Whether verification of the peer's certificate
 								///< has been requested.
+
+	fr_tls_pending_t	pending;			//!< Policy sections that an OpenSSL callback has
+								///< asked the handshake to run.
 
 	fr_tls_verify_t		validate;			//!< Current session certificate validation state.
 

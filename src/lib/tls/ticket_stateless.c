@@ -128,29 +128,42 @@ unlang_action_t fr_tls_ticket_stateless_pending_push(request_t *request, fr_tls_
 	}
 }
 
-/** Set up `encode session { ... }` or `decode session { ... }` from inside an OpenSSL callback
+/** Request `encode session { ... }`, and tell the handshake the section is pending
+ */
+static inline CC_HINT(always_inline) void tls_ticket_stateless_encode_request(fr_tls_session_t *tls_session)
+{
+	tls_session->ticket = FR_TLS_TICKET_STATELESS_ENCODE_REQUESTED;
+	TLS_PENDING_SET(tls_session, FR_TLS_PENDING_STATELESS_TICKET);
+}
+
+/** Request `decode session { ... }`, and tell the handshake the section is pending
+ */
+static inline CC_HINT(always_inline) void tls_ticket_stateless_decode_request(fr_tls_session_t *tls_session)
+{
+	tls_session->ticket = FR_TLS_TICKET_STATELESS_DECODE_REQUESTED;
+	TLS_PENDING_SET(tls_session, FR_TLS_PENDING_STATELESS_TICKET);
+}
+
+/** Pause the handshake for `encode session { ... }` or `decode session { ... }`, and read the result
  *
- * We can't run the interpreter inside of a callback, so record what
- * we want to do, and tell OpenSSL to pause its processing.  We then
- * return to session.c, which determines that there's work to do,
- * pushes the section, runs it, and calls us again.  That resumes
+ * We can't run the interpreter inside of a callback, so the caller records
+ * what we want to do, and this function tells OpenSSL to pause its
+ * processing.  We then return to session.c, which determines that there's
+ * work to do, pushes the section, runs it, and calls us again.  That resumes
  * after the ASYNC_pause_job() call.
  *
  * @param[in] request		bound to the session.
  * @param[in] tls_session	the ticket belongs to.
- * @param[in] decode		true to run `decode session`, false for `encode session`.
+ * @param[in] name		of the section, for the log.
+ * @param[in] error		to record when the section does not return success.
  * @return
  *	- true if the section ran and approved the session-state list.
  *	- false if it did not, or if it could not be run at all.
  */
-static bool tls_ticket_stateless_section_setup(request_t *request, fr_tls_session_t *tls_session, bool decode)
+static inline CC_HINT(always_inline)
+bool tls_ticket_stateless_section_run(request_t *request, fr_tls_session_t *tls_session,
+				      char const *name, uint32_t error)
 {
-	char const *name = decode ? "decode session" : "encode session";
-
-	fr_assert(tls_session->ticket == FR_TLS_TICKET_STATELESS_INIT);
-
-	tls_session->ticket = decode ? FR_TLS_TICKET_STATELESS_DECODE_REQUESTED : FR_TLS_TICKET_STATELESS_ENCODE_REQUESTED;
-
 	/*
 	 *	Sections are only allowed during the handshake, as
 	 *	with certificate re-validation.  See the FIXME in
@@ -176,8 +189,7 @@ static bool tls_ticket_stateless_section_setup(request_t *request, fr_tls_sessio
 
 	if (tls_session->ticket != FR_TLS_TICKET_STATELESS_SUCCESS) {
 		REDEBUG("`%s` did not return success", name);
-		fr_tls_session_error_add(request, decode ? FR_ERROR_VALUE_DECODE_SESSION_FAILED :
-					  FR_ERROR_VALUE_ENCODE_SESSION_FAILED);
+		fr_tls_session_error_add(request, error);
 		tls_session->ticket = FR_TLS_TICKET_STATELESS_INIT;
 		return false;
 	}
@@ -185,6 +197,42 @@ static bool tls_ticket_stateless_section_setup(request_t *request, fr_tls_sessio
 	tls_session->ticket = FR_TLS_TICKET_STATELESS_INIT;
 
 	return true;
+}
+
+/** Run `encode session { ... }` from inside an OpenSSL callback
+ *
+ * @param[in] request		bound to the session.
+ * @param[in] tls_session	the ticket belongs to.
+ * @return
+ *	- true if the section ran and approved the session-state list.
+ *	- false if it did not, or if it could not be run at all.
+ */
+static bool tls_ticket_stateless_encode_run(request_t *request, fr_tls_session_t *tls_session)
+{
+	fr_assert(tls_session->ticket == FR_TLS_TICKET_STATELESS_INIT);
+
+	tls_ticket_stateless_encode_request(tls_session);
+
+	return tls_ticket_stateless_section_run(request, tls_session, "encode session",
+						FR_ERROR_VALUE_ENCODE_SESSION_FAILED);
+}
+
+/** Run `decode session { ... }` from inside an OpenSSL callback
+ *
+ * @param[in] request		bound to the session.
+ * @param[in] tls_session	the ticket belongs to.
+ * @return
+ *	- true if the section ran and approved the session-state list.
+ *	- false if it did not, or if it could not be run at all.
+ */
+static bool tls_ticket_stateless_decode_run(request_t *request, fr_tls_session_t *tls_session)
+{
+	fr_assert(tls_session->ticket == FR_TLS_TICKET_STATELESS_INIT);
+
+	tls_ticket_stateless_decode_request(tls_session);
+
+	return tls_ticket_stateless_section_run(request, tls_session, "decode session",
+						FR_ERROR_VALUE_DECODE_SESSION_FAILED);
 }
 
 /** Disable stateless session tickets for a given TLS ctx
@@ -270,7 +318,7 @@ static int tls_ticket_stateless_app_data_set(SSL *ssl, void *arg)
 	 */
 	conf = fr_tls_session_conf(ssl);
 
-	if (conf->encode_session && !tls_ticket_stateless_section_setup(request, tls_session, false)) {
+	if (conf->encode_session && !tls_ticket_stateless_encode_run(request, tls_session)) {
 		REDEBUG("Not generating a session-ticket");
 		return 0;
 	}
@@ -356,7 +404,7 @@ static SSL_TICKET_RETURN tls_ticket_stateless_app_data_get(SSL *ssl, SSL_SESSION
 	 *	look at what the ticket carried before anything relies on
 	 *	it, certificate re-validation below included.
 	 */
-	if (conf->decode_session && !tls_ticket_stateless_section_setup(request, tls_session, true)) {
+	if (conf->decode_session && !tls_ticket_stateless_decode_run(request, tls_session)) {
 		REDEBUG("Denying session resumption via session-ticket");
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}

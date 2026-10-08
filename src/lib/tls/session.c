@@ -30,6 +30,7 @@
 #include <freeradius-devel/server/log.h>
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/math.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/pair_legacy.h>
@@ -352,6 +353,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 
 		fr_assert(tls_session->psk.state == FR_TLS_PSK_INIT);
 		tls_session->psk.state = FR_TLS_PSK_REQUESTED;
+		TLS_PENDING_SET(tls_session, FR_TLS_PENDING_PSK);
 		tls_session->psk.max_psk_len = max_psk_len;
 
 		ASYNC_pause_job();
@@ -1927,22 +1929,84 @@ static void tls_session_async_handshake_signal(UNUSED request_t *request, UNUSED
 	fr_tls_session_request_unbind(tls_session->ssl);
 }
 
-/** Call SSL_read() to continue the TLS state machine
+/** Push the section for one bit of #fr_tls_pending_t
+ *
+ */
+typedef unlang_action_t (*fr_tls_pending_push_t)(request_t *request, fr_tls_session_t *tls_session);
+
+/** Push the section for every raised bit, then call SSL_read() to continue the TLS state machine
  *
  * This function may be called multiple times, once after every asynchronous request.
  *
  * @param[in] request		The current request.
  * @param[in] uctx		#fr_tls_session_t to continue.
  * @return
- *	- UNLANG_ACTION_CALCULATE_RESULT - We're done with this round.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - We're done with this round, or a push
+ *	  failed and `tls_session->result` is FR_TLS_RESULT_ERROR.
  *	- UNLANG_ACTION_PUSHED_CHILD - Need to perform more asynchronous actions.
  */
 static unlang_action_t tls_session_async_handshake_cont(request_t *request, void *uctx)
 {
+	/*
+	 *	`push[idx]` is the push function for bit `1 << idx`.
+	 */
+	static fr_tls_pending_push_t const push[] = {
+		[0] = fr_tls_ticket_stateful_pending_push,	/* FR_TLS_PENDING_STATEFUL_TICKET */
+		[1] = fr_tls_ticket_stateless_pending_push,	/* FR_TLS_PENDING_STATELESS_TICKET */
+#ifdef PSK_MAX_IDENTITY_LEN
+		[2] = fr_tls_session_psk_pending_push,		/* FR_TLS_PENDING_PSK */
+#endif
+		[3] = fr_tls_verify_cert_pending_push,		/* FR_TLS_PENDING_VERIFY */
+	};
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int			err;
 
 	RDEBUG3("(re-)entered state %s", __FUNCTION__);
+
+again:
+	while (tls_session->pending) {
+		unsigned int		idx = fr_low_bit_pos(tls_session->pending) - 1;
+		fr_tls_pending_t	bit = (fr_tls_pending_t)(UINT64_C(1) << idx);
+		unlang_action_t		ua;
+
+		fr_assert(idx < NUM_ELEMENTS(push));
+		fr_assert(push[idx]);
+
+		/*
+		 *	Each bit is one shot.  The push function is called once for
+		 *	the bit, and raises the bit again if the callback asks again.
+		 */
+		TLS_PENDING_CLEAR(tls_session, bit);
+
+		/*
+		 *	Set this function as the repeat function before the push, so
+		 *	the frame runs this function again once the section has finished.
+		 */
+		if (unlikely(unlang_function_repeat_set(request, tls_session_async_handshake_cont) < 0)) {
+		error:
+			tls_session->result = FR_TLS_RESULT_ERROR;
+			goto finish;
+		}
+
+		ua = push[idx](request, tls_session);
+		switch (ua) {
+		case UNLANG_ACTION_PUSHED_CHILD:
+			return ua;
+
+		case UNLANG_ACTION_FAIL:
+			IGNORE(unlang_function_clear(request), int);
+			goto error;
+
+		default:
+			/*
+			 *	The push function found nothing to push for this bit, so the
+			 *	repeat function never runs.  Clear the repeat function and
+			 *	service the next raised bit.
+			 */
+			IGNORE(unlang_function_repeat_clear(request), int);
+			break;
+		}
+	}
 
 	/*
 	 *	Clear OpenSSL's thread local error stack.
@@ -2055,96 +2119,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 	 */
 	switch (err = SSL_get_error(tls_session->ssl, tls_session->last_ret)) {
 	case SSL_ERROR_WANT_ASYNC:	/* Certification validation or cache loads */
-	{
-		unlang_action_t ua;
-
-		RDEBUG3("Performing async action for libssl");
-
-		/*
-		 *	Call this function again once we're done
-		 *	asynchronously satisfying the load request.
-		 */
-		if (unlikely(unlang_function_repeat_set(request, tls_session_async_handshake_cont) < 0)) {
-		error:
-			tls_session->result = FR_TLS_RESULT_ERROR;
-			goto finish;
-		}
-
-		/*
-		 *	First service any pending cache actions
-		 */
-		ua = fr_tls_ticket_stateful_pending_push(request, tls_session);
-		switch (ua) {
-		case UNLANG_ACTION_FAIL:
-			IGNORE(unlang_function_clear(request), int);
-			goto error;
-
-		case UNLANG_ACTION_PUSHED_CHILD:
-			return ua;
-
-		default:
-			break;
-		}
-
-		/*
-		 *	Service any pending `encode session` or `decode session`, for stateless session
-		 *	tickets.
-		 */
-		ua = fr_tls_ticket_stateless_pending_push(request, tls_session);
-		switch (ua) {
-		case UNLANG_ACTION_FAIL:
-			IGNORE(unlang_function_clear(request), int);
-			goto error;
-
-		case UNLANG_ACTION_PUSHED_CHILD:
-			return ua;
-
-		default:
-			break;
-		}
-
-#ifdef PSK_MAX_IDENTITY_LEN
-		/*
-		 *	Service a pending `load psk`.
-		 */
-		ua = fr_tls_session_psk_pending_push(request, tls_session);
-		switch (ua) {
-		case UNLANG_ACTION_FAIL:
-			IGNORE(unlang_function_clear(request), int);
-			goto error;
-
-		case UNLANG_ACTION_PUSHED_CHILD:
-			return ua;
-
-		default:
-			break;
-		}
-#endif
-
-		/*
-		 *	Next service any pending certificate
-		 *	validation actions.
-		 */
-		ua = fr_tls_verify_cert_pending_push(request, tls_session);
-		switch (ua) {
-		case UNLANG_ACTION_FAIL:
-			IGNORE(unlang_function_clear(request), int);
-			goto error;
-
-		case UNLANG_ACTION_PUSHED_CHILD:
-			return ua;
-
-		default:
-			break;
-		}
-
-		/*
-		 *	Nothing was pushed, so the repeat armed above never runs.
-		 *	Clear the repeat and resume the handshake now.
-		 */
-		IGNORE(unlang_function_repeat_clear(request), int);
-		return tls_session_async_handshake_cont(request, uctx);
-	}
+		goto again;
 
 	case SSL_ERROR_WANT_ASYNC_JOB:
 		RERROR("No async jobs available in pool, increase thread.openssl_async_pool_max");
