@@ -1490,6 +1490,42 @@ int fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
 	return 0;
 }
 
+/** Convert an address from getifaddrs() to our internal ip address representation
+ *
+ * getifaddrs() does not align the addresses it returns to struct sockaddr_storage,
+ * and reading one through a struct sockaddr_storage pointer is undefined behaviour.
+ * The function copies the address into an aligned struct before converting it.
+ *
+ * @param[out] ipaddr	Where to write the ipaddr.
+ * @param[in] ifa_addr	The ifa_addr field of a struct ifaddrs entry.
+ * @return
+ *	- 0 on success.
+ *	- -1 if the address family is not AF_INET or AF_INET6.
+ */
+int fr_ipaddr_from_ifaddr(fr_ipaddr_t *ipaddr, struct sockaddr const *ifa_addr)
+{
+	struct sockaddr_storage	sa;
+	socklen_t		salen;
+
+	switch (ifa_addr->sa_family) {
+	case AF_INET:
+		salen = sizeof(struct sockaddr_in);
+		break;
+
+	case AF_INET6:
+		salen = sizeof(struct sockaddr_in6);
+		break;
+
+	default:
+		fr_strerror_printf("Unsupported address family %d", ifa_addr->sa_family);
+		return -1;
+	}
+
+	memcpy(&sa, ifa_addr, salen);
+
+	return fr_ipaddr_from_sockaddr(ipaddr, NULL, &sa, salen);
+}
+
 void  fr_ipaddr_get_scope_id(fr_ipaddr_t *ipaddr)
 {
 	struct ifaddrs *list = NULL;
@@ -1510,8 +1546,7 @@ void  fr_ipaddr_get_scope_id(fr_ipaddr_t *ipaddr)
 
 		if (!i->ifa_addr || !i->ifa_name || (ipaddr->af != i->ifa_addr->sa_family)) continue;
 
-		fr_ipaddr_from_sockaddr(&my_ipaddr, NULL,
-					(struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6));
+		fr_ipaddr_from_ifaddr(&my_ipaddr, i->ifa_addr);
 		my_ipaddr.scope_id = 0;
 
 		/*
@@ -1551,8 +1586,7 @@ char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr)
 
 		if (!i->ifa_addr || !i->ifa_name || (ipaddr->af != i->ifa_addr->sa_family)) continue;
 
-		fr_ipaddr_from_sockaddr(&my_ipaddr, NULL,
-					(struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6));
+		fr_ipaddr_from_ifaddr(&my_ipaddr, i->ifa_addr);
 
 		/*
 		 *	my_ipaddr will have a scope_id, but the input
@@ -1587,14 +1621,15 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 
 	for (i = list; i != NULL; i = i->ifa_next) {
 		fr_ipaddr_t my_ipaddr;
-		struct sockaddr_storage sa;
 
 		if (!i->ifa_addr || !i->ifa_name || ((af != AF_UNSPEC) && (af != i->ifa_addr->sa_family))) continue;
 		if (strcmp(i->ifa_name, interface) != 0) continue;
 
-		memcpy(&sa, i->ifa_addr,  sizeof(struct sockaddr_in6)); /* ifa->ifa_addr may not be aligned properly */
-
-		fr_ipaddr_from_sockaddr(&my_ipaddr, NULL, &sa, sizeof(struct sockaddr_in6));
+		/*
+		 *	With af == AF_UNSPEC the entry may be a link layer
+		 *	address, which has no ip address to return.
+		 */
+		if (fr_ipaddr_from_ifaddr(&my_ipaddr, i->ifa_addr) < 0) continue;
 
 		/*
 		 *	If they ask for a link local address, then give

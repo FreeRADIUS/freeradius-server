@@ -179,6 +179,7 @@ int	fr_ipaddr_to_sockaddr(struct sockaddr_storage *sa, socklen_t *salen,
 
 int	fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
 				struct sockaddr_storage const *sa, socklen_t salen);
+int	fr_ipaddr_from_ifaddr(fr_ipaddr_t *ipaddr, struct sockaddr const *ifa_addr);
 
 #ifdef __cplusplus
 }

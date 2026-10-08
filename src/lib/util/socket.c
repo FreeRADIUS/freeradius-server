@@ -343,9 +343,7 @@ int fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint
 						 */
 						if ((i->ifa_addr->sa_family == AF_INET) &&
 						    (!src_ipaddr || fr_ipaddr_is_inaddr_any(src_ipaddr))) {
-							(void) fr_ipaddr_from_sockaddr(&my_ipaddr, NULL,
-										       (struct sockaddr_storage *) i->ifa_addr,
-										       sizeof(struct sockaddr_in));
+							(void) fr_ipaddr_from_ifaddr(&my_ipaddr, i->ifa_addr);
 							my_ipaddr.scope_id = scope_id;
 							bound = true;
 							break;
