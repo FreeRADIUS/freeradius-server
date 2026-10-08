@@ -233,6 +233,7 @@ static unlang_action_t ldap_profile_search_push(ldap_profile_ctx_t *profile_ctx,
 						char const *base, int scope, char const *filter)
 {
 	LDAPControl	*serverctrls[] = { profile_ctx->inst->profile.obj_sort_ctrl, NULL };
+	unlang_action_t	ua;
 
 	if (unlang_function_push(request,
 				 NULL,
@@ -244,9 +245,15 @@ static unlang_action_t ldap_profile_search_push(ldap_profile_ctx_t *profile_ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return fr_ldap_trunk_search(profile_ctx, &profile_ctx->query, request, profile_ctx->ttrunk,
-				    base, scope, filter,
-				    profile_ctx->expanded->attrs, serverctrls, NULL);
+	ua = fr_ldap_trunk_search(profile_ctx, &profile_ctx->query, request, profile_ctx->ttrunk,
+				  base, scope, filter,
+				  profile_ctx->expanded->attrs, serverctrls, NULL);
+	if (ua == UNLANG_ACTION_FAIL) {
+		unlang_interpet_frame_discard(request);
+		talloc_free(profile_ctx);
+	}
+
+	return ua;
 }
 
 /** Search for and apply an LDAP profile
