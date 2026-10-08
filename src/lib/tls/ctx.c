@@ -432,18 +432,53 @@ int tls_ctx_version_set(
  * - Load the Private key & the certificate
  * - Set the Context options & Verify options
  *
+ * The caller passes the socket type it is already using for the network,
+ * rather than a type of our own.  SOCK_STREAM selects TLS and SOCK_DGRAM
+ * selects DTLS.  The tree carries a socket type as a plain int elsewhere,
+ * see `socket_type` in fr_bio_fd_config_t and `type` in fr_socket_t, so
+ * there is nothing to translate at the call site.
+ *
+ * Neither value is zero, so an argument which was never set is rejected
+ * rather than read as a deliberate choice of TLS.
+ *
  * @param conf to read settings from.
  * @param client If true SSL_CTX will be configured as a client context.
+ * @param socket_type SOCK_STREAM for TLS, or SOCK_DGRAM for DTLS.
  * @return
  *	- A new SSL_CTX on success.
  *	- NULL on failure.
  */
-SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
+SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client, int socket_type)
 {
 	SSL_CTX		*ctx;
 	X509_STORE	*verify_store = NULL;
 	int		ctx_options = 0;
 	int		mode= SSL_MODE_ASYNC;
+
+	/*
+	 *	SOCK_DGRAM is refused rather than accepted and then ignored.
+	 *	Until this function selects DTLS_method(), accepting it would
+	 *	hand a datagram caller a context which does TLS, and the
+	 *	failure would appear much later as a handshake which makes no
+	 *	sense.
+	 *
+	 *	SOCK_SEQPACKET is refused for its own reason: OpenSSL has
+	 *	DTLS over SCTP, and nothing here has been written or tested
+	 *	for it.
+	 */
+	switch (socket_type) {
+	case SOCK_STREAM:
+		break;
+
+	case SOCK_DGRAM:
+		ERROR("DTLS is not yet supported");
+		return NULL;
+
+	default:
+		ERROR("Unsupported socket type %d for a TLS context, "
+		      "expected SOCK_STREAM (%d)", socket_type, SOCK_STREAM);
+		return NULL;
+	}
 
 	ctx = SSL_CTX_new(TLS_method());
 	if (!ctx) {

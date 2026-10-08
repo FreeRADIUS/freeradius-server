@@ -987,7 +987,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_peap_t);
 	rlm_eap_peap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_peap_thread_t);
 
-	t->ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, false);
+	t->ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, false, SOCK_STREAM);
 	if (!t->ssl_ctx) return -1;
 
 	return 0;
