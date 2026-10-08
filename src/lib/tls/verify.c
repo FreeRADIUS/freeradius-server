@@ -582,6 +582,14 @@ static int tls_verify_chain_pairs_add(request_t *request, fr_tls_session_t *tls_
 			fr_pair_append(&request->session_state_pairs, container);
 		}
 
+#ifdef STATIC_ANALYZER
+		/*
+		 *	Container can never be NULL, because if container
+		 *	was previously NULL, i will be <= depth.
+		 */
+		if (!fr_cond_assert(container)) return -1;
+#endif
+
 		/*
 		 *	The issuer is the next certificate up the chain.  The last
 		 *	certificate is its own issuer when it is self-issued, which
