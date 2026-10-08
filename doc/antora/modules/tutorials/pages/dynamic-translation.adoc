@@ -10,14 +10,14 @@ references.
 - `radiusd.conf`
 - `mods-config/files/authorize`
 
-Run-time variables in the server may include more than simple references to
-attributes in packets. The server supports the ability to perform complex
-inter-module queries, which significantly extends its usefulness. In this
-exercise, we will work through a number of different examples of configuring
-inter-module calls.
+Run-time variables in the server may include more than simple
+references to attributes in packets. The server supports the ability
+to perform complex inter-module queries, which significantly extends
+its usefulness. In this exercise, we will work through a number of
+different examples of configuring inter-module calls.
 
-To start, open `mods-available/exec` and read the sample configuration for
-the `exec` module.
+To start, open `mods-available/exec` and read the sample configuration
+for the `exec` module.
 
 The `exec` module is used for executing external programs or scripts
 from within FreeRADIUS.  It is intended only for very rare use cases,
@@ -36,16 +36,16 @@ bob Password.Cleartext := "hello"
     Callback-Id = %exec('/bin/echo', "Hello, there")
 ----
 
-The `echo` program may be in `/usr/bin/echo`, depending on your local system. On
-many systems you can use the following command:
+The `echo` program may be in `/usr/bin/echo`, depending on your local
+system. On many systems you can use the following command:
 
 [source, bash]
 ----
 $ which echo
 ----
 
-This will tell you the full pathname of the `echo` command. Use that pathname in
-the file entry.
+This will tell you the full pathname of the `echo` command. Use that
+pathname in the file entry.
 
 Start the server
 
@@ -65,7 +65,8 @@ NAS-Port = 501
 NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
 ----
 
-The debug output of the server should print messages similar to the following.
+The debug output of the server should print messages similar to the
+following.
 
 [source,text]
 ----
@@ -99,14 +100,15 @@ Ignoring retransmit from client localhost - we are still processing the request
 
 == Mathematical Operations
 
-It is possible to do mathematical operations "in place"
-Another dynamic translation string function is the `expr` module. It
-performs some simple mathematical operations. The following sample
-file entry demonstrates how to use mathematical expressions:
+It is possible to do mathematical operations "in place" Another
+dynamic translation string function is the `expr` module. It performs
+some simple mathematical operations. The following sample file entry
+demonstrates how to use mathematical expressions:
 
 * Just use `%{... math ... }` for mathematical operations.  There's no
   need to use an `expr` module as was done in v3.
-* Don't use double quotes (`"..."`) around everything.  It's not necessary.
+* Don't use double quotes (`"..."`) around everything.  It's not
+  necessary.
 
 [source,text]
 ----
@@ -136,7 +138,8 @@ NAS-Port = 501
 NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
 ----
 
-The debug output should show the mathematical expression being evaluated and the final result.
+The debug output should show the mathematical expression being
+evaluated and the final result.
 
 [source,text]
 ----
@@ -189,20 +192,21 @@ multiplied by the value of the "UID" of the RADIUS server.  Again,
 this example is just for testing.  Don't use `%exec()` on a production
 server!
 
-=======
-**Example:**
-Request comes in with NAS-Port = 501 -> First entry matches -> `Your port is very nice.`
-Request comes in with NAS-Port = 2000 -> Second entry matches -> `Your port is less nice.`
-=======
+*Example*: +
+Request comes in with NAS-Port = 501 -> First entry matches -> `Your
+port is very nice.` +
+Request comes in with NAS-Port = 2000 -> Second entry matches -> `Your
+port is less nice.`
 
 You can find the UID by running the following command:
 
-[source,basg]
+[source,bash]
 ----
 $ /bin/id -u
 ----
 
-Send a test packet to verify the server's response as Your port is very nice using:
+Send a test packet to verify the server's response as Your port is
+very nice using:
 
 [source,bash]
 ----
@@ -238,7 +242,8 @@ Ignoring retransmit from client localhost - we are still processing the request
 (0)      files (ok)
 ----
 
-Verify by sending a test packet to receive the response `Your port is less nice`.
+Verify by sending a test packet to receive the response `Your port is
+less nice`.
 
 [source,bash]
 ----
@@ -272,7 +277,6 @@ conditional logic. The server evaluates the expression and compares it
 to the incoming request attribute to determine which entry to use for
 the user.
 
-
 == Further considerations
 
 Run-time variables allow inter-module calling. The administrator may
@@ -288,10 +292,10 @@ on the syntax for run-time dynamic translation of strings.
 
 == Questions
 
-1.  How would you perform an SQL query in a run-time variable, instead of
-executing a program?
-2.  Why is it useful for modules to be able to query information from other
-modules?
+1.  How would you perform an SQL query in a run-time variable, instead
+    of executing a program?
+2.  Why is it useful for modules to be able to query information from
+    other modules?
 3.  What is an example of conditional syntax for a run-time variable?
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
