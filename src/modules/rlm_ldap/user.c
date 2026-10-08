@@ -172,6 +172,7 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx,
 	static char const	*tmp_attrs[] = { NULL };
 	ldap_user_find_ctx_t	*user_ctx;
 	LDAPControl		*serverctrls[] = { inst->user.obj_sort_ctrl, NULL };
+	unlang_action_t		ua;
 
 	if (!attrs) memset(&attrs, 0, sizeof(tmp_attrs));
 
@@ -195,9 +196,18 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return fr_ldap_trunk_search(user_ctx, &user_ctx->query, request, user_ctx->ttrunk,
-				    user_ctx->base_dn, user_ctx->inst->user.obj_scope, user_ctx->filter,
-				    user_ctx->attrs, serverctrls, NULL);
+	/*
+	 *	The result frame must not outlive a search which was not submitted.
+	 */
+	ua = fr_ldap_trunk_search(user_ctx, &user_ctx->query, request, user_ctx->ttrunk,
+				  user_ctx->base_dn, user_ctx->inst->user.obj_scope, user_ctx->filter,
+				  user_ctx->attrs, serverctrls, NULL);
+	if (ua == UNLANG_ACTION_FAIL) {
+		unlang_interpet_frame_discard(request);
+		talloc_free(user_ctx);
+	}
+
+	return ua;
 }
 
 /** Check for presence of access attribute in result
