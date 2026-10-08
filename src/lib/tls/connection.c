@@ -380,13 +380,13 @@ static unlang_action_t tls_connection_application_data(UNUSED request_t *request
 	conn->idle = false;
 
 	/*
-	 *	fr_tls_cache_store_session() and fr_tls_cache_clear_session()
+	 *	fr_tls_ticket_stateful_store_session() and fr_tls_ticket_stateful_clear_session()
 	 *	run every queued cache operation before either function
 	 *	returns.  An operation still queued here would never run at
 	 *	all, and the session would silently not be cached, or would
 	 *	silently not be cleared.
 	 */
-	fr_assert(!fr_tls_cache_pending(conn->tls_session->cache));
+	fr_assert(!fr_tls_ticket_stateful_pending(conn->tls_session->cache));
 
 	conn->finished(conn->uctx, conn);
 	return UNLANG_ACTION_YIELD;
@@ -413,7 +413,7 @@ static unlang_action_t tls_connection_init_finished(request_t *request, void *uc
 	if (conn->failed) {
 		ua = fr_tls_session_fail_session(request, conn->tls_session);
 	} else {
-		ua = fr_tls_cache_store_session(request, conn->tls_session);
+		ua = fr_tls_ticket_stateful_store_session(request, conn->tls_session);
 	}
 	TLS_CONNECTION_ERROR_RETURN;
 

@@ -778,7 +778,7 @@ do { \
  *	- -1 on failure.
  *	- 0 on success.
  */
-int fr_tls_ocsp_state_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_cs)
+int fr_tls_ocsp_state_cache_compile(fr_tls_ticket_stateful_t *actions, CONF_SECTION *server_cs)
 {
 	bool found = false;
 
@@ -806,7 +806,7 @@ int fr_tls_ocsp_state_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *serve
  *	- -1 on failure.
  *	- 0 on success.
  */
-int fr_tls_ocsp_staple_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_cs)
+int fr_tls_ocsp_staple_cache_compile(fr_tls_ticket_stateful_t *actions, CONF_SECTION *server_cs)
 {
 	bool found = false;
 

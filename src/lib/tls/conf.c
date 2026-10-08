@@ -49,7 +49,7 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_fragment_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_padding_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
-static int tls_cache_lifetime_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int tls_ticket_lifetime_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_chain_private_key_file_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /** Certificate formats
@@ -70,10 +70,10 @@ static fr_table_num_sorted_t const chain_verify_mode_table[] = {
 static size_t chain_verify_mode_table_len = NUM_ELEMENTS(chain_verify_mode_table);
 
 static fr_table_num_sorted_t const cache_mode_table[] = {
-	{ L("auto"),			FR_TLS_CACHE_AUTO			},
-	{ L("disabled"),		FR_TLS_CACHE_DISABLED			},
-	{ L("stateful"),		FR_TLS_CACHE_STATEFUL			},
-	{ L("stateless"),		FR_TLS_CACHE_STATELESS			}
+	{ L("auto"),			FR_TLS_TICKET_AUTO			},
+	{ L("disabled"),		FR_TLS_TICKET_DISABLED			},
+	{ L("stateful"),		FR_TLS_TICKET_STATEFUL			},
+	{ L("stateless"),		FR_TLS_TICKET_STATELESS			}
 };
 static size_t cache_mode_table_len = NUM_ELEMENTS(cache_mode_table);
 
@@ -86,31 +86,31 @@ static fr_table_num_sorted_t const verify_mode_table[] = {
 };
 static size_t verify_mode_table_len = NUM_ELEMENTS(verify_mode_table);
 
-static conf_parser_t tls_cache_config[] = {
-	{ FR_CONF_OFFSET("mode", fr_tls_cache_conf_t, mode),
+static conf_parser_t tls_ticket_config[] = {
+	{ FR_CONF_OFFSET("mode", fr_tls_ticket_conf_t, mode),
 			 .func = tls_conf_parse_cache_mode,
 			 .uctx = &(cf_table_parse_ctx_t){
 			 	.table = cache_mode_table,
 			 	.len = &cache_mode_table_len
 			 },
 			 .dflt = "auto" },
-	{ FR_CONF_OFFSET_HINT_TYPE("name", FR_TYPE_STRING, fr_tls_cache_conf_t, id_name),
+	{ FR_CONF_OFFSET_HINT_TYPE("name", FR_TYPE_STRING, fr_tls_ticket_conf_t, id_name),
 			 .dflt = "%{EAP-Type}%interpreter('server')", .quote = T_DOUBLE_QUOTED_STRING },
-	{ FR_CONF_OFFSET("lifetime", fr_tls_cache_conf_t, lifetime), .func = tls_cache_lifetime_parse, .dflt = "1d" },
-	{ FR_CONF_OFFSET_IS_SET("min_lifetime", FR_TYPE_TIME_DELTA, 0, fr_tls_cache_conf_t, min_lifetime),
+	{ FR_CONF_OFFSET("lifetime", fr_tls_ticket_conf_t, lifetime), .func = tls_ticket_lifetime_parse, .dflt = "1d" },
+	{ FR_CONF_OFFSET_IS_SET("min_lifetime", FR_TYPE_TIME_DELTA, 0, fr_tls_ticket_conf_t, min_lifetime),
 			 .dflt = "10s" },
 
-	{ FR_CONF_OFFSET("require_extended_master_secret", fr_tls_cache_conf_t, require_extms), .dflt = "yes" },
-	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", fr_tls_cache_conf_t, require_pfs), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_extended_master_secret", fr_tls_ticket_conf_t, require_extms), .dflt = "yes" },
+	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", fr_tls_ticket_conf_t, require_pfs), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("session_ticket_key", fr_tls_cache_conf_t, session_ticket_key) },
+	{ FR_CONF_OFFSET("session_ticket_key", fr_tls_ticket_conf_t, session_ticket_key) },
 
 	/*
 	 *	Deprecated
 	 */
-	{ FR_CONF_V3_DEPRECATED("enable", fr_tls_cache_conf_t, NULL) },
-	{ FR_CONF_V3_DEPRECATED("max_entries", fr_tls_cache_conf_t, NULL) },
-	{ FR_CONF_V3_DEPRECATED("persist_dir", fr_tls_cache_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("enable", fr_tls_ticket_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("max_entries", fr_tls_ticket_conf_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("persist_dir", fr_tls_ticket_conf_t, NULL) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -216,11 +216,11 @@ conf_parser_t fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("client_hello_parse", fr_tls_conf_t, client_hello_parse )},
 
-	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_cache_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_ticket_config) },
 
 	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },
 
-	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_cache_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_ticket_config) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
@@ -241,7 +241,7 @@ conf_parser_t fr_tls_client_config[] = {
 
 	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },
 
-	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_cache_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_ticket_config) },
 
 	{ FR_CONF_V3_DEPRECATED("pem_file_type", fr_tls_conf_t, NULL) },
 	{ FR_CONF_V3_DEPRECATED("certificate_file", fr_tls_conf_t, NULL) },
@@ -275,7 +275,7 @@ conf_parser_t fr_tls_client_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
-	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_cache_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_ticket_config) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
@@ -325,11 +325,11 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 	 *      cache mode.
 	 */
 	switch (cache_mode) {
-	case FR_TLS_CACHE_DISABLED:
-	case FR_TLS_CACHE_STATELESS:
+	case FR_TLS_TICKET_DISABLED:
+	case FR_TLS_TICKET_STATELESS:
 		break;
 
-	case FR_TLS_CACHE_STATEFUL:
+	case FR_TLS_TICKET_STATEFUL:
 		if (!conf->virtual_server) {
 			cf_log_err(ci, "A virtual_server must be set when session.mode = \"stateful\"");
 		error:
@@ -360,12 +360,12 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 		}
 		break;
 
-	case FR_TLS_CACHE_AUTO:
+	case FR_TLS_TICKET_AUTO:
 		if (!conf->virtual_server) {
 			WARN("A virtual_server must be provided for stateful caching. "
 			     "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
 		cache_stateless:
-			cache_mode = FR_TLS_CACHE_STATELESS;
+			cache_mode = FR_TLS_TICKET_STATELESS;
 			break;
 		}
 
@@ -398,7 +398,7 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 	/*
 	 *	Generate random, ephemeral, session-ticket keys.
 	 */
-	if (cache_mode & FR_TLS_CACHE_STATELESS) {
+	if (cache_mode & FR_TLS_TICKET_STATELESS) {
 		/*
 		 *	Fill the key with randomness if one
 		 *	wasn't specified by the user.
@@ -461,7 +461,7 @@ static int tls_padding_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 /** Keep `session.lifetime` at or below #FR_TLS_MAX_SESSION_LIFETIME
  *
  */
-static int tls_cache_lifetime_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+static int tls_ticket_lifetime_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	fr_time_delta_t		*lifetime = out;
 	fr_time_delta_t const	max = fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME);

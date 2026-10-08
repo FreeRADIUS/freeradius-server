@@ -229,14 +229,14 @@ struct fr_tls_session_s {
 								///< alone, with no leading length octet.
 	size_t			sizeof_alpn;			//!< Length of `alpn`.
 
-	fr_tls_cache_t		*cache;				//!< Current session resumption state.
+	fr_tls_ticket_stateful_t		*cache;				//!< Current session resumption state.
 	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
 	bool			verify_peer_cert;		//!< Whether verification of the peer's certificate
 								///< has been requested.
 
 	fr_tls_verify_t		validate;			//!< Current session certificate validation state.
 
-	fr_tls_ticket_state_t	ticket;				//!< Whether `encode session` or `decode session`
+	fr_tls_ticket_stateless_state_t	ticket;				//!< Whether `encode session` or `decode session`
 								///< is waiting to run, and what it returned.
 
 #ifdef PSK_MAX_IDENTITY_LEN

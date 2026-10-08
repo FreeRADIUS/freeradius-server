@@ -4,14 +4,14 @@
 #  the handshake has succeeded, the way policy rejects a session.  Then check
 #  that unit_test_tls did not cache the session.
 #
-#  A caller runs fr_tls_cache_clear_session() when the caller decides that a
+#  A caller runs fr_tls_ticket_stateful_clear_session() when the caller decides that a
 #  session is not worth keeping.  rlm_eap_tls calls the same function when
 #  policy returns reject.  No other TLS test reaches that function.  The other
 #  TLS tests either complete the handshake and cache the session, or fail
 #  before a session exists.
 #
-#  fr_tls_cache_clear_session() runs every queued cache operation before
-#  fr_tls_cache_clear_session() returns.  In a build with assertions enabled,
+#  fr_tls_ticket_stateful_clear_session() runs every queued cache operation before
+#  fr_tls_ticket_stateful_clear_session() returns.  In a build with assertions enabled,
 #  tls_connection_application_data() and _fr_tls_session_free() both check
 #  that no cache operation is left queued.
 #
@@ -20,7 +20,7 @@
 #  calling SSL_CTX_remove_session().  cache.c sets SSL_SESS_CACHE_NO_INTERNAL,
 #  so OpenSSL holds no session for that call to find, and OpenSSL never runs
 #  the remove callback.  fr_tls_cache_deny() now calls
-#  tls_cache_delete_request() itself.
+#  tls_ticket_stateful_delete_request() itself.
 #
 #  Environment:
 #    UNIT_TEST_TLS  command that runs unit_test_tls, possibly several words
@@ -106,19 +106,19 @@ grep -q "Rejecting the session after a successful handshake" "$LOG" || \
 	fail "the server did not reject the session, -R had no effect"
 
 #
-#  fr_tls_cache_clear_session() cancels the pending store, so the
+#  fr_tls_ticket_stateful_clear_session() cancels the pending store, so the
 #  store session { ... } section must not run.  If that section runs, the
 #  server cached a rejected session.
 #
 if grep -q "# store session" "$LOG"; then
-	fail "store session ran, fr_tls_cache_clear_session() did not cancel the store"
+	fail "store session ran, fr_tls_ticket_stateful_clear_session() did not cancel the store"
 fi
 
 #
 #  clear session { ... } must not run either.  Nothing was loaded from the
 #  cache on this connection, the handshake is the first one, and the store
 #  was cancelled just above.  There is therefore no cache entry to remove,
-#  and fr_tls_cache_clear_session() drops the queued clear rather than
+#  and fr_tls_ticket_stateful_clear_session() drops the queued clear rather than
 #  running policy against an entry which does not exist.
 #
 #  The case where the clear does run is a session which was loaded and then
@@ -130,10 +130,10 @@ fi
 
 #
 #  Any assertion failure fails this test.  The assertion this test can trip is
-#  the one which catches a cache operation that tls_cache_drain() left queued.
+#  the one which catches a cache operation that tls_ticket_stateful_drain() left queued.
 #
 if grep -q "ASSERT FAILED" "$LOG"; then
-	fail "an assertion failed, check whether tls_cache_drain() left a cache operation queued"
+	fail "an assertion failed, check whether tls_ticket_stateful_drain() left a cache operation queued"
 fi
 
 #

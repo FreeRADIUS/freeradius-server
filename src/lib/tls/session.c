@@ -1185,7 +1185,7 @@ bool fr_tls_session_is_init_finished(fr_tls_session_t *tls_session)
 	if (!tls_session->cache) return true;
 
 	conf = fr_tls_session_conf(tls_session->ssl);
-	if (!(conf->cache.mode & FR_TLS_CACHE_STATELESS)) return true;
+	if (!(conf->cache.mode & FR_TLS_TICKET_STATELESS)) return true;
 
 	/*
 	 *	If we're not a server, then we're a client, and we
@@ -1208,7 +1208,7 @@ bool fr_tls_session_is_init_finished(fr_tls_session_t *tls_session)
 	 *	returns to INIT.  A session which never sends a ticket
 	 *	is therefore also marked as finished.
 	 */
-	return (tls_session->cache->load.state != FR_TLS_CACHE_REQUESTED);
+	return (tls_session->cache->load.state != FR_TLS_TICKET_STATEFUL_REQUESTED);
 }
 
 /** Decrypt application data
@@ -1238,7 +1238,7 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 		/*
 		 *	The handshake is over and we are about to move application
 		 *	data, so we are past the point where a session ticket is
-		 *	wanted.  tls_cache_store_cb() refuses any which arrive from
+		 *	wanted.  tls_ticket_stateful_store_cb() refuses any which arrive from
 		 *	here on.
 		 */
 		tls_session->seen_application_data = true;
@@ -1684,7 +1684,7 @@ static unlang_action_t tls_session_fail_clear(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 
-	return fr_tls_cache_clear_session(request, tls_session);
+	return fr_tls_ticket_stateful_clear_session(request, tls_session);
 }
 
 /** The TLS session failed
@@ -2073,7 +2073,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		/*
 		 *	First service any pending cache actions
 		 */
-		ua = fr_tls_cache_pending_push(request, tls_session);
+		ua = fr_tls_ticket_stateful_pending_push(request, tls_session);
 		switch (ua) {
 		case UNLANG_ACTION_FAIL:
 			IGNORE(unlang_function_clear(request), int);
@@ -2090,7 +2090,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		 *	Service any pending `encode session` or `decode session`, for stateless session
 		 *	tickets.
 		 */
-		ua = fr_tls_cache_stateless_pending_push(request, tls_session);
+		ua = fr_tls_ticket_stateless_pending_push(request, tls_session);
 		switch (ua) {
 		case UNLANG_ACTION_FAIL:
 			IGNORE(unlang_function_clear(request), int);
@@ -2245,7 +2245,7 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
  *
  * Only a client picks a session to resume before the handshake starts.  A
  * server is asked for one by OpenSSL, part way through the handshake, and
- * answers from tls_cache_load_cb().
+ * answers from tls_ticket_stateful_load_cb().
  *
  * Nothing is bound to the SSL * yet, so the `load session { ... }` section can
  * push a subrequest without the handshake holding the SSL * while that
@@ -2268,7 +2268,7 @@ static unlang_action_t tls_session_load_session(request_t *request, void *uctx)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	ua = fr_tls_cache_load_client_push(request, tls_session);
+	ua = fr_tls_ticket_stateful_load_client_push(request, tls_session);
 	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
 	if (ua == UNLANG_ACTION_FAIL) goto error;
 
@@ -2339,9 +2339,9 @@ static int _fr_tls_session_free(fr_tls_session_t *session)
 	 *	cleared, and the TLS peer can then use it to resume
 	 *	the session.
 	 */
-	fr_assert_msg(!fr_tls_cache_pending(session->cache),
+	fr_assert_msg(!fr_tls_ticket_stateful_pending(session->cache),
 		      "Session freed with cache work outstanding, the caller called neither "
-		      "fr_tls_cache_store_session() nor fr_tls_cache_clear_session()");
+		      "fr_tls_ticket_stateful_store_session() nor fr_tls_ticket_stateful_clear_session()");
 
 	if (session->ssl) {
 		/*
@@ -2577,12 +2577,12 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 	/*
 	 *	Session resumption needs somewhere to keep its state, and is
-	 *	driven by the caller.  See fr_tls_cache_load_client_push() and
-	 *	fr_tls_cache_pending_push().
+	 *	driven by the caller.  See fr_tls_ticket_stateful_load_client_push() and
+	 *	fr_tls_ticket_stateful_pending_push().
 	 */
-	if (request && (conf->cache.mode != FR_TLS_CACHE_DISABLED)) {
+	if (request && (conf->cache.mode != FR_TLS_TICKET_DISABLED)) {
 		tls_session->allow_session_resumption = true;	/* otherwise it's false */
-		fr_tls_cache_session_alloc(tls_session);
+		fr_tls_ticket_stateful_session_alloc(tls_session);
 	}
 
 	return tls_session;
@@ -2632,7 +2632,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 *	This seems to only be used for stateful session resumption
 	 *	not session-tickets
 	 */
-	if (conf->cache.mode != FR_TLS_CACHE_DISABLED) {
+	if (conf->cache.mode != FR_TLS_TICKET_DISABLED) {
 		char		*context_id;
 		EVP_MD_CTX	*md_ctx;
 		uint8_t		digest[SHA256_DIGEST_LENGTH];
@@ -2736,9 +2736,9 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 		SSL_CTX_set_client_hello_cb(ssl_ctx, fr_tls_session_client_hello_cb, NULL);
 	}
 
-	if (conf->cache.mode != FR_TLS_CACHE_DISABLED) {
+	if (conf->cache.mode != FR_TLS_TICKET_DISABLED) {
 		tls_session->allow_session_resumption = true;	/* otherwise it's false */
-		fr_tls_cache_session_alloc(tls_session);
+		fr_tls_ticket_stateful_session_alloc(tls_session);
 	}
 
 	fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */

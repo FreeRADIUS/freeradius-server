@@ -92,14 +92,14 @@ typedef struct {
  *
  */
 typedef enum {
-	FR_TLS_CACHE_DISABLED	= 0x00,			//!< Disabled
-	FR_TLS_CACHE_STATEFUL	= 0x01,			//!< Session resumption information is stored on the server
+	FR_TLS_TICKET_DISABLED	= 0x00,			//!< Disabled
+	FR_TLS_TICKET_STATEFUL	= 0x01,			//!< Session resumption information is stored on the server
 							///< and an identifier is provided to the client.
-	FR_TLS_CACHE_STATELESS	= 0x02,			//!< A session ticket is provided to the client.
-	FR_TLS_CACHE_AUTO	= FR_TLS_CACHE_STATEFUL |	//!< We pick the correct cache type
+	FR_TLS_TICKET_STATELESS	= 0x02,			//!< A session ticket is provided to the client.
+	FR_TLS_TICKET_AUTO	= FR_TLS_TICKET_STATEFUL |	//!< We pick the correct cache type
 								///< based on the TLS version and current
-				  FR_TLS_CACHE_STATELESS	///< configuration.
-} fr_tls_cache_mode_t;
+				  FR_TLS_TICKET_STATELESS	///< configuration.
+} fr_tls_ticket_mode_t;
 
 /** Maximum lifetime of a TLS session ticket.
  *
@@ -111,7 +111,7 @@ typedef enum {
  *
  */
 typedef struct {
-	fr_tls_cache_mode_t mode;			//!< What type of session resumption we're going to use.
+	fr_tls_ticket_mode_t mode;			//!< What type of session resumption we're going to use.
 
 	tmpl_t		*id_name;			//!< Context ID to allow multiple sessions stores to be defined.
 	char		context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
@@ -131,7 +131,7 @@ typedef struct {
 
 	uint8_t	const	*session_ticket_key;		//!< Raw input data.  Is fed through HKDF to produce the
 							///< actual session key we use.
-} fr_tls_cache_conf_t;
+} fr_tls_ticket_conf_t;
 
 /** Certificate verification configuration
  *
@@ -204,7 +204,7 @@ struct fr_tls_conf_s {
 
 	char const		*keylog_file;		//!< for SSLKEYLOGFILE functionality.
 
-	fr_tls_cache_conf_t	cache;			//!< Session cache configuration.
+	fr_tls_ticket_conf_t	cache;			//!< Session cache configuration.
 	fr_tls_verify_conf_t	verify;
 
 	bool		verify_certificate;		//!< Does the "verify certificate" section exist.

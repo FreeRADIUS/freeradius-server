@@ -311,7 +311,7 @@ static bool _request_scheduled(request_t const *request, UNUSED void *uctx)
  * For a TLS 1.3 client with statefull session tickets, the tickets
  * arrive after the last TLS handshake message.
  * fr_tls_session_is_init_finished() therefore holds the session in an
- * "unfinished" state until tls_cache_store_cb() reports a ticket.
+ * "unfinished" state until tls_ticket_stateful_store_cb() reports a ticket.
  *
  * Nothing distinguishes "the ticket is still on its way" from "there was
  * never going to be one", so the wait has to be bounded.  Both ends of this

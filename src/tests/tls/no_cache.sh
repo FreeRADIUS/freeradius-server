@@ -5,10 +5,10 @@
 #  end crashed.
 #
 #  Every other test in this directory runs with caching on.  With
-#  `mode = disabled` the TLS code allocates no fr_tls_cache_t, so
+#  `mode = disabled` the TLS code allocates no fr_tls_ticket_stateful_t, so
 #  tls_session->cache stays NULL, and several places take a NULL path that no
-#  other test reaches: fr_tls_cache_pending() in src/lib/tls/cache.h, and
-#  fr_tls_cache_disable(), fr_tls_cache_clear_session() and
+#  other test reaches: fr_tls_ticket_stateful_pending() in src/lib/tls/cache.h, and
+#  fr_tls_cache_disable(), fr_tls_ticket_stateful_clear_session() and
 #  fr_tls_cache_deny() in src/lib/tls/cache.c.  A missing NULL check in any of
 #  them is a null dereference rather than a wrong answer, so the check that
 #  matters most here is simply that both programs exited cleanly.
@@ -17,7 +17,7 @@
 #  where a stored session would be offered, so two connections are what proves
 #  caching is really off rather than merely unexercised.  Two connections also
 #  run the session teardown twice, and the teardown is where
-#  fr_tls_cache_pending() is asserted on.
+#  fr_tls_ticket_stateful_pending() is asserted on.
 #
 #  The configuration still has `load session`, `store session` and
 #  `clear session` sections, in common.conf.  Leaving them there is the point.

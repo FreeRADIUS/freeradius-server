@@ -49,14 +49,14 @@ extern "C" {
  * back, so it only ever moves between INIT and REQUESTED.
  */
 typedef enum {
-	FR_TLS_CACHE_INIT = 0,			//!< Nothing has been asked for.
-	FR_TLS_CACHE_REQUESTED,			//!< OpenSSL has asked for the operation, and the
+	FR_TLS_TICKET_STATEFUL_INIT = 0,			//!< Nothing has been asked for.
+	FR_TLS_TICKET_STATEFUL_REQUESTED,			//!< OpenSSL has asked for the operation, and the
 						///< section which does the work has not run yet.
-	FR_TLS_CACHE_SUCCESS,			//!< The operation completed.  For a load that means
+	FR_TLS_TICKET_STATEFUL_SUCCESS,			//!< The operation completed.  For a load that means
 						///< the session came back from the data store, and for
 						///< a store it means the session was persisted.
-	FR_TLS_CACHE_FAILED,			//!< The operation did not complete.
-} fr_tls_cache_state_t;
+	FR_TLS_TICKET_STATEFUL_FAILED,			//!< The operation did not complete.
+} fr_tls_ticket_stateful_state_t;
 
 /** The current state of calling `encode session` or `decode session`
  *
@@ -69,31 +69,31 @@ typedef enum {
  * after a ticket has been received.
  */
 typedef enum {
-	FR_TLS_TICKET_INIT = 0,				//!< Nothing requested.
-	FR_TLS_TICKET_ENCODE_REQUESTED,			//!< `encode session` needs to run.
-	FR_TLS_TICKET_DECODE_REQUESTED,			//!< `decode session` needs to run.
-	FR_TLS_TICKET_SUCCESS,				//!< The section ran and returned success.
-	FR_TLS_TICKET_FAILED				//!< The section ran and did not.
-} fr_tls_ticket_state_t;
+	FR_TLS_TICKET_STATELESS_INIT = 0,				//!< Nothing requested.
+	FR_TLS_TICKET_STATELESS_ENCODE_REQUESTED,			//!< `encode session` needs to run.
+	FR_TLS_TICKET_STATELESS_DECODE_REQUESTED,			//!< `decode session` needs to run.
+	FR_TLS_TICKET_STATELESS_SUCCESS,				//!< The section ran and returned success.
+	FR_TLS_TICKET_STATELESS_FAILED				//!< The section ran and did not.
+} fr_tls_ticket_stateless_state_t;
 
 /** This structure holds the current cache state for the session
  *
  */
 typedef struct {
 	struct {
-		fr_tls_cache_state_t		state;		//!< Tracks store state.
+		fr_tls_ticket_stateful_state_t		state;		//!< Tracks store state.
 		fr_value_box_t			id;		//!< ID of the session being stored
 		SSL_SESSION			*sess;		//!< Session to store.
 	} store;
 
 	struct {
-		fr_tls_cache_state_t		state;		//!< Tracks load requests from OpenSSL.
+		fr_tls_ticket_stateful_state_t		state;		//!< Tracks load requests from OpenSSL.
 		fr_value_box_t			id;		//!< Session ID that the peer asked to resume
 		SSL_SESSION			*sess;		//!< Deserialized session.
 	} load;
 
 	struct {
-		fr_tls_cache_state_t		state;		//!< Tracks delete requests from OpenSSL.
+		fr_tls_ticket_stateful_state_t		state;		//!< Tracks delete requests from OpenSSL.
 		fr_value_box_t			id;		//!< Session ID to clear
 	} clear;
 
@@ -109,7 +109,7 @@ typedef struct {
 							///< session was loaded, because `store session` is
 							///< not run on failure, and `load session` does not
 							///< remove what it read.
-} fr_tls_cache_t;
+} fr_tls_ticket_stateful_t;
 
 #ifdef _TLS_PRIVATE
 /** Is any cache operation still waiting to run?
@@ -123,13 +123,13 @@ typedef struct {
  *	- true if at least one operation is queued.
  *	- false if there is nothing left to do.
  */
-static inline bool fr_tls_cache_pending(fr_tls_cache_t const *tls_cache)
+static inline bool fr_tls_ticket_stateful_pending(fr_tls_ticket_stateful_t const *tls_cache)
 {
 	if (!tls_cache) return false;
 
-	return (tls_cache->load.state == FR_TLS_CACHE_REQUESTED) ||
-	       (tls_cache->clear.state == FR_TLS_CACHE_REQUESTED) ||
-	       (tls_cache->store.state == FR_TLS_CACHE_REQUESTED);
+	return (tls_cache->load.state == FR_TLS_TICKET_STATEFUL_REQUESTED) ||
+	       (tls_cache->clear.state == FR_TLS_TICKET_STATEFUL_REQUESTED) ||
+	       (tls_cache->store.state == FR_TLS_TICKET_STATEFUL_REQUESTED);
 }
 #endif
 
@@ -161,10 +161,10 @@ extern "C" {
  * is instead handled by fr_tls_session_fail_session().  That function
  * both calls `fail session`, and then (if needed) `clear session`.
  */
-unlang_action_t	fr_tls_cache_store_session(request_t *request, fr_tls_session_t *tls_session);
+unlang_action_t	fr_tls_ticket_stateful_store_session(request_t *request, fr_tls_session_t *tls_session);
 
 /*
- *	The only public function is fr_tls_cache_store_session(),
+ *	The only public function is fr_tls_ticket_stateful_store_session(),
  *	which is needed for EAP.  Other applications MUST instead call
  *	the various fr_session_*() functions.
  */
@@ -173,19 +173,19 @@ void		tls_session_id_cache(fr_tls_session_t *tls_session, SSL_SESSION *sess);
 
 request_t	*tls_subrequest_alloc(request_t *parent, uint32_t packet_type, fr_value_box_t const *id);
 
-unlang_action_t	fr_tls_cache_clear_session(request_t *request, fr_tls_session_t *tls_session);
+unlang_action_t	fr_tls_ticket_stateful_clear_session(request_t *request, fr_tls_session_t *tls_session);
 
-int		fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
+int		fr_tls_ticket_disable_cb(SSL *ssl, int is_forward_secure);
 
-void		fr_tls_cache_session_alloc(fr_tls_session_t *tls_session);
+void		fr_tls_ticket_stateful_session_alloc(fr_tls_session_t *tls_session);
 
-int		fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf, bool client);
+int		fr_tls_ticket_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *cache_conf, bool client);
 
-unlang_action_t	fr_tls_cache_load_client_push(request_t *request, fr_tls_session_t *tls_session);
+unlang_action_t	fr_tls_ticket_stateful_load_client_push(request_t *request, fr_tls_session_t *tls_session);
 
-unlang_action_t	fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *tls_session);
+unlang_action_t	fr_tls_ticket_stateful_pending_push(request_t *request, fr_tls_session_t *tls_session);
 
-unlang_action_t	fr_tls_cache_stateless_pending_push(request_t *request, fr_tls_session_t *tls_session);
+unlang_action_t	fr_tls_ticket_stateless_pending_push(request_t *request, fr_tls_session_t *tls_session);
 #endif
 
 #ifdef __cplusplus
