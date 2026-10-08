@@ -313,6 +313,109 @@ void fr_tls_connection_eof(fr_tls_connection_t *conn)
 	fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 }
 
+/** Look at slen / errno to see why IO failed, and act on it.
+ *
+ * The decision is recorded in `conn->io_state` and `errno` in `conn->error`, which lets other code know
+ * exactly what went wrong, and why.
+ *
+ * The application write function should call this function, and then check its return value.  The writer
+ * should return on fatal errors or EOF, or otherwise retry.
+ *
+ * We leave out EMSGSIZE, ENETDOWN, and ENETUNREACH.  These are recoverable only for unconnected datagram
+ * sockets, where we can re-send the datagram later, or send other datagrams to different destinations.  For
+ * connected sockets, those errors are fatal.
+ *
+ * @param[in] conn	the call was made on.
+ * @param[in] slen	which the call returned.  Zero and negative values are
+ *			classified, a positive value is not an error.
+ * @return the classification, which is also left in `conn->io_state`.
+ */
+fr_tls_connection_io_state_t fr_tls_connection_io_error(fr_tls_connection_t *conn, ssize_t slen)
+{
+	int error = errno;
+
+	/*
+	 *	Nothing failed, so there is nothing to classify.
+	 */
+	if (slen > 0) {
+		conn->io_state = FR_TLS_CONNECTION_IO_OK;
+		conn->error = 0;
+		return conn->io_state;
+	}
+
+	/*
+	 *	A read() of zero octets is the end of a stream.  errno says
+	 *	nothing about an orderly close, so it is not recorded.
+	 */
+	if (slen == 0) {
+		conn->io_state = FR_TLS_CONNECTION_IO_EOF;
+		error = 0;
+		goto act;
+	}
+
+	switch (error) {
+	case EINTR:
+		conn->io_state = FR_TLS_CONNECTION_IO_RETRY;
+		break;
+
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+	case EWOULDBLOCK:
+#endif
+	case EAGAIN:
+		conn->io_state = FR_TLS_CONNECTION_IO_BLOCKED;
+		break;
+
+	/*
+	 *	The peer closed the connection, or reset the connection, or
+	 *	went away while the connection was being written to.
+	 */
+	case ECONNRESET:
+	case ENOTCONN:
+	case EPIPE:
+		conn->io_state = FR_TLS_CONNECTION_IO_EOF;
+		break;
+
+	default:
+		conn->io_state = FR_TLS_CONNECTION_IO_FATAL;
+		break;
+	}
+
+act:
+	switch (conn->io_state) {
+	/*
+	 *	The caller runs the call again, or waits for the socket.
+	 *	Either way the connection carries on.
+	 */
+	case FR_TLS_CONNECTION_IO_OK:
+	case FR_TLS_CONNECTION_IO_RETRY:
+	case FR_TLS_CONNECTION_IO_BLOCKED:
+		break;
+
+	/*
+	 *	A record the peer sent before closing may still be pending,
+	 *	and may be the one which completes the handshake, so this
+	 *	does not always end the connection at once.
+	 */
+	case FR_TLS_CONNECTION_IO_EOF:
+		fr_tls_connection_eof(conn);
+		break;
+
+	case FR_TLS_CONNECTION_IO_FATAL:
+		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
+		break;
+	}
+
+	/*
+	 *	Set this last.  fr_tls_connection_eof() and
+	 *	fr_tls_connection_failed() both record errno themselves, and
+	 *	the first of those clears errno before it does, which would
+	 *	otherwise discard what the socket reported.
+	 */
+	conn->error = error;
+
+	return conn->io_state;
+}
+
 /** There is a fatal connection error.
  *
  * The state functions have no way to report a failure to the

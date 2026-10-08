@@ -187,6 +187,8 @@ void		fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail
 
 void		fr_tls_connection_eof(fr_tls_connection_t *conn);
 
+fr_tls_connection_io_state_t fr_tls_connection_io_error(fr_tls_connection_t *conn, ssize_t slen);
+
 void		fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size_t data_len);
 
 int		fr_tls_connection_write(fr_tls_connection_t *conn);

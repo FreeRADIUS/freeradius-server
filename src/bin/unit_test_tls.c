@@ -383,46 +383,6 @@ static void tls_request_failed(unit_test_tls_t *utt)
 	tls_request_finished(utt, utt->conn);
 }
 
-/** What a failed read() or write() on the connection means
- *
- * The classification repeats the classification in src/lib/bio/fd_errno.h,
- * where the server decides whether a socket error ends a connection.  This
- * program reads and writes the socket itself rather than through an FD bio,
- * so the classification has to be repeated here.
- *
- * The classification here leaves out EMSGSIZE, ENETDOWN, and ENETUNREACH.
- * fd_errno.h reports those three errors but leaves the socket open, because
- * an unconnected socket can still send to a different address, and a datagram
- * which exceeded the PMTU says nothing about the next datagram.  The
- * connection socket here is a connected TCP socket with one peer, so neither
- * reason applies, and all three errors are fatal.
- */
-static fr_tls_connection_io_state_t tls_connection_io_error(void)
-{
-	switch (errno) {
-	case EINTR:
-		return FR_TLS_CONNECTION_IO_RETRY;
-
-#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-	case EWOULDBLOCK:
-#endif
-	case EAGAIN:
-		return FR_TLS_CONNECTION_IO_BLOCKED;
-
-	/*
-	 *	The peer closed the connection, or reset the connection, or
-	 *	went away while the connection was being written to.
-	 */
-	case ECONNRESET:
-	case ENOTCONN:
-	case EPIPE:
-		return FR_TLS_CONNECTION_IO_EOF;
-
-	default:
-		return FR_TLS_CONNECTION_IO_FATAL;
-	}
-}
-
 static fr_event_update_t const pause_write[] = {
 	FR_EVENT_SUSPEND(fr_event_io_func_t, write),
 	{ 0 }
@@ -480,7 +440,7 @@ static ssize_t tls_connection_write(void *uctx, fr_tls_connection_t *conn, uint8
 		slen = write(utt->fd, data, size);
 		if (slen >= 0) break;
 
-		switch (tls_connection_io_error()) {
+		switch (fr_tls_connection_io_error(conn, slen)) {
 		case FR_TLS_CONNECTION_IO_RETRY:
 			continue;
 
@@ -498,8 +458,6 @@ static ssize_t tls_connection_write(void *uctx, fr_tls_connection_t *conn, uint8
 
 		case FR_TLS_CONNECTION_IO_EOF:
 			ERROR("Connection closed by the peer while writing to it");
-			errno = 0;	/* a close is not a system call error */
-			fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 			return -1;
 
 		/*
@@ -512,12 +470,7 @@ static ssize_t tls_connection_write(void *uctx, fr_tls_connection_t *conn, uint8
 			break;
 		}
 
-		/*
-		 *	Ensure that the connection records why the connection failed.
-		 */
-		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
-
-		ERROR("Failed writing to connection: %s", fr_syserror(errno));
+		ERROR("Failed writing to connection: %s", fr_syserror(conn->error));
 		return -1;
 	}
 
@@ -573,8 +526,13 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 	if (utt->done) return;
 
 	slen = read(fd, buf, sizeof(buf));
-	if (slen < 0) {
-		switch (tls_connection_io_error()) {
+	if (slen <= 0) {
+		/*
+		 *	The connection records what happened, and ends itself
+		 *	when the result ends it.  Nothing is left to do here
+		 *	but say which way the call was going.
+		 */
+		switch (fr_tls_connection_io_error(utt->conn, slen)) {
 		/*
 		 *	An interrupted read and a blocked read both wait
 		 *	for the next read event.  A socket which still
@@ -584,10 +542,10 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 		case FR_TLS_CONNECTION_IO_RETRY:
 		case FR_TLS_CONNECTION_IO_BLOCKED:
 			DEBUG3("Blocked reading from the connection");
-			return;
+			break;
 
 		case FR_TLS_CONNECTION_IO_EOF:
-			slen = 0;
+			DEBUG2("Peer closed the connection on fd %d, read returned EOF", fd);
 			break;
 
 		/*
@@ -597,15 +555,10 @@ static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int 
 		 */
 		case FR_TLS_CONNECTION_IO_OK:
 		case FR_TLS_CONNECTION_IO_FATAL:
-			ERROR("Failed reading from connection: %s", fr_syserror(errno));
-			fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
-			return;
+			ERROR("Failed reading from connection: %s", fr_syserror(utt->conn->error));
+			break;
 		}
-	}
 
-	if (slen == 0) {
-		DEBUG2("Peer closed the connection on fd %d, read returned EOF", fd);
-		fr_tls_connection_eof(utt->conn);
 		return;
 	}
 
@@ -622,12 +575,18 @@ static void _tls_connection_error(UNUSED fr_event_list_t *el, int fd, int flags,
 
 	if (fd_errno == 0) {
 		DEBUG2("Peer closed the connection on fd %d, event loop reported EOF (flags 0x%x)", fd, flags);
-		fr_tls_connection_eof(utt->conn);
+		(void) fr_tls_connection_io_error(utt->conn, 0);
 		return;
 	}
 
 	ERROR("Error on connection: %s", fr_syserror(fd_errno));
-	fr_tls_connection_failed(utt->conn, TLS_CONNECTION_FAIL_SYSCALL);
+
+	/*
+	 *	The event loop reports the error rather than leaving it in
+	 *	errno, so put it back where the classifier reads it.
+	 */
+	errno = fd_errno;
+	(void) fr_tls_connection_io_error(utt->conn, -1);
 }
 
 /** Drain the runnable heap once per pass of the event loop
