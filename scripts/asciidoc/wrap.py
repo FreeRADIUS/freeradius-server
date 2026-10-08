@@ -153,7 +153,7 @@ ASCII_REPLACEMENTS = str.maketrans({
     "–": "-",   # –  en dash
     "—": "-",   # —  em dash
     " ": " ",   #    non-breaking space
-    "…": ",",   # …  horizontal ellipsis
+    "…": "...", # …  horizontal ellipsis
     "“": '"',   # “  left double quotation mark
     "”": '"',   # ”  right double quotation mark
     "≤": "<=",  # ≤  less-than or equal

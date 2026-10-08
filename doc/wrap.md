@@ -12,7 +12,7 @@ Trailing spaces on lines should be removed.
 Non-ASCII characters get converted to equivalent ASCII ones, according
 to the following Perl regular expression:
 
-    "s,‘,',g;s,’,',g;s,–,-,g;s,—,-,g;s, , ,g;s:…:,:g;s,“,\",g;s,”,\",g;s,≤,<=,g;s,≥,>=,g;s,→,->,g"
+    "s,‘,',g;s,’,',g;s,–,-,g;s,—,-,g;s, , ,g;s:…:...:g;s,“,\",g;s,”,\",g;s,≤,<=,g;s,≥,>=,g;s,→,->,g"
 
 Comments are lines that begin with "//", and should not be wrapped
 
