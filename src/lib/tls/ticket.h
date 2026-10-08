@@ -18,98 +18,21 @@
 /**
  * $Id$
  *
- * @file lib/tls/cache.h
- * @brief Structures for session-resumption management.
+ * @file lib/tls/ticket.h
+ * @brief Session resumption, stateful and stateless
  *
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
-RCSIDH(cache_h, "$Id$")
+RCSIDH(ticket_h, "$Id$")
 
 #include "openssl_user_macros.h"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/** State of one cache operation
- *
- * All policy operations are run the same way.  OpenSSL asks us for
- * something via a callback, and the callback remembers to do it.
- * OpenSSL then returns to us, where then see that there's a policy to
- * be run, and run it.
- *
- * We can't run the interpreter from an OpenSSL callback, so we have
- * to do it via this "back and forth" bounce.
- *
- * Not every operation reaches every state.  A clear has nothing to report
- * back, so it only ever moves between INIT and REQUESTED.
- */
-typedef enum {
-	FR_TLS_TICKET_STATEFUL_INIT = 0,			//!< Nothing has been asked for.
-	FR_TLS_TICKET_STATEFUL_REQUESTED,			//!< OpenSSL has asked for the operation, and the
-						///< section which does the work has not run yet.
-	FR_TLS_TICKET_STATEFUL_SUCCESS,			//!< The operation completed.  For a load that means
-						///< the session came back from the data store, and for
-						///< a store it means the session was persisted.
-	FR_TLS_TICKET_STATEFUL_FAILED,			//!< The operation did not complete.
-} fr_tls_ticket_stateful_state_t;
-
-/** The current state of calling `encode session` or `decode session`
- *
- * A stateless session ticket encodes the contents of the `session-state` list.
- *
- * The `encode session` policy allows the admin to change the list
- * before the ticket is created.
- *
- * The `decode session` policy allows the admin to check the list
- * after a ticket has been received.
- */
-typedef enum {
-	FR_TLS_TICKET_STATELESS_INIT = 0,				//!< Nothing requested.
-	FR_TLS_TICKET_STATELESS_ENCODE_REQUESTED,			//!< `encode session` needs to run.
-	FR_TLS_TICKET_STATELESS_DECODE_REQUESTED,			//!< `decode session` needs to run.
-	FR_TLS_TICKET_STATELESS_SUCCESS,				//!< The section ran and returned success.
-	FR_TLS_TICKET_STATELESS_FAILED				//!< The section ran and did not.
-} fr_tls_ticket_stateless_state_t;
-
-/** This structure holds the current cache state for the session
- *
- */
-typedef struct {
-	struct {
-		fr_tls_ticket_stateful_state_t		state;		//!< Tracks store state.
-		fr_value_box_t			id;		//!< ID of the session being stored
-		SSL_SESSION			*sess;		//!< Session to store.
-	} store;
-
-	struct {
-		fr_tls_ticket_stateful_state_t		state;		//!< Tracks load requests from OpenSSL.
-		fr_value_box_t			id;		//!< Session ID that the peer asked to resume
-		SSL_SESSION			*sess;		//!< Deserialized session.
-	} load;
-
-	struct {
-		fr_tls_ticket_stateful_state_t		state;		//!< Tracks delete requests from OpenSSL.
-		fr_value_box_t			id;		//!< Session ID to clear
-	} clear;
-
-	fr_value_box_t const *session_id;      		//!< if set, points to tls_session->session_id
-							///< sent by the peer in ClientHello.
-							///< The various IDs above are _usually_ the same, but
-							///< are not _always_ the same.
-
-	bool		loaded;				//!< Whether `load session` ever returned a session.
-							///< The load state above is reset as the handshake
-							///< moves on, so it cannot answer this later.  A
-							///< failed session is only worth clearing when a
-							///< session was loaded, because `store session` is
-							///< not run on failure, and `load session` does not
-							///< remove what it read.
-} fr_tls_ticket_stateful_t;
+#include "ticket_stateful.h"
+#include "ticket_stateless.h"
 
 #ifdef _TLS_PRIVATE
 /** Is any cache operation still waiting to run?
@@ -133,16 +56,17 @@ static inline bool fr_tls_ticket_stateful_pending(fr_tls_ticket_stateful_t const
 }
 #endif
 
-#ifdef __cplusplus
-}
-#endif
-
+/*
+ *	The types above are what session.h needs.  The prototypes below need
+ *	the types that conf.h and session.h define.
+ */
 #include "conf.h"
 #include "session.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /** Cache the session now that the application has decided it's OK.
  *
  * Just finishing the TLS handshake is not always enough.  EAP runs
@@ -169,23 +93,52 @@ unlang_action_t	fr_tls_ticket_stateful_store_session(request_t *request, fr_tls_
  *	the various fr_session_*() functions.
  */
 #ifdef _TLS_PRIVATE
+/*
+ *	ticket.c, shared by both kinds of resumption.
+ */
 void		tls_session_id_cache(fr_tls_session_t *tls_session, SSL_SESSION *sess);
 
 request_t	*tls_subrequest_alloc(request_t *parent, uint32_t packet_type, fr_value_box_t const *id);
 
-unlang_action_t	fr_tls_ticket_stateful_clear_session(request_t *request, fr_tls_session_t *tls_session);
+int		tls_ticket_id_to_box(TALLOC_CTX *ctx, fr_value_box_t *out, SSL_SESSION *sess);
+
+int		tls_ticket_app_data_set(request_t *request, SSL_SESSION *sess, fr_value_box_t const *session_id);
+
+int		tls_ticket_app_data_get(request_t *request, SSL_SESSION *sess, fr_value_box_t const *session_id);
+
+fr_time_delta_t	tls_ticket_session_lifetime(request_t *request, fr_value_box_t const *session_id,
+					    fr_tls_conf_t const *conf, SSL_SESSION *sess);
+
+bool		tls_ticket_session_resumable(request_t *request, fr_value_box_t const *session_id,
+					     fr_tls_conf_t const *conf, SSL_SESSION *sess);
 
 int		fr_tls_ticket_disable_cb(SSL *ssl, int is_forward_secure);
 
-void		fr_tls_ticket_stateful_session_alloc(fr_tls_session_t *tls_session);
-
 int		fr_tls_ticket_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *cache_conf, bool client);
+
+/*
+ *	ticket_stateful.c
+ */
+unlang_action_t	fr_tls_ticket_stateful_clear_session(request_t *request, fr_tls_session_t *tls_session);
+
+void		fr_tls_ticket_stateful_session_alloc(fr_tls_session_t *tls_session);
 
 unlang_action_t	fr_tls_ticket_stateful_load_client_push(request_t *request, fr_tls_session_t *tls_session);
 
 unlang_action_t	fr_tls_ticket_stateful_pending_push(request_t *request, fr_tls_session_t *tls_session);
 
+void		fr_tls_ticket_stateful_disable(SSL_CTX *ctx);
+
+void		fr_tls_ticket_stateful_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *cache_conf, bool client);
+
+/*
+ *	ticket_stateless.c
+ */
 unlang_action_t	fr_tls_ticket_stateless_pending_push(request_t *request, fr_tls_session_t *tls_session);
+
+void		fr_tls_ticket_stateless_disable(SSL_CTX *ctx);
+
+int		fr_tls_ticket_stateless_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *cache_conf);
 #endif
 
 #ifdef __cplusplus

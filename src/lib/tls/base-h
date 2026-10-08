@@ -37,7 +37,7 @@ RCSIDH(tls_h, "$Id$")
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include "cache.h"
+#include "ticket.h"
 #include "conf.h"
 #include "index.h"
 #include "session.h"

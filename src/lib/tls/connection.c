@@ -36,7 +36,7 @@
 #include <freeradius-devel/protocol/tls/freeradius.h>
 
 #include "base.h"
-#include "cache.h"
+#include "ticket.h"
 #include "connection.h"
 #include "log.h"
 

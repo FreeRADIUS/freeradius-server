@@ -4,7 +4,7 @@
 #  resume the session the first one stored, then reject it, and check that
 #  clear session { ... } removed the entry.
 #
-#  This is the case fr_tls_ticket_stateful_clear_session() treats differently from every
+#  This is the case fr_tls_cache_clear_session() treats differently from every
 #  other failure.  A session which was never loaded was never in the cache,
 #  because store session { ... } does not run on a failed session, so the clear
 #  is dropped.  A session which was loaded is still in the cache after the

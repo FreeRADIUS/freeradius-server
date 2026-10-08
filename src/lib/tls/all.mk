@@ -9,7 +9,6 @@ SOURCES	:= \
 	alpn.c \
 	base.c \
 	bio.c \
-	cache.c \
 	cert.c \
 	conf.c \
 	connection.c \
@@ -18,6 +17,9 @@ SOURCES	:= \
 	pairs.c \
 	session.c \
 	strerror.c \
+	ticket.c \
+	ticket_stateful.c \
+	ticket_stateless.c \
 	utils.c \
 	verify.c \
 	version.c \

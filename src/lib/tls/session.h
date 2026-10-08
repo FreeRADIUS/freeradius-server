@@ -37,7 +37,7 @@ typedef struct fr_tls_session_s fr_tls_session_t;
 #include <freeradius-devel/util/dbuff.h>
 
 #include "bio.h"
-#include "cache.h"
+#include "ticket.h"
 #include "conf.h"
 #include "index.h"
 #include "verify.h"

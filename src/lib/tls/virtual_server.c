@@ -34,7 +34,7 @@
 
 #include "attrs.h"
 #include "base.h"
-#include "cache.h"
+#include "ticket.h"
 
 /** Push a request to perform a policy action using a virtual server
  *
