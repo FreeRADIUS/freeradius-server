@@ -1644,15 +1644,6 @@ void fr_tls_session_close_send(request_t *request, fr_tls_session_t *session)
 	if (!bound) fr_tls_session_request_unbind(session->ssl);
 }
 
-/** Process the result of `establish session { ... }`
- *
- * As this is just a logging session, it's result doesn't affect the parent.
- */
-static unlang_action_t tls_establish_session_result(UNUSED request_t *request, UNUSED void *uctx)
-{
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
-
 /** Push an `establish session { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
@@ -1677,22 +1668,13 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	ua = fr_tls_call_push(child, tls_establish_session_result, conf, tls_session, false);
+	ua = fr_tls_call_push(child, NULL, conf, tls_session, false);
 	if (ua == UNLANG_ACTION_FAIL) {
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
 
 	return ua;
-}
-
-/** Process the result of `fail session { ... }`
- *
- * As this is just a logging section, its result doesn't affect the parent.
- */
-static unlang_action_t tls_fail_session_result(UNUSED request_t *request, UNUSED void *uctx)
-{
-	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** Discard the session, once `fail session { ... }` has run
@@ -1748,7 +1730,7 @@ unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t
 	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_fail_session->vb_uint32,
 					 &tls_session->session_id));
 
-	ua = fr_tls_call_push(child, tls_fail_session_result, conf, tls_session, false);
+	ua = fr_tls_call_push(child, NULL, conf, tls_session, false);
 	if (!fr_cond_assert(ua == UNLANG_ACTION_PUSHED_CHILD)) {
 		talloc_free(child);
 		unlang_interpet_frame_discard(request);

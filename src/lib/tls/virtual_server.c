@@ -47,6 +47,7 @@
  * @param[in] resume		Function to call after the virtual server
  *      			finishes processing the request. uctx will
  *				be a pointer to the provided tls_session.
+ *				May be NULL, when nothing needs the result.
  * @param[in] conf		the tls configuration.
  * @param[in] tls_session	The current tls_session.
  * @param[in] cache_required	Does this action require the tls cache
@@ -93,12 +94,12 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 	 *	Setup a function to execute after the
 	 *	subrequest completes.
 	 */
-	if (!fr_cond_assert(unlang_function_push(child,
-						 NULL,
-						 resume,
-						 NULL,
-						 0, UNLANG_SUB_FRAME,
-						 tls_session) == UNLANG_ACTION_PUSHED_CHILD)) {
+	if (resume && !fr_cond_assert(unlang_function_push(child,
+							   NULL,
+							   resume,
+							   NULL,
+							   0, UNLANG_SUB_FRAME,
+							   tls_session) == UNLANG_ACTION_PUSHED_CHILD)) {
 		/*
 		 *	We just pushed the child frame onto the stack.
 		 *	We don't want the subrequest to execute, if we then
