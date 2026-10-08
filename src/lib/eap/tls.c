@@ -71,6 +71,7 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/server/pair.h>
 #include "tls.h"
@@ -954,6 +955,7 @@ static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(requ
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(eap_tls_session->tls_session, fr_tls_session_t);
+	unlang_action_t		ua;
 
 	/*
 	 *	Will run after the handshake round completes
@@ -965,9 +967,12 @@ static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(requ
 				 0, UNLANG_SUB_FRAME,
 				 eap_session) < 0) return UNLANG_ACTION_FAIL;
 
-	if (fr_tls_session_async_handshake_push(request, tls_session) < 0) return UNLANG_ACTION_FAIL;
+	if (!fr_cond_assert((ua = fr_tls_session_async_handshake_push(request, tls_session)) == UNLANG_ACTION_PUSHED_CHILD)) {
+		unlang_interpet_frame_discard(request);	/* Pop the resume function */
+		return UNLANG_ACTION_FAIL;
+	}
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return ua;
 }
 
 /** Process an EAP TLS request

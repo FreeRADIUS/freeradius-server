@@ -36,6 +36,7 @@
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/subrequest.h>
@@ -1694,55 +1695,6 @@ static unlang_action_t tls_fail_session_result(UNUSED request_t *request, UNUSED
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Push a `fail session { ... }` call into the current request, using a subrequest
- *
- * @param[in] request		The current request.
- * @param[in] conf		TLS configuration.
- * @param[in] tls_session	The session which failed.
- * @return
- *	- UNLANG_ACTION_PUSHED_CHILD on success.
- *      - UNLANG_ACTION_FAIL on failure.
- */
-static unlang_action_t tls_fail_session_push(request_t *request, fr_tls_conf_t *conf,
-					     fr_tls_session_t *tls_session)
-{
-	request_t	*child;
-	unlang_action_t	ua;
-
-	fr_assert(conf->virtual_server);
-
-	/*
-	 *	A session which failed before OpenSSL established one has
-	 *	no ID to report, which tls_subrequest_alloc() handles.
-	 */
-	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_fail_session->vb_uint32,
-					 &tls_session->session_id));
-
-	ua = fr_tls_call_push(child, tls_fail_session_result, conf, tls_session, false);
-	if (ua == UNLANG_ACTION_FAIL) {
-		talloc_free(child);
-		return UNLANG_ACTION_FAIL;
-	}
-
-	return ua;
-}
-
-/** Run `fail session { ... }`, if the section exists
- *
- * Runs whether or not sessions are being cached.  The section is a place for
- * policy to record that a TLS session failed, which is useful to an admin
- * whether or not session resumption is configured.
- */
-static unlang_action_t tls_session_fail_start(request_t *request, void *uctx)
-{
-	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
-	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
-
-	if (!conf->fail_session) return UNLANG_ACTION_CALCULATE_RESULT;
-
-	return tls_fail_session_push(request, conf, tls_session);
-}
-
 /** Discard the session, once `fail session { ... }` has run
  *
  */
@@ -1770,14 +1722,40 @@ static unlang_action_t tls_session_fail_clear(request_t *request, void *uctx)
  * @param[in] tls_session	which failed.
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD	- the sections are running.
- *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - there is no `fail session` section, and
+ *	  clearing the session pushed nothing.
+ *	- UNLANG_ACTION_FAIL		- a frame could not be pushed.
  */
 unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t *tls_session)
 {
-	return unlang_function_push(request,
-				    tls_session_fail_start,
-				    tls_session_fail_clear,
-				    NULL, 0, UNLANG_SUB_FRAME, tls_session);
+	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	request_t		*child;
+	unlang_action_t		ua;
+
+	if (!conf->fail_session) return tls_session_fail_clear(request, tls_session);
+
+	if (unlang_function_push(request,
+				 NULL,
+				 tls_session_fail_clear,
+				 NULL, 0, UNLANG_SUB_FRAME, tls_session) == UNLANG_ACTION_FAIL) {
+		return UNLANG_ACTION_FAIL;
+	}
+
+	/*
+	 *	A session which failed before OpenSSL established one has
+	 *	no ID to report, which tls_subrequest_alloc() handles.
+	 */
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_fail_session->vb_uint32,
+					 &tls_session->session_id));
+
+	ua = fr_tls_call_push(child, tls_fail_session_result, conf, tls_session, false);
+	if (!fr_cond_assert(ua == UNLANG_ACTION_PUSHED_CHILD)) {
+		talloc_free(child);
+		unlang_interpet_frame_discard(request);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	return ua;
 }
 
 /** Finish off a handshake round, possibly adding attributes to the request
@@ -2822,16 +2800,16 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 		return UNLANG_ACTION_FAIL;
 	}
 
-	if (unlang_function_push(child,
-				 NULL,
-				 tls_new_session_result,
-				 NULL, 0,
-				 UNLANG_SUB_FRAME, NULL) < 0) {
+	if (!fr_cond_assert(unlang_function_push(child,
+						 NULL,
+						 tls_new_session_result,
+						 NULL, 0,
+						 UNLANG_SUB_FRAME, NULL) == UNLANG_ACTION_PUSHED_CHILD)) {
 		/*
-		 *	A frame was pushed onto the stack, and that frame points to the subrequest we just
-		 *	allocated.  We therefore have to discard the frame on error, rather than just
-		 *	returning (which would process the subrequest), or freeing the subrequest (which would
-		 *	still have its frame processed, leading to a crash).
+		 *	We just pushed the child frame onto the stack.
+		 *	We don't want the subrequest to execute, if we then
+		 *	failed to push the function that executes after it
+		 *	returns.
 		 */
 	error:
 		unlang_interpet_frame_discard(request);
