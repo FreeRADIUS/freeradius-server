@@ -299,9 +299,13 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 /*
  * talloc_get_type_abort() aborts unless ptr is a talloc chunk of the named
  * type, so the pointer it returns is checked, even if ptr came from a read().
+ * A NULL ptr also aborts, because the talloc abort handlers in
+ * src/lib/util/debug.c never return.
  */
 void *_talloc_get_type_abort(const void *ptr, const char *name, const char *location)
 {
+	if (!ptr) __coverity_panic__();
+
 	__coverity_mark_pointee_as_sanitized__(&ptr, TAINTED_SCALAR_GENERIC);
 	return (void *)ptr;
 }
