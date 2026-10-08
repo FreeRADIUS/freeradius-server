@@ -930,25 +930,6 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, ~FR_SIGNAL_CANCEL, query);
 }
 
-/** User object lookup as part of group membership xlat
- *
- * Called if the ldap membership xlat is used and the user DN is not already known
- */
-static unlang_action_t ldap_group_xlat_user_find(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
-{
-	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_group_xlat_ctx_t);
-
-	if (xlat_ctx->env_data->user_filter.type == FR_TYPE_STRING) xlat_ctx->filter = &xlat_ctx->env_data->user_filter;
-
-	xlat_ctx->basedn = &xlat_ctx->env_data->user_base;
-
-	return rlm_ldap_find_user_async(xlat_ctx,
-					/* discard, this function is only used by xlats */NULL,
-					xlat_ctx->inst, request,
-					xlat_ctx->basedn, xlat_ctx->filter,
-					xlat_ctx->ttrunk, xlat_ctx->attrs, &xlat_ctx->query);
-}
-
 /** Cancel an in-progress query for the LDAP group membership xlat
  *
  */
@@ -1129,11 +1110,29 @@ static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 
 	if (unlang_function_push_with_result(NULL,
 					     request,
-					     xlat_ctx->dn ? NULL : ldap_group_xlat_user_find,
+					     NULL,
 					     ldap_group_xlat_results,
 					     ldap_group_xlat_cancel, ~FR_SIGNAL_CANCEL,
 					     UNLANG_SUB_FRAME,
 					     xlat_ctx) < 0) goto error;
+
+	/*
+	 *	The user DN is not known yet, so look the user up first.
+	 *	ldap_group_xlat_results() runs once the search has completed.
+	 */
+	if (!xlat_ctx->dn) {
+		if (xlat_ctx->env_data->user_filter.type == FR_TYPE_STRING) xlat_ctx->filter = &xlat_ctx->env_data->user_filter;
+		xlat_ctx->basedn = &xlat_ctx->env_data->user_base;
+
+		if (rlm_ldap_find_user_async(xlat_ctx,
+					     /* discard, this function is only used by xlats */NULL,
+					     xlat_ctx->inst, request,
+					     xlat_ctx->basedn, xlat_ctx->filter,
+					     xlat_ctx->ttrunk, xlat_ctx->attrs, &xlat_ctx->query) == UNLANG_ACTION_FAIL) {
+			unlang_interpet_frame_discard(request);
+			goto error;
+		}
+	}
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }
