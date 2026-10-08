@@ -2707,6 +2707,19 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	SSL_set_verify(tls_session->ssl, verify_mode, fr_tls_verify_cert_cb);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 
+	/*
+	 *	Set the MTU from the configuration.  SOCK_STREAM ignores this.  EAP over-rides it which it's
+	 *	own calculation.  A datagram session passes it to SSL_set_mtu().
+	 *
+	 *	@todo - we should have a way for the application to update the MTU based on expected headers.
+	 *	i.e. the MTU here should be the "raw" full-packet MTU, not the MTU of the application-layer
+	 *	contents.
+	 *
+	 *	That's because the admin often can find out the raw MTU, or even guess, but knowing how large
+	 *	the application MTU is depends on IP version, etc.
+	 */
+	tls_session->mtu = conf->fragment_size;
+
 	if (conf->client_hello_parse) {
 		SSL_CTX_set_client_hello_cb(ssl_ctx, fr_tls_session_client_hello_cb, NULL);
 	}
