@@ -3,7 +3,7 @@
 Many "virtual" or "fake" attributes and configuration items have been
 removed or renamed in FreeRADIUS v4.
 
-[cols=",",options="header",]
+[options="header"]
 |===
 | Old Attribute Name or Function        | Replace with
 |                                       |

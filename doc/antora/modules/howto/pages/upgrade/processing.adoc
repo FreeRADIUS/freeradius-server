@@ -3,7 +3,7 @@
 All of the processing sections have been renamed. Sorry, but this was
 required for the new features in v4.
 
-[cols=",",options="header",]
+[options="header"]
 |===
 | Old Name                   | New Name
 | `authorize`                | `recv Access-Request`

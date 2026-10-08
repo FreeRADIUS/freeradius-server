@@ -4,7 +4,7 @@ The directories in the server source are laid out as follows:
 
 == Documentation
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",cols="50%,50%",options="header"]
 |===
 | Directory           | Description
 | `doc/`              | Various snippets of documentation.
@@ -23,7 +23,7 @@ The directories in the server source are laid out as follows:
 
 == Utility
 
-[cols=",",options="header",]
+[options="header"]
 |===
 |Directory   | Description
 | `mibs/`    | SNMP Mibs for the server.
@@ -32,7 +32,7 @@ The directories in the server source are laid out as follows:
 
 == Configuration
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",cols="50%,50%",options="header"]
 |===
 | Directory               | Description
 | `<root>/`               | Sample configuration files for the server.
@@ -48,7 +48,7 @@ The directories in the server source are laid out as follows:
 
 == Packaging
 
-[cols=",",options="header",]
+[options="header"]
 |===
 |Directory  | Description
 | `debian/` | Files to build a `freeradius` Debian Linux package.
@@ -58,7 +58,7 @@ The directories in the server source are laid out as follows:
 
 == Source
 
-[cols=",",options="header",]
+[options="header"]
 |===
 |Directory         | Description
 | `src/`           | Source code.
