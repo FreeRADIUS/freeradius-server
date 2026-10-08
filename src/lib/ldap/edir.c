@@ -157,20 +157,6 @@ finish:
 	return err;
 }
 
-/** Submit LDAP extended operation to retrieve Universal Password
- *
- * @param p_result	Result of current operation.
- * @param request	Current request.
- * @param uctx		eDir lookup context.
- * @return One of the RLM_MODULE_* values.
- */
-static unlang_action_t ldap_edir_get_password_start(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
-{
-	ldap_edir_ctx_t	*edir_ctx = talloc_get_type_abort(uctx, ldap_edir_ctx_t);
-	return fr_ldap_trunk_extended(edir_ctx, &edir_ctx->query, request, edir_ctx->ttrunk,
-				      edir_ctx->reqoid, edir_ctx->dn, NULL, NULL);
-}
-
 /** Handle results of retrieving Universal Password
  *
  * @param p_result	Result of current operation.
@@ -295,6 +281,7 @@ unlang_action_t fr_ldap_edir_get_password(unlang_result_t *p_result,
 					  fr_dict_attr_t const *password_da)
 {
 	ldap_edir_ctx_t	*edir_ctx;
+	unlang_action_t	ua;
 	int		err = 0;
 
 	if (!dn || !*dn) {
@@ -317,12 +304,25 @@ unlang_action_t fr_ldap_edir_get_password(unlang_result_t *p_result,
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_function_push_with_result(p_result,
-						request,
-						ldap_edir_get_password_start,
-						ldap_edir_get_password_resume,
-						ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
-						UNLANG_SUB_FRAME, edir_ctx);
+	if (unlang_function_push_with_result(p_result,
+					     request,
+					     NULL,
+					     ldap_edir_get_password_resume,
+					     ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
+					     UNLANG_SUB_FRAME, edir_ctx) == UNLANG_ACTION_FAIL) {
+		talloc_free(edir_ctx);
+		RETURN_UNLANG_FAIL;
+	}
+
+	ua = fr_ldap_trunk_extended(edir_ctx, &edir_ctx->query, request, ttrunk,
+				    edir_ctx->reqoid, edir_ctx->dn, NULL, NULL);
+	if (ua == UNLANG_ACTION_FAIL) {
+		unlang_interpet_frame_discard(request);
+		talloc_free(edir_ctx);
+		RETURN_UNLANG_FAIL;
+	}
+
+	return ua;
 }
 
 char const *fr_ldap_edir_errstr(int code)
