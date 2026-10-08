@@ -94,19 +94,6 @@ static void unlang_function_signal(request_t *request,
 #define RESTORE_CALLER \
 	request->module = caller;
 
-/** Drop the repeat function of a frame
- *
- * @param[out] frame		to clear the repeatable flag on.
- * @param[out] state		to clear the repeat function in.
- */
-static inline CC_HINT(always_inline)
-void function_repeat_disarm(unlang_stack_frame_t *frame, unlang_frame_state_func_t *state)
-{
-	REPEAT(state) = NULL;
-	state->repeat_name = NULL;
-	repeatable_clear(frame);
-}
-
 /** Call a generic function that produces a result
  *
  * @param[out] p_result		The frame result.
@@ -127,7 +114,6 @@ static unlang_action_t call_with_result_repeat(unlang_result_t *p_result, reques
 		goto done;
 	}
 
-again:
 	RDEBUG4("Calling repeat function %p (%s)", REPEAT(state), state->repeat_name);
 
 	/*
@@ -140,7 +126,7 @@ again:
 	if (REPEAT(state)) { /* set again by func */
 		switch (ua) {
 		case UNLANG_ACTION_CALCULATE_RESULT:
-			goto again;
+			break;
 
 		default:
 			frame_repeat(frame, call_with_result_repeat);
@@ -173,7 +159,6 @@ static unlang_action_t call_with_result(unlang_result_t *p_result, request_t *re
 	if (REPEAT(state)) {
 		switch (ua) {
 		case UNLANG_ACTION_CALCULATE_RESULT:
-			ua = call_with_result_repeat(p_result, request, frame);
 			break;
 
 		default:
@@ -205,7 +190,6 @@ static unlang_action_t call_no_result_repeat(UNUSED unlang_result_t *p_result, r
 		goto done;
 	}
 
-again:
 	RDEBUG4("Calling repeat function %p (%s)", REPEAT(state), state->repeat_name);
 
 	/*
@@ -218,7 +202,7 @@ again:
 	if (REPEAT(state)) { /* set again by func */
 		switch (ua) {
 		case UNLANG_ACTION_CALCULATE_RESULT:
-			goto again;
+			break;
 
 		case UNLANG_ACTION_FAIL:
 		no_action_fail:
@@ -260,7 +244,6 @@ static unlang_action_t call_no_result(UNUSED unlang_result_t *p_result, request_
 	if (REPEAT(state)) {
 		switch (ua) {
 		case UNLANG_ACTION_CALCULATE_RESULT:
-			ua = call_no_result_repeat(p_result, request, frame);
 			break;
 
 		case UNLANG_ACTION_FAIL:
@@ -311,8 +294,12 @@ int unlang_function_clear(request_t *request)
 
 /** Clear the pending repeat function, and keep the signal handler
  *
- * For a function which armed a repeat before a push, and then found nothing
- * to push.  The function frame being modified must be at the top of the stack.
+ * If a unlang function returns UNLANG_ACTION_CALCULATE_RESULT with a repeat
+ * function set, the repeat function is never executed, and the signal handler
+ * for the frame (if set) is called to clean up state.
+ *
+ * If the returning function does not want the cancellation callback to execute
+ * it should call `unlang_function_repeat_clear` to clear the repeat function.
  *
  * @param[in] request	The current request.
  * @return
@@ -324,12 +311,17 @@ int unlang_function_repeat_clear(request_t *request)
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 
+	unlang_frame_state_func_t	*state;
+
 	if (frame->instruction->type != UNLANG_TYPE_FUNCTION) {
 		RERROR("Can't clear repeat function on non-function frame");
 		return -1;
 	}
 
-	function_repeat_disarm(frame, talloc_get_type_abort(frame->state, unlang_frame_state_func_t));
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+	REPEAT(state) = NULL;
+	state->repeat_name = NULL;
+	repeatable_clear(frame);
 
 	return 0;
 }
