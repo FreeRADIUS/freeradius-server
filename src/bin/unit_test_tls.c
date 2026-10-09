@@ -1688,6 +1688,13 @@ int main(int argc, char *argv[])
 	utt->conn->write = tls_connection_write;
 
 	/*
+	 *	The same value which fr_tls_ctx_alloc() is given below.  The
+	 *	connection reads it for the socket's own rules, such as what
+	 *	a read() of zero octets means.
+	 */
+	utt->conn->socket_type = SOCK_STREAM;
+
+	/*
 	 *	Bootstrap and instantiate the virtual servers and the modules
 	 *	that the virtual servers use.  The TLS subsections name a
 	 *	virtual server, so server_init() has to run before

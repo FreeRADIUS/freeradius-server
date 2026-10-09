@@ -13,6 +13,7 @@ SOURCES	:= \
 	conf.c \
 	connection.c \
 	ctx.c \
+	dtls.c \
 	log.c \
 	pairs.c \
 	session.c \

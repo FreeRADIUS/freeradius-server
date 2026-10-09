@@ -49,6 +49,7 @@
 
 #include "attrs.h"
 #include "base.h"
+#include "dtls.h"
 #include "log.h"
 
 #include <openssl/x509v3.h>
@@ -1418,8 +1419,6 @@ finish:
  * `Session-Invalid`.  Replacing would keep that second report and lose the
  * refusal which caused it, which is the part an administrator needs.
  *
- * `src/lib/tls/alerts.md` lists every error and where the code decides it.
- *
  * @param[in] request	to add the error to.  A NULL request is ignored,
  *			because several OpenSSL callbacks run without one.
  * @param[in] error	an `FR_ERROR_VALUE_*` value from
@@ -2359,6 +2358,11 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 	tls_session = talloc_zero(ctx, fr_tls_session_t);
 	if (!tls_session) return NULL;
 
+	/*
+	 *	The socket type determines whether we use TLS or DTLS.
+	 */
+	tls_session->socket_type = (SSL_CTX_get_ssl_method(ssl_ctx) == DTLS_method()) ? SOCK_DGRAM : SOCK_STREAM;
+
 	tls_session->ctx = ssl_ctx;
 
 	tls_session->ssl = SSL_new(ssl_ctx);
@@ -2548,7 +2552,14 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 
-	tls_session->mtu = conf->fragment_size;
+	/*
+	 *	Datagrams need to be limited to a pre-configured MTU.  So we remember that, and tell OpenSSL
+	 *	to limit the MTU.
+	 */
+	if ((tls_session->socket_type == SOCK_DGRAM) && (fr_dtls_session_init(tls_session, conf) < 0)) {
+		talloc_free(tls_session);
+		return NULL;
+	}
 
 	/*
 	 *	Session resumption needs somewhere to keep its state, and is
@@ -2708,17 +2719,12 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 
 	/*
-	 *	Set the MTU from the configuration.  SOCK_STREAM ignores this.  EAP over-rides it which it's
-	 *	own calculation.  A datagram session passes it to SSL_set_mtu().
-	 *
-	 *	@todo - we should have a way for the application to update the MTU based on expected headers.
-	 *	i.e. the MTU here should be the "raw" full-packet MTU, not the MTU of the application-layer
-	 *	contents.
-	 *
-	 *	That's because the admin often can find out the raw MTU, or even guess, but knowing how large
-	 *	the application MTU is depends on IP version, etc.
+	 *	Datagrams need to be limited to a pre-configured MTU.  So we remember that, and tell OpenSSL
+	 *	to limit the MTU.
 	 */
-	tls_session->mtu = conf->fragment_size;
+	if ((tls_session->socket_type == SOCK_DGRAM) && (fr_dtls_session_init(tls_session, conf) < 0)) {
+		goto error;
+	}
 
 	if (conf->client_hello_parse) {
 		SSL_CTX_set_client_hello_cb(ssl_ctx, fr_tls_session_client_hello_cb, NULL);

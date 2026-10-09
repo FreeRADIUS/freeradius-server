@@ -253,6 +253,12 @@ struct fr_tls_session_s {
 
 	size_t 			mtu;				//!< Maximum record fragment size.
 
+	int			socket_type;			//!< SOCK_STREAM for TLS, SOCK_DGRAM for DTLS.
+								///< Taken from the context the session was
+								///< allocated against, so that the rest of the
+								///< code reads a field rather than asking
+								///< OpenSSL the same question repeatedly.
+
 	void			*opaque;			//!< Used to store module specific data.
 
 	unsigned char		*alpn;				//!< Protocol name both ends agreed on, as

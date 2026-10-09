@@ -148,6 +148,11 @@ struct fr_tls_connection_s {
 	fr_tls_connection_fail_t failed;	       	//!< why the connection failed
 	int			error;			//!< for system call errors
 
+	int			socket_type;		//!< SOCK_STREAM or SOCK_DGRAM, the same value the
+							///< application passed to fr_tls_ctx_alloc().  The
+							///< connection reads it for the socket's own rules,
+							///< such as what a read() of zero octets means.
+
 	fr_tls_connection_io_state_t io_state;		//!< IO state, set by the application
 
 	bool			client;			//!< Act as the client and connect to a server,

@@ -350,12 +350,18 @@ fr_tls_connection_io_state_t fr_tls_connection_io_error(fr_tls_connection_t *con
 	}
 
 	/*
-	 *	A read() of zero octets is the end of a stream.  errno says
-	 *	nothing about an orderly close, so it is not recorded.
+	 *	A zero-read is "EOF" for stream sockets, and "no data"
+	 *	for datagram sockets.
 	 */
 	if (slen == 0) {
-		conn->io_state = FR_TLS_CONNECTION_IO_EOF;
 		error = 0;
+
+		if (conn->socket_type == SOCK_DGRAM) {
+			conn->io_state = FR_TLS_CONNECTION_IO_OK;
+			goto act;
+		}
+
+		conn->io_state = FR_TLS_CONNECTION_IO_EOF;
 		goto act;
 	}
 
@@ -640,7 +646,9 @@ static unlang_action_t tls_connection_new_session(request_t *request, void *uctx
 
 /** Return how many bytes should be written.
  *
- * This is a function in preparation for adding DTLS.
+ * For stream sockets, return all of the data in the buffer.
+ *
+ * For datagram sockets, return the length of the first datagram.
  *
  * @param[in] conn	to read.
  * @return the number of octets to write, or 0 when nothing is waiting.
@@ -648,6 +656,8 @@ static unlang_action_t tls_connection_new_session(request_t *request, void *uctx
 static size_t tls_connection_write_len(fr_tls_connection_t *conn)
 {
 	fr_tls_session_t *tls_session = conn->tls_session;
+
+	if (conn->socket_type == SOCK_DGRAM) return fr_tls_session_datagram_len(tls_session);
 
 	return fr_dbuff_remaining(tls_session->dirty_out);
 }
@@ -678,6 +688,11 @@ int fr_tls_connection_push(fr_tls_connection_t *conn)
 	 *	frees this one first.
 	 */
 	if (!conn->name) MEM(conn->name = talloc_strdup(conn, "(TLS)"));
+
+	/*
+	 *	Check that the TLS session socket type matches the connection socket type.
+	 */
+	fr_assert(!conn->tls_session || (conn->tls_session->socket_type == conn->socket_type));
 
 	return unlang_function_push(conn->request,
 				    tls_connection_new_session,
@@ -793,7 +808,18 @@ int fr_tls_connection_write(fr_tls_connection_t *conn)
 
 		fr_assert((size_t) slen <= size);
 
+		/*
+		 *	Datagrams are either fully written, or not at all.
+		 */
+		fr_assert((conn->socket_type != SOCK_DGRAM) || ((size_t) slen == size));
+
 		fr_dbuff_advance(conn->tls_session->dirty_out, (size_t) slen);
+
+		/*
+		 *	The cursor has passed this datagram, so the length
+		 *	which described it is no longer needed.
+		 */
+		if (conn->socket_type == SOCK_DGRAM) fr_tls_session_datagram_sent(conn->tls_session);
 	}
 
 	return 0;
