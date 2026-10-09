@@ -382,14 +382,16 @@ static void state_entry_fill(fr_state_entry_t *entry, fr_value_box_t const *vb)
 	memcpy(&entry->state, &hash, sizeof(hash));
 }
 
-/** Create a new state entry
+/** Create a new state entry, and store state_ctx and data in it
  *
- * @note Must be called with the mutex held.  Returns with the mutex held on
- *	 success, and with the mutex released on failure.
+ * @note Takes the mutex, and releases it before returning, on success and on
+ *	 failure.  The mutex is released while the entry is allocated, so it is
+ *	 taken and released twice.
  */
 static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *request,
 					    fr_pair_list_t *reply_list, fr_state_entry_t *old,
-					    fr_value_box_t const *dedup_key)
+					    fr_value_box_t const *dedup_key,
+					    fr_pair_t *state_ctx, fr_dlist_head_t *data)
 {
 	fr_time_t		now = fr_time();
 	fr_pair_t		*vp;
@@ -398,6 +400,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	uint64_t		timed_out = 0;
 	bool			too_many = false;
 	fr_dlist_head_t		to_free;
+
+	PTHREAD_MUTEX_LOCK(&state->mutex);
 
 	/*
 	 *	If we have a previous entry, then it can't be in an
@@ -654,6 +658,15 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 	entry->thawed = NULL;
 
+	fr_assert(entry->ctx == NULL);
+	fr_assert(request->session_state_ctx);
+
+	entry->seq_start = request->seq_start;
+	entry->ctx = state_ctx;
+	fr_dlist_move(&entry->data, data);
+
+	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
 	return entry;
 }
 
@@ -891,23 +904,14 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 	MEM(state_ctx = request_state_replace(request, NULL));
 
 	/*
-	 *	Reuses old if possible, and leaves the mutex unlocked on failure.
+	 *	Reuses old if possible.  On failure, data is still ours.
 	 */
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_create(state, request, &request->reply_pairs, old, dedup_key);
+	entry = state_entry_create(state, request, &request->reply_pairs, old, dedup_key, state_ctx, &data);
 	if (!entry) {
 		talloc_free(request_state_replace(request, state_ctx));
 		request_data_restore(request, &data);	/* Put it back again */
 		return -1;
 	}
-
-	fr_assert(entry->ctx == NULL);
-	fr_assert(request->session_state_ctx);
-
-	entry->seq_start = request->seq_start;
-	entry->ctx = state_ctx;
-	fr_dlist_move(&entry->data, &data);
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	RDEBUG3("%s - saved", state->da->name);
 	REQUEST_VERIFY(request);
