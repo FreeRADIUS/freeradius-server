@@ -1,0 +1,48 @@
+#  Test vectors for TACACS+ session IDs
+#
+#  When a request has no Session-Id, the encoder picks a random one.
+#  rand-seed fixes the sequence of random numbers, so the session ID is
+#  the same on every run.
+#
+proto tacacs
+proto-dictionary tacacs
+fuzzer-out tacacs
+
+#
+#  With no argument, the seed is 0
+#
+rand-seed
+match 0
+
+pair Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 1, Packet.Flags = None, Packet-Body-Type = Request, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob"
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 1, Flags = ::None }, Packet-Body-Type = ::Request, Authentication-Method = ::TACACSPLUS, Privilege-Level = ::Minimum, Authentication-Type = ::PAP, Authentication-Service = ::PPP, User-Name = "bob"
+
+encode-proto -
+match c0 02 01 01 39 d3 6d e7 00 00 00 0b 06 00 02 03 03 00 00 00 62 6f 62
+
+#
+#  The same seed gives the same session ID
+#
+rand-seed 0
+match 0
+
+pair Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 1, Packet.Flags = None, Packet-Body-Type = Request, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob"
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 1, Flags = ::None }, Packet-Body-Type = ::Request, Authentication-Method = ::TACACSPLUS, Privilege-Level = ::Minimum, Authentication-Type = ::PAP, Authentication-Service = ::PPP, User-Name = "bob"
+
+encode-proto -
+match c0 02 01 01 39 d3 6d e7 00 00 00 0b 06 00 02 03 03 00 00 00 62 6f 62
+
+#
+#  A different seed gives a different session ID
+#
+rand-seed 1
+match 1
+
+pair Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 1, Packet.Flags = None, Packet-Body-Type = Request, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob"
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 1, Flags = ::None }, Packet-Body-Type = ::Request, Authentication-Method = ::TACACSPLUS, Privilege-Level = ::Minimum, Authentication-Type = ::PAP, Authentication-Service = ::PPP, User-Name = "bob"
+
+encode-proto -
+match c0 02 01 01 12 39 33 12 00 00 00 0b 06 00 02 03 03 00 00 00 62 6f 62
+
+count
+match 21

@@ -71,6 +71,30 @@ void fr_rand_init(void)
 	fr_rand_initialized = true;
 }
 
+/** Seed the random number generator with a fixed value
+ *
+ * The same seed always produces the same sequence from fr_rand(), so tests
+ * can match output that includes random values.  The server must never call
+ * this, as anyone who knows the seed can predict every random value.
+ *
+ * @param[in] seed	to start the sequence from.
+ */
+void fr_rand_seed(uint64_t seed)
+{
+	memset(&fr_rand_pool, 0, sizeof(fr_rand_pool));
+
+	/*
+	 *	Set the seed one 32-bit word at a time, so the sequence
+	 *	is the same whatever the byte order of the host.
+	 */
+	fr_rand_pool.randrsl[0] = (uint32_t)seed;
+	fr_rand_pool.randrsl[1] = (uint32_t)(seed >> 32);
+
+	fr_isaac_init(&fr_rand_pool);
+	fr_rand_pool.randcnt = 0;
+	fr_rand_initialized = true;
+}
+
 /** Mix data into the random number generator.
  *
  * May be called any number of times.

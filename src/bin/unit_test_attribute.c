@@ -48,6 +48,7 @@ typedef struct request_s request_t;
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -3002,6 +3003,31 @@ static size_t command_proto_dictionary_root(command_result_t *result, command_fi
 	RETURN_OK(0);
 }
 
+/** Seed the random number generator, so fr_rand() returns a fixed sequence
+ *
+ */
+static size_t command_rand_seed(command_result_t *result, UNUSED command_file_ctx_t *cc,
+				char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	uint64_t	seed = 0;
+	char		*end;
+
+	fr_skip_whitespace(in);
+
+	if (*in != '\0') {
+		errno = 0;
+		seed = strtoull(in, &end, 10);
+		if ((*in == '-') || errno || *end) {
+			fr_strerror_const_push("Invalid integer");
+			RETURN_COMMAND_ERROR();
+		}
+	}
+
+	fr_rand_seed(seed);
+
+	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%" PRIu64, seed));
+}
+
 /** Parse an reprint a tmpl expansion
  *
  */
@@ -3788,6 +3814,12 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "proto-dictionary-root[ <root_attribute>]",
 					.description = "Set the root attribute for the current protocol dictionary.  "
 						       "If no attribute name is provided, the root will be reset to the root of the current dictionary",
+				}},
+	{ L("rand-seed"),	&(command_entry_t){
+					.func = command_rand_seed,
+					.usage = "rand-seed[ <integer>]",
+					.description = "Seed the random number generator, so random values such as "
+						       "identifiers and salts are the same on every run.  The seed defaults to 0"
 				}},
 	{ L("raw "),		&(command_entry_t){
 					.func = command_encode_raw,
