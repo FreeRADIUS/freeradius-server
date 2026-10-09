@@ -35,20 +35,47 @@ typedef unsigned int uint32_t;
 typedef ssize_t	fr_slen_t;
 
 /*
- * Field order matches the real structs, so p is at the same offset.
+ * The unions match the real structs.  FR_SBUFF_IN(), FR_SBUFF_OUT() and
+ * FR_DBUFF_TMP() set the immutable members (buff_i, start_i, end_i and
+ * p_i), so the models below write through p_i, the member the caller's
+ * buffer pointer was stored in.
  */
 typedef struct {
-	char	*buff;
-	char	*start;
-	char	*end;
-	char	*p;
+	union {
+		char const	*buff_i;
+		char		*buff;
+	};
+	union {
+		char const	*start_i;
+		char		*start;
+	};
+	union {
+		char const	*end_i;
+		char		*end;
+	};
+	union {
+		char const	*p_i;
+		char		*p;
+	};
 }	fr_sbuff_t;
 
 typedef struct {
-	uint8_t	*buff;
-	uint8_t	*start;
-	uint8_t	*end;
-	uint8_t	*p;
+	union {
+		uint8_t const	*buff_i;
+		uint8_t		*buff;
+	};
+	union {
+		uint8_t const	*start_i;
+		uint8_t		*start;
+	};
+	union {
+		uint8_t const	*end_i;
+		uint8_t		*end;
+	};
+	union {
+		uint8_t const	*p_i;
+		uint8_t		*p;
+	};
 }	fr_dbuff_t;
 
 typedef enum {
@@ -72,7 +99,7 @@ fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alph
 	fr_slen_t	result;
 
 	/* result hex characters, plus the terminating '\0' */
-	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result + 1);
+	if (result >= 0) __coverity_write_buffer_bytes__((void *)out->p_i, result + 1);
 
 	return result;
 }
@@ -83,7 +110,7 @@ fr_slen_t fr_base16_decode_nstd(fr_sbuff_err_t *err, fr_dbuff_t *out, fr_sbuff_t
 	fr_slen_t	result;
 
 	/* result decoded bytes, no terminator */
-	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result);
+	if (result >= 0) __coverity_write_buffer_bytes__((void *)out->p_i, result);
 
 	return result;
 }
@@ -159,7 +186,7 @@ fr_sbuff_err_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size
 {
 	fr_sbuff_err_t	result;
 
-	if (result == FR_SBUFF_OK) __coverity_write_buffer_bytes__(out->p, len);
+	if (result == FR_SBUFF_OK) __coverity_write_buffer_bytes__((void *)out->p_i, len);
 
 	return result;
 }
@@ -170,7 +197,7 @@ fr_sbuff_err_t fr_sbuff_out_bstrncpy_allowed(size_t *len, fr_sbuff_t *out, fr_sb
 	fr_sbuff_err_t	result;
 	size_t		copied;
 
-	__coverity_write_buffer_bytes__(out->p, copied + 1);
+	__coverity_write_buffer_bytes__((void *)out->p_i, copied + 1);
 	if (len) *len = copied;
 
 	return result;
@@ -188,7 +215,7 @@ fr_sbuff_err_t fr_sbuff_out_bstrncpy_until(size_t *len, fr_sbuff_t *out, fr_sbuf
 	fr_sbuff_err_t	result;
 	size_t		copied;
 
-	__coverity_write_buffer_bytes__(out->p, copied + 1);
+	__coverity_write_buffer_bytes__((void *)out->p_i, copied + 1);
 	if (len) *len = copied;
 
 	return result;
@@ -201,7 +228,7 @@ fr_sbuff_err_t fr_sbuff_out_unescape_until(size_t *len, fr_sbuff_t *out, fr_sbuf
 	fr_sbuff_err_t	result;
 	size_t		copied;
 
-	__coverity_write_buffer_bytes__(out->p, copied + 1);
+	__coverity_write_buffer_bytes__((void *)out->p_i, copied + 1);
 	if (len) *len = copied;
 
 	return result;
@@ -212,7 +239,7 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
 {
 	ssize_t	result;
 
-	if (result > 0) __coverity_write_buffer_bytes__(out->p, result);
+	if (result > 0) __coverity_write_buffer_bytes__((void *)out->p_i, result);
 
 	return result;
 }
@@ -224,7 +251,7 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 {
 	ssize_t	result;
 
-	if (result > 0) __coverity_write_buffer_bytes__(out->p, result);
+	if (result > 0) __coverity_write_buffer_bytes__((void *)out->p_i, result);
 
 	return result;
 }
@@ -255,7 +282,7 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 {
 	fr_slen_t result;
 
-	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result + 1);
+	if (result >= 0) __coverity_write_buffer_bytes__((void *)out->p_i, result + 1);
 
 	return result;
 }
