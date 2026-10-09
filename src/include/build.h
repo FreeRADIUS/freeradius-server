@@ -274,53 +274,67 @@ do { \
  */
 #define VA_NARG(...)    _VA_NARG(__VA_ARGS__, VA_RSEQ_N())
 
-/** Expansion table for VA_STRINGIFY, one entry per supported argument count
+/** Rescan an argument list enough times for VA_FOR_EACH to unroll 256 elements
+ *
+ * Each level rescans four times.  Four levels give 4^4 rescans, and the
+ * preprocessor performs one step of the VA_FOR_EACH recursion per rescan.
  */
-#define _VA_STR_1(_a)		#_a
-#define _VA_STR_2(_a, ...)	#_a, _VA_STR_1(__VA_ARGS__)
-#define _VA_STR_3(_a, ...)	#_a, _VA_STR_2(__VA_ARGS__)
-#define _VA_STR_4(_a, ...)	#_a, _VA_STR_3(__VA_ARGS__)
-#define _VA_STR_5(_a, ...)	#_a, _VA_STR_4(__VA_ARGS__)
-#define _VA_STR_6(_a, ...)	#_a, _VA_STR_5(__VA_ARGS__)
-#define _VA_STR_7(_a, ...)	#_a, _VA_STR_6(__VA_ARGS__)
-#define _VA_STR_8(_a, ...)	#_a, _VA_STR_7(__VA_ARGS__)
-#define _VA_STR_9(_a, ...)	#_a, _VA_STR_8(__VA_ARGS__)
-#define _VA_STR_10(_a, ...)	#_a, _VA_STR_9(__VA_ARGS__)
-#define _VA_STR_11(_a, ...)	#_a, _VA_STR_10(__VA_ARGS__)
-#define _VA_STR_12(_a, ...)	#_a, _VA_STR_11(__VA_ARGS__)
-#define _VA_STR_13(_a, ...)	#_a, _VA_STR_12(__VA_ARGS__)
-#define _VA_STR_14(_a, ...)	#_a, _VA_STR_13(__VA_ARGS__)
-#define _VA_STR_15(_a, ...)	#_a, _VA_STR_14(__VA_ARGS__)
-#define _VA_STR_16(_a, ...)	#_a, _VA_STR_15(__VA_ARGS__)
-#define _VA_STR_17(_a, ...)	#_a, _VA_STR_16(__VA_ARGS__)
-#define _VA_STR_18(_a, ...)	#_a, _VA_STR_17(__VA_ARGS__)
-#define _VA_STR_19(_a, ...)	#_a, _VA_STR_18(__VA_ARGS__)
-#define _VA_STR_20(_a, ...)	#_a, _VA_STR_19(__VA_ARGS__)
-#define _VA_STR_21(_a, ...)	#_a, _VA_STR_20(__VA_ARGS__)
-#define _VA_STR_22(_a, ...)	#_a, _VA_STR_21(__VA_ARGS__)
-#define _VA_STR_23(_a, ...)	#_a, _VA_STR_22(__VA_ARGS__)
-#define _VA_STR_24(_a, ...)	#_a, _VA_STR_23(__VA_ARGS__)
-#define _VA_STR_25(_a, ...)	#_a, _VA_STR_24(__VA_ARGS__)
-#define _VA_STR_26(_a, ...)	#_a, _VA_STR_25(__VA_ARGS__)
-#define _VA_STR_27(_a, ...)	#_a, _VA_STR_26(__VA_ARGS__)
-#define _VA_STR_28(_a, ...)	#_a, _VA_STR_27(__VA_ARGS__)
-#define _VA_STR_29(_a, ...)	#_a, _VA_STR_28(__VA_ARGS__)
-#define _VA_STR_30(_a, ...)	#_a, _VA_STR_29(__VA_ARGS__)
-#define _VA_STR_31(_a, ...)	#_a, _VA_STR_30(__VA_ARGS__)
-#define _VA_STR_32(_a, ...)	#_a, _VA_STR_31(__VA_ARGS__)
+#define _VA_EXPAND(...)		_VA_EXPAND4(_VA_EXPAND4(_VA_EXPAND4(_VA_EXPAND4(__VA_ARGS__))))
+#define _VA_EXPAND4(...)	_VA_EXPAND3(_VA_EXPAND3(_VA_EXPAND3(_VA_EXPAND3(__VA_ARGS__))))
+#define _VA_EXPAND3(...)	_VA_EXPAND2(_VA_EXPAND2(_VA_EXPAND2(_VA_EXPAND2(__VA_ARGS__))))
+#define _VA_EXPAND2(...)	_VA_EXPAND1(_VA_EXPAND1(_VA_EXPAND1(_VA_EXPAND1(__VA_ARGS__))))
+#define _VA_EXPAND1(...)	__VA_ARGS__
 
-#define _VA_STRINGIFY_N(_n, ...)	_VA_STRINGIFY_I(_n, __VA_ARGS__)
-#define _VA_STRINGIFY_I(_n, ...)	_VA_STR_ ## _n(__VA_ARGS__)
+/** Empty parentheses, applied to a deferred macro name on the next rescan
+ */
+#define _VA_PARENS		()
+
+/** Apply a macro to each variadic argument, producing a comma separated list
+ *
+ * VA_FOR_EACH(F, a, b, c) expands to F(a), F(b), F(c).  With no variadic
+ * arguments the macro expands to nothing.
+ *
+ * Each step writes the helper's name next to _VA_PARENS instead of calling
+ * the helper.  A macro may not expand itself.  The deferred call is what
+ * lets the next rescan perform the next step.  __VA_OPT__ ends the recursion
+ * when the list is exhausted.  _VA_EXPAND supplies the rescans that drive the
+ * steps, which caps the list at 256 elements.
+ *
+ * @param[in] _macro	Macro to apply.  Takes one argument.
+ * @param[in] ...	Variadic arguments to apply the macro to.
+ */
+#define VA_FOR_EACH(_macro, ...) \
+	__VA_OPT__(_VA_EXPAND(_VA_FOR_EACH(_macro, __VA_ARGS__)))
+#define _VA_FOR_EACH(_macro, _a, ...) \
+	_macro(_a) __VA_OPT__(, _VA_FOR_EACH_AGAIN _VA_PARENS (_macro, __VA_ARGS__))
+#define _VA_FOR_EACH_AGAIN()	_VA_FOR_EACH
+
+/** Apply a two argument macro to each variadic argument, with a fixed first argument
+ *
+ * VA_FOR_EACH_ARG(F, x, a, b) expands to F(x, a), F(x, b).  See VA_FOR_EACH
+ * for the mechanism and the 256 element cap.
+ *
+ * @param[in] _macro	Macro to apply.  Takes two arguments.
+ * @param[in] _arg	Passed as the first argument on every application.
+ * @param[in] ...	Variadic arguments to apply the macro to.
+ */
+#define VA_FOR_EACH_ARG(_macro, _arg, ...) \
+	__VA_OPT__(_VA_EXPAND(_VA_FOR_EACH_ARG(_macro, _arg, __VA_ARGS__)))
+#define _VA_FOR_EACH_ARG(_macro, _arg, _a, ...) \
+	_macro(_arg, _a) __VA_OPT__(, _VA_FOR_EACH_ARG_AGAIN _VA_PARENS (_macro, _arg, __VA_ARGS__))
+#define _VA_FOR_EACH_ARG_AGAIN()	_VA_FOR_EACH_ARG
+
+#define _VA_STRINGIFY_ONE(_a)	#_a
 
 /** Produce a comma separated list of string literals, one per variadic argument
  *
- * Each argument becomes the source text the caller wrote, so
+ * Each argument becomes the source text the caller wrote.
  * VA_STRINGIFY(request->reply, len + 1) expands to "request->reply", "len + 1".
- * Argument counting reuses the VA_NARG table.  Expansion is limited to 32 arguments.
+ * Expansion is limited to 256 arguments by VA_FOR_EACH.
  *
  * @param[in] ...	Variadic arguments to stringify.
  */
-#define VA_STRINGIFY(...)	_VA_STRINGIFY_N(VA_NARG(__VA_ARGS__), __VA_ARGS__)
+#define VA_STRINGIFY(...)	VA_FOR_EACH(_VA_STRINGIFY_ONE, __VA_ARGS__)
 
 
 /** Pass caller information to the function

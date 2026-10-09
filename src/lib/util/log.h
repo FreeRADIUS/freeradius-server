@@ -171,7 +171,7 @@ void	_fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line
 
 #define	fr_log(_log, _lvl, _file, _line, _fmt, ...) \
 		_fr_log(_log, _lvl, _file, _line, \
-			(char const * const []){ VA_STRINGIFY(__VA_ARGS__), NULL }, \
+			(char const * const []){ VA_STRINGIFY(__VA_ARGS__) __VA_OPT__(,) NULL }, \
 			_fmt, ##__VA_ARGS__)
 void	_fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line,
 		char const * const arg_names[], char const *fmt, ...)
@@ -186,7 +186,7 @@ void	_fr_vlog_perror(fr_log_t const *log, fr_log_type_t type,
 
 #define	fr_log_perror(_log, _type, _file, _line, _rules, _fmt, ...) \
 		_fr_log_perror(_log, _type, _file, _line, _rules, \
-			       (char const * const []){ VA_STRINGIFY(__VA_ARGS__), NULL }, \
+			       (char const * const []){ VA_STRINGIFY(__VA_ARGS__) __VA_OPT__(,) NULL }, \
 			       _fmt, ##__VA_ARGS__)
 void	_fr_log_perror(fr_log_t const *log, fr_log_type_t type,
 		       char const *file, int line, fr_log_perror_format_t const *rules,
