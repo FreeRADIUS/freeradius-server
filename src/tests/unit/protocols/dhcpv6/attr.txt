@@ -34,10 +34,10 @@ match struct
 #
 
 attr.children Client-ID
-match UUID (ALIAS ref=Client-ID.Value.UUID), DUID (uint16), LL (ALIAS ref=Client-ID.Value.LL), EN (ALIAS ref=Client-ID.Value.EN), Value (union), LLT (ALIAS ref=Client-ID.Value.LLT)
+match DUID (uint16), UUID (ALIAS ref=Client-ID.Value.UUID), LL (ALIAS ref=Client-ID.Value.LL), EN (ALIAS ref=Client-ID.Value.EN), Value (union), LLT (ALIAS ref=Client-ID.Value.LLT)
 
 attr.children Server-ID
-match UUID (ALIAS ref=Server-ID.Value.UUID), DUID (uint16), LL (ALIAS ref=Server-ID.Value.LL), EN (ALIAS ref=Server-ID.Value.EN), Value (union), LLT (ALIAS ref=Server-ID.Value.LLT)
+match DUID (uint16), UUID (ALIAS ref=Server-ID.Value.UUID), LL (ALIAS ref=Server-ID.Value.LL), EN (ALIAS ref=Server-ID.Value.EN), Value (union), LLT (ALIAS ref=Server-ID.Value.LLT)
 
 #
 #  Printing and parsing omit the intermediate UNION.
