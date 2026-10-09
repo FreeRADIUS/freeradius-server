@@ -112,12 +112,15 @@ static inline uint8_t fr_high_bit_pos(uint64_t num)
  */
 static inline uint8_t fr_low_bit_pos(uint64_t num)
 {
+#ifdef HAVE_BUILTIN_CTZLL
 	if (num == 0) return 0;
 
-#ifdef HAVE_BUILTIN_CTZLL
 	return __builtin_ctzll(num) + 1;
 #else
-	uint8_t ret = 1;
+	uint8_t ret;
+
+	if (num == 0) return 0;
+	ret = 1;
 
 	do {
 		if (num & 0x01) break;
