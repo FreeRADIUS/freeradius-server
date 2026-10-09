@@ -633,6 +633,18 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	}
 
 	/*
+	 *	A 'replicate' instance over a UDP socket has no trunk: UDP
+	 *	replication bypasses the trunk and is only reachable through the
+	 *	%<name>.sendto.ipaddr() expansion, not by calling the module in
+	 *	place.  Without this check the in-place call reaches
+	 *	trunk_request_alloc() with a NULL trunk and the server crashes.
+	 */
+	if (!thread->ctx.trunk) {
+		REDEBUG("Cannot call this module in place: 'mode = replicate' over UDP has no connection, and must be called via the %%%s.sendto.ipaddr(ipaddr, port, secret) expansion", mctx->mi->name);
+		RETURN_UNLANG_FAIL;
+	}
+
+	/*
 	 *	Push the request and it's data to the IO submodule.
 	 *
 	 *	This may return YIELD, for "please yield", or it may
