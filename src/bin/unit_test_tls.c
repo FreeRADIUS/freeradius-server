@@ -79,6 +79,8 @@ RCSID("$Id$")
 #  include <getopt.h>
 #endif
 
+#include <sys/wait.h>
+
 #define EXIT_WITH_FAILURE \
 do { \
 	ret = EXIT_FAILURE; \
