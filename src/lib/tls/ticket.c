@@ -220,6 +220,11 @@ int tls_ticket_app_data_get(request_t *request, SSL_SESSION *sess,
 		return -1;
 	}
 
+	if (unlikely(!data)) {
+		fr_tls_log_perror(request, "Session ID %pV - Got NULL session application data", session_id);
+		return -1;
+	}
+
 	fr_pair_list_init(&tmp);
 	fr_dbuff_init(&dbuff, data, data_len);
 
