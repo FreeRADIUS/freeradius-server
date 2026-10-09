@@ -128,6 +128,8 @@ typedef struct {
 							///< whichever subsection `transport` named.
 	uint16_t	port;				//!< Port of the listening socket, and the default
 							///< port for -s.
+	uint32_t	drop_datagram;			//!< Drop this datagram rather than sending it,
+							///< counting from one.  Zero drops nothing.
 	bool		require_client_certificate;	//!< Whether the client has to present a certificate.
 
 	fr_tls_conf_t	*server;			//!< The `server { ... }` subsection.
@@ -161,6 +163,12 @@ static const conf_parser_t unit_test_tls_config[] = {
 				    unit_test_tls_socket_config) },
 	{ FR_CONF_OFFSET_SUBSECTION("udp", CONF_FLAG_OK_MISSING, unit_test_tls_conf_t, udp,
 				    unit_test_tls_socket_config) },
+
+	/*
+	 *	Lose a datagram on purpose, so that a test can see the
+	 *	retransmission which recovers from it.  Zero loses nothing.
+	 */
+	{ FR_CONF_OFFSET("drop_datagram", unit_test_tls_conf_t, drop_datagram) },
 
 	{ FR_CONF_OFFSET("require_client_certificate", unit_test_tls_conf_t, require_client_certificate),
 	  .dflt = "no" },
@@ -222,6 +230,10 @@ typedef struct {
 	bool			command_waiting;	//!< Waiting in tls_command_wait().
 
 	int			fd;			//!< Accepted or connected socket.
+
+	uint32_t		datagrams;		//!< How many datagrams this connection has been
+							///< asked to write, counting from one.  Only used
+							///< by `drop_datagram`.
 
 	uint8_t			*first;			//!< The datagram which named the peer, read from
 							///< the listening socket before the connection's
@@ -475,6 +487,18 @@ static ssize_t tls_connection_write(void *uctx, fr_tls_connection_t *conn, uint8
 {
 	unit_test_tls_t		*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 	ssize_t			slen;
+
+	/*
+	 *	Lose this one on purpose.  Telling the connection that the
+	 *	whole datagram went out is what a real loss looks like from
+	 *	here: the sender has no idea, and only the retransmission
+	 *	timer recovers.
+	 */
+	utt->datagrams++;
+	if (utt->conf.drop_datagram && (utt->datagrams == utt->conf.drop_datagram)) {
+		DEBUG("Dropping datagram %u of %zu bytes", utt->datagrams, size);
+		return (ssize_t) size;
+	}
 
 	/*
 	 *	EINTR means the write never happened, so the same octets are

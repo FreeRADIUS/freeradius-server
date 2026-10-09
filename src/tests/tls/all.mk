@@ -63,16 +63,25 @@ TLS_COMMON  := $(DIR)/common.conf
 TLS_TESTS := $(patsubst $(DIR)/%.sh,%,$(wildcard $(DIR)/*.sh))
 
 #
-#  The suite takes one block of 20 ports from the allocator in
-#  scripts/build/make/port.c, the block size that radiusd.mk takes for a
-#  server.  Each test takes the port at the position of the test in
-#  TLS_TESTS.  The tests can therefore run at the same time, and a second
-#  build tree can run the suite at the same time.  Each test script passes
-#  PORT to the client, and the configuration file reads the server port
-#  from $ENV{PORT}.
+#  The suite takes one block of ports from the allocator in
+#  scripts/build/make/port.c.  Each test takes the port at the position of
+#  the test in TLS_TESTS.  The tests can therefore run at the same time, and
+#  a second build tree can run the suite at the same time.  Each test script
+#  passes PORT to the client, and the configuration file reads the server
+#  port from $ENV{PORT}.
 #
-TLS_PORT_FIRST := $(unique-port $(PORT_FILE),$(TLS_TEST),20,$(PORT_FIRST))
-TLS_PORTS := $(shell seq $(TLS_PORT_FIRST) $$(($(TLS_PORT_FIRST) + 19)))
+#  The block has to be at least as large as the number of tests.  A test
+#  beyond the end of the block is given an empty port, and fails in a way
+#  which says nothing about ports, so the count is checked below rather than
+#  left to be discovered.
+#
+TLS_PORT_COUNT := 32
+TLS_PORT_FIRST := $(unique-port $(PORT_FILE),$(TLS_TEST),$(TLS_PORT_COUNT),$(PORT_FIRST))
+TLS_PORTS := $(shell seq $(TLS_PORT_FIRST) $$(($(TLS_PORT_FIRST) + $(TLS_PORT_COUNT) - 1)))
+
+ifeq "$(shell test $(words $(TLS_TESTS)) -gt $(TLS_PORT_COUNT) && echo overflow)" "overflow"
+$(error src/tests/tls has $(words $(TLS_TESTS)) tests and only $(TLS_PORT_COUNT) ports.  Raise TLS_PORT_COUNT)
+endif
 
 #
 #  TLS_TEST_RULE defines the rule for one test.  ${1} is the test name.
