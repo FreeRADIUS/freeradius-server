@@ -474,7 +474,12 @@ static void bfd_calc_md5(bfd_session_t *session, bfd_packet_t *bfd)
 	memset(md5->digest, 0, sizeof(md5->digest));
 	memcpy(md5->digest, session->client.secret, session->secret_len);
 
-	fr_md5_calc(md5->digest,(const uint8_t *) bfd, bfd->length);
+	/*
+	 *	bfd_auth_md5() sets the length, and bfd_verify_md5()
+	 *	rejects packets with any other length.
+	 */
+	fr_assert(bfd->length == (FR_BFD_HEADER_LENGTH + sizeof(*md5)));
+	fr_md5_calc(md5->digest, (const uint8_t *) bfd, FR_BFD_HEADER_LENGTH + sizeof(*md5));
 }
 
 static void bfd_auth_md5(bfd_session_t *session, bfd_packet_t *bfd)
@@ -503,7 +508,12 @@ static void bfd_calc_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 	memcpy(sha1->digest, session->client.secret, session->secret_len);
 
 	fr_sha1_init(&ctx);
-	fr_sha1_update(&ctx, (const uint8_t *) bfd, bfd->length);
+	/*
+	 *	bfd_auth_sha1() sets the length, and bfd_verify_sha1()
+	 *	rejects packets with any other length.
+	 */
+	fr_assert(bfd->length == (FR_BFD_HEADER_LENGTH + sizeof(*sha1)));
+	fr_sha1_update(&ctx, (const uint8_t *) bfd, FR_BFD_HEADER_LENGTH + sizeof(*sha1));
 	fr_sha1_final(sha1->digest, &ctx);
 }
 
@@ -567,6 +577,8 @@ static int bfd_verify_md5(bfd_session_t *session, bfd_packet_t *bfd)
 
 	if (md5->auth_len != sizeof(*md5)) return 0;
 
+	if (bfd->length != (FR_BFD_HEADER_LENGTH + sizeof(*md5))) return 0;
+
 	if (md5->key_id != 0) return 0;
 
 	memcpy(digest, md5->digest, sizeof(digest));
@@ -606,6 +618,8 @@ static int bfd_verify_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 	uint8_t digest[sizeof(sha1->digest)];
 
 	if (sha1->auth_len != sizeof(*sha1)) return 0;
+
+	if (bfd->length != (FR_BFD_HEADER_LENGTH + sizeof(*sha1))) return 0;
 
 	if (sha1->key_id != 0) return 0;
 

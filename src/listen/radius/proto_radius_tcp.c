@@ -102,6 +102,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 	ssize_t				data_size;
 	size_t				packet_len, in_buffer;
+	uint8_t				code;
 	fr_radius_decode_fail_t		reason;
 
 	/*
@@ -166,11 +167,13 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 
 have_packet:
 	/*
-	 *	We MUST always start with a known RADIUS packet.
+	 *	We MUST always start with a known RADIUS packet.  Check
+	 *	and index with the same copy of the code.
 	 */
-	if ((buffer[0] == 0) || (buffer[0] >= FR_RADIUS_CODE_MAX)) {
+	code = buffer[0];
+	if ((code == 0) || (code >= FR_RADIUS_CODE_MAX)) {
 		proto_radius_log(li, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, NULL,
-				 "Received packet code %u", buffer[0]);
+				 "Received packet code %u", code);
 		thread->stats.total_unknown_types++;
 		return -1;
 	}
@@ -225,9 +228,9 @@ have_packet:
 	/*
 	 *	Unknown packets get discarded, but the socket can remain open.
 	 */
-	if ((buffer[0] == 0) || (buffer[0] >= FR_RADIUS_CODE_MAX)) {
+	if ((code == 0) || (code >= FR_RADIUS_CODE_MAX)) {
 		proto_radius_log(li, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, &thread->connection->socket,
-				 "Received packet code %u", buffer[0]);
+				 "Received packet code %u", code);
 		thread->stats.total_unknown_types++;
 		return 0;
 	}
@@ -252,7 +255,7 @@ have_packet:
 	 *	Print out what we received.
 	 */
 	DEBUG2("proto_radius_tcp - Received %s ID %d length %d %s",
-	       fr_radius_packet_name[buffer[0]], buffer[1],
+	       fr_radius_packet_name[code], buffer[1],
 	       (int) packet_len, thread->name);
 
 	return packet_len;

@@ -117,6 +117,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	int				flags;
 	ssize_t				data_size;
 	size_t				packet_len;
+	uint8_t				code;
 	fr_radius_decode_fail_t		reason;
 
 	*leftover = 0;		/* always for UDP */
@@ -162,9 +163,13 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		return 0;
 	}
 
-	if ((buffer[0] == 0) || (buffer[0] >= FR_RADIUS_CODE_MAX)) {
+	/*
+	 *	Check and index with the same copy of the code.
+	 */
+	code = buffer[0];
+	if ((code == 0) || (code >= FR_RADIUS_CODE_MAX)) {
 		proto_radius_log(li, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, &address->socket,
-				 "Received packet code %u", buffer[0]);
+				 "Received packet code %u", code);
 		thread->stats.total_unknown_types++;
 		return 0;
 	}
@@ -188,7 +193,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	Print out what we received.
 	 */
 	DEBUG2("proto_radius_udp - Received %s ID %d length %d %s",
-	       fr_radius_packet_name[buffer[0]], buffer[1],
+	       fr_radius_packet_name[code], buffer[1],
 	       (int) packet_len, thread->name);
 
 	return packet_len;

@@ -126,7 +126,7 @@ fr_dict_attr_t const **dhcp_header_attrs[] = {
 };
 size_t dhcp_header_attrs_len = NUM_ELEMENTS(dhcp_header_attrs);
 
-char const *dhcp_message_types[] = {
+char const *dhcp_message_types[FR_DHCP_CODE_MAX] = {
 	"invalid",
 	"Discover",
 	"Offer",
@@ -249,6 +249,7 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 {
 	uint32_t	magic;
 	uint8_t const	*code;
+	uint8_t		type;
 	size_t		hlen;
 
 	if (data_len < MIN_PACKET_SIZE) {
@@ -285,8 +286,12 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 		return false;
 	}
 
-	if ((code[2] == 0) || (code[2] >= DHCP_MAX_MESSAGE_TYPE)) {
-		fr_strerror_printf("Unknown value %d for message-type option", code[2]);
+	/*
+	 *	Check and return the same copy of the message type.
+	 */
+	type = code[2];
+	if ((type == 0) || (type >= DHCP_MAX_MESSAGE_TYPE)) {
+		fr_strerror_printf("Unknown value %d for message-type option", type);
 		return false;
 	}
 
@@ -296,7 +301,7 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	 *	the true size of the packet.
 	 */
 
-	if (message_type) *message_type = code[2];
+	if (message_type) *message_type = type;
 
 	if (xid) {
 		memcpy(&magic, data + 4, 4);

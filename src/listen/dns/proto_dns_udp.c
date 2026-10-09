@@ -123,6 +123,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	ssize_t				data_size;
 	size_t				packet_len;
 	uint32_t			xid;
+	uint8_t				opcode;
 	fr_dns_packet_t			*packet;
 	fr_dns_decode_fail_t		reason;
 
@@ -176,9 +177,17 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	xid = fr_nbo_to_uint16(buffer);
 
 	/*
+	 *	fr_dns_packet_ok() rejects opcodes outside fr_dns_packet_names.
+	 */
+	opcode = packet->opcode;
+	if (!fr_cond_assert_msg(opcode < FR_DNS_CODE_MAX, "fr_dns_packet_ok() accepted invalid opcode %u", opcode)) {
+		return 0;
+	}
+
+	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("Received %s ID %04x length %d %s", fr_dns_packet_names[packet->opcode], xid,
+	DEBUG2("Received %s ID %04x length %d %s", fr_dns_packet_names[opcode], xid,
 	       (int) packet_len, thread->name);
 
 	return packet_len;

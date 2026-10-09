@@ -246,10 +246,12 @@ have_packet:
 	if (DEBUG_ENABLED2) {
 		char bogus_type[4];
 		char const *type;
+		uint8_t packet_type = buffer[1];
 
-		if (buffer[1] && buffer[1] <= FR_TAC_PLUS_ACCT) type = packet_name[buffer[1]];
-		else {
-			snprintf(bogus_type, sizeof(bogus_type), "%d", buffer[1]);
+		if ((packet_type > 0) && (packet_type < NUM_ELEMENTS(packet_name))) {
+			type = packet_name[packet_type];
+		} else {
+			snprintf(bogus_type, sizeof(bogus_type), "%d", packet_type);
 			type = bogus_type;
 		}
 		DEBUG2("proto_tacacs_tcp - Received %s seq_no %d length %zd %s",
