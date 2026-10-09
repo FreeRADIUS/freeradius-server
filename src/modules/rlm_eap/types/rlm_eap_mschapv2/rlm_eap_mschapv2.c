@@ -333,8 +333,10 @@ static unlang_action_t mschap_resume(unlang_result_t *p_result, module_ctx_t con
 			if (n == 3) {
 				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
 					err, retry, buf);
-				fr_base16_decode(NULL, &FR_DBUFF_TMP(data->auth_challenge, 16),
-					   &FR_SBUFF_IN_STR(buf), false);
+				if (unlikely(fr_base16_decode(NULL, &FR_DBUFF_TMP(data->auth_challenge, 16),
+							      &FR_SBUFF_IN_STR(buf), false) < 0)) {
+					REDEBUG("Failed parsing new challenge value %s", buf);
+				}
 			} else {
 				RDEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
 			}
