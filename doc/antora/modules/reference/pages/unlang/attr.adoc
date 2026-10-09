@@ -20,8 +20,8 @@ NAS-IP-Address
 == Lists
 
 The attribute reference can also be qualified with a
-xref:unlang/list.adoc[list] reference.  When no list is given, the server
-looks in the input packet list for the named attribute.
+xref:unlang/list.adoc[list] reference.  When no list is given, the
+server looks in the input packet list for the named attribute.
 
 .Examples
 
@@ -57,7 +57,8 @@ EAP-Message[1]
 reply.NAS-IP-Address[2]
 ----
 
-The `<index>` can also be a special value `n`, which means "the last attribute in the list.
+The `<index>` can also be a special value `n`, which means "the last
+attribute in the list.
 
 .Last attribute in a list
 [source,unlang]
@@ -67,9 +68,13 @@ EAP-Message[n]
 
 The `<index>` can also be a reference to a numerical attribute.
 
-The reference *must* be to an attribute of numerical data type.  Structural data types and `string` or `octets` types are not allowed.  If the index is out of bounds (e.g. negative), then the reference fails.
+The reference *must* be to an attribute of numerical data type.
+Structural data types and `string` or `octets` types are not allowed.
+If the index is out of bounds (e.g. negative), then the reference
+fails.
 
-The main utility of attribute indexes is in a xref:unlang/foreach.adoc[foreach] loop.
+The main utility of attribute indexes is in a
+xref:unlang/foreach.adoc[foreach] loop.
 
 .Attribute reference as Array index
 [source,unlang]
@@ -81,9 +86,14 @@ foo = 2
 EAP-Message[foo]
 ----
 
-The `<index>` can also be an expression which is calculated at run time.  The expression _must_ not cause the server to call an external database, script, etc.  The main purpose of these expressions is to calculated an index without first placing it into another attribute.
+The `<index>` can also be an expression which is calculated at run
+time.  The expression _must_ not cause the server to call an external
+database, script, etc.  The main purpose of these expressions is to
+calculated an index without first placing it into another attribute.
 
-If the index must be calculated from an external database call or script, simply place that value into an attribute first, and then use that attribute as in index.
+If the index must be calculated from an external database call or
+script, simply place that value into an attribute first, and then use
+that attribute as in index.
 
 The expression _must_ be in an expansion block: `%{...}`.
 
@@ -109,7 +119,8 @@ request.[0]
 
 i.e. "the first child of the `request` list.
 
-This syntax is most useful in xref:xlat/attribute.adoc[xlat attribute references].
+This syntax is most useful in xref:xlat/attribute.adoc[xlat attribute
+references].
 
 Note that the old syntax of `request[...]` is disallowed.
 
@@ -137,7 +148,8 @@ reply.TLV[3].Child-Two
 
 == Putting it All Together
 
-All of the above syntaxes can be used interchangeably, at any nesting level.  The examples are presented
+All of the above syntaxes can be used interchangeably, at any nesting
+level.  The examples are presented
 
 .Examples
 [source,unlang]
@@ -168,7 +180,8 @@ following assignment:
 raw.reply.Framed-IP-Address := 0x01
 ----
 
-The `raw.` prefix must be listed first, before any list reference is given.
+The `raw.` prefix must be listed first, before any list reference is
+given.
 
 It is also possible to create raw attributes from numbers.  For
 example, `Vendor-Specific.Cisco.AVPAir` is `25.9.1`:

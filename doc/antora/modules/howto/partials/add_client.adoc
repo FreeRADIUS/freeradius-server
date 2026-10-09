@@ -3,9 +3,9 @@ wireless access point, network switch or other form of NAS. NOT the
 network clients - such as laptops, tablets etc - they do not talk
 directly to the RADIUS server.
 
-The above test runs `radtest` from localhost. It is useful to add a new
-client, which can be done by editing the `clients.conf` file. Add the
-following content:
+The above test runs `radtest` from localhost. It is useful to add a
+new client, which can be done by editing the `clients.conf` file. Add
+the following content:
 
     client new {
         ipaddr = 192.0.2.1

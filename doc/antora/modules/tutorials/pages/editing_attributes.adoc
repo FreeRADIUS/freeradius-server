@@ -13,8 +13,8 @@
 - xref:reference:unlang/condition/index.adoc[Conditions]
 - xref:reference:unlang/index.adoc[Unlang Policy Language]
 
-For this tutorial, you should start with an empty processing
-section (`recv Access-Request { ... }`) in the virtual server that you are
+For this tutorial, you should start with an empty processing section
+(`recv Access-Request { ... }`) in the virtual server that you are
 using to process requests.
 
 Attributes in the control list can control the behaviour of the
@@ -25,21 +25,22 @@ For example:
 * Reply.Framed-IP-Address
 * Control.Password.Cleartext
 
-Please refer to xref:reference:unlang/list.adoc[attribute lists] for more information
+Please refer to xref:reference:unlang/list.adoc[attribute lists] for
+more information
 
-Unlang `update` blocks are used to update one or attributes in one
-of the server's xref:reference:unlang/list.adoc[attribute lists].
+Unlang `update` blocks are used to update one or attributes in one of
+the server's xref:reference:unlang/list.adoc[attribute lists].
 
-In previous tutorials, we've used the `files` module, and the authorize
-methods of authentication modules such as `pap` and `chap` to alter how
-the server processes requests by setting an `Auth-Type` value.
-Here, we will emulate that behaviour using the policy language.
+In previous tutorials, we've used the `files` module, and the
+authorize methods of authentication modules such as `pap` and `chap`
+to alter how the server processes requests by setting an `Auth-Type`
+value. Here, we will emulate that behaviour using the policy language.
 
-* Create a condition (_condition 1_) to execute policy code if
-the `User-Name` in the request is 'bob'.
-* Within that condition block, set the control attribute `Password.Cleartext`
-to be 'hello', and instruct the server to run the `authenticate { ... }`
-subsection for `pap`.
+* Create a condition (_condition 1_) to execute policy code if the
+  `User-Name` in the request is 'bob'.
+* Within that condition block, set the control attribute
+  `Password.Cleartext` to be 'hello', and instruct the server to run
+  the `authenticate { ... }` subsection for `pap`.
 
 == Condition 1
 
@@ -63,8 +64,7 @@ server default {
 ----
 
 We have defined the cleartext password for the user `bob` here,
-instead of defining it in `mods-config/files/authorize`, as
-usual.
+instead of defining it in `mods-config/files/authorize`, as usual.
 
 Execute the following command to test this configuration:
 [source,text]
@@ -73,8 +73,8 @@ echo -e 'User-Name = "bob",
 User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
 ----
 
-After executing, verify that you see an `Access-Accept` returned despite
-the `files` module not being called.
+After executing, verify that you see an `Access-Accept` returned
+despite the `files` module not being called.
 
 === Debug Log Response
 
@@ -106,14 +106,17 @@ Received Access-Accept Id 84 from 127.0.0.1:1812 to 0.0.0.0:54238 via lo length 
         User-Name = "bob"
 ----
 
-Using additional conditions and update blocks, emulate the logic implemented using the files module in the xref:matching_users.adoc[Matching Users] exercise.
+Using additional conditions and update blocks, emulate the logic
+implemented using the files module in the
+xref:matching_users.adoc[Matching Users] exercise.
 
-* If an incoming request contains a `User-Name` attribute with the value
-  'bob', and contains an attribute `Framed-Protocol` with value `PPP`
-  (_condition 2_), reply with a `Framed-IP-Address` attribute with the value
-  `192.168.10.12`.
+* If an incoming request contains a `User-Name` attribute with the
+  value 'bob', and contains an attribute `Framed-Protocol` with value
+  `PPP` (_condition 2_), reply with a `Framed-IP-Address` attribute
+  with the value `192.168.10.12`.
 
 == Condition 2
+
 For testing purposes, edit the following file:
 [source,shell]
 ----
@@ -146,8 +149,8 @@ User-Password = "hello",
 Framed-Protocol = "PPP"' | radclient -x 127.0.0.1 auth testing123
 ----
 
-After executing, verify that you see an `Access-Accept` returned despite
-the `files` module not being called.
+After executing, verify that you see an `Access-Accept` returned
+despite the `files` module not being called.
 
 === Debug Log Response
 
@@ -189,10 +192,11 @@ Received Access-Accept Id 237 from 127.0.0.1:1812 to 0.0.0.0:53537 via lo length
         User-Name = "bob"
 ----
 
-* If an incoming request contains a `Service-Type` attribute with a value
-  of `Framed-User` (_condition 3_), reply with a `Framed-Route` attribute
-  assigning a default route of `192.168.10.1` (`0.0.0.0/0 192.168.10.1 1`) and
-  a `Framed-IP-Netmask` attribute with a value of `255.255.255.0`.
+* If an incoming request contains a `Service-Type` attribute with a
+  value of `Framed-User` (_condition 3_), reply with a `Framed-Route`
+  attribute assigning a default route of `192.168.10.1` (`0.0.0.0/0
+  192.168.10.1 1`) and a `Framed-IP-Netmask` attribute with a value of
+  `255.255.255.0`.
 
 == Condition 3
 
@@ -287,14 +291,15 @@ Received Access-Accept Id 237 from 127.0.0.1:1812 to 0.0.0.0:49684 via lo length
 
 ----
 
-Again test the server with username "bob" and password "hello". Use the
-debug output of the server to see which unlang conditions evaluated to
-true.
+Again test the server with username "bob" and password "hello". Use
+the debug output of the server to see which unlang conditions
+evaluated to true.
 
-Perform other authentication tests, adding the appropriate attributes to
-the test requests to exercise the different conditions. If you already have
-test packets from the xref:matching_users.adoc[Matching Users] exercises,
-you may use those, otherwise continue until you have packets that will match:
+Perform other authentication tests, adding the appropriate attributes
+to the test requests to exercise the different conditions. If you
+already have test packets from the xref:matching_users.adoc[Matching
+Users] exercises, you may use those, otherwise continue until you have
+packets that will match:
 
 === Conditions 1 and 2, but not 3
 
@@ -365,14 +370,14 @@ Service-Type = Framed-User" | radclient -x 127.0.0.1 auth testing123
 
 == Questions
 
-1.  What are the advantages of unlang over the files module when creating
-    policies?
-2.  What are the advantages of the files modules over unlang?  Are there
-    any situations where you think the files module might be better suited
-    to a task than unlang?
+1.  What are the advantages of unlang over the files module when
+    creating policies?
+2.  What are the advantages of the files modules over unlang?  Are
+    there any situations where you think the files module might be
+    better suited to a task than unlang?
 3.  Can you think of any efficiencies the users module might have over
-    multiple conditions, where policies are being assigned to many different
-    users?
+    multiple conditions, where policies are being assigned to many
+    different users?
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

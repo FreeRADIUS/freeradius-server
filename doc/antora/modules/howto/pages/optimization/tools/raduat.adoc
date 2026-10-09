@@ -1,8 +1,14 @@
 = Raduat
 
-The raduat tool is for automated testing of RADIUS server configurations and functionality.  Raduat is a shell script used for writing test suites as required by your organization's eco-system. This tool reads test files and uses radclient to send the test requests. Server responses are compared against a response filter file that contains the expected output.
+The raduat tool is for automated testing of RADIUS server
+configurations and functionality.  Raduat is a shell script used for
+writing test suites as required by your organization's eco-system.
+This tool reads test files and uses radclient to send the test
+requests. Server responses are compared against a response filter file
+that contains the expected output.
 
-Raduat helps identify configuration and functionality issues ensuring that the FreeRADIUS server is operating correctly.
+Raduat helps identify configuration and functionality issues ensuring
+that the FreeRADIUS server is operating correctly.
 
 == Getting Started
 
@@ -15,20 +21,29 @@ To use raduat successfully, follow these steps:
 . Fix any issues and update the relevant files.
 . Re-run the tests.
 
-Download the latest version of https://github.com/FreeRADIUS/freeradius-server/blob/master/scripts/util/raduat[raduat] from github.
+Download the latest version of
+https://github.com/FreeRADIUS/freeradius-server/blob/master/scripts/util/raduat[raduat]
+from github.
 
-The raduat tool supports PAP and CHAP authentications only (no EAP support). Raduat is often used by ISPs and carriers that require end to end testing involving complex business logic using basic authentication methods.
+The raduat tool supports PAP and CHAP authentications only (no EAP
+support). Raduat is often used by ISPs and carriers that require end
+to end testing involving complex business logic using basic
+authentication methods.
 
 [#testrequest]
 == Create a test request
 
-A test request consists of ``<attribute><op><value>`` pairs, separated by newlines.
+A test request consists of ``<attribute><op><value>`` pairs, separated
+by newlines.
 
 === Attribute
 
-Every request must contain a ``Packet-Type=[Access-Request|Accounting-Request]`` pair, to set the type of test request.
+Every request must contain a
+``Packet-Type=[Access-Request|Accounting-Request]`` pair, to set the
+type of test request.
 
-In addition to ``Packet-Type`` it may contain any attribute (including VSAs) found in the FreeRADIUS dictionaries.
+In addition to ``Packet-Type`` it may contain any attribute (including
+VSAs) found in the FreeRADIUS dictionaries.
 
 Commonly used attributes are:
 
@@ -52,21 +67,25 @@ The operator (op) must be one of the assignment operators below.
 | `+=`            | Append the value of the attribute to the list
 |===
 
-
 [#requestvalue]
 === Value
 
-Only static values are supported. In a future release, backtick (exec) expansion may be added.
+Only static values are supported. In a future release, backtick (exec)
+expansion may be added.
 
-Strings must be wrapped in single quotes, any other values remain unquoted.
+Strings must be wrapped in single quotes, any other values remain
+unquoted.
 
-Binary attributes values may be specified as an unquoted string with a 0x prefix e.g. ``0xffffff``
+Binary attributes values may be specified as an unquoted string with a
+0x prefix e.g. ``0xffffff``
 
 === Tags
 
-The following comment tags are supported. Tags are placed at the top of the request file.
+The following comment tags are supported. Tags are placed at the top
+of the request file.
 
-- ``# serial`` - Ensures this test is not executed in parallel with other tests
+- ``# serial`` - Ensures this test is not executed in parallel with
+  other tests
 
 === Comments
 
@@ -74,31 +93,39 @@ Any line starting with ``#`` is treated as a comment.
 
 === Example Test Request
 
-This test file generates an ``Access-Request``, with the attributes ``User-Name``, ``User-Password`` and ``NAS-IP-Address``.
+This test file generates an ``Access-Request``, with the attributes
+``User-Name``, ``User-Password`` and ``NAS-IP-Address``.
 
-```
+----
 # serial
 # My test access request
 Packet-Type=Access-Request
 User-Name='test_user001@test.realm'
 User-Password='testing123'
 NAS-IP-Address=127.0.0.1
-```
+----
 
 [#responsefilter]
 == Create a response filter file
 
-A response filter consists of ``<attribute><op><value>`` pairs, separated by newlines.
+A response filter consists of ``<attribute><op><value>`` pairs,
+separated by newlines.
 
-Response filters are used to verify that the response received from the server matches what's expected.
+Response filters are used to verify that the response received from
+the server matches what's expected.
 
-The pairs in the response filter do not need to be in the same order as the server response. However, every attribute in the server response must be matched by a line in the response filter.
+The pairs in the response filter do not need to be in the same order
+as the server response. However, every attribute in the server
+response must be matched by a line in the response filter.
 
 === Attributes
 
-Every response filter must contain a ``Response-Packet-Type=[Access-Accept|Access-Reject|Accounting-Response]`` pair to set the type of response expected.
+Every response filter must contain a
+``Response-Packet-Type=[Access-Accept|Access-Reject|Accounting-Response]``
+pair to set the type of response expected.
 
-In addition to ``Response-Packet-Type`` it may contain any attribute (including VSAs) found in the FreeRADIUS dictionaries.
+In addition to ``Response-Packet-Type`` it may contain any attribute
+(including VSAs) found in the FreeRADIUS dictionaries.
 
 Commonly used attributes are:
 *  ``Reply-Message``
@@ -129,27 +156,37 @@ Value format is the same as the <<requestvalue,request>>.
 
 === Example Test Response Filter
 
-The test response filter expects an Access-Accept packet with the corresponding reply message.
+The test response filter expects an Access-Accept packet with the
+corresponding reply message.
 
-```
+----
 Response-Packet-Type==Access-Accept
 Reply-Message=='Welcome to foocorp'
-```
+----
 
 [#testsuite]
 == Create a test suite
 
-By default ``raduat`` looks for a folder relative to itself called ``tests``.
+By default ``raduat`` looks for a folder relative to itself called
+``tests``.
 
-If it finds one, raduat tries executing each of the test requests in lexicographical order. The ``raduat`` tool also works with with a directory hierarchy. In this case the tests are executed depth first then in lexicographical order. This is to allow easy organization of tests.
+If it finds one, raduat tries executing each of the test requests in
+lexicographical order. The ``raduat`` tool also works with with a
+directory hierarchy. In this case the tests are executed depth first
+then in lexicographical order. This is to allow easy organization of
+tests.
 
-Only files with names that match the pattern ``test[0-9]{3}.*`` are processed. Each request file must also be paired with a response filter file. A response filter file uses the same name as the request file appended with an ``_expected`` suffix.
+Only files with names that match the pattern ``test[0-9]{3}.*`` are
+processed. Each request file must also be paired with a response
+filter file. A response filter file uses the same name as the request
+file appended with an ``_expected`` suffix.
 
-For example, the response filter file for ``test000_check_static_ip`` is ``test000_check_static_ip_expected``.
+For example, the response filter file for ``test000_check_static_ip``
+is ``test000_check_static_ip_expected``.
 
 === Example
 
-```
+----
 mkdir -p ./tests/static_ip
 
 echo "Packet-Type=Access-Request
@@ -165,15 +202,20 @@ User-Password=testing123" >> ./tests/static_ip/test001_check_static_ip
 
 echo "Response-Packet-Type==Access-Accept
 Framed-IP-address==192.168.0.2" >> ./tests/static_ip/test001_check_static_ip_expected
-```
+----
 
 == Run the tests
 
-By default radaut will execute tests in parallel batches of 20. If you want to execute tests one at a time, either add ``# serial`` to the top of the file, or pass ``-p 1``.
+By default radaut will execute tests in parallel batches of 20. If you
+want to execute tests one at a time, either add ``# serial`` to the
+top of the file, or pass ``-p 1``.
 
 === Arguments
 
-Command line arguments can be found with ``raduat -h``. They can be used to specify the server/port/secret to run the tests against. By default the server is ``127.0.0.1`` the port is automatically determined by ``Packet-Type`` and the secret is ``testing123``.
+Command line arguments can be found with ``raduat -h``. They can be
+used to specify the server/port/secret to run the tests against. By
+default the server is ``127.0.0.1`` the port is automatically
+determined by ``Packet-Type`` and the secret is ``testing123``.
 
 .Command-line raduat options
 [opts=headers,authowidth]
@@ -191,14 +233,16 @@ Command line arguments can be found with ``raduat -h``. They can be used to spec
 
 - ``TESTDIR`` - The directory containing the tests.
 - ``RADCLIENT`` - Path to the radclient binary.
-- ``FILTER_SUFFIX`` - The suffix added to the request file name to find response filters. Defaults to ``_expected``.
+- ``FILTER_SUFFIX`` - The suffix added to the request file name to
+  find response filters. Defaults to ``_expected``.
 - ``DICTPATH`` - Path to alternative RADIUS dictionaries.
 
 === Example test execution
 
-Running the above test requests/response filters against a dummy configuration:
+Running the above test requests/response filters against a dummy
+configuration:
 
-```
+----
 authorize {
 	switch User-Name {
 		case 'test_user001@test.realm' {
@@ -216,11 +260,11 @@ authorize {
 		Auth-Type := Accept
 	}
 }
-```
+----
 
 Produces the following output:
 
-```
+----
 $ ./raduat
 Executing 2 test(s) from ./tests
 Executing specified tests
@@ -235,11 +279,12 @@ Received Access-Accept Id 149 from 127.0.0.1:1812 to 0.0.0.0:0 length 26
 One or more tests failed (radclient exited with 1)
 $ echo $?
 1
-```
+----
 
 Which is correct, as ``192.168.0.3`` != ``192.168.0.2``.
 
-Adding ``-v`` gives us more verbose output, and also a summary of packets sent/received:
+Adding ``-v`` gives us more verbose output, and also a summary of
+packets sent/received:
 ```text
 ./raduat -v
 Executing 2 test(s) from ./tests
@@ -276,11 +321,11 @@ One or more tests failed (radclient exited with 1)
 
 The tests to run can be filtered using glob patterns:
 
-- ``./raduat -- 'static_ip/test000*'`` would execute only the first test in the static_ip suite.
+- ``./raduat -- 'static_ip/test000*'`` would execute only the first
+  test in the static_ip suite.
 - ``./raduat -- 'static_ip/*'`` would execute all the static_ip tests.
 
 This can be used to drill down, and only run the failing tests.
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -17,8 +17,8 @@ given time, it returns `timeout`.
 The value is interpreted as a `time_delta`, with default scale in
 seconds.
 +
-The time scale can be changed by appending `s`, `us`, `ms`, `ns`, etc. as
-with all uses of `time_delta` values.
+The time scale can be changed by appending `s`, `us`, `ms`, `ns`, etc.
+as with all uses of `time_delta` values.
 +
 Negative times, and times less than 1us are treated as zero.  The
 `timeout` section does not run, but instead immediately returns the

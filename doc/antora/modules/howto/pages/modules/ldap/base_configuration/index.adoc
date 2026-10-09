@@ -1,11 +1,14 @@
 = Base Configuration
 
 The configuration step should be little more than
-xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[copying the parameters used by ldapsearch]
-to the xref:reference:raddb/mods-available/ldap.adoc[ldap module] configuration file.
+xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[copying
+the parameters used by ldapsearch] to the
+xref:reference:raddb/mods-available/ldap.adoc[ldap module]
+configuration file.
 
-The xref:reference:raddb/mods-available/ldap.adoc[ldap module] configuration file
-describes the configuration parameters accepted by the module, and what they do.
+The xref:reference:raddb/mods-available/ldap.adoc[ldap module]
+configuration file describes the configuration parameters accepted by
+the module, and what they do.
 
 include::howto:partial$pre_test.adoc[]
 
@@ -16,15 +19,16 @@ possible in the default configuration.  The defaults are usually close
 to being correct.  All that is necessary is to make minor changes, and
 _test_ them.  FreeRADIUS should look for data.
 
-If the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tests above pass,
-then the LDAP module configuration can be copied directly from the
-command-line options to that tool using the
-xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[translation table] on that page.
+If the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tests above
+pass, then the LDAP module configuration can be copied directly from
+the command-line options to that tool using the
+xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[translation
+table] on that page.
 
-At a minimum you will need to set the following configuration items
-in in xref:reference:raddb/mods-available/ldap.adoc[mods-available/ldap] using
-the values you discovered
-running the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tests.
+At a minimum you will need to set the following configuration items in
+in xref:reference:raddb/mods-available/ldap.adoc[mods-available/ldap]
+using the values you discovered running the
+xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tests.
 
 [source,config]
 ----
@@ -51,21 +55,22 @@ ldap {
 }
 ----
 
-<1> A read only user that can bind to the directory to perform searches.
-    This user should not have permission to modify the directory unless
-    you're also using LDAP for accounting
+<1> A read only user that can bind to the directory to perform
+    searches. This user should not have permission to modify the
+    directory unless you're also using LDAP for accounting
     xref:modules/ldap/accounting.adoc[accounting].
 <2> The password for the read only user.
-<3> An LDAP URI pointing to the server.  If the LDAP server is on the same
-    host as the RADIUS server, consider using a Unix Socket (`ldapi://`)
-    to reduce network overhead.
+<3> An LDAP URI pointing to the server.  If the LDAP server is on the
+    same host as the RADIUS server, consider using a Unix Socket
+    (`ldapi://`) to reduce network overhead.
 <4> The object containing all other objects we're interested in.
-<5> The object containing all the users we need to perform AAA functions for.
+<5> The object containing all the users we need to perform AAA
+    functions for.
 <6> A filter to select the object matching the authenticating user.
 
-We do _not_ recommend immediately configuring TLS unless you are testing against
-a production server.  The best approach is to test one piece in isolation,
-before proceeding on to the next piece.
+We do _not_ recommend immediately configuring TLS unless you are
+testing against a production server.  The best approach is to test one
+piece in isolation, before proceeding on to the next piece.
 
 == Enable mods-available/ldap
 
@@ -79,24 +84,24 @@ cd raddb/mods-enabled && ln -s ../mods-available/ldap
 
 == Call the LDAP module
 
-The LDAP module needs to be listed in different section depending on the
-function(s) it's performing.
+The LDAP module needs to be listed in different section depending on
+the function(s) it's performing.
 
 === User authorization and group checks
 
 For simple authentication types like `PAP` and `CHAP` the LDAP module
-should be listed in the `recv Access-Request { ... }` (>= v4.0.x)
-or `authorize { ... }` (<= v3.2.x) section of the virtual server
+should be listed in the `recv Access-Request { ... }` (>= v4.0.x) or
+`authorize { ... }` (<= v3.2.x) section of the virtual server
 listening on the network (usually found in `sites-available/default`).
 
 For EAP authentication the LDAP module should be listed in
 `sites-available/inner-tunnel` instead.
 
-The LDAP module's `authorize` method will discover the authenticating user's DN
-and (optionally) cache that user's group memberships.
+The LDAP module's `authorize` method will discover the authenticating
+user's DN and (optionally) cache that user's group memberships.
 
-It will also (optionally) check whether a user is authorized to use a particular
-service.
+It will also (optionally) check whether a user is authorized to use a
+particular service.
 
 [source,config]
 ----
@@ -126,26 +131,27 @@ server default {
 }
 ----
 
-See xref:modules/ldap/authorization/index.adoc[LDAP authorization] for more detailed
-information on configuring LDAP/Group authorization. Including how to perform
-authorization _after_ authentication.
+See xref:modules/ldap/authorization/index.adoc[LDAP authorization] for
+more detailed information on configuring LDAP/Group authorization.
+Including how to perform authorization _after_ authentication.
 
 === User authentication with LDAP binds
 
 Before deciding which authentication to use, you should read
-xref:concepts:modules/ldap/authentication.adoc[LDAP authentication concepts] as it will
-explain which authentication methods are appropriate for different deployments
-and authentication protocols.
+xref:concepts:modules/ldap/authentication.adoc[LDAP authentication
+concepts] as it will explain which authentication methods are
+appropriate for different deployments and authentication protocols.
 
-LDAP binds for simple authentication types like `PAP` the LDAP module should be
-listed in the `recv Access-Request { ... }` and `authenticate ldap { ... }` (>=
-v4.0.x) or `authorize { ... }` and `authenticate { ... }` (<= v3.2.x) sections of
-the virtual server listening on the network (usually found in
-`sites-available/default`).
+LDAP binds for simple authentication types like `PAP` the LDAP module
+should be listed in the `recv Access-Request { ... }` and
+`authenticate ldap { ... }` (>= v4.0.x) or `authorize { ... }` and
+`authenticate { ... }` (<= v3.2.x) sections of the virtual server
+listening on the network (usually found in `sites-available/default`).
 
 For EAP authentication the LDAP module should be listed in
-`sites-available/inner-tunnel` instead.  Be aware that LDAP binds will only work
-for EAP methods which provide the user's password in the clear.
+`sites-available/inner-tunnel` instead.  Be aware that LDAP binds will
+only work for EAP methods which provide the user's password in the
+clear.
 
 [source,unlang]
 ----
@@ -165,8 +171,8 @@ server default {
 }
 ----
 
-See xref:modules/ldap/authentication.adoc[LDAP authentication] for more detailed
-information on configuring LDAP authentication.
+See xref:modules/ldap/authentication.adoc[LDAP authentication] for
+more detailed information on configuring LDAP authentication.
 
 == Test the server
 

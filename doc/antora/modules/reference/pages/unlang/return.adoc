@@ -15,8 +15,8 @@ policy.
 
 The `return` statement is not strictly necessary.  It is mainly used
 to simplify the layout of `unlang` policies.  If the `return`
-statement did not exist, then every xref:unlang/if.adoc[if] statement might need
-to have a matching xref:unlang/else.adoc[else] statement.
+statement did not exist, then every xref:unlang/if.adoc[if] statement
+might need to have a matching xref:unlang/else.adoc[else] statement.
 
 The `return` statement will also exit a policy which is defined in the
 `policy { ... } ` subsection.  This behaviour allows policies to be

@@ -1,8 +1,7 @@
 = Triple Quoted Strings
 
 .Syntax
-`"""string"""`
-`'''string'''`
+`"""string"""` `'''string'''`
 
 Triple-quoted strings are similar to their single-quoted or
 double-quoted counterparts.  The main difference is that for triple
@@ -25,7 +24,4 @@ quotes in them, because the quotes do not need to be escaped.
 
 // Licenced under CC-by-NC 4.0.
 // Copyright (C) 2026 Network RADIUS SAS.
-
-
-
 

@@ -15,7 +15,8 @@ reply.Reply-Message := "The result of 1 + 2 = %{1 + 2}"
 
 == %integer(...)
 
-This expansion has been removed.  Instead, just use `%{(integer) ...}` with math inside of the brackets.
+This expansion has been removed.  Instead, just use `%{(integer) ...}`
+with math inside of the brackets.
 
 [source,unlang]
 ----
@@ -24,7 +25,8 @@ reply.Reply-Message := "Value of Service-Type is %{(integer) Service-Type}"
 
 == +%pack(%{Attribute-Name}%{Attribute-Name}...)+
 
-This expansion has been removed.  Just convert the strings to octets, and concatenate them via `+`.
+This expansion has been removed.  Just convert the strings to octets,
+and concatenate them via `+`.
 
 .Example
 [source,unlang]
@@ -34,7 +36,8 @@ reply.Class := (octets) Framed-IP-Address + (octets) NAS-IP-Address.
 
 == %string(...)
 
-This expansion has been removed.  Instead, just use `%{(string) ...}` with an expression inside of the brackets.
+This expansion has been removed.  Instead, just use `%{(string) ...}`
+with an expression inside of the brackets.
 
 [source,unlang]
 ----
@@ -44,7 +47,6 @@ reply.Reply-Message := "The printable version of Class is %{(string) Class}"
 == %strlen(...)
 
 This expansion is deprecated.  Just use `%length(...)` instead.
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

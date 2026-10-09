@@ -26,8 +26,8 @@ that challenge combined with their password. The server runs the same
 calculation and checks if the results match. The password never
 crosses the network, only the hash does.
 
-For this exercise, your are assumed to have previously worked
-through and be familiar with the exercise in xref:new_user.adoc[New User] for
+For this exercise, your are assumed to have previously worked through
+and be familiar with the exercise in xref:new_user.adoc[New User] for
 user `bob`.
 
 *Diagram:*
@@ -102,7 +102,7 @@ network={
 ----
 
 *Note:* We have to specific `key_mgmt=NONE` because `EAP-MD5` does not
- derive the encryption keys used for normal Wi-Fi authentication.
+derive the encryption keys used for normal Wi-Fi authentication.
 
 === Step 5: install the eapol_test
 
@@ -255,16 +255,16 @@ and compares the results. On success it sends `Access-Accept`.
 
 == Questions
 
-1.  In which of the following sections is the `eap` module used?
-  `recv Access-Request`, `authenticate`, or `recv Accounting-Request`.
-2.  Which of those sections do not reference the `eap`
-    module? Why?
+1.  In which of the following sections is the `eap` module used? `recv
+    Access-Request`, `authenticate`, or `recv Accounting-Request`.
+2.  Which of those sections do not reference the `eap` module? Why?
 3.  What is the difference (if any) between the server output for this
     test and the diagram below? Why is there a difference?
     image::eap_md5.svg[Fig. EAP-MD5]
 4.  Why do we test EAP-MD5 before testing other EAP types?
 5.  How is the EAP protocol carried within a RADIUS packet?
-6.  Why is the `Message-Authenticator` attribute required when using EAP?
+6.  Why is the `Message-Authenticator` attribute required when using
+    EAP?
 7.  What security issues exist with EAP-MD5?
 8.  Why is EAP-MD5 disabled in newer operating systems?
 

@@ -1,6 +1,7 @@
 = Network Address Handling
 
-The following functions perform manipulation of IPv4 addresses / subnets.
+The following functions perform manipulation of IPv4 addresses /
+subnets.
 
 include::partial$index_net.adoc[]
 

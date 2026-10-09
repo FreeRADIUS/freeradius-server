@@ -1,8 +1,9 @@
 = Conditional Expressions
 
 Conditions are evaluated when parsing xref:unlang/if.adoc[if] and
-xref:unlang/elsif.adoc[elsif] statements.  These conditions allow the server to
-make complex decisions based on one of a number of possible criteria.
+xref:unlang/elsif.adoc[elsif] statements.  These conditions allow the
+server to make complex decisions based on one of a number of possible
+criteria.
 
 .Syntax
 [source,unlang]
@@ -27,7 +28,6 @@ Conditions are expressed using the following syntax:
 | xref:unlang/condition/and.adoc[( condition ) && ...] | Check a condition AND the next one
 | xref:unlang/condition/or.adoc[( condition ) \|\| ...] | Check a condition OR the next one
 |=====
-
 
 .Examples
 [source,unlang]
@@ -56,13 +56,14 @@ incorrect, a descriptive error is produced.
 This error contains the filename and line number of the syntax error.
 In addition, it will print out a portion of the line that caused the
 error and will point to the exact character where the error was seen.
-These descriptive messages mean that most errors are easy to find and fix.
+These descriptive messages mean that most errors are easy to find and
+fix.
 
 == Load-time Optimizations
 
 The server performs a number of optimizations when it loads the
-configuration files.  Conditions that have static values are
-evaluated and replaced with the result of the conditional comparison.
+configuration files.  Conditions that have static values are evaluated
+and replaced with the result of the conditional comparison.
 
 .Example
 [source,unlang]
@@ -72,15 +73,15 @@ if (0) {
 }
 ----
 
-The condition `0` is static and will evaluate to `false`.  Since
-it evaluates to `false`, the configuration inside of the `if`
-statement is ignored.  Any modules referenced inside of the `if`
-statement will not be loaded.
+The condition `0` is static and will evaluate to `false`.  Since it
+evaluates to `false`, the configuration inside of the `if` statement
+is ignored.  Any modules referenced inside of the `if` statement will
+not be loaded.
 
 This optimization is most useful for creating configurations that
 selectively load (or not) certain policies.  If the condition above
-was used in version 2, then the configuration inside of the `if` statement
-would be loaded, even though it would never be used.
+was used in version 2, then the configuration inside of the `if`
+statement would be loaded, even though it would never be used.
 
 == Practical Suggestions
 
@@ -109,11 +110,15 @@ if (Framed-IP-Address == 192.0.2.1) {
 
 In general, the following rules apply:
 
-* There is no need to quote attributes.  `User-Name` is almost always preferable to `%{User-Name}`.
+* There is no need to quote attributes.  `User-Name` is almost always
+  preferable to `%{User-Name}`.
 
-* There is no need to quote values, unless the value is a string.  `192.0.2.1` is always preferable to `"192.0.2.1"`
+* There is no need to quote values, unless the value is a string.
+  `192.0.2.1` is always preferable to `"192.0.2.1"`
 
-* There is no longer a need to use `%{expr:..}` to do math in conditions.  Using the math in-place will work, as with `if (1 + 2 == 3)`.  See xref:unlang/condition/expression.adoc[expressions].
+* There is no longer a need to use `%{expr:..}` to do math in
+  conditions.  Using the math in-place will work, as with `if (1 + 2
+  == 3)`.  See xref:unlang/condition/expression.adoc[expressions].
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

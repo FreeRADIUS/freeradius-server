@@ -33,7 +33,6 @@
 **** xref:network/message_authenticator_length.adoc[Message Authenticator has invalid length]
 **** xref:network/message_authenticator_too_many.adoc[Multiple Message-Authenticators is invalid]
 
-
 ** xref:user.adoc[User Management]
 ** xref:server.adoc[Server Configuration]
 ** xref:client.adoc[Client Configuration]

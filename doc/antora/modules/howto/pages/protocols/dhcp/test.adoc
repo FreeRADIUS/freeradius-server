@@ -3,9 +3,9 @@
 We can verify that FreeRADIUS is providing a DHCP service using the
 `dhcpclient` tool that is included with the FreeRADIUS distribution.
 
-Temporarily configure FreeRADIUS to issue a single static IP address to all
-clients by updating the `recv Discover` section in the `dhcp` virtual
-server to include the following:
+Temporarily configure FreeRADIUS to issue a single static IP address
+to all clients by updating the `recv Discover` section in the `dhcp`
+virtual server to include the following:
 
 [source,unlang]
 ----
@@ -25,8 +25,8 @@ Client-Identifier := abc123
 EOF
 ----
 
-We can generate this packet by invoking one of the following commands based
-on the current circumstances.
+We can generate this packet by invoking one of the following commands
+based on the current circumstances.
 
 From the host that is running the FreeRADIUS DHCP server:
 
@@ -35,17 +35,18 @@ From the host that is running the FreeRADIUS DHCP server:
 dhcpclient -i lo 255.255.255.255 -f dhcp-packet.txt -x auto
 ----
 
-From a different host with an interface (eth0) in the same broadcast domain
-as the FreeRADIUS DHCP server:
+From a different host with an interface (eth0) in the same broadcast
+domain as the FreeRADIUS DHCP server:
 
 [source,shell]
 ----
 dhcpclient -i eth0 255.255.255.255 -f dhcp-packet.txt -x auto
 ----
 
-If all of the DHCP broadcast traffic in other Layer 2 networks is converted to
-unicast by DHCP relay agents then it is not necessary for FreeRADIUS to listen
-on a broadcast address. In this case you can test DHCP using a unicast request:
+If all of the DHCP broadcast traffic in other Layer 2 networks is
+converted to unicast by DHCP relay agents then it is not necessary for
+FreeRADIUS to listen on a broadcast address. In this case you can test
+DHCP using a unicast request:
 
 [source,shell]
 ----
@@ -54,18 +55,18 @@ dhcpclient 192.0.2.10 -f dhcp-packet.txt -x auto
 
 [NOTE]
 ====
-In order for the returned, unicast DHCP OFFER to be received it is necessary to
-ensure that the `DHCP-Your-IP-Address` parameter set by FreeRADIUS matches an
-address on the interface used by the dhcpclient tool to send the Discover
-packet.
+In order for the returned, unicast DHCP OFFER to be received it is
+necessary to ensure that the `DHCP-Your-IP-Address` parameter set by
+FreeRADIUS matches an address on the interface used by the dhcpclient
+tool to send the Discover packet.
 ====
 
-When one of the above commands is run, the tool generates output such as
-the following which shows that the packet was sent and that it is now waiting
-for replies:
+When one of the above commands is run, the tool generates output such
+as the following which shows that the packet was sent and that it is
+now waiting for replies:
 
 .Example output from dhcpclient showing the request
-===================================================
+====
  dhcpclient: ...
  ----------------------------------------------------------------------
  Opcode = ::Client-Message
@@ -83,13 +84,13 @@ for replies:
  ----------------------------------------------------------------------
  Waiting for DHCP replies for: 5.000000
  ----------------------------------------------------------------------
-===================================================
+====
 
-
-Each received DHCP response will generate output such as the following:
+Each received DHCP response will generate output such as the
+following:
 
 .Example output from dhcpclient showing a response
-==================================================
+====
  ...
  ----------------------------------------------------------------------
  Opcode = ::Server-Message
@@ -108,31 +109,40 @@ Each received DHCP response will generate output such as the following:
  Client-Identifier = 0x616263313233
  Waiting for additional DHCP replies for: 4.999429
  ...
-==================================================
+====
 
-Examine the DHCP response to ensure that it has the correct message type
-(`Offer`, in this case), contains the temporary IP address that you
-configured earlier, i.e. `Your-IP-Address = 1.2.3.4`, and any other
-expected reply parameters (which we configure later). Carefully
-examine the output of a FreeRADIUS debug session (`radius -X`) to ensure that
-the policy is being executed in the way that you expect and that no warnings
-are being generated.
+Examine the DHCP response to ensure that it has the correct message
+type (`Offer`, in this case), contains the temporary IP address that
+you configured earlier, i.e. `Your-IP-Address = 1.2.3.4`, and any
+other expected reply parameters (which we configure later). Carefully
+examine the output of a FreeRADIUS debug session (`radius -X`) to
+ensure that the policy is being executed in the way that you expect
+and that no warnings are being generated.
 
-You can now change the content of the sample DHCP request by editing the
-`dhcp-packet.txt` file and re-run the above command to see the server's reply.
-You should examine the DHCP dictionary distributed with FreeRADIUS (usually
-`/usr/share/freeradius/dictionary/dhcpv4/`) which provides the list of all of the
-DHCP parameters ("attributes") understood by FreeRADIUS.
+You can now change the content of the sample DHCP request by editing
+the `dhcp-packet.txt` file and re-run the above command to see the
+server's reply. You should examine the DHCP dictionary distributed
+with FreeRADIUS (usually `/usr/share/freeradius/dictionary/dhcpv4/`)
+which provides the list of all of the DHCP parameters ("attributes")
+understood by FreeRADIUS.
 
 [WARNING]
 ====
-When you are done testing, **remember** to remove the temporary edit that was made to the `dhcp` virtual server that provides the static IP assignment.
+When you are done testing, **remember** to remove the temporary edit
+that was made to the `dhcp` virtual server that provides the static IP
+assignment.
 ====
 
 == Testing the DHCP policy
 
-The remainder of this guide describes how to configure the IP address plan,
-setup the IP pools and define a DHCP policy. It's recommended to develop your policy by making small, incremental changes to the provided configuration and then test those changes with the approach described above, using `dhcpclient` and `radius -X`, modifying the sample DHCP packet as required. If you break the policy then revert the last change, attempt to understand what went wrong, and try something else.
+The remainder of this guide describes how to configure the IP address
+plan, setup the IP pools and define a DHCP policy. It's recommended to
+develop your policy by making small, incremental changes to the
+provided configuration and then test those changes with the approach
+described above, using `dhcpclient` and `radius -X`, modifying the
+sample DHCP packet as required. If you break the policy then revert
+the last change, attempt to understand what went wrong, and try
+something else.
 
 Now xref:protocols/dhcp/policy.adoc[define the DHCP policy].
 

@@ -6,26 +6,28 @@ authentication and is widely used on Linux systems.
 
 == Edit `users` file
 
-Start by editing the users file with the following configuration items.
+Start by editing the users file with the following configuration
+items.
 
-Use `Auth-Type = PAM` in the users file. You cannot use
-`User-Password = PAM` as in other radius servers.
+Use `Auth-Type = PAM` in the users file. You cannot use `User-Password
+= PAM` as in other radius servers.
 
 You can also use `Pam-Auth = somestring` to specify an entry in
-/etc/pam.d directory. The default entry is `radius`, but you can change this to suit your needs.
+/etc/pam.d directory. The default entry is `radius`, but you can
+change this to suit your needs.
 
 == Compile FreeRADIUS with PAM
 
 The `pam` module should be automatically built and included with the
 server.  If it is not, you will need to install the relevant PAM
-development headers, then re-run `configure`, and re-compile FreeRADIUS.
+development headers, then re-run `configure`, and re-compile
+FreeRADIUS.
 
 == Edit `radiusd.conf`
 
 Ensure that the `pam` module is linked into `sites-enabled/pam`.
 
-
-```
+----
 pam {
          #
          #  The name to use for PAM authentication.
@@ -37,49 +39,50 @@ pam {
          #
          pam_auth = radiusd
 }
-```
+----
 
 In the `authenticate pam` section, do the same:
 
-```
+----
 #authenticate pam {
 #	pam
 #}
-```
+----
 
-In your `/etc/pam.d/` directory create a file called `radiusd` with the
-following configuration items (or whatever you need for your pam configuration):
+In your `/etc/pam.d/` directory create a file called `radiusd` with
+the following configuration items (or whatever you need for your pam
+configuration):
 
-```
+----
 #%PAM-1.0 auth required /lib/security/pam_unix_auth.so shadow md5 nullok
 auth required /lib/security/pam_nologin.so account required
 /lib/security/pam_unix_acct.so password required
 /lib/security/pam_cracklib.so password required
 /lib/security/pam_unix_passwd.so shadow md5 nullok use_authtok session
 required /lib/security/pam_unix_session.so
-```
+----
 
 If you don't want to run your freeradius server in debug mode as root
 (ie, run as an unprivileged user) you will need to run freeradius with
-a group membership that is able to read the `/etc/shadow` file - otherwise
-pam will be unable to read the `/etc/shadow` file and will fail. We suggest
-a group called `shadow' or the like.
+a group membership that is able to read the `/etc/shadow` file -
+otherwise pam will be unable to read the `/etc/shadow` file and will
+fail. We suggest a group called `shadow' or the like.
 
-```
+----
 $ chgrp /etc/shadow shadow
 $ chmod g+w /etc/shadow
-```
+----
 
 And in the `radiusd.conf` file:
 
-```
+----
 # On systems with shadow passwords, you might have to set `group = shadow`
 # for the server to be able to read the shadow password file.
 # Change below to suit your setup.
 
 user = radius
 group = shadow
-```
+----
 
 [NOTE]
 ====
@@ -90,13 +93,13 @@ are safe.
 
 == Worked Example
 
-```
+----
 DEFAULT Auth-Type = Pam, ..
 	...
 
 DEFAULT Auth-Type = Pam, Pam-Auth = radius2, ..
 	...
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

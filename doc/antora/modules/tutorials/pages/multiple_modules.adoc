@@ -1,6 +1,7 @@
 = Multiple instances of a module
 
-*Goal:* To configure the server to have multiple instances of a module.
+*Goal:* To configure the server to have multiple instances of a
+module.
 
 *Time:* 10-20 minutes
 
@@ -9,14 +10,14 @@
 - `mods-available/detail`
 
 In this exercise, we will configure the server to use two independent
-``databases'' (here, detail files) for recording accounting data. These
-databases will use the same `detail` module, but with two different
-configurations. The `detail` module logs plain-text information about
-the request to a local file and is therefore an easy module to use for
-demonstration purposes.
+``databases'' (here, detail files) for recording accounting data.
+These databases will use the same `detail` module, but with two
+different configurations. The `detail` module logs plain-text
+information about the request to a local file and is therefore an easy
+module to use for demonstration purposes.
 
 The first step is to configure the server to have two instances of the
-`detail` module. 
+`detail` module.
 
 The first instance should log requests to a different file for each
 username.The second should log requests to a different file for each
@@ -36,11 +37,12 @@ detail bydate {
 }
 ----
 
-In the module configurations contained within `mods-available/*`,
-each module may have two names. The first name is the name of the dynamically
-loadable module that implements that functionality. The second (optional) name
-is the name of an additional instance of the module. In this case, the `detail`
-module has two additional instances, `byname` and `bydate`.
+In the module configurations contained within `mods-available/*`, each
+module may have two names. The first name is the name of the
+dynamically loadable module that implements that functionality. The
+second (optional) name is the name of an additional instance of the
+module. In this case, the `detail` module has two additional
+instances, `byname` and `bydate`.
 
 These instance names can be used in the `sites-enabled/default` file,
 `recv Access-Request`, `recv Accounting-Request`, etc. sections, just
@@ -68,8 +70,8 @@ Start the server and verify that it is `Ready to process requests.`
 $ radiusd -X
 ----
 
-Send the server a test `Access-Request` packet and verify that
-the client receives a response packet.
+Send the server a test `Access-Request` packet and verify that the
+client receives a response packet.
 
 [source,bash]
 ----
@@ -109,7 +111,9 @@ Verify the server is using the two modules to log the request:
 (1)      bydate (ok)
 ----
 
-The correct file paths can be obtained from the debug output and verify that the request was logged into two different files by examining them:
+The correct file paths can be obtained from the debug output and
+verify that the request was logged into two different files by
+examining them:
 
 [source,bash]
 ----

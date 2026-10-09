@@ -1,34 +1,40 @@
 = Enable the DHCP service
 
-A major difference between configuring FreeRADIUS as a DHCP server and other DHCP software, such as ISC DHCP, lies in the approach taken by FreeRADIUS. Unlike other software that uses a single, monolithic configuration file, FreeRADIUS has a collection of modular configuration files.  Attempting to consolidate the entire configuration into a single file would result in an extremely challenging task.
+A major difference between configuring FreeRADIUS as a DHCP server and
+other DHCP software, such as ISC DHCP, lies in the approach taken by
+FreeRADIUS. Unlike other software that uses a single, monolithic
+configuration file, FreeRADIUS has a collection of modular
+configuration files.  Attempting to consolidate the entire
+configuration into a single file would result in an extremely
+challenging task.
 
-The root of the FreeRADIUS configuration may be in a different location on the
-filesystem depending on how FreeRADIUS has been installed. This directory will
-be referred to as `<raddb>` below. The sample configuration files are well
-commented describing what each configuration option does.
+The root of the FreeRADIUS configuration may be in a different
+location on the filesystem depending on how FreeRADIUS has been
+installed. This directory will be referred to as `<raddb>` below. The
+sample configuration files are well commented describing what each
+configuration option does.
 
-FreeRADIUS compiled from source will default to `/usr/local/etc/raddb`.
-Pre-built packages will default to either `/etc/raddb` or
-`/etc/freeradius`.
-
+FreeRADIUS compiled from source will default to
+`/usr/local/etc/raddb`. Pre-built packages will default to either
+`/etc/raddb` or `/etc/freeradius`.
 
 == Enable the DHCP virtual server
 
-The FreeRADIUS configuration separates each network service that it provides
-into "virtual servers". A number of sample virtual server definitions are
-provided in `<raddb>/sites-available`, one of which is the sample
-configuration for a DHCP service.
+The FreeRADIUS configuration separates each network service that it
+provides into "virtual servers". A number of sample virtual server
+definitions are provided in `<raddb>/sites-available`, one of which is
+the sample configuration for a DHCP service.
 
-Sites may be added to the working configuration by either creating a symlink to
-them or copying them to `<conf>/sites-enabled` depending on how you wish to
-manage future upgrades.
+Sites may be added to the working configuration by either creating a
+symlink to them or copying them to `<conf>/sites-enabled` depending on
+how you wish to manage future upgrades.
 
 [TIP]
 ====
-As with other package-managed configuration files, package upgrades will not
-automatically replace files that you have edited but you will need to resolve
-any local differences. Creating copies avoids the need to resolve conflicts
-during a package upgrade.
+As with other package-managed configuration files, package upgrades
+will not automatically replace files that you have edited but you will
+need to resolve any local differences. Creating copies avoids the need
+to resolve conflicts during a package upgrade.
 ====
 
 Add the DHCP virtual server to the active configuration:
@@ -47,38 +53,39 @@ cd <raddb>/sites-enabled
 cp ../sites-available/dhcp .
 ----
 
-The sample configuration has been set up in such a way that it is initially
-safe. It will not actually take over live DHCP serving on the network when it
-is simply enabled until it is configured to do so. Rather is set up for testing
-prior to going live.
+The sample configuration has been set up in such a way that it is
+initially safe. It will not actually take over live DHCP serving on
+the network when it is simply enabled until it is configured to do so.
+Rather is set up for testing prior to going live.
 
-The virtual server begins with a `listen` section. In this section your need to
-modify the following configuration items:
+The virtual server begins with a `listen` section. In this section
+your need to modify the following configuration items:
 
 `ipaddr`:: The IP address to listen on.
 `src_ipaddr`:: The source IP for unicast packets.
-`port`:: The port to listen on.  Setting this to `67` will make the DHCP service live on the network.
+`port`:: The port to listen on.  Setting this to `67` will make the
+DHCP service live on the network.
 `interface`:: The network interface to listen on.
-`broadcast`:: Allow broadcast packets.  For most live systems this will need to be set to `yes`.
+`broadcast`:: Allow broadcast packets.  For most live systems this
+will need to be set to `yes`.
 
-Below the `listen` section, there are sections that define how to respond to
-each of the DHCP packet types.  Most installations will require that you review
-the settings for `recv Discover` and `recv Request`.
+Below the `listen` section, there are sections that define how to
+respond to each of the DHCP packet types.  Most installations will
+require that you review the settings for `recv Discover` and `recv
+Request`.
 
-Their contents contain directives in the FreeRADIUS policy language, "unlang".
-Many examples are provided which have been carefully described.
-
+Their contents contain directives in the FreeRADIUS policy language,
+"unlang". Many examples are provided which have been carefully
+described.
 
 == Enable SQL and IP pool modules
 
-FreeRADIUS has many modules to support different aspects of the functionality
-required for the network protocols it can process. The two of most significance
-for DHCP are `sql` and `sqlippool`.  As with virtual servers, a
-number of example module configurations are available in
-`<raddb>/mods-available`.
-These should be symlinked or copied into `<raddb>/mods-enabled` in order to
-enable them.
-
+FreeRADIUS has many modules to support different aspects of the
+functionality required for the network protocols it can process. The
+two of most significance for DHCP are `sql` and `sqlippool`.  As with
+virtual servers, a number of example module configurations are
+available in `<raddb>/mods-available`. These should be symlinked or
+copied into `<raddb>/mods-enabled` in order to enable them.
 
 === Configure the `sql` module
 
@@ -98,16 +105,17 @@ cd <raddb>/mods-enabled
 cp ../mods-available/sql .
 ----
 
-The `sql` module should be configured with the connection parameters for
-whichever database is to be used.  The key configuration items are:
+The `sql` module should be configured with the connection parameters
+for whichever database is to be used.  The key configuration items
+are:
 
 `dialect`:: Which SQL dialect is in use.
-`driver`:: Which driver to use to access the database.  For most databases this
- is `rlm_sql_<dialect>`, however Microsoft SQL Server has a choice of
- drivers.
+`driver`:: Which driver to use to access the database.  For most
+databases this is `rlm_sql_<dialect>`, however Microsoft SQL Server
+has a choice of drivers.
 
-Then, there are configuration options that are unique to each database,
-including connection details.  For most databases these are:
+Then, there are configuration options that are unique to each
+database, including connection details.  For most databases these are:
 
 `server`:: The host name or IP address of the database server.
 `port`:: The port to connect to the database server on.
@@ -118,10 +126,10 @@ including connection details.  For most databases these are:
 [NOTE]
 ====
 SQLite does not use these connection options, rather the `filename`
-option in the `sqlite` driver options found in `<raddb>/mods-config/sql/driver/sqlite`
-is used to determine where the database will be stored.
+option in the `sqlite` driver options found in
+`<raddb>/mods-config/sql/driver/sqlite` is used to determine where the
+database will be stored.
 ====
-
 
 === Configure the `sqlippool` module
 
@@ -141,52 +149,61 @@ cd <raddb>/mods-enabled
 cp ../mods-available/sqlippool .
 ----
 
-The `sqlippool` module must be configured. The key configuration
-items are:
+The `sqlippool` module must be configured. The key configuration items
+are:
 
 `dialect`:: Set this to the same SQL dialect as in the `sql` module.
-`offer_duration`:: How long an IP is offered to the client in a DHCP OFFER.
-`lease_duration`:: How long an IP is leased to the client in a DHCP ACK.
-`allocated_address_attr`:: Which attribute should be populated with the allocated IP address - usually `reply.Your-IP-Address` for DHCPv4.
-`owner`:: How is a client device uniquely defined.  For DHCPv4 this will typically either be "%{Client-Hardware-Address}" or "%{Client-Identifier || Client-Hardware-Address".
-`requested_address`:: Which attribute contains an address the client is asking for.  For DHCPv4 this should be "%{Requested-IP-Address || Client-IP-Address}".
-`gateway`:: Which attribute identifies the gateway a request is coming via.  This should be "%{Gateway-IP-Address}".
-
+`offer_duration`:: How long an IP is offered to the client in a DHCP
+OFFER.
+`lease_duration`:: How long an IP is leased to the client in a DHCP
+ACK.
+`allocated_address_attr`:: Which attribute should be populated with
+the allocated IP address - usually `reply.Your-IP-Address` for DHCPv4.
+`owner`:: How is a client device uniquely defined.  For DHCPv4 this
+will typically either be "%{Client-Hardware-Address}" or
+"%{Client-Identifier || Client-Hardware-Address".
+`requested_address`:: Which attribute contains an address the client
+is asking for.  For DHCPv4 this should be "%{Requested-IP-Address ||
+Client-IP-Address}".
+`gateway`:: Which attribute identifies the gateway a request is coming
+via.  This should be "%{Gateway-IP-Address}".
 
 == Provision the database
 
 Provision your database by creating a user for FreeRADIUS (matching
-the configuration that you have previously provided) and then loading the
-schema.  The procedure for doing this will vary according to the database
-server.
+the configuration that you have previously provided) and then loading
+the schema.  The procedure for doing this will vary according to the
+database server.
 
-The schema, stored procedure definition and any additional setup scripts for
-your database are in `<raddb>/mods-config/sql/ippool-dhcp/{dialect}/`.
+The schema, stored procedure definition and any additional setup
+scripts for your database are in
+`<raddb>/mods-config/sql/ippool-dhcp/{dialect}/`.
 
 == Test FreeRADIUS startup
 
-Once you have provisioned your schema, created a user account and granted
-access to the user, you should be able to start FreeRADIUS.
+Once you have provisioned your schema, created a user account and
+granted access to the user, you should be able to start FreeRADIUS.
 
-If FreeRADIUS has been configured correctly then the output of `ss` will
-contain a line showing that FreeRADIUS is listening for DHCP packets on the
-designated interface on port 67:
+If FreeRADIUS has been configured correctly then the output of `ss`
+will contain a line showing that FreeRADIUS is listening for DHCP
+packets on the designated interface on port 67:
 
 .Example of FreeRADIUS listening on `<interface>` for DHCP packets
-==================================================================
+====
  # ss -lunp
  Netid  Recv-Q  Send-Q  Local Address:Port     ...
  udp    0       0       0.0.0.0%<interface>:67 ... users:(("radiusd",...))
-==================================================================
+====
 
 [NOTE]
 ====
 If the database is inaccessible then FreeRADIUS will normally refuse
-to start. Refer to the xref:ROOT:debugging/radiusd_X.adoc[Debugging] section for more details about startup issues.
+to start. Refer to the xref:ROOT:debugging/radiusd_X.adoc[Debugging]
+section for more details about startup issues.
 ====
 
-
-Essentially, stop your init system from repeatedly trying to launch FreeRADIUS:
+Essentially, stop your init system from repeatedly trying to launch
+FreeRADIUS:
 
 [source,shell]
 ----
@@ -200,8 +217,8 @@ Then start FreeRADIUS manually in debug mode:
 radiusd -X
 ----
 
-Carefully read the output since this will tell you why FreeRADIUS was unable to
-start.
+Carefully read the output since this will tell you why FreeRADIUS was
+unable to start.
 
 Once you have fixed the issue start FreeRADIUS as normal:
 
@@ -210,7 +227,8 @@ Once you have fixed the issue start FreeRADIUS as normal:
 service radiusd start
 ----
 
-Now xref:protocols/dhcp/test.adoc[test the DHCP service] to ensure that it is responding to requests.
+Now xref:protocols/dhcp/test.adoc[test the DHCP service] to ensure
+that it is responding to requests.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

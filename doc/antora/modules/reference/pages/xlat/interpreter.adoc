@@ -1,16 +1,19 @@
 = Interpreter
 
-The following functions allow inspection and/or manipulation of the `unlang` interpreter as it is running.
+The following functions allow inspection and/or manipulation of the
+`unlang` interpreter as it is running.
 
 <<debug_xlat>>
 
 == Debug Functions
 
-The following functions allow changing the debug level, or printing out specific lists of attributes.
+The following functions allow changing the debug level, or printing
+out specific lists of attributes.
 
 == %debug(<level>)
 
-Dynamically change the debug level to something high, recording the old level.
+Dynamically change the debug level to something high, recording the
+old level.
 
 .Return: _string_
 
@@ -30,7 +33,7 @@ recv Access-Request {
 
 .Output (_extra information only for that condition_)
 
-```
+----
 ...
 (0)  recv Access-Request {
 (0)    if (request.User-Name == "bob") {
@@ -42,7 +45,7 @@ recv Access-Request {
 (0)        ...
 (0)      }
 ...
-```
+----
 
 == State
 
@@ -78,7 +81,8 @@ Which section of a virtual server is processing the request.
 
 == %interpreter('rcode')
 
-Return the current interpreter xref:unlang/return_codes.adoc[rcode], e.g. `handled`, or `ok`, etc.
+Return the current interpreter xref:unlang/return_codes.adoc[rcode],
+e.g. `handled`, or `ok`, etc.
 
 == %interpreter('server')
 
@@ -86,7 +90,8 @@ The name of the virtual server which is running the request.
 
 == %interpreter.module.force('name', 'noop')
 
-Force a module xref:unlang/return_codes.adoc[rcode], e.g. `handled` or `ok`, etc
+Force a module xref:unlang/return_codes.adoc[rcode], e.g. `handled` or
+`ok`, etc
 
 A module can be "un-forced" by not passing a second argument.
 
@@ -106,9 +111,9 @@ current client. See the sections `client { ... }` in `clients.conf`.
 
 .Output
 
-```
+----
 The client ipaddr is 192.168.5.9
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

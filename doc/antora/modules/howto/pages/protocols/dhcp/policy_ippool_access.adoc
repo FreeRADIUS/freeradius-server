@@ -1,7 +1,8 @@
 = Configure Access Restrictions for Pools
 
-We can combine what we have learned in the preceding sections to provide pools
-whose access is restricted in some way, for example to a particular class.
+We can combine what we have learned in the preceding sections to
+provide pools whose access is restricted in some way, for example to a
+particular class.
 
 Consider the ISC DHCP configuration snippet:
 
@@ -37,11 +38,13 @@ Or the equivalent Kea configuration:
 }
 ----
 
-These define a subnet containing a single pool that is restricted to members of
-the "printers" class. (The definition for this class is omitted.)
+These define a subnet containing a single pool that is restricted to
+members of the "printers" class. (The definition for this class is
+omitted.)
 
-In FreeRADIUS, to filter access to this pool entries such as the following
-should included in the `<raddb>/mods-config/files/dhcp_subnet` configuration file:
+In FreeRADIUS, to filter access to this pool entries such as the
+following should included in the
+`<raddb>/mods-config/files/dhcp_subnet` configuration file:
 
 [source,config]
 ----

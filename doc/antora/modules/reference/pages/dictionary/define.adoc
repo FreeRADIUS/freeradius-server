@@ -20,13 +20,13 @@ parent attribute.
 
 <type>:: A xref:type/index.adoc[data type].
 
-<flags>:: The flag field is optional, and is usually protocol-specific.  See
-the xref:dictionary/flags.adoc[FLAGS] page for definitions of common
-flags.
+<flags>:: The flag field is optional, and is usually
+protocol-specific.  See the xref:dictionary/flags.adoc[FLAGS] page for
+definitions of common flags.
 +
-Please see the protocol dictionaries for examples of these flags.
-Only the flags which are used in a protocol dictionary are valid,
-and those flags are only valid for that protocol dictionary.
+Please see the protocol dictionaries for examples of these flags. Only
+the flags which are used in a protocol dictionary are valid, and those
+flags are only valid for that protocol dictionary.
 
 Common flags and meanings
 [options="header"]
@@ -38,7 +38,8 @@ Common flags and meanings
 | `ref=<ref>`  | For `group` types, the referenced attributes will be allowed in the group
 |=====
 
-See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax
+of references in the dictionary.
 
 .Examples
 ----

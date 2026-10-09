@@ -1,6 +1,8 @@
 = Proxy Receive
 
-*Goal:* Configure the server to handle local authentication and proxy requests to different remote RADIUS servers based on the user-name (realm) suffix.
+*Goal:* Configure the server to handle local authentication and proxy
+requests to different remote RADIUS servers based on the user-name
+(realm) suffix.
 
 *Time:* 15-25 minutes
 
@@ -19,7 +21,8 @@ image::proxy.svg[Fig. Proxy Request-Receive]
 
 *Prerequisites:*
 
-* You already have a working *second FreeRADIUS server* (the "home" server) running on another machine / IP.
+* You already have a working *second FreeRADIUS server* (the "home"
+  server) running on another machine / IP.
 * It accepts authentication on port 1812 with a known shared secret.
 * It can authenticate users like `bob` with password `hello`.
 
@@ -29,11 +32,13 @@ Configure your proxy server to:
 * Proxy `bob@realm1.com` to remote server 1
 * Proxy `bob@realm2.com` to remote server 2
 
-You can use the radclient commands shown in the Testing section to simulate the authentication requests.
+You can use the radclient commands shown in the Testing section to
+simulate the authentication requests.
 
 == 1. Create the proxy modules
 
-Create the file `mods-available/proxy-realm1` and add the following configuration.
+Create the file `mods-available/proxy-realm1` and add the following
+configuration.
 
 [source,unlang]
 ----
@@ -61,7 +66,8 @@ radius proxy-realm1 {
 }
 ----
 
-Create the file `mods-available/proxy-realm2` and add the following configuration.
+Create the file `mods-available/proxy-realm2` and add the following
+configuration.
 
 [source,unlang]
 ----
@@ -89,7 +95,8 @@ radius proxy-realm2 {
 }
 ----
 
-Enable both modules by creating symlinks / softlinks in the mods-enabled directory.
+Enable both modules by creating symlinks / softlinks in the
+mods-enabled directory.
 
 [source,bash]
 ----
@@ -125,7 +132,7 @@ client realm2_remote {
 
 Edit `sites-enabled/default` file with the following configuration.
 
-Update the `recv Access-Request { … }` section:
+Update the `recv Access-Request { ... }` section:
 
 [source,unlang]
 ----
@@ -178,7 +185,8 @@ In `mods-config/files/authorize` (or your users file):
 bob     Cleartext-Password := "hello"
 ----
 
-If the user doesn't exist, add the user to the authorize file as you did in the xref:new_user.adoc[New User] tutorial.
+If the user doesn't exist, add the user to the authorize file as you
+did in the xref:new_user.adoc[New User] tutorial.
 
 == 5. Testing
 
@@ -211,7 +219,7 @@ Received Access-Accept Id 200 from 127.0.0.1:1812 to 0.0.0.0:58423 via lo length
         User-Name = "bob"
 ----
 
-* Server debug output (main / proxy server – local user):
+* Server debug output (main / proxy server - local user):
 
 [source,text]
 ----
@@ -248,7 +256,6 @@ Received Access-Accept Id 200 from 127.0.0.1:1812 to 0.0.0.0:58423 via lo length
 ----
 ====
 
-
 === Proxy to realm1.com
 
 [source,text]
@@ -269,7 +276,7 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
         User-Name = "bob@realm1.com"
 ----
 
-* Server debug output (main / proxy server – proxied user):
+* Server debug output (main / proxy server - proxied user):
 
 [source,text]
 ----
@@ -331,7 +338,6 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
 ----
 ====
 
-
 === Proxy to realm2.com
 
 [source,text]
@@ -352,7 +358,7 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
         User-Name = "bob@realm2.com"
 ----
 
-* Server debug output (main / proxy server – proxied user):
+* Server debug output (main / proxy server - proxied user):
 
 [source,text]
 ----
@@ -414,7 +420,6 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
 ----
 ====
 
-
 === Proxy failure simulation
 
 Stop the remote server for realm1, then run:
@@ -424,16 +429,16 @@ Stop the remote server for realm1, then run:
 echo 'User-Name = "bob@realm1.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
 ----
 
-The request should be rejected. Examine the debug logs (of the realm1 user's)
-RADIUS client and server
+The request should be rejected. Examine the debug logs (of the realm1
+user's) RADIUS client and server
 
 == Questions
 
 1.  Why is it necessary for each server to mark some realms as local?
 2.  What would happen if each user did not configure the other RADIUS
-server in the `clients.conf` file?
+    server in the `clients.conf` file?
 3.  What would happen if each user did not configure the realms to
-"strip" the realm from the proxied requests?
+    "strip" the realm from the proxied requests?
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -3,8 +3,8 @@
 The client is either completely broken, or the packet is not RADIUS.
 
 The server receives a network packet with an attribute that isn't the
-correct length for the RADIUS protocol. The client sending the packet is
-either broken, or isn't sending RADIUS packets.
+correct length for the RADIUS protocol. The client sending the packet
+is either broken, or isn't sending RADIUS packets.
 
 include::partial$not-radius.adoc[]
 

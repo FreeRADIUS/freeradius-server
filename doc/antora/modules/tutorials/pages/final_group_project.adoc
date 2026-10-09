@@ -6,9 +6,9 @@ include::ROOT:partial$v3_warning.adoc[]
 
 *Time:* 2-3 hours
 
-This task is split into multiple sections.  If working with an instructor
-you should ask for your configuration file to be validated by the instructor
-after each section is complete.
+This task is split into multiple sections.  If working with an
+instructor you should ask for your configuration file to be validated
+by the instructor after each section is complete.
 
 For this task you will need at least two participants.
 
@@ -16,13 +16,12 @@ For this task you will need at least two participants.
 
 Each participant should decide on the following:
 
-* A realm e.g. `example.com`, that their RADIUS server will respond to request for
-  the realm must be unique within the group.  This will be referred to as
-  `your_realm` in the rest of the text.
+* A realm e.g. `example.com`, that their RADIUS server will respond to
+  request for the realm must be unique within the group.  This will be
+  referred to as `your_realm` in the rest of the text.
 * A shared secret for the realm `your_secret`.
-* A backend module (`your_module`) to use to authenticate their users. Again,
-  this should be unique within the group.
-  Options are:
+* A backend module (`your_module`) to use to authenticate their users.
+  Again, this should be unique within the group. Options are:
 +
 --
 ** `files`
@@ -32,13 +31,14 @@ Each participant should decide on the following:
 ** `sql`
 --
 +
-For everything except `files` it's recommended to pick a module where you're
-familiar with the backend protocol.
-* A set of credentials (`your_user`, `your_password`). These should not be
-  sensitive credentials as they will be seen by the rest of the group.
+For everything except `files` it's recommended to pick a module where
+you're familiar with the backend protocol.
+* A set of credentials (`your_user`, `your_password`). These should
+  not be sensitive credentials as they will be seen by the rest of the
+  group.
 
-Each user should send the following information to the instructor or place it in
-a shared document:
+Each user should send the following information to the instructor or
+place it in a shared document:
 
 - `your_realm`
 - `your_secret`
@@ -47,52 +47,58 @@ a shared document:
 - `your_user`
 - `your_password`
 
-For local preparation, you should ensure that the following sections have no
-content:
+For local preparation, you should ensure that the following sections
+have no content:
 
 - The `recv Access-Request { ... }` or `authorize { ... }` section of
   `sites-available/default`.
 - The `send Access-Accept { ... }` or `post-auth { ... }` section of
+  `sites-available/default`. _Clear the `post-auth-type reject { ...}`
+  section if present but do not remove_.
+- The `send Access-Reject { ... }` section of
   `sites-available/default`.
-  _Clear the `post-auth-type reject { ...}` section if present but do not remove_.
-- The `send Access-Reject { ... }` section of `sites-available/default`.
 
 After completing each of the sections below, you should check that the
-configuration you've produced is valid (radiusd -XC), and if possible, test the
-functionality you've configured using `radtest` or `radclient`/
+configuration you've produced is valid (radiusd -XC), and if possible,
+test the functionality you've configured using `radtest` or
+`radclient`/
 
 == Proxying
 
-*Goal:* To simulate federated access, by configuring proxy destinations for
-multiple upstream home servers.
+*Goal:* To simulate federated access, by configuring proxy
+destinations for multiple upstream home servers.
 
 *Files:*
 
 - xref:reference:raddb/mods-available/radius.adoc[`mods-available/radius`]
-- xref:reference:raddb/sites-available/default.adoc[`sites-available/default`] (optionally)
-- xref:reference:raddb/mods-available/linelog.adoc[`mods-available/linelog`] (optionally)
+- xref:reference:raddb/sites-available/default.adoc[`sites-available/default`]
+  (optionally)
+- xref:reference:raddb/mods-available/linelog.adoc[`mods-available/linelog`]
+  (optionally)
 
 *Time:* 20-30 minutes
 
-For each participant in the group, create a realm with a single home server.
+For each participant in the group, create a realm with a single home
+server.
 
-The information for the realm should come from the shared document, and should use
-the realm name, the secret, and the ip address supplied by the participant.
+The information for the realm should come from the shared document,
+and should use the realm name, the secret, and the ip address supplied
+by the participant.
 
-For `your_realm`, you should create a realm which authenticates users locally on
-your server.
+For `your_realm`, you should create a realm which authenticates users
+locally on your server.
 
 Liveliness checks should be performed with 'status-server'.
 
-All remote realms should be configured with "nostrip", so the full username is
-proxied.
+All remote realms should be configured with "nostrip", so the full
+username is proxied.
 
 The local realm should not have "nostrip" set.
 
 === Bonus tasks
 
-* When proxied requests fail, create a linelog message containing the date, the
-  username and the destination realm.
+* When proxied requests fail, create a linelog message containing the
+  date, the username and the destination realm.
 * Log all outbound packets to the proxy.
 * Log all inbound packets from the proxy.
 * For each home server
@@ -111,15 +117,15 @@ The local realm should not have "nostrip" set.
 *Time*: 15-20 minutes
 
 Add client entries for each of the other participants server's, using
-the participant's name as the client name, the ip of their server as `ipaddr` and
-`your_secret` as the secret.
+the participant's name as the client name, the ip of their server as
+`ipaddr` and `your_secret` as the secret.
 
 [WARNING]
 ====
-The secret used for the client _must_ be _your_ secret, not the other participants
-secret.  The other participant will be configuring your secret in the home
-server definition to send requests to your home server.  The client and home server
-definitions must match.
+The secret used for the client _must_ be _your_ secret, not the other
+participants secret.  The other participant will be configuring your
+secret in the home server definition to send requests to your home
+server.  The client and home server definitions must match.
 ====
 
 == Loading credentials
@@ -133,13 +139,13 @@ For your chosen backend:
 - Install any necessary packages
 - Load any FreeRADIUS specific schemas
 
-After the backend has bee setup insert your own credentials, and those for every
-other participant in the group, into your backend datastore.
+After the backend has bee setup insert your own credentials, and those
+for every other participant in the group, into your backend datastore.
 
-If the datastore provides no authentication method (`sql`, `redis`), you should
-use the value of `Stripped-User-Name` as the key, and when the user attempts to
-login, retrieve the user's password and store it in
-`control.Password.Cleartext`.
+If the datastore provides no authentication method (`sql`, `redis`),
+you should use the value of `Stripped-User-Name` as the key, and when
+the user attempts to login, retrieve the user's password and store it
+in `control.Password.Cleartext`.
 
 == Authorization
 
@@ -157,12 +163,13 @@ login, retrieve the user's password and store it in
 
 *Time:* 20-60 minutes
 
-First, in the `recv Access-Request { ... }` or `authorize { ... }` section of
-of an appropriate virtual server,  call the suffix module.
+First, in the `recv Access-Request { ... }` or `authorize { ... }`
+section of of an appropriate virtual server,  call the suffix module.
 
-If, after the suffix module has returned, the `control.Proxy-To-Realm` attribute
-is set, use the `return` keyword to exit from the section.  This prevents local
-modules being called, when we know the request will be handled by a remote proxy.
+If, after the suffix module has returned, the `control.Proxy-To-Realm`
+attribute is set, use the `return` keyword to exit from the section.
+This prevents local modules being called, when we know the request
+will be handled by a remote proxy.
 
 [source,unlang]
 ----
@@ -179,23 +186,26 @@ The following backend modules have an built in authorization method:
 - `rest`
 - `sql`
 
-The redis module has a string expansion %redis(<command>) which can be used
-to retrieve a single value from the datastore.
+The redis module has a string expansion %redis(<command>) which can be
+used to retrieve a single value from the datastore.
 
-Call the backend module's authorize method (or run an appropriate expansion) to
-determine if the authenticating user exists in the datastore.
+Call the backend module's authorize method (or run an appropriate
+expansion) to determine if the authenticating user exists in the
+datastore.
 
-If the user does exist, and your module has an authenticate method (`ldap`,
-`rest`), set `control.Auth-Type` to an appropriate value.
+If the user does exist, and your module has an authenticate method
+(`ldap`, `rest`), set `control.Auth-Type` to an appropriate value.
 
-If the backend module does not have an authenticate method (`redis`, `files`,
-`sql`), you should ensure the "known good" copy of the user's password is set in
-`control.Password.Cleartext` and then call the pap module.
+If the backend module does not have an authenticate method (`redis`,
+`files`, `sql`), you should ensure the "known good" copy of the user's
+password is set in `control.Password.Cleartext` and then call the pap
+module.
 
 === Bonus tasks
 
-- If the user was `notfound`, i.e. the user is local, log the fact the user was
-not found, along with the username, date and client IP address.
+- If the user was `notfound`, i.e. the user is local, log the fact the
+  user was not found, along with the username, date and client IP
+  address.
 
 == Authentication
 
@@ -203,33 +213,37 @@ not found, along with the username, date and client IP address.
 
 *Time:* 20-30 minutes
 
-For `ldap` and `rest` add or uncomment an appropriate `Auth-Type` section.
+For `ldap` and `rest` add or uncomment an appropriate `Auth-Type`
+section.
 
-For other backend modules, ensure the PAP module's `Auth-Type` section is
-uncommented.
+For other backend modules, ensure the PAP module's `Auth-Type` section
+is uncommented.
 
 Run `radtest` or `radclient`, with credentials:
-`<your_user>@<your_realm>` and `your_password`. You should receive an Access-Accept.
+`<your_user>@<your_realm>` and `your_password`. You should receive an
+Access-Accept.
 
 === Bonus tasks
 
-- If the user was accepted, log the date, username, and client ip address.
-- If the user was rejected, log the date, username, and client ip address.
+- If the user was accepted, log the date, username, and client ip
+  address.
+- If the user was rejected, log the date, username, and client ip
+  address.
 
 == Remote-Authentication
 
-*Goal:* Verify all participants have configured their RADIUS services correctly.
+*Goal:* Verify all participants have configured their RADIUS services
+correctly.
 
 *Time:* 20+ minutes
 
-Check with the other participants to see how much of the exercise they have
-completed.  If a participant has a working RADIUS server, send request
-with `<your_user>@<their_realm>` and `your_password`, and verify that
-their server responds with an Access-Accept.
+Check with the other participants to see how much of the exercise they
+have completed.  If a participant has a working RADIUS server, send
+request with `<your_user>@<their_realm>` and `your_password`, and
+verify that their server responds with an Access-Accept.
 
-If their server does not respond with an Access-Accept, work with the other
-participant to debug the issue.
-
+If their server does not respond with an Access-Accept, work with the
+other participant to debug the issue.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -18,13 +18,14 @@ _log_file_] [*-m*] [*-n* _name_] [*-s*] [*-t*] [*-T*] [*-v*] [*-x*]
 
 == DESCRIPTION
 
-FreeRADIUS is a high-performance and highly configurable RADIUS server.
-It supports many database back-ends such as flat-text files, SQL, LDAP,
-Perl, Python, etc. It also supports many authentication protocols such
-as PAP, CHAP, MS-CHAP(v2), HTTP Digest, and EAP (EAP-MD5, EAP-TLS, PEAP,
-EAP-TTLS, EAP-SIM, etc.).
+FreeRADIUS is a high-performance and highly configurable RADIUS
+server. It supports many database back-ends such as flat-text files,
+SQL, LDAP, Perl, Python, etc. It also supports many authentication
+protocols such as PAP, CHAP, MS-CHAP(v2), HTTP Digest, and EAP
+(EAP-MD5, EAP-TLS, PEAP, EAP-TTLS, EAP-SIM, etc.).
 
-It also has full support for Cisco's VLAN Query Protocol (VMPS) and DHCP.
+It also has full support for Cisco's VLAN Query Protocol (VMPS) and
+DHCP.
 
 Please read the DEBUGGING section below. It contains instructions for
 quickly configuring the server for your local system.
@@ -33,7 +34,7 @@ quickly configuring the server for your local system.
 
 The following command-line options are accepted by the server.
 
-*-C*:: 
+*-C*::
   Check the configuration and exit immediately. If there is a problem
   reading the configuration, then the server will exit with a non-zero
   status code. If the configuration appears to be acceptable, then the
@@ -43,12 +44,12 @@ Note that there are limitations to this check. Due to the complexities
 involved in _almost_ starting a RADIUS server, these checks are
 necessarily incomplete. The server can return a zero status code when
 run with `-C`, but may still exit with an error when run normally.
-+ 
++
 See the output of `radiusd -XC` for a list of which modules are
 checked for correct configuration, and which modules are skipped,
 and therefore not checked.
 
-*-d config_directory*:: 
+*-d config_directory*::
   Defaults to `/etc/raddb`. `Radiusd` looks here for its configuration
   files such as the `dictionary` and the `users` files.
 
@@ -106,48 +107,50 @@ binary to look for `foo.conf`.
 The default configuration is set to work in the widest possible
 circumstances. It requires minimal changes for your system.
 
-However, your needs may be complex, and may require significant changes
-to the server configuration. Making random changes is a guaranteed
-method of failure. Instead, we STRONGLY RECOMMEND proceeding via the
-following steps:
+However, your needs may be complex, and may require significant
+changes to the server configuration. Making random changes is a
+guaranteed method of failure. Instead, we STRONGLY RECOMMEND
+proceeding via the following steps:
 
 1) Always run the server in debugging mode ( `radiusd -X` ) after
 making a configuration change. We cannot emphasize this enough. If you
-are not running the server in debugging mode, you _will not_ be able to
-see what is doing, and you _will not_ be able to correct any problems.
+are not running the server in debugging mode, you _will not_ be able
+to see what is doing, and you _will not_ be able to correct any
+problems.
 
-If you ask questions on the mailing list, the first response will be to
-tell you "run the server in debugging mode". Please, follow these
+If you ask questions on the mailing list, the first response will be
+to tell you "run the server in debugging mode". Please, follow these
 instructions.
 
-2) Change as little as possible in the default configuration
-files. The server contains a decade of experience with protocols,
-databases, and different systems. Its default configuration is designed
-to work almost everywhere, and to do almost everything you need.
+2) Change as little as possible in the default configuration files.
+The server contains a decade of experience with protocols, databases,
+and different systems. Its default configuration is designed to work
+almost everywhere, and to do almost everything you need.
 
-3) When you make a small change, testing it before changing
-anything else. If the change works, save a copy of the configuration,
-and make another change. If the change doesn't work, debug it, and try
-to understand why it doesn't work.
+3) When you make a small change, testing it before changing anything
+else. If the change works, save a copy of the configuration, and make
+another change. If the change doesn't work, debug it, and try to
+understand why it doesn't work.
 
 If you begin by making large changes to the server configuration, it
 will never work, and you will never be able to debug the problem.
 
-4) If you need to add a connection to a database FOO (e.g. LDAP
-or SQL), then:
+4) If you need to add a connection to a database FOO (e.g. LDAP or
+SQL), then:
  +
 a) Edit `modules/foo`
  +
-This file contains the default configuration for the module. It contains
-comments describing what can be configured, and what those configuration
-entries mean.
+This file contains the default configuration for the module. It
+contains comments describing what can be configured, and what those
+configuration entries mean.
  +
 b) Edit `sites-available/default`
  +
-This file contains the default policy for the server. e.g. "enable CHAP,
-MS-CHAP, and EAP authentication". Look in this file for all references
-to your module "foo". Read the comments, and remove the leading hash '#'
-from the lines referencing the module. This enables the module.
+This file contains the default policy for the server. e.g. "enable
+CHAP, MS-CHAP, and EAP authentication". Look in this file for all
+references to your module "foo". Read the comments, and remove the
+leading hash '#' from the lines referencing the module. This enables
+the module.
  +
 c) Edit `sites-available/inner-tunnel`
  +
@@ -161,25 +164,25 @@ testing.
 
 5) Ask questions on the mailing list
  +
-(freeradius-users@lists.freeradius.org). When asking questions, include
-the output from debugging mode ( `radiusd -X` ). This information will
-allow people to help you. If you do not include it, the first response
-to your message will be "post the output of debug mode".
+(freeradius-users@lists.freeradius.org). When asking questions,
+include the output from debugging mode ( `radiusd -X` ). This
+information will allow people to help you. If you do not include it,
+the first response to your message will be "post the output of debug
+mode".
 
-Ask questions earlier, rather than later. If you cannot solve a problem
-in a day, ask a question on the mailing list. Most questions have been
-seen before, and can be answered quickly.
+Ask questions earlier, rather than later. If you cannot solve a
+problem in a day, ask a question on the mailing list. Most questions
+have been seen before, and can be answered quickly.
 
 == BACKGROUND
 
 *RADIUS* is a protocol spoken between an access server, typically a
-device connected to several modems or ISDN lines, and a *radius* server.
-When a user connects to the access server, (s)he is asked for a
-loginname and a password. This information is then sent to the *radius*
-server. The server replies with "access denied", or "access OK". In the
-latter case login information is sent along, such as the IP address in
-the case of a PPP connection.
-
+device connected to several modems or ISDN lines, and a *radius*
+server. When a user connects to the access server, (s)he is asked for
+a loginname and a password. This information is then sent to the
+*radius* server. The server replies with "access denied", or "access
+OK". In the latter case login information is sent along, such as the
+IP address in the case of a PPP connection.
 
 == CONFIGURATION
 

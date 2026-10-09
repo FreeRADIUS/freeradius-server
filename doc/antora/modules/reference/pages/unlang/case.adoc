@@ -9,8 +9,8 @@ case [ <match> ] {
 ----
 
 The `case` statement is used to match data inside of a
-xref:unlang/switch.adoc[switch] statement.  The `case` statement cannot be used
-outside of a xref:unlang/switch.adoc[switch] statement.
+xref:unlang/switch.adoc[switch] statement.  The `case` statement
+cannot be used outside of a xref:unlang/switch.adoc[switch] statement.
 
 The _<match>_ text *must* be static.  That is, the _<match>_ text
 cannot be an attribute expansion, or an `xlat`
@@ -44,7 +44,8 @@ switch User-Name {
 }
 ----
 
-The last entry in a `case` section can also be an xref:unlang/actions.adoc[action].
+The last entry in a `case` section can also be an
+xref:unlang/actions.adoc[action].
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

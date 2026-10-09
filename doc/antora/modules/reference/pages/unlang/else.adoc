@@ -22,9 +22,9 @@ xref:unlang/elsif.adoc[elsif] statement, then xref:unlang/if.adoc[if]
 condition is treated as "false", and the `else` or `elsif statement is
 processed.
 
-Otherwise, the failed xref:unlang/if.adoc[if] statement returns the `fail`
-xref:unlang/return_codes.adoc[rcode], which is processed according to
-the rules for the current section.
+Otherwise, the failed xref:unlang/if.adoc[if] statement returns the
+`fail` xref:unlang/return_codes.adoc[rcode], which is processed
+according to the rules for the current section.
 
 .Example
 [source,unlang]
@@ -37,9 +37,8 @@ else {
 }
 ----
 
-
-
-The last entry in an `else` section can also be an xref:unlang/actions.adoc[actions] subsection.
+The last entry in an `else` section can also be an
+xref:unlang/actions.adoc[actions] subsection.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

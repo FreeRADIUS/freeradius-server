@@ -4,7 +4,8 @@
 
 === Authentication
 
-Now in another terminal window run on the FreeRADIUS server to test authentication:
+Now in another terminal window run on the FreeRADIUS server to test
+authentication:
 
 [source,shell]
 ----
@@ -16,7 +17,8 @@ EOF
 
 ==== Access-Accept
 
-If this works you should see `radclient` report `Access-Accept` almost immediately without delay:
+If this works you should see `radclient` report `Access-Accept` almost
+immediately without delay:
 
 [source,log]
 ----
@@ -85,11 +87,15 @@ ldapsearch -LL -H ldap://localhost -x -D cn=freeradius,dc=example,dc=com -w mypa
  ** matches so `ok` is returned
  . we return `Access-Accept` as `ok` was returned to unlang
 
-This worked as the LDAP credentials used by FreeRADIUS to connect to the LDAP server is able to extract a the `userPassword` attribute; as could been seen from the example `ldapsearch` command provided earlier.
+This worked as the LDAP credentials used by FreeRADIUS to connect to
+the LDAP server is able to extract a the `userPassword` attribute; as
+could been seen from the example `ldapsearch` command provided
+earlier.
 
 ==== `Access-Reject`
 
-If this fails, the response will be delayed by one second and `Access-Reject` will be returned:
+If this fails, the response will be delayed by one second and
+`Access-Reject` will be returned:
 
 [source,shell]
 ----
@@ -98,7 +104,8 @@ Debug : Received Access-Reject Id 130 from 127.0.0.1:1812 to 0.0.0.0:49353 via l
 (0) -: Expected Access-Accept got Access-Reject
 ----
 
-You should now look to the output of the debugging from the FreeRADIUS terminal window which may show something like:
+You should now look to the output of the debugging from the FreeRADIUS
+terminal window which may show something like:
 
 [source,log]
 ----
@@ -134,9 +141,13 @@ Here FreeRADIUS describes it:
  . no `Auth-Type` is set, so FreeRADIUS rejects the request (no even attempting to authenticate)
  . returns `Access-Reject`
 
-This occurs as the LDAP credentials used by FreeRADIUS to connect to the LDAP server is *unable* to extract a the `userPassword` attribute; as could been seen from the example `ldapsearch` command provided earlier.
+This occurs as the LDAP credentials used by FreeRADIUS to connect to
+the LDAP server is *unable* to extract a the `userPassword` attribute;
+as could been seen from the example `ldapsearch` command provided
+earlier.
 
-You have two options available to you here (`Ctrl-C` the running FreeRADIUS server, make the change and restart):
+You have two options available to you here (`Ctrl-C` the running
+FreeRADIUS server, make the change and restart):
 
  . change the permissions of the LDAP credentials used so that FreeRADIUS can read the LDAP `userPassword` attribute
  ** this is the recommended option
@@ -154,7 +165,9 @@ if ((ok || updated) && User-Password) {
 ----
  ** FreeRADIUS is now configured to attempt to LDAP bind if the `ldap` module finds a user and the RADIUS request contains a `User-Password` RADIUS attribute
 
-If you use LDAP bind'ing to perform user authentication, then when `radclient` receives `Accept-Accept', the FreeRADIUS debug terminal will look like:
+If you use LDAP bind'ing to perform user authentication, then when
+`radclient` receives `Accept-Accept', the FreeRADIUS debug terminal
+will look like:
 
 [source,log]
 ----

@@ -1,8 +1,7 @@
 = Single Quoted Strings
 
 .Syntax
-`'string'`
-`'''string with 'quote' embedded'''`
+`'string'` `'''string with 'quote' embedded'''`
 
 A single-quoted string is interpreted without any dynamic string
 expansion. The quotes allow the string to contain spaces, among other

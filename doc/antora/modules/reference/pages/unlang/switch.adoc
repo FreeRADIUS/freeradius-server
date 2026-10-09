@@ -31,8 +31,8 @@ statement.
 
 The `case` statements are matches in a type-specific manner. In most
 cases, they are matched via an equality comparison.  For IP address
-types, the match is done on the network that most closely matches
-the input.  See below for more information.
+types, the match is done on the network that most closely matches the
+input.  See below for more information.
 
 The `switch` statement is largely equivalent to the following use of
 xref:unlang/if.adoc[if] statements:
@@ -74,9 +74,9 @@ representation for the set of xref:unlang/case.adoc[case] statements,
 depending on the data type of the _<expansion>_.  This data type can
 be forced by using a cast operation, e.g.
 
-```
+----
 switch (ipaddr) %sql.query("SELECT ...") {
-```
+----
 
 For `string` and `octets` data type, the xref:unlang/case.adoc[case]
 statements are place into a hash table. Entries are matched exactly.
@@ -90,8 +90,8 @@ network which contains the input data.
 
 Data types which are of the various "integer" or "float" types, or
 `ethernet`, or `ifid` are put into a
-https://en.wikipedia.org/wiki/Red%E2%80%93black_tree[Red-black
-tree]. Entries are matched exactly.
+https://en.wikipedia.org/wiki/Red%E2%80%93black_tree[Red-black tree].
+Entries are matched exactly.
 
 Other data types such as `vsa` or `group` are not permitted in the
 _<expansion>_ field of a `switch` statement.
@@ -108,8 +108,8 @@ memory.
 == Limitations
 
 The _match_ text for the xref:unlang/case.adoc[case] statement _must_
-be static data.  That is, the "thing to match"
-cannot be an attribute reference, or a dynamic expansion.
+be static data.  That is, the "thing to match" cannot be an attribute
+reference, or a dynamic expansion.
 
 Duplicate xref:unlang/case.adoc[case] statements are forbidden and
 will produce an error.

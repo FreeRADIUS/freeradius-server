@@ -13,15 +13,19 @@ for a particular xref:dictionary/vendor.adoc[VENDOR].
 
 <name>:: The name of the xref:dictionary/vendor.adoc[VENDOR].
 +
-The vendor must have previously been created in a xref:dictionary/vendor.adoc[VENDOR] definition.
+The vendor must have previously been created in a
+xref:dictionary/vendor.adoc[VENDOR] definition.
 
-parent=<ref>:: An optional argument defining which xref:dictionary/attribute.adoc[ATTRIBUTE] is the parent of the following definitions.
+parent=<ref>:: An optional argument defining which
+xref:dictionary/attribute.adoc[ATTRIBUTE] is the parent of the
+following definitions.
 +
 Some protocols have multiple vendor-specific options.  Using the
 `parent=<ref>` syntax allows the dictionaries to "scope" the vendor
 definition to a particular part of the attribute naming tree.
 
-The `BEGIN-VENDOR` keyword must always be paired with a matching xref:dictionary/end-vendor.adoc[END-VENDOR] keyword.
+The `BEGIN-VENDOR` keyword must always be paired with a matching
+xref:dictionary/end-vendor.adoc[END-VENDOR] keyword.
 
 .Example
 ----

@@ -10,7 +10,6 @@
 - `sites-enabled/default`
 - `mods-config/files/authorize`
 
-
 Many system administrators wish to implement "prepaid" billing for
 their systems. In this exercise, we will configure the server to use a
 simple "prepaid" scheme, wherein all users will be permitted to log in
@@ -33,7 +32,8 @@ Verify the symbolic link was created:
 $ cat mods-enabled/sqlcounter
 ----
 
-The `mods-enabled/sqlcounter` should contain a `daily counter` instance similar to the following:
+The `mods-enabled/sqlcounter` should contain a `daily counter`
+instance similar to the following:
 
 [source,unlang]
 ----
@@ -59,7 +59,6 @@ sqlcounter dailycounter {
 See xref:reference:raddb/mods-available/sqlcounter.adoc[sqlcounter]
 for detail on what each configuration item means.
 
-
 === 1. Add the user to the SQL database
 
 [source,sql]
@@ -70,7 +69,8 @@ VALUES ('alice', 'Cleartext-Password', ':=', 'testing123');
 
 === 2. Set User Limits
 
-Edit `mods-config/files/authorize` and add following entry to the file :
+Edit `mods-config/files/authorize` and add following entry to the file
+:
 
 [source,text]
 ----
@@ -79,7 +79,8 @@ DEFAULT control.Max-Daily-Session := 3600
 
 === 3. Enable SQLCounter dailycounter
 
-Edit `etc/sites-enabled/default` and add the `dailycounter` module to the `recv Access-Request` section:
+Edit `etc/sites-enabled/default` and add the `dailycounter` module to
+the `recv Access-Request` section:
 
 [source,unlang]
 ----
@@ -156,7 +157,8 @@ echo 'User-Name = "alice", Acct-Status-Type = Start, Acct-Session-Id = "01020304
 
 === Send Accounting Stop
 
-Wait a minute or so, and then send an Accounting-Stop to end the session:
+Wait a minute or so, and then send an Accounting-Stop to end the
+session:
 
 [source,bash]
 ----
@@ -183,12 +185,13 @@ Received Access-Accept Id 167 from 127.0.0.1:1812 to 0.0.0.0:57205 via lo length
         User-Name = "alice"
 ----
 
-The Session-Timeout should now be approximately 3590 seconds (3600 - 10 used).
+The Session-Timeout should now be approximately 3590 seconds (3600 -
+10 used).
 
 == Questions
 
-1.  How would you configure the server to obtain the daily access limits
-    from an SQL database?
+1.  How would you configure the server to obtain the daily access
+    limits from an SQL database?
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

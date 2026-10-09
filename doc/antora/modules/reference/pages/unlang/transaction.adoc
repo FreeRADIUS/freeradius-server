@@ -10,7 +10,8 @@ transaction {
 
 The `transaction` statement collects a series of statements into a
 single transaction.  If the block returns an error such as `fail`,
-`reject`, `invalid`, `notfound`, `timeout`, or `disallow`, any attribute changes which have been made will be reverted.
+`reject`, `invalid`, `notfound`, `timeout`, or `disallow`, any
+attribute changes which have been made will be reverted.
 
 [ statements ]:: The `unlang` commands which will be executed.
 
@@ -35,8 +36,8 @@ For example, any data which was inserted into `sql` during a
 independent of any database transactions.
 
 The `transaction` keyword sets its own return codes for `fail`,
-`invalid`, and `disallow` to be set the priority `1`, instead of
-the default `return`. This behaviour means that a failed `transaction`
+`invalid`, and `disallow` to be set the priority `1`, instead of the
+default `return`. This behaviour means that a failed `transaction`
 will cause the interpreter to proceed to the next instruction, instead
 of returning.
 
@@ -44,8 +45,8 @@ of returning.
 
 In this example, if the SQL `select` statement fails, then the
 `reply.Framed-IP-Address` attribute is _not_ updated, and the
-statements inside of the `transaction` section will return `fail`.
-The assignment to `reply.Framed-IP-Address` will then be reverted.
+statements inside of the `transaction` section will return `fail`. The
+assignment to `reply.Framed-IP-Address` will then be reverted.
 
 [source,unlang]
 ----
@@ -65,10 +66,10 @@ transaction {
 
 [NOTE]
 ====
-The xref:unlang/edit.adoc[edit] statements do not fail if the
-right hand side expression fails. Instead, you must manually check if
-the assignment failed. The example above does this with an
-intermediate variable.
+The xref:unlang/edit.adoc[edit] statements do not fail if the right
+hand side expression fails. Instead, you must manually check if the
+assignment failed. The example above does this with an intermediate
+variable.
 ====
 
 The last entry in a `transaction` section can also be an

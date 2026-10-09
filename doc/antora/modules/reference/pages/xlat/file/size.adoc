@@ -1,6 +1,7 @@
 = Size
 
-The `file.size` function returns the size (in bytes) of the given file.
+The `file.size` function returns the size (in bytes) of the given
+file.
 
 [#syntax]
 == Syntax

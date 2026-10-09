@@ -1,6 +1,9 @@
 = rmdir
 
-The `file.rmdir` function removes a directory.  If the directory exists and could be removed, it returns `true`.  Otherwise if the directory does not exist, or if the directory could not be removed, it returns `false`.
+The `file.rmdir` function removes a directory.  If the directory
+exists and could be removed, it returns `true`.  Otherwise if the
+directory does not exist, or if the directory could not be removed, it
+returns `false`.
 
 [#syntax]
 == Syntax

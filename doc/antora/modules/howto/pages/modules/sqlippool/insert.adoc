@@ -7,8 +7,8 @@ The `radippool` table is updated is a way that preserves existing
 leases, provided that the corresponding IP addresses still exist in
 the pool.
 
-This script typically receives the output of the `generate_pool_addresses.pl`
-script, as follows:
+This script typically receives the output of the
+`generate_pool_addresses.pl` script, as follows:
 
 [source,shell]
 ----

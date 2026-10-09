@@ -26,4 +26,3 @@ in an Access-Accept packet.
 
 |====
 
-

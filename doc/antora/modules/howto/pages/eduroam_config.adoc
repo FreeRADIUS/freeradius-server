@@ -35,14 +35,13 @@ The general order of operations is:
     authority.
 12. Alter the `eapol_test` files so they specify a certification
     authority.
-13. Check that the `eapol_test` files work with a *REAL*
-    certificate, and *REAL* credentials.
+13. Check that the `eapol_test` files work with a *REAL* certificate,
+    and *REAL* credentials.
 14. Clone the config onto two servers (or clone the server).
 15. Pass the server IP addresses of those servers to your NRO
     (National RADIUS Operator).  They will usually issue you secrets
     and tell you the IP addresses of the FLRS (Federation Level RADIUS
-    Servers), which you need to put in `proxy.conf` and
-    `clients.conf`
+    Servers), which you need to put in `proxy.conf` and `clients.conf`
 
 A separate page gives more detail on configuring efficient logging for
 eduroam.
@@ -51,11 +50,11 @@ eduroam.
 
 ### eapol_test
 
-Before you begin you should build a copy of `eapol_test`.
-`eapol_test` is an extremely useful tool produced by the hostapd
-project which can simulate both a Wireless Access Point and a
-Supplicant (client).  Unfortunately it's not usually packaged and can
-be quite challenging to build manually.
+Before you begin you should build a copy of `eapol_test`. `eapol_test`
+is an extremely useful tool produced by the hostapd project which can
+simulate both a Wireless Access Point and a Supplicant (client).
+Unfortunately it's not usually packaged and can be quite challenging
+to build manually.
 
 A script is included in the FreeRADIUS CIT suite that will
 automatically build `eapol_test`, which you should use. Instructions
@@ -314,11 +313,15 @@ eap {
 
 ***
 
-All eduroam members should log requests to/from their servers for compliance purposes and because it makes debugging much easier.
+All eduroam members should log requests to/from their servers for
+compliance purposes and because it makes debugging much easier.
 
-These logging module instances and the virtual server configuration above will make your site fully compliant, so long as the syslog messages are retained for the requisite period.
+These logging module instances and the virtual server configuration
+above will make your site fully compliant, so long as the syslog
+messages are retained for the requisite period.
 
-We recommend ingesting the messages into logstash or Splunk to make debugging/helpdesk activities easier.
+We recommend ingesting the messages into logstash or Splunk to make
+debugging/helpdesk activities easier.
 
 ***
 
@@ -367,7 +370,8 @@ linelog linelog_recv_proxy_response {
 
 ----
 
-You will also need to configure your local syslog daemon to log these messages.
+You will also need to configure your local syslog daemon to log these
+messages.
 
 For rsyslogd you could do that with the following:
 
@@ -379,7 +383,8 @@ Then setup the appropriate log rotation rules.
 
 ***
 
-A basic realm to forward requests to your National Roaming Operator's Federation Level RADIUS servers.
+A basic realm to forward requests to your National Roaming Operator's
+Federation Level RADIUS servers.
 
 ***
 
@@ -421,7 +426,8 @@ realm eduroam_flr {
 
 ***
 
-The `clients.conf` file determines which devices can talk to the RADIUS server.
+The `clients.conf` file determines which devices can talk to the
+RADIUS server.
 
 In most instances we need:
 
@@ -463,21 +469,22 @@ client wireless_access_points_mgmt {
 
 ### The Inner virtual Server
 
-This is a bare bones configuration file for the outer virtual-server. This
-virtual-server handles the inner EAP conversation, i.e. data inside of the TLS
-tunnel.
+This is a bare bones configuration file for the outer virtual-server.
+This virtual-server handles the inner EAP conversation, i.e. data
+inside of the TLS tunnel.
 
 It does the following:
 
 - Checks the sanity of the inner identity.
 - Makes the inner identity available to the outer server.
-- Retrieves the user's password (or, if used, forwards credentials to Active
-  Directory).
+- Retrieves the user's password (or, if used, forwards credentials to
+  Active Directory).
 - Authenticates the user.
 
 [NOTE]
 ====
-You may need to symlink `mods-enabled/inner-eap` to `mods-available/inner-eap`. i.e.
+You may need to symlink `mods-enabled/inner-eap` to
+`mods-available/inner-eap`. i.e.
 ----
 cd /etc/raddb/mods-available
 ln -s ../mods-available/inner-eap ../mods-enabled/inner-eap
@@ -587,17 +594,19 @@ eap inner-eap {
 
 ## Testing
 
-`eapol_test` is the utility of choice when testing. Some basic config files for
-`eapol_test` are given below, which allow you to generate EAP-TTLS, EAP-PEAP
-and EAP-TLS requests.
+`eapol_test` is the utility of choice when testing. Some basic config
+files for `eapol_test` are given below, which allow you to generate
+EAP-TTLS, EAP-PEAP and EAP-TLS requests.
 
 ### Test files
 
 ***
 
-This testing entry for the files module set the 'known-good' or 'reference' password to be 'changeme' for all users.
+This testing entry for the files module set the 'known-good' or
+'reference' password to be 'changeme' for all users.
 
-The `files` module should be removed from the config before the server is placed into production.
+The `files` module should be removed from the config before the server
+is placed into production.
 
 ***
 

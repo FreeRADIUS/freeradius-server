@@ -12,15 +12,16 @@
 
 *`man` page:* `radiusd.conf`
 
-*documentation page:* xref:reference:xlat/index.adoc[Dynamic expansions]
+*documentation page:* xref:reference:xlat/index.adoc[Dynamic
+expansions]
 
-There are two kinds of variables within the server. The first is within
-`radiusd.conf` and related files. These variables are referenced via the
-`$` character, which is used to define common terms (e.g. `${logdir})` so that
-those terms do not have to be repeated multiple times in the
-configuration files. These variables are used only when the server reads
-the configuration files, and they cannot be updated or edited once the files
-have been read.
+There are two kinds of variables within the server. The first is
+within `radiusd.conf` and related files. These variables are
+referenced via the `$` character, which is used to define common terms
+(e.g. `${logdir})` so that those terms do not have to be repeated
+multiple times in the configuration files. These variables are used
+only when the server reads the configuration files, and they cannot be
+updated or edited once the files have been read.
 
 Below example shows variables within `radiusd.conf`
 
@@ -36,11 +37,12 @@ confdir = ${sysconfdir}/raddb
 radacctdir = ${logdir}/radacct
 ----
 
-The second kind of variable is a run-time variable, which is dynamically
-expanded for each request received by the server. These variables are
-referenced by the `%` character, and they may be used to pull the values of
-attributes from the request to be used by a module. These variables may
-also be used by one module to obtain information from another module.
+The second kind of variable is a run-time variable, which is
+dynamically expanded for each request received by the server. These
+variables are referenced by the `%` character, and they may be used to
+pull the values of attributes from the request to be used by a module.
+These variables may also be used by one module to obtain information
+from another module.
 
 [source]
 ----
@@ -51,11 +53,11 @@ In this exercise, we cover configuration variables and some simple
 properties of the run-time variables. Later exercises cover additional
 properties of the run-time variables.
 
-The main configuration file `radiusd.conf` and the module configuration
-files contains a number of examples of the use of variables. For example,
-the `detail` module (configured in `mods-enabled/detail`)
-has a configuration entry named "filename", which by default has the
-following value:
+The main configuration file `radiusd.conf` and the module
+configuration files contains a number of examples of the use of
+variables. For example, the `detail` module (configured in
+`mods-enabled/detail`) has a configuration entry named "filename",
+which by default has the following value:
 
 [source]
 ----
@@ -64,25 +66,25 @@ filename = ${radacctdir}/%{Net.Src.IP}/detail-%Y%m%d
 
 The `filename` setting defines where FreeRADIUS stores its accounting
 "detail" files and how they are named.  The variable `${radacctdir}`
-points to the main directory where accounting files are stored, and
-is defined in the `radiusd.conf` file.
+points to the main directory where accounting files are stored, and is
+defined in the `radiusd.conf` file.
 
-The attribute `%{Net.Src.IP}` represents the IP address of the
-RADIUS client (such as a NAS or access point) sending the request.
-It is used to create a separate subdirectory for each client, so that
-each client's logs are kept separate.  The `detail-%Y-%m-%d` part
-specifies the naming pattern for the files using date formatting,
-where `%Y` represents the year (e.g., 2026), `%m` represents the month
-(e.g., 01), and `%d` represents the day (e.g., 16).
+The attribute `%{Net.Src.IP}` represents the IP address of the RADIUS
+client (such as a NAS or access point) sending the request. It is used
+to create a separate subdirectory for each client, so that each
+client's logs are kept separate.  The `detail-%Y-%m-%d` part specifies
+the naming pattern for the files using date formatting, where `%Y`
+represents the year (e.g., 2026), `%m` represents the month (e.g.,
+01), and `%d` represents the day (e.g., 16).
 
 This structure ensures that logs are organized by client and date for
 easier management.
 
-The configuration entry is composed of two kinds of variable expansion.
-One references the `${radacctdir}` configuration variable, which was
-previously defined in `radiusd.conf`. The following variables are
-expanded at run time and depend on information in the request packet
-and other dynamically calculated data.
+The configuration entry is composed of two kinds of variable
+expansion. One references the `${radacctdir}` configuration variable,
+which was previously defined in `radiusd.conf`. The following
+variables are expanded at run time and depend on information in the
+request packet and other dynamically calculated data.
 
 Start the server in debugging mode (`radiusd -X`).
 
@@ -90,8 +92,8 @@ In the server output, look for the `detail` module and the `filename`
 configuration entry for that module. Verify that the string printed
 for the `filename` does not print the reference to the `${radacctdir}`
 variable, but instead has substituted the value of that variable.
-Verify also that the values of the run-time variables have _not_
-been substituted and that they are still printed as variables.
+Verify also that the values of the run-time variables have _not_ been
+substituted and that they are still printed as variables.
 
 In the server output, look for the detail module and its filename
 configuration. You should see something like this:
@@ -102,9 +104,8 @@ configuration. You should see something like this:
 (0)      detail (ok)
 ----
 
-
-If you don't see any configuration printed for the `detail` file module
-ensure it is uncommented in the `accounting {}` section of the
+If you don't see any configuration printed for the `detail` file
+module ensure it is uncommented in the `accounting {}` section of the
 `sites-available/default` virtual server.
 
 [source]
@@ -115,10 +116,11 @@ accounting Stop {
 ----
 
 You can go to the xref:reference:xlat/index.adoc[dynamic expansion]
-documentation to determine the meaning of the variables used in the `filename` configuration entry.
-Then, end the server an accounting packet and go look for the detail file, which will be
-dynamically created. Verify that the contents of the file are the
-accounting packet you just sent.
+documentation to determine the meaning of the variables used in the
+`filename` configuration entry. Then, end the server an accounting
+packet and go look for the detail file, which will be dynamically
+created. Verify that the contents of the file are the accounting
+packet you just sent.
 
 Execute the following command to test detail file :
 
@@ -142,7 +144,8 @@ Use the following path to view the detail log file for the client:
 etc/usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-16
 ----
 
-The detail logs show detailed RADIUS request information and can be found in the accounting log directory.
+The detail logs show detailed RADIUS request information and can be
+found in the accounting log directory.
 
 [source]
 ----
@@ -159,9 +162,10 @@ Fri Jan 16 06:52:27 2026
     Timestamp = 1768546347
 ----
 
-In addition to being used in the configuration files, run-time variables
-may also be used to create values for reply attributes. Stop the server,
-and edit the users file to add the following entry at the top:
+In addition to being used in the configuration files, run-time
+variables may also be used to create values for reply attributes. Stop
+the server, and edit the users file to add the following entry at the
+top:
 
 [source]
 ----
@@ -171,7 +175,8 @@ bob Password.Cleartext := "hello"
 ----
 
 Start the server, and send the authentication packet. Verify that the
-`Reply-Message` attributes contain the user name, NAS port, time from the reply
+`Reply-Message` attributes contain the user name, NAS port, time from
+the reply
 
 [source]
 ----
@@ -194,10 +199,10 @@ Received Access-Accept Id 151 from 127.0.0.1:1812 to 0.0.0.0:46176 via lo length
 
 1.  Why are run-time variables useful?
 2.  How would you configure that entry in the file to reply with the
-directory name where the `radiusd.conf` file is stored? Why is this a
-bad idea?
-3.  How would you create an entry in the users file that matched users when
-their `Class` was the same as their `NAS-Port`?
+    directory name where the `radiusd.conf` file is stored? Why is
+    this a bad idea?
+3.  How would you create an entry in the users file that matched users
+    when their `Class` was the same as their `NAS-Port`?
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

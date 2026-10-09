@@ -1,6 +1,8 @@
 = Exists
 
-The `file.exists` function is used to check if a file exists on the filesystem. This function returns `true` if a file exists, or `false` if the file does not exist.
+The `file.exists` function is used to check if a file exists on the
+filesystem. This function returns `true` if a file exists, or `false`
+if the file does not exist.
 
 [#syntax]
 == Syntax

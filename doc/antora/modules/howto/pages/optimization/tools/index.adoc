@@ -3,7 +3,8 @@
 FreeRADIUS comes with a set of useful tools that assist you in
 monitoring and collecting statistics for your system.  While there are
 many third-party tools that offer similar functionality, the reliable
-and proven tools included with FreeRADIUS are the ones we recommend using.
+and proven tools included with FreeRADIUS are the ones we recommend
+using.
 
 Each tool has a specific purpose and is designed to work seamlessly
 together. These tools include:

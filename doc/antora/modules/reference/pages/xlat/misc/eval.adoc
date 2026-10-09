@@ -1,6 +1,8 @@
 = `%eval()`
 
-Evaluates the string as an expansion, and returns the result. The main difference between using this expansion and just using `%{...}` is that the string being evaluated can be dynamically changed.
+Evaluates the string as an expansion, and returns the result. The main
+difference between using this expansion and just using `%{...}` is
+that the string being evaluated can be dynamically changed.
 
 [#syntax]
 == Syntax
@@ -24,15 +26,15 @@ reply.Reply-Message := "%eval(control.Filter-Id}"
 
 .Output when `User-Name == bob`
 
-```
+----
 bob
-```
+----
 
 .Output when `User-Name == jim`
 
-```
+----
 not bob!
-```
+----
 ====
 
 .Evalute an expression
@@ -50,18 +52,16 @@ if (%eval(control.Filter-Id)) {
 
 .Output when `User-Name == bob`
 
-```
+----
 yes it's bob
-```
+----
 
 .Output when `User-Name == jim`
 
-```
+----
 not bob!
-```
+----
 ====
-
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

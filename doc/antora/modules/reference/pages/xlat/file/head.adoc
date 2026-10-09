@@ -1,6 +1,9 @@
 = Head
 
-The `file.head` function returns the first line of the file. Only up to the first 256 characters are returned. If the file does not exist, or ASCII control characters (except tab) are read, it fails and nothing is returned.
+The `file.head` function returns the first line of the file. Only up
+to the first 256 characters are returned. If the file does not exist,
+or ASCII control characters (except tab) are read, it fails and
+nothing is returned.
 
 [#syntax]
 == Syntax

@@ -8,7 +8,8 @@ it's possible for the next hop to send (for example) a
 
 The invalid or incorrect response may be due to misconfiguration, or
 software bugs.  The problem is caused by the next hop server which is
-sending the bad response, not by the local server which is received it.
+sending the bad response, not by the local server which is received
+it.
 
 Receiving a bad or wrong response will cause the server to ignore the
 response, as no valid response was received.  The solution is to

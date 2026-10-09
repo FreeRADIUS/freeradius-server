@@ -116,7 +116,8 @@ The messages consist of (usually)
 * type-specific information
 * packet type
 ** packet ID (globally unique number)
-** socket information (likely a pointer to the socket information, with src/dst ip/port, file descriptor, etc.)
+** socket information (likely a pointer to the socket information,
+   with src/dst ip/port, file descriptor, etc.)
 ** ring buffer pointer
 ** pointer / size to raw packet data (if required)
 * signal
@@ -127,11 +128,11 @@ The messages consist of (usually)
 When the receiver is done with the message, it marks it as "handled",
 and lets the originator do asynchronous cleanups.
 
-If the receiver has to sit on the data for a long time
-(e.g. `cleanup_delay`), it has to copy the message and any associated
-packet data into a separate buffer.  This copy ensures that the
-message headers and packet data ring buffer contain information for as
-short a period of time as possible.
+If the receiver has to sit on the data for a long time (e.g.
+`cleanup_delay`), it has to copy the message and any associated packet
+data into a separate buffer.  This copy ensures that the message
+headers and packet data ring buffer contain information for as short a
+period of time as possible.
 
 ### Packet Data Ring Buffer
 
@@ -143,9 +144,9 @@ the maximum sized packet into it.  It generally receives a smaller
 packet (e.g. 200 bytes), in which case the "start" pointer can be
 incremented, and the next packet read into the ring.
 
-Since the "create message" API is used only by one caller
-(e.g. network thread or worker thread), there is no issue with
-overlapping / simultaneous calls to allocate messages.
+Since the "create message" API is used only by one caller (e.g.
+network thread or worker thread), there is no issue with overlapping /
+simultaneous calls to allocate messages.
 
 ## Implementation Trade-offs
 
@@ -242,9 +243,9 @@ The APIs here are documented in reverse order.
 The ring buffers are only used by the message layer, and aren't
 directly accessible by the message originator.
 
-Each message API has one ring buffer associated with it, as above.
-The buffer has a fixed size.  The `reader` offset is where messages
-are read from.  The `writer` offset is where messages are written to.
+Each message API has one ring buffer associated with it, as above. The
+buffer has a fixed size.  The `reader` offset is where messages are
+read from.  The `writer` offset is where messages are written to.
 
 When a message is freed, the `reader` pointer is incremented.  If
 `reader == writer`, then the ring buffer is empty, and both are reset
@@ -263,16 +264,18 @@ it is discarded.
 
 The message API keeps track of the current and old ring buffers.
 
-Data is read into the buffer via an underlying IO
-implementation.  Then, packets are decoded from the ring buffwr.
+Data is read into the buffer via an underlying IO implementation.
+Then, packets are decoded from the ring buffwr.
 
 Packet allocations from the ring buffer are rounded up to the nearest
 cache line size (64 bytes).  This prevents false sharing.
 
 * create - create a ring buffer
 * destroy - free a ring buffer (maybe talloc?)
-* used - tell the ring buffer that N bytes of data have been used from the ring buffer
-* unused - tell the ring buffer than N bytes of data are unused at the start.
+* used - tell the ring buffer that N bytes of data have been used from
+  the ring buffer
+* unused - tell the ring buffer than N bytes of data are unused at the
+  start.
 
 Note that the read / write is done on raw sizes (e.g. 11 bytes).  If
 the caller needs cache line alignment, it does so itself.  This is
@@ -306,7 +309,8 @@ The message API is about allocating a message, and filling it out.
 
 The Queue API is about inserting / removing elements from a FIFO
 queue.  The `insert` function returns a special flag if the queue was
-empty, so that the originator can poke the receiver that another message is ready?
+empty, so that the originator can poke the receiver that another
+message is ready?
 
 Or, the even loop / FD has to be exposed to the queue API, so that the
 queue code can do this signalling itself.

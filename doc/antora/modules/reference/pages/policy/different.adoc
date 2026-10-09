@@ -33,9 +33,10 @@ That is not always the case for RADIUS.
 With RADIUS, it is true that basic configuration is simple.  For
 example, policies such as "I have users in LDAP, and I want
 authenticated users to access the network".  For this policy, the
-administrator configures the xref:reference:raddb/mods-available/ldap.adoc[LDAP]
-module, adds some xref:reference:raddb/clients.conf.adoc[client] definitions,
-and _everything just works_.
+administrator configures the
+xref:reference:raddb/mods-available/ldap.adoc[LDAP] module, adds some
+xref:reference:raddb/clients.conf.adoc[client] definitions, and
+_everything just works_.
 
 The problem comes when people need policies like "allow users onto the
 network for six hours, except for alternate Tuesdays between 9am and
@@ -67,8 +68,8 @@ a complex "declaration" may be no easier then effort required to
 simply program a procedural solution.
 
 In the end, the difficulty of configuring FreeRADIUS comes in part
-from the procedural nature of the `unlang` configuration language.
-The remainder of the difficulty is almost always because of poorly
+from the procedural nature of the `unlang` configuration language. The
+remainder of the difficulty is almost always because of poorly
 specified requirements.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

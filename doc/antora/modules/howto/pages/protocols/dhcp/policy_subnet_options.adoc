@@ -1,9 +1,10 @@
 = Configure Subnet-Specific Options for Shared Networks
 
 In the case that shared-networks are in use, with the pool containing
-equally-valid IP addresses from multiple subnets, it is necessary to set the
-subnet-specific parameters such as `Router-Address`, `Subnet-Mask`
-and `Broadcast-Address` based on the IP address that has been allocated.
+equally-valid IP addresses from multiple subnets, it is necessary to
+set the subnet-specific parameters such as `Router-Address`,
+`Subnet-Mask` and `Broadcast-Address` based on the IP address that has
+been allocated.
 
 Consider the ISC DHCP configuration snippet:
 
@@ -61,11 +62,13 @@ Or the equivalent Kea configuration:
 }
 ----
 
-As with the network to pool lookup, an instance of the `files` modules can be
-employed (this time after the allocation of an IP address) to set the correct
-reply parameters based on the subnet membership of the assigned address.
+As with the network to pool lookup, an instance of the `files` modules
+can be employed (this time after the allocation of an IP address) to
+set the correct reply parameters based on the subnet membership of the
+assigned address.
 
-To do this, we can create an instance of `files` - `<raddb>/mods-enabled/dhcp_subnets`:
+To do this, we can create an instance of `files` -
+`<raddb>/mods-enabled/dhcp_subnets`:
 
 [source,config]
 ----
@@ -82,8 +85,8 @@ Additionally, following the call to `sqlippool` add
 Network-Subnet := reply.Your-IP-Address
 ----
 
-The relevant entries in the `<raddb>/mods-config/files/dhcp_subnets` configuration
-file might then look something like this:
+The relevant entries in the `<raddb>/mods-config/files/dhcp_subnets`
+configuration file might then look something like this:
 
 [source,config]
 ----
@@ -105,49 +108,52 @@ DEFAULT
 
 == Example packet processing
 
-For our example, we consider a request arriving from a DHCP relay within
-10.30.10.0/24. In the absence of any specific DHCP subnet selection options in
-the request, the `Network-Subnet` attribute is calculated to be the
-relay's IP address, say 10.30.10.1.
+For our example, we consider a request arriving from a DHCP relay
+within 10.30.10.0/24. In the absence of any specific DHCP subnet
+selection options in the request, the `Network-Subnet` attribute is
+calculated to be the relay's IP address, say 10.30.10.1.
 
-The request is matched against the first "DEFAULT" block, setting the domain
-name to "example.org". By virtue of `Fall-Through` being set, the next
-block is considered.
+The request is matched against the first "DEFAULT" block, setting the
+domain name to "example.org". By virtue of `Fall-Through` being set,
+the next block is considered.
 
-Since the network identifier is within the specified subnet (i.e.  `10.30.10.1 <
-10.30.0.0/16`) this second block is matched. This block sets the pool
-name to "bigdept", sets some network-specific DNS resolvers and sets the lease
-time to 7200 seconds. `Fall-Through` is not set, so we are now done with
-deriving the pool name and network options.
+Since the network identifier is within the specified subnet (i.e.
+`10.30.10.1 < 10.30.0.0/16`) this second block is matched. This block
+sets the pool name to "bigdept", sets some network-specific DNS
+resolvers and sets the lease time to 7200 seconds. `Fall-Through` is
+not set, so we are now done with deriving the pool name and network
+options.
 
-When the `sqlippool` module is called during `recv Discover` processing (in
-`<raddb>/sites-enabled/dhcp`) the `bigdept` pool will be used for IP address
-allocation.
+When the `sqlippool` module is called during `recv Discover`
+processing (in `<raddb>/sites-enabled/dhcp`) the `bigdept` pool will
+be used for IP address allocation.
 
-After IP allocation `Network-Subnet` is set to be the assigned IP address,
-say 10.30.20.123 and then the files instance `dhcp_subnet` is called.
+After IP allocation `Network-Subnet` is set to be the assigned IP
+address, say 10.30.20.123 and then the files instance `dhcp_subnet` is
+called.
 
-The request does not match the first subnet block since 10.30.20.123 is not
-within 10.30.10.0/24. However, the request does match the second subnet block
-since `10.30.20.123 < 10.30.20.0/24`. This block sets the default gateway
-reply parameter.  `Fall-Through` is not set, so we are now done with deriving
-the pool name and network options.
+The request does not match the first subnet block since 10.30.20.123
+is not within 10.30.10.0/24. However, the request does match the
+second subnet block since `10.30.20.123 < 10.30.20.0/24`. This block
+sets the default gateway reply parameter.  `Fall-Through` is not set,
+so we are now done with deriving the pool name and network options.
 
-The assigned IP address, network and subnet parameters will subsequently be
-returned in the DHCP reply.
+The assigned IP address, network and subnet parameters will
+subsequently be returned in the DHCP reply.
 
 == Testing the subnet-specific options
 
-If you have set any subnet-specific reply parameters then you should test these
-before proceeding further.
+If you have set any subnet-specific reply parameters then you should
+test these before proceeding further.
 
-For example, in the case that you have a single, large pool spanning two IP
-subnets you might want to test by repeatedly allocating addresses using sample
-packets with different MAC addresses, each time checking to ensure that the
-DHCP parameters correspond to the IP address that has been offered.
+For example, in the case that you have a single, large pool spanning
+two IP subnets you might want to test by repeatedly allocating
+addresses using sample packets with different MAC addresses, each time
+checking to ensure that the DHCP parameters correspond to the IP
+address that has been offered.
 
 .Example output from dhcpclient showing a response
-==================================================
+====
  dhcpclient: ...
  ...
  ----------------------------------------------------------------------
@@ -158,11 +164,10 @@ DHCP parameters correspond to the IP address that has been offered.
  Router-Address = 10.0.10.1
  Broadcast-Address = 10.0.10.255
  Subnet-Mask = 255.255.255.255
-==================================================
-
+====
 
 .Example output from dhcpclient showing a response
-==================================================
+====
  dhcpclient: ...
  ...
  ----------------------------------------------------------------------
@@ -173,15 +178,14 @@ DHCP parameters correspond to the IP address that has been offered.
  Router-Address = 10.99.99.1
  Broadcast-Address = 10.99.99.255
  Subnet-Mask = 255.255.255.255
-==================================================
-
+====
 
 [TIP]
 ====
-If the subnets are large then you might want to temporarily reduce their
-size by setting the `status` field of the majority of the rows for each subnet
-to "`disabled`" to cause offers to be made more readily with IP addresses in
-different subnets.
+If the subnets are large then you might want to temporarily reduce
+their size by setting the `status` field of the majority of the rows
+for each subnet to "`disabled`" to cause offers to be made more
+readily with IP addresses in different subnets.
 ====
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

@@ -1,6 +1,8 @@
 = mkdir
 
-The `file.mkdir` function creates directories and subdirectories.  If the directory exists or was created successfully, it returns `true`.  Otherwise if it could not be created, it returns `false`.
+The `file.mkdir` function creates directories and subdirectories.  If
+the directory exists or was created successfully, it returns `true`.
+Otherwise if it could not be created, it returns `false`.
 
 [#syntax]
 == Syntax

@@ -4,7 +4,6 @@ The following is a comprehensive set of tables that list all the
 related RFCs.  Depending on the section or feature that you are
 developing, will determine which documents you need to review.
 
-
 .Dynamic Host Control Protocol (DHCP)
 include::partial$dict_dhcpv4.adoc[]
 

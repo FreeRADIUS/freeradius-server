@@ -58,17 +58,18 @@ complete list of allowed packet types for each protocol.
 +
 The _<type>_ field cannot be a dynamic expansion.
 +
-As an exception, the _<type>_ field can be an attribute reference.  When an
-attribute reference is used, the attribute must be of an integer type
-(8, 16, 32, or 64-bit), or of type `string`.  Integer types are
-resolved to known / allowed values of the `Packet-Type` attribute.
-String types are resolved to named values for the `Packet-Type`
-attribute.
+As an exception, the _<type>_ field can be an attribute reference.
+When an attribute reference is used, the attribute must be of an
+integer type (8, 16, 32, or 64-bit), or of type `string`.  Integer
+types are resolved to known / allowed values of the `Packet-Type`
+attribute. String types are resolved to named values for the
+`Packet-Type` attribute.
 +
-When the _<type>_ field is an attribute reference, it is not
-possible to change the dictionary.
+When the _<type>_ field is an attribute reference, it is not possible
+to change the dictionary.
 
-<request-list>:: A reference to a list of attributes which will be used as the child's request list.
+<request-list>:: A reference to a list of attributes which will be
+used as the child's request list.
 +
 It may be omitted, in which case the child request list is empty.  It
 can be initialized by manually copying attributes from the parent
@@ -79,7 +80,8 @@ also be specified.
 Note that this is a _reference_, and is not a copy.  Updates to the
 child's request list will be reflected in the named _<request-list>_.
 
-<reply-list>:: A reference to a list of attributes which will be used as the child's reply list.
+<reply-list>:: A reference to a list of attributes which will be used
+as the child's reply list.
 +
 Note that this is a _reference_, and is not a copy.  Updates to the
 child's reply list will be reflected in the named _<reply-list>_.
@@ -100,7 +102,6 @@ subrequest {
 	detail
 }
 ----
-
 
 == Changing Protocols
 
@@ -152,9 +153,11 @@ take the following steps:
 
 * use `subrequest` to create an `Accounting-Request` packet
 
-* use xref:unlang/edit.adoc[edit] statement to populate the `Accounting-Request` with information about the user session
+* use xref:unlang/edit.adoc[edit] statement to populate the
+  `Accounting-Request` with information about the user session
 
-* use xref:unlang/call.adoc[call] to call the server which handles `Accounting-Request` packets.
+* use xref:unlang/call.adoc[call] to call the server which handles
+  `Accounting-Request` packets.
 
 The result is a policy which cannot ever go wrong.  The fake "start
 accounting" packet is run through _exactly the same policies_ as a
@@ -177,19 +180,21 @@ difficult or impossible to do with other protocol servers.
 == Subrequests are Synchronous
 
 Execution of the parent request is paused while the child request is
-running.  The parent request continues execution once the child request
-has finished.
+running.  The parent request continues execution once the child
+request has finished.
 
-In some cases, it is useful to let the child request continue execution
-independently of the parent request.  In the example given above,
-sending a `Disconnect-Request` packet may result in a multiple-second
-delay the NAS does not respond quickly, due to retransmits.
+In some cases, it is useful to let the child request continue
+execution independently of the parent request.  In the example given
+above, sending a `Disconnect-Request` packet may result in a
+multiple-second delay the NAS does not respond quickly, due to
+retransmits.
 
 A child request can be made asynchronous by using the
-xref:unlang/detach.adoc[detach] keyword.  Once a child request is detached
-from the parent, the parent can continue execution independently of
-the child.  However, once a child request is detached from the parent
-request, the child can no longer access any attributes in the parent.
+xref:unlang/detach.adoc[detach] keyword.  Once a child request is
+detached from the parent, the parent can continue execution
+independently of the child.  However, once a child request is detached
+from the parent request, the child can no longer access any attributes
+in the parent.
 
 See the sections below for more information, including examples.
 
@@ -234,14 +239,18 @@ few lines of configuration.
 The example shows how to:
 
 * Match a `User-Name` to a domain
-* Tell the server to authenticate the user via a specific authentication section
+* Tell the server to authenticate the user via a specific
+  authentication section
 * During authentication, create a subrequest
 * populate the child request from the parent request
-* run the "radius.example.com" module to proxy the request.  This module should be an instance of the `radius` module.
-* after proxying has succeeded (or failed) populate the parent reply from the child reply.
+* run the "radius.example.com" module to proxy the request.  This
+  module should be an instance of the `radius` module.
+* after proxying has succeeded (or failed) populate the parent reply
+  from the child reply.
 
 The example shows how a xref:unlang/try.adoc[try] /
-xref:unlang/catch.adoc[catch] block can be used to process the different module return codes.
+xref:unlang/catch.adoc[catch] block can be used to process the
+different module return codes.
 
 .Example pre-proxy and post-proxy
 [source,unlang]
@@ -288,7 +297,6 @@ authenticate radius.example.com {
     }
 }
 ----
-
 
 ===
 

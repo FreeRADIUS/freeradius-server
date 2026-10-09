@@ -6,16 +6,19 @@ ENUM <name> <type>
 ----
 
 .Description
-The `ENUM` keyword defines a name for set of xref:dictionary/value.adoc[VALUE]s.
+The `ENUM` keyword defines a name for set of
+xref:dictionary/value.adoc[VALUE]s.
 
 <name>:: The name of the enum.
 +
 These names are in the same namespace as
-xref:dictionary/attribute.adoc[ATTRIBUTE]s, and must follow the same name format.
+xref:dictionary/attribute.adoc[ATTRIBUTE]s, and must follow the same
+name format.
 
 <type>:: A xref:type/index.adoc[data type]
 +
-The list of allowed data types are the same as for xref:dictionary/value.adoc[VALUE].
+The list of allowed data types are the same as for
+xref:dictionary/value.adoc[VALUE].
 
 Once an `ENUM` is defined, it can have
 xref:dictionary/value.adoc[VALUE]s associated with it, just like with
@@ -45,7 +48,8 @@ ATTRIBUTE Some-Protocol 2112 uint16 enum=Ethernet-Type
 ATTRIBUTE Other-Thing  6809 uint16 enum=Ethernet-Type
 ----
 
-See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax
+of references in the dictionary.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

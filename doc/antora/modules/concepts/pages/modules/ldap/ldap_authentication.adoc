@@ -1,8 +1,14 @@
 = Authentication with LDAP
 
-LDAP servers function primarily as databases that store user credentials and related information. They do not implement or handle authentication protocols themselves.
+LDAP servers function primarily as databases that store user
+credentials and related information. They do not implement or handle
+authentication protocols themselves.
 
-The RADIUS server handles the authentication protocols such as `PAP`, `CHAP`, or `MS-CHAP`.  The LDAP server is a backend accessed by the RADIUS server to verify user credentials. The LDAP module interacts with these protocols by retrieving and comparing data. The RADIUS server performs the authentication logic, not the LDAP server.
+The RADIUS server handles the authentication protocols such as `PAP`,
+`CHAP`, or `MS-CHAP`.  The LDAP server is a backend accessed by the
+RADIUS server to verify user credentials. The LDAP module interacts
+with these protocols by retrieving and comparing data. The RADIUS
+server performs the authentication logic, not the LDAP server.
 
 The LDAP module is compatible a few different kinds of authentication
 methods.  Note that we say _compatible_, and not _supports_.  LDAP
@@ -43,16 +49,15 @@ return the `userPassword` field to FreeRADIUS.  This change usually
 involves giving the FreeRADIUS "read-only" user permission to read the
 `userPassword` field.
 
-Again, the best method is to test authentication is with the
-ldap search tool. These tests *must* be
-run prior to configuring FreeRADIUS.  We strongly recommend having the
-LDAP database return the `userPassword` field to FreeRADIUS, so that
-FreeRADIUS can authenticate the user.
+Again, the best method is to test authentication is with the ldap
+search tool. These tests *must* be run prior to configuring
+FreeRADIUS.  We strongly recommend having the LDAP database return the
+`userPassword` field to FreeRADIUS, so that FreeRADIUS can
+authenticate the user.
 
-We recommend that the passwords be stored in LDAP as
-cleartext.  Otherwise, the only authentication methods that will work
-are PAP and EAP-TTLS/PAP.  The next section explains these issues in
-more detail.
+We recommend that the passwords be stored in LDAP as cleartext.
+Otherwise, the only authentication methods that will work are PAP and
+EAP-TTLS/PAP.  The next section explains these issues in more detail.
 
 == Password storage methods
 
@@ -60,8 +65,11 @@ If the `userPassword` field is returned from LDAP to FreeRADIUS, that
 information can be stored in a number of different formats:
 
 * the value can be cleartext
-* the value can be prepended with a string enclosed by braces, such as with `{crypt}` or `{ssha3}`.
-* the value can be have a suffix of `::`, in which case the password is generally a https://en.wikipedia.org/wiki/Base64[base64] encoded version of the real password
+* the value can be prepended with a string enclosed by braces, such as
+  with `{crypt}` or `{ssha3}`.
+* the value can be have a suffix of `::`, in which case the password
+  is generally a https://en.wikipedia.org/wiki/Base64[base64] encoded
+  version of the real password
 
 TIP: Base64 values can be decoded via the command: `printf "%s"
 "VALUE" | base64 -d`
@@ -71,16 +79,16 @@ formats.  There is sufficient information in the password values to
 determine what format it is in (base64, binary, or text), and what
 password "encryption" mechanism has been used (crypt, MD5, SHA, SSHA2,
 SHA3, etc).  All that is necessary is that the
-xref:reference:raddb/mods-available/ldap.adoc[ldap module] be configured to map
-the `userPassword` LDAP field to the `control.Password-With-Header`
-attribute in FreeRADIUS.  FreeRADIUS will then "do the right thing" to
-authenticate the user.
+xref:reference:raddb/mods-available/ldap.adoc[ldap module] be
+configured to map the `userPassword` LDAP field to the
+`control.Password-With-Header` attribute in FreeRADIUS.  FreeRADIUS
+will then "do the right thing" to authenticate the user.
 
 This mapping is done in the default module configuration.  There are
 no additional changes required for FreeRADIUS to correctly read and
 decode the `userPassword` field from LDAP.  Please see the
-xref:reference:raddb/mods-available/pap.adoc[pap module] for a full list of
-supported password "encryption" formats.
+xref:reference:raddb/mods-available/pap.adoc[pap module] for a full
+list of supported password "encryption" formats.
 
 == Additional considerations
 
@@ -128,11 +136,11 @@ authentication protocols.  While those passwords are protected by TLS
 generally better to use a stronger authentication method than just
 PAP.
 
-In the end, there is no perfect solution to security requirements.
-The choice may be either to give up on using a particular
-authentication method, or to relax the security requirements on LDAP
-and on password storage.  The final decision as to which choice is
-best can only be made by a local administrator.
+In the end, there is no perfect solution to security requirements. The
+choice may be either to give up on using a particular authentication
+method, or to relax the security requirements on LDAP and on password
+storage.  The final decision as to which choice is best can only be
+made by a local administrator.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -3,29 +3,31 @@
 In some instances it may be useful to "lock out" user accounts.
 
 The naïve approach of including subfilters in `user.filter` to prevent
-user objects for disabled accounts being return can cause subtle issues.
+user objects for disabled accounts being return can cause subtle
+issues.
 
-Using a subfilter, it is not possible to distinguish a login with an incorrect
-username from an attempt to use a disabled account (both result in a `notfound`
-return code).
+Using a subfilter, it is not possible to distinguish a login with an
+incorrect username from an attempt to use a disabled account (both
+result in a `notfound` return code).
 
 Return code ambiguity causes multiple other issues:
 
 - `notfound` does not result in the user being explicitly rejected.
   This may result in spurious logging output or un-needed callouts to
   additional modules.
-- It's not possible in policy to detect a login with a disabled account.
-  This is a lost opportunity to log useful debugging data.
+- It's not possible in policy to detect a login with a disabled
+  account. This is a lost opportunity to log useful debugging data.
 - It's not possible from FreeRADIUS' log output to detect a login with
   disabled account. This can make debugging frustrating.
 
 == Controlling user access with user.access_attribute and user.access_positive
 
-See xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] for how to determine the
-appropriate values for your directory.
+See xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] for how to
+determine the appropriate values for your directory.
 
-The presence of the attribute specified by `user.access_attribute` can indicate the account
-is enabled, or disabled, depending on the value of `user.access_positive`.
+The presence of the attribute specified by `user.access_attribute` can
+indicate the account is enabled, or disabled, depending on the value
+of `user.access_positive`.
 
 |===
 |                              | Access Attribute present (set true) | Access Attribute present (set false) | Access Attribute absent
@@ -33,7 +35,8 @@ is enabled, or disabled, depending on the value of `user.access_positive`.
 | `user.access_positive = no`  | `locked out`                        | `ok`                                 | `ok`
 |===
 
-When a user is "locked out", the LDAP module will return `disallow` in (>= v4.0.x) and `userlock` in (<= v3.2.x).
+When a user is "locked out", the LDAP module will return `disallow` in
+(>= v4.0.x) and `userlock` in (<= v3.2.x).
 
 === Edit mods-available/ldap to only allow access if the 'Access Attribute' is present
 
@@ -48,8 +51,8 @@ ldap {
 }
 ----
 
-<1> The attribute to use to indicate that the account is enabled.
-    If the attribute is absent or set to false then the user will be
+<1> The attribute to use to indicate that the account is enabled. If
+    the attribute is absent or set to false then the user will be
     "locked out".
 
 === Edit mods-available/ldap to disable access if the 'Access Attribute' is present
@@ -65,8 +68,8 @@ ldap {
 }
 ----
 
-<1> The attribute to use to indicate that the account is disabled.
-    If the attribute is present or set to true then the user will be
+<1> The attribute to use to indicate that the account is disabled. If
+    the attribute is present or set to true then the user will be
     "locked out".
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

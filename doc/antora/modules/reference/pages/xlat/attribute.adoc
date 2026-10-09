@@ -53,8 +53,9 @@ Returns the last attribute in the list.
 
 When an attribute appears multiple times in a list, this syntax allows
 you to address the attributes as with array entries.  `[0]` refers to
-the first attributes, `[1]` refers to the second attribute, etc.
-See the xref:unlang/attr.adoc[attribute reference page for more information.]
+the first attributes, `[1]` refers to the second attribute, etc. See
+the xref:unlang/attr.adoc[attribute reference page for more
+information.]
 
 == Lists and Grouping attributes
 
@@ -62,11 +63,13 @@ There is similar syntax for referencing children of a list, without
 addressing the children by name.
 
 `%{request.[#]}`::
-Returns an integer containing the number of attributes contained in the `request` list.  Any list name can be used.
+Returns an integer containing the number of attributes contained in
+the `request` list.  Any list name can be used.
 
 `%{request.[*]}`::
 
-Returns a comma-separated string containing all values of attributes in the `request` list.
+Returns a comma-separated string containing all values of attributes
+in the `request` list.
 
 `%{request.[n]}`::
 
@@ -74,8 +77,9 @@ Returns the last attribute in the list.
 
 `%{request.[0]}`::
 
-Returns the value of the first attribute in the `request` list.
-See the xref:unlang/attr.adoc[attribute reference page for more information.]
+Returns the value of the first attribute in the `request` list. See
+the xref:unlang/attr.adoc[attribute reference page for more
+information.]
 
 Note that the old syntax of `%{request[*]}` will instead refer to
 array entries of the `request` list.  This is a change from previous

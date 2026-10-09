@@ -23,8 +23,8 @@ or as partial OIDs (`.14`).
 +
 There are a number of complex rules and interpretations of OID values
 which are difficult to clearly document using simple examples.  This
-complex behaviour is only needed for rare situations.  In short, if you
-are creating complex protocol dictionaries, you need to understand
+complex behaviour is only needed for rare situations.  In short, if
+you are creating complex protocol dictionaries, you need to understand
 those protocols before creating the dictionaries.  On the other hand,
 if you are creating simple protocol dictionaries, there is no need to
 understand any complex rules around the use of OIDs.
@@ -32,15 +32,16 @@ understand any complex rules around the use of OIDs.
 <type>:: A xref:type/index.adoc[data type]
 +
 A few data types can be marked up as being fixed size, by adding an
-"array-style" suffix, such as with `octets[3]`.  See below for details.
+"array-style" suffix, such as with `octets[3]`.  See below for
+details.
 
-<flags>:: The flag field is optional, and is usually protocol-specific.  See
-the xref:dictionary/flags.adoc[FLAGS] page for definitions of common
-flags.
+<flags>:: The flag field is optional, and is usually
+protocol-specific.  See the xref:dictionary/flags.adoc[FLAGS] page for
+definitions of common flags.
 +
-Please see the protocol dictionaries for examples of these flags.
-Only the flags which are used in a protocol dictionary are valid,
-and those flags are only valid for that protocol dictionary.
+Please see the protocol dictionaries for examples of these flags. Only
+the flags which are used in a protocol dictionary are valid, and those
+flags are only valid for that protocol dictionary.
 +
 The old-style RADIUS syntax of specifying a vendor name in the `flags`
 field is not supported.
@@ -60,7 +61,8 @@ Common flags and meanings
 | `secret`       | The server will not print `secret` values in debug mode, and in many other situations.
 |=====
 
-See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax
+of references in the dictionary.
 
 .Examples
 ----
@@ -83,7 +85,6 @@ Fixed Size types and meanings
 | `string[n]`  | Declare that this attribute uses `n` bytes of `string` data
 | `struct[n]`  | Declare that this structure uses `n` bytes for itself, including all child xref:dictionary/member.adoc[MEMBER]s
 |=====
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

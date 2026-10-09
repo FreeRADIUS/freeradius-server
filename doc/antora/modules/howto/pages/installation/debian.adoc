@@ -1,21 +1,27 @@
 = Debian and Ubuntu
 
-To Build and Install FreeRadius on Ubuntu, obtain the install files from one of two ways:
+To Build and Install FreeRadius on Ubuntu, obtain the install files
+from one of two ways:
 
 * Install from repositories
 * Build and Install from Source
 
 == Install from repositories
 
-This is usually the easiest solution, as long as the system packages are the latest in their own main version, or can be updated before building. Building from source is recommended as it will contain the latest version, that contains the most recent bug fixes.
+This is usually the easiest solution, as long as the system packages
+are the latest in their own main version, or can be updated before
+building. Building from source is recommended as it will contain the
+latest version, that contains the most recent bug fixes.
 
-To begin your install, enter the command below to get the latest info about packages from Ubuntu:
+To begin your install, enter the command below to get the latest info
+about packages from Ubuntu:
 
 ----
 sudo apt-get update
 ----
 
-Then make sure the system is fully upgraded before installing freeradius:
+Then make sure the system is fully upgraded before installing
+freeradius:
 ----
 sudo apt-get upgrade
 ----
@@ -30,14 +36,20 @@ After that has been done we can use _apt_ to install freeradius:
 sudo apt-get install freeradius
 ----
 
-This will install the common,utils, ssl-cert, libdbi-perl, and libfreeradius2 packages. As you probably going to connect to a database or use perl, you should probably also install (some of) the suggested packages. Such as: freeradius-ldap, freeradius-postgresql and freeradius-mysql.
+This will install the common,utils, ssl-cert, libdbi-perl, and
+libfreeradius2 packages. As you probably going to connect to a
+database or use perl, you should probably also install (some of) the
+suggested packages. Such as: freeradius-ldap, freeradius-postgresql
+and freeradius-mysql.
 ----
 sudo apt-get install freeradius-ldap
 ----
 
-The 'apt install freeradius' command will list all the suggested packages.
+The 'apt install freeradius' command will list all the suggested
+packages.
 
-If all went well freeradius should now be installed and started. You can start or stop the server with:
+If all went well freeradius should now be installed and started. You
+can start or stop the server with:
 ----
 sudo service freeradius stop
 ----
@@ -47,16 +59,20 @@ or
 sudo service freeradius start
 ----
 
-Suggested is to stop the service and until all is working use freeradius in debug mode.
+Suggested is to stop the service and until all is working use
+freeradius in debug mode.
 ----
 sudo freeradius -X
 ----
 
 == Install from source
 
-Installing from source can be daunting for first time users, but as long as you read the output of the building process, it  tell you what went wrong or what is missing.
+Installing from source can be daunting for first time users, but as
+long as you read the output of the building process, it  tell you what
+went wrong or what is missing.
 
-Your first step is to download the source files which can be found on one of the following sites:
+Your first step is to download the source files which can be found on
+one of the following sites:
 
 include::partial$get_the_source.adoc[]
 
@@ -74,12 +90,15 @@ sudo apt-get install libssl-dev libtalloc-dev libkqueue-dev
 
 === Unzip the source
 
-Make sure unzip or any other utility that can extract the zip is installed. If not :
+Make sure unzip or any other utility that can extract the zip is
+installed. If not :
 ----
 sudo apt-get install unzip
 ----
 
-Here I download and extract the source to a temporary directory: (I'm using here a directory in my home folder.) Make sure the filename is the same as your downloaded one.
+Here I download and extract the source to a temporary directory: (I'm
+using here a directory in my home folder.) Make sure the filename is
+the same as your downloaded one.
 ----
 cd /home/myusername/
 mkdir freeradius
@@ -108,14 +127,21 @@ And run the following :
 fakeroot dpkg-buildpackage -b -uc
 ----
 
-It will probably error out on a clean system. Because the build tools are not installed or because not all dependencies are installed.
+It will probably error out on a clean system. Because the build tools
+are not installed or because not all dependencies are installed.
 
-Make sure fakeroot and build tools are installed (read the error message!!):
+Make sure fakeroot and build tools are installed (read the error
+message!!):
 ----
 sudo apt-get install fakeroot dpkg-dev quilt debhelper
 ----
 
-In the file _debian/rules_ we might need to make some changes depending on other packages we might not have installed or support that we do (not) need. In one of my own installs, there was no iodbc database support required as I'm using ldap as a database backend. If I build it will give an error and fail to build because of that. You can modify your install in the following way to prevent the error.
+In the file _debian/rules_ we might need to make some changes
+depending on other packages we might not have installed or support
+that we do (not) need. In one of my own installs, there was no iodbc
+database support required as I'm using ldap as a database backend. If
+I build it will give an error and fail to build because of that. You
+can modify your install in the following way to prevent the error.
 ----
 pico debian/rules
 ----
@@ -126,7 +152,9 @@ I create a new line :
 ----
 You can remove and add any module that you (do not) require this way.
 
-It might also error with more unmet dependencies to be able to build. When you run the command to build the package but it errors out with a dependencies/conflict abortion, install them as well.
+It might also error with more unmet dependencies to be able to build.
+When you run the command to build the package but it errors out with a
+dependencies/conflict abortion, install them as well.
 
 In my clean Ubuntu 16.04 install that meant :
 ----
@@ -138,7 +166,8 @@ After that we try again to build.
 fakeroot dpkg-buildpackage -b -uc
 ----
 
-If it errors out after it has already started building the deb files, you are sometimes better off starting anew. If that happens :
+If it errors out after it has already started building the deb files,
+you are sometimes better off starting anew. If that happens :
 ----
 cd /home/myusername/freeradius
 rm -R freeradius-server-W.X.Y
@@ -149,7 +178,8 @@ And unpack the archive again. I.e.
 unzip v4.0.x.zip
 ----
 
-And edit the debian/rules commenting out or adding depending on the error it gave you at the end of the build.
+And edit the debian/rules commenting out or adding depending on the
+error it gave you at the end of the build.
 
 === Install
 
@@ -158,16 +188,22 @@ After build has completed without any errors we can finally install.
 cd /home/myusername/freeradius
 sudo dpkg -i *freeradius*_W.X.Y*_*.deb
 ----
-The install might show errors. Read the error !! Ask questions on freeradius list if you cannot figure it out. v2 will fail install often on open_ssl issues. Quick thing to change to prevent just that error is to edit a config file so freeradius will not complain about ssl that might be vulnerable. ( /etc/freeradius/eap.conf (v2) or /etc/freeradius/modules-enabled/eap )
-
+The install might show errors. Read the error !! Ask questions on
+freeradius list if you cannot figure it out. v2 will fail install
+often on open_ssl issues. Quick thing to change to prevent just that
+error is to edit a config file so freeradius will not complain about
+ssl that might be vulnerable. ( /etc/freeradius/eap.conf (v2) or
+/etc/freeradius/modules-enabled/eap )
 
 == Build on Debian or Ubuntu
 
-Building Debian packages (including Ubuntu) of FreeRADIUS from source is kept as simple as possible.
+Building Debian packages (including Ubuntu) of FreeRADIUS from source
+is kept as simple as possible.
 
 == Build the release (v4.0)
 
-Building packages is very simple. First obtain a copy of the source and unpack it. Second, build the packages.
+Building packages is very simple. First obtain a copy of the source
+and unpack it. Second, build the packages.
 
 == Get the source
 
@@ -175,7 +211,8 @@ include::partial$get_the-source
 
 == Build dependencies
 
-Use the following to make sure that all build dependencies are all installed:
+Use the following to make sure that all build dependencies are all
+installed:
 
 ----
 sudo apt-get install devscripts quilt debhelper fakeroot equivs
@@ -186,19 +223,25 @@ sudo mk-build-deps -ir debian/control
 
 == Build Packages
 
-Having retrieved whichever version of the source you require and installed dependencies, build the FreeRADIUS packages:
+Having retrieved whichever version of the source you require and
+installed dependencies, build the FreeRADIUS packages:
 
 ----
 make deb
 ----
 
-This will build packages in the parent directory, which can be installed with ``dpkg -i`` or ``apt install``.
+This will build packages in the parent directory, which can be
+installed with ``dpkg -i`` or ``apt install``.
 
-You should ensure the source tree is completely clean before running `make deb`, e.g. do not run `./configure` first.
+You should ensure the source tree is completely clean before running
+`make deb`, e.g. do not run `./configure` first.
 
 == Build from source
 
-Alternatively, rather than building packages, you can build the source directly. Note that you will need to ensure all required dependencies are installed first (such as `libkqueue-dev`, `libtalloc-dev`, and `libssl-dev`).
+Alternatively, rather than building packages, you can build the source
+directly. Note that you will need to ensure all required dependencies
+are installed first (such as `libkqueue-dev`, `libtalloc-dev`, and
+`libssl-dev`).
 
 ----
 # Use ./configure --enable-developer if you're debugging issues, or using unstable code.

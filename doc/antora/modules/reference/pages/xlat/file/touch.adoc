@@ -1,6 +1,7 @@
 = Touch
 
-The `file.touch` function creates a file if it does not exist. If the file already exists then this function does nothing.
+The `file.touch` function creates a file if it does not exist. If the
+file already exists then this function does nothing.
 
 [#syntax]
 == Syntax

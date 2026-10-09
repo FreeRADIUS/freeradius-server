@@ -14,7 +14,8 @@ commonly used in xref:type/string/double.adoc[double-quoted strings],
 and xref:unlang/expression.adoc[expressions / conditions].
 
 The contents of an expansion can be many things, such as attribute
-references, function calls, etc.  The table below gives more examples of expansions.
+references, function calls, etc.  The table below gives more examples
+of expansions.
 
 .Types of Expansions
 [options="header"]
@@ -37,15 +38,15 @@ xref:type/string/backticks.adoc[back-tick quoted strings]
 == Character Escaping
 
 Some characters need to be escaped within a dynamically expanded
-string `%{...}`. The `%` character is used for variable expansion, so a
-literal `%` character can be created by using `%%`.
+string `%{...}`. The `%` character is used for variable expansion, so
+a literal `%` character can be created by using `%%`.
 
 Other than within a dynamically expanded string, very little character
 escaping is needed. The rules of the enclosing string context
 determine whether or not a space or `"` character needs to be escaped.
 See the xref:type/string/double.adoc[double-quoted strings] and
-xref:type/string/backticks.adoc[back-tick quoted strings] pages for more
-information.
+xref:type/string/backticks.adoc[back-tick quoted strings] pages for
+more information.
 
 .Example
 

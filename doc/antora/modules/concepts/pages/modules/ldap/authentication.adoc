@@ -1,10 +1,23 @@
 = Authentication with LDAP
 
-The FreeRADIUS is an AAA server, and LDAP servers function primarily as a *database* that stores user credentials and related information. FreeRADIUS handles the authentication protocols such as `PAP`, `CHAP`, or `MS-CHAP`.  LDAP is a backend accessed by the RADIUS server to verify user credentials. The xref:reference:raddb/mods-available/ldap.adoc[ldap module] interacts with these protocols by retrieving and comparing data. The FreeRADIUS server performs the authentication logic, not the LDAP server.
+The FreeRADIUS is an AAA server, and LDAP servers function primarily
+as a *database* that stores user credentials and related information.
+FreeRADIUS handles the authentication protocols such as `PAP`, `CHAP`,
+or `MS-CHAP`.  LDAP is a backend accessed by the RADIUS server to
+verify user credentials. The
+xref:reference:raddb/mods-available/ldap.adoc[ldap module] interacts
+with these protocols by retrieving and comparing data. The FreeRADIUS
+server performs the authentication logic, not the LDAP server.
 
-This separation of roles means that FreeRADIUS supports multiple kinds of authentication protocols whereas a LDAP database works only the authentication method "bind as user".  This authentication method is compatible only with PAP.
+This separation of roles means that FreeRADIUS supports multiple kinds
+of authentication protocols whereas a LDAP database works only the
+authentication method "bind as user".  This authentication method is
+compatible only with PAP.
 
-Our recommendation is to use LDAP as a database.  FreeRADIUS reads the "known good" password from LDAP, and then use that information to authenticate the user.  It's not recommended to use the LDAP "bind as user" method for authenticating users.
+Our recommendation is to use LDAP as a database.  FreeRADIUS reads the
+"known good" password from LDAP, and then use that information to
+authenticate the user.  It's not recommended to use the LDAP "bind as
+user" method for authenticating users.
 
 The only caveat to the above recommendation is Active Directory.  For
 "security" reasons, Active Directory will not return the "known good"
@@ -15,10 +28,11 @@ PAP::
 Use "bind as user".
 
 MS-CHAP::
-Use xref:reference:raddb/mods-available/ntlm_auth.adoc[`ntlm`] or xref:reference:raddb/mods-available/winbind.adoc[`winbind`].
+Use xref:reference:raddb/mods-available/ntlm_auth.adoc[`ntlm`] or
+xref:reference:raddb/mods-available/winbind.adoc[`winbind`].
 
-Due to these limitations of Active Directory, there are no
-other alternatives.
+Due to these limitations of Active Directory, there are no other
+alternatives.
 
 == LDAP security recommendations
 
@@ -34,15 +48,16 @@ following recommendations for LDAP "best practices" security.
 
 * Start by using *simple authentication* instead of
   https://en.wikipedia.org/wiki/Simple_Authentication_and_Security_Layer[SASL].
-  The SASL protocol should be attempted only after 'simple authentication' has been verified to work.
+  The SASL protocol should be attempted only after 'simple
+  authentication' has been verified to work.
 
 * Use TLS for connecting between FreeRADIUS and the LDAP server.  See
   the `tls` sub-section of the default `ldap` module for instructions.
 
 * When storing RADIUS user profiles (quotas, `Simultaneous-Use` flags,
   access time restrictions, etc.) in LDAP, the LDAP schema
-  `doc/schemas/ldap/openldap/freeradius-radius.schema` must first be imported
-  into the LDAP server.
+  `doc/schemas/ldap/openldap/freeradius-radius.schema` must first be
+  imported into the LDAP server.
 
 == Authentication method compatibility
 
@@ -77,11 +92,12 @@ MS-CHAPv2, or as PEAP/MSCHAPv2, or as EAP-TTLS/MS-CHAPv2.
 +
 FreeRADIUS reads the "known good" password from LDAP, and does the
 relevant MS-CHAP hashing in order to verify the data it received from
-the user.  The password in LDAP *must* be clear text, or as an NT hash.
+the user.  The password in LDAP *must* be clear text, or as an NT
+hash.
 
-All of these authentication methods except "bind as user" require
-that FreeRADIUS obtain the `userPassword` field from LDAP.  If that
-field is not returned to FreeRADIUS, then normal authentication is
+All of these authentication methods except "bind as user" require that
+FreeRADIUS obtain the `userPassword` field from LDAP.  If that field
+is not returned to FreeRADIUS, then normal authentication is
 impossible.  Either FreeRADIUS has to be configured to use "bind as
 user" for authentication, or the LDAP database has to be updated to
 return the `userPassword` field to FreeRADIUS.  This change usually
@@ -89,8 +105,8 @@ involves giving the FreeRADIUS "read-only" user permission to read the
 `userPassword` field.
 
 The best method to test authentication is with the
-xref:howto:modules/ldap/ldapsearch/index.adoc[ldapsearch] tool.
-These tests *must* be run prior to configuring FreeRADIUS.  We strongly
+xref:howto:modules/ldap/ldapsearch/index.adoc[ldapsearch] tool. These
+tests *must* be run prior to configuring FreeRADIUS.  We strongly
 recommend having the LDAP database return the `userPassword` field to
 FreeRADIUS, so that FreeRADIUS can authenticate the user.
 

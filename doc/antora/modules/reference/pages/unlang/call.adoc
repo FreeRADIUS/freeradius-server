@@ -19,11 +19,11 @@ calling virtual server. Enforcing the same `namespace` prevents calls
 to a virtual server with an incompatible protocol during compile or
 run-times.
 +
-The called virtual server will execute the request as if it had
-been received from the network.  For example, if the packet is a
-RADIUS `Access-Request`, then the called virtual server will process
-the `recv Access-Request` section, followed by the `authenticate
-<type>` section, followed by the `send Access-Accept` section.
+The called virtual server will execute the request as if it had been
+received from the network.  For example, if the packet is a RADIUS
+`Access-Request`, then the called virtual server will process the
+`recv Access-Request` section, followed by the `authenticate <type>`
+section, followed by the `send Access-Accept` section.
 
 [ statements ]:: Once the called virtual server has finished, the _[
 statements]_ from inside of the `call` section are executed.

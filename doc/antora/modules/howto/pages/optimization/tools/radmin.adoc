@@ -1,12 +1,19 @@
 = Radmin
 
-The `radmin` tool can send commands to a running FreeRADIUS instance to set options and gather data such as server statistics and configuration.
+The `radmin` tool can send commands to a running FreeRADIUS instance
+to set options and gather data such as server statistics and
+configuration.
 
-The xref:reference:raddb/sites-available/control-socket.adoc[control socket] virtual server must be enabled for `radmin` to be able to connect.
+The xref:reference:raddb/sites-available/control-socket.adoc[control
+socket] virtual server must be enabled for `radmin` to be able to
+connect.
 
 [NOTE]
 ====
-Debug conditions are no longer available in radmin. A more flexible method is available using the xref:reference:xlat/log.adoc[`%log.destination`] expansion xref:troubleshooting:conditional_debug.adoc[directly in unlang].
+Debug conditions are no longer available in radmin. A more flexible
+method is available using the
+xref:reference:xlat/log.adoc[`%log.destination`] expansion
+xref:troubleshooting:conditional_debug.adoc[directly in unlang].
 ====
 
 == Getting Started
@@ -15,9 +22,10 @@ Enter the following command to launch radmin:
 
 `root@radius# radmin -f /var/run/freeradius/control/control.sock`
 
-Pressing `?` at the radmin prompt will show a list of available options:
+Pressing `?` at the radmin prompt will show a list of available
+options:
 
-```
+----
 radmin> ?
 exit                          Exit from the current context.
 help                          Display list of commands and their help text.
@@ -28,74 +36,79 @@ stats                         Show statistics in the server.
 terminate                     Terminate the running server and cause it to exit.
 uptime                        Show uptime since the server started.
 radmin>
-```
+----
 
 == Managing the debug level
 
-This can be used to change the default debug level of the server. It may be more useful to set this dynamically with the `%debug()` xlat function.
+This can be used to change the default debug level of the server. It
+may be more useful to set this dynamically with the `%debug()` xlat
+function.
 
-```
+----
 radmin> set debug level 3
-```
+----
 
 The current debug level can be shown with:
 
-```
+----
 radmin> show debug level
 3
-```
-
+----
 
 == Changing a module status
 
-The return status of a module can be dynamically changed by `radmin`. For example, all `files` module calls can be made to fail. This can be very useful to set the behaviour of unlang dynamically, for instance in failover situations.
+The return status of a module can be dynamically changed by `radmin`.
+For example, all `files` module calls can be made to fail. This can be
+very useful to set the behaviour of unlang dynamically, for instance
+in failover situations.
 
-This will normally be used with instances of the `always` module where the result of a module call can then determine how unlang proceeds.
+This will normally be used with instances of the `always` module where
+the result of a module call can then determine how unlang proceeds.
 
 Given the module configuration:
 
-```
+----
 always check_network {
 	rcode = ok
 }
-```
+----
 
 and the unlang configuration:
 
-```
+----
 check_network
 if (ok) {
         %log.debug("network up")
 } elsif (noop) {
         %log.debug("network down")
 }
-```
+----
 
 we can then influence unlang externally with
 
-```
+----
 radmin> set module check_network status noop
-```
+----
 
 or
 
-```
+----
 radmin> set module check_network status ok
-```
+----
 
 The current status can also be shown:
 
-```
+----
 radmin> show module check_network status
 ok
-```
-
+----
 
 == Showing configuration
 
-Parts of the FreeRADIUS configuration can be shown using the radmin `show config ...` commands. For example:
+Parts of the FreeRADIUS configuration can be shown using the radmin
+`show config ...` commands. For example:
 
-```
+----
 radmin> show config item logdir
 /var/log/radius
 radmin> show config section log
@@ -106,51 +119,52 @@ log {
 	syslog_facility = daemon
 	suppress_secrets = yes
 }
-```
+----
 
 Showing the configuration of a defined client:
 
-```
+----
 radmin> show client config 127.0.0.1
 shortname	localhost
 secret		testing123
 proto		*
 radmin>
-```
+----
 
 Showing the configuration of a module:
 
-```
+----
 radmin> show module delay config
 delay {
 	delay = 1.0s
 }
-```
-
+----
 
 == Showing virtual servers
 
 `radmin` can show the list of virtual servers that are running:
 
-```
+----
 radmin> show server list
 control-socket-server         namespace = internal
 default                       namespace = RADIUS
 inner-tunnel                  namespace = RADIUS
 proxy                         namespace = RADIUS
-```
+----
 
 == View server statistics
 
-Select server statistics about memory usage, network and workers can be retrieved with the `stats` command.
+Select server statistics about memory usage, network and workers can
+be retrieved with the `stats` command.
 
 == Stop the server
 
-The running FreeRADIUS server can be stopped by sending the `terminate` command:
+The running FreeRADIUS server can be stopped by sending the
+`terminate` command:
 
-```
+----
 radmin> terminate
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

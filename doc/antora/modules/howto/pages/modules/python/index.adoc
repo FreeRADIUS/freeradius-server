@@ -1,8 +1,8 @@
 = Python
 
-FreeRADIUS can call Python scripts in order to utilize third party libraries
-which are only available in Python, or to execute particularly complex
-policy.
+FreeRADIUS can call Python scripts in order to utilize third party
+libraries which are only available in Python, or to execute
+particularly complex policy.
 
 Requires Python 3.8 or later
 
@@ -11,92 +11,99 @@ Requires Python 3.8 or later
 Due to limitations in Python, the search path for modules can only be
 set globally, rather than per module instance.
 
-This is set in the Python xref:reference:raddb/global.d/python.adoc[global config].
+This is set in the Python
+xref:reference:raddb/global.d/python.adoc[global config].
 
 == Module configuration
 
-Each `rlm_python` module xref:reference:raddb/mods-available/python.adoc[instance]
-should set a `module` option which is the default Python module from which functions
-will be called.
+Each `rlm_python` module
+xref:reference:raddb/mods-available/python.adoc[instance] should set a
+`module` option which is the default Python module from which
+functions will be called.
 
-An `instantiate` and `detach` function can be defined to run code during server
-start up and shutdown.
+An `instantiate` and `detach` function can be defined to run code
+during server start up and shutdown.
 
-When `rlm_python` is called in a processing section, by default the function
-called is based on the section name. e.g. if the call is made in `recv Access-Request`
-then, `recv_access_request` will be called if it exists, otherwise `recv` will
-be called.
+When `rlm_python` is called in a processing section, by default the
+function called is based on the section name. e.g. if the call is made
+in `recv Access-Request` then, `recv_access_request` will be called if
+it exists, otherwise `recv` will be called.
 
-In order to override the function being called, configuration options such as
-`func_recv_access_request` or `func_recv` can be used. e.g.
+In order to override the function being called, configuration options
+such as `func_recv_access_request` or `func_recv` can be used. e.g.
 
-```
+----
 func_recv_access_request = authorize
-```
+----
 
 could be used to use previous function names.
 
-In addition, the Python module can be changed on a per function basis with
-configuration options such as `mod_recv_access_request` or `mod_recv`.
+In addition, the Python module can be changed on a per function basis
+with configuration options such as `mod_recv_access_request` or
+`mod_recv`.
 
 If `rlm_python` is called with a suffix, e.g.
 
-```
+----
 python.my_function
-```
+----
 
-then, by default `my_function` will be called in the default module.  As with
-other calls the module can be specified with `mod_my_function` and the actual
-function with `func_my_function`.
+then, by default `my_function` will be called in the default module.
+As with other calls the module can be specified with `mod_my_function`
+and the actual function with `func_my_function`.
 
 == Python function behaviour
 
-Each function is called with an object representing the request, which contains
-objects representing the attribute lists.
+Each function is called with an object representing the request, which
+contains objects representing the attribute lists.
 
-Attributes can be accessed using Python dict syntax, e.g. `p.request['User-Name']`
-which is an object representing that attribute.
+Attributes can be accessed using Python dict syntax, e.g.
+`p.request['User-Name']` which is an object representing that
+attribute.
 
-When an attribute is referenced in string context (e.g. wrapped in `str()`) then
-the string representation of the attribute value will be returned.
+When an attribute is referenced in string context (e.g. wrapped in
+`str()`) then the string representation of the attribute value will be
+returned.
 
-Each attribute object has a `value` which can be used to get or set its value in
-the appropriate native Python type based on the type of the attribute in the
-dictionary e.g.
+Each attribute object has a `value` which can be used to get or set
+its value in the appropriate native Python type based on the type of
+the attribute in the dictionary e.g.
 
-```
+----
 p.reply['Class'].value = b'abc'
-```
+----
 
 Nested attributes are accessed with syntax of the form
 
-```
+----
 p.request['foo']['baa']['baz']
-```
+----
 
-Where there are multiple instances of an attribute, as with `unlang`, by
-default the first instance is returned.
+Where there are multiple instances of an attribute, as with `unlang`,
+by default the first instance is returned.
 
 To access other instances of an attribute add a numeric key e.g.
 
-```
+----
 p.request['foo'][2]
 p.reply['baa'][1]['baz']
-```
+----
 
-are the equivalent of `request.foo[2]` and `reply.baa[1].baz` in `unlang`.
+are the equivalent of `request.foo[2]` and `reply.baa[1].baz` in
+`unlang`.
 
-If functions returns None (plain `return' no return), this is treated as `ok`.
+If functions returns None (plain `return' no return), this is treated
+as `ok`.
 
-Specific return codes can be accessed with pre-defined constants in the
-`freeradius` module. e.g.
+Specific return codes can be accessed with pre-defined constants in
+the `freeradius` module. e.g.
 
-```
+----
 return freeradius.RLM_MODULE_UPDATED
-```
+----
 
-The Python `instantiation` function can return -1 to signal failure and abort
-startup.
+The Python `instantiation` function can return -1 to signal failure
+and abort startup.
 
 == Python module
 
@@ -109,30 +116,31 @@ This module provides:
 
 Constants are provided for return codes and log level.
 
-The return code constants are all of the form `freeradius.RLM_MODULE_<RCODE>` e.g.
-`freeradius.RLM_MODULE_OK`.  Log level constants are of the form `freeradius.L_<level>`
-e.g. `freeradius.L_DBG`.
+The return code constants are all of the form
+`freeradius.RLM_MODULE_<RCODE>` e.g. `freeradius.RLM_MODULE_OK`.  Log
+level constants are of the form `freeradius.L_<level>` e.g.
+`freeradius.L_DBG`.
 
-In addition, if the module config contains a `config` subsection, that is
-parsed to form a dictionary e.g.
+In addition, if the module config contains a `config` subsection, that
+is parsed to form a dictionary e.g.
 
-```
+----
 config {
 	name = "value"
 }
-```
+----
 
 will result in `freeradius.config['name']` having the value `value`.
 
 === Function
 
-The function `freeradius.log()` can be called to write log messages via the
-FreeRADIUS logging mechanisms.
+The function `freeradius.log()` can be called to write log messages
+via the FreeRADIUS logging mechanisms.
 
-```
+----
 import freeradius
 freeradius.log(message_string, freeradius.L_XXX)
-```
+----
 
 Its arguments are:
 

@@ -1,14 +1,19 @@
 # Alcatel-Lucent and Radius
 
-Alcatel-Lucent Enterprise(http://enterprise.alcatel-lucent.com/) runs various product lines. In the beginning this page will focus on the configuration of/for OmniSwitch products.
+Alcatel-Lucent Enterprise(http://enterprise.alcatel-lucent.com/) runs
+various product lines. In the beginning this page will focus on the
+configuration of/for OmniSwitch products.
 
 ## OmniSwitch
 
-The Alcatel-Lucent OmniSwitch Vendor-Specific-Attributes (VSA) run as "Vendor ID" 800, hence you'll have to use the "XYLAN" dictionary.
+The Alcatel-Lucent OmniSwitch Vendor-Specific-Attributes (VSA) run as
+"Vendor ID" 800, hence you'll have to use the "XYLAN" dictionary.
 
-The products run the "Alcatel-Lucent Operating System" (AOS) in two major release trees.
+The products run the "Alcatel-Lucent Operating System" (AOS) in two
+major release trees.
 
-Note: Not all features are shared/available across the product lines, I'll do my best to pin-point what works in which release!
+Note: Not all features are shared/available across the product lines,
+I'll do my best to pin-point what works in which release!
 
 **AOS Release 6**
 * AOS Release 6.4.x
@@ -25,10 +30,13 @@ Note: Not all features are shared/available across the product lines, I'll do my
 
 ### Authenticated Switch Access (ASA)
 
-If you want to access the OmniSwitch via Telnet/SSH/WebView and authenticate the user via Radius, follow the steps below.
+If you want to access the OmniSwitch via Telnet/SSH/WebView and
+authenticate the user via Radius, follow the steps below.
 
-By default all access to the switch is limited to "console access" (User: admin, Password: switch)
-Except for SSH if the switch obtained an IP address via DHCP, then SSH will be available for initial remote configuration (that is the case below).
+By default all access to the switch is limited to "console access"
+(User: admin, Password: switch) Except for SSH if the switch obtained
+an IP address via DHCP, then SSH will be available for initial remote
+configuration (that is the case below).
 
     -> show aaa authentication
     Service type = Default
@@ -63,7 +71,8 @@ Except for SSH if the switch obtained an IP address via DHCP, then SSH will be a
       Authentication port = 1812,
       Accounting port     = 1813
 
-Note: Please don't use "verysecret" as your key, it is just meant as a placeholder!
+Note: Please don't use "verysecret" as your key, it is just meant as a
+placeholder!
 
 **On the Radius ...**
 
@@ -76,14 +85,16 @@ Note: Please don't use "verysecret" as your key, it is just meant as a placehold
 
 **/etc/freeradius/users**
 
-To create an admin account that has full read-write privileges is straight forward:
+To create an admin account that has full read-write privileges is
+straight forward:
 
      admin           Cleartext-Password := "password"
                      Xylan-Asa-Access = "all",
                      Xylan-Acce-Priv-F-W1 = 0xFFFFFFFF,
                      Xylan-Acce-Priv-F-W2 = 0xFFFFFFFF
 
-Now let us assume you want to create an "read-only" user that can see all aspects of the configuration.
+Now let us assume you want to create an "read-only" user that can see
+all aspects of the configuration.
 
 (This is the **bad** example! Showcasing the most common mistake ...)
 
@@ -92,7 +103,8 @@ Now let us assume you want to create an "read-only" user that can see all aspect
                     Xylan-Acce-Priv-R1 = 0xFFFFFFFF,
                     Xylan-Acce-Priv-R2 = 0xFFFFFFFF
 
-If you just use the configuration above, you'll see the following error message:
+If you just use the configuration above, you'll see the following
+error message:
 
     Benny$ ssh readadmin@192.168.2.106
     readadmin's password for keyboard-interactive method:
@@ -132,9 +144,14 @@ The result should look like this:
        1    std   on     on     on    on     off    on   off     on   VLAN 1
       10    std   on    off     on    on     off   off   off     on   VLAN 10
 
-Although we just want to give "read-only" access to the OmniSwitch, we'll need to allow "read-write" for the access method, in this case SSH. The domains/command family values are simply added to the read-only or read-write entries.
+Although we just want to give "read-only" access to the OmniSwitch,
+we'll need to allow "read-write" for the access method, in this case
+SSH. The domains/command family values are simply added to the
+read-only or read-write entries.
 
-You can get the values for the various commands/domains either via the CLI or by using the "Bitmap Calculator" that is accessible through the WebView of the AOS.
+You can get the values for the various commands/domains either via the
+CLI or by using the "Bitmap Calculator" that is accessible through the
+WebView of the AOS.
 
 !webview.png(http://dokuwiki.alu4u.com/dokuwiki/lib/exe/fetch.php?t=1375813412&tok=845290&media=webview.png)
 
@@ -160,12 +177,16 @@ You can get the values for the various commands/domains either via the CLI or by
     -> show aaa priv hexa ssh telnet
     0x0000000a 0x00000000
 
-The first value goes in R1/W1 and the second value in R2/W2, pretty easy (if you once figured it out).
-The advantage is that at login the "allowed set of commands" is known by the switch without any further interaction with the Radius during the session.
+The first value goes in R1/W1 and the second value in R2/W2, pretty
+easy (if you once figured it out). The advantage is that at login the
+"allowed set of commands" is known by the switch without any further
+interaction with the Radius during the session.
 
-As you can see above, you can do the calculation on the switch as well if you provide the commands/domains.
+As you can see above, you can do the calculation on the switch as well
+if you provide the commands/domains.
 
-That said, a read-only user for all domains with SSH + Telnet access would look like this:
+That said, a read-only user for all domains with SSH + Telnet access
+would look like this:
 
         readadmin       Cleartext-Password := "password"
                         Xylan-Asa-Access = "all",
@@ -174,12 +195,15 @@ That said, a read-only user for all domains with SSH + Telnet access would look 
                         Xylan-Acce-Priv-F-W1 = 0x0000000A,
                         Xylan-Acce-Priv-F-W2 = 0x00000000
 
-Please don't forget that you'll have to add the following command on your OmniSwitch if you want Telnet to query the Radius.
+Please don't forget that you'll have to add the following command on
+your OmniSwitch if you want Telnet to query the Radius.
 
     -> aaa authentication telnet freeradius local
 
 ### MAC-ADDRESS Authentication (aka non-supplicant authentication)
-Read this if you want to authenticate MAC-ADDRESSES through the Radius server.
+
+Read this if you want to authenticate MAC-ADDRESSES through the Radius
+server.
 
 **On OmniSwitch:**
 
@@ -202,13 +226,18 @@ The OmniSwitch created the following template automatically for you:
     802.1x 1/2 non-supplicant policy block
     802.1x 1/2 captive-portal policy authentication pass default-vlan fail block
 
-This is a secure (802.1x enabled) starting point, but we want to look at MAC-ADDRESS (non-supplicant) authentication first.
+This is a secure (802.1x enabled) starting point, but we want to look
+at MAC-ADDRESS (non-supplicant) authentication first.
 
     -> 802.1x 1/2 non-supplicant policy authentication pass default-vlan fail block
 
-It is important to note the "policy authentication" keyword, as otherwise the MAC-ADDRESS will not be sent for verification to the Radius. In case of success we'll place the user in default-vlan, if not block.
+It is important to note the "policy authentication" keyword, as
+otherwise the MAC-ADDRESS will not be sent for verification to the
+Radius. In case of success we'll place the user in default-vlan, if
+not block.
 
-If you now connect your workstation to the port, you'll see a request like the following at the Radius
+If you now connect your workstation to the port, you'll see a request
+like the following at the Radius
 
     rad_recv: Access-Request packet from host 192.168.2.106 port 1028, id=6, length=76
 	User-Name = "001EECAAAAAA"
@@ -218,10 +247,12 @@ If you now connect your workstation to the port, you'll see a request like the f
 	NAS-Port-Type = Ethernet
 	Service-Type = Call-Check
 
-Note that the OmniSwitch sends the MAC-ADDRESS in UPPERCASE for username/password.
-TODO: Document how to change that... (it is possible)
+Note that the OmniSwitch sends the MAC-ADDRESS in UPPERCASE for
+username/password. TODO: Document how to change that... (it is
+possible)
 
-In case that the authentication failed, you can verify the same on AOS CLI:
+In case that the authentication failed, you can verify the same on AOS
+CLI:
 
     -> show 802.1x non-supplicant
 
@@ -243,12 +274,14 @@ The authentication should now be successful, verify like this:
     -----+-----------------+----------------+-------------------+--------
     01/02 00:1e:ec:aa:aa:aa Authenticated    Basic-Dft VLAN      1
 
-Now let us assume that you want to place the user in a different VLAN (Dynamic VLAN Assignment) via Radius.
-There are two ways to do that ... (VLAN 20 is our plan)
+Now let us assume that you want to place the user in a different VLAN
+(Dynamic VLAN Assignment) via Radius. There are two ways to do that
+... (VLAN 20 is our plan)
 
 1.) Use the Vendor-Specific-Attribute (Xylan-Auth-Group)
 
-The entry in /etc/freeradius/users for that MAC-ADDRESS should look like this:
+The entry in /etc/freeradius/users for that MAC-ADDRESS should look
+like this:
 
     001EECAAAAAA    Cleartext-Password := "001EECAAAAAA"
                     Xylan-Auth-Group = 20
@@ -269,7 +302,8 @@ Here is the confirmation:
 
 2.) Use the standardised way (IEEE)
 
-The entry in /etc/freeradius/users for that MAC-ADDRESS should look like this:
+The entry in /etc/freeradius/users for that MAC-ADDRESS should look
+like this:
 
     001EECAAAAAA    Cleartext-Password := "001EECAAAAAA"
                     Tunnel-Medium-Type = IEEE-802,
@@ -292,8 +326,8 @@ Here is the confirmation:
     -----+-----------------+----------------+-------------------+--------
     01/02 00:1e:ec:aa:aa:aa Authenticated    Basic-Auth Svr      20
 
-
 ### 802.1X Authentication (aka supplicant authentication)
+
 TODO
 
 **Work in Progress**
@@ -315,7 +349,8 @@ Brainstorm/TODO by Benny:
 * Unique Session ID for Accounting
 * Accounting in general
 * Filter-ID for UNPs
-* MAC-ADDRESS format command switch for UPPER or lower case of MAc-ADddreSSes ;)
+* MAC-ADDRESS format command switch for UPPER or lower case of
+  MAc-ADddreSSes ;)
 * User Community @ http://www.alcatelunleashed.com
 * German DokuWiki @ http://dokuwiki.alu4u.com
 

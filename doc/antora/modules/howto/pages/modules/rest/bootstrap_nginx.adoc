@@ -2,19 +2,23 @@
 
 NGINX itself should be installed from packages provided with your OS.
 
-After installing NGINX you should locate its configuration and virtual server directories.
+After installing NGINX you should locate its configuration and virtual
+server directories.
 
-On RHEL and Centos, the main configuration directory is located at `/etc/nginx`, with the
-default virtual server loading endpoint definitions from `/etc/nginx/default.d`.
+On RHEL and Centos, the main configuration directory is located at
+`/etc/nginx`, with the default virtual server loading endpoint
+definitions from `/etc/nginx/default.d`.
 
-We will be making no changes to the main NGINX configuration, and will instead be placing
-stub endpoints in `/etc/nginx/default.d`.
+We will be making no changes to the main NGINX configuration, and will
+instead be placing stub endpoints in `/etc/nginx/default.d`.
 
 == Static endpoint
 
-No special logic or server side processing needs to be implemented for simple APIs.
+No special logic or server side processing needs to be implemented for
+simple APIs.
 
-Serving files with static JSON data is often sufficient for testing purposes.
+Serving files with static JSON data is often sufficient for testing
+purposes.
 
 [source,shell]
 ----
@@ -29,18 +33,20 @@ EOF
 
 === Create a htpasswd file
 
-In order to enabled HTTP Basic Authentication, we first need to create a file containing user
-credentials.
+In order to enabled HTTP Basic Authentication, we first need to create
+a file containing user credentials.
 
-Ensure that the `apache2-utils` (Debian, Ubuntu) or `httpd-tools` (RHEL/CentOS)
-package is installed. This will provide the  `htpasswd` utility.
+Ensure that the `apache2-utils` (Debian, Ubuntu) or `httpd-tools`
+(RHEL/CentOS) package is installed. This will provide the  `htpasswd`
+utility.
 
 [source,shell]
 ----
 sudo htpasswd -cb /etc/nginx/.htpasswd john password
 ----
 
-If you `cat /etc/nginx/.htpasswd` you should see that an entry has been created for john.
+If you `cat /etc/nginx/.htpasswd` you should see that an entry has
+been created for john.
 
 [source,shell]
 ----

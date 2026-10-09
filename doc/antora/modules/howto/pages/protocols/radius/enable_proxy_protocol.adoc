@@ -9,7 +9,7 @@ Protocol for RadSec connections.  This is done by editing the `listen
 proxy protocol:
 
 .Enabling PROXY Protocol in a FreeRADIUS virtual server
-=======================================================
+====
 
  listen {
      ...
@@ -17,7 +17,7 @@ proxy protocol:
      ...
  }
 
-=======================================================
+====
 
 Now restart the debugging session:
 [source,shell]
@@ -25,20 +25,19 @@ Now restart the debugging session:
 radiusd -fxxl /dev/stdout
 ----
 
-
 For HAproxy, you should enable the PROXY Protocol on connections to
 the RadSec backend, by editing the `backend` definition to add a
 `send-proxy` argument:
 
 .Example HAproxy backend configuration with PROXY Protocol
-==========================================================
+====
 
  backend radsec_be
      mode tcp
      balance roundrobin
      server radsecsvr 172.23.0.3:2083 send-proxy
 
-==========================================================
+====
 
 Note the `send-proxy` argument in the `server` definition.
 
@@ -49,13 +48,12 @@ Now reload the HAproxy service:
 service haproxy reload
 ----
 
-
 For Traefik, enable the PROXY Protocol on connections to the RadSec
 backend by editing the `radsec-service` definition to add a reference
 to the proxy protocol"
 
 .Example Traefik service configuration with PROXY Protocol
-==========================================================
+====
 
      radsec-service:
        loadBalancer:
@@ -64,13 +62,12 @@ to the proxy protocol"
          proxyProtocol:
            version: 1
 
-==========================================================
+====
 
 Note the `proxyProtocol` and `version: 1` directives.
 
 Traefik should automatically detect the updates and reconfigure the
 service.
-
 
 === Testing RadSec connectivity via a proxy using PROXY Protocol
 
@@ -85,17 +82,17 @@ echo "User-Name = bob" | radclient 127.0.0.1 auth testing123
 You should expect to see the familiar output:
 
 .Example output from radclient
-==============================
+====
 
  Sent Access-Request Id 252 from 0.0.0.0:50118 to 127.0.0.1:1812 length 27
  Received Access-Accept Id 252 from 127.0.0.1:1812 to 127.0.0.1:50118 length 39
 
-==============================
+====
 
 Now examine the FreeRADIUS debug output on the RadSec server:
 
 .Expected output from `radiusd -X` with PROXY Protocol
-======================================================
+====
 
  ...
  (0) (TLS) Received PROXY protocol connection from client \
@@ -105,13 +102,12 @@ Now examine the FreeRADIUS debug output on the RadSec server:
  (0) Sent Access-Accept Id 227 from 172.23.0.4:2083 to 172.23.0.2:55343 length 0
  ...
 
-======================================================
+====
 
 The output indicates that FreeRADIUS is receiving the originating
 connection information from the PROXY Protocol.  FreeRADIUS then
 handles the RadSec requests as though they have been received directly
 from the originating client.
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

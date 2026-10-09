@@ -1,19 +1,19 @@
 = Accounting Requests
 
-
 *Goal*: To send the server accounting requests and to have the server
 log the accounting requests.
 
 *Time:* 20-30 minutes
 
-In addition to authorisation and authentication, one of the primary roles of a
-RADIUS server is to record accounting information supplied by an NAS. In this
-exercise, you should create accounting requests to send to the server and see what
-the server does with those requests. This process simulates the actions taken by
-an NAS when a user logs in.
+In addition to authorisation and authentication, one of the primary
+roles of a RADIUS server is to record accounting information supplied
+by an NAS. In this exercise, you should create accounting requests to
+send to the server and see what the server does with those requests.
+This process simulates the actions taken by an NAS when a user logs
+in.
 
-Use the entry in the file from the exercise in
-xref:new_user.adoc[New User] for user "bob".
+Use the entry in the file from the exercise in xref:new_user.adoc[New
+User] for user "bob".
 
 == Authenticate the user
 
@@ -23,8 +23,8 @@ and permits them to access the network. We will use the `radclient`
 command to simulate a Network Access Server (NAS) sending an
 `Access-Request`.
 
-You can choose between two common authentication methods: PAP or
-CHAP. If you are a beginner, we recommend starting with PAP.
+You can choose between two common authentication methods: PAP or CHAP.
+If you are a beginner, we recommend starting with PAP.
 
 **Option A - Using PAP (Recommended)**
 
@@ -68,7 +68,8 @@ configuration files. You should see output similar to this:
 
 === Radclient output
 
-On the client side, `radclient` will display the response from the server:
+On the client side, `radclient` will display the response from the
+server:
 
 ----
 Received Access-Accept Id 96 from 127.0.0.1:1812 ...
@@ -79,8 +80,8 @@ Received Access-Accept Id 96 from 127.0.0.1:1812 ...
         User-Name = "bob"
 ----
 
-The `Access-Accept` message confirms that the user "bob" is now authenticated.
-
+The `Access-Accept` message confirms that the user "bob" is now
+authenticated.
 
 == Send an Accounting-Start packet
 
@@ -89,7 +90,8 @@ Once the user has been authenticated, the NAS sends an
 started. This packet must contain the `Acct-Status-Type = Start`
 attribute.
 
-We will use `radclient` to send this packet to the server's accounting port (typically 1813).
+We will use `radclient` to send this packet to the server's accounting
+port (typically 1813).
 
 [source]
 ----
@@ -106,9 +108,9 @@ Framed-IP-Address = 192.168.100.55' | radclient -x 127.0.0.1:1813 acct testing12
 
 === Server debug output
 
-Observe the server's output as it processes the accounting
-request. You should see it execute the `accounting` section and then
-send a response:
+Observe the server's output as it processes the accounting request.
+You should see it execute the `accounting` section and then send a
+response:
 
 ----
 proto_radius_udp - Received Accounting-Request ID 6 length 77 radius_udp server * port 1813
@@ -135,7 +137,8 @@ proto_radius_udp - Received Accounting-Request ID 6 length 77 radius_udp server 
 
 === Radclient output
 
-`radclient` will show the request it sent and the response it received from the server:
+`radclient` will show the request it sent and the response it received
+from the server:
 
 ----
 Sent Accounting-Request Id 6 from 0.0.0.0:47339 to 127.0.0.1:1813 length 77
@@ -172,7 +175,8 @@ For this tutorial, the detail logs for requests originating from
 `127.0.0.1` are stored in
 `/usr/local/var/log/radius/radacct/127.0.0.1/`.
 
-You can also find the exact path by looking at the server's debug logs. Look for a line that shows the expansion of the `detail` path:
+You can also find the exact path by looking at the server's debug
+logs. Look for a line that shows the expansion of the `detail` path:
 
 ----
 (0)      detail - /usr/local/var/log/radius/radacct/%{Net.Src.IP}/detail-%Y-%m-%d expands to /usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-15
@@ -187,7 +191,8 @@ cat /usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-15
 
 === Example detail log entry
 
-Verify that the entry contains the information you sent, specifically the `Acct-Status-Type`:
+Verify that the entry contains the information you sent, specifically
+the `Acct-Status-Type`:
 
 ----
 Thu Jan 15 15:27:47 2026
@@ -199,7 +204,6 @@ Thu Jan 15 15:27:47 2026
 	...
 	Packet-Type = ::Accounting-Request
 ----
-
 
 == Send an Accounting-Stop packet
 
@@ -256,19 +260,20 @@ verify this by checking the detail log again.
 
 == Questions
 
-1.  Why do accounting messages require less configuration of the server
-than authentication methods?
+1.  Why do accounting messages require less configuration of the
+    server than authentication methods?
 2.  Why is the "detail" module useful?
-3.  Where is the "detail" file located? Why is the "detail" file in this location? Where is it configured?
+3.  Where is the "detail" file located? Why is the "detail" file in
+    this location? Where is it configured?
 4.  What parts of the servers manage user session information?
 5.  What module other than "radutmp" can manage user session
-information?
+    information?
 6.  Why is it useful to record which users are currently logged in?
-7.  What attributes that are found in the accounting request are not found in the
-authentication request? Why?
+7.  What attributes that are found in the accounting request are not
+    found in the authentication request? Why?
 8.  Which attributes are required to be in an accounting request?
 9.  What error message is produced on the second accounting stop, and
-why is it produced?
+    why is it produced?
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -6,37 +6,38 @@ were all in a "flat" namespace, so the names had to be globally
 unique.  This limitation meant that the names for Vendor-Specific
 attributes usually had the vendor name as a prefix.  For example,
 
-```
+----
 Cisco-AVPair = "foo"
-```
+----
 
-The `dictionary` file definition for this attribute would look like this:
+The `dictionary` file definition for this attribute would look like
+this:
 
-```
+----
 VENDOR Cisco
 BEGIN-Vendor Cisco
 ATTRIBUTE Cisco-AVPair 1 string
 ...
-```
+----
 
 In version 4, all of the namespaces are local.  The namespaces are
 separated by `.` instead of `-`.  The names also must begin at the
 root of the dictionary.  So the version 4 name for the above attribute
 is:
 
-```
+----
 Vendor-Specific.Cisco.AVPair = "foo"
-```
+----
 
 And the `dictionary` file definition for this attribute now looks like
 this:
 
-```
+----
 VENDOR Cisco
 BEGIN-Vendor Cisco
 ATTRIBUTE AVPair 1 string
 ...
-```
+----
 
 == Alias dictionaries for v3 compatibility
 
@@ -52,17 +53,17 @@ Note that these "alias" dictionaries are only used for reading
 attributes, such as from the `users` file or `sql`.  When the server
 prints attributes, it will always print the new v4 names.
 
-These alias dictionaries can be enabled by editing the
-`dictionary` file.  Please see that file for more information.
+These alias dictionaries can be enabled by editing the `dictionary`
+file.  Please see that file for more information.
 
 == Tools to help
 
 See `scripts/upgrade/rewrite_attribute_names` for a tool which
 rewrites files to use the new attribute names.
 
-```
+----
 $ ./scripts/upgrade/rewrite_attribute_names -D dictdir -a attrs -i input -o output
-```
+----
 
 This command will rewrite files to use the new names.  Only the
 attribute names will be changed, all other contents of the files will

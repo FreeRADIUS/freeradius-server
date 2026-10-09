@@ -12,8 +12,9 @@ rest {
 }
 ----
 
-<1> A common URL prefix for all REST API endpoints called by this module instance.
-    Connect URI is used to reduce repetition in the config.
+<1> A common URL prefix for all REST API endpoints called by this
+    module instance. Connect URI is used to reduce repetition in the
+    config.
 
 == Enable mods-available/rest
 
@@ -29,11 +30,11 @@ cd raddb/mods-enabled && ln -s ../mods-available/rest
 
 === Calling a generic API endpoint
 
-The REST module allows a different REST API endpoint to be configured for each
-type of section it can be called in.
+The REST module allows a different REST API endpoint to be configured
+for each type of section it can be called in.
 
-If called in `recv Access-Request` (>= v4.0.x) or `authorize { ... }` (<= v3.2.x)
-the `rest.authorize` module section will be evaluated.
+If called in `recv Access-Request` (>= v4.0.x) or `authorize { ... }`
+(<= v3.2.x) the `rest.authorize` module section will be evaluated.
 
 [source,config]
 ----
@@ -63,8 +64,9 @@ rest {
 <1> The URL to authenticate against. Will be expanded (if required).
 <2> The HTTP 'verb' to use.
 
-If called in `recv Accounting-Request` (>= v4.0.x) or `accounting { ... }` (<= v3.2.x)
-the `rest.authorize` mould section will be evaluated.
+If called in `recv Accounting-Request` (>= v4.0.x) or `accounting {
+... }` (<= v3.2.x) the `rest.authorize` mould section will be
+evaluated.
 
 [source,config]
 ----
@@ -96,14 +98,14 @@ rest {
 
 === Authenticating a user with HTTP basic auth
 
-The REST module can also authenticate users by performing HTTP basic access
-authentication against a REST API endpoint.
+The REST module can also authenticate users by performing HTTP basic
+access authentication against a REST API endpoint.
 
-With HTTP Basic Auth, the user's credentials will be base64 encoded and
-submitted in the clear.
+With HTTP Basic Auth, the user's credentials will be base64 encoded
+and submitted in the clear.
 
-It is strongly recommended to use `https://` with HTTP basic auth, to prevent
-snooping.
+It is strongly recommended to use `https://` with HTTP basic auth, to
+prevent snooping.
 
 [source,unlang]
 ----
@@ -140,7 +142,8 @@ rest {
 }
 ----
 <1> The URL to authenticate against. Will be expanded (if required).
-<2> Specify the type of authentication we'll be using (HTTP basic auth).
+<2> Specify the type of authentication we'll be using (HTTP basic
+    auth).
 <3> Username to submit for HTTP Basic Auth.  Will be expanded.
 <4> Password to submit for HTTP Basic Auth.  Will be expanded.
 <5> The HTTP 'verb' to use.

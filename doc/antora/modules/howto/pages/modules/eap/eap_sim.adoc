@@ -1,9 +1,8 @@
 = EAP SIM Server
 
 EAP-SIM configuration in v4 is handled through the `eap-aka-sim`
-virtual server (see `sites-available/eap-aka-sim`). The server
-calls sections of this virtual server at each stage of the EAP-SIM
-exchange.
+virtual server (see `sites-available/eap-aka-sim`). The server calls
+sections of this virtual server at each stage of the EAP-SIM exchange.
 
 To supply GSM triplets retrieved from an Authentication Centre (AuC),
 set the following `control` attributes inside the `send

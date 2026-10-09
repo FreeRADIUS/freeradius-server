@@ -40,14 +40,20 @@ keyword, local variables keep their value across the different
 subsections.  This behaviour can be used to track states inside of the
 xref:unlang/redundant.adoc[redundant] section.
 
-<data-type>:: A "leaf" xref:type/all_types.adoc[data type]. Structural types such as `struct`, `tlv`, VSA, etc. are not allowed.
+<data-type>:: A "leaf" xref:type/all_types.adoc[data type]. Structural
+types such as `struct`, `tlv`, VSA, etc. are not allowed.
 
-<name>:: A unique name for the local variable.  This name cannot be the same as any previously-defined local variable in the same scope, and it cannot be the same as any attribute defined in the current protocol dictionary.
+<name>:: A unique name for the local variable.  This name cannot be
+the same as any previously-defined local variable in the same scope,
+and it cannot be the same as any attribute defined in the current
+protocol dictionary.
 
 Multiple local variables may be defined.  All definitions must be at
 the top of a section.
 
-[ statements ]:: The `unlang` commands which will be executed.  The local variable can be used, edited, modified, etc. within these statements.
+[ statements ]:: The `unlang` commands which will be executed.  The
+local variable can be used, edited, modified, etc. within these
+statements.
 
 Local variables cannot be deleted.  Multiple local variables of the
 same name cannot be used.  The local variables exist in their own

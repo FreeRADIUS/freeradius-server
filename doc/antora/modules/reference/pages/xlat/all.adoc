@@ -4,72 +4,57 @@
 
 include::partial$index_pair.adoc[]
 
-
 == Data Conversion
 
 include::partial$index_conversion.adoc[]
-
 
 == File Handling
 
 include::partial$index_file.adoc[]
 
-
 == Hashing Functions
 
 include::partial$index_hash.adoc[]
-
 
 == HMAC Functions
 
 include::partial$index_hmac.adoc[]
 
-
 == Interpreter State and Debugging
 
 include::partial$index_interpreter.adoc[]
-
 
 == Logging
 
 include::partial$index_log.adoc[]
 
-
 == Miscellaneous Functions
 
 include::partial$index_misc.adoc[]
-
 
 == Network Address Handling
 
 include::partial$index_net.adoc[]
 
-
 == Profiling Functions
 
 include::partial$index_profiling.adoc[]
-
 
 == Protocol Encoding and Decoding
 
 include::partial$index_protocol.adoc[]
 
-
 == String Manipulation
 
 include::partial$index_string.adoc[]
-
 
 == Time Management
 
 include::partial$index_time.adoc[]
 
-
 == Deprecated Functions
 
 include::partial$index_deprecated.adoc[]
-
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

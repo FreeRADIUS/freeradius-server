@@ -16,8 +16,8 @@ radsniff - dump radius protocol
 
 == DESCRIPTION
 
-*radsniff* is a simple wrapper around libpcap. It can also print out the
-contents of RADIUS packets using the FreeRADIUS dictionaries.
+*radsniff* is a simple wrapper around libpcap. It can also print out
+the contents of RADIUS packets using the FreeRADIUS dictionaries.
 
 == OPTIONS
 

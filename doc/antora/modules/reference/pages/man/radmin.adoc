@@ -31,9 +31,9 @@ and `help`, and command history.
 == WARNING
 
 The security protections offered by this command are limited to the
-permissions on the Unix domain socket, and the server configuration. If
-someone can connect to the Unix domain socket, they have a substantial
-amount of control over the server.
+permissions on the Unix domain socket, and the server configuration.
+If someone can connect to the Unix domain socket, they have a
+substantial amount of control over the server.
 
 == OPTIONS
 
@@ -85,7 +85,6 @@ interpreted locally by radmin:
 
 *reconnect*::
   Reconnect to the server.
-
 
 The other commands are implemented by the server. Type `help` at the
 prompt for more information.

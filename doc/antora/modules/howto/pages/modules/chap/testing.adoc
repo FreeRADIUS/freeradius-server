@@ -18,9 +18,9 @@ the correct CHAP calculations in order to put the hashed
 
 [NOTE]
 ====
-The server must be configured with a known user and a "known
-good" password before any CHAP tests are performed.  In this case, we
-assume that the server knows about a user `bob` with password `hello`.
+The server must be configured with a known user and a "known good"
+password before any CHAP tests are performed.  In this case, we assume
+that the server knows about a user `bob` with password `hello`.
 ====
 
 The output of `radclient` should look like the following.  Some of the

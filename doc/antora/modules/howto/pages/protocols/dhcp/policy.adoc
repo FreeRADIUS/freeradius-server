@@ -1,7 +1,8 @@
 = Define the DHCP policy
 
-Now that FreeRADIUS is successfully running as a DHCP server it is necessary to
-configure a DHCP policy so that it returns correctly formed responses to the DHCP requests that it receives.
+Now that FreeRADIUS is successfully running as a DHCP server it is
+necessary to configure a DHCP policy so that it returns correctly
+formed responses to the DHCP requests that it receives.
 
 This involves a number of steps:
 

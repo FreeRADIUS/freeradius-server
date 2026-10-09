@@ -1,6 +1,7 @@
 = Alternation Syntax
 
-The v3 alternation syntax of `%{foo:-bar}` is no longer necessary, and has been removed.
+The v3 alternation syntax of `%{foo:-bar}` is no longer necessary, and
+has been removed.
 
 The new approach is simpler and clearer, just use short-circuit `||`:
 in an expression.
@@ -17,7 +18,8 @@ Reply-Message := "Hello %{%{User-Name}:-none}"
 Reply-Message := "Hello %{User-Name || 'none'}"
 ----
 
-This approach also means that nested alternation is no longer necessary:
+This approach also means that nested alternation is no longer
+necessary:
 
 .Old Style - no longer supported
 [source,unlang]
@@ -33,7 +35,8 @@ Reply-Message := "Hello %{NAS-Identifier || User-Name || 'none'}"
 
 [NOTE]
 ====
-Unlike version 3, any strings used in `||` alternation must be quoted.  Numbers and IP addresses do not need to be quoted.
+Unlike version 3, any strings used in `||` alternation must be quoted.
+Numbers and IP addresses do not need to be quoted.
 ====
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

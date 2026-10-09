@@ -1,17 +1,21 @@
 = Radclient
 
-Policy issues for basic authentication protocols such as PAP, CHAP and MSCHAP, as well as for accounting and CoA/Disconnect requests, can be investigated using the radclient command while the server is in debug mode.
-
+Policy issues for basic authentication protocols such as PAP, CHAP and
+MSCHAP, as well as for accounting and CoA/Disconnect requests, can be
+investigated using the radclient command while the server is in debug
+mode.
 
 == Getting Started
 
-First, create an authentication packet definition by specifying its attributes. See the xref:reference:man/radclient.adoc[radclient] man page for more details.
+First, create an authentication packet definition by specifying its
+attributes. See the xref:reference:man/radclient.adoc[radclient] man
+page for more details.
 
 === Create and send an authorization test packet
 
 For example:
 
-```
+----
 nwkrad@radius-fe-01$ cat <<EOF > auth_request.txt
 Acct-Session-Id = "00000042"
 Service-Type = Framed-User
@@ -24,23 +28,31 @@ NAS-IP-Address = 192.0.2.1
 NAS-Port = "12345"
 NAS-Port-Type = Virtual
 EOF
-```
-You will need to customise the above to reflect the attributes that are being sent by your NAS. You can passively determine the format of your RADIUS packets by running radsniff -x as root on the RADIUS server:
-`root@radius-fe-01# radsniff -x`
+----
+You will need to customise the above to reflect the attributes that
+are being sent by your NAS. You can passively determine the format of
+your RADIUS packets by running radsniff -x as root on the RADIUS
+server: `root@radius-fe-01# radsniff -x`
 
-Next, generate a RADIUS access request packet from this definition and send it to the RADIUS server by calling radclient with the auth option:
-```
+Next, generate a RADIUS access request packet from this definition and
+send it to the RADIUS server by calling radclient with the auth
+option:
+----
 nwkrad@radius-fe-01$ cat auth_request.txt | \
 radclient -x 127.0.0.1 auth testing123
-```
+----
 
-Carefully examine the output of the above command and the debug output from FreeRADIUS. Make any required changes in small careful steps, regularly committing the changes to versions control so that they can be reverted if necessary.
+Carefully examine the output of the above command and the debug output
+from FreeRADIUS. Make any required changes in small careful steps,
+regularly committing the changes to versions control so that they can
+be reverted if necessary.
 
 === Create and send an accounting test packet
 
-The process for generating accounting requests is similar. First, create the accounting packet definition:
+The process for generating accounting requests is similar. First,
+create the accounting packet definition:
 
-```
+----
 nwkrad@radius-fe-01$ cat <<EOF > acct_request.txt
 Acct-Session-Id = "00000042"
 Acct-Status-Type = Interim
@@ -64,14 +76,15 @@ NAS-IP-Address = 192.0.2.1
 NAS-Port = "12345"
 NAS-Port-Type = Ethernet
 EOF
-```
+----
 
-Then call radclient with the acct option to generate the actual accounting request:
+Then call radclient with the acct option to generate the actual
+accounting request:
 
-```
+----
 nwkrad@radius-fe-01:~$ cat acct_request.txt | \
 radclient -x 127.0.0.1 acct testing123
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

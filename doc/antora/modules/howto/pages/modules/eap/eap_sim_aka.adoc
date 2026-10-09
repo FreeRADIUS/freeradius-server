@@ -158,9 +158,9 @@ with no phones or access points needed.
 
 If you're set on using physical hardware or have particular handsets
 you want to use for testing you may want to consider purchasing a
-sysmocom sim, which allows you to set the Ki, and algorithms used.
-The SCM SCR3310 CCID reader and the mechanical adapter sysmocom sell
-both work very nicely out of the box (at least on OSX).
+sysmocom sim, which allows you to set the Ki, and algorithms used. The
+SCM SCR3310 CCID reader and the mechanical adapter sysmocom sell both
+work very nicely out of the box (at least on OSX).
 
 ### PS/CS
 

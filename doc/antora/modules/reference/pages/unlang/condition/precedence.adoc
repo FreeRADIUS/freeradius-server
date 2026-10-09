@@ -6,14 +6,15 @@ them true, not just a boolean `true` or `false`. For example, &Foo :=
 exists, or else the string "help" if it does not.
 
 If a math operation causes an overflow, underflow, or division by
-zero, it returns no result. This impacts the rest of the
-calculation. You can use the `||` operator to replace a missing result
-with a different value.
+zero, it returns no result. This impacts the rest of the calculation.
+You can use the `||` operator to replace a missing result with a
+different value.
 
 Use parentheses `( )` to wrap a nested expression. They also help
 clarify policies and define the order of evaluation.
 
-The following tables summarises the order of precedence of the v4 operators.
+The following tables summarises the order of precedence of the v4
+operators.
 
 .Operator Precedence in Conditional Expressions
 [options="header,autowidth"]
@@ -32,10 +33,9 @@ The following tables summarises the order of precedence of the v4 operators.
 |11 (lowest)    |`\|\|`           |Logical OR            |Short-circuits and can also be used to replace null results.
 |===
 
-
 [NOTE]
 ====
-The `%{expr:…}` syntax is not supported in v4 and will return an
+The `%{expr:...}` syntax is not supported in v4 and will return an
 error. You can now use math directly inside conditions and
 double-quoted strings.
 ====

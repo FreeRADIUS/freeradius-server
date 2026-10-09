@@ -24,21 +24,22 @@ sql
 
 == Module Return Codes
 
-When a module is called, it returns one of the following codes to
-the interpreter; the meaning of each code is detailed to the right of
-the source, below:
+When a module is called, it returns one of the following codes to the
+interpreter; the meaning of each code is detailed to the right of the
+source, below:
 
 .Module Return Codes
 
-The below table describes the purpose of the rcodes that may be returned
-by a module call.  In this case the 'operation' referenced in the table is
-the current module call.
+The below table describes the purpose of the rcodes that may be
+returned by a module call.  In this case the 'operation' referenced in
+the table is the current module call.
 
 include::partial$rcode_table.adoc[]
 
 These return codes can be used in a subsequent
-xref:unlang/condition/index.adoc[conditional expression] thus allowing policies to
-perform different actions based on the behaviour of the modules.
+xref:unlang/condition/index.adoc[conditional expression] thus allowing
+policies to perform different actions based on the behaviour of the
+modules.
 
 .Example
 [source,unlang]
@@ -59,10 +60,11 @@ The return codes for a module can be can be modified on a per-call
 basis.  These over-rides use the same syntax as the
 xref:unlang/actions.adoc[actions] subsection.
 
-Module priority overrides are specified in a block inline with the module call.
-The format of an override is `<rcode> = ([0-9]+|<rcode>|return)` - That is,
-a decimal number greater than or equal to 0, the priority of another rcode, or the special
-priority `return` which causes the current section to immediately exit.
+Module priority overrides are specified in a block inline with the
+module call. The format of an override is `<rcode> =
+([0-9]+|<rcode>|return)` - That is, a decimal number greater than or
+equal to 0, the priority of another rcode, or the special priority
+`return` which causes the current section to immediately exit.
 
 The following example shows what happens on each line of a
 configuration file when return code overrides are being used.
@@ -78,14 +80,14 @@ ldap {                    <1>
 
 <1> Call to the `ldap` module.
 <2> Sets the priority of the `fail` rcode to be `1`. If the priority
-    of the rcode for the request is `0`, then the request request rcode
-    will be set to `fail` if the module returns `fail`.
-<3> Sets the priority of the `ok` rcode to be whatever the default is for
-    `handled` in this section.  As the default for `handled` is usually
-    `return`.  If `ok` is returned, the current section will immediately
-    exit.
-<4> Sets the priority of `reject` to be `return`.  If the module returns
-    `reject`, the current section will immediately exit.
+    of the rcode for the request is `0`, then the request request
+    rcode will be set to `fail` if the module returns `fail`.
+<3> Sets the priority of the `ok` rcode to be whatever the default is
+    for `handled` in this section.  As the default for `handled` is
+    usually `return`.  If `ok` is returned, the current section will
+    immediately exit.
+<4> Sets the priority of `reject` to be `return`.  If the module
+    returns `reject`, the current section will immediately exit.
 
 See the xref:unlang/actions.adoc[actions] page for more information on
 the syntax of the `actions` section.

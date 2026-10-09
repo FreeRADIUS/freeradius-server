@@ -3,8 +3,8 @@
 This error means that the client is sending too much information in a
 packet.  It is due either to a misconfigured client or a possible
 attack on the server. Either way, you should check what the client is
-sending via `tcpdump` or `wireshark`, before changing the
-server configuration.
+sending via `tcpdump` or `wireshark`, before changing the server
+configuration.
 
 The default value for `max_attributes` is high enough for most common
 use cases. However, if you do increase this limit, be careful. It

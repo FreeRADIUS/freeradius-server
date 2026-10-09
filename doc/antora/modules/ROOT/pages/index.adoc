@@ -1,12 +1,12 @@
 = Introduction
 
-This FreeRADIUS version 4 documentation is available under
-the Creative Commons Non-Commercial  xref:LICENSE.adoc[license].
+This FreeRADIUS version 4 documentation is available under the
+Creative Commons Non-Commercial  xref:LICENSE.adoc[license].
 
 [WARNING]
 ====
-*VERSION 4 IS IN DEVELOPMENT AND HAS NOT BEEN OFFICIALLY
-RELEASED. USE AT YOUR OWN RISK.*
+*VERSION 4 IS IN DEVELOPMENT AND HAS NOT BEEN OFFICIALLY RELEASED. USE
+AT YOUR OWN RISK.*
 
 Please wait for an official release before using version 4 (v4).
 ====
@@ -21,9 +21,9 @@ enterprise networks.
 The default settings are sufficient for a simple install and basic
 functionality. The software's flexibility presents challenges when
 configuring it for advanced or specialized environments. There are
-many options and customisations for the FreeRADIUS
-server. Administrators must decide how and what settings to change,
-which may be complex and problematic.
+many options and customisations for the FreeRADIUS server.
+Administrators must decide how and what settings to change, which may
+be complex and problematic.
 
 The FreeRADIUS v4 documentation has been significantly revised
 compared to version 3. The updated documentation addresses both basic
@@ -43,8 +43,8 @@ even numbered releases should be packaged, e.g. 4.0 or 4.2.
 == Sections in this guide
 
 * xref:getstarted.adoc[Getting Started] guides you through a basic
-  install, xref:debugging/radiusd_X.adoc[debugging]. More
-  information about where to xref:gethelp.adoc[get help],
+  install, xref:debugging/radiusd_X.adoc[debugging]. More information
+  about where to xref:gethelp.adoc[get help],
   xref:bestpractices.adoc[best practices], and a xref:faq.adoc[FAQ]
   are found here to help you resolve issues.
 
@@ -60,8 +60,8 @@ even numbered releases should be packaged, e.g. 4.0 or 4.2.
 
 * xref:reference:index.adoc[Reference documentation] outlines the
   entire xref:reference:unlang/index.adoc[unlang policy language]
-  syntax and xref:reference:raddb/index.adoc[configuration
-  files]. More configuration information for
+  syntax and xref:reference:raddb/index.adoc[configuration files].
+  More configuration information for
   xref:reference:policy/index.adoc[policies],
   xref:reference:raddb/mods-available/index.adoc[modules],
   xref:reference:raddb/mods-available/doc/datastore.adoc[datastores]
@@ -69,8 +69,8 @@ even numbered releases should be packaged, e.g. 4.0 or 4.2.
   is accessed here.
 
 * xref:howto:index.adoc[Howto Guides] gives step-by-step instructions
-  on how to xref:howto:installation/index.adoc[install]
-  FreeRADIUS. Many other configuration guides are here for configuring
+  on how to xref:howto:installation/index.adoc[install] FreeRADIUS.
+  Many other configuration guides are here for configuring
   xref:howto:modules/configuring_modules.adoc[modules],
   xref:howto:datastores/index.adoc[datastores],
   xref:howto:protocols/index.adoc[protocols],
@@ -122,11 +122,11 @@ Here's a short list of the most confusing or complicated v3 issues:
 
 * Proxying is welded into the server core, which makes it difficult to
   run policies around proxying.
-  * There is a `fallback` configuration, but this is specific to
-    proxying, and doesn't use the standard module failover mechanisms.
-  * It's impossible to send packets as a client, packets can only be
-    proxied.  Except for `CoA-Request`, which has a magic
-    `originate-coa` functionality.
+* There is a `fallback` configuration, but this is specific to
+  proxying, and doesn't use the standard module failover mechanisms.
+* It's impossible to send packets as a client, packets can only be
+  proxied.  Except for `CoA-Request`, which has a magic
+  `originate-coa` functionality.
 
 * Much of the configuration has special-purpose flags or settings for
   special cases.
@@ -193,36 +193,40 @@ that the result is worth the wait.
 == What's new in FreeRADIUS v4
 
 FreeRADIUS v4 is in "alpha" right now.  If FreeRADIUS v4 works,
-continue to use.  If you have issues, *return* to using FreeRADIUS
-v3.
+continue to use.  If you have issues, *return* to using FreeRADIUS v3.
 
 As of the time of this release, FreeRADIUS:
 
 * Has the abililty to proxy one packet to several destinations.
-* Can capture a `failed` proxy, and fall back to local
-  authentication.
-* Server supports many clients with different shared
-  secrets behind one NAT gateway.
+* Can capture a `failed` proxy, and fall back to local authentication.
+* Server supports many clients with different shared secrets behind
+  one NAT gateway.
 * DHCP and VMPS integrated with full functionality and features.
 * Server supports TACACS+.
 * Connections to databases are `asynchronous` ensuring stable access,
   and prevents server lockups.
 * Enums are prefixed with `::`, as in `Service-Type == ::Framed-User`.
-  ** The server still doesn't always require (or print) the `::` prefix.  That will change.
-  ** By implementing `::` for enums, the requirement to use `&` as a prefix for attribute names is not needed.
-  ** This change may require an update to all of the configuration.  We will try to allow `&`, but that may not be possible.
-* Dynamic expansions have changed from `%{md5:foo}` to a more standard syntax of `%hash.md5(foo)`.
-  ** The new syntax supports multiple comma-separated arguments such as `%function(a, b, c)`.
-  ** Expansions such as `%{User-Name}` work in addition to expressions like `%{1+2}` too.
-  ** Alternation `%{foo || bar}` supersedes `%{%{foo}:-%{bar}}` now.
+** The server still doesn't always require (or print) the `::` prefix.
+   That will change.
+** By implementing `::` for enums, the requirement to use `&` as a
+   prefix for attribute names is not needed.
+** This change may require an update to all of the configuration.  We
+   will try to allow `&`, but that may not be possible.
+* Dynamic expansions have changed from `%{md5:foo}` to a more standard
+  syntax of `%hash.md5(foo)`.
+** The new syntax supports multiple comma-separated arguments such as
+   `%function(a, b, c)`.
+** Expansions such as `%{User-Name}` work in addition to expressions
+   like `%{1+2}` too.
+** Alternation `%{foo || bar}` supersedes `%{%{foo}:-%{bar}}` now.
 * RADIUS/TLS (RadSec) isn't available.
 * The "haproxy" and "reverse CoA" features aren't implemented.
 
 Administrators using version 3 that wish to upgrade to version 4 must
-read the xref:howto:upgrade/index.adoc[index] guide.  This
-guide explains the differences between the two versions and how an
-existing configuration is reproduced in the latest release. Do *not*
-use version 3 configuration files with version 4. These configuration
+read the xref:howto:upgrade/index.adoc[index] guide.  This guide
+explains the differences between the two versions and how an existing
+configuration is reproduced in the latest release. Do *not* use
+version 3 configuration files with version 4. These configuration
 files are *not* compatible on this major version upgrade.
 
 FreeRADIUS version 4 took a long time to incorporate all these
@@ -233,12 +237,12 @@ worthwhile for users.
 [WARNING]
 ====
 *Don't* open bug reports about previous features as missing. All such
- bug reports will be closed without comment.
+bug reports will be closed without comment.
 
 *Don't* create 4.0.0-alpha packages for your operating systems or
- Linux distributions. Creating "alpha" packages results in upset users
- that install that package. The users believed that the package is
- stable and they run into issues.
+Linux distributions. Creating "alpha" packages results in upset users
+that install that package. The users believed that the package is
+stable and they run into issues.
 ====
 
 == Network requirements

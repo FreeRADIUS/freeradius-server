@@ -9,8 +9,8 @@ redundant-load-balance [ <key> ] {
 ----
 
 The `redundant-load-balance` section operates as a combination of the
-xref:unlang/redundant.adoc[redundant] and xref:unlang/load-balance.adoc[load-balance]
-sections.
+xref:unlang/redundant.adoc[redundant] and
+xref:unlang/load-balance.adoc[load-balance] sections.
 
 <key>:: An attribute reference or expansion which will be hashed in
 order to select the statement to execute.
@@ -25,10 +25,10 @@ When the `<key>` field is omitted, the module is chosen randomly, in a
 [ statements ]:: One or more `unlang` commands.
 +
 If the selected statement succeeds, then the server stops processing
-the `redundant-load-balance` section. If, however, that statement fails,
-then the next statement in the list is chosen (wrapping around to the
-top).  This process continues until either one statement succeeds or all
-of the statements have failed.
+the `redundant-load-balance` section. If, however, that statement
+fails, then the next statement in the list is chosen (wrapping around
+to the top).  This process continues until either one statement
+succeeds or all of the statements have failed.
 +
 All of the statements in the list should be modules, and of the same
 type (e.g., `ldap` or `sql`). All of the statements in the list should
@@ -47,10 +47,10 @@ redundant-load-balance User-Name {
 
 == Redundant-load-balance Sections as Modules
 
-It can be useful to use the same `redundant-load-balance` section in multiple
-places.  Instead of copying the same text multiple times, a
-`redundant-load-balance` section can be defined as a module in the `mods-enabled/`
-directory.
+It can be useful to use the same `redundant-load-balance` section in
+multiple places.  Instead of copying the same text multiple times, a
+`redundant-load-balance` section can be defined as a module in the
+`mods-enabled/` directory.
 
 For example, the following text can be placed into the file
 `mods-enabled/sql_all`.  Once it is there, it can be used as a module
@@ -83,8 +83,8 @@ Reply-Message := %sql_all("SELECT message FROM table WHERE name='%{User-Name}'")
 }
 ----
 
-The expansion works exactly like a `redundant-load-balance` block.
-One of the underlying modules is chosen.  If it fails, the next one is
+The expansion works exactly like a `redundant-load-balance` block. One
+of the underlying modules is chosen.  If it fails, the next one is
 chosen, etc.
 
 The one caveat here is that the arguments passed to the underlying

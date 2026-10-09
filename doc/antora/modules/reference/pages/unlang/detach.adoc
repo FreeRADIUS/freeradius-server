@@ -52,7 +52,8 @@ subrequest ::Disconnect-Request {
 
 [NOTE]
 ====
-The `detach` keyword cannot be used as the last statement in a subrequest.
+The `detach` keyword cannot be used as the last statement in a
+subrequest.
 ====
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

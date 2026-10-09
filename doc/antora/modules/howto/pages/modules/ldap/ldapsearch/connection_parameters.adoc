@@ -116,8 +116,8 @@ ldapsearch -z 1 -x \
 
 == Failure - `Encryption (confidentiality) required`
 
-If a message similar to the one below is returned by `ldapsearch`.
-TLS must be enabled on the connection.
+If a message similar to the one below is returned by `ldapsearch`. TLS
+must be enabled on the connection.
 
 ----
 ldap_bind: Confidentiality required (13)

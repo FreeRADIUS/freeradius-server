@@ -8,8 +8,8 @@ group {
 }
 ----
 
-The `group` statement collects a series of statements into a list.
-The default processing sections of the server (`recv Access-Request`,
+The `group` statement collects a series of statements into a list. The
+default processing sections of the server (`recv Access-Request`,
 `send Accounting-Response %{Acct-Status-Type}`, etc.) are also `group`
 statements.  Those sections are given different name for management
 reasons, but they behave internally exactly like a `group`.
@@ -35,7 +35,8 @@ group {
 }
 ----
 
-The last entry in a `group` section can also be an xref:unlang/actions.adoc[actions] subsection.
+The last entry in a `group` section can also be an
+xref:unlang/actions.adoc[actions] subsection.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

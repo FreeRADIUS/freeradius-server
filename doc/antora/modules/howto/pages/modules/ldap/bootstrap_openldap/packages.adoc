@@ -7,25 +7,29 @@
 sudo -s
 ----
 
-LDAP URIs that begin with `ldapi://` (as in the examples below) refer to a Unix
-Socket. Unix sockets use `peercred` authorization where the primary UID and GID
-of the user running the LDAP client, determines which resources they can access.
+LDAP URIs that begin with `ldapi://` (as in the examples below) refer
+to a Unix Socket. Unix sockets use `peercred` authorization where the
+primary UID and GID of the user running the LDAP client, determines
+which resources they can access.
 
-For convenience we will configure the OLC database to be modifiable only by the
-root user (`UID=0`, `GID=0`).  When configuring OpenLDAP via OLC the `ldapadd`
-utility will be run as root so our changes are authorised.
+For convenience we will configure the OLC database to be modifiable
+only by the root user (`UID=0`, `GID=0`).  When configuring OpenLDAP
+via OLC the `ldapadd` utility will be run as root so our changes are
+authorised.
 
 == Bootstrap
 
 === Install packages
 
-OpenLDAP LTB packages available under the
-"Packaging and OpenLDAP extensions" heading https://ltb-project.org/documentation[here].
+OpenLDAP LTB packages available under the "Packaging and OpenLDAP
+extensions" heading https://ltb-project.org/documentation[here].
 
-You should add the appropriate repository definitions and install the `openldap`
-package (`dnf install openldap` or `apt-get install openldap`).
+You should add the appropriate repository definitions and install the
+`openldap` package (`dnf install openldap` or `apt-get install
+openldap`).
 
 === Define site specific variables
+
 Change the values here to match local paths and your site specific
 configuration.
 
@@ -49,13 +53,14 @@ LDAP_READONLY_PASSWORD="readonly"
 ----
 
 === Switch OpenLDAP from using static configuration files to OLC
-After installing OpenLDAP, `slapd` (the main OpenLDAP daemon) needs to be
-switched to using OLC (on-line configuration).
 
-OLC provides an LDAP based interface for dynamically changing OpenLDAP's
-configuration at runtime. OLC also allows more programmatic manipulation of
-OpenLDAP's configuration, which is the primary reason for using it in this
-example.
+After installing OpenLDAP, `slapd` (the main OpenLDAP daemon) needs to
+be switched to using OLC (on-line configuration).
+
+OLC provides an LDAP based interface for dynamically changing
+OpenLDAP's configuration at runtime. OLC also allows more programmatic
+manipulation of OpenLDAP's configuration, which is the primary reason
+for using it in this example.
 
 [source,shell]
 ----
@@ -123,21 +128,29 @@ EOF
 [%collapsible]
 ====
 
-The OpenLDAP ACL syntax can be difficult to understand for new users. To help
-with implementing site-specific ACLs, the humanly readable translation of the
-base ACLs in the above example is included below.
+The OpenLDAP ACL syntax can be difficult to understand for new users.
+To help with implementing site-specific ACLs, the humanly readable
+translation of the base ACLs in the above example is included below.
 
-* `to attrs=userPassword by dn="cn=admin,${LDAP_BASE_DN}" write by anonymous auth by self write by * none`
+* `to attrs=userPassword by dn="cn=admin,${LDAP_BASE_DN}" write by
+  anonymous auth by self write by * none`
 ** The administrative user can change the userPassword attribute.
-** Anonymous users can use the userPassword attribute contents for the purposes of authentication.
+** Anonymous users can use the userPassword attribute contents for the
+   purposes of authentication.
 ** OpenLDAP itself can write to userPassword attributes.
-** Other than the above users no one can access the userPassword attribute.
-* `to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by dn="cn=admin,${LDAP_BASE_DN}" manage by users read by * none`
-** The root user and admin users have full access to the data portion of the directory.
-** Any other authenticated user has read only access to the data portion of the directory.
+** Other than the above users no one can access the userPassword
+   attribute.
+* `to * by
+  dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"
+  manage by dn="cn=admin,${LDAP_BASE_DN}" manage by users read by *
+  none`
+** The root user and admin users have full access to the data portion
+   of the directory.
+** Any other authenticated user has read only access to the data
+   portion of the directory.
 * `to dn.base="" by * read`
-** Any user may access the metadata at the top of the directory.  The is useful for the
-   autodiscovery functionality in LDAP browsers.
+** Any user may access the metadata at the top of the directory.  The
+   is useful for the autodiscovery functionality in LDAP browsers.
 ====
 
 === Populate the top level object, and add credentials for the readonly user
@@ -164,9 +177,9 @@ EOF
 
 == Load schemas
 
-For our tests we need to load some basic bundled OpenLDAP schemas and some
-FreeRADIUS specific schemas for defining profiles, RADIUS to LDAP mappings and
-clients.
+For our tests we need to load some basic bundled OpenLDAP schemas and
+some FreeRADIUS specific schemas for defining profiles, RADIUS to LDAP
+mappings and clients.
 
 [source,shell]
 ----
@@ -186,15 +199,16 @@ done
 ----
 
 == Populate with test data
-Once slapd is running and appropriately configured with database definitions an
-admin user, a readonly user, and the prerequisite schemas, it can now be
-populated with test data.
 
-For test data we will be using the object definitions from the LDAP module's CIT
-(Continuous Integration Testing) script.
+Once slapd is running and appropriately configured with database
+definitions an admin user, a readonly user, and the prerequisite
+schemas, it can now be populated with test data.
 
-These object definitions have been designed to exercise all features of the
-FreeRADIUS LDAP module.
+For test data we will be using the object definitions from the LDAP
+module's CIT (Continuous Integration Testing) script.
+
+These object definitions have been designed to exercise all features
+of the FreeRADIUS LDAP module.
 
 [source,shell]
 ----
@@ -203,6 +217,7 @@ sed -e '1,/^description:/ d' ${FREERADIUS_SRC}/src/tests/modules/ldap/example.co
 ----
 
 == Switch to an unprivileged user
+
 [source,shell]
 ----
 exit
@@ -211,18 +226,19 @@ exit
 Now the setup of the directory is complete, we can communicate with it
 over a standard TCP socket and no longer need a root session.
 
-If, however, you need to make further changes to OpenLDAP's configuration, you
-should note that the `ldapadd`, `ldapmodify` commands must be called as root
-with the `-Y EXTERNAL` argument.
+If, however, you need to make further changes to OpenLDAP's
+configuration, you should note that the `ldapadd`, `ldapmodify`
+commands must be called as root with the `-Y EXTERNAL` argument.
 
 == Check it works
 
-As a final step you should verify that test data has been loaded correctly.
-This can be done using the `ldapsearch` utility using the LDAP read only user.
+As a final step you should verify that test data has been loaded
+correctly. This can be done using the `ldapsearch` utility using the
+LDAP read only user.
 
-The command below will retrieve the entry for one of the test `freeradiusClient`
-entries. You should see a single search result returned if everything worked
-correctly.
+The command below will retrieve the entry for one of the test
+`freeradiusClient` entries. You should see a single search result
+returned if everything worked correctly.
 
 [source,shell]
 ----

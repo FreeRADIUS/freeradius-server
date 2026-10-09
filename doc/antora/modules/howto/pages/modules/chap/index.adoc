@@ -25,15 +25,15 @@ returned.
 
 image::CHAP-Flow.svg[CHAP Flow, role=thumb]
 
-
 == Verify the Server Configuration
 
 include::howto:partial$pre_test.adoc[]
 
 == Edit mods-available/chap
 
-The xref:reference:raddb/mods-available/chap.adoc[mods-available/chap] module
-contains no configuration items, and does not need to be edited.
+The xref:reference:raddb/mods-available/chap.adoc[mods-available/chap]
+module contains no configuration items, and does not need to be
+edited.
 
 == Enable mods-available/chap
 
@@ -81,7 +81,9 @@ Due to the limitations of CHAP, other password formats are not
 supported.  For example, "salted" or "crypted" passwords are not
 compatible with CHAP authentication.
 
-See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatibility chart] for more information.
+See the
+xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol
+compatibility chart] for more information.
 
 === Configure `authenticate chap`
 

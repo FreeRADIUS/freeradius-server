@@ -2,8 +2,8 @@
 
 include::ROOT:partial$v3_warning.adoc[]
 
-The mschap module provides support for `MS-CHAPv1` and `MS-CHAPv2`, which is
-a common authentication mechanisms for Microsoft clients.
+The mschap module provides support for `MS-CHAPv1` and `MS-CHAPv2`,
+which is a common authentication mechanisms for Microsoft clients.
 
 If you want to support mschap, there are only 3 possibilities:
 
@@ -12,67 +12,69 @@ If you want to support mschap, there are only 3 possibilities:
 FreeRADIUS to read this, and set the `Password.Cleartext` control
 attribute.
 . You have access to the NT (MS-CHAPv2) or LM (MS-CHAPv1) hashes, and
-you configure FreeRADIUS to read this and set the Password.NT/LM control
-attribute.
+you configure FreeRADIUS to read this and set the Password.NT/LM
+control attribute.
 . You have Samba installed, joined into a windows domain, and use the
 ntlm_auth helper binary to pass authentication onwards to a domain
 controller.
 
-These are the ONLY possibilities; MS-CHAP is IMPOSSIBLE if you e.g. only
-have the unix/md5/sha crypt of your users password.
+These are the ONLY possibilities; MS-CHAP is IMPOSSIBLE if you e.g.
+only have the unix/md5/sha crypt of your users password.
 
-See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatibility chart] for more information.
+See the
+xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol
+compatibility chart] for more information.
 
 == EAP-MSCHAPv2
 
-The EAP module provides MS-CHAPv2 support as well. It simply passes the
-data through to the mschap module, so you must configure mschap
+The EAP module provides MS-CHAPv2 support as well. It simply passes
+the data through to the mschap module, so you must configure mschap
 properly.
 
 == ntlm_auth
 
-Method 3 above involves configuring the mschap module to call the Samba
-ntlm_auth helper:
+Method 3 above involves configuring the mschap module to call the
+Samba ntlm_auth helper:
 
-```
+----
 mschap { ntlm_auth = `/path/to/bin ,` }
-```
+----
 
 You need to be careful about setting this command line. There are
 several options for the arguments, in particular username and domain:
 
 * `-username=%{User-Name}` - this will fail if you're using realms or
-host-based auth
-* `-username=%mschap(User-Name)` - this will fail if using using suffix
-i.e. user@domain
+  host-based auth
+* `-username=%mschap(User-Name)` - this will fail if using using
+  suffix i.e. user@domain
 
 You'll need to fit this to your local needs.
 
 === Disable ntlm_auth for some users
 
-You might have some users in the domain, and others in files or SQL that
-you want to authenticate locally. To do this, set::
+You might have some users in the domain, and others in files or SQL
+that you want to authenticate locally. To do this, set::
 
-```
+----
 MS-CHAP-Use-NTLM-Auth := 0
-```
+----
 
-This will disable ntlm_auth for that user/group. This is also obeyed for
-password changes (see below).
+This will disable ntlm_auth for that user/group. This is also obeyed
+for password changes (see below).
 
 == Password changes
 
-From FreeRADIUS version 3 the mschap module supports password
-changes.
+From FreeRADIUS version 3 the mschap module supports password changes.
 
 There are two options, ntlm_auth and local.
 
 === ntlm_auth
 
 If you are using ntlm_auth to check passwords, you must also use
-ntlm_auth to change passwords. In modules/mschap you should configure::
+ntlm_auth to change passwords. In modules/mschap you should
+configure::
 
-```
+----
 mschap {
   ntlm_auth = ,
   passchange {
@@ -89,12 +91,12 @@ mschap {
     # ntlm_auth_domain - disabled
   }
 }
-```
+----
 
-If you are using ntlm_auth, then domain controllers might say `Password
-expired` if the user password is valid but has expired; the mschap
-module will detect this and return error 648 to the client, instructing
-it to try a password change.
+If you are using ntlm_auth, then domain controllers might say
+`Password expired` if the user password is valid but has expired; the
+mschap module will detect this and return error 648 to the client,
+instructing it to try a password change.
 
 Note: if you have disabled ntlm_auth for a user/group, this will apply
 for password changes too - they will fall through to using the Local
@@ -102,48 +104,50 @@ method.
 
 === Local
 
-If you are performing mschap locally with `Password.Cleartext/Password.NT`,
-you can decrypt and process the password change locally.
-To do this, you configure the `local_cpw` string:
+If you are performing mschap locally with
+`Password.Cleartext/Password.NT`, you can decrypt and process the
+password change locally. To do this, you configure the `local_cpw`
+string:
 
-```
+----
 mschap {
   passchange {
     local_cpw = "%function{,}
   }
 }
-```
+----
 
-To actually force a client to change passwords, you must set the expiry
-bit in the `SMB-Account-Ctrl` value - for example::
+To actually force a client to change passwords, you must set the
+expiry bit in the `SMB-Account-Ctrl` value - for example::
 
-```
+----
 # U == user
 # e == expired
 
 control.SMB-Account-Ctrl-Text := '[Ue]'
-```
+----
 
 This will cause the client to receive `error 648 - password expired`.
-Obviously you will need to ensure your local_cpw xlat clears this value,
-or else the client password will be expired the next time they log in.
-For example, you might use an SQL stored procedure to change passwords::
+Obviously you will need to ensure your local_cpw xlat clears this
+value, or else the client password will be expired the next time they
+log in. For example, you might use an SQL stored procedure to change
+passwords::
 
-```
+----
 mschap {
   passchange {
     local_cpw = %sql("select change_password('%{User-Name}','%{MS-CHAP-New-NT-Password}')")
   }
 }
-```
+----
 
 ,and an example stored procedure for Postgres might be:
 
-```
+----
 CREATE FUNCTION change_password(raduser text, ntpassword text) RETURNS
 text LANGUAGE plpgsql AS
-```
-```
+----
+----
 \[
   BEGIN
     update radcheck set value=ntpassword where username=raduser and attribute='Password.NT';
@@ -155,7 +159,7 @@ text LANGUAGE plpgsql AS
     return 'ok';
   END;
   \]
-```
+----
 
 The local_cpw xlat has access to two variables:
 
@@ -166,46 +170,47 @@ This allows you to do things like::
 
 . update via
 
-```
+----
 SQL local_cpw = %sql("update radcheck set value='%{MS-CHAP-New-NT-Password}' where username=%{User-Name} and attribute='Password.NT'")
-```
+----
 
 Or:
 
 . update via exec/script
 
-```
+----
 local_cpw = `%exec('/my/script', %{User-Name}, %{MS-CHAP-New-Cleartext-Password})`
-```
+----
 
 [WARNING]
 ====
 Wherever possible, you should use `MS-CHAP-New-NT-Password`. The
-reason is that cleartext passwords have undergone unicode transformation
-from the client encoding (utf-16) to the server encoding (utf-8) and the
-current code does this in a very ad-hoc way. The reverse transformation
-is also not done - when the server reads Password.Cleartext out of
-files/database, it assumes US-ASCII and thus international characters
-will fail.
+reason is that cleartext passwords have undergone unicode
+transformation from the client encoding (utf-16) to the server
+encoding (utf-8) and the current code does this in a very ad-hoc way.
+The reverse transformation is also not done - when the server reads
+Password.Cleartext out of files/database, it assumes US-ASCII and thus
+international characters will fail.
 ====
 
-N.B. this could be fixed, if we wanted to pull in something like iconv.
+N.B. this could be fixed, if we wanted to pull in something like
+iconv.
 
-In addition, you should beware of `Password.Cleartext` when using SQL; any
-password character not in safe_characters will be encoded as a hex
+In addition, you should beware of `Password.Cleartext` when using SQL;
+any password character not in safe_characters will be encoded as a hex
 number, e.g. =20.
 
 == Password changes over EAP
 
 You must set the following in eap.conf::
 
-```
+----
 eap {
   mschapv2 {
     send_error = yes
   }
 }
-```
+----
 
 Otherwise password changes for PEAP/MSCHAPv2 will not work.
 

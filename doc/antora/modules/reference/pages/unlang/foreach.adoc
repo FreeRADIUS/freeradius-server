@@ -8,10 +8,10 @@ foreach [<key-type> <key-name>,] [<value-type>] <value-name> (<reference>) {
 }
 ----
 
-The `foreach` statement loops over values given in `<reference>`.
-Each value is assigned to the given loop variable.  If the loop is
-done over attributes, it is also possible to get a reference to the
-current attribute, either as a string reference, or an integer index.
+The `foreach` statement loops over values given in `<reference>`. Each
+value is assigned to the given loop variable.  If the loop is done
+over attributes, it is also possible to get a reference to the current
+attribute, either as a string reference, or an integer index.
 
 The loop can be exited early by using the
 xref:unlang/break.adoc[break] keyword.
@@ -29,8 +29,8 @@ both must be specified.
 The `<key-type>` is the data type for the key or index variable. It
 can be a numeric type, such as `uint32`, when the `<reference>` is a
 dynamic expansion or attribute reference. Alternatively, the
-`<key-type>` needs to be `string` when the `<reference>` is a
-set of attributes that `foreach` is looping over.S
+`<key-type>` needs to be `string` when the `<reference>` is a set of
+attributes that `foreach` is looping over.S
 
 <key-name>::
 
@@ -43,30 +43,30 @@ looped over.
 +
 The `<key-type>` and `<key-name>` are optional, and can be omitted.
 +
-A `<key-name>` must not be an `unlang` keyword, a module name, or
-the name of an existing attribute.
+A `<key-name>` must not be an `unlang` keyword, a module name, or the
+name of an existing attribute.
 
 <value-type>::
 
 An optional data type for the `<value-name>` local variable.  It is
 usually a 'leaf' data type like `uint32`, or `string`, or `ipv4addr`.
-Structural data types like `group` or `tlv` are generally not
-allowed. However, structural types ARE allowed for attribute
-references, as long as the structural type exactly matches the
-attribute's data type.
+Structural data types like `group` or `tlv` are generally not allowed.
+However, structural types ARE allowed for attribute references, as
+long as the structural type exactly matches the attribute's data type.
 +
 When looping over attributes, the `<value-type>` can be omitted.  The
 data type of the local variable is then taken automatically from the
 attribute reference.
 +
 When looping over data returned from a dynamic expansion, the
-`<value-type>` can sometimes be determined from the expansion.
-e.g. `%range(...)` returns a `uint32`.  However, if the `<value-type>`
+`<value-type>` can sometimes be determined from the expansion. e.g.
+`%range(...)` returns a `uint32`.  However, if the `<value-type>`
 cannot be automatically determined, then an error will be produced.
 +
 If the `<value-type>` is specified, it has to be compatible with the
 data type produced by the `<reference>`.  That is, the data types can
-be different, but it must be possible to cast one data type to another.
+be different, but it must be possible to cast one data type to
+another.
 
 <value-name>::
 
@@ -97,10 +97,10 @@ xref:reference:xlat/index.adoc[dynamic expansion function], such as
 `%sql("SELECT ...")`.  When the reference is a dynamic expansion
 function, a `<value-type>` usually needs to be specified.
 +
-There is currently no way to assign _sets_ of results to a value.
-That is, an SQL query can return a list of strings or IP addresses,
-but it cannot return a series of rows, each of which contains a number
-of columns.
+There is currently no way to assign _sets_ of results to a value. That
+is, an SQL query can return a list of strings or IP addresses, but it
+cannot return a series of rows, each of which contains a number of
+columns.
 
 == Attributes Being Looped over
 
@@ -121,8 +121,8 @@ foreach item (NAS-Port) {
 }
 ----
 
-Once the loop has finished , the `NAS-Port` attribute will have
-the following set of values.
+Once the loop has finished , the `NAS-Port` attribute will have the
+following set of values.
 
 [source,unlang]
 ----
@@ -169,7 +169,8 @@ foreach string ref, uint32 item (NAS-Port) {
 }
 ----
 
-When the loop is finished, the `total` variable will have the following value:
+When the loop is finished, the `total` variable will have the
+following value:
 
 ----
 "NAS-Port[0] = 1, NAS-Port[1] = 3, NAS-Port[2] = 5, NAS-Port[3] = 11"
@@ -185,7 +186,6 @@ foreach uint32 index, uint32 item (NAS-Port) {
 	...
 }
 ----
-
 
 A dynamic expansion can use a keyed index.  If the `SELECT` statement
 below returns a list of `"a", "b", "c", "d"`. then we have the
@@ -204,7 +204,8 @@ foreach uint32 index, string data (%sql("SELECT ...")) {
 }
 ----
 
-When the loop is finished, the `total` variable will have the following value:
+When the loop is finished, the `total` variable will have the
+following value:
 
 ----
 "0:a, 1:b, 2:c, 3:d, "
@@ -213,11 +214,11 @@ When the loop is finished, the `total` variable will have the following value:
 === Structural Data Types
 
 It is possible to loop over the children of a structural data type, as
-given in the example below.  Since the loop is over the child
-(i.e. leaf) attributes, the values are copied back as described above.
+given in the example below.  Since the loop is over the child (i.e.
+leaf) attributes, the values are copied back as described above.
 
-In this example, we have to explicitly give a data type of `string`.  The
-data type is needed because there may be multiple children of the
+In this example, we have to explicitly give a data type of `string`.
+The data type is needed because there may be multiple children of the
 `TLV-Thing` attribute, and the children may not all have the same data
 type.
 

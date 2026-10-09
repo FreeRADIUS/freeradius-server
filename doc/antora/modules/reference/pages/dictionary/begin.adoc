@@ -13,9 +13,11 @@ for a particular parent attribute of type `tlv` or `struct`.
 
 <name>:: The name of the parent attribute.
 +
-The tlv or struct must have previously been created in anref:dictionary/attribute.adoc[ATTRIBUTE] definition.
+The tlv or struct must have previously been created in
+anref:dictionary/attribute.adoc[ATTRIBUTE] definition.
 
-The `BEGIN` keyword must always be paired with a matching xref:dictionary/end.adoc[END] keyword.
+The `BEGIN` keyword must always be paired with a matching
+xref:dictionary/end.adoc[END] keyword.
 
 Within the context of a ``BEGIN` block, the numbers for each
 xref:dictionary/attribute.adoc[ATTRIBUTE] definition are relative to
@@ -33,11 +35,10 @@ This example defines an attribute `Foo.Bar`, with OID `2.1`.
 
 == Purpose
 
-The `BEGIN` keyword exists for efficiency.  It is not strictly
-needed, but without a `BEGIN` keyword, every
+The `BEGIN` keyword exists for efficiency.  It is not strictly needed,
+but without a `BEGIN` keyword, every
 xref:dictionary/attribute.adoc[ATTRIBUTE] name would need to contain
-the parent attribute name, as in the following
-example.
+the parent attribute name, as in the following example.
 
 .Example
 ----
@@ -46,8 +47,8 @@ ATTRIBUTE Foo.bar 2.1 string
 
 == Nesting
 
-It is possible to nest multiple `BEGIN` keywords, so long as each
-one is paired with a matching xref:dictionary/end.adoc[END] keyword.
+It is possible to nest multiple `BEGIN` keywords, so long as each one
+is paired with a matching xref:dictionary/end.adoc[END] keyword.
 
 .Example of nested BEGIN
 ----

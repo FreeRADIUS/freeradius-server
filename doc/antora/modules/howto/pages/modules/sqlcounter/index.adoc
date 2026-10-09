@@ -2,85 +2,93 @@
 
 == Introduction
 
-The `sqlcounter` module provides a mechanism which can be used to enforce periodic
-resource limits.
+The `sqlcounter` module provides a mechanism which can be used to
+enforce periodic resource limits.
 
-Each instance of the module is configured with a period (e.g. daily) which is used
-to populate values in two attributes in the `control` list when the module is
-called.
+Each instance of the module is configured with a period (e.g. daily)
+which is used to populate values in two attributes in the `control`
+list when the module is called.
 
-An attribute is defined to contain a "limit" for whatever resource is being counted,
-(e.g. session time or data volume) for the specified period.
+An attribute is defined to contain a "limit" for whatever resource is
+being counted, (e.g. session time or data volume) for the specified
+period.
 
-If that attribute exists, the module will run an SQL query to calculate the used
-resource quantity.
+If that attribute exists, the module will run an SQL query to
+calculate the used resource quantity.
 
-The retrieved value is then compared with the limit and if the limit has been
-exceeded, the module will return `reject`
+The retrieved value is then compared with the limit and if the limit
+has been exceeded, the module will return `reject`
 
 == Configuration
 
-A sample module configuration is provided in `mods-available/sqlcounter`.
+A sample module configuration is provided in
+`mods-available/sqlcounter`.
 
-This includes configurations which cover daily and monthly periods, plus a
-couple of examples where there are no reset dates on the periods being considered.
+This includes configurations which cover daily and monthly periods,
+plus a couple of examples where there are no reset dates on the
+periods being considered.
 
-The SQL queries associated with these sample module configurations are found
-in `mods-config/sql/counter/<dialect>/*.conf` with each instances query
-in a different file.
+The SQL queries associated with these sample module configurations are
+found in `mods-config/sql/counter/<dialect>/*.conf` with each
+instances query in a different file.
 
-As provided, the counters are all based on session time, using the `acctsessiontime`,
-field from `radacct`.
+As provided, the counters are all based on session time, using the
+`acctsessiontime`, field from `radacct`.
 
-In order to enforce limits based on data volume, the queries should be updated to
-use the `acctinputoctets` and / or `acctoutputoctets` fields depending on the
-requirement.
+In order to enforce limits based on data volume, the queries should be
+updated to use the `acctinputoctets` and / or `acctoutputoctets`
+fields depending on the requirement.
 
-See the sample module configuration for details of the configuration options.
+See the sample module configuration for details of the configuration
+options.
 
 == Usage
 
-As a prerequisite to using the `sqlcounter` module with the sample configurations
-an instance of the `sql` module must be configured and called when processing
-accounting packets.
+As a prerequisite to using the `sqlcounter` module with the sample
+configurations an instance of the `sql` module must be configured and
+called when processing accounting packets.
 
-This instance of the `sql` module should be set as the `sql_module_instance`
-in the `sqlcounter` module configuration.
+This instance of the `sql` module should be set as the
+`sql_module_instance` in the `sqlcounter` module configuration.
 
-Depending on how user limits are to be set, appropriate entries should be
-added to the relevant source data store being used to set `control` attributes
-during authorization.  e.g. if the `sql` module is being used to hold user
-data, add entries to `radcheck` or `radgroupcheck` as appropriate.
+Depending on how user limits are to be set, appropriate entries should
+be added to the relevant source data store being used to set `control`
+attributes during authorization.  e.g. if the `sql` module is being
+used to hold user data, add entries to `radcheck` or `radgroupcheck`
+as appropriate.
 
-The attribute to set is the one referred to in the `check_name` module,
-configuration, e.g. on the sample `dailycounter` module instance the attribute
-is `control.Max-Daily-Session`.
+The attribute to set is the one referred to in the `check_name`
+module, configuration, e.g. on the sample `dailycounter` module
+instance the attribute is `control.Max-Daily-Session`.
 
-In the authorization policy, call the required `sqlcounter` module instance,
-having made sure that the appropriate `check_name` attribute is set.
+In the authorization policy, call the required `sqlcounter` module
+instance, having made sure that the appropriate `check_name` attribute
+is set.
 
-If the configured query returns a value which exceeds the value in the limit
-attribute, the module will return `reject` and populate the attribute set
-in `reply_message_name`.
+If the configured query returns a value which exceeds the value in the
+limit attribute, the module will return `reject` and populate the
+attribute set in `reply_message_name`.
 
 If the retrieved value is below the limit, then the attribute set in
 `reply_name` will be populated in the `reply` list with the difference
-between the limit and the retrieved value and the module will return `updated`.
+between the limit and the retrieved value and the module will return
+`updated`.
 
-If that attribute already exists with a lower value, that value will be
-left and the module will return `ok`.
+If that attribute already exists with a lower value, that value will
+be left and the module will return `ok`.
 
 If no `reply_name` is configured, then the module returns `ok`.
 
-For the use case where the reply attribute is being used to set a point when
-a user re-authenticates, specifically using time (in seconds), the option
-`auto_extend` can be used to avoid unnecessary re-authentications.
+For the use case where the reply attribute is being used to set a
+point when a user re-authenticates, specifically using time (in
+seconds), the option `auto_extend` can be used to avoid unnecessary
+re-authentications.
 
-Setting this option to `yes` causes a check to be done to see if the difference
-between the configured limit and the retrieved value is sufficient to cover the
-time to the next period.  If it is, then the value returned in the reply
-attribute will be the number of seconds until the next period plus the value of
-the limit.
+Setting this option to `yes` causes a check to be done to see if the
+difference between the configured limit and the retrieved value is
+sufficient to cover the time to the next period.  If it is, then the
+value returned in the reply attribute will be the number of seconds
+until the next period plus the value of the limit.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

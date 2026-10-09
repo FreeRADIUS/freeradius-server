@@ -17,27 +17,28 @@ that the double quoted strings can be dynamically expanded. The syntax
 run-time expansion. The difference between the two methods is that the
 `${...}` form is expanded when the server loads the configuration
 files and is valid anywhere in the configuration files. The `%{...}`
-xref:xlat/index.adoc[dynamic expansion] form is valid only in conditional
-expressions and attribute assignments.
+xref:xlat/index.adoc[dynamic expansion] form is valid only in
+conditional expressions and attribute assignments.
 
-The output of the dynamic expansion can be interpreted as a string,
-a number, or an IP address, depending on its context.
+The output of the dynamic expansion can be interpreted as a string, a
+number, or an IP address, depending on its context.
 
 Note that the interpretation of text _strongly_ depends on the
 context.  The text `"0000"` can be interpreted as a data type
 "integer", having value zero, or a data type "string", having value
 `"0000"`.  In general when a particular piece of text is used, it is
 used with the context of a known attribute.  That attribute has a
-xref:type/index.adoc[data type], and the text will be interpreted as that
-data type.
+xref:type/index.adoc[data type], and the text will be interpreted as
+that data type.
 
-NOTE: Most values retrieved from external datastores will be treated implicitly
-as double-quoted strings.
+NOTE: Most values retrieved from external datastores will be treated
+implicitly as double-quoted strings.
 
 == Escape sequences
 
-Escape sequences allow the inclusion of characters that may be difficult to
-represent in datastores, or the FreeRADIUS configuration files.
+Escape sequences allow the inclusion of characters that may be
+difficult to represent in datastores, or the FreeRADIUS configuration
+files.
 
 .Escape sequences and their descriptions
 [options="header", cols="15%,85%"]
@@ -117,9 +118,8 @@ type to `string`.  The value is left alone.
 
 if the `Class` attribute has value `0x666f6f` (`foo`)
 
-In the first expansion, the resulting output is `Value is
-0x666f6f`.  In the second expansion, the resulting output is
-`Value is foo`.
+In the first expansion, the resulting output is `Value is 0x666f6f`.
+In the second expansion, the resulting output is `Value is foo`.
 
 Note that placing raw `octets` data into a string may allow for binary
 data to be inserted into what should be a printable string.  Any uses
@@ -135,7 +135,8 @@ string is being used.
 `"this is a long string"` +
 `"this has embedded\ncharacters"` +
 `"attribute\tvalue\nusername\t%{User-Name}\nreply-message\t%{reply.Reply-Message}"`
-`"The result of 'SELECT * FROM foo WHERE 1' is: %sql(SELECT * FROM foo WHERE 1)"`
+`"The result of 'SELECT * FROM foo WHERE 1' is: %sql(SELECT * FROM foo
+WHERE 1)"`
 
 // Licenced under CC-by-NC 4.0.
 // Copyright (C) 2026 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

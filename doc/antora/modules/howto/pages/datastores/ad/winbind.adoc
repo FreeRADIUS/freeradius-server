@@ -1,6 +1,7 @@
 = Install Winbind
 
-To integrate linux-based systems with a Windows Active Directory domain, you need to install Winbind.
+To integrate linux-based systems with a Windows Active Directory
+domain, you need to install Winbind.
 
 == Build winbind from packages
 
@@ -17,7 +18,8 @@ To integrate linux-based systems with a Windows Active Directory domain, you nee
   `systemctl stop winbind`
   `systemctl start winbind`
 
-A description of how to test and troubleshoot winbind is provided in the
+A description of how to test and troubleshoot winbind is provided in
+the
 [Troubleshooting guide].
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

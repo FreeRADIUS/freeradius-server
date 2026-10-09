@@ -6,10 +6,10 @@
 lhs OP rhs
 ----
 
-The most common use-case for conditions is to perform comparisons.
-The `lhs` and `rhs` of a conditional comparison can be
-xref:unlang/attr.adoc[Attribute-Name] or xref:type/index.adoc[data].  The
-the `OP` is an operator, commonly `==` or `\<=`.  It is used to
+The most common use-case for conditions is to perform comparisons. The
+`lhs` and `rhs` of a conditional comparison can be
+xref:unlang/attr.adoc[Attribute-Name] or xref:type/index.adoc[data].
+The the `OP` is an operator, commonly `==` or `\<=`.  It is used to
 control how the two other portions of the condition are compared.
 
 == The Comparison Operators
@@ -32,10 +32,13 @@ The comparison operators are given below.
 |=====
 
 The comparison operators perform _type-specific_ comparisons.  The
-only exceptions are the xref:unlang/condition/regex.adoc[regular expression] operators, which interpret the `lhs` as a printable string, and the `rhs` as a
-regular expression.
+only exceptions are the xref:unlang/condition/regex.adoc[regular
+expression] operators, which interpret the `lhs` as a printable
+string, and the `rhs` as a regular expression.
 
-Comparisons can be done across differing data types.  Comparng a `uint8` value to an `uint16` value will "just work", as the data types will be automatically converted before any comparison is done.
+Comparisons can be done across differing data types.  Comparng a
+`uint8` value to an `uint16` value will "just work", as the data types
+will be automatically converted before any comparison is done.
 
 == IP Address Comparisons
 
@@ -44,11 +47,11 @@ The only exception is data types that are IP addresses or IP address
 prefixes.  For those data types, the comparisons are done via the
 following rules:
 
-* Any unqualified IP address is assumed to have a /32 prefix (IPv4)
-  or a /128 prefix (IPv6).
+* Any unqualified IP address is assumed to have a /32 prefix (IPv4) or
+  a /128 prefix (IPv6).
 
-* If the prefixes of the left and right sides are equal, then the comparisons
-  are performed on the IP address portion.
+* If the prefixes of the left and right sides are equal, then the
+  comparisons are performed on the IP address portion.
 
 * If the prefixes of the left and right sides are not equal, then the
   comparisons are performed as _set membership checks_.
@@ -65,8 +68,8 @@ interpreted as a particular data type.
 [NOTE]
 The data types used by the cast *must* be a type taken from the RADIUS
 dictionaries, e.g., `ipaddr`, `integer`, etc.  These types are not the
-same as the xref:type/index.adoc[data types] used in the
-configuration files.
+same as the xref:type/index.adoc[data types] used in the configuration
+files.
 
 .Syntax
 [source,unlang]
@@ -74,8 +77,8 @@ configuration files.
 (cast)lhs OP rhs
 ----
 
-The `cast` text can be any one of the supported data
-types, as with the following example:
+The `cast` text can be any one of the supported data types, as with
+the following example:
 
 .Example
 [source,unlang]
@@ -96,12 +99,12 @@ done in a type-safe manner, instead of performing a string comparison.
 (integer)`/bin/echo 00` == 0
 ----
 
-In this example, the string output of the `echo` program is interpreted as an
-integer.  It is then compared to the right side via integer
-comparisons.  Since the integer `00` is equivalent to the integer `0`,
-the comparison will match.  If the comparison had been performed via
-string equality checks, then the comparison would fail, because the
-strings `00` and `0` are different.
+In this example, the string output of the `echo` program is
+interpreted as an integer.  It is then compared to the right side via
+integer comparisons.  Since the integer `00` is equivalent to the
+integer `0`, the comparison will match.  If the comparison had been
+performed via string equality checks, then the comparison would fail,
+because the strings `00` and `0` are different.
 
 === Compatibility
 

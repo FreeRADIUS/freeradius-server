@@ -1,6 +1,8 @@
 = rm
 
-The `rm` function removes a file.  If the file exists and could be removed, it returns `true`.  Otherwise if the file does not exist, or if the file could not be removed, it returns `false`.
+The `rm` function removes a file.  If the file exists and could be
+removed, it returns `true`.  Otherwise if the file does not exist, or
+if the file could not be removed, it returns `false`.
 
 [#syntax]
 == Syntax

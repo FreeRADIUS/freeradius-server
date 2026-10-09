@@ -2,9 +2,9 @@
 
 The Unlang interpreter is a simple policy language which has a small
 set of pre-defined xref:unlang/keywords.adoc[Keywords].  It supports
-if/then/else xref:unlang/condition/index.adoc[Conditional expressions], and
-dynamic ref:xlat/index.adoc[String expansions].  It has a small number
-of predefined xref:type/index.adoc[data types].
+if/then/else xref:unlang/condition/index.adoc[Conditional
+expressions], and dynamic ref:xlat/index.adoc[String expansions].  It
+has a small number of predefined xref:type/index.adoc[data types].
 
 == Limitations
 
@@ -16,8 +16,8 @@ the following:
 
 * define both simple and complex policies based on the attributes,
 
-* interact with databases, usually via pre-defined behaviors
-  (e.g. "allocate IP from pool"),
+* interact with databases, usually via pre-defined behaviors (e.g.
+  "allocate IP from pool"),
 
 * update the contents of replies, using a clear and simple syntax.
 
@@ -87,9 +87,9 @@ process that list.
 One key difference between normal programming languages and Unlang is
 the concept of xref:unlang/module.adoc[modules].  The modules are
 treated as keywords in the language which contain complex behaviour.
-For example, the xref:reference:raddb/mods-available/sql.adoc[sql] module has a
-complex set of pre-defined behaviour, depending on what kind of packet
-it is processing.
+For example, the xref:reference:raddb/mods-available/sql.adoc[sql]
+module has a complex set of pre-defined behaviour, depending on what
+kind of packet it is processing.
 
 The ability to place complex logic into a module means that common
 functions such as "allocate IP from SQL" is little more than a
@@ -109,17 +109,17 @@ recv Access-Request {
 The benefit of this approach is that the _policies_ are simple:
 "allocate an IP, if that doesn't work, send a reject".  However, the
 _details_ of those policies are hidden behind the
-xref:reference:raddb/mods-available/sqlippool.adoc[sqlippool] configuration.
-This abstraction allows the underlying
-xref:reference:raddb/mods-available/sqlippool.adoc[sqlippool] configuration to
-be changed from MySQL to PostgreSQL without affecting any of the
-policies.
+xref:reference:raddb/mods-available/sqlippool.adoc[sqlippool]
+configuration. This abstraction allows the underlying
+xref:reference:raddb/mods-available/sqlippool.adoc[sqlippool]
+configuration to be changed from MySQL to PostgreSQL without affecting
+any of the policies.
 
 The server includes dozens of
-xref:reference:raddb/mods-available/index.adoc[modules], each of which defines a
-complex set of behaviour.  Please see the
-xref:reference:raddb/mods-available/index.adoc[modules] documentation for more
-information.
+xref:reference:raddb/mods-available/index.adoc[modules], each of which
+defines a complex set of behaviour.  Please see the
+xref:reference:raddb/mods-available/index.adoc[modules] documentation
+for more information.
 
 === Algorithm
 
@@ -127,9 +127,9 @@ The interpreter starts off each request with a default return code and
 priority. It processes the request through a processing section.
 
 Each statement or module is evaluated, and the statement return code
-is used to update the final return code associated with the
-request. When the list is finished, the server either continues to the
-next section or sends a reply to the request.
+is used to update the final return code associated with the request.
+When the list is finished, the server either continues to the next
+section or sends a reply to the request.
 
 When a xref:unlang/module.adoc[module] is executed, it returns a code
 to the interpreter.  This code tells the interpreter if the module was
@@ -142,9 +142,9 @@ include::partial$rcode_table.adoc[]
 The "return code" used by `unlang` is somewhat similar to return codes
 used by functions in other languages.  However, this return code is
 built into `unlang`, because it simplifies most common scenarios.  For
-example, automatic xref:unlang/load-balance.adoc[load-balancing]
-would be much more difficult without `unlang` hiding much of the
-underlying complexity.
+example, automatic xref:unlang/load-balance.adoc[load-balancing] would
+be much more difficult without `unlang` hiding much of the underlying
+complexity.
 
 The result is that the interpreter simply runs a series of statements
 and modules.  Depending on what is returned, the interpreter either
@@ -153,7 +153,7 @@ stops, or continues.
 The algorithm used by the interpreter is given in the following
 pseudo-code:
 
-```
+----
 (code, 0) = action_table[default]
 foreach (statement in section) {
     code' = evaluate(statement)
@@ -167,8 +167,7 @@ foreach (statement in section) {
     }
 }
 return (code, priority)
-```
-
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

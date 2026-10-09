@@ -6,7 +6,8 @@ version 3 documentation, and has not yet been updated for version 4.
 The general approach of this page is correct, but you will have to
 update the syntax if you are using version 4.
 
-Contact https://www.inkbridgenetworks.com/[InkBridge Networks] for more details.
+Contact https://www.inkbridgenetworks.com/[InkBridge Networks] for
+more details.
 ====
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

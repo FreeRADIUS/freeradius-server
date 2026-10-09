@@ -1,17 +1,16 @@
 = Server Statistics
 
-FreeRADIUS collects statistics internally about certain operations
-it is doing, such as the number of authentication and accounting
+FreeRADIUS collects statistics internally about certain operations it
+is doing, such as the number of authentication and accounting
 requests, how many accepts and failures, and server queue lengths.
 These can be queried by sending a specially-crafted RADIUS
 `Status-Server` packet to a "status" virtual server.
 
 == Configure the status virtual server
 
-The `status` virtual server is present in the default
-configuration, but needs to be enabled before it can be used. To
-do this, create a symlink from `sites-enabled/status` to
-`../sites-available/status`:
+The `status` virtual server is present in the default configuration,
+but needs to be enabled before it can be used. To do this, create a
+symlink from `sites-enabled/status` to `../sites-available/status`:
 
 [source,shell]
 ----
@@ -22,29 +21,28 @@ do this, create a symlink from `sites-enabled/status` to
 [NOTE]
 ====
 If you are not starting from the default configuration, check that
-`status_server` is still set to `yes` in `radiusd.conf` as
-well.
+`status_server` is still set to `yes` in `radiusd.conf` as well.
 ====
 
 While the default configuration will work for most setups, you may
-edit the virtual server configuration in `sites-enabled/status`.
-No major changes are necessary here, though the default secret,
-`adminsecret`, should be changed. Other possible changes may be
-the listening IP address and port, and the clients that are
-allowed to connect. By default, connections are restricted to the
-local host only.
+edit the virtual server configuration in `sites-enabled/status`. No
+major changes are necessary here, though the default secret,
+`adminsecret`, should be changed. Other possible changes may be the
+listening IP address and port, and the clients that are allowed to
+connect. By default, connections are restricted to the local host
+only.
 
-Having enabled and configured the status server, restart
-FreeRADIUS to make it active.
+Having enabled and configured the status server, restart FreeRADIUS to
+make it active.
 
 == Query the server
 
-To get the current statistics from the server, send a RADIUS
-request of type `Status-Server` to the status port. Unless edited
-above, the request must come from the same server that FreeRADIUS
-is running on, and be sent to port 18121 with the secret
-'adminsecret' . At a minimum, the `FreeRADIUS-Statistics-Type`
-attribute must be set. For example:
+To get the current statistics from the server, send a RADIUS request
+of type `Status-Server` to the status port. Unless edited above, the
+request must come from the same server that FreeRADIUS is running on,
+and be sent to port 18121 with the secret 'adminsecret' . At a
+minimum, the `FreeRADIUS-Statistics-Type` attribute must be set. For
+example:
 
     $ cat <<EOF | radclient -x localhost:18121 status adminsecret
     > FreeRADIUS-Statistics-Type = 0x01
@@ -66,10 +64,10 @@ attribute must be set. For example:
         FreeRADIUS-Total-Auth-Unknown-Types = 0
         FreeRADIUS-Total-Auth-Conflicts = 0
 
-The `FreeRADIUS-Statistics-Type` attribute is a bitmask - add
-together the following numbers to select the statistics required.
-Some options are mutually exclusive, so it might be necessary to
-send multiple requests to collect all information.
+The `FreeRADIUS-Statistics-Type` attribute is a bitmask - add together
+the following numbers to select the statistics required. Some options
+are mutually exclusive, so it might be necessary to send multiple
+requests to collect all information.
 
 [%header,cols="2,1,1,5"]
 |===
@@ -123,8 +121,8 @@ To show the statistics available, a few examples follow.
 === Global server authentications
 
 Using `FreeRADIUS-Statistics-Type = 0x01` requests statistics about
-authentications. Because, for example, no "Client" qualifier has
-been added (`0x20`) the numbers are global to the server.
+authentications. Because, for example, no "Client" qualifier has been
+added (`0x20`) the numbers are global to the server.
 
 [source,shell]
 ----
@@ -151,10 +149,10 @@ Received Access-Accept Id 90 from 127.0.0.1:46c9 to 127.0.0.1:57352 length 152
 
 === Global server authentication and accounting requests
 
-Sending `0x01` requests authentication statistics, and `0x02`
-requests accounting stats. To get both in one result, add them
-together, so we request `0x03`. In this example we send decimal
-rather than hexadecimal.
+Sending `0x01` requests authentication statistics, and `0x02` requests
+accounting stats. To get both in one result, add them together, so we
+request `0x03`. In this example we send decimal rather than
+hexadecimal.
 
 [source,shell]
 ----
@@ -219,11 +217,11 @@ Received Access-Accept Id 158 from 127.0.0.1:46c9 to 127.0.0.1:41104 length 164
 === Complete global server information
 
 A useful common request is all information about the server on a
-global basis: internal stats (16 / `0x10`) plus authentications (1
-/ `0x01`), accounting (2 / `0x02`), proxy authentications (4 /
-`0x04`) and proxy accounting (8 / `0x08`). The value `All` is
-defined in the dictionary as `0x1f` (decimal 31) to cover
-this common eventuality, and is what we demonstrate here.
+global basis: internal stats (16 / `0x10`) plus authentications (1 /
+`0x01`), accounting (2 / `0x02`), proxy authentications (4 / `0x04`)
+and proxy accounting (8 / `0x08`). The value `All` is defined in the
+dictionary as `0x1f` (decimal 31) to cover this common eventuality,
+and is what we demonstrate here.
 
 [source,shell]
 ----
@@ -287,17 +285,16 @@ Received Access-Accept Id 4 from 127.0.0.1:46c9 to 127.0.0.1:40676 length 596
 
 === Client statistics
 
-Data can be provided about each RADIUS client defined in the
-server. Note that this is for the client definition, not for each
-client that connects - if a client definition has a wide netmask
-and permits multiple clients to connect, the statistics will be an
-aggregate sum for all clients using that definition.
+Data can be provided about each RADIUS client defined in the server.
+Note that this is for the client definition, not for each client that
+connects - if a client definition has a wide netmask and permits
+multiple clients to connect, the statistics will be an aggregate sum
+for all clients using that definition.
 
 [NOTE]
 ====
-It is not possible to request global server statistics
-concurrently with client statistics as both use the same reply
-attributes.
+It is not possible to request global server statistics concurrently
+with client statistics as both use the same reply attributes.
 ====
 
 Here we request accounting data for one particular client by IP

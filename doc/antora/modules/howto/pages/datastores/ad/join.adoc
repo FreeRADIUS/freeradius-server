@@ -1,7 +1,11 @@
 = Join FreeRADIUS to AD Domain
 
-Some deployments use Active Directory services to use in mschap based authentications. The RADIUS server must already be up and running and basic authentication works (pap/chap). For a FreeRADIUS server to fully leverage the AD server and relevant services, the RADIUS server must first be configured and then joined to the domain (or samba realm).
-
+Some deployments use Active Directory services to use in mschap based
+authentications. The RADIUS server must already be up and running and
+basic authentication works (pap/chap). For a FreeRADIUS server to
+fully leverage the AD server and relevant services, the RADIUS server
+must first be configured and then joined to the domain (or samba
+realm).
 
  == Configuration of variables
 
@@ -22,55 +26,47 @@ Some deployments use Active Directory services to use in mschap based authentica
      - join_user: User privileged to perform domain joins. Optional.
      - join_server: DC to use for the join operation. Optional.
 
-
 == Install packages for AD integration
 
-{%- if g[orch_minion]['os_family'] == 'RedHat' %}
-{%-   set pkg = 'rpm' %}
-{%- elif g[orch_minion]['os_family'] == 'Debian' %}
-{%-   set pkg = 'deb' %}
-{%- endif %}
+{%- if g[orch_minion]['os_family'] == 'RedHat' %} {%-   set pkg =
+'rpm' %} {%- elif g[orch_minion]['os_family'] == 'Debian' %} {%-   set
+pkg = 'deb' %} {%- endif %}
 
-{%- if admin is not defined or admin == '' %}
-{%-   set admin = dcs[0] %}
-{%- endif %}
+{%- if admin is not defined or admin == '' %} {%-   set admin = dcs[0]
+%} {%- endif %}
 
-{%- if join_user is not defined or join_user == '' %}
-{%-   set join_user = '[ privileged user ]' %}
-{%- endif %}
+{%- if join_user is not defined or join_user == '' %} {%-   set
+join_user = '[ privileged user ]' %} {%- endif %}
 
-{%- set join_server_opt = '-S ' ~ join_server if join_server is defined else '' %}
-
+{%- set join_server_opt = '-S ' ~ join_server if join_server is
+defined else '' %}
 
 == Domain membership for MS-CHAPv2 based authentication
 
-A prerequisite for authenticating domain users via MS-CHAPv2 is that the RADIUS
-authentication servers have been successfully joined to the domain and winbind
-configured.
+A prerequisite for authenticating domain users via MS-CHAPv2 is that
+the RADIUS authentication servers have been successfully joined to the
+domain and winbind configured.
 
 [NOTE]
 ====
 Establishing and maintaining each host's domain membership is the
-responsibility of the user, so only an outline process is provided here.
-Configuration varies between organisations and over time, so an organisation's
-domain administrator should be consulted for details.
+responsibility of the user, so only an outline process is provided
+here. Configuration varies between organisations and over time, so an
+organisation's domain administrator should be consulted for details.
 ====
 
 Perform the following manual steps on each authentication server...
 
 === Install winbind as follows:
 
-{% if pkg == 'deb' %}
-    {{ host_exam }}# apt-get install -y samba winbind krb5-user
-{% elif pkg == 'rpm' %}
-    {{ host_exam }}# yum install -y samba-winbind krb5-workstation
-{% else %}
-{%-   set error = 'No instructions for this OS' + (0/0)|string %}
-{% endif %}
+{% if pkg == 'deb' %} {{ host_exam }}# apt-get install -y samba
+winbind krb5-user {% elif pkg == 'rpm' %} {{ host_exam }}# yum install
+-y samba-winbind krb5-workstation {% else %} {%-   set error = 'No
+instructions for this OS' + (0/0)|string %} {% endif %}
 
 == Configure `/etc/krb5.conf` as follows:
 
-```
+----
 [libdefaults]
         default_realm = {{ realm }}
         dns_lookup_realm = false
@@ -89,11 +85,11 @@ Perform the following manual steps on each authentication server...
         .{{ d }} = {{ realm }}
         {{ d }} = {{ realm }}
 {%- endfor %}
-```
+----
 
 === Configure `/etc/samba/smb.conf` as follows:
 
-```
+----
 [global]
    netbios name = {{ netbios_exam }}
    workgroup = {{ workgroup }}
@@ -119,7 +115,7 @@ Perform the following manual steps on each authentication server...
 {%- endif %}
    allow trusted domains = no
    realm = {{ realm }}
-```
+----
 
 == Join the host to the domain:
 
@@ -135,20 +131,25 @@ Perform the following manual steps on each authentication server...
     radius-auth1# systemctl stop winbind
     radius-auth1# systemctl start winbind
 
-A description of how to test and troubleshoot winbind is provided in the
+A description of how to test and troubleshoot winbind is provided in
+the
 [Operations and troubleshooting guide](/doc/html/ops/operations.html) document.
 
-Authentication must be achieved using the `wbinfo` tool before FreeRADIUS will
-be able to successfully authenticate users performing a MS-CHAPv2 based method.
+Authentication must be achieved using the `wbinfo` tool before
+FreeRADIUS will be able to successfully authenticate users performing
+a MS-CHAPv2 based method.
 
-If there are going to be password changes with freeradius ("your password has expired" - type - scenarios) You should probably also configure in /mods-available/mschap:
+If there are going to be password changes with freeradius ("your
+password has expired" - type - scenarios) You should probably also
+configure in /mods-available/mschap:
 
-passchange {
-ntlm_auth = "/path/to/ntlm_auth
+passchange { ntlm_auth = "/path/to/ntlm_auth
 --helper-protocol=ntlm-change-password-1 --allow-mschapv2
-ntlm_auth_username = "username: %{mschap:User-Name}
-ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
-With the settings above it works correctly, so even if it is unnecessary, it doesn't break anything. It hasn't been tested without this option while denying ntlmv1 overall on the AD DC, but it is thought that it will work without it.
+ntlm_auth_username = "username: %{mschap:User-Name} ntlm_auth_domain =
+"nt-domain: %{mschap:NT-Domain}" With the settings above it works
+correctly, so even if it is unnecessary, it doesn't break anything. It
+hasn't been tested without this option while denying ntlmv1 overall on
+the AD DC, but it is thought that it will work without it.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -6,14 +6,15 @@
 rcode
 ----
 
-The Unlang interpreter tracks the return code of any module, string expansion
-or keyword that has been called.
+The Unlang interpreter tracks the return code of any module, string
+expansion or keyword that has been called.
 
-This return code can be checked in any condition. If the saved return code
-matches the `code` given here, then the condition evaluates to `true`.
-Otherwise, it evaluates to `false`.
+This return code can be checked in any condition. If the saved return
+code matches the `code` given here, then the condition evaluates to
+`true`. Otherwise, it evaluates to `false`.
 
-rcodes cannot be set in a condition.  rcodes cannot be compared with anything else.
+rcodes cannot be set in a condition.  rcodes cannot be compared with
+anything else.
 
 The list of valid return codes is as follows:
 

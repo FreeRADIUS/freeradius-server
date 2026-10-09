@@ -1,5 +1,4 @@
-The default server configuration can be tested with this
-command:
+The default server configuration can be tested with this command:
 
 [source,shell]
 ----

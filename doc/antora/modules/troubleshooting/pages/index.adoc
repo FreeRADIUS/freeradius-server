@@ -66,15 +66,20 @@ Follow these recommended steps to troubleshoot your server:
 
 1. Make small, discrete changes to the configuration files.
 
-2. Start the server in debugging mode by entering the command `radiusd -X`.
+2. Start the server in debugging mode by entering the command `radiusd
+   -X`.
 
-3. Send test packets using `radclient`, or wait for a real client to send a packet.
+3. Send test packets using `radclient`, or wait for a real client to
+   send a packet.
 
-4. Read the debug output to verify that the it is doing what you expect.
+4. Read the debug output to verify that the it is doing what you
+   expect.
 
-The debug output show the current configuration and relevant information such as:
+The debug output show the current configuration and relevant
+information such as:
 
-* The server is reading the configuration files that you expect it to read
+* The server is reading the configuration files that you expect it to
+  read
 
 * Datastores are connected and operating.
 
@@ -82,7 +87,8 @@ The debug output show the current configuration and relevant information such as
 
 * Test packets are accepted by the server.
 
-* The debug output shows that the request packets are being processed as you expect.
+* The debug output shows that the request packets are being processed
+  as you expect.
 
 * The response packets contain the attributes you expect to see.
 
@@ -101,9 +107,10 @@ areas:
 
 == Further Readings
 
-* https://www.inkbridgenetworks.com/blog/blog-10/what-does-unresponsive-child-error-message-mean-116[What does unresponsive child error message mean]
-* https://www.inkbridgenetworks.com/blog/blog-10/common-freeradius-debug-messages-96[Common FreeRADIUS debug messages]
-
+* https://www.inkbridgenetworks.com/blog/blog-10/what-does-unresponsive-child-error-message-mean-116[What
+  does unresponsive child error message mean]
+* https://www.inkbridgenetworks.com/blog/blog-10/common-freeradius-debug-messages-96[Common
+  FreeRADIUS debug messages]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -7,42 +7,52 @@ PROTOCOL <name> <number> [<option>[,<option>...]]
 
 .Description
 
-The `PROTOCOL` keyword defines a new top-level protocol, such as `RADIUS` or `DHCPv4`.
-
+The `PROTOCOL` keyword defines a new top-level protocol, such as
+`RADIUS` or `DHCPv4`.
 
 <name>:: The name of the protocol.
 
 <number>:: The number of the protocol.
 +
-The FreeRADIUS developers assign the protocol numbers.
-The protocol numbers have no meaning outside of FreeRADIUS.
+The FreeRADIUS developers assign the protocol numbers. The protocol
+numbers have no meaning outside of FreeRADIUS.
 
-<option>:: One option, or a comma-separated list of options.
-Every option takes a value, written as `<option>=<value>`.
+<option>:: One option, or a comma-separated list of options. Every
+option takes a value, written as `<option>=<value>`.
 +
-`format=<length>`::: The size in octets of the 'type' field in each attribute of the protocol.
+`format=<length>`::: The size in octets of the 'type' field in each
+attribute of the protocol.
 +
-`format=string`::: The protocol identifies each attribute by name instead of by number.
-Terminal Access Controller Access-Control System Plus (TACACS+) is one such protocol.
+`format=string`::: The protocol identifies each attribute by name
+instead of by number. Terminal Access Controller Access-Control System
+Plus (TACACS+) is one such protocol.
 +
-`pool=<size>`::: The size of the memory pool that FreeRADIUS allocates for the protocol dictionary, before FreeRADIUS reads any attribute of the protocol.
-The default is `2MiB`.
-When the protocol dictionary needs more memory than the pool holds, the protocol dictionary still loads, but loads more slowly.
-To set `pool` from a measurement, run `radict -P <percent>`.
-radict measures the memory that each protocol dictionary uses, then sets `pool` on the `PROTOCOL` line of the dictionary to the measured size plus _<percent>_ percent.
+`pool=<size>`::: The size of the memory pool that FreeRADIUS allocates
+for the protocol dictionary, before FreeRADIUS reads any attribute of
+the protocol. The default is `2MiB`. When the protocol dictionary
+needs more memory than the pool holds, the protocol dictionary still
+loads, but loads more slowly. To set `pool` from a measurement, run
+`radict -P <percent>`. radict measures the memory that each protocol
+dictionary uses, then sets `pool` on the `PROTOCOL` line of the
+dictionary to the measured size plus _<percent>_ percent.
 +
 Set `pool` only on the first `PROTOCOL` line for a protocol.
-FreeRADIUS allocates the pool when FreeRADIUS reads the first `PROTOCOL` line for the protocol.
-A later `PROTOCOL` line for the same protocol that sets `pool` causes an error, because the pool already exists.
+FreeRADIUS allocates the pool when FreeRADIUS reads the first
+`PROTOCOL` line for the protocol. A later `PROTOCOL` line for the same
+protocol that sets `pool` causes an error, because the pool already
+exists.
 +
-`verify=lib`::: The protocol dictionary fails to load when FreeRADIUS cannot load the dynamic library ``libfreeradius-``_<name>_.
+`verify=lib`::: The protocol dictionary fails to load when FreeRADIUS
+cannot load the dynamic library ``libfreeradius-``_<name>_.
 +
-FreeRADIUS tries to load ``libfreeradius-``_<name>_ for every protocol, with _<name>_ in lower case.
-The library holds functions that verify the contents of the protocol dictionary.
-Without `verify=lib`, the protocol dictionary loads even when the library is missing.
+FreeRADIUS tries to load ``libfreeradius-``_<name>_ for every
+protocol, with _<name>_ in lower case. The library holds functions
+that verify the contents of the protocol dictionary. Without
+`verify=lib`, the protocol dictionary loads even when the library is
+missing.
 
-Only the FreeRADIUS developers should use the `PROTOCOL` keyword.
-This page documents the `PROTOCOL` keyword for completeness.
+Only the FreeRADIUS developers should use the `PROTOCOL` keyword. This
+page documents the `PROTOCOL` keyword for completeness.
 
 .Examples
 ----

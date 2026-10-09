@@ -8,7 +8,8 @@
 
 - `sites-enabled/virtual`
 
-*documentation page:* xref:reference:raddb/sites-available/index.adoc[virtual servers]
+*documentation page:*
+xref:reference:raddb/sites-available/index.adoc[virtual servers]
 
 A "virtual server" is a configuration file that contains sections
 which process packets.  These are usually `recv FOO` or `send FOO`.
@@ -17,25 +18,29 @@ They can also include `listen` sections, long with a few others.
 For RADIUS, the common sections are:
 
 - *listen* Defines a new socket.
-- *recv Access-Request* Run policies when receiving an `Access-Request` packet
+- *recv Access-Request* Run policies when receiving an
+  `Access-Request` packet
 - *authenticate <name>* Run an authentication method
 - *send Access-Accept* Run policies when sending an `Access-Accept`
 - *send Access-Reject* Run policies when sending an `Access-Reject`
-- *send Access-Challenge* Run policies when sending an `Access-Challenge`
-- *recv Accounting-Request* Run policies when receiving an `Accounting-Request` packet
-- *accounting <type>* Run policies for a particular value of `Acct-Status-Type`
-- *send Accounting-Response* Run policies when receiving an `Accounting-Response` packet
+- *send Access-Challenge* Run policies when sending an
+  `Access-Challenge`
+- *recv Accounting-Request* Run policies when receiving an
+  `Accounting-Request` packet
+- *accounting <type>* Run policies for a particular value of
+  `Acct-Status-Type`
+- *send Accounting-Response* Run policies when receiving an
+  `Accounting-Response` packet
 
-**Default behaviour:**
-All site configurations are stored in the `sites-availabl`e directory,
-while only the active (running) sites are present in sites-enabled. To
-activate a site, a symbolic link must be created in sites-enabled that
-points to the corresponding configuration in sites-available.
+**Default behaviour:** All site configurations are stored in the
+`sites-availabl`e directory, while only the active (running) sites are
+present in sites-enabled. To activate a site, a symbolic link must be
+created in sites-enabled that points to the corresponding
+configuration in sites-available.
 
-**Best practice:**
-Always create or modify site configurations in `sites-available`, and
-then enable them by creating a symbolic link in `sites-enabled`.
-
+**Best practice:** Always create or modify site configurations in
+`sites-available`, and then enable them by creating a symbolic link in
+`sites-enabled`.
 
 == Create Virtual Server file
 
@@ -87,7 +92,8 @@ Verify the symbolic link was created:
 $ cat sites-enabled/virtual
 ----
 
-Start the server in debugging mode (`radiusd -X`), and use `radclient` to send a test packet.
+Start the server in debugging mode (`radiusd -X`), and use `radclient`
+to send a test packet.
 
 [source, bash]
 ----
@@ -117,9 +123,11 @@ Ready to process requests
 
 == Questions
 
-1.  What happens when you try to use CHAP or MS-CHAP? Why does this result occur?
+1.  What happens when you try to use CHAP or MS-CHAP? Why does this
+    result occur?
 2.  How can you make that virtual server use CHAP or MS-CHAP?
-3.  What happens when you try different User-Names? Why does this result occur?
+3.  What happens when you try different User-Names? Why does this
+    result occur?
 4.  How can you make the above configuration authenticate different
     users via different passwords?
 

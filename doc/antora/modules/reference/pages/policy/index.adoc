@@ -8,8 +8,9 @@ policies.
 == Concepts versus Configuration
 
 A common concern around FreeRADIUS is that the learning curve is not
-just steep, it is a cliff.  The "cliff" means that some simple things are very
-simple to do, but anything more complex is extremely difficult.
+just steep, it is a cliff.  The "cliff" means that some simple things
+are very simple to do, but anything more complex is extremely
+difficult.
 
 While FreeRADIUS can be complex, we believe that the reason for this
 difficulty is related to the _creation of policies_, and not (so much)
@@ -47,8 +48,8 @@ FreeRADIUS policies.
 2. *Write down what you want FreeRADIUS to do in plain English.*
 +
 For example, "When the user comes in, the server should look up the
-password in LDAP.  If the password matches, the user gets accepted.
-If the password does not match, the user is rejected."
+password in LDAP.  If the password matches, the user gets accepted. If
+the password does not match, the user is rejected."
 +
 Mark up those sentences with the bits of information from step (1).
 Does the RADIUS packet contain a "password" for the user?  If so,
@@ -58,7 +59,8 @@ database?
 +
 These descriptions will form the basis for `unlang` policies.
 
-3. *A little bit at a time, convert the English statements to `unlang`.*
+3. *A little bit at a time, convert the English statements to
+   `unlang`.*
 +
 The important piece of information here is not "convert to `unlang`",
 but instead "take it a step at a time".
@@ -68,7 +70,8 @@ supposed to do, and what you expect the result will be.
 
 4. *Test it.*
 +
-Test that the change does what you expect.  If it the change works, great.
+Test that the change does what you expect.  If it the change works,
+great.
 +
 If the change does not work, then read the debug output to see what
 happened.  Ask yourself some questions.  Is the server missing
@@ -118,14 +121,13 @@ The first concept to understand in creating policies is why
 xref:policy/different.adoc[FreeRADIUS is different] from other
 networking programs.  The summary is that most other networking
 programs use a _declarative_ configuration, as in a web server "pages
-under `~user` are served from directory `/home/user/public_html` ".
-In contrast, complex policies are _procedural_, which is programming,
+under `~user` are served from directory `/home/user/public_html` ". In
+contrast, complex policies are _procedural_, which is programming,
 with all the difficulties of designing and debugging complex "if /
 then / else" statements.
 
 The second concept to understand in creating policies is that a
 methodical approach is critical.
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

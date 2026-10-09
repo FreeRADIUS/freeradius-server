@@ -2,7 +2,9 @@
 
 The `file.cat` function returns the contents of a file.
 
-The function takes a second argument, which is the maximum number of bytes that should be returned. If the file is larger than this then the function fails and nothing is returned.
+The function takes a second argument, which is the maximum number of
+bytes that should be returned. If the file is larger than this then
+the function fails and nothing is returned.
 
 [#syntax]
 == Syntax

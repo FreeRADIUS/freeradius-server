@@ -2,9 +2,16 @@
 
 The file handling functions perform operations on files.
 
-The filenames can be taken from untrusted sources, in which cases special characters such as '`/`' and '`$`' are escaped.  Any special character is replaced with an underscore, followed by the hex value of the character.  Valid UTF-8 characters are allowed.
+The filenames can be taken from untrusted sources, in which cases
+special characters such as '`/`' and '`$`' are escaped.  Any special
+character is replaced with an underscore, followed by the hex value of
+the character.  Valid UTF-8 characters are allowed.
 
-For example, the "unsafe" string `user@freeradius.org/..` will turn into the filename `user@freeradius.org_2f..`.  This operation renders the filename "safe" for operations on the local file system.  It is not possible for unsafe data to create unexpected files, or to perform directory traversal attacks.
+For example, the "unsafe" string `user@freeradius.org/..` will turn
+into the filename `user@freeradius.org_2f..`.  This operation renders
+the filename "safe" for operations on the local file system.  It is
+not possible for unsafe data to create unexpected files, or to perform
+directory traversal attacks.
 
 include::partial$index_file.adoc[]
 

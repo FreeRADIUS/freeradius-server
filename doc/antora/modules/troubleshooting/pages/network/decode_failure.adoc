@@ -5,9 +5,11 @@ process a packet which it has received. This failure may be caused by
 one of the following:
 
 * The server has run out of memory,
-* There are malformed Vendor-Specific Attributes (VSAs) within the packet.
+* There are malformed Vendor-Specific Attributes (VSAs) within the
+  packet.
 * The Type-Length-Value (TLV) is too deep.
-* Unusual or unexpected packet structures cause packets to be malformed in some weird way.
+* Unusual or unexpected packet structures cause packets to be
+  malformed in some weird way.
 
 In all these cases, the server discards the packet.
 

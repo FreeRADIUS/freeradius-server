@@ -5,8 +5,8 @@
 Performs a regular expression search on _string_, using _pattern_.  If
 there are subgroups in _pattern_, the subgroups are available via a
 subsequent `%regex.match()`.  Each regular expression search (or
-xref:unlang/condition/regex.adoc[`=~`] operator) clears and refreshes the list of
-matches in `%regex.match()`.
+xref:unlang/condition/regex.adoc[`=~`] operator) clears and refreshes
+the list of matches in `%regex.match()`.
 
 This function is the same as using `%{string =~ /pattern/}`.  However,
 this function is included for completeness.
@@ -14,28 +14,32 @@ this function is included for completeness.
 [#regex_0_32]
 == `+%regex.match(0)+`..`+%regex.match(32)+`
 
-`%regex.match(0)` expands to the portion of the subject that matched the last regular
-expression evaluated. `%regex.match(1)`..`%regex.match(32)` expand to the contents of any capture
-groups in the pattern.
+`%regex.match(0)` expands to the portion of the subject that matched
+the last regular expression evaluated.
+`%regex.match(1)`..`%regex.match(32)` expand to the contents of any
+capture groups in the pattern.
 
-Every time a regular expression is evaluated, whether it matches or not,
-the numbered capture group values will be cleared.
+Every time a regular expression is evaluated, whether it matches or
+not, the numbered capture group values will be cleared.
 
 == `+%regex.match(<named capture group>}+`
 
-Return named subcapture value from the last regular expression evaluated.
+Return named subcapture value from the last regular expression
+evaluated.
 
-Results of named capture groups are available using the `%regex.match(<named capture
-group>}` expansion. They will also be accessible using the numbered expansions
-described xref:xlat/misc/regex.adoc#regex_0_32[above].
+Results of named capture groups are available using the
+`%regex.match(<named capture group>}` expansion. They will also be
+accessible using the numbered expansions described
+xref:xlat/misc/regex.adoc#regex_0_32[above].
 
-Every time a regular expression is evaluated, whether it matches or not,
-the named capture group values will be cleared.
+Every time a regular expression is evaluated, whether it matches or
+not, the named capture group values will be cleared.
 
 [NOTE]
 ====
 This expansion is only available if the server is built with libpcre2.
-Use the output of `radiusd -Xxv` to determine which regular expression library in use.
+Use the output of `radiusd -Xxv` to determine which regular expression
+library in use.
 
 ....
 ...
@@ -48,7 +52,6 @@ Debug :   pcre2                    : 10.33 (2019-04-16) - retrieved at build tim
 ....
 ====
 
-
 .Using a numbered subpattern after a search
 ====
 [source,unlang]
@@ -60,11 +63,10 @@ if (%regex.search("(j)(i(m))", User-Name)) {
 
 .Output when `User-Name == "jim"`
 
-```
+----
 im
-```
+----
 ====
-
 
 .Using a named subpattern after a search
 ====
@@ -77,11 +79,10 @@ if (%regex.search("(?<first>b.*)b", User-Name)) {
 
 .Output when `User-Name == "bob"`
 
-```
+----
 bo
-```
+----
 ====
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

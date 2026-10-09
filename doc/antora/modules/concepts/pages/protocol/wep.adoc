@@ -151,17 +151,16 @@ not the network itself.
   (http://www.cs.umd.edu/~waa/attack/v3dcmnt.htm)
 * http://www.starkrealities.com/wireless003.html[It Came Out of the
   Sky -- WEP2, Credibility Zero]
-* http://www.agere.com/NEWS/PRESS2001/111201b.html[Agere Systems
-  press release]
+* http://www.agere.com/NEWS/PRESS2001/111201b.html[Agere Systems press
+  release]
 ** http://www.proxim.com/learn/library/whitepapers/wireless_security.pdf[
    Wireless Network Security] (Proxim Wireless white paper)
 * Weak IVs
-** http://www.cs.virginia.edu/sammyg/CS551/node16.html[Weak IV
-   Attack]
+** http://www.cs.virginia.edu/sammyg/CS551/node16.html[Weak IV Attack]
 ** http://www.informit.com/guides/content.asp?g=security&seqNum=85&rl=1[WPA
    Part 2: Weak IV's]
-** http://airsnort.shmoo.com/faq.html[Frequently Asked Questions
-   About AirSnort]
+** http://airsnort.shmoo.com/faq.html[Frequently Asked Questions About
+   AirSnort]
 * http://www.cs.virginia.edu/sammyg/CS551/node18.html[Replay Attack]
 
 === External links
@@ -173,19 +172,22 @@ not the network itself.
 * http://www.drizzle.com/~aboba/IEEE/rc4_ksaproc.pdf[Weaknesses in the
   Key Scheduling Algorithm of RC4]
 * http://www.cs.virginia.edu/sammyg/CS551/node12.html[WEP Weaknesses]
-* http://www.cs.umd.edu/~waa/wireless.html[List of security problems with WEP]
-* http://securityfocus.com/infocus/1814[WEP: Dead Again, Part 1 (Dec. 14, 2004)]
-* http://securityfocus.com/infocus/1824[WEP: Dead Again, Part 2 (Mar. 8, 2005)]
-* http://www.tomsnetworking.com/Sections-article111.php[The Feds can own your
-  WLAN too : TomsNetworking]
+* http://www.cs.umd.edu/~waa/wireless.html[List of security problems
+  with WEP]
+* http://securityfocus.com/infocus/1814[WEP: Dead Again, Part 1 (Dec.
+  14, 2004)]
+* http://securityfocus.com/infocus/1824[WEP: Dead Again, Part 2 (Mar.
+  8, 2005)]
+* http://www.tomsnetworking.com/Sections-article111.php[The Feds can
+  own your WLAN too : TomsNetworking]
 * Humphrey Cheung, How to crack WEP,
-   http://www.tomsnetworking.com/Sections-article118.php[part one],
-   http://www.tomsnetworking.com/Sections-article120.php[part two],
-   http://www.tomsnetworking.com/Sections-article124.php[part three]
+  http://www.tomsnetworking.com/Sections-article118.php[part one],
+  http://www.tomsnetworking.com/Sections-article120.php[part two],
+  http://www.tomsnetworking.com/Sections-article124.php[part three]
   May/June 2005.
 
 * Several software tools are available to compute and recover WEP keys
-by passively monitoring transmissions.
+  by passively monitoring transmissions.
 
 ** http://www.tuto-fr.com/tutoriaux/crack-wep/fichiers/wlan/en-index.php[aircrack]
 ** Aircrack-ng (aircrack-ng is the next generation of aircrack)

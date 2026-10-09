@@ -12,11 +12,11 @@ different from many other protocols. For example, HTTP allows a client
 to send an OPTIONS request to check a server's capabilities. In
 contrast, a RADIUS client cannot discover which packet types a server
 will accept. This means that an administrator has to manually update
-the configuration if there’s a mismatch.
+the configuration if there's a mismatch.
 
 To fix an Unexpected Request Code error, you have two options. First,
 reconfigure the client to send only the packet types that the server
-expects. This may involve updating the client’s software or adjusting
+expects. This may involve updating the client's software or adjusting
 its configuration files. This ensures the client works within the
 limits set by the server's listen section.
 

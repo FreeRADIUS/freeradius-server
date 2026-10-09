@@ -25,8 +25,8 @@ behave identically, otherwise different requests will be processed
 through different modules and will give different results.
 
 In general, we recommend using the
-xref:unlang/redundant-load-balance.adoc[redundant-load-balance] statement
-instead of `redundant`.
+xref:unlang/redundant-load-balance.adoc[redundant-load-balance]
+statement instead of `redundant`.
 
 .Example
 [source,unlang]
@@ -72,8 +72,8 @@ to define redundant dynamic expansions.  The good news is that the
 server does this automatically.
 
 When a `redundant` section is defined, _and_ where all of the modules
-in the `redundant` section reference the same underlying module
-(e.g. `sql`, or `ldap`), the server then automatically registers a new
+in the `redundant` section reference the same underlying module (e.g.
+`sql`, or `ldap`), the server then automatically registers a new
 _redundant expansion_, with the name of the `redundant` section.  The
 example below shows how this works.
 
@@ -118,8 +118,9 @@ registered with the `redundant` section name. Otherwise, the redundant
 expansion is _qualified_ with the `redundant` section name.
 
 For example, the `sql` module provides two expansions, a self-named
-expansion and a `group` expansion.  Using the example from the previous
-section, `redundant sql_all {...}` would register the following:
+expansion and a `group` expansion.  Using the example from the
+previous section, `redundant sql_all {...}` would register the
+following:
 
 ----
 %sql_all(...)
@@ -147,14 +148,17 @@ redundant sql_and_ldap {
 The `sql_and_ldap` redundant section would register the following
 expansions:
 
-- `%sql_and_ldap(...)` which would call `%sql1(...)`, `%sql2(...)`, `%ldap1(...)`, and `%ldap2(...)`
-- `%sql_and_ldap.group(...)` which would call `%sql1.group(...)`, `%sql2.group(...)`, `%ldap1.group(...)`, `%ldap2.group(...)`
-- `%sql_and_ldap.profile(...)` which would call `%ldap1.profile(...)`, `%ldap2.profile(...)`
+- `%sql_and_ldap(...)` which would call `%sql1(...)`, `%sql2(...)`,
+  `%ldap1(...)`, and `%ldap2(...)`
+- `%sql_and_ldap.group(...)` which would call `%sql1.group(...)`,
+  `%sql2.group(...)`, `%ldap1.group(...)`, `%ldap2.group(...)`
+- `%sql_and_ldap.profile(...)` which would call `%ldap1.profile(...)`,
+  `%ldap2.profile(...)`
 
 If the arguments passed to the redundant expansion are not compatible
 with _all_ the module expansions it would call, the server will log an
-error and either fail to start, or stop processing the expression which
-called the redundant expansion.
+error and either fail to start, or stop processing the expression
+which called the redundant expansion.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

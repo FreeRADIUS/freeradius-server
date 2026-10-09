@@ -1,18 +1,21 @@
 = Docker
 
-This page explains how to configure using OpenLDAP in a docker container.
+This page explains how to configure using OpenLDAP in a docker
+container.
 
 == Bootstrap
 
 https://github.com/osixia[Osixia!] provides a
-https://github.com/osixia/docker-openldap[fully functionally OpenLDAP container]
-which can be instantiated using the docker invocation below.
+https://github.com/osixia/docker-openldap[fully functionally OpenLDAP
+container] which can be instantiated using the docker invocation
+below.
 
-This docker invocation also sets up a readonly user, and loads the custom
-FreeRADIUS schemas required for RADIUS to LDAP attribute mapping, dynamic client
-definitions, and attribute profiles.
+This docker invocation also sets up a readonly user, and loads the
+custom FreeRADIUS schemas required for RADIUS to LDAP attribute
+mapping, dynamic client definitions, and attribute profiles.
 
 === Define site specific variables
+
 Change the values here to match local paths and your site specific
 configuration.
 
@@ -57,6 +60,7 @@ docker run -it --rm -p 389:389 \
 ----
 
 == Populate with test data
+
 Once docker is running, there should now be an LDAP server running on
 `localhost`, it can now be populated with test data.
 
@@ -75,9 +79,9 @@ sed -e '1,/^description:/ d' "${FREERADIUS_SRC}/src/tests/modules/ldap/example.c
 There should be no errors, and the console with the running LDAP
 server should show requests being handled.
 
-If the LDAP server server is stopped, as with `CTRL-C`, then the database
-contents will be lost.  All of the steps above will have to be re-done the next
-time the server is started.
+If the LDAP server server is stopped, as with `CTRL-C`, then the
+database contents will be lost.  All of the steps above will have to
+be re-done the next time the server is started.
 
 In order to make the LDAP database persistent, see the
 https://github.com/osixia/docker-openldap[osixia/openldap
@@ -85,12 +89,13 @@ instructions].
 
 == Test the configuration
 
-As a final step you should verify that test data has been loaded correctly.
-This can be done using the `ldapsearch` utility using the LDAP read only user.
+As a final step you should verify that test data has been loaded
+correctly. This can be done using the `ldapsearch` utility using the
+LDAP read only user.
 
-The command below will retrieve the entry for one of the test `freeradiusClient`
-entries. You should see a single search result returned if everything worked
-correctly.
+The command below will retrieve the entry for one of the test
+`freeradiusClient` entries. You should see a single search result
+returned if everything worked correctly.
 
 [source,shell]
 ----

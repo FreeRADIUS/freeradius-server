@@ -2,19 +2,28 @@
 
 Return the current time.
 
-This function does too many things, and will be deprecated.  We recommend using the other `%time.*()` functions instead.
+This function does too many things, and will be deprecated.  We
+recommend using the other `%time.*()` functions instead.
 
 .Return: _date_.
 
-If no argument is passed, it returns the current time.  Otherwise if the argument is:
+If no argument is passed, it returns the current time.  Otherwise if
+the argument is:
 
-* `dst` - returns a `bool` indicating whether or not the system is running in daylight savings time.
-* `mday_offset` - returns the `time_delta` offset since the start of the month.  Use `%d` to get an integer representing the day of the month.
+* `dst` - returns a `bool` indicating whether or not the system is
+  running in daylight savings time.
+* `mday_offset` - returns the `time_delta` offset since the start of
+  the month.  Use `%d` to get an integer representing the day of the
+  month.
 * `now` - returns the current time
-* `offset` - returns a `time_delta` of the current time zone offset.  This value may be negative.
-* `request` - returns the time at which the request packet was received (always less than `now`!)
-* `wday_offset` - returns the `time_delta` offset since the start of the week.
-* any other string is parsed as type `date`, using the normal date parsing routines.
+* `offset` - returns a `time_delta` of the current time zone offset.
+  This value may be negative.
+* `request` - returns the time at which the request packet was
+  received (always less than `now`!)
+* `wday_offset` - returns the `time_delta` offset since the start of
+  the week.
+* any other string is parsed as type `date`, using the normal date
+  parsing routines.
 
 .Example
 
@@ -41,7 +50,10 @@ server cannot support them all.
 
 [NOTE]
 ====
-This expansion should be used in preference to the xref:xlat/time/character.adoc[single letter expansions] `%l`.  That expansion returns integer seconds, and is not suitable for millisecond or microsecond resolution.
+This expansion should be used in preference to the
+xref:xlat/time/character.adoc[single letter expansions] `%l`.  That
+expansion returns integer seconds, and is not suitable for millisecond
+or microsecond resolution.
 ====
 
 Due to limitations in the underlying time functions (both system and
@@ -73,7 +85,8 @@ The following example calculates the correct value of "tomorrow" in
 UTC by using the following steps:
 
 * taking the current time of the request
-* calculating how long it has been since the start of the day as a `time_delta`
+* calculating how long it has been since the start of the day as a
+  `time_delta`
 * subtracting that `time_delta` from the current time
 
 .Example Calculating the UTC value of "tomorrow"

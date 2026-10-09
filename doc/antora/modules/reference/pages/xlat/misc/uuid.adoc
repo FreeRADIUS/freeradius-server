@@ -2,8 +2,8 @@
 
 Two functions are available to generate UUIDs.
 
-`uuid.v4` generates a version 4 UUID and `uuid.v7` generates a
-version 7 UUID.
+`uuid.v4` generates a version 4 UUID and `uuid.v7` generates a version
+7 UUID.
 
 .Return: _string_
 

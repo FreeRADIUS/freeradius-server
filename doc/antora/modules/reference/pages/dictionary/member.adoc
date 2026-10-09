@@ -13,7 +13,8 @@ of a `struct` data type.
 <name>:: The name of the attribute.  The name can contain alphanumeric
 characters, `-`, and `_`.  The name should be short and descriptive.
 +
-The name of this `MEMBER` is defined only within the context of its parent `struct`.
+The name of this `MEMBER` is defined only within the context of its
+parent `struct`.
 
 <type>:: A xref:type/index.adoc[data type], or the special type `bit`.
 +
@@ -25,15 +26,16 @@ fields do not have to start and end on byte boundaries, changing from
 a non-`bit` type to a `bit` type (and vice-versa) can only be done on
 a byte boundary.
 
-<flags>:: The flag field is optional, and is usually protocol-specific.  See
-the xref:dictionary/flags.adoc[FLAGS] page for definitions of common
-flags.
+<flags>:: The flag field is optional, and is usually
+protocol-specific.  See the xref:dictionary/flags.adoc[FLAGS] page for
+definitions of common flags.
 +
-Please see the protocol dictionaries for examples of these flags.
-Only the flags which are used in a protocol dictionary are valid,
-and those flags are only valid for that protocol dictionary.
+Please see the protocol dictionaries for examples of these flags. Only
+the flags which are used in a protocol dictionary are valid, and those
+flags are only valid for that protocol dictionary.
 +
-The `key` flag can only be used for ``MEMBER``s where the data type is `uint8`, `uint16`, or `uint32`.
+The `key` flag can only be used for ``MEMBER``s where the data type is
+`uint8`, `uint16`, or `uint32`.
 
 Common flags and meanings
 [options="header"]
@@ -46,7 +48,8 @@ Common flags and meanings
 | `key`        | This member is a "key" type.  The structure can have different children of type `union`, depending on the value of the key.
 |=====
 
-See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax
+of references in the dictionary.
 
 .Examples
 ----

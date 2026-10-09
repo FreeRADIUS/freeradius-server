@@ -1,6 +1,7 @@
 = Policies
 
-*Goal:* Create and use policies to abstract and reuse business logic in FreeRADIUS.
+*Goal:* Create and use policies to abstract and reuse business logic
+in FreeRADIUS.
 
 *Time:* 10-20 minutes
 
@@ -11,9 +12,9 @@
 
 == Preparation
 
-Look through the existing files in `policy.d/` and review
-other documentation sections (especially the unlang reference,
-conditions, and regular expressions) to become familiar with:
+Look through the existing files in `policy.d/` and review other
+documentation sections (especially the unlang reference, conditions,
+and regular expressions) to become familiar with:
 
 - Policy syntax
 - Attribute references (`request.`, `control.`, `reply.`, etc.)
@@ -60,8 +61,8 @@ realm-split {
 }
 ----
 
-Task: Call this policy at the very beginning of the `recv Access-Request`
-section in the default virtual server.
+Task: Call this policy at the very beginning of the `recv
+Access-Request` section in the default virtual server.
 
 Open the file:
 
@@ -85,7 +86,8 @@ authorization modules (like files, sql, ldap, etc.) access it.
 
 == Testing
 
-Make sure the testing user "bob" exists in `mods-config/files/authorize`:
+Make sure the testing user "bob" exists in
+`mods-config/files/authorize`:
 
 Run the server in debug mode:
 
@@ -112,10 +114,10 @@ Received Access-Accept Id 246 from 127.0.0.1:1812 to 0.0.0.0:56242 via lo length
 
 == Questions
 
-1.  What are the advantages of using the policy language over interpreted
-    language modules?
-2.  What are the main differences between a policy and a function in other
-    languages?
+1.  What are the advantages of using the policy language over
+    interpreted language modules?
+2.  What are the main differences between a policy and a function in
+    other languages?
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -12,19 +12,20 @@ radclient - send packets to a RADIUS server, show reply
 
 == SYNOPSIS
 
-*radclient* _[ OPTIONS ]_ _server {acct|auth|status|disconnect|auto} secret_
+*radclient* _[ OPTIONS ]_ _server {acct|auth|status|disconnect|auto}
+secret_
 
 == DESCRIPTION
 
 *radclient* is a radius client program. It can send arbitrary radius
-packets to a radius server, then shows the reply. It can be used to test
-changes you made in the configuration of the radius server, or it can be
-used to monitor if a radius server is up.
+packets to a radius server, then shows the reply. It can be used to
+test changes you made in the configuration of the radius server, or it
+can be used to monitor if a radius server is up.
 
 *radclient* reads radius attribute/value pairs from it standard input,
 or from a file specified on the command line. It then encodes these
-attribute/value pairs using the dictionary, and sends them to the remote
-server.
+attribute/value pairs using the dictionary, and sends them to the
+remote server.
 
 The `User-Password` and `CHAP-Password` attributes are automatically
 encrypted before the packet is sent to the server.

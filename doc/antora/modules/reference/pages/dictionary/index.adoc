@@ -40,13 +40,14 @@ the magic numbers into humanly-readable names.  The administrator can
 then write policies of the form `if the User-Name has value "bob",
 then do something ...`.
 
-Policies using descriptive names are much simpler to create and understand
-than policies using numbers.
+Policies using descriptive names are much simpler to create and
+understand than policies using numbers.
 
 The dictionaries also enable the server to decode protocols using
 xref:type/index.adoc[data types], and then present that decoded data
 to the administrator.  As with the other examples above, it would be
-very difficult write policies based on "raw hex" data: `if User-Name is 0x626f62 ...`.
+very difficult write policies based on "raw hex" data: `if User-Name
+is 0x626f62 ...`.
 
 The dictionaries solve the data type problem by associating
 xref:type/index.adoc[data types] with a name and number.  That way the
@@ -139,7 +140,8 @@ after the hash character to be ignored, up to the end of the line.
 
 Every non-blank line starts with a keyword, as given in the table
 below.  In most cases, the main keywords of interest are
-xref:dictionary/attribute.adoc[ATTRIBUTE] and xref:dictionary/value.adoc[VALUE].
+xref:dictionary/attribute.adoc[ATTRIBUTE] and
+xref:dictionary/value.adoc[VALUE].
 
 .Dictionary Definition Keywords
 [options="header"]
@@ -171,7 +173,6 @@ The following keywords define logical nesting of attributes.
 | xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]      | Begin defining vendor-specific attributes
 | xref:dictionary/end-vendor.adoc[END-VENDOR]          | End defining vendor-specific attributes
 |=====
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

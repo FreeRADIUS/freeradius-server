@@ -1,16 +1,16 @@
 = Casts
 
 Values can be *cast* from one data type to another.  However, this
-cast only changes the _type_ of the data, it does not change the data's
-_value_.  That is, a cast allows you to convert an `octets` data type
-to a `string`, but the resulting `string` may still contain
+cast only changes the _type_ of the data, it does not change the
+data's _value_.  That is, a cast allows you to convert an `octets`
+data type to a `string`, but the resulting `string` may still contain
 non-printable characters.
 
 Casting is used when the server is unable to automatically figure out
 the correct data type to use.  For example, in the following
 expansion, it is not immediately obvious that the right side of the
-expression is an IP address.  It could instead be interpreted as a string
-`"192.0.2.1"`.
+expression is an IP address.  It could instead be interpreted as a
+string `"192.0.2.1"`.
 
 [source,unlang]
 ----
@@ -22,10 +22,10 @@ if (%sql("SELECT ipaddress FROM table WHERE user=%{User-Name}") == 192.0.2.1) }
 Since there is no attribute reference on either side of the `==`
 operator, the interpreter has no way of knowing that the string
 `192.0.2.1` is an IP address.  In most cases, the interpreter will
-guess correctly.  However, there is no way of _always_ parsing
-strings in order to automatically determine which data type to use.
-Any such automatic parsing works most of the time, but it does have
-error cases where the parsing may be incorrect.
+guess correctly.  However, there is no way of _always_ parsing strings
+in order to automatically determine which data type to use. Any such
+automatic parsing works most of the time, but it does have error cases
+where the parsing may be incorrect.
 
 The solution to resolving these ambiguities is by allowing the values
 to be `cast` to a particular type.  Casting a value to a type tells
@@ -58,8 +58,8 @@ ambiguous, or when data should be normalized prior to comparison, or
 when a specific data type is required.
 
 For a full list of data types which can be used in a cast, please see
-the xref:type/all_types.adoc[list of data types] page, and the
-"Basic Type Types" section.
+the xref:type/all_types.adoc[list of data types] page, and the "Basic
+Type Types" section.
 
 == Casting behaviour
 
@@ -91,9 +91,9 @@ only if the prefix is `/32`.
 Numbers can generally be cast from one data type to another, if the
 input value can be represented in the new data type.
 
-For example, casting `uint8` to `uint16` will always succeed.
-However, casting a signed `int8` to `uint16` may fail, as negative
-values cannot be represented in the `uint16` data type.
+For example, casting `uint8` to `uint16` will always succeed. However,
+casting a signed `int8` to `uint16` may fail, as negative values
+cannot be represented in the `uint16` data type.
 
 === Octets
 
@@ -125,8 +125,8 @@ of how double-quoted strings are used.
 === Lists
 
 When a cast is applied to a list, the cast is applied _individually to
-each entry in the list_.  This behaviour is most noticeable when calling
-a function, or looping over a set of attributes.
+each entry in the list_.  This behaviour is most noticeable when
+calling a function, or looping over a set of attributes.
 
 The following example will first create two `Reply-Message` attributes
 in the request.  It will then copy all of those attributes to the
@@ -142,8 +142,8 @@ reply.Reply-Message := control.Reply-Message[*]
 
 The following example will take an input string `"192.168.0.1"`, split
 it on the `'.'` character, and then assign it to another attribute.
-The result will be four copies of the `NAS-Port` attribute, which
-each carry one octet of the IP address.
+The result will be four copies of the `NAS-Port` attribute, which each
+carry one octet of the IP address.
 
 .Example Creating multiple Attributes
 ----
@@ -153,10 +153,10 @@ NAS-Port := %str.split("192.168.0.1", '.')
 If you need to cast an entire list to a value, then the value being
 cast should be surrounded by brackets.
 
-In the following example, the `%str.split()` function will return a list
-of four values: `{"192", "168", "0", "1"}`.  Casting that to a string
-causes the values to be merged together, The resulting string is
-`"19216801"`.
+In the following example, the `%str.split()` function will return a
+list of four values: `{"192", "168", "0", "1"}`.  Casting that to a
+string causes the values to be merged together, The resulting string
+is `"19216801"`.
 
 If you need to add text in between each list entry, see the
 `%str.concat()` function in the xref:xlat/all.adoc[built-in
@@ -211,8 +211,8 @@ will result in the `octet` string value `0x010300047f000001`.
 == Compatibility
 
 For compatibility with version 3, the `<cast>` syntax is also
-supported.  We recommend, however, that people use the new syntax.
-The old syntax will eventually be removed, and will create an error.
+supported.  We recommend, however, that people use the new syntax. The
+old syntax will eventually be removed, and will create an error.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

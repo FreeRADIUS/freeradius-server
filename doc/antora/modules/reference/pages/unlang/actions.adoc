@@ -21,8 +21,8 @@ actions {
 ----
 
 Section priority overrides are specified in an `actions` block, which
-_must_ be the last thing in a section.  Actions can be set in blocks for the
-following keywords:
+_must_ be the last thing in a section.  Actions can be set in blocks
+for the following keywords:
 
 * `case`
 * `catch`
@@ -36,7 +36,8 @@ following keywords:
 * `timeout`
 * `transaction`
 
-The `actions` block cannot be used in blocks for the following keywords:
+The `actions` block cannot be used in blocks for the following
+keywords:
 
 * `redundant`
 * `redundant-load-balance`
@@ -55,8 +56,8 @@ priority `3` will over-ride an rcode of `ok` with priority `1`,
 
 == Override Syntax
 
-The format of an override is `<rcode> = (<integer>|<action>)` - That is,
-a number greater than or equal to 0, or a named action.
+The format of an override is `<rcode> = (<integer>|<action>)` - That
+is, a number greater than or equal to 0, or a named action.
 
 .Named Actions
 [options="header"]

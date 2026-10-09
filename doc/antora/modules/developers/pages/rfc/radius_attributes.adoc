@@ -42,36 +42,52 @@ the RFCs.  Each attribute includes a brief explanation and a direct
 link to its definition in the RFCs.
 
 == A
+
 include::partial$a_attributelist.adoc[]
 == C
+
 include::partial$c_attributelist.adoc[]
 == D
+
 include::partial$d_attributelist.adoc[]
 == E
+
 include::partial$e_attributelist.adoc[]
 == F
+
 include::partial$f_attributelist.adoc[]
 == I
+
 include::partial$i_attributelist.adoc[]
 == K
+
 include::partial$k_attributelist.adoc[]
 == L
+
 include::partial$l_attributelist.adoc[]
 == M
+
 include::partial$m_attributelist.adoc[]
 == N
+
 include::partial$n_attributelist.adoc[]
 == P
+
 include::partial$p_attributelist.adoc[]
 == R
+
 include::partial$r_attributelist.adoc[]
 == S
+
 include::partial$s_attributelist.adoc[]
 == T
+
 include::partial$t_attributelist.adoc[]
 == U
+
 include::partial$u_attributelist.adoc[]
 == V
+
 include::partial$v_attributelist.adoc[]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

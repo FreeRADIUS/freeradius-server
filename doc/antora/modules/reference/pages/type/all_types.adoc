@@ -69,7 +69,8 @@ data type can contain child attributes.  The different structural
 types have different behaviors about what kind of children they can
 contain, and how the data type is sent in a packet over the network.
 
-group: A `group` contains an arbitrary collection of children, in any order.
+group: A `group` contains an arbitrary collection of children, in any
+order.
 +
 A `group` is really a reference to some other attribute elsewhere in
 the same protocol dictionary, or to a different protocol dictionary.
@@ -83,15 +84,18 @@ information.
 The `group` only encodes the child attributes which have been created
 and stored within the `group`.  The order of children does not matter.
 
-struct:: A `struct` contains fixed-sized data types, in a pre-defined order.
+struct:: A `struct` contains fixed-sized data types, in a pre-defined
+order.
 +
 The `struct` can only contain a fixed and pre-defined list of child
-attributes.  These attributes are the fields, or members, of the structure.
+attributes.  These attributes are the fields, or members, of the
+structure.
 +
 The `struct` always encodes all of its children.  If a child is
 missing, then the relevant field is filled with zeros.
 
-tlv:: A `tlv` defines a hierarchy of children, which can only be contained in the `tlv`.
+tlv:: A `tlv` defines a hierarchy of children, which can only be
+contained in the `tlv`.
 +
 The `tlv` can only contain child attributes which have been defined as
 children of the `tlv.`
@@ -112,7 +116,8 @@ within the `union`.
 vendor:: A `vendor` is a group which has a limited subset of children:
 attributes which have been defined by that vendor.
 +
-The `vendor` can only contain child attributes which have been defined by the vendor.
+The `vendor` can only contain child attributes which have been defined
+by the vendor.
 +
 The `vendor` only encodes the child attributes which have been created
 and stored within the `vendor`.  The order of children does not
@@ -121,16 +126,16 @@ a 32-bit vendor ID, which identifies the vendor.
 +
 A `vendor` data type can only be a child of a `vsa` data type.
 
-vsa:: A `vsa` is a group which has a limited subset of children: `vendor`s.
+vsa:: A `vsa` is a group which has a limited subset of children:
+`vendor`s.
 +
 The `vsa` can only contain child attributes which are `vendor`s
 +
 The `vsa` only encodes the vendor attributes which have been created
-and stored within the `vsa`.  The order of children does not
-matter.
+and stored within the `vsa`.  The order of children does not matter.
 +
-A `vsa` data type can only be a contain children of the `vendor` data type.
-
+A `vsa` data type can only be a contain children of the `vendor` data
+type.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1,9 +1,9 @@
 = Character Escaping
 
-The quotation characters in the above string data types can be
-escaped by using the backslash, or `\,` character. The backslash
-character itself can be created by using `\\`. Carriage returns and
-line feeds can be created by using `\n` and `\r`.
+The quotation characters in the above string data types can be escaped
+by using the backslash, or `\,` character. The backslash character
+itself can be created by using `\\`. Carriage returns and line feeds
+can be created by using `\n` and `\r`.
 
 .Examples
 

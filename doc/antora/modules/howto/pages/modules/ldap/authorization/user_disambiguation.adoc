@@ -6,47 +6,52 @@ the LDAP directory.
 If when the LDAP module tries to locate a user, more than one entry is
 returned, authentication will fail with the following error:
 
-```
+----
 ldap: ERROR: Ambiguous search result, returned 2 unsorted entries (should return 1 or 0).  Enable sorting, or specify a more restrictive base_dn, filter or scope
 ldap: ERROR: The following entries were returned:
 ldap:   ERROR: uid=john,ou=people,dc=example,dc=com
 ldap:   ERROR: uid=john,dc=example,dc=com
-```
+----
 
-As the error message states, there are multiple ways to resolve this issue:
+As the error message states, there are multiple ways to resolve this
+issue:
 
-1. Specify a more restrictive base_dn.  In this example changing `user.base_dn`
-   to `ou=people,dc=example,dc=com` would resolve the issue.
-2. Specify a more restrictive filter.  For example, if one object represented
-   a user's login account, and another represented a Human Resources record,
-   the `user.filter` value could be changed to only return objects with an
-   object class that indicated the object represented login account
-   e.g. `(&(objectClass=posixAccount)(uid=...))`.
-3. Change the scope of the search to be more restritive.  If the additional user
-   object is located in a child object under the user base_dn, setting `user.scope`
-   to 'one' will resolve user object ambiguity by restricting the search to the
-   direct children of the user base_dn.
-4. As a last resort you can enable the Server Side Sorting extension (if
-   supported) on the LDAP server (see below).
+1. Specify a more restrictive base_dn.  In this example changing
+   `user.base_dn` to `ou=people,dc=example,dc=com` would resolve the
+   issue.
+2. Specify a more restrictive filter.  For example, if one object
+   represented a user's login account, and another represented a Human
+   Resources record, the `user.filter` value could be changed to only
+   return objects with an object class that indicated the object
+   represented login account e.g.
+   `(&(objectClass=posixAccount)(uid=...))`.
+3. Change the scope of the search to be more restritive.  If the
+   additional user object is located in a child object under the user
+   base_dn, setting `user.scope` to 'one' will resolve user object
+   ambiguity by restricting the search to the direct children of the
+   user base_dn.
+4. As a last resort you can enable the Server Side Sorting extension
+   (if supported) on the LDAP server (see below).
 
 == Enable and configure Server Side Sorting
 
 Server Side Sorting controls are specified by
 https://tools.ietf.org/html/rfc2891[RFC 2891].
 
-SSS controls allow the client to request the server sort results in a specific
-and consistent order.  This ensures that in the case where there is an ambiguous
-result, the same user object (the first in the result set) will be used by the
-LDAP module.
+SSS controls allow the client to request the server sort results in a
+specific and consistent order.  This ensures that in the case where
+there is an ambiguous result, the same user object (the first in the
+result set) will be used by the LDAP module.
 
-Without SSS which object is used by the LDAP module will be essentially random.
+Without SSS which object is used by the LDAP module will be
+essentially random.
 
 [TIP]
 ====
 If you followed the
-xref:modules/ldap/bootstrap_openldap/packages.adoc[Install OpenLDAP from
-packages] section you can enable the Server Side Sorting (SSS) overlay via OLC
-using the ldif below.
+xref:modules/ldap/bootstrap_openldap/packages.adoc[Install OpenLDAP
+from packages] section you can enable the Server Side Sorting (SSS)
+overlay via OLC using the ldif below.
 
 [source,ldif]
 ----
@@ -71,10 +76,11 @@ ldap {
 }
 ----
 
-<1> The attribute that attributes should be sorted by. It can be difficult to find
-    an attribute (or attributes - comma delimited) that disambiguate user objects in
-    a meaningful way.  If the LDAP server allows 'dn' to be specified as a sorting
-    attribute, it's recommended to use that.
+<1> The attribute that attributes should be sorted by. It can be
+    difficult to find an attribute (or attributes - comma delimited)
+    that disambiguate user objects in a meaningful way.  If the LDAP
+    server allows 'dn' to be specified as a sorting attribute, it's
+    recommended to use that.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

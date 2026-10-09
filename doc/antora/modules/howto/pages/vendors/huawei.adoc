@@ -1,5 +1,7 @@
 
-This is to set up Freeradius auth on Huawei S6320 running Comware Version 5.160. This method should be similar for all close to 2016 models of comware.
+This is to set up Freeradius auth on Huawei S6320 running Comware
+Version 5.160. This method should be similar for all close to 2016
+models of comware.
 
 **Switch side config:**
 ```text
@@ -26,8 +28,7 @@ aaa
 !
 ```
 
-Freeradius server-side is set up normally like:
-**Server-side setup:**
+Freeradius server-side is set up normally like: **Server-side setup:**
 ```text
 client <network_device_management_ip> {
 secret = <radius_key>

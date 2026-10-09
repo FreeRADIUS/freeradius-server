@@ -32,16 +32,16 @@ RADIUS packets carry attributes as type-length-value triples.  The
 type field is a number (e.g. `1` for `User-Name`).  Without a
 dictionary, a policy would have to say something like:
 
-```
+----
 if attribute 1 == "bob" { ... }
-```
+----
 
 With a dictionary entry that says "number 1 is called User-Name and
 holds a string", the policy can say:
 
-```
+----
 if User-Name == "bob" { ... }
-```
+----
 
 The dictionaries are _local_.  i.e. They names are available only
 within the scope of the server which has loaded the dictionary.
@@ -55,8 +55,8 @@ dictionary entries, they must go into
 xref:reference:raddb/dictionary.adoc[local dictionary] file or into
 `dictionary.d/`.
 
-In order to help you organize your own dictionaries, the
-`dictionary` file ends with:
+In order to help you organize your own dictionaries, the `dictionary`
+file ends with:
 
 [source]
 ----
@@ -74,13 +74,12 @@ FreeRADIUS is updated.
 In v4, attribute names are hierarchical.  A v3 flat name like
 `Cisco-AVPair` is now `Vendor-Specific.Cisco.AVPair`, where the full
 path makes the protocol structure explicit and removes name conflicts
-across vendors.  The
-xref:reference:dictionary/index.adoc[dictionary reference] describes
-hierarchical names in full.
+across vendors.  The xref:reference:dictionary/index.adoc[dictionary
+reference] describes hierarchical names in full.
 
 Old v3-style flat names are still available through alias
-dictionaries.  See the sample `dictionary` for the `$INCLUDE` directives
-that enable v3 compatibility names.
+dictionaries.  See the sample `dictionary` for the `$INCLUDE`
+directives that enable v3 compatibility names.
 
 == DEFINE versus ATTRIBUTE
 
@@ -98,8 +97,8 @@ See the reference pages for the full syntax of each keyword.
 == Step 1: Local Attributes with DEFINE
 
 Local attributes are the simplest way to add custom data to a policy.
-They live in `dictionary`, never go into a packet, and do not
-need a number assigned to them.
+They live in `dictionary`, never go into a packet, and do not need a
+number assigned to them.
 
 Open `dictionary` and add the following lines before the final
 `$INCLUDE- dictionary.d/` line:
@@ -130,8 +129,8 @@ RADIUS packet. For this exercise, use the example PEN `123456`.
 
 === Create the dictionary file
 
-Create the file `dictionary.d/dictionary.test` with the
-following content:
+Create the file `dictionary.d/dictionary.test` with the following
+content:
 
 [source]
 ----
@@ -154,19 +153,23 @@ VALUE   Test-What-To-Eat    Beans    4
 END-VENDOR  Test
 ----
 
-The file is picked up automatically because the `dictionary`
-file includes all files in the `dictionary.d/` directory.
+The file is picked up automatically because the `dictionary` file
+includes all files in the `dictionary.d/` directory.
 
 === Dictionary syntax reference
 
 The dictionary file created above relies on the following keywords,
 each documented in full on the dictionary reference pages:
 
-* xref:reference:dictionary/vendor.adoc[VENDOR] declares the vendor name and PEN.
-* xref:reference:dictionary/begin-vendor.adoc[BEGIN-VENDOR] opens the vendor namespace.
+* xref:reference:dictionary/vendor.adoc[VENDOR] declares the vendor
+  name and PEN.
+* xref:reference:dictionary/begin-vendor.adoc[BEGIN-VENDOR] opens the
+  vendor namespace.
 * xref:reference:dictionary/attribute.adoc[ATTRIBUTE] defines a VSA.
-* xref:reference:dictionary/value.adoc[VALUE] names an enumerated value.
-* xref:reference:dictionary/end-vendor.adoc[END-VENDOR] closes the vendor namespace.
+* xref:reference:dictionary/value.adoc[VALUE] names an enumerated
+  value.
+* xref:reference:dictionary/end-vendor.adoc[END-VENDOR] closes the
+  vendor namespace.
 
 The `date`, `string`, `ipaddr`, and `uint32` types used above are
 described, along with all other types, on the
@@ -182,8 +185,8 @@ Start the server in debug mode:
 $ radiusd -X
 ----
 
-With `-X`, the server logs one line for the root `dictionary`
-file (the leading path depends on your install prefix):
+With `-X`, the server logs one line for the root `dictionary` file
+(the leading path depends on your install prefix):
 
 [source]
 ----
@@ -208,8 +211,8 @@ server before continuing.
 
 === Add a test user
 
-Edit `mods-config/files/authorize` and add the following entry
-for user `bob`:
+Edit `mods-config/files/authorize` and add the following entry for
+user `bob`:
 
 [source]
 ----
@@ -305,7 +308,8 @@ dictionary {
 
 This attribute can be set and tested in policies within the `default`
 virtual server without adding anything to the
-xref:reference:raddb/dictionary.adoc[local dictionary] file or `dictionary.d/`.
+xref:reference:raddb/dictionary.adoc[local dictionary] file or
+`dictionary.d/`.
 
 == Questions
 

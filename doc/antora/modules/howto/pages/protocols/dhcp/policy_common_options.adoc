@@ -3,29 +3,29 @@
 FreeRADIUS includes a powerful xref:index.adoc[policy language] called
 "unlang".
 
-Statements in unlang may be used to call further policies, update attribute
-lists and invoke modules. There are also control flow statements (if,
-switch, etc.) typical of most imperative languages.
+Statements in unlang may be used to call further policies, update
+attribute lists and invoke modules. There are also control flow
+statements (if, switch, etc.) typical of most imperative languages.
 
-FreeRADIUS has a number attribute lists that it maintains as it processes
-packets within the virtual server sections.  Most relevant to DHCP are
-`request`, `control` and `reply`.
+FreeRADIUS has a number attribute lists that it maintains as it
+processes packets within the virtual server sections.  Most relevant
+to DHCP are `request`, `control` and `reply`.
 
 The DHCP options from the current request packet are provided in the
 `request` list.  This includes fixed DHCP parameters such as
 `Client-Hardware-Address`, optional parameters such as
-`Requested-IP-Address`, and parameters synthesised by FreeRADIUS such as
-`Message-Type` and `Network-Subnet`.
+`Requested-IP-Address`, and parameters synthesised by FreeRADIUS such
+as `Message-Type` and `Network-Subnet`.
 
-DHCP options can be set by updating their value in the `reply` list.  This
-forms the basis of the packet returned to the client.
+DHCP options can be set by updating their value in the `reply` list.
+This forms the basis of the packet returned to the client.
 
-In the default DHCP server configuration, a "policy" (akin to a subroutine) is
-used to set common options for reply packets.  The policy is found in
-`<raddb>/policy.d/dhcp`.
+In the default DHCP server configuration, a "policy" (akin to a
+subroutine) is used to set common options for reply packets.  The
+policy is found in `<raddb>/policy.d/dhcp`.
 
-Look at the contents of the `dhcp_common` section and set any global options
-applicable to all clients in this policy.
+Look at the contents of the `dhcp_common` section and set any global
+options applicable to all clients in this policy.
 
 [source,unlang]
 ----
@@ -39,18 +39,18 @@ dhcp_common {
 }
 ----
 
-See the xref:reference:unlang/edit.adoc[edit] documentation for instructions on
-creating and editing attributes.
+See the xref:reference:unlang/edit.adoc[edit] documentation for
+instructions on creating and editing attributes.
 
-These edit operation allow for attributes to be set to default values and then
-overwritten, e.g. setting a default lease time, but then later overwriting it for
-a particular group of clients.
+These edit operation allow for attributes to be set to default values
+and then overwritten, e.g. setting a default lease time, but then
+later overwriting it for a particular group of clients.
 
-Attributes in the `control` list are not returned in the DHCP reply packets
-but instead govern aspects of server's behaviour.
+Attributes in the `control` list are not returned in the DHCP reply
+packets but instead govern aspects of server's behaviour.
 
-To use an SQL backend for either static or dynamic IP allocation, un-comment
-the block:
+To use an SQL backend for either static or dynamic IP allocation,
+un-comment the block:
 
 [source,unlang]
 ----
@@ -58,14 +58,16 @@ control.IP-Pool.Name := "local"
 sqlippool
 ----
 
-The `IP-Pool.Name` control attribute is used in looking up addresses in the
-database.  The line containing `sqlippool` is a call to invoke the sqlippool
-module. This module is responsible for assigning a free IP address into the
-`Your-IP-Address` reply attribute from the pool identified by `IP-Pool.Name`.
+The `IP-Pool.Name` control attribute is used in looking up addresses
+in the database.  The line containing `sqlippool` is a call to invoke
+the sqlippool module. This module is responsible for assigning a free
+IP address into the `Your-IP-Address` reply attribute from the pool
+identified by `IP-Pool.Name`.
 
-Here `IP-Pool.Name` is being set to a constant value (`local`) indicating
-that a single pool is to be used. If you have multiple pools, then replace this
-assignment with logic to map clients to the correct pool, as described below.
+Here `IP-Pool.Name` is being set to a constant value (`local`)
+indicating that a single pool is to be used. If you have multiple
+pools, then replace this assignment with logic to map clients to the
+correct pool, as described below.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

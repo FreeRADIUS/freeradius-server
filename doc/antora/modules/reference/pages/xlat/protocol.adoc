@@ -49,14 +49,15 @@ It returns the number of attributes which were decoded.
 
 .Output
 
-```
+----
 Relay-Agent-Information.Circuit-Id = 0xabcdef, Relay-Agent-Information.Remote-Id = 0x010203040506
 User-Name = "ABCD"
-```
+----
 
 == %PROTO.encode(_list_)
 
-Encodes _list_ as the named protocol.  The _list_ can also be a series of attributes.
+Encodes _list_ as the named protocol.  The _list_ can also be a series
+of attributes.
 
 The `PROTO.encode` expansion is automatically registered for every
 protocol which is used by the server.
@@ -80,9 +81,9 @@ data = %radius.encode(reply)
 
 .Output
 
-```
+----
 0x010641424344
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

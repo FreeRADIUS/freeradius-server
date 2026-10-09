@@ -98,9 +98,8 @@ The server also defines two related functions:
 
 === `%interpreter.load-balance.persist()`
 
-This function persists the current load-balance choice across
-multiple packets/ It is mainly useful for RADIUS proxying, when EAP
-is used.
+This function persists the current load-balance choice across multiple
+packets/ It is mainly useful for RADIUS proxying, when EAP is used.
 
 If the function is called from outside of a `load-balance` or
 `redundant-load-balance` section, then it does nothing.

@@ -10,11 +10,12 @@ map <module-name> "string" {
 
 The `map` section is one of the most useful new additions to version
 4.  It allows for the mapping of arbitrary information from a database
-to attributes inside of the server.
+    to attributes inside of the server.
 
 The map syntax is similar for all use-cases.  It consists of:
 
-<module-name>:: The name of the module which implements this particular map
+<module-name>:: The name of the module which implements this
+particular map
 
 "string":: A module-specific query string.  This string is usually a
 database query which returns one or more fields.
@@ -23,16 +24,16 @@ database query which returns one or more fields.
 taken from the database query.
 
 <op>:: The operator such as `=`, `:=`, etc. Any
-xref:unlang/edit.adoc#list-editing-ops[editing operators] defined for an
-xref:unlang/update.adoc[subrequest] statement is permissible.
+xref:unlang/edit.adoc#list-editing-ops[editing operators] defined for
+an xref:unlang/update.adoc[subrequest] statement is permissible.
 
-<field>:: The name of the field from the database. For SQL, the field names are
-usually column names.  For LDAP, the field names are usually LDAP attributes.
+<field>:: The name of the field from the database. For SQL, the field
+names are usually column names.  For LDAP, the field names are usually
+LDAP attributes.
 +
-The _<field>_ name should be enclosed in single quotes.
-When the right hand side is instead a double-quoted string, that
-string is expanded dynamically.  The resulting value is then taken as
-the field name.
+The _<field>_ name should be enclosed in single quotes. When the right
+hand side is instead a double-quoted string, that string is expanded
+dynamically.  The resulting value is then taken as the field name.
 
 If the `map` fails for any reason, then all of the results are
 discarded, and the `map` does not affect any server attributes.  For

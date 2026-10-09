@@ -1,4 +1,6 @@
-The following tables indicate which terms are good or bad to use in our documentation, both the developer documentation written inside the source code and the customer-facing pages.
+The following tables indicate which terms are good or bad to use in
+our documentation, both the developer documentation written inside the
+source code and the customer-facing pages.
 
 === Words and terms
 

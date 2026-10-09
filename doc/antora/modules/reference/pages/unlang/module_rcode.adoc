@@ -27,7 +27,6 @@ there is already a xref:unlang/timeout.adoc[timeout] keyword, which
 enforces a timeout on a section.  In order to force a `timeout` rcode,
 you should specify a `timeout` section with `0` as the timeout value.
 
-
 .Example of forcing reject
 [source,unlang]
 ----

@@ -6,7 +6,9 @@ VALUE <attribute-name> <name> <data>
 ----
 
 .Description
-The `VALUE` keyword defines name for a particular value of an xref:dictionary/attribute.adoc[ATTRIBUTE] or xref:dictionary/member.adoc[MEMBER].
+The `VALUE` keyword defines name for a particular value of an
+xref:dictionary/attribute.adoc[ATTRIBUTE] or
+xref:dictionary/member.adoc[MEMBER].
 
 In many cases, it is useful to refer to values by name, for the same
 reason it is useful to refer to attributes by name.
@@ -15,9 +17,11 @@ reason it is useful to refer to attributes by name.
 +
 It is not possible to define a `VALUE` for structural attributes, such
 as `tlv`, `struct`, `group`, etc.  It is also not possible to define a
-`VALUE` for `string` attributes, or for an xref:dictionary/alias.adoc[ALIAS].
+`VALUE` for `string` attributes, or for an
+xref:dictionary/alias.adoc[ALIAS].
 
-<name>:: The name of the `VALUE`.  It can be used instead of the `<data>`.
+<name>:: The name of the `VALUE`.  It can be used instead of the
+`<data>`.
 +
 Where an attribute has a `VALUE` defined, the `<name>` will be be
 printed instead of the corresponding `<data>`.  It is still possible

@@ -37,10 +37,10 @@ internal problem in the server.
 
 [NOTE]
 ====
-In versions before 4.0, the `disallow` rcode was called
-`userlock`. The terms `disallow` and `userlock` have an identical
-meaning. `disallow` will be returned in any instance where `userlock`
-was returned in v3.0.x or v3.2.x
+In versions before 4.0, the `disallow` rcode was called `userlock`.
+The terms `disallow` and `userlock` have an identical meaning.
+`disallow` will be returned in any instance where `userlock` was
+returned in v3.0.x or v3.2.x
 ====
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

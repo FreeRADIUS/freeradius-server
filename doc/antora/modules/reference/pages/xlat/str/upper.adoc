@@ -16,9 +16,9 @@ reply.Reply-Message := "uppercase of %{User-Name} is " + %str.upper(User-Name)
 
 .Output
 
-```
+----
 uppercase of bob is BOB
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -4,12 +4,13 @@ The following functions perform hashing.
 
 [WARNING]
 ====
-The server supports insecure hashing methods such as MD4, MD5 and SHA1. These
-functions are here for historical compatibility and completeness. They should
-not be used.
+The server supports insecure hashing methods such as MD4, MD5 and
+SHA1. These functions are here for historical compatibility and
+completeness. They should not be used.
 ====
 
-All of the hash functions take arbitrary data, and return binary data as ``octet``s.
+All of the hash functions take arbitrary data, and return binary data
+as ``octet``s.
 
 == List of Hash Functions
 
@@ -32,10 +33,10 @@ reply += {
 
 .Output
 
-```
+----
 The md5 of Caipirinha in octal is \024\204\013md||\230\243\3472\3703\330n\251
 The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
