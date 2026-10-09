@@ -536,6 +536,19 @@ done:
 	return 0;
 }
 
+/** Extract values from ClientHello extensions into pairs
+ *
+ * @param request	being processed.
+ * @param container	List to put pairs in.
+ * @param extension	data to parse.
+ * @param hlen		Length of "length" header in extension.
+ * @param dlen		Length of each data entry in extension.
+ * @param total_len	of extension.
+ * @param da		Attribute to create using extension values.
+ * @return
+ *   - 0 on success
+ *   - -1 on failure
+ */
 static int fr_tls_extension_decode(request_t *request, fr_pair_t *container, uint8_t const *extension,
 				   size_t hlen, size_t dlen, size_t total_len, fr_dict_attr_t const *da)
 {
@@ -551,15 +564,14 @@ static int fr_tls_extension_decode(request_t *request, fr_pair_t *container, uin
 	}
 
 	if (hlen == 1) {
-		fr_assert(da->type == FR_TYPE_UINT8);
 		extension_len = extension[0];
 	} else {
-		fr_assert(da->type == FR_TYPE_UINT16);
 		extension_len = (extension[0] << 8) + extension[1];
 	}
+	fr_assert(da->type == ((dlen == 1) ? FR_TYPE_UINT8 : FR_TYPE_UINT16));
 
-	if (extension_len * dlen + hlen > total_len) {
-		REDEBUG("Invalid length in %s extension", da->name);
+	if (extension_len + hlen > total_len) {
+		REDEBUG("Invalid length %zu in %s extension", extension_len, da->name);
 		return -1;
 	}
 
