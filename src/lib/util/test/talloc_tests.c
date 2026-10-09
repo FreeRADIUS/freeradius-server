@@ -1106,7 +1106,11 @@ static void test_talloc_aligned_array(void)
  */
 static size_t pool_chunk_footprint(size_t size)
 {
-	return ROUND_UP_POW2((size_t)talloc_hdr_size() + size, 16);
+	ssize_t hdr = talloc_hdr_size();
+
+	TEST_ASSERT(hdr > 0);
+
+	return ROUND_UP_POW2((size_t)hdr + size, 16);
 }
 
 static void test_talloc_pool_used(void)
