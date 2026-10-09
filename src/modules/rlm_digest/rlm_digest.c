@@ -427,6 +427,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 		RETURN_UNLANG_INVALID;
 	}
 
+#ifdef __COVERITY__
+	/*
+	 *	Coverity doesn't see the write through the
+	 *	dbuff, so later reports digest as uninitialised.
+	 */
+	memset(digest, 0, sizeof(digest));
+#endif
 	if (fr_base16_decode(NULL, &FR_DBUFF_TMP(&digest[0], sizeof(digest)),
 		       &FR_SBUFF_IN(vp->vp_strvalue, vp->vp_length), false) != (fr_slen_t)sizeof(digest)) {
 		RDEBUG2("Invalid text in Digest-Response");
