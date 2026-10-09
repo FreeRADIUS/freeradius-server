@@ -24,14 +24,55 @@ typedef struct {
 	uint64_t		freed;			//!< Count of tests in this run that were freed.
 } test_proto_stats_t;
 
+/** A request the muxer has written, waiting for the demuxer
+ *
+ * The muxer keeps written requests in memory, and writes one byte to the
+ * socket pair for each.  The demuxer takes one request off the list for
+ * each byte that comes back.  Writing the request pointers themselves
+ * through the socket would make every pointer the demuxer reads back
+ * untrusted data.
+ */
+typedef struct {
+	fr_dlist_t		entry;			//!< Entry in test_conn_t sent.
+	test_proto_request_t	*preq;			//!< Request that was written.
+} test_sent_t;
+
+typedef struct {
+	int			fd[2];			//!< Socket pair.  fd[1] loops data back to fd[0].
+	fr_dlist_head_t		sent;			//!< Requests written, in the order they were written.
+} test_conn_t;
+
 #define DEBUG_LVL_SET if (acutest_verbose_level_ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
+
+/** Write a request to the connection
+ *
+ * @return
+ *	- 1 if the request was written.
+ *	- 0 if the socket would block.
+ *	- -1 on error.
+ */
+static int test_conn_write(test_conn_t *tc, test_proto_request_t *preq)
+{
+	test_sent_t	*sent;
+	uint8_t		wake = 0;
+	ssize_t		slen;
+
+	slen = write(tc->fd[0], &wake, sizeof(wake));
+	if (slen <= 0) return slen;
+
+	MEM(sent = talloc(tc, test_sent_t));
+	sent->preq = preq;
+	fr_dlist_insert_tail(&tc->sent, sent);
+
+	return 1;
+}
 
 static void test_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
 	trunk_request_t	*treq;
 	size_t			count = 0;
-	int			fd = *(talloc_get_type_abort(conn->h, int));
-	ssize_t			slen;
+	test_conn_t		*tc = talloc_get_type_abort(conn->h, test_conn_t);
+	int			ret;
 
 	while (trunk_connection_pop_request(&treq, tconn) == 0) {
 		test_proto_request_t	*preq = treq->pub.preq;
@@ -48,10 +89,8 @@ static void test_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn, conn
 
 		if (acutest_verbose_level_ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
 
-		slen = write(fd, &preq, sizeof(preq));
-		if (slen < 0) return;
-		if (slen == 0) return;
-		if (slen < (ssize_t)sizeof(preq)) abort();
+		ret = test_conn_write(tc, preq);
+		if (ret <= 0) return;
 
 		trunk_request_signal_sent(treq);
 	}
@@ -62,8 +101,8 @@ static void test_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tcon
 {
 	trunk_request_t	*treq;
 	size_t			count = 0;
-	int			fd = *(talloc_get_type_abort(conn->h, int));
-	ssize_t			slen;
+	test_conn_t		*tc = talloc_get_type_abort(conn->h, test_conn_t);
+	int			ret;
 
 	/*
 	 *	For cancellation we just do
@@ -82,13 +121,12 @@ static void test_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tcon
 		}
 
 		if (acutest_verbose_level_ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
-		slen = write(fd, &preq, sizeof(preq));
-		if (slen < 0) {
+		ret = test_conn_write(tc, preq);
+		if (ret < 0) {
 			fr_perror("%s - %s", __FUNCTION__, fr_syserror(errno));
 			return;
 		}
-		if (slen == 0) return;
-		if (slen < (ssize_t)sizeof(preq)) abort();
+		if (ret == 0) return;
 
 		trunk_request_signal_cancel_sent(treq);
 	}
@@ -97,22 +135,19 @@ static void test_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tcon
 
 static void test_demux(UNUSED fr_event_list_t *el, UNUSED trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
-	int			fd = *(talloc_get_type_abort(conn->h, int));
+	test_conn_t		*tc = talloc_get_type_abort(conn->h, test_conn_t);
 	test_proto_request_t	*preq;
-	ssize_t			slen;
+	test_sent_t		*sent;
+	uint8_t			wake;
 
-	for (;;) {
-		slen = read(fd, &preq, sizeof(preq));
-		if (slen <= 0) break;
+	while (read(tc->fd[0], &wake, sizeof(wake)) > 0) {
+		sent = fr_dlist_pop_head(&tc->sent);
+		if (!fr_cond_assert(sent)) break;
 
-		if (acutest_verbose_level_ >= 3) printf("%s - Read %p (%zu)\n", __FUNCTION__, preq, (size_t)slen);
+		preq = sent->preq;
+		talloc_free(sent);
 
-		/*
-		 *	The pointer came from test_mux() or test_cancel_mux() through
-		 *	the socket pair, so use the type checked copy.
-		 */
-		TEST_CHECK(slen == sizeof(preq));
-		preq = talloc_get_type_abort(preq, test_proto_request_t);
+		if (acutest_verbose_level_ >= 3) printf("%s - Read %p\n", __FUNCTION__, preq);
 
 		if (preq->freed) continue;
 
@@ -163,7 +198,8 @@ static void _conn_notify(trunk_connection_t *tconn, connection_t *conn,
 			 fr_event_list_t *el,
 			 trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
-	int fd = *(talloc_get_type_abort(conn->h, int));
+	test_conn_t *tc = talloc_get_type_abort(conn->h, test_conn_t);
+	int fd = tc->fd[0];
 
 	switch (notify_on) {
 	case TRUNK_CONN_EVENT_NONE:
@@ -241,12 +277,12 @@ static void test_request_free(UNUSED request_t *request, void *preq, void *uctx)
  */
 static void _conn_io_loopback(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
-	int		*our_h = talloc_get_type_abort(uctx, int);
+	test_conn_t	*tc = talloc_get_type_abort(uctx, test_conn_t);
 	static uint8_t	buff[1024];
 	static size_t	to_write;
 	ssize_t		slen;
 
-	fr_assert(fd == our_h[1]);
+	fr_assert(fd == tc->fd[1]);
 
 	while (true) {
 		slen = read(fd, buff, sizeof(buff));
@@ -255,7 +291,7 @@ static void _conn_io_loopback(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 		to_write = (size_t)slen;
 
 		if (acutest_verbose_level_ >= 3) printf("%s - Read %zu bytes of data\n", __FUNCTION__, slen);
-		slen = write(our_h[1], buff, (size_t)to_write);
+		slen = write(tc->fd[1], buff, (size_t)to_write);
 		if (slen < 0) return;
 
 		if (slen < (ssize_t)to_write) {
@@ -272,14 +308,14 @@ static void _conn_io_loopback(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 
 static void _conn_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
-	int *our_h = talloc_get_type_abort(h, int);
+	test_conn_t *tc = talloc_get_type_abort(h, test_conn_t);
 
-	talloc_free_children(our_h);	/* Clear the IO handlers */
+	talloc_free_children(tc);	/* Clear the IO handlers, and any requests not read back */
 
-	close(our_h[0]);
-	close(our_h[1]);
+	close(tc->fd[0]);
+	close(tc->fd[1]);
 
-	talloc_free(our_h);
+	talloc_free(tc);
 }
 
 /** Insert I/O handlers that loop any data back round
@@ -287,12 +323,12 @@ static void _conn_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
  */
 static connection_state_t _conn_open(fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
-	int *our_h = talloc_get_type_abort(h, int);
+	test_conn_t *tc = talloc_get_type_abort(h, test_conn_t);
 
 	/*
 	 *	This always needs to be inserted
 	 */
-	TEST_CHECK(fr_event_fd_insert(our_h, NULL, el, our_h[1], _conn_io_loopback, NULL, NULL, our_h) == 0);
+	TEST_CHECK(fr_event_fd_insert(tc, NULL, el, tc->fd[1], _conn_io_loopback, NULL, NULL, tc) == 0);
 
 	return CONNECTION_STATE_CONNECTED;
 }
@@ -303,15 +339,16 @@ static connection_state_t _conn_open(fr_event_list_t *el, void *h, UNUSED void *
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _conn_init(void **h_out, connection_t *conn, UNUSED void *uctx)
 {
-	int *h;
+	test_conn_t *tc;
 
-	h = talloc_array(conn, int, 2);
-	socketpair(AF_UNIX, SOCK_STREAM, 0, h);
+	MEM(tc = talloc_zero(conn, test_conn_t));
+	fr_dlist_talloc_init(&tc->sent, test_sent_t, entry);
+	socketpair(AF_UNIX, SOCK_STREAM, 0, tc->fd);
 
-	(void) fr_nonblock(h[0]);
-	(void) fr_nonblock(h[1]);
-	connection_signal_on_fd(conn, h[0]);
-	*h_out = h;
+	(void) fr_nonblock(tc->fd[0]);
+	(void) fr_nonblock(tc->fd[1]);
+	connection_signal_on_fd(conn, tc->fd[0]);
+	*h_out = tc;
 
 	return CONNECTION_STATE_CONNECTING;
 }
@@ -470,11 +507,12 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _conn_init_no_signal(void **h_out, connection_t *conn, UNUSED void *uctx)
 {
-	int *h;
+	test_conn_t *tc;
 
-	h = talloc_array(conn, int, 2);
-	socketpair(AF_UNIX, SOCK_STREAM, 0, h);
-	*h_out = h;
+	MEM(tc = talloc_zero(conn, test_conn_t));
+	fr_dlist_talloc_init(&tc->sent, test_sent_t, entry);
+	socketpair(AF_UNIX, SOCK_STREAM, 0, tc->fd);
+	*h_out = tc;
 
 	return CONNECTION_STATE_CONNECTING;
 }
