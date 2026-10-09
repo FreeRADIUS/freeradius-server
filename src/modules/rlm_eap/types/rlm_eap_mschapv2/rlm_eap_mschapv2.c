@@ -333,9 +333,16 @@ static unlang_action_t mschap_resume(unlang_result_t *p_result, module_ctx_t con
 			if (n == 3) {
 				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
 					err, retry, buf);
-				if (unlikely(fr_base16_decode(NULL, &FR_DBUFF_TMP(data->auth_challenge, 16),
-							      &FR_SBUFF_IN_STR(buf), false) < 0)) {
+				if (unlikely(fr_base16_decode(NULL,
+							      &FR_DBUFF_TMP(data->auth_challenge,
+							      sizeof(data->auth_challenge)),
+							      &FR_SBUFF_IN_STR(buf),
+							      false) != (fr_slen_t)sizeof(data->auth_challenge))) {
 					REDEBUG("Failed parsing new challenge value %s", buf);
+				invalid:
+					fr_pair_list_free(&response);
+					eap_round->request->code = FR_EAP_CODE_FAILURE;
+					RETURN_UNLANG_INVALID;
 				}
 			} else {
 				RDEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
@@ -352,7 +359,7 @@ static unlang_action_t mschap_resume(unlang_result_t *p_result, module_ctx_t con
 	 */
 	if (fr_pair_list_empty(&response)) {
 		REDEBUG("No %s or %s attributes were found", attr_ms_chap2_success->name, attr_ms_chap_error->name);
-		RETURN_UNLANG_INVALID;
+		goto invalid;
 	}
 
 	/*
