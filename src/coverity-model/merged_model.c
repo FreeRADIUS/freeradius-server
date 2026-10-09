@@ -347,7 +347,14 @@ void *_talloc_get_type_abort(const void *ptr, const char *name, const char *loca
  * whether or not ef->locking is true, so the model takes and releases
  * ef->mutex unconditionally.
  */
+/*
+ * Field order matches the real struct exfile_s up to mutex, so mutex is at
+ * the same offset.  fr_time_delta_t and fr_time_t each wrap an int64_t.
+ */
 typedef struct exfile_s {
+	uint32_t	max_entries;
+	long long int	max_idle;
+	long long int	last_cleaned;
 	pthread_mutex_t	mutex;
 } exfile_t;
 

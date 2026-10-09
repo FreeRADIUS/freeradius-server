@@ -509,6 +509,14 @@ try_lock:
 
 	exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_RESERVE);
 
+	/*
+	 *	Every path here called lseek() on the fd at try_lock, which
+	 *	fails for an invalid fd and goes to error, so the fd is valid,
+	 *	and the caller only ever holds the mutex with an fd >= 0.
+	 */
+	fr_assert(ef->entries[i].fd >= 0);
+
+	/* coverity[missing_unlock] */
 	return ef->entries[i].fd;
 }
 
@@ -543,6 +551,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flag
 		return found;
 	}
 
+	/* coverity[missing_unlock] */
 	return exfile_open_lock(ef, filename, permissions, flags, offset);
 }
 
