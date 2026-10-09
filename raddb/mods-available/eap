@@ -118,7 +118,7 @@
 	#  More information about the various sections can be found in the
 	#  virtual server `sites-available/tls-session`.
 	#
-#		virtual_server = tls-session
+#	virtual_server = tls-session
 
 	#  auto_chain::
 	#
@@ -130,7 +130,7 @@
 	#  NOTE: When setting `auto_chain = no`, the server `chain {}`
 	#  section(s) below MUST include the full certificate chain.
 	#
-#		auto_chain = no
+#	auto_chain = no
 
 	#
 	#  chain:: A chain of certificates to present to the client
@@ -162,7 +162,7 @@
 		#  Most Linux systems use PEM format. Windows and other systems
 		#  usually use DER.
 		#
-#			format = "PEM"
+#		format = "PEM"
 
 		#
 		#  certificate_file:: File which contains the certificate presented
@@ -266,7 +266,7 @@
 		#  section will be used.
 		#  ====
 		#
-#			verify_mode = "hard"
+#		verify_mode = "hard"
 
 		#
 		#  include_root_ca:: Whether or not the root CA is included in the
@@ -293,12 +293,12 @@
 	#  _and_ have all of the CA keys for each type of certificate, then
 	#  multiple chains can be enabled simultaneously.
 	#
-##		chain ecc {
-##			certificate_file = ${certdir}/ecc/server.pem
-##			ca_file = ${certdir}/ecc/ca.pem
-##			private_key_password = whatever
-##			private_key_file = ${certdir}/ecc/server.key
-##		}
+##	chain ecc {
+##		certificate_file = ${certdir}/ecc/server.pem
+##		ca_file = ${certdir}/ecc/ca.pem
+##		private_key_password = whatever
+##		private_key_file = ${certdir}/ecc/server.key
+##	}
 
 	#
 	#  == Server certificate
@@ -351,10 +351,10 @@
 	#  prefixed string, or a quoted string.  OpenSSL accepts a key of up
 	#  to 512 bytes.
 	#
-##		psk {
-##			identity = "test"
-##			key = 0x0123456789abcdef0123456789abcdef
-##		}
+##	psk {
+##		identity = "test"
+##		key = 0x0123456789abcdef0123456789abcdef
+##	}
 
 	#
 	#  A `load psk` section looks the key up at runtime, in place of a
@@ -380,7 +380,7 @@
 	#
 	#  Setting the `cipher_suites` here forces PSK to be negotiated.
 	#
-#		cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+#	cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 
 	#
 	#  You can create the DH parameters by running the following
@@ -393,7 +393,7 @@
 	#  If this file isn't specified, then OpenSSL will automatically set
 	#  the correct DH parameters.
 	#
-#		dh_file = ${certdir}/dh
+#	dh_file = ${certdir}/dh
 
 	#
 	#  fragment_size:: Limit for size of EAP fragments.
@@ -409,7 +409,7 @@
 	#  of at least 1020 bytes! Many implementations will work with
 	#  smaller values, but it is not guaranteed.
 	#
-#		fragment_size = 1024
+#	fragment_size = 1024
 
 	#
 	#  ca_path:: Directory where additional CAs are located.
@@ -462,7 +462,7 @@
 	#  They are insecure and SHOULD NOT BE USED.
 	#  ====
 	#
-#		tls_max_version = 1.2
+#	tls_max_version = 1.2
 
 	#
 	#  tls_min_version:: Minimum TLS version we allow.
@@ -476,7 +476,7 @@
 	#  SSLv2 and SSLv3 are permanently disabled due to security issues.
 	#  ====
 	#
-#		tls_min_version = 1.2
+#	tls_min_version = 1.2
 
 	#
 	#  ecdh_curve:: Elliptical cryptography configuration.
@@ -498,7 +498,7 @@
 	#  These are placed in `session-state` so that they are accessible
 	#  throughout the authentication process.
 	#
-#		client_hello_parse = no
+#	client_hello_parse = no
 
 	#
 	#  verify:: Parameters for controlling client cert chain
@@ -551,7 +551,7 @@
 		#  It is recommended to leave mode as `all` except when debugging,
 		#  or in an emergency situation.
 		#
-#			mode = all
+#		mode = all
 
 		#
 		#  attribute_mode:: Which client certificates should be converted
@@ -599,7 +599,7 @@
 		#  session-ticket in the case of stateless session-resumption.
 		#  ====
 		#
-#			attribute_mode = client-and-issuer
+#		attribute_mode = client-and-issuer
 	}
 	#
 	#  === TLS Session resumption
@@ -691,7 +691,7 @@
 		#  Some clients such as wpa_supplicant do not allow session tickets
 		#  by default for TLS < 1.3.
 		#
-#			mode = auto
+#		mode = auto
 
 		#  name:: Name of the context used for TLS sessions.
 		#
@@ -714,7 +714,7 @@
 		#  provided here is first hashed with SHA256 before being passed to
 		#  OpenSSL.
 		#
-#			name = "%{EAP-Type}%interpreter('server')"
+#		name = "%{EAP-Type}%interpreter('server')"
 
 		#
 		#  lifetime:: The period for which a resumable session remains
@@ -723,7 +723,7 @@
 		#  Default is 24hrs in line with RFC 4346. RFC 8446 requires that
 		#  ticket lifetimes must not be more than 7 days.
 		#
-#			lifetime = 86400
+#		lifetime = 86400
 
 		#
 		#  require_extended_master_secret:: Only allow session resumption
@@ -739,14 +739,14 @@
 		#
 		#  WARNING: This attack is undetectable by the client.
 		#
-#			require_extended_master_secret = yes
+#		require_extended_master_secret = yes
 
 		#
 		#  require_perfect_forward_secrecy:: Only allow session resumption
 		#  if a cipher which would allow perfect forward secrecy has been
 		#  selected.
 		#
-#			require_perfect_forward_secrecy = no
+#		require_perfect_forward_secrecy = no
 
 		#
 		#  session_ticket_key:: Key used to encrypt stateless session
@@ -775,7 +775,7 @@
 		#  escalation, or if OpenSSL's ticket parsing code is less than
 		#  perfect, buffer overflow attacks.
 		#
-#			session_ticket_key = "super-secret-key"
+#		session_ticket_key = "super-secret-key"
 
 		#
 		#  [NOTE]
