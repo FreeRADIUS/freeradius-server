@@ -129,8 +129,8 @@ static void test_deferred_connect_success_calls_connected_cb(void)
 	 *	FreeBSD completes a loopback TCP handshake inside connect(), so the connect can
 	 *	finish at once (rcode 1).  Linux and macOS return EINPROGRESS and defer it (rcode 0).
 	 */
-	TEST_MSG("connect_full returned %d.  0 means deferred, 1 means connected at once, <0 means failed", rcode);
 	TEST_CHECK(rcode >= 0);
+	TEST_MSG("connect_full returned %d.  0 means deferred, 1 means connected at once, <0 means failed", rcode);
 	if (rcode < 0) goto done;
 
 	/*
@@ -160,6 +160,33 @@ done:
 	talloc_free(ctx);
 }
 
+/** See if the IPv6 loopback address can be used
+ *
+ *  Some hosts and containers turn IPv6 off.  The socket() or bind() fails there.
+ *
+ * @return
+ *	- 0 the IPv6 loopback address can be used.
+ *	- the errno from the socket() or bind() which failed.  The errno is saved before close() can
+ *	  change it.
+ */
+static int ipv6_loopback_usable(void)
+{
+	struct sockaddr_in6	sin6 = {
+					.sin6_family = AF_INET6,
+					.sin6_addr = IN6ADDR_LOOPBACK_INIT,
+				};
+	int			fd;
+	int			error = 0;
+
+	fd = socket(AF_INET6, SOCK_DGRAM, 0);
+	if (fd < 0) return errno;
+
+	if (bind(fd, (struct sockaddr *) &sin6, sizeof(sin6)) < 0) error = errno;
+	close(fd);
+
+	return error;
+}
+
 /** Read one packet through an unconnected UDP bio bound to the wildcard address
  *
  *  The local address of a bio bound to the wildcard address does not identify the address that a
@@ -172,28 +199,6 @@ done:
  *  messages.  If cbuf in fr_bio_fd_t is too small for both control messages, then the bio drops every
  *  packet.
  */
-/** See if the IPv6 loopback address can be used
- *
- *  Some hosts and containers turn IPv6 off.  The bind() fails there, and errno says why.
- */
-static bool ipv6_loopback_usable(void)
-{
-	struct sockaddr_in6	sin6 = {
-					.sin6_family = AF_INET6,
-					.sin6_addr = IN6ADDR_LOOPBACK_INIT,
-				};
-	int			fd;
-	bool			usable;
-
-	fd = socket(AF_INET6, SOCK_DGRAM, 0);
-	if (fd < 0) return false;
-
-	usable = (bind(fd, (struct sockaddr *) &sin6, sizeof(sin6)) == 0);
-	close(fd);
-
-	return usable;
-}
-
 static void recvfromto_test(int af)
 {
 	TALLOC_CTX		*ctx = talloc_init_const("test");
@@ -208,9 +213,10 @@ static void recvfromto_test(int af)
 	ssize_t			rcode;
 	int			fd = -1;
 	struct timeval		recv_timeout = { .tv_sec = 5 };
+	int			error;
 
-	if ((af == AF_INET6) && !ipv6_loopback_usable()) {
-		TEST_SKIP("the IPv6 loopback address is not available: %s", fr_syserror(errno));
+	if ((af == AF_INET6) && ((error = ipv6_loopback_usable()) != 0)) {
+		TEST_SKIP("the IPv6 loopback address is not available: %s", fr_syserror(error));
 		talloc_free(ctx);
 		return;
 	}
@@ -249,9 +255,13 @@ static void recvfromto_test(int af)
 	TEST_CHECK(fd >= 0);
 	if (fd < 0) goto done;
 
+	/*
+	 *	A failed TEST_CHECK() calls printf(), which may change errno, so save errno first.
+	 */
 	rcode = sendto(fd, "x", 1, 0, (struct sockaddr *) &to, to_len);
+	error = errno;
 	TEST_CHECK(rcode == 1);
-	TEST_MSG("sendto failed: %s", fr_syserror(errno));
+	TEST_MSG("sendto failed: %s", fr_syserror(error));
 	if (rcode != 1) goto done;
 
 	/*
