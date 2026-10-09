@@ -767,7 +767,16 @@ make_digest:
 
 		pthread_mutex_lock(&inst->mutable->mutex);
 		fr_rb_find((void **)&entry, &inst->mutable->cache, &my_entry);
-		if (!entry) {
+		if (stage == 0) {
+			/*
+			 *	The PSK came from the cache, so there's nothing new
+			 *	to save.  Another thread may have evicted or replaced
+			 *	the entry since we read it, so only refresh the entry
+			 *	if it still holds the PMK which matched.
+			 */
+			if (entry && (memcmp(entry->pmk, pmk, sizeof(entry->pmk)) != 0)) entry = NULL;
+
+		} else if (!entry) {
 			/*
 			 *	Maybe there are oo many entries in the
 			 *	cache.  If so, delete the oldest one.
@@ -804,9 +813,11 @@ make_digest:
 			RDEBUG3("Cache entry saved");
 		}
 
-		entry->expires = fr_time_add(fr_time(), inst->cache_lifetime);
-		if (fr_dlist_entry_in_list(&entry->dlist)) fr_dlist_remove(&inst->mutable->head, entry);
-		fr_dlist_insert_tail(&inst->mutable->head, entry);
+		if (entry) {
+			entry->expires = fr_time_add(fr_time(), inst->cache_lifetime);
+			if (fr_dlist_entry_in_list(&entry->dlist)) fr_dlist_remove(&inst->mutable->head, entry);
+			fr_dlist_insert_tail(&inst->mutable->head, entry);
+		}
 		pthread_mutex_unlock(&inst->mutable->mutex);
 
 		/*
