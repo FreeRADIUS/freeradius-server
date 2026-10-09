@@ -274,9 +274,7 @@ static inline void fr_pool_trigger(fr_pool_t *pool, char const *event)
  * Walks over the list of connections searching for a specified connection
  * handle and returns the first connection that contains that pointer.
  *
- * @note Will lock mutex and only release mutex if connection handle
- * is not found, so will usually return will mutex held.
- * @note Must be called with the mutex free.
+ * @note Must be called with the mutex held.
  *
  * @param[in] pool	to search in.
  * @param[in] conn	handle to search for.
@@ -287,10 +285,6 @@ static inline void fr_pool_trigger(fr_pool_t *pool, char const *event)
 static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 {
 	fr_pool_connection_t *this;
-
-	if (!pool || !conn) return NULL;
-
-	pthread_mutex_lock(&pool->mutex);
 
 	/*
 	 *	FIXME: This loop could be avoided if we passed a 'void
@@ -311,7 +305,6 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 		}
 	}
 
-	pthread_mutex_unlock(&pool->mutex);
 	return NULL;
 }
 
@@ -641,7 +634,7 @@ static int connection_manage(fr_pool_t *pool, request_t *request, fr_pool_connec
  * @note Will only run checks the first time it's called in a given second,
  * to throttle connection spawning/closing.
  * @note Will only close connections not in use.
- * @note Must be called with the mutex held, will release mutex before returning.
+ * @note Must be called with the mutex held.  Returns with the mutex held.
  *
  * @param[in] pool	to manage.
  * @param[in] request	The current request.
@@ -653,10 +646,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	fr_time_t		now = fr_time();
 	fr_pool_connection_t	*this, *next;
 
-	if (fr_time_delta_lt(fr_time_sub(now, pool->state.last_checked), fr_time_delta_from_sec(1))) {
-		pthread_mutex_unlock(&pool->mutex);
-		return 1;
-	}
+	if (fr_time_delta_lt(fr_time_sub(now, pool->state.last_checked), fr_time_delta_from_sec(1))) return 1;
 
 	/*
 	 *	Get "real" number of connections, and count pending
@@ -730,10 +720,8 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	close_connection:
 		/*
 		 *	Don't close connections too often, in order to
-		 *	prevent flapping. Coverity doesn't notice that
-		 * 	all callers have the lock, so we annotate the issue.
+		 *	prevent flapping.
 		 */
-		/* coverity[missing_lock] */
 		if (fr_time_lt(now, fr_time_add(pool->state.last_spawned, pool->delay_interval))) goto manage_connections;
 
 		/*
@@ -769,10 +757,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	if (spare < pool->spare) {
 		/*
 		 *	Don't open too many pending connections.
-		 *	Again, coverity doesn't realize all callers have the lock,
-		 *	so we must annotate here as well.
 		 */
-		/* coverity[missing_lock] */
 		if (pool->state.pending >= pool->pending_window) goto manage_connections;
 
 		/*
@@ -808,8 +793,6 @@ manage_connections:
 	pool->state.last_checked = now;
 
 done:
-	pthread_mutex_unlock(&pool->mutex);
-
 	return 1;
 }
 
@@ -1409,8 +1392,14 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	fr_time_delta_t		held;
 	bool			trigger_min = false, trigger_max = false;
 
+	if (!conn) return;
+
+	pthread_mutex_lock(&pool->mutex);
 	this = connection_find(pool, conn);
-	if (!this) return;
+	if (!this) {
+		pthread_mutex_unlock(&pool->mutex);
+		return;
+	}
 
 	this->in_use = false;
 
@@ -1466,6 +1455,7 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	 *	connections, go manage the pool && clean some up.
 	 */
 	connection_check(pool, request);
+	pthread_mutex_unlock(&pool->mutex);
 
 	if (trigger_min) fr_pool_trigger(pool, "min");
 	if (trigger_max) fr_pool_trigger(pool, "max");
@@ -1502,16 +1492,18 @@ void *fr_pool_connection_reconnect(fr_pool_t *pool, request_t *request, void *co
 
 	if (!pool || !conn) return NULL;
 
-	/*
-	 *	If connection_find is successful the pool is now locked
-	 */
+	pthread_mutex_lock(&pool->mutex);
 	this = connection_find(pool, conn);
-	if (!this) return NULL;
+	if (!this) {
+		pthread_mutex_unlock(&pool->mutex);
+		return NULL;
+	}
 
 	ROPTIONAL(RINFO, INFO, "Deleting inviable connection (%" PRIu64 ")", this->number);
 
 	connection_close_internal(pool, this);
-	connection_check(pool, request);			/* Whilst we still have the lock (will release the lock) */
+	connection_check(pool, request);
+	pthread_mutex_unlock(&pool->mutex);
 
 	/*
 	 *	Return an existing connection or spawn a new one.
@@ -1537,8 +1529,14 @@ int fr_pool_connection_close(fr_pool_t *pool, request_t *request, void *conn)
 {
 	fr_pool_connection_t *this;
 
+	if (!conn) return 0;
+
+	pthread_mutex_lock(&pool->mutex);
 	this = connection_find(pool, conn);
-	if (!this) return 0;
+	if (!this) {
+		pthread_mutex_unlock(&pool->mutex);
+		return 0;
+	}
 
 	/*
 	 *	Record the last time a connection was closed
@@ -1549,5 +1547,7 @@ int fr_pool_connection_close(fr_pool_t *pool, request_t *request, void *conn)
 
 	connection_close_internal(pool, this);
 	connection_check(pool, request);
+	pthread_mutex_unlock(&pool->mutex);
+
 	return 1;
 }
