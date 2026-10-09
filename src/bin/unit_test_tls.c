@@ -62,6 +62,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/thread.h>
 
 #include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/tls/dtls.h>
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/tls/version.h>
 #include <freeradius-devel/tls/connection.h>
@@ -1430,6 +1431,19 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	 *	unlang_interpret_mark_runnable() acts only on a
 	 *	yielded frame.
 	 */
+	/*
+	 *	A datagram connection runs its own retransmission timer.  It
+	 *	has no event loop of its own, so it is given a sub-list of
+	 *	the one this program already runs: the timers are freed with
+	 *	the connection, and the event loop runs them without knowing
+	 *	what they are for.
+	 */
+	if ((utt->conf.socket_type == SOCK_DGRAM) &&
+	    (fr_dtls_timer_list_set(utt->conn, utt->el->tl) < 0)) {
+		PERROR("Failed giving the connection a timer list");
+		goto finish;
+	}
+
 	if (fr_tls_connection_push(utt->conn) < 0) {
 		PERROR("Failed starting new TLS connection");
 		goto finish;

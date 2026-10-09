@@ -53,7 +53,7 @@ int fr_dtls_session_init(fr_tls_session_t *tls_session, fr_tls_conf_t const *con
 	 *	has no answer, and OpenSSL has to be told not to ask and
 	 *	given the figure instead.
 	 *
-	 *	Without both of these the handshake does not complete.
+	 <*	Without both of these the handshake does not complete.
 	 */
 	SSL_set_options(tls_session->ssl, SSL_OP_NO_QUERY_MTU);
 
@@ -79,6 +79,112 @@ int fr_dtls_session_init(fr_tls_session_t *tls_session, fr_tls_conf_t const *con
 		fr_strerror_const("Failed initialising the datagram queue");
 		return -1;
 	}
+
+	return 0;
+}
+
+/** The retransmission timer has fired
+ *
+ * OpenSSL holds the flight it last sent, and DTLSv1_handle_timeout() puts it
+ * back into the outgoing buffer with fresh record sequence numbers.  Writing
+ * it is just like any other write.
+ *
+ * @param[in] tl	the timer fired on.  Unused.
+ * @param[in] now	Unused.
+ * @param[in] uctx	the fr_tls_connection_t.
+ */
+static void _fr_dtls_timer_expired(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
+	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
+	request_t		*request = conn->request;
+
+	ROPTIONAL(RDEBUG2, DEBUG2, "%s - DTLS retransmission timer fired", conn->name);
+
+	/*
+	 *	A return of < 0 means the handshake has given up, which
+	 *	OpenSSL reports rather than this code deciding it.
+	 */
+	if (DTLSv1_handle_timeout(conn->tls_session->ssl) < 0) {
+		fr_tls_log_perror(request, "DTLS handshake timed out");
+		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_TLS);
+		return;
+	}
+
+	if (fr_tls_connection_write(conn) < 0) {
+		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
+		return;
+	}
+
+	/*
+	 *	The interval doubles on each retransmission, so the next one
+	 *	is not the same as the last one.
+	 */
+	fr_dtls_timer_update(conn);
+}
+
+/** Arm or disarm the retransmission timer
+ *
+ * OpenSSL changes the timer value on every round.  When there's
+ * nothing outstanding, the timer is disarmed.
+ *
+ * @param[in] conn	to update the timer for.
+ */
+void fr_dtls_timer_update(fr_tls_connection_t *conn)
+{
+	request_t	*request = conn->request;
+	struct timeval	tv;
+
+	/*
+	 *	A stream connection has no timer list, and nothing to time.
+	 */
+	if (!conn->tl) return;
+
+	/*
+	 *	Anything other than 1 means no timer is wanted.
+	 */
+	if (DTLSv1_get_timeout(conn->tls_session->ssl, &tv) != 1) {
+		FR_TIMER_DELETE(&conn->timer_ev);
+		return;
+	}
+
+	FR_TIMER_DELETE(&conn->timer_ev);
+
+	if (fr_timer_in(conn, conn->tl, &conn->timer_ev, fr_time_delta_from_timeval(&tv),
+			false, _fr_dtls_timer_expired, conn) < 0) {
+		ROPTIONAL(RERROR, ERROR, "%s - Failed arming the DTLS retransmission timer", conn->name);
+		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
+	}
+}
+
+/** Set the DTLS retransmission timer list for this connection.
+ *
+ * The library runs its own timers rather than running
+ * application-layer callbacks.  The only actions taken by a callback
+ * would be to set the timer, or send a packet.  And we can do that
+ * ourselves once we have a timer list.
+ *
+ * There will arguably only ever be one timer event, so we don't
+ * _technically_ need a separate timer list for DTLS.  But having a
+ * separate timer list makes it easier for the application use it for
+ * retransmitting application-layer data.
+ *
+ *  Once the DTLS connection is established, the TLS library no longer
+ *  uses conn->tl or conn->timer_ev.
+ *
+ * @param[in] conn	to give a timer list to.
+ * @param[in] parent	list to allocate the sub-list from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dtls_timer_list_set(fr_tls_connection_t *conn, fr_timer_list_t *parent)
+{
+	fr_assert(conn->tls_session->socket_type == SOCK_DGRAM);
+
+	if (conn->tl) return 0;
+
+	conn->tl = fr_timer_list_lst_alloc(conn, parent);
+	if (!conn->tl) return -1;
 
 	return 0;
 }

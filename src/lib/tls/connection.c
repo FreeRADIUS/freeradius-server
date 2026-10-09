@@ -38,6 +38,7 @@
 #include "base.h"
 #include "ticket.h"
 #include "connection.h"
+#include "dtls.h"
 #include "log.h"
 
 fr_table_num_indexed_t const fr_tls_connection_state_table[] = {
@@ -850,6 +851,15 @@ void fr_tls_connection_process(fr_tls_connection_t *conn)
 	 *	connection`.
 	 */
 	if (fr_tls_connection_write(conn) < 0) fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
+
+	/*
+	 *	OpenSSL knows when it next wants attention, and the answer
+	 *	changes after every round, so the timer is updated after
+	 *	every round.  fr_dtls_timer_update() does nothing when the
+	 *	connection has no timer list, which is how a stream
+	 *	connection says it has nothing to time.
+	 */
+	fr_dtls_timer_update(conn);
 
 	tls_connection_check(conn);
 }

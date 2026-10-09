@@ -33,6 +33,7 @@ RCSIDH(tls_connection_h, "$Id$")
 #include "openssl_user_macros.h"
 
 #include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/util/timer.h>
 
 #include "conf.h"
 #include "session.h"
@@ -146,6 +147,10 @@ struct fr_tls_connection_s {
 
 	fr_tls_connection_fail_t failed;	       	//!< why the connection failed
 	int			error;			//!< for system call errors
+
+	fr_timer_list_t		*tl;			//!< DTLS retransmission timer list
+	fr_timer_t		*timer_ev;		//!< DTLS retransmission timer event
+							///< can be re-used by the application for application data
 
 	fr_tls_connection_io_state_t io_state;		//!< IO state, set by the application
 
