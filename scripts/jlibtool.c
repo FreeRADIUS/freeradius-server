@@ -837,6 +837,44 @@ static char const *flatten_count_chars(count_chars *cc, char delim)
 	return newval;
 }
 
+/** Quote one argument of an execute mode command for the shell
+ *
+ */
+static char *shell_quote(char const *arg)
+{
+	char const	*s;
+	char		*out, *d;
+	size_t		quotes = 0;
+	bool		plain = (*arg != '\0');
+
+	for (s = arg; *s; s++) {
+		if (*s == '\'') quotes++;
+		if (!isalnum((unsigned char)*s) && !strchr("@%+=:,./_-", *s)) plain = false;
+	}
+
+	out = lt_malloc(strlen(arg) + (quotes * 3) + 3);
+
+	if (plain) {
+		strcpy(out, arg);
+		return out;
+	}
+
+	d = out;
+	*d++ = '\'';
+	for (s = arg; *s; s++) {
+		if (*s == '\'') {
+			memcpy(d, "'\\''", 4);
+			d += 4;
+			continue;
+		}
+		*d++ = *s;
+	}
+	*d++ = '\'';
+	*d = '\0';
+
+	return out;
+}
+
 static char *shell_esc(char const *str)
 {
 	int in_quote = 0;
@@ -1163,7 +1201,19 @@ static int run_command(command_t *cmd, count_chars *cc)
 	}
 
 	raw = flatten_count_chars(&cctmp, ' ');
-	command = shell_esc(raw);
+
+	/*
+	 *	Execute mode quoted every argument with shell_quote(), so the
+	 *	command is already what the shell must see.  shell_esc() would
+	 *	add backslashes, which the shell leaves in place inside single
+	 *	quotes.
+	 */
+	if (cmd->mode == MODE_EXECUTE) {
+		command = lt_malloc(strlen(raw) + 1);
+		strcpy(command, raw);
+	} else {
+		command = shell_esc(raw);
+	}
 
 	memcpy(&tmp, &raw, sizeof(tmp));
 	free(tmp);
@@ -3175,24 +3225,7 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 		arg_used = 1;
 
 		if (cmd->mode == MODE_EXECUTE) {
-			if (strchr(arg, ' ') == NULL) {
-				push_count_chars(cmd->arglist, arg);
-
-			} else {
-				size_t len;
-				char *sp;
-
-				len = strlen(arg);
-
-				sp = lt_malloc(len + 3);
-				sp[0] = '\'';
-				memcpy(sp + 1, arg, len);
-				sp[len + 1] = '\'';
-				sp[len + 2] = '\0';
-
-				push_count_chars(cmd->arglist, sp);
-			}
-
+			push_count_chars(cmd->arglist, shell_quote(arg));
 			continue;
 		}
 
