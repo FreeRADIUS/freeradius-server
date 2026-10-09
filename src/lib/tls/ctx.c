@@ -426,9 +426,9 @@ int tls_ctx_version_set_dtls(SSL_CTX *ctx, fr_tls_conf_t const *conf)
 }
 
 static inline CC_HINT(always_inline)
-int tls_ctx_version_set(UNUSED int *ctx_options, SSL_CTX *ctx, fr_tls_conf_t const *conf, int socket_type)
+int tls_ctx_version_set(UNUSED int *ctx_options, SSL_CTX *ctx, fr_tls_conf_t const *conf)
 {
-	if (socket_type == SOCK_DGRAM) return tls_ctx_version_set_dtls(ctx, conf);
+	if (conf->socket_type == SOCK_DGRAM) return tls_ctx_version_set_dtls(ctx, conf);
 
 	/*
 	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
@@ -530,33 +530,34 @@ int tls_ctx_version_set(UNUSED int *ctx_options, SSL_CTX *ctx, fr_tls_conf_t con
 SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
-	int		socket_type = conf->socket_type;
 	X509_STORE	*verify_store = NULL;
 	int		ctx_options = 0;
 	int		mode= SSL_MODE_ASYNC;
 
-	/*
-	 *	If socket_type is unset, we default to SOCK_STREAM.
-	 */
-	if (socket_type == 0) socket_type = SOCK_STREAM;
 
 	/*
 	 *	SOCK_SEQPACKET is refused rather than guessed at: OpenSSL has
 	 *	DTLS over SCTP, and nothing here has been written or tested
 	 *	for it.
 	 */
-	switch (socket_type) {
+	switch (conf->socket_type) {
+
+	/*
+	 *	Zero means the application never set it, which every caller other than DTLS does.  For EAP,
+	 *	the configuration is in module structure, and is mprotect()'d.
+	 */
+	case 0:
 	case SOCK_STREAM:
 	case SOCK_DGRAM:
 		break;
 
 	default:
 		ERROR("Unsupported socket type %d for a TLS context, expected SOCK_STREAM (%d) "
-		      "or SOCK_DGRAM (%d)", socket_type, SOCK_STREAM, SOCK_DGRAM);
+		      "or SOCK_DGRAM (%d)", conf->socket_type, SOCK_STREAM, SOCK_DGRAM);
 		return NULL;
 	}
 
-	ctx = SSL_CTX_new((socket_type == SOCK_DGRAM) ? DTLS_method() : TLS_method());
+	ctx = SSL_CTX_new((conf->socket_type == SOCK_DGRAM) ? DTLS_method() : TLS_method());
 	if (!ctx) {
 		fr_tls_log_perror(NULL, "Failed creating TLS context");
 		return NULL;
@@ -790,7 +791,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 #ifdef PSK_MAX_IDENTITY_LEN
 post_ca:
 #endif
-	if (tls_ctx_version_set(&ctx_options, ctx, conf, socket_type) < 0) goto error;
+	if (tls_ctx_version_set(&ctx_options, ctx, conf) < 0) goto error;
 
 	/*
 	 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
@@ -943,7 +944,7 @@ post_ca:
 	 *	the config.  This is simpler than adding more options
 	 *	to the ctx_init() function.
 	 */
-	if (socket_type == SOCK_DGRAM) {
+	if (conf->socket_type == SOCK_DGRAM) {
 		if (conf->cache.mode == FR_TLS_TICKET_STATELESS) {
 			ERROR("session { mode = \"stateless\" } is not supported with DTLS.  "
 			      "Use \"stateful\" or \"disabled\"");
