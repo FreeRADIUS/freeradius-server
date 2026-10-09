@@ -336,11 +336,99 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)	}
 	return 0;
 }
 
+/** Map the configured version numbers onto the DTLS ones
+ *
+ * DTLS has 1.0 and 1.2, and nothing else.  There is no DTLS 1.1, and this
+ * OpenSSL has no DTLS 1.3: dtls1.h defines DTLS_MAX_VERSION as
+ * DTLS1_2_VERSION.
+ *
+ * The version numbers also run backwards.  DTLS1_VERSION is 0xFEFF and
+ * DTLS1_2_VERSION is 0xFEFD, this function fixes that mapping.
+ *
+ * @param[in] ctx	to configure.
+ * @param[in] conf	to read the versions from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
 static inline CC_HINT(always_inline)
-int tls_ctx_version_set(
-			UNUSED
-			int *ctx_options, SSL_CTX *ctx, fr_tls_conf_t const *conf)
+int tls_ctx_version_set_dtls(SSL_CTX *ctx, fr_tls_conf_t const *conf)
 {
+	int version;
+
+	if (conf->tls_max_version > (float) 0.0) {
+		if (conf->tls_min_version > conf->tls_max_version) {
+			ERROR("tls_min_version (%f) must be <= tls_max_version (%f)",
+			      (double)conf->tls_min_version, (double)conf->tls_max_version);
+			return -1;
+		}
+
+		/*
+		 *	1.3 and above allow more than exists, and the most
+		 *	recent DTLS there is satisfies them.
+		 */
+		if (conf->tls_max_version >= (float) 1.2) {
+			version = DTLS1_2_VERSION;
+
+		} else if (conf->tls_max_version >= (float) 1.1) {
+			ERROR("There is no DTLS 1.1.  Set tls_max_version to 1.0 or 1.2");
+			return -1;
+
+		} else if (conf->tls_max_version >= (float) 1.0) {
+			version = DTLS1_VERSION;
+			WARN("DTLS 1.0 is insecure and SHOULD NOT be used");
+			WARN("tls_max_version SHOULD be 1.2");
+
+		} else {
+			ERROR("tls_max_version must be >= 1.0");
+			return -1;
+		}
+
+		if (!SSL_CTX_set_max_proto_version(ctx, version)) {
+			fr_tls_log_perror(NULL, "Failed setting DTLS maximum version");
+			return -1;
+		}
+	}
+
+	/*
+	 *	A minimum which does not exist cannot be rounded down to one
+	 *	which does, as that would hand the administrator a weaker
+	 *	connection than the one asked for.
+	 */
+	if (conf->tls_min_version >= (float) 1.3) {
+		ERROR("DTLS 1.3 is not supported by this version of OpenSSL");
+		return -1;
+
+	} else if (conf->tls_min_version >= (float) 1.2) {
+		version = DTLS1_2_VERSION;
+
+	} else if (conf->tls_min_version >= (float) 1.1) {
+		ERROR("There is no DTLS 1.1.  Set tls_min_version to 1.0 or 1.2");
+		return -1;
+
+	} else if (conf->tls_min_version >= (float) 1.0) {
+		version = DTLS1_VERSION;
+		WARN("DTLS 1.0 is insecure and SHOULD NOT be used");
+		WARN("tls_min_version SHOULD be 1.2");
+
+	} else {
+		ERROR("tls_min_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
+		return -1;
+	}
+
+	if (!SSL_CTX_set_min_proto_version(ctx, version)) {
+		fr_tls_log_perror(NULL, "Failed setting DTLS minimum version");
+		return -1;
+	}
+
+	return 0;
+}
+
+static inline CC_HINT(always_inline)
+int tls_ctx_version_set(UNUSED int *ctx_options, SSL_CTX *ctx, fr_tls_conf_t const *conf, int socket_type)
+{
+	if (socket_type == SOCK_DGRAM) return tls_ctx_version_set_dtls(ctx, conf);
+
 	/*
 	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
 	 *
@@ -456,31 +544,22 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client, int socket_typ
 	int		mode= SSL_MODE_ASYNC;
 
 	/*
-	 *	SOCK_DGRAM is refused rather than accepted and then ignored.
-	 *	Until this function selects DTLS_method(), accepting it would
-	 *	hand a datagram caller a context which does TLS, and the
-	 *	failure would appear much later as a handshake which makes no
-	 *	sense.
-	 *
-	 *	SOCK_SEQPACKET is refused for its own reason: OpenSSL has
+	 *	SOCK_SEQPACKET is refused rather than guessed at: OpenSSL has
 	 *	DTLS over SCTP, and nothing here has been written or tested
 	 *	for it.
 	 */
 	switch (socket_type) {
 	case SOCK_STREAM:
+	case SOCK_DGRAM:
 		break;
 
-	case SOCK_DGRAM:
-		ERROR("DTLS is not yet supported");
-		return NULL;
-
 	default:
-		ERROR("Unsupported socket type %d for a TLS context, "
-		      "expected SOCK_STREAM (%d)", socket_type, SOCK_STREAM);
+		ERROR("Unsupported socket type %d for a TLS context, expected SOCK_STREAM (%d) "
+		      "or SOCK_DGRAM (%d)", socket_type, SOCK_STREAM, SOCK_DGRAM);
 		return NULL;
 	}
 
-	ctx = SSL_CTX_new(TLS_method());
+	ctx = SSL_CTX_new((socket_type == SOCK_DGRAM) ? DTLS_method() : TLS_method());
 	if (!ctx) {
 		fr_tls_log_perror(NULL, "Failed creating TLS context");
 		return NULL;
@@ -714,7 +793,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client, int socket_typ
 #ifdef PSK_MAX_IDENTITY_LEN
 post_ca:
 #endif
-	if (tls_ctx_version_set(&ctx_options, ctx, conf) < 0) goto error;
+	if (tls_ctx_version_set(&ctx_options, ctx, conf, socket_type) < 0) goto error;
 
 	/*
 	 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
@@ -857,6 +936,26 @@ post_ca:
 		 *	with the negotiated symmetric cipher key.
 		 */
 		SSL_CTX_set_dh_auto(ctx, 1);
+	}
+
+	/*
+	 *	DTLS doesn't support stateless session resumption.  So
+	 *	we forbid that.
+	 *
+	 *	For "auto", we do a horrible hack, and just rewrite
+	 *	the config.  This is simpler than adding more options
+	 *	to the ctx_init() function.
+	 */
+	if (socket_type == SOCK_DGRAM) {
+		if (conf->cache.mode == FR_TLS_TICKET_STATELESS) {
+			ERROR("session { mode = \"stateless\" } is not supported with DTLS.  "
+			      "Use \"stateful\" or \"disabled\"");
+			goto error;
+		}
+
+		if (conf->cache.mode == FR_TLS_TICKET_AUTO) {
+			UNCONST(fr_tls_conf_t *, conf)->cache.mode = FR_TLS_TICKET_STATEFUL;
+		}
 	}
 
 	/*
