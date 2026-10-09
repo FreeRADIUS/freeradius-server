@@ -38,6 +38,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "base.h"
 #include "utils.h"
+#include "dtls.h"
 #include "log.h"
 #include "cert.h"
 
@@ -951,6 +952,19 @@ post_ca:
 
 		if (conf->cache.mode == FR_TLS_TICKET_AUTO) {
 			UNCONST(fr_tls_conf_t *, conf)->cache.mode = FR_TLS_TICKET_STATEFUL;
+		}
+
+		/*
+		 *	A DTLS server answers the first ClientHello with a HelloVerifyRequest that carries a
+		 *	cookie.  The cookie prevents an attacker from forging DTLS packets which would
+		 *	otherwise be able to affect the connection.
+		 *
+		 *	The client simply echoes back any cookie that it received.
+		 */
+		if (!client) {
+			SSL_CTX_set_options(ctx, SSL_OP_COOKIE_EXCHANGE);
+			SSL_CTX_set_cookie_generate_cb(ctx, fr_dtls_cookie_generate_cb);
+			SSL_CTX_set_cookie_verify_cb(ctx, fr_dtls_cookie_verify_cb);
 		}
 	}
 

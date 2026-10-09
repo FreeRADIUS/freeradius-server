@@ -28,9 +28,140 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
 
+#include <openssl/hmac.h>
+#include <openssl/rand.h>
+
 #include "base.h"
 #include "dtls.h"
 #include "log.h"
+#include "strerror.h"
+
+/** The key the DTLS cookies are generated with
+ *
+ * One per process, generated at startup.  Rotating it would invalidate
+ * outstanding cookies, which costs a client one extra round trip, and nothing
+ * yet needs that.
+ */
+static uint8_t		dtls_cookie_key[32];
+
+/** Build the cookie from #fr_socket_t in the #fr_tls_connection_t
+ *
+ * RFC 6347 section 4.2.1 suggests this construction:
+ *
+ *	Cookie = HMAC(Secret, Client-IP, Client-Parameters)
+ *
+ * The application hands DTLS a #fr_socket_t, which identifies a particular network connection.  This should
+ * be the same for all DTLS calls, and should point to something which has a lifetime shared with the DTLS
+ * connection.
+ *
+ * OpenSSL does not do this work itself.  It's two pairs of cookie callbacks differ.  For the stateless pair,
+ * used by SSL_stateless(), "the integrity of the entire cookie ... is automatically verified by HMAC", while
+ * for this pair (used for the DTLS HelloVerifyRequest), "the integrity of the cookie is not verified by
+ * OpenSSL.  This is an application responsibility."
+ *
+ * @param[in] ssl	the cookie is for.
+ * @param[out] out	buffer of at least EVP_MAX_MD_SIZE octets.
+ * @param[out] out_len	how much of `out` was written.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dtls_cookie_hmac(SSL *ssl, uint8_t *out, unsigned int *out_len)
+{
+	fr_tls_session_t	*tls_session = fr_tls_session(ssl);
+
+	/*
+	 *	Nothing identifies the peer, so there is nothing to bind the
+	 *	cookie to, and a cookie which proves nothing is worse than
+	 *	refusing to make one.
+	 */
+	if (!tls_session->cookie) {
+		fr_strerror_const("No cookie value set on the session");
+		return -1;
+	}
+
+	/*
+	 *	Hash the entire #fr_socket_t, as the application should set this once, and then never change
+	 *	it.  This method means that we do exactly the same work for IPv4, Ipv6, and (potentially) Unix
+	 *	sockets with datagrams.
+	 */
+	if (!HMAC(EVP_sha256(), dtls_cookie_key, sizeof(dtls_cookie_key),
+		  (uint8_t const *) tls_session->cookie, sizeof(*tls_session->cookie),
+		  out, out_len)) {
+		fr_tls_strerror_printf(NULL);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Generate the cookie which goes into a HelloVerifyRequest
+ *
+ * @param[in] ssl		the cookie is for.
+ * @param[out] cookie		to write.  At most DTLS1_COOKIE_LENGTH octets.
+ * @param[out] cookie_len	how much was written.
+ * @return
+ *	- 1 on success, which is what OpenSSL wants.
+ *	- 0 on failure, which aborts the handshake.
+ */
+int fr_dtls_cookie_generate_cb(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len)
+{
+	uint8_t		hmac[EVP_MAX_MD_SIZE];
+	unsigned int	hmac_len;
+
+	static_assert(EVP_MAX_MD_SIZE <= DTLS1_COOKIE_LENGTH,
+		      "A SHA256 digest has to fit in a DTLS cookie");
+
+	if (dtls_cookie_hmac(ssl, hmac, &hmac_len) < 0) return 0;
+
+	memcpy(cookie, hmac, hmac_len);
+	*cookie_len = hmac_len;
+
+	return 1;
+}
+
+/** Check the cookie which came back in the second ClientHello
+ *
+ * @param[in] ssl		the cookie is for.
+ * @param[in] cookie		the client echoed back.
+ * @param[in] cookie_len	its length.
+ * @return
+ *	- 1 when the cookie is ours and is for this peer.
+ *	- 0 otherwise, which makes OpenSSL ask for another one.
+ */
+int fr_dtls_cookie_verify_cb(SSL *ssl, unsigned char const *cookie, unsigned int cookie_len)
+{
+	uint8_t		hmac[EVP_MAX_MD_SIZE];
+	unsigned int	hmac_len;
+
+	if (dtls_cookie_hmac(ssl, hmac, &hmac_len) < 0) return 0;
+
+	if (cookie_len != hmac_len) return 0;
+
+	/*
+	 *	A constant time compare, so that a wrong cookie says only
+	 *	that it was wrong.
+	 */
+	return CRYPTO_memcmp(cookie, hmac, hmac_len) == 0;
+}
+
+/** Generate the per-process cookie key
+ *
+ * Called once from fr_openssl_init().
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dtls_cookie_init(void)
+{
+	if (RAND_bytes(dtls_cookie_key, sizeof(dtls_cookie_key)) != 1) {
+		fr_tls_strerror_printf(NULL);
+		return -1;
+	}
+
+	return 0;
+}
 
 /** Set up the parts of a session which only a datagram transport needs
  *

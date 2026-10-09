@@ -1432,6 +1432,17 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	 *	yielded frame.
 	 */
 	/*
+	 *	Bind the DTLS cookie to the socket this connection runs on.
+	 *	The library hashes the whole structure with a key of its own
+	 *	and never reads it, and the structure is what the rest of
+	 *	the server uses to say which DTLS session a datagram belongs
+	 *	to.
+	 */
+	if (utt->conf.socket_type == SOCK_DGRAM) {
+		utt->conn->tls_session->cookie = &utt->conn->request->packet->socket;
+	}
+
+	/*
 	 *	A datagram connection runs its own retransmission timer.  It
 	 *	has no event loop of its own, so it is given a sub-list of
 	 *	the one this program already runs: the timers are freed with

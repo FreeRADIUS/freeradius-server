@@ -44,6 +44,12 @@ int		fr_dtls_timer_list_set(fr_tls_connection_t *conn, fr_timer_list_t *parent);
 
 void		fr_dtls_timer_update(fr_tls_connection_t *conn);
 
+int		fr_dtls_cookie_init(void);
+
+int		fr_dtls_cookie_generate_cb(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len);
+
+int		fr_dtls_cookie_verify_cb(SSL *ssl, unsigned char const *cookie, unsigned int cookie_len);
+
 #ifdef __cplusplus
 }
 #endif

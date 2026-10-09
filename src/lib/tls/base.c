@@ -30,6 +30,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "log.h"
 #include "bio.h"
+#include "dtls.h"
 
 #include <sys/mman.h>
 #include <openssl/conf.h>
@@ -581,6 +582,15 @@ int fr_openssl_init(void)
 	fr_tls_log_init();
 
 	fr_tls_bio_init();
+
+	/*
+	 *	The key every DTLS cookie is generated with, see
+	 *	fr_dtls_cookie_generate_cb().
+	 */
+	if (fr_dtls_cookie_init() < 0) {
+		fr_openssl_log_perror(NULL, "Failed generating the DTLS cookie key");
+		return -1;
+	}
 
 	fr_md5_openssl_init();
 	fr_md4_openssl_init();

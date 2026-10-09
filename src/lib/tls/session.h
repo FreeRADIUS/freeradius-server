@@ -264,6 +264,12 @@ struct fr_tls_session_s {
 								///< code reads a field rather than asking
 								///< OpenSSL the same question repeatedly.
 
+	fr_socket_t const	*cookie;			//!< What the DTLS cookie is bound to: the source
+								///< and destination of the connection, which is
+								///< how the rest of the server identifies a DTLS
+								///< session.  Set by the application, and hashed
+								///< but never read by the library.
+
 	void			*opaque;			//!< Used to store module specific data.
 
 	unsigned char		*alpn;				//!< Protocol name both ends agreed on, as
