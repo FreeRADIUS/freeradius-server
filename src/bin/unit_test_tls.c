@@ -906,7 +906,7 @@ static int tls_socket_accept_one(unit_test_tls_t *utt)
 
 	/*
 	 *	A datagram socket is not listening, so there is nothing to
-	 *	accept.  The first datagram names the peer, and the
+	 *	accept.  The first ClientHello names the peer, and the
 	 *	connection runs on a second socket which is connect()ed to
 	 *	that peer: the kernel then delivers that peer's datagrams to
 	 *	the connected socket in preference to this one, and read()
@@ -920,7 +920,7 @@ static int tls_socket_accept_one(unit_test_tls_t *utt)
 	 */
 	if (utt->conf.socket_type == SOCK_DGRAM) {
 		struct sockaddr_storage	peer;
-		socklen_t		peerlen = sizeof(peer);
+		socklen_t		peerlen;
 		uint8_t			buf[FR_TLS_MAX_PACKET_SIZE];
 		ssize_t			slen;
 		fr_ipaddr_t		ipaddr = utt->conf.ipaddr;
@@ -935,12 +935,53 @@ static int tls_socket_accept_one(unit_test_tls_t *utt)
 		 *	the connection once the connection is running, see
 		 *	tls_connection_run().
 		 */
-		slen = recvfrom(utt->sockfd, buf, sizeof(buf), 0, (struct sockaddr *) &peer, &peerlen);
-		if (slen < 0) {
-			if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) return 0;
+		for (;;) {
+			peerlen = sizeof(peer);
 
-			ERROR("Failed reading the first datagram: %s", fr_syserror(errno));
-			return -1;
+			slen = recvfrom(utt->sockfd, buf, sizeof(buf), 0, (struct sockaddr *) &peer, &peerlen);
+			if (slen < 0) {
+				if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) return 0;
+
+				ERROR("Failed reading the first datagram: %s", fr_syserror(errno));
+				return -1;
+			}
+
+			/*
+			 *	Filter input packets by ClientHello.
+			 *
+			 *	Even if we connect() sockets, the connected socket could go away.  Packets for
+			 *	that (old) socket are then received by the original accept socket.  We don't
+			 *	know what to do with them, as the DTLS session goes away when the socket goes
+			 *	away.
+			 *
+			 *	The main accept socket doesn't read its FD while the DTLS session is
+			 *	running, so packets might pile up here.  This is only a problem for
+			 *	unit_test_tls, as a real server would keep reading the accept socket.
+			 *
+			 *	@todo - keep some kind or more long-lived RBtree of client source IP/port and
+			 *	DTLS session.  It is at least theoretically possible that we could re-liven
+			 *	the DTLS connection.
+			 *
+			 *	A server which takes one of those old datagrams as a new connection request
+			 *	will try to start a connection to a peer which has already gone.  The real
+			 *	peer's handshake stays queued here, and the handshake never completes.
+			 *
+			 *	The solution (hack) is to just discard anything that doesn't look like a
+			 *	ClientHello.
+			 *
+			 *	A ClientHello is a handshake record in epoch 0 whose first message is a
+			 *	client_hello.  RFC 6347 Section 4.1 gives the record header, which is
+			 *	DTLS1_RT_HEADER_LENGTH octets of type, version, epoch, sequence number, and
+			 *	length.  Section 4.3.2 gives the handshake message types.  A discarded
+			 *	datagram looks to the peer like a lost datagram, and the peer retransmits, see
+			 *	Section 4.2.4.
+			 */
+			if ((slen > (ssize_t) DTLS1_RT_HEADER_LENGTH) &&
+			    (buf[0] == SSL3_RT_HANDSHAKE) &&
+			    (buf[3] == 0) && (buf[4] == 0) &&
+			    (buf[DTLS1_RT_HEADER_LENGTH] == SSL3_MT_CLIENT_HELLO)) break;
+
+			DEBUG2("Discarding a %zd byte datagram which does not start a connection", slen);
 		}
 
 		fd = fr_socket_server_udp(&ipaddr, &port, NULL, false);
