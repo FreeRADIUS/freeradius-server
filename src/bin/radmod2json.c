@@ -331,25 +331,9 @@ static int dump_module(struct json_object *modules, char const *bare_name)
 			_exit(1);
 		}
 
-		{
-			char const *s = json_object_to_json_string_ext(entry, JSON_C_TO_STRING_PLAIN |
-										      JSON_C_TO_STRING_NOSLASHESCAPE);
-			size_t	remaining = strlen(s);
-			ssize_t	n;
-
-			while (remaining > 0) {
-				n = write(fds[1], s, remaining);
-				if (n < 0) {
-					fprintf(stderr, "rlm_%s: write to pipe failed: %s\n",
-						bare_name, fr_syserror(errno));
-					_exit(1);
-				}
-				if (!fr_cond_assert((size_t) n <= remaining)) {
-					_exit(1);
-				}
-				s += n;
-				remaining -= n;
-			}
+		if (json_object_to_fd(fds[1], entry, JSON_C_TO_STRING_PLAIN | JSON_C_TO_STRING_NOSLASHESCAPE) < 0) {
+			fprintf(stderr, "rlm_%s: write to pipe failed: %s\n", bare_name, json_util_get_last_err());
+			_exit(1);
 		}
 		json_object_put(entry);
 		close(fds[1]);
@@ -358,47 +342,28 @@ static int dump_module(struct json_object *modules, char const *bare_name)
 
 	close(fds[1]);
 	{
-		char	buf[262144];
-		size_t	used = 0;
-		ssize_t n;
-		while ((n = read(fds[0], buf + used, sizeof(buf) - 1 - used)) > 0) {
-			/*
-			 *	read() never returns more than it was asked to read.
-			 */
-			if (!fr_cond_assert((size_t) n <= (sizeof(buf) - 1 - used))) {
-				close(fds[0]);
-				return -1;
-			}
-			used += n;
-			if (used >= sizeof(buf) - 1) break;
-		}
+		struct json_object *entry;
+
+		entry = json_object_from_fd(fds[0]);
 		close(fds[0]);
-		if (used >= sizeof(buf) - 1) {
-			fprintf(stderr, "rlm_%s: overflowed buffer reading JSON\n", bare_name);
-			return -1;
-		}
-		buf[used] = '\0';
 
 		waitpid(pid, &status, 0);
 
 		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+			json_object_put(entry);
 			fprintf(stderr, "rlm_%s: child %s (status=0x%x), skipping\n", bare_name,
 				WIFEXITED(status) ? "exited non-zero" : "crashed", status);
 			return -1;
 		}
 
-		if (used > 0) {
-			struct json_object *entry = json_tokener_parse(buf);
-			if (entry) {
-				json_object_array_add(modules, entry);
-				return 0;
-			}
-			fprintf(stderr, "rlm_%s: failed to parse child JSON\n", bare_name);
+		if (!entry) {
+			fprintf(stderr, "rlm_%s: failed to parse child JSON: %s\n", bare_name, json_util_get_last_err());
 			return -1;
 		}
-	}
 
-	return -1;
+		json_object_array_add(modules, entry);
+		return 0;
+	}
 }
 
 /*
