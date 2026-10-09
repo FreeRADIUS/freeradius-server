@@ -226,16 +226,6 @@ have_packet:
 	*leftover = in_buffer - packet_len;
 
 	/*
-	 *	Unknown packets get discarded, but the socket can remain open.
-	 */
-	if ((code == 0) || (code >= FR_RADIUS_CODE_MAX)) {
-		proto_radius_log(li, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, &thread->connection->socket,
-				 "Received packet code %u", code);
-		thread->stats.total_unknown_types++;
-		return 0;
-	}
-
-	/*
 	 *      If it's not a RADIUS packet, ignore it.
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, &reason)) {
