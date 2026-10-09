@@ -384,7 +384,8 @@ static void state_entry_fill(fr_state_entry_t *entry, fr_value_box_t const *vb)
 
 /** Create a new state entry
  *
- * @note Called with the mutex held.
+ * @note Must be called with the mutex held.  Returns with the mutex held on
+ *	 success, and with the mutex released on failure.
  */
 static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *request,
 					    fr_pair_list_t *reply_list, fr_state_entry_t *old,
@@ -897,14 +898,6 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 	if (!entry) {
 		talloc_free(request_state_replace(request, state_ctx));
 		request_data_restore(request, &data);	/* Put it back again */
-
-#ifdef __COVERITY__
-		/*
-		 *  Coverity doesn't see that state_entry_create releases
-		 *  the lock on failure
-		 */
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-#endif
 		return -1;
 	}
 
