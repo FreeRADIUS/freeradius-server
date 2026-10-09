@@ -1221,7 +1221,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Create our own random pool.
 	 */
 	for (i = 0; i < 256; i++) inst->rand_pool.randrsl[i] = fr_rand();
-	fr_isaac_init(&inst->rand_pool, 1);
+	fr_isaac_init(&inst->rand_pool);
 	inst->rand_pool.randcnt = 0;
 
 	return 0;

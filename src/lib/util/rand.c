@@ -66,7 +66,7 @@ void fr_rand_init(void)
 		memcpy((void *) &fr_rand_pool.randrsl[0], &when, sizeof(when));
 	}
 
-	fr_isaac_init(&fr_rand_pool, 1);
+	fr_isaac_init(&fr_rand_pool);
 	fr_rand_pool.randcnt = 0;
 	fr_rand_initialized = true;
 }

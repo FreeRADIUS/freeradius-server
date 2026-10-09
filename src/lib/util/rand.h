@@ -56,7 +56,7 @@ typedef struct {
 } fr_fast_rand_t;
 
 void		fr_isaac(fr_randctx *ctx);
-void		fr_isaac_init(fr_randctx *ctx, int flag);
+void		fr_isaac_init(fr_randctx *ctx);
 /** @hidecallergraph */
 uint32_t	fr_rand(void);	/* like rand(), but better. */
 
