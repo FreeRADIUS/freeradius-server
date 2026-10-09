@@ -844,9 +844,12 @@ static int file_replace(char const *filename, mode_t mode, char const *data, siz
 {
 	char	*tmp;
 	int	fd;
+	mode_t	old_umask;
 
 	MEM(tmp = talloc_asprintf(NULL, "%s.XXXXXX", filename));
+	old_umask = umask(S_IRWXG | S_IRWXO);
 	fd = mkstemp(tmp);
+	umask(old_umask);
 	if (fd < 0) {
 		fr_strerror_printf("Failed creating \"%s\": %s", tmp, fr_syserror(errno));
 		talloc_free(tmp);
