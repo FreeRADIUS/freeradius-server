@@ -18,8 +18,13 @@
 
 typedef unsigned char bool;
 
+/*
+ * The types glibc gives mode_t and off_t on the 64-bit Linux host which
+ * builds for Coverity Scan.  A model whose parameter types differ from the
+ * real function's may not be matched to it.
+ */
 typedef unsigned int mode_t;
-typedef long long int off_t;
+typedef long int off_t;
 
 typedef long int ssize_t;
 typedef unsigned long int size_t;
