@@ -917,6 +917,19 @@ DIAG_ON_OPTIONAL(used-but-marked-unused)
        }
 
 	/*
+	 *	Set the supported groups if configured.
+	 *
+	 *	For TLS 1.3 this can help reduce round trips if the list
+	 *	includes a group the client predicted in the key_share extension.
+	 */
+	if (conf->group_list) {
+		if (!SSL_CTX_set1_groups_list(ctx, UNCONST(char *,conf->group_list))) {
+			fr_tls_log_perror(NULL, "Failed setting group list");
+			goto error;
+		}
+	}
+
+	/*
 	 *	Print the actual cipher list
 	 */
 	if (DEBUG_ENABLED3) {

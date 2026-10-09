@@ -19,7 +19,7 @@
  *
  * @file tls/conf.c
  * @brief Configuration parsing for TLS servers and clients.
- * 
+ *
  * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSID("$Id$")
@@ -203,6 +203,7 @@ conf_parser_t fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("cipher_list", fr_tls_conf_t, cipher_list) },
 	{ FR_CONF_OFFSET("cipher_suites", fr_tls_conf_t, cipher_suites) },
+	{ FR_CONF_OFFSET("group_list", fr_tls_conf_t, group_list) },
 	{ FR_CONF_OFFSET("cipher_server_preference", fr_tls_conf_t, cipher_server_preference), .dflt = "yes" },
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 	{ FR_CONF_OFFSET("allow_renegotiation", fr_tls_conf_t, allow_renegotiation), .dflt = "no" },
