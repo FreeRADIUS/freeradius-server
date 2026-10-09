@@ -39,56 +39,13 @@ RECEIPT="$OUTPUT/no_verify.receipt"
 mkdir -p "$OUTPUT"
 rm -f "$SERVER_LOG" "$CLIENT_LOG" "$SERVER_RECEIPT" "$CLIENT_RECEIPT" "$RECEIPT"
 
-#
-#  setsid puts the server in a new session and process group, so that
-#  signalling the process group reaches the server and every process the
-#  server started.  "session" here is the process kind, not the TLS kind.
-#  Not every system has setsid, macOS for one, so fall back to running the
-#  server without setsid.  The trap below kills the server either way.
-#
-if command -v setsid > /dev/null 2>&1; then
-	SETSID="setsid"
-else
-	SETSID=""
-fi
-
-$SETSID $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n no_verify -xx -c 1 \
-	-r "$SERVER_RECEIPT" > "$SERVER_LOG" 2>&1 &
-SERVER_PID=$!
-
-cleanup() {
-	kill -TERM "-$SERVER_PID" 2> /dev/null
-	kill -TERM "$SERVER_PID" 2> /dev/null
-}
-trap cleanup EXIT INT TERM
-
-#
-#  Wait until the server logs "Waiting for a connection".  The log line says
-#  the listening socket is open, so the client connects as soon as the server
-#  is ready rather than after a guessed delay.  The loop bounds the wait, so a
-#  server that never opens the socket fails the test rather than hanging it.
-#
-if sleep 0.1 2> /dev/null; then
-	SNOOZE="sleep 0.1"
-	TRIES=100
-else
-	SNOOZE="sleep 1"
-	TRIES=30
-fi
-
-while [ "$TRIES" -gt 0 ]; do
-	grep -q "Waiting for a connection" "$SERVER_LOG" 2> /dev/null && break
-
-	kill -0 "$SERVER_PID" 2> /dev/null || break
-
-	TRIES=$((TRIES - 1))
-	$SNOOZE
-done
+export CLIENT_LOG CLIENT_RECEIPT
 
 $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n no_verify -xx -c 1 \
-	-s "127.0.0.1:$PORT" -r "$CLIENT_RECEIPT" > "$CLIENT_LOG" 2>&1
-
-wait "$SERVER_PID" 2> /dev/null
+	-r "$SERVER_RECEIPT" \
+	-e '$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n no_verify -xx -c 1 \
+		-s "127.0.0.1:$PORT" -r "$CLIENT_RECEIPT" > "$CLIENT_LOG" 2>&1' \
+	> "$SERVER_LOG" 2>&1
 
 fail() {
 	echo "$1"

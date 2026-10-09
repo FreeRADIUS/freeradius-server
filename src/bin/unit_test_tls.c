@@ -171,6 +171,16 @@ typedef struct {
 	uint16_t		server_port;		//!< Port from -s, or from the configuration.
 
 	int			sockfd;			//!< Listening socket.
+	fr_event_fd_t		*accept_ef;		//!< Read event for sockfd, while waiting in
+							///< tls_socket_accept().
+	bool			accepting;		//!< Waiting in tls_socket_accept().
+
+	char const		*command;		//!< Command to run, see -e.
+	pid_t			command_pid;		//!< Command started by -e, or 0.
+	fr_event_pid_t const	*command_ev;		//!< Waits for the command to exit.
+	bool			command_exited;		//!< The command has exited.
+	bool			command_waiting;	//!< Waiting in tls_command_wait().
+
 	int			fd;			//!< Accepted or connected socket.
 	fr_event_fd_t		*ef;			//!< Read and write events for fd.
 	bool			write_blocked;		//!< True while the socket has no room for a
@@ -834,11 +844,220 @@ static int tls_socket_open(unit_test_tls_t *utt)
 		return -1;
 	}
 
+	/*
+	 *	tls_socket_accept() waits for the socket in the event loop,
+	 *	and then accepts without blocking.
+	 */
+	if (fr_nonblock(sockfd) < 0) {
+		PERROR("Failed setting the listening socket non-blocking");
+		close(sockfd);
+		return -1;
+	}
+
 	INFO("Listening on %pV port %u", fr_box_ipaddr(ipaddr), port);
 
 	utt->sockfd = sockfd;
 
 	return 0;
+}
+
+/** Accept a connection, if the listening socket has one queued
+ *
+ * @return
+ *	- 1 if a connection was accepted.
+ *	- 0 if no connection is queued.
+ *	- -1 on error.
+ */
+static int tls_socket_accept_one(unit_test_tls_t *utt)
+{
+	int fd;
+
+	fd = accept(utt->sockfd, NULL, NULL);
+	if (fd < 0) {
+		if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) return 0;
+
+		ERROR("Failed accepting connection: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	Some systems give the accepted socket the O_NONBLOCK flag of
+	 *	the listening socket, and some don't.  Clear it, so the socket
+	 *	is blocking unless -B asks otherwise.
+	 */
+	if (fr_blocking(fd) < 0) {
+		PERROR("Failed setting the connection socket blocking");
+		close(fd);
+		return -1;
+	}
+
+	utt->fd = fd;
+
+	return 1;
+}
+
+/** Accept the connection once the listening socket is readable
+ *
+ */
+static void _tls_socket_accept(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
+
+	if (tls_socket_accept_one(utt) == 0) return;
+
+	fr_event_loop_exit(el, 1);
+}
+
+/** Stop waiting for a connection if the listening socket fails
+ *
+ */
+static void _tls_socket_error(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, UNUSED void *uctx)
+{
+	ERROR("Listening socket failed: %s", fr_syserror(fd_errno));
+
+	fr_event_loop_exit(el, 1);
+}
+
+/** Start waiting for a connection, from inside the event loop
+ *
+ * See tls_connection_run() for why this runs from inside the event loop.
+ */
+static void _tls_socket_accept_start(fr_event_list_t *el, void *uctx)
+{
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
+
+	/*
+	 *	The command exited before this connection, so the only
+	 *	connection which can arrive is one already queued.
+	 */
+	if (utt->command_exited) {
+		if (tls_socket_accept_one(utt) == 0) ERROR("The command exited without connecting");
+
+		fr_event_loop_exit(el, 1);
+		return;
+	}
+
+	if (fr_event_fd_insert(utt, &utt->accept_ef, el, utt->sockfd,
+			       _tls_socket_accept, NULL, _tls_socket_error, utt) < 0) {
+		PERROR("Failed adding the listening socket to the event loop");
+		fr_event_loop_exit(el, 1);
+	}
+}
+
+/** Wait for a connection, or for the command started by -e to exit without connecting
+ *
+ * @return
+ *	- 0 with utt->fd set to the accepted connection.
+ *	- -1 on failure.
+ */
+static int tls_socket_accept(unit_test_tls_t *utt)
+{
+	fr_event_user_t *ev = NULL;
+
+	INFO("Waiting for a connection");
+
+	if (fr_event_user_insert(utt, utt->el, &ev, true, _tls_socket_accept_start, utt) < 0) {
+		PERROR("Failed scheduling the wait for a connection");
+		return -1;
+	}
+
+	utt->accepting = true;
+	(void) fr_event_loop(utt->el);
+	utt->accepting = false;
+
+	if (utt->accept_ef) {
+		(void) fr_event_fd_delete(utt->el, utt->sockfd, FR_EVENT_FILTER_IO);
+		utt->accept_ef = NULL;
+	}
+	TALLOC_FREE(ev);
+
+	return (utt->fd < 0) ? -1 : 0;
+}
+
+/** Record that the command started by -e has exited
+ *
+ * If the server is waiting for a connection, a command which exits has either
+ * connected already, and the connection is queued, or never will.
+ */
+static void _tls_command_exit(fr_event_list_t *el, pid_t pid, int status, void *uctx)
+{
+	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
+
+	utt->command_exited = true;
+
+	if (WIFEXITED(status)) {
+		INFO("Command (PID %ld) exited with status %d", (long)pid, WEXITSTATUS(status));
+	} else if (WIFSIGNALED(status)) {
+		INFO("Command (PID %ld) was killed by signal %d", (long)pid, WTERMSIG(status));
+	}
+
+	if (utt->accepting) {
+		if (tls_socket_accept_one(utt) == 0) ERROR("The command exited without connecting");
+
+		fr_event_loop_exit(el, 1);
+		return;
+	}
+
+	if (utt->command_waiting) fr_event_loop_exit(el, 1);
+}
+
+/** Start the command named by -e
+ *
+ * A server starts the command once it is listening.  A command which connects
+ * to the server connects to a socket which is already listening, so it can't
+ * be refused, and the server sees the command exit, so it never waits for a
+ * peer which has gone.
+ *
+ * A client starts the command once its first connection succeeds.
+ */
+static int tls_command_start(unit_test_tls_t *utt, char const *command)
+{
+	pid_t		pid;
+	sigset_t	set;
+
+	pid = fork();
+	if (pid < 0) {
+		ERROR("Failed forking the command: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	if (pid == 0) {
+		/*
+		 *	Only async-signal-safe calls between fork() and exec.
+		 *	The command gets neither of our sockets, so the peer
+		 *	sees the connection close when we close it, and it
+		 *	gets an empty signal mask, not ours.
+		 */
+		if (utt->sockfd >= 0) close(utt->sockfd);
+		if (utt->fd >= 0) close(utt->fd);
+		sigemptyset(&set);
+		sigprocmask(SIG_SETMASK, &set, NULL);
+		execl("/bin/sh", "sh", "-c", command, (char *)NULL);
+		_exit(127);
+	}
+
+	INFO("Started command (PID %ld): %s", (long)pid, command);
+
+	utt->command_pid = pid;
+
+	if (fr_event_pid_wait(utt, utt->el, &utt->command_ev, pid, _tls_command_exit, utt) < 0) {
+		PERROR("Failed waiting for the command to exit");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Wait for the command started by -e to exit, so its output is complete
+ *
+ */
+static void tls_command_wait(unit_test_tls_t *utt)
+{
+	if (!utt->command_pid || utt->command_exited) return;
+
+	utt->command_waiting = true;
+	(void) fr_event_loop(utt->el);
+	utt->command_waiting = false;
 }
 
 /** Connect to the server named by -s
@@ -1060,14 +1279,10 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	 */
 	if (utt->conn->client) {
 		if (tls_socket_connect(utt) < 0) return -1;
-	} else {
-		INFO("Waiting for a connection");
 
-		utt->fd = accept(utt->sockfd, NULL, NULL);
-		if (utt->fd < 0) {
-			ERROR("Failed accepting connection: %s", fr_syserror(errno));
-			return -1;
-		}
+		if (utt->command && !utt->command_pid && (tls_command_start(utt, utt->command) < 0)) return -1;
+	} else {
+		if (tls_socket_accept(utt) < 0) return -1;
 	}
 
 	/*
@@ -1237,6 +1452,7 @@ int main(int argc, char *argv[])
 	int			ret = EXIT_SUCCESS;
 	int			c;
 	char const		*receipt_file = NULL;
+	char const		*command = NULL;
 	char const		*server = NULL;
 	unsigned int		count = 1;
 	bool			alert = false;
@@ -1309,7 +1525,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "ABc:Cd:D:hIlL:Mn:Pr:Rs:xX")) != -1) {
+	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hIlL:Mn:Pr:Rs:xX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
@@ -1369,6 +1585,10 @@ int main(int argc, char *argv[])
 
 			case 'P':
 				app_data = true;
+				break;
+
+			case 'e':
+				command = optarg;
 				break;
 
 			case 'r':
@@ -1694,11 +1914,21 @@ int main(int argc, char *argv[])
 	 */
 	if (!utt->conn->client && (tls_socket_open(utt) < 0)) EXIT_WITH_FAILURE;
 
+	/*
+	 *	A server starts the command once it is listening.  A client
+	 *	starts it once the first connection succeeds, see
+	 *	tls_connection_run().
+	 */
+	utt->command = command;
+	if (!utt->conn->client && command && (tls_command_start(utt, command) < 0)) EXIT_WITH_FAILURE;
+
 	for (i = 0; i < utt->count; i++) {
 		if (tls_connection_run(utt) < 0) EXIT_WITH_FAILURE;
 
 		if (utt->ret != EXIT_SUCCESS) break;
 	}
+
+	tls_command_wait(utt);
 
 	ret = utt->ret;
 
@@ -1712,6 +1942,15 @@ cleanup:
 		if (utt->ssl_ctx) SSL_CTX_free(utt->ssl_ctx);
 
 		if (utt->sockfd >= 0) close(utt->sockfd);
+
+		/*
+		 *	A failure left the client running.  The reap below
+		 *	signals it if it doesn't exit by itself.
+		 */
+		if (utt->command_pid && !utt->command_exited) {
+			talloc_free(UNCONST(fr_event_pid_t *, utt->command_ev));
+			(void) fr_event_pid_reap(utt->el, utt->command_pid, NULL, NULL);
+		}
 	}
 
 	unlang_interpret_set_thread_default(NULL);
@@ -1815,6 +2054,12 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "  -C                 Check configuration and exit.\n");
 	fprintf(output, "  -d <confdir>       Configuration file directory. (defaults to " CONFDIR ").\n");
 	fprintf(output, "  -D <dict_dir>      Dictionary files are in \"dict_dir/*\".\n");
+	fprintf(output, "  -e <command>       Run <command> in a shell.  A server runs it once it is\n");
+	fprintf(output, "                     listening, so <command> can be what connects to the server,\n");
+	fprintf(output, "                     such as openssl s_client.  If <command> exits without\n");
+	fprintf(output, "                     connecting, the server fails instead of waiting.  With -s,\n");
+	fprintf(output, "                     it runs once the first connection succeeds.  Either way,\n");
+	fprintf(output, "                     unit_test_tls waits for <command> to exit before it exits.\n");
 	fprintf(output, "  -h                 Print this help message.\n");
 	fprintf(output, "  -M                 Enable talloc leak reporting.\n");
 	fprintf(output, "  -n <name>          Read ${confdir}/name.conf instead of ${confdir}/unit_test_tls.conf.\n");

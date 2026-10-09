@@ -37,15 +37,18 @@
 #
 
 LOG="$OUTPUT/reject.log"
+CLIENT_LOG="$OUTPUT/reject_client.log"
 RECEIPT="$OUTPUT/reject.receipt"
 
 mkdir -p "$OUTPUT"
-rm -f "$LOG" "$RECEIPT"
+rm -f "$LOG" "$CLIENT_LOG" "$RECEIPT"
 
 fail() {
 	echo "reject.sh: $1"
 	echo "--- $LOG ---"
 	cat "$LOG"
+	echo "--- $CLIENT_LOG ---"
+	cat "$CLIENT_LOG"
 	exit 1
 }
 
@@ -54,46 +57,14 @@ if [ ! -r "$CERTDIR/client.pem" ]; then
 	exit 1
 fi
 
-if command -v setsid > /dev/null 2>&1; then
-	SETSID="setsid"
-else
-	SETSID=""
-fi
+export CLIENT_LOG
 
-$SETSID $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx -R > "$LOG" 2>&1 &
-SERVER_PID=$!
-
-cleanup() {
-	kill -TERM "-$SERVER_PID" 2> /dev/null
-	kill -TERM "$SERVER_PID" 2> /dev/null
-}
-trap cleanup EXIT INT TERM
-
-if sleep 0.1 2> /dev/null; then
-	SNOOZE="sleep 0.1"
-	TRIES=100
-else
-	SNOOZE="sleep 1"
-	TRIES=30
-fi
-
-while [ "$TRIES" -gt 0 ]; do
-	grep -q "Waiting for a connection" "$LOG" 2> /dev/null && break
-
-	kill -0 "$SERVER_PID" 2> /dev/null || break
-
-	TRIES=$((TRIES - 1))
-	$SNOOZE
-done
-
-echo "--- openssl s_client ---" >> "$LOG"
-
-echo | openssl s_client -connect "127.0.0.1:$PORT" \
-	-cert "$CERTDIR/client.pem" \
-	-key "$CERTDIR/client.key" -pass pass:whatever \
-	-CAfile "$CERTDIR/ca.pem" >> "$LOG" 2>&1
-
-wait "$SERVER_PID" 2> /dev/null
+$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx -R \
+	-e 'echo | openssl s_client -connect "127.0.0.1:$PORT" \
+		-cert "$CERTDIR/client.pem" \
+		-key "$CERTDIR/client.key" -pass pass:whatever \
+		-CAfile "$CERTDIR/ca.pem" > "$CLIENT_LOG" 2>&1' \
+	> "$LOG" 2>&1
 
 #
 #  The rejection proves nothing unless the handshake got far enough for

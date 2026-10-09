@@ -58,38 +58,6 @@ fail() {
 	exit 1
 }
 
-if command -v setsid > /dev/null 2>&1; then
-	SETSID="setsid"
-else
-	SETSID=""
-fi
-
-$SETSID $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx > "$LOG" 2>&1 &
-SERVER_PID=$!
-
-cleanup() {
-	kill -TERM "-$SERVER_PID" 2> /dev/null
-	kill -TERM "$SERVER_PID" 2> /dev/null
-}
-trap cleanup EXIT INT TERM
-
-if sleep 0.1 2> /dev/null; then
-	SNOOZE="sleep 0.1"
-	TRIES=100
-else
-	SNOOZE="sleep 1"
-	TRIES=30
-fi
-
-while [ "$TRIES" -gt 0 ]; do
-	grep -q "Waiting for a connection" "$LOG" 2> /dev/null && break
-
-	kill -0 "$SERVER_PID" 2> /dev/null || break
-
-	TRIES=$((TRIES - 1))
-	$SNOOZE
-done
-
 #
 #  s_client writes to its own file.  unit_test_tls is still writing to $LOG
 #  at this point, and two programs appending to one file interleave their
@@ -100,10 +68,12 @@ done
 #  s_client exits non-zero because the handshake failed, so the script
 #  ignores the exit status of s_client.
 #
-echo | openssl s_client -connect "127.0.0.1:$PORT" \
-	-CAfile "$CERTDIR/ca.pem" > "$CLIENT_LOG" 2>&1
+export CLIENT_LOG
 
-wait "$SERVER_PID" 2> /dev/null
+$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx \
+	-e 'echo | openssl s_client -connect "127.0.0.1:$PORT" \
+		-CAfile "$CERTDIR/ca.pem" > "$CLIENT_LOG" 2>&1' \
+	> "$LOG" 2>&1
 
 #
 #  The server has to have sent the alert.  Without this check the checks

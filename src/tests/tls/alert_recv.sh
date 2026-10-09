@@ -62,38 +62,6 @@ if [ ! -r "$CERTDIR/client.pem" ]; then
 	exit 1
 fi
 
-if command -v setsid > /dev/null 2>&1; then
-	SETSID="setsid"
-else
-	SETSID=""
-fi
-
-$SETSID $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx > "$LOG" 2>&1 &
-SERVER_PID=$!
-
-cleanup() {
-	kill -TERM "-$SERVER_PID" 2> /dev/null
-	kill -TERM "$SERVER_PID" 2> /dev/null
-}
-trap cleanup EXIT INT TERM
-
-if sleep 0.1 2> /dev/null; then
-	SNOOZE="sleep 0.1"
-	TRIES=100
-else
-	SNOOZE="sleep 1"
-	TRIES=30
-fi
-
-while [ "$TRIES" -gt 0 ]; do
-	grep -q "Waiting for a connection" "$LOG" 2> /dev/null && break
-
-	kill -0 "$SERVER_PID" 2> /dev/null || break
-
-	TRIES=$((TRIES - 1))
-	$SNOOZE
-done
-
 #
 #  s_client writes to its own file.  unit_test_tls is still writing to $LOG
 #  at this point, and two programs writing to one file overwrite each other,
@@ -103,13 +71,15 @@ done
 #  successful run of this test.  The script ignores the exit status of
 #  s_client.
 #
-echo | openssl s_client -connect "127.0.0.1:$PORT" \
-	-cert "$CERTDIR/client.pem" \
-	-key "$CERTDIR/client.key" -pass pass:whatever \
-	-CAfile "$CERTDIR/client.pem" \
-	-verify_return_error > "$CLIENT_LOG" 2>&1
+export CLIENT_LOG
 
-wait "$SERVER_PID" 2> /dev/null
+$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx \
+	-e 'echo | openssl s_client -connect "127.0.0.1:$PORT" \
+		-cert "$CERTDIR/client.pem" \
+		-key "$CERTDIR/client.key" -pass pass:whatever \
+		-CAfile "$CERTDIR/client.pem" \
+		-verify_return_error > "$CLIENT_LOG" 2>&1' \
+	> "$LOG" 2>&1
 
 #
 #  unit_test_tls must have read the alert.  Without the check below, a run

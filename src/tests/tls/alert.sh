@@ -54,38 +54,6 @@ if [ ! -r "$CERTDIR/client.pem" ]; then
 	exit 1
 fi
 
-if command -v setsid > /dev/null 2>&1; then
-	SETSID="setsid"
-else
-	SETSID=""
-fi
-
-$SETSID $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx -A > "$LOG" 2>&1 &
-SERVER_PID=$!
-
-cleanup() {
-	kill -TERM "-$SERVER_PID" 2> /dev/null
-	kill -TERM "$SERVER_PID" 2> /dev/null
-}
-trap cleanup EXIT INT TERM
-
-if sleep 0.1 2> /dev/null; then
-	SNOOZE="sleep 0.1"
-	TRIES=100
-else
-	SNOOZE="sleep 1"
-	TRIES=30
-fi
-
-while [ "$TRIES" -gt 0 ]; do
-	grep -q "Waiting for a connection" "$LOG" 2> /dev/null && break
-
-	kill -0 "$SERVER_PID" 2> /dev/null || break
-
-	TRIES=$((TRIES - 1))
-	$SNOOZE
-done
-
 #
 #  s_client writes to its own file.  unit_test_tls is still writing to $LOG
 #  at this point, and two programs writing to one file overwrite each other,
@@ -94,12 +62,14 @@ done
 #  s_client exits non-zero because the handshake failed, which is the point,
 #  so its exit status says nothing and is ignored.
 #
-echo | openssl s_client -connect "127.0.0.1:$PORT" \
-	-cert "$CERTDIR/client.pem" \
-	-key "$CERTDIR/client.key" -pass pass:whatever \
-	-CAfile "$CERTDIR/ca.pem" > "$CLIENT_LOG" 2>&1
+export CLIENT_LOG
 
-wait "$SERVER_PID" 2> /dev/null
+$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx -A \
+	-e 'echo | openssl s_client -connect "127.0.0.1:$PORT" \
+		-cert "$CERTDIR/client.pem" \
+		-key "$CERTDIR/client.key" -pass pass:whatever \
+		-CAfile "$CERTDIR/ca.pem" > "$CLIENT_LOG" 2>&1' \
+	> "$LOG" 2>&1
 
 #
 #  SSL_AD_ACCESS_DENIED is alert number 49.  OpenSSL prints both the name and

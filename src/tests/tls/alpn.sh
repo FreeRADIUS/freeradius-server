@@ -34,26 +34,6 @@ RECEIPT="$OUTPUT/alpn.receipt"
 mkdir -p "$OUTPUT"
 rm -f "$OUTPUT"/alpn_*.log "$RECEIPT"
 
-#
-#  setsid puts the server in a new session and process group, so that
-#  signalling the process group reaches the server and every process the
-#  server started.  Not every system has setsid, macOS for one, so fall back
-#  to running the server without setsid.
-#
-if command -v setsid > /dev/null 2>&1; then
-	SETSID="setsid"
-else
-	SETSID=""
-fi
-
-if sleep 0.1 2> /dev/null; then
-	SNOOZE="sleep 0.1"
-	TRIES=100
-else
-	SNOOZE="sleep 1"
-	TRIES=30
-fi
-
 fail() {
 	echo "alpn.sh: $1"
 	echo "--- $SERVER_LOG ---"
@@ -64,7 +44,8 @@ fail() {
 }
 
 #
-#  Run one server and one client against it, and wait for both.
+#  Run one server, which starts one client against itself with -e, and
+#  returns once both have exited.
 #
 #    tls_pair <case> <server args> -- <client args>
 #
@@ -87,30 +68,14 @@ tls_pair() {
 	done
 	shift
 
-	$SETSID $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n unit_test_tls -xx \
-		$server_args > "$SERVER_LOG" 2>&1 &
-	SERVER_PID=$!
-
-	#
-	#  Wait until the server says the listening socket is open, so the
-	#  client connects when the server is ready rather than after a
-	#  guessed delay.  The loop is bounded, so a server which never
-	#  listens fails the test rather than hanging it.
-	#
-	tries=$TRIES
-	while [ "$tries" -gt 0 ]; do
-		grep -q "Waiting for a connection" "$SERVER_LOG" 2> /dev/null && break
-
-		kill -0 "$SERVER_PID" 2> /dev/null || break
-
-		tries=$((tries - 1))
-		$SNOOZE
-	done
+	CLIENT_ARGS="$*"
+	export CLIENT_LOG CLIENT_ARGS
 
 	$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n unit_test_tls -xx \
-		-s "127.0.0.1:$PORT" "$@" > "$CLIENT_LOG" 2>&1
-
-	wait "$SERVER_PID" 2> /dev/null
+		$server_args \
+		-e '$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n unit_test_tls -xx \
+			-s "127.0.0.1:$PORT" $CLIENT_ARGS > "$CLIENT_LOG" 2>&1' \
+		> "$SERVER_LOG" 2>&1
 
 	#
 	#  An abort during the handshake looks like an ordinary failure to

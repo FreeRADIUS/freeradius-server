@@ -56,57 +56,21 @@ if [ ! -r "$CERTDIR/client.pem" ]; then
 	exit 1
 fi
 
-if command -v setsid > /dev/null 2>&1; then
-	SETSID="setsid"
-else
-	SETSID=""
-fi
-
-$SETSID $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n unit_test_tls -xx \
-	-L 'radius/1.1' -l > "$LOG" 2>&1 &
-SERVER_PID=$!
-
-cleanup() {
-	kill -TERM "-$SERVER_PID" 2> /dev/null
-	kill -TERM "$SERVER_PID" 2> /dev/null
-}
-trap cleanup EXIT INT TERM
-
-if sleep 0.1 2> /dev/null; then
-	SNOOZE="sleep 0.1"
-	TRIES=100
-else
-	SNOOZE="sleep 1"
-	TRIES=30
-fi
-
-#
-#  Wait until the server logs that the listening socket is open.  The client
-#  then connects when the server is ready, rather than after a guessed delay.
-#  The loop is bounded, so a server which never listens fails the test rather
-#  than hanging the test.
-#
-while [ "$TRIES" -gt 0 ]; do
-	grep -q "Waiting for a connection" "$LOG" 2> /dev/null && break
-
-	kill -0 "$SERVER_PID" 2> /dev/null || break
-
-	TRIES=$((TRIES - 1))
-	$SNOOZE
-done
-
 #
 #  stdin comes from /dev/null, so that s_client does not send data and does
 #  not close the connection.  The server therefore causes every close which
 #  s_client reports.  Sending "Q" here would make s_client close first, and
 #  the test would pass whatever the server did.
 #
-openssl s_client -connect "127.0.0.1:$PORT" \
-	-cert "$CERTDIR/client.pem" \
-	-key "$CERTDIR/client.key" -pass pass:whatever \
-	-CAfile "$CERTDIR/ca.pem" < /dev/null > "$CLIENT_LOG" 2>&1
+export CLIENT_LOG
 
-wait "$SERVER_PID" 2> /dev/null
+$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n unit_test_tls -xx \
+	-L 'radius/1.1' -l \
+	-e 'openssl s_client -connect "127.0.0.1:$PORT" \
+		-cert "$CERTDIR/client.pem" \
+		-key "$CERTDIR/client.key" -pass pass:whatever \
+		-CAfile "$CERTDIR/ca.pem" < /dev/null > "$CLIENT_LOG" 2>&1' \
+	> "$LOG" 2>&1
 
 if grep -qE "CAUGHT SIGNAL|ASSERT FAILED" "$LOG"; then
 	fail "a signal or a failed assertion appears in $LOG"
