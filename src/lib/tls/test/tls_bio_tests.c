@@ -268,7 +268,7 @@ static void test_queue_cap(void)
 	fr_tls_bio_dbuff_t	*bd = NULL;
 	BIO			*bio;
 	size_t			i;
-	uint8_t			buf[8];
+	uint8_t			buf[16]; /* post-drain writes are >8 bytes */
 
 	bio = datagram_bio_alloc(&bd);
 	if (!bio) return;
