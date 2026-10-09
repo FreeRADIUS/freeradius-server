@@ -107,8 +107,24 @@ fr_dict_autoload_t unit_test_tls_dict[] = {
  * so each subsection takes exactly the items that a `tls { ... }` section
  * takes anywhere else in the server.
  */
+/** One transport's socket, named by `transport` in the configuration
+ *
+ */
 typedef struct {
-	fr_ipaddr_t	ipaddr;				//!< Address of the listening socket.  Server mode only.
+	fr_ipaddr_t	ipaddr;				//!< Address of the listening socket.
+	uint16_t	port;				//!< Port of the listening socket.
+} unit_test_tls_socket_t;
+
+typedef struct {
+	char const	*transport;			//!< "tcp" or "udp", naming the subsection below
+							///< which holds the socket.
+	int		socket_type;			//!< SOCK_STREAM or SOCK_DGRAM, from `transport`.
+
+	unit_test_tls_socket_t	tcp;			//!< The `tcp { ... }` subsection.
+	unit_test_tls_socket_t	udp;			//!< The `udp { ... }` subsection.
+
+	fr_ipaddr_t	ipaddr;				//!< Address of the listening socket, copied from
+							///< whichever subsection `transport` named.
 	uint16_t	port;				//!< Port of the listening socket, and the default
 							///< port for -s.
 	bool		require_client_certificate;	//!< Whether the client has to present a certificate.
@@ -117,12 +133,33 @@ typedef struct {
 	fr_tls_conf_t	*client;			//!< The `client { ... }` subsection, used with `-s`.
 } unit_test_tls_conf_t;
 
-static const conf_parser_t unit_test_tls_config[] = {
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, unit_test_tls_conf_t, ipaddr) },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, unit_test_tls_conf_t, ipaddr) },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, unit_test_tls_conf_t, ipaddr) },
+/** The socket items, parsed once per transport subsection
+ *
+ */
+static const conf_parser_t unit_test_tls_socket_config[] = {
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, unit_test_tls_socket_t, ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, unit_test_tls_socket_t, ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, unit_test_tls_socket_t, ipaddr) },
 
-	{ FR_CONF_OFFSET("port", unit_test_tls_conf_t, port) },
+	{ FR_CONF_OFFSET("port", unit_test_tls_socket_t, port) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t unit_test_tls_config[] = {
+	/*
+	 *	`transport` names a subsection, the way a listener's
+	 *	`transport` does, see common_transport_parse() in
+	 *	src/lib/bio/fd_config.c.  The socket items live in that
+	 *	subsection rather than here, so that a configuration which
+	 *	names one transport cannot carry another one's settings.
+	 */
+	{ FR_CONF_OFFSET("transport", unit_test_tls_conf_t, transport), .dflt = "tcp" },
+
+	{ FR_CONF_OFFSET_SUBSECTION("tcp", CONF_FLAG_OK_MISSING, unit_test_tls_conf_t, tcp,
+				    unit_test_tls_socket_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("udp", CONF_FLAG_OK_MISSING, unit_test_tls_conf_t, udp,
+				    unit_test_tls_socket_config) },
 
 	{ FR_CONF_OFFSET("require_client_certificate", unit_test_tls_conf_t, require_client_certificate),
 	  .dflt = "no" },
@@ -184,6 +221,12 @@ typedef struct {
 	bool			command_waiting;	//!< Waiting in tls_command_wait().
 
 	int			fd;			//!< Accepted or connected socket.
+
+	uint8_t			*first;			//!< The datagram which named the peer, read from
+							///< the listening socket before the connection's
+							///< socket existed.  Handed to the connection once
+							///< the connection is running.
+	size_t			first_len;		//!< Length of `first`.
 	fr_event_fd_t		*ef;			//!< Read and write events for fd.
 	bool			write_blocked;		//!< True while the socket has no room for a
 							///< record and the write event is active, see
@@ -765,19 +808,44 @@ static int tls_socket_open(unit_test_tls_t *utt)
 		return -1;
 	}
 
-	sockfd = fr_socket_server_tcp(&ipaddr, &port, NULL, false);
+	if (utt->conf.socket_type == SOCK_DGRAM) {
+		sockfd = fr_socket_server_udp(&ipaddr, &port, NULL, false);
+	} else {
+		sockfd = fr_socket_server_tcp(&ipaddr, &port, NULL, false);
+	}
 	if (sockfd < 0) {
-		PERROR("Failed opening TCP socket");
+		PERROR("Failed opening %s socket", utt->conf.transport);
 		return -1;
 	}
 
+	/*
+	 *	A datagram connection runs on its own socket bound to the
+	 *	same address and port as this one, see
+	 *	tls_socket_accept_one().  Both have to ask for the port
+	 *	before they bind, or the second bind fails.
+	 */
+	if (utt->conf.socket_type == SOCK_DGRAM) {
+		int on = 1;
+
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
+			ERROR("Failed setting SO_REUSEPORT: %s", fr_syserror(errno));
+			close(sockfd);
+			return -1;
+		}
+	}
+
 	if (fr_socket_bind(sockfd, NULL, &ipaddr, &port) < 0) {
-		PERROR("Failed binding TCP socket");
+		PERROR("Failed binding %s socket", utt->conf.transport);
 		close(sockfd);
 		return -1;
 	}
 
-	if (listen(sockfd, 8) < 0) {
+	/*
+	 *	A datagram socket has no queue of connections to listen for.
+	 *	The first datagram to arrive is what stands in for a
+	 *	connection, see tls_socket_accept_one().
+	 */
+	if ((utt->conf.socket_type == SOCK_STREAM) && (listen(sockfd, 8) < 0)) {
 		ERROR("Failed listening on TCP socket: %s", fr_syserror(errno));
 		close(sockfd);
 		return -1;
@@ -793,7 +861,7 @@ static int tls_socket_open(unit_test_tls_t *utt)
 		return -1;
 	}
 
-	INFO("Listening on %pV port %u", fr_box_ipaddr(ipaddr), port);
+	INFO("Listening on %pV port %u using %s", fr_box_ipaddr(ipaddr), port, utt->conf.transport);
 
 	utt->sockfd = sockfd;
 
@@ -810,6 +878,77 @@ static int tls_socket_open(unit_test_tls_t *utt)
 static int tls_socket_accept_one(unit_test_tls_t *utt)
 {
 	int fd;
+
+	/*
+	 *	A datagram socket is not listening, so there is nothing to
+	 *	accept.  The first datagram names the peer, and the
+	 *	connection runs on a second socket which is connect()ed to
+	 *	that peer: the kernel then delivers that peer's datagrams to
+	 *	the connected socket in preference to this one, and read()
+	 *	and write() work as they do on a stream.
+	 *
+	 *	The connection cannot run on this socket.  connect() is a
+	 *	property of the socket rather than of the descriptor, so
+	 *	connecting this one, or any descriptor duplicated from it,
+	 *	would leave the listening socket bound to one peer for the
+	 *	rest of the program.
+	 */
+	if (utt->conf.socket_type == SOCK_DGRAM) {
+		struct sockaddr_storage	peer;
+		socklen_t		peerlen = sizeof(peer);
+		uint8_t			buf[FR_TLS_MAX_PACKET_SIZE];
+		ssize_t			slen;
+		fr_ipaddr_t		ipaddr = utt->conf.ipaddr;
+		uint16_t		port = utt->conf.port;
+		int			on = 1;
+
+		/*
+		 *	Read the datagram rather than peeking at it.  It is
+		 *	queued on this socket, and the connection's socket
+		 *	does not exist yet, so leaving it here would leave it
+		 *	somewhere the connection never reads.  It is given to
+		 *	the connection once the connection is running, see
+		 *	tls_connection_run().
+		 */
+		slen = recvfrom(utt->sockfd, buf, sizeof(buf), 0, (struct sockaddr *) &peer, &peerlen);
+		if (slen < 0) {
+			if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) return 0;
+
+			ERROR("Failed reading the first datagram: %s", fr_syserror(errno));
+			return -1;
+		}
+
+		fd = fr_socket_server_udp(&ipaddr, &port, NULL, false);
+		if (fd < 0) {
+			PERROR("Failed opening the connection's datagram socket");
+			return -1;
+		}
+
+		if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
+			ERROR("Failed setting SO_REUSEPORT: %s", fr_syserror(errno));
+			close(fd);
+			return -1;
+		}
+
+		if (fr_socket_bind(fd, NULL, &ipaddr, &port) < 0) {
+			PERROR("Failed binding the connection's datagram socket");
+			close(fd);
+			return -1;
+		}
+
+		if (connect(fd, (struct sockaddr *) &peer, peerlen) < 0) {
+			ERROR("Failed connecting to the peer: %s", fr_syserror(errno));
+			close(fd);
+			return -1;
+		}
+
+		MEM(utt->first = talloc_memdup(utt, buf, (size_t) slen));
+		utt->first_len = (size_t) slen;
+
+		utt->fd = fd;
+
+		return 1;
+	}
 
 	fd = accept(utt->sockfd, NULL, NULL);
 	if (fd < 0) {
@@ -1009,7 +1148,11 @@ static int tls_socket_connect(unit_test_tls_t *utt)
 
 	fr_inet_ntop(buffer, sizeof(buffer), &utt->server_ipaddr);
 
-	fd = fr_socket_client_tcp(NULL, NULL, &utt->server_ipaddr, utt->server_port, false);
+	if (utt->conf.socket_type == SOCK_DGRAM) {
+		fd = fr_socket_client_udp(NULL, NULL, NULL, &utt->server_ipaddr, utt->server_port, false);
+	} else {
+		fd = fr_socket_client_tcp(NULL, NULL, &utt->server_ipaddr, utt->server_port, false);
+	}
 	if (fd < 0) {
 		PERROR("Failed connecting to %s port %u", buffer, utt->server_port);
 		return -1;
@@ -1074,7 +1217,7 @@ static fr_client_t *tls_client_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *ipaddr)
  * TLS-Session-Require-Client-Certificate, and writes the negotiated version
  * and cipher suite into the session-state list, so a real request is needed.
  */
-static request_t *tls_request_alloc(TALLOC_CTX *ctx, int fd)
+static request_t *tls_request_alloc(TALLOC_CTX *ctx, int fd, int socket_type)
 {
 	request_t		*request;
 	struct sockaddr_storage	sa;
@@ -1090,7 +1233,7 @@ static request_t *tls_request_alloc(TALLOC_CTX *ctx, int fd)
 
 	request->packet->timestamp = fr_time();
 
-	request->packet->socket.type = SOCK_STREAM;
+	request->packet->socket.type = socket_type;
 	request->packet->socket.fd = fd;
 
 	salen = sizeof(sa);
@@ -1235,7 +1378,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 		return -1;
 	}
 
-	utt->conn->request = tls_request_alloc(utt, utt->fd);
+	utt->conn->request = tls_request_alloc(utt, utt->fd, utt->conf.socket_type);
 	if (!utt->conn->request) goto finish;
 
 	unlang_interpret_set(utt->conn->request, utt->intp);
@@ -1293,6 +1436,24 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	}
 
 	(void) unlang_interpret(utt->conn->request, UNLANG_REQUEST_RESUME);
+
+	/*
+	 *	A datagram connection starts with a datagram which was read
+	 *	from the listening socket, because that is what named the
+	 *	peer.  The connection's socket never saw it, so hand it over
+	 *	now that there is a connection to hand it to.
+	 */
+	if (utt->first) {
+		uint8_t	*first = utt->first;
+		size_t	first_len = utt->first_len;
+
+		utt->first = NULL;
+		utt->first_len = 0;
+
+		DEBUG3("Handing the connection the %zu byte datagram which named the peer", first_len);
+		fr_tls_connection_recv(utt->conn, first, first_len);
+		talloc_free(first);
+	}
 
 	if (fr_event_post_insert(utt->el, _tls_runnable, utt) < 0) {
 		PERROR("Failed adding the runnable handler to the event loop");
@@ -1732,6 +1893,26 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Resolve `transport` into the socket it names, and into the
+	 *	socket type which the TLS configuration below is given.
+	 */
+	if (strcmp(utt->conf.transport, "tcp") == 0) {
+		utt->conf.socket_type = SOCK_STREAM;
+		utt->conf.ipaddr = utt->conf.tcp.ipaddr;
+		utt->conf.port = utt->conf.tcp.port;
+
+	} else if (strcmp(utt->conf.transport, "udp") == 0) {
+		utt->conf.socket_type = SOCK_DGRAM;
+		utt->conf.ipaddr = utt->conf.udp.ipaddr;
+		utt->conf.port = utt->conf.udp.port;
+
+	} else {
+		cf_log_err(utt_cs, "Invalid transport name \"%s\", expected \"tcp\" or \"udp\"",
+			   utt->conf.transport);
+		EXIT_WITH_FAILURE;
+	}
+
+	/*
 	 *	-s turns the program around: instead of listening for a
 	 *	connection, it makes one.
 	 */
@@ -1784,7 +1965,7 @@ int main(int argc, char *argv[])
 	 *	the same rules everywhere, and only the application knows
 	 *	what it opened the socket as.
 	 */
-	conf->socket_type = SOCK_STREAM;
+	conf->socket_type = utt->conf.socket_type;
 
 	utt->ssl_ctx = fr_tls_ctx_alloc(conf, utt->conn->client);
 	if (!utt->ssl_ctx) {
