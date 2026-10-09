@@ -1546,7 +1546,7 @@ void  fr_ipaddr_get_scope_id(fr_ipaddr_t *ipaddr)
 
 		if (!i->ifa_addr || !i->ifa_name || (ipaddr->af != i->ifa_addr->sa_family)) continue;
 
-		fr_ipaddr_from_ifaddr(&my_ipaddr, i->ifa_addr);
+		if (fr_ipaddr_from_ifaddr(&my_ipaddr, i->ifa_addr) < 0) continue;
 		my_ipaddr.scope_id = 0;
 
 		/*
@@ -1586,7 +1586,7 @@ char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr)
 
 		if (!i->ifa_addr || !i->ifa_name || (ipaddr->af != i->ifa_addr->sa_family)) continue;
 
-		fr_ipaddr_from_ifaddr(&my_ipaddr, i->ifa_addr);
+		if (fr_ipaddr_from_ifaddr(&my_ipaddr, i->ifa_addr) < 0) continue;
 
 		/*
 		 *	my_ipaddr will have a scope_id, but the input
