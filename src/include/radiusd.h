@@ -193,6 +193,8 @@ typedef struct main_config {
 	bool		group_stop_return;		//!< "return" stops at end of group
 	bool		policy_stop_return;		//!< "return" stops at end of policy
 	bool		proxy_null_listener;		//!< use a null proxy listener for thread race conditions
+	bool		client_database_blastradius;	//!< clients from a database inherit the global
+							//!< BlastRADIUS configuration
 } main_config_t;
 
 #if defined(WITH_VERIFY_PTR)

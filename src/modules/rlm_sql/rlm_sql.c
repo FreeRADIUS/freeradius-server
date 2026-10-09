@@ -356,8 +356,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 				      row[4],	/* secret */
 				      row[2],	/* shortname */
 				      row[3],	/* type */
-				      server,	/* server */
-				      false);	/* require message authenticator */
+				      server);	/* server */
 		if (!c) {
 			continue;
 		}

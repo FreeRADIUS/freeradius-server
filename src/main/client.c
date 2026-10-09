@@ -941,10 +941,8 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 	c->cs = cs;
 
 	/*
-	 *	Set the "require message authenticator" and "limit
-	 *	proxy state" flags from the global default.  If the
-	 *	configuration item exists, AND is set, it will
-	 *	over-ride the flag.
+	 *	Set the "require message authenticator" and "limit proxy state" flags from the global default.
+	 *	If the configuration item exists, AND is set, it will over-ride the flag.
 	 */
 	c->require_ma = main_config.require_ma;
 	c->limit_proxy_state = main_config.limit_proxy_state;
@@ -1295,16 +1293,30 @@ done_coa:
  * @param shortname Client friendly name.
  * @param type NAS-Type.
  * @param server Virtual-Server to associate clients with.
- * @param require_ma If true all packets from client must include a message-authenticator.
  * @return The new client, or NULL on error.
  */
 RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret,
-			      char const *shortname, char const *type, char const *server, bool require_ma)
+			      char const *shortname, char const *type, char const *server)
 {
 	RADCLIENT *c;
 	char buffer[128];
 
 	c = talloc_zero(ctx, RADCLIENT);
+
+	/*
+	 *	Set the "require message authenticator" and "limit
+	 *	proxy state" flags from the global default, as
+	 *	client_afrom_cs() does, but only if configured to do so.
+	 *
+	 *	Enabling by default would be a change of behavior, and
+	 *	would stop a client defined in SQL from talking to the
+	 *	server.  We don't want to break a working
+	 *	configuration on upgrade.
+	 */
+	if (main_config.client_database_blastradius) {
+		c->require_ma = main_config.require_ma;
+		c->limit_proxy_state = main_config.limit_proxy_state;
+	}
 
 	if (fr_pton(&c->ipaddr, identifier, -1, AF_UNSPEC, true) < 0) {
 		ERROR("%s", fr_strerror());
@@ -1326,7 +1338,6 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 	if (shortname) c->shortname = talloc_typed_strdup(c, shortname);
 	if (type) c->nas_type = talloc_typed_strdup(c, type);
 	if (server) c->server = talloc_typed_strdup(c, server);
-	c->require_ma = require_ma;
 
 	return c;
 }
