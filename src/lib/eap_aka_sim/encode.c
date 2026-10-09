@@ -526,6 +526,7 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 	size_t			actual_len;
 	fr_dbuff_t		len_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+	fr_dbuff_marker_t	value_start;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_assert(da->flags.array);
 
@@ -546,19 +547,25 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 	 *	Keep encoding as long as we have space to
 	 *	encode things.
 	 */
+	fr_dbuff_marker(&value_start, &work_dbuff);
 	while (fr_dbuff_extend_lowat(NULL, &work_dbuff, element_len) >= element_len) {
 		fr_pair_t	*vp;
 		ssize_t		slen;
 
 		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-		if (slen == PAIR_ENCODE_FATAL_ERROR) return slen;
+		if (slen == PAIR_ENCODE_FATAL_ERROR) {
+			fr_dbuff_marker_release(&value_start);
+			return slen;
+		}
 		if (slen < 0) break;
 
 		vp = fr_dcursor_current(cursor);
 		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
 	}
 
-	actual_len = fr_dbuff_used(&work_dbuff) - 2;	/* Length of the elements we encoded */
+	actual_len = fr_dbuff_behind(&value_start);	/* Length of the elements we encoded */
+	fr_dbuff_marker_release(&value_start);
+
 	/*
 	 *	Arrays with an element size which is
 	 *	a multiple of 4 don't need an
