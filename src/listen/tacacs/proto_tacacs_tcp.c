@@ -265,6 +265,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 	ssize_t				data_size;
+	ssize_t				total;
 
 	/*
 	 *	We only write TACACS packets.
@@ -274,7 +275,6 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 */
 	fr_assert(buffer_len >= sizeof(fr_tacacs_packet_hdr_t));
 	fr_assert(written < buffer_len);
-	fr_assert(buffer_len < (1 << 20)); /* shut up coverity */
 
 	/*
 	 *	@todo - share a stats interface with the parent?  or
@@ -293,9 +293,10 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	if (data_size <= 0) return data_size;
 
 	/*
-	 *	write() never returns more than it was asked to write.
+	 *	The total never exceeds buffer_len, which is far below
+	 *	SSIZE_MAX.
 	 */
-	if (!fr_cond_assert((size_t) data_size <= (buffer_len - written))) return -1;
+	if (!fr_cond_assert(fr_add(&total, data_size, written))) return -1;
 
 	/*
 	 *	If we're supposed to close the socket, then go do that.
@@ -332,7 +333,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 *	Return the packet we wrote, plus any bytes previously
 	 *	left over from previous packets.
 	 */
-	return data_size + written;
+	return total;
 }
 
 static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)

@@ -25,6 +25,8 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/math.h>
 #include <freeradius-devel/util/strerror.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -33,15 +35,12 @@ RCSID("$Id$")
 
 static ssize_t lo_read(int fd, void *out, size_t outlen)
 {
-	size_t total;
+	ssize_t total;
 	ssize_t r;
 	uint8_t *p = out;
 
-	for (total = 0; total < outlen; ) {
-		/* coverity[overflow_sink] */
+	for (total = 0; (size_t)total < outlen; ) {
 		r = read(fd, p + total, outlen - total);
-
-		/* coverity[return_overflow] */
 		if (r == 0) return total;
 
 		if (r < 0) {
@@ -61,7 +60,12 @@ static ssize_t lo_read(int fd, void *out, size_t outlen)
 
 			return -1;
 		}
-		total += r;
+
+		/*
+		 *	The total never exceeds outlen, which is far below
+		 *	SSIZE_MAX.
+		 */
+		if (!fr_cond_assert(fr_add(&total, total, r))) return -1;
 	}
 
 	return total;

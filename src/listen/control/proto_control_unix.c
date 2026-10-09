@@ -339,6 +339,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 {
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	ssize_t				data_size;
+	ssize_t				total;
 
 	/*
 	 *	@todo - share a stats interface with the parent?  or
@@ -359,11 +360,12 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	if (data_size <= 0) return data_size;
 
 	/*
-	 *	write() never returns more than it was asked to write.
+	 *	The total never exceeds buffer_len, which is far below
+	 *	SSIZE_MAX.
 	 */
-	if (!fr_cond_assert((size_t) data_size <= (buffer_len - written))) return -1;
+	if (!fr_cond_assert(fr_add(&total, data_size, written))) return -1;
 
-	return data_size + written;
+	return total;
 }
 
 

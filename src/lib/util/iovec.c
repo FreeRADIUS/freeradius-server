@@ -79,8 +79,7 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t tim
 			 *	total never exceeds the sum of the iov_len values,
 			 *	and writev() rejects a vector whose sum overflows.
 			 */
-			if (!fr_cond_assert(wrote <= (SSIZE_MAX - total))) return -1;
-			total += wrote;
+			if (!fr_cond_assert(fr_add(&total, total, wrote))) return -1;
 			while (wrote > 0) {
 				/*
 				 *	An entire vector element was written
