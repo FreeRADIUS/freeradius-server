@@ -998,7 +998,6 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (slen < 0 ) return slen;
 
 		fr_assert(slen < (1 << 16));
-		/* coverity[return_overflow] */
 		return 3 + slen;
 	}
 

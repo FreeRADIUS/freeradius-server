@@ -241,7 +241,6 @@ again:
 			box_out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
 		}
 
-		/* coverity[var_deref_model] */
 		result = call_env_result(*call_env_rctx->data, request, box_out, env, &call_env_rctx->tmpl_expanded);
 		if (result != CALL_ENV_SUCCESS) {
 			if (call_env_rctx->result) *call_env_rctx->result = result;
@@ -293,7 +292,6 @@ static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result, 
 		out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
 	}
 
-	/* coverity[var_deref_model] */
 	result = call_env_result(*call_env_rctx->data, request, out, env, &call_env_rctx->tmpl_expanded);
 	if (result != CALL_ENV_SUCCESS) {
 		if (call_env_rctx->result) *call_env_rctx->result = result;

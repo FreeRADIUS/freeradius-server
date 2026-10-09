@@ -1035,7 +1035,6 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	list = &strings->vb_group;
 
-	/* coverity[dereference] */
 	if (delim_vb->vb_length == 0) {
 		REDEBUG("Delimiter must be greater than zero characters");
 		return XLAT_ACTION_FAIL;
@@ -1859,9 +1858,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &values, &pad, &fill);
 
-	/* coverity[dereference] */
 	list =  &values->vb_group;
-	/* coverity[dereference] */
 	pad_len = (size_t)pad->vb_uint64;
 
 	/*
@@ -1945,7 +1942,6 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*values;
 	fr_value_box_list_t	*list;
 	fr_value_box_t		*pad;
-	/* coverity[dereference] */
 	size_t			pad_len;
 	fr_value_box_t		*fill;
 	char const		*fill_str = NULL;
@@ -2473,10 +2469,8 @@ static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &data, &key);
 
 	if (type == HMAC_MD5) {
-		/* coverity[dereference] */
 		fr_hmac_md5(digest, data->vb_octets, data->vb_length, key->vb_octets, key->vb_length);
 	} else if (type == HMAC_SHA1) {
-		/* coverity[dereference] */
 		fr_hmac_sha1(digest, data->vb_octets, data->vb_length, key->vb_octets, key->vb_length);
 	}
 
@@ -3904,7 +3898,6 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &subject_vb, &pattern_vb, &rep_vb);
 
-	/* coverity[dereference] */
 	pattern = pattern_vb->vb_strvalue;
 	if (*pattern == '/') {
 #ifdef HAVE_REGEX_PCRE2
