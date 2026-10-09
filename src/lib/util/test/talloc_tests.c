@@ -1108,7 +1108,11 @@ static size_t pool_chunk_footprint(size_t size)
 {
 	ssize_t hdr = talloc_hdr_size();
 
-	TEST_ASSERT(hdr > 0);
+	/*
+	 *	The talloc header is a fixed struct of around a hundred
+	 *	bytes.  The upper bound keeps the sum below from wrapping.
+	 */
+	TEST_ASSERT((hdr > 0) && (hdr <= 4096));
 
 	return ROUND_UP_POW2((size_t)hdr + size, 16);
 }
