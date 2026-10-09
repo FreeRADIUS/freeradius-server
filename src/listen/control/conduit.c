@@ -119,9 +119,12 @@ ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit,
 	data_len = ntohl(hdr.length);
 
 	/*
-	 *	The data will overflow the buffer.  Die.
+	 *	The data will overflow the buffer.  Die.  outlen is larger
+	 *	than the header, see above, so the subtraction can't wrap,
+	 *	and data_len from the wire is checked before any arithmetic
+	 *	uses it.
 	 */
-	if ((sizeof(hdr) + data_len) > outlen) {
+	if (data_len > (outlen - sizeof(hdr))) {
 		errno = EINVAL;
 		return -1;
 	}
