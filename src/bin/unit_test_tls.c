@@ -1437,6 +1437,7 @@ int main(int argc, char *argv[])
 	CONF_SECTION		*utt_cs;
 
 	unit_test_tls_t		*utt = NULL;
+	fr_tls_conf_t		*conf = NULL;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -1687,12 +1688,6 @@ int main(int argc, char *argv[])
 	utt->conn->finished = tls_request_finished;
 	utt->conn->write = tls_connection_write;
 
-	/*
-	 *	The same value which fr_tls_ctx_alloc() is given below.  The
-	 *	connection reads it for the socket's own rules, such as what
-	 *	a read() of zero octets means.
-	 */
-	utt->conn->socket_type = SOCK_STREAM;
 
 	/*
 	 *	Bootstrap and instantiate the virtual servers and the modules
@@ -1761,8 +1756,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	utt->conn->tls_conf = utt->conn->client ? utt->conf.client : utt->conf.server;
-	if (!utt->conn->tls_conf) {
+	conf = utt->conn->client ? utt->conf.client : utt->conf.server;
+	if (!conf) {
 		cf_log_err(utt_cs, "Cannot run as %s, the 'unit_test_tls' section has no '%s { ... }' subsection",
 			   utt->conn->client ? "client" : "server", utt->conn->client ? "client" : "server");
 		EXIT_WITH_FAILURE;
@@ -1778,12 +1773,20 @@ int main(int argc, char *argv[])
 		utt->alpn = tls_alpn_build(utt, alpn_names);
 		if (!utt->alpn) EXIT_WITH_FAILURE;
 
-		UNCONST(fr_tls_conf_t *, utt->conn->tls_conf)->alpn = utt->alpn;
-		UNCONST(fr_tls_conf_t *, utt->conn->tls_conf)->sizeof_alpn = talloc_array_length(utt->alpn);
+		conf->alpn = utt->alpn;
+		conf->sizeof_alpn = talloc_array_length(utt->alpn);
 	}
-	UNCONST(fr_tls_conf_t *, utt->conn->tls_conf)->alpn_required = alpn_required;
+	conf->alpn_required = alpn_required;
 
-	utt->ssl_ctx = fr_tls_ctx_alloc(utt->conn->tls_conf, utt->conn->client, SOCK_STREAM);
+	/*
+	 *	The transport is set by the application for the same reason
+	 *	the ALPN strings are: one `tls { ... }` section is parsed by
+	 *	the same rules everywhere, and only the application knows
+	 *	what it opened the socket as.
+	 */
+	conf->socket_type = SOCK_STREAM;
+
+	utt->ssl_ctx = fr_tls_ctx_alloc(conf, utt->conn->client);
 	if (!utt->ssl_ctx) {
 		cf_log_perr(utt_cs, "Failed creating the TLS context");
 		EXIT_WITH_FAILURE;

@@ -250,7 +250,7 @@ static unlang_action_t tls_ticket_stateful_load_resume(request_t *request, void 
 	 *	a policy update reach sessions which were stored before it.
 	 */
 	{
-		fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
+		fr_tls_conf_t	*conf = tls_session->conf;
 
 		if (!tls_ticket_session_resumable(request, &tls_session->session_id, conf, sess)) {
 			RWDEBUG("Session ID %pV - Cached session has too little life left, not resuming",
@@ -303,7 +303,7 @@ static unlang_action_t tls_ticket_stateful_load_resume(request_t *request, void 
 static unlang_action_t tls_ticket_stateful_load_push(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_ticket_stateful_t		*tls_cache = tls_session->cache;
-	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t		*conf = tls_session->conf;
 	request_t		*child;
 	unlang_action_t		ua;
 
@@ -601,7 +601,7 @@ static unlang_action_t tls_ticket_stateful_load_client_resume(request_t *request
 unlang_action_t fr_tls_ticket_stateful_load_client_push(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_ticket_stateful_t		*tls_cache = tls_session->cache;
-	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t		*conf = tls_session->conf;
 	char			*name;
 	request_t		*child;
 	unlang_action_t		ua;
@@ -643,7 +643,7 @@ unlang_action_t fr_tls_ticket_stateful_load_client_push(request_t *request, fr_t
 unlang_action_t fr_tls_ticket_stateful_pending_push(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_ticket_stateful_t *tls_cache = tls_session->cache;
-	fr_tls_conf_t *conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t *conf = tls_session->conf;
 	unlang_action_t ua;
 
 	if (!tls_cache) return UNLANG_ACTION_CALCULATE_RESULT;	/* No caching allowed, nothing to discard */
@@ -946,7 +946,7 @@ static int tls_ticket_stateful_store_cb(SSL *ssl, SSL_SESSION *sess)
 	tls_cache = tls_session->cache;
 
 	fr_assert(tls_cache);
-	fr_assert(fr_tls_session_conf(tls_session->ssl)->virtual_server);
+	fr_assert(tls_session->conf->virtual_server);
 
 	/*
 	 *	Request was cancelled, just get OpenSSL to
@@ -1005,7 +1005,7 @@ static SSL_SESSION *tls_ticket_stateful_load_cb(SSL *ssl,
 	tls_cache = tls_session->cache;
 
 	fr_assert(tls_cache);
-	fr_assert(fr_tls_session_conf(tls_session->ssl)->virtual_server);
+	fr_assert(tls_session->conf->virtual_server);
 
 	/*
 	 *	The request was cancelled.  Do not return a session, and

@@ -245,7 +245,7 @@ static bool tls_session_alpn(fr_tls_session_t *tls_session)
  */
 int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 {
-	fr_tls_conf_t const	*conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t const	*conf = tls_session->conf;
 
 	if (!conf->alpn) return 0;
 

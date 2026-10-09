@@ -356,7 +356,7 @@ fr_tls_connection_io_state_t fr_tls_connection_io_error(fr_tls_connection_t *con
 	if (slen == 0) {
 		error = 0;
 
-		if (conn->socket_type == SOCK_DGRAM) {
+		if (conn->tls_session && (conn->tls_session->socket_type == SOCK_DGRAM)) {
 			conn->io_state = FR_TLS_CONNECTION_IO_OK;
 			goto act;
 		}
@@ -632,12 +632,12 @@ static unlang_action_t tls_connection_new_session(request_t *request, void *uctx
 	conn->idle = false;
 	conn->state = TLS_CONNECTION_HANDSHAKE;
 
-	if (conn->tls_conf->new_session) {
-		fr_assert(conn->tls_conf->virtual_server);
+	if (conn->tls_session->conf->new_session) {
+		fr_assert(conn->tls_session->conf->virtual_server);
 
 		TLS_CONNECTION_REPEAT(tls_connection_handshake);
 
-		ua = fr_tls_new_session_push(request, conn->tls_conf);
+		ua = fr_tls_new_session_push(request, conn->tls_session->conf);
 		TLS_CONNECTION_ERROR_RETURN;
 	}
 
@@ -657,7 +657,7 @@ static size_t tls_connection_write_len(fr_tls_connection_t *conn)
 {
 	fr_tls_session_t *tls_session = conn->tls_session;
 
-	if (conn->socket_type == SOCK_DGRAM) return fr_tls_session_datagram_len(tls_session);
+	if (tls_session->socket_type == SOCK_DGRAM) return fr_tls_session_datagram_len(tls_session);
 
 	return fr_dbuff_remaining(tls_session->dirty_out);
 }
@@ -688,11 +688,6 @@ int fr_tls_connection_push(fr_tls_connection_t *conn)
 	 *	frees this one first.
 	 */
 	if (!conn->name) MEM(conn->name = talloc_strdup(conn, "(TLS)"));
-
-	/*
-	 *	Check that the TLS session socket type matches the connection socket type.
-	 */
-	fr_assert(!conn->tls_session || (conn->tls_session->socket_type == conn->socket_type));
 
 	return unlang_function_push(conn->request,
 				    tls_connection_new_session,
@@ -811,7 +806,7 @@ int fr_tls_connection_write(fr_tls_connection_t *conn)
 		/*
 		 *	Datagrams are either fully written, or not at all.
 		 */
-		fr_assert((conn->socket_type != SOCK_DGRAM) || ((size_t) slen == size));
+		fr_assert((conn->tls_session->socket_type != SOCK_DGRAM) || ((size_t) slen == size));
 
 		fr_dbuff_advance(conn->tls_session->dirty_out, (size_t) slen);
 
@@ -819,7 +814,7 @@ int fr_tls_connection_write(fr_tls_connection_t *conn)
 		 *	The cursor has passed this datagram, so the length
 		 *	which described it is no longer needed.
 		 */
-		if (conn->socket_type == SOCK_DGRAM) fr_tls_session_datagram_sent(conn->tls_session);
+		if (conn->tls_session->socket_type == SOCK_DGRAM) fr_tls_session_datagram_sent(conn->tls_session);
 	}
 
 	return 0;

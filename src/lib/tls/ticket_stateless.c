@@ -83,7 +83,7 @@ static unlang_action_t tls_ticket_stateless_resume(request_t *request, void *uct
 static unlang_action_t tls_ticket_stateless_push(request_t *request, fr_tls_session_t *tls_session,
 					     uint32_t packet_type)
 {
-	fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t	*conf = tls_session->conf;
 	request_t	*child;
 	unlang_action_t	ua;
 
@@ -337,7 +337,7 @@ static SSL_TICKET_RETURN tls_ticket_stateless_app_data_get(SSL *ssl, SSL_SESSION
 							       void *arg)
 {
 	fr_tls_session_t	*tls_session = fr_tls_session(ssl);
-	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t		*conf = tls_session->conf;
 	fr_tls_ticket_conf_t	*tls_cache_conf = arg;	/* Not talloced */
 	request_t		*request = NULL;
 

@@ -231,6 +231,11 @@ DIAG_ON(attributes)
  * the transfer of TLS records.
  */
 struct fr_tls_session_s {
+	fr_tls_conf_t		*conf;				//!< The parsed "tls" section this session was
+								///< built from.  It does not change, so it is
+								///< recorded here rather than fetched from
+								///< OpenSSL's ex_data on every use.
+
 	SSL_CTX			*ctx;				//!< TLS configuration context.
 	SSL 			*ssl;				//!< This SSL session.
 	SSL_SESSION		*session;			//!< Session resumption data.

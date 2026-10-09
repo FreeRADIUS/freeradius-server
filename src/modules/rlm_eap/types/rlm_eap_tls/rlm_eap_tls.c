@@ -239,7 +239,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_tls_t);
 	rlm_eap_tls_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_tls_thread_t);
 
-	t->ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, false, SOCK_STREAM);
+	t->ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, false);
 	if (!t->ssl_ctx) return -1;
 
 	return 0;

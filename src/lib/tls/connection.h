@@ -139,7 +139,6 @@ typedef struct fr_tls_connection_s fr_tls_connection_t;
 struct fr_tls_connection_s {
 	char const		*name;			//!< What to call this connection in log messages,
 
-	fr_tls_conf_t		*tls_conf;		//!< Parsed "tls" section.
 	fr_tls_session_t	*tls_session;		//!< State of the handshake.
 	request_t		*request;		//!< Request the handshake runs under.
 
@@ -147,11 +146,6 @@ struct fr_tls_connection_s {
 
 	fr_tls_connection_fail_t failed;	       	//!< why the connection failed
 	int			error;			//!< for system call errors
-
-	int			socket_type;		//!< SOCK_STREAM or SOCK_DGRAM, the same value the
-							///< application passed to fr_tls_ctx_alloc().  The
-							///< connection reads it for the socket's own rules,
-							///< such as what a read() of zero octets means.
 
 	fr_tls_connection_io_state_t io_state;		//!< IO state, set by the application
 
@@ -175,8 +169,8 @@ struct fr_tls_connection_s {
 	void			(*finished)(void *uctx, fr_tls_connection_t *conn);
 							//!< Stop running the connection.  Read the
 							///< result from `conn->failed`, and anything
-							///< else needed from `conn->tls_conf` or
-							///< `conn->tls_session`.
+							///< else needed from `conn->tls_session`, which
+							///< carries the configuration as well.
 	ssize_t			(*write)(void *uctx, fr_tls_connection_t *conn,
 					 uint8_t const *data, size_t size);
 							//!< Write `size` octets at `data` to the

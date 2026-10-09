@@ -235,6 +235,18 @@ struct fr_tls_conf_s {
 							///< octets.  NULL means we don't use ALPN.
 	size_t			sizeof_alpn;		//!< Length of `alpn`, which carries no terminator.
 	bool			alpn_required;		//!< Fail if no ALPN was negotiated.
+
+	/** Underlying transport.
+	 *
+	 *  The TLS library does NOT manage any IO itself.  However, it
+	 *  does need to know whether it's supposed to do TLS or DTLS.
+	 *  Instead of having a separate flag / enum, we just re-use
+	 *  SOCK_*.  Only the application knows what IO method it's using,
+	 *  so it has to this field manually, just as with ALPN.
+	 *
+	 *  If it's unset (i.e. zero), then we default to SOCK_STREAM.
+	 */
+	int			socket_type;
 };
 
 #ifdef __cplusplus

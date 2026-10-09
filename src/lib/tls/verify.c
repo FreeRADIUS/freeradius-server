@@ -414,7 +414,7 @@ static unlang_action_t tls_verify_peer_cert_result(request_t *request, void *uct
  */
 static unlang_action_t tls_verify_peer_cert_push(request_t *request, fr_tls_session_t *tls_session)
 {
-	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t		*conf = tls_session->conf;
 	request_t		*child;
 	fr_pair_t		*vp;
 	unlang_action_t		ua;
@@ -641,7 +641,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
  */
 unlang_action_t fr_tls_verify_cert_pending_push(request_t *request, fr_tls_session_t *tls_session)
 {
-	fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t	*conf = tls_session->conf;
 
 	if (tls_session->validate.state != FR_TLS_VALIDATION_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
 

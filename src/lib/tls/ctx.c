@@ -520,28 +520,24 @@ int tls_ctx_version_set(UNUSED int *ctx_options, SSL_CTX *ctx, fr_tls_conf_t con
  * - Load the Private key & the certificate
  * - Set the Context options & Verify options
  *
- * The caller passes the socket type it is already using for the network,
- * rather than a type of our own.  SOCK_STREAM selects TLS and SOCK_DGRAM
- * selects DTLS.  The tree carries a socket type as a plain int elsewhere,
- * see `socket_type` in fr_bio_fd_config_t and `type` in fr_socket_t, so
- * there is nothing to translate at the call site.
- *
- * Neither value is zero, so an argument which was never set is rejected
- * rather than read as a deliberate choice of TLS.
- *
- * @param conf to read settings from.
+ * @param conf to read settings from, including `socket_type`.
  * @param client If true SSL_CTX will be configured as a client context.
- * @param socket_type SOCK_STREAM for TLS, or SOCK_DGRAM for DTLS.
  * @return
  *	- A new SSL_CTX on success.
  *	- NULL on failure.
  */
-SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client, int socket_type)
+SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
+	int		socket_type = conf->socket_type;
 	X509_STORE	*verify_store = NULL;
 	int		ctx_options = 0;
 	int		mode= SSL_MODE_ASYNC;
+
+	/*
+	 *	If socket_type is unset, we default to SOCK_STREAM.
+	 */
+	if (socket_type == 0) socket_type = SOCK_STREAM;
 
 	/*
 	 *	SOCK_SEQPACKET is refused rather than guessed at: OpenSSL has

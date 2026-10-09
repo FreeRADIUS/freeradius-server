@@ -498,7 +498,7 @@ static unlang_action_t _tls_session_psk_load_resume(request_t *request, void *uc
  */
 unlang_action_t fr_tls_session_psk_pending_push(request_t *request, fr_tls_session_t *tls_session)
 {
-	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t		*conf = tls_session->conf;
 	request_t		*child;
 	fr_pair_t		*identity;
 	unlang_action_t		ua;
@@ -1187,7 +1187,7 @@ bool fr_tls_session_is_init_finished(fr_tls_session_t *tls_session)
 
 	if (!tls_session->cache) return true;
 
-	conf = fr_tls_session_conf(tls_session->ssl);
+	conf = tls_session->conf;
 	if (!(conf->cache.mode & FR_TLS_TICKET_STATELESS)) return true;
 
 	/*
@@ -1711,7 +1711,7 @@ static unlang_action_t tls_session_fail_clear(request_t *request, void *uctx)
  */
 unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t *tls_session)
 {
-	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	fr_tls_conf_t		*conf = tls_session->conf;
 	request_t		*child;
 	unlang_action_t		ua;
 
@@ -1880,7 +1880,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 	tls_session->result = FR_TLS_RESULT_SUCCESS;
 	fr_tls_session_request_unbind(tls_session->ssl);
 	if (SSL_is_init_finished(tls_session->ssl)) {
-		fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
+		fr_tls_conf_t	*conf = tls_session->conf;
 		if (conf->establish_session) return tls_establish_session_push(request, conf, tls_session);
 	}
 	return UNLANG_ACTION_CALCULATE_RESULT;
@@ -2362,6 +2362,12 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 	 *	The socket type determines whether we use TLS or DTLS.
 	 */
 	tls_session->socket_type = (SSL_CTX_get_ssl_method(ssl_ctx) == DTLS_method()) ? SOCK_DGRAM : SOCK_STREAM;
+
+	/*
+	 *	Cache the configuration pointer, because it doesn't change during the lifetime of the
+	 *	connection.
+	 */
+	tls_session->conf = fr_tls_ctx_conf(ssl_ctx);
 
 	tls_session->ctx = ssl_ctx;
 
