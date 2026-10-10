@@ -1111,12 +1111,9 @@ static size_t pool_chunk_footprint(size_t size)
 	/*
 	 *	The talloc header is a fixed struct of around a hundred
 	 *	bytes.  The upper bounds on hdr and size keep the sum below
-	 *	from wrapping.
-	 *
-	 *	The if is for Coverity, which won't take TEST_ASSERT() as a
-	 *	bound.  TEST_ASSERT() returns instead of aborting once the
-	 *	test has been skipped.  Only the return here bounds hdr and
-	 *	size.
+	 *	from wrapping.  Coverity analyses this function apart from
+	 *	its callers, and needs the bound on size to see that the
+	 *	sum cannot wrap.
 	 */
 	if ((hdr <= 0) || (hdr > 4096) || (size > (SIZE_MAX / 2))) {
 		TEST_ASSERT_(false, "talloc_hdr_size() returned %zd for size %zu", hdr, size);
