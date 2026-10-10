@@ -79,7 +79,7 @@ ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit,
 			      void *out, size_t outlen, size_t *leftover, bool *want_more)
 {
 	ssize_t r;
-	size_t data_len;
+	uint32_t data_len;
 	uint8_t *buffer = out;
 	fr_conduit_hdr_t hdr;
 	size_t offset = *leftover;
