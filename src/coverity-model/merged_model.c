@@ -18,19 +18,8 @@
 
 typedef unsigned char bool;
 
-/*
- * The types glibc gives mode_t and off_t on the 64-bit Linux host which
- * builds for Coverity Scan.  A model whose parameter types differ from the
- * real function's may not be matched to it.
- */
-typedef unsigned int mode_t;
-typedef long int off_t;
-
 typedef long int ssize_t;
 typedef unsigned long int size_t;
-
-typedef union {
-} pthread_mutex_t;
 
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
@@ -340,49 +329,6 @@ void *_talloc_get_type_abort(const void *ptr, const char *name, const char *loca
 
 	__coverity_mark_pointee_as_sanitized__(&ptr, TAINTED_SCALAR_GENERIC);
 	return (void *)ptr;
-}
-
-/*
- * from src/lib/server/exfile.[ch]
- *
- * In the model, exfile_open() returns holding ef->mutex only when the
- * returned file descriptor is >= 0, and exfile_close() always releases
- * ef->mutex.  The real functions take ef->mutex only when ef->locking is
- * true.  Callers pair every successful exfile_open() with exfile_close()
- * whether or not ef->locking is true, so the model takes and releases
- * ef->mutex unconditionally.
- */
-/*
- * Field order matches the real struct exfile_s up to mutex, so mutex is at
- * the same offset.  fr_time_delta_t and fr_time_t each wrap an int64_t.
- */
-typedef struct exfile_s {
-	uint32_t	max_entries;
-	long long int	max_idle;
-	long long int	last_cleaned;
-	pthread_mutex_t	mutex;
-} exfile_t;
-
-int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flags, off_t *offset)
-{
-	int	result;
-	off_t	real_offset;
-
-	if (result >= 0) {
-		__coverity_exclusive_lock_acquire__(&ef->mutex);
-		if (offset) *offset = real_offset;
-	}
-
-	return result;
-}
-
-int exfile_close(exfile_t *ef, int fd)
-{
-	int	result;
-
-	__coverity_exclusive_lock_release__(&ef->mutex);
-
-	return result;
 }
 
 /*
