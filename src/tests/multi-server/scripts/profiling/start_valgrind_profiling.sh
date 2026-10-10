@@ -115,5 +115,14 @@ callgrind_annotate \
   $(find "$PROFILING_RESULT_DIR" -maxdepth 1 -name "profile.out.*" -size +0c | sort) \
   > "$PROFILING_RESULT_DIR/report.txt"
 
+#
+#  stats.txt is the summary that make prints after the test: the total
+#  instruction count (Ir) and the ten functions with the highest Ir.
+#
+callgrind_annotate --show=Ir --auto=no \
+  $(find "$PROFILING_RESULT_DIR" -maxdepth 1 -name "profile.out.*" -size +0c | sort) \
+  | awk '/^-+$/ { rule++; next } rule >= 3 && NF' | head -13 \
+  > "$PROFILING_RESULT_DIR/stats.txt"
+
 #  Discard any output after this point
 exec > /dev/null 2>&1

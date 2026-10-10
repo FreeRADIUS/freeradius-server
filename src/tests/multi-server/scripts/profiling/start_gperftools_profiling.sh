@@ -62,6 +62,19 @@ freeradius -f -l stdout \
   > "$PROFILING_RESULT_DIR/freeradius.log" 2>&1 || STATUS=$?
 
 #
+#  stats.txt is the summary that make prints after the test.  times prints
+#  the CPU time of this script, then the CPU time of the children that
+#  this script has waited for.  The only child so far is freeradius, so
+#  times has to run before pprof does.  times is a builtin, and the
+#  braces keep it in this shell.  A subshell would report its own,
+#  empty, totals.
+#
+{
+  echo "CPU time (user, system) of this script, then of freeradius:"
+  times
+} > "$PROFILING_RESULT_DIR/stats.txt"
+
+#
 #  Record how freeradius exited.  A run that a signal killed produces a
 #  truncated or absent profile, so the status has to survive to the publish
 #  step, which reads this file and refuses to upload an unclean run.  The
@@ -93,6 +106,16 @@ export PPROF_BINARY_PATH=/usr/lib
 RADIUSD_BIN=$(readlink -f "$(command -v freeradius)")
 pprof -proto "$RADIUSD_BIN" "$PROFILE" > "$PROFILING_RESULT_DIR/profile.pb.gz"
 pprof -text -nodefraction=0 "$RADIUSD_BIN" "$PROFILE" > "$PROFILING_RESULT_DIR/report.txt"
+
+#
+#  The interrupts count is the number of samples that gperftools took.
+#  Lines 3 to 14 of report.txt hold the sampled CPU time and the ten
+#  functions with the most samples.
+#
+{
+  grep 'PROFILE: interrupts' "$PROFILING_RESULT_DIR/freeradius.log"
+  sed -n '3,14p' "$PROFILING_RESULT_DIR/report.txt"
+} >> "$PROFILING_RESULT_DIR/stats.txt"
 
 #  Discard any output after this point
 exec > /dev/null 2>&1

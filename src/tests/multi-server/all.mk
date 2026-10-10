@@ -264,7 +264,7 @@ render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(
 .PHONY: test.multi-server.${1}.${2}
 test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MULTI_SERVER_SCRIPTS.${1}.${2})
 	${Q}mkdir -p "${4}/logs" "${4}/listener"
-	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2} (MODE=$(MODE))"
+	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2} ($(TEST_MULTI_SERVER_MODE_LABEL))"
 	${Q}if [ "$(MODE)" = "profiling" ]; then \
 		FREERADIUS_IMAGE=$(FREERADIUS_RADENV_PROFILING_IMAGE); \
 		RADIUSD_COMMAND="bash /usr/local/bin/start_$(PROFILING_TOOL)_profiling.sh"; \
@@ -294,7 +294,7 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MU
 	    --output "${4}/logs/result.log" \
 	    > "${4}/logs/stdout.log" 2> "${4}/logs/stderr.log" || \
 	{ \
-	    echo "FAILED: test.multi-server.${1}.${2} (MODE=$(MODE))"; \
+	    echo "FAILED: test.multi-server.${1}.${2} ($(TEST_MULTI_SERVER_MODE_LABEL))"; \
 	    for f in ${4}/logs/* ${4}/listener/*; do \
 	        [ -f "$$$$f" ] || continue; \
 	        echo ""; \
@@ -309,7 +309,15 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) $$(TEST_MU
 	        tail -200 "$$$$f"; \
 	    done; \
 	    exit 1; \
-	}
+	}; \
+	if [ "$(MODE)" = "profiling" ]; then \
+		if [ -s "$$$$PROFILING_RESULT_PATH/stats.txt" ]; then \
+			printf 'STATS: test.multi-server.${1}.${2} ($(TEST_MULTI_SERVER_MODE_LABEL))\n%s\n' \
+			    "$$$$(sed 's/^/    /' "$$$$PROFILING_RESULT_PATH/stats.txt")"; \
+		else \
+			echo "WARNING: test.multi-server.${1}.${2} ($(TEST_MULTI_SERVER_MODE_LABEL)) has no stats.txt, the capture script did not finish"; \
+		fi; \
+	fi
 endef
 
 #
@@ -341,6 +349,12 @@ endef
 MODE ?= service
 
 TEST_MULTI_SERVER_MODE_DIR = $(MODE)$(if $(filter profiling,$(MODE)),/$(PROFILING_TOOL))
+
+#
+#  How the progress and failure messages name the mode.  A profiling run
+#  also names the profiler, because each profiler runs every test.
+#
+TEST_MULTI_SERVER_MODE_LABEL = MODE=$(MODE)$(if $(filter profiling,$(MODE)), PROFILING_TOOL=$(PROFILING_TOOL))
 
 #
 #  A suite is any subdirectory containing a template.yml.j2 file.
