@@ -27,6 +27,8 @@
 #include <freeradius-devel/bio/fd.h>
 #include <freeradius-devel/util/syserror.h>
 
+#include <poll.h>
+
 static int	connected_count;
 static int	error_count;
 static int	timeout_count;
@@ -296,9 +298,122 @@ static void test_recvfromto6(void)
 	recvfromto_test(AF_INET6);
 }
 
+/** Accept a TCP connection through a listening bio
+ *
+ *  fr_bio_fd_accept() returns 0 when no connection is waiting, and 1 with a new connected bio when one
+ *  is.  The listening bio must not change: the new socket, its name, and its read and write routines
+ *  all belong to the new bio.
+ */
+static void test_listen_accept(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_fd_config_t	cfg;
+	fr_bio_t		*listener, *accepted = NULL;
+	fr_bio_fd_info_t const	*linfo, *ainfo;
+	fr_bio_fd_packet_ctx_t	packet_ctx = {};
+	fr_ipaddr_t		loopback = { .af = AF_INET, .prefix = 32, .addr.v4.s_addr = htonl(INADDR_LOOPBACK) };
+	struct sockaddr_storage	to;
+	socklen_t		to_len;
+	struct sockaddr_in	client_addr = {};
+	socklen_t		client_len = sizeof(client_addr);
+	struct pollfd		pfd;
+	char			buffer[16];
+	ssize_t			rcode;
+	int			client = -1;
+	int			fd;
+	uint16_t		port;
+
+	/*
+	 *	A server socket needs a port.  Ask the kernel for a free one, and release it.
+	 */
+	fd = loopback_listen(&port);
+	TEST_CHECK(fd >= 0);
+	if (fd < 0) goto done;
+	close(fd);
+
+	cfg = (fr_bio_fd_config_t) {
+		.type = FR_BIO_FD_LISTEN,
+		.socket_type = SOCK_STREAM,
+		.transport_type = FR_BIO_FD_TRANSPORT_TCP,
+		.async = true,		/* so that an accept() with nothing waiting does not block */
+		.src_ipaddr = loopback,
+		.src_port = port,
+	};
+
+	listener = fr_bio_fd_alloc(ctx, &cfg, 0);
+	TEST_CHECK(listener != NULL);
+	TEST_MSG("fr_bio_fd_alloc failed: %s", fr_strerror());
+	if (!listener) goto done;
+
+	linfo = fr_bio_fd_info(listener);
+	TEST_CASE("an accept with no connection waiting returns 0, and leaves the listener open");
+	rcode = fr_bio_fd_accept(ctx, &accepted, listener);
+	TEST_CHECK(rcode == 0);
+	TEST_MSG("fr_bio_fd_accept returned %zd", rcode);
+	TEST_CHECK(accepted == NULL);
+	TEST_CHECK(fcntl(linfo->socket.fd, F_GETFD) >= 0);
+	if ((rcode != 0) || accepted) goto done;
+
+	TEST_CHECK(fr_ipaddr_to_sockaddr(&to, &to_len, &loopback, linfo->socket.inet.src_port) == 0);
+	client = socket(AF_INET, SOCK_STREAM, 0);
+	TEST_CHECK(client >= 0);
+	if (client < 0) goto done;
+	TEST_CHECK(connect(client, (struct sockaddr *) &to, to_len) == 0);
+	TEST_CHECK(getsockname(client, (struct sockaddr *) &client_addr, &client_len) == 0);
+
+	/*
+	 *	connect() can return before the connection is queued on the listener.  A listening
+	 *	socket becomes readable once a connection is waiting, so wait for that.
+	 */
+	pfd = (struct pollfd) { .fd = linfo->socket.fd, .events = POLLIN };
+	TEST_CHECK(poll(&pfd, 1, 5000) == 1);
+
+	TEST_CASE("an accept with a connection waiting returns 1 and a connected bio");
+	rcode = fr_bio_fd_accept(ctx, &accepted, listener);
+	TEST_CHECK(rcode == 1);
+	TEST_MSG("fr_bio_fd_accept returned %zd", rcode);
+	TEST_CHECK(accepted != NULL);
+	if ((rcode != 1) || !accepted) goto done;
+
+	ainfo = fr_bio_fd_info(accepted);
+	TEST_CHECK(ainfo->type == FR_BIO_FD_CONNECTED);
+	TEST_CHECK(ainfo->state == FR_BIO_FD_STATE_OPEN);
+	TEST_CHECK((ainfo->socket.fd >= 0) && (ainfo->socket.fd != linfo->socket.fd));
+	TEST_CHECK(ainfo->name != NULL);
+
+	TEST_CASE("the remote end of the new bio is the client");
+	TEST_CHECK(fr_ipaddr_cmp(&ainfo->socket.inet.dst_ipaddr, &loopback) == 0);
+	TEST_CHECK(ainfo->socket.inet.dst_port == ntohs(client_addr.sin_port));
+	TEST_MSG("dst_port = %u, expected %u", ainfo->socket.inet.dst_port, ntohs(client_addr.sin_port));
+
+	TEST_CASE("the listener is unchanged");
+	TEST_CHECK(linfo->type == FR_BIO_FD_LISTEN);
+	TEST_CHECK(fr_bio_read(listener, &packet_ctx, buffer, sizeof(buffer)) < 0);
+
+	TEST_CASE("the new bio carries data in both directions");
+	TEST_CHECK(fr_bio_write(accepted, &packet_ctx, "x", 1) == 1);
+	TEST_CHECK(recv(client, buffer, sizeof(buffer), 0) == 1);
+	TEST_CHECK(buffer[0] == 'x');
+
+	TEST_CHECK(send(client, "y", 1, 0) == 1);
+
+	/*
+	 *	The new socket is non-blocking, so wait until the byte has arrived.
+	 */
+	pfd = (struct pollfd) { .fd = ainfo->socket.fd, .events = POLLIN };
+	TEST_CHECK(poll(&pfd, 1, 5000) == 1);
+	TEST_CHECK(fr_bio_read(accepted, &packet_ctx, buffer, sizeof(buffer)) == 1);
+	TEST_CHECK(buffer[0] == 'y');
+
+done:
+	if (client >= 0) close(client);
+	talloc_free(ctx);
+}
+
 TEST_LIST = {
 	{ "deferred_connect_success_calls_connected_cb",	test_deferred_connect_success_calls_connected_cb },
 	{ "recvfromto4",					test_recvfromto4 },
 	{ "recvfromto6",					test_recvfromto6 },
+	{ "listen_accept",					test_listen_accept },
 	TEST_TERMINATOR
 };

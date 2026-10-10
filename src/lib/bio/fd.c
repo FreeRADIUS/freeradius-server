@@ -1116,7 +1116,7 @@ int fr_bio_fd_close(fr_bio_t *bio)
 		(void) shutdown(my->info.socket.fd, SHUT_RDWR);
 	}
 
-	(void) close(my->info.socket.fd);
+	if (my->info.socket.fd >= 0) (void) close(my->info.socket.fd);
 
 	my->info.state = FR_BIO_FD_STATE_CLOSED;
 	my->info.read_blocked = true;
@@ -1513,7 +1513,6 @@ static int inline accept4(int fd, struct sockaddr *sockaddr, socklen_t *salen, U
  */
 static int fr_bio_fd_accept_stream(fr_bio_fd_t *my, fr_bio_fd_t const *parent)
 {
-	int rcode;
 	int fd, tries = 0;
 
 	my->remote_sockaddr_len = sizeof(my->remote_sockaddr);
@@ -1548,34 +1547,11 @@ retry:
 	}
 
 	/*
-	 *	Get IP addresses from the sockaddr.
-	 */
-	if ((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6)) {
-		fr_ipaddr_from_sockaddr(&my->info.socket.inet.dst_ipaddr, &my->info.socket.inet.dst_port,
-					&my->remote_sockaddr, my->remote_sockaddr_len);
-	}
-
-	/*
 	 *	The socket is now open.  Save the new state.
 	 */
 	my->info.socket.fd = fd;
-	my->info.type = FR_BIO_FD_CONNECTED;
 
-	rcode = fr_bio_fd_init_common(my);
-	if (rcode < 0) {
-		my->info.socket.fd = -1;
-		close(fd);
-		return rcode;
-	}
-
-	fr_bio_fd_name(my);
-	if (!my->info.name) {
-		my->info.socket.fd = -1;
-		close(fd);
-		return fr_bio_error(OOM);
-	}
-
-	return 0;
+	return 1;
 }
 
 
@@ -1596,7 +1572,7 @@ int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
 	 *	Allocate the base BIO and set it up.
 	 */
 	out = (fr_bio_fd_t *) fr_bio_fd_alloc(ctx, NULL, my->offset);
-	if (!out) return fr_bio_error(GENERIC);
+	if (!out) return fr_bio_error(OOM);
 
 	/*
 	 *	Initialize the new BIO information.
@@ -1607,7 +1583,16 @@ int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
 	 *	Copy all socket fields, including ones which will be over-written later.
 	 */
 	out->info.socket = my->info.socket;
+	out->info.socket.fd = -1;
+	out->info.type = FR_BIO_FD_CONNECTED;
 
+	/*
+	 *	Accept the socket:
+	 *
+	 *	- <0 for error
+	 *	- 0 for "nothing to do", typically because of EAGAIN.
+	 *	- 1 for "we have a new socket"
+	 */
 	if (my->info.socket.type == SOCK_STREAM) {
 		rcode = fr_bio_fd_accept_stream(out, my);
 
@@ -1617,14 +1602,31 @@ int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
 		// rcode = fr_bio_fd_accept_datagram(out, my);
 		rcode = -1;
 	}
-	if (rcode < 0) {
+	if (rcode <= 0) {
 		talloc_free(out);
 		return rcode;
 	}
 
 	/*
-	 *	The socket is now
+	 *	If it's an IP socket, update the remote_sockaddr.
 	 */
+	if ((out->info.socket.af == AF_INET) || (out->info.socket.af == AF_INET6)) {
+		fr_ipaddr_from_sockaddr(&out->info.socket.inet.dst_ipaddr, &out->info.socket.inet.dst_port,
+					&out->remote_sockaddr, out->remote_sockaddr_len);
+	}
+
+	rcode = fr_bio_fd_init_common(out);
+	if (rcode < 0) {
+	fail:
+		talloc_free(out); /* the destructor closes the FD */
+		return rcode;
+	}
+
+	fr_bio_fd_name(out);
+	if (!out->info.name) {
+		rcode = fr_bio_error(OOM);
+		goto fail;
+	}
 
 	*out_p = (fr_bio_t *) out;
 	return 1;
