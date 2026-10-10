@@ -45,6 +45,37 @@ int		exfile_open(exfile_t *lf, char const *filename, mode_t permissions, int fla
 
 int		exfile_close(exfile_t *lf, CC_RELEASE_HANDLE("exfile_fd") int fd);
 
+#ifdef __COVERITY__
+void		__coverity_exclusive_lock_acquire__(void *);
+void		__coverity_exclusive_lock_release__(void *);
+
+#  ifndef _EXFILE_PRIVATE
+/*
+ *	A successful exfile_open() returns holding a lock, which the
+ *	caller releases with exfile_close().  Coverity's summary of
+ *	exfile_open() loses the link between the lock and the return
+ *	value, and reports the error path of every caller as a missing
+ *	unlock.
+ *
+ *	These macros make the contract visible at the call site, where
+ *	Coverity can match the lock to the check of the return value.
+ *	The lock is identified by ef, because exfile_t is opaque here.
+ *	exfile.c tells Coverity that exfile_open() and exfile_close()
+ *	leave ef->mutex unchanged.
+ */
+#  define exfile_open(_ef, ...) ({ \
+	int _fd = (exfile_open)(_ef, __VA_ARGS__); \
+	if (_fd >= 0) __coverity_exclusive_lock_acquire__(_ef); \
+	_fd; \
+})
+
+#  define exfile_close(_ef, _fd) ({ \
+	__coverity_exclusive_lock_release__(_ef); \
+	(exfile_close)(_ef, _fd); \
+})
+#  endif
+#endif
+
 #ifdef __cplusplus
 }
 #endif

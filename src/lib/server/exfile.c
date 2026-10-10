@@ -23,6 +23,7 @@
  * @author Alan DeKok (aland@freeradius.org)
  * @copyright 2014 The FreeRADIUS server project
  */
+#define _EXFILE_PRIVATE 1
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/trigger.h>
@@ -289,9 +290,8 @@ static int exfile_open_mkdir(char const *filename, mode_t permissions, int flags
 /*
  * exfile_open() calls exfile_open_lock() when ef->locking is true.
  * exfile_open_lock() returns holding ef->mutex on success, and returns
- * without holding ef->mutex on failure.  The Coverity model in
- * src/coverity-model/merged_model.c applies the same ef->mutex contract
- * to exfile_open() and exfile_close().
+ * without holding ef->mutex on failure.  exfile.h gives Coverity the
+ * same contract at each call site.
  */
 static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissions, int flags, off_t *offset)
 {
@@ -516,7 +516,14 @@ try_lock:
 	 */
 	fr_assert(ef->entries[i].fd >= 0);
 
-	/* coverity[missing_unlock] */
+#ifdef __COVERITY__
+	/*
+	 *	The caller holds ef->mutex until exfile_close().  The
+	 *	macros in exfile.h tell Coverity about the lock at the call
+	 *	site.  Here Coverity must see ef->mutex released.
+	 */
+	__coverity_exclusive_lock_release__(&ef->mutex);
+#endif
 	return ef->entries[i].fd;
 }
 
@@ -551,7 +558,6 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flag
 		return found;
 	}
 
-	/* coverity[missing_unlock] */
 	return exfile_open_lock(ef, filename, permissions, flags, offset);
 }
 
@@ -562,6 +568,15 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flag
 static int exfile_close_lock(exfile_t *ef, int fd)
 {
 	uint32_t i;
+
+#ifdef __COVERITY__
+	/*
+	 *	The caller has held ef->mutex since exfile_open().  The
+	 *	macros in exfile.h tell Coverity about the lock at the call
+	 *	site.  Here Coverity must see ef->mutex taken.
+	 */
+	__coverity_exclusive_lock_acquire__(&ef->mutex);
+#endif
 
 	/*
 	 *	Unlock the bytes that we had previously locked.
