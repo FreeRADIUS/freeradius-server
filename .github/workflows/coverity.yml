@@ -89,16 +89,27 @@ jobs:
         run: |
           cat cov-int/build-log.txt
 
+      #
+      #  Coverity Scan reports a rejected build, for example one over the
+      #  submission quota, only in the text of the reply, and curl still
+      #  exits 0.  An accepted build gets "Build successfully submitted.",
+      #  and any other reply fails the step.
+      #
       - name: Submit result
         run: |
           tar czf cov-int.tar.gz cov-int
-          curl \
+          response=$(curl --silent --show-error \
             --form token="$TOKEN" \
             --form email="freeradius-devel@lists.freeradius.org" \
             --form file=@cov-int.tar.gz \
             --form version="`cat VERSION`" \
             --form description="FreeRADIUS" \
-            https://scan.coverity.com/builds?project=${OWNER}%2Ffreeradius-server
+            https://scan.coverity.com/builds?project=${OWNER}%2Ffreeradius-server)
+          echo "$response"
+          if [[ "$response" != *"Build successfully submitted."* ]]; then
+            echo "::error::Coverity Scan rejected the build: $response"
+            exit 1
+          fi
         env:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
           OWNER: ${{ github.repository_owner }}
