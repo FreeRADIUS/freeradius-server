@@ -72,6 +72,168 @@ void my_exit(int code)
 }
 ----
 
+A function annotation names an action. A `+` prefix means that the
+function performs the action. A `-` prefix means that the function
+does not perform the action. A suffix of the form `: arg-N` applies
+the annotation to argument `N`, counting from 0. A suffix of the form
+`: arg-*N` applies the annotation to the object that argument `N`
+points to. For example, FreeRADIUS marks `fr_nbo_to_uint16()` in
+`src/lib/util/nbo.h` with `/* coverity[-taint_source : arg-0] */`.
+
+Only the Coverity Checker Reference lists every function annotation.
+Only the commercial Coverity installation includes the Checker
+Reference, as `<Analysis>/doc/en/cov_checker_ref.html`, where
+`<Analysis>` is the directory where Coverity Analysis is installed.
+The Coverity Scan build tool does not include the Checker Reference.
+The table below lists annotations that open source projects on GitHub
+use. The 'Effect' column comes from how those projects use each
+annotation, and from conference slides.
+
+[cols="1,2"]
+|===
+| Annotation | Effect
+
+| `+kill`
+| The function does not return.
+
+| `+abort`
+| The function does not return.  No public source distinguishes
+  `+abort` from `+kill`.
+
+| `+alloc`
+| The function returns newly allocated memory.
+
+| `+alloc : arg-*N`
+| The function stores newly allocated memory in the object that
+  argument `N` points to.
+
+| `+free : arg-N`
+| The function frees argument `N`.
+
+| `-taint_source : arg-N`
+| The function does not taint argument `N`.
+|===
+
+==== Examples
+
+The `my_*` functions in the examples below are illustrative, and are
+not part of FreeRADIUS.
+
+Mark a function that ends the program with `+kill`. Coverity then
+treats every path that reaches a call to the function as ending at
+the call.
+
+[source,c]
+----
+/* coverity[+kill] */
+void my_fatal(char const *msg)
+{
+	...
+}
+
+void my_set(char *p)
+{
+	if (!p) my_fatal("p is NULL");
+
+	*p = 'x';	/* Coverity does not report a NULL dereference */
+}
+----
+
+Mark a function that allocates memory with `+alloc`. Mark a function
+that frees memory with `+free : arg-N`. In `my_pool_put()`, `p` is
+argument 1. Coverity then tracks the memory from `my_pool_get()` the
+same way that Coverity tracks memory from `malloc()`. Coverity
+reports a leak when a caller discards the pointer without calling
+`my_pool_put()`. Coverity reports a use after free when a caller uses
+the pointer after calling `my_pool_put()`.
+
+[source,c]
+----
+/* coverity[+alloc] */
+void *my_pool_get(my_pool_t *pool)
+{
+	...
+}
+
+/* coverity[+free : arg-1] */
+void my_pool_put(my_pool_t *pool, void *p)
+{
+	...
+}
+----
+
+Mark a function that returns newly allocated memory through an output
+argument with `+alloc : arg-*N`. In `my_buffer_alloc()`, `out` is
+argument 1. The `*` applies the annotation to the pointer that `out`
+points to, not to `out` itself.
+
+[source,c]
+----
+/* coverity[+alloc : arg-*1] */
+int my_buffer_alloc(size_t len, uint8_t **out)
+{
+	...
+}
+----
+
+`fr_nbo_to_uint16()` in `src/lib/util/nbo.h` reads two bytes in
+network byte order from the `data` buffer. Because Coverity would
+otherwise treat the `data` buffer as tainted after the call, as
+<<Taint>> describes, FreeRADIUS marks `fr_nbo_to_uint16()` with
+`-taint_source : arg-0`.
+
+[source,c]
+----
+/* coverity[-taint_source : arg-0] */
+static inline uint16_t fr_nbo_to_uint16(uint8_t const data[static sizeof(uint16_t)])
+{
+	return (((uint16_t)data[0]) << 8) | data[1];
+}
+----
+
+Open source projects also use the following taint annotations. A
+project adds a `: arg-N` suffix when the annotation applies to one
+argument. No public document describes the exact effect of these
+annotations.
+
+* `-tainted_data_argument`
+* `-tainted_data_return`
+* `-tainted_data_sink`
+* `-tainted_string_sink_content`
+* `+tainted_data_sanitize`
+* `+tainted_string_sanitize_content`
+* `+taint_source`
+
+OpenSSL's `HMAC()` writes the digest to the `md` argument. Coverity
+cannot see the write, because OpenSSL is outside the FreeRADIUS
+build. No annotation that we have found marks an argument as
+written. A function annotation on `HMAC()` cannot help either,
+because an annotation precedes the definition of the function, and
+the definition of `HMAC()` is in OpenSSL.
+
+`dtls_cookie_hmac()` in `src/lib/tls/dtls.c` passes the `out` buffer
+to `HMAC()` as `md`. Because Coverity cannot see `HMAC()` write `md`,
+`dtls_cookie_hmac()` zeroes `out` inside `#ifdef __COVERITY__`, before
+the call to `HMAC()`. Without the
+`memset()`, Coverity reports `out` as uninitialised in the callers of
+`dtls_cookie_hmac()`. Because a compiler outside a Coverity build does
+not define `__COVERITY__`, the release build does not include the
+`memset()`.
+
+[source,c]
+----
+#ifdef __COVERITY__
+	/*
+	 *	Coverity doesn't see HMAC() write the digest.  Without the
+	 *	memset, Coverity reports out as uninitialised in the callers.
+	 */
+	memset(out, 0, EVP_MAX_MD_SIZE);
+#endif
+	if (!HMAC(EVP_sha256(), dtls_cookie_key, sizeof(dtls_cookie_key),
+		  (uint8_t const *) tls_session->cookie, sizeof(*tls_session->cookie),
+		  out, out_len)) {
+----
+
 == Modeling
 
 Here is a slightly edited explanatory comment that appears in some
