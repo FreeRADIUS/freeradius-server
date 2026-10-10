@@ -80,6 +80,14 @@ static int dtls_cookie_hmac(SSL *ssl, uint8_t *out, unsigned int *out_len)
 		return -1;
 	}
 
+#ifdef __COVERITY__
+	/*
+	 *	Coverity doesn't see HMAC() write the digest.  Without the
+	 *	memset, Coverity reports out as uninitialised in the callers.
+	 */
+	memset(out, 0, EVP_MAX_MD_SIZE);
+#endif
+
 	/*
 	 *	Hash the entire #fr_socket_t, as the application should set this once, and then never change
 	 *	it.  This method means that we do exactly the same work for IPv4, Ipv6, and (potentially) Unix
