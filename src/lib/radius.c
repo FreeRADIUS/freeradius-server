@@ -586,7 +586,7 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 	fr_md5_init(&context);
 	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
-	fr_md5_copy(old, context);
+	fr_md5_copy(&old, &context);
 
 	/*
 	 *	Do first pass.
@@ -595,7 +595,7 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 
 	for (n = 0; n < len; n += AUTH_PASS_LEN) {
 		if (n > 0) {
-			fr_md5_copy(context, old);
+			fr_md5_copy(&context, &old);
 			fr_md5_update(&context,
 				       passwd + n - AUTH_PASS_LEN,
 				       AUTH_PASS_LEN);
@@ -681,7 +681,7 @@ static void make_tunnel_passwd(RADIUS_PACKET *packet, uint8_t *output, ssize_t *
 	fr_md5_init(&context);
 	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
-	fr_md5_copy(old, context);
+	fr_md5_copy(&old, &context);
 
 	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
 	fr_md5_update(&context, &output[0], 2);
@@ -690,7 +690,7 @@ static void make_tunnel_passwd(RADIUS_PACKET *packet, uint8_t *output, ssize_t *
 		size_t block_len;
 
 		if (n > 0) {
-			fr_md5_copy(context, old);
+			fr_md5_copy(&context, &old);
 			fr_md5_update(&context,
 				       output + 2 + n - AUTH_PASS_LEN,
 				       AUTH_PASS_LEN);
@@ -4899,7 +4899,7 @@ int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
 	fr_md5_init(&context);
 	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
-	fr_md5_copy(old, context);		/* save intermediate work */
+	fr_md5_copy(&old, &context);		/* save intermediate work */
 
 	/*
 	 *	Encrypt it in place.  Don't bother checking
@@ -4910,7 +4910,7 @@ int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
 			fr_md5_update(&context, vector, AUTH_PASS_LEN);
 			fr_md5_final(digest, &context);
 		} else {
-			fr_md5_copy(context, old);
+			fr_md5_copy(&context, &old);
 			fr_md5_update(&context,
 				     (uint8_t *) passwd + n - AUTH_PASS_LEN,
 				     AUTH_PASS_LEN);
@@ -4959,7 +4959,7 @@ static int rad_pwdecode(char passwd[static 256], size_t pwlen, char const *secre
 	fr_md5_init(&context);
 	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
-	fr_md5_copy(old, context);		/* save intermediate work */
+	fr_md5_copy(&old, &context);		/* save intermediate work */
 
 	/*
 	 *	The inverse of the code above.
@@ -4969,7 +4969,7 @@ static int rad_pwdecode(char passwd[static 256], size_t pwlen, char const *secre
 			fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
 			fr_md5_final(digest, &context);
 
-			fr_md5_copy(context, old);
+			fr_md5_copy(&context, &old);
 			if (pwlen > AUTH_PASS_LEN) {
 				fr_md5_update(&context, (uint8_t *) passwd,
 					     AUTH_PASS_LEN);
@@ -4977,7 +4977,7 @@ static int rad_pwdecode(char passwd[static 256], size_t pwlen, char const *secre
 		} else {
 			fr_md5_final(digest, &context);
 
-			fr_md5_copy(context, old);
+			fr_md5_copy(&context, &old);
 			if (pwlen > (n + AUTH_PASS_LEN)) {
 				fr_md5_update(&context, (uint8_t *) passwd + n,
 					     AUTH_PASS_LEN);
@@ -5046,7 +5046,7 @@ ssize_t rad_tunnel_pwdecode(uint8_t passwd[static 256], size_t *pwlen, char cons
 	fr_md5_init(&context);
 	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
-	fr_md5_copy(old, context);		/* save intermediate work */
+	fr_md5_copy(&old, &context);		/* save intermediate work */
 
 	/*
 	 *	Set up the initial key:
@@ -5073,7 +5073,7 @@ ssize_t rad_tunnel_pwdecode(uint8_t passwd[static 256], size_t *pwlen, char cons
 
 			fr_md5_final(digest, &context);
 
-			fr_md5_copy(context, old);
+			fr_md5_copy(&context, &old);
 
 			/*
 			 *	A quick check: decrypt the first octet
@@ -5095,7 +5095,7 @@ ssize_t rad_tunnel_pwdecode(uint8_t passwd[static 256], size_t *pwlen, char cons
 
 			fr_md5_final(digest, &context);
 
-			fr_md5_copy(context, old);
+			fr_md5_copy(&context, &old);
 			fr_md5_update(&context, passwd + n + 2, block_len);
 		}
 
