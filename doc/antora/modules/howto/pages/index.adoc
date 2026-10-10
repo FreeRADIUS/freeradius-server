@@ -1,51 +1,36 @@
 = Howto Guides
 
-This section describe how to perform various common tasks with
-FreeRADIUS. Each sub-section provides worked examples such as using
-the modules in common deployment scenarios or building packages.
+The Howto section is for users who want worked examples of common FreeRADIUS tasks. Each guide walks through a single job, such as installing the server, upgrading an existing configuration, connecting a datastore, or enabling a protocol. These guides assume a basic knowledge of Unix system administration and build on the background material in the xref:concepts:index.adoc[Concepts] section.
 
-The section is broken down into the following top-level areas:
+== xref:howto:installation/index.adoc[Install]
+Covers the available installation methods and the first install of a FreeRADIUS server. xref:howto:installation/dependencies.adoc[Dependencies] lists the libraries and tools the server needs. xref:howto:installation/packages.adoc[Install from Packages] describes using the official InkBridge Networks packages, which is the recommended approach where they are available. xref:howto:installation/source.adoc[Build from Source] describes building the server yourself, with per-platform notes for xref:howto:installation/debian.adoc[Debian and Ubuntu], xref:howto:installation/redhat.adoc[RedHat and Rocky], and xref:howto:installation/osx.adoc[OSX].
 
-xref:howto:installation/index.adoc[Install and Upgrade] contains
-instructions for building and installing FreeRADIUS from packages and
-source.
+== xref:howto:upgrade/index.adoc[Upgrade from v3]
+Describes what changed between version 3 and version 4, and how to move an existing configuration across. Most module configuration and `unlang` processing is close to v3, but the areas that did change are covered in detail: xref:howto:upgrade/configfiles.adoc[Configuration Files] including xref:howto:upgrade/radiusconf.adoc[radiusd.conf] and xref:howto:upgrade/virtualsvr.adoc[Virtual Servers], xref:howto:upgrade/modules.adoc[Modules], xref:howto:upgrade/processing.adoc[Processing Sections], xref:howto:upgrade/unlang.adoc[Unlang Syntax], xref:howto:upgrade/dict.adoc[Dictionaries], xref:howto:upgrade/attributes.adoc[Attributes], and xref:howto:upgrade/proxy.adoc[Proxying]. xref:howto:upgrade/recommendations.adoc[Recommendations] suggests an upgrade strategy.
 
-xref:modules/configuring_modules.adoc[Configure Modules] provides
-worked examples on using the various modules in common deployment
-scenarios.
+== xref:modules/configuring_modules.adoc[Configure Modules]
+Explains how to test any module configuration, then provides worked examples for individual modules in common deployment scenarios. The guides cover xref:modules/chap/index.adoc[CHAP], xref:modules/eap/index.adoc[EAP] and its xref:modules/eap/eap_subtypes.adoc[sub-types], xref:modules/expiration/index.adoc[Expiration], xref:modules/krb5/index.adoc[KRB5], xref:modules/mschap/index.adoc[MS-CHAP], xref:modules/pam/index.adoc[PAM], xref:modules/passwd/index.adoc[Passwd], xref:modules/python/index.adoc[Python], xref:modules/rest/index.adoc[REST], xref:modules/sql/index.adoc[SQL], xref:modules/sqlcounter/index.adoc[SQL-Counter], and xref:modules/sqlippool/index.adoc[SQL-IP-Pool]. The xref:modules/ldap/index.adoc[LDAP] guide is the most detailed: it takes you from xref:modules/ldap/bootstrap_openldap/index.adoc[installing OpenLDAP] and xref:modules/ldap/ldapsearch/index.adoc[testing with ldapsearch] through to xref:modules/ldap/authorization/index.adoc[authorization], xref:modules/ldap/authentication.adoc[authentication], and xref:modules/ldap/accounting.adoc[accounting].
 
-* xref:protocols/index.adoc[Protocols]
-** xref:protocols/dhcp/index.adoc[DHCP]
-*** xref:protocols/dhcp/prepare.adoc[Preparation]
-*** xref:protocols/dhcp/enable.adoc[Enabling the DHCP service]
-*** xref:protocols/dhcp/test.adoc[Testing the DHCP service]
-*** xref:protocols/dhcp/policy.adoc[Defining the DHCP policy] that
-    includes ip pool management.
+== xref:datastores/index.adoc[Set up Datastores]
+Describes how to connect FreeRADIUS to the systems that hold user credentials and session data. A datastore supplies data to the server; the server performs the authentication. Guides are provided for xref:datastores/ad/index.adoc[Active Directory], including xref:datastores/ad/samba.adoc[Samba], xref:datastores/ad/winbind.adoc[Winbind], and xref:datastores/ad/ntlm_mschap.adoc[NTLM] configuration, as well as xref:datastores/ldap.adoc[LDAP], xref:datastores/redis.adoc[Redis], and xref:datastores/sql.adoc[SQL].
 
-** Security Certificates
-*** xref:os/letsencrypt.adoc[Using LetsEncrypt certificates]
+== xref:protocols/index.adoc[Protocols]
+Covers enabling and configuring the protocols the server speaks. The xref:protocols/radius/index.adoc[RADIUS] guide describes xref:protocols/radius/using_coa.adoc[Change of Authorization] with xref:protocols/radius/coa_examples.adoc[examples], and xref:protocols/radius/proxy_config.adoc[Proxy Configuration] with its xref:protocols/radius/proxy_extensions.adoc[extensions]. The xref:protocols/dhcp/index.adoc[DHCP] guide is a staged walkthrough: xref:protocols/dhcp/prepare.adoc[Preparation], xref:protocols/dhcp/enable.adoc[enabling the service], xref:protocols/dhcp/test.adoc[testing the service], and xref:protocols/dhcp/policy.adoc[defining the DHCP policy], which includes IP pool creation and access restriction.
 
-** Vendors
-*** xref:vendors/ascend.adoc[Ascend]
-*** xref:vendors/bay.adoc[Bay]
-*** xref:vendors/cisco.adoc[Cisco]
-*** xref:vendors/proxim.adoc[ProxIM]
+== xref:os/index.adoc[Security Certificates]
+Explains how FreeRADIUS uses digital certificates for authentication methods such as EAP-TLS. The server can generate and manage its own certificates, or you can install certificates from an external Certificate Authority. xref:os/letsencrypt.adoc[LetsEncrypt] describes using certificates from a public CA.
 
-** Optimization
-*** xref:optimization/monitoring/index.adoc[Monitoring]
-**** xref:optimization/monitoring/statistics.adoc[Server Statistics]
-*** xref:tuning/performance-testing.adoc[Performance Testing]
-*** xref:tuning/tuning_guide.adoc[Tuning Guide]
+== xref:vendors/index.adoc[Vendors]
+Describes how FreeRADIUS interprets vendor-specific attributes (VSAs) and uses them in authentication, authorization, and accounting. Notes are provided for xref:vendors/alcatel-lucent.adoc[Alcatel-Lucent], xref:vendors/alvarion.adoc[Alvarion], xref:vendors/ascend.adoc[Ascend], xref:vendors/bay.adoc[Bay], xref:vendors/cisco.adoc[Cisco], xref:vendors/hp.adoc[HP], xref:vendors/huawei.adoc[Huawei], and xref:vendors/proxim.adoc[ProxIM]. These pages are largely historical, but may still contain useful information.
 
-If you have a topic you'd like to see included in the list of howtos,
-contact the developers on the
-https://lists.freeradius.org/mailman/listinfo/freeradius-users[User's
-mailing list].
+== xref:optimization/index.adoc[Optimisation]
+Covers keeping a working server fast and reliable once it is deployed. Start with xref:optimization/monitoring/index.adoc[Monitoring] to find the bottlenecks, using xref:optimization/monitoring/statistics.adoc[Server Statistics] and xref:optimization/monitoring/logging_examples.adoc[Log Examples]. xref:optimization/auditing.adoc[Auditing] describes recording what the server did and why. The xref:optimization/tools/index.adoc[Tools] guides cover xref:optimization/tools/radclient.adoc[radclient], xref:optimization/tools/radmin.adoc[radmin], xref:optimization/tools/radsniff.adoc[radsniff], and xref:optimization/tools/raduat.adoc[raduat]. xref:tuning/performance-testing.adoc[Performance Testing] and the xref:tuning/tuning_guide.adoc[Tuning Guide] describe measuring throughput and adjusting the server accordingly.
 
-Some of the documents here started life as pages on the old Wiki.
-However, there were eventually very few contributions to it. The full
-documentation is now maintained by [InkBridge
-Networks](https://inkbridgenetworks.com) (previously Network RADIUS).
+== Contributing
+
+If you have a topic you'd like to see included in the list of howtos, contact the developers on the https://lists.freeradius.org/mailman/listinfo/freeradius-users[User's mailing list].
+
+Some of the documents here started life as pages on the old Wiki. However, there were eventually very few contributions to it. The full documentation is now maintained by https://inkbridgenetworks.com[InkBridge Networks] (previously Network RADIUS).
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
