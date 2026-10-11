@@ -20,8 +20,10 @@
  *
  * @copyright 2026 The FreeRADIUS server project
  */
-static void test_init(void) __attribute__((constructor));
-static void test_fini(void) __attribute__((destructor));
+static void test_init(void);
+static void test_fini(void);
+#define TEST_GLOBAL_INIT test_init()
+#define TEST_GLOBAL_FINI test_fini()
 
 #include "acutest_common_init.h"
 

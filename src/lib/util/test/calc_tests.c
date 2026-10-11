@@ -20,6 +20,9 @@
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
 
+static void test_init(void);
+#define TEST_GLOBAL_INIT test_init()
+
 #include "acutest_common_init.h"
 #include "acutest_helpers.h"
 
@@ -27,7 +30,6 @@
 
 static TALLOC_CTX *autofree;
 
-static void test_init(void) __attribute__((constructor));
 static void test_init(void)
 {
 	autofree = talloc_autofree_context();

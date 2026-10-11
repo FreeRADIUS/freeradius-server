@@ -21,23 +21,8 @@
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
 
-/**
- *	The 'TEST_INIT' macro provided by 'acutest.h' allowing to register a function to be called
- *	before call the unit tests. Therefore, It calls the function ALL THE TIME causing an overhead.
- *	That is why we are initializing test_init() by "__attribute__((constructor));" reducing the
- *	test execution by 50% of the time.
- */
-#define USE_CONSTRUCTOR
-
-/*
- * It should be declared before include the "acutest.h"
- */
-#ifdef USE_CONSTRUCTOR
-static void test_init(void) __attribute__((constructor));
-#else
 static void test_init(void);
-#	define TEST_INIT  test_init()
-#endif
+#define TEST_GLOBAL_INIT test_init()
 
 #include "acutest_common_init.h"
 #include "acutest_helpers.h"

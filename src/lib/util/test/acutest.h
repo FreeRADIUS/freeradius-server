@@ -308,6 +308,12 @@
  *   #define TEST_INIT      { setlocale(LC_ALL, NULL); my_init_func(); }
  *
  * TEST_FINI is to be used in the same way.
+ *
+ * TEST_GLOBAL_INIT and TEST_GLOBAL_FINI (a FreeRADIUS addition) are used in
+ * the same way, but each expands once per run, not once per test.
+ * TEST_GLOBAL_INIT runs before the first test, in the process which forks the
+ * tests, and every test inherits the state which TEST_GLOBAL_INIT sets up.
+ * TEST_GLOBAL_FINI runs after the last test ends.
  */
 
 
@@ -2099,11 +2105,21 @@ main(int argc, char** argv)
             printf("1..%d\n", acutest_count_(ACUTEST_STATE_NEEDTORUN));
     }
 
+#ifdef TEST_GLOBAL_INIT
+    TEST_GLOBAL_INIT
+    ; /* Allow for a single unterminated function call */
+#endif
+
     index = acutest_worker_index_;
     for(i = 0; acutest_list_[i].func != NULL; i++) {
         if(acutest_test_data_[i].state == ACUTEST_STATE_NEEDTORUN)
             acutest_run_(&acutest_list_[i], index++, i);
     }
+
+#ifdef TEST_GLOBAL_FINI
+    TEST_GLOBAL_FINI
+    ; /* Allow for a single unterminated function call */
+#endif
 
     /* Write a summary */
     if(!acutest_no_summary_ && acutest_verbose_level_ >= 1) {
