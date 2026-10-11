@@ -312,6 +312,22 @@ _Generic(&(_ct), \
 	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs
 
+/** conf_parser_t which populates a sub-struct using a CONF_SECTION, recording if the CONF_SECTION was found in `<_is_set_field>`
+ *
+ * @param[in] _name		of the CONF_SECTION to search for.
+ * @param[in] _flags		controlling parsing behaviour.
+ * @param[in] _struct		containing the sub-struct to populate.
+ * @param[in] _field		containing the sub-struct to populate.
+ * @param[in] _is_set_field	bool to write the is set state to.
+ * @param[in] _subcs		CONF_SECTION to parse.
+ */
+#  define FR_CONF_OFFSET_SUBSECTION_IS_SET(_name, _flags, _struct, _field, _is_set_field, _subcs) \
+	.name1 = _name, \
+	.flags = (conf_parser_flags_t)(CONF_FLAG_SUBSECTION | CONF_FLAG_IS_SET | (_flags)), \
+	.offset = offsetof(_struct, _field), \
+	.is_set_offset = offsetof(_struct, _is_set_field), \
+	.subcs = _subcs
+
 /** conf_parser_t which populates a sub-struct using a CONF_SECTION
  *
  * @param[in] _struct		containing the sub-struct to populate.
