@@ -189,6 +189,7 @@ static int build_item(CONF_SECTION *parent, struct json_object *item)
 	static size_t item_builders_len = NUM_ELEMENTS(item_builders);
 
 	char const *type = json_get_str(item, "type");
+	void const *builder;
 	build_fn_t  build;
 
 	if (!type) {
@@ -196,7 +197,8 @@ static int build_item(CONF_SECTION *parent, struct json_object *item)
 		return -1;
 	}
 
-	build = (build_fn_t)(uintptr_t)fr_table_value_by_str(item_builders, type, NULL);
+	builder = fr_table_value_by_str(item_builders, type, NULL);
+	build = (build_fn_t)(uintptr_t)builder;
 	if (!build) {
 		fprintf(stderr, "unknown item type %s\n", type);
 		return -1;

@@ -179,7 +179,7 @@ static void **rlm_perl_get_handles(pTHX)
 			ERROR("Could not fetch $%s[%d]!", dl_librefs, (int)i);
 			continue;
 		}
-		handle = (void *)SvIV(handle_sv);
+		handle = INT2PTR(void *, SvIV(handle_sv));
 
 		if (handle) handles[i] = handle;
 	}

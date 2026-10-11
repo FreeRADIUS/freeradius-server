@@ -316,7 +316,11 @@ DIAG_ON_OPTIONAL(class-varargs)
 	/*
 	 *	The return should be a fixnum, which is converted to rlm_rcode_t
 	 */
-	if (mrb_type(mruby_result) == MRB_TT_FIXNUM) RETURN_UNLANG_RCODE((rlm_rcode_t)mrb_int(mrb, mruby_result));
+	if (mrb_type(mruby_result) == MRB_TT_FIXNUM) {
+		mrb_int rcode = mrb_int(mrb, mruby_result);
+
+		RETURN_UNLANG_RCODE((rlm_rcode_t)rcode);
+	}
 
 	/* Invalid return type */
 	RERROR("Expected return to be a Fixnum, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mruby_result)));
