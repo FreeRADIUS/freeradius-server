@@ -79,7 +79,7 @@ int cf_htrie_type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci,
 	 *	value later, we know to keep checking the
 	 *	htrie type value for consistency.
 	 */
-	if (*(int *)out == FR_HTRIE_AUTO) inst->htrie_auto = true;
+	if (*(fr_htrie_type_t *)out == FR_HTRIE_AUTO) inst->htrie_auto = true;
 
 	return 0;
 }
