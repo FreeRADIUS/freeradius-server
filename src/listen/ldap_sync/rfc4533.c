@@ -526,7 +526,7 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 		default:
 			ERROR("Invalid refresh phase transition (%s->%s)",
 			      fr_table_str_by_value(sync_phase_table, sync->phase, "<unknown>"),
-			      fr_table_str_by_value(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
+			      fr_table_str_by_value(sync_phase_table, SYNC_PHASE_PRESENT, "<unknown>"));
 			goto error;
 		}
 
