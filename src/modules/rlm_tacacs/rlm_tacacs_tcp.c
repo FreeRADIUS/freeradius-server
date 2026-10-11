@@ -590,7 +590,7 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 	}
 
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
-	       fr_tacacs_packet_names[code], code, packet_len, h->name);
+	       fr_tacacs_packet_names[code], req->id, packet_len, h->name);
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, reply, NULL);
 
 	*response_code = code;
