@@ -913,7 +913,7 @@ static inline CC_HINT(nonnull) fr_time_t fr_time_from_timeval(struct timeval con
  *	- 0 if a == b
  *      - -1 if a < b
  */
-static inline int8_t fr_time_cmp(fr_time_t a, fr_time_t b)
+static inline fr_cmp_ret_t fr_time_cmp(fr_time_t a, fr_time_t b)
 {
 	return CMP(fr_time_unwrap(a), fr_time_unwrap(b));
 }
@@ -927,7 +927,7 @@ static inline int8_t fr_time_cmp(fr_time_t a, fr_time_t b)
  *	- 0 if a == b
  *      - -1 if a < b
  */
-static inline int8_t fr_time_delta_cmp(fr_time_delta_t a, fr_time_delta_t b)
+static inline fr_cmp_ret_t fr_time_delta_cmp(fr_time_delta_t a, fr_time_delta_t b)
 {
 	return CMP(fr_time_delta_unwrap(a), fr_time_delta_unwrap(b));
 }
@@ -941,7 +941,7 @@ static inline int8_t fr_time_delta_cmp(fr_time_delta_t a, fr_time_delta_t b)
  *	- 0 if a == b
  *      - -1 if a < b
  */
-static inline int8_t fr_unix_time_cmp(fr_unix_time_t a, fr_unix_time_t b)
+static inline fr_cmp_ret_t fr_unix_time_cmp(fr_unix_time_t a, fr_unix_time_t b)
 {
 	return CMP(fr_unix_time_unwrap(a), fr_unix_time_unwrap(b));
 }

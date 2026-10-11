@@ -169,7 +169,7 @@ int	fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet);
  */
 fr_cmp_ret_t	fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
-int8_t	fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage const *b);
+fr_cmp_ret_t	fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage const *b);
 
 /*
  *	Sockaddr conversion functions

@@ -482,7 +482,7 @@ void tmpl_request_ref_list_debug(FR_DLIST_HEAD(tmpl_request_list) const *rql)
  *	- 0 a == b
  *	- <0 a < b
  */
-int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_DLIST_HEAD(tmpl_request_list) const *b)
+fr_cmp_ret_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_DLIST_HEAD(tmpl_request_list) const *b)
 {
 	tmpl_request_t *a_rr = NULL, *b_rr = NULL;
 
@@ -499,7 +499,7 @@ int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_D
 	/*
 	 *	Fast path...
 	 */
-	if (a == b) return 0;
+	if (a == b) return CMP_EQ;
 
 	for (;;) {
 		a_rr = tmpl_request_list_next(a, a_rr);

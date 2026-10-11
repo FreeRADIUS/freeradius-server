@@ -197,9 +197,9 @@ static fr_cmp_ret_t dict_attr_name_cmp(void const *one, void const *two)
  *
  *  This function orders parents first, then their children.
  */
-int8_t fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+fr_cmp_ret_t fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
 {
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	/*
 	 *	Order by parent first.  If the parents are different,
@@ -212,14 +212,14 @@ int8_t fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b
 		ret = fr_dict_attr_ordered_cmp(a, b->parent);
 		if (ret != 0) return ret;
 
-		return -1;	/* order a before b */
+		return CMP_LT;	/* order a before b */
 	}
 
 	if (a->depth > b->depth) {
 		ret = fr_dict_attr_ordered_cmp(a->parent, b);
 		if (ret != 0) return ret;
 
-		return +1;	/* order b before a */
+		return CMP_GT;	/* order b before a */
 	}
 
 	/*

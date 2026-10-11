@@ -110,7 +110,7 @@ static inline void section_name_dup(TALLOC_CTX *ctx, section_name_t *dst, sectio
 	if (dst->name2 && (dst->name2 != CF_IDENT_ANY)) dst->name2 = talloc_strdup(ctx, src->name2);
 }
 
-int8_t section_name_cmp(void const *one, void const *two);
+fr_cmp_ret_t section_name_cmp(void const *one, void const *two);
 
 #ifdef __cplusplus
 }

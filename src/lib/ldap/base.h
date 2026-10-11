@@ -697,7 +697,7 @@ static inline int fr_ldap_berval_strncasecmp(struct berval *value, char const *s
 static inline fr_cmp_ret_t fr_ldap_trunk_cmp(void const *one, void const *two)
 {
 	fr_ldap_thread_trunk_t const	*a = one, *b = two;
-	int8_t uricmp = CMP(strcmp(a->uri, b->uri), 0);
+	fr_cmp_ret_t uricmp = CMP(strcmp(a->uri, b->uri), 0);
 
 	if (uricmp !=0) return uricmp;
 	if (!a->bind_dn || !b->bind_dn) return CMP(a->bind_dn, b->bind_dn);

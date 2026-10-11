@@ -85,7 +85,7 @@ static void _trigger_last_fired_free(void *data)
 static fr_cmp_ret_t _trigger_last_fired_cmp(void const *one, void const *two)
 {
 	trigger_last_fired_t const *a = one, *b = two;
-	int8_t	ret;
+	fr_cmp_ret_t	ret;
 
 	ret = CMP(a->ci, b->ci);
 	if (ret != 0) return ret;

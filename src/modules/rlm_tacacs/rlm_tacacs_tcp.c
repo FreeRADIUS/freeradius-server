@@ -531,7 +531,7 @@ static fr_cmp_ret_t request_prioritise(void const *one, void const *two)
 {
 	tcp_request_t const *a = one;
 	tcp_request_t const *b = two;
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	/*
 	 *	Larger priority is more important.

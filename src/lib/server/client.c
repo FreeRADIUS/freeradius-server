@@ -74,7 +74,7 @@ static fr_cmp_ret_t client_cmp(void const *one, void const *two)
 	/*
 	 *	0 is "wildcard", or "both" protocols
 	 */
-	if ((a->proto == IPPROTO_IP) || (b->proto == IPPROTO_IP)) return 0;
+	if ((a->proto == IPPROTO_IP) || (b->proto == IPPROTO_IP)) return CMP_EQ;
 
 	return CMP(a->proto, b->proto);
 }

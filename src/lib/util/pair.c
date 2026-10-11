@@ -1843,7 +1843,7 @@ fr_cmp_ret_t fr_pair_cmp_by_da_mutable(void const *a, void const *b)
  */
 static inline fr_cmp_ret_t pair_cmp_by_num(void const *a, void const *b)
 {
-	int8_t ret;
+	fr_cmp_ret_t ret;
 	unsigned int i, min;
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
@@ -1906,7 +1906,7 @@ fr_cmp_ret_t fr_pair_cmp_by_parent_num(void const *a, void const *b)
 	fr_dict_attr_t const	*da_b = vp_b->da;
 	fr_da_stack_t		da_stack_a;
 	fr_da_stack_t		da_stack_b;
-	int8_t			cmp;
+	fr_cmp_ret_t			cmp;
 	int i;
 
 	/*
@@ -1928,7 +1928,7 @@ fr_cmp_ret_t fr_pair_cmp_by_parent_num(void const *a, void const *b)
 	 *	hierarchy than b, it should come
 	 *	before b.
 	 */
-	return (da_a && !da_b) - (!da_a && da_b);
+	return (fr_cmp_ret_t)((da_a && !da_b) - (!da_a && da_b));
 }
 
 /** Compare two pairs, using the operator from "a"

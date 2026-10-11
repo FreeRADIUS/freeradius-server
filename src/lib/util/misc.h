@@ -37,23 +37,6 @@ extern "C" {
 
 #include <signal.h>
 
-/** Result of an ordering comparison
- *
- * CMP_ERR means the comparison itself failed (corrupt or invalid operand),
- * not that the operands were unequal.  A comparator returning CMP_ERR also
- * pushes a fr_strerror describing the operand problem.
- *
- * CMP_ERR is negative, so sign-test idioms (ret < 0) misread an error as
- * "less than".  Any consumer which can receive CMP_ERR must check for the
- * value explicitly before interpreting the sign.
- */
-typedef enum : int8_t {
-	CMP_ERR	= INT8_MIN,		//!< comparison failed
-	CMP_LT	= -1,			//!< a < b
-	CMP_EQ	= 0,			//!< a == b
-	CMP_GT	= 1			//!< a > b
-} fr_cmp_ret_t;
-
 typedef		fr_cmp_ret_t (*fr_cmp_t)(void const *a, void const *b);
 typedef		void (*fr_free_t)(void *);
 

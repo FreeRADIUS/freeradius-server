@@ -363,7 +363,7 @@ static fr_cmp_ret_t _mlg_module_instance_cmp(void const *one, void const *two)
 {
 	module_instance_t const *a = talloc_get_type_abort_const(one, module_instance_t);
 	module_instance_t const *b = talloc_get_type_abort_const(two, module_instance_t);
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	fr_assert(a->ml && b->ml);
 

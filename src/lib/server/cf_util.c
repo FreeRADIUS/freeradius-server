@@ -313,7 +313,7 @@ static inline fr_cmp_ret_t _cf_ident1_cmp(void const *one, void const *two)
 
 	default:
 		fr_assert_fail(NULL);
-		return 0;
+		return CMP_EQ;
 	}
 }
 
@@ -333,16 +333,16 @@ static inline fr_cmp_ret_t cf_ident2_cmp(void const *one, void const *two)
 
 	switch (ci->type) {
 	case CONF_ITEM_PAIR:
-		return 0;
+		return CMP_EQ;
 
 	case CONF_ITEM_SECTION:
 	{
 		CONF_SECTION const *a = one;
 		CONF_SECTION const *b = two;
 
-		if (!b->name2 && a->name2) return +1;
-		if (b->name2 && !a->name2) return -1;
-		if (!b->name2 && !a->name2) return 0;
+		if (!b->name2 && a->name2) return CMP_GT;
+		if (b->name2 && !a->name2) return CMP_LT;
+		if (!b->name2 && !a->name2) return CMP_EQ;
 
 		ret = strcmp(a->name2, b->name2);
 		return CMP(ret, 0);
@@ -353,9 +353,9 @@ static inline fr_cmp_ret_t cf_ident2_cmp(void const *one, void const *two)
 		CONF_DATA const *a = one;
 		CONF_DATA const *b = two;
 
-		if (!b->name && a->name) return +1;
-		if (b->name && !a->name) return -1;
-		if (!b->name && !a->name) return 0;
+		if (!b->name && a->name) return CMP_GT;
+		if (b->name && !a->name) return CMP_LT;
+		if (!b->name && !a->name) return CMP_EQ;
 
 		ret = strcmp(a->name, b->name);
 		return CMP(ret, 0);
@@ -363,7 +363,7 @@ static inline fr_cmp_ret_t cf_ident2_cmp(void const *one, void const *two)
 
 	default:
 		fr_assert_fail(NULL);
-		return 0;
+		return CMP_EQ;
 	}
 }
 
@@ -1343,9 +1343,9 @@ char const *cf_section_value_find(CONF_SECTION const *cs, char const *attr)
  *	- 0 if cs matches the identifiers.
  *	- <0 if cs is less than the identifiers.
  */
-int8_t cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const *name2)
+fr_cmp_ret_t cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const *name2)
 {
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	if (name1 != CF_IDENT_ANY) {
 		ret = CMP(strcmp(cf_section_name1(cs), name1), 0);
@@ -1356,15 +1356,15 @@ int8_t cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const
 		char const *cs_name2 = cf_section_name2(cs);
 
 		if (!cs_name2) {
-			if (!name2) return 0;
-			return 1;
+			if (!name2) return CMP_EQ;
+			return CMP_GT;
 		}
-		if (!name2) return -1;
+		if (!name2) return CMP_LT;
 
 		return CMP(strcmp(cs_name2, name2), 0);
 	}
 
-	return 0;
+	return CMP_EQ;
 }
 
 /** Return the first identifier of a #CONF_SECTION

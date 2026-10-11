@@ -671,11 +671,11 @@ fr_dict_attr_t const	*fr_dict_attr_unknown_resolve(fr_dict_t const *dict, fr_dic
  *
  * @{
  */
-int8_t			fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b);
+fr_cmp_ret_t			fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b);
 
-static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+static inline CC_HINT(nonnull) fr_cmp_ret_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
 {
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	/*
 	 *	Comparing unknowns or raws is expensive
@@ -688,7 +688,7 @@ static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, 
 		ret = CMP(a->attr, b->attr);
 		if (ret != 0) return ret;
 
-		ret = (a->parent == NULL) - (b->parent == NULL);
+		ret = CMP(a->parent == NULL, b->parent == NULL);
 		if ((ret != 0) || !a->parent) return ret;
 
 		return fr_dict_attr_cmp(a->parent, b->parent);
@@ -710,9 +710,9 @@ static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, 
  *	- -1 if a < b.
  *	- +1 if a > b.
  */
-static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp_fields(const fr_dict_attr_t *a, const fr_dict_attr_t *b)
+static inline CC_HINT(nonnull) fr_cmp_ret_t fr_dict_attr_cmp_fields(const fr_dict_attr_t *a, const fr_dict_attr_t *b)
 {
-	int8_t ret;
+	fr_cmp_ret_t ret;
 	fr_dict_protocol_t const *a_proto = fr_dict_protocol(a->dict);
 
 	/*

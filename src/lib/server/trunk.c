@@ -5030,7 +5030,7 @@ static fr_cmp_ret_t _trunk_connection_order_by_shortest_queue(void const *one, v
 	/*
 	 *	Add a fudge factor of 1 to reduce spurious rebalancing
 	 */
-	return ((a_count > b_count) && ((a_count - b_count) > 1)) - ((b_count > a_count) && ((b_count - a_count) > 1));
+	return (fr_cmp_ret_t)(((a_count > b_count) && ((a_count - b_count) > 1)) - ((b_count > a_count) && ((b_count - a_count) > 1)));
 }
 
 /** Free a trunk, gracefully closing all connections.

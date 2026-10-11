@@ -117,7 +117,7 @@ static fr_cmp_ret_t interval_entry_cmp(void const *one, void const *two)
 {
 	rlm_interval_entry_t const *a = one;
 	rlm_interval_entry_t const *b = two;
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	ret = CMP(a->key.type, b->key.type);
 	if (ret != 0) return ret;

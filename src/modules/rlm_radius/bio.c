@@ -1160,7 +1160,7 @@ static fr_cmp_ret_t request_prioritise(void const *one, void const *two)
 {
 	bio_request_t const *a = one;
 	bio_request_t const *b = two;
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	/*
 	 *	Prioritise status check packets

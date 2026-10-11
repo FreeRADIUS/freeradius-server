@@ -952,8 +952,8 @@ static fr_cmp_ret_t request_cmp(void const *one, void const *two)
 	vp1 = fr_pair_find_by_da(&a->request_pairs, NULL, attr_coa_match_attr);
 	vp2 = fr_pair_find_by_da(&b->request_pairs, NULL, attr_coa_match_attr);
 
-	if (!vp1) return -1;
-	if (!vp2) return +1;
+	if (!vp1) return CMP_LT;
+	if (!vp2) return CMP_GT;
 
 	return fr_value_box_cmp(&vp1->data, &vp2->data);
 }

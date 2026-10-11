@@ -1144,7 +1144,7 @@ int			tmpl_request_ptr(request_t **request, FR_DLIST_HEAD(tmpl_request_list) con
 
 void			tmpl_request_ref_list_debug(FR_DLIST_HEAD(tmpl_request_list) const *rql);
 
-int8_t			tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a,
+fr_cmp_ret_t			tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a,
 						  FR_DLIST_HEAD(tmpl_request_list) const *b);
 
 /** Returns true if the specified qualifier list points to the current request

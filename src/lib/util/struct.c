@@ -521,7 +521,7 @@ static fr_cmp_ret_t pair_sort_increasing(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	/*
 	 *	Deeper attributes come later in the list.

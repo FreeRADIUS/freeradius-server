@@ -713,7 +713,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
  *  We're not _quite_ supposed to use DBL_EPSILON here, and are instead supposed to choose our own epsilon.
  *  But this is good enough for most purposed.
  */
-static int8_t float_cmp(double a, double b)
+static fr_cmp_ret_t float_cmp(double a, double b)
 {
 	double sum, diff;
 
@@ -721,7 +721,7 @@ static int8_t float_cmp(double a, double b)
 	 *	Handles the best cast scenario.
 	 */
 DIAG_OFF(float-equal)
-	if (a == b) return 0;
+	if (a == b) return CMP_EQ;
 DIAG_ON(float-equal)
 
 	diff = fabs(a - b);
@@ -734,7 +734,7 @@ DIAG_ON(float-equal)
 	 */
 	if ((fpclassify(a) == FP_ZERO) || (fpclassify(b) == FP_ZERO)) {
 	check:
-		if (diff < DBL_EPSILON) return 0;
+		if (diff < DBL_EPSILON) return CMP_EQ;
 
 		return CMP(a, b);
 	}
@@ -752,7 +752,7 @@ DIAG_ON(float-equal)
 	/*
 	 *	Get the relative differences.  This check also handles overflow of sum.
 	 */
-	if ((diff / fmin(sum, DBL_MAX)) < DBL_EPSILON) return 0;
+	if ((diff / fmin(sum, DBL_MAX)) < DBL_EPSILON) return CMP_EQ;
 
 	return CMP(a, b);
 }

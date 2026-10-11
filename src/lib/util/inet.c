@@ -1697,7 +1697,7 @@ int fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet)
 }
 
 
-int8_t fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage const *b)
+fr_cmp_ret_t fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage const *b)
 {
 	int ret;
 
@@ -1737,6 +1737,6 @@ int8_t fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage
 
 	default:
 		fr_assert(0);
-		return 0;
+		return CMP_EQ;
 	}
 }

@@ -803,7 +803,7 @@ static fr_cmp_ret_t host_uid_cmp(void const *one, void const *two)
 	isc_host_uid_t const *b = two;
 
 	MEMCMP_RETURN(a, b, client->vb_octets, client->vb_length);
-	return 0;
+	return CMP_EQ;
 }
 
 

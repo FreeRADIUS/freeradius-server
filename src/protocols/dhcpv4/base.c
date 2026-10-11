@@ -211,8 +211,8 @@ fr_cmp_ret_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	/*
 	 *	Message-Type is first, for simplicity.
 	 */
-	if ((my_a->da == attr_dhcp_message_type) && (my_b->da != attr_dhcp_message_type)) return -1;
-	if ((my_a->da != attr_dhcp_message_type) && (my_b->da == attr_dhcp_message_type)) return +1;
+	if ((my_a->da == attr_dhcp_message_type) && (my_b->da != attr_dhcp_message_type)) return CMP_LT;
+	if ((my_a->da != attr_dhcp_message_type) && (my_b->da == attr_dhcp_message_type)) return CMP_GT;
 
 	/*
 	 *	Relay-Agent is last.
@@ -228,8 +228,8 @@ fr_cmp_ret_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	 *
 	 *	Check if either of the options are option 82
 	 */
-	if ((my_a->da == attr_dhcp_option_82) && (my_b->da != attr_dhcp_option_82)) return +1;
-	if ((my_a->da != attr_dhcp_option_82) && (my_b->da == attr_dhcp_option_82)) return -1;
+	if ((my_a->da == attr_dhcp_option_82) && (my_b->da != attr_dhcp_option_82)) return CMP_GT;
+	if ((my_a->da != attr_dhcp_option_82) && (my_b->da == attr_dhcp_option_82)) return CMP_LT;
 
 	return fr_dict_attr_cmp(my_a->da, my_b->da);
 }

@@ -920,8 +920,8 @@ static fr_cmp_ret_t cache_entry_cmp(void const *one, void const *two)
 	rcode = memcmp(a->mac, b->mac, sizeof(a->mac));
 	if (rcode != 0) return CMP(rcode, 0);
 
-	if (a->ssid_len < b->ssid_len) return -1;
-	if (a->ssid_len > b->ssid_len) return +1;
+	if (a->ssid_len < b->ssid_len) return CMP_LT;
+	if (a->ssid_len > b->ssid_len) return CMP_GT;
 
 	return CMP(memcmp(a->ssid, b->ssid, a->ssid_len), 0);
 }

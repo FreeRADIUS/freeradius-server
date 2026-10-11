@@ -394,7 +394,7 @@ static fr_cmp_ret_t module_xlat_cmp(void const *a, void const *b)
 	 */
 	a_p = strchr(mrx_a->xlat->name, '.');
 	b_p = strchr(mrx_b->xlat->name, '.');
-	if (!a_p && !b_p) return 0;
+	if (!a_p && !b_p) return CMP_EQ;
 
 	/*
 	 *	Compare the bit after the module name
@@ -406,7 +406,7 @@ static fr_cmp_ret_t module_xlat_cmp(void const *a, void const *b)
 
 static fr_cmp_ret_t module_qualified_xlat_cmp(void const *a, void const *b)
 {
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
 	module_rlm_xlat_t const *mrx_a = talloc_get_type_abort_const(a, module_rlm_xlat_t);
 	module_rlm_xlat_t const *mrx_b = talloc_get_type_abort_const(b, module_rlm_xlat_t);

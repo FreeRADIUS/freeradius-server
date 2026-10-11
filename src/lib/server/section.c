@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/section.h>
 
 #define IDENT_ANY_CMP(_a, _b) \
-	(((_a) == CF_IDENT_ANY) < ((_b) == CF_IDENT_ANY)) - (((_a) == CF_IDENT_ANY) > ((_b) == CF_IDENT_ANY))
+	CMP_PREFER_LARGER((_a) == CF_IDENT_ANY, (_b) == CF_IDENT_ANY)
 
 #define NULL_CMP(_a, _b) \
 	(((_a) == NULL) < ((_b) == NULL)) - (((_a) == NULL) > ((_b) == NULL))
@@ -44,7 +44,7 @@ RCSID("$Id$")
  *
  * @return < 0 if one < two, 0 if one == two, > 0 if one > two.
  */
-int8_t section_name_cmp(void const *one, void const *two)
+fr_cmp_ret_t section_name_cmp(void const *one, void const *two)
 {
 	section_name_t const *a = one;
 	section_name_t const *b = two;
@@ -60,7 +60,7 @@ int8_t section_name_cmp(void const *one, void const *two)
 	 *	Straight comparison between sections.
 	 */
 	ret = CMP(a, b);
-	if (ret == 0) return 0;
+	if (ret == 0) return CMP_EQ;
 
 	/*
 	 *	Fastpath for static strings and CF_IDENT_ANY
@@ -87,7 +87,7 @@ name2:
 	ret = NULL_CMP(a->name2, b->name2);
 	if (ret != 0) return ret;
 
-	if (a->name2 == b->name2) return 0;
+	if (a->name2 == b->name2) return CMP_EQ;
 
 	if ((a->name2 == CF_IDENT_ANY) || (b->name2 == CF_IDENT_ANY)) {
 		return IDENT_ANY_CMP(b->name2, a->name2); /* Can't strcmp */

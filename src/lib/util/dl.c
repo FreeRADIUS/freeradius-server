@@ -129,7 +129,7 @@ static fr_cmp_ret_t dl_symbol_init_cmp(void const *one, void const *two)
 	ret = (a->symbol && !b->symbol) - (!a->symbol && b->symbol);
 	if (ret != 0) return ret;
 
-	if (!a->symbol && !b->symbol) return 0;
+	if (!a->symbol && !b->symbol) return CMP_EQ;
 
 #ifdef STATIC_ANALYZER
 	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */
@@ -152,7 +152,7 @@ static fr_cmp_ret_t dl_symbol_free_cmp(void const *one, void const *two)
 	ret = (a->symbol && !b->symbol) - (!a->symbol && b->symbol);
 	if (ret != 0) return ret;
 
-	if (!a->symbol && !b->symbol) return 0;
+	if (!a->symbol && !b->symbol) return CMP_EQ;
 
 #ifdef STATIC_ANALYZER
 	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */

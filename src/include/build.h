@@ -100,13 +100,30 @@ extern "C" {
  */
 #undef unix
 
+/** Result of an ordering comparison
+ *
+ * CMP_ERR means the comparison itself failed (corrupt or invalid operand),
+ * not that the operands were unequal.  A comparator returning CMP_ERR also
+ * pushes a fr_strerror describing the operand problem.
+ *
+ * CMP_ERR is negative, so sign-test idioms (ret < 0) misread an error as
+ * "less than".  Any consumer which can receive CMP_ERR must check for the
+ * value explicitly before interpreting the sign.
+ */
+typedef enum : int8_t {
+	CMP_ERR	= INT8_MIN,		//!< comparison failed
+	CMP_LT	= -1,			//!< a < b
+	CMP_EQ	= 0,			//!< a == b
+	CMP_GT	= 1			//!< a > b
+} fr_cmp_ret_t;
+
 /** Evaluates to +1 for a > b, and -1 for a < b
  */
-#define CMP_PREFER_SMALLER(_a,_b)	(((_a) > (_b)) - ((_a) < (_b)))
+#define CMP_PREFER_SMALLER(_a,_b)	((fr_cmp_ret_t)(((_a) > (_b)) - ((_a) < (_b))))
 
 /** Evaluates to -1 for a > b, and +1 for a < b
  */
-#define CMP_PREFER_LARGER(_a,_b)	(((_a) < (_b)) - ((_a) > (_b)))
+#define CMP_PREFER_LARGER(_a,_b)	((fr_cmp_ret_t)(((_a) < (_b)) - ((_a) > (_b))))
 
 /** Same as CMP_PREFER_SMALLER use when you don't really care about ordering, you just want _an_ ordering.
  */
@@ -121,7 +138,7 @@ extern "C" {
  */
 #define CMP_RETURN(_a, _b, _field) \
 do { \
-	int8_t _ret = CMP((_a)->_field, (_b)->_field); \
+	fr_cmp_ret_t _ret = CMP((_a)->_field, (_b)->_field); \
 	if (_ret != 0) return _ret; \
 } while (0)
 
@@ -136,14 +153,14 @@ do { \
  *	- 0 if a == b
  *	- -1 if a < b
  */
-static inline int8_t memcmp_return(void const *a, void const *b, size_t a_len, size_t b_len)
+static inline fr_cmp_ret_t memcmp_return(void const *a, void const *b, size_t a_len, size_t b_len)
 {
 	size_t cmp_len;
-	int8_t ret;
+	fr_cmp_ret_t ret;
 
-	if (!a_len && b_len) return -1;
-	if (a_len && !b_len) return +1;
-	if (!a_len && !b_len) return 0;
+	if (!a_len && b_len) return CMP_LT;
+	if (a_len && !b_len) return CMP_GT;
+	if (!a_len && !b_len) return CMP_EQ;
 
 	cmp_len = (a_len < b_len) ? a_len : b_len;
 
@@ -163,7 +180,7 @@ static inline int8_t memcmp_return(void const *a, void const *b, size_t a_len, s
  */
 #define MEMCMP_RETURN(_a, _b, _field, _len_field) \
 do { \
-	int8_t _ret = memcmp_return((_a)->_field, (_b)->_field, (_a)->_len_field, (_b)->_len_field); \
+	fr_cmp_ret_t _ret = memcmp_return((_a)->_field, (_b)->_field, (_a)->_len_field, (_b)->_len_field); \
 	if (_ret != 0) return _ret; \
 } while (0)
 

@@ -845,9 +845,9 @@ static fr_cmp_ret_t listen_addr_cmp(void const *one, void const *two)
 	/*
 	 *	The caller must ensure that the address field is set.
 	 */
-	if (!a->app_io_addr && !b->app_io_addr) return 0;
-	if (!a->app_io_addr && b->app_io_addr) return -1;
-	if (a->app_io_addr && !b->app_io_addr) return +1;
+	if (!a->app_io_addr && !b->app_io_addr) return CMP_EQ;
+	if (!a->app_io_addr && b->app_io_addr) return CMP_LT;
+	if (a->app_io_addr && !b->app_io_addr) return CMP_GT;
 
 	/*
 	 *	Address family
