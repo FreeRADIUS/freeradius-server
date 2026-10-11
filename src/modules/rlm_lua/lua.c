@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 
 #include "config.h"
-#include "lua.h"
+#include "rlm_lua.h"
 
 #include <float.h>
 #include <lauxlib.h>
@@ -326,7 +326,7 @@ static int fr_lua_pair_parent_build(request_t *request, fr_lua_pair_t *pair_data
 	if (pair_data->idx > 1) {
 		unsigned int count = fr_pair_count_by_da(&pair_data->parent->vp->vp_group, pair_data->da);
 		if (count < (pair_data->idx - 1)) {
-			RERROR("Attempt to set instance %d when only %d exist", pair_data->idx, count);
+			RERROR("Attempt to set instance %u when only %u exist", pair_data->idx, count);
 			return -1;
 		}
 	}
@@ -402,7 +402,7 @@ static int _lua_pair_setter(lua_State *L)
 	if (!vp && (index > 1)) {
 		unsigned int count = fr_pair_count_by_da(&parent->vp->vp_group, da);
 		if (count < (index - 1)) {
-			RERROR("Attempt to set instance %ld when only %d exist", index, count);
+			RERROR("Attempt to set instance %ld when only %u exist", index, count);
 			return -1;
 		}
 	}
@@ -759,7 +759,7 @@ static int fr_lua_get_field(module_ctx_t const *mctx, lua_State *L, request_t *r
 
 	if ((size_t) (q - p) >= sizeof(buff)) {
 	too_long:
-		ROPTIONAL(REDEBUG, ERROR, "Field name too long, expected < %zu, got %zu", q - p, sizeof(buff));
+		ROPTIONAL(REDEBUG, ERROR, "Field name too long, expected < %zu, got %zu", sizeof(buff), (size_t) (q - p));
 		return -1;
 	}
 

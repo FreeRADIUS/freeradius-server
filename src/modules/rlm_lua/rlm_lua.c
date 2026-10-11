@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/module_rlm.h>
 
-#include "lua.h"
+#include "rlm_lua.h"
 /*
  *	A mapping of configuration file names to internal variables.
  *
@@ -237,7 +237,7 @@ static void lua_func_name_safe(char *name) {
 }
 
 static int lua_func_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED tmpl_rules_t const *t_rules,
-			  UNUSED CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+			  UNUSED CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule)
 {
 	rlm_lua_t		*inst = talloc_get_type_abort(cec->mi->data, rlm_lua_t);
 	call_env_parsed_t	*parsed;

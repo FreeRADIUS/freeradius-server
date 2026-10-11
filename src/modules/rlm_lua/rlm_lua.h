@@ -16,10 +16,10 @@
 /**
  * $Id$
  *
- * @file lua.h
+ * @file rlm_lua.h
  * @brief Library function signatures for lua module.
  */
-RCSIDH(lua_h, "$Id$")
+RCSIDH(rlm_lua_h, "$Id$")
 
 /*
  *	If were using luajit, luajit.h will define a few more constants and

@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 
 #include "config.h"
-#include "lua.h"
+#include "rlm_lua.h"
 
 #include <lauxlib.h>
 #include <lualib.h>

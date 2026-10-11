@@ -257,7 +257,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *reques
 	 *	-1 means no value in this capture group.
 	 */
 	if ((num >= rc->regmatch->used) || (match_data[num].rm_eo == -1) || (match_data[num].rm_so == -1)) {
-		RDEBUG4("%i/%zu Not found", num + 1, rc->regmatch->used);
+		RDEBUG4("%u/%zu Not found", num + 1, rc->regmatch->used);
 		return -1;
 	}
 
@@ -276,7 +276,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *reques
 	fr_value_box_bstrndup_shallow(out, NULL, buff, len, false);
 	fr_value_box_safety_set(out, &rc->safety);
 
-	RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
+	RDEBUG4("%u/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
 
 	return 0;
 }
