@@ -58,8 +58,6 @@ typedef struct {
 FR_SLAB_TYPES(ocsp, fr_curl_io_request_t)
 FR_SLAB_FUNCS(ocsp, fr_curl_io_request_t)
 
-#define REST_BODY_ALLOC_CHUNK		1024
-
 typedef enum : uint8_t {
 	WRITE_STATE_INIT = 0,
 	WRITE_STATE_PARSE_HEADERS,
@@ -139,6 +137,8 @@ fr_dict_attr_autoload_t rlm_ocsp_dict_attr[] = {
 };
 
 #ifdef WITH_TLS
+#define REST_BODY_ALLOC_CHUNK		1024
+
 typedef struct {
 	ocsp_slab_list_t	*slab;
 	fr_curl_handle_t	*mhandle;

@@ -222,14 +222,14 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		case SQL_TIMESTAMP:
 			isc_decode_timestamp((ISC_TIMESTAMP ISC_FAR *)var->sqldata, &times);
-			conn->row[i] = talloc_typed_asprintf(conn->row, "%04d-%02d-%02d %02d:%02d:%02d.%04d",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%04d-%02d-%02d %02d:%02d:%02d.%04u",
 				 times.tm_year + 1900,
 				 times.tm_mon + 1,
 				 times.tm_mday,
 				 times.tm_hour,
 				 times.tm_min,
 				 times.tm_sec,
-				 ((ISC_TIMESTAMP *)var->sqldata)->timestamp_time % 10000);
+				 ((ISC_TIMESTAMP *)var->sqldata)->timestamp_time % 10000U);
 			break;
 
 		case SQL_TYPE_DATE:
@@ -242,19 +242,19 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		case SQL_TYPE_TIME:
 			isc_decode_sql_time((ISC_TIME ISC_FAR *)var->sqldata, &times);
-			conn->row[i] = talloc_typed_asprintf(conn->row, "%02d:%02d:%02d.%04d",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%02d:%02d:%02d.%04u",
 				 times.tm_hour,
 				 times.tm_min,
 				 times.tm_sec,
-				 (*((ISC_TIME *)var->sqldata)) % 10000);
+				 (*((ISC_TIME *)var->sqldata)) % 10000U);
 			break;
 
 		case SQL_BLOB:
 		case SQL_ARRAY:
 			/* Print the blob id on blobs or arrays */
 			bid = *(ISC_QUAD ISC_FAR *) var->sqldata;
-			conn->row[i] = talloc_typed_asprintf(conn->row, "%08" ISC_LONG_FMT "x:%08" ISC_LONG_FMT "x",
-				 bid.gds_quad_high, bid.gds_quad_low);
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%08" PRIx32 ":%08" PRIx32,
+				 (uint32_t) bid.gds_quad_high, (uint32_t) bid.gds_quad_low);
 			break;
 		}
 	}

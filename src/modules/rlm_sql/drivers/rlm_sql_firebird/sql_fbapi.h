@@ -34,14 +34,6 @@ RCSIDH(sql_fbapi_h, "$Id$")
 #define DOWN_SQL_CODE		-902
 #define DUPLICATE_KEY_SQL_CODE	-803
 
-#if defined(_LP64) || defined(__LP64__) || defined(__arch64__)
-#define ISC_LONG_FMT "d"
-#define ISC_ULONG_FMT "u"
-#else
-#define ISC_LONG_FMT "l"
-#define ISC_ULONG_FMT "ul"
-#endif
-
 typedef struct {
 	isc_db_handle dbh;
 	isc_stmt_handle stmt;
