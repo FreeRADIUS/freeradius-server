@@ -253,8 +253,14 @@ static void openssl3_free(void)
 	fr_md4_openssl_free();
 }
 #else
-#define openssl3_init()
-#define openssl3_free()
+static int openssl3_init(void)
+{
+	return 0;
+}
+
+static void openssl3_free(void)
+{
+}
 #endif
 
 static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void *ctx)

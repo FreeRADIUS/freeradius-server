@@ -252,8 +252,14 @@ static void openssl3_free(void)
 	fr_md4_openssl_free();
 }
 #else
-#define openssl3_init() (0)
-#define openssl3_free()
+static int openssl3_init(void)
+{
+	return 0;
+}
+
+static void openssl3_free(void)
+{
+}
 #endif
 
 static int mschapv1_encode(fr_packet_t *packet, fr_pair_list_t *list,

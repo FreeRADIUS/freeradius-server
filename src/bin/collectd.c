@@ -97,7 +97,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 	assert(type);
 	assert(type_instance);
 
-	for (len = 0; values[len].src; len++) {} ;
+	for (len = 0; values[len].src; len++) {}
 	assert(len > 0);
 
 	/*

@@ -196,7 +196,7 @@ static void fr_exit_after(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 
 #ifdef HAVE_CAPABILITY_H
 #define DUMP_CAPABILITIES(_phase) \
-{ \
+do { \
 	char *cap_str; \
 	if (fr_cap_set_to_str(talloc_autofree_context(), &cap_str) < 0) { \
 		PWARN("Failed retrieving %s capabilities", _phase); \
@@ -204,9 +204,9 @@ static void fr_exit_after(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		INFO("%s capabilities: %s", _phase, cap_str); \
 		talloc_free(cap_str); \
 	} \
-}
+} while (0)
 #else
-#define DUMP_CAPABILITIES(_phase)
+#define DUMP_CAPABILITIES(_phase) ((void)0)
 #endif
 
 /** Entry point for the daemon
