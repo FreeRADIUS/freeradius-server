@@ -1024,7 +1024,7 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_ct_t *rtcluster, fr_redis_io_con
 
 char const *fr_redis_command_get_cmd(fr_redis_command_t *cmd)
 {
-	switch(cmd->type) {
+	switch (cmd->fmt) {
 	case FR_REDIS_COMMAND_FMT_EXPANDED:
 	case FR_REDIS_COMMAND_FMT_PREFORMATTED:
 		return cmd->str;
