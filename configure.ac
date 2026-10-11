@@ -1978,6 +1978,7 @@ if test "x$developer" = "xyes"; then
       -W \
       -Weverything \
       -Wformat=2 \
+      -Wno-c++-keyword \
       -Wno-cast-align \
       -Wno-cast-function-type-strict \
       -Wno-conversion \
@@ -1993,6 +1994,7 @@ if test "x$developer" = "xyes"; then
       -Wno-gnu-zero-variadic-macro-arguments \
       -Wno-implicit-int-enum-cast \
       -Wno-implicit-void-ptr-cast \
+      -Wno-jump-misses-init \
       -Wno-ms-bitfield-padding \
       -Wno-packed \
       -Wno-padded \
