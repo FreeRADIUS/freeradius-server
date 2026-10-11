@@ -22,7 +22,14 @@
  */
 
 #define CACHE_LINE_DEFAULT	128
-#define CORES_DEFAULT		1
+
+/*
+ *	fr_hw_num_cores_active() on Linux reports a failure as 0 cores,
+ *	and does not use a default.
+ */
+#ifndef __linux__
+#  define CORES_DEFAULT		1
+#endif
 
 #include <freeradius-devel/util/hw.h>
 #include <freeradius-devel/util/syserror.h>
@@ -60,7 +67,7 @@ size_t fr_hw_cache_line_size(void)
 
 	file = fopen("/sys/devices/system/cpu/cpu0/cache/index0/coherency_cache_line_size", "r");
 	if (file) {
-		if (fscanf(file, "%d", &cache_line_size) != 1) {
+		if (fscanf(file, "%u", &cache_line_size) != 1) {
 			cache_line_size = CACHE_LINE_DEFAULT;
 		}
 		fclose(file);

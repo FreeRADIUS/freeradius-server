@@ -2206,8 +2206,8 @@ static size_t encode_pair(command_result_t *result, command_file_ctx_t *cc, char
 			 */
 			ASAN_POISON_MEMORY_REGION(enc_end, (cc->buffer_end) - enc_end);
 
-			DEBUG("%s[%d]: Iteration %zu - Safe region %p-%p (%zu bytes), "
-			      "poisoned region %p-%p (%zu bytes)", cc->filename, cc->lineno, iterations - 1,
+			DEBUG("%s[%" PRIu32 "]: Iteration %zu - Safe region %p-%p (%td bytes), "
+			      "poisoned region %p-%p (%td bytes)", cc->filename, cc->lineno, iterations - 1,
 			      enc_p, enc_end, enc_end - enc_p, enc_end, cc->buffer_end, cc->buffer_end - enc_end);
 #else
 			DEBUG("%s[%" PRIu32 "]: Iteration %zu - Allowed region %p-%p (%td bytes)",

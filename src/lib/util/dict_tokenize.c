@@ -3303,7 +3303,7 @@ bool fr_dict_filename_loaded(fr_dict_t const *dict, char const *dir, char const 
  *
  *  This function is called *after* the PROTOCOL handler.
  */
-static int dict_begin_protocol(NDEBUG_UNUSED dict_tokenize_ctx_t *dctx)
+static int dict_begin_protocol(dict_tokenize_ctx_t *dctx)
 {
 	ASSERT_CURRENT_NEST(dctx, NEST_NONE);
 	fr_assert(CURRENT_DA(dctx)->flags.is_root);

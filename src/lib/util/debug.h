@@ -229,9 +229,9 @@ NEVER_RETURNS void	_fr_exit(char const *file, int line, int status, bool now);
 #define		fr_fatal_assert_fail(_msg, ...) _fr_assert_fatal(__FILE__, __LINE__, "false", _msg,  ## __VA_ARGS__)
 
 #ifdef NDEBUG
-#  define fr_assert(_x)
-#  define fr_assert_msg(_x, _msg, ...)
-#  define fr_assert_fail(_msg, ...)
+#  define fr_assert(_x) ((void)0)
+#  define fr_assert_msg(_x, _msg, ...) ((void)0)
+#  define fr_assert_fail(_msg, ...) ((void)0)
 #elif !defined(STATIC_ANALYZER)
 /** Calls panic_action ifndef NDEBUG, else logs error
  *

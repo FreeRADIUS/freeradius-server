@@ -187,7 +187,7 @@ fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
  *
  */
 static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-			      uint8_t arg_cnt, uint8_t const *argv, uint8_t const *attrs, NDEBUG_UNUSED uint8_t const *end)
+			      uint8_t arg_cnt, uint8_t const *argv, uint8_t const *attrs, uint8_t const *end)
 {
 	uint8_t i;
 	bool append = false;

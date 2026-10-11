@@ -964,7 +964,7 @@ static int _pair_list_dcursor_insert(fr_dcursor_t *cursor, void *to_insert, UNUS
  * @return
  *	- 0 on success.
  */
-static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dcursor_t *cursor, void *to_remove, UNUSED void *uctx)
+static int _pair_list_dcursor_remove(fr_dcursor_t *cursor, void *to_remove, UNUSED void *uctx)
 {
 	fr_pair_t *vp = to_remove;
 	fr_pair_list_t *parent = fr_pair_parent_list(vp);
