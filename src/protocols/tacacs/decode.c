@@ -135,7 +135,7 @@ fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 #define PACKET_HEADER_CHECK(_msg, _hdr) do { \
 	p = buffer + FR_HEADER_LENGTH; \
 	if (sizeof(_hdr) > (size_t) (end - p)) { \
-		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, (size_t) (end - (uint8_t const *) pkt), (size_t) (p - (uint8_t const *) pkt)); \
+		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, (size_t) (end - p), sizeof(_hdr)); \
 		goto fail; \
 	} \
 	body = p + sizeof(_hdr); \
