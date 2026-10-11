@@ -47,7 +47,7 @@ extern "C" {
 /** Different chain building modes
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_TLS_CHAIN_VERIFY_INVALID = 0,
 
 	FR_TLS_CHAIN_VERIFY_HARD,			//!< Fail if we can't build a complete chain from
