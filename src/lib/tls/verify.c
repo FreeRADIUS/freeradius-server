@@ -68,8 +68,7 @@ bool verify_applies(fr_tls_verify_mode_t mode, int depth, int untrusted)
 	return false;
 }
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 
 /** Print verbose humanly readable messages about why certificate validation failed
  *
@@ -281,8 +280,7 @@ done:
 
 	return my_ok;
 }
-DIAG_ON(used-but-marked-unused)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(used-but-marked-unused)
 
 /** Revalidates the client's certificate chain
  *
@@ -529,8 +527,7 @@ void fr_tls_verify_resumed_request(fr_tls_session_t *tls_session)
 	tls_session->validate.x509_ctx = NULL;
 }
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Decode the chain OpenSSL is verifying into `session-state.TLS-Certificate` pairs
  *
  * Runs on the request's own stack while the handshake is paused in
@@ -624,8 +621,7 @@ static int tls_verify_chain_pairs_add(request_t *request, fr_tls_session_t *tls_
 
 	return 0;
 }
-DIAG_ON(used-but-marked-unused)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(used-but-marked-unused)
 
 /** Decode the chain, then push a `verify certificate { ... }` section
  *

@@ -899,12 +899,16 @@ they're being produced by 3rd party libraries, or when there is
 absolutely no other way to deal with them. If at all possible code in
 FreeRADIUS should be fixed not to produce compiler warnings.
 
-Four diagnostic control macros are available to all FreeRADIUS source
+Six diagnostic control macros are available to all FreeRADIUS source
 files:
 
 - `DIAG_OFF(<diagnostic>)` ignores a diagnostic.
 - `DIAG_ON(<diagnostic>)` sets the specified diagnostic to produce a
   warning.
+- `DIAG_OFF_OPTIONAL(<diagnostic>)` behaves as `DIAG_OFF`, for a
+  diagnostic which some compilers do not implement.
+- `DIAG_ON_OPTIONAL(<diagnostic>)` behaves as `DIAG_ON`, for a
+  diagnostic which some compilers do not implement.
 - `DIAG_PUSH()` stores the current state of all diagnostics.
 - `DIAG_POP()` restores the previous state of all diagnostics.
 
@@ -918,17 +922,21 @@ will be disabled.
 producing warnings.  They should used in balanced pairs in the vast
 majority of cases.
 
-If a diagnostic that may not be implemented by the compiler is being
-used, `DIAG_ON`, `DIAG_OFF` calls can be wrapped with
-`DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)` and `DIAG_ON(DIAG_UNKNOWN_PRAGMAS)`.
+A compiler warns about a diagnostic name which the compiler does not
+implement (`-Wunknown-warning-option` in clang, `-Wpragmas` in GCC).
+For a diagnostic which some compilers do not implement, such as a
+clang-only diagnostic, use `DIAG_OFF_OPTIONAL` and `DIAG_ON_OPTIONAL`.
+`DIAG_OFF_OPTIONAL` and `DIAG_ON_OPTIONAL` ignore the unknown name
+diagnostic while changing the specified diagnostic, then set the
+unknown name diagnostic to produce a warning rather than restoring the
+earlier state.
 
 .Disabling `-Wdocumentation` diagnostics for 3rd party headers
 [example]
 ====
 [source,c]
 ----
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS) /* -Wdocumentation is not available in GCC */
-DIAG_OFF(documentation)
+DIAG_OFF_OPTIONAL(documentation) /* -Wdocumentation is not available in GCC */
 #include <mruby.h>
 #include <mruby/compile.h>
 #include <mruby/array.h>
@@ -936,8 +944,7 @@ DIAG_OFF(documentation)
 #include <mruby/numeric.h>
 #include <mruby/string.h>
 #include <mruby/variable.h>
-DIAG_ON(documentation)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(documentation)
 ----
 
 The macro calls above disable and re-enable the `-Wdocumentation`
@@ -945,8 +952,8 @@ diagnostic for mruby headers. `-Wdocumentation` will produce a warning
 if doxygen style comment blocks are not correctly composed.  We don't
 control the mruby headers and we will not be calling doxygen to build
 documentation based on them, so it's fine to disable the warning.
-`-Wdocumentation` is only emitted by clang hence the use of
-`DIAG_(OFF|ON)_OPTIONAL`.
+The example uses `DIAG_OFF_OPTIONAL` and `DIAG_ON_OPTIONAL` because GCC
+does not implement `-Wdocumentation`.
 ====
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

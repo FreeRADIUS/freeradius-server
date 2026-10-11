@@ -583,8 +583,7 @@ static void tls_session_alert_pair_add(request_t *request, fr_pair_t *list_ctx, 
 }
 
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(used-but-marked-unused)	/* Fix spurious warnings for sk_ macros */
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* Fix spurious warnings for sk_ macros */
 /** Record session state changes
  *
  * Called by OpenSSL whenever the session state changes, an alert is received or an error occurs.
@@ -767,8 +766,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		}
 	}
 }
-DIAG_ON(used-but-marked-unused)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(used-but-marked-unused)
 
 /** Print a message to the request or global log detailing handshake state
  *
@@ -2100,13 +2098,11 @@ again:
 		 *	as "unused".  Unclear why this is done as it's
 		 *	not deprecated.
 		 */
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(used-but-marked-unused)
+DIAG_OFF_OPTIONAL(used-but-marked-unused)
 		while ((ssl_err = ERR_peek_error()) && (ERR_GET_REASON(ssl_err) == BIO_R_UNSUPPORTED_METHOD)) {
 			(void) ERR_get_error();
 		}
-DIAG_ON(used-but-marked-unused)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(used-but-marked-unused)
 	}
 
 	/*

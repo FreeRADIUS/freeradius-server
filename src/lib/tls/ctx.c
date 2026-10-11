@@ -240,8 +240,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 		return -1;
 	}
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 	for (i = 0; i < sk_X509_num(chain->extra); i++) {
 		if (SSL_CTX_add1_chain_cert(ctx, sk_X509_value(chain->extra, i)) != 1) {
 			fr_tls_log_perror(NULL, "Failed adding certificate %d to the chain for \"%s\"",
@@ -249,8 +248,7 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 			return -1;
 		}
 	}
-DIAG_ON(used-but-marked-unused)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(used-but-marked-unused)
 
 	if (SSL_CTX_use_PrivateKey(ctx, chain->private_key) != 1) {
 		fr_tls_log_perror(NULL, "Failed setting private key from \"%s\"", chain->private_key_file);
@@ -276,8 +274,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 		if (allow_multi_self_signed) self_signed = NULL;
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
 			/*
 			 *	SSL_CTX_use_certificate_chain_file set the
@@ -289,8 +286,8 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 
 			if (allow_multi_self_signed) self_signed = NULL;
 		}
-DIAG_ON(used-but-marked-unused)	/* fix spurious warnings for sk macros */
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)	}
+DIAG_ON_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+	}
 
 	{
 		int mode = SSL_BUILD_CHAIN_FLAG_CHECK;

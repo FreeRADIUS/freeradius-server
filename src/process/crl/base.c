@@ -639,8 +639,7 @@ RESUME(crl_fetch)
 		fr_value_box_t		*vb;
 
 		fr_value_box_list_init(&crl_entry->delta_urls);
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 		for (i = 0; i < sk_DIST_POINT_num(dps); i++) {
 			dp = sk_DIST_POINT_value(dps, i);
 			names = dp->distpoint->name.fullname;
@@ -655,8 +654,7 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 				fr_value_box_list_insert_tail(&crl_entry->delta_urls, vb);
 			}
 		}
-DIAG_ON(used-but-marked-unused)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(used-but-marked-unused)
 		CRL_DIST_POINTS_free(dps);
 
 		/*

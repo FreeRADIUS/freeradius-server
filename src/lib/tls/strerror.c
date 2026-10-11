@@ -35,8 +35,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "strerror.h"
 #include "utils.h"
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 static void _tls_cert_line_push(char const *file, int line, int idx, X509 *cert)
 {
 	char		subject[1024];

@@ -23,8 +23,7 @@
  * @copyright 2016 The FreeRADIUS server project
  */
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(documentation)
+DIAG_OFF_OPTIONAL(documentation)
 #include <mruby.h>
 #include <mruby/compile.h>
 #include <mruby/array.h>
@@ -34,8 +33,7 @@ DIAG_OFF(documentation)
 #include <mruby/variable.h>
 #include <mruby/class.h>
 #include <mruby/data.h>
-DIAG_ON(documentation)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(documentation)
 #include <freeradius-devel/server/base.h>
 
 typedef struct {

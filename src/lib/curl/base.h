@@ -39,9 +39,7 @@ extern "C" {
 #include <freeradius-devel/util/slab.h>
 #include <freeradius-devel/unlang/xlat.h>
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(disabled-macro-expansion)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF_OPTIONAL(disabled-macro-expansion)
 #define FR_CURL_SET_OPTION(_x, _y)\
 do {\
 	int _ret;\

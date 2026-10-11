@@ -31,11 +31,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(compound-token-split-by-macro) /* Perl does horrible things with macros */
-DIAG_OFF(unreachable-code-return)
-DIAG_OFF(unreachable-code-break)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF_OPTIONAL(compound-token-split-by-macro) /* Perl does horrible things with macros */
+DIAG_OFF_OPTIONAL(unreachable-code-return)
+DIAG_OFF_OPTIONAL(unreachable-code-break)
 
 #ifdef INADDR_ANY
 #  undef INADDR_ANY
@@ -1516,8 +1514,7 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(unlang_result_t *p_result, modu
 	RETURN_UNLANG_RCODE(ret);
 }
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(shadow)
+DIAG_OFF_OPTIONAL(shadow)
 static void rlm_perl_interp_free(PerlInterpreter *perl)
 {
 	void	**handles;
@@ -1543,8 +1540,7 @@ static void rlm_perl_interp_free(PerlInterpreter *perl)
 	perl_destruct(perl);
 	perl_free(perl);
 }
-DIAG_ON(shadow)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(shadow)
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {

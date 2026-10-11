@@ -44,8 +44,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ssl.h>
 #include <openssl/ocsp.h>
 
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Extract session pairs from the Subject Alternate Name extension
  *
  */
@@ -686,6 +685,5 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 
 	return SSL_CLIENT_HELLO_SUCCESS;
 }
-DIAG_ON(used-but-marked-unused)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(used-but-marked-unused)
 #endif

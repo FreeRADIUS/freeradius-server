@@ -309,11 +309,9 @@ static unlang_action_t CC_HINT(nonnull) mod_mruby(unlang_result_t *p_result, mod
 	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@session_state"), mruby_session_state);
 
 	RDEBUG2("Calling %s", func->func->function_name);
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(class-varargs)
+DIAG_OFF_OPTIONAL(class-varargs)
 	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), func->func->function_name, 1, mruby_packet);
-DIAG_ON(class-varargs)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+DIAG_ON_OPTIONAL(class-varargs)
 
 	/*
 	 *	The return should be a fixnum, which is converted to rlm_rcode_t
