@@ -1978,6 +1978,7 @@ if test "x$developer" = "xyes"; then
       -W \
       -Weverything \
       -Wformat=2 \
+      -Wno-bad-function-cast \
       -Wno-c++-keyword \
       -Wno-cast-align \
       -Wno-cast-function-type-strict \

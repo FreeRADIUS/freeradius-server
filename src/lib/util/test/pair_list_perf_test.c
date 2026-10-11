@@ -37,14 +37,13 @@ static void pair_list_perf_init(void);
 
 #define TEST_MSG_STATS \
 	do { \
-		int64_t _used_ns = fr_time_delta_unwrap(used); \
 		TEST_MSG_ALWAYS("\n"); \
 		TEST_MSG_ALWAYS("repetitions   = %u", reps); \
 		TEST_MSG_ALWAYS("%% repeated    = %u", perc); \
 		TEST_MSG_ALWAYS("list_length   = %u", len); \
 		TEST_MSG_ALWAYS("elapsed (ns)  = %" PRId64, fr_time_delta_unwrap(used)); \
        		TEST_MSG_ALWAYS("calls/s       = %0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC)); \
-		TEST_MSG_ALWAYS("(ns) / call   = %0.0lf", (double) _used_ns / (double) reps); \
+		TEST_MSG_ALWAYS("(ns) / call   = %0.0lf", (double) fr_time_delta_unwrap(used) / (double) reps); \
 	} while (0)
 
 /*

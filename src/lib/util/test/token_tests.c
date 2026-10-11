@@ -99,14 +99,12 @@ static parse_result_t test_getword(char const *in, bool unescape)
 	parse_result_t	result = {};
 	char		*base, *start;
 	char const	*p;
-	int		rcode;
 
 	start = guard_alloc(&base, in);
 	TEST_ASSERT(start != NULL);
 
 	p = start;
-	rcode = getword(&p, result.buf, sizeof(result.buf), unescape);
-	result.token = (fr_token_t) rcode;
+	result.token = (fr_token_t) getword(&p, result.buf, sizeof(result.buf), unescape);
 	result.used = (size_t) (p - start);
 
 	guard_free(base);
