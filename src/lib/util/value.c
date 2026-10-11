@@ -385,9 +385,7 @@ fr_sbuff_escape_rules_t const fr_value_escape_double = {
 	.do_oct = true
 };
 
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wgnu-designator"
-#endif
+DIAG_OFF_OPTIONAL(gnu-designator)
 
 /** Escape secret fields by simply mashing all data to '.'
  *
@@ -7311,14 +7309,14 @@ bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
  */
 void fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb)
 {
-DIAG_OFF(nonnull-compare)
+DIAG_OFF_OPTIONAL(nonnull-compare)
 	/*
 	 *	nonnull only does something if we're building
 	 *	with ubsan...  We still want to assert event
 	 *	if we're building without sanitizers.
 	 */
 	fr_fatal_assert_msg(vb, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t pointer was NULL", file, line);
-DIAG_ON(nonnull-compare)
+DIAG_ON_OPTIONAL(nonnull-compare)
 
 	if (VERIFY_IS_SET(vb)) return;
 

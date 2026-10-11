@@ -315,9 +315,7 @@ static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	return XLAT_ACTION_DONE;
 }
 
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wgnu-designator"
-#endif
+DIAG_OFF_OPTIONAL(gnu-designator)
 
 #define FR_FILENAME_SAFE_FOR ((uintptr_t) filename_xlat_escape)
 

@@ -213,9 +213,7 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 /*
  *	This is fine.  Don't complain.
  */
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wgnu-designator"
-#endif
+DIAG_OFF_OPTIONAL(gnu-designator)
 
 /** Convert tokens back to a quoting character
  *

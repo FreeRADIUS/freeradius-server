@@ -105,9 +105,7 @@ unlang_mod_actions_t const mod_actions_postauth = {
 	.retry = RETRY_INIT
 };
 
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wgnu-designator"
-#endif
+DIAG_OFF_OPTIONAL(gnu-designator)
 
 const char *mod_action_name[MOD_PRIORITY_MAX + 1] = {
 	[MOD_ACTION_NOT_SET] = "not-set",

@@ -40,9 +40,7 @@ RCSID("$Id$")
 
 fr_dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dictionary state.
 
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wgnu-designator"
-#endif
+DIAG_OFF_OPTIONAL(gnu-designator)
 
 #define DICT_ATTR_ALLOWED_CHARS \
 	['-'] = true, ['/'] = true, ['_'] = true, \

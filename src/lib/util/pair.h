@@ -178,7 +178,7 @@ void		fr_pair_list_verify(char const *file, int line,
 #  define PAIR_ALLOCED(_x) do { (_x)->data.file = __FILE__; (_x)->data.line = __LINE__; } while (0)
 #  define FR_PAIR_APPEND(_list, _x) do { PAIR_ALLOCED(_x); PAIR_VERIFY(_x); fr_pair_append(_list, _x); } while (0)
 #else
-DIAG_OFF(nonnull-compare)
+DIAG_OFF_OPTIONAL(nonnull-compare)
 /** Wrapper function to defeat nonnull checks
  *
  * We may sprinkle PAIR_VERIFY and PAIR_LIST_VERIFY in functions which
@@ -199,7 +199,7 @@ static inline bool fr_pair_list_nonnull_assert(fr_pair_list_t const *pair_list)
 {
 	return fr_cond_assert(pair_list);
 }
-DIAG_ON(nonnull-compare)
+DIAG_ON_OPTIONAL(nonnull-compare)
 
 /*
  *	Even if were building without WITH_VERIFY_PTR

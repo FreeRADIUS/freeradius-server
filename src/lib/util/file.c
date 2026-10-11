@@ -913,6 +913,11 @@ int fr_globdir_iter_free(fr_globdir_iter_t *iter)
 	return 0;
 }
 
+/*
+ *	This is fine.  Don't complain.
+ */
+DIAG_OFF_OPTIONAL(gnu-designator)
+
 const fr_sbuff_escape_rules_t fr_filename_escape = {
 	.name = "filename",
 	.chr = '_',
