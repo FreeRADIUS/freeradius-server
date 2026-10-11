@@ -39,6 +39,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/math.h>
 
 #include "base.h"
 #include "log.h"
@@ -440,8 +441,15 @@ static int tls_fragment_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CON
 	return 0;
 }
 
-/** Keep `padding` at or below the TLS record limit
+/** Parse padding, and clamp / round it.
  *
+ * - 0 means "no padding"
+ * - >256 is clamped to 256
+ * - we round to multiples of 16.
+ *
+ * We mangle the padding before writing it to the configuration,
+ * because we can't write to the configuration afterwards, due to
+ * mprotect().
  */
 static int tls_padding_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
@@ -449,11 +457,15 @@ static int tls_padding_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 
 	if (cf_pair_parse_value(ctx, out, parent, ci, rule) < 0) return -1;
 
-	if (*padding > SSL3_RT_MAX_PLAIN_LENGTH) {
+	if (!*padding) return 0;
+
+	if (*padding > FR_TLS_MAX_BLOCK_PADDING) {
 		cf_log_warn(ci, "Ignoring \"padding = %u\", forcing to \"padding = %u\"",
-			    *padding, (unsigned int)SSL3_RT_MAX_PLAIN_LENGTH);
-		*padding = SSL3_RT_MAX_PLAIN_LENGTH;
+			    *padding, (unsigned int) FR_TLS_MAX_BLOCK_PADDING);
+		*padding = FR_TLS_MAX_BLOCK_PADDING;
 	}
+
+	*padding = ROUND_UP_POW2(*padding, FR_TLS_BLOCK_PADDING_MULTIPLE);
 
 	return 0;
 }
