@@ -2479,7 +2479,7 @@ static void trie_node_dump(FILE *fp, fr_trie_t *trie, char const *key, int keyle
 	for (i = 0; i < (1 << node->bits); i++) {
 		if (!node->trie[i]) continue;
 
-		fprintf(fp, "\t%02x\t", (int) i);
+		fprintf(fp, "\t%02x\t", (unsigned int) i);
 		trie_dump_edge(fp, node->trie[i]);
 	}
 	fprintf(fp, "}\n\n");
@@ -3368,7 +3368,7 @@ static int command_lcp(UNUSED fr_trie_t *ft, int argc, char **argv, char *out, s
 		key1 = (uint8_t const *) argv[0];
 		keylen1 = atoi(argv[1]);
 		if ((keylen1 < 0) || (keylen1 > (int) BITSOF(strlen(argv[0])))) {
-			MPRINT("length of key1 %s is larger than string length %ld\n",
+			MPRINT("length of key1 %s is larger than string length %zu\n",
 				argv[1], BITSOF(strlen(argv[0])));
 			return -1;
 		}
@@ -3376,7 +3376,7 @@ static int command_lcp(UNUSED fr_trie_t *ft, int argc, char **argv, char *out, s
 		key2 = (uint8_t const *) argv[2];
 		keylen2 = atoi(argv[3]);
 		if ((keylen2 < 0) || (keylen2 > (int) BITSOF(strlen(argv[2])))) {
-			MPRINT("length of key2 %s is larger than string length %ld\n",
+			MPRINT("length of key2 %s is larger than string length %zu\n",
 				argv[3], BITSOF(strlen(argv[2])));
 			return -1;
 		}

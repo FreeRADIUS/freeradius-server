@@ -37,7 +37,7 @@ RCSID("$Id$")
 #endif
 
 #undef MEM
-#define MEM(x) if (!(x)) { fprintf(stderr, "%s[%u] OUT OF MEMORY\n", __FILE__, __LINE__); _exit(EXIT_FAILURE); }
+#define MEM(x) do { if (!(x)) { fprintf(stderr, "%s[%d] OUT OF MEMORY\n", __FILE__, __LINE__); _exit(EXIT_FAILURE); } } while (0)
 #define MPRINT1 if (debug_lvl) printf
 #define MPRINT2 if (debug_lvl >= 2) printf
 #define MPRINT3 if (debug_lvl >= 3) printf
@@ -89,8 +89,8 @@ static void recv_control_callback(void const *data, size_t data_size, UNUSED fr_
 	fr_assert(m->header == CONTROL_MAGIC);
 	fr_assert(data_size == sizeof(*m));
 
-	MPRINT2("Master got worker %ld message %zu, size %ld.\n", m->worker, m->counter, data_size);
-	if (m->counter == (max_messages - 1)) MPRINT1("Master seen all messages from worker %ld\n", m->worker);
+	MPRINT2("Master got worker %zu message %zu, size %zu.\n", m->worker, m->counter, data_size);
+	if (m->counter == (max_messages - 1)) MPRINT1("Master seen all messages from worker %zu\n", m->worker);
 	master_ctx->num_messages++;
 }
 
@@ -100,6 +100,7 @@ static void *control_master(void *arg)
 	master_ctx_t *master_ctx;
 	size_t i;
 	fr_time_t start;
+	int64_t elapsed_usec;
 	fr_sem_t *master_sem = arg;
 
 	MEM(ctx = talloc_init_const("control_master"));
@@ -119,7 +120,7 @@ static void *control_master(void *arg)
 	while (master_ctx->num_messages < (max_messages * num_workers)) {
 		int num_events;
 
-		MPRINT3("Master waiting for events (seen %ld).\n", master_ctx->num_messages);
+		MPRINT3("Master waiting for events (seen %zu).\n", master_ctx->num_messages);
 
 		num_events = fr_event_corral(el, fr_time(), true);
 		if (num_events < 0) {
@@ -130,10 +131,10 @@ static void *control_master(void *arg)
 			fr_event_service(el);
 		}
 	}
+	elapsed_usec = fr_time_delta_to_usec(fr_time_sub_time_time(fr_time(), start));
 	MPRINT1("Master exiting. Seen %zu messages. %.2f per second\n",
 		master_ctx->num_messages,
-		((double)master_ctx->num_messages * 1e6) /
-		(double)fr_time_delta_to_usec(fr_time_sub_time_time(fr_time(), start)));
+		((double)master_ctx->num_messages * 1e6) / (double)elapsed_usec);
 
 	talloc_free(ctx);
 
@@ -150,7 +151,7 @@ static void *control_worker(void *arg)
 
 	aq_num = single_aq ? 0 : wa->id;
 
-	MPRINT1("\tWorker %ld started using queue %ld.\n", wa->id, aq_num);
+	MPRINT1("\tWorker %zu started using queue %zu.\n", wa->id, aq_num);
 
 	for (i = 0; i < max_messages; i++) {
 		my_message_t m;
@@ -163,7 +164,7 @@ static void *control_worker(void *arg)
 retry:
 		if (fr_control_message_send(control[aq_num], wa->rb, FR_CONTROL_ID_CHANNEL, &m, sizeof(m)) < 0) {
 			char const *err;
-			MPRINT1("\tWorker %ld retrying message %zu\n", wa->id, i);
+			MPRINT1("\tWorker %zu retrying message %zu\n", wa->id, i);
 			while ((err = fr_strerror_pop())) {
 				MPRINT1("\t%s\n", err);
 			}
@@ -172,10 +173,10 @@ retry:
 			goto retry;
 		}
 
-		MPRINT2("\tWorker %ld sent message %zu\n", wa->id, i);
+		MPRINT2("\tWorker %zu sent message %zu\n", wa->id, i);
 	}
 
-	MPRINT1("\tWorker %ld exiting.\n", wa->id);
+	MPRINT1("\tWorker %zu exiting.\n", wa->id);
 
 	talloc_free(ctx);
 

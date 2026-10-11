@@ -363,7 +363,7 @@ int main(int argc, char *argv[])
 
 		end_t = fr_time();
 
-		printf("\nELAPSED %"PRIu64".%06d seconds, %d allocation / free cycles\n\n",
+		printf("\nELAPSED %"PRId64".%06d seconds, %d allocation / free cycles\n\n",
 		       fr_time_delta_to_sec(fr_time_sub(end_t, start_t)),
 		       (int) fr_time_delta_to_usec(fr_time_sub(end_t, start_t)),
 		       my_alloc_size * 10000);
