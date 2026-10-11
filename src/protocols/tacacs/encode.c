@@ -105,6 +105,11 @@ int fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, fr_tacacs_packet_code_t co
 		pkt->author_reply.status = FR_TAC_PLUS_AUTHOR_STATUS_FAIL;
 		break;
 
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_ERROR:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHOR;
+		pkt->author_reply.status = FR_TAC_PLUS_AUTHOR_STATUS_ERROR;
+		break;
+
 	case FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST:
 		pkt->hdr.type = FR_TAC_PLUS_ACCT;
 		break;
@@ -1062,9 +1067,17 @@ static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 				      uint8_t *data, size_t data_len, void *proto_ctx)
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
+	fr_pair_t	*vp;
+
+	/*
+	 *	A Packet-Type in the input sets the packet code, as
+	 *	request->reply->code does for proto_tacacs.
+	 */
+	vp = fr_pair_find_by_da(vps, NULL, attr_tacacs_packet_type);
 
 	return fr_tacacs_encode(&FR_DBUFF_TMP(data, data_len), NULL, test_ctx->secret,
-				test_ctx->secret ? talloc_strlen(test_ctx->secret) : 0, FR_TACACS_CODE_INVALID, vps);
+				test_ctx->secret ? talloc_strlen(test_ctx->secret) : 0,
+				vp ? (fr_tacacs_packet_code_t) vp->vp_uint32 : FR_TACACS_CODE_INVALID, vps);
 }
 
 static int _encode_test_ctx(fr_tacacs_ctx_t *test_ctx)

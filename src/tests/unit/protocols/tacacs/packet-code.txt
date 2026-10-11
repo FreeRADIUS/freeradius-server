@@ -1,0 +1,46 @@
+#
+#  Tests for the mapping between TACACS+ packets and packet codes.
+#
+#  An input Packet-Type sets the packet code for encode-proto, and
+#  decode-proto reports the packet code as Packet-Type.
+#
+proto tacacs
+proto-dictionary tacacs
+fuzzer-out tacacs
+
+#
+#  ----  Authorization-Error  ----
+#
+#  The packet code sets the authorization reply status to Error,
+#  whatever Authorization-Status the input gives.
+#
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 11000, Packet.Length = 0, Packet-Body-Type = Response, Authorization-Status = Fail, Server-Message = "internal error", Data = 0x, Packet-Type = Authorization-Error
+match c0 02 02 01 00 00 2a f8 00 00 00 14 11 00 00 0e 00 00 69 6e 74 65 72 6e 61 6c 20 65 72 72 6f 72
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 11000, Length = 20 }, Packet-Body-Type = ::Response, Authorization-Status = ::Error, Server-Message = "internal error", Data = 0x, Packet-Type = ::Authorization-Error
+
+#
+#  ----  Follow  ----
+#
+#  A Follow status is treated as Fail for authentication and
+#  authorization, and as Error for accounting.
+#
+
+#
+#  Authentication reply, status 0x21 (Follow)
+#
+decode-proto c0 01 02 01 00 00 00 01 00 00 00 06 21 00 00 00 00 00
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authentication, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 1, Length = 6 }, Packet-Body-Type = ::Reply, Authentication-Status = ::Follow, Authentication-Flags = 0, Server-Message = "", Data = 0x, Packet-Type = ::Authentication-Fail
+
+#
+#  Authorization reply, status 0x21 (Follow)
+#
+decode-proto c0 02 02 01 00 00 00 01 00 00 00 06 21 00 00 00 00 00
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 1, Length = 6 }, Packet-Body-Type = ::Response, Authorization-Status = ::Follow, Server-Message = "", Data = 0x, Packet-Type = ::Authorization-Fail
+
+#
+#  Accounting reply, status 0x21 (Follow)
+#
+decode-proto c0 03 02 01 00 00 00 01 00 00 00 05 00 00 00 00 21
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Accounting, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 1, Length = 5 }, Packet-Body-Type = ::Reply, Server-Message = "", Data = 0x, Accounting-Status = ::Follow, Packet-Type = ::Accounting-Error

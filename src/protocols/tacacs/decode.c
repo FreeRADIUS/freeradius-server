@@ -70,6 +70,9 @@ fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 		case FR_TAC_PLUS_AUTHEN_STATUS_ERROR:
 			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_ERROR;
 
+		case FR_TAC_PLUS_AUTHEN_STATUS_FOLLOW:
+			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_FAIL;
+
 		default:
 			break;
 		}
@@ -90,7 +93,11 @@ fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_PASS_REPLACE;
 
 		case FR_TAC_PLUS_AUTHOR_STATUS_FAIL:
+		case FR_TAC_PLUS_AUTHOR_STATUS_FOLLOW:
 			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_FAIL;
+
+		case FR_TAC_PLUS_AUTHOR_STATUS_ERROR:
+			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_ERROR;
 
 		default:
 			break;
@@ -109,6 +116,7 @@ fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 			return FR_PACKET_TYPE_VALUE_ACCOUNTING_SUCCESS;
 
 		case FR_TAC_PLUS_ACCT_STATUS_ERROR:
+		case FR_TAC_PLUS_ACCT_STATUS_FOLLOW:
 			return FR_PACKET_TYPE_VALUE_ACCOUNTING_ERROR;
 
 		default:
@@ -564,11 +572,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_tacacs_packet_log_hex(&default_log, pkt, (end - buffer));
 #endif
-
-	if (code) {
-		*code = fr_tacacs_packet_to_code((fr_tacacs_packet_t const *) buffer);
-		if (*code == FR_TACACS_CODE_INVALID) goto fail;
-	}
 
 	switch (pkt->hdr.type) {
 	case FR_TAC_PLUS_AUTHEN:
@@ -1065,6 +1068,16 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 		goto fail;
 	}
 
+	/*
+	 *	fr_tacacs_packet_to_code() reads the status or flags field
+	 *	of the body.  The switch above has checked that the body is
+	 *	long enough to hold that field.
+	 */
+	if (code) {
+		*code = fr_tacacs_packet_to_code((fr_tacacs_packet_t const *) buffer);
+		if (*code == FR_TACACS_CODE_INVALID) goto fail;
+	}
+
 	talloc_free(decrypted);
 	return buffer_len;
 }
@@ -1076,12 +1089,22 @@ static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 	fr_dict_attr_t const *dv;
+	fr_tacacs_packet_code_t	code;
+	fr_pair_t		*vp;
+	ssize_t			slen;
 
 	dv = fr_dict_attr_by_name(NULL, fr_dict_root(dict_tacacs), "Test");
 	fr_assert(!dv || (dv->type == FR_TYPE_VENDOR));
 
-	return fr_tacacs_decode(ctx, out, dv, data, data_len, NULL, test_ctx->secret,
-				test_ctx->secret ? talloc_strlen(test_ctx->secret) : 0, NULL);
+	slen = fr_tacacs_decode(ctx, out, dv, data, data_len, NULL, test_ctx->secret,
+				test_ctx->secret ? talloc_strlen(test_ctx->secret) : 0, &code);
+	if (slen < 0) return slen;
+
+	MEM(vp = fr_pair_afrom_da(ctx, attr_tacacs_packet_type));
+	vp->vp_uint32 = code;
+	fr_pair_append(out, vp);
+
+	return slen;
 }
 
 static int _encode_test_ctx(fr_tacacs_ctx_t *test_ctx)
