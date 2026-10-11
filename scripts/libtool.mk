@@ -153,7 +153,6 @@ define ADD_TARGET_RULE.la
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
                 $${${1}_PRLIBS}
 	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/.libs/$$(patsubst %.la,%.${TARGET_LIB_EXT},${1})
-	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/local/.libs/$$(patsubst %.la,%.${TARGET_LIB_EXT},${1})
 	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
@@ -271,6 +270,7 @@ define ADD_LOCAL_RULE.la
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${LOCAL}${1} $${LOCAL_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
                 $${${1}_LOCAL_PRLIBS}
+	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/local/.libs/$$(patsubst %.la,%.${TARGET_LIB_EXT},${1})
 	    $(Q)$${${1}_POSTMAKE}
 
 endef
