@@ -28,10 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/radius/defs.h>
 
-
-#define EMA_SCALE (100)
-#define F_EMA_SCALE (1000000)
-
 #define FR_STATS_INIT { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	\
 				 { 0, 0, 0, 0, 0, 0, 0, 0 }}
 

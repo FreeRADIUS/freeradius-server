@@ -48,10 +48,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static uint32_t openssl_instance_count = 0;
 
-/** How big of a stack to allocate for aynsc fibres
- */
-#define OPENSSL_ASYNC_STACK_SIZE	32768
-
 /** How big of a stack we allocate, taken from the default thread stack size
  */
 static size_t			openssl_stack_size;

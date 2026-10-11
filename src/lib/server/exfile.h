@@ -48,8 +48,10 @@ int		exfile_close(exfile_t *lf, CC_RELEASE_HANDLE("exfile_fd") int fd);
 #ifdef __COVERITY__
 void		__coverity_exclusive_lock_acquire__(void *);
 void		__coverity_exclusive_lock_release__(void *);
+#endif
 
-#  ifndef _EXFILE_PRIVATE
+#ifndef _EXFILE_PRIVATE
+#  ifdef __COVERITY__
 /*
  *	A successful exfile_open() returns holding a lock, which the
  *	caller releases with exfile_close().  Coverity's summary of

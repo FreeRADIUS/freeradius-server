@@ -24,7 +24,6 @@
 #include <freeradius-devel/util/test/acutest_common_init.h>
 #include <freeradius-devel/util/test/acutest_helpers.h>
 
-#define _BIO_PRIVATE 1
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/bio/dedup.h>

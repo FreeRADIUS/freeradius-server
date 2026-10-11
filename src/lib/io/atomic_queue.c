@@ -41,8 +41,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/math.h>
 
 /*
- *	Some macros to make our life easier.
+ *	Some macros to make our life easier.  Not every macro is used.
  */
+DIAG_OFF(unused-macros)
 #define atomic_int64_t _Atomic(int64_t)
 #define atomic_uint32_t _Atomic(uint32_t)
 #define atomic_uint64_t _Atomic(uint64_t)
@@ -52,6 +53,7 @@ RCSID("$Id$")
 #define load(_var)           	atomic_load_explicit(&_var, memory_order_relaxed)
 #define acquire(_var)        	atomic_load_explicit(&_var, memory_order_acquire)
 #define store(_store, _var)  	atomic_store_explicit(&_store, _var, memory_order_release)
+DIAG_ON(unused-macros)
 
 /*
  *	The distance two addresses need to be apart so that one core
