@@ -298,12 +298,12 @@ int fr_heap_extract(fr_heap_t **hp, void *data)
 		 *	structurally, only the ordering is undefined.
 		 */
 		if (child != max) {
-			fr_cmp_ret_t c = h->cmp(h->p[child + 1], h->p[child]);
+			fr_cmp_ret_t c = h->cmp(h->p[HEAP_RIGHT(parent)], h->p[child]);
 
 			if (unlikely(c == CMP_ERR)) {
 				ret = -1;
 			} else if (c == CMP_LT) {
-				child = child + 1;
+				child = HEAP_RIGHT(parent);
 			}
 		}
 		h->p[parent] = h->p[child];

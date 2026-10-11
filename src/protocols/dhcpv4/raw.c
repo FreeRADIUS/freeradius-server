@@ -284,7 +284,7 @@ fr_packet_t *fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_laye
 	 */
 	xid = ntohl(dhcp_hdr->xid);
 	if (xid != (uint32_t)request->id) DISCARD_RP("DHCP transaction ID (0x%04x) != xid from request (0x%04x)",
-						     xid, request->id)
+						     xid, (uint32_t)request->id);
 
 	/*
 	 *	all checks ok! this is a DHCP reply we're interested in.

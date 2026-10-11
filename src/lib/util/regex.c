@@ -796,7 +796,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 		if ((size_t)(p - pattern) != len) {
 			fr_strerror_printf("Found null in pattern at offset %zu.  Pattern unsafe for compilation",
-					   (p - pattern));
+					   (size_t)(p - pattern));
 			return -(p - pattern);
 		}
 
@@ -872,7 +872,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 
 		if ((size_t)(p - subject) != len) {
 			fr_strerror_printf("Found null in subject at offset %zu.  String unsafe for evaluation",
-					   (p - subject));
+					   (size_t)(p - subject));
 			if (regmatch) regmatch->used = 0;
 			return -1;
 		}

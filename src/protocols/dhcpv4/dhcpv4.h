@@ -38,7 +38,7 @@ extern "C" {
 #define DHCP_SNAME_LEN	(64)
 #define DHCP_FILE_LEN	(128)
 #define DHCP_VEND_LEN	(308)
-#define DHCP_OPTION_MAGIC_NUMBER (0x63825363)
+#define DHCP_OPTION_MAGIC_NUMBER (0x63825363U)
 
 typedef enum : uint16_t {
 	FR_DHCP_INVALID = 0,
@@ -117,7 +117,7 @@ extern uint8_t				eth_bcast[ETH_ADDR_LEN];
 #ifdef HAVE_LINUX_IF_PACKET_H
 #  define ETH_HDR_SIZE   14
 /* Discard raw packets which we are not interested in. Allow to trace why we discard. */
-#  define DISCARD_RP(...) { \
+#  define DISCARD_RP(...) do { \
 	if (fr_debug_lvl > 2) { \
 		fprintf(stdout, "dhcpclient: discarding received packet: "); \
 		fprintf(stdout, ## __VA_ARGS__); \
@@ -125,7 +125,7 @@ extern uint8_t				eth_bcast[ETH_ADDR_LEN];
 	} \
 	fr_packet_free(&packet); \
 	return NULL; \
-}
+} while (0)
 #endif
 
 /** Used as the decoder ctx
