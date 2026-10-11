@@ -416,12 +416,23 @@ void fr_radius_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool 
 {
 	char src_ipaddr[FR_IPADDR_STRLEN];
 	char dst_ipaddr[FR_IPADDR_STRLEN];
+	char const *via_prefix = "";
+	char const *via_ifname = "";
+	char const *via_suffix = "";
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
 
 	if (!log) return;
 	if (!packet) return;
+
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+	if (received) {
+		via_prefix = "via ";
+		via_ifname = fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex);
+		via_suffix = " ";
+	}
+#endif
 
 	/*
 	 *	Client-specific debugging re-prints the input
@@ -432,10 +443,7 @@ void fr_radius_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool 
 	if (FR_RADIUS_PACKET_CODE_VALID(packet->code)) {
 		fr_log(log, L_DBG, __FILE__, __LINE__,
 		       "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       "%s%s%s"
-#endif
-		       "length %zu\n",
+		       "%s%s%slength %zu\n",
 		        received ? "Received" : "Sent",
 		        fr_radius_packet_name[packet->code],
 		        packet->id,
@@ -447,19 +455,12 @@ void fr_radius_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool 
 			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->socket.inet.dst_ipaddr),
 		        packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->socket.inet.dst_port,
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-			received ? "via " : "",
-			received ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
-			received ? " " : "",
-#endif
+			via_prefix, via_ifname, via_suffix,
 			packet->data_len);
 	} else {
 		fr_log(log, L_DBG, __FILE__, __LINE__,
 		       "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       "%s%s%s"
-#endif
-		       "length %zu\n",
+		       "%s%s%slength %zu\n",
 		        received ? "Received" : "Sent",
 		        packet->code,
 		        packet->id,
@@ -471,11 +472,7 @@ void fr_radius_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool 
 			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->socket.inet.dst_ipaddr),
 		        packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->socket.inet.dst_port,
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-			received ? "via " : "",
-			received ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
-			received ? " " : "",
-#endif
+			via_prefix, via_ifname, via_suffix,
 		        packet->data_len);
 	}
 }

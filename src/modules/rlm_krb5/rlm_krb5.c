@@ -124,14 +124,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  *	rlm_krb5 was not built as threadsafe
  */
 #else
+#  ifdef HEIMDAL_KRB5
+#    define KRB5_THREAD_SUPPORT_OPTION "--enable-pthread-support"
+#  else
+#    define KRB5_THREAD_SUPPORT_OPTION "--disable-thread-support=no"
+#  endif
 		fr_log(&default_log, L_WARN, __FILE__, __LINE__,
 		       "libkrb5 is not threadsafe, recompile it with thread support enabled ("
-#  ifdef HEIMDAL_KRB5
-		       "--enable-pthread-support"
-#  else
-		       "--disable-thread-support=no"
-#  endif
-		       ")");
+		       KRB5_THREAD_SUPPORT_OPTION ")");
 		WARN("rlm_krb5 will run in single threaded mode, performance may be degraded");
 	} else {
 		WARN("Build time libkrb5 was not threadsafe, but run time library claims to be");
