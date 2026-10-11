@@ -894,10 +894,10 @@ row = SQLConnect(conn->dbc_handle,
 
 ### Disabling compiler warnings
 
-The only time it's acceptable to disable compiler warnings is where
-they're being produced by 3rd party libraries, or when there is
-absolutely no other way to deal with them. If at all possible code in
-FreeRADIUS should be fixed not to produce compiler warnings.
+Fix the FreeRADIUS code which produces a compiler warning wherever the
+code can be fixed.  Disable the warning only when a third-party library
+produces the warning, or when no change to the FreeRADIUS code removes
+the warning.
 
 Six diagnostic control macros are available to all FreeRADIUS source
 files:
@@ -914,13 +914,16 @@ files:
 
 [NOTE]
 ====
-For compilers other than GCC > 4.2 and clang > 2.8 `DIAG_*` macros
-will be disabled.
+`build.h` defines the `DIAG_*` macros only for clang 2.8 or later and
+GCC 4.2 or later.  With any other compiler, the `DIAG_*` macros expand
+to nothing, and do not change which warnings the compiler produces.
 ====
 
-`DIAG_ON` and `DIAG_OFF` macros should be used to wrap an area of code
-producing warnings.  They should used in balanced pairs in the vast
-majority of cases.
+Call `DIAG_OFF` before the code which produces a warning, and `DIAG_ON`
+after the code.  Follow each `DIAG_OFF` with a matching `DIAG_ON`,
+unless the suppression is meant to cover the rest of the file, such as
+`DIAG_OFF_OPTIONAL(gnu-designator)` above a file's tables of GNU range
+designators.
 
 A compiler warns about a diagnostic name which the compiler does not
 implement (`-Wunknown-warning-option` in clang, `-Wpragmas` in GCC).
@@ -931,12 +934,12 @@ diagnostic while changing the specified diagnostic, then set the
 unknown name diagnostic to produce a warning rather than restoring the
 earlier state.
 
-.Disabling `-Wdocumentation` diagnostics for 3rd party headers
+.Disabling `-Wdocumentation` diagnostics for third-party headers
 [example]
 ====
 [source,c]
 ----
-DIAG_OFF_OPTIONAL(documentation) /* -Wdocumentation is not available in GCC */
+DIAG_OFF_OPTIONAL(documentation) /* GCC does not implement -Wdocumentation */
 #include <mruby.h>
 #include <mruby/compile.h>
 #include <mruby/array.h>
@@ -947,11 +950,13 @@ DIAG_OFF_OPTIONAL(documentation) /* -Wdocumentation is not available in GCC */
 DIAG_ON_OPTIONAL(documentation)
 ----
 
-The macro calls above disable and re-enable the `-Wdocumentation`
-diagnostic for mruby headers. `-Wdocumentation` will produce a warning
-if doxygen style comment blocks are not correctly composed.  We don't
-control the mruby headers and we will not be calling doxygen to build
-documentation based on them, so it's fine to disable the warning.
+The clang diagnostic `-Wdocumentation` checks the syntax of Doxygen
+comments.  FreeRADIUS does not control the mruby headers, and does not
+build Doxygen documentation from the mruby headers.  Disabling
+`-Wdocumentation` for the mruby headers does not hide a warning which
+FreeRADIUS can fix.  The example disables `-Wdocumentation` before the
+mruby headers, and re-enables `-Wdocumentation` after the mruby headers.
+
 The example uses `DIAG_OFF_OPTIONAL` and `DIAG_ON_OPTIONAL` because GCC
 does not implement `-Wdocumentation`.
 ====
