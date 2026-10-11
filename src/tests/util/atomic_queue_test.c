@@ -38,7 +38,7 @@ static int		debug_lvl = 0;
 
 /** Which allocator the queue under test comes from
  */
-typedef enum {
+typedef enum : uint8_t {
 	QUEUE_TYPE_TALLOC = 0,		//!< #fr_atomic_queue_talloc, queue lives in the talloc hierarchy.
 	QUEUE_TYPE_MALLOC,		//!< #fr_atomic_queue_malloc, raw queue owned by a talloc handle.
 	QUEUE_TYPE_MAX

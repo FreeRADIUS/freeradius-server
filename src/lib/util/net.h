@@ -48,7 +48,7 @@ extern "C" {
  *	If we don't have libpcap, we still need an enumeration of link layers.
  */
 #ifndef HAVE_LIBPCAP
-typedef enum {
+typedef enum : uint8_t {
 	DLT_RAW,
 	DLT_NULL,
 	DLT_LOOP,
