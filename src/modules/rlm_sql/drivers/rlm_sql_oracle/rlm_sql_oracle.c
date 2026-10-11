@@ -160,7 +160,7 @@ static sql_rcode_t sql_check_reconnect(rlm_sql_oracle_conn_t *conn)
 {
 	char errbuff[512];
 
-	if (sql_snprint_error(errbuff, sizeof(errbuff), conn) < 0) return -1;
+	if (sql_snprint_error(errbuff, sizeof(errbuff), conn) < 0) return RLM_SQL_ERROR;
 
 	if (strstr(errbuff, "ORA-03113") || strstr(errbuff, "ORA-03114")) {
 		ERROR("OCI_SERVER_NOT_CONNECTED");
