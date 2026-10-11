@@ -645,7 +645,7 @@ RESUME(status_server)
 }
 #endif
 
-RESUME_FLAG(protocol_error,UNUSED,)
+RESUME(protocol_error)
 {
 	fr_pair_t 			*vp;
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);

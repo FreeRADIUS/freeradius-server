@@ -1028,7 +1028,7 @@ fr_dict_attr_t const *virtual_server_packet_type_by_cs(CONF_SECTION const *serve
  *
  */
 int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			    CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+			    CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	virtual_server_t const *vs;
 	virtual_server_cf_parse_uctx_t const *uctx = rule->uctx;

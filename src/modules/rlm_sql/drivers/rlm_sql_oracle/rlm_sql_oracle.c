@@ -535,7 +535,7 @@ static void sql_trunk_connection_write_poll(UNUSED fr_timer_list_t *tl, UNUSED f
  *	This "notify" callback sets up the appropriate polling events.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
-static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connection_t *conn, fr_event_list_t *el,
+static void sql_trunk_connection_notify(trunk_connection_t *tconn, connection_t *conn, fr_event_list_t *el,
 					trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
 	rlm_sql_oracle_conn_t	*c = talloc_get_type_abort(conn->h, rlm_sql_oracle_conn_t);

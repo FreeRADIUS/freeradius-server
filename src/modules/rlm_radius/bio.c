@@ -2493,7 +2493,7 @@ static unlang_action_t mod_resume(unlang_result_t *p_result, module_ctx_t const 
 
 static void do_signal(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_signal_t action);
 
-static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action)
+static void mod_signal(module_ctx_t const *mctx, request_t *request, fr_signal_t action)
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
 
@@ -2502,7 +2502,7 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 	do_signal(inst, u, request, action);
 }
 
-static void do_signal(rlm_radius_t const *inst, bio_request_t *u, UNUSED request_t *request, fr_signal_t action)
+static void do_signal(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_signal_t action)
 {
 	/*
 	 *	We received a duplicate packet, but we're not doing

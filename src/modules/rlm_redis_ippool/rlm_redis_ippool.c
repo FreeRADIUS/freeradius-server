@@ -1864,7 +1864,7 @@ static void redis_ippool_list_cancel(xlat_ctx_t const *xctx, request_t *request,
 }
 
 static xlat_action_t redis_ippool_list_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
-					      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+					      request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
 	redis_pools_list_rctx_t		*rctx = talloc_get_type_abort(xctx->rctx, redis_pools_list_rctx_t);
@@ -2114,7 +2114,7 @@ static void mod_show_result(request_t *request, UNUSED fr_redis_command_t *cmd, 
 if (cmd_len < 0) RETURN_UNLANG_FAIL; \
 if (fr_redis_command_preformatted_add(cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL, NULL) != FR_REDIS_PIPELINE_OK) goto error
 
-static unlang_action_t CC_HINT(nonnull) mod_show(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
+static unlang_action_t CC_HINT(nonnull) mod_show(unlang_result_t *p_result, module_ctx_t const *mctx,
 						 request_t *request)
 {
 	rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
@@ -2217,7 +2217,7 @@ static void mod_stats_result(request_t *request, UNUSED fr_redis_command_t *cmd,
 	POPULATE_PAIR(attr_ippool_stats_static_renew1d, 11, static_vp);
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_stats(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
+static unlang_action_t CC_HINT(nonnull) mod_stats(unlang_result_t *p_result, module_ctx_t const *mctx,
 						  request_t *request)
 {
 	rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
@@ -2505,7 +2505,7 @@ static void redis_ippool_common_cancel(xlat_ctx_t const *xctx, request_t *reques
  * Where the number of changes is to be returned
  */
 static xlat_action_t redis_ippool_common_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
-						UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+						request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	redis_ippool_tool_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, redis_ippool_tool_rctx_t);
 	fr_value_box_t			*vb;

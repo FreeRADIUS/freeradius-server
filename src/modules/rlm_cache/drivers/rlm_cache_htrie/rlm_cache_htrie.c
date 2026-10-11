@@ -91,7 +91,7 @@ int cf_htrie_type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci,
  * - It checks that all keys are compatible with each other.
  */
 static int cf_htrie_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-			      call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+			      call_env_ctx_t const *cec, call_env_parser_t const *rule)
 {
 	rlm_cache_t		const *parent = talloc_get_type_abort_const(cec->mi->data, rlm_cache_t);
 	rlm_cache_htrie_t	*inst = talloc_get_type_abort(parent->driver_submodule->data, rlm_cache_htrie_t);

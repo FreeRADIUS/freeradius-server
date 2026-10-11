@@ -585,7 +585,7 @@ static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
 			    fr_dict_attr_t const *key_da, fr_pair_t const *key_vp, fr_dbuff_marker_t *key_m,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_dcursor_t *cursor, void *encode_ctx,
-			    UNUSED fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_pair)
+			    fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_pair)
 
 {
 	ssize_t		slen;

@@ -282,7 +282,7 @@ RESUME(recv_generic)
 	return state->send(p_result, mctx, request);
 }
 
-RESUME_FLAG(recv_no_send,UNUSED,UNUSED)
+RESUME_FLAG(recv_no_send,UNUSED,)
 {
 	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_process_state_t const	*state;

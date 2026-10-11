@@ -1371,7 +1371,7 @@ int dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
  *	- 0 on success
  *	- <0 on error
  */
-int dict_attr_acopy_aliases(UNUSED fr_dict_attr_t *dst, fr_dict_attr_t const *src)
+int dict_attr_acopy_aliases(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 {
 	fr_hash_table_t *namespace;
 	fr_hash_iter_t	iter;

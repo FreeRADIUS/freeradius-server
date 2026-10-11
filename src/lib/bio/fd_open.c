@@ -249,9 +249,9 @@ static int fr_bio_fd_server_tcp(int fd, UNUSED fr_socket_t const *sock)
 /** Stop a wildcard IPv6 listener from accepting IPv4 packets.
  *
  */
-static int fr_bio_fd_server_v6only(UNUSED int fd, UNUSED fr_socket_t const *sock)
-{
 #ifdef IPV6_V6ONLY
+static int fr_bio_fd_server_v6only(int fd, fr_socket_t const *sock)
+{
 	if (IN6_IS_ADDR_UNSPECIFIED(UNCONST(struct in6_addr *, &sock->inet.src_ipaddr.addr.v6))) {
 		int on = 1;
 
@@ -260,10 +260,15 @@ static int fr_bio_fd_server_v6only(UNUSED int fd, UNUSED fr_socket_t const *sock
 			return -1;
 		}
 	}
-#endif /* IPV6_V6ONLY */
 
 	return 0;
 }
+#else
+static int fr_bio_fd_server_v6only(UNUSED int fd, UNUSED fr_socket_t const *sock)
+{
+	return 0;
+}
+#endif /* IPV6_V6ONLY */
 
 /** Verify or clean up a pre-existing domain socket.
  *

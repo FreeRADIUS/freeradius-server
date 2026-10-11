@@ -48,7 +48,7 @@ size_t unlang_child_states_table_len = NUM_ELEMENTS(unlang_child_states_table);
  * This processes any detach signals the child receives
  * The child doesn't actually do the detaching
  */
-static void unlang_child_request_signal(request_t *request, UNUSED unlang_stack_frame_t *frame, fr_signal_t action)
+static void unlang_child_request_signal(request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_frame_state_child_request_t *state;
 	unlang_child_request_t *cr;

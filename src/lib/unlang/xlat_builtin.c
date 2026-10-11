@@ -497,7 +497,7 @@ bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb, int oflags)
 
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
-					   UNUSED request_t *request, fr_value_box_list_t *args)
+					   request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t *dst, *vb;
 	char const	*filename;

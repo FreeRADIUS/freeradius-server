@@ -101,7 +101,7 @@ static xlat_arg_parser_t const kv_read_xlat_args[] = {
  */
 static xlat_action_t kv_write_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 				   xlat_ctx_t const *xctx,
-				   UNUSED request_t *request, fr_value_box_list_t *args)
+				   request_t *request, fr_value_box_list_t *args)
 {
 	rlm_kv_t const		*in = talloc_get_type_abort(xctx->mctx->mi->data, rlm_kv_t);
 	rlm_kv_mutable_t	*inst = talloc_get_type_abort(in->mutable, rlm_kv_mutable_t);
@@ -173,7 +173,7 @@ static xlat_action_t kv_write_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *
  */
 static xlat_action_t kv_read_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				  xlat_ctx_t const *xctx,
-				  UNUSED request_t *request, fr_value_box_list_t *args)
+				  request_t *request, fr_value_box_list_t *args)
 {
 	rlm_kv_t const		*in = talloc_get_type_abort(xctx->mctx->mi->data, rlm_kv_t);
 	rlm_kv_mutable_t	*inst = talloc_get_type_abort(in->mutable, rlm_kv_mutable_t);
@@ -225,7 +225,7 @@ static xlat_action_t kv_read_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t kv_delete_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    xlat_ctx_t const *xctx,
-				    UNUSED request_t *request, fr_value_box_list_t *args)
+				    request_t *request, fr_value_box_list_t *args)
 {
 	rlm_kv_t const		*in = talloc_get_type_abort(xctx->mctx->mi->data, rlm_kv_t);
 	rlm_kv_mutable_t	*inst = talloc_get_type_abort(in->mutable, rlm_kv_mutable_t);

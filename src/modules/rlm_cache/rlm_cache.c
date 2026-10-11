@@ -1356,8 +1356,8 @@ static xlat_action_t cache_xlat_results(TALLOC_CTX *ctx, unlang_result_t *result
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_action_t cache_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
-				       UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+static xlat_action_t cache_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+				       request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	unlang_result_t		result;
 	rlm_cache_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
@@ -1460,8 +1460,8 @@ static xlat_action_t cache_ttl_get_xlat_results(TALLOC_CTX *ctx, unlang_result_t
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_action_t cache_ttl_get_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
-					       UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+static xlat_action_t cache_ttl_get_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					       request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	unlang_result_t		result;
 	rlm_cache_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);

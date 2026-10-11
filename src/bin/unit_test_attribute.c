@@ -1243,7 +1243,7 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
  *
  */
 static size_t command_attr_children(command_result_t *result, command_file_ctx_t *cc,
-				    UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+				    char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	fr_hash_table_t *namespace;
 	fr_hash_iter_t	iter;
@@ -1283,7 +1283,7 @@ static size_t command_attr_children(command_result_t *result, command_file_ctx_t
  *
  */
 static size_t command_attr_flags(command_result_t *result, command_file_ctx_t *cc,
-				 UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+				 char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	ATTR_COMMON;
 
@@ -1297,7 +1297,7 @@ static size_t command_attr_flags(command_result_t *result, command_file_ctx_t *c
  *
  */
 static size_t command_attr_name(command_result_t *result, command_file_ctx_t *cc,
-				 UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+				 char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	ATTR_COMMON;
 
@@ -1311,7 +1311,7 @@ static size_t command_attr_name(command_result_t *result, command_file_ctx_t *cc
  *
  */
 static size_t command_attr_oid(command_result_t *result, command_file_ctx_t *cc,
-			       UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+			       char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	ATTR_COMMON;
 
@@ -1325,7 +1325,7 @@ static size_t command_attr_oid(command_result_t *result, command_file_ctx_t *cc,
  *
  */
 static size_t command_attr_type(command_result_t *result, command_file_ctx_t *cc,
-			       UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+			       char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	ATTR_COMMON;
 

@@ -639,6 +639,8 @@ RESUME(crl_fetch)
 		fr_value_box_t		*vb;
 
 		fr_value_box_list_init(&crl_entry->delta_urls);
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 		for (i = 0; i < sk_DIST_POINT_num(dps); i++) {
 			dp = sk_DIST_POINT_value(dps, i);
 			names = dp->distpoint->name.fullname;
@@ -653,6 +655,8 @@ RESUME(crl_fetch)
 				fr_value_box_list_insert_tail(&crl_entry->delta_urls, vb);
 			}
 		}
+DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		CRL_DIST_POINTS_free(dps);
 
 		/*
@@ -753,7 +757,7 @@ RESUME_FLAG(send_crl_ok, UNUSED,)
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-RESUME_FLAG(send_crl_fail, UNUSED,)
+RESUME(send_crl_fail)
 {
 	process_crl_t		*inst = talloc_get_type_abort(mctx->mi->data, process_crl_t);
 	process_thread_crl_t	*thread = talloc_get_type_abort(mctx->thread, process_thread_crl_t);

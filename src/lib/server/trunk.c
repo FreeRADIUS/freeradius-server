@@ -3479,7 +3479,7 @@ static void _trunk_connection_on_connecting(UNUSED connection_t *conn,
  * @param[in] state	The connection is now in.
  * @param[in] uctx	The trunk_connection_t wrapping the connection.
  */
-static void _trunk_connection_on_shutdown(UNUSED connection_t *conn,
+static void _trunk_connection_on_shutdown(connection_t *conn,
 					  UNUSED connection_state_t prev,
 					  UNUSED connection_state_t state,
 					  void *uctx)

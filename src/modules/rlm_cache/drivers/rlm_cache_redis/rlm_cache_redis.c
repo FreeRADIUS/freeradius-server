@@ -280,7 +280,7 @@ static void cache_redis_cancel(UNUSED rlm_cache_config_t const *config, UNUSED v
 }
 
 static cache_status_t cache_entry_find_resume(rlm_cache_entry_t **out, UNUSED rlm_cache_config_t const *config,
-					      void *instance, UNUSED request_t *request,
+					      void *instance, request_t *request,
 					      UNUSED void *handle, void *rctx)
 {
 	rlm_cache_redis_t		*driver = instance;
@@ -428,7 +428,7 @@ static cache_status_t cache_entry_find(UNUSED rlm_cache_entry_t **out, void **rc
 }
 
 static cache_status_t cache_entry_insert_resume(rlm_cache_entry_t **out, UNUSED rlm_cache_config_t const *config,
-						void *instance, UNUSED request_t *request,
+						void *instance, request_t *request,
 						UNUSED void *handle, void *rctx)
 {
 	rlm_cache_redis_t		*driver = instance;
@@ -455,7 +455,7 @@ static void cache_entry_insert_results(request_t *request, UNUSED fr_redis_comma
  *
  * @copydetails cache_entry_insert_t
  */
-static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cache_config_t const *config, void *instance,
+static cache_status_t cache_entry_insert(void **rctx_out, UNUSED rlm_cache_config_t const *config, void *instance,
 					 request_t *request, UNUSED void *handle, const rlm_cache_entry_t *c)
 {
 	rlm_cache_redis_t		*driver = instance;
@@ -626,7 +626,7 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
 }
 
 static cache_status_t cache_entry_expire_resume(UNUSED rlm_cache_config_t const *config, void *instance,
-						UNUSED request_t *request, UNUSED void *handle, void *rctx)
+						request_t *request, UNUSED void *handle, void *rctx)
 {
 	rlm_cache_redis_t	*driver = instance;
 	rlm_cache_redis_rctx_t	*cache_rctx = talloc_get_type_abort(rctx, rlm_cache_redis_rctx_t);
@@ -653,7 +653,7 @@ static void cache_entry_expire_results(request_t *request, UNUSED fr_redis_comma
  *
  * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(UNUSED void **rctx_out, UNUSED rlm_cache_config_t const *config, void *instance,
+static cache_status_t cache_entry_expire(void **rctx_out, UNUSED rlm_cache_config_t const *config, void *instance,
 					 request_t *request, UNUSED void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_redis_t		*driver = instance;

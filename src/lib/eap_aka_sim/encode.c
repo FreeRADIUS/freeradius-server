@@ -70,7 +70,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-static void *fr_eap_aka_sim_next_encodable(fr_dcursor_t *cursor, void *current, UNUSED void *uctx)
+static void *fr_eap_aka_sim_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
 {
 	fr_pair_t	*c = current;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);

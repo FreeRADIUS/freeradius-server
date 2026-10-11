@@ -1178,7 +1178,7 @@ static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_
 SQL_QUERY_FAIL
 SQL_QUERY_RESUME
 
-static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 

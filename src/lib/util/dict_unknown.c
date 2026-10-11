@@ -24,7 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/dict_priv.h>
 
-static int dict_attr_unknown_init(fr_dict_attr_t const *parent, UNUSED fr_dict_attr_t const *da, fr_type_t type, fr_dict_attr_flags_t *flags)
+static int dict_attr_unknown_init(fr_dict_attr_t const *parent, fr_dict_attr_t const *da, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
 	flags->is_unknown = true;
 

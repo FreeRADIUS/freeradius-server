@@ -1285,7 +1285,7 @@ static int mod_load(void)
  *	of the section the module is called in and then hands off to the normal
  *	parsing.
  */
-static int rest_sect_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED tmpl_rules_t const *t_rules,
+static int rest_sect_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
 			   CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	rlm_rest_t		*inst = talloc_get_type_abort(cec->mi->data, rlm_rest_t);

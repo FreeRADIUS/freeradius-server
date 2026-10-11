@@ -645,7 +645,7 @@ static void time_advance_resume(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now
 	unlang_interpret_mark_runnable(request);
 }
 
-static xlat_action_t xlat_func_time_advance_resume(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+static xlat_action_t xlat_func_time_advance_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						   UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	fr_value_box_t *vb;
@@ -658,7 +658,7 @@ static xlat_action_t xlat_func_time_advance_resume(TALLOC_CTX *ctx, UNUSED fr_dc
 }
 
 static xlat_action_t xlat_func_time_advance(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					    UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request, fr_value_box_list_t *in)
+					    UNUSED xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t *delta;
 

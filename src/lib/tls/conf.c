@@ -553,7 +553,11 @@ found:
 static int _tls_chain_conf_free(fr_tls_chain_conf_t *chain)
 {
 	if (chain->leaf) X509_free(chain->leaf);
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 	if (chain->extra) sk_X509_pop_free(chain->extra, X509_free);
+DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 	if (chain->private_key) EVP_PKEY_free(chain->private_key);
 
 	return 0;
@@ -584,9 +588,13 @@ static X509 *tls_chain_cert_read(CONF_ITEM *ci, FILE *fp, int format, bool aux)
 			 *	OpenSSL reports the end of a file by writing
 			 *	PEM_R_NO_START_LINE to the thread local buffer.
 			 */
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for ERR_GET macros */
 			if ((ERR_GET_LIB(err) == ERR_LIB_PEM) && (ERR_GET_REASON(err) == PEM_R_NO_START_LINE)) {
 				ERR_clear_error();
 			}
+DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		}
 		return cert;
 
@@ -649,7 +657,11 @@ static int tls_chain_private_key_file_parse(TALLOC_CTX *ctx, void *out, void *pa
 			X509_free(cert);
 			break;		/* A DER file holds exactly one certificate */
 		}
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 		MEM(sk_X509_push(chain->extra, cert) > 0);
+DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 	}
 	fclose(fp);
 	if (ERR_peek_error()) {
@@ -675,7 +687,11 @@ static int tls_chain_private_key_file_parse(TALLOC_CTX *ctx, void *out, void *pa
 			cf_log_perr(ci, "Failed reading ca_file \"%s\"", chain->ca_files[i]);
 			return -1;
 		}
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 		MEM(sk_X509_push(chain->extra, cert) > 0);
+DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 	}
 
 	/*

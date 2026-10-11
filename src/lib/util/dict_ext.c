@@ -58,7 +58,7 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 				       TALLOC_CTX *chunk_dst,
 				       UNUSED void *dst_ext_ptr, UNUSED size_t dst_ext_len,
 				       UNUSED TALLOC_CTX const *chunk_src,
-				       UNUSED void *src_ext_ptr, UNUSED size_t src_ext_len)
+				       void *src_ext_ptr, UNUSED size_t src_ext_len)
 {
 	fr_dict_attr_t			*da_dst = talloc_get_type_abort(chunk_dst, fr_dict_attr_t);
 	fr_dict_attr_ext_enumv_t	*src_ext = src_ext_ptr;

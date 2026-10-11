@@ -73,7 +73,7 @@ typedef struct {
 
 #include <freeradius-devel/server/process.h>
 
-RESUME_FLAG(recv_bfd, UNUSED,)
+RESUME(recv_bfd)
 {
 	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;

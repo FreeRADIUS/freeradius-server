@@ -53,7 +53,7 @@ static void unlang_transaction_signal(UNUSED request_t *request, unlang_stack_fr
 /** Commit a successful transaction.
  *
  */
-static unlang_action_t unlang_transaction_final(UNUSED unlang_result_t *p_result, UNUSED request_t *request,
+static unlang_action_t unlang_transaction_final(unlang_result_t *p_result, UNUSED request_t *request,
 						unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_transaction_t *state = talloc_get_type_abort(frame->state,

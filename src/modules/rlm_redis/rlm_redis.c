@@ -232,8 +232,8 @@ static void redis_xlat_cancel(xlat_ctx_t const *xctx, request_t *request, UNUSED
 	fr_redis_async_cmd_cancel(rctx->cmd);
 }
 
-static xlat_action_t redis_remap_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
-					     UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+static xlat_action_t redis_remap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					     request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	rlm_redis_xlat_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, rlm_redis_xlat_rctx_t);
 	fr_value_box_t		*vb = NULL;
@@ -396,7 +396,7 @@ static xlat_action_t redis_lua_func_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t 
  * If the load succeeds, re-enqueue the original EVALSHA command.
  */
 static xlat_action_t redis_lua_load_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, xlat_ctx_t const *xctx,
-					   UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+					   request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	rlm_redis_lua_xlat_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, rlm_redis_lua_xlat_rctx_t);
 
@@ -464,7 +464,7 @@ static void redis_lua_xlat_results(request_t *request, fr_redis_command_t *cmd, 
  * Enqueuing SCRIPT LOAD ... if the server reports that the script is missing
  */
 static xlat_action_t redis_lua_func_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
-					   UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+					   request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	rlm_redis_lua_xlat_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, rlm_redis_lua_xlat_rctx_t);
 	fr_value_box_t			*vb = NULL;

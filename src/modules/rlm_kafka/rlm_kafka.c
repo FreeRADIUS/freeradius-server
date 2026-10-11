@@ -546,7 +546,7 @@ static void mod_signal(module_ctx_t const *mctx, request_t *request, UNUSED fr_s
  * @return yielded on success, UNLANG_ACTION_FAIL if the produce couldn't
  *         even be enqueued.
  */
-static unlang_action_t CC_HINT(nonnull) mod_produce(UNUSED unlang_result_t *p_result,
+static unlang_action_t CC_HINT(nonnull) mod_produce(unlang_result_t *p_result,
 						    module_ctx_t const *mctx, request_t *request)
 {
 	rlm_kafka_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_kafka_t);
