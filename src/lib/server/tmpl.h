@@ -1194,7 +1194,7 @@ void			tmpl_set_xlat(tmpl_t *vpt, xlat_exp_head_t *xlat) CC_HINT(nonnull);
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal) CC_HINT(nonnull);
 
-void			tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int idx) CC_HINT(nonnull);
+void			tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, unsigned int idx) CC_HINT(nonnull);
 
 void			tmpl_attr_ref_list_debug(FILE *fp, FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC_HINT(nonnull);
 

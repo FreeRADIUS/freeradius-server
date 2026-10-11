@@ -198,7 +198,7 @@ static inline bool CC_HINT(always_inline) tmpl_substr_terminal_check(fr_sbuff_t 
 	return ret;
 }
 
-void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
+void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, unsigned int i)
 {
 	char buffer[sizeof(STRINGIFY(INT16_MAX)) + 1];
 
@@ -209,7 +209,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 	case TMPL_ATTR_TYPE_UNSPEC:
 	case TMPL_ATTR_TYPE_UNKNOWN:
 		if (!ar->da) {
-			fprintf(fp, "\t[%d] %s null%s%s%s\n",
+			fprintf(fp, "\t[%u] %s null%s%s%s\n",
 				i,
 				fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 				ar->ar_num != NUM_UNSPEC ? "[" : "",
@@ -218,7 +218,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 			return;
 		}
 
-		fprintf(fp, "\t[%d] %s %s %s%s%s%s (%p) attr %u\n ",
+		fprintf(fp, "\t[%u] %s %s %s%s%s%s (%p) attr %u\n ",
 			i,
 			fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			fr_type_to_str(ar->da->type),
@@ -240,7 +240,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 		 *	Type reveals unresolved status
 		 *	so we don't need to add it explicitly
 		 */
-		fprintf(fp, "\t[%d] %s %s%s%s%s\n",
+		fprintf(fp, "\t[%u] %s %s%s%s%s\n",
 			i,
 			fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			ar->ar_unresolved,
@@ -252,7 +252,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 		break;
 
 	default:
-		fprintf(fp, "\t[%d] Bad type %s(%u)\n",
+		fprintf(fp, "\t[%u] Bad type %s(%u)\n",
 			     i, fr_table_str_by_value(attr_table, ar->type, "<INVALID>"), ar->type);
 		break;
 	}
@@ -6198,11 +6198,11 @@ static void tmpl_attr_rules_debug(tmpl_attr_rules_t const *at_rules)
 
 	FR_FAULT_LOG("\tlist_def          = %s", at_rules->list_def ? at_rules->list_def->name : "");
 
-	FR_FAULT_LOG("\tallow_unknown     = %d", at_rules->allow_unknown);
-	FR_FAULT_LOG("\tallow_unresolved  = %d", at_rules->allow_unresolved);
-	FR_FAULT_LOG("\tallow_wildcard    = %d", at_rules->allow_wildcard);
-	FR_FAULT_LOG("\tallow_foreign     = %d", at_rules->allow_foreign);
-	FR_FAULT_LOG("\tdisallow_filters  = %d", at_rules->disallow_filters);
+	FR_FAULT_LOG("\tallow_unknown     = %s", at_rules->allow_unknown ? "yes" : "no");
+	FR_FAULT_LOG("\tallow_unresolved  = %s", at_rules->allow_unresolved ? "yes" : "no");
+	FR_FAULT_LOG("\tallow_wildcard    = %s", at_rules->allow_wildcard ? "yes" : "no");
+	FR_FAULT_LOG("\tallow_foreign     = %s", at_rules->allow_foreign ? "yes" : "no");
+	FR_FAULT_LOG("\tdisallow_filters  = %s", at_rules->disallow_filters ? "yes" : "no");
 }
 
 

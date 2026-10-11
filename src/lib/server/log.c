@@ -868,7 +868,7 @@ void log_request_packet(request_t *request, fr_packet_t *packet, fr_pair_list_t 
 	if (slen <= 0) buffer[0] = '\0';
 
 	if (id) {
-		(void) snprintf(id_buffer, sizeof(id_buffer), " ID %d", packet->id);
+		(void) snprintf(id_buffer, sizeof(id_buffer), " ID %u", (unsigned int)packet->id);
 	} else {
 		id_buffer[0] = '\0';
 	}

@@ -412,7 +412,7 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 
 	if (!fr_atomic_queue_pop(aq, (void **) &m)) return 0;
 
-	fr_assert_msg(m->status == FR_CONTROL_MESSAGE_USED, "Bad control message state, expected %d got %u",
+	fr_assert_msg(m->status == FR_CONTROL_MESSAGE_USED, "Bad control message state, expected %u got %u",
 		      FR_CONTROL_MESSAGE_USED, m->status);
 
 	/*

@@ -398,7 +398,7 @@ int _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	if (!parent || !child) return -1;
 
 	if (fr_dlist_num_elements(&parent->children) > CF_SECTION_MAX_CHILDREN) {
-		ERROR("%s[%d]: There are too many (%d) entries in this configuration section. "
+		ERROR("%s[%d]: There are too many (%u) entries in this configuration section. "
 		      "There is likely some structural issue with the configuration files",
 		      parent->filename, parent->lineno, CF_SECTION_MAX_CHILDREN);
 		return -1;
@@ -1009,7 +1009,7 @@ void _cf_lineno_set(CONF_ITEM *ci, int lineno)
  * @return `*total`, so that a caller which wants only the answer can take it
  *	   from here.
  */
-static int cf_section_item_count(CONF_SECTION const *cs, int *total)
+static unsigned int cf_section_item_count(CONF_SECTION const *cs, unsigned int *total)
 {
 	CONF_ITEM const	*ci = NULL;
 
@@ -1055,7 +1055,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 	CONF_SECTION	   *out, *dst;
 	CONF_SECTION const *src;
 	CONF_ITEM const	   *ci;
-	int		   parent_count = 0, cs_count = 0;
+	unsigned int	   parent_count = 0, cs_count = 0;
 
 	/*
 	 *	Disallow exponential explosion.  See the definition of CF_SECTION_MAX_DUP_ITEMS
@@ -1064,7 +1064,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 	(void) cf_section_item_count(cs, &cs_count);
 
 	if ((parent_count + cs_count) >= CF_SECTION_MAX_DUP_ITEMS) {
-		ERROR("%s[%d]: Copying section %s would create more than %d items in one section.  "
+		ERROR("%s[%d]: Copying section %s would create more than %u items in one section.  "
 		      "There is likely some structural issue with the configuration files",
 		      cs->item.filename, cs->item.lineno, name1, CF_SECTION_MAX_DUP_ITEMS);
 		return NULL;

@@ -1060,7 +1060,8 @@ static fr_cmp_ret_t worker_dedup_cmp(void const *one, void const *two)
  */
 void fr_worker_destroy(fr_worker_t *worker)
 {
-	int i, count, ret;
+	int i, ret;
+	unsigned int count;
 
 //	WORKER_VERIFY;
 
@@ -1090,7 +1091,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 
 	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
 
-	DEBUG("Worker is exiting - stopped %d requests", count);
+	DEBUG("Worker is exiting - stopped %u requests", count);
 
 	/*
 	 *	Signal the channels that we're closing.

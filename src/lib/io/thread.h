@@ -45,7 +45,7 @@ typedef enum fr_thread_status_t : uint8_t {
 
 typedef struct {
 	char const		*name;		//!< of this thread
-	int			id;		//!< unique ID for this thread
+	unsigned int		id;		//!< unique ID for this thread
 	fr_thread_status_t	status;		//!< running, etc.
 	pthread_t		pthread_id;	//!< of this thread
 

@@ -147,7 +147,7 @@ struct cf_section {
  *  configuration as a read-only key-value store.  However, if you're
  *  storing more than 1024 things, you should really use a database.
  */
-#define CF_SECTION_MAX_CHILDREN (1024)
+#define CF_SECTION_MAX_CHILDREN (1024U)
 
 /** Limit the number of indirect children that a section can have.
  *
@@ -162,7 +162,7 @@ struct cf_section {
  *  result in too many children.  The limit of 1024 is unrelated to
  *  CF_SECTION_MAX_CHILDREN, but is chosen for similar reasons.
  */
-#define CF_SECTION_MAX_DUP_ITEMS (1024)
+#define CF_SECTION_MAX_DUP_ITEMS (1024U)
 
 /*
  *	Private getter for cf_file.c's parser hook - the public API is the

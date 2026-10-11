@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include "rlm_sql_trunk.h"
 #include "config.h"
 
-#define BOOTSTRAP_MAX (1048576 * 10)
+#define BOOTSTRAP_MAX (1048576U * 10U)
 
 /*
  *	Allow us to use versions < 3.6.0 beta0
@@ -261,7 +261,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 	if (finfo.st_size > BOOTSTRAP_MAX) {
 	too_big:
-		fr_strerror_printf("Size of SQL (%zuk) file exceeds limit (%dk)",
+		fr_strerror_printf("Size of SQL (%zuk) file exceeds limit (%uk)",
 		       (size_t) finfo.st_size / 1024, BOOTSTRAP_MAX / 1024);
 		goto error;
 	}

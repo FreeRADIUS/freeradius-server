@@ -71,7 +71,7 @@ typedef struct {
 #define EAP_TLV_FAILURE (2)
 #define EAP_TLV_ACK_RESULT (3)
 
-#define FR_PEAP_EXTENSIONS_TYPE 33
+#define FR_PEAP_EXTENSIONS_TYPE 33U
 
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_REQUIRED, rlm_eap_peap_t, tls_conf, fr_tls_server_config),
@@ -218,7 +218,7 @@ static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 		}
 
 		if (eap_packet->data[0] != FR_PEAP_EXTENSIONS_TYPE) {
-			REDEBUG("Invalid inner tunnel data, expected method (%d), got (%u)",
+			REDEBUG("Invalid inner tunnel data, expected method (%u), got (%u)",
 				FR_PEAP_EXTENSIONS_TYPE, eap_packet->data[0]);
 			return -1;
 		}

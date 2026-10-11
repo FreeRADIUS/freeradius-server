@@ -552,7 +552,7 @@ fail:
  */
 int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 {
-	int num = 0;
+	unsigned int num = 0;
 
 	if (!coord_regs) return 0;
 

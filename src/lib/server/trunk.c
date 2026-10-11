@@ -2914,12 +2914,12 @@ void trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, char c
 {
 	trunk_request_state_log_t	*slog = NULL;
 
-	int i;
+	unsigned int i;
 
 	for (slog = fr_dlist_head(&treq->log), i = 0;
 	     slog;
 	     slog = fr_dlist_next(&treq->log, slog), i++) {
-		fr_log(log, log_type, file, line, "[%d] %s:%i - in conn %"PRIu64" in state %s - %s -> %s",
+		fr_log(log, log_type, file, line, "[%u] %s:%i - in conn %"PRIu64" in state %s - %s -> %s",
 		       i, slog->function, slog->line,
 		       slog->tconn_id,
 		       slog->tconn ? fr_table_str_by_value(trunk_connection_states,

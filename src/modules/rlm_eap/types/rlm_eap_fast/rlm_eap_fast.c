@@ -652,8 +652,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 			case FR_MSCHAP_MPPE_SEND_KEY:
 				if (vp->vp_length != MD5_DIGEST_LENGTH) {
 				wrong_length:
-					REDEBUG("Found %s with incorrect length.  Expected %d, got %zu",
-						vp->da->name, MD5_DIGEST_LENGTH, vp->vp_length);
+					REDEBUG("Found %s with incorrect length.  Expected %zu, got %zu",
+						vp->da->name, (size_t)MD5_DIGEST_LENGTH, vp->vp_length);
 					rcode = RLM_MODULE_INVALID;
 					break;
 				}

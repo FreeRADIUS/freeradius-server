@@ -136,7 +136,7 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	worker_id = sw->thread.id;		/* Store the current worker ID */
 
-	snprintf(worker_name, sizeof(worker_name), "Worker %d", sw->thread.id);
+	snprintf(worker_name, sizeof(worker_name), "Worker %u", sw->thread.id);
 
 #ifdef HAVE_PTHREAD_SETNAME_NP
 #  ifdef __APPLE__
@@ -161,7 +161,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		CONF_SECTION	*cs;
 		char		section_name[32];
 
-		snprintf(section_name, sizeof(section_name), "%d", sw->thread.id);
+		snprintf(section_name, sizeof(section_name), "%u", sw->thread.id);
 
 		cs = cf_section_find(sc->cs, "worker", section_name);
 		if (!cs) cs = cf_section_find(sc->cs, "worker", NULL);
@@ -177,7 +177,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	fr_dlist_foreach(&sc->networks, fr_schedule_network_t, sn) {
 		if (unlikely(fr_network_worker_add(sn->nr, sw->worker) < 0)) {
-			PERROR("%s - Failed adding worker to network %d", worker_name, sn->thread.id);
+			PERROR("%s - Failed adding worker to network %u", worker_name, sn->thread.id);
 			goto fail;	/* FIXME - Should maybe try to undo partial adds? */
 		}
 	}
@@ -229,7 +229,7 @@ static void *fr_schedule_network_thread(void *arg)
 	fr_thread_status_t		status = FR_THREAD_FAIL;
 	char				network_name[32];
 
-	snprintf(network_name, sizeof(network_name), "Network %d", sn->thread.id);
+	snprintf(network_name, sizeof(network_name), "Network %u", sn->thread.id);
 
 #ifdef HAVE_PTHREAD_SETNAME_NP
 #  ifdef __APPLE__
@@ -670,7 +670,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	 */
 	fr_dlist_foreach(&sc->networks, fr_schedule_network_t, sne) {
 		if (fr_network_exit(sne->nr) < 0) {
-			PERROR("Failed signaling network %i to exit", sne->thread.id);
+			PERROR("Failed signaling network %u to exit", sne->thread.id);
 		}
 	}
 
@@ -698,9 +698,9 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		 *	module instances.
 		 */
 		if ((ret = pthread_join(sn->thread.pthread_id, NULL)) != 0) {
-			ERROR("Failed joining network %i: %s", sn->thread.id, fr_syserror(ret));
+			ERROR("Failed joining network %u: %s", sn->thread.id, fr_syserror(ret));
 		} else {
-			DEBUG2("Network %i joined (cleaned up)", sn->thread.id);
+			DEBUG2("Network %u joined (cleaned up)", sn->thread.id);
 		}
 	}
 
@@ -729,9 +729,9 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		 *	module instances.
 		 */
 		if ((ret = pthread_join(sw->thread.pthread_id, NULL)) != 0) {
-			ERROR("Failed joining worker %i: %s", sw->thread.id, fr_syserror(ret));
+			ERROR("Failed joining worker %u: %s", sw->thread.id, fr_syserror(ret));
 		} else {
-			DEBUG2("Worker %i joined (cleaned up)", sw->thread.id);
+			DEBUG2("Worker %u joined (cleaned up)", sw->thread.id);
 		}
 	}
 
