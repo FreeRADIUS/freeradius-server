@@ -30,7 +30,7 @@ RCSIDH(tls_strerror_h, "$Id$")
 #include <openssl/x509.h>
 #include <stdint.h>
 
-#include "base.h"
+#include <freeradius-devel/tls/base.h>
 
 #ifdef __cplusplus
 extern "C" {

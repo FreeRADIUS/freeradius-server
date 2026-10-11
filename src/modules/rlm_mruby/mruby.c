@@ -255,12 +255,13 @@ static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr
 	{
 		char		*in;
 		fr_slen_t	len;
-		mrb_value	value;
+		mrb_value	value = mrb_nil_value();
 
 		len = fr_value_box_aprint(request, &in, &vp->data, NULL);
-		if (len < 0) return mrb_nil_value();
-		value = mrb_str_new(mrb, in, len);
-		talloc_free(in);
+		if (len >= 0) {
+			value = mrb_str_new(mrb, in, len);
+			talloc_free(in);
+		}
 		return value;
 	}
 

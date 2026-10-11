@@ -32,7 +32,7 @@ RCSIDH(tls_log_h, "$Id$")
 #include <freeradius-devel/server/request.h>
 #include <openssl/bio.h>
 
-#include "base.h"
+#include <freeradius-devel/tls/base.h>
 
 /** Write out a certificate chain to the request or global log
  *

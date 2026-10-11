@@ -1143,7 +1143,7 @@ conf_parser_t const kafka_consumer_group_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-conf_parser_t const kafka_base_consumer_topic_config[] = {
+static conf_parser_t const kafka_base_consumer_topic_config[] = {
 	/*
 	 *	How many messages we process at a time
 	 *

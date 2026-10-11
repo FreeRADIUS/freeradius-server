@@ -12,6 +12,5 @@ TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	+= -I$(top_builddir)/lib/kafka
 TGT_PREREQS	:= libfreeradius-kafka$(L)
 LOG_ID_LIB	= 61

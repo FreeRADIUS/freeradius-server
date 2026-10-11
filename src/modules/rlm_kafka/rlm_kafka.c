@@ -1183,6 +1183,7 @@ static void mod_unload(void)
 	fr_kafka_free();
 }
 
+extern module_rlm_t rlm_kafka;
 module_rlm_t rlm_kafka = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,

@@ -4284,7 +4284,7 @@ static uint32_t dict_filename_hash(void const *data)
 
 /** Compare two fr_dict_filename_t by filename
  */
-static int8_t dict_filename_cmp(void const *one, void const *two)
+static fr_cmp_ret_t dict_filename_cmp(void const *one, void const *two)
 {
 	return CMP(strcmp(((fr_dict_filename_t const *)one)->filename,
 			  ((fr_dict_filename_t const *)two)->filename), 0);
