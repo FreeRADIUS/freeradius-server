@@ -149,7 +149,7 @@ int fr_curl_easy_tls_init(fr_curl_io_request_t *randle, fr_curl_tls_t const *con
 #if !CURL_AT_LEAST_VERSION(7,84,0)
 	if (conf->random_file) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_RANDOM_FILE, conf->random_file);
 #endif
-	FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_USE_SSL, conf->require_cert);
+	FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_USE_SSL, (long)conf->require_cert);
 
 	FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSL_VERIFYPEER, (conf->check_cert == true) ? 1L : 0L);
 	FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSL_VERIFYHOST, (conf->check_cert_cn == true) ? 2L : 0L);
