@@ -333,15 +333,15 @@ typedef struct {
 
 /* encode.c */
 ssize_t		fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original, char const *const secret, size_t secret_len,
-				 unsigned int code, fr_pair_list_t *vps);
+				 fr_tacacs_packet_code_t code, fr_pair_list_t *vps);
 
-int		fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, uint32_t code);
+int		fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, fr_tacacs_packet_code_t code);
 
 /* decode.c */
 ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *vendor, uint8_t const *buffer, size_t buffer_len,
-			 UNUSED const uint8_t *original, char const * const secret, size_t secret_len, int *code);
+			 UNUSED const uint8_t *original, char const * const secret, size_t secret_len, fr_tacacs_packet_code_t *code);
 
-int		fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt);
+fr_tacacs_packet_code_t	fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt);
 
 /* base.c */
 ssize_t		fr_tacacs_length(uint8_t const *buffer, size_t buffer_len);

@@ -136,7 +136,8 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 
 	uint32_t		xid;
 	fr_pair_t		*vp;
-	int			code, port, rcode;
+	fr_dhcpv4_packet_code_t	code;
+	int			port, rcode;
 
 	rlm_dhcpv4_delay_t	*d;
 

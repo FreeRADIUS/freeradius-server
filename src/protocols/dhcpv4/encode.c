@@ -805,7 +805,7 @@ ssize_t	fr_dhcpv4_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
 
 static ssize_t fr_dhcpv4_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
+	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(data, data_len), NULL, FR_DHCP_INVALID, 0, vps);
 }
 
 static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,

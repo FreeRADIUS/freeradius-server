@@ -209,8 +209,8 @@ bool		fr_dhcpv4_ok(uint8_t const *data, size_t data_len, uint8_t *message_type, 
 fr_packet_t	*fr_dhcpv4_packet_alloc(uint8_t const *data, size_t data_len);
 bool 		fr_dhcpv4_is_encodable(void const *item, void const *uctx);
 void		*fr_dhcpv4_next_encodable(fr_dcursor_t *cursor, void *to_eval, void *uctx);
-ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps);
-ssize_t		fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps);
+ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, fr_dhcpv4_packet_code_t code, uint32_t xid, fr_pair_list_t *vps);
+ssize_t		fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, fr_dhcpv4_packet_code_t code, uint32_t xid, fr_pair_list_t *vps);
 ssize_t		fr_dhcpv4_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list);
 int		fr_dhcpv4_global_init(void);
 void		fr_dhcpv4_global_free(void);

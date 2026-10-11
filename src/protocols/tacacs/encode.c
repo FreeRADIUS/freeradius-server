@@ -33,7 +33,7 @@
 #include "tacacs.h"
 #include "attrs.h"
 
-int fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, uint32_t code)
+int fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, fr_tacacs_packet_code_t code)
 {
 	switch (code) {
 	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_START:
@@ -380,7 +380,7 @@ static ssize_t tacacs_encode_chap(fr_dbuff_t *dbuff, fr_tacacs_packet_t *packet,
  *	Encode VPS into a raw TACACS packet.
  */
 ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char const *secret, size_t secret_len,
-			 unsigned int code, fr_pair_list_t *vps)
+			 fr_tacacs_packet_code_t code, fr_pair_list_t *vps)
 {
 	fr_pair_t		*vp;
 	fr_tacacs_packet_t 	*packet;
@@ -1064,7 +1064,7 @@ static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 
 	return fr_tacacs_encode(&FR_DBUFF_TMP(data, data_len), NULL, test_ctx->secret,
-				test_ctx->secret ? talloc_strlen(test_ctx->secret) : 0, 0, vps);
+				test_ctx->secret ? talloc_strlen(test_ctx->secret) : 0, FR_TACACS_CODE_INVALID, vps);
 }
 
 static int _encode_test_ctx(fr_tacacs_ctx_t *test_ctx)

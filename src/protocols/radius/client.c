@@ -657,7 +657,7 @@ fr_radius_client_bio_info_t const *fr_radius_client_bio_info(fr_bio_packet_t *bi
 }
 
 
-int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id)
+int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, fr_radius_packet_code_t code, int id)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 

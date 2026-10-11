@@ -355,12 +355,12 @@ void *fr_dhcpv4_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
 	return c;
 }
 
-ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps)
+ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, fr_dhcpv4_packet_code_t code, uint32_t xid, fr_pair_list_t *vps)
 {
 	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(buffer, buflen), original, code, xid, vps);
 }
 
-ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps)
+ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, fr_dhcpv4_packet_code_t code, uint32_t xid, fr_pair_list_t *vps)
 {
 	fr_dcursor_t	cursor;
 	fr_pair_t	*vp;

@@ -565,7 +565,7 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 {
 	rlm_tacacs_tcp_t const *inst = h->thread->inst;
 	ssize_t			packet_len;
-	int			code;
+	fr_tacacs_packet_code_t	code;
 
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 

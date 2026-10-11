@@ -36,15 +36,6 @@ extern "C" {
 
 bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len);
 
-int	fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, unsigned int *code);
-
-ssize_t fr_vmps_packet_size(uint8_t const *data, size_t data_len);
-
-void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
-
-ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
-		       int code, uint32_t id, fr_dcursor_t *cursor) CC_HINT(nonnull(1));
-
 typedef enum : uint16_t {
 	FR_VMPS_INVALID = 0,
 	FR_VMPS_JOIN_REQUEST = 1,
@@ -54,6 +45,15 @@ typedef enum : uint16_t {
 	FR_VMPS_CODE_MAX = 5,
 	FR_VMPS_DO_NOT_RESPOND = 256,
 } fr_vmps_packet_code_t;
+
+int	fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, unsigned int *code);
+
+ssize_t fr_vmps_packet_size(uint8_t const *data, size_t data_len);
+
+void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
+
+ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
+		       fr_vmps_packet_code_t code, uint32_t id, fr_dcursor_t *cursor) CC_HINT(nonnull(1));
 
 #define FR_VMPS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_VMPS_CODE_MAX))
 

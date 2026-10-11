@@ -33,7 +33,7 @@
 #include "tacacs.h"
 #include "attrs.h"
 
-int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
+fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 {
 	switch (pkt->hdr.type) {
 	case FR_TAC_PLUS_AUTHEN:
@@ -45,7 +45,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_ABORT) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_ABORT;
 
 			fr_strerror_printf("Invalid value %d for authentication continue flag", pkt->authen_cont.flags);
-			return -1;
+			return FR_TACACS_CODE_INVALID;
 		}
 
 		switch (pkt->authen_reply.status) {
@@ -75,7 +75,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 		}
 
 		fr_strerror_printf("Invalid value %d for authentication reply status", pkt->authen_reply.status);
-		return -1;
+		return FR_TACACS_CODE_INVALID;
 
 	case FR_TAC_PLUS_AUTHOR:
 		if ((pkt->hdr.seq_no & 0x01) == 1) {
@@ -97,7 +97,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 		}
 
 		fr_strerror_printf("Invalid value %d for authorization reply status", pkt->author_reply.status);
-		return -1;
+		return FR_TACACS_CODE_INVALID;
 
 	case FR_TAC_PLUS_ACCT:
 		if ((pkt->hdr.seq_no & 0x01) == 1) {
@@ -116,11 +116,11 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 		}
 
 		fr_strerror_printf("Invalid value %d for accounting reply status", pkt->acct_reply.status);
-		return -1;
+		return FR_TACACS_CODE_INVALID;
 
 	default:
 		fr_strerror_const("Invalid header type");
-		return -1;
+		return FR_TACACS_CODE_INVALID;
 	}
 }
 
@@ -413,7 +413,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_att
  */
 ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *vendor,
 			 uint8_t const *buffer, size_t buffer_len,
-			 const uint8_t *original, char const * const secret, size_t secret_len, int *code)
+			 const uint8_t *original, char const * const secret, size_t secret_len, fr_tacacs_packet_code_t *code)
 {
 	fr_tacacs_packet_t const *pkt;
 	fr_pair_t		*vp;
@@ -567,7 +567,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 
 	if (code) {
 		*code = fr_tacacs_packet_to_code((fr_tacacs_packet_t const *) buffer);
-		if (*code < 0) goto fail;
+		if (*code == FR_TACACS_CODE_INVALID) goto fail;
 	}
 
 	switch (pkt->hdr.type) {

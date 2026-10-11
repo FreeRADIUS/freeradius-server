@@ -267,7 +267,7 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 #endif
 
 ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
-		       int code, uint32_t seq_no, fr_dcursor_t *cursor)
+		       fr_vmps_packet_code_t code, uint32_t seq_no, fr_dcursor_t *cursor)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t 		*vp;
@@ -555,7 +555,7 @@ static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps,
 
 	fr_pair_dcursor_iter_init(&cursor, vps, fr_proto_next_encodable, dict_vmps);
 
-	return fr_vmps_encode(&FR_DBUFF_TMP(data, data_len), NULL, -1, -1, &cursor);
+	return fr_vmps_encode(&FR_DBUFF_TMP(data, data_len), NULL, FR_VMPS_INVALID, -1, &cursor);
 }
 
 static int _encode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)

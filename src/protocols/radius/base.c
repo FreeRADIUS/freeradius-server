@@ -227,14 +227,14 @@ static fr_dict_flag_parser_t const radius_flags[] = {
 	{ L("long_extended"),		{ .func = dict_flag_long_extended } }
 };
 
-int fr_radius_allow_reply(int code, bool allowed[static FR_RADIUS_CODE_MAX])
+int fr_radius_allow_reply(fr_radius_packet_code_t code, bool allowed[static FR_RADIUS_CODE_MAX])
 {
 	int i;
 
-	if ((code <= 0) || (code >= FR_RADIUS_CODE_MAX)) return -1;
+	if ((code == FR_RADIUS_CODE_UNDEFINED) || (code >= FR_RADIUS_CODE_MAX)) return -1;
 
 	for (i = 1; i < FR_RADIUS_CODE_MAX; i++) {
-		allowed[i] |= (allowed_replies[i] == (fr_radius_packet_code_t) code);
+		allowed[i] |= (allowed_replies[i] == code);
 	}
 
 	return 0;

@@ -152,7 +152,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
 	fr_client_t const	*client;
-	int			code = -1;
+	fr_tacacs_packet_code_t	code = FR_TACACS_CODE_INVALID;
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
 	char const		*secret;
 	size_t			secretlen = 0;
