@@ -45,6 +45,11 @@ use constant {
 #		...
 #	}
 
+# Return an integer which is not a valid return code
+sub bad_rcode {
+	return 99;
+}
+
 sub authorize {
 	my $p = shift();
 

@@ -1501,7 +1501,8 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(unlang_result_t *p_result, modu
 			ret = RLM_MODULE_FAIL;
 		} else if (count == 1) {
 			ret = POPi;
-			if (ret >= 100 || ret < 0) {
+			if (!RLM_MODULE_RCODE_VALID(ret)) {
+				RERROR("Perl function returned %d, which is not a valid return code", ret);
 				ret = RLM_MODULE_FAIL;
 			}
 		}

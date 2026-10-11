@@ -22,4 +22,9 @@ module FreeRADIUS
     return RLM_MODULE_UPDATED
   end
 
+  # Return an integer which is not a valid return code
+  def self.bad_rcode(p)
+    return 99
+  end
+
 end

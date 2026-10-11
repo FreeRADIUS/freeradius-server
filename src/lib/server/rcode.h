@@ -57,6 +57,12 @@ typedef enum : uint8_t {
 	RLM_MODULE_NUMCODES,				//!< How many valid return codes there are.
 } rlm_rcode_t;
 
+/** Whether an integer is an rcode which a module may return
+ *
+ * RLM_MODULE_NOT_SET and RLM_MODULE_NUMCODES are not rcodes which a module may return.
+ */
+#define RLM_MODULE_RCODE_VALID(_rcode) (((_rcode) > RLM_MODULE_NOT_SET) && ((_rcode) < RLM_MODULE_NUMCODES))
+
 
 #define RETURN_UNLANG_RCODE(_rcode)	do { p_result->rcode = (_rcode); return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 #define RETURN_UNLANG_REJECT		RETURN_UNLANG_RCODE(RLM_MODULE_REJECT)

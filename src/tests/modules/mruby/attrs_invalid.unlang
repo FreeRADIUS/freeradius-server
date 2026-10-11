@@ -25,4 +25,12 @@ if (!fail) {
 	test_fail
 }
 
+#  An integer which is not a valid return code becomes fail
+mruby_invalid.bad_rcode {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
 test_pass

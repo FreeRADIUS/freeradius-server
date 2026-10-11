@@ -1185,6 +1185,24 @@ static inline CC_HINT(always_inline) PyObject *pair_list_alloc(request_t *reques
 	return py_list;
 }
 
+/** Convert the integer which a Python function returned to an rcode
+ *
+ * @param[in] inst	of rlm_python.
+ * @param[in] value	which the Python function returned.
+ * @return
+ *	- The rcode.
+ *	- RLM_MODULE_FAIL if the integer is not an rcode which a module may return.
+ */
+static rlm_rcode_t python_rcode_from_long(rlm_python_t const *inst, long value)
+{
+	if (!RLM_MODULE_RCODE_VALID(value)) {
+		ERROR("Python function returned %ld, which is not a valid return code", value);
+		return RLM_MODULE_FAIL;
+	}
+
+	return (rlm_rcode_t) value;
+}
+
 static unlang_action_t do_python_single(unlang_result_t *p_result, module_ctx_t const *mctx,
 					request_t *request, PyObject *p_func, char const *funcname)
 {
@@ -1237,7 +1255,7 @@ static unlang_action_t do_python_single(unlang_result_t *p_result, module_ctx_t 
 
 	if (!request) {
 		// check return code at module instantiation time
-		if (PyNumber_Check(p_ret)) rcode = PyLong_AsLong(p_ret);
+		if (PyNumber_Check(p_ret)) rcode = python_rcode_from_long(inst, PyLong_AsLong(p_ret));
 		goto finish;
 	}
 
@@ -1247,7 +1265,7 @@ static unlang_action_t do_python_single(unlang_result_t *p_result, module_ctx_t 
 	 */
 	if (PyNumber_Check(p_ret)) {
 		/* Just an integer */
-		rcode = PyLong_AsLong(p_ret);
+		rcode = python_rcode_from_long(inst, PyLong_AsLong(p_ret));
 
 	} else if (p_ret == Py_None) {
 		/* returned 'None', return value defaults to "OK, continue." */

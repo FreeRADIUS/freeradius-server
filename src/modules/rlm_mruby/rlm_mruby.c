@@ -319,6 +319,11 @@ DIAG_ON_OPTIONAL(class-varargs)
 	if (mrb_type(mruby_result) == MRB_TT_FIXNUM) {
 		mrb_int rcode = mrb_int(mrb, mruby_result);
 
+		if (!RLM_MODULE_RCODE_VALID(rcode)) {
+			RERROR("Ruby function returned %" PRId64 ", which is not a valid return code", (int64_t) rcode);
+			RETURN_UNLANG_FAIL;
+		}
+
 		RETURN_UNLANG_RCODE((rlm_rcode_t)rcode);
 	}
 
