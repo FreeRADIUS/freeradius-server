@@ -3978,7 +3978,7 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 	if (write_fp) {
 		fputs(in, write_fp);
 		fputs("\n", write_fp);
-	};
+	}
 
 	talloc_free_children(cc->tmp_ctx);
 

@@ -3717,7 +3717,7 @@ fr_dict_enum_value_t const *fr_dict_enum_iter_next(fr_dict_attr_t const *da, fr_
 		return NULL;
 	}
 
-	return fr_hash_table_iter_next(ext->value_by_name, iter);;
+	return fr_hash_table_iter_next(ext->value_by_name, iter);
 }
 
 /** Lookup the structure representing an enum value in a #fr_dict_attr_t

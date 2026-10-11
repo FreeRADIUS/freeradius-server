@@ -49,20 +49,22 @@ typedef struct fr_redis_async_cmd_s fr_redis_async_cmd_t;
  * @param _error_ret		Return value on error.
  */
 #define REDIS_ASYNC_START_RCODE_PROCESS(_rcode, _cluster, _cw, _coord_pair_reg, _error_msg, _error_ret) \
-switch (_rcode) { \
-case REDIS_ASYNC_RCODE_BOOTSTRAP: \
-	fr_redis_ct_map_bootstrap(_cluster, _cw, _coord_pair_reg); \
-	break; \
-case REDIS_ASYNC_RCODE_GETMAP: \
-	fr_redis_ct_map_get(_cluster, _cw, _coord_pair_reg, false); \
-	break; \
-case REDIS_ASYNC_RCODE_FAIL: \
-case REDIS_ASYNC_RCODE_ERROR: \
-	RPERROR(_error_msg); \
-	return _error_ret; \
-default: \
-	break; \
-}
+do { \
+	switch (_rcode) { \
+	case REDIS_ASYNC_RCODE_BOOTSTRAP: \
+		fr_redis_ct_map_bootstrap(_cluster, _cw, _coord_pair_reg); \
+		break; \
+	case REDIS_ASYNC_RCODE_GETMAP: \
+		fr_redis_ct_map_get(_cluster, _cw, _coord_pair_reg, false); \
+		break; \
+	case REDIS_ASYNC_RCODE_FAIL: \
+	case REDIS_ASYNC_RCODE_ERROR: \
+		RPERROR(_error_msg); \
+		return _error_ret; \
+	default: \
+		break; \
+	} \
+} while (0)
 
 #define REDIS_ASYNC_COORD_CALLBACKS(_thread_type) \
 typedef enum : uint8_t { \

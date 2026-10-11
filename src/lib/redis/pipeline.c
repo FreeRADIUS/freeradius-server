@@ -595,7 +595,7 @@ static int redis_addr_from_redirect(TALLOC_CTX *ctx, char **addr, uint16_t *port
 	if (fr_sbuff_out(&key, &sbuff) < 0) {
 		fr_strerror_const("Failed to parse key slot from MOVED / ASK reply");
 		return -1;
-	};
+	}
 	if (key >= KEY_SLOTS) {
 		fr_strerror_printf("Key %lu outside of redis slot range", key);
 		return -1;

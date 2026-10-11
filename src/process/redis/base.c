@@ -759,7 +759,7 @@ static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, r
 	if (fr_timer_in(cluster, rctx->thread->el->tl, &cluster->ev, rctx->inst->retry_interval,
 			false, redis_cluster_map_get_refetch, cluster) < 0) {
 		RERROR("Failed setting up retry event");
-	};
+	}
 	return process_redis_return_failed(request, cluster, rctx->worker_id);
 }
 
@@ -850,7 +850,7 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 		if (fr_timer_in(cluster, rctx->thread->el->tl, &cluster->ev, rctx->inst->retry_interval,
 				false, redis_cluster_map_get_refetch, cluster) < 0) {
 			RERROR("Failed setting up retry event");
-		};
+		}
 		if (!cluster->no_trigger[FR_REDIS_CLUSTER_MAP_FAIL]) {
 			trigger(unlang_interpret_get_thread_default(), rctx->inst->conf,
 				&cluster->trigger_cp[FR_REDIS_CLUSTER_MAP_FAIL], "modules.redis.cluster_fail", true,

@@ -542,7 +542,7 @@ static PyObject *py_freeradius_attribute_instance(PyObject *self, PyObject *attr
 	if (!pair) {
 		PyErr_SetString(PyExc_MemoryError, "Failed to allocate PyObject");
 		return NULL;
-	};
+	}
 	pair->parent = init_pair->parent;
 	Py_INCREF(init_pair->parent);
 	pair->da = init_pair->da;
@@ -605,7 +605,7 @@ static PyObject *py_freeradius_pair_map_subscript(PyObject *self, PyObject *attr
 	if (!pair) {
 		PyErr_SetString(PyExc_MemoryError, "Failed to allocate PyObject");
 		return NULL;
-	};
+	}
 
 	pair->parent = self;
 	Py_INCREF(self);

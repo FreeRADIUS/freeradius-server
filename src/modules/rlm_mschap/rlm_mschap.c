@@ -2328,7 +2328,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 			 */
 			if (unlang_module_yield(request, mod_authenticate_resume, NULL, 0, auth_ctx) == UNLANG_ACTION_FAIL) {
 				RETURN_UNLANG_FAIL;
-			};
+			}
 
 			/*
 			 *	a) Expanding the domain, if specified

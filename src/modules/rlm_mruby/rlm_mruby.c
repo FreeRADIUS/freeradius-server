@@ -167,7 +167,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/* Define the log method */
 	mrb_define_class_method(mrb, inst->mruby_module, "log", mruby_log, MRB_ARGS_REQ(2));
 
-#define A(x) mrb_define_const(mrb, inst->mruby_module, #x, mrb_fixnum_value(x));
+#define A(x) mrb_define_const(mrb, inst->mruby_module, #x, mrb_fixnum_value(x))
 	/* Define the logging constants */
 	A(L_DBG);
 	A(L_WARN);
@@ -180,16 +180,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	A(L_DBG_ERR_REQ);
 
 	/* Define the return value constants */
-	A(RLM_MODULE_REJECT)
-	A(RLM_MODULE_FAIL)
-	A(RLM_MODULE_OK)
-	A(RLM_MODULE_HANDLED)
-	A(RLM_MODULE_INVALID)
-	A(RLM_MODULE_DISALLOW)
-	A(RLM_MODULE_NOTFOUND)
-	A(RLM_MODULE_NOOP)
-	A(RLM_MODULE_UPDATED)
-	A(RLM_MODULE_NUMCODES)
+	A(RLM_MODULE_REJECT);
+	A(RLM_MODULE_FAIL);
+	A(RLM_MODULE_OK);
+	A(RLM_MODULE_HANDLED);
+	A(RLM_MODULE_INVALID);
+	A(RLM_MODULE_DISALLOW);
+	A(RLM_MODULE_NOTFOUND);
+	A(RLM_MODULE_NOOP);
+	A(RLM_MODULE_UPDATED);
+	A(RLM_MODULE_NUMCODES);
 #undef A
 
 	/* Convert a FreeRADIUS config structure into a mruby hash */

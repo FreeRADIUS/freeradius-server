@@ -421,7 +421,7 @@ static cache_status_t cache_entry_find(UNUSED rlm_cache_entry_t **out, void **rc
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, (uint8_t const *)key->vb_strvalue,
 					     key->vb_length, cmds, false, NULL);
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
-					"Failed to enqueue Redis cache find commands", CACHE_ERROR)
+					"Failed to enqueue Redis cache find commands", CACHE_ERROR);
 
 	*rctx_out = rctx;
 	return CACHE_YIELD;
@@ -572,7 +572,7 @@ static cache_status_t cache_entry_insert(void **rctx_out, UNUSED rlm_cache_confi
 		error:
 			talloc_free(rctx);
 			return CACHE_ERROR;
-		};
+		}
 	}
 
 	RDEBUG3("DEL \"%pV\"", &c->key);
@@ -619,7 +619,7 @@ static cache_status_t cache_entry_insert(void **rctx_out, UNUSED rlm_cache_confi
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, (uint8_t const *)c->key.vb_strvalue,
 					     c->key.vb_length, cmds, false, NULL);
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
-					"Failed to enqueue Redis cache insert commands", CACHE_ERROR)
+					"Failed to enqueue Redis cache insert commands", CACHE_ERROR);
 
 	*rctx_out = rctx;
 	return CACHE_YIELD;
@@ -683,7 +683,7 @@ static cache_status_t cache_entry_expire(void **rctx_out, UNUSED rlm_cache_confi
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, (uint8_t const *)key->vb_strvalue,
 					     key->vb_length, cmds, false, NULL);
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
-					"Failed to enqueue Redis cache expire command", CACHE_ERROR)
+					"Failed to enqueue Redis cache expire command", CACHE_ERROR);
 
 	*rctx_out = rctx;
 	return CACHE_YIELD;

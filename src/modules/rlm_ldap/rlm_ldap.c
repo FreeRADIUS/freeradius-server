@@ -2071,7 +2071,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 						     inst->handle_config.admin_password, request, &inst->handle_config);
 	if (!autz_ctx->ttrunk) goto fail;
 
-#define CHECK_EXPANDED_SPACE(_expanded) fr_assert((size_t)_expanded->count < (NUM_ELEMENTS(_expanded->attrs) - 1));
+#define CHECK_EXPANDED_SPACE(_expanded) fr_assert((size_t)_expanded->count < (NUM_ELEMENTS(_expanded->attrs) - 1))
 
 	/*
 	 *	Add any additional attributes we need for checking access, memberships, and profiles
@@ -2328,7 +2328,7 @@ static unlang_action_t CC_HINT(nonnull) user_modify_resume(unlang_result_t *p_re
 	fr_value_box_list_init(&usermod_ctx->expanded);
 
 	if (unlang_module_yield(request, user_modify_mod_build_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) goto fail;
-;
+
 	if (unlang_tmpl_push(usermod_ctx, NULL, &usermod_ctx->expanded, request,
 			     usermod_ctx->call_env->mod[0]->tmpl, NULL, UNLANG_SUB_FRAME) < 0) goto fail;
 

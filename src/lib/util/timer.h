@@ -96,7 +96,9 @@ int			fr_timer_disarm(fr_timer_t *ev);			/* disarms but does not free */
 			} while (0)
 
 #define			FR_TIMER_DISARM_RETURN(_ev) \
-				if ((likely(((_ev)) != NULL) && unlikely(!fr_cond_assert_msg(fr_timer_disarm(_ev) == 0, "Failed to disarm timer %p", (_ev))))) return -1;
+			do { \
+				if ((likely(((_ev)) != NULL) && unlikely(!fr_cond_assert_msg(fr_timer_disarm(_ev) == 0, "Failed to disarm timer %p", (_ev))))) return -1; \
+			} while (0)
 
 int			fr_timer_delete(fr_timer_t **ev_p) CC_HINT(nonnull);	/* disarms AND frees */
 
@@ -108,7 +110,9 @@ int			fr_timer_delete(fr_timer_t **ev_p) CC_HINT(nonnull);	/* disarms AND frees 
 			} while (0)
 
 #define			FR_TIMER_DELETE_RETURN(_ev_p) \
-				if ((likely((*(_ev_p)) != NULL) && unlikely(!fr_cond_assert_msg(fr_timer_delete(_ev_p) == 0, "Failed to delete timer %p", *(_ev_p))))) return -1;
+			do { \
+				if ((likely((*(_ev_p)) != NULL) && unlikely(!fr_cond_assert_msg(fr_timer_delete(_ev_p) == 0, "Failed to delete timer %p", *(_ev_p))))) return -1; \
+			} while (0)
 
 fr_time_t		fr_timer_when(fr_timer_t *ev) CC_HINT(nonnull);
 

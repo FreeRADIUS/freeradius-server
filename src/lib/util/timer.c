@@ -112,7 +112,7 @@ FR_DLIST_FUNCS(timer, fr_timer_t, entry)
 
 #define CHECK_PARENT(_ev) \
 	fr_assert_msg(!(_ev)->parent || (*(_ev)->parent == ev), \
-		      "Event %p, allocd %s[%d], parent field points to %p", (_ev), (_ev)->file, (_ev)->line, *(_ev)->parent);
+		      "Event %p, allocd %s[%d], parent field points to %p", (_ev), (_ev)->file, (_ev)->line, *(_ev)->parent)
 
 #define TIMER_UCTX_TO_TIME(_tl, _x) ((fr_time_t *)(((uintptr_t) (_x)) + (_tl)->shared.time_offset))
 
@@ -652,7 +652,7 @@ static int timer_ordered_disarm(fr_timer_t *ev)
 	/*
 	 *	Check the check is still valid (sanity check)
 	 */
-	(void)talloc_get_type_abort(ev, fr_timer_t);;
+	(void)talloc_get_type_abort(ev, fr_timer_t);
 
 	/*
 	 *	Already dissassociated from a list, nothing to do.

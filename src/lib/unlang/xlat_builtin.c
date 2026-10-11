@@ -2988,14 +2988,17 @@ static int uuid_print_vb(fr_value_box_t *vb, uint32_t vals[4])
 	char	buffer[36];
 	int	i, j = 0;
 
-#define UUID_CHARS(_v, _num)	for (i = 0; i < _num; i++) { \
-		buffer[j++] = fr_base16_alphabet_encode_lc[(uint8_t)((vals[_v] & 0xf0000000) >> 28)]; \
-		vals[_v] = vals[_v] << 4; \
-	}
+#define UUID_CHARS(_v, _num) \
+	do { \
+		for (i = 0; i < _num; i++) { \
+			buffer[j++] = fr_base16_alphabet_encode_lc[(uint8_t)((vals[_v] & 0xf0000000) >> 28)]; \
+			vals[_v] = vals[_v] << 4; \
+		} \
+	} while (0)
 
-	UUID_CHARS(0, 8)
+	UUID_CHARS(0, 8);
 	buffer[j++] = '-';
-	UUID_CHARS(1, 4)
+	UUID_CHARS(1, 4);
 	buffer[j++] = '-';
 	UUID_CHARS(1, 4);
 	buffer[j++] = '-';

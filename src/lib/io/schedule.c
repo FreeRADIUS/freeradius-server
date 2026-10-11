@@ -495,7 +495,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx,
 	if (fr_coord_start(sc->config->max_workers, sc->coord_sem) < 0) {
 		fr_schedule_destroy(&sc);
 		return NULL;
-	};
+	}
 
 	/*
 	 *	Create all of the workers.

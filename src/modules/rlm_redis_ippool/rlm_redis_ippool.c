@@ -996,7 +996,7 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 	error:
 		talloc_free(cmds);
 		return UNLANG_ACTION_FAIL;
-	};
+	}
 
 	if (thread->inst->wait_cmd) {
 		if (fr_redis_command_preformatted_add(cmds, thread->inst->wait_cmd, thread->inst->wait_cmd_len,
@@ -1006,7 +1006,7 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 	*out_cmd = fr_redis_async_cmd_start(ctx, request, &ret, thread->rtcluster, key, key_len, cmds, false, NULL);
 
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
-					"Failed enqueuing Redis command", UNLANG_ACTION_FAIL)
+					"Failed enqueuing Redis command", UNLANG_ACTION_FAIL);
 
 	if (out_cmds) *out_cmds = cmds;
 	return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, rctx);
@@ -2166,7 +2166,7 @@ static unlang_action_t CC_HINT(nonnull) mod_show(unlang_result_t *p_result, modu
 					     rctx->cmds, false, NULL);
 
 	REDIS_ASYNC_START_RCODE_PROCESS(rcode, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
-					"Failed enqueueing Redis command", UNLANG_ACTION_FAIL)
+					"Failed enqueueing Redis command", UNLANG_ACTION_FAIL);
 
 	return unlang_module_yield(request, mod_show_resume, mod_info_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
@@ -2250,7 +2250,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(unlang_result_t *p_result, mod
 	error:
 		talloc_free(rctx);
 		RETURN_UNLANG_FAIL;
-	};
+	}
 	ADD_REDIS_COMMAND("ZCARD %b", key, key_p - key);						/* Total */
 	ADD_REDIS_COMMAND("ZCOUNT %b -inf %i", key, key_p - key, fr_time_to_sec(now));			/* Free */
 	ADD_REDIS_COMMAND("ZCOUNT %b -inf %i", key, key_p - key, fr_time_to_sec(now) + 60);		/* Free in next 60s */
@@ -2275,7 +2275,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(unlang_result_t *p_result, mod
 					     rctx->cmds, false, NULL);
 
 	REDIS_ASYNC_START_RCODE_PROCESS(rcode, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
-					"Failed enqueueing Redis command", UNLANG_ACTION_FAIL)
+					"Failed enqueueing Redis command", UNLANG_ACTION_FAIL);
 
 	return unlang_module_yield(request, mod_show_resume, mod_info_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
@@ -2768,7 +2768,7 @@ static xlat_action_t redis_ippool_remove_common(request_t *request, rlm_redis_ip
 						      redis_xlat_common_results, rctx) != FR_REDIS_PIPELINE_OK) {
 			talloc_free(rctx);
 			return XLAT_ACTION_FAIL;
-		};
+		}
 		rctx->changes++;
 
 		ipaddr_inc(&curr_addr.vb_ip, step);

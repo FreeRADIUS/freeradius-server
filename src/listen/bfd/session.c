@@ -814,7 +814,7 @@ static void bfd_unlang_send_packet(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	if (unlikely(fr_network_sendto_worker(session->nr, parent, track, (uint8_t const *) wrapper,
 					      (wrapper->packet + bfd->length) - (uint8_t *) wrapper, fr_time()) < 0)) {
 		PERROR("Failed sending packet to worker");
-	};
+	}
 }
 
 /*

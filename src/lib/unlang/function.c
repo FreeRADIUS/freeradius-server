@@ -92,7 +92,7 @@ static void unlang_function_signal(request_t *request,
 	request->module = NULL
 
 #define RESTORE_CALLER \
-	request->module = caller;
+	request->module = caller
 
 /** Call a generic function that produces a result
  *

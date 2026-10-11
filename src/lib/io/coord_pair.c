@@ -699,7 +699,7 @@ void fr_coord_pair_data_recv(UNUSED fr_coord_t *coord, uint32_t worker_id, fr_db
 	error:
 		request_slab_release(request);
 		return;
-	};
+	}
 	vp->vp_int32 = worker_id;
 
 	if (fr_internal_decode_list_dbuff(request->pair_list.request, &request->request_pairs,

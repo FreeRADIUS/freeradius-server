@@ -574,7 +574,7 @@ int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 			talloc_free(sc);
 			PERROR("Failed creating coordinator %s", coord_reg->name);
 			return -1;
-		};
+		}
 
 		fr_dlist_insert_tail(coord_threads, sc);
 	}

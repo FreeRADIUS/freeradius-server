@@ -201,7 +201,7 @@ unlang_action_t process_with_rctx(unlang_result_t *p_result, module_ctx_t const 
 
 /** Call a named recv function directly with a new rctx
  */
-#define CALL_RECV_RCTX(_x, _rctx) process_with_rctx(p_result, mctx, request, recv_ ## _x, _rctx);
+#define CALL_RECV_RCTX(_x, _rctx) process_with_rctx(p_result, mctx, request, recv_ ## _x, _rctx)
 
 /** Call a named send function directly
  */

@@ -309,7 +309,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 					     thread->rtcluster, NULL, 0, cmds, rctx->read_only, NULL);
 
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, inst->coord_pair_reg,
-					"Failed to enqueue redis PING", XLAT_ACTION_FAIL)
+					"Failed to enqueue redis PING", XLAT_ACTION_FAIL);
 
 	return unlang_xlat_yield(request, redis_remap_xlat_resume, redis_xlat_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
@@ -628,7 +628,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *o
 					     cmds, func->read_only, NULL);
 
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, inst->coord_pair_reg,
-					"Failed enqueing lua command", XLAT_ACTION_FAIL)
+					"Failed enqueing lua command", XLAT_ACTION_FAIL);
 
 	return unlang_xlat_yield(request, redis_lua_func_resume, redis_lua_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
@@ -828,7 +828,7 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 					     thread->rtcluster, key, key_len, cmds, rctx->read_only, node);
 
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, inst->coord_pair_reg,
-					"Failed enqueueing Redis command", XLAT_ACTION_FAIL)
+					"Failed enqueueing Redis command", XLAT_ACTION_FAIL);
 
 	return unlang_xlat_yield(request, redis_xlat_resume, redis_xlat_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
@@ -865,7 +865,7 @@ static void lua_script_load(fr_redis_trunk_t *rtrunk, void *uctx)
 					      lua_script_load_results, func) != FR_REDIS_PIPELINE_OK) {
 			talloc_free(cmds);
 			return;
-		};
+		}
 	}
 
 	if (redis_command_set_enqueue(rtrunk, cmds) != FR_REDIS_PIPELINE_OK) {

@@ -248,7 +248,7 @@ static int crl_build_reply(request_t *request, crl_entry_t *crl_entry)
 {
 	fr_pair_t	*vp;
 
-	if (pair_update_reply(&vp, attr_crl_cdp_url) < 0) return -1;;
+	if (pair_update_reply(&vp, attr_crl_cdp_url) < 0) return -1;
 	fr_value_box_clear_value(&vp->data);
 	fr_value_box_strdup(vp, &vp->data, NULL, crl_entry->cdp_url, false);
 	fr_pair_immutable(vp);
