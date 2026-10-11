@@ -37,12 +37,12 @@ fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 {
 	switch (pkt->hdr.type) {
 	case FR_TAC_PLUS_AUTHEN:
-		if (pkt->hdr.seq_no == 1) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
+		if (pkt->hdr.seq_no == 1) return FR_TACACS_CODE_AUTH_START;
 
 		if ((pkt->hdr.seq_no & 0x01) == 1) {
-			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_UNSET) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE;
+			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_UNSET) return FR_TACACS_CODE_AUTH_CONT;
 
-			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_ABORT) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_ABORT;
+			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_ABORT) return FR_TACACS_CODE_AUTH_CONT_ABORT;
 
 			fr_strerror_printf("Invalid value %d for authentication continue flag", pkt->authen_cont.flags);
 			return FR_TACACS_CODE_INVALID;
@@ -50,28 +50,28 @@ fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 
 		switch (pkt->authen_reply.status) {
 		case FR_TAC_PLUS_AUTHEN_STATUS_PASS:
-			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_PASS;
+			return FR_TACACS_CODE_AUTH_PASS;
 
 		case FR_TAC_PLUS_AUTHEN_STATUS_FAIL:
-			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_FAIL;
+			return FR_TACACS_CODE_AUTH_FAIL;
 
 		case FR_TAC_PLUS_AUTHEN_STATUS_GETDATA:
-			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_GETDATA;
+			return FR_TACACS_CODE_AUTH_GETDATA;
 
 		case FR_TAC_PLUS_AUTHEN_STATUS_GETUSER:
-			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_GETUSER;
+			return FR_TACACS_CODE_AUTH_GETUSER;
 
 		case FR_TAC_PLUS_AUTHEN_STATUS_GETPASS:
-			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_GETPASS;
+			return FR_TACACS_CODE_AUTH_GETPASS;
 
 		case FR_TAC_PLUS_AUTHEN_STATUS_RESTART:
-			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_RESTART;
+			return FR_TACACS_CODE_AUTH_RESTART;
 
 		case FR_TAC_PLUS_AUTHEN_STATUS_ERROR:
-			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_ERROR;
+			return FR_TACACS_CODE_AUTH_ERROR;
 
 		case FR_TAC_PLUS_AUTHEN_STATUS_FOLLOW:
-			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_FAIL;
+			return FR_TACACS_CODE_AUTH_FAIL;
 
 		default:
 			break;
@@ -82,22 +82,22 @@ fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 
 	case FR_TAC_PLUS_AUTHOR:
 		if ((pkt->hdr.seq_no & 0x01) == 1) {
-			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
+			return FR_TACACS_CODE_AUTZ_REQUEST;
 		}
 
 		switch (pkt->author_reply.status) {
 		case FR_TAC_PLUS_AUTHOR_STATUS_PASS_ADD:
-			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_PASS_ADD;
+			return FR_TACACS_CODE_AUTZ_PASS_ADD;
 
 		case FR_TAC_PLUS_AUTHOR_STATUS_PASS_REPL:
-			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_PASS_REPLACE;
+			return FR_TACACS_CODE_AUTZ_PASS_REPLACE;
 
 		case FR_TAC_PLUS_AUTHOR_STATUS_FAIL:
 		case FR_TAC_PLUS_AUTHOR_STATUS_FOLLOW:
-			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_FAIL;
+			return FR_TACACS_CODE_AUTZ_FAIL;
 
 		case FR_TAC_PLUS_AUTHOR_STATUS_ERROR:
-			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_ERROR;
+			return FR_TACACS_CODE_AUTZ_ERROR;
 
 		default:
 			break;
@@ -108,16 +108,16 @@ fr_tacacs_packet_code_t fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 
 	case FR_TAC_PLUS_ACCT:
 		if ((pkt->hdr.seq_no & 0x01) == 1) {
-			return FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
+			return FR_TACACS_CODE_ACCT_REQUEST;
 		}
 
 		switch (pkt->acct_reply.status) {
 		case FR_TAC_PLUS_ACCT_STATUS_SUCCESS:
-			return FR_PACKET_TYPE_VALUE_ACCOUNTING_SUCCESS;
+			return FR_TACACS_CODE_ACCT_SUCCESS;
 
 		case FR_TAC_PLUS_ACCT_STATUS_ERROR:
 		case FR_TAC_PLUS_ACCT_STATUS_FOLLOW:
-			return FR_PACKET_TYPE_VALUE_ACCOUNTING_ERROR;
+			return FR_TACACS_CODE_ACCT_ERROR;
 
 		default:
 			break;

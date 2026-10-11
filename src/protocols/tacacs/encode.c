@@ -375,7 +375,7 @@ static ssize_t tacacs_encode_chap(fr_dbuff_t *dbuff, fr_tacacs_packet_t *packet,
  */
 #define ENCODE_FIELD_UINT8(_field, _da) do { \
 	vp = fr_pair_find_by_da(vps, NULL, _da); \
-	_field = (vp) ? vp->vp_uint8 : 0; \
+	_field = (typeof(_field))((vp) ? vp->vp_uint8 : 0); \
 } while (0)
 
 #define ENCODE_FIELD_STRING8(_field, _da) _field = tacacs_encode_field(&work_dbuff, vps, _da, 0xff)
@@ -1023,7 +1023,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) {
-		uint8_t flags = packet->hdr.flags;
+		fr_tacacs_flags_t flags = packet->hdr.flags;
 
 		packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
 		fr_tacacs_packet_log_hex(&default_log, packet, packet_len);

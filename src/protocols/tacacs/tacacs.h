@@ -94,9 +94,9 @@ typedef struct CC_HINT(__packed__) {
 #endif
 		} ver;
 	};
-	fr_tacacs_type_t	type:8;
+	fr_tacacs_type_t	type;
 	uint8_t 		seq_no;
-	fr_tacacs_flags_t	flags:8;
+	fr_tacacs_flags_t	flags;
 	uint32_t 		session_id;
 	uint32_t 		length;
 } fr_tacacs_packet_hdr_t;
@@ -137,10 +137,10 @@ typedef enum : uint8_t {
 } fr_tacacs_authenservice_t;
 
 typedef struct CC_HINT(__packed__) {
-	fr_tacacs_action_t		action:8;
-	fr_tacacs_privlvl_t		priv_lvl:8;
-	fr_tacacs_authentype_t		authen_type:8;
-	fr_tacacs_authenservice_t	authen_service:8;
+	fr_tacacs_action_t		action;
+	fr_tacacs_privlvl_t		priv_lvl;
+	fr_tacacs_authentype_t		authen_type;
+	fr_tacacs_authenservice_t	authen_service;
 	uint8_t				user_len;
 	uint8_t				port_len;
 	uint8_t				rem_addr_len;
@@ -164,8 +164,8 @@ typedef enum : uint8_t {
 } fr_tacacs_authen_reply_flags_t;
 
 typedef struct CC_HINT(__packed__) {
-	fr_tacacs_authen_reply_status_t	status:8;
-	fr_tacacs_authen_reply_flags_t	flags:8;
+	fr_tacacs_authen_reply_status_t	status;
+	fr_tacacs_authen_reply_flags_t	flags;
 	uint16_t			server_msg_len;
 	uint16_t			data_len;
 } fr_tacacs_packet_authen_reply_hdr_t;
@@ -178,7 +178,7 @@ typedef enum : uint8_t {
 typedef struct CC_HINT(__packed__) {
 	uint16_t			user_msg_len;
 	uint16_t			data_len;
-	fr_tacacs_authen_cont_flags_t	flags:8;
+	fr_tacacs_authen_cont_flags_t	flags;
 } fr_tacacs_packet_authen_cont_hdr_t;
 
 typedef enum : uint8_t {
@@ -196,10 +196,10 @@ typedef enum : uint8_t {
 } fr_tacacs_author_authen_method_t;
 
 typedef struct CC_HINT(__packed__) {
-	fr_tacacs_author_authen_method_t	authen_method:8;
-	fr_tacacs_privlvl_t		priv_lvl:8;
-	fr_tacacs_authentype_t		authen_type:8;
-	fr_tacacs_authenservice_t		authen_service:8;
+	fr_tacacs_author_authen_method_t	authen_method;
+	fr_tacacs_privlvl_t		priv_lvl;
+	fr_tacacs_authentype_t		authen_type;
+	fr_tacacs_authenservice_t		authen_service;
 	uint8_t				user_len;
 	uint8_t				port_len;
 	uint8_t				rem_addr_len;
@@ -216,7 +216,7 @@ typedef enum : uint8_t {
 } fr_tacacs_author_reply_status_t;
 
 typedef struct CC_HINT(__packed__) {
-	fr_tacacs_author_reply_status_t	status:8;
+	fr_tacacs_author_reply_status_t	status;
 	uint8_t				arg_cnt;
 	uint16_t			server_msg_len;
 	uint16_t			data_len;
@@ -230,11 +230,11 @@ typedef enum : uint8_t {
 } fr_tacacs_acct_req_flags_t;
 
 typedef struct CC_HINT(__packed__) {
-	fr_tacacs_acct_req_flags_t		flags:8;
-	fr_tacacs_author_authen_method_t	authen_method:8;
-	fr_tacacs_privlvl_t		priv_lvl:8;
-	fr_tacacs_authentype_t		authen_type:8;
-	fr_tacacs_authenservice_t		authen_service:8;
+	fr_tacacs_acct_req_flags_t		flags;
+	fr_tacacs_author_authen_method_t	authen_method;
+	fr_tacacs_privlvl_t		priv_lvl;
+	fr_tacacs_authentype_t		authen_type;
+	fr_tacacs_authenservice_t		authen_service;
 	uint8_t				user_len;
 	uint8_t				port_len;
 	uint8_t				rem_addr_len;
@@ -260,7 +260,7 @@ typedef enum : uint8_t {
 typedef struct CC_HINT(__packed__) {
 	uint16_t			server_msg_len;
 	uint16_t			data_len;
-	fr_tacacs_acct_reply_status_t	status:8;
+	fr_tacacs_acct_reply_status_t	status;
 } fr_tacacs_packet_acct_reply_hdr_t;
 
 /*
