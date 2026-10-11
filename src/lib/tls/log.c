@@ -407,7 +407,7 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
 		 *	We failed to copy the data into the buffer
 		 *	so we can't do anything with it.
 		 */
-		REDEBUG2("(TLS) Failed copying %u bytes into TLS log aggregation buffer - buffer is too small.", len);
+		REDEBUG2("(TLS) Failed copying %d bytes into TLS log aggregation buffer - buffer is too small.", len);
 		return 0;
 	}
 

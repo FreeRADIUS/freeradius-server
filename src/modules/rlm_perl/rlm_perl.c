@@ -673,7 +673,7 @@ static int fr_perl_pair_parent_build(fr_perl_pair_t *pair_data)
 		 */
 		if (pair_data->idx > 0) {
 		none_exist:
-			croak("Attempt to set instance %d when none exist", pair_data->idx);
+			croak("Attempt to set instance %u when none exist", pair_data->idx);
 			return -1;
 		}
 		if (fr_perl_pair_parent_build(parent) < 0) return -1;
@@ -685,7 +685,7 @@ static int fr_perl_pair_parent_build(fr_perl_pair_t *pair_data)
 		if (!parent->parent->vp) goto none_exist;
 		count = fr_pair_count_by_da(&parent->parent->vp->vp_group, pair_data->da);
 		if (count < pair_data->idx) {
-			croak("Attempt to set instance %d when only %d exist", pair_data->idx, count);
+			croak("Attempt to set instance %u when only %u exist", pair_data->idx, count);
 			return -1;
 		}
 		parent = parent->parent;
@@ -764,7 +764,7 @@ static XS(XS_pairs_STORE)
 		 *	the parent doesn't exist is invalid.
 		 */
 		if (idx > 0) {
-			croak("Attempting to set instance %d when none exist", idx);
+			croak("Attempting to set instance %u when none exist", idx);
 			XSRETURN(0);
 		}
 
@@ -776,7 +776,7 @@ static XS(XS_pairs_STORE)
 		if (idx > 0) {
 			unsigned int count = fr_pair_count_by_da(&pair_data->parent->vp->vp_group, pair_data->da);
 			if (count < idx) {
-				croak("Attempt to set instance %d when only %d exist", idx, count);
+				croak("Attempt to set instance %u when only %u exist", idx, count);
 				XSRETURN(0);
 			}
 		}
@@ -1140,7 +1140,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_bstrndup(vb, vb, NULL, tmp, len, SvTAINTED(sv)) < 0) {
 			talloc_free(vb);
-			RPEDEBUG("Failed to allocate %ld for output", len);
+			RPEDEBUG("Failed to allocate %zu for output", len);
 			return -1;
 		}
 		break;

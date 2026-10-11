@@ -103,7 +103,7 @@ static inline CC_HINT(always_inline) void exec_debug(request_t *request, char **
 {
 	char **p;
 
-	if (argv_in) for (p = argv_in; *p; p++) ROPTIONAL(RDEBUG3, DEBUG3, "arg[%d] %s", (unsigned int)(p - argv_in), *p);
+	if (argv_in) for (p = argv_in; *p; p++) ROPTIONAL(RDEBUG3, DEBUG3, "arg[%u] %s", (unsigned int)(p - argv_in), *p);
 	if (env_in) for (p = env_in; *p; p++) ROPTIONAL(RDEBUG3, DEBUG3, "export %s", *p);
 	if (env_inherit) for (p = environ; *p; p++) ROPTIONAL(RDEBUG3, DEBUG3, "export %s", *p);
 }
@@ -737,7 +737,7 @@ void fr_exec_oneshot_cleanup(fr_exec_state_t *exec, int signal)
 	fr_event_list_t	*el = unlang_interpret_event_list(request);
 
 	if (exec->pid >= 0) {
-		RDEBUG3("Cleaning up exec state for PID %u", exec->pid);
+		RDEBUG3("Cleaning up exec state for PID %ld", (long)exec->pid);
 
 	} else if (exec->failed != FR_EXEC_FAIL_NONE) {
 		RDEBUG3("Cleaning up failed exec");
@@ -774,7 +774,7 @@ void fr_exec_oneshot_cleanup(fr_exec_state_t *exec, int signal)
 		if (unlikely(fr_event_pid_reap(el, exec->pid, NULL, NULL) < 0)) {
 			int status;
 
-			RPERROR("Failed setting up async PID reaper, PID %u may now be a zombie", exec->pid);
+			RPERROR("Failed setting up async PID reaper, PID %ld may now be a zombie", (long)exec->pid);
 
 			/*
 			 *	Try and cleanup... really we have
@@ -799,7 +799,7 @@ static void exec_reap(fr_event_list_t *el, pid_t pid, int status, void *uctx)
 	int		wait_status = 0;
 	int		ret;
 
-	if (!fr_cond_assert(pid == exec->pid)) RWDEBUG("Event PID %u and exec->pid %u do not match", pid, exec->pid);
+	if (!fr_cond_assert(pid == exec->pid)) RWDEBUG("Event PID %ld and exec->pid %ld do not match", (long)pid, (long)exec->pid);
 
 	/*
 	 *	Reap the process.  This is needed so the processes
@@ -1016,7 +1016,7 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
 	 *	Only print if we got additional data
 	 */
 	if (RDEBUG_ENABLED2 && fr_sbuff_behind(&start_m)) {
-		RDEBUG2("pid %u (stdout) - %pV", exec->pid,
+		RDEBUG2("pid %ld (stdout) - %pV", (long)exec->pid,
 			fr_box_strvalue_len(fr_sbuff_current(&start_m), fr_sbuff_behind(&start_m)));
 	}
 
@@ -1138,7 +1138,7 @@ int fr_exec_oneshot(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	 *	into the request log if we're logging at a high enough level of verbosity.
 	 */
 	} else if (RDEBUG_ENABLED2) {
-		snprintf(exec->stdout_prefix, sizeof(exec->stdout_prefix), "pid %u (stdout)", exec->pid);
+		snprintf(exec->stdout_prefix, sizeof(exec->stdout_prefix), "pid %ld (stdout)", (long)exec->pid);
 		exec->stdout_uctx = (log_fd_event_ctx_t) {
 			.type = L_DBG,
 			.lvl = L_DBG_LVL_2,
@@ -1156,7 +1156,7 @@ int fr_exec_oneshot(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	/*
 	 *	Send stderr to the request log as error messages with a custom prefix
 	 */
-	snprintf(exec->stderr_prefix, sizeof(exec->stderr_prefix), "pid %u (stderr)", exec->pid);
+	snprintf(exec->stderr_prefix, sizeof(exec->stderr_prefix), "pid %ld (stderr)", (long)exec->pid);
 	exec->stderr_uctx = (log_fd_event_ctx_t) {
 		.type = L_DBG_ERR,
 		.lvl = L_DBG_LVL_1,

@@ -28,7 +28,7 @@
 
 /** Types of the internal packets for processing LDAP sync messages
  */
-typedef enum {
+typedef enum : uint16_t {
 	FR_LDAP_SYNC_CODE_UNDEFINED		= 0,	//!< Packet code has not been set.
 	FR_LDAP_SYNC_CODE_PRESENT		= FR_PACKET_TYPE_VALUE_PRESENT,
 							//!< LDAP server indicates a particular object is

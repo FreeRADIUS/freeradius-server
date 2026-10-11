@@ -86,7 +86,7 @@ extern "C" {
  *	TLS record.  So one TLS "round" could map to multple EAP
  *	"rounds".
  */
-#define FR_TLS_MAX_ROUNDS 50
+#define FR_TLS_MAX_ROUNDS 50U
 
 /*
  * FIXME: Dynamic allocation of buffer to overcome SSL3_RT_MAX_PLAIN_LENGTH overflows.
@@ -138,7 +138,7 @@ static inline void fr_tls_record_drain(fr_dbuff_t *record)
 	fr_dbuff_init(record, fr_dbuff_start(record), used);
 }
 
-typedef enum {
+typedef enum : uint8_t {
 	TLS_INFO_ORIGIN_RECORD_RECEIVED,
 	TLS_INFO_ORIGIN_RECORD_SENT
 } fr_tls_info_origin_t;
@@ -161,7 +161,7 @@ typedef struct {
  *
  * This is needed to record the result of an asynchronous
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_TLS_RESULT_IN_PROGRESS	= 0x00,		//!< Handshake round in progress.
 	FR_TLS_RESULT_ERROR		= 0x01,		//!< Handshake failed.
 	FR_TLS_RESULT_SUCCESS		= 0x02		//!< Handshake round succeed.
@@ -171,7 +171,7 @@ typedef enum {
 /** State of the `load psk` call that the PSK callback requested
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_TLS_PSK_INIT = 0,				//!< No call is pending.
 	FR_TLS_PSK_REQUESTED,				//!< `load psk` needs to run.  The PSK callback has
 							///< paused the handshake until the section finishes.

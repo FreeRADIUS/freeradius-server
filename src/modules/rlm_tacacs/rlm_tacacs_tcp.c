@@ -888,7 +888,7 @@ static void request_mux(fr_event_list_t *el,
 		h->id += 2;
 		h->active++;
 
-		RDEBUG("Sending %s ID %d length %ld over connection %s",
+		RDEBUG("Sending %s ID %d length %zu over connection %s",
 		       fr_tacacs_packet_names[req->code], req->id, req->packet_len, h->name);
 
 		if (encode(h, request, req) < 0) {

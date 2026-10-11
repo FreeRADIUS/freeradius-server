@@ -553,7 +553,7 @@ delay:
 		/*
 		 *	Check every N seconds.
 		 */
-		DEBUG3("Waiting %d.000000s for new files in %s", inst->poll_interval, thread->name);
+		DEBUG3("Waiting %" PRIu32 ".000000s for new files in %s", inst->poll_interval, thread->name);
 
 		if (fr_timer_in(thread, thread->el->tl, &thread->ev,
 				fr_time_delta_from_sec(inst->poll_interval),

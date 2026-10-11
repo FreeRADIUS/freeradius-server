@@ -94,7 +94,7 @@ extern "C" {
 extern fr_table_num_ordered_t const pair_list_table[];
 extern size_t pair_list_table_len;
 
-typedef enum requests_ref_e {
+typedef enum requests_ref_e : uint8_t {
 	REQUEST_CURRENT = 0,		//!< The current request (default).
 	REQUEST_OUTER,			//!< #request_t containing the outer layer of the EAP
 					//!< conversation. Usually the RADIUS request sent
@@ -135,7 +135,7 @@ extern size_t tmpl_request_ref_table_len;
  * - XLAT_TYPE_XLAT		- #tmpl_t contains xlat expansion.
  * - XLAT_TYPE_UNRESOLVED	- #tmpl_t contains unresolved elements such as xlat functions or other expansions.
  */
-typedef enum tmpl_type_e {
+typedef enum tmpl_type_e : uint32_t {
 	/** Uninitialised
 	 */
 	TMPL_TYPE_UNINITIALISED 	= 0x0000,
@@ -265,7 +265,7 @@ typedef struct tmpl_s tmpl_t;
 /** Specify whether attribute references can have a list (or parent) reference
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	TMPL_ATTR_LIST_ALLOW = 0,			//!< Attribute refs are allowed to have a list
 	TMPL_ATTR_LIST_FORBID,				//!< Attribute refs are forbidden from having a list
 	TMPL_ATTR_LIST_REQUIRE 				//!< Attribute refs are required to have a list.
@@ -400,7 +400,7 @@ struct tmpl_res_rules_s {
 	fr_dict_attr_t const	*enumv;			//!< for resolving T_BARE_WORD
 };
 
-typedef enum {
+typedef enum : uint8_t {
 	TMPL_ATTR_TYPE_NORMAL = 0,			//!< Normal, resolved, attribute ref.
 	TMPL_ATTR_TYPE_UNSPEC,				//!< No attribute was specified as this level
 							///< only a filter.
@@ -427,7 +427,7 @@ FR_DLIST_TYPES(tmpl_attr_list)
 /** Different types of filter that can be applied to an attribute reference
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	TMPL_ATTR_FILTER_TYPE_NONE = 0,			//!< No filter present.
 	TMPL_ATTR_FILTER_TYPE_INDEX,			//!< Filter is an index type.
 	TMPL_ATTR_FILTER_TYPE_CONDITION,       		//!< Filter is a condition
@@ -1024,7 +1024,7 @@ do {\
 	}\
 } while (0)
 
-typedef enum {
+typedef enum : uint8_t {
 	TMPL_ATTR_ERROR_NONE = 0,			//!< No error.
 	TMPL_ATTR_ERROR_EMPTY,				//!< Attribute ref contains no data.
 	TMPL_ATTR_ERROR_BAD_PREFIX,			//!< Missing '&' or has '&' when it shouldn't.

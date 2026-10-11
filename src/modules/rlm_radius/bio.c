@@ -35,7 +35,7 @@
 //#include "rlm_radius.h"
 #include "track.h"
 
-typedef enum {
+typedef enum : uint8_t {
 	LIMIT_PORTS_NONE = 0,			//!< Source port not restricted
 	LIMIT_PORTS_STATIC,			//!< Limited source ports for static home servers
 	LIMIT_PORTS_DYNAMIC			//!< Limited source ports for dynamic home servers

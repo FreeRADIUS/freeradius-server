@@ -412,7 +412,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 				if (len == 0) {
 					REDEBUG("Failed encoding attribute");
 				} else {
-					RDEBUG3("Returning %zd bytes of POST data "
+					RDEBUG3("Returning %zu bytes of POST data "
 						"(buffer full or chunk exceeded)", len);
 				}
 
@@ -438,7 +438,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		if (slen < 0) return 0;
 
 		RINDENT();
-		RDEBUG3("Length : %zd", (size_t)slen);
+		RDEBUG3("Length : %zu", (size_t)slen);
 		REXDENT();
 		if (slen > 0) {
 			escaped = curl_escape(p, (size_t)slen);
@@ -487,7 +487,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	len = p - (char *)out;
 
 	RDEBUG3("POST Data: %s", (char *)out);
-	RDEBUG3("Returning %zd bytes of POST data", len);
+	RDEBUG3("Returning %zu bytes of POST data", len);
 
 	return len;
 }
@@ -552,7 +552,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		data->len = strlen(encoded);
 
 		RDEBUG3("JSON Data: %s", encoded);
-		RDEBUG3("Returning %zd bytes of JSON data", data->len);
+		RDEBUG3("Returning %zu bytes of JSON data", data->len);
 
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
@@ -1305,7 +1305,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		if ((end - p) < 12) {
 			REDEBUG("Malformed HTTP header: Status line too short");
 		malformed:
-			REDEBUG("Received %zu bytes of invalid header data: %pV",
+			REDEBUG("Received %td bytes of invalid header data: %pV",
 				(end - start), fr_box_strvalue_len(in, (end - start)));
 			ctx->code = 0;
 
@@ -1722,7 +1722,7 @@ static int rest_request_config_body(module_ctx_t const *mctx, rlm_rest_section_t
 		REDEBUG("Failed creating HTTP body content");
 		return -1;
 	}
-	RDEBUG2("Content-Length will be %zu bytes", len);
+	RDEBUG2("Content-Length will be %zu bytes", (size_t)len);
 
 	fr_assert((len == 0) || (talloc_array_length(uctx->body) >= (size_t)len));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_POSTFIELDS, uctx->body);
@@ -1981,7 +1981,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 do {\
 	if ((ret = curl_easy_setopt(candle, _x, _y)) != CURLE_OK) {\
 		option = STRINGIFY(_x);\
-		REDEBUG("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret); \
+		REDEBUG("Failed setting curl option %s: %s (%u)", option, curl_easy_strerror(ret), ret); \
 		goto error;\
 	}\
 } while (0)

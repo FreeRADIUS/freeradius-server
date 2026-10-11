@@ -1793,59 +1793,42 @@ int _cf_section_rules_push(CONF_SECTION *cs, conf_parser_t const *rules, char co
 	return 0;
 }
 
-/** Generic function for parsing conf pair values as int
+/** Define a function which resolves a #CONF_PAIR value in a table, and writes the result as _type
  *
- * @note This should be used for enum types as c99 6.4.4.3 states that the enumeration
- * constants are of type int.
+ * Each function looks the value of the #CONF_PAIR up in the #cf_table_parse_ctx_t
+ * table passed as the rule's uctx, and stores the result in a field of type _type.
+ * Use the function whose type matches the field, so the store writes exactly as
+ * many bytes as the field holds.  An enum field gets the function matching the
+ * enum's fixed underlying type.
  *
+ * @param[in] _name		suffix of the function name, cf_table_parse_<_name>.
+ * @param[in] _type		C type of the field the function writes to.
+ * @param[in] _out_of_range	expression of num, true if num does not fit in _type.
  */
-int cf_table_parse_int(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-		       CONF_ITEM *ci, conf_parser_t const *rule)
-{
-	int32_t				num;
-	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx;
-
-	if (cf_pair_in_table(&num, parse_ctx->table, *parse_ctx->len, cf_item_to_pair(ci)) < 0) return -1;
-
-	*((int *)out) = num;
-
-	return 0;
+#define CF_TABLE_PARSE_DEF(_name, _type, _out_of_range) \
+int cf_table_parse_ ## _name(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, \
+			     CONF_ITEM *ci, conf_parser_t const *rule) \
+{ \
+	int32_t				num; \
+	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx; \
+\
+	if (cf_pair_in_table(&num, parse_ctx->table, *parse_ctx->len, cf_item_to_pair(ci)) < 0) return -1; \
+	if (_out_of_range) { \
+		cf_log_err(ci, "Resolved value %i does not fit in " STRINGIFY(_type), num); \
+		return -1; \
+	} \
+	*((_type *)out) = (_type)num; \
+\
+	return 0; \
 }
 
-/** Generic function for parsing conf pair values as int32_t (FR_TYPE_INT32)
- *
- */
-int cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			 CONF_ITEM *ci, conf_parser_t const *rule)
-{
-	int32_t				num;
-	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx;
-
-	if (cf_pair_in_table(&num, parse_ctx->table, *parse_ctx->len, cf_item_to_pair(ci)) < 0) return -1;
-
-	*((int32_t *)out) = num;
-
-	return 0;
-}
-
-/** Generic function for parsing conf pair values as int32_t (FR_TYPE_UINT32)
- *
- */
-int cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, conf_parser_t const *rule)
-{
-	int32_t				num;
-	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx;
-
-	if (cf_pair_in_table(&num, parse_ctx->table, *parse_ctx->len, cf_item_to_pair(ci)) < 0) return -1;
-	if (num < 0) {
-		cf_log_err(ci, "Resolved value must be a positive integer, got %i", num);
-		return -1;
-	}
-	*((uint32_t *)out) = (uint32_t)num;
-
-	return 0;
-}
+CF_TABLE_PARSE_DEF(int, int, false)
+CF_TABLE_PARSE_DEF(int8, int8_t, (num < INT8_MIN) || (num > INT8_MAX))
+CF_TABLE_PARSE_DEF(int16, int16_t, (num < INT16_MIN) || (num > INT16_MAX))
+CF_TABLE_PARSE_DEF(int32, int32_t, false)
+CF_TABLE_PARSE_DEF(uint8, uint8_t, (num < 0) || (num > UINT8_MAX))
+CF_TABLE_PARSE_DEF(uint16, uint16_t, (num < 0) || (num > UINT16_MAX))
+CF_TABLE_PARSE_DEF(uint32, uint32_t, num < 0)
 
 /** Generic function for resolving UID strings to uid_t values
  *

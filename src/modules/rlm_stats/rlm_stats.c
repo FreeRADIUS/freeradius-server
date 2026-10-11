@@ -317,7 +317,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(unlang_result_t *p_result
 		break;
 
 	default:
-		REDEBUG("Invalid value '%d' for FreeRADIUS-Stats4-type", stats_type);
+		REDEBUG("Invalid value '%" PRIu32 "' for FreeRADIUS-Stats4-type", stats_type);
 		RETURN_UNLANG_FAIL;
 	}
 

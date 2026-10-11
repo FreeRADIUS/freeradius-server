@@ -48,7 +48,7 @@ extern bool	log_dates_utc;
 extern fr_table_num_ordered_t const fr_log_levels[];
 extern size_t fr_log_levels_len;
 
-typedef enum {
+typedef enum : uint8_t {
 	L_INFO = 3,				//!< Informational message.
 	L_ERR = 4,				//!< Error message.
 	L_WARN = 5,				//!< Warning.
@@ -61,7 +61,7 @@ typedef enum {
 	L_DBG_ERR_REQ = 21			//!< Less severe error only displayed when debugging is enabled.
 } fr_log_type_t;
 
-typedef enum {
+typedef enum : int8_t {
 	L_DBG_LVL_DISABLE = -1,			//!< Don't print messages.
 	L_DBG_LVL_OFF = 0,			//!< No debug messages.
 	L_DBG_LVL_1,				//!< Highest priority debug messages (-x).
@@ -71,7 +71,7 @@ typedef enum {
 	L_DBG_LVL_MAX				//!< Lowest priority debug messages (-xxxxx | -Xxxx).
 } fr_log_lvl_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	L_DST_STDOUT = 0,			//!< Log to stdout.
 	L_DST_FILES,				//!< Log to a file on disk.
 	L_DST_SYSLOG,				//!< Log to syslog.
@@ -81,7 +81,7 @@ typedef enum {
 	L_DST_NUM_DEST
 } fr_log_dst_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	L_TIMESTAMP_AUTO = 0,			//!< Timestamp logging preference not specified. Do it based on
 						//!< debug level and destination.
 	L_TIMESTAMP_ON,				//!< Always log timestamps.

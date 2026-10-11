@@ -60,14 +60,14 @@ FR_SLAB_FUNCS(ocsp, fr_curl_io_request_t)
 
 #define REST_BODY_ALLOC_CHUNK		1024
 
-typedef enum {
+typedef enum : uint8_t {
 	WRITE_STATE_INIT = 0,
 	WRITE_STATE_PARSE_HEADERS,
 	WRITE_STATE_PARSE_CONTENT,
 	WRITE_STATE_DISCARD,
 } write_state_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	OCSP_STATUS_FAILED	= 0,
 	OCSP_STATUS_OK		= 1,
 	OCSP_STATUS_SKIPPED	= 2,
@@ -213,7 +213,7 @@ static size_t ocsp_response_header(void *in, size_t size, size_t nmemb, void *us
 		if ((end - p) < 12) {
 			REDEBUG("Malformed HTTP header: Status line too short");
 		malformed:
-			REDEBUG("Received %zu bytes of invalid header data: %pV",
+			REDEBUG("Received %td bytes of invalid header data: %pV",
 				(end - start), fr_box_strvalue_len(in, (end - start)));
 			ctx->code = 0;
 

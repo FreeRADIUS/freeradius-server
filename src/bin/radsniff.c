@@ -559,12 +559,12 @@ static int rs_check_pcap_drop(fr_pcap_t *in)
 	}
 
 	if (pstats.ps_drop - in->pstats.ps_drop > 0) {
-		ERROR("%s dropped %i packets: Buffer exhaustion", in->name, pstats.ps_drop - in->pstats.ps_drop);
+		ERROR("%s dropped %u packets: Buffer exhaustion", in->name, pstats.ps_drop - in->pstats.ps_drop);
 		ret = -2;
 	}
 
 	if (pstats.ps_ifdrop - in->pstats.ps_ifdrop > 0) {
-		ERROR("%s dropped %i packets: Interface", in->name, pstats.ps_ifdrop - in->pstats.ps_ifdrop);
+		ERROR("%s dropped %u packets: Interface", in->name, pstats.ps_ifdrop - in->pstats.ps_ifdrop);
 		ret = -3;
 	}
 
@@ -1333,7 +1333,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		char src[INET6_ADDRSTRLEN];
 		inet_ntop(version == 4 ? AF_INET : AF_INET6,
 			  version == 4 ? (void const *)&ip->ip_src.s_addr : (void const *)&ip6->ip_src, src, sizeof(src));
-		REDEBUG("Packet from %s too small, we require at least %zu bytes, captured %i bytes",
+		REDEBUG("Packet from %s too small, we require at least %zu bytes, captured %u bytes",
 			src, (size_t) len, header->caplen);
 		return;
 	}
@@ -1838,7 +1838,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	}
 
 	default:
-		REDEBUG("Unsupported code %i", packet->code);
+		REDEBUG("Unsupported code %u", packet->code);
 		fr_packet_free(&packet);
 
 		return;
@@ -2138,7 +2138,7 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 	return 0;
 }
 
-static int rs_build_event_flags(int *flags, fr_table_num_sorted_t const *map, size_t map_len, char *list)
+static int rs_build_event_flags(rs_status_t *flags, fr_table_num_sorted_t const *map, size_t map_len, char *list)
 {
 	size_t i = 0;
 	char *p, *tok;
@@ -2151,11 +2151,12 @@ static int rs_build_event_flags(int *flags, fr_table_num_sorted_t const *map, si
 			continue;
 		}
 
-		*flags |= flag = fr_table_value_by_str(map, tok, -1);
+		flag = fr_table_value_by_str(map, tok, -1);
 		if (flag < 0) {
 			ERROR("Invalid flag \"%s\"", tok);
 			return -1;
 		}
+		*flags |= flag;
 
 		i++;
 	}
@@ -2248,7 +2249,7 @@ fr_event_list_t *list, int fd, int UNUSED flags, UNUSED void *ctx)
 
 	if (ret != sizeof(sig)) {
 		ERROR("Failed reading signal from pipe: "
-		      "Expected signal to be %zu bytes but only read %zu byes", sizeof(sig), ret);
+		      "Expected signal to be %zu bytes but only read %zu byes", sizeof(sig), (size_t)ret);
 		fr_exit_now(EXIT_FAILURE);
 	}
 
@@ -2459,7 +2460,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'e':
-			if (rs_build_event_flags((int *) &conf->event_flags,
+			if (rs_build_event_flags(&conf->event_flags,
 						 rs_events, rs_events_len, optarg) < 0) usage(64);
 			break;
 

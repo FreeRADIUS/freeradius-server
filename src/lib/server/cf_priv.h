@@ -36,7 +36,7 @@ extern "C" {
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/dlist.h>
 
-typedef enum conf_type {
+typedef enum conf_type : uint8_t {
 	CONF_ITEM_INVALID = 0,
 	CONF_ITEM_PAIR,
 	CONF_ITEM_SECTION,
@@ -88,7 +88,7 @@ struct cf_pair {
 	bool			printed;	//!< Was this item printed already in debug mode?
 };
 
-typedef enum {
+typedef enum : uint8_t {
 	CF_UNLANG_NONE = 0,			//!< no unlang
 	CF_UNLANG_ALLOW,			//!< allow unlang in this section
 	CF_UNLANG_SERVER,			//!< this section is a virtual server, allow unlang 2 down

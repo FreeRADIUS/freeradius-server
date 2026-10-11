@@ -28,7 +28,7 @@ RCSIDH(radius_h, "$Id$")
 /** RADIUS packet codes
  *
  */
-typedef enum {
+typedef enum : uint16_t {
 	FR_RADIUS_CODE_UNDEFINED		= 0,	//!< Packet code has not been set
 	FR_RADIUS_CODE_ACCESS_REQUEST		= 1,	//!< RFC2865 - Access-Request
 	FR_RADIUS_CODE_ACCESS_ACCEPT		= 2,	//!< RFC2865 - Access-Accept

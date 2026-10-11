@@ -44,7 +44,7 @@ extern "C" {
  * Here are our basic types: unlang_t, unlang_group_t, and unlang_module_t. For an
  * explanation of what they are all about, see doc/unlang/configurable_failover.adoc
  */
-typedef enum {
+typedef enum : uint8_t {
 	UNLANG_TYPE_NULL = 0,			//!< unlang type not set.
 	UNLANG_TYPE_MODULE = 1,			//!< Module method.
 	UNLANG_TYPE_FUNCTION,			//!< Internal call to a function or submodule.
@@ -86,7 +86,7 @@ typedef enum {
 /** Allows the frame evaluator to signal the interpreter
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	UNLANG_FRAME_ACTION_POP = 1,		//!< Pop the current frame, and check the next one further
 						///< up in the stack for what to do next.
 	UNLANG_FRAME_ACTION_RETRY,		//!< retry the current frame
@@ -102,7 +102,7 @@ typedef enum {
 #define UNLANG_NORMAL_CHILD	(false)
 
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint8_t {
 	UNLANG_FRAME_FLAG_NONE			= 0x00,			//!< No flags.
 	UNLANG_FRAME_FLAG_REPEAT		= 0x01,			//!< Repeat the frame on the way up the stack.
 	UNLANG_FRAME_FLAG_TOP_FRAME		= 0x02,			//!< are we the top frame of the stack?
@@ -253,7 +253,7 @@ static inline CC_HINT(always_inline)
 void unlang_compile_ctx_copy(unlang_compile_ctx_t *dst, unlang_compile_ctx_t const *src)
 {
 #ifndef NDEBUG
-	int i;
+	rlm_rcode_t i;
 #endif
 
 	*dst = *src;
@@ -293,7 +293,7 @@ static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const 
 #endif
 
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint16_t {
 	UNLANG_OP_FLAG_NONE			= 0x00,			//!< No flags.
 	UNLANG_OP_FLAG_DEBUG_BRACES		= 0x01,			//!< Print debug braces.
 	UNLANG_OP_FLAG_RCODE_SET		= 0x02,			//!< Set request->rcode to the result of this operation.

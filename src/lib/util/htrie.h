@@ -55,7 +55,7 @@ typedef struct {
 
 typedef void *(*fr_htrie_iter_func_t)(void *ht, void *iter);
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_HTRIE_INVALID = 0,
 	FR_HTRIE_HASH,		//!< Data is stored in a hash.
 	FR_HTRIE_RB,		//!< Data is stored in a rb tree.

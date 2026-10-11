@@ -20,7 +20,7 @@
 /** How profile objects are retrieved from the directory
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_PROFILE_SEARCH_MODE_AUTO = 0,		//!< Resolved at instantiation, LDAP_PROFILE_SEARCH_MODE_BULK
 							///< when server side sorting is configured and the search
 							///< scope is base, otherwise LDAP_PROFILE_SEARCH_MODE_SEQ.
@@ -195,7 +195,7 @@ typedef struct {
 /** State list for resumption of authorization
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_AUTZ_FIND = 0,
 	LDAP_AUTZ_GROUP,
 	LDAP_AUTZ_GROUP_PROFILES,
@@ -212,7 +212,7 @@ typedef enum {
 /** User's access state
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_ACCESS_ALLOWED = 0,			//!< User is allowed to login.
 	LDAP_ACCESS_DISALLOWED,				//!< User it not allow to login (disabled)
 	LDAP_ACCESS_SUSPENDED				//!< User account has been suspended.
@@ -265,7 +265,7 @@ static inline char const *rlm_ldap_profile_attr_select(char const *attr, char co
 
 /** State list for xlat evaluation of LDAP group membership
  */
-typedef enum {
+typedef enum : uint8_t {
 	GROUP_XLAT_FIND_USER = 0,
 	GROUP_XLAT_MEMB_FILTER,
 	GROUP_XLAT_MEMB_ATTR

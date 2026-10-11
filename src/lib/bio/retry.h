@@ -79,7 +79,7 @@ struct  fr_bio_retry_entry_s {
 };
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_BIO_RETRY_DONE = 0,
 	FR_BIO_RETRY_NO_REPLY,
 	FR_BIO_RETRY_CANCELLED,

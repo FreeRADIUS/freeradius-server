@@ -1211,7 +1211,7 @@ static int CC_HINT(nonnull) do_mschap(rlm_mschap_t const *inst, request_t *reque
 #endif
 	default:
 		/* We should never reach this line */
-		RERROR("Internal error: Unknown mschap auth method (%d)", auth_ctx->method);
+		RERROR("Internal error: Unknown mschap auth method (%u)", auth_ctx->method);
 		return -1;
 	}
 

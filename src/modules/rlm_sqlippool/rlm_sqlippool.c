@@ -72,7 +72,7 @@ typedef struct {
 
 /** Current step in IP allocation state machine
  */
-typedef enum {
+typedef enum : uint8_t {
 	IPPOOL_ALLOC_BEGIN_RUN,			//!< Run the "begin" query
 	IPPOOL_ALLOC_EXISTING,			//!< Expanding the "existing" query
 	IPPOOL_ALLOC_EXISTING_RUN,		//!< Run the "existing" query

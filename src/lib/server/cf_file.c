@@ -62,7 +62,7 @@ bool check_config = false;
 static uid_t conf_check_uid = (uid_t)-1;
 static gid_t conf_check_gid = (gid_t)-1;
 
-typedef enum conf_property {
+typedef enum conf_property : uint8_t {
 	CONF_PROPERTY_INVALID = 0,
 	CONF_PROPERTY_NAME,
 	CONF_PROPERTY_INSTANCE,
@@ -95,7 +95,7 @@ static fr_table_num_sorted_t const server_unlang_section[] = {
 };
 static size_t server_unlang_section_len = NUM_ELEMENTS(server_unlang_section);
 
-typedef enum {
+typedef enum : uint8_t {
 	CF_STACK_FILE = 0,
 #ifdef HAVE_DIRENT_H
 	CF_STACK_DIR,
@@ -1271,7 +1271,7 @@ static fr_cmp_ret_t filename_cmp(void const *one, void const *two)
 	return CMP(ret, 0);
 }
 
-typedef enum {
+typedef enum : uint8_t {
 	CF_EXTENSION_READ = 0,
 	CF_EXTENSION_PKG,
 	CF_EXTENSION_TXT,

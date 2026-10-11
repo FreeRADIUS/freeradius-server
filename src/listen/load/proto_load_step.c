@@ -42,7 +42,7 @@ typedef struct proto_load_step_s proto_load_step_t;
  *  max_requests packets (if set) have been sent, and every reply has
  *  been received.
  */
-typedef enum {
+typedef enum : uint8_t {
 	LOAD_STEP_ON_COMPLETE_EXIT = 0,			//!< make the server exit
 	LOAD_STEP_ON_COMPLETE_REPEAT,			//!< run the test again from start_pps
 	LOAD_STEP_ON_COMPLETE_STOP,			//!< stop generating load, leave the server running
@@ -113,7 +113,7 @@ static const conf_parser_t load_listen_config[] = {
 	{ FR_CONF_OFFSET("parallel", proto_load_step_t, load.parallel) },
 	{ FR_CONF_OFFSET("max_requests", proto_load_step_t, load.max_requests) },
 	{ FR_CONF_OFFSET("on_complete", proto_load_step_t, on_complete),
-	  .func = cf_table_parse_int,
+	  .func = cf_table_parse_uint8,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = load_on_complete_table, .len = &load_on_complete_table_len },
 	  .dflt = "exit" },
 

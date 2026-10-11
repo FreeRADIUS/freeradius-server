@@ -1090,7 +1090,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 
 	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
 
-	DEBUG("Worker is exiting - stopped %u requests", count);
+	DEBUG("Worker is exiting - stopped %d requests", count);
 
 	/*
 	 *	Signal the channels that we're closing.
@@ -1185,7 +1185,7 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 	fr_assert_msg(!unlang_interpret_is_resumable(request),
 		      "Request %s is marked as yielded at end of processing", request->name);
 	fr_assert_msg(unlang_interpret_stack_depth(request) == 0,
-		      "Request %s stack depth %u > 0", request->name, unlang_interpret_stack_depth(request));
+		      "Request %s stack depth %d > 0", request->name, unlang_interpret_stack_depth(request));
 	RDEBUG("Done request");
 
 	/*
@@ -1614,7 +1614,7 @@ void fr_worker(fr_worker_t *worker)
 			break;
 		}
 
-		DEBUG4("%u event(s) pending", num_events);
+		DEBUG4("%d event(s) pending", num_events);
 
 		/*
 		 *	Service outstanding events.

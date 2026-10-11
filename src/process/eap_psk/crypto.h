@@ -80,9 +80,9 @@ RCSIDH(eap_psk_crypto_h, "$Id$")
 /*
  *	RFC 4764 Section 5.2 bounds ID_P (an NAI) at 966 bytes.
  */
-#define EAP_PSK_MAX_ID_P_LEN	966
+#define EAP_PSK_MAX_ID_P_LEN	966U
 
-typedef enum {
+typedef enum : uint8_t {
 	EAP_PSK_STATE_INIT = 0,				/* nothing sent yet */
 	EAP_PSK_STATE_IDENTITY_REQUEST_SENT,		/* first message sent, expecting the second */
 	EAP_PSK_STATE_RESULT_INDICATION_SENT,		/* third message sent, expecting the fourth */

@@ -57,7 +57,7 @@ typedef struct {
 /*
  *	States for the response
  */
-typedef enum {
+typedef enum : uint8_t {
 	WRITE_STATE_INIT = 0,
 	WRITE_STATE_POPULATED,
 	WRITE_STATE_DISCARD,

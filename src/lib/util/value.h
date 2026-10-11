@@ -27,7 +27,7 @@ RCSIDH(value_h, "$Id$")
 extern "C" {
 #endif
 
-#define FR_MAX_STRING_LEN	254	/* RFC2138: string 0-253 octets */
+#define FR_MAX_STRING_LEN	254U	/* RFC2138: string 0-253 octets */
 
 typedef struct value_box_s fr_value_box_t;
 
@@ -258,7 +258,7 @@ FR_DCURSOR_FUNCS(fr_value_box_dcursor, fr_value_box_list, fr_value_box_t)
 /** Actions to perform when we process a box in a list
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_VALUE_BOX_LIST_NONE			= 0x00,			//!< Do nothing to processed boxes.
 	FR_VALUE_BOX_LIST_REMOVE		= 0x01,			//!< Remove the box from the input list.
 	FR_VALUE_BOX_LIST_FREE_BOX		= (0x02 | FR_VALUE_BOX_LIST_REMOVE), //!< Free each processed box.

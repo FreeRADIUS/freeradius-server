@@ -116,7 +116,7 @@ static void test_retry_rt(void)
 		now = r.next;
 		state = fr_retry_next(&r, now);
 		TEST_CHECK(state == FR_RETRY_CONTINUE);
-		TEST_MSG("retry %d should be CONTINUE, got %d", i + 2, state);
+		TEST_MSG("retry %d should be CONTINUE, got %u", i + 2, state);
 
 		/*
 		 *	For zero, RT = IRT + RAND*IRT
@@ -169,14 +169,14 @@ static void test_retry_mrc(void)
 		now = r.next;
 		state = fr_retry_next(&r, now);
 		TEST_CHECK(state == FR_RETRY_CONTINUE);
-		TEST_MSG("retry %d should be CONTINUE, got %d", i + 2, state);
+		TEST_MSG("retry %d should be CONTINUE, got %u", i + 2, state);
 
 	}
 
 	now = r.next;
 	state = fr_retry_next(&r, now);
 	TEST_CHECK(state == FR_RETRY_MRC);
-	TEST_MSG("retry 3 should be MRC, got %d", state);
+	TEST_MSG("retry 3 should be MRC, got %u", state);
 
 	TEST_CHECK(r.state == FR_RETRY_MRC);
 }
@@ -219,7 +219,7 @@ static void test_retry_mrd(void)
 	}
 
 	TEST_CHECK(state == FR_RETRY_MRD);
-	TEST_MSG("expected MRD, got %d after %d attempts", state, attempts);
+	TEST_MSG("expected MRD, got %u after %d attempts", state, attempts);
 	TEST_CHECK(r.state == FR_RETRY_MRD);
 }
 

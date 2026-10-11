@@ -44,7 +44,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("relative", rlm_delay_t, relative), .dflt = "no" },
 	{ FR_CONF_OFFSET("force_reschedule", rlm_delay_t, force_reschedule), .dflt = "no" },
 	{ FR_CONF_OFFSET("rcode", rlm_delay_t, rcode),
-			 .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = rcode_table, .len = &rcode_table_len }, .dflt = "notset" },
+			 .func = cf_table_parse_uint8, .uctx = &(cf_table_parse_ctx_t){ .table = rcode_table, .len = &rcode_table_len }, .dflt = "notset" },
 	CONF_PARSER_TERMINATOR
 };
 

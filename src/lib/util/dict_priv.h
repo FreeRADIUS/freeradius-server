@@ -181,7 +181,7 @@ struct fr_dict_gctx_s {
 	fr_dict_attr_t const	*attr_protocol_encapsulation;
 };
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_DICT_PROTO_RADIUS = 1,
 	FR_DICT_PROTO_DHCPv4 = 2,
 	FR_DICT_PROTO_DHCPv6 = 3,

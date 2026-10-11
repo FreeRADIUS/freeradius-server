@@ -58,7 +58,7 @@
  *
  * @note Don't change the enum values.  They allow efficient bistmasking.
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_RADIUS_REQUIRE_MA_NO			= 0x00,		//!< Do not require Message-Authenticator
 	FR_RADIUS_REQUIRE_MA_YES		= 0x01,		//!< Require Message-Authenticator
 	FR_RADIUS_REQUIRE_MA_AUTO		= 0x02,		//!< Only require Message-Authenticator if we've previously
@@ -72,7 +72,7 @@ typedef enum {
  *
  * @note Don't change the enum values.  They allow efficient bistmasking.
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_RADIUS_LIMIT_PROXY_STATE_NO		= 0x00,		//!< Do not limit Proxy-State.  Allow proxy-state to be sent in
 								///< all packets.
 	FR_RADIUS_LIMIT_PROXY_STATE_YES		= 0x01,		//!< Limit Proxy-State.  Do not allow Proxy-State to be sent in
@@ -86,7 +86,7 @@ typedef enum {
 } fr_radius_limit_proxy_state_t;
 
 /** Failure reasons */
-typedef enum {
+typedef enum : uint8_t {
 	FR_RADIUS_FAIL_NONE = 0,
 	FR_RADIUS_FAIL_MIN_LENGTH_PACKET,
 	FR_RADIUS_FAIL_MAX_LENGTH_PACKET,
@@ -177,7 +177,7 @@ typedef struct {
 	TALLOC_CTX		*tag_root_ctx;		//!< Where to allocate new tag attributes.
 } fr_radius_decode_ctx_t;
 
-typedef enum {
+typedef enum : int8_t {
 	RADIUS_FLAG_ENCRYPT_INVALID = -1,			//!< Invalid encryption flag.
 	RADIUS_FLAG_ENCRYPT_NONE = 0,				//!< No encryption.
 	RADIUS_FLAG_ENCRYPT_USER_PASSWORD = 1,			//!< Encrypt attribute RFC 2865 style.

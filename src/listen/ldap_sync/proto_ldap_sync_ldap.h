@@ -32,7 +32,7 @@ USES_APPLE_DEPRECATED_API
 
 /** Phases of the initial refresh stage for RFC 4533 servers
  */
-typedef enum {
+typedef enum : uint8_t {
 	SYNC_PHASE_INIT			= 0,		//!< We haven't entered any of the refresh phases.
 	SYNC_PHASE_PRESENT		= 1,		//!< Currently in the present phase.
 	SYNC_PHASE_DELETE		= 2,		//!< Currently in the delete phase.
@@ -123,14 +123,14 @@ typedef struct {
 	connection_t			*conn;			//!< Our connection to the LDAP directory.
 } proto_ldap_sync_ldap_thread_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	SYNC_PACKET_PENDING = 0,				//!< Packet not yet sent.
 	SYNC_PACKET_PREPARING,					//!< Packet being prepared.
 	SYNC_PACKET_PROCESSING,					//!< Packet sent to worker.
 	SYNC_PACKET_COMPLETE,					//!< Packet response received from worker.
 } sync_packet_status_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	SYNC_PACKET_TYPE_CHANGE = 0,				//!< Packet is an entry change.
 	SYNC_PACKET_TYPE_COOKIE
 } sync_packet_type_t;

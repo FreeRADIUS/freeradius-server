@@ -42,7 +42,7 @@ DIAG_OFF(unused-macros)
 #define INFO(fmt, ...)		fprintf(stdout, fmt "\n", ## __VA_ARGS__)
 DIAG_ON(unused-macros)
 
-typedef enum {
+typedef enum : uint8_t {
 	RADLOCK_INVALID = 0,
 	RADLOCK_LOCK,		//!< Acquire the semaphore if it's at 0.
 	RADLOCK_TRYLOCK,	//!< Try and lock the semaphore and return if we can't.
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 			pid_t pid;
 
 			fr_sem_pid(&pid, sem_id);
-			fr_perror("radlock - Can't lock \"%s\" already held by PID %u", file, pid);
+			fr_perror("radlock - Can't lock \"%s\" already held by PID %ld", file, (long)pid);
 			EXIT_WITH_FAILURE;
 		}
 
@@ -278,11 +278,11 @@ int main(int argc, char *argv[])
 		value = semctl(sem_id, 0, GETVAL);
 
 		INFO("Locking information for \"%s\"", file);
-		INFO("\tsemid         : %u", sem_id);
+		INFO("\tsemid         : %d", sem_id);
 		INFO("\tPermissions   : %s", fr_perm_mode_to_str(buff, info.sem_perm.mode & perm));
-		INFO("\tValue         : %u (%s)", value, value > 0 ? "locked" : "unlocked");
+		INFO("\tValue         : %d (%s)", value, value > 0 ? "locked" : "unlocked");
 		INFO("Last Modified:");
-		INFO("\tPID           : %u (%s)", pid, dead ? "dead" : "alive");
+		INFO("\tPID           : %ld (%s)", (long)pid, dead ? "dead" : "alive");
 		INFO("\tUser          : %s (%u)", uid_str, info.sem_perm.uid);
 		INFO("\tGroup         : %s (%u)", gid_str, info.sem_perm.gid);
 		INFO("\tTime          : %s",

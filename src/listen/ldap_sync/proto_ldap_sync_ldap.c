@@ -868,7 +868,7 @@ static void proto_ldap_cookie_load_retry(fr_timer_list_t *tl, UNUSED fr_time_t n
 {
 	proto_ldap_cookie_load_retry_ctx  *retry_ctx = talloc_get_type_abort(uctx, proto_ldap_cookie_load_retry_ctx);
 
-	DEBUG2("Retrying \"load Cookie\" for sync no %ld", retry_ctx->sync_no);
+	DEBUG2("Retrying \"load Cookie\" for sync no %zu", retry_ctx->sync_no);
 	if (proto_ldap_cookie_load_send(retry_ctx, retry_ctx->inst, retry_ctx->sync_no,
 					retry_ctx->thread) < 0) {
 		ERROR("Failed retrying \"load Cookie\".  Will try again in %pV seconds",
@@ -976,7 +976,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 	{
 		proto_ldap_cookie_load_retry_ctx *retry_ctx;
 
-		ERROR("Load Cookie failed for sync %d, retrying in %pV seconds", packet_id,
+		ERROR("Load Cookie failed for sync %" PRIu32 ", retrying in %pV seconds", packet_id,
 		      fr_box_time_delta(inst->handle_config.reconnection_delay));
 
 		MEM(retry_ctx = talloc(thread, proto_ldap_cookie_load_retry_ctx));
@@ -993,7 +993,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 		break;
 
 	default:
-		ERROR("Invalid packet type returned %d", pcode);
+		ERROR("Invalid packet type returned %u", pcode);
 		break;
 	}
 

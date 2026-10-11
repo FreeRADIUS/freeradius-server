@@ -215,11 +215,11 @@ static void coord_data_recv(void const *data, size_t data_size, fr_time_t now, v
 
 	if (unlikely(!fr_atomic_queue_pop(coord->coord_recv_aq, (void **)&cd))) return;
 
-	DEBUG3("Coordinator %s got data from worker %d for callback %d",
+	DEBUG3("Coordinator %s got data from worker %d for callback %" PRIu32,
 	       coord->coord_reg->name, cm.worker, cd->coord_cb_id);
 
 	if (cd->coord_cb_id >= coord->num_callbacks) {
-		ERROR("Received data for callback %d which is not defined", cd->coord_cb_id);
+		ERROR("Received data for callback %" PRIu32 " which is not defined", cd->coord_cb_id);
 		fr_message_done(&cd->m);
 		return;
 	}
@@ -248,10 +248,10 @@ static void coord_worker_data_recv(void const *data, size_t data_size, fr_time_t
 
 	if (unlikely(!fr_atomic_queue_pop(cw->worker_recv_aq, (void **)&cd))) return;
 
-	DEBUG3("Coordinator %s sent message for callback %d", cw->coord->coord_reg->name, cd->coord_cb_id);
+	DEBUG3("Coordinator %s sent message for callback %" PRIu32, cw->coord->coord_reg->name, cd->coord_cb_id);
 
 	if (cd->coord_cb_id >= cw->num_callbacks) {
-		ERROR("Received message for callback %d which is not defined", cd->coord_cb_id);
+		ERROR("Received message for callback %" PRIu32 " which is not defined", cd->coord_cb_id);
 		fr_message_done(&cd->m);
 		return;
 	}
@@ -475,7 +475,7 @@ static void fr_coordinate(fr_coord_t *coord)
 		 */
 		DEBUG4("Gathering events");
 		num_events = fr_event_corral(coord->el, fr_time(), true);
-		DEBUG4("%u event(s) pending%s",
+		DEBUG4("%d event(s) pending%s",
 		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
 		if (num_events < 0) break;
 

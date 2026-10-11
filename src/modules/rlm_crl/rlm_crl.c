@@ -74,7 +74,7 @@ typedef struct {
 } crl_pending_t;
 
 /** A status used to track which CRL is being checked */
-typedef enum {
+typedef enum : uint8_t {
 	CRL_CHECK_BASE = 0,						//!< The base CRL is being checked
 	CRL_CHECK_FETCH_DELTA,						//!< The delta CRL is being fetched
 	CRL_CHECK_DELTA							//!< The delta CRL exists and is being checked
@@ -96,7 +96,7 @@ static conf_parser_t module_config[] = {
 
 /** Callback IDs used by CRL coordinator calls
  */
-typedef enum {
+typedef enum : uint8_t {
 	CRL_COORD_PAIR_CALLBACK_ID = 0,
 } rlm_crl_coord_callback_t;
 
@@ -129,7 +129,7 @@ typedef struct {
 	fr_value_box_list_head_t	*cdp; 				//!< The CRL distribution points
 } rlm_crl_env_t;
 
-typedef enum {
+typedef enum : int8_t {
 	CRL_ERROR = -1,							//!< Unspecified error ocurred.
 	CRL_ENTRY_NOT_FOUND = 0,					//!< Serial not found in this CRL.
 	CRL_ENTRY_FOUND = 1,						//!< Serial was found in this CRL.

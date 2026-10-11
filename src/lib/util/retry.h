@@ -42,7 +42,7 @@ typedef struct {
  *	Anything other than "CONTINUE" means "DONE".  For helpfulness,
  *	we return *why* the timer is done.
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_RETRY_CONTINUE = 0,
 	FR_RETRY_MRC,					//!< reached maximum retransmission count
 	FR_RETRY_MRD,					//!< reached maximum retransmission duration

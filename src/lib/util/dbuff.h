@@ -629,7 +629,7 @@ do { \
 
 /** Whether the buffer is currently extendable and whether it was extended
  */
-typedef enum {
+typedef enum : uint8_t {
 	/** dbuff cannot be extended
 	 */
 	FR_DBUFF_NOT_EXTENDABLE			= 0x00,

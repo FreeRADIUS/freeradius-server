@@ -66,7 +66,7 @@ extern "C" {
 
 #define FR_CONTROL_ID_CHANNEL		(1)
 
-typedef enum fr_channel_event_t {
+typedef enum fr_channel_event_t : uint8_t {
 	FR_CHANNEL_ERROR = 0,
 	FR_CHANNEL_DATA_READY_RESPONDER,
 	FR_CHANNEL_DATA_READY_REQUESTOR,

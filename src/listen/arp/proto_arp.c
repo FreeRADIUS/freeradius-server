@@ -131,7 +131,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	fr_packet_net_from_pairs(request->reply, &request->reply_pairs);
 
 	if (RDEBUG_ENABLED) {
-		RDEBUG("Sending %d via socket %s",
+		RDEBUG("Sending %u via socket %s",
 		       request->reply->code,
 		       request->async->listen->name);
 

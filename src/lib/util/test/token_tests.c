@@ -156,7 +156,7 @@ static parse_result_t test_getop(char const *in)
 
 #define TEST_PARSE(_result, _token, _buf, _used) do { \
 	TEST_CHECK((_result).token == (_token)); \
-	TEST_MSG("token: got %d, expected %d", (_result).token, (_token)); \
+	TEST_MSG("token: got %u, expected %u", (_result).token, (fr_token_t)(_token)); \
 	TEST_CHECK(strcmp((_result).buf, (_buf)) == 0); \
 	TEST_MSG("buf: got \"%s\", expected \"%s\"", (_result).buf, (_buf)); \
 	TEST_CHECK((_result).used == (size_t) (_used)); \
@@ -336,7 +336,7 @@ static void test_gettoken_truncation(void)
 	p = start;
 	token = gettoken(&p, buf, sizeof(buf), true);
 	TEST_CHECK(token == T_INVALID);
-	TEST_MSG("got token %d", token);
+	TEST_MSG("got token %u", token);
 	guard_free(base);
 }
 

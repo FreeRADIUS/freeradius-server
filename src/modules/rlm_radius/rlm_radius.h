@@ -38,7 +38,7 @@
 
 typedef struct rlm_radius_s rlm_radius_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	RLM_RADIUS_MODE_INVALID = 0,
 	RLM_RADIUS_MODE_PROXY,				//!< we proxy to one home server
 	RLM_RADIUS_MODE_CLIENT,				//!< we are a client to one home server

@@ -439,7 +439,7 @@ _Generic(&(_ct), \
  * @{
  */
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint32_t {
 	CONF_FLAG_NONE			= 0,				//!< No special flags.
 	CONF_FLAG_SUBSECTION		= (1 << 1),			//!< Instead of putting the information into a
 									///< configuration structure, the configuration
@@ -731,14 +731,30 @@ int		_cf_section_rules_push(CONF_SECTION *cs, conf_parser_t const *rules, char c
 /*
  *	Generic parsing callback functions
  */
+
+/** @name Table lookups, one function per field type
+ *
+ * Each function resolves the #CONF_PAIR value in the table passed as the
+ * rule's uctx, and writes the result as the type in its name.  Use the
+ * function matching the field's type.  An enum field gets the function
+ * matching the enum's fixed underlying type.
+ * @{
+ */
 int		cf_table_parse_int(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			 	   CONF_ITEM *ci, conf_parser_t const *rule);
-
-int		cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-				      CONF_ITEM *ci, conf_parser_t const *rule);
-
+				   CONF_ITEM *ci, conf_parser_t const *rule);
+int		cf_table_parse_int8(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				    CONF_ITEM *ci, conf_parser_t const *rule);
+int		cf_table_parse_int16(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				     CONF_ITEM *ci, conf_parser_t const *rule);
 int		cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 				     CONF_ITEM *ci, conf_parser_t const *rule);
+int		cf_table_parse_uint8(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				     CONF_ITEM *ci, conf_parser_t const *rule);
+int		cf_table_parse_uint16(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				      CONF_ITEM *ci, conf_parser_t const *rule);
+int		cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				      CONF_ITEM *ci, conf_parser_t const *rule);
+/** @} */
 
 int		cf_parse_uid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			     CONF_ITEM *ci, conf_parser_t const *rule);

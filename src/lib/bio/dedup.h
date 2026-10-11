@@ -56,7 +56,7 @@ struct  fr_bio_dedup_entry_s {
 };
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_BIO_DEDUP_EXPIRED = 0,
 	FR_BIO_DEDUP_CANCELLED,
 	FR_BIO_DEDUP_WRITE_ERROR,

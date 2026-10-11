@@ -182,7 +182,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 
 	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &to_certinfo);
 	if (ret != CURLE_OK) {
-		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
+		REDEBUG("Getting certificate info failed: %u - %s", ret, curl_easy_strerror(ret));
 
 		return -1;
 	}
@@ -318,7 +318,7 @@ static int fr_curl_init(void)
 
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
-		ERROR("CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
+		ERROR("CURL init returned error: %u - %s", ret, curl_easy_strerror(ret));
 	error:
 		fr_dict_autofree(curl_dict);
 		return -1;

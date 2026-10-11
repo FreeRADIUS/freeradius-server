@@ -36,7 +36,7 @@
 
 #include <fcntl.h>
 
-typedef enum {
+typedef enum : uint8_t {
 	EXFILE_TRIGGER_OPEN = 0,
 	EXFILE_TRIGGER_CLOSE,
 	EXFILE_TRIGGER_RESERVE,

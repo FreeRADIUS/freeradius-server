@@ -383,7 +383,7 @@ static ssize_t fr_dns_encode_rr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	fr_proto_da_stack_build(&da_stack, attr_dns_rr);
 	FR_PROTO_STACK_PRINT(&da_stack, 0);
 
-	FR_PROTO_TRACE("encode_rr -- remaining %zd", fr_dbuff_remaining(&work_dbuff));
+	FR_PROTO_TRACE("encode_rr -- remaining %zu", fr_dbuff_remaining(&work_dbuff));
 
 	vp = fr_dcursor_current(cursor);
 	if (!vp) return 0;

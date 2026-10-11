@@ -451,7 +451,7 @@ static void write_chunk(uint8_t *out, int start_bit, int num_bits, uint16_t chun
 	}
 }
 
-typedef enum fr_trie_type_t {
+typedef enum fr_trie_type_t : uint8_t {
 	FR_TRIE_INVALID = 0,
 	FR_TRIE_USER,
 #ifdef WITH_PATH_COMPRESSION

@@ -559,7 +559,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *o
 
 	argc = fr_value_box_list_num_elements(in);
 	if (argc > MAX_REDIS_ARGS) {
-		REDEBUG("Too many arguments (%ld)", argc);
+		REDEBUG("Too many arguments (%zu)", argc);
 		return XLAT_ACTION_FAIL;
 	}
 	argc += 2;

@@ -40,7 +40,7 @@ extern "C" {
 #define DHCP_VEND_LEN	(308)
 #define DHCP_OPTION_MAGIC_NUMBER (0x63825363)
 
-typedef enum {
+typedef enum : uint16_t {
 	FR_DHCP_INVALID = 0,
 	FR_DHCP_DISCOVER = 1,
 	FR_DHCP_OFFER =	2,
@@ -136,7 +136,7 @@ typedef struct {
 	TALLOC_CTX	*tmp_ctx;		//!< for temporary things cleaned up during decoding
 } fr_dhcpv4_ctx_t;
 
-typedef enum {
+typedef enum : int8_t {
 	DHCPV4_FLAG_PREFIX_INVALID = -1,
 	DHCPV4_FLAG_PREFIX_NONE = 0,
 	DHCPV4_FLAG_PREFIX_BITS = 1,
@@ -205,7 +205,7 @@ static inline bool fr_dhcpv4_flag_prefix_split(fr_dict_attr_t const *da)
  */
 fr_cmp_ret_t	fr_dhcpv4_attr_cmp(void const *a, void const *b);
 
-bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, uint32_t *xid);
+bool		fr_dhcpv4_ok(uint8_t const *data, size_t data_len, uint8_t *message_type, uint32_t *xid);
 fr_packet_t	*fr_dhcpv4_packet_alloc(uint8_t const *data, size_t data_len);
 bool 		fr_dhcpv4_is_encodable(void const *item, void const *uctx);
 void		*fr_dhcpv4_next_encodable(fr_dcursor_t *cursor, void *to_eval, void *uctx);

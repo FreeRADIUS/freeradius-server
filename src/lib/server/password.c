@@ -42,7 +42,7 @@ RCSID("$Id$")
 #  include <openssl/sha.h>
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	PASSWORD_CLEARTEXT = 0,			//!< Variable length.
 	PASSWORD_HASH,				//!< Fixed length.
 	PASSWORD_HASH_SALTED,			//!< Fixed length hash, variable length salt.
@@ -181,7 +181,7 @@ fr_dict_attr_autoload_t password_dict_attr[] = {
 	DICT_AUTOLOAD_TERMINATOR
 };
 
-typedef enum {
+typedef enum : uint8_t {
 	NORMALISED_NOTHING = 0,
 	NORMALISED_B64,
 	NORMALISED_HEX
@@ -532,7 +532,7 @@ static fr_pair_t *password_normify(TALLOC_CTX *ctx, request_t *request, fr_pair_
 	if (normalised != NORMALISED_NOTHING) {
 		RDEBUG2("Normalizing %s %s encoding, %zu bytes -> %zu bytes",
 			known_good->da->name, fr_table_str_by_value(normalise_table, normalised, 0),
-			known_good->vp_length, decoded);
+			known_good->vp_length, (size_t)decoded);
 		MEM(out = fr_pair_afrom_da(ctx, known_good->da));
 		fr_pair_value_memdup(out, buffer, decoded, known_good->vp_tainted);
 		return out;
@@ -755,7 +755,7 @@ do_header:
 		if ((n1[0] == '{') && (memchr(n1, '}', decoded) != NULL)) {
 			RDEBUG2("Normalizing %s %s encoding, %zu bytes -> %zu bytes",
 				known_good->da->name, fr_table_str_by_value(normalise_table, normalised, 0),
-				known_good->vp_length, decoded);
+				known_good->vp_length, (size_t)decoded);
 
 			/*
 			 *	Password.With-Header is a string attribute.

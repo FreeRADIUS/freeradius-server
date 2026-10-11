@@ -40,7 +40,7 @@ RCSIDH(redis_pipeline_h, "$Id$")
 extern "C" {
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_REDIS_PIPELINE_OK	= 0,			//!< No failure.
 	FR_REDIS_PIPELINE_BAD_CMDS,			//!< Malformed command set.
 	FR_REDIS_PIPELINE_DST_UNAVAILABLE,		//!< Cluster or host is down.

@@ -49,7 +49,7 @@ RCSID("$Id$")
  * These are flags to allow multiple nesting types to be passed to the search function.
  */
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint8_t {
 	NEST_NONE	= 0x00,
 	NEST_TOP	= 0x01,		//!< top of the stack
 	NEST_PROTOCOL	= 0x02,		//!< BEGIN-PROTOCOL
@@ -2921,7 +2921,7 @@ static size_t const dict_proto_table_len = NUM_ELEMENTS(dict_proto_table);
 
 /** Options that can appear in the last field of a PROTOCOL line
  */
-typedef enum {
+typedef enum : uint8_t {
 	DICT_PROTOCOL_OPT_INVALID = 0,			//!< Returned by the dict_protocol_opt_table lookup for an unknown name.
 	DICT_PROTOCOL_OPT_FORMAT,			//!< format=<n> or format=string.
 	DICT_PROTOCOL_OPT_POOL,				//!< pool=<size>.
@@ -3542,7 +3542,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		 *	so lines past UINT16_MAX cannot be recorded accurately.
 		 */
 		if (unlikely(line > UINT16_MAX)) {
-			fr_strerror_printf("Dictionary files are limited to %u lines", UINT16_MAX);
+			fr_strerror_printf("Dictionary files are limited to %u lines", (unsigned int)UINT16_MAX);
 			goto error;
 		}
 

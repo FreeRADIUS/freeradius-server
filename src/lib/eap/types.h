@@ -33,7 +33,7 @@ RCSIDH(lib_eap_types, "$Id$")
 /* Code (1) + Identifier (1) + Length (2) */
 #define EAP_HEADER_LEN 		4
 
-typedef enum eap_code {
+typedef enum eap_code : uint8_t {
 	FR_EAP_CODE_REQUEST = 1,
 	FR_EAP_CODE_RESPONSE,
 	FR_EAP_CODE_SUCCESS,
@@ -41,7 +41,7 @@ typedef enum eap_code {
 	FR_EAP_CODE_MAX
 } eap_code_t;
 
-typedef enum eap_type {
+typedef enum eap_type : uint8_t {
 	FR_EAP_METHOD_INVALID = 0,		/* 0 */
 	FR_EAP_METHOD_IDENTITY,			/* 1 */
 	FR_EAP_METHOD_NOTIFICATION,		/* 2 */

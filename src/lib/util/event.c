@@ -87,7 +87,7 @@ static size_t kevent_filter_table_len = NUM_ELEMENTS(kevent_filter_table);
 static int log_conf_kq;
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_EVENT_FD_SOCKET	= 1,			//!< is a socket.
 	FR_EVENT_FD_FILE	= 2,			//!< is a file.
 	FR_EVENT_FD_DIRECTORY	= 4,			//!< is a directory.
@@ -97,7 +97,7 @@ typedef enum {
 #endif
 } fr_event_fd_type_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_EVENT_FUNC_IDX_NONE = 0,
 
 	FR_EVENT_FUNC_IDX_FILTER,			//!< Sign flip is performed i.e. -1 = 0The filter is used

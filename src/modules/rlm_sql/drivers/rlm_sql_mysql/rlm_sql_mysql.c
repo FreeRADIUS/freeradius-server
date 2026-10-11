@@ -52,7 +52,7 @@ DIAG_ON(strict-prototypes)
 #include "rlm_sql.h"
 #include "rlm_sql_trunk.h"
 
-typedef enum {
+typedef enum : uint8_t {
 	SERVER_WARNINGS_AUTO = 0,
 	SERVER_WARNINGS_YES,
 	SERVER_WARNINGS_NO
@@ -326,7 +326,7 @@ connected:
 		return;
 	}
 
-	DEBUG2("Connected to database on %s, server version %s, protocol version %i",
+	DEBUG2("Connected to database on %s, server version %s, protocol version %u",
 	       mysql_get_host_info(c->sock),
 	       mysql_get_server_info(c->sock), mysql_get_proto_info(c->sock));
 
@@ -445,7 +445,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	}
 
 	if (c->status == 0) {
-		DEBUG2("Connected to database '%s' on %s, server version %s, protocol version %i",
+		DEBUG2("Connected to database '%s' on %s, server version %s, protocol version %u",
 		       config->sql_db, mysql_get_host_info(c->sock),
 		       mysql_get_server_info(c->sock), mysql_get_proto_info(c->sock));
 		goto finish;
@@ -455,7 +455,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 			       c->status & MYSQL_WAIT_READ ? _sql_connect_io_notify : NULL,
 			       c->status & MYSQL_WAIT_WRITE ? _sql_connect_io_notify : NULL, NULL, c) != 0) goto error;
 
-	DEBUG2("Connecting to database '%s' on %s:%d, fd %d",
+	DEBUG2("Connecting to database '%s' on %s:%" PRIu32 ", fd %d",
 	       config->sql_db, config->sql_server, config->sql_port, c->fd);
 
 finish:

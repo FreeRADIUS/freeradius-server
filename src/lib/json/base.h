@@ -52,7 +52,7 @@ extern size_t fr_json_format_table_len;
 
 /** How to encode FR_TYPE_OCTETS values in JSON output.
  */
-typedef enum {
+typedef enum : uint8_t {
 	JSON_BINARY_FORMAT_RAW = 0,	//!< Current behaviour - raw bytes as JSON string.
 	JSON_BINARY_FORMAT_BASE16,	//!< Base16-encode octets values.
 	JSON_BINARY_FORMAT_BASE64	//!< Base64-encode octets values.
@@ -65,7 +65,7 @@ extern size_t fr_json_binary_format_table_len;
  *
  * @see fr_json_format_s
  */
-typedef enum {
+typedef enum : uint8_t {
 	JSON_MODE_UNSET = 0,
 	JSON_MODE_OBJECT,
 	JSON_MODE_OBJECT_SIMPLE,

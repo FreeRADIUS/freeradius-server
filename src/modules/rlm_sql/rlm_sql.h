@@ -41,7 +41,7 @@ RCSIDH(rlm_sql_h, "$Id$")
 /** Action to take at end of an SQL query
  *
  */
-typedef enum {
+typedef enum : int8_t {
 	RLM_SQL_QUERY_INVALID = -3,	//!< Query syntax error.
 	RLM_SQL_ERROR = -2,		//!< General connection/server error.
 	RLM_SQL_OK = 0,			//!< Success.
@@ -50,7 +50,7 @@ typedef enum {
 	RLM_SQL_NO_MORE_ROWS,		//!< No more rows available
 } sql_rcode_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FALL_THROUGH_NO = 0,
 	FALL_THROUGH_YES,
 	FALL_THROUGH_DEFAULT,
@@ -116,14 +116,14 @@ typedef struct {
 	void			*sql_escape_arg;		//!< Thread specific argument to be passed to escape function.
 } rlm_sql_thread_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	SQL_QUERY_SELECT,
 	SQL_QUERY_OTHER
 } fr_sql_query_type_t;
 
 /** Status of an SQL query
  */
-typedef enum {
+typedef enum : int8_t {
 	SQL_QUERY_FAILED = -1,					//!< Failed to submit.
 	SQL_QUERY_PREPARED = 0,					//!< Ready to submit.
 	SQL_QUERY_SUBMITTED,					//!< Submitted for execution.

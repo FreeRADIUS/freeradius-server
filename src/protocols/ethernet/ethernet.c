@@ -156,7 +156,7 @@ static ssize_t fr_ethernet_encode(void *proto_ctx, uint8_t *data, size_t data_le
 	p += sizeof(ether_hdr->src_addr) + sizeof(ether_hdr->dst_addr);
 	if (unlikely(p >= end)) {
 	oob:
-		fr_strerror_printf("insufficient buffer space, needed %zu bytes, have %zu bytes",
+		fr_strerror_printf("insufficient buffer space, needed %td bytes, have %zu bytes",
 				   p - data, data_len);
 		return data - p;
 	}
@@ -289,7 +289,7 @@ static int fr_ethernet_get_option(fr_value_box_t *out, void const *proto_ctx, fr
 			return fr_value_box(out, ether_ctx->cvlan_vid, true);
 
 		default:
-			fr_strerror_printf("Option %i group %i not implemented", opt, group);
+			fr_strerror_printf("Option %i group %u not implemented", opt, group);
 			return -1;
 		}
 
@@ -310,12 +310,12 @@ static int fr_ethernet_get_option(fr_value_box_t *out, void const *proto_ctx, fr
 			return fr_value_box(out, ether_ctx->ether_type, true);
 
 		default:
-			fr_strerror_printf("Option %i group %i not implemented", opt, group);
+			fr_strerror_printf("Option %i group %u not implemented", opt, group);
 			return -1;
 		}
 
 	default:
-		fr_strerror_printf("Option group %i not implemented", group);
+		fr_strerror_printf("Option group %u not implemented", group);
 		return -1;
 	}
 }
@@ -362,7 +362,7 @@ static int fr_ethernet_set_option(void *proto_ctx, fr_proto_opt_group_t group, i
 			return fr_value_unbox_shallow(&ether_ctx->cvlan_vid, in);
 
 		default:
-			fr_strerror_printf("Option %i group %i not implemented", opt, group);
+			fr_strerror_printf("Option %i group %u not implemented", opt, group);
 			return -1;
 		}
 
@@ -388,12 +388,12 @@ static int fr_ethernet_set_option(void *proto_ctx, fr_proto_opt_group_t group, i
 			return fr_value_unbox_shallow(&ether_ctx->ether_type, in);
 
 		default:
-			fr_strerror_printf("Option %i group %i not implemented", opt, group);
+			fr_strerror_printf("Option %i group %u not implemented", opt, group);
 			return -1;
 		}
 
 	default:
-		fr_strerror_printf("Option group %i not implemented", group);
+		fr_strerror_printf("Option group %u not implemented", group);
 		return -1;
 	}
 

@@ -89,7 +89,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 			 *	If the request failed, say why...
 			 */
 			if (m->data.result != CURLE_OK) {
-				REDEBUG("curl request failed: %s (%i)",
+				REDEBUG("curl request failed: %s (%u)",
 					curl_easy_strerror(m->data.result), m->data.result);
 			}
 			randle->result = m->data.result;
@@ -106,7 +106,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 
 		default:
 #ifndef NDEBUG
-			DEBUG4("Got unknown msg (%i) when dequeueing curl responses", m->msg);
+			DEBUG4("Got unknown msg (%u) when dequeueing curl responses", m->msg);
 #endif
 			break;
 		}
@@ -506,7 +506,7 @@ int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, request_t *request, fr
 	 */
 	ret = curl_easy_setopt(randle->candle, CURLOPT_PRIVATE, randle);
 	if (ret != CURLE_OK) {
-		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
+		REDEBUG("Request failed: %u - %s", ret, curl_easy_strerror(ret));
 		return -1;
 	}
 

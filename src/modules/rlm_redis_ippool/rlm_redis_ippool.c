@@ -1293,7 +1293,7 @@ static void redis_ippool_release_results(request_t *request, UNUSED fr_redis_com
 
 #define CHECK_POOL_NAME \
 	if (env->pool_name.vb_length > IPPOOL_MAX_KEY_PREFIX_SIZE) { \
-		REDEBUG("Pool name too long.  Expected %u bytes, got %ld bytes", \
+		REDEBUG("Pool name too long.  Expected %u bytes, got %zu bytes", \
 			IPPOOL_MAX_KEY_PREFIX_SIZE, env->pool_name.vb_length); \
 		RETURN_UNLANG_FAIL; \
 	} \

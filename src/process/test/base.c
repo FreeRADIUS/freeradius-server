@@ -53,7 +53,7 @@ typedef struct {
 	process_test_sections_t	sections;
 } process_test_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TEST_INVALID = 0,
 	FR_TEST_REQUEST,
 	FR_TEST_REPLY,

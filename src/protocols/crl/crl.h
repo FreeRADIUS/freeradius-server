@@ -27,7 +27,7 @@ RCSIDH(crl_h, "$Id$")
 
 /** CRL packet codes
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_CRL_INVALID = 0,
 	FR_CRL_CRL_FETCH,
 	FR_CRL_CRL_REFRESH,

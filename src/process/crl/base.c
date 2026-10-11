@@ -120,7 +120,7 @@ static const conf_parser_t config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-typedef enum {
+typedef enum : uint8_t {
 	CRL_TYPE_BASE,
 	CRL_TYPE_DELTA
 } crl_type_t;
@@ -822,7 +822,7 @@ RESUME_FLAG(send_crl_fail, UNUSED,)
 			for (i = 0; i < main_config->max_workers; i++) {
 				if (fetch->workers[i]) {
 					fr_coord_to_worker_reply_send(request, i);
-					RDEBUG3("Sending fail to worker %d", i);
+					RDEBUG3("Sending fail to worker %" PRIu32, i);
 				}
 			}
 			talloc_free(fetch);

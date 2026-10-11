@@ -62,7 +62,7 @@ extern "C" {
  */
 #define MODULE_MAGIC_INIT RADIUSD_MAGIC_NUMBER
 
-typedef enum {
+typedef enum : uint8_t {
 	DL_MODULE_TYPE_MODULE = 0,	//!< Standard loadable module.
 	DL_MODULE_TYPE_PROTO,		//!< Protocol module.
 	DL_MODULE_TYPE_PROCESS,		//!< protocol processor.

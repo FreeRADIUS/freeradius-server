@@ -381,7 +381,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 				size_t		msg_len;
 
 				cass_future_error_message(future, &msg, &msg_len);
-				ERROR("Unable to connect: [%x] %s", (int)ret, msg);
+				ERROR("Unable to connect: [%x] %s", (unsigned int)ret, msg);
 				cass_future_free(future);
 				pthread_mutex_unlock(&inst->mutable->connect_mutex);
 

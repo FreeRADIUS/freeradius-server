@@ -55,7 +55,7 @@ RCSID("$Id$")
 
 #define RTT(_old, _new) fr_time_delta_wrap((fr_time_delta_unwrap(_new) + (fr_time_delta_unwrap(_old) * (IALPHA - 1))) / IALPHA)
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_LOAD_STATE_INIT = 0,
 	FR_LOAD_STATE_SENDING,
 	FR_LOAD_STATE_GATED,
@@ -433,7 +433,7 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 
 	return snprintf(buffer, buflen,
 			"%f,%f,"
-			"%" PRIu64 ",%" PRIu64 ","
+			"%" PRId64 ",%" PRId64 ","
 			"%d,%d,"
 			"%d,%d,"
 			"%d,%d,"

@@ -206,7 +206,7 @@ fr_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 
 	data_len = ntohs(udp->len);
 	if (data_len <= sizeof(udp_header_t)) {
-		fr_strerror_printf("UDP header length (%zd) smaller than required for layers 2+3+4", data_len);
+		fr_strerror_printf("UDP header length (%zu) smaller than required for layers 2+3+4", data_len);
 		return NULL;
 	}
 	data_len -= sizeof(udp_header_t);

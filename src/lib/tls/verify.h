@@ -37,14 +37,14 @@ extern "C" {
 /** Certificate validation states
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_TLS_VALIDATION_INIT = 0,			//!< OpenSSL hasn't requested certificate validation.
 	FR_TLS_VALIDATION_REQUESTED,			//!< OpenSSL requested validation.
 	FR_TLS_VALIDATION_SUCCESS,			//!< Certificate chain was validate.
 	FR_TLS_VALIDATION_FAILED			//!< Certificate validation failed.
 } fr_tls_validation_state_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TLS_VERIFY_MODE_DISABLED = 0,		//!< Don't convert any pairs for verification.
 	FR_TLS_VERIFY_MODE_LEAF = 0x01,			//!< Convert the client certificate.
 	FR_TLS_VERIFY_MODE_ISSUER = 0x02,		//!< Convert the issuer of the client certificate.

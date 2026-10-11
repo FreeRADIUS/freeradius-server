@@ -145,7 +145,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *reques
 	 *	Not finding a substring is fine
 	 */
 	case PCRE2_ERROR_NOSUBSTRING:
-		RDEBUG4("%i/%zu Not found", num + 1, rc->regmatch->used);
+		RDEBUG4("%" PRIu32 "/%zu Not found", num + 1, rc->regmatch->used);
 		return -1;
 
 	default:
@@ -160,7 +160,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *reques
 		fr_value_box_bstrndup_shallow(out, NULL, buff, len, false);
 		fr_value_box_safety_set(out, &rc->safety);
 
-		RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
+		RDEBUG4("%" PRIu32 "/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
 		break;
 	}
 

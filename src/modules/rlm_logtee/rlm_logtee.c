@@ -49,7 +49,7 @@ RCSID("$Id$")
 
 #include <sys/uio.h>
 
-typedef enum {
+typedef enum : uint8_t {
 	LOGTEE_DST_INVALID = 0,
 	LOGTEE_DST_FILE,				//!< Log to a file.
 	LOGTEE_DST_UNIX,				//!< Log via Unix socket.

@@ -193,7 +193,7 @@ static unlang_action_t ldap_group_name2dn_resume(unlang_result_t *p_result, requ
 	}
 
 	if (entry_cnt < group_ctx->name_cnt) {
-		RWDEBUG("Got partial mapping of group names (%i) to DNs (%i), membership information may be incomplete",
+		RWDEBUG("Got partial mapping of group names (%u) to DNs (%u), membership information may be incomplete",
 			group_ctx->name_cnt, entry_cnt);
 	}
 

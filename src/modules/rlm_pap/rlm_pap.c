@@ -909,7 +909,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(unl
 	uint8_t			digest[SHA256_DIGEST_LENGTH];
 
 	if ((end - p) != PBKDF2_SHA256_LEGACY_B64_LENGTH) {
-		REDEBUG("Password.With-Header {PBKDF2_SHA256} has incorrect size %zd instead of %d.", known_good->vp_length, PBKDF2_SHA256_LEGACY_B64_LENGTH);
+		REDEBUG("Password.With-Header {PBKDF2_SHA256} has incorrect size %zu instead of %d.", known_good->vp_length, PBKDF2_SHA256_LEGACY_B64_LENGTH);
 		RETURN_UNLANG_INVALID;
 	}
 
@@ -929,7 +929,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(unl
 	pbkdf2_buf.iterations = ntohl(pbkdf2_buf.iterations);
 
 	if (pbkdf2_buf.iterations < 1) {
-		REDEBUG("Password.With-Header {PBKDF2_SHA256} has invalid number of iterations %d.", pbkdf2_buf.iterations);
+		REDEBUG("Password.With-Header {PBKDF2_SHA256} has invalid number of iterations %" PRIu32 ".", pbkdf2_buf.iterations);
 		RETURN_UNLANG_INVALID;
 	}
 
@@ -1134,7 +1134,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	}
 
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Login attempt with %s = %pV (%zd)", env_data->password_tmpl->name,
+		RDEBUG3("Login attempt with %s = %pV (%zu)", env_data->password_tmpl->name,
 			&env_data->password, env_data->password.vb_length);
 	} else {
 		RDEBUG2("Login attempt with password");

@@ -48,7 +48,7 @@ FR_DLIST_TYPEDEFS(call_env_parsed, call_env_parsed_head_t, call_env_parsed_entry
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/tmpl.h>
 
-typedef enum {
+typedef enum : int8_t {
 	CALL_ENV_SUCCESS = 0,
 	CALL_ENV_MISSING = -1,
 	CALL_ENV_INVALID = -2
@@ -56,7 +56,7 @@ typedef enum {
 
 /** What type of structure is produced by the parsing phase
  */
-typedef enum {
+typedef enum : uint8_t {
 	CALL_ENV_PARSE_TYPE_TMPL = 1,				//!< Output of the parsing phase is a tmpl_t.
 	CALL_ENV_PARSE_TYPE_VALUE_BOX,				//!< Output of the parsing phase is a single value box (static data).
 	CALL_ENV_PARSE_TYPE_VOID				//!< Output of the parsing phase is undefined (a custom structure).
@@ -64,13 +64,13 @@ typedef enum {
 
 /** What type of structure is produced by the evaluation phase
  */
-typedef enum {
+typedef enum : uint8_t {
 	CALL_ENV_RESULT_TYPE_VALUE_BOX = 1,			//!< Output of the evaluation phase is a single value box.
 	CALL_ENV_RESULT_TYPE_VALUE_BOX_LIST,			//!< Output of the evaluation phase is a list of value boxes.
 } call_env_result_type_t;
 
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint16_t {
 	CALL_ENV_FLAG_NONE 		= 0,
 	CALL_ENV_FLAG_REQUIRED 		= 1,			//!< Associated conf pair or section is required.
 	CALL_ENV_FLAG_CONCAT 		= (1 << 1),		//!< If the tmpl produced multiple boxes they should be concatenated.
@@ -218,7 +218,7 @@ struct call_env_parser_s {
 	void const *uctx;					//!< User context for callback functions.
 };
 
-typedef enum {
+typedef enum : uint8_t {
 	CALL_ENV_CTX_TYPE_MODULE = 1,				//!< The callenv is registered to a module method.
 	CALL_ENV_CTX_TYPE_XLAT					//!< The callenv is registered to an xlat.
 } call_env_ctx_type_t;

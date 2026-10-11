@@ -91,7 +91,7 @@ DIAG_ON(strict-prototypes)
 static char const *progname = "radmin";
 static char const *radmin_version = RADIUSD_VERSION_BUILD("radmin");
 
-typedef enum {
+typedef enum : uint8_t {
 	RADMIN_CONN_NONE = 0,				//!< Don't know, never connected.
 	RADMIN_CONN_UNIX,				//!< Connect via unix socket.
 	RADMIN_CONN_TCP					//!< Connect via TCP.

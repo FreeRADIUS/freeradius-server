@@ -491,12 +491,12 @@ static int cmd_stats_memory(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_inf
 	}
 
 	if (strcmp(info->argv[0], "total") == 0) {
-		fprintf(fp, "%zd\n", talloc_total_size(NULL));
+		fprintf(fp, "%zu\n", talloc_total_size(NULL));
 		return 0;
 	}
 
 	if (strcmp(info->argv[0], "blocks") == 0) {
-		fprintf(fp, "%zd\n", talloc_total_blocks(NULL));
+		fprintf(fp, "%zu\n", talloc_total_blocks(NULL));
 		return 0;
 	}
 
@@ -566,7 +566,7 @@ static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ct
 			ProfilerStart(filename);
 		} else {
 			pid_t pid = getpid();
-			MEM(filename = talloc_asprintf(NULL, "/tmp/freeradius-profile.%u.prof", pid));
+			MEM(filename = talloc_asprintf(NULL, "/tmp/freeradius-profile.%ld.prof", (long)pid));
 			ProfilerStart(filename);
 			talloc_free(filename);
 		}

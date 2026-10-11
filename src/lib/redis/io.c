@@ -149,7 +149,7 @@ static void _redis_auth_result(struct redisAsyncContext *ac, void *data, UNUSED 
 	}
 
 	if (database) {
-		DEBUG3("Executing: SELECT %d", database);
+		DEBUG3("Executing: SELECT %" PRIu32, database);
 		if (redisAsyncCommand(ac, _redis_select_result, NULL, "SELECT %d", database) != REDIS_OK) goto error;
 		return;
 	}
@@ -211,7 +211,7 @@ static void _redis_connected_nc(redisAsyncContext *ac, UNUSED int status)
 	}
 
 	if (io_conf->database) {
-		DEBUG3("Executing: SELECT %d", io_conf->database);
+		DEBUG3("Executing: SELECT %" PRIu32, io_conf->database);
 		if (redisAsyncCommand(ac, _redis_select_result, NULL, "SELECT %d", io_conf->database) != REDIS_OK) goto error;
 		return;
 	}

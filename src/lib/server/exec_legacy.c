@@ -387,7 +387,7 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 		rcode = select(fd + 1, &fds, NULL, NULL, &fr_time_delta_to_timeval(fr_time_delta_sub(timeout, elapsed)));
 		if (rcode == 0) {
 		too_long:
-			DEBUG("Child PID %u is taking too much time: forcing failure and killing child.", pid);
+			DEBUG("Child PID %ld is taking too much time: forcing failure and killing child.", (long)pid);
 			kill(pid, SIGTERM);
 			close(fd); /* should give SIGPIPE to child, too */
 

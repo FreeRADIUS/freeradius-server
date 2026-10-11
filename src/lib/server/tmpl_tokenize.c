@@ -209,7 +209,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 	case TMPL_ATTR_TYPE_UNSPEC:
 	case TMPL_ATTR_TYPE_UNKNOWN:
 		if (!ar->da) {
-			fprintf(fp, "\t[%u] %s null%s%s%s\n",
+			fprintf(fp, "\t[%d] %s null%s%s%s\n",
 				i,
 				fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 				ar->ar_num != NUM_UNSPEC ? "[" : "",
@@ -218,7 +218,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 			return;
 		}
 
-		fprintf(fp, "\t[%u] %s %s %s%s%s%s (%p) attr %u\n ",
+		fprintf(fp, "\t[%d] %s %s %s%s%s%s (%p) attr %u\n ",
 			i,
 			fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			fr_type_to_str(ar->da->type),
@@ -240,7 +240,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 		 *	Type reveals unresolved status
 		 *	so we don't need to add it explicitly
 		 */
-		fprintf(fp, "\t[%u] %s %s%s%s%s\n",
+		fprintf(fp, "\t[%d] %s %s%s%s%s\n",
 			i,
 			fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			ar->ar_unresolved,
@@ -252,7 +252,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 		break;
 
 	default:
-		fprintf(fp, "\t[%u] Bad type %s(%u)\n",
+		fprintf(fp, "\t[%d] Bad type %s(%u)\n",
 			     i, fr_table_str_by_value(attr_table, ar->type, "<INVALID>"), ar->type);
 		break;
 	}
@@ -3900,7 +3900,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		break;
 
 	default:
-		fr_assert_msg(0, "Unknown quote type %i", quote);
+		fr_assert_msg(0, "Unknown quote type %u", quote);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
@@ -5332,7 +5332,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 		 */
 		fast = tmpl_attr_list_next(tmpl_attr(vpt), fast);
 		fr_fatal_assert_msg(fast != slow,
-				    "CONSISTENCY CHECK FAILED %s[%u]:  Looping reference list found.  "
+				    "CONSISTENCY CHECK FAILED %s[%d]:  Looping reference list found.  "
 				    "Fast pointer hit slow pointer at \"%s\"",
 				    file, line,
 				    slow->type == TMPL_ATTR_TYPE_UNRESOLVED ? slow->ar_unresolved :
@@ -5350,7 +5350,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 		case TMPL_ATTR_TYPE_NORMAL:
 			if (seen_unknown) {
 				tmpl_attr_debug(stderr, vpt);
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: "
 						     "TMPL_TYPE_ATTR known attribute \"%s\" "
 						     "occurred after unknown attribute %s "
 						     "in attr ref list",
@@ -5360,7 +5360,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 			}
 			if (seen_unresolved) {
 				tmpl_attr_debug(stderr, vpt);
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: "
 						     "TMPL_TYPE_ATTR known attribute \"%s\" "
 						     "occurred after unresolved attribute \"%s\""
 						     "in attr ref list",
@@ -5369,12 +5369,12 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 						     ar->ar_unresolved);
 			}
 			fr_fatal_assert_msg(ar->ar_parent,
-					    "CONSISTENCY CHECK FAILED %s[%u]: attr ref missing parent",
+					    "CONSISTENCY CHECK FAILED %s[%d]: attr ref missing parent",
 					    file, line);
 
 			if (ar->ar_parent->type != FR_TYPE_GROUP) {
 				fr_fatal_assert_msg(ar->ar_parent == ar->ar_da->parent,
-						    "CONSISTENCY CHECK FAILED %s[%u]: attr ref has wrong parent: "
+						    "CONSISTENCY CHECK FAILED %s[%d]: attr ref has wrong parent: "
 						    "Expected %s, got %s",
 						    file, line,
 						    ar->ar_da->parent->name,
@@ -5386,7 +5386,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 		case TMPL_ATTR_TYPE_UNSPEC:
 			if (seen_unknown) {
 				tmpl_attr_debug(stderr, vpt);
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: "
 						     "TMPL_TYPE_ATTR unspecified attribute "
 						     "occurred after unknown attribute %s "
 						     "in attr ref list",
@@ -5395,7 +5395,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 			}
 			if (seen_unresolved) {
 				tmpl_attr_debug(stderr, vpt);
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: "
 						     "TMPL_TYPE_ATTR unspecified attribute "
 						     "occurred after unresolved attribute \"%s\""
 						     "in attr ref list",
@@ -5407,7 +5407,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 		case TMPL_ATTR_TYPE_UNRESOLVED:
 			seen_unresolved = ar;
 			fr_fatal_assert_msg(ar->ar_unresolved_namespace,
-					    "CONSISTENCY CHECK FAILED %s[%u]: unresolved attr ref missing namespace",
+					    "CONSISTENCY CHECK FAILED %s[%d]: unresolved attr ref missing namespace",
 					    file, line);
 			break;
 
@@ -5415,7 +5415,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 			seen_unknown = ar;
 			if (seen_unresolved) {
 				tmpl_attr_debug(stderr, vpt);
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: "
 						     "TMPL_TYPE_ATTR unknown attribute \"%s\" "
 						     "occurred after unresolved attribute %s "
 						     "in attr ref list",
@@ -5442,24 +5442,24 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 	fr_assert(vpt);
 
 	if (tmpl_is_uninitialised(vpt)) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: tmpl_t type was "
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: tmpl_t type was "
 				     "TMPL_TYPE_UNINITIALISED (uninitialised)", file, line);
 	}
 
 	if (vpt->type >= TMPL_TYPE_MAX) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: tmpl_t type was %i "
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: tmpl_t type was %u "
 				     "(outside range of tmpl_type_table)", file, line, vpt->type);
 	}
 
 	if (!vpt->name && (vpt->quote != T_INVALID)) {
 		char quote = vpt->quote >= T_TOKEN_LAST ? '?' : fr_token_quote[vpt->quote];
 
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: Quote type '%c' (%i) was set for NULL name",
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: Quote type '%c' (%u) was set for NULL name",
 				     file, line, quote, vpt->quote);
 	}
 
 	if (vpt->name && (vpt->quote == T_INVALID)) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: No quoting type was set for name \"%.*s\"",
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: No quoting type was set for name \"%.*s\"",
 				     file, line, (int)vpt->len, vpt->name);
 	}
 
@@ -5474,27 +5474,27 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 	switch (vpt->type) {
 	case TMPL_TYPE_DATA_UNRESOLVED:
 		if (!vpt->data.unescaped) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA_UNRESOLVED "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_DATA_UNRESOLVED "
 					     "unescaped field is NULL", file, line);
 		 }
 		break;
 
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 		if (!vpt->data.xlat.ex) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_XLAT "
 					     "has a NULL xlat.ex field", file, line);
 
 		}
 
 		if (!xlat_needs_resolving(vpt->data.xlat.ex)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT_UNRESOLVED "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_XLAT_UNRESOLVED "
 					     "does not have 'needs resolving' flag set", file, line);
 		}
 		break;
 
 	case TMPL_TYPE_XLAT:
 		if (!vpt->data.xlat.ex) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_XLAT "
 					     "has a NULL xlat.ex field", file, line);
 
 		}
@@ -5531,7 +5531,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 #ifndef NDEBUG
 			tmpl_attr_debug(stderr, vpt);
 #endif
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR_UNRESOLVED contains %u "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_ATTR_UNRESOLVED contains %u "
 					     "references", file, line, tmpl_attr_list_num_elements(tmpl_attr(vpt)));
 		}
 		break;
@@ -5539,7 +5539,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 	case TMPL_TYPE_ATTR:
 		if ((nz = CHECK_ZEROED(vpt, attribute))) {
 			PRINT_NON_ZEROED(vpt, attribute, nz);
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_ATTR "
 					     "has non-zero bytes after the data.attribute struct in the union",
 					     file, line);
 		}
@@ -5551,7 +5551,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 
 		if (tmpl_attr_tail_is_unknown(vpt)) {
 			if (tmpl_attr_tail_da(vpt) != tmpl_attr_tail_unknown(vpt)) {
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_ATTR "
 						     "da is marked as unknown, but address is not equal to the template's "
 						     "unknown da pointer", file, line);
 			}
@@ -5567,7 +5567,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			 */
 			dict = fr_dict_by_da(tmpl_attr_tail_da(vpt));
 			if (!dict) {
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" (%s) not rooted in a dictionary",
 						     file, line, tmpl_attr_tail_da(vpt)->name,
 						     fr_type_to_str(tmpl_attr_tail_da(vpt)->type));
@@ -5575,7 +5575,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 
 			da = tmpl_attr_tail_da(vpt);
 			if (!tmpl_attr_tail_is_raw(vpt) && (da != tmpl_attr_tail_da(vpt))) {
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_ATTR "
 						     "dictionary pointer %p \"%s\" (%s) "
 						     "and global dictionary pointer %p \"%s\" (%s) differ",
 						     file, line,
@@ -5592,7 +5592,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 	case TMPL_TYPE_DATA:
 		if ((nz = CHECK_ZEROED(vpt, literal))) {
 			PRINT_NON_ZEROED(vpt, literal, nz);
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_DATA "
 					     "has non-zero bytes after the data.literal struct in the union",
 					     file, line);
 		}
@@ -5604,7 +5604,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 		 *	deliberately constructs one.  Accept it.
 		 */
 		if (tmpl_value_type(vpt) >= FR_TYPE_MAX) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA type was "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_DATA type was "
 					     "%i (outside the range of fr_type_ts)", file, line, tmpl_value_type(vpt));
 		}
 		/*
@@ -5614,13 +5614,13 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 		switch (tmpl_value_type(vpt)) {
 		case FR_TYPE_STRING:
 			if (tmpl_value(vpt)->vb_strvalue[tmpl_value_length(vpt)] != '\0') {
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA char buffer not \\0 "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_DATA char buffer not \\0 "
 						     "terminated", file, line);
 			}
 			break;
 
 		case FR_TYPE_STRUCTURAL:
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA is of type TLV",
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_DATA is of type TLV",
 					     file, line);
 
 		default:
@@ -5648,7 +5648,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 	case TMPL_TYPE_REGEX:
 #ifdef HAVE_REGEX
 		if (tmpl_regex(vpt) == NULL) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_REGEX "
 					     "reg.ex field was NULL", file, line);
 		}
 #else
@@ -5658,10 +5658,10 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_UNINITIALISED:
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_UNINITIALISED", file, line);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_UNINITIALISED", file, line);
 
 	case TMPL_TYPE_MAX:
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_MAX", file, line);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: TMPL_TYPE_MAX", file, line);
 	}
 }
 #endif
@@ -6198,11 +6198,11 @@ static void tmpl_attr_rules_debug(tmpl_attr_rules_t const *at_rules)
 
 	FR_FAULT_LOG("\tlist_def          = %s", at_rules->list_def ? at_rules->list_def->name : "");
 
-	FR_FAULT_LOG("\tallow_unknown     = %u", at_rules->allow_unknown);
-	FR_FAULT_LOG("\tallow_unresolved  = %u", at_rules->allow_unresolved);
-	FR_FAULT_LOG("\tallow_wildcard    = %u", at_rules->allow_wildcard);
-	FR_FAULT_LOG("\tallow_foreign     = %u", at_rules->allow_foreign);
-	FR_FAULT_LOG("\tdisallow_filters  = %u", at_rules->disallow_filters);
+	FR_FAULT_LOG("\tallow_unknown     = %d", at_rules->allow_unknown);
+	FR_FAULT_LOG("\tallow_unresolved  = %d", at_rules->allow_unresolved);
+	FR_FAULT_LOG("\tallow_wildcard    = %d", at_rules->allow_wildcard);
+	FR_FAULT_LOG("\tallow_foreign     = %d", at_rules->allow_foreign);
+	FR_FAULT_LOG("\tdisallow_filters  = %d", at_rules->disallow_filters);
 }
 
 

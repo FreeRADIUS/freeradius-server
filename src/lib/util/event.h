@@ -79,14 +79,14 @@ typedef struct fr_event_user_s fr_event_user_t;
 
 /** The type of filter to install for an FD
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_EVENT_FILTER_IO = 1,			//!< Combined filter for read/write functions/
 	FR_EVENT_FILTER_VNODE			//!< Filter for vnode subfilters
 } fr_event_filter_t;
 
 /** Operations to perform on filter
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_EVENT_OP_SUSPEND = 1,		//!< Temporarily remove the relevant filter from kevent.
 	FR_EVENT_OP_RESUME			//!< Reinsert the filter into kevent.
 } fr_event_op_t;

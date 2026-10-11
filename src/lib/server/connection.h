@@ -44,7 +44,7 @@ typedef struct connection_pub_s connection_t; /* We use the private version of t
 #  define _CONST
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	CONNECTION_STATE_HALTED = 0,		//!< The connection is in a halted stat.  It does not have
 						///< a valid file descriptor, and it will not try and
 						///< and create one.
@@ -85,7 +85,7 @@ struct connection_pub_s {
 							///< connecting.
 };
 
-typedef enum {
+typedef enum : uint8_t {
 	CONNECTION_FAILED = 0,			//!< Connection is being reconnected because it failed.
 	CONNECTION_EXPIRED 			//!< Connection is being reconnected because it's at
 						///< the end of its life.  In this case we enter the

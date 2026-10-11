@@ -118,7 +118,7 @@ ldap_create_session_tracking_control LDAP_P((
 #define LDAP_MATCHING_RULE_BIT_AND	"1.2.840.113556.1.4.803"	//!< OID of bit-wise AND LDAP match rule
 #define LDAP_MATCHING_RULE_BIT_OR	"1.2.840.113556.1.4.804"	//!< OID of bit-wise OR LDAP match rule
 
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
 	LDAP_EXT_BINDNAME,				//!< Specifies the user DN or name for an LDAP bind.
 	LDAP_EXT_BINDPW,				//!< Specifies the password for an LDAP bind.
@@ -136,7 +136,7 @@ typedef struct {
 							//!< we've finished using it.
 } fr_ldap_control_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_LDAP_DIRECTORY_UNKNOWN = 0,			//!< We can't determine the directory server.
 
 	FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY,		//!< Directory server is Active Directory.
@@ -153,7 +153,7 @@ typedef enum {
 	FR_LDAP_DIRECTORY_SAMBA				//!< Directory server is Samba.
 } fr_ldap_directory_type_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_LDAP_SYNC_NONE = 0,				//!< No support for LDAP sync
 	FR_LDAP_SYNC_RFC4533,				//!< Directory supports RFC 4533
 	FR_LDAP_SYNC_ACTIVE_DIRECTORY,			//!< Directory supports AD style persistent search.
@@ -163,7 +163,7 @@ typedef enum {
 /** LDAP connection handle states
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_LDAP_STATE_INIT = 0,				//!< Connection uninitialised.
 	FR_LDAP_STATE_START_TLS,			//!< TLS is being negotiated.
 	FR_LDAP_STATE_BIND,				//!< Connection is being bound.
@@ -175,7 +175,7 @@ typedef enum {
 /** Types of LDAP requests
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_REQUEST_SEARCH = 1,			//!< A lookup in an LDAP directory
 	LDAP_REQUEST_MODIFY,				//!< A modification to an LDAP entity
 	LDAP_REQUEST_DELETE,				//!< A deletion of an LDAP entity
@@ -185,7 +185,7 @@ typedef enum {
 /** LDAP query result codes
  *
  */
-typedef enum {
+typedef enum : int8_t {
 	LDAP_RESULT_PENDING = 1,			//!< Result not yet returned
 	LDAP_RESULT_SUCCESS = 0,			//!< Successfully got LDAP results
 	LDAP_RESULT_ERROR = -1,				//!< A general error occurred
@@ -520,7 +520,7 @@ typedef struct {
 	char const		*rmech;			//!< Mech we're continuing with.
 } fr_ldap_sasl_ctx_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_BIND_SIMPLE		= 0,
 #ifdef WITH_SASL
 	LDAP_BIND_SASL
@@ -531,7 +531,7 @@ typedef struct ldap_filter_s ldap_filter_t;
 
 /** Types of parsed LDAP filter nodes
  */
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_FILTER_NODE		= 0,		//!< The filter node is an individual one
 							//!< to be evaluated against an attribute.
 	LDAP_FILTER_GROUP				//!< The filter node is a parent of a group
@@ -540,7 +540,7 @@ typedef enum {
 
 /** Logical operators for use in LDAP filters
  */
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_FILTER_LOGIC_AND		= 1,
 	LDAP_FILTER_LOGIC_OR,
 	LDAP_FILTER_LOGIC_NOT
@@ -548,7 +548,7 @@ typedef enum {
 
 /** Operators for use in LDAP filters
  */
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_FILTER_OP_UNSET		= 0,		//!< Attribute not set yet
 	LDAP_FILTER_OP_EQ,				//!< Attribute equals value
 	LDAP_FILTER_OP_SUBSTR,				//!< Attribute matches string with wildcards
@@ -581,7 +581,7 @@ struct ldap_filter_s {
 /** Codes returned by fr_ldap internal functions
  *
  */
-typedef enum {
+typedef enum : int8_t {
 	LDAP_PROC_REFERRAL = 2,				//!< LDAP server returned referral URLs.
 	LDAP_PROC_CONTINUE = 1,				//!< Operation is in progress.
 	LDAP_PROC_SUCCESS = 0,				//!< Operation was successful.

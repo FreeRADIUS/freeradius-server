@@ -91,7 +91,7 @@ typedef struct {
 /** Client states
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	PR_CLIENT_INVALID = 0,
 	PR_CLIENT_STATIC,				//!< static / global clients
 	PR_CLIENT_DYNAMIC,				//!< dynamically defined client
@@ -3057,7 +3057,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		client->state = PR_CLIENT_DYNAMIC;
 		client->radclient->active = true;
 
-		INFO("proto_%s - Verification succeeded for packet from dynamic client %pV - processing %d queued packets",
+		INFO("proto_%s - Verification succeeded for packet from dynamic client %pV - processing %u queued packets",
 		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr),
 		     fr_heap_num_elements(client->pending));
 	}
@@ -3272,7 +3272,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		 *	Can't add v4 networks to a v6 socket, or vice versa.
 		 */
 		if (allow[i].af != af) {
-			fr_strerror_printf("Address family in entry %zd - 'allow = %pV' "
+			fr_strerror_printf("Address family in entry %zu - 'allow = %pV' "
 					   "does not match 'ipaddr'", i + 1, fr_box_ipaddr(allow[i]));
 			talloc_free(trie);
 			return NULL;
@@ -3341,7 +3341,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		 *	Can't add v4 networks to a v6 socket, or vice versa.
 		 */
 		if (deny[i].af != af) {
-			fr_strerror_printf("Address family in entry %zd - 'deny = %pV' "
+			fr_strerror_printf("Address family in entry %zu - 'deny = %pV' "
 					   "does not match 'ipaddr'", i + 1, fr_box_ipaddr(deny[i]));
 			talloc_free(trie);
 			return NULL;
@@ -3364,7 +3364,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		network = fr_trie_lookup_by_key(trie,
 					 &deny[i].addr, deny[i].prefix);
 		if (!network) {
-			fr_strerror_printf("The network in entry %zd - 'deny = %pV' is not "
+			fr_strerror_printf("The network in entry %zu - 'deny = %pV' is not "
 					   "contained within a previous 'allow'", i + 1, fr_box_ipaddr(deny[i]));
 			talloc_free(trie);
 			return NULL;
@@ -3376,7 +3376,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		 *	adding a "deny" inside of a "deny".
 		 */
 		if (network->af != af) {
-			fr_strerror_printf("The network in entry %zd - 'deny = %pV' is overlaps "
+			fr_strerror_printf("The network in entry %zu - 'deny = %pV' is overlaps "
 					   "with another 'deny' rule", i + 1, fr_box_ipaddr(deny[i]));
 			talloc_free(trie);
 			return NULL;

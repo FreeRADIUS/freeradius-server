@@ -134,7 +134,7 @@ static conf_parser_t tls_chain_config[] = {
 			 .func = tls_chain_private_key_file_parse },
 
 	{ FR_CONF_OFFSET("verify_mode", fr_tls_chain_conf_t, verify_mode),
-			 .func = cf_table_parse_int,
+			 .func = cf_table_parse_uint8,
 			 .uctx = &(cf_table_parse_ctx_t){
 			 	.table = chain_verify_mode_table,
 			 	.len = &chain_verify_mode_table_len
@@ -146,14 +146,14 @@ static conf_parser_t tls_chain_config[] = {
 
 static conf_parser_t tls_verify_config[] = {
 	{ FR_CONF_OFFSET("mode", fr_tls_verify_conf_t, mode),
-			 .func = cf_table_parse_int,
+			 .func = cf_table_parse_uint8,
 			 .uctx = &(cf_table_parse_ctx_t){
 			 	.table = verify_mode_table,
 			 	.len = &verify_mode_table_len
 			 },
 			 .dflt = "all" },
 	{ FR_CONF_OFFSET("attribute_mode", fr_tls_verify_conf_t, attribute_mode),
-			 .func = cf_table_parse_int,
+			 .func = cf_table_parse_uint8,
 			 .uctx = &(cf_table_parse_ctx_t){
 			 	.table = verify_mode_table,
 			 	.len = &verify_mode_table_len

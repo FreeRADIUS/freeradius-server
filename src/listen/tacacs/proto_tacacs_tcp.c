@@ -221,7 +221,7 @@ have_packet:
 	if (in_buffer < (size_t) packet_len) {
 		*leftover = in_buffer;
 		DEBUG3("proto_tacacs_tcp - Received packet fragment of %zu bytes (%zu bytes now pending)",
-		       packet_len, *leftover);
+		       (size_t)packet_len, *leftover);
 		return 0;
 	}
 

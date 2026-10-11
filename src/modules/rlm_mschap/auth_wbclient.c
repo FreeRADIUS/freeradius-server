@@ -258,9 +258,9 @@ release:
 		 * neither of which are particularly likely.
 		 */
 		if (error && error->display_string) {
-			REDEBUG2("libwbclient error: wbcErr %d (%s)", err, error->display_string);
+			REDEBUG2("libwbclient error: wbcErr %u (%s)", err, error->display_string);
 		} else {
-			REDEBUG2("libwbclient error: wbcErr %d", err);
+			REDEBUG2("libwbclient error: wbcErr %u", err);
 		}
 		break;
 	}

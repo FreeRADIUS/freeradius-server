@@ -14,7 +14,7 @@ RCSIDH(rlm_mschap_h, "$Id$")
 #endif
 
 /* Method of authentication we are going to use */
-typedef enum {
+typedef enum : uint8_t {
 	AUTH_INTERNAL		= 0, /* MS-CHAP-Use-NTLM-Auth = no */
 	AUTH_NTLMAUTH_EXEC	= 1, /* MS-CHAP-Use-NTLM-Auth = yes */
 	AUTH_AUTO		= 2, /* MS-CHAP-Use-NTLM-Auth = auto */

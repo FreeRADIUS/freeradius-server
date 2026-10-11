@@ -51,7 +51,7 @@ RCSID("$Id$")
 #include "edit.h"
 #include "calc.h"
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_EDIT_INVALID = 0,
 	FR_EDIT_DELETE,			//!< delete a VP
 	FR_EDIT_VALUE,			//!< edit a VP in place

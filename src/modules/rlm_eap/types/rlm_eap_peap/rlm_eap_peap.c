@@ -43,7 +43,7 @@ typedef struct {
 	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_peap_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	PEAP_STATUS_INVALID,
 	PEAP_STATUS_SENT_TLV_SUCCESS,
 	PEAP_STATUS_SENT_TLV_FAILURE,
@@ -53,7 +53,7 @@ typedef enum {
 	PEAP_STATUS_PHASE2,
 } peap_status;
 
-typedef enum {
+typedef enum : uint8_t {
 	PEAP_RESUMPTION_NO,
 	PEAP_RESUMPTION_YES,
 	PEAP_RESUMPTION_MAYBE
@@ -218,7 +218,7 @@ static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 		}
 
 		if (eap_packet->data[0] != FR_PEAP_EXTENSIONS_TYPE) {
-			REDEBUG("Invalid inner tunnel data, expected method (%u), got (%u)",
+			REDEBUG("Invalid inner tunnel data, expected method (%d), got (%u)",
 				FR_PEAP_EXTENSIONS_TYPE, eap_packet->data[0]);
 			return -1;
 		}
@@ -240,7 +240,7 @@ static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 	 */
 	case FR_EAP_METHOD_MSCHAPV2:
 	default:
-		RDEBUG2("EAP method %s (%d)", eap_type2name(eap_method), eap_method);
+		RDEBUG2("EAP method %s (%u)", eap_type2name(eap_method), eap_method);
 		return 0;
 	}
 
@@ -373,7 +373,7 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 		if (FR_RADIUS_PACKET_CODE_VALID(reply->code)) {
 			RDEBUG2("Got tunneled reply %s", fr_radius_packet_name[reply->code]);
 		} else {
-			RDEBUG2("Got tunneled reply code %i", reply->code);
+			RDEBUG2("Got tunneled reply code %u", reply->code);
 		}
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->reply_pairs, NULL);
 	}
@@ -409,7 +409,7 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 		RETURN_UNLANG_HANDLED;
 
 	default:
-		REDEBUG2("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		REDEBUG2("Unknown RADIUS packet type %u: rejecting tunneled user", reply->code);
 		RETURN_UNLANG_REJECT;
 	}
 }

@@ -32,7 +32,7 @@ extern "C" {
  *
  * These deal exclusively with control flow.
  */
-typedef enum {
+typedef enum : int8_t {
 	UNLANG_ACTION_FAIL = -1,		//!< Encountered an unexpected error.
 						/* 0 interntionally left unused to avoid initialisation errors */
 	UNLANG_ACTION_CALCULATE_RESULT = 1,	//!< Calculate a new section #rlm_rcode_t value.

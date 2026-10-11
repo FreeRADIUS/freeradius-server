@@ -1777,7 +1777,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
 {
 	fr_radius_encode_ctx_t	*packet_ctx = talloc_get_type_abort(proto_ctx, fr_radius_encode_ctx_t);
-	int packet_type = FR_RADIUS_CODE_ACCESS_REQUEST;
+	uint32_t packet_type = FR_RADIUS_CODE_ACCESS_REQUEST;
 	fr_pair_t *vp;
 	ssize_t slen;
 	uint8_t const *request_authenticator = NULL;

@@ -39,7 +39,7 @@
  */
 static _Thread_local fr_dlist_head_t *command_set_free_list;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_REDIS_COMMAND_NORMAL = 0,			//!< A normal, non-transactional command.
 	FR_REDIS_COMMAND_TRANSACTION_START,		//!< Start of a transaction block. Either WATCH or MULTI.
 							///< if a transaction is started with WATCH, then multi
@@ -50,7 +50,7 @@ typedef enum {
 							///< MULTI command must be requeued.
 } fr_redis_command_type_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_REDIS_COMMAND_FMT_EXPANDED = 0,		//!< A command as a single string
 	FR_REDIS_COMMAND_FMT_ARGV,			//!< A command as an argv array
 	FR_REDIS_COMMAND_FMT_PREFORMATTED		//!< A command preformatted with redisCommandFormat

@@ -86,7 +86,7 @@ static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *un
 	 *	before.
 	 */
 	if (!cf_section_name2(cs)) {
-		int i;
+		rlm_rcode_t i;
 
 		c->debug_name = c->name = "catch";
 

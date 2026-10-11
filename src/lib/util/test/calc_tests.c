@@ -1364,7 +1364,7 @@ static void test_int64_and(void)
 
 	TEST_CHECK(fr_value_calc_binary_op(autofree, &dst, FR_TYPE_INT64, &a, T_AND, &b) == 0);
 	TEST_CHECK(dst.vb_int64 == 0x00ff);
-	TEST_MSG("Expected 0x00ff, got 0x%" PRIx64, dst.vb_int64);
+	TEST_MSG("Expected 0x00ff, got 0x%" PRIx64, (uint64_t)dst.vb_int64);
 }
 
 static void test_int64_or(void)
@@ -1378,7 +1378,7 @@ static void test_int64_or(void)
 
 	TEST_CHECK(fr_value_calc_binary_op(autofree, &dst, FR_TYPE_INT64, &a, T_OR, &b) == 0);
 	TEST_CHECK(dst.vb_int64 == 0xf00f);
-	TEST_MSG("Expected 0xf00f, got 0x%" PRIx64, dst.vb_int64);
+	TEST_MSG("Expected 0xf00f, got 0x%" PRIx64, (uint64_t)dst.vb_int64);
 }
 
 static void test_int64_xor(void)
@@ -1392,7 +1392,7 @@ static void test_int64_xor(void)
 
 	TEST_CHECK(fr_value_calc_binary_op(autofree, &dst, FR_TYPE_INT64, &a, T_XOR, &b) == 0);
 	TEST_CHECK(dst.vb_int64 == 0xf0f0);
-	TEST_MSG("Expected 0xf0f0, got 0x%" PRIx64, dst.vb_int64);
+	TEST_MSG("Expected 0xf0f0, got 0x%" PRIx64, (uint64_t)dst.vb_int64);
 }
 
 static void test_int64_shift(void)
@@ -1407,12 +1407,12 @@ static void test_int64_shift(void)
 	/* left shift */
 	TEST_CHECK(fr_value_calc_binary_op(autofree, &dst, FR_TYPE_INT64, &a, T_LSHIFT, &b) == 0);
 	TEST_CHECK(dst.vb_int64 == 0x1000);
-	TEST_MSG("Expected 0x1000, got 0x%" PRIx64, dst.vb_int64);
+	TEST_MSG("Expected 0x1000, got 0x%" PRIx64, (uint64_t)dst.vb_int64);
 
 	/* right shift */
 	TEST_CHECK(fr_value_calc_binary_op(autofree, &dst, FR_TYPE_INT64, &a, T_RSHIFT, &b) == 0);
 	TEST_CHECK(dst.vb_int64 == 0x10);
-	TEST_MSG("Expected 0x10, got 0x%" PRIx64, dst.vb_int64);
+	TEST_MSG("Expected 0x10, got 0x%" PRIx64, (uint64_t)dst.vb_int64);
 }
 
 static void test_int64_shift_too_large(void)

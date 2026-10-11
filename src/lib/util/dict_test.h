@@ -32,7 +32,7 @@ extern "C" {
 
 /** Test attribute numbers
  */
-typedef enum {
+typedef enum : int8_t {
 	FR_TEST_ATTR_INVALID = -1,
 	FR_TEST_ATTR_STRING = 1,
 	FR_TEST_ATTR_OCTETS,

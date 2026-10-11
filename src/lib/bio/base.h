@@ -44,7 +44,7 @@ RCSIDH(lib_bio_base_h, "$Id$")
 #  define _CONST
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_BIO_ERROR_NONE = 0,
 	FR_BIO_ERROR_GENERIC,				//!< -1 == generic "failed" error - check fr_strerror()
 	FR_BIO_ERROR_IO_WOULD_BLOCK,     		//!< IO would block

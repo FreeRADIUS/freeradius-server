@@ -105,8 +105,8 @@ static ssize_t fr_der_decode_boolean(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	FR_DBUFF_OUT_RETURN(&value, &our_in);
 
 	if (unlikely((value != DER_BOOLEAN_FALSE) && (value != DER_BOOLEAN_TRUE))) {
-		fr_strerror_printf_push("Boolean is not correctly DER encoded (0x%02" PRIx32 " or 0x%02" PRIx32 ").", DER_BOOLEAN_FALSE,
-				   DER_BOOLEAN_TRUE);
+		fr_strerror_printf_push("Boolean is not correctly DER encoded (0x%02" PRIx32 " or 0x%02" PRIx32 ").", (uint32_t)DER_BOOLEAN_FALSE,
+				   (uint32_t)DER_BOOLEAN_TRUE);
 		return -1;
 	}
 
@@ -221,7 +221,7 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	uint8_t	   unused_bits = 0;
 	uint8_t	  *data;
 
-	ssize_t data_len = 0, index = 0;
+	size_t	data_len = 0, index = 0;
 	size_t	len = fr_dbuff_remaining(&our_in);
 
 	fr_assert(fr_type_is_octets(parent->type) || fr_type_is_struct(parent->type));
@@ -325,11 +325,12 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 		ssize_t slen;
 
 		slen = fr_struct_from_network(ctx, out, parent, data, data_len, decode_ctx, NULL, NULL);
+		if (unlikely(slen < 0)) goto error;
 
 		/*
 		 *	If the structure decoder didn't consume all the data, we need to free the data and bail out
 		 */
-		if (unlikely(slen < data_len - 1)) {
+		if (unlikely(((size_t)slen + 1) < data_len)) {
 			fr_strerror_printf_push("Bitstring structure decoder didn't consume all data. Consumed %zd of %zu bytes",
 					   slen, data_len);
 		error:
@@ -877,7 +878,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
 				if ((tag_byte & DER_TAG_CLASS_MASK) == FR_DER_CLASS_UNIVERSAL) {
 				unexpected_class:
-					fr_strerror_printf_push("Tag has unexpected class %02x", tag_byte & DER_TAG_CLASS_MASK);
+					fr_strerror_printf_push("Tag has unexpected class %02x", (unsigned int)(tag_byte & DER_TAG_CLASS_MASK));
 					goto error;
 				}
 

@@ -307,12 +307,12 @@ void radius_track_state_log(fr_log_t const *log, fr_log_type_t log_type, char co
 
 		if (entry->request) {
 			fr_log(log, log_type, file, line,
-			       "[%zu] %"PRIu64 " - Allocated at %s:%u to request %p (%s), uctx %p",
+			       "[%zu] %"PRIu64 " - Allocated at %s:%d to request %p (%s), uctx %p",
 			       i, entry->operation,
 			       entry->file, entry->line, entry->request, entry->request->name, entry->uctx);
 		} else {
 			fr_log(log, log_type, file, line,
-			       "[%zu] %"PRIu64 " - Freed at %s:%u",
+			       "[%zu] %"PRIu64 " - Freed at %s:%d",
 			       i, entry->operation, entry->file, entry->line);
 		}
 

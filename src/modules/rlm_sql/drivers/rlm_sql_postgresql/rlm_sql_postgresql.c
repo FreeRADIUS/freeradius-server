@@ -771,7 +771,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 
 		if (config->sql_port) {
-			db_string = talloc_asprintf_append(db_string, " port=%i", config->sql_port);
+			db_string = talloc_asprintf_append(db_string, " port=%" PRIu32, config->sql_port);
 		}
 
 		if (config->sql_login[0] != '\0') {
@@ -803,7 +803,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 
 		if (config->sql_port && !strstr(db_string, "port=")) {
-			db_string = talloc_asprintf_append(db_string, " port=%i", config->sql_port);
+			db_string = talloc_asprintf_append(db_string, " port=%" PRIu32, config->sql_port);
 		}
 
 		if ((config->sql_login[0] != '\0') && !strstr(db_string, "user=")) {

@@ -130,7 +130,7 @@ int eap_md5_verify(request_t *request, MD5_PACKET *packet, fr_pair_t *password,
 	}
 
 	if ((1 + password->vp_length + MD5_CHALLENGE_LEN) > sizeof(string)) {
-		REDEBUG("Password is too long (expected <= %u", FR_MAX_STRING_LEN);
+		REDEBUG("Password is too long (expected <= %u)", FR_MAX_STRING_LEN);
 		return 0;
 	}
 

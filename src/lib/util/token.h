@@ -33,7 +33,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/table.h>
 
-typedef enum fr_token {
+typedef enum fr_token : uint8_t {
 	T_INVALID = 0,			/* invalid token */
 	T_EOL,				/* end of line */
 	T_LCBRACE,			/* { */

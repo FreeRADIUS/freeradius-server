@@ -93,12 +93,12 @@ static conf_parser_t const proto_radius_config[] = {
 	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
 	{ FR_CONF_OFFSET("require_message_authenticator", proto_radius_t, require_message_authenticator),
-	  .func = cf_table_parse_int,
+	  .func = cf_table_parse_uint8,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_require_ma_table, .len = &fr_radius_require_ma_table_len },
 	  .dflt = "no" },
 
 	{ FR_CONF_OFFSET("limit_proxy_state", proto_radius_t, limit_proxy_state),
-	  .func = cf_table_parse_int,
+	  .func = cf_table_parse_uint8,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_limit_proxy_state_table, .len = &fr_radius_limit_proxy_state_table_len },
 	  .dflt = "auto" },
 
@@ -689,7 +689,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		       request->reply->socket.inet.src_port,
 		       fr_box_ipaddr(request->reply->socket.inet.dst_ipaddr),
 		       request->reply->socket.inet.dst_port,
-		       data_len,
+		       (size_t)data_len,
 		       request->async->listen->name);
 
 		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);

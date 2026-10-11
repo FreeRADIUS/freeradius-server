@@ -231,7 +231,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	};
 
 	if (RDEBUG_ENABLED) {
-		RDEBUG("Sending %s XID %08X to %pV:%d", dhcp_message_types[code], request->packet->id, &vp->data, port);
+		RDEBUG("Sending %s XID %08" PRIX32 " to %pV:%d", dhcp_message_types[code], (uint32_t)request->packet->id, &vp->data, port);
 		RINDENT();
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 		REXDENT();

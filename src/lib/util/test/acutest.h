@@ -331,7 +331,7 @@
     extern "C" {
 #endif
 
-enum acutest_state_ {
+enum acutest_state_ : int8_t {
     ACUTEST_STATE_INITIAL = -4,
     ACUTEST_STATE_SELECTED = -3,
     ACUTEST_STATE_NEEDTORUN = -2,

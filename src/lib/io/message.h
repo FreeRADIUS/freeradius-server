@@ -34,7 +34,7 @@ extern "C" {
 
 typedef struct fr_message_set_s fr_message_set_t;
 
-typedef enum fr_message_status_t {
+typedef enum fr_message_status_t : uint8_t {
 	FR_MESSAGE_FREE = 0,
 	FR_MESSAGE_USED,
 	FR_MESSAGE_LOCALIZED,

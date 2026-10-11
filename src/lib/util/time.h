@@ -45,7 +45,7 @@ extern "C" {
 
 /** The base resolution for print parse operations
  */
-typedef enum {
+typedef enum : int8_t {
 	FR_TIME_RES_INVALID = -1,
 	FR_TIME_RES_SEC = 0,
 	FR_TIME_RES_MIN,

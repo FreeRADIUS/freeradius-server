@@ -355,7 +355,7 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 		bool		is_critical = false;
 
 		if (sss_p == sss_end) {
-			fr_strerror_printf("Too many extensions.  Maximum is %ld", sss_len);
+			fr_strerror_printf("Too many extensions.  Maximum is %zu", sss_len);
 			goto error;
 		}
 
@@ -1222,11 +1222,11 @@ void fr_ldap_entry_dump(LDAPMessage *entry)
 				}
 
 				if (binary) {
-					DEBUG("%s[%u]: %pV", attr, i, fr_box_octets((uint8_t *)vals[i]->bv_val, vals[i]->bv_len));
+					DEBUG("%s[%d]: %pV", attr, i, fr_box_octets((uint8_t *)vals[i]->bv_val, vals[i]->bv_len));
 					continue;
 				}
 
-				DEBUG("%s[%u]: %pV", attr, i, fr_box_strvalue_len(vals[i]->bv_val, vals[i]->bv_len));
+				DEBUG("%s[%d]: %pV", attr, i, fr_box_strvalue_len(vals[i]->bv_val, vals[i]->bv_len));
 			}
 
 			ldap_value_free_len(vals);

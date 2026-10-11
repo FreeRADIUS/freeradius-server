@@ -37,7 +37,7 @@ FR_DLIST_TYPEDEFS(timer, fr_timer_head_t, fr_timer_entry_t)
 /** What type of event list the timer is inserted into
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	TIMER_LIST_TYPE_LST = 1,			//!< Self-sorting timer list based on a left leaning skeleton tree.
 	TIMER_LIST_TYPE_ORDERED = 2,			//!< Strictly ordered list of events in a dlist.
 	TIMER_LIST_TYPE_SHARED = 3			//!< all events share one event callback

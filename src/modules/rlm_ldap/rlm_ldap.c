@@ -102,7 +102,7 @@ static conf_parser_t profile_config[] = {
 	{ FR_CONF_OFFSET("scope", rlm_ldap_t, profile.obj_scope), .dflt = "base",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("search_mode", rlm_ldap_t, profile.search_mode), .dflt = "auto",
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = profile_search_mode_table, .len = &profile_search_mode_table_len } },
+	  .func = cf_table_parse_uint8, .uctx = &(cf_table_parse_ctx_t){ .table = profile_search_mode_table, .len = &profile_search_mode_table_len } },
 	{ FR_CONF_V3_DEPRECATED("attribute", rlm_ldap_t, user.profile_attr) },
 	{ FR_CONF_V3_DEPRECATED("attribute_suspend", rlm_ldap_t, user.profile_attr_suspend) },
 	{ FR_CONF_OFFSET("check_attribute", rlm_ldap_t, profile.check_attr) },
@@ -413,7 +413,7 @@ typedef struct {
 	LDAPControl		*serverctrls[LDAP_MAX_CONTROLS];
 } ldap_map_ctx_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	LDAP_SCHEME_UNIX = 0,
 	LDAP_SCHEME_TCP,
 	LDAP_SCHEME_TCP_SSL

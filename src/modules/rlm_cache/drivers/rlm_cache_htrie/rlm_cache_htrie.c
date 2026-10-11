@@ -71,7 +71,7 @@ int cf_htrie_type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci,
 	rlm_cache_htrie_t	*inst = talloc_get_type_abort(parent, rlm_cache_htrie_t);
 	int ret;
 
-	ret = cf_table_parse_int(ctx, out, parent, ci, rule);
+	ret = cf_table_parse_uint8(ctx, out, parent, ci, rule);
 	if (unlikely(ret < 0)) return ret;
 
 	/*

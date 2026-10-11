@@ -121,14 +121,14 @@ typedef struct {
  *
  *	In addition, there are state changes associated with BFD packets.
  */
-typedef enum {
+typedef enum : uint8_t {
 	BFD_WRAPPER_INVALID = 0,
 	BFD_WRAPPER_RECV_PACKET,
 	BFD_WRAPPER_SEND_PACKET,
 	BFD_WRAPPER_STATE_CHANGE,
 } bfd_wrapper_type_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	BFD_STATE_CHANGE_INVALID = 0,
 	BFD_STATE_CHANGE_NONE,			//!< no state change
 	BFD_STATE_CHANGE_ADMIN_DOWN,		//!< we are admin-down

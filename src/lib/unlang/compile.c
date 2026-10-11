@@ -483,7 +483,7 @@ unlang_group_t *unlang_group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang
  */
 static void compile_set_default_actions(unlang_t *c, unlang_compile_ctx_t *unlang_ctx)
 {
-	int i;
+	rlm_rcode_t i;
 
 	/*
 	 *	Note that we do NOT copy over the default retries, as
@@ -988,7 +988,7 @@ static bool compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 		actions->actions[rcode] = action;
 
 	} else {		/* set all unset values to the default */
-		int i;
+		rlm_rcode_t i;
 
 		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 			if (!actions->actions[i]) actions->actions[i] = action;
@@ -1085,7 +1085,7 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 
 bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *cs, bool module_retry)
 {
-	int i;
+	rlm_rcode_t i;
 	bool disallow_retry_action = false;
 	CONF_ITEM *csi;
 

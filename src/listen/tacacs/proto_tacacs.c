@@ -381,7 +381,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		       request->reply->socket.inet.src_port,
 		       fr_box_ipaddr(request->reply->socket.inet.dst_ipaddr),
 		       request->reply->socket.inet.dst_port,
-		       data_len,
+		       (size_t)data_len,
 		       request->async->listen->name);
 
 		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);

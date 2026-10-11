@@ -73,14 +73,14 @@ int fr_machine_current(fr_machine_t *m);
 
 char const *fr_machine_state_name(fr_machine_t *m, int state);
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_MACHINE_ENTER,
 	FR_MACHINE_PROCESS,
 	FR_MACHINE_EXIT,
 	FR_MACHINE_SIGNAL,
 } fr_machine_hook_type_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_MACHINE_PRE = 0,
 	FR_MACHINE_POST,
 } fr_machine_hook_sense_t;

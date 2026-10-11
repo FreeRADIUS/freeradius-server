@@ -66,7 +66,7 @@ RCSIDH(radsniff_h, "$Id$")
 #define RDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_lvl > 1)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
 #define RDEBUG2(fmt, ...)	if (conf->print_packet && (fr_debug_lvl > 2)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
 
-typedef enum {
+typedef enum : uint8_t {
 	RS_NORMAL	= 0x01,
 	RS_UNLINKED	= 0x02,
 	RS_RTX		= 0x04,
@@ -78,7 +78,7 @@ typedef enum {
 typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle,
 				   fr_packet_t *packet, fr_pair_list_t *list,
 				   struct timeval *elapsed, struct timeval *latency, bool response, bool body);
-typedef enum {
+typedef enum : uint8_t {
 #ifdef HAVE_COLLECTDC_H
 	RS_STATS_OUT_COLLECTD = 1,
 #endif

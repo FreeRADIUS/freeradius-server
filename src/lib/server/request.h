@@ -85,13 +85,13 @@ extern "C" {
 					(sizeof(fr_pair_t) * 10) \
 				)
 
-typedef enum {
+typedef enum : uint8_t {
 	REQUEST_ACTIVE = 1,		//!< Request is active (running or runnable)
 	REQUEST_STOP_PROCESSING,	//!< Request has been signalled to stop
 	REQUEST_DONE,			//!< Request has completed
 } request_master_state_t;
 
-typedef enum request_state_t {
+typedef enum request_state_t : uint8_t {
 	REQUEST_INIT = 0,
 	REQUEST_RECV,
 	REQUEST_PROCESS,
@@ -175,7 +175,7 @@ typedef struct {
 	fr_pair_t		*local;		//!< Pair containing local variables
 } request_pair_lists_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	REQUEST_TYPE_EXTERNAL = 0,		//!< A request received on the wire.
 	REQUEST_TYPE_INTERNAL,			//!< A request generated internally.
 	REQUEST_TYPE_DETACHED 			//!< A request that was generated internally, but is now detached

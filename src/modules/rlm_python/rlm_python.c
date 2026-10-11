@@ -1129,7 +1129,7 @@ static void python_error_log(rlm_python_t const *inst, request_t *request)
 #if PY_VERSION_HEX >= 0x030A0000
 			PyCodeObject *code = PyFrame_GetCode(cur_frame);
 
-			ROPTIONAL(RERROR, ERROR, "[%ld] %s:%d at %s()",
+			ROPTIONAL(RERROR, ERROR, "[%zu] %s:%d at %s()",
 				fnum,
 				PyUnicode_AsUTF8(code->co_filename),
 				PyFrame_GetLineNumber(cur_frame),

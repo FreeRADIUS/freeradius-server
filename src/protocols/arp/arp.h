@@ -64,7 +64,7 @@ typedef struct {
 	uint8_t		tpa[4];			//!< Target protocol address.
 } fr_arp_packet_t;
 
-typedef enum {
+typedef enum : uint16_t {
 	FR_ARP_INVALID = 0,
 	FR_ARP_REQUEST = 1,
 	FR_ARP_REPLY = 2,

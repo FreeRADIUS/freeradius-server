@@ -178,7 +178,7 @@ enum {
  *
  * @note New extension structures should also be added to the to the appropriate table in dict_ext.c
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_DICT_ATTR_EXT_NAME = 0,				//!< Name of the attribute.
 	FR_DICT_ATTR_EXT_CHILDREN,				//!< Attribute has children.
 	FR_DICT_ATTR_EXT_REF,					//!< Attribute references another
@@ -258,7 +258,7 @@ struct dict_attr_s {
  *
  * @note New extension structures should also be added to the appropriate table in dict_ext.c
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_DICT_ENUM_EXT_ATTR_REF = 0,				//!< Reference to a child attribute associated with this key value
 	FR_DICT_ENUM_EXT_MAX
 } fr_dict_enum_ext_t;
@@ -338,7 +338,7 @@ typedef struct {
 /** Errors returned by attribute lookup functions
  *
  */
-typedef enum {
+typedef enum : int8_t {
 	FR_DICT_ATTR_OK			= 0,			//!< No error.
 	FR_DICT_ATTR_NOTFOUND		= -1,			//!< Attribute couldn't be found.
 	FR_DICT_ATTR_PROTOCOL_NOTFOUND	= -2,			//!< Protocol couldn't be found.

@@ -1978,26 +1978,35 @@ if test "x$developer" = "xyes"; then
       -W \
       -Weverything \
       -Wformat=2 \
-      -Wno-date-time \
-      -Wno-disabled-macro-expansion \
-      -Wno-format-pedantic \
       -Wno-cast-align \
+      -Wno-cast-function-type-strict \
       -Wno-conversion \
       -Wno-covered-switch-default \
+      -Wno-date-time \
       -Wno-default-const-init-field-unsafe \
+      -Wno-disabled-macro-expansion \
       -Wno-documentation-unknown-command \
       -Wno-extended-offsetof \
+      -Wno-format-pedantic \
       -Wno-gnu-empty-initializer \
       -Wno-gnu-statement-expression \
       -Wno-gnu-zero-variadic-macro-arguments \
+      -Wno-implicit-int-enum-cast \
+      -Wno-implicit-void-ptr-cast \
+      -Wno-ms-bitfield-padding \
       -Wno-packed \
       -Wno-padded \
       -Wno-poison-system-directories \
+      -Wno-pre-c11-compat \
+      -Wno-pre-c23-compat \
       -Wno-reserved-id-macro \
+      -Wno-reserved-identifier \
       -Wno-shorten-64-to-32 \
       -Wno-sign-conversion \
+      -Wno-switch-default \
       -Wno-switch-enum \
       -Wno-unreachable-code-generic-assoc \
+      -Wno-unsafe-buffer-usage \
       -Wno-vla \
       $verify_ptr"
   elif test "x$GCC" = "xyes"; then

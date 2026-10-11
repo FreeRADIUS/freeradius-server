@@ -399,9 +399,9 @@ process_error:
 
 	error_string:
 		if (lib_errno == srv_errno) {
-			fr_strerror_printf("lib error: %s (%u)", ldap_err2string(lib_errno), lib_errno);
+			fr_strerror_printf("lib error: %s (%d)", ldap_err2string(lib_errno), lib_errno);
 		} else {
-			fr_strerror_printf("lib error: %s (%u), srv error: %s (%u)",
+			fr_strerror_printf("lib error: %s (%d), srv error: %s (%d)",
 					   ldap_err2string(lib_errno), lib_errno,
 					   ldap_err2string(srv_errno), srv_errno);
 		}

@@ -29,7 +29,7 @@ RCSIDH(lib_bio_mem_h, "$Id$")
 /** Status returned by the verification callback.
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_BIO_VERIFY_OK = 0,		//!< packet is OK
 	FR_BIO_VERIFY_DISCARD,		//!< the packet should be discarded
 	FR_BIO_VERIFY_WANT_MORE,	//!< not enough data for one packet

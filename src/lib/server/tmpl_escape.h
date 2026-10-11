@@ -27,7 +27,7 @@
 /** Different modes for creating a user context for escaping
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	TMPL_ESCAPE_UCTX_STATIC = 0,			//!< A static (to us) is provided by whatever is initialising
 							///< the tmpl_escape_t.  This is the default.
 	TMPL_ESCAPE_UCTX_ALLOC,				//!< A new uctx of the specified size and type is allocated
@@ -55,7 +55,7 @@ typedef void(*tmpl_escape_uctx_free_t)(void *uctx);
 
 /** When to apply escaping
  */
-typedef enum {
+typedef enum : uint8_t {
 	TMPL_ESCAPE_NONE = 0,				//!< No escaping is performed.
 
 	TMPL_ESCAPE_PRE_CONCAT,				//!< Pre-concatenation escaping is useful for

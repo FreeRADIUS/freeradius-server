@@ -31,7 +31,7 @@ extern "C" {
 
 
 /* Red-Black tree description */
-typedef enum {
+typedef enum : uint8_t {
 	BLACK,
 	RED
 } fr_rb_colour_t;

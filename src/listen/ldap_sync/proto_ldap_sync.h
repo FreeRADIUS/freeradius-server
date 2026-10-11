@@ -67,7 +67,7 @@ typedef struct {
 
 /** Operations to perform on entries
  */
-typedef enum {
+typedef enum : int8_t {
 	SYNC_OP_INVALID			= -1,		//!< Invalid sync operation.
 	SYNC_OP_PRESENT			= 0,		//!< Entry is present and unchanged on the server.
 	SYNC_OP_ADD			= 1,		//!< Entry should be added to our copy.

@@ -30,12 +30,12 @@
 
 #define	SELECTOR_INDEX_UNSET			INT32_MAX
 
-typedef enum {
+typedef enum : uint8_t {
 	JPATH_OPERAND_LITERAL = 0,		//!< Operand is a literal
 	JPATH_OPERAND_JPATH			//!< Operand is a jpath sequence
 } jpath_operand_type;
 
-typedef enum {
+typedef enum : uint8_t {
 	JPATH_SELECTOR_INVALID = 0,
 	JPATH_SELECTOR_ROOT,			//!< Jump to the root of the document.
 	JPATH_SELECTOR_CURRENT,			//!< Continue at the current node in the document.

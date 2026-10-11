@@ -37,7 +37,7 @@ extern "C" {
 extern fr_table_num_ordered_t fr_time_tracking_state_table[];
 extern size_t fr_time_tracking_state_table_len;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TIME_TRACKING_STOPPED = 0,				//!< Time tracking is not running.
 	FR_TIME_TRACKING_RUNNING,				//!< We're currently tracking time in the
 								///< running state.

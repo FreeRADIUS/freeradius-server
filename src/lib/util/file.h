@@ -72,7 +72,7 @@ char const	*fr_cwd_strip(char const *filename);
 
 int 		fr_dirfd(int *dirfd, char const **filename, char const *pathname) CC_HINT(nonnull);
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_GLOBDIR_INVALID = 0,
 	FR_GLOBDIR_FILE,
 #ifdef HAVE_DIRENT_H

@@ -153,7 +153,7 @@ static int parse_field(CONF_ITEM *ci, char const **start, char const *name,
 		 */
 		num = strtoul(p, &end, 10);
 		if ((num < min) || (num > max)) {
-			cf_log_err(ci, "Number is invalid or out of bounds (%d..%d) for %s at %s",
+			cf_log_err(ci, "Number is invalid or out of bounds (%u..%u) for %s at %s",
 				   min, max, name, p);
 			return -1;
 		}
@@ -185,7 +185,7 @@ static int parse_field(CONF_ITEM *ci, char const **start, char const *name,
 			}
 
 			if (next > max) {
-				cf_log_err(ci, "End of range number is invalid or out of bounds (%d..%d) for %s at %s",
+				cf_log_err(ci, "End of range number is invalid or out of bounds (%u..%u) for %s at %s",
 					   min, max, name, p);
 				return -1;
 			}

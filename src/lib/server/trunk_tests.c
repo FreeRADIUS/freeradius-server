@@ -290,7 +290,7 @@ static void _conn_io_loopback(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 
 		to_write = (size_t)slen;
 
-		if (acutest_verbose_level_ >= 3) printf("%s - Read %zu bytes of data\n", __FUNCTION__, slen);
+		if (acutest_verbose_level_ >= 3) printf("%s - Read %zu bytes of data\n", __FUNCTION__, (size_t)slen);
 		slen = write(tc->fd[1], buff, (size_t)to_write);
 		if (slen < 0) return;
 
@@ -301,7 +301,7 @@ static void _conn_io_loopback(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 			}
 			return;
 		} else {
-			if (acutest_verbose_level_ >= 3) printf("%s - Wrote %zu bytes of data\n", __FUNCTION__, slen);
+			if (acutest_verbose_level_ >= 3) printf("%s - Wrote %zu bytes of data\n", __FUNCTION__, (size_t)slen);
 		}
 	}
 }
@@ -480,14 +480,14 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 
 	events = fr_event_corral(el, test_time_base, false);
 	TEST_CHECK(events == 0);	/* I/O events should have been cleared */
-	TEST_MSG("Got %u events", events);
+	TEST_MSG("Got %d events", events);
 
 	trunk_reconnect(trunk, TRUNK_CONN_ACTIVE, CONNECTION_FAILED);
 
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(2));
 	events = fr_event_corral(el, test_time_base, true);
 	TEST_CHECK(events == 1);	/* Two timer events but event loops only adds one to the total*/
-	TEST_MSG("Got %u events", events);
+	TEST_MSG("Got %d events", events);
 	fr_event_service(el);
 
 	TEST_CHECK(trunk_connection_count_by_state(trunk, TRUNK_CONN_CONNECTING) == 2);

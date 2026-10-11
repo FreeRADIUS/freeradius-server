@@ -384,7 +384,7 @@ static void request_common_deinit(request_t *request)
 		      request->alloc_line,
 		      request->name ? request->name : "(null)");
 	fr_assert_msg(!fr_heap_entry_inserted(request->runnable),
-		      "alloced %s:%i: %s still in the runnable heap ID %i",
+		      "alloced %s:%i: %s still in the runnable heap ID %u",
 		      request->alloc_file,
 		      request->alloc_line,
 		      request->name ? request->name : "(null)", request->runnable);

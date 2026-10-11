@@ -77,7 +77,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 
 	count = to_count + fr_pair_list_num_elements(from);
 
-	RDEBUG4("::: FROM %ld TO %d MAX %d", fr_pair_list_num_elements(from), to_count, count);
+	RDEBUG4("::: FROM %zu TO %d MAX %d", fr_pair_list_num_elements(from), to_count, count);
 
 	/*
 	 *	Now that we have the lists initialized, start working

@@ -33,7 +33,7 @@ RCSID("$Id$")
  * are:
  */
 
-typedef enum {
+typedef enum : uint8_t {
 	ASCEND_FILTER_GENERIC = 0,
 	ASCEND_FILTER_IP = 1,
 	ASCEND_FILTER_IPX = 2,
@@ -300,7 +300,7 @@ static fr_table_num_sorted_t const filterType[] = {
 };
 static size_t filterType_len = NUM_ELEMENTS(filterType);
 
-typedef enum {
+typedef enum : uint8_t {
 	FILTER_IN,
 	FILTER_OUT,
 	FILTER_FORWARD,
@@ -367,7 +367,7 @@ static size_t filterProtoName_len = NUM_ELEMENTS(filterProtoName);
  *
  * An enumerated values for the IP filter port comparisons.
  */
-typedef enum {
+typedef enum : uint8_t {
 	RAD_NO_COMPARE = 0,
 	RAD_COMPARE_LESS,
 	RAD_COMPARE_EQUAL,

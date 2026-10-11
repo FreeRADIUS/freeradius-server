@@ -245,7 +245,7 @@ fr_cmp_ret_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
  *	- true if the packet is well-formed
  *	- false if it's a bad packet
  */
-bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, uint32_t *xid)
+bool fr_dhcpv4_ok(uint8_t const *data, size_t data_len, uint8_t *message_type, uint32_t *xid)
 {
 	uint32_t	magic;
 	uint8_t const	*code;
@@ -258,7 +258,7 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	}
 
 	if (data_len > MAX_PACKET_SIZE) {
-		fr_strerror_printf("DHCP packet is too large (%zd > %d)", data_len, MAX_PACKET_SIZE);
+		fr_strerror_printf("DHCP packet is too large (%zu > %d)", data_len, MAX_PACKET_SIZE);
 		return false;
 	}
 

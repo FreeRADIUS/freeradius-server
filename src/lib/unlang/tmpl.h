@@ -38,7 +38,7 @@ extern "C" {
 /** Flags that show the type of arguments included
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	UNLANG_TMPL_ARGS_TYPE_EXEC = 1,				//!< We have arguments for performing an exec.
 } unlang_tmpl_args_type_t;
 

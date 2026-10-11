@@ -40,7 +40,7 @@ RCSID("$Id$")
 #  include <getopt.h>
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	RADICT_OUT_INVALID = 0,
 	RADICT_OUT_FANCY,
 	RADICT_OUT_CSV,
@@ -217,7 +217,7 @@ static void da_print_info(fr_dict_t const *dict, fr_dict_attr_t const *da, int d
 
 	switch(output_format) {
 		case RADICT_OUT_CSV:
-			printf("%s,%s,%s,%d,%s,%s\n",
+			printf("%s,%s,%s,%u,%s,%s\n",
 			       depth == 0 ? fr_dict_root(dict)->name : "",
 			       fr_sbuff_start(&old_str_sbuff),
 			       da->name,
@@ -228,7 +228,7 @@ static void da_print_info(fr_dict_t const *dict, fr_dict_attr_t const *da, int d
 
 		case RADICT_OUT_FANCY:
 		default:
-			printf("%s\t%s\t%s\t%d\t%s\t%s\n",
+			printf("%s\t%s\t%s\t%u\t%s\t%s\n",
 			       depth == 0 ? fr_dict_root(dict)->name : "",
 			       fr_sbuff_start(&old_str_sbuff),
 			       da->name,
@@ -250,7 +250,7 @@ static void da_print_info(fr_dict_t const *dict, fr_dict_attr_t const *da, int d
 
 			switch(output_format) {
 				case RADICT_OUT_CSV:
-					str = fr_asprintf(NULL, "%s,%s,%s,%d,%s,%s,%s,%pV",
+					str = fr_asprintf(NULL, "%s,%s,%s,%u,%s,%s,%s,%pV",
 								depth == 0 ? fr_dict_root(dict)->name : "",
 								fr_sbuff_start(&old_str_sbuff),
 								da->name,
@@ -263,7 +263,7 @@ static void da_print_info(fr_dict_t const *dict, fr_dict_attr_t const *da, int d
 
 				case RADICT_OUT_FANCY:
 				default:
-					str = fr_asprintf(NULL, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%pV",
+					str = fr_asprintf(NULL, "%s\t%s\t%s\t%u\t%s\t%s\t%s\t%pV",
 								depth == 0 ? fr_dict_root(dict)->name : "",
 								fr_sbuff_start(&old_str_sbuff),
 								da->name,

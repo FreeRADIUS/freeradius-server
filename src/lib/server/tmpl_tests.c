@@ -1012,7 +1012,7 @@ static void test_parse_attr_empty_ref(void)
 	TEST_CHECK(vpt == NULL);
 	TEST_MSG("Expected error for empty attr ref '&', got slen=%zd", slen);
 	TEST_CHECK(err != TMPL_ATTR_ERROR_NONE);
-	TEST_MSG("Expected non-zero error code, got %d", err);
+	TEST_MSG("Expected non-zero error code, got %u", err);
 }
 
 static void test_parse_attr_unresolved_disallowed(void)

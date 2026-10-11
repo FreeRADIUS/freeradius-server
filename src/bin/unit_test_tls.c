@@ -642,7 +642,7 @@ static void _tls_connection_error(UNUSED fr_event_list_t *el, int fd, int flags,
 	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
 	if (fd_errno == 0) {
-		DEBUG2("Peer closed the connection on fd %d, event loop reported EOF (flags 0x%x)", fd, flags);
+		DEBUG2("Peer closed the connection on fd %d, event loop reported EOF (flags 0x%x)", fd, (unsigned int)flags);
 		(void) fr_tls_connection_io_error(utt->conn, 0);
 		return;
 	}

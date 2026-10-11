@@ -142,7 +142,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	for (child_num = 1;
 	     (p < end) && (child = fr_dict_attr_child_by_num(parent, child_num)) != NULL;
 	     child_num++) {
-		FR_PROTO_TRACE("Decoding struct %s child %s (%d)", parent->name, child->name, child->attr);
+		FR_PROTO_TRACE("Decoding struct %s child %s (%u)", parent->name, child->name, child->attr);
 		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - remaining %zu", (size_t) (end - p));
 
 		/*

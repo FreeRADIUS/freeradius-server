@@ -86,7 +86,7 @@ RCSIDH(sim_h, "$Id$")
 
 /** The type of auth vector held by a fr_aka_sim_keys_t
  */
-typedef enum {
+typedef enum : uint8_t {
 	AKA_SIM_VECTOR_NONE = 0,
 	AKA_SIM_VECTOR_GSM,					//!< Vector is GSM triplets.
 	AKA_SIM_VECTOR_UMTS,					//!< Vector is UMTS quintuplets.
@@ -96,7 +96,7 @@ typedef enum {
 
 /** Where to get EAP-SIM vectors from
  */
-typedef enum {
+typedef enum : uint8_t {
 	AKA_SIM_VECTOR_SRC_AUTO,				//!< Discover where to get Triplets from automatically.
 	AKA_SIM_VECTOR_SRC_TRIPLETS,				//!< Source of triplets is EAP-SIM-* attributes.
 	AKA_SIM_VECTOR_SRC_QUINTUPLETS,				//!< Source of triplets is derived from EAP-AKA-*
@@ -256,7 +256,7 @@ typedef struct {
 
 extern size_t const fr_aka_sim_attr_sizes[FR_TYPE_MAX + 1][2];
 
-typedef enum {
+typedef enum : int8_t {
 	AKA_SIM_FLAG_ENCRYPT_INVALID = -1,			//!< Invalid encryption flag.
 	AKA_SIM_FLAG_ENCRYPT_NONE = 0,				//!< No encryption.
 	AKA_SIM_FLAG_ENCRYPT_AES_CBC = 1,			//!< Encrypt attribute RFC 2865 style.

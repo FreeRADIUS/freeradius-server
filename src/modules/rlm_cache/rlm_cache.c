@@ -566,7 +566,7 @@ static unlang_action_t cache_insert(unlang_result_t *p_result, void **out_rctx,
 
 	if ((inst->config.max_entries > 0) && inst->driver->count &&
 	    (inst->driver->count(&inst->config, inst->driver_submodule->data, request, *handle) > inst->config.max_entries)) {
-		RWDEBUG("Cache is full: %d entries", inst->config.max_entries);
+		RWDEBUG("Cache is full: %" PRIu32 " entries", inst->config.max_entries);
 		RETURN_UNLANG_FAIL;
 	}
 

@@ -59,7 +59,7 @@ static size_t require_identity_realm_table_len = NUM_ELEMENTS(require_identity_r
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("require_identity_realm", rlm_eap_t, require_realm),
-			 .func = cf_table_parse_int,
+			 .func = cf_table_parse_uint8,
 			 .uctx = &(cf_table_parse_ctx_t){ .table = require_identity_realm_table, .len = &require_identity_realm_table_len },
 			 .dflt = "nai" },
 
@@ -333,7 +333,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 				 *	types.
 				 */
 				if (vp->vp_uint32 != sanitised[i]) continue;
-				RDEBUG2("Found mutually acceptable type %s (%d)", eap_type2name(sanitised[i]), sanitised[i]);
+				RDEBUG2("Found mutually acceptable type %s (%u)", eap_type2name(sanitised[i]), sanitised[i]);
 				method = sanitised[i];
 				break;
 			}
@@ -611,7 +611,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 	 *	Don't trust anyone.
 	 */
 	if ((type->num == 0) || (type->num >= FR_EAP_METHOD_MAX)) {
-		REDEBUG("Peer sent EAP type number %d, which is outside known range", type->num);
+		REDEBUG("Peer sent EAP type number %u, which is outside known range", type->num);
 
 	is_invalid:
 		RETURN_UNLANG_INVALID;
@@ -633,7 +633,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 		goto is_invalid;
 	}
 
-	RDEBUG2("Peer sent packet with EAP method %s (%d)", eap_type2name(type->num), type->num);
+	RDEBUG2("Peer sent packet with EAP method %s (%u)", eap_type2name(type->num), type->num);
 
 	/*
 	 *	Figure out what to do.
@@ -724,7 +724,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 		 *	Ensure it's valid.
 		 */
 		if ((next < FR_EAP_METHOD_MD5) || (next >= FR_EAP_METHOD_MAX) || (!inst->methods[next].submodule)) {
-			REDEBUG2("Peer tried to start unsupported EAP type %s (%d)",
+			REDEBUG2("Peer tried to start unsupported EAP type %s (%u)",
 				 eap_type2name(next), next);
 			goto is_invalid;
 		}
@@ -761,7 +761,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 	 */
 	default:
 		if (!inst->methods[type->num].submodule) {
-			REDEBUG2("Peer asked for unsupported EAP type %s (%d)", eap_type2name(type->num), type->num);
+			REDEBUG2("Peer asked for unsupported EAP type %s (%u)", eap_type2name(type->num), type->num);
 			goto is_invalid;
 		}
 		/*
@@ -774,7 +774,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 		 *	of the method and continue.
 		 */
 		if (eap_session->rounds == 0) {
-			RDEBUG2("Peer started EAP type %s (%d) without sending an Identity", eap_type2name(type->num), type->num);
+			RDEBUG2("Peer started EAP type %s (%u) without sending an Identity", eap_type2name(type->num), type->num);
 			vp = fr_pair_find_by_da(&eap_session->request->control_pairs, NULL, attr_eap_type);
 			if (vp) {
 				RDEBUG2("Using method from control.EAP-Type");
@@ -1159,7 +1159,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				CONF_SECTION *conf = inst->methods[method].submodule_inst->conf;
 
 				cf_log_err(submodule_inst->conf,
-					   "Duplicate EAP-Type %s.  Conflicting entry %s[%u]",
+					   "Duplicate EAP-Type %s.  Conflicting entry %s[%d]",
 					   eap_type2name(method),
 					   cf_filename(conf), cf_lineno(conf));
 

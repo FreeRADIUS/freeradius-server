@@ -49,7 +49,7 @@ RCSIDH(eap_fast_h, "$Id$")
 #define EAP_FAST_TLV_RESULT_SUCCESS		1
 #define EAP_FAST_TLV_RESULT_FAILURE		2
 
-typedef enum {
+typedef enum : uint8_t {
 	EAP_FAST_TLS_SESSION_HANDSHAKE = 0,
 	EAP_FAST_AUTHENTICATION,
 	EAP_FAST_CRYPTOBIND_CHECK,
@@ -57,14 +57,14 @@ typedef enum {
 	EAP_FAST_COMPLETE
 } eap_fast_stage_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	EAP_FAST_UNKNOWN = 0,
 	EAP_FAST_PROVISIONING_ANON,
 	EAP_FAST_PROVISIONING_AUTH,
 	EAP_FAST_NORMAL_AUTH
 } eap_fast_auth_type_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	PAC_TYPE_TUNNEL = 1,	// 1
 	PAC_TYPE_MACHINE_AUTH,	// 2
 	PAC_TYPE_USER_AUTHZ,	// 3
@@ -151,7 +151,7 @@ typedef struct {
         uint8_t compound_mac[20];
 } CC_HINT(__packed__) eap_tlv_crypto_binding_tlv_t;
 
-typedef enum eap_fast_tlv_crypto_binding_tlv_subtype_t {
+typedef enum eap_fast_tlv_crypto_binding_tlv_subtype_t : uint8_t {
 	EAP_FAST_TLV_CRYPTO_BINDING_SUBTYPE_REQUEST = 0,	// 0
 	EAP_FAST_TLV_CRYPTO_BINDING_SUBTYPE_RESPONSE		// 1
 } eap_fast_tlv_crypto_binding_tlv_subtype_t;

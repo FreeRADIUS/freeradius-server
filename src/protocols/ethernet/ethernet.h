@@ -105,7 +105,7 @@ typedef struct {
 /** Protocol options for ethernet
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	PROTO_OPT_ETHERNET_SVLAN_TPID = 0,	//!< Outer VLAN tag type.
 	PROTO_OPT_ETHERNET_SVLAN_PCP,		//!< Outer VLAN priority code point.
 	PROTO_OPT_ETHERNET_SVLAN_DEI,		//!< Outer VLAN drop eligible indicator.

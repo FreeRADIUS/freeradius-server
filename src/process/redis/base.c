@@ -153,7 +153,7 @@ static const conf_parser_t config[] = {
 
 /** State of cluster map fetching from each node.
  */
-typedef enum {
+typedef enum : uint8_t {
 	CLUSTER_MAP_GET_INFO = 0,
 	CLUSTER_MAP_GOT_INFO,
 	CLUSTER_MAP_GET_MAP,

@@ -194,14 +194,14 @@ static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, c
 		/* Get the group name from the (fake winbind) gid */
 		err = wbcCtxGetgrgid(wb_ctx, wb_groups[i], &group);
 		if (err != WBC_ERR_SUCCESS) {
-			REDEBUG("Failed resolving GID %i: %s", wb_groups[i], wbcErrorString(err));
+			REDEBUG("Failed resolving GID %lu: %s", (unsigned long)wb_groups[i], wbcErrorString(err));
 			if (wb_groups[i] == UINT32_MAX) {
 				REDEBUG("GID appears to be winbind placeholder value, idmap likely failed");
 			}
 			continue;
 		}
 
-		RDEBUG3("Resolved GID %i to name \"%s\"", wb_groups[i], group->gr_name);
+		RDEBUG3("Resolved GID %lu to name \"%s\"", (unsigned long)wb_groups[i], group->gr_name);
 
 		/* Find the backslash in the returned group name */
 		if ((backslash < strlen(group->gr_name)) && (group->gr_name[backslash] == '\\')) {
@@ -509,7 +509,7 @@ static int domain_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const 
 		wbcCtxFree(wb_ctx);
 
 		if (err != WBC_ERR_SUCCESS) {
-			cf_log_err(ci, "libwbclient returned wbcErr code %d; unable to get domain name.", err);
+			cf_log_err(ci, "libwbclient returned wbcErr code %u; unable to get domain name.", err);
 			cf_log_err(ci, "Is winbind running and does the winbind_privileged socket have");
 			cf_log_err(ci, "the correct permissions?");
 			goto no_domain;

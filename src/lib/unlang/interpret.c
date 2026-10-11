@@ -403,7 +403,7 @@ static size_t unlang_frame_action_table_len = NUM_ELEMENTS(unlang_frame_action_t
 #ifndef NDEBUG
 #include <freeradius-devel/unlang/module_priv.h>
 
-typedef enum {
+typedef enum : uint8_t {
 	P_RESULT_LOCATION_UNKNOWN = 0,
 	P_RESULT_LOCATION_FRAME,
 	P_RESULT_LOCATION_SCRATCH,
@@ -502,7 +502,7 @@ static void instruction_dump(request_t *request, unlang_t const *instruction)
 
 static void CC_HINT(nonnull) actions_dump(request_t *request, unlang_t const *instruction)
 {
-	int i;
+	rlm_rcode_t i;
 
 	RDEBUG2("actions");
 	RINDENT();

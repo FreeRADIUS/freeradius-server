@@ -221,11 +221,11 @@ static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
 	 *	print them both.
 	 */
 	if ((status != SQLITE_OK) && (status != hstatus)) {
-		fr_strerror_printf("%s: Code 0x%04x (%i): %s", p, status, status, sqlite3_errstr(status));
+		fr_strerror_printf("%s: Code 0x%04x (%i): %s", p, (unsigned int)status, status, sqlite3_errstr(status));
 	}
 
 	if (hstatus != SQLITE_OK) fr_strerror_printf("%s: Code 0x%04x (%i): %s",
-						     p, hstatus, hstatus, sqlite3_errmsg(db));
+						     p, (unsigned int)hstatus, hstatus, sqlite3_errmsg(db));
 }
 
 static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
@@ -261,7 +261,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 	if (finfo.st_size > BOOTSTRAP_MAX) {
 	too_big:
-		fr_strerror_printf("Size of SQL (%zuk) file exceeds limit (%uk)",
+		fr_strerror_printf("Size of SQL (%zuk) file exceeds limit (%dk)",
 		       (size_t) finfo.st_size / 1024, BOOTSTRAP_MAX / 1024);
 		goto error;
 	}
@@ -304,7 +304,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	}
 
 	if ((p - buffer) != len) {
-		fr_strerror_printf("Bootstrap file contains non-UTF8 char at offset %zu", p - buffer);
+		fr_strerror_printf("Bootstrap file contains non-UTF8 char at offset %td", p - buffer);
 		talloc_free(buffer);
 		return -1;
 	}

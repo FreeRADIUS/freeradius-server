@@ -676,7 +676,7 @@ static void fr_coord_pair_exit(fr_coord_t *coord, UNUSED fr_event_list_t *el, vo
 	if (unlikely(ret < 0)) {
 		fr_assert_msg(0, "Failed to force run the timeout list");
 	} else {
-		DEBUG("Coordinator %s is exiting - stopped %u requests", fr_coord_name(coord), ret);
+		DEBUG("Coordinator %s is exiting - stopped %d requests", fr_coord_name(coord), ret);
 	}
 }
 

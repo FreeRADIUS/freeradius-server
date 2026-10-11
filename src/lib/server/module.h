@@ -45,7 +45,7 @@ typedef struct module_list_s			module_list_t;
 #include <freeradius-devel/unlang/interpret.h>
 
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint8_t {
 	MODULE_TYPE_THREAD_UNSAFE	= (1 << 0), 	//!< Module is not threadsafe.
 							//!< Server will protect calls with mutex.
 	MODULE_TYPE_RETRY		= (1 << 2), 	//!< can handle retries
@@ -264,7 +264,7 @@ struct module_s {
  *
  */
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint8_t {
 	MODULE_INSTANCE_BOOTSTRAPPED		= (1 << 1),	//!< Module instance has been bootstrapped, but not
 								///< yet instantiated.
 	MODULE_INSTANCE_INSTANTIATED		= (1 << 2),	//!< Module instance has been bootstrapped and

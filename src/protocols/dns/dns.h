@@ -80,7 +80,7 @@ typedef struct {
 int		fr_dns_global_init(void);
 void		fr_dns_global_free(void);
 
-typedef enum {
+typedef enum : uint16_t {
 	FR_DNS_QUERY = 0,
 	FR_DNS_INVERSE_QUERY = 1,
 	FR_DNS_STATUS = 2,
@@ -99,7 +99,7 @@ typedef enum {
 	FR_DNS_DO_NOT_RESPOND = 256,
 } fr_dns_packet_code_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_DNS_DECODE_FAIL_NONE = 0,
 	FR_DNS_DECODE_FAIL_UNKNOWN_OPCODE,
 	FR_DNS_DECODE_FAIL_MIN_LENGTH_PACKET,

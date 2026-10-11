@@ -400,7 +400,7 @@ fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num_raw(TALLOC_CTX *ctx, fr_dic
 	if (((parent->type == FR_TYPE_TLV) || (parent->type == FR_TYPE_VENDOR))) {
 		if ((uint64_t) num >= ((uint64_t) 1 << (8 * parent->flags.type_size))) {
 			fr_strerror_printf("Invalid attribute number '%u' - it must be no more than %u bits in size",
-					   num, 8 * parent->flags.type_size);
+					   num, 8U * parent->flags.type_size);
 			return NULL;
 		}
 	}
@@ -507,7 +507,7 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 		 *	Cannot create attributes that are too deeply nested.
 		 */
 		if ((depth + parent->depth) >= FR_DICT_MAX_TLV_STACK) {
-			fr_strerror_printf("Attribute depth (%u) is too large", depth + parent->depth);
+			fr_strerror_printf("Attribute depth (%d) is too large", depth + parent->depth);
 			goto error;
 		}
 

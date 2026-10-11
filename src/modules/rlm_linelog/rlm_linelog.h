@@ -23,7 +23,7 @@
 
 #include <freeradius-devel/server/base.h>
 
- typedef enum {
+ typedef enum : uint8_t {
 	LINELOG_DST_INVALID = 0,
 	LINELOG_DST_FILE,				//!< Log to a file.
 	LINELOG_DST_REQUEST,				//!< Log to the request->log

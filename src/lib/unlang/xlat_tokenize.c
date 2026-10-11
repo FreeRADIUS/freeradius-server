@@ -237,7 +237,7 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 /**  Validate and sanity check function arguments.
  *
  */
-static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg, int argc)
+static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg, unsigned int argc)
 {
 	xlat_exp_t *node;
 
@@ -375,7 +375,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	 */
 	if (fr_type_is_null(node->data.type)) {
 		if (arg_p->required) {
-			fr_strerror_printf("Invalid argument %d - `null` is not allowed for a required argument", argc);
+			fr_strerror_printf("Invalid argument %u - `null` is not allowed for a required argument", argc);
 			return -1;
 		}
 		return 0;
@@ -385,7 +385,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	 *	Cast (or parse) the input data to the expected argument data type.
 	 */
 	if (fr_value_box_cast_in_place(node, &node->data, arg_p->type, NULL) < 0) {
-		fr_strerror_printf("Invalid argument %d - %s", argc, fr_strerror());
+		fr_strerror_printf("Invalid argument %u - %s", argc, fr_strerror());
 		return -1;
 	}
 
@@ -396,7 +396,7 @@ int xlat_validate_function_args(xlat_exp_t *node)
 {
 	xlat_arg_parser_t const *arg_p;
 	xlat_exp_t		*arg = xlat_exp_head(node->call.args);
-	int			i = 1;
+	unsigned int		i = 1;
 
 	fr_assert(node->type == XLAT_FUNC);
 
@@ -1776,7 +1776,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			     xlat_arg_parser_t const *xlat_args,
 			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool spaces)
 {
-	int				argc;
+	unsigned int			argc;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	fr_slen_t			slen;
 	fr_sbuff_marker_t		m;
@@ -1934,7 +1934,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 *	Check number of arguments.
 		 */
 		if (arg->type == FR_TYPE_NULL) {
-			fr_strerror_printf("Too many arguments, expected %zu, got %d",
+			fr_strerror_printf("Too many arguments, expected %zu, got %u",
 					   (size_t) (arg - arg_start), argc);
 			fr_sbuff_set(&our_in, &m);
 			goto error;
@@ -1972,11 +1972,11 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			if (fr_sbuff_is_char(&our_in, ')')) break;
 
 			if (fr_sbuff_eof(&our_in)) {
-				fr_strerror_printf("Missing ')' after argument %d", argc);
+				fr_strerror_printf("Missing ')' after argument %u", argc);
 				goto error;
 			}
 
-			fr_strerror_printf("Unexpected text after argument %d", argc);
+			fr_strerror_printf("Unexpected text after argument %u", argc);
 			goto error;
 		}
 
@@ -1987,7 +1987,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			if (fr_sbuff_is_terminal(&our_in, our_p_rules->terminals)) break;
 
 			if (fr_sbuff_eof(&our_in)) {
-				fr_strerror_printf("Unexpected end of input string after argument %d", argc);
+				fr_strerror_printf("Unexpected end of input string after argument %u", argc);
 				goto error;
 			}
 		}
@@ -2007,7 +2007,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			argc++;
 
 			if (arg->type == FR_TYPE_NULL) {
-				fr_strerror_printf("Too many arguments, expected %zu, got %d",
+				fr_strerror_printf("Too many arguments, expected %zu, got %u",
 						   (size_t) (arg - arg_start), argc);
 				goto error;
 			}

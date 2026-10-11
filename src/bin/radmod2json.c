@@ -352,7 +352,7 @@ static int dump_module(struct json_object *modules, char const *bare_name)
 		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 			json_object_put(entry);
 			fprintf(stderr, "rlm_%s: child %s (status=0x%x), skipping\n", bare_name,
-				WIFEXITED(status) ? "exited non-zero" : "crashed", status);
+				WIFEXITED(status) ? "exited non-zero" : "crashed", (unsigned int)status);
 			return -1;
 		}
 

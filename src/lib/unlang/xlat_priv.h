@@ -105,7 +105,7 @@ typedef struct xlat_s {
 							///< then the xlat function can return any type of output.
 } xlat_t;
 
-typedef enum {
+typedef enum : uint16_t {
 	XLAT_INVALID		= 0x0000,		//!< Bad expansion
 	XLAT_BOX		= 0x0001,		//!< #fr_value_box_t
 	XLAT_ONE_LETTER		= 0x0002,		//!< Special "one-letter" expansion

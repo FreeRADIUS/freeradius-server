@@ -80,7 +80,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_READABLE, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("v3_compat", rlm_files_t, v3_compat) },
 	{ FR_CONF_OFFSET("lookup_type", rlm_files_t, htype), .dflt = "auto",
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_htrie_type_table, .len = &fr_htrie_type_table_len } },
+	  .func = cf_table_parse_uint8, .uctx = &(cf_table_parse_ctx_t){ .table = fr_htrie_type_table, .len = &fr_htrie_type_table_len } },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -450,7 +450,7 @@ static unlang_action_t CC_HINT(nonnull) mod_files_resume(unlang_result_t *p_resu
 
 			(void) fr_value_box_to_key(&key, &keylen, key_vb);
 
-			RDEBUG3("Keylen %ld", keylen);
+			RDEBUG3("Keylen %zu", keylen);
 			RHEXDUMP3(key, (keylen + 7) >> 3, "KEY ");
 		}
 
@@ -611,7 +611,7 @@ redo:
 			}
 
 			user_pl = fr_dlist_head(&user_list->head);
-			RDEBUG("%s - Found matching shorter subnet %s at key length %ld", env->name, user_pl->name, keylen);
+			RDEBUG("%s - Found matching shorter subnet %s at key length %zu", env->name, user_pl->name, keylen);
 			goto redo;
 		} while (keylen > 0);
 	}

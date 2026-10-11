@@ -161,7 +161,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		CONF_SECTION	*cs;
 		char		section_name[32];
 
-		snprintf(section_name, sizeof(section_name), "%u", sw->thread.id);
+		snprintf(section_name, sizeof(section_name), "%d", sw->thread.id);
 
 		cs = cf_section_find(sc->cs, "worker", section_name);
 		if (!cs) cs = cf_section_find(sc->cs, "worker", NULL);
@@ -177,7 +177,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	fr_dlist_foreach(&sc->networks, fr_schedule_network_t, sn) {
 		if (unlikely(fr_network_worker_add(sn->nr, sw->worker) < 0)) {
-			PERROR("%s - Failed adding worker to network %u", worker_name, sn->thread.id);
+			PERROR("%s - Failed adding worker to network %d", worker_name, sn->thread.id);
 			goto fail;	/* FIXME - Should maybe try to undo partial adds? */
 		}
 	}
@@ -542,7 +542,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx,
 
 		next_sw = fr_dlist_next(&sc->workers, sw);
 
-		snprintf(buffer, sizeof(buffer), "%d", i);
+		snprintf(buffer, sizeof(buffer), "%u", i);
 		if (fr_command_register_hook(NULL, buffer, sw->worker, cmd_worker_table) < 0) {
 			PERROR("Failed adding worker commands");
 		mt_fail:
@@ -558,7 +558,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx,
 
 		next_sn = fr_dlist_next(&sc->networks, sn);
 
-		snprintf(buffer, sizeof(buffer), "%d", i);
+		snprintf(buffer, sizeof(buffer), "%u", i);
 		if (fr_command_register_hook(NULL, buffer, sn->nr, cmd_network_table) < 0) {
 			PERROR("Failed adding network commands");
 			goto mt_fail;

@@ -107,7 +107,7 @@ fr_dict_attr_autoload_t redis_ippool_tool_dict_attr[] = {
 /** Pool management actions
  *
  */
-typedef enum ippool_tool_action {
+typedef enum ippool_tool_action : uint8_t {
 	IPPOOL_TOOL_NOOP = 0,			//!< Do nothing.
 	IPPOOL_TOOL_ADD,			//!< Add one or more IP addresses.
 	IPPOOL_TOOL_REMOVE,			//!< Remove one or more IP addresses.
@@ -459,7 +459,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 	}
 
 	if ((prefix - start.prefix) > 64) {
-		ERROR("-p must be less than or equal to %u", start.prefix + 64);
+		ERROR("-p must be less than or equal to %u", start.prefix + 64U);
 		return -1;
 	}
 

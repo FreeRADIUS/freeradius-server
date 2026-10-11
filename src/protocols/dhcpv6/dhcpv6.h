@@ -63,7 +63,7 @@ RCSIDH(dhcpv6_h, "$Id$")
  *	Copied from src/include/protocols/dhcpv6/freeradius.internal.h
  *	and edited.
  */
-typedef enum {
+typedef enum : uint16_t {
 	FR_DHCPV6_INVALID = 0,
 	FR_DHCPV6_SOLICIT = 1,
 	FR_DHCPV6_ADVERTISE = 2,

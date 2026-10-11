@@ -48,14 +48,14 @@ typedef struct {
 	fr_time_t	when;		//!< when the packet was received
 } fr_bio_fd_packet_ctx_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_BIO_FD_STATE_INVALID = 0,
 	FR_BIO_FD_STATE_CLOSED,
 	FR_BIO_FD_STATE_OPEN,		//!< error states must be before this
 	FR_BIO_FD_STATE_CONNECTING,
 } fr_bio_fd_state_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_BIO_FD_INVALID,		//!< not set
 	FR_BIO_FD_UNCONNECTED,		//!< unconnected UDP / datagram only
 					// updates #fr_bio_fd_packet_ctx_t for reads,
@@ -73,7 +73,7 @@ typedef enum {
  *
  *  This field is set automatically when parsing the configuration.
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_BIO_FD_TRANSPORT_INVALID = 0, //!< not set
 	FR_BIO_FD_TRANSPORT_FILE,	//!< regular file, named by 'filename'
 	FR_BIO_FD_TRANSPORT_TCP,	//!< TCP over IPv4 or IPv6

@@ -42,7 +42,7 @@ extern "C" {
 /** Results of file checks
  *
  */
-typedef enum {
+typedef enum : int8_t {
 	CF_FILE_OK = 0,		//!< File checks passed.
 	CF_FILE_NO_PERMISSION = -1,	//!< Requested permissions not set
 	CF_FILE_NO_EXIST = -2,		//!< File does not exist

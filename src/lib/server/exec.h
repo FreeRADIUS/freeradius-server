@@ -45,7 +45,7 @@ extern "C" {
 extern "C" {
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_EXEC_FAIL_NONE = 0,
 	FR_EXEC_FAIL_TOO_MUCH_DATA,
 	FR_EXEC_FAIL_TIMEOUT,

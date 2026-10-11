@@ -744,7 +744,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				goto error;
 
 			default:
-				REDEBUG("Can't determine expected reply.Packet-Type for Packet-Type %i",
+				REDEBUG("Can't determine expected reply.Packet-Type for Packet-Type %u",
 					request->packet->code);
 				goto error;
 			}
@@ -774,7 +774,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			default:
-				REDEBUG("Can't determine expected Packet-Type for reply.Packet-Type %i",
+				REDEBUG("Can't determine expected Packet-Type for reply.Packet-Type %u",
 					request->filter_code);
 				goto error;
 			}
@@ -1175,7 +1175,7 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 	fr_radius_packet_log(&default_log, reply, &reply_pairs, true);
 
 	if (print_filename) {
-		RDEBUG("%s response code %d", request->files->packets, reply->code);
+		RDEBUG("%s response code %u", request->files->packets, reply->code);
 	}
 
 	/*
@@ -1207,7 +1207,7 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_name[request->filter_code],
 				fr_radius_packet_name[reply->code]);
 		} else {
-			REDEBUG("%s: Expected %u got %i", request->name, request->filter_code,
+			REDEBUG("%s: Expected %u got %u", request->name, request->filter_code,
 				reply->code);
 		}
 		stats.failed++;

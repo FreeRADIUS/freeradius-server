@@ -834,7 +834,7 @@ static xlat_action_t smtp_send_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*vb;
 
 	if (randle->result != CURLE_OK) {
-		RPERROR("Sending mail failed: %s %i", curl_easy_strerror(randle->result), randle->result);
+		RPERROR("Sending mail failed: %s %u", curl_easy_strerror(randle->result), randle->result);
 		smtp_slab_release(randle);
 		return XLAT_ACTION_FAIL;
 	}

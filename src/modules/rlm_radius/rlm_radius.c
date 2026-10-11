@@ -156,7 +156,7 @@ static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET("max_attributes", rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
 	{ FR_CONF_OFFSET("require_message_authenticator", rlm_radius_t, require_message_authenticator),
-	  .func = cf_table_parse_int,
+	  .func = cf_table_parse_uint8,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_require_ma_table, .len = &fr_radius_require_ma_table_len },
 	  .dflt = "no" },
 

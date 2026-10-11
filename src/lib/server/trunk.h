@@ -52,14 +52,14 @@ typedef struct trunk_pub_s trunk_t;
 /** Reasons for a request being cancelled
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	TRUNK_CANCEL_REASON_NONE = 0,			//!< Request has not been cancelled.
 	TRUNK_CANCEL_REASON_SIGNAL,			//!< Request cancelled due to a signal.
 	TRUNK_CANCEL_REASON_MOVE,			//!< Request cancelled because it's being moved.
 	TRUNK_CANCEL_REASON_REQUEUE			//!< A previously sent request is being requeued.
 } trunk_cancel_reason_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	TRUNK_STATE_IDLE = 0,				//!< Trunk has no connections.
 	TRUNK_STATE_ACTIVE,				//!< Trunk has at least one active connection which
 							///< can service requests.
@@ -78,7 +78,7 @@ typedef enum {
 /** What type of I/O events the trunk connection is currently interested in receiving
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	TRUNK_CONN_EVENT_NONE	= 0x00,			//!< Don't notify the trunk on connection state
 							///< changes.
 	TRUNK_CONN_EVENT_READ 	= 0x01,			//!< Trunk should be notified if a connection is
@@ -93,7 +93,7 @@ typedef enum {
 /** Used for sanity checks and to track which list the connection is in
  *
  */
-typedef enum {
+typedef enum : uint16_t {
 	TRUNK_CONN_HALTED		= 0x0000,	//!< Halted, ready to be freed.
 	TRUNK_CONN_INIT			= 0x0001,	//!< In the initial state.
 	TRUNK_CONN_CONNECTING		= 0x0002,	//!< Connection is connecting.
@@ -155,7 +155,7 @@ typedef enum {
 	TRUNK_CONN_DRAINING_TO_FREE \
 )
 
-typedef enum {
+typedef enum : int8_t {
 	TRUNK_ENQUEUE_IN_BACKLOG = 1,				//!< Request should be enqueued in backlog
 	TRUNK_ENQUEUE_OK = 0,					//!< Operation was successful.
 	TRUNK_ENQUEUE_NO_CAPACITY = -1,				//!< At maximum number of connections,
@@ -168,7 +168,7 @@ typedef enum {
  *
  * Allows us to track which
  */
-typedef enum {
+typedef enum : uint16_t {
 	TRUNK_REQUEST_STATE_INIT		= 0x0000,	//!< Initial state.  Requests in this state
 								///< were never assigned, and the request_t should
 								///< not have been yielded.

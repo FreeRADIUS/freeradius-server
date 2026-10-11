@@ -41,7 +41,7 @@ extern "C" {
  *  everything which references RLM_MODULE_NUMCODES.  e.g. foo [RLM_MODULE_NUMCODES];
  
  */
-typedef enum {
+typedef enum : uint8_t {
 	RLM_MODULE_NOT_SET = 0,				//!< Error resolving rcode (should not be
 							//!< returned by modules).
 	RLM_MODULE_REJECT,				//!< Immediately reject the request.

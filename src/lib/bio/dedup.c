@@ -82,7 +82,7 @@ typedef struct fr_bio_dedup_s	fr_bio_dedup_t;
  */
 FR_DLIST_TYPES(fr_bio_dedup_list)
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_BIO_DEDUP_STATE_FREE,
 	FR_BIO_DEDUP_STATE_ACTIVE,		//!< Received, but not replied.
 	FR_BIO_DEDUP_STATE_PENDING,		//!< Have a reply, but we're trying to write it out.

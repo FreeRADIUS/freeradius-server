@@ -45,7 +45,7 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		       int code, uint32_t id, fr_dcursor_t *cursor) CC_HINT(nonnull(1));
 
-typedef enum {
+typedef enum : uint16_t {
 	FR_VMPS_INVALID = 0,
 	FR_VMPS_JOIN_REQUEST = 1,
 	FR_VMPS_JOIN_RESPONSE = 2,

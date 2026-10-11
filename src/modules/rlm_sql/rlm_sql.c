@@ -146,7 +146,7 @@ typedef struct rlm_sql_grouplist_s rlm_sql_grouplist_t;
 
 /** Status of the authorization process
  */
-typedef enum {
+typedef enum : uint8_t {
 	SQL_AUTZ_CHECK			= 0x12,		//!< Running user `check` query
 	SQL_AUTZ_CHECK_RESUME		= 0x13,		//!< Completed user `check` query
 	SQL_AUTZ_REPLY			= 0x14,		//!< Running user `reply` query
@@ -1666,7 +1666,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		break;
 
 	default:
-		fr_assert_msg(0, "Invalid status %d in mod_authorize_resume", autz_ctx->status);
+		fr_assert_msg(0, "Invalid status %u in mod_authorize_resume", autz_ctx->status);
 	}
 
 	if (!autz_ctx->user_found) RETURN_UNLANG_NOTFOUND;

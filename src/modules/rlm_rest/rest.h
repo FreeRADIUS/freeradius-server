@@ -40,7 +40,7 @@ RCSIDH(rest_h, "$Id$")
 #define REST_BODY_ALLOC_CHUNK		1024
 #define REST_BODY_MAX_ATTRS		256
 
-typedef enum {
+typedef enum : uint8_t {
 	REST_HTTP_METHOD_UNKNOWN = 0,
 	REST_HTTP_METHOD_GET,
 	REST_HTTP_METHOD_POST,
@@ -50,7 +50,7 @@ typedef enum {
 	REST_HTTP_METHOD_CUSTOM		//!< Must always come last, should not be in method table
 } http_method_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	REST_HTTP_BODY_UNKNOWN = 0,
 	REST_HTTP_BODY_UNSUPPORTED,
 	REST_HTTP_BODY_UNAVAILABLE,
@@ -67,7 +67,7 @@ typedef enum {
 	REST_HTTP_BODY_NUM_ENTRIES
 } http_body_type_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	REST_HTTP_AUTH_UNKNOWN = 0,
 	REST_HTTP_AUTH_NONE,
 	REST_HTTP_AUTH_TLS_SRP,
@@ -219,7 +219,7 @@ typedef struct {
 /*
  *	States for stream based attribute encoders
  */
-typedef enum {
+typedef enum : uint8_t {
 	READ_STATE_INIT	= 0,
 	READ_STATE_ATTR_BEGIN,
 	READ_STATE_ATTR_CONT,
@@ -229,7 +229,7 @@ typedef enum {
 /*
  *	States for the response parser
  */
-typedef enum {
+typedef enum : uint8_t {
 	WRITE_STATE_INIT = 0,
 	WRITE_STATE_PARSE_HEADERS,
 	WRITE_STATE_PARSE_CONTENT,

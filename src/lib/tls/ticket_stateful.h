@@ -47,7 +47,7 @@ extern "C" {
  * Not every operation reaches every state.  A clear has nothing to report
  * back, so it only ever moves between INIT and REQUESTED.
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_TLS_TICKET_STATEFUL_INIT = 0,			//!< Nothing has been asked for.
 	FR_TLS_TICKET_STATEFUL_REQUESTED,			//!< OpenSSL has asked for the operation, and the
 						///< section which does the work has not run yet.

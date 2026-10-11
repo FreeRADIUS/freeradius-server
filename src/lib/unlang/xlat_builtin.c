@@ -832,7 +832,7 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	if ((size_t)buf.st_size > max_size->vb_size) {
-		RPERROR("File larger than specified maximum (%"PRIu64" vs %zu)", buf.st_size, max_size->vb_size);
+		RPERROR("File larger than specified maximum (%zu vs %zu)", (size_t)buf.st_size, max_size->vb_size);
 		goto fail;
 	}
 
@@ -2456,7 +2456,7 @@ static xlat_action_t xlat_func_hex(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-typedef enum {
+typedef enum : uint8_t {
 	HMAC_MD5,
 	HMAC_SHA1
 } hmac_type;

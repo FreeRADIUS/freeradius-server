@@ -33,7 +33,7 @@
  * Exported by the protocol library.
  * Indicates which option contexts the library implements.
  */
-typedef enum {
+typedef enum : uint8_t {
 	PROTO_OPT_GROUP_CUSTOM		= 0x01,		//!< Custom options exported by the library.
 							///< See library header file for more information.
 	PROTO_OPT_GROUP_L2		= 0x02,		//!< Generic layer 2 options.
@@ -45,7 +45,7 @@ typedef enum {
 /** Layer 2 options such as Media addresses
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	PROTO_OPT_L2_PAYLOAD_LEN = 0,
 	PROTO_OPT_L2_SRC_ADDRESS,			//!< Source address.
 	PROTO_OPT_L2_DST_ADDRESS,			//!< Destination address.
@@ -55,7 +55,7 @@ typedef enum {
 /** Layer 3 options, such as IP address
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	PROTO_OPT_L3_PAYLOAD_LEN = 0,			//!< The size of payload data.
 	PROTO_OPT_L3_SRC_ADDRESS,			//!< Source address.
 	PROTO_OPT_L3_DST_ADDRESS,			//!< Destination address.
@@ -65,7 +65,7 @@ typedef enum {
 /** Layer 4 options, such as port number
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	PROTO_OPT_L4_PAYLOAD_LEN = 0,			//!< The size of payload data.
 	PROTO_OPT_L4_SRC_PORT,				//!< Source port.
 	PROTO_OPT_L4_DST_PORT,				//!< Destination port.
@@ -74,7 +74,7 @@ typedef enum {
 /** Application options
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	PROTO_OPT_PAIRS = 0,				//!< Attribute Value Pairs belonging
 							///< to the application.
 } fr_proto_opt_app_t;

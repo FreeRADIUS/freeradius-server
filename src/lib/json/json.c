@@ -66,7 +66,7 @@ static conf_parser_t const json_format_value_config[] = {
 	{ FR_CONF_OFFSET("enum_as_integer", fr_json_format_value_t, enum_as_int), .dflt = "no" },
 	{ FR_CONF_OFFSET("always_string", fr_json_format_value_t, always_string), .dflt = "no" },
 	{ FR_CONF_OFFSET("binary_format", fr_json_format_value_t, binary_format), .dflt = "raw",
-	  .func = cf_table_parse_int,
+	  .func = cf_table_parse_uint8,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_json_binary_format_table, .len = &fr_json_binary_format_table_len } },
 	CONF_PARSER_TERMINATOR
 };

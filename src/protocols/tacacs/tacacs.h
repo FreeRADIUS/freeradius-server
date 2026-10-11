@@ -60,7 +60,7 @@
 
 #define packet_is_encrypted(p)			(((p)->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0)
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_INVALID			= 0x00,
 	FR_TAC_PLUS_AUTHEN			= 0x01,
 	FR_TAC_PLUS_AUTHOR			= 0x02,
@@ -74,7 +74,7 @@ typedef enum {
  * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81665
  */
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint8_t {
 	FR_TAC_PLUS_FLAGS_NONE			= 0x00,
 	FR_TAC_PLUS_UNENCRYPTED_FLAG		= 0x01,
 	FR_TAC_PLUS_SINGLE_CONNECT_FLAG		= 0x04
@@ -101,13 +101,13 @@ typedef struct CC_HINT(__packed__) {
 	uint32_t 		length;
 } fr_tacacs_packet_hdr_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_AUTHEN_LOGIN		= 0x01,
 	FR_TAC_PLUS_AUTHEN_CHPASS		= 0x02,
 	FR_TAC_PLUS_AUTHEN_SENDAUTH		= 0x04
 } fr_tacacs_action_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_AUTHEN_TYPE_ASCII		= 0x01,
 	FR_TAC_PLUS_AUTHEN_TYPE_PAP		= 0x02,
 	FR_TAC_PLUS_AUTHEN_TYPE_CHAP		= 0x03,
@@ -116,14 +116,14 @@ typedef enum {
 	FR_TAC_PLUS_AUTHEN_TYPE_MSCHAPV2	= 0x06
 } fr_tacacs_authentype_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_PRIV_LVL_MAX		= 0x0f,
 	FR_TAC_PLUS_PRIV_LVL_ROOT		= 0x0f,
 	FR_TAC_PLUS_PRIV_LVL_USER		= 0x01,
 	FR_TAC_PLUS_PRIV_LVL_MIN		= 0x00
 } fr_tacacs_privlvl_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_AUTHEN_SVC_NONE		= 0x00,
 	FR_TAC_PLUS_AUTHEN_SVC_LOGIN		= 0x01,
 	FR_TAC_PLUS_AUTHEN_SVC_ENABLE		= 0x02,
@@ -147,7 +147,7 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t				data_len;
 } fr_tacacs_packet_authen_start_hdr_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_AUTHEN_STATUS_PASS		= 0x01, /* accept */
 	FR_TAC_PLUS_AUTHEN_STATUS_FAIL		= 0x02, /* reject */
 	FR_TAC_PLUS_AUTHEN_STATUS_GETDATA	= 0x03, /* prompt for data */
@@ -158,7 +158,7 @@ typedef enum {
 	FR_TAC_PLUS_AUTHEN_STATUS_FOLLOW	= 0x21 /* forward, should be treated as FR_TAC_PLUS_AUTHEN_STATUS_FAIL */
 } fr_tacacs_authen_reply_status_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_REPLY_FLAG_UNSET		= 0x00,	/* gdb candy */
 	FR_TAC_PLUS_REPLY_FLAG_NOECHO		= 0x01
 } fr_tacacs_authen_reply_flags_t;
@@ -170,7 +170,7 @@ typedef struct CC_HINT(__packed__) {
 	uint16_t			data_len;
 } fr_tacacs_packet_authen_reply_hdr_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_CONTINUE_FLAG_UNSET	= 0x00,	/* gdb candy */
 	FR_TAC_PLUS_CONTINUE_FLAG_ABORT	= 0x01
 } fr_tacacs_authen_cont_flags_t;
@@ -181,7 +181,7 @@ typedef struct CC_HINT(__packed__) {
 	fr_tacacs_authen_cont_flags_t	flags:8;
 } fr_tacacs_packet_authen_cont_hdr_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_AUTHEN_METH_NOT_SET		= 0x00,
 	FR_TAC_PLUS_AUTHEN_METH_NONE		= 0x01,
 	FR_TAC_PLUS_AUTHEN_METH_KRB5		= 0x02,
@@ -207,7 +207,7 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t				arg_len[];
 } fr_tacacs_packet_author_req_hdr_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_AUTHOR_STATUS_PASS_ADD	= 0x01, /* authorized, append new arguments (if any) */
 	FR_TAC_PLUS_AUTHOR_STATUS_PASS_REPL	= 0x02, /* authorized, replace arguments */
 	FR_TAC_PLUS_AUTHOR_STATUS_FAIL		= 0x10, /* reject */
@@ -223,7 +223,7 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t				arg_len[];
 } fr_tacacs_packet_author_reply_hdr_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_ACCT_FLAG_START		= 0x02,
 	FR_TAC_PLUS_ACCT_FLAG_STOP		= 0x04,
 	FR_TAC_PLUS_ACCT_FLAG_WATCHDOG		= 0x08
@@ -242,7 +242,7 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t				arg_len[];
 } fr_tacacs_packet_acct_req_hdr_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_PACKET_BODY_TYPE_UNKNOWN  	= 0,
 	FR_PACKET_BODY_TYPE_START    	= 1,
 	FR_PACKET_BODY_TYPE_REPLY    	= 2,
@@ -251,7 +251,7 @@ typedef enum {
 	FR_PACKET_BODY_TYPE_RESPONSE 	= 5
 } fr_tacacs_packet_body_type_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_TAC_PLUS_ACCT_STATUS_SUCCESS		= 0x01,
 	FR_TAC_PLUS_ACCT_STATUS_ERROR		= 0x02,
 	FR_TAC_PLUS_ACCT_STATUS_FOLLOW		= 0x21 /* forward, should be treated as FR_TAC_PLUS_ACCT_STATUS_ERROR */
@@ -289,7 +289,7 @@ typedef struct CC_HINT(__packed__) {
 DIAG_ON(flexible-array-extensions)
 #endif
 
-typedef enum {
+typedef enum : uint16_t {
 	FR_TACACS_CODE_INVALID = 0,
 
 	FR_TACACS_CODE_AUTH_START		= FR_PACKET_TYPE_VALUE_AUTHENTICATION_START,

@@ -600,7 +600,7 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
 		if (fr_redis_command_preformatted_add(cmds, rctx->cmd_str[1], cmd_len, NULL,
 						      NULL) != FR_REDIS_PIPELINE_OK) goto error;
 
-		RDEBUG3("EXPIREAT \"%pV\" %" PRIu64, &c->key, fr_unix_time_to_sec(c->expires));
+		RDEBUG3("EXPIREAT \"%pV\" %" PRId64, &c->key, fr_unix_time_to_sec(c->expires));
 		cmd_len = redisFormatCommand(&rctx->cmd_str[2], "EXPIREAT %b %" PRIu64,
 					     (uint8_t const *)c->key.vb_strvalue, (size_t)c->key.vb_length,
 					     fr_unix_time_to_sec(c->expires));

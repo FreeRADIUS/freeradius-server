@@ -36,7 +36,7 @@ extern "C" {
  *
  * Derived from processing the provided identity.
  */
-typedef enum {
+typedef enum : uint8_t {
 	AKA_SIM_METHOD_HINT_UNKNOWN = 0,		//!< We don't know what method the identity hints at.
 	AKA_SIM_METHOD_HINT_SIM,			//!< The identity hints the supplicant wants to use
 							///< EAP-SIM.
@@ -50,7 +50,7 @@ typedef enum {
  *
  * Derived from the processing the provided identity.
  */
-typedef enum {
+typedef enum : uint8_t {
 	AKA_SIM_ID_TYPE_UNKNOWN	= 0,			//!< We don't know what type of identity this is.
 	AKA_SIM_ID_TYPE_PERMANENT,			//!< This is a permanent identity (the IMSI of the SIM).
 	AKA_SIM_ID_TYPE_PSEUDONYM,			//!< This is a custom pseudonym.
@@ -58,7 +58,7 @@ typedef enum {
 	AKA_SIM_ID_TYPE_MAX
 } fr_aka_sim_id_type_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	ID_TAG_SIM_PERMANENT			= '1',  //!< IMSI, and hint that client wants to do EAP-SIM
 	ID_TAG_SIM_PSEUDONYM			= '3',	//!< Pseudonym, continue EAP-SIM
 	ID_TAG_SIM_FASTAUTH			= '5',	//!< Fastauth, continue EAP-SIM
@@ -74,7 +74,7 @@ typedef enum {
 
 /** Identity request types
  */
-typedef enum {
+typedef enum : uint8_t {
 	AKA_SIM_INIT_ID_REQ = 0,		//!< We've requested no ID.  This is used for last_id_req.
 	AKA_SIM_NO_ID_REQ,			//!< We're not requesting any ID.
 	AKA_SIM_ANY_ID_REQ,			//!< Request IMSI, Pseudonym or Fast-reauth.

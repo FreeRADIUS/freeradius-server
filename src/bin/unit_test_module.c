@@ -442,7 +442,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 			size_t output_len = strlen(output_buff);
 
 			if (!fr_sbuff_is_str(&line, output_buff, output_len) || (output_len != fr_sbuff_remaining(&line))) {
-				fprintf(stderr, "Mismatch at %s[%u]\n\tgot          : %s (%zu)\n\texpected     : %s (%zu)\n",
+				fprintf(stderr, "Mismatch at %s[%d]\n\tgot          : %s (%zu)\n\texpected     : %s (%zu)\n",
 					filename, lineno,  output_buff, output_len, fr_sbuff_current(&line), fr_sbuff_remaining(&line));
 				return false;
 			}
@@ -1251,7 +1251,7 @@ cleanup:
 #ifndef NDEBUG
 	memory_used_after = talloc_total_size(autofree);
 	if (memory_used_after != memory_used_before) {
-		printf("WARNING: May have leaked memory (%zd - %zd = %zd)\n",
+		printf("WARNING: May have leaked memory (%zu - %zu = %zu)\n",
 		       memory_used_after, memory_used_before, memory_used_after - memory_used_before);
 	}
 #endif

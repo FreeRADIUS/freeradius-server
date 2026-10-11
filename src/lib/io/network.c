@@ -133,10 +133,10 @@ struct fr_network_s {
 	fr_rb_tree_t		*sockets;		//!< list of sockets we're managing, ordered by the listener
 	fr_rb_tree_t		*sockets_by_num;       	//!< ordered by number;
 
-	int			num_workers;		//!< number of active workers
-	int			num_blocked;		//!< number of blocked workers
+	unsigned int		num_workers;		//!< number of active workers
+	unsigned int		num_blocked;		//!< number of blocked workers
 	int			num_pending_workers;	//!< number of workers we're waiting to start.
-	int			max_workers;		//!< maximum number of allowed workers
+	unsigned int		max_workers;		//!< maximum number of allowed workers
 	int			num_sockets;		//!< actually a counter...
 
 	int			signal_pipe[2];		//!< Pipe for signalling the worker in an orderly way.
@@ -607,7 +607,7 @@ static void fr_network_channel_callback(void const *data, size_t data_size, fr_t
 	{
 		fr_network_worker_t	*w = talloc_get_type_abort(fr_channel_requestor_uctx_get(ch),
 								   fr_network_worker_t);
-		int			i;
+		unsigned int		i;
 
 		/*
 		 *	Remove this worker from the array
@@ -706,7 +706,7 @@ retry:
 			worker = nr->workers[two];
 		}
 	} else {
-		int i;
+		unsigned int i;
 		uint64_t min_outstanding = UINT64_MAX;
 		fr_network_worker_t *found = NULL;
 
@@ -879,7 +879,7 @@ ssize_t fr_network_listen_outstanding(fr_network_t *nr, fr_listen_t *li) {
  */
 static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
 {
-	int i;
+	unsigned int i;
 
 	if (s->dead) return;
 
@@ -930,15 +930,15 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	ssize_t			data_size;
 	fr_channel_data_t	*cd, *next;
 
-	if (!fr_cond_assert_msg(s->listen->fd == sockfd, "Expected listen->fd (%u) to be equal event fd (%u)",
+	if (!fr_cond_assert_msg(s->listen->fd == sockfd, "Expected listen->fd (%d) to be equal event fd (%d)",
 				s->listen->fd, sockfd)) return;
 
-	DEBUG3("Reading data from FD %u", sockfd);
+	DEBUG3("Reading data from FD %d", sockfd);
 
 	if (!s->cd) {
 		cd = (fr_channel_data_t *) fr_message_and_data_reserve(s->ms, s->listen->default_message_size);
 		if (!cd) {
-			ERROR("Failed allocating message size %zd! - Closing socket",
+			ERROR("Failed allocating message size %zu! - Closing socket",
 			      s->listen->default_message_size);
 			fr_network_socket_dead(nr, s);
 			return;
@@ -1018,7 +1018,7 @@ next_message:
 	}
 	s->cd = NULL;
 
-	DEBUG3("Read %zd byte(s) from FD %u", data_size, sockfd);
+	DEBUG3("Read %zu byte(s) from FD %d", (size_t)data_size, sockfd);
 	if (s->listen->read_hexdump) HEXDUMP2(cd->m.data, data_size, "%s read ", s->listen->name);
 	nr->stats.in++;
 	s->stats.in++;
@@ -1651,7 +1651,7 @@ static void fr_network_directory_callback(void const *data, size_t data_size, UN
  */
 static void fr_network_worker_started_callback(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
-	int i;
+	unsigned int i;
 	fr_network_t *nr = uctx;
 	fr_worker_t *worker;
 	fr_network_worker_t *w;
@@ -1934,7 +1934,7 @@ int fr_network_destroy(fr_network_t *nr)
 	 *	loop (fr_network()) will exit.
 	 */
 	{
-		int i;
+		unsigned int i;
 
 		for (i = 0; i < nr->num_workers; i++) {
 			fr_network_worker_t *worker = nr->workers[i];
@@ -2017,7 +2017,7 @@ void fr_network(fr_network_t *nr)
 		 */
 		DEBUG4("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
 		num_events = fr_event_corral(nr->el, fr_time(), wait_for_event);
-		DEBUG4("%u event(s) pending%s",
+		DEBUG4("%d event(s) pending%s",
 		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
 		if (num_events < 0) break;
 
@@ -2245,7 +2245,7 @@ int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats)
 
 void fr_network_stats_log(fr_network_t const *nr, fr_log_t const *log)
 {
-	int i;
+	unsigned int i;
 
 	/*
 	 *	Dump all of the channel statistics.

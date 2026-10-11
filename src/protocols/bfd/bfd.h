@@ -30,14 +30,14 @@
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/dbuff.h>
 
-typedef enum bfd_session_state_t {
+typedef enum bfd_session_state_t : uint8_t {
 	BFD_STATE_ADMIN_DOWN = 0,
 	BFD_STATE_DOWN,
 	BFD_STATE_INIT,
 	BFD_STATE_UP
 } bfd_session_state_t;
 
-typedef enum bfd_diag_t {
+typedef enum bfd_diag_t : uint8_t {
 	BFD_DIAG_NONE = 0,
 	BFD_CTRL_EXPIRED,
 	BFD_ECHO_FAILED,
@@ -49,7 +49,7 @@ typedef enum bfd_diag_t {
 	BFD_REVERSE_CONCAT_PATH_DOWN
 } bfd_diag_t;
 
-typedef enum bfd_auth_type_t {
+typedef enum bfd_auth_type_t : uint8_t {
 	BFD_AUTH_RESERVED = 0,
 	BFD_AUTH_SIMPLE,
 	BFD_AUTH_KEYED_MD5,
@@ -140,7 +140,7 @@ typedef struct {
 
 #define FR_BFD_HEADER_LENGTH (24)
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_BFD_ADMIN_DOWN,
 	FR_BFD_DOWN,
 	FR_BFD_INIT,

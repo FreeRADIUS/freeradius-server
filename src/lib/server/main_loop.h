@@ -31,7 +31,7 @@ RCSIDH(process_h, "$Id$")
 extern "C" {
 #endif
 
-typedef enum {
+typedef enum : uint8_t {
 	RADIUS_SIGNAL_SELF_NONE		= (0),
 	RADIUS_SIGNAL_SELF_HUP		= (1 << 0),
 	RADIUS_SIGNAL_SELF_TERM		= (1 << 1),

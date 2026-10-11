@@ -149,7 +149,7 @@ do { \
 /** Deferred signals
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	CONNECTION_DSIGNAL_INIT,			//!< Restart a halted connection.
 	CONNECTION_DSIGNAL_CONNECTED,			//!< Signal that a connection is connected.
 	CONNECTION_DSIGNAL_RECONNECT_FAILED,		//!< Reconnect a failed connection.

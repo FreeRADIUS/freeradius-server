@@ -35,7 +35,7 @@ RCSIDH(thread_h, "$Id$")
 /**
  *  Track the child thread status.
  */
-typedef enum fr_thread_status_t {
+typedef enum fr_thread_status_t : uint8_t {
 	FR_THREAD_FREE = 0,			//!< child is free
 	FR_THREAD_INITIALIZING,			//!< initialized, but not running
 	FR_THREAD_RUNNING,			//!< running, and in the running queue

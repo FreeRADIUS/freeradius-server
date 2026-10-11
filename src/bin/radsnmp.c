@@ -55,7 +55,7 @@ static bool stop;
 
 #define ERROR(fmt, ...)		fr_log(&default_log, L_DBG,  __FILE__, __LINE__, "radsnmp (error): " fmt, ## __VA_ARGS__)
 
-typedef enum {
+typedef enum : int8_t {
 	RADSNMP_UNKNOWN = -1,				//!< Unknown command.
 	RADSNMP_PING = 0,				//!< Check server is alive.
 	RADSNMP_GET,					//!< Get an SNMP leaf value.
@@ -304,7 +304,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_d
 	if (attr != 0) {
 		da = fr_dict_attr_child_by_num(parent, attr);
 		if (!da) {
-			fr_strerror_printf("Unknown leaf attribute %i", attr);
+			fr_strerror_printf("Unknown leaf attribute %u", attr);
 			return -(slen);
 		}
 	} else {
@@ -468,7 +468,7 @@ static int radsnmp_get_response(int fd,
 			 *	Add the value of the index attribute as the next
 			 *	OID component.
 			 */
-			len = snprintf(p, end - p, ".%i.", vp->vp_uint32);
+			len = snprintf(p, end - p, ".%" PRIu32 ".", vp->vp_uint32);
 			if (is_truncated(len, end - p)) goto oob;
 
 			p += len;
@@ -811,7 +811,7 @@ do { \
 					return EXIT_FAILURE;
 
 				case 0:
-					DEBUG("Response timeout.  Retrying %d/%u...", i + 1, conf->retries);
+					DEBUG("Response timeout.  Retrying %u/%u...", i + 1, conf->retries);
 					continue;	/* Timeout */
 
 				case 1:
@@ -1104,8 +1104,8 @@ int main(int argc, char **argv)
 
 	conf->snmp_root = fr_dict_attr_child_by_num(attr_vendor_specific, VENDORPEC_FREERADIUS);
 	if (!conf->snmp_root) {
-		ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1(%i)."
-		      "Vendor-Specific(%i).FreeRADIUS(%i)",
+		ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1(%u)."
+		      "Vendor-Specific(%u).FreeRADIUS(%i)",
 		      attr_extended_attribute_1->attr,
 		      attr_vendor_specific->attr,
 		      VENDORPEC_FREERADIUS);
@@ -1116,8 +1116,8 @@ int main(int argc, char **argv)
 
 	conf->snmp_oid_root = fr_dict_attr_child_by_num(conf->snmp_root, 1);
 	if (!conf->snmp_oid_root) {
-		ERROR("Incomplete dictionary: Missing definition for 1.Extended-Attribute-1(%i)."
-		      "Vendor-Specific(%i).FreeRADIUS(%i).FreeRADIUS-Iso(%i)",
+		ERROR("Incomplete dictionary: Missing definition for 1.Extended-Attribute-1(%u)."
+		      "Vendor-Specific(%u).FreeRADIUS(%i).FreeRADIUS-Iso(%i)",
 		      attr_extended_attribute_1->attr,
 		      attr_vendor_specific->attr,
 		      VENDORPEC_FREERADIUS, 1);

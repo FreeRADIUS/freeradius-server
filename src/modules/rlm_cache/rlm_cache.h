@@ -36,7 +36,7 @@ typedef void rlm_cache_handle_t;
 
 #define MAX_ATTRMAP	128
 
-typedef enum {
+typedef enum : int8_t {
 	CACHE_RECONNECT	= -2,				//!< Handle needs to be reconnected
 	CACHE_ERROR	= -1,				//!< Fatal error
 	CACHE_OK	= 0,				//!< Cache entry found/updated

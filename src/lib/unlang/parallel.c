@@ -99,7 +99,7 @@ static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_pa
 	}
 
 	request = cr->request->parent;
-	RDEBUG3("parallel - child %s (%d/%d) CANCELLED, previously %s",
+	RDEBUG3("parallel - child %s (%d/%u) CANCELLED, previously %s",
 		cr->name, cr->num, state->num_children,
 		fr_table_str_by_value(unlang_child_states_table, child_state, "<INVALID>"));
 }
@@ -151,7 +151,7 @@ static unlang_action_t unlang_parallel_resume(unlang_result_t *p_result, request
 
 		REQUEST_VERIFY(state->children[i].request);
 
-		RDEBUG3("parallel - child %s (%d/%d) DONE",
+		RDEBUG3("parallel - child %s (%u/%u) DONE",
 			state->children[i].name,
 			i + 1, state->num_children);
 
@@ -248,7 +248,7 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 						   request->proto_dict, state->detach));
 		child->packet->code = request->packet->code;
 
-		RDEBUG3("parallel - child %s (%d/%d) INIT",
+		RDEBUG3("parallel - child %s (%d/%u) INIT",
 			child->name,
 			i + 1, state->num_children);
 
@@ -335,7 +335,7 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 				request_t *parent = request;
 
 				request = state->children[i].request;
-				RDEBUG3("parallel - child %s (%d/%d) DETACHED",
+				RDEBUG3("parallel - child %s (%d/%u) DETACHED",
 					request->name,
 					i + 1, state->num_children);
 				request = parent;

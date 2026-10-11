@@ -33,7 +33,7 @@ RCSIDH(xlat_register_h, "$Id$")
  * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81665
  */
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint8_t {
 	XLAT_FUNC_FLAG_NONE = 0x00,
 	XLAT_FUNC_FLAG_PURE = 0x01,
 	XLAT_FUNC_FLAG_INTERNAL = 0x02,

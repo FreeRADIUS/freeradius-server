@@ -47,7 +47,7 @@ RCSID("$Id$")
  */
 #define ENABLE_SKIPS (0)
 
-typedef enum {
+typedef enum : uint8_t {
 	TO_RESPONDER = 0,
 	TO_REQUESTOR = 1
 } fr_channel_direction_t;
@@ -77,7 +77,7 @@ size_t channel_direction_len = NUM_ELEMENTS(channel_direction);
  */
 #define ATOMIC_QUEUE_SIZE (1024)
 
-typedef enum fr_channel_signal_t {
+typedef enum fr_channel_signal_t : uint8_t {
 	FR_CHANNEL_SIGNAL_ERROR			= FR_CHANNEL_ERROR,
 	FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	= FR_CHANNEL_DATA_READY_RESPONDER,
 	FR_CHANNEL_SIGNAL_DATA_TO_REQUESTOR	= FR_CHANNEL_DATA_READY_REQUESTOR,
@@ -1011,17 +1011,17 @@ void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char cons
 	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.kevents);
 	fr_log(log, L_INFO, file, line, "\toutstanding = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.outstanding);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.packets);
-	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", fr_time_delta_unwrap(ch->end[TO_RESPONDER].stats.message_interval));
-	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_write));
-	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_read_other));
-	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_sent_signal));
+	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRId64 "\n", fr_time_delta_unwrap(ch->end[TO_RESPONDER].stats.message_interval));
+	fr_log(log, L_INFO, file, line, "\tlast write = %" PRId64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_write));
+	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRId64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_read_other));
+	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRId64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_sent_signal));
 
 	fr_log(log, L_INFO, file, line, "responder\n");
 	fr_log(log, L_INFO, file, line, "\tsignals sent = %" PRIu64"\n", ch->end[TO_REQUESTOR].stats.signals);
 	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.kevents);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.packets);
-	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", fr_time_delta_unwrap(ch->end[TO_REQUESTOR].stats.message_interval));
-	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_write));
-	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_read_other));
-	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_sent_signal));
+	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRId64 "\n", fr_time_delta_unwrap(ch->end[TO_REQUESTOR].stats.message_interval));
+	fr_log(log, L_INFO, file, line, "\tlast write = %" PRId64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_write));
+	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRId64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_read_other));
+	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRId64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_sent_signal));
 }

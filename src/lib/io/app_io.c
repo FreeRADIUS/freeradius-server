@@ -30,8 +30,8 @@
  *	@todo - include the name of the virtual server, too.
  */
 char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
-				  fr_ipaddr_t const *src_ipaddr, int src_port,
-				  fr_ipaddr_t const *dst_ipaddr, int dst_port,
+				  fr_ipaddr_t const *src_ipaddr, uint16_t src_port,
+				  fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port,
 				  char const *interface)
 {
 	char		    dst_buf[128], src_buf[128];

@@ -131,7 +131,7 @@ static void xlat_icmp_cancel(xlat_ctx_t const *xctx, request_t *request, UNUSED 
 	rlm_icmp_echo_t *echo = talloc_get_type_abort(xctx->rctx, rlm_icmp_echo_t);
 	rlm_icmp_thread_t *t = talloc_get_type_abort(xctx->mctx->thread, rlm_icmp_thread_t);
 
-	RDEBUG2("Cancelling ICMP request for %pV (counter=%d)", echo->ip, echo->counter);
+	RDEBUG2("Cancelling ICMP request for %pV (counter=%" PRIu32 ")", echo->ip, echo->counter);
 
 	(void) fr_rb_delete(t->tree, echo);
 	talloc_free(echo);
@@ -144,7 +144,7 @@ static void _xlat_icmp_timeout(xlat_ctx_t const *xctx, request_t *request, UNUSE
 
 	if (echo->replied) return; /* it MUST already have been marked resumable. */
 
-	RDEBUG2("No response to ICMP request for %pV (counter=%d)", echo->ip, echo->counter);
+	RDEBUG2("No response to ICMP request for %pV (counter=%" PRIu32 ")", echo->ip, echo->counter);
 
 	unlang_interpret_mark_runnable(request);
 }
@@ -213,7 +213,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	RDEBUG("Sending ICMP request to %pV (counter=%d)", echo->ip, echo->counter);
+	RDEBUG("Sending ICMP request to %pV (counter=%" PRIu32 ")", echo->ip, echo->counter);
 
 	icmp = (icmp_header_t) {
 		.type = t->request_type,
@@ -343,7 +343,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	my_echo.counter = icmp->counter;
 	fr_rb_find((void **)&echo, t->tree, &my_echo);
 	if (!echo) {
-		DEBUG("%s - Can't find packet counter=%d in tree", mctx->mi->name, icmp->counter);
+		DEBUG("%s - Can't find packet counter=%" PRIu32 " in tree", mctx->mi->name, icmp->counter);
 		return;
 	}
 

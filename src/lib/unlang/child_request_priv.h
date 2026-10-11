@@ -33,7 +33,7 @@ extern "C" {
 /** Parallel child states
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	CHILD_INIT = 0,						//!< Initial state, has no request allocated.
 
 	CHILD_RUNNABLE,						//!< Running/runnable.  The request is currently

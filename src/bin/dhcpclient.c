@@ -487,14 +487,14 @@ static void dhcp_packet_debug(fr_packet_t *packet, fr_pair_list_t *list, bool re
 	 *
 	 *	This really belongs in a utility library
 	 */
-	printf("%s %s Id %08x from %s%s%s:%i to %s%s%s:%i "
+	printf("%s %s Id %08" PRIx32 " from %s%s%s:%i to %s%s%s:%i "
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	       "%s%s%s"
 #endif
 	       "length %zu\n",
 	       received ? "Received" : "Sending",
 	       FR_DHCP_PACKET_CODE_VALID(packet->code) ? dhcp_message_types[packet->code] : "unknown",
-	       packet->id,
+	       (uint32_t)packet->id,
 	       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
 	       inet_ntop(packet->socket.inet.src_ipaddr.af,
 			 &packet->socket.inet.src_ipaddr.addr,

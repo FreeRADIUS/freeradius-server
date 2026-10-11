@@ -232,7 +232,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	partial = buffer + *leftover;
 
-	MPRINT("READ leftover %zd", *leftover);
+	MPRINT("READ leftover %zu", *leftover);
 
 	/*
 	 *	Try to read as much data as possible.
@@ -261,7 +261,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		 */
 		thread->eof = (data_size == 0) || (thread->read_offset == thread->file_size) || ((size_t) data_size < room);
 		if (thread->eof) {
-			MPRINT("Set EOF data_size %ld vs room %ld", data_size, room);
+			MPRINT("Set EOF data_size %ld vs room %zu", data_size, room);
 			MPRINT("Set EOF read %ld vs file %ld", (long) thread->read_offset, (long) thread->file_size);
 		}
 		end = partial + data_size;
@@ -289,7 +289,7 @@ redo:
 	 */
 	fr_assert((buffer + thread->last_search) <= end);
 
-	MPRINT("Starting search from offset %ld", thread->last_search);
+	MPRINT("Starting search from offset %zu", thread->last_search);
 
 	p = buffer + thread->last_search;
 	while (p < end) {
@@ -388,7 +388,7 @@ redo:
 		packet_len = next - buffer;
 		*leftover = end - next;
 
-		MPRINT("FOUND next at %zd, leftover is %zd", packet_len, *leftover);
+		MPRINT("FOUND next at %zu, leftover is %zu", packet_len, *leftover);
 
 	} else if (!thread->eof) {
 		if ((size_t) (end - buffer) == buffer_len) {
@@ -406,7 +406,7 @@ redo:
 		 *	there's more data.
 		 */
 		*leftover = end - buffer;
-		MPRINT("Not at EOF, and no next.  Leftover is %zd", *leftover);
+		MPRINT("Not at EOF, and no next.  Leftover is %zu", *leftover);
 		return 0;
 
 	} else {
@@ -418,7 +418,7 @@ redo:
 		packet_len = end - buffer;
 		*leftover = 0;
 
-		MPRINT("NO end of record, but at EOF, found %zd leftover is 0", packet_len);
+		MPRINT("NO end of record, but at EOF, found %zu leftover is 0", packet_len);
 	}
 
 	/*
@@ -669,7 +669,7 @@ free_track:
 		return -1;
 	}
 
-	MPRINT("WRITE RETURN B %ld", buffer_len);
+	MPRINT("WRITE RETURN B %zu", buffer_len);
 	return buffer_len;
 }
 

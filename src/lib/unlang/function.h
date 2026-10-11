@@ -38,7 +38,7 @@ extern "C" {
 #include <freeradius-devel/server/signal.h>
 
 
-typedef enum {
+typedef enum : uint8_t {
 	UNLANG_FUNCTION_TYPE_WITH_RESULT,	//!< Function with a result.
 	UNLANG_FUNCTION_TYPE_NO_RESULT,		//!< Function without a result.
 } unlang_function_type_t;

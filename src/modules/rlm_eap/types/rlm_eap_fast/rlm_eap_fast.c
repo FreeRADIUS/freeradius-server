@@ -555,7 +555,7 @@ unexpected:
 		}
 		break;
 	default:
-		REDEBUG("Unexpected stage %d", t->stage);
+		REDEBUG("Unexpected stage %u", t->stage);
 		return 0;
 	}
 
@@ -652,7 +652,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 			case FR_MSCHAP_MPPE_SEND_KEY:
 				if (vp->vp_length != MD5_DIGEST_LENGTH) {
 				wrong_length:
-					REDEBUG("Found %s with incorrect length.  Expected %u, got %zu",
+					REDEBUG("Found %s with incorrect length.  Expected %d, got %zu",
 						vp->da->name, MD5_DIGEST_LENGTH, vp->vp_length);
 					rcode = RLM_MODULE_INVALID;
 					break;
@@ -698,7 +698,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		break;
 
 	default:
-		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		REDEBUG("Unknown RADIUS packet type %u: rejecting tunneled user", reply->code);
 		rcode = RLM_MODULE_INVALID;
 		break;
 	}
@@ -1177,7 +1177,7 @@ static fr_radius_packet_code_t eap_fast_process(request_t *request, module_ctx_t
 		break;
 
 	default:
-		RERROR("Internal sanity check failed in EAP-FAST at %d", t->stage);
+		RERROR("Internal sanity check failed in EAP-FAST at %u", t->stage);
 		code = FR_RADIUS_CODE_ACCESS_REJECT;
 	}
 

@@ -253,7 +253,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 		fr_dict_attr_t const	*our_parent = parent;
 
 		if ((end - p) < 8) {
-			fr_strerror_printf("Malformed diameter attribute at offset %zu.  Needed at least 8 bytes, got %zu bytes",
+			fr_strerror_printf("Malformed diameter attribute at offset %td.  Needed at least 8 bytes, got %td bytes",
 					   p - data, end - p);
 		error:
 			talloc_free(tmp_ctx);
@@ -261,7 +261,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 			return -1;
 		}
 
-		RDEBUG3("%04zu %02x%02x%02x%02x %02x%02x%02x%02x ...", p - data,
+		RDEBUG3("%04td %02x%02x%02x%02x %02x%02x%02x%02x ...", p - data,
 			p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
 
 		attr = fr_nbo_to_uint32(p);
@@ -274,7 +274,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 		p += 3;
 
 		if (value_len < 8) {
-			fr_strerror_printf("Malformed diameter attribute at offset %zu.  Needed at least length of 8, got %u",
+			fr_strerror_printf("Malformed diameter attribute at offset %td.  Needed at least length of 8, got %u",
 					   p - data, (unsigned int) value_len);
 			goto error;
 		}
@@ -284,7 +284,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 		 */
 		if ((p + ((value_len + 0x03) & ~0x03)) - 8 > end) {
 		overflow:
-			fr_strerror_printf("Malformed diameter attribute at offset %zu.  Value length %u overflows input",
+			fr_strerror_printf("Malformed diameter attribute at offset %td.  Value length %u overflows input",
 					   p - data, (unsigned int) value_len);
 			goto error;
 		}
@@ -703,7 +703,7 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 		break;
 
 	default:
-		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		REDEBUG("Unknown RADIUS packet type %u: rejecting tunneled user", reply->code);
 		p_result->rcode = RLM_MODULE_INVALID;
 		return eap_tls_fail(request, eap_session);
 	}

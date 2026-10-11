@@ -55,7 +55,7 @@ typedef struct {
 } fr_dict_attr_ext_children_t;
 
 DIAG_OFF(attributes)
-typedef enum CC_HINT(flag_enum) {
+typedef enum CC_HINT(flag_enum) : uint16_t {
 	FR_DICT_ATTR_REF_NONE		= 0x00,			//!< No ref set.
 	FR_DICT_ATTR_REF_ALIAS		= 0x01,			//!< The attribute is an alias for another attribute.
 								///< Either a straight ALIAS, or a pointer from FR_TYPE_GROUP

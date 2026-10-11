@@ -35,7 +35,7 @@ RCSID("$Id$")
 
 #include <pthread.h>
 
-typedef enum {
+typedef enum : uint8_t {
 	INTERVAL_SCOPE_GLOBAL = 0,
 	INTERVAL_SCOPE_THREAD
 } rlm_interval_scope_t;
@@ -100,7 +100,7 @@ static conf_parser_t reuse_config[] = {
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("scope", rlm_interval_t, scope),
-	  .func = cf_table_parse_int,
+	  .func = cf_table_parse_uint8,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = interval_scope_table, .len = &interval_scope_table_len },
 	  .dflt = "global" },
 	{ FR_CONF_OFFSET_SUBSECTION("reuse", 0, rlm_interval_t, reuse, reuse_config) },

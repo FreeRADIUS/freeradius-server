@@ -160,7 +160,7 @@ struct fr_redis_ct_key_slot_s {
 	uint8_t		master;				//!< id of the master node.
 };
 
-typedef enum {
+typedef enum : uint8_t {
 	CLUSTER_INIT = 0,				//!< Cluster has been initialised.
 	CLUSTER_MAP_FETCHING,				//!< The cluster map is currently being fetched.
 	CLUSTER_READY,					//!< The cluster is available to handle requests.
@@ -306,7 +306,7 @@ fr_redis_ct_key_slot_t const *fr_redis_ct_slot_by_key(fr_redis_ct_t *rtcluster, 
 
 	if (!key || (key_len == 0)) {
 		key_slot = &rtcluster->key_slot[(uint16_t)(fr_rand() & (KEY_SLOTS - 1))];
-		ROPTIONAL(RDEBUG2, DEBUG2, "Key rand() -> slot %zu", key_slot - rtcluster->key_slot);
+		ROPTIONAL(RDEBUG2, DEBUG2, "Key rand() -> slot %td", key_slot - rtcluster->key_slot);
 
 		return key_slot;
 	}
@@ -317,7 +317,7 @@ fr_redis_ct_key_slot_t const *fr_redis_ct_slot_by_key(fr_redis_ct_t *rtcluster, 
 	 */
 	if (fr_rb_num_elements(rtcluster->used_nodes) > 1) {
 		key_slot = &rtcluster->key_slot[cluster_key_hash(key, key_len)];
-		ROPTIONAL(RDEBUG2, DEBUG2, "Key \"%pV\" -> slot %zu",
+		ROPTIONAL(RDEBUG2, DEBUG2, "Key \"%pV\" -> slot %td",
 			  fr_box_strvalue_len((char const *)key, key_len), key_slot - rtcluster->key_slot);
 
 		return key_slot;

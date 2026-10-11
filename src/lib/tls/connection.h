@@ -57,7 +57,7 @@ extern "C" {
  * TLS_CONNECTION_HANDSHAKE, and sets `state` to TLS_CONNECTION_COMPLETE to
  * record that the handshake has ended.
  */
-typedef enum {
+typedef enum : uint8_t {
 	TLS_CONNECTION_NEW_SESSION = 0,			//!< Run `new session { ... }`.
 	TLS_CONNECTION_HANDSHAKE,			//!< Run handshake rounds until the handshake ends.
 	TLS_CONNECTION_COMPLETE				//!< Run the cache operations the handshake queued.
@@ -66,7 +66,7 @@ typedef enum {
 /** Give the reason why the connection failed
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	TLS_CONNECTION_FAIL_NONE = 0,			//!< no failure as of yet
 	TLS_CONNECTION_FAIL_TLS,			//!< failure inside of TLS
 	TLS_CONNECTION_FAIL_SYSCALL,			//!< system call, usually IO layer
@@ -85,7 +85,7 @@ typedef enum {
  *
  * New connections start off with state 0 (FR_TLS_CONNECTION_IO_OK).
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_TLS_CONNECTION_IO_OK = 0,			//!< The call succeeded, or no call has been
 							///< made yet.
 	FR_TLS_CONNECTION_IO_RETRY,			//!< A signal interrupted the call.  Run the

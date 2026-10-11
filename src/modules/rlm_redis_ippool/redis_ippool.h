@@ -37,7 +37,7 @@ RCSIDH(redis_ippool_h, "$Id$")
 #define _IPPOOL_RCODE_POOL_EMPTY	-4
 #define _IPPOOL_RCODE_FAIL		-5
 
-typedef enum {
+typedef enum : int8_t {
 	IPPOOL_RCODE_SUCCESS = _IPPOOL_RCODE_SUCCESS,
 	IPPOOL_RCODE_NOT_FOUND = _IPPOOL_RCODE_NOT_FOUND,
 	IPPOOL_RCODE_EXPIRED = _IPPOOL_RCODE_EXPIRED,
@@ -46,14 +46,14 @@ typedef enum {
 	IPPOOL_RCODE_FAIL = _IPPOOL_RCODE_FAIL
 } ippool_rcode_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	POOL_ACTION_ALLOCATE = 1,
 	POOL_ACTION_UPDATE = 2,
 	POOL_ACTION_RELEASE = 3,
 	POOL_ACTION_BULK_RELEASE = 4,
 } ippool_action_t;
 
-#define IPPOOL_MAX_KEY_PREFIX_SIZE	128
+#define IPPOOL_MAX_KEY_PREFIX_SIZE	128U
 #define IPPOOL_POOL_KEY			"pool"
 #define IPPOOL_ADDRESS_KEY		"ip"
 #define IPPOOL_OWNER_KEY		"device"
@@ -72,7 +72,7 @@ typedef enum {
 #define IPPOOL_MAX_OWNER_KEY_SIZE	IPPOOL_MAX_KEY_PREFIX_SIZE + (sizeof("{}:" IPPOOL_OWNER_KEY ":") - 1) + 128
 
 
-#define IPADDR_LEN(_af) ((_af == AF_UNSPEC) ? 0 : ((_af == AF_INET6) ? 128 : 32))
+#define IPADDR_LEN(_af) ((_af == AF_UNSPEC) ? 0U : ((_af == AF_INET6) ? 128U : 32U))
 
 /** Wrap the prefix in {} and add the pool suffix
  *

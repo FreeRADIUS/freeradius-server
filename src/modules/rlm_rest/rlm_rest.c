@@ -100,7 +100,7 @@ static int rest_proxy_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 	{ FR_CONF_OFFSET("body", rlm_rest_section_request_t, body_str), .dflt = "none" }, \
 	/* User authentication */ \
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, 0, rlm_rest_section_request_t, auth), \
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" }, \
+	  .func = cf_table_parse_uint8, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" }, \
 	{ FR_CONF_OFFSET("require_auth", rlm_rest_section_request_t, require_auth), .dflt = "no" }, \
 	{ FR_CONF_OFFSET("chunk", rlm_rest_section_request_t, chunk), .dflt = "0" } \
 

@@ -223,7 +223,7 @@ static xlat_action_t json_jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out
 
 	slen = fr_jpath_parse(request, &head, path->vb_strvalue, path->vb_length);
 	if (slen <= 0) {
-		fr_value_box_asprintf(ctx, vb, NULL, false, "%zu:%s", -(slen), fr_strerror());
+		fr_value_box_asprintf(ctx, vb, NULL, false, "%zd:%s", -(slen), fr_strerror());
 		fr_dcursor_append(out, vb);
 		fr_assert(head == NULL);
 		return XLAT_ACTION_DONE;

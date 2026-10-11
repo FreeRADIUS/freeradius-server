@@ -37,7 +37,7 @@
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("network_name", eap_aka_sim_process_conf_t, network_name ) },
 	{ FR_CONF_OFFSET("request_identity", eap_aka_sim_process_conf_t, request_identity ),
-	  .func = cf_table_parse_int,
+	  .func = cf_table_parse_uint8,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_aka_sim_id_request_table, .len = &fr_aka_sim_id_request_table_len }},
 	{ FR_CONF_OFFSET("strip_permanent_identity_hint", eap_aka_sim_process_conf_t,
 			 strip_permanent_identity_hint ), .dflt = "yes" },

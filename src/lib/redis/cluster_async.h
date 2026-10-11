@@ -65,7 +65,7 @@ default: \
 }
 
 #define REDIS_ASYNC_COORD_CALLBACKS(_thread_type) \
-typedef enum { \
+typedef enum : uint8_t { \
 	REDIS_COORD_PAIR_CALLBACK_ID = 0, \
 } rlm_redis_coord_t; \
 static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg, \

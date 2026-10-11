@@ -53,7 +53,7 @@ static int cipher_rsa_private_key_file_load(UNUSED TALLOC_CTX *ctx, void *out, U
 static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 					    CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
-typedef enum {
+typedef enum : uint8_t {
 	RLM_CIPHER_TYPE_INVALID = 0,
 	RLM_CIPHER_TYPE_RSA = 1,
 	RLM_CIPHER_TYPE_SYMMETRIC = 2				//!< Any symmetric cipher available via
@@ -63,7 +63,7 @@ typedef enum {
 /** Certificate validation modes
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	CIPHER_CERT_VERIFY_INVALID = 0,
 
 	CIPHER_CERT_VERIFY_HARD,				//!< Fail if the certificate isn't valid.
@@ -72,7 +72,7 @@ typedef enum {
 								///< notBefore or notAfter.
 } cipher_cert_verify_mode_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	CIPHER_CERT_ATTR_UNKNOWN = 0,				//!< Unrecognised attribute.
 	CIPHER_CERT_ATTR_SERIAL,				//!< Certificate's serial number.
 	CIPHER_CERT_ATTR_FINGERPRINT,				//!< Dynamically calculated fingerprint.
@@ -203,7 +203,7 @@ static const conf_parser_t rsa_oaep_config[] = {
  */
 static const conf_parser_t rsa_config[] = {
 	{ FR_CONF_OFFSET("verify_mode", cipher_rsa_t, verify_mode),
-			 .func = cf_table_parse_int,
+			 .func = cf_table_parse_uint8,
 			 .uctx = &(cf_table_parse_ctx_t){
 			 	.table = cipher_cert_verify_mode_table,
 			 	.len = &cipher_cert_verify_mode_table_len
@@ -512,7 +512,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *pa
 		case CIPHER_CERT_VERIFY_NONE:
 			break;
 
-		case CIPHER_CERT_ATTR_UNKNOWN:
+		case CIPHER_CERT_VERIFY_INVALID:
 			fr_assert(0);
 			break;
 		}

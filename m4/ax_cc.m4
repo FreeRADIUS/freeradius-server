@@ -241,7 +241,7 @@ AC_DEFUN([AX_CC_WEVERYTHING_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-Weverything"], [ax_cv_cc_weverything_flag],[
 
     CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror -Weverything -Wno-reserved-id-macro -Wno-unused-macros -Wno-unreachable-code-return -Wno-poison-system-directories"
+    CFLAGS="$CFLAGS -Weverything"
 
     AC_LANG_PUSH(C)
     AC_TRY_COMPILE(

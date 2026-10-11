@@ -1002,7 +1002,7 @@ int main_config_exclusive_proc(main_config_t *config)
 		pid_t pid;
 
 		fr_sem_pid(&pid, sem_id);
-		fr_strerror_printf("Refusing to start - PID %u already running with \"%s\"", pid, path);
+		fr_strerror_printf("Refusing to start - PID %ld already running with \"%s\"", (long)pid, path);
 		talloc_free(path);
 	}
 		break;

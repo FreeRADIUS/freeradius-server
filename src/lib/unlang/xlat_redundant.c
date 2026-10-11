@@ -38,7 +38,7 @@ RCSID("$Id$")
 /*
  *	Internal redundant handler for xlats
  */
-typedef enum {
+typedef enum : uint8_t {
 	XLAT_REDUNDANT_INVALID = 0,			//!< Not a valid redundant type.
 	XLAT_REDUNDANT,					//!< Use the first xlat function first, then
 							///< go through in sequence, using the next

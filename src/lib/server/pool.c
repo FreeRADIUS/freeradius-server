@@ -664,7 +664,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	 *	num + pending <= max.
 	 */
 	if (num < pool->min) {
-		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach min connections (%i)", pool->min - num, pool->min);
+		ROPTIONAL(RINFO, INFO, "Need %" PRIu32 " more connections to reach min connections (%" PRIu32 ")", pool->min - num, pool->min);
 		goto add_connection;
 	}
 
@@ -769,7 +769,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 		/*
 		 *	Too few spares, go add one.
 		 */
-		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach %i spares", pool->spare - spare, pool->spare);
+		ROPTIONAL(RINFO, INFO, "Need %" PRIu32 " more connections to reach %" PRIu32 " spares", pool->spare - spare, pool->spare);
 
 	add_connection:
 		/*
@@ -867,7 +867,7 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 		return NULL;
 	}
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "%i of %u connections in use.  You may need to increase \"spare\"",
+	ROPTIONAL(RDEBUG2, DEBUG2, "%" PRIu32 " of %u connections in use.  You may need to increase \"spare\"",
 	       pool->state.active, pool->state.num);
 
 	this = connection_spawn(pool, request, now, true);

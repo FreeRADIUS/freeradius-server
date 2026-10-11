@@ -281,7 +281,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		break;
 	}
 
-	RDEBUG2("Sending EAP %s (code %d) ID %d length %i",
+	RDEBUG2("Sending EAP %s (code %u) ID %d length %i",
 		eap_codes[reply->code], reply->code, reply->id,
 		eap_packet->length[0] * 256 + eap_packet->length[1]);
 

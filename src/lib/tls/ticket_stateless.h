@@ -44,7 +44,7 @@ extern "C" {
  * The `decode session` policy allows the admin to check the list
  * after a ticket has been received.
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_TLS_TICKET_STATELESS_INIT = 0,				//!< Nothing requested.
 	FR_TLS_TICKET_STATELESS_ENCODE_REQUESTED,			//!< `encode session` needs to run.
 	FR_TLS_TICKET_STATELESS_DECODE_REQUESTED,			//!< `decode session` needs to run.

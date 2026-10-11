@@ -293,7 +293,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 
 		packet = (pwd_id_packet_t *) in;
 		if (in_len < sizeof(*packet)) {
-			REDEBUG("Packet is too small (%zd < %zd).", in_len, sizeof(*packet));
+			REDEBUG("Packet is too small (%zu < %zu).", in_len, sizeof(*packet));
 			RETURN_UNLANG_INVALID;
 		}
 
@@ -426,7 +426,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 
 	case PWD_STATE_CONFIRM:
 		if (in_len < SHA256_DIGEST_LENGTH) {
-			REDEBUG("Peer confirm is too short (%zd < %d)", in_len, SHA256_DIGEST_LENGTH);
+			REDEBUG("Peer confirm is too short (%zu < %d)", in_len, SHA256_DIGEST_LENGTH);
 			RETURN_UNLANG_INVALID;
 		}
 
@@ -566,7 +566,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		break;
 
 	default:
-		cf_log_err_by_child(conf, "group", "Group %i is not supported", inst->group);
+		cf_log_err_by_child(conf, "group", "Group %" PRIu32 " is not supported", inst->group);
 		return -1;
 	}
 

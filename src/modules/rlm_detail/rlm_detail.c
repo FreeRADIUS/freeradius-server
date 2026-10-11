@@ -330,7 +330,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(unlang_result_t *p_result, mod
 
 	if (inst->group_is_set) {
 		if (chown(env->filename.vb_strvalue, -1, inst->group) == -1) {
-			RERROR("Unable to set detail file group to '%d': %s", inst->group, fr_syserror(errno));
+			RERROR("Unable to set detail file group to '%lu': %s", (unsigned long)inst->group, fr_syserror(errno));
 			goto fail;
 		}
 	}

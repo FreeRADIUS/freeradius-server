@@ -31,7 +31,7 @@ extern "C" {
 
 #define FR_CONDUIT_MAGIC (0xf7eead17)
 
-typedef enum fr_conduit_type_t {
+typedef enum fr_conduit_type_t : uint8_t {
 	FR_CONDUIT_STDIN = 0,
 	FR_CONDUIT_STDOUT,
 	FR_CONDUIT_STDERR,
@@ -44,19 +44,19 @@ typedef enum fr_conduit_type_t {
 	FR_CONDUIT_COMPLETE,
 } fr_conduit_type_t;
 
-typedef enum fr_conduit_origin_t {
+typedef enum fr_conduit_origin_t : uint8_t {
 	FR_ORIGIN_SIGNAL = 0,
 	FR_ORIGIN_DEBUG,
 	FR_ORIGIN_WORKER,
 } fr_conduit_origin_t;
 
-typedef enum fr_conduit_result_t {
+typedef enum fr_conduit_result_t : uint8_t {
 	FR_CONDUIT_FAIL = 0,
 	FR_CONDUIT_PARTIAL,
 	FR_CONDUIT_SUCCESS
 } fr_conduit_result_t;
 
-typedef enum fr_conduit_notify_t {
+typedef enum fr_conduit_notify_t : uint8_t {
 	FR_NOTIFY_NONE = 0,
 	FR_NOTIFY_BUFFERED,
 	FR_NOTIFY_UNBUFFERED

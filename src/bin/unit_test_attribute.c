@@ -151,7 +151,7 @@ do { \
  */
 #define DEFAULT_BUFFER_SIZE	1024
 
-typedef enum {
+typedef enum : uint8_t {
 	RESULT_OK = 0,				//!< Not an error - Result as expected.
 	RESULT_NOOP,				//!< Not an error - Did nothing...
 	RESULT_SKIP_FILE,			//!< Not an error - Skip the rest of this file, or until we
@@ -352,7 +352,7 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 {
 	char *g, *e;
 
-	ERROR("%s failed %s/%s:%d", command, cc->path, cc->filename, cc->lineno);
+	ERROR("%s failed %s/%s:%" PRIu32, command, cc->path, cc->filename, cc->lineno);
 
 	if (!print_diff) {
 		ERROR("  got      : %.*s", (int) got_len, got);
@@ -371,11 +371,11 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 
 			ERROR("  EXPECTED : %.*s", (int) expected_len, expected);
 			ERROR("  GOT      : %.*s", (int) got_len, got);
-			ERROR("             %.*s^ differs here (%zu)", (int) (e - expected), spaces, e - expected);
+			ERROR("             %.*s^ differs here (%td)", (int) (e - expected), spaces, e - expected);
 		} else if (fr_debug_lvl > 1) {
 			ERROR("  EXPECTED : %.*s", (int) expected_len, expected);
 			ERROR("  GOT      : %.*s", (int) got_len, got);
-			ERROR("Differs at : %zu", e - expected);
+			ERROR("Differs at : %td", e - expected);
 
 		} else {
 			size_t glen, elen;
@@ -385,8 +385,8 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 			glen = strlen(g);
 			if (glen > 70) glen = 70;
 
-			ERROR("(%zu) ... %.*s ... ", e - expected, (int) elen, e);
-			ERROR("(%zu) ... %.*s ... ", e - expected, (int) glen, g);
+			ERROR("(%td) ... %.*s ... ", e - expected, (int) elen, e);
+			ERROR("(%td) ... %.*s ... ", e - expected, (int) glen, g);
 		}
 	}
 }
@@ -2099,7 +2099,7 @@ size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc
 
 		if (ret < 0) RETURN_OK_WITH_ERROR();
 
-		if (ret == 0) RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "need=%zd", need));
+		if (ret == 0) RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "need=%zu", need));
 
 		enc_p += ret;
 
@@ -2210,7 +2210,7 @@ static size_t encode_pair(command_result_t *result, command_file_ctx_t *cc, char
 			      "poisoned region %p-%p (%zu bytes)", cc->filename, cc->lineno, iterations - 1,
 			      enc_p, enc_end, enc_end - enc_p, enc_end, cc->buffer_end, cc->buffer_end - enc_end);
 #else
-			DEBUG("%s[%d]: Iteration %zu - Allowed region %p-%p (%zu bytes)",
+			DEBUG("%s[%" PRIu32 "]: Iteration %zu - Allowed region %p-%p (%td bytes)",
 			      cc->filename, cc->lineno, iterations - 1, enc_p, enc_end, enc_end - enc_p);
 #endif
 		}
@@ -2223,7 +2223,7 @@ static size_t encode_pair(command_result_t *result, command_file_ctx_t *cc, char
 			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encode_ctx);
 			cc->last_ret = slen;
 
-			if (truncate) DEBUG("%s[%d]: Iteration %zu - Result %zd%s%s",
+			if (truncate) DEBUG("%s[%" PRIu32 "]: Iteration %zu - Result %zd%s%s",
 					    cc->filename, cc->lineno, iterations - 1, slen,
 					    *fr_strerror_peek() != '\0' ? " - " : "",
 					    *fr_strerror_peek() != '\0' ? fr_strerror_peek() : "");
@@ -2233,7 +2233,7 @@ static size_t encode_pair(command_result_t *result, command_file_ctx_t *cc, char
 			 *	Encoder indicated it encoded too much data
 			 */
 			if (slen > (enc_end - enc_p)) {
-				fr_strerror_printf("Expected returned encoded length <= %zu bytes, got %zu bytes",
+				fr_strerror_printf("Expected returned encoded length <= %td bytes, got %zu bytes",
 						   (enc_end - enc_p), (size_t)slen);
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
 				if (truncate) ASAN_UNPOISON_MEMORY_REGION(enc_end, (cc->buffer_end) - enc_end);
@@ -2774,7 +2774,7 @@ static size_t command_max_buffer_size(command_result_t *result, command_file_ctx
 	cc->buffer_start = POISONED_BUFFER_START(cc->buffer);
 	cc->buffer_end = POISONED_BUFFER_END(cc->buffer);
 
-	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%ld", size));
+	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%lu", size));
 }
 
 /** Set or clear migration flags.
@@ -2855,7 +2855,7 @@ static size_t command_no(command_result_t *result, command_file_ctx_t *cc,
 	 *	OK becomes a command error
 	 */
 	case RESULT_OK:
-		ERROR("%s[%d]: %.*s: returned 'ok', where we expected 'result-mismatch'",
+		ERROR("%s[%" PRIu32 "]: %.*s: returned 'ok', where we expected 'result-mismatch'",
 		      cc->filename, cc->lineno, (int) inlen, in);
 		RETURN_MISMATCH(data_used);
 
@@ -3923,7 +3923,7 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 		RETURN_NOOP(data_used);
 	}
 
-	DEBUG2("%s[%d]: %s", cc->filename, cc->lineno, p);
+	DEBUG2("%s[%" PRIu32 "]: %s", cc->filename, cc->lineno, p);
 
 	/*
 	 *	Look up the command by longest prefix
@@ -3965,10 +3965,10 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 	}
 
 	if (data_used) {
-		DEBUG2("%s[%d]: --> %s (%zu bytes in buffer)", cc->filename, cc->lineno,
+		DEBUG2("%s[%" PRIu32 "]: --> %s (%zu bytes in buffer)", cc->filename, cc->lineno,
 		       fr_table_str_by_value(command_rcode_table, result->rcode, "<INVALID>"), data_used);
 	} else {
-		DEBUG2("%s[%d]: --> %s", cc->filename, cc->lineno,
+		DEBUG2("%s[%" PRIu32 "]: --> %s", cc->filename, cc->lineno,
 		       fr_table_str_by_value(command_rcode_table, result->rcode, "<INVALID>"));
 	}
 
@@ -4145,7 +4145,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 
 		if (!p) {
 			if (!feof(fp)) {
-				ERROR("Line %d too long in %s/%s", cc->lineno, cc->path, cc->filename);
+				ERROR("Line %" PRIu32 " too long in %s/%s", cc->lineno, cc->path, cc->filename);
 				ret = -1;
 				goto finish;
 			}
@@ -4187,7 +4187,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 
 				command = fr_table_value_by_longest_prefix(&match_len, commands, buffer, -1, NULL);
 				if (!command) {
-					ERROR("%s[%d]: Unknown command: %s", cc->path, cc->lineno, p);
+					ERROR("%s[%" PRIu32 "]: Unknown command: %s", cc->path, cc->lineno, p);
 					ret = -1;
 					goto finish;
 				}
@@ -4204,7 +4204,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 		 */
 		case RESULT_PARSE_ERROR:
 		case RESULT_COMMAND_ERROR:
-			fr_perror("%s[%d]", filename, cc->lineno);
+			fr_perror("%s[%" PRIu32 "]", filename, cc->lineno);
 			ret = -1;
 			goto finish;
 
@@ -4226,7 +4226,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 			/*
 			 *	If this happens, fix the damn command.
 			 */
-			fr_assert_msg(false, "Command exited with invalid return code (%i)", result.rcode);
+			fr_assert_msg(false, "Command exited with invalid return code (%u)", result.rcode);
 			ret = -1;
 			goto finish;
 		}

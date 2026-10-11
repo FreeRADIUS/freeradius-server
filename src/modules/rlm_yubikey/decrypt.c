@@ -33,7 +33,7 @@ unlang_action_t rlm_yubikey_decrypt(unlang_result_t *p_result, module_ctx_t cons
 	}
 
 	if (key->vp_length != YUBIKEY_KEY_SIZE) {
-		REDEBUG("Yubikey-Key length incorrect, expected %u got %zu", YUBIKEY_KEY_SIZE, key->vp_length);
+		REDEBUG("Yubikey-Key length incorrect, expected %zu got %zu", (size_t)YUBIKEY_KEY_SIZE, key->vp_length);
 		RETURN_UNLANG_INVALID;
 	}
 

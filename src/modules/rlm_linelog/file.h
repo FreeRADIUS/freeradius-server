@@ -56,7 +56,7 @@ struct rlm_linelog_file_s {
 	rlm_linelog_file_entry_t	entry[];		//!< Array of metadata for each pending write.
 };
 
-typedef enum {
+typedef enum : int8_t {
 	LINELOG_BUFFER_WRITE_FAIL = -1,		//!< Writing buffered data failed.
 	LINELOG_BUFFER_WRITE_YIELD = 0,		//!< Writing buffered data yielded.
 	LINELOG_BUFFER_WRITE_DONE = 1		//!< Writing buffered data completed.

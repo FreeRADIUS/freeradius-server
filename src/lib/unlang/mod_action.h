@@ -34,7 +34,7 @@ extern "C" {
 #define MOD_PRIORITY(_x) ((_x) | 0x80)
 #define MOD_DEFINE(_x) MOD_PRIORITY_ ## _x = MOD_PRIORITY(_x)
 
-typedef enum {
+typedef enum : uint8_t {
 	MOD_ACTION_NOT_SET = 0,       	//!< default "not set by anything"
 	MOD_ACTION_RETRY = 1,		//!< retry the instruction, MUST also set a retry config
 	MOD_ACTION_REJECT = 2,		//!< change the rcode to REJECT, with unset priority

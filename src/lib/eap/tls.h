@@ -83,7 +83,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define SET_MORE_FRAGMENTS(x) 	((x) | (0x40))
 #define SET_LENGTH_INCLUDED(x) 	((x) | (0x80))
 
-typedef enum {
+typedef enum : uint8_t {
 	EAP_TLS_INVALID = 0,	  			//!< Invalid, don't reply.
 	EAP_TLS_ESTABLISHED,       			//!< Session established, send success (or start phase2).
 	EAP_TLS_FAIL,       				//!< Fail, send fail.

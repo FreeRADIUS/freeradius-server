@@ -115,7 +115,7 @@ typedef struct fr_load_s fr_load_t;
 /** Whether or not the application should continue.
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_LOAD_CONTINUE = 0,		//!< continue sending packets.
 	FR_LOAD_DONE			//!< the load generator is done
 } fr_load_reply_t;

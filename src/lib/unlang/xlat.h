@@ -34,7 +34,7 @@ extern "C" {
 /*
  *	Forward declarations
  */
-typedef enum {
+typedef enum : uint8_t {
 	XLAT_ACTION_PUSH_CHILD = 1,		//!< A deeper level of nesting needs to be evaluated.
 	XLAT_ACTION_PUSH_UNLANG,		//!< An xlat function pushed an unlang frame onto the unlang stack.
 						///< This frame needs to be evaluated, and then we need to call
@@ -121,7 +121,7 @@ typedef struct {
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
 
-typedef enum {
+typedef enum : uint8_t {
 	XLAT_ARG_VARIADIC_DISABLED	= 0,
 	XLAT_ARG_VARIADIC_EMPTY_SQUASH	= 1,	//!< Empty argument groups are removed.
 	XLAT_ARG_VARIADIC_EMPTY_KEEP	= 2, 	//!< Empty argument groups are left alone,

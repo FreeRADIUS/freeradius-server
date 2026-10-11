@@ -149,7 +149,7 @@ typedef struct {
 typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
 typedef int (*rlm_isc_dhcp_apply_t)(rlm_isc_dhcp_t const *inst, request_t *request, rlm_isc_dhcp_info_t *info);
 
-typedef enum rlm_isc_dhcp_type_t {
+typedef enum rlm_isc_dhcp_type_t : uint8_t {
 	ISC_INVALID = 0,		//!< we recognize it, but don't implement it
 	ISC_NOOP,			//!< we don't do anything with it
 	ISC_IGNORE,			//!< we deliberately ignore it

@@ -46,7 +46,7 @@ RCSID("$Id$")
 /**
  *  Status of control messages
  */
-typedef enum fr_control_message_status_t {
+typedef enum fr_control_message_status_t : uint8_t {
 	FR_CONTROL_MESSAGE_FREE = 0,			//!< the message is free
 	FR_CONTROL_MESSAGE_USED,			//!< the message is used (set only by originator)
 	FR_CONTROL_MESSAGE_DONE				//!< the message is done (set only by receiver)
@@ -412,14 +412,14 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 
 	if (!fr_atomic_queue_pop(aq, (void **) &m)) return 0;
 
-	fr_assert_msg(m->status == FR_CONTROL_MESSAGE_USED, "Bad control message state, expected %u got %u",
+	fr_assert_msg(m->status == FR_CONTROL_MESSAGE_USED, "Bad control message state, expected %d got %u",
 		      FR_CONTROL_MESSAGE_USED, m->status);
 
 	/*
 	 *	There isn't enough room to store the data, die.
 	 */
 	if (data_size < m->data_size) {
-		fr_strerror_printf("Allocation size should be at least %zd", m->data_size);
+		fr_strerror_printf("Allocation size should be at least %zu", m->data_size);
 		m->status = FR_CONTROL_MESSAGE_DONE;
 		return -(m->data_size);
 	}
@@ -460,7 +460,7 @@ int fr_control_callback_add(fr_control_t **c, uint32_t id, fr_control_callback_t
 	if (id >= ctrl->num_callbacks) {
 		ctrl = talloc_realloc_size(talloc_parent(*c), *c, sizeof(fr_control_t) + sizeof(fr_control_ctx_t) * (id + 1));
 		if (!ctrl) {
-			fr_strerror_printf("Failed re-allocating control when registering callback ID %d", id);
+			fr_strerror_printf("Failed re-allocating control when registering callback ID %" PRIu32, id);
 			return -1;
 		}
 		talloc_set_type(ctrl, fr_control_t);
@@ -508,7 +508,7 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 	if (id >= c->num_callbacks) {
-		fr_strerror_printf("Failed deleting unknown ID %d", id);
+		fr_strerror_printf("Failed deleting unknown ID %" PRIu32, id);
 		return -1;
 	}
 

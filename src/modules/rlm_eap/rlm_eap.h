@@ -34,7 +34,7 @@ RCSIDH(rlm_eap_h, "$Id$")
 
 /** Different settings for realm issues
  */
-typedef enum {
+typedef enum : uint8_t {
 	REQUIRE_REALM_YES = 0,			//!< Require the EAP-Identity string contain an NAI realm
 						///< or that Stripped-User-Domain is present in the request.
 	REQUIRE_REALM_NO,			//!< Don't require that the identity is qualified.

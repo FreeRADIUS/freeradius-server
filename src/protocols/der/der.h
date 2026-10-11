@@ -31,7 +31,7 @@
 
 /** Enumeration describing the data types in a DER encoded structure
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_DER_TAG_INVALID	    = 0x00,	   //!< Invalid tag.
 	FR_DER_TAG_BOOLEAN	    = 0x01,	   //!< Boolean true/false
 	FR_DER_TAG_INTEGER	    = 0x02,	   //!< Arbitrary width signed integer.
@@ -60,12 +60,12 @@ typedef enum {
 
 #define FR_DER_TAG_VALUE_MAX (0x1f)		//!< tags >=max can't exist
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_DER_TAG_PRIMITIVE   = 0x00,	     //!< This is a leaf value, it contains no children.
 	FR_DER_TAG_CONSTRUCTED = 0x20	     //!< This is a sequence or set, it contains children.
 } fr_der_tag_constructed_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_DER_CLASS_UNIVERSAL   = 0x00,
 	FR_DER_CLASS_APPLICATION = 0x40,
 	FR_DER_CLASS_CONTEXT	    = 0x80,
@@ -93,7 +93,7 @@ typedef enum {
 /** Which member of the fr_der_attr_flags_t union is in use
  *
  */
-typedef enum {
+typedef enum : uint8_t {
 	FR_DER_ATTR_FLAG_NONE = 0,		//!< no member is in use
 	FR_DER_ATTR_FLAG_SEQUENCE_OF,		//!< sequence_of has been defined
 	FR_DER_ATTR_FLAG_SETOF,			//!< set_of has been defined

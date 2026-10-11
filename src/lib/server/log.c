@@ -868,7 +868,7 @@ void log_request_packet(request_t *request, fr_packet_t *packet, fr_pair_list_t 
 	if (slen <= 0) buffer[0] = '\0';
 
 	if (id) {
-		(void) snprintf(id_buffer, sizeof(id_buffer), " ID %u", packet->id);
+		(void) snprintf(id_buffer, sizeof(id_buffer), " ID %d", packet->id);
 	} else {
 		id_buffer[0] = '\0';
 	}
@@ -996,7 +996,7 @@ void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		if ((i + len) > data_len) len = data_len - i;
 
 		for (p = buffer, j = 0; j < len; j++, p += 3) snprintf(p, end - p, "%02x ", data[i + j]);
-		log_request(type, lvl, request, file, line, "%04x: %s", (int)i, buffer);
+		log_request(type, lvl, request, file, line, "%04x: %s", (unsigned int)i, buffer);
 	}
 }
 

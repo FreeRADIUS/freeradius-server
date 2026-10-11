@@ -28,7 +28,7 @@
 
 #include <freeradius-devel/bio/mem.h>
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_BIO_MEM_INVALID = 0,
 	FR_BIO_MEM_SOURCE,	/* the application writes to it, something else reads */
 	FR_BIO_MEM_SINK,	/* something else writes to it, the application reads */

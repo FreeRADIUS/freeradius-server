@@ -76,7 +76,7 @@ extern size_t redis_rcodes_len;
  * the lowest status code, and the reply which accompanies it should
  * be returned to the redis cluster code.
  */
-typedef enum {
+typedef enum : int8_t {
 	REDIS_RCODE_SUCCESS = 0,		//!< Operation was successful.
 	REDIS_RCODE_ERROR = -1,			//!< Unrecoverable library/server error.
 	REDIS_RCODE_TRY_AGAIN = -2,		//!< Try the operation again.
@@ -87,7 +87,7 @@ typedef enum {
 	REDIS_RCODE_NO_SCRIPT = -6,		//!< Script doesn't exist.
 } fr_redis_rcode_t;
 
-typedef enum {
+typedef enum : int8_t {
 	REDIS_ASYNC_RCODE_SUCCESS = 0,		//!< Operation was successful.
 	REDIS_ASYNC_RCODE_ERROR = -1,		//!< Unrecoverable error.
 	REDIS_ASYNC_RCODE_BOOTSTRAP = -2,	//!< The caller should issue a request to bootstrap the cluster map.
@@ -107,7 +107,7 @@ typedef struct {
 	fr_redis_cluster_node_t	*node;		//!< Node this connection is to.
 } fr_redis_conn_t;
 
-typedef enum {
+typedef enum : uint8_t {
 	FR_REDIS_INVALID = 0,
 	FR_REDIS_CLUSTER_MAP_BOOTSTRAP,
 	FR_REDIS_CLUSTER_MAP_GET,

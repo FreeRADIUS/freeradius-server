@@ -157,7 +157,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	void			*rctx = NULL;
 
 	if (!FR_TACACS_PACKET_CODE_VALID(request->packet->code)) {
-		REDEBUG("Invalid packet code %d", request->packet->code);
+		REDEBUG("Invalid packet code %u", request->packet->code);
 		RETURN_UNLANG_FAIL;
 	}
 

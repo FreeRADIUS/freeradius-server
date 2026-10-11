@@ -435,13 +435,13 @@ static const conf_parser_t client_config[] = {
 
 	{ FR_CONF_OFFSET("nas_type", fr_client_t, nas_type) },
 
-	{ FR_CONF_OFFSET_IS_SET("require_message_authenticator", FR_TYPE_UINT32, 0, fr_client_t, require_message_authenticator),
-	  .func = cf_table_parse_int,
+	{ FR_CONF_OFFSET_IS_SET("require_message_authenticator", FR_TYPE_UINT8, 0, fr_client_t, require_message_authenticator),
+	  .func = cf_table_parse_uint8,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_require_ma_table, .len = &fr_radius_require_ma_table_len },
 	  .dflt = "no" },
 
-	{ FR_CONF_OFFSET_IS_SET("limit_proxy_state", FR_TYPE_UINT32, 0, fr_client_t, limit_proxy_state),
-	  .func = cf_table_parse_int,
+	{ FR_CONF_OFFSET_IS_SET("limit_proxy_state", FR_TYPE_UINT8, 0, fr_client_t, limit_proxy_state),
+	  .func = cf_table_parse_uint8,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_limit_proxy_state_table, .len = &fr_radius_limit_proxy_state_table_len },
 	  .dflt = "auto" },
 

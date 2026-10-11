@@ -140,7 +140,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	}
 
 	if (message_size < sizeof(fr_message_t)) {
-		fr_strerror_printf("Message size must be at least %zd", sizeof(fr_message_t));
+		fr_strerror_printf("Message size must be at least %zu", sizeof(fr_message_t));
 		return NULL;
 	}
 
@@ -978,7 +978,7 @@ fr_message_t *fr_message_and_data_reserve(fr_message_set_t *ms, size_t reserve_s
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	if (reserve_size > ms->max_allocation) {
-		fr_strerror_printf("Cannot reserve %zd > max allocation %zd\n", reserve_size, ms->max_allocation);
+		fr_strerror_printf("Cannot reserve %zu > max allocation %zu\n", reserve_size, ms->max_allocation);
 		return NULL;
 	}
 
