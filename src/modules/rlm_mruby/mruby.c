@@ -237,7 +237,7 @@ static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr
 		return mrb_int_value(mrb, vp->vp_size);
 
 	case FR_TYPE_FLOAT32:
-		return mrb_float_value(mrb, vp->vp_float32);
+		return mrb_float_value(mrb, (mrb_float) vp->vp_float32);
 	case FR_TYPE_FLOAT64:
 		return mrb_float_value(mrb, vp->vp_float64);
 

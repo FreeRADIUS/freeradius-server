@@ -1305,7 +1305,7 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 			if (SSL_set_ ## _type ## _proto_version(tls_session->ssl, tls_version) != 1) {\
 				RERROR("Failed to set %pP", tls_ ## _type); \
 			} else { \
-				RDEBUG2("Setting TLS " #_type " version to %0.1f", tls_ ## _type->vp_float32); \
+				RDEBUG2("Setting TLS " #_type " version to %0.1f", (double) tls_ ## _type->vp_float32); \
 			} \
 		} else { \
 			RWARN("Invalid value %pP", tls_ ## _type); \

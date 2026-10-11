@@ -830,7 +830,7 @@ fr_cmp_ret_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		return fr_time_delta_cmp(a->datum.time_delta, b->datum.time_delta);
 
 	case FR_TYPE_FLOAT32:
-		return float_cmp(a->vb_float32, b->vb_float32);
+		return float_cmp((double) a->vb_float32, (double) b->vb_float32);
 
 	case FR_TYPE_FLOAT64:
 		return float_cmp(a->vb_float64, b->vb_float64);
@@ -3681,13 +3681,13 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 	}
 
 	case FR_TYPE_FLOAT32:
-		if (src->vb_float32 < (double) fr_value_box_integer_min[dst_type]) {
+		if ((double) src->vb_float32 < (double) fr_value_box_integer_min[dst_type]) {
 		underflow:
 			fr_strerror_const("Source value for cast would underflow destination type");
 			return -1;
 		}
 
-		if (src->vb_float32 > (double) fr_value_box_integer_max[dst_type]) {
+		if ((double) src->vb_float32 > (double) fr_value_box_integer_max[dst_type]) {
 		overflow:
 			fr_strerror_const("Source value for cast would overflow destination type");
 			return -1;
@@ -3750,7 +3750,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 			sec = src->vb_float32;
 			sec *= res;
-			nsec = ((src->vb_float32 * res) - ((double) sec));
+			nsec = (((double) src->vb_float32 * res) - ((double) sec));
 
 			dst->vb_time_delta = fr_time_delta_from_integer(&fail, sec + nsec,
 									dst->enumv ? dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
