@@ -1431,7 +1431,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	packet->socket.inet.src_port = ntohs(udp->src);
 	packet->socket.inet.dst_port = ntohs(udp->dst);
 
-	if (!fr_packet_ok(packet, RADIUS_MAX_ATTRIBUTES, false, &reason)) {
+	if (!fr_radius_packet_ok(packet, RADIUS_MAX_ATTRIBUTES, false, &reason)) {
 		fr_perror("radsniff");
 		if (conf->event_flags & RS_ERROR) {
 			rs_packet_print(NULL, count, RS_ERROR, event->in,
@@ -1487,7 +1487,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 		/*
 		 *	Only decode attributes if we want to print them or filter on them
-		 *	fr_packet_ok( does checks to verify the packet is actually valid.
+		 *	fr_radius_packet_ok( does checks to verify the packet is actually valid.
 		 */
 		if (conf->decode_attrs) {
 			int ret;
@@ -1631,7 +1631,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 		/*
 		 *	Only decode attributes if we want to print them or filter on them
-		 *	fr_packet_ok( does checks to verify the packet is actually valid.
+		 *	fr_radius_packet_ok( does checks to verify the packet is actually valid.
 		 */
 		if (conf->decode_attrs) {
 			int ret;

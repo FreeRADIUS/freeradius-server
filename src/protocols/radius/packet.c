@@ -115,7 +115,7 @@ ssize_t fr_radius_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
  *	- True on success.
  *	- False on failure.
  */
-bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
+bool fr_radius_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
 {
 	if (!fr_radius_ok(packet->data, &packet->data_len, max_attributes, require_message_authenticator, reason)) {
 		return false;
@@ -259,7 +259,7 @@ fr_packet_t *fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_att
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_packet_ok(packet, max_attributes, require_message_authenticator, NULL)) {
+	if (!fr_radius_packet_ok(packet, max_attributes, require_message_authenticator, NULL)) {
 		fr_packet_free(&packet);
 		return NULL;
 	}

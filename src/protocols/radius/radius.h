@@ -306,7 +306,7 @@ ssize_t		fr_radius_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 					fr_packet_t const *original,
 					char const *secret) CC_HINT(nonnull (1,2,4));
 
-bool		fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator,
+bool		fr_radius_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator,
 				    fr_radius_decode_fail_t *reason) CC_HINT(nonnull (1));
 
 int		fr_radius_packet_verify(fr_packet_t *packet, fr_packet_t *original,

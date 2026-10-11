@@ -1471,7 +1471,7 @@ static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
  *
  *  "length" is AT LEAST the length of this attribute, as we
  *  expect the caller to have verified the data with
- *  fr_packet_ok().  "length" may be up to the length of the
+ *  fr_radius_packet_ok().  "length" may be up to the length of the
  *  packet.
  *
  *  This function will ONLY return -1 on programmer error or OOM.  If
