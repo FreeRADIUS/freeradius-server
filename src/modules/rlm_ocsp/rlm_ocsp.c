@@ -600,7 +600,7 @@ finish:
 		}
 		break;
 
-	default:
+	case OCSP_STATUS_FAILED:
 		MEM(pair_update_request(&vp, attr_tls_ocsp_cert_valid) >= 0);
 		vp->vp_uint32 = FR_TLS_OCSP_CERT_VALID_VALUE_NO;
 		REDEBUG("Failed to validate certificate");

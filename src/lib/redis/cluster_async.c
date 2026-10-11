@@ -514,7 +514,7 @@ fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *reque
 		talloc_free(cmd);
 		return NULL;
 
-	default:
+	case CLUSTER_READY:
 		*rcode = fr_redis_async_cmd_enqueue(cmd);
 		break;
 	}
