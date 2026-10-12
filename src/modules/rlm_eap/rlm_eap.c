@@ -976,7 +976,7 @@ static unlang_action_t mod_authenticate(unlang_result_t *p_result, module_ctx_t 
 static unlang_action_t mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_t);
-	int			status;
+	rlm_rcode_t		status;
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup EAP authentication",
@@ -998,12 +998,12 @@ static unlang_action_t mod_authorize(unlang_result_t *p_result, module_ctx_t con
 	switch (status) {
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_HANDLED:
-		return status;
+		RETURN_UNLANG_RCODE(status);
 
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 		eap_failure(request);
-		return status;
+		RETURN_UNLANG_RCODE(status);
 
 	default:
 		break;

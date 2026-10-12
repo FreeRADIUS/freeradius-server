@@ -1,0 +1,13 @@
+#
+#  Input Packet
+#
+#  A two byte EAP-Message is an EAP-Start.
+#
+Packet-Type = Access-Request
+User-Name = "bob"
+EAP-Message = 0x0101
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

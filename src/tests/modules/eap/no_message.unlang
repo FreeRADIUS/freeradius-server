@@ -1,0 +1,11 @@
+#
+#  A request without an EAP-Message is not an EAP request.  The eap
+#  module must return noop, and the section must carry on.
+#
+eap
+
+if !(noop) {
+	test_fail
+}
+
+test_pass

@@ -1,0 +1,19 @@
+#
+#  An EAP-Start must be answered with an EAP-Identity request, and the
+#  eap module must return handled.
+#
+eap {
+	handled = 1
+}
+
+if !(handled) {
+	test_fail
+}
+
+if !(reply.EAP-Message) {
+	test_fail
+}
+
+reply -= EAP-Message
+
+test_pass
