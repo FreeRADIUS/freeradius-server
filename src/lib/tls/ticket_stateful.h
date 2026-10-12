@@ -48,13 +48,13 @@ extern "C" {
  * back, so it only ever moves between INIT and REQUESTED.
  */
 typedef enum : uint8_t {
-	FR_TLS_TICKET_STATEFUL_INIT = 0,			//!< Nothing has been asked for.
-	FR_TLS_TICKET_STATEFUL_REQUESTED,			//!< OpenSSL has asked for the operation, and the
+	FR_TLS_TICKET_STATEFUL_INIT = 0,	//!< Nothing has been asked for.
+	FR_TLS_TICKET_STATEFUL_REQUESTED,	//!< OpenSSL has asked for the operation, and the
 						///< section which does the work has not run yet.
-	FR_TLS_TICKET_STATEFUL_SUCCESS,			//!< The operation completed.  For a load that means
+	FR_TLS_TICKET_STATEFUL_SUCCESS,		//!< The operation completed.  For a load that means
 						///< the session came back from the data store, and for
 						///< a store it means the session was persisted.
-	FR_TLS_TICKET_STATEFUL_FAILED,			//!< The operation did not complete.
+	FR_TLS_TICKET_STATEFUL_FAILED,		//!< The operation did not complete.
 } fr_tls_ticket_stateful_state_t;
 
 /** This structure holds the current cache state for the session
@@ -62,19 +62,19 @@ typedef enum : uint8_t {
  */
 typedef struct {
 	struct {
-		fr_tls_ticket_stateful_state_t		state;		//!< Tracks store state.
+		fr_tls_ticket_stateful_state_t	state;		//!< Tracks store state.
 		fr_value_box_t			id;		//!< ID of the session being stored
 		SSL_SESSION			*sess;		//!< Session to store.
 	} store;
 
 	struct {
-		fr_tls_ticket_stateful_state_t		state;		//!< Tracks load requests from OpenSSL.
+		fr_tls_ticket_stateful_state_t	state;		//!< Tracks load requests from OpenSSL.
 		fr_value_box_t			id;		//!< Session ID that the peer asked to resume
 		SSL_SESSION			*sess;		//!< Deserialized session.
 	} load;
 
 	struct {
-		fr_tls_ticket_stateful_state_t		state;		//!< Tracks delete requests from OpenSSL.
+		fr_tls_ticket_stateful_state_t	state;		//!< Tracks delete requests from OpenSSL.
 		fr_value_box_t			id;		//!< Session ID to clear
 	} clear;
 
