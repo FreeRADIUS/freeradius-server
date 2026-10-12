@@ -2295,6 +2295,32 @@ unlang_action_t fr_tls_session_async_handshake_push(request_t *request, fr_tls_s
 				    tls_session);
 }
 
+/** Callback run during ClientHello phase of handshake
+ *
+ * The SSL_client_hello* functions can only be called inside a callback like this.
+ */
+static int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
+{
+	fr_tls_conf_t		*conf = fr_tls_session_conf(ssl);
+	request_t		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+
+	/*
+	 *	Is there a session_ticket extension in the CLientHello?
+	 *	If not, the client doesn't support session tickets - disable them.
+	 */
+	if (conf->cache.mode != FR_TLS_TICKET_DISABLED &&
+	    (SSL_client_hello_get0_ext(ssl, TLSEXT_TYPE_session_ticket, NULL, NULL) == 0)) {
+		long ssl_options = SSL_get_options(ssl);
+		RDEBUG2("Session ticket extension not found in ClientHello");
+		ssl_options |= SSL_OP_NO_TICKET;
+		SSL_set_options(ssl, ssl_options);
+	}
+
+	if (conf->client_hello_parse) return fr_tls_session_client_hello_pairs(ssl, request);
+
+	return SSL_CLIENT_HELLO_SUCCESS;
+}
+
 /** Free a TLS session and any associated OpenSSL data
  *
  * @param session to free.
@@ -2728,9 +2754,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 		goto error;
 	}
 
-	if (conf->client_hello_parse) {
-		SSL_CTX_set_client_hello_cb(ssl_ctx, fr_tls_session_client_hello_cb, NULL);
-	}
+	SSL_CTX_set_client_hello_cb(ssl_ctx, fr_tls_session_client_hello_cb, NULL);
 
 	if (conf->cache.mode != FR_TLS_TICKET_DISABLED) {
 		tls_session->allow_session_resumption = true;	/* otherwise it's false */

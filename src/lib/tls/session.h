@@ -513,7 +513,7 @@ int		fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *
 				     		    request_t *request, X509 *cert, X509 *issuer,
 						    bool der_decode) CC_HINT(nonnull(1,2,3,4));
 
-int		fr_tls_session_client_hello_cb(SSL *ssl, int *al, void *arg);
+int		fr_tls_session_client_hello_pairs(SSL *ssl, request_t *request);
 
 bool		fr_tls_session_is_init_finished(fr_tls_session_t *tls_session);
 

@@ -601,9 +601,8 @@ static int fr_tls_extension_decode(request_t *request, fr_pair_t *container, uin
 /** Callback to extract pairs from a Client Hello
  *
  */
-int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
+int fr_tls_session_client_hello_pairs(SSL *ssl, request_t *request)
 {
-	request_t		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	request_t		*parent = request->parent;
 	uint8_t	const		*ciphers, *extension;
 	int			i, *extensions = NULL;
