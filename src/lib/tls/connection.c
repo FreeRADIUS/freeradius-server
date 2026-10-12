@@ -184,12 +184,6 @@ finish:
  */
 static void tls_connection_close(fr_tls_connection_t *conn)
 {
-	/*
-	 *	fr_tls_connection_failed() reaches here while the connection
-	 *	frame is still initializing, which is before there is a
-	 *	request to log against.  fr_tls_connection_failed() logs
-	 *	through ROPTIONAL for that reason, and so does this function.
-	 */
 	request_t *request = conn->request;
 
 	/*
@@ -201,7 +195,7 @@ static void tls_connection_close(fr_tls_connection_t *conn)
 
 	conn->idle = false;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "%s - closing connection", conn->name);
+	RDEBUG2("%s - closing connection", conn->name);
 	conn->close(conn);
 }
 
@@ -288,8 +282,8 @@ void fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_
 	conn->failed = reason;
 	if (conn->failed == TLS_CONNECTION_FAIL_SYSCALL) conn->error = errno;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "%s - connection failed: %s", conn->name,
-		  fr_table_str_by_value(fr_tls_connection_fail_table, conn->failed, "<INVALID>"));
+	RDEBUG2("%s - connection failed: %s", conn->name,
+		fr_table_str_by_value(fr_tls_connection_fail_table, conn->failed, "<INVALID>"));
 
 	/*
 	 *	Record the reason where `fail session { ... }` reads it.
@@ -482,8 +476,8 @@ act:
 	 */
 	conn->error = error;
 
-	ROPTIONAL(RDEBUG3, DEBUG3, "%s - IO state is now %s", conn->name,
-		  fr_table_str_by_value(fr_tls_connection_io_state_table, conn->io_state, "<INVALID>"));
+	RDEBUG3("%s - IO state is now %s", conn->name,
+		fr_table_str_by_value(fr_tls_connection_io_state_table, conn->io_state, "<INVALID>"));
 
 	return conn->io_state;
 }

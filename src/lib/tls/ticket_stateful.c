@@ -896,6 +896,14 @@ static int tls_ticket_stateful_store_cb(SSL *ssl, SSL_SESSION *sess)
 	request = fr_tls_session_request(tls_session->ssl);
 
 	/*
+	 *	OpenSSL runs this callback when a session is established or
+	 *	when a NewSessionTicket arrives.  Both happen inside
+	 *	fr_tls_session_recv(), fr_tls_session_send() or a handshake
+	 *	round, and each of those binds the request across the call.
+	 */
+	fr_assert(request != NULL);
+
+	/*
 	 *	RFC 8446 Section 4.6.1 lets a TLS 1.3 server send NewSessionTicket at any point after its
 	 *	Finished message, including part way through application data.  We do not support that.
 	 *
@@ -919,8 +927,7 @@ static int tls_ticket_stateful_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	peer (client here) is unable to use that ticket for session resumption.
 	 */
 	if (tls_session->seen_application_data) {
-		ROPTIONAL(RDEBUG2, DEBUG2,
-			  "Ignoring session ticket received after application data started");
+		RDEBUG2("Ignoring session ticket received after application data started");
 		return 0;
 	}
 

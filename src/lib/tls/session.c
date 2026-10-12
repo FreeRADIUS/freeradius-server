@@ -599,6 +599,12 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 	char const	*role, *state;
 	request_t	*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 
+	/*
+	 *	OpenSSL runs the info callback from inside a handshake round,
+	 *	and the library binds the request across a round.
+	 */
+	fr_assert(request != NULL);
+
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
 		role = "Client ";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
@@ -611,7 +617,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 	state = state ? state : "<INVALID>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
+		if (RDEBUG_ENABLED3) {
 			char const *abbrv = SSL_state_string(ssl);
 			size_t len;
 
@@ -621,7 +627,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			len = strlen(abbrv);
 			if ((len > 1) && (abbrv[len - 1] == ' ')) len--;
 
-			ROPTIONAL(RDEBUG3, DEBUG3, "Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
+			RDEBUG3("Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
 
 #ifdef OPENSSL_NO_SSL_TRACE
 	        	{
@@ -647,36 +653,36 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 					 *	These are printed on startup, so not usually
 					 *      required.
 					 */
-					ROPTIONAL(RDEBUG4, DEBUG4, "Our preferred ciphers (by priority)");
-					if (ROPTIONAL_ENABLED(RDEBUG_ENABLED4, DEBUG_ENABLED4)) {
-						if (request) RINDENT();
+					RDEBUG4("Our preferred ciphers (by priority)");
+					if (RDEBUG_ENABLED4) {
+						RINDENT();
 						num_ciphers = sk_SSL_CIPHER_num(server_ciphers);
 						for (i = 0; i < num_ciphers; i++) {
 							this_cipher = sk_SSL_CIPHER_value(server_ciphers, i);
-							ROPTIONAL(RDEBUG4, DEBUG4, "[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+							RDEBUG4("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
 						}
-						if (request) REXDENT();
+						REXDENT();
 					}
 
 					/*
 					 *	Print information about the client's
 					 *      handshake message.
 					 */
-					if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
-						ROPTIONAL(RDEBUG3, DEBUG3, "Client's preferred ciphers (by priority)");
-						if (request) RINDENT();
+					if (RDEBUG_ENABLED3) {
+						RDEBUG3("Client's preferred ciphers (by priority)");
+						RINDENT();
 						num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
 						for (i = 0; i < num_ciphers; i++) {
 							this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
-							ROPTIONAL(RDEBUG3, DEBUG3, "[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+							RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
 						}
-						if (request) REXDENT();
+						REXDENT();
 					}
 				}
 			}
 #  endif
 		} else {
-			ROPTIONAL(RDEBUG2, DEBUG2, "Handshake state - %s%s (%u)", role, state, SSL_get_state(ssl));
+			RDEBUG2("Handshake state - %s%s (%u)", role, state, SSL_get_state(ssl));
 		}
 		return;
 	}
@@ -688,16 +694,16 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		 *	We got an alert...
 		 */
 		if (where & SSL_CB_READ) {
-			ROPTIONAL(REDEBUG, ERROR, "Client sent %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
-			          ret & 0xff, SSL_alert_desc_string_long(ret));
+			REDEBUG("Client sent %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
+				ret & 0xff, SSL_alert_desc_string_long(ret));
 
 			/*
 			 *	Offer helpful advice... Should be expanded.
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_UNKNOWN_CA:
-				ROPTIONAL(REDEBUG, ERROR, "Verify the client has a copy of the server's Certificate "
-							  "Authority (CA) installed, and trusts that CA");
+				REDEBUG("Verify the client has a copy of the server's Certificate "
+					"Authority (CA) installed, and trusts that CA");
 				break;
 
 			default:
@@ -721,18 +727,18 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		 *	We're sending the client an alert.
 		 */
 		} else {
-			ROPTIONAL(REDEBUG, ERROR, "Sending client %s TLS alert (%i) - %s",
-				  SSL_alert_type_string_long(ret), ret & 0xff, SSL_alert_desc_string_long(ret));
+			REDEBUG("Sending client %s TLS alert (%i) - %s",
+				SSL_alert_type_string_long(ret), ret & 0xff, SSL_alert_desc_string_long(ret));
 
 			/*
 			 *	Offer helpful advice... Should be expanded.
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_PROTOCOL_VERSION:
-				ROPTIONAL(REDEBUG, ERROR, "Client requested a TLS protocol version that is not "
-					  "enabled or not supported. Upgrade FreeRADIUS + OpenSSL to their latest "
-					  "versions and/or adjust 'tls_max_version'/'tls_min_version' if you want "
-					  "authentication to succeed");
+				REDEBUG("Client requested a TLS protocol version that is not "
+					"enabled or not supported. Upgrade FreeRADIUS + OpenSSL to their latest "
+					"versions and/or adjust 'tls_max_version'/'tls_min_version' if you want "
+					"authentication to succeed");
 				break;
 
 			default:
@@ -753,16 +759,16 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			ROPTIONAL(REDEBUG, ERROR, "Handshake exit state %s%s", role, state);
+			REDEBUG("Handshake exit state %s%s", role, state);
 			return;
 		}
 
 		if (ret < 0) {
 			if (SSL_want_read(ssl)) {
-				ROPTIONAL(RDEBUG2, DEBUG2, "Need more data from client"); /* State same as previous call, don't print */
+				RDEBUG2("Need more data from client"); /* State same as previous call, don't print */
 				return;
 			}
-			ROPTIONAL(REDEBUG, ERROR, "Handshake exit state %s%s", role, state);
+			REDEBUG("Handshake exit state %s%s", role, state);
 		}
 	}
 }
@@ -785,10 +791,16 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	char		unknown_handshake_type[32];
 
 	/*
+	 *	Both callers hold a request: fr_tls_session_msg_cb() takes it
+	 *	off the SSL *, and fr_tls_session_alert_send() is handed one.
+	 */
+	fr_assert(request != NULL);
+
+	/*
 	 *	Don't print this out in the normal course of
 	 *	operations.
 	 */
-	if (!ROPTIONAL_ENABLED(RDEBUG_ENABLED2, DEBUG_ENABLED2)) return;
+	if (!RDEBUG_ENABLED2) return;
 
 	if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
 	    !tls_version_str[tls_session->info.version]) {
@@ -873,10 +885,10 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	 *	Print out information about the record and print the
 	 *	data at higher debug levels.
 	 */
-	if (ROPTIONAL_ENABLED(RDEBUG_ENABLED4, DEBUG_ENABLED4)) {
-		ROPTIONAL(RHEXDUMP4, HEXDUMP4, data, data_len, "%s", tls_session->info.info_description);
+	if (RDEBUG_ENABLED4) {
+		RHEXDUMP4(data, data_len, "%s", tls_session->info.info_description);
 	} else {
-		ROPTIONAL(RDEBUG2, DEBUG2, "%s", tls_session->info.info_description);
+		RDEBUG2("%s", tls_session->info.info_description);
 	}
 }
 
@@ -918,10 +930,18 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	request_t		*request = fr_tls_session_request(tls_session->ssl);
 
 	/*
+	 *	OpenSSL runs the message callback for every record it reads
+	 *	or writes, and every one of those happens while the library
+	 *	has the request bound.  _fr_dtls_timer_expired() binds across
+	 *	DTLSv1_handle_timeout() for exactly this reason.
+	 */
+	fr_assert(request != NULL);
+
+	/*
 	 *	Mostly to check for memory corruption...
 	 */
 	if (!fr_cond_assert(tls_session->ssl == ssl)) {
-		ROPTIONAL(REDEBUG, ERROR, "fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
+		REDEBUG("fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_SESSION_MISMATCH, SSL_AD_INTERNAL_ERROR);
 		tls_session->invalid = true;
@@ -935,7 +955,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 */
 #ifdef SSL2_VERSION
 	if (!fr_cond_assert(msg_version != SSL2_VERSION)) {
-		ROPTIONAL(REDEBUG, ERROR, "Invalid version (SSLv2) in handshake");
+		REDEBUG("Invalid version (SSLv2) in handshake");
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_INVALID_VERSION_SSLV2, SSL_AD_PROTOCOL_VERSION);
 		tls_session->invalid = true;
@@ -945,7 +965,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 
 #ifdef SSL3_VERSION
 	if (!fr_cond_assert(msg_version != SSL3_VERSION)) {
-		ROPTIONAL(REDEBUG, ERROR, "Invalid version (SSLv3) in handshake");
+		REDEBUG("Invalid version (SSLv3) in handshake");
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_INVALID_VERSION_SSLV3, SSL_AD_PROTOCOL_VERSION);
 		tls_session->invalid = true;
@@ -959,13 +979,13 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 *	the SSL Session state.
 	 */
 	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
-		ROPTIONAL(REDEBUG4, DEBUG4, "Ignoring fr_tls_session_msg_cb call with pseudo content type %i, version %i",
-		          content_type, msg_version);
+		REDEBUG4("Ignoring fr_tls_session_msg_cb call with pseudo content type %i, version %i",
+			 content_type, msg_version);
 		return;
 	}
 
 	if ((write_p != 0) && (write_p != 1)) {
-		ROPTIONAL(REDEBUG4, DEBUG4, "Ignoring fr_tls_session_msg_cb call with invalid write_p %d", write_p);
+		REDEBUG4("Ignoring fr_tls_session_msg_cb call with invalid write_p %d", write_p);
 		return;
 	}
 
@@ -983,7 +1003,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	case SSL3_RT_ALERT:
 		if (len < 2) {
 		invalid_alert:
-			ROPTIONAL(REDEBUG, ERROR, "Invalid TLS Alert.  Closing connection");
+			REDEBUG("Invalid TLS Alert.  Closing connection");
 			fr_tls_session_error_alert(request, tls_session,
 						   FR_ERROR_VALUE_INVALID_RECORD_LENGTH, SSL_AD_DECODE_ERROR);
 			tls_session->invalid = true;
@@ -1013,7 +1033,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 			payload_len = fr_nbo_to_uint16(p + 1);
 			if ((payload_len + 3) > len) {
 				tls_session->invalid = true;
-				ROPTIONAL(REDEBUG, ERROR, "OpenSSL Heartbeat attack detected.  Closing connection");
+				REDEBUG("OpenSSL Heartbeat attack detected.  Closing connection");
 				fr_tls_session_error_alert(request, tls_session,
 							   FR_ERROR_VALUE_HEARTBEAT_OVERFLOW, SSL_AD_DECODE_ERROR);
 				return;
@@ -1039,7 +1059,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		if (tls_session->write_encrypted) break;
 
 		tls_session->write_encrypted = true;
-		ROPTIONAL(RDEBUG3, DEBUG3, "The records we write are encrypted, from the ChangeCipherSpec onwards");
+		RDEBUG3("The records we write are encrypted, from the ChangeCipherSpec onwards");
 		break;
 
 	/*
@@ -1053,7 +1073,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		if (tls_session->write_encrypted) break;
 
 		tls_session->write_encrypted = true;
-		ROPTIONAL(RDEBUG3, DEBUG3, "The records we write are encrypted, from the ServerHello onwards");
+		RDEBUG3("The records we write are encrypted, from the ServerHello onwards");
 		break;
 
 	default:
@@ -1063,7 +1083,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	session_msg_log(request, tls_session, (uint8_t const *)inbuf, len);
 
 #ifndef OPENSSL_NO_SSL_TRACE
-	if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
+	if (RDEBUG_ENABLED3) {
 		SSL_trace(tls_session->info.origin,
 			  tls_session->info.version,
 			  tls_session->info.content_type,
@@ -1440,6 +1460,8 @@ void fr_tls_session_error_add(request_t *request, uint32_t error)
  */
 int fr_tls_session_alert(request_t *request, fr_tls_session_t *session, uint8_t level, uint8_t description)
 {
+	fr_assert(request != NULL);
+
 	if (session->alerts_sent > 3) return -1;		/* Some kind of state machine brokenness */
 
 	/*
@@ -1463,9 +1485,8 @@ int fr_tls_session_alert(request_t *request, fr_tls_session_t *session, uint8_t 
 	 *	way.  However, the peer never gets the alert.
 	 */
 	if (session->write_encrypted) {
-		ROPTIONAL(RDEBUG2, DEBUG2,
-			  "Not sending TLS alert (%u), the records we write are already encrypted",
-			  description);
+		RDEBUG2("Not sending TLS alert (%u), the records we write are already encrypted",
+			description);
 		return -1;
 	}
 

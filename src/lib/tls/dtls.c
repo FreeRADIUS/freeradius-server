@@ -236,14 +236,24 @@ static void _fr_dtls_timer_expired(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 {
 	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
 	request_t		*request = conn->request;
+	int			ret;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "%s - DTLS retransmission timer fired", conn->name);
+	RDEBUG2("%s - DTLS retransmission timer fired", conn->name);
 
 	/*
+	 *	DTLSv1_handle_timeout() asks OpenSSL to retransmit the pending data, and writes those records
+	 *	via fr_tls_session_msg_cb().  That callback reads the request back off the SSL *, which means
+	 *	that the request has to be bound across the call.  Without the bind, the callback logs the
+	 *	retransmitted flight with no request.
+	 *
 	 *	A return of < 0 means the handshake has given up, which
 	 *	OpenSSL reports rather than this code deciding it.
 	 */
-	if (DTLSv1_handle_timeout(conn->tls_session->ssl) < 0) {
+	fr_tls_session_request_bind(conn->tls_session->ssl, request);
+	ret = DTLSv1_handle_timeout(conn->tls_session->ssl);
+	fr_tls_session_request_unbind(conn->tls_session->ssl);
+
+	if (ret < 0) {
 		fr_tls_log_perror(request, "DTLS handshake timed out");
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_TLS);
 		return;
@@ -290,7 +300,7 @@ void fr_dtls_timer_update(fr_tls_connection_t *conn)
 
 	if (fr_timer_in(conn, conn->tl, &conn->timer_ev, fr_time_delta_from_timeval(&tv),
 			false, _fr_dtls_timer_expired, conn) < 0) {
-		ROPTIONAL(RERROR, ERROR, "%s - Failed arming the DTLS retransmission timer", conn->name);
+		RERROR("%s - Failed arming the DTLS retransmission timer", conn->name);
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
 	}
 }

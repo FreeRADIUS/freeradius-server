@@ -142,6 +142,7 @@ struct fr_tls_connection_s {
 
 	fr_tls_session_t	*tls_session;		//!< State of the handshake.
 	request_t		*request;		//!< Request the handshake runs under.
+							///< MUST be set, and MUST live longer than the connection.
 
 	fr_tls_connection_state_t state;       		//!< Which part of the connection is running.
 
