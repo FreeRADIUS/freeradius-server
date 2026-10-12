@@ -84,6 +84,45 @@ if (!ok) {
 	return
 }
 
+#
+#  A key equal to the number of children is out of range, and the
+#  child is chosen by hashing the key instead.
+#
+key := 4
+load-balance %{key} {
+	group {
+		if (%interpreter.load-balance.child() != 0) {
+			test_fail
+			return
+		}
+		ok
+	}
+	group {
+		if (%interpreter.load-balance.child() != 1) {
+			test_fail
+			return
+		}
+		ok
+	}
+	group {
+		if (%interpreter.load-balance.child() != 2) {
+			test_fail
+			return
+		}
+		ok
+	}
+	group {
+		if (%interpreter.load-balance.child() != 3) {
+			test_fail
+			return
+		}
+		ok
+	}
+}
+if (!ok) {
+	return
+}
+
 } # foreach
 
 success

@@ -264,7 +264,7 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 		}
 
 
-		if ((box->type == FR_TYPE_UINT8) && (box->vb_uint8 <= num)) {
+		if ((box->type == FR_TYPE_UINT8) && (box->vb_uint8 < num)) {
 			start = box->vb_uint8;
 		} else {
 			start = fr_value_box_hash(box) % num;
