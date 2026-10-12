@@ -867,7 +867,7 @@ build_vector:
 		fr_value_box_list_init(&rctx->expanded);
 		rctx->with_delim = with_delim;
 
-		return unlang_module_yield_to_tmpl(rctx, &rctx->expanded, request, vpt_p, NULL, mod_do_linelog_resume, NULL, 0, rctx);
+		return unlang_module_yield_to_tmpl(rctx, &rctx->expanded, request, vpt_p, NULL, mod_do_linelog_resume, NULL, FR_SIGNAL_NONE, rctx);
 	}
 	}
 }

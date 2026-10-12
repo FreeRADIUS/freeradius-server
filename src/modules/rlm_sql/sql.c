@@ -233,7 +233,7 @@ static void sql_trunk_query_cancel(request_t *request, UNUSED fr_signal_t action
 	if (unlikely(treq->state == TRUNK_REQUEST_STATE_REAPABLE)) {
 		fr_sql_query_free(query_ctx);
 		query_ctx->treq = NULL;
-		query_ctx->status = 0;
+		query_ctx->status = SQL_QUERY_PREPARED;
 		query_ctx->tconn = NULL;
 		return;
 	}
@@ -385,7 +385,7 @@ unlang_action_t sql_get_map_list(unlang_result_t *p_result, request_t *request, 
 					     request,
 					     NULL,
 					     sql_get_map_list_resume,
-					     NULL, 0,
+					     NULL, FR_SIGNAL_NONE,
 					     UNLANG_SUB_FRAME,
 					    map_ctx) < 0) return UNLANG_ACTION_FAIL;
 
@@ -393,7 +393,7 @@ unlang_action_t sql_get_map_list(unlang_result_t *p_result, request_t *request, 
 						request,
 						inst->select,
 						NULL,
-						NULL, 0,
+						NULL, FR_SIGNAL_NONE,
 						UNLANG_SUB_FRAME,
 						map_ctx->query_ctx);
 }

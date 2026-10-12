@@ -1602,7 +1602,7 @@ static xlat_action_t xlat_func_module_call(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 *	Push the resumption point BEFORE pushing the module onto
 	 *	the stack.
 	 */
-	(void) unlang_xlat_yield(request, xlat_module_call_resume, NULL, 0, rctx);
+	(void) unlang_xlat_yield(request, xlat_module_call_resume, NULL, FR_SIGNAL_NONE, rctx);
 
 	if (unlang_interpret_push_section(&rctx->last_result, request, cs,
 					  FRAME_CONF(RLM_MODULE_NOOP, UNLANG_SUB_FRAME)) < 0) {
@@ -1809,7 +1809,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	}
 
-	if (unlang_xlat_yield(request, xlat_eval_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
+	if (unlang_xlat_yield(request, xlat_eval_resume, NULL, FR_SIGNAL_NONE, rctx) != XLAT_ACTION_YIELD) goto error;
 
 	if (unlang_xlat_push(ctx, &rctx->last_result, (fr_value_box_list_t *)fr_dcursor_list(out),
 			     request, rctx->ex, UNLANG_SUB_FRAME) < 0) goto error;

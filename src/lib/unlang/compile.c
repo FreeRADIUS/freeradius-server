@@ -496,7 +496,7 @@ static void compile_set_default_actions(unlang_t *c, unlang_compile_ctx_t *unlan
 	 *	Set the default actions if they haven't already been
 	 *	set.
 	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+	for (i = RLM_MODULE_NOT_SET; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions.actions[i]) {
 			c->actions.actions[i] = unlang_ctx->actions.actions[i];
 		}
@@ -990,7 +990,7 @@ static bool compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 	} else {		/* set all unset values to the default */
 		rlm_rcode_t i;
 
-		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		for (i = RLM_MODULE_NOT_SET; i < RLM_MODULE_NUMCODES; i++) {
 			if (!actions->actions[i]) actions->actions[i] = action;
 		}
 	}
@@ -1167,7 +1167,7 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *cs, boo
 	 *	Sanity check that "fail = retry", we actually have a
 	 *	retry section.
 	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+	for (i = RLM_MODULE_NOT_SET; i < RLM_MODULE_NUMCODES; i++) {
 		if (actions->actions[i] != MOD_ACTION_RETRY) continue;
 
 		if (module_retry) {

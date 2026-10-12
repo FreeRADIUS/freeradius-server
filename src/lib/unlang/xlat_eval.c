@@ -1143,7 +1143,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return xa;
 
 	case XLAT_ACTION_DONE:
-		if (unlang_xlat_yield(request, xlat_null_resume, NULL, 0, NULL) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
+		if (unlang_xlat_yield(request, xlat_null_resume, NULL, FR_SIGNAL_NONE, NULL) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
 
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		if ((node->type == XLAT_FUNC) && (node->call.func)) {
@@ -1540,7 +1540,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 				xlat_debug_log_expansion(request, node, NULL, __LINE__);
 
-				if (unlang_xlat_yield(request, xlat_exec_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto fail;
+				if (unlang_xlat_yield(request, xlat_exec_resume, NULL, FR_SIGNAL_NONE, rctx) != XLAT_ACTION_YIELD) goto fail;
 
 				if (unlang_tmpl_push(ctx, &rctx->result, &rctx->list, request, node->vpt,
 						     TMPL_ARGS_EXEC(NULL, fr_time_delta_from_sec(EXEC_TIMEOUT),

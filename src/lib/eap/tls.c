@@ -964,7 +964,7 @@ static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(requ
 				 NULL,
 				 eap_tls_handshake_resume,
 				 NULL,
-				 0, UNLANG_SUB_FRAME,
+				 FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
 				 eap_session) < 0) return UNLANG_ACTION_FAIL;
 
 	if (!fr_cond_assert((ua = fr_tls_session_async_handshake_push(request, tls_session)) == UNLANG_ACTION_PUSHED_CHILD)) {

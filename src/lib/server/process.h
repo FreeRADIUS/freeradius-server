@@ -255,7 +255,7 @@ RECV(generic)
 
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, state->default_rcode, state->resume,
-					      NULL, 0, mctx->rctx);
+					      NULL, FR_SIGNAL_NONE, mctx->rctx);
 }
 
 RESUME(recv_generic)
@@ -372,7 +372,7 @@ SEND_NO_RESULT(generic)
 
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, state->default_rcode, state->resume,
-					      NULL, 0, mctx->rctx);
+					      NULL, FR_SIGNAL_NONE, mctx->rctx);
 }
 
 RESUME(send_generic)
@@ -427,7 +427,7 @@ RESUME(send_generic)
 
 			return unlang_module_yield_to_section(RESULT_P, request,
 							      cs, state->default_rcode, state->send,
-							      NULL, 0, mctx->rctx);
+							      NULL, FR_SIGNAL_NONE, mctx->rctx);
 		}
 		p_result->rcode = state->result_rcode;
 
@@ -512,7 +512,7 @@ RESUME(new_client)
 
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_FAIL, resume_new_client_done,
-					      NULL, 0, mctx->rctx);
+					      NULL, FR_SIGNAL_NONE, mctx->rctx);
 }
 
 static inline unlang_action_t new_client(UNUSED unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -529,7 +529,7 @@ static inline unlang_action_t new_client(UNUSED unlang_result_t *p_result, modul
 
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_FAIL, resume_new_client,
-					      NULL, 0, mctx->rctx);
+					      NULL, FR_SIGNAL_NONE, mctx->rctx);
 }
 
 #define DYNAMIC_CLIENT_SECTIONS \

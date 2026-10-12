@@ -256,7 +256,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	 */
 	mi = module_instance_alloc(process_modules, NULL, DL_MODULE_TYPE_PROCESS,
 				   module_name, inst_name,
-				   0);
+				   MODULE_INSTANCE_NONE);
 	talloc_free(module_name);
 	if (mi == NULL) {
 	error:
@@ -477,7 +477,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 		return -1;
 	}
 
-	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, module, fr_sbuff_start(agg), 0);
+	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, module, fr_sbuff_start(agg), MODULE_INSTANCE_NONE);
 	if (!mi) {
 		cf_log_perr(listener_cs, "Failed creating listen section");
 		return -1;

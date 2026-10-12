@@ -251,7 +251,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting_expire(unlang_result_t *p
 					"Failed to enqueue Redis cache find commands", UNLANG_ACTION_FAIL);
 	RDEBUG3("Setting expiry to %d", inst->expiry_time);
 
-	return unlang_module_yield(request, mod_accounting_resume, mod_accounting_cancel, 0, rctx);
+	return unlang_module_yield(request, mod_accounting_resume, mod_accounting_cancel, FR_SIGNAL_NONE, rctx);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_accounting_trim(unlang_result_t *p_result, module_ctx_t const *mctx,
@@ -280,7 +280,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting_trim(unlang_result_t *p_r
 		REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
 						"Failed to enqueue Redis cache find commands", UNLANG_ACTION_FAIL);
 		RDEBUG3("Trimming \"%pV\" to %d entries", &env->key, inst->trim_count);
-		return unlang_module_yield(request, mod_accounting_expire, mod_accounting_cancel, 0, rctx);
+		return unlang_module_yield(request, mod_accounting_expire, mod_accounting_cancel, FR_SIGNAL_NONE, rctx);
 	}
 
 	ret = rediswho_command(thread, request, &env->key, rctx, "EXPIRE %b %d",
@@ -289,7 +289,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting_trim(unlang_result_t *p_r
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
 					"Failed to enqueue Redis cache find commands", UNLANG_ACTION_FAIL);
 
-	return unlang_module_yield(request, mod_accounting_resume, mod_accounting_cancel, 0, rctx);
+	return unlang_module_yield(request, mod_accounting_resume, mod_accounting_cancel, FR_SIGNAL_NONE, rctx);
 }
 
 static int _rediswho_rctx_free(rediswho_rctx_t *rctx)

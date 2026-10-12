@@ -887,7 +887,7 @@ unlang_action_t rlm_ldap_group_profiles(unlang_result_t *p_result, request_t *re
 	if (unlang_function_push_with_result(p_result, request,
 					     NULL,
 					     ldap_group_profile_resume,
-					     NULL, 0, UNLANG_SUB_FRAME,
+					     NULL, FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
 					     group_ctx) < 0) {
 		talloc_free(group_ctx);
 		RETURN_UNLANG_FAIL;

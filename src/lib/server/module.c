@@ -871,7 +871,7 @@ int module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	 *	and will be appended to the parent's instance
 	 *	name.
 	 */
-	mi = module_instance_alloc(ml, module_instance_by_data(ml, parent), DL_MODULE_TYPE_SUBMODULE, name, name, 0);
+	mi = module_instance_alloc(ml, module_instance_by_data(ml, parent), DL_MODULE_TYPE_SUBMODULE, name, name, MODULE_INSTANCE_NONE);
 	if (unlikely(mi == NULL)) {
 		cf_log_err(submodule_cs, "Failed loading submodule");
 		return -1;
@@ -1605,7 +1605,7 @@ module_instance_t *module_instance_copy(module_list_t *dst, module_instance_t co
 {
 	module_instance_t *mi = module_instance_alloc(dst, src->parent, src->module->type,
 						      src->module->name,
-						      inst_name ? inst_name : src->name, 0);
+						      inst_name ? inst_name : src->name, MODULE_INSTANCE_NONE);
 	if (!mi) return NULL;
 
 	return mi;

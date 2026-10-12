@@ -578,7 +578,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
 						   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
 
-		unlang_xlat_yield(request, sql_xlat_query_resume, NULL, 0, query_ctx);
+		unlang_xlat_yield(request, sql_xlat_query_resume, NULL, FR_SIGNAL_NONE, query_ctx);
 
 		/* Modify current frame's rcode directly */
 		query_ret = inst->query(unlang_interpret_result(request), request, query_ctx);
@@ -590,13 +590,13 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
 					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
 
-	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, 0, query_ctx);
+	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, FR_SIGNAL_NONE, query_ctx);
 
 	if (unlang_function_push_with_result(/* discard, sql_xlat_select_resume just uses query_ctx->rcode */ NULL,
 					     request,
 					     inst->select,
 					     NULL,
-					     NULL, 0,
+					     NULL, FR_SIGNAL_NONE,
 					     UNLANG_SUB_FRAME, query_ctx) == UNLANG_ACTION_FAIL) return XLAT_ACTION_FAIL;
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -625,12 +625,12 @@ static xlat_action_t sql_fetch_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
 					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
 
-	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, 0, query_ctx);
+	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, FR_SIGNAL_NONE, query_ctx);
 	if (unlang_function_push_with_result(/* discard, sql_xlat_select_resume just uses query_ctx->rcode */NULL,
 					     request,
 					     inst->select,
 					     NULL,
-					     NULL, 0,
+					     NULL, FR_SIGNAL_NONE,
 					     UNLANG_SUB_FRAME, query_ctx) != UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_FAIL;
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -659,7 +659,7 @@ static xlat_action_t sql_modify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
 					   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
 
-	unlang_xlat_yield(request, sql_xlat_query_resume, NULL, 0, query_ctx);
+	unlang_xlat_yield(request, sql_xlat_query_resume, NULL, FR_SIGNAL_NONE, query_ctx);
 	/* Write out the result directly to this frame's rcode */
 	if (inst->query(unlang_interpret_result(request), request, query_ctx) == UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_PUSH_UNLANG;
 
@@ -902,13 +902,13 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 	query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
 				       thread->trunk, query_head->vb_strvalue, SQL_QUERY_SELECT);
 
-	if (unlang_map_yield(request, mod_map_resume, NULL, 0, query_ctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
+	if (unlang_map_yield(request, mod_map_resume, NULL, FR_SIGNAL_NONE, query_ctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
 	return unlang_function_push_with_result(/* discard, mod_map_resume just uses query_ctx->rcode */ NULL,
 						request,
 						inst->select,
 						NULL,
 						NULL,
-						0, UNLANG_SUB_FRAME,
+						FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
 						query_ctx);
 }
 
@@ -1099,14 +1099,14 @@ static unlang_action_t sql_get_grouplist(unlang_result_t *p_result, sql_group_ct
 				 NULL,
 				 sql_get_grouplist_resume,
 				 NULL,
-				 0, UNLANG_SUB_FRAME,
+				 FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
 				 group_ctx) < 0) return UNLANG_ACTION_FAIL;
 
 	return unlang_function_push_with_result(/* discard, sql_get_grouplist_resume translates rcodes */NULL,
 						request,
 						inst->select,
 						NULL,
-						NULL, 0,
+						NULL, FR_SIGNAL_NONE,
 						UNLANG_SUB_FRAME, group_ctx->query_ctx);
 }
 
@@ -1167,7 +1167,7 @@ static xlat_action_t sql_group_xlat_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 		.query = query,
 	};
 
-	if (unlang_xlat_yield(request, sql_group_xlat_query_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
+	if (unlang_xlat_yield(request, sql_group_xlat_query_resume, NULL, FR_SIGNAL_NONE, xlat_ctx) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
 
 	if (sql_get_grouplist(NULL, xlat_ctx->group_ctx, thread->trunk, request) != UNLANG_ACTION_PUSHED_CHILD) {
 		return XLAT_ACTION_FAIL;
@@ -1205,7 +1205,7 @@ static xlat_action_t sql_group_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 	MEM(xlat_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), sql_group_xlat_ctx_t));
 	fr_value_box_list_init(&xlat_ctx->query);
 
-	if (unlang_xlat_yield(request, sql_group_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
+	if (unlang_xlat_yield(request, sql_group_xlat_resume, NULL, FR_SIGNAL_NONE, xlat_ctx) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
 	if (unlang_tmpl_push(xlat_ctx, NULL, &xlat_ctx->query, request, call_env->membership_query, NULL, UNLANG_SUB_FRAME) < 0) return XLAT_ACTION_FAIL;
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -1308,7 +1308,7 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 	switch(autz_ctx->status) {
 	case SQL_AUTZ_GROUP_MEMB:
 		if (!query) RETURN_UNLANG_FAIL;
-		if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (unlang_module_yield(request, mod_autz_group_resume, NULL, FR_SIGNAL_NONE, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		MEM(autz_ctx->group_ctx = talloc(autz_ctx, sql_group_ctx_t));
 		*autz_ctx->group_ctx = (sql_group_ctx_t) {
 			.inst = inst,
@@ -1357,7 +1357,7 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 		}
 
 		if (call_env->group_check_query) {
-			if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+			if (unlang_module_yield(request, mod_autz_group_resume, NULL, FR_SIGNAL_NONE, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 			if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request,
 					     call_env->group_check_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			return UNLANG_ACTION_PUSHED_CHILD;
@@ -1378,7 +1378,7 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 			.query = query,
 		};
 
-		if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (unlang_module_yield(request, mod_autz_group_resume, NULL, FR_SIGNAL_NONE, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		if (sql_get_map_list(p_result, request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD) {
 			autz_ctx->status = autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? SQL_AUTZ_GROUP_CHECK_RESUME : SQL_AUTZ_PROFILE_CHECK_RESUME;
 			return UNLANG_ACTION_PUSHED_CHILD;
@@ -1412,7 +1412,7 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 
 		if (call_env->group_reply_query) {
 		group_reply_push:
-			if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+			if (unlang_module_yield(request, mod_autz_group_resume, NULL, FR_SIGNAL_NONE, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 			if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request,
 					     call_env->group_reply_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			autz_ctx->status = autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? SQL_AUTZ_GROUP_REPLY : SQL_AUTZ_PROFILE_REPLY;
@@ -1435,7 +1435,7 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 			.expand_rhs = true,
 		};
 
-		if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (unlang_module_yield(request, mod_autz_group_resume, NULL, FR_SIGNAL_NONE, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		if (sql_get_map_list(p_result, request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD) {
 			autz_ctx->status = autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? SQL_AUTZ_GROUP_REPLY_RESUME : SQL_AUTZ_PROFILE_REPLY_RESUME;
 			return UNLANG_ACTION_PUSHED_CHILD;
@@ -1550,7 +1550,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			.query = query,
 		};
 
-		if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (unlang_module_yield(request, mod_authorize_resume, NULL, FR_SIGNAL_NONE, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		if (sql_get_map_list(p_result, request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD){
 			autz_ctx->status = SQL_AUTZ_CHECK_RESUME;
 			return UNLANG_ACTION_PUSHED_CHILD;
@@ -1577,7 +1577,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 
 		if (!call_env->reply_query) goto skip_reply;
 
-		if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (unlang_module_yield(request, mod_authorize_resume, NULL, FR_SIGNAL_NONE, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request, call_env->reply_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 		autz_ctx->status = SQL_AUTZ_REPLY;
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -1593,7 +1593,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			.expand_rhs = true,
 		};
 
-		if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (unlang_module_yield(request, mod_authorize_resume, NULL, FR_SIGNAL_NONE, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		if (sql_get_map_list(p_result, request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD){
 			autz_ctx->status = SQL_AUTZ_REPLY_RESUME;
 			return UNLANG_ACTION_PUSHED_CHILD;
@@ -1640,7 +1640,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 				break;
 			}
 
-			if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+			if (unlang_module_yield(request, mod_autz_group_resume, NULL, FR_SIGNAL_NONE, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 			if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request,
 					     call_env->membership_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			autz_ctx->status = SQL_AUTZ_GROUP_MEMB;
@@ -1712,7 +1712,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 
 	if (unlang_module_yield(request,
 				(call_env->check_query || call_env->reply_query) ? mod_authorize_resume : mod_autz_group_resume,
-				NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) {
+				NULL, FR_SIGNAL_NONE, autz_ctx) == UNLANG_ACTION_FAIL) {
 	error:
 		talloc_free(autz_ctx);
 		RETURN_UNLANG_FAIL;
@@ -1836,7 +1836,7 @@ next:
 	talloc_free(query_ctx);
 	redundant_ctx->query_no++;
 	if (redundant_ctx->query_no >= talloc_array_length(call_env->query)) RETURN_UNLANG_NOOP;
-	if (unlang_module_yield(request, mod_sql_redundant_resume, NULL, 0, redundant_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+	if (unlang_module_yield(request, mod_sql_redundant_resume, NULL, FR_SIGNAL_NONE, redundant_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 	if (unlang_tmpl_push(redundant_ctx, NULL, &redundant_ctx->query, request, call_env->query[redundant_ctx->query_no], NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 
 	RDEBUG2("Trying next query...");
@@ -1868,13 +1868,13 @@ static unlang_action_t mod_sql_redundant_resume(unlang_result_t *p_result, modul
 	MEM(redundant_ctx->query_ctx = fr_sql_query_alloc(redundant_ctx, inst, request, redundant_ctx->trunk,
 							  redundant_ctx->query_vb->vb_strvalue, SQL_QUERY_OTHER));
 
-	unlang_module_yield(request, mod_sql_redundant_query_resume, NULL, 0, redundant_ctx);
+	unlang_module_yield(request, mod_sql_redundant_query_resume, NULL, FR_SIGNAL_NONE, redundant_ctx);
 	return unlang_function_push_with_result(/* discard, mod_sql_redundant_query_resume uses query_ctx->rcode*/ NULL,
 						request,
 						inst->query,
 						NULL,
 						NULL,
-						0, UNLANG_SUB_FRAME,
+						FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
 						redundant_ctx->query_ctx);
 }
 
@@ -1913,7 +1913,7 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(unlang_result_t *p_res
 	fr_value_box_list_init(&redundant_ctx->query);
 
 	return unlang_module_yield_to_tmpl(request, &redundant_ctx->query, request, *call_env->query,
-					   NULL, mod_sql_redundant_resume, NULL, 0, redundant_ctx);
+					   NULL, mod_sql_redundant_resume, NULL, FR_SIGNAL_NONE, redundant_ctx);
 }
 
 static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,

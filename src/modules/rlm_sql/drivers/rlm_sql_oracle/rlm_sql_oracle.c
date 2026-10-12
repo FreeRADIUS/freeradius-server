@@ -801,7 +801,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_co
 		return RLM_SQL_ERROR;
 	}
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
@@ -818,7 +818,7 @@ static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm
 		return RLM_SQL_ERROR;
 	}
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /* Exported to rlm_sql */

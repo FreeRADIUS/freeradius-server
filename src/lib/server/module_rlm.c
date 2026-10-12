@@ -1188,7 +1188,7 @@ static int module_conf_parse(module_list_t *ml, CONF_SECTION *mod_conf)
 
 	if (module_instance_name_from_conf(&inst_name, mod_conf) < 0) goto invalid_name;
 
-	mi = module_rlm_instance_alloc(ml, NULL, DL_MODULE_TYPE_MODULE, name, inst_name, 0);
+	mi = module_rlm_instance_alloc(ml, NULL, DL_MODULE_TYPE_MODULE, name, inst_name, MODULE_INSTANCE_NONE);
 	if (unlikely(mi == NULL)) {
 		cf_log_perr(mod_conf, "Failed loading module");
 		return -1;

@@ -248,7 +248,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_module_yield(request, dhcpv4_resume, NULL, 0, d);
+	return unlang_module_yield(request, dhcpv4_resume, NULL, FR_SIGNAL_NONE, d);
 }
 
 

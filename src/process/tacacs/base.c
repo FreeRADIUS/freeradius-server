@@ -543,7 +543,7 @@ RESUME(auth_start)
 	 */
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
-					      NULL, 0, mctx->rctx);
+					      NULL, FR_SIGNAL_NONE, mctx->rctx);
 }
 
 RESUME(auth_type)
@@ -1024,7 +1024,7 @@ RESUME(accounting_request)
 	 */
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_acct_type,
-					      NULL, 0, mctx->rctx);
+					      NULL, FR_SIGNAL_NONE, mctx->rctx);
 }
 
 static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)

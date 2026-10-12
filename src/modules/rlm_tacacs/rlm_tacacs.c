@@ -181,7 +181,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return unlang_module_yield(request, inst->io->resume, mod_tacacs_signal, 0, rctx);
+	return unlang_module_yield(request, inst->io->resume, mod_tacacs_signal, FR_SIGNAL_NONE, rctx);
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)

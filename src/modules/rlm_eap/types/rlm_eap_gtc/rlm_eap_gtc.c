@@ -172,7 +172,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_module_yield_to_section(&rctx->section_result, request, unlang, RLM_MODULE_FAIL, gtc_resume, NULL, 0, rctx);
+	return unlang_module_yield_to_section(&rctx->section_result, request, unlang, RLM_MODULE_FAIL, gtc_resume, NULL, FR_SIGNAL_NONE, rctx);
 }
 
 

@@ -172,7 +172,7 @@ yield:
 	 *	Once the state machine finishes with this round, translate
 	 *	the reply Packet-Type into an EAP result.
 	 */
-	(void)unlang_module_yield(request, mod_encode, NULL, 0, NULL);
+	(void)unlang_module_yield(request, mod_encode, NULL, FR_SIGNAL_NONE, NULL);
 
 	if (unlang_call_push(NULL, request, virtual_server_cs(inst->virtual_server), UNLANG_SUB_FRAME) < 0) {
 		unlang_interpet_frame_discard(request);

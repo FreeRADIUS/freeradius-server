@@ -506,7 +506,7 @@ static void CC_HINT(nonnull) actions_dump(request_t *request, unlang_t const *in
 
 	RDEBUG2("actions");
 	RINDENT();
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+	for (i = RLM_MODULE_NOT_SET; i < RLM_MODULE_NUMCODES; i++) {
 		RDEBUG2("%s: %s",
 			fr_table_str_by_value(mod_rcode_table, i, "<invalid>"),
 			mod_action_name[instruction->actions.actions[i]]);

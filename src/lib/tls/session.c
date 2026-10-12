@@ -1718,7 +1718,7 @@ unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t
 	if (unlang_function_push(request,
 				 NULL,
 				 tls_session_fail_clear,
-				 NULL, 0, UNLANG_SUB_FRAME, tls_session) == UNLANG_ACTION_FAIL) {
+				 NULL, FR_SIGNAL_NONE, UNLANG_SUB_FRAME, tls_session) == UNLANG_ACTION_FAIL) {
 		return UNLANG_ACTION_FAIL;
 	}
 
@@ -2781,7 +2781,7 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 	if (!fr_cond_assert(unlang_function_push(child,
 						 NULL,
 						 tls_new_session_result,
-						 NULL, 0,
+						 NULL, FR_SIGNAL_NONE,
 						 UNLANG_SUB_FRAME, NULL) == UNLANG_ACTION_PUSHED_CHILD)) {
 		/*
 		 *	We just pushed the child frame onto the stack.

@@ -107,7 +107,7 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 		 *	Result is always OK, even if we fail to persist the
 		 *	session data.
 		 */
-		unlang_module_yield(request, mod_handshake_done, NULL, 0, mctx->rctx);
+		unlang_module_yield(request, mod_handshake_done, NULL, FR_SIGNAL_NONE, mctx->rctx);
 		/*
 		 *	Write the session to the session cache
 		 *
@@ -166,7 +166,7 @@ static unlang_action_t mod_handshake_process(UNUSED unlang_result_t *p_result, U
 	/*
 	 *	Setup the resumption frame to process the result
 	 */
-	(void)unlang_module_yield(request, mod_handshake_resume, NULL, 0, eap_session);
+	(void)unlang_module_yield(request, mod_handshake_resume, NULL, FR_SIGNAL_NONE, eap_session);
 
 	/*
 	 *	Process TLS layer until done.
@@ -227,7 +227,7 @@ static unlang_action_t mod_session_init(UNUSED unlang_result_t *p_result, module
 
 	eap_session->tls = true;
 
-	(void) unlang_module_yield(request, mod_session_init_resume, NULL, 0, NULL);
+	(void) unlang_module_yield(request, mod_session_init_resume, NULL, FR_SIGNAL_NONE, NULL);
 
 	if (inst->tls_conf->new_session) return fr_tls_new_session_push(request, inst->tls_conf);
 

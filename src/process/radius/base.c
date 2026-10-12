@@ -369,7 +369,7 @@ RESUME(access_request)
 	 */
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
-					      NULL, 0, mctx->rctx);
+					      NULL, FR_SIGNAL_NONE, mctx->rctx);
 }
 
 RESUME(auth_type)
@@ -378,7 +378,7 @@ RESUME(auth_type)
 		[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
-		[RLM_MODULE_HANDLED] =	0,
+		[RLM_MODULE_HANDLED] =	FR_RADIUS_CODE_UNDEFINED,
 		[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_ACCESS_REJECT,
@@ -629,7 +629,7 @@ RESUME(accounting_request)
 	 */
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_acct_type,
-					      NULL, 0, mctx->rctx);
+					      NULL, FR_SIGNAL_NONE, mctx->rctx);
 }
 
 #if 0

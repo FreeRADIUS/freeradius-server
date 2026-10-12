@@ -693,7 +693,7 @@ int fr_tls_connection_push(fr_tls_connection_t *conn)
 	return unlang_function_push(conn->request,
 				    tls_connection_new_session,
 				    tls_connection_new_session,
-				    NULL, 0, UNLANG_TOP_FRAME, conn);
+				    NULL, FR_SIGNAL_NONE, UNLANG_TOP_FRAME, conn);
 }
 
 /** A TLS record is available, so wake up the connection to process it.

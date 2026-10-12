@@ -397,7 +397,7 @@ RESUME(recv_request)
 						       *	Jump straight to the send function.
 						       */
 						      state->send,
-						      NULL, 0, mctx->rctx);
+						      NULL, FR_SIGNAL_NONE, mctx->rctx);
 	}
 
 	/*

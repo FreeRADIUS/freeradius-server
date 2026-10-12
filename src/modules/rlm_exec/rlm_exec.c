@@ -177,7 +177,7 @@ static xlat_action_t exec_xlat_oneshot(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 	}
 	talloc_set_destructor(exec, _exec_free);
 
-	return unlang_xlat_yield(request, exec_xlat_oneshot_wait_resume, NULL, 0, exec);
+	return unlang_xlat_yield(request, exec_xlat_oneshot_wait_resume, NULL, FR_SIGNAL_NONE, exec);
 }
 
 typedef struct {
@@ -419,7 +419,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(unlang_result_
 		 *  exec request.
 		 */
 		return unlang_module_yield_to_xlat(request, NULL, box, request, tmpl_xlat(env_data->program),
-						   mod_exec_oneshot_nowait_resume, NULL, 0, box);
+						   mod_exec_oneshot_nowait_resume, NULL, FR_SIGNAL_NONE, box);
 	}
 
 	/*
@@ -444,7 +444,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(unlang_result_
 					   request, env_data->program,
 					   TMPL_ARGS_EXEC(env_pairs, inst->timeout, true, &m->status),
 					   mod_exec_oneshot_wait_resume,
-					   NULL, 0, &m->box);
+					   NULL, FR_SIGNAL_NONE, &m->box);
 }
 
 static int mob_instantiate(module_inst_ctx_t const *mctx)

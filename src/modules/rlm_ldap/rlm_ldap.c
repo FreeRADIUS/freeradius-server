@@ -1106,7 +1106,7 @@ static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_yield(request, ldap_group_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
+	if (unlang_xlat_yield(request, ldap_group_xlat_resume, NULL, FR_SIGNAL_NONE, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
 
 	if (unlang_function_push_with_result(NULL,
 					     request,
@@ -1290,7 +1290,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 		goto error;
 	}
 
-	if (unlang_xlat_yield(request, ldap_profile_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
+	if (unlang_xlat_yield(request, ldap_profile_xlat_resume, NULL, FR_SIGNAL_NONE, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
 
 	/*
 	 *	Pushes a frame onto the stack to retrieve and evaluate a profile
@@ -1387,7 +1387,7 @@ static xlat_action_t ldap_whoami_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_
 
 	MEM(xlat_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_xlat_whoami_ctx_t));
 
-	if (unlang_xlat_yield(request, ldap_whoami_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) {
+	if (unlang_xlat_yield(request, ldap_whoami_xlat_resume, NULL, FR_SIGNAL_NONE, xlat_ctx) != XLAT_ACTION_YIELD) {
 	error:
 		talloc_free(xlat_ctx);
 		return XLAT_ACTION_FAIL;
@@ -1628,7 +1628,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 	if (host) ldap_memfree(host);
 	if (!ttrunk) goto fail;
 
-	if (unlikely(unlang_map_yield(request, mod_map_resume, NULL, 0, map_ctx) != UNLANG_ACTION_YIELD)) goto fail;
+	if (unlikely(unlang_map_yield(request, mod_map_resume, NULL, FR_SIGNAL_NONE, map_ctx) != UNLANG_ACTION_YIELD)) goto fail;
 
 	return fr_ldap_trunk_search(map_ctx, &map_ctx->query, request, ttrunk, ldap_url->lud_dn,
 				    ldap_url->lud_scope, ldap_url->lud_filter, map_ctx->expanded.attrs,
@@ -1734,7 +1734,7 @@ static void profile_dn_list_dedupe(char const **dn_list)
 }
 
 #define REPEAT_MOD_AUTHORIZE_RESUME \
-	if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) do { \
+	if (unlang_module_yield(request, mod_authorize_resume, NULL, FR_SIGNAL_NONE, autz_ctx) == UNLANG_ACTION_FAIL) do { \
 		p_result->rcode = RLM_MODULE_FAIL; \
 		goto finish; \
 	} while (0)
@@ -2287,7 +2287,7 @@ next:
 	 *	Keep calling until we've completed all the modifications
 	 */
 	if (usermod_ctx->current_mod < usermod_ctx->num_mods) {
-		if (unlang_module_yield(request, user_modify_mod_build_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (unlang_module_yield(request, user_modify_mod_build_resume, NULL, FR_SIGNAL_NONE, usermod_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		if (unlang_tmpl_push(usermod_ctx, NULL, &usermod_ctx->expanded, request,
 				     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -2327,7 +2327,7 @@ static unlang_action_t CC_HINT(nonnull) user_modify_resume(unlang_result_t *p_re
 	MEM(usermod_ctx->mod_s = talloc_array(usermod_ctx, LDAPMod, usermod_ctx->num_mods));
 	fr_value_box_list_init(&usermod_ctx->expanded);
 
-	if (unlang_module_yield(request, user_modify_mod_build_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) goto fail;
+	if (unlang_module_yield(request, user_modify_mod_build_resume, NULL, FR_SIGNAL_NONE, usermod_ctx) == UNLANG_ACTION_FAIL) goto fail;
 
 	if (unlang_tmpl_push(usermod_ctx, NULL, &usermod_ctx->expanded, request,
 			     usermod_ctx->call_env->mod[0]->tmpl, NULL, UNLANG_SUB_FRAME) < 0) goto fail;
@@ -2380,7 +2380,7 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(unlang_result_t *p_result, mo
 	 *	Find the user first
 	 */
 	if (!usermod_ctx->dn) {
-		if (unlang_module_yield(request, user_modify_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) {
+		if (unlang_module_yield(request, user_modify_resume, NULL, FR_SIGNAL_NONE, usermod_ctx) == UNLANG_ACTION_FAIL) {
 			talloc_free(usermod_ctx);
 			RETURN_UNLANG_FAIL;
 		}
@@ -3104,7 +3104,7 @@ module_rlm_t rlm_ldap = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
 		.name			= "ldap",
-		.flags			= 0,
+		.flags			= MODULE_TYPE_NONE,
 		MODULE_BOOT(rlm_ldap_boot_t),
 		MODULE_INST(rlm_ldap_t),
 		.config			= module_config,

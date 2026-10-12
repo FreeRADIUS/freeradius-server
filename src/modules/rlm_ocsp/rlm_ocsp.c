@@ -695,7 +695,7 @@ static unlang_action_t CC_HINT(nonnull) mod_ocsp(unlang_result_t *p_result, modu
 
 finish:
 
-	if (rcode == RLM_MODULE_NOT_SET) return unlang_module_yield(request, mod_ocsp_resume, NULL, 0, rctx);
+	if (rcode == RLM_MODULE_NOT_SET) return unlang_module_yield(request, mod_ocsp_resume, NULL, FR_SIGNAL_NONE, rctx);
 
 	RETURN_UNLANG_RCODE(rcode);
 }

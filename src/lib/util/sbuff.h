@@ -60,6 +60,7 @@ typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
 DIAG_OFF(attributes)
 DIAG_OFF(cast-align)
 typedef enum CC_HINT(flag_enum) : uint8_t {
+	FR_SBUFF_FLAG_NONE			= 0x00,		//!< No extension status.
 	FR_SBUFF_FLAG_EXTENDED			= 0x01,		//!< The last call to extend function actually extended the buffer.
 	FR_SBUFF_FLAG_EXTEND_ERROR		= 0x02		//!< The last call to an extend function resulted in an error.
 								///< Error should be provided using fr_strerror_const/fr_strerror_printf
@@ -1097,7 +1098,7 @@ static inline fr_slen_t _fr_sbuff_error(fr_sbuff_t *sbuff, char const *err)
 static inline size_t _fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr_sbuff_t *in, size_t remaining, size_t lowat)
 {
 	size_t extended;
-	fr_sbuff_extend_status_t our_status = 0;
+	fr_sbuff_extend_status_t our_status = FR_SBUFF_FLAG_NONE;
 
 	if (!fr_sbuff_is_extendable(in)) {
 	no_extend:

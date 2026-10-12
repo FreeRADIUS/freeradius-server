@@ -36,7 +36,7 @@ extern "C" {
  */
 DIAG_OFF(attributes) /* Stupid GCC */
 typedef enum CC_HINT(flag_enum) : uint8_t {	/* server action */
-	FR_SIGNAL_INVALID	= 0x00,
+	FR_SIGNAL_NONE		= 0x00,	//!< No signals.
 	FR_SIGNAL_CANCEL	= 0x01,	//!< Request has been cancelled.
 					///< If a module is signalled with this, the module
 					///< should stop processing the request and cleanup

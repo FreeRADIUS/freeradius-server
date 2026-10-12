@@ -190,7 +190,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 		 *	of that list.
 		 */
 		inst->work_submodule = module_instance_alloc(mi->ml, mi, DL_MODULE_TYPE_SUBMODULE,
-							     "work", inst_name, 0);
+							     "work", inst_name, MODULE_INSTANCE_NONE);
 		if (inst->work_submodule == NULL) {
 		error:
 			cf_log_perr(mi->conf, "Failed to load proto_detail_work");

@@ -308,7 +308,7 @@ static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result, 
 						call_env_expand_start,
 						call_env_expand_repeat,
 						NULL,
-						0, UNLANG_SUB_FRAME,
+						FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
 						call_env_rctx);
 }
 
@@ -339,7 +339,7 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
 						call_env_expand_start,
 						call_env_expand_repeat,
 						NULL,
-						0, UNLANG_SUB_FRAME,
+						FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
 						call_env_rctx);
 }
 

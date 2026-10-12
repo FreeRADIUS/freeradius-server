@@ -71,7 +71,7 @@ static sql_rcode_t sql_check_error(SQLRETURN ret, SQLSMALLINT handle_type, SQLHA
 	SQLSMALLINT	length = 255;
 	int		res = RLM_SQL_ERROR;
 
-	if (SQL_SUCCEEDED(ret)) return 0; /* on success, just return 0 */
+	if (SQL_SUCCEEDED(ret)) return RLM_SQL_OK; /* on success, just return 0 */
 
 	error[0] = state[0] = '\0';
 

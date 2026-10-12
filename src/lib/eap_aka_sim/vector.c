@@ -982,8 +982,8 @@ int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_l
 void fr_aka_sim_vector_umts_reauth_clear(fr_aka_sim_keys_t *keys)
 {
 	memset(&keys->reauth, 0, sizeof(keys->reauth));
-	keys->vector_src = 0;
-	keys->vector_type = 0;
+	keys->vector_src = AKA_SIM_VECTOR_SRC_AUTO;
+	keys->vector_type = AKA_SIM_VECTOR_NONE;
 }
 
 /** Perform milenage AUTS validation and resynchronisation

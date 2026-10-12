@@ -653,7 +653,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 
 	free_result_row(conn);
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /** Retrieves any errors associated with the query context

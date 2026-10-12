@@ -98,7 +98,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 							   NULL,
 							   resume,
 							   NULL,
-							   0, UNLANG_SUB_FRAME,
+							   FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
 							   tls_session) == UNLANG_ACTION_PUSHED_CHILD)) {
 		/*
 		 *	We just pushed the child frame onto the stack.

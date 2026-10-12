@@ -1215,7 +1215,7 @@ RECV(cluster_map_get)
 	}
 
 	return unlang_function_push_with_result(p_result, request, redis_cluster_map_get, redis_cluster_map_get_resume,
-						NULL, 0, UNLANG_SUB_FRAME, rctx);
+						NULL, FR_SIGNAL_NONE, UNLANG_SUB_FRAME, rctx);
 }
 
 static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)

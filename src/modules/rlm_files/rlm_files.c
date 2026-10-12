@@ -645,7 +645,7 @@ static unlang_action_t CC_HINT(nonnull) mod_files(UNUSED unlang_result_t *p_resu
 	env->name = mctx->mi->name;
 
 	return unlang_module_yield_to_tmpl(env, &env->values, request, env->data->key_tmpl,
-					   NULL, mod_files_resume, NULL, 0, NULL);
+					   NULL, mod_files_resume, NULL, FR_SIGNAL_NONE, NULL);
 }
 
 /** Custom call_env parser for loading files data

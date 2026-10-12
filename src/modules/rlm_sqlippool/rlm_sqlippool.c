@@ -225,7 +225,7 @@ static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 	return 0;
 }
 
-#define REPEAT_MOD_ALLOC_RESUME if (unlang_module_yield(request, mod_alloc_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL
+#define REPEAT_MOD_ALLOC_RESUME if (unlang_module_yield(request, mod_alloc_resume, NULL, FR_SIGNAL_NONE, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL
 #define SUBMIT_QUERY(_query_str, _new_status, _type, _function) do { \
 	alloc_ctx->status = _new_status; \
 	REPEAT_MOD_ALLOC_RESUME; \
@@ -233,7 +233,7 @@ static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 	query_ctx->type = _type; \
 	query_ctx->status = SQL_QUERY_PREPARED; \
 	alloc_ctx->query = query; \
-	return unlang_function_push_with_result(p_result, request, sql->_function, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx); \
+	return unlang_function_push_with_result(p_result, request, sql->_function, NULL, NULL, FR_SIGNAL_NONE, UNLANG_SUB_FRAME, query_ctx); \
 } while (0)
 
 /** Resume function called after each IP allocation query is expanded
@@ -526,7 +526,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 	MEM(alloc_ctx->query_ctx = sql->query_alloc(alloc_ctx, sql, request, thread->trunk, "", SQL_QUERY_OTHER));
 
 	fr_value_box_list_init(&alloc_ctx->values);
-	if (unlikely(unlang_module_yield(request, mod_alloc_resume, NULL, 0, alloc_ctx) != UNLANG_ACTION_YIELD)) {
+	if (unlikely(unlang_module_yield(request, mod_alloc_resume, NULL, FR_SIGNAL_NONE, alloc_ctx) != UNLANG_ACTION_YIELD)) {
 		talloc_free(alloc_ctx);
 		RETURN_UNLANG_FAIL;
 	}
@@ -537,7 +537,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 							request,
 							sql->query,
 							NULL,
-							NULL, 0,
+							NULL, FR_SIGNAL_NONE,
 							UNLANG_SUB_FRAME,
 							alloc_ctx->query_ctx);
 	}
@@ -589,7 +589,7 @@ static unlang_action_t mod_common_free_resume(unlang_result_t *p_result, module_
 
 	sql->driver->sql_finish_query(query_ctx, &sql->config);
 
-	if (unlikely(unlang_module_yield(request, mod_common_update_resume, NULL, 0, common_ctx) != UNLANG_ACTION_YIELD)) {
+	if (unlikely(unlang_module_yield(request, mod_common_update_resume, NULL, FR_SIGNAL_NONE, common_ctx) != UNLANG_ACTION_YIELD)) {
 		talloc_free(common_ctx);
 		RETURN_UNLANG_FAIL;
 	}
@@ -600,7 +600,7 @@ static unlang_action_t mod_common_free_resume(unlang_result_t *p_result, module_
 						request,
 						sql->query,
 						NULL,
-						NULL, 0,
+						NULL, FR_SIGNAL_NONE,
 						UNLANG_SUB_FRAME,
 						query_ctx);
 }
@@ -637,7 +637,7 @@ static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, mo
 	 */
 	if (env->free.type == FR_TYPE_STRING) {
 		common_ctx->query_ctx->query_str = env->free.vb_strvalue;
-		if (unlikely(unlang_module_yield(request, mod_common_free_resume, NULL, 0, common_ctx) != UNLANG_ACTION_YIELD)) {
+		if (unlikely(unlang_module_yield(request, mod_common_free_resume, NULL, FR_SIGNAL_NONE, common_ctx) != UNLANG_ACTION_YIELD)) {
 			talloc_free(common_ctx);
 			RETURN_UNLANG_FAIL;
 		}
@@ -645,14 +645,14 @@ static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, mo
 							request,
 							sql->query,
 							NULL,
-							NULL, 0,
+							NULL, FR_SIGNAL_NONE,
 							UNLANG_SUB_FRAME,
 							common_ctx->query_ctx);
 	}
 
 	common_ctx->query_ctx->query_str = env->update.vb_strvalue;
 
-	if (unlikely(unlang_module_yield(request, mod_common_update_resume, NULL, 0, common_ctx) != UNLANG_ACTION_YIELD)) {
+	if (unlikely(unlang_module_yield(request, mod_common_update_resume, NULL, FR_SIGNAL_NONE, common_ctx) != UNLANG_ACTION_YIELD)) {
 		talloc_free(common_ctx);
 		RETURN_UNLANG_FAIL;
 	}
@@ -660,7 +660,7 @@ static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, mo
 						request,
 						sql->query,
 						NULL,
-						NULL, 0,
+						NULL, FR_SIGNAL_NONE,
 						UNLANG_SUB_FRAME,
 						common_ctx->query_ctx);
 }

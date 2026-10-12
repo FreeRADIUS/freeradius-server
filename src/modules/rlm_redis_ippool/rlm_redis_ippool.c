@@ -1970,7 +1970,7 @@ static xlat_action_t redis_ippool_list_start(UNUSED TALLOC_CTX *ctx, UNUSED fr_d
 	case REDIS_ASYNC_RCODE_BOOTSTRAP:
 		fr_redis_ct_map_bootstrap(thread->rtcluster, thread->cw, thread->inst->coord_pair_reg);
 		fr_redis_ct_request_yield(rctx, thread->rtcluster, request);
-		return unlang_xlat_yield(request, redis_ippool_list_start, NULL, 0, rctx);
+		return unlang_xlat_yield(request, redis_ippool_list_start, NULL, FR_SIGNAL_NONE, rctx);
 
 	default:
 		return XLAT_ACTION_FAIL;

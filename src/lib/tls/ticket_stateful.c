@@ -757,7 +757,7 @@ static unlang_action_t tls_ticket_stateful_drain_push(request_t *request, fr_tls
 {
 	if (!fr_tls_ticket_stateful_pending(tls_session->cache)) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	return unlang_function_push(request, tls_ticket_stateful_drain, NULL, NULL, 0, UNLANG_SUB_FRAME, tls_session);
+	return unlang_function_push(request, tls_ticket_stateful_drain, NULL, NULL, FR_SIGNAL_NONE, UNLANG_SUB_FRAME, tls_session);
 }
 
 /** Store a session after a successful authentication

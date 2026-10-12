@@ -860,7 +860,7 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 	 *	For this round, when the virtual server returns
 	 *	we run the process reply function.
 	 */
-	if (unlikely(unlang_module_yield(request, process_reply, NULL, 0, eap_session) != UNLANG_ACTION_YIELD)) {
+	if (unlikely(unlang_module_yield(request, process_reply, NULL, FR_SIGNAL_NONE, eap_session) != UNLANG_ACTION_YIELD)) {
 		return UNLANG_ACTION_FAIL;
 	}
 
@@ -962,7 +962,7 @@ static unlang_action_t mod_handshake_process(UNUSED unlang_result_t *p_result, U
 	/*
 	 *	Setup the resumption frame to process the result
 	 */
-	(void)unlang_module_yield(request, mod_handshake_resume, NULL, 0, eap_session);
+	(void)unlang_module_yield(request, mod_handshake_resume, NULL, FR_SIGNAL_NONE, eap_session);
 
 	/*
 	 *	Process TLS layer until done.
@@ -1024,7 +1024,7 @@ static unlang_action_t mod_session_init(UNUSED unlang_result_t *p_result, module
 
 	eap_session->tls = true;
 
-	(void) unlang_module_yield(request, mod_session_init_resume, NULL, 0, NULL);
+	(void) unlang_module_yield(request, mod_session_init_resume, NULL, FR_SIGNAL_NONE, NULL);
 
 	if (inst->tls_conf->new_session) return fr_tls_new_session_push(request, inst->tls_conf);
 

@@ -238,7 +238,7 @@ static unlang_action_t ldap_profile_search_push(ldap_profile_ctx_t *profile_ctx,
 	if (unlang_function_push(request,
 				 NULL,
 				 ldap_map_profile_resume,
-				 NULL, 0,
+				 NULL, FR_SIGNAL_NONE,
 				 UNLANG_SUB_FRAME,
 				 profile_ctx) < 0) {
 		talloc_free(profile_ctx);

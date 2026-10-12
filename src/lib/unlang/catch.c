@@ -90,7 +90,7 @@ static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *un
 
 		c->debug_name = c->name = "catch";
 
-		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		for (i = RLM_MODULE_NOT_SET; i < RLM_MODULE_NUMCODES; i++) {
 			if (gext->catch[i]) continue;
 
 			gext->catch[i] = c;

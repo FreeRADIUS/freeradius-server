@@ -263,7 +263,7 @@ void unlang_compile_ctx_copy(unlang_compile_ctx_t *dst, unlang_compile_ctx_t con
 	 *	Ensure that none of the actions are RETRY.  The actions { ... } section is applied to the
 	 *	instruction, and not to the unlang_compile_ctx_t
 	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+	for (i = RLM_MODULE_NOT_SET; i < RLM_MODULE_NUMCODES; i++) {
 		fr_assert(dst->actions.actions[i] != MOD_ACTION_RETRY);
 		fr_assert(MOD_ACTION_VALID(dst->actions.actions[i]));
 	}

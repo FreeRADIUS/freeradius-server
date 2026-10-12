@@ -140,7 +140,7 @@ static inline int dict_attr_ref_null(fr_dict_attr_t const *da)
 		return -1;
 	}
 
-	ext->type = 0;
+	ext->type = FR_DICT_ATTR_REF_NONE;
 	ext->ref = NULL;
 
 	return 0;

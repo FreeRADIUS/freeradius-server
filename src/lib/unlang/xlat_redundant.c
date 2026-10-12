@@ -111,7 +111,7 @@ static xlat_action_t xlat_redundant_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		goto done;
 	}
 
-	if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
+	if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, FR_SIGNAL_NONE, rctx) != XLAT_ACTION_YIELD) goto error;
 
 	/*
 	 *	Push the next child...
@@ -157,7 +157,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	case XLAT_REDUNDANT:
 		rctx->current = rctx->first = xri->ex;	/* First element first */
-		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) {
+		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, FR_SIGNAL_NONE, rctx) != XLAT_ACTION_YIELD) {
 		error:
 			talloc_free(rctx);
 			return XLAT_ACTION_FAIL;
@@ -169,7 +169,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	case XLAT_LOAD_BALANCE:
 		rctx->current = rctx->first = &xri->ex[(size_t)fr_rand() % talloc_array_length(xri->ex)];	/* Random start */
-		if (unlang_xlat_yield(request, xlat_load_balance_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
+		if (unlang_xlat_yield(request, xlat_load_balance_resume, NULL, FR_SIGNAL_NONE, rctx) != XLAT_ACTION_YIELD) goto error;
 		break;
 
 	/*
@@ -178,7 +178,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	case XLAT_REDUNDANT_LOAD_BALANCE:
 		rctx->current = rctx->first = &xri->ex[(size_t)fr_rand() % talloc_array_length(xri->ex)];	/* Random start */
-		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
+		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, FR_SIGNAL_NONE, rctx) != XLAT_ACTION_YIELD) goto error;
 		break;
 
 	default:
@@ -438,7 +438,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 	char const		*name1;
 	xlat_redundant_type_t	xr_type;
-	xlat_func_flags_t	default_flags = 0;	/* Prevent warnings about default flags if xr_rype is corrupt */
+	xlat_func_flags_t	default_flags = XLAT_FUNC_FLAG_NONE;	/* Prevent warnings about default flags if xr_rype is corrupt */
 
 	fr_type_t		return_type = FR_TYPE_NULL;
 

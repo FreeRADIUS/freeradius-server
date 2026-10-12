@@ -1013,7 +1013,7 @@ fr_sbuff_err_t fr_sbuff_out_unescape_until(size_t *len, fr_sbuff_t *out, fr_sbuf
 
 	uint8_t				idx[SBUFF_CHAR_CLASS];			/* Fast path index */
 	size_t				needle_len = 1;
-	fr_sbuff_extend_status_t	status = 0;
+	fr_sbuff_extend_status_t	status = FR_SBUFF_FLAG_NONE;
 
 	/*
 	 *	If we don't need to do unescaping
@@ -2317,7 +2317,7 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 	 *	No terminal, check for EOF.
 	 */
 	if (!tt) {
-		fr_sbuff_extend_status_t status = 0;
+		fr_sbuff_extend_status_t status = FR_SBUFF_FLAG_NONE;
 
 		if ((fr_sbuff_extend_lowat(&status, in, 1) == 0) &&
 		    (status & FR_SBUFF_FLAG_EXTEND_ERROR) == 0) {

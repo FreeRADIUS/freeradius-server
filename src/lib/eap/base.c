@@ -404,7 +404,7 @@ unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_sessio
 					     request,
 					     NULL,
 					     eap_virtual_server_resume,
-					     NULL, 0,
+					     NULL, FR_SIGNAL_NONE,
 					     UNLANG_SUB_FRAME,
 					     eap_session) < 0) return UNLANG_ACTION_FAIL;
 

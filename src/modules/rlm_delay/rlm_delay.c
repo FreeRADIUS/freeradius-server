@@ -194,7 +194,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(unlang_result_t *p_result, mod
 		.mrc = 1,
 	};
 
-	return unlang_module_yield_to_retry(request, mod_delay_return, _delay_done, NULL, 0,
+	return unlang_module_yield_to_retry(request, mod_delay_return, _delay_done, NULL, FR_SIGNAL_NONE,
 					    yielded, &yielded->retry_cfg);
 }
 
@@ -296,7 +296,7 @@ module_rlm_t rlm_delay = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "delay",
-		.flags		= 0,
+		.flags		= MODULE_TYPE_NONE,
 		.inst_size	= sizeof(rlm_delay_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap

@@ -1367,7 +1367,7 @@ static xlat_action_t cache_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_
 
 	if (cache_find_resume(&result, &entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		unlang_xlat_yield(request, cache_xlat_resume, NULL, 0, rctx);
+		unlang_xlat_yield(request, cache_xlat_resume, NULL, FR_SIGNAL_NONE, rctx);
 		return XLAT_ACTION_YIELD;
 	}
 
@@ -1429,7 +1429,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			.uctx = target
 		};
 
-		unlang_xlat_yield(request, cache_xlat_resume, NULL, 0, rctx);
+		unlang_xlat_yield(request, cache_xlat_resume, NULL, FR_SIGNAL_NONE, rctx);
 		return XLAT_ACTION_YIELD;
 	}
 	return cache_xlat_results(ctx, &result, request, inst, handle, c, target, out);
@@ -1470,7 +1470,7 @@ static xlat_action_t cache_ttl_get_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *ou
 
 	if (cache_find_resume(&result, &entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		unlang_xlat_yield(request, cache_xlat_resume, NULL, 0, rctx);
+		unlang_xlat_yield(request, cache_xlat_resume, NULL, FR_SIGNAL_NONE, rctx);
 		return XLAT_ACTION_YIELD;
 	}
 
@@ -1506,7 +1506,7 @@ static xlat_action_t cache_ttl_get_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			.rctx = driver_rctx,
 		};
 
-		unlang_xlat_yield(request, cache_ttl_get_xlat_resume, NULL, 0, rctx);
+		unlang_xlat_yield(request, cache_ttl_get_xlat_resume, NULL, FR_SIGNAL_NONE, rctx);
 		return XLAT_ACTION_YIELD;
 	}
 	return cache_ttl_get_xlat_results(ctx, &result, request, inst, handle, c, out);

@@ -643,7 +643,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	if (rcode == 0) RETURN_UNLANG_NOOP;
 	if (rcode < 0) RETURN_UNLANG_FAIL;
 
-	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, 0, u, retry_config);
+	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, FR_SIGNAL_NONE, u, retry_config);
 }
 
 

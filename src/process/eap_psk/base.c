@@ -115,7 +115,7 @@ static conf_parser_t submodule_config[] = {
 		if (inst->sections._section) { \
 			return unlang_module_yield_to_section(&session->section_result, request, \
 							      inst->sections._section, RLM_MODULE_NOOP, \
-							      _resume, NULL, 0, session); \
+							      _resume, NULL, FR_SIGNAL_NONE, session); \
 		} \
 		session->section_result.rcode = RLM_MODULE_NOOP; \
 		our_mctx = *mctx; \

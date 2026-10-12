@@ -686,7 +686,7 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 					      *	written to eap_session->submodule_result.
 					      */
 					     process_reply,
-					     NULL, 0,
+					     NULL, FR_SIGNAL_NONE,
 					     UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto finish;
 
 	/*
@@ -873,7 +873,7 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 	 *	Setup the resume point to prepare the correct reply based on
 	 *	the rcode coming back from PEAP processing.
 	 */
-	(void) unlang_module_yield(request, process_rcode, NULL, 0, eap_session);
+	(void) unlang_module_yield(request, process_rcode, NULL, FR_SIGNAL_NONE, eap_session);
 
 	/*
 	 *	Process the PEAP portion of the request.
@@ -892,7 +892,7 @@ static unlang_action_t mod_handshake_process(UNUSED unlang_result_t *p_result, U
 	/*
 	 *	Setup the resumption frame to process the result
 	 */
-	(void)unlang_module_yield(request, mod_handshake_resume, NULL, 0, eap_session);
+	(void)unlang_module_yield(request, mod_handshake_resume, NULL, FR_SIGNAL_NONE, eap_session);
 
 	/*
 	 *	Process TLS layer until done.
@@ -975,7 +975,7 @@ static unlang_action_t mod_session_init(UNUSED unlang_result_t *p_result, module
 
 	eap_session->tls = true;
 
-	(void) unlang_module_yield(request, mod_session_init_resume, NULL, 0, NULL);
+	(void) unlang_module_yield(request, mod_session_init_resume, NULL, FR_SIGNAL_NONE, NULL);
 
 	if (inst->tls_conf->new_session) return fr_tls_new_session_push(request, inst->tls_conf);
 

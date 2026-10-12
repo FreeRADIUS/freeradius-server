@@ -81,7 +81,7 @@ static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t
 
 static sql_rcode_t sql_free_result(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /** Stub function for retrieving errors, should not be called
@@ -95,7 +95,7 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, UNUSED sql_log_entry_t out[], UN
 
 static sql_rcode_t sql_finish_query(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	return 0;
+	return RLM_SQL_OK;
 }
 
 static int sql_affected_rows(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
