@@ -89,7 +89,7 @@ int fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl)
 		return -1;
 	cipher = SSL_CIPHER_get_cipher_nid(ssl_cipher);
 	digest = SSL_CIPHER_get_digest_nid(ssl_cipher);
-	RDEBUG2("OpenSSL: cipher nid %d digest nid %d", cipher, digest);
+	RDEBUG2("(TLS) OpenSSL: cipher nid %d digest nid %d", cipher, digest);
 	if (cipher < 0 || digest < 0)
 		return -1;
 	c = EVP_get_cipherbynid(cipher);
@@ -97,7 +97,7 @@ int fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl)
 	if (!c || !h)
 		return -1;
 
-	RDEBUG2("OpenSSL: keyblock size: key_len=%d MD_size=%d IV_len=%d",
+	RDEBUG2("(TLS) OpenSSL: keyblock size: key_len=%d MD_size=%d IV_len=%d",
 		   EVP_CIPHER_key_length(c), EVP_MD_size(h),
 		   EVP_CIPHER_iv_length(c));
 	return 2 * (EVP_CIPHER_key_length(c) + EVP_MD_size(h) +

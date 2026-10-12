@@ -129,7 +129,7 @@ static void tls_connection_check(fr_tls_connection_t *conn)
 	 *	is true, and the completion is reported below.
 	 */
 	if (conn->eof && conn->idle && !fr_tls_session_is_init_finished(tls_session)) {
-		REDEBUG("Peer closed the connection before the handshake completed");
+		REDEBUG("(TLS) Peer closed the connection before the handshake completed");
 		errno = 0;		/* fr_tls_connection_failed() records errno, and no call set one */
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 		return;
@@ -197,7 +197,7 @@ static void tls_connection_close(fr_tls_connection_t *conn)
 	FR_TIMER_DELETE(&conn->timer_ev);
 	TALLOC_FREE(conn->tl);
 
-	RDEBUG2("%s - closing connection", conn->name);
+	RDEBUG2("(TLS) %s - closing connection", conn->name);
 	conn->close(conn);
 }
 
@@ -238,7 +238,7 @@ static unlang_action_t tls_connection_connected(request_t *request, void *uctx)
 	conn->state = TLS_CONNECTION_CONNECTED;
 	FR_TIMER_DELETE(&conn->timer_ev);
 
-	RDEBUG2("%s - connection state is now %s", conn->name,
+	RDEBUG2("(TLS) %s - connection state is now %s", conn->name,
 	       fr_table_str_by_value(fr_tls_connection_state_table, conn->state, "<INVALID>"));
 
 	/*
@@ -285,7 +285,7 @@ void fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_
 	conn->failed = reason;
 	if (conn->failed == TLS_CONNECTION_FAIL_SYSCALL) conn->error = errno;
 
-	RDEBUG2("%s - connection failed: %s", conn->name,
+	RDEBUG2("(TLS) %s - connection failed: %s", conn->name,
 		fr_table_str_by_value(fr_tls_connection_fail_table, conn->failed, "<INVALID>"));
 
 	/*
@@ -367,7 +367,7 @@ void fr_tls_connection_eof(fr_tls_connection_t *conn)
 		return;
 	}
 
-	REDEBUG("Peer closed the connection before the handshake completed");
+	REDEBUG("(TLS) Peer closed the connection before the handshake completed");
 	errno = 0;		/* fr_tls_connection_failed() records errno, and no call set one */
 	fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 }
@@ -479,7 +479,7 @@ act:
 	 */
 	conn->error = error;
 
-	RDEBUG3("%s - IO state is now %s", conn->name,
+	RDEBUG3("(TLS) %s - IO state is now %s", conn->name,
 		fr_table_str_by_value(fr_tls_connection_io_state_table, conn->io_state, "<INVALID>"));
 
 	return conn->io_state;
@@ -775,10 +775,10 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	fr_tls_session_t *tls_session = conn->tls_session;
 	request_t *request = conn->request;
 
-	RDEBUG3("Read %zu bytes from the connection", data_len);
+	RDEBUG3("(TLS) Read %zu bytes from the connection", data_len);
 
 	if (fr_dbuff_in_memcpy_partial(tls_session->dirty_in, data, data_len) != data_len) {
-		REDEBUG("Failed buffering %zu bytes of TLS record data", data_len);
+		REDEBUG("(TLS) Failed buffering %zu bytes of TLS record data", data_len);
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_RECORD_TOO_LARGE, SSL_AD_RECORD_OVERFLOW);
 	error:
@@ -792,7 +792,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	 *	is not handled yet, so a record arriving now is an error.
 	 */
 	if (fr_tls_session_is_init_finished(tls_session)) {
-		REDEBUG("Received %zu bytes of application data, which is not supported", data_len);
+		REDEBUG("(TLS) Received %zu bytes of application data, which is not supported", data_len);
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_RECORD_AFTER_HANDSHAKE, SSL_AD_UNEXPECTED_MESSAGE);
 		goto error;

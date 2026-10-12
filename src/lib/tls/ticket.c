@@ -160,7 +160,7 @@ int tls_ticket_app_data_set(request_t *request, SSL_SESSION *sess,
 	int			ret;
 
 	if (RDEBUG_ENABLED2) {
-		RDEBUG2("Session ID %pV - Adding session-state[*] to data", session_id);
+		RDEBUG2("(TLS) Session ID %pV - Adding session-state[*] to data", session_id);
 		RINDENT();
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, NULL);
 		REXDENT();
@@ -181,14 +181,14 @@ int tls_ticket_app_data_set(request_t *request, SSL_SESSION *sess,
 	     vp = fr_dcursor_current(&dcursor)) {
 		slen = fr_internal_encode_pair(&dbuff, &dcursor, NULL);
 		if (slen < 0) {
-			RPERROR("Session ID %pV - Failed serialising session-state list", session_id);
+			RPERROR("(TLS) Session ID %pV - Failed serialising session-state list", session_id);
 			fr_dbuff_free_talloc(&dbuff);
 			return 0; /* didn't store data */
 		}
 		if (slen == 0) (void) fr_dcursor_next(&dcursor);
 	}
 
-	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "session-ticket application data");
+	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "(TLS) session-ticket application data");
 
 	/*
 	 *	Pass the serialized session-state list
@@ -228,7 +228,7 @@ int tls_ticket_app_data_get(request_t *request, SSL_SESSION *sess,
 	fr_pair_list_init(&tmp);
 	fr_dbuff_init(&dbuff, data, data_len);
 
-	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_len(&dbuff), "session application data");
+	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_len(&dbuff), "(TLS) session application data");
 
 	/*
 	 *	Decode the session-state data into a temporary list.
@@ -240,14 +240,14 @@ int tls_ticket_app_data_get(request_t *request, SSL_SESSION *sess,
 		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &tmp,
 						  fr_dict_root(request->proto_dict), &dbuff, NULL) < 0) {
 			fr_pair_list_free(&tmp);
-			RPEDEBUG("Session-ID %pV - Failed decoding session-state", session_id);
+			RPEDEBUG("(TLS) Session-ID %pV - Failed decoding session-state", session_id);
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_DATA_DECODE_FAILED);
 			return -1;
 		}
 	}
 
 	if (RDEBUG_ENABLED2) {
-		RDEBUG2("Session-ID %pV - Restoring session-state[*]", session_id);
+		RDEBUG2("(TLS) Session-ID %pV - Restoring session-state[*]", session_id);
 		RINDENT();
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "session-state.");
 		REXDENT();
@@ -286,7 +286,7 @@ fr_time_delta_t tls_ticket_session_lifetime(request_t *request, fr_value_box_t c
 	if (lifetime && (lifetime < timeout)) timeout = lifetime;
 
 	if (timeout > FR_TLS_MAX_SESSION_LIFETIME) {
-		RWDEBUG("Session ID %pV - Session lifetime %pV is longer than the maximum of %pV, limiting it",
+		RWDEBUG("(TLS) Session ID %pV - Session lifetime %pV is longer than the maximum of %pV, limiting it",
 			session_id, fr_box_time_delta(fr_time_delta_from_sec(timeout)),
 			fr_box_time_delta(fr_time_delta_from_sec(FR_TLS_MAX_SESSION_LIFETIME)));
 
@@ -323,7 +323,7 @@ bool tls_ticket_session_resumable(request_t *request, fr_value_box_t const *sess
 	if (!fr_time_delta_ispos(left)) return false;
 
 	if (fr_time_delta_lt(left, conf->cache.min_lifetime)) {
-		RDEBUG2("Session ID %pV - %pV left is less than min_lifetime of %pV",
+		RDEBUG2("(TLS) Session ID %pV - %pV left is less than min_lifetime of %pV",
 			session_id, fr_box_time_delta(left), fr_box_time_delta(conf->cache.min_lifetime));
 		return false;
 	}
@@ -363,13 +363,13 @@ int fr_tls_ticket_disable_cb(SSL *ssl, int is_forward_secure)
 
 		conf = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
 		if (conf->cache.require_extms && (SSL_get_extms_support(tls_session->ssl) == 0)) {
-			RDEBUG2("Client does not support the Extended Master Secret extension, "
+			RDEBUG2("(TLS) Client does not support the Extended Master Secret extension, "
 				"denying session resumption");
 			goto disable;
 		}
 
 		if (conf->cache.require_pfs && !is_forward_secure) {
-			RDEBUG2("Cipher suite is not forward secure, denying session resumption");
+			RDEBUG2("(TLS) Cipher suite is not forward secure, denying session resumption");
 			goto disable;
 		}
 	}
@@ -384,20 +384,20 @@ int fr_tls_ticket_disable_cb(SSL *ssl, int is_forward_secure)
 	 *	user.
 	 */
 	if (!tls_session->allow_session_resumption) {
-		RDEBUG2("Session resumption not enabled for this TLS session, denying session resumption");
+		RDEBUG2("(TLS) Session resumption not enabled for this TLS session, denying session resumption");
 		goto disable;
 	}
 
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_allow_session_resumption);
 	if (vp && (vp->vp_uint32 == 0)) {
-		RDEBUG2("control.Allow-Session-Resumption == no, denying session resumption");
+		RDEBUG2("(TLS) control.Allow-Session-Resumption == no, denying session resumption");
 	disable:
 		SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
 		tls_session->allow_session_resumption = false;
 		return 1;
 	}
 
-	RDEBUG2("Allowing future session-resumption");
+	RDEBUG2("(TLS) Allowing future session-resumption");
 
 	return 0;
 }

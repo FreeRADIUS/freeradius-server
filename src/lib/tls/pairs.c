@@ -285,7 +285,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	}
 	fr_pair_value_bstrdup_buffer_shallow(vp, fr_tls_bio_dbuff_thread_local_finalise_bstr(), true);
 
-	RDEBUG3("Creating attributes for \"%pV\":", fr_box_strvalue_buffer(vp->vp_strvalue));
+	RDEBUG3("(TLS) Creating attributes for \"%pV\":", fr_box_strvalue_buffer(vp->vp_strvalue));
 
 	/*
 	 *	Common name
@@ -362,7 +362,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	asn_time = X509_get0_notBefore(cert);
 
 	if (fr_tls_utils_asn1time_to_epoch(&time, asn_time) < 0) {
-		RPWDEBUG("Failed parsing certificate not-before");
+		RPWDEBUG("(TLS) Failed parsing certificate not-before");
 		goto error;
 	}
 
@@ -375,7 +375,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	asn_time = X509_get0_notAfter(cert);
 
 	if (fr_tls_utils_asn1time_to_epoch(&time, asn_time) < 0) {
-		RPWDEBUG("Failed parsing certificate not-after");
+		RPWDEBUG("(TLS) Failed parsing certificate not-after");
 		goto error;
 	}
 
@@ -419,7 +419,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	 */
 	ext_list = X509_get0_extensions(cert);
 	if (unlikely(!ext_list)) {
-		RWDEBUG("Failed retrieving extensions");
+		RWDEBUG("(TLS) Failed retrieving extensions");
 		goto done;
 	}
 
@@ -471,7 +471,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			}
 
 			if (i2a_ASN1_OBJECT(bio, obj) <= 0) {
-				RPWDEBUG("Skipping X509 Extension (%i) conversion to attribute. "
+				RPWDEBUG("(TLS) Skipping X509 Extension (%i) conversion to attribute. "
 					 "Conversion from ASN1 failed...", i);
 			again:
 				fr_tls_bio_dbuff_reset(bd);
@@ -492,7 +492,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			 *	so we do don't replace the \0)
 			 */
 			if (unlikely(fr_dbuff_in_bytes(in, (uint8_t)'\0') <= 0)) {
-				RWDEBUG("Attribute name too long");
+				RWDEBUG("(TLS) Attribute name too long");
 				goto again;
 			}
 
@@ -501,7 +501,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			fr_dbuff_set(in, fr_dbuff_current(in) - 1);	/* Ensure the \0 isn't counted in remaining */
 
 			if (!da) {
-				RWDEBUG3("Skipping attribute \"%pV\": "
+				RWDEBUG3("(TLS) Skipping attribute \"%pV\": "
 					 "Add a dictionary definition if you want to access it",
 					 fr_box_strvalue_len((char *)fr_dbuff_current(out),
 					  		     fr_dbuff_remaining(out)));
@@ -512,7 +512,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			fr_tls_bio_dbuff_reset(bd);	/* 'free' any data used */
 
 			if (X509V3_EXT_print(bio, ext, X509V3_EXT_PARSE_UNKNOWN, 0) != 1) {
-				REDEBUG("Failed extracting data for \"%s\"", da->name);
+				REDEBUG("(TLS) Failed extracting data for \"%s\"", da->name);
 				goto again;
 			}
 
@@ -559,7 +559,7 @@ static int fr_tls_extension_decode(request_t *request, fr_pair_t *container, uin
 	fr_assert((dlen == 1) || (dlen == 2));
 
 	if (total_len < hlen) {
-		REDEBUG("Missing length in %s extension", da->name);
+		REDEBUG("(TLS) Missing length in %s extension", da->name);
 		return -1;
 	}
 
@@ -571,7 +571,7 @@ static int fr_tls_extension_decode(request_t *request, fr_pair_t *container, uin
 	fr_assert(da->type == ((dlen == 1) ? FR_TYPE_UINT8 : FR_TYPE_UINT16));
 
 	if (extension_len + hlen > total_len) {
-		REDEBUG("Invalid length %zu in %s extension", extension_len, da->name);
+		REDEBUG("(TLS) Invalid length %zu in %s extension", extension_len, da->name);
 		return -1;
 	}
 
@@ -621,7 +621,7 @@ int fr_tls_session_client_hello_pairs(SSL *ssl, request_t *request)
 
 	data_size = SSL_client_hello_get0_ciphers(ssl, &ciphers);
 	if (SSL_bytes_to_cipher_list(ssl, ciphers, data_size, SSL_client_hello_isv2(ssl), &sk, &scsvs) == 0) {
-		RPEDEBUG("Failed to decode cipher list");
+		RPEDEBUG("(TLS) Failed to decode cipher list");
 	fail:
 		if (extensions) OPENSSL_free(extensions);
 		talloc_free(container);
@@ -643,7 +643,7 @@ int fr_tls_session_client_hello_pairs(SSL *ssl, request_t *request)
 	 *	of values of known length which map to enum attributes.
 	 */
 	if (SSL_client_hello_get1_extensions_present(ssl, &extensions, &data_size) == 0) {
-		RPEDEBUG("Failed to fetch client hello extensions");
+		RPEDEBUG("(TLS) Failed to fetch client hello extensions");
 		goto fail;
 	}
 

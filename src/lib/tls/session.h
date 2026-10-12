@@ -370,7 +370,7 @@ static inline CC_HINT(nonnull) void _fr_tls_session_request_bind(char const *fil
 {
 	int ret;
 
-	RDEBUG3("%s[%d] - Binding SSL * (%p) to request (%p)", file, line, ssl, request);
+	RDEBUG3("(TLS) %s[%d] - Binding SSL * (%p) to request (%p)", file, line, ssl, request);
 
 #ifndef NDEBUG
 	{
@@ -408,7 +408,7 @@ static inline CC_HINT(nonnull) void _fr_tls_session_request_unbind(char const *f
 	(void)talloc_get_type_abort(request, request_t);
 #endif
 
-	RDEBUG3("%s[%d] - Unbinding SSL * (%p) from request (%p)", file, line, ssl, request);
+	RDEBUG3("(TLS) %s[%d] - Unbinding SSL * (%p) from request (%p)", file, line, ssl, request);
 	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
 	if (unlikely(ret == 0)) {
 		fr_assert(0);

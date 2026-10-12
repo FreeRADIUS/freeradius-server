@@ -91,7 +91,7 @@ static void tls_verify_error_detail(request_t *request, SSL_CTX *ctx, int err)
 	 *	other local certificates in the chain.
 	 */
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
-		RDEBUG2("Static certificates in verification store are");
+		RDEBUG2("(TLS) Static certificates in verification store are");
 		if (RDEBUG_ENABLED2) {
 			RINDENT();
 			fr_tls_x509_objects_log(request, L_DBG, X509_STORE_get0_objects(store));
@@ -189,7 +189,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 */
 	if (unlikely(fr_pair_find_or_append_by_da(request->session_state_ctx, &depth_pair, &request->session_state_pairs,
 					 attr_tls_certificate_chain_depth) < 0)) {
-		REDEBUG("Failed to add certificate chain depth pair");
+		REDEBUG("(TLS) Failed to add certificate chain depth pair");
 		return 0;
 	}
 	if (depth_pair->vp_uint32 < ((uint32_t)depth) + 1) depth_pair->vp_uint32 = (uint32_t)depth + 1;
@@ -200,14 +200,14 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		int		i;
 
 		our_chain = X509_STORE_CTX_get0_chain(x509_ctx);
-		RDEBUG3("Certificate chain - %i cert(s) untrusted", untrusted);
+		RDEBUG3("(TLS) Certificate chain - %i cert(s) untrusted", untrusted);
 		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
 			X509 *this_cert = sk_X509_value(our_chain, i - 1);
 
 			X509_NAME_oneline(X509_get_subject_name(this_cert), subject, sizeof(subject));
 			subject[sizeof(subject) - 1] = '\0';
 
-			RDEBUG3("%s [%i] %s", this_cert == cert ? ">" : " ", i - 1, subject);
+			RDEBUG3("(TLS) %s [%i] %s", this_cert == cert ? ">" : " ", i - 1, subject);
 		}
 	}
 
@@ -219,13 +219,13 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	if (!my_ok) {
 		char const *p = X509_verify_cert_error_string(err);
 		if (!verify_applies(conf->verify.mode, depth, untrusted)) {
-			RDEBUG2("Ignoring verification error - %s (%i)", p, err);
+			RDEBUG2("(TLS) Ignoring verification error - %s (%i)", p, err);
 			tls_verify_error_detail(request, ssl_ctx, err);
 
 			my_ok = 1;
 			X509_STORE_CTX_set_error(x509_ctx, 0);
 		} else {
-			REDEBUG("Verification error - %s (%i)", p, err);
+			REDEBUG("(TLS) Verification error - %s (%i)", p, err);
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_CERTIFICATE_VERIFY_FAILED);
 			tls_verify_error_detail(request, ssl_ctx, err);
 			goto done;
@@ -268,7 +268,7 @@ done:
 			 *	then validation overall fails.
 			 */
 			if (!fr_tls_verify_cert_result(tls_session)) {
-				REDEBUG("Certificate validation failed");
+				REDEBUG("(TLS) Certificate validation failed");
 				my_ok = 0;
 				X509_STORE_CTX_set_error(x509_ctx, X509_V_ERR_APPLICATION_VERIFICATION);
 			}
@@ -276,7 +276,7 @@ done:
 	}
 
 	tls_session->peer_cert_ok = (my_ok > 0);
-	RDEBUG2("[verify] = %s", my_ok ? "ok" : "invalid");
+	RDEBUG2("(TLS) [verify] = %s", my_ok ? "ok" : "invalid");
 
 	return my_ok;
 }
@@ -315,7 +315,7 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 	ssl_ctx = SSL_get_SSL_CTX(ssl);
 	store_ctx = X509_STORE_CTX_new();
 	if (unlikely(store_ctx == NULL)) {
-		REDEBUG("Failed allocating X509_STORE_CTX");
+		REDEBUG("(TLS) Failed allocating X509_STORE_CTX");
 		return 0;
 	}
 
@@ -339,7 +339,7 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 	 *      is not the same as the verification cert store.
 	 */
 	if (unlikely(X509_STORE_CTX_init(store_ctx, store, cert, chain) != 1)) {
-		REDEBUG("Failed initialising X509_STORE_CTX");
+		REDEBUG("(TLS) Failed initialising X509_STORE_CTX");
 		X509_STORE_CTX_free(store_ctx);
 		return 0;
 	}
@@ -352,7 +352,7 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 		err = X509_STORE_CTX_get_error(store_ctx);
 
 		if (err != X509_V_OK) {
-			REDEBUG("Failed re-validating resumed session: %s", X509_verify_cert_error_string(err));
+			REDEBUG("(TLS) Failed re-validating resumed session: %s", X509_verify_cert_error_string(err));
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_CERTIFICATE_REVALIDATION_FAILED);
 			ret = 0;
 		}
@@ -375,7 +375,7 @@ static unlang_action_t tls_verify_peer_cert_result(request_t *request, void *uct
 
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
-		REDEBUG("Failed (re-)validating certificates");
+		REDEBUG("(TLS) Failed (re-)validating certificates");
 		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_VERIFY_CERTIFICATE_FAILED);
 
 		/*
@@ -396,7 +396,7 @@ static unlang_action_t tls_verify_peer_cert_result(request_t *request, void *uct
 
 	tls_session->validate.state = FR_TLS_VALIDATION_SUCCESS;
 
-	RDEBUG2("Certificates (re-)validated");
+	RDEBUG2("(TLS) Certificates (re-)validated");
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -645,7 +645,7 @@ unlang_action_t fr_tls_verify_cert_pending_push(request_t *request, fr_tls_sessi
 	 *	A resumed session has no chain, its pairs came back with the session.
 	 */
 	if (!tls_session->validate.resumed) {
-		RDEBUG2("Decoding certificate chain");
+		RDEBUG2("(TLS) Decoding certificate chain");
 		if (tls_verify_chain_pairs_add(request, tls_session, conf) < 0) {
 			tls_session->validate.state = FR_TLS_VALIDATION_FAILED;
 			return UNLANG_ACTION_CALCULATE_RESULT;
@@ -660,7 +660,7 @@ unlang_action_t fr_tls_verify_cert_pending_push(request_t *request, fr_tls_sessi
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	RDEBUG2("Requesting certificate validation");
+	RDEBUG2("(TLS) Requesting certificate validation");
 
 	return tls_verify_peer_cert_push(request, tls_session);
 }

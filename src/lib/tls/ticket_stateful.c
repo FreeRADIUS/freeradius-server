@@ -142,11 +142,11 @@ static void tls_ticket_stateful_delete_request(fr_tls_session_t *tls_session, SS
 	 *	Record the session to delete
 	 */
 	if (tls_ticket_id_to_box(tls_cache, &tls_cache->clear.id, sess) < 0) {
-		RWDEBUG("Error retrieving Session ID");
+		RWDEBUG("(TLS) Error retrieving Session ID");
 		return;
 	}
 
-	RDEBUG3("Session ID %pV - Requested session clear", &tls_cache->clear.id);
+	RDEBUG3("(TLS) Session ID %pV - Requested session clear", &tls_cache->clear.id);
 
 	tls_ticket_stateful_clear_state_request(tls_session);
 
@@ -197,7 +197,7 @@ static unlang_action_t tls_ticket_stateful_load_resume(request_t *request, void 
 
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
-		RWDEBUG("Failed acquiring session data");
+		RWDEBUG("(TLS) Failed acquiring session data");
 
 		/*
 		 *	A cache miss answers `notfound`, and a miss is the
@@ -216,7 +216,7 @@ static unlang_action_t tls_ticket_stateful_load_resume(request_t *request, void 
 
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_session_data);
 	if (!vp) {
-		RWDEBUG("No cached session found");
+		RWDEBUG("(TLS) No cached session found");
 		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_LOAD_SESSION_NOT_FOUND);
 		goto error;
 	}
@@ -234,7 +234,7 @@ static unlang_action_t tls_ticket_stateful_load_resume(request_t *request, void 
 	tls_session_id_cache(tls_session, sess);		/* the client path has no ID until now */
 
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Session ID %pV - Read %zu bytes of data.  "
+		RDEBUG3("(TLS) Session ID %pV - Read %zu bytes of data.  "
 			"Session de-serialized successfully", &tls_session->session_id, vp->vp_length);
 		SSL_SESSION_print(fr_tls_request_log_bio(request, L_DBG, L_DBG_LVL_3), sess);
 	}
@@ -253,7 +253,7 @@ static unlang_action_t tls_ticket_stateful_load_resume(request_t *request, void 
 		fr_tls_conf_t	*conf = tls_session->conf;
 
 		if (!tls_ticket_session_resumable(request, &tls_session->session_id, conf, sess)) {
-			RWDEBUG("Session ID %pV - Cached session has too little life left, not resuming",
+			RWDEBUG("(TLS) Session ID %pV - Cached session has too little life left, not resuming",
 				&tls_session->session_id);
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_LOAD_SESSION_EXPIRED);
 
@@ -322,7 +322,7 @@ static unlang_action_t tls_ticket_stateful_load_push(request_t *request, fr_tls_
 	 *	peer does a full handshake instead.
 	 */
 	if (tls_cache->clear.state == FR_TLS_TICKET_STATEFUL_REQUESTED) {
-		RDEBUG3("Session ID %pV - Clear is pending, skipping `load session { ... }`",
+		RDEBUG3("(TLS) Session ID %pV - Clear is pending, skipping `load session { ... }`",
 			&tls_cache->load.id);
 		tls_cache->load.state = FR_TLS_TICKET_STATEFUL_FAILED;
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -361,7 +361,7 @@ static unlang_action_t tls_ticket_stateful_store_resume(request_t *request, void
 	if (vp && (vp->vp_uint32 == enum_tls_packet_type_success->vb_uint32)) {
 		tls_cache->store.state = FR_TLS_TICKET_STATEFUL_SUCCESS;	/* Avoid spurious clear calls */
 	} else {
-		RWDEBUG("Failed storing session data");
+		RWDEBUG("(TLS) Failed storing session data");
 		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_STORE_SESSION_FAILED);
 		tls_cache->store.state = FR_TLS_TICKET_STATEFUL_INIT;
 	}
@@ -406,7 +406,7 @@ unlang_action_t tls_ticket_stateful_store_push(request_t *request, fr_tls_conf_t
 	 *	It also documents / enforces our expectations.
 	 */
 	if (tls_cache->clear.state == FR_TLS_TICKET_STATEFUL_REQUESTED) {
-		RWDEBUG("Session ID %pV - Clear is pending, not storing", &tls_cache->store.id);
+		RWDEBUG("(TLS) Session ID %pV - Clear is pending, not storing", &tls_cache->store.id);
 		fr_tls_session_error_add(request, FR_ERROR_VALUE_STORE_CANCELLED_BY_CLEAR);
 		tls_ticket_stateful_store_state_reset(request, tls_cache);
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -414,7 +414,7 @@ unlang_action_t tls_ticket_stateful_store_push(request_t *request, fr_tls_conf_t
 
 	ttl = tls_ticket_session_lifetime(request, &tls_cache->store.id, conf, sess);
 	if (!fr_time_delta_ispos(ttl)) {
-		RWDEBUG("Session ID %pV - Session has already expired, not storing", &tls_cache->store.id);
+		RWDEBUG("(TLS) Session ID %pV - Session has already expired, not storing", &tls_cache->store.id);
 		fr_tls_session_error_add(request, FR_ERROR_VALUE_STORE_SESSION_EXPIRED);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -449,7 +449,7 @@ unlang_action_t tls_ticket_stateful_store_push(request_t *request, fr_tls_conf_t
 	if (ret < 1) {
 		/* something went wrong */
 		fr_tls_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
-		RPWDEBUG("Session ID %pV - Serialisation failed, couldn't determine "
+		RPWDEBUG("(TLS) Session ID %pV - Serialisation failed, couldn't determine "
 			 "required buffer length", &tls_cache->store.id);
 	error:
 		tls_ticket_stateful_store_state_reset(request, tls_cache);
@@ -466,7 +466,7 @@ unlang_action_t tls_ticket_stateful_store_push(request_t *request, fr_tls_conf_t
 	ret = i2d_SSL_SESSION(sess, &p);	/* Serialize as ASN.1 */
 	if (ret != len) {
 		fr_tls_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
-		RPWDEBUG("Session ID %pV - Serialisation failed", &tls_cache->store.id);
+		RPWDEBUG("(TLS) Session ID %pV - Serialisation failed", &tls_cache->store.id);
 		talloc_free(data);
 		goto error;
 	}
@@ -499,7 +499,7 @@ static unlang_action_t tls_ticket_stateful_clear_resume(request_t *request, void
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	RWDEBUG("Failed deleting session data - security may be compromised");
+	RWDEBUG("(TLS) Failed deleting session data - security may be compromised");
 	fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_CLEAR_SESSION_FAILED);
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -557,7 +557,7 @@ static unlang_action_t tls_ticket_stateful_load_client_resume(request_t *request
 	(void) tls_ticket_stateful_load_resume(request, uctx);
 
 	if (tls_cache->load.state != FR_TLS_TICKET_STATEFUL_SUCCESS) {
-		RDEBUG2("No session to resume");
+		RDEBUG2("(TLS) No session to resume");
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -567,7 +567,7 @@ static unlang_action_t tls_ticket_stateful_load_client_resume(request_t *request
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	RDEBUG2("Offering the cached session for resumption");
+	RDEBUG2("(TLS) Offering the cached session for resumption");
 
 	/*
 	 *	SSL_set_session() takes its own reference, and nothing else
@@ -612,7 +612,7 @@ unlang_action_t fr_tls_ticket_stateful_load_client_push(request_t *request, fr_t
 	fr_assert(conf->cache.id_name);
 
 	if (tmpl_aexpand(tls_session, &name, request, conf->cache.id_name, NULL, NULL) < 0) {
-		RPEDEBUG("Failed expanding the session name");
+		RPEDEBUG("(TLS) Failed expanding the session name");
 		return UNLANG_ACTION_FAIL;
 	}
 
@@ -737,7 +737,7 @@ static unlang_action_t tls_ticket_stateful_drain(request_t *request, void *uctx)
 	  *	On error, log the failure and continue.
 	 */
 	if (ua == UNLANG_ACTION_FAIL) {
-		REDEBUG("Failed running session cache operations");
+		REDEBUG("(TLS) Failed running session cache operations");
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -927,7 +927,7 @@ static int tls_ticket_stateful_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	peer (client here) is unable to use that ticket for session resumption.
 	 */
 	if (tls_session->seen_application_data) {
-		RDEBUG2("Ignoring session ticket received after application data started");
+		RDEBUG2("(TLS) Ignoring session ticket received after application data started");
 		return 0;
 	}
 
@@ -971,11 +971,11 @@ static int tls_ticket_stateful_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	after the session is gone.
 	 */
 	if (tls_ticket_id_to_box(tls_cache, &tls_cache->store.id, sess) < 0) {
-		RDEBUG3("No Session ID to store");
+		RDEBUG3("(TLS) No Session ID to store");
 		return 0;
 	}
 
-	RDEBUG3("Session ID %pV - Requested store", &tls_cache->store.id);
+	RDEBUG3("(TLS) Session ID %pV - Requested store", &tls_cache->store.id);
 
 	/*
 	 *	Store the session blob and session id for writing
@@ -1073,7 +1073,7 @@ again:
 			if (tls_cache) tls_cache->session_id = &tls_session->session_id;
 		}
 
-		RDEBUG3("Requested session load - ID %pV", &tls_cache->load.id);
+		RDEBUG3("(TLS) Requested session load - ID %pV", &tls_cache->load.id);
 
 		/*
 		 *	Cache functions are only allowed during the
@@ -1128,7 +1128,7 @@ again:
 		 */
 		tls_session_id_cache(tls_session, tls_cache->load.sess);
 
-		RDEBUG3("Setting session data");
+		RDEBUG3("(TLS) Setting session data");
 
 		fr_value_box_clear(&tls_cache->load.id);
 
@@ -1142,7 +1142,7 @@ again:
 		 *	session.
 		 */
 		if (tls_ticket_app_data_get(request, tls_cache->load.sess, &tls_session->session_id) < 0) {
-			REDEBUG("Denying session resumption via session-id");
+			REDEBUG("(TLS) Denying session resumption via session-id");
 		verify_error:
 			/*
 			 *	Request the `delete session { ... }`
@@ -1189,7 +1189,7 @@ again:
 		 *	certificate fails re-validation.
 		 */
 		if (!fr_tls_verify_cert_result(tls_session)) {
-			RDEBUG2("Certificate re-validation failed, denying session resumption via session-id");
+			RDEBUG2("(TLS) Certificate re-validation failed, denying session resumption via session-id");
 			goto verify_error;
 		}
 		sess = tls_cache->load.sess;
@@ -1201,7 +1201,7 @@ again:
 		 *	on cleanup.
 		 */
 		{
-			RDEBUG3("Session ID %pV - Session ownership transferred to libssl", &tls_session->session_id);
+			RDEBUG3("(TLS) Session ID %pV - Session ownership transferred to libssl", &tls_session->session_id);
 			*copy = 0;
 			tls_cache->load.sess = NULL;
 		}
@@ -1210,7 +1210,7 @@ again:
 
 
 	case FR_TLS_TICKET_STATEFUL_FAILED:
-		RDEBUG3("Session data load failed");
+		RDEBUG3("(TLS) Session data load failed");
 		break;
 	}
 

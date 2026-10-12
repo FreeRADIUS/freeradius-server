@@ -139,7 +139,7 @@ static int tls_session_alpn_select_cb(SSL *ssl, unsigned char const **out, unsig
 
 	if (RDEBUG_ENABLED2) {
 		for (i = 0; i < inlen; i += in[i] + 1) {
-			RDEBUG2("ALPN - peer offers \"%.*s\"", in[i], &in[i + 1]);
+			RDEBUG2("(TLS) ALPN - peer offers \"%.*s\"", in[i], &in[i + 1]);
 		}
 	}
 
@@ -152,11 +152,11 @@ static int tls_session_alpn_select_cb(SSL *ssl, unsigned char const **out, unsig
 	if (SSL_select_next_proto(UNCONST(unsigned char **, out), outlen,
 				  conf->alpn, (unsigned int) conf->sizeof_alpn,
 				  in, inlen) != OPENSSL_NPN_NEGOTIATED) {
-		REDEBUG("ALPN - no protocol in common with the peer");
+		REDEBUG("(TLS) ALPN - no protocol in common with the peer");
 		return SSL_TLSEXT_ERR_ALERT_FATAL;
 	}
 
-	RDEBUG2("ALPN - chose \"%.*s\"", (int) *outlen, *out);
+	RDEBUG2("(TLS) ALPN - chose \"%.*s\"", (int) *outlen, *out);
 
 	return SSL_TLSEXT_ERR_OK;
 }
@@ -270,23 +270,23 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 	if (tls_session_alpn(tls_session)) {
 		fr_pair_t *vp;
 
-		RDEBUG2("ALPN - agreed on \"%.*s\"",
+		RDEBUG2("(TLS) ALPN - agreed on \"%.*s\"",
 			(int) tls_session->sizeof_alpn, tls_session->alpn);
 
 		MEM(pair_append_session_state(&vp, attr_tls_alpn) >= 0);
 		MEM(fr_pair_value_bstrndup(vp, (char *) tls_session->alpn, tls_session->sizeof_alpn, false) == 0);
 
-		RDEBUG2("session-state.%pP", vp);
+		RDEBUG2("(TLS) session-state.%pP", vp);
 
 		return 0;
 	}
 
 	if (!conf->alpn_required) {
-		RDEBUG2("ALPN - No protocols in common, not using ALPN");
+		RDEBUG2("(TLS) ALPN - No protocols in common, not using ALPN");
 		return 0;
 	}
 
-	REDEBUG("ALPN - Failure, no protocols in common");
+	REDEBUG("(TLS) ALPN - Failure, no protocols in common");
 	fr_tls_session_error_alert(request, tls_session,
 				   FR_ERROR_VALUE_ALPN_FAILED, SSL_AD_NO_APPLICATION_PROTOCOL);
 

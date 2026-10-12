@@ -240,7 +240,7 @@ static void _fr_dtls_timer_expired(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 
 	fr_assert(request != NULL);
 
-	RDEBUG2("%s - DTLS retransmission timer fired", conn->name);
+	RDEBUG2("(TLS) %s - DTLS retransmission timer fired", conn->name);
 
 	/*
 	 *	DTLSv1_handle_timeout() asks OpenSSL to retransmit the pending data, and writes those records
@@ -302,7 +302,7 @@ void fr_dtls_timer_update(fr_tls_connection_t *conn)
 
 	if (fr_timer_in(conn, conn->tl, &conn->timer_ev, fr_time_delta_from_timeval(&tv),
 			false, _fr_dtls_timer_expired, conn) < 0) {
-		REDEBUG("%s - Failed arming the DTLS retransmission timer", conn->name);
+		REDEBUG("(TLS) %s - Failed arming the DTLS retransmission timer", conn->name);
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
 	}
 }

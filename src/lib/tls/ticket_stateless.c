@@ -188,7 +188,7 @@ bool tls_ticket_stateless_section_run(request_t *request, fr_tls_session_t *tls_
 	}
 
 	if (tls_session->ticket != FR_TLS_TICKET_STATELESS_SUCCESS) {
-		REDEBUG("`%s` did not return success", name);
+		REDEBUG("(TLS) `%s` did not return success", name);
 		fr_tls_session_error_add(request, error);
 		tls_session->ticket = FR_TLS_TICKET_STATELESS_INIT;
 		return false;
@@ -300,14 +300,14 @@ static int tls_ticket_stateless_app_data_set(SSL *ssl, void *arg)
 	 */
 	if (!tls_session->allow_session_resumption ||
 	    (!(tls_cache_conf->mode & FR_TLS_TICKET_STATELESS))) {
-		REDEBUG("Generating session-tickets is not allowed");
+		REDEBUG("(TLS) Generating session-tickets is not allowed");
 		fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_TICKET_NOT_ALLOWED);
 		return 0;
 	}
 
 	sess = SSL_get_session(ssl);
 	if (!sess) {
-		REDEBUG("Failed retrieving session in session generation callback");
+		REDEBUG("(TLS) Failed retrieving session in session generation callback");
 		return 0;
 	}
 
@@ -319,7 +319,7 @@ static int tls_ticket_stateless_app_data_set(SSL *ssl, void *arg)
 	conf = fr_tls_session_conf(ssl);
 
 	if (conf->encode_session && !tls_ticket_stateless_encode_run(request, tls_session)) {
-		REDEBUG("Not generating a session-ticket");
+		REDEBUG("(TLS) Not generating a session-ticket");
 		return 0;
 	}
 
@@ -389,13 +389,13 @@ static SSL_TICKET_RETURN tls_ticket_stateless_app_data_get(SSL *ssl, SSL_SESSION
 	 *	reauthentication.
 	 */
 	if (!tls_ticket_session_resumable(request, &tls_session->session_id, conf, sess)) {
-		REDEBUG("Session-ticket has too little life left, denying session resumption");
+		REDEBUG("(TLS) Session-ticket has too little life left, denying session resumption");
 		fr_tls_session_error_add(request, FR_ERROR_VALUE_SESSION_TICKET_EXPIRED);
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}
 
 	if (tls_ticket_app_data_get(request, sess, &tls_session->session_id) < 0) {
-		REDEBUG("Denying session resumption via session-ticket");
+		REDEBUG("(TLS) Denying session resumption via session-ticket");
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}
 
@@ -405,12 +405,12 @@ static SSL_TICKET_RETURN tls_ticket_stateless_app_data_get(SSL *ssl, SSL_SESSION
 	 *	it, certificate re-validation below included.
 	 */
 	if (conf->decode_session && !tls_ticket_stateless_decode_run(request, tls_session)) {
-		REDEBUG("Denying session resumption via session-ticket");
+		REDEBUG("(TLS) Denying session resumption via session-ticket");
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}
 
 	if (conf->virtual_server && tls_session->verify_peer_cert) {
-		RDEBUG2("Requesting certificate re-validation for session-ticket");
+		RDEBUG2("(TLS) Requesting certificate re-validation for session-ticket");
 		/*
 		 *	This sets the validation state of the tls_session
 		 *	so that when we call ASYNC_pause_job(), and execution
@@ -457,7 +457,7 @@ static SSL_TICKET_RETURN tls_ticket_stateless_app_data_get(SSL *ssl, SSL_SESSION
 		 *	one, but _don't_ allow session resumption.
 		 */
 		if (!fr_tls_verify_cert_result(tls_session)) {
-			RDEBUG2("Certificate re-validation failed, denying session resumption via session-ticket");
+			RDEBUG2("(TLS) Certificate re-validation failed, denying session resumption via session-ticket");
 			return SSL_TICKET_RETURN_IGNORE_RENEW;
 		}
 	}

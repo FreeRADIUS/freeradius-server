@@ -315,7 +315,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		 *	The passed identity is weird.  Deny it.
 		 */
 		if (!session_psk_identity_is_safe(identity)) {
-			RWDEBUG("Invalid characters in PSK identity %s", identity);
+			RWDEBUG("(TLS) Invalid characters in PSK identity %s", identity);
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_PSK_IDENTITY_INVALID);
 			return 0;
 		}
@@ -443,7 +443,7 @@ static unlang_action_t _tls_session_psk_load_resume(request_t *request, void *uc
 
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
-		RWDEBUG("Failed loading the pre-shared key, `load psk` did not return success");
+		RWDEBUG("(TLS) Failed loading the pre-shared key, `load psk` did not return success");
 
 		/*
 		 *	`notfound` says that the policy does not know the
@@ -461,13 +461,13 @@ static unlang_action_t _tls_session_psk_load_resume(request_t *request, void *uc
 
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_psk_key);
 	if (!vp || (vp->vp_length == 0)) {
-		RWDEBUG("`load psk` returned success, but reply.TLS-PSK-Key is missing or empty");
+		RWDEBUG("(TLS) `load psk` returned success, but reply.TLS-PSK-Key is missing or empty");
 		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_PSK_EMPTY);
 		goto failed;
 	}
 
 	if (vp->vp_length > tls_session->psk.max_psk_len) {
-		RWDEBUG("Rejecting reply.TLS-PSK-Key of %zu bytes, OpenSSL accepts at most %u bytes", vp->vp_length,
+		RWDEBUG("(TLS) Rejecting reply.TLS-PSK-Key of %zu bytes, OpenSSL accepts at most %u bytes", vp->vp_length,
 			tls_session->psk.max_psk_len);
 		fr_tls_session_error_add(request->parent, FR_ERROR_VALUE_PSK_TOO_LONG);
 		goto failed;
@@ -477,7 +477,7 @@ static unlang_action_t _tls_session_psk_load_resume(request_t *request, void *uc
 	tls_session->psk.key_len = vp->vp_length;
 	tls_session->psk.state = FR_TLS_PSK_SUCCESS;
 
-	RDEBUG2("Loaded a %zu-byte pre-shared key", vp->vp_length);
+	RDEBUG2("(TLS) Loaded a %zu-byte pre-shared key", vp->vp_length);
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -514,7 +514,7 @@ unlang_action_t fr_tls_session_psk_pending_push(request_t *request, fr_tls_sessi
 	identity = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tls_psk_identity);
 	fr_assert(identity);
 
-	RDEBUG2("Loading the pre-shared key for identity \"%pV\"", &identity->data);
+	RDEBUG2("(TLS) Loading the pre-shared key for identity \"%pV\"", &identity->data);
 
 	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_load_psk->vb_uint32,
 					 &tls_session->session_id));
@@ -579,7 +579,7 @@ static void tls_session_alert_pair_add(request_t *request, fr_pair_t *list_ctx, 
 	MEM(fr_pair_append_by_da(alert, &vp, &alert->vp_group, attr_tls_alert_description) >= 0);
 	vp->vp_uint8 = description;
 
-	RDEBUG2("Adding %s%pP", prefix, alert);
+	RDEBUG2("(TLS) Adding %s%pP", prefix, alert);
 }
 
 
@@ -627,7 +627,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			len = strlen(abbrv);
 			if ((len > 1) && (abbrv[len - 1] == ' ')) len--;
 
-			RDEBUG3("Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
+			RDEBUG3("(TLS) Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
 
 #ifdef OPENSSL_NO_SSL_TRACE
 	        	{
@@ -653,13 +653,13 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 					 *	These are printed on startup, so not usually
 					 *      required.
 					 */
-					RDEBUG4("Our preferred ciphers (by priority)");
+					RDEBUG4("(TLS) Our preferred ciphers (by priority)");
 					if (RDEBUG_ENABLED4) {
 						RINDENT();
 						num_ciphers = sk_SSL_CIPHER_num(server_ciphers);
 						for (i = 0; i < num_ciphers; i++) {
 							this_cipher = sk_SSL_CIPHER_value(server_ciphers, i);
-							RDEBUG4("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+							RDEBUG4("(TLS) [%i] %s", i, SSL_CIPHER_get_name(this_cipher));
 						}
 						REXDENT();
 					}
@@ -669,12 +669,12 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 					 *      handshake message.
 					 */
 					if (RDEBUG_ENABLED3) {
-						RDEBUG3("Client's preferred ciphers (by priority)");
+						RDEBUG3("(TLS) Client's preferred ciphers (by priority)");
 						RINDENT();
 						num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
 						for (i = 0; i < num_ciphers; i++) {
 							this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
-							RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+							RDEBUG3("(TLS) [%i] %s", i, SSL_CIPHER_get_name(this_cipher));
 						}
 						REXDENT();
 					}
@@ -682,7 +682,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			}
 #  endif
 		} else {
-			RDEBUG2("Handshake state - %s%s (%u)", role, state, SSL_get_state(ssl));
+			RDEBUG2("(TLS) Handshake state - %s%s (%u)", role, state, SSL_get_state(ssl));
 		}
 		return;
 	}
@@ -694,7 +694,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		 *	We got an alert...
 		 */
 		if (where & SSL_CB_READ) {
-			REDEBUG("Client sent %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
+			REDEBUG("(TLS) Client sent %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
 				ret & 0xff, SSL_alert_desc_string_long(ret));
 
 			/*
@@ -702,7 +702,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_UNKNOWN_CA:
-				REDEBUG("Verify the client has a copy of the server's Certificate "
+				REDEBUG("(TLS) Verify the client has a copy of the server's Certificate "
 					"Authority (CA) installed, and trusts that CA");
 				break;
 
@@ -727,7 +727,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		 *	We're sending the client an alert.
 		 */
 		} else {
-			REDEBUG("Sending client %s TLS alert (%i) - %s",
+			REDEBUG("(TLS) Sending client %s TLS alert (%i) - %s",
 				SSL_alert_type_string_long(ret), ret & 0xff, SSL_alert_desc_string_long(ret));
 
 			/*
@@ -735,7 +735,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_PROTOCOL_VERSION:
-				REDEBUG("Client requested a TLS protocol version that is not "
+				REDEBUG("(TLS) Client requested a TLS protocol version that is not "
 					"enabled or not supported. Upgrade FreeRADIUS + OpenSSL to their latest "
 					"versions and/or adjust 'tls_max_version'/'tls_min_version' if you want "
 					"authentication to succeed");
@@ -759,16 +759,16 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			REDEBUG("Handshake exit state %s%s", role, state);
+			REDEBUG("(TLS) Handshake exit state %s%s", role, state);
 			return;
 		}
 
 		if (ret < 0) {
 			if (SSL_want_read(ssl)) {
-				RDEBUG2("Need more data from client"); /* State same as previous call, don't print */
+				RDEBUG2("(TLS) Need more data from client"); /* State same as previous call, don't print */
 				return;
 			}
-			REDEBUG("Handshake exit state %s%s", role, state);
+			REDEBUG("(TLS) Handshake exit state %s%s", role, state);
 		}
 	}
 }
@@ -886,9 +886,9 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	 *	data at higher debug levels.
 	 */
 	if (RDEBUG_ENABLED4) {
-		RHEXDUMP4(data, data_len, "%s", tls_session->info.info_description);
+		RHEXDUMP4(data, data_len, "(TLS) %s", tls_session->info.info_description);
 	} else {
-		RDEBUG2("%s", tls_session->info.info_description);
+		RDEBUG2("(TLS) %s", tls_session->info.info_description);
 	}
 }
 
@@ -941,7 +941,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 *	Mostly to check for memory corruption...
 	 */
 	if (!fr_cond_assert(tls_session->ssl == ssl)) {
-		REDEBUG("fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
+		REDEBUG("(TLS) fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_SESSION_MISMATCH, SSL_AD_INTERNAL_ERROR);
 		tls_session->invalid = true;
@@ -955,7 +955,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 */
 #ifdef SSL2_VERSION
 	if (!fr_cond_assert(msg_version != SSL2_VERSION)) {
-		REDEBUG("Invalid version (SSLv2) in handshake");
+		REDEBUG("(TLS) Invalid version (SSLv2) in handshake");
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_INVALID_VERSION_SSLV2, SSL_AD_PROTOCOL_VERSION);
 		tls_session->invalid = true;
@@ -965,7 +965,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 
 #ifdef SSL3_VERSION
 	if (!fr_cond_assert(msg_version != SSL3_VERSION)) {
-		REDEBUG("Invalid version (SSLv3) in handshake");
+		REDEBUG("(TLS) Invalid version (SSLv3) in handshake");
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_INVALID_VERSION_SSLV3, SSL_AD_PROTOCOL_VERSION);
 		tls_session->invalid = true;
@@ -979,13 +979,13 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 *	the SSL Session state.
 	 */
 	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
-		REDEBUG4("Ignoring fr_tls_session_msg_cb call with pseudo content type %i, version %i",
+		REDEBUG4("(TLS) Ignoring fr_tls_session_msg_cb call with pseudo content type %i, version %i",
 			 content_type, msg_version);
 		return;
 	}
 
 	if ((write_p != 0) && (write_p != 1)) {
-		REDEBUG4("Ignoring fr_tls_session_msg_cb call with invalid write_p %d", write_p);
+		REDEBUG4("(TLS) Ignoring fr_tls_session_msg_cb call with invalid write_p %d", write_p);
 		return;
 	}
 
@@ -1003,7 +1003,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	case SSL3_RT_ALERT:
 		if (len < 2) {
 		invalid_alert:
-			REDEBUG("Invalid TLS Alert.  Closing connection");
+			REDEBUG("(TLS) Invalid TLS Alert.  Closing connection");
 			fr_tls_session_error_alert(request, tls_session,
 						   FR_ERROR_VALUE_INVALID_RECORD_LENGTH, SSL_AD_DECODE_ERROR);
 			tls_session->invalid = true;
@@ -1033,7 +1033,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 			payload_len = fr_nbo_to_uint16(p + 1);
 			if ((payload_len + 3) > len) {
 				tls_session->invalid = true;
-				REDEBUG("OpenSSL Heartbeat attack detected.  Closing connection");
+				REDEBUG("(TLS) OpenSSL Heartbeat attack detected.  Closing connection");
 				fr_tls_session_error_alert(request, tls_session,
 							   FR_ERROR_VALUE_HEARTBEAT_OVERFLOW, SSL_AD_DECODE_ERROR);
 				return;
@@ -1059,7 +1059,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		if (tls_session->write_encrypted) break;
 
 		tls_session->write_encrypted = true;
-		RDEBUG3("The records we write are encrypted, from the ChangeCipherSpec onwards");
+		RDEBUG3("(TLS) The records we write are encrypted, from the ChangeCipherSpec onwards");
 		break;
 
 	/*
@@ -1073,7 +1073,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		if (tls_session->write_encrypted) break;
 
 		tls_session->write_encrypted = true;
-		RDEBUG3("The records we write are encrypted, from the ServerHello onwards");
+		RDEBUG3("(TLS) The records we write are encrypted, from the ServerHello onwards");
 		break;
 
 	default:
@@ -1251,7 +1251,7 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 
 	if (!tls_session->seen_application_data) {
 		if (!SSL_is_init_finished(tls_session->ssl)) {
-			REDEBUG("Attempted to read application data before handshake completed");
+			REDEBUG("(TLS) Attempted to read application data before handshake completed");
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_APPLICATION_DATA_TOO_EARLY);
 			return -1;
 		}
@@ -1297,24 +1297,24 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 		code = SSL_get_error(tls_session->ssl, ret);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
-			RWDEBUG("Peer indicated record was complete, but OpenSSL returned SSL_WANT_READ. "
+			RWDEBUG("(TLS) Peer indicated record was complete, but OpenSSL returned SSL_WANT_READ. "
 				"Attempting to continue");
 			ret = 1;
 			goto finish;
 
 		case SSL_ERROR_WANT_WRITE:
-			REDEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
+			REDEBUG("(TLS) Error in fragmentation logic: SSL_WANT_WRITE");
 		error:
 			ret = -1;
 			goto finish;
 
 		case SSL_ERROR_NONE:
-			RDEBUG2("No application data received.  Assuming handshake is continuing...");
+			RDEBUG2("(TLS) No application data received.  Assuming handshake is continuing...");
 			ret = 0;
 			break;
 
 		default:
-			REDEBUG("Error in fragmentation logic");
+			REDEBUG("(TLS) Error in fragmentation logic");
 			fr_tls_log_io_error(request, code, "SSL_read (%s)", __FUNCTION__);
 			goto error;
 		}
@@ -1328,9 +1328,9 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 
 	if (RDEBUG_ENABLED3) {
 		RHEXDUMP3(fr_dbuff_start(&tls_session->clean_out), fr_dbuff_used(&tls_session->clean_out),
-			 "Decrypted TLS application data (%zu bytes)", fr_dbuff_used(&tls_session->clean_out));
+			 "(TLS) Decrypted TLS application data (%zu bytes)", fr_dbuff_used(&tls_session->clean_out));
 	} else {
-		RDEBUG2("Decrypted TLS application data (%zu bytes)", fr_dbuff_used(&tls_session->clean_out));
+		RDEBUG2("(TLS) Decrypted TLS application data (%zu bytes)", fr_dbuff_used(&tls_session->clean_out));
 	}
 finish:
 	fr_tls_session_request_unbind(tls_session->ssl);
@@ -1357,7 +1357,7 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 
 	if (!tls_session->seen_application_data) {
 		if (!SSL_is_init_finished(tls_session->ssl)) {
-			REDEBUG("Attempted to write application data before handshake completed");
+			REDEBUG("(TLS) Attempted to write application data before handshake completed");
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_APPLICATION_DATA_TOO_EARLY);
 			return -1;
 		}
@@ -1386,9 +1386,9 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 
 		if (RDEBUG_ENABLED3) {
 			RHEXDUMP3(fr_dbuff_start(&tls_session->clean_in), used,
-				 "TLS application data to encrypt (%zu bytes)", used);
+				 "(TLS) TLS application data to encrypt (%zu bytes)", used);
 		} else {
-			RDEBUG2("TLS application data to encrypt (%zu bytes)", used);
+			RDEBUG2("(TLS) TLS application data to encrypt (%zu bytes)", used);
 		}
 
 		ret = SSL_write(tls_session->ssl, fr_dbuff_start(&tls_session->clean_in), used);
@@ -1452,7 +1452,7 @@ void fr_tls_session_error_add(request_t *request, uint32_t error)
 	MEM(pair_append_request(&vp, attr_tls_error) >= 0);
 	vp->vp_uint32 = error;
 
-	RDEBUG2("request.%pP", vp);
+	RDEBUG2("(TLS) request.%pP", vp);
 }
 
 /** Instruct fr_tls_session_async_handshake to create a synthesised TLS alert record and send it to the peer
@@ -1485,7 +1485,7 @@ int fr_tls_session_alert(request_t *request, fr_tls_session_t *session, uint8_t 
 	 *	way.  However, the peer never gets the alert.
 	 */
 	if (session->write_encrypted) {
-		RDEBUG2("Not sending TLS alert (%u), the records we write are already encrypted",
+		RDEBUG2("(TLS) Not sending TLS alert (%u), the records we write are already encrypted",
 			description);
 		return -1;
 	}
@@ -1655,10 +1655,10 @@ void fr_tls_session_close_send(request_t *request, fr_tls_session_t *session)
 	 *	peer", which is expected.
 	 */
 	if (ret < 0) {
-		RDEBUG2("Failed sending close_notify");
+		RDEBUG2("(TLS) Failed sending close_notify");
 		ERR_clear_error();
 	} else {
-		RDEBUG2("Sending close_notify");
+		RDEBUG2("(TLS) Sending close_notify");
 	}
 
 	if (!bound) fr_tls_session_request_unbind(session->ssl);
@@ -1767,7 +1767,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 
-	RDEBUG3("entered state %s", __FUNCTION__);
+	RDEBUG3("(TLS) entered state %s", __FUNCTION__);
 
 	/*
 	 *	This only occurs once per session, where calling
@@ -1814,13 +1814,13 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 		}
 		*q = '\0';
 
-		RDEBUG2("Cipher suite: %s", cipher_desc_clean);
+		RDEBUG2("(TLS) Cipher suite: %s", cipher_desc_clean);
 
-		RDEBUG2("Adding TLS session information to request");
+		RDEBUG2("(TLS) Adding TLS session information to request");
 		RINDENT();
 		MEM(pair_update_session_state(&vp, attr_tls_session_cipher_suite) >= 0);
 		fr_pair_value_strdup(vp,  SSL_CIPHER_get_name(cipher), false);
-		RDEBUG2("session-state.%pP", vp);
+		RDEBUG2("(TLS) session-state.%pP", vp);
 
 		if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
 		    !tls_version_str[tls_session->info.version]) {
@@ -1831,7 +1831,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 
 		MEM(pair_update_session_state(&vp, attr_tls_session_version) >= 0);
 		fr_pair_value_strdup(vp, version, false);
-		RDEBUG2("session-state.%pP", vp);
+		RDEBUG2("(TLS) session-state.%pP", vp);
 		REXDENT();
 
 		/*
@@ -1845,7 +1845,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 				tls_session_id_cache(tls_session, tls_session->session);
 			}
 			if (!tls_session->session) {
-				REDEBUG("Failed getting TLS session");
+				REDEBUG("(TLS) Failed getting TLS session");
 				fr_tls_session_error_alert(request, tls_session,
 							   FR_ERROR_VALUE_SESSION_MISSING, SSL_AD_INTERNAL_ERROR);
 				fr_tls_session_close_send(request, tls_session);
@@ -1858,7 +1858,7 @@ static unlang_action_t tls_session_async_handshake_done_round(request_t *request
 		if (RDEBUG_ENABLED3) {
 			if (SSL_SESSION_print(fr_tls_request_log_bio(request, L_DBG, L_DBG_LVL_3),
 					      tls_session->session) != 1) {
-				RDEBUG3("Failed retrieving session data");
+				RDEBUG3("(TLS) Failed retrieving session data");
 			}
 		}
 
@@ -1979,7 +1979,7 @@ static unlang_action_t tls_session_async_handshake_cont(request_t *request, void
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int			err;
 
-	RDEBUG3("(re-)entered state %s", __FUNCTION__);
+	RDEBUG3("(TLS) (re-)entered state %s", __FUNCTION__);
 
 again:
 	while (tls_session->pending) {
@@ -2138,7 +2138,7 @@ DIAG_ON_OPTIONAL(used-but-marked-unused)
 		goto again;
 
 	case SSL_ERROR_WANT_ASYNC_JOB:
-		REDEBUG("No async jobs available in pool, increase thread.openssl_async_pool_max");
+		REDEBUG("(TLS) No async jobs available in pool, increase thread.openssl_async_pool_max");
 		goto error;
 
 	default:
@@ -2171,7 +2171,7 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 {
 	fr_tls_session_t *tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 
-	RDEBUG3("entered state %s", __FUNCTION__);
+	RDEBUG3("(TLS) entered state %s", __FUNCTION__);
 
 	tls_session->result = FR_TLS_RESULT_IN_PROGRESS;
 
@@ -2188,7 +2188,7 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 	 *	after the TLS handshake has completed.
 	 */
 	if (fr_tls_session_is_init_finished(tls_session)) {
-		REDEBUG("Attempted to continue TLS handshake, but handshake has completed");
+		REDEBUG("(TLS) Attempted to continue TLS handshake, but handshake has completed");
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_HANDSHAKE_FINISHED, SSL_AD_INTERNAL_ERROR);
 	error:
@@ -2205,7 +2205,7 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 	}
 
 	if (tls_session->invalid) {
-		REDEBUG("Preventing invalid session from continuing");
+		REDEBUG("(TLS) Preventing invalid session from continuing");
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_SESSION_INVALID, SSL_AD_INTERNAL_ERROR);
 		goto error;
@@ -2219,7 +2219,7 @@ static unlang_action_t tls_session_handshake_round(request_t *request, void *uct
 	 */
 	tls_session->rounds++;
 	if (tls_session->rounds >= FR_TLS_MAX_ROUNDS) {
-		REDEBUG("Failing TLS session due to too many handshake rounds (limit %u)", FR_TLS_MAX_ROUNDS);
+		REDEBUG("(TLS) Failing TLS session due to too many handshake rounds (limit %u)", FR_TLS_MAX_ROUNDS);
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_TOO_MANY_ROUNDS, SSL_AD_INTERNAL_ERROR);
 		goto error;
@@ -2644,7 +2644,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	fr_pair_t		*vp;
 	fr_tls_conf_t		*conf = fr_tls_ctx_conf(ssl_ctx);
 
-	RDEBUG2("Initiating new TLS session");
+	RDEBUG2("(TLS) Initiating new TLS session");
 
 	tls_session = tls_session_alloc(ctx, request, ssl_ctx);
 	if (!tls_session) return NULL;
@@ -2677,7 +2677,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 		fr_assert(conf->cache.id_name);
 
 		if (tmpl_aexpand(tls_session, &context_id, request, conf->cache.id_name, NULL, NULL) < 0) {
-			RPEDEBUG("Failed expanding session ID");
+			RPEDEBUG("(TLS) Failed expanding session ID");
 		error:
 			fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
 			talloc_free(tls_session);
@@ -2700,7 +2700,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_tls_session_cert_file);
 	if (vp) {
-		RDEBUG2("Loading TLS session certificate \"%pV\"", &vp->data);
+		RDEBUG2("(TLS) Loading TLS session certificate \"%pV\"", &vp->data);
 
 		if (SSL_use_certificate_file(tls_session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
 			fr_tls_log_perror(request, "Failed loading TLS session certificate \"%s\"",
@@ -2757,7 +2757,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 *	Verify the peer certificate, if asked.
 	 */
 	if (client_cert) {
-		RDEBUG2("Setting verify mode to require certificate from client");
+		RDEBUG2("(TLS) Setting verify mode to require certificate from client");
 		verify_mode = SSL_VERIFY_PEER;
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
