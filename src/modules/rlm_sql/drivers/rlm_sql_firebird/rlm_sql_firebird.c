@@ -246,7 +246,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_co
 	TALLOC_FREE(conn->row);
 	query_ctx->status = SQL_QUERY_PREPARED;
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /** Frees memory allocated for a result set.
@@ -257,7 +257,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
 
 	TALLOC_FREE(conn->row);
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /** Retrieves any errors associated with the query context
