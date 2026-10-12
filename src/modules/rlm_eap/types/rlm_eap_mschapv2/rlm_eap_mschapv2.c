@@ -231,6 +231,14 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		RDEBUG2("MS-CHAPv2 Success");
+
+		/*
+		 *	One byte of ident, and the 42 byte authenticator response.
+		 */
+		if (reply->vp_length != 43) {
+			REDEBUG("%s must be 43 bytes, got %zu", reply->da->name, reply->vp_length);
+			return -1;
+		}
 		length = 46;
 		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length));
 
@@ -247,6 +255,15 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		memcpy((eap_round->request->type.data + 4), reply->vp_strvalue + 1, 42);
 	} else if (reply->da == attr_ms_chap_error) {
 		REDEBUG("MS-CHAPv2 Failure");
+
+		/*
+		 *	One byte of ident, then the message, which must fit
+		 *	after the 4 byte header in a 16 bit length.
+		 */
+		if ((reply->vp_length < 1) || (reply->vp_length > (UINT16_MAX - 3))) {
+			REDEBUG("%s length %zu is invalid", reply->da->name, reply->vp_length);
+			return -1;
+		}
 		length = 4 + reply->vp_length - 1;
 		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length));
 
@@ -366,7 +383,10 @@ static unlang_action_t mschap_resume(unlang_result_t *p_result, module_ctx_t con
 	 *	Compose the response (whatever it is),
 	 *	and return it to the over-lying EAP module.
 	 */
-	eap_mschapv2_compose(eap_session->inst, request, eap_session, fr_pair_list_head(&response));
+	if (eap_mschapv2_compose(eap_session->inst, request, eap_session, fr_pair_list_head(&response)) < 0) {
+		fr_pair_list_free(&response);
+		RETURN_UNLANG_FAIL;
+	}
 	fr_pair_list_free(&response);
 
 	RETURN_UNLANG_OK;
