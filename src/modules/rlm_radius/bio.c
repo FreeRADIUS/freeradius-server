@@ -3044,7 +3044,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		home->ctx.fd_config = thread->ctx.fd_config;
 		home->ctx.fd_config.type = FR_BIO_FD_CONNECTED;
 		home->ctx.fd_config.dst_ipaddr = ipaddr->vb_ip;
-		home->ctx.fd_config.dst_port = port->vb_uint32;
+		home->ctx.fd_config.dst_port = port->vb_uint16;
 
 		home->ctx.radius_ctx = (fr_radius_ctx_t) {
 			.secret = talloc_strdup(home, secret->vb_strvalue),
