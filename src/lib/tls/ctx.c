@@ -871,28 +871,50 @@ post_ca:
 #endif
 
 	/*
-	 *	Set the cipher list if we were told to
+	 *	Set the cipher list if we were told to do so.  We do
+	 *	this before setting min/max TLS version.  In a sane
+	 *	world, OpenSSL would error out if we set the max TLS
+	 *	version to something which was unsupported by the
+	 *	current security level.  However, this is OpenSSL.  If
+	 *	you set conflicting options, it doesn't give an error.
+	 *	Instead, it just picks something to do.
+	 *
+	 *	SSL_CTX_set_cipher_list() accepts an empty string to
+	 *	clear the list for TLS <1.3 methods.  However, it
+	 *	reports an error.  We therefore catch the error, and
+	 *	allow it.
 	 */
-	if (conf->cipher_list) {
-		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			fr_tls_log_perror(NULL, "Failed setting cipher list");
+	if (conf->cipher_list &&
+	    !SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
+		unsigned long err = ERR_peek_last_error();
+
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for ERR_GET macros */
+		if (ERR_GET_LIB(err) != ERR_LIB_SSL ||
+		    ERR_GET_REASON(err) != SSL_R_NO_CIPHER_MATCH) {
+			fr_tls_log_perror(NULL, "Failed setting cipher_list");
 			goto error;
 		}
+DIAG_ON_OPTIONAL(used-but-marked-unused)
 	}
 
 	/*
-	 *	Set the TLS 1.3 cipher suites if we were told to.
-	 *
-	 *	This helps with TLS-PSK: OpenSSL will otherwise
-	 *	negotiate cipher suites which are incompatible with
-	 *	PSK, and then fail.
+	 *	SSL_CTX_set_ciphersuites() accepts an empty string to
+	 *	clear the list for TLS >=1.3 methods.  However, it
+	 *	reports an error.  We therefore catch the error, and
+	 *	allow it.
 	 */
-	if (conf->cipher_suites) {
-		if (!SSL_CTX_set_ciphersuites(ctx, conf->cipher_suites)) {
-			fr_tls_log_perror(NULL, "Failed setting cipher suites");
+       if (conf->cipher_suites &&
+	   !SSL_CTX_set_ciphersuites(ctx, conf->cipher_suites)) {
+		unsigned long err = ERR_peek_last_error();
+
+DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for ERR_GET macros */
+		if (ERR_GET_LIB(err) != ERR_LIB_SSL ||
+		    ERR_GET_REASON(err) != SSL_R_NO_CIPHER_MATCH) {
+			fr_tls_log_perror(NULL, "Failed setting cipher_suites");
 			goto error;
 		}
-	}
+DIAG_ON_OPTIONAL(used-but-marked-unused)
+       }
 
 	/*
 	 *	Print the actual cipher list

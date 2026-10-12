@@ -368,21 +368,6 @@
 	#
 
 	#
-	#  cipher_suites:: TLS 1.3 cipher suites.
-	#
-	#  For TLS-PSK, uncomment the following line to use standard ciphers
-	#  for TLS 1.3.
-	#
-	#  TLS-PSK may work without this line, but it is likely to not work
-	#  when the "next hop" home_server accepts both certificates and
-	#  PSK. OpenSSL will negotiate cipher suites which are incompatible
-	#  with PSK, and then fail.
-	#
-	#  Setting the `cipher_suites` here forces PSK to be negotiated.
-	#
-#	cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
-
-	#
 	#  You can create the DH parameters by running the following
 	#  command:
 	#
@@ -431,13 +416,30 @@
 	ca_path = ${cadir}
 
 	#
-	#  cipher_list:: Set the list of allowed TLS cipher suites.
+	#  cipher_list:: Set the list of allowed TLS cipher suites, for TLS < 1.3
 	#
 	#  The format is listed by OpenSSL in `man 1 ciphers`.
+	#
+	#  To use only TLS 1.3 cipher sites, set this to an empty string.
 	#
 	#  NOTE: For `EAP-FAST`, use "ALL:!EXPORT:!eNULL:!SSLv2"
 	#
 	cipher_list = "DEFAULT"
+
+	#
+	#  cipher_suites:: TLS 1.3 cipher suites.
+	#
+	#  For TLS-PSK, uncomment the following line to use standard ciphers
+	#  for TLS 1.3.
+	#
+	#  TLS-PSK may work without this line, but it is likely to not work
+	#  when the "next hop" home_server accepts both certificates and
+	#  PSK. OpenSSL will negotiate cipher suites which are incompatible
+	#  with PSK, and then fail.
+	#
+	#  Setting the `cipher_suites` here forces PSK to be negotiated.
+	#
+#	cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 
 	#
 	#  cipher_server_preference:: Prefer the server cipher list.
