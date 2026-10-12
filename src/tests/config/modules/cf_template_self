@@ -1,0 +1,22 @@
+#
+#  Test: a section inside template "t" uses "$template t".
+#
+#  unit_test_module.conf includes this file inside "modules { }".  The
+#  '@templates' reference creates a "templates" section at the top of the
+#  configuration.  '$template' looks up template names in the "templates"
+#  section.
+#
+#  Merging template "t" into section "sub" copies each item of "t" into
+#  "sub".  One of those items is "sub" itself, so the copy lands inside the
+#  section being copied, and the copy never ends.  Without a check, memory
+#  grows until the process dies.
+#
+#  process_template() in cf_file.c must refuse the '$template' line.
+#
+@templates t {
+	a = 1
+
+	sub {
+		$template t	# ERROR
+	}
+}

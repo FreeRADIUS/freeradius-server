@@ -1661,10 +1661,7 @@ static int process_template(cf_stack_t *stack)
 	 *	Allow in-line templates.
 	 */
 	templatecs = cf_section_find(cf_item_to_section(cf_parent(parent)), "template", stack->buff[2]);
-	if (templatecs) {
-		parent->template = templatecs;
-		return 0;
-	}
+	if (templatecs) goto check;
 
 	parent_cs = cf_root(parent);
 
@@ -1682,7 +1679,22 @@ static int process_template(cf_stack_t *stack)
 		return -1;
 	}
 
-	parent->template = cf_item_to_section(ci);
+	templatecs = cf_item_to_section(ci);
+
+check:
+	/*
+	 *	We can't use a template from inside of itself.  Otherwise merging the template copies the
+	 *	section into itself, forever.
+	 */
+	for (ci = &parent->item; ci != NULL; ci = ci->parent) {
+		if (ci != &templatecs->item) continue;
+
+		ERROR("%s[%d]: Cannot use template \"%s\" from inside of itself",
+		      frame->filename, frame->lineno, stack->buff[2]);
+		return -1;
+	}
+
+	parent->template = templatecs;
 	return 0;
 }
 

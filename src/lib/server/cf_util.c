@@ -1058,6 +1058,18 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 	unsigned int	   parent_count = 0, cs_count = 0;
 
 	/*
+	 *	The destination can't be inside of the source.  Otherwise the copy is added to the source, and
+	 *	then the loop below copies the copy, forever.
+	 */
+	for (ci = parent ? &parent->item : NULL; ci != NULL; ci = ci->parent) {
+		if (ci != &cs->item) continue;
+
+		ERROR("%s[%d]: Cannot copy section %s into itself",
+		      cs->item.filename, cs->item.lineno, name1);
+		return NULL;
+	}
+
+	/*
 	 *	Disallow exponential explosion.  See the definition of CF_SECTION_MAX_DUP_ITEMS
 	 */
 	(void) cf_section_item_count(parent, &parent_count);
