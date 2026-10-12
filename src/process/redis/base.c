@@ -228,14 +228,14 @@ static int fr_redis_cluster_shards_slots_to_pairs(redisReply *reply, fr_pair_t *
 
 		MEM(vp = fr_pair_afrom_da(slot_vp, attr_redis_slot_start));
 		if (reply->element[i]->type != REDIS_REPLY_INTEGER) return -1;
-		if (reply->element[i]->integer >= KEY_SLOTS) return -1;
+		if ((reply->element[i]->integer < 0) || (reply->element[i]->integer >= KEY_SLOTS)) return -1;
 		vp->vp_uint16 = (uint16_t) reply->element[i]->integer;
 		fr_pair_append(&slot_vp->vp_group, vp);
 
 		MEM(vp = fr_pair_afrom_da(slot_vp, attr_redis_slot_end));
 		if (reply->element[i + 1]->type != REDIS_REPLY_INTEGER) return -1;
+		if ((reply->element[i + 1]->integer < 0) || (reply->element[i + 1]->integer >= KEY_SLOTS)) return -1;
 		vp->vp_uint16 = (uint16_t) reply->element[i + 1]->integer;
-		if (reply->element[i + 1]->integer >= KEY_SLOTS) return -1;
 		fr_pair_append(&slot_vp->vp_group, vp);
 
 		for(s = reply->element[i]->integer; s <= reply->element[i + 1]->integer; s++) slots_covered[s] = true;
@@ -489,13 +489,13 @@ static int fr_redis_cluster_slots_to_pairs(TALLOC_CTX *ctx, request_t *request, 
 			fr_pair_list_free(list);
 			return -1;
 		}
-		if (map->element[0]->integer >= KEY_SLOTS) goto error;
+		if ((map->element[0]->integer < 0) || (map->element[0]->integer >= KEY_SLOTS)) goto error;
 		vp->vp_uint16 = (uint16_t) map->element[0]->integer;
 		fr_pair_append(&slot_vp->vp_group, vp);
 
 		MEM(vp = fr_pair_afrom_da(slot_vp, attr_redis_slot_end));
 		if (map->element[1]->type != REDIS_REPLY_INTEGER) goto error;
-		if (map->element[0]->integer >= KEY_SLOTS) goto error;
+		if ((map->element[1]->integer < 0) || (map->element[1]->integer >= KEY_SLOTS)) goto error;
 		vp->vp_uint16 = (uint16_t) map->element[1]->integer;
 		fr_pair_append(&slot_vp->vp_group, vp);
 
