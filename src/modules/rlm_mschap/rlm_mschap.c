@@ -2175,10 +2175,10 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
 		/*
 		 *  Gah. nasty. maybe we should just pull in iconv?
 		 */
-		if (c < 0x7f) {
+		if (c <= 0x7f) {
 			*x++ = c;
 
-		} else if (c < 0x7ff) {
+		} else if (c <= 0x7ff) {
 			*x++ = 0xc0 + (c >> 6);
 			*x++ = 0x80 + (c & 0x3f);
 

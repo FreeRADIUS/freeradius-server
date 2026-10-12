@@ -1,0 +1,36 @@
+#
+#  The new password is "a", U+007F, "b", U+07FF, "c", sent as UTF-16.
+#  U+007F is the last one byte UTF-8 character, and U+07FF is the last
+#  two byte UTF-8 character.  The CHAP2-CPW response is still the one
+#  for "SuperSecret", so the authentication fails after the new
+#  password has been decoded.
+#
+control.Password.Cleartext := "secret"
+
+mschap
+
+if !(control.Auth-Type == ::mschap) {
+	test_fail
+}
+
+mschap.authenticate {
+	reject = 1
+	invalid = 1
+}
+
+#
+#  Builds without OpenSSL return invalid.  The new password is only
+#  decoded with OpenSSL.
+#
+if (invalid) {
+	test_pass
+	return
+}
+
+if !(%hex(MS-CHAP-New-Cleartext-Password) == '617f62dfbf63') {
+	test_fail
+}
+
+reply -= Vendor-Specific.Microsoft.CHAP-Error
+
+test_pass
