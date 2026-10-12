@@ -48,6 +48,15 @@ typedef enum CC_HINT(flag_enum) : uint8_t {	/* server action */
 } fr_signal_t;
 DIAG_ON(attributes)
 
+/** Signal mask which blocks every signal except the ones in _signals
+ *
+ * The sigmask of a yield function lists the signals to block.  To allow a
+ * set of signals, the mask blocks the complement of that set.
+ *
+ * @param[in] _signals	to allow, e.g. FR_SIGNAL_CANCEL | FR_SIGNAL_DUP.
+ */
+#define FR_SIGNAL_ALLOW(_signals)	((fr_signal_t)~(_signals))
+
 #define fr_signal_is_cancel(_signal)	(_signal & FR_SIGNAL_CANCEL)
 #define fr_signal_is_dup(_signal)	(_signal & FR_SIGNAL_DUP)
 #define fr_signal_is_detach(_signal)	(_signal & FR_SIGNAL_DETACH)

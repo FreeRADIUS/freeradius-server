@@ -3119,6 +3119,6 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	fr_retry_init(&u->retry, fr_time(), retry_config);
 
 	return unlang_xlat_yield_to_retry(request, xlat_sendto_resume, xlat_sendto_retry,
-					  xlat_sendto_signal, ~(FR_SIGNAL_CANCEL | FR_SIGNAL_DUP),
+					  xlat_sendto_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL | FR_SIGNAL_DUP),
 					  u, retry_config);
 }

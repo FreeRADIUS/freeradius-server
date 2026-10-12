@@ -2241,7 +2241,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	 */
 	if (auth_ctx->method != AUTH_INTERNAL) {
 		fr_pair_t *vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_ms_chap_use_ntlm_auth);
-		if (vp && (vp->vp_uint8 <= AUTH_AUTO)) auth_ctx->method = vp->vp_uint8;
+		if (vp && (vp->vp_uint8 <= AUTH_AUTO)) auth_ctx->method = (MSCHAP_AUTH_METHOD)vp->vp_uint8;
 	}
 
 	/*

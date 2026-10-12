@@ -339,7 +339,7 @@ typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
  */
 #define FR_CALL_ENV_OFFSET(_name, _cast_type, _flags, _struct, _field) \
 	.name = _name, \
-	.flags = CALL_ENV_FLAGS(_cast_type, _flags, _struct, _field), \
+	.flags = (call_env_flags_t)CALL_ENV_FLAGS(_cast_type, _flags, _struct, _field), \
 	.pair = { \
 		.cast_type = _cast_type, \
 		.type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
@@ -364,7 +364,7 @@ typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
  */
 #define FR_CALL_ENV_PARSE_OFFSET(_name, _cast_type, _flags, _struct, _field, _parse_field) \
 	.name = _name, \
-	.flags = CALL_ENV_FLAGS(_cast_type, _flags, _struct, _field), \
+	.flags = (call_env_flags_t)CALL_ENV_FLAGS(_cast_type, _flags, _struct, _field), \
 	.pair = { \
 		.cast_type = _cast_type, \
 		.type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
@@ -388,7 +388,7 @@ typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
  */
 #define FR_CALL_ENV_PARSE_ONLY_OFFSET(_name, _cast_type, _flags, _struct, _parse_field) \
 	.name = _name, \
-	.flags = (_flags) | CALL_ENV_FLAG_PARSE_ONLY, \
+	.flags = (call_env_flags_t)((_flags) | CALL_ENV_FLAG_PARSE_ONLY), \
 	.pair = { \
 		.cast_type = _cast_type, \
 		.parsed = { \
@@ -401,7 +401,7 @@ typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
  */
 #define FR_CALL_ENV_SUBSECTION(_name, _name2, _flags, _subcs ) \
 	.name = _name, \
-	.flags = CALL_ENV_FLAG_SUBSECTION | (_flags), \
+	.flags = (call_env_flags_t)(CALL_ENV_FLAG_SUBSECTION | (_flags)), \
 	.section = { \
 		.name2 = _name2, \
 		.subcs = _subcs, \
@@ -411,7 +411,7 @@ typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
  */
 #define FR_CALL_ENV_SUBSECTION_FUNC(_name, _name2, _flags, _func) \
 	.name = _name, \
-	.flags = CALL_ENV_FLAG_SUBSECTION | (_flags), \
+	.flags = (call_env_flags_t)(CALL_ENV_FLAG_SUBSECTION | (_flags)), \
 	.section = { \
 		.name2 = _name2, \
 		.func = _func \

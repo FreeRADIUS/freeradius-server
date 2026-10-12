@@ -237,8 +237,8 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_OFFSET_TYPE_FLAGS(_name, _type, _flags, _struct, _field) \
 	.name1 = _name, \
-	.type = (_type), \
-	.flags = (_flags), \
+	.type = (fr_type_t)(_type), \
+	.flags = (conf_parser_flags_t)(_flags), \
 	.offset = FR_CONF_FLAG_CHECK((_type), (_flags), &(((_struct *)NULL)->_field), offsetof(_struct, _field))
 
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
@@ -252,7 +252,7 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_OFFSET_HINT_TYPE(_name, _type, _struct, _field) \
 	.name1 = _name, \
-	.type = (_type), \
+	.type = (fr_type_t)(_type), \
 	.flags = CONF_FLAG_TMPL, \
 	.offset = FR_CONF_FLAG_CHECK(FR_TYPE_VOID, CONF_FLAG_TMPL, &(((_struct *)NULL)->_field), offsetof(_struct, _field))
 
@@ -293,8 +293,8 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_OFFSET_IS_SET(_name, _type, _flags, _struct, _field) \
 	.name1 = _name, \
-	.type = (_type), \
-	.flags = CONF_FLAG_IS_SET | (_flags), \
+	.type = (fr_type_t)(_type), \
+	.flags = (conf_parser_flags_t)(CONF_FLAG_IS_SET | (_flags)), \
 	.offset = FR_CONF_FLAG_CHECK((_type), (_flags), &(((_struct *)NULL)->_field), offsetof(_struct, _field)), \
 	.is_set_offset = offsetof(_struct, _field ## _is_set)
 
@@ -308,7 +308,7 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_OFFSET_SUBSECTION(_name, _flags, _struct, _field, _subcs) \
 	.name1 = _name, \
-	.flags = CONF_FLAG_SUBSECTION | (_flags), \
+	.flags = (conf_parser_flags_t)(CONF_FLAG_SUBSECTION | (_flags)), \
 	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs
 
@@ -349,8 +349,8 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_POINTER(_name, _type, _flags, _res_p) \
 	.name1 = _name, \
-	.type = (_type), \
-	.flags = (_flags), \
+	.type = (fr_type_t)(_type), \
+	.flags = (conf_parser_flags_t)(_flags), \
 	.data = FR_CONF_FLAG_CHECK((_type), (_flags), (_res_p), _res_p)
 
 /** conf_parser_t which parses a single CONF_PAIR producing a single global result, recording if a default was used in `<_res_p>`_is_set
@@ -364,8 +364,8 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_POINTER_IS_SET(_name, _type, _flags, _res_p) \
 	.name1 = _name, \
-	.type = (_type), \
-	.flags = CONF_FLAG_IS_SET | (_flags), \
+	.type = (fr_type_t)(_type), \
+	.flags = (conf_parser_flags_t)(CONF_FLAG_IS_SET | (_flags)), \
 	.data = FR_CONF_FLAG_CHECK((_type), (_flags), (_res_p), _res_p), \
 	.is_set_ptr = _res_p ## _is_set
 #  define FR_ITEM_POINTER(_type, _res_p) _type, FR_CONF_FLAG_CHECK((_type), 0, (_res_p), _res_p)
@@ -383,7 +383,7 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_SUBSECTION_ALLOC(_name, _flags, _struct, _field, _subcs) \
 	.name1 = _name, \
-	.flags = CONF_FLAG_SUBSECTION | (_flags), \
+	.flags = (conf_parser_flags_t)(CONF_FLAG_SUBSECTION | (_flags)), \
 	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs, \
 	.subcs_size = sizeof(*(((_struct *)0)->_field))
@@ -402,7 +402,7 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_SUBSECTION_ALLOC_MULTI(_name, _flags, _struct, _field, _subcs) \
 	.name1 = _name, \
-	.flags = CONF_FLAG_SUBSECTION | CONF_FLAG_MULTI | (_flags), \
+	.flags = (conf_parser_flags_t)(CONF_FLAG_SUBSECTION | CONF_FLAG_MULTI | (_flags)), \
 	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs, \
 	.subcs_size = sizeof(**(((_struct *)0)->_field))
@@ -417,8 +417,8 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_PAIR_GLOBAL(_name, _type, _flags, _func, _dflt_func) \
 	.name1 = _name, \
-	.type = (_type), \
-	.flags = CONF_FLAG_NO_OUTPUT | (_flags), \
+	.type = (fr_type_t)(_type), \
+	.flags = (conf_parser_flags_t)(CONF_FLAG_NO_OUTPUT | (_flags)), \
 	.func = _func, \
 	.dflt_func = _dflt_func
 
@@ -430,7 +430,7 @@ _Generic(&(_ct), \
  */
 #  define FR_CONF_SUBSECTION_GLOBAL(_name, _flags, _subcs) \
 	.name1 = _name, \
-	.flags = CONF_FLAG_SUBSECTION | CONF_FLAG_NO_OUTPUT | (_flags), \
+	.flags = (conf_parser_flags_t)(CONF_FLAG_SUBSECTION | CONF_FLAG_NO_OUTPUT | (_flags)), \
 	.subcs = _subcs
 
 /** conf_parser_t entry which raises an error if a deprecated v3 item is found
@@ -709,10 +709,10 @@ typedef struct {
 	size_t			*len;
 } cf_table_parse_ctx_t;
 
-#define CONF_PARSER_TERMINATOR	{ .name1 = NULL, .type = ~(UINT32_MAX - 1), \
+#define CONF_PARSER_TERMINATOR	{ .name1 = NULL, .type = (fr_type_t)~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
-#define CONF_PARSER_PARTIAL_TERMINATOR	{ .name1 = NULL, .type = ~(UINT32_MAX - 1), \
+#define CONF_PARSER_PARTIAL_TERMINATOR	{ .name1 = NULL, .type = (fr_type_t)~(UINT32_MAX - 1), \
 					  .offset = 1, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
 #define CF_FILE_NONE   (0)

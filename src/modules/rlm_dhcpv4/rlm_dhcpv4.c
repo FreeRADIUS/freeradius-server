@@ -174,7 +174,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 		code = vp->vp_uint32;
 
 	} else if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_type)) != NULL) {
-		code = vp->vp_uint8;
+		code = (fr_dhcpv4_packet_code_t)vp->vp_uint8;
 
 	} else {
 		code = request->packet->code;

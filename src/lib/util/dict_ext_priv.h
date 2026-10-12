@@ -235,7 +235,7 @@ static inline int dict_attr_ref_aunresolved(fr_dict_attr_t **da_p, char const *r
 		fr_strerror_printf("Attribute already has a 'ref=...' defined");
 		return -1;
 	}
-	ext->type = type | FR_DICT_ATTR_REF_UNRESOLVED;	/* Always unresolved */
+	ext->type = (fr_dict_attr_ref_type_t)(type | FR_DICT_ATTR_REF_UNRESOLVED);	/* Always unresolved */
 	ext->unresolved = talloc_strdup(da, ref);
 
 	return 0;

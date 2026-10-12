@@ -284,7 +284,7 @@ void unlang_timeout_init(void)
 	unlang_register(&(unlang_op_t){
 			.name = "timeout",
 			.type = UNLANG_TYPE_TIMEOUT,
-			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
+			.flag = (unlang_op_flag_t)(UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET),
 
 			.compile = unlang_compile_timeout,
 			.interpret = unlang_timeout,

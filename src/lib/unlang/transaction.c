@@ -252,9 +252,9 @@ static unlang_t *unlang_compile_transaction(unlang_t *parent, unlang_compile_ctx
 	 *	The default for a failed transaction is to continue to
 	 *	the next instruction on failure.
 	 */
-	c->actions.actions[RLM_MODULE_FAIL] = MOD_PRIORITY(1);
-	c->actions.actions[RLM_MODULE_INVALID] = MOD_PRIORITY(1);
-	c->actions.actions[RLM_MODULE_DISALLOW] = MOD_PRIORITY(1);
+	c->actions.actions[RLM_MODULE_FAIL] = MOD_PRIORITY_1;
+	c->actions.actions[RLM_MODULE_INVALID] = MOD_PRIORITY_1;
+	c->actions.actions[RLM_MODULE_DISALLOW] = MOD_PRIORITY_1;
 
 	/*
 	 *	For the children of this keyword, any failure is

@@ -1750,7 +1750,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 	constructed = func->constructed;
 
 	if (flags->is_option) {
-		tag = flags->option;
+		tag = (fr_der_tag_t)flags->option;
 
 		/*
 		 *	Raw attributes save the constructed flag in the flags.  This lets us re-encode

@@ -341,7 +341,7 @@ static unlang_action_t mod_exec_oneshot_wait_resume(unlang_result_t *p_result, m
 				}
 
 #ifdef STATIC_ANALYZER
-				if (!map) return -1;
+				if (!map) return UNLANG_ACTION_FAIL;
 #endif
 
 				RDEBUG("applying %s %s %s",
@@ -351,7 +351,7 @@ static unlang_action_t mod_exec_oneshot_wait_resume(unlang_result_t *p_result, m
 					RPEDEBUG("Failed applying assignment");
 
 					TALLOC_FREE(map);
-					return -1;
+					return UNLANG_ACTION_FAIL;
 				}
 				TALLOC_FREE(map);
 

@@ -1087,7 +1087,7 @@ RECV(cluster_map_bootstrap)
 			RDEBUG2("Cluster map already being fetched");
 			rctx->cluster = cluster;
 			if (unlang_module_yield(request, recv_cluster_map_bootstrap, process_redis_pending_cancel,
-						~FR_SIGNAL_CANCEL, mctx->rctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
+						FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), mctx->rctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
 
 			MEM(pending = talloc(cluster, process_redis_pending_t));
 			*pending = (process_redis_pending_t) {.request = request};
@@ -1173,7 +1173,7 @@ RECV(cluster_map_bootstrap)
 
 	rctx->cluster = cluster;
 	return unlang_function_push_with_result(p_result, request, redis_cluster_map_get, redis_cluster_map_get_resume,
-						redis_cluster_map_get_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, rctx);
+						redis_cluster_map_get_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), UNLANG_SUB_FRAME, rctx);
 }
 
 RECV(cluster_map_get)

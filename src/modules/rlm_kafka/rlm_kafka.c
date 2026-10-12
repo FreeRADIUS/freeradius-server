@@ -578,7 +578,7 @@ static unlang_action_t CC_HINT(nonnull) mod_produce(unlang_result_t *p_result,
 	if (unlikely(!pctx)) RETURN_UNLANG_FAIL;
 
 	return unlang_module_yield(request, mod_resume, mod_signal,
-				   ~FR_SIGNAL_CANCEL, pctx);
+				   FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), pctx);
 }
 
 /** Xlat instance data - cached topic handle for literal-topic calls
@@ -786,7 +786,7 @@ static xlat_action_t kafka_xlat_produce(UNUSED TALLOC_CTX *xctx_ctx, UNUSED fr_d
 	if (unlikely(!pctx)) return XLAT_ACTION_FAIL;
 
 	return unlang_xlat_yield(request, kafka_xlat_produce_resume, kafka_xlat_produce_signal,
-				 ~FR_SIGNAL_CANCEL, pctx);
+				 FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), pctx);
 }
 
 /** Background event callback, runs on librdkafka's bg thread

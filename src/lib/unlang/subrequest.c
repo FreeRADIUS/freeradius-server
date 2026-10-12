@@ -841,7 +841,7 @@ int unlang_subrequest_op_init(void)
 			 *	to end normally so that non-detachable requests are
 			 *	guaranteed the parent still exists.
 				 */
-			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
+			.flag = (unlang_op_flag_t)(UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND),
 
 			.compile = unlang_compile_subrequest,
 			.interpret = unlang_subrequest_init,

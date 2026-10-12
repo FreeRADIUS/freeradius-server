@@ -955,19 +955,19 @@ do {\
 
 	if (inst->load_balance_round_robin) cass_cluster_set_load_balance_round_robin(inst->cluster);
 
-	cass_cluster_set_token_aware_routing(inst->cluster, inst->token_aware_routing);
+	cass_cluster_set_token_aware_routing(inst->cluster, inst->token_aware_routing ? cass_true : cass_false);
 
 	if (inst->lbdc_local_dc) {
 		DO_CASS_OPTION("load_balance_dc_aware",
 			       cass_cluster_set_load_balance_dc_aware(inst->cluster,
 			       					      inst->lbdc_local_dc,
 			       					      inst->lbdc_hosts_per_remote_dc,
-			       					      inst->lbdc_allow_remote_dcs_for_local_cl));
+			       					      inst->lbdc_allow_remote_dcs_for_local_cl ? cass_true : cass_false));
 	}
 
 	if (do_latency_aware_routing) {
 		/* Can't fail */
-		cass_cluster_set_latency_aware_routing(inst->cluster, true);
+		cass_cluster_set_latency_aware_routing(inst->cluster, cass_true);
 
 		/* Can't fail */
 		cass_cluster_set_latency_aware_routing_settings(inst->cluster,
@@ -978,8 +978,8 @@ do {\
 							        inst->lar_min_measured);
 	}
 
-	if (inst->tcp_keepalive) cass_cluster_set_tcp_keepalive(inst->cluster, true, inst->tcp_keepalive);
-	cass_cluster_set_tcp_nodelay(inst->cluster, inst->tcp_nodelay);
+	if (inst->tcp_keepalive) cass_cluster_set_tcp_keepalive(inst->cluster, cass_true, inst->tcp_keepalive);
+	cass_cluster_set_tcp_nodelay(inst->cluster, inst->tcp_nodelay ? cass_true : cass_false);
 
 	if (do_tls) {
 		CassSsl	*ssl;

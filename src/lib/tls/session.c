@@ -2290,7 +2290,7 @@ unlang_action_t fr_tls_session_async_handshake_push(request_t *request, fr_tls_s
 				    tls_session_async_handshake,
 				    NULL,
 				    tls_session_async_handshake_signal,
-				    ~FR_SIGNAL_CANCEL,
+				    FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 				    UNLANG_SUB_FRAME,
 				    tls_session);
 }

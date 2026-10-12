@@ -269,7 +269,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 		 *	notification & nak in nak.
 		 */
 		if (nak->data[i] < FR_EAP_METHOD_MD5) {
-			REDEBUG("Peer NAK'd asking for bad type %s (%d)", eap_type2name(nak->data[i]), nak->data[i]);
+			REDEBUG("Peer NAK'd asking for bad type %s (%d)", eap_type2name((eap_type_t)nak->data[i]), nak->data[i]);
 
 			return FR_EAP_METHOD_INVALID;
 		}
@@ -277,7 +277,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 		if ((nak->data[i] >= FR_EAP_METHOD_MAX) ||
 		    !inst->methods[nak->data[i]].submodule) {
 			RDEBUG2("Peer NAK'd asking for unsupported EAP type %s (%d), skipping...",
-				eap_type2name(nak->data[i]),
+				eap_type2name((eap_type_t)nak->data[i]),
 				nak->data[i]);
 
 			continue;
@@ -290,7 +290,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 		 *	methods we've already sent back.
 		 */
 		if (last_type == nak->data[i]) {
-			char const *type_str = eap_type2name(nak->data[i]);
+			char const *type_str = eap_type2name((eap_type_t)nak->data[i]);
 
 			RDEBUG2("Peer NAK'd our request for %s (%d) with a request for %s (%d), skipping...",
 				type_str, nak->data[i], type_str, nak->data[i]);
@@ -305,7 +305,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 			continue;
 		}
 
-		sanitised[s_i++] = nak->data[i];
+		sanitised[s_i++] = (eap_type_t)nak->data[i];
 	}
 
 	if (s_i == 0) {
@@ -824,7 +824,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 	 *	done (after the subrequest frame in the
 	 *	parent gets popped).
 	 */
-	(void)unlang_module_yield(request, mod_authenticate_result_async, mod_authenticate_cancel, ~FR_SIGNAL_CANCEL, eap_session);
+	(void)unlang_module_yield(request, mod_authenticate_result_async, mod_authenticate_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), eap_session);
 
 	/*
 	 *	This sets up a subrequest frame in the parent

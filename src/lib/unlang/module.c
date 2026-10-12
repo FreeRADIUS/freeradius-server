@@ -158,7 +158,7 @@ int unlang_module_set_resume(request_t *request, module_method_t resume)
  * @param[in] resume		function to call when the XLAT expansion is complete.
  * @param[in] signal		function to call if a signal is received.
  * @param[in] sigmask		Set of signals to block.  For example if we wanted to only allow
- *				FR_SIGNAL_CANCEL, we'd pass ~FR_SIGNAL_CANCEL to block the other
+ *				FR_SIGNAL_CANCEL, we'd pass FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL) to block the other
  *				signals.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
@@ -207,7 +207,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, unlang_result_t *p_
  * @param[in] resume		function to call when the XLAT expansion is complete.
  * @param[in] signal		function to call if a signal is received.
  * @param[in] sigmask		Set of signals to block.  For example if we wanted to only allow
- *				FR_SIGNAL_CANCEL, we'd pass ~FR_SIGNAL_CANCEL to block the other
+ *				FR_SIGNAL_CANCEL, we'd pass FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL) to block the other
  *				signals.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
@@ -358,7 +358,7 @@ static unlang_action_t unlang_module_retry_resume(unlang_result_t *p_result, mod
  * @param[in] retry		Called on when a retry timer hits
  * @param[in] signal		Called on unlang_action().
  * @param[in] sigmask		Set of signals to block.  For example if we wanted to only allow
- *				FR_SIGNAL_CANCEL, we'd pass ~FR_SIGNAL_CANCEL to block the other
+ *				FR_SIGNAL_CANCEL, we'd pass FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL) to block the other
  *				signals.
  * @param[in] rctx		to pass to the callbacks.
  * @param[in] retry_cfg		to set up the retries
@@ -421,7 +421,7 @@ unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t
  * @param[in] resume		Called on unlang_interpret_mark_runnable().
  * @param[in] signal		Called on unlang_action().
  * @param[in] sigmask		Set of signals to block.  For example if we wanted to only allow
- *				FR_SIGNAL_CANCEL, we'd pass ~FR_SIGNAL_CANCEL to block the other
+ *				FR_SIGNAL_CANCEL, we'd pass FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL) to block the other
  *				signals.
  * @param[in] rctx		to pass to the callbacks.
  * @return
@@ -985,9 +985,9 @@ void unlang_module_init(void)
 			 *	- UNLANG_OP_FLAG_RETURN_POINT
 			 *	  Set the return point to be the module.
 			 */
-			.flag = UNLANG_OP_FLAG_RCODE_SET |
+			.flag = (unlang_op_flag_t)(UNLANG_OP_FLAG_RCODE_SET |
 				UNLANG_OP_FLAG_RETURN_POINT |
-				UNLANG_OP_FLAG_INTERNAL,
+				UNLANG_OP_FLAG_INTERNAL),
 
 			.interpret = unlang_module,
 			.signal = unlang_module_signal,

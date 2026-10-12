@@ -1993,7 +1993,6 @@ if test "x$developer" = "xyes"; then
       -Wno-gnu-empty-initializer \
       -Wno-gnu-statement-expression \
       -Wno-gnu-zero-variadic-macro-arguments \
-      -Wno-implicit-int-enum-cast \
       -Wno-implicit-void-ptr-cast \
       -Wno-jump-misses-init \
       -Wno-ms-bitfield-padding \

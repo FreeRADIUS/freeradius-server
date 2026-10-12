@@ -764,7 +764,7 @@ skip_auth:
 		goto error;
 	}
 
-	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
+	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), randle);
 }
 
 /*
@@ -816,7 +816,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(unlang_result_t *p
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
+	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), randle);
 }
 
 static xlat_arg_parser_t const smtp_xlat_args[] = {
@@ -952,7 +952,7 @@ skip_auth:
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) goto error;
 
-	return unlang_xlat_yield(request, smtp_send_xlat_resume, smtp_xlat_signal, ~FR_SIGNAL_CANCEL, randle);
+	return unlang_xlat_yield(request, smtp_send_xlat_resume, smtp_xlat_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), randle);
 }
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)

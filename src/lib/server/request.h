@@ -310,7 +310,7 @@ typedef struct {
 #  define REQUEST_VERIFY(_x) fr_assert(_x)
 #endif
 
-#define RAD_REQUEST_LVL_NONE	(0)		//!< No debug messages should be printed.
+#define RAD_REQUEST_LVL_NONE	L_DBG_LVL_OFF		//!< No debug messages should be printed.
 #define RAD_REQUEST_LVL_DEBUG	(1)
 #define RAD_REQUEST_LVL_DEBUG2	(2)
 #define RAD_REQUEST_LVL_DEBUG3	(3)

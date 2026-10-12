@@ -199,11 +199,11 @@ static inline unlang_action_t rediswho_rcode_check(request_t *request, fr_redis_
 
 	case REDIS_ASYNC_RCODE_ASK:
 		if (fr_redis_async_cmd_redirect(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
-		return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
+		return unlang_module_yield(request, resume, cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), mctx->rctx);
 
 	case REDIS_ASYNC_RCODE_TRY_AGAIN:
 		if (fr_redis_async_cmd_resend(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
-		return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
+		return unlang_module_yield(request, resume, cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), mctx->rctx);
 
 	default:
 		break;
@@ -329,7 +329,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result
 					"Failed to enqueue Redis cache find commands", UNLANG_ACTION_FAIL);
 
 	return unlang_module_yield(request, inst->trim_count > 0 ? mod_accounting_trim : mod_accounting_expire,
-				   mod_accounting_cancel, ~FR_SIGNAL_CANCEL, rctx);
+				   mod_accounting_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)

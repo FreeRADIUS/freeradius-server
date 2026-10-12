@@ -231,7 +231,7 @@ static bool eap_is_valid(TALLOC_CTX *ctx, eap_packet_raw_t **eap_packet_p)
 		if ((eap_packet->data[7] <= FR_EAP_METHOD_NAK) ||
 		    (eap_packet->data[7] >= FR_EAP_METHOD_MAX)) {
 			fr_strerror_printf("Unsupported Expanded EAP type %s (%u): ignoring the packet",
-					   eap_type2name(eap_packet->data[7]), eap_packet->data[7]);
+					   eap_type2name((eap_type_t)eap_packet->data[7]), eap_packet->data[7]);
 			return false;
 		}
 
@@ -244,7 +244,7 @@ static bool eap_is_valid(TALLOC_CTX *ctx, eap_packet_raw_t **eap_packet_p)
 		p = talloc_realloc(ctx, eap_packet, uint8_t, len - 7);
 		if (!p) {
 			fr_strerror_printf("Unsupported EAP type %s (%u): ignoring the packet",
-					   eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
+					   eap_type2name((eap_type_t)eap_packet->data[0]), eap_packet->data[0]);
 			return false;
 		}
 
@@ -260,7 +260,7 @@ static bool eap_is_valid(TALLOC_CTX *ctx, eap_packet_raw_t **eap_packet_p)
 	if ((eap_packet->data[0] == 0) ||
 	    (eap_packet->data[0] >= FR_EAP_METHOD_MAX)) {
 		fr_strerror_printf("Unsupported EAP type %s (%u): ignoring the packet",
-				   eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
+				   eap_type2name((eap_type_t)eap_packet->data[0]), eap_packet->data[0]);
 		return false;
 	}
 

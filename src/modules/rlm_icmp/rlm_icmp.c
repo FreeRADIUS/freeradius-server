@@ -257,7 +257,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, ~FR_SIGNAL_CANCEL, echo);
+	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), echo);
 }
 
 static fr_cmp_ret_t echo_cmp(void const *one, void const *two)

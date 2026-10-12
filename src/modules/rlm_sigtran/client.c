@@ -469,5 +469,5 @@ unlang_action_t sigtran_client_map_send_auth_info(unlang_result_t *p_result, rlm
 		goto error;
 	}
 
-	return unlang_module_yield(request, sigtran_client_map_resume, sigtran_client_signal, ~FR_SIGNAL_CANCEL, txn);
+	return unlang_module_yield(request, sigtran_client_map_resume, sigtran_client_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), txn);
 }

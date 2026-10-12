@@ -157,7 +157,7 @@ typedef struct {
 						///< this round, otherwise an error will be produced.
 } xlat_res_rules_t;
 
-#define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .single = false, .variadic = false, \
+#define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .single = false, .variadic = XLAT_ARG_VARIADIC_DISABLED, \
 					.type = FR_TYPE_NULL, .func = NULL, .uctx = NULL }
 
 /** A callback when the timeout occurs

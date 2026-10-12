@@ -204,7 +204,7 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 *	Set bfd.RemoteDemandMode to the value of the Demand (D) bit.
 	 */
 	session->remote_disc = bfd->my_disc;
-	session->remote_session_state = bfd->state;
+	session->remote_session_state = (bfd_session_state_t)bfd->state;
 	session->remote_demand_mode = bfd->demand;
 
 	/*

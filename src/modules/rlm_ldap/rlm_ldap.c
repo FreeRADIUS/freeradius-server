@@ -927,7 +927,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		goto query_error;
 	}
 
-	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, ~FR_SIGNAL_CANCEL, query);
+	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), query);
 }
 
 /** Cancel an in-progress query for the LDAP group membership xlat
@@ -1112,7 +1112,7 @@ static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 					     request,
 					     NULL,
 					     ldap_group_xlat_results,
-					     ldap_group_xlat_cancel, ~FR_SIGNAL_CANCEL,
+					     ldap_group_xlat_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 					     UNLANG_SUB_FRAME,
 					     xlat_ctx) < 0) goto error;
 
@@ -2107,7 +2107,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 
 	if (unlikely(unlang_module_yield(request,
 					 mod_authorize_resume,
-					 mod_authorize_cancel, ~FR_SIGNAL_CANCEL,
+					 mod_authorize_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 					 autz_ctx) == UNLANG_ACTION_FAIL)) {
 		talloc_free(autz_ctx);
 		RETURN_UNLANG_FAIL;
@@ -2295,7 +2295,7 @@ next:
 
 	modify = usermod_ctx->mod_p;
 
-	if (unlang_module_yield(request, user_modify_final, user_modify_cancel, ~FR_SIGNAL_CANCEL, usermod_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+	if (unlang_module_yield(request, user_modify_final, user_modify_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), usermod_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 
 	return fr_ldap_trunk_modify(usermod_ctx, &usermod_ctx->query, request, usermod_ctx->ttrunk,
 				    usermod_ctx->dn, modify, NULL, NULL);

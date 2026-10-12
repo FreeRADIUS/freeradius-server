@@ -63,7 +63,7 @@ void unlang_group_init(void)
 	unlang_register(&(unlang_op_t){
 			.name = "policy",
 			.type = UNLANG_TYPE_POLICY,
-			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL,
+			.flag = (unlang_op_flag_t)(UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL),
 
 			.interpret = unlang_policy,
 

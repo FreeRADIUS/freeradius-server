@@ -444,7 +444,7 @@ static unlang_action_t CC_HINT(nonnull) mod_crl_by_url(unlang_result_t *p_result
 	if (ret < 0) RETURN_UNLANG_FAIL;
 
 	if (unlang_module_yield(request, mod_crl_by_url, crl_by_url_cancel,
-				~FR_SIGNAL_CANCEL, mctx->rctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
+				FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), mctx->rctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
 
 	MEM(pending = talloc_zero(t, crl_pending_t));
 	pending->request = request;

@@ -202,7 +202,7 @@ int eap_md5_compose(eap_round_t *eap_round, MD5_PACKET *reply)
 		eap_round->request->type.length = 0;
 		/* TODO: In future we might add message here wrt rfc1994 */
 	}
-	eap_round->request->code = reply->code;
+	eap_round->request->code = (eap_code_t)reply->code;
 	talloc_free(reply);
 
 	return 1;

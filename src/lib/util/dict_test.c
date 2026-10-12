@@ -131,7 +131,7 @@ fr_dict_test_attr_t const fr_dict_test_attrs[] = {
 	{ .attr = FR_TEST_ATTR_TLV_STRING, .parent = &fr_dict_attr_test_tlv, .da = &fr_dict_attr_test_tlv_string, .name = "String", .type = FR_TYPE_STRING },
 
 	{ .attr = FR_TEST_ATTR_STRUCT, .da = &fr_dict_attr_test_struct, .name = "Test-Struct", .type = FR_TYPE_STRUCT },
-	{ .attr = 1, .parent = &fr_dict_attr_test_struct, .da = &fr_dict_attr_test_struct_uint32, .name = "uint32", .type = FR_TYPE_UINT32 },
+	{ .attr = (fr_dict_test_attr_number_t)1, .parent = &fr_dict_attr_test_struct, .da = &fr_dict_attr_test_struct_uint32, .name = "uint32", .type = FR_TYPE_UINT32 },
 
 	{ .attr = FR_TEST_ATTR_VSA, .da = &fr_dict_attr_test_vsa, .name = "Test-VSA", .type = FR_TYPE_VSA },
 	{ .attr = FR_TEST_ATTR_VENDOR, .parent = &fr_dict_attr_test_vsa, .da = &fr_dict_attr_test_vendor, .name = "Test-Vendor", .type = FR_TYPE_VENDOR },

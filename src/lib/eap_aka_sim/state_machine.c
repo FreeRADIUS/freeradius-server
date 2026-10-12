@@ -69,7 +69,7 @@ RCSID("$Id$")
 							       RLM_MODULE_NOOP, \
 							       resume_ ## _x, \
 							       mod_signal, \
-							       ~FR_SIGNAL_CANCEL, \
+							       FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), \
 							       talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t))
 
 /*
@@ -2988,7 +2988,7 @@ STATE(aka_identity)
 						      RLM_MODULE_NOOP,
 						      resume_recv_aka_identity_response,
 						      mod_signal,
-						      ~FR_SIGNAL_CANCEL,
+						      FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 						      eap_aka_sim_session);
 	}
 
@@ -3094,7 +3094,7 @@ STATE_GUARD_NO_RESULT(aka_identity)
 					      RLM_MODULE_NOOP,
 					      resume_send_aka_identity_request,
 					      mod_signal,
-					      ~FR_SIGNAL_CANCEL,
+					      FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 					      eap_aka_sim_session);
 }
 
@@ -3326,7 +3326,7 @@ STATE(sim_start)
 						      RLM_MODULE_NOOP,
 						      resume_recv_sim_start_response,
 						      mod_signal,
-						      ~FR_SIGNAL_CANCEL,
+						      FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 						      eap_aka_sim_session);
 	}
 
@@ -3459,7 +3459,7 @@ STATE_GUARD_NO_RESULT(sim_start)
 					      RLM_MODULE_NOOP,
 					      resume_send_sim_start,
 					      mod_signal,
-					      ~FR_SIGNAL_CANCEL,
+					      FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 					      eap_aka_sim_session);
 }
 

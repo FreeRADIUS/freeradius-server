@@ -13926,7 +13926,6 @@ printf '%s\n' "$ax_cv_cc_weverything_flag" >&6; }
       -Wno-gnu-empty-initializer \
       -Wno-gnu-statement-expression \
       -Wno-gnu-zero-variadic-macro-arguments \
-      -Wno-implicit-int-enum-cast \
       -Wno-implicit-void-ptr-cast \
       -Wno-jump-misses-init \
       -Wno-ms-bitfield-padding \

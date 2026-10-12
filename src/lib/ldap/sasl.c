@@ -558,6 +558,6 @@ unlang_action_t fr_ldap_sasl_bind_auth_async(unlang_result_t *p_result,
 						ldap_async_sasl_bind_auth_start,
 						ldap_async_sasl_bind_auth_results,
 						ldap_async_sasl_bind_auth_cancel,
-						~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
+						FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), UNLANG_SUB_FRAME,
 						bind_auth_ctx);
 }

@@ -742,7 +742,7 @@ unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 	action = unlang_function_push(request,
 				      NULL,
 				      ldap_trunk_query_results,
-				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+				      ldap_trunk_query_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 				      UNLANG_SUB_FRAME,
 				      query);
 
@@ -793,7 +793,7 @@ unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
 	action = unlang_function_push(request,
 				      NULL,
 				      ldap_trunk_query_results,
-				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+				      ldap_trunk_query_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 				      UNLANG_SUB_FRAME,
 				      query);
 
@@ -925,7 +925,7 @@ unlang_action_t fr_ldap_trunk_extended(TALLOC_CTX *ctx,
 	action = unlang_function_push(request,
 				      NULL,
 				      ldap_trunk_query_results,
-				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+				      ldap_trunk_query_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 				      UNLANG_SUB_FRAME,
 				      query);
 

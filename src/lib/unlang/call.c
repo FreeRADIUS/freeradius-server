@@ -339,7 +339,7 @@ void unlang_call_init(void)
 {
 	unlang_register(&(unlang_op_t){
 			.name		= "call",
-			.flag		= UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_DEBUG_BRACES,
+			.flag		= (unlang_op_flag_t)(UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_DEBUG_BRACES),
 			.type		= UNLANG_TYPE_CALL,
 
 			.compile	= unlang_compile_call,

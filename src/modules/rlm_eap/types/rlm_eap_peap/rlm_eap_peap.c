@@ -228,7 +228,7 @@ static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 		break;
 	}
 
-	eap_method = data[0];	/* Inner EAP header misses off code and identifier */
+	eap_method = (eap_type_t)data[0];	/* Inner EAP header misses off code and identifier */
 	switch (eap_method) {
 	case FR_EAP_METHOD_IDENTITY:
 		RDEBUG2("Received EAP-Identity-Response");

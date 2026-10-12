@@ -575,9 +575,9 @@ eap_round_t *eap_round_build(eap_session_t *eap_session, eap_packet_raw_t **eap_
 
 	eap_round->response->packet = (uint8_t *)eap_packet;
 	(void) talloc_steal(eap_round, eap_packet);
-	eap_round->response->code = eap_packet->code;
+	eap_round->response->code = (eap_code_t)eap_packet->code;
 	eap_round->response->id = eap_packet->id;
-	eap_round->response->type.num = eap_packet->data[0];
+	eap_round->response->type.num = (eap_type_t)eap_packet->data[0];
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);

@@ -125,7 +125,7 @@ static xlat_action_t xlat_idna(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			free (idna); /* Docs unclear, be safe. */
 		}
 
-		REDEBUG("%s", idna_strerror(res));
+		REDEBUG("%s", idna_strerror((Idna_rc)res));
 		return XLAT_ACTION_FAIL;
 	}
 

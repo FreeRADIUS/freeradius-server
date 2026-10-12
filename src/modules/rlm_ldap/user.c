@@ -190,7 +190,7 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx,
 					     request,
 					     NULL,
 					     ldap_find_user_async_result,
-					     ldap_find_user_async_cancel, ~FR_SIGNAL_CANCEL,
+					     ldap_find_user_async_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 					     UNLANG_SUB_FRAME, user_ctx) < 0) {
 		talloc_free(user_ctx);
 		return UNLANG_ACTION_FAIL;

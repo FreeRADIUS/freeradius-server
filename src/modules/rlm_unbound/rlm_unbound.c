@@ -413,7 +413,7 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	return unlang_xlat_yield(request, xlat_unbound_resume, xlat_unbound_signal, ~FR_SIGNAL_CANCEL, ur);
+	return unlang_xlat_yield(request, xlat_unbound_resume, xlat_unbound_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), ur);
 }
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)

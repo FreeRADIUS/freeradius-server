@@ -679,7 +679,7 @@ static xlat_action_t xlat_func_time_advance(UNUSED TALLOC_CTX *ctx, UNUSED fr_dc
 
 	RDEBUG("Time now %pV (offset +%pV)", fr_box_date(fr_time_to_unix_time(_synthetic_time_source())), fr_box_time_delta(time_offset));
 
-	unlang_xlat_yield(request, xlat_func_time_advance_resume, NULL, 0, NULL);
+	unlang_xlat_yield(request, xlat_func_time_advance_resume, NULL, FR_SIGNAL_NONE, NULL);
 
 	return XLAT_ACTION_YIELD;
 }

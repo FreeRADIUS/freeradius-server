@@ -2253,7 +2253,7 @@ xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			RPEDEBUG("Failed parsing '%pV' as a numerical data type", name);
 			return XLAT_ACTION_FAIL;
 		}
-		type = name->vb_uint8;
+		type = (fr_type_t)name->vb_uint8;
 
 	} else {
 		if (name->type != FR_TYPE_STRING) {
@@ -4940,7 +4940,7 @@ static int _xlat_global_init(UNUSED void *uctx)
 do { \
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, _args); \
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
+	xlat_func_flags_set(xlat, (xlat_func_flags_t)(XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL)); \
 } while (0)
 
 #define XLAT_NEW(_x) xlat->replaced_with = _x
@@ -5078,7 +5078,7 @@ do { \
 	XLAT_REGISTER_ARGS("range", xlat_func_range, FR_TYPE_UINT64, xlat_func_range_arg);
 
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "unsafe", xlat_func_unsafe, FR_TYPE_VOID)) == NULL)) return -1;
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
+	xlat_func_flags_set(xlat, (xlat_func_flags_t)(XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL));
 	xlat_func_args_set(xlat, xlat_func_unsafe_args);
 
 	/*
@@ -5088,7 +5088,7 @@ do { \
 do { \
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, _arg); \
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
+	xlat_func_flags_set(xlat, (xlat_func_flags_t)(XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL)); \
 } while (0)
 
 	XLAT_REGISTER_PURE("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
@@ -5111,14 +5111,14 @@ do { \
 
 	{
 		static xlat_arg_parser_t const xlat_regex_safe_args[] = {
-			{ .type = FR_TYPE_STRING, .variadic = true, .concat = true },
+			{ .type = FR_TYPE_STRING, .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .concat = true },
 			XLAT_ARG_PARSER_TERMINATOR
 		};
 
 		static xlat_arg_parser_t const xlat_regex_escape_args[] = {
 			{ .type = FR_TYPE_STRING,
 			  .func = xlat_regex_escape, .safe_for = FR_REGEX_SAFE_FOR, .always_escape = true,
-			  .variadic = true, .concat = true },
+			  .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .concat = true },
 			XLAT_ARG_PARSER_TERMINATOR
 		};
 

@@ -378,7 +378,7 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 	uint8_t const *end;
 	fr_radius_client_bio_retry_t *acct;
 
-	id_ctx = fr_radius_code_id_find(my->codes, data[0], data[1]);
+	id_ctx = fr_radius_code_id_find(my->codes, (fr_radius_packet_code_t)data[0], data[1]);
 	fr_assert(id_ctx != NULL);
 
 	id_ctx->packet = packet_ctx;

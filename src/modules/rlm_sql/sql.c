@@ -302,7 +302,7 @@ unlang_action_t rlm_sql_trunk_query(unlang_result_t *p_result, request_t *reques
 						     query_ctx->type == SQL_QUERY_SELECT ?
 							query_ctx->inst->driver->sql_select_query_resume :
 							query_ctx->inst->driver->sql_query_resume,
-						     sql_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+						     sql_trunk_query_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 						     UNLANG_SUB_FRAME, query_ctx) < 0) RETURN_UNLANG_FAIL;
 		p_result->rcode = RLM_MODULE_OK;
 		return UNLANG_ACTION_PUSHED_CHILD;

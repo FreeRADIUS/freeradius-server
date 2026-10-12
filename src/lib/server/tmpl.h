@@ -670,7 +670,7 @@ static inline char const *tmpl_type_to_str(tmpl_type_t type)
  */
 static inline tmpl_type_t tmpl_type_from_str(char const *type)
 {
-	return fr_table_value_by_str(tmpl_type_table, type, TMPL_TYPE_UNINITIALISED);
+	return (tmpl_type_t)fr_table_value_by_str(tmpl_type_table, type, TMPL_TYPE_UNINITIALISED);
 }
 /** @} */
 

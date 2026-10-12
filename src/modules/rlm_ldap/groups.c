@@ -397,7 +397,7 @@ static unlang_action_t ldap_cacheable_userobj_resolve(unlang_result_t *p_result,
 		if (unlang_function_push_with_result(/* both start and resume provide an rcode */p_result, request,
 						     ldap_group_dn2name_start,
 						     ldap_group_dn2name_resume,
-						     ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+						     ldap_group_userobj_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 						     UNLANG_SUB_FRAME,
 						     group_ctx) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -411,7 +411,7 @@ static unlang_action_t ldap_cacheable_userobj_resolve(unlang_result_t *p_result,
 		if (unlang_function_push_with_result(/* both start and resume provide an rcode */p_result, request,
 						     ldap_group_name2dn_start,
 						     ldap_group_name2dn_resume,
-						     ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+						     ldap_group_userobj_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 						     UNLANG_SUB_FRAME,
 						     group_ctx) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -583,7 +583,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 						     ldap_cacheable_userobj_resolve,
 						     NULL,
 						     ldap_group_userobj_cancel,
-						     ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
+						     FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), UNLANG_SUB_FRAME,
 						     group_ctx) < 0) {
 			talloc_free(group_ctx);
 			RETURN_UNLANG_FAIL;
@@ -772,7 +772,7 @@ unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t
 					     request,
 					     ldap_cacheable_groupobj_start,
 					     ldap_cacheable_groupobj_resume,
-					     ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
+					     ldap_group_groupobj_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 					     UNLANG_SUB_FRAME,
 					     group_ctx) < 0) {
 	error:
@@ -1011,7 +1011,7 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, reque
 					     request,
 					     ldap_cacheable_groupobj_start,
 					     ldap_check_groupobj_resume,
-					     ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
+					     ldap_group_groupobj_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 					     UNLANG_SUB_FRAME,
 					     group_ctx) < 0) {
 	error:
@@ -1239,7 +1239,7 @@ static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, requ
 									request,
 									ldap_dn2name_start,
 									NULL,
-									ldap_dn2name_cancel, ~FR_SIGNAL_CANCEL,
+									ldap_dn2name_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 									UNLANG_SUB_FRAME,
 									group_ctx);
 			}
@@ -1270,7 +1270,7 @@ static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, requ
 								request,
 								ldap_dn2name_start,
 								NULL,
-								ldap_dn2name_cancel, ~FR_SIGNAL_CANCEL,
+								ldap_dn2name_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 								UNLANG_SUB_FRAME, group_ctx);
 		}
 
@@ -1324,7 +1324,7 @@ unlang_action_t rlm_ldap_check_userobj_dynamic(unlang_result_t *p_result, reques
 					     request,
 					     xlat_ctx->query ? NULL : ldap_check_userobj_start,
 					     ldap_check_userobj_resume,
-					     ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+					     ldap_group_userobj_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 					     UNLANG_SUB_FRAME,
 					     group_ctx) < 0) {
 		talloc_free(group_ctx);

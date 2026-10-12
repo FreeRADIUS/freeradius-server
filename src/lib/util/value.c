@@ -1758,7 +1758,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		if (!value->enumv) {
 			res = FR_TIME_RES_SEC;
 		} else {
-			res = value->enumv->flags.flag_time_res;
+			res = (fr_time_res_t)value->enumv->flags.flag_time_res;
 		}
 		date = fr_unix_time_to_integer(value->vb_date, res);
 
@@ -1792,7 +1792,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	{
 		int64_t date = 0;	/* may be negative */
 		fr_time_res_t res = FR_TIME_RES_SEC;
-		if (value->enumv) res = value->enumv->flags.flag_time_res;
+		if (value->enumv) res = (fr_time_res_t)value->enumv->flags.flag_time_res;
 
 		date = fr_time_delta_to_integer(value->vb_time_delta, res);
 
@@ -3486,7 +3486,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	case FR_TYPE_DATE:
 	{
 		fr_time_res_t res = FR_TIME_RES_SEC;
-		if (src->enumv) res = src->enumv->flags.flag_time_res;
+		if (src->enumv) res = (fr_time_res_t)src->enumv->flags.flag_time_res;
 
 		tmp = fr_unix_time_to_integer(src->vb_date, res);
 	}
@@ -3502,7 +3502,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	{
 		fr_time_res_t res = FR_TIME_RES_SEC;
 
-		if (src->enumv) res = src->enumv->flags.flag_time_res;
+		if (src->enumv) res = (fr_time_res_t)src->enumv->flags.flag_time_res;
 
 		tmp = (uint64_t)fr_time_delta_to_integer(src->vb_time_delta, res);
 	}
@@ -3551,7 +3551,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	{
 		bool overflow;
 		fr_time_res_t res = FR_TIME_RES_SEC;
-		if (dst->enumv) res = dst->enumv->flags.flag_time_res;
+		if (dst->enumv) res = (fr_time_res_t)dst->enumv->flags.flag_time_res;
 
 		dst->vb_date = fr_unix_time_from_integer(&overflow, tmp, res);
 		if (overflow) {
@@ -3565,7 +3565,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	{
 		bool overflow;
 		fr_time_res_t res = FR_TIME_RES_SEC;
-		if (dst->enumv) res = dst->enumv->flags.flag_time_res;
+		if (dst->enumv) res = (fr_time_res_t)dst->enumv->flags.flag_time_res;
 
 		dst->vb_time_delta = fr_time_delta_from_integer(&overflow, tmp, res);
 		if (overflow) {
@@ -3746,14 +3746,14 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 			int64_t res = NSEC;
 			bool fail = false;
 
-			if (dst->enumv) res = fr_time_multiplier_by_res[dst->enumv->flags.flag_time_res];
+			if (dst->enumv) res = fr_time_multiplier_by_res[(fr_time_res_t)dst->enumv->flags.flag_time_res];
 
 			sec = src->vb_float32;
 			sec *= res;
 			nsec = (((double) src->vb_float32 * res) - ((double) sec));
 
 			dst->vb_time_delta = fr_time_delta_from_integer(&fail, sec + nsec,
-									dst->enumv ? dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
+									dst->enumv ? (fr_time_res_t)dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
 			if (fail) goto overflow;
 		}
 			break;
@@ -3823,7 +3823,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 			int64_t res = NSEC;
 			bool fail = false;
 
-			if (dst->enumv) res = fr_time_multiplier_by_res[dst->enumv->flags.flag_time_res];
+			if (dst->enumv) res = fr_time_multiplier_by_res[(fr_time_res_t)dst->enumv->flags.flag_time_res];
 
 			sec = src->vb_float64;
 
@@ -3832,7 +3832,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 			nsec = ((src->vb_float64 * res) - ((double) sec));
 
 			dst->vb_time_delta = fr_time_delta_from_integer(&fail, sec + nsec,
-									dst->enumv ? dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
+									dst->enumv ? (fr_time_res_t)dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
 			if (fail) goto overflow;
 		}
 			break;
@@ -3931,7 +3931,7 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 		 */
 		num = fr_time_delta_unwrap(src->vb_time_delta);
 		if (src->enumv) {
-			num /= fr_time_multiplier_by_res[src->enumv->flags.flag_time_res];
+			num /= fr_time_multiplier_by_res[(fr_time_res_t)src->enumv->flags.flag_time_res];
 		} else {
 			num /= NSEC;
 		}
@@ -5968,7 +5968,7 @@ parse:
 		fr_value_box_init(dst, FR_TYPE_TIME_DELTA, dst_enumv, false);
 
 		slen = fr_time_delta_from_substr(&dst->datum.time_delta, &our_in,
-						 dst_enumv ? dst_enumv->flags.flag_time_res : FR_TIME_RES_SEC,
+						 dst_enumv ? (fr_time_res_t)dst_enumv->flags.flag_time_res : FR_TIME_RES_SEC,
 						 false, rules->terminals);
 		if (slen < 0) return slen;
 		if (!slen) {
@@ -6123,7 +6123,7 @@ parse:
 	case FR_TYPE_DATE:
 	{
 		if (dst_enumv) {
-			if (fr_unix_time_from_str(&dst->vb_date, buffer, dst_enumv->flags.flag_time_res) < 0) return -1;
+			if (fr_unix_time_from_str(&dst->vb_date, buffer, (fr_time_res_t)dst_enumv->flags.flag_time_res) < 0) return -1;
 		} else {
 			if (fr_unix_time_from_str(&dst->vb_date, buffer, FR_TIME_RES_SEC) < 0) return -1;
 		}
@@ -6305,7 +6305,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	{
 		fr_time_res_t	res = FR_TIME_RES_SEC;
 
-		if (data->enumv) res = data->enumv->flags.flag_time_res;
+		if (data->enumv) res = (fr_time_res_t)data->enumv->flags.flag_time_res;
 
 		FR_SBUFF_RETURN(fr_unix_time_to_str, &our_out, data->vb_date, res, true);
 		break;
@@ -6321,7 +6321,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		bool		is_unsigned = false;
 
 		if (data->enumv) {
-			res = data->enumv->flags.flag_time_res;
+			res = (fr_time_res_t)data->enumv->flags.flag_time_res;
 			is_unsigned = data->enumv->flags.is_unsigned;
 		}
 
@@ -7672,7 +7672,7 @@ static void _fr_value_box_debug(FILE *fp, fr_value_box_t const *vb, int depth, i
 			snprintf(buffer, sizeof(buffer), " (sec!) %" PRId64, fr_time_delta_unwrap(vb->vb_time_delta));
 		} else {
 			snprintf(buffer, sizeof(buffer), " (%s) %" PRId64,
-				 fr_table_str_by_value(fr_time_precision_table, vb->enumv->flags.flag_time_res, "?"),
+				 fr_table_str_by_value(fr_time_precision_table, (fr_time_res_t)vb->enumv->flags.flag_time_res, "?"),
 				 fr_time_delta_unwrap(vb->vb_time_delta));
 		}
 	}

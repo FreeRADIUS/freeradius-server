@@ -965,7 +965,7 @@ static bool compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 			return false;
 		}
 
-		action = MOD_PRIORITY(atoi(value));
+		action = (unlang_mod_action_t)MOD_PRIORITY(atoi(value));
 
 		if (!MOD_ACTION_VALID_SET(action)) goto invalid_action;
 

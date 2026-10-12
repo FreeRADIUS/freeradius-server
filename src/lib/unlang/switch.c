@@ -562,7 +562,7 @@ void unlang_switch_init(void)
 	unlang_register(&(unlang_op_t){
 			.name = "case",
 			.type = UNLANG_TYPE_CASE,
-			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT,
+			.flag = (unlang_op_flag_t)(UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT),
 
 			.compile = unlang_compile_case,
 			.interpret = unlang_case,

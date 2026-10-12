@@ -171,8 +171,8 @@ static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
 /*
  *	Can't use |= or ^= else we get out of range errors
  */
-#define UNRESOLVED_SET(_flags) (*(_flags) = (*(_flags) | TMPL_FLAG_UNRESOLVED))
-#define RESOLVED_SET(_flags) (*(_flags) = (*(_flags) & ~TMPL_FLAG_UNRESOLVED))
+#define UNRESOLVED_SET(_flags) (*(_flags) = (tmpl_type_t)(*(_flags) | TMPL_FLAG_UNRESOLVED))
+#define RESOLVED_SET(_flags) (*(_flags) = (tmpl_type_t)(*(_flags) & ~TMPL_FLAG_UNRESOLVED))
 
 /** Verify, after skipping whitespace, that a substring ends in a terminal char, or ends without further chars
  *

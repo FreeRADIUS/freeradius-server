@@ -850,7 +850,7 @@ void unlang_foreach_init(void)
 	unlang_register(&(unlang_op_t){
 			.name = "foreach",
 			.type = UNLANG_TYPE_FOREACH,
-			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT | UNLANG_OP_FLAG_CONTINUE_POINT,
+			.flag = (unlang_op_flag_t)(UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT | UNLANG_OP_FLAG_CONTINUE_POINT),
 
 			.compile = unlang_compile_foreach,
 			.interpret = unlang_foreach,

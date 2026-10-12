@@ -279,7 +279,7 @@ yield:
 		return XLAT_ACTION_FAIL;
 	}
 
-	return unlang_xlat_yield(request, xlat_delay_resume, xlat_delay_cancel, ~FR_SIGNAL_CANCEL, yielded_at);
+	return unlang_xlat_yield(request, xlat_delay_resume, xlat_delay_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), yielded_at);
 }
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)

@@ -2346,7 +2346,7 @@ fr_type_t xlat_node_data_type(xlat_exp_t const *node)
 		fr_assert(node != NULL);
 		fr_assert(node->type == XLAT_BOX);
 		fr_assert(node->data.type == FR_TYPE_UINT8);
-		return node->data.vb_uint8;
+		return (fr_type_t)node->data.vb_uint8;
 	}
 
 	if (node->type == XLAT_TMPL) {

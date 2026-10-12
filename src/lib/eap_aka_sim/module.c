@@ -436,7 +436,7 @@ done:
 	 *	frame when the state machine finishes with
 	 *	this round.
 	 */
-	(void)unlang_module_yield(request, mod_encode, NULL, 0, NULL);
+	(void)unlang_module_yield(request, mod_encode, NULL, FR_SIGNAL_NONE, NULL);
 
 	if (virtual_server_push(&mod_session->virtual_server_result, request, inst->virtual_server, UNLANG_SUB_FRAME) < 0) {
 		unlang_interpet_frame_discard(request);

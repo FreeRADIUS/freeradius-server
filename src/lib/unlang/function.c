@@ -581,7 +581,7 @@ void unlang_function_init(void)
 	unlang_register(&(unlang_op_t){
 			.name = "function",
 			.type = UNLANG_TYPE_FUNCTION,
-			.flag = UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL,
+			.flag = (unlang_op_flag_t)(UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL),
 
 			.interpret = call_no_result,
 			.signal = unlang_function_signal,

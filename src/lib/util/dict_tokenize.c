@@ -58,7 +58,7 @@ typedef enum CC_HINT(flag_enum) : uint8_t {
 } dict_nest_t;
 DIAG_ON(attributes)
 
-#define NEST_ANY (NEST_TOP | NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE)
+#define NEST_ANY ((dict_nest_t)(NEST_TOP | NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE))
 
 static fr_table_num_sorted_t const dict_nest_table[] = {
 	{ L("ATTRIBUTE"),	NEST_ATTRIBUTE },
@@ -1829,7 +1829,7 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 		return -1;
 	}
 
-	frame = dict_dctx_find_frame(dctx, NEST_TOP | NEST_PROTOCOL | NEST_ATTRIBUTE);
+	frame = dict_dctx_find_frame(dctx, (dict_nest_t)(NEST_TOP | NEST_PROTOCOL | NEST_ATTRIBUTE));
 	if (!fr_cond_assert_msg(frame, "Context stack doesn't have an attribute or dictionary "
 				"root to begin searching from %s[%d]", dctx->filename, dctx->line) ||
 	    !fr_cond_assert_msg(fr_type_is_structural(frame->da->type), "Context attribute is not structural %s[%d]",
@@ -1900,7 +1900,7 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 		return -1;
 	}
 
-	frame = dict_dctx_find_frame(dctx, NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE);
+	frame = dict_dctx_find_frame(dctx, (dict_nest_t)(NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE));
 	if (frame) {
 		fr_strerror_printf("BEGIN-PROTOCOL cannot be used inside of any other BEGIN/END block.  Previous definition is at %s[%d]",
 				   frame->filename, frame->line);
@@ -2215,7 +2215,7 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 	 *	This is where we'll have begun the previous search to
 	 *	evaluate the BEGIN keyword.
 	 */
-	frame = dict_dctx_find_frame(dctx, NEST_TOP | NEST_PROTOCOL | NEST_ATTRIBUTE);
+	frame = dict_dctx_find_frame(dctx, (dict_nest_t)(NEST_TOP | NEST_PROTOCOL | NEST_ATTRIBUTE));
 	if (!fr_cond_assert(frame)) return -1;
 
 	da = fr_dict_attr_by_oid(NULL, frame->da, argv[0]);

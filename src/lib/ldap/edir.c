@@ -308,7 +308,7 @@ unlang_action_t fr_ldap_edir_get_password(unlang_result_t *p_result,
 					     request,
 					     NULL,
 					     ldap_edir_get_password_resume,
-					     ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
+					     ldap_edir_get_password_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL),
 					     UNLANG_SUB_FRAME, edir_ctx) == UNLANG_ACTION_FAIL) {
 		talloc_free(edir_ctx);
 		RETURN_UNLANG_FAIL;

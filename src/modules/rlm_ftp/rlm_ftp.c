@@ -336,7 +336,7 @@ static xlat_action_t ftp_get_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *o
 		goto error;
 	}
 
-	return unlang_xlat_yield(request, ftp_get_xlat_resume, ftp_io_xlat_signal, ~FR_SIGNAL_CANCEL, rctx);
+	return unlang_xlat_yield(request, ftp_get_xlat_resume, ftp_io_xlat_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 /** Cleans up after a FTP request.

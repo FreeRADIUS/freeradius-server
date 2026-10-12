@@ -293,7 +293,7 @@ static void *sql_escape_uctx_alloc(UNUSED request_t *request, void const *uctx)
  */
 static sql_fall_through_t fall_through(map_list_t *maps)
 {
-	bool rcode;
+	sql_fall_through_t rcode;
 	map_t *map, *next;
 
 	for (map = map_list_head(maps);
@@ -309,9 +309,9 @@ static sql_fall_through_t fall_through(map_list_t *maps)
 			if (tmpl_is_data(map->rhs)) {
 				fr_assert(tmpl_value_type(map->rhs) == FR_TYPE_BOOL);
 
-				rcode = tmpl_value(map->rhs)->vb_bool;
+				rcode = tmpl_value(map->rhs)->vb_bool ? FALL_THROUGH_YES : FALL_THROUGH_NO;
 			} else {
-				rcode = false;
+				rcode = FALL_THROUGH_NO;
 			}
 
 			talloc_free(map);
@@ -2347,7 +2347,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	sql_xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2);
 	sql_xlat_arg[0] = (xlat_arg_parser_t){
 		.type = FR_TYPE_STRING,
-		.variadic = true,
+		.variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH,
 		.concat = true,
 	};
 	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
@@ -2359,7 +2359,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	sql_xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2);
 	sql_xlat_arg[0] = (xlat_arg_parser_t){
 		.type = FR_TYPE_STRING,
-		.variadic = true,
+		.variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH,
 		.concat = true
 	};
 	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;

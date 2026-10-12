@@ -634,7 +634,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	ret = fr_curl_io_request_enqueue(t->mhandle, request, randle);
 	if (ret < 0) goto error_release;
 
-	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, ~FR_SIGNAL_CANCEL, rctx);
+	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static unlang_action_t mod_common_result(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -743,7 +743,7 @@ static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, mo
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_common_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
+	return unlang_module_yield(request, mod_common_result, rest_io_module_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), handle);
 }
 
 static unlang_action_t mod_authenticate_result(unlang_result_t *p_result,
@@ -880,7 +880,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authenticate_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
+	return unlang_module_yield(request, mod_authenticate_result, rest_io_module_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), handle);
 }
 
 static unlang_action_t mod_accounting_result(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -953,7 +953,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_accounting_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
+	return unlang_module_yield(request, mod_accounting_result, rest_io_module_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), handle);
 }
 
 static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser_t const *config_items,

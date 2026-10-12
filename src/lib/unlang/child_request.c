@@ -276,7 +276,7 @@ int unlang_child_request_op_init(void)
 			 *	to end normally so that non-detachable requests are
 			 *	guaranteed the parent still exists.
 			 */
-			.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_INTERNAL,
+			.flag = (unlang_op_flag_t)(UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_INTERNAL),
 
 			.interpret = unlang_child_request_done,
 			.signal = unlang_child_request_signal,

@@ -548,7 +548,7 @@ static fr_dict_attr_t *fr_der_unknown_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t 
 
 		flags->is_option = true;
 		flags->option	 = attr;
-		flags->class	 = tag_byte & DER_TAG_CLASS_MASK;
+		flags->class	 = (fr_der_tag_class_t)(tag_byte & DER_TAG_CLASS_MASK);
 	}
 
 	return da;
@@ -897,7 +897,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 				fr_strerror_printf_push("Attribute %s is a sequence_of=%s which does not allow DER type '%s'",
 							parent->name,
 							fr_der_tag_to_str(flags->sequence_of),
-							fr_der_tag_to_str(current_tag));
+							fr_der_tag_to_str((fr_der_tag_t)current_tag));
 				goto error;
 			}
 
@@ -1984,8 +1984,8 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	/*
 	 *	Decode the tag flags
 	 */
-	tag_class   = (tag_byte & DER_TAG_CLASS_MASK);
-	constructed = IS_DER_TAG_CONSTRUCTED(tag_byte);
+	tag_class   = (fr_der_tag_class_t)(tag_byte & DER_TAG_CLASS_MASK);
+	constructed = (fr_der_tag_constructed_t)(tag_byte & DER_TAG_CONSTRUCTED_MASK);
 
 	/*
 	 *	Decode the tag
@@ -2018,7 +2018,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 
 		if ((expected != FR_DER_TAG_INVALID) && (*tag != expected)) {
 			fr_strerror_printf_push("Invalid tag %s. Expected tag %s",
-					   fr_der_tag_to_str(*tag), fr_der_tag_to_str(expected));
+					   fr_der_tag_to_str((fr_der_tag_t)*tag), fr_der_tag_to_str(expected));
 			return -1;
 		}
 		break;
@@ -2064,7 +2064,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 				if (flags->optional) return 0;
 
 				fr_strerror_printf_push("Invalid tag %s for attribute %s. Expected tag %s",
-						   fr_der_tag_to_str(*tag), parent->name, fr_der_tag_to_str(flags->der_type));
+						   fr_der_tag_to_str((fr_der_tag_t)*tag), parent->name, fr_der_tag_to_str(flags->der_type));
 				return -1;
 			}
 		}
@@ -2081,7 +2081,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		return -1;
 	}
 
-	if (IS_DER_TAG_CONSTRUCTED(func->constructed) != constructed) {
+	if (func->constructed != constructed) {
 		fr_strerror_printf_push("Constructed flag mismatch for tag %u", *tag);
 		return -1;
 	}
@@ -2429,7 +2429,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			 */
 			if (unlikely(tag != FR_DER_TAG_OCTETSTRING)) {
 				fr_strerror_printf_push("Expected tag OCTETSTRING for the %s extnValue. Got tag %s",
-							parent->name, fr_der_tag_to_str(tag));
+							parent->name, fr_der_tag_to_str((fr_der_tag_t)tag));
 				slen = -1;
 				goto error;
 			}
@@ -2587,7 +2587,7 @@ static ssize_t fr_der_decode_unknown(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	 *	We have no idea what is inside of the value, so we also remember whether or not the data
 	 *	said that it was constructed.
 	 */
-	flags->class	      = tag_byte & DER_TAG_CLASS_MASK;
+	flags->class	      = (fr_der_tag_class_t)(tag_byte & DER_TAG_CLASS_MASK);
 	flags->is_option      = (flags->class != FR_DER_CLASS_UNIVERSAL);
 	flags->is_constructed = IS_DER_TAG_CONSTRUCTED(tag_byte);
 	if (flags->is_option) flags->option = tag_byte & DER_TAG_CONTINUATION;
@@ -2805,7 +2805,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	 *	attributes in dictionarty.common, and remove the "tags compatible" checks.
 	 */
 	if (unlikely((tag != flags->der_type) &&
-		     (!fr_type_to_der_tag_valid(parent->type, tag) || !fr_der_tags_compatible(tag, flags->der_type)))) {
+		     (!fr_type_to_der_tag_valid(parent->type, (fr_der_tag_t)tag) || !fr_der_tags_compatible((fr_der_tag_t)tag, flags->der_type)))) {
 		/*
 		 *	Optional or not, if we can create a default value, then do so.
 		 *
@@ -2823,7 +2823,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		 */
 		if (!flags->optional) {
 			fr_strerror_printf_push("Failed decoding %s - got tag '%s', expected '%s'", parent->name,
-						fr_der_tag_to_str(tag), fr_der_tag_to_str(flags->der_type));
+						fr_der_tag_to_str((fr_der_tag_t)tag), fr_der_tag_to_str(flags->der_type));
 			return -1;
 		}
 

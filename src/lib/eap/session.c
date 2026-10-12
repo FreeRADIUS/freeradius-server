@@ -399,7 +399,7 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 		case FR_EAP_METHOD_NOTIFICATION:
 		case FR_EAP_METHOD_NAK:
 			REDEBUG("Initial EAP method %s(%u) invalid",
-				eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
+				eap_type2name((eap_type_t)eap_packet->data[0]), eap_packet->data[0]);
 			goto error;
 
 		/*
@@ -441,7 +441,7 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 			RERROR("Response appears to match a previous request, but the EAP type is wrong");
 			RERROR("We expected EAP type %s, but received type %s",
 			       eap_type2name(eap_session->type),
-			       eap_type2name(eap_packet->data[0]));
+			       eap_type2name((eap_type_t)eap_packet->data[0]));
 			RERROR("Your Supplicant or NAS is probably broken");
 			goto error;
 		}

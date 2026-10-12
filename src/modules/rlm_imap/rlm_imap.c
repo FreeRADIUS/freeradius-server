@@ -187,7 +187,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(unlang_result_t *p
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authenticate_resume, imap_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
+	return unlang_module_yield(request, mod_authenticate_resume, imap_io_module_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), randle);
 }
 
 /** Clean up CURL handle on freeing

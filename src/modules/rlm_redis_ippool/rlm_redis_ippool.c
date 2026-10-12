@@ -1009,7 +1009,7 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 					"Failed enqueuing Redis command", UNLANG_ACTION_FAIL);
 
 	if (out_cmds) *out_cmds = cmds;
-	return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, rctx);
+	return unlang_module_yield(request, resume, cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 /** Callback to process results from allocation script
@@ -1327,7 +1327,7 @@ static unlang_action_t CC_HINT(nonnull) redis_ippool_load_resume(unlang_result_t
 
 	if (fr_redis_async_cmd_resend(rctx->eval_cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
 
-	return unlang_module_yield(request, rctx->resume, rctx->cancel, ~FR_SIGNAL_CANCEL, rctx->eval_rctx);
+	return unlang_module_yield(request, rctx->resume, rctx->cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx->eval_rctx);
 }
 
 static void lua_script_load_results(request_t *request, UNUSED fr_redis_command_t *cmd,
@@ -1395,7 +1395,7 @@ static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_re
 		rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, NULL, 0, load_cmds,
 						     false, fr_redis_async_cmd_node(cmd));
 		return unlang_module_yield(request, redis_ippool_load_resume, redis_ippool_load_cancel,
-					   ~FR_SIGNAL_CANCEL, rctx);
+					   FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 	}
 
 	case REDIS_ASYNC_RCODE_MOVE:
@@ -1410,11 +1410,11 @@ static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_re
 
 	case REDIS_ASYNC_RCODE_ASK:
 		if (fr_redis_async_cmd_redirect(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
-		return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
+		return unlang_module_yield(request, resume, cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), mctx->rctx);
 
 	case REDIS_ASYNC_RCODE_TRY_AGAIN:
 		if (fr_redis_async_cmd_resend(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
-		return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
+		return unlang_module_yield(request, resume, cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), mctx->rctx);
 
 	default:
 		break;
@@ -1880,7 +1880,7 @@ static xlat_action_t redis_ippool_list_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor
 	case REDIS_ASYNC_RCODE_TRY_AGAIN:
 		if (fr_redis_async_cmd_resend(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
 		return unlang_xlat_yield(request, redis_ippool_list_resume, redis_ippool_list_cancel,
-					   ~FR_SIGNAL_CANCEL, xctx->rctx);
+					   FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), xctx->rctx);
 
 	default:
 		break;
@@ -1948,7 +1948,7 @@ static xlat_action_t redis_ippool_list_next_scan(request_t *request, rlm_redis_i
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
 					"Failed enqueuing redis command", XLAT_ACTION_FAIL);
 
-	return unlang_xlat_yield(request, redis_ippool_list_resume, redis_ippool_list_cancel, ~FR_SIGNAL_CANCEL, rctx);
+	return unlang_xlat_yield(request, redis_ippool_list_resume, redis_ippool_list_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static xlat_action_t redis_ippool_list_start(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, xlat_ctx_t const *xctx,
@@ -2168,7 +2168,7 @@ static unlang_action_t CC_HINT(nonnull) mod_show(unlang_result_t *p_result, modu
 	REDIS_ASYNC_START_RCODE_PROCESS(rcode, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
 					"Failed enqueueing Redis command", UNLANG_ACTION_FAIL);
 
-	return unlang_module_yield(request, mod_show_resume, mod_info_cancel, ~FR_SIGNAL_CANCEL, rctx);
+	return unlang_module_yield(request, mod_show_resume, mod_info_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static void mod_stats_result(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
@@ -2277,7 +2277,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(unlang_result_t *p_result, mod
 	REDIS_ASYNC_START_RCODE_PROCESS(rcode, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
 					"Failed enqueueing Redis command", UNLANG_ACTION_FAIL);
 
-	return unlang_module_yield(request, mod_show_resume, mod_info_cancel, ~FR_SIGNAL_CANCEL, rctx);
+	return unlang_module_yield(request, mod_show_resume, mod_info_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 /** Increment an IP address by a given number of addresses
@@ -2526,11 +2526,11 @@ static xlat_action_t redis_ippool_common_resume(TALLOC_CTX *ctx, fr_dcursor_t *o
 
 	case REDIS_ASYNC_RCODE_ASK:
 		if (fr_redis_async_cmd_redirect(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
-		return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel, ~FR_SIGNAL_CANCEL, rctx);
+		return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 
 	case REDIS_ASYNC_RCODE_TRY_AGAIN:
 		if (fr_redis_async_cmd_resend(rctx->cmd) != REDIS_ASYNC_RCODE_ASK) return XLAT_ACTION_FAIL;
-		return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel, ~FR_SIGNAL_CANCEL, rctx);
+		return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 
 	case REDIS_ASYNC_RCODE_ERROR:
 		PERROR("Server returned error");
@@ -2675,7 +2675,7 @@ static xlat_action_t redis_ippool_add_common(request_t *request, rlm_redis_ippoo
 					"Failed to launch Redis command", XLAT_ACTION_FAIL);
 
 	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
-				 ~FR_SIGNAL_CANCEL, rctx);
+				 FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static xlat_arg_parser_t const redis_ippool_subnet_add_args[] = {
@@ -2781,7 +2781,7 @@ static xlat_action_t redis_ippool_remove_common(request_t *request, rlm_redis_ip
 					"Failed to launch Redis command", XLAT_ACTION_FAIL);
 
 	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
-				 ~FR_SIGNAL_CANCEL, rctx);
+				 FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static xlat_arg_parser_t const redis_ippool_subnet_remove_args[] = {
@@ -2885,7 +2885,7 @@ static xlat_action_t redis_ippool_release_common(request_t *request, rlm_redis_i
 					"Failed to launch Redis command", XLAT_ACTION_FAIL);
 
 	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
-				 ~FR_SIGNAL_CANCEL, rctx);
+				 FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static xlat_arg_parser_t const redis_ippool_subnet_release_args[] = {
@@ -2994,7 +2994,7 @@ static xlat_action_t redis_ippool_modify_common(request_t *request, rlm_redis_ip
 					"Failed to launch Redis command", XLAT_ACTION_FAIL);
 
 	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
-				 ~FR_SIGNAL_CANCEL, rctx);
+				 FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static xlat_arg_parser_t const redis_ippool_subnet_modify_args[] = {
@@ -3103,7 +3103,7 @@ static xlat_action_t redis_ippool_assign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 					"Failed to launch Redis command", XLAT_ACTION_FAIL);
 
 	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
-				 ~FR_SIGNAL_CANCEL, rctx);
+				 FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static xlat_arg_parser_t const redis_ippool_unassign_args[] = {
@@ -3153,7 +3153,7 @@ static xlat_action_t redis_ippool_unassign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED f
 					"Failed to launch Redis command", XLAT_ACTION_FAIL);
 
 	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
-				 ~FR_SIGNAL_CANCEL, rctx);
+				 FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
 static void lua_script_load(fr_redis_trunk_t *rtrunk, UNUSED void *uctx)

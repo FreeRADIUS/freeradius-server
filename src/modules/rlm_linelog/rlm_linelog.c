@@ -543,7 +543,7 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			break;
 
 		case LINELOG_BUFFER_WRITE_YIELD:
-			return unlang_xlat_yield(request, file_batching_xlat_resume, file_batching_xlat_handle_signal, ~FR_SIGNAL_CANCEL, entry);
+			return unlang_xlat_yield(request, file_batching_xlat_resume, file_batching_xlat_handle_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), entry);
 		}
 
 		slen = entry->data_len;
@@ -630,7 +630,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(unlang_result_t *p
 			RETURN_UNLANG_OK;
 
 		case LINELOG_BUFFER_WRITE_YIELD:
-			return unlang_module_yield(request, file_batching_mod_resume, file_batching_mod_handle_signal, ~FR_SIGNAL_CANCEL, entry);
+			return unlang_module_yield(request, file_batching_mod_resume, file_batching_mod_handle_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), entry);
 		}
 	}
 
@@ -844,7 +844,7 @@ build_vector:
 				RETURN_UNLANG_OK;
 
 			case LINELOG_BUFFER_WRITE_YIELD:
-				return unlang_module_yield(request, file_batching_mod_resume, file_batching_mod_handle_signal, ~FR_SIGNAL_CANCEL, entry);
+				return unlang_module_yield(request, file_batching_mod_resume, file_batching_mod_handle_signal, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), entry);
 			}
 		} else {
 			rcode = linelog_write(inst, call_env, request, vector_p, vector_len, with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
