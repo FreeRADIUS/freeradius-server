@@ -384,7 +384,6 @@ int fr_get_debug_state(void)
 	if (pid == 0) {
 		int8_t	ret = DEBUGGER_STATE_NOT_ATTACHED;
 		int	ppid = getppid();
-		int	flags;
 
 		/*
 		 *	Disable the leak checker for this forked process
@@ -393,10 +392,6 @@ int fr_get_debug_state(void)
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
 		lsan_disable = true;
 #endif
-
-DIAG_OFF(deprecated-declarations)
-		flags = PT_ATTACH;
-DIAG_ON(deprecated-declarations)
 
 		/* Close parent's side */
 		close(from_child[0]);
@@ -410,7 +405,9 @@ DIAG_ON(deprecated-declarations)
 		 *	a SIGKILL.
 		 */
 		errno = 0;
-		_PTRACE(flags, ppid);
+DIAG_OFF(deprecated-declarations)
+		_PTRACE(PT_ATTACH, ppid);
+DIAG_ON(deprecated-declarations)
 		if (errno == 0) {
 			/* Wait for the parent to stop */
 			waitpid(ppid, NULL, 0);
