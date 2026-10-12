@@ -1713,7 +1713,7 @@ static CC_HINT(nonnull) unlang_action_t mschap_process_response(unlang_result_t 
 								fr_pair_t *challenge, fr_pair_t *response)
 {
 	int			offset;
-	rlm_rcode_t		mschap_result;
+	int			mschap_result;
 	mschap_auth_call_env_t	*env_data = auth_ctx->env_data;
 
 	*mschap_version = 1;
