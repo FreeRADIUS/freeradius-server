@@ -189,7 +189,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 */
 	if (unlikely(fr_pair_find_or_append_by_da(request->session_state_ctx, &depth_pair, &request->session_state_pairs,
 					 attr_tls_certificate_chain_depth) < 0)) {
-		RERROR("Failed to add certificate chain depth pair");
+		REDEBUG("Failed to add certificate chain depth pair");
 		return 0;
 	}
 	if (depth_pair->vp_uint32 < ((uint32_t)depth) + 1) depth_pair->vp_uint32 = (uint32_t)depth + 1;
@@ -225,7 +225,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			my_ok = 1;
 			X509_STORE_CTX_set_error(x509_ctx, 0);
 		} else {
-			RERROR("Verification error - %s (%i)", p, err);
+			REDEBUG("Verification error - %s (%i)", p, err);
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_CERTIFICATE_VERIFY_FAILED);
 			tls_verify_error_detail(request, ssl_ctx, err);
 			goto done;
@@ -450,7 +450,7 @@ static unlang_action_t tls_verify_peer_cert_push(request_t *request, fr_tls_sess
 	 */
 	ua = fr_tls_call_push(child, tls_verify_peer_cert_result, conf, tls_session, false);
 	if (ua == UNLANG_ACTION_FAIL) {
-	        fr_tls_log_error("Failed calling TLS virtual server");
+	        REDEBUG("(TLS) Failed calling TLS virtual server");
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}

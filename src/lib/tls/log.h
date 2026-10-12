@@ -122,13 +122,21 @@ int		fr_openssl_log_perror(request_t *request, char const *msg, ...)  CC_HINT(fo
  * most, the ones attached to a request, are the ones with nothing to say
  * where they came from.
  *
+ * The request branch is REDEBUG and not RERROR on purpose.  RERROR logs at
+ * L_DBG_LVL_OFF, which would put every TLS connection failure into
+ * radiusd.log.  An administrator decides which failures are worth recording,
+ * by writing a `fail session { ... }` policy, so the library says what
+ * happened at debug level and leaves the decision alone.
+ *
  * Needs a `request` in scope, as every R* macro does.  A NULL `request` logs
- * globally.
+ * globally, which is why this macro still exists: nearly every caller has a
+ * request and uses REDEBUG directly, and what is left is the handful of
+ * places where the request may genuinely be absent.
  *
  * @param[in] _fmt	printf style format string.
  * @param[in] ...	printf arguments.
  */
-#define		fr_tls_log_error(_fmt, ...) ROPTIONAL(RERROR, ERROR, "(TLS) " _fmt, ## __VA_ARGS__)
+#define		fr_tls_log_error(_fmt, ...) ROPTIONAL(REDEBUG, ERROR, "(TLS) " _fmt, ## __VA_ARGS__)
 
 void		fr_tls_log_clear(void);
 

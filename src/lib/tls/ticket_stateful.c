@@ -737,7 +737,7 @@ static unlang_action_t tls_ticket_stateful_drain(request_t *request, void *uctx)
 	  *	On error, log the failure and continue.
 	 */
 	if (ua == UNLANG_ACTION_FAIL) {
-		RERROR("Failed running session cache operations");
+		REDEBUG("Failed running session cache operations");
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 

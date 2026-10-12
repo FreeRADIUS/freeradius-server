@@ -531,7 +531,7 @@ unlang_action_t fr_tls_session_psk_pending_push(request_t *request, fr_tls_sessi
 	 */
 	ua = fr_tls_call_push(child, _tls_session_psk_load_resume, conf, tls_session, false);
 	if (ua == UNLANG_ACTION_FAIL) {
-		fr_tls_log_error("Failed calling TLS virtual server");
+		REDEBUG("(TLS) Failed calling TLS virtual server");
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -2138,7 +2138,7 @@ DIAG_ON_OPTIONAL(used-but-marked-unused)
 		goto again;
 
 	case SSL_ERROR_WANT_ASYNC_JOB:
-		RERROR("No async jobs available in pool, increase thread.openssl_async_pool_max");
+		REDEBUG("No async jobs available in pool, increase thread.openssl_async_pool_max");
 		goto error;
 
 	default:
@@ -2725,13 +2725,13 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 */
 	} else {
 		if (!conf->chains || !conf->chains[0]->private_key_file) {
-			fr_tls_log_error("Server requires a private key file");
+			REDEBUG("(TLS) Server requires a private key file");
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_NO_SERVER_PRIVATE_KEY);
 			goto error;
 		}
 
 		if (!conf->chains || !conf->chains[0]->certificate_file) {
-			fr_tls_log_error("Server requires a certificate file");
+			REDEBUG("(TLS) Server requires a certificate file");
 			fr_tls_session_error_add(request, FR_ERROR_VALUE_NO_SERVER_CERTIFICATE);
 			goto error;
 		}

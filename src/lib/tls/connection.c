@@ -129,7 +129,7 @@ static void tls_connection_check(fr_tls_connection_t *conn)
 	 *	is true, and the completion is reported below.
 	 */
 	if (conn->eof && conn->idle && !fr_tls_session_is_init_finished(tls_session)) {
-		RERROR("Peer closed the connection before the handshake completed");
+		REDEBUG("Peer closed the connection before the handshake completed");
 		errno = 0;		/* fr_tls_connection_failed() records errno, and no call set one */
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 		return;
@@ -367,7 +367,7 @@ void fr_tls_connection_eof(fr_tls_connection_t *conn)
 		return;
 	}
 
-	RERROR("Peer closed the connection before the handshake completed");
+	REDEBUG("Peer closed the connection before the handshake completed");
 	errno = 0;		/* fr_tls_connection_failed() records errno, and no call set one */
 	fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 }
@@ -644,7 +644,7 @@ static unlang_action_t tls_connection_handshake(request_t *request, void *uctx)
 	ua = fr_tls_session_async_handshake_push(request, conn->tls_session);
 	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
 
-	fr_tls_log_error("Failed pushing a TLS handshake round");
+	REDEBUG("(TLS) Failed pushing a TLS handshake round");
 	return tls_connection_error(request, conn);
 }
 
@@ -778,7 +778,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	RDEBUG3("Read %zu bytes from the connection", data_len);
 
 	if (fr_dbuff_in_memcpy_partial(tls_session->dirty_in, data, data_len) != data_len) {
-		RERROR("Failed buffering %zu bytes of TLS record data", data_len);
+		REDEBUG("Failed buffering %zu bytes of TLS record data", data_len);
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_RECORD_TOO_LARGE, SSL_AD_RECORD_OVERFLOW);
 	error:
@@ -792,7 +792,7 @@ void fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size
 	 *	is not handled yet, so a record arriving now is an error.
 	 */
 	if (fr_tls_session_is_init_finished(tls_session)) {
-		RERROR("Received %zu bytes of application data, which is not supported", data_len);
+		REDEBUG("Received %zu bytes of application data, which is not supported", data_len);
 		fr_tls_session_error_alert(request, tls_session,
 					   FR_ERROR_VALUE_RECORD_AFTER_HANDSHAKE, SSL_AD_UNEXPECTED_MESSAGE);
 		goto error;

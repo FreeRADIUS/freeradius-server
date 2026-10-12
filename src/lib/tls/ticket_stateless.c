@@ -95,7 +95,7 @@ static unlang_action_t tls_ticket_stateless_push(request_t *request, fr_tls_sess
 
 	ua = fr_tls_call_push(child, tls_ticket_stateless_resume, conf, tls_session, false);
 	if (ua == UNLANG_ACTION_FAIL) {
-		fr_tls_log_error("Failed calling TLS virtual server");
+		REDEBUG("(TLS) Failed calling TLS virtual server");
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}

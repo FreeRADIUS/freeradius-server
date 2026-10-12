@@ -302,7 +302,7 @@ void fr_dtls_timer_update(fr_tls_connection_t *conn)
 
 	if (fr_timer_in(conn, conn->tl, &conn->timer_ev, fr_time_delta_from_timeval(&tv),
 			false, _fr_dtls_timer_expired, conn) < 0) {
-		RERROR("%s - Failed arming the DTLS retransmission timer", conn->name);
+		REDEBUG("%s - Failed arming the DTLS retransmission timer", conn->name);
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
 	}
 }
