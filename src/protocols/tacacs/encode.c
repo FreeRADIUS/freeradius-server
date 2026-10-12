@@ -896,7 +896,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Just to avoid malformed packet.
 			 */
 			fr_dbuff_set(&hdr_io, &hdr);
-			fr_dbuff_out(&version_byte, &hdr_io);
+			(void) fr_dbuff_out(&version_byte, &hdr_io);
 			if (!version_byte) {
 				version_byte = 0xc1; /* version 12.1 */
 				fr_dbuff_set(&hdr_io, &hdr);
