@@ -795,8 +795,8 @@ static fr_cmp_ret_t module_instance_name_cmp(void const *one, void const *two)
 	int ret;
 
 #ifdef STATIC_ANALYZER
-	if (!fr_cond_assert(a)) return +1;
-	if (!fr_cond_assert(b)) return -1;
+	if (!fr_cond_assert(a)) return CMP_GT;
+	if (!fr_cond_assert(b)) return CMP_LT;
 #endif
 
 	/*
