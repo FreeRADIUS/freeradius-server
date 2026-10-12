@@ -292,7 +292,7 @@ static int tls_ticket_stateless_app_data_set(SSL *ssl, void *arg)
 	if (unlang_request_is_cancelled(request)) return 0;
 
 	/*
-	 *	Fatal error - We definitely should be
+	 *	Fatal error - We definitely shouldn't be
 	 *      attempting to generate session tickets
 	 *      if it's not permitted.
 	 */
