@@ -40,7 +40,6 @@ extern "C" {
 
 int		fr_dtls_session_init(fr_tls_session_t *tls_session, fr_tls_conf_t const *conf);
 
-int		fr_dtls_timer_list_set(fr_tls_connection_t *conn, fr_timer_list_t *parent);
 
 void		fr_dtls_timer_update(fr_tls_connection_t *conn);
 

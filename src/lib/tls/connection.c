@@ -695,6 +695,50 @@ static size_t tls_connection_write_len(fr_tls_connection_t *conn)
 	return fr_dbuff_remaining(tls_session->dirty_out);
 }
 
+/** Allocate a connection
+ *
+ * The connection owns its own timer list, taken from `tl`, which the DTLS
+ * retransmission timer hangs off.  Every connection gets one, not only a
+ * datagram connection, because the handshake has timers which are nothing to
+ * do with the transport: a TLS 1.3 peer which owes us a session ticket is
+ * waited for on a timer too.
+ *
+ * The caller sets `uctx` before the connection runs.  The three callbacks
+ * read `conn->uctx` rather than taking a context argument of their own.
+ *
+ * @param[in] ctx		to allocate the connection in.
+ * @param[in] tl		to allocate the connection's timer sub-list from.
+ * @param[in] write		called to write octets to the peer.
+ * @param[in] connected		called once the connection can carry application data.
+ * @param[in] close		called when the connection ends.
+ * @return
+ *	- the connection on success.
+ *	- NULL on failure.
+ */
+fr_tls_connection_t *fr_tls_connection_alloc(TALLOC_CTX *ctx, fr_timer_list_t *tl,
+					     ssize_t (*write)(fr_tls_connection_t *conn,
+							      uint8_t const *data, size_t size),
+					     void (*connected)(fr_tls_connection_t *conn),
+					     void (*close)(fr_tls_connection_t *conn))
+{
+	fr_tls_connection_t *conn;
+
+	conn = talloc_zero(ctx, fr_tls_connection_t);
+	if (!conn) return NULL;
+
+	conn->tl = fr_timer_list_lst_alloc(conn, tl);
+	if (!conn->tl) {
+		talloc_free(conn);
+		return NULL;
+	}
+
+	conn->write = write;
+	conn->connected = connected;
+	conn->close = close;
+
+	return conn;
+}
+
 /** Push the connection frame onto the request's stack
  *
  * Run the interpreter once after fr_tls_connection_push() returns, so that

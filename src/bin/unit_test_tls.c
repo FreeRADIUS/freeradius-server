@@ -207,10 +207,12 @@ typedef struct {
 	bool			alert;			//!< Reject the peer with a TLS alert, see -A.
 	bool			invalid;		//!< Mark the session invalid mid-handshake, see -I.
 	bool			nonblock;		//!< Put the connection socket in non-blocking mode, see -B.
+	bool			client;			//!< Act as the client and connect to a server,
+							///< rather than accept a connection.  Copied into
+							///< every connection this program allocates.
+
 	bool			app_data;		//!< Send one byte of application data once the
 							///< handshake is done, see -P.
-	bool			app_data_sent;		//!< Whether that byte has gone out on this
-							///< connection.
 
 	bool			reject;			//!< Reject the session once the handshake
 							///< succeeds, see -R.
@@ -436,7 +438,38 @@ static void tls_request_close(fr_tls_connection_t *conn)
  */
 static void tls_request_connected(fr_tls_connection_t *conn)
 {
+	unit_test_tls_t	*utt = talloc_get_type_abort(conn->uctx, unit_test_tls_t);
+
 	DEBUG2("Connection is up and can carry application data");
+
+	/*
+	 *	Send one byte of application data, which tells the peer that
+	 *	every session ticket we were going to send has already gone.
+	 *
+	 *	This used to test fr_tls_session_is_init_finished() after
+	 *	every pass of the interpreter.  The connected callback says
+	 *	the same thing and says it once, because the connection only
+	 *	reaches TLS_CONNECTION_CONNECTED when every ticket section has
+	 *	run.
+	 */
+	if (utt->app_data && !conn->client) {
+		fr_tls_session_t *tls_session = conn->tls_session;
+
+		fr_dbuff_in_bytes(&tls_session->clean_in, 0x00);
+		if (fr_tls_session_send(conn->request, tls_session) < 0) {
+			ERROR("Failed encrypting the application data");
+			tls_request_failed(utt);
+			return;
+		}
+
+		if (fr_tls_connection_write(conn) < 0) {
+			ERROR("Failed sending the application data");
+			tls_request_failed(utt);
+			return;
+		}
+
+		DEBUG("Sent one byte of application data");
+	}
 
 	tls_request_close(conn);
 }
@@ -768,34 +801,6 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 					tls_request_failed(utt);
 					return;
 				}
-			}
-
-			/*
-			 *	Send one byte of application data, which
-			 *	tells the peer that every session ticket we
-			 *	were going to send has already gone.
-			 */
-			if (utt->app_data && !utt->app_data_sent && !utt->conn->client &&
-			    utt->conn->tls_session &&
-			    fr_tls_session_is_init_finished(utt->conn->tls_session)) {
-				fr_tls_session_t *tls_session = utt->conn->tls_session;
-
-				utt->app_data_sent = true;
-
-				fr_dbuff_in_bytes(&tls_session->clean_in, 0x00);
-				if (fr_tls_session_send(utt->conn->request, tls_session) < 0) {
-					ERROR("Failed encrypting the application data");
-					tls_request_failed(utt);
-					return;
-				}
-
-				if (fr_tls_connection_write(utt->conn) < 0) {
-					ERROR("Failed sending the application data");
-					tls_request_failed(utt);
-					return;
-				}
-
-				DEBUG("Sent one byte of application data");
 			}
 
 			if (utt->reject && (utt->connections == utt->count) &&
@@ -1419,16 +1424,22 @@ static int tls_connection_run(unit_test_tls_t *utt)
 
 	utt->connections++;
 
-	utt->conn->state = TLS_CONNECTION_NEW_SESSION;
-	utt->conn->pending = utt->conn->idle = utt->conn->fail_pending = utt->conn->eof = false;
-	utt->conn->failed = TLS_CONNECTION_FAIL_NONE;
-	utt->conn->io_state = FR_TLS_CONNECTION_IO_OK;
-	utt->conn->request = NULL;
-	utt->conn->tls_session = NULL;
+	/*
+	 *	A connection of its own for each connection, rather than one
+	 *	connection reset by hand between them.  Everything the
+	 *	library puts on a connection then goes when the connection
+	 *	goes, and this program has nothing to remember to clear.
+	 */
+	TALLOC_FREE(utt->conn);
+	MEM(utt->conn = fr_tls_connection_alloc(utt, utt->el->tl,
+						tls_connection_write,
+						tls_request_connected,
+						tls_request_close));
+	utt->conn->uctx = utt;
+	utt->conn->client = utt->client;
 
 	TALLOC_FREE(utt->post_handshake_ev);
 
-	utt->app_data_sent = false;
 
 	utt->done = false;
 	utt->ret = EXIT_SUCCESS;
@@ -1518,19 +1529,6 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	 */
 	if (utt->conf.socket_type == SOCK_DGRAM) {
 		utt->conn->tls_session->cookie = &utt->conn->request->packet->socket;
-	}
-
-	/*
-	 *	A datagram connection runs its own retransmission timer.  It
-	 *	has no event loop of its own, so it is given a sub-list of
-	 *	the one this program already runs: the timers are freed with
-	 *	the connection, and the event loop runs them without knowing
-	 *	what they are for.
-	 */
-	if ((utt->conf.socket_type == SOCK_DGRAM) &&
-	    (fr_dtls_timer_list_set(utt->conn, utt->el->tl) < 0)) {
-		PERROR("Failed giving the connection a timer list");
-		goto finish;
 	}
 
 	if (fr_tls_connection_push(utt->conn) < 0) {
@@ -1684,6 +1682,7 @@ int main(int argc, char *argv[])
 	bool			nonblock = false;
 	bool			reject = false;
 	bool			app_data = false;
+	bool			client = false;
 	char const		*alpn_names = NULL;
 	bool			alpn_required = false;
 	unsigned int		i;
@@ -1941,18 +1940,6 @@ int main(int argc, char *argv[])
 	utt->app_data = app_data;
 	utt->reject = reject;
 
-	/*
-	 *	`utt` is the argument both callbacks take, so the state
-	 *	machine stops the event loop and writes to the socket
-	 *	without reading any field of `utt`.  See fr_tls_connection_t
-	 *	for why the two callbacks exist.
-	 */
-	MEM(utt->conn = talloc_zero(utt, fr_tls_connection_t));
-	utt->conn->uctx = utt;
-	utt->conn->connected = tls_request_connected;
-	utt->conn->close = tls_request_close;
-	utt->conn->write = tls_connection_write;
-
 
 	/*
 	 *	Bootstrap and instantiate the virtual servers and the modules
@@ -2021,7 +2008,7 @@ int main(int argc, char *argv[])
 	 *	connection, it makes one.
 	 */
 	if (server) {
-		utt->conn->client = true;
+		utt->client = client = true;
 
 		if (fr_inet_pton_port(&utt->server_ipaddr, &utt->server_port, server,
 				      -1, AF_UNSPEC, true, false) < 0) {
@@ -2041,10 +2028,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	conf = utt->conn->client ? utt->conf.client : utt->conf.server;
+	conf = client ? utt->conf.client : utt->conf.server;
 	if (!conf) {
 		cf_log_err(utt_cs, "Cannot run as %s, the 'unit_test_tls' section has no '%s { ... }' subsection",
-			   utt->conn->client ? "client" : "server", utt->conn->client ? "client" : "server");
+			   client ? "client" : "server", client ? "client" : "server");
 		EXIT_WITH_FAILURE;
 	}
 
@@ -2071,7 +2058,7 @@ int main(int argc, char *argv[])
 	 */
 	conf->socket_type = utt->conf.socket_type;
 
-	utt->ssl_ctx = fr_tls_ctx_alloc(conf, utt->conn->client);
+	utt->ssl_ctx = fr_tls_ctx_alloc(conf, client);
 	if (!utt->ssl_ctx) {
 		cf_log_perr(utt_cs, "Failed creating the TLS context");
 		EXIT_WITH_FAILURE;
@@ -2087,6 +2074,7 @@ int main(int argc, char *argv[])
 
 	utt->el = main_loop_event_list();
 	fr_assert(utt->el != NULL);
+
 
 	fr_coords_create(autofree, utt->el);
 
@@ -2167,7 +2155,7 @@ int main(int argc, char *argv[])
 	 *	A server has one listening socket for every connection it
 	 *	accepts, so it is opened once, here.
 	 */
-	if (!utt->conn->client && (tls_socket_open(utt) < 0)) EXIT_WITH_FAILURE;
+	if (!utt->client && (tls_socket_open(utt) < 0)) EXIT_WITH_FAILURE;
 
 	/*
 	 *	A server starts the command once it is listening.  A client
@@ -2175,7 +2163,7 @@ int main(int argc, char *argv[])
 	 *	tls_connection_run().
 	 */
 	utt->command = command;
-	if (!utt->conn->client && command && (tls_command_start(utt, command) < 0)) EXIT_WITH_FAILURE;
+	if (!utt->client && command && (tls_command_start(utt, command) < 0)) EXIT_WITH_FAILURE;
 
 	for (i = 0; i < utt->count; i++) {
 		if (tls_connection_run(utt) < 0) EXIT_WITH_FAILURE;

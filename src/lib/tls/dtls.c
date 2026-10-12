@@ -307,36 +307,4 @@ void fr_dtls_timer_update(fr_tls_connection_t *conn)
 	}
 }
 
-/** Set the DTLS retransmission timer list for this connection.
- *
- * The library runs its own timers rather than running
- * application-layer callbacks.  The only actions taken by a callback
- * would be to set the timer, or send a packet.  And we can do that
- * ourselves once we have a timer list.
- *
- * There will arguably only ever be one timer event, so we don't
- * _technically_ need a separate timer list for DTLS.  But having a
- * separate timer list makes it easier for the application use it for
- * retransmitting application-layer data.
- *
- *  Once the DTLS connection is established, the TLS library no longer
- *  uses conn->tl or conn->timer_ev.
- *
- * @param[in] conn	to give a timer list to.
- * @param[in] parent	list to allocate the sub-list from.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dtls_timer_list_set(fr_tls_connection_t *conn, fr_timer_list_t *parent)
-{
-	fr_assert(conn->tls_session->socket_type == SOCK_DGRAM);
-
-	if (conn->tl) return 0;
-
-	conn->tl = fr_timer_list_lst_alloc(conn, parent);
-	if (!conn->tl) return -1;
-
-	return 0;
-}
 #endif /* WITH_TLS */

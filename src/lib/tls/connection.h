@@ -187,6 +187,12 @@ struct fr_tls_connection_s {
 							///< amount of data written >=0.
 };
 
+fr_tls_connection_t *fr_tls_connection_alloc(TALLOC_CTX *ctx, fr_timer_list_t *tl,
+					     ssize_t (*write)(fr_tls_connection_t *conn,
+							      uint8_t const *data, size_t size),
+					     void (*connected)(fr_tls_connection_t *conn),
+					     void (*close)(fr_tls_connection_t *conn));
+
 int		fr_tls_connection_push(fr_tls_connection_t *conn);
 
 void		fr_tls_connection_wake(fr_tls_connection_t *conn);
