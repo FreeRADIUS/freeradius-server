@@ -4427,20 +4427,39 @@ post_ca:
 	 *	current security level.  However, this is OpenSSL.  If
 	 *	you set conflicting options, it doesn't give an error.
 	 *	Instead, it just picks something to do.
+	 *
+	 *	SSL_CTX_set_cipher_list() accepts an empty string to
+	 *	clear the list for TLS <1.3 methods.  However, it
+	 *	reports an error.  We therefore catch the error, and
+	 *	allow it.
 	 */
-	if (conf->cipher_list) {
-		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			tls_error_log(NULL, "Failed setting cipher list");
+	if (conf->cipher_list &&
+	    !SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
+		unsigned long err = ERR_peek_last_error();
+
+		if (ERR_GET_LIB(err) != ERR_LIB_SSL ||
+		    ERR_GET_REASON(err) != SSL_R_NO_CIPHER_MATCH) {
+			tls_error_log(NULL, "Failed setting cipher_list");
 			return NULL;
 		}
 	}
 
 #ifdef TLS1_3_VERSION
-       if (conf->cipher_suites) {
-               if (!SSL_CTX_set_ciphersuites(ctx, conf->cipher_suites)) {
-                       tls_error_log(NULL, "Failed setting cipher suites");
-                       return NULL;
-               }
+	/*
+	 *	SSL_CTX_set_ciphersuites() accepts an empty string to
+	 *	clear the list for TLS >=1.3 methods.  However, it
+	 *	reports an error.  We therefore catch the error, and
+	 *	allow it.
+	 */
+       if (conf->cipher_suites &&
+	   !SSL_CTX_set_ciphersuites(ctx, conf->cipher_suites)) {
+		unsigned long err = ERR_peek_last_error();
+
+		if (ERR_GET_LIB(err) != ERR_LIB_SSL ||
+		    ERR_GET_REASON(err) != SSL_R_NO_CIPHER_MATCH) {
+			tls_error_log(NULL, "Failed setting cipher_suites");
+			return NULL;
+		}
        }
 #endif
 
