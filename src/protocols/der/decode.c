@@ -1606,6 +1606,11 @@ static ssize_t fr_der_decode_ipv4_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 		return -1;
 	}
 
+	if (!len && byte) {
+		fr_strerror_printf_push("Invalid ipv4prefix, no address bytes but unused bits is %u", byte);
+		return -1;
+	}
+
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
 		fr_strerror_const_push("Out of memory");
@@ -1702,6 +1707,11 @@ static ssize_t fr_der_decode_ipv6_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 	FR_DBUFF_OUT_RETURN(&byte, &our_in);
 	if (byte > 7) {
 		fr_strerror_printf_push("Invalid ipv6prefix is too large (%02x)", byte);
+		return -1;
+	}
+
+	if (!len && byte) {
+		fr_strerror_printf_push("Invalid ipv6prefix, no address bytes but unused bits is %u", byte);
 		return -1;
 	}
 

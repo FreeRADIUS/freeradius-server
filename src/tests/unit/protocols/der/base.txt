@@ -1001,6 +1001,20 @@ match Test-IPv4-Prefix = 10.5.0.4/32
 decode-pair 03 01 00
 match Test-IPv4-Prefix = 0.0.0.0/0
 
+#
+#  Unused bits with no address bytes
+#
+decode-pair 03 01 07
+match ERROR: Invalid ipv4prefix, no address bytes but unused bits is 7
+
+proto-dictionary-root Test-IPv6-Prefix
+
+decode-pair 03 01 00
+match Test-IPv6-Prefix = ::/0
+
+decode-pair 03 01 07
+match ERROR: Invalid ipv6prefix, no address bytes but unused bits is 7
+
 proto-dictionary der
 
 #
@@ -1156,4 +1170,4 @@ encode-pair Test-Enumerated = -1
 match 0a 01 ff
 
 count
-match 651
+match 658
