@@ -251,9 +251,7 @@ void fr_tls_ticket_stateless_disable(SSL_CTX *ctx)
 
 	/*
 	 *	This controls the number of stateful or stateless
-	 *	tickets generated with TLS 1.3.  In OpenSSL 1.1.0
-	 *	it's also required to disable sending session tickets,
-	 *	SSL_SESS_CACHE_OFF is not good enough.
+	 *	tickets generated with TLS 1.3.
 	 */
 	SSL_CTX_set_num_tickets(ctx, 0);
 }
