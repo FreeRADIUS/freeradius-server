@@ -137,6 +137,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	uint32_t		xid;
 	fr_pair_t		*vp;
 	fr_dhcpv4_packet_code_t	code;
+	uint32_t		type;
 	int			port, rcode;
 
 	rlm_dhcpv4_delay_t	*d;
@@ -171,14 +172,20 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	 */
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_type);
 	if (vp) {
-		code = vp->vp_uint32;
+		type = vp->vp_uint32;
 
 	} else if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_type)) != NULL) {
-		code = (fr_dhcpv4_packet_code_t)vp->vp_uint8;
+		type = vp->vp_uint8;
 
 	} else {
-		code = request->packet->code;
+		type = request->packet->code;
 	}
+
+	if (!FR_DHCP_PACKET_CODE_VALID(type)) {
+		REDEBUG("Invalid DHCP packet type %u", type);
+		RETURN_UNLANG_FAIL;
+	}
+	code = (fr_dhcpv4_packet_code_t)type;
 
 	/*
 	 *	Set the destination port, defaulting to 67
