@@ -2028,6 +2028,15 @@ int main(int argc, char **argv)
 	}
 
 	/*
+	 *	"auto" is FR_RADIUS_CODE_UNDEFINED, and the code is then
+	 *	chosen from the destination port.
+	 */
+	if ((packet_code != FR_RADIUS_CODE_UNDEFINED) && !FR_RADIUS_PACKET_CODE_VALID(packet_code)) {
+		ERROR("Invalid request type \"%s\"", argv[2]);
+		usage();
+	}
+
+	/*
 	 *	Resolve hostname.
 	 */
 	if (strcmp(argv[1], "-") != 0) {

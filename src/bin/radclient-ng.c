@@ -1639,8 +1639,14 @@ int main(int argc, char **argv)
 		packet_code = atoi(argv[2]);
 	}
 
-	fr_assert(packet_code != 0);
-	fr_assert(packet_code < FR_RADIUS_CODE_MAX);
+	/*
+	 *	"auto" is FR_RADIUS_CODE_UNDEFINED, and the code is then
+	 *	chosen from the destination port.
+	 */
+	if ((packet_code != FR_RADIUS_CODE_UNDEFINED) && !FR_RADIUS_PACKET_CODE_VALID(packet_code)) {
+		ERROR("Invalid request type \"%s\"", argv[2]);
+		usage();
+	}
 
 	/*
 	 *	Initialize the retry configuration for this type of packet.
