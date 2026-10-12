@@ -145,8 +145,6 @@ server tls-session {
 	#  just cause the server to emit a warning.
 	#
 	load session {
-		control.Cache-Allow-Insert := no
-
 		cache_tls_session
 	}
 
@@ -186,9 +184,6 @@ server tls-session {
 	#  just cause the server to emit a warning.
 	#
 	clear session {
-		control.Cache-TTL := 0
-		control.Cache-Allow-Insert := no
-
 		cache_tls_session
 	}
 
