@@ -54,7 +54,8 @@ retry_delay:: Time between retries of failed CRL refreshes.
 
 ca_file:: File containing trusted CA, used to sign CRLs
 
-This can reference the setting in the `tls-common` template.
+`ca_file` can reference the `ca_file` item of the `tls-common`
+template.
 
 ----
 #		ca_file = ${templates.tls-common.ca_file}

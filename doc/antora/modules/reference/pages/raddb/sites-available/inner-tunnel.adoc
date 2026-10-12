@@ -16,16 +16,16 @@ authentication methods, independently from the "default" server. It is
 listening on "localhost", so that it can only be used from the same
 machine.
 
-$ radtest USER PASSWORD 127.0.0.1:18120 0 testing123
+    $ radtest USER PASSWORD 127.0.0.1:18120 0 testing123
 
 If it works, you have configured the inner tunnel correctly. To check
 if PEAP will work, use:
 
-$ radtest -t mschap USER PASSWORD 127.0.0.1:18120 0 testing123
+    $ radtest -t mschap USER PASSWORD 127.0.0.1:18120 0 testing123
 
 If that works, PEAP should work. If that command doesn't work, then
 
-FIX THE INNER TUNNEL CONFIGURATION SO THAT IT WORKS.
+    FIX THE INNER TUNNEL CONFIGURATION SO THAT IT WORKS.
 
 Do NOT do any PEAP tests. It won't help. Instead, concentrate on
 fixing the inner tunnel configuration. DO NOTHING ELSE.
@@ -53,7 +53,7 @@ The 'copy_request_to_tunnel' option has been removed from v4.0.
 
 Individual attributes from the outer request may be accessed with:
 
-outer.request.<attribute>
+    outer.request.<attribute>
 
 The following policy in policy.d/eap can be used to copy attributes
 over.
@@ -284,7 +284,7 @@ safe way is to set the outer session-state list. Attributes that
 should be provided in the reply should be copied to the
 outer.session-state list:
 
-outer.session-state.Attribute := <Value>
+    outer.session-state.Attribute := <Value>
 
 The default configuration in the outer post-auth "send" section will
 copy this to the reply. To copy the entire reply see

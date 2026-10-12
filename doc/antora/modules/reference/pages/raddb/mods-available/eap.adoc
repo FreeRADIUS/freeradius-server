@@ -302,18 +302,6 @@ has an example.
 WARNING: When the virtual server has a `load psk` section, you MUST
 NOT set a fixed key in a `psk` section.
 
-cipher_suites:: TLS 1.3 cipher suites.
-
-For TLS-PSK, uncomment the following line to use standard ciphers for
-TLS 1.3.
-
-TLS-PSK may work without this line, but it is likely to not work when
-the "next hop" home_server accepts both certificates and PSK. OpenSSL
-will negotiate cipher suites which are incompatible with PSK, and then
-fail.
-
-Setting the `cipher_suites` here forces PSK to be negotiated.
-
 You can create the DH parameters by running the following command:
 
 openssl dhparam -out certs/dh 2048
@@ -351,11 +339,25 @@ The main reason to use multiple `ca_file` entries, or the `ca_path`
 configuration, is when the server is expected to authenticate client
 certificates issued by multiple CAs.
 
-cipher_list:: Set the list of allowed TLS cipher suites.
+cipher_list:: Set the list of allowed TLS cipher suites, for TLS < 1.3
 
 The format is listed by OpenSSL in `man 1 ciphers`.
 
+To use only TLS 1.3 cipher sites, set this to an empty string.
+
 NOTE: For `EAP-FAST`, use "ALL:!EXPORT:!eNULL:!SSLv2"
+
+cipher_suites:: TLS 1.3 cipher suites.
+
+For TLS-PSK, uncomment the following line to use standard ciphers for
+TLS 1.3.
+
+TLS-PSK may work without this line, but it is likely to not work when
+the "next hop" home_server accepts both certificates and PSK. OpenSSL
+will negotiate cipher suites which are incompatible with PSK, and then
+fail.
+
+Setting the `cipher_suites` here forces PSK to be negotiated.
 
 cipher_server_preference:: Prefer the server cipher list.
 
@@ -363,6 +365,29 @@ If enabled, OpenSSL will use the server cipher list (possibly defined
 by the `cipher_list` option above) for choosing right cipher suite,
 instead of using the client-specified list which is OpenSSl default
 behavior. Having it set to 'yes' is best practice for TLS.
+
+group_list:: Supported groups
+
+When using TLS 1.3, the client sends keying material in a key_share
+extension of the ClientHello, for one or more groups it predicts the
+server will accept.
+
+If none of the groups in that extension are supported by the server
+then the server will send a HelloRetryRequest message, prompting
+another ClientHello to be sent by the client, increasing the number of
+round trips.
+
+The impact is particularly seen when session tickets are included in
+the ClientHello, since they will be included again in the new
+ClientHello, potentially adding multiple additional round trips to the
+handshake.
+
+This option allows setting the groups supported by the server.
+
+Each group can be either the NIST name (e.g. P-256), some other
+commonly used name where applicable (e.g. X25519, ffdhe2048) or an
+OpenSSL OID name (e.g. prime256v1). Group names are case-insensitive
+in OpenSSL 3.5 and later.
 
 tls_max_version:: Maximum TLS version we allow.
 
@@ -1215,49 +1240,50 @@ TODO
 
 ----
 @templates tls-common {
-#		virtual_server = tls-session
-#		auto_chain = no
+#	virtual_server = tls-session
+#	auto_chain = no
 	chain rsa {
-#			format = "PEM"
+#		format = "PEM"
 		certificate_file = ${certdir}/rsa/server.pem
 		ca_file = ${certdir}/rsa/ca.pem
 		private_key_password = whatever
 		private_key_file = ${certdir}/rsa/server.key
-#			verify_mode = "hard"
+#		verify_mode = "hard"
 		include_root_ca = no
 	}
-##		chain ecc {
-##			certificate_file = ${certdir}/ecc/server.pem
-##			ca_file = ${certdir}/ecc/ca.pem
-##			private_key_password = whatever
-##			private_key_file = ${certdir}/ecc/server.key
-##		}
+##	chain ecc {
+##		certificate_file = ${certdir}/ecc/server.pem
+##		ca_file = ${certdir}/ecc/ca.pem
+##		private_key_password = whatever
+##		private_key_file = ${certdir}/ecc/server.key
+##	}
 	ca_file = ${cadir}/rsa/ca.pem
-##		psk {
-##			identity = "test"
-##			key = 0x0123456789abcdef0123456789abcdef
-##		}
-#		cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
-#		dh_file = ${certdir}/dh
-#		fragment_size = 1024
+##	psk {
+##		identity = "test"
+##		key = 0x0123456789abcdef0123456789abcdef
+##	}
+#	dh_file = ${certdir}/dh
+#	fragment_size = 1024
 	ca_path = ${cadir}
 	cipher_list = "DEFAULT"
+#	cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 	cipher_server_preference = yes
-#		tls_max_version = 1.2
-#		tls_min_version = 1.2
+#	group_list = 'x25519:prime256v1:x448:secp521r1:secp384r1:ffdhe2048:ffdhe3072'
+#	tls_max_version = 1.2
+#	tls_min_version = 1.2
 	ecdh_curve = prime256v1
-#		client_hello_parse = no
+#	client_hello_parse = no
 	verify {
-#			mode = all
-#			attribute_mode = client-and-issuer
+#		mode = all
+#		attribute_mode = client-and-issuer
 	}
 	session {
-#			mode = auto
-#			name = "%{EAP-Type}%interpreter('server')"
-#			lifetime = 86400
-#			require_extended_master_secret = yes
-#			require_perfect_forward_secrecy = no
-#			session_ticket_key = "super-secret-key"
+#		mode = auto
+#		name = "%{EAP-Type}%interpreter('server')"
+#		lifetime = 86400
+#		require_extended_master_secret = yes
+#		require_perfect_forward_secrecy = no
+#		session_ticket_key = "super-secret-key"
 	}
 }
 eap {

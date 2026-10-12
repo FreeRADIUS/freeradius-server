@@ -13,9 +13,10 @@ configuration entries.
 
 == TLS configuration for the inner EAP-TLS method
 
-`tls-peer` is a template, used by the `tls { ... }` section of the
-`tls` method below.  See the `eap` module for how templates share a
-TLS configuration between methods.
+`tls-peer` is a template.  The `tls { ... }` section of the `tls`
+method below uses the template.  See
+xref:reference:raddb/mods-available/eap.adoc[mods-available/eap] for
+how methods share one TLS configuration through a template.
 
 auto_chain:: See the `eap` module for common configuration
 explanation.
