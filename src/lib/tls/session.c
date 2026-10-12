@@ -2734,7 +2734,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 	if (conf->cache.mode != FR_TLS_TICKET_DISABLED) {
 		tls_session->allow_session_resumption = true;	/* otherwise it's false */
-		fr_tls_ticket_stateful_session_alloc(tls_session);
+		if (conf->cache.mode & FR_TLS_TICKET_STATEFUL) fr_tls_ticket_stateful_session_alloc(tls_session);
 	}
 
 	fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
