@@ -735,7 +735,7 @@ static inline CC_HINT(nonnull) fr_cmp_ret_t fr_dict_attr_cmp_fields(const fr_dic
 	/*
 	 *	Compare protocol specific flags
 	 */
-	if (a_proto->attr.flags.cmp && (ret = a_proto->attr.flags.cmp(a, b))) return ret;
+	if (a_proto->attr.flags.cmp && (ret = CMP(a_proto->attr.flags.cmp(a, b), 0))) return ret;
 
 	return CMP(memcmp(&a->flags, &b->flags, sizeof(a->flags)), 0);
 }
