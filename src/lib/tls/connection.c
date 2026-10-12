@@ -44,7 +44,8 @@
 fr_table_num_indexed_t const fr_tls_connection_state_table[] = {
 	[TLS_CONNECTION_NEW_SESSION]	= { L("new_session"),	TLS_CONNECTION_NEW_SESSION },
 	[TLS_CONNECTION_HANDSHAKE]	= { L("handshake"),	TLS_CONNECTION_HANDSHAKE },
-	[TLS_CONNECTION_COMPLETE]	= { L("complete"),	TLS_CONNECTION_COMPLETE }
+	[TLS_CONNECTION_TICKET]		= { L("ticket"),	TLS_CONNECTION_TICKET },
+	[TLS_CONNECTION_CONNECTED]	= { L("connected"),	TLS_CONNECTION_CONNECTED }
 };
 size_t fr_tls_connection_state_table_len = NUM_ELEMENTS(fr_tls_connection_state_table);
 
@@ -170,21 +171,27 @@ finish:
 	 *	request.  The frame process function will see that
 	 *	state change, and switch to the new function.
 	 */
-	conn->state = TLS_CONNECTION_COMPLETE;
+	conn->state = TLS_CONNECTION_TICKET;
 	tls_connection_request_wake(conn);
 }
 
-static unlang_action_t tls_connection_application_data(request_t *request, void *uctx);
-
-/** Tell the application that the connection is over
+/** Tell the application that the connection is closed
  *
  * This function should be used after all policies have been run.  A caller which needs to run policies should
  * use fr_tls_connection_failed() instead.
  *
  * @param[in] conn	which failed.
  */
-static void tls_connection_finished(fr_tls_connection_t *conn)
+static void tls_connection_close(fr_tls_connection_t *conn)
 {
+	/*
+	 *	fr_tls_connection_failed() reaches here while the connection
+	 *	frame is still initializing, which is before there is a
+	 *	request to log against.  fr_tls_connection_failed() logs
+	 *	through ROPTIONAL for that reason, and so does this function.
+	 */
+	request_t *request = conn->request;
+
 	/*
 	 *	Both callers record why the connection failed before calling
 	 *	this function, so recording a reason here would overwrite the
@@ -194,8 +201,57 @@ static void tls_connection_finished(fr_tls_connection_t *conn)
 
 	conn->idle = false;
 
-	conn->finished(conn->uctx, conn);
+	ROPTIONAL(RDEBUG2, DEBUG2, "%s - closing connection", conn->name);
+	conn->close(conn);
 }
+
+/** Tell the application that the connection is connected
+ *
+ * Every ticket section has finished, so the connection can carry application
+ * data from here on.
+ */
+static unlang_action_t tls_connection_connected(request_t *request, void *uctx)
+{
+	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
+
+	conn->idle = false;
+
+	/*
+	 *	fr_tls_ticket_stateful_store_session() and fr_tls_ticket_stateful_clear_session()
+	 *	run every queued cache operation before either function
+	 *	returns.  An operation still queued here would never run at
+	 *	all, and the session would silently not be cached, or would
+	 *	silently not be cleared.
+	 */
+	fr_assert(!fr_tls_ticket_stateful_pending(conn->tls_session->cache));
+
+	/*
+	 *	We're run the ticket policies, but something failed.
+	 *	`fail session` ends up here, too.
+	 */
+	if (conn->failed) {
+		tls_connection_close(conn);
+		return UNLANG_ACTION_YIELD;
+	}
+
+	if (conn->state == TLS_CONNECTION_CONNECTED) return UNLANG_ACTION_YIELD;
+
+	/*
+	 *	We've successfully run all ticket policies.  The connection can now carry application data.
+	 */
+	conn->state = TLS_CONNECTION_CONNECTED;
+
+	RDEBUG2("%s - connection state is now %s", conn->name,
+	       fr_table_str_by_value(fr_tls_connection_state_table, conn->state, "<INVALID>"));
+
+	/*
+	 *	Tell the application that the connection is up.
+	 */
+	conn->connected(conn);
+
+	return UNLANG_ACTION_YIELD;
+}
+
 
 /** Record a fatal error found outside of the interpreter
  *
@@ -263,7 +319,7 @@ void fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_
 	 *	received application data.  Just run the callback, and not any policies.
 	 */
 	if (conn->state != TLS_CONNECTION_HANDSHAKE) {
-		tls_connection_finished(conn);
+		tls_connection_close(conn);
 		return;
 	}
 
@@ -286,7 +342,7 @@ void fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail_
 	 *	We failed during TLS negotiation, we're done with the connection.  Wake up the request so that
 	 *	it can run `fail connection`.
 	 */
-	conn->state = TLS_CONNECTION_COMPLETE;
+	conn->state = TLS_CONNECTION_TICKET;
 	tls_connection_request_wake(conn);
 }
 
@@ -472,13 +528,13 @@ static unlang_action_t tls_connection_error(request_t *request, fr_tls_connectio
 
 	/*
 	 *	Set our own repeat, which closes the connection, as is
-	 *	done in tls_connection_init_finished().  We have to
+	 *	done in tls_connection_ticket().  We have to
 	 *	set a repeat function to a "connection done" function,
 	 *	as fr_tls_session_fail_session() may push a child.  That runs
 	 *	`fail session { ... }`, and then the `clear session`
 	 *	code.
 	 */
-	if (unlang_function_repeat_set(request, tls_connection_application_data) < 0) goto finished;
+	if (unlang_function_repeat_set(request, tls_connection_connected) < 0) goto finished;
 
 	ua = fr_tls_session_fail_session(request, conn->tls_session);
 	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
@@ -496,7 +552,7 @@ static unlang_action_t tls_connection_error(request_t *request, fr_tls_connectio
 	IGNORE(unlang_function_clear(request), int);
 
 finished:
-	tls_connection_finished(conn);
+	tls_connection_close(conn);
 	return UNLANG_ACTION_YIELD;
 }
 
@@ -513,35 +569,14 @@ finished:
 		} \
 	} while (0)
 
-/** Tell the application that the application data is ready
- *
- */
-static unlang_action_t tls_connection_application_data(UNUSED request_t *request, void *uctx)
-{
-	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
 
-	conn->idle = false;
-
-	/*
-	 *	fr_tls_ticket_stateful_store_session() and fr_tls_ticket_stateful_clear_session()
-	 *	run every queued cache operation before either function
-	 *	returns.  An operation still queued here would never run at
-	 *	all, and the session would silently not be cached, or would
-	 *	silently not be cleared.
-	 */
-	fr_assert(!fr_tls_ticket_stateful_pending(conn->tls_session->cache));
-
-	conn->finished(conn->uctx, conn);
-	return UNLANG_ACTION_YIELD;
-}
-
-/** Decide whether to keep the session once the handshake has stopped
+/** Run the ticket and cache operations which the handshake queued
  *
  * The handshakes are done, either due to success or failure.  On
  * failure, we discard any cached session.  On success, we store the
  * session before processing application data.
  */
-static unlang_action_t tls_connection_init_finished(request_t *request, void *uctx)
+static unlang_action_t tls_connection_ticket(request_t *request, void *uctx)
 {
 	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
 	unlang_action_t		ua;
@@ -551,7 +586,7 @@ static unlang_action_t tls_connection_init_finished(request_t *request, void *uc
 	/*
 	 *	Arm the repeat before any push.
 	 */
-	TLS_CONNECTION_REPEAT(tls_connection_application_data);
+	TLS_CONNECTION_REPEAT(tls_connection_connected);
 
 	if (conn->failed) {
 		ua = fr_tls_session_fail_session(request, conn->tls_session);
@@ -560,7 +595,7 @@ static unlang_action_t tls_connection_init_finished(request_t *request, void *uc
 	}
 	TLS_CONNECTION_ERROR_RETURN;
 
-	return tls_connection_application_data(request, conn);
+	return tls_connection_connected(request, conn);
 }
 
 /** Run handshake rounds until the handshakes finish.
@@ -585,7 +620,7 @@ static unlang_action_t tls_connection_handshake(request_t *request, void *uctx)
 	 *	Check that here, and move to the next state if
 	 *	necessary.
 	 */
-	if (conn->state == TLS_CONNECTION_COMPLETE) return tls_connection_init_finished(request, conn);
+	if (conn->state == TLS_CONNECTION_TICKET) return tls_connection_ticket(request, conn);
 
 	/*
 	 *	Arm the repeat function before pushing anything else.
@@ -794,7 +829,7 @@ int fr_tls_connection_write(fr_tls_connection_t *conn)
 		uint8_t const	*data = fr_dbuff_current(conn->tls_session->dirty_out);
 		ssize_t		slen;
 
-		slen = conn->write(conn->uctx, conn, data, size);
+		slen = conn->write(conn, data, size);
 		if (slen < 0) return -1;
 
 		/*

@@ -414,9 +414,9 @@ static void tls_post_handshake_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_tim
  * notion of a result, and no part of a TLS connection should have to know
  * about one.
  */
-static void tls_request_finished(void *uctx, fr_tls_connection_t *conn)
+static void tls_request_close(fr_tls_connection_t *conn)
 {
-	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
+	unit_test_tls_t *utt = talloc_get_type_abort(conn->uctx, unit_test_tls_t);
 
 	if (utt->done) return;
 
@@ -428,15 +428,28 @@ static void tls_request_finished(void *uctx, fr_tls_connection_t *conn)
 	fr_event_loop_exit(utt->el, 1);
 }
 
+/** The connection is up, and can carry application data
+ *
+ * unit_test_tls has no application data to send, so a connection which
+ * reaches this point has done everything it was going to do.  A program which
+ * did have data to send would send it here, and close when it was done.
+ */
+static void tls_request_connected(fr_tls_connection_t *conn)
+{
+	DEBUG2("Connection is up and can carry application data");
+
+	tls_request_close(conn);
+}
+
 /** Record a failure this program cannot recover from, and stop
  *
- * tls_request_finished() reads the result from the connection, so a failure
+ * tls_request_close() reads the result from the connection, so a failure
  * has to reach the connection before the callback runs.
  */
 static void tls_request_failed(unit_test_tls_t *utt)
 {
 	utt->conn->failed = TLS_CONNECTION_FAIL_APPLICATION;
-	tls_request_finished(utt, utt->conn);
+	tls_request_close(utt->conn);
 }
 
 static fr_event_update_t const pause_write[] = {
@@ -483,9 +496,9 @@ static int tls_connection_write_wait(unit_test_tls_t *utt, bool wait)
  * therefore the caller's job.  The EAP code in src/lib/eap/tls.c writes
  * records the same way.
  */
-static ssize_t tls_connection_write(void *uctx, fr_tls_connection_t *conn, uint8_t const *data, size_t size)
+static ssize_t tls_connection_write(fr_tls_connection_t *conn, uint8_t const *data, size_t size)
 {
-	unit_test_tls_t		*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
+	unit_test_tls_t		*utt = talloc_get_type_abort(conn->uctx, unit_test_tls_t);
 	ssize_t			slen;
 
 	/*
@@ -1936,7 +1949,8 @@ int main(int argc, char *argv[])
 	 */
 	MEM(utt->conn = talloc_zero(utt, fr_tls_connection_t));
 	utt->conn->uctx = utt;
-	utt->conn->finished = tls_request_finished;
+	utt->conn->connected = tls_request_connected;
+	utt->conn->close = tls_request_close;
 	utt->conn->write = tls_connection_write;
 
 

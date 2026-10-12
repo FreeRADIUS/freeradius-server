@@ -9,6 +9,13 @@
 #  ordinary close as readily as for a real failure, and so says nothing
 #  about whether the handshake worked.
 #
+#  The test also checks the order of the two states which end a connection.
+#  A TLS 1.3 session ticket is written after the handshake, so `store session`
+#  runs after the handshake has completed.  An application which sent
+#  application data when the handshake completed would race that section.
+#  TLS_CONNECTION_CONNECTED is the state which says every ticket
+#  section has finished, so that state must come after `store session`.
+#
 #  Environment:
 #    UNIT_TEST_TLS  command which runs unit_test_tls, possibly several words
 #    OUTPUT         directory for the log file and the receipt file
@@ -41,13 +48,31 @@ $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx -r "$RECEIPT" \
 		-CAfile "$CERTDIR/ca.pem" > "$CLIENT_LOG" 2>&1' \
 	> "$LOG" 2>&1
 
-if [ ! -e "$RECEIPT" ]; then
-	echo "unit_test_tls did not create $RECEIPT"
+fail() {
+	echo "$1"
 	echo "--- $LOG ---"
 	cat "$LOG"
 	echo "--- $CLIENT_LOG ---"
 	cat "$CLIENT_LOG"
 	exit 1
-fi
+}
+
+[ -e "$RECEIPT" ] || fail "unit_test_tls did not create $RECEIPT"
+
+#
+#  The connection reaches the application-data state exactly once, and
+#  reaches that state after `store session` has finished.
+#
+count=$(grep -c "connection state is now connected" "$LOG")
+[ "$count" = "1" ] || \
+	fail "expected one connected state, found $count"
+
+store=$(grep -n "} # store session" "$LOG" | head -1 | cut -d: -f1)
+[ -n "$store" ] || fail "the connection did not run 'store session'"
+
+connected=$(grep -n "connection state is now connected" "$LOG" | head -1 | cut -d: -f1)
+
+[ "$store" -lt "$connected" ] || \
+	fail "'store session' ended at line $store, after the connected state at line $connected"
 
 exit 0

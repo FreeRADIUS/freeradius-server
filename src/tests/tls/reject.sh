@@ -77,6 +77,21 @@ grep -q "Rejecting the session after a successful handshake" "$LOG" || \
 	fail "the server did not reject the session, -R had no effect"
 
 #
+#  A rejected connection is never a connected one.  The handshake here
+#  succeeds and the ticket sections still run, so the connection reaches the
+#  same place a working connection reaches.  What tells the two apart is that
+#  a failed connection takes the close callback and never the connected one,
+#  which is the whole reason the two callbacks are separate.
+#
+if grep -q "connection state is now connected" "$LOG"; then
+	fail "a rejected connection reached the connected state"
+fi
+
+if grep -q "Connection is up and can carry application data" "$LOG"; then
+	fail "a rejected connection ran the connected callback"
+fi
+
+#
 #  fr_tls_cache_clear_session() cancels the pending store, so the
 #  store session { ... } section must not run.  If that section runs, the
 #  server cached a rejected session.

@@ -42,25 +42,25 @@ RCSIDH(tls_connection_h, "$Id$")
 extern "C" {
 #endif
 
-/** Which part of a connection is running
+/** The state of the TLS connection.
  *
- * A connection is more than a handshake.  Policy runs before the handshake
- * and after the handshake.  fr_tls_connection_push() pushes one connection
- * frame, and the policy sections and the handshake rounds all run under the
- * connection frame.  Each state arms the next state as the repeat function of
- * the connection frame, so the repeat function records which part runs next.
+ * The connection state goes from new, to "doing handshakes", to
+ * "doing ticket callbacks", to "connected".
  *
- * The `state` field of fr_tls_connection_t records the same part for
- * fr_tls_connection_process().  fr_tls_connection_process() runs outside of
- * the connection frame, and so cannot read a repeat function.
- * fr_tls_connection_process() acts only while `state` is
- * TLS_CONNECTION_HANDSHAKE, and sets `state` to TLS_CONNECTION_COMPLETE to
- * record that the handshake has ended.
+ * TICKET is not the same as CONNECTED, because TLS 1.3 sends tickets
+ * after the handshake, but before the application data.  In TLS 1.2,
+ * the state goes from HANDSHAKE directly to CONNECTED.
+ *
+ * There is no substantial difference between HANDSHAKE and TICKET,
+ * except to give more visibility into the state of the connection.
  */
 typedef enum : uint8_t {
 	TLS_CONNECTION_NEW_SESSION = 0,			//!< Run `new session { ... }`.
 	TLS_CONNECTION_HANDSHAKE,			//!< Run handshake rounds until the handshake ends.
-	TLS_CONNECTION_COMPLETE				//!< Run the cache operations the handshake queued.
+	TLS_CONNECTION_TICKET,				//!< Run the ticket and cache operations which the
+							///< handshake queued.
+	TLS_CONNECTION_CONNECTED			//!< Every ticket section has finished.  The
+							///< connection can carry application data.
 } fr_tls_connection_state_t;
 
 /** Give the reason why the connection failed
@@ -170,13 +170,16 @@ struct fr_tls_connection_s {
 							///< determines it needs another record.
 
 	void			*uctx;			//!< Context for the callback functions below.
+							///< The callbacks read `conn->uctx` rather than
+							///< taking the context as an argument, so that
+							///< adding a callback does not mean repeating
+							///< the same first parameter again.
 
-	void			(*finished)(void *uctx, fr_tls_connection_t *conn);
-							//!< Stop running the connection.  Read the
-							///< result from `conn->failed`, and anything
-							///< else needed from `conn->tls_session`, which
-							///< carries the configuration as well.
-	ssize_t			(*write)(void *uctx, fr_tls_connection_t *conn,
+	void			(*connected)(fr_tls_connection_t *conn);
+							//!< TLS is connected, and the application can send data
+	void			(*close)(fr_tls_connection_t *conn);
+							//!< TLS is closing the connection
+	ssize_t			(*write)(fr_tls_connection_t *conn,
 					 uint8_t const *data, size_t size);
 							//!< Write `size` octets at `data` to the
 							///< peer.  Returns <0 on failure, or the
