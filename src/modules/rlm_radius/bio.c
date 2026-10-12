@@ -2854,6 +2854,14 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	}
 
 	/*
+	 *	The encoder indexes tables by the packet code.
+	 */
+	if (!FR_RADIUS_PACKET_CODE_VALID(request->packet->code)) {
+		REDEBUG("Cannot replicate packet code %u, it is not a RADIUS packet code", request->packet->code);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
 	 *	Warn if we're not replicating accounting data.  It likely won't wokr/
 	 */
 	if (request->packet->code != FR_RADIUS_CODE_ACCOUNTING_REQUEST) {
