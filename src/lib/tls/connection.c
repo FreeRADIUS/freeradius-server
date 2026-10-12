@@ -194,6 +194,8 @@ static void tls_connection_close(fr_tls_connection_t *conn)
 	fr_assert(conn->failed != TLS_CONNECTION_FAIL_NONE);
 
 	conn->idle = false;
+	FR_TIMER_DELETE(&conn->timer_ev);
+	TALLOC_FREE(conn->tl);
 
 	RDEBUG2("%s - closing connection", conn->name);
 	conn->close(conn);
@@ -234,6 +236,7 @@ static unlang_action_t tls_connection_connected(request_t *request, void *uctx)
 	 *	We've successfully run all ticket policies.  The connection can now carry application data.
 	 */
 	conn->state = TLS_CONNECTION_CONNECTED;
+	FR_TIMER_DELETE(&conn->timer_ev);
 
 	RDEBUG2("%s - connection state is now %s", conn->name,
 	       fr_table_str_by_value(fr_tls_connection_state_table, conn->state, "<INVALID>"));

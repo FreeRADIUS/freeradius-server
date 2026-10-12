@@ -238,6 +238,8 @@ static void _fr_dtls_timer_expired(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	request_t		*request = conn->request;
 	int			ret;
 
+	fr_assert(request != NULL);
+
 	RDEBUG2("%s - DTLS retransmission timer fired", conn->name);
 
 	/*
