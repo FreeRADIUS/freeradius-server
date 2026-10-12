@@ -911,8 +911,11 @@ error:
 		 *	e.g: return "handled", "ok", "fail", ...
 		 */
 		if (lua_isstring(L, -1)) {
-			rcode = fr_table_value_by_str(rcode_table, lua_tostring(L, -1), -1);
-			if ((int)rcode != -1) goto done;
+			int ret = fr_table_value_by_str(rcode_table, lua_tostring(L, -1), -1);
+			if (ret >= 0) {
+				rcode = ret;
+				goto done;
+			}
 		}
 
 		ROPTIONAL(RDEBUG2, DEBUG2, "Lua function %s() returned invalid value \"%s\"", funcname, lua_tostring(L, -1));
