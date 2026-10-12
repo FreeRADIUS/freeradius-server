@@ -896,11 +896,11 @@ error:
 	}
 
 	/*
-	 *	functions without rcodeurn or rcodeurning none/nil will be RLM_MODULE_OK
+	 *	functions without return or returning none/nil will be RLM_MODULE_OK
 	 */
 	if (!lua_isnoneornil(L, -1)) {
 		/*
-		 *	e.g: rcodeurn 2, rcodeurn "2", rcodeurn fr.handled, fr.fail, ...
+		 *	e.g: return 2, return "2", return fr.handled, fr.fail, ...
 		 */
 		if (lua_isnumber(L, -1)) {
 			rcode = lua_tointeger(L, -1);
@@ -908,14 +908,14 @@ error:
 		}
 
 		/*
-		 *	e.g: rcodeurn "handled", "ok", "fail", ...
+		 *	e.g: return "handled", "ok", "fail", ...
 		 */
 		if (lua_isstring(L, -1)) {
 			rcode = fr_table_value_by_str(rcode_table, lua_tostring(L, -1), -1);
 			if ((int)rcode != -1) goto done;
 		}
 
-		ROPTIONAL(RDEBUG2, DEBUG2, "Lua function %s() rcodeurned invalid rcode \"%s\"", funcname, lua_tostring(L, -1));
+		ROPTIONAL(RDEBUG2, DEBUG2, "Lua function %s() returned invalid value \"%s\"", funcname, lua_tostring(L, -1));
 		goto error;
 	}
 
