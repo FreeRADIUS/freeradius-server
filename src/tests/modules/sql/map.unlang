@@ -328,4 +328,29 @@ if (control.IP-Pool.Name != 'bob') {
 	test_fail
 }
 
+control -= IP-Pool.Name[*]
+
+#
+#  A result set of 256 rows.  Drivers which count rows must not
+#  mistake the count for an empty result.  16 seed rows, cross
+#  joined with themselves, give 256 rows.
+#
+%sql("DELETE FROM radusergroup WHERE priority IN (300, 301)")
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300), ('seed', 's', 300)")
+%sql("INSERT INTO radusergroup (username, groupname, priority) SELECT 'bulk', 'b', 301 FROM radusergroup x, radusergroup y WHERE x.priority = 300 AND y.priority = 300")
+
+map sql 'SELECT * FROM radusergroup WHERE priority = 301' {
+	control.Filter-Id := 'username'
+}
+if (!updated) {
+	test_fail
+}
+
+if !(control.Filter-Id == 'bulk') {
+	test_fail
+}
+
+control -= Filter-Id[*]
+%sql("DELETE FROM radusergroup WHERE priority IN (300, 301)")
+
 test_pass

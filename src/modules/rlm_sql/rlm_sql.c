@@ -738,6 +738,7 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 	map_t const		*map;
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	sql_rcode_t		ret;
+	int			num_rows;
 	char const		**fields = NULL, *map_rhs;
 	rlm_sql_row_t		row;
 	int			i, j, field_cnt, rows = 0;
@@ -755,14 +756,14 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 	 *	Not every driver provides an sql_num_rows function
 	 */
 	if (inst->driver->sql_num_rows) {
-		ret = inst->driver->sql_num_rows(query_ctx, &inst->config);
-		if (ret == 0) {
+		num_rows = inst->driver->sql_num_rows(query_ctx, &inst->config);
+		if (num_rows == 0) {
 			RDEBUG2("Server returned an empty result");
 			rcode = RLM_MODULE_NOTFOUND;
 			goto finish;
 		}
 
-		if (ret < 0) {
+		if (num_rows < 0) {
 			RERROR("Failed retrieving row count");
 		error:
 			rcode = RLM_MODULE_FAIL;
