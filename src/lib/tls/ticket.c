@@ -414,7 +414,7 @@ int fr_tls_ticket_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *cache_conf,
 {
 	switch (cache_conf->mode) {
 	case FR_TLS_TICKET_DISABLED:
-		fr_tls_ticket_stateless_disable(ctx);
+		fr_tls_ticket_stateless_disable(ctx, false);
 		fr_tls_ticket_stateful_disable(ctx);
 		return 0;
 
@@ -426,7 +426,7 @@ int fr_tls_ticket_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *cache_conf,
 		 *	Disables stateless session tickets for TLS 1.3.
 		 */
 		if (!(cache_conf->mode & FR_TLS_TICKET_STATELESS)) {
-			fr_tls_ticket_stateless_disable(ctx);
+			fr_tls_ticket_stateless_disable(ctx, true);
 			break;
 		}
 		FALL_THROUGH;

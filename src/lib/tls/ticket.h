@@ -136,7 +136,7 @@ void		fr_tls_ticket_stateful_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *
  */
 unlang_action_t	fr_tls_ticket_stateless_pending_push(request_t *request, fr_tls_session_t *tls_session);
 
-void		fr_tls_ticket_stateless_disable(SSL_CTX *ctx);
+void		fr_tls_ticket_stateless_disable(SSL_CTX *ctx, bool stateful);
 
 int		fr_tls_ticket_stateless_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *cache_conf);
 #endif

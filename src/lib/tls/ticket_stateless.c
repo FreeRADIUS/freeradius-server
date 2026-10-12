@@ -238,8 +238,9 @@ static bool tls_ticket_stateless_decode_run(request_t *request, fr_tls_session_t
 /** Disable stateless session tickets for a given TLS ctx
  *
  * @param[in] ctx to disable session tickets for.
+ * @param[in] stateful Are stateful tickets in use.
  */
-void fr_tls_ticket_stateless_disable(SSL_CTX *ctx)
+void fr_tls_ticket_stateless_disable(SSL_CTX *ctx, bool stateful)
 {
 	long ctx_options = SSL_CTX_get_options(ctx);
 
@@ -252,8 +253,9 @@ void fr_tls_ticket_stateless_disable(SSL_CTX *ctx)
 	/*
 	 *	This controls the number of stateful or stateless
 	 *	tickets generated with TLS 1.3.
+	 *	Set to 1 ticket if stateful tickets are in use.
 	 */
-	SSL_CTX_set_num_tickets(ctx, 0);
+	SSL_CTX_set_num_tickets(ctx, stateful ? 1 : 0);
 }
 
 /** Called when new tickets are being generated
