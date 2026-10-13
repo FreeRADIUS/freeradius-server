@@ -284,6 +284,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 			unlang_interpret_synchronous(el, request);
 			state = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_state);
 			if (state) state = fr_pair_copy(ctx, state);
+			FR_TIMER_DISARM(request->timeout);
 		}
 
 		talloc_free(request);

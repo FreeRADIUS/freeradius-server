@@ -55,6 +55,7 @@ static fr_pair_t *conversation_step(TALLOC_CTX *ctx, CONF_SECTION *server, eap_f
 		if (reply) reply = fr_pair_copy(ctx, reply);
 	}
 
+	FR_TIMER_DISARM(request->timeout);
 	talloc_free(request);
 	return reply;
 }
