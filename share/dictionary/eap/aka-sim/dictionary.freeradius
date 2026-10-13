@@ -10,7 +10,7 @@
 #  Internal (Non-Protocol) attributes
 #
 FLAGS	internal
-ATTRIBUTE	Subtype					260	integer
+ATTRIBUTE	Subtype					260	uint8
 
 VALUE	Subtype				AKA-Challenge		1
 VALUE	Subtype				AKA-Authentication-Reject 2

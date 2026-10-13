@@ -898,7 +898,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *e
 		REDEBUG("Missing subtype attribute");
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
-	subtype = vp->vp_uint16;
+	subtype = vp->vp_uint8;
 
 	/*
 	 *	Group attributes with similar lineages together

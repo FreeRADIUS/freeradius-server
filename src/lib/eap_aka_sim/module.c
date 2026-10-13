@@ -126,7 +126,7 @@ static unlang_action_t mod_encode(unlang_result_t *p_result, module_ctx_t const 
 	 *	Perform different actions depending on the type
 	 *	of request we're sending.
 	 */
-	switch (subtype_vp->vp_uint16) {
+	switch (subtype_vp->vp_uint8) {
 	case FR_SUBTYPE_VALUE_AKA_IDENTITY:
 	case FR_SUBTYPE_VALUE_SIM_START:
 		if (!RDEBUG_ENABLED2) break;
@@ -259,7 +259,7 @@ static unlang_action_t mod_encode(unlang_result_t *p_result, module_ctx_t const 
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->reply_pairs, NULL);
 	if (fr_aka_sim_encode(request, &request->reply_pairs, &encode_ctx) <= 0) RETURN_UNLANG_FAIL;
 
-	switch (subtype_vp->vp_uint16) {
+	switch (subtype_vp->vp_uint8) {
 	case FR_SUBTYPE_VALUE_AKA_IDENTITY:
 		/*
 		 *	Ingest the identity message into the checkcode
@@ -363,7 +363,7 @@ unlang_action_t eap_aka_sim_process(unlang_result_t *p_result, module_ctx_t cons
 
 		RDEBUG2("Received EAP-Response/%pV", &(subtype_vp)->data);
 
-		switch (subtype_vp->vp_uint16) {
+		switch (subtype_vp->vp_uint8) {
 		/*
 		 *	Ingest the identity message into the checkcode
 		 */

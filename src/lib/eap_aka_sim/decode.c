@@ -995,7 +995,7 @@ int fr_aka_sim_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dic
 			fr_strerror_const("Failed allocating subtype attribute");
 			goto error;
 		}
-		vp->vp_uint32 = data[0];
+		vp->vp_uint8 = data[0];
 		fr_pair_append(out, vp);
 	}
 

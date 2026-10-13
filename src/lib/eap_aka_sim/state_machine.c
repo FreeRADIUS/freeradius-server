@@ -956,7 +956,7 @@ static unlang_action_t session_and_pseudonym_clear(unlang_result_t *p_result, mo
  * This allows test frameworks and the encoder to access any data they need without
  * needing to look at the eap_aka_session_t.
  */
-static void common_reply(request_t *request, eap_aka_sim_session_t *eap_aka_sim_session, uint16_t subtype)
+static void common_reply(request_t *request, eap_aka_sim_session_t *eap_aka_sim_session, uint8_t subtype)
 {
 	fr_pair_t		*subtype_vp;
 
@@ -964,7 +964,7 @@ static void common_reply(request_t *request, eap_aka_sim_session_t *eap_aka_sim_
 	 *	Set the subtype to identity request
 	 */
 	MEM(pair_update_reply(&subtype_vp, attr_eap_aka_sim_subtype) >= 0);
-	subtype_vp->vp_uint16 = subtype;
+	subtype_vp->vp_uint8 = subtype;
 
 	if (!eap_aka_sim_session->allow_encrypted) {
 		fr_pair_list_foreach(&request->reply_pairs, vp) {
@@ -1301,7 +1301,7 @@ STATE(common_failure_notification)
 	subtype_vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_aka_sim_subtype);
 	if (!subtype_vp) goto fail;
 
-	switch (subtype_vp->vp_uint16) {
+	switch (subtype_vp->vp_uint8) {
 	case FR_SUBTYPE_VALUE_AKA_SIM_NOTIFICATION:
 		RDEBUG2("Failure-Notification ACKed, sending EAP-Failure");
 		return CALL_SECTION(recv_common_failure_notification_ack);
@@ -1760,7 +1760,7 @@ STATE(common_reauthentication)
 	 *	EAP_AKA_AUTHENTICATION_REJECT	- We didn't provide an AUTN value
 	 *	EAP_AKA_SYNCHRONIZATION_FAILURE	- We didn't use new vectors.
 	 */
-	switch (subtype_vp->vp_uint16) {
+	switch (subtype_vp->vp_uint8) {
 	case FR_SUBTYPE_VALUE_AKA_SIM_REAUTHENTICATION:
 		/*
 		 *	AT_COUNTER_TOO_SMALL is handled
@@ -2292,7 +2292,7 @@ STATE(aka_challenge)
 		goto fail;
 	}
 
-	switch (subtype_vp->vp_uint16) {
+	switch (subtype_vp->vp_uint8) {
 	case FR_SUBTYPE_VALUE_AKA_CHALLENGE:
 		return CALL_SECTION(recv_aka_challenge_response);
 
@@ -2665,7 +2665,7 @@ STATE(sim_challenge)
 		goto fail;
 	}
 
-	switch (subtype_vp->vp_uint16) {
+	switch (subtype_vp->vp_uint8) {
 	case FR_SUBTYPE_VALUE_SIM_CHALLENGE:
 		return CALL_SECTION(recv_sim_challenge_response);
 
@@ -2940,7 +2940,7 @@ STATE(aka_identity)
 		goto fail;
 	}
 
-	switch (subtype_vp->vp_uint16) {
+	switch (subtype_vp->vp_uint8) {
 	/*
 	 *	This is the subtype we expect
 	 */
@@ -3248,7 +3248,7 @@ STATE(sim_start)
 		REDEBUG("Missing AT_SUBTYPE");
 		goto fail;
 	}
-	switch (subtype_vp->vp_uint16) {
+	switch (subtype_vp->vp_uint8) {
 	case FR_SUBTYPE_VALUE_SIM_START:
 	{
 		eap_session_t		*eap_session = eap_session_get(request->parent);
