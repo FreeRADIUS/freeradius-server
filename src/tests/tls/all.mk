@@ -2,6 +2,9 @@
 #  Tests for unit_test_tls: one script per test, each running TLS handshakes
 #  against the program.
 #
+#  The same scripts then run a second time against unit_test_bio, which is
+#  unit_test_tls reworked to use the TLS bio in src/lib/bio/tls.c.
+#
 
 #
 #  Test name
@@ -75,7 +78,7 @@ TLS_TESTS := $(patsubst $(DIR)/%.sh,%,$(wildcard $(DIR)/*.sh))
 #  which says nothing about ports, so the count is checked below rather than
 #  left to be discovered.
 #
-TLS_PORT_COUNT := 32
+TLS_PORT_COUNT := 64
 TLS_PORT_FIRST := $(unique-port $(PORT_FILE),$(TLS_TEST),$(TLS_PORT_COUNT),$(PORT_FIRST))
 TLS_PORTS := $(shell seq $(TLS_PORT_FIRST) $$(($(TLS_PORT_FIRST) + $(TLS_PORT_COUNT) - 1)))
 
@@ -108,6 +111,42 @@ endef
 
 TLS_RECEIPTS :=
 $(foreach x,$(TLS_TESTS),$(eval $(call TLS_TEST_RULE,$x)))
+
+#
+#  The same scripts, run against unit_test_bio.  unit_test_bio reads the same
+#  configuration files, but the program name picks the default configuration
+#  file, so `-n unit_test_tls` restores the default.  A script which passes
+#  its own -n wins, as the later -n is the one which counts.
+#
+#  dtls_loss is left out, because the TLS bio has no place to drop a
+#  datagram, so unit_test_bio refuses `drop_datagram`.
+#
+#  Each test writes to the bio subdirectory, so the receipts and the logs of
+#  the two programs do not overwrite each other.
+#
+TLS_BIO_TESTS := $(filter-out dtls_loss,$(TLS_TESTS))
+
+define TLS_BIO_TEST_RULE
+TLS_PORT.bio.${1} := $(word $(words $(TLS_RECEIPTS) ${1}),$(TLS_PORTS))
+TLS_CMD.bio.${1} := OUTPUT="$(TLS_OUTPUT)/bio" CONFDIR="$(top_srcdir)/$(TLS_DIR)" CERTDIR="$(top_srcdir)/raddb/certs/rsa" DICT_PATH="$(DICT_PATH)" PORT="$$(TLS_PORT.bio.${1})" UNIT_TEST_TLS="$(TEST_BIN)/unit_test_bio -n unit_test_tls" $(SHELL) $(TLS_DIR)/${1}.sh
+
+$(TLS_OUTPUT)/bio/${1}.receipt: $(or $(wildcard $(TLS_DIR)/${1}.conf),$(TLS_CONF)) $(TLS_COMMON) $(TLS_DIR)/${1}.sh $(TEST_BIN_DIR)/unit_test_bio $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+	@echo "TLS-BIO-TEST ${1}"
+	$${Q}mkdir -p $(TLS_OUTPUT)/bio
+	$${Q}if ! $$(TLS_CMD.bio.${1}) > $$@.log 2>&1 || ! test -f $$@; then \
+		cat $$@.log; \
+		echo "# $$@.log"; \
+		echo $$(TLS_CMD.bio.${1}); \
+		rm -f $(BUILD_DIR)/tests/$(TLS_TEST); \
+		exit 1; \
+	fi
+
+TLS_RECEIPTS += $(TLS_OUTPUT)/bio/${1}.receipt
+endef
+
+ifneq "$(filter unit_test_bio,$(ALL_TGTS))" ""
+$(foreach x,$(TLS_BIO_TESTS),$(eval $(call TLS_BIO_TEST_RULE,$x)))
+endif
 
 #
 #  unit_test_tls loads a process module and rlm_* modules at run time, so
