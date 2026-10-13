@@ -84,6 +84,17 @@ static void tls_connection_request_wake(fr_tls_connection_t *conn)
 	if (!conn->idle) return;
 
 	conn->idle = false;
+
+	/*
+	 *	The frame is running, so the request has not yielded, and
+	 *	marking it runnable now would be lost.  Tell the frame
+	 *	instead: it runs the state machine again before it yields.
+	 */
+	if (conn->in_frame) {
+		conn->wake_pending = true;
+		return;
+	}
+
 	unlang_interpret_mark_runnable(conn->request);
 }
 
@@ -529,6 +540,14 @@ act:
 	return conn->io_state;
 }
 
+/** Set or clear the connections processing function
+ *
+ * The TLS connection needs to run its own state machine, and once that returns, do a standard set of
+ * post-processing via fr_tls_connection_process().
+ */
+#define TLS_CONNECTION_FUNC_SET(_conn, _func)	(_conn)->process = (_func)
+#define TLS_CONNECTION_FUNC_CLEAR(_conn)	(_conn)->process = NULL
+
 /** There is a fatal connection error.
  *
  * The state functions have no way to report a failure to the
@@ -565,7 +584,7 @@ static unlang_action_t tls_connection_error(request_t *request, fr_tls_connectio
 	/*
 	 *	Clear any pending repeat, so that the TLS state machine functions aren't used.
 	 */
-	IGNORE(unlang_function_clear(request), int);
+	TLS_CONNECTION_FUNC_CLEAR(conn);
 
 	/*
 	 *	Set our own repeat, which closes the connection, as is
@@ -575,7 +594,7 @@ static unlang_action_t tls_connection_error(request_t *request, fr_tls_connectio
 	 *	`fail session { ... }`, and then the `clear session`
 	 *	code.
 	 */
-	if (unlang_function_repeat_set(request, tls_connection_connected) < 0) goto finished;
+	TLS_CONNECTION_FUNC_SET(conn, tls_connection_connected);
 
 	ua = fr_tls_session_fail_session(request, conn->tls_session);
 	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
@@ -590,9 +609,8 @@ static unlang_action_t tls_connection_error(request_t *request, fr_tls_connectio
 	 *	else.  So we just return, and potentially leave any
 	 *	cache entries behind.
 	 */
-	IGNORE(unlang_function_clear(request), int);
+	TLS_CONNECTION_FUNC_CLEAR(conn);
 
-finished:
 	tls_connection_close(conn);
 	return UNLANG_ACTION_YIELD;
 }
@@ -602,14 +620,6 @@ finished:
 		if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua; \
 		if (ua == UNLANG_ACTION_FAIL) return tls_connection_error(request, conn); \
 	} while (0)
-
-#define TLS_CONNECTION_REPEAT(_func) \
-	do { \
-		if (unlang_function_repeat_set(request, _func) < 0) { \
-			return tls_connection_error(request, conn); \
-		} \
-	} while (0)
-
 
 /** Run the ticket and cache operations which the handshake queued
  *
@@ -627,7 +637,7 @@ static unlang_action_t tls_connection_ticket(request_t *request, void *uctx)
 	/*
 	 *	Arm the repeat before any push.
 	 */
-	TLS_CONNECTION_REPEAT(tls_connection_connected);
+	TLS_CONNECTION_FUNC_SET(conn, tls_connection_connected);
 
 	if (conn->failed) {
 		ua = fr_tls_session_fail_session(request, conn->tls_session);
@@ -666,7 +676,7 @@ static unlang_action_t tls_connection_handshake(request_t *request, void *uctx)
 	/*
 	 *	Arm the repeat function before pushing anything else.
 	 */
-	TLS_CONNECTION_REPEAT(tls_connection_handshake);
+	TLS_CONNECTION_FUNC_SET(conn, tls_connection_handshake);
 
 	/*
 	 *	No record is waiting for OpenSSL, yield until the next
@@ -712,7 +722,7 @@ static unlang_action_t tls_connection_new_session(request_t *request, void *uctx
 	if (conn->tls_session->conf->new_session) {
 		fr_assert(conn->tls_session->conf->virtual_server);
 
-		TLS_CONNECTION_REPEAT(tls_connection_handshake);
+		TLS_CONNECTION_FUNC_SET(conn, tls_connection_handshake);
 
 		ua = fr_tls_new_session_push(request, conn->tls_session->conf);
 		TLS_CONNECTION_ERROR_RETURN;
@@ -783,6 +793,82 @@ fr_tls_connection_t *fr_tls_connection_alloc(TALLOC_CTX *ctx, fr_timer_list_t *t
 	return conn;
 }
 
+/** Run the connection's state machine, then do the connection's IO
+ *
+ * This is the only function that is pushed onto the interpreter stack.
+ *
+ * This connection code runs its own state machine, which calls fr_tls_session_*() functions.  That state
+ * machine reads or writes data to the dbuffs, and suggests that we yield / calculate_result / etc.  However,
+ * the state machine doesn't do IO.
+
+ * Once the dbuffs have data, fr_tls_connection_process() has to run.  The interpreter doesn't have a
+ * "post-yield" hook, so we have to run the entire connection state machine ourselves.  We can then do
+ * whatever work is necessary for the connection, and then do the suggested yield / calculate_result, etc.
+ *
+ * @param[in] request	the connection runs under.
+ * @param[in] uctx	the #fr_tls_connection_t.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	a policy section is running.
+ *	- UNLANG_ACTION_YIELD		waiting for the peer.
+ *	- UNLANG_ACTION_CALCULATE_RESULT the connection has finished.
+ */
+static unlang_action_t tls_connection_frame_process(request_t *request, void *uctx)
+{
+	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
+	unlang_action_t		ua;
+
+	/*
+	 *	Re-arm ourselves every time through the interpreter loop.
+	 */
+	if (unlang_function_repeat_set(request, tls_connection_frame_process) < 0) {
+		return UNLANG_ACTION_FAIL;
+	}
+
+	/*
+	 *	The connection's state machine has run out of states, we must be done.
+	 */
+	if (!conn->process) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	conn->in_frame = true;
+
+again:
+	conn->wake_pending = false;
+
+	ua = conn->process(request, conn);
+
+	switch (ua) {
+		/*
+		 *	A policy section is running as a real unlang child.  The pending TLS data can wait
+		 *	until that section finishes and the interpeter returns to us here.
+		 */
+	case UNLANG_ACTION_PUSHED_CHILD:
+		conn->in_frame = false;
+		return ua;
+
+		/*
+		 *	The connection is about to wait for the peer.  Write the pending TLS data, and
+		 *	re-check the connection, before waiting for the peer.
+		 */
+	case UNLANG_ACTION_YIELD:
+		fr_tls_connection_process(conn);
+
+		/*
+		 *	fr_tls_connection_process() re-checks the connection, and that check can result in
+		 *	more handshake data, or a connection failure.  Both states ask for the state machine
+		 *	to run again.  If there's a wake pending, we just loop here, rather than taking
+		 *	another bounce through the interpreter.
+		 */
+		if (conn->wake_pending) goto again;
+
+		conn->in_frame = false;
+		return UNLANG_ACTION_YIELD;
+
+	default:
+		conn->in_frame = false;
+		return ua;
+	}
+}
+
 /** Push the connection frame onto the request's stack
  *
  * Run the interpreter once after fr_tls_connection_push() returns, so that
@@ -810,9 +896,16 @@ int fr_tls_connection_push(fr_tls_connection_t *conn)
 	 */
 	if (!conn->name) MEM(conn->name = talloc_strdup(conn, "(TLS)"));
 
+	/*
+	 *	The connection's own state machine starts at `new session`.
+	 *	The interpreter is told only about the frame which runs that
+	 *	machine.
+	 */
+	TLS_CONNECTION_FUNC_SET(conn, tls_connection_new_session);
+
 	return unlang_function_push(conn->request,
-				    tls_connection_new_session,
-				    tls_connection_new_session,
+				    tls_connection_frame_process,
+				    tls_connection_frame_process,
 				    NULL, FR_SIGNAL_NONE, UNLANG_TOP_FRAME, conn);
 }
 

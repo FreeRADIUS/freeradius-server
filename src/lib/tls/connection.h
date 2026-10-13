@@ -33,6 +33,7 @@ RCSIDH(tls_connection_h, "$Id$")
 #include "openssl_user_macros.h"
 
 #include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/util/timer.h>
 
 #include "conf.h"
@@ -145,6 +146,21 @@ struct fr_tls_connection_s {
 							///< MUST be set, and MUST live longer than the connection.
 
 	fr_tls_connection_state_t state;       		//!< Which part of the connection is running.
+
+	bool			in_frame;		//!< tls_connection_frame_process() is running.
+							///< A wake raised while the frame runs cannot go
+							///< to the interpreter, because the request has
+							///< not yielded yet, so the frame takes it.
+	bool			wake_pending;		//!< A wake was raised while `in_frame` was set.
+
+	unlang_function_no_result_t process;		//!< The connection runs its own state machine
+							///< inside one unlang frame, and this is the
+							///< function that machine runs next.  The
+							///< interpreter does not know about it:
+							///< tls_connection_frame_process() is the only
+							///< thing the interpreter sees, and that function
+							///< calls this one.  NULL means the connection's
+							///< state machine has finished.
 
 	fr_tls_connection_fail_t failed;	       	//!< why the connection failed
 	int			error;			//!< for system call errors

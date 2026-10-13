@@ -584,7 +584,10 @@ static ssize_t tls_connection_write(fr_tls_connection_t *conn, uint8_t const *da
 	return slen;
 }
 
-/** The socket has room again, so write the rest of the records to the socket
+/** The socket is ready for writes.
+ *
+ * Run the connection state machine, which either flushes pending
+ * data, or keeps going with the next TLS state.
  *
  * The event loop calls _tls_connection_write() only after a write blocked,
  * see tls_connection_write_wait().
@@ -593,6 +596,9 @@ static void _tls_connection_write(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 {
 	unit_test_tls_t *utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 
+	/*
+	 *	@todo - arguably remove the socket from the event list.
+	 */
 	if (utt->done) return;
 
 	/*
@@ -749,10 +755,15 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 		 *	Only the connection's own request advances the
 		 *	handshake.  A subrequest returns the subrequest's
 		 *	result through the interpreter.
+		 *
+		 *	The connection's own IO is not done here any more.
+		 *	tls_connection_frame_process() does it, inside
+		 *	src/lib/tls, at the point the connection is about to
+		 *	wait for the peer.  A real listener has no hook here,
+		 *	so nothing which a real listener cannot do belongs
+		 *	here either.
 		 */
 		if (request == utt->conn->request) {
-			fr_tls_connection_process(utt->conn);
-
 			/*
 			 *	Stand in for an application which rejects a
 			 *	session after the handshake succeeded.  The
