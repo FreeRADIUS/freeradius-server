@@ -238,6 +238,11 @@ VALUE	Error				Post-Handshake-Timeout		41
 VALUE	Error				DTLS-Handshake-Timeout		42
 
 #
+#  The peer closed the connection.
+#
+VALUE	Error				Peer-Closed-Connection		43
+
+#
 #  The name of the ALPN string which was negotiated.
 #
 DEFINE	ALPN							string

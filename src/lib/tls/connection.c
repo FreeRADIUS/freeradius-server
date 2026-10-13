@@ -403,6 +403,7 @@ void fr_tls_connection_eof(fr_tls_connection_t *conn)
 	request_t *request = conn->request;
 
 	conn->eof = true;
+	fr_tls_session_error_add(request, FR_ERROR_VALUE_PEER_CLOSED_CONNECTION);
 
 	if (conn->pending) {
 		tls_connection_request_wake(conn);
@@ -509,6 +510,7 @@ act:
 		break;
 
 	case FR_TLS_CONNECTION_IO_FATAL:
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_SYSTEM_CALL_FAILED);
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_SYSCALL);
 		break;
 	}
