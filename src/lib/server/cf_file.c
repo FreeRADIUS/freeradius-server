@@ -1649,13 +1649,11 @@ static int process_template(cf_stack_t *stack)
 {
 	CONF_ITEM *ci;
 	CONF_SECTION *parent_cs, *templatecs;
-	fr_token_t token;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 
-	token = getword(&stack->ptr, stack->buff[2], stack->bufsize, true);
-	if (token != T_EOL) {
-		ERROR("%s[%d]: Unexpected text after $TEMPLATE", frame->filename, frame->lineno);
+	if (getword(&stack->ptr, stack->buff[2], stack->bufsize, true) == 0) {
+		ERROR("%s[%d]: Missing template name after $TEMPLATE", frame->filename, frame->lineno);
 		return -1;
 	}
 
