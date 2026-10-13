@@ -31,7 +31,7 @@ extern "C" {
 
 #define FR_CONDUIT_MAGIC (0xf7eead17)
 
-typedef enum fr_conduit_type_t : uint8_t {
+typedef enum fr_conduit_type_t : uint16_t {	/* same width as fr_conduit_hdr_t conduit */
 	FR_CONDUIT_STDIN = 0,
 	FR_CONDUIT_STDOUT,
 	FR_CONDUIT_STDERR,
