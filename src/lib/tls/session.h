@@ -304,6 +304,8 @@ struct fr_tls_session_s {
 	bool			seen_application_data;		//!< Application data has started moving, which
 								///< indicates that all session tickets have been sent.
 
+	bool			session_ticket_supported;	//!< Did the client present a session_ticket in the hello.
+
 	bool			session_ticket_received;	//!< A client has seen the NewSessionTicket which
 								///< a TLS 1.3 server sends after the handshake.
 

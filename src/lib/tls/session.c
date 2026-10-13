@@ -2329,12 +2329,16 @@ static int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void 
 	 *	Is there a session_ticket extension in the CLientHello?
 	 *	If not, the client doesn't support session tickets - disable them.
 	 */
-	if (conf->cache.mode != FR_TLS_TICKET_DISABLED &&
-	    (SSL_client_hello_get0_ext(ssl, TLSEXT_TYPE_session_ticket, NULL, NULL) == 0)) {
-		long ssl_options = SSL_get_options(ssl);
-		RDEBUG2("Session ticket extension not found in ClientHello");
-		ssl_options |= SSL_OP_NO_TICKET;
-		SSL_set_options(ssl, ssl_options);
+	if (conf->cache.mode != FR_TLS_TICKET_DISABLED) {
+		if (SSL_client_hello_get0_ext(ssl, TLSEXT_TYPE_session_ticket, NULL, NULL) == 1) {
+			fr_tls_session_t *tls_session = fr_tls_session(ssl);
+			tls_session->session_ticket_supported = true;
+		} else {
+			long ssl_options = SSL_get_options(ssl);
+			RDEBUG2("(TLS) Session ticket extension not found in ClientHello");
+			ssl_options |= SSL_OP_NO_TICKET;
+			SSL_set_options(ssl, ssl_options);
+		}
 	}
 
 	if (conf->client_hello_parse) return fr_tls_session_client_hello_pairs(ssl, request);

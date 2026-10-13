@@ -281,6 +281,12 @@ static int tls_ticket_stateless_app_data_set(SSL *ssl, void *arg)
 	if (!fr_tls_session_request_bound(ssl)) return 1;
 
 	/*
+	 *	If the client doesn't support session tickets then there is no
+	 *	point in adding the application data - it won't get sent.
+	 */
+	if (!tls_session->session_ticket_supported) return 1;
+
+	/*
 	 *	Encode the complete session state list
 	 *	as app data.  Then, when the session is
 	 *	resumed, the session-state list is
