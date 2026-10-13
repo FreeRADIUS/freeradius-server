@@ -7,22 +7,6 @@ type = tls
 tls {
 	tls {
 		virtual_server = eap-tls-test
-		chain {
-			certificate_file = ${certdir}/rsa/server.pem
-
-			private_key_password = whatever
-			private_key_file = ${certdir}/rsa/server.pem
-			ca_file = ${cadir}/rsa/ca.pem
-		}
-
-		ca_file = ${cadir}/rsa/ca.pem
-		ca_path = ${cadir}
-		dh_file = ${certdir}/dh
-
-		fragment_size = 1024
-		include_length = no
-
-		cipher_list = "DEFAULT"
-		ecdh_curve = "prime256v1"
+		$template tls-common
 	}
 }
