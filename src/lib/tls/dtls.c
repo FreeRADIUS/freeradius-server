@@ -30,6 +30,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
+#include <freeradius-devel/protocol/tls/freeradius.h>
 
 #include "base.h"
 #include "dtls.h"
@@ -257,6 +258,7 @@ static void _fr_dtls_timer_expired(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 
 	if (ret < 0) {
 		fr_tls_log_perror(request, "DTLS handshake timed out");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_DTLS_HANDSHAKE_TIMEOUT);
 		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_TLS);
 		return;
 	}

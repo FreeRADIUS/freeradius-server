@@ -228,6 +228,16 @@ VALUE	Error				Session-Missing			39
 VALUE	Error				ALPN-Failed			40
 
 #
+#  We didn't see a session ticket or data after the TLS handshake.
+#
+VALUE	Error				Post-Handshake-Timeout		41
+
+#
+#  DTLS needed more data from the peer, and didn't receive it
+#
+VALUE	Error				DTLS-Handshake-Timeout		42
+
+#
 #  The name of the ALPN string which was negotiated.
 #
 DEFINE	ALPN							string

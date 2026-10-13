@@ -95,7 +95,7 @@ typedef enum : uint8_t {
 	FR_TLS_CONNECTION_IO_EOF,			//!< The peer closed the connection.  On a stream
 							///< a read() which returns zero means the same
 							///< thing.
-	FR_TLS_CONNECTION_IO_FATAL			//!< The connection cannot continue.
+	FR_TLS_CONNECTION_IO_FATAL,			//!< The connection cannot continue.
 } fr_tls_connection_io_state_t;
 
 /** Tables which map enumeration values to names.
@@ -150,6 +150,10 @@ struct fr_tls_connection_s {
 	int			error;			//!< for system call errors
 
 	fr_timer_list_t		*tl;			//!< DTLS retransmission timer list
+	fr_timer_t		*post_handshake_ev;	//!< Bounds the wait for whatever the peer still owes
+							///< once OpenSSL has finished.  A TLS 1.3 peer is
+							///< owed a session ticket, and nothing else times
+							///< that wait.
 	fr_timer_t		*timer_ev;		//!< DTLS retransmission timer event
 							///< can be re-used by the application for application data
 

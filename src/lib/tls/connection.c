@@ -87,6 +87,27 @@ static void tls_connection_request_wake(fr_tls_connection_t *conn)
 	unlang_interpret_mark_runnable(conn->request);
 }
 
+/** Response timeout for post handshake packets.
+ *
+ * TLS handshake finished is not the same as connected.  TLS 1.3 sends session tickets after
+ * SSL_is_init_finished().  We need to bound the time that we wait for the ticket.
+ */
+#define TLS_POST_HANDSHAKE_TIMEOUT	fr_time_delta_from_sec(2)
+
+/** The peer didn't send anything after TLS handshake finished.
+ *
+ */
+static void _tls_connection_post_handshake_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
+	fr_tls_connection_t	*conn = talloc_get_type_abort(uctx, fr_tls_connection_t);
+	request_t		*request = conn->request;
+
+	REDEBUG("(TLS) %s - Timed out waiting for data after the handshake completed", conn->name);
+
+	fr_tls_session_error_add(request, FR_ERROR_VALUE_POST_HANDSHAKE_TIMEOUT);
+	fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_TLS);
+}
+
 /** Decide whether the handshake is over, and whether the handshake succeeded
  *
  * The handshake is complete only when fr_tls_session_is_init_finished()
@@ -151,7 +172,27 @@ static void tls_connection_check(fr_tls_connection_t *conn)
 	 *	The TLS handshake is continuing, OR it's done but
 	 *	there's still data to push to the peer.
 	 */
-	if (!fr_tls_session_is_init_finished(tls_session)) return;
+	if (!fr_tls_session_is_init_finished(tls_session)) {
+		/*
+		 *	OpenSSL is done, but the session is not: the peer
+		 *	still owes us the records which finish it, which for
+		 *	TLS 1.3 is a session ticket.  Bound that wait, because
+		 *	nothing else does, and a peer which never sends them
+		 *	would otherwise hold the connection open for good.
+		 */
+		if (SSL_is_init_finished(tls_session->ssl) && !conn->post_handshake_ev &&
+		    fr_timer_in(conn, conn->tl, &conn->post_handshake_ev,
+				TLS_POST_HANDSHAKE_TIMEOUT, false,
+				_tls_connection_post_handshake_timeout, conn) < 0) {
+			fr_tls_log_error("Failed arming the post-handshake timer");
+			fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
+		}
+
+		return;
+	}
+
+	FR_TIMER_DELETE(&conn->post_handshake_ev);
+
 	if (fr_dbuff_remaining(tls_session->dirty_out) > 0) return;
 
 	INFO("%s - TLS handshake completed", conn->name);
@@ -195,6 +236,7 @@ static void tls_connection_close(fr_tls_connection_t *conn)
 
 	conn->idle = false;
 	FR_TIMER_DELETE(&conn->timer_ev);
+	FR_TIMER_DELETE(&conn->post_handshake_ev);
 	TALLOC_FREE(conn->tl);
 
 	RDEBUG2("(TLS) %s - closing connection", conn->name);
