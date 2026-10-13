@@ -424,7 +424,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 
 		vp = NULL;
 		while ((vp = fr_pair_find_by_da(&request->control_pairs, vp, attr_eap_type))) {
-			(void) fr_sbuff_in_sprintf(allowed, "%s (%d), ", eap_type2name(vp->vp_uint32), vp->vp_uint32);
+			(void) fr_sbuff_in_sprintf(allowed, "%pV (%u), ", &vp->data, vp->vp_uint32);
 		}
 		fr_sbuff_advance(allowed, -2);	/* Negative advance past start should be disallowed */
 		fr_sbuff_terminate(allowed);
