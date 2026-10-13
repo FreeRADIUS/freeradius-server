@@ -198,6 +198,9 @@ ${2}: $$(addprefix $$(BUILD_DIR)/lib/local/,$$(CONFIG_LIBS.$(TEST)))
 endif
 endef
 
+PROTOCOL_LIBS := $(filter $(ALL_TGTS),$(patsubst %,libfreeradius-%.la,$(notdir $(patsubst %/,%,$(wildcard src/protocols/*/)))))
+$(addprefix $(TEST_BIN_DIR)/,radiusd radict unit_test_attribute unit_test_module): | $(addprefix $(BUILD_DIR)/lib/local/,$(PROTOCOL_LIBS))
+
 ######################################################################
 #
 #  Generic rules to set up the tests
