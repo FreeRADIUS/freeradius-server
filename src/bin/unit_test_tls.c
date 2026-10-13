@@ -214,6 +214,9 @@ typedef struct {
 	bool			app_data;		//!< Send one byte of application data once the
 							///< handshake is done, see -P.
 
+	bool			hold;			//!< Once connected, send nothing and stay
+							///< connected, see -H.
+
 	bool			reject;			//!< Reject the session once the handshake
 							///< succeeds, see -R.
 	unsigned int		connections;		//!< How many connections have been run so far.
@@ -431,6 +434,20 @@ static void tls_request_connected(fr_tls_connection_t *conn)
 		}
 
 		DEBUG("Sent one byte of application data");
+	}
+
+	/*
+	 *	-H holds the connection open with nothing more to say.  A
+	 *	peer which is still owed a session ticket or a byte of
+	 *	application data then waits for something which never
+	 *	arrives, which is what the post-handshake timer is for.
+	 *
+	 *	The connection still ends: the peer gives up, closes, and
+	 *	this end sees EOF.
+	 */
+	if (utt->hold) {
+		DEBUG("Holding the connection open, sending nothing");
+		return;
 	}
 
 	tls_request_close(conn);
@@ -1625,6 +1642,7 @@ int main(int argc, char *argv[])
 	bool			nonblock = false;
 	bool			reject = false;
 	bool			app_data = false;
+	bool			hold = false;
 	bool			client = false;
 	char const		*alpn_names = NULL;
 	bool			alpn_required = false;
@@ -1692,7 +1710,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hIlL:Mn:Pr:Rs:xX")) != -1) {
+	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hHIlL:Mn:Pr:Rs:xX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
@@ -1748,6 +1766,10 @@ int main(int argc, char *argv[])
 
 			case 'n':
 				config->name = optarg;
+				break;
+
+			case 'H':
+				hold = true;
 				break;
 
 			case 'P':
@@ -1881,6 +1903,7 @@ int main(int argc, char *argv[])
 	utt->invalid = invalid;
 	utt->nonblock = nonblock;
 	utt->app_data = app_data;
+	utt->hold = hold;
 	utt->reject = reject;
 
 
@@ -2235,6 +2258,10 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "                     rather than stored.  With -c 2 the first connection fills the\n");
 	fprintf(output, "                     cache and the second resumes from it before being rejected, so\n");
 	fprintf(output, "                     the clear then has a loaded session to remove.\n");
+	fprintf(output, "  -H                 Once the connection is up, send nothing and hold it open.\n");
+	fprintf(output, "                     A peer which is still owed a session ticket or a byte of\n");
+	fprintf(output, "                     application data then waits for something which never\n");
+	fprintf(output, "                     arrives, which is what exercises the post-handshake timer.\n");
 	fprintf(output, "  -c <count>         Run <count> connections, one after another.  Session resumption\n");
 	fprintf(output, "                     needs two: one to fill the cache, one to resume from it.\n");
 	fprintf(output, "  -C                 Check configuration and exit.\n");
