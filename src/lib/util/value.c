@@ -1718,11 +1718,18 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 
 		switch (value->vb_attr->flags.length) {
 		case 1:
+			if (value->vb_attr->attr > UINT8_MAX) {
+			too_large:
+				fr_strerror_printf("Attribute %s number %u is too large to encode in %d byte(s)",
+						   value->vb_attr->name, value->vb_attr->attr, value->vb_attr->flags.length);
+				return 0;
+			}
 			fr_value_box_init(&base, FR_TYPE_UINT8, NULL, false);
 			base.vb_uint8 = value->vb_attr->attr;
 			break;
 
 		case 2:
+			if (value->vb_attr->attr > UINT16_MAX) goto too_large;
 			fr_value_box_init(&base, FR_TYPE_UINT16, NULL, false);
 			base.vb_uint16 = value->vb_attr->attr;
 			break;

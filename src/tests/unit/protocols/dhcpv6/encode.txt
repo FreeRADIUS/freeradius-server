@@ -205,5 +205,8 @@ match 00 07 00 01 64 00 08 00 02 13 88
 decode-pair -
 match Preference = 100, Elapsed-Time = 5000
 
+encode-pair Option-Request = ::Hop-Count
+match ERROR: encode_value: Attribute Hop-Count is not a DHCPv6 option
+
 count
-match 79
+match 81

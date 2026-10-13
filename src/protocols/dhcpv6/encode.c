@@ -117,6 +117,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 	switch (vp->vp_type) {
 	case FR_TYPE_ATTR:
+		if (vp->vp_attr->attr > UINT16_MAX) {
+			fr_strerror_printf("%s: Attribute %s is not a DHCPv6 option", __FUNCTION__, vp->vp_attr->name);
+			return PAIR_ENCODE_FATAL_ERROR;
+		}
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) vp->vp_attr->attr);
 		break;
 

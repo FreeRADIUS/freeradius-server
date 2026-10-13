@@ -127,5 +127,8 @@ match Parameter-Request-List = ::Subnet-Mask, Parameter-Request-List = ::Broadca
 encode-pair -
 match 37 04 01 1c 03 2b
 
+encode-pair Parameter-Request-List = ::Hardware-Type
+match ERROR: encode_value: Attribute Hardware-Type is not a DHCPv4 option
+
 count
-match 53
+match 55
