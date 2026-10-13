@@ -1879,7 +1879,12 @@ int main(int argc, char **argv)
 			break;
 
 		case 'o':
-			coa_port = atoi(optarg);
+		{
+			int port = atoi(optarg);
+
+			if ((port <= 0) || (port > UINT16_MAX)) usage();
+			coa_port = (uint16_t) port;
+		}
 			break;
 
 			/*

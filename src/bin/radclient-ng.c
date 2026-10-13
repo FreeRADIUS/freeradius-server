@@ -1532,7 +1532,7 @@ int main(int argc, char **argv)
 
 		case 'o':
 			coa_port = atoi(optarg);
-			if (!coa_port || (coa_port > 65535)) usage();
+			if ((coa_port <= 0) || (coa_port > UINT16_MAX)) usage();
 			break;
 
 			/*
