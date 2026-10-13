@@ -904,6 +904,17 @@ static int tls_ticket_stateful_store_cb(SSL *ssl, SSL_SESSION *sess)
 	fr_assert(request != NULL);
 
 	/*
+	 *	When handling TLS 1.3, if they are enabled OpenSSL calls both the callback to create stateless
+	 *	session tickets and this one.  If a stateless ticket has been created, we don't need to store
+	 *	the data in a stateful store as well.
+	 *	TLS 1.2 handling does the right thing.
+	 */
+	if (tls_session->session_ticket_created) {
+		RDEBUG2("(TLS) Stateless ticket already created, not performing stateful store");
+		return 0;
+	}
+
+	/*
 	 *	RFC 8446 Section 4.6.1 lets a TLS 1.3 server send NewSessionTicket at any point after its
 	 *	Finished message, including part way through application data.  We do not support that.
 	 *

@@ -306,6 +306,9 @@ struct fr_tls_session_s {
 
 	bool			session_ticket_supported;	//!< Did the client present a session_ticket in the hello.
 
+	bool			session_ticket_created;		//!< The stateless session ticket creation callback has
+								///< successfully run.
+
 	bool			session_ticket_received;	//!< A client has seen the NewSessionTicket which
 								///< a TLS 1.3 server sends after the handshake.
 

@@ -271,6 +271,7 @@ static int tls_ticket_stateless_app_data_set(SSL *ssl, void *arg)
 	SSL_SESSION		*sess;
 	request_t		*request;
 	fr_tls_conf_t		*conf;
+	int			ret;
 
 	/*
 	 *	Check to see if we have a request bound
@@ -329,7 +330,10 @@ static int tls_ticket_stateless_app_data_set(SSL *ssl, void *arg)
 		return 0;
 	}
 
-	return tls_ticket_app_data_set(request, sess, &tls_session->session_id);
+	ret = tls_ticket_app_data_set(request, sess, &tls_session->session_id);
+	if (ret == 1) tls_session->session_ticket_created = true;
+
+	return ret;
 }
 
 /** Called when new tickets are being decoded
