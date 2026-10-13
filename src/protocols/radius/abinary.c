@@ -898,6 +898,10 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 					return -1;
 				}
 			}
+			if (token > UINT8_MAX) {
+				fr_strerror_printf("IP protocol \"%s\" is too large in IP data filter", argv[0]);
+				return -1;
+			}
 			filter->proto = token;
 			flags |= IP_PROTO_FLAG;
 
@@ -1028,6 +1032,10 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 					return -1;
 				}
 			}
+			if (token > UINT8_MAX) {
+				fr_strerror_printf("IPv6 protocol \"%s\" is too large in IP data filter", argv[0]);
+				return -1;
+			}
 			filter->proto = token;
 			flags |= IP_PROTO_FLAG;
 
@@ -1076,7 +1084,7 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 static int ascend_parse_generic(int argc, char **argv,
 				ascend_generic_filter_t *filter)
 {
-	int offset;
+	unsigned long offset;
 	fr_slen_t slen;
 	fr_slen_t value_slen;
 	int token;
@@ -1112,8 +1120,8 @@ static int ascend_parse_generic(int argc, char **argv,
 		return -1;
 	}
 
-	offset = atoi(argv[0]);
-	if (offset > 65535) goto invalid;
+	offset = strtoul(argv[0], NULL, 10);
+	if (offset > UINT16_MAX) goto invalid;
 
 	filter->offset = offset;
 	filter->offset = htons(filter->offset);

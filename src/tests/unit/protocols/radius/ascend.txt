@@ -40,5 +40,17 @@ match 1a 18 00 00 02 11 d6 12 ce 8d bb 29 95 fb f5 a4 f3 90 df a8 41 24 91 40
 decode-pair -
 match Vendor-Specific = { Ascend = { Send-Secret = "foo 56789abcdef0" } }
 
+encode-pair Vendor-Specific.Ascend.Data-Filter = "ip in drop 300"
+match 
+
+encode-pair Vendor-Specific.Ascend.Data-Filter = "ipv6 in drop 300"
+match 
+
+encode-pair Vendor-Specific.Ascend.Data-Filter = "generic in drop 4294967297 ffffffffffff 000000000000"
+match 
+
+encode-pair Vendor-Specific.Ascend.Data-Filter = "ipx in drop dstipxnet 1 dstipxnode 0x000000000001 dstipxsock = ffffffff"
+match 
+
 count
-match 23
+match 31
