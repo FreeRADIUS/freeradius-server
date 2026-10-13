@@ -378,8 +378,23 @@ static ssize_t tacacs_encode_chap(fr_dbuff_t *dbuff, fr_tacacs_packet_t *packet,
 	_field = (typeof(_field))((vp) ? vp->vp_uint8 : 0); \
 } while (0)
 
-#define ENCODE_FIELD_STRING8(_field, _da) _field = tacacs_encode_field(&work_dbuff, vps, _da, 0xff)
-#define ENCODE_FIELD_STRING16(_field, _da) _field = htons(tacacs_encode_field(&work_dbuff, vps, _da, 0xffff))
+#define ENCODE_FIELD_STRING8(_field, _da) do { \
+	ssize_t _slen = tacacs_encode_field(&work_dbuff, vps, _da, 0xff); \
+	if (_slen < 0) { \
+		fr_strerror_printf("Failed encoding %s", (_da)->name); \
+		return -1; \
+	} \
+	_field = (uint8_t) _slen; \
+} while (0)
+
+#define ENCODE_FIELD_STRING16(_field, _da) do { \
+	ssize_t _slen = tacacs_encode_field(&work_dbuff, vps, _da, 0xffff); \
+	if (_slen < 0) { \
+		fr_strerror_printf("Failed encoding %s", (_da)->name); \
+		return -1; \
+	} \
+	_field = htons((uint16_t) _slen); \
+} while (0)
 
 /**
  *	Encode VPS into a raw TACACS packet.
