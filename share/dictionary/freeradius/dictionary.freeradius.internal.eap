@@ -117,7 +117,7 @@ ATTRIBUTE	EAP-Session-Id				4006	octets
 # For session resumption
 ATTRIBUTE	Allow-Session-Resumption		4007	bool
 ATTRIBUTE	EAP-Session-Resumed			4008	bool
-ATTRIBUTE	Chbind-Response-Code			4009	integer
+ATTRIBUTE	Chbind-Response-Code			4009	uint8
 
 VALUE	Chbind-Response-Code		success			2
 VALUE	Chbind-Response-Code		failure			3

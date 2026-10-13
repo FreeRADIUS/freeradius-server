@@ -71,7 +71,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_chbind_response_code);
 	if (vp) {
-		ptr[0] = vp->vp_uint32;
+		ptr[0] = vp->vp_uint8;
 	} else {
 		ptr[0] = CHBIND_CODE_FAILURE;
 	}
