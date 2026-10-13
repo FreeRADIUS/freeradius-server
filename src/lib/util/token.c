@@ -323,7 +323,6 @@ static fr_token_t getthing(char const **ptr, char *buf, size_t buflen, bool tok,
 	char const		*p;
 	char			quote;
 	bool			triple = false;
-	unsigned int		x;
 	size_t			i;
 	fr_token_t 		token;
 
@@ -474,9 +473,10 @@ static fr_token_t getthing(char const **ptr, char *buf, size_t buflen, bool tok,
 					break;
 
 				default:
-					if (*p >= '0' && *p <= '9' &&
-					    sscanf(p, "%3o", &x) == 1) {
-						*s++ = x;
+					if ((p[0] >= '0') && (p[0] <= '3') &&
+					    (p[1] >= '0') && (p[1] <= '7') &&
+					    (p[2] >= '0') && (p[2] <= '7')) {
+						*s++ = (char) (((p[0] - '0') << 6) | ((p[1] - '0') << 3) | (p[2] - '0'));
 						p += 2;
 					} else
 						*s++ = *p;
