@@ -30,6 +30,7 @@
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/util/file.h>
+#include <freeradius-devel/util/nbo.h>
 
 #include <netdb.h>
 
@@ -202,7 +203,7 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 
 		if (hdr->length < 2) goto fail;
 
-		start = (string[0] << 8) | string[1];
+		start = fr_nbo_to_uint16((uint8_t const *) string);
 
 		thread->misc_conduit = FR_CONDUIT_COMPLETE;
 
