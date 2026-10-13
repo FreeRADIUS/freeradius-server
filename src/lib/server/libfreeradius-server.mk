@@ -61,9 +61,10 @@ endif
 # way of building clients.  Once that's fixed we can remove the dependency.
 TGT_PREREQS	+= $(LIBFREERADIUS_UTIL) libfreeradius-radius$(L)
 
-ifneq ($(MAKECMDGOALS),scan)
-SRC_CFLAGS	+= -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLAGS)\" -DBUILT_WITH_LDFLAGS=\"$(LDFLAGS)\" -DBUILT_WITH_LIBS=\"$(LIBS)\"
-endif
+SRC_CFLAGS	+= $(call SHELL_QUOTE,-DBUILT_WITH_CPPFLAGS="$(CPPFLAGS)") \
+		   $(call SHELL_QUOTE,-DBUILT_WITH_CFLAGS="$(CFLAGS)") \
+		   $(call SHELL_QUOTE,-DBUILT_WITH_LDFLAGS="$(LDFLAGS)") \
+		   $(call SHELL_QUOTE,-DBUILT_WITH_LIBS="$(LIBS)")
 
 # ID of this library
 LOG_ID_LIB	:= 1

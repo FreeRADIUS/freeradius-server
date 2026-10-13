@@ -14,6 +14,7 @@ TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-io$(L) libfreeradius-tls$(L
 # Flags needed when linking main executables that link against LuaJIT
 TGT_LDLIBS	+= $(LUAJIT_LDLIBS)
 
-ifneq ($(MAKECMDGOALS),scan)
-SRC_CFLAGS	+= -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLAGS)\" -DBUILT_WITH_LDFLAGS=\"$(LDFLAGS)\" -DBUILT_WITH_LIBS=\"$(LIBS)\"
-endif
+SRC_CFLAGS	+= $(call SHELL_QUOTE,-DBUILT_WITH_CPPFLAGS="$(CPPFLAGS)") \
+		   $(call SHELL_QUOTE,-DBUILT_WITH_CFLAGS="$(CFLAGS)") \
+		   $(call SHELL_QUOTE,-DBUILT_WITH_LDFLAGS="$(LDFLAGS)") \
+		   $(call SHELL_QUOTE,-DBUILT_WITH_LIBS="$(LIBS)")
