@@ -69,6 +69,8 @@ $(OUTPUT)/%.error: $(DIR)/%.error $(TEST_BIN_DIR)/unit_test_attribute
 	fi
 	${Q}sed 's,${top_srcdir}/,,g' < "$@.log" > "$@.out"
 	${Q}if ! diff "$@.out" "$(subst .error,,$<).out" ; then \
+		rm -f $@; \
 		echo "diff $@.out $(subst .error,,$<).out"; \
 		echo "FAILED"; \
+		exit 1; \
 	fi
