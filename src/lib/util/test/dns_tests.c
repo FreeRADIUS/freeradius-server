@@ -642,6 +642,29 @@ static void test_compress_two_names(void)
 	TEST_MSG("Compressed size %zd should be < 17", slen2);
 }
 
+/** A compression pointer has 14 bits of offset, and cannot point at a label which starts at offset 16384
+ *
+ *  (16384 >> 8) | 0xc0 is 0xc0, which with a low byte of 0 would point at the packet header.
+ */
+static void test_compress_offset_too_large(void)
+{
+	ssize_t slen1, slen2;
+	static uint8_t pkt[(1 << 14) + 256];
+	uint8_t *where;
+
+	memset(pkt, 0, sizeof(pkt));
+
+	where = pkt + (1 << 14) - 8;
+	slen1 = encode_label(pkt, sizeof(pkt), where, "example.com", true, NULL);
+	TEST_CHECK(slen1 == 13);
+	TEST_MSG("First encode: %zd", slen1);
+
+	where += slen1;
+	slen2 = encode_label(pkt, sizeof(pkt), where, "foo.com", true, NULL);
+	TEST_CHECK(slen2 == 9);
+	TEST_MSG("Second encode should not compress, got %zd bytes", slen2);
+}
+
 /* ----------------------------------------------------------------
  *  Decode: fr_dns_label_to_value_box error paths
  * ---------------------------------------------------------------- */
@@ -1052,6 +1075,7 @@ TEST_LIST = {
 
 	/* Compression */
 	{ "compress_two_names",			test_compress_two_names },
+	{ "compress_offset_too_large",		test_compress_offset_too_large },
 	{ "roundtrip_compressed",		test_roundtrip_compressed },
 	{ "compress_62_byte_label",		test_compress_62_byte_label },
 	{ "compress_63_byte_label",		test_compress_63_byte_label },

@@ -398,7 +398,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 			 *	point to it.  This check is mainly for
 			 *	static analyzers.
 			 */
-			if ((q - packet) > (1 << 14)) return false;
+			if ((q - packet) >= MAX_OFFSET) return false;
 
 			/*
 			 *	Only now do case-insensitive
@@ -554,7 +554,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 		 *	Pointer is too far away.  Don't point
 		 *	to it.
 		 */
-		if ((q - packet) > (1 << 14)) return compressed;
+		if ((q - packet) >= MAX_OFFSET) return compressed;
 
 		/*
 		 *	Only now do case-insensitive
