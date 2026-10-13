@@ -1044,6 +1044,45 @@ static void test_network_uint32(void)
 	TEST_MSG("Expected 0x12345678, got 0x%08x", dst.vb_uint32);
 }
 
+/** The scope_id of an IPv6 address is one byte on the wire, not the four bytes of fr_ipaddr_t.scope_id
+ *
+ */
+static void test_network_ipv6addr_scope_id(void)
+{
+	fr_value_box_t src, dst;
+	uint8_t buffer[256] = {};
+	fr_dbuff_t dbuff;
+	ssize_t enc_len, dec_len;
+
+	fr_value_box_init(&src, FR_TYPE_IPV6_ADDR, NULL, false);
+	src.vb_ip = (fr_ipaddr_t) {
+		.af = AF_INET6,
+		.prefix = 128,
+		.scope_id = 1,
+		.addr.v6.s6_addr = { 0xfe, 0x80, [15] = 0x01 }
+	};
+
+	dbuff = FR_DBUFF_TMP(buffer, sizeof(buffer));
+	enc_len = fr_value_box_to_network(&dbuff, &src);
+	TEST_CHECK(enc_len == 17);
+	TEST_MSG("Expected 17, got %zd", enc_len);
+	TEST_CHECK(buffer[0] == 1);
+	TEST_CHECK(buffer[1] == 0xfe);
+
+	fr_value_box_init_null(&dst);
+	dbuff = FR_DBUFF_TMP(buffer, (size_t)enc_len);
+	dec_len = fr_value_box_from_network(NULL, &dst, FR_TYPE_IPV6_ADDR, NULL, &dbuff, enc_len, false);
+	TEST_CHECK(dec_len == 17);
+	TEST_CHECK(dst.vb_ip.scope_id == 1);
+	TEST_CHECK(memcmp(&dst.vb_ip.addr.v6, &src.vb_ip.addr.v6, sizeof(src.vb_ip.addr.v6)) == 0);
+
+	src.vb_ip.scope_id = 256;
+	dbuff = FR_DBUFF_TMP(buffer, sizeof(buffer));
+	enc_len = fr_value_box_to_network(&dbuff, &src);
+	TEST_CHECK(enc_len < 0);
+	TEST_MSG("Expected an error, got %zd", enc_len);
+}
+
 static void test_network_uint64(void)
 {
 	fr_value_box_t src, dst;
@@ -1580,6 +1619,7 @@ TEST_LIST = {
 	{ "round_trip_int64",			test_round_trip_int64 },
 	{ "round_trip_bool",			test_round_trip_bool },
 	{ "round_trip_network_uint32",		test_round_trip_network_uint32 },
+	{ "network_ipv6addr_scope_id",		test_network_ipv6addr_scope_id },
 
 	TEST_TERMINATOR
 };

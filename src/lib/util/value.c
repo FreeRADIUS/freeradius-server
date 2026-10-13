@@ -1474,6 +1474,23 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 	}
 }
 
+/** Encode the scope_id of an IPv6 address or prefix as one byte
+ *
+ * The network format gives the scope_id one byte, but fr_ipaddr_t holds the
+ * scope_id in a uint32_t.  The function fails for a scope_id above 255 rather
+ * than truncating the scope_id.
+ */
+static int value_box_ipv6_scope_id_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
+{
+	if (value->vb_ip.scope_id > UINT8_MAX) {
+		fr_strerror_printf("IPv6 scope_id %u is too large to encode in one byte", value->vb_ip.scope_id);
+		return -1;
+	}
+
+	FR_DBUFF_IN_BYTES_RETURN(dbuff, (uint8_t) value->vb_ip.scope_id);
+	return 0;
+}
+
 /** Encode a single value box, serializing its contents in generic network format
  *
  * The serialized form of #fr_value_box_t may not match the requirements of your protocol
@@ -1627,13 +1644,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 
 	case FR_TYPE_IPV6_ADDR:
 	ipv6addr:
-		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
+		if (value->vb_ip.scope_id > 0) {
+			if (value_box_ipv6_scope_id_to_network(&work_dbuff, value) < 0) return -1;
+		}
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ipv6addr, sizeof(value->vb_ipv6addr));
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
 	ipv6prefix:
-		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
+		if (value->vb_ip.scope_id > 0) {
+			if (value_box_ipv6_scope_id_to_network(&work_dbuff, value) < 0) return -1;
+		}
 		FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.prefix);
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ipv6addr, sizeof(value->vb_ipv6addr));
 		break;
@@ -2774,9 +2795,14 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	{
 		uint8_t *bin;
 
+		if (src->vb_ip.scope_id > UINT8_MAX) {
+			fr_strerror_printf("IPv6 scope_id %u is too large to encode in one byte", src->vb_ip.scope_id);
+			return -1;
+		}
+
 		if (fr_value_box_mem_alloc(ctx, &bin, dst, dst_enumv,
 					   sizeof(src->vb_ipv6addr) + 2, src->tainted) < 0) return -1;
-		bin[0] = src->vb_ip.scope_id;
+		bin[0] = (uint8_t) src->vb_ip.scope_id;
 		bin[1] = src->vb_ip.prefix;
 		memcpy(&bin[2], src->vb_ipv6addr, sizeof(src->vb_ipv6addr));
 	}
