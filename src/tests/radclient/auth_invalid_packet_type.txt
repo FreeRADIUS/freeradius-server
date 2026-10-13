@@ -1,0 +1,6 @@
+#
+#	ARGV: -i 125 -c 1 -x -F
+#	IGNORE_ERROR: 1
+#
+Packet-Type = 300,
+User-Name = "bob"

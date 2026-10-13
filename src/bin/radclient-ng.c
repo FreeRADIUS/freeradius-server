@@ -658,6 +658,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			 *	the attributes read from the file.
 			 */
 			if (vp->da == attr_packet_type) {
+				if (!FR_RADIUS_PACKET_CODE_VALID(vp->vp_uint32)) {
+					REDEBUG("Invalid Packet-Type %u in %s", vp->vp_uint32, files->packets);
+					goto error;
+				}
+
 				request->packet->code = vp->vp_uint32;
 			} else if (vp->da == attr_request_authenticator) {
 				if (vp->vp_length > sizeof(request->packet->vector)) {
