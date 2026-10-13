@@ -824,6 +824,8 @@ static void request_mux(fr_event_list_t *el,
 		tcp_request_t	*req;
 		request_t	*request;
 
+		if (h->id > UINT8_MAX) break;
+
  		if (unlikely(trunk_connection_pop_request(&treq, tconn) < 0)) return;
 
 		/*
