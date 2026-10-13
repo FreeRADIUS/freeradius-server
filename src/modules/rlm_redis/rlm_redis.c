@@ -349,8 +349,10 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						key->vb_length);
 	if (idx == 0) {
 		node = fr_redis_ct_master(thread->rtcluster, key_slot);
+	} else if ((idx - 1) > UINT8_MAX) {
+		node = NULL;
 	} else {
-		node = fr_redis_ct_replica(thread->rtcluster, key_slot, idx - 1);
+		node = fr_redis_ct_replica(thread->rtcluster, key_slot, (uint8_t) (idx - 1));
 	}
 
 	if (!node) {
