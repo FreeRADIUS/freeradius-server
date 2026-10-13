@@ -165,6 +165,7 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 		 */
 		if (vp->vp_type == FR_TYPE_VENDOR) {
 			arg_cnt += tacacs_encode_body_arg_cnt(&vp->vp_group, NULL);
+			if (arg_cnt > UINT8_MAX) arg_cnt = UINT8_MAX;
 			continue;
 		}
 
@@ -195,8 +196,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 	     vp = fr_pair_list_next(vps, vp)) {
 		size_t len;
 
-		if (i == 255) break;
-		if (i > arg_cnt) break;
+		if (i >= arg_cnt) break;
 
 		if (vp->da->flags.internal) continue;
 
@@ -221,7 +221,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 			/*
 			 *	Nested attribute: just recurse.
 			 */
-			child_argc = fr_pair_list_num_elements(&vp->vp_group);
+			child_argc = tacacs_encode_body_arg_cnt(&vp->vp_group, NULL);
 			if (child_argc > (arg_cnt - i)) child_argc = arg_cnt - i;
 
 			slen = tacacs_encode_body_arg_n(&work_dbuff, child_argc, &arg_len[i], &vp->vp_group, vp->da);
