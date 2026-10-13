@@ -16,4 +16,5 @@ SUBMAKEFILES := \
     unit_test_map.mk \
     unit_test_module.mk \
     unit_test_tls.mk \
+    unit_test_bio.mk \
     checkrad.mk

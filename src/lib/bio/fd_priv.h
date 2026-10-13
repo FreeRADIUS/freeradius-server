@@ -29,6 +29,11 @@ RCSIDH(lib_bio_fd_privh, "$Id$")
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/fd.h>
 
+/** The largest payload of a UDP datagram.
+ *
+ */
+#define FR_BIO_FD_MAX_DATAGRAM (65535)
+
 /** Our FD bio structure.
  *
  */
@@ -47,6 +52,12 @@ typedef struct fr_bio_fd_s {
 		fr_event_list_t	  	*el;		//!< for fr_bio_fd_connect()
 		fr_timer_t		*ev;	//!< for fr_bio_fd_connect()
 	} connect;
+
+	uint8_t		*accept_buffer;		//!< A LISTEN datagram bio reads datagrams into this buffer, which is
+						///< allocated once by fr_bio_fd_init_listen().
+	uint8_t		*first_datagram;	//!< The datagram which fr_bio_fd_accept() read to name the peer.
+						///< Only fr_bio_fd_read_first_datagram() reads it.
+	size_t		first_datagram_len;	//!< Length of #first_datagram.
 
 	int		max_tries;		//!< how many times we retry on EINTR
 	size_t		offset;			//!< where #fr_bio_fd_packet_ctx_t is stored

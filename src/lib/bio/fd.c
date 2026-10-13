@@ -226,6 +226,34 @@ static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, UNUSED void *pac
 	return rcode;
 }
 
+/** Return the datagram which fr_bio_fd_accept() read from the listening socket
+ *
+ *  fr_bio_fd_accept_datagram() has to read the datagram in order to name the peer, so the datagram is no
+ *  longer in the socket.  The first read returns the saved datagram, and then switches to reading the
+ *  connected socket.
+ *
+ *  A datagram which is larger than the buffer is truncated, in the same way as a read of the socket.
+ */
+static ssize_t fr_bio_fd_read_first_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+	size_t len;
+
+	fr_assert(my->first_datagram != NULL);
+
+	len = my->first_datagram_len;
+	if (len > size) len = size;
+
+	memcpy(buffer, my->first_datagram, len);
+
+	TALLOC_FREE(my->first_datagram);
+	my->first_datagram_len = 0;
+
+	my->bio.read = fr_bio_fd_read_connected_datagram;
+
+	return len;
+}
+
 /** Read from a UDP socket where we know our IP
  */
 static ssize_t fr_bio_fd_recvfrom(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
@@ -989,8 +1017,6 @@ int fr_bio_fd_init_common(fr_bio_fd_t *my)
 
 int fr_bio_fd_init_listen(fr_bio_fd_t *my)
 {
-	fr_assert(my->info.socket.type == SOCK_STREAM);
-
 	/*
 	 *	A listening socket supports neither read nor write, so both routines return an error.  The
 	 *	caller calls fr_bio_fd_accept() to get each new connection.
@@ -998,7 +1024,42 @@ int fr_bio_fd_init_listen(fr_bio_fd_t *my)
 	my->bio.read = fr_bio_fail_read;
 	my->bio.write = fr_bio_fail_write;
 
-	if (listen(my->info.socket.fd, my->info.cfg->backlog_is_set ? my->info.cfg->backlog : 8) < 0) {
+	/*
+	 *	A datagram socket has no queue of connections, so there is nothing to listen for.
+	 *	fr_bio_fd_accept_datagram() reads the datagrams.
+	 */
+	/*
+	 *	fr_bio_fd_accept_datagram() reads each datagram into this buffer, which is allocated once.
+	 */
+	if ((my->info.socket.type == SOCK_DGRAM) && !my->accept_buffer) {
+		my->accept_buffer = talloc_array(my, uint8_t, FR_BIO_FD_MAX_DATAGRAM);
+		if (!my->accept_buffer) return fr_bio_error(OOM);
+	}
+
+	/*
+	 *	A datagram listener on a wildcard address needs the destination address of each datagram,
+	 *	so that fr_bio_fd_accept_datagram() can bind the new socket to that address.
+	 */
+	if ((my->info.socket.type == SOCK_DGRAM) && fr_ipaddr_is_inaddr_any(&my->info.socket.inet.src_ipaddr)) {
+#if defined(IP_PKTINFO) || defined(IP_RECVDSTADDR)
+		if ((my->info.socket.inet.src_ipaddr.af == AF_INET) &&
+		    (fr_bio_fd_udpfromto_init4(my->info.socket.fd) < 0)) {
+			fr_strerror_printf("Failed enabling destination addresses: %s", fr_syserror(errno));
+			return fr_bio_error(IO);
+		}
+#endif
+
+#if defined(IPV6_PKTINFO)
+		if ((my->info.socket.inet.src_ipaddr.af == AF_INET6) &&
+		    (fr_bio_fd_udpfromto_init6(my->info.socket.fd) < 0)) {
+			fr_strerror_printf("Failed enabling destination addresses: %s", fr_syserror(errno));
+			return fr_bio_error(IO);
+		}
+#endif
+	}
+
+	if ((my->info.socket.type == SOCK_STREAM) &&
+	    (listen(my->info.socket.fd, my->info.cfg->backlog_is_set ? my->info.cfg->backlog : 8) < 0)) {
 		fr_strerror_printf("Failed calling listen() %s", fr_syserror(errno));
 		return fr_bio_error(IO);
 	}
@@ -1555,6 +1616,234 @@ retry:
 }
 
 
+/** Receive a datagram, and find the address which the datagram was sent to
+ *
+ *  A wildcard listener asks the kernel for the destination address of each datagram, which arrives as a
+ *  control message.  A listener bound to one address has no need of the control message, as every datagram
+ *  was sent to that address.
+ *
+ * @param[in] parent		the listening bio.
+ * @param[in] buffer		of #FR_BIO_FD_MAX_DATAGRAM octets.
+ * @param[in] flags		for recvmsg().
+ * @param[out] from		the source of the datagram.
+ * @param[out] from_len		length of the source.
+ * @param[out] dst		the destination of the datagram.  `af` is AF_UNSPEC when the kernel did not
+ *				say.
+ * @return
+ *	- >=0 size of the datagram.
+ *	- <0 on error, with `errno` set.
+ */
+static ssize_t fr_bio_fd_recvmsg_dst(fr_bio_fd_t *parent, uint8_t *buffer, int flags,
+				     struct sockaddr_storage *from, socklen_t *from_len, fr_ipaddr_t *dst)
+{
+	ssize_t		slen;
+	struct iovec	iov = { .iov_base = buffer, .iov_len = FR_BIO_FD_MAX_DATAGRAM };
+	uint8_t		cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo)) + CMSG_SPACE(sizeof(struct timespec))];
+	struct msghdr	msgh = {
+		.msg_control	= cbuf,
+		.msg_controllen	= sizeof(cbuf),
+		.msg_name	= from,
+		.msg_namelen	= sizeof(*from),
+		.msg_iov	= &iov,
+		.msg_iovlen	= 1,
+	};
+	struct cmsghdr	*cmsg;
+
+	*dst = (fr_ipaddr_t) { .af = AF_UNSPEC };
+
+	slen = recvmsg(parent->info.socket.fd, &msgh, flags);
+	if (slen < 0) return slen;
+
+	*from_len = msgh.msg_namelen;
+
+	/*
+	 *	A listener bound to one address.
+	 */
+	if (!fr_ipaddr_is_inaddr_any(&parent->info.socket.inet.src_ipaddr)) {
+		*dst = parent->info.socket.inet.src_ipaddr;
+		return slen;
+	}
+
+DIAG_OFF(sign-compare)
+	for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL; cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
+DIAG_ON(sign-compare)
+		struct sockaddr_storage to;
+
+#ifdef IP_PKTINFO
+		if ((cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == IP_PKTINFO)) {
+			struct in_pktinfo *i = (struct in_pktinfo *) CMSG_DATA(cmsg);
+
+			memset(&to, 0, sizeof(to));
+			((struct sockaddr_in *) &to)->sin_family = AF_INET;
+			((struct sockaddr_in *) &to)->sin_addr = i->ipi_addr;
+			if (fr_ipaddr_from_sockaddr(dst, NULL, &to, sizeof(struct sockaddr_in)) == 0) break;
+		}
+#endif
+
+#ifdef IP_RECVDSTADDR
+		if ((cmsg->cmsg_level == IPPROTO_IP) && (cmsg->cmsg_type == IP_RECVDSTADDR)) {
+			struct in_addr *i = (struct in_addr *) CMSG_DATA(cmsg);
+
+			memset(&to, 0, sizeof(to));
+			((struct sockaddr_in *) &to)->sin_family = AF_INET;
+			((struct sockaddr_in *) &to)->sin_addr = *i;
+			if (fr_ipaddr_from_sockaddr(dst, NULL, &to, sizeof(struct sockaddr_in)) == 0) break;
+		}
+#endif
+
+#ifdef IPV6_PKTINFO
+		if ((cmsg->cmsg_level == IPPROTO_IPV6) && (cmsg->cmsg_type == IPV6_PKTINFO)) {
+			struct in6_pktinfo *i = (struct in6_pktinfo *) CMSG_DATA(cmsg);
+
+			memset(&to, 0, sizeof(to));
+			((struct sockaddr_in6 *) &to)->sin6_family = AF_INET6;
+			((struct sockaddr_in6 *) &to)->sin6_addr = i->ipi6_addr;
+			((struct sockaddr_in6 *) &to)->sin6_scope_id = i->ipi6_ifindex;
+			if (fr_ipaddr_from_sockaddr(dst, NULL, &to, sizeof(struct sockaddr_in6)) == 0) break;
+		}
+#endif
+	}
+
+	return slen;
+}
+
+/** Accept a "connection" on a datagram listening socket
+ *
+ *  This function is really only useful for DTLS.  A datagram socket has no connections, so a connection is
+ *  made by taking the source IP and port of the first datagram, and opening a new socket which is connected
+ *  to that peer.  The kernel then delivers the datagrams of that peer to the new socket in preference to the
+ *  listening socket.  This only works when the peer sends one stream of datagrams.  Other UDP applications
+ *  can have several datagrams from the same source IP waiting in the listening socket, and those datagrams
+ *  stay in the listening socket.
+ *
+ *  The new bio is a copy of the listening bio, except that it is a connected socket.  It has its own file
+ *  descriptor, as connect() is a property of the socket and not of the descriptor, so dup() would connect the
+ *  listening socket.  The new socket needs SO_REUSEPORT, as the new socket is bound to the address which the
+ *  datagram was sent to, and the port of the listening socket.  That address can be more specific than the
+ *  address of the listening socket, when the listening socket is bound to a wildcard.
+ *
+ *  The datagram is read directly into a buffer which belongs to the listening bio, and which is allocated
+ *  once when the listening bio opens.  The one read gives the datagram, the source, and the destination.  The
+ *  datagram is out of the socket before the new socket exists, so if the new socket cannot be opened, the
+ *  datagram is lost.  The peer retransmits, as a lost datagram looks like any other lost datagram.
+ *
+ *  The datagram which named the peer is saved in the new bio.  The first read of the new bio returns the
+ *  saved datagram.  The datagram is no longer in the kernel, so no event loop will tell the application that
+ *  the new socket is readable.  `info.read_blocked` is false, and the application MUST call fr_bio_read()
+ *  once after fr_bio_fd_accept() returns, and then it can wait for events as usual.
+ *
+ * @param[in] ctx	to allocate the new bio in.
+ * @param[out] out_p	the new bio.
+ * @param[in] parent	the listening datagram bio.
+ * @return
+ *	- <0 on error
+ *	- 0 for "no datagram is waiting"
+ *	- 1 for "the new bio is available"
+ */
+static int fr_bio_fd_accept_datagram(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_fd_t *parent)
+{
+	fr_bio_fd_t		*out;
+	fr_bio_fd_config_t	*cfg;
+	struct sockaddr_storage	peer;
+	socklen_t		peer_len;
+	fr_ipaddr_t		peer_ipaddr, dst_ipaddr;
+	uint16_t		peer_port;
+	ssize_t			slen;
+	int			tries = 0;
+	int			rcode;
+
+	fr_assert(parent->info.socket.type == SOCK_DGRAM);
+	fr_assert(parent->accept_buffer != NULL);
+
+retry:
+	/*
+	 *	Read the datagram, with its source and destination.  The buffer is big enough for any
+	 *	datagram, so the return value is the real size.
+	 */
+	slen = fr_bio_fd_recvmsg_dst(parent, parent->accept_buffer, 0, &peer, &peer_len, &dst_ipaddr);
+	if (slen < 0) {
+		switch (errno) {
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+		case EWOULDBLOCK:
+#endif
+		case EAGAIN:
+			return 0;
+
+		case EINTR:
+			tries++;
+			if (tries <= parent->max_tries) goto retry;
+			break;
+
+		default:
+			break;
+		}
+
+		fr_strerror_printf("Failed reading the first datagram: %s", fr_syserror(errno));
+		return fr_bio_error(IO);
+	}
+
+	if (dst_ipaddr.af == AF_UNSPEC) {
+		fr_strerror_const("Cannot find the address which the first datagram was sent to");
+		return fr_bio_error(GENERIC);
+	}
+
+	if (fr_ipaddr_from_sockaddr(&peer_ipaddr, &peer_port, &peer, peer_len) < 0) {
+		fr_strerror_const("Failed getting the address of the peer");
+		return fr_bio_error(GENERIC);
+	}
+
+	out = (fr_bio_fd_t *) fr_bio_fd_alloc(ctx, NULL, parent->offset);
+	if (!out) return fr_bio_error(OOM);
+
+	/*
+	 *	The configuration of the new bio belongs to the new bio.  It is the configuration of the
+	 *	listening bio, except that the new bio is connected to the peer, and bound to the address
+	 *	which the datagram was sent to.
+	 */
+	cfg = talloc_zero(out, fr_bio_fd_config_t);
+	if (!cfg) {
+		talloc_free(out);
+		return fr_bio_error(OOM);
+	}
+
+	*cfg = *parent->info.cfg;
+	cfg->type = FR_BIO_FD_CONNECTED;
+	cfg->server = false;
+	cfg->reuse_port = true;
+	cfg->src_ipaddr = dst_ipaddr;
+	cfg->dst_ipaddr = peer_ipaddr;
+	cfg->dst_port = peer_port;
+
+	/*
+	 *	Open a new UDP socket with SO_REUSEPORT, bind it, and connect it to the peer.
+	 */
+	rcode = fr_bio_fd_open(&out->bio, cfg);
+	if (rcode < 0) {
+		talloc_free(out);
+		return rcode;
+	}
+
+	/*
+	 *	The buffer belongs to the listening bio, so the new bio gets a copy.
+	 */
+	out->first_datagram = talloc_memdup(out, parent->accept_buffer, slen ? (size_t) slen : 1);
+	if (!out->first_datagram) {
+		talloc_free(out);
+		return fr_bio_error(OOM);
+	}
+	out->first_datagram_len = (size_t) slen;
+
+	/*
+	 *	The first read returns the saved datagram.  The saved datagram is not in the socket, so the
+	 *	application has to read the bio without waiting for an event.
+	 */
+	out->bio.read = fr_bio_fd_read_first_datagram;
+	out->info.read_blocked = false;
+
+	*out_p = (fr_bio_t *) out;
+	return 1;
+}
+
 /** Accept a new connection on a socket.
  *
  */
@@ -1567,6 +1856,8 @@ int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
 	*out_p = NULL;
 
 	fr_assert(my->info.type == FR_BIO_FD_LISTEN);
+
+	if (my->info.socket.type == SOCK_DGRAM) return fr_bio_fd_accept_datagram(ctx, out_p, my);
 
 	/*
 	 *	Allocate the base BIO and set it up.
@@ -1593,15 +1884,8 @@ int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
 	 *	- 0 for "nothing to do", typically because of EAGAIN.
 	 *	- 1 for "we have a new socket"
 	 */
-	if (my->info.socket.type == SOCK_STREAM) {
-		rcode = fr_bio_fd_accept_stream(out, my);
-
-	} else {
-		fr_assert(my->info.socket.type == SOCK_DGRAM);
-
-		// rcode = fr_bio_fd_accept_datagram(out, my);
-		rcode = -1;
-	}
+	fr_assert(my->info.socket.type == SOCK_STREAM);
+	rcode = fr_bio_fd_accept_stream(out, my);
 	if (rcode <= 0) {
 		talloc_free(out);
 		return rcode;
