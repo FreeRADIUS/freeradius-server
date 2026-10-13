@@ -54,7 +54,7 @@ void _tls_ticket_stateful_load_state_reset(request_t *request, fr_tls_ticket_sta
 {
 	if (cache->load.sess) {
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
-			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing loaded session in %s", cache->session_id, func);
+			ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Session ID %pV - Freeing loaded session in %s", cache->session_id, func);
 		}
 
 		SSL_SESSION_free(cache->load.sess);
@@ -69,7 +69,7 @@ void _tls_ticket_stateful_store_state_reset(request_t *request, fr_tls_ticket_st
 {
 	if (cache->store.sess) {
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
-			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing session to store in %s", &cache->store.id, func);
+			ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Session ID %pV - Freeing session to store in %s", &cache->store.id, func);
 		}
 		SSL_SESSION_free(cache->store.sess);
 		cache->store.sess = NULL;
@@ -84,7 +84,7 @@ void _tls_ticket_stateful_clear_state_reset(request_t *request, fr_tls_ticket_st
 {
 	if (!fr_type_is_null(cache->clear.id.type)) {
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
-			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing session ID to clear in %s",
+			ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Session ID %pV - Freeing session ID to clear in %s",
 				  &cache->clear.id, func);
 		}
 		fr_value_box_clear(&cache->clear.id);

@@ -358,7 +358,7 @@ static SSL_TICKET_RETURN tls_ticket_stateless_app_data_get(SSL *ssl, SSL_SESSION
 
 	if (!tls_session->allow_session_resumption ||
 	    (!(tls_cache_conf->mode & FR_TLS_TICKET_STATELESS))) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Session resumption not enabled for this TLS session, "
+		ROPTIONAL(RDEBUG2, DEBUG2, "(TLS) Session resumption not enabled for this TLS session, "
 			  "denying session resumption via session-ticket");
 	    	return SSL_TICKET_RETURN_IGNORE;
 	}
