@@ -737,6 +737,10 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 		vp = fr_pair_find_by_da(&eap_session->request->control_pairs, NULL, attr_eap_type);
 		if (vp) {
 			RDEBUG2("Using method from control.EAP-Type");
+			if (vp->vp_uint32 >= FR_EAP_METHOD_MAX) {
+				REDEBUG2("control.EAP-Type %u is not a valid EAP type", vp->vp_uint32);
+				goto is_invalid;
+			}
 			next = vp->vp_uint32;
 		/*
 		 *	We have an array of the submodules which
@@ -841,6 +845,10 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 			vp = fr_pair_find_by_da(&eap_session->request->control_pairs, NULL, attr_eap_type);
 			if (vp) {
 				RDEBUG2("Using method from control.EAP-Type");
+				if (vp->vp_uint32 >= FR_EAP_METHOD_MAX) {
+					REDEBUG2("control.EAP-Type %u is not a valid EAP type", vp->vp_uint32);
+					goto is_invalid;
+				}
 				next = vp->vp_uint32;
 			}
 			goto do_init;

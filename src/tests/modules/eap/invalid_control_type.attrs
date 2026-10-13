@@ -1,0 +1,13 @@
+#
+#  Input Packet
+#
+Packet-Type = Access-Request
+User-Name = "bob@example.com"
+EAP-Message = 0x0201001401626f62406578616d706c652e636f6d
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Reject
+EAP-Message == 0x04010004
+Message-Authenticator =* ANY

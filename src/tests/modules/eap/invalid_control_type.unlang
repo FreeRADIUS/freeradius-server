@@ -1,0 +1,6 @@
+#
+#  control.EAP-Type 260 is not an EAP type, and the request is rejected.
+#
+control.EAP-Type := 260
+
+eap
