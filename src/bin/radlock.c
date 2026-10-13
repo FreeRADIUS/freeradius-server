@@ -125,8 +125,8 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			mode = strtol(optarg, &end, 0);	/* 0 base plus 0 prefix = octal */
-			if (*end || (end == optarg)) {
-				fr_perror("radlock - Bad mode value");
+			if (*end || (end == optarg) || (mode < 0) || (mode > 0777)) {
+				fr_perror("radlock - Bad mode value, expected 0 to 0777");
 				EXIT_WITH_FAILURE;
 			}
 			mode_set = true;
