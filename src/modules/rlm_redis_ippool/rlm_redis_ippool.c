@@ -1012,6 +1012,25 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 	return unlang_module_yield(request, resume, cancel, FR_SIGNAL_ALLOW(FR_SIGNAL_CANCEL), rctx);
 }
 
+/** Convert the rcode element of a Lua script reply to an ippool_rcode_t
+ *
+ * hiredis returns the rcode as a long long, and ippool_rcode_t has an int8_t underlying type.
+ * Assigning the rcode directly would truncate an out of range value into another code, for
+ * example 256 into IPPOOL_RCODE_SUCCESS.
+ *
+ * For any rcode outside IPPOOL_RCODE_FAIL to IPPOOL_RCODE_SUCCESS, the function logs the rcode
+ * and returns IPPOOL_RCODE_FAIL.  Otherwise the function returns the rcode as an ippool_rcode_t.
+ */
+static inline CC_HINT(always_inline) ippool_rcode_t ippool_rcode_from_reply(request_t *request, long long rcode)
+{
+	if ((rcode < IPPOOL_RCODE_FAIL) || (rcode > IPPOOL_RCODE_SUCCESS)) {
+		REDEBUG("Server returned unknown rcode %lld", rcode);
+		return IPPOOL_RCODE_FAIL;
+	}
+
+	return (ippool_rcode_t) rcode;
+}
+
 /** Callback to process results from allocation script
  */
 static void redis_ippool_allocate_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
@@ -1043,7 +1062,7 @@ static void redis_ippool_allocate_results(request_t *request, UNUSED fr_redis_co
 		alloc_rctx->ret = IPPOOL_RCODE_FAIL;
 		return;
 	}
-	alloc_rctx->ret = reply->element[0]->integer;
+	alloc_rctx->ret = ippool_rcode_from_reply(request, reply->element[0]->integer);
 	if (alloc_rctx->ret < 0) return;
 
 	/*
@@ -1198,7 +1217,7 @@ static void redis_ippool_update_results(request_t *request, UNUSED fr_redis_comm
 		update_rctx->ret = IPPOOL_RCODE_FAIL;
 		return;
 	}
-	update_rctx->ret = reply->element[0]->integer;
+	update_rctx->ret = ippool_rcode_from_reply(request, reply->element[0]->integer);
 	if (update_rctx->ret < 0) return;
 
 	/*
@@ -1288,7 +1307,7 @@ static void redis_ippool_release_results(request_t *request, UNUSED fr_redis_com
 		release_rctx->ret = IPPOOL_RCODE_FAIL;
 		return;
 	}
-	release_rctx->ret = reply->element[0]->integer;
+	release_rctx->ret = ippool_rcode_from_reply(request, reply->element[0]->integer);
 }
 
 #define CHECK_POOL_NAME \
