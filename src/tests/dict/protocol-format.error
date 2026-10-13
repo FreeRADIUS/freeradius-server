@@ -1,0 +1,4 @@
+#
+#  PROTOCOL format= with a type size other than 1, 2, or 4
+#
+PROTOCOL	Test-Format	250	format=256
