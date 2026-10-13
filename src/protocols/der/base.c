@@ -1018,7 +1018,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 */
 	if ((parent->is_choice && !flags->is_option) ||
 	    (flags->class == FR_DER_CLASS_PRIVATE) || (flags->class == FR_DER_CLASS_APPLICATION)) {
-		fr_assert(da->attr < FR_DER_TAG_VALUE_MAX);
+		if (da->attr >= FR_DER_TAG_VALUE_MAX) {
+			fr_strerror_printf("Attribute %s number %u is larger than 30, and cannot be used as a tag",
+					   da->name, da->attr);
+			return false;
+		}
 
 		if (!flags->class) flags->class = FR_DER_CLASS_CONTEXT;
 		flags->option = da->attr;
