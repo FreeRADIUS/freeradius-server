@@ -879,9 +879,20 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 		if ((eap_session->type == FR_EAP_METHOD_TLS) || SSL_session_reused(tls_session->ssl)) {
 			eap_tls_session->authentication_success = true;
 
-			RDEBUG("(TLS) EAP Sending final Commitment Message.");
-			(void) fr_dbuff_in_bytes(&tls_session->clean_in, (uint8_t) 0x00);
-			fr_tls_session_send(request, tls_session);
+			/*
+			 *	Ensure only a single instance of the application data is added.
+			 *	Some handshakes result in multiple passes through this path.
+			 */
+			if (!tls_session->sent_commitment) {
+				RDEBUG2("(TLS) EAP Sending final Commitment Message.");
+				(void) fr_dbuff_in_bytes(&tls_session->clean_in, (uint8_t) 0x00);
+				tls_session->sent_commitment = true;
+			}
+
+			/*
+			 *	Write out the application data if the session is ready for it.
+			 */
+			if (SSL_is_init_finished(tls_session->ssl)) fr_tls_session_send(request, tls_session);
 		} else {
 
 			/*

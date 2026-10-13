@@ -315,6 +315,8 @@ struct fr_tls_session_s {
 	bool			can_pause;			//!< If true, it's ok to pause the request
 								///< using the OpenSSL async API.
 
+	bool			sent_commitment;		//!< Has the commitment message been sent.
+
 	uint8_t			alerts_sent;
 	bool			pending_alert;
 	uint8_t			pending_alert_level;
