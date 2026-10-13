@@ -1,0 +1,5 @@
+#
+#	ARGV: -i 124 -c 1 -x -F
+#
+User-Name = "bob",
+Message-Authenticator !* ANY

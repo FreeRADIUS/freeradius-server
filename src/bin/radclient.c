@@ -1150,7 +1150,7 @@ static int send_one_packet(rc_request_t *request)
 	 */
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator);
 	if (vp && (vp->op == T_OP_CMP_FALSE) && !request->packet->data &&
-	    (request->packet->code = FR_RADIUS_CODE_ACCESS_REQUEST)) {
+	    (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST)) {
 		fr_pair_delete(&request->request_pairs, vp);
 
 		if (fr_radius_packet_encode(request->packet, &request->request_pairs, NULL, secret) < 0) {
@@ -1162,7 +1162,7 @@ static int send_one_packet(rc_request_t *request)
 		 *	Manually re-write the packet to get rid of Message-Authenticator.
 		 */
 		if ((request->packet->data_len >= (RADIUS_HEADER_LENGTH + 18)) &&
-		    (request->packet->data[RADIUS_HEADER_LENGTH] = attr_message_authenticator->attr) &&
+		    (request->packet->data[RADIUS_HEADER_LENGTH] == attr_message_authenticator->attr) &&
 		    (request->packet->data[RADIUS_HEADER_LENGTH + 1] == 18)) {
 			memmove(request->packet->data + RADIUS_HEADER_LENGTH,
 				request->packet->data + RADIUS_HEADER_LENGTH + 18,

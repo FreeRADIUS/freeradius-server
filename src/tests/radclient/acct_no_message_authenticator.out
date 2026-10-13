@@ -1,0 +1,4 @@
+Sent Accounting-Request Id 124 from 0.0.0.0:1238 to 127.0.0.1:20020 length 43 
+        User-Name = "bob"
+Received Accounting-Response Id 124 from 127.0.0.1:20020 to 0.0.0.0:1238 via lo length 20 
+(0) src/tests/radclient/acct_no_message_authenticator.txt response code 5
