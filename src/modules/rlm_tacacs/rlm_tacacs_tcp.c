@@ -138,7 +138,7 @@ struct tcp_request_s {
 	uint32_t		priority;		//!< copied from request->async->priority
 	fr_time_t		recv_time;		//!< copied from request->async->recv_time
 
-	uint8_t			code;			//!< Packet code.
+	fr_tacacs_packet_code_t	code;			//!< Packet code.
 	uint8_t			id;			//!< Last ID assigned to this packet.
 	bool			outstanding;		//!< are we waiting for a reply?
 
@@ -637,7 +637,7 @@ static int encode(tcp_handle_t *h, request_t *request, tcp_request_t *req)
 	 *	Encode the packet.
 	 */
 	packet_len = fr_tacacs_encode(&FR_DBUFF_TMP(req->packet, (size_t) inst->max_packet_size), NULL,
-				      inst->secret, inst->secretlen, request->reply->code, &request->request_pairs);
+				      inst->secret, inst->secretlen, req->code, &request->request_pairs);
 	if (packet_len < 0) {
 		RPERROR("Failed encoding packet");
 		return -1;
@@ -1408,7 +1408,7 @@ static unlang_action_t mod_enqueue(unlang_result_t *p_result, void **rctx_out, U
 	 *	Can't use compound literal - const issues.
 	 */
 	MEM(req = talloc_zero(treq, tcp_request_t));
-	req->code = request->packet->code;
+	req->code = (fr_tacacs_packet_code_t) request->packet->code;
 	req->priority = request->priority;
 	req->recv_time = request->async->recv_time;
 
