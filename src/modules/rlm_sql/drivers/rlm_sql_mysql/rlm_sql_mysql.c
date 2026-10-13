@@ -455,7 +455,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 			       c->status & MYSQL_WAIT_READ ? _sql_connect_io_notify : NULL,
 			       c->status & MYSQL_WAIT_WRITE ? _sql_connect_io_notify : NULL, NULL, c) != 0) goto error;
 
-	DEBUG2("Connecting to database '%s' on %s:%" PRIu32 ", fd %d",
+	DEBUG2("Connecting to database '%s' on %s:%" PRIu16 ", fd %d",
 	       config->sql_db, config->sql_server, config->sql_port, c->fd);
 
 finish:

@@ -72,7 +72,7 @@ typedef struct {
 
 typedef struct {
 	char const 		*sql_server;			//!< Server to connect to.
-	uint32_t 		sql_port;			//!< Port to connect to.
+	uint16_t 		sql_port;			//!< Port to connect to.
 	char const 		*sql_login;			//!< Login credentials to use.
 	char const 		*sql_password;			//!< Login password to use.
 	char const 		*sql_db;			//!< Database to run queries against.
