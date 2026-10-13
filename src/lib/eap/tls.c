@@ -542,9 +542,13 @@ static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t
 		 */
 	default:
 		/*
-		 *	If the last message was from us, then the session is established
+		 *	If the last message was from us, then the session is established or we're still
+		 *	sending the session ticket.
 		 */
-		if (tls_session->info.origin == TLS_INFO_ORIGIN_RECORD_SENT) return EAP_TLS_ESTABLISHED;
+		if (tls_session->info.origin == TLS_INFO_ORIGIN_RECORD_SENT) {
+			if (fr_dbuff_remaining(tls_session->dirty_out) == 0) return EAP_TLS_ESTABLISHED;
+			return EAP_TLS_RECORD_SEND;
+		}
 		REDEBUG("Invalid ACK received: %d", tls_session->info.content_type);
 		return EAP_TLS_INVALID;
 	}
