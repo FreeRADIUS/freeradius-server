@@ -1,0 +1,14 @@
+#
+#  PRE: if
+#
+if (%log.destination('test_null', 255)) {
+	test_fail
+}
+
+if (Module-Failure-Message[*] == 'Invalid debug level 255, expected 0 to 5') {
+	ok
+} else {
+	test_fail
+}
+
+success
