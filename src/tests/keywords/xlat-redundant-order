@@ -1,0 +1,11 @@
+#
+#  PRE: if
+#
+%order_first('reject')
+%order_second('handled')
+
+if (%redundant_order() != 'handled') {
+	test_fail
+}
+
+success

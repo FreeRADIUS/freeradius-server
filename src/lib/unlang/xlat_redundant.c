@@ -404,17 +404,30 @@ static fr_cmp_ret_t module_xlat_cmp(void const *a, void const *b)
 	return CMP(strcmp(a_p, b_p), 0);
 }
 
-static fr_cmp_ret_t module_qualified_xlat_cmp(void const *a, void const *b)
+/** An xlat of a redundant section, with the position of the module
+ */
+typedef struct {
+	module_rlm_xlat_t const	*mrx;		//!< xlat registered by the module.
+	unsigned int		position;	//!< Position of the module in the section.
+} xlat_redundant_member_t;
+
+/** Order the xlats of a redundant section by name, then by module position
+ *
+ * The in-order walk of the tree sets the order in which a redundant
+ * xlat tries the modules.  A tie-break on the address of the module
+ * instance makes the order follow the heap instead of the section.
+ */
+static fr_cmp_ret_t xlat_redundant_member_cmp(void const *a, void const *b)
 {
 	fr_cmp_ret_t ret;
 
-	module_rlm_xlat_t const *mrx_a = talloc_get_type_abort_const(a, module_rlm_xlat_t);
-	module_rlm_xlat_t const *mrx_b = talloc_get_type_abort_const(b, module_rlm_xlat_t);
+	xlat_redundant_member_t const *member_a = talloc_get_type_abort_const(a, xlat_redundant_member_t);
+	xlat_redundant_member_t const *member_b = talloc_get_type_abort_const(b, xlat_redundant_member_t);
 
-	ret = module_xlat_cmp(a, b);
+	ret = module_xlat_cmp(member_a->mrx, member_b->mrx);
 	if (ret != 0) return ret;
 
-	return CMP(mrx_a->mi, mrx_b->mi);
+	return CMP(member_a->position, member_b->position);
 }
 
 /** Registers a redundant xlat
@@ -444,6 +457,8 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 	CONF_ITEM		*ci = NULL;
 	int			children = 0;
+	unsigned int		position = 0;
+	module_instance_t const	**seen;			/* Modules already in the section */
 	fr_rb_tree_t		*mrx_tree;		/* Temporary tree for ordering xlats */
 
 	name1 = cf_section_name1(cs);
@@ -496,7 +511,8 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	 *	redundant xlats from contiguous runs of mrxs
 	 *	pointing to the same xlat.
 	 */
-	MEM(mrx_tree = fr_rb_talloc_alloc(NULL, module_rlm_xlat_t, module_qualified_xlat_cmp, NULL));
+	MEM(mrx_tree = fr_rb_talloc_alloc(NULL, xlat_redundant_member_t, xlat_redundant_member_cmp, NULL));
+	MEM(seen = talloc_zero_array(mrx_tree, module_instance_t const *, children));
 	for (ci = cf_item_next(cs, NULL);
 	     ci;
 	     ci = cf_item_next(cs, ci)) {
@@ -517,14 +533,31 @@ int xlat_register_redundant(CONF_SECTION *cs)
 			return -1;
 		}
 
+		for (unsigned int i = 0; i < position; i++) {
+			if (seen[i] != mi) continue;
+
+			cf_log_err(cs, "Module '%s' referenced multiple times in %s %s { ... } section",
+				   mi->name, cf_section_name1(cs), cf_section_name2(cs));
+			goto error;
+		}
+		seen[position] = mi;
+
 		mri = talloc_get_type_abort(mi->uctx, module_rlm_instance_t);
 		fr_dlist_foreach(&mri->xlats, module_rlm_xlat_t const, mrx) {
-			if (fr_rb_insert(mrx_tree, mrx) != 0) {
-				cf_log_err(cs, "Module '%s' referenced multiple times in %s %s { ... } section",
+			xlat_redundant_member_t *member;
+
+			MEM(member = talloc(mrx_tree, xlat_redundant_member_t));
+			*member = (xlat_redundant_member_t) {
+				.mrx = mrx,
+				.position = position
+			};
+			if (fr_rb_insert(mrx_tree, member) != 0) {
+				cf_log_err(cs, "Failed ordering expansions of module '%s' in %s %s { ... } section",
 					   mrx->mi->name, cf_section_name1(cs), cf_section_name2(cs));
 				goto error;
 			}
 		}
+		position++;
 	}
 
 	if (fr_rb_num_elements(mrx_tree) == 0) {
@@ -548,7 +581,8 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		fr_sbuff_t			*name;
 		fr_sbuff_marker_t		name_start;
 		module_instance_t		*mi;
-		module_rlm_xlat_t		*mrx, *prev_mrx;
+		xlat_redundant_member_t		*member;
+		module_rlm_xlat_t const		*mrx, *prev_mrx;
 		xlat_redundant_t		*xr;
 
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&name, 128, SIZE_MAX);
@@ -570,13 +604,14 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		 *	Iterate over the all the xlats, registered by
 		 *	all the modules in the section.
 		 */
-		mrx = fr_rb_iter_init_inorder(mrx_tree, &iter);
+		member = fr_rb_iter_init_inorder(mrx_tree, &iter);
 
-		while (mrx) {
+		while (member) {
 			xlat_t			*xlat;
 			xlat_func_flags_t	flags = default_flags;
 			char const		*name_p;
 
+			mrx = member->mrx;
 			mi = mrx->mi;
 
 			/*
@@ -621,7 +656,11 @@ int xlat_register_redundant(CONF_SECTION *cs)
 				if (!mrx->xlat->flags.pure) flags &= ~XLAT_FUNC_FLAG_PURE;
 				xlat_redundant_add_xlat(xr, mrx->xlat);
 				prev_mrx = mrx;
-			} while ((mrx = fr_rb_iter_next_inorder(mrx_tree, &iter)) && (module_xlat_cmp(prev_mrx, mrx) == 0));
+
+				member = fr_rb_iter_next_inorder(mrx_tree, &iter);
+				if (!member) break;
+				mrx = member->mrx;
+			} while (module_xlat_cmp(prev_mrx, mrx) == 0);
 
 			/*
 			 *	Warn, but allow, redundant/failover expansions that are
