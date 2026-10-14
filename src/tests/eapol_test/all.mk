@@ -135,13 +135,14 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 	$(eval EAPOL_TEST_LOG := $(patsubst %.ok,%.log,$@))
 	$(eval METHOD := $(notdir $(subst _,-,$(patsubst %.conf,%,$<))))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
+	$(eval EAPOL_TEST_OPTS := $(shell grep "EAPOL_TEST_OPTS:" $< | cut -f2 -d ':'))
 	$(eval RADIUS_LOG := $(dir $@)/test.$(METHOD)/radiusd.log)
 	$(eval TEST_PORT := $($(METHOD)_port))
 	$(eval EXPECT_FAIL := $(if $(filter fail-%,$(METHOD)),yes,))
 	@echo "EAPOL-TEST $(METHOD)$(if $(EXPECT_FAIL), (expect-fail),)"
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_start $(POST_INSTALL_RADIUSD_BIN_ARG)
-	${Q}$(EAPOL_TEST) -t $(EAPOL_TEST_TIMEOUT) -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) > $(EAPOL_TEST_LOG) 2>&1; rc=$$?; \
+	${Q}$(EAPOL_TEST) -t $(EAPOL_TEST_TIMEOUT) -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) $(EAPOL_TEST_OPTS) > $(EAPOL_TEST_LOG) 2>&1; rc=$$?; \
 	if [ -z "$(EXPECT_FAIL)" ] && [ $$rc -ne 0 ]; then \
 		failed=1; reason="eapol_test exited $$rc, expected success"; \
 	elif [ -n "$(EXPECT_FAIL)" ] && [ $$rc -eq 0 ]; then \
