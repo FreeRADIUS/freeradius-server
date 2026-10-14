@@ -28,7 +28,7 @@
  *
  *  The retry BIO also deals with partially written packets.  The BIO takes responsibility for not writing
  *  partial packets, which means that requests can be rleeased even if the data has been partially written.
- *  The application can also cancel an ongoing retryt entrty at any time.
+ *  The application can also cancel an ongoing retry entry at any time.
  *
  *  If something blocks IO, the application should call the blocked / resume functions for this BIO to inform
  *  it of IO changes.  Otherwise, the only time this BIO blocks is when it runs out of retransmission slots.
