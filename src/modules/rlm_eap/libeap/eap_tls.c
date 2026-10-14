@@ -512,13 +512,28 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	if (TLS_OUTER_TLV_INCLUDED(eaptls_packet->flags)) {
 		uint8_t const *p = eaptls_packet->data;
 
+		/*
+		 *	eap_vp2packet() has already checked this, but
+		 *	don't depend on it.
+		 */
+		if (frag_len < sizeof(olen)) {
+			REDEBUG("(TLS) EAP fragment is too small to contain Outer TLV length");
+			return FR_TLS_INVALID;
+		}
+
 		p += TLS_LENGTH_INCLUDED(eaptls_packet->flags) << 2;
 
 		memcpy(&olen, p, sizeof(olen));
 		olen = ntohl(olen);
 
-		fr_assert((4 + olen) <= frag_len); /* already checked in eap_vp2packet */
-		frag_len -= (olen + 4);
+		if (olen > (frag_len - sizeof(olen))) {
+			REDEBUG("(TLS) EAP Outer TLV length (%u bytes) exceeds fragment (%zu bytes)",
+				olen, frag_len - sizeof(olen));
+			return FR_TLS_INVALID;
+		}
+
+		frag_len -= sizeof(olen);
+		frag_len -= olen;
 	}
 
 	/*

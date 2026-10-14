@@ -5,6 +5,14 @@ SUBMAKEFILES := value_tests.mk pair_tests.mk
 
 API_TESTS := value_tests pair_tests
 
+#
+#  Only build the EAP tests if we also build libfreeradius-eap.
+#
+ifneq "$(filter libfreeradius-eap%,${ALL_TGTS})" ""
+SUBMAKEFILES += eap_tests.mk
+API_TESTS += eap_tests
+endif
+
 .PHONY: tests.api
 tests.api: $(addprefix $(BUILD_DIR)/tests/api/,$(API_TESTS))
 

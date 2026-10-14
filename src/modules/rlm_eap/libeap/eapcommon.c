@@ -306,6 +306,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	eap_packet_raw_t *eap_packet;
 	unsigned char *ptr;
 	uint16_t len;
+	size_t data_len;
 	int total_len;
 	vp_cursor_t cursor;
 	bool allow_o = false;
@@ -422,7 +423,13 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	case PW_EAP_TTLS:
 	case PW_EAP_PEAP:
 	case PW_EAP_FAST:
-		if (len < 2) {
+		/*
+		 *	len includes the EAP header, but all of the
+		 *	offsets below are into eap_packet->data.
+		 */
+		data_len = len - EAP_HEADER_LEN;	/* len >= 5, checked above */
+
+		if (data_len < 2) {
 			fr_strerror_printf("Malformed EAP packet - packet is too small to contain TLS flags");
 			talloc_free(eap_packet);
 			return NULL;
@@ -443,7 +450,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 		if (TLS_LENGTH_INCLUDED(eap_packet->data[1])) {
 			uint32_t tls_len;
 
-			if (len <= (2 + 4)) {
+			if (data_len < (2 + 4)) {
 				fr_strerror_printf("Malformed EAP packet - TLS 'L' bit is set, but packet is too small to contain 'length' field");
 				talloc_free(eap_packet);
 				return NULL;
@@ -483,7 +490,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 			 */
 			if (TLS_OUTER_TLV_INCLUDED(eap_packet->data[1])) {
 				uint32_t tlv_len;
-				uint16_t offset;
+				size_t offset;
 
 			check_outer_tlv:
 				if (!allow_o) {
@@ -497,7 +504,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 				 */
 				offset = 2 + (TLS_LENGTH_INCLUDED(eap_packet->data[1]) << 2);
 
-				if (len <= (offset + 4)) {
+				if (data_len < (offset + 4)) {
 					fr_strerror_printf("Malformed EAP packet - TLS 'O' bit is set, but packet is too small to contain 'outer tlv length' field");
 					talloc_free(eap_packet);
 					return NULL;
@@ -507,14 +514,12 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 				tlv_len = ntohl(tlv_len);
 
 				/*
-				 *	The EAP header includes all of
-				 *	the data in the packet.  The
-				 *	outer TLV length cannot
-				 *	include the EAP header, type,
-				 *	flags, length field, or outer
-				 *	tlv length field.
+				 *	The outer TLV length cannot
+				 *	include the type, flags,
+				 *	length field, or outer tlv
+				 *	length field.
 				 */
-				if ((int)tlv_len > (len - (offset + 4))) {
+				if (tlv_len > (data_len - (offset + 4))) {
 					fr_strerror_printf("Malformed EAP packet - TLS 'O' bit is set, but 'outer tlv length' field is larger than the current fragment");
 					talloc_free(eap_packet);
 					return NULL;
