@@ -96,25 +96,26 @@ fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus
 #
 #  tests add a 10s timeout.  This is so that we can see if the fuzzers run _at all_.
 #
+FUZZER_CMD.$(PROTOCOL) = \
+	$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
+	-artifact_prefix=$(call SHELL_QUOTE,$(FUZZER_ARTIFACTS)/$(PROTOCOL)/) \
+	-max_len=512 \
+	$(FUZZER_ARGUMENTS) \
+	-max_total_time=$(FUZZER_TIMEOUT) \
+	-D share/dictionary \
+	src/tests/fuzzer-corpus/$(PROTOCOL)
+
 ifeq "$(CI)" ""
 test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
-	${Q}$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
-		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
-		-max_len=512 $(FUZZER_ARGUMENTS) \
-		-max_total_time=$(FUZZER_TIMEOUT) \
-		-D share/dictionary \
-		src/tests/fuzzer-corpus/$(PROTOCOL)
+	@echo $(call SHELL_QUOTE,$(FUZZER_CMD.$(PROTOCOL)))
+	${Q}$(FUZZER_CMD.$(PROTOCOL))
 else
 test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
+	@echo $(call SHELL_QUOTE,$(FUZZER_CMD.$(PROTOCOL)))
 	@mkdir -p $(BUILD_DIR)/fuzzer
-	${Q}if ! $(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
-		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
-		-max_len=512 $(FUZZER_ARGUMENTS) \
-		-max_total_time=$(FUZZER_TIMEOUT) \
-		-D share/dictionary \
-		src/tests/fuzzer-corpus/$(PROTOCOL) > $(BUILD_DIR)/fuzzer/$(PROTOCOL).log 2>&1; then \
+	${Q}if ! $(FUZZER_CMD.$(PROTOCOL)) > $(BUILD_DIR)/fuzzer/$(PROTOCOL).log 2>&1; then \
 		tail -20 $(BUILD_DIR)/fuzzer/$(PROTOCOL).log; \
 		echo FAILED; \
 		exit 1; \

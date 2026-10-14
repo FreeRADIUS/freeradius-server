@@ -62,15 +62,22 @@ CONFIG_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(CONFIG_MODULES))) rlm_csv.la
 #
 #	(make -k test.config 2>&1) | grep 'CONFIG=' | sed 's/CONFIG=//;s/ .*$//'
 #
+CONFIG_CMD = \
+	CONFIG_FILE=$(call SHELL_QUOTE,$(notdir $@)) \
+	$(TEST_BIN)/unit_test_module \
+	$(UNIT_TEST_CONFIG_ARGS.$(subst -,_,$(notdir $@))) \
+	-D share/dictionary \
+	-d src/tests/config/ \
+	-xxC
+
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(CONFIG_LIBS)
 	@mkdir -p $(dir $@)
-	$(eval CMD:=CONFIG_FILE=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_CONFIG_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/config/ -xxC )
 	@echo "CONFIG-TEST $(notdir $@)"
-	${Q}if ! $(CMD) > "$@.log" 2>&1; then \
+	${Q}if ! $(CONFIG_CMD) > "$@.log" 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo $(CMD); \
+			echo $(call SHELL_QUOTE,$(CONFIG_CMD)); \
 			rm -f $(BUILD_DIR)/tests/test.config; \
 			exit 1; \
 		fi; \
@@ -79,7 +86,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(CONFIG_LIBS)
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo $(CMD); \
+			echo $(call SHELL_QUOTE,$(CONFIG_CMD)); \
 			rm -f $(BUILD_DIR)/tests/test.config; \
 			exit 1; \
 		fi; \

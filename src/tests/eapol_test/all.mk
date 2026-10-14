@@ -121,6 +121,15 @@ TEST := test.eap
 #
 test.eap.check: $(OUTPUT) $(GENERATED_CERT_FILES)
 
+EAPOL_CMD = \
+	$(EAPOL_TEST) \
+	-t $(EAPOL_TEST_TIMEOUT) \
+	-c $(call SHELL_QUOTE,$<) \
+	-p $(TEST_PORT) \
+	-s $(SECRET) \
+	$(KEY) \
+	$(EAPOL_TEST_OPTS)
+
 #
 #  Run EAP tests.
 #
@@ -143,7 +152,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 	@echo "EAPOL-TEST $(METHOD)$(if $(EXPECT_FAIL), (expect-fail),)"
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_start $(POST_INSTALL_RADIUSD_BIN_ARG)
-	${Q}$(EAPOL_TEST) -t $(EAPOL_TEST_TIMEOUT) -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) $(EAPOL_TEST_OPTS) > $(EAPOL_TEST_LOG) 2>&1; rc=$$?; \
+	${Q}$(EAPOL_CMD) > $(EAPOL_TEST_LOG) 2>&1; rc=$$?; \
 	if [ -z "$(EXPECT_FAIL)" ] && [ $$rc -ne 0 ]; then \
 		failed=1; reason="eapol_test exited $$rc, expected success"; \
 	elif [ -n "$(EXPECT_FAIL)" ] && [ $$rc -eq 0 ]; then \
@@ -161,9 +170,11 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 		echo "Last entries in server log ($(RADIUS_LOG)):"; \
 		tail -n 500 "$(RADIUS_LOG)"; \
 		echo "--------------------------------------------------"; \
-		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) TEST=$(METHOD) TEST_PORT=$(TEST_PORT) $(RADIUSD_BIN) -fxxx -n servers -d $(dir $<)config -D $(DICT_PATH) -lstdout -f"; \
-		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(TEST_PORT) -s $(SECRET) $(KEY) "; \
-		echo "           log is in $(RADIUS_LOG)"; \
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.$(METHOD))); \
+		echo "# eapol_test"; \
+		echo $(call SHELL_QUOTE,$(EAPOL_CMD)); \
+		echo "# server log is in $(RADIUS_LOG)"; \
 		rm -f $(BUILD_DIR)/tests/test.eap; \
 		$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill; \
 		exit 1; \

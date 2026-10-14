@@ -2,7 +2,6 @@
 #  Unit tests for unlang keywords
 #
 
-
 #
 #  Test name
 #
@@ -142,17 +141,26 @@ export IF_ENV_CONDITION := !test || (test != 'if-env')
 #
 #  To quickly find all failing tests, run:
 #
-#	(make -k test.keywords 2>&1) | grep 'KEYWORD=' | sed 's/KEYWORD=//;s/ .*$//'
-#
+#	(make -k test.keywords 2>&1) | grep "^KEYWORD='" | sed "s/^KEYWORD='//;s/'.*$//"
+KEYWORD_CMD = \
+	KEYWORD=$(call SHELL_QUOTE,$(notdir $@)) \
+	OUTPUT=$(call SHELL_QUOTE,$(BUILD_DIR)/tests/keywords) \
+	$(TEST_BIN)/unit_test_module \
+	$(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) \
+	-D share/dictionary \
+	-d src/tests/keywords/ \
+	-i $(call SHELL_QUOTE,$@.attrs) \
+	-f $(call SHELL_QUOTE,$@.attrs) \
+	-r $(call SHELL_QUOTE,$@) \
+	-xx
+
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
-	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx )
-	$(eval export OUTPUT=$(BUILD_DIR)/tests/keywords)
 	@echo "KEYWORD-TEST $(notdir $@)"
-	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}if ! $(KEYWORD_CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo $(CMD); \
+			echo $(call SHELL_QUOTE,$(KEYWORD_CMD)); \
 			rm -f $(BUILD_DIR)/tests/test.keywords; \
 			exit 1; \
 		fi; \
@@ -161,7 +169,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYW
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo $(CMD); \
+			echo $(call SHELL_QUOTE,$(KEYWORD_CMD)); \
 			rm -f $(BUILD_DIR)/tests/test.keywords; \
 			exit 1; \
 		else \

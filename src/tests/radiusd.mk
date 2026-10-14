@@ -21,9 +21,6 @@
 #  <test>_port  Passing TEST=test.foo results in "foo_port" being set to the port assigned to the
 #               radiusd instance created for the test suite.
 #
-#  - Available in calling rule
-#
-#  RADIUSD_RUN  The server invocation
 #
 #  - How to use
 #
@@ -33,8 +30,7 @@
 #
 #    $(TEST).radiusd_kill and $(TEST).radiusd_start
 #
-#  3. The target 'radiusd_start' define the variable $(RADIUSD_RUN) with the
-#  exactly command used to start the service.
+#  3. $(TEST).radiusd_start starts the server by running RADIUSD_CMD.<test>.
 #
 #  4. You could use the 'RADIUSD_BIN' to set such path to the "radiusd" binary
 #  that you want to against the tests.
@@ -109,6 +105,19 @@ $(TEST).radiusd_stop: | ${2}
 		exit 0; \
 	fi
 
+RADIUSD_CMD.$(TEST) := \
+	TESTDIR=$(call SHELL_QUOTE,$(DIR)) \
+	OUTPUT=$(call SHELL_QUOTE,${2}) \
+	TEST_PORT=$(PORT) \
+	TEST=$(call SHELL_QUOTE,$(subst test.,,$(TEST))) \
+	$$(RADIUSD_BIN) \
+	-Pxxx \
+	-d $(call SHELL_QUOTE,$(DIR)/config) \
+	-e 600 \
+	-n ${1} \
+	-D $(call SHELL_QUOTE,$(DICT_PATH)) \
+	-l $(call SHELL_QUOTE,${2}/radiusd.log)
+
 #
 #	Start radiusd instance
 #
@@ -118,22 +127,17 @@ $(TEST).radiusd_stop: | ${2}
 #  kill and the start side by side on a test output does not order them.
 #
 ${2}/radiusd.pid: ${2} | $(TEST).radiusd_kill
-	$$(eval export TESTDIR	   := $(DIR))
-	$$(eval export OUTPUT	   := ${2})
-	$$(eval export TEST_PORT   := $(PORT))
-	$$(eval export TEST	   := $(subst test.,,$(TEST)))
-	$$(eval export RADIUSD_RUN := $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -e 600 -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
-
 	${Q}rm -f ${2}/radiusd.log
 	${Q}if test ! -z "$$(PRINT_PORT)"; then \
 		echo "$(PORT)"; \
 	fi
-	${Q}if ! $$(RADIUSD_RUN); then \
+	${Q}if ! $$(RADIUSD_CMD.$(TEST)); then \
 		echo "FAILED STARTING RADIUSD"; \
 		grep 'Error :' "${2}/radiusd.log"; \
 		echo "Last entries in server log (${2}/radiusd.log):"; \
 		tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
-		echo "RADIUSD_RUN: $$(RADIUSD_RUN)"; \
+		echo $$(call SHELL_QUOTE,$$(RADIUSD_CMD.$(TEST))); \
+		exit 1; \
 	fi
 
 .PHONY: $(TEST).radiusd_start

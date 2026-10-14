@@ -45,6 +45,17 @@ endef
 
 $(foreach x,$(FILES),$(eval $(call RADCLIENT_TEST, $x)))
 
+RADCLIENT_CMD = \
+	$(TEST_BIN)/$(RADCLIENT) \
+	$(ARGV) \
+	-C $(RADCLIENT_CLIENT_PORT) \
+	-f $(call SHELL_QUOTE,$<) \
+	-d src/tests/radclient/config \
+	-D share/dictionary \
+	127.0.0.1:$(radclient_port) \
+	$(TYPE) \
+	$(SECRET)
+
 #
 #	Run the radclient commands against the radiusd.
 #
@@ -60,7 +71,7 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 
 	${Q}echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
 	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
-	${Q}if ! $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
+	${Q}if ! $(RADCLIENT_CMD) 1> $(FOUND) 2>&1; then \
 		if [ "$(IGNORE_ERROR)" != "1" ]; then                               \
 			echo "FAILED";                                              \
 			cat $(FOUND);                                               \
@@ -68,8 +79,10 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 			$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 			echo "RADIUSD LOG: $(RADCLIENT_RADIUS_LOG)";                \
 			cat $(RADCLIENT_RADIUS_LOG);                                \
-			echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-			echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
+			echo "# radiusd"; \
+			echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.radclient)); \
+			echo "# radclient"; \
+			echo $(call SHELL_QUOTE,$(RADCLIENT_CMD)); \
 			exit 1;                                                     \
 		fi;                                                                 \
 	fi
@@ -98,8 +111,10 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 	${Q}mv $(FOUND).out $(FOUND)
 	${Q}if [ -e "$(EXPECTED)" ] && ! diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND); then \
 		echo "RADCLIENT FAILED $@";                                 \
-		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.radclient)); \
+		echo "# radclient"; \
+		echo $(call SHELL_QUOTE,$(RADCLIENT_CMD)); \
 		echo "ERROR: File $(FOUND) is not the same as $(EXPECTED)"; \
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)";                                    \
@@ -111,8 +126,10 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 		exit 1;                                                     \
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then           \
 		echo "RADCLIENT FAILED $@";                                 \
-		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.radclient)); \
+		echo "# radclient"; \
+		echo $(call SHELL_QUOTE,$(RADCLIENT_CMD)); \
 		echo "ERROR: The script $(CMD_TEST) can't validate the content of $(FOUND)"; \
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		rm -f $(BUILD_DIR)/tests/test.radclient;		    \

@@ -32,6 +32,14 @@ GIT_HAS_LFS = $(shell git lfs 1> /dev/null 2>&1 && echo yes || echo no)
 raddb/test.conf:
 	${Q}printf 'security {\nallow_vulnerable_openssl = yes\n}\n$$INCLUDE radiusd.conf\n' > $@
 
+RADIUSD_CONFIG_CMD = \
+	$(TEST_BIN)/radiusd \
+	-XCM \
+	-d ./raddb \
+	-n debug \
+	-D ./share/dictionary \
+	-n test
+
 #
 #  Run "radiusd -C", looking for errors.
 #
@@ -44,10 +52,10 @@ raddb/test.conf:
 #
 $(BUILD_DIR)/tests/radiusd-c: | raddb/test.conf
 	@printf "radiusd -C... "
-	${Q}if ! ${TEST_BIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+	${Q}if ! $(RADIUSD_CONFIG_CMD) > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
-		echo "${TEST_BIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CONFIG_CMD)); \
 		exit 1; \
 	fi
 	${Q}rm -f raddb/test.conf

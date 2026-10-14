@@ -278,6 +278,7 @@ static FILE		*write_fp = NULL;
 static char const		*receipt_file = NULL;
 static char const		*receipt_dir = NULL;
 static char const      		*fail_file = "";
+static char const		*fail_message = NULL;
 
 size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx,
@@ -4269,6 +4270,7 @@ static void usage(char const *name)
 	INFO("  -M                 Show talloc memory report.");
 	INFO("  -p                 Allow xlat_purify");
 	INFO("  -o <receipt_file>  Create the <receipt_file> as a 'success' exit.");
+	INFO("  -m <message>       On failure, print <message> followed by the failed file.");
 	INFO("  -w <output_file>   Write 'corrected' output to <output_file>.");
 	INFO("Where <filename> is a file containing one or more commands and '-' indicates commands should be read from stdin.");
 	INFO("Ranges of <lines> may be specified in the format <start>[-[<end>]][,]");
@@ -4525,6 +4527,29 @@ fail:
 	return ret;
 }
 
+/** Print a string as a single shell word
+ *
+ * The failure message is usually a command for a shell, and a file name
+ * containing spaces, quotes, or glob characters must reach the shell as one
+ * word.  Because a single quote cannot appear between single quotes, each
+ * single quote in str becomes '\'', which closes the quoted section, adds an
+ * escaped quote, and opens a new quoted section.
+ */
+static void shell_word_print(FILE *fp, char const *str)
+{
+	char const *p;
+
+	fputc('\'', fp);
+	for (p = str; *p != '\0'; p++) {
+		if (*p == '\'') {
+			fputs("'\\''", fp);
+			continue;
+		}
+		fputc(*p, fp);
+	}
+	fputc('\'', fp);
+}
+
 /**
  *
  * @hidecallgraph
@@ -4591,7 +4616,7 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "cd:D:F:fxMhpo:S:w:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "cd:D:F:fxm:Mhpo:S:w:")) != -1) switch (c) {
 		case 'c':
 			do_commands = true;
 			break;
@@ -4638,6 +4663,10 @@ int main(int argc, char *argv[])
 
 		case 'p':
 			allow_purify = true;
+			break;
+
+		case 'm':
+			fail_message = optarg;
 			break;
 
 		case 'S':
@@ -4898,8 +4927,14 @@ do { \
 		/*
 		 *	Print any command needed to run the test from the command line.
 		 */
-		p = getenv("UNIT_TEST_ATTRIBUTE");
-		if (p) printf("%s %s\n", p, fail_file);
+		if (fail_message) {
+			fputs(fail_message, stdout);
+			if (*fail_file) {
+				fputc(' ', stdout);
+				shell_word_print(stdout, fail_file);
+			}
+			fputc('\n', stdout);
+		}
 	}
 
 

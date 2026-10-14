@@ -92,10 +92,19 @@ $(filter $(BUILD_DIR)/tests/unit/purify/%,$(FILES.$(TEST))): PURIFY=-p
 #
 #  And the actual script to run each test.
 #
+UNIT_TEST_ARGS = \
+	$(PURIFY) \
+	-F ./src/tests/fuzzer-corpus \
+	-D ./share/dictionary \
+	-d ${top_srcdir}/src/tests/unit \
+	-o $(call SHELL_QUOTE,$@)
+
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
-	$(eval DIR:=${top_srcdir}/src/tests/unit)
-	$(eval export UNIT_TEST_ATTRIBUTE:=TZ=GMT $(TEST_BIN_NO_TIMEOUT)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -o \"$@\" $<)
-	${Q}$(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -o "$@" $<
+	${Q}$(TEST_BIN)/unit_test_attribute \
+		$(UNIT_TEST_ARGS) \
+		$(REWRITE_FLAGS) \
+		-m $(call SHELL_QUOTE,TZ=GMT $(TEST_BIN_NO_TIMEOUT)/unit_test_attribute $(UNIT_TEST_ARGS)) \
+		$(call SHELL_QUOTE,$<)
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@

@@ -99,25 +99,26 @@ $$(FUZZER_ARTIFACTS)/${1}: ; @mkdir -p $$@
 
 src/tests/fuzzer-corpus/${1}: ; @mkdir -p $$@
 
+FUZZER_CMD.${1} = \
+	$$(TEST_BIN_NO_TIMEOUT)/fuzzer_${1} \
+	-artifact_prefix=$$(call SHELL_QUOTE,$$(FUZZER_ARTIFACTS)/${1}/) \
+	-max_len=512 \
+	$$(FUZZER_ARGUMENTS) \
+	-max_total_time=$$(FUZZER_TIMEOUT) \
+	$$(FUZZER_${1}_ARGS) \
+	src/tests/fuzzer-corpus/${1}
+
 ifeq "$$(CI)" ""
 test.fuzzer.${1}: $$(TEST_BIN_DIR)/fuzzer_${1} src/tests/fuzzer-corpus/${1} $$(FUZZER_ARTIFACTS)/${1}
 	@echo TEST-FUZZER ${1} for $$(FUZZER_TIMEOUT)s
-	$${Q}$$(TEST_BIN_NO_TIMEOUT)/fuzzer_${1} \
-		-artifact_prefix="$$(FUZZER_ARTIFACTS)/${1}/" \
-		-max_len=512 $$(FUZZER_ARGUMENTS) \
-		-max_total_time=$$(FUZZER_TIMEOUT) \
-		$$(FUZZER_${1}_ARGS) \
-		src/tests/fuzzer-corpus/${1}
+	@echo $$(call SHELL_QUOTE,$$(FUZZER_CMD.${1}))
+	$${Q}$$(FUZZER_CMD.${1})
 else
 test.fuzzer.${1}: $$(TEST_BIN_DIR)/fuzzer_${1} src/tests/fuzzer-corpus/${1} $$(FUZZER_ARTIFACTS)/${1}
 	@echo TEST-FUZZER ${1} for $$(FUZZER_TIMEOUT)s
+	@echo $$(call SHELL_QUOTE,$$(FUZZER_CMD.${1}))
 	@mkdir -p $$(BUILD_DIR)/fuzzer
-	$${Q}if ! $$(TEST_BIN_NO_TIMEOUT)/fuzzer_${1} \
-		-artifact_prefix="$$(FUZZER_ARTIFACTS)/${1}/" \
-		-max_len=512 $$(FUZZER_ARGUMENTS) \
-		-max_total_time=$$(FUZZER_TIMEOUT) \
-		$$(FUZZER_${1}_ARGS) \
-		src/tests/fuzzer-corpus/${1} > $$(BUILD_DIR)/fuzzer/${1}.log 2>&1; then \
+	$${Q}if ! $$(FUZZER_CMD.${1}) > $$(BUILD_DIR)/fuzzer/${1}.log 2>&1; then \
 		tail -100 $$(BUILD_DIR)/fuzzer/${1}.log; \
 		echo FAILED; \
 		exit 1; \

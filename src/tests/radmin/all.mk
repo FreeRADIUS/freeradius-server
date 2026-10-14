@@ -56,6 +56,12 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 -include $(OUTPUT)/depends.mk
 endif
 
+RADMIN_CMD = \
+	$(TEST_BIN)/radmin \
+	-q \
+	-f $(call SHELL_QUOTE,$(RADMIN_SOCKET_FILE)) \
+	< $(call SHELL_QUOTE,$<)
+
 #
 #	Run the radmin commands against the radiusd.
 #
@@ -65,13 +71,15 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)$(E)))
-	${Q}if ! $(TEST_BIN)/radmin -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND) 2>&1; then\
+	${Q}if ! $(RADMIN_CMD) > $(FOUND) 2>&1; then \
 		echo "--------------------------------------------------"; \
 		tail -n 20 "$(RADMIN_RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADMIN_RADIUS_LOG)):"; \
 		echo "--------------------------------------------------"; \
-		echo "RADIUSD: $(RADIUSD_RUN)"; \
-		echo "RADMIN : $(TEST_BIN)/radmin -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND)"; \
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.radmin)); \
+		echo "# radmin"; \
+		echo $(call SHELL_QUOTE,$(RADMIN_CMD)); \
 		rm -f $(BUILD_DIR)/tests/test.radmin; \
 		$(MAKE) --no-print-directory test.radmin.radiusd_kill; \
 		exit 1; \
@@ -79,8 +87,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	sed -i.bak -e '$${/Executing: /d;}' $(FOUND); \
 	if ! cmp -s $(FOUND) $(EXPECTED); then \
 		echo "RADMIN FAILED $@"; \
-		echo "RADIUSD: $(RADIUSD_RUN)"; \
-		echo "RADMIN : $(TEST_BIN)/radmin -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND)"; \
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.radmin)); \
+		echo "# radmin"; \
+		echo $(call SHELL_QUOTE,$(RADMIN_CMD)); \
 		echo "ERROR: File $(FOUND) is not the same as $(EXPECTED)"; \
 		echo "If you did some update on the radmin code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)"; \

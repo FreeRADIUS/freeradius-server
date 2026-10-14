@@ -40,6 +40,13 @@ $(OUTPUT)/%.pcap: $(DIR)/%.pcap.gz
 #
 #	Run the radsniff commands
 #
+RADSNIFF_CMD = \
+	TZ=UTC \
+	$(TEST_BIN)/radsniff \
+	$(ARGV) \
+	-I $(call SHELL_QUOTE,$(PCAP_IN)) \
+	-D share/dictionary
+
 $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 	$(eval TARGET   := $(notdir $@)$(E))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
@@ -51,10 +58,10 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 #
 # 	We need that 'TZ=UTC ...' to libpcap pass the same timestamp in anywhere.
 #
-	${Q}if ! TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary 1> $(FOUND); then     \
+	${Q}if ! $(RADSNIFF_CMD) 1> $(FOUND); then \
 		echo "FAILED";                                                                                \
 		cat $(FOUND);                                                                                 \
-		echo "RADSNIFF: TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary" -xx;  \
+		echo $(call SHELL_QUOTE,$(RADSNIFF_CMD)); \
 		rm -f $@;										      \
 		exit 1;                                                                                       \
 	fi
@@ -63,7 +70,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 		sed -i.bak -e '$${/Executing: /d;}' $(FOUND);                                                 \
 		if ! cmp $(EXPECTED).simple $(FOUND); then                                                       \
 			echo "RADSNIFF FAILED $@";                                                                \
-			echo "RADSNIFF: $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary -xx";        \
+			echo $(call SHELL_QUOTE,$(RADSNIFF_CMD)); \
 			echo "ERROR: File $(FOUND) is not the same as $(EXPECTED).simple";                        \
 			echo "If radsniff has been modified, please update the unit tests."; \
 			echo "e.g: $(EXPECTED)";                                                                      \
@@ -74,7 +81,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 		fi; \
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then                                             \
 		echo "RADSNIFF FAILED $@";                                                                    \
-		echo "RADSNIFF:   $(RADIUSD_RUN)";                                                            \
+		echo $(call SHELL_QUOTE,$(RADSNIFF_CMD)); \
 		echo "ERROR: The script $(CMD_TEST) can't validate the content of $(FOUND)";                  \
 		echo "If radsniff has been modified, please update the unit tests."; \
 		rm -f $@;										      \

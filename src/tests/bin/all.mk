@@ -99,13 +99,17 @@ radict_pool_check.ARGS = -D $(top_srcdir)/share/dictionary -O
 #  they must be set above this point.
 #
 define BIN_TEST
+BIN_CMD.${1} = \
+	$$(TEST_BIN)/$(or $(${1}.BIN),${1}) \
+	$(${1}.ARGS)
+
 $(BUILD_DIR)/tests/bin/${1}: $(BUILD_DIR)/bin/local/$(or $(${1}.BIN),${1}) $(${1}.DEPS)
 	@echo "BIN-TEST ${1}"
 	$(if $(${1}.PRE),$${Q}$(${1}.PRE))
-	$${Q}if ! $$(TEST_BIN)/$(or $(${1}.BIN),${1}) $(${1}.ARGS) > $$@.log 2>&1; then \
+	$${Q}if ! $$(BIN_CMD.${1}) > $$@.log 2>&1; then \
 		echo LOG in $$@.log; \
 		cat $$@.log; \
-		echo $$(TEST_BIN)/$(or $(${1}.BIN),${1}) $(${1}.ARGS); \
+		echo $$(call SHELL_QUOTE,$$(BIN_CMD.${1})); \
 		exit 1; \
 	fi
 	$(if $(${1}.POST),$${Q}$(${1}.POST))

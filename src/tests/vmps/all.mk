@@ -30,6 +30,12 @@ $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 #
 $(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/radiusd.conf,$(OUTPUT)/radiusd.pid))
 
+VQCLI_CMD = \
+	$(VQCLI) \
+	-s 127.0.0.1 \
+	-p $(vmps_port) \
+	$(ARGV)
+
 #
 #	Run the VMPS commands against the radiusd.
 #
@@ -41,15 +47,17 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
 	${Q}echo "VMPS-TEST INPUT=$(TARGET) VMPS_ARGV=\"$(ARGV)\""
 	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
-	${Q}if ! $(VQCLI) -s 127.0.0.1 -p $(vmps_port) $(ARGV) 1> $(FOUND) 2>&1; then \
+	${Q}if ! $(VQCLI_CMD) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                            \
 		cat $(FOUND);                                             \
 		rm -f $(BUILD_DIR)/tests/test.vmps;                       \
 		$(MAKE) --no-print-directory test.vmps.radiusd_kill;      \
 		echo "RADIUSD LOG: $(VMPS_RADIUS_LOG)";                   \
 		cat $(VMPS_RADIUS_LOG);                                   \
-		echo "RADIUSD: $(RADIUSD_RUN)";                           \
-		echo "VQCLI:   $(VQCLI) -s 127.0.0.1 -p $(vmps_port) $(ARGV)"; \
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.vmps)); \
+		echo "# vqcli"; \
+		echo $(call SHELL_QUOTE,$(VQCLI_CMD)); \
 		exit 1;                                                   \
 	fi
 #
@@ -59,8 +67,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 #
 	${Q}if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then   \
 		echo "VMPS FAILED $@";                                       \
-		echo "RADIUSD:    $(RADIUSD_RUN)";                           \
-		echo "VQCLI:      $(VQCLI) -s 127.0.0.1 -p $(PORT) $(ARGV)"; \
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.vmps)); \
+		echo "# vqcli"; \
+		echo $(call SHELL_QUOTE,$(VQCLI_CMD)); \
 		echo "ERROR: File $(FOUND) is not the same as $(EXPECTED)";  \
 		echo "If you did some update on the VMPS code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)";                                     \

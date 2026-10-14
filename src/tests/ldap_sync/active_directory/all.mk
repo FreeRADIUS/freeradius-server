@@ -27,6 +27,9 @@ $(TEST).trigger_clear:
 #
 $(OUTPUT)/radiusd.pid: | $(TEST).trigger_clear
 
+LDAP_SYNC_ACTIVE_DIRECTORY_CMD = \
+	$(call SHELL_QUOTE,$<)
+
 #
 #	There is a delay of up to 30 seconds looking for the output file
 #	as samba only sends results of persistent LDAP searches on a polled
@@ -53,7 +56,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		i=$$((i+1));				\
 	done;
 
-	${Q}$<
+	${Q}$(LDAP_SYNC_ACTIVE_DIRECTORY_CMD)
 	${Q}i=0; while [ $$i -lt 600 ] ; \
 		do if [ -e $(OUT_DIR)/$(OUT).out ] ;	\
 		then					\
@@ -67,6 +70,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		$(MAKE) --no-print-directory test.ldap_sync/active_directory.radiusd_kill; \
 		cat $(OUT_DIR)/radiusd.log;					\
 		echo "LDAP_SYNC FAILED $(TARGET) - expected output file not produced";	\
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.ldap_sync/active_directory)); \
+		echo "# $(notdir $<)"; \
+		echo $(call SHELL_QUOTE,$(LDAP_SYNC_ACTIVE_DIRECTORY_CMD)); \
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/active_directory;	\
 		exit 1;								\
 	fi
@@ -76,6 +83,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		$(MAKE) --no-print-directory test.ldap_sync/active_directory.radiusd_kill; \
 		cat $(OUT_DIR)/radiusd.log;					\
 		echo "LDAP_SYNC FAILED $(TARGET)";				\
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.ldap_sync/active_directory)); \
+		echo "# $(notdir $<)"; \
+		echo $(call SHELL_QUOTE,$(LDAP_SYNC_ACTIVE_DIRECTORY_CMD)); \
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/active_directory;	\
 		exit 1;								\
 	fi

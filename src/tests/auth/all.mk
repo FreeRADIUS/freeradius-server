@@ -102,13 +102,23 @@ AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
+AUTH_CMD = \
+	TESTDIR=$(call SHELL_QUOTE,$(notdir $@)) \
+	$(TEST_BIN)/unit_test_module \
+	-D share/dictionary \
+	-d src/tests/auth/ \
+	-i $(call SHELL_QUOTE,$@.attrs) \
+	-f $(call SHELL_QUOTE,$@.attrs) \
+	-r $(call SHELL_QUOTE,$@) \
+	-xx
+
 $(OUTPUT)/%: $(DIR)/% $(OUTPUT)/%.attrs $(TEST_BIN_DIR)/unit_test_module | $(AUTH_RADDB) $(AUTH_LIBS) build.raddb
 	@echo "AUTH-TEST $(notdir $@)"
-	${Q}if ! TESTDIR=$(notdir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}if ! $(AUTH_CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "TESTDIR=$(notdir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xxx > \"$@.log\" 2>&1"; \
+			echo $(call SHELL_QUOTE,$(AUTH_CMD)); \
 			rm -f $(BUILD_DIR)/tests/test.auth; \
 			exit 1; \
 		fi; \
@@ -117,7 +127,7 @@ $(OUTPUT)/%: $(DIR)/% $(OUTPUT)/%.attrs $(TEST_BIN_DIR)/unit_test_module | $(AUT
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "TESTDIR=$(notdir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xxx > \"$@.log\" 2>&1"; \
+			echo $(call SHELL_QUOTE,$(AUTH_CMD)); \
 			rm -f $(BUILD_DIR)/tests/test.auth; \
 			exit 1; \
 		else \

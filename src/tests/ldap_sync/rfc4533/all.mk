@@ -28,6 +28,11 @@ $(TEST).trigger_clear:
 #
 $(OUTPUT)/radiusd.pid: | $(TEST).trigger_clear
 
+LDAP_SYNC_RFC4533_CMD = \
+	ldapmodify \
+	$(ARGV) \
+	-f $(call SHELL_QUOTE,$<)
+
 $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))
 	$(eval EXPECTED := $(patsubst %.ldif,%.out,$<))
@@ -50,7 +55,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		i=$$((i+1));				\
 	done ;
 
-	${Q}ldapmodify $(ARGV) -f $< > /dev/null
+	${Q}$(LDAP_SYNC_RFC4533_CMD) > /dev/null
 	${Q}i=0; while [ $$i -lt 600 ] ; \
 		do if [ -e $(OUT_DIR)/$(OUT).out ] ;	\
 		then					\
@@ -64,6 +69,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		$(MAKE) --no-print-directory test.ldap_sync/rfc4533.radiusd_kill; \
 		cat $(OUT_DIR)/radiusd.log;					\
 		echo "LDAP_SYNC FAILED $(TARGET) - expected output file not produced";	\
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.ldap_sync/rfc4533)); \
+		echo "# ldapmodify"; \
+		echo $(call SHELL_QUOTE,$(LDAP_SYNC_RFC4533_CMD)); \
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/rfc4533;		\
 		exit 1;								\
 	fi
@@ -72,6 +81,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		$(MAKE) --no-print-directory test.ldap_sync/rfc4533.radiusd_kill; \
 		cat $(OUT_DIR)/radiusd.log;					\
 		echo "LDAP_SYNC FAILED $(TARGET)";				\
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.ldap_sync/rfc4533)); \
+		echo "# ldapmodify"; \
+		echo $(call SHELL_QUOTE,$(LDAP_SYNC_RFC4533_CMD)); \
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/rfc4533;		\
 		exit 1;								\
 	fi

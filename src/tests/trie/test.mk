@@ -10,13 +10,33 @@ TRIE_FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 $(BUILD_DIR)/tests/trie:
 	${Q}mkdir -p $@
 
+TRIE_CMD = \
+	$(TEST_BIN)/trie \
+	$(call SHELL_QUOTE,$<)
+
 $(BUILD_DIR)/tests/trie/trie-%: $(DIR)/% $(TEST_BIN_DIR)/trie | $(BUILD_DIR)/tests/trie
 	@echo TRIE-TEST $(notdir $@)
-	@$(TEST_BIN)/trie $^ > $@
+	${Q}if ! $(TRIE_CMD) > "$@.log" 2>&1; then \
+		cat "$@.log"; \
+		echo "# $@.log"; \
+		echo $(call SHELL_QUOTE,$(TRIE_CMD)); \
+		exit 1; \
+	fi
+	${Q}touch $@
+
+NOPC_CMD = \
+	$(TEST_BIN)/nopc \
+	$(call SHELL_QUOTE,$<)
 
 $(BUILD_DIR)/tests/trie/nopc-%: $(DIR)/% $(TEST_BIN_DIR)/nopc | $(BUILD_DIR)/tests/trie
 	@echo TRIE-NO-PC-TEST $(notdir $@)
-	@$(TEST_BIN)/nopc $^ > $@
+	${Q}if ! $(NOPC_CMD) > "$@.log" 2>&1; then \
+		cat "$@.log"; \
+		echo "# $@.log"; \
+		echo $(call SHELL_QUOTE,$(NOPC_CMD)); \
+		exit 1; \
+	fi
+	${Q}touch $@
 
 #
 #  Get all of the unit test output files

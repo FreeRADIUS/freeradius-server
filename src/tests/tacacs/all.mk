@@ -49,6 +49,18 @@ $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 #
 $(eval $(call TEST_CONFIG_LIBS,$(DIR)/config/radiusd.conf,$(OUTPUT)/radiusd.pid))
 
+TACCLIENT_CMD = \
+	$(TACCLIENT) \
+	--return-0-if-failed \
+	-v \
+	-k $(SECRET) \
+	-p $(tacacs_port) \
+	-H localhost \
+	-r 192.168.69.1 \
+	-P pegapilha/0 \
+	--timeout 2 \
+	$(ARGV)
+
 #
 #	Run the tacacs_client commands against the radiusd.
 #
@@ -60,15 +72,17 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la $(BUILD_DIR)/lib/
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
 	${Q}echo "TACACS-TEST INPUT=$(TARGET) TACACS_ARGV=\"$(ARGV)\""
 	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
-	${Q}if ! $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV) 1> $(FOUND) 2>&1; then \
+	${Q}if ! $(TACCLIENT_CMD) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                              \
 		cat $(FOUND);                                               \
 		rm -f $(BUILD_DIR)/tests/test.tacacs;                       \
 		$(MAKE) --no-print-directory test.tacacs.radiusd_kill;      \
 		echo "RADIUSD LOG: $(TACACS_RADIUS_LOG)";                   \
 		cat $(TACACS_RADIUS_LOG);                                   \
-		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "TACCLIENT: $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV)"; \
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.tacacs)); \
+		echo "# tacacs_client"; \
+		echo $(call SHELL_QUOTE,$(TACCLIENT_CMD)); \
 		exit 1;                                                     \
 	fi
 #
@@ -78,8 +92,10 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la $(BUILD_DIR)/lib/
 #
 	${Q}if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then  \
 		echo "TACCLIENT FAILED $@";                                 \
-		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "TACCLIENT: $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV)"; \
+		echo "# radiusd"; \
+		echo $(call SHELL_QUOTE,$(RADIUSD_CMD.test.tacacs)); \
+		echo "# tacacs_client"; \
+		echo $(call SHELL_QUOTE,$(TACCLIENT_CMD)); \
 		echo "ERROR: File $(FOUND) is not the same as $(EXPECTED)"; \
 		echo "If you did some update on the proto_tacacs code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)";                                    \

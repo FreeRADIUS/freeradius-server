@@ -2,7 +2,6 @@
 #  Unit tests for process state machines
 #
 
-
 #
 #  Test name
 #
@@ -85,23 +84,28 @@ $(foreach x,$(FILES),$(eval $(call PROCESS_TEST,$x)))
 #
 #  To quickly find all failing tests, run:
 #
-#	(make -k test.process 2>&1) | grep 'PROCESS=' | sed 's/PROCESS=//;s/ .*$//'
-#
-PROCESS_ARGS := -p test
-PROCESS_ARGS += -D $(DIR)/share -d $(DIR)/
-PROCESS_ARGS += -i $(DIR)/test.attrs -f $(DIR)/test.attrs
+#	(make -k test.process 2>&1) | grep "^PROCESS='" | sed "s/^PROCESS='//;s/'.*$//"
+PROCESS_CMD = \
+	PROCESS=$(call SHELL_QUOTE,$<) \
+	PROTOCOL=$(call SHELL_QUOTE,$(dir $<)) \
+	OUTPUT=$(call SHELL_QUOTE,$(dir $@)) \
+	$(TEST_BIN)/unit_test_module \
+	-p test \
+	-D src/tests/process/share \
+	-d src/tests/process/ \
+	-i src/tests/process/test.attrs \
+	-f src/tests/process/test.attrs \
+	-r $(call SHELL_QUOTE,$@) \
+	-xx
 
 $(OUTPUT)/%: $(DIR)/% $(PROCESS_DICT) $(TEST_BIN_DIR)/unit_test_module $(DIR)/unit_test_module.conf
 	$(eval PROTOCOL_NAME=$(lastword $(subst /, ,$(dir $(abspath $@)))))
-	$(eval CMD:=PROCESS=$< PROTOCOL=$(dir $<) $(TEST_BIN)/unit_test_module $(PROCESS_ARGS) -r "$@" -xx)
-	$(eval export OUTPUT:=$(OUTPUT))
-	$(eval export TEST_PORT:=$(TEST_PORT))
 	@echo PROCESS-TEST $(PROTOCOL_NAME) $(notdir $@)
 	$(Q)mkdir -p $(dir $@)
-	$(Q)if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
+	$(Q)if ! $(PROCESS_CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		cat $@.log; \
 		echo "# $@.log"; \
-		echo OUTPUT=$(dir $@) $(CMD); \
+		echo $(call SHELL_QUOTE,$(PROCESS_CMD)); \
 		exit 1; \
 	fi
 
