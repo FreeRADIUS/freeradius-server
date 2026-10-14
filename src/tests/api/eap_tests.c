@@ -244,5 +244,5 @@ TEST_LIST = {
 	{ "teap_length_outer_tlv_length_fits",		test_teap_length_outer_tlv_length_fits },
 	{ "teap_length_outer_tlv_length_too_long",	test_teap_length_outer_tlv_length_too_long },
 
-	{ NULL }
+	{ NULL, NULL }
 };
