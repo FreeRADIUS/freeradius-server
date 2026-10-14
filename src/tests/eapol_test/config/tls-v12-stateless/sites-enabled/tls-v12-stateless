@@ -1,0 +1,40 @@
+server eap-tls-test {
+	namespace = tls
+
+	load session {
+		cache_tls_session
+	}
+
+	store session {
+		cache_tls_session
+	}
+
+	clear session {
+		cache_tls_session
+	}
+
+	encode session {
+		parent.session-state.Stripped-User-Name := parent.session-state.TLS-Certificate.Common-Name
+		ok
+	}
+
+	decode session {
+		if (parent.session-state.Stripped-User-Name != parent.session-state.TLS-Certificate.Common-Name) {
+			reject
+		}
+		ok
+	}
+
+	verify certificate {
+		if (Session-Resumed == true) {
+			reject
+		}
+
+		#
+		#  Ensure we have access to the certificate attributes
+		#
+		if (!parent.session-state.TLS-Certificate[0].Issuer) {
+			reject
+		}
+	}
+}
