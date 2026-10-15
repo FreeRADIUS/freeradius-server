@@ -245,14 +245,14 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 		return -1;
 
 	if (argc >= (MAX_REDIS_ARGS - 1)) {
-		RERROR("Query has too many parameters; increase "
-		       "MAX_REDIS_ARGS and recompile", inst->xlat_name);
+		RERROR("Query \"%s\" has too many parameters; increase "
+		       "MAX_REDIS_ARGS and recompile", query);
 		return -1;
 	}
 
 	dissocket = *dissocket_p;
 
-	RDEBUG2("Executing the query: \"%s\"", inst->xlat_name, query);
+	RDEBUG2("Executing the query: \"%s\"", query);
 	dissocket->reply = redisCommandArgv(dissocket->conn, argc, argv, NULL);
 	if (!dissocket->reply) {
 		RERROR("Redis server returned error: %s", dissocket->conn->errstr);
