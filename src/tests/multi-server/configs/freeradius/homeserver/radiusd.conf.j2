@@ -136,6 +136,14 @@ server hs-auto-accept {
 		limit_proxy_state = auto
 	}
 
+	client upstream-proxy-tcp {
+		ipaddr = $ENV{TEST_SUBNET}
+		proto = tcp
+		secret = testing123
+		require_message_authenticator = yes
+		limit_proxy_state = no
+	}
+
 	recv Access-Request {
 		string Log-Timestamp
 		string Log-Label
