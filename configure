@@ -13911,7 +13911,6 @@ printf '%s\n' "$ax_cv_cc_weverything_flag" >&6; }
       -W \
       -Weverything \
       -Wformat=2 \
-      -Wno-bad-function-cast \
       -Wno-c++-keyword \
       -Wno-cast-align \
       -Wno-cast-function-type-strict \
