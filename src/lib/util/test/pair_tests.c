@@ -17,8 +17,8 @@
 /** Tests for a AVP manipulation and search API.
  *
  * @file src/lib/util/test//pair_tests.c
- * @author Jorge Pereira <jpereira@freeradius.org>
- * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
+ * @author Jorge Pereira ("jpereira@freeradius.org")
+ * @copyright 2020 Network RADIUS SAS ("legal@networkradius.com")
  */
 
 static void test_init(void);

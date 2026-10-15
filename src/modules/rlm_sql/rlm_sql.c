@@ -915,7 +915,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 
 /** Default escape function for drivers which do not provide their own
  *
- * Multi-byte UTF-8 characters pass through unchanged, `\n` / `\r` / `\t` become
+ * Multi-byte UTF-8 characters pass through unchanged, `\\n` / `\\r` / `\\t` become
  * their backslash-escaped equivalents, and anything else outside
  * `allowed_chars` is replaced with `=XX` (mime-style hex).
  */

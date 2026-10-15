@@ -1987,7 +1987,6 @@ if test "x$developer" = "xyes"; then
       -Wno-date-time \
       -Wno-default-const-init-field-unsafe \
       -Wno-disabled-macro-expansion \
-      -Wno-documentation-unknown-command \
       -Wno-extended-offsetof \
       -Wno-format-pedantic \
       -Wno-gnu-empty-initializer \

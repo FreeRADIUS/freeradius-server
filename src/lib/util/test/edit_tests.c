@@ -17,8 +17,8 @@
 /** Tests for a AVP manipulation and search API.
  *
  * @file src/lib/util/test//edit_tests.c
- * @author Alan DeKok (aland@networkradius.com)
- * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
+ * @author Alan DeKok ("aland@networkradius.com")
+ * @copyright 2021 Network RADIUS SAS ("legal@networkradius.com")
  */
 
 static void test_init(void);

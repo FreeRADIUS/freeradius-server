@@ -13920,7 +13920,6 @@ printf '%s\n' "$ax_cv_cc_weverything_flag" >&6; }
       -Wno-date-time \
       -Wno-default-const-init-field-unsafe \
       -Wno-disabled-macro-expansion \
-      -Wno-documentation-unknown-command \
       -Wno-extended-offsetof \
       -Wno-format-pedantic \
       -Wno-gnu-empty-initializer \

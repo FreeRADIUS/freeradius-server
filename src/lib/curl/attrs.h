@@ -17,7 +17,7 @@
 
 /** Attribute definitions for lib curl
  *
- * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2021 Arran Cudbard-Bell ("a.cudbardb@freeradius.org")
  */
 RCSIDH(attrs_h, "$Id$")
 

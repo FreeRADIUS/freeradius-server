@@ -20,7 +20,7 @@
  * @file lib/bio/pipe.h
  * @brief BIO pipe handlers.
  *
- * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
+ * @copyright 2024 Network RADIUS SAS ("legal@networkradius.com")
  */
 RCSIDH(lib_bio_pipe_h, "$Id$")
 

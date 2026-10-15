@@ -20,8 +20,8 @@
  * @file unit_test_attribute.c
  * @brief Provides a test harness for various internal libraries and functions.
  *
- * @copyright 2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
- * @copyright 2010 Alan DeKok (aland@freeradius.org)
+ * @copyright 2019 Arran Cudbard-Bell ("a.cudbardb@freeradius.org")
+ * @copyright 2010 Alan DeKok ("aland@freeradius.org")
  */
 RCSID("$Id$")
 

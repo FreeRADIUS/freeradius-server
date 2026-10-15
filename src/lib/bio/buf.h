@@ -22,7 +22,7 @@
  *
  *  The #fr_bio_buf_t allows readers and writers to use a shared buffer, without overflow.
  *
- * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
+ * @copyright 2024 Network RADIUS SAS ("legal@networkradius.com")
  */
 RCSIDH(lib_bio_buf_h, "$Id$")
 

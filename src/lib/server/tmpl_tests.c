@@ -18,7 +18,7 @@
  *
  * @file src/lib/server/tmpl_tests.c
  *
- * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
+ * @copyright 2026 Network RADIUS SAS ("legal@networkradius.com")
  */
 
 static void test_init(void);

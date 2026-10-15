@@ -23,7 +23,7 @@
  * Write packets of data to bios.  If a packet is partially
  * read/written, it is cached for later processing.
  *
- * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
+ * @copyright 2024 Network RADIUS SAS ("legal@networkradius.com")
  */
 RCSIDH(lib_bio_queue_h, "$Id$")
 

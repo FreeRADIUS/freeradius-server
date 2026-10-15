@@ -17,7 +17,7 @@
 /** Tests for value box functions
  *
  * @file src/lib/util/test/value_tests.c
- * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
+ * @copyright 2026 Network RADIUS SAS ("legal@networkradius.com")
  */
 
 static void test_init(void);
