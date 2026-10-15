@@ -17,8 +17,8 @@
 #  then magically turns into different fuzzers.
 #
 
-TARGET			:= fuzzer_$(PROTOCOL)$(E)
-SOURCES			:= fuzzer_$(PROTOCOL).c common.c
+TARGET			:= $(FUZZER_NAME)_$(PROTOCOL)$(E)
+SOURCES			:= $(FUZZER_NAME)_$(PROTOCOL).c common.c
 
 TGT_PREREQS		:= libfreeradius-$(PROTOCOL)$(L) $(FUZZER_PROTO_LIBS)
 
@@ -46,6 +46,7 @@ endif
 ifneq "$(PROTOCOL)" "util"
 
 FUZZER_CORPUS_DIR	:= src/tests/fuzzer-corpus
+FUZZER_CORPUS_ID_DIR	:= $(FUZZER_CORPUS_DIR)/$(FUZZER_ID)
 
 #
 #  Ensure that the large data file is copied from git-lfs,
@@ -54,25 +55,25 @@ FUZZER_CORPUS_DIR	:= src/tests/fuzzer-corpus
 #  git-lfs fails to update the git index when multiple instances run
 #  concurrently.  Unfortunately there's no equivalent command on macOS.
 #
-.PHONY:src/tests/fuzzer-corpus/$(PROTOCOL)
-src/tests/fuzzer-corpus/$(PROTOCOL):
+.PHONY:$(FUZZER_CORPUS_ID_DIR)
+$(FUZZER_CORPUS_ID_DIR):
 	${Q}if [ ! -e $@ ] || [ ! -e "$@/.extracted" ]; then \
-		if which flock > /dev/null 2>&1; then flock -F /tmp/git-lfs-mutex git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
-		else git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; fi; \
+		if which flock > /dev/null 2>&1; then flock -F /tmp/git-lfs-mutex git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=$(FUZZER_CORPUS_ID_DIR).tar' lfs pull; \
+		else git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=$(FUZZER_CORPUS_ID_DIR).tar' lfs pull; fi; \
 		cd src/tests/fuzzer-corpus; \
-		if [ -f $(PROTOCOL).tar ]; then \
-			tar -xf $(PROTOCOL).tar; \
+		if [ -f $(FUZZER_ID).tar ]; then \
+			tar -xf $(FUZZER_ID).tar; \
 		else \
-			mkdir -p $(PROTOCOL); \
+			mkdir -p $(FUZZER_ID); \
 		fi; \
-		touch "$(PROTOCOL)/.extracted"; \
+		touch "$(FUZZER_ID)/.extracted"; \
 	fi
 
-.PHONY: $(FUZZER_ARTIFACTS)/$(PROTOCOL)
-$(FUZZER_ARTIFACTS)/$(PROTOCOL):
+.PHONY: $(FUZZER_ARTIFACTS)/$(FUZZER_ID)
+$(FUZZER_ARTIFACTS)/$(FUZZER_ID):
 	@mkdir -p $@
 
-$(TEST_BIN_DIR)/fuzzer_$(PROTOCOL): $(BUILD_DIR)/lib/local/libfreeradius-$(PROTOCOL).la | $(FUZZER_ARTIFACTS)/$(PROTOCOL)
+$(TEST_BIN_DIR)/$(TARGET): $(BUILD_DIR)/lib/local/libfreeradius-$(PROTOCOL).la | $(FUZZER_ARTIFACTS)/$(FUZZER_ID)
 
 #
 #  Run the fuzzer binary against the fuzzer corpus data files.
@@ -86,62 +87,62 @@ $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL): $(BUILD_DIR)/lib/local/libfreeradius-$(PROTO
 #  This will track values across compare instructions.  But it can slow down scanning by 2x, and
 #  increase the size of the corpus by several times.
 #
-fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
-	${Q}$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
-		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
+fuzzer.$(FUZZER_ID): $(TEST_BIN_DIR)/$(TARGET) | $(FUZZER_CORPUS_ID_DIR)
+	${Q}$(TEST_BIN_NO_TIMEOUT)/$(TARGET) \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(FUZZER_ID)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-D share/dictionary \
-		src/tests/fuzzer-corpus/$(PROTOCOL)
+		$(FUZZER_CORPUS_ID_DIR)
 
 #
 #  tests add a 10s timeout.  This is so that we can see if the fuzzers run _at all_.
 #
 ifeq "$(CI)" ""
-test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
-	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
-	${Q}$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
-		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
+test.fuzzer.$(FUZZER_ID): $(TEST_BIN_DIR)/$(TARGET) | $(FUZZER_CORPUS_ID_DIR)
+	@echo TEST-FUZZER $(FUZZER_ID) for $(FUZZER_TIMEOUT)s
+	${Q}$(TEST_BIN_NO_TIMEOUT)/$(TARGET) \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(FUZZER_ID)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-max_total_time=$(FUZZER_TIMEOUT) \
 		-D share/dictionary \
-		src/tests/fuzzer-corpus/$(PROTOCOL)
+		$(FUZZER_CORPUS_ID_DIR)
 else
-test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
-	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
+test.fuzzer.$(FUZZER_ID): $(TEST_BIN_DIR)/$(TARGET) | $(FUZZER_CORPUS_ID_DIR)
+	@echo TEST-FUZZER $(FUZZER_ID) for $(FUZZER_TIMEOUT)s
 	@mkdir -p $(BUILD_DIR)/fuzzer
-	${Q}if ! $(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
-		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
+	${Q}if ! $(TEST_BIN_NO_TIMEOUT)/$(TARGET) \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(FUZZER_ID)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-max_total_time=$(FUZZER_TIMEOUT) \
 		-D share/dictionary \
-		src/tests/fuzzer-corpus/$(PROTOCOL) > $(BUILD_DIR)/fuzzer/$(PROTOCOL).log 2>&1; then \
-		tail -20 $(BUILD_DIR)/fuzzer/$(PROTOCOL).log; \
+		$(FUZZER_CORPUS_ID_DIR) > $(BUILD_DIR)/fuzzer/$(FUZZER_ID).log 2>&1; then \
+		tail -20 $(BUILD_DIR)/fuzzer/$(FUZZER_ID).log; \
 		echo FAILED; \
 		exit 1; \
 	fi
 endif
 
-test.fuzzer.$(PROTOCOL).merge: | src/tests/fuzzer-corpus/$(PROTOCOL)
-	@echo MERGE-FUZZER-CORPUS $(PROTOCOL)
-	${Q}[ -e "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new" ] || mkdir "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new"
-	${Q}$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
+test.fuzzer.$(FUZZER_ID).merge: | $(FUZZER_CORPUS_ID_DIR)
+	@echo MERGE-FUZZER-CORPUS $(FUZZER_ID)
+	${Q}[ -e "$(FUZZER_CORPUS_ID_DIR)_new" ] || mkdir "$(FUZZER_CORPUS_ID_DIR)_new"
+	${Q}$(TEST_BIN_NO_TIMEOUT)/$(TARGET) \
 		-D share/dictionary \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-merge=1 \
-		"$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new" "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)"
-	${Q}[ ! -e "$(FUZZER_CORPUS_DIR)/$(PROTOCOL).tar" ] || rm "$(FUZZER_CORPUS_DIR)/$(PROTOCOL).tar"
-	${Q}rm -rf "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)"
-	${Q}mv "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new" "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)"
-	${Q}tar -C "$(FUZZER_CORPUS_DIR)" -c -f "$(FUZZER_CORPUS_DIR)/$(PROTOCOL).tar" "$(PROTOCOL)"
-	${Q}rm -rf "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new"
+		"$(FUZZER_CORPUS_ID_DIR)_new" "$(FUZZER_CORPUS_ID_DIR)"
+	${Q}[ ! -e "$(FUZZER_CORPUS_ID_DIR).tar" ] || rm "$(FUZZER_CORPUS_ID_DIR).tar"
+	${Q}rm -rf "$(FUZZER_CORPUS_ID_DIR)"
+	${Q}mv "$(FUZZER_CORPUS_ID_DIR)_new" "$(FUZZER_CORPUS_ID_DIR)"
+	${Q}tar -C "$(FUZZER_CORPUS_DIR)" -c -f "$(FUZZER_CORPUS_ID_DIR).tar" "$(FUZZER_ID)"
+	${Q}rm -rf "$(FUZZER_CORPUS_ID_DIR)_new"
 
-test.fuzzer.$(PROTOCOL).crash: $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-*) $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/timeout-*) $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/slow-unit-*) $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
-	$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
-		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
+test.fuzzer.$(FUZZER_ID).crash: $(wildcard $(BUILD_DIR)/fuzzer/$(FUZZER_ID)/crash-*) $(wildcard $(BUILD_DIR)/fuzzer/$(FUZZER_ID)/timeout-*) $(wildcard $(BUILD_DIR)/fuzzer/$(FUZZER_ID)/slow-unit-*) $(TEST_BIN_DIR)/$(TARGET) | $(FUZZER_CORPUS_ID_DIR)
+	$(TEST_BIN_NO_TIMEOUT)/$(TARGET) \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(FUZZER_ID)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-max_total_time=$(FUZZER_TIMEOUT) \
 		-D share/dictionary \
-		$(filter $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-% $(BUILD_DIR)/fuzzer/$(PROTOCOL)/timeout-% $(BUILD_DIR)/fuzzer/$(PROTOCOL)/slow-unit-%, $?)
+		$(filter $(BUILD_DIR)/fuzzer/$(FUZZER_ID)/crash-% $(BUILD_DIR)/fuzzer/$(FUZZER_ID)/timeout-% $(BUILD_DIR)/fuzzer/$(FUZZER_ID)/slow-unit-%, $?)
 
 #
 #

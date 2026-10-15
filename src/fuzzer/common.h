@@ -33,6 +33,7 @@ RCSIDH(fuzzer_common_h, "$Id$")
 extern TALLOC_CTX		*autofree;
 extern fr_dict_t		*dict;
 extern fr_dict_attr_t const	*root_da;
+extern char const		*fuzzer_protocol;
 
 extern fr_dict_protocol_t	*dl_proto;
 
