@@ -250,7 +250,9 @@ int fr_ext_copy_all(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX cons
 	int	i;
 	uint8_t	*ext_src_offsets = fr_ext_offsets(def, chunk_src);	/* old chunk array */
 	uint8_t *ext_dst_offsets = fr_ext_offsets(def, *chunk_dst);	/* new chunk array */
-	bool	ext_new_alloc[def->max];
+	bool	ext_new_alloc[UINT8_MAX + 1];	/* Extension ids are uint8_t enums */
+
+	fr_assert(def->max <= (int)NUM_ELEMENTS(ext_new_alloc));
 
 	/*
 	 *	Do the operation in two phases.

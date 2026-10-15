@@ -2008,7 +2008,6 @@ if test "x$developer" = "xyes"; then
       -Wno-switch-enum \
       -Wno-unreachable-code-generic-assoc \
       -Wno-unsafe-buffer-usage \
-      -Wno-vla \
       $verify_ptr"
   elif test "x$GCC" = "xyes"; then
     devcflags="$devcflags \

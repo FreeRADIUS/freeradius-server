@@ -418,10 +418,16 @@ int fr_dirfd(int *dirfd, char const **filename, char const *pathname)
 		return 0;
 	}
 	{
-		char dirpath[(last_slash - pathname) + 1];
+		char	dirpath[PATH_MAX];
+		size_t	dirlen = (size_t)(last_slash - pathname);
 
-		memcpy(dirpath, pathname, last_slash - pathname);
-		dirpath[last_slash - pathname] = '\0';
+		if (unlikely(dirlen >= sizeof(dirpath))) {
+			errno = ENAMETOOLONG;
+			return -1;
+		}
+
+		memcpy(dirpath, pathname, dirlen);
+		dirpath[dirlen] = '\0';
 		*filename = last_slash + 1;
 		*dirfd = open(dirpath, O_DIRECTORY);
 		return (*dirfd < 0) ? -1 : 0;
