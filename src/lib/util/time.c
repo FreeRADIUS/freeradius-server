@@ -319,7 +319,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 
 		f *= fr_time_multiplier_by_res[res];
 		res = FR_TIME_RES_NSEC;
-		integer = f;
+		integer = (int64_t) f;
 	}
 
 	/*

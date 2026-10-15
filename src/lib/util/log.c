@@ -839,7 +839,7 @@ void fr_log_marker(fr_log_t const *log, fr_log_type_t type, char const *file, in
 	if (marker_idx < 0) marker_idx = marker_idx * -1;
 
 	if ((size_t)marker_idx >= sizeof(marker_spaces)) {
-		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + (sizeof(marker_spaces) * 0.75);
+		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + ((sizeof(marker_spaces) * 3) / 4);
 		marker_idx -= offset;
 
 		if (offset > str_len) offset = str_len;

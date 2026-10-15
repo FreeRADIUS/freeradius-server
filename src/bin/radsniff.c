@@ -602,7 +602,7 @@ static void rs_stats_process_latency(rs_latency_t *stats)
 		return;
 	}
 
-	if (stats->interval.linked_total && stats->interval.latency_total) {
+	if (stats->interval.linked_total && (stats->interval.latency_total != 0.0L)) {
 		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked_total);
 	}
 
@@ -636,11 +636,11 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code
 	int i;
 	bool have_rt = false;
 
-	for (i = 1; i <= RS_RETRANSMIT_MAX; i++) if (stats->interval.rt[i]) have_rt = true;
+	for (i = 1; i <= RS_RETRANSMIT_MAX; i++) if (stats->interval.rt[i] != 0.0) have_rt = true;
 
-	if (!stats->interval.received && !have_rt && !stats->interval.reused) return;
+	if ((stats->interval.received == 0.0) && !have_rt && (stats->interval.reused == 0.0)) return;
 
-	if (stats->interval.received || stats->interval.linked) {
+	if ((stats->interval.received != 0.0) || (stats->interval.linked != 0.0)) {
 		INFO("%s counters:", fr_radius_packet_name[code]);
 		if (stats->interval.received > 0) {
 			INFO("\tTotal     : %.3lf/s" , stats->interval.received);
@@ -657,14 +657,14 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code
 		INFO("\tMA        : %.3lfms", stats->latency_smoothed);
 	}
 
-	if (have_rt || stats->interval.lost || stats->interval.reused) {
+	if (have_rt || (stats->interval.lost != 0.0) || (stats->interval.reused != 0.0)) {
 		INFO("%s retransmits & loss:", fr_radius_packet_name[code]);
 
-		if (stats->interval.lost)	INFO("\tLost      : %.3lf/s", stats->interval.lost);
-		if (stats->interval.reused)	INFO("\tID Reused : %.3lf/s", stats->interval.reused);
+		if (stats->interval.lost != 0.0)	INFO("\tLost      : %.3lf/s", stats->interval.lost);
+		if (stats->interval.reused != 0.0)	INFO("\tID Reused : %.3lf/s", stats->interval.reused);
 
 		for (i = 1; i <= RS_RETRANSMIT_MAX; i++) {
-			if (!stats->interval.rt[i]) continue;
+			if (stats->interval.rt[i] == 0.0) continue;
 
 			if (i != RS_RETRANSMIT_MAX) {
 				INFO("\tRT (%i)    : %.3lf/s", i, stats->interval.rt[i]);
@@ -929,7 +929,7 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 	if (lint > stats->interval.latency_high) {
 		stats->interval.latency_high = lint;
 	}
-	if (!stats->interval.latency_low || (lint < stats->interval.latency_low)) {
+	if ((stats->interval.latency_low == 0.0) || (lint < stats->interval.latency_low)) {
 		stats->interval.latency_low = lint;
 	}
 	stats->interval.latency_total += (long double) lint;

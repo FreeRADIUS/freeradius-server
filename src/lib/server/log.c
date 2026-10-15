@@ -950,7 +950,7 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	if (marker_idx < 0) marker_idx = (marker_idx == SSIZE_MIN) ? SSIZE_MAX : -marker_idx;
 
 	if ((size_t) marker_idx >= sizeof(marker_spaces)) {
-		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + (sizeof(marker_spaces) * 0.75);
+		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + ((sizeof(marker_spaces) * 3) / 4);
 
 		marker_idx -= offset;
 

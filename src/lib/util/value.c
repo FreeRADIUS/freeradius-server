@@ -3717,47 +3717,47 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 		switch (dst_type) {
 		case FR_TYPE_UINT8:
-			dst->vb_uint8 = src->vb_float32;
+			dst->vb_uint8 = (uint8_t) src->vb_float32;
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->vb_uint16 = src->vb_float32;
+			dst->vb_uint16 = (uint16_t) src->vb_float32;
 			break;
 
 		case FR_TYPE_UINT32:
-			dst->vb_uint32 = src->vb_float32;
+			dst->vb_uint32 = (uint32_t) src->vb_float32;
 			break;
 
 		case FR_TYPE_UINT64:
-			dst->vb_uint64 = src->vb_float32;
+			dst->vb_uint64 = (uint64_t) src->vb_float32;
 			break;
 
 		case FR_TYPE_INT8:
-			dst->vb_int8 = src->vb_float32;
+			dst->vb_int8 = (int8_t) src->vb_float32;
 			break;
 
 		case FR_TYPE_INT16:
-			dst->vb_int16 = src->vb_float32;
+			dst->vb_int16 = (int16_t) src->vb_float32;
 			break;
 
 		case FR_TYPE_INT32:
-			dst->vb_int32 = src->vb_float32;
+			dst->vb_int32 = (int32_t) src->vb_float32;
 			break;
 
 		case FR_TYPE_INT64:
-			dst->vb_int64 = src->vb_float32;
+			dst->vb_int64 = (int64_t) src->vb_float32;
 			break;
 
 		case FR_TYPE_SIZE:
-			dst->vb_size = src->vb_float32;
+			dst->vb_size = (size_t) src->vb_float32;
 			break;
 
 		case FR_TYPE_DATE: {
 			int64_t sec, nsec;
 
-			sec = src->vb_float32;
+			sec = (int64_t) src->vb_float32;
 			sec *= NSEC;
-			nsec = ((src->vb_float32 * NSEC) - ((float) sec));
+			nsec = (int64_t) ((src->vb_float32 * NSEC) - ((float) sec));
 
 			dst->vb_date = fr_unix_time_from_nsec(sec + nsec);
 		}
@@ -3770,9 +3770,9 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 			if (dst->enumv) res = fr_time_multiplier_by_res[(fr_time_res_t)dst->enumv->flags.flag_time_res];
 
-			sec = src->vb_float32;
+			sec = (int64_t) src->vb_float32;
 			sec *= res;
-			nsec = (((double) src->vb_float32 * res) - ((double) sec));
+			nsec = (int64_t) (((double) src->vb_float32 * res) - ((double) sec));
 
 			dst->vb_time_delta = fr_time_delta_from_integer(&fail, sec + nsec,
 									dst->enumv ? (fr_time_res_t)dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
@@ -3792,49 +3792,49 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 		switch (dst_type) {
 		case FR_TYPE_UINT8:
-			dst->vb_uint8 = src->vb_float64;
+			dst->vb_uint8 = (uint8_t) src->vb_float64;
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->vb_uint16 = src->vb_float64;
+			dst->vb_uint16 = (uint16_t) src->vb_float64;
 			break;
 
 		case FR_TYPE_UINT32:
-			dst->vb_uint32 = src->vb_float64;
+			dst->vb_uint32 = (uint32_t) src->vb_float64;
 			break;
 
 		case FR_TYPE_UINT64:
-			dst->vb_uint64 = src->vb_float64;
+			dst->vb_uint64 = (uint64_t) src->vb_float64;
 			break;
 
 		case FR_TYPE_INT8:
-			dst->vb_int8 = src->vb_float64;
+			dst->vb_int8 = (int8_t) src->vb_float64;
 			break;
 
 		case FR_TYPE_INT16:
-			dst->vb_int16 = src->vb_float64;
+			dst->vb_int16 = (int16_t) src->vb_float64;
 			break;
 
 		case FR_TYPE_INT32:
-			dst->vb_int32 = src->vb_float64;
+			dst->vb_int32 = (int32_t) src->vb_float64;
 			break;
 
 		case FR_TYPE_INT64:
-			dst->vb_int64 = src->vb_float64;
+			dst->vb_int64 = (int64_t) src->vb_float64;
 			break;
 
 		case FR_TYPE_SIZE:
-			dst->vb_size = src->vb_float64;
+			dst->vb_size = (size_t) src->vb_float64;
 			break;
 
 		case FR_TYPE_DATE: {
 			int64_t sec, nsec;
 
-			sec = src->vb_float64;
+			sec = (int64_t) src->vb_float64;
 
 			if (unlikely((sec > INT64_MAX / NSEC) || (sec < INT64_MIN / NSEC))) goto overflow;
 			sec *= NSEC;
-			nsec = ((src->vb_float64 * NSEC) - ((double) sec));
+			nsec = (int64_t) ((src->vb_float64 * NSEC) - ((double) sec));
 
 			dst->vb_date = fr_unix_time_from_nsec(sec + nsec);
 		}
@@ -3847,11 +3847,11 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 			if (dst->enumv) res = fr_time_multiplier_by_res[(fr_time_res_t)dst->enumv->flags.flag_time_res];
 
-			sec = src->vb_float64;
+			sec = (int64_t) src->vb_float64;
 
 			if (unlikely((sec > INT64_MAX / res) || (sec < INT64_MIN / res))) goto overflow;
 			sec *= res;
-			nsec = ((src->vb_float64 * res) - ((double) sec));
+			nsec = (int64_t) ((src->vb_float64 * res) - ((double) sec));
 
 			dst->vb_time_delta = fr_time_delta_from_integer(&fail, sec + nsec,
 									dst->enumv ? (fr_time_res_t)dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);

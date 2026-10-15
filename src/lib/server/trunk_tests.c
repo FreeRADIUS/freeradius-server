@@ -565,7 +565,7 @@ static void test_socket_pair_alloc_then_connect_timeout(void)
 	/*
 	 *	Trigger connection timeout
 	 */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 1.5));
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC + (NSEC / 2)));
 	TEST_CHECK(fr_event_list_num_timers(el) == 1);	/* One timer event for the connection timeout */
 	events = fr_event_corral(el, test_time_base, true);
 	TEST_CHECK(events == 1);	/* We didn't install the I/O events */
@@ -645,7 +645,7 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	/*
 	 *	Trigger connection timeout
 	 */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 1.5));
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC + (NSEC / 2)));
 	TEST_CHECK(fr_event_list_num_timers(el) == 1);	/* One timer event for the connection timeout */
 	events = fr_event_corral(el, test_time_base, true);
 	TEST_CHECK(events == 2);	/* We didn't install the I/O events */
@@ -662,7 +662,7 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	 *	Trigger reconnection
 	 */
 	connection_signal_reconnect(tconn->pub.conn, CONNECTION_FAILED);
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC / 2));
 
 	events = fr_event_corral(el, test_time_base, false);
 	TEST_CHECK(events == 0);	/* Reconnect delay not ready to fire yet, no I/O handlers installed */
@@ -695,7 +695,7 @@ static void test_enqueue_basic(void)
 	trunk_conf_t		conf = {
 					.start = 1,
 					.min = 1,
-					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
 				};
 	test_proto_request_t	*preq;
 	trunk_request_t	*treq = NULL;
@@ -796,7 +796,7 @@ static void test_enqueue_cancellation_points(void)
 	trunk_conf_t		conf = {
 					.start = 1,
 					.min = 1,
-					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
 				};
 	test_proto_request_t	*preq;
 	trunk_request_t	*treq = NULL;
@@ -1043,7 +1043,7 @@ static void test_partial_to_complete_states(void)
 	trunk_conf_t		conf = {
 					.start = 1,
 					.min = 1,
-					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
 				};
 	test_proto_request_t	*preq;
 	trunk_request_t	*treq = NULL;
@@ -1118,7 +1118,7 @@ static void test_requeue_on_reconnect(void)
 	trunk_conf_t		conf = {
 					.start = 2,
 					.min = 2,
-					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5),
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
 					.conn_conf = &(connection_conf_t){
 						.reconnection_delay = fr_time_delta_from_nsec(NSEC / 10)
 					},
@@ -1406,7 +1406,7 @@ static void test_connection_start_on_enqueue(void)
 	trunk_conf_t		conf = {
 					.start = 0,
 					.min = 0,	/* No connections on start */
-					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
 				};
 	test_proto_request_t	*preq;
 	trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL;
@@ -1417,7 +1417,7 @@ static void test_connection_start_on_enqueue(void)
 	fr_timer_list_set_time_func(el->tl, test_time);
 
 	/* Need to provide a timer starting value above zero */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC / 2));
 
 	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
@@ -1466,7 +1466,7 @@ static void test_connection_rebalance_requests(void)
 	trunk_conf_t		conf = {
 					.start = 2,
 					.min = 2,	/* No connections on start */
-					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
 				};
 	test_proto_request_t	*preq;
 	trunk_connection_t	*tconn;
@@ -1539,7 +1539,7 @@ static void test_connection_levels_max(void)
 					.max = 2,
 					.max_req_per_conn = 2,
 					.target_req_per_conn = 2,	/* One request per connection */
-					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
 				};
 	test_proto_request_t	*preq_a, *preq_b, *preq_c, *preq_d, *preq_e;
 	trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL, *treq_d = NULL, *treq_e = NULL;
@@ -1551,7 +1551,7 @@ static void test_connection_levels_max(void)
 	fr_timer_list_set_time_func(el->tl, test_time);
 
 	/* Need to provide a timer starting value above zero */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC / 2));
 
 	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	TRUNK_VERIFY(trunk);
@@ -1713,7 +1713,7 @@ static void test_connection_levels_alternating_edges(void)
 	fr_timer_list_set_time_func(el->tl, test_time);
 
 	/* Need to provide a timer starting value above zero */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC / 2));
 
 	memset(&stats, 0, sizeof(stats));
 	trunk = test_setup_trunk(ctx, el, &conf, true, &stats);
@@ -1933,7 +1933,7 @@ static void test_trunk_state_full(void)
 					.max = 1,
 					.max_req_per_conn = 1,
 					.target_req_per_conn = 1,
-					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
 				};
 	test_proto_request_t	*preq_a;
 	trunk_request_t		*treq_a = NULL;
@@ -1945,7 +1945,7 @@ static void test_trunk_state_full(void)
 	fr_timer_list_set_time_func(el->tl, test_time);
 
 	/* Need to provide a timer starting value above zero */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC / 2));
 
 	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 
@@ -2005,7 +2005,7 @@ static void test_enqueue_and_io_speed(void)
 					.target_req_per_conn = 0,	/* One request per connection */
 					.req_pool_headers = 1,
 					.req_pool_size = sizeof(test_proto_request_t),
-					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
 				};
 	size_t			i = 0, requests = 100000;
 	fr_time_t		enqueue_start, enqueue_stop, io_start, io_stop;
@@ -2020,7 +2020,7 @@ static void test_enqueue_and_io_speed(void)
 	fr_timer_list_set_time_func(el->tl, test_time);
 
 	/* Need to provide a timer starting value above zero */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC / 2));
 
 	memset(&stats, 0, sizeof(stats));
 	trunk = test_setup_trunk(ctx, el, &conf, true, &stats);
@@ -2073,7 +2073,7 @@ static void test_enqueue_and_io_speed(void)
 		events = fr_event_corral(el, test_time_base, false);
 		if (!events) break;
 		fr_event_service(el);
-		test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.25));
+		test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC / 4));
 	}
 	io_stop = fr_time();
 	io_time = fr_time_sub(io_stop, io_start);
