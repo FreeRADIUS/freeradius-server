@@ -603,7 +603,7 @@ static void rs_stats_process_latency(rs_latency_t *stats)
 	}
 
 	if (stats->interval.linked_total && (stats->interval.latency_total != 0.0L)) {
-		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked_total);
+		stats->interval.latency_average = (stats->interval.latency_total / (long double) stats->interval.linked_total);
 	}
 
 	if (isnan((long double)stats->latency_smoothed)) {
@@ -612,7 +612,7 @@ static void rs_stats_process_latency(rs_latency_t *stats)
 	if (stats->interval.latency_average > 0) {
 		stats->latency_smoothed_count++;
 		stats->latency_smoothed += ((stats->interval.latency_average - stats->latency_smoothed) /
-				       ((stats->latency_smoothed_count < 100) ? stats->latency_smoothed_count : 100));
+				       (double) ((stats->latency_smoothed_count < 100) ? stats->latency_smoothed_count : 100));
 	}
 }
 
@@ -687,8 +687,8 @@ static void rs_stats_print_fancy(rs_update_t *this, rs_stats_t *stats, struct ti
 	INFO("\x1b[0;0f");
 	INFO("\x1b[2J");
 
-	if ((stats->quiet.tv_sec + (stats->quiet.tv_usec / 1000000.0)) -
-	    (now->tv_sec + (now->tv_usec / 1000000.0)) > 0) {
+	if (((double) stats->quiet.tv_sec + ((double) stats->quiet.tv_usec / 1000000.0)) -
+	    ((double) now->tv_sec + ((double) now->tv_usec / 1000000.0)) > 0) {
 		INFO("Stats muted because of warmup, or previous error");
 		return;
 	}
@@ -872,8 +872,8 @@ static void rs_stats_process(fr_timer_list_t *tl, fr_time_t now_t, void *ctx)
 	/*
 	 *	Stats temporarily muted
 	 */
-	if ((stats->quiet.tv_sec + (stats->quiet.tv_usec / 1000000.0)) -
-	    (now.tv_sec + (now.tv_usec / 1000000.0)) > 0) goto clear;
+	if (((double) stats->quiet.tv_sec + ((double) stats->quiet.tv_usec / 1000000.0)) -
+	    ((double) now.tv_sec + ((double) now.tv_usec / 1000000.0)) > 0) goto clear;
 
 	for (i = 0; i < rs_codes_len; i++) {
 		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]]);
@@ -925,7 +925,7 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 
 	stats->interval.linked_total++;
 	/* More useful is this in milliseconds */
-	lint = (latency->tv_sec + (latency->tv_usec / 1000000.0)) * 1000;
+	lint = ((double) latency->tv_sec + ((double) latency->tv_usec / 1000000.0)) * 1000;
 	if (lint > stats->interval.latency_high) {
 		stats->interval.latency_high = lint;
 	}

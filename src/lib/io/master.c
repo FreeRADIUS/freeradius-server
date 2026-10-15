@@ -2504,7 +2504,7 @@ static void packet_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 				track->expires,
 				false, packet_expiry_timer, track) == 0) {
 			DEBUG("proto_%s - cleaning up request in %.6fs", inst->app_io->common.name,
-			      fr_time_delta_unwrap(inst->cleanup_delay) / (double)NSEC);
+			      (double) fr_time_delta_unwrap(inst->cleanup_delay) / (double)NSEC);
 			return;
 		}
 

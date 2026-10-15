@@ -3772,7 +3772,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 			sec = (int64_t) src->vb_float32;
 			sec *= res;
-			nsec = (int64_t) (((double) src->vb_float32 * res) - ((double) sec));
+			nsec = (int64_t) (((double) src->vb_float32 * (double) res) - ((double) sec));
 
 			dst->vb_time_delta = fr_time_delta_from_integer(&fail, sec + nsec,
 									dst->enumv ? (fr_time_res_t)dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
@@ -3851,7 +3851,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 			if (unlikely((sec > INT64_MAX / res) || (sec < INT64_MIN / res))) goto overflow;
 			sec *= res;
-			nsec = (int64_t) ((src->vb_float64 * res) - ((double) sec));
+			nsec = (int64_t) ((src->vb_float64 * (double) res) - ((double) sec));
 
 			dst->vb_time_delta = fr_time_delta_from_integer(&fail, sec + nsec,
 									dst->enumv ? (fr_time_res_t)dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
@@ -3920,7 +3920,7 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 		goto good_cast;
 
 	case FR_TYPE_INT64:
-		num = src->vb_int64;
+		num = (double) src->vb_int64;
 		goto good_cast;
 
 	case FR_TYPE_UINT8:
@@ -3936,14 +3936,14 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 		goto good_cast;
 
 	case FR_TYPE_UINT64:
-		num = src->vb_uint64;
+		num = (double) src->vb_uint64;
 		goto good_cast;
 
 	case FR_TYPE_DATE:
 		/*
 		 *	Unix times are in nanoseconds
 		 */
-		num = fr_unix_time_unwrap(src->vb_date);
+		num = (double) fr_unix_time_unwrap(src->vb_date);
 		num /= NSEC;
 		goto good_cast;
 
@@ -3951,16 +3951,16 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 		/*
 		 *	Time deltas are in nanoseconds, but scaled.
 		 */
-		num = fr_time_delta_unwrap(src->vb_time_delta);
+		num = (double) fr_time_delta_unwrap(src->vb_time_delta);
 		if (src->enumv) {
-			num /= fr_time_multiplier_by_res[(fr_time_res_t)src->enumv->flags.flag_time_res];
+			num /= (double) fr_time_multiplier_by_res[(fr_time_res_t)src->enumv->flags.flag_time_res];
 		} else {
 			num /= NSEC;
 		}
 		goto good_cast;
 
 	case FR_TYPE_SIZE:
-		num = src->vb_size;
+		num = (double) src->vb_size;
 
 	good_cast:
 		fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);

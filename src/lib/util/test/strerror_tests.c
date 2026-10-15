@@ -205,7 +205,7 @@ static void strerror_printf_benchmark(void)
 	}
 	stop = fr_time();
 
-	rate = (uint64_t)((float)NSEC / (fr_time_delta_unwrap(fr_time_sub(stop, start)) / 100000));
+	rate = (uint64_t)((float)NSEC / (float)(fr_time_delta_unwrap(fr_time_sub(stop, start)) / 100000));
 	printf("printf pop rate %" PRIu64 "\n", rate);
 
 	/* shared runners are terrible for performance tests */
@@ -229,7 +229,7 @@ static void strerror_const_benchmark(void)
 	}
 	stop = fr_time();
 
-	rate = (uint64_t)((float)NSEC / (fr_time_delta_unwrap(fr_time_sub(stop, start)) / 100000));
+	rate = (uint64_t)((float)NSEC / (float)(fr_time_delta_unwrap(fr_time_sub(stop, start)) / 100000));
 	printf("const pop rate %" PRIu64 "\n", rate);
 
 	/* shared runners are terrible for performance tests */

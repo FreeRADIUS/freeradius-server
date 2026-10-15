@@ -413,9 +413,9 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 	}
 
 
-	now_f = fr_time_delta_unwrap(fr_time_sub(now, l->stats.start)) / (double)NSEC;
+	now_f = (double) fr_time_delta_unwrap(fr_time_sub(now, l->stats.start)) / (double)NSEC;
 
-	last_send_f = fr_time_delta_unwrap(fr_time_sub(l->stats.last_send, l->stats.start)) / (double)NSEC;
+	last_send_f = (double) fr_time_delta_unwrap(fr_time_sub(l->stats.last_send, l->stats.start)) / (double)NSEC;
 
 	/*
 	 *	Track packets/s.  Since times are in nanoseconds, we

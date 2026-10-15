@@ -103,7 +103,7 @@ static unlang_action_t sometimes_return(unlang_result_t *p_result, module_ctx_t 
 	}
 
 	hash &= 0xffff;		/* all we need are 2^16 bits of precision */
-	value = hash;
+	value = (float) hash;
 	value /= (1 << 16);
 	value *= 100;
 

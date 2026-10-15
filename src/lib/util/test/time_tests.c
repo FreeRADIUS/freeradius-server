@@ -41,7 +41,7 @@ static void time_benchmark(void)
 	}
 	stop = fr_time();
 
-	rate = (uint64_t)((float)NSEC / (fr_time_delta_unwrap(fr_time_sub(stop, start)) / ROUNDS));
+	rate = (uint64_t)((float)NSEC / (float)(fr_time_delta_unwrap(fr_time_sub(stop, start)) / ROUNDS));
 	printf("fr_time rate %" PRIu64 "\n", rate);
 
 	/* shared runners are terrible for performance tests */

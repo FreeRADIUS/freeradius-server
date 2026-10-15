@@ -1984,6 +1984,7 @@ if test "x$developer" = "xyes"; then
       -Wno-cast-function-type-strict \
       -Wno-conversion \
       -Wfloat-conversion \
+      -Wimplicit-int-float-conversion \
       -Wno-covered-switch-default \
       -Wno-date-time \
       -Wno-default-const-init-field-unsafe \

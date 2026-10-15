@@ -2063,7 +2063,7 @@ static void test_enqueue_and_io_speed(void)
 	if (acutest_verbose_level_ >= 1) {
 		INFO("Enqueue time %pV (%u rps) (%"PRIu64"/%"PRIu64")",
 		     fr_box_time_delta(enqueue_time),
-		     (uint32_t)(requests / ((float)(fr_time_delta_unwrap(enqueue_time)) / NSEC)),
+		     (uint32_t)((float) requests / ((float)(fr_time_delta_unwrap(enqueue_time)) / NSEC)),
 		     trunk->pub.req_alloc_new, trunk->pub.req_alloc_reused);
 	}
 
@@ -2081,14 +2081,14 @@ static void test_enqueue_and_io_speed(void)
 	if (acutest_verbose_level_ >= 1) {
 		INFO("I/O time %pV (%u rps)",
 		     fr_box_time_delta(io_time),
-		     (uint32_t)(requests / ((float)(fr_time_delta_unwrap(io_time)) / NSEC)));
+		     (uint32_t)((float) requests / ((float)(fr_time_delta_unwrap(io_time)) / NSEC)));
 	}
 
 	if (acutest_verbose_level_ >= 1) {
 		total_time = fr_time_sub(io_stop, enqueue_start);
 		INFO("Total time %pV (%u rps)",
 		     fr_box_time_delta(total_time),
-		     (uint32_t)(requests / ((float)(fr_time_delta_unwrap(total_time)) / NSEC)));
+		     (uint32_t)((float) requests / ((float)(fr_time_delta_unwrap(total_time)) / NSEC)));
 	}
 
 	TEST_CHECK_LEN(stats.completed, requests);

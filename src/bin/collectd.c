@@ -315,7 +315,7 @@ void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timev
 			tmpl->value_tmpl[i].cb(conf, &tmpl->value_tmpl[i]);
 		}
 
-		tmpl->value->time = now->tv_sec;
+		tmpl->value->time = (double) now->tv_sec;
 
 		lcc_identifier_to_string(conf->stats.handle, identifier, sizeof(identifier), &tmpl->value->identifier);
 

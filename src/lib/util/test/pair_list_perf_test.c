@@ -42,7 +42,7 @@ static void pair_list_perf_init(void);
 		TEST_MSG_ALWAYS("%% repeated    = %u", perc); \
 		TEST_MSG_ALWAYS("list_length   = %u", len); \
 		TEST_MSG_ALWAYS("elapsed (ns)  = %" PRId64, fr_time_delta_unwrap(used)); \
-       		TEST_MSG_ALWAYS("calls/s       = %0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC)); \
+       		TEST_MSG_ALWAYS("calls/s       = %0.0lf", (reps * len)/((double) fr_time_delta_unwrap(used) / (double)NSEC)); \
 		TEST_MSG_ALWAYS("(ns) / call   = %0.0lf", (double) fr_time_delta_unwrap(used) / (double) reps); \
 	} while (0)
 
