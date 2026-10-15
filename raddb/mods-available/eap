@@ -467,6 +467,27 @@ eap {
 		#
 	#	cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 
+		#
+		#  group_list:: Supported groups
+		#
+		#  When using TLS 1.3, the client sends keying material in a key_share
+		#  extension of the ClientHello, for one or more groups it predicts the
+		#  server will accept.
+		#
+		#  If none of the groups in that extension are supported by the server
+		#  then the server will send a HelloRetryRequest message, prompting
+		#  another ClientHello to be sent by the client, increasing the number
+		#  of round trips.
+		#
+		#  This option allows setting the groups supported by the server.
+		#
+		#  Each group can be either the NIST name (e.g. P-256), some other
+		#  commonly used name where applicable (e.g. X25519, ffdhe2048) or an
+		#  OpenSSL OID name (e.g. prime256v1).
+		#  Group names are case-insensitive in OpenSSL 3.5 and later.
+		#
+	#	group_list = 'x25519:prime256v1:x448:secp521r1:secp384r1:ffdhe2048:ffdhe3072'
+
 		#  Set this option to specify the allowed
 		#  TLS signature algorithms for OpenSSL 1.1.1 and above.
 		#  The format and available signature algorithms are listed

@@ -407,6 +407,7 @@ struct fr_tls_server_conf_t {
 	char const	*cipher_list;
 	char const	*cipher_suites;
 	bool		cipher_server_preference;
+	char const	*group_list;
 	char const	*check_cert_issuer;
 	char const	*sigalgs_list;
 

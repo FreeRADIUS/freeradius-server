@@ -1639,6 +1639,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
 #ifdef TLS1_3_VERSION
 	{ "cipher_suites", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_suites), NULL },
+	{ "group_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, group_list), NULL },
 #endif
 	{ "cipher_server_preference", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, cipher_server_preference), NULL },
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
@@ -4461,6 +4462,23 @@ post_ca:
 			return NULL;
 		}
        }
+
+	/*
+	 *	Set the supported groups if configured.
+	 *
+	 *	For TLS 1.3 this can help reduce round trips if the list
+	 *	includes a group the client predicted in the key_share extension.
+	 */
+       if (conf->group_list) {
+		char *list;
+
+		memcpy(&list, &(conf->group_list), sizeof(list)); /* const issues */
+
+	   	if (SSL_CTX_set1_groups_list(ctx, list) == 0) {
+			tls_error_log(NULL, "Failed setting group_list");
+			return NULL;
+		}
+	}
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
