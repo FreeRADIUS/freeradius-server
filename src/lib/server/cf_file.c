@@ -1278,12 +1278,15 @@ typedef enum : uint8_t {
 } cf_file_extension_t;
 
 static fr_table_num_sorted_t const cf_file_extensions[] = {
+	{ L("BAK"),		CF_EXTENSION_TXT },
 	{ L("adoc"),		CF_EXTENSION_TXT },
+	{ L("bak"),		CF_EXTENSION_TXT },
 	{ L("dpkg-dist"),	CF_EXTENSION_PKG },
 	{ L("dpkg-old"),	CF_EXTENSION_PKG },
 	{ L("md"),		CF_EXTENSION_TXT },
 	{ L("rpmnew"),		CF_EXTENSION_PKG },
 	{ L("rpmsave"),		CF_EXTENSION_PKG },
+	{ L("txt"),		CF_EXTENSION_TXT },
 };
 static const size_t cf_file_extensions_len = NUM_ELEMENTS(cf_file_extensions);
 
@@ -1564,7 +1567,10 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		while ((dp = readdir(dir)) != NULL) {
 			char const *p, *ext = NULL;
 
-			if (dp->d_name[0] == '.') continue;
+			if ((dp->d_name[0] == '.') ||
+			    (dp->d_name[0] == '#')) {
+				continue;
+			}
 
 			/*
 			 *	Check for valid characters
@@ -1581,6 +1587,12 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 				}
 				break;
 			}
+
+			/*
+			 *	Ignore editor files: foo~
+			 */
+			if ((*p == '~') && !p[1]) continue;
+
 			if (*p != '\0') continue;
 
 			/*
