@@ -314,9 +314,9 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 
 	switch(query_ctx->status) {
 	case SQL_QUERY_PREPARED:
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
+		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %pV", query_ctx->query);
 		if (OCIStmtPrepare2(sql_conn->ctx, &sql_conn->query, sql_conn->error,
-				    (const OraText *)query_ctx->query_str, strlen(query_ctx->query_str),
+				    (const OraText *)query_ctx->query->vb_strvalue, query_ctx->query->vb_length,
 	        		    NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 			sql_snprint_error(errbuff, sizeof(errbuff), sql_conn);
 			ERROR("Failed to prepare query: %s", errbuff);

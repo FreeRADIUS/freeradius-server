@@ -576,7 +576,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	    (strncasecmp(p, "update", 6) == 0) ||
 	    (strncasecmp(p, "delete", 6) == 0)) {
 		MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
-						   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
+						   thread->trunk, arg, SQL_QUERY_OTHER));
 
 		unlang_xlat_yield(request, sql_xlat_query_resume, NULL, FR_SIGNAL_NONE, query_ctx);
 
@@ -588,7 +588,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	} /* else it's a SELECT statement */
 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
-					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
+					   thread->trunk, arg, SQL_QUERY_SELECT));
 
 	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, FR_SIGNAL_NONE, query_ctx);
 
@@ -623,7 +623,7 @@ static xlat_action_t sql_fetch_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 	}
 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
-					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
+					   thread->trunk, arg, SQL_QUERY_SELECT));
 
 	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, FR_SIGNAL_NONE, query_ctx);
 	if (unlang_function_push_with_result(/* discard, sql_xlat_select_resume just uses query_ctx->rcode */NULL,
@@ -657,7 +657,7 @@ static xlat_action_t sql_modify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 	}
 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
-					   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
+					   thread->trunk, arg, SQL_QUERY_OTHER));
 
 	unlang_xlat_yield(request, sql_xlat_query_resume, NULL, FR_SIGNAL_NONE, query_ctx);
 	/* Write out the result directly to this frame's rcode */
@@ -902,7 +902,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 	}
 
 	query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
-				       thread->trunk, query_head->vb_strvalue, SQL_QUERY_SELECT);
+				       thread->trunk, query_head, SQL_QUERY_SELECT);
 
 	if (unlang_map_yield(request, mod_map_resume, NULL, FR_SIGNAL_NONE, query_ctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
 	return unlang_function_push_with_result(/* discard, mod_map_resume just uses query_ctx->rcode */ NULL,
@@ -1094,7 +1094,7 @@ static unlang_action_t sql_get_grouplist(unlang_result_t *p_result, sql_group_ct
 	if (!group_ctx->query || (group_ctx->query->vb_length == 0)) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	MEM(group_ctx->query_ctx = fr_sql_query_alloc(group_ctx, inst, request, trunk,
-						      group_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
+						      group_ctx->query, SQL_QUERY_SELECT));
 
 	if (unlang_function_push_with_result(/* sql_get_grouplist_resume translates the query_ctx->rocde into a module rcode */p_result,
 					     request,
@@ -1868,7 +1868,7 @@ static unlang_action_t mod_sql_redundant_resume(unlang_result_t *p_result, modul
 	}
 
 	MEM(redundant_ctx->query_ctx = fr_sql_query_alloc(redundant_ctx, inst, request, redundant_ctx->trunk,
-							  redundant_ctx->query_vb->vb_strvalue, SQL_QUERY_OTHER));
+							  redundant_ctx->query_vb, SQL_QUERY_OTHER));
 
 	unlang_module_yield(request, mod_sql_redundant_query_resume, NULL, FR_SIGNAL_NONE, redundant_ctx);
 	return unlang_function_push_with_result(/* discard, mod_sql_redundant_query_resume uses query_ctx->rcode*/ NULL,

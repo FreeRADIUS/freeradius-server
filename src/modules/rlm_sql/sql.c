@@ -194,19 +194,19 @@ static int fr_sql_query_free(fr_sql_query_t *to_free)
  *
  */
 fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
-				   trunk_t *trunk, char const *query_str, fr_sql_query_type_t type)
+				   trunk_t *trunk, fr_value_box_t const *query, fr_sql_query_type_t type)
 {
-	fr_sql_query_t	*query;
-	MEM(query = talloc(ctx, fr_sql_query_t));
-	*query = (fr_sql_query_t) {
+	fr_sql_query_t	*query_ctx;
+	MEM(query_ctx = talloc(ctx, fr_sql_query_t));
+	*query_ctx = (fr_sql_query_t) {
 		.inst = inst,
 		.request = request,
 		.trunk = trunk,
-		.query_str = query_str,
+		.query = query,
 		.type = type
 	};
-	talloc_set_destructor(query, fr_sql_query_free);
-	return query;
+	talloc_set_destructor(query_ctx, fr_sql_query_free);
+	return query_ctx;
 }
 
 /** Yield processing after submitting a trunk request.
@@ -238,7 +238,7 @@ static void sql_trunk_query_cancel(request_t *request, UNUSED fr_signal_t action
 		return;
 	}
 
-	RDEBUG2("Forcefully cancelling query %s", query_ctx->query_str);
+	RDEBUG2("Forcefully cancelling query %pV", query_ctx->query);
 
 	/*
 	 *	The query_ctx needs to be parented by the treq so that it still exists
@@ -265,7 +265,7 @@ unlang_action_t rlm_sql_trunk_query(unlang_result_t *p_result, request_t *reques
 	fr_assert(query_ctx->trunk);
 
 	/* There's no query to run, return an error */
-	if (query_ctx->query_str[0] == '\0') {
+	if (query_ctx->query->vb_length == 0) {
 		if (request) REDEBUG("Zero length query");
 		RETURN_UNLANG_INVALID;
 	}
@@ -379,7 +379,7 @@ unlang_action_t sql_get_map_list(unlang_result_t *p_result, request_t *request, 
 	fr_assert(map_ctx->query);
 
 	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, trunk,
-						    map_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
+						    map_ctx->query, SQL_QUERY_SELECT));
 
 	if (unlang_function_push_with_result(p_result,
 					     request,

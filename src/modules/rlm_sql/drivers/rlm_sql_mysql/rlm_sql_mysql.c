@@ -996,8 +996,8 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 
 	switch (query_ctx->status) {
 	case SQL_QUERY_PREPARED:
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
-		sql_conn->status = mysql_real_query_start(&err, sql_conn->sock, query_ctx->query_str, strlen(query_ctx->query_str));
+		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %pV", query_ctx->query);
+		sql_conn->status = mysql_real_query_start(&err, sql_conn->sock, query_ctx->query->vb_strvalue, query_ctx->query->vb_length);
 		query_ctx->tconn = tconn;
 
 		if (sql_conn->status) {

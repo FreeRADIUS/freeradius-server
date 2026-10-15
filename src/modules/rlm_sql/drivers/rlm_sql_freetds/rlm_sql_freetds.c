@@ -547,14 +547,14 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	request = query_ctx->request;
 	query_ctx->tconn = tconn;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
+	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %pV", query_ctx->query);
 
 	switch (query_ctx->type) {
 	case SQL_QUERY_SELECT:
-		query_ctx->rcode = sql_select_query(request, sql_conn, query_ctx->query_str);
+		query_ctx->rcode = sql_select_query(request, sql_conn, query_ctx->query->vb_strvalue);
 		break;
 	case SQL_QUERY_OTHER:
-		query_ctx->rcode = sql_query(request, sql_conn, query_ctx->query_str);
+		query_ctx->rcode = sql_query(request, sql_conn, query_ctx->query->vb_strvalue);
 		break;
 	}
 

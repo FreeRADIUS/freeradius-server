@@ -422,8 +422,8 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 
 		switch (query_ctx->status) {
 		case SQL_QUERY_PREPARED:
-			ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
-			statement = cass_statement_new_n(query_ctx->query_str, talloc_strlen(query_ctx->query_str), 0);
+			ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %pV", query_ctx->query);
+			statement = cass_statement_new_n(query_ctx->query->vb_strvalue, query_ctx->query->vb_length, 0);
 			if (inst->consistency_str) cass_statement_set_consistency(statement, inst->consistency);
 
 			/*

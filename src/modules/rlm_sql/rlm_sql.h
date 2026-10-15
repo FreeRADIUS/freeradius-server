@@ -139,7 +139,7 @@ typedef struct {
 	trunk_t			*trunk;				//!< Trunk this query is being run on.
 	trunk_connection_t	*tconn;				//!< Trunk connection this query is being run on.
 	trunk_request_t		*treq;				//!< Trunk request for this query.
-	char const		*query_str;			//!< Query string to run.
+	fr_value_box_t const	*query;				//!< The query to run.  The box outlives the query context.
 	fr_sql_query_type_t	type;				//!< Type of query.
 	fr_sql_query_status_t	status;				//!< Status of the query.
 	sql_rcode_t		rcode;				//!< Result code.
@@ -242,7 +242,7 @@ struct sql_inst {
 	unlang_function_with_result_t	select;
 	unlang_function_with_result_t	fetch_row;
 
-	fr_sql_query_t			*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
+	fr_sql_query_t			*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, fr_value_box_t const *query, fr_sql_query_type_t type);
 
 	char const			*name;			//!< Module instance name.
 	fr_dict_attr_t const		*group_da;		//!< Group dictionary attribute.
@@ -257,7 +257,7 @@ void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const
 unlang_action_t rlm_sql_trunk_query(unlang_result_t *p_result, request_t *request, void *uctx);
 unlang_action_t rlm_sql_fetch_row(unlang_result_t *p_result, request_t *request, void *uctx);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query_t *query_ctx, bool force_debug);
-fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
+fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, fr_value_box_t const *query, fr_sql_query_type_t type);
 
 /*
  *	sql_state.c

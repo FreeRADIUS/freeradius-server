@@ -226,10 +226,10 @@ static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 }
 
 #define REPEAT_MOD_ALLOC_RESUME if (unlang_module_yield(request, mod_alloc_resume, NULL, FR_SIGNAL_NONE, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL
-#define SUBMIT_QUERY(_query_str, _new_status, _type, _function) do { \
+#define SUBMIT_QUERY(_query, _new_status, _type, _function) do { \
 	alloc_ctx->status = _new_status; \
 	REPEAT_MOD_ALLOC_RESUME; \
-	query_ctx->query_str = _query_str; \
+	query_ctx->query = _query; \
 	query_ctx->type = _type; \
 	query_ctx->status = SQL_QUERY_PREPARED; \
 	alloc_ctx->query = query; \
@@ -293,7 +293,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		goto expand_requested;
 
 	case IPPOOL_ALLOC_EXISTING:
-		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_EXISTING_RUN, SQL_QUERY_SELECT, select);
+		if (query && query->vb_length) SUBMIT_QUERY(query, IPPOOL_ALLOC_EXISTING_RUN, SQL_QUERY_SELECT, select);
 		goto expand_requested;
 
 	case IPPOOL_ALLOC_EXISTING_RUN:
@@ -316,7 +316,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		goto expand_find;
 
 	case IPPOOL_ALLOC_REQUESTED:
-		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_REQUESTED_RUN, SQL_QUERY_SELECT, select);
+		if (query && query->vb_length) SUBMIT_QUERY(query, IPPOOL_ALLOC_REQUESTED_RUN, SQL_QUERY_SELECT, select);
 
 		goto expand_find;
 
@@ -337,7 +337,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case IPPOOL_ALLOC_FIND:
-		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_FIND_RUN, SQL_QUERY_SELECT, select);
+		if (query && query->vb_length) SUBMIT_QUERY(query, IPPOOL_ALLOC_FIND_RUN, SQL_QUERY_SELECT, select);
 		RETURN_UNLANG_FAIL;
 
 	case IPPOOL_ALLOC_FIND_RUN:
@@ -352,7 +352,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		 *  Nothing found
 		 */
 		if ((env->commit.type == FR_TYPE_STRING) &&
-		    env->commit.vb_length) SUBMIT_QUERY(env->commit.vb_strvalue, IPPOOL_ALLOC_NO_ADDRESS, SQL_QUERY_OTHER, query);
+		    env->commit.vb_length) SUBMIT_QUERY(&env->commit, IPPOOL_ALLOC_NO_ADDRESS, SQL_QUERY_OTHER, query);
 		FALL_THROUGH;
 
 	case IPPOOL_ALLOC_NO_ADDRESS:
@@ -418,7 +418,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		 *	Ok, so the allocate-find query found nothing ...
 		 *	Let's check if the pool exists at all
 		 */
-		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_POOL_CHECK_RUN, SQL_QUERY_SELECT, select);
+		if (query && query->vb_length) SUBMIT_QUERY(query, IPPOOL_ALLOC_POOL_CHECK_RUN, SQL_QUERY_SELECT, select);
 		goto no_address;
 
 	case IPPOOL_ALLOC_POOL_CHECK_RUN:
@@ -449,7 +449,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		RETURN_UNLANG_NOOP;
 
 	case IPPOOL_ALLOC_UPDATE:
-		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_UPDATE_RUN, SQL_QUERY_OTHER, query);
+		if (query && query->vb_length) SUBMIT_QUERY(query, IPPOOL_ALLOC_UPDATE_RUN, SQL_QUERY_OTHER, query);
 
 		goto finish;
 
@@ -459,7 +459,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 
 	finish:
 		if ((env->commit.type == FR_TYPE_STRING) &&
-		    env->commit.vb_length) SUBMIT_QUERY(env->commit.vb_strvalue, IPPOOL_ALLOC_COMMIT_RUN, SQL_QUERY_OTHER, query);
+		    env->commit.vb_length) SUBMIT_QUERY(&env->commit, IPPOOL_ALLOC_COMMIT_RUN, SQL_QUERY_OTHER, query);
 
 		FALL_THROUGH;
 
@@ -523,7 +523,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 	 *	Since they typically form an SQL transaction, they all need to be on the same
 	 *	connection, and use the same trunk request if using trunks.
 	 */
-	MEM(alloc_ctx->query_ctx = sql->query_alloc(alloc_ctx, sql, request, thread->trunk, "", SQL_QUERY_OTHER));
+	MEM(alloc_ctx->query_ctx = sql->query_alloc(alloc_ctx, sql, request, thread->trunk, NULL, SQL_QUERY_OTHER));
 
 	fr_value_box_list_init(&alloc_ctx->values);
 	if (unlikely(unlang_module_yield(request, mod_alloc_resume, NULL, FR_SIGNAL_NONE, alloc_ctx) != UNLANG_ACTION_YIELD)) {
@@ -532,7 +532,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 	}
 
 	if ((env->begin.type == FR_TYPE_STRING) && env->begin.vb_length) {
-		alloc_ctx->query_ctx->query_str = env->begin.vb_strvalue;
+		alloc_ctx->query_ctx->query = &env->begin;
 		return unlang_function_push_with_result(/* mod_alloc_resume looks at frame result */ p_result,
 							request,
 							sql->query,
@@ -594,7 +594,7 @@ static unlang_action_t mod_common_free_resume(unlang_result_t *p_result, module_
 		RETURN_UNLANG_FAIL;
 	}
 
-	common_ctx->query_ctx->query_str = common_ctx->env->update.vb_strvalue;
+	common_ctx->query_ctx->query = &common_ctx->env->update;
 	query_ctx->status = SQL_QUERY_PREPARED;
 	return unlang_function_push_with_result(/* mod_common_update_resume uses frame rcode */p_result,
 						request,
@@ -628,7 +628,7 @@ static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, mo
 		.sql = sql,
 	};
 
-	MEM(common_ctx->query_ctx = sql->query_alloc(common_ctx, sql, request, thread->trunk, "", SQL_QUERY_OTHER));
+	MEM(common_ctx->query_ctx = sql->query_alloc(common_ctx, sql, request, thread->trunk, NULL, SQL_QUERY_OTHER));
 
 	/*
 	 *  An optional query which can be used to tidy up before updates
@@ -636,7 +636,7 @@ static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, mo
 	 *  allowing for tidy up of multiple offered addresses in a DHCP context.
 	 */
 	if (env->free.type == FR_TYPE_STRING) {
-		common_ctx->query_ctx->query_str = env->free.vb_strvalue;
+		common_ctx->query_ctx->query = &env->free;
 		if (unlikely(unlang_module_yield(request, mod_common_free_resume, NULL, FR_SIGNAL_NONE, common_ctx) != UNLANG_ACTION_YIELD)) {
 			talloc_free(common_ctx);
 			RETURN_UNLANG_FAIL;
@@ -650,7 +650,7 @@ static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, mo
 							common_ctx->query_ctx);
 	}
 
-	common_ctx->query_ctx->query_str = env->update.vb_strvalue;
+	common_ctx->query_ctx->query = &env->update;
 
 	if (unlikely(unlang_module_yield(request, mod_common_update_resume, NULL, FR_SIGNAL_NONE, common_ctx) != UNLANG_ACTION_YIELD)) {
 		talloc_free(common_ctx);

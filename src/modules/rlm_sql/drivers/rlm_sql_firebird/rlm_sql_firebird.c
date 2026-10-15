@@ -101,17 +101,17 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	request = query_ctx->request;
 	query_ctx->tconn = tconn;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
+	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %pV", query_ctx->query);
 
 	try_again:
 	/*
 	 *	Try again query when deadlock, because in any case it
 	 *	will be retried.
 	 */
-	if (fb_sql_query(sql_conn, query_ctx->query_str)) {
+	if (fb_sql_query(sql_conn, query_ctx->query->vb_strvalue)) {
 		/* but may be lost for short sessions */
 		if ((sql_conn->sql_code == DEADLOCK_SQL_CODE) && !deadlock) {
-			ROPTIONAL(RWARN, WARN, "SQL deadlock. Retry query %s", query_ctx->query_str);
+			ROPTIONAL(RWARN, WARN, "SQL deadlock. Retry query %pV", query_ctx->query);
 
 			/*
 			 *	@todo For non READ_COMMITED transactions put
@@ -128,7 +128,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 		}
 
 		ROPTIONAL(RERROR, ERROR, "conn_id rlm_sql_firebird,sql_query error: sql_code=%li, error='%s', query=%s",
-		      (long int) sql_conn->sql_code, sql_conn->error, query_ctx->query_str);
+		      (long int) sql_conn->sql_code, sql_conn->error, query_ctx->query->vb_strvalue);
 
 		query_ctx->status = SQL_QUERY_FAILED;
 		trunk_request_signal_fail(treq);

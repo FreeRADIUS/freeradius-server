@@ -129,15 +129,15 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	request = query_ctx->request;
 	query_ctx->tconn = tconn;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
+	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %pV", query_ctx->query);
 
 	/* allocate handle for statement */
 	SQLAllocHandle(SQL_HANDLE_STMT, sql_conn->dbc_handle, &(sql_conn->stmt));
 
 	/* execute query */
-	memcpy(&db2_query, &query_ctx->query_str, sizeof(query_ctx->query_str));
+	memcpy(&db2_query, &query_ctx->query->vb_strvalue, sizeof(db2_query));
 
-	ret = SQLExecDirect(sql_conn->stmt, db2_query, SQL_NTS);
+	ret = SQLExecDirect(sql_conn->stmt, db2_query, query_ctx->query->vb_length);
 	if (ret != SQL_SUCCESS) {
 		SQLCHAR		state[6];
 		SQLSMALLINT	len;
@@ -150,7 +150,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 		}
 
 		/* XXX Check if ret means we should return RLM_SQL_RECONNECT */
-		ERROR("Could not execute statement \"%s\"", query_ctx->query_str);
+		ERROR("Could not execute statement %pV", query_ctx->query);
 		query_ctx->rcode = RLM_SQL_ERROR;
 		trunk_request_signal_fail(treq);
 		return;

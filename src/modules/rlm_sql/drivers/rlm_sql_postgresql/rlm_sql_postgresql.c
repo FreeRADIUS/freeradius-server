@@ -413,8 +413,8 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 
 	switch (query_ctx->status) {
 	case SQL_QUERY_PREPARED:
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
-		err = PQsendQuery(sql_conn->db, query_ctx->query_str);
+		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %pV", query_ctx->query);
+		err = PQsendQuery(sql_conn->db, query_ctx->query->vb_strvalue);
 		query_ctx->tconn = tconn;
 		if (!err) {
 			ROPTIONAL(RERROR, ERROR, "Failed to send query: %s", PQerrorMessage(sql_conn->db));

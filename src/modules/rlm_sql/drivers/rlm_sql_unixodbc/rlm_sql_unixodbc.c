@@ -172,9 +172,9 @@ static void sql_trunk_connection_init_poll(fr_timer_list_t *tl, UNUSED fr_time_t
 	SQLRETURN		ret;
 
 	ret = SQLConnect(c->dbc,
-			 UNCONST(SQLCHAR *, c->config->sql_server), strlen(c->config->sql_server),
-			 UNCONST(SQLCHAR *, c->config->sql_login), strlen(c->config->sql_login),
-			 UNCONST(SQLCHAR *, c->config->sql_password), strlen(c->config->sql_password));
+			 UNCONST(SQLCHAR *, c->config->sql_server), SQL_NTS,
+			 UNCONST(SQLCHAR *, c->config->sql_login), SQL_NTS,
+			 UNCONST(SQLCHAR *, c->config->sql_password), SQL_NTS);
 
 	if (ret == SQL_STILL_EXECUTING) {
 		if (fr_timer_in(c, tl, &c->read_ev, fr_time_delta_from_usec(c->query_interval),
@@ -248,9 +248,9 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 
 	/* Connect to the datasource */
 	ret = SQLConnect(c->dbc,
-			 UNCONST(SQLCHAR *, config->sql_server), strlen(config->sql_server),
-			 UNCONST(SQLCHAR *, config->sql_login), strlen(config->sql_login),
-			 UNCONST(SQLCHAR *, config->sql_password), strlen(config->sql_password));
+			 UNCONST(SQLCHAR *, config->sql_server), SQL_NTS,
+			 UNCONST(SQLCHAR *, config->sql_login), SQL_NTS,
+			 UNCONST(SQLCHAR *, config->sql_password), SQL_NTS);
 
 	if (ret == SQL_STILL_EXECUTING) {
 		if (fr_timer_in(c, conn->el->tl, &c->read_ev, fr_time_delta_from_usec(c->query_interval),
@@ -290,8 +290,8 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 
 	switch(query_ctx->status) {
 	case SQL_QUERY_PREPARED:
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
-		ret = SQLExecDirect(sql_conn->stmt, UNCONST(SQLCHAR *, query_ctx->query_str), strlen(query_ctx->query_str));
+		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %pV", query_ctx->query);
+		ret = SQLExecDirect(sql_conn->stmt, UNCONST(SQLCHAR *, query_ctx->query->vb_strvalue), query_ctx->query->vb_length);
 		query_ctx->tconn = tconn;
 
 		if (ret == SQL_STILL_EXECUTING) {
@@ -371,7 +371,7 @@ static void sql_trunk_connection_read_poll(fr_timer_list_t *tl, UNUSED fr_time_t
 
 	switch (query_ctx->status) {
 	case SQL_QUERY_SUBMITTED:
-		ret = SQLExecDirect(c->stmt, UNCONST(SQLCHAR *, query_ctx->query_str), strlen(query_ctx->query_str));
+		ret = SQLExecDirect(c->stmt, UNCONST(SQLCHAR *, query_ctx->query->vb_strvalue), query_ctx->query->vb_length);
 		c->poll_count++;
 		/* Back off the poll interval, up to half the query timeout */
 		if (c->poll_count > 2) {
