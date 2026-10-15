@@ -264,6 +264,44 @@ static void test_cast_uint32_to_uint64(void)
 	TEST_CHECK(dst.vb_uint64 == 42);
 }
 
+/** A float at or past the top of a 64-bit integer must fail the cast, not convert
+ *
+ *  UINT64_MAX and INT64_MAX are not representable as a double, and round up to 2^64 and
+ *  2^63.  A source of exactly 2^64 or 2^63 passed a "greater than the maximum" check, and
+ *  the conversion to the integer type was undefined.
+ */
+static void test_cast_float_to_int64_bounds(void)
+{
+	fr_value_box_t src, dst;
+
+	TEST_CASE("float64 2^64 to uint64 overflows");
+	fr_value_box(&src, (double) 0x1p64, false);
+	fr_value_box_init_null(&dst);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_UINT64, NULL, &src) < 0);
+
+	TEST_CASE("float32 2^64 to uint64 overflows");
+	fr_value_box(&src, (float) 0x1p64, false);
+	fr_value_box_init_null(&dst);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_UINT64, NULL, &src) < 0);
+
+	TEST_CASE("float64 2^63 to int64 overflows");
+	fr_value_box(&src, (double) 0x1p63, false);
+	fr_value_box_init_null(&dst);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_INT64, NULL, &src) < 0);
+
+	TEST_CASE("the largest float64 below 2^64 converts to uint64");
+	fr_value_box(&src, (double) 0x1.fffffffffffffp63, false);
+	fr_value_box_init_null(&dst);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_UINT64, NULL, &src) == 0);
+	TEST_CHECK(dst.vb_uint64 == UINT64_C(18446744073709549568));
+
+	TEST_CASE("float64 -2^63 converts to int64");
+	fr_value_box(&src, (double) -0x1p63, false);
+	fr_value_box_init_null(&dst);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_INT64, NULL, &src) == 0);
+	TEST_CHECK(dst.vb_int64 == INT64_MIN);
+}
+
 static void test_cast_uint32_to_string(void)
 {
 	fr_value_box_t src, dst;
@@ -1373,6 +1411,7 @@ TEST_LIST = {
 
 	/* Cast tests */
 	{ "cast_uint32_to_uint64",		test_cast_uint32_to_uint64 },
+	{ "cast_float_to_int64_bounds",		test_cast_float_to_int64_bounds },
 	{ "cast_uint32_to_string",		test_cast_uint32_to_string },
 	{ "cast_string_to_uint32",		test_cast_string_to_uint32 },
 	{ "cast_int32_to_int64",		test_cast_int32_to_int64 },

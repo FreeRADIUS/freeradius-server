@@ -3589,6 +3589,28 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	return 0;
 }
 
+/** Check whether a floating point value is above the range of an integer type
+ *
+ * The maximum of a 64-bit integer type is not representable as a double.  The conversion
+ * rounds UINT64_MAX up to 2^64, and INT64_MAX up to 2^63.  A source equal to the rounded
+ * maximum passes a "greater than the maximum" test, and converting that source to the
+ * integer type is undefined.  Adding 1.0 to a rounded maximum leaves the maximum unchanged,
+ * and the second test catches the source which equals the maximum.  For the narrower types,
+ * the maximum converts exactly, and the second test adds nothing to the first.
+ *
+ * @param[in] f		The value to check.
+ * @param[in] dst_type	The integer type the value is cast to.
+ * @return
+ *	- true if the value does not fit in dst_type.
+ *	- false if the value fits.
+ */
+static inline CC_HINT(always_inline) bool value_box_float_overflows(double f, fr_type_t dst_type)
+{
+	double max = (double) fr_value_box_integer_max[dst_type];
+
+	return (f > max) || (f >= max + 1.0);
+}
+
 /** Convert any value to a signed or unsigned integer
  *
  * @param ctx		unused.
@@ -3687,7 +3709,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 			return -1;
 		}
 
-		if ((double) src->vb_float32 > (double) fr_value_box_integer_max[dst_type]) {
+		if (value_box_float_overflows((double) src->vb_float32, dst_type)) {
 		overflow:
 			fr_strerror_const("Source value for cast would overflow destination type");
 			return -1;
@@ -3766,7 +3788,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 	case FR_TYPE_FLOAT64:
 		if (src->vb_float64 < (double) fr_value_box_integer_min[dst_type]) goto underflow;
 
-		if (src->vb_float64 > (double) fr_value_box_integer_max[dst_type]) goto overflow;
+		if (value_box_float_overflows(src->vb_float64, dst_type)) goto overflow;
 
 		switch (dst_type) {
 		case FR_TYPE_UINT8:
