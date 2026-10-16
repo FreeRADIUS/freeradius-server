@@ -330,6 +330,10 @@ radius {
 		#  other packet types. The Message-Authenticator attribute will be
 		#  added automatically, and does not need to be specified here.
 		#
+		#  Status-Server packets must not contain User-Name, Reply-Message,
+		#  passwords, EAP-Message, or Digest-* attributes (RFC 5997
+		#  Section 5).  The server refuses to start if they are set here.
+		#
 		#  If the Event-Timestamp attribute is added, it will be updated
 		#  each time the packet is sent.
 		#
@@ -338,7 +342,6 @@ radius {
 		#  a connection is opened, and are not changeable after that.
 		#
 		update {
-			User-Name := "test-user"
 			NAS-Identifier := "Status check.  Are you alive?"
 			Event-Timestamp = 0
 		}

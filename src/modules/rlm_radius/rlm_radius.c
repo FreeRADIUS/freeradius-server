@@ -199,11 +199,15 @@ static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_error_cause;
 static fr_dict_attr_t const *attr_event_timestamp;
 static fr_dict_attr_t const *attr_extended_attribute_1;
+static fr_dict_attr_t const *attr_digest_attributes;
+static fr_dict_attr_t const *attr_digest_response;
 static fr_dict_attr_t const *attr_message_authenticator;
 static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_nas_identifier;
 static fr_dict_attr_t const *attr_original_packet_code;
+static fr_dict_attr_t const *attr_reply_message;
 static fr_dict_attr_t const *attr_response_length;
+static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_radius_dict_attr[];
@@ -217,11 +221,15 @@ fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius},
 	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_TLV, .dict = &dict_radius},
+	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_TLV, .dict = &dict_radius},
+	{ .out = &attr_digest_response, .name = "Digest-Response", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_nas_identifier, .name = "NAS-Identifier", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ .out = &attr_original_packet_code, .name = "Extended-Attribute-1.Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius},
+	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ .out = &attr_response_length, .name = "Extended-Attribute-1.Response-Length", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius},
 
 	DICT_AUTOLOAD_TERMINATOR
@@ -456,6 +464,17 @@ static int status_check_verify(map_t *map, void *ctx)
 	 */
 	if ((inst->status_check != FR_RADIUS_CODE_ACCESS_REQUEST) &&
 	    ((da == attr_user_password) || (da == attr_chap_password) || (da == attr_eap_message))) {
+		goto cannot_use;
+	}
+
+	/*
+	 *	RFC 5997 Section 5 says these MUST NOT be in Status-Server.
+	 *	The passwords are covered above.
+	 */
+	if ((inst->status_check == FR_RADIUS_CODE_STATUS_SERVER) &&
+	    ((da == attr_user_name) || (da == attr_reply_message) ||
+	     (da == attr_digest_response) || (da == attr_digest_attributes) ||
+	     (da->parent == attr_digest_attributes))) {
 		goto cannot_use;
 	}
 

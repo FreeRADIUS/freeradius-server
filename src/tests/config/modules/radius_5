@@ -15,7 +15,6 @@ radius {
 		type = Status-Server
 
 		update {
-			User-Name := "test-user"
 			NAS-Identifier := "Status check.  Are you alive?"
 			Event-Timestamp = 0
 		}
