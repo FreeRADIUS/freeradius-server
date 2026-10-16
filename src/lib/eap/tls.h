@@ -172,7 +172,7 @@ unlang_action_t		eap_tls_process(request_t *request, eap_session_t *eap_session)
 
 int			eap_tls_start(request_t *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_success(request_t *request, eap_session_t *eap_session, eap_tls_prf_label_t *prf_label) CC_HINT(nonnull(1,2));
+unlang_action_t		eap_tls_success(request_t *request, eap_session_t *eap_session, eap_tls_prf_label_t *prf_label) CC_HINT(nonnull(1,2));
 
 unlang_action_t		eap_tls_fail(request_t *request, eap_session_t *eap_session) CC_HINT(nonnull);
 			/*!< The caller must set its result before calling this,

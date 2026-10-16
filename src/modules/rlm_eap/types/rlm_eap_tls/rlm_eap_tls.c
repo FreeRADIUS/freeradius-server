@@ -67,17 +67,10 @@ fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 	DICT_AUTOLOAD_TERMINATOR
 };
 
-static unlang_action_t mod_handshake_done(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
-					  UNUSED request_t *request)
-{
-	RETURN_UNLANG_OK;
-}
-
 static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	if ((eap_tls_session->state == EAP_TLS_INVALID) || (eap_tls_session->state == EAP_TLS_FAIL)) {
 		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, eap_tls_session->state, "<INVALID>"));
@@ -101,26 +94,8 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 					  "client EAP encryption",
 					  sizeof("client EAP encryption") - 1);
 
-		if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_UNLANG_FAIL;
-
-		/*
-		 *	Result is always OK, even if we fail to persist the
-		 *	session data.
-		 */
-		unlang_module_yield(request, mod_handshake_done, NULL, FR_SIGNAL_NONE, mctx->rctx);
-		/*
-		 *	Write the session to the session cache
-		 *
-		 *	We do this here (instead of relying on OpenSSL to call the
-		 *	session caching callback), because we only want to write
-		 *	session data to the cache if all phases were successful.
-		 *
-		 *	If we wrote out the cache data earlier, and the server
-		 *	exited whilst the session was in progress, the supplicant
-		 *	could resume the session (and get access) even if phase2
-		 *	never completed.
-		 */
-		return fr_tls_ticket_stateful_store_session(request, tls_session);
+		p_result->rcode = RLM_MODULE_OK;
+		return eap_tls_success(request, eap_session, &prf_label);
 	}
 
 	/*

@@ -580,37 +580,14 @@ static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pai
 
 static unlang_action_t eap_ttls_success(unlang_result_t *p_result, request_t *request, eap_session_t *eap_session)
 {
-	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 	eap_tls_prf_label_t prf_label;
 
 	eap_crypto_prf_label_init(&prf_label, eap_session,
 				  "ttls keying material",
 				  sizeof("ttls keying material") - 1);
-	/*
-	 *	Success: Automatically return MPPE keys.
-	 */
-	if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_UNLANG_FAIL;
 
-	/*
-	 *	Result is always OK, even if we fail to persist the
-	 *	session data.
-	 */
 	p_result->rcode = RLM_MODULE_OK;
-
-	/*
-	 *	Write the session to the session cache
-	 *
-	 *	We do this here (instead of relying on OpenSSL to call the
-	 *	session caching callback), because we only want to write
-	 *	session data to the cache if all phases were successful.
-	 *
-	 *	If we wrote out the cache data earlier, and the server
-	 *	exited whilst the session was in progress, the supplicant
-	 *	could resume the session (and get access) even if phase2
-	 *	never completed.
-	 */
-	return fr_tls_ticket_stateful_store_session(request, tls_session);
+	return eap_tls_success(request, eap_session, &prf_label);
 }
 
 
