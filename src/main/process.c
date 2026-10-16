@@ -5742,6 +5742,15 @@ static void coa_retransmit(REQUEST *request)
 
 	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
 
+#ifdef WITH_TCP
+	/*
+	 *	Over a stream the packet is not sent again.  The timers
+	 *	still run, so the request fails at MRC or MRD as it
+	 *	would over UDP.
+	 */
+	if (request->home_server->proto == IPPROTO_TCP) return;
+#endif
+
 #ifdef WITH_STATS
 	packet = request->proxy;
 #endif
