@@ -2746,23 +2746,23 @@ static int insert_into_proxy_hash(REQUEST *request)
 		 *	listener by key.
 		 */
 		if (reverse_coa) {
-			int rcode;
+			int rcode = -1;
 			VALUE_PAIR *vp;
+			vp_cursor_t cursor;
 
 			/*
-			 *	Find the Originating-Realm key, which
-			 *	might not be the same as
-			 *	proxy_listener->key.
-			 */
-			vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
-			if (!vp) break;
-
-			/*
+			 *	Find another connection for one of the
+			 *	Originating-Realm keys.
+			 *
 			 *	We don't want to hold multiple mutexes
 			 *	at the same time.
 			 */
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			rcode = listen_coa_find(request, vp->vp_strvalue);
+			fr_cursor_init(&cursor, &request->config);
+			while ((vp = fr_cursor_next_by_num(&cursor, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY)) != NULL) {
+				rcode = listen_coa_find(request, vp->vp_strvalue);
+				if (rcode == 0) break;
+			}
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (rcode < 0) continue;
 			break;
@@ -3952,24 +3952,22 @@ static int request_will_proxy(REQUEST *request)
 		    (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) &&
 		   ((vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY)) != NULL)) {
 
+		vp_cursor_t cursor;
+
 		/*
-		 *	This function will set request->home_server,
-		 *	and also request->proxy_listener.
+		 *	Try each one in turn, so that policy can name
+		 *	the connection which carried the session first,
+		 *	and the realm after it.  This function will set
+		 *	request->home_server, and also
+		 *	request->proxy_listener.
 		 */
-		if (listen_coa_find(request, vp->vp_strvalue) < 0) {
-			vp_cursor_t cursor;
-
-			(void) fr_cursor_init(&cursor, &request->config); /* already checked it above */
-
-			while ((vp = fr_cursor_next(&cursor)) != NULL) {
-				if (listen_coa_find(request, vp->vp_strvalue) == 0) break;
-			}
-
-			/*
-			 *	Not found.
-			 */
-			return 0;
+		fr_cursor_init(&cursor, &request->config);
+		while ((vp = fr_cursor_next_by_num(&cursor, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY)) != NULL) {
+			if (listen_coa_find(request, vp->vp_strvalue) == 0) break;
 		}
+		if (!vp) return 0;
+
+		RDEBUG2("Found reverse CoA connection for %s", vp->vp_strvalue);
 
 		/*
 		 *	Initialise request->proxy, and copy VPs over.
@@ -5353,15 +5351,23 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(coa->proxy->vps, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
 	if (vp) {
+		vp_cursor_t cursor;
+
 		/*
-		 *	This function will set request->home_server,
-		 *	and also request->proxy_listener.
+		 *	Try each one in turn.  This function will set
+		 *	request->home_server, and also
+		 *	request->proxy_listener.
 		 */
-		if (listen_coa_find(coa, vp->vp_strvalue) < 0) {
-			RWDEBUG("Unknown Originating realm '%s'", vp->vp_strvalue);
+		fr_cursor_init(&cursor, &coa->proxy->vps);
+		while ((vp = fr_cursor_next_by_num(&cursor, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY)) != NULL) {
+			if (listen_coa_find(coa, vp->vp_strvalue) == 0) break;
+		}
+		if (!vp) {
+			RWDEBUG("No reverse CoA connection for any Proxy-To-Originating-Realm");
 			goto fail;
 		}
 
+		RDEBUG2("Found reverse CoA connection for %s", vp->vp_strvalue);
 		goto set_packet_type;
 	}
 #endif
