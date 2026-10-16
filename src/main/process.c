@@ -3952,6 +3952,7 @@ static int request_will_proxy(REQUEST *request)
 		    (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) &&
 		   ((vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY)) != NULL)) {
 
+		bool busy = false;
 		vp_cursor_t cursor;
 
 		/*
@@ -3963,7 +3964,24 @@ static int request_will_proxy(REQUEST *request)
 		 */
 		fr_cursor_init(&cursor, &request->config);
 		while ((vp = fr_cursor_next_by_num(&cursor, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY)) != NULL) {
-			if (listen_coa_find(request, vp->vp_strvalue) == 0) break;
+			rcode = listen_coa_find(request, vp->vp_strvalue);
+			if (rcode == 0) break;
+			if (rcode == -2) busy = true;
+		}
+
+		/*
+		 *	The realm is known, but every connection for it
+		 *	is full.  That is not a routing failure.
+		 */
+		if (!vp && busy) {
+			RWDEBUG("Every reverse CoA connection is busy");
+			request->reply->code = (request->packet->code == PW_CODE_COA_REQUEST) ? PW_CODE_COA_NAK : PW_CODE_DISCONNECT_NAK;
+			vp = fr_pair_afrom_num(request->reply, PW_ERROR_CAUSE, 0);
+			if (vp) {
+				vp->vp_integer = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
+				fr_pair_add(&request->reply->vps, vp);
+			}
+			return 0;
 		}
 		if (!vp) return 0;
 

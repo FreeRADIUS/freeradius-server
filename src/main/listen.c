@@ -5232,6 +5232,9 @@ retry:
  *
  *	This function will update request->home_server, and
  *	request->proxy_listener.
+ *
+ *	Returns 0 on success, -1 if the key is unknown, and -2 if
+ *	no connection with that key can take a request.
  */
 int listen_coa_find(REQUEST *request, char const *key)
 {
@@ -5300,7 +5303,7 @@ int listen_coa_find(REQUEST *request, char const *key)
 	}
 
 	pthread_mutex_unlock(&coa_key->mutex);
-	if (!found) return -1;
+	if (!found) return -2;
 
 	request->proxy_listener = found;
 
