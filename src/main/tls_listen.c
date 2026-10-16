@@ -1069,8 +1069,21 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 
 		fr_cursor_init(&cursor, &request->config);
 		while ((vp = fr_cursor_next_by_num(&cursor, PW_ORIGINATING_REALM_KEY, 0, TAG_ANY)) != NULL) {
-			if (listen_coa_add(request->listener, vp->vp_strvalue)) {
-				RDEBUG("Adding send CoA listener with key %s", vp->vp_strvalue);
+			char const *key = vp->vp_strvalue;
+
+			/*
+			 *	As with Status-Server, a leading sign
+			 *	adds or deletes the key.
+			 */
+			if (*key == '-') {
+				RDEBUG("Deleting send CoA listener key %s", key + 1);
+				listen_coa_delete(request->listener, key + 1);
+				continue;
+			}
+			if (*key == '+') key++;
+
+			if (listen_coa_add(request->listener, key)) {
+				RDEBUG("Adding send CoA listener with key %s", key);
 			}
 		}
 	}

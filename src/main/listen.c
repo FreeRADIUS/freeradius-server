@@ -5312,7 +5312,7 @@ int listen_coa_find(REQUEST *request, char const *key)
 /*
  *	Delete a listener entry.
  */
-static void listen_coa_delete(rad_listen_t *this, char const *key)
+void listen_coa_delete(rad_listen_t *this, char const *key)
 {
 	coa_key_t my_key, *coa_key;
 	coa_entry_t my_entry, *entry;
