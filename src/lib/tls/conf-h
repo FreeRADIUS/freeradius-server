@@ -223,6 +223,7 @@ struct fr_tls_conf_s {
 	fr_tls_ticket_conf_t	cache;			//!< Session cache configuration.
 	fr_tls_verify_conf_t	verify;
 
+	bool		delayed_tickets;		//!< do we delay session tickets to after application data?
 	bool		verify_certificate;		//!< Does the "verify certificate" section exist.
 	bool		new_session;			//!< Does the "new session" section exist.
 	bool		establish_session;		//!< Does the "establish session" section exist.

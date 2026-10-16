@@ -1371,4 +1371,9 @@ void eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf)
 		cf_log_warn_by_child(cs, "tls", "Raising EAP session.min_lifetime to %pV",
 				     fr_box_time_delta(tls_conf->cache.min_lifetime));
 	}
+
+	/*
+	 *	EAP sends the ticket after the authentication has succeeded, not in the TLS handshake.
+	 */
+	tls_conf->delayed_tickets = true;
 }
