@@ -301,11 +301,11 @@ ATTRIBUTE	PBKDF2-SHA1-Password			1186	octets secret
 ATTRIBUTE	PBKDF2-SHA256-Password			1187	octets secret
 ATTRIBUTE	PBKDF2-SHA512-Password			1188	octets secret
 ATTRIBUTE	PBKDF2-SHA256-LEGACY-Password		1189	octets secret
+ATTRIBUTE	Originating-Realm-Key			1190	string
+ATTRIBUTE	Proxy-To-Originating-Realm		1191	string
 
 ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets
 ATTRIBUTE	Home-Server-Name			1193	string
-ATTRIBUTE	Originating-Realm-Key			1194	string
-ATTRIBUTE	Proxy-To-Originating-Realm		1195	string
 
 ATTRIBUTE	TOTP-Secret				1194	string # base32 encoded
 ATTRIBUTE	TOTP-Key				1195	octets # raw key
