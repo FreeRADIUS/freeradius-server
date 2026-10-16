@@ -1,0 +1,37 @@
+#
+#  Verify that rlm_preprocess performs the Cisco-specific normalization.
+#  The following policy checks only C-created request attributes.
+#
+preprocess
+
+if (!&request:Tmp-String-0 || !&request:Tmp-Octets-0 || !&request:Tmp-Octets-1 || !&request:Tmp-Octets-2) {
+	reject
+}
+
+if (&request:Tmp-String-0 != "EasyPSK") {
+	reject
+}
+
+if (&request:Tmp-Octets-0 != 0x0c75bdd2a5ea) {
+	reject
+}
+
+if (&request:Tmp-Octets-1 != 0xba68f260c749b30e1fdb0fc57b4b15185d966ba2abece6bd1dd541beabede8b7) {
+	reject
+}
+
+if (&request:Tmp-Octets-2 != 0x0103007502010a00100000000000000001066a805a59e584c510126d1862ea6fb3d7da1c1f439dd2213e7446d684edb53c00000000000000000000000000000000000000000000000000000000000000001d2d91b0502c21911af36c05a6cb72b5001630140100000fac040100000fac040100000fac028c00) {
+	reject
+}
+
+if (&request:Tmp-String-0[1] || &request:Tmp-Octets-0[1] || &request:Tmp-Octets-1[1] || &request:Tmp-Octets-2[1]) {
+	reject
+}
+
+update reply {
+	Filter-Id := "success"
+}
+
+update control {
+	Cleartext-Password := "%{User-Name}"
+}
