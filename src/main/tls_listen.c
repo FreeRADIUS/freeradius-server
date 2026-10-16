@@ -921,6 +921,7 @@ redo:
 	case PW_CODE_COA_NAK:
 	case PW_CODE_DISCONNECT_ACK:
 	case PW_CODE_DISCONNECT_NAK:
+	case PW_CODE_PROTOCOL_ERROR:
 		if (!listener->send_coa) goto bad_packet;
 		is_reply = true;
                 break;
