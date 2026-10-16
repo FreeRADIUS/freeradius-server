@@ -539,6 +539,9 @@ static const CONF_PARSER client_config[] = {
 	{ "limit_proxy_state", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &limit_proxy_state), NULL },
 
 	{ "protocol_error", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, protocol_error), "no" },
+#ifdef WITH_COA_TUNNEL
+	{ "reverse_coa", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, reverse_coa), "yes" },
+#endif
 
 	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, RADCLIENT, secret), NULL },
 	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), NULL },

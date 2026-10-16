@@ -47,6 +47,9 @@ typedef struct radclient {
 
 	bool			dynamic_require_ma;	//!< for dynamic clients
 	bool			protocol_error;		//!< can receive Protocol-Error replies
+#ifdef WITH_COA_TUNNEL
+	bool			reverse_coa;		//!< can receive CoA requests on its own connection
+#endif
 
 	fr_bool_auto_t 		limit_proxy_state;     	//!< Limit Proxy-State in requests
 

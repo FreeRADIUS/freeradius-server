@@ -502,7 +502,7 @@ int rad_status_server(REQUEST *request)
 			request->reply->code = PW_CODE_ACCESS_ACCEPT;
 
 #ifdef WITH_COA_TUNNEL
-			if (request->listener->send_coa) listener_coa_update(request->listener, request->packet->vps);
+			if (request->listener->send_coa && request->client->reverse_coa) listener_coa_update(request->listener, request->packet->vps);
 #endif
 			break;
 
@@ -533,7 +533,7 @@ int rad_status_server(REQUEST *request)
 			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 
 #ifdef WITH_COA_TUNNEL
-			if (request->listener->send_coa) listener_coa_update(request->listener, request->packet->vps);
+			if (request->listener->send_coa && request->client->reverse_coa) listener_coa_update(request->listener, request->packet->vps);
 #endif
 			break;
 

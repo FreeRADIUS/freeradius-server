@@ -1063,7 +1063,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	Save the key, if we haven't already done that.
 	 */
-	if (listener->send_coa) {
+	if (listener->send_coa && request->client->reverse_coa) {
 		VALUE_PAIR *vp;
 		vp_cursor_t cursor;
 
