@@ -59,6 +59,7 @@ server proxy-tls-default {
 		type = coa
 		ipaddr = 127.0.0.1
 		port = ${{port-proxy-coa}}
+		clients = proxy_coa
 	}
 
 	recv-coa {
@@ -72,6 +73,20 @@ server proxy-tls-default {
 		update {
 			&reply:Acct-Session-Id += "proxy-tls-default:send-coa"
 		}
+	}
+}
+
+#
+#  The home server originates CoA over UDP without a Message-Authenticator.
+#  Test 1's Access-Request carries one, so with the default "auto" the
+#  global localhost client would be switched to require it, and the CoA
+#  would then be dropped.  The CoA listener has its own localhost client.
+#
+clients proxy_coa {
+	client localhost {
+		ipaddr = 127.0.0.1
+		secret = testing123
+		require_message_authenticator = no
 	}
 }
 
