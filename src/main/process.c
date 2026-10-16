@@ -5228,9 +5228,18 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *
 		 *	This check should really be part of a home
 		 *	server state machine.
+		 *
+		 *	Home servers on connections which the NAS
+		 *	opened to us live and die with the connection.
+		 *	There is nothing to mark as zombie, to ping, or
+		 *	to revive.
 		 */
-		if ((home->state == HOME_STATE_ALIVE) ||
-		     (home->state == HOME_STATE_UNKNOWN)) {
+		if (((home->state == HOME_STATE_ALIVE) ||
+		     (home->state == HOME_STATE_UNKNOWN))
+#ifdef WITH_COA_TUNNEL
+		    && !request->proxy_listener->send_coa
+#endif
+			) {
 			home->response_timeouts++;
 			if (home->response_timeouts >= home->max_response_timeouts)
 				mark_home_server_zombie(home, &now, response_window);
