@@ -1070,6 +1070,19 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	case SSL3_RT_HANDSHAKE:
 		if (tls_session->info.handshake_type != SSL3_MT_SERVER_HELLO) break;
 		if (SSL_version(ssl) < TLS1_3_VERSION) break;
+
+		/*
+		 *	We allow one session ticket, which is fine for TLS 1.2.  The tickets are sent in the
+		 *	header.  For TLS 1.3 and stateful session tickets, the server also sends the ticket
+		 *	immediately.  For EAP, the `store session` code is delayed until after the inner
+		 *	methods succeed.  So it doesn't matter if the peer has a ticket.
+		 */
+		if (tls_session->conf->delayed_tickets && (tls_session->conf->cache.mode & FR_TLS_TICKET_STATELESS) &&
+		    SSL_is_server(ssl)) {
+			RDEBUG3("(TLS) TLS 1.3 session ticket is delayed until inner tunnel indicates success");
+			SSL_set_num_tickets(ssl, 0);
+		}
+
 		if (tls_session->write_encrypted) break;
 
 		tls_session->write_encrypted = true;

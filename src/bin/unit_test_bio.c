@@ -1364,6 +1364,7 @@ int main(int argc, char *argv[])
 	bool			nonblock = false;
 	bool			reject = false;
 	bool			app_data = false;
+	bool			delay_tickets = false;
 	bool			hold = false;
 	bool			client = false;
 	char const		*alpn_names = NULL;
@@ -1432,7 +1433,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hHIlL:Mn:Pr:Rs:xX")) != -1) {
+	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hHIlL:Mn:Pr:Rs:TxX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
@@ -1496,6 +1497,10 @@ int main(int argc, char *argv[])
 
 			case 'P':
 				app_data = true;
+				break;
+
+			case 'T':
+				delay_tickets = true;
 				break;
 
 			case 'e':
@@ -1727,6 +1732,8 @@ int main(int argc, char *argv[])
 			   client ? "client" : "server", client ? "client" : "server");
 		EXIT_WITH_FAILURE;
 	}
+
+	conf->delayed_tickets = delay_tickets;
 
 	/*
 	 *	ALPN is not parsed from the configuration file.  The library
@@ -2007,6 +2014,8 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "                     handshake is done.  A server sends every session ticket before\n");
 	fprintf(output, "                     its first byte of application data, so this tells a client that\n");
 	fprintf(output, "                     no ticket is still on its way.\n");
+	fprintf(output, "  -T                 Delay stateless TLS 1.3 session tickets, as EAP does.  The server\n");
+	fprintf(output, "                     sends none in the handshake.\n");
 	fprintf(output, "  -r <receipt_file>  Create <receipt_file> when the program exits successfully.\n");
 	fprintf(output, "  -s <server[:port]> Connect to <server> as a TLS client, instead of listening\n");
 	fprintf(output, "                     for a connection.  Reads the 'tls client' section.  The port\n");

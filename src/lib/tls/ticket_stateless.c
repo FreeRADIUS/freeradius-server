@@ -331,7 +331,7 @@ static int tls_ticket_stateless_app_data_set(SSL *ssl, void *arg)
 	}
 
 	ret = tls_ticket_app_data_set(request, sess, &tls_session->session_id);
-	if (ret == 1) tls_session->session_ticket_created = true;
+	tls_session->session_ticket_created = (ret == 1);
 
 	return ret;
 }
