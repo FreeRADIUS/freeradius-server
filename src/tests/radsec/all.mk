@@ -15,6 +15,7 @@ port-coa 	        = 12344
 # Port difines for request types: auth or coa
 auth-port = $(port-proxy-auth)
 coa-port  = $(port-home-coa)
+disconnect-port = $(port-home-coa)
 
 
 #

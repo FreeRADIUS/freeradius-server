@@ -192,6 +192,11 @@ server coa-buffered-reader {
 					coa:Proxy-To-Originating-Realm := &Called-Station-Id
 				}
 			}
+			case "TcpSessionKey-Disconnect" {
+				update disconnect {
+					&Proxy-To-Originating-Realm := &Called-Station-Id
+				}
+			}
 		}
 
 		switch &COA-Packet-Type {

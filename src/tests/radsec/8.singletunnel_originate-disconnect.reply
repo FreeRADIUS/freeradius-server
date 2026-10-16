@@ -1,0 +1,3 @@
+delay 2.5
+Received Disconnect-ACK
+Acct-Session-Id = "default:pre-proxy"  "coa_tls:recv-coa"  "proxy-originate-coa-relay:pre-proxy"  "coa:recv-coa"  "coa:send-coa"  "proxy-originate-coa-relay:post-proxy-disconnect-ack"  "coa_tls:send-coa"  "default:post-proxy-disconnect-ack"$
