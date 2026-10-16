@@ -3943,6 +3943,19 @@ static int request_will_proxy(REQUEST *request)
 			home = home_server_byname(vp->vp_strvalue, HOME_TYPE_AUTH_ACCT);
 		}
 
+#ifdef WITH_COA_TUNNEL
+		/*
+		 *	Or to those which also take CoA requests.
+		 */
+		if (!home && (type == HOME_TYPE_AUTH)) {
+			home = home_server_byname(vp->vp_strvalue, HOME_TYPE_AUTH_COA);
+		}
+
+		if (!home && ((type == HOME_TYPE_AUTH) || (type == HOME_TYPE_ACCT))) {
+			home = home_server_byname(vp->vp_strvalue, HOME_TYPE_AUTH_ACCT_COA);
+		}
+#endif
+
 		if (!home) {
 			RWDEBUG("No such home server %s", vp->vp_strvalue);
 			return 0;
