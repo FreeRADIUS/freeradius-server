@@ -98,13 +98,15 @@ struct rad_listen {
 #endif
 
 #ifdef WITH_COA_TUNNEL
-	char const	*key;		/* Originating-Realm-Key */
+	char const	*key;		/* the first Originating-Realm-Key */
+	uint32_t	num_keys;
 	bool		send_coa;	/* to the NAS */
 
 	uint32_t	coa_irt;
 	uint32_t	coa_mrc;
 	uint32_t	coa_mrt;
 	uint32_t	coa_mrd;
+	uint32_t	coa_max_keys;
 
 	int		num_ids_used;	/* for proxying CoA packets */
 #endif

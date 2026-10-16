@@ -1063,13 +1063,15 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	Save the key, if we haven't already done that.
 	 */
-	if (listener->send_coa && !listener->key) {
-		VALUE_PAIR *vp = NULL;
+	if (listener->send_coa) {
+		VALUE_PAIR *vp;
+		vp_cursor_t cursor;
 
-		vp = fr_pair_find_by_num(request->config, PW_ORIGINATING_REALM_KEY, 0, TAG_ANY);
-		if (vp) {
-			RDEBUG("Adding send CoA listener with key %s", vp->vp_strvalue);
-			listen_coa_add(request->listener, vp->vp_strvalue);
+		fr_cursor_init(&cursor, &request->config);
+		while ((vp = fr_cursor_next_by_num(&cursor, PW_ORIGINATING_REALM_KEY, 0, TAG_ANY)) != NULL) {
+			if (listen_coa_add(request->listener, vp->vp_strvalue)) {
+				RDEBUG("Adding send CoA listener with key %s", vp->vp_strvalue);
+			}
 		}
 	}
 #endif

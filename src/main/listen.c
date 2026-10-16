@@ -1228,6 +1228,7 @@ static void listen_init_from_parent(rad_listen_t *this, rad_listen_t *parent)
 	this->coa_mrc = parent->coa_mrc;
 	this->coa_mrt = parent->coa_mrt;
 	this->coa_mrd = parent->coa_mrd;
+	this->coa_max_keys = parent->coa_max_keys;
 #endif
 #endif
 
@@ -1794,6 +1795,7 @@ static CONF_PARSER coa_config[] = {
 	{ "mrt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_mrt), STRINGIFY(16) },
 	{ "mrc",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_mrc), STRINGIFY(5) },
 	{ "mrd",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_mrd), STRINGIFY(30) },
+	{ "max_keys",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_max_keys), STRINGIFY(4096) },
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -4633,6 +4635,9 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 
 		FR_INTEGER_BOUND_CHECK("coa_mrd", this->coa_mrd, >=, 5);
 		FR_INTEGER_BOUND_CHECK("coa_mrd", this->coa_mrd, <=, 60);
+
+		FR_INTEGER_BOUND_CHECK("max_keys", this->coa_max_keys, >=, 1);
+		FR_INTEGER_BOUND_CHECK("max_keys", this->coa_max_keys, <=, 65536);
 	}
 #endif	/* WITH_COA_TUNNEL */
 
@@ -5073,6 +5078,8 @@ static void coa_entry_free(void *data)
 
 static int coa_entry_destructor(coa_entry_t *entry)
 {
+	entry->listener->num_keys--;
+
 	if (!entry->coa_key) return 0;
 
 	pthread_mutex_lock(&entry->coa_key->mutex);
@@ -5109,9 +5116,32 @@ void listen_coa_free(void)
 }
 
 /*
+ *	Check for an active listener by key.
+ */
+static bool listen_coa_exists(rad_listen_t *this, char const *key)
+{
+	coa_key_t my_key, *coa_key;
+	coa_entry_t my_entry, *entry;
+
+	/*
+	 *	Find the key.  If we can't find it, then error out.
+	 */
+	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+	coa_key = rbtree_finddata(coa_tree, &my_key);
+	if (!coa_key) return false;
+
+	my_entry.listener = this;
+	pthread_mutex_lock(&coa_key->mutex);
+	entry = fr_hash_table_finddata(coa_key->ht, &my_entry);
+	pthread_mutex_unlock(&coa_key->mutex);
+
+	return (entry != NULL);
+}
+
+/*
  *	Adds a listener to the hash of listeners, based on key.
  */
-void listen_coa_add(rad_listen_t *this, char const *key)
+bool listen_coa_add(rad_listen_t *this, char const *key)
 {
 	int tries = 0;
 	coa_key_t my_key, *coa_key;
@@ -5119,7 +5149,19 @@ void listen_coa_add(rad_listen_t *this, char const *key)
 
 	rad_assert(this->send_coa);
 	rad_assert(this->parent);
-	rad_assert(!this->key);
+
+	/*
+	 *	A connection can carry many keys, but each one once.
+	 */
+	if (listen_coa_exists(this, key)) return false;
+
+	if (this->num_keys >= this->coa_max_keys) {
+		listen_socket_t *sock = this->data;
+
+		RATE_LIMIT(WARN("Ignoring key %s from client %s: the connection already has %u keys",
+				key, sock->client->shortname, this->num_keys));
+		return false;
+	}
 
 	/*
 	 *	Find the key.  If we can't find it, then create it.
@@ -5130,12 +5172,12 @@ retry:
 	coa_key = rbtree_finddata(coa_tree, &my_key);
 	if (!coa_key) {
 		coa_key = talloc_zero(NULL, coa_key_t);
-		if (!coa_key) return;
+		if (!coa_key) return false;
 		coa_key->key = talloc_strdup(coa_key, key);
 		if (!coa_key->key) {
 		fail:
 			talloc_free(coa_key);
-			return;
+			return false;
 		}
 
 		/*
@@ -5156,20 +5198,14 @@ retry:
 			 */
 			tries++;
 			if (tries < 3) goto retry;
-			return;
+			return false;
 		}
 
 		(void) pthread_mutex_init(&coa_key->mutex, NULL);
 	}
 
-	/*
-	 *	No need to strdup() this, coa_key will only be removed
-	 *	after the listener has been removed.
-	 */
-	if (!this->key) this->key = coa_key->key;
-
 	entry = talloc_zero(this, coa_entry_t);
-	if (!entry) return;
+	if (!entry) return false;
 	talloc_set_destructor(entry, coa_entry_destructor);
 
 	entry->coa_key = coa_key;
@@ -5181,6 +5217,14 @@ retry:
 	pthread_mutex_lock(&coa_key->mutex);
 	fr_hash_table_insert(coa_key->ht, entry);
 	pthread_mutex_unlock(&coa_key->mutex);
+
+	/*
+	 *	Remember the first key, for %{listen:Originating-Realm-Key}.
+	 */
+	if (!this->key) this->key = coa_key->key;
+
+	this->num_keys++;
+	return true;
 }
 
 /*
@@ -5266,35 +5310,12 @@ int listen_coa_find(REQUEST *request, char const *key)
 }
 
 /*
- *	Check for an active listener by key.
- */
-static bool listen_coa_exists(rad_listen_t *this, char const *key)
-{
-	coa_key_t my_key, *coa_key;
-	coa_entry_t my_entry, *entry;
-
-	/*
-	 *	Find the key.  If we can't find it, then error out.
-	 */
-	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
-	coa_key = rbtree_finddata(coa_tree, &my_key);
-	if (!coa_key) return false;
-
-	my_entry.listener = this;
-	pthread_mutex_lock(&coa_key->mutex);
-	entry = fr_hash_table_finddata(coa_key->ht, &my_entry);
-	pthread_mutex_unlock(&coa_key->mutex);
-
-	return (entry != NULL);
-}
-
-/*
  *	Delete a listener entry.
  */
 static void listen_coa_delete(rad_listen_t *this, char const *key)
 {
 	coa_key_t my_key, *coa_key;
-	coa_entry_t my_entry;
+	coa_entry_t my_entry, *entry;
 
 	/*
 	 *	Find the key.  If we can't find it, then error out.
@@ -5305,8 +5326,17 @@ static void listen_coa_delete(rad_listen_t *this, char const *key)
 
 	my_entry.listener = this;
 	pthread_mutex_lock(&coa_key->mutex);
-	(void) fr_hash_table_delete(coa_key->ht, &my_entry);
+	entry = fr_hash_table_finddata(coa_key->ht, &my_entry);
+	if (entry) {
+		fr_hash_table_yank(coa_key->ht, entry);
+		entry->coa_key = NULL;
+	}
 	pthread_mutex_unlock(&coa_key->mutex);
+
+	/*
+	 *	The destructor would lock the key again.
+	 */
+	if (entry) talloc_free(entry);
 }
 
 
@@ -5324,14 +5354,12 @@ static void listener_coa_update(rad_listen_t *this, VALUE_PAIR *vps)
 		if (vp->vp_length <= 1) continue;
 
 		if (vp->vp_strvalue[0] == '+') {
-			if (listen_coa_exists(this, vp->vp_strvalue)) continue;
-
-			listen_coa_add(this, vp->vp_strvalue);
+			(void) listen_coa_add(this, vp->vp_strvalue + 1);
 			continue;
 		}
 
 		if (vp->vp_strvalue[0] == '-') {
-			listen_coa_delete(this, vp->vp_strvalue);
+			listen_coa_delete(this, vp->vp_strvalue + 1);
 			continue;
 		}
 	}
