@@ -1,0 +1,177 @@
+# -*- text -*-
+######################################################################
+#
+#	Reverse CoA over RADIUS/TLS, server side.
+#
+#	A RADIUS/TLS client (a NAS, or a proxy in front of it) connects
+#	to us, and we send CoA-Request and Disconnect-Request packets
+#	back down that same connection.  See draft-ietf-radext-reverse-coa
+#	and RFC 8559, Section 3.2.
+#
+#	The feature is experimental.  The server has to be built with
+#
+#		CFLAGS += -DWITH_COA_TUNNEL
+#
+#	added to Make.inc after running configure.  "radiusd -xxv" then
+#	lists "recv-coa-from-home-server : yes".
+#
+#	To use this file, copy it to sites-enabled/ and remove the
+#	"default" and "tls" sites, or merge the listen sections.
+#
+######################################################################
+
+#
+#  Listen for RADIUS/TLS.  The "+coa" suffix is what allows reverse
+#  CoA on the connections accepted here.  It requires TLS.
+#
+listen {
+	ipaddr = *
+	port = 2083
+	type = auth+acct+coa
+	proto = tcp
+	virtual_server = reverse-coa
+	clients = radsec
+
+	limit {
+		max_connections = 16
+
+		#
+		#  A reverse CoA connection has to stay open, or the
+		#  route to the NAS is lost until the NAS reconnects and
+		#  we send our next reply on the new connection.  Do NOT
+		#  leave both values at 0: with no lifetime, an
+		#  idle_timeout of 0 is turned into 30 seconds.  Set a
+		#  lifetime and no idle timeout:
+		#
+		lifetime = 86400
+		idle_timeout = 0
+	}
+
+	#
+	#  Timers for the packets we send down the connection.
+	#  Packets proxied to the NAS are not retransmitted, and "mrd"
+	#  is how long we wait for its answer.  Packets originated
+	#  with "update coa" still use irt / mrt / mrc.
+	#
+	coa {
+		irt = 2
+		mrt = 16
+		mrc = 5
+		mrd = 30
+	}
+
+	tls {
+		private_key_file = ${certdir}/server.pem
+		certificate_file = ${certdir}/server.pem
+		ca_file = ${cadir}/ca.pem
+		require_client_cert = yes
+	}
+}
+
+#
+#  The clients which may connect over TLS.  The same idle_timeout
+#  rule applies here: the smaller of the client and the listener
+#  values is used, and the client default is 30.
+#
+clients radsec {
+	client hub-peer {
+		ipaddr = 192.0.2.0/24
+		proto = tls
+		secret = radsec
+
+		limit {
+			idle_timeout = 0
+		}
+	}
+}
+
+server reverse-coa {
+	authorize {
+		preprocess
+		eap {
+			ok = return
+		}
+		files
+		pap
+	}
+
+	authenticate {
+		Auth-Type PAP {
+			pap
+		}
+		eap
+	}
+
+	preacct {
+		preprocess
+		acct_unique
+	}
+
+	accounting {
+		detail
+	}
+
+	#
+	#  The key is attached when we send the first reply on the
+	#  connection for a request which has control:Originating-Realm-Key.
+	#  It is compared to Proxy-To-Originating-Realm as a string.
+	#
+	post-auth {
+		if (&Operator-Name) {
+			update control {
+				&Originating-Realm-Key := "%{Operator-Name}"
+			}
+		}
+
+		Post-Auth-Type REJECT {
+			attr_filter.access_reject
+		}
+	}
+}
+
+#
+#  Where the CoA / Disconnect requests come from: a policy server, or
+#  a script with radclient.  The listener gets its own client, so that
+#  requests from other sources on this host do not change what it
+#  requires.
+#
+listen {
+	type = coa
+	ipaddr = 127.0.0.1
+	port = 3799
+	virtual_server = reverse-coa-originate
+	clients = reverse-coa-originate
+}
+
+clients reverse-coa-originate {
+	client localhost {
+		ipaddr = 127.0.0.1
+		secret = testing123
+	}
+}
+
+server reverse-coa-originate {
+	#
+	#  Route by Operator-Name (RFC 8559, Section 3.2).  A request
+	#  without it cannot be routed: answer with Missing-Attribute.
+	#  An unknown key, or a key with no open connection, gets
+	#  Proxy-Request-Not-Routable from the server.
+	#
+	recv-coa {
+		if (!&Operator-Name) {
+			update reply {
+				&Error-Cause := Missing-Attribute
+			}
+			reject
+		}
+
+		update control {
+			&Proxy-To-Originating-Realm := &Operator-Name
+		}
+		ok
+	}
+
+	send-coa {
+		ok
+	}
+}
