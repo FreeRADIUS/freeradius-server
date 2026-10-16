@@ -2822,17 +2822,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 			goto fail;
 		}
 
-#ifdef WITH_COA_TUNNEL
-		/*
-		 *	Track how many IDs are used.  This information
-		 *	helps the listen_coa_find() function get a
-		 *	listener which has free IDs.
-		 */
-		if (request->proxy_listener && request->proxy_listener->send_coa) {
-			request->proxy_listener->num_ids_used++;
-		}
-#endif
-
 		/*
 		 *	Add it to the event loop.  Ensure that we have
 		 *	only one mutex locked at a time.
@@ -2868,6 +2857,17 @@ static int insert_into_proxy_hash(REQUEST *request)
 	request->home_server->currently_outstanding++;
 
 	request->proxy_listener->count++;
+
+#ifdef WITH_COA_TUNNEL
+	/*
+	 *	Track how many IDs are used.  This information
+	 *	helps the listen_coa_find() function get a
+	 *	listener which has free IDs.
+	 */
+	if (request->proxy_listener->send_coa) {
+		request->proxy_listener->num_ids_used++;
+	}
+#endif
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
