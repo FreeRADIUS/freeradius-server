@@ -16,6 +16,9 @@ BEGIN-VENDOR	Calix
 
 ATTRIBUTE	Role					1	string
 
+# Port and VLAN tags of the subscriber, e.g. "svlan=3625,cvlan=200"
+ATTRIBUTE	Port-Info				2	string
+
 # The current session Role is returned in this attribute in accounting
 ATTRIBUTE	Applied-Role				50	string
 ATTRIBUTE	Walled-Garden-URL		51  string
