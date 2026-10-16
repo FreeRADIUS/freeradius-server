@@ -74,6 +74,7 @@ done < $TEST_NAME.reply.tmp
 
 if [ ! -f fail ]; then echo "This test succeded!" >> ok; fi
 
+rm -rf $TEST_NAME.result
 mkdir $TEST_NAME.result 2>&1 > /dev/null
 cp ./$TEST_NAME.reply.tmp fr-*-$TEST_NAME.log fail ok \
     $RES radclient.log detail_test $TEST_NAME.result 2>&1 > /dev/null
