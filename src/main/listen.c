@@ -1541,6 +1541,11 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		home->coa_mrc = this->coa_mrc;
 		home->coa_mrd = this->coa_mrd;
 		home->recv_coa_server = this->server;
+
+		/*
+		 *	Wait for the NAS for as long as we would retransmit.
+		 */
+		home->response_window.tv_sec = this->coa_mrd;
 	}
 #endif
 
