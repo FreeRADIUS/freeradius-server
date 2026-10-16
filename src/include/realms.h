@@ -172,7 +172,9 @@ typedef struct home_server {
 
 #ifdef WITH_TCP
 	bool			tcp_failed;		//!< TCP connection failed, but old connections might still be active
-	time_t			tcp_failed_time;	//!< New connections are blocked for "connection_fail_interval"
+	time_t			tcp_failed_time;	//!< New connections are blocked for "tcp_failed_wait"
+	uint32_t		tcp_failed_count;	//!< consecutive failures, for the back-off
+	uint32_t		tcp_failed_wait;	//!< seconds to wait before the next attempt
 #endif
 
 #ifdef WITH_STATS

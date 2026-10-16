@@ -4052,6 +4052,23 @@ static void proxy_failed_open(home_server_t *home, time_t now)
 	 */
 	home->tcp_failed_time = now;
 	home->tcp_failed = true;
+
+	/*
+	 *	Back off exponentially, from one second up to
+	 *	connect_fail_interval, with some jitter.  Also limit
+	 *	the failures to a small number, as realms.c limits its
+	 *	value to 86400.  And even that value is way too large.
+	 */
+	if (home->tcp_failed_count < 17) {
+		home->tcp_failed_count++;
+		home->tcp_failed_wait = 1 << (home->tcp_failed_count - 1);
+
+		if (home->tcp_failed_wait > home->limit.connect_fail_interval) {
+			home->tcp_failed_wait = home->limit.connect_fail_interval;
+		}
+
+		home->tcp_failed_wait += fr_rand() % (home->tcp_failed_wait / 4 + 1);
+	}
 #endif
 }
 

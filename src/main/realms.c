@@ -3186,7 +3186,7 @@ bool home_server_connect_blocked(home_server_t const *home, time_t now)
 	if (home->proto != IPPROTO_TCP) return false;
 
 	if (home->tcp_failed &&
-	    ((home->tcp_failed_time + (time_t) home->limit.connect_fail_interval) > now)) return true;
+	    ((home->tcp_failed_time + (time_t) home->tcp_failed_wait) > now)) return true;
 
 #ifdef WITH_TLS
 	if (home->tls_failed &&

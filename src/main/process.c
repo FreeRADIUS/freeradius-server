@@ -3448,6 +3448,9 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 		sock->last_packet = now.tv_sec;
 #endif
 		request->home_server->last_packet_recv = now.tv_sec;
+#ifdef WITH_TCP
+		request->home_server->tcp_failed_count = 0;
+#endif
 
 		/*
 		 *	We have a reply from this home server, so we can can reset response_timeouts, which
