@@ -87,6 +87,8 @@ extern "C" {
  */
 unlang_action_t	fr_tls_ticket_stateful_store_session(request_t *request, fr_tls_session_t *tls_session);
 
+unlang_action_t	fr_tls_ticket_issue(request_t *request, fr_tls_session_t *tls_session);
+
 /*
  *	The only public function is fr_tls_ticket_stateful_store_session(),
  *	which is needed for EAP.  Other applications MUST instead call
@@ -135,6 +137,8 @@ void		fr_tls_ticket_stateful_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *
  *	ticket_stateless.c
  */
 unlang_action_t	fr_tls_ticket_stateless_pending_push(request_t *request, fr_tls_session_t *tls_session);
+
+unlang_action_t	tls_ticket_stateless_issue_push(request_t *request, fr_tls_session_t *tls_session);
 
 void		fr_tls_ticket_stateless_disable(SSL_CTX *ctx, bool stateful);
 

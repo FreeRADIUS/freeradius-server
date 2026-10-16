@@ -1439,6 +1439,61 @@ finish:
 	return ret;
 }
 
+/** Create a TLS 1.3 session ticket after the handshake, and queue the ticket for the peer
+ *
+ * SSL_new_session_ticket() queues a ticket, and we need to call SSL_do_handshake() to put the ticket into
+ * dirty_out for writing.
+ *
+ * The ticket creation callback runs inside SSL_do_handshake().  It cannot pause the request, so the caller
+ * MUST have run `encode session` already, and set tls_session->app_data_ready.
+ *
+ * @param[in] request		bound to the session for the duration of the call.
+ * @param[in] tls_session	to create a ticket for.  Must be a server, and TLS 1.3.
+ * @return
+ *	- 0 on success.  tls_session->session_ticket_created says if OpenSSL made a ticket.
+ *	- -1 on failure.
+ */
+int fr_tls_session_ticket_write(request_t *request, fr_tls_session_t *tls_session)
+{
+	int ret;
+
+	fr_tls_session_request_bind(tls_session->ssl, request);
+
+	ERR_clear_error();
+
+	tls_session->session_ticket_created = false;
+
+	if (SSL_new_session_ticket(tls_session->ssl) != 1) {
+		fr_tls_log_perror(request, "SSL_new_session_ticket failed");
+		tls_session->app_data_ready = false;
+		fr_tls_session_request_unbind(tls_session->ssl);
+		return -1;
+	}
+
+	ret = SSL_do_handshake(tls_session->ssl);
+	if (ret <= 0) {
+		ret = fr_tls_log_io_error(request, SSL_get_error(tls_session->ssl, ret),
+					  "SSL_do_handshake (%s)", __FUNCTION__);
+		if (ret < 0) {
+			tls_session->app_data_ready = false;
+			fr_tls_session_request_unbind(tls_session->ssl);
+			return -1;
+		}
+	}
+
+	/*
+	 *	The app_data_set() callback clears the flag when the callback uses the data.  If the flag is
+	 *	still set, then OpenSSL did not create a ticket.  Don't leave stale data for the next ticket.
+	 */
+	if (tls_session->app_data_ready) {
+		RWDEBUG("(TLS) OpenSSL did not create a session ticket");
+		tls_session->app_data_ready = false;
+	}
+
+	fr_tls_session_request_unbind(tls_session->ssl);
+	return 0;
+}
+
 /** Record a failure which FreeRADIUS itself decided
  *
  * The `session-state` list is where these go, because the list is what

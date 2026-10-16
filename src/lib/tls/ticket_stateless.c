@@ -235,6 +235,109 @@ static bool tls_ticket_stateless_decode_run(request_t *request, fr_tls_session_t
 						FR_ERROR_VALUE_DECODE_SESSION_FAILED);
 }
 
+/** Push `encode session { ... }`, and leave the section's result in tls_session->ticket
+ *
+ * Unlike the section which the ticket callback runs, this section runs as an
+ * ordinary unlang frame.  It does not pause OpenSSL.
+ *
+ * @param[in] request		The current request.
+ * @param[in] tls_session	The current TLS session.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_FAIL on failure.
+ */
+static unlang_action_t tls_ticket_stateless_encode_push(request_t *request, fr_tls_session_t *tls_session)
+{
+	tls_session->ticket = FR_TLS_TICKET_STATELESS_ENCODE_REQUESTED;
+
+	return tls_ticket_stateless_push(request, tls_session, enum_tls_packet_type_encode_session->vb_uint32);
+}
+
+/** Run `encode session`, put the session-state list into the session, and create the ticket
+ *
+ * NOTE: The function runs twice when `encode session` exists.  The first run pushes the section,
+ * and the second run is the repeat, which runs after the section finishes.
+ *
+ * @param[in] request		The current request.
+ * @param[in] uctx		The #fr_tls_session_t.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- `encode session` is running.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - the ticket was created, or there is nothing to do.
+ *	- UNLANG_ACTION_FAIL		- a step failed.
+ */
+static unlang_action_t tls_ticket_stateless_issue(request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	fr_tls_conf_t		*conf = tls_session->conf;
+	SSL_SESSION		*sess;
+	int			ret;
+
+	switch (tls_session->ticket) {
+	case FR_TLS_TICKET_STATELESS_INIT:
+		if (!conf->encode_session) break;
+
+		if (unlikely(unlang_function_repeat_set(request, tls_ticket_stateless_issue) < 0)) {
+			return UNLANG_ACTION_FAIL;
+		}
+
+		switch (tls_ticket_stateless_encode_push(request, tls_session)) {
+		case UNLANG_ACTION_PUSHED_CHILD:
+			return UNLANG_ACTION_PUSHED_CHILD;
+
+		default:
+			IGNORE(unlang_function_clear(request), int);
+			tls_session->ticket = FR_TLS_TICKET_STATELESS_INIT;
+			return UNLANG_ACTION_FAIL;
+		}
+
+	case FR_TLS_TICKET_STATELESS_SUCCESS:
+		IGNORE(unlang_function_clear(request), int);
+		tls_session->ticket = FR_TLS_TICKET_STATELESS_INIT;
+		break;
+
+	default:
+		IGNORE(unlang_function_clear(request), int);
+		tls_session->ticket = FR_TLS_TICKET_STATELESS_INIT;
+		REDEBUG("(TLS) `encode session` did not return success");
+		fr_tls_session_error_add(request, FR_ERROR_VALUE_ENCODE_SESSION_FAILED);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	if (unlang_request_is_cancelled(request)) return UNLANG_ACTION_FAIL;
+
+	sess = SSL_get_session(tls_session->ssl);
+	if (!sess) {
+		REDEBUG("(TLS) Failed retrieving session when creating a session ticket");
+		return UNLANG_ACTION_FAIL;
+	}
+
+	ret = tls_ticket_app_data_set(request, sess, &tls_session->session_id);
+	if (ret != 1) {
+		REDEBUG("(TLS) Not creating a session ticket");
+		return UNLANG_ACTION_FAIL;
+	}
+
+	tls_session->app_data_ready = true;
+
+	if (fr_tls_session_ticket_write(request, tls_session) < 0) return UNLANG_ACTION_FAIL;
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Push a frame which runs `encode session`, and then creates a TLS 1.3 stateless session ticket
+ *
+ * @param[in] request		The current request.
+ * @param[in] tls_session	to create a ticket for.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- the frame is running.
+ *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
+ */
+unlang_action_t tls_ticket_stateless_issue_push(request_t *request, fr_tls_session_t *tls_session)
+{
+	return unlang_function_push(request, tls_ticket_stateless_issue, NULL, NULL, FR_SIGNAL_NONE,
+				    UNLANG_SUB_FRAME, tls_session);
+}
+
 /** Disable stateless session tickets for a given TLS ctx
  *
  * @param[in] ctx to disable session tickets for.
@@ -286,6 +389,17 @@ static int tls_ticket_stateless_app_data_set(SSL *ssl, void *arg)
 	 *	point in adding the application data - it won't get sent.
 	 */
 	if (!tls_session->session_ticket_supported) return 1;
+
+	/*
+	 *	fr_tls_ticket_issue() already ran `encode session`, and put the session-state data into the
+	 *	SSL_SESSION.  OpenSSL keeps that data through SSL_new_session_ticket(), so we just return
+	 *	"yes, the data is ready".
+	 */
+	if (tls_session->app_data_ready) {
+		tls_session->app_data_ready = false;
+		tls_session->session_ticket_created = true;
+		return 1;
+	}
 
 	/*
 	 *	Encode the complete session state list

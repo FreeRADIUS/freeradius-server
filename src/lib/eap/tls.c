@@ -295,7 +295,7 @@ unlang_action_t eap_tls_success(request_t *request, eap_session_t *eap_session, 
 	/*
 	 *	EAP-FAST does it's own thing here.  <sigh>
 	 */
-	if (!prf_label) return fr_tls_ticket_stateful_store_session(request, tls_session);
+	if (!prf_label) return fr_tls_ticket_issue(request, tls_session);
 
 	/*
 	 *	Automatically generate MPPE keying material.
@@ -317,7 +317,7 @@ unlang_action_t eap_tls_success(request_t *request, eap_session_t *eap_session, 
 	RDEBUG2("reply.%pP", vp);
 	REXDENT();
 
-	return fr_tls_ticket_stateful_store_session(request, tls_session);
+	return fr_tls_ticket_issue(request, tls_session);
 }
 
 /** Send an EAP-TLS failure

@@ -309,6 +309,12 @@ struct fr_tls_session_s {
 	bool			session_ticket_created;		//!< The stateless session ticket creation callback has
 								///< successfully run.
 
+	bool			app_data_ready;			//!< The session-state list is already in the SSL_SESSION
+								///< as ticket application data, so the ticket creation
+								///< callback does not run `encode session` again.  Set
+								///< by fr_tls_ticket_issue(), and cleared by the callback
+								///< after each ticket.
+
 	bool			session_ticket_received;	//!< A client has seen the NewSessionTicket which
 								///< a TLS 1.3 server sends after the handshake.
 
@@ -527,6 +533,8 @@ bool		fr_tls_session_is_init_finished(fr_tls_session_t *tls_session);
 int		fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session);
 
 int 		fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session);
+
+int		fr_tls_session_ticket_write(request_t *request, fr_tls_session_t *tls_session);
 
 int 		fr_tls_session_alert(request_t *request, fr_tls_session_t *tls_session, uint8_t level, uint8_t description);
 

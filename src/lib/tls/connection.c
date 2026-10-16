@@ -642,7 +642,7 @@ static unlang_action_t tls_connection_ticket(request_t *request, void *uctx)
 	if (conn->failed) {
 		ua = fr_tls_session_fail_session(request, conn->tls_session);
 	} else {
-		ua = fr_tls_ticket_stateful_store_session(request, conn->tls_session);
+		ua = fr_tls_ticket_issue(request, conn->tls_session);
 	}
 	TLS_CONNECTION_ERROR_RETURN;
 
