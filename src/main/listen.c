@@ -5020,10 +5020,24 @@ static int coa_key_cmp(void const *one, void const *two)
 	return strcmp(a->key, b->key);
 }
 
+/*
+ *	Only called on exit.  Freeing the hash frees the entries of
+ *	connections which are still open, so their destructor must not
+ *	touch the key.
+ */
+static int coa_entry_forget(UNUSED void *ctx, void *data)
+{
+	coa_entry_t *entry = data;
+
+	entry->coa_key = NULL;
+	return 0;
+}
+
 static void coa_key_free(void *data)
 {
 	coa_key_t *coa_key = data;
 
+	(void) fr_hash_table_walk(coa_key->ht, coa_entry_forget, NULL);
 	pthread_mutex_destroy(&coa_key->mutex);
 	fr_hash_table_free(coa_key->ht);
 	talloc_free(coa_key);
@@ -5054,6 +5068,8 @@ static void coa_entry_free(void *data)
 
 static int coa_entry_destructor(coa_entry_t *entry)
 {
+	if (!entry->coa_key) return 0;
+
 	pthread_mutex_lock(&entry->coa_key->mutex);
 	fr_hash_table_yank(entry->coa_key->ht, entry);
 	pthread_mutex_unlock(&entry->coa_key->mutex);
@@ -5080,10 +5096,9 @@ static int listen_coa_init(void)
 void listen_coa_free(void)
 {
 	/*
-	 *	If we are freeing the tree, then all of the listeners
-	 *	must have been freed first.
+	 *	Keys are never removed from the tree, and connections
+	 *	which are still open at exit still have entries.
 	 */
-	rad_assert(rbtree_num_elements(coa_tree) == 0);
 	rbtree_free(coa_tree);
 	coa_tree = NULL;
 }
