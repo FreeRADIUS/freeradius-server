@@ -199,9 +199,5 @@ typedef struct {
 
 	bool			result_final;
 
-#ifdef WITH_PROXY
-	bool		proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated
-							//!< protocol.
-#endif
 	CONF_SECTION	*server_cs;
 } eap_fast_tunnel_t;

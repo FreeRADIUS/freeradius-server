@@ -100,7 +100,6 @@ static fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 static fr_dict_attr_t const *attr_eap_type;
 static fr_dict_attr_t const *attr_ms_chap_challenge;
 static fr_dict_attr_t const *attr_ms_chap_peer_challenge;
-static fr_dict_attr_t const *attr_proxy_to_realm;
 
 static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_freeradius_proxied_to;
@@ -144,7 +143,6 @@ fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_challenge, .name = "Vendor-Specific.Microsoft.CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_freeradius_proxied_to, .name = "Vendor-Specific.FreeRADIUS.Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
@@ -814,78 +812,9 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 	 * Decide what to do with the reply.
 	 */
 	switch (fake->reply->code) {
-	case 0:			/* No reply code, must be proxied... */
-#ifdef WITH_PROXY
-		vp = fr_pair_find_by_da(&fake->control, NULL, attr_proxy_to_realm);
-		if (vp) {
-			int			ret;
-			eap_tunnel_data_t	*tunnel;
-
-			RDEBUG2("Tunneled authentication will be proxied to %pV", &vp->data);
-
-			/*
-			 *	Tell the original request that it's going to be proxied.
-			 */
-			fr_pair_list_copy_by_da(request->control_ctx, &request->control_pairs,
-						&fake->control_pairs, attr_proxy_to_realm);
-
-			/*
-			 *	Seed the proxy packet with the tunneled request.
-			 */
-			fr_assert(!request->proxy);
-
-			/*
-			 *	FIXME: Actually proxy stuff
-			 */
-			request->proxy = request_alloc_internal(request, &(request_init_args_t){ .parent = request });
-
-			request->proxy->packet = talloc_steal(request->proxy, fake->packet);
-			memset(&request->proxy->packet->src_ipaddr, 0,
-			       sizeof(request->proxy->packet->src_ipaddr));
-			memset(&request->proxy->packet->src_ipaddr, 0,
-			       sizeof(request->proxy->packet->src_ipaddr));
-			request->proxy->packet->src_port = 0;
-			request->proxy->packet->dst_port = 0;
-			fake->packet = NULL;
-			fr_packet_free(&fake->reply);
-			fake->reply = NULL;
-
-			/*
-			 *	Set up the callbacks for the tunnel
-			 */
-			tunnel = talloc_zero(request, eap_tunnel_data_t);
-			tunnel->tls_session = tls_session;
-
-			/*
-			 *	Associate the callback with the request.
-			 */
-			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-					       tunnel, false, false, false);
-			fr_cond_assert(ret == 0);
-
-			/*
-			 *	rlm_eap.c has taken care of associating the eap_session
-			 *	with the fake request.
-			 *
-			 *	So we associate the fake request with this request.
-			 */
-			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-					       fake, true, false, false);
-			fr_cond_assert(ret == 0);
-
-			fake = NULL;
-
-			/*
-			 *	Didn't authenticate the packet, but we're proxying it.
-			 */
-			code = FR_RADIUS_CODE_STATUS_CLIENT;
-
-		} else
-#endif	/* WITH_PROXY */
-		  {
-			  REDEBUG("No tunneled reply was found, and the request was not proxied: rejecting the user");
-			  code = FR_RADIUS_CODE_ACCESS_REJECT;
-		  }
+	case 0:			/* No reply code, reject... */
+		REDEBUG("No tunneled reply was found: rejecting the user");
+		code = FR_RADIUS_CODE_ACCESS_REJECT;
 		break;
 
 	default:
@@ -1487,15 +1416,6 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 		p_result->rcode = RLM_MODULE_OK;
 
 		return eap_tls_success(request, eap_session, NULL);
-
-	/*
-	 *	No response packet, MUST be proxying it.
-	 *	The main EAP module will take care of discovering
-	 *	that the request now has a "proxy" packet, and
-	 *	will proxy it, rather than returning an EAP packet.
-	 */
-	case FR_RADIUS_CODE_STATUS_CLIENT:
-		RETURN_UNLANG_OK;
 
 	default:
 		break;
