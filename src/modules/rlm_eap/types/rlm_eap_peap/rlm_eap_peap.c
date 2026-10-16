@@ -737,8 +737,6 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx)
 static unlang_action_t process_rcode(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
-	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	RDEBUG3("Tunneled request complete");
 
@@ -759,25 +757,8 @@ static unlang_action_t process_rcode(unlang_result_t *p_result, module_ctx_t con
 					  "client EAP encryption",
 					  sizeof("client EAP encryption") - 1);
 
-		/*
-		 *	Success: Automatically return MPPE keys.
-		 */
-		if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_UNLANG_FAIL;
 		p_result->rcode = RLM_MODULE_OK;
-
-		/*
-		 *	Write the session to the session cache
-		 *
-		 *	We do this here (instead of relying on OpenSSL to call the
-		 *	session caching callback), because we only want to write
-		 *	session data to the cache if all phases were successful.
-		 *
-		 *	If we wrote out the cache data earlier, and the server
-		 *	exited whilst the session was in progress, the supplicant
-		 *	could resume the session (and get access) even if phase2
-		 *	never completed.
-		 */
-		return fr_tls_ticket_stateful_store_session(request, tls_session);
+		return eap_tls_success(request, eap_session, &prf_label);
 	}
 
 	/*

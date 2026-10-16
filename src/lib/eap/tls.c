@@ -257,17 +257,30 @@ int eap_tls_start(request_t *request, eap_session_t *eap_session)
  * We add the MPPE keys here.  These are used by the NAS.  The supplicant
  * will derive the same keys separately.
  *
+ * If we're using session tickets, then we call `store session` or
+ * `encode session` to save the session ticket.  This is done by the
+ * application (EAP) instead TLS, because the user isn't authenticated
+ * until the inner-tunnel data says so.
+ *
+ * @note The caller MUST set the caller's own unlang result before calling
+ *	 eap_tls_success().  A pushed child returns to the caller's caller
+ *	 with that result already in place.  The result is normally
+ *	 RLM_MODULE_OK, even if we fail to persist the session data.
+ *
  * @param[in] request			The current subrequest.
  * @param[in] eap_session		that completed successfully.
- * @param[in] prf_label			PRF label struct
+ * @param[in] prf_label			PRF label struct, or NULL to skip key generation.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- UNLANG_ACTION_PUSHED_CHILD	- cache sections are running.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - there was nothing more to do.
+ *	- UNLANG_ACTION_FAIL		- the success packet or the keys could not be created.
  */
-int eap_tls_success(request_t *request, eap_session_t *eap_session, eap_tls_prf_label_t *prf_label)
+unlang_action_t eap_tls_success(request_t *request, eap_session_t *eap_session, eap_tls_prf_label_t *prf_label)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+	uint8_t			*session_id;
+	fr_pair_t		*vp;
 
 	fr_assert(request->parent);	/* must be a subrequest */
 
@@ -277,36 +290,34 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session, eap_tls_prf_
 	 *	Build the success packet
 	 */
 	if (eap_tls_compose(request, eap_session, EAP_TLS_ESTABLISHED,
-			    eap_tls_session->base_flags, NULL, 0, 0) < 0) return -1;
+			    eap_tls_session->base_flags, NULL, 0, 0) < 0) return UNLANG_ACTION_FAIL;
 
-	if (!prf_label) return 0;
+	/*
+	 *	EAP-FAST does it's own thing here.  <sigh>
+	 */
+	if (!prf_label) return fr_tls_ticket_stateful_store_session(request, tls_session);
 
 	/*
 	 *	Automatically generate MPPE keying material.
 	 */
-	if (eap_crypto_mppe_keys(request->parent, tls_session->ssl, prf_label) < 0) return -1;
+	if (eap_crypto_mppe_keys(request->parent, tls_session->ssl, prf_label) < 0) return UNLANG_ACTION_FAIL;
 
 	/*
 	 *	Add the EAP session ID to the request
 	 */
-	{
-		uint8_t		*session_id;
-		fr_pair_t	*vp;
-
-		MEM(pair_append_reply(&vp, attr_eap_session_id) >= 0);
-		if (eap_crypto_tls_session_id(vp, request, tls_session->ssl, prf_label,
-					      &session_id, eap_session->type) < 0) {
-			pair_delete_reply(vp);
-			return -1;
-		}
-		fr_pair_value_memdup_buffer_shallow(vp, session_id, false);
-
-		RINDENT();
-		RDEBUG2("reply.%pP", vp);
-		REXDENT();
+	MEM(pair_append_reply(&vp, attr_eap_session_id) >= 0);
+	if (eap_crypto_tls_session_id(vp, request, tls_session->ssl, prf_label,
+				      &session_id, eap_session->type) < 0) {
+		pair_delete_reply(vp);
+		return UNLANG_ACTION_FAIL;
 	}
+	fr_pair_value_memdup_buffer_shallow(vp, session_id, false);
 
-	return 0;
+	RINDENT();
+	RDEBUG2("reply.%pP", vp);
+	REXDENT();
+
+	return fr_tls_ticket_stateful_store_session(request, tls_session);
 }
 
 /** Send an EAP-TLS failure

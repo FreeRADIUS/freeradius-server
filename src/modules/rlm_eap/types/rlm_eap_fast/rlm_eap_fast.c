@@ -1458,31 +1458,9 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 	 *	Success.
 	 */
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		if (eap_tls_success(request, eap_session, NULL) < 0) RETURN_UNLANG_FAIL;
-
-		/*
-		 *	@todo - generate MPPE keys, which have their own magical deriviation.
-		 */
-
-		/*
-		 *	Result is always OK, even if we fail to persist the
-		 *	session data.
-		 */
 		p_result->rcode = RLM_MODULE_OK;
 
-		/*
-		 *	Write the session to the session cache
-		 *
-		 *	We do this here (instead of relying on OpenSSL to call the
-		 *	session caching callback), because we only want to write
-		 *	session data to the cache if all phases were successful.
-		 *
-		 *	If we wrote out the cache data earlier, and the server
-		 *	exited whilst the session was in progress, the supplicant
-		 *	could resume the session (and get access) even if phase2
-		 *	never completed.
-		 */
-		return fr_tls_ticket_stateful_store_session(request, tls_session);
+		return eap_tls_success(request, eap_session, NULL);
 
 	/*
 	 *	No response packet, MUST be proxying it.
