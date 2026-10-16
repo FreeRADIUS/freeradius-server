@@ -402,6 +402,40 @@ int fr_tls_ticket_disable_cb(SSL *ssl, int is_forward_secure)
 	return 0;
 }
 
+/** Issue the session ticket, or store the session, after the application has succeeded
+ *
+ * For most modes, run `store session`.  The ticket was already sent to the peer.
+ *
+ * For a TLS 1.3 server, stateless tickets, and with delayed tickets,
+ * we didn't send the ticket, which menas that we need to call `encode session`.
+ *
+ * @note The caller MUST set the caller's own unlang result before calling
+ *	 fr_tls_ticket_issue().  A pushed child returns to the caller's caller with that result
+ *	 already in place.
+ *
+ * @param[in] request		to run the sections in.
+ * @param[in] tls_session	to issue a ticket for.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- sections are running.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - there was nothing to do.
+ *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
+ */
+unlang_action_t fr_tls_ticket_issue(request_t *request, fr_tls_session_t *tls_session)
+{
+	fr_tls_conf_t *conf = tls_session->conf;
+
+	if (conf->delayed_tickets &&
+	    (conf->cache.mode & FR_TLS_TICKET_STATELESS) &&
+	    SSL_is_server(tls_session->ssl) &&
+	    (SSL_version(tls_session->ssl) == TLS1_3_VERSION) &&
+	    tls_session->allow_session_resumption &&
+	    tls_session->session_ticket_supported) {
+		return tls_ticket_stateless_issue_push(request, tls_session);
+	}
+
+	return fr_tls_ticket_stateful_store_session(request, tls_session);
+}
+
 /** Sets callbacks and flags on a SSL_CTX to enable/disable session resumption
  *
  * @param[in] ctx			to modify.
