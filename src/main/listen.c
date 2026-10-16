@@ -4608,7 +4608,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		 */
 		coa = cf_section_sub_find(cs, "coa");
 		if (coa) {
-			rcode = cf_section_parse(cs, this, coa_config);
+			rcode = cf_section_parse(coa, this, coa_config);
 			if (rcode < 0) {
 				listen_free(&this);
 				return NULL;
