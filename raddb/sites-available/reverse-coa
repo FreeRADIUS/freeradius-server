@@ -49,18 +49,24 @@ listen {
 
 	#
 	#  Timers for the packets we send down the connection.
-	#  Packets proxied to the NAS are not retransmitted, and "mrd"
-	#  is how long we wait for its answer.  Packets originated
-	#  with "update coa" still use irt / mrt / mrc.
+	#  Nothing is sent twice over a stream: "mrd" is how long we
+	#  wait for the NAS to answer, and packets originated with
+	#  "update coa" give up at "mrc" or "mrd", whichever is first.
+	#
+	#  "max_keys" bounds the number of keys one connection may
+	#  carry (see post-auth and accounting below).  A key per
+	#  session on a busy peer adds up; the default is 4096.
 	#
 	coa {
 		irt = 2
 		mrt = 16
 		mrc = 5
 		mrd = 30
+		max_keys = 4096
 	}
 
 	tls {
+		private_key_password = whatever
 		private_key_file = ${certdir}/server.pem
 		certificate_file = ${certdir}/server.pem
 		ca_file = ${cadir}/ca.pem
@@ -73,15 +79,28 @@ listen {
 #  rule applies here: the smaller of the client and the listener
 #  values is used, and the client default is 30.
 #
+#  "reverse_coa" is the per-client flag of the draft (Section 4).
+#  It defaults to "yes".  A peer which does not take CoA on its own
+#  connection gets "no": no key is ever attached to its connections
+#  and nothing is sent down them, even on a "+coa" listener.
+#
 clients radsec {
 	client hub-peer {
 		ipaddr = 192.0.2.0/24
 		proto = tls
 		secret = radsec
+		reverse_coa = yes
 
 		limit {
 			idle_timeout = 0
 		}
+	}
+
+	client legacy-peer {
+		ipaddr = 198.51.100.0/24
+		proto = tls
+		secret = radsec
+		reverse_coa = no
 	}
 }
 
@@ -92,12 +111,16 @@ server reverse-coa {
 			ok = return
 		}
 		files
+		mschap
 		pap
 	}
 
 	authenticate {
 		Auth-Type PAP {
 			pap
+		}
+		Auth-Type MS-CHAP {
+			mschap
 		}
 		eap
 	}
@@ -107,19 +130,50 @@ server reverse-coa {
 		acct_unique
 	}
 
+	#
+	#  A key which names the session is attached on the
+	#  Accounting-Response to the Start, and removed on the Stop.
+	#  A leading '-' removes a key.  With that key, a CoA for the
+	#  session goes down the connection which carried it, even when
+	#  the peer has several connections to us with the same
+	#  Operator-Name.
+	#
 	accounting {
+		if (&Operator-Name && &Acct-Session-Id) {
+			if (&Acct-Status-Type == Start) {
+				update control {
+					&Originating-Realm-Key := "sid:%{Acct-Session-Id}"
+				}
+			}
+			elsif (&Acct-Status-Type == Stop) {
+				update control {
+					&Originating-Realm-Key := "-sid:%{Acct-Session-Id}"
+				}
+			}
+		}
+
 		detail
 	}
 
 	#
-	#  The key is attached when we send the first reply on the
-	#  connection for a request which has control:Originating-Realm-Key.
-	#  It is compared to Proxy-To-Originating-Realm as a string.
+	#  Keys are attached when we send a reply on the connection for
+	#  a request which has control:Originating-Realm-Key.  A
+	#  connection can carry many keys; each is compared with
+	#  Proxy-To-Originating-Realm as a string.  Here every
+	#  connection gets the realm key from Operator-Name, and a key
+	#  for the Chargeable-User-Identity we issued, when we issued
+	#  one.
 	#
 	post-auth {
 		if (&Operator-Name) {
 			update control {
 				&Originating-Realm-Key := "%{Operator-Name}"
+			}
+
+			if (&reply:Chargeable-User-Identity) {
+				update control {
+					&Originating-Realm-Key += "cui:%{reply:Chargeable-User-Identity}"
+				}
 			}
 		}
 
@@ -154,8 +208,18 @@ server reverse-coa-originate {
 	#
 	#  Route by Operator-Name (RFC 8559, Section 3.2).  A request
 	#  without it cannot be routed: answer with Missing-Attribute.
-	#  An unknown key, or a key with no open connection, gets
-	#  Proxy-Request-Not-Routable from the server.
+	#  An unknown key gets Proxy-Request-Not-Routable (502) from
+	#  the server, and a known key whose connections are all full
+	#  gets Proxy-Processing-Error (505).
+	#
+	#  The routing keys are tried in order.  The session key goes
+	#  first, so that the request follows the connection which
+	#  carried the session, and the realm key is the fallback for
+	#  a peer which only has the one connection, or whose session
+	#  key has gone.
+	#
+	#  A request with a stale Event-Timestamp is a replay or a
+	#  clock problem (RFC 5176, Section 6.3): reject it.
 	#
 	recv-coa {
 		if (!&Operator-Name) {
@@ -165,8 +229,27 @@ server reverse-coa-originate {
 			reject
 		}
 
+		if (&Event-Timestamp) {
+			if (("%{expr: %l - %{integer:Event-Timestamp}}" > 300) || ("%{expr: %{integer:Event-Timestamp} - %l}" > 300)) {
+				update reply {
+					&Error-Cause := Invalid-Request
+				}
+				reject
+			}
+		}
+
+		if (&Acct-Session-Id) {
+			update control {
+				&Proxy-To-Originating-Realm := "sid:%{Acct-Session-Id}"
+			}
+		}
+		if (&Chargeable-User-Identity) {
+			update control {
+				&Proxy-To-Originating-Realm += "cui:%{Chargeable-User-Identity}"
+			}
+		}
 		update control {
-			&Proxy-To-Originating-Realm := &Operator-Name
+			&Proxy-To-Originating-Realm += &Operator-Name
 		}
 		ok
 	}
