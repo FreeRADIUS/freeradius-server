@@ -1796,16 +1796,6 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 				     next->item.lineno, name);
 			}
 		}
-
-		if (multi) {
-			while ((next = cf_pair_find_next(cs, next, name)) != NULL) {
-				/*
-				 *	@fixme We should actually validate
-				 *	the value of the pairs too
-				 */
-				next->parsed = true;
-			};
-		}
 	}
 
 	if (!value) {
@@ -1817,6 +1807,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		return rcode;
 	}
 
+redo:
 	if ((value[0] == '\0') && cant_be_empty) {
 	cant_be_empty:
 		cf_log_err(c_item, "Configuration item '%s' must not be empty (zero length)", name);
@@ -2131,6 +2122,16 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		       fr_int2str(dict_attr_types, type, "?Unknown?"));
 		return -1;
 	} /* switch over variable type */
+
+	if (multi) {
+		cp = cf_pair_find_next(cs, cp, name);
+		if (cp) {
+			value = cp->value;
+			cp->parsed = true;
+			c_item = &cp->item;
+			goto redo;
+		}
+	}
 
 	if (!cp) {
 		CONF_PAIR *cpn;
