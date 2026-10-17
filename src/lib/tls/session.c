@@ -2384,6 +2384,41 @@ unlang_action_t fr_tls_session_async_handshake_push(request_t *request, fr_tls_s
 				    tls_session);
 }
 
+/** Will this handshake negotiate TLS 1.3?
+ *
+ * OpenSSL decides whether to send a TLS 1.2 ticket while it parses the ClientHello extensions, so which means that
+ * we need to check TLS versions in the ClientHello callback.
+ *
+ * TLS 1.3 is negotiated when the server allows it, and the client lists it in `supported_versions`.
+ * A client which sends no `supported_versions` extension (including a DTLS client) cannot do TLS 1.3.
+ *
+ * @param[in] ssl	to check.  Must be inside the ClientHello callback.
+ * @return
+ *	- true if TLS 1.3 will be negotiated.
+ *	- false if TLS 1.2 or earlier will be negotiated.
+ */
+static bool tls_client_hello_is_tls13(SSL *ssl)
+{
+	uint8_t const	*p;
+	size_t		len, i;
+	int		max = SSL_get_max_proto_version(ssl);
+
+	if (max && (max < TLS1_3_VERSION)) return false;
+
+	if (SSL_client_hello_get0_ext(ssl, TLSEXT_TYPE_supported_versions, &p, &len) != 1) return false;
+
+	/*
+	 *	One byte of length, then a list of two byte versions.
+	 */
+	if ((len < 1) || (p[0] != (len - 1)) || (p[0] & 0x01)) return false;
+
+	for (i = 1; (i + 1) < len; i += 2) {
+		if (((p[i] << 8) | p[i + 1]) == TLS1_3_VERSION) return true;
+	}
+
+	return false;
+}
+
 /** Callback run during ClientHello phase of handshake
  *
  * The SSL_client_hello* functions can only be called inside a callback like this.
@@ -2406,6 +2441,38 @@ static int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void 
 			RDEBUG2("(TLS) Session ticket extension not found in ClientHello");
 			ssl_options |= SSL_OP_NO_TICKET;
 			SSL_set_options(ssl, ssl_options);
+		}
+
+		/*
+		 *	Session tickets interact badly with EAP.  For EAP success, we would ideally like to
+		 *	send the session ticket only after the inner-tunnel method has succeeded.  However,
+		 *	for TLS 1.2, the ticket it sent during the TLS handshake, and there's nothing we can
+		 *	do about that.
+		 *
+		 *	So for stateful session tickets, we just skip `store session` if the inner-tunnel
+		 *	method fails.  The peer has a ticket (with an ID), but the server doesn't know about
+		 *	that ticket or ID, and therefore won't be able to resume the session.
+		 *
+		 *	For TLS 1.3, the session ticket is sent after the TLS handshake has completed.
+		 *	HOWEVER, the EAP peers will process that ticket only in a few situations.  (1) if they
+		 *	see the ticket immediately after the TLS handshake has completed, or (2) when the
+		 *	ticket arrives with expected inner-tunnel "success" from the server.
+		 *
+		 *	i.e. for EAP-TLS, with the inner "protected success indicator".  For PEAP / TTLS /
+		 *	FAST, with the MS-CHAPv2 success.  For TTLS with PAP or CHAP, you're out of luck.
+		 *
+		 *	Overall, stateless session tickets are poorly tested with TLS 1.2, even outside of EAP.
+		 *
+		 *	All of the above menas that We allow stateless session tickets only when TLS 1.3 has
+		 *	been negotiated.  In `auto` mode with TLS 1.2, we forced the use of stateful session
+		 *	IDs.
+		 */
+		if ((conf->cache.mode & FR_TLS_TICKET_STATELESS) && !tls_client_hello_is_tls13(ssl)) {
+			fr_tls_session_t *tls_session = fr_tls_session(ssl);
+
+			RDEBUG2("(TLS) Stateless session tickets are not used below TLS 1.3");
+			SSL_set_options(ssl, SSL_get_options(ssl) | SSL_OP_NO_TICKET);
+			tls_session->session_ticket_supported = false;
 		}
 	}
 
