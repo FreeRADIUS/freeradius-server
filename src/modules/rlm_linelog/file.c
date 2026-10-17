@@ -96,7 +96,13 @@ void file_batching_xlat_handle_signal(xlat_ctx_t const *xctx, request_t *request
 
 static int _file_free(rlm_linelog_file_t *file)
 {
-	(void) fr_hash_table_delete(file->thread_inst->file_table, file);
+	int ret;
+
+	ret = fr_hash_table_delete(file->thread_inst->file_table, file);
+
+	fr_fatal_assert_msg(ret >= 0, "Failed removing \"%s\" from file_table: %s", file->filename, fr_strerror());
+
+	fr_cond_assert_msg(ret == 0, "file_table delete for \"%s\" returned \"not found\"", file->filename);
 
 	return 0;
 }
