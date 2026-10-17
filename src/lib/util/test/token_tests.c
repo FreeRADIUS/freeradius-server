@@ -32,6 +32,7 @@
  */
 typedef struct {
 	fr_token_t	token;				//!< what the parse function returned.
+	int		rcode;				//!< what getword() returned, which is not a token.
 	char		buf[256];			//!< what the parse function wrote.
 	size_t		used;				//!< how many bytes of the input the parse consumed.
 } parse_result_t;
@@ -92,7 +93,7 @@ static parse_result_t test_gettoken(char const *in, bool unescape)
 
 /** Run getword() over a guarded copy of the input
  *
- *  getword() returns 0 at end of line and 1 otherwise, so the rcode goes in `token`.
+ *  getword() returns 0 at end of line and 1 otherwise.  The return value goes in `rcode`.
  */
 static parse_result_t test_getword(char const *in, bool unescape)
 {
@@ -104,7 +105,7 @@ static parse_result_t test_getword(char const *in, bool unescape)
 	TEST_ASSERT(start != NULL);
 
 	p = start;
-	result.token = (fr_token_t) getword(&p, result.buf, sizeof(result.buf), unescape);
+	result.rcode = getword(&p, result.buf, sizeof(result.buf), unescape);
 	result.used = (size_t) (p - start);
 
 	guard_free(base);
@@ -154,13 +155,25 @@ static parse_result_t test_getop(char const *in)
 	return result;
 }
 
-#define TEST_PARSE(_result, _token, _buf, _used) do { \
-	TEST_CHECK((_result).token == (_token)); \
-	TEST_MSG("token: got %u, expected %u", (_result).token, (fr_token_t)(_token)); \
+#define TEST_PARSE_BUF(_result, _buf, _used) do { \
 	TEST_CHECK(strcmp((_result).buf, (_buf)) == 0); \
 	TEST_MSG("buf: got \"%s\", expected \"%s\"", (_result).buf, (_buf)); \
 	TEST_CHECK((_result).used == (size_t) (_used)); \
 	TEST_MSG("used: got %zu, expected %zu", (_result).used, (size_t) (_used)); \
+} while (0)
+
+#define TEST_PARSE(_result, _token, _buf, _used) do { \
+	parse_result_t _r = (_result); \
+	TEST_CHECK(_r.token == (_token)); \
+	TEST_MSG("token: got %u, expected %u", _r.token, (fr_token_t)(_token)); \
+	TEST_PARSE_BUF(_r, _buf, _used); \
+} while (0)
+
+#define TEST_PARSE_WORD(_result, _rcode, _buf, _used) do { \
+	parse_result_t _r = (_result); \
+	TEST_CHECK(_r.rcode == (_rcode)); \
+	TEST_MSG("rcode: got %d, expected %d", _r.rcode, (_rcode)); \
+	TEST_PARSE_BUF(_r, _buf, _used); \
 } while (0)
 
 /** A triple-quoted string keeps every character between the delimiters
@@ -348,33 +361,33 @@ static void test_getword_no_delimiters(void)
 	/*
 	 *	getword() returns 1 when the call read a word, and 0 at end of line.
 	 */
-	TEST_PARSE(test_getword("hello", true), 1, "hello", 5);
+	TEST_PARSE_WORD(test_getword("hello", true), 1, "hello", 5);
 
 	/*
 	 *	gettoken() stops at the "==".  getword() does not.
 	 */
-	TEST_PARSE(test_getword("a==b", true), 1, "a==b", 4);
-	TEST_PARSE(test_getword("a;b", true), 1, "a;b", 3);
+	TEST_PARSE_WORD(test_getword("a==b", true), 1, "a==b", 4);
+	TEST_PARSE_WORD(test_getword("a;b", true), 1, "a;b", 3);
 
 	/*
 	 *	The comma is the exception.  getthing() tests for the comma outside the block
 	 *	which tests the token list, so the comma ends a word for getword() as well as for
 	 *	gettoken().
 	 */
-	TEST_PARSE(test_getword("a,b", true), 1, "a", 1);
+	TEST_PARSE_WORD(test_getword("a,b", true), 1, "a", 1);
 
 	/*
 	 *	Whitespace still ends the word.
 	 */
-	TEST_PARSE(test_getword("a b", true), 1, "a", 2);
+	TEST_PARSE_WORD(test_getword("a b", true), 1, "a", 2);
 
-	TEST_PARSE(test_getword("", true), 0, "", 0);
+	TEST_PARSE_WORD(test_getword("", true), 0, "", 0);
 
 	/*
 	 *	getword() reads quoted strings, which is the path that $TEMPLATE uses.
 	 */
-	TEST_PARSE(test_getword("\"a b\"", true), 1, "a b", 5);
-	TEST_PARSE(test_getword("\"\"\"abc\"\"\"", true), 1, "abc", 9);
+	TEST_PARSE_WORD(test_getword("\"a b\"", true), 1, "a b", 5);
+	TEST_PARSE_WORD(test_getword("\"\"\"abc\"\"\"", true), 1, "abc", 9);
 }
 
 /** getop() accepts an assignment or comparison operator and rejects everything else
