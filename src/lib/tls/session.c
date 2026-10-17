@@ -1593,9 +1593,7 @@ void fr_tls_session_error_alert(request_t *request, fr_tls_session_t *session,
 
 static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *session)
 {
-#ifndef NDEBUG
 	ssize_t slen;
-#endif
 
 	/*
 	 *	Update our internal view of the session
@@ -1626,15 +1624,12 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 	 */
 	fr_tls_bio_dbuff_clear(session->from_ssl);
 
-#ifndef NDEBUG
-	slen =			/* only used for the assert below */
-#endif
-		fr_dbuff_in_bytes(fr_tls_bio_dbuff_in(session->from_ssl),
-				  (uint8_t) session->info.content_type,
-				  (uint8_t) 3, (uint8_t) 1, (uint8_t) 0, (uint8_t) 2,
-				  session->pending_alert_level,
-				  session->pending_alert_description);
-	fr_assert(slen == 7);
+	slen = fr_dbuff_in_bytes(fr_tls_bio_dbuff_in(session->from_ssl),
+				 (uint8_t) session->info.content_type,
+				 (uint8_t) 3, (uint8_t) 1, (uint8_t) 0, (uint8_t) 2,
+				 session->pending_alert_level,
+				 session->pending_alert_description);
+	if (!fr_cond_assert(slen == 7)) return;
 
 	/*
 	 *	We're building the TLS Alert manually, so we have to
