@@ -587,13 +587,14 @@ typedef struct {
 do {\
 	if (fr_rate_limit_enabled()) {\
 		(_entry)->now = fr_time();\
-		if (fr_time_to_sec((_entry)->now) != fr_time_to_sec((_entry)->last_complained)) {\
-			(_entry)->last_complained = (_entry)->now;\
+		if (!fr_time_ispos((_entry)->last_complained) || \
+		    (fr_time_to_sec((_entry)->now) != fr_time_to_sec((_entry)->last_complained))) {\
 			if (((_entry)->repeated > 0) && (fr_time_delta_to_sec(fr_time_sub((_entry)->now, (_entry)->last_complained)) == 1)) { \
 				_log(_fmt " - repeated %u time(s)", ##__VA_ARGS__, (_entry)->repeated); \
 			} else { \
 				_log(_fmt, ##__VA_ARGS__); \
 			}\
+			(_entry)->last_complained = (_entry)->now;\
 			(_entry)->repeated = 0; \
 		} else { \
 			(_entry)->repeated++; \
@@ -624,13 +625,14 @@ do {\
 do {\
 	if (fr_rate_limit_enabled()) {\
 		(_entry)->now = fr_time();\
-		if (fr_time_to_sec((_entry)->now) != fr_time_to_sec((_entry)->last_complained)) {\
-			(_entry)->last_complained = (_entry)->now;\
+		if (!fr_time_ispos((_entry)->last_complained) || \
+		    (fr_time_to_sec((_entry)->now) != fr_time_to_sec((_entry)->last_complained))) {\
 			if (((_entry)->repeated > 0) && (fr_time_delta_to_sec(fr_time_sub((_entry)->now, (_entry)->last_complained)) == 1)) { \
 				ROPTIONAL(_l_request, _l_global, _fmt " - repeated %u time(s)", ##__VA_ARGS__, (_entry)->repeated); \
 			} else { \
 				ROPTIONAL(_l_request, _l_global, _fmt, ##__VA_ARGS__); \
 			}\
+			(_entry)->last_complained = (_entry)->now;\
 			(_entry)->repeated = 0; \
 		} else { \
 			(_entry)->repeated++; \
