@@ -919,6 +919,8 @@ redo:
 #ifdef WITH_COA_TUNNEL
 	case PW_CODE_COA_ACK:
 	case PW_CODE_COA_NAK:
+	case PW_CODE_DISCONNECT_ACK:
+	case PW_CODE_DISCONNECT_NAK:
 		if (!listener->send_coa) goto bad_packet;
 		is_reply = true;
                 break;
