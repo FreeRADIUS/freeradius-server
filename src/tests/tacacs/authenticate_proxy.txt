@@ -1,0 +1,3 @@
+#
+#	ARGV: -t pap -u proxyme authenticate -p queijo
+#
