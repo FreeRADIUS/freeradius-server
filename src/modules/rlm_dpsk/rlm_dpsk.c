@@ -315,6 +315,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	uint8_t			digest[EVP_MAX_MD_SIZE], mic[EVP_MAX_MD_SIZE];
 	char			token_identity[256];
 	char			token_psk[256];
+	char			token_mac[256];
+	char			buffer[1024];
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_file_t	fctx;
+	size_t			len;
+	fr_sbuff_err_t		sberr;
+	fr_sbuff_term_t const	terms = FR_SBUFF_TERMS(L("\n"),L("\r"),L(","));
+	fr_sbuff_term_t const	quoted_terms = FR_SBUFF_TERMS(L("\""));
+	bool			quoted = false;
 
 	/*
 	 *	Search for the information in a bunch of attributes.
@@ -492,138 +501,122 @@ stage2:
 		RETURN_UNLANG_FAIL;
 	}
 
-	/*
-	 *	If there's an PSK from an external database, then we
-	 *	never read the filename.
-	 */
-	if (filename) {
-		char			token_mac[256];
-		char			buffer[1024];
-		fr_sbuff_t		sbuff;
-		fr_sbuff_uctx_file_t	fctx;
-		size_t			len;
-		fr_sbuff_err_t		sberr;
-		fr_sbuff_term_t const	terms = FR_SBUFF_TERMS(L("\n"),L("\r"),L(","));
-		fr_sbuff_term_t const	quoted_terms = FR_SBUFF_TERMS(L("\""));
-		bool			quoted = false;
-
 #if defined(__clang_analyzer__) || defined(__COVERITY__)
-		/*
-		 *	Neither the clang analyser nor Coverity sees the MAC
-		 *	copied into token_mac through the sbuff, and both report
-		 *	the memcmp() against s_mac as a read of uninitialised
-		 *	memory.
-		 */
-		memset(token_mac, 0, sizeof(token_mac));
+	/*
+	 *	Neither the clang analyser nor Coverity sees the MAC
+	 *	copied into token_mac through the sbuff, and both report
+	 *	the memcmp() against s_mac as a read of uninitialised
+	 *	memory.
+	 */
+	memset(token_mac, 0, sizeof(token_mac));
 #endif
 
-		RDEBUG3("Looking for PSK in file %s", filename);
+	RDEBUG3("Looking for PSK in file %s", filename);
 
-		fp = fopen(filename, "r");
-		if (!fp) {
-			REDEBUG("Failed opening %s - %s", filename, fr_syserror(errno));
-			RETURN_UNLANG_FAIL;
-		}
+	fp = fopen(filename, "r");
+	if (!fp) {
+		REDEBUG("Failed opening %s - %s", filename, fr_syserror(errno));
+		RETURN_UNLANG_FAIL;
+	}
 
-		fr_sbuff_init_file(&sbuff, &fctx, buffer, sizeof(buffer), fp, SIZE_MAX);
+	fr_sbuff_init_file(&sbuff, &fctx, buffer, sizeof(buffer), fp, SIZE_MAX);
 
 stage2a:
-		lineno++;
-		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
-		quoted = fr_sbuff_next_if_char(&sbuff, '"');
-		sberr = fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(token_identity, sizeof(token_identity)), &sbuff,
-						    SIZE_MAX, quoted ? &quoted_terms : &terms, NULL);
-		if (sberr < 0) {
-			RERROR("%s[%d] Failed reading identity: %s", filename, lineno, fr_sbuff_err_to_str(sberr));
-			goto fail_file;
-		}
-		if (len == 0) {
-			RDEBUG("Failed to find matching PSK or MAC in %s", filename);
-		fail_file:
-			fclose(fp);
-			RETURN_UNLANG_FAIL;
-		}
-		if (quoted) {
-			fr_sbuff_next_if_char(&sbuff, '"');
-			fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
-		}
+	lineno++;
+	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
+	quoted = fr_sbuff_next_if_char(&sbuff, '"');
+	sberr = fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(token_identity, sizeof(token_identity)), &sbuff,
+					    SIZE_MAX, quoted ? &quoted_terms : &terms, NULL);
+	if (sberr < 0) {
+		RERROR("%s[%d] Failed reading identity: %s", filename, lineno, fr_sbuff_err_to_str(sberr));
+		goto fail_file;
+	}
+	if (len == 0) {
+		RDEBUG("Failed to find matching PSK or MAC in %s", filename);
+	fail_file:
+		fclose(fp);
+		RETURN_UNLANG_FAIL;
+	}
+	if (quoted) {
+		fr_sbuff_next_if_char(&sbuff, '"');
+		fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
+	}
 
-		if (!fr_sbuff_next_if_char(&sbuff, ',')) {
-			RDEBUG("%s[%d] Failed to find ',' after identity", filename, lineno);
-			goto fail_file;
-		}
+	if (!fr_sbuff_next_if_char(&sbuff, ',')) {
+		RDEBUG("%s[%d] Failed to find ',' after identity", filename, lineno);
+		goto fail_file;
+	}
+
+	fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
+	quoted = fr_sbuff_next_if_char(&sbuff, '"');
+	sberr = fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(token_psk, sizeof(token_psk)), &sbuff,
+					    SIZE_MAX, quoted ? &quoted_terms : &terms, NULL);
+	if (sberr < 0) {
+		RERROR("%s[%d] Failed reading PSK: %s", filename, lineno, fr_sbuff_err_to_str(sberr));
+		goto fail_file;
+	}
+	if (len == 0) {
+		RDEBUG("%s[%d] Failed parsing PSK", filename, lineno);
+		goto fail_file;
+	}
+	if (quoted) {
+		fr_sbuff_next_if_char(&sbuff, '"');
+		fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
+	}
+
+	/*
+	 *	The MAC is optional.  If there is a MAC, we
+	 *	loop over the file until we find a matching
+	 *	one.
+	 */
+	if (fr_sbuff_next_if_char(&sbuff, ',')) {
 
 		fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 		quoted = fr_sbuff_next_if_char(&sbuff, '"');
-		sberr = fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(token_psk, sizeof(token_psk)), &sbuff,
+		sberr = fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(token_mac, sizeof(token_mac)), &sbuff,
 						    SIZE_MAX, quoted ? &quoted_terms : &terms, NULL);
 		if (sberr < 0) {
-			RERROR("%s[%d] Failed reading PSK: %s", filename, lineno, fr_sbuff_err_to_str(sberr));
+			RERROR("%s[%d] Failed reading MAC: %s", filename, lineno, fr_sbuff_err_to_str(sberr));
 			goto fail_file;
 		}
 		if (len == 0) {
-			RDEBUG("%s[%d] Failed parsing PSK", filename, lineno);
+			RERROR("%s[%d] Failed parsing MAC", filename, lineno);
 			goto fail_file;
-		}
-		if (quoted) {
-			fr_sbuff_next_if_char(&sbuff, '"');
-			fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 		}
 
 		/*
-		 *	The MAC is optional.  If there is a MAC, we
-		 *	loop over the file until we find a matching
-		 *	one.
+		 *	See if the MAC matches.  If not, skip
+		 *	this entry.  That's a basic negative cache.
 		 */
-		if (fr_sbuff_next_if_char(&sbuff, ',')) {
-
-			fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
-			quoted = fr_sbuff_next_if_char(&sbuff, '"');
-			sberr = fr_sbuff_out_bstrncpy_until(&len, &FR_SBUFF_OUT(token_mac, sizeof(token_mac)), &sbuff,
-							    SIZE_MAX, quoted ? &quoted_terms : &terms, NULL);
-			if (sberr < 0) {
-				RERROR("%s[%d] Failed reading MAC: %s", filename, lineno, fr_sbuff_err_to_str(sberr));
-				goto fail_file;
-			}
-			if (len == 0) {
-				RERROR("%s[%d] Failed parsing MAC", filename, lineno);
-				goto fail_file;
-			}
-
-			/*
-			 *	See if the MAC matches.  If not, skip
-			 *	this entry.  That's a basic negative cache.
-			 */
-			if ((len != 12) ||
-			    (fr_base16_decode(NULL, &FR_DBUFF_TMP((uint8_t *)token_mac, 6),
-			    		      &FR_SBUFF_IN(token_mac, 12), false) != 6)) {
-				RERROR("%s[%d] Failed parsing MAC", filename, lineno);
-				goto fail_file;
-			}
-			if (quoted) fr_sbuff_next_if_char(&sbuff, '"');
-
-			/*
-			 *	The MAC doesn't match, don't even bother trying to generate the PMK.
-			 */
-			if (memcmp(s_mac, token_mac, 6) != 0) {
-				goto stage2a;
-			}
-
-			RDEBUG3("Found matching MAC");
-			stage = 3;
-		}
-
-		/*
-		 *	Generate the PMK using the SSID, this MAC, and the PSK we just read.
-		 */
-		psk = token_psk;
-		psk_len = strlen(token_psk);
-		psk_identity = token_identity;
-
-		RDEBUG3("%s[%d] Trying PSK %s", filename, lineno, token_psk);
-		if (generate_pmk(request, pmk, sizeof(pmk), &env->ssid, psk, psk_len) < 0) {
+		if ((len != 12) ||
+		    (fr_base16_decode(NULL, &FR_DBUFF_TMP((uint8_t *)token_mac, 6),
+		    		      &FR_SBUFF_IN(token_mac, 12), false) != 6)) {
+			RERROR("%s[%d] Failed parsing MAC", filename, lineno);
 			goto fail_file;
 		}
+		if (quoted) fr_sbuff_next_if_char(&sbuff, '"');
+
+		/*
+		 *	The MAC doesn't match, don't even bother trying to generate the PMK.
+		 */
+		if (memcmp(s_mac, token_mac, 6) != 0) {
+			goto stage2a;
+		}
+
+		RDEBUG3("Found matching MAC");
+		stage = 3;
+	}
+
+	/*
+	 *	Generate the PMK using the SSID, this MAC, and the PSK we just read.
+	 */
+	psk = token_psk;
+	psk_len = strlen(token_psk);
+	psk_identity = token_identity;
+
+	RDEBUG3("%s[%d] Trying PSK %s", filename, lineno, token_psk);
+	if (generate_pmk(request, pmk, sizeof(pmk), &env->ssid, psk, psk_len) < 0) {
+		goto fail_file;
 	}
 
 	/*
