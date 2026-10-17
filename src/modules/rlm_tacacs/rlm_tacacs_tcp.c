@@ -1390,7 +1390,6 @@ static unlang_action_t mod_enqueue(unlang_result_t *p_result, void **rctx_out, U
 	tcp_result_t		*r;
 	tcp_request_t		*req;
 	trunk_request_t		*treq;
-	trunk_enqueue_t		q;
 
 	fr_assert(FR_TACACS_PACKET_CODE_VALID(request->packet->code));
 
@@ -1412,20 +1411,29 @@ static unlang_action_t mod_enqueue(unlang_result_t *p_result, void **rctx_out, U
 
 	r->rcode = RLM_MODULE_FAIL;
 
-	q = trunk_request_enqueue(&treq, t->trunk, request, req, r);
-	if (q < 0) {
-		fr_assert(!req->packet);	/* Should not have been fed to the muxer */
-		trunk_request_free(&treq);		/* Return to the free list */
+	switch (trunk_request_enqueue(&treq, t->trunk, request, req, r)) {
+	/*
+	 *	A request in the backlog is queued, and the trunk sends it
+	 *	once a connection comes up.
+	 */
+	case TRUNK_ENQUEUE_OK:
+	case TRUNK_ENQUEUE_IN_BACKLOG:
+		break;
+
+	case TRUNK_ENQUEUE_NO_CAPACITY:
+		REDEBUG("Unable to queue packet - connections at maximum capacity");
 	fail:
+		fr_assert(!req->packet);	/* Should not have been fed to the muxer */
+		trunk_request_free(&treq);	/* Return to the free list */
 		talloc_free(r);
 		RETURN_UNLANG_FAIL;
-	}
 
-	/*
-	 *	All destinations are down.
-	 */
-	if (q == TRUNK_ENQUEUE_IN_BACKLOG) {
-		RDEBUG("All destinations are down - cannot send packet");
+	case TRUNK_ENQUEUE_DST_UNAVAILABLE:
+		REDEBUG("All destinations are down - cannot send packet");
+		goto fail;
+
+	case TRUNK_ENQUEUE_FAIL:
+		REDEBUG("Unable to queue packet");
 		goto fail;
 	}
 
