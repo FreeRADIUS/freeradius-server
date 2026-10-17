@@ -3755,6 +3755,12 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 		case FR_TYPE_DATE: {
 			int64_t sec, nsec;
 
+			/*
+			 *	A date is int64_t nanoseconds.  The check runs on the float,
+			 *	before any conversion, and leaves room for the fraction.
+			 */
+			if (unlikely((double) src->vb_float32 >= (double) (INT64_MAX / NSEC))) goto overflow;
+
 			sec = (int64_t) src->vb_float32;
 			sec *= NSEC;
 			nsec = (int64_t) ((src->vb_float32 * NSEC) - ((float) sec));
@@ -3830,9 +3836,13 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 		case FR_TYPE_DATE: {
 			int64_t sec, nsec;
 
-			sec = (int64_t) src->vb_float64;
+			/*
+			 *	A date is int64_t nanoseconds.  The check runs on the double,
+			 *	before any conversion, and leaves room for the fraction.
+			 */
+			if (unlikely(src->vb_float64 >= (double) (INT64_MAX / NSEC))) goto overflow;
 
-			if (unlikely((sec > INT64_MAX / NSEC) || (sec < INT64_MIN / NSEC))) goto overflow;
+			sec = (int64_t) src->vb_float64;
 			sec *= NSEC;
 			nsec = (int64_t) ((src->vb_float64 * NSEC) - ((double) sec));
 

@@ -302,6 +302,41 @@ static void test_cast_float_to_int64_bounds(void)
 	TEST_CHECK(dst.vb_int64 == INT64_MIN);
 }
 
+/** A float cast to a date must fail when the date does not fit in int64_t nanoseconds
+ *
+ *  A date is a signed 64-bit count of nanoseconds, which holds about 9.2e9 seconds.  The float
+ *  branches converted the seconds to int64_t and multiplied by NSEC.  The float32 branch had
+ *  no check, the float64 branch checked after a conversion that was already undefined above
+ *  2^63, and a value in the last second before the bound overflowed when the fraction was
+ *  added.
+ */
+static void test_cast_float_to_date_bounds(void)
+{
+	fr_value_box_t src, dst;
+
+	TEST_CASE("float32 1e10 seconds overflows");
+	fr_value_box(&src, (float) 1e10, false);
+	fr_value_box_init_null(&dst);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_DATE, NULL, &src) < 0);
+
+	TEST_CASE("float64 1e19 seconds overflows");
+	fr_value_box(&src, (double) 1e19, false);
+	fr_value_box_init_null(&dst);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_DATE, NULL, &src) < 0);
+
+	TEST_CASE("float64 in the last second before the bound overflows");
+	fr_value_box(&src, (double) 9223372036.5, false);
+	fr_value_box_init_null(&dst);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_DATE, NULL, &src) < 0);
+
+	TEST_CASE("float64 1.5 seconds converts, keeping the fraction");
+	fr_value_box(&src, (double) 1.5, false);
+	fr_value_box_init_null(&dst);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_DATE, NULL, &src) == 0);
+	TEST_CHECK(fr_unix_time_unwrap(dst.vb_date) == UINT64_C(1500000000));
+	TEST_MSG("got %" PRIu64 " ns", fr_unix_time_unwrap(dst.vb_date));
+}
+
 static void test_cast_uint32_to_string(void)
 {
 	fr_value_box_t src, dst;
@@ -1412,6 +1447,7 @@ TEST_LIST = {
 	/* Cast tests */
 	{ "cast_uint32_to_uint64",		test_cast_uint32_to_uint64 },
 	{ "cast_float_to_int64_bounds",		test_cast_float_to_int64_bounds },
+	{ "cast_float_to_date_bounds",		test_cast_float_to_date_bounds },
 	{ "cast_uint32_to_string",		test_cast_uint32_to_string },
 	{ "cast_string_to_uint32",		test_cast_string_to_uint32 },
 	{ "cast_int32_to_int64",		test_cast_int32_to_int64 },
