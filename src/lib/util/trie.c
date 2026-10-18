@@ -2752,7 +2752,7 @@ int fr_trie_replace(void **old, fr_trie_t *ft, void const *data)
 
 	if (uctx->get_key(&key, &keylen, data) < 0) return -1;
 
-	found = trie_key_match(ft, key, 0, keylen, true); /* do exact match */
+	found = fr_trie_match_by_key(ft, key, keylen);
 	if (found) {
 		if (old) *old = found;
 		if (fr_trie_remove_by_key(ft, key, keylen) != found) return -1;
