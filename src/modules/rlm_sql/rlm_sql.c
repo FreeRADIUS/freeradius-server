@@ -836,7 +836,7 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 		     map = map_list_next(maps, map), j++) {
 			if (field_index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
 			if (!row[field_index[j]]) {
-				RDEBUG2("Database returned NULL for %s", fields[j]);
+				RDEBUG2("Database returned NULL for %s", fields[field_index[j]]);
 				continue;
 			}
 			if (map_to_request(request, map, _sql_map_proc_get_value, row[field_index[j]]) < 0) goto error;
