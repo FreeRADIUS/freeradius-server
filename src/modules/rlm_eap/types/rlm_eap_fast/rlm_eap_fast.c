@@ -1628,6 +1628,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	eap_tls_conf_check(conf, inst->tls_conf);
 
+	if (eap_tls_check_stateless(conf, inst->tls_conf) < 0) return -1;
+
 	if (talloc_strlen(inst->pac_opaque_key) != 32) {
 		cf_log_err_by_child(conf, "pac_opaque_key", "Must be 32 bytes long");
 		return -1;

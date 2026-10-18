@@ -424,6 +424,18 @@ unlang_action_t fr_tls_ticket_issue(request_t *request, fr_tls_session_t *tls_se
 {
 	fr_tls_conf_t *conf = tls_session->conf;
 
+	/*
+	 *	Some TLS servers (EAP-TTLS, PEAP, and EAP-FAST) do not use stateless tickets with TLS 1.3.
+	 *	The call succeeds, but no stateless ticket is created.
+	 */
+	if (tls_session->disallow_stateless_tickets &&
+	    (conf->cache.mode & FR_TLS_TICKET_STATELESS) &&
+	    SSL_is_server(tls_session->ssl) &&
+	    (SSL_version(tls_session->ssl) == TLS1_3_VERSION)) {
+		RWDEBUG("(TLS) Stateless session resumption does not work for this session");
+		return fr_tls_ticket_stateful_store_session(request, tls_session);
+	}
+
 	if (conf->delayed_tickets &&
 	    (conf->cache.mode & FR_TLS_TICKET_STATELESS) &&
 	    SSL_is_server(tls_session->ssl) &&

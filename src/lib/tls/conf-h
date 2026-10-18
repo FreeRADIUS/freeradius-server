@@ -126,6 +126,8 @@ typedef enum {
  */
 typedef struct {
 	fr_tls_ticket_mode_t mode;			//!< What type of session resumption we're going to use.
+	bool		mode_is_auto;			//!< The configuration said `auto`.  `mode` may have been
+							///< rewritten to `stateless`, and this field keeps the original.
 
 	tmpl_t		*id_name;			//!< Context ID to allow multiple sessions stores to be defined.
 	char		context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];

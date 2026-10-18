@@ -719,7 +719,7 @@
 		#  Some clients such as wpa_supplicant do not allow session tickets
 		#  by default for TLS < 1.3.
 		#
-#		mode = auto
+		mode = disabled
 
 		#  name:: Name of the context used for TLS sessions.
 		#

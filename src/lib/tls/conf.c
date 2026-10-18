@@ -94,7 +94,7 @@ static conf_parser_t tls_ticket_config[] = {
 			 	.table = cache_mode_table,
 			 	.len = &cache_mode_table_len
 			 },
-			 .dflt = "auto" },
+			 .dflt = "disabled" },
 	{ FR_CONF_OFFSET_HINT_TYPE("name", FR_TYPE_STRING, fr_tls_ticket_conf_t, id_name),
 			 .dflt = "%{EAP-Type}%interpreter('server')", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("lifetime", fr_tls_ticket_conf_t, lifetime), .func = tls_ticket_lifetime_parse, .dflt = "1d" },
@@ -320,6 +320,8 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 	int		cache_mode;
 
 	if (cf_table_parse_int(ctx, &cache_mode, parent, ci, rule) < 0) return -1;
+
+	conf->cache.mode_is_auto = (cache_mode == FR_TLS_TICKET_AUTO);
 
 	/*
 	 *	Ensure our virtual server contains the

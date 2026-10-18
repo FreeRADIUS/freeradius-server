@@ -278,9 +278,6 @@ struct fr_tls_session_s {
 	size_t			sizeof_alpn;			//!< Length of `alpn`.
 
 	fr_tls_ticket_stateful_t	*cache;			//!< Current session resumption state.
-	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
-	bool			verify_peer_cert;		//!< Whether verification of the peer's certificate
-								///< has been requested.
 
 	fr_tls_pending_t	pending;			//!< Policy sections that an OpenSSL callback has
 								///< asked the handshake to run.
@@ -294,6 +291,13 @@ struct fr_tls_session_s {
 	fr_tls_psk_t		psk;				//!< Whether `load psk` is waiting to run, and what
 								///< `load psk` returned.
 #endif
+
+	bool			disallow_stateless_tickets;	//!< Stateless session tickets are not used, even if the
+								///< configuration allows them.  Set for EAP-TTLS, PEAP,
+								///< and EAP-FAST on a TLS server.  `false` is the default.
+	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
+	bool			verify_peer_cert;		//!< Whether verification of the peer's certificate
+								///< has been requested.
 
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 

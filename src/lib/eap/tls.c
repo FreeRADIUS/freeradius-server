@@ -1267,6 +1267,22 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	if (unlikely(!tls_session)) return NULL;
 
 	/*
+	 *	These methods cannot reliably use stateless session tickets with TLS 1.3.
+	 *
+	 *	See src/lib/tls/session.c for explanations.
+	 */
+	switch (eap_session->type) {
+	case FR_EAP_METHOD_TTLS:
+	case FR_EAP_METHOD_PEAP:
+	case FR_EAP_METHOD_FAST:
+		tls_session->disallow_stateless_tickets = true;
+		break;
+
+	default:
+		break;
+	}
+
+	/*
 	 *	Set our MTU, and enforce dynamic MTU
 	 *
 	 *	Account for the EAP header (4), and the EAP-TLS header
@@ -1376,4 +1392,51 @@ void eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf)
 	 *	EAP sends the ticket after the authentication has succeeded, not in the TLS handshake.
 	 */
 	tls_conf->delayed_tickets = true;
+}
+
+/** Check that the TLS configuration does not need stateless session tickets
+ *
+ * EAP-TTLS, PEAP, and EAP-FAST do not use stateless session tickets with TLS 1.3.  Their
+ * sessions set `disallow_stateless_tickets`, and the ticket code creates no stateless ticket.
+ *
+ * - `session.mode = "stateless"` needs stateless tickets, so with TLS 1.3 allowed the method
+ *   cannot work as configured.  That is an error.
+ * - `session.mode = "auto"` allows stateless tickets, but does not need them.  That is a warning.
+ *
+ * @param[in] cs		the submodule's section.
+ * @param[in] tls_conf		parsed from the `tls { ... }` subsection.
+ *	- 0 on success.
+ *	- -1 if the configuration requires stateless session tickets.
+ */
+int eap_tls_check_stateless(CONF_SECTION *cs, fr_tls_conf_t const *tls_conf)
+{
+	/*
+	 *	No TLS 1.3 means no stateless tickets, which TLS 1.2 and earlier do not use.
+	 */
+	if ((tls_conf->tls_max_version != 0) && (tls_conf->tls_max_version < (float)1.3)) return 0;
+
+	if (!(tls_conf->cache.mode & FR_TLS_TICKET_STATELESS)) return 0;
+
+	if (tls_conf->cache.mode == FR_TLS_TICKET_AUTO) {
+		cf_log_warn_by_child(cs, "tls", "Stateless session tickets do not work with this EAP method, "
+				     "and are not used with TLS 1.3");
+		return 0;
+	}
+
+	cf_log_err_by_child(cs, "tls", "session.mode = \"stateless\" does not work with this EAP method, "
+			    "which does not use stateless session tickets with TLS 1.3.");
+
+	/*
+	 *	`auto` is rewritten to `stateless` when there is no stateful cache.  The administrator
+	 *	still asked for `auto`.
+	 */
+	if (tls_conf->cache.mode_is_auto) {
+		cf_log_warn_by_child(cs, "tls", "Add a 'save session { ... }' section to save stateful tickets, or");
+		cf_log_warn_by_child(cs, "tls", "use session.mode = \"disabled\",");
+	} else {
+		cf_log_warn_by_child(cs, "tls", "Use session.mode = \"auto\" or \"disabled\",");
+	}
+	cf_log_warn_by_child(cs, "tls", "or set tls_max_version = 1.2");
+
+	return -1;
 }
