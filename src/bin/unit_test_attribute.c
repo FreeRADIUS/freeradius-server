@@ -3539,7 +3539,7 @@ static size_t command_xlat_purify_condition(command_result_t *result, command_fi
 static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc,
 				char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	int		i, argc;
+	ssize_t		i, argc;
 	char		*p;
 	fr_slen_t	slen;
 	xlat_exp_head_t	*head = NULL;
@@ -3576,7 +3576,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 	for (i = 0, p = data; i < argc; i++) {
 		(void)  xlat_print(&FR_SBUFF_OUT(buff, sizeof(buff)), argv[i], NULL);
 
-		len = snprintf(p, data + COMMAND_OUTPUT_MAX - p, "[%d]{ %s }, ", i, buff);
+		len = snprintf(p, data + COMMAND_OUTPUT_MAX - p, "[%zd]{ %s }, ", i, buff);
 		p += len;
 	}
 

@@ -1936,9 +1936,9 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
  *
  *  This is mostly for async use.
  */
-int xlat_flatten_to_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head)
+ssize_t xlat_flatten_to_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head)
 {
-	int			i;
+	size_t			i;
 	xlat_exp_head_t		**my_argv;
 	size_t			count;
 

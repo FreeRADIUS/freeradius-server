@@ -1392,8 +1392,11 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static int xlat_instantiate_logical(xlat_inst_ctx_t const *xctx)
 {
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
+	ssize_t			argc;
 
-	inst->argc = xlat_flatten_to_argv(inst, &inst->argv, xctx->ex->call.args);
+	argc = xlat_flatten_to_argv(inst, &inst->argv, xctx->ex->call.args);
+	if (argc < 0) return -1;
+	inst->argc = (int)argc;
 	if (xctx->ex->call.func->token == T_LOR) {
 		inst->callback = xlat_logical_or_resume;
 		inst->stop_on_match = true;
