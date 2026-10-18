@@ -1075,18 +1075,18 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	 *	Check for invalid text, or invalid trailing text.
 	 */
 	l = strtoul(f[1], &tail, 10);
-	if ((l == ULONG_MAX) || (*tail != '\0')) {
+	if ((l > INT_MAX) || (*tail != '\0')) {
 		fr_strerror_const("Invalid year string");
 		return -1;
 	}
-	tm->tm_year = l;
+	tm->tm_year = (int)l;
 
 	l = strtoul(f[2], &tail, 10);
-	if ((l == ULONG_MAX) || (*tail != '\0')) {
+	if ((l > INT_MAX) || (*tail != '\0')) {
 		fr_strerror_const("Invalid day of month string");
 		return -1;
 	}
-	tm->tm_mday = l;
+	tm->tm_mday = (int)l;
 
 	if (tm->tm_year >= 1900) {
 		tm->tm_year -= 1900;
