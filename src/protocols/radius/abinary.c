@@ -392,6 +392,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 				ascend_ipx_net_t *net, uint8_t *comp)
 {
 	int		token;
+	unsigned long	socket_num;
 	char const	*p;
 
 	if (argc < 3) {
@@ -483,13 +484,13 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	/*
 	 *	Parse the value.
 	 */
-	token = strtoul(argv[5], NULL, 16);
-	if (token > 65535) {
+	socket_num = strtoul(argv[5], NULL, 16);
+	if (socket_num > 65535) {
 		fr_strerror_printf("Socket value '%s' is too large for IPX network filter", argv[5]);
 		return -1;
 	}
 
-	net->socket = token;
+	net->socket = socket_num;
 	net->socket = htons(net->socket);
 
 
