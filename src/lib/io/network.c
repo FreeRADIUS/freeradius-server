@@ -1454,7 +1454,7 @@ static void fr_network_listen_callback(void const *data, size_t data_size, UNUSE
 
 static void fr_network_limit_ringbuffer(fr_network_socket_t *s, int *num_messages_p, size_t *size_p)
 {
-	int num_messages;
+	size_t num_messages;
 	size_t size;
 
 	num_messages = s->listen->num_messages;
@@ -1465,7 +1465,7 @@ static void fr_network_limit_ringbuffer(fr_network_socket_t *s, int *num_message
 	if (size < (1 << 17)) size = (1 << 17);
 	if (size > (100 * 1024 * 1024)) size = (100 * 1024 * 1024);
 
-	*num_messages_p = num_messages;
+	*num_messages_p = (int)num_messages;	/* clamped to (1 << 20) above */
 	*size_p = size;
 }
 
