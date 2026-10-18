@@ -593,7 +593,7 @@ static cache_status_t cache_entry_insert(void **rctx_out, UNUSED rlm_cache_confi
 		}
 		REXDENT();
 	}
-	cmd_len = redisFormatCommandArgv(&rctx->cmd_str[1], talloc_array_length(argv), argv, argv_len);
+	cmd_len = redisFormatCommandArgv(&rctx->cmd_str[1], (int)talloc_array_length(argv), argv, argv_len);
 	if (cmd_len < 0) goto format_error;
 
 	if (fr_unix_time_ispos(c->expires)) {

@@ -241,7 +241,7 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp,
 			goto next_type;
 		}
 
-		if ((pad = (11 - type->name.len)) < 0) pad = 0;
+		pad = (type->name.len < 11) ? (int)(11 - type->name.len) : 0;
 
 		RINDENT();
 		RDEBUG4("as %s%*s: %pV", type->name.str, pad, " ", dst);
@@ -4497,7 +4497,7 @@ static xlat_action_t xlat_pair_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
 				      request_t *request, fr_value_box_list_t *in)
 {
-	int					decoded;
+	ssize_t					decoded;
 	fr_value_box_t				*vb, *in_head, *root_da;
 	void					*decode_ctx = NULL;
 	xlat_pair_decode_inst_t const	*inst = talloc_get_type_abort_const(xctx->inst, xlat_pair_decode_inst_t);
@@ -4552,7 +4552,7 @@ static xlat_action_t xlat_pair_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	it to the output list.
 	 */
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
-	vb->vb_uint32 = decoded;
+	vb->vb_uint32 = (uint32_t)decoded;
 	fr_dcursor_append(out, vb);
 
 	talloc_free(decode_ctx);

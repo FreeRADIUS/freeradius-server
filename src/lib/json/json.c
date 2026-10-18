@@ -233,14 +233,14 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 
 		if (fr_value_box_print(&sbuff, data, NULL) <= 0) return NULL;
 
-		return json_object_new_string_len(buffer, fr_sbuff_used(&sbuff));
+		return json_object_new_string_len(buffer, (int)fr_sbuff_used(&sbuff));
 	}
 
 	case FR_TYPE_STRING:
-		return json_object_new_string_len(data->vb_strvalue, data->vb_length);
+		return json_object_new_string_len(data->vb_strvalue, (int)data->vb_length);
 
 	case FR_TYPE_OCTETS:
-		return json_object_new_string_len((char const *)data->vb_octets, data->vb_length);
+		return json_object_new_string_len((char const *)data->vb_octets, (int)data->vb_length);
 
 	case FR_TYPE_BOOL:
 		return json_object_new_boolean(data->vb_bool);
@@ -543,7 +543,7 @@ int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 				break;
 			}
 
-			MEM(*out = json_object_new_string_len(fr_sbuff_start(encoded), fr_sbuff_used(encoded)));
+			MEM(*out = json_object_new_string_len(fr_sbuff_start(encoded), (int)fr_sbuff_used(encoded)));
 			return 0;
 		}
 

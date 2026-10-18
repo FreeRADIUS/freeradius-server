@@ -205,5 +205,5 @@ int fr_utils_get_private_key_password(char *buf, int size, UNUSED int rwflag, vo
 	}
 	memcpy(buf, pass, len);			/* Copy complete password including \0 byte */
 
-	return len - 1;
+	return (int)(len - 1);
 }

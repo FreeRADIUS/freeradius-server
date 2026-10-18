@@ -207,7 +207,7 @@ typedef struct {
  *	- number of slot ranges found
  *	- -1 on error
  */
-static int fr_redis_cluster_shards_slots_to_pairs(redisReply *reply, fr_pair_t *shard_vp, bool slots_covered[KEY_SLOTS])
+static ssize_t fr_redis_cluster_shards_slots_to_pairs(redisReply *reply, fr_pair_t *shard_vp, bool slots_covered[KEY_SLOTS])
 {
 	fr_pair_t	*slot_vp, *vp;
 	size_t		i;
@@ -252,7 +252,7 @@ static int fr_redis_cluster_shards_slots_to_pairs(redisReply *reply, fr_pair_t *
  *	- number of nodes found
  *	- -1 on error
  */
-static int fr_redis_cluster_shards_nodes_to_pairs(redisReply *reply, fr_pair_t *shard_vp)
+static ssize_t fr_redis_cluster_shards_nodes_to_pairs(redisReply *reply, fr_pair_t *shard_vp)
 {
 	fr_pair_t	*node_vp, *vp;
 	size_t		i, j;
@@ -362,7 +362,7 @@ static int fr_redis_cluster_shards_nodes_to_pairs(redisReply *reply, fr_pair_t *
 {
 	size_t		i;
 	fr_pair_t	*shard_vp;
-	int		ret;
+	ssize_t		ret;
 	bool		slots_covered[KEY_SLOTS];
 	uint16_t	s;
 

@@ -62,7 +62,8 @@ static void ntpwdhash(uint8_t *out, char const *password)
 
 int main (int argc, char *argv[])
 {
-	int i, l;
+	int i;
+	size_t l;
 	char password[1024];
 	uint8_t hash[16];
 	char ntpass[33];

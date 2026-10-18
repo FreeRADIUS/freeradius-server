@@ -184,7 +184,7 @@ fr_slen_t fr_utf8_str(uint8_t const *str, ssize_t inlen)
 char const *fr_utf8_strchr(int *out_chr_len, char const *str, ssize_t inlen, char const *chr)
 {
 	char const	*p = str, *end;
-	int		needle_len;
+	size_t		needle_len;
 
 	if (inlen < 0) inlen = strlen(str);
 
@@ -196,14 +196,14 @@ char const *fr_utf8_strchr(int *out_chr_len, char const *str, ssize_t inlen, cha
 	 */
 	needle_len = fr_utf8_char((uint8_t const *)chr, -1);
 	if (needle_len == 0) needle_len = 1;	/* Invalid UTF8 sequence - ignore - needle is one byte */
-	if (out_chr_len) *out_chr_len = needle_len;
+	if (out_chr_len) *out_chr_len = (int)needle_len;
 
 	/*
 	 *	Loop over the input sequence, advancing
 	 *      UTF8 sequence by utf8 seqnce.
 	 */
 	while (p < end) {
-		int schr_len;
+		size_t schr_len;
 
 		schr_len = fr_utf8_char((uint8_t const *)p, end - p);
 		if (schr_len == 0) schr_len = 1;	/* Invalid UTF8 sequence - ignore - advance by 1 */

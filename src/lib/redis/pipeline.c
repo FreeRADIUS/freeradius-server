@@ -808,7 +808,7 @@ static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *
 					}
 
 				}
-				ret = redisAsyncCommandArgv(h->ac, _redis_pipeline_demux, cmd, cmd->argc,
+				ret = redisAsyncCommandArgv(h->ac, _redis_pipeline_demux, cmd, (int)cmd->argc,
 							    cmd->argv, cmd->argv_len);
 				break;
 

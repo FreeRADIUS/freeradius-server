@@ -123,13 +123,13 @@ int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,
 	/* Provide any AAD data. This can be called zero or more times as
 	 * required
 	 */
-	if (1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len))
+	if (1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, (int)aad_len))
 		handleErrors();
 
 	/* Provide the message to be encrypted, and obtain the encrypted output.
 	 * EVP_EncryptUpdate can be called multiple times if necessary
 	 */
-	if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
+	if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, (int)plaintext_len))
 		handleErrors();
 	ciphertext_len = len;
 
@@ -175,13 +175,13 @@ int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 	/* Provide any AAD data. This can be called zero or more times as
 	 * required
 	 */
-	if (!EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len))
+	if (!EVP_DecryptUpdate(ctx, NULL, &len, aad, (int)aad_len))
 		handleErrors();
 
 	/* Provide the message to be decrypted, and obtain the plaintext output.
 	 * EVP_DecryptUpdate can be called multiple times if necessary
 	 */
-	if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
+	if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, (int)ciphertext_len))
 		handleErrors();
 	plaintext_len = len;
 
@@ -223,7 +223,7 @@ static void crypto_rfc4346_p_hash(uint8_t *out, size_t out_len,
 	ctx_a = EVP_MD_CTX_new();
 	ctx_out = EVP_MD_CTX_new();
 
-	MEM(pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, secret, secret_len));
+	MEM(pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, secret, (int)secret_len));
 
 	EVP_DigestSignInit(ctx_a, NULL, evp_md, NULL, pkey);
 	EVP_DigestSignInit(ctx_out, NULL, evp_md, NULL, pkey);

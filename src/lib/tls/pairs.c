@@ -298,7 +298,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_common_name) == 0);
 		MEM(fr_pair_value_bstr_alloc(vp, &cn, (size_t)slen, true) == 0); /* Allocs \0 byte in addition to len */
 
-		slen = X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, cn, (size_t)slen + 1);
+		slen = X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, cn, (int)slen + 1);
 		if (slen < 0) {
 			fr_tls_log_perror(request, "Failed retrieving certificate common name");
 			goto error;

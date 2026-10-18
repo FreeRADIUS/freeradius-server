@@ -361,7 +361,7 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 
 			if (RDEBUG_ENABLED3) linelog_hexdump(request, head_vector_s, head_vector_len, "linelog header");
 
-			if (writev(fd, &head_vector_s[0], head_vector_len) < 0) {
+			if (writev(fd, &head_vector_s[0], (int)head_vector_len) < 0) {
 			write_fail:
 				RERROR("Failed writing to \"%pV\": %s", call_env->filename, fr_syserror(errno));
 				exfile_close(inst->file.ef, fd);
@@ -380,7 +380,7 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 
 		if (RDEBUG_ENABLED3) linelog_hexdump(request, vector_p, vector_len, "linelog data");
 
-		ret = writev(fd, vector_p, vector_len);
+		ret = writev(fd, vector_p, (int)vector_len);
 		if (ret < 0) goto write_fail;
 
 		exfile_close(inst->file.ef, fd);
@@ -489,7 +489,7 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 	case LINELOG_DST_STDERR:
 	{
 		int fd = inst->log_dst == LINELOG_DST_STDOUT ? STDOUT_FILENO : STDERR_FILENO;
-		if ((ret = writev(fd, vector_p, vector_len)) < 0) {
+		if ((ret = writev(fd, vector_p, (int)vector_len)) < 0) {
 			RERROR("Failed writing to \"%s\": %s",
 			       fr_table_str_by_value(linefr_log_dst_table, inst->log_dst, NULL),
 			       fr_syserror(errno));

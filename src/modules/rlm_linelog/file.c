@@ -124,7 +124,8 @@ void batching_mark_entries_failed(rlm_linelog_file_t *file, rlm_linelog_file_ent
 
 static void _batch_write(rlm_linelog_file_t *file)
 {
-	int			ret, written, fd = -1;
+	ssize_t			ret, written;
+	int			fd = -1;
 	bool			with_delim;
 	size_t			len = 0, header_len = 0;
 	off_t			offset, file_size;

@@ -248,7 +248,7 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
  *	- The number of elements in the array on success.
  *	- < 0 on error (array length not a multiple of element size).
  */
-static int sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
+static ssize_t sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
 {
 	size_t		element_len;
 
@@ -302,7 +302,7 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	uint8_t const	*p = data, *end = p + attr_len;
 	uint16_t	actual_len;
-	int		elements, i;
+	ssize_t		elements, i;
 	size_t		element_len;
 	ssize_t		ret;
 

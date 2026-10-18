@@ -39,7 +39,7 @@ struct map_proc {
 	fr_rb_node_t		node;			//!< Entry in the map processor tree.
 	void const		*mod_inst;		//!< Module instance.
 	char			name[FR_MAX_STRING_LEN];	//!< Name of the map function.
-	int			length;			//!< Length of name.
+	size_t			length;			//!< Length of name.
 
 	map_proc_func_t		evaluate;		//!< Module's map processor function.
 	map_proc_instantiate_t	instantiate;		//!< Callback to create new instance struct.

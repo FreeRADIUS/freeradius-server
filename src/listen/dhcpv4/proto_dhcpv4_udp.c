@@ -750,11 +750,13 @@ static int mod_close(fr_listen_t *li)
 {
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 	void				**pcap_to_free;
-	int				i;
+	size_t				i;
 
 	if (fr_rb_flatten_inorder(NULL, &pcap_to_free, &thread->pcaps) < 0) return -1;
 
-	for (i = talloc_array_length(pcap_to_free) - 1; i >= 0; i--) talloc_free(pcap_to_free[i]);
+	for (i = talloc_array_length(pcap_to_free); i > 0; i--) {
+		talloc_free(pcap_to_free[i - 1]);
+	}
 	talloc_free(pcap_to_free);
 
 	return 0;

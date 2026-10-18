@@ -183,7 +183,7 @@ static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t 
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	char		challenge_str[1024];
-	int		length;
+	size_t		length;
 	eap_round_t	*eap_round = eap_session->this_round;
 	rlm_eap_gtc_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_gtc_t);
 

@@ -277,11 +277,11 @@ struct rs {
 
 	char			*list_attributes;	//!< Raw attribute filter string.
 	fr_dict_attr_t const 	*list_da[RS_MAX_ATTRS]; //!< Output CSV with these attribute values.
-	int			list_da_num;
+	size_t			list_da_num;
 
 	char			*link_attributes;	//!< Names of fr_dict_attr_ts to use for rtx.
 	fr_dict_attr_t const	*link_da[RS_MAX_ATTRS];	//!< fr_dict_attr_ts to link on.
-	int			link_da_num;		//!< Number of rtx fr_dict_attr_ts.
+	size_t			link_da_num;		//!< Number of rtx fr_dict_attr_ts.
 
 	char const		*filter_request;	//!< Raw request filter string.
 	char const		*filter_response;	//!< Raw response filter string.

@@ -2170,7 +2170,7 @@ static unlang_action_t CC_HINT(nonnull) user_modify_mod_build_resume(unlang_resu
 	LDAPMod			**modify;
 	ldap_mod_tmpl_t		*mod;
 	fr_value_box_t		*vb = NULL;
-	int			mod_no = usermod_ctx->expanded_mods, i = 0;
+	size_t			mod_no = usermod_ctx->expanded_mods, i = 0;
 	struct berval		**value_refs;
 	struct berval		*values;
 
@@ -2616,11 +2616,13 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
 	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
 	void			**trunks_to_free;
-	int			i;
+	size_t			i;
 
 	if (fr_rb_flatten_inorder(NULL, &trunks_to_free, t->trunks) < 0) return -1;
 
-	for (i = talloc_array_length(trunks_to_free) - 1; i >= 0; i--) talloc_free(trunks_to_free[i]);
+	for (i = talloc_array_length(trunks_to_free); i > 0; i--) {
+		talloc_free(trunks_to_free[i - 1]);
+	}
 	talloc_free(trunks_to_free);
 	talloc_free(t->trunks);
 

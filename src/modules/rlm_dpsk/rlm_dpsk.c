@@ -280,8 +280,8 @@ static int generate_pmk(request_t *request, uint8_t *buffer, size_t buflen, fr_v
 {
 	fr_assert(buflen == 32);
 
-	if (PKCS5_PBKDF2_HMAC_SHA1((const char *) psk, psk_len, (const unsigned char *) ssid->vb_strvalue,
-				   ssid->vb_length, 4096, buflen, buffer) == 0) {
+	if (PKCS5_PBKDF2_HMAC_SHA1((const char *) psk, (int)psk_len, (const unsigned char *) ssid->vb_strvalue,
+				   (int)ssid->vb_length, 4096, (int)buflen, buffer) == 0) {
 		RERROR("Failed calling OpenSSL to calculate the PMK");
 		return -1;
 	}
@@ -875,8 +875,8 @@ static xlat_action_t dpsk_pmk_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xl
 
 	XLAT_ARGS(in, &ssid, &psk);
 
-	if (PKCS5_PBKDF2_HMAC_SHA1(psk->vb_strvalue, psk->vb_length,
-				   (const unsigned char *) ssid->vb_strvalue, ssid->vb_length,
+	if (PKCS5_PBKDF2_HMAC_SHA1(psk->vb_strvalue, (int)psk->vb_length,
+				   (const unsigned char *) ssid->vb_strvalue, (int)ssid->vb_length,
 				   4096, sizeof(buffer), buffer) == 0) {
 		RERROR("Failed calling OpenSSL to calculate the PMK");
 		return XLAT_ACTION_FAIL;

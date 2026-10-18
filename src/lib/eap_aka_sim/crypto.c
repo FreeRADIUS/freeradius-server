@@ -318,7 +318,7 @@ ssize_t fr_aka_sim_crypto_sign_packet(uint8_t out[static AKA_SIM_MAC_DIGEST_SIZE
 	}
 
 	FR_PROTO_HEX_DUMP(key, key_len, "MAC key");
-	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, (int)key_len);
 	if (!pkey) {
 		fr_tls_strerror_printf("Failed creating HMAC signing key");
 	error:
@@ -784,7 +784,7 @@ static int aka_prime_prf(uint8_t *out, size_t outlen,
 	EVP_PKEY	*pkey;
 	EVP_MD_CTX	*md_ctx = NULL;
 
-	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, (int)key_len);
 	if (!pkey) {
 		fr_tls_strerror_printf("Failed creating HMAC signing key");
 	error:

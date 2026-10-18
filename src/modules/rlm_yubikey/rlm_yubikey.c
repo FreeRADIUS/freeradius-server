@@ -266,7 +266,7 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t const *inst, char con
 	size_t i;
 
 	for (i = inst->id_len; i < len; i++) {
-		if (!is_modhex(otp[i])) return -i;
+		if (!is_modhex(otp[i])) return -(int)i;
 	}
 
 	return 1;

@@ -49,7 +49,7 @@ xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*to_escape = fr_value_box_list_pop_head(in);
 	char		*escaped;
 
-	escaped = curl_easy_escape(fr_curl_tmp_handle(), to_escape->vb_strvalue, to_escape->vb_length);
+	escaped = curl_easy_escape(fr_curl_tmp_handle(), to_escape->vb_strvalue, (int)to_escape->vb_length);
 	if (!escaped) {
 		talloc_free(to_escape);
 		return XLAT_ACTION_FAIL;
@@ -81,7 +81,7 @@ xlat_action_t fr_curl_xlat_uri_unescape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *ou
 	int		unescaped_len;
 	char		*unescaped;
 
-	unescaped = curl_easy_unescape(fr_curl_tmp_handle(), to_unescape->vb_strvalue, to_unescape->vb_length, &unescaped_len);
+	unescaped = curl_easy_unescape(fr_curl_tmp_handle(), to_unescape->vb_strvalue, (int)to_unescape->vb_length, &unescaped_len);
 	if (!unescaped) {
 		talloc_free(to_unescape);
 		return XLAT_ACTION_FAIL;

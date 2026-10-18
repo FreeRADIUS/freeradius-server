@@ -268,7 +268,7 @@ static void rs_packet_print_csv_header(void)
 {
 	char buffer[2048];
 	char *p = buffer;
-	int i;
+	size_t i;
 
 	ssize_t len, s = sizeof(buffer);
 
@@ -344,7 +344,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	}
 
 	if (body) {
-		int i;
+		size_t i;
 		fr_pair_t *vp;
 
 		for (i = 0; i < conf->list_da_num; i++) {
@@ -369,7 +369,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 			if (fr_sbuff_in_char(&sbuff, ',') < 0) return;
 		}
 	} else {
-		if (fr_sbuff_remaining(&sbuff) < (size_t)conf->list_da_num) return;
+		if (fr_sbuff_remaining(&sbuff) < conf->list_da_num) return;
 
 		memset(fr_sbuff_current(&sbuff), ',', conf->list_da_num);
 		fr_sbuff_advance(&sbuff, conf->list_da_num);
@@ -992,13 +992,13 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
  *
  * Should be O(n) if all the attributes exist.  List must be pre-sorted.
  */
-static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vps, fr_dict_attr_t const *da[], int num)
+static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vps, fr_dict_attr_t const *da[], size_t num)
 {
 	fr_dcursor_t list_cursor;
 	fr_pair_t *match, *copy;
 	fr_pair_t *last_match = NULL;
 	uint64_t count = 0;
-	int i;
+	size_t i;
 
 	last_match = fr_pair_list_head(vps);
 
@@ -2069,7 +2069,7 @@ static fr_cmp_ret_t rs_rtx_cmp(void const *one, void const *two)
 	return fr_pair_list_cmp(&a->link_vps, &b->link_vps);
 }
 
-static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list)
+static ssize_t rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list)
 {
 	size_t i = 0;
 	char *p, *tok;
@@ -2138,7 +2138,7 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 	return 0;
 }
 
-static int rs_build_event_flags(rs_status_t *flags, fr_table_num_sorted_t const *map, size_t map_len, char *list)
+static ssize_t rs_build_event_flags(rs_status_t *flags, fr_table_num_sorted_t const *map, size_t map_len, char *list)
 {
 	size_t i = 0;
 	char *p, *tok;
@@ -2755,20 +2755,24 @@ int main(int argc, char *argv[])
 	fr_strerror_clear();	/* Clear out any non-fatal errors */
 
 	if (conf->list_attributes) {
-		conf->list_da_num = rs_build_dict_list(conf->list_da, NUM_ELEMENTS(conf->list_da),
-						       conf->list_attributes);
-		if (conf->list_da_num < 0) {
+		ssize_t num;
+
+		num = rs_build_dict_list(conf->list_da, NUM_ELEMENTS(conf->list_da), conf->list_attributes);
+		if (num < 0) {
 			usage(64);
 		}
+		conf->list_da_num = (size_t)num;
 		rs_packet_print_csv_header();
 	}
 
 	if (conf->link_attributes) {
-		conf->link_da_num = rs_build_dict_list(conf->link_da, NUM_ELEMENTS(conf->link_da),
-						       conf->link_attributes);
-		if (conf->link_da_num < 0) {
+		ssize_t num;
+
+		num = rs_build_dict_list(conf->link_da, NUM_ELEMENTS(conf->link_da), conf->link_attributes);
+		if (num < 0) {
 			usage(64);
 		}
+		conf->link_da_num = (size_t)num;
 
 		link_tree = fr_rb_inline_talloc_alloc(conf, rs_request_t, link_node, rs_rtx_cmp, _unmark_link);
 		if (!link_tree) {

@@ -254,7 +254,7 @@ static void eap_fast_update_icmk(request_t *request, fr_tls_session_t *tls_sessi
 	RHEXDUMP3(t->emsk, EAP_EMSK_LEN, "EMSK");
 }
 
-static void eap_fast_tlv_append(fr_tls_session_t *tls_session, fr_dict_attr_t const *tlv, bool mandatory, int length, void const *data)
+static void eap_fast_tlv_append(fr_tls_session_t *tls_session, fr_dict_attr_t const *tlv, bool mandatory, size_t length, void const *data)
 {
 	uint16_t hdr[2];
 
@@ -262,7 +262,7 @@ static void eap_fast_tlv_append(fr_tls_session_t *tls_session, fr_dict_attr_t co
 	hdr[1] = htons(length);
 
 	(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, (uint8_t const *) &hdr, (size_t) 4);
-	(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, (uint8_t const *) data, (size_t) length);
+	(void) fr_dbuff_in_memcpy_partial(&tls_session->clean_in, (uint8_t const *) data, length);
 }
 
 static void eap_fast_send_error(fr_tls_session_t *tls_session, int error)
@@ -306,7 +306,8 @@ static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_s
 	eap_fast_tunnel_t			*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_fast_pac_t				pac;
 	eap_fast_attr_pac_opaque_plaintext_t	opaque_plaintext;
-	int					alen, dlen;
+	size_t					alen;
+	int					dlen;
 
 	memset(&pac, 0, sizeof(pac));
 	memset(&opaque_plaintext, 0, sizeof(opaque_plaintext));

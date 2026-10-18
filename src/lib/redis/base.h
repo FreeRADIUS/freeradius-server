@@ -189,7 +189,7 @@ int		redis_dict_init(void);
 /*
  *	Command and resulting parsing
  */
-void			fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx,
+void			fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, size_t idx,
 					     fr_redis_rcode_t status);
 
 int			fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply *reply,

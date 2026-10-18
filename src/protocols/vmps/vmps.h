@@ -46,7 +46,7 @@ typedef enum : uint16_t {
 	FR_VMPS_DO_NOT_RESPOND = 256,
 } fr_vmps_packet_code_t;
 
-int	fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, unsigned int *code);
+ssize_t	fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, unsigned int *code);
 
 ssize_t fr_vmps_packet_size(uint8_t const *data, size_t data_len);
 

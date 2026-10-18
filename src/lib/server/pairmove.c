@@ -43,7 +43,7 @@ RCSID("$Id$")
  */
 void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *from)
 {
-	int		i, j, count, to_count, tailto;
+	size_t		i, j, count, to_count, tailto;
 	fr_pair_t	*from_vp, *next_from, *to_vp, *next_to = NULL;
 	fr_pair_list_t	append, prepend;
 	bool		*edited = NULL;
@@ -77,7 +77,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 
 	count = to_count + fr_pair_list_num_elements(from);
 
-	RDEBUG4("::: FROM %zu TO %d MAX %d", fr_pair_list_num_elements(from), to_count, count);
+	RDEBUG4("::: FROM %zu TO %zu MAX %zu", fr_pair_list_num_elements(from), to_count, count);
 
 	/*
 	 *	Now that we have the lists initialized, start working
@@ -103,7 +103,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 		 */
 
 		if (from_vp->op == T_OP_PREPEND) {
-			RDEBUG4("::: PREPENDING %s FROM %d", from_vp->da->name, i);
+			RDEBUG4("::: PREPENDING %s FROM %zu", from_vp->da->name, i);
 			fr_pair_remove(from, from_vp);
 			fr_pair_prepend(&prepend, from_vp);
 			from_vp->op = T_OP_EQ;
@@ -135,7 +135,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 			 *	the one in the "from" list.
 			 */
 			if (from_vp->op == T_OP_SET) {
-				RDEBUG4("::: OVERWRITING %s FROM %d TO %d",
+				RDEBUG4("::: OVERWRITING %s FROM %zu TO %zu",
 				       to_vp->da->name, i, j);
 				fr_pair_remove(from, from_vp);
 				fr_pair_replace(to, to_vp, from_vp);
@@ -199,7 +199,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 				case T_OP_SUB_EQ:
 					if (rcode == 0) {
 					delete:
-						RDEBUG4("::: DELETING %s FROM %d TO %d",
+						RDEBUG4("::: DELETING %s FROM %zu TO %zu",
 						       from_vp->da->name, i, j);
 						/*
 						 *	Mark that this will be deleted
@@ -214,7 +214,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 					 */
 				case T_OP_LE:
 					if (rcode > 0) {
-						RDEBUG4("::: REPLACING %s FROM %d TO %d",
+						RDEBUG4("::: REPLACING %s FROM %zu TO %zu",
 						       from_vp->da->name, i, j);
 						goto replace;
 					}
@@ -222,7 +222,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 
 				case T_OP_GE:
 					if (rcode < 0) {
-						RDEBUG4("::: REPLACING %s FROM %d TO %d",
+						RDEBUG4("::: REPLACING %s FROM %zu TO %zu",
 						       from_vp->da->name, i, j);
 					replace:
 						fr_pair_remove(from, from_vp);
@@ -251,7 +251,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 			    (from_vp->op == T_OP_GE) ||
 			    (from_vp->op == T_OP_SET)) {
 			do_append:
-				RDEBUG4("::: APPENDING %s FROM %d TO %d",
+				RDEBUG4("::: APPENDING %s FROM %zu TO %zu",
 				       from_vp->da->name, i, tailto++);
 				fr_pair_remove(from, from_vp);
 				fr_pair_append(&append, from_vp);
@@ -265,7 +265,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 	 */
 	fr_pair_list_free(from);
 
-	RDEBUG4("::: TO in %d out %d", to_count, tailto);
+	RDEBUG4("::: TO in %zu out %zu", to_count, tailto);
 
 	/*
 	 *	Delete any "to" items marked for deletion
@@ -280,7 +280,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 			continue;
 		}
 
-		RDEBUG4("::: to[%d] = %s", i, to_vp->da->name);
+		RDEBUG4("::: to[%zu] = %s", i, to_vp->da->name);
 
 		/*
 		 *	Mash the operator to a simple '='.  The

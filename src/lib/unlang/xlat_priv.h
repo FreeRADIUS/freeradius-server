@@ -340,7 +340,7 @@ void		unlang_xlat_init(void);
 int		unlang_xlat_push_node(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 				      request_t *request, xlat_exp_t *node);
 
-int 		xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
+ssize_t		xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					   request_t *request, void *decode_ctx, fr_pair_decode_t decode,
 					   fr_value_box_list_t *in);
 /*

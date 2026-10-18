@@ -430,7 +430,7 @@ RESUME(auth_type)
 
 				p = (uint8_t const *) vp->vp_strvalue;
 				while (*p) {
-					int size;
+					size_t size;
 
 					size = fr_utf8_char(p, -1);
 					if (!size) {

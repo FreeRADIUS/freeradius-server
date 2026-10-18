@@ -970,7 +970,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 
 	case 'T': /* Request timestamp in ISO format */
 	{
-		int len = 0;
+		size_t len = 0;
 
 		if (!gmtime_r(&now, &ts)) goto error;
 

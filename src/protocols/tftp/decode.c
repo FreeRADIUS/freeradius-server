@@ -71,7 +71,7 @@ RCSID("$Id$")
  *  2. Host B sends a "DATA" (with block number= 1) to host  A  with
  *     source= B's TID, destination= A's TID.
  */
-int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len)
+ssize_t fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len)
 {
 	uint8_t const  	*q, *p, *end;
 	uint16_t 	opcode;

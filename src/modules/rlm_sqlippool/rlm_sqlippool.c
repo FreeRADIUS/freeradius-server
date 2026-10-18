@@ -141,10 +141,10 @@ static void *sql_escape_uctx_alloc(UNUSED request_t *request, void const *uctx)
 /*
  *	Process the results of an SQL query expected to return a single row
  */
-static int sqlippool_result_process(char *out, int outlen, fr_sql_query_t *query_ctx)
+static size_t sqlippool_result_process(char *out, size_t outlen, fr_sql_query_t *query_ctx)
 {
 	unlang_result_t	p_result;
-	int		rlen, retval = 0;
+	size_t		rlen, retval = 0;
 	rlm_sql_row_t	row;
 	request_t	*request = query_ctx->request;
 
@@ -169,7 +169,7 @@ static int sqlippool_result_process(char *out, int outlen, fr_sql_query_t *query
 
 	rlen = strlen(row[0]);
 	if (rlen >= outlen) {
-		REDEBUG("The first column of the result was too long (%d)", rlen);
+		REDEBUG("The first column of the result was too long (%zu)", rlen);
 		goto finish;
 	}
 
@@ -251,7 +251,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 {
 	ippool_alloc_ctx_t	*alloc_ctx = talloc_get_type_abort(mctx->rctx, ippool_alloc_ctx_t);
 	ippool_alloc_call_env_t	*env = alloc_ctx->env;
-	int			allocation_len = 0;
+	size_t			allocation_len = 0;
 	char			allocation[FR_MAX_STRING_LEN];
 	rlm_sql_t const		*sql = alloc_ctx->sql;
 	fr_value_box_t		*query = fr_value_box_list_pop_head(&alloc_ctx->values);

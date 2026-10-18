@@ -623,7 +623,7 @@ static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const
 {
 	cassandra_query_ctx_t	*cass_query_ctx = query_ctx->uctx;
 
-	return cass_query_ctx->result ? cass_result_row_count(cass_query_ctx->result) : 0;
+	return cass_query_ctx->result ? (int)cass_result_row_count(cass_query_ctx->result) : 0;
 }
 
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
@@ -662,7 +662,7 @@ static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t
 	CassRow	const 			*cass_row;
 	cassandra_query_ctx_t		*cass_query_ctx = query_ctx->uctx;
 	CassResult const		*result = cass_query_ctx->result;
-	int				fields, i;
+	size_t				fields, i;
 	char				**row;
 
 #define RLM_CASS_ERR_DATA_RETRIVE(_t) \
@@ -673,7 +673,7 @@ do {\
 	if ((_ret = cass_result_column_name(result, i, &_col_name, &_col_name_len)) != CASS_OK) {\
 		_col_name = "<INVALID>";\
 	}\
-	sql_set_query_error_printf(conn->log_ctx, cass_query_ctx, "Failed to retrieve " _t " data at column %s (%d): %s", \
+	sql_set_query_error_printf(conn->log_ctx, cass_query_ctx, "Failed to retrieve " _t " data at column %s (%zu): %s", \
 				  _col_name, i, cass_error_desc(_ret));\
 	TALLOC_FREE(query_ctx->row);\
 	query_ctx->rcode = RLM_SQL_ERROR;\
@@ -781,7 +781,7 @@ do {\
 						    &col_name_len) != CASS_OK) col_name = "<INVALID>";
 
 			sql_set_query_error_printf(conn->log_ctx, cass_query_ctx,
-						  "Failed to retrieve data at column %s (%d): Unsupported data type",
+						  "Failed to retrieve data at column %s (%zu): Unsupported data type",
 						  col_name, i);
 			talloc_free(query_ctx->row);
 			query_ctx->rcode = RLM_SQL_ERROR;

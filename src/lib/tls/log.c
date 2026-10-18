@@ -451,7 +451,7 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
  */
 static int tls_log_request_bio_puts_cb(BIO *bio, char const *in)
 {
-	return tls_log_request_bio_write_cb(bio, in, strlen(in));
+	return tls_log_request_bio_write_cb(bio, in, (int)strlen(in));
 }
 
 /** Decrement the bio meth reference counter
@@ -535,7 +535,7 @@ static int tls_log_global_bio_write_cb(BIO *bio, char const *in, int len)
  */
 static int tls_log_global_bio_puts_cb(BIO *bio, char const *in)
 {
-	return tls_log_global_bio_write_cb(bio, in, strlen(in));
+	return tls_log_global_bio_write_cb(bio, in, (int)strlen(in));
 }
 
 /** Decrement the bio meth reference counter

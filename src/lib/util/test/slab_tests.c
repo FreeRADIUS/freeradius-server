@@ -15,7 +15,7 @@ typedef struct {
 } test_element_t;
 
 typedef struct {
-	int	count;
+	size_t	count;
 } test_uctx_t;
 
 typedef struct {

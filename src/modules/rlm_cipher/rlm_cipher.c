@@ -1036,7 +1036,7 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 			 *	idiots...
 			 */
 			MEM(label = talloc_bstrndup(evp_pkey_ctx, rsa_inst->oaep->label, label_len));
-		    	if (unlikely(EVP_PKEY_CTX_set0_rsa_oaep_label(evp_pkey_ctx, label, label_len) <= 0)) {
+		    	if (unlikely(EVP_PKEY_CTX_set0_rsa_oaep_label(evp_pkey_ctx, label, (int)label_len) <= 0)) {
 	   			fr_tls_strerror_printf(NULL);
 				PERROR("%s: Failed setting OAEP padding label", __FUNCTION__);
 				OPENSSL_free(label);

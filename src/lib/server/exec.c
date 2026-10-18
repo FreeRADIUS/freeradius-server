@@ -47,7 +47,7 @@ static _Thread_local char *env_exec_arr[MAX_ENVP];	/* Avoid allocing 8k on the s
  *	- >= 0 number of array elements in argv
  *	- <0 on error
  */
-int fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in)
+ssize_t fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in)
 {
 	char			**argv;
 	unsigned int		i = 0;
@@ -129,9 +129,9 @@ static inline CC_HINT(always_inline) void exec_debug(request_t *request, char **
  *	- -1 on failure.
  */
 static inline CC_HINT(nonnull(1,3,4,5)) CC_HINT(always_inline)
-int exec_pair_to_env(char **env_p, size_t env_len,
-		     fr_sbuff_t *env_sbuff, fr_sbuff_marker_t env_m[],
-		     request_t *request, fr_pair_list_t *env_pairs, bool env_escape)
+ssize_t exec_pair_to_env(char **env_p, size_t env_len,
+			 fr_sbuff_t *env_sbuff, fr_sbuff_marker_t env_m[],
+			 request_t *request, fr_pair_list_t *env_pairs, bool env_escape)
 {
 	char			*p;
 	size_t			i, j;

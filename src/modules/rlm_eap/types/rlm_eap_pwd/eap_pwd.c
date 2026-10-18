@@ -254,9 +254,9 @@ fail:
 }
 
 int compute_password_element (request_t *request, pwd_session_t *session, uint16_t grp_num,
-			      char const *password, int password_len,
-			      char const *id_server, int id_server_len,
-			      char const *id_peer, int id_peer_len,
+			      char const *password, size_t password_len,
+			      char const *id_server, size_t id_server_len,
+			      char const *id_peer, size_t id_peer_len,
 			      uint32_t *token, BN_CTX *bnctx)
 {
 	BIGNUM		*x_candidate = NULL, *rnd = NULL, *y_sqrd = NULL, *qr = NULL, *qnr = NULL, *y1 = NULL, *y2 = NULL, *y = NULL, *exp = NULL;
@@ -613,13 +613,13 @@ int process_peer_commit(request_t *request, pwd_session_t *session, uint8_t *in,
 		goto finish;
 	}
 
-	BN_bin2bn(ptr, data_len, x);
+	BN_bin2bn(ptr, (int)data_len, x);
 	ptr += data_len;
-	BN_bin2bn(ptr, data_len, y);
+	BN_bin2bn(ptr, (int)data_len, y);
 	ptr += data_len;
 
 	data_len = BN_num_bytes(session->order);
-	BN_bin2bn(ptr, data_len, session->peer_scalar);
+	BN_bin2bn(ptr, (int)data_len, session->peer_scalar);
 
 	/* validate received scalar */
 	if (BN_is_zero(session->peer_scalar) ||

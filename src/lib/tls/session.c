@@ -211,7 +211,7 @@ int fr_tls_session_password_cb(char *buf, int size, int rwflag UNUSED, void *u)
 		return 0;
 	}
 
-	return len;
+	return (int)len;
 }
 
 #ifdef PSK_MAX_IDENTITY_LEN
@@ -1303,7 +1303,7 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 	 *      data buffer.
 	 */
 	ret = SSL_read(tls_session->ssl, fr_dbuff_current(&tls_session->clean_out),
-		       fr_dbuff_remaining(&tls_session->clean_out));
+		       (int)fr_dbuff_remaining(&tls_session->clean_out));
 	if (ret < 0) {
 		int code;
 
@@ -1404,7 +1404,7 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 			RDEBUG2("(TLS) TLS application data to encrypt (%zu bytes)", used);
 		}
 
-		ret = SSL_write(tls_session->ssl, fr_dbuff_start(&tls_session->clean_in), used);
+		ret = SSL_write(tls_session->ssl, fr_dbuff_start(&tls_session->clean_in), (int)used);
 		if (ret < 0) {
 			/*
 			 *	ret<0 means that we have a real error.
@@ -2002,7 +2002,7 @@ static void tls_session_async_handshake_signal(UNUSED request_t *request, UNUSED
 	for (ret = tls_session->last_ret;
 	     SSL_get_error(tls_session->ssl, ret) == SSL_ERROR_WANT_ASYNC;
 	     ret = SSL_read(tls_session->ssl, fr_dbuff_current(&tls_session->clean_out),
-			    fr_dbuff_remaining(&tls_session->clean_out)));
+			    (int)fr_dbuff_remaining(&tls_session->clean_out)));
 
 	/*
 	 *	Unbind the cancelled request from the SSL *
@@ -2130,7 +2130,7 @@ again:
 	 */
 	tls_session->can_pause = true;
 	tls_session->last_ret = SSL_read(tls_session->ssl, fr_dbuff_current(&tls_session->clean_out),
-					 fr_dbuff_remaining(&tls_session->clean_out));
+					 (int)fr_dbuff_remaining(&tls_session->clean_out));
 	tls_session->can_pause = false;
 	if (tls_session->last_ret > 0) {
 		fr_dbuff_advance(&tls_session->clean_out, (size_t) tls_session->last_ret);

@@ -907,7 +907,7 @@ int talloc_decrease_ref_count(void const *ptr)
 		if (talloc_reference_count(to_free) == 0) talloc_free(to_free);
 	}
 
-	return ref_count;
+	return (int)ref_count;
 }
 
 /** Add a NULL pointer to an array of pointers

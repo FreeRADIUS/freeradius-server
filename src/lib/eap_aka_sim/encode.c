@@ -231,7 +231,7 @@ static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
 	 *	inform OpenSSL explicitly that there's no padding.
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
-	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, &len, fr_dbuff_start(&work_dbuff), total_len) != 1)) {
+	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, &len, fr_dbuff_start(&work_dbuff), (int)total_len) != 1)) {
 		fr_tls_strerror_printf("%s: Failed encrypting attribute", __FUNCTION__);
 		goto error;
 	}

@@ -62,7 +62,7 @@ static void test_init(void)
 
 static void add_pairs(fr_pair_list_t *local_pairs)
 {
-	int count;
+	size_t count;
 	fr_pair_t *vp;
 
 	fr_pair_list_init(local_pairs);
@@ -86,7 +86,7 @@ static void add_pairs(fr_pair_list_t *local_pairs)
 
 static void expect3(fr_pair_list_t *local_pairs)
 {
-	int count;
+	size_t count;
 	fr_pair_t *vp;
 
 	count = fr_pair_list_num_elements(local_pairs);
@@ -551,7 +551,8 @@ static void test_pair_edit_value_delete(void)
 	fr_pair_t	*vp;
 	fr_pair_list_t	local_pairs;
 	fr_edit_list_t	*el;
-	int		rcode, count;
+	int		rcode;
+	size_t		count;
 
 	TEST_CASE("Add 3 pairs, change the value of the first one, and delete it");
 

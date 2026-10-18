@@ -441,7 +441,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		RDEBUG3("Length : %zu", (size_t)slen);
 		REXDENT();
 		if (slen > 0) {
-			escaped = curl_escape(p, (size_t)slen);
+			escaped = curl_escape(p, (int)slen);
 			if (!escaped) {
 				REDEBUG("Failed escaping string \"%s\"", vp->da->name);
 				return 0;
@@ -775,7 +775,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, rlm_rest_section_
 		q = strchr(p, '&');
 		len = (!q) ? (rawlen - (p - raw)) : (unsigned)(q - p);
 
-		value = curl_easy_unescape(candle, p, len, &curl_len);
+		value = curl_easy_unescape(candle, p, (int)len, &curl_len);
 
 		/*
 		 *  If we found a delimiter we want to skip over it,
@@ -1018,7 +1018,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 	 */
 	{
 		json_object_object_foreach(object, name, value) {
-			int		i = 0, elements;
+			size_t		i = 0, elements;
 			struct		json_object *element, *tmp;
 			TALLOC_CTX	*ctx;
 

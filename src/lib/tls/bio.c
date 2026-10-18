@@ -127,7 +127,7 @@ static int _tls_bio_talloc_write_cb(BIO *bio, char const *in, int len)
  */
 static int _tls_bio_talloc_puts_cb(BIO *bio, char const *in)
 {
-	return _tls_bio_talloc_write_cb(bio, in, strlen(in));
+	return _tls_bio_talloc_write_cb(bio, in, (int)strlen(in));
 }
 
 /** Serves BIO_read() from a talloced buffer

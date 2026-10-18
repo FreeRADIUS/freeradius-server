@@ -196,12 +196,12 @@ void fr_backtrace(void)
 	 */
 #if (!defined(NDEBUG) || !defined(__GNUC__))
 	if (fr_fault_log_fd >= 0) {
-		size_t frame_count;
+		int frame_count;
 		void *stack[MAX_BT_FRAMES];
 
 		frame_count = backtrace(stack, MAX_BT_FRAMES);
 
-		FR_FAULT_LOG("Backtrace of last %zu frames:", frame_count);
+		FR_FAULT_LOG("Backtrace of last %i frames:", frame_count);
 
 		backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
 	}

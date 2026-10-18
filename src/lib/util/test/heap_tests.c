@@ -199,7 +199,7 @@ static void heap_iter(void)
 
 	array = calloc(HEAP_ITER_SIZE, sizeof(heap_thing));
 
-	for (size_t i = 0; i < HEAP_ITER_SIZE; i++) {
+	for (int i = 0; i < HEAP_ITER_SIZE; i++) {
 		array[i].data = i;
 		TEST_CHECK(fr_heap_insert(&hp, &array[i])  >= 0);
 	}

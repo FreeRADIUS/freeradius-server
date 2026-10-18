@@ -193,7 +193,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
-		int len;
+		size_t len;
 
 		if (i == 255) break;
 		if (i > arg_cnt) break;
@@ -290,14 +290,14 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 
 			len = fr_dbuff_used(&arg_dbuff);
 
-			FR_PROTO_TRACE("arg[%d] --> %.*s", i, len, fr_dbuff_start(&arg_dbuff));
+			FR_PROTO_TRACE("arg[%d] --> %.*s", i, (int)len, fr_dbuff_start(&arg_dbuff));
 
 			fr_dbuff_set(&work_dbuff, &arg_dbuff);
 		}
 
 		fr_assert(len <= UINT8_MAX);
 
-		FR_PROTO_TRACE("len(arg[%d]) = %d", i, len);
+		FR_PROTO_TRACE("len(arg[%d]) = %zu", i, len);
 		arg_len[i++] = len;
 	}
 

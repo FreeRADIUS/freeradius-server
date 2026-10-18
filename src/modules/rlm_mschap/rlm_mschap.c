@@ -2075,7 +2075,7 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
 		return -1;
 	}
 
-	if (unlikely(EVP_CIPHER_CTX_set_key_length(evp_ctx, auth_ctx->nt_password->vp_length) != 1)) {
+	if (unlikely(EVP_CIPHER_CTX_set_key_length(evp_ctx, (int)auth_ctx->nt_password->vp_length) != 1)) {
 		EVP_CIPHER_CTX_free(evp_ctx);
 		fr_tls_strerror_printf(NULL);
 		RPERROR("Failed setting key length");

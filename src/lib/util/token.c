@@ -316,7 +316,7 @@ const bool fr_str_tok[T_TOKEN_LAST] = {
  *	At end-of-line, buf[0] is set to '\0'.
  *	Returns 0 or special token value.
  */
-static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
+static fr_token_t getthing(char const **ptr, char *buf, size_t buflen, bool tok,
 			 fr_table_num_ordered_t const *tokenlist, size_t tokenlist_len, bool unescape)
 {
 	char			*s;
@@ -524,7 +524,7 @@ done:
  *	Read a "word" - this means we don't honor
  *	tokens as delimiters.
  */
-int getword(char const **ptr, char *buf, int buflen, bool unescape)
+int getword(char const **ptr, char *buf, size_t buflen, bool unescape)
 {
 	return getthing(ptr, buf, buflen, false, fr_tokens_table, fr_tokens_table_len, unescape) == T_EOL ? 0 : 1;
 }
@@ -533,7 +533,7 @@ int getword(char const **ptr, char *buf, int buflen, bool unescape)
 /*
  *	Read the next word, use tokens as delimiters.
  */
-fr_token_t gettoken(char const **ptr, char *buf, int buflen, bool unescape)
+fr_token_t gettoken(char const **ptr, char *buf, size_t buflen, bool unescape)
 {
 	return getthing(ptr, buf, buflen, true, fr_tokens_table, fr_tokens_table_len, unescape);
 }
@@ -557,7 +557,7 @@ fr_token_t getop(char const **ptr)
 /*
  *	Expect a string.
  */
-fr_token_t getstring(char const **ptr, char *buf, int buflen, bool unescape)
+fr_token_t getstring(char const **ptr, char *buf, size_t buflen, bool unescape)
 {
 	char const *p;
 

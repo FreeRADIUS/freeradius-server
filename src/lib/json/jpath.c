@@ -660,7 +660,7 @@ static ssize_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t i
 	 *	Field name with optional selector
 	 */
 	while (p < end) {
-		int clen;
+		size_t clen;
 
 		if (buff_p == buff_end) {
 		name_too_big:

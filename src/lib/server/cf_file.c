@@ -3678,7 +3678,7 @@ read_continuation:
 	/*
 	 *	Get data, and remember if we are at EOF.
 	 */
-	at_eof = (fgets(stack->fill, stack->bufsize - (stack->fill - stack->buff[0]), frame->fp) == NULL);
+	at_eof = (fgets(stack->fill, (int)(stack->bufsize - (stack->fill - stack->buff[0])), frame->fp) == NULL);
 	frame->lineno++;
 
 	/*

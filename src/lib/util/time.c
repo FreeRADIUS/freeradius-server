@@ -646,7 +646,7 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
 		} else {
 			int tabs;
 
-			tabs = ((tab_offset * 8) - len);
+			tabs = (int)((tab_offset * 8) - len);
 			if ((tabs & 0x07) != 0) tabs += 7;
 			tabs >>= 3;
 

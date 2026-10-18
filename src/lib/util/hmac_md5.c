@@ -75,7 +75,7 @@ int fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inl
 		ctx = md5_hmac_ctx;
 	}
 
-	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, (int)key_len);
 	if (unlikely(pkey == NULL)) {
 		fr_strerror_const("Failed allocating pkey for HMAC-MD5");
 		return -1;

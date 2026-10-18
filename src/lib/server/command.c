@@ -2461,7 +2461,7 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, i
 	return count + 1;
 }
 
-static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, char const *text, int start,
+static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, char const *text, size_t start,
 			 char const **word_p, int count, int max_expansions, char const **expansions)
 {
 	char const *p, *q;
@@ -2650,7 +2650,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
  *	- <0 on error
  *	- >= 0 number of expansions in the array
  */
-int fr_command_complete(fr_cmd_t *head, char const *text, int start,
+int fr_command_complete(fr_cmd_t *head, char const *text, size_t start,
 			int max_expansions, char const **expansions)
 {
 	char const *word, *p, *q;

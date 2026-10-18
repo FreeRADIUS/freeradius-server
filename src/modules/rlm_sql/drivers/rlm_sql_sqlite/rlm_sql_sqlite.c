@@ -234,7 +234,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	int		statement_len, statement_cnt = 0;
 	char		*buffer;
 	char const	*p;
-	int		cl;
+	size_t		cl;
 	FILE		*f;
 	struct stat	finfo;
 
@@ -633,7 +633,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	query_ctx->tconn = tconn;
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
-	status = sqlite3_prepare_v2(sql_conn->db, query_ctx->query_str, strlen(query_ctx->query_str),
+	status = sqlite3_prepare_v2(sql_conn->db, query_ctx->query_str, (int)strlen(query_ctx->query_str),
 				    &sql_conn->statement, &z_tail);
 	query_ctx->rcode = sql_check_error(sql_conn->db, status);
 	if (query_ctx->rcode != RLM_SQL_OK) {

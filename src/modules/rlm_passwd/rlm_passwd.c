@@ -82,8 +82,8 @@ static struct mypasswd *mypasswd_alloc(TALLOC_CTX *ctx, char const* buffer, int 
 	return t;
 }
 
-static int string_to_entry(char const* string, int num_fields, char delimiter,
-			   struct mypasswd *passwd, size_t bufferlen)
+static size_t string_to_entry(char const* string, int num_fields, char delimiter,
+			      struct mypasswd *passwd, size_t bufferlen)
 {
 	char *str;
 	size_t len, i;

@@ -224,7 +224,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 	 *	MIP-RK-1 = HMAC-SSHA256(EMSK, usage-data | 0x01)
 	 */
 	MEM(hmac_ctx = EVP_MD_CTX_new());
-	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, emsk->vp_octets, emsk->vp_length));
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, emsk->vp_octets, (int)emsk->vp_length));
 	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
 	EVP_DigestSignUpdate(hmac_ctx, &usage_data[0], sizeof(usage_data));
@@ -249,7 +249,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 	 */
 	EVP_MD_CTX_reset(hmac_ctx);
 	EVP_PKEY_free(hmac_pkey); /* No way to reset ? */
-	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, mip_rk, rk_len));
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, mip_rk, (int)rk_len));
 	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
 	EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "SPI CMIP PMIP", 13);

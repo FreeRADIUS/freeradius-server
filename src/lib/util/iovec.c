@@ -35,9 +35,9 @@ RCSID("$Id$")
  *	- >= 0 on success.
  *	- <0 on failure.
  */
-ssize_t fr_concatv(fr_dbuff_t *out, struct iovec vector[], int iovcnt)
+ssize_t fr_concatv(fr_dbuff_t *out, struct iovec vector[], size_t iovcnt)
 {
-	int i;
+	size_t i;
 
 	fr_dbuff_t our_out = FR_DBUFF(out);
 
@@ -65,7 +65,7 @@ ssize_t fr_concatv(fr_dbuff_t *out, struct iovec vector[], int iovcnt)
  *	- Number of bytes written.
  *	- -1 on failure.
  */
-ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t timeout)
+ssize_t fr_writev(int fd, struct iovec vector[], size_t iovcnt, fr_time_delta_t timeout)
 {
 	struct iovec *vector_p = vector;
 	ssize_t total = 0;
@@ -73,7 +73,7 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t tim
 	while (iovcnt > 0) {
 		ssize_t wrote;
 
-		wrote = writev(fd, vector_p, iovcnt);
+		wrote = writev(fd, vector_p, (int)iovcnt);
 		if (wrote > 0) {
 			/*
 			 *	total never exceeds the sum of the iov_len values,

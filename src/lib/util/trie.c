@@ -1272,7 +1272,7 @@ void *fr_trie_lookup_by_key(fr_trie_t const *ft, void const *key, size_t keylen)
 
 	user = UNCONST(fr_trie_user_t *, ft);
 
-	return trie_key_match(user->trie, key, 0, keylen, false);
+	return trie_key_match(user->trie, key, 0, (int) keylen, false);
 }
 
 /** Match a key and length in a trie and return user ctx, if any
@@ -1296,7 +1296,7 @@ void *fr_trie_match_by_key(fr_trie_t const *ft, void const *key, size_t keylen)
 
 	user = UNCONST(fr_trie_user_t *, ft);
 
-	return trie_key_match(user->trie, key, 0, keylen, true);
+	return trie_key_match(user->trie, key, 0, (int) keylen, true);
 }
 
 /* INSERT FUNCTIONS */
@@ -1894,7 +1894,7 @@ int fr_trie_insert_by_key(fr_trie_t *ft, void const *key, size_t keylen, void co
 	 *	ensures that the insertion can modify the trie in
 	 *	place without worry.
 	 */
-	if (trie_key_match(user->trie, key, 0, keylen, true) != NULL) {
+	if (trie_key_match(user->trie, key, 0, (int) keylen, true) != NULL) {
 		fr_strerror_const("Cannot insert due to pre-existing key");
 		return -1;
 	}
@@ -1904,7 +1904,7 @@ int fr_trie_insert_by_key(fr_trie_t *ft, void const *key, size_t keylen, void co
 
 	MPRINT3("%.*srecurse STARTS at %d with %.*s=%s\n", 0, spaces, __LINE__,
 		(int) keylen, key, my_data);
-	return trie_key_insert(user->data, &user->trie, key, 0, keylen, my_data);
+	return trie_key_insert(user->data, &user->trie, key, 0, (int) keylen, my_data);
 }
 
 /* REMOVE FUNCTIONS */

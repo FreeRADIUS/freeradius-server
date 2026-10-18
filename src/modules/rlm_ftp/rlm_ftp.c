@@ -122,7 +122,7 @@ static int ftp_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	char	*escaped;
 	size_t	len;
 
-	escaped = curl_easy_escape(fr_curl_tmp_handle(), vb->vb_strvalue, vb->vb_length);
+	escaped = curl_easy_escape(fr_curl_tmp_handle(), vb->vb_strvalue, (int)vb->vb_length);
 	if (!escaped) return -1;
 
 	len = strlen(escaped);

@@ -231,7 +231,8 @@ static int radmin_help(UNUSED int count, UNUSED int key)
 static void *fr_radmin(UNUSED void *input_ctx)
 {
 	int argc = 0;
-	int *context_exit, *context_offset;
+	int *context_exit;
+	size_t *context_offset;
 	char const *prompt;
 	size_t size;
 	TALLOC_CTX *ctx;
@@ -248,7 +249,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	fr_command_info_init(ctx, info);
 
 	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
-	context_offset = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
+	context_offset = talloc_zero_array(ctx, size_t, CMD_MAX_ARGV + 1);
 	context_offset[0] = 0;
 
 	fflush(my_stdout);
@@ -263,7 +264,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		char *line;
 
 		fr_assert(context >= 0);
-		fr_assert(context_offset[context] >= 0);
 		radmin_partial_line = radmin_buffer + context_offset[context];
 		line = readline(prompt);
 		if (stop) break;

@@ -430,7 +430,7 @@ void _fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int lin
 		if (len > location_indent) {
 			location_indent = len;
 		} else {
-			pad = location_indent - len;
+			pad = (int)(location_indent - len);
 		}
 
 		fmt_location = talloc_asprintf_append_buffer(str, "%.*s : ", pad, spaces);
@@ -540,7 +540,7 @@ void _fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int lin
 		 *	Filter out control chars and non UTF8 chars
 		 */
 		for (p = fmt_msg; p < end; p++) {
-			int clen;
+			size_t clen;
 
 			switch (*p) {
 			case '\r':

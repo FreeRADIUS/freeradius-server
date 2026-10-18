@@ -741,8 +741,9 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 	int			num_rows;
 	char const		**fields = NULL, *map_rhs;
 	rlm_sql_row_t		row;
-	int			i, j, field_cnt, rows = 0;
-	int			field_index[MAX_SQL_FIELD_INDEX];
+	int			i, rows = 0;
+	size_t			j, field_cnt;
+	ssize_t			field_index[MAX_SQL_FIELD_INDEX];
 	char			map_rhs_buff[128];
 	bool			found_field = false;	/* Did we find any matching fields in the result set ? */
 

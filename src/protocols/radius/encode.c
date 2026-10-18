@@ -661,7 +661,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  *        headers.
  */
 static ssize_t attr_fragment(fr_dbuff_t *data, size_t data_len, fr_dbuff_marker_t *hdr, size_t hdr_len,
-			     int flag_offset, int vsa_offset)
+			     size_t flag_offset, size_t vsa_offset)
 {
 	unsigned int		num_fragments, i = 0;
 	size_t			max_frag_data = UINT8_MAX - hdr_len;

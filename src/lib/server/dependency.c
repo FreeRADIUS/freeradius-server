@@ -380,7 +380,7 @@ void dependency_version_print(void)
 	INFO("https://inkbridgenetworks.com/");
 
 	if (DEBUG_ENABLED3) {
-		int max = 0, len;
+		size_t max = 0, len;
 
 		MEM(features = cf_section_alloc(NULL, NULL, "feature", NULL));
 		dependency_features_init(features);

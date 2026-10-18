@@ -55,9 +55,9 @@ static void test_hmac_md5(void)
 {
 	uint8_t digest[16];
 	uint8_t const *key;
-	int key_len;
+	size_t key_len;
 	uint8_t const *text;
-	int text_len;
+	size_t text_len;
 
 	/*
 	 *	Test 1
@@ -153,9 +153,9 @@ static void test_hmac_sha1(void)
 
 	uint8_t digest[20];
 	uint8_t const *key;
-	int key_len;
+	size_t key_len;
 	uint8_t const *text;
-	int text_len;
+	size_t text_len;
 
 	/*
 	 *	Test 1

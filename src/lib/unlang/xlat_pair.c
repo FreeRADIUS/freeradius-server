@@ -87,11 +87,11 @@ static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many value boxes were decoded
  */
-int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			       request_t *request, void *decode_ctx, fr_pair_decode_t decode,
-			       fr_value_box_list_t *in)
+ssize_t xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				   request_t *request, void *decode_ctx, fr_pair_decode_t decode,
+				   fr_value_box_list_t *in)
 {
-	int		decoded = 0;
+	ssize_t		decoded = 0;
 	fr_pair_t	*vp = NULL;
 	fr_dict_attr_t const *parent = fr_dict_root(request->proto_dict);
 	fr_pair_list_t	head;

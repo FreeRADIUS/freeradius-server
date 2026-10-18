@@ -150,7 +150,7 @@ int redis_dict_init(void)
  * @param[in] idx Response number.
  * @param[in] status code from processing last reply.
  */
-void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx, fr_redis_rcode_t status)
+void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, size_t idx, fr_redis_rcode_t status)
 {
 	size_t i = 0;
 
@@ -159,30 +159,30 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *reques
 	switch (reply->type) {
 	case REDIS_REPLY_ERROR:
 		if (status == REDIS_RCODE_MOVE) {
-			ROPTIONAL(RWARN, WARN, "(%i) warn    : %s", idx, reply->str);
+			ROPTIONAL(RWARN, WARN, "(%zu) warn    : %s", idx, reply->str);
 		} else {
-			ROPTIONAL(REDEBUG, ERROR, "(%i) error   : %s", idx, reply->str);
+			ROPTIONAL(REDEBUG, ERROR, "(%zu) error   : %s", idx, reply->str);
 		}
 		break;
 
 	case REDIS_REPLY_STATUS:
-		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) status  : %s", idx, reply->str);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%zu) status  : %s", idx, reply->str);
 		break;
 
 	case REDIS_REPLY_STRING:
-		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) string  : %s", idx, reply->str);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%zu) string  : %s", idx, reply->str);
 		break;
 
 	case REDIS_REPLY_INTEGER:
-		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) integer : %lld", idx, reply->integer);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%zu) integer : %lld", idx, reply->integer);
 		break;
 
 	case REDIS_REPLY_NIL:
-		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) nil", idx);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%zu) nil", idx);
 		break;
 
 	case REDIS_REPLY_ARRAY:
-		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) array[%zu]", idx, reply->elements);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%zu) array[%zu]", idx, reply->elements);
 		for (i = 0; i < reply->elements; i++) {
 			if (request) RINDENT();
 			fr_redis_reply_print(lvl, reply->element[i], request, i, status);

@@ -638,7 +638,7 @@ int fr_tls_ticket_stateless_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *c
 	}
 	if (unlikely(EVP_PKEY_CTX_set1_hkdf_key(pkey_ctx,
 						UNCONST(unsigned char *, cache_conf->session_ticket_key),
-						talloc_array_length(cache_conf->session_ticket_key)) != 1)) {
+						(int)talloc_array_length(cache_conf->session_ticket_key)) != 1)) {
 		fr_tls_strerror_printf(NULL);
 		PERROR("Failed setting KDF key");
 		goto kdf_error;

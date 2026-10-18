@@ -79,7 +79,7 @@ int fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *in, size_t i
 		ctx = sha1_hmac_ctx;
 	}
 
-	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, (int)key_len);
 	if (unlikely(pkey == NULL)) {
 		fr_strerror_const("Failed allocating pkey for HMAC-SHA1");
 		return -1;

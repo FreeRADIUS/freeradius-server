@@ -857,9 +857,9 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 
 static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
-static void print_hex_data(FILE *fp, uint8_t const *ptr, int attrlen, int depth)
+static void print_hex_data(FILE *fp, uint8_t const *ptr, size_t attrlen, int depth)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < attrlen; i++) {
 		if ((i > 0) && ((i & 0x0f) == 0x00))
