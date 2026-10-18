@@ -485,7 +485,7 @@ static int _fr_quick_sort(void const *to_sort[], int start, int end, fr_cmp_t cm
  *
  * @param to_sort array of pointers to sort.
  * @param start the lowest index (usually 0).
- * @param end the length of the array.
+ * @param end the index of the last element to sort.
  * @param cmp the comparison function to use to sort the array elements.
  * @return
  *	- 0 on success.
