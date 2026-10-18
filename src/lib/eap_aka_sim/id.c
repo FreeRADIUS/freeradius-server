@@ -400,7 +400,8 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 {
 	uint8_t		padded[16];				/* Random (8 bytes) + Compressed (8 bytes) */
 	uint8_t		encr[16];				/* aes_ecb(padded) */
-	size_t		encr_len, len = 0;
+	size_t		encr_len;
+	int		len = 0;
 
 	char		*out_p = out;
 
@@ -486,13 +487,13 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 	 *	when decrypting.
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
-	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, (int *)&len, padded, sizeof(padded)) != 1)) {
+	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, &len, padded, sizeof(padded)) != 1)) {
 		fr_tls_strerror_printf("Failed encrypting padded IMSI");
 		goto error;
 	}
 	encr_len = len;
 
-	if (unlikely(EVP_EncryptFinal_ex(evp_ctx, encr + len, (int *)&len) != 1)) {
+	if (unlikely(EVP_EncryptFinal_ex(evp_ctx, encr + len, &len) != 1)) {
 		fr_tls_strerror_printf("Failed finalising encrypted IMSI");
 		goto error;
 	}
@@ -589,7 +590,7 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 
 	char const	*p = encr_id, *end = p + AKA_SIM_3GPP_PSEUDONYM_LEN;
 
-	size_t		len = 0;
+	int		len = 0;
 	unsigned int	i;
 
 	for (i = 0; i < AKA_SIM_3GPP_PSEUDONYM_LEN; i++) {
@@ -628,13 +629,13 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 	 *	inform OpenSSL explicitly that there's no padding.
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
-	if (unlikely(EVP_DecryptUpdate(evp_ctx, decr, (int *)&len, dec, sizeof(dec)) != 1)) {
+	if (unlikely(EVP_DecryptUpdate(evp_ctx, decr, &len, dec, sizeof(dec)) != 1)) {
 		fr_tls_strerror_printf("Failed decypting IMSI");
 		goto error;
 	}
 	decr_len = len;
 
-	if (unlikely(EVP_DecryptFinal_ex(evp_ctx, decr + len, (int *)&len) != 1)) {
+	if (unlikely(EVP_DecryptFinal_ex(evp_ctx, decr + len, &len) != 1)) {
 		fr_tls_strerror_printf("Failed finalising decypted IMSI");
 		goto error;
 	}

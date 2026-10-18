@@ -120,7 +120,8 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	EVP_CIPHER_CTX		*evp_ctx;
 	EVP_CIPHER const	*evp_cipher = EVP_aes_128_cbc();
 	size_t			block_size = EVP_CIPHER_block_size(evp_cipher);
-	size_t			len = 0, decr_len = 0;
+	int			len = 0;
+	size_t			decr_len = 0;
 	uint8_t			*decr = NULL;
 
 	if (!fr_cond_assert(attr_len <= data_len)) return -1;
@@ -199,13 +200,13 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	 *	inform OpenSSL explicitly that there's no padding.
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
-	if (!EVP_DecryptUpdate(evp_ctx, decr, (int *)&len, data, attr_len)) {
+	if (!EVP_DecryptUpdate(evp_ctx, decr, &len, data, (int)attr_len)) {
 		fr_tls_strerror_printf("%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}
 	decr_len = len;
 
-	if (!EVP_DecryptFinal_ex(evp_ctx, decr + decr_len, (int *)&len)) {
+	if (!EVP_DecryptFinal_ex(evp_ctx, decr + decr_len, &len)) {
 		fr_tls_strerror_printf("%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}

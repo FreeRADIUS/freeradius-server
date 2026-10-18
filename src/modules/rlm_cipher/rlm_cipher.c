@@ -867,7 +867,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_cipher_t);
 	char const			*md_name;
 	EVP_MD const			*md;
-	size_t				md_len;
+	unsigned int			md_len;
 	fr_value_box_t			*vb;
 	uint8_t				*digest;
 
@@ -894,7 +894,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	MEM(fr_value_box_mem_alloc(vb, &digest, vb, NULL, md_len, false) == 0);
 
-	if (X509_digest(inst->rsa->x509_certificate_file, md, digest, (unsigned int *)&md_len) != 1) {
+	if (X509_digest(inst->rsa->x509_certificate_file, md, digest, &md_len) != 1) {
 		RPERROR_SSL("Failed calculating certificate fingerprint");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
