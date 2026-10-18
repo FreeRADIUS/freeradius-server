@@ -37,8 +37,4 @@ src/lib/tls/base.h: src/lib/tls/base-h src/include/autoconf.sed src/include/auto
 	${Q}sed -f src/include/autoconf.sed < $< > $@
 
 
-src/lib/tls/conf.h: src/lib/tls/conf-h src/include/autoconf.sed src/include/autoconf.h
-	${Q}$(ECHO) HEADER $@
-	${Q}sed -f src/include/autoconf.sed < $< > $@
-
 src/freeradius-devel: | src/lib/tls/base.h src/lib/tls/conf.h
