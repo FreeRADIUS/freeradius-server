@@ -57,5 +57,12 @@ match ERROR: internal_decode_pair: Third extension byte not in use
 decode-pair 00 1a 04 01 40 01 00
 match ERROR: internal_decode_pair: Internal flag can only be set on top level attribute
 
+#
+#  An attribute number which does not fit in 32 bits.  2^32 + 1 must not be
+#  truncated to attribute 1 (User-Name).
+#
+decode-pair e0 00 00 00 01 00 00 00 01 03 62 6f 62
+match ERROR: internal_decode_pair: Attribute number 4294967297 is larger than 32 bits
+
 count
-match 12
+match 14

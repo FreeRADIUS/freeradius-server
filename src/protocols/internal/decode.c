@@ -182,6 +182,10 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	}
 
 	FR_DBUFF_OUT_UINT64V_RETURN(&type, &work_dbuff, type_field_size);
+	if (type > UINT32_MAX) {
+		fr_strerror_printf("%s: Attribute number %" PRIu64 " is larger than 32 bits", __FUNCTION__, type);
+		return PAIR_DECODE_FATAL_ERROR;
+	}
 
 	/*
 	 *	This is the length of the start *after* the flags and
@@ -213,11 +217,11 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	if (unknown || parent_da->flags.is_unknown) {
 	unknown:
 		FR_PROTO_TRACE("Unknown attribute %" PRIu64, type);
-		da = fr_dict_attr_unknown_raw_afrom_num(ctx, parent_da, type);
+		da = fr_dict_attr_unknown_raw_afrom_num(ctx, parent_da, (unsigned int) type);
 		if (!da) return PAIR_DECODE_FATAL_ERROR;
 		unknown = true;
 	} else {
-		da = fr_dict_attr_child_by_num(parent_da, type);
+		da = fr_dict_attr_child_by_num(parent_da, (unsigned int) type);
 		if (!da) goto unknown;
 	}
 
