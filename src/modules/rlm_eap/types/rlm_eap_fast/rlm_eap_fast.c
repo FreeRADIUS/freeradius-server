@@ -1488,13 +1488,6 @@ static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t 
 		}
 	}
 
-#ifdef SSL_OP_NO_TLSv1_2
-	/*
-	 *	Forcibly disable TLSv1.2
-	 */
-	SSL_set_options(tls_session->ssl, SSL_OP_NO_TLSv1_2);
-#endif
-
 	/*
 	 *	Push TLV of authority_identity into tls_record
 	 *	call eap_tls_compose() with args
@@ -1575,15 +1568,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (talloc_strlen(inst->pac_opaque_key) != 32) {
 		cf_log_err_by_child(conf, "pac_opaque_key", "Must be 32 bytes long");
-		return -1;
-	}
-
-	/*
-	 *	Allow anything for the TLS version, we try to forcibly
-	 *	disable TLSv1.2 later.
-	 */
-	if (inst->tls_conf->tls_min_version > (float) 1.1) {
-		cf_log_err_by_child(conf, "tls_min_version", "require tls_min_version <= 1.1");
 		return -1;
 	}
 
