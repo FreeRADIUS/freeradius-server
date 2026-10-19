@@ -487,7 +487,7 @@ static ssize_t fr_der_decode_oid_to_stack(uint64_t subidentifier, void *uctx, UN
 	}
 
 
-	decode_ctx->oid[decode_ctx->depth++] = subidentifier;
+	decode_ctx->oid[decode_ctx->depth++] = (unsigned int) subidentifier;	/* fr_der_decode_oid() limits subidentifiers to 28 bits */
 
 	return 1;
 }
@@ -575,6 +575,7 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 	fr_der_decode_oid_to_da_ctx_t *decode_ctx = uctx;
 	fr_pair_t		      *vp;
 	fr_dict_attr_t const	      *da;
+	unsigned int		      attr = (unsigned int) subidentifier;	/* fr_der_decode_oid() limits subidentifiers to 28 bits */
 
 	fr_dict_attr_t const *parent_da = fr_type_is_group(decode_ctx->parent_da->type) ?
 						  fr_dict_attr_ref(decode_ctx->parent_da) :
@@ -584,12 +585,12 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 	FR_PROTO_TRACE("decode context - Parent Name: %s Sub-Identifier %" PRIu64, parent_da->name, subidentifier);
 	FR_PROTO_TRACE("decode context - Parent Address: %p", parent_da);
 
-	da = fr_dict_attr_child_by_num(parent_da, subidentifier);
+	da = fr_dict_attr_child_by_num(parent_da, attr);
 
 	if (is_last) {
 		if (unlikely(da == NULL)) {
 			decode_ctx->parent_da = fr_der_unknown_afrom_num(decode_ctx->ctx, parent_da,
-									 FR_TYPE_OCTETS, subidentifier, 0, false);
+									 FR_TYPE_OCTETS, attr, 0, false);
 
 			if (unlikely(decode_ctx->parent_da == NULL)) {
 				return -1;
@@ -610,7 +611,7 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 		 *	We need to create an unknown attribute for this subidentifier so we can store the raw data
 		 */
 		fr_dict_attr_t *unknown_da = fr_der_unknown_afrom_num(decode_ctx->ctx, parent_da, FR_TYPE_TLV,
-								      subidentifier, 0, false);
+								      attr, 0, false);
 
 		if (unlikely(unknown_da == NULL)) {
 		oom:
