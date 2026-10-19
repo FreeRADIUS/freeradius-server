@@ -3280,9 +3280,19 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 
 	/*
 	 *	Check for listener, etc. not existing any more.
+	 *
+	 *	Or, we don't have a reply, but we've already
+	 *	transitioned to a state which isn't expecting one.
 	 */
-	if (!request->proxy_listener || (request->proxy_listener == proxy_null_listener) ||
-	    !request->proxy_listener->data) {
+	if (!request->proxy_listener ||
+	    (request->proxy_listener == proxy_null_listener) ||
+	    !request->proxy_listener->data ||
+	    (!request->proxy_reply &&
+	     ((request->process == proxy_wait_for_reply) ||
+#ifdef WITH_COA
+	      (request->process == coa_wait_for_reply) ||
+#endif
+	      (request->process == request_ping)))) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		FR_PROXY_STATS_INC(listener, request->home_server, total_no_records, 0);
 		proxy_reply_too_late(request);
@@ -3604,6 +3614,13 @@ static void proxy_no_reply(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_RUN:
+		/*
+		 *	No reply arrived in time.  Replies to this packet are
+		 *	now too late, so stop the proxy hash from finding the
+		 *	request.
+		 */
+		remove_from_proxy_hash(request);
+
 		if (process_proxy_reply(request, NULL, PW_ERROR_CAUSE_UNSUPPORTED_EXTENSION)) {
 			request->handle(request);
 		}
