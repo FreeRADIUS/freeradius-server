@@ -713,9 +713,17 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 
 		FR_DBUFF_OUT_RETURN(&byte, &our_in);
 
+		/*
+		 *	8.19.2 - The leading octet of a subidentifier shall not have the value 0x80.
+		 */
+		if ((magnitude == 0) && (byte == 0x80)) {
+			fr_strerror_const_push("OID subidentifier is not encoded in the fewest possible octets");
+			return -1;
+		}
+
 		magnitude++;
 		if (magnitude > 4) {
-			fr_strerror_const_push("OID subidentifier too large (>32 bits)");
+			fr_strerror_const_push("OID subidentifier too large (>28 bits)");
 			return -1;
 		}
 

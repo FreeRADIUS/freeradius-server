@@ -39,6 +39,13 @@ decode-pair 06 03 88 37 03
 match Test-Oid = ::joint-iso-itu-t.999.3
 
 #
+#  DER encodes a subidentifier in the fewest possible octets.  A subidentifier
+#  whose leading octet is 0x80 is not minimal, and is invalid.
+#
+decode-pair 06 04 88 37 80 03
+match ERROR: OID subidentifier is not encoded in the fewest possible octets
+
+#
 #  Sequences
 #
 proto-dictionary-root Test-Seq-Of
@@ -403,34 +410,34 @@ decode-pair 06 0A 2a 86 48 ff 86 f7 0d 01 01 0b
 match Test-Oid = ::iso.member-body.us.266451853.1.1.11
 
 decode-pair 06 0B 2a 86 48 ff ff 86 f7 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 decode-pair 06 0C 2a 86 48 ff ff ff 86 f7 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 decode-pair 06 0C 2a 86 48 ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 decode-pair 06 0D 2a 86 48 ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 decode-pair 06 0e 2a 86 48 ff ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 decode-pair 06 0f 2a 86 48 ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 decode-pair 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 decode-pair 06 11 2a 86 48 ff ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 decode-pair 06 12 2a 86 48 ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 decode-pair 06 19 2a 86 48 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits)
+match ERROR: OID subidentifier too large (>28 bits)
 
 proto-dictionary-root Seq-Oid
 
@@ -450,34 +457,34 @@ decode-pair 30 0C 06 0A 2a 86 48 ff 86 f7 0d 01 01 0b
 match Seq-Oid = { Test-Oid = ::iso.member-body.us.266451853.1.1.11 }
 
 decode-pair 30 0d 06 0B 2a 86 48 ff ff 86 f7 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 decode-pair 30 0e 06 0C 2a 86 48 ff ff ff 86 f7 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 decode-pair 30 0e 06 0C 2a 86 48 ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 decode-pair 30 0f 06 0D 2a 86 48 ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 decode-pair 30 10 06 0e 2a 86 48 ff ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 decode-pair 30 11 06 0f 2a 86 48 ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 decode-pair 30 12 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 decode-pair 30 13 06 11 2a 86 48 ff ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 decode-pair 30 14 06 12 2a 86 48 ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 decode-pair 30 1b 06 19 2a 86 48 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match ERROR: OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
+match ERROR: OID subidentifier too large (>28 bits): Failed decoding Seq-Oid
 
 
 # Test IA5String
@@ -1170,4 +1177,4 @@ encode-pair Test-Enumerated = -1
 match 0a 01 ff
 
 count
-match 658
+match 660
