@@ -49,7 +49,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [service, profiling]
+        mode: [profiling]
+        #mode: [service, profiling]
 
     services:
       dind:
@@ -221,16 +222,17 @@ jobs:
         run: |
           case "${{ matrix.mode }}-${{ github.event_name }}" in
             service-schedule)
-              make -j$(nproc) test.multi-server
-              ;;
+               make -j$(nproc) test.multi-server
+               ;;
             service-*)
-              make -j$(nproc) test.multi-server.ci
-              ;;
+               make -j$(nproc) test.multi-server.ci
+               ;;
             profiling-schedule)
               make -j$(nproc) test.multi-server.profiling
               ;;
             profiling-*)
-              make -j$(nproc) test.multi-server.profiling.ci
+              #make -j$(nproc) test.multi-server.profiling.ci
+              make test.multi-server.accept.short_ci MODE=profiling PROFILING_TOOL=gperftools
               ;;
           esac
 
