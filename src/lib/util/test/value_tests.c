@@ -358,12 +358,49 @@ static void test_cast_string_to_uint32(void)
 	fr_value_box_strdup(autofree, &src, NULL, "12345", false);
 	fr_value_box_init_null(&dst);
 
-	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_UINT32, NULL, &src) >= 0);
+	TEST_CHECK(fr_value_box_cast(autofree, &dst, FR_TYPE_UINT32, NULL, &src) == 0);
 	TEST_CHECK(dst.type == FR_TYPE_UINT32);
 	TEST_CHECK(dst.vb_uint32 == 12345);
 	TEST_MSG("Expected 12345, got %u", dst.vb_uint32);
 
 	fr_value_box_clear(&src);
+}
+
+/*
+ *	fr_value_box_cast() returns 0 on success.  A cast from a string
+ *	parses the string, and must not return the length it parsed.
+ */
+static void test_cast_string_returns_zero(void)
+{
+	static struct {
+		char const	*in;
+		fr_type_t	type;
+	} const cast[] = {
+		{ "192.0.2.1",		FR_TYPE_IPV4_ADDR },
+		{ "192.0.2.0/24",	FR_TYPE_IPV4_PREFIX },
+		{ "2001:db8::1",	FR_TYPE_IPV6_ADDR },
+		{ "2001:db8::/32",	FR_TYPE_IPV6_PREFIX },
+		{ "aa:bb:cc:dd:ee:ff",	FR_TYPE_ETHERNET },
+		{ "yes",		FR_TYPE_BOOL },
+		{ "12345",		FR_TYPE_UINT64 },
+		{ "0x0102",		FR_TYPE_OCTETS },
+	};
+	fr_value_box_t	src, dst;
+	size_t		i;
+	int		ret;
+
+	for (i = 0; i < NUM_ELEMENTS(cast); i++) {
+		fr_value_box_strdup(autofree, &src, NULL, cast[i].in, false);
+		fr_value_box_init_null(&dst);
+
+		ret = fr_value_box_cast(autofree, &dst, cast[i].type, NULL, &src);
+		TEST_CHECK(ret == 0);
+		TEST_MSG("Casting \"%s\" to %s returned %d, expected 0",
+			 cast[i].in, fr_type_to_str(cast[i].type), ret);
+
+		fr_value_box_clear(&dst);
+		fr_value_box_clear(&src);
+	}
 }
 
 static void test_cast_int32_to_int64(void)
@@ -1450,6 +1487,7 @@ TEST_LIST = {
 	{ "cast_float_to_date_bounds",		test_cast_float_to_date_bounds },
 	{ "cast_uint32_to_string",		test_cast_uint32_to_string },
 	{ "cast_string_to_uint32",		test_cast_string_to_uint32 },
+	{ "cast_string_returns_zero",		test_cast_string_returns_zero },
 	{ "cast_int32_to_int64",		test_cast_int32_to_int64 },
 	{ "cast_uint8_to_uint32",		test_cast_uint8_to_uint32 },
 	{ "cast_same_type",			test_cast_same_type },
