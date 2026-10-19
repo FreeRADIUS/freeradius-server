@@ -5250,8 +5250,9 @@ retry:
  *	This function will update request->home_server, and
  *	request->proxy_listener.
  *
- *	Returns 0 on success, -1 if the key is unknown, and -2 if
- *	no connection with that key can take a request.
+ *	Returns 0 on success, -1 if the key is unknown or every
+ *	connection with that key has gone, and -2 if the live
+ *	connections with that key cannot take a request.
  */
 int listen_coa_find(REQUEST *request, char const *key)
 {
@@ -5260,6 +5261,7 @@ int listen_coa_find(REQUEST *request, char const *key)
 	listen_socket_t *sock;
 	fr_hash_iter_t iter;
 	coa_entry_t *entry;
+	int live;
 
 	/*
 	 *	Find the key.  If we can't find it, then error out.
@@ -5274,15 +5276,23 @@ int listen_coa_find(REQUEST *request, char const *key)
 	 *	256.
 	 */
 	found = NULL;
+	live = 0;
 	pthread_mutex_lock(&coa_key->mutex);
 	for (entry = fr_hash_table_iter_init(coa_key->ht, &iter);
 	     entry != NULL;
 	     entry = fr_hash_table_iter_next(coa_key->ht, &iter)) {
 		this = entry->listener;
 
-		if (this->blocked) continue;
-
+		/*
+		 *	A listener which is closing still carries the
+		 *	key until it is freed.  It is not a connection
+		 *	the request can wait for.
+		 */
 		if (this->dead) continue;
+
+		live++;
+
+		if (this->blocked) continue;
 
 		if (!found) {
 			if (this->num_ids_used < 256) {
@@ -5320,7 +5330,14 @@ int listen_coa_find(REQUEST *request, char const *key)
 	}
 
 	pthread_mutex_unlock(&coa_key->mutex);
-	if (!found) return -2;
+
+	/*
+	 *	The key is known, but no connection carries it any
+	 *	more: that is "not routable", not "busy".  Busy is
+	 *	for live connections which have no free IDs, or
+	 *	which are blocked on write.
+	 */
+	if (!found) return live ? -2 : -1;
 
 	request->proxy_listener = found;
 
