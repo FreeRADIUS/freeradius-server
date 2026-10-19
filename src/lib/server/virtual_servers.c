@@ -451,8 +451,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 		/*
 		 *	Load "radius", instance "default.foo".
 		 */
-		FR_SBUFF_IN_CHAR_RETURN(agg, '.');
-		FR_SBUFF_IN_STRCPY_RETURN(agg, name2);
+		if ((fr_sbuff_in_char(agg, '.') < 0) || (fr_sbuff_in_strcpy(agg, name2) < 0)) goto name_too_long;
 	}
 
 	/*
@@ -463,13 +462,15 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 		cf_log_err(listener_cs, "Invalid 'listen' section - No 'transport = ...' definition was found.");
 		return -1;
 	}
-	FR_SBUFF_IN_CHAR_RETURN(agg, '.');
-	FR_SBUFF_IN_STRCPY_RETURN(agg, p);
+	if ((fr_sbuff_in_char(agg, '.') < 0) || (fr_sbuff_in_strcpy(agg, p) < 0)) {
+	name_too_long:
+		cf_log_err(listener_cs, "Listener name is too long");
+		return -1;
+	}
 
 	cp = cf_pair_find(listener_cs, "port");
 	if (cp && ((p = cf_pair_value(cp)) != NULL)) {
-		FR_SBUFF_IN_CHAR_RETURN(agg, '.');
-		FR_SBUFF_IN_STRCPY_RETURN(agg, p);
+		if ((fr_sbuff_in_char(agg, '.') < 0) || (fr_sbuff_in_strcpy(agg, p) < 0)) goto name_too_long;
 	}
 
 	if (module_instance_name_valid(fr_sbuff_start(agg)) < 0) {
