@@ -770,7 +770,7 @@ static void fr_bio_fd_set_open(fr_bio_fd_t *my)
  *  If connect is blocking, we either succeed or error immediately.  Otherwise, the caller has to select the
  *  socket for writeability, and then call fr_bio_fd_connect() as soon as the socket is writeable.
  */
-static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
+static int fr_bio_fd_try_connect(fr_bio_fd_t *my)
 {
         int tries = 0;
 	int rcode;
@@ -1388,7 +1388,7 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 	 *	No callback
 	 */
 	if (!connected_cb) {
-		ssize_t rcode;
+		int rcode;
 
 		rcode = fr_bio_fd_try_connect(my);
 		if (rcode < 0) {

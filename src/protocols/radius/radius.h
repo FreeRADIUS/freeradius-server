@@ -315,7 +315,7 @@ int		fr_radius_packet_sign(fr_packet_t *packet, fr_packet_t const *original,
 				      char const *secret) CC_HINT(nonnull (1,3));
 
 fr_packet_t	*fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_message_authenticator);
-int		fr_radius_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
+ssize_t		fr_radius_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
 				      fr_packet_t const *original, char const *secret) CC_HINT(nonnull (1,2,4));
 
 #define fr_packet_log_hex(_log, _packet) _fr_packet_log_hex(_log, _packet, __FILE__, __LINE__)

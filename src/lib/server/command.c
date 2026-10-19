@@ -1932,6 +1932,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 		 */
 		if (argv->type < FR_TYPE_FIXED) {
 			size_t len, offset;
+			fr_slen_t slen;
 			char quote, *str;
 			fr_type_t type;
 
@@ -1979,11 +1980,11 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 				info->box[argc] = talloc_zero(info->box, fr_value_box_t);
 			}
 
-			ret = fr_value_box_from_str(info->box[argc], info->box[argc],
-						    type, NULL,
-						    word + offset, len - (offset << 1),
-						    fr_value_unescape_by_char[(uint8_t)quote]);
-			if (ret < 0) return -1;
+			slen = fr_value_box_from_str(info->box[argc], info->box[argc],
+						     type, NULL,
+						     word + offset, len - (offset << 1),
+						     fr_value_unescape_by_char[(uint8_t)quote]);
+			if (slen < 0) return -1;
 
 			/*
 			 *	Note that argv[i] is the *input* string.
@@ -2526,6 +2527,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 		if (argv->type < FR_TYPE_FIXED) {
 			int ret;
 			size_t len, offset;
+			fr_slen_t slen;
 			char quote, *my_word;
 			fr_type_t type = argv->type;
 
@@ -2584,11 +2586,11 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				offset = 0;
 			}
 
-			ret = fr_value_box_from_str(info->box[info->argc], info->box[info->argc],
-						    type, NULL,
-						    word + offset, len - (offset << 1),
-						    fr_value_unescape_by_char[(uint8_t)quote]);
-			if (ret < 0) return -1;
+			slen = fr_value_box_from_str(info->box[info->argc], info->box[info->argc],
+						     type, NULL,
+						     word + offset, len - (offset << 1),
+						     fr_value_unescape_by_char[(uint8_t)quote]);
+			if (slen < 0) return -1;
 			info->argc++;
 			*word_p = word = p;
 			continue;

@@ -38,9 +38,9 @@
  *	- >= 0 if successful.
  *	- < 0 if failed.
  */
-int fr_dhcpv4_udp_packet_send(fr_packet_t *packet)
+ssize_t fr_dhcpv4_udp_packet_send(fr_packet_t *packet)
 {
-	int ret;
+	ssize_t ret;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_dst;
 	struct sockaddr_storage	src;

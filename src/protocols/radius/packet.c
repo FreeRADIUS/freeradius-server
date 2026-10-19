@@ -281,9 +281,13 @@ fr_packet_t *fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_att
 /** Reply to the request
  *
  * Also attach reply attribute value pairs and any user message provided.
+ *
+ * @return
+ *	- >=0 amount of data written.  0 if the packet has no socket.
+ *	- -1 on failure.
  */
-int fr_radius_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
-			  fr_packet_t const *original, char const *secret)
+ssize_t fr_radius_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
+			      fr_packet_t const *original, char const *secret)
 {
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.

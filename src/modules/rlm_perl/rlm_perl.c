@@ -1147,11 +1147,12 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 	/*	Array */
 	{
 		SV	**av_sv;
+		SSize_t	last_idx, idx;
 		RDEBUG3("Array returned");
 		av = (AV*)sv;
-		sv_len = av_len(av);
-		for (i = 0; i <= sv_len; i++) {
-			av_sv = av_fetch(av, i, 0);
+		last_idx = av_len(av);
+		for (idx = 0; idx <= last_idx; idx++) {
+			av_sv = av_fetch(av, idx, 0);
 			if (SvOK(*av_sv)) {
 				if (perl_sv_to_vblist(ctx, list, request, *av_sv) < 0) return -1;
 			}
@@ -1222,7 +1223,7 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       request_t *request, fr_value_box_list_t *in)
 {
 	rlm_perl_thread_t const		*t = talloc_get_type_abort_const(xctx->mctx->thread, rlm_perl_thread_t);
-	int				count, i;
+	SSize_t				count, i;
 	xlat_action_t			ret = XLAT_ACTION_FAIL;
 	STRLEN				n_a;
 	fr_value_box_t			*func = fr_value_box_list_pop_head(in);
@@ -1442,7 +1443,8 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(unlang_result_t *p_result, modu
 	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
 	perl_call_env_t		*func = talloc_get_type_abort(mctx->env_data, perl_call_env_t);
 	PerlInterpreter		*interp = ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl;
-	int			ret=0, count;
+	int			ret=0;
+	SSize_t			count;
 	STRLEN			n_a;
 
 	HV			*frpair_stash;
@@ -1756,7 +1758,8 @@ DIAG_OFF(nested-externs)
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_perl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
-	int 		ret = 0, count = 0;
+	int 		ret = 0;
+	SSize_t		count = 0;
 
 
 	if (inst->perl_parsed) {

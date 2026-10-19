@@ -39,9 +39,9 @@ RCSID("$Id$")
  *	- >=0 amount of data written.
  *	- -1 on failure.
  */
-int udp_send(fr_socket_t const *sock, int flags, void *data, size_t data_len)
+ssize_t udp_send(fr_socket_t const *sock, int flags, void *data, size_t data_len)
 {
-	int ret;
+	ssize_t ret;
 
 	fr_assert(sock->type == SOCK_DGRAM);
 
@@ -72,7 +72,7 @@ int udp_send(fr_socket_t const *sock, int flags, void *data, size_t data_len)
  *
  * @param[in] sockfd we're reading from.
  */
-int udp_recv_discard(int sockfd)
+ssize_t udp_recv_discard(int sockfd)
 {
 	uint8_t			data[4];
 	struct sockaddr_storage	src;

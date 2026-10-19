@@ -266,7 +266,7 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	} else {
 		rcode = my->rewrite(&my->bio, item, item->buffer, item->size);
 	}
-	if (rcode < 0) return rcode;
+	if (rcode < 0) return (int)rcode;	/* fr_bio_error() codes fit in an int */
 
 	/*
 	 *	We did not write the whole packet, so we are blocked.

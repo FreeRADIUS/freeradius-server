@@ -392,6 +392,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 				ascend_ipx_net_t *net, uint8_t *comp)
 {
 	int		token;
+	fr_slen_t	slen;
 	unsigned long	socket_num;
 	char const	*p;
 
@@ -429,10 +430,10 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	/*
 	 *	Node must be 6 octets long.
 	 */
-	token = fr_base16_decode(NULL,
+	slen = fr_base16_decode(NULL,
 			   &FR_DBUFF_TMP(net->node, IPX_NODE_ADDR_LEN),
 			   &FR_SBUFF_IN_STR(p), false);
-	if (token != IPX_NODE_ADDR_LEN) {
+	if (slen != IPX_NODE_ADDR_LEN) {
 		fr_strerror_printf("IPX network node name '%s' is the wrong size", argv[2]);
 		return -1;
 	}
@@ -927,7 +928,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
  */
 static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter)
 {
-	ssize_t slen;
+	int slen;
 	int token;
 	int flags;
 
@@ -1075,7 +1076,9 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 static int ascend_parse_generic(int argc, char **argv,
 				ascend_generic_filter_t *filter)
 {
-	int slen;
+	int offset;
+	fr_slen_t slen;
+	fr_slen_t value_slen;
 	int token;
 	int flags;
 
@@ -1109,10 +1112,10 @@ static int ascend_parse_generic(int argc, char **argv,
 		return -1;
 	}
 
-	slen = atoi(argv[0]);
-	if (slen > 65535) goto invalid;
+	offset = atoi(argv[0]);
+	if (offset > 65535) goto invalid;
 
-	filter->offset = slen;
+	filter->offset = offset;
 	filter->offset = htons(filter->offset);
 
 	slen = fr_base16_decode(NULL,
@@ -1123,10 +1126,10 @@ static int ascend_parse_generic(int argc, char **argv,
 		return -1;
 	}
 
-	token = fr_base16_decode(NULL,
+	value_slen = fr_base16_decode(NULL,
 			   &FR_DBUFF_TMP(filter->value, sizeof(filter->value)),
 			   &FR_SBUFF_IN_STR(argv[2]), false);
-	if (token != sizeof(filter->value)) {
+	if (value_slen != sizeof(filter->value)) {
 		fr_strerror_printf("Invalid filter mask '%s'", argv[1]);
 		return -1;
 	}

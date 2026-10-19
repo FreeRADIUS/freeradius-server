@@ -314,7 +314,7 @@ static int fr_bio_tls_flush(fr_bio_tls_t *my)
 {
 	fr_tls_session_t *tls_session = my->conn->tls_session;
 
-	if (fr_tls_connection_write(my->conn) < 0) return my->next_error;
+	if (fr_tls_connection_write(my->conn) < 0) return (int)my->next_error;	/* fr_bio_error() codes fit in an int */
 
 	if (fr_dbuff_remaining(tls_session->dirty_out) > 0) return 0;
 

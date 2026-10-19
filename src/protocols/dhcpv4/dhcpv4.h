@@ -270,7 +270,7 @@ int		fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_packet_t *
  *	udp.c
  */
 fr_packet_t	*fr_dhcpv4_udp_packet_recv(int sockfd);
-int		fr_dhcpv4_udp_packet_send(fr_packet_t *packet);
+ssize_t		fr_dhcpv4_udp_packet_send(fr_packet_t *packet);
 
 #ifdef __cplusplus
 }

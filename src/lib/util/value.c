@@ -7069,10 +7069,10 @@ int fr_value_box_escape_in_place_erules(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_
 			);
 		if (rcode < 0) return rcode;
 
-		rcode = fr_value_box_list_concat_as_string(NULL, escaped, &vb->vb_group, NULL, 0, NULL,
-							   FR_VALUE_BOX_LIST_FREE,
-							   (fr_value_box_safe_for_t) erules, true);
-		if (rcode < 0) return rcode;
+		slen = fr_value_box_list_concat_as_string(NULL, escaped, &vb->vb_group, NULL, 0, NULL,
+							  FR_VALUE_BOX_LIST_FREE,
+							  (fr_value_box_safe_for_t) erules, true);
+		if (slen < 0) return -1;
 
 		fr_assert(fr_value_box_list_num_elements(&vb->vb_group) == 0);
 

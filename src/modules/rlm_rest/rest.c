@@ -2235,7 +2235,7 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, reques
 	/*
 	 *  Unescape any special sequences in the first part of the URI
 	 */
-	scheme = curl_easy_unescape(candle, uri, len, NULL);
+	scheme = curl_easy_unescape(candle, uri, (int)len, NULL);
 	if (!scheme) {
 		REDEBUG("Error unescaping host");
 		return -1;

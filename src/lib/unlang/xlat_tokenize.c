@@ -701,11 +701,11 @@ static bool const tmpl_attr_allowed_chars[SBUFF_CHAR_CLASS] = {
 	['['] = true, [']'] = true, 					// tmpls and attribute arrays
 };
 
-static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
-							 tmpl_rules_t const *t_rules)
+static CC_HINT(nonnull(1,2)) fr_slen_t xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
+							       tmpl_rules_t const *t_rules)
 {
 	size_t			len;
-	int			ret;
+	fr_slen_t		ret;
 	fr_sbuff_marker_t	m_s;
 	char			hint;
 	fr_sbuff_term_t		hint_tokens = FR_SBUFF_TERMS(

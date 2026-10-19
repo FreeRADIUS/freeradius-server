@@ -723,7 +723,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (inst->bootstrap && !exists) {
 		int		status;
-		int		ret;
+		int		ret = 0;
+		ssize_t		slen;
 		char const	*p;
 		char		*buff;
 		sqlite3		*db = NULL;
@@ -741,9 +742,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			MEM(buff = talloc_strdup(mctx->mi->conf, inst->filename));
 		}
 
-		ret = fr_mkdir(NULL, buff, -1, 0700, NULL, NULL);
+		slen = fr_mkdir(NULL, buff, -1, 0700, NULL, NULL);
 		talloc_free(buff);
-		if (ret < 0) {
+		if (slen < 0) {
 			PERROR("Failed creating directory for SQLite database");
 
 			return -1;

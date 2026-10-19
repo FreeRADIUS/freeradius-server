@@ -1231,7 +1231,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	}
 
 	while (cd != NULL) {
-		int rcode;
+		ssize_t rcode;
 
 		fr_assert(li == cd->listen);
 		if (li->write_hexdump) HEXDUMP2(cd->m.data, cd->m.data_size, "%s writing ", li->name);

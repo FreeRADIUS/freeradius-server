@@ -1870,12 +1870,12 @@ static void tmpl_attr_ref_fixup(TALLOC_CTX *ctx, tmpl_t *vpt, fr_dict_attr_t con
  *	- <0 on error.
  *	- 0 on success.
  */
-static int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-				       tmpl_t *vpt,
-				       fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
-				       fr_sbuff_t *name,
-				       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-				       unsigned int depth)
+static fr_slen_t tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+					     tmpl_t *vpt,
+					     fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
+					     fr_sbuff_t *name,
+					     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+					     unsigned int depth)
 {
 	tmpl_attr_rules_t const	*at_rules = &t_rules->attr;
 	uint32_t		oid = 0;
@@ -2384,7 +2384,7 @@ fr_slen_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			       fr_sbuff_parse_rules_t const *p_rules,
 			       tmpl_rules_t const *t_rules)
 {
-	int				ret;
+	fr_slen_t			slen;
 	tmpl_t				*vpt;
 	fr_sbuff_t			our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
 	bool				is_raw = false;
@@ -2446,12 +2446,12 @@ fr_slen_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	/*
 	 *	Parse one or more request references
 	 */
-	ret = tmpl_request_ref_list_from_substr(vpt, err,
-						&vpt->data.attribute.rr,
-						&our_name,
-						t_rules,
-						&namespace);
-	if (ret < 0) {
+	slen = tmpl_request_ref_list_from_substr(vpt, err,
+						 &vpt->data.attribute.rr,
+						 &our_name,
+						 t_rules,
+						 &namespace);
+	if (slen < 0) {
 	error:
 		*out = NULL;
 		talloc_free(vpt);
@@ -2463,11 +2463,11 @@ fr_slen_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	/*
 	 *	Parse the list and / or attribute reference
 	 */
-	ret = tmpl_attr_afrom_attr_substr(vpt, err,
-					  vpt,
-					  namespace, namespace,
-					  &our_name, p_rules, t_rules, 0);
-	if (ret < 0) goto error;
+	slen = tmpl_attr_afrom_attr_substr(vpt, err,
+					   vpt,
+					   namespace, namespace,
+					   &our_name, p_rules, t_rules, 0);
+	if (slen < 0) goto error;
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
 		fr_strerror_const("Unexpected text after attribute reference");
@@ -2530,8 +2530,7 @@ fr_slen_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 				fr_sbuff_set(&our_name, &m_l);
 				goto error;
 			}
-			ret = attr_to_raw(vpt, tmpl_attr_list_tail(tmpl_attr(vpt)));
-			if (ret < 0) goto error;
+			if (attr_to_raw(vpt, tmpl_attr_list_tail(tmpl_attr(vpt))) < 0) goto error;
 		}
 
 		/*

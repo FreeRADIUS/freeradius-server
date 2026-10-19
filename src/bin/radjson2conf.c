@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
 		struct json_tokener *tok = json_tokener_new();
 
 		while ((n = read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
-			root_json = json_tokener_parse_ex(tok, buf, n);
+			root_json = json_tokener_parse_ex(tok, buf, (int)n);	/* n <= sizeof(buf) */
 			if (json_tokener_get_error(tok) == json_tokener_continue) continue;
 			if (json_tokener_get_error(tok) != json_tokener_success) {
 				fprintf(stderr, "JSON parse error: %s\n",

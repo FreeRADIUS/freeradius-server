@@ -605,12 +605,12 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 					break;
 
 				case FR_AUTHENTICATION_TYPE_VALUE_MSCHAP: {
-					int rcode;
+					ssize_t slen;
 
-					rcode = tacacs_encode_chap(&work_dbuff, packet, vps, attr_tacacs_mschap_response, attr_tacacs_mschap_challenge);
-					if (rcode < 0) return rcode;
+					slen = tacacs_encode_chap(&work_dbuff, packet, vps, attr_tacacs_mschap_response, attr_tacacs_mschap_challenge);
+					if (slen < 0) return slen;
 
-					if (rcode > 0) break;
+					if (slen > 0) break;
 
 					if (tacacs_encode_chap(&work_dbuff, packet, vps, attr_tacacs_mschap2_response, attr_tacacs_mschap_challenge) < 0) return -1;
 					}

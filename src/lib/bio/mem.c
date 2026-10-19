@@ -938,7 +938,7 @@ int fr_bio_mem_write_resume(fr_bio_t *bio)
 		 */
 		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return 0;
 
-		return rcode;
+		return (int)rcode;	/* fr_bio_error() codes fit in an int */
 	}
 
 	/*

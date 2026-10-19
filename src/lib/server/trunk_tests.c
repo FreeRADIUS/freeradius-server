@@ -58,7 +58,8 @@ static int test_conn_write(test_conn_t *tc, test_proto_request_t *preq)
 	ssize_t		slen;
 
 	slen = write(tc->fd[0], &wake, sizeof(wake));
-	if (slen <= 0) return slen;
+	if (slen < 0) return -1;
+	if (slen == 0) return 0;
 
 	MEM(sent = talloc(tc, test_sent_t));
 	sent->preq = preq;

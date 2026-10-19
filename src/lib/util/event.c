@@ -812,7 +812,7 @@ static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
 static int _event_fd_delete(fr_event_fd_t *ef)
 {
 	struct kevent		evset[10];
-	int			count = 0;
+	ssize_t			count = 0;
 	fr_event_list_t		*el = ef->el;
 	fr_event_funcs_t	funcs;
 
@@ -836,7 +836,7 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 			/*
 			 *	If this fails, assert on debug builds.
 			 */
-			ret = kevent(el->kq, evset, count, NULL, 0, NULL);
+			ret = kevent(el->kq, evset, (int)count, NULL, 0, NULL);
 			if (!fr_cond_assert_msg(ret >= 0,
 						"FD %i was closed without being removed from the KQ: %s",
 						ef->fd, fr_syserror(errno))) {
@@ -948,7 +948,7 @@ int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
 	size_t			i;
 	fr_event_funcs_t	curr_active, curr_stored;
 	struct kevent		evset[10];
-	int			count = 0;
+	ssize_t			count = 0;
 
 	fr_rb_find((void **)&ef, el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
@@ -998,7 +998,7 @@ int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
 		return -1;
 	}
 
-	if (count && unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
+	if (count && unlikely(kevent(el->kq, evset, (int)count, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed updating filters for FD %i: %s", ef->fd, fr_syserror(errno));
 		goto error;
 	}
@@ -1105,7 +1105,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 		count = fr_event_build_evset(el, evset, sizeof(evset)/sizeof(*evset),
 					     &ef->active, ef, funcs, &ef->active);
 		if (count < 0) goto free;
-		if (count && (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0))) {
+		if (count && (unlikely(kevent(el->kq, evset, (int)count, NULL, 0, NULL) < 0))) {
 			fr_strerror_printf("Failed inserting filters for FD %i: %s", fd, fr_syserror(errno));
 			goto free;
 		}
@@ -1137,7 +1137,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 			memcpy(&ef->active, &active, sizeof(ef->active));
 			return -1;
 		}
-		if (count && (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0))) {
+		if (count && (unlikely(kevent(el->kq, evset, (int)count, NULL, 0, NULL) < 0))) {
 			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
 			goto error;
 		}

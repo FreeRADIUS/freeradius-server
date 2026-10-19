@@ -199,17 +199,17 @@ int udpfromto_init(int s, int af)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int recvfromto(int fd, void *buf, size_t len, int flags,
-	       int *ifindex,
-	       struct sockaddr *from, socklen_t *from_len,
-	       struct sockaddr *to, socklen_t *to_len,
-	       fr_time_t *when)
+ssize_t recvfromto(int fd, void *buf, size_t len, int flags,
+		   int *ifindex,
+		   struct sockaddr *from, socklen_t *from_len,
+		   struct sockaddr *to, socklen_t *to_len,
+		   fr_time_t *when)
 {
 	struct msghdr		msgh;
 	struct cmsghdr		*cmsg;
 	struct iovec		iov;
 	char			cbuf[256];
-	int			ret;
+	ssize_t			ret;
 	struct sockaddr_storage	si;
 	socklen_t		si_len = sizeof(si);
 
@@ -418,10 +418,10 @@ DIAG_ON(sign-compare)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int sendfromto(int fd, void *buf, size_t len, int flags,
-	       int ifindex,
-	       struct sockaddr *from, socklen_t from_len,
-	       struct sockaddr *to, socklen_t to_len)
+ssize_t sendfromto(int fd, void *buf, size_t len, int flags,
+		   int ifindex,
+		   struct sockaddr *from, socklen_t from_len,
+		   struct sockaddr *to, socklen_t to_len)
 {
 	struct msghdr	msgh;
 	struct iovec	iov;

@@ -812,7 +812,7 @@ static int fr_bio_dedup_write_resume(fr_bio_t *bio)
 		rcode = my->bio.write(bio, NULL, NULL, SIZE_MAX);
 	}
 
-	if ((rcode < 0) && (rcode != fr_bio_error(IO_WOULD_BLOCK))) return rcode;
+	if ((rcode < 0) && (rcode != fr_bio_error(IO_WOULD_BLOCK))) return (int)rcode;	/* fr_bio_error() codes fit in an int */
 
 	/*
 	 *	We are still blocked if there is partial data, or a pending reply.  A flush of the next bio may

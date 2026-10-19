@@ -511,7 +511,16 @@ static int put_bits_dbuff(fr_dbuff_t *dbuff, uint8_t *p, int start_bit, uint8_t 
 	data = htonll(data);
 
 	start_bit += num_bits;
-	if (start_bit > 7) FR_DBUFF_IN_MEMCPY_RETURN(dbuff, (uint8_t const *) &data, (size_t)(start_bit / 8));
+	if (start_bit > 7) {
+		ssize_t slen;
+
+		/*
+		 *	At most 7 bytes are copied, which bounds a
+		 *	"need more space" return to -7.
+		 */
+		slen = fr_dbuff_in_memcpy(dbuff, (uint8_t const *) &data, (size_t)(start_bit / 8));
+		if (slen < 0) return (int)slen;
+	}
 
 	*p = ((uint8_t *) &data)[start_bit / 8];
 	return start_bit % 8;

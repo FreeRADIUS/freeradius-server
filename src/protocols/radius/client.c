@@ -261,7 +261,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *pctx, fr_
 		fr_assert((slen != fr_bio_error(IO_WOULD_BLOCK)) || my->common.write_blocked);
 
 		fr_radius_code_id_push(my->codes, packet);
-		return slen;
+		return (int) slen;
 	}
 
 	fr_assert((size_t) slen == packet->data_len);
@@ -594,7 +594,7 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **pctx_p, fr_packet_
 
 	if (slen < 0) {
 		fr_assert(slen != fr_bio_error(IO_WOULD_BLOCK));
-		return slen;
+		return (int) slen;
 	}
 
 	original = response.uctx;

@@ -110,7 +110,7 @@ int fr_radius_server_fd_bio_write(fr_bio_packet_t *bio, UNUSED void *pctx, fr_pa
 	if (slen < 0) {
 		fr_assert((slen != fr_bio_error(IO_WOULD_BLOCK)) || my->common.write_blocked);
 
-		return slen;
+		return (int) slen;
 	}
 
 	my->info.write_blocked = false;
@@ -140,7 +140,7 @@ int fr_radius_server_fd_bio_read(fr_bio_packet_t *bio, UNUSED void **packet_ctx_
 
 	if (slen < 0) {
 		fr_assert(slen != fr_bio_error(IO_WOULD_BLOCK));
-		return slen;
+		return (int) slen;
 	}
 
 

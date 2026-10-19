@@ -887,9 +887,8 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	}
 
 	type = FR_TYPE_UINT32;
-	ret = fr_value_box_from_str(NULL, &box, type, NULL,
-				    state->token, state->token_len, NULL);
-	if (ret < 0) goto error;
+	if (fr_value_box_from_str(NULL, &box, type, NULL,
+				  state->token, state->token_len, NULL) < 0) goto error;
 
 	/*
 	 *	Look for '='

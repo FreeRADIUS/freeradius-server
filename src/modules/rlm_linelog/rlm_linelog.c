@@ -297,9 +297,9 @@ static void linelog_hexdump(request_t *request, struct iovec *vector_p, size_t v
 	RHEXDUMP3(fr_dbuff_start(agg), fr_dbuff_used(agg), "%s", msg);
 }
 
-static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *call_env, request_t *request, struct iovec *vector_p, size_t vector_len, bool with_delim)
+static ssize_t linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *call_env, request_t *request, struct iovec *vector_p, size_t vector_len, bool with_delim)
 {
-	int 			ret = 0;
+	ssize_t			ret = 0;
 	linelog_conn_t		*conn;
 	fr_time_delta_t		timeout = fr_time_delta_wrap(0);
 

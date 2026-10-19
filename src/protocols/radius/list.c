@@ -713,13 +713,13 @@ int fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, TALLOC_CTX *ctx, fr_p
 		if (!FD_ISSET(pl->sockets[start].socket.fd, set)) continue;
 
 		if (pl->sockets[start].socket.type == SOCK_STREAM) {
-			int rcode;
+			ssize_t slen;
 			ps = &pl->sockets[start];
 
 			ps->used = 0;
-			rcode = fr_tcp_read_packet(ps->socket.fd, ps->buffer, ps->bufsize,
-						   &ps->used, max_attributes, require_message_authenticator);
-			if (rcode <= 0) return rcode;
+			slen = fr_tcp_read_packet(ps->socket.fd, ps->buffer, ps->bufsize,
+						  &ps->used, max_attributes, require_message_authenticator);
+			if (slen <= 0) return (int) slen;
 
 			if (ps->used < RADIUS_HEADER_LENGTH) {
 				fr_strerror_printf("TCP packet too short: %zu", ps->used);
@@ -729,22 +729,22 @@ int fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, TALLOC_CTX *ctx, fr_p
 			packet = fr_packet_alloc(ctx, false);
 			if (!packet) return -1;
 
-			packet->data = talloc_memdup(packet, ps->buffer, rcode);
+			packet->data = talloc_memdup(packet, ps->buffer, slen);
 			if (!packet->data) {
 				talloc_free(packet);
 				return -1;
 			}
 
-			packet->data_len = rcode;
+			packet->data_len = slen;
 			packet->socket = ps->socket;
 
-			if (ps->used == (size_t) rcode) {
+			if (ps->used == (size_t) slen) {
 				ps->used = 0;
 			} else {
-				fr_assert(ps->used > (size_t) rcode);
+				fr_assert(ps->used > (size_t) slen);
 
-				memmove(ps->buffer, ps->buffer + rcode, ps->used - rcode);
-				ps->used -= rcode;
+				memmove(ps->buffer, ps->buffer + slen, ps->used - slen);
+				ps->used -= slen;
 			}
 
 		} else {

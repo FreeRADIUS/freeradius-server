@@ -854,7 +854,8 @@ static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t const *inst, request_t *r
 		 */
 
 		size_t		size;
-		int		status, len, to_child=-1, from_child=-1;
+		int		status, to_child=-1, from_child=-1;
+		ssize_t		len;
 		pid_t		pid, child_pid;
 		char		buf[2048];
 		char		*pmsg;

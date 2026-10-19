@@ -1075,7 +1075,7 @@ static xlat_action_t xlat_func_tacacs_secret_verify(TALLOC_CTX *ctx, fr_dcursor_
                                                     request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t  *secret, *vb;
-	int		ret;
+	ssize_t		slen;
 	TALLOC_CTX	*local = talloc_new(NULL);
 	fr_pair_list_t	list;
 
@@ -1090,11 +1090,11 @@ static xlat_action_t xlat_func_tacacs_secret_verify(TALLOC_CTX *ctx, fr_dcursor_
 	 *	If the decoding fails then the secret is wrong.
 	 */
 	fr_pair_list_init(&list);
-	ret = fr_tacacs_decode(local, &list, NULL, request->packet->data, request->packet->data_len, NULL,
-			       secret->vb_strvalue, secret->vb_length, NULL);
+	slen = fr_tacacs_decode(local, &list, NULL, request->packet->data, request->packet->data_len, NULL,
+				secret->vb_strvalue, secret->vb_length, NULL);
 	talloc_free(local);
 
-	if (ret < 0) {
+	if (slen < 0) {
 		RPEDEBUG("Failed to verify the TACACS secret");
 		vb->vb_bool = false;
 	} else {

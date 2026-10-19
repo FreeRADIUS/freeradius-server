@@ -39,13 +39,13 @@ extern "C" {
 
 int	udpfromto_init(int s, int af);
 
-int	recvfromto(int s, void *buf, size_t len, int flags,
+ssize_t	recvfromto(int s, void *buf, size_t len, int flags,
 		   int *ifindex,
 	       	   struct sockaddr *from, socklen_t *fromlen,
 		   struct sockaddr *to, socklen_t *tolen,
 		   fr_time_t *when);
 
-int	sendfromto(int s, void *buf, size_t len, int flags,
+ssize_t	sendfromto(int s, void *buf, size_t len, int flags,
 		   int ifindex,
 		   struct sockaddr *from, socklen_t fromlen,
 		   struct sockaddr *to, socklen_t tolen);

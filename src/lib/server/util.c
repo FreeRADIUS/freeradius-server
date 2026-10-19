@@ -455,7 +455,7 @@ int rad_expand_xlat(request_t *request, char const *cmd,
 	char *to;
 	int argc = -1;
 	int i;
-	int left;
+	size_t left;
 	size_t len = strlen(cmd);
 
 	if (len > (argv_buflen - 1)) {
@@ -551,7 +551,7 @@ int rad_expand_xlat(request_t *request, char const *cmd,
 	 */
 	left = argv_buf + argv_buflen - to;
 	for (i = 0; i < argc; i++) {
-		int sublen;
+		ssize_t sublen;
 
 		/*
 		 *	Don't touch argv's which won't be translated.
@@ -582,7 +582,7 @@ int rad_expand_xlat(request_t *request, char const *cmd,
 		left -= sublen;
 		left--;
 
-		if (left <= 0) {
+		if (left == 0) {
 			fr_strerror_const("Ran out of space while expanding arguments");
 			return -1;
 		}

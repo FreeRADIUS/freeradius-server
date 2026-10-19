@@ -355,9 +355,9 @@ pid_t radius_start_program_legacy(int *stdin_fd, int *stdout_fd, int *stderr_fd,
  *	- -1 on failure.
  *	- Length of output.
  */
-int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, char *answer, int left)
+ssize_t radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, char *answer, size_t left)
 {
-	int done = 0;
+	size_t done = 0;
 	int status;
 	fr_time_t start;
 
@@ -375,6 +375,7 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 	start = fr_time();
 	while (1) {
 		int		rcode;
+		ssize_t		slen;
 		fd_set		fds;
 		fr_time_delta_t	elapsed;
 
@@ -407,26 +408,26 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 		 *	Read as many bytes as possible.  The kernel
 		 *	will return the number of bytes available.
 		 */
-		status = read(fd, answer + done, left);
+		slen = read(fd, answer + done, left);
 #else
 		/*
 		 *	There's at least 1 byte ready: read it.
 		 *	This is a terrible hack for non-blocking IO.
 		 */
-		status = read(fd, answer + done, 1);
+		slen = read(fd, answer + done, 1);
 #endif
 
 		/*
 		 *	Nothing more to read: stop.
 		 */
-		if (status == 0) {
+		if (slen == 0) {
 			break;
 		}
 
 		/*
 		 *	Error: See if we have to continue.
 		 */
-		if (status < 0) {
+		if (slen < 0) {
 			/*
 			 *	We were interrupted: continue reading.
 			 */
@@ -442,9 +443,9 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 			break;
 		}
 
-		done += status;
-		left -= status;
-		if (left <= 0) break;
+		done += slen;
+		left -= slen;
+		if (left == 0) break;
 	}
 
 	/* Strip trailing new lines */
