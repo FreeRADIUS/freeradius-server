@@ -231,8 +231,8 @@ jobs:
               make -j$(nproc) test.multi-server.profiling
               ;;
             profiling-*)
-              #make -j$(nproc) test.multi-server.profiling.ci
-              make test.multi-server.accept.short_ci MODE=profiling PROFILING_TOOL=gperftools
+              make -j$(nproc) test.multi-server.profiling.ci PROFILING_TOOL=gperftools
+              #make test.multi-server.accept.short_ci MODE=profiling PROFILING_TOOL=gperftools
               ;;
           esac
 
