@@ -463,5 +463,24 @@ match ERROR: Unexpected key 2 for time_delta, expected key 1
 decode-pair 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ca d9 03 ea a2 01 19 0e 10 21 1a 1d cd 65 00 ff
 match ERROR: Unsupported time_delta key -2
 
+#
+#  Error: an attribute number which does not fit in 32 bits.  2^32 + 1 must not
+#  be truncated to attribute 1 (User-Name).
+#
+decode-pair 9f a1 1b 00 00 00 01 00 00 00 01 63 62 6f 62 ff
+match ERROR: Invalid cbor - attribute number 4294967297 is larger than 32 bits
+
+#
+#  Error: an IPv4 scope ID which does not fit in 32 bits.
+#
+decode-pair 9f a1 08 d8 34 83 44 c0 00 02 01 18 20 1b 00 00 00 01 00 00 00 05 ff
+match ERROR: Invalid IPv4 address - scope ID 4294967301 is larger than 32 bits
+
+#
+#  Error: an IPv6 scope ID which does not fit in 32 bits.
+#
+decode-pair 9f a1 18 5f d8 36 83 50 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 01 18 80 1b 00 00 00 01 00 00 00 05 ff
+match ERROR: Invalid IPv6 address - scope ID 4294967301 is larger than 32 bits
+
 count
-match 201
+match 207

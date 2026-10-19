@@ -94,7 +94,7 @@ static ssize_t cbor_encode_integer(fr_dbuff_t *dbuff, uint8_t type, uint64_t dat
 	}
 
 	if (data < (((uint64_t) 1) << 32)) {
-		fr_nbo_from_uint32(value, data);
+		fr_nbo_from_uint32(value, (uint32_t) data);
 
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) (type | CBOR_4_BYTE));
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value, 4);
@@ -662,7 +662,12 @@ static ssize_t cbor_decode_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
 	if (slen <= 0) return_slen;
 
-	vb->vb_ip.scope_id = value;
+	if (value > UINT32_MAX) {
+		fr_strerror_printf("Invalid IPv4 address - scope ID %" PRIu64 " is larger than 32 bits", value);
+		return -fr_dbuff_used(&work_dbuff);
+	}
+
+	vb->vb_ip.scope_id = (uint32_t) value;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -721,7 +726,12 @@ static ssize_t cbor_decode_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
 	if (slen <= 0) return_slen;
 
-	vb->vb_ip.scope_id = value;
+	if (value > UINT32_MAX) {
+		fr_strerror_printf("Invalid IPv6 address - scope ID %" PRIu64 " is larger than 32 bits", value);
+		return -fr_dbuff_used(&work_dbuff);
+	}
+
+	vb->vb_ip.scope_id = (uint32_t) value;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -1118,7 +1128,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 		case FR_TYPE_UINT32:
 			if (value > UINT32_MAX) goto invalid;
-			vb->vb_uint32 = value;
+			vb->vb_uint32 = (uint32_t) value;
 			break;
 
 		case FR_TYPE_UINT64:
@@ -1137,7 +1147,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 		case FR_TYPE_INT32:
 			if (value > INT32_MAX) goto invalid;
-			vb->vb_int32 = value;
+			vb->vb_int32 = (int32_t) value;
 			break;
 
 		case FR_TYPE_INT64:
@@ -1183,7 +1193,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 		case FR_TYPE_INT32:
 			if (neg < INT32_MIN) goto invalid;
-			vb->vb_int32 = neg;
+			vb->vb_int32 = (int32_t) neg;
 			break;
 
 		case FR_TYPE_INT64:
@@ -1678,13 +1688,18 @@ static ssize_t cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t
 		return_slen;
 	}
 
+	if (value > UINT32_MAX) {
+		fr_strerror_printf("Invalid cbor - attribute number %" PRIu64 " is larger than 32 bits", value);
+		return -fr_dbuff_used(&work_dbuff);
+	}
+
 	/*
 	 *	If the nesting is too deep, decode as raw octets.  We have to do this manually in CBOR,
 	 *	because the other protocols create a da_stack which limits the depth.
 	 */
 	if (depth >= FR_DICT_MAX_TLV_STACK) goto raw;
 
-	da = fr_dict_attr_child_by_num(parent, value);
+	da = fr_dict_attr_child_by_num(parent, (unsigned int) value);
 	if (!da) {
 		fr_type_t type;
 
@@ -1702,7 +1717,7 @@ static ssize_t cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t
 		 *	use that instead.  This would involve creating a function which maps cbor types to our
 		 *	data types.
 		 */
-		da = fr_dict_attr_unknown_typed_afrom_num(ctx, parent, value, type);
+		da = fr_dict_attr_unknown_typed_afrom_num(ctx, parent, (unsigned int) value, type);
 		if (!da) return -fr_dbuff_used(&work_dbuff);
 	}
 
