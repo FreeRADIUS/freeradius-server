@@ -9,8 +9,24 @@ name: Docker CI images refresh
 #  standalone run would race the run that the pipeline waits for.  The
 #  pipeline's 'changes' job holds the list of paths that trigger a refresh.
 #
+#  The workflow rebuilds the images one family at a time: the tooling
+#  images (stages 1 and 2), the Debian and Ubuntu images, the Rocky images,
+#  and the copies of Docker Hub images.  `common_vars.yml` reports which
+#  families this ref changes.  A family that this ref does not change is
+#  copied from `latest` to this ref's tag instead of rebuilt, because every
+#  job reads one tag for every image.  `docker-ci-images-build.yml` builds
+#  or copies the Debian, Ubuntu, and Rocky families, and takes each family's
+#  matrix as an input.
+#
 on:
   workflow_call:
+    inputs:
+      rebuild_all:
+        description: "Rebuild every family, whatever this ref changes"
+        type: boolean
+        #  The nightly and hand-started refreshes pass no inputs, and
+        #  rebuild every family.
+        default: true
 
 concurrency:
   #
@@ -42,6 +58,7 @@ jobs:
   #
   process-host-bases:
     needs: common_vars
+    if: ${{ inputs.rebuild_all || needs.common_vars.outputs.images_tooling == 'true' }}
     timeout-minutes: 40
 
     env:
@@ -235,6 +252,7 @@ jobs:
   #
   process-docker-cli:
     needs: [process-host-bases, common_vars]
+    if: ${{ inputs.rebuild_all || needs.common_vars.outputs.images_tooling == 'true' }}
     timeout-minutes: 15
 
     env:
@@ -344,94 +362,21 @@ jobs:
           exit 1
 
   #
-  #  Stage 3: refresh the remaining CI base images and the pull-through
-  #  cache mirrors.  Stage 3 runs inside the dind sidecar plus the
-  #  freshly built 'docker-cli' container.
+  #  When this ref does not change the tooling images, copy the images
+  #  of stages 1 and 2 from `latest` to this ref's tag.  The list holds every
+  #  `display` name and every `extra_tags` name of stages 1 and 2.  The later
+  #  stages run inside 'self-hosted-docker-dind' and 'self-hosted-docker-cli'
+  #  under this ref's tag, so the copy must finish before the later stages
+  #  start.
   #
-  process-ci-images:
-    needs: [process-docker-cli, common_vars]
-    timeout-minutes: 20
-
-    env:
-      DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
-      IMAGE_PREFIX: ${{ needs.common_vars.outputs.image_prefix }}
-      IMAGE_TAG: ${{ needs.common_vars.outputs.image_tag }}
+  copy-tooling-images:
+    needs: common_vars
+    if: ${{ !(inputs.rebuild_all || needs.common_vars.outputs.images_tooling == 'true') && needs.common_vars.outputs.image_tag != 'latest' }}
+    timeout-minutes: 10
 
     runs-on: ${{ needs.common_vars.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
-    services:
-      dind:
-        image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
-        options: --privileged
-        env:
-          DOCKER_TLS_CERTDIR: ""
-          NO_PROXY: "*.networkradius.com,127.0.0.1"
-        volumes:
-          - ${{ github.workspace }}:/workspace
-
-    container:
-      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}
-      env:
-        DOCKER_HOST: tcp://dind:2375
-        NO_PROXY: dind,*.networkradius.com,127.0.0.1
-      volumes:
-        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
-        - ${{ github.workspace }}:/workspace
-
-    defaults:
-      run:
-        shell: bash
-        working-directory: /workspace
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          #
-          #  Slim build bases for `ci-rpm.yml` / `ci-deb.yml`.
-          #  `scripts/docker/m4/ci.{rpm,deb}.m4` generates each `Dockerfile.ci`,
-          #  so regenerate with `make dockerfile.ci` after editing the m4.
-          #  The generated `Dockerfile.ci` hardcodes the per-distro `FROM`, so
-          #  the matrix entries pass no `build_args`.
-          #
-          - base_image: rockylinux/rockylinux:9
-            display: self-hosted-ci-rocky9
-            publishes: true
-            dockerfile: scripts/docker/build/rocky9/Dockerfile.ci
-
-          - base_image: rockylinux/rockylinux:10
-            display: self-hosted-ci-rocky10
-            publishes: true
-            dockerfile: scripts/docker/build/rocky10/Dockerfile.ci
-
-          - base_image: debian:trixie
-            display: self-hosted-ci-debian13
-            publishes: true
-            dockerfile: scripts/docker/build/debian13/Dockerfile.ci
-
-          - base_image: debian:sid
-            display: self-hosted-ci-debiansid
-            publishes: true
-            dockerfile: scripts/docker/build/debiansid/Dockerfile.ci
-
-          - base_image: ubuntu:24.04
-            display: self-hosted-ci-ubuntu24
-            publishes: true
-            dockerfile: scripts/docker/build/ubuntu24/Dockerfile.ci
-
-          - base_image: ubuntu:26.04
-            display: self-hosted-ci-ubuntu26
-            publishes: true
-            dockerfile: scripts/docker/build/ubuntu26/Dockerfile.ci
-
-          - base_image: mariadb
-            display: mariadb
-          - base_image: postgres
-            display: postgres
-          - base_image: 4teamwork/389ds
-            display: 4teamwork/389ds
-
-    name: "${{ matrix.os.display }}"
+    name: "Copy unchanged tooling images"
 
     steps:
 
@@ -439,143 +384,18 @@ jobs:
         with:
           lfs: false
 
-      - name: setup-dind
-        uses: ./.github/actions/setup-dind
-
-      #
-      #  Authenticate dind to Docker Hub up front.  Every subsequent
-      #  `docker pull` (and the implicit `FROM` pull that `docker build`
-      #  triggers) then uses the higher per-user rate limit instead of the
-      #  anonymous 100 pulls per 6 hours.  The `parent_image`-only entries
-      #  skip the login, because a `parent_image`-only entry pulls from the
-      #  internal registry instead.
-      #
-      - name: Login to Docker Hub (via dind)
-        if: ${{ matrix.os.base_image && needs.common_vars.outputs.selfhosted == '1' }}
-        uses: docker/login-action@v4
-        with:
-          username: ${{ vars.DOCKERHUB_READ_USER }}
-          password: ${{ secrets.DOCKERHUB_READ_KEY }}
-
-      #
-      #  The registry serves the `freeradius-server/` images to the public
-      #  `anonymous` account, so the pulls below do not need a real account.
-      #  This step runs first, so that a `parent_image` entry ('cli') can
-      #  pull the parent image before the build step.
-      #
-      - name: Login to internal Docker registry (read, via dind)
-        if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
-        uses: docker/login-action@v4
-        with:
-          username: anonymous
-          password: anonymous
-          registry: ${{ env.DOCKER_REGISTRY }}
-
-      #  A fork pushes to, and pulls from, the fork's own GitHub Container
-      #  Registry (GHCR) namespace.  The automatic `GITHUB_TOKEN` can reach that
-      #  namespace whenever the workflow runs in the fork's own context.
-      - name: Login to GHCR (read, via dind)
-        if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
-        uses: docker/login-action@v4
-        with:
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-          registry: ghcr.io
-
-      #
-      #  Pull the source image into dind.  `base_image` entries pull from
-      #  Docker Hub and then re-tag the image to the internal registry namespace,
-      #  so jobs that pull through the cache use the same name.
-      #  `parent_image` entries pull from the internal registry directly.
-      #
-      - name: Pull source image
-        env:
-          DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
-          PARENT_IMAGE: ${{ matrix.os.parent_image }}
-        run: |
-          if [ -n "$PARENT_IMAGE" ]; then
-            for attempt in 1 2 3; do
-              docker pull "$PARENT_IMAGE" && exit 0
-              echo "Retrying pull after backoff, attempt $attempt failed"
-              sleep 10
-            done
-            exit 1
-          fi
-          for attempt in 1 2 3; do
-            docker pull "$DOCKER_BASE_IMAGE" && break
-            if [ "$attempt" = 3 ]; then exit 1; fi
-            echo "Retrying pull after backoff, attempt $attempt failed"
-            sleep 10
-          done
-          echo "FROM $DOCKER_BASE_IMAGE" | docker build --label preserve=true -t "$IMAGE_PREFIX$DOCKER_BASE_IMAGE" -
-
-      #
-      #  Generate `freeradius-build-deps*.deb` so the slim CI base images
-      #  can apt-install the package list without pulling the full
-      #  `build-essential` / `devscripts` toolchain at every CI run.  The
-      #  step only matters for the deb-family CI bases that build
-      #  FreeRADIUS.  The pull-through database caches, dind, and cli
-      #  entries skip the step.
-      #
-      - name: Create build dependency package
-        if: ${{ matrix.os.publishes && matrix.os.dockerfile && matrix.os.base_image }}
-        env:
-          DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
-        run: |
-          cat > build-dep-pkg.sh << EOF
-          apt-get update
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
-          cd /work
-          debian/rules debian/control
-          mk-build-deps debian/control
-          mv freeradius-build-deps_*.deb freeradius-build-deps.deb
-          mk-build-deps scripts/ci/extra-packages.debian.control
-          mv freeradius-build-deps_1*.deb freeradius-build-deps-extra.deb
-          chown $(stat -c'%u:%g' .git) *
-          EOF
-          chmod 755 build-dep-pkg.sh
-          docker run \
-            -v /workspace:/work \
-            -w /work \
-            --rm \
-            "$DOCKER_BASE_IMAGE" \
-            sh -c './build-dep-pkg.sh'
-
-      #
-      #  Stage the internal CA certificate into the build context for
-      #  any matrix entry that sets `needs_internal_ca` (the dind sidecar
-      #  image, which must trust 'docker.internal.networkradius.com').
-      #
-      - name: Stage registry mirror CA into build context
-        if: ${{ matrix.os.needs_internal_ca && needs.common_vars.outputs.selfhosted == '1' }}
-        run: |
-          cp /usr/local/share/ca-certificates/networkradius.com.crt \
-             scripts/ci/networkradius.com.crt
-
-      #
-      #  The "exporting to image" phase of `docker build` occasionally trips a
-      #  transient, millisecond-scale lock race in the containerd
-      #  snapshot store.  Three attempts with a short sleep absorb the
-      #  race without masking real failures.
-      #
-      #  Log in before building.  The dind sidecar starts empty in every job,
-      #  so the previous image pulled from the registry is the only layer
-      #  cache that a build can have, and the job pushes the result with
-      #  the same credentials.
-      #
-      - name: Login to internal Docker registry for push (via dind)
+      - name: Login to internal Docker registry for push
         if: ${{ needs.common_vars.outputs.selfhosted == '1' }}
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
           password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
-          registry: ${{ env.DOCKER_REGISTRY }}
+          registry: ${{ needs.common_vars.outputs.docker_registry }}
 
       #  A fork pushes to, and pulls from, the fork's own GitHub Container
       #  Registry (GHCR) namespace.  The automatic `GITHUB_TOKEN` can reach that
       #  namespace whenever the workflow runs in the fork's own context.
-      - name: Login to GHCR for push (via dind)
+      - name: Login to GHCR for push
         if: ${{ needs.common_vars.outputs.selfhosted != '1' }}
         uses: docker/login-action@v4
         with:
@@ -583,78 +403,106 @@ jobs:
           password: ${{ github.token }}
           registry: ghcr.io
 
-      - name: Build main Docker image
-        if: ${{ matrix.os.publishes && matrix.os.dockerfile }}
-        env:
-          DOCKER_IMAGE_NAME: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
-          DOCKER_CACHE_IMAGE: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:latest
-          DOCKERFILE: ${{ matrix.os.dockerfile }}
-          BUILD_ARGS_JSON: ${{ toJson(matrix.os.build_args) }}
-        run: |
-          build_args=()
-          while IFS=$'\t' read -r key value; do
-            [ -n "$key" ] && build_args+=(--build-arg "${key}=${value}")
-          done < <(printf '%s' "$BUILD_ARGS_JSON" | jq -r 'to_entries[]? | [.key, .value] | @tsv')
+      - name: Copy the images to this ref's tag
+        uses: ./.github/actions/image-copy
+        with:
+          prefix: ${{ needs.common_vars.outputs.image_prefix }}
+          images: self-hosted-ubuntu24 self-hosted self-hosted-docker-dind self-hosted-docker-cli
+          tag: ${{ needs.common_vars.outputs.image_tag }}
 
-          #  The previous image for the ref being built is the best cache,
-          #  and the `latest` tag is the fallback for a ref building for the
-          #  first time.  A pull
-          #  that finds nothing means a cold build.
-          docker pull "$DOCKER_IMAGE_NAME" 2>/dev/null || true
-          docker pull "$DOCKER_CACHE_IMAGE" 2>/dev/null || true
+  #
+  #  Stage 3: rebuild or copy the remaining CI images, one family at a time.
+  #  Each family waits for the tooling images, because the build runs
+  #  inside the 'self-hosted-docker-dind' and 'self-hosted-docker-cli'
+  #  containers under this ref's tag.  Either stages 1 and 2 run, or
+  #  `copy-tooling-images` runs, or none of the three runs on the default
+  #  branch when the tooling images do not change.  A skipped prerequisite is
+  #  therefore normal, and the condition checks only that no prerequisite
+  #  failed.  `process-host-bases` is listed as well as `process-docker-cli`,
+  #  because a failed stage 1 skips stage 2 rather than failing stage 2.
+  #
+  #  Slim build bases for `ci-rpm.yml` / `ci-deb.yml`.
+  #  `scripts/docker/m4/ci.{rpm,deb}.m4` generates each `Dockerfile.ci`,
+  #  so regenerate with `make dockerfile.ci` after editing the m4.
+  #  The generated `Dockerfile.ci` hardcodes the per-distro `FROM`, so
+  #  the matrix entries pass no `build_args`.
+  #
+  ci-images-deb:
+    name: "Debian and Ubuntu"
+    needs: [common_vars, process-host-bases, process-docker-cli, copy-tooling-images]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
+    uses: ./.github/workflows/docker-ci-images-build.yml
+    with:
+      rebuild: ${{ inputs.rebuild_all || needs.common_vars.outputs.images_deb == 'true' }}
+      images: |
+        [
+          {
+            "base_image": "debian:trixie",
+            "display": "self-hosted-ci-debian13",
+            "publishes": true,
+            "dockerfile": "scripts/docker/build/debian13/Dockerfile.ci"
+          },
+          {
+            "base_image": "debian:sid",
+            "display": "self-hosted-ci-debiansid",
+            "publishes": true,
+            "dockerfile": "scripts/docker/build/debiansid/Dockerfile.ci"
+          },
+          {
+            "base_image": "ubuntu:24.04",
+            "display": "self-hosted-ci-ubuntu24",
+            "publishes": true,
+            "dockerfile": "scripts/docker/build/ubuntu24/Dockerfile.ci"
+          },
+          {
+            "base_image": "ubuntu:26.04",
+            "display": "self-hosted-ci-ubuntu26",
+            "publishes": true,
+            "dockerfile": "scripts/docker/build/ubuntu26/Dockerfile.ci"
+          }
+        ]
+    secrets: inherit
 
-          #  `BUILDKIT_INLINE_CACHE` embeds the cache metadata in the pushed
-          #  image, without which a pulled image cannot seed the next build.
-          for attempt in 1 2 3; do
-            docker build -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true \
-              --cache-from "$DOCKER_IMAGE_NAME" --cache-from "$DOCKER_CACHE_IMAGE" \
-              --build-arg BUILDKIT_INLINE_CACHE=1 \
-              "${build_args[@]}" . && exit 0
-            echo "Retrying build after backoff, attempt $attempt failed"
-            sleep 10
-          done
-          exit 1
+  ci-images-rpm:
+    name: "Rocky"
+    needs: [common_vars, process-host-bases, process-docker-cli, copy-tooling-images]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
+    uses: ./.github/workflows/docker-ci-images-build.yml
+    with:
+      rebuild: ${{ inputs.rebuild_all || needs.common_vars.outputs.images_rpm == 'true' }}
+      images: |
+        [
+          {
+            "base_image": "rockylinux/rockylinux:9",
+            "display": "self-hosted-ci-rocky9",
+            "publishes": true,
+            "dockerfile": "scripts/docker/build/rocky9/Dockerfile.ci"
+          },
+          {
+            "base_image": "rockylinux/rockylinux:10",
+            "display": "self-hosted-ci-rocky10",
+            "publishes": true,
+            "dockerfile": "scripts/docker/build/rocky10/Dockerfile.ci"
+          }
+        ]
+    secrets: inherit
 
-      #  Renaming the image fills the organisation's local copy of
-      #  Docker Hub.  A fork keeps no local copy and fetches third-party
-      #  images under plain upstream names, so a fork skips the rename.
-      - name: Push base image to local registry
-        if: ${{ matrix.os.base_image && needs.common_vars.outputs.selfhosted == '1' }}
-        env:
-          DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
-        run: |
-          for attempt in 1 2 3; do
-            docker push "$IMAGE_PREFIX$DOCKER_BASE_IMAGE" && exit 0
-            echo "Retrying push after backoff, attempt $attempt failed"
-            sleep 10
-          done
-          exit 1
-
-      - name: Push main image to local registry
-        if: ${{ matrix.os.publishes && matrix.os.dockerfile }}
-        env:
-          DOCKER_IMAGE_NAME: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
-        run: |
-          for attempt in 1 2 3; do
-            docker push "$DOCKER_IMAGE_NAME" && exit 0
-            echo "Retrying push after backoff, attempt $attempt failed"
-            sleep 10
-          done
-          exit 1
-
-      - name: Create and push alternative tags
-        if: ${{ matrix.os.publishes && matrix.os.extra_tags }}
-        env:
-          DOCKER_IMAGE_NAME: ${{ needs.common_vars.outputs.image_prefix }}${{ matrix.os.display }}:${{ needs.common_vars.outputs.image_tag }}
-          DOCKER_TAGS: ${{ join(matrix.os.extra_tags, ' ') }}
-        run: |
-          for TAG in $DOCKER_TAGS; do
-            docker image tag "$DOCKER_IMAGE_NAME" "$TAG"
-            for attempt in 1 2 3; do
-              docker push "$TAG" && break
-              if [ "$attempt" = "3" ]; then exit 1; fi
-              echo "Retrying push of $TAG after backoff, attempt $attempt failed"
-              sleep 10
-            done
-          done
-
+  #
+  #  The copies of Docker Hub images ('mariadb', 'postgres', '389ds') have
+  #  no Dockerfile, and no file in the repository feeds the copies, so the
+  #  copies refresh on every run of this workflow.
+  #
+  ci-images-docker-hub:
+    name: "Docker Hub copies"
+    needs: [common_vars, process-host-bases, process-docker-cli, copy-tooling-images]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
+    uses: ./.github/workflows/docker-ci-images-build.yml
+    with:
+      rebuild: true
+      images: |
+        [
+          { "base_image": "mariadb", "display": "mariadb" },
+          { "base_image": "postgres", "display": "postgres" },
+          { "base_image": "4teamwork/389ds", "display": "4teamwork/389ds" }
+        ]
+    secrets: inherit

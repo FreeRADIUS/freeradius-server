@@ -1,0 +1,44 @@
+name: 'Copy CI images to the tag of this ref'
+description: |
+  Copy images from the `latest` tag to the tag of this ref, inside the
+  registry, without pulling the images.
+
+  Every job reads one tag for every CI image (`image_tag` in
+  `common_vars.yml`).  A branch that rebuilds some of the images under
+  the branch's own tag therefore needs every other image under the same
+  tag.  The refresh workflows call this action for the images that the
+  ref does not rebuild.
+
+  The caller must log in to the registry with an account that can push.
+
+inputs:
+  prefix:
+    description: 'Registry and path that the images sit under, ending in a slash (`image_prefix`)'
+    required: true
+  images:
+    description: 'Image names to copy, without the prefix or a tag (whitespace-separated)'
+    required: true
+  tag:
+    description: 'Tag to copy `latest` to (`image_tag`)'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    #
+    #  `imagetools create` wraps a single image that is not an index in a
+    #  new manifest list.  `--prefer-index=false` copies the manifest
+    #  unchanged instead.
+    #
+    - name: Copy the images
+      shell: bash
+      env:
+        PREFIX: ${{ inputs.prefix }}
+        IMAGES: ${{ inputs.images }}
+        TAG: ${{ inputs.tag }}
+      run: |
+        for image in $IMAGES; do
+          echo "Copying $PREFIX$image:latest to $PREFIX$image:$TAG"
+          docker buildx imagetools create --prefer-index=false \
+            --tag "$PREFIX$image:$TAG" "$PREFIX$image:latest"
+        done

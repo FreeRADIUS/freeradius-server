@@ -197,6 +197,14 @@ jobs:
                 || needs.images_present.outputs.missing == 'true'
                 || github.repository_owner != 'FreeRADIUS') }}
     uses: ./.github/workflows/docker-ci-images-refresh.yml
+    #
+    #  A commit that changes the images rebuilds only the families of images
+    #  that read the changed files.  Missing images need every family
+    #  rebuilt, and so does a fork, which has no images until the fork builds
+    #  the images.
+    #
+    with:
+      rebuild_all: ${{ needs.images_present.outputs.missing == 'true' || github.repository_owner != 'FreeRADIUS' }}
     secrets: inherit
 
   #
@@ -210,9 +218,15 @@ jobs:
   #
   docker_freeradius_images_refresh:
     name: Docker FreeRADIUS images refresh
-    needs: [docker_ci_images_refresh]
+    #  `images_present` is in `needs` only so that `rebuild_all` can read the
+    #  output of `images_present`.  `images_present` skips whenever the
+    #  images change, and `!cancelled()` keeps that skip from skipping this
+    #  job.
+    needs: [docker_ci_images_refresh, images_present]
     if: ${{ !cancelled() && needs.docker_ci_images_refresh.result == 'success' }}
     uses: ./.github/workflows/docker-freeradius-images-refresh.yml
+    with:
+      rebuild_all: ${{ needs.images_present.outputs.missing == 'true' || github.repository_owner != 'FreeRADIUS' }}
     secrets: inherit
 
   ci:

@@ -1,0 +1,273 @@
+name: Docker FreeRADIUS images build
+
+#
+#  The refresh workflow `docker-freeradius-images-refresh.yml` calls this
+#  workflow once for each family of distributions, and passes the family's
+#  distributions in `images`.  When `rebuild` is true, the
+#  `process-freeradius-images` job rebuilds and publishes the
+#  `freeradius4-{crossbuild,radenv-profiling-deps,service}` images.
+#  Otherwise the `copy-freeradius-images` job copies each image from
+#  `latest` to this ref's tag.
+#
+#  Every job that reads the images reads one tag for every image
+#  (`image_tag` in `common_vars.yml`).  An image that this ref does not
+#  rebuild must therefore still exist under this ref's tag.  On the default
+#  branch the tag is `latest`, so the copy job does not run.
+#
+on:
+  workflow_call:
+    inputs:
+      images:
+        description: 'JSON list of distributions, for example ["rocky9", "rocky10"]'
+        type: string
+        required: true
+      rebuild:
+        description: "true to rebuild the images, false to copy `latest` to this ref's tag"
+        type: boolean
+        required: true
+
+jobs:
+  #
+  #  The `common_vars` job determines which registry holds the continuous
+  #  integration (CI) images, and which tag this ref uses.  See
+  #  `.github/workflows/common_vars.yml`.
+  #
+  common_vars:
+    name: Common vars
+    uses: ./.github/workflows/common_vars.yml
+
+  #
+  #  This job periodically refreshes the FreeRADIUS base image chain in
+  #  the internal registry, and builds the chain for each supported
+  #  distro in parallel:
+  #
+  #    crossbuild        `FROM` the upstream OS base, full toolchain +
+  #                      FreeRADIUS build-deps
+  #    radenv-profiling-deps
+  #                      `FROM` `crossbuild:latest`, toolchain layer
+  #                      (valgrind / kcachegrind / dbgsym / FlameGraph /
+  #                      inferno / pprof).  ubuntu24 only, because only
+  #                      the multi-server tests use the radenv images.
+  #    service           `FROM` the same upstream OS base as 'crossbuild'
+  #                      (NOT from 'crossbuild') - the FreeRADIUS
+  #                      debian/rpm package build apt-installs build
+  #                      deps for itself, and layering on 'crossbuild'
+  #                      would bloat the runtime image with toolchain
+  #                      artefacts.
+  #
+  #  The job pushes each of the three images under the repository's path,
+  #  tagged for the ref being built: `latest` on the default branch, the
+  #  branch's own tag elsewhere.  `common_vars.yml` decides the tag.
+  #
+  #  The `process-freeradius-images` job does NOT publish the 'radenv'
+  #  layer (a developer build of FreeRADIUS on top of 'crossbuild') or the
+  #  'radenv-profiling' layer (FreeRADIUS compiled with the callgrind
+  #  `CFLAGS` on top of 'radenv-profiling-deps').  The multi-server tests
+  #  must run the radiusd built from the commit under test, not the
+  #  radiusd built from the 'master' HEAD at refresh time.  The
+  #  multi-server tests therefore pull 'crossbuild' and
+  #  'radenv-profiling-deps', then build the 'radenv' and
+  #  'radenv-profiling' layers locally for each commit.
+  #
+  process-freeradius-images:
+    needs: common_vars
+    timeout-minutes: 90
+
+    env:
+      DOCKER_REGISTRY: ${{ needs.common_vars.outputs.docker_registry }}
+      IMAGE_PREFIX: ${{ needs.common_vars.outputs.image_prefix }}
+      IMAGE_TAG: ${{ needs.common_vars.outputs.image_tag }}
+
+    runs-on: self-hosted
+    if: ${{ inputs.rebuild && (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && needs.common_vars.outputs.selfhosted == '1' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.images) }}
+
+    services:
+      dind:
+        image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-dind:${{ needs.common_vars.outputs.image_tag }}
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+        volumes:
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      image: ${{ needs.common_vars.outputs.image_prefix }}self-hosted-docker-cli:${{ needs.common_vars.outputs.image_tag }}
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: /workspace
+
+    name: "freeradius4-{crossbuild,radenv-profiling-deps,service}-${{ matrix.os }}"
+
+    steps:
+
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      - name: setup-dind
+        uses: ./.github/actions/setup-dind
+
+      - name: Login to Docker Hub (via dind)
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_READ_USER }}
+          password: ${{ secrets.DOCKERHUB_READ_KEY }}
+
+      #
+      #  The registry serves the `freeradius-server/` images to the public
+      #  `anonymous` account, so the pulls from `DOCKER_REGISTRY` below do
+      #  not need a real account. The 'crossbuild' Dockerfile pulls the
+      #  upstream OS base image with `FROM`, and does not pull the base
+      #  image from the internal registry.
+      #
+      - name: Login to internal Docker registry (read, via dind)
+        uses: docker/login-action@v4
+        with:
+          username: anonymous
+          password: anonymous
+          registry: ${{ env.DOCKER_REGISTRY }}
+
+      #
+      #  Build 'crossbuild' + 'radenv-profiling-deps' + 'service'. 'crossbuild'
+      #  and 'service' both pull the upstream OS base with `FROM`. The
+      #  'radenv-profiling-deps' Dockerfile pulls `crossbuild:latest`, which `DOCKER_BUILD` writes locally
+      #  as part of the 'crossbuild' build, so the chain resolves in
+      #  order without a registry pull between layers.
+      #
+      #  `docker.mk` encodes the chain as stamp prerequisites, so one
+      #  make run with `-j` builds the independent 'service' image
+      #  alongside the 'crossbuild' > 'radenv-profiling-deps' chain.
+      #
+      #  `NOPULL=1` forces `docker.mk` to build from the local
+      #  `Dockerfile` instead of pulling whatever the registry already
+      #  holds for this ref.  Without `NOPULL=1` the refresh silently
+      #  retags whatever the registry already published, which defeats
+      #  the point of the workflow.
+      #
+      #  `make docker.types.$OS` prints the types that exist for the
+      #  distro.  'radenv-profiling-deps' exists for ubuntu24 only, so the
+      #  step adds 'radenv-profiling-deps' to the list of images to
+      #  publish only when the distro has the type.  The push step reads
+      #  the same list from `$GITHUB_ENV`.
+      #
+      - name: Build crossbuild + radenv-profiling-deps + service images
+        env:
+          OS: ${{ matrix.os }}
+          NOPULL: 1
+        run: |
+          make dockerfile.check
+          publish="crossbuild service"
+          case " $(make -s docker.types.$OS) " in
+            *" radenv-profiling-deps "*)
+              publish="$publish radenv-profiling-deps"
+              ;;
+          esac
+          echo "PUBLISH_TYPES=$publish" >> "$GITHUB_ENV"
+          make -j$(nproc) $(for type in $publish; do echo "docker.$type.$OS"; done)
+
+      - name: Show docker build logs
+        if: failure()
+        env:
+          OS: ${{ matrix.os }}
+        run: |
+          for type in crossbuild radenv-profiling-deps service; do
+            log="build/docker/build.$OS.$type"
+            if [ -f "$log" ]; then
+              echo "===== $log ====="
+              cat "$log"
+            fi
+          done
+
+      #
+      #  Switch to push-capable credentials and publish the 'crossbuild',
+      #  'radenv-profiling-deps' and 'service' images under this ref's tag.
+      #  The per-commit 'radenv' and 'radenv-profiling' layers stay local.
+      #
+      - name: Login to internal Docker registry for push (via dind)
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+          registry: ${{ env.DOCKER_REGISTRY }}
+
+      - name: Push freeradius4-{crossbuild,radenv-profiling-deps,service}
+        env:
+          OS: ${{ matrix.os }}
+        run: |
+          for type in $PUBLISH_TYPES; do
+            #  `docker.mk` always builds the local tag as `:latest`.
+            local_tag="freeradius4-${type}/${OS}:latest"
+            remote_tag="${IMAGE_PREFIX}freeradius4-${type}/${OS}:${IMAGE_TAG}"
+            docker tag "${local_tag}" "${remote_tag}"
+            for attempt in 1 2 3; do
+              docker push "${remote_tag}" && break
+              echo "Retrying push of ${remote_tag} after backoff, attempt $attempt failed"
+              sleep 10
+            done
+          done
+
+  #
+  #  Copy each distribution's images from `latest` to this ref's tag, inside
+  #  the registry.  `make docker.types.<os>` lists the image types of a
+  #  distribution, as in the `process-freeradius-images` job.
+  #
+  copy-freeradius-images:
+    needs: common_vars
+    if: ${{ !inputs.rebuild && needs.common_vars.outputs.image_tag != 'latest' && (github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch') && needs.common_vars.outputs.selfhosted == '1' }}
+    timeout-minutes: 10
+
+    runs-on: self-hosted
+
+    name: "Copy unchanged images"
+
+    steps:
+
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      - name: Login to internal Docker registry for push
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+          registry: ${{ needs.common_vars.outputs.docker_registry }}
+
+      - name: List the images
+        env:
+          IMAGES_JSON: ${{ inputs.images }}
+        run: |
+          images=
+          for os in $(printf '%s' "$IMAGES_JSON" | jq -r '.[]'); do
+            publish="crossbuild service"
+            case " $(make -s docker.types.$os) " in
+              *" radenv-profiling-deps "*)
+                publish="$publish radenv-profiling-deps"
+                ;;
+            esac
+            for type in $publish; do
+              images="$images freeradius4-$type/$os"
+            done
+          done
+          echo "COPY_IMAGES=$images" >> "$GITHUB_ENV"
+
+      - name: Copy the images to this ref's tag
+        uses: ./.github/actions/image-copy
+        with:
+          prefix: ${{ needs.common_vars.outputs.image_prefix }}
+          images: ${{ env.COPY_IMAGES }}
+          tag: ${{ needs.common_vars.outputs.image_tag }}

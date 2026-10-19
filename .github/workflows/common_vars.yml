@@ -11,6 +11,12 @@ name: Common vars
 #    docker_prefix     what to put in front of a third-party image name
 #    images_changed    whether this ref changes anything that the CI images
 #                      bake in
+#    images_tooling    whether this ref changes anything that the tooling
+#                      images bake in
+#    images_deb        whether this ref changes anything that the Debian and
+#                      Ubuntu images bake in
+#    images_rpm        whether this ref changes anything that the Rocky images
+#                      bake in
 #    docs_changed      whether this ref changes anything that the
 #                      documentation uses
 #    image_prefix      registry and path that the CI images sit under
@@ -22,7 +28,11 @@ name: Common vars
 #  run happens in the FreeRADIUS organisation or in somebody else's fork.
 #  `images_changed`, `docs_changed` and `image_tag` follow from whether this ref
 #  changes the images or the documentation, which paths-filter answers by
-#  diffing against the default branch.
+#  diffing against the default branch.  A change to the packaging files under
+#  `debian/` and `redhat/` counts as an image change only when the change
+#  alters the build dependencies (see `scripts/ci/images-build-deps.sh`).
+#  `images_changed` is true when any of `images_tooling`, `images_deb`, and
+#  `images_rpm` is true.
 #
 #  Every workflow that reads any of the values calls this workflow for
 #  itself.  GitHub cannot evaluate a reusable workflow once and share the
@@ -65,6 +75,15 @@ on:
       images_changed:
         description: "'true' when this ref changes something the CI images bake in"
         value: ${{ jobs.common_vars.outputs.images_changed }}
+      images_tooling:
+        description: "'true' when this ref changes something the tooling images bake in"
+        value: ${{ jobs.common_vars.outputs.images_tooling }}
+      images_deb:
+        description: "'true' when this ref changes something the Debian and Ubuntu images bake in"
+        value: ${{ jobs.common_vars.outputs.images_deb }}
+      images_rpm:
+        description: "'true' when this ref changes something the Rocky images bake in"
+        value: ${{ jobs.common_vars.outputs.images_rpm }}
       docs_changed:
         description: "'true' when this ref changes something the documentation is built from"
         value: ${{ jobs.common_vars.outputs.docs_changed }}
@@ -97,7 +116,10 @@ jobs:
       docker_registry: ${{ steps.evaluate.outputs.docker_registry }}
       selfhosted: ${{ steps.evaluate.outputs.selfhosted }}
       docker_prefix: ${{ steps.evaluate.outputs.docker_prefix }}
-      images_changed: ${{ steps.changed.outputs.images_changed }}
+      images_changed: ${{ steps.evaluate.outputs.images_changed }}
+      images_tooling: ${{ steps.evaluate.outputs.images_tooling }}
+      images_deb: ${{ steps.evaluate.outputs.images_deb }}
+      images_rpm: ${{ steps.evaluate.outputs.images_rpm }}
       docs_changed: ${{ steps.changed.outputs.docs_changed }}
       image_prefix: ${{ steps.evaluate.outputs.image_prefix }}
       image_tag: ${{ steps.evaluate.outputs.image_tag }}
@@ -130,31 +152,72 @@ jobs:
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         with:
           filters: |
-            images_changed:
-              - 'debian/**'
-              - 'redhat/**'
-              - 'scripts/ci/extra-packages.debian.control'
-              - 'scripts/ci/docker/Dockerfile*'
-              #  copied into the self-hosted image by a `COPY` instruction, so a change has to
-              #  rebuild the image that bakes the result in.
-              - 'scripts/ci/eapol_test-build.sh'
-              - 'scripts/ci/eapol_test/**'
-              - 'scripts/ci/ubuntu-mirrors-setup.sh'
-              - 'scripts/docker/build/*/Dockerfile.ci'
-              - 'scripts/docker/build/*/Dockerfile.crossbuild'
-              - 'scripts/docker/build/*/Dockerfile.radenv-profiling-deps'
-              - 'scripts/docker/build/*/Dockerfile.service'
-              #  These two decide what gets built and where it is published,
-              #  so a change to either has to rebuild before anything reads
-              #  the result.
-              - 'scripts/docker/docker.mk'
-              - '.github/workflows/docker-ci-images-refresh.yml'
             docs_changed:
               - '.github/workflows/documentation.yml'
               - 'doc/**'
               - 'man/**'
               - 'raddb/**'
               - 'share/**'
+
+            #
+            #  The refresh workflows rebuild the images one family at a
+            #  time, and copy `latest` to this ref's tag for every family
+            #  that this ref does not change.  Each `*_paths` filter lists
+            #  the files that a family's Dockerfiles copy in, so a change
+            #  that only one family reads rebuilds only that family.  The
+            #  `evaluate` step combines the `*_paths` filters with the
+            #  `packaging_*` filters into `images_tooling`, `images_deb`,
+            #  `images_rpm`, and `images_changed`.
+            #
+            #  The shared inputs are the files that every family reads, and
+            #  the files that decide what gets built and where the result is
+            #  published.
+            #
+            images_inputs_shared: &images_inputs_shared
+              - 'scripts/ci/eapol_test-build.sh'
+              - 'scripts/ci/eapol_test/**'
+              - 'scripts/ci/images-build-deps.sh'
+              - 'scripts/docker/docker.mk'
+              - '.github/workflows/docker-ci-images-refresh.yml'
+              - '.github/workflows/docker-ci-images-build.yml'
+              - '.github/workflows/docker-freeradius-images-refresh.yml'
+              - '.github/workflows/docker-freeradius-images-build.yml'
+              - '.github/actions/image-copy/**'
+            #  The tooling images are 'self-hosted', the main build image,
+            #  and 'self-hosted-docker-cli' plus 'self-hosted-docker-dind',
+            #  which the other image builds run inside.  'self-hosted'
+            #  installs the build dependencies from `debian/control`, and
+            #  'self-hosted-docker-cli' is built on top of 'self-hosted'.
+            images_tooling_paths:
+              - *images_inputs_shared
+              - 'scripts/ci/extra-packages.debian.control'
+              - 'scripts/ci/docker/Dockerfile*'
+              - 'scripts/ci/ubuntu-mirrors-setup.sh'
+            images_deb_paths:
+              - *images_inputs_shared
+              - 'scripts/ci/extra-packages.debian.control'
+              - 'scripts/docker/build/debian*/Dockerfile.ci'
+              - 'scripts/docker/build/debian*/Dockerfile.crossbuild'
+              - 'scripts/docker/build/debian*/Dockerfile.service'
+              - 'scripts/docker/build/ubuntu*/Dockerfile.ci'
+              - 'scripts/docker/build/ubuntu*/Dockerfile.crossbuild'
+              - 'scripts/docker/build/ubuntu*/Dockerfile.radenv-profiling-deps'
+              - 'scripts/docker/build/ubuntu*/Dockerfile.service'
+            images_rpm_paths:
+              - *images_inputs_shared
+              - 'scripts/docker/build/rocky*/Dockerfile.ci'
+              - 'scripts/docker/build/rocky*/Dockerfile.crossbuild'
+              - 'scripts/docker/build/rocky*/Dockerfile.service'
+            #
+            #  The images read only the build dependencies from the
+            #  packaging files.  The `evaluate` step counts a change to the
+            #  packaging files as an image change only when the change alters
+            #  the build dependencies.
+            #
+            packaging_deb:
+              - 'debian/**'
+            packaging_rpm:
+              - 'redhat/**'
 
       #
       #  docker_registry:  The FreeRADIUS organisation sets a repository
@@ -202,7 +265,12 @@ jobs:
           default_branch: ${{ github.event.repository.default_branch }}
           ref_name: ${{ github.ref_name }}
           repo_name: ${{ github.event.repository.name }}
-          images_changed: ${{ steps.changed.outputs.images_changed }}
+          images_tooling_paths: ${{ steps.changed.outputs.images_tooling_paths }}
+          images_deb_paths: ${{ steps.changed.outputs.images_deb_paths }}
+          images_rpm_paths: ${{ steps.changed.outputs.images_rpm_paths }}
+          packaging_deb: ${{ steps.changed.outputs.packaging_deb }}
+          packaging_rpm: ${{ steps.changed.outputs.packaging_rpm }}
+          before: ${{ github.event.before }}
           event: ${{ github.event_name }}
         run: |
           #
@@ -234,6 +302,80 @@ jobs:
             prefix="$registry/$repo_name/"
           fi
 
+          #
+          #  A change under `debian/` or `redhat/` changes the images only
+          #  when the change alters the build dependencies, because the images
+          #  read nothing else from the packaging files.
+          #  `scripts/ci/images-build-deps.sh` prints a family's build
+          #  dependencies at a revision.  The step compares this ref with the
+          #  revision that paths-filter diffed against:
+          #
+          #    1. A push to the default branch compares with the previous tip
+          #       of the default branch, `github.event.before`.
+          #    2. A push to any other branch compares with the merge base of
+          #       the branch and the default branch.  paths-filter has already
+          #       fetched the default branch.
+          #
+          #  Any other event, or a base revision that the step cannot fetch,
+          #  leaves `deps_base` empty.  An empty `deps_base` counts every
+          #  packaging change as an image change.
+          #
+          deps_base=
+          if [ "$event" = "push" ]; then
+            if [ "$ref_name" = "$default_branch" ]; then
+              if git fetch --no-tags --depth=1 origin "$before"; then
+                deps_base="$before"
+              fi
+            else
+              deps_base=$(git merge-base "origin/$default_branch" HEAD) || deps_base=
+            fi
+          fi
+
+          #  Succeeds when this ref changes the build dependencies of the
+          #  family named by the first argument, `rpm` or `deb`.
+          build_deps_changed() {
+            [ -n "$deps_base" ] || return 0
+            [ "$(scripts/ci/images-build-deps.sh "$1" HEAD)" \
+              != "$(scripts/ci/images-build-deps.sh "$1" "$deps_base")" ]
+          }
+
+          deb_deps_changed=false
+          if [ "$packaging_deb" = "true" ] && build_deps_changed deb; then
+            deb_deps_changed=true
+          fi
+
+          rpm_deps_changed=false
+          if [ "$packaging_rpm" = "true" ] && build_deps_changed rpm; then
+            rpm_deps_changed=true
+          fi
+
+          #
+          #  The tooling images install the Debian build dependencies, as
+          #  the Debian and Ubuntu images do.
+          #
+          images_tooling=false
+          if [ "$images_tooling_paths" = "true" ] || [ "$deb_deps_changed" = "true" ]; then
+            images_tooling=true
+          fi
+
+          images_deb=false
+          if [ "$images_deb_paths" = "true" ] || [ "$deb_deps_changed" = "true" ]; then
+            images_deb=true
+          fi
+
+          images_rpm=false
+          if [ "$images_rpm_paths" = "true" ] || [ "$rpm_deps_changed" = "true" ]; then
+            images_rpm=true
+          fi
+
+          images_changed=false
+          if [ "$images_tooling" = "true" ] || [ "$images_deb" = "true" ] \
+             || [ "$images_rpm" = "true" ]; then
+            images_changed=true
+          fi
+
+          echo "Build dependencies compared with ${deps_base:-no base revision}: deb changed $deb_deps_changed, rpm changed $rpm_deps_changed"
+
           image_tag=latest
           if [ "$event" = "push" ] && [ "$ref_name" != "$default_branch" ] \
              && [ "$images_changed" = "true" ]; then
@@ -249,6 +391,10 @@ jobs:
             echo "docker_prefix=$prefix"
             echo "image_prefix=$registry/$repo_name/"
             echo "image_tag=$image_tag"
+            echo "images_changed=$images_changed"
+            echo "images_tooling=$images_tooling"
+            echo "images_deb=$images_deb"
+            echo "images_rpm=$images_rpm"
             echo "llvm_version=$LLVM_VERSION"
             echo "gcc_version=$GCC_VERSION"
           } >> "$GITHUB_OUTPUT"
