@@ -1060,6 +1060,7 @@ static void request_mux(fr_event_list_t *el,
 	h->send.write = partial;
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
 	tcp_handle_t		*h = talloc_get_type_abort(conn->h, tcp_handle_t);
