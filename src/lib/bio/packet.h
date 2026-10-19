@@ -172,11 +172,11 @@ static inline CC_HINT(nonnull) int fr_bio_packet_write_flush(fr_bio_packet_t *my
 	 *	Note that "wrote no data" means that there's no pending data, so we're no longer blocked.
 	 */
 	slen = my->bio->write(my->bio, NULL, NULL, SIZE_MAX);
-	if (slen >= 0) {
-		my->write_blocked = false;
-	}
+	if (slen < 0) return (int)slen;	/* fr_bio_error() codes fit in an int */
 
-	return slen;
+	my->write_blocked = false;
+
+	return 0;
 }
 
 void	fr_bio_packet_connected(fr_bio_t *bio) CC_HINT(nonnull);

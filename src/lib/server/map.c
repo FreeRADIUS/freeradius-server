@@ -1682,7 +1682,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		REXDENT();
 
 		if (slen < 0) {
-			rcode = slen;
+			rcode = -1;
 			goto error;
 		}
 

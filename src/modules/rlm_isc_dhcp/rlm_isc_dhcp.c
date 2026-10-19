@@ -695,9 +695,8 @@ redo_multi:
 	 */
 	info->argv[info->argc] = talloc_zero(info, fr_value_box_t);
 
-	ret = fr_value_box_from_str(info, info->argv[info->argc], type, NULL,
-				    state->token, state->token_len, NULL);
-	if (ret < 0) return ret;
+	if (fr_value_box_from_str(info, info->argv[info->argc], type, NULL,
+				  state->token, state->token_len, NULL) < 0) return -1;
 
 	info->argc++;
 
