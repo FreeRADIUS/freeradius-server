@@ -350,6 +350,23 @@ static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t da
 
 
 /*
+ *	Send the success TLV, once any session ticket has been written.
+ */
+static unlang_action_t process_reply_success(unlang_result_t *p_result, request_t *request, void *uctx)
+{
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+	peap_tunnel_t		*t = tls_session->opaque;
+
+	t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
+	if (eap_peap_success(request, eap_session, tls_session) < 0) RETURN_UNLANG_FAIL;
+
+	p_result->priority = MOD_PRIORITY_MAX;
+	RETURN_UNLANG_HANDLED;
+}
+
+/*
  *	Use a reply packet to determine what to do.
  */
 static unlang_action_t process_reply(unlang_result_t *p_result, request_t *request, void *uctx)
@@ -380,9 +397,11 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 
 	switch (reply->code) {
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-		if (eap_peap_success(request, eap_session, tls_session) < 0) RETURN_UNLANG_FAIL;
-		RETURN_UNLANG_HANDLED;
+		/*
+		 *	Create the stateless session ticket before the success TLV is written.  PEAP ends with
+		 *	a message from the server, so the ticket and the TLV leave in the same EAP request.
+		 */
+		return fr_tls_ticket_stateless_issue(p_result, request, tls_session, process_reply_success, eap_session);
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
@@ -997,8 +1016,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->server_cs = virtual_server_cs(inst->virtual_server);
 
 	eap_tls_conf_check(conf, inst->tls_conf);
-
-	if (eap_tls_check_stateless(conf, inst->tls_conf) < 0) return -1;
 
 	return 0;
 }

@@ -1,0 +1,19 @@
+type = peap
+type = mschapv2
+peap {
+	tls {
+		virtual_server = peap-v13-stateless-tls
+		$template tls-common
+
+		#
+		#  Stateless tickets are a TLS 1.3 feature.
+		#
+		tls_min_version = 1.3
+
+		session {
+			mode = stateless
+		}
+	}
+	default_eap_type = mschapv2
+	virtual_server = "inner-tunnel"
+}

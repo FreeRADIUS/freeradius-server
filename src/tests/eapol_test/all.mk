@@ -136,6 +136,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 	$(eval METHOD := $(notdir $(subst _,-,$(patsubst %.conf,%,$<))))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	$(eval EAPOL_TEST_OPTS := $(shell grep "EAPOL_TEST_OPTS:" $< | cut -f2 -d ':'))
+	$(eval EAPOL_TEST_EXPECT := $(shell grep "EAPOL_TEST_EXPECT:" $< | head -1 | sed 's/.*EAPOL_TEST_EXPECT: *//'))
 	$(eval RADIUS_LOG := $(dir $@)/test.$(METHOD)/radiusd.log)
 	$(eval TEST_PORT := $($(METHOD)_port))
 	$(eval EXPECT_FAIL := $(if $(filter fail-%,$(METHOD)),yes,))
@@ -147,6 +148,8 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 		failed=1; reason="eapol_test exited $$rc, expected success"; \
 	elif [ -n "$(EXPECT_FAIL)" ] && [ $$rc -eq 0 ]; then \
 		failed=1; reason="eapol_test exited 0, expected non-zero (test marked expect-fail)"; \
+	elif [ -n "$(EAPOL_TEST_EXPECT)" ] && ! grep -q -- "$(EAPOL_TEST_EXPECT)" "$(EAPOL_TEST_LOG)"; then \
+		failed=1; reason="expected '$(EAPOL_TEST_EXPECT)' in the supplicant log"; \
 	else \
 		failed=0; \
 	fi; \

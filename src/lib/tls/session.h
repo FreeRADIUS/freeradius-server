@@ -293,8 +293,8 @@ struct fr_tls_session_s {
 #endif
 
 	bool			disallow_stateless_tickets;	//!< Stateless session tickets are not used, even if the
-								///< configuration allows them.  Set for EAP-TTLS, PEAP,
-								///< and EAP-FAST on a TLS server.  `false` is the default.
+								///< configuration allows them.  Set for EAP-TTLS on a
+								///< TLS server.  `false` is the default.
 	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
 	bool			verify_peer_cert;		//!< Whether verification of the peer's certificate
 								///< has been requested.

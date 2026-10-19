@@ -1267,14 +1267,12 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	if (unlikely(!tls_session)) return NULL;
 
 	/*
-	 *	These methods cannot reliably use stateless session tickets with TLS 1.3.
+	 *	EAP-TTLS cannot reliably use stateless session tickets with TLS 1.3.
 	 *
 	 *	See src/lib/tls/session.c for explanations.
 	 */
 	switch (eap_session->type) {
 	case FR_EAP_METHOD_TTLS:
-	case FR_EAP_METHOD_PEAP:
-	case FR_EAP_METHOD_FAST:
 		tls_session->disallow_stateless_tickets = true;
 		break;
 
@@ -1396,8 +1394,8 @@ void eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf)
 
 /** Check that the TLS configuration does not need stateless session tickets
  *
- * EAP-TTLS, PEAP, and EAP-FAST do not use stateless session tickets with TLS 1.3.  Their
- * sessions set `disallow_stateless_tickets`, and the ticket code creates no stateless ticket.
+ * EAP-TTLS does not use stateless session tickets with TLS 1.3.  TTLS sessions set
+ * `disallow_stateless_tickets`, and the ticket code creates no stateless ticket.
  *
  * - `session.mode = "stateless"` needs stateless tickets, so with TLS 1.3 allowed the method
  *   cannot work as configured.  That is an error.
@@ -1413,7 +1411,7 @@ int eap_tls_check_stateless(CONF_SECTION *cs, fr_tls_conf_t const *tls_conf)
 	/*
 	 *	No TLS 1.3 means no stateless tickets, which TLS 1.2 and earlier do not use.
 	 */
-	if ((tls_conf->tls_max_version != 0) && (tls_conf->tls_max_version < (float)1.3)) return 0;
+	if ((tls_conf->tls_max_version > 0) && (tls_conf->tls_max_version < (float)1.3)) return 0;
 
 	if (!(tls_conf->cache.mode & FR_TLS_TICKET_STATELESS)) return 0;
 

@@ -253,24 +253,35 @@ static unlang_action_t tls_ticket_stateless_encode_push(request_t *request, fr_t
 	return tls_ticket_stateless_push(request, tls_session, enum_tls_packet_type_encode_session->vb_uint32);
 }
 
-/** Run `encode session`, put the session-state list into the session, and create the ticket
+/** State of a frame which creates a stateless ticket, and then runs a function
+ */
+typedef struct {
+	fr_tls_session_t		*tls_session;	//!< to create a ticket for.
+	unlang_function_with_result_t	resume;		//!< to call once the ticket is created.  May be NULL.
+	void				*uctx;		//!< passed to `resume`.
+} tls_ticket_stateless_issue_t;
+
+/** Run `encode session`, put the session-state list into the session, create the ticket, and resume
  *
- * NOTE: The function runs twice when `encode session` exists.  The first run pushes the section,
- * and the second run is the repeat, which runs after the section finishes.
+ * The function runs twice when `encode session` exists.  The first run pushes the section,
+ * and the second run is the repeat, which runs after the section finishes.  After the ticket is
+ * written, the function calls the resume function.
  *
  * @param[in] request		The current request.
- * @param[in] uctx		The #fr_tls_session_t.
+ * @param[in] uctx		The #tls_ticket_stateless_issue_t.
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD	- `encode session` is running.
- *	- UNLANG_ACTION_CALCULATE_RESULT - the ticket was created, or there is nothing to do.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - the ticket was created, and there was no resume function.
  *	- UNLANG_ACTION_FAIL		- a step failed.
+ *	- anything else the resume function returns, once the ticket is created.
  */
-static unlang_action_t tls_ticket_stateless_issue(request_t *request, void *uctx)
+static unlang_action_t tls_ticket_stateless_issue(unlang_result_t *p_result, request_t *request, void *uctx)
 {
-	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
-	fr_tls_conf_t		*conf = tls_session->conf;
-	SSL_SESSION		*sess;
-	int			ret;
+	tls_ticket_stateless_issue_t	*issue = talloc_get_type_abort(uctx, tls_ticket_stateless_issue_t);
+	fr_tls_session_t		*tls_session = issue->tls_session;
+	fr_tls_conf_t			*conf = tls_session->conf;
+	SSL_SESSION			*sess;
+	int				ret;
 
 	switch (tls_session->ticket) {
 	case FR_TLS_TICKET_STATELESS_INIT:
@@ -321,21 +332,33 @@ static unlang_action_t tls_ticket_stateless_issue(request_t *request, void *uctx
 
 	if (fr_tls_session_ticket_write(request, tls_session) < 0) return UNLANG_ACTION_FAIL;
 
+	if (issue->resume) return issue->resume(p_result, request, issue->uctx);
+
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Push a frame which runs `encode session`, and then creates a TLS 1.3 stateless session ticket
+/** Push a frame which runs `encode session`, creates a TLS 1.3 stateless session ticket, and resumes
  *
  * @param[in] request		The current request.
  * @param[in] tls_session	to create a ticket for.
+ * @param[in] resume		function to call once the ticket is created.  May be NULL.
+ * @param[in] uctx		passed to `resume`.
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD	- the frame is running.
  *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
  */
-unlang_action_t tls_ticket_stateless_issue_push(request_t *request, fr_tls_session_t *tls_session)
+unlang_action_t tls_ticket_stateless_issue_push(request_t *request, fr_tls_session_t *tls_session,
+						unlang_function_with_result_t resume, void *uctx)
 {
-	return unlang_function_push(request, tls_ticket_stateless_issue, NULL, NULL, FR_SIGNAL_NONE,
-				    UNLANG_SUB_FRAME, tls_session);
+	tls_ticket_stateless_issue_t *issue;
+
+	MEM(issue = talloc_zero(request, tls_ticket_stateless_issue_t));
+	issue->tls_session = tls_session;
+	issue->resume = resume;
+	issue->uctx = uctx;
+
+	return unlang_function_push_with_result(NULL, request, tls_ticket_stateless_issue, NULL, NULL, FR_SIGNAL_NONE,
+						UNLANG_SUB_FRAME, issue);
 }
 
 /** Disable stateless session tickets for a given TLS ctx

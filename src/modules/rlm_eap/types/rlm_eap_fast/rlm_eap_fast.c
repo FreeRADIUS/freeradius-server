@@ -1385,6 +1385,19 @@ error:
 	return 1;
 }
 
+/*
+ *	Send the tunneled challenge, once any session ticket has been written.
+ */
+static unlang_action_t mod_challenge_send(unlang_result_t *p_result, request_t *request, void *uctx)
+{
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+
+	fr_tls_session_send(request, eap_tls_session->tls_session);
+	eap_tls_request(request, eap_session);
+	RETURN_UNLANG_HANDLED;
+}
+
 static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
@@ -1451,9 +1464,21 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		fr_tls_session_send(request, tls_session);
-		eap_tls_request(request, eap_session);
-		RETURN_UNLANG_HANDLED;
+	{
+		eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
+
+		/*
+		 *	The last message from the server carries any stateless session ticket.  EAP-FAST ends
+		 *	with a message from the server, so the ticket and the message leave in the same EAP
+		 *	request.
+		 */
+		if (t->result_final) {
+			return fr_tls_ticket_stateless_issue(p_result, request, tls_session,
+							     mod_challenge_send, eap_session);
+		}
+
+		return mod_challenge_send(p_result, request, eap_session);
+	}
 
 	/*
 	 *	Success.
@@ -1627,8 +1652,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	eap_tls_conf_check(conf, inst->tls_conf);
-
-	if (eap_tls_check_stateless(conf, inst->tls_conf) < 0) return -1;
 
 	if (talloc_strlen(inst->pac_opaque_key) != 32) {
 		cf_log_err_by_child(conf, "pac_opaque_key", "Must be 32 bytes long");

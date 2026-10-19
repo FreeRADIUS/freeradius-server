@@ -402,12 +402,73 @@ int fr_tls_ticket_disable_cb(SSL *ssl, int is_forward_secure)
 	return 0;
 }
 
+/** Does this session need a delayed stateless ticket?
+ *
+ * @param[in] tls_session	to check.
+ * @return
+ *	- true if the session is a TLS 1.3 server, and no stateless ticket has been created.
+ *	- false otherwise.
+ */
+static bool tls_ticket_stateless_wanted(fr_tls_session_t *tls_session)
+{
+	fr_tls_conf_t *conf = tls_session->conf;
+
+	return conf->delayed_tickets &&
+	       (conf->cache.mode & FR_TLS_TICKET_STATELESS) &&
+	       !tls_session->disallow_stateless_tickets &&
+	       !tls_session->session_ticket_created &&
+	       SSL_is_server(tls_session->ssl) &&
+	       (SSL_version(tls_session->ssl) == TLS1_3_VERSION) &&
+	       tls_session->allow_session_resumption &&
+	       tls_session->session_ticket_supported;
+}
+
+/** Create the delayed stateless ticket, and queue the ticket for the peer, and then run a function
+ *
+ * Callers which send a final message to the peer call this function, and write the message in
+ * the resume function.  The ticket record is then ahead of the message in the output, and both
+ * leave in the same EAP request.
+ *
+ * - If the session needs a ticket, the function pushes a frame which runs `encode session`,
+ *   creates the ticket, and then calls the resume function.  The function returns
+ *   #UNLANG_ACTION_PUSHED_CHILD.
+ * - If the session is not a TLS 1.3 server with a delayed stateless ticket, or the ticket has
+ *   already been created, the function calls the resume function directly, and returns what
+ *   the resume function returns.
+ *
+ * The resume function sets the unlang result, as a module function does.
+ *
+ * @param[out] p_result		the caller's result.  Passed to the resume function when no ticket is needed.
+ * @param[in] request		to run `encode session` and the resume function in.
+ * @param[in] tls_session	to create a ticket for.
+ * @param[in] resume		function to run after the ticket has been created.  May be NULL.
+ * @param[in] uctx		passed to the resume function.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- `encode session` and the ticket are running, and the
+ *					  resume function runs after them.
+ *	- anything else the resume function returns, if no ticket is needed.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - no ticket is needed, and there is no resume function.
+ *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
+ */
+unlang_action_t fr_tls_ticket_stateless_issue(unlang_result_t *p_result, request_t *request, fr_tls_session_t *tls_session,
+					      unlang_function_with_result_t resume, void *uctx)
+{
+	if (!tls_ticket_stateless_wanted(tls_session)) {
+		if (!resume) return UNLANG_ACTION_CALCULATE_RESULT;
+
+		return resume(p_result, request, uctx);
+	}
+
+	return tls_ticket_stateless_issue_push(request, tls_session, resume, uctx);
+}
+
 /** Issue the session ticket, or store the session, after the application has succeeded
  *
- * For most modes, run `store session`.  The ticket was already sent to the peer.
+ * A TLS 1.3 server in a mode which includes stateless tickets, with delayed tickets, sent no
+ * ticket in the handshake (see fr_tls_session_msg_cb()).  Run `encode session`, and send the
+ * ticket now.  Every other session has already sent any ticket, so we only run `store session`.
  *
- * For a TLS 1.3 server, stateless tickets, and with delayed tickets,
- * we didn't send the ticket, which menas that we need to call `encode session`.
+ * The `store session` and `encode session` sections are never both run for one session.
  *
  * @note The caller MUST set the caller's own unlang result before calling
  *	 fr_tls_ticket_issue().  A pushed child returns to the caller's caller with that result
@@ -425,7 +486,7 @@ unlang_action_t fr_tls_ticket_issue(request_t *request, fr_tls_session_t *tls_se
 	fr_tls_conf_t *conf = tls_session->conf;
 
 	/*
-	 *	Some TLS servers (EAP-TTLS, PEAP, and EAP-FAST) do not use stateless tickets with TLS 1.3.
+	 *	Some TLS servers (EAP-TTLS) do not use stateless tickets with TLS 1.3.
 	 *	The call succeeds, but no stateless ticket is created.
 	 */
 	if (tls_session->disallow_stateless_tickets &&
@@ -436,14 +497,7 @@ unlang_action_t fr_tls_ticket_issue(request_t *request, fr_tls_session_t *tls_se
 		return fr_tls_ticket_stateful_store_session(request, tls_session);
 	}
 
-	if (conf->delayed_tickets &&
-	    (conf->cache.mode & FR_TLS_TICKET_STATELESS) &&
-	    SSL_is_server(tls_session->ssl) &&
-	    (SSL_version(tls_session->ssl) == TLS1_3_VERSION) &&
-	    tls_session->allow_session_resumption &&
-	    tls_session->session_ticket_supported) {
-		return tls_ticket_stateless_issue_push(request, tls_session);
-	}
+	if (tls_ticket_stateless_wanted(tls_session)) return tls_ticket_stateless_issue_push(request, tls_session, NULL, NULL);
 
 	return fr_tls_ticket_stateful_store_session(request, tls_session);
 }

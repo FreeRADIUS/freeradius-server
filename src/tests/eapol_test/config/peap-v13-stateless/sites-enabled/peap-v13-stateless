@@ -1,0 +1,67 @@
+server inner-tunnel {
+	namespace = radius
+
+recv Access-Request {
+	copy_request_to_tunnel
+	filter_username
+	filter_inner_identity
+
+	split_username_nai
+	control.Password.Cleartext := Stripped-User-Name
+
+	chap
+	mschap
+	eap {
+		ok = return
+	}
+
+	files
+
+	pap
+}
+
+authenticate pap {
+	pap
+}
+
+authenticate chap {
+	chap
+}
+
+authenticate mschap {
+	mschap
+}
+
+authenticate eap {
+	eap
+}
+
+send Access-Accept {
+	ok
+}
+
+send Access-Reject {
+	ok
+}
+}
+
+#
+#  The `tls` virtual server which holds the session ticket sections.  `encode session` puts a value
+#  in the session-state list, and `decode session` refuses the ticket if the value does not come
+#  back.  A ticket which loses the list is then not resumed, and the test fails.
+#
+server peap-v13-stateless-tls {
+	namespace = tls
+
+	encode session {
+		parent.session-state.Tmp-String-0 := "ticket-data"
+		ok
+	}
+
+	decode session {
+		if (parent.session-state.Tmp-String-0 != "ticket-data") {
+			reject
+		}
+		ok
+	}
+}
