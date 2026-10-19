@@ -1088,7 +1088,10 @@ int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const
 		char *p;
 
 		slen = fr_value_box_aprint(ctx, &p, a, NULL); /* no escaping */
-		if (slen < 0) return slen;
+		if (slen < 0) {
+			talloc_free(ctx);
+			return -1;
+		}
 
 		lhs = p;
 		lhs_len = slen;
