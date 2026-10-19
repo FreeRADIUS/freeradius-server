@@ -191,7 +191,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					break;
 
 				case FR_TYPE_UINT32:
-					vp->vp_uint32 = value;
+					vp->vp_uint32 = (uint32_t) value;	/* uint32 bit fields are at most 32 bits */
 					break;
 
 				case FR_TYPE_UINT64:
@@ -382,9 +382,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 */
 			if (fr_type_is_integer(key_vp->vp_type)) {
 				attr = fr_value_box_as_uint64(&key_vp->data);
+				if (attr > UINT32_MAX) attr = 0;
 			}
 
-			child = fr_dict_attr_unknown_raw_afrom_num(child_ctx, substruct_da, attr);
+			child = fr_dict_attr_unknown_raw_afrom_num(child_ctx, substruct_da, (unsigned int) attr);
 			if (!child) {
 				FR_PROTO_TRACE("failed allocating unknown child for key VP %s - %s",
 					       key_vp->da->name, fr_strerror());
