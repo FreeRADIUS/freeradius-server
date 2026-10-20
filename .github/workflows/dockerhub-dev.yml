@@ -1,10 +1,29 @@
 name: Dockerhub Dev
 
+#
+#  Build and push multi-arch Docker images to the freeradius-dev Dockerhub
+#  repository after every commit that passes the main CI job.
+#
+
 on:
-  push:
-    branches-ignore:
-      - coverity_scan
+
+#
+#  Called by the CI job after it has successfully completed. workflow_run would
+#  be more appropriate, but according to the Github docs this workflow must
+#  exist in the master branch for that to work.
+#
+  workflow_call:
+
+#
+#  Can also be called manually if needed to refresh the images:
+#
   workflow_dispatch:
+
+
+# Don't run more than one build at the same time
+concurrency:
+  group: dockerhub-dev-v3.2.x
+
 
 env:
   CI: 1
@@ -21,7 +40,9 @@ jobs:
   #
   build_docker_images:
     runs-on: ubuntu-24.04
-    if: github.repository_owner == 'FreeRADIUS'
+    if: |
+      github.repository_owner == 'FreeRADIUS' &&
+      github.ref_name == 'v3.2.x'
 
     strategy:
       matrix:
@@ -76,8 +97,10 @@ jobs:
 
 
   manifest:
+    needs:
+      - build_docker_images
+
     runs-on: ubuntu-24.04
-    needs: build_docker_images
     if: github.repository_owner == 'FreeRADIUS'
 
     strategy:
@@ -97,7 +120,7 @@ jobs:
         fetch-depth: 1
 
     - name: Docker login
-      uses: docker/login-action@v3
+      uses: docker/login-action@v4
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}

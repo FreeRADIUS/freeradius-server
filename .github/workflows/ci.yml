@@ -516,3 +516,13 @@ jobs:
       env:
         USERNAME: ${{ github.actor }}
         REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+  push_docker_dev:
+    needs: ci
+    if: |
+      needs.ci.result == 'success' &&
+      github.repository_owner == 'FreeRADIUS' &&
+      github.ref_name == 'v3.2.x'
+    name: Push Dockerhub dev images
+    uses: ./.github/workflows/dockerhub-dev.yml
+    secrets: inherit
