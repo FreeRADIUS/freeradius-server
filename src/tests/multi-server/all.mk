@@ -252,6 +252,15 @@ TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(addprefix ${4}/,$$(notdir $$(pats
 
 $$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MULTI_SERVER_RENDER,${1},${2},${3},$$j)))
 
+#
+#  environment.yml and freeradius-common.yml both mount
+#  ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/, and
+#  --process-volumes removes and re-copies that directory on every render.
+#  Order the two renders so a parallel make does not copy the directory
+#  from two processes at once.
+#
+${4}/freeradius-common.yml: | ${4}/environment.yml
+
 TEST_MULTI_SERVER_SCRIPTS.${1}.${2}      := $$(addprefix ${4}/scripts/,$$(TEST_MULTI_SERVER_SCRIPT_NAMES))
 
 ${4}/scripts/start_%_profiling.sh: $$(TEST_MULTI_SERVER_SCRIPT_DIR)/profiling/start_%_profiling.sh
