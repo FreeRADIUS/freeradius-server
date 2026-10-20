@@ -714,6 +714,13 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 
 		fr_cursor_merge(out, vp);
 
+		/*
+		 *	When decoding TLV children, `out` is populated when this
+		 *	function is called, so `first` remains NULL, meaning the
+		 *	caller gets a NULL response reporting the decode as failed.
+		 */
+		if (!first) first = vp;
+
 	next_attr:
 		while (fr_cursor_next(out)) {
 			/* nothing */
