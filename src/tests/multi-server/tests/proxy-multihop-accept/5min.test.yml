@@ -14,7 +14,7 @@ proxy_dst_server_name: homeserver
 # Load generator profile
 loadgen:
   start_pps: 50
-  max_pps: 50
+  max_pps: 51
   duration: 300
   step: 5
   parallel: 1

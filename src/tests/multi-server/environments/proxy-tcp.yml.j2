@@ -46,6 +46,9 @@ services:
       homeserver{{ i }}:
         condition: service_healthy
 {% endfor %}
+    environment:
+      TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      TRIGGER_SERVER_STOP_APPEND: "%exec('/bin/bash', '/usr/local/bin/check-status.sh')"
     volumes:
     # load-generator templates
     - ${DATA_PATH}/freeradius/load-generator/template.d/load-generator-templates:/etc/freeradius/template.d/load-generator-templates
@@ -57,7 +60,9 @@ services:
     # load-generator-tcp server config
     - ${DATA_PATH}/freeradius/load-generator-tcp/radiusd.conf:/etc/freeradius/radiusd.conf
 
+    # common load-generator configs
     - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
+    - ${DATA_PATH}/freeradius/common/load-generator/check-status.sh:/usr/local/bin/check-status.sh
     entrypoint:
     - bash
     - -lc

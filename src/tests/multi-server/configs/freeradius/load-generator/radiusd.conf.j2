@@ -14,6 +14,12 @@ security {
 	allow_core_dumps = yes
 }
 
+trigger {
+	server {
+		stop = "%exec('/bin/bash', '/usr/local/bin/check-status.sh')"
+	}
+}
+
 # logging configuration required for linelog module
 log {
 	destination = files
@@ -26,6 +32,9 @@ log {
 }
 
 modules {
+	# Common exec module configuration
+	{% include "freeradius/common/mods-available/exec" %}
+
 	# Common linelog module configuration
 	{% include "freeradius/common/mods-available/linelog" %}
 

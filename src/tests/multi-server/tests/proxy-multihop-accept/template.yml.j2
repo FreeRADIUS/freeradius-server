@@ -6,6 +6,12 @@ states:
       Baseline load-generator test for load-generator ->
       {{ compose_num_of_proxy_servers }} proxy ->
       {{ compose_num_of_home_servers }} home servers. Home servers auto-accept requests.
+      Because the test configuration sets `complete: exit`, the load generator shuts down when
+      the load completes.
+
+      The `server.stop` trigger then runs the `check-status.sh` script which sends the
+      Status-Server request to the load-generator. The `recv Status-Server` section of
+      the server generates the `load-generator-status-server` trigger with PASS or FAIL.
     host:
       load-generator:
         actions:
@@ -23,19 +29,7 @@ states:
             detach: true
     verify:
       timeout: {{ test_verify_timeout }}
-      timeout_mode: window
-      trigger_mode: unordered
-  state_2:
-    description: Check load-generator Status-Server stats
-    host:
-      load-generator:
-        actions:
-        - execute_command:
-            command: |
-              # This command will query the load-generator's built-in Status-Server for statistics. Port 1820 configured to be used for Status-Server.
-              printf 'User-Name := "testuser"\nUser-Password := "testpass"' | /usr/bin/radclient -x localhost:1820 status testing123
-    verify:
-      timeout: 5
+      timeout_mode: bound
       trigger_mode: unordered
       triggers:
       - load-generator-status-server:
