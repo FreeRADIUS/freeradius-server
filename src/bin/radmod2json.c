@@ -100,7 +100,7 @@ static struct json_object *build_conf_parser_flags(conf_parser_flags_t flags)
 		char const *name;
 
 		if (!(flags & mask)) continue;
-		name = cf_parser_flag_to_enum_str(mask);
+		name = cf_parser_flag_to_enum_str((conf_parser_flags_t) mask);
 		if (!name) continue;
 		json_object_array_add(a, json_object_new_string(name));
 	}

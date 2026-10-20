@@ -739,10 +739,13 @@ static void bfd_control_packet_init(bfd_session_t *session, bfd_packet_t *bfd)
 	bfd->my_disc = session->local_disc;
 	bfd->your_disc = session->remote_disc;
 
-	bfd->desired_min_tx_interval = fr_time_delta_to_usec(session->desired_min_tx_interval);
-	bfd->required_min_rx_interval = fr_time_delta_to_usec(session->required_min_rx_interval);
+	/*
+	 *	proto_bfd limits the intervals to 2s, which fits in the 32-bit wire fields.
+	 */
+	bfd->desired_min_tx_interval = (uint32_t) fr_time_delta_to_usec(session->desired_min_tx_interval);
+	bfd->required_min_rx_interval = (uint32_t) fr_time_delta_to_usec(session->required_min_rx_interval);
 
-	bfd->min_echo_rx_interval = fr_time_delta_to_usec(session->my_min_echo_rx_interval);
+	bfd->min_echo_rx_interval = (uint32_t) fr_time_delta_to_usec(session->my_min_echo_rx_interval);	/* not configurable, always 0 */
 }
 
 static void bfd_send_init(bfd_session_t *session, bfd_packet_t *bfd)

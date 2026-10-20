@@ -155,8 +155,8 @@ char const *fr_openssl_version_expanded(void)
 
 #  ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct {
-	uint64_t	high;		//!< The last version number this defect affected.
-	uint64_t	low;		//!< The first version this defect affected.
+	uint32_t	high;		//!< The last version number this defect affected.
+	uint32_t	low;		//!< The first version this defect affected.
 
 	char const	*id;		//!< CVE (or other ID)
 	char const	*name;		//!< As known in the media...

@@ -992,12 +992,12 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
  *
  * Should be O(n) if all the attributes exist.  List must be pre-sorted.
  */
-static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vps, fr_dict_attr_t const *da[], size_t num)
+static ssize_t rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vps, fr_dict_attr_t const *da[], size_t num)
 {
 	fr_dcursor_t list_cursor;
 	fr_pair_t *match, *copy;
 	fr_pair_t *last_match = NULL;
-	uint64_t count = 0;
+	size_t count = 0;
 	size_t i;
 
 	last_match = fr_pair_list_head(vps);
@@ -1672,7 +1672,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		}
 
 		if ((conf->link_da_num > 0) && (!fr_pair_list_empty(&decoded))) {
-			int ret;
+			ssize_t ret;
 			ret = rs_get_pairs(packet, &search.link_vps, &decoded, conf->link_da,
 					   conf->link_da_num);
 			if (ret < 0) {

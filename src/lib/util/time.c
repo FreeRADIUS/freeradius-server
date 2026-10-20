@@ -871,7 +871,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		int tz, tz_hour, tz_min;
 
 		p = tail + 1;
-		s_tm.tm_year = tmp - 1900; /* 'struct tm' starts years in 1900 */
+		s_tm.tm_year = (int) (tmp - 1900); /* 'struct tm' starts years in 1900 */
 
 		if (get_part(&p, &s_tm.tm_mon, 1, 12, '-', "month") < 0) return -1;
 		s_tm.tm_mon--;	/* ISO is 1..12, where 'struct tm' is 0..11 */

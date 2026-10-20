@@ -462,7 +462,7 @@ static cache_status_t cache_entry_insert(void **rctx_out, UNUSED rlm_cache_confi
 	rlm_cache_redis_thread_t	*thread = talloc_get_type_abort(module_thread(driver->mi)->data, rlm_cache_redis_thread_t);
 	rlm_cache_redis_rctx_t		*rctx;
 	fr_redis_command_set_t		*cmds;
-	int				cmd_len;
+	long long			cmd_len;
 	fr_redis_async_rcode_t		ret;
 
 	TALLOC_CTX		*pool;

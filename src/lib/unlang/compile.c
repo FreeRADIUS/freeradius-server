@@ -2187,7 +2187,7 @@ allocate_number:
 	 */
 	if (c->number) return c;
 
-	c->number = unlang_number++;
+	c->number = (unsigned int) unlang_number++;
 	compile_set_default_actions(c, unlang_ctx);
 
 	if (fr_rb_insert(unlang_instruction_tree, c) != 0) {

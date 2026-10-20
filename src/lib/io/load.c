@@ -424,7 +424,7 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 	 *	numbers, and then converted to a final 32-bit counter.
 	 */
 	if (fr_time_gt(now, l->step_start)) {
-		l->stats.pps_accepted =
+		l->stats.pps_accepted = (int)
 			fr_time_delta_unwrap(
 				fr_time_delta_div(fr_time_delta_from_sec(l->stats.received - l->step_received),
 					  	  fr_time_sub(now, l->step_start))

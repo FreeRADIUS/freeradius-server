@@ -61,7 +61,7 @@ typedef struct {
 	fr_redis_command_set_t	*cmds;			//!< Command set for module call.
 	fr_redis_async_cmd_t	*cmd;			//!< Async command context.
 	char			*cmd_str;		//!< Formatted command currently being run.
-	int			ret;			//!< Value returned in Redis reply.
+	long long		ret;			//!< Value returned in Redis reply.
 } rediswho_rctx_t;
 
 typedef struct {
@@ -271,7 +271,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting_trim(unlang_result_t *p_r
 		RETURN_UNLANG_FAIL;
 	}
 
-	RDEBUG3("Key \"%pV\" has %d entries", &env->key, rctx->ret);
+	RDEBUG3("Key \"%pV\" has %lld entries", &env->key, rctx->ret);
 
 	if (rctx->ret > inst->trim_count) {
 		ret = rediswho_command(thread, request, &env->key, rctx, "%s %b 0 %d", env->trim_cmd.vb_strvalue,

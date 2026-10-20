@@ -158,7 +158,7 @@ void fr_stats_bins(fr_stats_t *stats, fr_time_t start, fr_time_t end)
 		int i;
 		uint32_t cmp;
 
-		delay = fr_time_delta_to_usec(diff);
+		delay = (uint32_t) fr_time_delta_to_usec(diff);	/* diff is less than 10s */
 
 		cmp = 10;
 		for (i = 0; i < 7; i++) {

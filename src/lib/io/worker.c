@@ -798,7 +798,7 @@ void worker_request_name_number(request_t *request)
 }
 
 static inline CC_HINT(always_inline)
-uint32_t worker_num_requests(fr_worker_t *worker)
+uint64_t worker_num_requests(fr_worker_t *worker)
 {
 	return fr_timer_list_num_events(worker->timeout);
 }
@@ -815,7 +815,7 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 	request_t		*request;
 	fr_listen_t		*listen = cd->listen;
 
-	if (worker_num_requests(worker) >= (uint32_t) worker->config.max_requests) {
+	if (worker_num_requests(worker) >= (uint64_t) worker->config.max_requests) {
 		RATE_LIMIT_GLOBAL(ERROR, "Worker at max requests");
 		goto nak;
 	}

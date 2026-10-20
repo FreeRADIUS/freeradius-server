@@ -4787,9 +4787,9 @@ static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 	/*
 	 *	Requests on all connections
 	 */
-	req_count = trunk_request_count_by_state(trunk,
-						    TRUNK_CONN_ALL ^
-						    TRUNK_CONN_DRAINING_TO_FREE, TRUNK_REQUEST_STATE_ALL);
+	req_count = (uint32_t) trunk_request_count_by_state(trunk,
+							       TRUNK_CONN_ALL ^
+							       TRUNK_CONN_DRAINING_TO_FREE, TRUNK_REQUEST_STATE_ALL);
 
 	/*
 	 *	No connections, but we do have requests
