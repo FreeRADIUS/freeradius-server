@@ -34,7 +34,7 @@ RCSID("$Id$")
 
 typedef struct {
 	uint32_t	initial;	//!< initial value
-	uint32_t	start;		//!< Unix time we started sending this packet
+	fr_time_t	start;		//!< Time we started sending this packet
 
 	size_t		offset;		//!< offset to Acct-Delay-Time value
 } fr_radius_client_bio_retry_t;
@@ -325,7 +325,7 @@ static ssize_t radius_client_rewrite_acct(fr_bio_t *bio, fr_bio_retry_entry_t *r
 	fr_radius_id_ctx_t my_id_ctx = *id_ctx;
 	fr_packet_t *packet = id_ctx->packet;
 	uint8_t *ptr = packet->data + acct->offset;
-	uint32_t now, delay;
+	int64_t elapsed;
 
 	fr_assert(packet->data_len == size);
 
@@ -343,13 +343,11 @@ static ssize_t radius_client_rewrite_acct(fr_bio_t *bio, fr_bio_retry_entry_t *r
 	id_ctx->request_ctx = my_id_ctx.request_ctx;
 	retry_ctx->uctx = id_ctx;
 
-	now = fr_time_to_sec(retry_ctx->retry.updated);
-	fr_assert(now >= acct->start);
-	fr_assert((now - acct->start) < (1 << 20)); /* just for pairanoia */
+	elapsed = fr_time_delta_to_sec(fr_time_sub(retry_ctx->retry.updated, acct->start));
+	fr_assert(elapsed >= 0);
+	fr_assert(elapsed < (1 << 20)); /* just for pairanoia */
 
-	delay = acct->initial + (now - acct->start);
-
-	fr_nbo_from_uint32(ptr, delay);
+	fr_nbo_from_uint32(ptr, acct->initial + (uint32_t) elapsed);
 
 	/*
 	 *	Sign the updated packet.
@@ -428,7 +426,7 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 	data += 2;
 
 	acct->initial = fr_nbo_to_uint32(data);
-	acct->start = fr_time_to_sec(retry_ctx->retry.start);
+	acct->start = retry_ctx->retry.start;
 	acct->offset = (size_t) (data - (uint8_t const *) buffer);
 }
 
