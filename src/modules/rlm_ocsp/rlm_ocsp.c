@@ -526,6 +526,7 @@ static unlang_action_t mod_ocsp_resume(unlang_result_t *p_result, module_ctx_t c
 	if (next_update) {
 		fr_time_t	now;
 		time_t		next;
+		time_t		ttl;
 
 		now = fr_time();
 
@@ -538,7 +539,8 @@ static unlang_action_t mod_ocsp_resume(unlang_result_t *p_result, module_ctx_t c
 			RDEBUG2("Adding OCSP TTL attribute");
 
 			MEM(pair_update_request(&vp, attr_tls_ocsp_next_update) >= 0);
-			vp->vp_uint32 = next - fr_time_to_sec(now);
+			ttl = next - fr_time_to_sec(now);
+			vp->vp_uint32 = (ttl > UINT32_MAX) ? UINT32_MAX : (uint32_t) ttl;
 			RINDENT();
 			RDEBUG2("%pP", vp);
 			REXDENT();
