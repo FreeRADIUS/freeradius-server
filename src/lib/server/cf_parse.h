@@ -709,6 +709,16 @@ typedef struct {
 	size_t			*len;
 } cf_table_parse_ctx_t;
 
+/** Bounds for #cf_parse_time_delta_bounded, passed as the rule's uctx
+ */
+typedef struct {
+	fr_time_delta_t		min;			//!< Smallest value accepted.
+	fr_time_delta_t		max;			//!< Largest value accepted.  0 means no maximum.
+} cf_time_delta_bounds_t;
+
+extern cf_time_delta_bounds_t const cf_time_delta_bounds_int_msec;
+extern cf_time_delta_bounds_t const cf_time_delta_bounds_int_sec;
+
 #define CONF_PARSER_TERMINATOR	{ .name1 = NULL, .type = (fr_type_t)~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
@@ -780,6 +790,9 @@ int		cf_parse_gid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 int		cf_parse_permissions(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 				     CONF_ITEM *ci, conf_parser_t const *rule);
+
+int		cf_parse_time_delta_bounded(TALLOC_CTX *ctx, void *out, void *parent,
+					    CONF_ITEM *ci, conf_parser_t const *rule);
 
 int		cf_null_on_read(TALLOC_CTX *ctx, void *out, void *parent,
 				CONF_ITEM *ci, conf_parser_t const *rule);

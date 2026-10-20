@@ -335,7 +335,7 @@ static conf_parser_t const trunk_config_request[] = {
 };
 
 static conf_parser_t const trunk_config_connection[] = {
-	{ FR_CONF_OFFSET("connect_timeout", connection_conf_t, connection_timeout), .dflt = "3.0" },
+	{ FR_CONF_OFFSET("connect_timeout", connection_conf_t, connection_timeout), .dflt = "3.0", .func = cf_parse_time_delta_bounded, .uctx = &cf_time_delta_bounds_int_msec },
 	{ FR_CONF_OFFSET("reconnect_delay", connection_conf_t, reconnection_delay), .dflt = "1" },
 
 	CONF_PARSER_TERMINATOR

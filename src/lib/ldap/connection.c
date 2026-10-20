@@ -129,13 +129,13 @@ DIAG_ON(unused-macros)
 	ldap_version = LDAP_VERSION3;
 	do_ldap_option(LDAP_OPT_PROTOCOL_VERSION, "ldap_version", &ldap_version);
 
-	keepalive = fr_time_delta_to_sec(config->keepalive_idle);
+	keepalive = (int) fr_time_delta_to_sec(config->keepalive_idle);
 	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &keepalive);
 
 	probes = config->keepalive_probes;
 	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &probes);
 
-	keepalive = fr_time_delta_to_sec(config->keepalive_interval);
+	keepalive = (int) fr_time_delta_to_sec(config->keepalive_interval);
 	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &keepalive);
 
 	if (config->sasl_secprops) do_ldap_option(LDAP_OPT_X_SASL_SECPROPS, "sasl_secprops", config->sasl_secprops);

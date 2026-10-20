@@ -371,7 +371,8 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 			 *	Easier to do this here instead of mod_instantiate
 			 *	as we don't have a pointer to the pool.
 			 */
-			cass_cluster_set_connect_timeout(inst->cluster, fr_time_delta_to_msec(config->trunk_conf.conn_conf->connection_timeout));
+			cass_cluster_set_connect_timeout(inst->cluster,
+							 (unsigned int) fr_time_delta_to_msec(config->trunk_conf.conn_conf->connection_timeout));
 
 			DEBUG2("Connecting to Cassandra cluster");
 			future = cass_session_connect_keyspace(inst->session, inst->cluster, config->sql_db);
@@ -907,7 +908,7 @@ do {\
 	if (config->sql_port) DO_CASS_OPTION("sql_port", cass_cluster_set_port(cluster, config->sql_port));
 	/* Can't fail */
 	if (fr_time_delta_ispos(config->query_timeout)) {
-		cass_cluster_set_request_timeout(cluster, fr_time_delta_to_msec(config->query_timeout));
+		cass_cluster_set_request_timeout(cluster, (unsigned int) fr_time_delta_to_msec(config->query_timeout));
 	}
 
 	/* Can't fail */

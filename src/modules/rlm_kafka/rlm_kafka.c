@@ -184,7 +184,7 @@ static conf_parser_t const module_config[] = {
 	 *	Module-level (not a librdkafka property) so we own the
 	 *	CONF_PARSER entry rather than the kafka base library.
 	 */
-	{ FR_CONF_OFFSET("flush_timeout", rlm_kafka_t, flush_timeout), .dflt = "5s" },
+	{ FR_CONF_OFFSET("flush_timeout", rlm_kafka_t, flush_timeout), .dflt = "5s", .func = cf_parse_time_delta_bounded, .uctx = &cf_time_delta_bounds_int_msec },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -976,7 +976,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	 *	be enqueued by other threads after the first
 	 *	thread has called flush.
 	 */
-	err = rd_kafka_flush(inst->rk, fr_time_delta_to_msec(inst->flush_timeout));
+	err = rd_kafka_flush(inst->rk, (int) fr_time_delta_to_msec(inst->flush_timeout));
 	if (unlikely(err != RD_KAFKA_RESP_ERR_NO_ERROR)) {
 		WARN("Shutdown flush timed out, purging %d in-flight message(s)",
 		     rd_kafka_outq_len(inst->rk));
@@ -1125,7 +1125,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	if (inst->rk) {
 		rd_kafka_resp_err_t	ferr;
 
-		ferr = rd_kafka_flush(inst->rk, fr_time_delta_to_msec(inst->flush_timeout));
+		ferr = rd_kafka_flush(inst->rk, (int) fr_time_delta_to_msec(inst->flush_timeout));
 		if (ferr != RD_KAFKA_RESP_ERR_NO_ERROR) {
 			WARN("kafka - flush timed out; %d messages remain in queue",
 			     rd_kafka_outq_len(inst->rk));

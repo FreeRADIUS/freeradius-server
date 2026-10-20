@@ -87,11 +87,11 @@ conf_parser_t const fr_ldap_option_config[] = {
 	 */
 	{ FR_CONF_OFFSET("net_timeout", fr_ldap_config_t, net_timeout), .dflt = "10" },
 
-	{ FR_CONF_OFFSET("idle", fr_ldap_config_t, keepalive_idle), .dflt = "60" },
+	{ FR_CONF_OFFSET("idle", fr_ldap_config_t, keepalive_idle), .dflt = "60", .func = cf_parse_time_delta_bounded, .uctx = &cf_time_delta_bounds_int_sec },
 
 	{ FR_CONF_OFFSET("probes", fr_ldap_config_t, keepalive_probes), .dflt = "3" },
 
-	{ FR_CONF_OFFSET("interval", fr_ldap_config_t, keepalive_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("interval", fr_ldap_config_t, keepalive_interval), .dflt = "30", .func = cf_parse_time_delta_bounded, .uctx = &cf_time_delta_bounds_int_sec },
 
 	{ FR_CONF_OFFSET("dereference", fr_ldap_config_t, dereference_str) },
 

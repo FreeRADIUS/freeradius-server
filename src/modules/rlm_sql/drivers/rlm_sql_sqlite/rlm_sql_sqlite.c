@@ -64,7 +64,7 @@ typedef struct {
 
 static const conf_parser_t driver_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_WRITABLE | CONF_FLAG_REQUIRED, rlm_sql_sqlite_t, filename) },
-	{ FR_CONF_OFFSET("busy_timeout", rlm_sql_sqlite_t, busy_timeout) },
+	{ FR_CONF_OFFSET("busy_timeout", rlm_sql_sqlite_t, busy_timeout), .func = cf_parse_time_delta_bounded, .uctx = &cf_time_delta_bounds_int_msec },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -401,7 +401,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		talloc_free(c);
 		return CONNECTION_STATE_FAILED;
 	}
-	status = sqlite3_busy_timeout(c->db, fr_time_delta_to_msec(inst->busy_timeout));
+	status = sqlite3_busy_timeout(c->db, (int) fr_time_delta_to_msec(inst->busy_timeout));
 	if (sql_check_error(c->db, status) != RLM_SQL_OK) {
 		sql_print_error(c->db, status, "Failed setting busy timeout");
 		goto error;

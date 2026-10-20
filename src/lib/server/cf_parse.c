@@ -1880,6 +1880,58 @@ int cf_parse_permissions(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	return 0;
 }
 
+/** Bounds which keep a time delta within an int of milliseconds, for libraries which take one
+ */
+cf_time_delta_bounds_t const cf_time_delta_bounds_int_msec = {
+	.max = fr_time_delta_wrap((int64_t) INT_MAX * (NSEC / MSEC))
+};
+
+/** Bounds which keep a time delta within an int of seconds, for libraries which take one
+ */
+cf_time_delta_bounds_t const cf_time_delta_bounds_int_sec = {
+	.max = fr_time_delta_wrap((int64_t) INT_MAX * NSEC)
+};
+
+/** Parse a time delta, and force it within the bounds passed as the rule's uctx
+ *
+ * Type should be FR_TYPE_TIME_DELTA, and the rule's uctx a #cf_time_delta_bounds_t.
+ * A value outside the bounds is replaced by the nearest bound, with a warning.
+ *
+ * @param[in] ctx	to allocate data in.
+ * @param[out] out	the fr_time_delta_t to write.
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_PAIR to parse.
+ * @param[in] rule	whose uctx holds the bounds.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int cf_parse_time_delta_bounded(TALLOC_CTX *ctx, void *out, void *parent,
+				CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	cf_time_delta_bounds_t const	*bounds = rule->uctx;
+	fr_time_delta_t			*delta = out;
+	fr_time_delta_t			bound;
+	int				ret;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	if (fr_time_delta_lt(*delta, bounds->min)) {
+		bound = bounds->min;
+	} else if (fr_time_delta_ispos(bounds->max) && fr_time_delta_gt(*delta, bounds->max)) {
+		bound = bounds->max;
+	} else {
+		return 0;
+	}
+
+	cf_log_warn(ci, "Ignoring \"%s = %pV\", forcing to \"%s = %pV\"",
+		    cf_pair_attr(cf_item_to_pair(ci)), fr_box_time_delta(*delta),
+		    cf_pair_attr(cf_item_to_pair(ci)), fr_box_time_delta(bound));
+	*delta = bound;
+
+	return 0;
+}
+
 /** NULL callback for sections
  *
  *  This callback exists only as a place-holder to ensure that the

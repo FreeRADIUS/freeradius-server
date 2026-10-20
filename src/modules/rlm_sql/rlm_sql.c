@@ -71,7 +71,7 @@ static const conf_parser_t module_config[] = {
 	/*
 	 *	This only works for a few drivers.
 	 */
-	{ FR_CONF_OFFSET("query_timeout", rlm_sql_config_t, query_timeout), .dflt = "5" },
+	{ FR_CONF_OFFSET("query_timeout", rlm_sql_config_t, query_timeout), .dflt = "5", .func = cf_parse_time_delta_bounded, .uctx = &cf_time_delta_bounds_int_msec },
 
 	/*
 	 *	The pool section is used for trunk config
