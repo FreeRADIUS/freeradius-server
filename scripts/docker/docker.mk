@@ -47,7 +47,7 @@ DIST_DIR := $(DOCKER_DIR)/dists
 #  List of images we can build
 DOCKER_IMAGES:=$(sort $(patsubst $(DIST_DIR)/%,%,$(wildcard $(DIST_DIR)/*)))
 
-DOCKER_DEFAULT_UBUNTU := ubuntu22
+DOCKER_DEFAULT_UBUNTU := ubuntu26
 DOCKER_DEFAULT_ALPINE := alpine
 
 ifeq "${VERBOSE}" ""
