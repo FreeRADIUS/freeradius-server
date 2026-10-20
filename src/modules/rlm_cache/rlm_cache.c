@@ -305,7 +305,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, request_t *request, rlm_
 	if (inst->config.stats) {
 		fr_assert(request->packet != NULL);
 		MEM(pair_update_request(&vp, attr_cache_entry_hits) >= 0);
-		vp->vp_uint32 = c->hits;
+		vp->vp_uint32 = (c->hits > UINT32_MAX) ? UINT32_MAX : (uint32_t) c->hits;
 	}
 
 	return merged > 0 ?
