@@ -568,9 +568,8 @@ unexpected:
  *
  * FIXME do something with mandatory
  */
-static ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-				    uint8_t const *data, size_t data_len,
-				    void *decode_ctx)
+static ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *out,
+				    fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
 	fr_dict_attr_t const	*da;
 	uint8_t	const		*p = data, *end = p + data_len;
@@ -578,7 +577,7 @@ static ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	/*
 	 *	Decode the TLVs
 	 */
-	while (p < end) {
+	while ((p + 4) <= end) {
 		ssize_t		ret;
 		uint16_t	attr;
 		uint16_t	len;
@@ -591,14 +590,18 @@ static ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 
 		da = fr_dict_attr_child_by_num(parent, attr);
 		if (!da) {
-			MEM(vp = fr_pair_afrom_child_num(ctx, parent, attr));
+			REDEBUG2("Unknown FAST TLV attribute %d", attr);
+			return -1;
+		}
 
-		} else if (da->type == FR_TYPE_TLV) {
-			p += (size_t) eap_fast_decode_pair(ctx, out, parent, p, len, decode_ctx);
+		MEM(vp = fr_pair_afrom_da(ctx, da));
+
+		if (da->type == FR_TYPE_TLV) {
+			ret = eap_fast_decode_pair(vp, request, &vp->vp_group, da, p, len);
+			if (ret < 0) return -1;
+			p += ret;
+			fr_pair_append(out, vp);
 			continue;
-
-		} else {
-			MEM(vp = fr_pair_afrom_da(ctx, da));
 		}
 
 		ret = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
@@ -1035,8 +1038,8 @@ static fr_radius_packet_code_t eap_fast_process(request_t *request, module_ctx_t
 		return FR_RADIUS_CODE_ACCESS_CHALLENGE;
 	}
 
-	if (eap_fast_decode_pair(request, &fast_vps, fr_dict_root(dict_eap_fast),
-				 data, data_len, NULL) < 0) return FR_RADIUS_CODE_ACCESS_REJECT;
+	if (eap_fast_decode_pair(request, request, &fast_vps, fr_dict_root(dict_eap_fast),
+				 data, data_len) < 0) return FR_RADIUS_CODE_ACCESS_REJECT;
 
 	RDEBUG2("Got Tunneled FAST TLVs");
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &fast_vps, NULL);
@@ -1252,7 +1255,8 @@ error:
 
 	RHEXDUMP3((uint8_t const *)&opaque_plaintext, plen, "PAC-Opaque plaintext data section");
 
-	if (eap_fast_decode_pair(tls_session, &fast_vps, attr_eap_fast_pac_opaque_tlv, (uint8_t *)&opaque_plaintext, plen, NULL) < 0) {
+	if (eap_fast_decode_pair(tls_session, request, &fast_vps, attr_eap_fast_pac_opaque_tlv,
+				 (uint8_t *)&opaque_plaintext, plen) < 0) {
 		errmsg = fr_strerror();
 		goto error;
 	}
