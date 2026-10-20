@@ -3288,11 +3288,11 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 	    (request->proxy_listener == proxy_null_listener) ||
 	    !request->proxy_listener->data ||
 	    (!request->proxy_reply &&
-	     ((request->process == proxy_wait_for_reply) ||
+	     ((request->process != proxy_wait_for_reply) &&
 #ifdef WITH_COA
-	      (request->process == coa_wait_for_reply) ||
+	      (request->process != coa_wait_for_reply) &&
 #endif
-	      (request->process == request_ping)))) {
+	      (request->process != request_ping)))) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		FR_PROXY_STATS_INC(listener, request->home_server, total_no_records, 0);
 		proxy_reply_too_late(request);
