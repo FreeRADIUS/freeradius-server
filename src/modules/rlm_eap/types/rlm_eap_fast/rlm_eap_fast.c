@@ -204,7 +204,8 @@ static void eap_fast_init_keys(request_t *request, fr_tls_session_t *tls_session
 
 	t->keyblock = talloc(t, eap_fast_keyblock_t);
 
-	eap_fast_tls_gen_challenge(tls_session->ssl, buf, scratch, ksize + sizeof(*t->keyblock), "key expansion");
+	eap_fast_tls_gen_challenge(tls_session->ssl, SSL_version(tls_session->ssl), buf, scratch,
+				   ksize + sizeof(*t->keyblock), "key expansion");
 	memcpy(t->keyblock, &buf[ksize], sizeof(*t->keyblock));
 	memset(buf, 0, ksize + sizeof(*t->keyblock));
 
