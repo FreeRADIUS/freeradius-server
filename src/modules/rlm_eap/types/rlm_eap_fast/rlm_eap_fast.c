@@ -103,6 +103,7 @@ static fr_dict_attr_t const *attr_ms_chap_peer_challenge;
 
 static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_freeradius_proxied_to;
+static fr_dict_attr_t const *attr_microsoft;
 static fr_dict_attr_t const *attr_ms_mppe_send_key;
 static fr_dict_attr_t const *attr_ms_mppe_recv_key;
 static fr_dict_attr_t const *attr_user_name;
@@ -141,6 +142,7 @@ fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
 	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_microsoft, .name = "Vendor-Specific.Microsoft", .type = FR_TYPE_VENDOR, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_challenge, .name = "Vendor-Specific.Microsoft.CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
@@ -641,15 +643,17 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 	 */
 	switch (reply->code) {
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	{
+		fr_pair_t	*ms_vp = fr_pair_find_by_da_nested (&request->reply_pairs, attr_microsoft);
+		if (!ms_vp) break;
+
 		rcode = RLM_MODULE_OK;
 
 		/*
-		 * Copy what we need into the TTLS tunnel and leave
+		 * Copy what we need into the FAST tunnel and leave
 		 * the rest to be cleaned up.
 		 */
-		for (vp = fr_pair_list_head(reply_list); vp; vp = fr_pair_list_next(reply_list, vp)) {
-			if (fr_dict_vendor_num_by_da(vp->da) != VENDORPEC_MICROSOFT) continue;
-
+		fr_pair_list_foreach(&ms_vp->vp_group, vp){
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
 			switch (vp->da->attr) {
 			case FR_MSCHAP_MPPE_SEND_KEY:
@@ -680,6 +684,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 			}
 		}
 		RHEXDUMP3((uint8_t *)&t->isk, 2 * MD5_DIGEST_LENGTH, "ISK[j]"); /* FIXME (part of above) */
+	}
 		break;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
