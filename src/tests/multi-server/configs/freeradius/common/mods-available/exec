@@ -1,0 +1,7 @@
+# Exec module config for the load-generator trigger stop command.
+exec {
+	wait = yes
+	shell_escape = yes
+	env_inherit = no
+	timeout = 10
+}
