@@ -1294,6 +1294,17 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	}
 
 	/*
+	 *	Track EAP-TLS inside of a tunneled method.  The outer TLS session encrypts each inner packet,
+	 *	which adds a record header, plus the IV, MAC or tag, and padding.  The inner MTU therefore
+	 *	needs to be smaller than the outer one, so that the inner TLS fragments fit within the outer
+	 *	TLS fragments.
+	 */
+	if (eap_session_in_tunnel(eap_session->request) && (tls_session->mtu > (EAP_TLS_NESTED_OVERHEAD + 100))) {
+		tls_session->mtu -= EAP_TLS_NESTED_OVERHEAD;
+		RDEBUG2("Nested inside another EAP method, lowering fragment_len to %zu", tls_session->mtu);
+	}
+
+	/*
 	 *	Add the EAP-Identity value to the TLS session so
 	 *	it's available in all the TLS callbacks.
 	 */

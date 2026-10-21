@@ -55,6 +55,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define TLS_HEADER_LEN 4
 #define TLS_HEADER_LENGTH_FIELD_LEN 4
 
+/** Overhead subtracted from the MTU of an EAP-TLS session which is nested inside a tunneled method.
+ *
+ * The outer TLS session adds a 5 octet record header, plus the IV, MAC or tag, and padding of the cipher
+ * suite, to every inner EAP packet.  This value is a conservative allowance and is not an exact figure.
+ */
+#define EAP_TLS_NESTED_OVERHEAD 100
+
 /*
  *	RFC 2716, Section 4.2:
  *

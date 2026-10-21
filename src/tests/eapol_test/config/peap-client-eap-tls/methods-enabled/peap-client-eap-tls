@@ -1,0 +1,16 @@
+type = peap
+type = tls
+peap {
+	tls {
+		$template tls-common
+	}
+	default_eap_type = tls
+	virtual_server = "inner-tunnel"
+	require_client_certificate = "yes"
+}
+
+tls {
+	tls {
+		$template tls-common
+	}
+}
