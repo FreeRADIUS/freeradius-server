@@ -6814,7 +6814,7 @@ static void handle_signal_self(int flag)
 	 *	event_new_fd() on them.
 	 */
 	if ((flag & RADIUS_SIGNAL_SELF_NEW_FD) != 0) {
-		rad_listen_t *this, *next;
+		rad_listen_t *this, *next, *my_list;
 		/*
 		 *	event_new_fd() may do a lot of work.  So we
 		 *	only hold the mutex while we detach the
