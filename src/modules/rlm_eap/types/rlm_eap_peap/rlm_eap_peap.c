@@ -253,35 +253,27 @@ static void eap_peap_inner_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *pairs,
 			  	    eap_round_t *eap_round,
 				    uint8_t const *data, size_t data_len)
 {
-	size_t 		total;
 	uint8_t		*p;
 	fr_pair_t	*vp = NULL;
 
-	if (data_len > 65535) return; /* paranoia */
-
-	MEM(vp = fr_pair_afrom_da(ctx, attr_eap_message));
-	total = data_len;
-	if (total > 249) total = 249;
+	if (data_len > (65535 - EAP_HEADER_LEN)) return; /* paranoia */
 
 	/*
 	 *	Hand-build an EAP packet from the crap in PEAP version 0.
+	 *
+	 *	The whole packet goes in one EAP-Message attribute.  eap_packet_from_vp() compares
+	 *	the length in the EAP header with the length of the first EAP-Message attribute,
+	 *	so a packet split across attributes fails that check.
 	 */
-	MEM(fr_pair_value_mem_alloc(vp, &p, EAP_HEADER_LEN + total, false) == 0);
+	MEM(vp = fr_pair_afrom_da(ctx, attr_eap_message));
+	MEM(fr_pair_value_mem_alloc(vp, &p, EAP_HEADER_LEN + data_len, false) == 0);
 	p[0] = FR_EAP_CODE_RESPONSE;
 	p[1] = eap_round->response->id;
 	p[2] = (data_len + EAP_HEADER_LEN) >> 8;
 	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
-	memcpy(p + EAP_HEADER_LEN, data, total);
+	memcpy(p + EAP_HEADER_LEN, data, data_len);
 
 	fr_pair_append(pairs, vp);
-	while (total < data_len) {
-		MEM(vp = fr_pair_afrom_da(ctx, attr_eap_message));
-		fr_pair_value_memdup(vp, data + total, (data_len - total), false);
-
-		total += vp->vp_length;
-
-		fr_pair_append(pairs, vp);
-	}
 }
 
 
