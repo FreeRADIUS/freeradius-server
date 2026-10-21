@@ -102,7 +102,6 @@ static fr_dict_attr_t const *attr_ms_chap_challenge;
 static fr_dict_attr_t const *attr_ms_chap_peer_challenge;
 
 static fr_dict_attr_t const *attr_eap_message;
-static fr_dict_attr_t const *attr_freeradius_proxied_to;
 static fr_dict_attr_t const *attr_microsoft;
 static fr_dict_attr_t const *attr_ms_mppe_send_key;
 static fr_dict_attr_t const *attr_ms_mppe_recv_key;
@@ -147,7 +146,6 @@ fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_freeradius_proxied_to, .name = "Vendor-Specific.FreeRADIUS.Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
@@ -737,12 +735,6 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 	/*
 	 *	Add the tunneled attributes to the fake request.
 	 */
-
-	/*
-	 *	Tell the request that it's a fake one.
-	 */
-	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
-	(void)fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
 
 	/*
 	 *	Add EAP-Message after other attributes, as VP is used below.
