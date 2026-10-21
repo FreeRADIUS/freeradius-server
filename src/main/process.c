@@ -6815,29 +6815,35 @@ static void handle_signal_self(int flag)
 	 */
 	if ((flag & RADIUS_SIGNAL_SELF_NEW_FD) != 0) {
 		rad_listen_t *this, *next;
-
-		FD_MUTEX_LOCK(&fd_mutex);
-
 		/*
 		 *	event_new_fd() may do a lot of work.  So we
-		 *	only hold the mutex while we're updating the
+		 *	only hold the mutex while we detach the
 		 *	"new_listeners" list.
 		 *
-		 *	This means that we might process the same
-		 *	listener twice, but that's fine.
+		 *	Other threads can add listeners to "new_listeners"
+		 *	while we are running event_new_fd().  Those are not
+		 *	in our private list, so they must not be touched
+		 *	here.  Their signal will cause us to run again.
+		 *
+		 *	A listener which is still in our private list has
+		 *	"fd_updating" set, so it is not added again.  We
+		 *	clear that flag before calling event_new_fd(), so
+		 *	any update after that point is not lost.
 		 */
-		for (this = new_listeners; this != NULL; this = next) {
+		FD_MUTEX_LOCK(&fd_mutex);
+		my_list = new_listeners;
+		new_listeners = NULL;
+		FD_MUTEX_UNLOCK(&fd_mutex);
+
+		for (this = my_list; this != NULL; this = next) {
+			FD_MUTEX_LOCK(&fd_mutex);
 			next = this->next;
 			this->next = NULL;
 			this->fd_updating = false;
-
 			FD_MUTEX_UNLOCK(&fd_mutex);
-			event_new_fd(this);
-			FD_MUTEX_LOCK(&fd_mutex);
-		}
 
-		new_listeners = NULL;
-		FD_MUTEX_UNLOCK(&fd_mutex);
+			event_new_fd(this);
+		}
 	}
 #endif
 
