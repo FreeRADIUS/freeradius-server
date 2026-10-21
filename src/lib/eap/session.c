@@ -210,6 +210,29 @@ void eap_session_freeze(eap_session_t **eap_session)
 	*eap_session = NULL;
 }
 
+/** Check whether a request runs inside the tunnel of another EAP method
+ *
+ * A tunneled EAP method (PEAP, TTLS, FAST, TEAP) should not nest
+ * inside of another tunneled method.
+ *
+ * @param[in] request	to check.
+ * @return
+ *	- true if any ancestor has an #eap_session_t with #eap_session_t::tunnel set.
+ *	- false otherwise.
+ */
+bool eap_session_in_tunnel(request_t const *request)
+{
+	request_t	*parent;
+
+	for (parent = request->parent; parent; parent = parent->parent) {
+		eap_session_t *outer = eap_session_get(parent);
+
+		if (outer && outer->tunnel) return true;
+	}
+
+	return false;
+}
+
 /** Thaw an eap_session_t so it can be continued
  *
  * Retrieve an #eap_session_t from the request data, and set relevant fields. Primarily

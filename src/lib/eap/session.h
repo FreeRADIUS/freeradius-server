@@ -69,6 +69,7 @@ struct eap_session_s {
 	fr_time_t	updated;			//!< The last time we received a packet for this EAP session.
 
 	bool		tls;				//!< Whether EAP method uses TLS.
+	bool		tunnel;				//!< copied from #fr_rlm_eap_submodule_t
 	bool		finished;			//!< Whether we consider this session complete.
 };
 
@@ -86,3 +87,5 @@ static inline eap_session_t *eap_session_get(request_t *request)
 {
 	return request_data_reference(request, NULL, REQUEST_DATA_EAP_SESSION);
 }
+
+bool		eap_session_in_tunnel(request_t const *request) CC_HINT(nonnull);
