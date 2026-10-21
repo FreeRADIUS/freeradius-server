@@ -326,7 +326,7 @@ static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_s
 	pac.info.a_id.hdr.length = htons(sizeof(pac.info.a_id.data));
 	memcpy(pac.info.a_id.data, t->a_id, sizeof(pac.info.a_id.data));
 
-	pac.info.a_id_info.hdr.type = htons(attr_eap_fast_pac_a_id->attr);
+	pac.info.a_id_info.hdr.type = htons(attr_eap_fast_pac_a_id_info->attr);
 	pac.info.a_id_info.hdr.length = htons(sizeof(pac.info.a_id_info.data));
 
 #define MIN(a,b) (((a)>(b)) ? (b) : (a))
