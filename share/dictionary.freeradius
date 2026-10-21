@@ -265,7 +265,7 @@ ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-I-ID		190.11.5	octets
 ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-A-ID-Info	190.11.7	octets
 ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Acknowledgement	190.11.8	short
 ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Info-TLV	190.11.9	tlv
-ATTRIBUTE	FreeRADIUS-EAP-TRAP-PAC-Type		186.11.10	short
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Type		190.11.10	short
 #
 #  Sub-TLVs with the same numbers as the similar ones above.
 #
