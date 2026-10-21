@@ -59,6 +59,9 @@ typedef struct {
 	fr_dict_t const			**namespace;		//!< Namespace children should be allocated in.
 
 	bool				clone_parent_lists;	//!< HACK until all eap methods run their own sections.
+
+	bool				tunnel;			//!< A tunneled method (PEAP, TTLS, FAST, TEAP)
+								///< Tunnelled methods cannot be nested
 } rlm_eap_submodule_t;
 
 /** Private structure to hold handles and interfaces for an EAP method

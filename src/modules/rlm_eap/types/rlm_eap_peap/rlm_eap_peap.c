@@ -1039,4 +1039,5 @@ rlm_eap_submodule_t rlm_eap_peap = {
 	},
 	.provides		= { FR_EAP_METHOD_PEAP },
 	.session_init		= mod_session_init,	/* Initialise a new EAP session */
+	.tunnel			= true
 };
