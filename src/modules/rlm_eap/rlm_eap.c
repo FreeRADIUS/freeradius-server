@@ -675,22 +675,6 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 		RETURN_UNLANG_INVALID;
 	}
 
-	/*
-	 *	Multiple levels of TLS nesting are invalid.  But if
-	 *	the parent has a home_server defined, then this
-	 *	request is being processed through a virtual
-	 *	server... so that's OK.
-	 *
-	 *	i.e. we're inside an EAP tunnel, which means we have a
-	 *	parent.  If the outer session exists, and doesn't have
-	 *	a home server, then it's multiple layers of tunneling.
-	 */
-	if (type->num == FR_EAP_METHOD_TLS && eap_session->request->parent &&
-	    eap_session->request->parent->parent) {
-		RERROR("Multiple levels of TLS nesting are invalid");
-		goto is_invalid;
-	}
-
 	RDEBUG2("Peer sent packet with EAP method %s (%u)", eap_type2name(type->num), type->num);
 
 	/*
