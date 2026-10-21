@@ -1244,18 +1244,14 @@ error:
 	for (vp = fr_pair_list_head(&fast_vps);
 	     vp;
 	     vp = fr_pair_list_next(&fast_vps, vp)) {
-		if (vp->da == attr_eap_fast_pac_info_pac_type) {
+		if (vp->da == attr_eap_fast_pac_opaque_pac_type) {
 			fr_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_uint16;
-		} else if (vp->da == attr_eap_fast_pac_info_pac_lifetime) {
+		} else if (vp->da == attr_eap_fast_pac_opaque_pac_lifetime) {
 			fr_assert(fr_time_eq(t->pac.expires, fr_time_wrap(0)));
 			t->pac.expires = fr_time_add(request->packet->timestamp, vp->vp_time_delta);
 			t->pac.expired = false;
-		/*
-		 *	Not sure if this is the correct attr
-		 *	The original enum didn't match a specific TLV nesting level
-		 */
-		} else if (vp->da == attr_eap_fast_pac_key) {
+		} else if (vp->da == attr_eap_fast_pac_opaque_pac_key) {
 			fr_assert(t->pac.key == NULL);
 			fr_assert(vp->vp_length == PAC_KEY_LENGTH);
 			t->pac.key = talloc_array(t, uint8_t, PAC_KEY_LENGTH);
