@@ -878,79 +878,50 @@ static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, module_
 				     fr_tls_session_t *tls_session, fr_pair_list_t *fast_vps)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
-	fr_pair_t			*vp;
 	eap_tlv_crypto_binding_tlv_t	my_binding, *binding = NULL;
 
-	memset(&my_binding, 0, sizeof(my_binding));
-
-	for (vp = fr_pair_list_head(fast_vps);
-	     vp;
-	     vp = fr_pair_list_next(fast_vps, vp)) {
+	fr_pair_list_foreach(&t->fast_vps, vp) {
 		fr_radius_packet_code_t code = FR_RADIUS_CODE_ACCESS_REJECT;
-		if (vp->da->parent == fr_dict_root(dict_eap_fast)) {
-			if (vp->da == attr_eap_fast_eap_payload) {
-				code = eap_fast_eap_payload(request, mctx, eap_session, tls_session, vp);
-				if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) t->stage = EAP_FAST_CRYPTOBIND_CHECK;
-			} else if ((vp->da == attr_eap_fast_result) ||
-				   (vp->da == attr_eap_fast_intermediate_result)) {
-				code = FR_RADIUS_CODE_ACCESS_ACCEPT;
-				t->stage = EAP_FAST_PROVISIONING;
-			} else {
-				RDEBUG2("ignoring unknown %pP", vp);
-				continue;
-			}
-		} else if (vp->da->parent == attr_eap_fast_crypto_binding) {
-			binding = &my_binding;
-
-			/*
-			 *	fr_radius_encode_pair() does not work for structures
-			 */
-			switch (vp->da->attr) {
-			case 1:	/* FR_EAP_FAST_CRYPTO_BINDING_RESERVED */
-				binding->reserved = vp->vp_uint8;
-				break;
-			case 2:	/* FR_EAP_FAST_CRYPTO_BINDING_VERSION */
-				binding->version = vp->vp_uint8;
-				break;
-			case 3:	/* FR_EAP_FAST_CRYPTO_BINDING_RECV_VERSION */
-				binding->received_version = vp->vp_uint8;
-				break;
-			case 4:	/* FR_EAP_FAST_CRYPTO_BINDING_SUB_TYPE */
-				binding->subtype = vp->vp_uint8;
-				break;
-			case 5:	/* FR_EAP_FAST_CRYPTO_BINDING_NONCE */
-				if (vp->vp_length >= sizeof(binding->nonce)) {
-					memcpy(binding->nonce, vp->vp_octets, vp->vp_length);
-				}
-				break;
-			case 6:	/* FR_EAP_FAST_CRYPTO_BINDING_COMPOUND_MAC */
-				if (vp->vp_length >= sizeof(binding->compound_mac)) {
-					memcpy(binding->compound_mac, vp->vp_octets, sizeof(binding->compound_mac));
-				}
-				break;
+		if (vp->da == attr_eap_fast_eap_payload) {
+			code = eap_fast_eap_payload(request, mctx, eap_session, tls_session, vp);
+			if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) t->stage = EAP_FAST_CRYPTOBIND_CHECK;
+		} else if ((vp->da == attr_eap_fast_result) ||
+			   (vp->da == attr_eap_fast_intermediate_result)) {
+			code = FR_RADIUS_CODE_ACCESS_ACCEPT;
+			t->stage = EAP_FAST_PROVISIONING;
+		} else if (vp->da == attr_eap_fast_crypto_binding) {
+			if (vp->vp_length == sizeof(eap_tlv_crypto_binding_tlv_t)) {
+				my_binding.tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
+				my_binding.length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
+				memcpy(&my_binding.reserved, vp->vp_octets, sizeof(my_binding) - 4);
+				binding = &my_binding;
 			}
 			continue;
-		} else if (vp->da->parent == attr_eap_fast_pac_tlv) {
-			if (vp->da == attr_eap_fast_pac_acknowledge) {
-				if (vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
-					code = FR_RADIUS_CODE_ACCESS_ACCEPT;
-					t->pac.expires = fr_time_max();
-					t->pac.expired = false;
-					t->stage = EAP_FAST_COMPLETE;
-				}
-			} else if (vp->da == attr_eap_fast_pac_info_pac_type) {
-				if (vp->vp_uint32 != PAC_TYPE_TUNNEL) {
-					RDEBUG2("only able to serve Tunnel PAC's, ignoring request");
+		} else if (vp->da == attr_eap_fast_pac_tlv) {
+			fr_pair_list_foreach(&vp->vp_group, pac_vp) {
+				if (pac_vp->da == attr_eap_fast_pac_acknowledge) {
+					if (pac_vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
+						p_result->rcode = RLM_MODULE_OK;
+						t->pac.expires = fr_time_max();
+						t->pac.expired = false;
+						t->stage = EAP_FAST_COMPLETE;
+					}
+					break;
+				} else if (pac_vp->da == attr_eap_fast_pac_info_pac_type) {
+					if (pac_vp->vp_uint32 != PAC_TYPE_TUNNEL) {
+						RDEBUG2("only able to serve Tunnel PAC's, ignoring request");
+						continue;
+					}
+					t->pac.send = true;
+					continue;
+				} else {
+					RDEBUG2("ignoring unknown EAP-FAST-PAC-TLV %pP", vp);
 					continue;
 				}
-				t->pac.send = true;
-				continue;
-			} else {
-				RDEBUG2("ignoring unknown EAP-FAST-PAC-TLV %pP", vp);
-				continue;
 			}
+			break;
 		} else {
-			RDEBUG2("ignoring non-EAP-FAST TLV %pP", vp);
+			RDEBUG3("Ignoring %pP", vp);
 			continue;
 		}
 
