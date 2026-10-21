@@ -221,6 +221,54 @@ static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent
 	return 0;
 }
 
+/** Is this method allowed inside of a tunnel?
+ *
+ * A tunnelling method (TTLS, PEAP, FAST) cannot run inside another tunnelling method.
+ * A method which does not tunnel (MD5, MSCHAPv2, PSK, TLS) can run anywhere.
+ *
+ * @param[in] method	to start.  The submodule MUST be loaded.
+ * @param[in] request	the method would run in.
+ * @return
+ *	- true if the method can be used
+ *	- false if the method would create a tunneled method inside of a tunneled method.
+ */
+static bool eap_type_nest_allowed(rlm_eap_method_t const *method, request_t const *request)
+{
+	return !method->submodule->tunnel || !eap_session_in_tunnel(request);
+}
+
+/** Find a method to offer when the default method is a nested tunnel.
+ *
+ * MS-CHAPv2 is preferred when the method is loaded.  Otherwise the lowest numbered EAP type is used.
+ *
+ * @param[in] inst	of rlm_eap.
+ * @param[in] request	the method would run in.
+ * @return
+ *	- #FR_EAP_METHOD_MSCHAPV2 if it's configured
+ *	- The lowest numbered loaded EAP type is configured
+ *	- #FR_EAP_METHOD_INVALID if there is no non-tunneled method available.
+ */
+static eap_type_t eap_type_nest_fallback(rlm_eap_t const *inst, request_t const *request)
+{
+	unsigned int type;
+
+	/*
+	 *	Try EAP-MSCHAPv2 first.  It's the default for essentially all tunneled methods.
+	 */
+	if (inst->methods[FR_EAP_METHOD_MSCHAPV2].submodule &&
+	    eap_type_nest_allowed(&inst->methods[FR_EAP_METHOD_MSCHAPV2], request)) {
+		return FR_EAP_METHOD_MSCHAPV2;
+	}
+
+	for (type = FR_EAP_METHOD_MD5; type < FR_EAP_METHOD_MAX; type++) {
+		if (inst->methods[type].submodule && eap_type_nest_allowed(&inst->methods[type], request)) {
+			return (eap_type_t)type;
+		}
+	}
+
+	return FR_EAP_METHOD_INVALID;
+}
+
 /** Process NAK data from EAP peer
  *
  */
@@ -280,6 +328,16 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 				eap_type2name((eap_type_t)nak->data[i]),
 				nak->data[i]);
 
+			continue;
+		}
+
+		/*
+		 *	Forbid nesting a tunneled method inside of a tunneled method.
+		 */
+		if (!eap_type_nest_allowed(&inst->methods[nak->data[i]], request)) {
+			RDEBUG2("Peer NAK'd asking for EAP type %s (%d), which cannot be nested inside "
+				"another tunnelling EAP type, skipping...",
+				eap_type2name((eap_type_t)nak->data[i]), nak->data[i]);
 			continue;
 		}
 
@@ -729,6 +787,27 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 			goto is_invalid;
 		}
 
+		/*
+		 *	The server chooses the method here, and a single eap instance often serves both
+		 *	the outer session and the tunnel.  The default method of the instance is then a
+		 *	tunnelling method, which cannot start inside a tunnel.  The peer sends a NAK to
+		 *	ask for the method that the peer wants, so offer a method which can nest.
+		 */
+		if (!eap_type_nest_allowed(&inst->methods[next], request)) {
+			eap_type_t fallback = eap_type_nest_fallback(inst, request);
+
+			if (fallback == FR_EAP_METHOD_INVALID) {
+				REDEBUG("EAP type %s (%u) cannot be nested inside another tunnelling EAP type, "
+					"and no other EAP type is loaded", eap_type2name(next), next);
+				goto is_invalid;
+			}
+
+			RDEBUG2("EAP type %s (%u) cannot be nested inside another tunnelling EAP type, "
+				"offering %s (%u) instead", eap_type2name(next), next,
+				eap_type2name(fallback), fallback);
+			next = fallback;
+		}
+
 		eap_session->process = inst->methods[next].submodule->session_init;
 		eap_session->type = next;
 		break;
@@ -792,6 +871,20 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 	}
 
 	method = &inst->methods[eap_session->type];
+
+	/*
+	 *	We cannot nest tunneled methods.
+	 */
+	if (!eap_type_nest_allowed(method, request)) {
+		REDEBUG("EAP type %s (%u) cannot be nested inside another tunnelling EAP type",
+			eap_type2name(eap_session->type), eap_session->type);
+		goto is_invalid;
+	}
+
+	/*
+	 *	Save the tunneled status in the EAP session, which can be found from the request data.
+	 */
+	eap_session->tunnel = method->submodule->tunnel;
 
 	RDEBUG2("Calling submodule %s", method->submodule->common.name);
 
