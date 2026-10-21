@@ -1,0 +1,22 @@
+name: Dockerhub Releases
+
+#
+#  This workflow does nothing on the v4 master branch. It exists only to
+#  enable the 'Run workflow' trigger so it can be used on the v3.2.x branch.
+#
+
+
+on:
+  workflow_dispatch:
+
+jobs:
+  do-nothing:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - id: empty
+      name: Do nothing here
+      run: |
+        echo "Just chilling, waiting on v4 to be released and need Dockerhub images."
