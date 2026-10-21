@@ -83,25 +83,38 @@ int fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl)
 	const EVP_MD *h;
 	const SSL_CIPHER *ssl_cipher;
 	int cipher, digest;
+	int mac_key_len, enc_key_len, fixed_iv_len;
 
 	ssl_cipher = SSL_get_current_cipher(ssl);
 	if (!ssl_cipher)
 		return -1;
 	cipher = SSL_CIPHER_get_cipher_nid(ssl_cipher);
 	digest = SSL_CIPHER_get_digest_nid(ssl_cipher);
-	RDEBUG2("(TLS) OpenSSL: cipher nid %d digest nid %d", cipher, digest);
+	RDEBUG3("(TLS) OpenSSL: cipher nid %d digest nid %d", cipher, digest);
 	if (cipher < 0 || digest < 0)
 		return -1;
 	c = EVP_get_cipherbynid(cipher);
-	h = EVP_get_digestbynid(digest);
-	if (!c || !h)
+	if (!c)
 		return -1;
+	enc_key_len = EVP_CIPHER_key_length(c);
+	if (EVP_CIPHER_mode(c) == EVP_CIPH_GCM_MODE ||
+	    EVP_CIPHER_mode(c) == EVP_CIPH_CCM_MODE)
+		fixed_iv_len = 4; /* only part of IV from PRF */
+	else
+		fixed_iv_len = EVP_CIPHER_iv_length(c);
+	if (digest == NID_undef) {
+		RDEBUG3("(TLS) OpenSSL: no digest in use (e.g., AEAD)");
+		mac_key_len = 0;
+	} else {
+		h = EVP_get_digestbynid(digest);
+		if (!h)
+			return -1;
+		mac_key_len = EVP_MD_size(h);
+	}
 
 	RDEBUG2("(TLS) OpenSSL: keyblock size: key_len=%d MD_size=%d IV_len=%d",
-		   EVP_CIPHER_key_length(c), EVP_MD_size(h),
-		   EVP_CIPHER_iv_length(c));
-	return 2 * (EVP_CIPHER_key_length(c) + EVP_MD_size(h) +
-		    EVP_CIPHER_iv_length(c));
+		   mac_key_len, enc_key_len, fixed_iv_len);
+	return 2 * (mac_key_len + enc_key_len + fixed_iv_len);
 }
 
 /** Convert OpenSSL's ASN1_TIME to an epoch time
