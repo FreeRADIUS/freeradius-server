@@ -1238,6 +1238,9 @@ error:
 		goto error;
 	}
 
+	RDEBUG2("Got FAST TLVs from session ticket");
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &fast_vps, NULL);
+
 	for (vp = fr_pair_list_head(&fast_vps);
 	     vp;
 	     vp = fr_pair_list_next(&fast_vps, vp)) {
