@@ -593,19 +593,27 @@ static unlang_action_t eap_ttls_success(unlang_result_t *p_result, request_t *re
 
 /*
  *	Use a reply packet to determine what to do.
+ *
+ *	This runs in the child request, after the inner tunnel has run.  The TLS session is bound
+ *	to the parent request, so everything which writes to the TLS session takes the parent.
+ *	The result of this function is the result of the child, and process_rcode() reads the
+ *	result in the parent.
  */
-static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t process_reply(unlang_result_t *p_result, request_t *request, void *uctx)
 {
-	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 	fr_pair_t		*vp = NULL, *copy;
 	fr_pair_list_t		tunnel_vps;
 	ttls_tunnel_t		*t = tls_session->opaque;
+	request_t		*parent = request->parent;
 	fr_packet_t		*reply = request->reply;
 
 	fr_pair_list_init(&tunnel_vps);
-	fr_assert(eap_session->request == request->parent);
+	fr_assert(eap_session->request == parent->parent);
+
+	p_result->priority = MOD_PRIORITY_MAX;
 
 	/*
 	 *	If the response packet was Access-Accept, then
@@ -648,13 +656,12 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 		}
 
 		/*
-		 *	Success: Automatically return MPPE keys.
+		 *	Success: process_rcode() automatically returns MPPE keys.
 		 */
-		return eap_ttls_success(p_result, request, eap_session);
+		RETURN_UNLANG_OK;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
-		p_result->rcode = RLM_MODULE_REJECT;
-		return eap_tls_fail(request, eap_session);
+		RETURN_UNLANG_REJECT;
 
 	/*
 	 *	Handle Access-Challenge, but only if we
@@ -681,8 +688,7 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 
 	default:
 		REDEBUG("Unknown RADIUS packet type %u: rejecting tunneled user", reply->code);
-		p_result->rcode = RLM_MODULE_INVALID;
-		return eap_tls_fail(request, eap_session);
+		RETURN_UNLANG_INVALID;
 	}
 
 
@@ -694,16 +700,45 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 		RDEBUG2("Sending tunneled reply attributes");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tunnel_vps, NULL);
 
-		vp2diameter(request, tls_session, &tunnel_vps);
+		vp2diameter(parent, tls_session, &tunnel_vps);
 		fr_pair_list_free(&tunnel_vps);
 	}
 
-	eap_tls_request(request, eap_session);
-	RETURN_UNLANG_OK;
+	RETURN_UNLANG_HANDLED;
+}
+
+/*
+ *	Construct the reply appropriately based on the rcode from TTLS processing.
+ *
+ *	This runs in the request which holds the TLS session, once the child has finished.
+ */
+static unlang_action_t process_rcode(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
+
+	RDEBUG3("Tunneled request complete");
+
+	switch (eap_session->submodule_result.rcode) {
+	case RLM_MODULE_OK:
+		return eap_ttls_success(p_result, request, eap_session);
+
+	case RLM_MODULE_HANDLED:
+		eap_tls_request(request, eap_session);
+		RETURN_UNLANG_OK;
+
+	default:
+		p_result->rcode = eap_session->submodule_result.rcode;
+		return eap_tls_fail(request, eap_session);
+	}
 }
 
 /*
  *	Process the "diameter" contents of the tunneled data.
+ *
+ *	The inner tunnel runs in a child request, so that the session-state list of the TLS
+ *	session stays in this request.  The state code moves the session-state list out of the
+ *	request which ran the inner tunnel, and the TLS session needs the list when it stores
+ *	a session ticket.
  */
 static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t const *mctx,
 					request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
@@ -714,7 +749,9 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 	size_t			data_len;
 	chbind_packet_t		*chbind;
 	fr_pair_t		*username;
+	request_t		*child = NULL;
 	rlm_eap_ttls_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_ttls_t);
+	rlm_rcode_t		rcode = RLM_MODULE_FAIL;
 
 	/*
 	 *	Read the buffer directly, rather than copying the
@@ -733,7 +770,7 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 	if (data_len == 0) {
 		if (t->authenticated) {
 			RDEBUG2("Got ACK, and the user was already authenticated");
-			return eap_ttls_success(p_result, request, eap_session);
+			RETURN_UNLANG_OK;
 		} /* else no session, no data, die. */
 
 		/*
@@ -741,18 +778,21 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 		 *	wrong.
 		 */
 		RDEBUG2("SSL_read Error");
-		return UNLANG_ACTION_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	if (!diameter_verify(request, data, data_len)) return UNLANG_ACTION_FAIL;
+	if (!diameter_verify(request, data, data_len)) RETURN_UNLANG_FAIL;
+
+	MEM(child = unlang_subrequest_alloc(request, request->proto_dict));
+	fr_assert(fr_pair_list_empty(&child->request_pairs));
 
 	/*
-	 *	Add the tunneled attributes to the request request.
+	 *	Add the tunneled attributes to the child request.
 	 */
-	if (eap_ttls_decode_pair(request, request->request_ctx, &request->request_pairs, fr_dict_root(fr_dict_internal()),
+	if (eap_ttls_decode_pair(request, child->request_ctx, &child->request_pairs, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
-		return UNLANG_ACTION_FAIL;
+		goto finish;
 	}
 
 	/*
@@ -762,14 +802,14 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 	/*
 	 *	No User-Name, try to create one from stored data.
 	 */
-	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
+	username = fr_pair_find_by_da(&child->request_pairs, NULL, attr_user_name);
 	if (!username) {
 		/*
 		 *	No User-Name in the stored data, look for
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message);
+			vp = fr_pair_find_by_da(&child->request_pairs, NULL, attr_eap_message);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
@@ -796,18 +836,18 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 		} /* else there WAS a t->username */
 
 		if (t->username) {
-			MEM(vp = fr_pair_copy(request->request_ctx, t->username));
-			fr_pair_append(&request->request_pairs, vp);
+			MEM(vp = fr_pair_copy(child->request_ctx, t->username));
+			fr_pair_append(&child->request_pairs, vp);
 		}
 	} /* else the request ALREADY had a User-Name */
 
 	/*
 	 *	Process channel binding.
 	 */
-	chbind = eap_chbind_vp2packet(request, &request->request_pairs);
+	chbind = eap_chbind_vp2packet(child, &child->request_pairs);
 	if (chbind) {
 		fr_radius_packet_code_t chbind_code;
-		CHBIND_REQ *req = talloc_zero(request, CHBIND_REQ);
+		CHBIND_REQ *req = talloc_zero(child, CHBIND_REQ);
 
 		RDEBUG2("received chbind request");
 		req->request = chbind;
@@ -816,13 +856,13 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 		} else {
 			req->username = NULL;
 		}
-		chbind_code = chbind_process(request, req);
+		chbind_code = chbind_process(child, req);
 
 		/* encapsulate response here */
 		if (req->response) {
 			RDEBUG2("sending chbind response");
-			fr_pair_append(&request->reply_pairs,
-				    eap_chbind_packet2vp(request->reply_ctx, req->response));
+			fr_pair_append(&child->reply_pairs,
+				    eap_chbind_packet2vp(child->reply_ctx, req->response));
 		} else {
 			RDEBUG2("no chbind response");
 		}
@@ -830,22 +870,56 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 		/* clean up chbind req */
 		talloc_free(req);
 
-		if (chbind_code != FR_RADIUS_CODE_ACCESS_ACCEPT) return UNLANG_ACTION_FAIL;
+		if (chbind_code != FR_RADIUS_CODE_ACCESS_ACCEPT) goto finish;
 	}
 
+	RDEBUG2("Got tunneled request");
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &child->request_pairs, NULL);
+
 	/*
-	 *	For this round, when the virtual server returns
-	 *	we run the process reply function.
+	 *	Set the child up for execution.
 	 */
-	if (unlikely(unlang_module_yield(request, process_reply, NULL, FR_SIGNAL_NONE, eap_session) != UNLANG_ACTION_YIELD)) {
-		return UNLANG_ACTION_FAIL;
-	}
+	if (unlang_subrequest_child_push(&eap_session->submodule_result, child,
+					 child,
+					 false, UNLANG_SUB_FRAME) < 0) goto finish;
+
+	/*
+	 *	Set up a function in the child to process the result of the inner tunnel.  The function
+	 *	runs in the child after the virtual server executes.  The function sets the rcode of the
+	 *	subrequest, which is written to eap_session->submodule_result.
+	 */
+	if (unlang_function_push_with_result(NULL,
+					     child,
+					     NULL,
+					     process_reply,
+					     NULL, FR_SIGNAL_NONE,
+					     UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto finish;
 
 	/*
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	return eap_virtual_server(request, eap_session, inst->virtual_server);
+	if (unlikely(eap_virtual_server(child, eap_session, inst->virtual_server) == UNLANG_ACTION_FAIL)) goto finish;
+
+	/*
+	 *	We now yield to the subrequest.  unlang_subrequest_child_push
+	 *	pushed a new frame in the context of the parent which'll start
+	 *	the subrequest.
+	 */
+	return UNLANG_ACTION_PUSHED_CHILD;
+
+finish:
+	if (child) {
+		/*
+		 *	We can't just free the child, we need to detach it
+		 *	and then let the interpreter to unwind and eventually
+		 *	free the request.
+		 */
+		request_detach(child);
+		unlang_interpret_signal(child, FR_SIGNAL_CANCEL);
+	}
+
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /*
@@ -923,9 +997,15 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 	RDEBUG2("Session established.  Decoding Diameter attributes");
 
 	/*
+	 *	Set up the resume point to prepare the correct reply based on
+	 *	the rcode coming back from the inner tunnel.
+	 */
+	(void) unlang_module_yield(request, process_rcode, NULL, FR_SIGNAL_NONE, eap_session);
+
+	/*
 	 *	Process the TTLS portion of the request.
 	 */
-	return eap_ttls_process(p_result, mctx, request, eap_session, tls_session);
+	return eap_ttls_process(&eap_session->submodule_result, mctx, request, eap_session, tls_session);
 }
 
 /*

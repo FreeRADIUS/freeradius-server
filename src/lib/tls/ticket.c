@@ -224,10 +224,6 @@ int tls_ticket_app_data_get(request_t *request, SSL_SESSION *sess,
 	 *	OpenSSL returns NULL and a length of zero both for a session with no application data, and for
 	 *	application data of zero octets.  A session which was stored with an empty session-state list
 	 *	looks like a session without stored state.  An empty list is valid.
-	 *
-	 *	@todo - EAP-TTLS stores an empty list.  EAP-TTLS runs the inner tunnel in the request which
-	 *	holds the TLS session-state list, and the state code moves the list out of that request when
-	 *	the inner tunnel finishes.  This should be addressed in a future commit.
 	 */
 	if (!data) {
 		if (data_len == 0) {
