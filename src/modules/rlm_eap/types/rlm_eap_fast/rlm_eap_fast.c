@@ -719,32 +719,25 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 	rlm_rcode_t			rcode;
 	fr_pair_t			*vp;
 	eap_fast_tunnel_t		*t;
-	request_t			*fake;
 	rlm_eap_fast_t			*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_fast_t);
+	request_t		*child;
 
 	RDEBUG2("Processing received EAP Payload");
 
-	/*
-	 *	Allocate a fake request_t structure.
-	 */
-	fake = request_local_alloc_internal(request, &(request_init_args_t){ .parent = request });
-	fr_assert(fr_pair_list_empty(&fake->request_pairs));
+	MEM(child = unlang_subrequest_alloc(request, request->proto_dict));
+	fr_assert(fr_pair_list_empty(&child->request_pairs));
 
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	/*
-	 *	Add the tunneled attributes to the fake request.
+	 *	Add the tunneled EAP-Message to the child request.
 	 */
-
-	/*
-	 *	Add EAP-Message after other attributes, as VP is used below.
-	 */
-	MEM(vp = fr_pair_afrom_da(fake->request_ctx, attr_eap_message));
-	fr_pair_append(&fake->request_pairs, vp);
+	MEM(vp = fr_pair_afrom_da(child->request_ctx, attr_eap_message));
+	fr_pair_append(&child->request_pairs, vp);
 	fr_pair_value_memdup(vp, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
 
 	RDEBUG2("Got tunneled request");
-	log_request_pair_list(L_DBG_LVL_1, fake, NULL, &fake->request_pairs, NULL);
+	log_request_pair_list(L_DBG_LVL_2, child, NULL, &child->request_pairs, NULL);
 
 	/*
 	 *	If there's no User-Name in the stored data, look for
@@ -776,29 +769,29 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 	} /* else there WAS a t->username */
 
 	if (t->username) {
-		MEM(vp = fr_pair_copy(fake->request_ctx, t->username));
-		fr_pair_append(&fake->request_pairs, vp);
+		MEM(vp = fr_pair_copy(child->request_ctx, t->username));
+		fr_pair_append(&child->request_pairs, vp);
 	}
 
 	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		fr_pair_t *tvp;
 
-		MEM(tvp = fr_pair_afrom_da(fake, attr_eap_type));
+		MEM(tvp = fr_pair_afrom_da(child->control_ctx, attr_eap_type));
 		tvp->vp_uint32 = t->default_provisioning_method;
-		fr_pair_append(&fake->control_pairs, tvp);
+		fr_pair_append(&child->control_pairs, tvp);
 
 		/*
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
-			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge));
+			MEM(tvp = fr_pair_afrom_da(child->control_ctx, attr_ms_chap_challenge));
 			fr_pair_value_memdup(tvp, t->keyblock->server_challenge, MD5_DIGEST_LENGTH, false);
-			fr_pair_append(&fake->control_pairs, tvp);
+			fr_pair_append(&child->control_pairs, tvp);
 			RHEXDUMP3(t->keyblock->server_challenge, MD5_DIGEST_LENGTH, "MSCHAPv2 auth_challenge");
 
-			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge));
+			MEM(tvp = fr_pair_afrom_da(child->control_ctx, attr_ms_chap_peer_challenge));
 			fr_pair_value_memdup(tvp, t->keyblock->client_challenge, MD5_DIGEST_LENGTH, false);
-			fr_pair_append(&fake->control_pairs, tvp);
+			fr_pair_append(&child->control_pairs, tvp);
 			RHEXDUMP3(t->keyblock->client_challenge, MD5_DIGEST_LENGTH, "MSCHAPv2 peer_challenge");
 		}
 	}
@@ -812,7 +805,7 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 	/*
 	 * Decide what to do with the reply.
 	 */
-	switch (fake->reply->code) {
+	switch (child->reply->code) {
 	case 0:			/* No reply code, reject... */
 		REDEBUG("No tunneled reply was found: rejecting the user");
 		code = FR_RADIUS_CODE_ACCESS_REJECT;
@@ -843,7 +836,7 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 		break;
 	}
 
-	talloc_free(fake);
+	talloc_free(child);
 
 	return code;
 }
