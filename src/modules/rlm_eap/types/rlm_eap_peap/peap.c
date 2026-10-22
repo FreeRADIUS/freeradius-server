@@ -185,26 +185,25 @@ static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 			  EAP_DS *eap_ds,
 			  uint8_t const *data, size_t data_len, int peap_version)
 {
-	size_t total;
 	uint8_t *p;
 	VALUE_PAIR *vp = NULL, *head = NULL;
 	vp_cursor_t cursor;
 
-	if (data_len > 65535) return NULL; /* paranoia */
+	if (data_len > (65535 - EAP_HEADER_LEN)) return NULL; /* paranoia */
 
 	vp = fr_pair_afrom_num(packet, PW_EAP_MESSAGE, 0);
 	if (!vp) {
 		return NULL;
 	}
 
-	total = data_len;
-	if (total > 249) total = 249;
-
+	/*
+	 *	The whole packet goes in one EAP-Message attribute.
+	 */
 	if (peap_version == 0) {
 		/*
 		 *	Hand-build an EAP packet from the crap in PEAP version 0.
 		 */
-		vp->vp_length = EAP_HEADER_LEN + total;
+		vp->vp_length = EAP_HEADER_LEN + data_len;
 		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
 
 		p[0] = PW_EAP_RESPONSE;
@@ -212,29 +211,16 @@ static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 		p[2] = (data_len + EAP_HEADER_LEN) >> 8;
 		p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
 
-		memcpy(p + EAP_HEADER_LEN, data, total);
+		memcpy(p + EAP_HEADER_LEN, data, data_len);
 
 	} else {		/* peapv1 */
-		vp->vp_length = total;
+		vp->vp_length = data_len;
 		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
-		memcpy(p, data, total);
+		memcpy(p, data, data_len);
 	}
 
 	fr_cursor_init(&cursor, &head);
 	fr_cursor_insert(&cursor, vp);
-	while (total < data_len) {
-		vp = fr_pair_afrom_num(packet, PW_EAP_MESSAGE, 0);
-		if (!vp) {
-			fr_pair_list_free(&head);
-			return NULL;
-		}
-
-		fr_pair_value_memcpy(vp, data + total, (data_len - total));
-
-		total += vp->vp_length;
-
-		fr_cursor_insert(&cursor, vp);
-	}
 
 	return head;
 }
