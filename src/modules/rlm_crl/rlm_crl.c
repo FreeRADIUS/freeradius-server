@@ -475,10 +475,29 @@ static void crl_pending_resume(rlm_crl_thread_t *thread)
 	}
 }
 
+/** Record that a CRL could not be used
+ *
+ * Requests which need the CRL fail for `retry_delay`, instead of fetching the CRL again.
+ *
+ * @param[in] thread	to record the failure in.
+ * @param[in] cdp_url	of the CRL which failed.
+ * @param[in] now	time of the failure.
+ */
+static void crl_fail_record(rlm_crl_thread_t *thread, char const *cdp_url, fr_time_t now)
+{
+	crl_fail_t *fail;
+
+	MEM(fail = talloc_zero(thread, crl_fail_t));
+	fail->cdp_url = talloc_strdup(fail, cdp_url);
+	fail->fail_time = now;
+
+	if (unlikely(fr_rb_insert(&thread->fails, fail) != 0)) talloc_free(fail);
+}
+
 /** Callback for worker receiving Fetch-OK packet from coordinator
  */
 static void recv_crl_ok(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg,
-			  fr_pair_list_t const *list, UNUSED fr_time_t now,
+			  fr_pair_list_t const *list, fr_time_t now,
 			  module_ctx_t *mctx, UNUSED void *uctx)
 {
 	fr_pair_t               *url, *crl, *delta = NULL;
@@ -526,8 +545,15 @@ static void recv_crl_ok(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t
 	if (unlikely(!crl_entry->crl)) {
 		ERROR("Failed to parse CRL");
 	error:
+		/*
+		 *	The entry is freed, so nothing below this point may use crl_entry.
+		 *	Requests waiting for the CRL resume, and fail until retry_delay passes.
+		 */
 		fr_rb_remove(NULL, &thread->crls, crl_entry);
 		talloc_free(crl_entry);
+		crl_fail_record(thread, url->vp_strvalue, now);
+		crl_pending_resume(thread);
+		return;
 	}
 
 	DEBUG3("CRL %pP refreshed", crl);
@@ -554,17 +580,7 @@ static void recv_crl_fail(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg
 	 *	Record the URL of the fetch that failed.
 	 */
 	vp = fr_pair_find_by_da(list, NULL, attr_crl_cdp_url);
-	if (vp) {
-		crl_fail_t *fail;
-
-		MEM(fail = talloc_zero(thread, crl_fail_t));
-		fail->cdp_url = talloc_strdup(fail, vp->vp_strvalue);
-		fail->fail_time = now;
-
-		if (unlikely(fr_rb_insert(&thread->fails, fail) != 0)) {
-			talloc_free(fail);
-		}
-	}
+	if (vp) crl_fail_record(thread, vp->vp_strvalue, now);
 
 	crl_pending_resume(thread);
 }
