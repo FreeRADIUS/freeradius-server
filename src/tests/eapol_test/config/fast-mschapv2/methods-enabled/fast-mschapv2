@@ -1,0 +1,12 @@
+type = fast
+type = mschapv2
+fast {
+	tls {
+		$template tls-common
+	}
+	cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2:@SECLEVEL=0"
+	pac_lifetime = 604800
+	authority_identity = "1234"
+	pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
+	virtual_server = "inner-tunnel"
+}

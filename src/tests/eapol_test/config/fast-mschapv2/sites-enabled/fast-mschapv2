@@ -1,0 +1,29 @@
+server inner-tunnel {
+	namespace = radius
+
+recv Access-Request {
+	filter_username
+	filter_inner_identity
+
+	split_username_nai
+	control.Password.Cleartext := Stripped-User-Name
+
+	eap
+}
+
+authenticate mschap {
+	mschap
+}
+
+authenticate eap {
+	eap
+}
+
+send Access-Accept {
+	ok
+}
+
+send Access-Reject {
+	ok
+}
+}
