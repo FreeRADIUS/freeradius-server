@@ -357,11 +357,6 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 			           "when session.mode = \"stateful\"");
 			goto error;
 		}
-
-		if (conf->tls_min_version >= (float)1.3) {
-			cf_log_err(ci, "session.mode = \"stateful\" is not supported with tls_min_version >= 1.3");
-			goto error;
-		}
 		break;
 
 	case FR_TLS_TICKET_AUTO:
@@ -388,12 +383,6 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 		if (!cf_section_find(conf->virtual_server, "clear", "session")) {
 			cf_log_warn(ci, "Specified virtual_server missing \"clear cache { ... }\" section. "
 				    "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
-			goto cache_stateless;
-		}
-
-		if (conf->tls_min_version >= (float)1.3) {
-			cf_log_err(ci, "stateful session-resumption is not supported with tls_min_version >= 1.3. "
-			           "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
 			goto cache_stateless;
 		}
 		break;

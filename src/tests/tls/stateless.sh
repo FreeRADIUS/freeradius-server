@@ -25,9 +25,8 @@
 #  coming.  Without it a client which is never going to get a ticket has
 #  nothing to wait on but a timer.
 #
-#  This is also the only test which negotiates TLS 1.3.  Every other
-#  configuration here pins tls_max_version to 1.2, because stateful resumption
-#  is not defined above that.
+#  Stateful resumption over TLS 1.3 is the other case, and stateful_tls13.sh
+#  tests it.  The remaining configurations pin tls_max_version to 1.2.
 #
 #  Each program writes a receipt file only when that program exits
 #  successfully, so a receipt records that both connections worked.

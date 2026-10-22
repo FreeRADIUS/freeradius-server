@@ -1210,31 +1210,31 @@ bool fr_tls_session_is_init_finished(fr_tls_session_t *tls_session)
 	if (!SSL_is_init_finished(tls_session->ssl)) return false;
 
 	/*
-	 *	Stateless session tickets are what add a step after
-	 *	OpenSSL is done, and only TLS 1.3 uses them here.  Without
-	 *	them there is nothing else to wait for.
+	 *	TLS 1.3 servers send the session ticket (stateless or stateful) after the handshake has
+	 *	finished.  That adds a step after the TLS handshake is done.  If we're not doing TLS 1.3, or
+	 *	we're not using tickets, then we're done all negotiation, and application data can flow.
 	 */
 	if (tls_session->info.version != TLS1_3_VERSION) return true;
 
 	if (!tls_session->cache) return true;
 
-	conf = tls_session->conf;
-	if (!(conf->cache.mode & FR_TLS_TICKET_STATELESS)) return true;
-
 	/*
-	 *	If we're not a server, then we're a client, and we
-	 *	need to receive a ticket.  For TLS 1.3 with stateless
-	 *	session tickets, the TLS handshake is finished, and
-	 *	then we get a ticket.  So we're not done until we see
-	 *	a ticket.
+	 *	If we're not a server, then we're a client, and we need to receive a ticket.  For TLS 1.3, the
+	 *	TLS handshake is finished, and then we might fet a ticket (stateless or stateful).
 	 *
-	 *	We can either wait forever for a ticket, or notice
-	 *	that receiption of application data means that the
-	 *	ticket was sent (or not).
+	 *	We can either wait for a ticket (with timeout), or notice that receiption of application data
+	 *	means that the ticket was sent (or not).
 	 */
 	if (!SSL_is_server(tls_session->ssl)) {
 		return tls_session->session_ticket_received || tls_session->seen_application_data;
 	}
+
+	/*
+	 *	A server which keeps its sessions in a cache has no
+	 *	`load session` to wait for after the handshake.
+	 */
+	conf = tls_session->conf;
+	if (!(conf->cache.mode & FR_TLS_TICKET_STATELESS)) return true;
 
 	/*
 	 *	Something has requested `load session`, but it hasn't
