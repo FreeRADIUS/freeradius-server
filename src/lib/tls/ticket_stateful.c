@@ -54,7 +54,12 @@ void _tls_ticket_stateful_load_state_reset(request_t *request, fr_tls_ticket_sta
 {
 	if (cache->load.sess) {
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
-			ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Session ID %pV - Freeing loaded session in %s", cache->session_id, func);
+			if (cache->session_id) {
+				ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Session ID %pV - Freeing loaded session in %s",
+					  cache->session_id, func);
+			} else {
+				ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Freeing loaded session in %s", func);
+			}
 		}
 
 		SSL_SESSION_free(cache->load.sess);
@@ -1271,6 +1276,14 @@ static void tls_ticket_stateful_delete_cb(UNUSED SSL_CTX *ctx, SSL_SESSION *sess
  */
 static int _tls_ticket_stateful_free(fr_tls_ticket_stateful_t *tls_cache)
 {
+	/*
+	 *	`session_id` points at the session ID in the TLS session, which owns `tls_cache`.  Talloc
+	 *	frees the children of the TLS session in the reverse order of their allocation, so the
+	 *	octets of the session ID are already freed when this destructor runs.  The reset functions
+	 *	log the session ID, so they must not see the pointer.
+	 */
+	tls_cache->session_id = NULL;
+
 	tls_ticket_stateful_load_state_reset(NULL, tls_cache);
 	tls_ticket_stateful_store_state_reset(NULL, tls_cache);
 
