@@ -1,0 +1,16 @@
+type = tls
+tls {
+	tls {
+		virtual_server = tls-v13-stateful-tls
+		$template tls-common
+
+		#
+		#  Stateful tickets on TLS 1.3 only.
+		#
+		tls_min_version = 1.3
+
+		session {
+			mode = stateful
+		}
+	}
+}

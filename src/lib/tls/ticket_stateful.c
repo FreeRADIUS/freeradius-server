@@ -60,6 +60,7 @@ void _tls_ticket_stateful_load_state_reset(request_t *request, fr_tls_ticket_sta
 		SSL_SESSION_free(cache->load.sess);
 		cache->load.sess = NULL;
 	}
+	cache->load.returned = false;
 	cache->load.state = FR_TLS_TICKET_STATEFUL_INIT;
 }
 #define tls_ticket_stateful_load_state_reset(_request, _cache) _tls_ticket_stateful_load_state_reset(_request, _cache, __FUNCTION__)
@@ -1129,7 +1130,14 @@ again:
 
 	case FR_TLS_TICKET_STATEFUL_SUCCESS:
 	{
-		SSL_SESSION	*sess;
+		/*
+		 *	OpenSSL calls this callback once for each ClientHello that it receives.  A TLS 1.3
+		 *	server which sends a HelloRetryRequest receives a second ClientHello, and we don't
+		 *	want to run the full `load session` or `verify certificate` sections twice.
+		 *
+		 *	The second time we're called, just return the previously found session.
+		 */
+		if (tls_cache->load.returned) goto return_session;
 
 		/*
 		 *	The handshake continues with the loaded session.
@@ -1173,6 +1181,7 @@ again:
 		fr_tls_verify_resumed_request(tls_session);
 
 		if (unlikely(!tls_session->can_pause)) goto cant_pause;
+
 		/*
 		 *	Jumps back to SSL_read() in session.c.
 		 *
@@ -1203,20 +1212,19 @@ again:
 			RDEBUG2("(TLS) Certificate re-validation failed, denying session resumption via session-id");
 			goto verify_error;
 		}
-		sess = tls_cache->load.sess;
+		tls_cache->load.returned = true;
 
+	return_session:
 		/*
-		 *	After we return it's OpenSSL's responsibility
-		 *	to free the session data, so set our copy of
-		 *	the pointer to NULL, to prevent a double free
-		 *	on cleanup.
+		 *	OpenSSL frees the reference which the callback returns, so the callback takes a
+		 *	reference for OpenSSL, and tells OpenSSL that the callback has done so with
+		 *	*copy = 0.  `load.sess` keeps the original reference for a second call, and
+		 *	tls_ticket_stateful_load_state_reset() frees the original reference.
 		 */
-		{
-			RDEBUG3("(TLS) Session ID %pV - Session ownership transferred to libssl", &tls_session->session_id);
-			*copy = 0;
-			tls_cache->load.sess = NULL;
-		}
-		return sess;
+		RDEBUG3("(TLS) Session ID %pV - Giving a reference to the session to libssl", &tls_session->session_id);
+		SSL_SESSION_up_ref(tls_cache->load.sess);
+		*copy = 0;
+		return tls_cache->load.sess;
 	}
 
 

@@ -71,6 +71,7 @@ typedef struct {
 		fr_tls_ticket_stateful_state_t	state;		//!< Tracks load requests from OpenSSL.
 		fr_value_box_t			id;		//!< Session ID that the peer asked to resume
 		SSL_SESSION			*sess;		//!< Deserialized session.
+		bool				returned;	//!< We've already seen the same session
 	} load;
 
 	struct {

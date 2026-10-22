@@ -1,0 +1,30 @@
+#
+#  The `tls` virtual server which holds the session cache sections.  The server keeps the session,
+#  and a TLS 1.3 stateful ticket holds only the session ID.  `store session` runs when the ticket
+#  is issued, and `load session` runs when the peer presents the ID.
+#
+server tls-v13-stateful-tls {
+	namespace = tls
+
+	load session {
+		cache_tls_session
+	}
+
+	store session {
+		cache_tls_session
+	}
+
+	clear session {
+		cache_tls_session
+	}
+
+	#
+	#  The restored session-state list holds the client certificate, so the resumed session has
+	#  the same attributes as the first one.
+	#
+	verify certificate {
+		if (!parent.session-state.TLS-Certificate[0].Issuer) {
+			reject
+		}
+	}
+}
