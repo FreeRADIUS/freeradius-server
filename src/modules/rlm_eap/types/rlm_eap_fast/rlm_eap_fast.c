@@ -29,6 +29,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/tls/utils.h>
+#include <freeradius-devel/unlang/function.h>
 #include <openssl/rand.h>
 #include "eap_fast.h"
 #include "eap_fast_crypto.h"
@@ -69,7 +70,7 @@ static conf_parser_t submodule_config[] = {
 
 	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_fast_t, virtual_server),
 				    .func = virtual_server_cf_parse,
-				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "eap_fast"} },
+				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "radius"} },
 
 	{ FR_CONF_OFFSET("cipher_list", rlm_eap_fast_t, cipher_list) },
 
@@ -621,16 +622,15 @@ static ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, request_t *request, fr_pair
 /*
  * Use a reply packet to determine what to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_session,
-						  fr_tls_session_t *tls_session,
-						  request_t *request,
-						  fr_packet_t *reply, fr_pair_list_t *reply_list)
+static unlang_action_t process_reply(unlang_result_t *p_result, request_t *request, void *uctx)
 {
-	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
-	fr_pair_t			*vp;
-	fr_dcursor_t			cursor;
-
-	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+	rlm_rcode_t		rcode = RLM_MODULE_REJECT;
+	fr_dcursor_t		cursor;
+	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
+	fr_packet_t		*reply = request->reply;
 
 	/*
 	 * If the response packet was Access-Accept, then
@@ -646,6 +646,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		if (!ms_vp) break;
 
 		rcode = RLM_MODULE_OK;
+		t->stage = EAP_FAST_CRYPTOBIND_CHECK;
 
 		/*
 		 * Copy what we need into the FAST tunnel and leave
@@ -690,17 +691,20 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		break;
 
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	{
+		fr_pair_t	*vp;
+
 		/*
 		 *	Copy the EAP-Message back to the tunnel.
 		 */
-
-		for (vp = fr_pair_dcursor_by_da_init(&cursor, reply_list, attr_eap_message);
+		for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->reply_pairs, attr_eap_message);
 		     vp;
 		     vp = fr_dcursor_next(&cursor)) {
 			eap_fast_tlv_append(tls_session, attr_eap_fast_eap_payload, true, vp->vp_length, vp->vp_octets);
 		}
 
 		rcode = RLM_MODULE_HANDLED;
+	}
 		break;
 
 	default:
@@ -709,17 +713,14 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		break;
 	}
 
-	return rcode;
+	RETURN_UNLANG_RCODE(rcode);
 }
 
-static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_ctx_t const *mctx, eap_session_t *eap_session,
+static unlang_action_t eap_fast_eap_payload(unlang_result_t *p_result, request_t *request, eap_session_t *eap_session,
 				    fr_tls_session_t *tls_session, fr_pair_t *tlv_eap_payload)
 {
-	fr_radius_packet_code_t		code = FR_RADIUS_CODE_ACCESS_REJECT;
-	rlm_rcode_t			rcode;
-	fr_pair_t			*vp;
-	eap_fast_tunnel_t		*t;
-	rlm_eap_fast_t			*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_fast_t);
+	fr_pair_t		*vp;
+	eap_fast_tunnel_t	*t;
 	request_t		*child;
 
 	RDEBUG2("Processing received EAP Payload");
@@ -796,49 +797,29 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, module_c
 		}
 	}
 
-	/*
-	 * Call authentication recursively, which will
-	 * do PAP, CHAP, MS-CHAP, etc.
-	 */
-	eap_virtual_server(request, eap_session, inst->virtual_server);
-
-	/*
-	 * Decide what to do with the reply.
-	 */
-	switch (child->reply->code) {
-	case 0:			/* No reply code, reject... */
-		REDEBUG("No tunneled reply was found: rejecting the user");
-		code = FR_RADIUS_CODE_ACCESS_REJECT;
-		break;
-
-	default:
+	if (unlang_subrequest_child_push(&eap_session->submodule_result, child, child,
+					 false, UNLANG_SUB_FRAME) < 0)  {
+	fail:
 		/*
-		 *	Returns RLM_MODULE_FOO, and we want to return FR_FOO
+		 *	We can't just free the child, we need to detach it
+		 *	and then let the interpreter to unwind and eventually
+		 *	free the request.
 		 */
-		rcode = process_reply(eap_session, tls_session, request, fake->reply, &fake->reply_pairs);
-		switch (rcode) {
-		case RLM_MODULE_REJECT:
-			code = FR_RADIUS_CODE_ACCESS_REJECT;
-			break;
+		request_detach(child);
+		unlang_interpret_signal(child, FR_SIGNAL_CANCEL);
 
-		case RLM_MODULE_HANDLED:
-			code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
-			break;
-
-		case RLM_MODULE_OK:
-			code = FR_RADIUS_CODE_ACCESS_ACCEPT;
-			break;
-
-		default:
-			code = FR_RADIUS_CODE_ACCESS_REJECT;
-			break;
-		}
-		break;
+		RETURN_UNLANG_FAIL;
 	}
 
-	talloc_free(child);
+	if (unlang_function_push_with_result(&eap_session->submodule_result, child, NULL, process_reply, NULL, FR_SIGNAL_NONE,
+					     UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto fail;
 
-	return code;
+	/*
+	 *	Call inner-tunnel virtual server, which will do PAP, CHAP, MS-CHAP, etc.
+	 */
+	if (unlikely(eap_virtual_server(child, eap_session, t->virtual_server) == UNLANG_ACTION_FAIL)) goto fail;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 static fr_radius_packet_code_t eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t *eap_session,
@@ -864,24 +845,100 @@ static fr_radius_packet_code_t eap_fast_crypto_binding(request_t *request, UNUSE
 	return FR_RADIUS_CODE_ACCESS_ACCEPT;
 }
 
-static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, module_ctx_t const *mctx, eap_session_t *eap_session,
-				     fr_tls_session_t *tls_session, fr_pair_list_t *fast_vps)
+static unlang_action_t eap_fast_process_tlvs_result(unlang_result_t *p_result, request_t *request, void *uctx)
 {
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
+
+	fr_pair_list_free(&t->fast_vps);
+
+	if (p_result->rcode == RLM_MODULE_REJECT) RETURN_UNLANG_REJECT;
+
+	switch (t->stage) {
+	case EAP_FAST_AUTHENTICATION:
+		RETURN_UNLANG_HANDLED;
+
+	case EAP_FAST_CRYPTOBIND_CHECK:
+	{
+		if (t->mode != EAP_FAST_PROVISIONING_ANON && !t->pac.send)
+			t->result_final = true;
+
+		eap_fast_append_result(tls_session, FR_RADIUS_CODE_ACCESS_ACCEPT);
+
+		eap_fast_update_icmk(request, tls_session, (uint8_t *)&t->isk);
+		eap_fast_append_crypto_binding(request, tls_session);
+
+		RETURN_UNLANG_HANDLED;
+	}
+	case EAP_FAST_PROVISIONING:
+		t->result_final = true;
+
+		eap_fast_append_result(tls_session, FR_RADIUS_CODE_ACCESS_ACCEPT);
+
+		if (t->pac.send) {
+			RDEBUG2("Peer requires new PAC");
+			eap_fast_send_pac_tunnel(request, tls_session);
+			RETURN_UNLANG_HANDLED;
+		}
+
+		t->stage = EAP_FAST_COMPLETE;
+		FALL_THROUGH;
+
+	case EAP_FAST_COMPLETE:
+		/*
+		 * RFC 5422 section 3.5 - Network Access after EAP-FAST Provisioning
+		 */
+		if (t->pac.type && t->pac.expired) {
+			REDEBUG("Rejecting expired PAC.");
+			RETURN_UNLANG_HANDLED;
+		}
+
+		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
+			REDEBUG("Rejecting unauthenticated provisioning");
+			RETURN_UNLANG_HANDLED;
+		}
+
+		/*
+		 * eap_crypto_mppe_keys() is unsuitable for EAP-FAST as Cisco decided
+		 * it would be a great idea to flip the recv/send keys around
+		 */
+		#define EAPTLS_MPPE_KEY_LEN 32
+		eap_add_reply(request->parent, attr_ms_mppe_recv_key, t->msk, EAPTLS_MPPE_KEY_LEN);
+		eap_add_reply(request->parent, attr_ms_mppe_send_key, &t->msk[EAPTLS_MPPE_KEY_LEN], EAPTLS_MPPE_KEY_LEN);
+		eap_add_reply(request->parent, attr_eap_msk, t->msk, EAP_FAST_KEY_LEN);
+		eap_add_reply(request->parent, attr_eap_emsk, t->emsk, EAP_EMSK_LEN);
+
+		break;
+
+	default:
+		RERROR("Internal sanity check failed in EAP-FAST at %u", t->stage);
+		RETURN_UNLANG_REJECT;
+	}
+
+	RETURN_UNLANG_OK;
+}
+
+static unlang_action_t eap_fast_process_tlvs(unlang_result_t *p_result, request_t *request, void *uctx)
+{
+	eap_session_t			*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	eap_tls_session_t		*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_tlv_crypto_binding_tlv_t	my_binding, *binding = NULL;
+	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
 
 	fr_pair_list_foreach(&t->fast_vps, vp) {
-		fr_radius_packet_code_t code = FR_RADIUS_CODE_ACCESS_REJECT;
 		if (vp->da == attr_eap_fast_eap_payload) {
-			code = eap_fast_eap_payload(request, mctx, eap_session, tls_session, vp);
-			if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) t->stage = EAP_FAST_CRYPTOBIND_CHECK;
+			return eap_fast_eap_payload(p_result, request, eap_session, tls_session, vp);
 		} else if ((vp->da == attr_eap_fast_result) ||
 			   (vp->da == attr_eap_fast_intermediate_result)) {
-			code = FR_RADIUS_CODE_ACCESS_ACCEPT;
+			rcode = RLM_MODULE_OK;
 			t->stage = EAP_FAST_PROVISIONING;
 		} else if (vp->da == attr_eap_fast_crypto_binding) {
 			if (vp->vp_length == sizeof(eap_tlv_crypto_binding_tlv_t)) {
-				my_binding.tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
+				my_binding.tlv_type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_crypto_binding->attr);
 				my_binding.length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
 				memcpy(&my_binding.reserved, vp->vp_octets, sizeof(my_binding) - 4);
 				binding = &my_binding;
@@ -891,7 +948,6 @@ static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, module_
 			fr_pair_list_foreach(&vp->vp_group, pac_vp) {
 				if (pac_vp->da == attr_eap_fast_pac_acknowledge) {
 					if (pac_vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
-						p_result->rcode = RLM_MODULE_OK;
 						t->pac.expires = fr_time_max();
 						t->pac.expired = false;
 						t->stage = EAP_FAST_COMPLETE;
@@ -915,33 +971,95 @@ static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, module_
 			continue;
 		}
 
-		if (code == FR_RADIUS_CODE_ACCESS_REJECT) return FR_RADIUS_CODE_ACCESS_REJECT;
+		if (rcode == RLM_MODULE_REJECT) RETURN_UNLANG_REJECT;
 	}
 
 	if (binding) {
 		fr_radius_packet_code_t code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
 		if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) {
 			t->stage = EAP_FAST_PROVISIONING;
+			goto finish;
 		}
-		return code;
+		RETURN_UNLANG_REJECT;
 	}
 
-	return FR_RADIUS_CODE_ACCESS_ACCEPT;
+finish:
+	return eap_fast_process_tlvs_result(p_result, request, uctx);
 }
 
+/*
+ *	Send the tunneled challenge, once any session ticket has been written.
+ */
+static unlang_action_t mod_challenge_send(unlang_result_t *p_result, request_t *request, void *uctx)
+{
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+
+	fr_tls_session_send(request, eap_tls_session->tls_session);
+	eap_tls_request(request, eap_session);
+	RETURN_UNLANG_HANDLED;
+}
+
+static unlang_action_t process_rcode(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+
+	RDEBUG3("Tunneled request complete");
+
+	switch (eap_session->submodule_result.rcode) {
+	case RLM_MODULE_REJECT:
+		p_result->rcode = RLM_MODULE_REJECT;
+		return eap_tls_fail(request, eap_session);
+
+	/*
+	 *      Access-Challenge, continue tunneled conversation.
+	 */
+	case RLM_MODULE_HANDLED:
+	{
+		eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
+
+		/*
+		 *	The last message from the server carries any stateless session ticket.  EAP-FAST ends
+		 *	with a message from the server, so the ticket and the message leave in the same EAP
+		 *	request.
+		 */
+		if (t->result_final) {
+			return fr_tls_ticket_stateless_issue(p_result, request, tls_session,
+							     mod_challenge_send, eap_session);
+		}
+	}
+		return mod_challenge_send(p_result, request, eap_session);
+
+	/*
+	 *      Success.
+	 */
+	case RLM_MODULE_OK:
+		p_result->rcode = RLM_MODULE_OK;
+		return eap_tls_success(request, eap_session, NULL);
+
+        default:
+                break;
+        }
+
+	/*
+	 *      Something we don't understand: Reject it.
+	 */
+	p_result->rcode = RLM_MODULE_FAIL;
+	return eap_tls_fail(request, eap_session);
+}
 
 /*
  * Process the inner tunnel data
  */
-static fr_radius_packet_code_t eap_fast_process(request_t *request, module_ctx_t const *mctx, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+static unlang_action_t eap_fast_process(unlang_result_t *p_result, request_t *request,
+					eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
-	fr_radius_packet_code_t			code;
-	fr_pair_list_t		fast_vps;
 	uint8_t const		*data;
 	size_t			data_len;
 	eap_fast_tunnel_t	*t;
 
-	fr_pair_list_init(&fast_vps);
 	/*
 	 * Read the buffer directly, rather than copying the
 	 * octets out of it.
@@ -952,10 +1070,12 @@ static fr_radius_packet_code_t eap_fast_process(request_t *request, module_ctx_t
 
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
+	fr_pair_list_init(&t->fast_vps);
+
 	/*
 	 * See if the tunneled data is well formed.
 	 */
-	if (!eap_fast_verify(request, tls_session, data, data_len)) return FR_RADIUS_CODE_ACCESS_REJECT;
+	if (!eap_fast_verify(request, tls_session, data, data_len)) RETURN_UNLANG_REJECT;
 
 	if (t->stage == EAP_FAST_TLS_SESSION_HANDSHAKE) {
 		char buf[256];
@@ -997,86 +1117,17 @@ static fr_radius_packet_code_t eap_fast_process(request_t *request, module_ctx_t
 		eap_fast_send_identity_request(request, tls_session, eap_session);
 
 		t->stage = EAP_FAST_AUTHENTICATION;
-		return FR_RADIUS_CODE_ACCESS_CHALLENGE;
+		RETURN_UNLANG_HANDLED;
 	}
 
-	if (eap_fast_decode_pair(request, request, &fast_vps, fr_dict_root(dict_eap_fast),
-				 data, data_len) < 0) return FR_RADIUS_CODE_ACCESS_REJECT;
+	if (eap_fast_decode_pair(t, request, &t->fast_vps, fr_dict_root(dict_eap_fast),
+				 data, data_len) < 0) RETURN_UNLANG_REJECT;
 
 	RDEBUG2("Got Tunneled FAST TLVs");
-	log_request_pair_list(L_DBG_LVL_1, request, NULL, &fast_vps, NULL);
-	code = eap_fast_process_tlvs(request, mctx, eap_session, tls_session, &fast_vps);
-	fr_pair_list_free(&fast_vps);
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &t->fast_vps, NULL);
 
-	if (code == FR_RADIUS_CODE_ACCESS_REJECT) return FR_RADIUS_CODE_ACCESS_REJECT;
-
-	switch (t->stage) {
-	case EAP_FAST_AUTHENTICATION:
-		code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
-		break;
-
-	case EAP_FAST_CRYPTOBIND_CHECK:
-	{
-		if (t->mode != EAP_FAST_PROVISIONING_ANON && !t->pac.send)
-			t->result_final = true;
-
-		eap_fast_append_result(tls_session, code);
-
-		eap_fast_update_icmk(request, tls_session, (uint8_t *)&t->isk);
-		eap_fast_append_crypto_binding(request, tls_session);
-
-		code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
-		break;
-	}
-	case EAP_FAST_PROVISIONING:
-		t->result_final = true;
-
-		eap_fast_append_result(tls_session, code);
-
-		if (t->pac.send) {
-			RDEBUG2("Peer requires new PAC");
-			eap_fast_send_pac_tunnel(request, tls_session);
-			code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
-			break;
-		}
-
-		t->stage = EAP_FAST_COMPLETE;
-		FALL_THROUGH;
-
-	case EAP_FAST_COMPLETE:
-		/*
-		 * RFC 5422 section 3.5 - Network Access after EAP-FAST Provisioning
-		 */
-		if (t->pac.type && t->pac.expired) {
-			REDEBUG("Rejecting expired PAC.");
-			code = FR_RADIUS_CODE_ACCESS_REJECT;
-			break;
-		}
-
-		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
-			REDEBUG("Rejecting unauthenticated provisioning");
-			code = FR_RADIUS_CODE_ACCESS_REJECT;
-			break;
-		}
-
-		/*
-		 * eap_crypto_mppe_keys() is unsuitable for EAP-FAST as Cisco decided
-		 * it would be a great idea to flip the recv/send keys around
-		 */
-		#define EAPTLS_MPPE_KEY_LEN 32
-		eap_add_reply(request, attr_ms_mppe_recv_key, t->msk, EAPTLS_MPPE_KEY_LEN);
-		eap_add_reply(request, attr_ms_mppe_send_key, &t->msk[EAPTLS_MPPE_KEY_LEN], EAPTLS_MPPE_KEY_LEN);
-		eap_add_reply(request, attr_eap_msk, t->msk, EAP_FAST_KEY_LEN);
-		eap_add_reply(request, attr_eap_emsk, t->emsk, EAP_EMSK_LEN);
-
-		break;
-
-	default:
-		RERROR("Internal sanity check failed in EAP-FAST at %u", t->stage);
-		code = FR_RADIUS_CODE_ACCESS_REJECT;
-	}
-
-	return code;
+	return unlang_function_push_with_result(p_result, request, eap_fast_process_tlvs, eap_fast_process_tlvs_result,
+						NULL, FR_SIGNAL_NONE, UNLANG_SUB_FRAME, eap_session);
 }
 
 /** Allocate the FAST per-session data
@@ -1095,6 +1146,7 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t const *
 	t->authority_identity = inst->authority_identity;
 	t->a_id = inst->a_id;
 	t->pac_opaque_key = (uint8_t const *)inst->pac_opaque_key;
+	t->virtual_server = inst->virtual_server;
 
 	return t;
 }
@@ -1279,19 +1331,6 @@ error:
 	return 1;
 }
 
-/*
- *	Send the tunneled challenge, once any session ticket has been written.
- */
-static unlang_action_t mod_challenge_send(unlang_result_t *p_result, request_t *request, void *uctx)
-{
-	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
-	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-
-	fr_tls_session_send(request, eap_tls_session->tls_session);
-	eap_tls_request(request, eap_session);
-	RETURN_UNLANG_HANDLED;
-}
-
 static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
@@ -1346,51 +1385,9 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 	 */
 	RDEBUG2("Session established.  Proceeding to decode tunneled attributes");
 
-	/*
-	 *	Process the FAST portion of the request.
-	 */
-	switch (eap_fast_process(request, mctx, eap_session, tls_session)) {
-	case FR_RADIUS_CODE_ACCESS_REJECT:
-		p_result->rcode = RLM_MODULE_FAIL;
-		return eap_tls_fail(request, eap_session);
+	(void) unlang_module_yield(request, process_rcode, NULL, FR_SIGNAL_NONE, eap_session);
 
-		/*
-		 *	Access-Challenge, continue tunneled conversation.
-		 */
-	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-	{
-		eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
-
-		/*
-		 *	The last message from the server carries any stateless session ticket.  EAP-FAST ends
-		 *	with a message from the server, so the ticket and the message leave in the same EAP
-		 *	request.
-		 */
-		if (t->result_final) {
-			return fr_tls_ticket_stateless_issue(p_result, request, tls_session,
-							     mod_challenge_send, eap_session);
-		}
-
-		return mod_challenge_send(p_result, request, eap_session);
-	}
-
-	/*
-	 *	Success.
-	 */
-	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		p_result->rcode = RLM_MODULE_OK;
-
-		return eap_tls_success(request, eap_session, NULL);
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Something we don't understand: Reject it.
-	 */
-	p_result->rcode = RLM_MODULE_FAIL;
-	return eap_tls_fail(request, eap_session);
+	return eap_fast_process(&eap_session->submodule_result, request, eap_session, tls_session);
 }
 
 /*

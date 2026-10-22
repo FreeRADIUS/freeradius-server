@@ -166,6 +166,8 @@ typedef struct {
 typedef struct {
 	fr_pair_t		*username;
 
+	fr_pair_list_t		fast_vps;		//!< Pairs extracted from FAST data
+
 	bool			authenticated;
 
 	int			mode;
@@ -199,5 +201,5 @@ typedef struct {
 
 	bool			result_final;
 
-	CONF_SECTION	*server_cs;
+	virtual_server_t	*virtual_server;	//!< To run inner tunnel authentication through
 } eap_fast_tunnel_t;
