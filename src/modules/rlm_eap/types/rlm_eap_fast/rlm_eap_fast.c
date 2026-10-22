@@ -402,26 +402,22 @@ static int eap_fast_verify(request_t *request, fr_tls_session_t *tls_session, ui
 	int	num[EAP_FAST_TLV_MAX + 1] = {0};
 	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint32_t present = 0;
+	fr_dict_attr_t const	*da = NULL, *tlv_da = fr_dict_root(dict_eap_fast);
 
 	fr_assert(sizeof(present) * 8 > EAP_FAST_TLV_MAX);
 
 	while (remaining > 0) {
 		if (remaining < 4) {
-			RDEBUG2("EAP-FAST TLV is too small (%u) to contain a EAP-FAST TLV header", remaining);
+			REDEBUG2("EAP-FAST TLV is too small (%u) to contain a EAP-FAST TLV header", remaining);
 			return 0;
 		}
 
 		memcpy(&attr, data, sizeof(attr));
 		attr = ntohs(attr) & EAP_FAST_TLV_TYPE;
 
-		if ((attr == attr_eap_fast_result->attr) ||
-		    (attr == attr_eap_fast_nak->attr) ||
-		    (attr == attr_eap_fast_error->attr) ||
-		    (attr == attr_eap_fast_vendor_specific->attr) ||
-		    (attr == attr_eap_fast_eap_payload->attr) ||
-		    (attr == attr_eap_fast_intermediate_result->attr) ||
-		    (attr == attr_eap_fast_pac_tlv->attr) ||
-		    (attr == attr_eap_fast_crypto_binding->attr)) {
+		da = fr_dict_attr_child_by_num(tlv_da, attr);
+
+		if (da && (attr < EAP_FAST_TLV_MAX)) {
 			num[attr]++;
 			present |= 1 << attr;
 
@@ -440,7 +436,7 @@ unexpected:
 				goto unexpected;
 			}
 		} else {
-			if ((data[0] & 0x80) != 0) {
+			if (!da && ((data[0] & 0x80) != 0)) {
 				REDEBUG("Unknown mandatory TLV %02x", attr);
 				goto unexpected;
 			}
@@ -457,8 +453,8 @@ unexpected:
 		remaining -= 4;
 
 		if (length > remaining) {
-			RDEBUG2("EAP-FAST TLV %u is longer than room remaining in the packet (%u > %u).", attr,
-				length, remaining);
+			REDEBUG2("EAP-FAST TLV %s is longer than room remaining in the packet (%u > %u).",
+				 da ? da->name : "<unknown>", length, remaining);
 			return 0;
 		}
 
@@ -470,7 +466,7 @@ unexpected:
 		 * of the TLCs, die.
 		 */
 		if (remaining < length) {
-			RDEBUG2("EAP-FAST TLV overflows packet!");
+			REDEBUG2("EAP-FAST TLV %s overflows packet!", da ? da->name : "<unknown>");
 			return 0;
 		}
 
@@ -479,11 +475,11 @@ unexpected:
 		 * authentication process before allocating
 		 * memory.
 		 */
-		if ((attr == attr_eap_fast_intermediate_result->attr) || (attr == attr_eap_fast_result->attr)) {
+		if ((da == attr_eap_fast_intermediate_result) || (da == attr_eap_fast_result)) {
 			uint16_t status;
 
 			if (length < 2) {
-				REDEBUG("EAP-FAST TLV %u is too short.  Expected 2, got %d", attr, length);
+				REDEBUG("EAP-FAST TLV %s is too short.  Expected 2, got %d", da->name, length);
 				return 0;
 			}
 
@@ -491,12 +487,12 @@ unexpected:
 			status = ntohs(status);
 
 			if (status == EAP_FAST_TLV_RESULT_FAILURE) {
-				REDEBUG("EAP-FAST TLV %u indicates failure.  Rejecting request", attr);
+				REDEBUG("EAP-FAST TLV %s value %d indicates failure.  Rejecting request", da->name, status);
 				return 0;
 			}
 
 			if (status != EAP_FAST_TLV_RESULT_SUCCESS) {
-				REDEBUG("EAP-FAST TLV %u contains unknown value.  Rejecting request", attr);
+				REDEBUG("EAP-FAST TLV %s contains unknown value %d.  Rejecting request", da->name, status);
 				goto unexpected;
 			}
 		}
