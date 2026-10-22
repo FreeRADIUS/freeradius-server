@@ -822,8 +822,8 @@ static unlang_action_t eap_fast_eap_payload(unlang_result_t *p_result, request_t
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static fr_radius_packet_code_t eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t *eap_session,
-				       fr_tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
+static int eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t *eap_session,
+				   fr_tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
 {
 	uint8_t			cmac[sizeof(binding->compound_mac)];
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -839,10 +839,10 @@ static fr_radius_packet_code_t eap_fast_crypto_binding(request_t *request, UNUSE
 		RDEBUG2("Crypto-Binding TLV mismatch");
 		RHEXDUMP3((uint8_t const *) binding->compound_mac,
                 sizeof(binding->compound_mac), "Calculated Compound MAC");
-		return FR_RADIUS_CODE_ACCESS_REJECT;
+		return -1;
 	}
 
-	return FR_RADIUS_CODE_ACCESS_ACCEPT;
+	return 0;
 }
 
 static unlang_action_t eap_fast_process_tlvs_result(unlang_result_t *p_result, request_t *request, void *uctx)
@@ -975,15 +975,10 @@ static unlang_action_t eap_fast_process_tlvs(unlang_result_t *p_result, request_
 	}
 
 	if (binding) {
-		fr_radius_packet_code_t code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
-		if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) {
-			t->stage = EAP_FAST_PROVISIONING;
-			goto finish;
-		}
-		RETURN_UNLANG_REJECT;
+		if (eap_fast_crypto_binding(request, eap_session, tls_session, binding) < 0) RETURN_UNLANG_REJECT;
+		t->stage = EAP_FAST_PROVISIONING;
 	}
 
-finish:
 	return eap_fast_process_tlvs_result(p_result, request, uctx);
 }
 
