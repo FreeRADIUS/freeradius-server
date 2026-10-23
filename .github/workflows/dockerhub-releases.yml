@@ -1,15 +1,58 @@
 name: Dockerhub Releases
 
+#
+#  Build and push multi-arch Docker images to the freeradius Dockerhub
+#  repository when a new release tag is pushed.
+#
+
 on:
-# Rebuild on new release tag...
-  push:
-    tags:
-      - 'release_3_2_*'
-# ...weekly (to keep docker base OS up-to-date)...
-  schedule:
-    - cron: '30 4 * * 1'
-# ...or when manually triggered.
+
+#
+#  Rebuild when manually triggered (github.ref_name == v3.2.x)
+#
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git 'release_' tag"
+        required: false
+        type: string
+        default: 'latest'
+
+      repo:
+        description: "Dockerhub repository"
+        required: true
+        type: choice
+        options:
+          - freeradius
+          - freeradius-test
+        default: "freeradius-test"
+
+      do_build:
+        description: "Build images"
+        type: boolean
+        default: true
+
+      do_manifests:
+        description: "Build manifests"
+        type: boolean
+        default: true
+
+      update_latest:
+        description: "Update latest tags"
+        type: boolean
+        default: false
+
+#
+#  Rebuild on new release tag (github.ref_name = release_3_2_...)
+#
+#  We don't currently do this, but may add it in future. There are risks such
+#  as if an old tag is pushed and not wanting to accidentally update the
+#  'latest' docker images.
+#
+#  push:
+#    tags:
+#      - 'release_3_2_*'
+
 
 
 # Don't run more than one build at the same time
@@ -18,26 +61,29 @@ concurrency:
 
 
 env:
+  DOCKER_REPOSITORY_DEFAULT: "freeradius-test"
+  BRANCH: v3.2.x
   CI: 1
   GH_ACTIONS: 1
   DEBIAN_FRONTEND: noninteractive
   APT_OPTS: "-y --no-install-recommends"
-  DOCKER_TAG: "freeradius-test"
-  BRANCH: v3.2.x
 
 
 jobs:
 
   #
-  #  Get list of releases to rebuild
+  #  Get the git tag to build and the docker repo to push to
   #
-  get_release_tags:
+  get_build_info:
     runs-on: ubuntu-latest
 
     outputs:
-      matrix: ${{ steps.gen-matrix.outputs.matrix }}
-      latest_tag: ${{ steps.gen-matrix.outputs.tag }}
-      latest_ver: ${{ steps.gen-matrix.outputs.version }}
+      git_tag: ${{ steps.find-tag.outputs.tag }}
+      version: ${{ steps.find-tag.outputs.version }}
+      docker_repo: ${{ steps.docker-repo.outputs.repo }}
+      do_build: ${{ steps.flags.outputs.build }}
+      do_manifests: ${{ steps.flags.outputs.manifest }}
+      update_latest: ${{ steps.flags.outputs.latest }}
 
     steps:
 
@@ -46,20 +92,52 @@ jobs:
         fetch-depth: 0
         lfs: false
 
-    - id: gen-matrix
-      name: Generate matrix based on recent release tags
+    - id: find-tag
+      name: Find correct git tag to build
       run: |
-        TAGS=$(git ls-remote --tags --sort=-committerdate origin 'release_3_2_*' | head -2 | cut -d/ -f3)
-        echo "Tags: $TAGS"
-        M=$(echo "$TAGS" | perl -n -e '{chomp; $Q=$_; s/release_//; s/_/./g; push @L,"\"TAG\":\"$Q\",\"VER\":\"$_\""} END{print "[{",join("},{",@L),"}]"}')
-        T=$(git describe --abbrev=0 --tags)
-        V=$(echo "$T" | perl -pe 's/release_//; s/_/./g')
-        echo "Matrix: $M"
-        echo "Latest tag: $T"
-        echo "Latest version: $V"
-        echo "matrix=$M" >> $GITHUB_OUTPUT
-        echo "tag=$T" >> $GITHUB_OUTPUT
-        echo "version=$V" >> $GITHUB_OUTPUT
+        TAG="${{ inputs.tag }}"
+        if [ -z "$TAG" -o "$TAG" = "latest" ]; then
+          TAG=$(git describe --abbrev=0 --tags)
+        fi
+
+        # Check tag exists (mainly if from input)
+        if ! git describe --abbrev=0 --tags "$TAG"; then
+          echo "Unable to find git tag '$TAG'"
+          exit 1
+        fi
+
+        VER=$(echo "$TAG" | perl -pe 's/release_//; s/_/./g')
+        echo "Tag: $TAG"
+        echo "Version: $VER"
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "version=$VER" >> $GITHUB_OUTPUT
+
+    - id: docker-repo
+      name: Ensure docker repo is set
+      run: |
+        REPO="${{ inputs.repo }}"
+        [ -n "$REPO" ] || REPO="$DOCKER_REPOSITORY_DEFAULT"
+
+        echo "Docker repository: $REPO"
+        echo "repo=$REPO" >> $GITHUB_OUTPUT
+
+    - id: flags
+      name: Check flags
+      run: |
+        BUILD="${{ github.event.inputs.do_build }}"
+        [ -n "$BUILD" ] || BUILD="true"
+        echo "build=$BUILD" >> $GITHUB_OUTPUT
+        echo "Do build? $BUILD"
+
+        MANIFEST="${{ github.event.inputs.do_manifests }}"
+        [ -n "$MANIFEST" ] || MANIFEST="true"
+        echo "manifest=$MANIFEST" >> $GITHUB_OUTPUT
+        echo "Do manifest? $MANIFEST"
+
+        LATEST="${{ github.event.inputs.update_latest }}"
+        [ -n "$LATEST" ] || LATEST="false"
+        echo "latest=$LATEST" >> $GITHUB_OUTPUT
+        echo "Tag latest? $LATEST"
 
 
   #
@@ -68,14 +146,18 @@ jobs:
   #
   build_docker_images:
     needs:
-      - get_release_tags
+      - get_build_info
 
     runs-on: ubuntu-24.04
-    if: github.repository_owner == 'FreeRADIUS'
+
+#  Checking github.ref_name stops the build from running when pushing a tag.
+    if: |
+      github.ref_name == 'v3.2.x'
+      && needs.get_build_info.outputs.do_build == 'true'
+      && github.repository_owner == 'FreeRADIUS'
 
     strategy:
       matrix:
-        tag: ${{ fromJson(needs.get_release_tags.outputs.matrix) }}
         env:
           - { OS: "ubuntu", ARCH: "linux/amd64",    NAME: "amd64" }
           - { OS: "ubuntu", ARCH: "linux/arm/v7",   NAME: "armv7" }
@@ -87,7 +169,7 @@ jobs:
 
       fail-fast: false
 
-    name: "${{ matrix.tag.TAG }}-${{ matrix.env.OS }}-${{ matrix.env.ARCH }}"
+    name: "${{ needs.get_build_info.outputs.git_tag }}-${{ matrix.env.OS }}-${{ matrix.env.ARCH }}"
 
     steps:
 
@@ -108,10 +190,10 @@ jobs:
     - name: Build docker image
       run: |
         make docker-${{ matrix.env.OS }} \
-          DOCKER_COMMIT="${{ matrix.tag.TAG }}" \
+          DOCKER_TAG="${{ needs.get_build_info.outputs.docker_repo }}" \
+          DOCKER_COMMIT="${{ needs.get_build_info.outputs.git_tag }}" \
           DOCKER_BUILD_ARGS="--no-cache --platform ${{ matrix.env.ARCH }}" \
-          DOCKER_TAG="$DOCKER_TAG" \
-          DOCKER_VERSION="${{ matrix.env.NAME }}-${{ matrix.tag.VER }}"
+          DOCKER_VERSION="${{ matrix.env.NAME }}-${{ needs.get_build_info.outputs.version }}"
 
     - name: Docker login
       uses: docker/login-action@v4
@@ -123,28 +205,38 @@ jobs:
       shell: bash
       run: |
         make docker-push-${{ matrix.env.OS }} \
-          DOCKER_TAG="$DOCKER_TAG" \
-          DOCKER_VERSION="${{ matrix.env.NAME }}-${{ matrix.tag.VER }}"
+          DOCKER_TAG="${{ needs.get_build_info.outputs.docker_repo }}" \
+          DOCKER_VERSION="${{ matrix.env.NAME }}-${{ needs.get_build_info.outputs.version }}"
 
 
+  #
+  #  Create/update manifest for *this* version
+  #
+  #  This maintains the '3.2.x' and '3.2.x-alpine' image tags
+  #
   manifest:
     needs:
-      - get_release_tags
+      - get_build_info
       - build_docker_images
 
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'FreeRADIUS'
+
+    if: |
+      !cancelled()
+      && (needs.build_docker_images.result == 'skipped'
+          || needs.build_docker_images.result == 'success')
+      && needs.get_build_info.outputs.do_manifests == 'true'
+      && github.repository_owner == 'FreeRADIUS'
 
     strategy:
       matrix:
-        tag: ${{ fromJson(needs.get_release_tags.outputs.matrix) }}
         env:
           - { OS: "ubuntu", ARCHS: "amd64 armv7 arm64v8", SUFFIX: "" }
           - { OS: "alpine", ARCHS: "amd64 armv6 armv7 arm64v8", SUFFIX: "-alpine" }
 
       fail-fast: false
 
-    name: "manifest-${{ matrix.tag.VER }}-${{ matrix.env.OS }}"
+    name: "manifest-${{ needs.get_build_info.outputs.version }}-${{ matrix.env.OS }}"
 
     steps:
 
@@ -162,8 +254,8 @@ jobs:
       shell: bash
       run: |
         make docker-ci-manifest \
-          DOCKER_TAG="$DOCKER_TAG" \
-          DOCKER_VERSION="${{ matrix.tag.VER }}${{ matrix.env.SUFFIX }}" \
+          DOCKER_TAG="${{ needs.get_build_info.outputs.docker_repo }}" \
+          DOCKER_VERSION="${{ needs.get_build_info.outputs.version }}${{ matrix.env.SUFFIX }}" \
           DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
 
 
@@ -172,13 +264,23 @@ jobs:
   #
   #  This maintains the 'latest', 'latest-alpine', 'latest-3.2' and 'latest-3.2-alpine' image tags
   #
+  #  This should pretty much always only be run on a new release, unless there
+  #  is some serious problem that needs us to set an older version as current.
+  #  This is why the default for this is 'false' above.
+  #
   latest_manifest:
     needs:
-      - get_release_tags
+      - get_build_info
       - build_docker_images
 
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'FreeRADIUS'
+
+    if: |
+      !cancelled()
+      && (needs.build_docker_images.result == 'skipped'
+          || needs.build_docker_images.result == 'success')
+      && needs.get_build_info.outputs.update_latest == 'true'
+      && github.repository_owner == 'FreeRADIUS'
 
     strategy:
       matrix:
@@ -206,8 +308,8 @@ jobs:
       shell: bash
       run: |
         make docker-ci-manifest \
-          DOCKER_TAG="$DOCKER_TAG" \
-          DOCKER_VERSION="${{ needs.get_release_tags.outputs.latest_ver }}${{ matrix.env.SUFFIX }}" \
+          DOCKER_TAG="${{ needs.get_build_info.outputs.docker_repo }}" \
+          DOCKER_VERSION="${{ needs.get_build_info.outputs.version }}${{ matrix.env.SUFFIX }}" \
           DOCKER_MANIFEST_VERSION="latest${{ matrix.env.SUFFIX }}" \
           DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
 
@@ -215,7 +317,7 @@ jobs:
       shell: bash
       run: |
         make docker-ci-manifest \
-          DOCKER_TAG="$DOCKER_TAG" \
-          DOCKER_VERSION="${{ needs.get_release_tags.outputs.latest_ver }}${{ matrix.env.SUFFIX }}" \
+          DOCKER_TAG="${{ needs.get_build_info.outputs.docker_repo }}" \
+          DOCKER_VERSION="${{ needs.get_build_info.outputs.version }}${{ matrix.env.SUFFIX }}" \
           DOCKER_MANIFEST_VERSION="latest-3.2${{ matrix.env.SUFFIX }}" \
           DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
