@@ -3,8 +3,17 @@ state_order: sequence
 states:
   state_1:
     description: >
-      Baseline load-generator test for load-generator ->
-      {{ compose_num_of_home_servers }} home servers. Home servers auto-accept requests.
+      The load generator sends Access-Requests to
+      {{ compose_num_of_home_servers }} home servers, and each home server accepts every request.
+      Because the test configuration sets `complete: exit`, the load generator shuts down when
+      the load completes.
+
+      The `server.stop` trigger will run the `check-status.sh` script to check
+      the Status-Server stats.
+
+      In profiling mode the state runs until timeout is reached to ensure the scripts
+      have enough time to write the profiling results.  Setting timeout_mode to `bound`
+      could result in the test ending before the profiling results are written.
     host:
       load-generator:
         actions:
@@ -22,19 +31,7 @@ states:
             detach: true
     verify:
       timeout: {{ test_verify_timeout }}
-      timeout_mode: window
-      trigger_mode: unordered
-  state_2:
-    description: Check load-generator Status-Server stats
-    host:
-      load-generator:
-        actions:
-        - execute_command:
-            command: |
-              # This command will query the load-generator's built-in Status-Server for statistics. Port 1820 configured to be used for Status-Server.
-              printf 'User-Name := "testuser"\nUser-Password := "testpass"' | /usr/bin/radclient -x localhost:1820 status testing123
-    verify:
-      timeout: 5
+      timeout_mode: {{ 'window' if mode == 'profiling' else 'bound' }}
       trigger_mode: unordered
       triggers:
       - load-generator-status-server:
