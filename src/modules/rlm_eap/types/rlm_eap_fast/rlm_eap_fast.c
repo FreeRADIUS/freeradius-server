@@ -478,6 +478,13 @@ unexpected:
 		if ((da == attr_eap_fast_intermediate_result) || (da == attr_eap_fast_result)) {
 			uint16_t status;
 
+#ifdef __clang_analyzer__
+			/*
+			 *	Clang scan doesn't realise that the condition above means da is populated
+			 */
+			if (!da) return 0;
+#endif
+
 			if (length < 2) {
 				REDEBUG("EAP-FAST TLV %s is too short.  Expected 2, got %d", da->name, length);
 				return 0;
