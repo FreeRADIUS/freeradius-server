@@ -1519,6 +1519,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	eap_tls_conf_check(conf, inst->tls_conf);
 
+	/*
+	 *	Limit TLS version to 1.2.  More work is needed to support TLS 1.3
+	 */
+	if ((inst->tls_conf->tls_max_version <= (float) 0.0) || (inst->tls_conf->tls_max_version > (float) 1.2)) {
+		cf_log_warn(conf, "Max TLS version supported for EAP-FAST is 1.2");
+		inst->tls_conf->tls_max_version = (float) 1.2;
+	}
+
 	if (talloc_strlen(inst->pac_opaque_key) != 32) {
 		cf_log_err_by_child(conf, "pac_opaque_key", "Must be 32 bytes long");
 		return -1;

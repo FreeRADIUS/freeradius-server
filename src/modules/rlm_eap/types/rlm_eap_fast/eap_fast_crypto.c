@@ -321,7 +321,7 @@ void eap_fast_tls_gen_challenge(SSL *s, int version, uint8_t *buffer, uint8_t *s
 	p += SSL3_RANDOM_SIZE;
 
 	master_key_len = SSL_SESSION_get_master_key(SSL_get_session(s), master_key, sizeof(master_key));
-	if (version >= TLS1_2_VERSION) {
+	if (version == TLS1_2_VERSION) {
 		eap_crypto_rfc5246_prf(buffer, size, master_key, master_key_len, seed, p - seed);
 	} else {
 		eap_crypto_rfc4346_prf(buffer, size, scratch, master_key, master_key_len, seed, p - seed);
