@@ -1,16 +1,16 @@
 FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	Configuration changes
+	* Add notes on the security of CHAP-Password and MS-CHAP-*
+	  If you send these attributes over RADIUS/UDP, then any observer
+	  can crack those passwords in milliseconds on a laptop.
 	* PEAP / SoH functionality has been removed.  It was removed from
 	  Windows over 10 years ago, and is no longer relevant.
+	* Removed all code and configuration related to trustrouter (abfab)
+	  That project was marked as end of life a few years ago.
 	* Add example of using socat to test radclient + UDP to the server
 	  over TLS.  See sites-available/tls, and look for "socat".
 	* Add per-section "do_xlat" and "is_json" config items to rlm_rest.
 	  see mods-available/rest for details.
-	* Add notes on the security of CHAP-Password and MS-CHAP-*
-	  If you send these attributes over RADIUS/UDP, then any observer
-	  can crack those passwords in milliseconds on a laptop.
-	* Removed all code and configuration related to trustrouter (abfab)
-	  That project was marked as end of life a few years ago.
 
 	Feature improvements
 	* Implement "track_home_server" in home_server_pool configuration
@@ -45,6 +45,10 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Failed TCP / TLS connections no longer mark the home server as "dead".
 	  Existing connections (if any) continue to be used.  New connection are
 	  blocked for "connect_fail_interval" or "certificate_fail_interval".
+	* Handle race condition in "new proxy socket", which fixes a
+	  long-standing issue where it would open a socket, send packets,
+	  and then (rarely) ignore the replies.
+	* Security fixes in TEAP and FAST.  See the commit log for details.
 
 FreeRADIUS 3.2.10 Wed 03 Jun 2026 12:00:00 UTC urgency=high
 	Configuration changes
