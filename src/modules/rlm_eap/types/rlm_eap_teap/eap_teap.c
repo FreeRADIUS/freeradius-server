@@ -33,7 +33,8 @@ RCSID("$Id$")
 #define RDEBUGHEX(_label, _data, _length) \
 do { if (fr_debug_lvl > 2) {\
 	char __buf[8192];\
-	for (size_t i = 0; (i < (size_t) _length) && (3*i < sizeof(__buf)); i++) {\
+	__buf[0] = '\0';\
+	for (size_t i = 0; (i < (size_t) _length) && ((3*i + 4) <= sizeof(__buf)); i++) {\
 		sprintf(&__buf[3*i], " %02x", (uint8_t)(_data)[i]);\
 	}\
 	RDEBUG2("%s - hexdump(len=%zu):%s", _label, (size_t)_length, __buf);\
