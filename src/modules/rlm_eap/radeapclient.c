@@ -708,6 +708,14 @@ static void generate_triplets(RADIUS_PACKET *packet, VALUE_PAIR *ki, uint8_t con
 	int i, idx;
 	eap_sim_state_t ess;
 
+	/*
+	 *	comp128 reads 16 octets of Ki.
+	 */
+	if (ki->vp_length < 16) {
+		ERROR("EAP-Sim-Ki must be 16 octets\n");
+		return;
+	}
+
 	for (idx = 0; idx < 3; idx++) {
 		VALUE_PAIR *vp;
 		char *p;
@@ -1047,6 +1055,13 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		  }
 	  }
 
+	  for (int j = 0; j < 3; j++) {
+		  if (randcfgvp[j]->vp_length < EAPSIM_RAND_SIZE) {
+			  ERROR("EAP-Sim-Rand%d must be %d octets\n", j + 1, EAPSIM_RAND_SIZE);
+			  return 0;
+		  }
+	  }
+
 	  if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
 	      memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
 	      memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE)!=0) {
@@ -1081,6 +1096,13 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		ERROR("needs to have sres1, 2 and 3 set.\n");
 		return 0;
 	}
+
+	if ((sres1->vp_length < EAPSIM_SRES_SIZE) ||
+	    (sres2->vp_length < EAPSIM_SRES_SIZE) ||
+	    (sres3->vp_length < EAPSIM_SRES_SIZE)) {
+		ERROR("sres1, 2 and 3 must be %d octets.\n", EAPSIM_SRES_SIZE);
+		return 0;
+	}
 	memcpy(eap_context->eap.sim.keys.sres[0], sres1->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[0]));
 	memcpy(eap_context->eap.sim.keys.sres[1], sres2->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[1]));
 	memcpy(eap_context->eap.sim.keys.sres[2], sres3->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[2]));
@@ -1093,6 +1115,13 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	   !Kc2 ||
 	   !Kc3) {
 		ERROR("needs to have Kc1, 2 and 3 set.\n");
+		return 0;
+	}
+
+	if ((Kc1->vp_length < EAPSIM_KC_SIZE) ||
+	    (Kc2->vp_length < EAPSIM_KC_SIZE) ||
+	    (Kc3->vp_length < EAPSIM_KC_SIZE)) {
+		ERROR("Kc1, 2 and 3 must be %d octets.\n", EAPSIM_KC_SIZE);
 		return 0;
 	}
 	memcpy(eap_context->eap.sim.keys.Kc[0], Kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[0]));
