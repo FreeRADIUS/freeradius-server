@@ -528,44 +528,38 @@ int fr_tls_ticket_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *cache_conf,
 		fr_tls_ticket_stateful_disable(ctx);
 		return 0;
 
-	case FR_TLS_TICKET_AUTO:
 	case FR_TLS_TICKET_STATEFUL:
+		/*
+		 *	Allow stateful tickets, and if we're a server, disable stateless tickets.
+		 *
+		 *	We don't disable stateless tickets on the client, because doing so will tell the
+		 *	server that the client doesn't support stateless tickets.  Since the client treats all
+		 *	tickets as opaque blobs, it doesn't matter whether the tickets are stateless or
+		 *	stateful.
+		 */
 		fr_tls_ticket_stateful_ctx_init(ctx, cache_conf, client);
 
-		/*
-		 *	Disables stateless session tickets for TLS 1.3.
-		 */
-		if (!(cache_conf->mode & FR_TLS_TICKET_STATELESS)) {
-			fr_tls_ticket_stateless_disable(ctx, true);
-			break;
-		}
-		FALL_THROUGH;
+		if (!client) fr_tls_ticket_stateless_disable(ctx, true);
+		break;
 
 	case FR_TLS_TICKET_STATELESS:
-	{
-		/*
-		 *	For stateless session tickets, the server
-		 *	doesn't call `load session` or `store
-		 *	session`.  Don't register those callbacks.
-		 *
-		 *	For stateless session tickets, the client has
-		 *	to store the ticket somewhere, so that it's
-		 *	read back on the next session.
-		 *
-		 *	The client therefore runs the `store session`
-		 *	and `load session` policies, even for
-		 *	stateless session resumption.
-		 */
-		if (!(cache_conf->mode & FR_TLS_TICKET_STATEFUL)) {
-			if (!client) {
-				fr_tls_ticket_stateful_disable(ctx);
-			} else {
-				fr_tls_ticket_stateful_ctx_init(ctx, cache_conf, client);
-			}
-		}
-
 		if (fr_tls_ticket_stateless_ctx_init(ctx, cache_conf) < 0) return -1;
-	}
+
+		if (!client) {
+			fr_tls_ticket_stateful_disable(ctx);
+		} else {
+			/*
+			 *	Stateless clients get stateful init, too, because the cache flag controls what
+			 *	we tell the server, but the client just runs `store session` and `load
+			 *	session`.
+			 */
+			fr_tls_ticket_stateful_ctx_init(ctx, cache_conf, client);
+		}
+		break;
+
+	case FR_TLS_TICKET_AUTO:
+		fr_tls_ticket_stateful_ctx_init(ctx, cache_conf, client);
+		if (fr_tls_ticket_stateless_ctx_init(ctx, cache_conf) < 0) return -1;
 		break;
 	}
 
