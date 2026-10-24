@@ -1,0 +1,26 @@
+#  This needs to be cleared explicitly, as the libfreeradius-json.mk
+#  might not always be available, and the TARGETNAME from the previous
+#  target may stick around.
+TARGETNAME	:=
+-include $(top_builddir)/src/lib/json/all.mk
+TARGET		:=
+
+#  Check the targetname defined by libfreeradius-json.mk
+#  to verify we have json-c and the libfreeradius-json library.
+ifneq "$(TARGETNAME)" ""
+  TARGETNAME	:= @targetname@
+
+  #  Check the targetname from the local configure script
+  ifneq "$(TARGETNAME)" ""
+    TARGET		:= $(TARGETNAME)$(L)
+  endif
+endif
+
+SOURCES		:= $(TARGETNAME).c
+
+SRC_CFLAGS	+= @mongoc_cflags@
+SRC_CFLAGS	+= -I${top_srcdir}/src/modules/rlm_sql
+TGT_LDLIBS	+= @mongoc_ldflags@
+TGT_PREREQS	:= libfreeradius-json.a
+
+$(call DEFINE_LOG_ID_SECTION,mongo,11,$(SOURCES))
