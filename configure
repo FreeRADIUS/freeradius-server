@@ -6716,7 +6716,7 @@ then :
 
 fi
 
-if test "x$WITH_RADIUSCV11" = "xyes"; then
+if test "x$WITH_RADIUSV11" = "xyes"; then
 
 printf "%s\n" "#define WITH_RADIUSV11 1" >>confdefs.h
 
