@@ -762,7 +762,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		eap_ds->request->code = PW_EAP_REQUEST;
 		eap_ds->request->type.num = PW_EAP_PWD;
 		eap_ds->request->type.length = sizeof(pwd_hdr);
-		if ((eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, sizeof(pwd_hdr))) == NULL) {
+		if ((eap_ds->request->type.data = talloc_zero_array(eap_ds->request, uint8_t, sizeof(pwd_hdr))) == NULL) {
 			return 0;
 		}
 		hdr = (pwd_hdr *)eap_ds->request->type.data;
