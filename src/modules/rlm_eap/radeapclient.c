@@ -1310,15 +1310,21 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 		return 0;
 	}
 
+	/* the first octet is the value size, and the value follows it */
+	if (vp->vp_length < 1) {
+		ERROR("md5 challenge is empty\n");
+		return 0;
+	}
+
 	/* got the details of the MD5 challenge */
 	valuesize = vp->vp_octets[0];
 	value = &vp->vp_octets[1];
 
 	/* sanitize items */
-	if (valuesize > vp->vp_length)
+	if (valuesize > (vp->vp_length - 1))
 	{
 		ERROR("md5 valuesize if too big (%u > %u)\n",
-			(unsigned int) valuesize, (unsigned int) vp->vp_length);
+			(unsigned int) valuesize, (unsigned int) (vp->vp_length - 1));
 		return 0;
 	}
 
