@@ -1440,7 +1440,7 @@ int eap_tls_check_stateless(CONF_SECTION *cs, fr_tls_conf_t const *tls_conf)
 	 *	still asked for `auto`.
 	 */
 	if (tls_conf->cache.mode_is_auto) {
-		cf_log_warn_by_child(cs, "tls", "Add a 'save session { ... }' section to save stateful tickets, or");
+		cf_log_warn_by_child(cs, "tls", "Add a 'store session { ... }' section to save stateful tickets, or");
 		cf_log_warn_by_child(cs, "tls", "use session.mode = \"disabled\",");
 	} else {
 		cf_log_warn_by_child(cs, "tls", "Use session.mode = \"auto\" or \"disabled\",");
