@@ -70,10 +70,8 @@ jobs:
         rm scripts/docker/dists/*/Dockerfile || true
         make docker.regen
 
-    - name: Install qemu
-      run: |
-        sudo apt-get update
-        sudo apt-get install ${APT_OPTS} qemu-user-static
+    - name: Set up qemu
+      uses: docker/setup-qemu-action@v4
 
     - name: Build docker image
       run: |
