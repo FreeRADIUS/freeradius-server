@@ -1138,6 +1138,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 	vp_cursor_t			cursor;
 	eap_tlv_crypto_binding_tlv_t	*binding = NULL;
 	eap_tlv_crypto_binding_tlv_t	my_binding;
+	bool				need_binding = (t->stage == CRYPTOBIND_CHECK);
 
 	for (vp = fr_cursor_init(&cursor, &fast_vps); vp; vp = fr_cursor_next(&cursor)) {
 		PW_CODE code = PW_CODE_ACCESS_REJECT;
@@ -1166,11 +1167,11 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				t->stage = PROVISIONING;
 				break;
 			case EAP_FAST_TLV_CRYPTO_BINDING:
-				if (!binding && (vp->vp_length >= sizeof(eap_tlv_crypto_binding_tlv_t))) {
+				if (!binding && (vp->vp_length >= (sizeof(eap_tlv_crypto_binding_tlv_t) - 2 * sizeof(uint16_t)))) {
 					binding = &my_binding;
 					binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
 					binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
-					memcpy(&my_binding.reserved, vp->vp_octets, sizeof(my_binding) - 4);
+					memcpy(&my_binding.reserved, vp->vp_octets, sizeof(my_binding) - 2 * sizeof(uint16_t));
 				}
 				continue;
 			default:
@@ -1213,6 +1214,16 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 
 		if (code == PW_CODE_ACCESS_REJECT)
 			return PW_CODE_ACCESS_REJECT;
+	}
+
+	/*
+	 *	A Result TLV moves the stage on before the loop above ends.  The
+	 *	Crypto-Binding TLV is checked here, and a peer which does not send
+	 *	one must not get past this point.
+	 */
+	if (need_binding && !binding) {
+		REDEBUG("Missing or malformed Crypto-Binding TLV");
+		return PW_CODE_ACCESS_REJECT;
 	}
 
 	if (binding) {
