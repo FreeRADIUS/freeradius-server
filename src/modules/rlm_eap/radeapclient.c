@@ -987,6 +987,14 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	}
 
 	/*
+	 *	The attribute has two reserved octets, followed by three RAND values.
+	 */
+	if (randvp->vp_length < (2 + (EAPSIM_RAND_SIZE * 3))) {
+		ERROR("challenge message RAND is too short\n");
+		return 0;
+	}
+
+	/*
 	 * compare RAND with randX, to verify this is the right response
 	 * to this challenge.
 	 */
