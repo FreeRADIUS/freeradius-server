@@ -3651,8 +3651,24 @@ X509_STORE *fr_init_x509_store(fr_tls_server_conf_t *conf)
 		}
 
 #ifdef X509_V_FLAG_CRL_CHECK
-	if (conf->check_crl)
+	if (conf->check_crl) {
 		X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
+
+#ifdef X509_V_FLAG_USE_DELTAS
+		/*
+		 *	If set, delta CRLs (if present) are used to
+		 *	determine certificate status. If not set
+		 *	deltas are ignored.
+		 *
+		 *	So it's safe to always set this flag.
+		 *
+		 *	Set it here, and not in tls_init_ctx(), so
+		 *	that it also applies to the store which is
+		 *	re-created by ca_path_reload_interval.
+		 */
+		X509_STORE_set_flags(store, X509_V_FLAG_USE_DELTAS);
+#endif
+	}
 #endif
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
 	if (conf->check_all_crl)
@@ -4685,17 +4701,6 @@ post_ca:
 	    		return NULL;
 		}
 		X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
-
-#ifdef X509_V_FLAG_USE_DELTAS
-		/*
-		 *	If set, delta CRLs (if present) are used to
-		 *	determine certificate status. If not set
-		 *	deltas are ignored.
-		 *
-		 *	So it's safe to always set this flag.
-		 */
-		X509_STORE_set_flags(certstore, X509_V_FLAG_USE_DELTAS);
-#endif
 
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
 		if (conf->check_all_crl)
