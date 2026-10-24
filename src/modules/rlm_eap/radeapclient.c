@@ -481,6 +481,14 @@ static int rc_init_packet(rc_transaction_t *trans)
 			DICT_ATTR const *da;
 			uint8_t *p, *q;
 
+			/*
+			 *	The length octet holds the length of the value plus the 2 octet header.
+			 */
+			if (vp->vp_length > (255 - 2)) {
+				ERROR("%s is too long\n", vp->da->name);
+				return 0;
+			}
+
 			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
 
 			memcpy(p + 2, vp->vp_octets, vp->vp_length);
