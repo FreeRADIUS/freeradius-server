@@ -15,6 +15,16 @@ RUN apt-get update
 RUN apt-get install -y devscripts equivs git quilt gcc
 
 #
+#  chmod from uutils is currently broken on armv7 (fails with
+#  EOVERFLOW under qemu) so bodge the proper gnu binary in place.
+#  The proper way is to install coreutils-from-gnu, but build-essential
+#  has a hard dependency on coreutils-from-uutils :(
+#
+RUN apt-get install -y gnu-coreutils \
+ && rm -f /usr/bin/chmod \
+ && cp -a /usr/bin/gnuchmod /usr/bin/chmod
+
+#
 #  Create build directory
 #
 RUN mkdir -p /usr/local/src/repositories/freeradius-server
