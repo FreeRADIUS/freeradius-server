@@ -233,6 +233,9 @@ struct fr_tls_conf_s {
 
 	bool		encode_session;			//!< Does the "encode session" section exist.
 	bool		decode_session;			//!< Does the "decode session" section exist.
+	bool		load_session;			//!< Does the "load session" section exist.
+	bool		store_session;			//!< Does the "store session" section exist.
+	bool		clear_session;			//!< Does the "clear session" section exist.
 #ifdef PSK_MAX_IDENTITY_LEN
 	bool		load_psk;			//!< Does the "load psk" section exist.
 #endif

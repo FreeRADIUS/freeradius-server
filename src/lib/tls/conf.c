@@ -46,7 +46,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "strerror.h"
 #include "utils.h"
 
-static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int tls_conf_parse_server_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int tls_conf_parse_client_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_fragment_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_padding_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
@@ -87,31 +88,45 @@ static fr_table_num_sorted_t const verify_mode_table[] = {
 };
 static size_t verify_mode_table_len = NUM_ELEMENTS(verify_mode_table);
 
-static conf_parser_t tls_ticket_config[] = {
+/*
+ *	The client and server share ticket configurations.  However, their parsers for "mode" are different,
+ *	because the client just calls load / store session, and the server can call encode / decode session.
+ */
+#define TLS_TICKET_CONFIG_COMMON \
+	{ FR_CONF_OFFSET_HINT_TYPE("name", FR_TYPE_STRING, fr_tls_ticket_conf_t, id_name), \
+			 .dflt = "%{EAP-Type}%interpreter('server')", .quote = T_DOUBLE_QUOTED_STRING }, \
+	{ FR_CONF_OFFSET("lifetime", fr_tls_ticket_conf_t, lifetime), .func = tls_ticket_lifetime_parse, .dflt = "1d" }, \
+	{ FR_CONF_OFFSET_IS_SET("min_lifetime", FR_TYPE_TIME_DELTA, 0, fr_tls_ticket_conf_t, min_lifetime), \
+			 .dflt = "10s" }, \
+	{ FR_CONF_OFFSET("require_extended_master_secret", fr_tls_ticket_conf_t, require_extms), .dflt = "yes" }, \
+	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", fr_tls_ticket_conf_t, require_pfs), .dflt = "no" }, \
+	{ FR_CONF_OFFSET("session_ticket_key", fr_tls_ticket_conf_t, session_ticket_key) }, \
+	{ FR_CONF_V3_DEPRECATED("enable", fr_tls_ticket_conf_t, NULL) }, \
+	{ FR_CONF_V3_DEPRECATED("max_entries", fr_tls_ticket_conf_t, NULL) }, \
+	{ FR_CONF_V3_DEPRECATED("persist_dir", fr_tls_ticket_conf_t, NULL) },
+
+static conf_parser_t tls_server_ticket_config[] = {
 	{ FR_CONF_OFFSET("mode", fr_tls_ticket_conf_t, mode),
-			 .func = tls_conf_parse_cache_mode,
+			 .func = tls_conf_parse_server_cache_mode,
 			 .uctx = &(cf_table_parse_ctx_t){
-			 	.table = cache_mode_table,
-			 	.len = &cache_mode_table_len
+				 .table = cache_mode_table,
+				 .len = &cache_mode_table_len
 			 },
 			 .dflt = "disabled" },
-	{ FR_CONF_OFFSET_HINT_TYPE("name", FR_TYPE_STRING, fr_tls_ticket_conf_t, id_name),
-			 .dflt = "%{EAP-Type}%interpreter('server')", .quote = T_DOUBLE_QUOTED_STRING },
-	{ FR_CONF_OFFSET("lifetime", fr_tls_ticket_conf_t, lifetime), .func = tls_ticket_lifetime_parse, .dflt = "1d" },
-	{ FR_CONF_OFFSET_IS_SET("min_lifetime", FR_TYPE_TIME_DELTA, 0, fr_tls_ticket_conf_t, min_lifetime),
-			 .dflt = "10s" },
+	TLS_TICKET_CONFIG_COMMON
 
-	{ FR_CONF_OFFSET("require_extended_master_secret", fr_tls_ticket_conf_t, require_extms), .dflt = "yes" },
-	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", fr_tls_ticket_conf_t, require_pfs), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
+};
 
-	{ FR_CONF_OFFSET("session_ticket_key", fr_tls_ticket_conf_t, session_ticket_key) },
-
-	/*
-	 *	Deprecated
-	 */
-	{ FR_CONF_V3_DEPRECATED("enable", fr_tls_ticket_conf_t, NULL) },
-	{ FR_CONF_V3_DEPRECATED("max_entries", fr_tls_ticket_conf_t, NULL) },
-	{ FR_CONF_V3_DEPRECATED("persist_dir", fr_tls_ticket_conf_t, NULL) },
+static conf_parser_t tls_client_ticket_config[] = {
+	{ FR_CONF_OFFSET("mode", fr_tls_ticket_conf_t, mode),
+			 .func = tls_conf_parse_client_cache_mode,
+			 .uctx = &(cf_table_parse_ctx_t){
+				 .table = cache_mode_table,
+				 .len = &cache_mode_table_len
+			 },
+			 .dflt = "disabled" },
+	TLS_TICKET_CONFIG_COMMON
 
 	CONF_PARSER_TERMINATOR
 };
@@ -218,11 +233,11 @@ conf_parser_t fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("client_hello_parse", fr_tls_conf_t, client_hello_parse )},
 
-	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_ticket_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_server_ticket_config) },
 
 	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },
 
-	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_ticket_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_server_ticket_config) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
@@ -243,7 +258,7 @@ conf_parser_t fr_tls_client_config[] = {
 
 	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },
 
-	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_ticket_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_client_ticket_config) },
 
 	{ FR_CONF_V3_DEPRECATED("pem_file_type", fr_tls_conf_t, NULL) },
 	{ FR_CONF_V3_DEPRECATED("certificate_file", fr_tls_conf_t, NULL) },
@@ -277,7 +292,7 @@ conf_parser_t fr_tls_client_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
-	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_ticket_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("cache", CONF_FLAG_V3_DEPRECATED, fr_tls_conf_t, cache, tls_client_ticket_config) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_issuer", fr_tls_conf_t, check_cert_issuer) },
 	{ FR_CONF_V3_DEPRECATED("check_cert_cn", fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
@@ -296,14 +311,20 @@ static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	 *	`out` points to conf->virtual_server
 	 */
 	*((CONF_SECTION const **)out) = virtual_server_cs(vs);
-	conf->verify_certificate = cf_section_find(conf->virtual_server, "verify", "certificate") ? true : false;
-	conf->new_session = cf_section_find(conf->virtual_server, "new", "session") ? true : false;
-	conf->establish_session = cf_section_find(conf->virtual_server, "establish", "session") ? true : false;
-	conf->fail_session = cf_section_find(conf->virtual_server, "fail", "session") ? true : false;
-	conf->encode_session = cf_section_find(conf->virtual_server, "encode", "session") ? true : false;
-	conf->decode_session = cf_section_find(conf->virtual_server, "decode", "session") ? true : false;
+
+#define EXISTS(_x, _y) (cf_section_find(conf->virtual_server, _x, _y) != NULL)
+
+	conf->verify_certificate = EXISTS("verify", "certificate");
+	conf->new_session = EXISTS("new", "session");
+	conf->establish_session = EXISTS("establish", "session");
+	conf->fail_session = EXISTS("fail", "session");
+	conf->encode_session = EXISTS("encode", "session");
+	conf->decode_session = EXISTS("decode", "session");
+	conf->load_session = EXISTS("load", "session");
+	conf->store_session = EXISTS("store", "session");
+	conf->clear_session = EXISTS("clear", "session");
 #ifdef PSK_MAX_IDENTITY_LEN
-	conf->load_psk = cf_section_find(conf->virtual_server, "load", "psk") ? true : false;
+	conf->load_psk = EXISTS("load", "psk");
 #else
 	if (cf_section_find(conf->virtual_server, "load", "psk")) {
 		cf_log_err(ci, "Specified virtual_server has a \"load psk { ... }\" section, "
@@ -314,87 +335,17 @@ static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	return 0;
 }
 
-static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+/** Generate the session ticket key if the mode needs one, and write out the mode
+ *
+ */
+static int tls_conf_cache_mode_set(fr_tls_conf_t *conf, int cache_mode, void *out)
 {
-	fr_tls_conf_t	*conf = talloc_get_type_abort((uint8_t *)parent - offsetof(fr_tls_conf_t, cache), fr_tls_conf_t);
-	int		cache_mode;
-
-	if (cf_table_parse_int(ctx, &cache_mode, parent, ci, rule) < 0) return -1;
-
-	conf->cache.mode_is_auto = (cache_mode == FR_TLS_TICKET_AUTO);
-
-	/*
-	 *	Ensure our virtual server contains the
-	 *      correct sections for the specified
-	 *      cache mode.
-	 */
-	switch (cache_mode) {
-	case FR_TLS_TICKET_DISABLED:
-	case FR_TLS_TICKET_STATELESS:
-		break;
-
-	case FR_TLS_TICKET_STATEFUL:
-		if (!conf->virtual_server) {
-			cf_log_err(ci, "A virtual_server must be set when session.mode = \"stateful\"");
-		error:
-			return -1;
-		}
-
-		if (!cf_section_find(conf->virtual_server, "load", "session")) {
-			cf_log_err(ci, "Specified virtual_server must contain a \"load session { ... }\" section "
-				   "when session.mode = \"stateful\"");
-			goto error;
-		}
-
-		if (!cf_section_find(conf->virtual_server, "store", "session")) {
-			cf_log_err(ci, "Specified virtual_server must contain a \"store session { ... }\" section "
-				   "when session.mode = \"stateful\"");
-			goto error;
-		}
-
-		if (!cf_section_find(conf->virtual_server, "clear", "session")) {
-			cf_log_err(ci, "Specified virtual_server must contain a \"clear session { ... }\" section "
-			           "when session.mode = \"stateful\"");
-			goto error;
-		}
-		break;
-
-	case FR_TLS_TICKET_AUTO:
-		if (!conf->virtual_server) {
-			WARN("A virtual_server must be provided for stateful caching. "
-			     "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
-		cache_stateless:
-			cache_mode = FR_TLS_TICKET_STATELESS;
-			break;
-		}
-
-		if (!cf_section_find(conf->virtual_server, "load", "session")) {
-			cf_log_warn(ci, "Specified virtual_server missing \"load session { ... }\" section. "
-			            "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
-			goto cache_stateless;
-		}
-
-		if (!cf_section_find(conf->virtual_server, "store", "session")) {
-			cf_log_warn(ci, "Specified virtual_server missing \"store session { ... }\" section. "
-			            "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
-			goto cache_stateless;
-		}
-
-		if (!cf_section_find(conf->virtual_server, "clear", "session")) {
-			cf_log_warn(ci, "Specified virtual_server missing \"clear cache { ... }\" section. "
-				    "session.mode = \"auto\" rewritten to session.mode = \"stateless\"");
-			goto cache_stateless;
-		}
-		break;
-	}
-
 	/*
 	 *	Generate random, ephemeral, session-ticket keys.
 	 */
 	if (cache_mode & FR_TLS_TICKET_STATELESS) {
 		/*
-		 *	Fill the key with randomness if one
-		 *	wasn't specified by the user.
+		 *	Fill the key with randomness if one wasn't specified by the user.
 		 */
 		if (!conf->cache.session_ticket_key) {
 			MEM(conf->cache.session_ticket_key = talloc_array(conf, uint8_t, 256));
@@ -406,6 +357,152 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 	*((int *)out) = cache_mode;
 
 	return 0;
+}
+
+#define CHECK_MODE(_x) \
+	do { \
+		if (!conf->_x ## _session) { \
+			cf_log_err(ci, "Virtual server %s must contain a \"" STRINGIFY(_x) " session { ... }\" section when session.mode = \"%s\"", cf_section_name2(conf->virtual_server), fr_table_str_by_value(cache_mode_table, cache_mode, "disabled")); \
+			return -1; \
+		} \
+	} while (0)
+
+/** Parse cache mode for a TLS server
+ *
+ * Stateless tickets need `encode session` and `decode session`.  @todo - arguable also `clear session` for
+ * "oopsies" like TTLS.
+ *
+ * Stateful tickets need `load session`, `store session`, and `clear session`.
+ */
+static int tls_conf_parse_server_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	fr_tls_conf_t	*conf = talloc_get_type_abort((uint8_t *)parent - offsetof(fr_tls_conf_t, cache), fr_tls_conf_t);
+	int		cache_mode;
+
+	if (cf_table_parse_int(ctx, &cache_mode, parent, ci, rule) < 0) return -1;
+
+	conf->cache.mode_is_auto = (cache_mode == FR_TLS_TICKET_AUTO);
+
+	/*
+	 *	Modes other than "disabled" (0) require a virtual server.
+	 */
+	if (cache_mode && !conf->virtual_server) {
+		cf_log_err(ci, "A virtual_server must be set when session.mode = \"%s\"",
+			   fr_table_str_by_value(cache_mode_table, cache_mode, "disabled"));
+		return -1;
+	}
+
+	/*
+	 *	Ensure our virtual server contains the
+	 *      correct sections for the specified
+	 *      cache mode.
+	 */
+	switch (cache_mode) {
+	case FR_TLS_TICKET_DISABLED:
+		break;
+
+	case FR_TLS_TICKET_STATELESS:
+		CHECK_MODE(encode);
+		CHECK_MODE(decode);
+		break;
+
+	case FR_TLS_TICKET_STATEFUL:
+	check_stateful:
+		CHECK_MODE(load);
+		CHECK_MODE(store);
+		CHECK_MODE(clear);
+		break;
+
+	case FR_TLS_TICKET_AUTO:
+		if (!conf->encode_session) {
+			cf_log_warn(ci, "Virtual server %s is missing an \"encode session { ... }\" section. "
+				    "Rewriting session.mode = \"auto\" to \"stateful\"",
+				    cf_section_name2(conf->virtual_server));
+			cache_mode = FR_TLS_TICKET_STATEFUL;
+			goto check_stateful;
+		}
+
+		if (!conf->decode_session) {
+			cf_log_warn(ci, "Virtual server %s is missing a \"decode session { ... }\" section. "
+				    "Rewriting session.mode = \"auto\" to \"stateful\"",
+				    cf_section_name2(conf->virtual_server));
+			cache_mode = FR_TLS_TICKET_STATEFUL;
+			goto check_stateful;
+		}
+
+		if (!conf->load_session) {
+			cf_log_warn(ci, "Virtual server %s is missing a \"load session { ... }\" section. "
+				    "Rewriting session.mode = \"auto\" to \"stateless\"",
+				    cf_section_name2(conf->virtual_server));
+			cache_mode = FR_TLS_TICKET_STATELESS;
+			break;
+		}
+
+		if (!conf->store_session) {
+			cf_log_warn(ci, "Virtual server %s is missing a \"store session { ... }\" section. "
+				    "Rewriting session.mode = \"auto\" to \"stateless\"",
+				    cf_section_name2(conf->virtual_server));
+			cache_mode = FR_TLS_TICKET_STATELESS;
+			break;
+		}
+
+		if (!conf->clear_session) {
+			cf_log_warn(ci, "Virtual server %s is missing a \"clear session { ... }\" section. "
+				    "Rewriting session.mode = \"auto\" to \"stateless\"",
+				    cf_section_name2(conf->virtual_server));
+			cache_mode = FR_TLS_TICKET_STATELESS;
+			break;
+		}
+		break;
+	}
+
+	return tls_conf_cache_mode_set(conf, cache_mode, out);
+}
+
+/** Parse "mode" for a TLS client
+ *
+ * A client tells a server whether it supports stateful or stateless session tickets, because a server
+ * responds slightly differently to each one.  Yay TLS magic.
+ *
+ * However, the client mashes both types of tickets into `load session` and `store session`, because it can't
+ * do anything else with them.
+ */
+static int tls_conf_parse_client_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	fr_tls_conf_t	*conf = talloc_get_type_abort((uint8_t *)parent - offsetof(fr_tls_conf_t, cache), fr_tls_conf_t);
+	int		cache_mode;
+
+	if (cf_table_parse_int(ctx, &cache_mode, parent, ci, rule) < 0) return -1;
+
+	/*
+	 *	Modes other than "disabled" (0) require a virtual server.
+	 */
+	if (cache_mode && !conf->virtual_server) {
+		cf_log_err(ci, "A virtual_server must be set when session.mode = \"%s\"",
+			   fr_table_str_by_value(cache_mode_table, cache_mode, "disabled"));
+		return -1;
+	}
+
+	switch (cache_mode) {
+	case FR_TLS_TICKET_DISABLED:
+		break;
+
+	case FR_TLS_TICKET_STATELESS:
+	case FR_TLS_TICKET_AUTO:
+		cf_log_warn(ci, "A TLS client always uses \"store session { ... }\" and "
+			    "\"load session { ... }\" to store tickets.  Rewriting session.mode = \"%s\" to \"stateful\"",
+			    (cache_mode == FR_TLS_TICKET_AUTO) ? "auto" : "stateless");
+		cache_mode = FR_TLS_TICKET_STATEFUL;
+		FALL_THROUGH;
+
+	case FR_TLS_TICKET_STATEFUL:
+		CHECK_MODE(load);
+		CHECK_MODE(store);
+		CHECK_MODE(clear);
+		break;
+	}
+
+	return tls_conf_cache_mode_set(conf, cache_mode, out);
 }
 
 /** Keep `fragment_size` between 100 and the TLS record limit
