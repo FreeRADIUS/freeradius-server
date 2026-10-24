@@ -967,65 +967,13 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	if ((eap_packet->data[0] <= 0) ||
 	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
 		/*
-		 *	Handle expanded types by smashing them to
-		 *	normal types.
+		 *	A peer should send a normal EAP type instead of wrapping the type in an Expanded type.
+		 *	eap_vp2packet() checks the flags and lengths of TLS-based EAP types by looking at the
+		 *	"base" type, not by looking at the expanded type.  (
 		 */
 		if (eap_packet->data[0] == PW_EAP_EXPANDED_TYPE) {
-			uint8_t *p, *q;
-
-			if (len <= (EAP_HEADER_LEN + 1 + 3 + 4)) {
-				REDEBUG("Expanded EAP type is too short: ignoring the packet");
-				return EAP_INVALID;
-			}
-
-			if ((eap_packet->data[1] != 0) ||
-			    (eap_packet->data[2] != 0) ||
-			    (eap_packet->data[3] != 0)) {
-				REDEBUG("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
-				return EAP_INVALID;
-			}
-
-			if ((eap_packet->data[4] != 0) ||
-			    (eap_packet->data[5] != 0) ||
-			    (eap_packet->data[6] != 0)) {
-				REDEBUG("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
-				return EAP_INVALID;
-			}
-
-			if ((eap_packet->data[7] == 0) ||
-			    (eap_packet->data[7] >= PW_EAP_MAX_TYPES)) {
-				REDEBUG("Unsupported Expanded EAP type %s (%u): ignoring the packet",
-				      eap_type2name(eap_packet->data[7]), eap_packet->data[7]);
-				return EAP_INVALID;
-			}
-
-			if (eap_packet->data[7] == PW_EAP_NAK) {
-				REDEBUG("Unsupported Expanded EAP-NAK: ignoring the packet");
-				return EAP_INVALID;
-			}
-
-			/*
-			 *	Re-write the EAP packet to NOT have the expanded type.
-			 */
-			q = (uint8_t *) eap_packet;
-			memmove(q + EAP_HEADER_LEN, q + EAP_HEADER_LEN + 7, len - 7 - EAP_HEADER_LEN);
-
-			p = talloc_realloc(talloc_parent(eap_packet), eap_packet, uint8_t, len - 7);
-			if (!p) {
-				REDEBUG("Unsupported EAP type %s (%u): ignoring the packet",
-				      eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
-				return EAP_INVALID;
-			}
-
-			len -= 7;
-			p[2] = (len >> 8) & 0xff;
-			p[3] = len & 0xff;
-
-			*eap_packet_p = (eap_packet_raw_t *) p;
-			RWARN("Converting Expanded EAP to normal EAP.");
-			RWARN("Unnecessary use of Expanded EAP types is not recommended.");
-
-			return EAP_VALID;
+			REDEBUG("Unsupported Expanded EAP type: ignoring the packet");
+			return EAP_INVALID;
 		}
 
 		REDEBUG("Unsupported EAP type %s (%u): ignoring the packet",
