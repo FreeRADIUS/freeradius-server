@@ -377,9 +377,14 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			 *	Copy it over verbatim.
 			 */
 		case PW_TYPE_OCTETS:
-		default:
 			fr_pair_value_memcpy(vp, data, size);
 			break;
+
+			/*
+			 *	It's an unknown type, it must be raw.
+			 */
+		default:
+			goto raw;
 		}
 
 		/*
