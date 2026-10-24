@@ -137,6 +137,11 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler,
 		 *  |                             Server Name...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
+		if (reply->vp_length != MSCHAPV2_CHALLENGE_LEN) {
+			REDEBUG("MS-CHAP-Challenge has length %zu, expected %d", reply->vp_length, MSCHAPV2_CHALLENGE_LEN);
+			return 0;
+		}
+
 		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(inst->identity);
 		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
 
@@ -180,6 +185,15 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler,
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		RDEBUG2("MSCHAP Success");
+
+		/*
+		 *	The copy below starts at the second octet of the attribute.
+		 */
+		if (reply->vp_length < 43) {
+			REDEBUG("MS-CHAP2-Success has length %zu, expected at least 43", reply->vp_length);
+			return 0;
+		}
+
 		length = 46;
 		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
 		/*
@@ -200,6 +214,12 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler,
 
 	case PW_MSCHAP_ERROR:
 		REDEBUG("MSCHAP Failure");
+
+		if (reply->vp_length < 1) {
+			REDEBUG("MS-CHAP-Error is empty");
+			return 0;
+		}
+
 		length = 4 + reply->vp_length - 1;
 		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
 
