@@ -154,6 +154,14 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 		return 0;
 	}
 
+	/*
+	 *	The packet ID, the password, and the challenge go into one buffer.
+	 */
+	if (password->vp_length > (sizeof(string) - 1 - MD5_CHALLENGE_LEN)) {
+		ERROR("rlm_eap_md5: Password is too long for EAP-MD5");
+		return 0;
+	}
+
 	len = 0;
 	ptr = string;
 
