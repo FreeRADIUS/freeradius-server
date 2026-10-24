@@ -378,8 +378,8 @@ static int mod_process(void *instance, eap_handler_t *handler)
 	uint8_t *in;
 	uint8_t *out = NULL;
 
-	uint8_t *ikemsg;
-	u_int32_t len;
+	uint8_t *ikemsg = NULL;
+	u_int32_t len = 0;
 
 	uint8_t *sikemsg = NULL;   //out message
 	u_int32_t slen = 0;
@@ -407,7 +407,7 @@ static int mod_process(void *instance, eap_handler_t *handler)
 	}
 
 	in = talloc_array(eap_ds, uint8_t, eap_ds->response->length);
-	if (in){
+	if (!in) {
 		ERROR(IKEv2_LOG_PREFIX "alloc error");
 		return -1;
 	}
