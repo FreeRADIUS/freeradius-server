@@ -330,7 +330,8 @@ static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t da
 		}
 
 		if (data[10] == EAP_TLV_FAILURE) {
-			RDEBUG2("Client rejected our response.  The password is probably incorrect");
+			RDEBUG2("Client sent a Result TLV = Failure in reply to our Success TLV");
+			RDEBUG2("This means that the client rejected our response.  The password is probably incorrect");
 			return 0;
 		}
 	}
