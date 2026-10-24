@@ -90,8 +90,8 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	newvp->vp_length = 2;
 	newvp->vp_octets = p = talloc_array(newvp, uint8_t, 2);
 
-	p[0] = 0;
 	p[0] = 1;
+	p[1] = 0;
 	fr_pair_add(vps, newvp);
 
 	/* the SUBTYPE, set to start. */
