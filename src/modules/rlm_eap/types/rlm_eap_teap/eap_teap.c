@@ -649,6 +649,7 @@ static ssize_t eap_teap_decode_vp(TALLOC_CTX *request, DICT_ATTR const *parent,
 		RERROR("eap_teap_decode_vp: Invalid arguments");
 		return -1;
 	}
+	*out = NULL;
 
 	/*
 	 *	Silently ignore zero-length attributes.
@@ -839,11 +840,18 @@ VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, UNUSED SSL *ssl, uint8_t const *d
 			RDEBUG3("Phase 2: Skipping unsupported TLV %s", da->name);
 			goto next_attr;
 		}
+
 		decoded = eap_teap_decode_vp(request, da, data, length, &vp);
 		if (decoded < 0) {
 			REDEBUG3("Phase 2: Failed decoding %s: %s", da->name, fr_strerror());
 			goto next_attr;
 		}
+
+		/*
+		 *	Zero-length TLVs are ignored, and do not create a VP.  Merging
+		 *	the VP from the previous TLV would link that VP to itself.
+		 */
+		if (!decoded) goto next_attr;
 
 		fr_cursor_merge(out, vp);
 
