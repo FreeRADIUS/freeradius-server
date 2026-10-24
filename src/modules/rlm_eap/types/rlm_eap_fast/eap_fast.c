@@ -112,18 +112,23 @@ static int openssl_get_keyblock_size(REQUEST *request, SSL *ssl)
 /**
  * RFC 4851 section 5.1 - EAP-FAST Authentication Phase 1: Key Derivations
  */
-static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
+static int eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 {
 	eap_fast_tunnel_t *t = tls_session->opaque;
 	uint8_t *buf;
 	size_t ksize;
+	int ret;
 
 	RDEBUG2("Deriving EAP-FAST keys");
 
 	rad_assert(t->simck == NULL);
 
-	ksize = openssl_get_keyblock_size(request, tls_session->ssl);
-	rad_assert(ksize > 0);
+	ret = openssl_get_keyblock_size(request, tls_session->ssl);
+	if (ret <= 0) {
+		REDEBUG("Failed getting the size of the TLS key block");
+		return -1;
+	}
+	ksize = ret;
 	buf = talloc_size(request, ksize + sizeof(*t->keyblock));
 
 	t->keyblock = talloc(t, eap_fast_keyblock_t);
@@ -139,6 +144,8 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 	t->imckc = 0;
 
 	talloc_free(buf);
+
+	return 0;
 }
 
 /**
@@ -1274,7 +1281,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 			}
 		}
 
-		eap_fast_init_keys(request, tls_session);
+		if (eap_fast_init_keys(request, tls_session) < 0) return PW_CODE_ACCESS_REJECT;
 
 		eap_fast_send_identity_request(request, tls_session, eap_session);
 
