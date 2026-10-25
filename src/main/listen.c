@@ -2861,8 +2861,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd,
-			  (client->require_ma == FR_BOOL_TRUE) ? RAD_RECV_FLAG_REQUIRE_MA : RAD_RECV_FLAG_NONE);
+	packet = rad_recv(ctx, listener->fd, RAD_RECV_FLAG_NONE);
 	if (!packet) {
 		FR_STATS_INC(coa, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
