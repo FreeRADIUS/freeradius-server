@@ -39,7 +39,6 @@ jobs:
   #  build the Docker images.
   #
   build_docker_images:
-    runs-on: ubuntu-24.04
     if: |
       github.repository_owner == 'FreeRADIUS' &&
       github.ref_name == 'v3.2.x'
@@ -47,17 +46,20 @@ jobs:
     strategy:
       matrix:
         env:
-          - { OS: "ubuntu", ARCH: "linux/amd64",    NAME: "amd64" }
-          - { OS: "ubuntu", ARCH: "linux/arm/v7",   NAME: "armv7" }
-          - { OS: "ubuntu", ARCH: "linux/arm64/v8", NAME: "arm64v8" }
-          - { OS: "alpine", ARCH: "linux/amd64",    NAME: "amd64" }
-          - { OS: "alpine", ARCH: "linux/arm/v6",   NAME: "armv6" }
-          - { OS: "alpine", ARCH: "linux/arm/v7",   NAME: "armv7" }
-          - { OS: "alpine", ARCH: "linux/arm64/v8", NAME: "arm64v8" }
+          - { OS: "ubuntu", ARCH: "linux/amd64",    NAME: "amd64",   RUNNER: "ubuntu-24.04" }
+          - { OS: "ubuntu", ARCH: "linux/arm/v7",   NAME: "armv7",   RUNNER: "ubuntu-24.04-arm" }
+          - { OS: "ubuntu", ARCH: "linux/arm64/v8", NAME: "arm64v8", RUNNER: "ubuntu-24.04-arm" }
+
+          - { OS: "alpine", ARCH: "linux/amd64",    NAME: "amd64",   RUNNER: "ubuntu-24.04" }
+          - { OS: "alpine", ARCH: "linux/arm/v6",   NAME: "armv6",   RUNNER: "ubuntu-24.04-arm" }
+          - { OS: "alpine", ARCH: "linux/arm/v7",   NAME: "armv7",   RUNNER: "ubuntu-24.04-arm" }
+          - { OS: "alpine", ARCH: "linux/arm64/v8", NAME: "arm64v8", RUNNER: "ubuntu-24.04-arm" }
 
       fail-fast: false
 
     name: "${{ matrix.env.OS }}-${{ matrix.env.ARCH }}"
+
+    runs-on: ${{ matrix.env.RUNNER }}
 
     steps:
 
@@ -70,6 +72,10 @@ jobs:
         rm scripts/docker/dists/*/Dockerfile || true
         make docker.regen
 
+    #
+    #  No-op on ARM runners, but left to ensure future
+    #  compatibility e.g. if 32bit support is removed.
+    #
     - name: Set up qemu
       uses: docker/setup-qemu-action@v4
 
