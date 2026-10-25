@@ -45,6 +45,13 @@ RUN [ -z "$release" ] || git checkout ${release} ; \
     git log -1 --oneline
 
 #
+#  libssl3 is called libssl3t64 on 32-bit platforms with a 64-bit time_t (e.g.
+#  armhf). This hack fixes rebuilding older releases before debian/rules was
+#  updated.
+#
+RUN sed -i 's/libssl3\([,"]\)/libssl3 | libssl3t64\1/' debian/rules
+
+#
 #  Install build dependencies
 #
 RUN if [ -e ./debian/control.in ]; then \
