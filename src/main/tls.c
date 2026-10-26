@@ -2585,9 +2585,9 @@ error:
 /** Extract components of OCSP responser URL from a certificate
  *
  * @param[in] cert to extract URL from.
- * @param[out] host_out Portion of the URL (must be freed with free()).
- * @param[out] port_out Port portion of the URL (must be freed with free()).
- * @param[out] path_out Path portion of the URL (must be freed with free()).
+ * @param[out] host_out Portion of the URL (must be freed with OPENSSL_free()).
+ * @param[out] port_out Port portion of the URL (must be freed with OPENSSL_free()).
+ * @param[out] path_out Path portion of the URL (must be freed with OPENSSL_free()).
  * @param[out] is_https Whether the responder should be contacted using https.
  * @return
  *	- 0 if no valid URL is contained in the certificate.
@@ -2640,7 +2640,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 				STACK_OF(X509) *untrusted, fr_tls_server_conf_t *conf)
 {
 	OCSP_CERTID	*certid;
-	OCSP_REQUEST	*req;
+	OCSP_REQUEST	*req = NULL;
 	OCSP_RESPONSE	*resp = NULL;
 	OCSP_BASICRESP	*bresp = NULL;
 	char		*host = NULL;
@@ -2649,19 +2649,24 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 	char		hostheader[1024];
 	int		use_ssl = -1;
 	long		nsec = MAX_VALIDITY_PERIOD, maxage = -1;
-	BIO		*cbio, *bio_out;
+	BIO		*cbio = NULL, *bio_out = NULL;
 	ocsp_status_t	ocsp_status = OCSP_STATUS_FAILED;
 	int		status;
 	ASN1_GENERALIZEDTIME *rev = NULL, *thisupd, *nextupd;
 	int		reason;
 #if OPENSSL_VERSION_NUMBER >= 0x1000003f
-	OCSP_REQ_CTX	*ctx;
+	OCSP_REQ_CTX	*ctx = NULL;
 	int		rc;
 	struct timeval	now;
 	struct timeval	when;
 #endif
 	VALUE_PAIR	*vp;
 
+	/*
+	 *	We didn't allocate anything, so we don't need to free anything.
+	 *
+	 *	All other code paths should do `goto ocsp_end` on error.
+	 */
 	if (issuer_cert == NULL) {
 		RWDEBUG("(TLS) Could not get issuer certificate");
 		goto skipped;
@@ -2671,8 +2676,29 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 	 * Create OCSP Request
 	 */
 	certid = OCSP_cert_to_id(NULL, client_cert, issuer_cert);
+	if (!certid) {
+		tls_error_log(request, "ocsp: Couldn't create certificate ID");
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto ocsp_end;
+	}
+
 	req = OCSP_REQUEST_new();
-	OCSP_request_add0_id(req, certid);
+	if (!req) {
+		tls_error_log(request, "ocsp: Couldn't create OCSP request");
+		OCSP_CERTID_free(certid);
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto ocsp_end;
+	}
+
+	/*
+	 *	On success the request owns the certid.
+	 */
+	if (!OCSP_request_add0_id(req, certid)) {
+		tls_error_log(request, "ocsp: Couldn't add certificate ID to OCSP request");
+		OCSP_CERTID_free(certid);
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto ocsp_end;
+	}
 	if (conf->ocsp_use_nonce) OCSP_request_add1_nonce(req, NULL, 8);
 
 	/*
@@ -2689,7 +2715,8 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		OCSP_parse_url(url, &host, &port, &path, &use_ssl);
 		if (!host || !port || !path) {
 			RWDEBUG("(TLS) ocsp: Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
-			goto skipped;
+			ocsp_status = OCSP_STATUS_SKIPPED;
+			goto ocsp_end;
 		}
 	} else {
 		int ret;
@@ -2698,7 +2725,8 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		switch (ret) {
 		case -1:
 			RWDEBUG("(TLS) ocsp: Invalid URL in certificate.  Not doing OCSP");
-			goto skipped;
+			ocsp_status = OCSP_STATUS_SKIPPED;
+			goto ocsp_end;
 
 		case 0:
 			if (conf->ocsp_url) {
@@ -2706,7 +2734,8 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 				goto use_ocsp_url;
 			}
 			RWDEBUG("(TLS) ocsp: No OCSP URL in certificate.  Not doing OCSP");
-			goto skipped;
+			ocsp_status = OCSP_STATUS_SKIPPED;
+			goto ocsp_end;
 
 		case 1:
 			break;
@@ -2718,14 +2747,14 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 	/* Check host and port length are sane, then create Host: HTTP header */
 	if ((strlen(host) + strlen(port) + 2) > sizeof(hostheader)) {
 		RWDEBUG("(TLS) ocsp: Host and port too long");
-		goto skipped;
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto ocsp_end;
 	}
 	snprintf(hostheader, sizeof(hostheader), "%s:%s", host, port);
 
 	/* Setup BIO socket to OCSP responder */
 	cbio = BIO_new_connect(host);
 
-	bio_out = NULL;
 	if (rad_debug_lvl) {
 		if (default_log.dst == L_DST_STDOUT) {
 			bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
@@ -2792,8 +2821,6 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto ocsp_end;
 	}
-
-	OCSP_REQ_CTX_free(ctx);
 
 	if (rc == 0) {
 		REDEBUG("ocsp: Couldn't get OCSP response");
@@ -2871,11 +2898,14 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 
 ocsp_end:
 	/* Free OCSP Stuff */
+#if OPENSSL_VERSION_NUMBER >= 0x1000003f
+	if (ctx) OCSP_REQ_CTX_free(ctx);
+#endif
 	OCSP_REQUEST_free(req);
 	OCSP_RESPONSE_free(resp);
-	free(host);
-	free(port);
-	free(path);
+	OPENSSL_free(host);
+	OPENSSL_free(port);
+	OPENSSL_free(path);
 	BIO_free_all(cbio);
 	if (bio_out) BIO_free(bio_out);
 	OCSP_BASICRESP_free(bresp);
