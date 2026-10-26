@@ -1995,7 +1995,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 	 *  no body should be sent.
 	 */
 	if (!func) {
-		SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
+		SET_OPTION(CURLOPT_POSTFIELDSIZE, 0L);
 		return 0;
 	}
 
