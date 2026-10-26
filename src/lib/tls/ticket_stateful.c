@@ -1286,6 +1286,7 @@ static int _tls_ticket_stateful_free(fr_tls_ticket_stateful_t *tls_cache)
 
 	tls_ticket_stateful_load_state_reset(NULL, tls_cache);
 	tls_ticket_stateful_store_state_reset(NULL, tls_cache);
+	tls_ticket_stateful_clear_state_reset(NULL, tls_cache);
 
 	return 0;
 }

@@ -2484,15 +2484,19 @@ static int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void 
 static int _fr_tls_session_free(fr_tls_session_t *session)
 {
 	/*
-	 *	Ensure that there are no pending cache operations
-	 *	before we free the session.  Leaving a pending cache
-	 *	operation might mean that the session ticket isn't
-	 *	cleared, and the TLS peer can then use it to resume
-	 *	the session.
+	 *	The application can free the session before the cache operations have run, for example
+	 *	when the peer closes the connection after the handshake has finished.  A cache section
+	 *	needs a request to run, and no request exists in this destructor.  Because of that, the
+	 *	cache destructor discards the queued operations.
+	 *
+	 *	A discarded `store session` is harmless.  Because the server never stored the session
+	 *	that the ticket names, the peer cannot resume from the ticket.  A discarded
+	 *	`clear session` leaves the session in the cache until the cache entry for the session
+	 *	expires.
 	 */
-	fr_assert_msg(!fr_tls_ticket_stateful_pending(session->cache),
-		      "Session freed with cache work outstanding, the caller called neither "
-		      "fr_tls_ticket_stateful_store_session() nor fr_tls_ticket_stateful_clear_session()");
+	if (fr_tls_ticket_stateful_pending(session->cache)) {
+		DEBUG2("(TLS) Discarding queued cache operations, session freed before the operations ran");
+	}
 
 	if (session->ssl) {
 		/*
