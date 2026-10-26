@@ -3355,12 +3355,13 @@ pick:
 
 		if (!home_server_active(request, home[i])) continue;
 
-		if (home[i]->id <= key[i]) {
-			diff = key[i] - home[i]->id;
-
-		} else {
-			diff = home[i]->id - key[i];
-		}
+		/*
+		 *	The distance is measured clockwise around the
+		 *	ring, from the key to the home server.  Unsigned
+		 *	arithmetic handles the wrap-around case, where
+		 *	the home server's ID is smaller than the key.
+		 */
+		diff = home[i]->id - key[i];
 
 		if (!found || (diff < found_diff)) {
 			found = home[i];
