@@ -355,7 +355,7 @@ unlang_action_t eap_tls_fail(request_t *request, eap_session_t *eap_session)
 	 *	any queued "store session", and then run "clear
 	 *	session".
 	 */
-	return fr_tls_session_fail_session(request, tls_session);
+	return fr_tls_session_fail_session(request, tls_session, true);
 }
 
 /** Frames the OpenSSL data that needs to be sent to the client in an EAP-Request

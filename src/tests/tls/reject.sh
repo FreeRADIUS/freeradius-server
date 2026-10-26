@@ -4,23 +4,28 @@
 #  the handshake has succeeded, the way policy rejects a session.  Then check
 #  that unit_test_tls did not cache the session.
 #
-#  A caller runs fr_tls_cache_clear_session() when the caller decides that a
-#  session is not worth keeping.  rlm_eap_tls calls the same function when
-#  policy returns reject.  No other TLS test reaches that function.  The other
-#  TLS tests either complete the handshake and cache the session, or fail
-#  before a session exists.
+#  A caller runs `fr_tls_session_fail_session()` when the caller decides that
+#  a session is not worth keeping.  rlm_eap_tls reaches the same function
+#  through `eap_tls_fail()` when policy returns reject.
+#  `fr_tls_session_fail_session()` runs `fail session { ... }`, and then
+#  `fr_tls_ticket_stateful_clear_session()`.  Of the TLS tests, only this test
+#  and `fail_resumed.sh` reach `fr_tls_ticket_stateful_clear_session()`.  The
+#  other TLS tests either complete the handshake and cache the session, or
+#  fail before a session exists.
 #
-#  fr_tls_cache_clear_session() runs every queued cache operation before
-#  fr_tls_cache_clear_session() returns.  In a build with assertions enabled,
-#  tls_connection_application_data() and _fr_tls_session_free() both check
-#  that no cache operation is left queued.
+#  `fr_tls_ticket_stateful_clear_session()` runs every queued cache operation
+#  before `fr_tls_ticket_stateful_clear_session()` returns.  In a build with
+#  assertions enabled, `tls_connection_connected()` checks that no cache
+#  operation is left queued.
 #
-#  This test is the only coverage of the clear session { ... } section.  That
-#  section was unreachable while fr_tls_cache_deny() asked for the clear by
-#  calling SSL_CTX_remove_session().  cache.c sets SSL_SESS_CACHE_NO_INTERNAL,
-#  so OpenSSL holds no session for that call to find, and OpenSSL never runs
-#  the remove callback.  fr_tls_cache_deny() now calls
-#  tls_cache_delete_request() itself.
+#  This test covers the case where `clear session { ... }` does not run,
+#  because no session was loaded.  `fail_resumed.sh` covers the case where
+#  `clear session { ... }` does run.
+#
+#  Because `ticket_stateful.c` sets `SSL_SESS_CACHE_NO_INTERNAL`, OpenSSL holds
+#  no session for `SSL_CTX_remove_session()` to find, and OpenSSL never runs the
+#  remove callback.  Because of that, `fr_tls_ticket_stateful_clear_session()`
+#  queues the clear directly instead of calling `SSL_CTX_remove_session()`.
 #
 #  Environment:
 #    UNIT_TEST_TLS  command that runs unit_test_tls, possibly several words
@@ -92,23 +97,24 @@ if grep -q "Connection is up and can carry application data" "$LOG"; then
 fi
 
 #
-#  fr_tls_cache_clear_session() cancels the pending store, so the
-#  store session { ... } section must not run.  If that section runs, the
+#  Because `fr_tls_ticket_stateful_clear_session()` cancels the pending store,
+#  the `store session { ... }` section must not run.  If the section runs, the
 #  server cached a rejected session.
 #
 if grep -q "# store session" "$LOG"; then
-	fail "store session ran, fr_tls_cache_clear_session() did not cancel the store"
+	fail "store session ran, fr_tls_ticket_stateful_clear_session() did not cancel the store"
 fi
 
 #
-#  clear session { ... } must not run either.  Nothing was loaded from the
-#  cache on this connection, the handshake is the first one, and the store
-#  was cancelled just above.  There is therefore no cache entry to remove,
-#  and fr_tls_cache_clear_session() drops the queued clear rather than
-#  running policy against an entry which does not exist.
+#  `clear session { ... }` must not run either.  Nothing was loaded from the
+#  cache on this connection, the handshake is the first handshake, and
+#  `fr_tls_ticket_stateful_clear_session()` cancelled the store.  Because no
+#  cache entry exists to remove, `fr_tls_ticket_stateful_clear_session()` does
+#  not queue a clear.  Policy would otherwise run against an entry which does
+#  not exist.
 #
-#  The case where the clear does run is a session which was loaded and then
-#  failed, which is what fail_resumed.sh covers.
+#  The clear runs for a session which was loaded and then failed.
+#  `fail_resumed.sh` covers that case.
 #
 if grep -q "# clear session" "$LOG"; then
 	fail "clear session ran, although no session was ever loaded from the cache"
@@ -116,10 +122,10 @@ fi
 
 #
 #  Any assertion failure fails this test.  The assertion this test can trip is
-#  the one which catches a cache operation that tls_cache_drain() left queued.
+#  the one which catches a cache operation that `tls_ticket_stateful_drain()` left queued.
 #
 if grep -q "ASSERT FAILED" "$LOG"; then
-	fail "an assertion failed, check whether tls_cache_drain() left a cache operation queued"
+	fail "an assertion failed, check whether tls_ticket_stateful_drain() left a cache operation queued"
 fi
 
 #

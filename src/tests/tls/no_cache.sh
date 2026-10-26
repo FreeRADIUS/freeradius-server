@@ -5,19 +5,21 @@
 #  end crashed.
 #
 #  Every other test in this directory runs with caching on.  With
-#  `mode = disabled` the TLS code allocates no fr_tls_cache_t, so
-#  tls_session->cache stays NULL, and several places take a NULL path that no
-#  other test reaches: fr_tls_ticket_stateful_pending() in src/lib/tls/ticket.h, and
-#  fr_tls_cache_disable(), fr_tls_cache_clear_session() and
-#  fr_tls_cache_deny() in src/lib/tls/ticket_stateful.c.  A missing NULL check in any of
-#  them is a null dereference rather than a wrong answer, so the check that
-#  matters most here is simply that both programs exited cleanly.
+#  `mode = disabled`, the TLS code does not allocate a
+#  `fr_tls_ticket_stateful_t`, and `tls_session->cache` stays NULL.  Several
+#  functions then take a NULL path which no other test reaches:
+#  `fr_tls_ticket_stateful_pending()` in `src/lib/tls/ticket.h`, and
+#  `fr_tls_ticket_stateful_disable()`, `fr_tls_ticket_stateful_clear_session()`,
+#  and `fr_tls_ticket_stateful_discard()` in `src/lib/tls/ticket_stateful.c`.  A
+#  missing NULL check in any of these functions causes a null dereference
+#  instead of a wrong answer.  Because of that, the check that matters most is
+#  that both programs exited cleanly.
 #
-#  Two connections rather than one, for two reasons.  The second connection is
-#  where a stored session would be offered, so two connections are what proves
-#  caching is really off rather than merely unexercised.  Two connections also
-#  run the session teardown twice, and the teardown is where
-#  fr_tls_ticket_stateful_pending() is asserted on.
+#  Two connections run instead of one, for two reasons.  A stored session would
+#  be offered on the second connection.  Because of that, two connections prove
+#  that caching is off rather than merely unexercised.  Two connections also run
+#  the session teardown twice, and the teardown calls
+#  `fr_tls_ticket_stateful_pending()`.
 #
 #  The configuration still has `load session`, `store session` and
 #  `clear session` sections, in common.conf.  Leaving them there is the point.

@@ -863,6 +863,41 @@ unlang_action_t fr_tls_ticket_stateful_clear_session(request_t *request, fr_tls_
 	return tls_ticket_stateful_drain_push(request, tls_session);
 }
 
+/** Discard a session after a network failure, without clearing the cache.
+ *
+ * See fr_tls_session_fail_session() for more information.
+ *
+ * @note The caller MUST set the caller's own unlang result before calling
+ *	 `fr_tls_ticket_stateful_discard_session()`.  A pushed child returns to the caller's caller with
+ *	 that result already in place.
+ *
+ * @param[in] request		to run the queued `clear session { ... }` in.
+ * @param[in] tls_session	to discard.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD	- `clear session { ... }` is running.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - no section was pushed.
+ *	- UNLANG_ACTION_FAIL		- a frame could not be pushed.
+ */
+unlang_action_t fr_tls_ticket_stateful_discard_session(request_t *request, fr_tls_session_t *tls_session)
+{
+	fr_tls_ticket_stateful_t *tls_cache = tls_session->cache;
+
+	if (!tls_cache) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	tls_ticket_stateful_store_state_reset(request, tls_cache);
+
+	/*
+	 *	Do `clear session ` only if it matches a previous `load session`.
+	 */
+	if ((tls_cache->clear.state == FR_TLS_TICKET_STATEFUL_REQUESTED) &&
+	    (!tls_ticket_stateful_loaded(tls_cache) ||
+	     (fr_value_box_cmp(&tls_cache->clear.id, &tls_cache->load.id) != 0))) {
+		tls_ticket_stateful_clear_state_reset(request, tls_cache);
+	}
+
+	return tls_ticket_stateful_drain_push(request, tls_session);
+}
+
 /** Write a newly created session data to the tls_session->cache structure
  *
  * @note If you hit an assert in this function, it was likely called twice, which shouldn't happen

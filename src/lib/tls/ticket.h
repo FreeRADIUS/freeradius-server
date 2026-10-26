@@ -126,6 +126,8 @@ int		fr_tls_ticket_ctx_init(SSL_CTX *ctx, fr_tls_ticket_conf_t const *cache_conf
  */
 unlang_action_t	fr_tls_ticket_stateful_clear_session(request_t *request, fr_tls_session_t *tls_session);
 
+unlang_action_t	fr_tls_ticket_stateful_discard_session(request_t *request, fr_tls_session_t *tls_session);
+
 void		fr_tls_ticket_stateful_session_alloc(fr_tls_session_t *tls_session);
 
 unlang_action_t	fr_tls_ticket_stateful_load_client_push(request_t *request, fr_tls_session_t *tls_session);

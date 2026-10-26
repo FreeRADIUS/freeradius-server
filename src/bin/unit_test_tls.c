@@ -219,6 +219,8 @@ typedef struct {
 
 	bool			reject;			//!< Reject the session once the handshake
 							///< succeeds, see -R.
+	bool			network_fail;		//!< Fail the session with a network error once
+							///< the handshake succeeds, see -N.
 	unsigned int		connections;		//!< How many connections have been run so far.
 	fr_ipaddr_t		server_ipaddr;		//!< Server named by -s.
 	uint16_t		server_port;		//!< Port from -s, or from the configuration.
@@ -775,9 +777,10 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 			 *	store, which is what rlm_eap_tls does when
 			 *	policy rejects.
 			 */
-			if (utt->reject && (utt->connections == utt->count) &&
+			if ((utt->reject || utt->network_fail) && (utt->connections == utt->count) &&
 			    fr_tls_session_is_init_finished(utt->conn->tls_session)) {
-				INFO("Rejecting the session after a successful handshake");
+				INFO("%s the session after a successful handshake",
+				     utt->network_fail ? "Failing, with a network error," : "Rejecting");
 
 				/*
 				 *	Record the reason, and nothing else.
@@ -796,7 +799,8 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 				 *	drained.  src/lib/tls/session.c asserts
 				 *	on exactly that.
 				 */
-				utt->conn->failed = TLS_CONNECTION_FAIL_APPLICATION;
+				utt->conn->failed = utt->network_fail ? TLS_CONNECTION_FAIL_SYSCALL :
+									TLS_CONNECTION_FAIL_APPLICATION;
 			}
 		}
 
@@ -1652,6 +1656,7 @@ int main(int argc, char *argv[])
 	bool			invalid = false;
 	bool			nonblock = false;
 	bool			reject = false;
+	bool			network_fail = false;
 	bool			app_data = false;
 	bool			delay_tickets = false;
 	bool			hold = false;
@@ -1722,7 +1727,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hHIlL:Mn:Pr:Rs:TxX")) != -1) {
+	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hHIlL:Mn:NPr:Rs:TxX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
@@ -1730,6 +1735,10 @@ int main(int argc, char *argv[])
 
 			case 'B':
 				nonblock = true;
+				break;
+
+			case 'N':
+				network_fail = true;
 				break;
 
 			case 'R':
@@ -1921,6 +1930,7 @@ int main(int argc, char *argv[])
 	utt->app_data = app_data;
 	utt->hold = hold;
 	utt->reject = reject;
+	utt->network_fail = network_fail;
 
 
 	/*
@@ -2276,6 +2286,11 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "                     rather than stored.  With -c 2 the first connection fills the\n");
 	fprintf(output, "                     cache and the second resumes from it before being rejected, so\n");
 	fprintf(output, "                     the clear then has a loaded session to remove.\n");
+	fprintf(output, "  -N                 Fail the session with a network error on the last connection,\n");
+	fprintf(output, "                     once the handshake succeeds, to simulate the peer closing the\n");
+	fprintf(output, "                     connection.  With -c 2 the second connection loads a session\n");
+	fprintf(output, "                     from the cache.  A network error does not clear the loaded\n");
+	fprintf(output, "                     session, and the session stays in the cache.\n");
 	fprintf(output, "  -H                 Once the connection is up, send nothing and hold it open.\n");
 	fprintf(output, "                     A peer which is still owed a session ticket or a byte of\n");
 	fprintf(output, "                     application data then waits for something which never\n");

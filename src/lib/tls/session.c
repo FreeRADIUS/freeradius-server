@@ -1770,38 +1770,58 @@ static unlang_action_t tls_session_fail_clear(request_t *request, void *uctx)
 	return fr_tls_ticket_stateful_clear_session(request, tls_session);
 }
 
+/** Discard the session without clearing the cached session, once `fail session { ... }` has run
+ *
+ */
+static unlang_action_t tls_session_fail_discard(request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+
+	return fr_tls_ticket_stateful_discard_session(request, tls_session);
+}
+
 /** The TLS session failed
  *
  * Runs `fail session { ... }`, so that the admin can run policies on
- * TLS connection failure.  Once that's done, run `clear session` to
- * remove any cached session information.
+ * TLS connection failure.  When `fail session { ... }` has finished, the function runs
+ * `clear session { ... }` to remove any cached session information, unless `clear` is false.
  *
- * We can fail sessions without using session tickets and we can
- * remove session tickets without failing TLS negotiation.
+ * Pass `clear` as false after a network failure.  A network failure is normal, and shouldn't invalidate the
+ * session ticket.
+ *
+ * When `clear` is false, the function cancels any pending `store session { ... }`.  A `clear session { ... }`
+ * that was already queued for the loaded session still runs to invalidate the previous ticket, and any other
+ * queued clear is dropped.
+ *
+ * A session can fail without session tickets, and a session ticket can be removed without a TLS
+ * negotiation failure.
  *
  * @note The caller MUST set the caller's own unlang result before calling
- *	 fr_tls_session_fail_session().  A pushed child returns to the caller's
+ *	 `fr_tls_session_fail_session()`.  A pushed child returns to the caller's
  *	 caller with that result already in place.
  *
  * @param[in] request		to run the sections in.
  * @param[in] tls_session	which failed.
+ * @param[in] clear		true to run `clear session { ... }` for a loaded session, false to
+ *				keep the cached session.
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD	- the sections are running.
- *	- UNLANG_ACTION_CALCULATE_RESULT - there is no `fail session` section, and
- *	  clearing the session pushed nothing.
+ *	- UNLANG_ACTION_CALCULATE_RESULT - there is no `fail session { ... }` section, and no
+ *	  `clear session { ... }` was pushed.
  *	- UNLANG_ACTION_FAIL		- a frame could not be pushed.
  */
-unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t *tls_session)
+unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t *tls_session, bool clear)
 {
 	fr_tls_conf_t		*conf = tls_session->conf;
 	request_t		*child;
 	unlang_action_t		ua;
+	unlang_function_no_result_t	finish = clear ? tls_session_fail_clear : tls_session_fail_discard;
 
-	if (!conf->fail_session) return tls_session_fail_clear(request, tls_session);
+	if (!conf->fail_session) return finish(request, tls_session);
 
 	if (unlang_function_push(request,
 				 NULL,
-				 tls_session_fail_clear,
+				 finish,
 				 NULL, FR_SIGNAL_NONE, UNLANG_SUB_FRAME, tls_session) == UNLANG_ACTION_FAIL) {
 		return UNLANG_ACTION_FAIL;
 	}

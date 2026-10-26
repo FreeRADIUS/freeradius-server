@@ -556,7 +556,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const *tls_conf);
 
-unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t *tls_session);
+unlang_action_t fr_tls_session_fail_session(request_t *request, fr_tls_session_t *tls_session, bool clear);
 
 #ifdef __cplusplus
 }

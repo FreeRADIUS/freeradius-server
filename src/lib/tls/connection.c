@@ -548,6 +548,24 @@ act:
 #define TLS_CONNECTION_FUNC_SET(_conn, _func)	(_conn)->process = (_func)
 #define TLS_CONNECTION_FUNC_CLEAR(_conn)	(_conn)->process = NULL
 
+/** Should a failed connection clear the cached session?
+ *
+ * A network failure is part of normal operation, and doesn't affect cached session tickets.  The peer may
+ * resume the cached session on a later connection.
+ *
+ * For other failures (e.g. TLS negotiation, etc.), the failure handling runs `clear session` for any session
+ * which was previously found via `load session`.
+ *
+ * @param[in] conn	which failed.
+ * @return
+ *	- true if `clear session { ... }` should run for a loaded session.
+ *	- false if the cached session should stay valid.
+ */
+static inline bool tls_connection_should_clear(fr_tls_connection_t const *conn)
+{
+	return conn->failed != TLS_CONNECTION_FAIL_SYSCALL;
+}
+
 /** There is a fatal connection error.
  *
  * The state functions have no way to report a failure to the
@@ -596,7 +614,7 @@ static unlang_action_t tls_connection_error(request_t *request, fr_tls_connectio
 	 */
 	TLS_CONNECTION_FUNC_SET(conn, tls_connection_connected);
 
-	ua = fr_tls_session_fail_session(request, conn->tls_session);
+	ua = fr_tls_session_fail_session(request, conn->tls_session, tls_connection_should_clear(conn));
 	if (ua == UNLANG_ACTION_PUSHED_CHILD) return ua;
 
 	/*
@@ -640,7 +658,7 @@ static unlang_action_t tls_connection_ticket(request_t *request, void *uctx)
 	TLS_CONNECTION_FUNC_SET(conn, tls_connection_connected);
 
 	if (conn->failed) {
-		ua = fr_tls_session_fail_session(request, conn->tls_session);
+		ua = fr_tls_session_fail_session(request, conn->tls_session, tls_connection_should_clear(conn));
 	} else {
 		ua = fr_tls_ticket_issue(request, conn->tls_session);
 	}
