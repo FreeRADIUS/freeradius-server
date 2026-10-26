@@ -2601,7 +2601,7 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out,
 
 	AUTHORITY_INFO_ACCESS	*aia;
 	ACCESS_DESCRIPTION	*ad;
-	int			ret = -1;
+	int			ret = 0;
 
 	aia = X509_get_ext_d2i(cert, NID_info_access, NULL, NULL);
 
@@ -2611,6 +2611,14 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out,
 		ad = sk_ACCESS_DESCRIPTION_value(aia, i);
 		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
 		if (ad->location->type != GEN_URI) continue;
+
+		/*
+		 *	Distinguish "no OCSP URI" (0) from "OCSP URI
+		 *	which we could not parse" (-1).  The caller
+		 *	can then fall back to the "url" from the
+		 *	configuration file.
+		 */
+		ret = -1;
 
 		if (OCSP_parse_url((const char *) ASN1_STRING_get0_data(ad->location->d.ia5), host_out,
 				   port_out, path_out, is_https)) {
