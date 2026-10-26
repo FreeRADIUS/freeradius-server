@@ -964,6 +964,12 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 
 		if (tunnel && tunnel->authenticated) return eap_ttls_success(p_result, request, eap_session);
 
+		/*
+		 *	Some supplicants send application data in the same packet as
+		 *	the end of the handshake - continue to process that data.
+		 */
+		if (fr_dbuff_used(&tls_session->clean_out) > 0) break;
+
 		eap_tls_request(request, eap_session);
 		RETURN_UNLANG_OK;
 
