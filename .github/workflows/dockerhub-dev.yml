@@ -136,3 +136,21 @@ jobs:
           DOCKER_TAG="$DOCKER_REPOSITORY" \
           DOCKER_VERSION="$BRANCH${{ matrix.env.SUFFIX }}" \
           DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
+
+    - name: Create latest manifests
+      shell: bash
+      run: |
+        make docker-ci-manifest \
+          DOCKER_TAG="$DOCKER_REPOSITORY" \
+          DOCKER_VERSION="$BRANCH${{ matrix.env.SUFFIX }}" \
+          DOCKER_MANIFEST_VERSION="latest${{ matrix.env.SUFFIX }}" \
+          DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
+
+    - name: Create latest-3.2 manifests
+      shell: bash
+      run: |
+        make docker-ci-manifest \
+          DOCKER_TAG="$DOCKER_REPOSITORY" \
+          DOCKER_VERSION="$BRANCH${{ matrix.env.SUFFIX }}" \
+          DOCKER_MANIFEST_VERSION="latest-3.2${{ matrix.env.SUFFIX }}" \
+          DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
