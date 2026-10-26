@@ -23,7 +23,7 @@ on:
         required: true
         type: choice
         options:
-          - freeradius
+          - freeradius-server
           - freeradius-test
         default: "freeradius-test"
 
@@ -62,7 +62,6 @@ concurrency:
 
 env:
   DOCKER_REPOSITORY_DEFAULT: "freeradius-test"
-  BRANCH: v3.2.x
   CI: 1
   GH_ACTIONS: 1
   DEBIAN_FRONTEND: noninteractive
