@@ -69,7 +69,10 @@ typedef struct {
 
 	struct {
 		fr_tls_ticket_stateful_state_t	state;		//!< Tracks load requests from OpenSSL.
-		fr_value_box_t			id;		//!< Session ID that the peer asked to resume
+		fr_value_box_t			id;		//!< Session ID that the peer asked to resume.  Set when the load is
+								///< requested, and cleared when the load fails.  Stays set after a
+								///< successful load, because a failed session is cleared by the ID in
+								///< `load.id`.  Null otherwise.
 		SSL_SESSION			*sess;		//!< Deserialized session.
 		bool				returned;	//!< We've already seen the same session
 	} load;
@@ -83,14 +86,6 @@ typedef struct {
 							///< sent by the peer in ClientHello.
 							///< The various IDs above are _usually_ the same, but
 							///< are not _always_ the same.
-
-	bool		loaded;				//!< Whether `load session` ever returned a session.
-							///< The load state above is reset as the handshake
-							///< moves on, so it cannot answer this later.  A
-							///< failed session is only worth clearing when a
-							///< session was loaded, because `store session` is
-							///< not run on failure, and `load session` does not
-							///< remove what it read.
 } fr_tls_ticket_stateful_t;
 
 #ifdef __cplusplus

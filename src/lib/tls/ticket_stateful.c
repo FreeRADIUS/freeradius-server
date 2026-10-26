@@ -123,6 +123,22 @@ static inline CC_HINT(always_inline) void tls_ticket_stateful_clear_state_reques
 	TLS_PENDING_SET(tls_session, FR_TLS_PENDING_STATEFUL_TICKET);
 }
 
+/** Has `load session { ... }` returned a session which the handshake is still using?
+ *
+ * `load.id` is set when the load is requested, and stays set after a successful load.  Every failed
+ * load clears `load.id`.  Because every failed load clears `load.id`, a set `load.id` with no load
+ * pending means that the session cache holds an entry for the session.
+ *
+ * @param[in] tls_cache	to check.
+ * @return
+ *	- true if a loaded session exists, and `load.id` names the cache entry.
+ *	- false otherwise.
+ */
+static inline CC_HINT(always_inline) bool tls_ticket_stateful_loaded(fr_tls_ticket_stateful_t const *tls_cache)
+{
+	return !fr_type_is_null(tls_cache->load.id.type) && (tls_cache->load.state != FR_TLS_TICKET_STATEFUL_REQUESTED);
+}
+
 /** Delete session data be deleted from the cache
  *
  * @param[in] sess to be deleted.
@@ -286,13 +302,6 @@ static unlang_action_t tls_ticket_stateful_load_resume(request_t *request, void 
 
 	tls_cache->load.state = FR_TLS_TICKET_STATEFUL_SUCCESS;
 	tls_cache->load.sess = sess;	/* This is consumed in tls_ticket_stateful_load_cb */
-
-	/*
-	 *	Remember that we loaded an entry from the session
-	 *	cache.  If the session eventually fails, we then know
-	 *	that we have to remove the failed cache entry.
-	 */
-	tls_cache->loaded = true;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -564,12 +573,14 @@ static unlang_action_t tls_ticket_stateful_load_client_resume(request_t *request
 
 	if (tls_cache->load.state != FR_TLS_TICKET_STATEFUL_SUCCESS) {
 		RDEBUG2("(TLS) No session to resume");
+		fr_value_box_clear(&tls_cache->load.id);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	if (SSL_set_session(tls_session->ssl, tls_cache->load.sess) != 1) {
 		fr_tls_log_perror(request, "Failed setting the session to resume");
 		tls_ticket_stateful_load_state_reset(request, tls_cache);
+		fr_value_box_clear(&tls_cache->load.id);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -622,14 +633,23 @@ unlang_action_t fr_tls_ticket_stateful_load_client_push(request_t *request, fr_t
 		return UNLANG_ACTION_FAIL;
 	}
 
-	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_load_session->vb_uint32,
-					 fr_box_octets((uint8_t const *) name, talloc_strlen(name))));
+	/*
+	 *	Keep the session ID in `load.id`.  If the session later fails authentication, we need to run
+	 *	`clear session` on the session we wanted to load.
+	 *	i.e. `fr_tls_ticket_stateful_clear_session()` clears a failed session by that ID.
+	 */
+	fr_assert(fr_type_is_null(tls_cache->load.id.type));
+	MEM(fr_value_box_memdup(tls_cache, &tls_cache->load.id, NULL,
+				(uint8_t const *) name, talloc_strlen(name), false) == 0);
+
+	MEM(child = tls_subrequest_alloc(request, enum_tls_packet_type_load_session->vb_uint32, &tls_cache->load.id));
 
 	talloc_free(name);
 
 	ua = fr_tls_call_push(child, tls_ticket_stateful_load_client_resume, conf, tls_session, true);
 	if (ua == UNLANG_ACTION_FAIL) {
 		talloc_free(child);
+		fr_value_box_clear(&tls_cache->load.id);
 		return UNLANG_ACTION_FAIL;
 	}
 
@@ -792,84 +812,53 @@ unlang_action_t fr_tls_ticket_stateful_store_session(request_t *request, fr_tls_
 
 /** Clear a session after a failed authentication
  *
- * Cancels any pending `store session`, and if necessary, remember to run `clear session { ... }` as the
- * session might have been loaded from the cache.
+ * Cancels any pending `store session { ... }`, because a failed session is never stored.  If we did a `load
+ * session`, then call `clear session { ... }` for that session.  `load session { ... }` just loads, and does not
+ * remove entries.
  *
- * @note The caller MUST set the caller's own unlang result before calling
- *	 fr_tls_ticket_stateful_clear_session().  A pushed child returns to the
- *	 caller's caller with that result already in place.
+ * A session which was not loaded is not in the cache, so we don't need to run `clear session { ... }`.
+ *
+ * @note The caller MUST set the unlang result of the caller before calling
+ *	 `fr_tls_ticket_stateful_clear_session()`.  A pushed child returns to the caller's caller with
+ *	 the result that the caller set.
  *
  * @param[in] request		to run the cache sections in.
  * @param[in] tls_session	to discard.
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD	- cache sections are running.
  *	- UNLANG_ACTION_CALCULATE_RESULT - there was nothing to do.
- *	- UNLANG_ACTION_FAIL		- the frame could not be pushed.
+ *	- UNLANG_ACTION_FAIL		- a frame could not be pushed.
  */
 unlang_action_t fr_tls_ticket_stateful_clear_session(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_ticket_stateful_t *tls_cache = tls_session->cache;
-	bool bound;
 
 	/*
-	 *	No caching allowed, so there is nothing to deny, and
-	 *	nothing to clear.
+	 *	Caching is not allowed for the session.  The session has no cache entry to clear.
 	 */
 	if (!tls_cache) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	bound = fr_tls_session_request_bound(tls_session->ssl);
-
-	/*
-	 *	This is necessary to allow this function to
-	 *	be called inside and outside of OpenSSL handshake
-	 *	code.
-	 */
-	if (!bound) {
-		fr_tls_session_request_bind(tls_session->ssl, request);
-
-	} else {
-		/*
-		 *	If there's already a request bound, it better be
-		 *      the one passed to this function.
-		 */
-		fr_assert(fr_tls_session_request(tls_session->ssl) == request);
-	}
-
-	/*
-	 *	SSL_CTX_remove_session() frees the previously loaded session in tls_session. If the reference
-	 *	count reaches zero the SSL_CTX_sess_remove_cb is called, which in our code is
-	 *	tls_ticket_stateful_delete_cb.  HOWEVER, we've already set SSL_SESS_CACHE_NO_INTERNAL, which means that
-	 *	SSL_CTX_remove_session() largely does nothing, and skips our callback.  These checks are
-	 *	largely for paranoia, just in case the internal OpenSSL cache is somehow re-enabled.
-	 *
-	 *	tls_ticket_stateful_delete_cb calls tls_ticket_stateful_delete_request to record the ID of tls_session->session in
-	 *	our pending cache state structure.
-	 *
-	 *	tls_ticket_stateful_delete_request does NOT immediately call `clear session {}` as that must
-	 *	be done in a code area which can return a yield to the interpreter.
-	 */
-	if (tls_session->session) {
-		SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
-
-		/*
-		 *	Manually call tls_ticket_stateful_delete_request(), just in case.  That function clears
-		 *	tls_session->session, so it's idempotent.  It clears tls_session->session, so it's
-		 *	safe to call twice.  If it's called via the above path, then it clears the session
-		 *	pointer, which means that we don't call it again.
-		 */
-		if (tls_session->session && tls_cache->loaded) tls_ticket_stateful_delete_request(tls_session, tls_session->session);
-	}
 	tls_session->allow_session_resumption = false;
 
 	/*
-	 *	Clear any pending store requests.
+	 *	Cancel any pending `store session { ... }`, because a failed session is never stored.
 	 */
 	tls_ticket_stateful_store_state_reset(request, tls_cache);
 
 	/*
-	 *	The request wasn't bound when we were called, so unbind it now.
+	 *	Queue a clear for the loaded session using `load.id`, unless OpenSSL already queued a clear.
+	 *	A queued clear has the ID in `load.id`, because OpenSSL asked for the clear when the loaded
+	 *	session was invalidated.
 	 */
-	if (!bound) fr_tls_session_request_unbind(tls_session->ssl);
+	if (tls_ticket_stateful_loaded(tls_cache) && (tls_cache->clear.state != FR_TLS_TICKET_STATEFUL_REQUESTED)) {
+		if (fr_value_box_copy(tls_cache, &tls_cache->clear.id, &tls_cache->load.id) < 0) {
+			RPERROR("(TLS) Failed recording the session ID to clear");
+			return UNLANG_ACTION_FAIL;
+		}
+
+		RDEBUG3("(TLS) Session ID %pV - Requested session clear", &tls_cache->clear.id);
+		tls_ticket_stateful_clear_state_request(tls_session);
+	}
 
 	return tls_ticket_stateful_drain_push(request, tls_session);
 }
@@ -1123,6 +1112,7 @@ again:
 		 */
 		if (unlang_request_is_cancelled(request)) {
 			tls_ticket_stateful_load_state_reset(request, tls_cache);	/* Clears any loaded session data */
+			fr_value_box_clear(&tls_cache->load.id);
 			return NULL;
 
 		}
@@ -1145,16 +1135,13 @@ again:
 		if (tls_cache->load.returned) goto return_session;
 
 		/*
-		 *	The handshake continues with the loaded session.
-		 *	Cache the ID of the loaded session in
-		 *	tls_session->session_id now.  load.id is cleared
-		 *	below.
+		 *	The handshake continues with the loaded session.  Cache the ID of the loaded session
+		 *	in `tls_session->session_id`.  `load.id` stays set after a successful load, because we
+		 *	need to clear a failed session by that ID.
 		 */
 		tls_session_id_cache(tls_session, tls_cache->load.sess);
 
 		RDEBUG3("(TLS) Setting session data");
-
-		fr_value_box_clear(&tls_cache->load.id);
 
 		/*
 		 *	The SSL_SESSION holds a copy of the peer's
@@ -1175,6 +1162,7 @@ again:
 			 */
 			tls_ticket_stateful_delete_request(tls_session, tls_cache->load.sess);
 			tls_ticket_stateful_load_state_reset(request, tls_session->cache);	/* Free the session */
+			fr_value_box_clear(&tls_cache->load.id);	/* Nothing is loaded, the clear above has the ID */
 			return NULL;
 		}
 
@@ -1204,6 +1192,7 @@ again:
 		 */
 		if (unlang_request_is_cancelled(request)) {
 			tls_ticket_stateful_load_state_reset(request, tls_cache);	/* Clears any loaded session data */
+			fr_value_box_clear(&tls_cache->load.id);
 			fr_tls_verify_cert_reset(tls_session);
 			return NULL;
 
