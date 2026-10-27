@@ -4403,10 +4403,13 @@ static int request_proxy(REQUEST *request)
 	 *	Always create a Proxy-State with our value.  This
 	 *	helps us produce better error messages.
 	 */
+
 	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
 	hash = proxy_state_hash(request->proxy_listener->proxy_state_random,
 				&request->proxy->dst_ipaddr, request->proxy->dst_port);
-	fr_pair_value_memcpy(vp, (void *) &hash, sizeof(hash));
+	buffer[0] = (request->proxy->id & 0xff);
+	memcpy(buffer + 1, (void *) &hash, sizeof(hash));
+	fr_pair_value_memcpy(vp, (void *) buffer, 5);
 
 	/*
 	 *	Encode the packet before we do anything else.
@@ -4446,8 +4449,23 @@ static int request_proxy(REQUEST *request)
 static int request_proxy_anew(REQUEST *request)
 {
 	home_server_t *home;
+	VALUE_PAIR *vp, *found;
 
 	VERIFY_REQUEST(request);
+
+	/*
+	 *	Don't add repeated Proxy-State
+	 */
+	found = NULL;
+	for (vp = request->proxy->vps; vp != NULL; vp = vp->next) {
+		if (vp->da->vendor != 0) continue;
+		if (vp->da->attr != PW_PROXY_STATE) continue;
+		if (vp->vp_length != 5) continue;
+		if (vp->vp_octets[0] != (request->proxy->id & 0xff)) continue;
+		found = vp;
+	}
+
+	if (found) fr_pair_delete(&request->proxy->vps, found);
 
 	/*
 	 *	Delete the request from the proxy list.
@@ -4483,8 +4501,6 @@ static int request_proxy_anew(REQUEST *request)
 	 *	time we tried to retransmit this packet.
 	 */
 	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
-		VALUE_PAIR *vp;
-
 		vp = fr_pair_find_by_num(request->proxy->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 		if (!vp) vp = radius_pair_create(request->proxy,
 						&request->proxy->vps,
@@ -4803,12 +4819,15 @@ static void ping_home_server(void *ctx)
 	 */
 	if (request->proxy_listener->filter_proxy_state) {
 		uint32_t hash;
+		uint8_t buffer[5];
 
 		hash = proxy_state_hash(request->proxy_listener->proxy_state_random,
 					&request->proxy->dst_ipaddr, request->proxy->dst_port);
 
 		MEM(vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0));
-		fr_pair_value_memcpy(vp, (void *) &hash, sizeof(hash));
+		buffer[0] = (request->proxy->id & 0xff);
+		memcpy(buffer + 1, &hash, sizeof(hash));
+		fr_pair_value_memcpy(vp, (void *) buffer, 5);
 	}
 
 	/*

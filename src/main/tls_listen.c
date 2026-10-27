@@ -1419,14 +1419,15 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 int proxy_tls_recv(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
-	char buffer[256];
 	RADIUS_PACKET *packet;
+	bool found;
 	uint8_t *data;
 	ssize_t data_len;
 #ifdef WITH_COA_TUNNEL
 	bool is_request = false;
 	RADCLIENT *client = sock->client;
 #endif
+	char buffer[256];
 
 	/*
 	 *	Lock the mutex before checking listener->status.
@@ -1479,7 +1480,6 @@ int proxy_tls_recv(rad_listen_t *listener)
 	packet->code = data[0];
 	packet->id = data[1];
 	memcpy(packet->vector, packet->data + 4, 16);
-
 
 #ifdef WITH_RADIUSV11
 	packet->radiusv11 = sock->radiusv11;
@@ -1555,8 +1555,20 @@ int proxy_tls_recv(rad_listen_t *listener)
 			rad_free(&packet);
 			return 0;
 		}
-	} else
+
+		return 1;
+	}
 #endif
+
+	found = proxy_state_hash_check(listener, packet);
+	if (!found) {
+		DEBUG("(TLS) Response does not match Proxy-State filter for packet code %d sent to a proxy port "
+		      "from home server %s port %d - ID %u",
+		      packet->code,
+		      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		      packet->src_port, packet->id);
+	}
+
 	if (!request_proxy_reply(listener, packet)) {
 		rad_free(&packet);
 		return 0;

@@ -3034,11 +3034,59 @@ uint32_t proxy_state_hash(uint32_t seed[static 2], fr_ipaddr_t const *home_ip, i
 }
 
 /*
+ *	See if we have a matching Proxy-State
+ */
+bool proxy_state_hash_check(rad_listen_t *listener, RADIUS_PACKET *packet)
+{
+	bool found = false;
+	uint8_t id;
+	uint8_t const *attr, *end;
+
+	attr = packet->data + 20; /* RADIUS_HDR_LEN */
+	end = packet->data + packet->data_len;
+
+#ifdef WITH_RADIUSV11
+	if (packet->radiusv11) {
+		id = packet->data[4 + 3];
+	} else
+#endif
+		id = packet->data[1];
+
+	while (attr < end) {
+		/*
+		 *	Paranoia, just in case.
+		 */
+		if ((size_t) (end - attr) < 2) break;
+		if (attr[1] < 2) break;
+
+		if ((attr[0] == PW_PROXY_STATE) &&
+		    (attr[1] == 2 + 1 + sizeof(uint32_t)) &&
+		    (attr[2] == id)) {
+			uint32_t hash;
+
+			hash = proxy_state_hash(listener->proxy_state_random,
+						&packet->src_ipaddr, packet->src_port);
+
+			if (memcmp(&hash, attr + 3, sizeof(hash)) == 0) {
+				found = true;
+				break;
+			}
+		}
+
+		attr += attr[1];
+	}
+
+	packet->filter_proxy_state = found;
+	return found;
+}
+
+/*
  *	Receive packets from a proxy socket.
  */
 static int proxy_socket_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET	*packet;
+	bool found;
 #ifdef WITH_TCP
 	listen_socket_t *sock;
 #endif
@@ -3056,51 +3104,16 @@ static int proxy_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	/*
-	 *	See if we have a matching Proxy-State
-	 */
-	if (1) {
-		bool found = false;
-		uint8_t const *attr, *end;
-
-		attr = packet->data + 20; /* RADIUS_HDR_LEN */
-		end = packet->data + packet->data_len;
-
-		while (attr < end) {
-			/*
-			 *	Paranoia, just in case.
-			 */
-			if ((size_t) (end - attr) < 2) break;
-			if (attr[1] < 2) break;
-
-			if ((attr[0] == PW_PROXY_STATE) &&
-			    (attr[1] == 2 + sizeof(uint32_t))) {
-				uint32_t hash;
-
-				hash = proxy_state_hash(listener->proxy_state_random,
-							&packet->src_ipaddr, packet->src_port);
-
-				if (memcmp(&hash, attr + 2, sizeof(hash)) == 0) {
-					found = true;
-					break;
-				}
-			}
-
-			attr += attr[1];
-		}
-
-		if (!found && listener->filter_proxy_state) {
-			ERROR("Invalid response fails Proxy-State filter for packet code %d sent to a proxy port "
-			      "from home server %s port %d - ID %d : IGNORED",
-			      packet->code,
-			      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
-			      packet->src_port, packet->id);
-			FR_PROXY_STATS_INC(listener, NULL, total_no_records, 0);
-			rad_free(&packet);
-			return 0;
-		}
-
-		packet->filter_proxy_state = found;
+	found = proxy_state_hash_check(listener, packet);
+	if (!found && listener->filter_proxy_state) {
+		ERROR("Invalid response fails Proxy-State filter for packet code %d sent to a proxy port "
+		      "from home server %s port %d - ID %d : IGNORED",
+		      packet->code,
+		      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		      packet->src_port, packet->id);
+		FR_PROXY_STATS_INC(listener, NULL, total_no_records, 0);
+		rad_free(&packet);
+		return 0;
 	}
 
 	switch (packet->code) {
