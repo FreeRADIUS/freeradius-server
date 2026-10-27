@@ -14,6 +14,12 @@ x-common-config: &id001
   environment:
     TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
     TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
+    # The profiling wrappers append these to the server.start and server.stop
+    # triggers.  utime + stime from /proc/self/stat at each end give the CPU
+    # time of the profiled window, which measure_gperftools_capture_rate.sh
+    # compares with the samples the profile recorded.
+    TRIGGER_SERVER_START_APPEND: "%log.info(%file.head('/proc/self/stat'))"
+    TRIGGER_SERVER_STOP_APPEND: "%log.info(%file.head('/proc/self/stat'))"
 services:
   mariadb:
     image: mariadb:11.4

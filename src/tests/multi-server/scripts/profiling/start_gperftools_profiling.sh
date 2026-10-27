@@ -54,7 +54,8 @@ echo ""
 #
 echo "INFO: starting freeradius under gperftools at $(date)"
 STATUS=0
-CPUPROFILE_FREQUENCY=1000 \
+CPUPROFILE_FREQUENCY=100 \
+CPUPROFILE_PER_THREAD_TIMERS=1 \
 freeradius -f -l stdout \
   -S resources.talloc_skip_cleanup=yes \
   -S "trigger.server.start=%gperftools.start('$PROFILE') && ${TRIGGER_SERVER_START_APPEND:-true}" \
