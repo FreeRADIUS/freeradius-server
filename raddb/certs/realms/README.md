@@ -214,14 +214,41 @@ a file which taken from
 is taken from the TLS messages, and the `.pem` suffix is hard-coded in
 the source code.
 
+The name in SNI and realm names are both DNS names, and are case
+insensitive.  When SNI is present, the server always adds
+TLS-Server-Name-Indication, with the *lowercase* version of the
+supplied name.  This change "normalizes" the name, and makes it easier
+to write policies.
+
+Similarly, when matching SNI to file in `realm_dir`, the filename
+lookups are done in a case-insensitive manner.  So a client which
+sends `Example.com` gets:
+
+* TLS-Server-Name-Indication = "example.com"
+* matches all files named "example.com", such as:
+  * ${realm_dir}/example.com.pem
+  * ${realm_dir}/Example.com.pem
+  * ${realm_dir}/example.COM.pem
+  * ${realm_dir}/examplE.com.pem
+  * etc.
+
+For ease of management, we recommend using lowercase filenames
+everywhere.
+
+If two files exist which differ only in case such as `Example.com.pem` and
+`example.com.pem`, the server reports an error and refuses to start.
+
 Taking the filename from an untrusted source is fine here.  The
 standard (RFC 6066 Section 3) says that the Server Name Indication
 field is a DNS "A label".  Which means that there are a limited number
 of characters allowed:
 
-* `.`, `-`, `a-Z`, `A-Z`, `0-9`
+* `.`, `-`, `a-z`, `A-Z`, `0-9`
 
-If the SNI contain anything else, the TLS connection is rejected.
+If `realm_dir` is configured, the server rejects the TLS connection when
+the SNI contains an invalid character, or is longer than 255 characters.
+If `realm_dir` is not configured, the server ignores such an SNI and
+does not set the `TLS-Server-Name-Indication` attribute.
 
 Note that if session resumption is enabled for RadSec, the session
 cache *must* also cache the `TLS-Server-Name-Indication` attribute.

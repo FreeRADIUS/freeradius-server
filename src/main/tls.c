@@ -4883,19 +4883,53 @@ static int store_cmp(void const *a, void const *b)
 	return (one < two) - (one > two);
 }
 
+/*
+ *	Realm names are DNS names, which are case-insensitive.  And
+ *	DNS is ASCII only.  If we get something else, then we just
+ *	ignore it.
+ */
+static inline uint8_t realm_lower(uint8_t c)
+{
+	return ((c >= 'A') && (c <= 'Z')) ? (c + ('a' - 'A')) : c;
+}
+
 static uint32_t realm_hash(void const *data)
 {
 	fr_realm_ctx_t const *r = data;
+	uint8_t const *p;
+	uint32_t hash = fr_hash(NULL, 0);
 
-	return fr_hash_string(r->name);
+	for (p = (uint8_t const *) r->name; *p != '\0'; p++) {
+		uint8_t c = realm_lower(*p);
+
+		hash = fr_hash_update(&c, 1, hash);
+	}
+
+	return hash;
 }
 
 static int realm_cmp(void const *a, void const *b)
 {
 	fr_realm_ctx_t const *one = a;
 	fr_realm_ctx_t const *two = b;
+	uint8_t const *p = (uint8_t const *) one->name;
+	uint8_t const *q = (uint8_t const *) two->name;
+	uint8_t pc, qc;
 
-	return strcmp(one->name, two->name);
+	pc = realm_lower(*p);
+	qc = realm_lower(*q);
+
+	while (*p) {
+		if (pc != qc) break;
+
+		p++;
+		q++;
+
+		pc = realm_lower(*p);
+		qc = realm_lower(*q);
+	}
+
+	return (pc > qc) - (pc < qc);
 }
 
 static void realm_free(void *data)
@@ -4970,8 +5004,16 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 		r->name = talloc_strdup(r, buffer);
 		r->ctx = ctx;
 
-		if (fr_hash_table_insert(ht, r) < 0) {
-			ERROR("Failed inserting certificate file %s into hash table", buffer);
+		/*
+		 *	Realm names are DNS, and are case insensitive.
+		 *	If there are two files of the same name but
+		 *	differing case, then that's an error.
+		 */
+		if (fr_hash_table_insert(ht, r) <= 0) {
+			ERROR("Failed inserting certificate file %s into hash table.  "
+			      "Is there another file with the same name, ignoring case?", buffer);
+			SSL_CTX_free(ctx);
+			talloc_free(r);
 			goto error;
 		}
 
