@@ -903,6 +903,137 @@ static void test_username_password_parent(void)
 }
 
 /*
+ *	The `to` list is empty.  The operators which add a pair add it to the
+ *	empty list.  The operators which look for an instance of the attribute
+ *	find nothing, and then delete nothing.
+ */
+static void test_empty_to(void)
+{
+	static pairmove_case_t const cases[] = {
+		/*
+		 *	One operator.
+		 */
+		{ "= (empty to)",		"",		"s0=a",		"s0=a" },
+		{ ":= (empty to)",		"",		"s0:=a",	"s0=a" },
+		{ "+= (empty to)",		"",		"s0+=a",	"s0=a" },
+		{ "^= (empty to)",		"",		"s0^=a",	"s0=a" },
+		{ "-= (empty to)",		"",		"s0-=a",	"" },
+		{ "!* (empty to)",		"",		"s0!*",		"" },
+		{ "== (empty to)",		"",		"s0==a",	"" },
+		{ "<= (empty to)",		"",		"i0<=5",	"i0=5" },
+		{ ">= (empty to)",		"",		"i0>=5",	"i0=5" },
+		{ "<= prefix (empty to)",	"",		"p4<=10.0.0.0/8", "p4=10.0.0.0/8" },
+		{ ">= prefix (empty to)",	"",		"p6>=2001:db8::/32", "p6=2001:db8::/32" },
+
+		/*
+		 *	The same operator twice.  Because the `to` list has no instance of
+		 *	the attribute, the merge adds both pairs.
+		 */
+		{ "= twice",			"",		"s0=a s0=b",	"s0=a s0=b" },
+		{ ":= twice",			"",		"s0:=a s0:=b",	"s0=a s0=b" },
+		{ "+= twice",			"",		"s0+=a s0+=b",	"s0=a s0=b" },
+		{ "^= twice",			"",		"s0^=a s0^=b",	"s0=b s0=a" },
+		{ "-= twice",			"",		"s0-=a s0-=b",	"" },
+		{ "!* twice",			"",		"s0!* s0!*",	"" },
+		{ "== twice",			"",		"s0==a s0==b",	"" },
+		{ "<= twice",			"",		"i0<=5 i0<=3",	"i0=5 i0=3" },
+		{ ">= twice",			"",		"i0>=5 i0>=7",	"i0=5 i0=7" },
+
+		/*
+		 *	A later pair does not apply to a pair which an earlier pair added.
+		 */
+		{ "= then :=",			"",		"s0=a s0:=b",	"s0=a s0=b" },
+		{ ":= then =",			"",		"s0:=a s0=b",	"s0=a s0=b" },
+		{ "+= then -=",			"",		"s0+=a s0-=a",	"s0=a" },
+		{ "+= then !*",			"",		"s0+=a s0!*",	"s0=a" },
+		{ "+= then ==",			"",		"s0+=a s0==b",	"s0=a" },
+		{ "^= then !*",			"",		"s0^=a s0!*",	"s0=a" },
+
+		/*
+		 *	Pairs which delete nothing do not change the pairs which are added.
+		 */
+		{ "deletes then add",		"",		"s0-=a s1!* s2==c i0=1", "i0=1" },
+		{ "add then deletes",		"",		"i0=1 s0-=a s1!* s2==c", "i0=1" },
+		{ "add between deletes",	"",		"s0-=a i0=1 s1!*", "i0=1" },
+
+		/*
+		 *	Several attributes, in the order of the `from` list.
+		 */
+		{ "different attributes",	"",		"s0=a i0:=1 s1+=b", "s0=a i0=1 s1=b" },
+		{ "prepend and append",		"",		"s0=a s1^=b s2+=c", "s1=b s0=a s2=c" },
+		{ "all operators",
+		  "",
+		  "s0=a i0:=1 s1+=b s2^=c i1<=4 s0-=x s1!* un=bob",
+		  "s2=c s0=a i0=1 s1=b i1=4 un=bob" },
+	};
+
+	pairmove_run_cases(cases, NUM_ELEMENTS(cases));
+}
+
+/*
+ *	When the packet list is empty, `request->username` and
+ *	`request->password` are NULL.  A merge which adds User-Name or
+ *	User-Password to the packet list must set the pointers, and a merge
+ *	which adds neither must leave the pointers NULL.
+ */
+static void test_empty_to_username_password(void)
+{
+	REQUEST		*request;
+	VALUE_PAIR	*from;
+
+	TEST_CASE("empty packet list: username and password added");
+	request = request_make(autofree);
+	TEST_CHECK(request->packet->vps == NULL);
+	TEST_CHECK(request->username == NULL);
+	TEST_CHECK(request->password == NULL);
+
+	from = list_alloc(request->packet, "un=bob up=hello");
+	radius_pairmove(request, &request->packet->vps, from, false);
+
+	TEST_CHECK_STRCMP(list_str(request->packet->vps), "un=bob up=hello");
+	TEST_CHECK(request->username == request->packet->vps);
+	TEST_CHECK(request->password == request->packet->vps->next);
+	fr_pair_list_free(&request->packet->vps);
+	talloc_free(request);
+
+	TEST_CASE("empty packet list: username and password prepended");
+	request = request_make(autofree);
+
+	from = list_alloc(request->packet, "s0=a up^=hello un^=bob");
+	radius_pairmove(request, &request->packet->vps, from, false);
+
+	TEST_CHECK_STRCMP(list_str(request->packet->vps), "un=bob up=hello s0=a");
+	TEST_CHECK(request->username == request->packet->vps);
+	TEST_CHECK(request->password == request->packet->vps->next);
+	fr_pair_list_free(&request->packet->vps);
+	talloc_free(request);
+
+	TEST_CASE("empty packet list: username and password set");
+	request = request_make(autofree);
+
+	from = list_alloc(request->packet, "un:=bob up:=hello");
+	radius_pairmove(request, &request->packet->vps, from, false);
+
+	TEST_CHECK_STRCMP(list_str(request->packet->vps), "un=bob up=hello");
+	TEST_CHECK(request->username == request->packet->vps);
+	TEST_CHECK(request->password == request->packet->vps->next);
+	fr_pair_list_free(&request->packet->vps);
+	talloc_free(request);
+
+	TEST_CASE("empty packet list: neither added");
+	request = request_make(autofree);
+
+	from = list_alloc(request->packet, "un!* up-=x un==y s0=a");
+	radius_pairmove(request, &request->packet->vps, from, false);
+
+	TEST_CHECK_STRCMP(list_str(request->packet->vps), "s0=a");
+	TEST_CHECK(request->username == NULL);
+	TEST_CHECK(request->password == NULL);
+	fr_pair_list_free(&request->packet->vps);
+	talloc_free(request);
+}
+
+/*
  *	This test checks which talloc context owns the pairs of the `to` list
  *	after the merge.
  *
@@ -957,6 +1088,8 @@ TEST_LIST = {
 	{ "username_password",			test_username_password },
 	{ "username_password_other_lists",	test_username_password_other_lists },
 	{ "username_password_parent",		test_username_password_parent },
+	{ "empty_to",				test_empty_to },
+	{ "empty_to_username_password",		test_empty_to_username_password },
 	{ "ownership",				test_ownership },
 
 	{ NULL, NULL }

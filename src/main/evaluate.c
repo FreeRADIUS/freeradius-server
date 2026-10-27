@@ -1003,6 +1003,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			continue;
 
 		case T_OP_CMP_FALSE:
+			if (!edited) continue;
+
 			/*
 			 *	Remove every unedited instance of the
 			 *	attribute, whatever its value.
@@ -1018,6 +1020,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 		case T_OP_SUB:
 		case T_OP_CMP_EQ:
+			if (!edited) continue;
+
 			/*
 			 *	"-=" removes every unedited instance of the
 			 *	attribute which has the same value.  "=="
@@ -1042,6 +1046,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 		case T_OP_LE:
 		case T_OP_GE:
+			if (!edited) continue;
+
 			/*
 			 *	"<=" replaces the first unedited instance
 			 *	which has a larger value, and ">=" the first
@@ -1081,6 +1087,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			goto do_add;
 
 		case T_OP_SET:
+			if (!edited) goto do_add;
+
 			/*
 			 *	Replace the first existing instance.  If
 			 *	there isn't one, add the new pair.
