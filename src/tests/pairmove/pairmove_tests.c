@@ -63,9 +63,6 @@ static TALLOC_CTX	*autofree;
 #ifdef HAVE_PTHREAD_H
 #  include <sys/wait.h>
 
-pid_t rad_fork(void);
-pid_t rad_waitpid(pid_t pid, int *status);
-
 pid_t rad_fork(void)
 {
 	return fork();
