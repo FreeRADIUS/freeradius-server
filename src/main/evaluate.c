@@ -1014,6 +1014,13 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 					 *	>, replace it.
 					 */
 				case T_OP_LE:
+					/*
+					 *	The `to` list already has an instance of the attribute.
+					 *	Setting `found` stops the code after the loop appending the
+					 *	`from` pair.
+					 */
+					found = true;
+
 					if (rcode > 0) {
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_list[i]->da->name, i, j);
@@ -1025,6 +1032,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 					break;
 
 				case T_OP_GE:
+					found = true;
+
 					if (rcode < 0) {
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_list[i]->da->name, i, j);

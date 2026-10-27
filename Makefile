@@ -97,7 +97,7 @@ $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.r
 	${Q}echo "ok"
 	${Q}touch $@
 
-test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.api tests.unit tests.xlat tests.keywords tests.modules tests.auth test.sql_nas_table $(BUILD_DIR)/tests/radiusd-c | build.raddb
+test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.api tests.pairmove tests.unit tests.xlat tests.keywords tests.modules tests.auth test.sql_nas_table $(BUILD_DIR)/tests/radiusd-c | build.raddb
 	${Q}$(MAKE) -C src/tests tests
 
 #
