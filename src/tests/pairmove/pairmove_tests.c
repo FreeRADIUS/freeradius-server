@@ -28,6 +28,7 @@
  *
  *	s0, s1, s2	`Tmp-String-0`, `Tmp-String-1`, `Tmp-String-2`
  *	i0, i1		`Tmp-Integer-0`, `Tmp-Integer-1`
+ *	p4, p6		`Tmp-Cast-IPv4Prefix`, `Tmp-Cast-IPv6Prefix`
  *	un, up		`User-Name`, `User-Password`
  *
  * Each test renders the merged `to` list in the same text form, and compares
@@ -118,6 +119,8 @@ static struct {
 	{ "s2", "Tmp-String-2" },
 	{ "i0", "Tmp-Integer-0" },
 	{ "i1", "Tmp-Integer-1" },
+	{ "p4", "Tmp-Cast-IPv4Prefix" },
+	{ "p6", "Tmp-Cast-IPv6Prefix" },
 	{ "un", "User-Name" },
 	{ "up", "User-Password" },
 };
@@ -530,6 +533,52 @@ static void test_op_le_ge(void)
 }
 
 /*
+ *	The '<=' and '>=' operators with prefixes.
+ *
+ *	`radius_pairmove()` compares the values with the '==' operator, and
+ *	prefixes only compare as equal or not equal.  There is no ordering, so
+ *	'<=' never replaces a prefix, and '>=' replaces a prefix whenever the
+ *	prefixes are different.  This is true even when one prefix contains
+ *	the other.
+ */
+static void test_op_le_ge_prefix(void)
+{
+	static pairmove_case_t const cases[] = {
+		/*
+		 *	IPv4.
+		 */
+		{ "<= ipv4 prefix, inside",	"p4=10.0.0.0/8", "p4<=10.1.0.0/16",	"p4=10.0.0.0/8" },
+		{ "<= ipv4 prefix, equal",	"p4=10.0.0.0/8", "p4<=10.0.0.0/8",	"p4=10.0.0.0/8" },
+		{ "<= ipv4 prefix, contains",	"p4=10.0.0.0/8", "p4<=0.0.0.0/0",	"p4=10.0.0.0/8" },
+		{ "<= ipv4 prefix, disjoint",	"p4=10.0.0.0/8", "p4<=192.168.0.0/16",	"p4=10.0.0.0/8" },
+		{ ">= ipv4 prefix, inside",	"p4=10.0.0.0/8", "p4>=10.1.0.0/16",	"p4=10.1.0.0/16" },
+		{ ">= ipv4 prefix, equal",	"p4=10.0.0.0/8", "p4>=10.0.0.0/8",	"p4=10.0.0.0/8" },
+		{ ">= ipv4 prefix, contains",	"p4=10.0.0.0/8", "p4>=0.0.0.0/0",	"p4=0.0.0.0/0" },
+		{ ">= ipv4 prefix, disjoint",	"p4=10.0.0.0/8", "p4>=192.168.0.0/16",	"p4=192.168.0.0/16" },
+
+		/*
+		 *	IPv6.
+		 */
+		{ "<= ipv6 prefix, inside",	"p6=2001:db8::/32", "p6<=2001:db8:1::/48",	"p6=2001:db8::/32" },
+		{ "<= ipv6 prefix, equal",	"p6=2001:db8::/32", "p6<=2001:db8::/32",	"p6=2001:db8::/32" },
+		{ "<= ipv6 prefix, contains",	"p6=2001:db8::/32", "p6<=::/0",			"p6=2001:db8::/32" },
+		{ "<= ipv6 prefix, disjoint",	"p6=2001:db8::/32", "p6<=fe80::/10",		"p6=2001:db8::/32" },
+		{ ">= ipv6 prefix, inside",	"p6=2001:db8::/32", "p6>=2001:db8:1::/48",	"p6=2001:db8:1::/48" },
+		{ ">= ipv6 prefix, equal",	"p6=2001:db8::/32", "p6>=2001:db8::/32",	"p6=2001:db8::/32" },
+		{ ">= ipv6 prefix, contains",	"p6=2001:db8::/32", "p6>=::/0",			"p6=::/0" },
+		{ ">= ipv6 prefix, disjoint",	"p6=2001:db8::/32", "p6>=fe80::/10",		"p6=fe80::/10" },
+
+		/*
+		 *	No existing prefix, so the pair is added.
+		 */
+		{ "<= prefix, absent",		"",		"p4<=10.0.0.0/8",	"p4=10.0.0.0/8" },
+		{ ">= prefix, absent",		"",		"p6>=2001:db8::/32",	"p6=2001:db8::/32" },
+	};
+
+	pairmove_run_cases(cases, NUM_ELEMENTS(cases));
+}
+
+/*
  *	The operators apply to the original `to` list only.  The operators do
  *	not apply to attributes that the same `radius_pairmove()` call adds.
  */
@@ -571,6 +620,58 @@ static void test_op_eq_after_edit(void)
 		 *	An edit of another attribute has no effect.
 		 */
 		{ "other attribute then =",	"s0=a s1=x",	"s1:=y s0=c",	"s0=a s1=y" },
+	};
+
+	pairmove_run_cases(cases, NUM_ELEMENTS(cases));
+}
+
+/*
+ *	A pair which `radius_pairmove()` moves out of the `from` list must not
+ *	keep its `next` pointer.  In each case below, a pair which stays in the
+ *	result is followed in the `from` list by a pair which is freed, replaces
+ *	an existing pair, or goes to the start of the list.  If the first pair
+ *	keeps the pointer to the second one, then the result has extra entries
+ *	at the end, or it ends in a pair which has been freed.
+ */
+static void test_stale_next(void)
+{
+	static pairmove_case_t const cases[] = {
+		/*
+		 *	The pair which follows is freed.
+		 */
+		{ "+= then -=",			"s0=a",		"s1+=x s0-=a",	"s1=x" },
+		{ "+= then !*",			"s0=a s1=b",	"i0+=1 s0!*",	"s1=b i0=1" },
+		{ "+= then == (no match)",	"s0=a",		"s1+=x s0==b",	"s1=x" },
+		{ "+= then = (present)",	"s0=a",		"s1+=x s0=b",	"s0=a s1=x" },
+		{ "+= then <= (kept)",		"i0=3",		"s1+=x i0<=5",	"i0=3 s1=x" },
+		{ "+= then >= (kept)",		"i0=9",		"s1+=x i0>=5",	"i0=9 s1=x" },
+		{ "+= then two freed",		"s0=a s2=c",	"s1+=x s0-=a s2!*", "s1=x" },
+		{ "two += then freed",		"s0=a",		"s1+=x s2+=y s0-=a", "s1=x s2=y" },
+
+		/*
+		 *	The pair which follows replaces an existing pair.
+		 */
+		{ "+= then :=",			"s0=a",		"s1+=x s0:=y",	"s0=y s1=x" },
+		{ "+= then <= (replaced)",	"i0=10",	"s1+=x i0<=5",	"i0=5 s1=x" },
+		{ "+= then >= (replaced)",	"i0=1",		"s1+=x i0>=5",	"i0=5 s1=x" },
+
+		/*
+		 *	The pair which follows goes to the start of the list.
+		 */
+		{ "+= then ^=",			"s0=a",		"s1+=x s2^=y",	"s2=y s0=a s1=x" },
+		{ "^= then -=",			"s0=a s2=z",	"s1^=x s0-=a",	"s1=x s2=z" },
+
+		/*
+		 *	The replacing pair is followed by a pair which is freed.
+		 */
+		{ ":= then -=",			"s0=a s2=z",	"s0:=b s1-=q",	"s0=b s2=z" },
+		{ ":= then !*",			"s0=a s2=z",	"s0:=b s2!*",	"s0=b" },
+
+		/*
+		 *	A pair which is added is followed by one which is added.
+		 */
+		{ "= then +=",			"",		"s0=a s1+=b",	"s0=a s1=b" },
+		{ ":= (absent) then -=",	"",		"s0:=a s1-=b",	"s0=a" },
 	};
 
 	pairmove_run_cases(cases, NUM_ELEMENTS(cases));
@@ -850,8 +951,10 @@ TEST_LIST = {
 	{ "op_cmp_false",			test_op_cmp_false },
 	{ "op_cmp_eq",				test_op_cmp_eq },
 	{ "op_le_ge",				test_op_le_ge },
+	{ "op_le_ge_prefix",			test_op_le_ge_prefix },
 	{ "original_list_only",			test_original_list_only },
 	{ "op_eq_after_edit",			test_op_eq_after_edit },
+	{ "stale_next",				test_stale_next },
 	{ "mixed",				test_mixed },
 	{ "long_lists",				test_long_lists },
 	{ "username_password",			test_username_password },
