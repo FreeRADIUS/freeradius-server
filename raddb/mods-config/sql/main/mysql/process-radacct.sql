@@ -126,6 +126,8 @@ BEGIN
         )) AS a
         GROUP BY
             username
+        ORDER BY
+            NULL
     ) AS s
     ON DUPLICATE KEY UPDATE
         acctinputoctets = data_usage_by_period.acctinputoctets + s.acctinputoctets,
