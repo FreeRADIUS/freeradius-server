@@ -3,6 +3,7 @@ TEST	:= test.bin
 FILES	:= \
 	atomic_queue_test 	\
 	atomic_ring_test 	\
+	channel_test		\
 	control_test		\
 	message_set_test	\
 	radclient		\
@@ -38,6 +39,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 #  Some tests take arguments, others do not.
 #
+channel_test.ARGS = -m 20000 -t 30
 control_test.ARGS = -m 1000 -w 32
 radclient.ARGS = -h
 radict.ARGS = -D $(top_srcdir)/share/dictionary User-Name
