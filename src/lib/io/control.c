@@ -38,6 +38,7 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 #include <sys/event.h>
+#include <sys/socket.h>
 #include <poll.h>
 
 /*
@@ -84,7 +85,8 @@ struct fr_control_s {
 
 	fr_atomic_queue_t	*aq;			//!< destination AQ
 
-	int			pipe[2];       		//!< our pipes
+	int			fd[2];			//!< wakeup socketpair.  [0] is read by the event loop,
+							///< [1] is written by the senders.
 
 	bool			same_thread;		//!< are the two ends in the same thread
 
@@ -98,7 +100,7 @@ struct fr_control_s {
 							///< are created by allocating a larger memory size.
 };
 
-static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+static void control_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_control_t *c = talloc_get_type_abort(uctx, fr_control_t);
 	fr_time_t now;
@@ -109,14 +111,16 @@ static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 	uint32_t id = 0;
 
 	/*
-	 *	Each byte on the pipe announces one message, and the loop
-	 *	below pops every message in the atomic queue, so empty the
-	 *	pipe.  The queue is popped even when the read fails, as a
-	 *	full read of the last bytes ends with EAGAIN.
+	 *	Each datagram on the socket announces one message, and
+	 *	the loop below pops every message in the atomic queue, so
+	 *	empty the socket.  A read returns a single datagram no
+	 *	matter how large the buffer is, so keep reading until
+	 *	there are none left.  The queue is popped even when the
+	 *	read fails, as a complete drain always ends with EAGAIN.
 	 */
 	do {
 		slen = read(fd, read_buffer, sizeof(read_buffer));
-	} while ((slen == (ssize_t) sizeof(read_buffer)) || ((slen < 0) && (errno == EINTR)));
+	} while ((slen > 0) || ((slen < 0) && (errno == EINTR)));
 
 	now = fr_time();
 
@@ -140,12 +144,12 @@ static int _control_free(fr_control_t *c)
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 #ifndef NDEBUG
-	(void) fr_event_fd_unarmour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
+	(void) fr_event_fd_unarmour(c->el, c->fd[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
 #endif
-	(void) fr_event_fd_delete(c->el, c->pipe[0], FR_EVENT_FILTER_IO);
+	(void) fr_event_fd_delete(c->el, c->fd[0], FR_EVENT_FILTER_IO);
 
-	close(c->pipe[0]);
-	close(c->pipe[1]);
+	close(c->fd[0]);
+	close(c->fd[1]);
 
 	return 0;
 }
@@ -186,27 +190,33 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
  */
 int fr_control_open(fr_control_t *c)
 {
-	if (pipe(c->pipe) < 0) {
-		fr_strerror_printf("Failed opening pipe for control socket: %s", fr_syserror(errno));
+	/*
+	 *	A datagram socketpair rather than a pipe.  The wakeups
+	 *	are still single bytes, but a socket can also carry
+	 *	descriptors as ancillary data, and the two ends can live
+	 *	in different processes.
+	 */
+	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, c->fd) < 0) {
+		fr_strerror_printf("Failed opening socketpair for control socket: %s", fr_syserror(errno));
 		return -1;
 	}
 	talloc_set_destructor(c, _control_free);
 
 	/*
-	 *	We don't want reads from the pipe to be blocking.
+	 *	We don't want reads from the socket to be blocking.
 	 */
-	(void) fr_nonblock(c->pipe[0]);
-	(void) fr_nonblock(c->pipe[1]);
-	(void) fr_cloexec(c->pipe[0]);
-	(void) fr_cloexec(c->pipe[1]);
+	(void) fr_nonblock(c->fd[0]);
+	(void) fr_nonblock(c->fd[1]);
+	(void) fr_cloexec(c->fd[0]);
+	(void) fr_cloexec(c->fd[1]);
 
-	if (fr_event_fd_insert(c, NULL, c->el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
+	if (fr_event_fd_insert(c, NULL, c->el, c->fd[0], control_read, NULL, NULL, c) < 0) {
 		fr_strerror_const_push("Failed adding FD to event list control socket");
 		return -1;
 	}
 
 #ifndef NDEBUG
-	(void) fr_event_fd_armour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
+	(void) fr_event_fd_armour(c->el, c->fd[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
 #endif
 	c->opened = true;
 
@@ -377,15 +387,19 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
 redo:
-	if (write(c->pipe[1], ".", 1) >= 0) return 0;
+	if (write(c->fd[1], ".", 1) >= 0) return 0;
 
 	if (errno == EINTR) goto redo;
 
 	/*
-	 *	EAGAIN means that the pipe is full, which means that the other end will eventually
-	 *	read from it.
+	 *	The socket is full, so it holds wakeups the reader has
+	 *	not consumed yet.  When it drains them it pops every
+	 *	message in the queue, including the one just pushed, so
+	 *	this wakeup is not needed.  Linux reports a full datagram
+	 *	socket as EAGAIN, macOS as ENOBUFS.
 	 */
 	if (errno == EAGAIN) return 0;
+	if (errno == ENOBUFS) return 0;
 
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
 	if (errno == EWOULDBLOCK) return 0;
@@ -577,9 +591,9 @@ bool fr_control_is_sleeping(fr_control_t *c)
 int fr_control_same_thread(fr_control_t *c)
 {
 	c->same_thread = true;
-	(void) fr_event_fd_delete(c->el, c->pipe[0], FR_EVENT_FILTER_IO);
-	close(c->pipe[0]);
-	close(c->pipe[1]);
+	(void) fr_event_fd_delete(c->el, c->fd[0], FR_EVENT_FILTER_IO);
+	close(c->fd[0]);
+	close(c->fd[1]);
 
 	/*
 	 *	Nothing more to do now that everything is gone.
@@ -600,7 +614,7 @@ void fr_control_wait(fr_control_t *c)
 {
 	struct pollfd	fd;
 
-	fd.fd = c->pipe[0];
+	fd.fd = c->fd[0];
 	fd.events = POLLIN;
 
 	(void) poll(&fd, 1, -1);
