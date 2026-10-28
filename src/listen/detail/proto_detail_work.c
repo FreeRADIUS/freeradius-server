@@ -606,7 +606,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		}
 
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %.6fs",
-		      thread->name, track->id, (double) fr_time_delta_unwrap(track->retry.rt) / (double)NSEC);
+		      thread->name, track->id, fr_time_delta_to_sec_double(track->retry.rt));
 
 		if (fr_timer_at(thread, thread->el->tl, &track->ev,
 				 track->retry.next, false, work_retransmit, track) < 0) {

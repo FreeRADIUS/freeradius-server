@@ -1878,19 +1878,19 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_inf
 
 	if ((info->argc == 0) || (strcmp(info->argv[0], "cpu") == 0)) {
 		when = worker->predicted;
-		fprintf(fp, "cpu.request_time_rtt\t\t%.9f\n", (double) fr_time_delta_unwrap(when) / (double)NSEC);
+		fprintf(fp, "cpu.request_time_rtt\t\t%.9f\n", fr_time_delta_to_sec_double(when));
 
 		when = worker->tracking.running_total;
 		if (fr_time_delta_ispos(when) && (worker->stats.in > worker->stats.dropped)) {
 			when = fr_time_delta_div(when, fr_time_delta_wrap(worker->stats.in - worker->stats.dropped));
 		}
-		fprintf(fp, "cpu.average_request_time\t%.9f\n", (double) fr_time_delta_unwrap(when) / (double)NSEC);
+		fprintf(fp, "cpu.average_request_time\t%.9f\n", fr_time_delta_to_sec_double(when));
 
 		when = worker->tracking.running_total;
-		fprintf(fp, "cpu.used\t\t\t%.6f\n", (double) fr_time_delta_unwrap(when) / (double)NSEC);
+		fprintf(fp, "cpu.used\t\t\t%.6f\n", fr_time_delta_to_sec_double(when));
 
 		when = worker->tracking.waiting_total;
-		fprintf(fp, "cpu.waiting\t\t\t%.3f\n", (double) fr_time_delta_unwrap(when) / (double)NSEC);
+		fprintf(fp, "cpu.waiting\t\t\t%.3f\n", fr_time_delta_to_sec_double(when));
 
 		fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu.requests", 4);
 		fr_time_elapsed_fprint(fp, &worker->wall_clock, "time.requests", 4);

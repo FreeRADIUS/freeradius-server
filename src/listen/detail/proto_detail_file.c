@@ -277,7 +277,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 		}
 
 		DEBUG3("proto_detail (%s): Waiting %.6fs for lock on file %s",
-		       thread->name, (double) fr_time_delta_unwrap(delay) / (double)NSEC, inst->filename_work);
+		       thread->name, fr_time_delta_to_sec_double(delay), inst->filename_work);
 
 		if (fr_timer_in(thread, thread->el->tl, &thread->ev, delay,
 				false, work_retry_timer, thread) < 0) {

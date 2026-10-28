@@ -4007,21 +4007,24 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 		/*
 		 *	Unix times are in nanoseconds
 		 */
-		num = (double) fr_unix_time_unwrap(src->vb_date);
-		num /= NSEC;
+		num = fr_unix_time_to_sec_double(src->vb_date);
 		goto good_cast;
 
 	case FR_TYPE_TIME_DELTA:
+	{
 		/*
 		 *	Time deltas are in nanoseconds, but scaled.
 		 */
-		num = (double) fr_time_delta_unwrap(src->vb_time_delta);
+		int64_t nsec = fr_time_delta_unwrap(src->vb_time_delta);
+
+		num = (double) nsec;
 		if (src->enumv) {
 			num /= (double) fr_time_multiplier_by_res[(fr_time_res_t)src->enumv->flags.flag_time_res];
 		} else {
 			num /= NSEC;
 		}
 		goto good_cast;
+	}
 
 	case FR_TYPE_SIZE:
 		num = (double) src->vb_size;

@@ -243,7 +243,7 @@ static fr_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 	while (fr_time_delta_ispos(our_timeout)) {
 		if ((!found) || (reply)) { // only debug at start and each time we get a valid DHCP reply on raw socket
 			DEBUG("Waiting for %s DHCP replies for: %.6f",
-			      (nb_reply > 0) ? " additional ":" ", (double) fr_time_delta_unwrap(our_timeout) / (double)NSEC);
+			      (nb_reply > 0) ? " additional ":" ", fr_time_delta_to_sec_double(our_timeout));
 		}
 
 		reply = NULL;

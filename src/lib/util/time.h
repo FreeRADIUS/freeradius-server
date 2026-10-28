@@ -508,6 +508,15 @@ static inline int64_t fr_unix_time_to_sec(fr_unix_time_t delta)
 	return (fr_unix_time_unwrap(delta) / NSEC);
 }
 
+/** Seconds since the epoch as a double, for printing and for arithmetic which need not be exact
+ */
+static inline double fr_unix_time_to_sec_double(fr_unix_time_t when)
+{
+	uint64_t nsec = fr_unix_time_unwrap(when);
+
+	return (double) nsec / (double) NSEC;
+}
+
 static inline int64_t fr_unix_time_to_min(fr_unix_time_t delta)
 {
 	return (fr_unix_time_unwrap(delta) / NSEC) / 60;
@@ -647,6 +656,15 @@ static inline int64_t fr_time_delta_to_csec(fr_time_delta_t delta)
 static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
 {
 	return (fr_time_delta_unwrap(delta) / NSEC);
+}
+
+/** Seconds as a double, for printing and for arithmetic which need not be exact
+ */
+static inline double fr_time_delta_to_sec_double(fr_time_delta_t delta)
+{
+	int64_t nsec = fr_time_delta_unwrap(delta);
+
+	return (double) nsec / (double) NSEC;
 }
 
 /** Convert a delta to a timeval
