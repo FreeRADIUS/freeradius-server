@@ -378,7 +378,7 @@ static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_s
 static void eap_fast_append_crypto_binding(request_t *request, fr_tls_session_t *tls_session)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
-	eap_tlv_crypto_binding_tlv_t	binding = {0};
+	eap_tlv_crypto_binding_tlv_t	binding = {};
 	int const			len = sizeof(binding) - (&binding.reserved - (uint8_t *)&binding);
 
 	RDEBUG2("Sending Cryptobinding");
@@ -603,6 +603,15 @@ static ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, request_t *request, fr_pair
 		p += 2;
 		len = fr_nbo_to_uint16(p);
 		p += 2;
+
+		/*
+		 *	eap_fast_verify() only checks the lengths of the top-level TLVs.  We need to check the
+		 *	length of every TLV here, including the nested TLVs.
+		 */
+		if ((size_t)(end - p) < len) {
+			REDEBUG2("FAST TLV %d is longer than room remaining (%u > %zu)", attr, len, (size_t)(end - p));
+			return -1;
+		}
 
 		da = fr_dict_attr_child_by_num(parent, attr);
 		if (!da) {
@@ -943,6 +952,12 @@ static unlang_action_t eap_fast_process_tlvs(unlang_result_t *p_result, request_
 	eap_tlv_crypto_binding_tlv_t	my_binding, *binding = NULL;
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
 
+	/*
+	 *	Cache if a Crypto-Binding TLV is required, as the loop changes t->stage when it sees a Result
+	 *	TLV.
+	 */
+	bool				need_cryptobind = (t->stage == EAP_FAST_CRYPTOBIND_CHECK);
+
 	fr_pair_list_foreach(&t->fast_vps, vp) {
 		if (vp->da == attr_eap_fast_eap_payload) {
 			return eap_fast_eap_payload(p_result, request, eap_session, tls_session, vp);
@@ -951,7 +966,7 @@ static unlang_action_t eap_fast_process_tlvs(unlang_result_t *p_result, request_
 			rcode = RLM_MODULE_OK;
 			t->stage = EAP_FAST_PROVISIONING;
 		} else if (vp->da == attr_eap_fast_crypto_binding) {
-			if (vp->vp_length == sizeof(eap_tlv_crypto_binding_tlv_t)) {
+			if (vp->vp_length == (sizeof(*binding) - 2 * sizeof(uint16_t))) {
 				my_binding.tlv_type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_crypto_binding->attr);
 				my_binding.length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
 				memcpy(&my_binding.reserved, vp->vp_octets, sizeof(my_binding) - 4);
@@ -986,6 +1001,11 @@ static unlang_action_t eap_fast_process_tlvs(unlang_result_t *p_result, request_
 		}
 
 		if (rcode == RLM_MODULE_REJECT) RETURN_UNLANG_REJECT;
+	}
+
+	if (need_cryptobind && !binding) {
+		REDEBUG("Missing or malformed Crypto-Binding TLV");
+		RETURN_UNLANG_REJECT;
 	}
 
 	if (binding) {
