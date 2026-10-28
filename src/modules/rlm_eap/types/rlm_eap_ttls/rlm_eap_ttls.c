@@ -55,7 +55,6 @@ typedef struct {
 	 *	Virtual server for inner tunnel session.
 	 */
 	virtual_server_t	*virtual_server;
-	CONF_SECTION		*server_cs;
 
 	/*
 	 * 	Do we do require a client cert?
@@ -1122,8 +1121,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_eap_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_ttls_t);
 	CONF_SECTION 	*conf = mctx->mi->conf;
-
-	inst->server_cs = virtual_server_cs(inst->virtual_server);
 
 	eap_tls_conf_check(conf, inst->tls_conf);
 
