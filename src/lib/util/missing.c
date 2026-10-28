@@ -527,6 +527,52 @@ int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags)
 }
 #endif
 
+#ifndef HAVE_RECVMMSG
+/** Emulates the real recvmmsg in userland
+ *
+ * The proper recvmmsg in FreeBSD and Linux receives multiple datagram
+ * messages using a single system call.
+ *
+ * This function doesn't achieve that, but it does reduce ifdefs elsewhere
+ * and means we can batch receiving/decoding operations.
+ *
+ * @param[in] sockfd	to read packets from.
+ * @param[in] msgvec	a pointer to an array of mmsghdr structures.
+ *			The size of this array is specified in vlen.
+ * @param[in] vlen	Length of msgvec.
+ * @param[in] flags	same as for recvmsg(2).
+ * @param[in] timeout	ignored.  Each recvmsg blocks or not as the socket
+ *			does, so only use this on a non-blocking socket.
+ * @return
+ *	- >= 0 The number of messages received.  Check against vlen to determine
+ *	  if overall operation was successful.
+ *	- < 0 on error.  Only returned if first operation errors.
+ */
+int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags, UNUSED struct timespec *timeout)
+{
+	unsigned int i;
+
+	for (i = 0; i < vlen; i++) {
+		ssize_t slen;
+
+		slen = recvmsg(sockfd, &msgvec[i].msg_hdr, flags);
+		if (slen < 0) {
+			msgvec[i].msg_len = 0;
+
+			/*
+			 * man recvmmsg - An error is returned only if no
+			 * datagrams could be received.  See also BUGS.
+			 */
+			if (i == 0) return -1;
+			return i;
+		}
+		msgvec[i].msg_len = (unsigned int)slen;	/* Number of bytes received */
+	}
+
+	return i;
+}
+#endif
+
 /*
  *	So we don't have ifdef's in the rest of the code
  */

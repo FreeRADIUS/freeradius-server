@@ -157,12 +157,22 @@ int		inet_pton(int af, char const *src, void *dst);
 char const	*inet_ntop(int af, void const *src, char *dst, size_t cnt);
 #endif
 
-#ifndef HAVE_SENDMMSG
+/*
+ *	The system header defines mmsghdr if it has either function.
+ */
+#if !defined(HAVE_SENDMMSG) && !defined(HAVE_RECVMMSG)
 struct mmsghdr {
 	struct msghdr msg_hdr;  /* Message header */
 	unsigned int  msg_len;  /* Number of bytes transmitted */
 };
+#endif
+
+#ifndef HAVE_SENDMMSG
 int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags);
+#endif
+
+#ifndef HAVE_RECVMMSG
+int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags, struct timespec *timeout);
 #endif
 
 #ifndef HAVE_CLOSEFROM
