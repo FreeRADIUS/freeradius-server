@@ -194,15 +194,33 @@ int fr_aka_sim_crypto_update_checkcode(fr_aka_sim_checkcode_t *checkcode, eap_pa
  */
 ssize_t fr_aka_sim_crypto_finalise_checkcode(TALLOC_CTX *ctx, uint8_t **out, fr_aka_sim_checkcode_t *checkcode)
 {
-	size_t	len;
-	uint8_t	*buff;
+	size_t		len;
+	uint8_t		*buff;
+	EVP_MD_CTX	*md_ctx;
 
-	len = (size_t)EVP_MD_CTX_size((*checkcode).md_ctx);
-	MEM(buff = talloc_array(ctx, uint8_t, len));
-	if (EVP_DigestFinal_ex((*checkcode).md_ctx, buff, NULL) != 1) {
-		fr_tls_strerror_printf("Failed finalising checkcode digest");
+	/*
+	  *	Don't call EVP_DigestFinal_ex() twice on the same EVP_MD_CTX.
+	 *
+	 *	The server calculates the checkcode twice, once for `AT_CHECKCODE`
+	 *	in the AKA-Challenge request, and once to verify `AT_CHECKCODE` in
+	 *	the response.
+	 */
+	md_ctx = EVP_MD_CTX_create();
+	if (!md_ctx || (EVP_MD_CTX_copy_ex(md_ctx, checkcode->md_ctx) != 1)) {
+		fr_tls_strerror_printf("Failed copying checkcode digest");
+		if (md_ctx) EVP_MD_CTX_destroy(md_ctx);
 		return -1;
 	}
+
+	len = (size_t)EVP_MD_CTX_size(md_ctx);
+	MEM(buff = talloc_array(ctx, uint8_t, len));
+	if (EVP_DigestFinal_ex(md_ctx, buff, NULL) != 1) {
+		fr_tls_strerror_printf("Failed finalising checkcode digest");
+		EVP_MD_CTX_destroy(md_ctx);
+		talloc_free(buff);
+		return -1;
+	}
+	EVP_MD_CTX_destroy(md_ctx);
 	*out = buff;
 
 	return (size_t)len;
