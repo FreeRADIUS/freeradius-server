@@ -324,6 +324,22 @@ static int message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int max_t
 		fr_assert(m->status != FR_MESSAGE_FREE);
 		if (m->status != FR_MESSAGE_DONE) break;
 
+		/*
+		 *	A data ring buffer only frees from its tail, and
+		 *	is shared by every message ring.  The rings are
+		 *	collected one at a time, so this message's data
+		 *	can sit behind a live message from another ring.
+		 *	Leave it until its data is the oldest in the
+		 *	buffer, or we free someone else's bytes.
+		 */
+		if (m->rb) {
+			uint8_t	*start;
+			size_t	used;
+
+			(void) fr_ring_buffer_start(m->rb, &start, &used);
+			if (start != m->data) break;
+		}
+
 		messages_cleaned++;
 		m->status = FR_MESSAGE_FREE;
 		ms->freed++;
@@ -351,10 +367,12 @@ static int message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int max_t
  *  number of messages at a time, so that we don't have sudden latency
  *  spikes when cleaning 1M messages.
  *
+ *
  * @param[in] ms the message set
  * @param[in] max_to_clean the maximum number of messages to clean
+ * @param[in] compact whether to free empty rings and repack the arrays
  */
-static void message_gc(fr_message_set_t *ms, int max_to_clean)
+static void message_gc(fr_message_set_t *ms, int max_to_clean, bool compact)
 {
 	int i;
 	int arrays_freed, arrays_used, empty_slot;
@@ -387,6 +405,8 @@ static void message_gc(fr_message_set_t *ms, int max_to_clean)
 	 *	Couldn't GC anything.  Don't do more work.
 	 */
 	if (total_cleaned == 0) return;
+
+	if (!compact) return;
 
 	arrays_freed = 0;
 	arrays_used = 0;
@@ -657,7 +677,7 @@ uint8_t *_message_ring_find(bool *p_cleaned, fr_message_set_t *ms, fr_ring_buffe
 	/*
 	 *	Else the buffer is full.  Do a global cleanup.
 	 */
-	message_gc(ms, 128);
+	message_gc(ms, 128, true);
 	*p_cleaned = true;
 
 	/*
@@ -858,7 +878,11 @@ static fr_message_t *message_data_reserve(fr_message_set_t *ms, fr_message_t *m,
 		MPRINT("CLEANED UP BECAUSE OF RING BUFFER (%d - %d = %d)\n", ms->allocated, ms->freed,
 			ms->allocated - ms->freed);
 
-		message_gc(ms, 128);
+		/*
+		 *	The message slot is reserved but not finalised,
+		 *	so only collect: see message_gc().
+		 */
+		message_gc(ms, 128, false);
 
 		/*
 		 *	Try to allocate the packet from the newly current ring buffer.
@@ -1320,21 +1344,27 @@ int fr_message_set_messages_used(fr_message_set_t *ms)
  */
 void fr_message_set_gc(fr_message_set_t *ms)
 {
-	int i;
+	int i, cleaned;
 
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/*
-	 *	Manually clean up each message ring.
+	 *	Manually clean up each message ring.  A ring can be
+	 *	blocked by a done message whose data sits behind
+	 *	another ring's, so keep going until a pass frees
+	 *	nothing.
 	 */
-	for (i = 0; i <= ms->mr_max; i++) {
-		(void) message_ring_gc(ms, ms->mr_array[i], INT_MAX);
-	}
+	do {
+		cleaned = 0;
+		for (i = 0; i <= ms->mr_max; i++) {
+			cleaned += message_ring_gc(ms, ms->mr_array[i], INT_MAX);
+		}
+	} while (cleaned > 0);
 
 	/*
 	 *	And then do one last pass to clean up the arrays.
 	 */
-	message_gc(ms, INT_MAX);
+	message_gc(ms, INT_MAX, true);
 }
 
 /** Print debug information about the message set.
