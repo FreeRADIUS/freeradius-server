@@ -771,7 +771,10 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 */
 	while (q < strend) {
 		fr_assert(data < end);
-		fr_assert((data - where) < 255);
+		if ((data - where) > 254) {
+			fr_strerror_const("Domain is larger than 254 characters");
+			return -1;
+		}
 
 		/*
 		 *	'.' is a label delimiter.
