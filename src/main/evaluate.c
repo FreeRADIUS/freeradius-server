@@ -1003,7 +1003,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			continue;
 
 		case T_OP_CMP_FALSE:
-			if (!edited) continue;
+			if (!edited) goto do_remove;
 
 			/*
 			 *	Remove every unedited instance of the
@@ -1014,13 +1014,14 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 				relink = true;
 			}
 
+		do_remove:
 			REMOVE(vp);
 			talloc_free(vp);
 			continue;
 
 		case T_OP_SUB:
 		case T_OP_CMP_EQ:
-			if (!edited) continue;
+			if (!edited) goto do_remove;
 
 			/*
 			 *	"-=" removes every unedited instance of the
@@ -1046,7 +1047,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 		case T_OP_LE:
 		case T_OP_GE:
-			if (!edited) continue;
+			if (!edited) goto do_add;
 
 			/*
 			 *	"<=" replaces the first unedited instance
