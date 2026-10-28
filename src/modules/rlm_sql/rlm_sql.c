@@ -241,11 +241,26 @@ typedef struct {
 	tmpl_t		*membership_query;
 } sql_group_xlat_call_env_t;
 
+static void *sql_escape_uctx_alloc(request_t *request, void const *uctx);
+
+static int sql_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			      call_env_ctx_t const *cec, call_env_parser_t const *rule);
+
+/** Escape the user name when it is expanded into a query
+ *
+ *  Every query which interpolates request data needs this.  A query which is parsed without it is
+ *  concatenated into the SQL as it was sent by the peer.
+ */
+#define QUERY_ESCAPE .pair.escape = { \
+	.mode = TMPL_ESCAPE_PRE_CONCAT, \
+	.uctx = { .func = { .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC }, \
+}, .pair.func = sql_call_env_parse
+
 static const call_env_method_t group_xlat_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_group_xlat_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_group_xlat_call_env_t, user) },
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_group_xlat_call_env_t, membership_query) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_group_xlat_call_env_t, membership_query), QUERY_ESCAPE },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -2440,11 +2455,6 @@ static int sql_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_
 	*(void **)out = parsed_tmpl;
 	return 0;
 }
-
-#define QUERY_ESCAPE .pair.escape = { \
-	.mode = TMPL_ESCAPE_PRE_CONCAT, \
-	.uctx = { .func = { .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC }, \
-}, .pair.func = sql_call_env_parse
 
 static const call_env_method_t authorize_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_autz_call_env_t),

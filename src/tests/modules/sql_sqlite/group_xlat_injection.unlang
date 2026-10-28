@@ -1,0 +1,14 @@
+#
+#  The user name is controlled by the peer, so %sql.group() has to escape it.
+#
+#  Without the escaping, the user name closes the quoted string in group_membership_query, and
+#  the UNION adds a row to the result.  The group is then reported as "has a member" even though
+#  radusergroup does not contain the group.
+#
+%sql("DELETE FROM radusergroup WHERE groupname = 'staff'")
+
+if (%sql.group('staff')) {
+	test_fail
+}
+
+test_pass

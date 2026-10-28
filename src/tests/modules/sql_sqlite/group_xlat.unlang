@@ -1,0 +1,23 @@
+#
+#  %sql.group() takes the user name from the request, and expands the group_membership_query with it.
+#
+%sql("DELETE FROM radusergroup WHERE username = 'group_xlat_user'")
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('group_xlat_user', 'group_xlat_a', 1000)")
+
+#
+#  The user is in the group which the table says.
+#
+if (!%sql.group('group_xlat_a')) {
+	test_fail
+}
+
+#
+#  And not in any other group.
+#
+if (%sql.group('group_xlat_b')) {
+	test_fail
+}
+
+%sql("DELETE FROM radusergroup WHERE username = 'group_xlat_user'")
+
+test_pass
