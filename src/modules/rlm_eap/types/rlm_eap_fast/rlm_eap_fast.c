@@ -1220,6 +1220,15 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	RDEBUG2("PAC provided via ClientHello SessionTicket extension");
 	RHEXDUMP3(data, len, "PAC-Opaque");
 
+	/*
+	 *	Check that the ticket is large enough to contain a
+	 *	header, before we read the header.
+	 */
+	if (len < (int) sizeof(opaque->hdr)) {
+		errmsg = "PAC is too small to contain a header";
+		goto error;
+	}
+
 	if ((ntohs(opaque->hdr.type) & EAP_FAST_TLV_TYPE) != attr_eap_fast_pac_opaque_tlv->attr) {
 		errmsg = "PAC is not of type Opaque";
 error:
@@ -1241,13 +1250,24 @@ error:
 	 * so we have to use the length in the PAC-Opaque header
 	 */
 	length = ntohs(opaque->hdr.length);
-	if (len - sizeof(opaque->hdr) < length) {
+	if (length > ((size_t) len - sizeof(opaque->hdr))) {
 		errmsg = "PAC has bad length in header";
 		goto error;
 	}
 
 	if (length < PAC_A_ID_LENGTH + EVP_MAX_IV_LENGTH + EVP_GCM_TLS_TAG_LEN + 1) {
 		errmsg = "PAC file too short";
+		goto error;
+	}
+
+	/*
+	 *	eap_fast_decrypt() writes the decrypted data to
+	 *	opaque_plaintext, which is a fixed-size structure on
+	 *	the stack.  Bound the length by that structure, and
+	 *	not by the size of the ticket that the peer sent.
+	 */
+	if ((size_t) length > sizeof(*opaque) - sizeof(opaque->hdr)) {
+		errmsg = "PAC is too long";
 		goto error;
 	}
 
