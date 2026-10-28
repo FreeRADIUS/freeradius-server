@@ -140,8 +140,10 @@ ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit,
 	offset += r;
 
 	if (offset == outlen) {
+		uint16_t conduit = ntohs(hdr.conduit);
+
 		*want_more = false;
-		*pconduit = (fr_conduit_type_t) ntohs(hdr.conduit);
+		*pconduit = (fr_conduit_type_t) conduit;
 		return outlen;
 	}
 
@@ -155,6 +157,7 @@ ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *out, size_t o
 	size_t data_len;
 	uint8_t *buffer = out;
 	fr_conduit_hdr_t hdr;
+	uint16_t conduit;
 
 	/*
 	 *	Read the header
@@ -165,7 +168,8 @@ ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *out, size_t o
 	/*
 	 *	Read the data into the buffer.
 	 */
-	*pconduit = (fr_conduit_type_t) ntohs(hdr.conduit);
+	conduit = ntohs(hdr.conduit);
+	*pconduit = (fr_conduit_type_t) conduit;
 	data_len = ntohl(hdr.length);
 	if (data_len == 0) return 0;
 	if (data_len > UINT32_MAX) data_len = UINT32_MAX;	/* For Coverity */
