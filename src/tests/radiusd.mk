@@ -41,6 +41,13 @@
 #
 include Make.inc
 
+#
+#  The package test includes this file without the rest of the build
+#  framework, so pull in SHELL_QUOTE directly rather than relying on
+#  scripts/boiler.mk having defined it.
+#
+include scripts/utils.mk
+
 define RADIUSD_SERVICE
 $$(eval RADIUSD_BIN := $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --mode=execute $$(TEST_BIN)/radiusd)
 #
