@@ -3,23 +3,21 @@
 #  Check that the server frees a TLS session without an assertion failure when
 #  the cache operations of the session have not run.
 #
-#  A client can close the connection after the handshake has finished and
-#  before `store session` has run.  The server queues `store session` when the
-#  server issues the ticket, and the section needs a request to run.  If the
-#  server frees the session before `store session` runs, the queued operation
-#  cannot run.  The TLS library must then discard the operation.
+#  The server queues `store session` when it issues the ticket, and the section
+#  needs a request to run.  If the server frees the session before that queued
+#  operation runs, the operation cannot run, and the TLS library must discard
+#  it rather than assert.
 #
-#  Setting `TLS_TEST_STORE_DELAY=yes` makes `store session` call the `delay`
-#  module.  `common.conf` defines the `delay` module.  The delay makes
-#  `store session` yield for 2 seconds.
+#  `unit_test_tls -Q` reaches that state deterministically.  Once the handshake
+#  has succeeded and `store session` is queued, before it runs, `-Q` frees the
+#  connection.  Freeing it there frees the session with the operation still
+#  pending.  This does not depend on when the peer closes, so it behaves the
+#  same on every platform.
 #
-#  The client is `openssl s_client`, and `openssl s_client` reads its input from
-#  `/dev/null`.  Because of that input, `openssl s_client` closes the connection
-#  as soon as the handshake has finished.  The server sees the close while
-#  `store session` is still yielding.
+#  `openssl s_client` is only here to complete a handshake with the server; its
+#  own close timing no longer matters.
 #
-#  The server frees the session when the connection closes.  The test passes
-#  when both of these conditions hold:
+#  The test passes when both of these conditions hold:
 #    1. The server log says that the server discarded the queued cache
 #       operations when freeing the session.
 #    2. The server log has no signal and no failed assertion.
@@ -60,9 +58,9 @@ if [ ! -r "$CERTDIR/client.pem" ]; then
 	exit 1
 fi
 
-export CLIENT_LOG TLS_TEST_STORE_DELAY=yes
+export CLIENT_LOG
 
-$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n stateful_tls13 -xx \
+$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n stateful_tls13 -xx -Q \
 	-e 'openssl s_client -connect "127.0.0.1:$PORT" -tls1_3 \
 		-cert "$CERTDIR/client.pem" \
 		-key "$CERTDIR/client.key" -pass pass:whatever \
@@ -74,18 +72,13 @@ if grep -qE "CAUGHT SIGNAL|ASSERT FAILED" "$LOG"; then
 fi
 
 #
-#  The handshake has to finish, or the test closes the connection before the
-#  server queues `store session`, and tests nothing.
+#  `-Q` only fires once the handshake has finished and `store session` is
+#  queued, so this message also proves the handshake got that far.  The
+#  'Discarding queued cache operations' message then proves the server
+#  discarded that queued operation when it freed the session.
 #
-count=$(grep -c "TLS handshake completed" "$LOG")
-[ "$count" = "1" ] || fail "expected one completed handshake, found $count"
-
-#
-#  The store section has to start before the server frees the session.  The
-#  'Discarding queued cache operations' message proves that the server
-#  discarded the queued operation when freeing the session.
-#
-grep -q "# store session\|store session {" "$LOG" || fail "store session did not run"
+grep -q "Aborting the connection with cache operations still queued" "$LOG" || \
+	fail "the server did not reach a queued cache operation to abort"
 grep -q "Discarding queued cache operations" "$LOG" || \
 	fail "the server did not free the session with queued cache operations"
 
