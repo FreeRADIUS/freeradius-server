@@ -259,7 +259,8 @@ int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
 	rb = fr_network_rb_init();
 	if (!rb) return -1;
 
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_LISTEN, &li, sizeof(li));
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_EVENTSET_NETWORK,
+				       FR_NETWORK_CONTROL_LISTEN, &li, sizeof(li));
 }
 
 
@@ -294,7 +295,8 @@ int fr_network_directory_add(fr_network_t *nr, fr_listen_t *li)
 	rb = fr_network_rb_init();
 	if (!rb) return -1;
 
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_DIRECTORY, &li, sizeof(li));
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_EVENTSET_NETWORK,
+				       FR_NETWORK_CONTROL_DIRECTORY, &li, sizeof(li));
 }
 
 /** Add a worker to a network in a different thread
@@ -312,7 +314,8 @@ int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
 
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_EVENTSET_NETWORK,
+				       FR_NETWORK_CONTROL_WORKER, &worker, sizeof(worker));
 }
 
 static void fr_network_worker_started_callback(void const *data, size_t data_size, fr_time_t now, void *uctx);
@@ -452,7 +455,8 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 	my_inject.packet_len = packet_len;
 	my_inject.recv_time = recv_time;
 
-	rcode = fr_control_message_send(nr->control, rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
+	rcode = fr_control_message_send(nr->control, rb, FR_CONTROL_EVENTSET_NETWORK,
+					FR_NETWORK_CONTROL_INJECT, &my_inject, sizeof(my_inject));
 	if (rcode < 0) talloc_free(my_inject.packet);
 
 	return rcode;
@@ -561,76 +565,41 @@ static void fr_network_recv_reply(fr_channel_t *ch, fr_channel_data_t *cd, void 
 	}
 }
 
-/** Handle a network control message callback for a channel
+/** A worker has finished closing a channel we asked it to close, remove it from the array
  *
- * This is called from the event loop when we get a notification
- * from the event signalling pipe.
- *
- * @param[in] data	the message
- * @param[in] data_size	size of the data
+ * @param[in] ch	the channel.
  * @param[in] now	the current time
  * @param[in] uctx	the network
  */
-static void fr_network_channel_callback(void const *data, size_t data_size, fr_time_t now, void *uctx)
+static void fr_network_channel_closed(fr_channel_t *ch, UNUSED fr_time_t now, void *uctx)
 {
-	fr_channel_event_t	ce;
-	fr_channel_t		*ch;
 	fr_network_t		*nr = uctx;
+	fr_network_worker_t	*w = talloc_get_type_abort(fr_channel_requestor_uctx_get(ch),
+							   fr_network_worker_t);
+	unsigned int		i;
 
-	ce = fr_channel_service_message(now, &ch, NULL, data, data_size);
-	DEBUG3("Channel %s",
-	       fr_table_str_by_value(channel_signals, ce, "<INVALID>"));
-	switch (ce) {
-	case FR_CHANNEL_ERROR:
-		return;
+	DEBUG3("Worker acked our close request");
+	for (i = 0; i < nr->num_workers; i++) {
+		if (nr->workers[i] == w) {
+			if (i == (nr->num_workers - 1)) break;
 
-	case FR_CHANNEL_EMPTY:
-		return;
-
-	case FR_CHANNEL_NOOP:
-		break;
-
-	case FR_CHANNEL_DATA_READY_REQUESTOR:
-		fr_assert(ch != NULL);
-		while (fr_channel_recv_reply(ch));
-		break;
-
-	case FR_CHANNEL_DATA_READY_RESPONDER:
-		fr_assert(0 == 1);
-		break;
-
-	case FR_CHANNEL_OPEN:
-		fr_assert(0 == 1);
-		break;
-
-	case FR_CHANNEL_CLOSE:
-	{
-		fr_network_worker_t	*w = talloc_get_type_abort(fr_channel_requestor_uctx_get(ch),
-								   fr_network_worker_t);
-		unsigned int		i;
-
-		/*
-		 *	Remove this worker from the array
-		 */
-		DEBUG3("Worker acked our close request");
-		for (i = 0; i < nr->num_workers; i++) {
-			if (nr->workers[i] == w) {
-				if (i == (nr->num_workers - 1)) break;
-
-				/*
-				 *	Close the hole...
-				 */
-				memmove(&nr->workers[i], &nr->workers[i + 1],
-					(uint8_t *) &nr->workers[nr->num_workers] - (uint8_t *) &nr->workers[i + 1]);
-				break;
-			}
+			/*
+			 *	Close the hole...
+			 */
+			memmove(&nr->workers[i], &nr->workers[i + 1],
+				(uint8_t *) &nr->workers[nr->num_workers] - (uint8_t *) &nr->workers[i + 1]);
+			break;
 		}
-		nr->num_workers--;
-		nr->workers[nr->num_workers] = NULL; /* over-write now unused pointer */
 	}
-		break;
-	}
+	nr->num_workers--;
+	nr->workers[nr->num_workers] = NULL; /* over-write now unused pointer */
 }
+
+/** Channel events the network handles.  As the requestor it is never sent an open or a close.
+ */
+static fr_channel_callbacks_t const fr_network_channel_callbacks = {
+	.closed		= fr_network_channel_closed
+};
 
 #define OUTSTANDING(_x) ((_x)->stats.in - (_x)->stats.out)
 
@@ -2129,7 +2098,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 		return NULL;
 	}
 
-	nr->control = fr_control_create(nr, el, nr->aq_control, 6);
+	nr->control = fr_control_create(nr, el, nr->aq_control);
 	if (!nr->control) {
 		fr_strerror_const_push("Failed creating control queue");
 	fail:
@@ -2151,27 +2120,31 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 		goto fail;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_CHANNEL, fr_network_channel_callback, nr) < 0) {
+	if (fr_channel_callbacks_add(nr->control, &fr_network_channel_callbacks, nr) < 0) {
 		fr_strerror_const_push("Failed adding channel callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_LISTEN, fr_network_listen_callback, nr) < 0) {
+	if (fr_control_callback_add(nr->control, FR_CONTROL_EVENTSET_NETWORK,
+				    FR_NETWORK_CONTROL_LISTEN, fr_network_listen_callback, nr) < 0) {
 		fr_strerror_const_push("Failed adding socket callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_DIRECTORY, fr_network_directory_callback, nr) < 0) {
+	if (fr_control_callback_add(nr->control, FR_CONTROL_EVENTSET_NETWORK,
+				    FR_NETWORK_CONTROL_DIRECTORY, fr_network_directory_callback, nr) < 0) {
 		fr_strerror_const_push("Failed adding socket callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_WORKER, fr_network_worker_started_callback, nr) < 0) {
+	if (fr_control_callback_add(nr->control, FR_CONTROL_EVENTSET_NETWORK,
+				    FR_NETWORK_CONTROL_WORKER, fr_network_worker_started_callback, nr) < 0) {
 		fr_strerror_const_push("Failed adding worker callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_INJECT, fr_network_inject_callback, nr) < 0) {
+	if (fr_control_callback_add(nr->control, FR_CONTROL_EVENTSET_NETWORK,
+				    FR_NETWORK_CONTROL_INJECT, fr_network_inject_callback, nr) < 0) {
 		fr_strerror_const_push("Failed adding packet injection callback");
 		goto fail2;
 	}

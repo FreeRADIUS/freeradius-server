@@ -43,6 +43,14 @@ RCSID("$Id$")
 #define MPRINT3 if (debug_lvl >= 3) printf
 #define CONTROL_MAGIC 0xabcd6809
 
+/** Events on the test's control planes
+ *
+ *  The test stands in for the network, and only needs one table.
+ */
+typedef enum control_test_event_t : uint16_t {
+	CONTROL_TEST_MESSAGE = 0
+} control_test_event_t;
+
 typedef struct {
 	size_t	id;
 	fr_ring_buffer_t *rb;
@@ -110,7 +118,8 @@ static void *control_master(void *arg)
 	MPRINT1("Master started.\n");
 
 	for (i = 0; i < num_aq; i++) {
-		fr_control_callback_add(&control[i], FR_CONTROL_ID_CHANNEL, recv_control_callback, master_ctx);
+		fr_control_callback_add(control[i], FR_CONTROL_EVENTSET_NETWORK, CONTROL_TEST_MESSAGE,
+					recv_control_callback, master_ctx);
 		fr_control_open(control[i]);
 	}
 
@@ -162,7 +171,8 @@ static void *control_worker(void *arg)
 		m.worker = wa->id;
 
 retry:
-		if (fr_control_message_send(control[aq_num], wa->rb, FR_CONTROL_ID_CHANNEL, &m, sizeof(m)) < 0) {
+		if (fr_control_message_send(control[aq_num], wa->rb, FR_CONTROL_EVENTSET_NETWORK, CONTROL_TEST_MESSAGE,
+					    &m, sizeof(m)) < 0) {
 			char const *err;
 			MPRINT1("\tWorker %zu retrying message %zu\n", wa->id, i);
 			while ((err = fr_strerror_pop())) {
@@ -237,7 +247,7 @@ int main(int argc, char *argv[])
 
 	control = talloc_array(autofree, fr_control_t *, num_aq);
 	for (i = 0; i < num_aq; i++) {
-		control[i] = fr_control_create(control, el, aq[i], 2);
+		control[i] = fr_control_create(control, el, aq[i]);
 		if (!control[i]) {
 			fprintf(stderr, "control_test: Failed to create control plane\n");
 			fr_exit_now(EXIT_FAILURE);

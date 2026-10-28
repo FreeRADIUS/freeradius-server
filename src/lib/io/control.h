@@ -44,25 +44,44 @@ extern "C" {
 typedef struct fr_control_s fr_control_t;
 typedef	void (*fr_control_callback_t)(void const *data, size_t data_size, fr_time_t now, void *uctx);
 
+/** Who defines control plane events
+ *
+ *  Each event set has its own dispatch table on every control, and
+ *  numbers its own events from zero.  A message is addressed by
+ *  event set and event, so the code behind one set never needs to
+ *  know what any other set registered.
+ */
+typedef enum fr_control_eventset_t : uint16_t {
+	FR_CONTROL_EVENTSET_NETWORK = 0,	//!< Events the network defines.
+	FR_CONTROL_EVENTSET_WORKER,		//!< Events a worker defines.
+	FR_CONTROL_EVENTSET_CHANNEL,		//!< Events channels define.
+	FR_CONTROL_EVENTSET_COORD,		//!< Events the coordinator defines.
+	FR_CONTROL_EVENTSET_MAX
+} fr_control_eventset_t;
+
 /*
  *	A suggestion for max # of messages, and max message size.
  */
 #define FR_CONTROL_MAX_MESSAGES (1024)
 #define FR_CONTROL_MAX_SIZE	(64)
 
-fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq, size_t num_callbacks) CC_HINT(nonnull(3));
+fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq) CC_HINT(nonnull(3));
 
 int fr_control_open(fr_control_t *c);
 
 int fr_control_gc(fr_control_t *c, fr_ring_buffer_t *rb) CC_HINT(nonnull);
 
-int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size) CC_HINT(nonnull);
+int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_eventset_t es, uint16_t ev,
+			    void *data, size_t data_size) CC_HINT(nonnull);
 
-int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size) CC_HINT(nonnull);
-ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data, size_t data_size) CC_HINT(nonnull);
+int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_eventset_t es, uint16_t ev,
+			    void *data, size_t data_size) CC_HINT(nonnull);
+ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, fr_control_eventset_t *p_es, uint16_t *p_ev,
+			       void *data, size_t data_size) CC_HINT(nonnull);
 
-int fr_control_callback_add(fr_control_t **c, uint32_t id, fr_control_callback_t callback, void *uctx) CC_HINT(nonnull(1,3));
-int fr_control_callback_delete(fr_control_t *c, uint32_t id) CC_HINT(nonnull);
+int fr_control_callback_add(fr_control_t *c, fr_control_eventset_t es, uint16_t ev,
+			    fr_control_callback_t callback, void *uctx) CC_HINT(nonnull(1,4));
+int fr_control_callback_delete(fr_control_t *c, fr_control_eventset_t es, uint16_t ev) CC_HINT(nonnull);
 
 int fr_control_same_thread(fr_control_t *c) CC_HINT(nonnull);
 

@@ -65,16 +65,24 @@ typedef enum fr_control_message_status_t : uint8_t {
  */
 typedef struct {
 	fr_control_message_status_t	status;		//!< status of this message
-	uint32_t			id;		//!< ID of this message
+	fr_control_eventset_t		es;		//!< event set of this message
+	uint16_t			event;		//!< event this message signals, within its event set
 	size_t				data_size;     	//!< size of the data we're sending
 } fr_control_message_t;
 
 
 typedef struct {
-	uint32_t			id;		//!< id of this callback
 	fr_control_callback_t		callback;	//!< the function to call
 	void				*uctx;		//!< context for the callback
 } fr_control_ctx_t;
+
+/**
+ *  The dispatch table for one event set
+ */
+typedef struct {
+	uint16_t			num;		//!< the size of the callback array
+	fr_control_ctx_t		*events;		//!< callbacks, indexed by event
+} fr_control_eventset_table_t;
 
 
 /**
@@ -94,11 +102,30 @@ struct fr_control_s {
 
 	atomic_bool		sleeping;		//!< the reader is blocked waiting for a signal.
 
-	uint32_t		num_callbacks;		//!< the size of the callback array
-
-	fr_control_ctx_t 	type[];			//!< callbacks.  Must be at the end of the structure as these
-							///< are created by allocating a larger memory size.
+	fr_control_eventset_table_t	eventsets[FR_CONTROL_EVENTSET_MAX];	//!< one table per event set
 };
+
+/** Find the callback registered for a message
+ *
+ * @param[in] c the control structure
+ * @param[in] es the event set of the message
+ * @param[in] ev the event, within its event set
+ * @return
+ *	- NULL if nothing is registered for this event set and event.
+ *	- the callback entry otherwise.
+ */
+static inline fr_control_ctx_t const *control_ctx_find(fr_control_t const *c, fr_control_eventset_t es, uint16_t ev)
+{
+	fr_control_eventset_table_t const *eventset;
+
+	if (es >= FR_CONTROL_EVENTSET_MAX) return NULL;
+
+	eventset = &c->eventsets[es];
+	if (ev >= eventset->num) return NULL;
+	if (!eventset->events[ev].callback) return NULL;
+
+	return &eventset->events[ev];
+}
 
 static void control_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
@@ -108,7 +135,8 @@ static void control_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, v
 	uint8_t	data[256];
 	ssize_t message_size;
 	ssize_t slen;
-	uint32_t id = 0;
+	fr_control_eventset_t es = 0;
+	uint16_t ev = 0;
 
 	/*
 	 *	Each datagram on the socket announces one message, and
@@ -124,12 +152,12 @@ static void control_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, v
 
 	now = fr_time();
 
-	while((message_size = fr_control_message_pop(c->aq, &id, data, sizeof(data)))) {
-		if (id >= c->num_callbacks) continue;
+	while((message_size = fr_control_message_pop(c->aq, &es, &ev, data, sizeof(data)))) {
+		fr_control_ctx_t const *cctx = control_ctx_find(c, es, ev);
 
-		if (!c->type[id].callback) continue;
+		if (!cctx) continue;
 
-		c->type[id].callback(data, message_size, now, c->type[id].uctx);
+		cctx->callback(data, message_size, now, cctx->uctx);
 	}
 }
 
@@ -159,24 +187,17 @@ static int _control_free(fr_control_t *c)
  * @param[in] ctx the talloc context
  * @param[in] el the event list for the control socket
  * @param[in] aq the atomic queue where we will be pushing message data
- * @param[in] num_callbacks the initial number of callback entries to allocate.
  * @return
  *	- NULL on error
  *	- fr_control_t on success
  */
-fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq, size_t num_callbacks)
+fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq)
 {
 	fr_control_t *c;
 
-	c = talloc_zero_size(ctx, sizeof(fr_control_t) + sizeof(fr_control_ctx_t) * num_callbacks);
-	if (!c) {
-		fr_strerror_const("Failed allocating memory");
-		return NULL;
-	}
-	talloc_set_type(c, fr_control_t);
+	MEM(c = talloc_zero(ctx, fr_control_t));
 	c->el = el;
 	c->aq = aq;
-	c->num_callbacks = num_callbacks;
 
 	return c;
 }
@@ -279,14 +300,17 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
  *
  * @param[in] c the control structure
  * @param[in] rb the callers ring buffer for message allocation.
- * @param[in] id the ident of this message.
+ * @param[in] es the event set of this message.
+ * @param[in] ev the event this message signals, within its event set.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
  * @return
  *	- NULL on error
  *	- fr_message_t on success
  */
-static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
+static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_buffer_t *rb,
+						      fr_control_eventset_t es, uint16_t ev,
+						      void *data, size_t data_size)
 {
 	size_t message_size;
 	fr_control_message_t *m;
@@ -308,7 +332,8 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
 	}
 
 	m->status = FR_CONTROL_MESSAGE_USED;
-	m->id = id;
+	m->es = es;
+	m->event = ev;
 	m->data_size = data_size;
 
 	p = (uint8_t *) m;
@@ -325,7 +350,8 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
  *
  * @param[in] c the control structure
  * @param[in] rb the callers ring buffer for message allocation.
- * @param[in] id the ident of this message.
+ * @param[in] es the event set of this message.
+ * @param[in] ev the event this message signals, within its event set.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
  * @return
@@ -333,7 +359,8 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
+int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_eventset_t es, uint16_t ev,
+			    void *data, size_t data_size)
 {
 	fr_control_message_t *m;
 
@@ -345,7 +372,7 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	 *	Get a message.  The alloc call attempts garbage collection
 	 *	if there is not enough free space.
 	 */
-	m = fr_control_message_alloc(c, rb, id, data, data_size);
+	m = fr_control_message_alloc(c, rb, es, ev, data, data_size);
 	if (!m) {
 		fr_strerror_const_push("Failed allocating after GC");
 		return -2;
@@ -366,25 +393,29 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
  *
  * @param[in] c the control structure
  * @param[in] rb the callers ring buffer for message allocation.
- * @param[in] id the ident of this message.
+ * @param[in] es the event set of this message.
+ * @param[in] ev the event this message signals, within its event set.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
+int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_eventset_t es, uint16_t ev,
+			    void *data, size_t data_size)
 {
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 	if (c->same_thread) {
-		if (!c->type[id].callback) return -1;
+		fr_control_ctx_t const *cctx = control_ctx_find(c, es, ev);
 
-		c->type[id].callback(data, data_size, fr_time(), c->type[id].uctx);
+		if (!cctx) return -1;
+
+		cctx->callback(data, data_size, fr_time(), cctx->uctx);
 		return 0;
 	}
 
-	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
+	if (fr_control_message_push(c, rb, es, ev, data, data_size) < 0) return -1;
 
 redo:
 	if (write(c->fd[1], ".", 1) >= 0) return 0;
@@ -417,7 +448,8 @@ redo:
  *  This function is called ONLY from the receiving thread.
  *
  * @param[in] aq the recipients atomic queue for control-plane messages
- * @param[out] p_id the ident of this message.
+ * @param[out] p_es the event set of this message.
+ * @param[out] p_ev the event this message signals, within its event set.
  * @param[in,out] data where the data is stored
  * @param[in] data_size the size of the buffer where we store the data.
  * @return
@@ -425,7 +457,8 @@ redo:
  *	- 0 this kevent is not for us.
  *	- >0 the amount of data we've read
  */
-ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data, size_t data_size)
+ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, fr_control_eventset_t *p_es, uint16_t *p_ev,
+			       void *data, size_t data_size)
 {
 	uint8_t *p;
 	fr_control_message_t *m;
@@ -451,94 +484,98 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 	memcpy(data, p + sizeof(*m), data_size);
 
 	m->status = FR_CONTROL_MESSAGE_DONE;
-	*p_id = m->id;
+	*p_es = m->es;
+	*p_ev = m->event;
 	return data_size;
 }
 
 
-/** Register a callback for an ID
+/** Register a callback for a message
  *
  * @param[in] c the control structure
- * @param[in] id the ident of this message.
+ * @param[in] es the event set of the message.
+ * @param[in] ev the event, within its event set.
  * @param[in] callback the callback function
  * @param[in] uctx the context passed to the callback
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_callback_add(fr_control_t **c, uint32_t id, fr_control_callback_t callback, void *uctx)
+int fr_control_callback_add(fr_control_t *c, fr_control_eventset_t es, uint16_t ev,
+			    fr_control_callback_t callback, void *uctx)
 {
-	fr_control_t	*ctrl = talloc_get_type_abort(*c, fr_control_t);
+	fr_control_eventset_table_t	*eventset;
 
-	if (ctrl->opened) {
+	(void) talloc_get_type_abort(c, fr_control_t);
+
+	if (c->opened) {
 		fr_strerror_printf("Cannot add callbacks after the control is opened");
 		return -1;
 	}
 
+	if (es >= FR_CONTROL_EVENTSET_MAX) {
+		fr_strerror_printf("Unknown control event set %" PRIu16, es);
+		return -1;
+	}
+	eventset = &c->eventsets[es];
+
 	/*
 	 *	If there is not enough space in the array of callbacks
-	 *	re-allocate the fr_control_t with a larger array.
+	 *	re-allocate it with a larger one.  The array is a child
+	 *	of the control, so the control itself never moves.
 	 */
-	if (id >= ctrl->num_callbacks) {
-		ctrl = talloc_realloc_size(talloc_parent(*c), *c, sizeof(fr_control_t) + sizeof(fr_control_ctx_t) * (id + 1));
-		if (!ctrl) {
-			fr_strerror_printf("Failed re-allocating control when registering callback ID %" PRIu32, id);
-			return -1;
-		}
-		talloc_set_type(ctrl, fr_control_t);
+	if (ev >= eventset->num) {
+		MEM(eventset->events = talloc_realloc(c, eventset->events, fr_control_ctx_t, ev + 1));
 
 		/*
 		 *	Zero the additional callback entries.
 		 */
-		memset((uint8_t *)ctrl + sizeof(fr_control_t) + sizeof(fr_control_ctx_t) * ctrl->num_callbacks, 0,
-		       (id + 1 - ctrl->num_callbacks) * sizeof(fr_control_ctx_t));
-
-		ctrl->num_callbacks = id + 1;
-		*c = ctrl;
+		memset(eventset->events + eventset->num, 0, (ev + 1 - eventset->num) * sizeof(*eventset->events));
+		eventset->num = ev + 1;
 	}
 
 	/*
 	 *	Re-registering the same thing is OK.
 	 */
-	if ((ctrl->type[id].uctx == uctx) &&
-	    (ctrl->type[id].callback == callback)) {
+	if ((eventset->events[ev].uctx == uctx) &&
+	    (eventset->events[ev].callback == callback)) {
 		return 0;
 	}
 
-	if (ctrl->type[id].callback != NULL) {
+	if (eventset->events[ev].callback != NULL) {
 		fr_strerror_const("Callback is already set");
 		return -1;
 	}
 
-	ctrl->type[id].id = id;
-	ctrl->type[id].uctx = uctx;
-	ctrl->type[id].callback = callback;
+	eventset->events[ev].uctx = uctx;
+	eventset->events[ev].callback = callback;
 
 	return 0;
 }
 
-/** Delete a callback for an ID
+/** Delete a callback for a message
  *
  * @param[in] c the control structure
- * @param[in] id the ident of this message.
+ * @param[in] es the event set of the message.
+ * @param[in] ev the event, within its event set.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_callback_delete(fr_control_t *c, uint32_t id)
+int fr_control_callback_delete(fr_control_t *c, fr_control_eventset_t es, uint16_t ev)
 {
+	fr_control_eventset_table_t	*eventset;
+
 	(void) talloc_get_type_abort(c, fr_control_t);
 
-	if (id >= c->num_callbacks) {
-		fr_strerror_printf("Failed deleting unknown ID %" PRIu32, id);
+	if ((es >= FR_CONTROL_EVENTSET_MAX) || (ev >= c->eventsets[es].num)) {
+		fr_strerror_printf("Failed deleting unknown event %" PRIu16 " in event set %" PRIu16, ev, es);
 		return -1;
 	}
+	eventset = &c->eventsets[es];
 
-	if (c->type[id].callback == NULL) return 0;
-
-	c->type[id].id = 0;
-	c->type[id].uctx = NULL;
-	c->type[id].callback = NULL;
+	eventset->events[ev].uctx = NULL;
+	eventset->events[ev].callback = NULL;
 
 	return 0;
 }

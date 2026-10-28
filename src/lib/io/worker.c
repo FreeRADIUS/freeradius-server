@@ -248,136 +248,123 @@ static void worker_exit(fr_worker_t *worker)
 	worker->exiting = true;
 }
 
-/** Handle a control plane message sent to the worker via a channel
+/** The network has opened a channel to us
  *
- * @param[in] data	the message
- * @param[in] data_size	size of the data
+ * @param[in] ch	the new channel
+ * @param[in] reply_ms	the message set for replies on this channel
  * @param[in] now	the current time
  * @param[in] uctx	the worker
  */
-static void worker_channel_callback(void const *data, size_t data_size, fr_time_t now, void *uctx)
+static void worker_channel_open(fr_channel_t *ch, fr_message_set_t *reply_ms, UNUSED fr_time_t now, void *uctx)
+{
+	int			i;
+	bool			ok;
+	fr_worker_t		*worker = uctx;
+
+	DEBUG3("Channel open");
+
+	ok = false;
+	for (i = 0; i < worker->config.max_channels; i++) {
+		fr_assert(worker->channel[i].ch != ch);
+
+		if (worker->channel[i].ch != NULL) continue;
+
+		worker->channel[i].worker = worker;
+		worker->channel[i].ch = ch;
+		fr_dlist_init(&worker->channel[i].dlist, fr_async_t, entry);
+
+		DEBUG3("Received channel %p into array entry %d", ch, i);
+
+		worker->channel[i].ms = reply_ms;
+
+		/*
+		 *	Hand the channel a pointer to the slot rather than to
+		 *	any one field of it, so a callback holding only the
+		 *	channel reaches the message set and the request list
+		 *	alike.  Neither can be set in
+		 *	fr_worker_channel_create() because the slot has not
+		 *	been claimed at that point.
+		 */
+		fr_channel_responder_uctx_add(ch, &worker->channel[i]);
+		fr_channel_set_recv_request(ch, worker_recv_request, &worker->channel[i]);
+
+		worker->num_channels++;
+		ok = true;
+		break;
+	}
+
+	fr_cond_assert(ok);
+}
+
+/** The network is closing a channel to us
+ *
+ * @param[in] ch	the channel
+ * @param[in] now	the current time
+ * @param[in] uctx	the worker
+ */
+static void worker_channel_close(fr_channel_t *ch, UNUSED fr_time_t now, void *uctx)
 {
 	int			i;
 	unsigned int		num;
 	bool			ok;
-	fr_channel_t		*ch;
 	fr_message_set_t	*ms;
-	fr_channel_event_t	ce;
 	fr_worker_t		*worker = uctx;
-	void			*ch_uctx;
 
-	ce = fr_channel_service_message(now, &ch, &ch_uctx, data, data_size);
-	DEBUG3("Channel %s",
-	       fr_table_str_by_value(channel_signals, ce, "<INVALID>"));
-	switch (ce) {
-	case FR_CHANNEL_ERROR:
-		return;
+	DEBUG3("Channel close");
 
-	case FR_CHANNEL_EMPTY:
-		return;
+	ok = false;
 
-	case FR_CHANNEL_NOOP:
-		return;
+	/*
+	 *	Locate the signalling channel in the list
+	 *	of channels.
+	 */
+	for (i = 0; i < worker->config.max_channels; i++) {
+		if (!worker->channel[i].ch) continue;
 
-	case FR_CHANNEL_DATA_READY_REQUESTOR:
-		fr_assert(0 == 1);
-		break;
+		if (worker->channel[i].ch != ch) continue;
 
-	case FR_CHANNEL_DATA_READY_RESPONDER:
-		fr_assert(ch != NULL);
+		worker_requests_cancel(worker, &worker->channel[i]);
 
-		while (fr_channel_recv_request(ch));
-		break;
-
-	case FR_CHANNEL_OPEN:
-		fr_assert(ch != NULL);
-
-		ok = false;
-		for (i = 0; i < worker->config.max_channels; i++) {
-			fr_assert(worker->channel[i].ch != ch);
-
-			if (worker->channel[i].ch != NULL) continue;
-
-			worker->channel[i].worker = worker;
-			worker->channel[i].ch = ch;
-			fr_dlist_init(&worker->channel[i].dlist, fr_async_t, entry);
-
-			DEBUG3("Received channel %p into array entry %d", ch, i);
-
-			ms = talloc_get_type_abort(ch_uctx, fr_message_set_t);
-
-			worker->channel[i].ms = ms;
-
-			/*
-			 *	Hand the channel a pointer to the slot rather than to
-			 *	any one field of it, so a callback holding only the
-			 *	channel reaches the message set and the request list
-			 *	alike.  Neither can be set in
-			 *	fr_worker_channel_create() because the slot has not
-			 *	been claimed at that point.
-			 */
-			fr_channel_responder_uctx_add(ch, &worker->channel[i]);
-			fr_channel_set_recv_request(ch, worker_recv_request, &worker->channel[i]);
-
-			worker->num_channels++;
-			ok = true;
-			break;
-		}
-
-		fr_cond_assert(ok);
-		break;
-
-	case FR_CHANNEL_CLOSE:
-		fr_assert(ch != NULL);
-
-		ok = false;
+		ms = worker->channel[i].ms;
 
 		/*
-		 *	Locate the signalling channel in the list
-		 *	of channels.
+		 *	Should be nothing left: the network is not supposed
+		 *	to enqueue anything once it has signalled the close,
+		 *	which is what the assert above claims.  Hand back
+		 *	whatever we find anyway, so the messages do not
+		 *	strand the ring buffer they came from, and complain,
+		 *	because these produce no reply and so the network
+		 *	never decrements its outstanding count for them.
 		 */
-		for (i = 0; i < worker->config.max_channels; i++) {
-			if (!worker->channel[i].ch) continue;
+		num = fr_channel_responder_discard(ch);
+		if (num > 0) PWARN("Discarded %u request(s) still queued at close", num);
 
-			if (worker->channel[i].ch != ch) continue;
+		fr_assert(ms != NULL);
+		fr_message_set_gc(ms);
 
-			worker_requests_cancel(worker, &worker->channel[i]);
+		fr_assert(worker->num_channels > 0);
 
-			ms = worker->channel[i].ms;
-
-			/*
-			 *	Should be nothing left: the network is not supposed
-			 *	to enqueue anything once it has signalled the close,
-			 *	which is what the assert above claims.  Hand back
-			 *	whatever we find anyway, so the messages do not
-			 *	strand the ring buffer they came from, and complain,
-			 *	because these produce no reply and so the network
-			 *	never decrements its outstanding count for them.
-			 */
-			num = fr_channel_responder_discard(ch);
-			if (num > 0) PWARN("Discarded %u request(s) still queued at close", num);
-
-			fr_assert(ms != NULL);
-			fr_message_set_gc(ms);
-
-			fr_assert(worker->num_channels > 0);
-
-			worker->num_channels--;
-			worker->num_closing++;
-			ok = true;
-			break;
-		}
-
-		fr_cond_assert(ok);
-
-		/*
-		 *	Our last input channel closed,
-		 *	time to die.
-		 */
-		if (worker->num_channels == 0) worker_exit(worker);
+		worker->num_channels--;
+		worker->num_closing++;
+		ok = true;
 		break;
 	}
+
+	fr_cond_assert(ok);
+
+	/*
+	 *	Our last input channel closed,
+	 *	time to die.
+	 */
+	if (worker->num_channels == 0) worker_exit(worker);
 }
+
+/** Channel events the worker handles
+ */
+static fr_channel_callbacks_t const worker_channel_callbacks = {
+	.open		= worker_channel_open,
+	.close		= worker_channel_close
+};
 
 static int fr_worker_listen_cancel_self(fr_worker_t *worker, fr_listen_t const *li)
 {
@@ -1452,18 +1439,19 @@ nomem:
 		return NULL;
 	}
 
-	worker->control = fr_control_create(worker, el, worker->aq_control, 7);
+	worker->control = fr_control_create(worker, el, worker->aq_control);
 	if (!worker->control) {
 		fr_strerror_const_push("Failed creating control plane");
 		goto fail;
 	}
 
-	if (fr_control_callback_add(&worker->control, FR_CONTROL_ID_CHANNEL, worker_channel_callback, worker) < 0) {
+	if (fr_channel_callbacks_add(worker->control, &worker_channel_callbacks, worker) < 0) {
 		fr_strerror_const_push("Failed adding control channel");
 		goto fail;
 	}
 
-	if (fr_control_callback_add(&worker->control, FR_CONTROL_ID_LISTEN_DEAD, worker_listen_cancel_callback, worker) < 0) {
+	if (fr_control_callback_add(worker->control, FR_CONTROL_EVENTSET_WORKER, FR_WORKER_CONTROL_LISTEN_DEAD,
+				    worker_listen_cancel_callback, worker) < 0) {
 		fr_strerror_const_push("Failed adding callback for listeners");
 		goto fail;
 	}
@@ -1762,9 +1750,10 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
  * @param[in] worker the worker
  * @param[in] ctx the context in which the channel will be created
  * @param[in] master the control plane of the master
- * @param[in] uctx to include in the channel open message
+ * @param[in] reply_ms the message set the worker allocates replies from
  */
-fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master, void *uctx)
+fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master,
+				       fr_message_set_t *reply_ms)
 {
 	fr_channel_t *ch;
 	pthread_t id;
@@ -1782,7 +1771,7 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	/*
 	 *	Tell the worker about the channel
 	 */
-	if (fr_channel_signal_open(ch, uctx) < 0) {
+	if (fr_channel_signal_open(ch, reply_ms) < 0) {
 		talloc_free(ch);
 		return NULL;
 	}
@@ -1804,7 +1793,8 @@ int fr_worker_listen_cancel(fr_worker_t *worker, fr_listen_t const *li)
 	rb = fr_worker_rb_init();
 	if (!rb) return -1;
 
-	return fr_control_message_send(worker->control, rb, FR_CONTROL_ID_LISTEN_DEAD, &li, sizeof(li));
+	return fr_control_message_send(worker->control, rb, FR_CONTROL_EVENTSET_WORKER, FR_WORKER_CONTROL_LISTEN_DEAD,
+				       &li, sizeof(li));
 }
 
 #ifdef WITH_VERIFY_PTR

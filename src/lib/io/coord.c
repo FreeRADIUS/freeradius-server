@@ -33,10 +33,20 @@ RCSID("$Id$")
 
 #include <stdalign.h>
 
-#define FR_CONTROL_ID_COORD_WORKER_ATTACH	(1)	//!< Message sent from worker to attach to a coordinator
-#define FR_CONTROL_ID_COORD_WORKER_DETACH	(2)	//!< Message sent from worker to detach from a coordinator
-#define FR_CONTROL_ID_COORD_WORKER_ACK		(3)	//!< Message sent to worker to acknowledge attach / detach
-#define FR_CONTROL_ID_COORD_DATA		(4)	//!< Worker <-> coordinator message to pass data to a callback
+/** Events on a coordinator's control plane, sent by workers, in the FR_CONTROL_EVENTSET_COORD event set
+ */
+typedef enum fr_coord_control_event_t : uint16_t {
+	FR_COORD_CONTROL_WORKER_ATTACH = 0,	//!< Message sent from worker to attach to a coordinator
+	FR_COORD_CONTROL_WORKER_DETACH,		//!< Message sent from worker to detach from a coordinator
+	FR_COORD_CONTROL_DATA			//!< Worker -> coordinator message to pass data to a callback
+} fr_coord_control_event_t;
+
+/** Events on a coordinator worker's control plane, sent by the coordinator, in the FR_CONTROL_EVENTSET_COORD event set
+ */
+typedef enum fr_coord_worker_control_event_t : uint16_t {
+	FR_COORD_WORKER_CONTROL_ACK = 0,	//!< Message sent to worker to acknowledge attach / detach
+	FR_COORD_WORKER_CONTROL_DATA		//!< Coordinator -> worker message to pass data to a callback
+} fr_coord_worker_control_event_t;
 
 #define MIN_WORKER_ID -1	//!< The minimum value we expect as worker id.  -1 is the main thread.
 
@@ -284,7 +294,7 @@ static void coord_worker_attach(void const *data, NDEBUG_UNUSED size_t data_size
 
 	ack.worker = msg->worker;
 	fr_control_message_send(coord->coord_send_control[thread_id], coord->coord_send_rb[thread_id],
-				FR_CONTROL_ID_COORD_WORKER_ACK, &ack, sizeof(ack));
+				FR_CONTROL_EVENTSET_COORD, FR_COORD_WORKER_CONTROL_ACK, &ack, sizeof(ack));
 }
 
 /** Callback run by a coordinator when a worker detaches
@@ -318,7 +328,7 @@ static void coord_worker_detach(void const *data, NDEBUG_UNUSED size_t data_size
 
 	ack.worker = msg->worker;
 	fr_control_message_send(coord->coord_send_control[thread_id], coord->coord_send_rb[thread_id],
-				FR_CONTROL_ID_COORD_WORKER_ACK, &ack, sizeof(fr_coord_msg_t));
+				FR_CONTROL_EVENTSET_COORD, FR_COORD_WORKER_CONTROL_ACK, &ack, sizeof(fr_coord_msg_t));
 
 	coord->coord_send_control[thread_id] = NULL;
 	coord->coord_send_aq[thread_id] = NULL;
@@ -359,7 +369,7 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 		talloc_free(coord);
 		return NULL;
 	}
-	coord->coord_recv_control = fr_control_create(coord, el, aq, 5);
+	coord->coord_recv_control = fr_control_create(coord, el, aq);
 	if (!coord->coord_recv_control) {
 		fr_strerror_const("Failed creating worker -> coordinator control plane");
 		goto fail;
@@ -372,11 +382,11 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 		goto fail;
 	}
 
-	if (fr_control_callback_add(&coord->coord_recv_control, FR_CONTROL_ID_COORD_WORKER_ATTACH,
-				    coord_worker_attach, coord) < 0) goto fail;
-	if (fr_control_callback_add(&coord->coord_recv_control, FR_CONTROL_ID_COORD_WORKER_DETACH,
-				    coord_worker_detach, coord) < 0) goto fail;
-	if (fr_control_callback_add(&coord->coord_recv_control, FR_CONTROL_ID_COORD_DATA,
+	if (fr_control_callback_add(coord->coord_recv_control, FR_CONTROL_EVENTSET_COORD,
+				    FR_COORD_CONTROL_WORKER_ATTACH, coord_worker_attach, coord) < 0) goto fail;
+	if (fr_control_callback_add(coord->coord_recv_control, FR_CONTROL_EVENTSET_COORD,
+				    FR_COORD_CONTROL_WORKER_DETACH, coord_worker_detach, coord) < 0) goto fail;
+	if (fr_control_callback_add(coord->coord_recv_control, FR_CONTROL_EVENTSET_COORD, FR_COORD_CONTROL_DATA,
 				    coord_data_recv, coord) < 0) goto fail;
 
 	/* Count the number of callbacks defined, for sanity checking messages */
@@ -658,7 +668,7 @@ int fr_coord_detach(fr_coord_worker_t *cw, bool exiting)
 	msg->exiting = exiting;
 
 	if (fr_control_message_send(cw->coord->coord_recv_control, cw->worker_send_rb,
-				    FR_CONTROL_ID_COORD_WORKER_DETACH,
+				    FR_CONTROL_EVENTSET_COORD, FR_COORD_CONTROL_WORKER_DETACH,
 				    msg, sizeof(fr_coord_worker_detach_msg_t)) < 0) return -1;
 
 	if (!cw->coord->single_thread) fr_control_wait(cw->worker_recv_control);
@@ -710,7 +720,7 @@ fr_coord_worker_t *fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 
 	aq = fr_atomic_queue_talloc(cw, 1024);
 	cw->worker_recv_aq = fr_atomic_queue_talloc(cw, FR_CONTROL_MAX_MESSAGES);
-	cw->worker_recv_control = fr_control_create(cw, el, aq, 0);
+	cw->worker_recv_control = fr_control_create(cw, el, aq);
 	cw->worker_send_rb = fr_ring_buffer_create(cw, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	cw->worker_send_ms = fr_message_set_create(cw, FR_CONTROL_MAX_MESSAGES, sizeof(fr_coord_data_t),
 						   coord_reg->worker_send_size, true);
@@ -721,9 +731,9 @@ fr_coord_worker_t *fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	}
 	cw->callbacks = coord_reg->worker_cb;
 
-	if (fr_control_callback_add(&cw->worker_recv_control, FR_CONTROL_ID_COORD_WORKER_ACK,
+	if (fr_control_callback_add(cw->worker_recv_control, FR_CONTROL_EVENTSET_COORD, FR_COORD_WORKER_CONTROL_ACK,
 				    coordinate_worker_ack, cw) < 0) goto fail;
-	if (fr_control_callback_add(&cw->worker_recv_control, FR_CONTROL_ID_COORD_DATA,
+	if (fr_control_callback_add(cw->worker_recv_control, FR_CONTROL_EVENTSET_COORD, FR_COORD_WORKER_CONTROL_DATA,
 				    coord_worker_data_recv, cw) < 0) goto fail;
 
 	if (fr_control_open(cw->worker_recv_control) < 0) goto fail;
@@ -733,7 +743,7 @@ fr_coord_worker_t *fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	msg.worker = fr_schedule_worker_id();
 
 	if (fr_control_message_send(cw->coord->coord_recv_control, cw->worker_send_rb,
-				    FR_CONTROL_ID_COORD_WORKER_ATTACH,
+				    FR_CONTROL_EVENTSET_COORD, FR_COORD_CONTROL_WORKER_ATTACH,
 				    &msg, sizeof(fr_coord_worker_attach_msg_t)) < 0) goto fail;
 
 	if (!cw->coord->single_thread) fr_control_wait(cw->worker_recv_control);
@@ -773,7 +783,7 @@ int fr_coord_to_worker_send(fr_coord_t *coord, int32_t worker_id, uint32_t cb_id
 		return -1;
 	}
 	return fr_control_message_send(coord->coord_send_control[thread_id], coord->coord_send_rb[thread_id],
-				       FR_CONTROL_ID_COORD_DATA,
+				       FR_CONTROL_EVENTSET_COORD, FR_COORD_WORKER_CONTROL_DATA,
 				       &cm, sizeof(fr_coord_msg_t));
 }
 
@@ -828,7 +838,7 @@ int fr_worker_to_coord_send(fr_coord_worker_t *cw, uint32_t cb_id, fr_dbuff_t *d
 	}
 
 	return fr_control_message_send(cw->coord->coord_recv_control, cw->worker_send_rb,
-				       FR_CONTROL_ID_COORD_DATA, &cm, sizeof(fr_coord_msg_t));
+				       FR_CONTROL_EVENTSET_COORD, FR_COORD_CONTROL_DATA, &cm, sizeof(fr_coord_msg_t));
 }
 
 /** Insert instance specific pre-event callbacks

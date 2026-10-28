@@ -87,8 +87,6 @@ struct requestor_s {
 
 	req_channel_t		*channel;	//!< one per responder.
 	size_t			num_closed;
-
-	uint64_t		spurious;	//!< reply signals which found nothing.
 };
 
 /** A responder's view of one channel
@@ -115,8 +113,6 @@ struct responder_s {
 	size_t			pending_num;
 
 	uint64_t		received;
-	uint64_t		signals;	//!< request signals delivered to us.
-	uint64_t		spurious;	//!< request signals which found nothing.
 	uint64_t		sleeps;		//!< times we blocked.
 	uint64_t		rescued;	//!< final drains which found work, i.e. skipped signals we caught.
 };
@@ -199,38 +195,20 @@ static void requestor_recv_reply(fr_channel_t *ch, fr_channel_data_t *cd, UNUSED
 	atomic_fetch_add_explicit(&progress, 1, memory_order_relaxed);
 }
 
-static void requestor_control(void const *data, size_t data_size, fr_time_t now, void *uctx)
+static void requestor_closed(fr_channel_t *ch, UNUSED fr_time_t now, void *uctx)
 {
 	requestor_t	*r = uctx;
-	fr_channel_t	*ch;
-	req_channel_t	*rc;
+	req_channel_t	*rc = fr_channel_requestor_uctx_get(ch);
 
-	switch (fr_channel_service_message(now, &ch, NULL, data, data_size)) {
-	case FR_CHANNEL_DATA_READY_REQUESTOR:
-		if (!fr_channel_recv_reply(ch)) {
-			r->spurious++;
-			break;
-		}
-		while (fr_channel_recv_reply(ch));
-		break;
-
-	case FR_CHANNEL_CLOSE:
-		rc = fr_channel_requestor_uctx_get(ch);
-		fr_assert(rc->closing);
-		rc->closed = true;
-		r->num_closed++;
-		MPRINT1("requestor %zu: responder %zu acked close\n", r->id, rc->responder);
-		break;
-
-	case FR_CHANNEL_NOOP:
-	case FR_CHANNEL_ERROR:
-		break;
-
-	default:
-		fr_assert_fail("requestor got unexpected channel event");
-		break;
-	}
+	fr_assert(rc->closing);
+	rc->closed = true;
+	r->num_closed++;
+	MPRINT1("requestor %zu: responder %zu acked close\n", r->id, rc->responder);
 }
+
+static fr_channel_callbacks_t const requestor_callbacks = {
+	.closed		= requestor_closed
+};
 
 static void *requestor_thread(void *arg)
 {
@@ -335,71 +313,55 @@ static void responder_recv_request(fr_channel_t *ch, fr_channel_data_t *cd, void
 	w->received++;
 }
 
-static void responder_control(void const *data, size_t data_size, fr_time_t now, void *uctx)
+static void responder_open(fr_channel_t *ch, fr_message_set_t *reply_ms, UNUSED fr_time_t now, void *uctx)
 {
 	responder_t	*w = uctx;
-	fr_channel_t	*ch;
-	void		*ch_uctx;
 	resp_channel_t	*slot;
 	size_t		i;
+
+	for (i = 0; i < num_requestors; i++) {
+		if (w->channel[i].ch) continue;
+
+		slot = &w->channel[i];
+		slot->ch = ch;
+		slot->reply_ms = reply_ms;
+		fr_channel_responder_uctx_add(ch, slot);
+		fr_channel_set_recv_request(ch, responder_recv_request, w);
+		w->num_channels++;
+		MPRINT1("responder %zu: channel %zu opened\n", w->id, i);
+		return;
+	}
+	fr_assert_fail("responder has no free channel slot");
+}
+
+static void responder_close(fr_channel_t *ch, UNUSED fr_time_t now, void *uctx)
+{
+	responder_t	*w = uctx;
+	resp_channel_t	*slot = fr_channel_responder_uctx_get(ch);
 	unsigned int	num;
 
-	switch (fr_channel_service_message(now, &ch, &ch_uctx, data, data_size)) {
-	case FR_CHANNEL_OPEN:
-		for (i = 0; i < num_requestors; i++) {
-			if (w->channel[i].ch) continue;
-
-			slot = &w->channel[i];
-			slot->ch = ch;
-			slot->reply_ms = talloc_get_type_abort(ch_uctx, fr_message_set_t);
-			fr_channel_responder_uctx_add(ch, slot);
-			fr_channel_set_recv_request(ch, responder_recv_request, w);
-			w->num_channels++;
-			MPRINT1("responder %zu: channel %zu opened\n", w->id, i);
-			return;
-		}
-		fr_assert_fail("responder has no free channel slot");
-		break;
-
-	case FR_CHANNEL_DATA_READY_RESPONDER:
-		w->signals++;
-		if (!fr_channel_recv_request(ch)) {
-			w->spurious++;
-			break;
-		}
-		while (fr_channel_recv_request(ch));
-		break;
-
-	case FR_CHANNEL_CLOSE:
-		slot = fr_channel_responder_uctx_get(ch);
-
-		/*
-		 *	The requestor only closes once every reply is
-		 *	in, so nothing can be queued or pending.
-		 */
-		num = fr_channel_responder_discard(ch);
-		if (num > 0) {
-			fprintf(stderr, "responder %zu: %u requests queued at close\n", w->id, num);
-			fr_exit_now(EXIT_FAILURE);
-		}
-
-		(void) fr_channel_responder_ack_close(ch);
-		slot->ch = NULL;
-		w->num_channels--;
-		w->num_closed++;
-		MPRINT1("responder %zu: channel closed, %zu remain\n", w->id, w->num_channels);
-		if (w->num_closed == num_requestors) w->running = false;
-		break;
-
-	case FR_CHANNEL_NOOP:
-	case FR_CHANNEL_ERROR:
-		break;
-
-	default:
-		fr_assert_fail("responder got unexpected channel event");
-		break;
+	/*
+	 *	The requestor only closes once every reply is
+	 *	in, so nothing can be queued or pending.
+	 */
+	num = fr_channel_responder_discard(ch);
+	if (num > 0) {
+		fprintf(stderr, "responder %zu: %u requests queued at close\n", w->id, num);
+		fr_exit_now(EXIT_FAILURE);
 	}
+
+	(void) fr_channel_responder_ack_close(ch);
+	slot->ch = NULL;
+	w->num_channels--;
+	w->num_closed++;
+	MPRINT1("responder %zu: channel closed, %zu remain\n", w->id, w->num_channels);
+	if (w->num_closed == num_requestors) w->running = false;
 }
+
+static fr_channel_callbacks_t const responder_callbacks = {
+	.open		= responder_open,
+	.close		= responder_close
+};
 
 /** The responder half of the handshake, as fr_worker() does it
  *
@@ -528,9 +490,9 @@ static void dump_state(void)
 	for (i = 0; i < num_responders; i++) {
 		responder_t *w = &responders[i];
 
-		fprintf(stderr, "responder %zu: received %" PRIu64 " pending %zu signals %" PRIu64
+		fprintf(stderr, "responder %zu: received %" PRIu64 " pending %zu"
 			" sleeps %" PRIu64 " %s\n",
-			i, w->received, w->pending_num, w->signals, w->sleeps,
+			i, w->received, w->pending_num, w->sleeps,
 			fr_control_is_sleeping(w->control) ? "SLEEPING" : "awake");
 	}
 }
@@ -665,8 +627,8 @@ int main(int argc, char *argv[])
 		w->running = true;
 		MEM(w->el = fr_event_list_alloc(ctx, NULL, NULL));
 		MEM(w->aq = fr_atomic_queue_talloc(ctx, FR_CONTROL_MAX_MESSAGES));
-		MEM(w->control = fr_control_create(ctx, w->el, w->aq, 2));
-		if ((fr_control_callback_add(&w->control, FR_CONTROL_ID_CHANNEL, responder_control, w) < 0) ||
+		MEM(w->control = fr_control_create(ctx, w->el, w->aq));
+		if ((fr_channel_callbacks_add(w->control, &responder_callbacks, w) < 0) ||
 		    (fr_control_open(w->control) < 0)) {
 			fprintf(stderr, "failed setting up responder %zu control plane: %s\n", i, fr_strerror());
 			fr_exit_now(EXIT_FAILURE);
@@ -682,8 +644,8 @@ int main(int argc, char *argv[])
 		r->id = i;
 		MEM(r->el = fr_event_list_alloc(ctx, NULL, NULL));
 		MEM(r->aq = fr_atomic_queue_talloc(ctx, FR_CONTROL_MAX_MESSAGES));
-		MEM(r->control = fr_control_create(ctx, r->el, r->aq, 2));
-		if ((fr_control_callback_add(&r->control, FR_CONTROL_ID_CHANNEL, requestor_control, r) < 0) ||
+		MEM(r->control = fr_control_create(ctx, r->el, r->aq));
+		if ((fr_channel_callbacks_add(r->control, &requestor_callbacks, r) < 0) ||
 		    (fr_control_open(r->control) < 0)) {
 			fprintf(stderr, "failed setting up requestor %zu control plane: %s\n", i, fr_strerror());
 			fr_exit_now(EXIT_FAILURE);
@@ -750,19 +712,23 @@ int main(int argc, char *argv[])
 
 			fr_message_set_gc(rc->reply_ms);
 			fr_assert(fr_message_set_messages_used(rc->reply_ms) == 0);
+
+			/*
+			 *	The channel holds both ends' counters.
+			 */
+			signals += fr_channel_requestor_stats(rc->ch)->signals;
+			spurious_req += fr_channel_responder_stats(rc->ch)->spurious;
+			spurious_rep += fr_channel_requestor_stats(rc->ch)->spurious;
 		}
 
 		fr_message_set_gc(r->ms);
 		fr_assert(fr_message_set_messages_used(r->ms) == 0);
-		spurious_rep += r->spurious;
 	}
 
 	for (i = 0; i < num_responders; i++) {
 		responder_t *w = &responders[i];
 
 		fr_assert(w->pending_num == 0);
-		signals += w->signals;
-		spurious_req += w->spurious;
 		sleeps += w->sleeps;
 		rescued += w->rescued;
 	}

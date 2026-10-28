@@ -30,14 +30,11 @@ RCSIDH(worker_h, "$Id$")
 extern "C" {
 #endif
 
-/*
- *  Network <-> Worker control message IDs
+/** Events for a worker's own control messages, in the FR_CONTROL_EVENTSET_WORKER event set
  */
-#define FR_CONTROL_ID_LISTEN		(2)
-#define FR_CONTROL_ID_WORKER		(3)
-#define FR_CONTROL_ID_DIRECTORY		(4)
-#define FR_CONTROL_ID_INJECT	 	(5)
-#define FR_CONTROL_ID_LISTEN_DEAD	(6)
+typedef enum fr_worker_control_event_t : uint16_t {
+	FR_WORKER_CONTROL_LISTEN_DEAD = 0	//!< A listener has been closed.
+} fr_worker_control_event_t;
 
 /**
  *  A data structure to track the worker.
@@ -97,7 +94,8 @@ int		fr_worker_pre_event(fr_time_t now, fr_time_delta_t wake, void *uctx);
 
 void		fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 
-fr_channel_t	*fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master, void *uctx) CC_HINT(nonnull(1,2,3));
+fr_channel_t	*fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master,
+					  fr_message_set_t *reply_ms) CC_HINT(nonnull);
 
 int		fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats) CC_HINT(nonnull);
 

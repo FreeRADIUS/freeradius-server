@@ -72,26 +72,23 @@ size_t channel_direction_len = NUM_ELEMENTS(channel_direction);
  */
 #define ATOMIC_QUEUE_SIZE (1024)
 
-typedef enum fr_channel_signal_t : uint8_t {
-	FR_CHANNEL_SIGNAL_ERROR			= FR_CHANNEL_ERROR,
-	FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	= FR_CHANNEL_DATA_READY_RESPONDER,
-	FR_CHANNEL_SIGNAL_DATA_TO_REQUESTOR	= FR_CHANNEL_DATA_READY_REQUESTOR,
-	FR_CHANNEL_SIGNAL_OPEN			= FR_CHANNEL_OPEN,
-	FR_CHANNEL_SIGNAL_CLOSE			= FR_CHANNEL_CLOSE,
-
-	/*
-	 *	The preceding MUST be in the same order as fr_channel_event_t
-	 */
-
-	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER,
-} fr_channel_signal_t;
-
+/** The payload of every channel control message
+ *
+ *  Which event it is comes from the control message, not from the payload.
+ */
 typedef struct {
-	fr_channel_signal_t	signal;		//!< the signal to send
-	uint64_t		ack;		//!< or the endpoint..
+	uint64_t		ack;		//!< the sender's ack sequence, for data done.
 	fr_channel_t		*ch;		//!< the channel
-	void			*uctx;		//!< arbitrary message data
+	fr_message_set_t	*reply_ms;	//!< the reply message set, for open only.
 } fr_channel_control_t;
+
+/** The callbacks one control plane's owner registered for channel events
+ */
+typedef struct {
+	fr_control_t		*control;	//!< the control plane these were registered on
+	fr_channel_callbacks_t	cb;		//!< what the owner does with each event
+	void			*uctx;		//!< passed to each callback
+} fr_channel_hooks_t;
 
 /** One end of a channel
  *
@@ -141,12 +138,12 @@ struct fr_channel_s {
 };
 
 fr_table_num_sorted_t const channel_signals[] = {
-	{ L("error"),			FR_CHANNEL_ERROR			},
-	{ L("data-to-responder"),	FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	},
-	{ L("data-to-requestor"),	FR_CHANNEL_DATA_READY_REQUESTOR		},
-	{ L("open"),			FR_CHANNEL_OPEN				},
-	{ L("close"),			FR_CHANNEL_CLOSE			},
-	{ L("data-done-responder"),	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER	},
+	{ L("close"),			FR_CHANNEL_CONTROL_CLOSE		},
+	{ L("close-ack"),		FR_CHANNEL_CONTROL_CLOSE_ACK		},
+	{ L("data-done-responder"),	FR_CHANNEL_CONTROL_DATA_DONE_RESPONDER	},
+	{ L("data-to-requestor"),	FR_CHANNEL_CONTROL_DATA_TO_REQUESTOR	},
+	{ L("data-to-responder"),	FR_CHANNEL_CONTROL_DATA_TO_RESPONDER	},
+	{ L("open"),			FR_CHANNEL_CONTROL_OPEN			},
 };
 size_t channel_signals_len = NUM_ELEMENTS(channel_signals);
 
@@ -253,27 +250,27 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
  * @param[in] ch	the channel.
  * @param[in] when	the data was ready.  Typically taken from the message.
  * @param[in] end	of the channel that the message was written to.
- * @param[in] which	end of the channel (0/1).
+ * @param[in] ev	the event to send.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_end_t *end, fr_channel_signal_t which)
+static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_end_t *end, fr_channel_control_event_t ev)
 {
 	fr_channel_control_t cc;
 
 	end->stats.last_sent_signal = when;
 	end->stats.signals++;
 
-	cc.signal = which;
 	cc.ack = end->ack;
 	cc.ch = ch;
+	cc.reply_ms = NULL;
 
 	MPRINT("Signalling %s, with %s\n",
 	       fr_table_str_by_value(channel_direction, end->direction, "<INVALID>"),
-	       fr_table_str_by_value(channel_signals, which, "<INVALID>"));
+	       fr_table_str_by_value(channel_signals, ev, "<INVALID>"));
 
-	return fr_control_message_send(end->control, end->rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+	return fr_control_message_send(end->control, end->rb, FR_CONTROL_EVENTSET_CHANNEL, ev, &cc, sizeof(cc));
 }
 
 #define IALPHA (8)
@@ -363,7 +360,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	will pick up the message.
 	 */
 	MPRINT("REQUESTOR SIGNALS\n");
-	(void) fr_channel_data_ready(ch, when, requestor, FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER);
+	(void) fr_channel_data_ready(ch, when, requestor, FR_CHANNEL_CONTROL_DATA_TO_RESPONDER);
 	return 0;
 }
 
@@ -540,7 +537,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	thread.
 	 */
 	if (responder->stats.outstanding == 0) {
-		(void) fr_channel_data_ready(ch, when, responder, FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER);
+		(void) fr_channel_data_ready(ch, when, responder, FR_CHANNEL_CONTROL_DATA_DONE_RESPONDER);
 		return 0;
 	}
 
@@ -580,7 +577,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 #endif
 
 	MPRINT("\tRESPONDER SIGNALS num_outstanding %"PRIu64"\n", responder->stats.outstanding);
-	(void) fr_channel_data_ready(ch, when, responder, FR_CHANNEL_SIGNAL_DATA_TO_REQUESTOR);
+	(void) fr_channel_data_ready(ch, when, responder, FR_CHANNEL_CONTROL_DATA_TO_REQUESTOR);
 	return 0;
 }
 
@@ -606,66 +603,93 @@ int fr_channel_null_reply(fr_channel_t *ch)
 
 
 
-/** Service a control-plane message
- *
- * @param[in] when		The current time.
- * @param[out] p_channel	The channel which should be serviced.
- * @param[out] uctx_out		The uctx sent in the control message.
- * @param[in] data		The control message.
- * @param[in] data_size		The size of the control message.
- * @return
- *	- FR_CHANNEL_ERROR on error
- *	- FR_CHANNEL_NOOP, on do nothing
- *	- FR_CHANNEL_DATA_READY on data ready
- *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
- *	- FR_CHANNEL_CLOSE when a channel should be closed
+/** Unpack the payload of a channel control message
  */
-fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void **uctx_out, void const *data, size_t data_size)
+static inline void channel_message_unpack(fr_channel_control_t *cc, void const *data, size_t data_size)
 {
-	int rcode;
-	uint64_t ack;
-	fr_channel_control_t cc;
-	fr_channel_signal_t cs;
-	fr_channel_event_t ce = FR_CHANNEL_ERROR;
-	fr_channel_end_t *requestor;
-	fr_channel_t *ch;
+	fr_assert(data_size == sizeof(*cc));
+	memcpy(cc, data, sizeof(*cc));
+}
 
-	fr_assert(data_size == sizeof(cc));
-	memcpy(&cc, data, data_size);
-
-	cs = cc.signal;
-	ack = cc.ack;
-	*p_channel = ch = cc.ch;
-	if (uctx_out) *uctx_out = cc.uctx;
-
-	switch (cs) {
-	/*
-	 *	These all have the same numbers as the channel
-	 *	events, and have no extra processing.  We just
-	 *	return them as-is.
-	 */
-	case FR_CHANNEL_SIGNAL_ERROR:
-	case FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER:
-	case FR_CHANNEL_SIGNAL_DATA_TO_REQUESTOR:
-	case FR_CHANNEL_SIGNAL_OPEN:
-	case FR_CHANNEL_SIGNAL_CLOSE:
-		MPRINT("channel got %d\n", cs);
-		return (fr_channel_event_t) cs;
-
-	/*
-	 *	Only sent by the responder.
-	 */
-	case FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER:
-		MPRINT("channel got data_done_responder\n");
-		ce = FR_CHANNEL_DATA_READY_REQUESTOR;
-		break;
+/** Drain the requests queued for the responder
+ *
+ * Runs on the responder's thread, so a signal which finds nothing is
+ * counted in the responder's own stats.  Each end's stats are only
+ * ever written by that end's thread.
+ */
+static inline void channel_drain_requests(fr_channel_t *ch)
+{
+	if (!fr_channel_recv_request(ch)) {
+		ch->end[TO_REQUESTOR].stats.spurious++;
+		return;
 	}
+	while (fr_channel_recv_request(ch));
+}
 
-	/*
-	 *	Compare their ACK to the last sequence we
-	 *	sent.  If it's different, we signal the responder
-	 *	to wake up.
-	 */
+/** Drain the replies queued for the requestor
+ *
+ * Runs on the requestor's thread, see channel_drain_requests().
+ */
+static inline void channel_drain_replies(fr_channel_t *ch)
+{
+	if (!fr_channel_recv_reply(ch)) {
+		ch->end[TO_RESPONDER].stats.spurious++;
+		return;
+	}
+	while (fr_channel_recv_reply(ch));
+}
+
+/** The requestor has queued requests for the responder
+ *
+ * Must arrive on the responder's control plane.
+ */
+static void channel_data_to_responder(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
+{
+	fr_channel_hooks_t	*hooks = talloc_get_type_abort(uctx, fr_channel_hooks_t);
+	fr_channel_control_t	cc;
+
+	channel_message_unpack(&cc, data, data_size);
+	MPRINT("channel got data_to_responder\n");
+
+	if (!fr_cond_assert(hooks->control == cc.ch->end[TO_RESPONDER].control)) return;
+	channel_drain_requests(cc.ch);
+}
+
+/** The responder has queued replies for the requestor
+ *
+ * Must arrive on the requestor's control plane.
+ */
+static void channel_data_to_requestor(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
+{
+	fr_channel_hooks_t	*hooks = talloc_get_type_abort(uctx, fr_channel_hooks_t);
+	fr_channel_control_t	cc;
+
+	channel_message_unpack(&cc, data, data_size);
+	MPRINT("channel got data_to_requestor\n");
+
+	if (!fr_cond_assert(hooks->control == cc.ch->end[TO_REQUESTOR].control)) return;
+	channel_drain_replies(cc.ch);
+}
+
+/** The responder has serviced its requests, and says how many it has seen
+ *
+ * Only sent by the responder.  Replies may be waiting, so drain them.
+ * First compare their ACK to the last sequence we sent, and if they
+ * have not seen our latest, signal the responder to wake up.
+ */
+static void channel_data_done_responder(void const *data, size_t data_size, fr_time_t now, void *uctx)
+{
+	fr_channel_hooks_t	*hooks = talloc_get_type_abort(uctx, fr_channel_hooks_t);
+	fr_channel_control_t	cc;
+	fr_channel_t		*ch;
+	fr_channel_end_t	*requestor;
+
+	channel_message_unpack(&cc, data, data_size);
+	ch = cc.ch;
+	MPRINT("channel got data_done_responder\n");
+
+	if (!fr_cond_assert(hooks->control == ch->end[TO_REQUESTOR].control)) return;
+
 	requestor = &ch->end[TO_RESPONDER];
 
 	/*
@@ -680,16 +704,17 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 *	ack at all.  The load is relaxed because only this thread
 	 *	clears "active" for this end.
 	 */
-	if (unlikely(!atomic_load_explicit(&requestor->active, memory_order_relaxed))) return ce;
+	if (unlikely(!atomic_load_explicit(&requestor->active, memory_order_relaxed))) goto drain;
 
 	/*
 	 *	Their ack covers everything we have sent.  Anything
 	 *	sent later signals for itself.
 	 */
-	fr_assert(ack <= requestor->sequence);
-	if (ack == requestor->sequence) {
-		MPRINT("REQUESTOR SKIPS signal AFTER CE %d num_outstanding %"PRIu64"\n", cs, requestor->stats.outstanding);
-		return ce;
+	fr_assert(cc.ack <= requestor->sequence);
+	if (cc.ack == requestor->sequence) {
+		MPRINT("REQUESTOR SKIPS signal AFTER data_done_responder num_outstanding %"PRIu64"\n",
+		       requestor->stats.outstanding);
+		goto drain;
 	}
 
 	/*
@@ -699,15 +724,98 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 *	again only if it has since blocked: cheap insurance
 	 *	against a dropped wakeup, free when it is running.
 	 */
-	if (!fr_control_is_sleeping(requestor->control)) return ce;
+	if (!fr_control_is_sleeping(requestor->control)) goto drain;
 
 	requestor->stats.resignals++;
 
-	MPRINT("REQUESTOR SIGNALS AFTER CE %d\n", cs);
-	rcode = fr_channel_data_ready(ch, when, requestor, FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER);
-	if (rcode < 0) return FR_CHANNEL_ERROR;
+	MPRINT("REQUESTOR SIGNALS AFTER data_done_responder\n");
+	if (fr_channel_data_ready(ch, now, requestor, FR_CHANNEL_CONTROL_DATA_TO_RESPONDER) < 0) return;
 
-	return ce;
+drain:
+	channel_drain_replies(ch);
+}
+
+/** A requestor has opened a channel to us
+ */
+static void channel_open(void const *data, size_t data_size, fr_time_t now, void *uctx)
+{
+	fr_channel_hooks_t	*hooks = talloc_get_type_abort(uctx, fr_channel_hooks_t);
+	fr_channel_control_t	cc;
+
+	channel_message_unpack(&cc, data, data_size);
+	MPRINT("channel got open\n");
+
+	if (!fr_cond_assert(hooks->cb.open)) return;
+	hooks->cb.open(cc.ch, cc.reply_ms, now, hooks->uctx);
+}
+
+/** The requestor is closing a channel to us
+ */
+static void channel_close(void const *data, size_t data_size, fr_time_t now, void *uctx)
+{
+	fr_channel_hooks_t	*hooks = talloc_get_type_abort(uctx, fr_channel_hooks_t);
+	fr_channel_control_t	cc;
+
+	channel_message_unpack(&cc, data, data_size);
+	MPRINT("channel got close\n");
+
+	if (!fr_cond_assert(hooks->cb.close)) return;
+	hooks->cb.close(cc.ch, now, hooks->uctx);
+}
+
+/** The responder has finished closing a channel we asked it to close
+ */
+static void channel_close_ack(void const *data, size_t data_size, fr_time_t now, void *uctx)
+{
+	fr_channel_hooks_t	*hooks = talloc_get_type_abort(uctx, fr_channel_hooks_t);
+	fr_channel_control_t	cc;
+
+	channel_message_unpack(&cc, data, data_size);
+	MPRINT("channel got close_ack\n");
+
+	if (!fr_cond_assert(hooks->cb.closed)) return;
+	hooks->cb.closed(cc.ch, now, hooks->uctx);
+}
+
+/** Register the owner's channel callbacks on its control plane
+ *
+ * Call before fr_control_open().  Every channel event gets its
+ * own entry in the FR_CONTROL_EVENTSET_CHANNEL event set, so the control
+ * plane dispatches straight to the handler for that event.
+ *
+ * @param[in] c		the control plane channels will signal.
+ * @param[in] callbacks	what the owner does with each event.  Copied.
+ * @param[in] uctx	passed to each callback.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_channel_callbacks_add(fr_control_t *c, fr_channel_callbacks_t const *callbacks, void *uctx)
+{
+	fr_channel_hooks_t *hooks;
+
+	MEM(hooks = talloc_zero(c, fr_channel_hooks_t));
+	hooks->control = c;
+	hooks->cb = *callbacks;
+	hooks->uctx = uctx;
+
+	if ((fr_control_callback_add(c, FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_DATA_TO_RESPONDER,
+				     channel_data_to_responder, hooks) < 0) ||
+	    (fr_control_callback_add(c, FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_DATA_TO_REQUESTOR,
+				     channel_data_to_requestor, hooks) < 0) ||
+	    (fr_control_callback_add(c, FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_DATA_DONE_RESPONDER,
+				     channel_data_done_responder, hooks) < 0) ||
+	    (fr_control_callback_add(c, FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_OPEN,
+				     channel_open, hooks) < 0) ||
+	    (fr_control_callback_add(c, FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_CLOSE,
+				     channel_close, hooks) < 0) ||
+	    (fr_control_callback_add(c, FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_CLOSE_ACK,
+				     channel_close_ack, hooks) < 0)) {
+		talloc_free(hooks);
+		return -1;
+	}
+
+	return 0;
 }
 
 
@@ -773,12 +881,13 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
-	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
-	cc.ack = TO_RESPONDER;
+	cc.ack = 0;
 	cc.ch = ch;
+	cc.reply_ms = NULL;
 
 	ret = fr_control_message_send(ch->end[TO_RESPONDER].control,
-				      ch->end[TO_RESPONDER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+				      ch->end[TO_RESPONDER].rb, FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_CLOSE,
+				      &cc, sizeof(cc));
 
 	return ret;
 }
@@ -828,12 +937,14 @@ int fr_channel_responder_ack_close(fr_channel_t *ch)
 
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
-	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
-	cc.ack = TO_REQUESTOR;
+	cc.ack = 0;
 	cc.ch = ch;
+	cc.reply_ms = NULL;
 
 	ret = fr_control_message_send(ch->end[TO_REQUESTOR].control,
-				      ch->end[TO_REQUESTOR].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+				      ch->end[TO_REQUESTOR].rb, FR_CONTROL_EVENTSET_CHANNEL,
+				      FR_CHANNEL_CONTROL_CLOSE_ACK,
+				      &cc, sizeof(cc));
 
 	return ret;
 }
@@ -906,20 +1017,21 @@ int fr_channel_set_recv_request(fr_channel_t *ch, fr_channel_recv_callback_t rec
 /** Send a channel to a responder
  *
  * @param[in] ch	The channel.
+ * @param[in] reply_ms	The message set the responder allocates replies from.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_signal_open(fr_channel_t *ch, void *uctx)
+int fr_channel_signal_open(fr_channel_t *ch, fr_message_set_t *reply_ms)
 {
 	fr_channel_control_t cc;
 
-	cc.signal = FR_CHANNEL_SIGNAL_OPEN;
 	cc.ack = 0;
 	cc.ch = ch;
-	cc.uctx = uctx;
+	cc.reply_ms = reply_ms;
 
-	return fr_control_message_send(ch->end[TO_RESPONDER].control, ch->end[TO_RESPONDER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+	return fr_control_message_send(ch->end[TO_RESPONDER].control, ch->end[TO_RESPONDER].rb,
+				       FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_OPEN, &cc, sizeof(cc));
 }
 
 void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char const *file, int line)
@@ -927,6 +1039,8 @@ void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char cons
 	fr_log(log, L_INFO, file, line, "requestor\n");
 	fr_log(log, L_INFO, file, line, "\tsignals sent = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.signals);
 	fr_log(log, L_INFO, file, line, "\tsignals re-sent = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.resignals);
+	fr_log(log, L_INFO, file, line, "\tsignals received empty = %" PRIu64 "\n",
+	       ch->end[TO_RESPONDER].stats.spurious);
 	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.kevents);
 	fr_log(log, L_INFO, file, line, "\toutstanding = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.outstanding);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.packets);
@@ -937,10 +1051,28 @@ void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char cons
 
 	fr_log(log, L_INFO, file, line, "responder\n");
 	fr_log(log, L_INFO, file, line, "\tsignals sent = %" PRIu64"\n", ch->end[TO_REQUESTOR].stats.signals);
+	fr_log(log, L_INFO, file, line, "\tsignals received empty = %" PRIu64 "\n",
+	       ch->end[TO_REQUESTOR].stats.spurious);
 	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.kevents);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.packets);
 	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRId64 "\n", fr_time_delta_unwrap(ch->end[TO_REQUESTOR].stats.message_interval));
 	fr_log(log, L_INFO, file, line, "\tlast write = %" PRId64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_write));
 	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRId64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_read_other));
 	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRId64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_sent_signal));
+}
+
+/** Statistics for the requestor's end of a channel
+ *
+ * Signals the requestor sent, and signals it received which found nothing.
+ */
+fr_channel_stats_t const *fr_channel_requestor_stats(fr_channel_t const *ch)
+{
+	return &ch->end[TO_RESPONDER].stats;
+}
+
+/** Statistics for the responder's end of a channel
+ */
+fr_channel_stats_t const *fr_channel_responder_stats(fr_channel_t const *ch)
+{
+	return &ch->end[TO_REQUESTOR].stats;
 }

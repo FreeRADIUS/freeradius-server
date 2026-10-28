@@ -31,6 +31,15 @@ extern "C" {
 
 typedef struct fr_network_s fr_network_t;
 
+/** Events for the network's own control messages, in the FR_CONTROL_EVENTSET_NETWORK event set
+ */
+typedef enum fr_network_control_event_t : uint16_t {
+	FR_NETWORK_CONTROL_LISTEN = 0,		//!< Add a listener.
+	FR_NETWORK_CONTROL_DIRECTORY,		//!< Add a directory listener.
+	FR_NETWORK_CONTROL_WORKER,		//!< A worker has started.
+	FR_NETWORK_CONTROL_INJECT		//!< Inject a packet into a listener.
+} fr_network_control_event_t;
+
 #ifdef __cplusplus
 }
 #endif
