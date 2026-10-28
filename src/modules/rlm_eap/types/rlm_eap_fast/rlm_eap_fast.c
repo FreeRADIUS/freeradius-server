@@ -352,7 +352,18 @@ static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_s
 
 	fr_assert(PAC_A_ID_LENGTH <= EVP_GCM_TLS_TAG_LEN);
 	memcpy(pac.opaque.aad, t->a_id, PAC_A_ID_LENGTH);
-	fr_assert(RAND_bytes(pac.opaque.iv, sizeof(pac.opaque.iv)) != 0);
+
+	/*
+	 *	Generating the IV is not optional.  Do NOT put the
+	 *	call to RAND_bytes() into an assertion, because the
+	 *	build compiles assertions out when the build defines
+	 *	NDEBUG.
+	 */
+	if (RAND_bytes(pac.opaque.iv, sizeof(pac.opaque.iv)) != 1) {
+		RERROR("Failed generating random IV for the PAC-Opaque");
+		return;
+	}
+
 	dlen = eap_fast_encrypt((unsigned const char *)&opaque_plaintext, sizeof(opaque_plaintext),
 				    t->a_id, PAC_A_ID_LENGTH, t->pac_opaque_key, pac.opaque.iv,
 				    pac.opaque.data, pac.opaque.tag);
