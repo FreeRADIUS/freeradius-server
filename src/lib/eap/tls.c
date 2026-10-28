@@ -923,6 +923,16 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	 *	TLS proper can decide what to do, then.
 	 */
 	if (fr_dbuff_remaining(tls_session->dirty_out) > 0) {
+		/*
+		 *	If the handshake is finished and we have application data
+		 *	then move to phase2.
+		 *	This happens when a client sends application data in the
+		 *	same packet as the handshake finished record, but OpenSSL
+		 *	has decided to send a NewSessionTicket.
+		 *	The client isn't expecting a ticket at this point.
+		 */
+		if (tls_session->seen_application_data && fr_dbuff_used(&tls_session->clean_out) > 0) goto phase2;
+
 		if (eap_tls_request(request, eap_session) < 0) {
 			REDEBUG("TLS failed composing a response");
 			goto fail;
@@ -940,6 +950,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	 *	this begins phase2.
 	 */
 	if (eap_tls_session->phase2 || fr_tls_session_is_init_finished(tls_session)) {
+	phase2:
 		eap_tls_session->phase2 = true;
 
 		/*
