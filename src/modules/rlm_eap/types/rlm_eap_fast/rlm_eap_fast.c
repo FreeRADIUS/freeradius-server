@@ -624,7 +624,13 @@ static ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, request_t *request, fr_pair
 		if (da->type == FR_TYPE_TLV) {
 			ret = eap_fast_decode_pair(vp, request, &vp->vp_group, da, p, len);
 			if (ret < 0) return -1;
-			p += ret;
+
+			/*
+			 *	The recursive call stops when fewer than 4 bytes remain, so
+			 *	"ret" can be smaller than "len".  Skip the whole value, or
+			 *	the unused bytes are read as the header of the next TLV.
+			 */
+			p += len;
 			fr_pair_append(out, vp);
 			continue;
 		}
