@@ -214,6 +214,7 @@ static void *requestor_thread(void *arg)
 {
 	requestor_t	*r = arg;
 	size_t		i;
+	bool		wait;
 
 	MPRINT1("requestor %zu: started\n", r->id);
 
@@ -279,10 +280,19 @@ static void *requestor_thread(void *arg)
 		spin(max_pause_usec);
 
 		/*
-		 *	Everything we can send is sent.  Wait for
-		 *	replies, or close acks.
+		 *	Everything we can send is sent.  Announce that
+		 *	we are about to block, drain every channel one
+		 *	last time, and only block if that found nothing.
 		 */
-		num_events = fr_event_corral(r->el, fr_time(), true);
+		fr_control_sleeping(r->control);
+		wait = true;
+		for (i = 0; i < num_responders; i++) {
+			while (fr_channel_recv_reply(r->channel[i].ch)) wait = false;
+		}
+		if (!wait) fr_control_awake(r->control);
+
+		num_events = fr_event_corral(r->el, fr_time(), wait);
+		fr_control_awake(r->control);
 		if (num_events < 0) {
 			fprintf(stderr, "requestor %zu: failed waiting for events: %s\n", r->id, fr_syserror(errno));
 			fr_exit_now(EXIT_FAILURE);

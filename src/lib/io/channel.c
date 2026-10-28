@@ -533,8 +533,19 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	while (fr_channel_recv_request(ch));
 
 	/*
-	 *	No packets outstanding, we HAVE to signal the requestor
-	 *	thread.
+	 *	The reply is in the queue.  If the requestor is awake
+	 *	it will find it before it next blocks, so the signal is
+	 *	only needed if it is already asleep.  The mirror of the
+	 *	check in fr_channel_send_request().
+	 */
+	if (!fr_control_is_sleeping(responder->control)) {
+		MPRINT("\tRESPONDER SKIPS signal\n");
+		return 0;
+	}
+
+	/*
+	 *	No packets outstanding.  Tell the requestor how far we
+	 *	got, so it can re-signal us if it has sent more.
 	 */
 	if (responder->stats.outstanding == 0) {
 		(void) fr_channel_data_ready(ch, when, responder, FR_CHANNEL_CONTROL_DATA_DONE_RESPONDER);

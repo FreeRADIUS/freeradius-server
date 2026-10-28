@@ -1955,6 +1955,36 @@ static void _signal_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
  *
  * @param[in] nr the network data structure to run.
  */
+/** Announce we are about to block, then drain every channel one last time
+ *
+ * The mirror of worker_sleeping().  See fr_control_sleeping() for the
+ * ordering this relies on.
+ *
+ * @return
+ *	- true if a channel had replies, so the caller must not block.
+ *	- false if every channel was empty.
+ */
+static inline bool network_sleeping(fr_network_t *nr)
+{
+	unsigned int i;
+	bool received = false;
+
+	fr_control_sleeping(nr->control);
+
+	for (i = 0; i < nr->num_workers; i++) {
+		while (fr_channel_recv_reply(nr->workers[i]->channel)) received = true;
+	}
+
+	/*
+	 *	A responder may have pushed before it could see us
+	 *	sleeping, and skipped the signal.  We found that work,
+	 *	so we are not going to block after all.
+	 */
+	if (received) fr_control_awake(nr->control);
+
+	return received;
+}
+
 void fr_network(fr_network_t *nr)
 {
 	/*
@@ -1972,6 +2002,7 @@ void fr_network(fr_network_t *nr)
 	 */
 	while (likely(!(nr->exiting && (nr->num_workers == 0)))) {
 		bool wait_for_event;
+		bool announced = false;
 		int num_events;
 
 		/*
@@ -1979,6 +2010,15 @@ void fr_network(fr_network_t *nr)
 		 *	the event loop, but we don't wait for events.
 		 */
 		wait_for_event = (fr_heap_num_elements(nr->replies) == 0);
+		if (wait_for_event) {
+			/*
+			 *	Announce that we are about to block, so the
+			 *	responders know to signal us.  If the final
+			 *	drain turned up replies, don't block.
+			 */
+			announced = true;
+			if (network_sleeping(nr)) wait_for_event = false;
+		}
 
 		/*
 		 *	Check the event list.  If there's an error
@@ -1986,6 +2026,12 @@ void fr_network(fr_network_t *nr)
 		 */
 		DEBUG4("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
 		num_events = fr_event_corral(nr->el, fr_time(), wait_for_event);
+
+		/*
+		 *	Whatever woke us, we are running again.
+		 */
+		if (announced) fr_control_awake(nr->control);
+
 		DEBUG4("%d event(s) pending%s",
 		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
 		if (num_events < 0) break;
