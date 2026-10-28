@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 
 #include "base.h"
@@ -554,7 +555,17 @@ static int checkcode_validate(request_t *request)
 		 */
 		peer_checkcode = fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_aka_sim_checkcode);
 		if (peer_checkcode) {
-			if (fr_pair_cmp(peer_checkcode, our_checkcode) == 0) {
+			/*
+			 *	Compare the octets.  fr_pair_cmp() cannot be used here, as it returns
+			 *	"false" for any pair which has the default operator, and so it never
+			 *	compares the data.
+			 *
+			 *	A checkcode which covers no identity packets is empty.
+			 */
+			if ((peer_checkcode->vp_length == our_checkcode->vp_length) &&
+			    ((our_checkcode->vp_length == 0) ||
+			     (fr_digest_cmp(peer_checkcode->vp_octets, our_checkcode->vp_octets,
+					    our_checkcode->vp_length) == 0))) {
 				RDEBUG2("Received AT_CHECKCODE matches calculated AT_CHECKCODE");
 				return 0;
 			} else {
@@ -608,7 +619,14 @@ static int mac_validate(request_t *request)
 		return -1;
 	}
 
-	if (fr_pair_cmp(peer_mac, our_mac) != 0) {
+	/*
+	 *	Compare the octets, and not the pairs.  fr_pair_cmp() returns "false" for any
+	 *	pair which has the default operator, so the result is the same whatever the
+	 *	peer sent.  The comparison takes the same time whatever the octets are, so that
+	 *	it does not tell the peer how much of the AT_MAC was right.
+	 */
+	if (!our_mac->vp_length || (peer_mac->vp_length != our_mac->vp_length) ||
+	    (fr_digest_cmp(peer_mac->vp_octets, our_mac->vp_octets, our_mac->vp_length) != 0)) {
 		REDEBUG("Received AT_MAC does not match calculated AT_MAC");
 		RHEXDUMP_INLINE2(peer_mac->vp_octets, peer_mac->vp_length, "Received");
 		RHEXDUMP_INLINE2(our_mac->vp_octets, our_mac->vp_length, "Expected");

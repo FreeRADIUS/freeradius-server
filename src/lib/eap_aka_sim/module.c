@@ -300,6 +300,7 @@ unlang_action_t eap_aka_sim_process(unlang_result_t *p_result, module_ctx_t cons
 	fr_dcursor_t			cursor;
 	ssize_t				ret;
 	fr_aka_sim_ctx_t		decode_ctx;
+	bool				free_hmac_extra = false;
 
 	switch (eap_session->this_round->response->type.num) {
 	default:
@@ -331,10 +332,10 @@ unlang_action_t eap_aka_sim_process(unlang_result_t *p_result, module_ctx_t cons
 					&decode_ctx);
 
 		/*
-		 *	Only good for one response packet
+		 *	The extra data is only good for one response packet.  It is freed at "done",
+		 *	and not here, as the AT_MAC calculation below needs the extra data too.
 		 */
-		TALLOC_FREE(mod_session->response_hmac_extra);
-		mod_session->response_hmac_extra_len = 0;
+		free_hmac_extra = true;
 
 		/*
 		 *	RFC 4187 says we *MUST* notify, not just send
@@ -431,6 +432,11 @@ unlang_action_t eap_aka_sim_process(unlang_result_t *p_result, module_ctx_t cons
 	}
 
 done:
+	if (free_hmac_extra) {
+		TALLOC_FREE(mod_session->response_hmac_extra);
+		mod_session->response_hmac_extra_len = 0;
+	}
+
 	/*
 	 *	Setup our encode function as the resumption
 	 *	frame when the state machine finishes with
