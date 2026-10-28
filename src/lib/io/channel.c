@@ -42,11 +42,6 @@ RCSID("$Id$")
 #define MPRINT(...)
 #endif
 
-/*
- *	We disable this until we fix all of the signaling issues...
- */
-#define ENABLE_SKIPS (0)
-
 typedef enum : uint8_t {
 	TO_RESPONDER = 0,
 	TO_REQUESTOR = 1
@@ -89,7 +84,6 @@ typedef enum fr_channel_signal_t : uint8_t {
 	 */
 
 	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER,
-	FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING,
 } fr_channel_signal_t;
 
 typedef struct {
@@ -116,9 +110,6 @@ typedef struct {
 
 	fr_channel_recv_callback_t recv;	//!< callback for receiving messages
 	void			*recv_uctx;	//!< context for receiving messages
-
-	bool			must_signal;	//!< we need to signal the other end
-
 
 	uint64_t		sequence;	//!< Sequence number for this channel.
 	uint64_t		ack;		//!< Sequence number of the other end.
@@ -156,7 +147,6 @@ fr_table_num_sorted_t const channel_signals[] = {
 	{ L("open"),			FR_CHANNEL_OPEN				},
 	{ L("close"),			FR_CHANNEL_CLOSE			},
 	{ L("data-done-responder"),	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER	},
-	{ L("responder-sleeping"),	FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING	},
 };
 size_t channel_signals_len = NUM_ELEMENTS(channel_signals);
 
@@ -274,7 +264,6 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 
 	end->stats.last_sent_signal = when;
 	end->stats.signals++;
-	end->must_signal = false;
 
 	cc.signal = which;
 	cc.ack = end->ack;
@@ -356,34 +345,15 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 
 	MPRINT("REQUESTOR requests %"PRIu64", num_outstanding %"PRIu64"\n", requestor->stats.packets, requestor->stats.outstanding);
 
-#if ENABLE_SKIPS
 	/*
-	 *	We just sent the first packet.  There can't possibly be a reply, so don't bother looking.
+	 *	The message is in the queue.  If the responder is
+	 *	awake it will find it before it next bsleeps, so
+	 *	the signal is only needed if it is already asleep.
 	 */
-	if (requestor->stats.outstanding == 1) {
-
-		/*
-		 *	There is at least one old packet which is
-		 *	outstanding, look for a reply.
-		 */
-	} else if (requestor->stats.outstanding > 1) {
-		bool has_reply;
-
-		has_reply = fr_channel_recv_reply(ch);
-
-		if (has_reply) while (fr_channel_recv_reply(ch));
-
-		/*
-		 *	There's no reply yet, so we still have packets outstanding.
-		 *	Or, there is a reply, and there are more packets outstanding.
-		 *	Skip the signal.
-		 */
-		if (!requestor->must_signal && (!has_reply || (has_reply && (requestor->stats.outstanding > 1)))) {
-			MPRINT("REQUESTOR SKIPS signal\n");
-			return 0;
-		}
+	if (!fr_control_is_sleeping(requestor->control)) {
+		MPRINT("REQUESTOR SKIPS signal\n");
+		return 0;
 	}
-#endif
 
 	/*
 	 *	Tell the other end that there is new data ready.
@@ -636,42 +606,6 @@ int fr_channel_null_reply(fr_channel_t *ch)
 
 
 
-/** Signal a channel that the responder is sleeping
- *
- * This function should be called from the responders idle loop.
- * i.e. only when it has nothing else to do.
- *
- * @param[in] ch	the channel to signal we're no longer listening on.
- * @return
- *	- <0 on error
- *	- 0 on success
- */
-int fr_channel_responder_sleeping(fr_channel_t *ch)
-{
-	fr_channel_end_t *responder;
-	fr_channel_control_t cc;
-
-	responder = &(ch->end[TO_REQUESTOR]);
-
-	/*
-	 *	We don't have any outstanding requests to process for
-	 *	this channel, don't signal the network thread that
-	 *	we're sleeping.  It already knows.
-	 */
-	if (responder->stats.outstanding == 0) return 0;
-
-	responder->stats.signals++;
-
-	cc.signal = FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING;
-	cc.ack = responder->ack;
-	cc.ch = ch;
-
-	MPRINT("\tRESPONDER SLEEPING num_outstanding %"PRIu64", packets in %"PRIu64", packets out %"PRIu64"\n", responder->stats.outstanding,
-	       ch->end[TO_RESPONDER].stats.packets, responder->stats.packets);
-	return fr_control_message_send(responder->control, responder->rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
-}
-
-
 /** Service a control-plane message
  *
  * @param[in] when		The current time.
@@ -689,9 +623,7 @@ int fr_channel_responder_sleeping(fr_channel_t *ch)
 fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void **uctx_out, void const *data, size_t data_size)
 {
 	int rcode;
-#if ENABLE_SKIPS
 	uint64_t ack;
-#endif
 	fr_channel_control_t cc;
 	fr_channel_signal_t cs;
 	fr_channel_event_t ce = FR_CHANNEL_ERROR;
@@ -702,9 +634,7 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	memcpy(&cc, data, data_size);
 
 	cs = cc.signal;
-#if ENABLE_SKIPS
 	ack = cc.ack;
-#endif
 	*p_channel = ch = cc.ch;
 	if (uctx_out) *uctx_out = cc.uctx;
 
@@ -723,20 +653,11 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 		return (fr_channel_event_t) cs;
 
 	/*
-	 *	Only sent by the responder.  Both of these
-	 *	situations are largely the same, except for
-	 *	return codes.
+	 *	Only sent by the responder.
 	 */
 	case FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER:
 		MPRINT("channel got data_done_responder\n");
 		ce = FR_CHANNEL_DATA_READY_REQUESTOR;
-		ch->end[TO_RESPONDER].must_signal = true;
-		break;
-
-	case FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING:
-		MPRINT("channel got responder_sleeping\n");
-		ce = FR_CHANNEL_NOOP;
-		ch->end[TO_RESPONDER].must_signal = true;
 		break;
 	}
 
@@ -761,29 +682,27 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 */
 	if (unlikely(!atomic_load_explicit(&requestor->active, memory_order_relaxed))) return ce;
 
-#if ENABLE_SKIPS
-	if (!requestor->must_signal && (ack == requestor->sequence)) {
+	/*
+	 *	Their ack covers everything we have sent.  Anything
+	 *	sent later signals for itself.
+	 */
+	fr_assert(ack <= requestor->sequence);
+	if (ack == requestor->sequence) {
 		MPRINT("REQUESTOR SKIPS signal AFTER CE %d num_outstanding %"PRIu64"\n", cs, requestor->stats.outstanding);
-		MPRINT("REQUESTOR has ack %"PRIu64", my seq %"PRIu64" my_view %"PRIu64"\n", ack, requestor->sequence, requestor->their_view_of_my_sequence);
 		return ce;
 	}
 
 	/*
-	 *	The responder is sleeping or done.  There are more
-	 *	packets available, so we signal it to wake up again.
+	 *	They have not seen our latest.  Each of those sends
+	 *	already signalled, or was pushed while the responder was
+	 *	awake and so will be found by its final drain.  Signal
+	 *	again only if it has since blocked: cheap insurance
+	 *	against a dropped wakeup, free when it is running.
 	 */
-	fr_assert(ack <= requestor->sequence);
-#endif
+	if (!fr_control_is_sleeping(requestor->control)) return ce;
 
-	/*
-	 *	We're signaling it again...
-	 */
 	requestor->stats.resignals++;
 
-	/*
-	 *	The responder hasn't seen our last few packets.  Signal
-	 *	that there is data ready.
-	 */
 	MPRINT("REQUESTOR SIGNALS AFTER CE %d\n", cs);
 	rcode = fr_channel_data_ready(ch, when, requestor, FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER);
 	if (rcode < 0) return FR_CHANNEL_ERROR;

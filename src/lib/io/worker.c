@@ -126,8 +126,6 @@ struct fr_worker_s {
 
 	fr_time_delta_t		predicted;	//!< How long we predict a request will take to execute.
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
-
-	bool			was_sleeping;	//!< used to suppress multiple sleep signals in a row
 	bool			exiting;	//!< are we exiting?
 
 	fr_worker_channel_t	*channel;	//!< list of channels
@@ -261,20 +259,13 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 {
 	int			i;
 	unsigned int		num;
-	bool			ok, was_sleeping;
+	bool			ok;
 	fr_channel_t		*ch;
 	fr_message_set_t	*ms;
 	fr_channel_event_t	ce;
 	fr_worker_t		*worker = uctx;
 	void			*ch_uctx;
 
-	was_sleeping = worker->was_sleeping;
-	worker->was_sleeping = false;
-
-	/*
-	 *	We were woken up by a signal to do something.  We're
-	 *	not sleeping.
-	 */
 	ce = fr_channel_service_message(now, &ch, &ch_uctx, data, data_size);
 	DEBUG3("Channel %s",
 	       fr_table_str_by_value(channel_signals, ce, "<INVALID>"));
@@ -295,10 +286,7 @@ static void worker_channel_callback(void const *data, size_t data_size, fr_time_
 	case FR_CHANNEL_DATA_READY_RESPONDER:
 		fr_assert(ch != NULL);
 
-		if (!fr_channel_recv_request(ch)) {
-			worker->was_sleeping = was_sleeping;
-
-		} else while (fr_channel_recv_request(ch));
+		while (fr_channel_recv_request(ch));
 		break;
 
 	case FR_CHANNEL_OPEN:
@@ -1547,6 +1535,42 @@ nomem:
 	return worker;
 }
 
+/** Announce we are about to block, then drain every channel one last time
+ *
+ * See fr_control_sleeping() for the ordering this relies on.
+ *
+ * @return
+ *	- true if a channel had messages, so the caller must not block.
+ *	- false if every channel was empty.
+ */
+static inline bool worker_sleeping(fr_worker_t *worker)
+{
+	int i;
+	bool received = false;
+
+	fr_control_sleeping(worker->control);
+
+	for (i = 0; i < worker->config.max_channels; i++) {
+		if (!worker->channel[i].ch) continue;
+
+		/*
+		 *	Nothing further arrives on a closed channel.
+		 */
+		if (!fr_channel_active(worker->channel[i].ch)) continue;
+
+		while (fr_channel_recv_request(worker->channel[i].ch)) received = true;
+	}
+
+	/*
+	 *	A requestor may have pushed before it could see us
+	 *	sleeping, and skipped the signal.  We found that work,
+	 *	so we are not going to block after all.
+	 */
+	if (received) fr_control_awake(worker->control);
+
+	return received;
+}
+
 /** Acknowledge channel close after requests are completed
  *
  * When the channel close is acknowledged, the network frees the channel
@@ -1581,7 +1605,7 @@ void fr_worker(fr_worker_t *worker)
 	WORKER_VERIFY;
 
 	while (true) {
-		bool wait_for_event;
+		bool wait_for_event, announced = false;
 		int num_events;
 
 		WORKER_VERIFY;
@@ -1596,6 +1620,14 @@ void fr_worker(fr_worker_t *worker)
 
 			if (unlikely(worker->exiting && (worker_num_requests(worker) == 0))) break;
 
+			/*
+			 *	Announce that we are about to block, so the
+			 *	requestors know to signal us.  If the final
+			 *	drain turned up work, don't block.
+			 */
+			announced = true;
+			if (worker_sleeping(worker)) wait_for_event = false;
+
 			DEBUG4("Ready to process requests");
 		}
 
@@ -1605,6 +1637,12 @@ void fr_worker(fr_worker_t *worker)
 		 */
 		DEBUG4("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
 		num_events = fr_event_corral(worker->el, fr_time(), wait_for_event);
+
+		/*
+		 *	Whatever woke us, we are running again.
+		 */
+		if (announced) fr_control_awake(worker->control);
+
 		if (num_events < 0) {
 			if (fr_event_loop_exiting(worker->el)) {
 				DEBUG4("Event loop exiting");

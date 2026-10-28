@@ -30,6 +30,12 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 
+#ifdef HAVE_STDATOMIC_H
+#  include <stdatomic.h>
+#else
+#  include <freeradius-devel/util/stdatomic.h>
+#endif
+
 #include <fcntl.h>
 #include <sys/event.h>
 #include <poll.h>
@@ -83,6 +89,8 @@ struct fr_control_s {
 	bool			same_thread;		//!< are the two ends in the same thread
 
 	bool			opened;			//!< has the control path been opened.
+
+	atomic_bool		sleeping;		//!< the reader is blocked waiting for a signal.
 
 	uint32_t		num_callbacks;		//!< the size of the callback array
 
@@ -519,6 +527,51 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 	c->type[id].callback = NULL;
 
 	return 0;
+}
+
+/** Record that the reader of this control plane is about to block
+ *
+ * Call this before blocking, then check the work queues one last time.  A
+ * sender pushes work, then checks this flag.  The seq_cst fences stop either
+ * side reordering its store after its load, so one of them always sees the
+ * other.  Weaker orderings permit the lost wakeup this exists to prevent.
+ *
+ * A spurious signal is a wasted wakeup.  A skipped signal is a stall.  Err
+ * towards signalling.
+ *
+ * @param[in] c the control structure.
+ */
+void fr_control_sleeping(fr_control_t *c)
+{
+	atomic_store_explicit(&c->sleeping, true, memory_order_seq_cst);
+	atomic_thread_fence(memory_order_seq_cst);
+}
+
+/** Record that the reader of this control plane is running again
+ *
+ * Call this as soon as the reader stops blocking, whatever woke it.
+ *
+ * @param[in] c the control structure.
+ */
+void fr_control_awake(fr_control_t *c)
+{
+	atomic_store_explicit(&c->sleeping, false, memory_order_seq_cst);
+}
+
+/** Check whether the reader of this control plane is blocked
+ *
+ * Call this after pushing work, to decide whether a signal is needed.  The
+ * fence orders the push before the load.  See fr_control_sleeping().
+ *
+ * @param[in] c the control structure.
+ * @return
+ *	- true if the reader is blocked, and must be signalled.
+ *	- false if the reader is running, and will find the work itself.
+ */
+bool fr_control_is_sleeping(fr_control_t *c)
+{
+	atomic_thread_fence(memory_order_seq_cst);
+	return atomic_load_explicit(&c->sleeping, memory_order_seq_cst);
 }
 
 int fr_control_same_thread(fr_control_t *c)

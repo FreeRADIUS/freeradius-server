@@ -172,8 +172,6 @@ typedef void (*fr_channel_recv_callback_t)(fr_channel_t *ch, fr_channel_data_t *
 int	fr_channel_set_recv_reply(fr_channel_t *ch, fr_channel_recv_callback_t recv_reply, void *uctx) CC_HINT(nonnull(1,2));
 int	fr_channel_set_recv_request(fr_channel_t *ch, fr_channel_recv_callback_t recv_request, void *uctx) CC_HINT(nonnull(1,2));
 
-int	fr_channel_responder_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
-
 int	fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, struct kevent const *kev) CC_HINT(nonnull);
 fr_channel_event_t	fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void **uctx_out, void const *data, size_t data_size) CC_HINT(nonnull(2,4));
 

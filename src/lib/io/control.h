@@ -66,6 +66,10 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id) CC_HINT(nonnull);
 
 int fr_control_same_thread(fr_control_t *c) CC_HINT(nonnull);
 
+void fr_control_sleeping(fr_control_t *c) CC_HINT(nonnull);
+void fr_control_awake(fr_control_t *c) CC_HINT(nonnull);
+bool fr_control_is_sleeping(fr_control_t *c) CC_HINT(nonnull);
+
 void fr_control_wait(fr_control_t *c) CC_HINT(nonnull);
 
 #ifdef __cplusplus
