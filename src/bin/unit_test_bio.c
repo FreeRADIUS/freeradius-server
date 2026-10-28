@@ -241,6 +241,9 @@ typedef struct {
 							///< succeeds, see -R.
 	bool			network_fail;		//!< Fail the session with a network error once
 							///< the handshake succeeds, see -N.
+	bool			abort_pending;		//!< Free the connection once the handshake
+							///< succeeds, while `store session` is still
+							///< queued, see -Q.
 	unsigned int		connections;		//!< How many connections have been run so far.
 	fr_ipaddr_t		server_ipaddr;		//!< Server named by -s.
 	uint16_t		server_port;		//!< Port from -s, or from the configuration.
@@ -627,6 +630,24 @@ static void _tls_runnable(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 				 */
 				utt->conn->failed = utt->network_fail ? TLS_CONNECTION_FAIL_SYSCALL :
 									TLS_CONNECTION_FAIL_APPLICATION;
+			}
+
+			/*
+			 *	Free the connection while `store session` is
+			 *	still queued.  The handshake has finished, so
+			 *	OpenSSL has asked for the session to be cached
+			 *	and the connection is about to run that work,
+			 *	but it has not run yet.  Closing now frees the
+			 *	session with the operation still pending, which
+			 *	is the path session.c used to assert on and now
+			 *	discards.  This is deterministic: it does not
+			 *	depend on when the peer closes.
+			 */
+			if (utt->abort_pending && (utt->connections == utt->count) &&
+			    fr_tls_session_is_init_finished(utt->conn->tls_session)) {
+				INFO("Aborting the connection with cache operations still queued");
+				tls_done(utt);
+				return;
 			}
 		}
 
@@ -1368,6 +1389,7 @@ int main(int argc, char *argv[])
 	bool			nonblock = false;
 	bool			reject = false;
 	bool			network_fail = false;
+	bool			abort_pending = false;
 	bool			app_data = false;
 	bool			delay_tickets = false;
 	bool			hold = false;
@@ -1438,7 +1460,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hHIlL:Mn:NPr:Rs:TxX")) != -1) {
+	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hHIlL:Mn:NPQr:Rs:TxX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
@@ -1454,6 +1476,10 @@ int main(int argc, char *argv[])
 
 			case 'R':
 				reject = true;
+				break;
+
+			case 'Q':
+				abort_pending = true;
 				break;
 
 			case 'c':
@@ -1642,6 +1668,7 @@ int main(int argc, char *argv[])
 	utt->hold = hold;
 	utt->reject = reject;
 	utt->network_fail = network_fail;
+	utt->abort_pending = abort_pending;
 
 
 	/*
@@ -2002,6 +2029,9 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "                     rather than stored.  With -c 2 the first connection fills the\n");
 	fprintf(output, "                     cache and the second resumes from it before being rejected, so\n");
 	fprintf(output, "                     the clear then has a loaded session to remove.\n");
+	fprintf(output, "  -Q                 Free the connection on the last connection once the handshake\n");
+	fprintf(output, "                     has succeeded, while `store session` is still queued, to\n");
+	fprintf(output, "                     exercise the path that discards queued cache operations.\n");
 	fprintf(output, "  -N                 Fail the session with a network error on the last connection,\n");
 	fprintf(output, "                     once the handshake succeeds, to simulate the peer closing the\n");
 	fprintf(output, "                     connection.  With -c 2 the second connection loads a session\n");
