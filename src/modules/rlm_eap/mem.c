@@ -48,17 +48,9 @@ EAP_DS *eap_ds_alloc(eap_handler_t *handler)
 {
 	EAP_DS	*eap_ds;
 
-	eap_ds = talloc_zero(handler, EAP_DS);
-	eap_ds->response = talloc_zero(eap_ds, eap_packet_t);
-	if (!eap_ds->response) {
-		eap_ds_free(&eap_ds);
-		return NULL;
-	}
-	eap_ds->request = talloc_zero(eap_ds, eap_packet_t);
-	if (!eap_ds->response) {
-		eap_ds_free(&eap_ds);
-		return NULL;
-	}
+	MEM(eap_ds = talloc_zero(handler, EAP_DS));
+	MEM(eap_ds->response = talloc_zero(eap_ds, eap_packet_t));
+	MEM(eap_ds->request = talloc_zero(eap_ds, eap_packet_t));
 
 	return eap_ds;
 }
