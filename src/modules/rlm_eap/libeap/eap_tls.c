@@ -459,7 +459,8 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	else.
 	 */
 	eaptls_packet = (eaptls_packet_t *)eap_ds->response->type.data;
-	if (prev_eap_ds && prev_eap_ds->response && (prev_eap_ds->response->type.num == prev_eap_ds->request->type.num)) {
+	if (prev_eap_ds && prev_eap_ds->response && prev_eap_ds->request &&
+	    (prev_eap_ds->response->type.num == prev_eap_ds->request->type.num)) {
 		eaptls_prev = (eaptls_packet_t *)prev_eap_ds->response->type.data;
 	}
 
