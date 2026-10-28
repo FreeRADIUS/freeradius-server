@@ -1120,10 +1120,6 @@ eap {
 		#  The inner tunneled request can be sent through a virtual server
 		#  which verifies the inner credentials.
 		#
-		#  If this entry is commented out, the inner tunneled request will
-		#  be sent through the virtual server which processed the outer
-		#  request. This configuration is NOT RECOMMENDED.
-		#
 		virtual_server = "inner-tunnel"
 
 		#
@@ -1228,10 +1224,6 @@ eap {
 		#
 		#  The inner tunneled request can be sent through a virtual server
 		#  which verifies the inner credentials.
-		#
-		#  If this entry is commented out, the inner tunneled request will
-		#  be sent through the virtual server which processed the outer
-		#  request. This configuration is NOT RECOMMENDED.
 		#
 		virtual_server = "inner-tunnel"
 
