@@ -35,10 +35,7 @@ typedef struct {
 } rlm_eap_ttls_thread_t;
 
 typedef struct {
-	/*
-	 *	TLS configuration
-	 */
-	fr_tls_conf_t		*tls_conf;
+	fr_tls_conf_t		*tls_conf;		//!< TLS configuration
 
 	/*
 	 *	RFC 5281 (TTLS) says that the length field MUST NOT be
@@ -51,15 +48,9 @@ typedef struct {
 	 */
 	bool			include_length;
 
-	/*
-	 *	Virtual server for inner tunnel session.
-	 */
-	virtual_server_t	*virtual_server;
+	virtual_server_t	*virtual_server;	//!< Virtual server for inner tunnel session.
 
-	/*
-	 * 	Do we do require a client cert?
-	 */
-	bool			req_client_cert;
+	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_ttls_t;
 
 typedef struct {
