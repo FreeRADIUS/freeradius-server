@@ -1,3 +1,3 @@
 build/tests/dict/protocol-format.error.txt[3]: Invalid type size '256' for PROTOCOL, expected 1, 2, or 4
-Failed parsing dictionary at src/tests/dict/protocol-format.error[6]
+Failed parsing dictionary at src/tests/dict/protocol-format.error[4]
 unit_test_attribute failed in an input file - 
