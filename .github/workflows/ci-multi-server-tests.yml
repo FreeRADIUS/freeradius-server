@@ -110,6 +110,9 @@ jobs:
       volumes:
         - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
         - ${{ github.workspace }}:/workspace
+        #  TEMPORARY, gperftools profiling test: the runner's kernel
+        #  config, for the `Runner kernel` step.
+        - /boot:/host-boot:ro
 
     defaults:
       run:
@@ -210,6 +213,34 @@ jobs:
           done
 
       #
+      #  TEMPORARY, gperftools profiling test: print the runner kernel's
+      #  timer settings, which decide how per-thread CPU timers fire, and
+      #  record the CPU counters so the step after the tests can report
+      #  steal time.  The job container shares the runner's kernel, so
+      #  `uname`, `/proc` and `/sys` describe the runner.
+      #
+      - name: Runner kernel
+        if: ${{ matrix.mode == 'profiling' }}
+        run: |
+          uname -a
+          echo "nproc: $(nproc), CLK_TCK: $(getconf CLK_TCK)"
+          grep -m1 'model name' /proc/cpuinfo || true
+          keys='CONFIG_HZ|CONFIG_NO_HZ|CONFIG_POSIX_CPU_TIMERS_TASK_WORK|CONFIG_PREEMPT|CONFIG_HIGH_RES_TIMERS'
+          cfg="/host-boot/config-$(uname -r)"
+          if [ -r "$cfg" ]; then
+            grep -E "$keys" "$cfg"
+          elif [ -r /proc/config.gz ]; then
+            zcat /proc/config.gz | grep -E "$keys"
+          else
+            echo "No kernel config: neither $cfg nor /proc/config.gz"
+            ls -la /host-boot || true
+          fi
+          echo "nohz_full: $(cat /sys/devices/system/cpu/nohz_full 2>/dev/null)"
+          echo "clocksource: $(cat /sys/devices/system/clocksource/clocksource0/current_clocksource 2>/dev/null)"
+          echo "cmdline: $(cat /proc/cmdline)"
+          echo "STAT_START=$(grep '^cpu ' /proc/stat)" >> "$GITHUB_ENV"
+
+      #
       #  `schedule` runs the full test set, and a `push` runs the CI
       #  subset.  `github.event_name` is the caller's event, so the
       #  pipeline's nightly run selects the full set here without an
@@ -233,6 +264,22 @@ jobs:
               make -j$(nproc) test.multi-server.profiling.ci
               ;;
           esac
+
+      #
+      #  TEMPORARY, gperftools profiling test: CPU time the hypervisor
+      #  took from the runner while the tests ran, out of all CPU time
+      #  across all CPUs.  /proc/stat fields 2-9 are user to steal.
+      #
+      - name: Runner steal time
+        if: ${{ matrix.mode == 'profiling' && always() && env.STAT_START != '' }}
+        run: |
+          grep '^cpu ' /proc/stat | awk -v a="$STAT_START" -v hz="$(getconf CLK_TCK)" '
+            BEGIN { split(a, s, " ") }
+            {
+              for (i = 2; i <= 9; i++) t += $i - s[i]
+              st = $9 - s[9]
+              printf "steal during tests: %.1f s of %.1f s CPU (%.2f%%)\n", st / hz, t / hz, t ? 100 * st / t : 0
+            }'
 
       #  The collect step runs before both uploads below.  The step's
       #  `move: true` option moves a core out of `prof-results/`, so a core
