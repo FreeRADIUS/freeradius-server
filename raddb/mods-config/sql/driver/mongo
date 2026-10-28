@@ -1,0 +1,46 @@
+#
+#	Configuration for Mongo.
+#
+#	Note that the Mongo driver is experimental.  The FreeRADIUS developers
+#	are unable to help with the syntax of the Mongo queries.  Please see
+#	the Mongo documentation for that syntax.
+#
+#	The Mongo driver supports only the following methods:
+#
+#		aggregate
+#		findAndModify
+#		findOne
+#		insert
+#
+#	For examples, see the query files:
+#
+#		raddb/mods-config/sql/main/mongo/queries.conf
+#		raddb/mods-config/sql/main/mongo/schema-sample.js
+#
+#	In order to use findAndModify with an aggretation pipleline, make
+#	sure that you are running MongoDB version 5.0 or greater. FreeRADIUS
+#	assumes that the paramaters passed to the methods are supported by the
+#	version of MongoDB which it is connected to.
+#
+mongo {
+	#
+	#  The TLS parameters here map directly to the Mongo TLS configuration
+	#
+
+#	tls {
+#		ca_file = "/etc/ssl/certs/my_ca.crt"
+#		ca_path = "/etc/ssl/certs/"
+#		certificate_file = "/etc/ssl/certs/private/client.crt"
+#		private_key_file = "/etc/ssl/certs/private/client.key"
+#		cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
+#	}
+#
+	#
+	# If yes, (or auto and libmongo-c reports warnings are
+	# available), will retrieve and log additional warnings from
+	# the server if an error has occured.
+	#
+	# Defaults to 'auto'
+	#
+	warnings = auto
+}
