@@ -38,6 +38,7 @@ typedef struct {
 							//!< tunneled session in the tunneled request.
 
 	virtual_server_t	*virtual_server;	//!< Virtual server for inner tunnel session.
+	virtual_server_t	*resume_virtual_server;	//!< Virtual server to send resumed sessions through.
 
 	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_peap_t;
@@ -81,6 +82,9 @@ static conf_parser_t submodule_config[] = {
 	{ FR_CONF_V3_DEPRECATED("use_tunneled_reply", rlm_eap_peap_t, NULL), .dflt = "no" },
 
 	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_peap_t, virtual_server),
+				    .func = virtual_server_cf_parse,
+				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "radius"} },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("resume_virtual_server", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, rlm_eap_peap_t, resume_virtual_server),
 				    .func = virtual_server_cf_parse,
 				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "radius"} },
 	{ FR_CONF_OFFSET("require_client_cert", rlm_eap_peap_t, req_client_cert), .dflt = "no" },
@@ -453,6 +457,37 @@ static char const *peap_state(peap_tunnel_t *t)
 	return "?";
 }
 
+static unlang_action_t process_rcode(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
+
+static unlang_action_t process_resume_reply(unlang_result_t *p_result, request_t *request, void *uctx)
+{
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+	peap_tunnel_t		*t = tls_session->opaque;
+#ifndef NDEBUG
+	request_t		*parent = request->parent;
+#endif
+
+	fr_assert(eap_session->request = parent->parent);
+
+	p_result->priority = MOD_PRIORITY_MAX;
+
+	switch (request->reply->code) {
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+		t->session_resumption_state = PEAP_RESUMPTION_YES;
+		/* we're good, send success TLV */
+		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
+		if (eap_peap_success(request, eap_session, tls_session) < 0) {
+			RETURN_UNLANG_FAIL;
+		}
+		RETURN_UNLANG_HANDLED;
+
+	default:
+		RETURN_UNLANG_REJECT;
+	}
+}
+
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
@@ -489,13 +524,38 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 
 		if (SSL_session_reused(tls_session->ssl)) {
 			RDEBUG2("Skipping Phase2 because of session resumption");
-			t->session_resumption_state = PEAP_RESUMPTION_YES;
-			/* we're good, send success TLV */
-			t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-			if (eap_peap_success(request, eap_session, tls_session) < 0) {
+
+			/*
+			 *	A simplified version of the code used to process tunnelled TTLS data.
+			 *
+			 *	In this case, the request is populated with pairs restored from
+			 *	the cached session-state.
+			 */
+			(void) unlang_module_yield(request, process_rcode, NULL, FR_SIGNAL_NONE, eap_session);
+
+			MEM(child = unlang_subrequest_alloc(request, request->proto_dict));
+
+			if (unlikely(fr_pair_list_copy(child->request_ctx, &child->request_pairs,
+						       &request->session_state_pairs) < 0)) {
+			error:
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
+
+			RDEBUG2("Resumed session-state:");
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, &child->request_pairs, NULL);
+
+			if (unlang_subrequest_child_push(&eap_session->submodule_result, child, child,
+							 false, UNLANG_SUB_FRAME) < 0) goto error;
+
+			if (unlang_function_push_with_result(NULL, child, NULL, process_resume_reply, NULL,
+							     FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
+							     eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto error;
+
+			if (unlikely(eap_virtual_server(child, eap_session,
+							inst->resume_virtual_server) == UNLANG_ACTION_FAIL)) goto error;
+
+			return UNLANG_ACTION_PUSHED_CHILD;
 
 		} else {
 			/* send an identity request */
@@ -1006,6 +1066,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_assert(inst->virtual_server);
 
 	eap_tls_conf_check(conf, inst->tls_conf, true);
+
+	if (!inst->resume_virtual_server) inst->resume_virtual_server = inst->virtual_server;
 
 	return 0;
 }
