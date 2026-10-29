@@ -1981,9 +1981,13 @@ void fr_network(fr_network_t *nr)
 		if (num_events < 0) break;
 
 		/*
-		 *	Service outstanding events.
+		 *	Service outstanding events.  The post event callback
+		 *	writes the replies, so it has to run whenever there
+		 *	are replies to write, which the final drain before
+		 *	blocking may have found without the kernel reporting
+		 *	an event.
 		 */
-		if (num_events > 0) {
+		if ((num_events > 0) || !wait_for_event) {
 			DEBUG4("Servicing event(s)");
 			fr_event_service(nr->el);
 		}
