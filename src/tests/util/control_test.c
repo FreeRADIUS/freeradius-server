@@ -142,7 +142,11 @@ static void recv_socket_callback(int sock, UNUSED fr_time_t now, void *uctx)
 	}
 	fr_assert(id < num_workers);
 	slen = write(sock, &id, sizeof(id));
-	fr_assert(slen == sizeof(id));
+	if (slen != sizeof(id)) {
+		fprintf(stderr, "Write of worker id back through socket %d returned %zd: %s\n", sock, slen,
+			(slen < 0) ? fr_syserror(errno) : "short write");
+		fr_exit_now(EXIT_FAILURE);
+	}
 	close(sock);
 
 	MPRINT1("Master got socket, read worker id %zu through it\n", id);
@@ -350,7 +354,11 @@ retry:
 			fr_exit_now(EXIT_FAILURE);
 		}
 		slen = write(sv[1], &wa->id, sizeof(wa->id));
-		fr_assert(slen == sizeof(wa->id));
+		if (slen != sizeof(wa->id)) {
+			fprintf(stderr, "Worker %zu failed writing its id into the socketpair: %s\n", wa->id,
+				(slen < 0) ? fr_syserror(errno) : "short write");
+			fr_exit_now(EXIT_FAILURE);
+		}
 
 retry_socket:
 		if (fr_control_socket_send(control[aq_num], FR_CONTROL_EVENTSET_NETWORK, CONTROL_TEST_SOCKET,
@@ -366,8 +374,11 @@ retry_socket:
 		MPRINT1("\tWorker %zu sent socket\n", wa->id);
 
 		slen = read(sv[1], &id, sizeof(id));
-		fr_assert(slen == sizeof(id));
-		fr_assert(id == wa->id);
+		if ((slen != sizeof(id)) || (id != wa->id)) {
+			fprintf(stderr, "Worker %zu did not get its id back from the master: returned %zd, id %zu\n",
+				wa->id, slen, id);
+			fr_exit_now(EXIT_FAILURE);
+		}
 		close(sv[0]);
 		close(sv[1]);
 	}
