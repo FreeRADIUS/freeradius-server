@@ -596,7 +596,7 @@ int fr_channel_null_reply(fr_channel_t *ch)
 
 /** Unpack the payload of a channel control message
  */
-static inline void channel_message_unpack(fr_channel_control_t *cc, void const *data, size_t data_size)
+static inline void channel_message_unpack(fr_channel_control_t *cc, void const *data, NDEBUG_UNUSED size_t data_size)
 {
 	fr_assert(data_size == sizeof(*cc));
 	memcpy(cc, data, sizeof(*cc));
