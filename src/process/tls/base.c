@@ -319,8 +319,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 
 	UPDATE_STATE(packet);
 
-	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
-
 	return state->recv(p_result, mctx, request);
 }
 
