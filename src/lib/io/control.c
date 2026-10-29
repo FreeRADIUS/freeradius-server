@@ -39,6 +39,8 @@ RCSID("$Id$")
 #endif
 
 #include <fcntl.h>
+#include <pthread.h>
+#include <stddef.h>
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <poll.h>
@@ -64,18 +66,141 @@ typedef struct {
 
 static_assert(sizeof(fr_control_header_t) == 8, "control message data must stay 8 byte aligned");
 
+/**
+ *  Ancillary data for the one socket a datagram may carry
+ *
+ *  Used on both sides.  The cmsghdr member only keeps buf aligned as
+ *  the CMSG macros require.
+ */
+typedef union {
+	struct cmsghdr			align;		//!< never read.
+	uint8_t				buf[CMSG_SPACE(sizeof(int))];	//!< one cmsghdr and one int.
+} control_socket_cmsg_t;
+
+/*
+ *	Datagrams one recvmmsg() takes off the wakeup socket.  Most are
+ *	wakeups.  The default buffer holds about 32 on macOS and about
+ *	280 on Linux before senders see it as full, so one batch usually
+ *	empties it on macOS, and takes a few calls on Linux.
+ */
+#define CONTROL_SOCKET_MSGS_PER_READ	(64)
+
+/*
+ *	Datagrams carrying a socket the wakeup socket should hold.  Linux
+ *	doubles a buffer request and clamps it at twice net.core.wmem_max
+ *	and rmem_max, so with their default of 212992 this is about the
+ *	most that fits there.
+ */
+#define CONTROL_SOCKET_DATAGRAMS	(512)
+
+/*
+ *	What one datagram carrying a socket takes up in a socket buffer,
+ *	which is the kernel's own bookkeeping and not the bytes sent.
+ *	Measured once, the first time a control is opened.  The initial
+ *	value is what Linux was measured at, and is used if the
+ *	measurement fails.
+ */
+static size_t		control_socket_dgram_size_actual = 768;
+static pthread_once_t	control_socket_dgram_size_once = PTHREAD_ONCE_INIT;
+
+/** Measure what one datagram carrying a socket takes up in a socket buffer
+ *
+ */
+static void control_socket_dgram_size_measure(void)
+{
+	int			sv[2];
+	int			bufsize = 65536;
+	int			sndbuf, rcvbuf;
+	socklen_t		len;
+	fr_control_header_t	hdr = {};
+	control_socket_cmsg_t	cmsg;
+	struct iovec		iov;
+	struct msghdr		mh;
+	struct cmsghdr		*ch;
+	unsigned int		num = 0;
+
+	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) < 0) return;
+
+	(void) setsockopt(sv[0], SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+	(void) setsockopt(sv[1], SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
+	(void) fr_nonblock(sv[0]);
+	(void) fr_nonblock(sv[1]);
+
+	iov.iov_base = &hdr;
+	iov.iov_len = sizeof(hdr);
+
+	memset(&cmsg, 0, sizeof(cmsg));
+	memset(&mh, 0, sizeof(mh));
+	mh.msg_iov = &iov;
+	mh.msg_iovlen = 1;
+	mh.msg_control = &cmsg;
+	mh.msg_controllen = sizeof(cmsg);
+
+	ch = CMSG_FIRSTHDR(&mh);
+	ch->cmsg_level = SOL_SOCKET;
+	ch->cmsg_type = SCM_RIGHTS;
+	ch->cmsg_len = CMSG_LEN(sizeof(int));
+	memcpy(CMSG_DATA(ch), &sv[1], sizeof(int));
+
+	while (sendmsg(sv[1], &mh, 0) == sizeof(hdr)) num++;
+
+	/*
+	 *	Whichever side the kernel counts against, both were asked
+	 *	for the same size, so the smaller of what it granted is the
+	 *	bound.
+	 */
+	len = sizeof(sndbuf);
+	if (getsockopt(sv[1], SOL_SOCKET, SO_SNDBUF, &sndbuf, &len) < 0) sndbuf = bufsize;
+	len = sizeof(rcvbuf);
+	if (getsockopt(sv[0], SOL_SOCKET, SO_RCVBUF, &rcvbuf, &len) < 0) rcvbuf = bufsize;
+	if (num > 0) control_socket_dgram_size_actual = ((sndbuf < rcvbuf) ? sndbuf : rcvbuf) / num;
+
+	while (num-- > 0) {
+		int sock = -1;
+
+		mh.msg_controllen = sizeof(cmsg);
+		if (recvmsg(sv[0], &mh, 0) < 0) break;
+		ch = CMSG_FIRSTHDR(&mh);
+		if (ch && (ch->cmsg_level == SOL_SOCKET) && (ch->cmsg_type == SCM_RIGHTS)) {
+			memcpy(&sock, CMSG_DATA(ch), sizeof(sock));
+			close(sock);
+		}
+	}
+
+	close(sv[0]);
+	close(sv[1]);
+}
+
+/*
+ *	Received sockets must be close-on-exec.  Linux can set that as
+ *	they are received, elsewhere it is set just after.
+ */
+#ifdef MSG_CMSG_CLOEXEC
+#  define CONTROL_RECV_FLAGS		MSG_CMSG_CLOEXEC
+#else
+#  define CONTROL_RECV_FLAGS		0
+#endif
 
 typedef struct {
 	fr_control_callback_t		callback;	//!< the function to call
 	void				*uctx;		//!< context for the callback
 } fr_control_ctx_t;
 
+typedef struct {
+	fr_control_socket_callback_t	callback;	//!< the function to call
+	void				*uctx;		//!< context for the callback
+} fr_control_socket_ctx_t;
+
 /**
  *  The dispatch table for one event set
  */
 typedef struct {
-	uint16_t			num;		//!< the size of the callback array
+	uint16_t			events_num;	//!< the size of the callback array
 	fr_control_ctx_t		*events;		//!< callbacks, indexed by event
+
+	uint16_t			socket_events_num;	//!< the size of the socket callback array
+	fr_control_socket_ctx_t		*socket_events;	//!< callbacks for messages carrying a socket,
+							///< indexed by event
 } fr_control_eventset_table_t;
 
 
@@ -89,6 +214,13 @@ struct fr_control_s {
 	uint16_t		max_size;		//!< the largest payload a message may carry.
 
 	fr_atomic_queue_t	*aq;			//!< the messages, header and data by value.
+
+	struct {
+		struct mmsghdr		msgs[CONTROL_SOCKET_MSGS_PER_READ];	//!< one per datagram, for recvmmsg().
+		struct iovec		iov[CONTROL_SOCKET_MSGS_PER_READ];	//!< one per datagram.
+		fr_control_header_t	hdr[CONTROL_SOCKET_MSGS_PER_READ];	//!< where the datagrams land.
+		control_socket_cmsg_t	cmsg[CONTROL_SOCKET_MSGS_PER_READ];	//!< where their sockets land.
+	} socket;
 
 	int			fd[2];			//!< wakeup socketpair.  [0] is read by the event loop,
 							///< [1] is written by the senders.
@@ -118,7 +250,7 @@ static inline fr_control_ctx_t const *control_ctx_find(fr_control_t const *c, fr
 	if (es >= FR_CONTROL_EVENTSET_MAX) return NULL;
 
 	eventset = &c->eventsets[es];
-	if (ev >= eventset->num) return NULL;
+	if (ev >= eventset->events_num) return NULL;
 	if (!eventset->events[ev].callback) return NULL;
 
 	return &eventset->events[ev];
@@ -157,21 +289,73 @@ static inline unsigned int control_service(fr_control_t *c)
 	return num;
 }
 
-/** Drain the wakeup socket, then dispatch every queued message
+/** Dispatch one datagram taken off the wakeup socket
  *
- * Each byte on the socket announces that a message was queued while we
- * were asleep.  A read returns a single datagram no matter how large the
- * buffer is, so keep reading until there are none left.
+ * @param[in] c the control structure.
+ * @param[in] mmh the recvmmsg() slot the datagram landed in.
+ * @param[in] hdr the datagram, which should be a bare message header.
+ * @param[in] now when the batch was read.
+ */
+static void control_socket_dispatch(fr_control_t *c, struct mmsghdr *mmh, fr_control_header_t const *hdr,
+				    fr_time_t now)
+{
+	struct msghdr			*mh = &mmh->msg_hdr;
+	struct cmsghdr			*ch = CMSG_FIRSTHDR(mh);
+	fr_control_socket_ctx_t const	*cctx = NULL;
+	int				sock;
+
+	if (!ch || (ch->cmsg_level != SOL_SOCKET) || (ch->cmsg_type != SCM_RIGHTS) ||
+	    (ch->cmsg_len != CMSG_LEN(sizeof(int)))) {
+		fr_cond_assert_msg(!(mh->msg_flags & MSG_CTRUNC), "Control socket message truncated");
+		return;
+	}
+	memcpy(&sock, CMSG_DATA(ch), sizeof(sock));
+#ifndef MSG_CMSG_CLOEXEC
+	(void) fr_cloexec(sock);
+#endif
+
+	if (!fr_cond_assert_msg(!(mh->msg_flags & (MSG_TRUNC | MSG_CTRUNC)), "Control socket message truncated") ||
+	    !fr_cond_assert_msg(mmh->msg_len == sizeof(*hdr), "Malformed control message with socket")) {
+		close(sock);
+		return;
+	}
+
+	if ((hdr->es < FR_CONTROL_EVENTSET_MAX) && (hdr->event < c->eventsets[hdr->es].socket_events_num)) {
+		cctx = &c->eventsets[hdr->es].socket_events[hdr->event];
+	}
+	if (!fr_cond_assert_msg(cctx && cctx->callback, "No callback for socket event %u in event set %u",
+				hdr->event, hdr->es)) {
+		close(sock);
+		return;
+	}
+
+	cctx->callback(sock, now, cctx->uctx);
+}
+
+/** Take a batch of datagrams off the wakeup socket, then dispatch every queued message
+ *
+ * Each datagram is a wakeup, announcing that a message was queued while
+ * we were asleep, or a message carying file descriptors in its metdata.
  */
 static void control_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_control_t	*c = talloc_get_type_abort(uctx, fr_control_t);
-	uint8_t		buf[256];
-	ssize_t		slen;
+	int		num, i;
+
+	for (i = 0; i < CONTROL_SOCKET_MSGS_PER_READ; i++) {
+		c->socket.msgs[i].msg_hdr.msg_controllen = sizeof(c->socket.cmsg[i]);
+		c->socket.msgs[i].msg_hdr.msg_flags = 0;
+	}
 
 	do {
-		slen = read(fd, buf, sizeof(buf));
-	} while ((slen > 0) || ((slen < 0) && (errno == EINTR)));
+		num = recvmmsg(fd, c->socket.msgs, CONTROL_SOCKET_MSGS_PER_READ, CONTROL_RECV_FLAGS, NULL);
+	} while ((num < 0) && (errno == EINTR));
+
+	if (num > 0) {
+		fr_time_t now = fr_time();
+
+		for (i = 0; i < num; i++) control_socket_dispatch(c, &c->socket.msgs[i], &c->socket.hdr[i], now);
+	}
 
 	(void) control_service(c);
 }
@@ -228,19 +412,33 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, uint16_t s
  */
 int fr_control_open(fr_control_t *c)
 {
+	int	i;
+	int	bufsize;
+
+	(void) pthread_once(&control_socket_dgram_size_once, control_socket_dgram_size_measure);
+
 	/*
-	 *	A datagram socketpair for the wakeups.  Its default buffer
-	 *	is small, and that is wanted: once it is full the reader has
-	 *	wakeups it has not consumed, and further writes fail cheaply
-	 *	instead of queueing.  A socket can also carry descriptors as
-	 *	ancillary data, and the two ends can live in different
-	 *	processes.
+	 *	A datagram socketpair for the wakeups.  Once it is full the
+	 *	reader has wakeups it has not consumed, and further writes
+	 *	fail cheaply instead of queueing.  A socket can also carry
+	 *	descriptors as ancillary data, and the two ends can live in
+	 *	different processes.
 	 */
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, c->fd) < 0) {
 		fr_strerror_printf("Failed opening socketpair for control socket: %s", fr_syserror(errno));
 		return -1;
 	}
 	talloc_set_destructor(c, _control_free);
+
+	/*
+	 *	The default buffer holds a few dozen datagrams.  Wakeups only
+	 *	go to a sleeping reader, so they never need more, but a
+	 *	datagram carrying a socket is refused when the buffer is
+	 *	full, so make room for a reasonable number of those.
+	 */
+	bufsize = CONTROL_SOCKET_DATAGRAMS * control_socket_dgram_size_actual;
+	(void) setsockopt(c->fd[0], SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+	(void) setsockopt(c->fd[1], SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
 
 	/*
 	 *	We don't want reads from the socket to be blocking.
@@ -257,6 +455,19 @@ int fr_control_open(fr_control_t *c)
 	if (!c->aq) {
 		fr_strerror_const("Failed creating control message queue");
 		return -1;
+	}
+
+	/*
+	 *	Point each recvmmsg() slot at its own vector, datagram
+	 *	buffer, and ancillary buffer.  Everything else in a slot
+	 *	stays zero from talloc_zero().
+	 */
+	for (i = 0; i < CONTROL_SOCKET_MSGS_PER_READ; i++) {
+		c->socket.iov[i].iov_base = &c->socket.hdr[i];
+		c->socket.iov[i].iov_len = sizeof(c->socket.hdr[i]);
+		c->socket.msgs[i].msg_hdr.msg_iov = &c->socket.iov[i];
+		c->socket.msgs[i].msg_hdr.msg_iovlen = 1;
+		c->socket.msgs[i].msg_hdr.msg_control = &c->socket.cmsg[i];
 	}
 
 	if (fr_event_fd_insert(c, NULL, c->el, c->fd[0], control_read, NULL, NULL, c) < 0) {
@@ -336,7 +547,59 @@ int fr_control_message_send(fr_control_t *c, fr_control_eventset_t es, uint16_t 
 	return 0;
 }
 
+/** Send a control-plane message carrying a socket
+ *
+ * @param[in] c the control structure
+ * @param[in] es the event set of this message.
+ * @param[in] ev the event this message signals, within its event set.
+ * @param[in] sock the socket to send.
+ * @return
+ *	- <0 on error, including the wakeup socket being full.
+ *	- 0 on success
+ */
+int fr_control_socket_send(fr_control_t *c, fr_control_eventset_t es, uint16_t ev, int sock)
+{
+	fr_control_header_t	hdr = {
+		.es = es,
+		.event = ev
+	};
+	control_socket_cmsg_t	cmsg;
+	struct cmsghdr		*ch;
+	struct iovec		iov;
+	struct msghdr		mh;
+	ssize_t			slen;
 
+	(void) talloc_get_type_abort(c, fr_control_t);
+
+	if (!fr_cond_assert_msg(!c->same_thread, "Control messages with sockets need a socket")) return -1;
+
+	iov.iov_base = &hdr;
+	iov.iov_len = sizeof(hdr);
+
+	memset(&cmsg, 0, sizeof(cmsg));
+	memset(&mh, 0, sizeof(mh));
+	mh.msg_iov = &iov;
+	mh.msg_iovlen = 1;
+	mh.msg_control = &cmsg;
+	mh.msg_controllen = sizeof(cmsg);
+
+	ch = CMSG_FIRSTHDR(&mh);
+	ch->cmsg_level = SOL_SOCKET;
+	ch->cmsg_type = SCM_RIGHTS;
+	ch->cmsg_len = CMSG_LEN(sizeof(sock));
+	memcpy(CMSG_DATA(ch), &sock, sizeof(sock));
+
+	do {
+		slen = sendmsg(c->fd[1], &mh, 0);
+	} while ((slen < 0) && (errno == EINTR));
+
+	if (slen < 0) {
+		fr_strerror_printf("Failed sending control message with socket: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return 0;
+}
 
 /** Register a callback for a message
  *
@@ -372,14 +635,15 @@ int fr_control_callback_add(fr_control_t *c, fr_control_eventset_t es, uint16_t 
 	 *	re-allocate it with a larger one.  The array is a child
 	 *	of the control, so the control itself never moves.
 	 */
-	if (ev >= eventset->num) {
+	if (ev >= eventset->events_num) {
 		MEM(eventset->events = talloc_realloc(c, eventset->events, fr_control_ctx_t, ev + 1));
 
 		/*
 		 *	Zero the additional callback entries.
 		 */
-		memset(eventset->events + eventset->num, 0, (ev + 1 - eventset->num) * sizeof(*eventset->events));
-		eventset->num = ev + 1;
+		memset(eventset->events + eventset->events_num, 0,
+		       (ev + 1 - eventset->events_num) * sizeof(*eventset->events));
+		eventset->events_num = ev + 1;
 	}
 
 	/*
@@ -401,6 +665,71 @@ int fr_control_callback_add(fr_control_t *c, fr_control_eventset_t es, uint16_t 
 	return 0;
 }
 
+/** Register a callback for a message which carries a socket
+ *
+ *  Socket events are numbered separately from message events within an
+ *  event set, so the same number may be registered with both this and
+ *  fr_control_callback_add().  They are sent with fr_control_socket_send().
+ *
+ * @param[in] c the control structure
+ * @param[in] es the event set of the message.
+ * @param[in] ev the event, within its event set.
+ * @param[in] callback the callback function
+ * @param[in] uctx the context passed to the callback
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_control_socket_callback_add(fr_control_t *c, fr_control_eventset_t es, uint16_t ev,
+				   fr_control_socket_callback_t callback, void *uctx)
+{
+	fr_control_eventset_table_t	*eventset;
+
+	(void) talloc_get_type_abort(c, fr_control_t);
+
+	if (c->opened) {
+		fr_strerror_printf("Cannot add callbacks after the control is opened");
+		return -1;
+	}
+
+	if (es >= FR_CONTROL_EVENTSET_MAX) {
+		fr_strerror_printf("Unknown control event set %" PRIu16, es);
+		return -1;
+	}
+	eventset = &c->eventsets[es];
+
+	/*
+	 *	If there is not enough space in the array of callbacks
+	 *	re-allocate it with a larger one.  The array is a child
+	 *	of the control, so the control itself never moves.
+	 */
+	if (ev >= eventset->socket_events_num) {
+		MEM(eventset->socket_events = talloc_realloc(c, eventset->socket_events,
+							     fr_control_socket_ctx_t, ev + 1));
+		memset(eventset->socket_events + eventset->socket_events_num, 0,
+		       (ev + 1 - eventset->socket_events_num) * sizeof(*eventset->socket_events));
+		eventset->socket_events_num = ev + 1;
+	}
+
+	/*
+	 *	Re-registering the same thing is OK.
+	 */
+	if ((eventset->socket_events[ev].uctx == uctx) &&
+	    (eventset->socket_events[ev].callback == callback)) {
+		return 0;
+	}
+
+	if (eventset->socket_events[ev].callback != NULL) {
+		fr_strerror_const("Callback is already set");
+		return -1;
+	}
+
+	eventset->socket_events[ev].uctx = uctx;
+	eventset->socket_events[ev].callback = callback;
+
+	return 0;
+}
+
 /** Delete a callback for a message
  *
  * @param[in] c the control structure
@@ -416,7 +745,7 @@ int fr_control_callback_delete(fr_control_t *c, fr_control_eventset_t es, uint16
 
 	(void) talloc_get_type_abort(c, fr_control_t);
 
-	if ((es >= FR_CONTROL_EVENTSET_MAX) || (ev >= c->eventsets[es].num)) {
+	if ((es >= FR_CONTROL_EVENTSET_MAX) || (ev >= c->eventsets[es].events_num)) {
 		fr_strerror_printf("Failed deleting unknown event %" PRIu16 " in event set %" PRIu16, ev, es);
 		return -1;
 	}
@@ -424,6 +753,33 @@ int fr_control_callback_delete(fr_control_t *c, fr_control_eventset_t es, uint16
 
 	eventset->events[ev].uctx = NULL;
 	eventset->events[ev].callback = NULL;
+
+	return 0;
+}
+
+/** Delete a callback for a message which carries a socket
+ *
+ * @param[in] c the control structure
+ * @param[in] es the event set of the message.
+ * @param[in] ev the event, within its event set.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_control_socket_callback_delete(fr_control_t *c, fr_control_eventset_t es, uint16_t ev)
+{
+	fr_control_eventset_table_t	*eventset;
+
+	(void) talloc_get_type_abort(c, fr_control_t);
+
+	if ((es >= FR_CONTROL_EVENTSET_MAX) || (ev >= c->eventsets[es].socket_events_num)) {
+		fr_strerror_printf("Failed deleting unknown socket event %" PRIu16 " in event set %" PRIu16, ev, es);
+		return -1;
+	}
+	eventset = &c->eventsets[es];
+
+	eventset->socket_events[ev].uctx = NULL;
+	eventset->socket_events[ev].callback = NULL;
 
 	return 0;
 }

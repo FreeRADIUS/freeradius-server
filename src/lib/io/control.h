@@ -45,6 +45,13 @@ extern "C" {
 typedef struct fr_control_s fr_control_t;
 typedef	void (*fr_control_callback_t)(void const *data, size_t data_size, fr_time_t now, void *uctx);
 
+/** A callback for a message which carries a socket
+ *
+ *  The callback owns the socket and must close it.  The descriptor
+ *  number is a new one, not the sender's.
+ */
+typedef	void (*fr_control_socket_callback_t)(int sock, fr_time_t now, void *uctx);
+
 /** Who defines control plane events
  *
  *  Each event set has its own dispatch table on every control, and
@@ -74,10 +81,14 @@ int fr_control_open(fr_control_t *c);
 
 int fr_control_message_send(fr_control_t *c, fr_control_eventset_t es, uint16_t ev,
 			    void const *data, size_t data_size) CC_HINT(nonnull);
+int fr_control_socket_send(fr_control_t *c, fr_control_eventset_t es, uint16_t ev, int sock) CC_HINT(nonnull);
 
 int fr_control_callback_add(fr_control_t *c, fr_control_eventset_t es, uint16_t ev,
 			    fr_control_callback_t callback, void *uctx) CC_HINT(nonnull(1,4));
+int fr_control_socket_callback_add(fr_control_t *c, fr_control_eventset_t es, uint16_t ev,
+				   fr_control_socket_callback_t callback, void *uctx) CC_HINT(nonnull(1,4));
 int fr_control_callback_delete(fr_control_t *c, fr_control_eventset_t es, uint16_t ev) CC_HINT(nonnull);
+int fr_control_socket_callback_delete(fr_control_t *c, fr_control_eventset_t es, uint16_t ev) CC_HINT(nonnull);
 
 int fr_control_same_thread(fr_control_t *c) CC_HINT(nonnull);
 

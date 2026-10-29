@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/semaphore.h>
 
 #include <sys/event.h>
+#include <sys/socket.h>
 #include <pthread.h>
 #include <sched.h>
 
@@ -53,6 +54,12 @@ typedef enum control_test_event_t : uint16_t {
 	CONTROL_TEST_MESSAGE = 0
 } control_test_event_t;
 
+/** Events whose messages carry a socket, numbered separately from those above
+ */
+typedef enum control_test_socket_event_t : uint16_t {
+	CONTROL_TEST_SOCKET = 0			//!< one end of a socketpair, with the worker's id in it.
+} control_test_socket_event_t;
+
 typedef struct {
 	size_t	id;
 } worker_args_t;
@@ -71,7 +78,7 @@ static uint32_t		watchdog_secs = 30;	//!< fail if the master makes no progress f
 static pthread_mutex_t	wd_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t	wd_cond = PTHREAD_COND_INITIALIZER;
 static bool		finished = false;
-static _Atomic(size_t)	progress = 0;		//!< messages the master has received, for the watchdog.
+static _Atomic(size_t)	progress = 0;		//!< messages and sockets the master has received, for the watchdog.
 static _Atomic(size_t)	master_sleeps = 0;	//!< times the master blocked.
 static _Atomic(size_t)	master_rescued = 0;	//!< times announcing found messages, so it did not block.
 
@@ -99,6 +106,7 @@ typedef struct {
 
 typedef struct {
 	size_t			num_messages;
+	size_t			num_sockets;
 } master_ctx_t;
 
 static void recv_control_callback(void const *data, size_t data_size, UNUSED fr_time_t now, void *uctx)
@@ -112,7 +120,33 @@ static void recv_control_callback(void const *data, size_t data_size, UNUSED fr_
 	MPRINT2("Master got worker %zu message %zu, size %zu.\n", m->worker, m->counter, data_size);
 	if (m->counter == (max_messages - 1)) MPRINT1("Master seen all messages from worker %zu\n", m->worker);
 	master_ctx->num_messages++;
-	atomic_store_explicit(&progress, master_ctx->num_messages, memory_order_relaxed);
+	atomic_store_explicit(&progress, master_ctx->num_messages + master_ctx->num_sockets,
+			      memory_order_relaxed);
+}
+
+/** Receive a socket, read the sending worker's id through it, send it back, and close it
+ */
+static void recv_socket_callback(int sock, UNUSED fr_time_t now, void *uctx)
+{
+	master_ctx_t		*master_ctx = uctx;
+	size_t			id;
+	ssize_t			slen;
+
+	slen = read(sock, &id, sizeof(id));
+	if (slen != sizeof(id)) {
+		fprintf(stderr, "Read of worker id through socket %d returned %zd: %s\n", sock, slen,
+			(slen < 0) ? fr_syserror(errno) : "no data");
+		fr_exit_now(EXIT_FAILURE);
+	}
+	fr_assert(id < num_workers);
+	slen = write(sock, &id, sizeof(id));
+	fr_assert(slen == sizeof(id));
+	close(sock);
+
+	MPRINT1("Master got socket, read worker id %zu through it\n", id);
+	master_ctx->num_sockets++;
+	atomic_store_explicit(&progress, master_ctx->num_messages + master_ctx->num_sockets,
+			      memory_order_relaxed);
 }
 
 /** Busy wait for a random time up to max_usec
@@ -157,9 +191,9 @@ static void *watchdog_thread(UNUSED void *arg)
 
 		now = atomic_load_explicit(&progress, memory_order_relaxed);
 		if (now == last) {
-			fprintf(stderr, "STALL: master received %zu of %zu messages, then nothing for %u seconds, "
-				"slept %zu times, rescued %zu times\n",
-				now, max_messages * num_workers, watchdog_secs,
+			fprintf(stderr, "STALL: master received %zu of %zu messages and sockets, then nothing for "
+				"%u seconds, slept %zu times, rescued %zu times\n",
+				now, (max_messages + 1) * num_workers, watchdog_secs,
 				atomic_load_explicit(&master_sleeps, memory_order_relaxed),
 				atomic_load_explicit(&master_rescued, memory_order_relaxed));
 			fr_exit_now(EXIT_FAILURE);
@@ -190,13 +224,16 @@ static void *control_master(void *arg)
 	for (i = 0; i < num_aq; i++) {
 		fr_control_callback_add(control[i], FR_CONTROL_EVENTSET_NETWORK, CONTROL_TEST_MESSAGE,
 					recv_control_callback, master_ctx);
+		fr_control_socket_callback_add(control[i], FR_CONTROL_EVENTSET_NETWORK, CONTROL_TEST_SOCKET,
+					       recv_socket_callback, master_ctx);
 		fr_control_open(control[i]);
 	}
 
 	sem_post(master_sem);
 
 	start = fr_time();
-	while (master_ctx->num_messages < (max_messages * num_workers)) {
+	while ((master_ctx->num_messages < (max_messages * num_workers)) ||
+	       (master_ctx->num_sockets < num_workers)) {
 		int num_events;
 		bool wait = true;
 
@@ -228,6 +265,7 @@ static void *control_master(void *arg)
 	}
 	elapsed_usec = fr_time_delta_to_usec(fr_time_sub_time_time(fr_time(), start));
 	printf("messages          %zu from %zu workers\n", master_ctx->num_messages, num_workers);
+	printf("sockets           %zu\n", master_ctx->num_sockets);
 	printf("master slept      %zu times\n", atomic_load_explicit(&master_sleeps, memory_order_relaxed));
 	printf("rescued by drain  %zu times\n", atomic_load_explicit(&master_rescued, memory_order_relaxed));
 	printf("elapsed           %.3fs, %.0f messages/s\n", (double) elapsed_usec / 1e6,
@@ -284,6 +322,46 @@ retry:
 		}
 
 		MPRINT2("\tWorker %zu sent message %zu\n", wa->id, i);
+	}
+
+	/*
+	 *	Send the master one end of a socketpair with our id in it,
+	 *	and wait for the master to send the id back before closing
+	 *	either end.  On macOS, if we closed them while the end was
+	 *	still in flight, the id would sometimes be gone when it
+	 *	arrived.  The master gets its own descriptor for the end
+	 *	it was sent.
+	 */
+	{
+		int		sv[2];
+		size_t		id;
+		ssize_t		slen;
+
+		if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
+			fprintf(stderr, "Failed creating socketpair: %s\n", fr_syserror(errno));
+			fr_exit_now(EXIT_FAILURE);
+		}
+		slen = write(sv[1], &wa->id, sizeof(wa->id));
+		fr_assert(slen == sizeof(wa->id));
+
+retry_socket:
+		if (fr_control_socket_send(control[aq_num], FR_CONTROL_EVENTSET_NETWORK, CONTROL_TEST_SOCKET,
+					   sv[0]) < 0) {
+			char const *err;
+			MPRINT1("\tWorker %zu retrying socket message\n", wa->id);
+			while ((err = fr_strerror_pop())) {
+				MPRINT1("\t%s\n", err);
+			}
+			sched_yield();
+			goto retry_socket;
+		}
+		MPRINT1("\tWorker %zu sent socket\n", wa->id);
+
+		slen = read(sv[1], &id, sizeof(id));
+		fr_assert(slen == sizeof(id));
+		fr_assert(id == wa->id);
+		close(sv[0]);
+		close(sv[1]);
 	}
 
 	MPRINT1("\tWorker %zu exiting.\n", wa->id);
