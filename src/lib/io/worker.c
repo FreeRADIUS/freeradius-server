@@ -73,8 +73,6 @@ static _Atomic(uint64_t) request_number = 0;
 FR_SLAB_TYPES(request, request_t)
 FR_SLAB_FUNCS(request, request_t)
 
-static _Thread_local fr_ring_buffer_t *fr_worker_rb;
-
 typedef struct {
 	fr_worker_t		*worker;	//!< the worker that owns this channel slot,
 						///< so channel callbacks can reach back without
@@ -98,8 +96,6 @@ struct fr_worker_s {
 
 	fr_log_t const		*log;		//!< log destination
 	fr_log_lvl_t		lvl;		//!< log level
-
-	fr_atomic_queue_t	*aq_control;	//!< atomic queue for control messages sent to me
 
 	fr_control_t		*control;	//!< the control plane
 
@@ -153,37 +149,6 @@ static fr_cmp_ret_t worker_listener_cmp(void const *one, void const *two)
 	return CMP(a->listener, b->listener);
 }
 
-
-/*
- *	Explicitly cleanup the memory allocated to the ring buffer,
- *	just in case valgrind complains about it.
- */
-static int _fr_worker_rb_free(void *arg)
-{
-	return talloc_free(arg);
-}
-
-/** Initialise thread local storage
- *
- * @return fr_ring_buffer_t for messages
- */
-static inline fr_ring_buffer_t *fr_worker_rb_init(void)
-{
-	fr_ring_buffer_t *rb;
-
-	rb = fr_worker_rb;
-	if (rb) return rb;
-
-	rb = fr_ring_buffer_create(NULL, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
-	if (!rb) {
-		fr_perror("Failed allocating memory for worker ring buffer");
-		return NULL;
-	}
-
-	fr_atexit_thread_local(fr_worker_rb, _fr_worker_rb_free, rb);
-
-	return rb;
-}
 
 static inline bool is_worker_thread(fr_worker_t const *worker)
 {
@@ -1431,18 +1396,12 @@ nomem:
 	 */
 	memset(&worker->tracking, 0, sizeof(worker->tracking));
 
-	worker->aq_control = fr_atomic_queue_talloc(worker, 1024, sizeof(uintptr_t));
-	if (!worker->aq_control) {
-		fr_strerror_const("Failed creating atomic queue");
+	worker->control = fr_control_create(worker, el, FR_CONTROL_MAX_MESSAGES, FR_CONTROL_MAX_SIZE);
+	if (!worker->control) {
+		fr_strerror_const_push("Failed creating control plane");
 	fail:
 		talloc_free(worker);
 		return NULL;
-	}
-
-	worker->control = fr_control_create(worker, el, worker->aq_control);
-	if (!worker->control) {
-		fr_strerror_const_push("Failed creating control plane");
-		goto fail;
 	}
 
 	if (fr_channel_callbacks_add(worker->control, &worker_channel_callbacks, worker) < 0) {
@@ -1781,8 +1740,6 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 
 int fr_worker_listen_cancel(fr_worker_t *worker, fr_listen_t const *li)
 {
-	fr_ring_buffer_t *rb;
-
 	/*
 	 *	Skip a bunch of work if we're already in the worker thread.
 	 */
@@ -1790,10 +1747,7 @@ int fr_worker_listen_cancel(fr_worker_t *worker, fr_listen_t const *li)
 		return fr_worker_listen_cancel_self(worker, li);
 	}
 
-	rb = fr_worker_rb_init();
-	if (!rb) return -1;
-
-	return fr_control_message_send(worker->control, rb, FR_CONTROL_EVENTSET_WORKER, FR_WORKER_CONTROL_LISTEN_DEAD,
+	return fr_control_message_send(worker->control, FR_CONTROL_EVENTSET_WORKER, FR_WORKER_CONTROL_LISTEN_DEAD,
 				       &li, sizeof(li));
 }
 
@@ -1807,7 +1761,6 @@ static void worker_verify(fr_worker_t *worker)
 	int i;
 
 	(void) talloc_get_type_abort(worker, fr_worker_t);
-	fr_atomic_queue_verify(worker->aq_control);
 
 	fr_assert(worker->control != NULL);
 	(void) talloc_get_type_abort(worker->control, fr_control_t);

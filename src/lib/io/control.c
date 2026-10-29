@@ -24,7 +24,9 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/io/control.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
@@ -42,33 +44,25 @@ RCSID("$Id$")
 #include <poll.h>
 
 /*
- *	Debugging, mainly for channel_test
+ *	A message buffer large enough for any element the queue accepts.
  */
-#if 0
-#define MPRINT(...) fprintf(stderr, __VA_ARGS__)
-#else
-#define MPRINT(...)
-#endif
+#define CACHE_LINE_BYTES	(128)
 
 /**
- *  Status of control messages
- */
-typedef enum fr_control_message_status_t : uint8_t {
-	FR_CONTROL_MESSAGE_FREE = 0,			//!< the message is free
-	FR_CONTROL_MESSAGE_USED,			//!< the message is used (set only by originator)
-	FR_CONTROL_MESSAGE_DONE				//!< the message is done (set only by receiver)
-} fr_control_message_status_t;
-
-
-/**
- *  The header for the control message
+ *  The header of every message
+ *
+ *  A message is this header followed by data_size bytes, copied by
+ *  value into the receiver's queue.  The queue places elements 8 byte
+ *  aligned, and the header is 8 bytes, so callbacks can read their
+ *  structs straight out of the data.
  */
 typedef struct {
-	fr_control_message_status_t	status;		//!< status of this message
 	fr_control_eventset_t		es;		//!< event set of this message
 	uint16_t			event;		//!< event this message signals, within its event set
-	size_t				data_size;     	//!< size of the data we're sending
-} fr_control_message_t;
+	uint32_t			data_size;     	//!< size of the data we're sending
+} fr_control_header_t;
+
+static_assert(sizeof(fr_control_header_t) == 8, "control message data must stay 8 byte aligned");
 
 
 typedef struct {
@@ -91,7 +85,10 @@ typedef struct {
 struct fr_control_s {
 	fr_event_list_t		*el;			//!< our event list
 
-	fr_atomic_queue_t	*aq;			//!< destination AQ
+	uint16_t		slots;			//!< messages the queue holds unread.
+	uint16_t		max_size;		//!< the largest payload a message may carry.
+
+	fr_atomic_queue_t	*aq;			//!< the messages, header and data by value.
 
 	int			fd[2];			//!< wakeup socketpair.  [0] is read by the event loop,
 							///< [1] is written by the senders.
@@ -127,43 +124,47 @@ static inline fr_control_ctx_t const *control_ctx_find(fr_control_t const *c, fr
 	return &eventset->events[ev];
 }
 
+/** The size of one queued message: header and the largest payload
+ */
+static inline size_t control_message_size(fr_control_t const *c)
+{
+	return sizeof(fr_control_header_t) + c->max_size;
+}
+
+/** Drain the wakeup socket, then dispatch every queued message
+ *
+ * Each byte on the socket announces that a message was queued, and the
+ * loop below pops every message, so empty the socket.  A read returns a
+ * single datagram no matter how large the buffer is, so keep reading
+ * until there are none left.
+ */
 static void control_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
-	fr_control_t *c = talloc_get_type_abort(uctx, fr_control_t);
-	fr_time_t now;
-	char read_buffer[256];
-	uint8_t	data[256];
-	ssize_t message_size;
-	ssize_t slen;
-	fr_control_eventset_t es = 0;
-	uint16_t ev = 0;
+	fr_control_t	*c = talloc_get_type_abort(uctx, fr_control_t);
+	fr_time_t	now;
+	uint8_t		buf[256];
+	uint8_t		rec[CACHE_LINE_BYTES];
+	ssize_t		slen;
 
-	/*
-	 *	Each datagram on the socket announces one message, and
-	 *	the loop below pops every message in the atomic queue, so
-	 *	empty the socket.  A read returns a single datagram no
-	 *	matter how large the buffer is, so keep reading until
-	 *	there are none left.  The queue is popped even when the
-	 *	read fails, as a complete drain always ends with EAGAIN.
-	 */
 	do {
-		slen = read(fd, read_buffer, sizeof(read_buffer));
+		slen = read(fd, buf, sizeof(buf));
 	} while ((slen > 0) || ((slen < 0) && (errno == EINTR)));
 
 	now = fr_time();
 
-	while((message_size = fr_control_message_pop(c->aq, &es, &ev, data, sizeof(data)))) {
-		fr_control_ctx_t const *cctx = control_ctx_find(c, es, ev);
+	while (fr_atomic_queue_spsc_pop(c->aq, rec)) {
+		fr_control_header_t const	*hdr = (fr_control_header_t const *) rec;
+		fr_control_ctx_t const		*cctx = control_ctx_find(c, hdr->es, hdr->event);
 
 		if (!cctx) continue;
 
-		cctx->callback(data, message_size, now, cctx->uctx);
+		cctx->callback(rec + sizeof(*hdr), hdr->data_size, now, cctx->uctx);
 	}
 }
 
 /** Free a control structure
  *
- *  This function really only calls the underlying "garbage collect".
+ *  Removes the socket from the event loop, and closes both ends.
  *
  * @param[in] c the control structure
  */
@@ -186,18 +187,20 @@ static int _control_free(fr_control_t *c)
  *
  * @param[in] ctx the talloc context
  * @param[in] el the event list for the control socket
- * @param[in] aq the atomic queue where we will be pushing message data
+ * @param[in] slots how many messages the socket holds unread.
+ * @param[in] max_size the largest payload a message may carry.
  * @return
  *	- NULL on error
  *	- fr_control_t on success
  */
-fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq)
+fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, uint16_t slots, uint16_t max_size)
 {
 	fr_control_t *c;
 
 	MEM(c = talloc_zero(ctx, fr_control_t));
 	c->el = el;
-	c->aq = aq;
+	c->slots = slots;
+	c->max_size = max_size;
 
 	return c;
 }
@@ -212,10 +215,12 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 int fr_control_open(fr_control_t *c)
 {
 	/*
-	 *	A datagram socketpair rather than a pipe.  The wakeups
-	 *	are still single bytes, but a socket can also carry
-	 *	descriptors as ancillary data, and the two ends can live
-	 *	in different processes.
+	 *	A datagram socketpair for the wakeups.  Its default buffer
+	 *	is small, and that is wanted: once it is full the reader has
+	 *	wakeups it has not consumed, and further writes fail cheaply
+	 *	instead of queueing.  A socket can also carry descriptors as
+	 *	ancillary data, and the two ends can live in different
+	 *	processes.
 	 */
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, c->fd) < 0) {
 		fr_strerror_printf("Failed opening socketpair for control socket: %s", fr_syserror(errno));
@@ -231,6 +236,15 @@ int fr_control_open(fr_control_t *c)
 	(void) fr_cloexec(c->fd[0]);
 	(void) fr_cloexec(c->fd[1]);
 
+	/*
+	 *	Room for "slots" unread messages.
+	 */
+	c->aq = fr_atomic_queue_talloc(c, c->slots, control_message_size(c));
+	if (!c->aq) {
+		fr_strerror_const("Failed creating control message queue");
+		return -1;
+	}
+
 	if (fr_event_fd_insert(c, NULL, c->el, c->fd[0], control_read, NULL, NULL, c) < 0) {
 		fr_strerror_const_push("Failed adding FD to event list control socket");
 		return -1;
@@ -244,166 +258,27 @@ int fr_control_open(fr_control_t *c)
 	return 0;
 }
 
-/** Clean up messages in a control-plane buffer
- *
- *  Find the oldest messages which are marked FR_CONTROL_MESSAGE_DONE,
- *  and mark them FR_CONTROL_MESSAGE_FREE.
- *
- * @param[in] c the fr_control_t
- * @param[in] rb the callers ring buffer for message allocation.
- * @return
- *	- <0 there are still messages used
- *	- 0 the control list is empty.
- */
-int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
-{
-	while (true) {
-		size_t room, message_size;
-		fr_control_message_t *m;
-
-		(void) fr_ring_buffer_start(rb, (uint8_t **) &m, &room);
-		if (room == 0) break;
-
-		fr_assert(m != NULL);
-		fr_assert(room >= sizeof(*m));
-
-		fr_assert(m->status != FR_CONTROL_MESSAGE_FREE);
-
-		if (m->status != FR_CONTROL_MESSAGE_DONE) break;
-
-		m->status = FR_CONTROL_MESSAGE_FREE;
-
-		/*
-		 *	Each message is aligned to a 64-byte boundary,
-		 *	for cache contention issues.
-		 */
-		message_size = sizeof(*m);
-		message_size += m->data_size;
-		message_size += 63;
-		message_size &= ~(size_t) 63;
-		fr_ring_buffer_free(rb, message_size);
-	}
-
-	/*
-	 *	Maybe we failed to garbage collect everything?
-	 */
-	if (fr_ring_buffer_used(rb) > 0) {
-		fr_strerror_const("Data still in control buffers");
-		return -1;
-	}
-
-	return 0;
-}
-
-
-/** Allocate a control message
- *
- * @param[in] c the control structure
- * @param[in] rb the callers ring buffer for message allocation.
- * @param[in] es the event set of this message.
- * @param[in] ev the event this message signals, within its event set.
- * @param[in] data the data to write to the control plane
- * @param[in] data_size the size of the data to write to the control plane.
- * @return
- *	- NULL on error
- *	- fr_message_t on success
- */
-static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_buffer_t *rb,
-						      fr_control_eventset_t es, uint16_t ev,
-						      void *data, size_t data_size)
-{
-	size_t message_size;
-	fr_control_message_t *m;
-	uint8_t *p;
-
-	message_size = sizeof(*m);
-	message_size += data_size;
-	message_size += 63;
-	message_size &= ~(size_t) 63;
-
-	m = (fr_control_message_t *) fr_ring_buffer_alloc(rb, message_size);
-	if (!m) {
-		(void) fr_control_gc(c, rb);
-		m = (fr_control_message_t *) fr_ring_buffer_alloc(rb, message_size);
-		if (!m) {
-			fr_strerror_const_push("Failed allocating from ring buffer");
-			return NULL;
-		}
-	}
-
-	m->status = FR_CONTROL_MESSAGE_USED;
-	m->es = es;
-	m->event = ev;
-	m->data_size = data_size;
-
-	p = (uint8_t *) m;
-	memcpy(p + sizeof(*m), data, data_size);
-
-	return m;
-
-}
-
-
-/** Push a control-plane message
- *
- *  This function is called ONLY from the originating threads.
- *
- * @param[in] c the control structure
- * @param[in] rb the callers ring buffer for message allocation.
- * @param[in] es the event set of this message.
- * @param[in] ev the event this message signals, within its event set.
- * @param[in] data the data to write to the control plane
- * @param[in] data_size the size of the data to write to the control plane.
- * @return
- *	- -2 on ring buffer full
- *	- <0 on error
- *	- 0 on success
- */
-int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_eventset_t es, uint16_t ev,
-			    void *data, size_t data_size)
-{
-	fr_control_message_t *m;
-
-	(void) talloc_get_type_abort(c, fr_control_t);
-
-	MPRINT("CONTROL push aq %p\n", c->aq);
-
-	/*
-	 *	Get a message.  The alloc call attempts garbage collection
-	 *	if there is not enough free space.
-	 */
-	m = fr_control_message_alloc(c, rb, es, ev, data, data_size);
-	if (!m) {
-		fr_strerror_const_push("Failed allocating after GC");
-		return -2;
-	}
-
-	if (!fr_atomic_queue_mpmc_push(c->aq, &m)) {
-		m->status = FR_CONTROL_MESSAGE_DONE;
-		fr_strerror_const("Failed pushing message to atomic queue.");
-		return -1;
-	}
-
-	return 0;
-}
-
 /** Send a control-plane message
  *
- *  This function is called ONLY from the originating threads.
+ *  Called from the originating threads.  The message is copied into
+ *  the receiver's queue, then a byte is written to the wakeup socket.
  *
  * @param[in] c the control structure
- * @param[in] rb the callers ring buffer for message allocation.
  * @param[in] es the event set of this message.
  * @param[in] ev the event this message signals, within its event set.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
  * @return
- *	- <0 on error
+ *	- <0 on error, including the queue being full.
  *	- 0 on success
  */
-int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_eventset_t es, uint16_t ev,
-			    void *data, size_t data_size)
+int fr_control_message_send(fr_control_t *c, fr_control_eventset_t es, uint16_t ev,
+			    void const *data, size_t data_size)
 {
+	uint8_t			rec[CACHE_LINE_BYTES];
+	fr_control_header_t	*hdr = (fr_control_header_t *) rec;
+	ssize_t			slen;
+
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 	if (c->same_thread) {
@@ -415,79 +290,36 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_ev
 		return 0;
 	}
 
-	if (fr_control_message_push(c, rb, es, ev, data, data_size) < 0) return -1;
+	if (!fr_cond_assert_msg(data_size <= c->max_size, "Control message of %zu bytes exceeds max_size %u",
+				data_size, c->max_size)) return -1;
 
-redo:
-	if (write(c->fd[1], ".", 1) >= 0) return 0;
+	hdr->es = es;
+	hdr->event = ev;
+	hdr->data_size = data_size;
+	memcpy(rec + sizeof(*hdr), data, data_size);
 
-	if (errno == EINTR) goto redo;
-
-	/*
-	 *	The socket is full, so it holds wakeups the reader has
-	 *	not consumed yet.  When it drains them it pops every
-	 *	message in the queue, including the one just pushed, so
-	 *	this wakeup is not needed.  Linux reports a full datagram
-	 *	socket as EAGAIN, macOS as ENOBUFS.
-	 */
-	if (errno == EAGAIN) return 0;
-	if (errno == ENOBUFS) return 0;
-
-#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-	if (errno == EWOULDBLOCK) return 0;
-#endif
-
-	/*
-	 *	Other error, that's an issue.
-	 */
-	return -1;
-}
-
-
-/** Pop control-plane message
- *
- *  This function is called ONLY from the receiving thread.
- *
- * @param[in] aq the recipients atomic queue for control-plane messages
- * @param[out] p_es the event set of this message.
- * @param[out] p_ev the event this message signals, within its event set.
- * @param[in,out] data where the data is stored
- * @param[in] data_size the size of the buffer where we store the data.
- * @return
- *	- <0 the size of the data we need to read the next message
- *	- 0 this kevent is not for us.
- *	- >0 the amount of data we've read
- */
-ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, fr_control_eventset_t *p_es, uint16_t *p_ev,
-			       void *data, size_t data_size)
-{
-	uint8_t *p;
-	fr_control_message_t *m;
-
-	MPRINT("CONTROL pop aq %p\n", aq);
-
-	if (!fr_atomic_queue_spsc_pop(aq, &m)) return 0;
-
-	fr_assert_msg(m->status == FR_CONTROL_MESSAGE_USED, "Bad control message state, expected %u got %u",
-		      FR_CONTROL_MESSAGE_USED, m->status);
-
-	/*
-	 *	There isn't enough room to store the data, die.
-	 */
-	if (data_size < m->data_size) {
-		fr_strerror_printf("Allocation size should be at least %zu", m->data_size);
-		m->status = FR_CONTROL_MESSAGE_DONE;
-		return -(m->data_size);
+	if (!fr_atomic_queue_mpmc_push(c->aq, rec)) {
+		fr_strerror_const("Control message queue full");
+		return -1;
 	}
 
-	p = (uint8_t *) m;
-	data_size = m->data_size;
-	memcpy(data, p + sizeof(*m), data_size);
+	/*
+	 *	Wake the reader.  A full socket means it has wakeups it
+	 *	has not consumed, so this one is not needed.  Linux reports
+	 *	a full datagram socket as EAGAIN, macOS as ENOBUFS.
+	 */
+	do {
+		slen = write(c->fd[1], ".", 1);
+	} while ((slen < 0) && (errno == EINTR));
 
-	m->status = FR_CONTROL_MESSAGE_DONE;
-	*p_es = m->es;
-	*p_ev = m->event;
-	return data_size;
+	if ((slen < 0) && (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != ENOBUFS)) {
+		fr_strerror_printf("Failed waking control reader: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return 0;
 }
+
 
 
 /** Register a callback for a message

@@ -99,9 +99,7 @@ typedef struct {
 typedef struct {
 	fr_channel_direction_t	direction;	//!< Use for debug messages.
 
-	fr_control_t		*control;	//!< The control plane, consisting of an atomic queue and kqueue.
-
-	fr_ring_buffer_t	*rb;		//!< Ring buffer for control-plane messages.
+	fr_control_t		*control;	//!< The control plane we signal this end through.
 
 	void			*uctx;		//!< Worker context.
 
@@ -199,24 +197,6 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
 	ch->end[TO_REQUESTOR].control = requestor;
 
 	/*
-	 *	Create the ring buffer for the requestor to send
-	 *	control-plane messages to the responder, and vice-versa.
-	 */
-	ch->end[TO_RESPONDER].rb = fr_ring_buffer_create(ch, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
-	if (!ch->end[TO_RESPONDER].rb) {
-	rb_nomem:
-		fr_strerror_const_push("Failed allocating ring buffer");
-		talloc_free(ch);
-		return NULL;
-	}
-
-	ch->end[TO_REQUESTOR].rb = fr_ring_buffer_create(ch, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
-	if (!ch->end[TO_REQUESTOR].rb) {
-		talloc_free(ch);
-		goto rb_nomem;
-	}
-
-	/*
 	 *	Initialize all of the timers to now.
 	 */
 	now = fr_time();
@@ -270,7 +250,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	       fr_table_str_by_value(channel_direction, end->direction, "<INVALID>"),
 	       fr_table_str_by_value(channel_signals, ev, "<INVALID>"));
 
-	return fr_control_message_send(end->control, end->rb, FR_CONTROL_EVENTSET_CHANNEL, ev, &cc, sizeof(cc));
+	return fr_control_message_send(end->control, FR_CONTROL_EVENTSET_CHANNEL, ev, &cc, sizeof(cc));
 }
 
 #define IALPHA (8)
@@ -896,9 +876,8 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 	cc.ch = ch;
 	cc.reply_ms = NULL;
 
-	ret = fr_control_message_send(ch->end[TO_RESPONDER].control,
-				      ch->end[TO_RESPONDER].rb, FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_CLOSE,
-				      &cc, sizeof(cc));
+	ret = fr_control_message_send(ch->end[TO_RESPONDER].control, FR_CONTROL_EVENTSET_CHANNEL,
+				      FR_CHANNEL_CONTROL_CLOSE, &cc, sizeof(cc));
 
 	return ret;
 }
@@ -952,10 +931,8 @@ int fr_channel_responder_ack_close(fr_channel_t *ch)
 	cc.ch = ch;
 	cc.reply_ms = NULL;
 
-	ret = fr_control_message_send(ch->end[TO_REQUESTOR].control,
-				      ch->end[TO_REQUESTOR].rb, FR_CONTROL_EVENTSET_CHANNEL,
-				      FR_CHANNEL_CONTROL_CLOSE_ACK,
-				      &cc, sizeof(cc));
+	ret = fr_control_message_send(ch->end[TO_REQUESTOR].control, FR_CONTROL_EVENTSET_CHANNEL,
+				      FR_CHANNEL_CONTROL_CLOSE_ACK, &cc, sizeof(cc));
 
 	return ret;
 }
@@ -1041,8 +1018,8 @@ int fr_channel_signal_open(fr_channel_t *ch, fr_message_set_t *reply_ms)
 	cc.ch = ch;
 	cc.reply_ms = reply_ms;
 
-	return fr_control_message_send(ch->end[TO_RESPONDER].control, ch->end[TO_RESPONDER].rb,
-				       FR_CONTROL_EVENTSET_CHANNEL, FR_CHANNEL_CONTROL_OPEN, &cc, sizeof(cc));
+	return fr_control_message_send(ch->end[TO_RESPONDER].control, FR_CONTROL_EVENTSET_CHANNEL,
+				       FR_CHANNEL_CONTROL_OPEN, &cc, sizeof(cc));
 }
 
 void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char const *file, int line)

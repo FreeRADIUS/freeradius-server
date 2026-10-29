@@ -25,8 +25,6 @@
  */
 RCSIDH(control_h, "$Id$")
 
-#include <freeradius-devel/io/atomic_queue.h>
-#include <freeradius-devel/io/ring_buffer.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/event.h>
 
@@ -37,9 +35,12 @@ extern "C" {
 #endif
 
 /**
- *  A one-way control plane signal.
+ *  A one-way control plane.
  *
- *  Multiple-producer, single consumer.
+ *  Multiple-producer, single consumer.  Messages are copied into a
+ *  queue the receiver owns, and a byte on a unix socket wakes the
+ *  receiver.  When the socket is full the reader has wakeups it has
+ *  not consumed, so further bytes are not needed.
  */
 typedef struct fr_control_s fr_control_t;
 typedef	void (*fr_control_callback_t)(void const *data, size_t data_size, fr_time_t now, void *uctx);
@@ -60,24 +61,19 @@ typedef enum fr_control_eventset_t : uint16_t {
 } fr_control_eventset_t;
 
 /*
- *	A suggestion for max # of messages, and max message size.
+ *	Defaults for the number of messages a control plane can hold
+ *	unread, and the largest message it accepts.  A message and its
+ *	header fit two to a cache line in the receiver's queue.
  */
 #define FR_CONTROL_MAX_MESSAGES (1024)
-#define FR_CONTROL_MAX_SIZE	(64)
+#define FR_CONTROL_MAX_SIZE	(48)
 
-fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq) CC_HINT(nonnull(3));
+fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, uint16_t slots, uint16_t max_size);
 
 int fr_control_open(fr_control_t *c);
 
-int fr_control_gc(fr_control_t *c, fr_ring_buffer_t *rb) CC_HINT(nonnull);
-
-int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_eventset_t es, uint16_t ev,
-			    void *data, size_t data_size) CC_HINT(nonnull);
-
-int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_eventset_t es, uint16_t ev,
-			    void *data, size_t data_size) CC_HINT(nonnull);
-ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, fr_control_eventset_t *p_es, uint16_t *p_ev,
-			       void *data, size_t data_size) CC_HINT(nonnull);
+int fr_control_message_send(fr_control_t *c, fr_control_eventset_t es, uint16_t ev,
+			    void const *data, size_t data_size) CC_HINT(nonnull);
 
 int fr_control_callback_add(fr_control_t *c, fr_control_eventset_t es, uint16_t ev,
 			    fr_control_callback_t callback, void *uctx) CC_HINT(nonnull(1,4));

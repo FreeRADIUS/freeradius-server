@@ -41,8 +41,6 @@ RCSID("$Id$")
 
 #define MAX_WORKERS 64
 
-static _Thread_local fr_ring_buffer_t *fr_network_rb;
-
 typedef struct {
 	fr_listen_t		*listen;
 	uint8_t			*packet;
@@ -118,11 +116,7 @@ struct fr_network_s {
 	fr_log_t const		*log;			//!< log destination
 	fr_log_lvl_t		lvl;			//!< debug log level
 
-	fr_atomic_queue_t	*aq_control;		//!< atomic queue for control messages sent to me
-
 	fr_control_t		*control;		//!< the control plane
-
-	fr_ring_buffer_t	*rb;			//!< ring buffer for my control-plane messages
 
 	fr_event_list_t		*el;			//!< our event list
 
@@ -190,37 +184,6 @@ static fr_cmp_ret_t socket_num_cmp(void const *one, void const *two)
 	return CMP(a->number, b->number);
 }
 
-/*
- *	Explicitly cleanup the memory allocated to the ring buffer,
- *	just in case valgrind complains about it.
- */
-static int _fr_network_rb_free(void *arg)
-{
-	return talloc_free(arg);
-}
-
-/** Initialise thread local storage
- *
- * @return fr_ring_buffer_t for messages
- */
-static inline fr_ring_buffer_t *fr_network_rb_init(void)
-{
-	fr_ring_buffer_t *rb;
-
-	rb = fr_network_rb;
-	if (rb) return rb;
-
-	rb = fr_ring_buffer_create(NULL, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
-	if (!rb) {
-		fr_perror("Failed allocating memory for network ring buffer");
-		return NULL;
-	}
-
-	fr_atexit_thread_local(fr_network_rb, _fr_network_rb_free, rb);
-
-	return rb;
-}
-
 static inline bool is_network_thread(fr_network_t const *nr)
 {
 	return (pthread_equal(pthread_self(), nr->thread_id) != 0);
@@ -235,8 +198,6 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *listen);
  */
 int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
 {
-	fr_ring_buffer_t *rb;
-
 	/*
 	 *	Associate the protocol dictionary with the listener, so that the decode functions can check /
 	 *	use it.
@@ -256,10 +217,7 @@ int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
 		return fr_network_listen_add_self(nr, li);
 	}
 
-	rb = fr_network_rb_init();
-	if (!rb) return -1;
-
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_EVENTSET_NETWORK,
+	return fr_control_message_send(nr->control, FR_CONTROL_EVENTSET_NETWORK,
 				       FR_NETWORK_CONTROL_LISTEN, &li, sizeof(li));
 }
 
@@ -290,12 +248,7 @@ int fr_network_listen_delete(fr_network_t *nr, fr_listen_t *li)
  */
 int fr_network_directory_add(fr_network_t *nr, fr_listen_t *li)
 {
-	fr_ring_buffer_t *rb;
-
-	rb = fr_network_rb_init();
-	if (!rb) return -1;
-
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_EVENTSET_NETWORK,
+	return fr_control_message_send(nr->control, FR_CONTROL_EVENTSET_NETWORK,
 				       FR_NETWORK_CONTROL_DIRECTORY, &li, sizeof(li));
 }
 
@@ -306,15 +259,10 @@ int fr_network_directory_add(fr_network_t *nr, fr_listen_t *li)
  */
 int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 {
-	fr_ring_buffer_t *rb;
-
-	rb = fr_network_rb_init();
-	if (!rb) return -1;
-
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
 
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_EVENTSET_NETWORK,
+	return fr_control_message_send(nr->control, FR_CONTROL_EVENTSET_NETWORK,
 				       FR_NETWORK_CONTROL_WORKER, &worker, sizeof(worker));
 }
 
@@ -413,7 +361,6 @@ void fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len, fr_time_t recv_time)
 {
 	int rcode;
-	fr_ring_buffer_t *rb;
 	fr_network_inject_t my_inject;
 
 	/*
@@ -447,15 +394,12 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 		return 0;
 	}
 
-	rb = fr_network_rb_init();
-	if (!rb) return -1;
-
 	my_inject.listen = li;
 	MEM(my_inject.packet = talloc_memdup(NULL, packet, packet_len));
 	my_inject.packet_len = packet_len;
 	my_inject.recv_time = recv_time;
 
-	rcode = fr_control_message_send(nr->control, rb, FR_CONTROL_EVENTSET_NETWORK,
+	rcode = fr_control_message_send(nr->control, FR_CONTROL_EVENTSET_NETWORK,
 					FR_NETWORK_CONTROL_INJECT, &my_inject, sizeof(my_inject));
 	if (rcode < 0) talloc_free(my_inject.packet);
 
@@ -2138,37 +2082,19 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	nr->signal_pipe[1] = -1;
 	if (config) nr->config = *config;
 
-	nr->aq_control = fr_atomic_queue_talloc(nr, 1024, sizeof(uintptr_t));
-	if (!nr->aq_control) {
-		talloc_free(nr);
-		return NULL;
-	}
-
-	nr->control = fr_control_create(nr, el, nr->aq_control);
+	nr->control = fr_control_create(nr, el, FR_CONTROL_MAX_MESSAGES, FR_CONTROL_MAX_SIZE);
 	if (!nr->control) {
-		fr_strerror_const_push("Failed creating control queue");
+		fr_strerror_const_push("Failed creating control plane");
 	fail:
 		talloc_free(nr);
 		return NULL;
 	}
 
-	/*
-	 *	@todo - rely on thread-local variables.  And then the
-	 *	various users of this can check if (rb == nr->rb), and
-	 *	if so, skip the whole control plane / kevent /
-	 *	whatever roundabout thing.
-	 */
-	nr->rb = fr_ring_buffer_create(nr, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
-	if (!nr->rb) {
-		fr_strerror_const_push("Failed creating ring buffer");
+	if (fr_channel_callbacks_add(nr->control, &fr_network_channel_callbacks, nr) < 0) {
+		fr_strerror_const_push("Failed adding channel callback");
 	fail2:
 		talloc_free(nr->control);
 		goto fail;
-	}
-
-	if (fr_channel_callbacks_add(nr->control, &fr_network_channel_callbacks, nr) < 0) {
-		fr_strerror_const_push("Failed adding channel callback");
-		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_EVENTSET_NETWORK,

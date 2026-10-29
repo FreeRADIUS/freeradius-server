@@ -51,6 +51,7 @@ typedef struct fr_listen fr_listen_t;
 #endif
 
 #include <freeradius-devel/io/base.h>
+#include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/util/dlist.h>

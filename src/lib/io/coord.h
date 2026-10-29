@@ -25,6 +25,7 @@
  */
 RCSIDH(coord_h, "$Id$")
 
+#include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/server/cf_util.h>

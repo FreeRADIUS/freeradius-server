@@ -81,7 +81,6 @@ typedef struct {
 struct requestor_s {
 	size_t			id;
 	fr_event_list_t		*el;
-	fr_atomic_queue_t	*aq;
 	fr_control_t		*control;
 	fr_message_set_t	*ms;		//!< requests are allocated from this.
 
@@ -99,7 +98,6 @@ typedef struct {
 struct responder_s {
 	size_t			id;
 	fr_event_list_t		*el;
-	fr_atomic_queue_t	*aq;
 	fr_control_t		*control;
 
 	resp_channel_t		*channel;	//!< one slot per requestor.
@@ -636,8 +634,7 @@ int main(int argc, char *argv[])
 		w->id = i;
 		w->running = true;
 		MEM(w->el = fr_event_list_alloc(ctx, NULL, NULL));
-		MEM(w->aq = fr_atomic_queue_talloc(ctx, FR_CONTROL_MAX_MESSAGES, sizeof(uintptr_t)));
-		MEM(w->control = fr_control_create(ctx, w->el, w->aq));
+		MEM(w->control = fr_control_create(ctx, w->el, FR_CONTROL_MAX_MESSAGES, FR_CONTROL_MAX_SIZE));
 		if ((fr_channel_callbacks_add(w->control, &responder_callbacks, w) < 0) ||
 		    (fr_control_open(w->control) < 0)) {
 			fprintf(stderr, "failed setting up responder %zu control plane: %s\n", i, fr_strerror());
@@ -653,8 +650,7 @@ int main(int argc, char *argv[])
 
 		r->id = i;
 		MEM(r->el = fr_event_list_alloc(ctx, NULL, NULL));
-		MEM(r->aq = fr_atomic_queue_talloc(ctx, FR_CONTROL_MAX_MESSAGES, sizeof(uintptr_t)));
-		MEM(r->control = fr_control_create(ctx, r->el, r->aq));
+		MEM(r->control = fr_control_create(ctx, r->el, FR_CONTROL_MAX_MESSAGES, FR_CONTROL_MAX_SIZE));
 		if ((fr_channel_callbacks_add(r->control, &requestor_callbacks, r) < 0) ||
 		    (fr_control_open(r->control) < 0)) {
 			fprintf(stderr, "failed setting up requestor %zu control plane: %s\n", i, fr_strerror());

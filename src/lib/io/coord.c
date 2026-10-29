@@ -69,7 +69,6 @@ struct fr_coord_s {
 
 	fr_control_t			*coord_recv_control;	//!< Control plane for worker -> coordinator messages.
 	fr_atomic_queue_t		*coord_recv_aq;		//!< Atomic queue for worker -> coordinator
-	fr_ring_buffer_t		**coord_send_rb;	//!< Ring buffers for coordinator -> worker control messages.
 	fr_control_t			**coord_send_control;	//!< Control planes for coordinator -> worker messages.
 	fr_message_set_t		**coord_send_ms;	//!< Message sets for coordinator -> worker data.
 	fr_atomic_queue_t		**coord_send_aq;	//!< Atomic queues for coordinator -> worker data.
@@ -82,7 +81,6 @@ struct fr_coord_s {
  */
 struct fr_coord_worker_s {
 	fr_coord_t			*coord;			//!< Coordinator this worker is related to
-	fr_ring_buffer_t		*worker_send_rb;	//!< Ring buffer for worker -> coordinator control plane
 	fr_message_set_t		*worker_send_ms;	//!< Message set for worker -> coordinator messages
 	fr_control_t			*worker_recv_control;	//!< Coordinator -> worker control plane
 	fr_atomic_queue_t		*worker_recv_aq;	//!< Atomic queue for coordinator -> worker messages
@@ -293,7 +291,7 @@ static void coord_worker_attach(void const *data, NDEBUG_UNUSED size_t data_size
 	coord->coord_send_aq[thread_id] = msg->worker_recv_aq;
 
 	ack.worker = msg->worker;
-	fr_control_message_send(coord->coord_send_control[thread_id], coord->coord_send_rb[thread_id],
+	fr_control_message_send(coord->coord_send_control[thread_id],
 				FR_CONTROL_EVENTSET_COORD, FR_COORD_WORKER_CONTROL_ACK, &ack, sizeof(ack));
 }
 
@@ -327,7 +325,7 @@ static void coord_worker_detach(void const *data, NDEBUG_UNUSED size_t data_size
 	}
 
 	ack.worker = msg->worker;
-	fr_control_message_send(coord->coord_send_control[thread_id], coord->coord_send_rb[thread_id],
+	fr_control_message_send(coord->coord_send_control[thread_id],
 				FR_CONTROL_EVENTSET_COORD, FR_COORD_WORKER_CONTROL_ACK, &ack, sizeof(fr_coord_msg_t));
 
 	coord->coord_send_control[thread_id] = NULL;
@@ -351,7 +349,6 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	fr_coord_t		*coord;
 	uint32_t		i, num_threads = max_workers - MIN_WORKER_ID;
 	fr_coord_cb_reg_t	*cb = coord_reg->coord_cb;
-	fr_atomic_queue_t	*aq;
 
 	MEM(coord = talloc(ctx, fr_coord_t));
 	*coord = (fr_coord_t) {
@@ -361,18 +358,13 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 		.max_workers = max_workers
 	};
 
-	/* Allocate atomic queue / control for receiving messages from workers */
-	aq = fr_atomic_queue_talloc(coord, FR_CONTROL_MAX_MESSAGES, sizeof(uintptr_t));
-	if (!aq) {
-		fr_strerror_const("Failed creating worker -> coordinator atomic queue");
+	/* Allocate the control plane for receiving messages from workers */
+	coord->coord_recv_control = fr_control_create(coord, el, FR_CONTROL_MAX_MESSAGES, FR_CONTROL_MAX_SIZE);
+	if (!coord->coord_recv_control) {
+		fr_strerror_const("Failed creating worker -> coordinator control plane");
 	fail:
 		talloc_free(coord);
 		return NULL;
-	}
-	coord->coord_recv_control = fr_control_create(coord, el, aq);
-	if (!coord->coord_recv_control) {
-		fr_strerror_const("Failed creating worker -> coordinator control plane");
-		goto fail;
 	}
 
 	/* Allocate atomic queue for workers sending data to coordinators */
@@ -408,12 +400,8 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	 *	workers plus any additional threads, currently just the main
 	 *	thread (worker id -1)
 	 */
-	MEM(coord->coord_send_rb = talloc_array(coord, fr_ring_buffer_t *, num_threads));
 	MEM(coord->coord_send_ms = talloc_array(coord, fr_message_set_t *, num_threads));
 	for (i = 0; i < num_threads; i++) {
-		coord->coord_send_rb[i] = fr_ring_buffer_create(coord, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
-		if (!coord->coord_send_rb[i]) goto fail;
-
 		coord->coord_send_ms[i] = fr_message_set_create(coord, FR_CONTROL_MAX_MESSAGES, sizeof(fr_coord_data_t),
 								coord_reg->coord_send_size, true);
 		if (!coord->coord_send_ms[i]) goto fail;
@@ -667,7 +655,7 @@ int fr_coord_detach(fr_coord_worker_t *cw, bool exiting)
 	msg->worker = fr_schedule_worker_id();
 	msg->exiting = exiting;
 
-	if (fr_control_message_send(cw->coord->coord_recv_control, cw->worker_send_rb,
+	if (fr_control_message_send(cw->coord->coord_recv_control,
 				    FR_CONTROL_EVENTSET_COORD, FR_COORD_CONTROL_WORKER_DETACH,
 				    msg, sizeof(fr_coord_worker_detach_msg_t)) < 0) return -1;
 
@@ -704,7 +692,6 @@ fr_coord_worker_t *fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	fr_coord_worker_cb_reg_t	*cb_reg = coord_reg->worker_cb;
 	fr_coord_worker_attach_msg_t	msg;
 	fr_coord_t			find;
-	fr_atomic_queue_t		*aq;
 
 	cw = talloc_zero(ctx, fr_coord_worker_t);
 
@@ -718,10 +705,8 @@ fr_coord_worker_t *fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 		return NULL;
 	}
 
-	aq = fr_atomic_queue_talloc(cw, 1024, sizeof(uintptr_t));
 	cw->worker_recv_aq = fr_atomic_queue_talloc(cw, FR_CONTROL_MAX_MESSAGES, sizeof(uintptr_t));
-	cw->worker_recv_control = fr_control_create(cw, el, aq);
-	cw->worker_send_rb = fr_ring_buffer_create(cw, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
+	cw->worker_recv_control = fr_control_create(cw, el, FR_CONTROL_MAX_MESSAGES, FR_CONTROL_MAX_SIZE);
 	cw->worker_send_ms = fr_message_set_create(cw, FR_CONTROL_MAX_MESSAGES, sizeof(fr_coord_data_t),
 						   coord_reg->worker_send_size, true);
 
@@ -742,7 +727,7 @@ fr_coord_worker_t *fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	msg.worker_recv_aq = cw->worker_recv_aq;
 	msg.worker = fr_schedule_worker_id();
 
-	if (fr_control_message_send(cw->coord->coord_recv_control, cw->worker_send_rb,
+	if (fr_control_message_send(cw->coord->coord_recv_control,
 				    FR_CONTROL_EVENTSET_COORD, FR_COORD_CONTROL_WORKER_ATTACH,
 				    &msg, sizeof(fr_coord_worker_attach_msg_t)) < 0) goto fail;
 
@@ -782,7 +767,7 @@ int fr_coord_to_worker_send(fr_coord_t *coord, int32_t worker_id, uint32_t cb_id
 		fr_message_done((fr_message_t *)cd);
 		return -1;
 	}
-	return fr_control_message_send(coord->coord_send_control[thread_id], coord->coord_send_rb[thread_id],
+	return fr_control_message_send(coord->coord_send_control[thread_id],
 				       FR_CONTROL_EVENTSET_COORD, FR_COORD_WORKER_CONTROL_DATA,
 				       &cm, sizeof(fr_coord_msg_t));
 }
@@ -837,7 +822,7 @@ int fr_worker_to_coord_send(fr_coord_worker_t *cw, uint32_t cb_id, fr_dbuff_t *d
 		return -1;
 	}
 
-	return fr_control_message_send(cw->coord->coord_recv_control, cw->worker_send_rb,
+	return fr_control_message_send(cw->coord->coord_recv_control,
 				       FR_CONTROL_EVENTSET_COORD, FR_COORD_CONTROL_DATA, &cm, sizeof(fr_coord_msg_t));
 }
 

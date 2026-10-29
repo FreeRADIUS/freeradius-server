@@ -53,11 +53,9 @@ typedef enum control_test_event_t : uint16_t {
 
 typedef struct {
 	size_t	id;
-	fr_ring_buffer_t *rb;
 } worker_args_t;
 
 static int		debug_lvl = 0;
-static fr_atomic_queue_t **aq;
 static size_t		max_messages = 10;
 static size_t		num_workers = 1;
 static int		aq_size = 16;
@@ -171,7 +169,7 @@ static void *control_worker(void *arg)
 		m.worker = wa->id;
 
 retry:
-		if (fr_control_message_send(control[aq_num], wa->rb, FR_CONTROL_EVENTSET_NETWORK, CONTROL_TEST_MESSAGE,
+		if (fr_control_message_send(control[aq_num], FR_CONTROL_EVENTSET_NETWORK, CONTROL_TEST_MESSAGE,
 					    &m, sizeof(m)) < 0) {
 			char const *err;
 			MPRINT1("\tWorker %zu retrying message %zu\n", wa->id, i);
@@ -239,15 +237,10 @@ int main(int argc, char *argv[])
 
 	num_aq = single_aq ? 1 : num_workers;
 	aq_size = single_aq ? FR_CONTROL_MAX_MESSAGES * num_workers : FR_CONTROL_MAX_MESSAGES;
-	aq = talloc_array(autofree, fr_atomic_queue_t *, num_aq);
-	for (i = 0; i < num_aq; i++) {
-		aq[i] = fr_atomic_queue_talloc(aq, aq_size, sizeof(uintptr_t));
-		fr_assert(aq[i] != NULL);
-	}
 
 	control = talloc_array(autofree, fr_control_t *, num_aq);
 	for (i = 0; i < num_aq; i++) {
-		control[i] = fr_control_create(control, el, aq[i]);
+		control[i] = fr_control_create(control, el, aq_size, FR_CONTROL_MAX_SIZE);
 		if (!control[i]) {
 			fprintf(stderr, "control_test: Failed to create control plane\n");
 			fr_exit_now(EXIT_FAILURE);
@@ -269,7 +262,6 @@ int main(int argc, char *argv[])
 	worker_args = talloc_array(autofree, worker_args_t, num_workers);
 	for (i = 0; i < num_workers; i++) {
 		worker_args[i].id = i;
-		worker_args[i].rb = fr_ring_buffer_create(worker_args, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 		(void) pthread_create(&worker_id[i], &attr, control_worker, &worker_args[i]);
 	}
 
