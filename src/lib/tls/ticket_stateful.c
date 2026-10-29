@@ -1160,6 +1160,8 @@ again:
 
 	case FR_TLS_TICKET_STATEFUL_SUCCESS:
 	{
+		fr_pair_t *vp;
+
 		/*
 		 *	OpenSSL calls this callback once for each ClientHello that it receives.  A TLS 1.3
 		 *	server which sends a HelloRetryRequest receives a second ClientHello, and we don't
@@ -1199,6 +1201,16 @@ again:
 			tls_ticket_stateful_load_state_reset(request, tls_session->cache);	/* Free the session */
 			fr_value_box_clear(&tls_cache->load.id);	/* Nothing is loaded, the clear above has the ID */
 			return NULL;
+		}
+
+		/*
+		 *	Add TLS-Session-Resume-Type to report how the session was resumed.
+		 */
+		if (unlikely(pair_update_session_state(&vp, attr_tls_session_resume_type)) < 0) {
+			RWDEBUG("(TLS) Session ID %pV - Failed adding %s attribute", &tls_session->session_id,
+				attr_tls_session_resume_type->name);
+		} else {
+			vp->vp_uint32 = enum_tls_session_resumed_stateful->vb_uint32;
 		}
 
 		/*

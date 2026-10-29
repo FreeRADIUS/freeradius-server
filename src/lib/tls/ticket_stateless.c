@@ -487,6 +487,7 @@ static SSL_TICKET_RETURN tls_ticket_stateless_app_data_get(SSL *ssl, SSL_SESSION
 	fr_tls_conf_t		*conf = tls_session->conf;
 	fr_tls_ticket_conf_t	*tls_cache_conf = arg;	/* Not talloced */
 	request_t		*request = NULL;
+	fr_pair_t		*vp;
 
 	if (fr_tls_session_request_bound(ssl)) {
 		request = fr_tls_session_request(ssl);
@@ -607,6 +608,16 @@ static SSL_TICKET_RETURN tls_ticket_stateless_app_data_get(SSL *ssl, SSL_SESSION
 			RDEBUG2("(TLS) Certificate re-validation failed, denying session resumption via session-ticket");
 			return SSL_TICKET_RETURN_IGNORE_RENEW;
 		}
+	}
+
+	/*
+	 *	Add TLS-Session-Resume-Type to report how the session was resumed.
+	 */
+	if (unlikely(pair_update_session_state(&vp, attr_tls_session_resume_type)) < 0) {
+		RWDEBUG("(TLS) Session ID %pV - Failed adding %s attribute", &tls_session->session_id,
+			attr_tls_session_resume_type->name);
+	} else {
+		vp->vp_uint32 = enum_tls_session_resumed_stateless->vb_uint32;
 	}
 
 	return (status == SSL_TICKET_SUCCESS_RENEW) ? SSL_TICKET_RETURN_USE_RENEW : SSL_TICKET_RETURN_USE;
