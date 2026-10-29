@@ -239,7 +239,7 @@ int fr_queue_localize_atomic(fr_queue_t *fq, fr_atomic_queue_t *aq)
 	 *	Pop as many entries as we have room for.
 	 */
 	for (i = 0; i < room; i++) {
-		if (!fr_atomic_queue_pop(aq, &data)) {
+		if (!fr_atomic_queue_mpmc_pop(aq, &data)) {
 			return i;
 		}
 

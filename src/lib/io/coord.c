@@ -223,7 +223,7 @@ static void coord_data_recv(void const *data, size_t data_size, fr_time_t now, v
 	memcpy(&cm, data, data_size);
 	fr_assert((cm.worker >= MIN_WORKER_ID) && (cm.worker < (int32_t)coord->max_workers));
 
-	if (unlikely(!fr_atomic_queue_pop(coord->coord_recv_aq, (void **)&cd))) return;
+	if (unlikely(!fr_atomic_queue_spsc_pop(coord->coord_recv_aq, &cd))) return;
 
 	DEBUG3("Coordinator %s got data from worker %d for callback %" PRIu32,
 	       coord->coord_reg->name, cm.worker, cd->coord_cb_id);
@@ -256,7 +256,7 @@ static void coord_worker_data_recv(void const *data, size_t data_size, fr_time_t
 	fr_assert(data_size == sizeof(cm));
 	memcpy(&cm, data, data_size);
 
-	if (unlikely(!fr_atomic_queue_pop(cw->worker_recv_aq, (void **)&cd))) return;
+	if (unlikely(!fr_atomic_queue_spsc_pop(cw->worker_recv_aq, &cd))) return;
 
 	DEBUG3("Coordinator %s sent message for callback %" PRIu32, cw->coord->coord_reg->name, cd->coord_cb_id);
 
@@ -362,7 +362,7 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	};
 
 	/* Allocate atomic queue / control for receiving messages from workers */
-	aq = fr_atomic_queue_talloc(coord, FR_CONTROL_MAX_MESSAGES);
+	aq = fr_atomic_queue_talloc(coord, FR_CONTROL_MAX_MESSAGES, sizeof(uintptr_t));
 	if (!aq) {
 		fr_strerror_const("Failed creating worker -> coordinator atomic queue");
 	fail:
@@ -376,7 +376,7 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	}
 
 	/* Allocate atomic queue for workers sending data to coordinators */
-	coord->coord_recv_aq = fr_atomic_queue_talloc(coord, FR_CONTROL_MAX_MESSAGES);
+	coord->coord_recv_aq = fr_atomic_queue_talloc(coord, FR_CONTROL_MAX_MESSAGES, sizeof(uintptr_t));
 	if (!coord->coord_recv_aq) {
 		fr_strerror_const("Failed creating worker -> coordinator data atomic queue");
 		goto fail;
@@ -718,8 +718,8 @@ fr_coord_worker_t *fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 		return NULL;
 	}
 
-	aq = fr_atomic_queue_talloc(cw, 1024);
-	cw->worker_recv_aq = fr_atomic_queue_talloc(cw, FR_CONTROL_MAX_MESSAGES);
+	aq = fr_atomic_queue_talloc(cw, 1024, sizeof(uintptr_t));
+	cw->worker_recv_aq = fr_atomic_queue_talloc(cw, FR_CONTROL_MAX_MESSAGES, sizeof(uintptr_t));
 	cw->worker_recv_control = fr_control_create(cw, el, aq);
 	cw->worker_send_rb = fr_ring_buffer_create(cw, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	cw->worker_send_ms = fr_message_set_create(cw, FR_CONTROL_MAX_MESSAGES, sizeof(fr_coord_data_t),
@@ -778,7 +778,7 @@ int fr_coord_to_worker_send(fr_coord_t *coord, int32_t worker_id, uint32_t cb_id
 
 	memcpy(cd->m.data, fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff));
 	cd->coord_cb_id = cb_id;
-	if (!fr_atomic_queue_push(coord->coord_send_aq[thread_id], cd)) {
+	if (!fr_atomic_queue_spsc_push(coord->coord_send_aq[thread_id], &cd)) {
 		fr_message_done((fr_message_t *)cd);
 		return -1;
 	}
@@ -832,7 +832,7 @@ int fr_worker_to_coord_send(fr_coord_worker_t *cw, uint32_t cb_id, fr_dbuff_t *d
 
 	memcpy(cd->m.data, fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff));
 	cd->coord_cb_id = cb_id;
-	if (!fr_atomic_queue_push(cw->coord->coord_recv_aq, cd)) {
+	if (!fr_atomic_queue_mpmc_push(cw->coord->coord_recv_aq, &cd)) {
 		fr_message_done((fr_message_t *)cd);
 		return -1;
 	}

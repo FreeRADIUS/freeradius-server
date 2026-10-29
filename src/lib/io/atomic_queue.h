@@ -39,11 +39,17 @@ extern "C" {
 
 typedef struct fr_atomic_queue_s fr_atomic_queue_t;
 
-fr_atomic_queue_t	*fr_atomic_queue_talloc(TALLOC_CTX *ctx, size_t size);
-fr_atomic_queue_t	*fr_atomic_queue_malloc(TALLOC_CTX *ctx, size_t size);
+fr_atomic_queue_t	*fr_atomic_queue_talloc(TALLOC_CTX *ctx, size_t num, size_t elem_len);
+fr_atomic_queue_t	*fr_atomic_queue_malloc(TALLOC_CTX *ctx, size_t num, size_t elem_len);
+fr_atomic_queue_t	*fr_atomic_queue_mmap(TALLOC_CTX *ctx, int *fd, size_t num,
+					      size_t elem_len) CC_HINT(nonnull(2));
 void			fr_atomic_queue_free(fr_atomic_queue_t **aq);
-bool			fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data);
-bool			fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data);
+
+bool			fr_atomic_queue_mpmc_push(fr_atomic_queue_t *aq, void const *data) CC_HINT(nonnull);
+bool			fr_atomic_queue_mpmc_pop(fr_atomic_queue_t *aq, void *data) CC_HINT(nonnull);
+
+bool			fr_atomic_queue_spsc_push(fr_atomic_queue_t *aq, void const *data) CC_HINT(nonnull);
+bool			fr_atomic_queue_spsc_pop(fr_atomic_queue_t *aq, void *data) CC_HINT(nonnull);
 size_t			fr_atomic_queue_size(fr_atomic_queue_t *aq);
 
 /** Unbounded segmented single-producer / single-consumer queue

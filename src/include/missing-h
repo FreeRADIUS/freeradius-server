@@ -175,6 +175,13 @@ int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags);
 int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags, struct timespec *timeout);
 #endif
 
+#ifndef HAVE_MEMFD_CREATE
+#  ifndef MFD_CLOEXEC
+#    define MFD_CLOEXEC	0x0001U
+#  endif
+int memfd_create(char const *name, unsigned int flags);
+#endif
+
 #ifndef HAVE_CLOSEFROM
 void		closefrom(int fd);
 #endif

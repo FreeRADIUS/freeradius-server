@@ -266,6 +266,9 @@
 /* Define to 1 if you have the 'mallopt' function. */
 #undef HAVE_MALLOPT
 
+/* Define to 1 if you have the 'memfd_create' function. */
+#undef HAVE_MEMFD_CREATE
+
 /* Define to 1 if you have the 'memrchr' function. */
 #undef HAVE_MEMRCHR
 

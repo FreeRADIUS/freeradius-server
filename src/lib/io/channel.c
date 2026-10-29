@@ -183,13 +183,13 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
 	ch->end[TO_RESPONDER].direction = TO_RESPONDER;
 	ch->end[TO_REQUESTOR].direction = TO_REQUESTOR;
 
-	ch->end[TO_RESPONDER].aq = fr_atomic_queue_talloc(ch, ATOMIC_QUEUE_SIZE);
+	ch->end[TO_RESPONDER].aq = fr_atomic_queue_talloc(ch, ATOMIC_QUEUE_SIZE, sizeof(uintptr_t));
 	if (!ch->end[TO_RESPONDER].aq) {
 		talloc_free(ch);
 		goto nomem;
 	}
 
-	ch->end[TO_REQUESTOR].aq = fr_atomic_queue_talloc(ch, ATOMIC_QUEUE_SIZE);
+	ch->end[TO_REQUESTOR].aq = fr_atomic_queue_talloc(ch, ATOMIC_QUEUE_SIZE, sizeof(uintptr_t));
 	if (!ch->end[TO_REQUESTOR].aq) {
 		talloc_free(ch);
 		goto nomem;
@@ -316,7 +316,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	Push the message onto the queue for the other end.  If
 	 *	the push fails, the caller should try another queue.
 	 */
-	if (!fr_atomic_queue_push(requestor->aq, cd)) {
+	if (!fr_atomic_queue_spsc_push(requestor->aq, &cd)) {
 		fr_strerror_printf("Failed pushing to atomic queue - full.  Queue contains %zu items",
 				   fr_atomic_queue_size(requestor->aq));
 		while (fr_channel_recv_reply(ch));
@@ -385,7 +385,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	/*
 	 *	It's OK for the queue to be empty.
 	 */
-	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return false;
+	if (!fr_atomic_queue_spsc_pop(aq, &cd)) return false;
 
 	/*
 	 *	We want an exponential moving average for round trip
@@ -447,7 +447,7 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 	/*
 	 *	It's OK for the queue to be empty.
 	 */
-	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return false;
+	if (!fr_atomic_queue_spsc_pop(aq, &cd)) return false;
 
 	fr_assert(cd->live.sequence > responder->ack);
 	fr_assert(cd->live.sequence >= responder->sequence); /* must have more requests than replies */
@@ -499,7 +499,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	cd->live.sequence = sequence;
 	cd->live.ack = responder->ack;
 
-	if (!fr_atomic_queue_push(responder->aq, cd)) {
+	if (!fr_atomic_queue_spsc_push(responder->aq, &cd)) {
 		fr_strerror_printf("Failed pushing to atomic queue - full.  Queue contains %zu items",
 				   fr_atomic_queue_size(responder->aq));
 		while (fr_channel_recv_request(ch));
@@ -919,7 +919,7 @@ unsigned int fr_channel_responder_discard(fr_channel_t *ch)
 	fr_atomic_queue_t	*aq = ch->end[TO_RESPONDER].aq;
 	unsigned int		num = 0;
 
-	while (fr_atomic_queue_pop(aq, (void **) &cd)) {
+	while (fr_atomic_queue_spsc_pop(aq, &cd)) {
 		fr_message_done(&cd->m);
 		num++;
 	}

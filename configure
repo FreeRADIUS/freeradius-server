@@ -13318,6 +13318,12 @@ then :
   printf '%s\n' "#define HAVE_MALLOPT 1" >>confdefs.h
 
 fi
+ac_fn_c_check_func "$LINENO" "memfd_create" "ac_cv_func_memfd_create"
+if test "x$ac_cv_func_memfd_create" = xyes
+then :
+  printf '%s\n' "#define HAVE_MEMFD_CREATE 1" >>confdefs.h
+
+fi
 ac_fn_c_check_func "$LINENO" "memrchr" "ac_cv_func_memrchr"
 if test "x$ac_cv_func_memrchr" = xyes
 then :

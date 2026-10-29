@@ -636,7 +636,7 @@ int main(int argc, char *argv[])
 		w->id = i;
 		w->running = true;
 		MEM(w->el = fr_event_list_alloc(ctx, NULL, NULL));
-		MEM(w->aq = fr_atomic_queue_talloc(ctx, FR_CONTROL_MAX_MESSAGES));
+		MEM(w->aq = fr_atomic_queue_talloc(ctx, FR_CONTROL_MAX_MESSAGES, sizeof(uintptr_t)));
 		MEM(w->control = fr_control_create(ctx, w->el, w->aq));
 		if ((fr_channel_callbacks_add(w->control, &responder_callbacks, w) < 0) ||
 		    (fr_control_open(w->control) < 0)) {
@@ -653,7 +653,7 @@ int main(int argc, char *argv[])
 
 		r->id = i;
 		MEM(r->el = fr_event_list_alloc(ctx, NULL, NULL));
-		MEM(r->aq = fr_atomic_queue_talloc(ctx, FR_CONTROL_MAX_MESSAGES));
+		MEM(r->aq = fr_atomic_queue_talloc(ctx, FR_CONTROL_MAX_MESSAGES, sizeof(uintptr_t)));
 		MEM(r->control = fr_control_create(ctx, r->el, r->aq));
 		if ((fr_channel_callbacks_add(r->control, &requestor_callbacks, r) < 0) ||
 		    (fr_control_open(r->control) < 0)) {

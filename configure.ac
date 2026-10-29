@@ -1832,6 +1832,7 @@ AC_CHECK_FUNCS( \
   initgroups \
   localtime_r \
   mallopt \
+  memfd_create \
   memrchr \
   memset_explicit \
   mkdirat \

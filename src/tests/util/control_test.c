@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 	aq_size = single_aq ? FR_CONTROL_MAX_MESSAGES * num_workers : FR_CONTROL_MAX_MESSAGES;
 	aq = talloc_array(autofree, fr_atomic_queue_t *, num_aq);
 	for (i = 0; i < num_aq; i++) {
-		aq[i] = fr_atomic_queue_talloc(aq, aq_size);
+		aq[i] = fr_atomic_queue_talloc(aq, aq_size, sizeof(uintptr_t));
 		fr_assert(aq[i] != NULL);
 	}
 

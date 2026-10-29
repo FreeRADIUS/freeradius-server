@@ -573,6 +573,44 @@ int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags, U
 }
 #endif
 
+#ifndef HAVE_MEMFD_CREATE
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/mman.h>
+#include <freeradius-devel/util/rand.h>
+
+/** Emulates memfd_create with a named shared memory object
+ *
+ * A memfd is an anonymous shared memory object which lives as long as a
+ * descriptor or mapping refers to it.  The nearest portable thing is a
+ * named object which is unlinked as soon as it has been opened.  The
+ * name is only there to create it, so it is the caller's name with a
+ * random suffix, and only its first characters are kept as macOS limits
+ * the whole name to 31 characters.
+ *
+ * @param[in] name	for debugging, as for the real call.
+ * @param[in] flags	only MFD_CLOEXEC is honoured.
+ * @return
+ *	- The descriptor.
+ *	- -1 on error, with errno set as for shm_open.
+ */
+int memfd_create(char const *name, unsigned int flags)
+{
+	char	path[32];
+	int	fd;
+
+	snprintf(path, sizeof(path), "/%.6s_%08" PRIx32 "%08" PRIx32, name, fr_rand(), fr_rand());
+
+	fd = shm_open(path, O_RDWR | O_CREAT | O_EXCL, 0600);
+	if (fd < 0) return -1;
+
+	(void) shm_unlink(path);
+	if (flags & MFD_CLOEXEC) (void) fcntl(fd, F_SETFD, FD_CLOEXEC);
+
+	return fd;
+}
+#endif
+
 /*
  *	So we don't have ifdef's in the rest of the code
  */

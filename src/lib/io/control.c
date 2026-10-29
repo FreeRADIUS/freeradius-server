@@ -378,7 +378,7 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, fr_control_ev
 		return -2;
 	}
 
-	if (!fr_atomic_queue_push(c->aq, m)) {
+	if (!fr_atomic_queue_mpmc_push(c->aq, &m)) {
 		m->status = FR_CONTROL_MESSAGE_DONE;
 		fr_strerror_const("Failed pushing message to atomic queue.");
 		return -1;
@@ -465,7 +465,7 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, fr_control_eventset_t *p_e
 
 	MPRINT("CONTROL pop aq %p\n", aq);
 
-	if (!fr_atomic_queue_pop(aq, (void **) &m)) return 0;
+	if (!fr_atomic_queue_spsc_pop(aq, &m)) return 0;
 
 	fr_assert_msg(m->status == FR_CONTROL_MESSAGE_USED, "Bad control message state, expected %u got %u",
 		      FR_CONTROL_MESSAGE_USED, m->status);
