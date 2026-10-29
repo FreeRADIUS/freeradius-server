@@ -50,6 +50,8 @@ typedef struct {
 
 	virtual_server_t	*virtual_server;	//!< Virtual server for inner tunnel session.
 
+	virtual_server_t	*resume_virtual_server;	//!< Virtual server to send resumed sessions through.
+
 	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_ttls_t;
 
@@ -64,6 +66,9 @@ static conf_parser_t submodule_config[] = {
 	{ FR_CONF_V3_DEPRECATED("copy_request_to_tunnel", rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_V3_DEPRECATED("use_tunneled_reply", rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_ttls_t, virtual_server),
+				    .func = virtual_server_cf_parse,
+				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "radius"} },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("resume_virtual_server", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, rlm_eap_ttls_t, resume_virtual_server),
 				    .func = virtual_server_cf_parse,
 				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "radius"} },
 	{ FR_CONF_OFFSET("include_length", rlm_eap_ttls_t, include_length), .dflt = "yes" },
@@ -924,6 +929,26 @@ static ttls_tunnel_t *ttls_alloc(TALLOC_CTX *ctx)
 	return t;
 }
 
+static unlang_action_t process_resume_reply(unlang_result_t *p_result, request_t *request, NDEBUG_UNUSED void *uctx)
+{
+#ifndef NDEBUG
+	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	request_t	*parent = request->parent;
+#endif
+
+	fr_assert(eap_session->request == parent->parent);
+
+	p_result->priority = MOD_PRIORITY_MAX;
+
+	switch (request->reply->code) {
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+		RETURN_UNLANG_OK;
+
+	default:
+		RETURN_UNLANG_REJECT;
+	}
+}
+
 static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
@@ -948,8 +973,43 @@ static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ct
 	 */
 	case EAP_TLS_ESTABLISHED:
 		if (SSL_session_reused(tls_session->ssl)) {
+			rlm_eap_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_ttls_t);
+			request_t	*child;
+
 			RDEBUG2("Skipping Phase2 due to session resumption");
-			return eap_ttls_success(p_result, request, eap_session);
+
+			/*
+			 *	A simplified version of the code used to process tunnelled TTLS data.
+			 *
+			 *	In this case, the request is populated with pairs restored from
+			 *	the cached session-state.
+			 */
+			(void) unlang_module_yield(request, process_rcode, NULL, FR_SIGNAL_NONE, eap_session);
+
+			MEM(child = unlang_subrequest_alloc(request, request->proto_dict));
+
+			if (unlikely(fr_pair_list_copy(child->request_ctx, &child->request_pairs,
+						       &request->session_state_pairs) < 0)) {
+			error:
+				request_detach(child);
+				unlang_interpret_signal(child, FR_SIGNAL_CANCEL);
+				RETURN_UNLANG_FAIL;
+			}
+
+			RDEBUG2("Resumed session-state:");
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, &child->request_pairs, NULL);
+
+			if (unlang_subrequest_child_push(&eap_session->submodule_result, child, child,
+							 false, UNLANG_SUB_FRAME) < 0) goto error;
+
+			if (unlang_function_push_with_result(NULL, child, NULL, process_resume_reply, NULL,
+							     FR_SIGNAL_NONE, UNLANG_SUB_FRAME,
+							     eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto error;
+
+			if (unlikely(eap_virtual_server(child, eap_session,
+							inst->resume_virtual_server) == UNLANG_ACTION_FAIL)) goto error;
+
+			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
 		if (tunnel && tunnel->authenticated) return eap_ttls_success(p_result, request, eap_session);
@@ -1116,6 +1176,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	eap_tls_conf_check(conf, inst->tls_conf, true);
 
 	if (eap_tls_check_stateless(conf, inst->tls_conf) < 0) return -1;
+
+	if (!inst->resume_virtual_server) inst->resume_virtual_server = inst->virtual_server;
 
 	return 0;
 }
