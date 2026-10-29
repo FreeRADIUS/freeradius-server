@@ -38,7 +38,6 @@ typedef struct {
 							//!< tunneled session in the tunneled request.
 
 	virtual_server_t	*virtual_server;	//!< Virtual server for inner tunnel session.
-	CONF_SECTION		*server_cs;
 
 	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_peap_t;
@@ -1005,8 +1004,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	CONF_SECTION		*conf = mctx->mi->conf;
 
 	fr_assert(inst->virtual_server);
-
-	inst->server_cs = virtual_server_cs(inst->virtual_server);
 
 	eap_tls_conf_check(conf, inst->tls_conf);
 
