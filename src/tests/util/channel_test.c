@@ -282,8 +282,7 @@ static void *requestor_thread(void *arg)
 		 *	we are about to block, drain every channel one
 		 *	last time, and only block if that found nothing.
 		 */
-		fr_control_sleeping(r->control);
-		wait = true;
+		wait = !fr_control_sleeping(r->control);
 		for (i = 0; i < num_responders; i++) {
 			while (fr_channel_recv_reply(r->channel[i].ch)) wait = false;
 		}
@@ -378,9 +377,9 @@ static fr_channel_callbacks_t const responder_callbacks = {
 static bool responder_sleeping(responder_t *w)
 {
 	size_t	i;
-	bool	received = false;
+	bool	received;
 
-	fr_control_sleeping(w->control);
+	received = fr_control_sleeping(w->control);
 
 	for (i = 0; i < num_requestors; i++) {
 		if (!w->channel[i].ch) continue;

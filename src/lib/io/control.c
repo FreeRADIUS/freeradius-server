@@ -131,35 +131,49 @@ static inline size_t control_message_size(fr_control_t const *c)
 	return sizeof(fr_control_header_t) + c->max_size;
 }
 
+/** Dispatch every queued message
+ *
+ * Called from the reading thread only.
+ *
+ * @param[in] c the control structure.
+ * @return how many messages were dispatched.
+ */
+static inline unsigned int control_service(fr_control_t *c)
+{
+	fr_time_t	now = fr_time();
+	uint8_t		rec[CACHE_LINE_BYTES];
+	unsigned int	num = 0;
+
+	while (fr_atomic_queue_spsc_pop(c->aq, rec)) {
+		fr_control_header_t const	*hdr = (fr_control_header_t const *) rec;
+		fr_control_ctx_t const		*cctx = control_ctx_find(c, hdr->es, hdr->event);
+
+		num++;
+		if (!cctx) continue;
+
+		cctx->callback(rec + sizeof(*hdr), hdr->data_size, now, cctx->uctx);
+	}
+
+	return num;
+}
+
 /** Drain the wakeup socket, then dispatch every queued message
  *
- * Each byte on the socket announces that a message was queued, and the
- * loop below pops every message, so empty the socket.  A read returns a
- * single datagram no matter how large the buffer is, so keep reading
- * until there are none left.
+ * Each byte on the socket announces that a message was queued while we
+ * were asleep.  A read returns a single datagram no matter how large the
+ * buffer is, so keep reading until there are none left.
  */
 static void control_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_control_t	*c = talloc_get_type_abort(uctx, fr_control_t);
-	fr_time_t	now;
 	uint8_t		buf[256];
-	uint8_t		rec[CACHE_LINE_BYTES];
 	ssize_t		slen;
 
 	do {
 		slen = read(fd, buf, sizeof(buf));
 	} while ((slen > 0) || ((slen < 0) && (errno == EINTR)));
 
-	now = fr_time();
-
-	while (fr_atomic_queue_spsc_pop(c->aq, rec)) {
-		fr_control_header_t const	*hdr = (fr_control_header_t const *) rec;
-		fr_control_ctx_t const		*cctx = control_ctx_find(c, hdr->es, hdr->event);
-
-		if (!cctx) continue;
-
-		cctx->callback(rec + sizeof(*hdr), hdr->data_size, now, cctx->uctx);
-	}
+	(void) control_service(c);
 }
 
 /** Free a control structure
@@ -303,6 +317,8 @@ int fr_control_message_send(fr_control_t *c, fr_control_eventset_t es, uint16_t 
 		return -1;
 	}
 
+	if (!fr_control_is_sleeping(c)) return 0;
+
 	/*
 	 *	Wake the reader.  A full socket means it has wakeups it
 	 *	has not consumed, so this one is not needed.  Linux reports
@@ -414,20 +430,25 @@ int fr_control_callback_delete(fr_control_t *c, fr_control_eventset_t es, uint16
 
 /** Record that the reader of this control plane is about to block
  *
- * Call this before blocking, then check the work queues one last time.  A
- * sender pushes work, then checks this flag.  The seq_cst fences stop either
- * side reordering its store after its load, so one of them always sees the
- * other.  Weaker orderings permit the lost wakeup this exists to prevent.
- *
- * A spurious signal is a wasted wakeup.  A skipped signal is a stall.  Err
- * towards signalling.
+ * Call this before blocking, then check any other work queues one last
+ * time.  A sender pushes work, then checks this flag.  The seq_cst
+ * fences stop either side reordering its store after its load, so one
+ * of them always sees the other.
  *
  * @param[in] c the control structure.
+ * @return
+ *	- true if messages were serviced, so the caller must not block.
+ *	- false if the queue was empty.
  */
-void fr_control_sleeping(fr_control_t *c)
+bool fr_control_sleeping(fr_control_t *c)
 {
 	atomic_store_explicit(&c->sleeping, true, memory_order_seq_cst);
 	atomic_thread_fence(memory_order_seq_cst);
+
+	if (control_service(c) == 0) return false;
+
+	fr_control_awake(c);
+	return true;
 }
 
 /** Record that the reader of this control plane is running again
@@ -483,8 +504,16 @@ void fr_control_wait(fr_control_t *c)
 {
 	struct pollfd	fd;
 
+	/*
+	 *	Senders only wake a reader which announced it is blocking,
+	 *	and a message may have arrived before we announced.
+	 */
+	if (fr_control_sleeping(c)) return;
+
 	fd.fd = c->fd[0];
 	fd.events = POLLIN;
 
 	(void) poll(&fd, 1, -1);
+
+	fr_control_awake(c);
 }

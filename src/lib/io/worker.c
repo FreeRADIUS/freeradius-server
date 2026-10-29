@@ -1493,9 +1493,9 @@ nomem:
 static inline bool worker_sleeping(fr_worker_t *worker)
 {
 	int i;
-	bool received = false;
+	bool received;
 
-	fr_control_sleeping(worker->control);
+	received = fr_control_sleeping(worker->control);
 
 	for (i = 0; i < worker->config.max_channels; i++) {
 		if (!worker->channel[i].ch) continue;

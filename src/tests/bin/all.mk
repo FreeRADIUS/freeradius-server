@@ -40,7 +40,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #  Some tests take arguments, others do not.
 #
 channel_test.ARGS = -m 20000 -t 30
-control_test.ARGS = -m 1000 -w 32
+control_test.ARGS = -m 20000 -w 8 -P 20 -t 30
 radclient.ARGS = -h
 radict.ARGS = -D $(top_srcdir)/share/dictionary User-Name
 radmin.ARGS = -h

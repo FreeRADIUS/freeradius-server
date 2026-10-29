@@ -1911,9 +1911,9 @@ static void _signal_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 static inline bool network_sleeping(fr_network_t *nr)
 {
 	unsigned int i;
-	bool received = false;
+	bool received;
 
-	fr_control_sleeping(nr->control);
+	received = fr_control_sleeping(nr->control);
 
 	for (i = 0; i < nr->num_workers; i++) {
 		while (fr_channel_recv_reply(nr->workers[i]->channel)) received = true;

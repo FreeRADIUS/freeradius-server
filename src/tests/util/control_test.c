@@ -25,12 +25,14 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/semaphore.h>
 
 #include <sys/event.h>
 #include <pthread.h>
+#include <sched.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -63,6 +65,15 @@ static fr_control_t	**control = NULL;
 static fr_event_list_t	*el = NULL;
 static bool		single_aq = true;
 static size_t		num_aq = 1;
+static uint32_t		max_pause_usec = 0;	//!< workers pause up to this long between sends.
+static uint32_t		watchdog_secs = 30;	//!< fail if the master makes no progress for this long.
+
+static pthread_mutex_t	wd_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t	wd_cond = PTHREAD_COND_INITIALIZER;
+static bool		finished = false;
+static _Atomic(size_t)	progress = 0;		//!< messages the master has received, for the watchdog.
+static _Atomic(size_t)	master_sleeps = 0;	//!< times the master blocked.
+static _Atomic(size_t)	master_rescued = 0;	//!< times announcing found messages, so it did not block.
 
 /**********************************************************************/
 
@@ -72,6 +83,9 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  -m <messages>	  Send number of messages.\n");
 	fprintf(stderr, "  -w <workers>           Number of workers.\n");
 	fprintf(stderr, "  -q                     Use per-worker atomic queues.\n");
+	fprintf(stderr, "  -P <usec>              Pause each worker up to this long between sends,\n");
+	fprintf(stderr, "                         so the master runs dry and blocks (default: 0).\n");
+	fprintf(stderr, "  -t <seconds>           Fail if the master receives nothing for this long (default: 30).\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
 	fr_exit_now(EXIT_SUCCESS);
@@ -98,6 +112,64 @@ static void recv_control_callback(void const *data, size_t data_size, UNUSED fr_
 	MPRINT2("Master got worker %zu message %zu, size %zu.\n", m->worker, m->counter, data_size);
 	if (m->counter == (max_messages - 1)) MPRINT1("Master seen all messages from worker %zu\n", m->worker);
 	master_ctx->num_messages++;
+	atomic_store_explicit(&progress, master_ctx->num_messages, memory_order_relaxed);
+}
+
+/** Busy wait for a random time up to max_usec
+ *
+ * Deliberately a spin, so the worker never blocks and the master is
+ * the only thread which sleeps.
+ */
+static void spin(uint32_t max_usec)
+{
+	fr_time_t until;
+
+	if (!max_usec) return;
+
+	until = fr_time_add(fr_time(), fr_time_delta_from_usec(fr_rand() % (max_usec + 1)));
+	while (fr_time_lt(fr_time(), until)) {
+		/* spin */
+	}
+}
+
+/** Fail the test if the master stops receiving
+ *
+ * With the wakeup gated on the master announcing it is blocking, a
+ * missed wakeup leaves the master asleep with messages queued, which
+ * would otherwise hang the test rather than fail it.
+ */
+static void *watchdog_thread(UNUSED void *arg)
+{
+	size_t last = 0;
+
+	pthread_mutex_lock(&wd_mutex);
+	while (!finished) {
+		struct timespec	ts;
+		int		ret;
+		size_t		now;
+
+		clock_gettime(CLOCK_REALTIME, &ts);
+		ts.tv_sec += watchdog_secs;
+
+		ret = pthread_cond_timedwait(&wd_cond, &wd_mutex, &ts);
+		if (finished) break;
+		if (ret != ETIMEDOUT) continue;
+
+		now = atomic_load_explicit(&progress, memory_order_relaxed);
+		if (now == last) {
+			fprintf(stderr, "STALL: master received %zu of %zu messages, then nothing for %u seconds, "
+				"slept %zu times, rescued %zu times\n",
+				now, max_messages * num_workers, watchdog_secs,
+				atomic_load_explicit(&master_sleeps, memory_order_relaxed),
+				atomic_load_explicit(&master_rescued, memory_order_relaxed));
+			fr_exit_now(EXIT_FAILURE);
+		}
+		MPRINT1("watchdog: %zu messages\n", now);
+		last = now;
+	}
+	pthread_mutex_unlock(&wd_mutex);
+
+	return NULL;
 }
 
 static void *control_master(void *arg)
@@ -126,10 +198,26 @@ static void *control_master(void *arg)
 	start = fr_time();
 	while (master_ctx->num_messages < (max_messages * num_workers)) {
 		int num_events;
+		bool wait = true;
 
 		MPRINT3("Master waiting for events (seen %zu).\n", master_ctx->num_messages);
 
-		num_events = fr_event_corral(el, fr_time(), true);
+		/*
+		 *	Announce that we are about to block, on every control
+		 *	we read.  If any held messages, service the rest
+		 *	without blocking.
+		 */
+		for (i = 0; i < num_aq; i++) {
+			if (fr_control_sleeping(control[i])) wait = false;
+		}
+		if (wait) {
+			atomic_fetch_add_explicit(&master_sleeps, 1, memory_order_relaxed);
+		} else {
+			atomic_fetch_add_explicit(&master_rescued, 1, memory_order_relaxed);
+		}
+
+		num_events = fr_event_corral(el, fr_time(), wait);
+		for (i = 0; i < num_aq; i++) fr_control_awake(control[i]);
 		if (num_events < 0) {
 			fprintf(stderr, "Failed reading kevent: %s\n", fr_syserror(errno));
 			fr_exit_now(EXIT_FAILURE);
@@ -139,9 +227,11 @@ static void *control_master(void *arg)
 		}
 	}
 	elapsed_usec = fr_time_delta_to_usec(fr_time_sub_time_time(fr_time(), start));
-	MPRINT1("Master exiting. Seen %zu messages. %.2f per second\n",
-		master_ctx->num_messages,
-		((double)master_ctx->num_messages * 1e6) / (double)elapsed_usec);
+	printf("messages          %zu from %zu workers\n", master_ctx->num_messages, num_workers);
+	printf("master slept      %zu times\n", atomic_load_explicit(&master_sleeps, memory_order_relaxed));
+	printf("rescued by drain  %zu times\n", atomic_load_explicit(&master_rescued, memory_order_relaxed));
+	printf("elapsed           %.3fs, %.0f messages/s\n", (double) elapsed_usec / 1e6,
+	       ((double)master_ctx->num_messages * 1e6) / (double)elapsed_usec);
 
 	talloc_free(ctx);
 
@@ -162,11 +252,17 @@ static void *control_worker(void *arg)
 
 	for (i = 0; i < max_messages; i++) {
 		my_message_t m;
-		int delay = 0;
 
 		m.header = CONTROL_MAGIC;
 		m.counter = i;
 		m.worker = wa->id;
+
+		/*
+		 *	Go quiet for a bit so the master runs dry, announces
+		 *	and blocks.  The next send then lands on a master which
+		 *	is asleep, or is in the middle of deciding to be.
+		 */
+		spin(max_pause_usec);
 
 retry:
 		if (fr_control_message_send(control[aq_num], FR_CONTROL_EVENTSET_NETWORK, CONTROL_TEST_MESSAGE,
@@ -176,8 +272,14 @@ retry:
 			while ((err = fr_strerror_pop())) {
 				MPRINT1("\t%s\n", err);
 			}
-			delay += 10;
-			usleep(delay);
+
+			/*
+			 *	The queue is full.  Give the master a chance to
+			 *	drain it, without sleeping for a growing delay
+			 *	which would turn the test into a benchmark of
+			 *	the sleep.
+			 */
+			sched_yield();
 			goto retry;
 		}
 
@@ -198,16 +300,24 @@ int main(int argc, char *argv[])
 	int 			c;
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 	pthread_attr_t		attr;
-	pthread_t		master_id, *worker_id;
+	pthread_t		master_id, *worker_id, wd_id;
 	size_t			i;
 	worker_args_t		*worker_args;
 	fr_sem_t		*master_sem;
 
 	fr_time_start();
 
-	while ((c = getopt(argc, argv, "hm:qw:x")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "hm:P:qt:w:x")) != -1) switch (c) {
 		case 'x':
 			debug_lvl++;
+			break;
+
+		case 'P':
+			max_pause_usec = (uint32_t) strtoul(optarg, NULL, 10);
+			break;
+
+		case 't':
+			watchdog_secs = (uint32_t) strtoul(optarg, NULL, 10);
 			break;
 
 		case 'm':
@@ -255,6 +365,7 @@ int main(int argc, char *argv[])
 
 	master_sem = fr_sem_alloc();
 	fr_assert(master_sem != NULL);
+	(void) pthread_create(&wd_id, &attr, watchdog_thread, NULL);
 	(void) pthread_create(&master_id, &attr, control_master, master_sem);
 	SEM_WAIT_INTR(master_sem);
 
@@ -270,10 +381,17 @@ int main(int argc, char *argv[])
 		(void) pthread_join(worker_id[i], NULL);
 	}
 
+	pthread_mutex_lock(&wd_mutex);
+	finished = true;
+	pthread_cond_signal(&wd_cond);
+	pthread_mutex_unlock(&wd_mutex);
+	(void) pthread_join(wd_id, NULL);
+
 	fr_sem_free(master_sem);
 	talloc_free(control);
 
 	main_loop_free();
 
+	fflush(stdout);
 	fr_exit_now(EXIT_SUCCESS);
 }
