@@ -752,7 +752,7 @@ done:
 	return 0;
 }
 
-/** Add a fr_listen_t to a scheduler.
+/** Add a fr_listen_instance_t to a scheduler.
  *
  * @param[in] sc the scheduler
  * @param[in] li the ctx and callbacks for the transport.
@@ -760,7 +760,7 @@ done:
  *	- NULL on error
  *	- the fr_network_t that the socket was added to.
  */
-fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t *li)
+fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_instance_t *li)
 {
 	fr_network_t *nr;
 
@@ -792,7 +792,7 @@ fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t *li)
  *	- NULL on error
  *	- the fr_network_t that the socket was added to.
  */
-fr_network_t *fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t *li)
+fr_network_t *fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_instance_t *li)
 {
 	fr_network_t *nr;
 

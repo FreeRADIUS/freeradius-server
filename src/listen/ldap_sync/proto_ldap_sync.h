@@ -61,7 +61,7 @@ typedef struct {
 
 	fr_schedule_t		*sc;
 
-	fr_listen_t		*listen;			//!< The listener structure which describes
+	fr_listen_instance_t	*listen;			//!< The listener structure which describes
 								//! the I/O path.
 } proto_ldap_sync_t;
 

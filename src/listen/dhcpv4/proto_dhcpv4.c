@@ -310,7 +310,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		       dhcp_message_types[request->reply->code],
 		       (uint32_t)request->reply->id,
 		       (size_t)data_len,
-		       request->async->listen->name);
+		       request->async->inst->name);
 		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
 

@@ -68,7 +68,7 @@ typedef struct {
 
 	fr_schedule_t			*sc;				//!< the scheduler, where we insert new readers
 
-	fr_listen_t			*listen;			//!< The listener structure which describes
+	fr_listen_instance_t		*listen;			//!< The listener structure which describes
 									//!< the I/O path.
 } proto_detail_t;
 
@@ -112,7 +112,8 @@ struct proto_detail_work_thread_s {
 
 	fr_event_list_t			*el;			//!< for various timers
 	fr_network_t			*nr;			//!< for Linux-specific callbacks
-	fr_listen_t			*listen;		//!< talloc_parent() is slow
+	fr_listen_instance_t		*li;			//!< talloc_parent() is slow
+	fr_listen_t			*work_listen;		//!< I/O path, every work file read is a socket of it.
 	proto_detail_work_thread_t	*file_parent;		//!< thread instance of the directory reader that spawned us
 
 	char const			*filename_work;		//!< work file name

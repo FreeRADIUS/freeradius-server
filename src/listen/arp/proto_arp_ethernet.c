@@ -57,7 +57,8 @@ static conf_parser_t const arp_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static ssize_t mod_read(fr_listen_instance_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
+			size_t buffer_len, size_t *leftover)
 {
 	proto_arp_ethernet_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_arp_ethernet_thread_t);
 	int				ret;
@@ -106,8 +107,9 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 }
 
 
-static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
-			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
+static ssize_t mod_write(fr_listen_instance_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
+			 uint8_t *buffer,
+			 size_t buffer_len, UNUSED size_t written)
 {
 	proto_arp_ethernet_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_arp_ethernet_thread_t);
 
@@ -165,9 +167,10 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 /** Open a pcap file for ARP
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
-	proto_arp_ethernet_t const      *inst = talloc_get_type_abort_const(li->app_io_instance, proto_arp_ethernet_t);
+	proto_arp_ethernet_t const      *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_arp_ethernet_t);
 	proto_arp_ethernet_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_arp_ethernet_thread_t);
 
 	char const			*filter;
@@ -176,7 +179,7 @@ static int mod_open(fr_listen_t *li)
 
 	thread->pcap = fr_pcap_init(thread, inst->interface, PCAP_INTERFACE_IN);
 	if (!thread->pcap) {
-		cf_log_err(li->cs, "Failed initializing pcap - %s", fr_strerror());
+		cf_log_err(li->listen->cs, "Failed initializing pcap - %s", fr_strerror());
 		return -1;
 	}
 
@@ -184,7 +187,7 @@ static int mod_open(fr_listen_t *li)
 	rcode = fr_pcap_open(thread->pcap);
 	rad_suid_down();
 	if (rcode < 0) {
-		cf_log_err(li->cs, "Failed opening interface %s - %s", inst->interface, fr_strerror());
+		cf_log_err(li->listen->cs, "Failed opening interface %s - %s", inst->interface, fr_strerror());
 		return -1;
 	}
 
@@ -198,7 +201,7 @@ static int mod_open(fr_listen_t *li)
 	}
 
 	if (fr_pcap_apply_filter(thread->pcap, filter) < 0) {
-		cf_log_err(li->cs, "Failed applying pcap filter '%s' - %s", filter, fr_strerror());
+		cf_log_err(li->listen->cs, "Failed applying pcap filter '%s' - %s", filter, fr_strerror());
 		talloc_free(our_filter);
 		return -1;
 	}
@@ -212,7 +215,7 @@ static int mod_open(fr_listen_t *li)
 	return 0;
 }
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 {
 	proto_arp_ethernet_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_arp_ethernet_thread_t);
 

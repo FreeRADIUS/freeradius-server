@@ -427,32 +427,31 @@ static int mod_priority_set(void const *instance, UNUSED uint8_t const *buffer, 
  */
 static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
-	fr_listen_t	*li;
-	proto_detail_t 	*inst = talloc_get_type_abort(instance, proto_detail_t);
+	fr_listen_instance_t	*li;
+	fr_listen_t		*listen;
+	proto_detail_t		*inst = talloc_get_type_abort(instance, proto_detail_t);
 
 	/*
-	 *	Build the #fr_listen_t.  This describes the complete
-	 *	path, data takes from the socket to the decoder and
-	 *	back again.
+	 *	Build the listener.  This describes the complete path data
+	 *	takes from the socket to the decoder and back again.
 	 */
-	MEM(li = talloc_zero(inst, fr_listen_t));	/* Assigned thread steals the memory */
-	talloc_set_destructor(li, fr_io_listen_free);
-
-	li->cs = conf;
-	li->app_io = inst->app_io;
-	li->thread_instance = talloc_zero_array(li, uint8_t, li->app_io->common.thread_inst_size);
-	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->common.name);
-	li->app_io_instance = inst->app_io_instance;
-
-	li->app = &proto_detail;
-	li->app_instance = instance;
-	li->server_cs = inst->server_cs;
+	MEM(listen = fr_listen_alloc(inst, conf, inst->server_cs, &proto_detail, instance,
+				     inst->app_io, inst->app_io_instance));
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	li->default_message_size = inst->max_packet_size;
-	li->num_messages = inst->num_messages;
+	listen->default_message_size = inst->max_packet_size;
+	listen->num_messages = inst->num_messages;
+
+	/*
+	 *	Then the socket of it we will open.
+	 */
+	MEM(li = fr_listen_instance_alloc(inst, listen));	/* Assigned thread steals the memory */
+	talloc_set_destructor(li, fr_io_listen_free);
+
+	li->thread_instance = talloc_zero_array(li, uint8_t, listen->app_io->common.thread_inst_size);
+	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->common.name);
 
 	/*
 	 *	Open the file.
@@ -463,8 +462,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		return -1;
 	}
 
-	fr_assert(li->app_io->get_name);
-	li->name = li->app_io->get_name(li);
+	fr_assert(li->listen->app_io->get_name);
+	li->name = li->listen->app_io->get_name(li);
 
 	/*
 	 *	Testing: allow it to read a "detail.work" file
@@ -480,7 +479,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		return 0;
 	}
 
-	if (li->non_socket_listener) {
+	if (li->listen->non_socket_listener) {
 		/*
 		 *	Add listener.  Will insert polling timer.
 		 */
@@ -499,7 +498,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	}
 
 	DEBUG("Listening on %s bound to virtual server %s",
-	      li->name, cf_section_name2(li->server_cs));
+	      li->name, cf_section_name2(li->listen->server_cs));
 
 	inst->listen = li;	/* Probably won't need it, but doesn't hurt */
 	inst->sc = sc;

@@ -225,8 +225,8 @@ DIAG_OFF(format-nonliteral)
  *
  *  'fmt' is from our source code, so we don't care about format literals.
  */
-void proto_radius_log(fr_listen_t const *li, fr_radius_decode_fail_t reason,
-		      fr_socket_t const *sock, char const *fmt, ...)
+void proto_radius_log(fr_listen_instance_t const *li, fr_radius_decode_fail_t reason, fr_socket_t const *sock,
+		      char const *fmt, ...)
 {
 	va_list ap;
 	char const *msg;
@@ -690,7 +690,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		       fr_box_ipaddr(request->reply->socket.inet.dst_ipaddr),
 		       request->reply->socket.inet.dst_port,
 		       (size_t)data_len,
-		       request->async->listen->name);
+		       request->async->inst->name);
 
 		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}

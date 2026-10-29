@@ -203,8 +203,8 @@ static void dhcpv4_pcap_free(proto_dhcpv4_udp_thread_t *thread, proto_dhcpv4_pca
 }
 #endif
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,
-			 size_t *leftover)
+static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
+			size_t buffer_len, size_t *leftover)
 {
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
@@ -286,10 +286,11 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 }
 
 
-static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
-			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
+static ssize_t mod_write(fr_listen_instance_t *li, void *packet_ctx, UNUSED fr_time_t request_time, uint8_t *buffer,
+			 size_t buffer_len, UNUSED size_t written)
 {
-	proto_dhcpv4_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t const        *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_dhcpv4_udp_t);
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
@@ -644,7 +645,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 }
 
 
-static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
+static int mod_connection_set(fr_listen_instance_t *li, fr_io_address_t *connection)
 {
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
@@ -666,9 +667,10 @@ static void mod_network_get(int *ipproto, bool *dynamic_clients, fr_trie_t const
 /** Open a UDP listener for DHCPV4
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
-	proto_dhcpv4_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t const        *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_dhcpv4_udp_t);
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	int				sockfd, rcode;
@@ -677,7 +679,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		cf_log_err(li->cs, "Failed opening UDP socket - %s", fr_strerror());
+		cf_log_err(li->listen->cs, "Failed opening UDP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -692,7 +694,7 @@ static int mod_open(fr_listen_t *li)
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
-			cf_log_err(li->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
+			cf_log_err(li->listen->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -704,7 +706,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->recv_buff;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
-			cf_log_warn(li->cs, "Failed setting 'recv_buf' - %s", fr_syserror(errno));
+			cf_log_warn(li->listen->cs, "Failed setting 'recv_buf' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -713,7 +715,7 @@ static int mod_open(fr_listen_t *li)
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-			cf_log_err(li->cs, "Failed to set 'broadcast' - %s", fr_syserror(errno));
+			cf_log_err(li->listen->cs, "Failed to set 'broadcast' - %s", fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -724,8 +726,8 @@ static int mod_open(fr_listen_t *li)
 	rad_suid_down();
 	if (rcode < 0) {
 		close(sockfd);
-		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
-		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
+		cf_log_err(li->listen->cs, "Failed binding to socket - %s", fr_strerror());
+		cf_log_err(li->listen->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 		goto error;
 	}
 	if (inst->interface) li->app_io_addr->inet.src_ipaddr.scope_id = ipaddr.scope_id;
@@ -746,7 +748,7 @@ static int mod_open(fr_listen_t *li)
 }
 
 #ifdef HAVE_LIBPCAP
-static int mod_close(fr_listen_t *li)
+static int mod_close(fr_listen_instance_t *li)
 {
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 	void				**pcap_to_free;
@@ -766,9 +768,10 @@ static int mod_close(fr_listen_t *li)
 /** Set the file descriptor for this socket.
  *
  */
-static int mod_fd_set(fr_listen_t *li, int fd)
+static int mod_fd_set(fr_listen_instance_t *li, int fd)
 {
-	proto_dhcpv4_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t const        *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_dhcpv4_udp_t);
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	thread->sockfd = fd;
@@ -851,7 +854,7 @@ static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_in
 	return (a->message_type < b->message_type) - (a->message_type > b->message_type);
 }
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 {
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
@@ -993,9 +996,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
+static fr_client_t *mod_client_find(fr_listen_instance_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
-	proto_dhcpv4_udp_t const *inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t const *inst = talloc_get_type_abort_const(li->listen->app_io_instance, proto_dhcpv4_udp_t);
 
 	/*
 	 *	Prefer local clients.

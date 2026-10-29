@@ -267,7 +267,7 @@ skip_decode:
 		       fr_box_ipaddr(request->packet->socket.inet.dst_ipaddr),
 		       request->packet->socket.inet.dst_port,
 		       request->packet->data_len,
-		       request->async->listen->name);
+		       request->async->inst->name);
 
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
@@ -382,7 +382,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		       fr_box_ipaddr(request->reply->socket.inet.dst_ipaddr),
 		       request->reply->socket.inet.dst_port,
 		       (size_t)data_len,
-		       request->async->listen->name);
+		       request->async->inst->name);
 
 		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}

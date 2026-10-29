@@ -39,7 +39,7 @@ typedef struct {
 	 *	peer can only have one session associated with it.
 	 */
 	void				*inst;			//!< proto_bfd_udp instance using this session
-	fr_listen_t			*listen;		//!< associated listener
+	fr_listen_instance_t		*listen;		//!< associated listener
 
 	int				sockfd;			//!< cached for laziness
 	fr_event_list_t			*el;			//!< event list

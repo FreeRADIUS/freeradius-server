@@ -8,6 +8,7 @@ SOURCES	:= \
 	control.c \
 	coord.c \
 	coord_pair.c \
+	listen.c \
 	load.c \
 	master.c \
 	message.c \

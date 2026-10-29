@@ -130,7 +130,7 @@ struct fr_worker_s {
 };
 
 typedef struct {
-	fr_listen_t const	*listener;	//!< incoming packets
+	fr_listen_instance_t const	*listener;	//!< incoming packets
 
 	fr_rb_node_t		node;		//!< in tree of listeners
 
@@ -331,7 +331,7 @@ static fr_channel_callbacks_t const worker_channel_callbacks = {
 	.close		= worker_channel_close
 };
 
-static int fr_worker_listen_cancel_self(fr_worker_t *worker, fr_listen_t const *li)
+static int fr_worker_listen_cancel_self(fr_worker_t *worker, fr_listen_instance_t const *li)
 {
 	fr_worker_listen_t *wl;
 	request_t *request;
@@ -360,7 +360,7 @@ static int fr_worker_listen_cancel_self(fr_worker_t *worker, fr_listen_t const *
  */
 static void worker_listen_cancel_callback(void const *data, NDEBUG_UNUSED size_t data_size, UNUSED fr_time_t now, void *uctx)
 {
-	fr_listen_t const	*li;
+	fr_listen_instance_t const	*li;
 	fr_worker_t		*worker = uctx;
 
 	fr_assert(data_size == sizeof(li));
@@ -387,7 +387,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	fr_channel_t		*ch;
 	fr_worker_channel_t	*wc;
 	fr_message_set_t	*ms;
-	fr_listen_t		*listen;
+	fr_listen_instance_t	*li;
 
 	worker->num_naks++;
 
@@ -395,7 +395,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	 *	Cache the outbound channel.  We'll need it later.
 	 */
 	ch = cd->channel.ch;
-	listen = cd->listen;
+	li = cd->inst;
 
 	/*
 	 *	If the channel has been closed, but we haven't
@@ -413,8 +413,8 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	ms = wc->ms;
 	fr_assert(ms != NULL);
 
-	size = listen->app_io->default_reply_size;
-	if (!size) size = listen->default_message_size;
+	size = li->listen->app_io->default_reply_size;
+	if (!size) size = li->listen->default_message_size;
 
 	/*
 	 *	Allocate a default message size.
@@ -424,8 +424,8 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	/*
 	 *	Encode a NAK
 	 */
-	if (listen->app_io->nak) {
-		size = listen->app_io->nak(listen, cd->packet_ctx, cd->m.data,
+	if (li->listen->app_io->nak) {
+		size = li->listen->app_io->nak(li, cd->packet_ctx, cd->m.data,
 					   cd->m.data_size, reply->m.data, reply->m.rb_size);
 	} else {
 		size = 1;	/* rely on them to figure it the heck out */
@@ -441,7 +441,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	reply->reply.processing_time = fr_time_delta_from_msec(1); /* @todo - set to something better? */
 	reply->reply.request_time = cd->request.recv_time;
 
-	reply->listen = cd->listen;
+	reply->inst = cd->inst;
 	reply->packet_ctx = cd->packet_ctx;
 
 	/*
@@ -576,8 +576,8 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 	fr_assert(!fr_heap_entry_inserted(request->runnable));
 
 	if (send_reply) {
-		size = request->async->listen->app_io->default_reply_size;
-		if (!size) size = request->async->listen->default_message_size;
+		size = request->async->inst->listen->app_io->default_reply_size;
+		if (!size) size = request->async->inst->listen->default_message_size;
 	}
 
 	/*
@@ -609,13 +609,13 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 	 */
 	if (send_reply) {
 		ssize_t slen = 0;
-		fr_listen_t const *listen = request->async->listen;
+		fr_listen_instance_t const *li = request->async->inst;
 
-		if (listen->app_io->encode) {
-			slen = listen->app_io->encode(listen->app_io_instance, request,
+		if (li->listen->app_io->encode) {
+			slen = li->listen->app_io->encode(li->listen->app_io_instance, request,
 						      reply->m.data, reply->m.rb_size);
-		} else if (listen->app->encode) {
-			slen = listen->app->encode(listen->app_instance, request,
+		} else if (li->listen->app->encode) {
+			slen = li->listen->app->encode(li->listen->app_instance, request,
 						   reply->m.data, reply->m.rb_size);
 		}
 		if (slen < 0) {
@@ -645,7 +645,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 	reply->reply.processing_time = request->async->tracking.running_total;
 	reply->reply.request_time = request->async->recv_time;
 
-	reply->listen = request->async->listen;
+	reply->inst = request->async->inst;
 	reply->packet_ctx = request->async->packet_ctx;
 
 	/*
@@ -681,7 +681,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 	request->async->el = NULL;
 	request->async->channel = NULL;
 	request->async->packet_ctx = NULL;
-	request->async->listen = NULL;
+	request->async->inst = NULL;
 #endif
 }
 
@@ -753,7 +753,7 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 	fr_worker_t		*worker = wc->worker;
 	int			ret = -1;
 	request_t		*request;
-	fr_listen_t		*listen = cd->listen;
+	fr_listen_instance_t	*li = cd->inst;
 
 	if (worker_num_requests(worker) >= (uint64_t) worker->config.max_requests) {
 		RATE_LIMIT_GLOBAL(ERROR, "Worker at max requests");
@@ -764,7 +764,7 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 	 *	Receive a message to the worker queue, and decode it
 	 *	to a request.
 	 */
-	fr_assert(listen != NULL);
+	fr_assert(li != NULL);
 
 	request = request_slab_reserve(worker->slab);
 	if (!request) {
@@ -783,7 +783,7 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 	 *	changes based on the listener that allocated it.
 	 */
 	if (request_init(request, REQUEST_TYPE_EXTERNAL,
-			 (&(request_init_args_t){ .namespace = listen->dict })) < 0) {
+			 (&(request_init_args_t){ .namespace = li->listen->dict })) < 0) {
 		request_slab_release(request);
 		goto nak;
 	}
@@ -809,7 +809,7 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 
 	request->async->recv_time = cd->request.recv_time;
 
-	request->async->listen = listen;
+	request->async->inst = li;
 	request->async->packet_ctx = cd->packet_ctx;
 	request->priority = cd->priority;
 
@@ -818,10 +818,11 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 	 *
 	 *	Note that this also sets the "async process" function.
 	 */
-	if (listen->app->decode) {
-		ret = listen->app->decode(listen->app_instance, request, cd->m.data, cd->m.data_size);
-	} else if (listen->app_io->decode) {
-		ret = listen->app_io->decode(listen->app_io_instance, request, cd->m.data, cd->m.data_size);
+	if (li->listen->app->decode) {
+		ret = li->listen->app->decode(li->listen->app_instance, request, cd->m.data, cd->m.data_size);
+	} else if (li->listen->app_io->decode) {
+		ret = li->listen->app_io->decode(li->listen->app_io_instance, request, cd->m.data,
+						     cd->m.data_size);
 	}
 
 	if (ret < 0) {
@@ -837,7 +838,7 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 	/*
 	 *	Set the entry point for this virtual server.
 	 */
-	if (unlang_call_push(NULL, request, cd->listen->server_cs, UNLANG_TOP_FRAME) < 0) {
+	if (unlang_call_push(NULL, request, cd->inst->listen->server_cs, UNLANG_TOP_FRAME) < 0) {
 		RERROR("Protocol failed to set 'process' function");
 		goto fail;
 	}
@@ -846,7 +847,7 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 	 *	Look for conflicting / duplicate packets, but only if
 	 *	requested to do so.
 	 */
-	if (request->async->listen->track_duplicates) {
+	if (request->async->inst->listen->track_duplicates) {
 		request_t *old;
 
 		fr_rb_find((void **)&old, worker->dedup, request);
@@ -854,7 +855,7 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 			goto insert_new;
 		}
 
-		fr_assert(old->async->listen == request->async->listen);
+		fr_assert(old->async->inst == request->async->inst);
 		fr_assert(old->async->channel == request->async->channel);
 
 		/*
@@ -913,7 +914,7 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 	}
 
 	if (worker_request_time_tracking_start(worker, request, now) < 0) {
-		if (request->async->listen->track_duplicates) (void) fr_rb_remove(NULL, worker->dedup, request);
+		if (request->async->inst->listen->track_duplicates) (void) fr_rb_remove(NULL, worker->dedup, request);
 		goto fail;
 	}
 
@@ -925,11 +926,11 @@ static void worker_request_bootstrap(fr_worker_channel_t *wc, fr_channel_data_t 
 	{
 		fr_worker_listen_t *wl;
 
-		fr_rb_find((void **)&wl, worker->listeners, &(fr_worker_listen_t) { .listener = listen });
+		fr_rb_find((void **)&wl, worker->listeners, &(fr_worker_listen_t) { .listener = li });
 		if (!wl) {
 			MEM(wl = talloc_zero(worker, fr_worker_listen_t));
 			fr_dlist_init(&wl->dlist, request_t, listen_entry);
-			wl->listener = listen;
+			wl->listener = li;
 
 			(void) fr_rb_insert(worker->listeners, wl);
 		}
@@ -980,7 +981,7 @@ static fr_cmp_ret_t worker_dedup_cmp(void const *one, void const *two)
 	int ret;
 	request_t const *a = one, *b = two;
 
-	ret = CMP(a->async->listen, b->async->listen);
+	ret = CMP(a->async->inst, b->async->inst);
 	if (ret) return ret;
 
 	return CMP(a->async->packet_ctx, b->async->packet_ctx);
@@ -1100,13 +1101,13 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 	 *	All external requests MUST have a listener.
 	 */
 	fr_assert(request_is_external(request));
-	fr_assert(request->async->listen != NULL);
+	fr_assert(request->async->inst != NULL);
 
 	/*
 	 *	Only real packets are in the dedup tree.  And even
 	 *	then, only some of the time.
 	 */
-	if (request->async->listen->track_duplicates && fr_rb_node_inline_in_tree(&request->dedup_node)) {
+	if (request->async->inst->listen->track_duplicates && fr_rb_node_inline_in_tree(&request->dedup_node)) {
 		(void) fr_rb_delete(worker->dedup, request);
 	}
 
@@ -1738,7 +1739,7 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	return ch;
 }
 
-int fr_worker_listen_cancel(fr_worker_t *worker, fr_listen_t const *li)
+int fr_worker_listen_cancel(fr_worker_t *worker, fr_listen_instance_t const *li)
 {
 	/*
 	 *	Skip a bunch of work if we're already in the worker thread.

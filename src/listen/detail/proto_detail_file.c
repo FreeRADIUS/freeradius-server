@@ -94,7 +94,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 }
 
 #if 0
-static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
+static ssize_t mod_write(UNUSED fr_listen_instance_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
 			 UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t written)
 {
 #if 1
@@ -104,12 +104,13 @@ static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED
 #else
 	proto_detail_file_thread_t  *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
-	return thread->listen->app_io->write(thread->listen, packet_ctx, request_time, buffer, buffer_len, written);
+	return thread->li->listen->app_io->write(thread->li, packet_ctx, request_time, buffer, buffer_len,
+						     written);
 #endif
 }
 #endif
 
-static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
+static void mod_vnode_extend(fr_listen_instance_t *li, UNUSED uint32_t fflags)
 {
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
@@ -129,9 +130,10 @@ static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 /** Open a detail listener
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
-	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
+	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+								       proto_detail_file_t);
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
 	if (inst->poll_interval == 0) {
@@ -149,15 +151,23 @@ static int mod_open(fr_listen_t *li)
 		}
 	} else {
 		li->fd = thread->fd = -1;
-		li->non_socket_listener = true;
-		li->needs_full_setup = true;
+		li->listen->non_socket_listener = true;
+		li->listen->needs_full_setup = true;
 	}
 	thread->inst = inst;
 	thread->name = talloc_typed_asprintf(thread, "detail_file which will read files matching %s", inst->filename);
 	thread->vnode_fd = -1;
 	pthread_mutex_init(&thread->worker_mutex, NULL);
 
-	li->no_write_callback = true;
+	li->listen->no_write_callback = true;
+
+	/*
+	 *	The I/O path for the work files.  Each one read is a
+	 *	socket of this one listener.
+	 */
+	MEM(thread->work_listen = fr_listen_alloc(thread, inst->parent->work_io_conf, inst->parent->server_cs,
+						  inst->parent->self, inst->parent,
+						  inst->parent->work_io, inst->parent->work_io_instance));
 
 	return 0;
 }
@@ -245,7 +255,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	proto_detail_file_t const *inst = thread->inst;
 	bool			opened = false;
 	proto_detail_work_thread_t     *work;
-	fr_listen_t		*li = NULL;
+	fr_listen_instance_t	       *li = NULL;
 	struct stat		st;
 
 	fr_event_vnode_func_t	funcs = { .delete = mod_vnode_delete };
@@ -312,31 +322,19 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	This listener is allocated in a thread-specific
 	 *	context, so it doesn't need a destructor,
 	 */
-	MEM(li = talloc_zero(NULL, fr_listen_t));
+	MEM(li = fr_listen_instance_alloc(NULL, thread->work_listen));
 
 	/*
-	 *	Create a new listener, and insert it into the
+	 *	A socket of the work file listener, inserted into the
 	 *	scheduler.  Shamelessly copied from proto_detail.c
 	 *	mod_open(), with changes.
 	 *
-	 *	This listener is parented from the worker.  So that
-	 *	when the worker goes away, so does the listener.
-	 */
-	li->cs = inst->parent->work_io_conf;
-	li->app_io = inst->parent->work_io;
-
-	li->app = inst->parent->self;
-	li->app_instance = inst->parent;
-	li->server_cs = inst->parent->server_cs;
-
-	/*
-	 *	The worker may be in a different thread, so avoid
-	 *	talloc threading issues by using a NULL TALLOC_CTX.
+	 *	This socket is parented from the worker.  So that
+	 *	when the worker goes away, so does the socket.
 	 */
 	MEM(li->thread_instance = work = talloc_zero(li, proto_detail_work_thread_t));
 
-	li->app_io_instance = inst->parent->work_io_instance;
-	work->inst = li->app_io_instance;
+	work->inst = li->listen->app_io_instance;
 	work->file_parent = thread;
 	work->ev = NULL;
 
@@ -374,27 +372,27 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	For us, this is the worker listener.
 	 *	For the worker, this is it's own parent
 	 */
-	thread->listen = li;
+	thread->li = li;
 
 	work->filename_work = talloc_strdup(work, inst->filename_work);
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	li->default_message_size = inst->parent->max_packet_size;
-	li->num_messages = inst->parent->num_messages;
+	li->listen->default_message_size = inst->parent->max_packet_size;
+	li->listen->num_messages = inst->parent->num_messages;
 
 	/*
 	 *	Open the detail.work file.
 	 */
-	if (li->app_io->open(li) < 0) {
-		ERROR("Failed opening %s", li->app_io->common.name);
+	if (li->listen->app_io->open(li) < 0) {
+		ERROR("Failed opening %s", li->listen->app_io->common.name);
 		goto error;
 	}
 	opened = true;
 
-	fr_assert(li->app_io->get_name);
-	li->name = li->app_io->get_name(li);
+	fr_assert(li->listen->app_io->get_name);
+	li->name = li->listen->app_io->get_name(li);
 
 	if (!fr_schedule_listen_add(inst->parent->sc, li)) {
 	error:
@@ -405,8 +403,8 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 		thread->vnode_fd = -1;
 
 		if (opened) {
-			(void) li->app_io->close(li);
-			thread->listen = NULL;
+			(void) li->listen->app_io->close(li);
+			thread->li = NULL;
 			li = NULL;
 		} else {
 			close(li->fd);
@@ -419,7 +417,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	/*
 	 *	Tell the worker to clean itself up.
 	 */
-	work->listen = li;
+	work->li = li;
 
 	pthread_mutex_lock(&thread->worker_mutex);
 	thread->num_workers++;
@@ -592,9 +590,10 @@ delay:
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void *nr)
+static void mod_event_list_set(fr_listen_instance_t *li, fr_event_list_t *el, UNUSED void *nr)
 {
-	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
+	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+								       proto_detail_file_t);
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
 	thread->el = el;
@@ -618,7 +617,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 }
 
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 {
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
@@ -744,9 +743,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 }
 
 
-static int mod_close(fr_listen_t *li)
+static int mod_close(fr_listen_instance_t *li)
 {
-	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
+	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+								       proto_detail_file_t);
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
 	if (thread->nr) {

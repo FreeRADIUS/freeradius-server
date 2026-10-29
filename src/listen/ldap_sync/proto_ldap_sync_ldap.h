@@ -115,8 +115,9 @@ typedef struct {
 
 	fr_event_list_t			*el;			//!< Network side event list.
 	fr_network_t			*nr;			//!< Network handler.
-	fr_listen_t			*parent;		//!< master IO handler.
-	fr_listen_t			*li;			//!< Our listener.
+	fr_listen_instance_t		*parent;		//!< master IO handler.
+	fr_listen_t			*child_listen;		//!< I/O path, every connection made is a socket of it.
+	fr_listen_instance_t		*li;			//!< Our listener.
 
 	fr_timer_t		*conn_retry_ev;		//!< When to retry re-establishing the conn.
 

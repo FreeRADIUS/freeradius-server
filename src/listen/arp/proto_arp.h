@@ -45,6 +45,6 @@ typedef struct {
 
 	fr_schedule_t			*sc;				//!< the scheduler, where we insert new readers
 
-	fr_listen_t			*listen;			//!< The listener structure which describes
+	fr_listen_instance_t		*listen;			//!< The listener structure which describes
 									//!< the I/O path.
 } proto_arp_t;

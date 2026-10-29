@@ -58,7 +58,7 @@ typedef int (*fr_app_priority_get_t)(void const *instance, uint8_t const *buffer
 
 /** Called by the network thread to pass an event list for the module to use for timer events
  */
-typedef void (*fr_app_event_list_set_t)(fr_listen_t *li, fr_event_list_t *el, void *nr);
+typedef void (*fr_app_event_list_set_t)(fr_listen_instance_t *li, fr_event_list_t *el, void *nr);
 
 /** Describes a new application (protocol)
  *
@@ -73,7 +73,7 @@ typedef struct {
 
 	fr_dict_t const			**dict;		//!< default dictionary for this application.
 
-	fr_app_open_t			open;		//!< Callback to allow the #fr_app_t to build an #fr_listen_t
+	fr_app_open_t			open;		//!< Callback to allow the #fr_app_t to open its listeners
 							///< and register it with the scheduler so we can receive
 							///< data.
 

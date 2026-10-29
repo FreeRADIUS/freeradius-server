@@ -105,10 +105,11 @@ static const conf_parser_t udp_listen_config[] = {
 };
 
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,
-			size_t *leftover)
+static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
+			size_t buffer_len, size_t *leftover)
 {
-	proto_bfd_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
+	proto_bfd_udp_t const           *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_bfd_udp_t);
 	proto_bfd_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
 	fr_client_t			*client;
@@ -190,8 +191,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	return sizeof(*wrapper) + packet_len;
 }
 
-static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
-			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
+static ssize_t mod_write(fr_listen_instance_t *li, void *packet_ctx, UNUSED fr_time_t request_time, uint8_t *buffer,
+			 size_t buffer_len, UNUSED size_t written)
 {
 	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
 	fr_io_track_t		*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
@@ -241,9 +242,10 @@ static void mod_network_get(int *ipproto, bool *dynamic_clients, fr_trie_t const
 /** Open a UDP listener for RADIUS
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
-	proto_bfd_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
+	proto_bfd_udp_t const           *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_bfd_udp_t);
 	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
 
 	int				sockfd;
@@ -252,7 +254,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		cf_log_err(li->cs, "Failed opening UDP socket - %s", fr_strerror());
+		cf_log_err(li->listen->cs, "Failed opening UDP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -267,7 +269,7 @@ static int mod_open(fr_listen_t *li)
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
-			cf_log_err(li->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
+			cf_log_err(li->listen->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -279,7 +281,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->recv_buff;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
-			cf_log_warn(li->cs, "Failed setting 'recv_buf' - %s", fr_syserror(errno));
+			cf_log_warn(li->listen->cs, "Failed setting 'recv_buf' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -290,7 +292,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->send_buff;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
-			cf_log_warn(li->cs, "Failed setting 'send_buf' - %s", fr_syserror(errno));
+			cf_log_warn(li->listen->cs, "Failed setting 'send_buf' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -301,7 +303,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->ttl;
 		if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, &opt, sizeof(opt)) < 0) {
-			cf_log_warn(li->cs, "Failed setting 'ttl' - %s", fr_syserror(errno));
+			cf_log_warn(li->listen->cs, "Failed setting 'ttl' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -311,8 +313,8 @@ static int mod_open(fr_listen_t *li)
 	 */
 	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
-		cf_log_err(li->cs, "Failed binding socket - %s", fr_strerror());
-		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
+		cf_log_err(li->listen->cs, "Failed binding socket - %s", fr_strerror());
+		cf_log_err(li->listen->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 		goto error;
 	}
 
@@ -331,9 +333,10 @@ static int mod_open(fr_listen_t *li)
 /** Set the file descriptor for this socket.
  *
  */
-static int mod_fd_set(fr_listen_t *li, int fd)
+static int mod_fd_set(fr_listen_instance_t *li, int fd)
 {
-	proto_bfd_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
+	proto_bfd_udp_t const           *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_bfd_udp_t);
 	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
 
 	thread->sockfd = fd;
@@ -346,7 +349,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 {
 	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
 
@@ -472,9 +475,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
+static fr_client_t *mod_client_find(fr_listen_instance_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
-	proto_bfd_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
+	proto_bfd_udp_t const	*inst = talloc_get_type_abort_const(li->listen->app_io_instance, proto_bfd_udp_t);
 	fr_client_t		*client;
 
 	if (ipproto != IPPROTO_UDP) return NULL;
@@ -490,9 +493,9 @@ static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, 
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
+static void mod_event_list_set(fr_listen_instance_t *li, fr_event_list_t *el, void *nr)
 {
-	proto_bfd_udp_t const  	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
+	proto_bfd_udp_t const  	*inst = talloc_get_type_abort_const(li->listen->app_io_instance, proto_bfd_udp_t);
 	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
 	fr_rb_iter_inorder_t	iter;
 	bfd_session_t		*peer;

@@ -155,9 +155,11 @@ static SINT write_misc(void *instance, char const *buffer, INT buffer_size)
 /*
  *	Run a command.
  */
-static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover)
+static ssize_t mod_read_command(fr_listen_instance_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p,
+				uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover)
 {
-	proto_control_unix_t const     	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_control_unix_t);
+	proto_control_unix_t const      *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_control_unix_t);
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
 	uint32_t			status;
@@ -246,7 +248,8 @@ done:
 /*
  *	Process an initial connection request.
  */
-static ssize_t mod_read_init(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, UNUSED size_t *leftover)
+static ssize_t mod_read_init(fr_listen_instance_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p,
+			     uint8_t *buffer, size_t buffer_len, UNUSED size_t *leftover)
 {
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
@@ -287,7 +290,8 @@ static ssize_t mod_read_init(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED f
 	return 0;
 }
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
+			size_t buffer_len, size_t *leftover)
 {
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	ssize_t				data_size;
@@ -335,8 +339,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 }
 
 
-static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
-			 uint8_t *buffer, size_t buffer_len, size_t written)
+static ssize_t mod_write(fr_listen_instance_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
+			 uint8_t *buffer,
+			 size_t buffer_len, size_t written)
 {
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	ssize_t				data_size;
@@ -370,7 +375,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 }
 
 
-static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
+static int mod_connection_set(fr_listen_instance_t *li, fr_io_address_t *connection)
 {
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 
@@ -391,9 +396,10 @@ static void mod_network_get(int *ipproto, bool *dynamic_clients, fr_trie_t const
 /** Open a UNIX listener for control sockets
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
-	proto_control_unix_t const     	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_control_unix_t);
+	proto_control_unix_t const      *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_control_unix_t);
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 
 	CONF_ITEM			*ci;
@@ -408,7 +414,7 @@ static int mod_open(fr_listen_t *li)
 	 */
 	thread->fd_bio = fr_bio_fd_alloc(thread, &inst->fd_config, 0);
 	if (!thread->fd_bio) {
-		cf_log_err(li->cs, "Failed opening UNIX path %s - %s", inst->filename, fr_strerror());
+		cf_log_err(li->listen->cs, "Failed opening UNIX path %s - %s", inst->filename, fr_strerror());
 		return -1;
 	}
 
@@ -472,9 +478,10 @@ static int _close_cookies(proto_control_unix_thread_t *thread)
 /** Set the file descriptor for this socket.
  *
  */
-static int mod_fd_set(fr_listen_t *li, int fd)
+static int mod_fd_set(fr_listen_instance_t *li, int fd)
 {
-	proto_control_unix_t const     	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_control_unix_t);
+	proto_control_unix_t const      *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_control_unix_t);
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 
 	cookie_io_functions_t io;
@@ -581,7 +588,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 {
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 
@@ -694,7 +701,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static fr_client_t *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
+static fr_client_t *mod_client_find(fr_listen_instance_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
 	proto_control_unix_thread_t    	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 

@@ -793,7 +793,7 @@ static void bfd_unlang_send_packet(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	bfd_packet_t *bfd;
 	bfd_wrapper_t *wrapper;
 	fr_io_track_t *track;
-	fr_listen_t *parent;
+	fr_listen_instance_t *parent;
 	uint8_t buffer[sizeof(bfd_wrapper_t) + sizeof(*bfd)];
 
 	wrapper = (bfd_wrapper_t *) buffer;
@@ -808,7 +808,7 @@ static void bfd_unlang_send_packet(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	wrapper->session = session;
 
 	parent = talloc_parent(session->listen);
-	(void) talloc_get_type_abort(parent, fr_listen_t);
+	(void) talloc_get_type_abort(parent, fr_listen_instance_t);
 
 	track = fr_master_io_track_alloc(session->listen, &session->client, &session->client.ipaddr, session->port,
 					 &session->client.src_ipaddr, session->port);

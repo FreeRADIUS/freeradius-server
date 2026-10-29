@@ -115,8 +115,8 @@ size_t sync_op_table_len = NUM_ELEMENTS(sync_op_table);
 /** Context used when looking up Directory types
  */
 typedef struct {
-	fr_listen_t		*main_listen;
-	fr_listen_t		*child_listen;
+	fr_listen_instance_t	*main_listen;
+	fr_listen_instance_t	*child_listen;
 	connection_t		*conn;
 	int			msgid;
 } proto_ldap_dir_ctx;
@@ -537,7 +537,7 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
  */
 static void proto_ldap_connection_init(fr_timer_list_t *tl, UNUSED fr_time_t now, void *user_ctx)
 {
-	fr_listen_t			*listen = talloc_get_type_abort(user_ctx, fr_listen_t);
+	fr_listen_instance_t		*listen = talloc_get_type_abort(user_ctx, fr_listen_instance_t);
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(listen->thread_instance, proto_ldap_sync_ldap_thread_t);
 	proto_ldap_sync_ldap_t const	*inst = talloc_get_type_abort_const(thread->inst, proto_ldap_sync_ldap_t);
 
@@ -590,7 +590,7 @@ static void proto_ldap_connection_init(fr_timer_list_t *tl, UNUSED fr_time_t now
  * Ensures the LDAP connection is signalled to close gracefully when
  * the listener is closed.
  */
-static int proto_ldap_child_mod_close(fr_listen_t *li)
+static int proto_ldap_child_mod_close(fr_listen_instance_t *li)
 {
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_ldap_sync_ldap_thread_t);
 
@@ -610,8 +610,9 @@ static int proto_ldap_child_mod_close(fr_listen_t *li)
  *   - Various sync related messages can include a new cookie in
  *     addition to their other data.
  */
-static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, UNUSED uint8_t *buffer,
-					 UNUSED size_t buffer_len, UNUSED size_t *leftover)
+static ssize_t proto_ldap_child_mod_read(fr_listen_instance_t *li, UNUSED void **packet_ctx,
+					 UNUSED fr_time_t *recv_time_p,
+					 UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover)
 {
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_ldap_sync_ldap_thread_t);
 	fr_ldap_connection_t		*conn = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
@@ -887,7 +888,7 @@ static void proto_ldap_cookie_load_retry(fr_timer_list_t *tl, UNUSED fr_time_t n
  * Handle any returned data after the worker has processed the packet and,
  * for packets where tracking structures were used, ensure they are freed.
  */
-static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
+static ssize_t proto_ldap_child_mod_write(fr_listen_instance_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 					  uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_ldap_sync_ldap_thread_t);
@@ -1070,7 +1071,8 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 {
 	proto_ldap_dir_ctx		*dir_ctx = talloc_get_type_abort(uctx, proto_ldap_dir_ctx);
 	fr_ldap_connection_t		*ldap_conn = talloc_get_type_abort(dir_ctx->conn->h, fr_ldap_connection_t);
-	proto_ldap_sync_ldap_t const	*inst = talloc_get_type_abort_const(dir_ctx->main_listen->app_io_instance,
+	fr_listen_t const		*listen = dir_ctx->main_listen->listen;
+	proto_ldap_sync_ldap_t const	*inst = talloc_get_type_abort_const(listen->app_io_instance,
 									    proto_ldap_sync_ldap_t);
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(dir_ctx->main_listen->thread_instance,
 									proto_ldap_sync_ldap_thread_t);
@@ -1143,25 +1145,13 @@ static void _proto_ldap_socket_init(connection_t *conn, UNUSED connection_state_
 				    UNUSED connection_state_t state, void *uctx)
 {
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(uctx, proto_ldap_sync_ldap_thread_t);
-	fr_listen_t			*li;
+	fr_listen_instance_t		*li;
 
-	MEM(li = talloc_zero(conn, fr_listen_t));
+	MEM(li = fr_listen_instance_alloc(conn, thread->child_listen));
 
 	thread->li = li;
 	li->thread_instance = thread;
-
-	li->cs = thread->parent->cs;
-	li->app_io = &proto_ldap_sync_child;
-	li->name = li->app_io->common.name;
-	li->default_message_size = li->app_io->default_message_size;
-
-	/*
-	 *	Use the app from the parent listener to access
-	 *	the encoder / decoder functions
-	 */
-	li->app = thread->parent->app;
-	li->app_instance = thread->parent->app_instance;
-	li->server_cs = thread->inst->parent->server_cs;
+	li->name = li->listen->app_io->common.name;
 }
 
 /** Callback for closure of LDAP connection
@@ -1171,7 +1161,7 @@ static void _proto_ldap_socket_init(connection_t *conn, UNUSED connection_state_
 static void _proto_ldap_socket_closed(UNUSED connection_t *conn, connection_state_t prev,
 				      UNUSED connection_state_t state, void *uctx)
 {
-	fr_listen_t			*listen = talloc_get_type_abort(uctx, fr_listen_t);
+	fr_listen_instance_t		*listen = talloc_get_type_abort(uctx, fr_listen_instance_t);
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(listen->thread_instance, proto_ldap_sync_ldap_thread_t);
 	proto_ldap_sync_ldap_t const	*inst = thread->inst;
 
@@ -1199,7 +1189,7 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
 					      UNUSED connection_state_t state, void *uctx)
 {
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(uctx, proto_ldap_sync_ldap_thread_t);
-	fr_listen_t			*listen = talloc_get_type_abort(thread->parent, fr_listen_t);
+	fr_listen_instance_t		*listen = talloc_get_type_abort(thread->parent, fr_listen_instance_t);
 	proto_ldap_sync_ldap_t const	*inst = talloc_get_type_abort_const(thread->inst,
 									    proto_ldap_sync_ldap_t);
 	fr_ldap_connection_t		*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
@@ -1271,9 +1261,10 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
  * @param[in] el	Event list for this listener.
  * @param[in] nr	Network handler.
  */
-static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
+static void mod_event_list_set(fr_listen_instance_t *li, fr_event_list_t *el, void *nr)
 {
-	proto_ldap_sync_ldap_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_ldap_sync_ldap_t);
+	proto_ldap_sync_ldap_t const    *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_ldap_sync_ldap_t);
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_ldap_sync_ldap_thread_t);
 
 	/*
@@ -1284,6 +1275,17 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	thread->el = el;
 	thread->nr = nr;
 	thread->inst = inst;
+
+	/*
+	 *	The I/O path for the connection.  Each connection made,
+	 *	and re-made, is a socket of this one listener.  It uses
+	 *	the app from the parent listener to reach the encoder
+	 *	and decoder.
+	 */
+	MEM(thread->child_listen = fr_listen_alloc(thread, li->listen->cs, inst->parent->server_cs,
+						   li->listen->app, li->listen->app_instance,
+						   &proto_ldap_sync_child, NULL));
+	thread->child_listen->default_message_size = proto_ldap_sync_child.default_message_size;
 
 	/*
 	 *	Initialise the connection

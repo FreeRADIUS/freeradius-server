@@ -53,8 +53,8 @@ typedef struct {
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
 	fr_heap_t			*alive_clients;			//!< heap of active dynamic clients
 
-	fr_listen_t			*listen;			//!< The master IO path
-	fr_listen_t			*child;				//!< The child (app_io) IO path
+	fr_listen_instance_t		*inst;				//!< The master IO path
+	fr_listen_instance_t		*child_inst;			//!< The child (app_io) IO path
 	fr_schedule_t			*sc;				//!< the scheduler
 
 	uint32_t			num_connections;		//!< number of dynamic connections
@@ -164,8 +164,8 @@ struct fr_io_connection_s {
 	char const			*name;		//!< taken from proto_FOO_TRANSPORT
 	int				packets;	//!< number of packets using this connection
 	fr_io_address_t   		*address;      	//!< full information about the connection.
-	fr_listen_t			*listen;	//!< master listener for this socket
-	fr_listen_t			*child;		//!< child listener (app_io) for this socket
+	fr_listen_instance_t		*inst;		//!< master listener for this socket
+	fr_listen_instance_t		*child_inst;	//!< child listener (app_io) for this socket
 	fr_io_client_t			*client;	//!< our local client (pending or connected).
 	fr_io_client_t			*parent;	//!< points to the parent client.
 	module_instance_t   		*mi;		//!< for submodule
@@ -337,7 +337,7 @@ static fr_cmp_ret_t track_cmp(void const *one, void const *two)
 	 *	Call the per-protocol comparison function.
 	 */
 	ret = a->client->inst->app_io->track_compare(a->client->inst->app_io_instance,
-						     a->client->thread->child->thread_instance,
+						     a->client->thread->child_inst->thread_instance,
 						     a->client->radclient,
 						     a->packet, b->packet);
 	return CMP(ret, 0);
@@ -363,7 +363,7 @@ static fr_cmp_ret_t track_connected_cmp(void const *one, void const *two)
 	 *	we may do negotiation specific to this connection.
 	 */
 	ret = a->client->inst->app_io->track_compare(a->client->inst->app_io_instance,
-						     a->client->connection->child->thread_instance,
+						     a->client->connection->child_inst->thread_instance,
 						     a->client->connection->client->radclient,
 						     a->packet, b->packet);
 	return CMP(ret, 0);
@@ -650,7 +650,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	int ret;
 	fr_io_connection_t *connection;
 	module_instance_t *mi = NULL;
-	fr_listen_t *li;
+	fr_listen_instance_t *li;
 	fr_client_t *radclient;
 
 
@@ -850,65 +850,32 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		/*
 		 *	Get the child listener.
 		 */
-		MEM(li = connection->child = talloc(connection, fr_listen_t));
-		memcpy(li, thread->listen, sizeof(*li));
-
-		/*
-		 *	Glue in the actual app_io
-		 */
+		MEM(li = connection->child_inst = fr_listen_instance_alloc(connection, thread->child_inst->listen));
 		li->connected = true;
-		li->app_io = thread->child->app_io;
-		li->cs = inst->app_io_conf;
-		li->thread_instance = connection;
-		li->app_io_instance = mi->data;
-		li->track_duplicates = thread->child->app_io->track_duplicates;
 
 		/*
 		 *	Create writable thread instance data.
 		 */
-		connection->child->thread_instance = talloc_zero_array(NULL, uint8_t,
-								       inst->app_io->common.thread_inst_size);
-		talloc_set_destructor(connection->child, fr_io_listen_free);
-		talloc_set_name(connection->child->thread_instance, "proto_%s_thread_t",
-				inst->app_io->common.name);
+		li->thread_instance = talloc_zero_array(NULL, uint8_t, inst->app_io->common.thread_inst_size);
+		talloc_set_destructor(li, fr_io_listen_free);
+		talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->common.name);
 
 		/*
-		 *	This is "const", and the user can't
-		 *	touch it.  So we just reuse the same
-		 *	configuration everywhere.
+		 *	Our own socket for the connection.  All the variable
+		 *	data is in the connection, the listener is shared.
 		 */
-		connection->child->app_io_instance = inst->app_io_instance;
-
-		/*
-		 *	Create the listener, based on our listener.
-		 */
-		MEM(li = connection->listen = talloc(connection, fr_listen_t));
-
-		/*
-		 *	Note that our instance is effectively 'const'.
-		 *
-		 *	i.e. we can't add things to it.  Instead, we have to
-		 *	put all variable data into the connection.
-		 */
-		memcpy(li, thread->listen, sizeof(*li));
-
-		/*
-		 *	Glue in the connection to the listener.
-		 */
-		fr_assert(li->app_io == &fr_master_app_io);
+		MEM(li = connection->inst = fr_listen_instance_alloc(connection, thread->inst->listen));
+		fr_assert(li->listen->app_io == &fr_master_app_io);
 
 		li->connected = true;
 		li->thread_instance = connection;
-		li->cs = inst->app_io_conf;
-		li->app_io_instance = li->thread_instance;
-		li->track_duplicates = thread->child->app_io->track_duplicates;
 
 		/*
 		 *	Instantiate the child, and open the socket.
 		 */
 		fr_assert(inst->app_io->connection_set != NULL);
 
-		if (inst->app_io->connection_set(connection->child, connection->address) < 0) {
+		if (inst->app_io->connection_set(connection->child_inst, connection->address) < 0) {
 			DEBUG("proto_%s - Failed setting connection for socket.", inst->app->common.name);
 			goto cleanup;
 		}
@@ -940,26 +907,26 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 				return NULL;
 			}
 
-			if (inst->app_io->open(connection->child) < 0) {
+			if (inst->app_io->open(connection->child_inst) < 0) {
 				DEBUG("proto_%s - Failed opening connected socket.", inst->app->common.name);
 				talloc_free(mi);
 				return NULL;
 			}
 
-			fd = connection->child->fd;
+			fd = connection->child_inst->fd;
 
 			if (connect(fd, (struct sockaddr *) &src, salen) < 0) {
 				ERROR("proto_%s - Failed in connect: %s", inst->app->common.name, fr_syserror(errno));
 				goto cleanup;
 			}
 		} else {
-			connection->child->fd = fd;
+			connection->child_inst->fd = fd;
 		}
 
 		/*
 		 *	Set the new FD, and get the module to set it's connection name.
 		 */
-		if (inst->app_io->fd_set(connection->child, fd) < 0) {
+		if (inst->app_io->fd_set(connection->child_inst, fd) < 0) {
 			DEBUG3("Failed setting FD to %s", inst->app_io->common.name);
 			goto cleanup;
 		}
@@ -975,14 +942,14 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 						       fr_box_ipaddr(connection->address->socket.inet.dst_ipaddr),
 						       connection->address->socket.inet.dst_port);
 		} else {
-			connection->name = inst->app_io->get_name(connection->child);
+			connection->name = inst->app_io->get_name(connection->child_inst);
 		}
 
 		/*
 		 *	Set the names for the listeners.
 		 */
-		connection->listen->name = connection->name;
-		connection->child->name = connection->name;
+		connection->inst->name = connection->name;
+		connection->child_inst->name = connection->name;
 	}
 
 	/*
@@ -1032,7 +999,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	pthread_mutex_unlock(&client->mutex);
 
 	DEBUG("proto_%s - starting connection %s", inst->app_io->common.name, connection->name);
-	connection->nr = fr_schedule_listen_add(thread->sc, connection->listen);
+	connection->nr = fr_schedule_listen_add(thread->sc, connection->inst);
 	if (!connection->nr) {
 		ERROR("proto_%s - Failed inserting connection into scheduler.  "
 		      "Closing it, and diuscarding all packets for connection %s.",
@@ -1068,14 +1035,14 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
  *	fr_io_connection_io, which will duplicate some code,
  *	but may make things simpler?
  */
-static void get_inst(fr_listen_t *li, fr_io_instance_t const **inst, fr_io_thread_t **thread,
-		     fr_io_connection_t **connection, fr_listen_t **child)
+static void get_inst(fr_listen_instance_t *li, fr_io_instance_t const **inst, fr_io_thread_t **thread,
+		     fr_io_connection_t **connection, fr_listen_instance_t **child)
 {
 	if (!li->connected) {
-		*inst = li->app_io_instance;
+		*inst = li->listen->app_io_instance;
 		if (thread) *thread = li->thread_instance;
 		*connection = NULL;
-		if (child) *child = ((fr_io_thread_t *)li->thread_instance)->child;
+		if (child) *child = ((fr_io_thread_t *)li->thread_instance)->child_inst;
 
 	} else {
 		fr_assert(connection != NULL);
@@ -1083,7 +1050,7 @@ static void get_inst(fr_listen_t *li, fr_io_instance_t const **inst, fr_io_threa
 		*connection = li->thread_instance;
 		*inst = (*connection)->client->inst;
 		if (thread) *thread = NULL;
-		if (child) *child = (*connection)->child;
+		if (child) *child = (*connection)->child_inst;
 	}
 }
 
@@ -1263,10 +1230,8 @@ static fr_io_client_t *client_alloc(TALLOC_CTX *ctx, fr_io_client_state_t state,
 }
 
 
-static fr_io_track_t *fr_io_track_add(fr_listen_t const *li, fr_io_client_t *client,
-				      fr_io_address_t *address,
-				      uint8_t const *packet, size_t packet_len,
-				      fr_time_t recv_time, bool *is_dup)
+static fr_io_track_t *fr_io_track_add(fr_listen_instance_t const *li, fr_io_client_t *client, fr_io_address_t *address,
+				      uint8_t const *packet, size_t packet_len, fr_time_t recv_time, bool *is_dup)
 {
 	size_t len;
 	fr_io_track_t *track, *old;
@@ -1313,7 +1278,7 @@ static fr_io_track_t *fr_io_track_add(fr_listen_t const *li, fr_io_client_t *cli
 	 *	already in the tree.
 	 */
 	track->packet = client->inst->app_io->track_create(client->inst->app_io_instance,
-							   client->thread->child->thread_instance,
+							   client->thread->child_inst->thread_instance,
 							   client->radclient,
 							   track, packet, packet_len);
 	if (!track->packet) {
@@ -1496,8 +1461,8 @@ static fr_cmp_ret_t alive_client_cmp(void const *one, void const *two)
  *
  *  The app_io->read does the transport-specific data read.
  */
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p,
-			uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
+			size_t buffer_len, size_t *leftover)
 {
 	fr_io_instance_t const	*inst;
 	fr_io_thread_t		*thread;
@@ -1508,7 +1473,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	fr_io_connection_t	my_connection, *connection;
 	fr_io_pending_packet_t	*pending = NULL;
 	fr_io_track_t		*track;
-	fr_listen_t		*child;
+	fr_listen_instance_t	*child;
 	int			value, accept_fd = -1;
 	uint32_t		priority = PRIORITY_NORMAL;
 
@@ -1767,7 +1732,7 @@ do_read:
 		if (client && (client->state == PR_CLIENT_STATIC)) {
 			fr_client_t *radclient;
 
-			radclient = inst->app_io->client_find(thread->child,
+			radclient = inst->app_io->client_find(thread->child_inst,
 							      &address.socket.inet.src_ipaddr, inst->ipproto);
 			if (radclient && (radclient->ipaddr.prefix > client->src_ipaddr.prefix)) {
 				client = NULL;
@@ -1815,7 +1780,8 @@ do_read:
 		 */
 		fr_assert(!connection);
 
-		radclient = inst->app_io->client_find(thread->child, &address.socket.inet.src_ipaddr, inst->ipproto);
+		radclient = inst->app_io->client_find(thread->child_inst, &address.socket.inet.src_ipaddr,
+						      inst->ipproto);
 		if (radclient) {
 			state = PR_CLIENT_STATIC;
 
@@ -2130,7 +2096,7 @@ have_client:
 	 *	We don't need "to_free" after this, as it will be
 	 *	tracked in the connected socket.
 	 */
-	if (fr_network_listen_inject(connection->nr, connection->listen,
+	if (fr_network_listen_inject(connection->nr, connection->inst,
 				     buffer, packet_len, recv_time) < 0) {
 		RATE_LIMIT_LOCAL(&thread->rate_limit.queue_full, PERROR,
 				 "proto_%s - Discarding packet from dynamic client %pV - cannot push packet to connected socket",
@@ -2147,7 +2113,7 @@ have_client:
  *
  *  Always called in the context of the network.
  */
-static int mod_inject(fr_listen_t *li, uint8_t const *buffer, size_t buffer_len, fr_time_t recv_time)
+static int mod_inject(fr_listen_instance_t *li, uint8_t const *buffer, size_t buffer_len, fr_time_t recv_time)
 {
 	fr_io_instance_t const *inst;
 	int		priority;
@@ -2205,25 +2171,25 @@ static int mod_inject(fr_listen_t *li, uint8_t const *buffer, size_t buffer_len,
 /** Open a new listener
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
 	fr_io_thread_t *thread;
 	fr_io_instance_t const *inst;
 
 	thread = li->thread_instance;
-	inst = li->app_io_instance;
+	inst = li->listen->app_io_instance;
 
-	if (inst->app_io->open(thread->child) < 0) return -1;
+	if (inst->app_io->open(thread->child_inst) < 0) return -1;
 
-	li->fd = thread->child->fd;	/* copy this back up */
+	li->fd = thread->child_inst->fd;	/* copy this back up */
 
 	/*
 	 *	Set the name of the socket.
 	 */
-	if (!li->app_io->get_name) {
-		li->name = li->app_io->common.name;
+	if (!li->listen->app_io->get_name) {
+		li->name = li->listen->app_io->common.name;
 	} else {
-		li->name = li->app_io->get_name(li);
+		li->name = li->listen->app_io->get_name(li);
 	}
 
 	/*
@@ -2241,12 +2207,12 @@ static int mod_open(fr_listen_t *li)
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
+static void mod_event_list_set(fr_listen_instance_t *li, fr_event_list_t *el, void *nr)
 {
 	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
 	fr_io_thread_t *thread;
-	fr_listen_t *child;
+	fr_listen_instance_t *child;
 
 	get_inst(li, &inst, &thread, &connection, &child);
 
@@ -2295,7 +2261,7 @@ static void fr_io_client_delete(fr_io_client_t *client)
 		pthread_mutex_unlock(&connection->parent->mutex);
 
 		connection->dead = true;
-		fr_network_listen_read(connection->nr, connection->listen);
+		fr_network_listen_read(connection->nr, connection->inst);
 		return;
 	}
 
@@ -2620,11 +2586,11 @@ static void fr_io_connection_deny(fr_io_client_t *parent)
 		DEBUG("proto_%s - cleaning up deferred connection %s after verification failure",
 		      target->client->inst->app_io->common.name, target->name);
 
-		if (target->child) {
+		if (target->child_inst) {
 			if (target->client->inst->app_io->close) {
-				(void) target->client->inst->app_io->close(target->child);
-			} else if (target->child->fd >= 0) {
-				close(target->child->fd);
+				(void) target->client->inst->app_io->close(target->child_inst);
+			} else if (target->child_inst->fd >= 0) {
+				close(target->child_inst->fd);
 			}
 		}
 
@@ -2710,7 +2676,7 @@ static void fr_io_connection_allow(fr_io_client_t *parent, fr_client_t *radclien
 				DEBUG("proto_%s - scheduling deferred connection %s",
 				      child->inst->app_io->common.name, conn->name);
 
-				conn->nr = fr_schedule_listen_add(sc, conn->listen);
+				conn->nr = fr_schedule_listen_add(sc, conn->inst);
 				if (!conn->nr) {
 					ERROR("proto_%s - Failed scheduling deferred connection %s",
 					      child->inst->app_io->common.name, conn->name);
@@ -2726,7 +2692,7 @@ static void fr_io_connection_allow(fr_io_client_t *parent, fr_client_t *radclien
 				 */
 				if (conn->paused) {
 					conn->paused = false;
-					(void) fr_event_filter_update(conn->el, conn->child->fd,
+					(void) fr_event_filter_update(conn->el, conn->child_inst->fd,
 								      FR_EVENT_FILTER_IO, resume_read);
 				}
 
@@ -2738,8 +2704,8 @@ static void fr_io_connection_allow(fr_io_client_t *parent, fr_client_t *radclien
 	pthread_mutex_unlock(&parent->mutex);
 }
 
-static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
-			 uint8_t *buffer, size_t buffer_len, size_t written)
+static ssize_t mod_write(fr_listen_instance_t *li, void *packet_ctx, fr_time_t request_time, uint8_t *buffer,
+			 size_t buffer_len, size_t written)
 {
 	fr_io_instance_t const *inst;
 	fr_io_thread_t *thread;
@@ -2747,7 +2713,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	fr_io_track_t *track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	fr_io_client_t *client;
 	fr_client_t *radclient;
-	fr_listen_t *child;
+	fr_listen_instance_t *child;
 	fr_event_list_t *el;
 	char const *name;
 
@@ -2911,7 +2877,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	connection through its normal error handling.
 		 */
 		connection->dead = true;
-		fr_network_listen_read(connection->nr, connection->listen);
+		fr_network_listen_read(connection->nr, connection->inst);
 
 		return buffer_len;
 	}
@@ -3092,9 +3058,9 @@ finish:
 	 */
 	if (fr_heap_num_elements(client->pending) > 0) {
 		if (connection) {
-			fr_network_listen_read(connection->nr, connection->listen);
+			fr_network_listen_read(connection->nr, connection->inst);
 		} else {
-			fr_network_listen_read(thread->nr, thread->listen);
+			fr_network_listen_read(thread->nr, thread->inst);
 		}
 	}
 
@@ -3104,11 +3070,11 @@ finish:
 /** Close the socket.
  *
  */
-static int mod_close(fr_listen_t *li)
+static int mod_close(fr_listen_instance_t *li)
 {
 	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
-	fr_listen_t *child;
+	fr_listen_instance_t *child;
 
 	get_inst(li, &inst, NULL, &connection, &child);
 
@@ -3232,17 +3198,17 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 }
 
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 {
 	fr_io_thread_t *thread;
 	fr_io_connection_t *connection;
-	fr_listen_t *child;
+	fr_listen_instance_t *child;
 	fr_io_instance_t const *inst;
 
 	get_inst(li, &inst, &thread, &connection, &child);
 
 	fr_assert(child != NULL);
-	return child->app_io->get_name(child);
+	return child->listen->app_io->get_name(child);
 }
 
 /** Create a trie from arrays of allow / deny IP addresses
@@ -3405,19 +3371,13 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 }
 
 
-int fr_io_listen_free(fr_listen_t *li)
-{
-	if (!li->thread_instance) return 0;
-
-	talloc_free(li->thread_instance);
-	return 0;
-}
 
 int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 			size_t default_message_size, size_t num_messages)
 {
-	fr_listen_t	*li, *child;
-	fr_io_thread_t	*thread;
+	fr_listen_instance_t	*li, *child;
+	fr_listen_t		*listen, *child_listen;
+	fr_io_thread_t		*thread;
 
 	/*
 	 *	No IO paths, so we don't initialize them.
@@ -3433,13 +3393,10 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	}
 
 	/*
-	 *	Build the #fr_listen_t.  This describes the complete
+	 *	Build the #fr_listen_instance_t.  This describes the complete
 	 *	path data takes from the socket to the decoder and
 	 *	back again.
 	 */
-	MEM(li = talloc_zero(NULL, fr_listen_t));
-	talloc_set_destructor(li, fr_io_listen_free);
-
 	/*
 	 *	The first listener is the one for the application
 	 *	(e.g. RADIUS).  However, we mangle the IO path to
@@ -3452,21 +3409,20 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	 *	which calls our trampoline functions to do the actual
 	 *	work.
 	 */
-	li->app = inst->app;
-	li->app_instance = inst->app_instance;
-	li->server_cs = inst->server_cs;
+	MEM(listen = fr_listen_alloc(NULL, inst->app_io_conf, inst->server_cs, inst->app, inst->app_instance,
+				     &fr_master_app_io, inst));
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	li->default_message_size = default_message_size;
-	li->num_messages = num_messages;
+	listen->default_message_size = default_message_size;
+	listen->num_messages = num_messages;
+	listen->track_duplicates = inst->app_io->track_duplicates;
 
 	/*
 	 *	Per-socket data lives here.
 	 */
 	thread = talloc_zero(NULL, fr_io_thread_t);
-	thread->listen = li;
 	thread->sc = sc;
 
 	/*
@@ -3482,13 +3438,12 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	}
 
 	/*
-	 *	Set the listener to call our master trampoline function.
+	 *	The socket of the listener the network reads.
 	 */
-	li->cs = inst->app_io_conf;
-	li->app_io = &fr_master_app_io;
+	MEM(li = fr_listen_instance_alloc(NULL, listen));
+	talloc_set_destructor(li, fr_io_listen_free);
 	li->thread_instance = thread;
-	li->app_io_instance = inst;
-	li->track_duplicates = inst->app_io->track_duplicates;
+	thread->inst = li;
 	if (inst->app_io->hexdump_set) inst->app_io->hexdump_set(li, inst->app_io_instance);
 
 	/*
@@ -3501,33 +3456,26 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	 *	Once the network side calls us, we will call the child
 	 *	listener to do the actual IO.
 	 */
-	child = thread->child = talloc_zero(li, fr_listen_t);
-	memcpy(child, li, sizeof(*child));
+	MEM(child_listen = fr_listen_alloc(listen, listen->cs, listen->server_cs, listen->app, listen->app_instance,
+					   inst->app_io, inst->app_io_instance));
+	child_listen->default_message_size = listen->default_message_size;
+	child_listen->num_messages = listen->num_messages;
+	child_listen->track_duplicates = inst->app_io->track_duplicates;
 
 	/*
-	 *	Reset these fields to point to the IO instance data.
+	 *	The socket of it which does the actual IO.
 	 */
-	child->app_io = inst->app_io;
-	child->track_duplicates = inst->app_io->track_duplicates;
+	MEM(child = thread->child_inst = fr_listen_instance_alloc(li, child_listen));
 
-	if (child->app_io->common.thread_inst_size > 0) {
+	if (inst->app_io->common.thread_inst_size > 0) {
 		child->thread_instance = talloc_zero_array(NULL, uint8_t,
 							   inst->app_io->common.thread_inst_size);
 		talloc_set_destructor(child, fr_io_listen_free);
 
 		talloc_set_name(child->thread_instance, "proto_%s_thread_t",
 				inst->app_io->common.name);
-
-		/*
-		 *	This is "const", and the user can't
-		 *	touch it.  So we just reuse the same
-		 *	configuration everywhere.
-		 */
-		child->app_io_instance = inst->app_io_instance;
-
 	} else {
-		child->thread_instance = inst->app_io_instance;
-		child->app_io_instance = child->thread_instance;
+		child->thread_instance = UNCONST(void *, inst->app_io_instance);
 	}
 
 	/*
@@ -3542,10 +3490,10 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 
 	li->fd = child->fd;	/* copy this back up */
 
-	if (!child->app_io->get_name) {
-		child->name = child->app_io->common.name;
+	if (!child->listen->app_io->get_name) {
+		child->name = child->listen->app_io->common.name;
 	} else {
-		child->name = child->app_io->get_name(child);
+		child->name = child->listen->app_io->get_name(child);
 	}
 	li->name = child->name;
 
@@ -3553,12 +3501,13 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	 *	Record which socket we opened.
 	 */
 	if (child->app_io_addr) {
-		fr_listen_t *other;
+		fr_listen_instance_t *other;
 
-		other = listen_find_any(thread->child);
+		other = listen_find_any(thread->child_inst);
 		if (other) {
-			cf_log_err(other->cs, "Already opened socket %s", other->name);
-			cf_log_err(li->cs, "Failed opening duplicate socket - cannot use the same configuration for two different listen sections");
+			cf_log_err(other->listen->cs, "Already opened socket %s", other->name);
+			cf_log_err(li->listen->cs, "Failed opening duplicate socket - cannot use the same "
+				   "configuration for two different listen sections");
 
 			talloc_free(li);
 			return -1;
@@ -3582,19 +3531,19 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 /*
  *	Used to create a tracking structure for fr_network_sendto_worker()
  */
-fr_io_track_t *fr_master_io_track_alloc(fr_listen_t *li, fr_client_t *radclient, fr_ipaddr_t const *src_ipaddr, int src_port,
-					fr_ipaddr_t const *dst_ipaddr, int dst_port)
+fr_io_track_t *fr_master_io_track_alloc(fr_listen_instance_t *li, fr_client_t *radclient, fr_ipaddr_t const *src_ipaddr,
+					int src_port, fr_ipaddr_t const *dst_ipaddr, int dst_port)
 {
 	fr_io_instance_t const	*inst;
 	fr_io_thread_t		*thread;
 	fr_io_connection_t	*connection;
-	fr_listen_t		*child;
+	fr_listen_instance_t	*child;
 	fr_io_track_t		*track;
 	fr_io_client_t		*client;
 	fr_io_address_t		*address;
-	fr_listen_t		*parent = talloc_parent(li);
+	fr_listen_instance_t	*parent = talloc_parent(li);
 
-	(void) talloc_get_type_abort(parent, fr_listen_t);
+	(void) talloc_get_type_abort(parent, fr_listen_instance_t);
 
 	get_inst(parent, &inst, &thread, &connection, &child);
 

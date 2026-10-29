@@ -88,7 +88,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Received ARP %s via socket %s",
 		       fr_arp_packet_codes[request->packet->code],
-		       request->async->listen->name);
+		       request->async->inst->name);
 
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 	}
@@ -133,7 +133,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Sending %u via socket %s",
 		       request->reply->code,
-		       request->async->listen->name);
+		       request->async->inst->name);
 
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
@@ -152,45 +152,44 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
  */
 static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
-	fr_listen_t	*li;
-	proto_arp_t 	*inst = talloc_get_type_abort(instance, proto_arp_t);
+	fr_listen_instance_t	*li;
+	fr_listen_t		*listen;
+	proto_arp_t		*inst = talloc_get_type_abort(instance, proto_arp_t);
 
 	/*
-	 *	Build the #fr_listen_t.  This describes the complete
-	 *	path, data takes from the socket to the decoder and
-	 *	back again.
+	 *	Build the listener.  This describes the complete path data
+	 *	takes from the socket to the decoder and back again.
 	 */
-	li = talloc_zero(inst, fr_listen_t);
-	talloc_set_destructor(li, fr_io_listen_free); /* frees li->thread_instance */
-
-	li->cs = conf;
-	li->app = &proto_arp;
-	li->app_instance = instance;
-	li->server_cs = inst->server_cs;
+	MEM(listen = fr_listen_alloc(inst, conf, inst->server_cs, &proto_arp, instance,
+				     (fr_app_io_t const *)inst->io_submodule->exported, inst->io_submodule->data));
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	li->default_message_size = FR_ARP_PACKET_SIZE;
-	li->num_messages = inst->num_messages;
+	listen->default_message_size = FR_ARP_PACKET_SIZE;
+	listen->num_messages = inst->num_messages;
 
-	li->app_io = (fr_app_io_t const *)inst->io_submodule->exported;
-	li->app_io_instance = inst->io_submodule->data;
-	if (li->app_io->common.thread_inst_size) {
-		li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->common.thread_inst_size);
-		talloc_set_name(li->thread_instance, "proto_%s_thread_t", li->app_io->common.name);
+	/*
+	 *	Then the socket of it we will open.
+	 */
+	MEM(li = fr_listen_instance_alloc(inst, listen));
+	talloc_set_destructor(li, fr_io_listen_free); /* frees li->thread_instance */
+
+	if (listen->app_io->common.thread_inst_size) {
+		li->thread_instance = talloc_zero_array(NULL, uint8_t, listen->app_io->common.thread_inst_size);
+		talloc_set_name(li->thread_instance, "proto_%s_thread_t", listen->app_io->common.name);
 	}
 
 	/*
 	 *	Open the raw socket.
 	 */
-	if (li->app_io->open(li) < 0) {
+	if (li->listen->app_io->open(li) < 0) {
 		talloc_free(li);
 		return -1;
 	}
 	fr_assert(li->fd >= 0);
 
-	li->name = li->app_io->get_name(li);
+	li->name = li->listen->app_io->get_name(li);
 
 	/*
 	 *	Watch the directory for changes.

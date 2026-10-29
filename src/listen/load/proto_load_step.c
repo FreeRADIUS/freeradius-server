@@ -75,7 +75,7 @@ typedef struct {
 	int				fd;			//!< for CSV files
 	fr_timer_t			*ev;			//!< for writing statistics
 
-	fr_listen_t			*parent;		//!< master IO handler
+	fr_listen_instance_t		*parent;		//!< master IO handler
 } proto_load_step_thread_t;
 
 struct proto_load_step_s {
@@ -121,9 +121,11 @@ static const conf_parser_t load_listen_config[] = {
 };
 
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
+			size_t buffer_len, size_t *leftover)
 {
-	proto_load_step_t const		*inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
+	proto_load_step_t const         *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_load_step_t);
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 	fr_io_address_t			*address, **address_p;
 
@@ -228,14 +230,15 @@ static void load_complete(proto_load_step_thread_t *thread)
  */
 static void mod_load_done(void *uctx)
 {
-	fr_listen_t			*li = uctx;
+	fr_listen_instance_t		*li = uctx;
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 
 	load_complete(thread);
 }
 
-static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t request_time,
-			 UNUSED uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
+static ssize_t mod_write(fr_listen_instance_t *li, UNUSED void *packet_ctx, fr_time_t request_time,
+			 UNUSED uint8_t *buffer,
+			 size_t buffer_len, UNUSED size_t written)
 {
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 	fr_load_reply_t state;
@@ -264,9 +267,10 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t req
 /** Open a load listener
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
-	proto_load_step_t const		*inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
+	proto_load_step_t const         *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_load_step_t);
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 
 	fr_ipaddr_t			ipaddr;
@@ -277,7 +281,7 @@ static int mod_open(fr_listen_t *li)
 	 */
 	li->fd = open(inst->filename, O_RDONLY);
 	if (li->fd < 0) {
-		cf_log_err(li->cs, "Failed opening %s - %s", inst->filename, fr_syserror(errno));
+		cf_log_err(li->listen->cs, "Failed opening %s - %s", inst->filename, fr_syserror(errno));
 		return -1;
 	}
 
@@ -299,7 +303,7 @@ static int mod_open(fr_listen_t *li)
  */
 static int mod_generate(fr_time_t now, void *uctx)
 {
-	fr_listen_t			*li = uctx;
+	fr_listen_instance_t		*li = uctx;
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 
 	thread->recv_time = now;
@@ -372,7 +376,7 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
  *	- 0 on success.
  *	- -1 if the generator could not be stopped.  The fd is closed either way.
  */
-static int mod_close(fr_listen_t *li)
+static int mod_close(fr_listen_instance_t *li)
 {
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 	int				ret = 0;
@@ -393,9 +397,10 @@ static int mod_close(fr_listen_t *li)
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
+static void mod_event_list_set(fr_listen_instance_t *li, fr_event_list_t *el, void *nr)
 {
-	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
+	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									  proto_load_step_t);
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 	size_t len;
 	char buffer[256];
@@ -426,7 +431,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	}
 }
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 {
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 
@@ -517,9 +522,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static fr_client_t *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
+static fr_client_t *mod_client_find(fr_listen_instance_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
-	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
+	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									  proto_load_step_t);
 
 	return inst->client;
 }

@@ -214,7 +214,7 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 	uint32_t	sequence;
 	fr_pair_t 	*vp;
 
-	if (!request->async->listen) return -1;
+	if (!request->async->inst) return -1;
 
 	vp = fr_pair_find_by_da_nested(&request->request_pairs, attr_tacacs_session_id);
 	if (!vp) return -1;
@@ -232,7 +232,7 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 	sequence = vp->vp_uint8 + ((int) reply << 1);
 	hash = fr_hash64_update(&sequence, sizeof(sequence), hash);
 
-	hash = fr_hash64_update(&request->async->listen, sizeof(request->async->listen), hash);
+	hash = fr_hash64_update(&request->async->inst, sizeof(request->async->inst), hash);
 
 	vp = fr_pair_afrom_da(ctx, attr_tacacs_state);
 	if (!vp) return -1;

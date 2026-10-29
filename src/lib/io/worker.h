@@ -99,7 +99,7 @@ fr_channel_t	*fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 
 int		fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats) CC_HINT(nonnull);
 
-int		fr_worker_listen_cancel(fr_worker_t *worker, fr_listen_t const *li);
+int		fr_worker_listen_cancel(fr_worker_t *worker, fr_listen_instance_t const *li);
 
 fr_worker_config_t const *fr_worker_config(fr_worker_t *worker) CC_HINT(nonnull);
 

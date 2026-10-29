@@ -44,7 +44,8 @@ typedef struct fr_channel_s fr_channel_t;
  *	Forward declaration until such time as we fix the code so that
  *	the network threads can push transports to worker threads.
  */
-typedef struct fr_listen fr_listen_t;
+typedef struct fr_listen_s fr_listen_t;
+typedef struct fr_listen_instance_s fr_listen_instance_t;
 
 #ifdef __cplusplus
 }
@@ -149,7 +150,7 @@ typedef struct {
 								//!< information, and other proto_* specific information
 								//!< that needs to be passed to the request.
 
-	fr_listen_t	*listen;				//!< for tracking packet transport, etc.
+	fr_listen_instance_t	*inst;				//!< for tracking packet transport, etc.
 } fr_channel_data_t;
 
 #define PRIORITY_NOW    (1 << 16)

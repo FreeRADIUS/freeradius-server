@@ -128,8 +128,8 @@ static const char *packet_name[] = {
  *	- 0 when we read a partial packet.
  * 	- <0 on error (socket should be closed).
  */
-static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p,
-			uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static ssize_t mod_read(fr_listen_instance_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
+			size_t buffer_len, size_t *leftover)
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 	ssize_t				data_size, packet_len;
@@ -262,8 +262,9 @@ have_packet:
 	return packet_len;
 }
 
-static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
-			 uint8_t *buffer, size_t buffer_len, size_t written)
+static ssize_t mod_write(fr_listen_instance_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
+			 uint8_t *buffer,
+			 size_t buffer_len, size_t written)
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 	ssize_t				data_size;
@@ -338,7 +339,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	return total;
 }
 
-static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
+static int mod_connection_set(fr_listen_instance_t *li, fr_io_address_t *connection)
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 
@@ -359,9 +360,10 @@ static void mod_network_get(int *ipproto, bool *dynamic_clients, fr_trie_t const
 /** Open a TCP listener for TACACS+
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
-	proto_tacacs_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
+	proto_tacacs_tcp_t const        *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_tacacs_tcp_t);
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 
 	int				sockfd;
@@ -372,7 +374,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_tcp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		cf_log_err(li->cs, "Failed opening TCP socket - %s", fr_strerror());
+		cf_log_err(li->listen->cs, "Failed opening TCP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -381,14 +383,14 @@ static int mod_open(fr_listen_t *li)
 
 	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
-		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
-		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
+		cf_log_err(li->listen->cs, "Failed binding to socket - %s", fr_strerror());
+		cf_log_err(li->listen->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 		goto error;
 	}
 
 	if (listen(sockfd, SOMAXCONN) < 0) {
 		close(sockfd);
-		cf_log_err(li->cs, "Failed listening on socket - %s", fr_syserror(errno));
+		cf_log_err(li->listen->cs, "Failed listening on socket - %s", fr_syserror(errno));
 		goto error;
 	}
 
@@ -407,9 +409,9 @@ static int mod_open(fr_listen_t *li)
 
 /** Set the file descriptor for this socket.
  */
-static int mod_fd_set(fr_listen_t *li, int fd)
+static int mod_fd_set(fr_listen_instance_t *li, int fd)
 {
-	proto_tacacs_tcp_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
+	proto_tacacs_tcp_t const  *inst = talloc_get_type_abort_const(li->listen->app_io_instance, proto_tacacs_tcp_t);
 	proto_tacacs_tcp_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 
 	thread->sockfd = fd;
@@ -422,18 +424,18 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 
 	return thread->name;
 }
 
-static void mod_hexdump_set(fr_listen_t *li, void *data)
+static void mod_hexdump_set(fr_listen_instance_t *li, void *data)
 {
 	proto_tacacs_tcp_t	*inst = talloc_get_type_abort(data, proto_tacacs_tcp_t);
-	li->read_hexdump = inst->read_hexdump;
-	li->write_hexdump = inst->write_hexdump;
+	li->listen->read_hexdump = inst->read_hexdump;
+	li->listen->write_hexdump = inst->write_hexdump;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -521,9 +523,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
+static fr_client_t *mod_client_find(fr_listen_instance_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
-	proto_tacacs_tcp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
+	proto_tacacs_tcp_t const        *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_tacacs_tcp_t);
 
 	/*
 	 *	Prefer local clients.

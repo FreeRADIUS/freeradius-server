@@ -838,8 +838,8 @@ static fr_cmd_table_t cmd_table[] = {
  */
 static fr_cmp_ret_t listen_addr_cmp(void const *one, void const *two)
 {
-	fr_listen_t const *a = one;
-	fr_listen_t const *b = two;
+	fr_listen_instance_t const *a = one;
+	fr_listen_instance_t const *b = two;
 	fr_ipaddr_t aip, bip;
 	int ret;
 
@@ -908,9 +908,9 @@ static fr_cmp_ret_t listen_addr_cmp(void const *one, void const *two)
 /** See if another global listener is using a particular IP / port
  *
  */
-fr_listen_t *listen_find_any(fr_listen_t *li)
+fr_listen_instance_t *listen_find_any(fr_listen_instance_t *li)
 {
-	fr_listen_t *found;
+	fr_listen_instance_t *found;
 
 	if (!listen_addr_root) return NULL;
 
@@ -923,7 +923,7 @@ fr_listen_t *listen_find_any(fr_listen_t *li)
 /**  Record that we're listening on a particular IP / port
  *
  */
-bool listen_record(fr_listen_t *li)
+bool listen_record(fr_listen_instance_t *li)
 {
 	if (!listen_addr_root) return false;
 
@@ -1891,7 +1891,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 			 *	proto_radius_udp, and then calling proto_radius_udp->open.
 			 *
 			 *	Even then, proto_radius usually calls fr_master_io_listen() in order
-			 *	to create the fr_listen_t structure.
+			 *	to create the fr_listen_instance_t structure.
 			 */
 
 			/*
@@ -2134,7 +2134,8 @@ int virtual_servers_init(void)
 	 *	off of their instance data.
 	 */
 	MEM(proto_modules = module_list_alloc(NULL, &module_list_type_global, "protocol", false));
-	MEM(listen_addr_root = fr_rb_inline_alloc(NULL, fr_listen_t, virtual_server_node, listen_addr_cmp, NULL));
+	MEM(listen_addr_root = fr_rb_inline_alloc(NULL, fr_listen_instance_t, virtual_server_node, listen_addr_cmp,
+						  NULL));
 
 	/*
 	 *	Create a list to hold all the proto_* modules

@@ -125,8 +125,8 @@ int			virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 						CONF_ITEM *ci, conf_parser_t const *rule) CC_HINT(nonnull(2,4));
 /** @} */
 
-fr_listen_t *  		listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
-bool			listen_record(fr_listen_t *li) CC_HINT(nonnull);
+fr_listen_instance_t *  		listen_find_any(fr_listen_instance_t *li) CC_HINT(nonnull);
+bool			listen_record(fr_listen_instance_t *li) CC_HINT(nonnull);
 
 /** Processing sections which are allowed in this virtual server.
  *

@@ -44,7 +44,7 @@ typedef struct {
 
 	fr_timer_t			*ev;			//!< for writing statistics
 
-	fr_listen_t			*parent;		//!< master IO handler
+	fr_listen_instance_t		*parent;		//!< master IO handler
 
 	fr_time_t			recv_time;		//!< when the timer hit.
 
@@ -330,9 +330,11 @@ static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	return 0;
 }
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
+			size_t buffer_len, size_t *leftover)
 {
-	proto_cron_crontab_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_cron_crontab_t);
+	proto_cron_crontab_t const      *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_cron_crontab_t);
 	proto_cron_crontab_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_cron_crontab_thread_t);
 	fr_io_address_t			*address, **address_p;
 
@@ -390,7 +392,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 }
 
 
-static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
+static ssize_t mod_write(UNUSED fr_listen_instance_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
 			 UNUSED uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	return buffer_len;
@@ -400,9 +402,10 @@ static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED
 /** Open a crontab listener
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
-	proto_cron_crontab_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_cron_crontab_t);
+	proto_cron_crontab_t const      *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_cron_crontab_t);
 	proto_cron_crontab_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_cron_crontab_thread_t);
 
 	fr_ipaddr_t			ipaddr;
@@ -414,7 +417,7 @@ static int mod_open(fr_listen_t *li)
 	if (inst->filename == NULL) return -1;
 	li->fd = open(inst->filename, O_RDONLY);
 	if (li->fd < 0) {
-		cf_log_err(li->cs, "Failed opening %s - %s", inst->filename, fr_syserror(errno));
+		cf_log_err(li->listen->cs, "Failed opening %s - %s", inst->filename, fr_syserror(errno));
 		return -1;
 	}
 
@@ -662,7 +665,7 @@ use_time:
  *	- 0 on success.
  *	- -1 if the timer could not be deleted.  The fd is closed either way.
  */
-static int mod_close(fr_listen_t *li)
+static int mod_close(fr_listen_instance_t *li)
 {
 	proto_cron_crontab_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_cron_crontab_thread_t);
 	int				ret = 0;
@@ -683,9 +686,10 @@ static int mod_close(fr_listen_t *li)
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
+static void mod_event_list_set(fr_listen_instance_t *li, fr_event_list_t *el, void *nr)
 {
-	proto_cron_crontab_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_cron_crontab_t);
+	proto_cron_crontab_t const       *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									     proto_cron_crontab_t);
 	proto_cron_crontab_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_cron_crontab_thread_t);
 
 	thread->el = el;
@@ -696,16 +700,17 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	do_cron(el->tl, fr_time(), thread);
 }
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 {
 	proto_cron_crontab_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_cron_crontab_thread_t);
 
 	return thread->name;
 }
 
-static fr_client_t *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
+static fr_client_t *mod_client_find(fr_listen_instance_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
-	proto_cron_crontab_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_cron_crontab_t);
+	proto_cron_crontab_t const       *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									     proto_cron_crontab_t);
 
 	return inst->client;
 }

@@ -195,31 +195,31 @@ send:
 static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
 	proto_ldap_sync_t	*inst = talloc_get_type_abort(instance, proto_ldap_sync_t);
-	fr_listen_t		*li;
+	fr_listen_instance_t	*li;
+	fr_listen_t		*listen;
 
 	/*
-	 *	Build the #fr_listen_t.
+	 *	Build the listener.
 	 */
-	MEM(li = talloc_zero(inst, fr_listen_t));
-	talloc_set_destructor(li, fr_io_listen_free);
-
-	li->cs = conf;
-	li->app_io = inst->app_io;
-	li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->common.thread_inst_size);
-	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->common.name);
-	li->app_io_instance = inst->app_io_instance;
-	li->name = "ldap_sync main listener";
-
-	li->app = &proto_ldap_sync;
-	li->app_instance = instance;
-	li->server_cs = inst->server_cs;
-	li->non_socket_listener = true;
+	MEM(listen = fr_listen_alloc(inst, conf, inst->server_cs, &proto_ldap_sync, instance,
+				     inst->app_io, inst->app_io_instance));
+	listen->non_socket_listener = true;
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	li->default_message_size = inst->max_packet_size;
-	li->num_messages = inst->num_messages;
+	listen->default_message_size = inst->max_packet_size;
+	listen->num_messages = inst->num_messages;
+
+	/*
+	 *	Then its one socket, which is not a socket at all.
+	 */
+	MEM(li = fr_listen_instance_alloc(inst, listen));
+	talloc_set_destructor(li, fr_io_listen_free);
+
+	li->thread_instance = talloc_zero_array(NULL, uint8_t, listen->app_io->common.thread_inst_size);
+	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->common.name);
+	li->name = "ldap_sync main listener";
 
 	if (!fr_schedule_listen_add(sc, li)) {
 		talloc_free(li);

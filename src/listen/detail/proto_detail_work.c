@@ -140,9 +140,11 @@ static fr_event_update_t resume_read[] = {
 	{ 0 }
 };
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
+			size_t buffer_len, size_t *leftover)
 {
-	proto_detail_work_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_work_t);
+	proto_detail_work_t const       *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_detail_work_t);
 	proto_detail_work_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 
 	ssize_t				data_size;
@@ -565,14 +567,15 @@ static void work_retransmit(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, vo
 	(void) lseek(thread->fd, 0, SEEK_SET);
 
 #ifdef __linux__
-	fr_network_listen_read(thread->nr, thread->listen);
+	fr_network_listen_read(thread->nr, thread->li);
 #endif
 }
 
-static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
-			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
+static ssize_t mod_write(fr_listen_instance_t *li, void *packet_ctx, UNUSED fr_time_t request_time, uint8_t *buffer,
+			 size_t buffer_len, UNUSED size_t written)
 {
-	proto_detail_work_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_work_t);
+	proto_detail_work_t const       *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_detail_work_t);
 	proto_detail_work_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 	fr_detail_entry_t		*track = packet_ctx;
 
@@ -676,9 +679,10 @@ free_track:
 /** Open a detail listener
  *
  */
-static int mod_open(fr_listen_t *li)
+static int mod_open(fr_listen_instance_t *li)
 {
-	proto_detail_work_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_work_t);
+	proto_detail_work_t const       *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
+									    proto_detail_work_t);
 	proto_detail_work_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 
 	fr_dlist_init(&thread->list, fr_detail_entry_t, entry);
@@ -729,7 +733,7 @@ static int mod_open(fr_listen_t *li)
 	 *	mod_write() callback on any write, even if the
 	 *	listener is marked "read_only"
 	 */
-	li->no_write_callback = true;
+	li->listen->no_write_callback = true;
 
 	return 0;
 }
@@ -780,7 +784,7 @@ static int mod_close_internal(proto_detail_work_thread_t *thread)
 /** Close  a detail listener
  *
  */
-static int mod_close(fr_listen_t *li)
+static int mod_close(fr_listen_instance_t *li)
 {
 	proto_detail_work_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 
@@ -808,7 +812,7 @@ static void mod_revoke(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
+static void mod_event_list_set(fr_listen_instance_t *li, fr_event_list_t *el, void *nr)
 {
 	proto_detail_work_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 
@@ -828,7 +832,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 }
 
 
-static char const *mod_name(fr_listen_t *li)
+static char const *mod_name(fr_listen_instance_t *li)
 
 {	proto_detail_work_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 
