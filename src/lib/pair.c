@@ -34,7 +34,17 @@ RCSID("$Id$")
  * @param vp to free.
  * @return 0
  */
-static int _fr_pair_free(VALUE_PAIR *vp) {
+static int _fr_pair_free(VALUE_PAIR *vp)
+{
+	if (vp->da && vp->da->flags.secret && vp->data.ptr) {
+		volatile uint8_t *volatile p =  (volatile uint8_t *volatile) vp->data.ptr;
+		size_t i = vp->vp_length;
+
+		while (i--) {
+			*(p++) = 0;
+		}
+	}
+
 #ifndef NDEBUG
 	vp->vp_integer = 0xf4eef4ee;
 #endif
