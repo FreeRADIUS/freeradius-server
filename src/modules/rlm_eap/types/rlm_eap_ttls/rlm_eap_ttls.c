@@ -1113,7 +1113,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_eap_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_ttls_t);
 	CONF_SECTION 	*conf = mctx->mi->conf;
 
-	eap_tls_conf_check(conf, inst->tls_conf);
+	eap_tls_conf_check(conf, inst->tls_conf, true);
 
 	if (eap_tls_check_stateless(conf, inst->tls_conf) < 0) return -1;
 

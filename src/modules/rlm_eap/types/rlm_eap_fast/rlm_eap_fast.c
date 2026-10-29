@@ -1581,7 +1581,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	eap_tls_conf_check(conf, inst->tls_conf);
+	eap_tls_conf_check(conf, inst->tls_conf, true);
 
 	/*
 	 *	Limit TLS version to 1.2.  More work is needed to support TLS 1.3

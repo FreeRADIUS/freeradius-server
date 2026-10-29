@@ -1388,8 +1388,9 @@ skip_tls_version:
  *
  * @param[in] cs		the submodule's section.
  * @param[in,out] tls_conf	parsed from the `tls { ... }` subsection.
+ * @param[in] delayed_tickets	Does this EAP type need delayed session tickets.
  */
-void eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf)
+void eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf, bool delayed_tickets)
 {
 	/*
 	 *	There isn't any point to having EAP sessions cache
@@ -1409,9 +1410,9 @@ void eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf)
 	}
 
 	/*
-	 *	EAP sends the ticket after the authentication has succeeded, not in the TLS handshake.
+	 *	Most EAP methods send the ticket after the authentication has succeeded, not in the TLS handshake.
 	 */
-	tls_conf->delayed_tickets = true;
+	tls_conf->delayed_tickets = delayed_tickets;
 }
 
 /** Check that the TLS configuration does not need stateless session tickets

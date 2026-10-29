@@ -206,6 +206,6 @@ eap_tls_session_t	*eap_tls_session_init(request_t *request, eap_session_t *eap_s
 					      SSL_CTX *ssl_ctx, bool client_cert) CC_HINT(nonnull);
 
 
-void			eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf) CC_HINT(nonnull);
+void			eap_tls_conf_check(CONF_SECTION *cs, fr_tls_conf_t *tls_conf, bool delayed_tickets) CC_HINT(nonnull);
 
 int			eap_tls_check_stateless(CONF_SECTION *cs, fr_tls_conf_t const *tls_conf) CC_HINT(nonnull);

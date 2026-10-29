@@ -1005,7 +1005,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	fr_assert(inst->virtual_server);
 
-	eap_tls_conf_check(conf, inst->tls_conf);
+	eap_tls_conf_check(conf, inst->tls_conf, true);
 
 	return 0;
 }
