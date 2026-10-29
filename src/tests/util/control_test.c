@@ -68,6 +68,7 @@ static int		debug_lvl = 0;
 static size_t		max_messages = 10;
 static size_t		num_workers = 1;
 static int		aq_size = 16;
+static bool		el_announces = false;	//!< the master never announces, the event list does it.
 static fr_control_t	**control = NULL;
 static fr_event_list_t	*el = NULL;
 static bool		single_aq = true;
@@ -90,6 +91,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  -m <messages>	  Send number of messages.\n");
 	fprintf(stderr, "  -w <workers>           Number of workers.\n");
 	fprintf(stderr, "  -q                     Use per-worker atomic queues.\n");
+	fprintf(stderr, "  -e                     The master never announces it is blocking, the event list does.\n");
 	fprintf(stderr, "  -P <usec>              Pause each worker up to this long between sends,\n");
 	fprintf(stderr, "                         so the master runs dry and blocks (default: 0).\n");
 	fprintf(stderr, "  -t <seconds>           Fail if the master receives nothing for this long (default: 30).\n");
@@ -242,10 +244,14 @@ static void *control_master(void *arg)
 		/*
 		 *	Announce that we are about to block, on every control
 		 *	we read.  If any held messages, service the rest
-		 *	without blocking.
+		 *	without blocking.  Or leave all of that to the event
+		 *	list, as a loop which knows nothing of the controls
+		 *	it reads would.
 		 */
-		for (i = 0; i < num_aq; i++) {
-			if (fr_control_sleeping(control[i])) wait = false;
+		if (!el_announces) {
+			for (i = 0; i < num_aq; i++) {
+				if (fr_control_sleeping(control[i])) wait = false;
+			}
 		}
 		if (wait) {
 			atomic_fetch_add_explicit(&master_sleeps, 1, memory_order_relaxed);
@@ -254,7 +260,9 @@ static void *control_master(void *arg)
 		}
 
 		num_events = fr_event_corral(el, fr_time(), wait);
-		for (i = 0; i < num_aq; i++) fr_control_awake(control[i]);
+		if (!el_announces) {
+			for (i = 0; i < num_aq; i++) fr_control_awake(control[i]);
+		}
 		if (num_events < 0) {
 			fprintf(stderr, "Failed reading kevent: %s\n", fr_syserror(errno));
 			fr_exit_now(EXIT_FAILURE);
@@ -385,9 +393,13 @@ int main(int argc, char *argv[])
 
 	fr_time_start();
 
-	while ((c = getopt(argc, argv, "hm:P:qt:w:x")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "ehm:P:qt:w:x")) != -1) switch (c) {
 		case 'x':
 			debug_lvl++;
+			break;
+
+		case 'e':
+			el_announces = true;
 			break;
 
 		case 'P':

@@ -69,12 +69,12 @@ static_assert(sizeof(fr_control_header_t) == 8, "control message data must stay 
 /**
  *  Ancillary data for the one socket a datagram may carry
  *
- *  Used on both sides.  The cmsghdr member only keeps buf aligned as
- *  the CMSG macros require.
+ *  Used on both sides.  Aligned as the CMSG macros require, without
+ *  embedding a cmsghdr, as on Linux that ends in a flexible array and
+ *  cannot then sit in an array of these.
  */
-typedef union {
-	struct cmsghdr			align;		//!< never read.
-	uint8_t				buf[CMSG_SPACE(sizeof(int))];	//!< one cmsghdr and one int.
+typedef struct {
+	_Alignas(struct cmsghdr) uint8_t	buf[CMSG_SPACE(sizeof(int))];	//!< one cmsghdr and one int.
 } control_socket_cmsg_t;
 
 /*
@@ -360,9 +360,39 @@ static void control_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, v
 	(void) control_service(c);
 }
 
+/** Announce that the reader is about to block, and drain the queue one last time
+ *
+ * The event list runs this when the loop reading this control is about
+ * to idle, so every control read by a loop announces itself, whether or
+ * not the loop knows about it.
+ *
+ * @param[in] uctx the control structure.
+ * @return
+ *	- 1 if messages were found, so the loop must not block.
+ *	- 0 if the queue was empty.
+ */
+static int control_pre_event(UNUSED fr_time_t now, UNUSED fr_time_delta_t wake, void *uctx)
+{
+	fr_control_t	*c = talloc_get_type_abort(uctx, fr_control_t);
+
+	return fr_control_sleeping(c) ? 1 : 0;
+}
+
+/** The reader is running again
+ *
+ * @param[in] uctx the control structure.
+ */
+static void control_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_control_t	*c = talloc_get_type_abort(uctx, fr_control_t);
+
+	fr_control_awake(c);
+}
+
 /** Free a control structure
  *
- *  Removes the socket from the event loop, and closes both ends.
+ *  Removes the socket and the idle callbacks from the event loop, and
+ *  closes both ends.
  *
  * @param[in] c the control structure
  */
@@ -374,6 +404,8 @@ static int _control_free(fr_control_t *c)
 	(void) fr_event_fd_unarmour(c->el, c->fd[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
 #endif
 	(void) fr_event_fd_delete(c->el, c->fd[0], FR_EVENT_FILTER_IO);
+	(void) fr_event_pre_delete(c->el, control_pre_event, c);
+	(void) fr_event_post_delete(c->el, control_post_event, c);
 
 	close(c->fd[0]);
 	close(c->fd[1]);
@@ -478,6 +510,17 @@ int fr_control_open(fr_control_t *c)
 #ifndef NDEBUG
 	(void) fr_event_fd_armour(c->el, c->fd[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
 #endif
+
+	/*
+	 *	Senders only wake a reader which has announced it is
+	 *	blocking.  The event list tells us when that is about
+	 *	to happen, and when it is over.
+	 */
+	if ((fr_event_pre_insert(c->el, control_pre_event, c) < 0) ||
+	    (fr_event_post_insert(c->el, control_post_event, c) < 0)) {
+		fr_strerror_const_push("Failed adding idle callbacks for control socket");
+		return -1;
+	}
 	c->opened = true;
 
 	return 0;
