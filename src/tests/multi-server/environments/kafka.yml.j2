@@ -76,8 +76,13 @@ services:
     volumes:
     - ${DATA_PATH}/freeradius/kafka-producer1/radiusd.conf:/etc/freeradius/radiusd.conf
     - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
+    - ${DATA_PATH}/freeradius/common/proto-load/stats/:/etc/freeradius/stats/
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
+    #  In profiling mode, ensure that the profiling results directory is mounted
+    #  since it is there that the load generator saves the CSV statistics when profiling.
+    - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:{{ profiling_result_dir }}/
+
     #
     #  proto_load runs the generator to completion and then radiusd
     #  exits normally.  If docker restarts the container at that point
@@ -106,6 +111,7 @@ services:
       TEST_LOADGEN_MAX_BACKLOG:  "{{ loadgen.max_backlog }}"
       TEST_LOADGEN_PARALLEL:     "{{ loadgen.parallel }}"
       TEST_LOADGEN_COMPLETE:     "{{ loadgen.complete }}"
+      TEST_LOADGEN_STATS_DIR:    "{{ loadgen_stats_dir }}"
       #
       #  Hard cap on packets emitted.  Tests that want the emit
       #  count to equal the consume count default this to
