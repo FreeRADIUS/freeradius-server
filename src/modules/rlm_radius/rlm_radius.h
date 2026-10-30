@@ -27,6 +27,10 @@
 
 #include <freeradius-devel/bio/fd.h>
 
+#ifdef WITH_TLS
+#include <freeradius-devel/tls/base.h>
+#endif
+
 /*
  * $Id$
  *
@@ -62,6 +66,10 @@ struct rlm_radius_s {
 	fr_time_delta_t		home_server_lifetime;	//!< for XLAT_PROXY
 
 	char const		*secret;		//!< Shared secret.
+
+#ifdef WITH_TLS
+	fr_tls_conf_t		*tls_conf;		//!< Parsed "tls" section.  If set, we use RADIUS/TLS.
+#endif
 
 	uint32_t		max_packet_size;	//!< Maximum packet size.
 	uint16_t		max_send_coalesce;	//!< Maximum number of packets to coalesce into one mmsg call.

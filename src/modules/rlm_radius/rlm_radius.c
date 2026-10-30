@@ -113,6 +113,17 @@ static conf_parser_t const transport_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static conf_parser_t const tcp_config[] = {
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_SECRET, rlm_radius_t, secret) },
+
+#ifdef WITH_TLS
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, fr_tls_client_config),
+	  .subcs_type = "fr_tls_conf_t" },
+#endif
+
+	CONF_PARSER_TERMINATOR
+};
+
 /*
  *	We only parse the pool options if we're connected.
  */
@@ -123,7 +134,7 @@ static conf_parser_t const connected_config[] = {
 
 	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_config },
 
-	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_config },
+	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) tcp_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -675,6 +686,43 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->name = mctx->mi->name;
 	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
+#ifdef WITH_TLS
+	/*
+	 *	TLS needs a connected stream socket, and a trunk to manage the connections.
+	 */
+	if (inst->tls_conf) {
+		if ((inst->mode != RLM_RADIUS_MODE_PROXY) && (inst->mode != RLM_RADIUS_MODE_CLIENT)) {
+			cf_log_err(conf, "The 'tls' section can only be used with 'mode = proxy' or 'mode = client'");
+			return -1;
+		}
+
+		/*
+		 *	@todo - src/lib/tls/ supports DTLS, so we can enable that once we have some more
+		 *	tests.
+		 */
+		if (inst->fd_config.socket_type == SOCK_DGRAM) {
+			cf_log_err(conf, "The 'tls' section can only be used with 'transport = tcp'");
+			return -1;
+		}
+
+		/*
+		 *	RFC6614 Section 2.3 says that the port is 2083, and that the secret is "radsec".
+		 */
+		if (!inst->fd_config.dst_port) inst->fd_config.dst_port = 2083;
+
+		if (!inst->secret) {
+			MEM(inst->secret = talloc_strdup(inst, "radsec"));
+
+		} else if (strcmp(inst->secret, "radsec") != 0) {
+			cf_log_warn(conf, "RFC 6614 says that the secret should be 'radsec'.  A different secret may not work.");
+		}
+	} else
+#endif
+	if (!inst->secret && cf_section_find(conf, "tcp", NULL)) {
+		cf_log_err(conf, "Missing 'secret' in the 'tcp' section");
+		return -1;
+	}
+
 	/*
 	 *	Replication is write-only, and append by default.
 	 */
@@ -1116,6 +1164,7 @@ module_rlm_t rlm_radius = {
 		.thread_inst_size	= sizeof(bio_thread_t),
 		.thread_inst_type	= "bio_thread_t",
 		.thread_instantiate 	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){

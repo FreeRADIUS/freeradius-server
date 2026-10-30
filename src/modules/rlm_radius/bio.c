@@ -51,6 +51,9 @@ typedef struct {
 	fr_radius_ctx_t		radius_ctx;	//!< for signing packets
 	bio_limit_ports_t	limit_source_ports;	//!< What type of port limit is in use.
 	bool			dynamic;	//!< is this a dynamic home server.
+#ifdef WITH_TLS
+	SSL_CTX			*ssl_ctx;	//!< TLS context for this thread, NULL if we don't use TLS.
+#endif
 } bio_handle_ctx_t;
 
 typedef struct {
@@ -2753,6 +2756,19 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	thread->ctx.fd_config = inst->fd_config;
 	thread->ctx.radius_ctx = inst->common_ctx;
 
+#ifdef WITH_TLS
+	/*
+	 *	SSL_CTX cannot be shared across threads, so each worker thread allocates its own.
+	 */
+	if (inst->tls_conf) {
+		thread->ctx.ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, true);
+		if (!thread->ctx.ssl_ctx) {
+			PERROR("%s - failed allocating TLS context", inst->name);
+			return -1;
+		}
+	}
+#endif
+
 	switch (inst->mode) {
 	case RLM_RADIUS_MODE_XLAT_PROXY:
 		fr_rb_expire_inline_talloc_init(&thread->bio.expires, home_server_t, expire, home_server_cmp, home_server_free,
@@ -2818,6 +2834,22 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	(void) fr_bio_fd_write_only(thread->bio.fd);
 
 	DEBUG("%s - Opened unconnected replication socket %s", inst->name, thread->ctx.fd_info->name);
+	return 0;
+}
+
+/** Free thread data for the submodule.
+ *
+ */
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+#ifdef WITH_TLS
+	bio_thread_t		*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
+
+	if (thread->ctx.ssl_ctx) SSL_CTX_free(thread->ctx.ssl_ctx);
+#else
+	(void) mctx;
+#endif
+
 	return 0;
 }
 
