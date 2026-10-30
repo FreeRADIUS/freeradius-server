@@ -229,10 +229,8 @@ server tls-session {
 	#  NOTE: The session tickets should be small, at most 512
 	#  bytes.  Anything larger is not likely to work.
 	#
-	#  This section is run _instead of_ `store session`.
-	#
-	#  The section is optional. If it is not used, then the
-	#  session ticket contains default information.
+	#  This section is run _instead of_ `store session` and is
+	#  required if stateless session resumption is in use.
 	#
 ##	encode session {
 ##
@@ -249,10 +247,8 @@ server tls-session {
 	#  resumptions, then it will be in the `session-state` list
 	#  here.
 	#
-	#  This section is run _instead of_ `load session`.
-	#
-	#  The section is optional. If it is not used, then the
-	#  `session-state` list contains default information.
+	#  This section is run _instead of_ `load session` and is required
+	#  if stateless session resumption is in use.
 	#
 ##	decode session {
 ##
