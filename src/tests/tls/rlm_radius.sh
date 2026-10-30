@@ -13,6 +13,10 @@
 #  with a `tls` section.  The `radius` module starts one connection when the
 #  server starts, so radiusd connects without a packet.
 #
+#  The unit_test_tls run and the unit_test_bio run of this test can run at
+#  the same time, and both use radiusd.conf.  `radiusd -m` allows two
+#  radiusd processes to read the same configuration file.
+#
 #  unit_test_tls accepts one connection, and the `radius` module opens one
 #  connection for each thread.  `radiusd -s` runs radiusd with one thread, so
 #  the one connection is the one that unit_test_tls accepts.
@@ -80,7 +84,7 @@ fi
 cat > "$HELPER" <<'EOF'
 mkfifo "$FIFO"
 
-$RADIUSD -d "$CONFDIR" -D "$DICT_PATH" -sxx -e 30 -l stdout > "$FIFO" 2>&1 &
+$RADIUSD -d "$CONFDIR" -D "$DICT_PATH" -msxx -e 30 -l stdout > "$FIFO" 2>&1 &
 pid=$!
 
 while IFS= read -r line; do

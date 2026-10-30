@@ -697,6 +697,26 @@ static void bio_tls_connected(fr_bio_t *bio)
 {
 	bio_handle_t		*h = bio->uctx;
 
+	/*
+	 *	If we're doing status checks, then we want at least one positive response before signalling
+	 *	that the connection is open.  The status check code is the same as for a socket without TLS.
+	 *
+	 *	Insert an FD event to read from the socket, because the TLS BIO deleted its own "connection
+	 *	setup" FD events before calling this function.
+	 */
+	if (h->ctx.inst->status_check) {
+		DEBUG("%s - TLS handshake finished - %s", h->ctx.module_name, h->ctx.fd_info->name);
+
+		status_check_alloc(h);
+
+		if (fr_event_fd_insert(h, NULL, h->conn->el, h->fd, NULL,
+				       conn_init_writable, conn_init_error, h->conn) < 0) {
+			PERROR("%s - Failed inserting FD event", h->ctx.module_name);
+			connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+		}
+		return;
+	}
+
 	DEBUG("%s - TLS connection open - %s", h->ctx.module_name, h->ctx.fd_info->name);
 
 	connection_signal_connected(h->conn);
