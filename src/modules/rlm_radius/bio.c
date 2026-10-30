@@ -109,6 +109,11 @@ typedef struct {
 	bool			status_checking;       	//!< whether we're doing status checks
 	bio_request_t		*status_u;		//!< for sending status check packets
 	request_t		*status_request;
+
+#ifdef WITH_TLS
+	request_t		*conn_request;		//!< owns the TLS bio, and runs the handshake.  This is
+							///< separate from status_request.
+#endif
 } bio_handle_t;
 
 
@@ -616,6 +621,63 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	}
 }
 
+#ifdef WITH_TLS
+/** Allocate the request that owns the TLS bio.
+ *
+ * The code in src/lib/tls uses a request to handle the BIO and the TLS handshake.  The TLS handshake runs the
+ * various unlang sessions for `verify certificate`, etc.
+ *
+ * This request is only used to manage the TLS state machine.  The status check request is needed for UDP,
+ * and is therefore independent.
+ *
+ * @param[in] h		the connection handle.  The fd bio MUST be allocated.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int conn_request_alloc(bio_handle_t *h)
+{
+	request_t		*request;
+	unlang_interpret_t	*intp;
+	static uint64_t		number = 0;
+
+	fr_assert(h->bio.fd);
+	fr_assert(!h->conn_request);
+
+	intp = unlang_interpret_get_thread_default();
+	if (!intp) {
+		ERROR("%s - No interpreter for the TLS connection request", h->ctx.module_name);
+		return -1;
+	}
+
+	MEM(request = request_local_alloc_internal(h, NULL));
+
+	MEM(request->packet = fr_packet_alloc(request, false));
+	MEM(request->reply = fr_packet_alloc(request, false));
+
+	request->packet->timestamp = fr_time();
+
+	/*
+	 *	The home server is the destination.  The socket names it in log messages and in the
+	 *	session-state list.
+	 */
+	request->packet->socket = h->ctx.fd_info->socket;
+
+	request->number = number++;
+	talloc_const_free(request->name);
+	MEM(request->name = talloc_typed_asprintf(request, "%s TLS %" PRIu64, h->ctx.module_name, request->number));
+
+	MEM(request->async = talloc_zero(request, fr_async_t));
+	request->async->request = request;
+
+	unlang_interpret_set(request, intp);
+
+	h->conn_request = request;
+
+	return 0;
+}
+#endif
+
 /** Free a connection handle, closing associated resources
  *
  */
@@ -851,6 +913,18 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 */
 	h->bio.main = h->bio.mem;
 	h->bio.mem->uctx = h;
+
+#ifdef WITH_TLS
+	/*
+	 *	Allocate the connection request.
+	 *
+	 *	@todo - next step is to allocate the TLS BIO.
+	 */
+	if (h->ctx.ssl_ctx && (conn_request_alloc(h) < 0)) {
+		PERROR("%s - Failed allocating the TLS connection request", h->ctx.module_name);
+		goto fail;
+	}
+#endif
 
 	h->fd = fd;
 
