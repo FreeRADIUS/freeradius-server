@@ -8,5 +8,8 @@ tls {
 	tls {
 		virtual_server = eap-tls-test
 		$template tls-common
+		session {
+			mode = auto
+		}
 	}
 }

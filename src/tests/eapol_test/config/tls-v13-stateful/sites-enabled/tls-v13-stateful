@@ -23,6 +23,12 @@ server tls-v13-stateful-tls {
 	#  the same attributes as the first one.
 	#
 	verify certificate {
+		if (Session-Resumed == true) {
+			if (!parent.session-state.TLS-Certificate[0].Issuer) {
+				reject
+			}
+		}
+
 		if (!parent.session-state.TLS-Certificate[0].Issuer) {
 			reject
 		}
