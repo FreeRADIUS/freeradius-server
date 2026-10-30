@@ -3,9 +3,14 @@ type = ttls
 ttls {
 	tls {
 		$template tls-common
+		virtual_server = tls-session
+		session {
+			mode = auto
+		}
 	}
 	default_eap_type = md5
 	virtual_server = "inner-tunnel"
+	resume_virtual_server = "resume-inner-tunnel"
 	include_length = no
 }
 

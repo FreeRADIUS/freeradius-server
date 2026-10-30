@@ -37,6 +37,7 @@ authenticate eap {
 }
 
 send Access-Accept {
+	parent.session-state += request.User-Name
 	ok
 }
 
@@ -44,3 +45,31 @@ send Access-Reject {
 	ok
 }
 }
+
+server resume-inner-tunnel {
+	namespace = radius
+
+recv Access-Request {
+	if (User-Name) {
+		accept
+	}
+	reject
+}
+}
+
+server tls-session {
+	namespace = tls
+
+	load session {
+		cache_tls_session
+	}
+
+	store session {
+		cache_tls_session
+	}
+
+	clear session {
+		cache_tls_session
+	}
+}
+

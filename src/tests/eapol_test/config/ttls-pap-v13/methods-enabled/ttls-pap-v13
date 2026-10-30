@@ -1,19 +1,16 @@
 type = ttls
+## EAP-TTLS
 ttls {
 	tls {
-		virtual_server = ttls-v13-stateful-tls
 		$template tls-common
-
-		#
-		#  Stateful tickets on TLS 1.3 only.
-		#
-		tls_min_version = 1.3
-
+		virtual_server = tls-session
 		session {
-			mode = stateful
+			mode = auto
 		}
 	}
 	default_eap_type = md5
 	virtual_server = "inner-tunnel"
+	resume_virtual_server = "resume-inner-tunnel"
 	include_length = no
 }
+
