@@ -1788,7 +1788,7 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 	if ((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK) != 0) {
 		RDEBUGHEX("Phase 2: CMK for Compound MAC calculation (MSK)", t->imck_msk.cmk, EAP_TEAP_CMK_LEN);
 		HMAC(md, &t->imck_msk.cmk, EAP_TEAP_CMK_LEN, buf, buflen, mac, &maclen);
-		if (memcmp(binding->msk_compound_mac, mac, sizeof(binding->msk_compound_mac))) {
+		if (rad_digest_cmp(binding->msk_compound_mac, mac, sizeof(binding->msk_compound_mac)) != 0) {
 			RWDEBUG2("Phase 2: Crypto-Binding TLV (MSK) mis-match");
 			return PW_CODE_ACCESS_REJECT;
 		}
@@ -1802,7 +1802,7 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 	if (((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_EMSK) != 0) && t->imck_emsk_available) {
 		RDEBUGHEX("Phase 2: CMK for Compound MAC calculation (EMSK)", t->imck_emsk.cmk, EAP_TEAP_CMK_LEN);
 		HMAC(md, &t->imck_emsk.cmk, EAP_TEAP_CMK_LEN, buf, buflen, mac, &maclen);
-		if (memcmp(binding->emsk_compound_mac, mac, sizeof(binding->emsk_compound_mac))) {
+		if (rad_digest_cmp(binding->emsk_compound_mac, mac, sizeof(binding->emsk_compound_mac)) != 0) {
 			RWDEBUG2("Phase 2: Crypto-Binding TLV (EMSK) mis-match");
 			return PW_CODE_ACCESS_REJECT;
 		}
