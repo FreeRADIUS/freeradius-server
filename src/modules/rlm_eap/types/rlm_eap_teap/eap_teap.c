@@ -2037,6 +2037,18 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 	t = (teap_tunnel_t *) tls_session->opaque;
 
+	/*
+	 * When the inner EAP-Request/Identity cannt be coalesed with the TLS
+	 * Server Finished record we hit this section with no payload as we
+	 * see the supplicant ACK before we get the payload in the next round-trip
+	 * and we use the t->stage conditional to prevent any silly busy.
+	 *
+	 * TODO for TLS 1.3 do this coalesing (looks to EAP-TLS session resumption
+	 * for inspiration) , and for 1.2 something like False Start could be used
+	 * which of course OpenSSL does not support so a non-starter... :-/
+	 */
+	if (t->stage == TLS_SESSION_HANDSHAKE && data_len == 0) goto noappdata;
+
 	if (rad_debug_lvl > 2) print_tunneled_data(data, data_len);
 
 	/*
@@ -2057,6 +2069,7 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 	if (verify != RLM_MODULE_OK) return PW_CODE_ACCESS_REJECT;
 
+noappdata:
 	if (t->stage == TLS_SESSION_HANDSHAKE) {
 		char buf[256];
 
