@@ -1123,6 +1123,18 @@ eap {
 		virtual_server = "inner-tunnel"
 
 		#
+		#  resume_virtual_server:: The virtual server used for "inner"
+		#  authentication on resumed sessions.
+		#
+		#  If not set, then the virtual server set above will be used.
+		#
+		#  Depending on what has been stored in the session cache,
+		#  resumed sessions may not have the same attributes available
+		#  e.g. typically User-Password would not be cached.
+		#
+#		resume_virtual_server = "resume-inner-tunnel"
+
+		#
 		#  include_length:: Whether we include a length field in the TLS
 		#  header.
 		#
@@ -1226,6 +1238,18 @@ eap {
 		#  which verifies the inner credentials.
 		#
 		virtual_server = "inner-tunnel"
+
+		#
+		#  resume_virtual_server:: The virtual server used for "inner"
+		#  authentication on resumed sessions.
+		#
+		#  If not set, then the virtual server set above will be used.
+		#
+		#  Depending on what has been stored in the session cache,
+		#  resumed sessions may not have the same attributes available
+		#  e.g. typically User-Password would not be cached.
+		#
+#		resume_virtual_server = "resume-inner-tunnel"
 
 		#
 		#  require_client_cert:: Whether we require a client certificate.
