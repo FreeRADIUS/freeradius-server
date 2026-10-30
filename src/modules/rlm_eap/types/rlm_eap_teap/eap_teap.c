@@ -1737,12 +1737,14 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 	}
 
 	/*
-	 *	The Flags field is 4 bits:
+	 *	The Flags field is 4 bits.  It is a value, not a bit
+	 *	mask, and says which Compound MACs are present:
 	 *
-	 *		0 - EMSK (may or may not be set)
-	 *		1 - MSK (always set)
-	 *		2 - MUST be zero
-	 *		3 - MUST be zero
+	 *		0 - invalid
+	 *		1 - EMSK Compound MAC only
+	 *		2 - MSK Compound MAC only
+	 *		3 - both Compound MACs
+	 *		4 and above - invalid
 	 */
 	if ((flags == 0) || (flags > 3)) {
 		RWDEBUG2("Phase 2: Invalid Crypto-Binding Flags=%d", flags);
