@@ -257,6 +257,7 @@ static void atomic_queue_init(fr_atomic_queue_t *aq, size_t num, size_t elem_len
 
 	aq->elem_len = elem_len;
 	aq->stripes = atomic_queue_stripes(elem_len);
+	fr_assert(aq->stripes > 0);
 	aq->slot_len = CACHE_LINE_SIZE / aq->stripes;
 	num_lines = atomic_queue_num_lines(num, aq->stripes);
 	memset(aq->lines, 0, num_lines * CACHE_LINE_SIZE);
