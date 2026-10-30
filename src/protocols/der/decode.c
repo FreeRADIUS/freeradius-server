@@ -290,6 +290,11 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 		data_len = len;
 	}
 
+	if (unlikely(data_len == 0)) {
+		fr_strerror_const_push("Zero length bitstring");
+		return -1;
+	}
+
 	data = talloc_array(decode_ctx->tmp_ctx, uint8_t, data_len);
 	if (unlikely(!data)) {
 		fr_strerror_const_push("Out of memory");
@@ -2800,7 +2805,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		if (tag == FR_DER_TAG_NULL) {
 			func = &tag_funcs[FR_DER_TAG_NULL];
 			goto decode_it;
-		}		
+		}
 	}
 
 	/*
@@ -2996,7 +3001,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 	if (!test_ctx) return -1;
 
 	test_ctx->tmp_ctx = talloc_new(test_ctx);
-	test_ctx->root = root_da;	 
+	test_ctx->root = root_da;
 
 	*out = test_ctx;
 
