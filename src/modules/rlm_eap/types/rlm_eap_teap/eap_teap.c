@@ -1795,8 +1795,15 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 		imck = &t->imck_msk;
 	}
 
+	/*
+	 *	The peer says that it sent an EMSK Compound MAC, but we have no
+	 *	EMSK to check it with.  Skipping the check would leave "imck"
+	 *	unset, and the keys would be derived from all zeroes without
+	 *	any Compound MAC having been verified.
+	 */
 	if (((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_EMSK) != 0) && !t->imck_emsk_available) {
-		fr_assert(0);
+		RWDEBUG2("Phase 2: Crypto-Binding Flags=%d includes an EMSK Compound MAC, but there is no EMSK to verify it", flags);
+		return PW_CODE_ACCESS_REJECT;
 	}
 
 	if (((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_EMSK) != 0) && t->imck_emsk_available) {
