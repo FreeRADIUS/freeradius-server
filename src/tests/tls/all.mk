@@ -99,10 +99,11 @@ TLS_CMD.${1} := \
 	DICT_PATH=$(call SHELL_QUOTE,$(DICT_PATH)) \
 	PORT=$$(TLS_PORT.${1}) \
 	UNIT_TEST_TLS=$(call SHELL_QUOTE,$(TEST_BIN)/unit_test_tls) \
+	RADIUSD=$(call SHELL_QUOTE,$(TEST_BIN)/radiusd) \
 	$(SHELL) \
 	$(TLS_DIR)/${1}.sh
 
-$(TLS_OUTPUT)/${1}.receipt: $(or $(wildcard $(TLS_DIR)/${1}.conf),$(TLS_CONF)) $(TLS_COMMON) $(TLS_DIR)/${1}.sh $(TEST_BIN_DIR)/unit_test_tls $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+$(TLS_OUTPUT)/${1}.receipt: $(or $(wildcard $(TLS_DIR)/${1}.conf),$(TLS_CONF)) $(TLS_COMMON) $(TLS_DIR)/${1}.sh $(TEST_BIN_DIR)/unit_test_tls $(TEST_BIN_DIR)/radiusd $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
 	@echo "TLS-TEST ${1}"
 	$${Q}if ! $$(TLS_CMD.${1}) > $$@.log 2>&1 || ! test -f $$@; then \
 		cat $$@.log; \
@@ -134,9 +135,9 @@ TLS_BIO_TESTS := $(filter-out dtls_loss,$(TLS_TESTS))
 
 define TLS_BIO_TEST_RULE
 TLS_PORT.bio.${1} := $(word $(words $(TLS_RECEIPTS) ${1}),$(TLS_PORTS))
-TLS_CMD.bio.${1} := OUTPUT="$(TLS_OUTPUT)/bio" CONFDIR="$(top_srcdir)/$(TLS_DIR)" CERTDIR="$(top_srcdir)/raddb/certs/rsa" DICT_PATH="$(DICT_PATH)" PORT="$$(TLS_PORT.bio.${1})" UNIT_TEST_TLS="$(TEST_BIN)/unit_test_bio -n unit_test_tls" $(SHELL) $(TLS_DIR)/${1}.sh
+TLS_CMD.bio.${1} := OUTPUT="$(TLS_OUTPUT)/bio" CONFDIR="$(top_srcdir)/$(TLS_DIR)" CERTDIR="$(top_srcdir)/raddb/certs/rsa" DICT_PATH="$(DICT_PATH)" PORT="$$(TLS_PORT.bio.${1})" UNIT_TEST_TLS="$(TEST_BIN)/unit_test_bio -n unit_test_tls" RADIUSD="$(TEST_BIN)/radiusd" $(SHELL) $(TLS_DIR)/${1}.sh
 
-$(TLS_OUTPUT)/bio/${1}.receipt: $(or $(wildcard $(TLS_DIR)/${1}.conf),$(TLS_CONF)) $(TLS_COMMON) $(TLS_DIR)/${1}.sh $(TEST_BIN_DIR)/unit_test_bio $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+$(TLS_OUTPUT)/bio/${1}.receipt: $(or $(wildcard $(TLS_DIR)/${1}.conf),$(TLS_CONF)) $(TLS_COMMON) $(TLS_DIR)/${1}.sh $(TEST_BIN_DIR)/unit_test_bio $(TEST_BIN_DIR)/radiusd $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
 	@echo "TLS-BIO-TEST ${1}"
 	$${Q}mkdir -p $(TLS_OUTPUT)/bio
 	$${Q}if ! $$(TLS_CMD.bio.${1}) > $$@.log 2>&1 || ! test -f $$@; then \
@@ -160,7 +161,7 @@ endif
 #  src/tests/all.mk reads the module list from common.conf, which holds the
 #  modules section.
 #
-$(eval $(call TEST_CONFIG_LIBS,$(TLS_COMMON),$(TLS_RECEIPTS)))
+$(eval $(call TEST_CONFIG_LIBS,$(TLS_COMMON) $(TLS_DIR)/radiusd.conf,$(TLS_RECEIPTS)))
 
 $(BUILD_DIR)/tests/$(TEST): $(TLS_RECEIPTS)
 

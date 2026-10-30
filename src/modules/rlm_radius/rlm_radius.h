@@ -29,6 +29,8 @@
 
 #ifdef WITH_TLS
 #include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/tls/connection.h>
+#include <freeradius-devel/bio/tls.h>
 #endif
 
 /*

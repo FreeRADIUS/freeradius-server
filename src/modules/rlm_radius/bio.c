@@ -83,6 +83,9 @@ typedef struct {
 		fr_bio_t		*main;     	//!< what we use for IO
 		fr_bio_t		*fd;		//!< raw FD
 		fr_bio_t		*mem;		//!< memory wrappers for stream sockets
+#ifdef WITH_TLS
+		fr_bio_tls_t		*tls;		//!< TLS BIO.
+#endif
 	} bio;
 
 	connection_t		*conn;
@@ -113,6 +116,7 @@ typedef struct {
 #ifdef WITH_TLS
 	request_t		*conn_request;		//!< owns the TLS bio, and runs the handshake.  This is
 							///< separate from status_request.
+	bool			tls_starting;		//!< Is conn_init() inside of fr_bio_tls_connect() ?.
 #endif
 } bio_handle_t;
 
@@ -670,9 +674,86 @@ static int conn_request_alloc(bio_handle_t *h)
 	MEM(request->async = talloc_zero(request, fr_async_t));
 	request->async->request = request;
 
+	/*
+	 *	worker.c calls fr_time_tracking_yield() and fr_time_tracking_resume() on every
+	 *	request which is not detached.  The worker only starts tracking for requests which it creates,
+	 *	and this request is not one of them.  Start tracking here, in the yielded state, which is the
+	 *	state that worker.c expects.
+	 */
+	fr_time_tracking_start(NULL, &request->async->tracking, request->packet->timestamp);
+	fr_time_tracking_yield(&request->async->tracking, request->packet->timestamp);
+
 	unlang_interpret_set(request, intp);
 
 	h->conn_request = request;
+
+	return 0;
+}
+
+/** Callback to signal that the TLS connection is open.
+ *
+ */
+static void bio_tls_connected(fr_bio_t *bio)
+{
+	bio_handle_t		*h = bio->uctx;
+
+	DEBUG("%s - TLS connection open - %s", h->ctx.module_name, h->ctx.fd_info->name);
+
+	connection_signal_connected(h->conn);
+}
+
+/** Something in TLS failed.
+ *
+ * The TLS bio calls this function from inside of a read or a write.
+ * Don't free the BIO, just signal that we need a reconnection/
+ */
+static void bio_tls_failed(fr_bio_t *bio)
+{
+	bio_handle_t		*h = bio->uctx;
+	fr_tls_connection_t	*tls_conn = fr_bio_tls_conn(h->bio.tls);
+
+	if (tls_conn->failed == TLS_CONNECTION_FAIL_SYSCALL) {
+		ERROR("%s - TLS connection failed - %s - %s", h->ctx.module_name, h->ctx.fd_info->name,
+		      fr_syserror(tls_conn->error));
+	} else {
+		ERROR("%s - TLS connection failed - %s - %s", h->ctx.module_name, h->ctx.fd_info->name,
+		      fr_table_str_by_value(fr_tls_connection_fail_table, tls_conn->failed, "<INVALID>"));
+	}
+
+	/*
+	 *	conn_init() is still running, and returns CONNECTION_STATE_FAILED when fr_bio_tls_connect()
+	 *	fails.  Signalling the connection from here would make the connection code handle the same
+	 *	failure twice.
+	 */
+	if (h->tls_starting) return;
+
+	connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+}
+
+/** Allocate the TLS bio
+ *
+ * @param[in] h		the connection handle.  The fd bio MUST be allocated.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int conn_tls_alloc(bio_handle_t *h)
+{
+	fr_tls_connection_t	*tls_conn;
+
+	if (conn_request_alloc(h) < 0) return -1;
+
+	h->bio.tls = fr_bio_tls_alloc(h->conn_request, h->bio.fd, h->ctx.ssl_ctx, true, false);
+	if (!h->bio.tls) return -1;
+
+	((fr_bio_t *) h->bio.tls)->uctx = h;
+	fr_bio_cb_set((fr_bio_t *) h->bio.tls, &(fr_bio_cb_funcs_t) {
+			.connected = bio_tls_connected,
+			.failed = bio_tls_failed,
+		      });
+
+	tls_conn = fr_bio_tls_conn(h->bio.tls);
+	tls_conn->name = talloc_typed_asprintf(tls_conn, "TLS %s", h->ctx.fd_info->name);
 
 	return 0;
 }
@@ -798,6 +879,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	bio_handle_t		*h;
 	bio_handle_ctx_t	*ctx = uctx; /* thread or home server */
 	connection_t		**to_save = NULL;
+	fr_bio_t		*next;
 
 	MEM(h = talloc_zero(conn, bio_handle_t));
 	h->ctx = *ctx;
@@ -895,8 +977,25 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	way we don't need a memory BIO for UDP sockets, but we can still add a verification layer for
 	 *	UDP sockets?
 	 */
+	next = h->bio.fd;
+
+#ifdef WITH_TLS
+	/*
+	 *	For TLS, the path goes mem -> TLS -> FD.  The memory BIO sees the decrypted application data,
+	 *	and can then run its validation callbacks.
+	 */
+	if (h->ctx.ssl_ctx) {
+		if (conn_tls_alloc(h) < 0) {
+			PERROR("%s - Failed allocating the TLS bio", h->ctx.module_name);
+			goto fail;
+		}
+
+		next = (fr_bio_t *) h->bio.tls;
+	}
+#endif
+
 	h->bio.mem = fr_bio_mem_alloc(h, (h->ctx.fd_config.socket_type == SOCK_DGRAM) ? 0 : h->ctx.inst->max_packet_size * 4,
-				      0, h->bio.fd);
+				      0, next);
 	if (!h->bio.mem) {
 		PERROR("%s - Failed allocating memory buffer - ", h->ctx.module_name);
 		goto fail;
@@ -914,21 +1013,35 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->bio.main = h->bio.mem;
 	h->bio.mem->uctx = h;
 
-#ifdef WITH_TLS
-	/*
-	 *	Allocate the connection request.
-	 *
-	 *	@todo - next step is to allocate the TLS BIO.
-	 */
-	if (h->ctx.ssl_ctx && (conn_request_alloc(h) < 0)) {
-		PERROR("%s - Failed allocating the TLS connection request", h->ctx.module_name);
-		goto fail;
-	}
-#endif
-
 	h->fd = fd;
 
 	talloc_set_destructor(h, _bio_handle_free);
+
+#ifdef WITH_TLS
+	/*
+	 *	The TLS BIO owns the FD events until the  bio_tls_connected() is called.
+	 *
+	 *	The fd bio connect and TLS handshakes all happen after fr_bio_tls_connect().
+	 */
+	if (h->bio.tls) {
+		int rcode;
+
+		h->tls_starting = true;
+		rcode = fr_bio_tls_connect(h->bio.tls);
+		h->tls_starting = false;
+
+		if (rcode < 0) {
+			PERROR("%s - Failed starting the TLS connection", h->ctx.module_name);
+			goto fail;
+		}
+
+		*h_out = h;
+
+		if (to_save) *to_save = conn;
+
+		return CONNECTION_STATE_CONNECTING;
+	}
+#endif
 
 	/*
 	 *	If the socket isn't connected, then do that first.
@@ -2824,6 +2937,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_radius_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
 	bio_thread_t		*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
+	bool			delay_start = false;
 
 	thread->ctx.el = mctx->el;
 	thread->ctx.inst = inst;
@@ -2864,8 +2978,18 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 			}
 		}
 
+		/*
+		 *	@todo - we are called for threads which do NOT have an interpreter set up.  e.g. the
+		 *	coordinator thread.  This is likely wrong.
+		 *
+		 *	For now, work around it.
+		 */
+#ifdef WITH_TLS
+		if (thread->ctx.ssl_ctx && !unlang_interpret_get_thread_default()) delay_start = true;
+#endif
+
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_funcs,
-					    &inst->trunk_conf, inst->name, thread, false, inst->trigger_args);
+					    &inst->trunk_conf, inst->name, thread, delay_start, inst->trigger_args);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
 
