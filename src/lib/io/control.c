@@ -155,7 +155,7 @@ static void control_socket_dgram_size_measure(void)
 	if (getsockopt(sv[0], SOL_SOCKET, SO_RCVBUF, &rcvbuf, &len) < 0) rcvbuf = bufsize;
 	if (num > 0) control_socket_dgram_size_actual = ((sndbuf < rcvbuf) ? sndbuf : rcvbuf) / num;
 
-	while (num-- > 0) {
+	while (num > 0) {
 		int sock = -1;
 
 		mh.msg_controllen = sizeof(cmsg);
@@ -165,6 +165,7 @@ static void control_socket_dgram_size_measure(void)
 			memcpy(&sock, CMSG_DATA(ch), sizeof(sock));
 			close(sock);
 		}
+		num--;
 	}
 
 	close(sv[0]);
