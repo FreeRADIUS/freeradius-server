@@ -342,11 +342,32 @@ fr_bio_t *fr_bio_eof(fr_bio_t *bio)
  *  the hierarchy, and calling any write_blocked callbacks.
  *
  *  Once all of the BIOs have been marked as blocked, it will call the application write_blocked callback.
+ *
+ *  However, a BIO chain which is in the process of shutting down shouldn't signal the application.
+ *
+ * @return
+ *	- 1 every BIO in the chain is blocked.
+ *	- 0 a BIO is not blocked, or the chain is shutting down.
+ *	- <0 on error.
  */
 int fr_bio_write_blocked(fr_bio_t *bio)
 {
 	fr_bio_common_t *this = (fr_bio_common_t *) bio;
+	fr_bio_common_t *head = (fr_bio_common_t *) fr_bio_head(bio);
 	int is_blocked = 1;
+
+	/*
+	 *	We're in the process of shutting down, don't do anything.  We have to check both the flags and
+	 *	the write functions.  See fr_bio_shutdown_final(), which clears `shutdown_pending`, and then
+	 *	walks the chain from the head, resetting the write function in each BIO.
+	 *
+	 *	A shutdown routine lower in the chain therefore sees a head BIO which is already dead, but its
+	 *	own write function is not yet dead.  So we have to check for all of these cases.
+	 */
+	if (head->shutdown_pending || (head->bio.write == fr_bio_shutdown_write) ||
+	    (this->bio.write == fr_bio_shutdown_write)) {
+		return 0;
+	}
 
 	while (true) {
 		fr_bio_common_t *prev = (fr_bio_common_t *) fr_bio_prev(&this->bio);
