@@ -358,6 +358,42 @@ static int fr_bio_tls_write_resume(fr_bio_t *bio)
 	return my->cb.write_resume(bio);
 }
 
+/** Does the TLS bio have encrypted data which has not reached the next bio?
+ *
+ *  The data is TLS signalling, such as a post-handshake message or an alert, or encrypted application data
+ *  which was blocked.  The application calls `fr_bio_tls_write_flush()` when the fd is writable and this
+ *  function returns true.  When this function returns false, the application can write to the bio at once.
+ *
+ * @param[in] my	the TLS bio.
+ * @return
+ *	- true encrypted data is waiting, or the bio is in the blocked state.
+ *	- false nothing is waiting.
+ */
+bool fr_bio_tls_write_flush_needed(fr_bio_tls_t *my)
+{
+	return my->write_blocked || (fr_dbuff_remaining(my->conn->tls_session->dirty_out) > 0);
+}
+
+/** Flush any pending data to the next BIO.
+ *
+ *  Once the connection is open, all FD events are owned by the application. So if the application gets "write
+ *  available", it needs to flush any pending TLS signaling data before writing the application data.  This
+ *  process uses the normal write process, including clearing the "blocked" state and signaling the
+ *  application, or staying in the blocked state.
+ *
+ *  The application calls `fr_bio_tls_write_flush_needed()` to find out if a flush is needed.
+ *
+ * @param[in] my	the TLS bio.
+ * @return
+ *	- 1 nothing is left to write, and the application can write to the bio.
+ *	- 0 the next bio is still blocked, and some data is still waiting.
+ *	- <0 the error which the next bio returned.
+ */
+int fr_bio_tls_write_flush(fr_bio_tls_t *my)
+{
+	return fr_bio_tls_write_resume(&my->bio);
+}
+
 /** Encrypt application data, and write the encrypted records to the next bio
  *
  *  `SSL_MODE_ENABLE_PARTIAL_WRITE` is not set, so OpenSSL encrypts all of the data passed to
@@ -910,15 +946,70 @@ static void fr_bio_tls_fd_error(fr_bio_t *fd_bio)
 	fr_bio_tls_failed(my, TLS_CONNECTION_FAIL_SYSCALL, fr_bio_fd_info(fd_bio)->connect_errno);
 }
 
-/** Cancel the request, and then run the common bio destructor
+/** Send a TLS `close_notify` alert to the peer
+ *
+ *  RFC 9846 Section 6.1 requires that a party sends a `close_notify` alert before closing its write side
+ *  of the connection.  A TCP connection can be closed without writing, but a TLS connection cannot.
+ *
+ *  The write is best effort.  If the next bio is blocked, the alert stays in the TLS connection buffer, and
+ *  the fd is closed anyway.
+ *
+ *  The alert is not sent when the TLS connection is not connected, when the TLS connection failed, when
+ *  the bio chain already shut down, or when the fd is at EOF or is not open.
+ *
+ * @param[in] my	the TLS bio.
+ */
+static void fr_bio_tls_close_send(fr_bio_tls_t *my)
+{
+	fr_bio_t		*next = fr_bio_next(&my->bio);
+	fr_bio_fd_info_t const	*info;
+
+	if (my->conn->state != TLS_CONNECTION_CONNECTED) return;
+	if (my->conn->failed != TLS_CONNECTION_FAIL_NONE) return;
+	if (my->bio.write == fr_bio_shutdown_write) return;
+
+	info = fr_bio_fd_info(next);
+	if (info->eof || (info->state != FR_BIO_FD_STATE_OPEN)) return;
+
+	fr_tls_session_close_send(my->conn->request, my->conn->tls_session);
+
+	/*
+	 *	Nothing can write to the bio after the alert.  Setting the write function also stops a
+	 *	blocked write from running the `write_blocked` callbacks while the bio closes.
+	 */
+	my->bio.write = fr_bio_shutdown_write;
+
+	(void) fr_bio_tls_flush(my);
+}
+
+/** Send any close_notify, stop the fd events, cancel the request, and then run the common bio destructor
+ *
+ *  The application is freeing the bio, so the application does not care if there is a failed write when
+ *  sending the `close_notify`.  Delete the FD events before any writes.
+ *
+ *  A failed write in the FD BIO causes it to close the FD.
  *
  *  The request has a frame which points at the TLS connection, and the TLS connection is freed with the bio.
- *  Cancelling the request unwinds the frame first, so the interpreter never runs a frame which points at a
- *  freed connection.
+ *  Cancelling the request unwinds the frames nad frees the connection.  The interpreter can then free the
+ *  request.
  */
 static int fr_bio_tls_destructor(fr_bio_tls_t *my)
 {
-	unlang_interpret_signal(my->conn->request, FR_SIGNAL_CANCEL);
+	my->cb.failed = NULL;
+
+	(void) fr_event_fd_delete(my->el, my->fd, FR_EVENT_FILTER_IO);
+	my->events = false;
+	my->write_wait = false;
+
+	fr_bio_tls_close_send(my);
+
+	/*
+	 *	Signal the request only if we have an interpreter.
+	 *
+	 *	When the worker thread is shutting down, our destructor is called, but there's no interpreter,
+	 *	and we can't signal the request.
+	 */
+	if (unlang_interpret_get_thread_default()) unlang_interpret_signal(my->conn->request, FR_SIGNAL_CANCEL);
 
 	return fr_bio_destructor((fr_bio_t *) my);
 }

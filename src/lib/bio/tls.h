@@ -39,4 +39,8 @@ fr_bio_tls_t		*fr_bio_tls_alloc(request_t *request, fr_bio_t *next, SSL_CTX *ssl
 fr_tls_connection_t	*fr_bio_tls_conn(fr_bio_tls_t *my) CC_HINT(nonnull);
 
 int			fr_bio_tls_connect(fr_bio_tls_t *my) CC_HINT(nonnull);
+
+bool			fr_bio_tls_write_flush_needed(fr_bio_tls_t *my) CC_HINT(nonnull);
+
+int			fr_bio_tls_write_flush(fr_bio_tls_t *my) CC_HINT(nonnull);
 #endif

@@ -27,7 +27,9 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/server/connection.h>
+#include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/load_balance_priv.h>
+#include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/rb_expire.h>
 
@@ -79,6 +81,8 @@ typedef struct {
 
 	int			fd;			//!< File descriptor.
 
+	bool			eof;			//!< The BIO chain is at EOF, see bio_eof().
+
 	struct {
 		fr_bio_t		*main;     	//!< what we use for IO
 		fr_bio_t		*fd;		//!< raw FD
@@ -116,9 +120,20 @@ typedef struct {
 #ifdef WITH_TLS
 	request_t		*conn_request;		//!< owns the TLS bio, and runs the handshake.  This is
 							///< separate from status_request.
-	bool			tls_starting;		//!< Is conn_init() inside of fr_bio_tls_connect() ?.
+	bool			tls_starting;		//!< Are we inside of fr_bio_tls_connect() ?
+	bool			tls_started;		//!< The connection request has run, and the TLS start is scheduled.
+	fr_timer_t		*tls_ev;		//!< Starts the TLS connection.
 #endif
 } bio_handle_t;
+
+/** Is the connection at EOF?
+ *
+ *  Either the whole BIO chain is at EOF, or the fd is at EOF.
+ */
+static inline CC_HINT(always_inline) bool bio_at_eof(bio_handle_t const *h)
+{
+	return h->eof || h->ctx.fd_info->eof;
+}
 
 
 /** Connect request_t to local tracking structure
@@ -451,10 +466,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	fr_pair_list_init(&reply);
 	slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 	if (slen == 0) {
-		/*
-		 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
-		 */
-		if (h->ctx.fd_info->eof) goto failed;
+		if (bio_at_eof(h)) goto failed;
 		return;
 	}
 
@@ -626,6 +638,61 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 }
 
 #ifdef WITH_TLS
+/** Start the TLS connection
+ *
+ * The TLS bio needs to run the interpreter on the connection request.  When the request is added to the
+ * worker, the worker runs the request function.  Which is this one.
+
+ * fr_bio_tls_connect() runs the interpreter on the connection request.  The interpreter asserts that the
+ * request is not in the runnable heap of the worker, and the worker adds a new request to the heap.  The
+ * worker has therefore to run the request once, before the TLS connection can start.  conn_request_hold() adds
+ * the timer which calls this function, and the timer runs only after the worker has finished with the request.
+ */
+static void conn_tls_start(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
+	bio_handle_t		*h = talloc_get_type_abort(uctx, bio_handle_t);
+	int			rcode;
+
+	/*
+	 *	From fr_bio_tls_connect() until the "connected" callback, the TLS BIO owns the FD events.  The
+	 *	fd bio connect and the TLS handshake both happen after fr_bio_tls_connect().
+	 */
+	h->tls_starting = true;
+	rcode = fr_bio_tls_connect(h->bio.tls);
+	h->tls_starting = false;
+
+	if (rcode < 0) {
+		PERROR("%s - Failed starting the TLS connection", h->ctx.module_name);
+		connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+	}
+}
+
+/** The bottom frame of the connection request
+ *
+ * The worker runs a request which has no frames, and the interpreter asserts that the stack is not empty.  This
+ * frame is the bottom of the stack.  The TLS code pushes its own frame above this frame, once the TCP connection
+ * is open.
+ *
+ * The worker has finished with the request as soon as this frame yields.  The function therefore asks for the
+ * TLS connection to start from an event, instead of starting the TLS connection here, as the TLS connection
+ * runs the interpreter on the request.
+ */
+static unlang_action_t conn_request_hold(UNUSED request_t *request, void *uctx)
+{
+	bio_handle_t		*h = talloc_get_type_abort(uctx, bio_handle_t);
+
+	if (h->tls_started) return UNLANG_ACTION_YIELD;
+
+	h->tls_started = true;
+
+	if (fr_timer_in(h, h->conn->el->tl, &h->tls_ev, fr_time_delta_wrap(0), false, conn_tls_start, h) < 0) {
+		PERROR("%s - Failed adding a timer to start the TLS connection", h->ctx.module_name);
+		connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+	}
+
+	return UNLANG_ACTION_YIELD;
+}
+
 /** Allocate the request that owns the TLS bio.
  *
  * The code in src/lib/tls uses a request to handle the BIO and the TLS handshake.  The TLS handshake runs the
@@ -633,6 +700,9 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
  *
  * This request is only used to manage the TLS state machine.  The status check request is needed for UDP,
  * and is therefore independent.
+ *
+ * The request is detached, which allows it to be managed by the worker.  When the request is cancelled, it's
+ * stack is unwound, and the request is freed.  As a result, the request is not owned by the handle.
  *
  * @param[in] h		the connection handle.  The fd bio MUST be allocated.
  * @return
@@ -654,12 +724,10 @@ static int conn_request_alloc(bio_handle_t *h)
 		return -1;
 	}
 
-	MEM(request = request_local_alloc_internal(h, NULL));
+	MEM(request = request_local_alloc_internal(intp, &(request_init_args_t) { .detachable = true }));
 
 	MEM(request->packet = fr_packet_alloc(request, false));
 	MEM(request->reply = fr_packet_alloc(request, false));
-
-	request->packet->timestamp = fr_time();
 
 	/*
 	 *	The home server is the destination.  The socket names it in log messages and in the
@@ -671,19 +739,28 @@ static int conn_request_alloc(bio_handle_t *h)
 	talloc_const_free(request->name);
 	MEM(request->name = talloc_typed_asprintf(request, "%s TLS %" PRIu64, h->ctx.module_name, request->number));
 
-	MEM(request->async = talloc_zero(request, fr_async_t));
-	request->async->request = request;
+	unlang_interpret_set(request, intp);
+
+	if (unlang_function_push(request, conn_request_hold, conn_request_hold, NULL, FR_SIGNAL_NONE,
+				 UNLANG_TOP_FRAME, h) == UNLANG_ACTION_FAIL) {
+	fail:
+		talloc_free(request);
+		return -1;
+	}
 
 	/*
-	 *	worker.c calls fr_time_tracking_yield() and fr_time_tracking_resume() on every
-	 *	request which is not detached.  The worker only starts tracking for requests which it creates,
-	 *	and this request is not one of them.  Start tracking here, in the yielded state, which is the
-	 *	state that worker.c expects.
+	 *	Push the request onto the interpreter "runnable" queue.  The worker is now responsible for the
+	 *	request.
 	 */
-	fr_time_tracking_start(NULL, &request->async->tracking, request->packet->timestamp);
-	fr_time_tracking_yield(&request->async->tracking, request->packet->timestamp);
+	if (unlang_subrequest_child_push_and_detach(request) < 0) goto fail;
 
-	unlang_interpret_set(request, intp);
+	/*
+	 *	Remove the `max_request_time` timer, which is automatically added by the worker.  Instead,
+	 *	the request lives as long as the connection is up.  Which could be a long time.
+	 *
+	 *	When the connection is closed, the request is freed.
+	 */
+	TALLOC_FREE(request->timeout);
 
 	h->conn_request = request;
 
@@ -764,7 +841,16 @@ static int conn_tls_alloc(bio_handle_t *h)
 	if (conn_request_alloc(h) < 0) return -1;
 
 	h->bio.tls = fr_bio_tls_alloc(h->conn_request, h->bio.fd, h->ctx.ssl_ctx, true, false);
-	if (!h->bio.tls) return -1;
+	if (!h->bio.tls) {
+		/*
+		 *	_bio_handle_free() expects that a connection request has a TLS bio.  Without a TLS bio
+		 *	nothing owns the request, so cancel the request here.  The worker unwinds and frees
+		 *	the request.
+		 */
+		unlang_interpret_signal(h->conn_request, FR_SIGNAL_CANCEL);
+		h->conn_request = NULL;
+		return -1;
+	}
 
 	((fr_bio_t *) h->bio.tls)->uctx = h;
 	fr_bio_cb_set((fr_bio_t *) h->bio.tls, &(fr_bio_cb_funcs_t) {
@@ -789,6 +875,22 @@ static int _bio_handle_free(bio_handle_t *h)
 	fr_assert(h->fd >= 0);
 
 	if (h->status_u) FR_TIMER_DELETE_RETURN(&h->status_u->ev);
+
+#ifdef WITH_TLS
+	/*
+	 *	Parenting goes "connection request" -> TLS bio -> TLS connection.  The TLS BIO also points to
+	 *	the FD BIO.  The TLS bio MUST therefore be freed before the the FD bio.
+	 *
+	 *	Freeing the TLS bio sends any TLS close_notify, deletes the fd events, and cancels the request.
+	 *	The interpreter then cleans it up, and frees everything.
+	 */
+	if (h->conn_request) {
+		fr_assert(h->bio.tls);
+
+		TALLOC_FREE(h->bio.tls);
+		h->conn_request = NULL;
+	}
+#endif
 
 	/*
 	 *	The connection code will take care of deleting the FD from the event loop.
@@ -816,6 +918,18 @@ static void bio_error(fr_bio_t *bio)
 	      fr_syserror(h->ctx.fd_info->connect_errno));
 
 	connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+}
+
+/** The BIO chain is at EOF, and has no more data for us.
+ *
+ *  For TLS, the peer sent us a close_notify alert.  The fd BIO may not have seen EOF, as the peer can send
+ *  a close_notify and keep the TCP connection open.
+ */
+static void bio_eof(fr_bio_t *bio)
+{
+	bio_handle_t		*h = bio->uctx;
+
+	h->eof = true;
 }
 
 static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *verify_ctx, UNUSED void *packet_ctx, const void *data, size_t *size)
@@ -990,6 +1104,13 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	fr_assert(fd >= 0);
 
 	/*
+	 *	Set the destructor now, so that every failure below frees the TLS bio and the connection
+	 *	request.
+	 */
+	h->fd = fd;
+	talloc_set_destructor(h, _bio_handle_free);
+
+	/*
 	 *	Create a memory BIO for stream sockets.  We want to return only complete packets, and not
 	 *	partial packets.
 	 *
@@ -1032,10 +1153,9 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 */
 	h->bio.main = h->bio.mem;
 	h->bio.mem->uctx = h;
-
-	h->fd = fd;
-
-	talloc_set_destructor(h, _bio_handle_free);
+	fr_bio_cb_set(h->bio.mem, &(fr_bio_cb_funcs_t) {
+			.eof = bio_eof,
+		      });
 
 #ifdef WITH_TLS
 	/*
@@ -1044,17 +1164,9 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	The fd bio connect and TLS handshakes all happen after fr_bio_tls_connect().
 	 */
 	if (h->bio.tls) {
-		int rcode;
-
-		h->tls_starting = true;
-		rcode = fr_bio_tls_connect(h->bio.tls);
-		h->tls_starting = false;
-
-		if (rcode < 0) {
-			PERROR("%s - Failed starting the TLS connection", h->ctx.module_name);
-			goto fail;
-		}
-
+		/*
+		 *	The connection request starts the TLS connection, see conn_request_hold().
+		 */
 		*h_out = h;
 
 		if (to_save) *to_save = conn;
@@ -1297,6 +1409,35 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
+#ifdef WITH_TLS
+/** The fd is writable, and the connection uses TLS
+ *
+ * After a write blocks, the TLS bio keeps encrypted records until the fd has room, and the TLS bio returns
+ * IO_WOULD_BLOCK for new data until the records are written.  This function catches the "writable" event, and
+ * flushes the TLS BIO of all pending data.  If there is no pending data, then it signals the trunk that the
+ * application can start writing data again.
+ */
+static void conn_tls_writable(fr_event_list_t *el, int fd, int flags, void *uctx)
+{
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
+	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
+	int			rcode;
+
+	rcode = fr_bio_tls_write_flush(h->bio.tls);
+	if (rcode < 0) {
+		ERROR("%s - Failed writing pending TLS data on connection %s: %s", h->ctx.module_name,
+		      h->ctx.fd_info->name, fr_strerror());
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+		return;
+	}
+
+	if (rcode == 0) return;
+
+	trunk_connection_callback_writable(el, fd, flags, uctx);
+}
+
+#endif
+
 static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 			       fr_event_list_t *el,
 			       trunk_connection_event_t notify_on, UNUSED void *uctx)
@@ -1331,6 +1472,14 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 		break;
 
 	}
+
+#ifdef WITH_TLS
+	/*
+	 *	A TLS connection can have encrypted records waiting for the fd.  The records have to be written
+	 *	before the trunk code writes packets.
+	 */
+	if (h->bio.tls && write_fn && fr_bio_tls_write_flush_needed(h->bio.tls)) write_fn = conn_tls_writable;
+#endif
 
 	/*
 	 *	Over-ride read for replication.
@@ -2300,10 +2449,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 */
 		slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 		if (slen == 0) {
-			/*
-			 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
-			 */
-			if (h->ctx.fd_info->eof) trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+			if (bio_at_eof(h)) trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
 
@@ -2505,10 +2651,7 @@ static void request_replicate_demux(UNUSED fr_event_list_t *el, trunk_connection
 		 */
 		slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 		if (slen == 0) {
-			/*
-			 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
-			 */
-			if (h->ctx.fd_info->eof) trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+			if (bio_at_eof(h)) trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
 
