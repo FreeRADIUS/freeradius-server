@@ -175,24 +175,6 @@ static void worker_recv_request(fr_channel_t *ch, fr_channel_data_t *cd, void *u
 	worker_request_bootstrap(wc, cd, fr_time());
 }
 
-static inline int worker_cancelled_run(fr_worker_t *worker)
-{
-	int cancelled = 0;
-	request_t *request;
-
-	while ((request = fr_heap_peek(worker->runnable)) && (unlang_request_is_cancelled(request))) {
-		fr_heap_extract(&worker->runnable, request);
-
-		REQUEST_VERIFY(request);
-		fr_assert(!fr_heap_entry_inserted(request->runnable));
-
-		(void)unlang_interpret(request, UNLANG_REQUEST_RESUME);
-		cancelled++;
-	}
-
-	return cancelled;
-}
-
 static void worker_requests_cancel(fr_worker_t *worker, fr_worker_channel_t *ch)
 {
 	fr_async_t *async = NULL;
@@ -987,75 +969,6 @@ static fr_cmp_ret_t worker_dedup_cmp(void const *one, void const *two)
 	return CMP(a->async->packet_ctx, b->async->packet_ctx);
 }
 
-/** Destroy a worker
- *
- * The input channels are signaled, and local messages are cleaned up.
- *
- * This should be called to _EXPLICITLY_ destroy a worker, when some fatal
- * error has occurred on the worker side, and we need to destroy it.
- *
- * We signal all pending requests in the backlog to stop, and tell the
- * network side that it should not send us any more requests.
- *
- * @param[in] worker the worker to destroy.
- */
-void fr_worker_destroy(fr_worker_t *worker)
-{
-	int i, ret;
-	unsigned int count;
-
-//	WORKER_VERIFY;
-
-	/*
-	 *	Stop any new requests running with this interpreter
-	 */
-	unlang_interpret_set_thread_default(NULL);
-
-	/*
-	 *	Destroy all of the active requests.  These are ones
-	 *	which are still waiting for timers or file descriptor
-	 *	events.
-	 */
-	count = 0;
-
-	/*
-	 *	Force the timeout event to fire for all requests that
-	 *	are still running.
-	 */
-	ret = fr_timer_list_force_run(worker->timeout);
-	if (unlikely(ret < 0)) {
-		fr_assert_msg(0, "Failed to force run the timeout list");
-	} else {
-		count += ret;
-	}
-	worker_cancelled_run(worker);
-
-	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
-
-	DEBUG("Worker is exiting - stopped %u requests", count);
-
-	/*
-	 *	Signal the channels that we're closing.
-	 *
-	 *	The other end owns the channel, and will take care of
-	 *	popping messages in the TO_RESPONDER queue, and marking
-	 *	them FR_MESSAGE_DONE.  It will ignore the messages in
-	 *	the TO_REQUESTOR queue, as we own those.  They will be
-	 *	automatically freed when our talloc context is freed.
-	 */
-	for (i = 0; i < worker->config.max_channels; i++) {
-		if (!worker->channel[i].ch) continue;
-
-		worker_requests_cancel(worker, &worker->channel[i]);
-
-		fr_assert_msg(fr_dlist_num_elements(&worker->channel[i].dlist) == 0,
-			      "Pending messages in channel after cancelling request");
-
-		fr_channel_responder_ack_close(worker->channel[i].ch);
-	}
-
-	talloc_free(worker);
-}
 
 /** Tidy up a worker on normal exit
  */
