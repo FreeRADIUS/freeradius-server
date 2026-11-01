@@ -1152,6 +1152,90 @@ uint64_t fr_timer_list_num_events(fr_timer_list_t *tl)
 	return num + timer_num_elements(&tl->deferred);
 }
 
+#ifndef NDEBUG
+#define TIMER_EMPTY_MAX_PRINT (10)
+
+/** Print one timer event, and count the event as shown
+ *
+ * @param[in] ev	to print.
+ * @param[in,out] shown	number of events printed so far.
+ */
+static void timer_print(fr_timer_t *ev, unsigned int *shown)
+{
+	FR_FAULT_LOG("    timer %p allocated at %s[%d]", ev, ev->file, ev->line);
+	(*shown)++;
+}
+
+/** Print the timer events which remain in a timer list
+ *
+ * At most TIMER_EMPTY_MAX_PRINT events are printed, followed by a count of the events which were not printed.
+ *
+ * @param[in] tl	to print the events of.
+ */
+static void timer_list_print_remaining(fr_timer_list_t *tl)
+{
+	uint64_t	total = fr_timer_list_num_events(tl);
+	unsigned int	shown = 0;
+	fr_timer_t	*ev;
+
+	FR_FAULT_LOG("Timer list %p has %" PRIu64 " events remaining", tl, total);
+
+	switch (tl->type) {
+	case TIMER_LIST_TYPE_LST:
+	{
+		fr_lst_iter_t	iter;
+
+		for (ev = fr_lst_iter_init(tl->lst, &iter);
+		     ev && (shown < TIMER_EMPTY_MAX_PRINT);
+		     ev = fr_lst_iter_next(tl->lst, &iter)) {
+			timer_print(ev, &shown);
+		}
+	}
+		break;
+
+	case TIMER_LIST_TYPE_ORDERED:
+		for (ev = timer_head(&tl->ordered);
+		     ev && (shown < TIMER_EMPTY_MAX_PRINT);
+		     ev = timer_next(&tl->ordered, ev)) {
+			timer_print(ev, &shown);
+		}
+		break;
+
+	case TIMER_LIST_TYPE_SHARED:
+		/*
+		 *	Shared lists hold raw pointers to the timers, so there is no file and line to print.
+		 */
+		break;
+	}
+
+	for (ev = timer_head(&tl->deferred);
+	     ev && (shown < TIMER_EMPTY_MAX_PRINT);
+	     ev = timer_next(&tl->deferred, ev)) {
+		timer_print(ev, &shown);
+	}
+
+	if (total > shown) FR_FAULT_LOG("    ... and %" PRIu64 " more events", total - shown);
+}
+
+/** Assert that a timer list has no events
+ *
+ * If the list has events, print up to TIMER_EMPTY_MAX_PRINT of the events by file and line, and then assert.
+ *
+ * Only built when NDEBUG is not defined.  Otherwise timer.h defines fr_timer_list_empty() as a macro which does
+ * nothing.
+ *
+ * @param[in] tl	to check.
+ */
+void fr_timer_list_empty(fr_timer_list_t *tl)
+{
+	if (fr_timer_list_num_events(tl) == 0) return;
+
+	timer_list_print_remaining(tl);
+
+	fr_assert(fr_timer_list_num_events(tl) == 0);
+}
+#endif
+
 static fr_time_t *timer_list_when(fr_timer_list_t *tl)
 {
 	fr_timer_t *ev;

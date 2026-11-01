@@ -140,6 +140,12 @@ int			fr_timer_list_arm(fr_timer_list_t *tl) CC_HINT(nonnull);
 
 uint64_t		fr_timer_list_num_events(fr_timer_list_t *tl) CC_HINT(nonnull);
 
+#ifndef NDEBUG
+void			fr_timer_list_empty(fr_timer_list_t *tl) CC_HINT(nonnull);
+#else
+#  define		fr_timer_list_empty(_tl)
+#endif
+
 fr_time_t		fr_timer_list_when(fr_timer_list_t *tl) CC_HINT(nonnull);
 
 void			fr_timer_list_set_time_func(fr_timer_list_t *tl, fr_event_time_source_t func) CC_HINT(nonnull);

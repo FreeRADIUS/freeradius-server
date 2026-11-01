@@ -300,7 +300,11 @@ int		fr_event_loop(fr_event_list_t *el);
 
 fr_event_list_t	*fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_ctx);
 
-bool		fr_event_list_empty(fr_event_list_t *el);
+#ifndef NDEBUG
+void		fr_event_list_empty(fr_event_list_t *el) CC_HINT(nonnull);
+#else
+#  define	fr_event_list_empty(_el)
+#endif
 
 #ifdef __cplusplus
 }

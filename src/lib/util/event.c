@@ -2609,13 +2609,50 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	return el;
 }
 
-/** Return whether the event loop has any active events
+#ifndef NDEBUG
+#define EVENT_EMPTY_MAX_PRINT (10)
+
+/** Print the file descriptor events which remain in an event list
  *
+ * At most EVENT_EMPTY_MAX_PRINT events are printed, followed by a count of the events which were not printed.
+ *
+ * @param[in] el	to print the file descriptor events of.
  */
-bool fr_event_list_empty(fr_event_list_t *el)
+static void event_list_print_remaining_fds(fr_event_list_t *el)
 {
-	return fr_time_eq(fr_timer_list_when(el->pub.tl), fr_time_wrap(0)) && (fr_rb_num_elements(el->fds) == 0);
+	uint64_t	total = fr_event_list_num_fds(el);
+	unsigned int	shown = 0;
+
+	FR_FAULT_LOG("Event list %p has %" PRIu64 " file descriptors remaining", el, total);
+
+	fr_rb_inorder_foreach(el->fds, fr_event_fd_t, ef) {
+		if (shown >= EVENT_EMPTY_MAX_PRINT) break;
+
+		FR_FAULT_LOG("    fd %d allocated at %s[%d]", ef->fd, ef->file, ef->line);
+		shown++;
+	}}
+
+	if (total > shown) FR_FAULT_LOG("    ... and %" PRIu64 " more file descriptors", total - shown);
 }
+
+/** Assert that an event list has no file descriptors and no timer events
+ *
+ * If the event list has either, print up to EVENT_EMPTY_MAX_PRINT of each by file and line, and then assert.
+ *
+ * Only built when fr_assert() is active, i.e. when NDEBUG is not defined.  Otherwise event.h defines
+ * fr_event_list_empty() as a macro which does nothing.
+ *
+ * @param[in] el	to check.
+ */
+void fr_event_list_empty(fr_event_list_t *el)
+{
+	if (fr_event_list_num_fds(el) > 0) event_list_print_remaining_fds(el);
+
+	fr_timer_list_empty(el->pub.tl);
+
+	fr_assert(fr_event_list_num_fds(el) == 0);
+}
+#endif
 #ifdef TESTING
 /*
  *  cc -g -I .. -c rb.c -o rbtree.o && cc -g -I .. -c isaac.c -o isaac.o && cc -DTESTING -I .. -c event.c  -o event_mine.o && cc event_mine.o rbtree.o isaac.o -o event
