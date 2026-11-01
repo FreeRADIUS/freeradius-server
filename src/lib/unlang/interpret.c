@@ -2463,6 +2463,33 @@ char const *unlang_interpret_virtual_server(request_t *request)
 }
 
 
+/** Remove the event list from the interpreter when the event list is freed
+ *
+ *  If the event list is freed before the interpreter, then we don't want the
+ *  interpreter to use a freed event list.
+ */
+static int _unlang_interpret_el_free(unlang_interpret_t **p_self)
+{
+	if (!*p_self) return 0;
+
+	(*p_self)->el = NULL;
+	(*p_self)->p_self = NULL;
+
+	return 0;
+}
+
+/** Remove the event list from the interpreter when the interpreter is freed
+ */
+static int _unlang_interpret_free(unlang_interpret_t *intp)
+{
+	if (!intp->p_self) return 0;
+
+	*intp->p_self = NULL;
+	talloc_set_destructor(intp->p_self, NULL);
+	TALLOC_FREE(intp->p_self);
+	return 0;
+}
+
 /** Initialize a unlang compiler / interpret.
  *
  * @param[in] ctx	to bind lifetime of the interpret to.
@@ -2498,6 +2525,14 @@ unlang_interpret_t *unlang_interpret_init(TALLOC_CTX *ctx,
 		.funcs = *funcs,
 		.uctx = uctx
 	};
+
+	if (el) {
+		MEM(intp->p_self = talloc(el, unlang_interpret_t *));
+		*intp->p_self = intp;
+		talloc_set_destructor(intp->p_self, _unlang_interpret_el_free);
+	}
+
+	talloc_set_destructor(intp, _unlang_interpret_free);
 
  	return intp;
 }

@@ -31,8 +31,14 @@
 extern "C" {
 #endif
 
+/** el_self ties the lifetime of the event list to the interpreter
+ *
+ * The block is a child of the event list.  When the event list is freed, the block removes the event list
+ * from the interpreter, so that the interpreter does not use a freed event list.
+ */
 struct unlang_interpret_s {
 	fr_event_list_t		*el;
+	unlang_interpret_t	**p_self;      	//!< Child of the event list, which points back to us.
 	unlang_request_func_t	funcs;
 	void			*uctx;
 };
