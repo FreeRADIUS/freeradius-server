@@ -2490,6 +2490,197 @@ static int _unlang_interpret_free(unlang_interpret_t *intp)
 	return 0;
 }
 
+/** Cancel every frame of a request which is shutting down
+ *
+ *  The request is marked as cancelled, and each frame receives FR_SIGNAL_CANCEL.  The frames are
+ *  unwound by the interpreter when the request next runs.
+ *
+ * @param[in] request	to cancel.
+ */
+static void unlang_interpret_shutdown_cancel(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+
+	if (unlang_request_is_done(request) || unlang_request_is_cancelled(request)) return;
+
+	if (stack && (stack->depth > 0)) unlang_stack_signal(request, FR_SIGNAL_CANCEL, 1);
+
+	request->master_state = REQUEST_STOP_PROCESSING;
+}
+
+typedef struct {
+	unlang_request_func_t	funcs;		//!< original functions
+	void			*uctx;		//!< original uctx
+} unlang_interpret_shutdown_t;
+
+#define SHUTDOWN do { \
+		unlang_interpret_shutdown_cancel(request); \
+		if (unlang_request_is_done(request)) {	   \
+			unlang_interpret_request_done(request); \
+			return; \
+		} \
+	} while (0)
+
+/** Wrapper for "detach" during interpreter shutdown
+ *
+ *  A request which is running when the owner tells the request to detach continues to run, and the
+ *  interpreter calls the done callback when the cancelled frames are unwound.
+ */
+static void _unlang_interpret_shutdown_detach(request_t *request, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	ctx->funcs.detach(request, ctx->uctx);
+
+	SHUTDOWN;
+}
+
+/** Wrapper for "yield"
+ */
+static void _unlang_interpret_shutdown_yield(request_t *request, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	SHUTDOWN;
+
+	ctx->funcs.yield(request, ctx->uctx);
+}
+
+/** Wrapper for "resume" during interpreter shutdown
+ *
+ *  The interpreter continues to run the request after this callback returns, and unwinds the cancelled
+ *  frames.
+ */
+static void _unlang_interpret_shutdown_resume(request_t *request, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	unlang_interpret_shutdown_cancel(request);
+	ctx->funcs.resume(request, ctx->uctx);
+}
+
+/** Wrapper for "mark_runnable"
+ */
+static void _unlang_interpret_shutdown_mark_runnable(request_t *request, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	SHUTDOWN;
+
+	ctx->funcs.mark_runnable(request, ctx->uctx);
+}
+
+/** Wrapper for "init_internal" during interpreter shutdown
+ *
+ *  The request is initialized, and then a later call will cancel it.
+ */
+static void _unlang_interpret_shutdown_init_internal(request_t *request, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	ctx->funcs.init_internal(request, ctx->uctx);
+}
+
+/** Wrapper for "done_internal" during interpreter shutdown
+ */
+static void _unlang_interpret_shutdown_done_internal(request_t *request, rlm_rcode_t rcode, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	ctx->funcs.done_internal(request, rcode, ctx->uctx);
+}
+
+/** Wrapper for "done_external" during interpreter shutdown
+ */
+static void _unlang_interpret_shutdown_done_external(request_t *request, rlm_rcode_t rcode, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	ctx->funcs.done_external(request, rcode, ctx->uctx);
+}
+
+/** Wrapper for "done_detached" during interpreter shutdown
+ */
+static void _unlang_interpret_shutdown_done_detached(request_t *request, rlm_rcode_t rcode, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	ctx->funcs.done_detached(request, rcode, ctx->uctx);
+}
+
+/** Wrapper for "scheduled" during interpreter shutdown
+ */
+static bool _unlang_interpret_shutdown_scheduled(request_t const *request, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	return ctx->funcs.scheduled(request, ctx->uctx);
+}
+
+/** Wrapper for "prioritise" during interpreter shutdown
+ */
+static void _unlang_interpret_shutdown_prioritise(request_t *request, void *uctx)
+{
+	unlang_interpret_shutdown_t *ctx = uctx;
+
+	if (!ctx->funcs.prioritise) return;
+
+	ctx->funcs.prioritise(request, ctx->uctx);
+}
+
+
+/** Prepare to shutdown an unlang interpreter
+ *
+ *  Once this function is called, the interpreter stops processing
+ *  _new_ actions.  It should be called before the interpreter is
+ *  freed.  The idea is that we can mark up the interpreter as
+ *  shutting down, and then call the various request cancel,
+ *  etc. routines.  The various request cancel routines have no idea
+ *  that the interpreter is shutting down, and can't tell the
+ *  difference between "stop everything", and "this stack frame was
+ *  cancelled, but the request should continue running".
+ *
+ *  Rather than hacking up every call _to_ the interpreter with checks
+ *  as to whether or not the interpreter is shutting down, the main
+ *  worker thread can call this function, and then the interpreter
+ *  will take care of checking things.
+ *
+ * @param[in] intp	the interpreter
+ */
+void unlang_interpret_shutting_down(unlang_interpret_t *intp)
+{
+	unlang_interpret_shutdown_t *ctx;
+
+	/*
+	 *	Don't wrap ourselves twice.
+	 */
+	if (intp->uctx && talloc_get_type(intp->uctx, unlang_interpret_shutdown_t)) return;
+
+	MEM(ctx = talloc(intp, unlang_interpret_shutdown_t));
+	ctx->funcs = intp->funcs;
+	ctx->uctx = intp->uctx;
+
+	/*
+	 *	Replace the interpreter functions with ones which
+	 *	either cancel the request, or free it.
+	 */
+	intp->funcs.init_internal = _unlang_interpret_shutdown_init_internal;
+	intp->funcs.done_internal = _unlang_interpret_shutdown_done_internal;
+	intp->funcs.done_external = _unlang_interpret_shutdown_done_external;
+	intp->funcs.done_detached = _unlang_interpret_shutdown_done_detached;
+
+	intp->funcs.detach = _unlang_interpret_shutdown_detach;
+	intp->funcs.yield = _unlang_interpret_shutdown_yield;
+	intp->funcs.resume = _unlang_interpret_shutdown_resume;
+	intp->funcs.mark_runnable = _unlang_interpret_shutdown_mark_runnable;
+
+	intp->funcs.scheduled = _unlang_interpret_shutdown_scheduled;
+	intp->funcs.prioritise = _unlang_interpret_shutdown_prioritise;
+
+	intp->uctx = ctx;
+}
+
+
 /** Initialize a unlang compiler / interpret.
  *
  * @param[in] ctx	to bind lifetime of the interpret to.

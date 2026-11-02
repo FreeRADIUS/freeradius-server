@@ -177,6 +177,8 @@ int			unlang_interpret_push_instruction(unlang_result_t *p_result, request_t *re
 unlang_interpret_t	*unlang_interpret_init(TALLOC_CTX *ctx,
 					       fr_event_list_t *el, unlang_request_func_t *func, void *uctx);
 
+void			unlang_interpret_shutting_down(unlang_interpret_t *intp) CC_HINT(nonnull);
+
 void			unlang_interpet_frame_discard(request_t *request);
 
 void			unlang_interpret_set(request_t *request, unlang_interpret_t *intp);
