@@ -500,7 +500,6 @@ static CONF_PARSER home_server_recv_coa[] = {
 static const char *require_message_authenticator = NULL;
 
 static CONF_PARSER home_server_config[] = {
-	{ "nonblock", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, nonblock), "no" },
 	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &require_message_authenticator), NULL },
 	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ipaddr_str), NULL },
 	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ipaddr_str), NULL },

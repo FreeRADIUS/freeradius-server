@@ -78,7 +78,6 @@ struct rad_listen {
 
 	bool		proxy_protocol;		//!< haproxy protocol
 	bool		listen;			//! just calls listen()
-	bool		nonblock;
 #endif
 	bool		dual;
 	bool		nodup;

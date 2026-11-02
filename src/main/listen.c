@@ -1221,7 +1221,6 @@ static void listen_init_from_parent(rad_listen_t *this, rad_listen_t *parent)
 	 */
 	this->dual = parent->dual;
 	this->nodup = parent->nodup;
-	this->nonblock = parent->nonblock;
 	this->proxy_protocol = parent->proxy_protocol;
 
 	this->filter_proxy_state = parent->filter_proxy_state;
@@ -1486,7 +1485,6 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		if (this->tls) {
 			this->recv = dual_tls_recv;
 			this->send = dual_tls_send;
-			this->nonblock = true;
 
 #ifdef HAVE_PTHREAD_H
 			sock->mutex = talloc_zero(sock, pthread_mutex_t);
@@ -1574,16 +1572,14 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	/*
 	 *	Configure non-blocking sockets if requested.
 	 */
-	if (this->nonblock) {
-		if (fr_nonblock(this->fd) < 0) {
-			ERROR("Failed setting non-blocking on socket: %s",
-			      fr_syserror(errno));
+	if (fr_nonblock(this->fd) < 0) {
+		ERROR("Failed setting non-blocking on socket: %s",
+		      fr_syserror(errno));
 #ifdef WITH_TLS
-		tree_error:
+	tree_error:
 #endif
-			rbtree_deletebydata(listener->children, this);
-			goto error;
-		}
+		rbtree_deletebydata(listener->children, this);
+		goto error;
 	}
 
 #ifdef TCP_NODELAY
@@ -1992,8 +1988,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				this->radiusv11 = this->tls->radiusv11 = rcode;
 			}
 #endif
-
-			this->nonblock = true;
 		}
 #else  /* WITH_TLS */
 		/*
@@ -2005,18 +1999,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 #endif	/* WITH_TLS */
-
-		/*
-		 *	Allow non-blocking for TCP sockets
-		 *
-		 *	For TLS, we always set nonblock=true, which avoids calling this section The check
-		 *	below just means that we don't have to have more ifdef's around checking for
-		 *	this->tls.
-		 */
-		if (!this->nonblock && (sock->proto == IPPROTO_TCP)) {
-			rcode = cf_item_parse(cs, "nonblock", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->nonblock), NULL);
-			if (rcode < 0) return -1;
-		}
 
 #endif	/* WITH_TCP */
 
@@ -4218,12 +4200,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 
 	if (!sock->limit.lifetime && !sock->limit.idle_timeout) sock->limit.idle_timeout = 30;
 
-#ifdef WITH_TLS
-	this->nonblock |= home->nonblock;
-	this->nonblock |= (this->tls != NULL);		// incoming TLS connections are always nonblocking.
-	this->nonblock |= (home->tls != NULL);		// outgoing TLS connections are always nonblocking
-#endif
-
 	/*
 	 *	connect() is blocking for TCP.  The administrator has to manually set "nonblock" in
 	 *	the configuration to make it non-blocking.
@@ -4238,7 +4214,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	 */
 	this->fd = fr_socket_client_tcp(&home->src_ipaddr,
 					&home->ipaddr, home->port,
-					this->nonblock);
+					true);
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
 		ERROR("Failed opening new proxy socket '%s' : %s",

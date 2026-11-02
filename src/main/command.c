@@ -254,24 +254,12 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 		return -1;
 	}
 
-#ifdef O_NONBLOCK
-	{
-		int flags;
-
-		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
-			fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-
-		flags |= O_NONBLOCK;
-		if( fcntl(sockfd, F_SETFL, flags) < 0) {
-			fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
+	if (fr_nonblock(sockfd) < 0) {
+		ERROR("Failed setting non-blocking on socket: %s",
+		      fr_syserror(errno));
+		close(sockfd);
+		return -1;
 	}
-#endif
 
 	/*
 	 *	Changing socket permissions only works on linux.
@@ -652,23 +640,12 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		goto sock_error;
 	}
 
-#ifdef O_NONBLOCK
-	{
-		int flags;
-
-		flags = fcntl(sock_fd, F_GETFL, NULL);
-		if (flags < 0)  {
-			fr_strerror_printf("Failed getting socket flags: %s", fr_syserror(errno));
-			goto sock_error;
-		}
-
-		flags |= O_NONBLOCK;
-		if (fcntl(sock_fd, F_SETFL, flags) < 0) {
-			fr_strerror_printf("Failed setting nonblocking socket flag: %s", fr_syserror(errno));
-			goto sock_error;
-		}
+	if (fr_nonblock(sock_fd) < 0) {
+		ERROR("Failed setting non-blocking on socket: %s",
+		      fr_syserror(errno));
+		close(sock_fd);
+		return -1;
 	}
-#endif
 
 	if (uid != (uid_t)-1) rad_seuid(euid);
 	if (gid != (gid_t)-1) rad_segid(egid);
