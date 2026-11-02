@@ -4,7 +4,8 @@
   container.  A template imports the macros with:
 
     {% from "macros.j2" import event_recv, event_absent, event_field_match,
-                               server_answered, server_dropped, radclient %}
+                               server_answered, server_dropped, radclient,
+                               radclient_retransmit %}
 
   A trigger is a line that a container appends to the file that the test
   framework watches.  The first word of the line is the trigger name, and
@@ -53,8 +54,9 @@
   radclient options in `options`.  `send.sh` then appends the trigger
   `client-<step>`.  The value of the trigger is a JSON object that holds
   the exit code of radclient (`exit_code`), the number of attempts
-  (`attempts`), the reply count (`reply_count`), and the reply codes
-  (`replies`).  The macro adds `NAS-Identifier = "<step>"` to the request,
+  (`attempts`), the reply count (`reply_count`), the reply codes
+  (`replies`), and the first Reply-Message of the replies
+  (`reply_message`).  The macro adds `NAS-Identifier = "<step>"` to the request,
   so a server configuration can name the server's triggers after the step.
   `send.sh` sends the request up to `attempts` times and stops at the first
   answered attempt.  `timeout` is the reply timeout of radclient in
@@ -66,6 +68,25 @@
             command: >-
               bash /usr/local/bin/send.sh --attempts {{ attempts }} --timeout {{ timeout }} --source {{ source }} {{ step }} {{ target }} {{ command }} {{ secret }} {{ options }} --
               {%- for attr in attrs %} '{{ attr }}'{%- endfor %} 'NAS-Identifier = "{{ step }}"'
+{%- endmacro %}
+{#
+  `radclient_retransmit()` writes a `radclient()` action that sends the
+  same packet on every call, so the server treats every call after the
+  first as a retransmission.  radclient uses RADIUS ID `id`, binds to
+  `source_port`, and puts `authenticator` (16 octets, as hex) in the
+  Request Authenticator through `Packet-Authentication-Vector`.  The
+  other packet types compute the authenticator from the packet, so the
+  override only matters for Access-Request and Status-Server.
+
+  Every call that should retransmit must pass the same `step`, `command`,
+  `secret`, and `attrs`, because the step name goes into `NAS-Identifier`.
+  Each of the `attempts` is one more retransmission.
+#}
+{%- macro radclient_retransmit(step, target, command, secret, attrs, id, source_port, authenticator, attempts=1, timeout=1) %}
+{{-   radclient(step, target, command, secret,
+                attrs + ['Packet-Authentication-Vector = ' ~ authenticator],
+                '-i ' ~ id ~ ' -C ' ~ source_port,
+                attempts, timeout, 0) }}
 {%- endmacro %}
 {#
   `server_answered()` and `server_dropped()` write rules that check the

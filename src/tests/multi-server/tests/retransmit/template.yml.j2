@@ -1,0 +1,196 @@
+{#
+  The test covers the life of a cached reply.  Every `send()` is the same
+  Access-Request, so the server treats every send after the first as a
+  retransmission.  A `tc` filter on the server drops the first reply and
+  the retransmissions that follow, then the filter is removed, and later
+  the client stays quiet for longer than `cleanup_delay`.
+
+  The server copies `/tmp/generation` into the Reply-Message of each
+  reply that it builds, and the test rewrites the file after the first
+  reply, so the Reply-Message that the client receives shows whether a
+  reply came from the cache.  The rules of a state only see the triggers
+  that fire during that state, so `event_absent('recv-access-request-rtx')`
+  proves that the server did not run the request again during the state.
+#}
+{%- set t = timing[mode] %}
+{%- from "macros.j2" import event_recv, event_absent, event_field_match, radclient_retransmit %}
+{#
+  `send()` calls `radclient_retransmit()` with the step name `rtx` and
+  the fixed packet fields from `retransmit`.
+#}
+{%- macro send(attempts=1) %}
+{{-   radclient_retransmit('rtx', 'server:' ~ ports.auth, 'auth', secret, ['User-Name = "bob"'],
+                           retransmit.id, retransmit.source_port, retransmit.authenticator,
+                           attempts, t.reply_timeout) }}
+{%- endmacro %}
+{#
+  `client_result()` writes a rule for the `client-rtx` trigger that
+  `send()` produces.  `exit_code` is 0 when radclient got a reply and 1
+  when it did not.  `replies` lists the reply codes, `reply_message`
+  holds the Reply-Message of the reply, and `attempts` is the number of
+  sends.
+#}
+{%- macro client_result(exit_code, replies, reply_message, attempts) %}
+      - client-rtx:
+          json:
+            exit_code:
+              pattern:
+                reg_pattern: '^{{ exit_code }}$'
+            replies:
+              pattern:
+                reg_pattern: '^{{ replies }}$'
+            reply_message:
+              pattern:
+                reg_pattern: '^{{ reply_message }}$'
+            attempts:
+              pattern:
+                reg_pattern: '^{{ attempts }}$'
+{%- endmacro %}
+{#
+  `tc` drops every UDP packet that leaves the server from the listener
+  port, which is every reply, and nothing else.  ARP and the rest of the
+  traffic of the server still flow, so the client keeps the address of
+  the server resolved.
+#}
+{%- set block_cmd = 'tc qdisc replace dev eth0 root handle 1: prio && tc filter add dev eth0 parent 1: protocol ip prio 1 u32 match ip protocol 17 0xff match ip sport ' ~ ports.auth ~ ' 0xffff action drop' %}
+{%- set unblock_cmd = 'tc qdisc del dev eth0 root' %}
+timeout: {{ test_timeout }}
+state_order: sequence
+states:
+  start:
+    description: >
+      Write the first generation to `/tmp/generation` on the server, and
+      start FreeRADIUS.  The server reports `server-start` once the
+      listener is open.
+    host:
+      server:
+        actions:
+        - execute_command:
+            command: printf '%s' '{{ generations.first }}' > /tmp/generation
+        - execute_command:
+            command: exec ${RADIUSD_COMMAND:-freeradius -fxx -l /var/log/freeradius/server-debug.log}
+            detach: true
+    verify:
+      timeout: {{ t.start_window }}
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('server-start') }}
+
+  block_return_path:
+    description: >
+      Drop every reply that the server sends.  Requests still reach the
+      server.
+    host:
+      server:
+        actions:
+        - execute_command:
+            command: >-
+              {{ block_cmd }}
+    verify:
+      timeout: {{ settle }}
+      timeout_mode: window
+      trigger_mode: unordered
+
+  first_send_reply_lost:
+    description: >
+      The client sends the request.  The server runs the request and
+      builds a reply with the first generation, and the filter drops the
+      reply, so radclient gets no answer.  The server caches the reply.
+    host:
+      client:
+        actions:
+{{ send() }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('recv-access-request-rtx', 'generation', '^' ~ generations.first ~ '$') }}
+{{ client_result(1, '', '', 1) }}
+
+  retransmit_while_blocked:
+    description: >
+      The server now has the second generation in `/tmp/generation`.
+      The client retransmits the request `blocked_sends` times.  Each
+      retransmission arrives while the reply is cached, so the server
+      sends the cached reply, the filter drops it, and the server does
+      not run the request again.  Each retransmission restarts
+      `cleanup_delay`.
+    host:
+      server:
+        actions:
+        - execute_command:
+            command: printf '%s' '{{ generations.second }}' > /tmp/generation
+      client:
+        actions:
+{{ send(attempts=t.blocked_sends) }}
+    verify:
+      timeout: {{ t.blocked_sends * t.reply_timeout + t.margin }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_absent('recv-access-request-rtx') }}
+{{ client_result(1, '', '', t.blocked_sends) }}
+
+  restore_return_path:
+    description: >
+      Remove the filter, so replies from the server reach the client
+      again.
+    host:
+      server:
+        actions:
+        - execute_command:
+            command: >-
+              {{ unblock_cmd }}
+    verify:
+      timeout: {{ settle }}
+      timeout_mode: window
+      trigger_mode: unordered
+
+  retransmit_answered:
+    description: >
+      The client retransmits once more, inside `cleanup_delay` of the
+      last retransmission.  The server sends the cached reply, and the
+      reply now reaches the client.  The reply carries the first
+      generation, so the reply is the one that the server built in
+      `first_send_reply_lost`, not a new one.  This retransmission also
+      restarts `cleanup_delay`.
+    host:
+      client:
+        actions:
+{{ send() }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_absent('recv-access-request-rtx') }}
+{{ client_result(0, 'Access-Accept', generations.first, 1) }}
+
+  idle_past_cleanup_delay:
+    description: >
+      The client sends nothing for longer than `cleanup_delay`, so the
+      server discards the cached reply.  The server writes no trigger
+      when the cached reply expires, so the state only waits for
+      `idle_gap` seconds.
+    verify:
+      timeout: {{ t.idle_gap }}
+      timeout_mode: window
+      trigger_mode: unordered
+      triggers:
+{{ event_absent('recv-access-request-rtx') }}
+
+  retransmit_after_expiry:
+    description: >
+      The client retransmits the same request.  The server no longer has
+      a cached reply, so the server runs the request again and answers
+      with a new reply that carries the second generation.
+    host:
+      client:
+        actions:
+{{ send() }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('recv-access-request-rtx', 'generation', '^' ~ generations.second ~ '$') }}
+{{ client_result(0, 'Access-Accept', generations.second, 1) }}

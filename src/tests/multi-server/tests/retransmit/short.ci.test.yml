@@ -1,0 +1,74 @@
+# Type of the test framework listener that the server writes triggers to
+listener_type: file
+
+# `auth` is the port of the server listener.  The port is private to the
+# compose network.
+ports:
+  auth: 1812
+
+# Shared secret of the static client on the server
+secret: testing123
+
+# radclient sends every request of the test with this RADIUS ID, this
+# Request Authenticator, and this source port.  With all three fixed, each
+# send is byte-for-byte the same packet, so the server sees every send
+# after the first as a retransmission.
+retransmit:
+  id: 42
+  source_port: 41812
+  authenticator: '0x0123456789abcdef0123456789abcdef'
+
+# Contents of `/tmp/generation` on the server.  The server copies the
+# file into the Reply-Message of each reply that the server builds.  The
+# test writes `first` before the first send and `second` once the server
+# has built the first reply.
+generations:
+  first: generation-1
+  second: generation-2
+
+# Seconds that a `tc` change on the server takes to apply, before the
+# next state sends a packet
+settle: 2
+
+# Timings per mode.  A server that runs under a profiler starts and
+# answers slowly, so the profiling values are a multiple of the service
+# values.
+#
+#   reply_timeout    seconds that radclient waits for a reply.  An
+#                    unanswered send costs `reply_timeout` seconds, and
+#                    consecutive retransmissions are `reply_timeout`
+#                    seconds apart
+#   start_window     seconds that the `start` state allows for the server
+#                    to open the listener
+#   margin           seconds added to every verify window for docker exec
+#                    overhead and the delay before the framework reads the
+#                    listener file
+#   blocked_sends    retransmissions in `retransmit_while_blocked`.  Each
+#                    one restarts `cleanup_delay`
+#   cleanup_delay    seconds that the server keeps a reply after the last
+#                    send of the request.  Must comfortably exceed
+#                    `reply_timeout + margin + settle`, the gap between the
+#                    last blocked retransmission and `retransmit_answered`
+#   idle_gap         seconds that `idle_past_cleanup_delay` waits with no
+#                    sends.  Longer than `cleanup_delay`, so the server
+#                    discards the cached reply before the next send
+timing:
+  service:
+    reply_timeout: 1
+    start_window: 6
+    margin: 4
+    blocked_sends: 2
+    cleanup_delay: 20.0
+    idle_gap: 26
+  profiling:
+    reply_timeout: 10
+    start_window: 40
+    margin: 6
+    blocked_sends: 2
+    cleanup_delay: 60.0
+    idle_gap: 75
+
+# Timeout for the whole test, in seconds, in both modes.  The `profiling`
+# timings are longer than the `service` timings, so the value covers a
+# `profiling` run.
+test_timeout: 600

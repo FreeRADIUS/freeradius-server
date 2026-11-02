@@ -9,12 +9,14 @@
 #  The script writes the attribute pairs to the stdin of radclient, one per
 #  line.  When radclient exits, the script appends the line
 #
-#    client-<step> {"exit_code": N, "attempts": N, "reply_count": N, "replies": "<codes>"}
+#    client-<step> {"exit_code": N, "attempts": N, "reply_count": N, "replies": "<codes>", "reply_message": "<text>"}
 #
 #  to the file that the test framework watches.  `replies` lists the
 #  distinct reply packet codes that radclient received, comma separated, and
-#  is empty when no reply arrived.  radclient exits non-zero when the server
-#  does not answer a request.
+#  is empty when no reply arrived.  `reply_message` holds the first
+#  Reply-Message of the replies, unescaped, and is empty when no reply
+#  carried one.  radclient exits non-zero when the server does not answer
+#  a request.
 #
 #  With `--source O`, radclient binds to the alias of the container whose
 #  address ends in the octet O, so the request arrives at the server from
@@ -92,5 +94,6 @@ done
 replies=$(printf '%s\n' "$output" | sed -n 's/^Received \([A-Za-z-]*\) .*/\1/p')
 reply_count=$(printf '%s\n' "$replies" | grep -c .)
 reply_codes=$(printf '%s\n' "$replies" | grep . | sort -u | paste -sd, -)
+reply_message=$(printf '%s\n' "$output" | sed -n 's/^[[:space:]]*Reply-Message = "\(.*\)"$/\1/p' | head -1)
 
-echo "client-${step} {\"exit_code\": ${exit_code}, \"attempts\": ${attempt}, \"reply_count\": ${reply_count}, \"replies\": \"${reply_codes}\"}" >> "$trigger_file"
+echo "client-${step} {\"exit_code\": ${exit_code}, \"attempts\": ${attempt}, \"reply_count\": ${reply_count}, \"replies\": \"${reply_codes}\", \"reply_message\": \"${reply_message}\"}" >> "$trigger_file"

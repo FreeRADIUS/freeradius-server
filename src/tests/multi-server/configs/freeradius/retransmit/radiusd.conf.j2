@@ -1,0 +1,109 @@
+#
+#  The server under test.  One listener answers Access-Request packets
+#  from a static client, and caches each reply for `cleanup_delay`
+#  seconds.  A retransmission that arrives while the reply is cached gets
+#  the cached reply, and the server does not run the request again.
+#
+#  `recv Access-Request` copies `/tmp/generation` into the Reply-Message
+#  of the reply and reports the value as the trigger
+#  `recv-access-request-<NAS-Identifier>`.  The test rewrites the file
+#  between phases, so a cached reply carries an older generation than a
+#  reply that the server builds again.
+#
+name       = server
+
+raddbdir   = /etc/freeradius
+confdir    = ${raddbdir}
+modconfdir = ${confdir}/mods-config
+logdir     = /var/log/freeradius
+radacctdir = ${logdir}/radacct
+
+security {
+	allow_core_dumps = yes
+}
+
+#
+#  The server runs `server.start` once the listeners are open, and
+#  `server.start` writes the `server-start` trigger.  The `start` state of
+#  the test waits for `server-start`, so no case sends a packet before the
+#  server can answer.
+#
+trigger {
+	server {
+		start = "%linelog_test_framework('server-start {}')"
+	}
+}
+
+log {
+	destination = files
+	file = ${logdir}/radius.log
+	syslog_facility = daemon
+	stripped_names = no
+	auth = yes
+	auth_badpass = yes
+	auth_goodpass = yes
+}
+
+modules {
+{% include "freeradius/common/mods-available/linelog" %}
+
+{%- if listener_type == "unix" %}
+{%   include "freeradius/common/mods-available/linelog_socket" %}
+{%- elif listener_type == "file" %}
+{%   include "freeradius/common/mods-available/linelog_file" %}
+{%- endif %}
+
+{% include "freeradius/common/mods-available/json" %}
+
+{% include "freeradius/common/mods-available/always" %}
+}
+
+policy {
+{% include "freeradius/common/policy.d/control" %}
+}
+
+{%- set t = timing[mode] %}
+server retransmit {
+	namespace = radius
+
+	#
+	#  `cleanup_delay` is how long the server keeps a reply for
+	#  retransmissions.  Every retransmission that gets the cached reply
+	#  restarts the delay.
+	#
+	listen auth {
+		type = Access-Request
+		transport = udp
+		require_message_authenticator = yes
+
+		limit {
+			cleanup_delay = {{ t.cleanup_delay }}
+		}
+
+		udp {
+			ipaddr = *
+			port = {{ ports.auth }}
+		}
+	}
+
+	client any {
+		ipaddr = *
+		secret = {{ secret }}
+	}
+
+	recv Access-Request {
+		reply.Reply-Message := %file.head('/tmp/generation')
+
+{%- raw %}
+		%linelog_test_framework("recv-access-request-%{NAS-Identifier} {\"generation\": %json.quote("%{reply.Reply-Message}")}")
+{%- endraw %}
+
+		accept
+	}
+
+	send Access-Accept {
+	}
+
+	send Access-Reject {
+	}
+}
