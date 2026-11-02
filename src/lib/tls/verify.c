@@ -93,9 +93,20 @@ static void tls_verify_error_detail(request_t *request, SSL_CTX *ctx, int err)
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
 		RDEBUG2("(TLS) Static certificates in verification store are");
 		if (RDEBUG_ENABLED2) {
+#if OPENSSL_VERSION_NUMBER >= 0x30300000L
+			STACK_OF(X509_OBJECT) *objects = X509_STORE_get1_objects(store);
+
+			if (objects) {
+				RINDENT();
+				fr_tls_x509_objects_log(request, L_DBG, objects);
+				REXDENT();
+				sk_X509_OBJECT_pop_free(objects, X509_OBJECT_free);
+			}
+#else
 			RINDENT();
 			fr_tls_x509_objects_log(request, L_DBG, X509_STORE_get0_objects(store));
 			REXDENT();
+#endif
 		}
 		break;
 

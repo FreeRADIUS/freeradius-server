@@ -48,7 +48,8 @@ DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros
 /** Extract session pairs from the Subject Alternate Name extension
  *
  */
-static bool tls_session_pairs_from_san(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, request_t *request, X509_EXTENSION *ext)
+static bool tls_session_pairs_from_san(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, request_t *request,
+				       FR_OPENSSL_X509_CONST X509_EXTENSION *ext)
 {
 	GENERAL_NAMES	*names = NULL;
 	int		i;
@@ -66,7 +67,7 @@ static bool tls_session_pairs_from_san(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 						 attr_tls_certificate_subject_alt_name_email) == 0);
 			MEM(fr_pair_value_bstrndup(vp,
 						   (char const *)ASN1_STRING_get0_data(name->d.rfc822Name),
-						   ASN1_STRING_length(name->d.rfc822Name), true) == 0);
+						   fr_tls_asn1_string_length(name->d.rfc822Name), true) == 0);
 			break;
 #endif	/* GEN_EMAIL */
 #ifdef GEN_DNS
@@ -75,7 +76,7 @@ static bool tls_session_pairs_from_san(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 						 attr_tls_certificate_subject_alt_name_dns) == 0);
 			MEM(fr_pair_value_bstrndup(vp,
 						   (char const *)ASN1_STRING_get0_data(name->d.dNSName),
-						   ASN1_STRING_length(name->d.dNSName), true) == 0);
+						   fr_tls_asn1_string_length(name->d.dNSName), true) == 0);
 			break;
 #endif	/* GEN_DNS */
 #ifdef GEN_OTHERNAME
@@ -89,7 +90,7 @@ static bool tls_session_pairs_from_san(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 							 attr_tls_certificate_subject_alt_name_upn) == 0);
 				MEM(fr_pair_value_bstrndup(vp,
 							   (char const *)ASN1_STRING_get0_data(name->d.otherName->value->value.utf8string),
-							   ASN1_STRING_length(name->d.otherName->value->value.utf8string),
+							   fr_tls_asn1_string_length(name->d.otherName->value->value.utf8string),
 							   true) == 0);
 				break;
 			}
@@ -109,9 +110,10 @@ static bool tls_session_pairs_from_san(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 /** Extract session pairs from the X509v3-CRL-Distribution-Points extension
  *
  */
-static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, UNUSED request_t *request, X509_EXTENSION *ext)
+static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, UNUSED request_t *request,
+				       FR_OPENSSL_X509_CONST X509_EXTENSION *ext)
 {
-	ASN1_STRING		*s = X509_EXTENSION_get_data(ext);
+	ASN1_STRING const	*s = X509_EXTENSION_get_data(ext);
 	char unsigned const	*data = ASN1_STRING_get0_data(s);
 	STACK_OF(DIST_POINT)	*dps;
 	DIST_POINT		*dp;
@@ -120,7 +122,7 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 	fr_pair_t		*vp;
 	int			i, j;
 
-	if (!(dps = d2i_CRL_DIST_POINTS(NULL, &data, ASN1_STRING_length(s)))) return false;
+	if (!(dps = d2i_CRL_DIST_POINTS(NULL, &data, fr_tls_asn1_string_length(s)))) return false;
 
 	for (i = 0; i < sk_DIST_POINT_num(dps); i++) {
 		dp = sk_DIST_POINT_value(dps, i);
@@ -149,7 +151,7 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 						 attr_tls_certificate_x509v3_crl_distribution_points) == 0);
 			MEM(fr_pair_value_bstrndup(vp,
 						   (char const *)ASN1_STRING_get0_data(name->d.uniformResourceIdentifier),
-						   ASN1_STRING_length(name->d.uniformResourceIdentifier),
+						   fr_tls_asn1_string_length(name->d.uniformResourceIdentifier),
 						   true) == 0);
 		}
 	}
@@ -162,9 +164,10 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 /** Extract session pairs from the Authority Key Identifier extension - specifically OCSP URI
  *
  */
-static bool tls_session_pairs_from_aia(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, UNUSED request_t *request, X509_EXTENSION *ext)
+static bool tls_session_pairs_from_aia(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, UNUSED request_t *request,
+				       FR_OPENSSL_X509_CONST X509_EXTENSION *ext)
 {
-	ASN1_STRING		*s = X509_EXTENSION_get_data(ext);
+	ASN1_STRING const	*s = X509_EXTENSION_get_data(ext);
 	char unsigned const	*data = ASN1_STRING_get0_data(s);
 	fr_pair_t		*vp;
 	AUTHORITY_INFO_ACCESS	*aia;
@@ -172,7 +175,7 @@ static bool tls_session_pairs_from_aia(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 	char			*host = NULL, *path = NULL;
 	int			i, port, is_https;
 
-	if (!(aia = d2i_AUTHORITY_INFO_ACCESS(NULL, &data, ASN1_STRING_length(s)))) return false;
+	if (!(aia = d2i_AUTHORITY_INFO_ACCESS(NULL, &data, fr_tls_asn1_string_length(s)))) return false;
 
 	for (i = 0; i < sk_ACCESS_DESCRIPTION_num(aia); i++) {
 		char	*uri;
@@ -182,7 +185,7 @@ static bool tls_session_pairs_from_aia(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
 		if (ad->location->type != GEN_URI) continue;
 
-		len = ASN1_STRING_length(ad->location->d.uniformResourceIdentifier);
+		len = fr_tls_asn1_string_length(ad->location->d.uniformResourceIdentifier);
 		MEM(uri = talloc_bstrndup(NULL,
 					  (char const *)ASN1_STRING_get0_data(ad->location->d.uniformResourceIdentifier),
 					  len));
@@ -303,10 +306,10 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		ASN1_STRING const *cn;
 
 		cn = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(X509_get_subject_name(cert), loc));
-		if (cn && (ASN1_STRING_length(cn) > 0)) {
+		if (cn && (fr_tls_asn1_string_length(cn) > 0)) {
 			MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_common_name) == 0);
 			MEM(fr_pair_value_bstrndup(vp, (char const *)ASN1_STRING_get0_data(cn),
-						   ASN1_STRING_length(cn), true) == 0);
+						   fr_tls_asn1_string_length(cn), true) == 0);
 		}
 	}
 
@@ -322,7 +325,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_signature) == 0);
 		MEM(fr_pair_value_memdup(vp,
 					 (uint8_t const *)ASN1_STRING_get0_data(sig),
-					 ASN1_STRING_length(sig), true) == 0);
+					 fr_tls_asn1_string_length(sig), true) == 0);
 
 		OBJ_obj2txt(buff, sizeof(buff), alg->algorithm, 0);
 		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_signature_algorithm) == 0);
@@ -392,13 +395,13 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	 */
 	loc = X509_get_ext_by_NID(cert, NID_subject_alt_name, 0);
 	if (loc >= 0) {
-		X509_EXTENSION	*ext = X509_get_ext(cert, loc);
+		FR_OPENSSL_X509_CONST X509_EXTENSION *ext = X509_get_ext(cert, loc);
 		if (ext) san_found = tls_session_pairs_from_san(pair_list, ctx, request, ext);
 	}
 
 	loc = X509_get_ext_by_NID(cert, NID_crl_distribution_points, 0);
 	if (loc >= 0) {
-		X509_EXTENSION	*ext = X509_get_ext(cert, loc);
+		FR_OPENSSL_X509_CONST X509_EXTENSION *ext = X509_get_ext(cert, loc);
 		if (ext) crl_found = tls_session_pairs_from_crl(pair_list, ctx, request, ext);
 	}
 
@@ -443,7 +446,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		out = fr_tls_bio_dbuff_out(bd);
 
 		for (i = 0; i < sk_X509_EXTENSION_num(ext_list); i++) {
-			ASN1_OBJECT		*obj;
+			ASN1_OBJECT const	*obj;
 			X509_EXTENSION		*ext;
 			fr_dict_attr_t const	*da;
 			char			*p;
@@ -625,7 +628,13 @@ int fr_tls_session_client_hello_pairs(SSL *ssl, request_t *request)
 	MEM(container = fr_pair_afrom_da(parent->session_state_ctx, attr_tls_client_hello));
 
 	data_size = SSL_client_hello_get0_ciphers(ssl, &ciphers);
-	if (SSL_bytes_to_cipher_list(ssl, ciphers, data_size, SSL_client_hello_isv2(ssl), &sk, &scsvs) == 0) {
+	if (SSL_bytes_to_cipher_list(ssl, ciphers, data_size,
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L
+				     0,	/* OpenSSL 4.0 removed SSLv2 ClientHello support */
+#else
+				     SSL_client_hello_isv2(ssl),
+#endif
+				     &sk, &scsvs) == 0) {
 		RPEDEBUG("(TLS) Failed to decode cipher list");
 	fail:
 		if (extensions) OPENSSL_free(extensions);

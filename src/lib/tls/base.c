@@ -419,6 +419,7 @@ void fr_openssl_free(void)
 	fr_md4_openssl_free();
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x40000000L
 static void _openssl_provider_free(void)
 {
 	if (openssl_default_provider && !OSSL_PROVIDER_unload(openssl_default_provider)) {
@@ -431,6 +432,7 @@ static void _openssl_provider_free(void)
 	}
 	openssl_legacy_provider = NULL;
 }
+#endif
 
 static int fr_openssl_cleanup(UNUSED void *uctx)
 {
@@ -546,12 +548,22 @@ int fr_openssl_init(void)
 		return -1;
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x40000000L
 	/*
-	 *	It's best to use OpenSSL's cleanup stack
-	 *	as then everything is cleaned up relative
-	 *	to the OPENSSL_cleanup() call.
+	 *	Unload the providers from OpenSSL's cleanup
+	 *	stack, which runs inside OPENSSL_cleanup() after
+	 *	this thread's OpenSSL state is freed and before
+	 *	the library itself is torn down.
 	 */
 	OPENSSL_atexit(_openssl_provider_free);
+#else
+	/*
+	 *	OpenSSL 4.0 removed OPENSSL_atexit(), and
+	 *	OPENSSL_cleanup() now defers the teardown to a
+	 *	library destructor, which deactivates and frees
+	 *	every loaded provider itself at that point.
+	 */
+#endif
 
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't

@@ -649,7 +649,7 @@ DIAG_OFF_OPTIONAL(used-but-marked-unused)	/* fix spurious warnings for sk macros
 				MEM(vb = fr_value_box_alloc_null(crl_entry));
 				fr_value_box_bstrndup(vb, vb, NULL,
 						      (char const *)ASN1_STRING_get0_data(name->d.uniformResourceIdentifier),
-						      ASN1_STRING_length(name->d.uniformResourceIdentifier), true);
+						      fr_tls_asn1_string_length(name->d.uniformResourceIdentifier), true);
 				RDEBUG3("CRL references delta URI %pV", vb);
 				fr_value_box_list_insert_tail(&crl_entry->delta_urls, vb);
 			}

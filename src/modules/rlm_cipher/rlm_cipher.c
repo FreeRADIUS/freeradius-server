@@ -928,7 +928,7 @@ static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	MEM(fr_value_box_memdup(vb, vb, NULL, ASN1_STRING_get0_data(serial), ASN1_STRING_length(serial), true) == 0);
+	MEM(fr_value_box_memdup(vb, vb, NULL, ASN1_STRING_get0_data(serial), fr_tls_asn1_string_length(serial), true) == 0);
 
 	fr_dcursor_append(out, vb);
 
