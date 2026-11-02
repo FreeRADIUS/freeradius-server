@@ -16,7 +16,8 @@ settle: 0.5
 
 # Timings per mode, in seconds unless the key name ends in `_ms`.  A
 # server under a profiler answers slowly, so a healthy lookup needs a
-# longer `request_timeout` there.
+# longer `request_timeout` there.  The first request is the slowest, so
+# `reply_timeout` needs plenty of room over `request_timeout`.
 #
 #   connect_timeout  time that rlm_ldap waits for a connection to open
 #   request_timeout  time that the `timeout` block around the `ldap` call
@@ -40,10 +41,10 @@ timing:
     start_window: 15
     margin: 4
   profiling:
-    connect_timeout: 0.8
-    delay_ms: 2000
-    request_timeout: 0.8
-    reply_timeout: 0.95
+    connect_timeout: 2
+    delay_ms: 5000
+    request_timeout: 2
+    reply_timeout: 10
     start_window: 60
     margin: 6
 
