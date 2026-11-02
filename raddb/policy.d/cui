@@ -69,7 +69,7 @@ cui.post-auth {
 	if (!&control:Proxy-To-Realm && &Chargeable-User-Identity && !&reply:Chargeable-User-Identity && \
 	    (&Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
 		update reply {
-			&Chargeable-User-Identity = "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{Operator-Name}:-}}}"
+			&Chargeable-User-Identity = "0x%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{Operator-Name}:-}}}"
 		}
 	}
 
