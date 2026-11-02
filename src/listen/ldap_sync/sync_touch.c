@@ -15,9 +15,12 @@
  */
 
 /**
- * @file src/listen/proto_ldap_sync/sync_touch.c
+ * @file src/listen/ldap_sync/sync_touch.c
  *
- * @brief Touch entries, causing them to be re-processed by the proto_ldap_sync module.
+ * @brief Test utility that touches entries, so LDAP sync clients re-process them.
+ *
+ * Replaces an attribute with its current values, which OpenLDAP records as a
+ * modification (other servers may not), and skips entries without the attribute.
  *
  * @author Arran Cudbard-Bell
  *
@@ -27,144 +30,306 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/ldap/base.h>
-#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/autoconf.h>
+
+#include <ldap.h>
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifdef HAVE_GETOPT_H
+#  include <getopt.h>
+#endif
 
 typedef struct {
-	uint64_t	id;		//!< Bitfield ID.
-	bool		master;		//!< Server is a master.
-	char const	*uri;
-	bool		start_tls;	//!< Whether we should use the StartTLS extension.
-} sync_host_t;
-
-
-typedef struct {
-	char const	*bind_dn;
-	char const	*bind_pw;
+	char const	*uri;		//!< LDAP server to connect to.
+	bool		start_tls;	//!< Whether to use the StartTLS extended operation.
+	char const	*bind_dn;	//!< Distinguished Name (DN) to bind as.  NULL for an anonymous bind.
+	char const	*bind_pw;	//!< Password to bind with.
+	char const	*base_dn;	//!< Where to start the search.
+	int		scope;		//!< LDAP_SCOPE_* value for the search.
+	char const	*filter;	//!< Search filter that selects the entries to touch.
+	char const	*attr;		//!< Attribute to replace with the current values of the attribute.
+	bool		dry_run;	//!< Print the entries that sync_touch would touch, without modifying the entries.
+	int		verbose;	//!< 1 prints each entry.  2 or more also prints libldap debug output.
 } sync_touch_conf_t;
+
+static NEVER_RETURNS void usage(int status)
+{
+	FILE *fp = status ? stderr : stdout;
+
+	fprintf(fp, "Usage: sync_touch [options] <attribute> [<filter>]\n");
+	fprintf(fp, "Replace <attribute> with the current values of <attribute> in every entry\n");
+	fprintf(fp, "matching <filter>, so that LDAP sync clients see the entries as changed.\n");
+	fprintf(fp, "<filter> defaults to (objectClass=*).\n\n");
+	fprintf(fp, "  -H <uri>          LDAP server URI (default ldap://localhost).\n");
+	fprintf(fp, "  -Z                Use StartTLS.\n");
+	fprintf(fp, "  -D <dn>           DN to bind as (default anonymous).\n");
+	fprintf(fp, "  -w <password>     Password to bind with.\n");
+	fprintf(fp, "  -y <file>         Read the password from the first line of <file>.\n");
+	fprintf(fp, "  -b <dn>           Search base (required).\n");
+	fprintf(fp, "  -s <scope>        base, one, or sub (default sub).\n");
+	fprintf(fp, "  -n                Dry run.  List the entries that sync_touch would touch.\n");
+	fprintf(fp, "  -v                Print each entry.  Use -vv to also print libldap debug output.\n");
+	fprintf(fp, "  -h                Print this help.\n");
+
+	exit(status);
+}
+
+/** Read the bind password from the first line of a file
+ *
+ * @param[in] path	of the file.
+ * @return the password, or NULL on error.  The caller must free() the password.
+ */
+static char *password_from_file(char const *path)
+{
+	FILE	*fp;
+	char	buff[1024];
+	size_t	len;
+
+	fp = fopen(path, "r");
+	if (!fp) {
+		fprintf(stderr, "sync_touch: Failed opening %s\n", path);
+		return NULL;
+	}
+
+	if (!fgets(buff, sizeof(buff), fp)) {
+		fprintf(stderr, "sync_touch: Failed reading %s\n", path);
+		fclose(fp);
+		return NULL;
+	}
+	fclose(fp);
+
+	len = strlen(buff);
+	while ((len > 0) && ((buff[len - 1] == '\n') || (buff[len - 1] == '\r'))) {
+		buff[--len] = '\0';
+	}
+
+	return strdup(buff);
+}
+
+/** Touch one entry by replacing an attribute with the current values of the attribute
+ *
+ * @param[in] ld	connection to the directory.
+ * @param[in] conf	search and touch options.
+ * @param[in] entry	from the search.
+ * @return
+ *	- 1 if the entry was touched.
+ *	- 0 if the entry was skipped, because the entry does not have the attribute.
+ *	- -1 on error.
+ */
+static int touch_entry(LDAP *ld, sync_touch_conf_t const *conf, LDAPMessage *entry)
+{
+	char		*dn;
+	struct berval	**values;
+	LDAPMod		mod;
+	LDAPMod		*mods[2];
+	int		ret;
+
+	dn = ldap_get_dn(ld, entry);
+	if (!dn) {
+		fprintf(stderr, "sync_touch: Failed getting DN of entry\n");
+		return -1;
+	}
+
+	values = ldap_get_values_len(ld, entry, conf->attr);
+	if (!values) {
+		if (conf->verbose) printf("skipped %s (no %s)\n", dn, conf->attr);
+		ldap_memfree(dn);
+		return 0;
+	}
+
+	if (conf->dry_run) {
+		printf("would touch %s\n", dn);
+		ldap_value_free_len(values);
+		ldap_memfree(dn);
+		return 1;
+	}
+
+	mod = (LDAPMod) {
+		.mod_op = LDAP_MOD_REPLACE | LDAP_MOD_BVALUES,
+		.mod_type = UNCONST(char *, conf->attr),
+		.mod_bvalues = values
+	};
+	mods[0] = &mod;
+	mods[1] = NULL;
+
+	ret = ldap_modify_ext_s(ld, dn, mods, NULL, NULL);
+	ldap_value_free_len(values);
+
+	if (ret != LDAP_SUCCESS) {
+		fprintf(stderr, "sync_touch: Failed touching %s: %s\n", dn, ldap_err2string(ret));
+		ldap_memfree(dn);
+		return -1;
+	}
+
+	if (conf->verbose) printf("touched %s\n", dn);
+	ldap_memfree(dn);
+
+	return 1;
+}
 
 int main(int argc, char **argv)
 {
-	int			c;
-	sync_touch_conf_t	*conf;
-	int			ret;
-	int			sockfd;
+	sync_touch_conf_t	conf = {
+		.uri = "ldap://localhost",
+		.scope = LDAP_SCOPE_SUBTREE,
+		.filter = "(objectClass=*)"
+	};
+	char			*pw_from_file = NULL;
+	char			*attrs[2];
+	LDAP			*ld = NULL;
+	LDAPMessage		*result = NULL, *entry;
+	struct berval		cred;
+	int			c, ret, version = LDAP_VERSION3;
+	int			touched = 0, skipped = 0, failed = 0;
+	int			status = EXIT_FAILURE;
 
-	conf = talloc_zero(NULL, sync_touch_conf_t);
-	conf->proto = IPPROTO_UDP;
-	conf->dict_dir = DICTDIR;
-	conf->confdir = CONFDIR;
-	conf->secret = talloc_strdup(conf, "testing123");
-	conf->timeout = fr_time_delta_from_sec(3);
-	conf->retries = 5;
+	while ((c = getopt(argc, argv, "b:D:hH:ns:vw:y:Z")) != -1) switch (c) {
+	case 'b':
+		conf.base_dn = optarg;
+		break;
 
-#ifndef NDEBUG
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0], PANIC_ACTION_SIGNALS) < 0) {
-		fr_perror("sync_touch");
-		fr_exit_now(EXIT_FAILURE);
-	}
-#endif
+	case 'D':
+		conf.bind_dn = optarg;
+		break;
 
-	talloc_set_log_stderr();
+	case 'h':
+		usage(EXIT_SUCCESS);
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:l:n:p:qr:sS:t:vx")) != -1) switch (c) {
-		case 'S':
-		{
-			char *p;
-			fp = fopen(optarg, "r");
-			if (!fp) {
-			       ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
-			       fr_exit_now(EXIT_FAILURE);
-			}
-			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
-			       ERROR("Error reading %s: %s", optarg, fr_syserror(errno));
-			       fr_exit_now(EXIT_FAILURE);
-			}
-			fclose(fp);
+	case 'H':
+		conf.uri = optarg;
+		break;
 
-			/* truncate newline */
-			p = filesecret + strlen(filesecret) - 1;
-			while ((p >= filesecret) &&
-			      (*p < ' ')) {
-			       *p = '\0';
-			       --p;
-			}
+	case 'n':
+		conf.dry_run = true;
+		break;
 
-			if (strlen(filesecret) < 2) {
-			       ERROR("Secret in %s is too short", optarg);
-			       fr_exit_now(EXIT_FAILURE);
-			}
-			talloc_free(conf->secret);
-			conf->secret = talloc_strdup(conf, filesecret);
+	case 's':
+		if (strcmp(optarg, "base") == 0) {
+			conf.scope = LDAP_SCOPE_BASE;
+		} else if (strcmp(optarg, "one") == 0) {
+			conf.scope = LDAP_SCOPE_ONELEVEL;
+		} else if (strcmp(optarg, "sub") == 0) {
+			conf.scope = LDAP_SCOPE_SUBTREE;
+		} else {
+			fprintf(stderr, "sync_touch: Invalid scope \"%s\"\n", optarg);
+			usage(EXIT_FAILURE);
 		}
-		       break;
+		break;
 
-		case 't':
-			if (fr_time_delta_from_str(&conf->timeout, optarg, strlen(optarg), FR_TIME_RES_SEC) < 0) {
-				PERROR("Failed parsing timeout value");
-				fr_exit_now(EXIT_FAILURE);
-			}
-			break;
+	case 'v':
+		conf.verbose++;
+		break;
 
-		case 'v':
-			DEBUG("%s", sync_touch_version);
-			fr_exit_now(0);
+	case 'w':
+		conf.bind_pw = optarg;
+		break;
 
-		case 'x':
-			fr_debug_lvl++;
-			break;
+	case 'y':
+		free(pw_from_file);
+		pw_from_file = password_from_file(optarg);
+		if (!pw_from_file) exit(EXIT_FAILURE);
+		conf.bind_pw = pw_from_file;
+		break;
 
-		case 'h':
-		default:
-			usage();
+	case 'Z':
+		conf.start_tls = true;
+		break;
+
+	default:
+		usage(EXIT_FAILURE);
 	}
-	argc -= (optind - 1);
-	argv += (optind - 1);
+	argc -= optind;
+	argv += optind;
 
-	if ((argc < 2)  || ((conf->secret == NULL) && (argc < 3))) {
-		ERROR("Insufficient arguments");
-		usage();
+	if ((argc < 1) || (argc > 2)) usage(EXIT_FAILURE);
+	conf.attr = argv[0];
+	if (argc == 2) conf.filter = argv[1];
+
+	if (!conf.base_dn) {
+		fprintf(stderr, "sync_touch: A search base (-b) is required\n");
+		usage(EXIT_FAILURE);
 	}
+
+	if (conf.verbose > 1) {
+		int debug = -1;
+
+		ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &debug);
+	}
+
+	ret = ldap_initialize(&ld, conf.uri);
+	if (ret != LDAP_SUCCESS) {
+		fprintf(stderr, "sync_touch: Failed initialising connection to %s: %s\n",
+			conf.uri, ldap_err2string(ret));
+		goto finish;
+	}
+	ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version);
+
+	if (conf.start_tls) {
+		ret = ldap_start_tls_s(ld, NULL, NULL);
+		if (ret != LDAP_SUCCESS) {
+			fprintf(stderr, "sync_touch: StartTLS failed: %s\n", ldap_err2string(ret));
+			goto finish;
+		}
+	}
+
+	cred = (struct berval) {
+		.bv_val = UNCONST(char *, conf.bind_pw),
+		.bv_len = conf.bind_pw ? strlen(conf.bind_pw) : 0
+	};
+	ret = ldap_sasl_bind_s(ld, conf.bind_dn, LDAP_SASL_SIMPLE, &cred, NULL, NULL, NULL);
+	if (ret != LDAP_SUCCESS) {
+		fprintf(stderr, "sync_touch: Bind failed: %s\n", ldap_err2string(ret));
+		goto finish;
+	}
+
 	/*
-	 *	Mismatch between the binary and the libraries it depends on
+	 *	Only fetch the attribute we replace.
 	 */
-	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("sync_touch");
-		fr_exit_now(EXIT_FAILURE);
+	attrs[0] = UNCONST(char *, conf.attr);
+	attrs[1] = NULL;
+
+	ret = ldap_search_ext_s(ld, conf.base_dn, conf.scope, conf.filter, attrs, 0,
+				NULL, NULL, NULL, LDAP_NO_LIMIT, &result);
+	if ((ret != LDAP_SUCCESS) && (ret != LDAP_SIZELIMIT_EXCEEDED)) {
+		fprintf(stderr, "sync_touch: Search failed: %s\n", ldap_err2string(ret));
+		goto finish;
+	}
+	if (ret == LDAP_SIZELIMIT_EXCEEDED) {
+		fprintf(stderr, "sync_touch: Server size limit reached, not all matching entries will be touched\n");
 	}
 
-	if (!fr_dict_global_ctx_init(NULL, true, dict_dir)) {
-		fr_perror("sync_touch");
-		fr_exit_now(EXIT_FAILURE);
+	for (entry = ldap_first_entry(ld, result); entry; entry = ldap_next_entry(ld, entry)) {
+		switch (touch_entry(ld, &conf, entry)) {
+		case 1:
+			touched++;
+			break;
+
+		case 0:
+			skipped++;
+			break;
+
+		default:
+			failed++;
+			break;
+		}
 	}
 
-	if (fr_dict_internal_afrom_file(&conf->dict, FR_DICTIONARY_FILE, __FILE__) < 0) {
-		fr_perror("sync_touch");
-		fr_exit_now(EXIT_FAILURE);
-	}
+	printf("%s %i, skipped %i, failed %i\n", conf.dry_run ? "would touch" : "touched", touched, skipped, failed);
 
-	if (fr_dict_read(dict_freeradius, conf->confdir, FR_DICTIONARY_FILE) == -1) {
-		fr_perror("sync_touch");
-		fr_exit_now(EXIT_FAILURE);
-	}
-	fr_strerror_clear();	/* Clear the error buffer */
-
-	fr_set_signal(SIGPIPE, rs_signal_stop);
-	fr_set_signal(SIGINT, rs_signal_stop);
-	fr_set_signal(SIGTERM, rs_signal_stop);
-#ifdef SIGQUIT
-	fr_set_signal(SIGQUIT, rs_signal_stop);
-#endif
-
-	DEBUG("%s - Starting pass_persist read loop", sync_touch_version);
-	ret = sync_touch_send_recv(conf, sockfd);
-	DEBUG("Read loop done");
+	/*
+	 *	Matching nothing is a failure, as the caller wanted
+	 *	something to be re-synced.
+	 */
+	if ((failed == 0) && (touched > 0)) status = EXIT_SUCCESS;
 
 finish:
-	/*
-	 *	Everything should be parented from conf
-	 */
-	talloc_free(conf);
+	if (result) ldap_msgfree(result);
+	if (ld) ldap_unbind_ext_s(ld, NULL, NULL);
+	free(pw_from_file);
 
-	return ret;
+	return status;
 }

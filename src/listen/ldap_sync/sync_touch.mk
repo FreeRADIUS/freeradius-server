@@ -10,5 +10,15 @@ ifneq "${TARGETNAME}" ""
 endif
 TGT_CATEGORY	:=
 
+#
+#  A testing tool, so it isn't installed.
+#
+TGT_INSTALLDIR	:=
+
 SOURCES		:= $(TARGETNAME).c
-TGT_PREREQS	:= libfreeradius-ldap$(L)
+
+#
+#  Only uses libldap.  The include of src/lib/ldap/all.mk above provides
+#  the libldap build and link flags.
+#
+TGT_PREREQS	:=
