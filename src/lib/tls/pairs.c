@@ -239,7 +239,6 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	STACK_OF(X509_EXTENSION) const *ext_list = NULL;
 
 	fr_pair_t	*vp = NULL;
-	ssize_t		slen;
 	bool		san_found = false, crl_found = false, aia_found = false;
 
 	/*
@@ -253,6 +252,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		int			der_len;
 		fr_der_decode_ctx_t	der_ctx;
 		fr_pair_list_t		tmp_list;
+		ssize_t			slen;
 
 		der_len = i2d_X509(cert, NULL);
 		if (der_len < 0) {
