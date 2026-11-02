@@ -986,7 +986,7 @@ bool		fr_fifo_full(fr_fifo_t *fi);
  */
 int		fr_socket_client_unix(char const *path, bool async);
 int		fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async);
-int		fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async);
+int		fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async, bool *connected);
 int		fr_socket_wait_for_connect(int sockfd, struct timeval *timeout);
 
 #ifdef __cplusplus

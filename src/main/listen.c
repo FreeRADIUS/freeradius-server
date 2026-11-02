@@ -4201,20 +4201,12 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	if (!sock->limit.lifetime && !sock->limit.idle_timeout) sock->limit.idle_timeout = 30;
 
 	/*
-	 *	connect() is blocking for TCP.  The administrator has to manually set "nonblock" in
-	 *	the configuration to make it non-blocking.
-	 *
-	 *	Due to the way that TLS works, TLS sockets are always non blocking.
-	 *
-	 *	FIXME: setting nonblock=true for TCP (not TLS) means that any subsequence read() will
-	 *	return ENOTCONN, and the reader has to call connect() again.  But doing this also
-	 *	means that we need to update fr_socket_client_tcp() to return a flag which indicates
-	 *	whether or not the connection attempt was successful.  And then we need to store that
-	 *	somewhere, etc.
+	 *	Try to connect.
 	 */
 	this->fd = fr_socket_client_tcp(&home->src_ipaddr,
 					&home->ipaddr, home->port,
-					true);
+					true,
+					&sock->connected);
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
 		ERROR("Failed opening new proxy socket '%s' : %s",

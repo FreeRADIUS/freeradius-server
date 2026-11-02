@@ -144,7 +144,7 @@ static int client_socket(char const *server)
 		exit(1);
 	}
 
-	sockfd = fr_socket_client_tcp(NULL, &ipaddr, port, false);
+	sockfd = fr_socket_client_tcp(NULL, &ipaddr, port, false, NULL);
 	if (sockfd < 0) {
 		fprintf(stderr, "%s: Failed opening socket %s: %s\n",
 			progname, server, fr_syserror(errno));

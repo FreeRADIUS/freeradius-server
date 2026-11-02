@@ -187,6 +187,7 @@ typedef struct listen_socket_t {
 	uint16_t	haproxy_dst_port;
 
 	bool		connection_counted;	//!< this connection is counted in home->active_connections
+	bool		connected;		//!< was this socket connected?
 #endif
 
 #ifdef WITH_TLS

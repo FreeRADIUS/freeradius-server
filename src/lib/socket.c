@@ -152,11 +152,13 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
  *	#fr_socket_wait_for_connect.
  * @return FD on success, -1 on failure.
  */
-int fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async)
+int fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async, bool *connected)
 {
 	int sockfd;
 	struct sockaddr_storage salocal;
 	socklen_t	salen;
+
+	if (connected) *connected = false;
 
 	if (!dst_ipaddr) return -1;
 
@@ -223,6 +225,7 @@ int fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint1
 		return -1;
 	}
 
+	if (connected) *connected = true;
 	return sockfd;
 }
 
