@@ -1,0 +1,165 @@
+#  -*- text -*-
+######################################################################
+#
+#	This is a virtual server that handles *only* resumed sessions
+#	for EAP-TTLS and PEAP.
+#
+#	Typically resumed sessions will not contain all the attributes
+#	present in the original inner-tunnel request.
+#
+#	This virtual server can be used to validate that a user is
+#	still valid when they reconnect using a resumed TLS session.
+#
+#	$Id$
+#
+######################################################################
+
+server resume-inner-tunnel {
+
+	namespace = radius
+
+#
+#  Authorization
+#
+#  Typically resumed sessions will not contain User-Password, so rather
+#  than checking the user's password, this policy should be used to
+#  check if the user is still valid and perform additional checks
+#  such as group membership etc.
+recv Access-Request {
+	#
+	#  Take a User-Name, and perform some checks on it, for spaces and
+	#  other invalid characters. If the User-Name appears invalid, reject
+	#  the request.
+	#
+	#  Since the User-Name is populated by cached session data, this is
+	#  unlikely to need checking, since it would have been validated during
+	#  the original authentcation.
+	#
+	#  See policy.d/filter for the definition of the filter_username
+	#  policy.
+	#
+#	filter_username
+
+	#
+	#  Do checks on outer / inner User-Name, so that users can't spoof us
+	#  by using incompatible identities
+	#
+#	filter_inner_identity
+
+	#
+	#  Read the 'users' file
+	files
+
+	#
+	#  Look in an SQL database. The schema of the database is meant to
+	#  mirror the "users" file.
+	#
+	-sql
+
+	#
+	#  The ldap module reads user details from an LDAP directory.
+	-ldap
+
+	#
+	#  Enforce daily limits on time spent logged in.
+#	daily
+
+	expiration
+
+	#
+	#  Add suitable policy to check that the user is still valid based
+	#  on attributes which calls to files / sql / ldap would have added e.g.
+	#
+#	if (!control.Password) {
+#		reject
+#	}
+
+	accept
+}
+
+
+#  Authentication.
+#
+#  Since resumed sessions won't have the User-Password available the
+#  authentication methods such as PAP / CHAP are not relevant.
+#
+
+#  Post-Authentication Once we KNOW that the user has been
+#  re-authenticated, there are additional steps we can take.
+#
+#  This should typically match the `send Access-Accept` section
+#  used in the standard `inner-tunnel` virtual server.
+#
+send Access-Accept {
+	#  If you want privacy to remain, see the Chargeable-User-Identity
+	#  attribute from RFC 4372. If you want to use it just uncomment the
+	#  line below.
+#       cui-inner
+
+	#
+	#  If you want to have a log of authentication replies, uncomment the
+	#  following line, and enable the 'detail reply_log' module.
+#	reply_log
+
+	#
+	#  After authenticating the user, do another SQL query.
+	#
+	#  See "Authentication Logging Queries" in
+	#  `mods-config/sql/main/$driver/queries.conf`
+	-sql
+
+	#
+	#  Instead of sending the query to the SQL server, write it into a
+	#  log file.
+	#
+#	sql_log
+
+	#
+	#  Uncomment the following if you have set 'edir = yes' in the ldap
+	#  module sub-section of the 'modules' section.
+	#
+#	ldap
+
+	#
+	#  Instead of the "use_tunneled_reply" option in previous versions of
+	#  the server, uncomment the following line to copy reply attributes
+	#  from the inner-tunnel back to the outer session-state. The outer
+	#  "send Access-Accept" section will then copy them from the
+	#  session-state into the reply.
+	#
+#	use_tunneled_reply
+
+	#
+	#  Call an instance of `linelog` to log the authentication success
+	#  - equivalent to the previous log `auth = yes` option in v3.
+	#  See `mods-enabled/linelog` for message formats and destinations.
+	#
+#	log_auth_result
+}
+
+#
+#  Access-Reject packets are sent through the REJECT sub-section of
+#  the post-auth section.
+#
+#  Add the ldap module name (or instance) if you have set 'edir = yes'
+#  in the ldap module configuration
+#
+send Access-Reject {
+	#  log failed authentications in SQL, too.
+	-sql
+
+	#
+	#  Call an instance of `linelog` to log the authentication failure
+	#  - equivalent to the previous log `auth = yes` option in v3.
+	#  See `mods-enabled/linelog` for message formats and destinations.
+	#
+#	log_auth_result
+
+	attr_filter.access_reject
+
+	#
+	#  Let the outer session know which module failed, and why.
+	#
+	outer.session-state.Module-Failure-Message := request.Module-Failure-Message[*]
+}
+} # resume-inner-tunnel server block
