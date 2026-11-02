@@ -44,6 +44,16 @@ static fr_internal_encode_ctx_t	encode_ctx = { .allow_name_only = true };
 extern fr_app_io_t proto_ldap_sync_ldap;
 extern fr_app_io_t proto_ldap_sync_child;
 
+/*
+ *	Same names as the "connection" section of a connection pool.
+ */
+static conf_parser_t const proto_ldap_sync_ldap_connection_config[] = {
+	{ FR_CONF_OFFSET("connect_timeout", connection_conf_t, connection_timeout), .dflt = "10.0", .func = cf_parse_time_delta_bounded, .uctx = &cf_time_delta_bounds_int_msec },
+	{ FR_CONF_OFFSET("reconnect_delay", connection_conf_t, reconnection_delay), .dflt = "10" },
+
+	CONF_PARSER_TERMINATOR
+};
+
 static conf_parser_t const proto_ldap_sync_ldap_config[] = {
 	/*
 	 *	LDAP server definition
@@ -54,6 +64,8 @@ static conf_parser_t const proto_ldap_sync_ldap_config[] = {
 	 *	Common LDAP conf parsers
 	 */
 	FR_LDAP_COMMON_CONF(proto_ldap_sync_ldap_t),
+
+	{ FR_CONF_OFFSET_SUBSECTION("connection", 0, proto_ldap_sync_ldap_t, conn_conf, proto_ldap_sync_ldap_connection_config) },
 
 	/*
 	 *	Network tunable parameters
@@ -551,18 +563,14 @@ static void proto_ldap_connection_init(fr_timer_list_t *tl, UNUSED fr_time_t now
 						.init = fr_ldap_connection_init,
 						.close = fr_ldap_connection_close
 					},
-					&(connection_conf_t){
-						.connection_timeout = inst->handle_config.net_timeout,
-						.reconnection_delay = inst->handle_config.reconnection_delay
-					},
-					"ldap_sync", &inst->handle_config);
+					&inst->conn_conf, "ldap_sync", &inst->handle_config);
 
 	if (!thread->conn) {
 		PERROR("Failed (re)initialising connection, will retry in %pV seconds",
-		       fr_box_time_delta(inst->handle_config.reconnection_delay));
+		       fr_box_time_delta(inst->conn_conf.reconnection_delay));
 
 		if (fr_timer_in(thread, tl, &thread->conn_retry_ev,
-				inst->handle_config.reconnection_delay,
+				inst->conn_conf.reconnection_delay,
 				false, proto_ldap_connection_init, listen) < 0) {
 			FATAL("Failed inserting event: %s", fr_strerror());
 		}
@@ -873,10 +881,10 @@ static void proto_ldap_cookie_load_retry(fr_timer_list_t *tl, UNUSED fr_time_t n
 	if (proto_ldap_cookie_load_send(retry_ctx, retry_ctx->inst, retry_ctx->sync_no,
 					retry_ctx->thread) < 0) {
 		ERROR("Failed retrying \"load Cookie\".  Will try again in %pV seconds",
-		      fr_box_time_delta(retry_ctx->inst->handle_config.reconnection_delay));
+		      fr_box_time_delta(retry_ctx->inst->conn_conf.reconnection_delay));
 		(void) fr_timer_in(retry_ctx->thread->conn->h, tl,
 				   &retry_ctx->inst->parent->sync_config[retry_ctx->sync_no]->ev,
-				   retry_ctx->inst->handle_config.reconnection_delay,
+				   retry_ctx->inst->conn_conf.reconnection_delay,
 				   false, proto_ldap_cookie_load_retry, retry_ctx);
 		return;
 	}
@@ -978,7 +986,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_instance_t *li, void *packet
 		proto_ldap_cookie_load_retry_ctx *retry_ctx;
 
 		ERROR("Load Cookie failed for sync %" PRIu32 ", retrying in %pV seconds", packet_id,
-		      fr_box_time_delta(inst->handle_config.reconnection_delay));
+		      fr_box_time_delta(inst->conn_conf.reconnection_delay));
 
 		MEM(retry_ctx = talloc(thread, proto_ldap_cookie_load_retry_ctx));
 		*retry_ctx = (proto_ldap_cookie_load_retry_ctx){
@@ -988,7 +996,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_instance_t *li, void *packet
 		};
 
 		(void) fr_timer_in(thread->conn->h, thread->el->tl, &inst->parent->sync_config[packet_id]->ev,
-				   inst->handle_config.reconnection_delay,
+				   inst->conn_conf.reconnection_delay,
 				   false, proto_ldap_cookie_load_retry, retry_ctx);
 	}
 		break;
@@ -1083,11 +1091,18 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 	TALLOC_CTX			*local = NULL;
 
 	/*
-	 *	Fetch the result.  Setting the timeout to 0 here means use
-	 *	res_timeout from the configuration.
+	 *	The event loop calls this handler when the fd is readable.  fr_ldap_result()
+	 *	returns LDAP_PROC_PENDING until it has read the final message.
 	 */
 	status = fr_ldap_result(&result, NULL, ldap_conn, dir_ctx->msgid, LDAP_MSG_ALL, NULL, fr_time_delta_from_msec(0));
-	if (status != LDAP_PROC_SUCCESS) {
+	switch (status) {
+	case LDAP_PROC_PENDING:
+		return;
+
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	default:
 		PERROR("Failed querying for directory type");
 		if (result) ldap_msgfree(result);
 	error:
@@ -1169,9 +1184,9 @@ static void _proto_ldap_socket_closed(UNUSED connection_t *conn, connection_stat
 
 	if (prev == CONNECTION_STATE_CONNECTED) {
 		ERROR("LDAP connection closed.  Scheduling restart in %pVs",
-		       fr_box_time_delta(inst->handle_config.reconnection_delay));
+		       fr_box_time_delta(inst->conn_conf.reconnection_delay));
 		if (fr_timer_in(thread, thread->el->tl, &thread->conn_retry_ev,
-				inst->handle_config.reconnection_delay,
+				inst->conn_conf.reconnection_delay,
 				false, proto_ldap_connection_init, listen) < 0) {
 			FATAL("Failed inserting event: %s", fr_strerror());
 		}
@@ -1199,7 +1214,7 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
 	if (ldap_conn->fd < 0) {
 	connection_failed:
 		if (fr_timer_in(thread, thread->el->tl, &thread->conn_retry_ev,
-				inst->handle_config.reconnection_delay,
+				inst->conn_conf.reconnection_delay,
 				false, proto_ldap_connection_init, listen) < 0) {
 			FATAL("Failed inserting event: %s", fr_strerror());
 		}

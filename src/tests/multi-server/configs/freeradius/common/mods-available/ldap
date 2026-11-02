@@ -14,9 +14,7 @@ ldap {
 	}
 
 	options {
-		res_timeout = 10
 		srv_timelimit = 3
-		net_timeout = 10
 	}
 
 	pool {
@@ -26,5 +24,9 @@ ldap {
 		connecting = 2
 		uses = 0
 		lifetime = 0
+
+		connection {
+			connect_timeout = 10
+		}
 	}
 }

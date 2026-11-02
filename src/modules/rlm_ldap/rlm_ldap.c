@@ -532,32 +532,6 @@ static xlat_action_t ldap_uri_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-/** Callback when LDAP query times out
- *
- */
-static void ldap_query_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
-{
-	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
-	trunk_request_t		*treq;
-	request_t		*request;
-
-	/*
-	 *	If the trunk request has completed but the query
-	 *	has not yet resumed, query->treq will be NULL
-	 */
-	if (!query->treq) return;
-
-	treq = talloc_get_type_abort(query->treq, trunk_request_t);
-	request = treq->request;
-
-	ROPTIONAL(RERROR, ERROR, "Timeout waiting for LDAP query");
-
-	trunk_request_signal_cancel(query->treq);
-
-	query->ret = LDAP_RESULT_TIMEOUT;
-	unlang_interpret_mark_runnable(request);
-}
-
 static xlat_arg_parser_t const ldap_uri_attr_option_xlat_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
@@ -917,13 +891,6 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	default:
 		REDEBUG("Unable to enqueue LDAP query for xlat");
-		goto query_error;
-	}
-
-	if (fr_timer_in(query, unlang_interpret_event_list(request)->tl, &query->ev, handle_config->res_timeout,
-			false, ldap_query_timeout, query) < 0) {
-		REDEBUG("Unable to set timeout for LDAP query");
-		trunk_request_signal_cancel(query->treq);
 		goto query_error;
 	}
 

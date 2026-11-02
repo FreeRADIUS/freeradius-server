@@ -66,8 +66,12 @@ static char const *ldap_msg_types[UINT8_MAX + 1] = {
  */
 int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config)
 {
-	LDAP	*handle = NULL;
-	int	ldap_errno, ldap_version, keepalive, probes, is_server;
+	LDAP		*handle = NULL;
+	int		ldap_errno, ldap_version, keepalive, probes, is_server;
+	struct timeval	no_wait = {
+		.tv_sec = 0,
+		.tv_usec = 0
+	};
 
 	fr_assert(config->server);
 
@@ -113,16 +117,11 @@ DIAG_ON(unused-macros)
 	do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_OFF);
 
 	/*
-	 *	A value of zero results in an handle configuration failure.
-	 *
-	 *	When most people specify zero they mean infinite.
-	 *
-	 *	libldap requires tv_sec to be -1 to mean that.
+	 *	libldap must never wait on the network, we do all the waiting
+	 *	in the event loop, and enforce deadlines with our own timers.
+	 *	The one exception is the StartTLS handshake, see start_tls.c.
 	 */
-	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout",
-		       (fr_time_delta_ispos(config->net_timeout) ?
-				&fr_time_delta_to_timeval(config->net_timeout) :
-				&(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
+	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "network_timeout", &no_wait);
 
 	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &fr_time_delta_to_timeval(config->srv_timelimit));
 
@@ -364,9 +363,12 @@ static connection_state_t ldap_connection_init(void **h, connection_t *conn,
 		return CONNECTION_STATE_FAILED;
 	}
 
-	/* Don't block */
+	/*
+	 *	Don't block.  libldap returns LDAP_X_CONNECTING while connect()
+	 *	is in progress, and the connection state machine's own timer
+	 *	bounds the attempt.
+	 */
 	if (ldap_set_option(c->handle, LDAP_OPT_CONNECT_ASYNC, LDAP_OPT_ON) != LDAP_OPT_SUCCESS) goto error;
-	fr_ldap_connection_timeout_set(c, fr_time_delta_wrap(0));	/* Forces LDAP_X_CONNECTING */
 
 	state = fr_ldap_state_next(c);
 	if (state == FR_LDAP_STATE_ERROR) goto error;
@@ -410,50 +412,6 @@ connection_state_t fr_ldap_trunk_connection_init(void **h, connection_t *conn, v
 	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
 
 	return ldap_connection_init(h, conn, &ttrunk->config, ttrunk->directory);
-}
-
-int fr_ldap_connection_timeout_set(fr_ldap_connection_t const *c, fr_time_delta_t timeout)
-{
-	int ldap_errno;
-
-	/*
-	 *	A value of zero results in an handle configuration failure.
-	 *
-	 *	When most people specify zero they mean infinite.
-	 *
-	 *	libldap requires tv_sec to be -1 to mean that.
-	 */
-	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout",
-		       (fr_time_delta_ispos(timeout) ?
-		       		&fr_time_delta_to_timeval(timeout) :
-		       		&(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
-
-	return 0;
-
-error:
-	return -1;
-}
-
-int fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *c)
-{
-	int ldap_errno;
-
-	/*
-	 *	A value of zero results in an handle configuration failure.
-	 *
-	 *	When most people specify zero they mean infinite.
-	 *
-	 *	libldap requires tv_sec to be -1 to mean that.
-	 */
-	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout",
-		       (fr_time_delta_ispos(c->config->net_timeout) ?
-		       		&fr_time_delta_to_timeval(c->config->net_timeout) :
-				&(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
-
-	return 0;
-
-error:
-	return -1;
 }
 
 /** Callback for closing idle LDAP trunk
@@ -547,7 +505,7 @@ TRUNK_NOTIFY_FUNC(ldap_trunk_connection_notify, fr_ldap_connection_t)
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_t *ldap_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
-						    UNUSED connection_conf_t const *conn_conf,
+						    connection_conf_t const *conn_conf,
 						    char const *log_prefix, void *uctx)
 {
 	fr_ldap_thread_trunk_t	*thread_trunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
@@ -558,11 +516,7 @@ static connection_t *ldap_trunk_connection_alloc(trunk_connection_t *tconn, fr_e
 					.init = fr_ldap_trunk_connection_init,
 					.close = fr_ldap_connection_close
 				},
-				&(connection_conf_t){
-					.connection_timeout = thread_trunk->config.net_timeout,
-					.reconnection_delay = thread_trunk->config.reconnection_delay
-				},
-				log_prefix, thread_trunk);
+				conn_conf, log_prefix, thread_trunk);
 	if (!conn) {
 		PERROR("Failed allocating state handler for new LDAP trunk connection");
 		return NULL;
@@ -884,10 +838,6 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 			break;
 		}
 
-		/*
-		 *	Remove the timeout event
-		 */
-		FR_TIMER_DELETE(&query->ev);
 		query->result = result;
 
 		/*

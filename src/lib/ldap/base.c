@@ -144,64 +144,6 @@ typedef struct {
 	LDAPMessage	**result;
 } sync_ldap_query_t;
 
-/** Prints information to the debug log on the current timeout settings
- *
- * There are so many different timers in LDAP it's often hard to debug
- * issues with them, hence the need for this function.
- */
-void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
-			   fr_time_delta_t timeout, char const *prefix)
-{
-	struct timeval 			*net = NULL, *client = NULL;
-	int				server = 0;
-	fr_ldap_config_t const	*handle_config = conn->config;
-
-	if (request) RINDENT();
-
-	if (ldap_get_option(conn->handle, LDAP_OPT_NETWORK_TIMEOUT, &net) != LDAP_OPT_SUCCESS) {
-		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_NETWORK_TIMEOUT");
-	}
-
-	if (ldap_get_option(conn->handle, LDAP_OPT_TIMEOUT, &client) != LDAP_OPT_SUCCESS) {
-		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_TIMEOUT");
-	}
-
-	if (ldap_get_option(conn->handle, LDAP_OPT_TIMELIMIT, &server) != LDAP_OPT_SUCCESS) {
-		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_TIMELIMIT");
-	}
-
-	ROPTIONAL(RDEBUG4, DEBUG4, "%s: Timeout settings", prefix);
-
-	if (fr_time_delta_ispos(timeout)) {
-		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (ovr): %pVs",
-			  fr_box_time_delta(timeout));
-	} else {
-		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (ovr): unset");
-	}
-
-	if (client && (client->tv_sec != -1)) {
-		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (dfl): %pVs",
-			  fr_box_time_delta(fr_time_delta_from_timeval(client)));
-
-	} else {
-		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (dfl): unset");
-	}
-
-	if (net && (net->tv_sec != -1)) {
-		ROPTIONAL(RDEBUG4, DEBUG4, "Client side network I/O timeout : %pVs",
-			  fr_box_time_delta(fr_time_delta_from_timeval(net)));
-	} else {
-		ROPTIONAL(RDEBUG4, DEBUG4, "Client side network I/O timeout : unset");
-
-	}
-
-	ROPTIONAL(RDEBUG4, DEBUG4, "Server side result timeout      : %i", server);
-	if (request) REXDENT();
-
-	free(net);
-	free(client);
-}
-
 /** Return the error string associated with a handle
  *
  * @param conn to retrieve error from.
@@ -420,6 +362,21 @@ process_error:
 	return status;
 }
 
+/** Whether libldap holds data it has read from the socket but not yet processed
+ *
+ * Buffered data, e.g. decrypted TLS records, never makes the fd readable again.
+ *
+ * @param[in] conn	to check.
+ * @return true if libldap has buffered data.
+ */
+static bool ldap_data_buffered(fr_ldap_connection_t const *conn)
+{
+	Sockbuf		*sb = NULL;
+
+	return (ldap_get_option(conn->handle, LDAP_OPT_SOCKBUF, &sb) == LDAP_OPT_SUCCESS) && sb &&
+	       ber_sockbuf_ctrl(sb, LBER_SB_OPT_DATA_READY, NULL);
+}
+
 /** Parse response from LDAP server dealing with any errors
  *
  * Should be called after an LDAP operation. Will check result of operation and if
@@ -443,7 +400,9 @@ process_error:
  *			- LDAP_MSG_ALL - Retrieve all received messages matching msgid (waiting if none are available).
  *			- LDAP_MSG_RECEIVED - Retrieve all received messages.
  * @param[in] dn	Last search or bind DN.  May be NULL.
- * @param[in] timeout	Override the default result timeout.
+ * @param[in] timeout	How long to wait for the result.  With zero, this function reads at
+ *			most one message and returns LDAP_PROC_PENDING until it has read
+ *			the final message.
  *
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
@@ -454,7 +413,6 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 {
 	fr_ldap_rcode_t	status = LDAP_PROC_SUCCESS;
 	int		lib_errno;
-	fr_time_delta_t	our_timeout = timeout;
 
 	LDAPMessage	*tmp_msg = NULL, *msg;	/* Temporary message pointer storage if we weren't provided with one */
 	LDAPMessage	**result_p = result;
@@ -471,20 +429,43 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 	 *	Check if there was an error sending the request
 	 */
 	ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &lib_errno);
-	if (lib_errno != LDAP_SUCCESS) return fr_ldap_error_check(NULL, conn, NULL, dn);
-
-	if (!fr_time_delta_ispos(timeout)) our_timeout = conn->config->res_timeout;
 
 	/*
-	 *	Now retrieve the result and check for errors
-	 *	ldap_result returns -1 on failure, and 0 on timeout
+	 *	LDAP_BUSY means libldap queued the rest of a request the socket couldn't take,
+	 *	which it sends later, so it's not an error.
 	 */
-	lib_errno = ldap_result(conn->handle, msgid, all, &fr_time_delta_to_timeval(our_timeout), result_p);
+	if (lib_errno == LDAP_BUSY) {
+		lib_errno = LDAP_SUCCESS;
+		ldap_set_option(conn->handle, LDAP_OPT_RESULT_CODE, &lib_errno);
+	}
+	if (lib_errno != LDAP_SUCCESS) return fr_ldap_error_check(NULL, conn, NULL, dn);
+
+	/*
+	 *	With a zero timeout, ldap_result() reads at most one message per call.
+	 *	Loop while libldap holds data it has already taken off the socket (e.g.
+	 *	decrypted TLS records), as that data won't make the fd readable again.
+	 */
+	for (;;) {
+		lib_errno = ldap_result(conn->handle, msgid, all, &fr_time_delta_to_timeval(timeout), result_p);
+		if ((lib_errno != 0) || fr_time_delta_ispos(timeout) || !ldap_data_buffered(conn)) break;
+	}
 	switch (lib_errno) {
 	case 0:
-		lib_errno = LDAP_TIMEOUT;
+	{
+		int success = LDAP_SUCCESS;
+
+		/*
+		 *	ldap_result leaves LDAP_TIMEOUT as the handle's result code,
+		 *	though the request hasn't failed.  Reset it, or the result code
+		 *	check above fails every later call before it reads anything.
+		 */
+		ldap_set_option(conn->handle, LDAP_OPT_RESULT_CODE, &success);
+
+		if (!fr_time_delta_ispos(timeout)) return LDAP_PROC_PENDING;
+
 		fr_strerror_const("timeout waiting for result");
 		return LDAP_PROC_TIMEOUT;
+	}
 
 	case -1:
 		return fr_ldap_error_check(NULL, conn, NULL, dn);
@@ -544,10 +525,6 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 			      pconn, serverctrls, clientctrls);
 
 	fr_assert(pconn && pconn->handle);
-
-	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
-		fr_ldap_timeout_debug(request, pconn, fr_time_delta_wrap(0), __FUNCTION__);
-	}
 
 	/*
 	 *	OpenLDAP library doesn't declare attrs array as const, but
@@ -832,8 +809,6 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
 
 	fr_assert(pconn && pconn->handle);
 
-	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, pconn, fr_time_delta_wrap(0), __FUNCTION__);
-
 	RDEBUG2("Modifying object with DN \"%s\"", dn);
 	if(ldap_modify_ext(pconn->handle, dn, mods, our_serverctrls, our_clientctrls, msgid) != LDAP_SUCCESS) {
 		fr_ldap_rcode_t	ret = fr_ldap_error_check(NULL, pconn, NULL, NULL);
@@ -871,8 +846,6 @@ fr_ldap_rcode_t fr_ldap_delete_async(int *msgid, request_t *request, fr_ldap_con
 			      pconn, serverctrls, clientctrls);
 
 	fr_assert(pconn && pconn->handle);
-
-	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, pconn, fr_time_delta_wrap(0), __FUNCTION__);
 
 	RDEBUG2("Deleting object with DN \"%s\"", dn);
 	if(ldap_delete_ext(pconn->handle, dn, our_serverctrls, our_clientctrls, msgid) != LDAP_SUCCESS) {

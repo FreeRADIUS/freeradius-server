@@ -578,10 +578,6 @@ NOTE: uncomment when using GSS-API sasl mechanism along with TLS
 encryption against Active-Directory LDAP servers (this disables
 sealing and signing at the GSS level as required by AD).
 
-res_timeout:: Seconds to wait for LDAP query to finish.
-
-Default `20`
-
 srv_timelimit:: Seconds LDAP server has to process the query
 (server-side time limit).
 
@@ -604,13 +600,13 @@ probes.
 
 NOTE: `LDAP_OPT_X_KEEPALIVE_INTERVAL` is set to this value.
 
-net_timeout:: Sets the timeout for establishing connections.
+NOTE: There is no option here to limit how long a query may take.  Put
+the module call in a `timeout` section instead, see the policy at the
+end of this file.
 
-NOTE: `LDAP_OPT_NETWORK_TIMEOUT` is set to this value.
-
-reconnection_delay:: Sets the time in seconds before a failed
-connection will attempt reconnection. This includes failures to bind
-as the admin user due to incorrect credentials.
+How long to wait for a connection to open, and how long to wait before
+trying again, are set in the `connection` section of `pool` and
+`bind_pool`.
 
 === TLS encrypted connections
 
@@ -696,6 +692,16 @@ closed
 
 manage_interval:: How often to manage the connection pool.
 
+connection { ... }:: Per-connection configuration.
+
+connect_timeout:: How long to wait before giving up on a connection
+which is being opened.
+
+reconnect_delay:: If opening a connection fails, or an open connection
+fails, we wait `reconnect_delay` seconds before attempting to open
+another connection.  This includes failures to bind as the admin user
+due to incorrect credentials.
+
 request:: Options specific to requests handled by this connection pool
 
 per_connection_max:: Maximum number of active queries there can be on
@@ -728,7 +734,8 @@ progress binds which there can be on a single thread.
 == Policy Over-rides
 
 The following policy ensures that every call to the `ldap` module will
-time out within a short period of time.
+time out within a short period of time.  When the timeout is reached,
+the module abandons the query on the LDAP server.
 
 The policy name here should be the same as the module name. Reusing
 the same name means that this policy will be used instead of the
@@ -1142,13 +1149,10 @@ ldap {
 		use_referral_credentials = no
 #		session_tracking = yes
 #		sasl_secprops = 'noanonymous,noplain,maxssf=0'
-		res_timeout = 10
 		srv_timelimit = 3
 		idle = 60
 		probes = 3
 		interval = 3
-		net_timeout = 10
-		reconnection_delay = 10
 	}
 	tls {
 #		start_tls = yes
@@ -1170,6 +1174,10 @@ ldap {
 #		open_delay = 0.2
 #		close_delay = 10
 #		manage_interval = 0.2
+		connection {
+			connect_timeout = 3.0
+			reconnect_delay = 10
+		}
 		request {
 #			per_connection_max = 2000
 #			per_connection_target = 1000

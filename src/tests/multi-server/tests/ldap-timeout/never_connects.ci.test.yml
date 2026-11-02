@@ -1,0 +1,45 @@
+# Which case the template runs, see tests/ldap-timeout/template.yml.j2
+variant: never_connects
+
+# Type of the test framework listener that the server writes triggers to
+listener_type: file
+
+# RADIUS port of FreeRADIUS, private to the compose network
+ports:
+  auth: 1812
+
+# Shared secret of the client definition on FreeRADIUS
+secret: testing123
+
+# Seconds that a `tc` change takes to apply, before the next state sends
+settle: 0.5
+
+# Timings per mode, in seconds.  A server under a profiler answers
+# slowly, so a healthy lookup needs a longer `request_timeout` there.
+#
+#   connect_timeout  time that rlm_ldap waits for a connection to open
+#   request_timeout  time that the `timeout` block around the `ldap` call
+#                    allows the lookup
+#   reply_timeout    time that radclient waits for a reply.  Longer than
+#                    `request_timeout`, shorter than the server's 30 second
+#                    `max_request_time`
+#   start_window     time that the `start` state allows for FreeRADIUS
+#                    to open its listener
+#   margin           time added to every verify window for docker exec
+#                    overhead
+timing:
+  service:
+    connect_timeout: 0.3
+    request_timeout: 0.3
+    reply_timeout: 0.8
+    start_window: 15
+    margin: 4
+  profiling:
+    connect_timeout: 0.8
+    request_timeout: 0.8
+    reply_timeout: 0.95
+    start_window: 60
+    margin: 6
+
+# Timeout for the whole test, in seconds, in both modes
+test_timeout: 300

@@ -848,13 +848,6 @@ ldap {
 #		sasl_secprops = 'noanonymous,noplain,maxssf=0'
 
 		#
-		#  res_timeout:: Seconds to wait for LDAP query to finish.
-		#
-		#  Default `20`
-		#
-		res_timeout = 10
-
-		#
 		#  srv_timelimit:: Seconds LDAP server has to process the query
 		#  (server-side time limit).
 		#
@@ -889,18 +882,14 @@ ldap {
 		interval = 3
 
 		#
-		#  net_timeout:: Sets the timeout for establishing connections.
+		#  NOTE: There is no option here to limit how long a query may
+		#  take.  Put the module call in a `timeout` section instead, see
+		#  the policy at the end of this file.
 		#
-		#  NOTE: `LDAP_OPT_NETWORK_TIMEOUT` is set to this value.
+		#  How long to wait for a connection to open, and how long to wait
+		#  before trying again, are set in the `connection` section of
+		#  `pool` and `bind_pool`.
 		#
-		net_timeout = 10
-
-		#
-		#  reconnection_delay:: Sets the time in seconds before a failed
-		#  connection will attempt reconnection. This includes failures to
-		#  bind as the admin user due to incorrect credentials.
-		#
-		reconnection_delay = 10
 	}
 
 	#
@@ -1036,6 +1025,26 @@ ldap {
 #		manage_interval = 0.2
 
 		#
+		#  connection { ... }:: Per-connection configuration.
+		#
+		connection {
+			#
+			#  connect_timeout:: How long to wait before giving up on a
+			#  connection which is being opened.
+			#
+			connect_timeout = 3.0
+
+			#
+			#  reconnect_delay:: If opening a connection fails, or an open
+			#  connection fails, we wait `reconnect_delay` seconds before
+			#  attempting to open another connection.  This includes
+			#  failures to bind as the admin user due to incorrect
+			#  credentials.
+			#
+			reconnect_delay = 10
+		}
+
+		#
 		#  request:: Options specific to requests handled by this connection
 		#  pool
 		#
@@ -1091,7 +1100,8 @@ ldap {
 #  == Policy Over-rides
 #
 #  The following policy ensures that every call to the `ldap` module
-#  will time out within a short period of time.
+#  will time out within a short period of time.  When the timeout is
+#  reached, the module abandons the query on the LDAP server.
 #
 #  The policy name here should be the same as the module name. Reusing
 #  the same name means that this policy will be used instead of the

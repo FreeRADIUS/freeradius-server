@@ -65,6 +65,9 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	 */
 	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL, bind_ctx->bind_dn, fr_time_delta_wrap(0));
 	switch (status) {
+	case LDAP_PROC_PENDING:
+		return;
+
 	case LDAP_PROC_SUCCESS:
 		DEBUG2("Bind as \"%s\" to \"%s\" successful",
 		       *bind_ctx->bind_dn ? bind_ctx->bind_dn : "(anonymous)", c->config->server);
@@ -138,7 +141,6 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 		if (!fr_cond_assert(ret == LDAP_OPT_SUCCESS)) {
 		error:
 			talloc_free(bind_ctx);
-			fr_ldap_connection_timeout_reset(c);
 			fr_ldap_state_error(c);			/* Restart the connection state machine */
 			return;
 		}
@@ -157,6 +159,16 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
 		}
 		c->fd = fd;
+
+		/*
+		 *	libldap, up to at least 2.7.2, switches the socket to blocking mode
+		 *	while sending the first request after an async connect.
+		 */
+		if (fr_nonblock(fd) < 0) {
+			PERROR("Failed setting LDAP connection non-blocking");
+			goto error;
+		}
+
 		ret = fr_event_fd_insert(bind_ctx, NULL, el, fd,
 					 _ldap_bind_io_read,
 					 NULL,
@@ -169,8 +181,6 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 		ERROR("Bind failed: %s", ldap_err2string(ret));
 		goto error;
 	}
-
-	fr_ldap_connection_timeout_reset(c);
 }
 
 /** Install I/O handlers for the bind operation

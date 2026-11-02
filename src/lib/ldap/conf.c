@@ -80,13 +80,6 @@ conf_parser_t const fr_ldap_option_config[] = {
 
 	{ FR_CONF_OFFSET("sasl_secprops", fr_ldap_config_t, sasl_secprops) },
 
-	/*
-	 *	We use this config option to populate libldap's LDAP_OPT_NETWORK_TIMEOUT -
-	 *	timeout on network activity - specifically libldap's initial call to "connect"
-	 *	Must be non-zero for async connections to start correctly.
-	 */
-	{ FR_CONF_OFFSET("net_timeout", fr_ldap_config_t, net_timeout), .dflt = "10" },
-
 	{ FR_CONF_OFFSET("idle", fr_ldap_config_t, keepalive_idle), .dflt = "60", .func = cf_parse_time_delta_bounded, .uctx = &cf_time_delta_bounds_int_sec },
 
 	{ FR_CONF_OFFSET("probes", fr_ldap_config_t, keepalive_probes), .dflt = "3" },
@@ -98,15 +91,15 @@ conf_parser_t const fr_ldap_option_config[] = {
 	/* allow server unlimited time for search (server-side limit) */
 	{ FR_CONF_OFFSET("srv_timelimit", fr_ldap_config_t, srv_timelimit), .dflt = "20" },
 
-	/*
-	 *	Instance config items
-	 */
-	/* timeout for search results */
-	{ FR_CONF_OFFSET("res_timeout", fr_ldap_config_t, res_timeout), .dflt = "20" },
-
 	{ FR_CONF_OFFSET("idle_timeout", fr_ldap_config_t, idle_timeout), .dflt = "300" },
 
-	{ FR_CONF_OFFSET("reconnection_delay", fr_ldap_config_t, reconnection_delay), .dflt = "10" },
+	/*
+	 *	Replaced by the connection timeout and reconnect delay of the
+	 *	connection pool, and by a "timeout" section around the module call.
+	 */
+	{ FR_CONF_V3_DEPRECATED("net_timeout", fr_ldap_config_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("res_timeout", fr_ldap_config_t, NULL) },
+	{ FR_CONF_V3_DEPRECATED("reconnection_delay", fr_ldap_config_t, NULL) },
 
 	CONF_PARSER_TERMINATOR
 };

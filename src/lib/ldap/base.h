@@ -304,21 +304,6 @@ typedef struct {
 	fr_time_delta_t		srv_timelimit;		//!< How long the server should spent on a single request
 							///< (also bounded by value on the server).
 
-	fr_time_delta_t		res_timeout;		//!< How long we wait for results.
-
-	/*
-	 *	I/O timelimits.
-	 */
-	fr_time_delta_t		net_timeout;		//!< How long we wait in blocking network calls.
-							///< We set this in the LDAP API, even though with
-							///< async calls, we control this using our event loop.
-							///< This is just in case there are blocking calls which
-							///< happen internally which we can't work around.
-
-	fr_time_delta_t		tls_handshake_timeout;	//!< How long we wait for the TLS handshake to complete.
-
-	fr_time_delta_t		reconnection_delay;	//!< How long to wait before attempting to reconnect.
-
 	fr_time_delta_t		idle_timeout;		//!< How long to wait before closing unused connections.
 } fr_ldap_config_t;
 
@@ -458,8 +443,6 @@ struct fr_ldap_query_s {
 	trunk_request_t	*treq;				//!< Trunk request this query is associated with
 	fr_ldap_connection_t	*ldap_conn;		//!< LDAP connection this query is running on.
 
-	fr_timer_t		*ev;			//!< Event for timing out the query
-
 	char			**referral_urls;	//!< Referral results to follow
 	fr_dlist_head_t		referrals;		//!< List of parsed referrals
 	uint16_t		referral_depth;		//!< How many referrals we have followed
@@ -582,6 +565,8 @@ struct ldap_filter_s {
  *
  */
 typedef enum : int8_t {
+	LDAP_PROC_PENDING = 3,				//!< fr_ldap_result() was polling and hasn't read the final message
+							//!< yet.  Call it again when the fd is next readable.
 	LDAP_PROC_REFERRAL = 2,				//!< LDAP server returned referral URLs.
 	LDAP_PROC_CONTINUE = 1,				//!< Operation is in progress.
 	LDAP_PROC_SUCCESS = 0,				//!< Operation was successful.
@@ -758,9 +743,6 @@ unlang_action_t fr_ldap_trunk_extended(TALLOC_CTX *ctx,
 /*
  *	base.c - Wrappers arounds OpenLDAP functions.
  */
-void		fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
-				      fr_time_delta_t timeout, char const *prefix);
-
 fr_slen_t	fr_ldap_dn_escape(fr_sbuff_t *out, fr_sbuff_t *in) CC_HINT(nonnull);
 
 fr_slen_t	fr_ldap_filter_escape(fr_sbuff_t *out, fr_sbuff_t *in) CC_HINT(nonnull);
@@ -883,10 +865,6 @@ connection_state_t fr_ldap_trunk_connection_init(void **h, connection_t *conn, v
 void		fr_ldap_connection_close(fr_event_list_t *el, void *h, void *uctx);
 
 int		fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config);
-
-int		fr_ldap_connection_timeout_set(fr_ldap_connection_t const *conn, fr_time_delta_t timeout);
-
-int		fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *conn);
 
 fr_ldap_thread_trunk_t	*fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char const *uri,
 					       char const *bind_dn, char const *bind_password,

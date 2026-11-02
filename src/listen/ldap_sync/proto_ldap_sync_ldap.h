@@ -94,6 +94,8 @@ typedef struct {
 
 	fr_ldap_config_t		handle_config;		//!< Connection configuration instance
 
+	connection_conf_t		conn_conf;		//!< Connect timeout and reconnect delay.
+
 	char const			*server;		//!< Server string from the config.  LDAP sync needs to
 								//!< remain against a single server so this is used rather
 								//!< than the server_str array in fr_ldap_config_t.

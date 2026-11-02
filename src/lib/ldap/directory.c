@@ -378,10 +378,17 @@ static void _ldap_directory_discover_io_read(UNUSED fr_event_list_t *el, UNUSED 
 	fr_ldap_rcode_t			status;
 
 	status = fr_ldap_result(&result, NULL, c, discover_ctx->msgid, LDAP_MSG_ALL, "", fr_time_delta_wrap(0));
-	if (status == LDAP_PROC_SUCCESS) {
+	switch (status) {
+	case LDAP_PROC_PENDING:
+		return;
+
+	case LDAP_PROC_SUCCESS:
 		(void)fr_ldap_directory_result_parse(c->directory, c->handle, result, name);
-	} else {
+		break;
+
+	default:
 		PWARN("Directory discovery failed, proceeding without directory capability data");
+		break;
 	}
 	if (result) ldap_msgfree(result);
 
@@ -424,8 +431,6 @@ int fr_ldap_directory_discover_async(fr_ldap_connection_t *c)
 			       NULL,
 			       _ldap_directory_discover_io_error,
 			       discover_ctx) < 0) goto error;
-
-	fr_ldap_connection_timeout_reset(c);
 
 	return 0;
 }

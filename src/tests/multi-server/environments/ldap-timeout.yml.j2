@@ -1,0 +1,89 @@
+# ---------------------------------------------------------------
+# Docker Compose Test Environment:
+#
+#   client (radclient) --> freeradius (rlm_ldap) --> openldap
+#
+#   A `tc` filter on freeradius drops or delays its LDAP packets without
+#   closing the connection, and openldap writes an `ldap-abandon` trigger
+#   for each LDAP Abandon request slapd receives.  The `start` state of
+#   `tests/ldap-timeout/template.yml.j2` starts FreeRADIUS, which writes a
+#   debug log into `logs/`.
+# ---------------------------------------------------------------
+x-common-config: &id001
+  cap_add:
+  - NET_ADMIN
+  - SYS_PTRACE
+  environment:
+    TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+services:
+  openldap:
+    image: dinkel/openldap:latest
+    # A service `environment` replaces the `environment` of the anchor and
+    # does not merge with the anchor.  The openldap service therefore
+    # repeats `TEST_PROJECT_NAME`.
+    environment:
+      TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      SLAPD_DOMAIN: "example.com"
+      SLAPD_PASSWORD: "adminpassword"
+      SLAPD_ORGANIZATION: "Example"
+    volumes:
+    - ${DATA_PATH}/openldap/bootstrap:/etc/ldap/prepopulate:ro
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    # `-d 256` makes slapd log each operation at the `stats` level.  The
+    # `while` loop copies every slapd log line to the container log, and
+    # writes an `ldap-abandon` trigger for each line that records an Abandon.
+    command:
+    - bash
+    - -c
+    - |
+      slapd -d 256 -u openldap -g openldap 2>&1 | while IFS= read -r line; do
+        printf '%s\n' "$$line"
+        case "$$line" in
+        *" ABANDON "*)
+          printf 'ldap-abandon {}\n' >> "/var/run/multi-server/$${TEST_PROJECT_NAME}.txt"
+          ;;
+        esac
+      done
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/389'"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    <<: *id001
+  freeradius:
+    image: ${FREERADIUS_IMAGE}
+    extends:
+      file: freeradius-common.yml
+      service: freeradius-profiled
+    depends_on:
+      openldap:
+        condition: service_healthy
+      client:
+        condition: service_started
+    # The profiling wrapper overrides trigger.server.start, so the suite
+    # hands the wrapper the same expansion to append.
+    environment:
+      TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      TRIGGER_SERVER_START_APPEND: "%linelog_test_framework('server-start {}')"
+    volumes:
+    - ${DATA_PATH}/freeradius/ldap-timeout/radiusd.conf:/etc/freeradius/radiusd.conf
+    - ${DATA_PATH}/logs/:/var/log/freeradius/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      sleep infinity
+    <<: *id001
+  client:
+    image: ${FREERADIUS_IMAGE}
+    volumes:
+    # The radclient driver that `radclient()` in templates/macros.j2 runs
+    - ${DATA_PATH}/freeradius/dynamic-clients/send.sh:/usr/local/bin/send.sh
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      sleep infinity
+    <<: *id001

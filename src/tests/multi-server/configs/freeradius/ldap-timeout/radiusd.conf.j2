@@ -1,0 +1,161 @@
+#
+#  The server under test.  `recv Access-Request` looks the user up in
+#  LDAP inside a `timeout` block, and rejects the request when the lookup
+#  times out or fails, so a dead LDAP server turns into an Access-Reject
+#  rather than a dropped request.
+#
+#  After the lookup, the server reports `ldap-result-<NAS-Identifier>`
+#  with `result` set to `timeout`, `fail`, `notfound`, or `ok`.
+#
+name       = freeradius
+
+raddbdir   = /etc/freeradius
+confdir    = ${raddbdir}
+modconfdir = ${confdir}/mods-config
+logdir     = /var/log/freeradius
+radacctdir = ${logdir}/radacct
+
+security {
+	allow_core_dumps = yes
+}
+
+trigger {
+	server {
+		start = "%linelog_test_framework('server-start {}')"
+	}
+}
+
+log {
+	destination = files
+	file = ${logdir}/radius.log
+	syslog_facility = daemon
+	stripped_names = no
+}
+
+{%- set t = timing[mode] %}
+modules {
+{% include "freeradius/common/mods-available/linelog" %}
+
+{%- if listener_type == "unix" %}
+{%   include "freeradius/common/mods-available/linelog_socket" %}
+{%- elif listener_type == "file" %}
+{%   include "freeradius/common/mods-available/linelog_file" %}
+{%- endif %}
+
+{% include "freeradius/common/mods-available/always" %}
+
+	#
+	#  `recv Access-Request` calls `reject` when the LDAP lookup times out
+	#  or fails.
+	#
+	always reject {
+		rcode = reject
+	}
+
+	$include ${confdir}/mods-available/pap
+
+	ldap {
+		server = 'openldap'
+		identity = 'cn=admin,dc=example,dc=com'
+		password = 'adminpassword'
+		base_dn = 'dc=example,dc=com'
+
+		update {
+			control.Password.With-Header	+= 'userPassword'
+		}
+
+		user {
+			base_dn = "${..base_dn}"
+			filter = "(uid=%{Stripped-User-Name || User-Name})"
+		}
+
+		pool {
+			start = 0
+			min = 1
+			max = 1
+			connecting = 1
+			uses = 0
+			lifetime = 0
+
+			#
+			#  `connect_timeout` bounds opening a connection.  The
+			#  `timeout` block in `recv Access-Request` bounds the lookup.
+			#
+			connection {
+				connect_timeout = {{ t.connect_timeout }}
+			}
+		}
+	}
+}
+
+policy {
+{% include "freeradius/common/policy.d/control" %}
+}
+
+server freeradius {
+	namespace = radius
+
+	listen authentication {
+		type = Access-Request
+		transport = udp
+		require_message_authenticator = yes
+		limit_proxy_state = auto
+
+		udp {
+			ipaddr = *
+			port = {{ ports.auth }}
+		}
+	}
+
+	client any {
+		ipaddr = *
+		secret = {{ secret }}
+	}
+
+	recv Access-Request {
+		#
+		#  A `timeout` rcode ends the section without a reply, so `catch`
+		#  turns a timed out or failed lookup into a reject.
+		#
+		try {
+			timeout {{ t.request_timeout }}s {
+				ldap
+			}
+		}
+		catch timeout {
+{%- raw %}
+			%linelog_test_framework("ldap-result-%{NAS-Identifier} {\"result\": \"timeout\"}")
+{%- endraw %}
+			reject
+		}
+		catch fail {
+{%- raw %}
+			%linelog_test_framework("ldap-result-%{NAS-Identifier} {\"result\": \"fail\"}")
+{%- endraw %}
+			reject
+		}
+
+		if (notfound) {
+{%- raw %}
+			%linelog_test_framework("ldap-result-%{NAS-Identifier} {\"result\": \"notfound\"}")
+{%- endraw %}
+			reject
+		}
+
+{%- raw %}
+		%linelog_test_framework("ldap-result-%{NAS-Identifier} {\"result\": \"ok\"}")
+{%- endraw %}
+
+		pap
+	}
+
+	authenticate pap {
+		pap
+	}
+
+	send Access-Accept {
+	}
+
+	send Access-Reject {
+	}
+}

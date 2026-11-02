@@ -1,0 +1,226 @@
+{#
+  Checks that FreeRADIUS, with the `ldap` call in a `request_timeout`
+  `timeout` block, answers every request while LDAP is blocked, lossy or
+  slow, as picked by `variant`.  radclient waits `reply_timeout`, between
+  `request_timeout` and the server's `max_request_time`, so a request
+  stuck on LDAP shows up as a missing reply.
+#}
+{%- set t = timing[mode] %}
+{%- from "macros.j2" import event_recv, event_field_match, server_answered, radclient %}
+{#
+  `server_rejected()` checks that radclient got exactly one reply and that
+  it was an Access-Reject.  radclient expects an Access-Accept and exits 1
+  on any other reply, so the rule does not check `exit_code`.
+#}
+{%- macro server_rejected(step) %}
+      - client-{{ step }}:
+          json:
+            reply_count:
+              pattern:
+                reg_pattern: '^1$'
+            replies:
+              pattern:
+                reg_pattern: '^Access-Reject$'
+{%- endmacro %}
+{#
+  `server_replied()` checks that radclient got exactly one reply, of
+  either kind.
+#}
+{%- macro server_replied(step) %}
+      - client-{{ step }}:
+          json:
+            reply_count:
+              pattern:
+                reg_pattern: '^1$'
+            replies:
+              pattern:
+                reg_pattern: '^Access-(Accept|Reject)$'
+{%- endmacro %}
+{%- macro send(step) %}
+{{-   radclient(step, 'freeradius:' ~ ports.auth, 'auth', secret,
+                ['User-Name = "testuser"', 'User-Password = "testpass"'],
+                '', 1, t.reply_timeout, 0) }}
+{%- endmacro %}
+{#
+  `block_cmd` drops every TCP packet from FreeRADIUS to the LDAP port, while
+  `lossy_cmd` and `delay_cmd` send them through a fourth `prio` band whose
+  netem qdisc drops `loss_percent` of them or delays them by `delay_ms`.
+  The default priomap only uses the first three bands, so no other traffic
+  reaches the fourth.
+#}
+{%- set ldap_match = 'match ip protocol 6 0xff match ip dport 389 0xffff' %}
+{%- set block_cmd = 'tc qdisc replace dev eth0 root handle 1: prio && tc filter add dev eth0 parent 1: protocol ip prio 1 u32 ' ~ ldap_match ~ ' action drop' %}
+{%- set delay_cmd = 'tc qdisc replace dev eth0 root handle 1: prio bands 4 && tc qdisc add dev eth0 parent 1:4 handle 40: netem delay ' ~ t.delay_ms | default(0) ~ 'ms && tc filter add dev eth0 parent 1: protocol ip prio 1 u32 ' ~ ldap_match ~ ' flowid 1:4' %}
+{%- set lossy_cmd = 'tc qdisc replace dev eth0 root handle 1: prio bands 4 && tc qdisc add dev eth0 parent 1:4 handle 40: netem loss ' ~ loss_percent | default(0) ~ '% && tc filter add dev eth0 parent 1: protocol ip prio 1 u32 ' ~ ldap_match ~ ' flowid 1:4' %}
+timeout: {{ test_timeout }}
+state_order: sequence
+states:
+  start:
+    description: >
+      Start FreeRADIUS.  With `never_connects`, block the LDAP traffic
+      first.
+    host:
+      freeradius:
+        actions:
+{%- if variant == 'never_connects' %}
+        - execute_command:
+            command: >-
+              {{ block_cmd }}
+{%- endif %}
+        - execute_command:
+            command: exec ${RADIUSD_COMMAND:-freeradius -fxx -l /var/log/freeradius/server-debug.log}
+            detach: true
+    verify:
+      timeout: {{ t.start_window }}
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('server-start') }}
+{%- if variant in ('blocked_after_connect', 'lossy', 'delayed') %}
+
+  connected:
+    description: >
+      A request succeeds, so FreeRADIUS has an open LDAP connection.
+    host:
+      client:
+        actions:
+{{ send('connected') }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('ldap-result-connected', 'result', '^ok$') }}
+{{ server_answered('connected', 'Access-Accept') }}
+{%- endif %}
+{%- if variant == 'blocked_after_connect' %}
+
+  block_ldap:
+    description: >
+      Drop the LDAP traffic.  The open connection stays up, but openldap
+      no longer answers on it.
+    host:
+      freeradius:
+        actions:
+        - execute_command:
+            command: >-
+              {{ block_cmd }}
+    verify:
+      timeout: {{ settle }}
+      timeout_mode: window
+      trigger_mode: unordered
+
+  blocked:
+    description: >
+      The query goes out on the open connection and gets no answer.  The
+      `timeout` block cancels the lookup after `request_timeout`, and the
+      server rejects the request.
+    host:
+      client:
+        actions:
+{{ send('blocked') }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('ldap-result-blocked', 'result', '^timeout$') }}
+{{ server_rejected('blocked') }}
+{%- elif variant == 'delayed' %}
+
+  delay_ldap:
+    description: >
+      Delay the LDAP traffic by `delay_ms`, which is longer than
+      `request_timeout`.  The netem qdisc does not drop any packets.
+    host:
+      freeradius:
+        actions:
+        - execute_command:
+            command: >-
+              {{ delay_cmd }}
+    verify:
+      timeout: {{ settle }}
+      timeout_mode: window
+      trigger_mode: unordered
+
+  delayed:
+    description: >
+      The query reaches openldap after `delay_ms`.  Before then, the
+      `timeout` block cancels the lookup after `request_timeout`, and the
+      server rejects the request.  rlm_ldap then sends an LDAP Abandon
+      request for the query.  Because netem delays the Abandon request too,
+      the Abandon request reaches openldap after the query reaches openldap.
+    host:
+      client:
+        actions:
+{{ send('delayed') }}
+    verify:
+      timeout: {{ t.reply_timeout + (t.delay_ms / 1000) + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('ldap-result-delayed', 'result', '^timeout$') }}
+{{ server_rejected('delayed') }}
+{{ event_recv('ldap-abandon') }}
+{%- elif variant == 'lossy' %}
+
+  lossy_ldap:
+    description: >
+      Drop `loss_percent` of the LDAP traffic at random.  The open
+      connection stays up.
+    host:
+      freeradius:
+        actions:
+        - execute_command:
+            command: >-
+              {{ lossy_cmd }}
+    verify:
+      timeout: {{ settle }}
+      timeout_mode: window
+      trigger_mode: unordered
+{%- for i in range(1, lossy_requests + 1) %}
+
+  lossy_{{ i }}:
+    description: >
+      Request {{ i }} of {{ lossy_requests }}.  The lookup succeeds, fails,
+      or times out depending on which packets get through, and the server
+      answers either way.
+    host:
+      client:
+        actions:
+{{ send('lossy-' ~ i) }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('ldap-result-lossy-' ~ i, 'result', '^(ok|timeout|fail)$') }}
+{{ server_replied('lossy-' ~ i) }}
+{%- endfor %}
+{%- else %}
+
+  first_request:
+    description: >
+      The first request waits for an LDAP connection, which never opens.
+      The lookup fails or times out, and the server rejects the request.
+    host:
+      client:
+        actions:
+{{ send('first') }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('ldap-result-first', 'result', '^(timeout|fail)$') }}
+{{ server_rejected('first') }}
+
+  after_failure:
+    description: >
+      A request that arrives after a connection attempt has failed.  The
+      lookup fails or times out, and the server rejects the request.
+    host:
+      client:
+        actions:
+{{ send('after-failure') }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ event_field_match('ldap-result-after-failure', 'result', '^(timeout|fail)$') }}
+{{ server_rejected('after-failure') }}
+{%- endif %}

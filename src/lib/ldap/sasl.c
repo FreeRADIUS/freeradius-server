@@ -140,6 +140,9 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 	status = fr_ldap_result(&sasl_ctx->result, NULL, c, sasl_ctx->msgid, LDAP_MSG_ALL,
 				sasl_ctx->identity, fr_time_delta_wrap(0));
 	switch (status) {
+	case LDAP_PROC_PENDING:
+		return;
+
 	case LDAP_PROC_SUCCESS:
 	case LDAP_PROC_CONTINUE:
 	{
@@ -219,7 +222,6 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 					 LDAP_SASL_AUTOMATIC,
 					 _sasl_interact, sasl_ctx, sasl_ctx->result,
 					 &sasl_ctx->rmech, &sasl_ctx->msgid);
-	fr_ldap_connection_timeout_reset(c);
 	switch (ret) {
 	/*
 	 *	If the handle was not connected, this operation
@@ -233,7 +235,6 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 		if (!fr_cond_assert(ret == LDAP_OPT_SUCCESS)) {
 		error:
 			talloc_free(sasl_ctx);
-			fr_ldap_connection_timeout_reset(c);
 			fr_ldap_state_error(c);				/* Restart the connection state machine */
 			return;
 		}
@@ -255,6 +256,16 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
 		}
 		c->fd = fd;
+
+		/*
+		 *	libldap, up to at least 2.7.2, switches the socket to blocking mode
+		 *	while sending the first request after an async connect.
+		 */
+		if (fr_nonblock(fd) < 0) {
+			PERROR("Failed setting LDAP connection non-blocking");
+			goto error;
+		}
+
 		ret = fr_event_fd_insert(sasl_ctx, NULL, el, fd,
 					 _ldap_sasl_bind_io_read,
 					 NULL,

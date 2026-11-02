@@ -146,16 +146,25 @@ these should be commented out.
 			options {
 ----
 
-timeouts may need to be longer than for normal LDAP queries if a
-refresh phase returns a lot of data.
+The server-side time limit may need to be longer than for normal LDAP
+queries if a refresh phase returns a lot of data.
 
 ----
-				res_timeout = 20
 				srv_timelimit = 120
 				idle = 60
 				probes = 3
 				interval = 3
-				reconnection_delay = 10
+			}
+
+----
+
+How long to wait for the connection to the LDAP server to open, and
+how long to wait before trying again after the connection fails.
+
+----
+			connection {
+				connect_timeout = 10
+				reconnect_delay = 10
 			}
 
 ----
