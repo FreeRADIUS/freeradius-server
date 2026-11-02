@@ -209,6 +209,12 @@ static int mod_open(fr_listen_instance_t *li)
 
 	li->fd = thread->pcap->fd;
 
+	/*
+	 *	Replies are injected whole, so there is nothing to wait
+	 *	for.  A BPF device also refuses a kqueue write filter.
+	 */
+	li->listen->no_write_callback = true;
+
 	fr_assert(cf_parent(inst->cs) != NULL);	/* listen { ... } */
 
 	thread->name = talloc_asprintf(thread, "arp on interface %s", inst->interface);

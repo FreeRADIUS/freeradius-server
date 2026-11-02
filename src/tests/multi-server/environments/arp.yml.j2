@@ -1,0 +1,61 @@
+# ---------------------------------------------------------------
+# Docker Compose Test Environment:
+#
+#   client (arp-request.py) --> server (proto_arp, active, answers for one address)
+#
+#   Both containers sit on the compose network, which is one bridge, so an
+#   ARP request from the client reaches the interface of the server as it
+#   would on a LAN.  The server listens on eth0 with the `ethernet`
+#   transport and answers requests for `answered_address` only.
+#
+#   The `start` state of the test template, `tests/arp/template.yml.j2`,
+#   starts FreeRADIUS in the server container, so the entrypoint only
+#   keeps the container alive.  FreeRADIUS writes a debug log into the
+#   `logs/` directory of the test.  The test template runs
+#   `arp-request.py` in the client container, and the script reports the
+#   outcome of each request as a trigger.
+# ---------------------------------------------------------------
+x-common-config: &id001
+  cap_add:
+  - NET_ADMIN
+  - SYS_PTRACE
+  environment:
+    TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+services:
+  server:
+    image: ${FREERADIUS_IMAGE}
+    extends:
+      file: freeradius-common.yml
+      service: freeradius-profiled
+    # The profiling wrapper overrides trigger.server.start to switch callgrind
+    # on, which would drop the `server-start` trigger that radiusd.conf writes,
+    # so the suite hands the wrapper the same expansion to append.  A service
+    # `environment` replaces the one from the anchor rather than merging with
+    # it, so the common variable is repeated here.
+    environment:
+      TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      TRIGGER_SERVER_START_APPEND: "%linelog_test_framework('server-start {}')"
+    volumes:
+    - ${DATA_PATH}/freeradius/arp/radiusd.conf:/etc/freeradius/radiusd.conf
+    # The server writes the debug log into the same directory as the framework logs
+    - ${DATA_PATH}/logs/:/var/log/freeradius/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      # Keep the container alive.  The test framework starts FreeRADIUS
+      # and runs commands with `docker exec`, so the test framework controls
+      # the timing.
+      sleep infinity
+    <<: *id001
+  client:
+    image: ${FREERADIUS_IMAGE}
+    volumes:
+    - ${DATA_PATH}/freeradius/arp/arp-request.py:/usr/local/bin/arp-request.py
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      sleep infinity
+    <<: *id001

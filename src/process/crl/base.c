@@ -397,7 +397,7 @@ static void crl_refresh_event(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 
 	if (crl_entry->type == CRL_TYPE_DELTA) {
 		if (fr_pair_append_by_da(local, &vp, &list, attr_base_crl) < 0) goto fail;
-		if (fr_value_box_copy(vp, &vp->data, crl_entry->cdp_url) < 0) goto fail;
+		if (fr_value_box_copy(vp, &vp->data, crl_entry->base_url) < 0) goto fail;
 	}
 
 	if (fr_coord_pair_coord_request_start(crl_entry->coord_pair, &list, now) < 0) {

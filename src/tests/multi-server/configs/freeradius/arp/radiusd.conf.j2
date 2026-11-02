@@ -1,0 +1,88 @@
+#
+#  The server under test.  The listener reads ARP from the interface of
+#  the container, which shares a bridge with the client container.  The
+#  server answers requests for `answered_address` with `answer_mac` as the
+#  sender hardware address, and rejects every other request, so nothing
+#  goes out for those.
+#
+#  `recv Request` reports each request it decodes as the `arp-request`
+#  trigger, with the target address as a field, so the test can tell that
+#  the request reached the server whether or not the server answered.
+#
+name       = server
+
+raddbdir   = /etc/freeradius
+confdir    = ${raddbdir}
+modconfdir = ${confdir}/mods-config
+logdir     = /var/log/freeradius
+radacctdir = ${logdir}/radacct
+
+security {
+	allow_core_dumps = yes
+}
+
+#
+#  The server runs `server.start` once the listener is open, and
+#  `server.start` writes the `server-start` trigger.  The `start` state of
+#  the test waits for `server-start`, so no request is sent before the
+#  server can answer.
+#
+trigger {
+	server {
+		start = "%linelog_test_framework('server-start {}')"
+	}
+}
+
+modules {
+{% include "freeradius/common/mods-available/linelog" %}
+
+{%- if listener_type == "unix" %}
+{%   include "freeradius/common/mods-available/linelog_socket" %}
+{%- elif listener_type == "file" %}
+{%   include "freeradius/common/mods-available/linelog_file" %}
+{%- endif %}
+
+{% include "freeradius/common/mods-available/json" %}
+
+{% include "freeradius/common/mods-available/always" %}
+
+	always reject {
+		rcode = reject
+	}
+}
+
+server arp {
+	namespace = arp
+
+	listen {
+		transport = ethernet
+		active = yes
+
+		ethernet {
+			interface = eth0
+		}
+	}
+
+	#
+	#  The first "arp" in a reference is the protocol, the second is the
+	#  packet struct, whose members are the ARP fields.
+	#
+	recv Request {
+		%linelog_test_framework("arp-request {\"target\": %json.quote("%{request.arp.arp.target-protocol-address}")}")
+
+		if (request.arp.arp.target-protocol-address == {{ answered_address }}) {
+			reply.arp.arp.sender-hardware-address := {{ answer_mac }}
+			ok
+		} else {
+			reject
+		}
+	}
+
+	send Reply {
+		ok
+	}
+
+	send Do-Not-Respond {
+		ok
+	}
+}

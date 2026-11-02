@@ -1,0 +1,107 @@
+{#
+  Checks that the ARP listener answers a request from another host on the
+  same bridge.  The client container sends a request for
+  `answered_address`, which the server answers with `answer_mac` as the
+  sender hardware address, and then a request for `ignored_address`, which
+  the server rejects and so does not answer.
+
+  The server reports every request it decodes as the `arp-request`
+  trigger, whose `target` field is the address asked for.  The client
+  reports the outcome of each request as the `client-<step>` trigger, whose
+  `reply` field is `yes` or `no` and whose `sender_mac` field is the
+  hardware address of the reply.  The client waits `reply_timeout` for a
+  reply before it reports `no`, so a `bound` state is enough for the
+  ignored request: the client trigger only fires once the wait is over.
+
+  `timing[mode]` holds the timings for the mode that the test runs in.  A
+  server that runs under a profiler starts and answers slowly, so the
+  `profiling` timings are longer than the `service` timings.
+#}
+{%- set t = timing[mode] %}
+{%- from "macros.j2" import event_recv, event_field_match %}
+{#
+  `request()` writes an action that sends one ARP request for `target`
+  from the client container, with `step` as the suffix of the trigger.
+#}
+{%- macro request(step, target) %}
+        - execute_command:
+            command: python3 /usr/local/bin/arp-request.py {{ step }} {{ target }} {{ t.reply_timeout }}
+{%- endmacro %}
+{#
+  `server_saw()` writes a rule that passes when the server decoded a
+  request for `target`.
+#}
+{%- macro server_saw(target) %}
+{{-   event_field_match('arp-request', 'target', '^' ~ target | replace('.', '\\.') ~ '$') }}
+{%- endmacro %}
+{#
+  `client_answered()` writes a rule that passes when the client got a
+  reply from `mac`.  `client_ignored()` writes a rule that passes when the
+  client got no reply.
+#}
+{%- macro client_answered(step, mac) %}
+      - client-{{ step }}:
+          json:
+            reply:
+              pattern:
+                reg_pattern: '^yes$'
+            sender_mac:
+              pattern:
+                reg_pattern: '^{{ mac }}$'
+{%- endmacro %}
+{%- macro client_ignored(step) %}
+      - client-{{ step }}:
+          json:
+            reply:
+              pattern:
+                reg_pattern: '^no$'
+{%- endmacro %}
+timeout: {{ test_timeout }}
+state_order: sequence
+states:
+  start:
+    description: >
+      Start FreeRADIUS in the server container.  The server reports
+      `server-start` once the listener is open.
+    host:
+      server:
+        actions:
+        - execute_command:
+            command: exec ${RADIUSD_COMMAND:-freeradius -fxx -l /var/log/freeradius/server-debug.log}
+            detach: true
+    verify:
+      timeout: {{ t.start_window }}
+      trigger_mode: unordered
+      triggers:
+{{ event_recv('server-start') }}
+
+  answered:
+    description: >
+      A request for `answered_address`.  The server decodes it and answers
+      with `answer_mac`.
+    host:
+      client:
+        actions:
+{{ request('answered', answered_address) }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ server_saw(answered_address) }}
+{{ client_answered('answered', answer_mac) }}
+
+  ignored:
+    description: >
+      A request for `ignored_address`.  The server decodes it and rejects
+      it, so nothing goes out, and the client reports no reply once
+      `reply_timeout` has passed.
+    host:
+      client:
+        actions:
+{{ request('ignored', ignored_address) }}
+    verify:
+      timeout: {{ t.reply_timeout + t.margin }}
+      trigger_mode: unordered
+      triggers:
+{{ server_saw(ignored_address) }}
+{{ client_ignored('ignored') }}

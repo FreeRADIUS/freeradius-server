@@ -1,0 +1,33 @@
+# Type of the test framework listener that the server writes triggers to
+listener_type: file
+
+# Address the server answers ARP requests for, and the hardware address
+# it answers with.  Neither belongs to a container, so only the policy of
+# the server can produce the reply.
+answered_address: 192.0.2.2
+answer_mac: 02:00:00:00:02:02
+
+# Address the server rejects requests for, so no reply goes out
+ignored_address: 192.0.2.3
+
+# Timings per mode, in seconds.  A server under a profiler starts and
+# answers slowly.
+#
+#   reply_timeout    time that the client waits for a reply
+#   start_window     time that the `start` state allows for FreeRADIUS
+#                    to open its listener
+#   margin           time added to every verify window for docker exec
+#                    overhead and the delay before the framework reads
+#                    the file that the framework watches
+timing:
+  service:
+    reply_timeout: 2
+    start_window: 15
+    margin: 4
+  profiling:
+    reply_timeout: 10
+    start_window: 60
+    margin: 6
+
+# Timeout for the whole test, in seconds, in both modes
+test_timeout: 120

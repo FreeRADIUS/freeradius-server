@@ -33,6 +33,9 @@ extern fr_app_t proto_arp;
  *
  */
 static conf_parser_t const proto_arp_config[] = {
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_arp_t, io_submodule),
+	  .func = virtual_server_listen_transport_parse },
+
 	{ FR_CONF_OFFSET("num_messages", proto_arp_t, num_messages) } ,
 
 	{ FR_CONF_OFFSET("active", proto_arp_t, active), .dflt = "false" } ,
@@ -123,6 +126,14 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 
 	arp = (fr_arp_packet_t *) buffer;
 	fr_assert(request->packet->data_len == FR_ARP_PACKET_SIZE);
+
+	/*
+	 *	The reply code is the opcode, unless the policy set one.
+	 */
+	if ((arp->op[0] == 0) && (arp->op[1] == 0)) {
+		arp->op[0] = (request->reply->code >> 8) & 0xff;
+		arp->op[1] = request->reply->code & 0xff;
+	}
 
 	if (memcmp(arp->sha, zeros, sizeof(arp->sha)) == 0) {
 		RDEBUG("WARNING: Sender-Hardware-Address of zeros will likely cause problems");

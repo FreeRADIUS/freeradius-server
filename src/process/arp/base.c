@@ -53,15 +53,17 @@ typedef struct {
 } process_arp_sections_t;
 
 typedef struct {
-	bool		test;
+	process_arp_sections_t	sections;	//!< First, as the state machine finds them by offset.
 
-	process_arp_sections_t	sections;
+	bool		test;
 } process_arp_t;
+
+#define FR_ARP_PROCESS_CODE_VALID(_x) (FR_ARP_PACKET_CODE_VALID(_x) || (_x == FR_ARP_DO_NOT_RESPOND))
 
 #define PROCESS_PACKET_TYPE		fr_arp_packet_code_t
 #define PROCESS_CODE_MAX		FR_ARP_CODE_MAX
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_ARP_DO_NOT_RESPOND
-#define PROCESS_PACKET_CODE_VALID	FR_ARP_PACKET_CODE_VALID
+#define PROCESS_PACKET_CODE_VALID	FR_ARP_PROCESS_CODE_VALID
 #define PROCESS_INST			process_arp_t
 #include <freeradius-devel/server/process.h>
 

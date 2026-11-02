@@ -201,3 +201,4 @@ finding `*.test.yml` files within them.
 | `dynamic-clients` | Dynamic client lifecycle: definition, negative cache, expiry, secret rotation, Status-Server, and originating CoA-Request and Disconnect-Request to a dynamic client |
 | `retransmit` | Retransmission of a request whose reply was lost: the server answers from its reply cache without running the request again, then discards the cached reply after `cleanup_delay` and runs the request again |
 | `ldap-timeout` | LDAP server that goes silent after a connection opens, is unreachable from the start, or drops 75% of packets: every request must still be answered |
+| `arp` | ARP listener: a client container on the same bridge asks for an address the server answers for, then one it rejects |

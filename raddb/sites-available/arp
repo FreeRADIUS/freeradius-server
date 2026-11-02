@@ -43,25 +43,12 @@ server arp {
 	#
 	listen {
 		#
-		#  interface:: The name of the interface.
+		#  transport:: How ARP packets are read.
 		#
-		interface = en0
-
+		#  The only transport is `ethernet`, which reads them from a
+		#  network interface.
 		#
-		#  filter:: An optional PCAP filter.
-		#
-		#  If we want to receive only ARPs for a particular IP address, then
-		#  we list it here as `host foo`
-		#
-		#  You can also filter on ethernet via `ether src foo` or `ether dst
-		#  foo`.
-		#
-		#  Or to accept only ARP Request packets, and filter out replies,
-		#  use:
-		#
-		#	`(arp[6] == 0) and (arp[7] == 1)`
-		#
-#		filter = "host 192.0.2.1"
+		transport = ethernet
 
 		#
 		#  active:: Whether or not we response to ARP requests
@@ -73,6 +60,29 @@ server arp {
 		#  reply.
 		#
 #		active = no
+
+		ethernet {
+			#
+			#  interface:: The name of the interface.
+			#
+			interface = en0
+
+			#
+			#  filter:: An optional PCAP filter.
+			#
+			#  If we want to receive only ARPs for a particular IP address, then
+			#  we list it here as `host foo`
+			#
+			#  You can also filter on ethernet via `ether src foo` or `ether dst
+			#  foo`.
+			#
+			#  Or to accept only ARP Request packets, and filter out replies,
+			#  use:
+			#
+			#	`(arp[6] == 0) and (arp[7] == 1)`
+			#
+#			filter = "host 192.0.2.1"
+		}
 	}
 
 #
