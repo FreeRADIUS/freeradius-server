@@ -906,6 +906,27 @@ static ssize_t fr_bio_fd_notconn_read(UNUSED fr_bio_t *bio, UNUSED void *packet_
 	return fr_bio_error(IO);
 }
 
+#ifdef SO_NOSIGPIPE
+/** Stop the kernel raising SIGPIPE when a write finds that the peer closed the socket
+ *
+ *  Although the server ignores SIGPIPE, some operating systems like BSD and OSX ignore the ignoring.
+ *
+ *  Fortunately, those operating systems usually support SO_NOSIGPIPE.  We set that to prevent them
+ *  raising the signal in the first place.
+ *
+ *  Every stream socket needs this, including a socket which the BIO accepted.  A TLS BIO can write a
+ *  close_notify alert to a peer which has already closed the socket.
+ */
+static void fr_bio_fd_no_sigpipe(int fd)
+{
+	int on = 1;
+
+	(void) setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+}
+#else
+#  define fr_bio_fd_no_sigpipe(_x)
+#endif
+
 int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 {
 	int rcode;
@@ -936,20 +957,7 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 	my->info.read_blocked = false;
 	my->info.write_blocked = false;
 
-#ifdef SO_NOSIGPIPE
-	/*
-	 *	Although the server ignore SIGPIPE, some operating systems like BSD and OSX ignore the
-	 *	ignoring.
-	 *
-	 *	Fortunately, those operating systems usually support SO_NOSIGPIPE.  We set that to prevent
-	 *	them raising the signal in the first place.
-	 */
-	{
-		int on = 1;
-
-		setsockopt(my->info.socket.fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
-	}
-#endif
+	fr_bio_fd_no_sigpipe(my->info.socket.fd);
 
 	/*
 	 *	Call connect() for both synchronous and asynchronous sockets.
@@ -1905,6 +1913,8 @@ int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
 		talloc_free(out); /* the destructor closes the FD */
 		return rcode;
 	}
+
+	fr_bio_fd_no_sigpipe(out->info.socket.fd);
 
 	fr_bio_fd_name(out);
 	if (!out->info.name) {

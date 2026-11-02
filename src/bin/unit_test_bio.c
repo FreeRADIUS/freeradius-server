@@ -1657,6 +1657,18 @@ int main(int argc, char *argv[])
 
 	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
 
+	/*
+	 *	The TLS bio writes a close_notify alert when the bio closes, and the peer may have closed the
+	 *	socket already.  The write must fail with an error, as it does in radiusd, and must not kill
+	 *	the process.
+	 */
+#ifdef SIGPIPE
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+		fr_perror("%s: Failed ignoring SIGPIPE", config->name);
+		EXIT_WITH_FAILURE;
+	}
+#endif
+
 	MEM(utt = talloc_zero(autofree, unit_test_bio_t));
 	utt->sockfd = utt->fd = -1;
 	utt->ret = EXIT_SUCCESS;
