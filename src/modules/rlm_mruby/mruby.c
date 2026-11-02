@@ -598,7 +598,7 @@ struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent)
 
 	mrb_define_method(mrb, pair_list, "initialize", mruby_pair_init, MRB_ARGS_ARG(5,1));
 	mrb_define_method(mrb, pair_list, "keys", mruby_pair_list_keys, MRB_ARGS_REQ(0));
-	mrb_define_method(mrb, pair_list, "method_missing", mruby_pair_list_missing, MRB_ARGS_OPT(1));
+	mrb_define_method(mrb, pair_list, "method_missing", mruby_pair_list_missing, MRB_ARGS_REQ(1) | MRB_ARGS_REST());
 
 	return pair_list;
 }
