@@ -127,60 +127,22 @@ int fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl)
  */
 int fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 {
-	struct		tm t;
-	char const	*p = (char const *)asn1->data, *end = p + strlen(p);
+	struct tm t;
 
-	memset(&t, 0, sizeof(t));
-
-	if (asn1->type == V_ASN1_UTCTIME) {/* two digit year */
-		if ((end - p) < 2) {
-			fr_strerror_printf("ASN1 date string too short, expected 2 additional bytes, got %zu bytes",
-					   (size_t) (end - p));
-			return -1;
-		}
-
-		t.tm_year = (*(p++) - '0') * 10;
-		t.tm_year += (*(p++) - '0');
-		if (t.tm_year < 70) t.tm_year += 100;
-	} else if (asn1->type == V_ASN1_GENERALIZEDTIME) {/* four digit year */
-		if ((end - p) < 4) {
-			fr_strerror_printf("ASN1 string too short, expected 4 additional bytes, got %zu bytes",
-					   (size_t) (end - p));
-			return -1;
-		}
-
-		t.tm_year = (*(p++) - '0') * 1000;
-		t.tm_year += (*(p++) - '0') * 100;
-		t.tm_year += (*(p++) - '0') * 10;
-		t.tm_year += (*(p++) - '0');
-		t.tm_year -= 1900;
-	}
-
-	if ((end - p) < 4) {
-		fr_strerror_printf("ASN1 string too short, expected 4 additional bytes, got %zu bytes",
-				   (size_t) (end - p));
+	/*
+	 *	ASN1_TIME_to_tm() would convert the current time instead.
+	 */
+	if (!asn1) {
+		fr_strerror_const("ASN1 time not present");
 		return -1;
 	}
 
-	t.tm_mon = (*(p++) - '0') * 10;
-	t.tm_mon += (*(p++) - '0') - 1; // -1 since January is 0 not 1.
-	t.tm_mday = (*(p++) - '0') * 10;
-	t.tm_mday += (*(p++) - '0');
-
-	if ((end - p) < 2) goto done;
-	t.tm_hour = (*(p++) - '0') * 10;
-	t.tm_hour += (*(p++) - '0');
-
-	if ((end - p) < 2) goto done;
-	t.tm_min = (*(p++) - '0') * 10;
-	t.tm_min += (*(p++) - '0');
-
-	if ((end - p) < 2) goto done;
-	t.tm_sec = (*(p++) - '0') * 10;
-	t.tm_sec += (*(p++) - '0');
+	if (ASN1_TIME_to_tm(asn1, &t) != 1) {
+		fr_strerror_const("Invalid ASN1 time");
+		return -1;
+	}
 
 	/* ASN1_TIME is UTC, so get the UTC time */
-done:
 	*out = timegm(&t);
 
 	return 0;

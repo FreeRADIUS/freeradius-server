@@ -147,9 +147,10 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 			if (name->type != GEN_URI) continue;
 			MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
 						 attr_tls_certificate_x509v3_crl_distribution_points) == 0);
-			MEM(fr_pair_value_strdup(vp,
-						 (char const *)ASN1_STRING_get0_data(name->d.uniformResourceIdentifier),
-						 true) == 0);
+			MEM(fr_pair_value_bstrndup(vp,
+						   (char const *)ASN1_STRING_get0_data(name->d.uniformResourceIdentifier),
+						   ASN1_STRING_length(name->d.uniformResourceIdentifier),
+						   true) == 0);
 		}
 	}
 
@@ -174,23 +175,30 @@ static bool tls_session_pairs_from_aia(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 	if (!(aia = d2i_AUTHORITY_INFO_ACCESS(NULL, &data, ASN1_STRING_length(s)))) return false;
 
 	for (i = 0; i < sk_ACCESS_DESCRIPTION_num(aia); i++) {
+		char	*uri;
+		size_t	len;
+
 		ad = sk_ACCESS_DESCRIPTION_value(aia, i);
 		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
 		if (ad->location->type != GEN_URI) continue;
 
+		len = ASN1_STRING_length(ad->location->d.uniformResourceIdentifier);
+		MEM(uri = talloc_bstrndup(NULL,
+					  (char const *)ASN1_STRING_get0_data(ad->location->d.uniformResourceIdentifier),
+					  len));
+
 		/*
-		 *	Use OpenSSL URL parsing to check that the URL is valid
+		 *	Use OpenSSL URL parsing to check that the URL is valid.  It only takes a
+		 *	C string, so it needs the terminated copy.
 		 */
-		if (OSSL_HTTP_parse_url((char *) ad->location->d.ia5->data, &is_https, NULL, &host,
-					NULL, &port, &path, NULL, NULL)){
+		if (OSSL_HTTP_parse_url(uri, &is_https, NULL, &host, NULL, &port, &path, NULL, NULL)) {
 			OPENSSL_free(host);
 			OPENSSL_free(path);
 			MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
 						 attr_tls_certificate_ocsp_uri) == 0);
-			MEM(fr_pair_value_strdup(vp,
-						 (char const *)ad->location->d.ia5->data,
-						 true) == 0);
+			MEM(fr_pair_value_bstrndup(vp, uri, len, true) == 0);
 		}
+		talloc_free(uri);
 	}
 	AUTHORITY_INFO_ACCESS_free(aia);
 
