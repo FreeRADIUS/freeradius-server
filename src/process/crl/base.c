@@ -128,7 +128,7 @@ typedef enum : uint8_t {
 /** A single CRL in the list of CRLs
  */
 typedef struct {
-	char const 			*cdp_url;		//!< The URL of the CRL.
+	fr_value_box_t const		*cdp_url;		//!< The URL of the CRL.
 	crl_type_t			type;			//!< What type of CRL is this.
 	uint8_t				*crl_data;		//!< The CRL data.
 	time_t				last_update;		//!< Last update value extracted from the CRL.
@@ -138,7 +138,7 @@ typedef struct {
 	fr_time_t			refresh;		//!< Refresh time of the CRL.
 	union {
 		fr_value_box_list_t	delta_urls;		//!< URLs from which a delta CRL can be retrieved
-		char const		*base_url;		//!< Base URL if this is a delta
+		fr_value_box_t const	*base_url;		//!< Base URL if this is a delta
 	};
 	process_crl_t			*inst;			//!< Module instance this entry is associated with.
 	fr_coord_pair_t			*coord_pair;		//!< The coord_pair which requested this CRL.
@@ -148,7 +148,7 @@ typedef struct {
 /** An entry in the list of CRLs currently being fetched.
  */
 typedef struct {
-	char const			*cdp_url;		//!< URL being fetched.
+	fr_value_box_t const		*cdp_url;		//!< URL being fetched.
 	bool				*workers;		//!< True for each worker waiting for a response.
 	fr_dlist_t			entry;			//!< Entry in list of CRLs being fetched.
 } crl_fetch_t;
@@ -168,14 +168,14 @@ static fr_cmp_ret_t crl_cmp(void const *a, void const *b)
 	crl_entry_t	const	*crl_a = (crl_entry_t const *)a;
 	crl_entry_t	const	*crl_b = (crl_entry_t const *)b;
 
-	return CMP(strcmp(crl_a->cdp_url,  crl_b->cdp_url), 0);
+	return fr_value_box_cmp(crl_a->cdp_url, crl_b->cdp_url);
 }
 
 /** Resume context for CRL requests */
 typedef struct {
 	unlang_result_t		result;			//!< Where process section results are written to
 	int32_t			worker_id;		//!< The worker which sent the data leading to this request.
-	char const		*cdp_url;		//!< The URL of the CRL being requested.
+	fr_value_box_t const	*cdp_url;		//!< The URL of the CRL being requested.
 	crl_entry_t		*crl_entry;		//!< The existing instance a CRL, if previously fetched.
 	crl_entry_t		*base_crl;		//!< The base CRL a delta CRL is related to.
 	bool			cached;			//!< This is a cached response.
@@ -210,7 +210,7 @@ static unlang_action_t fetch_setup_common(unlang_result_t *p_result, module_ctx_
 	 *	that this worker wants the reply, and just Do Not Respond.
 	 */
 	fr_dlist_foreach(&inst->mutable->fetching, crl_fetch_t, fetching) {
-		if (strcmp(fetching->cdp_url, vp->vp_strvalue) == 0) {
+		if (fr_value_box_cmp(fetching->cdp_url, &vp->data) == 0) {
 			if (rctx->worker_id >= 0) fetching->workers[rctx->worker_id] = true;
 			RDEBUG2("CRL already being fetched");
 			return CALL_SEND_TYPE(FR_CRL_DO_NOT_RESPOND);
@@ -220,12 +220,12 @@ static unlang_action_t fetch_setup_common(unlang_result_t *p_result, module_ctx_
 	/*
 	 *	Cache the URI / Base CRL incase the pair gets altered / deleted in the process section.
 	 */
-	rctx->cdp_url = talloc_bstrdup(rctx, vp->vp_strvalue);
+	MEM(rctx->cdp_url = fr_value_box_acopy(rctx, &vp->data));
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_base_crl);
 	if (vp) {
 		crl_entry_t		find;
-		find.cdp_url = vp->vp_strvalue;
+		find.cdp_url = &vp->data;
 		fr_rb_find((void **)&rctx->base_crl, &inst->mutable->crls, &find);
 	}
 
@@ -250,7 +250,7 @@ static int crl_build_reply(request_t *request, crl_entry_t *crl_entry)
 
 	if (pair_update_reply(&vp, attr_crl_cdp_url) < 0) return -1;
 	fr_value_box_clear_value(&vp->data);
-	fr_value_box_strdup(vp, &vp->data, NULL, crl_entry->cdp_url, false);
+	if (unlikely(fr_value_box_copy(vp, &vp->data, crl_entry->cdp_url) < 0)) return -1;
 	fr_pair_immutable(vp);
 
 	if (fr_pair_append_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_crl_num)< 0) return -1;
@@ -300,7 +300,7 @@ RECV(crl_fetch)
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_crl_cdp_url);
 	if (!vp) return UNLANG_ACTION_FAIL;
 
-	find.cdp_url = vp->vp_strvalue;
+	find.cdp_url = &vp->data;
 	fr_rb_find((void **)&crl_entry, &inst->mutable->crls, &find);
 	rctx->crl_entry = crl_entry;
 
@@ -336,7 +336,7 @@ RECV(crl_refresh) {
 
 	if (!vp) return UNLANG_ACTION_FAIL;
 
-	find.cdp_url = vp->vp_strvalue;
+	find.cdp_url = &vp->data;
 	fr_rb_find((void **)&rctx->crl_entry, &inst->mutable->crls, &find);
 	if (rctx->crl_entry) rctx->refresh = true;
 
@@ -361,7 +361,7 @@ static int _crl_entry_free(crl_entry_t *to_free)
 		fr_value_box_list_foreach(&to_free->delta_urls, delta) {
 			crl_entry_t	find, *delta_crl;
 
-			find.cdp_url = delta->vb_strvalue;
+			find.cdp_url = delta;
 			fr_rb_find((void **)&delta_crl, &to_free->inst->mutable->crls, &find);
 			if (!delta_crl) continue;
 
@@ -382,7 +382,7 @@ static void crl_refresh_event(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	fr_pair_t	*vp;
 	TALLOC_CTX	*local = talloc_new(NULL);
 
-	DEBUG2("Refreshing CRL from CDP %s", crl_entry->cdp_url);
+	DEBUG2("Refreshing CRL from CDP %pV", crl_entry->cdp_url);
 
 	fr_pair_list_init(&list);
 	fr_pair_list_append_by_da(local, vp, &list, attr_packet_type, (uint32_t)FR_CRL_CRL_REFRESH, false);
@@ -393,11 +393,11 @@ static void crl_refresh_event(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	}
 
 	if (fr_pair_append_by_da(local, &vp, &list, attr_crl_cdp_url) < 0) goto fail;
-	fr_value_box_strdup(vp, &vp->data, NULL, crl_entry->cdp_url, false);
+	if (fr_value_box_copy(vp, &vp->data, crl_entry->cdp_url) < 0) goto fail;
 
 	if (crl_entry->type == CRL_TYPE_DELTA) {
 		if (fr_pair_append_by_da(local, &vp, &list, attr_base_crl) < 0) goto fail;
-		fr_value_box_strdup(vp, &vp->data, NULL, crl_entry->cdp_url, false);
+		if (fr_value_box_copy(vp, &vp->data, crl_entry->cdp_url) < 0) goto fail;
 	}
 
 	if (fr_coord_pair_coord_request_start(crl_entry->coord_pair, &list, now) < 0) {
@@ -411,9 +411,9 @@ static void crl_refresh_event(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	talloc_free(local);
 }
 
-static inline void crl_fetching_entry_remove(fr_dlist_head_t *fetching, char const *cdp_url) {
+static inline void crl_fetching_entry_remove(fr_dlist_head_t *fetching, fr_value_box_t const *cdp_url) {
 	fr_dlist_foreach(fetching, crl_fetch_t, fetch) {
-		if (strcmp(fetch->cdp_url, cdp_url) == 0) {
+		if (fr_value_box_cmp(fetch->cdp_url, cdp_url) == 0) {
 			fr_dlist_remove(fetching, fetch);
 			talloc_free(fetch);
 			return;
@@ -461,7 +461,7 @@ RESUME(crl_fetch)
 	data = crl_data->vp_octets;
 	crl = d2i_X509_CRL(NULL, (const unsigned char **)&data, crl_data->vp_size);
 	if (!crl) {
-		fr_tls_strerror_printf("Failed to parse CRL from %s", rctx->cdp_url);
+		fr_tls_strerror_printf("Failed to parse CRL from %pV", rctx->cdp_url);
 		return CALL_SEND_TYPE(FR_CRL_FETCH_FAIL);
 	}
 
@@ -575,7 +575,7 @@ RESUME(crl_fetch)
 	 *	The fetched CRL is now validated and newer than the old
 	 *	entry, complete building the entry.
 	 */
-	crl_entry->cdp_url = talloc_bstrdup(crl_entry, rctx->cdp_url);
+	MEM(crl_entry->cdp_url = fr_value_box_acopy(crl_entry, rctx->cdp_url));
 	crl_entry->crl_data = talloc_typed_memdup(crl_entry, crl_data->vp_octets, crl_data->vp_length);
 	crl_entry->coord_pair = fr_coord_pair_request_coord_pair(request);
 
@@ -614,7 +614,7 @@ RESUME(crl_fetch)
 			RERROR("Delta CRL number %"PRIu64" is less than base CRL number %"PRIu64, delta_num, crl_num);
 			goto error;
 		}
-		crl_entry->base_url = talloc_strdup(crl_entry, rctx->base_crl->cdp_url);
+		MEM(crl_entry->base_url = fr_value_box_acopy(crl_entry, rctx->base_crl->cdp_url));
 	}
 
 	if (fr_tls_utils_asn1time_to_epoch(&crl_entry->last_update, X509_CRL_get0_lastUpdate(crl)) < 0) {
@@ -677,8 +677,7 @@ DIAG_ON_OPTIONAL(used-but-marked-unused)
 			}
 
 			if (fr_pair_append_by_da(local, &vp, &list, attr_base_crl) < 0) goto free_local;
-			if (unlikely(fr_value_box_strdup(vp, &vp->data, NULL, rctx->cdp_url,
-							 false) < 0)) goto free_local;
+			if (unlikely(fr_value_box_copy(vp, &vp->data, rctx->cdp_url) < 0)) goto free_local;
 
 			if (fr_coord_pair_coord_request_start(crl_entry->coord_pair, &list, now) < 0) {
 				RERROR("Failed to start fetch of delta CRL");
@@ -715,7 +714,7 @@ timer:
 	 */
 	if (fr_time_delta_isneg(refresh_delta)) refresh_delta = inst->retry_delay;
 
-	RDEBUG2("CRL from %s will refresh in %pVs", rctx->cdp_url, fr_box_time_delta(refresh_delta));
+	RDEBUG2("CRL from %pV will refresh in %pVs", rctx->cdp_url, fr_box_time_delta(refresh_delta));
 
 	if (fr_timer_in(crl_entry, thread->el->tl, &crl_entry->ev, refresh_delta, false, crl_refresh_event, crl_entry) <0) {
 		RERROR("Failed to set timer to refresh CRL");
@@ -768,7 +767,7 @@ RESUME(send_crl_fail)
 		/*
 		 *	Set up retry of failed refresh.
 		 */
-		RDEBUG2("Refresh of CRL from %s will retry in %pVs", rctx->cdp_url, fr_box_time_delta(inst->retry_delay));
+		RDEBUG2("Refresh of CRL from %pV will retry in %pVs", rctx->cdp_url, fr_box_time_delta(inst->retry_delay));
 
 		if (fr_timer_in(rctx->crl_entry, thread->el->tl, &rctx->crl_entry->ev, inst->retry_delay,
 				false, crl_refresh_event, rctx->crl_entry) <0) {
@@ -795,7 +794,7 @@ RESUME(send_crl_fail)
 
 		if (fr_pair_append_by_da(request->reply_ctx, &vp, &request->reply_pairs,
 					 attr_crl_cdp_url) < 0) RETURN_UNLANG_FAIL;
-		fr_value_box_strdup(vp, &vp->data, NULL, rctx->cdp_url, false);
+		if (unlikely(fr_value_box_copy(vp, &vp->data, rctx->cdp_url) < 0)) RETURN_UNLANG_FAIL;
 
 		fr_coord_to_worker_reply_broadcast(request);
 
@@ -808,7 +807,7 @@ RESUME(send_crl_fail)
 	fr_pair_delete_by_da(&request->reply_pairs, attr_crl_data);
 
 	if (pair_update_reply(&vp, attr_crl_cdp_url) < 0) RETURN_UNLANG_FAIL;
-	fr_value_box_strdup(vp, &vp->data, NULL, rctx->cdp_url, false);
+	if (unlikely(fr_value_box_copy(vp, &vp->data, rctx->cdp_url) < 0)) RETURN_UNLANG_FAIL;
 
 	RDEBUG3("Sending fail to worker %d", rctx->worker_id);
 	fr_coord_to_worker_reply_send(request, rctx->worker_id);
@@ -818,7 +817,7 @@ RESUME(send_crl_fail)
 	 *	the failure as well.
  	 */
 	fr_dlist_foreach(&inst->mutable->fetching, crl_fetch_t, fetch) {
-		if (strcmp(fetch->cdp_url, rctx->cdp_url) == 0) {
+		if (fr_value_box_cmp(fetch->cdp_url, rctx->cdp_url) == 0) {
 			uint32_t	i;
 			fr_dlist_remove(&inst->mutable->fetching, fetch);
 			for (i = 0; i < main_config->max_workers; i++) {

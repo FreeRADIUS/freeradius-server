@@ -54,7 +54,7 @@ typedef struct {
 /** A single CRL in the thread specific list of CRLs */
 typedef struct {
 	X509_CRL			*crl;				//!< The CRL.
-	char const 			*cdp_url;			//!< The URL of the CRL.
+	fr_value_box_t const		*cdp_url;			//!< The URL of the CRL.
 	fr_rb_node_t			node;				//!< The node in the tree
 	fr_value_box_list_t		delta_urls;			//!< URLs from which a delta CRL can be retrieved.
 } crl_entry_t;
@@ -62,7 +62,7 @@ typedef struct {
 /** Structure to record recent fetch failures
  */
 typedef struct {
-	char const			*cdp_url;			//!< The URL which failed to fetch.
+	fr_value_box_t const		*cdp_url;			//!< The URL which failed to fetch.
 	fr_rb_node_t			node;				//!< Node in the tree of failures.
 	fr_time_t			fail_time;			//!< When did the failure occur.
 } crl_fail_t;
@@ -155,7 +155,7 @@ static fr_cmp_ret_t crl_cmp(void const *a, void const *b)
 	crl_entry_t	const	*crl_a = (crl_entry_t const *)a;
 	crl_entry_t	const	*crl_b = (crl_entry_t const *)b;
 
-	return CMP(strcmp(crl_a->cdp_url,  crl_b->cdp_url), 0);
+	return fr_value_box_cmp(crl_a->cdp_url, crl_b->cdp_url);
 }
 
 static fr_cmp_ret_t crl_pending_cmp(void const *a, void const *b)
@@ -171,7 +171,7 @@ static fr_cmp_ret_t crl_fail_cmp(void const *a, void const *b)
 	crl_fail_t	const *fail_a = (crl_fail_t const *)a;
 	crl_fail_t	const *fail_b = (crl_fail_t const *)b;
 
-	return CMP(strcmp(fail_a->cdp_url, fail_b->cdp_url), 0);
+	return fr_value_box_cmp(fail_a->cdp_url, fail_b->cdp_url);
 }
 
 static xlat_arg_parser_t const crl_refresh_xlat_arg[] = {
@@ -225,7 +225,7 @@ static xlat_action_t crl_refresh_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_c
 	if (ret < 0) return XLAT_ACTION_FAIL;
 
 	find = (crl_entry_t) {
-		.cdp_url = url->vb_strvalue
+		.cdp_url = url
 	};
 	fr_rb_find((void **)&found, &t->crls, &find);
 	if (found) {
@@ -259,11 +259,11 @@ static crl_ret_t crl_check_entry(crl_entry_t *crl_entry, request_t *request, uin
 		return CRL_ENTRY_NOT_FOUND;
 
 	case 1:
-		REDEBUG2("Certificate revoked by %s", crl_entry->cdp_url);
+		REDEBUG2("Certificate revoked by %pV", crl_entry->cdp_url);
 		return CRL_ENTRY_FOUND;
 
 	case 2:
-		RDEBUG3("Certificate un-revoked by %s", crl_entry->cdp_url);
+		RDEBUG3("Certificate un-revoked by %pV", crl_entry->cdp_url);
 		return CRL_ENTRY_REMOVED;
 	}
 
@@ -273,7 +273,7 @@ static crl_ret_t crl_check_entry(crl_entry_t *crl_entry, request_t *request, uin
 /** Resolve a cdp_url to a CRL entry, and check serial against it, if it exists
  *
  */
-static crl_ret_t crl_check_serial(fr_rb_tree_t *crls, request_t *request, char const *cdp_url, uint8_t const *serial,
+static crl_ret_t crl_check_serial(fr_rb_tree_t *crls, request_t *request, fr_value_box_t const *cdp_url, uint8_t const *serial,
 				  crl_entry_t **found)
 {
 	crl_entry_t	*delta, find = { .cdp_url = cdp_url};
@@ -287,7 +287,7 @@ static crl_ret_t crl_check_serial(fr_rb_tree_t *crls, request_t *request, char c
 	 *	First check the delta if it should exist
 	 */
 	while ((vb = fr_value_box_list_next(&(*found)->delta_urls, vb))) {
-		find.cdp_url = vb->vb_strvalue;
+		find.cdp_url = vb;
 		fr_rb_find((void **)&delta, crls, &find);
 		if (delta) {
 			ret = crl_check_entry(delta, request, serial);
@@ -323,7 +323,7 @@ static int _crl_entry_free(crl_entry_t *crl_entry)
  *	- 0 on success
  *	- -1 on failure
  */
-static int crl_fetch_start(rlm_crl_t const *inst, rlm_crl_thread_t *t, fr_value_box_list_t *cdp_urls, char const *base_crl) {
+static int crl_fetch_start(rlm_crl_t const *inst, rlm_crl_thread_t *t, fr_value_box_list_t *cdp_urls, fr_value_box_t const *base_crl) {
 	fr_pair_list_t		list;
 	fr_pair_t		*vp;
 	TALLOC_CTX		*local = talloc_new(NULL);
@@ -344,7 +344,7 @@ static int crl_fetch_start(rlm_crl_t const *inst, rlm_crl_thread_t *t, fr_value_
 
 	if (base_crl) {
 		if (fr_pair_append_by_da(local, &vp, &list, attr_base_crl) < 0) goto error;
-		fr_value_box_strdup(vp, &vp->data, NULL, base_crl, false);
+		if (fr_value_box_copy(vp, &vp->data, base_crl) < 0) goto error;
 	}
 
 	ret = fr_worker_to_coord_pair_send(t->cw, inst->coord_pair_reg, &list);
@@ -380,7 +380,7 @@ static unlang_action_t CC_HINT(nonnull) mod_crl_by_url(unlang_result_t *p_result
 	crl_entry_t		*found;
 	fr_value_box_list_t	missing;
 	fr_value_box_t		*uri;
-	char const		*base_url = NULL;
+	fr_value_box_t const	*base_url = NULL;
 	int			ret;
 	crl_pending_t		*pending;
 	crl_fail_t		find, *fail;
@@ -388,7 +388,7 @@ static unlang_action_t CC_HINT(nonnull) mod_crl_by_url(unlang_result_t *p_result
 	fr_value_box_list_init(&missing);
 
 	while ((cdp = fr_value_box_list_next(env->cdp, cdp))) {
-		switch (crl_check_serial(&t->crls, request, cdp->vb_strvalue, env->serial.vb_octets, &found)) {
+		switch (crl_check_serial(&t->crls, request, cdp, env->serial.vb_octets, &found)) {
 		case CRL_ENTRY_FOUND:
 			RETURN_UNLANG_REJECT;
 
@@ -411,7 +411,7 @@ static unlang_action_t CC_HINT(nonnull) mod_crl_by_url(unlang_result_t *p_result
 				uri = fr_value_box_acopy(NULL, vb);
 				fr_value_box_list_insert_tail(&missing, uri);
 			}
-			base_url = cdp->vb_strvalue;
+			base_url = cdp;
 			break;
 		}
 	}
@@ -419,7 +419,7 @@ static unlang_action_t CC_HINT(nonnull) mod_crl_by_url(unlang_result_t *p_result
 	if (fr_value_box_list_num_elements(&missing) == 0) RETURN_UNLANG_FAIL;
 
 	find = (crl_fail_t) {
-		.cdp_url = fr_value_box_list_head(&missing)->vb_strvalue
+		.cdp_url = fr_value_box_list_head(&missing)
 	};
 
 	/*
@@ -483,12 +483,12 @@ static void crl_pending_resume(rlm_crl_thread_t *thread)
  * @param[in] cdp_url	of the CRL which failed.
  * @param[in] now	time of the failure.
  */
-static void crl_fail_record(rlm_crl_thread_t *thread, char const *cdp_url, fr_time_t now)
+static void crl_fail_record(rlm_crl_thread_t *thread, fr_value_box_t const *cdp_url, fr_time_t now)
 {
 	crl_fail_t *fail;
 
 	MEM(fail = talloc_zero(thread, crl_fail_t));
-	fail->cdp_url = talloc_strdup(fail, cdp_url);
+	MEM(fail->cdp_url = fr_value_box_acopy(fail, cdp_url));
 	fail->fail_time = now;
 
 	if (unlikely(fr_rb_insert(&thread->fails, fail) != 0)) talloc_free(fail);
@@ -512,7 +512,7 @@ static void recv_crl_ok(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t
 	}
 
 	find = (crl_entry_t) {
-		.cdp_url = url->vp_strvalue
+		.cdp_url = &url->data
 	};
 
 	fr_rb_find((void **)&crl_entry, &thread->crls, &find);
@@ -528,7 +528,7 @@ static void recv_crl_ok(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t
 	 */
 	if (!crl_entry) {
 		MEM(crl_entry = talloc_zero(thread, crl_entry_t));
-		crl_entry->cdp_url = talloc_strdup(crl_entry, url->vp_strvalue);
+		MEM(crl_entry->cdp_url = fr_value_box_acopy(crl_entry, &url->data));
 		fr_value_box_list_init(&crl_entry->delta_urls);
 		if (fr_rb_insert(&thread->crls, crl_entry) != 0) {
 			talloc_free(crl_entry);
@@ -551,7 +551,7 @@ static void recv_crl_ok(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t
 		 */
 		fr_rb_remove(NULL, &thread->crls, crl_entry);
 		talloc_free(crl_entry);
-		crl_fail_record(thread, url->vp_strvalue, now);
+		crl_fail_record(thread, &url->data, now);
 		crl_pending_resume(thread);
 		return;
 	}
@@ -580,7 +580,7 @@ static void recv_crl_fail(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg
 	 *	Record the URL of the fetch that failed.
 	 */
 	vp = fr_pair_find_by_da(list, NULL, attr_crl_cdp_url);
-	if (vp) crl_fail_record(thread, vp->vp_strvalue, now);
+	if (vp) crl_fail_record(thread, &vp->data, now);
 
 	crl_pending_resume(thread);
 }
@@ -598,7 +598,7 @@ static void recv_crl_expire(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_r
 	if (!vp) return;
 
 	find = (crl_entry_t) {
-		.cdp_url = vp->vp_strvalue
+		.cdp_url = &vp->data
 	};
 
 	fr_rb_find((void **)&crl_entry, &thread->crls, &find);
@@ -611,16 +611,16 @@ static void recv_crl_expire(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_r
 	fr_value_box_list_foreach(&crl_entry->delta_urls, delta) {
 		crl_entry_t	*delta_entry;
 
-		find.cdp_url = delta->vb_strvalue;
+		find.cdp_url = delta;
 		fr_rb_find((void **)&delta_entry, &thread->crls, &find);
 		if (!delta_entry) continue;
 
-		WARN("Delta CRL %s expired", delta_entry->cdp_url);
+		WARN("Delta CRL %pV expired", delta_entry->cdp_url);
 		fr_rb_remove(NULL, &thread->crls, delta_entry);
 		talloc_free(delta_entry);
 	}
 
-	WARN("CRL %s expired", crl_entry->cdp_url);
+	WARN("CRL %pV expired", crl_entry->cdp_url);
 	fr_rb_remove(NULL, &thread->crls, crl_entry);
 	talloc_free(crl_entry);
 }
@@ -661,13 +661,13 @@ static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
 		fr_value_box_list_t	list;
 		fr_value_box_t		vb;
 
-		DEBUG2("Pre-fetching CRL from %s", inst->urls[i]);
 		fr_value_box_list_init(&list);
 		fr_value_box_init(&vb, FR_TYPE_STRING, NULL, false);
-		fr_value_box_strdup_shallow(&vb, NULL, inst->urls[i], false);
+		fr_value_box_bstrndup_shallow(&vb, NULL, inst->urls[i], talloc_strlen(inst->urls[i]), false);
+		DEBUG2("Pre-fetching CRL from %pV", &vb);
 		fr_value_box_list_insert_head(&list, &vb);
 		if (crl_fetch_start(inst, t, &list, NULL) < 0) {
-			ERROR("Failed to initiate fetch for %s", inst->urls[i]);
+			ERROR("Failed to initiate fetch for %pV", &vb);
 			return -1;
 		}
 	}
