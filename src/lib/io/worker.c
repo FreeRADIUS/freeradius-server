@@ -190,11 +190,6 @@ static void worker_requests_cancel(fr_worker_t *worker, fr_worker_channel_t *ch)
 	DEBUG("%d requests cancelled", cancelled);
 }
 
-static void worker_exit(fr_worker_t *worker)
-{
-	worker->exiting = true;
-}
-
 /** The network has opened a channel to us
  *
  * @param[in] ch	the new channel
@@ -303,7 +298,7 @@ static void worker_channel_close(fr_channel_t *ch, UNUSED fr_time_t now, void *u
 	 *	Our last input channel closed,
 	 *	time to die.
 	 */
-	if (worker->num_channels == 0) worker_exit(worker);
+	if (worker->num_channels == 0) fr_worker_shutting_down(worker);
 }
 
 /** Channel events the worker handles
@@ -974,8 +969,12 @@ static fr_cmp_ret_t worker_dedup_cmp(void const *one, void const *two)
  */
 void fr_worker_exit(fr_worker_t *worker)
 {
+	fr_worker_shutting_down(worker);
+
 	unlang_interpret_set_thread_default(NULL);
+
 	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
+	fr_assert(fr_timer_list_num_events(worker->timeout) == 0);
 	fr_assert(worker->num_channels == 0);
 	DEBUG("Worker is exiting");
 	talloc_free(worker);
@@ -1590,6 +1589,32 @@ int fr_worker_close_event_insert(fr_worker_t *worker)
 		return -1;
 	}
 	return 0;
+}
+
+/** Tell the interpreter of the worker to cancel requests, instead of running them
+ *
+ * The single threaded scheduler calls this function before it detaches the thread data, so that the requests
+ * which the detach cancels do not go into the runnable heap of the worker.  A worker thread does the same
+ * when the last input channel closes.
+ *
+ * @param[in] worker	which is shutting down.
+ */
+void fr_worker_shutting_down(fr_worker_t *worker)
+{
+	request_t *request;
+
+	unlang_interpret_shutting_down(worker->intp);
+
+	while ((fr_heap_pop((void **)&request, &worker->runnable) == 0) && request) {
+		REQUEST_VERIFY(request);
+		fr_assert(!fr_heap_entry_inserted(request->runnable));
+
+		(void) unlang_interpret(request, UNLANG_REQUEST_RESUME);
+	}
+
+	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
+
+	worker->exiting = true;
 }
 
 /** Print debug information about the worker structure

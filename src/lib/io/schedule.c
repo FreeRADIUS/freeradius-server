@@ -122,6 +122,31 @@ void fr_schedule_worker_id_set(int id)
 	worker_id = id;
 }
 
+/** Unify the "clean up worker" path.
+ *
+ */
+static void fr_schedule_worker_exit(fr_worker_t **p_worker, fr_schedule_thread_detach_t worker_thread_detach)
+{
+	fr_worker_t *worker = *p_worker;
+
+	*p_worker = NULL;
+
+	/*
+	 *	Mark the interpreter as shutting down before the thread data is detached, so that
+	 *	requests are cancelled, and are not run.
+	 */
+	if (worker) fr_worker_shutting_down(worker);
+
+	/*
+	 *	Detach the thread-local data before the worker is freed. This call frees the
+	 *	thread-local trunks, connections and their timers and file descriptors.  Requests
+	 *	which hold those connections are cancelled.
+	 */
+	if (worker_thread_detach) worker_thread_detach(NULL);
+
+	if (worker) fr_worker_exit(worker);
+}
+
 /** Entry point for worker threads
  *
  * @param[in] arg	the fr_schedule_worker_t
@@ -195,12 +220,12 @@ static void *fr_schedule_worker_thread(void *arg)
 	status = FR_THREAD_EXITED;
 
 fail:
-	if (sw->worker) {
-		fr_worker_exit(sw->worker);
-		sw->worker = NULL;
-	}
+	fr_schedule_worker_exit(&sw->worker, sc->worker_thread_detach);
 
-	if (sc->worker_thread_detach) sc->worker_thread_detach(NULL);	/* Fixme once we figure out what uctx should be */
+	/*
+	 *	If we're exiting, there should be no events left for the worker to process.
+	 */
+	fr_event_list_empty(sw->thread.el);
 
 	fr_thread_exit(&sw->thread, status, sc->worker_sem);
 
@@ -606,8 +631,6 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 
 	sc->running = false;
 
-
-
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
 	 */
@@ -651,7 +674,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 			fr_event_loop(sc->el);
 		}
 
-		fr_worker_exit(sc->single_worker);
+		fr_schedule_worker_exit(&sc->single_worker, sc->worker_thread_detach);
 		fr_coords_destroy();
 
 		goto done;
