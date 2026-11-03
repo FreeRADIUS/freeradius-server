@@ -32,6 +32,7 @@ ATTRIBUTE	Expires					3	date
 ATTRIBUTE	Device					4	string
 ATTRIBUTE	Gateway					5	string
 ATTRIBUTE	Range					6	string
+ATTRIBUTE	Static					7	bool
 END	Lease
 
 ATTRIBUTE	Stats					8	tlv

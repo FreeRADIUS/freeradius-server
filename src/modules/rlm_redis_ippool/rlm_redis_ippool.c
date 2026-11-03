@@ -73,6 +73,7 @@ static fr_dict_attr_t const *attr_ippool_lease_expires;
 static fr_dict_attr_t const *attr_ippool_lease_device;
 static fr_dict_attr_t const *attr_ippool_lease_gateway;
 static fr_dict_attr_t const *attr_ippool_lease_range;
+static fr_dict_attr_t const *attr_ippool_lease_static;
 static fr_dict_attr_t const *attr_ippool_stats;
 static fr_dict_attr_t const *attr_ippool_stats_total;
 static fr_dict_attr_t const *attr_ippool_stats_dynamic;
@@ -100,6 +101,7 @@ fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
 	{ .out = &attr_ippool_lease_device, .name = "IP-Pool.Lease.Device", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_lease_gateway, .name = "IP-Pool.Lease.Gateway", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_lease_range, .name = "IP-Pool.Lease.Range", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_lease_static, .name = "IP-Pool.Lease.Static", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_stats, .name = "IP-Pool.Stats", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_stats_total, .name = "IP-Pool.Stats.Total", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_stats_dynamic, .name = "IP-Pool.Stats.Dynamic", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
@@ -2081,7 +2083,8 @@ static void mod_show_result(request_t *request, UNUSED fr_redis_command_t *cmd, 
 	redis_ippool_info_rctx_t	*show_rctx = talloc_get_type_abort(rctx, redis_ippool_info_rctx_t);
 	redisReply			*ip_reply;
 	fr_pair_t			*lease_vp, *vp;
-	bool				active;
+	bool				active, staticip = false;
+	fr_value_box_t			expires;
 	char				ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
@@ -2102,13 +2105,26 @@ static void mod_show_result(request_t *request, UNUSED fr_redis_command_t *cmd, 
 	fr_value_box_strdup(vp, &vp->data, NULL, ip_buff, false);
 	fr_pair_append(&lease_vp->vp_group, vp);
 
+	fr_value_box_from_str(NULL, &expires, FR_TYPE_UINT64, NULL, reply->element[0]->str, reply->element[0]->len, NULL);
+	if (expires.vb_uint64 >= IPPOOL_STATIC_BIT) {
+		staticip = true;
+		expires.vb_uint64 -= IPPOOL_STATIC_BIT;
+	}
+
 	MEM(vp = fr_pair_afrom_da(lease_vp, attr_ippool_lease_expires));
-	fr_value_box_from_str(vp, &vp->data, FR_TYPE_DATE, NULL, reply->element[0]->str, reply->element[0]->len, NULL);
+	if (fr_value_box_cast(vp, &vp->data, attr_ippool_lease_expires->type, NULL, &expires) < 0) {
+		talloc_free(vp);
+		return;
+	}
 	fr_pair_append(&lease_vp->vp_group, vp);
 	active = fr_unix_time_to_sec(vp->vp_date) > fr_time_to_sec(fr_time()) ? true : false;
 
 	MEM(vp = fr_pair_afrom_da(lease_vp, attr_ippool_lease_active));
 	vp->vp_bool = active;
+	fr_pair_append(&lease_vp->vp_group, vp);
+
+	MEM(vp = fr_pair_afrom_da(lease_vp, attr_ippool_lease_static));
+	vp->vp_bool = staticip;
 	fr_pair_append(&lease_vp->vp_group, vp);
 
 	ip_reply = reply->element[1];
