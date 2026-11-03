@@ -396,6 +396,11 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 	(void) fr_bio_buf_write(&my->write_buffer, ((uint8_t const *) buffer) + rcode, leftover);
 
 	/*
+	 *	The next bio blocked, so the buffer has data.
+	 */
+	fr_assert(fr_bio_buf_used(&my->write_buffer) > 0);
+
+	/*
 	 *	Some of the data base been written to the next bio, and some to our cache.  The caller has to
 	 *	ensure that the first subsequent write will send over the rest of the data.
 	 *
@@ -522,6 +527,8 @@ static ssize_t fr_bio_mem_write_buffer(fr_bio_t *bio, UNUSED void *packet_ctx, v
 	 */
 	if (room == size) {
 		int rcode;
+
+		fr_assert(fr_bio_buf_used(&my->write_buffer) > 0);
 
 		rcode = fr_bio_write_blocked(bio);
 		if (rcode < 0) return rcode;

@@ -314,7 +314,7 @@ static int fr_bio_tls_flush(fr_bio_tls_t *my)
 {
 	fr_tls_session_t *tls_session = my->conn->tls_session;
 
-	if (fr_tls_connection_write(my->conn) < 0) return (int)my->next_error;	/* fr_bio_error() codes fit in an int */
+	if (fr_tls_connection_write(my->conn) < 0) return (int) my->next_error;
 
 	if (fr_dbuff_remaining(tls_session->dirty_out) > 0) return 0;
 
@@ -327,6 +327,13 @@ static int fr_bio_tls_flush(fr_bio_tls_t *my)
 static int fr_bio_tls_write_blocked(fr_bio_t *bio)
 {
 	fr_bio_tls_t *my = talloc_get_type_abort(bio, fr_bio_tls_t);
+
+	/*
+	 *	If we're blocked, then either we're waiting for connect() to finish, or there's pending
+	 *	application data.
+	 */
+	fr_assert((my->conn->state != TLS_CONNECTION_CONNECTED) ||
+		  (fr_dbuff_remaining(my->conn->tls_session->dirty_out) > 0));
 
 	my->write_blocked = true;
 
@@ -358,42 +365,6 @@ static int fr_bio_tls_write_resume(fr_bio_t *bio)
 	return my->cb.write_resume(bio);
 }
 
-/** Does the TLS bio have encrypted data which has not reached the next bio?
- *
- *  The data is TLS signalling, such as a post-handshake message or an alert, or encrypted application data
- *  which was blocked.  The application calls `fr_bio_tls_write_flush()` when the fd is writable and this
- *  function returns true.  When this function returns false, the application can write to the bio at once.
- *
- * @param[in] my	the TLS bio.
- * @return
- *	- true encrypted data is waiting, or the bio is in the blocked state.
- *	- false nothing is waiting.
- */
-bool fr_bio_tls_write_flush_needed(fr_bio_tls_t *my)
-{
-	return my->write_blocked || (fr_dbuff_remaining(my->conn->tls_session->dirty_out) > 0);
-}
-
-/** Flush any pending data to the next BIO.
- *
- *  Once the connection is open, all FD events are owned by the application. So if the application gets "write
- *  available", it needs to flush any pending TLS signaling data before writing the application data.  This
- *  process uses the normal write process, including clearing the "blocked" state and signaling the
- *  application, or staying in the blocked state.
- *
- *  The application calls `fr_bio_tls_write_flush_needed()` to find out if a flush is needed.
- *
- * @param[in] my	the TLS bio.
- * @return
- *	- 1 nothing is left to write, and the application can write to the bio.
- *	- 0 the next bio is still blocked, and some data is still waiting.
- *	- <0 the error which the next bio returned.
- */
-int fr_bio_tls_write_flush(fr_bio_tls_t *my)
-{
-	return fr_bio_tls_write_resume(&my->bio);
-}
-
 /** Encrypt application data, and write the encrypted records to the next bio
  *
  *  `SSL_MODE_ENABLE_PARTIAL_WRITE` is not set, so OpenSSL encrypts all of the data passed to
@@ -417,8 +388,13 @@ static ssize_t fr_bio_tls_write_data(fr_bio_tls_t *my, void const *buffer, size_
 
 	/*
 	 *	Writes are blocked.  `fr_bio_tls_write_resume()` writes the waiting records.
+	 *
+	 *	A blocked bio always has encrypted records which have not reached the next bio.
 	 */
-	if (my->write_blocked) return fr_bio_error(IO_WOULD_BLOCK);
+	if (my->write_blocked) {
+		fr_assert(fr_dbuff_remaining(tls_session->dirty_out) > 0);
+		return fr_bio_error(IO_WOULD_BLOCK);
+	}
 
 	/*
 	 *	A read can leave encrypted records waiting.  `fr_bio_tls_flush()` writes the waiting
@@ -473,12 +449,27 @@ static ssize_t fr_bio_tls_write(fr_bio_t *bio, void *packet_ctx, void const *buf
 	ssize_t		rcode;
 
 	/*
-	 *	The fd bio asks the previous bios to write any pending data by passing `SIZE_MAX`, before the fd
-	 *	bio shuts down.
+	 *	If we're not writing actual data, then flush the buffer.
+	 *
+	 *	A blocked TLS BIO is either waiting on connect(), or it has waiting records.  We clear the
+	 *	blocked flag so that the write() tries the next BIO.  The write function will take care of
+	 *	either writing all of the data, or setting the write_blocked flag again.
 	 */
-	if (size == SIZE_MAX) {
+	if (!buffer) {
+		my->write_blocked = false;
+
 		rcode = fr_bio_tls_flush(my);
-		return (rcode < 0) ? rcode : 0;
+		if (rcode < 0) {
+			fr_assert((rcode != fr_bio_error(IO_WOULD_BLOCK)) || my->write_blocked);
+			return rcode;
+		}
+		if (rcode > 0) {
+			fr_assert(!my->write_blocked);
+			return 0;
+		}
+
+		fr_assert(my->write_blocked);
+		return fr_bio_error(IO_WOULD_BLOCK);
 	}
 
 	my->packet_ctx = packet_ctx;

@@ -657,6 +657,16 @@ static int bio_write_blocked(fr_bio_t *bio)
 {
 	bio_handle_t		*h = bio->uctx;
 
+	/*
+	 *	@todo - the FD BIO runs the write_blocked callbacks only when the FD BIO changes from "not
+	 *	blocked" to "blocked".  If the FD BIO is already flagged as blocked, then a write which
+	 *	returns IO_WOULD_BLOCK doesn't run the callback, and h->write_blocked stays false.  That
+	 *	shouldn't happen, but there's no test for it.
+	 *
+	 *	The solution is likely to hoist the `write_blocked` flag into a public flag in fr_bio_t.  That
+	 *	lets us get rid of `h->write_blocked`.  i.e. having multiple different flags for the same
+	 *	state is a source of issues.
+	 */
 	h->write_blocked = true;
 
 	/*
@@ -691,7 +701,7 @@ static int bio_write_resume(fr_bio_t *bio)
 	trunk_connection_signal_active(h->tconn);
 
 	/*
-	 *	bio_write_blocked() registered conn_tls_writable_flush() or conn_tcp_writable_flush() as the write handler.
+	 *	bio_write_blocked() registered conn_writable_flush() as the write handler.
 	 *	The fd is almost always writable, so the handler would run in a loop.  Register the events
 	 *	which the trunk wants.
 	 */
@@ -947,7 +957,6 @@ static int conn_tls_alloc(bio_handle_t *h)
 	fr_bio_cb_set((fr_bio_t *) h->bio.tls, &(fr_bio_cb_funcs_t) {
 			.connected = bio_tls_connected,
 			.failed = bio_tls_failed,
-			.write_resume = bio_write_resume,
 		      });
 
 	tls_conn = fr_bio_tls_conn(h->bio.tls);
@@ -1237,7 +1246,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	/*
 	 *	A plain stream socket can accept only part of a packet, so the memory BIO needs a write buffer to
-	 *	keep the rest of the packet.  conn_tcp_writable_flush() flushes the buffer.  The TLS BIO keeps its own
+	 *	keep the rest of the packet.  conn_writable_flush() flushes the buffer.  The TLS BIO keeps its own
 	 *	pending data, so a TLS connection does not need a write buffer.
 	 */
 	write_size = 0;
@@ -1523,64 +1532,34 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-#ifdef WITH_TLS
-/** The fd is writable, and the connection uses TLS
+/** The fd is writable, and the connection is blocked on write
  *
- * After a write blocks, the TLS bio keeps encrypted records until the fd has room, and the TLS bio returns
- * IO_WOULD_BLOCK for new data until the records are written.  This function catches the "writable" event, and
- * flushes the TLS BIO of all pending data.  If there is no pending data, then it signals the trunk that the
- * application can start writing data again.
  */
-static void conn_tls_writable_flush(fr_event_list_t *el, int fd, int flags, void *uctx)
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
+static void conn_writable_flush(fr_event_list_t *el, int fd, int flags, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
-	int			rcode;
+	ssize_t			slen;
 
-	rcode = fr_bio_tls_write_flush(h->bio.tls);
-	if (rcode < 0) {
-		ERROR("%s - Failed writing pending TLS data on connection %s: %s", h->ctx.module_name,
-		      h->ctx.fd_info->name, fr_strerror());
-		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
-		return;
-	}
+	/*
+	 *	Write "no packet" with a size, which signals the BIOs to flush their buffers.
+	 *
+	 *	The write returns the actual amount of data which was flushed, even though we don't care about
+	 *	that.  All we care is that _some_ data was written on success.  If only partial data is
+	 *	written, then the BIO returns "would block".
+	 */
+	slen = fr_bio_write(h->bio.main, NULL, NULL, SIZE_MAX);
+	if (slen == fr_bio_error(IO_WOULD_BLOCK)) return;
 
-	if (rcode == 0) return;
-
-	trunk_connection_callback_writable(el, fd, flags, uctx);
-}
-
-#endif
-
-/** The fd is writable, and the connection uses a stream socket without TLS
- *
- * After a write blocks, the memory BIO keeps the unwritten part of the data in the write buffer, and
- * returns IO_WOULD_BLOCK when the write buffer is full.  This function catches the "writable" event, and
- * flushes the write buffer.  If the write buffer is empty, then this function runs bio_write_resume(), and
- * signals the trunk that the application can start writing data again.
- *
- * The memory BIO does not run a resume callback itself.  A write which blocked before any data was written
- * is not in the write buffer, and fr_bio_mem_write_resume() returns 1 without any callback.
- */
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-static void conn_tcp_writable_flush(fr_event_list_t *el, int fd, int flags, void *uctx)
-{
-	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
-	int			rcode;
-
-	rcode = fr_bio_mem_write_resume(h->bio.mem);
-	if (rcode < 0) {
+	if (slen < 0) {
 		ERROR("%s - Failed writing pending data on connection %s: %s", h->ctx.module_name,
 		      h->ctx.fd_info->name, fr_strerror());
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		return;
 	}
 
-	if (rcode == 0) return;
-
-	bio_write_resume(h->bio.mem);
+	bio_write_resume(h->bio.main);
 
 	trunk_connection_callback_writable(el, fd, flags, uctx);
 }
@@ -1623,20 +1602,10 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 
 	}
 
-#ifdef WITH_TLS
 	/*
-	 *	A TLS connection can have encrypted records waiting for the fd.  The records have to be written
-	 *	before the trunk code writes packets.
+	 *	A blocked connection has data which has to reach the fd before the trunk code writes packets.
 	 */
-	if (h->bio.tls && fr_bio_tls_write_flush_needed(h->bio.tls)) {
-		write_fn = conn_tls_writable_flush;
-	} else
-#endif
-
-	/*
-	 *	A stream socket without TLS can have unwritten data in the write buffer of the memory BIO.
-	 */
-	if (h->write_blocked && (h->ctx.fd_config.socket_type == SOCK_STREAM)) write_fn = conn_tcp_writable_flush;
+	if (h->write_blocked) write_fn = conn_writable_flush;
 
 	/*
 	 *	Over-ride read for replication.
