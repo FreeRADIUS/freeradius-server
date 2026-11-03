@@ -432,7 +432,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 	//FR_PROTO_HEX_DUMP(autn, MILENAGE_AUTN_SIZE, "AUTN");
 	//FR_PROTO_HEX_DUMP(rand, MILENAGE_RAND_SIZE, "RAND");
 
-	if (milenage_f2345(res, ck, ik, ak, NULL, opc, ki, rand)) return -1;
+	if (milenage_f2345(res, ik, ck, ak, NULL, opc, ki, rand)) return -1;
 
 	//FR_PROTO_HEX_DUMP(res, MILENAGE_RES_SIZE, "RES");
 	//FR_PROTO_HEX_DUMP(ck, MILENAGE_CK_SIZE, "CK");
@@ -504,6 +504,12 @@ void test_set_1(void)
 	uint8_t ik_out[MILENAGE_IK_SIZE];
 	uint8_t ak_out[MILENAGE_AK_SIZE];
 	uint8_t ak_resync_out[MILENAGE_AK_SIZE];
+	uint8_t autn[MILENAGE_AUTN_SIZE];
+	uint8_t auts[MILENAGE_AUTS_SIZE];
+	uint8_t res_check[MILENAGE_RES_SIZE];
+	uint8_t ck_check[MILENAGE_CK_SIZE];
+	uint8_t ik_check[MILENAGE_IK_SIZE];
+	uint64_t sqn_value;
 
 	/* function 1 */
 	uint8_t mac_a[]		= { 0x4a, 0x9f, 0xfa, 0xc3, 0x54, 0xdf, 0xaf, 0xb3 };
@@ -553,6 +559,23 @@ void test_set_1(void)
 	TEST_CHECK(memcmp(ik_out, ik, sizeof(ik_out)) == 0);
 	TEST_CHECK(memcmp(ak_out, ak, sizeof(ak_out)) == 0);
 	TEST_CHECK(memcmp(ak_resync, ak_resync, sizeof(ak_resync_out)) == 0);
+
+	sqn_value = uint48_from_buff(sqn);
+
+	ret = milenage_umts_generate(autn, NULL, NULL, NULL, NULL,
+				     opc, amf, ki, sqn_value, rand);
+	TEST_CHECK(ret == 0);
+
+	/*
+	 * Use the same SQN so the synchronization path is deterministic.
+	 */
+	ret = milenage_check(ik_check, ck_check, res_check, auts,
+			     opc, ki, sqn_value, rand, autn);
+	TEST_CHECK(ret == -2);
+
+	TEST_CHECK(memcmp(res_check, res, sizeof(res_check)) == 0);
+	TEST_CHECK(memcmp(ck_check, ck, sizeof(ck_check)) == 0);
+	TEST_CHECK(memcmp(ik_check, ik, sizeof(ik_check)) == 0);
 }
 
 void test_set_19(void)
