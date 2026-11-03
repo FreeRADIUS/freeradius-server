@@ -693,7 +693,11 @@ check_for_setup:
 			goto get_application_data;
 		}
 
+		/*
+		 *	Copy the certificate fields, and the other TLS-* attributes into the request.
+		 */
 		request->packet->vps = fr_pair_list_copy(request->packet, sock->certs);
+		fr_pair_add(&request->state, fr_pair_list_copy(request->state_ctx, sock->request->state));
 
 		/*
 		 *	Fake out a Status-Server packet, which
