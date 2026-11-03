@@ -66,6 +66,22 @@ TLS_COMMON  := $(DIR)/common.conf
 TLS_TESTS := $(patsubst $(DIR)/%.sh,%,$(wildcard $(DIR)/*.sh))
 
 #
+#  A few tests run a Python home server, because neither unit_test_tls nor
+#  unit_test_bio can behave like the home server in those tests.  The test
+#  names are in TLS_PYTHON_TESTS.  They run when a Python 3 interpreter can
+#  import the modules which the Python programs use, and they do not run
+#  otherwise.  The Python tests run once, as the tests do not use
+#  unit_test_tls or unit_test_bio.
+#
+TLS_PYTHON_TESTS := rlm_radius_blocked
+TLS_PYTHON := $(shell python3 -c 'import signal, socket, ssl, struct' 2>/dev/null && command -v python3)
+
+TLS_TESTS := $(filter-out $(TLS_PYTHON_TESTS),$(TLS_TESTS))
+ifneq "$(TLS_PYTHON)" ""
+TLS_TESTS += $(TLS_PYTHON_TESTS)
+endif
+
+#
 #  The suite takes one block of ports from the allocator in
 #  scripts/build/make/port.c.  Each test takes the port at the position of
 #  the test in TLS_TESTS.  The tests can therefore run at the same time, and
@@ -82,9 +98,12 @@ TLS_PORT_COUNT := 64
 TLS_PORT_FIRST := $(unique-port $(PORT_FILE),$(TLS_TEST),$(TLS_PORT_COUNT),$(PORT_FIRST))
 TLS_PORTS := $(shell seq $(TLS_PORT_FIRST) $$(($(TLS_PORT_FIRST) + $(TLS_PORT_COUNT) - 1)))
 
-ifeq "$(shell test $(words $(TLS_TESTS)) -gt $(TLS_PORT_COUNT) && echo overflow)" "overflow"
-$(error src/tests/tls has $(words $(TLS_TESTS)) tests and only $(TLS_PORT_COUNT) ports.  Raise TLS_PORT_COUNT)
-endif
+#
+#  The Python tests need a second port for the UDP listener of radiusd.  The
+#  last port of the block is the second port, and the position of a test
+#  never reaches the last port, see the check after the rules.
+#
+TLS_LPORT := $(lastword $(TLS_PORTS))
 
 #
 #  TLS_TEST_RULE defines the rule for one test.  ${1} is the test name.
@@ -98,12 +117,14 @@ TLS_CMD.${1} := \
 	CERTDIR=$(call SHELL_QUOTE,$(top_srcdir)/raddb/certs/rsa) \
 	DICT_PATH=$(call SHELL_QUOTE,$(DICT_PATH)) \
 	PORT=$$(TLS_PORT.${1}) \
+	LPORT=$(TLS_LPORT) \
+	PYTHON=$(call SHELL_QUOTE,$(TLS_PYTHON)) \
 	UNIT_TEST_TLS=$(call SHELL_QUOTE,$(TEST_BIN)/unit_test_tls) \
 	RADIUSD=$(call SHELL_QUOTE,$(TEST_BIN)/radiusd) \
 	$(SHELL) \
 	$(TLS_DIR)/${1}.sh
 
-$(TLS_OUTPUT)/${1}.receipt: $(or $(wildcard $(TLS_DIR)/${1}.conf),$(TLS_CONF)) $(TLS_COMMON) $(TLS_DIR)/${1}.sh $(TEST_BIN_DIR)/unit_test_tls $(TEST_BIN_DIR)/radiusd $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+$(TLS_OUTPUT)/${1}.receipt: $(or $(wildcard $(TLS_DIR)/${1}.conf),$(TLS_CONF)) $(TLS_COMMON) $(TLS_DIR)/${1}.sh $(wildcard $(TLS_DIR)/${1}.py $(TLS_DIR)/${1}_server.py) $(TEST_BIN_DIR)/unit_test_tls $(TEST_BIN_DIR)/radiusd $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
 	@echo "TLS-TEST ${1}"
 	$${Q}if ! $$(TLS_CMD.${1}) > $$@.log 2>&1 || ! test -f $$@; then \
 		cat $$@.log; \
@@ -131,7 +152,7 @@ $(foreach x,$(TLS_TESTS),$(eval $(call TLS_TEST_RULE,$x)))
 #  Each test writes to the bio subdirectory, so the receipts and the logs of
 #  the two programs do not overwrite each other.
 #
-TLS_BIO_TESTS := $(filter-out dtls_loss,$(TLS_TESTS))
+TLS_BIO_TESTS := $(filter-out dtls_loss $(TLS_PYTHON_TESTS),$(TLS_TESTS))
 
 define TLS_BIO_TEST_RULE
 TLS_PORT.bio.${1} := $(word $(words $(TLS_RECEIPTS) ${1}),$(TLS_PORTS))
@@ -153,6 +174,15 @@ endef
 
 ifneq "$(filter unit_test_bio,$(ALL_TGTS))" ""
 $(foreach x,$(TLS_BIO_TESTS),$(eval $(call TLS_BIO_TEST_RULE,$x)))
+endif
+
+#
+#  Every test, and every unit_test_bio run of a test, takes one port from the
+#  block.  The last port of the block is TLS_LPORT, so the receipts have to
+#  leave the last port free.
+#
+ifeq "$(shell test $(words $(TLS_RECEIPTS)) -ge $(TLS_PORT_COUNT) && echo overflow)" "overflow"
+$(error src/tests/tls has $(words $(TLS_RECEIPTS)) tests and only $(TLS_PORT_COUNT) ports, and the last port is reserved.  Raise TLS_PORT_COUNT)
 endif
 
 #

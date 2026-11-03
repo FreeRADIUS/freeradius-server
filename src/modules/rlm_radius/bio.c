@@ -123,6 +123,11 @@ typedef struct {
 	bool			tls_starting;		//!< Are we inside of fr_bio_tls_connect() ?
 	bool			tls_started;		//!< The connection request has run, and the TLS start is scheduled.
 	fr_timer_t		*tls_ev;		//!< Starts the TLS connection.
+	fr_timer_t		*tls_failed_ev;		//!< Signals the connection after the TLS connection failed.
+
+	trunk_connection_t	*tconn;			//!< The trunk connection.  Set by thread_conn_notify(), so it
+							///< is NULL until the trunk has started to use the connection.
+	trunk_connection_event_t notify_on;		//!< The events which the trunk last asked for.
 #endif
 } bio_handle_t;
 
@@ -207,6 +212,9 @@ static fr_radius_decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 static void		protocol_error_reply(bio_request_t *u, bio_handle_t *h);
 
 static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h);
+
+static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn, fr_event_list_t *el,
+			       trunk_connection_event_t notify_on, void *uctx);
 
 static int _bio_request_free(bio_request_t *u);
 
@@ -799,10 +807,75 @@ static void bio_tls_connected(fr_bio_t *bio)
 	connection_signal_connected(h->conn);
 }
 
+/** Pause the connection when the TLS BIO is blocked on write
+ *
+ * @return
+ *	- 1 for "writes are blocked".
+ */
+static int bio_tls_write_blocked(fr_bio_t *bio)
+{
+	bio_handle_t		*h = bio->uctx;
+
+	/*
+	 *	The trunk has not started to use the connection, e.g. the handshake is still running.  The
+	 *	TLS BIO tracks its own blocked state.
+	 */
+	if (!h->tconn) return 1;
+
+	DEBUG("%s - Writing is blocked on connection %s", h->ctx.module_name, h->ctx.fd_info->name);
+
+	trunk_connection_signal_inactive(h->tconn);
+	thread_conn_notify(h->tconn, h->conn, h->conn->el, h->notify_on, NULL);
+
+	return 1;
+}
+
+/** Resume the connection when the TLS BIO wrote all of its waiting data.
+ *
+ * @return
+ *	- 1 for "writes can resume".
+ */
+static int bio_tls_write_resume(fr_bio_t *bio)
+{
+	bio_handle_t		*h = bio->uctx;
+
+	if (!h->tconn) return 1;
+
+	DEBUG("%s - Writing is resumed on connection %s", h->ctx.module_name, h->ctx.fd_info->name);
+
+	trunk_connection_signal_active(h->tconn);
+
+	/*
+	 *	bio_tls_write_blocked() registered conn_tls_writable() as the write handler.  The fd is almost
+	 *	always writable, so the handler would run in a loop.  Register the events which the trunk wants.
+	 */
+	thread_conn_notify(h->tconn, h->conn, h->conn->el, h->notify_on, NULL);
+
+	return 1;
+}
+
+/** Tell the connection that the TLS connection failed
+ *
+ * The timer runs bio_tls_failed() later, outside of the TLS code.
+ */
+static void conn_tls_failed(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
+	bio_handle_t		*h = talloc_get_type_abort(uctx, bio_handle_t);
+
+	connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+}
+
 /** Something in TLS failed.
  *
- * The TLS bio calls this function from inside of a read or a write.
- * Don't free the BIO, just signal that we need a reconnection/
+ * The TLS bio calls this function from inside of a read or a write.  The TLS connection also calls this
+ * function from inside of the connection frame, which the worker runs for the connection request.
+ *
+ * Don't free the BIO, and don't signal the connection from here.  Signalling the connection runs
+ * conn_close(), which frees the handle, the TLS bio, and the TLS connection, while the TLS code is still
+ * running and uses the TLS connection.  Instead, run the signal from a timer.  The timer is a
+ * child of the handle, so freeing the handle stops the timer.
+ *
+ * @todo - using a timer seems to be annoying and problematic.  We need a better way.
  */
 static void bio_tls_failed(fr_bio_t *bio)
 {
@@ -824,7 +897,17 @@ static void bio_tls_failed(fr_bio_t *bio)
 	 */
 	if (h->tls_starting) return;
 
-	connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+	if (fr_timer_armed(h->tls_failed_ev)) return;
+
+	if (fr_timer_in(h, h->conn->el->tl, &h->tls_failed_ev, fr_time_delta_wrap(0), false, conn_tls_failed, h) < 0) {
+		PERROR("%s - Failed adding a timer to signal the failed TLS connection", h->ctx.module_name);
+
+		/*
+		 *	We have no other way to update the connection.  A connection which never reconnects is worse
+		 *	than the risk of this signal.
+		 */
+		connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+	}
 }
 
 /** Allocate the TLS bio
@@ -856,6 +939,7 @@ static int conn_tls_alloc(bio_handle_t *h)
 	fr_bio_cb_set((fr_bio_t *) h->bio.tls, &(fr_bio_cb_funcs_t) {
 			.connected = bio_tls_connected,
 			.failed = bio_tls_failed,
+			.write_resume = bio_tls_write_resume,
 		      });
 
 	tls_conn = fr_bio_tls_conn(h->bio.tls);
@@ -883,11 +967,18 @@ static int _bio_handle_free(bio_handle_t *h)
 	 *
 	 *	Freeing the TLS bio sends any TLS close_notify, deletes the fd events, and cancels the request.
 	 *	The interpreter then cleans it up, and frees everything.
+	 *
+	 *	If the handle is being freed, then cancel the request.  The request is allocated from the
+	 *	interpreter ctx.  The worker will clean up the request after it's cancelled.
 	 */
+	h->tconn = NULL;
+
 	if (h->conn_request) {
 		fr_assert(h->bio.tls);
 
-		TALLOC_FREE(h->bio.tls);
+		unlang_interpret_signal(h->conn_request, FR_SIGNAL_CANCEL);
+		unlang_interpret_mark_runnable(h->conn_request);
+		h->bio.tls = NULL;
 		h->conn_request = NULL;
 	}
 #endif
@@ -1155,6 +1246,12 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->bio.mem->uctx = h;
 	fr_bio_cb_set(h->bio.mem, &(fr_bio_cb_funcs_t) {
 			.eof = bio_eof,
+#ifdef WITH_TLS
+			/*
+			 *	@todo - this is likely better in the TLS BIO.
+			 */
+			.write_blocked = h->bio.tls ? bio_tls_write_blocked : NULL,
+#endif
 		      });
 
 #ifdef WITH_TLS
@@ -1446,6 +1543,9 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 	fr_event_fd_cb_t	read_fn = NULL;
 	fr_event_fd_cb_t	write_fn = NULL;
 
+	h->tconn = tconn;
+	h->notify_on = notify_on;
+
 	switch (notify_on) {
 		/*
 		 *	We may have sent multiple requests to the
@@ -1478,7 +1578,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 	 *	A TLS connection can have encrypted records waiting for the fd.  The records have to be written
 	 *	before the trunk code writes packets.
 	 */
-	if (h->bio.tls && write_fn && fr_bio_tls_write_flush_needed(h->bio.tls)) write_fn = conn_tls_writable;
+	if (h->bio.tls && fr_bio_tls_write_flush_needed(h->bio.tls)) write_fn = conn_tls_writable;
 #endif
 
 	/*
