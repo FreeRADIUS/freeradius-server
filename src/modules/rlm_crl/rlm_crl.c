@@ -400,7 +400,7 @@ static unlang_action_t CC_HINT(nonnull) mod_crl_by_url(unlang_result_t *p_result
 			continue;
 
 		case CRL_NOT_FOUND:
-			uri = fr_value_box_acopy(NULL, cdp);
+			MEM(uri = fr_value_box_acopy(NULL, cdp));
 			fr_value_box_list_insert_tail(&missing, uri);
 			continue;
 
@@ -408,7 +408,7 @@ static unlang_action_t CC_HINT(nonnull) mod_crl_by_url(unlang_result_t *p_result
 			fr_value_box_t	*vb = NULL;
 			fr_value_box_list_talloc_free(&missing);
 			while ((vb = fr_value_box_list_next(&found->delta_urls, vb))) {
-				uri = fr_value_box_acopy(NULL, vb);
+				MEM(uri = fr_value_box_acopy(NULL, vb));
 				fr_value_box_list_insert_tail(&missing, uri);
 			}
 			base_url = cdp;
