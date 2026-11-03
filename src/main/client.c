@@ -755,11 +755,11 @@ static const CONF_PARSER dynamic_config[] = {
 
 	{ "FreeRADIUS-Client-Require-MA", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, dynamic_require_ma), NULL },
 
-	{ "FreeRADIUS-Client-Secret",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, secret), "" },
-	{ "FreeRADIUS-Client-Shortname",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), "" },
-	{ "FreeRADIUS-Client-NAS-Type",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, nas_type), NULL },
-	{ "FreeRADIUS-Client-Virtual-Server",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, server), NULL },
-	{ "FreeRADIUS-Client-Protocol-Error",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, protocol_error), NULL },
+	{ "FreeRADIUS-Client-Secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, RADCLIENT, secret), "" },
+	{ "FreeRADIUS-Client-Shortname", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), "" },
+	{ "FreeRADIUS-Client-NAS-Type", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, nas_type), NULL },
+	{ "FreeRADIUS-Client-Virtual-Server", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, server), NULL },
+	{ "FreeRADIUS-Client-Protocol-Error", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, protocol_error), NULL },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1430,7 +1430,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		 */
 		strvalue = vp_aprints_value(vp, vp, '\'');
 
-		switch (dynamic_config[i].type) {
+		switch (dynamic_config[i].type & 0xff) {
 		case PW_TYPE_IPV4_ADDR:
 			if (da->attr == PW_FREERADIUS_CLIENT_IP_ADDRESS) {
 				c->ipaddr.af = AF_INET;
@@ -1556,11 +1556,17 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			goto error;
 		}
 
-		if (cf_pair_attr_type(cp) == T_SINGLE_QUOTED_STRING) {
-			RDEBUG2("%s = '%s'", cf_pair_attr(cp), cf_pair_value(cp));
+
+		if (dynamic_config[i].type & PW_TYPE_SECRET) {
+			RDEBUG2("%s = %s", cf_pair_attr(cp), ATTRIBUTE_SECRET_PLACEHOLDER);
 		} else {
-			RDEBUG2("%s = %s", cf_pair_attr(cp), cf_pair_value(cp));
+			if (cf_pair_attr_type(cp) == T_SINGLE_QUOTED_STRING) {
+				RDEBUG2("%s = '%s'", cf_pair_attr(cp), cf_pair_value(cp));
+			} else {
+				RDEBUG2("%s = %s", cf_pair_attr(cp), cf_pair_value(cp));
+			}
 		}
+
 		cf_pair_add(c->cs, cp);
 
 		talloc_free(vp);
