@@ -861,7 +861,7 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 {
 	char const		*value;
 	char			*expanded = NULL;
-	int 			ret;
+	int 			ret = 0;
 
 	fr_pair_t		*vp;
 
@@ -901,8 +901,9 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 			fr_value_box_bstrndup_shallow(&src, NULL, expanded,
 						      talloc_strlen(expanded), true);
 		} else {
-			fr_value_box_bstrndup_shallow(&src, NULL, value,
-						      json_object_get_string_len(leaf), true);
+			if (fr_value_box_from_str(vp, &vp->data, da->type, da, value,
+						  json_object_get_string_len(leaf), NULL) < 0) ret = -1;
+			goto finish;
 		}
 		break;
 
@@ -927,6 +928,7 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	}
 
 	ret = fr_value_box_cast(vp, &vp->data, da->type, da, &src);
+finish:
 	talloc_free(expanded);
 	if (ret < 0) {
 		RWDEBUG("Failed parsing value for attribute \"%s\" (skipping)", da->name);
