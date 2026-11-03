@@ -1799,6 +1799,15 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 		if (!fr_cond_assert(request_is_detachable(request))) return;
 		break;
 
+	case FR_SIGNAL_CANCEL:
+		/*
+		 *	Make it idempotent.  We can have cases where a
+		 *	request is cancelled for one reason, and then
+		 *	an IO callback also tries to cancel it.
+		 */
+		if (unlang_request_is_cancelled(request) || unlang_request_is_done(request)) return;
+		break;
+
 	default:
 		break;
 	}
