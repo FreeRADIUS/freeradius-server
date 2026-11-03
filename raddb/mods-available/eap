@@ -486,6 +486,12 @@ eap {
 		#  OpenSSL OID name (e.g. prime256v1).
 		#  Group names are case-insensitive in OpenSSL 3.5 and later.
 		#
+		#  Note: `group_list` and `ecdh_curve` below configure the same
+		#  OpenSSL supported-groups list (`group_list` takes precedence
+		#  when set).  In TLS 1.2, OpenSSL also requires an ECDSA peer
+		#  certificate's curve to appear in this list (for example,
+		#  include `secp384r1` if clients use ECDSA P-384 certificates).
+		#
 	#	group_list = 'x25519:prime256v1:x448:secp521r1:secp384r1:ffdhe2048:ffdhe3072'
 
 		#  Set this option to specify the allowed
@@ -593,6 +599,9 @@ eap {
 		#  For supported curve names, please run
 		#
 		#	openssl ecparam -list_curves
+		#
+		#  Ignored if `group_list` is set above.  In TLS 1.2, OpenSSL
+		#  also checks ECDSA peer certificate curves against this list.
 		#
 		ecdh_curve = ""
 
