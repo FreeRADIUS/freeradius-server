@@ -436,7 +436,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 	 */
 	if (lib_errno == LDAP_BUSY) {
 		lib_errno = LDAP_SUCCESS;
-		ldap_set_option(conn->handle, LDAP_OPT_RESULT_CODE, &lib_errno);
+		(void) ldap_set_option(conn->handle, LDAP_OPT_RESULT_CODE, &lib_errno);
 	}
 	if (lib_errno != LDAP_SUCCESS) return fr_ldap_error_check(NULL, conn, NULL, dn);
 
@@ -459,7 +459,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 		 *	though the request hasn't failed.  Reset it, or the result code
 		 *	check above fails every later call before it reads anything.
 		 */
-		ldap_set_option(conn->handle, LDAP_OPT_RESULT_CODE, &success);
+		(void) ldap_set_option(conn->handle, LDAP_OPT_RESULT_CODE, &success);
 
 		if (!fr_time_delta_ispos(timeout)) return LDAP_PROC_PENDING;
 
