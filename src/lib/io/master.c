@@ -573,13 +573,12 @@ static int count_connections(UNUSED uint8_t const *key, UNUSED size_t keylen, vo
 	fr_io_client_t *client = talloc_get_type_abort(data, fr_io_client_t);
 	int connections;
 
+	/*
+	 *	The mutex doesn't exist if there isn't a hash table.
+	 */
+	if (!client->ht) return 0;
+
 	pthread_mutex_lock(&client->mutex);
-
-	if (!client->ht) {
-		pthread_mutex_unlock(&client->mutex);
-		return 0;
-	}
-
 	connections = fr_hash_table_num_elements(client->ht);
 	pthread_mutex_unlock(&client->mutex);
 
