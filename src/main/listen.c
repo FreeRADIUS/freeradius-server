@@ -4163,6 +4163,19 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 			return NULL;
 		}
 
+		/*
+		 *	A wildcard UDP socket can send to any server.  If we allocate a new listener with the
+		 *	destination IP of _this_ home server, then it can't be used for other home servers.
+		 *	We therefore check if the home server doesn't care about the source IP.  If so, we can
+		 *	use a wildcard source IP.
+		 *
+		 *	This matches the default proxy listener, which also has a wildcard destination.
+		 */
+		if (fr_inaddr_any(&home->src_ipaddr)) {
+			memset(&sock->other_ipaddr, 0, sizeof(sock->other_ipaddr));
+			sock->other_ipaddr.af = home->ipaddr.af;
+		}
+
 		return this;
 	}
 
