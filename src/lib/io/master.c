@@ -671,16 +671,14 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			uint32_t max_connections = inst->max_connections ? inst->max_connections : client->radclient->limit.max_connections;
 
 			/*
-			 *	We've hit the connection limit.  Walk
-			 *	over all clients with connections, and
-			 *	count the number of connections used.
+			 *	If we're already at the limit, don't add more.
 			 */
 			if (thread->num_connections >= max_connections) {
 				thread->num_connections = 0;
 
 				(void) fr_trie_walk(thread->trie, &thread->num_connections, count_connections);
 
-				if ((thread->num_connections + 1) >= max_connections) {
+				if (thread->num_connections >= max_connections) {
 					RATE_LIMIT_LOCAL(&thread->rate_limit.max_connections, INFO,
 							 "proto_%s - Ignoring connection from client %s - 'max_connections' limit reached.",
 							 inst->app->common.name, client->radclient->shortname);
