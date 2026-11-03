@@ -57,6 +57,7 @@ static fr_dict_attr_t const *attr_ippool_lease_expires;
 static fr_dict_attr_t const *attr_ippool_lease_device;
 static fr_dict_attr_t const *attr_ippool_lease_gateway;
 static fr_dict_attr_t const *attr_ippool_lease_range;
+static fr_dict_attr_t const *attr_ippool_lease_static;
 static fr_dict_attr_t const *attr_ippool_stats;
 static fr_dict_attr_t const *attr_ippool_stats_total;
 static fr_dict_attr_t const *attr_ippool_stats_dynamic;
@@ -85,6 +86,7 @@ fr_dict_attr_autoload_t redis_ippool_tool_dict_attr[] = {
 	{ .out = &attr_ippool_lease_device, .name = "IP-Pool.Lease.Device", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_lease_gateway, .name = "IP-Pool.Lease.Gateway", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_lease_range, .name = "IP-Pool.Lease.Range", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_lease_static, .name = "IP-Pool.Lease.Static", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_stats, .name = "IP-Pool.Stats", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_stats_total, .name = "IP-Pool.Stats.Total", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_stats_dynamic, .name = "IP-Pool.Stats.Dynamic", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
@@ -1243,6 +1245,9 @@ do { \
 			vp = fr_pair_find_by_da(&lease->vp_group, NULL, attr_ippool_lease_address);
 			if (!vp) EXIT_WITH_FAILURE;
 			INFO("address/prefix  : %pV", &vp->data);
+
+			vp = fr_pair_find_by_da(&lease->vp_group, NULL, attr_ippool_lease_static);
+			if (vp) INFO("static          : %s", vp->vp_bool ? "yes" : "no");
 
 			vp = fr_pair_find_by_da(&lease->vp_group, NULL, attr_ippool_lease_active);
 			if (!vp) EXIT_WITH_FAILURE;
