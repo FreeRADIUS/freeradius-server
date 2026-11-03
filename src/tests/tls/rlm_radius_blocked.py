@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 #
-#  Check that the `radius` module pauses and resumes a RADIUS/TLS connection
-#  when the connection blocks on write.
+#  Check that the `radius` module pauses and resumes a RADIUS/TLS or a
+#  RADIUS/TCP connection when the connection blocks on write.
 #
-#  The test starts a home server which accepts one TLS connection and then
+#  The test starts a home server which accepts one connection and then
 #  stops reading, see rlm_radius_blocked_server.py.  The test then starts
-#  radiusd, waits until the radius module reports an open TLS connection, and
+#  radiusd, waits until the radius module reports an open connection, and
 #  sends 1500 large Access-Request packets to the UDP listener of radiusd.  The
 #  radius module proxies the packets to the home server.  The kernel buffers
-#  between the two processes fill up, and the TLS bio blocks.
+#  between the two processes fill up, and the write blocks.
 #
 #  The test then checks, in order:
 #
@@ -26,9 +26,12 @@
 #  child processes.  The timeouts only limit how long a failing test runs.
 #
 #  Environment:
+#    TRANSPORT "tls" (the default) or "tcp".  The test name, and so the
+#              configuration file and the log files, are rlm_radius_blocked
+#              for TLS and rlm_radius_blocked_tcp for TCP.
 #    RADIUSD   command which runs radiusd, possibly several words
 #    OUTPUT    directory for the log files
-#    CONFDIR   directory holding rlm_radius_blocked.conf and the server
+#    CONFDIR   directory holding the configuration file and the server
 #    CERTDIR   directory holding the test certificates
 #    DICT_PATH dictionary directory
 #    PORT      port of the home server
@@ -55,6 +58,12 @@ dict_path = os.environ["DICT_PATH"]
 port = os.environ["PORT"]
 lport = os.environ["LPORT"]
 
+transport = os.environ.get("TRANSPORT", "tls")
+if transport not in ("tls", "tcp"):
+    sys.exit(f"rlm_radius_blocked.py: unknown TRANSPORT {transport}")
+
+name = "rlm_radius_blocked" + ("_tcp" if transport == "tcp" else "")
+
 NUM_PACKETS = 1500
 
 #
@@ -71,7 +80,7 @@ PACKET_BODY = 14
 #
 lines = []
 marks = {
-    "open": "TLS connection open",
+    "open": "TLS connection open" if transport == "tls" else "Connection open",
     "blocked": "Writing is blocked",
     "resumed": "Writing is resumed",
 }
@@ -96,24 +105,25 @@ def wait(name, timeout):
 
 
 def finish():
-    with open(f"{output}/rlm_radius_blocked_radiusd.log", "w") as f:
+    with open(f"{output}/{name}_radiusd.log", "w") as f:
         f.writelines(lines)
 
     if failed:
-        print("rlm_radius_blocked.py: failed: " + "; ".join(failed))
+        print(f"{name}: failed: " + "; ".join(failed))
         sys.exit(1)
 
     sys.exit(0)
 
 
-server = subprocess.Popen([sys.executable, "-I", f"{confdir}/rlm_radius_blocked_server.py", port, certdir],
+server = subprocess.Popen([sys.executable, "-I", f"{confdir}/rlm_radius_blocked_server.py", port, certdir] +
+                          (["tcp"] if transport == "tcp" else []),
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
 if not check(server.stdout.readline().strip() == "listening", "home server is listening"):
     finish()
 
 env = dict(os.environ, PORT=port, LPORT=lport)
-rad = subprocess.Popen(radiusd + ["-d", confdir, "-D", dict_path, "-n", "rlm_radius_blocked",
+rad = subprocess.Popen(radiusd + ["-d", confdir, "-D", dict_path, "-n", name,
                                   "-msx", "-e", "60", "-l", "stdout"],
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
@@ -132,7 +142,7 @@ def reader():
 reader_thread = threading.Thread(target=reader, daemon=True)
 reader_thread.start()
 
-if check(wait("open", 30), "radius module opened the TLS connection"):
+if check(wait("open", 30), f"radius module opened the {transport.upper()} connection"):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     for i in range(NUM_PACKETS):
@@ -168,19 +178,34 @@ check(not any(("ASSERT FAILED" in line) or ("CAUGHT SIGNAL" in line) for line in
 check(rad.returncode == 0, f"radiusd exited with status {rad.returncode}")
 
 #
-#  The home server prints "handshake done" first, and then the number of bytes when the radius module
+#  The home server prints "handshake done" (TLS) or "connected" (TCP) first, and then the number of bytes when the radius module
 #  closes the connection.
 #
+#
+#  The home server waits for SIGUSR1 before reading.  The test did not send SIGUSR1 when a check failed
+#  earlier, so send SIGUSR1 again here, as a server which still waits would never end.
+#
+server.send_signal(signal.SIGUSR1)
+
 server_lines = []
 for line in server.stdout:
     server_lines.append(line.strip())
 
-check(server_lines[:1] == ["handshake done"], "home server finished the TLS handshake")
+first = "handshake done" if transport == "tls" else "connected"
+check(server_lines[:1] == [first], "home server accepted the connection" if transport == "tcp"
+      else "home server finished the TLS handshake")
 drained = [line for line in server_lines if line.startswith("drained ")]
 check(len(drained) == 1 and int(drained[0].split()[1]) > 0, "home server read the data after the pause")
+
+#
+#  Writes which blocked part way through a packet must not lose the rest of the packet.
+#
+framing = [line for line in server_lines if line.startswith("framing ")]
+check(len(framing) == 1 and framing[0].startswith("framing ok ") and int(framing[0].split()[2]) > 0,
+      "home server read whole packets: " + (framing[0] if framing else "no framing line"))
 server.wait()
 
-with open(f"{output}/rlm_radius_blocked_server.log", "w") as f:
+with open(f"{output}/{name}_server.log", "w") as f:
     f.write("\n".join(server_lines) + "\n")
 
 finish()

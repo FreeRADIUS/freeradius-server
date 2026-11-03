@@ -73,7 +73,13 @@ TLS_TESTS := $(patsubst $(DIR)/%.sh,%,$(wildcard $(DIR)/*.sh))
 #  otherwise.  The Python tests run once, as the tests do not use
 #  unit_test_tls or unit_test_bio.
 #
-TLS_PYTHON_TESTS := rlm_radius_blocked
+TLS_PYTHON_TESTS := rlm_radius_blocked rlm_radius_blocked_tcp
+
+#
+#  The Python tests share the Python programs, so every Python test depends on
+#  every Python program.
+#
+TLS_PYTHON_FILES := $(wildcard $(DIR)/*.py)
 TLS_PYTHON := $(shell python3 -c 'import signal, socket, ssl, struct' 2>/dev/null && command -v python3)
 
 TLS_TESTS := $(filter-out $(TLS_PYTHON_TESTS),$(TLS_TESTS))
@@ -124,7 +130,7 @@ TLS_CMD.${1} := \
 	$(SHELL) \
 	$(TLS_DIR)/${1}.sh
 
-$(TLS_OUTPUT)/${1}.receipt: $(or $(wildcard $(TLS_DIR)/${1}.conf),$(TLS_CONF)) $(TLS_COMMON) $(TLS_DIR)/${1}.sh $(wildcard $(TLS_DIR)/${1}.py $(TLS_DIR)/${1}_server.py) $(TEST_BIN_DIR)/unit_test_tls $(TEST_BIN_DIR)/radiusd $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
+$(TLS_OUTPUT)/${1}.receipt: $(or $(wildcard $(TLS_DIR)/${1}.conf),$(TLS_CONF)) $(TLS_COMMON) $(TLS_DIR)/${1}.sh $(if $(filter ${1},$(TLS_PYTHON_TESTS)),$(TLS_PYTHON_FILES)) $(TEST_BIN_DIR)/unit_test_tls $(TEST_BIN_DIR)/radiusd $(GENERATED_CERT_FILES) | $(TLS_OUTPUT)
 	@echo "TLS-TEST ${1}"
 	$${Q}if ! $$(TLS_CMD.${1}) > $$@.log 2>&1 || ! test -f $$@; then \
 		cat $$@.log; \
