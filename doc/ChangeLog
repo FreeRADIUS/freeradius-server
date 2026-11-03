@@ -13,6 +13,7 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  see mods-available/rest for details.
 
 	Feature improvements
+	* Security fixes in a number of EAP methods.  See the commit log for details.
 	* Implement "track_home_server" in home_server_pool configuration
 	  See proxy.conf.  The previous (and not working) "affinity_id"
 	  configuration has been removed.
@@ -27,6 +28,15 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Clean up and normalize log messages and debug output.  These
 	  changes make the messages easier to read, and easier to understand.
 	* Add significantly more stats for outgoing proxy sockets.
+	* Use wildcard socket for outgoing UDP proxy sockets in more cases.
+	  This helps to significantly lower the number of active sockets.
+	* Add TLS-* attributes for use in Autz-Type New-TLS-Connection.
+	  Fixes #5979
+	* Performance improvements for "update" sections.  The differences are
+	  most noticable when there are many attributes (30+).
+	* Docker fixups for 32-bit ARM systems.
+	* rlm_python3 is now marked as thread-safe, which should help to
+	  improve performance.
 
 	Bug fixes
 	* Skip TLS PSK checks when OpenSSL does not support PSK.
@@ -48,7 +58,18 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Handle race condition in "new proxy socket", which fixes a
 	  long-standing issue where it would open a socket, send packets,
 	  and then (rarely) ignore the replies.
-	* Security fixes in TEAP and FAST.  See the commit log for details.
+	* Fix secret suppression in rlm_python3
+	* Set "secret" flag for dynamic clients, too
+	* For dynamic home servers, make realm_dir filenames and SNI checks case
+	  insensitive.
+	* Avoid filesort when processing radacct on MySQL / MariaDB
+	* Update "consistent-keyed-balance" to be more even.  There are still some
+	  differences between home servers, but the differences are not substantial.
+	* Fix OCSP checks for certificates containing Authority Info Access.
+	* Clean up memory on OSCP failure.  Fixes #5973
+	* Don't use require_ma for CoA / Disconnect packets, as it's not necessary.
+	* Many fixes and tweaks for reverse CoA, which is now running in production.
+	  Patches from CyB0rgg.
 
 FreeRADIUS 3.2.10 Wed 03 Jun 2026 12:00:00 UTC urgency=high
 	Configuration changes
