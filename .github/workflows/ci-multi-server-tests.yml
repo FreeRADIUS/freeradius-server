@@ -267,8 +267,11 @@ jobs:
       #  given URL (see the script header). The step does not run when the
       #  artifact step found no files (empty `artifact-id`).
       #
+      #  `continue-on-error` is a stop-gap. Publish script will be updated soon.
+      #
       - name: Publish profiling results to the prof-results store
         if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
+        continue-on-error: true
         run: scripts/ci/publish-profiling-results.sh "https://cinfra-ca.inkbridge.io/profiling/data"
 
       #
