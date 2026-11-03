@@ -257,7 +257,10 @@ int main(int argc, char **argv)
 	if (conf.verbose > 1) {
 		int debug = -1;
 
-		ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &debug);
+		if (ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &debug) != LDAP_OPT_SUCCESS) {
+			fprintf(stderr, "sync_touch: Failed setting debug level");
+			goto finish;
+		}
 	}
 
 	ret = ldap_initialize(&ld, conf.uri);
@@ -266,7 +269,10 @@ int main(int argc, char **argv)
 			conf.uri, ldap_err2string(ret));
 		goto finish;
 	}
-	ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version);
+	if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version) != LDAP_OPT_SUCCESS) {
+		fprintf(stderr, "sync_touch: Failed setting protocol version");
+		goto finish;
+	}
 
 	if (conf.start_tls) {
 		ret = ldap_start_tls_s(ld, NULL, NULL);
