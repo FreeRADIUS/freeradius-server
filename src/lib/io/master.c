@@ -1869,7 +1869,7 @@ have_client:
 
 			RATE_LIMIT_LOCAL(thread ? &thread->rate_limit.conn_alloc_failed : &alloc_failed,
 					 ERROR, "Failed to allocate connection from client %s", client->radclient->shortname);
-			return -1;
+			return 0;
 		}
 
 		/*
