@@ -1,0 +1,141 @@
+#
+#  A2 = Digest-Method ":" Digest-URI [ ":" Digest-Body-Digest ]
+#
+#  The A2 buffer is 765 bytes, so the longest A2 is 764 bytes, leaving
+#  room for the trailing NUL.  Test the longest valid value and the
+#  next longer one for each component.
+#
+#  The long values are set by policy after the request is decoded.
+#  The valid cases use the correct Digest-Response, calculated with
+#  Python's hashlib (user "bob", realm "biloxi.com", password "zanzibar").
+#
+digest
+if (!ok) {
+	test_fail
+}
+
+update control {
+	&Cleartext-Password := "zanzibar"
+}
+
+#
+#  Method[763] ":" URI[0]
+#
+update request {
+	&Digest-Method := "M"
+	&Digest-URI := ""
+	&Digest-QOP !* ANY
+	&Digest-Response := "f8c3399181005d81e9469a33daaa6500"
+}
+update request {
+	&Digest-Method := "%{rpad:&Digest-Method 763 M}"
+}
+if ("%{length:Digest-Method}" != 763) {
+	test_fail
+}
+digest.authenticate {
+	invalid = 1
+	reject = 1
+}
+if (!ok) {
+	test_fail
+}
+
+#
+#  Method[764] ":" leaves no room for the NUL.
+#
+update request {
+	&Digest-Method := "%{rpad:&Digest-Method 764 M}"
+}
+if ("%{length:Digest-Method}" != 764) {
+	test_fail
+}
+digest.authenticate {
+	invalid = 1
+	reject = 1
+}
+if (!invalid) {
+	test_fail
+}
+
+#
+#  "M" ":" URI[762]
+#
+update request {
+	&Digest-Method := "M"
+	&Digest-URI := "U"
+	&Digest-QOP := "auth"
+	&Digest-Response := "d07c53534a50eced017ad87e4d6412b9"
+}
+update request {
+	&Digest-URI := "%{rpad:&Digest-URI 762 U}"
+}
+if ("%{length:Digest-URI}" != 762) {
+	test_fail
+}
+digest.authenticate {
+	invalid = 1
+	reject = 1
+}
+if (!ok) {
+	test_fail
+}
+
+#
+#  "M" ":" URI[763] fills the buffer.
+#
+update request {
+	&Digest-URI := "%{rpad:&Digest-URI 763 U}"
+}
+if ("%{length:Digest-URI}" != 763) {
+	test_fail
+}
+digest.authenticate {
+	invalid = 1
+	reject = 1
+}
+if (!invalid) {
+	test_fail
+}
+
+#
+#  "M" ":" "U" ":" Body[760]
+#
+update request {
+	&Digest-URI := "U"
+	&Digest-QOP := "auth-int"
+	&Digest-Body-Digest := "B"
+	&Digest-Response := "3ff1a462e89e58f43fd44fd295122846"
+}
+update request {
+	&Digest-Body-Digest := "%{rpad:&Digest-Body-Digest 760 B}"
+}
+if ("%{length:Digest-Body-Digest}" != 760) {
+	test_fail
+}
+digest.authenticate {
+	invalid = 1
+	reject = 1
+}
+if (!ok) {
+	test_fail
+}
+
+#
+#  "M" ":" "U" ":" Body[761] fills the buffer.
+#
+update request {
+	&Digest-Body-Digest := "%{rpad:&Digest-Body-Digest 761 B}"
+}
+if ("%{length:Digest-Body-Digest}" != 761) {
+	test_fail
+}
+digest.authenticate {
+	invalid = 1
+	reject = 1
+}
+if (!invalid) {
+	test_fail
+}
+
+test_pass

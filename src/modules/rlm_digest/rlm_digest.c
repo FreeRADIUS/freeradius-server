@@ -382,6 +382,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		REDEBUG("No Digest-Method: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
+
+	/*
+	 *	Leave room for the ':' and the trailing NUL.
+	 */
+	if (vp->vp_length >= (sizeof(a2) - 1)) {
+		REDEBUG("Digest-Method is too long");
+		return RLM_MODULE_INVALID;
+	}
 	memcpy(&a2[0], vp->vp_octets, vp->vp_length);
 	a2_len = vp->vp_length;
 
@@ -391,6 +399,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	vp = fr_pair_find_by_num(request->packet->vps, PW_DIGEST_URI, 0, TAG_ANY);
 	if (!vp) {
 		REDEBUG("No Digest-URI: Cannot perform Digest authentication");
+		return RLM_MODULE_INVALID;
+	}
+
+	if (vp->vp_length >= (sizeof(a2) - a2_len)) {
+		REDEBUG("Digest-URI is too long");
 		return RLM_MODULE_INVALID;
 	}
 	memcpy(&a2[a2_len], vp->vp_octets, vp->vp_length);
@@ -419,7 +432,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 				return RLM_MODULE_INVALID;
 			}
 
-			if ((a2_len + body->vp_length) > sizeof(a2)) {
+			if (body->vp_length >= (sizeof(a2) - a2_len)) {
 				REDEBUG("Digest-Body-Digest is too long");
 				return RLM_MODULE_INVALID;
 			}
