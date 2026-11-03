@@ -373,7 +373,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		}
 
 		if (fr_pair_value_from_str(vp, s2, -1) >= 0) {
-			RDEBUG("%s - %s'%s:%s' %s %s%s%s", funcname, s2,
+			RDEBUG("%s - '%s:%s' %s %s%s%s", funcname,
 			       list_name, s1, fr_int2str(fr_tokens, op, "="), quote, s2p, quote);
 			radius_pairmove(current, vps, vp, false);
 		} else {
