@@ -11,4 +11,5 @@ NAS-IP-Address = '192.168.1.1'
 #  Expected answer
 #
 Packet-Type == Access-Accept
-
+Class == 0x010203
+Chargeable-User-Identity == Bob

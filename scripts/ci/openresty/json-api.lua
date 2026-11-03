@@ -131,6 +131,14 @@ Api.endpoint('GET', '/user/<username>/mac/<client>',
             op = "^=",
             value = keyData.username
         }
+        returnData["reply.Class"] = {
+            op = ":=",
+            value = "0x010203"
+        }
+        returnData["reply.Chargeable-User-Identity"] = {
+            op = ":=",
+            value = keyData.username
+        }
         return ngx.say(cjson.encode(returnData))
     end
 )
