@@ -4157,12 +4157,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 			sock->recv_buff = sock2->recv_buff;
 		}
 
-		if (listen_bind(this) < 0) {
-			listen_free(&this);
-			home->last_failed_open = now;
-			return NULL;
-		}
-
 		/*
 		 *	A wildcard UDP socket can send to any server.  If we allocate a new listener with the
 		 *	destination IP of _this_ home server, then it can't be used for other home servers.
@@ -4174,6 +4168,12 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 		if (fr_inaddr_any(&home->src_ipaddr)) {
 			memset(&sock->other_ipaddr, 0, sizeof(sock->other_ipaddr));
 			sock->other_ipaddr.af = home->ipaddr.af;
+		}
+
+		if (listen_bind(this) < 0) {
+			listen_free(&this);
+			home->last_failed_open = now;
+			return NULL;
 		}
 
 		return this;
