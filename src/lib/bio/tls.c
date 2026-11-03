@@ -1003,13 +1003,7 @@ static int fr_bio_tls_destructor(fr_bio_tls_t *my)
 
 	fr_bio_tls_close_send(my);
 
-	/*
-	 *	Signal the request only if we have an interpreter.
-	 *
-	 *	When the worker thread is shutting down, our destructor is called, but there's no interpreter,
-	 *	and we can't signal the request.
-	 */
-	if (unlang_interpret_get_thread_default()) unlang_interpret_signal(my->conn->request, FR_SIGNAL_CANCEL);
+	unlang_interpret_signal(my->conn->request, FR_SIGNAL_CANCEL);
 
 	return fr_bio_destructor((fr_bio_t *) my);
 }
