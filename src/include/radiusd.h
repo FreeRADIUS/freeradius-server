@@ -627,7 +627,7 @@ int radius_evaluate_map(REQUEST *request, int modreturn, int depth,
 			fr_cond_t const *c);
 int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 			 fr_cond_t const *c);
-void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat) CC_HINT(nonnull(1));
+void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat) CC_HINT(nonnull(1,2));
 
 #ifdef WITH_TLS
 /*
