@@ -70,7 +70,7 @@ struct rlm_radius_s {
 	char const		*secret;		//!< Shared secret.
 
 #ifdef WITH_TLS
-	fr_tls_conf_t		*tls_conf;		//!< Parsed "tls" section.  If set, we use RADIUS/TLS.
+	fr_tls_conf_t		*tls_conf;		//!< Parsed "tls" section.  If set, we use RADIUS/TLS, or RADIUS/DTLS for UDP.
 #endif
 
 	uint32_t		max_packet_size;	//!< Maximum packet size.

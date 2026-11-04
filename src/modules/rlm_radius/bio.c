@@ -960,7 +960,9 @@ static int conn_tls_alloc(bio_handle_t *h)
 		      });
 
 	tls_conn = fr_bio_tls_conn(h->bio.tls);
-	tls_conn->name = talloc_typed_asprintf(tls_conn, "TLS %s", h->ctx.fd_info->name);
+	tls_conn->name = talloc_typed_asprintf(tls_conn, "%s %s",
+					       (h->ctx.fd_config.socket_type == SOCK_DGRAM) ? "DTLS" : "TLS",
+					       h->ctx.fd_info->name);
 
 	return 0;
 }

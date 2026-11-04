@@ -107,8 +107,13 @@ static conf_parser_t disconnect_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static conf_parser_t const transport_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED | CONF_FLAG_SECRET, rlm_radius_t, secret) },
+static conf_parser_t const udp_config[] = {
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_SECRET, rlm_radius_t, secret) },
+
+#ifdef WITH_TLS
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, fr_tls_client_config),
+	  .subcs_type = "fr_tls_conf_t" },
+#endif
 
 	CONF_PARSER_TERMINATOR
 };
@@ -132,7 +137,7 @@ static conf_parser_t const connected_config[] = {
 
 	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_radius_t, trunk_conf, trunk_config ) },
 
-	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_config },
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) udp_config },
 
 	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) tcp_config },
 
@@ -688,39 +693,63 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 #ifdef WITH_TLS
 	/*
-	 *	TLS needs a connected stream socket, and a trunk to manage the connections.
+	 *	TLS and DTLS need a connected socket, and a trunk to manage the connections.
 	 */
 	if (inst->tls_conf) {
+		char const	*fixed_secret;
+		CONF_SECTION	*wrong_cs;
+
 		if ((inst->mode != RLM_RADIUS_MODE_PROXY) && (inst->mode != RLM_RADIUS_MODE_CLIENT)) {
 			cf_log_err(conf, "The 'tls' section can only be used with 'mode = proxy' or 'mode = client'");
 			return -1;
 		}
 
 		/*
-		 *	@todo - src/lib/tls/ supports DTLS, so we can enable that once we have some more
-		 *	tests.
+		 *	The 'tls' section is only parsed inside of the 'tcp' or 'udp' section.  Make sure that
+		 *	the section matches the transport, as src/lib/tls/ uses the transport to select
+		 *	between TLS and DTLS.
 		 */
-		if (inst->fd_config.socket_type == SOCK_DGRAM) {
-			cf_log_err(conf, "The 'tls' section can only be used with 'transport = tcp'");
+		wrong_cs = cf_section_find(conf, (inst->fd_config.socket_type == SOCK_DGRAM) ? "tcp" : "udp", NULL);
+		if (wrong_cs && cf_section_find(wrong_cs, "tls", NULL)) {
+			cf_log_err(conf, "The 'tls' section is in the '%s' section, which does not match 'transport = %s'",
+				   cf_section_name1(wrong_cs),
+				   (inst->fd_config.socket_type == SOCK_DGRAM) ? "udp" : "tcp");
 			return -1;
 		}
 
+		inst->tls_conf->socket_type = inst->fd_config.socket_type;
+
 		/*
-		 *	RFC6614 Section 2.3 says that the port is 2083, and that the secret is "radsec".
+		 *	RFC 6614 Section 2.1 says that the port is 2083, and Section 2.3 (4) says that the secret
+		 *	is "radsec".  RFC 7360 Section 3.1 says that the DTLS port is UDP/2083, and Section 2.1
+		 *	says that the secret is "radius/dtls".
 		 */
 		if (!inst->fd_config.dst_port) inst->fd_config.dst_port = 2083;
 
-		if (!inst->secret) {
-			MEM(inst->secret = talloc_strdup(inst, "radsec"));
+		fixed_secret = (inst->fd_config.socket_type == SOCK_DGRAM) ? "radius/dtls" : "radsec";
 
-		} else if (strcmp(inst->secret, "radsec") != 0) {
-			cf_log_warn(conf, "RFC 6614 says that the secret should be 'radsec'.  A different secret may not work.");
+		if (!inst->secret) {
+			MEM(inst->secret = talloc_strdup(inst, fixed_secret));
+
+		} else if (strcmp(inst->secret, fixed_secret) != 0) {
+			cf_log_warn(conf, "The RFC says that the secret should be '%s'.  A different secret may not work.",
+				    fixed_secret);
 		}
 	} else
 #endif
-	if (!inst->secret && cf_section_find(conf, "tcp", NULL)) {
-		cf_log_err(conf, "Missing 'secret' in the 'tcp' section");
-		return -1;
+	/*
+	 *	Only the connected modes parse the 'tcp' and 'udp' sections, see mode_parse().
+	 */
+	if (!inst->secret && (inst->fd_config.type == FR_BIO_FD_CONNECTED)) {
+		if (cf_section_find(conf, "tcp", NULL)) {
+			cf_log_err(conf, "Missing 'secret' in the 'tcp' section");
+			return -1;
+		}
+
+		if (cf_section_find(conf, "udp", NULL)) {
+			cf_log_err(conf, "Missing 'secret' in the 'udp' section");
+			return -1;
+		}
 	}
 
 	/*

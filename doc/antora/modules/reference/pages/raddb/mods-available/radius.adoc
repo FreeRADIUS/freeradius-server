@@ -293,7 +293,7 @@ automatically, and does not need to be specified here.
 
 Status-Server packets must not contain User-Name, Reply-Message,
 passwords, EAP-Message, or Digest-* attributes
-(https://tools.ietf.org/html/rfc5997[RFC 5997] Section 5).  The server
+(https://tools.ietf.org/html/rfc5997[RFC 5997] Section 5). The server
 refuses to start if they are set here.
 
 If the Event-Timestamp attribute is added, it will be updated each
@@ -332,6 +332,27 @@ recv_buff:: How big the kernel's receive buffer should be.
 
 send_buff:: How big the kernel's send buffer should be.
 
+==== RADIUS over DTLS
+
+When the `udp` subsection contains a `tls` subsection, the module used
+RADIUS/DTLS, https://tools.ietf.org/html/rfc7360[RFC 7360]. The `tls`
+subsection takes the same configuration items as the other `tls`
+sections.
+
+The `tls` subsection is only available when:
+
+  * the server was built with OpenSSL,
+  * and the `mode` is `proxy` or `client`.
+
+OpenSSL does not support DTLS 1.3. If you set `tls_max_version = 1.3`,
+then it will be automatically set to `1.2`.
+
+The default secret is `radsec`. The module logs a warning when the
+`secret` has any other value, but does not return an error
+
+Like normal UDP, DTLS will retransmit lost packets. The DTLS layer
+ensures that each retransmitted packet is unique.
+
 === TCP Transport
 
 The `tcp` subsection accepts the same configuration items as the `udp`
@@ -340,33 +361,32 @@ subsection.
 ==== RadSec
 
 When the `tcp` subsection contains a `tls` subsection, the module
-sends packets over a TLS connection (RadSec, or RADIUS/TLS in
-https://tools.ietf.org/html/rfc6614[RFC 6614]).  The module checks the
-certificate of the home server, and opens each connection with a TLS
-handshake before the module sends any packet.
+sends packets over a TLS connection (RadSec, or RADIUS/TLS in RFC
+6614). The module checks the certificate of the home server, and opens
+each connection with a TLS handshake before the module sends any
+packet.
 
 The `tls` subsection is only available when:
 
   * the server was built with OpenSSL,
-  * and the `transport` is `tcp`,
   * and the `mode` is `proxy` or `client`.
 
 The `tls` subsection takes the usual TLS client configuration items.
 The items that RadSec usually needs are:
 
 chain { ... }:: The certificate chain, the private key, and the
-password for the private key.  The module sends the certificate chain
+password for the private key. The module sends the certificate chain
 to the home server when the home server asks for a client certificate.
 
 ca_file:: The file with the certificate authority (CA) certificates
 that the module uses to check the certificate of the home server.
 
-ca_path:: A directory of CA certificates.  The module uses the
+ca_path:: A directory of CA certificates. The module uses the
 certificates in the directory in addition to `ca_file`.
 
 tls_max_version:: The highest TLS version that the module offers.
 
-The default secret is `radsec`.  The module logs a warning when the
+The default secret is `radsec`. The module logs a warning when the
 `secret` has any other value, but does not return an error
 
 == Connection trunking
@@ -783,6 +803,17 @@ radius {
 #		max_packet_size = 4096
 #		recv_buff = 1048576
 #		send_buff = 1048576
+##		tls {
+##			chain {
+##				certificate_file = ${certdir}/client.pem
+##				private_key_password = whatever
+##				private_key_file = ${certdir}/client.key
+##				ca_file = ${cadir}/ca.pem
+##			}
+##			ca_file = ${cadir}/ca.pem
+##			ca_path = ${cadir}
+##			tls_max_version = 1.2
+##		}
 	}
 ##	tcp {
 ##		src_ipaddr = *
