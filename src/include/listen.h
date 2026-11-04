@@ -78,6 +78,7 @@ struct rad_listen {
 
 	bool		proxy_protocol;		//!< haproxy protocol
 	bool		listen;			//! just calls listen()
+	bool		blocked;		//!< writes are frozen until the socket is writable
 #endif
 	bool		dual;
 	bool		nodup;
@@ -88,7 +89,6 @@ struct rad_listen {
 #ifdef WITH_TLS
 	fr_tls_server_conf_t *tls;
 	bool		check_client_connections;
-	bool		blocked;
 
 	fr_dlist_t		entry;		//!< for the home server free list
 
@@ -188,6 +188,15 @@ typedef struct listen_socket_t {
 
 	bool		connection_counted;	//!< this connection is counted in home->active_connections
 	bool		connected;		//!< was this socket connected?
+
+	pthread_mutex_t *mutex;			//!< protects the buffered write state
+	fr_event_fd_handler_t write_handler;	//!< installed when the socket joins the event loop
+
+	uint8_t		*read_buf;		//!< one partial packet read from a proxy socket
+	size_t		read_used;		//!< bytes in read_buf
+	uint8_t		*write_buf;		//!< packets which write() did not accept
+	size_t		write_used;		//!< bytes in write_buf
+	bool		connecting;		//!< the connect timer has seen this socket unconnected
 #endif
 
 #ifdef WITH_TLS
@@ -195,11 +204,9 @@ typedef struct listen_socket_t {
 	REQUEST		*request; /* horrible hacks */
 	VALUE_PAIR	*certs;
 	uint32_t	connect_timeout;
-	pthread_mutex_t *mutex;
 	uint8_t		*data;
 	size_t		partial;
 
-	fr_event_fd_handler_t write_handler;
 	enum {
 		LISTEN_TLS_INIT = 0,
 		LISTEN_TLS_CHECKING,

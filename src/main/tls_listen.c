@@ -197,7 +197,7 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener)
 		 *	until such time as it becomes writable.
 		 */
 		if (errno == EWOULDBLOCK) {
-			tls_listener_freeze(listener, tls_write_available);
+			tcp_socket_freeze(listener, tls_write_available);
 			return 0;
 		}
 #endif
@@ -267,7 +267,7 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 
 	PTHREAD_MUTEX_UNLOCK(sock->mutex);
 
-	if (thaw) tls_listener_thaw(listener);
+	if (thaw) tcp_socket_thaw(listener);
 }
 
 
@@ -1218,18 +1218,19 @@ static int try_connect(rad_listen_t *this)
 			return -1;
 
 		case SSL_ERROR_WANT_READ:
-			if (this->blocked) tls_listener_thaw(this);
+			if (this->blocked) tcp_socket_thaw(this);
 			DEBUG3("(TLS) SSL_connect() returned WANT_READ");
 			return 2;
 
 		case SSL_ERROR_WANT_WRITE:
-			if (!this->blocked) tls_listener_freeze(this, tls_write_available);
+			if (!this->blocked) tcp_socket_freeze(this, tls_write_available);
 			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 			return 2;
 		}
 	}
 
 	sock->ssn->connected = true;
+	sock->connected = true;
 
 	/*
 	 *	We don't need this any more.

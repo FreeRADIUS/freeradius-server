@@ -259,15 +259,20 @@ static inline void state_machine_timer(char const *file, int line, REQUEST *requ
  *	being called from a child thread or the master, and then do
  *	different things based on that.
  */
-#ifdef WITH_PROXY
+#ifdef WITH_TCP
 static fr_packet_list_t *proxy_list = NULL;
+#endif
+
+#ifdef WITH_PROXY
 static TALLOC_CTX *proxy_ctx = NULL;
 static rad_listen_t *proxy_null_listener = NULL;
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#  ifdef WITH_PROXY
+#  ifdef WITH_TCP
 static pthread_mutex_t proxy_mutex;
+#  endif
+#  ifdef WITH_PROXY
 static bool proxy_no_new_sockets = false;
 #  endif
 
@@ -625,8 +630,8 @@ void request_free(REQUEST *request)
 }
 
 
-#ifdef WITH_TLS
-void tls_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler)
+#ifdef WITH_TCP
+void tcp_socket_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler)
 {
 	int rcode = 1;
 
@@ -644,7 +649,7 @@ void tls_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_han
 			 */
 			rcode = fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener, true);
 			if (rcode < 0) {
-				ERROR("Fatal error freezing TLS socket: %s", fr_strerror());
+				ERROR("Fatal error freezing TCP socket: %s", fr_strerror());
 				fr_exit(1);
 			}
 		}
@@ -694,7 +699,7 @@ void tls_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_han
 	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
 
-void tls_listener_thaw(rad_listen_t *listener)
+void tcp_socket_thaw(rad_listen_t *listener)
 {
 	int rcode;
 
@@ -710,7 +715,7 @@ void tls_listener_thaw(rad_listen_t *listener)
 		 */
 		rcode = fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener, true);
 		if (rcode < 0) {
-			ERROR("Fatal error thawing TLS socket: %s", fr_strerror());
+			ERROR("Fatal error thawing TCP socket: %s", fr_strerror());
 			fr_exit(1);
 		}
 
@@ -751,7 +756,7 @@ void tls_listener_thaw(rad_listen_t *listener)
 
 	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
-#endif	/* WITH_TLS */
+#endif	/* WITH_TCP */
 
 #ifdef WITH_PROXY
 /*
@@ -6461,7 +6466,7 @@ static void event_new_fd(void *ctx)
 				       event_socket_handler, this)) {
 			this->status = RAD_LISTEN_STATUS_KNOWN;
 
-#ifdef WITH_TLS
+#ifdef WITH_TCP
 			if (this->type == RAD_LISTEN_DETAIL) {
 				return;
 			}

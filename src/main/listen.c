@@ -1434,9 +1434,9 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	this->fd = newfd;
 	this->status = RAD_LISTEN_STATUS_INIT;
 
-#ifdef WITH_TLS
 	sock->mutex = NULL;	/* we're not using our parents mutex */
-#endif
+	sock->read_buf = NULL;	/* proxy sockets only */
+	sock->write_buf = NULL;
 	sock->parent = listener->data;
 	sock->other_ipaddr = src_ipaddr;
 	sock->other_port = src_port;
@@ -4086,6 +4086,250 @@ static void proxy_failed_open(home_server_t *home, time_t now)
 	}
 #endif
 }
+
+#ifdef WITH_TCP
+/*
+ *	Finish a non-blocking connect() on a plain TCP proxy socket.
+ *	Largely a clone of try_connect(), with some changes for TCP.
+ *
+ *	Returns -1 on failure, 1 when the socket is connected, and 2 when
+ *	the connect() is still in progress.  The caller closes the socket
+ *	on failure, as it does for the TLS try_connect().
+ *
+ *	The caller holds sock->mutex.
+ */
+static UNUSED int tcp_try_connect(rad_listen_t *this)
+{
+	int error = 0;
+	socklen_t len = sizeof(error);
+	socklen_t salen;
+	time_t now = time(NULL);
+	listen_socket_t *sock = this->data;
+	home_server_t *home = sock->home;
+	struct sockaddr_storage ss;
+
+	rad_assert(!sock->connected);
+
+	/*
+	 *	The connect timeout is copied from the home server by
+	 *	proxy_new_listener().  A value of zero means that there is no
+	 *	timeout.
+	 */
+	if (sock->limit.connect_timeout &&
+	    ((sock->opened + sock->limit.connect_timeout) < now)) {
+		ERROR("Timeout connecting to home server %s", home->log_name);
+		goto failed;
+	}
+
+	/*
+	 *	A failed connect() leaves its error in SO_ERROR.
+	 */
+	if (getsockopt(this->fd, SOL_SOCKET, SO_ERROR, (void *) &error, &len) < 0) {
+		ERROR("Failed reading connect() status for home server %s: %s",
+		      home->log_name, fr_syserror(errno));
+		goto failed;
+	}
+
+	if (error != 0) {
+		ERROR("Failed connecting to home server %s: %s", home->log_name, fr_syserror(error));
+		goto failed;
+	}
+
+	if (fr_ipaddr2sockaddr(&sock->other_ipaddr, sock->other_port, &ss, &salen) < 0) {
+		ERROR("Failed connecting to home server %s: %s", home->log_name, fr_strerror());
+		goto failed;
+	}
+
+	/*
+	 *	Calling connect() again is portable.  A connected socket
+	 *	returns EISCONN, which means that the connection succeeded.
+	 */
+	if (connect(this->fd, (struct sockaddr *) &ss, salen) < 0) {
+		switch (errno) {
+		case EISCONN:
+			break;
+
+		case EINPROGRESS:
+		case EALREADY:
+			return 2;
+
+		default:
+			ERROR("Failed connecting to home server %s: %s", home->log_name, fr_syserror(errno));
+			goto failed;
+		}
+	}
+
+	sock->connected = true;
+	home->tcp_failed = false;
+	home_server_active_connections_increment(this);
+
+	return 1;
+
+failed:
+	proxy_failed_open(home, now);
+	return -1;
+}
+
+/*
+ *	Size of sock->write_buf.  A RADIUS packet is typically 1K or
+ *	less, so the buffer holds dozens of packets.
+ */
+#define TCP_WRITE_BUF_SIZE (65536)
+
+/*
+ *	Close a proxy socket.
+ *
+ *	Called with sock->mutex held, and unlocks the mutex.  We do NOT
+ *	free the listener, as a request may still be using the listener.
+ *	The listener is freed when all of the requests using it are done.
+ *	Senders see the status and stop writing.
+ */
+static void proxy_tcp_close_locked(rad_listen_t *listener)
+{
+	listen_socket_t *sock = listener->data;
+
+	if (listener->status >= RAD_LISTEN_STATUS_EOL) {
+		PTHREAD_MUTEX_UNLOCK(sock->mutex);
+		return;
+	}
+
+	listener->status = RAD_LISTEN_STATUS_EOL;
+
+	DEBUG3("Closing proxy connection");
+	PTHREAD_MUTEX_UNLOCK(sock->mutex);
+
+	/*
+	 *	Tell the event handler that an FD has disappeared.
+	 */
+	radius_update_listener(listener);
+}
+
+/*
+ *	Append a packet to sock->write_buf.  Returns false if the packet
+ *	does not fit.  The caller drops the packet, and keeps the
+ *	connection open.
+ *
+ *	Called with sock->mutex held.
+ */
+static UNUSED bool tcp_write_append(listen_socket_t *sock, uint8_t const *data, size_t len)
+{
+	if (len > (TCP_WRITE_BUF_SIZE - sock->write_used)) return false;
+
+	memcpy(sock->write_buf + sock->write_used, data, len);
+	sock->write_used += len;
+
+	return true;
+}
+
+static void tcp_write_available(fr_event_list_t *el, int fd, void *ctx);
+
+/*
+ *	Write sock->write_buf to the socket.
+ *
+ *	Called with sock->mutex held.  A short write or EWOULDBLOCK
+ *	freezes the socket until the socket is writable.  The
+ *	remaining data stays in sock->write_buf.
+ */
+static UNUSED int CC_HINT(nonnull) tcp_socket_write(rad_listen_t *listener)
+{
+	ssize_t rcode;
+	listen_socket_t *sock = listener->data;
+
+	/*
+	 *	It's not writable, so we don't bother writing to it.
+	 */
+	if (listener->blocked) return 0;
+
+	if (!sock->write_used) return 0;
+
+	rcode = write(listener->fd, sock->write_buf, sock->write_used);
+	if (rcode < 0) {
+		/*
+		 *	Writing to the socket would cause it to block.
+		 *	Mark it as "don't use" until it becomes writable.
+		 */
+		if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) {
+			tcp_socket_freeze(listener, tcp_write_available);
+			return 0;
+		}
+
+		ERROR("Error writing to proxy socket: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	All of the data was written.
+	 */
+	if ((size_t) rcode == sock->write_used) {
+		sock->write_used = 0;
+		return 0;
+	}
+
+	/*
+	 *	Move the unwritten data to the start of the buffer, so
+	 *	that the next append and write need no offset.
+	 */
+	sock->write_used -= rcode;
+	memmove(sock->write_buf, sock->write_buf + rcode, sock->write_used);
+
+	tcp_socket_freeze(listener, tcp_write_available);
+	return 0;
+}
+
+/*
+ *	The write handler.  Finishes the connect, writes the buffered
+ *	data, and thaws the socket when the buffer is empty.
+ */
+static void tcp_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void *ctx)
+{
+	bool thaw;
+	rad_listen_t *listener = ctx;
+	listen_socket_t *sock = listener->data;
+
+	PTHREAD_MUTEX_LOCK(sock->mutex);
+	listener->blocked = false;
+
+	if (!sock->connected) {
+		int rcode;
+
+		rcode = tcp_try_connect(listener);
+		if (rcode <= 0) {
+			proxy_tcp_close_locked(listener);
+			return;
+		}
+
+		/*
+		 *	Still connecting.  Stay frozen.
+		 */
+		if (rcode == 2) {
+			listener->blocked = true;
+			PTHREAD_MUTEX_UNLOCK(sock->mutex);
+			return;
+		}
+	}
+
+	if (tcp_socket_write(listener) < 0) {
+		proxy_tcp_close_locked(listener);
+		return;
+	}
+
+	/*
+	 *	A short write has already frozen the socket, and the
+	 *	data stays in the buffer.
+	 */
+	thaw = (sock->write_used == 0);
+
+	/*
+	 *	tcp_socket_thaw() returns early unless the socket is
+	 *	blocked, and this handler cleared the flag above.
+	 */
+	listener->blocked = true;
+
+	PTHREAD_MUTEX_UNLOCK(sock->mutex);
+
+	if (thaw) tcp_socket_thaw(listener);
+}
+#endif	/* WITH_TCP */
 
 
 /*

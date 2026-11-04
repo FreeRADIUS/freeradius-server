@@ -80,9 +80,9 @@ bool radius_event_fd_full(void);
 int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet);
 #endif
 
-#ifdef WITH_TLS
-void tls_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler);
-void tls_listener_thaw(rad_listen_t *listener);
+#ifdef WITH_TCP
+void tcp_socket_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler);
+void tcp_socket_thaw(rad_listen_t *listener);
 #endif
 
 #ifdef __cplusplus
