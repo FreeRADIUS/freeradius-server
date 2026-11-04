@@ -3148,106 +3148,6 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	return 1;
 }
 
-#ifdef WITH_TCP
-/*
- *	Recieve packets from a proxy socket.
- */
-static int proxy_socket_tcp_recv(rad_listen_t *listener)
-{
-	int rcode;
-	RADIUS_PACKET	*packet;
-	listen_socket_t	*sock = listener->data;
-	char		buffer[256];
-
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-
-	if (!sock->packet) {
-		sock->packet = rad_alloc(sock, false);
-		if (!sock->packet) return 0;
-
-		sock->packet->sockfd = listener->fd;
-		sock->packet->src_ipaddr = sock->other_ipaddr;
-		sock->packet->src_port = sock->other_port;
-		sock->packet->dst_ipaddr = sock->my_ipaddr;
-		sock->packet->dst_port = sock->my_port;
-		sock->packet->proto = sock->proto;
-	}
-
-	packet = sock->packet;
-
-	rcode = fr_tcp_read_packet(packet, RAD_RECV_FLAG_NONE);
-
-	/*
-	 *	Still only a partial packet.  Put it back, and return,
-	 *	so that we'll read more data when it's ready.
-	 */
-	if (rcode == 0) {
-		return 0;
-	}
-
-	if (rcode == -1) {	/* error reading packet */
-		ERROR("Invalid packet from %s port %d, closing socket: %s",
-		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
-		       packet->src_port, fr_strerror());
-	}
-
-	if (rcode < 0) {	/* error or connection reset */
-		DEBUG("Home server %s port %d has closed connection",
-		      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
-		      packet->src_port);
-
-		tcp_socket_close(listener);
-		return 0;
-	}
-
-	sock->packet = NULL;	/* we have no need for more partial reads */
-
-	/*
-	 *	FIXME: Client MIB updates?
-	 */
-	switch (packet->code) {
-	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCESS_CHALLENGE:
-	case PW_CODE_ACCESS_REJECT:
-	case PW_CODE_PROTOCOL_ERROR:
-		break;
-
-#ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_RESPONSE:
-		break;
-#endif
-
-	default:
-		/*
-		 *	FIXME: Update MIB for packet types?
-		 */
-		ERROR("Invalid packet code %d sent to a proxy port "
-		       "from home server %s port %d - ID %d : IGNORED",
-		       packet->code,
-		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
-		       packet->src_port, packet->id);
-		rad_free(&packet);
-		return 0;
-	}
-
-
-	/*
-	 *	FIXME: Have it return an indication of packets that
-	 *	are OK to ignore (dups, too late), versus ones that
-	 *	aren't OK to ignore (unknown response, spoofed, etc.)
-	 *
-	 *	Close the socket on bad packets...
-	 */
-	if (!request_proxy_reply(listener, packet)) {
-		rad_free(&packet);
-		return 0;
-	}
-
-	sock->opened = sock->last_packet = time(NULL);
-
-	return 1;
-}
-#endif
 #endif
 
 #ifdef WITH_TLS
@@ -3994,6 +3894,7 @@ static int _listener_free(rad_listen_t *this)
 
 		if (sock->home && sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
 	}
+#endif	/* WITH_TLS */
 
 #ifdef HAVE_PTHREAD_H
 	/*
@@ -4002,15 +3903,16 @@ static int _listener_free(rad_listen_t *this)
 	 *	Guard on the type so a command socket (whose "data"
 	 *	is NOT a listen_socket_t) is never treated as one.
 	 */
-	if ((this->tls
-#ifdef WITH_PROXY
-	     || (this->type == RAD_LISTEN_PROXY)
+	{
+		bool has_mutex = (this->type == RAD_LISTEN_PROXY);
+
+#ifdef WITH_TLS
+		if (this->tls) has_mutex = true;
 #endif
-		    ) && sock->mutex) {
-		pthread_mutex_destroy(sock->mutex);
+
+		if (has_mutex && sock->mutex) pthread_mutex_destroy(sock->mutex);
 	}
 #endif	/* HAVE_PTHREAD_H */
-#endif	/* WITH_TLS */
 #endif	/* WITH_TCP */
 
 	return 0;
@@ -4098,7 +4000,7 @@ static void proxy_failed_open(home_server_t *home, time_t now)
  *
  *	The caller holds sock->mutex.
  */
-static UNUSED int tcp_try_connect(rad_listen_t *this)
+static int tcp_try_connect(rad_listen_t *this)
 {
 	int error = 0;
 	socklen_t len = sizeof(error);
@@ -4208,7 +4110,7 @@ static void proxy_tcp_close_locked(rad_listen_t *listener)
  *	Close a proxy socket from a caller which does not hold
  *	sock->mutex.
  */
-static UNUSED void proxy_tcp_close(rad_listen_t *listener)
+static void proxy_tcp_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
 
@@ -4223,7 +4125,7 @@ static UNUSED void proxy_tcp_close(rad_listen_t *listener)
  *
  *	Called with sock->mutex held.
  */
-static UNUSED bool tcp_write_append(listen_socket_t *sock, uint8_t const *data, size_t len)
+static bool tcp_write_append(listen_socket_t *sock, uint8_t const *data, size_t len)
 {
 	if (len > (TCP_WRITE_BUF_SIZE - sock->write_used)) return false;
 
@@ -4242,7 +4144,7 @@ static void tcp_write_available(fr_event_list_t *el, int fd, void *ctx);
  *	freezes the socket until the socket is writable.  The
  *	remaining data stays in sock->write_buf.
  */
-static UNUSED int CC_HINT(nonnull) tcp_socket_write(rad_listen_t *listener)
+static int CC_HINT(nonnull) tcp_socket_write(rad_listen_t *listener)
 {
 	ssize_t rcode;
 	listen_socket_t *sock = listener->data;
@@ -4360,7 +4262,7 @@ static void tcp_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
  *
  *	Called with sock->mutex held.
  */
-static UNUSED ssize_t proxy_tcp_read(rad_listen_t *listener)
+static ssize_t proxy_tcp_read(rad_listen_t *listener)
 {
 	int rcode;
 	ssize_t len;
@@ -4433,7 +4335,7 @@ recv_error:
 /*
  *	Receive packets from a proxy socket.
  */
-static UNUSED int proxy_tcp_recv(rad_listen_t *listener)
+static int proxy_tcp_recv(rad_listen_t *listener)
 {
 	ssize_t		data_len;
 	RADIUS_PACKET	*packet;
@@ -4556,7 +4458,7 @@ static UNUSED int proxy_tcp_recv(rad_listen_t *listener)
  *	buffered or written, 0 when the packet is dropped or not
  *	sent, and -1 when the socket is closed.
  */
-static UNUSED int proxy_tcp_send(rad_listen_t *listener, REQUEST *request)
+static int proxy_tcp_send(rad_listen_t *listener, REQUEST *request)
 {
 	int rcode;
 	listen_socket_t *sock = listener->data;
@@ -4729,8 +4631,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	sock->other_port = home->port;
 	sock->home = home;
 
-	this->recv = proxy_socket_tcp_recv;
-
 	/*
 	 *	Our limit is the smaller of the socket config and this home server config.
 	 */
@@ -4800,6 +4700,31 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	}
 #endif
 
+	/*
+	 *	Plain TCP buffers writes and reads via buffers and a
+	 *	mutex.  The TLS code below sets up its own.
+	 */
+#ifdef WITH_TLS
+	if (!home->tls)
+#endif
+	{
+		this->recv = proxy_tcp_recv;
+		this->proxy_send = proxy_tcp_send;
+
+#ifdef HAVE_PTHREAD_H
+		sock->mutex = talloc_zero(sock, pthread_mutex_t);
+		if (!sock->mutex) goto error;
+
+		if (pthread_mutex_init(sock->mutex, NULL) < 0) goto error;
+#endif
+
+		sock->read_buf = talloc_array(sock, uint8_t, TCP_READ_BUF_SIZE);
+		if (!sock->read_buf) goto error;
+
+		sock->write_buf = talloc_array(sock, uint8_t, TCP_WRITE_BUF_SIZE);
+		if (!sock->write_buf) goto error;
+	}
+
 #ifdef WITH_TLS
 	if (!home->tls) goto find_port;
 
@@ -4831,6 +4756,13 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	sock->ssn->mtu = 1 << 15;
 
 	SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_HOME, sock->home);
+
+	/*
+	 *	For TLS, sock->connected means that the handshake has
+	 *	finished, and not that the TCP connect() has finished.
+	 *	try_connect() sets sock->connected.
+	 */
+	sock->connected = false;
 
 #ifdef WITH_RADIUSV11
 	/*
@@ -4949,17 +4881,25 @@ find_port:
 	home->tls_failed = false;
 #endif
 
-	home->tcp_failed = false;
-
 	/*
-	 *	Count the connection as open.  For non-blocking TCP,
-	 *	we allow a connection to be marked open, even if the
-	 *	connect() later fails.
-	 *
-	 *	For TLS, this only increments the active connections
-	 *	if the TLS handshake has finished.
+	 *	Plain TCP: if the connect() has not finished, then
+	 *	tcp_try_connect() clears home->tcp_failed and counts the
+	 *	connection when the connect() succeeds.
 	 */
-	home_server_active_connections_increment(this);
+	if (sock->connected
+#ifdef WITH_TLS
+	    || home->tls
+#endif
+	    ) {
+		home->tcp_failed = false;
+
+		/*
+		 *	Count the connection as open.  For TLS, this only
+		 *	increments the active connections if the TLS
+		 *	handshake has finished.
+		 */
+		home_server_active_connections_increment(this);
+	}
 
 	return this;
 #endif	/* WITH_TCP */
@@ -5969,14 +5909,14 @@ void home_server_active_connections_increment(rad_listen_t *this)
 	 */
 	if (sock->connection_counted) return;
 
-#ifdef WITH_TLS
 	/*
-	 *	The TCP connection is up, but the TLS session isn't
-	 *	usable until the handshake has finished.  We are called
-	 *	again from try_connect() when that happens.
+	 *	The socket is not usable until sock->connected is set.
+	 *	For plain TCP, tcp_try_connect() sets sock->connected when
+	 *	the connect() finishes.  For TLS, try_connect() sets
+	 *	sock->connected when the handshake finishes.  The caller
+	 *	calls this function again when that happens.
 	 */
-	if (sock->ssn && !sock->ssn->connected) return;
-#endif
+	if (!sock->connected) return;
 
 	fr_assert(sock->home);
 	home = sock->home;
