@@ -19,7 +19,8 @@
 #    CERTDIR        directory holding the test certificates
 #    DICT_PATH      dictionary directory
 #    PORT           port of the home server
-#    LPORT          UDP port where radiusd listens
+#    LPORT          UDP port where radiusd listens.  The port number is
+#                   the same as PORT, as UDP and TCP ports are separate.
 #
 #  $Id$
 #

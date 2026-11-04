@@ -105,13 +105,6 @@ TLS_PORT_FIRST := $(unique-port $(PORT_FILE),$(TLS_TEST),$(TLS_PORT_COUNT),$(POR
 TLS_PORTS := $(shell seq $(TLS_PORT_FIRST) $$(($(TLS_PORT_FIRST) + $(TLS_PORT_COUNT) - 1)))
 
 #
-#  The Python tests need a second port for the UDP listener of radiusd.  The
-#  last port of the block is the second port, and the position of a test
-#  never reaches the last port, see the check after the rules.
-#
-TLS_LPORT := $(lastword $(TLS_PORTS))
-
-#
 #  TLS_TEST_RULE defines the rule for one test.  ${1} is the test name.
 #
 #
@@ -123,7 +116,7 @@ TLS_CMD.${1} := \
 	CERTDIR=$(call SHELL_QUOTE,$(top_srcdir)/raddb/certs/rsa) \
 	DICT_PATH=$(call SHELL_QUOTE,$(DICT_PATH)) \
 	PORT=$$(TLS_PORT.${1}) \
-	LPORT=$(TLS_LPORT) \
+	LPORT=$$(TLS_PORT.${1}) \
 	PYTHON=$(call SHELL_QUOTE,$(TLS_PYTHON)) \
 	UNIT_TEST_TLS=$(call SHELL_QUOTE,$(TEST_BIN)/unit_test_tls) \
 	RADIUSD=$(call SHELL_QUOTE,$(TEST_BIN)/radiusd) \
@@ -184,11 +177,10 @@ endif
 
 #
 #  Every test, and every unit_test_bio run of a test, takes one port from the
-#  block.  The last port of the block is TLS_LPORT, so the receipts have to
-#  leave the last port free.
+#  block.
 #
-ifeq "$(shell test $(words $(TLS_RECEIPTS)) -ge $(TLS_PORT_COUNT) && echo overflow)" "overflow"
-$(error src/tests/tls has $(words $(TLS_RECEIPTS)) tests and only $(TLS_PORT_COUNT) ports, and the last port is reserved.  Raise TLS_PORT_COUNT)
+ifeq "$(shell test $(words $(TLS_RECEIPTS)) -gt $(TLS_PORT_COUNT) && echo overflow)" "overflow"
+$(error src/tests/tls has $(words $(TLS_RECEIPTS)) tests and only $(TLS_PORT_COUNT) ports.  Raise TLS_PORT_COUNT)
 endif
 
 #

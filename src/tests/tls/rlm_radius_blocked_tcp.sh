@@ -17,7 +17,8 @@
 #    CONFDIR        directory holding rlm_radius_blocked_tcp.conf and the Python programs
 #    DICT_PATH      dictionary directory
 #    PORT           port of the home server
-#    LPORT          UDP port where radiusd listens
+#    LPORT          UDP port where radiusd listens.  The port number is
+#                   the same as PORT, as UDP and TCP ports are separate.
 #
 #  $Id$
 #
