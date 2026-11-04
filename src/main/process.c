@@ -2423,6 +2423,7 @@ static void tcp_socket_timer(void *ctx)
 	struct timeval end, now;
 	char buffer[256];
 	fr_socket_limit_t *limit;
+	bool connecting = false;
 
 	ASSERT_MASTER;
 
@@ -2430,11 +2431,20 @@ static void tcp_socket_timer(void *ctx)
 
 	fr_event_now(el, &now);
 
-#ifdef WITH_TLS
 	/*
-	 *	Enforce connection timeouts.
+	 *	Enforce connection timeouts.  A proxy socket is connecting
+	 *	until sock->connected is set.  For TLS, sock->connected is
+	 *	set when the handshake finishes.  An incoming TLS socket
+	 *	is connecting until the handshake finishes.
 	 */
-	if (sock->ssn && !sock->ssn->connected) {
+#ifdef WITH_PROXY
+	if (listener->type == RAD_LISTEN_PROXY) connecting = !sock->connected;
+#endif
+#ifdef WITH_TLS
+	if (sock->ssn && !sock->ssn->connected) connecting = true;
+#endif
+
+	if (connecting) {
 		if (!sock->limit.connect_timeout ||
 		    (sock->limit.connect_timeout > 30)) {
 			end.tv_sec = sock->opened + 5;
@@ -2446,17 +2456,16 @@ static void tcp_socket_timer(void *ctx)
 
 		end.tv_usec = 0;
 
-		if (sock->ssn->connecting) {
+		if (sock->connecting) {
 			listener->print(listener, buffer, sizeof(buffer));
 			DEBUG("Failed to connect after %u seconds to home server %s",
 			      (unsigned int) (end.tv_sec - sock->opened), buffer);
 			goto do_close;
 		}
 
-		sock->ssn->connecting = true;
+		sock->connecting = true;
 		goto set_timer;
 	}
-#endif
 
 	limit = &sock->limit;
 
@@ -2503,11 +2512,9 @@ static void tcp_socket_timer(void *ctx)
 			/*
 			 *	If it's blocked, then push all of the requests to other sockets.
 			 */
-#ifdef WITH_TLS
 			if (listener->blocked) {
 				listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 			}
-#endif
 
 			event_new_fd(listener);
 			return;

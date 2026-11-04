@@ -4649,6 +4649,11 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	if (!sock->limit.lifetime && !sock->limit.idle_timeout) sock->limit.idle_timeout = 30;
 
 	/*
+	 *	tcp_socket_timer() closes a socket whose connect() has not finished by this time.
+	 */
+	sock->limit.connect_timeout = home->limit.connect_timeout;
+
+	/*
 	 *	Try to connect.
 	 */
 	this->fd = fr_socket_client_tcp(&home->src_ipaddr,
