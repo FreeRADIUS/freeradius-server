@@ -4088,7 +4088,9 @@ failed:
  */
 static void proxy_tcp_close_locked(rad_listen_t *listener)
 {
+#ifdef HAVE_PTHREAD_H
 	listen_socket_t *sock = listener->data;
+#endif
 
 	if (listener->status >= RAD_LISTEN_STATUS_EOL) {
 		PTHREAD_MUTEX_UNLOCK(sock->mutex);
@@ -4112,7 +4114,9 @@ static void proxy_tcp_close_locked(rad_listen_t *listener)
  */
 static void proxy_tcp_close(rad_listen_t *listener)
 {
+#ifdef HAVE_PTHREAD_H
 	listen_socket_t *sock = listener->data;
+#endif
 
 	PTHREAD_MUTEX_LOCK(sock->mutex);
 	proxy_tcp_close_locked(listener);

@@ -2554,9 +2554,7 @@ static void tcp_socket_timer(void *ctx)
 	 */
 	end.tv_usec = USEC / 2;
 
-#ifdef WITH_TLS
 set_timer:
-#endif
 	ASSERT_MASTER;
 	if (!fr_event_insert(el, tcp_socket_timer, listener, &end, &sock->ev)) {
 		rad_panic("Failed to insert event");
