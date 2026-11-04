@@ -1004,7 +1004,6 @@ static int _bio_handle_free(bio_handle_t *h)
 		fr_bio_tls_close_send(h->bio.tls);
 
 		unlang_interpret_signal(h->conn_request, FR_SIGNAL_CANCEL);
-		unlang_interpret_mark_runnable(h->conn_request);
 		h->bio.tls = NULL;
 		h->conn_request = NULL;
 	}
