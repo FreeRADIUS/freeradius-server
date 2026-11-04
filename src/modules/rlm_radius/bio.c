@@ -1080,8 +1080,11 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 		return FR_BIO_VERIFY_WANT_MORE;
 	}
 
+#ifndef WITH_TLS
 #define REQUIRE_MA(_h) (((_h)->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || *(_h)->ctx.inst->received_message_authenticator)
-
+#else
+#define REQUIRE_MA(_h) (!(_h)->bio.tls && (((_h)->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || *(_h)->ctx.inst->received_message_authenticator))
+#endif
 	/*
 	 *	See if we need to discard the packet.
 	 *
@@ -1695,9 +1698,9 @@ static fr_cmp_ret_t request_prioritise(void const *one, void const *two)
  *	- FR_RADIUS_FAIL_* on failure.
  */
 static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
-			    bio_handle_t *h, request_t *request, bio_request_t *u,
-			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
-			    uint8_t *data, size_t data_len)
+				      bio_handle_t *h, request_t *request, bio_request_t *u,
+				      uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
+				      uint8_t *data, size_t data_len)
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(h->ctx.inst, rlm_radius_t);
 	uint8_t			code;
@@ -1738,6 +1741,10 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	 *	the response can be manipulated by an attacker.
 	 */
 	if ((u->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
+#ifdef WITH_TLS
+	    !h->bio.tls &&
+#endif
+
 	    (inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) &&
 	    !*(inst->received_message_authenticator) &&
 	    fr_pair_find_by_da(reply, NULL, attr_message_authenticator) &&
