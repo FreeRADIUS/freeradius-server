@@ -366,6 +366,7 @@ int tls_ctx_version_set_dtls(SSL_CTX *ctx, fr_tls_conf_t const *conf)
 		 *	recent DTLS there is satisfies them.
 		 */
 		if (conf->tls_max_version >= (float) 1.2) {
+			WARN("Ignoring DTLS 1.3, OpenSSL does not support it.");
 			version = DTLS1_2_VERSION;
 
 		} else if (conf->tls_max_version >= (float) 1.1) {
