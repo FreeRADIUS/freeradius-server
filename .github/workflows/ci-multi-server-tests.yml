@@ -267,11 +267,17 @@ jobs:
       #  given URL (see the script header). The step does not run when the
       #  artifact step found no files (empty `artifact-id`).
       #
-      #  `continue-on-error` is a stop-gap. Publish script will be updated soon.
+      #  `continue-on-error` ensures that a failed publish does not fail the
+      #  job. The results remain in the artifact uploaded by the previous step.
+      #
+      #  `timeout-minutes` stops a stalled publish after 10 minutes. It must
+      #  stay above the publish script's worst case, set by its curl limits
+      #  (~4 minutes).
       #
       - name: Publish profiling results to the prof-results store
         if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
         continue-on-error: true
+        timeout-minutes: 10
         run: scripts/ci/publish-profiling-results.sh "https://cinfra-ca.inkbridge.io/profiling/data"
 
       #
