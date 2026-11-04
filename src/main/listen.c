@@ -4429,6 +4429,197 @@ recv_error:
 
 	return -1;
 }
+
+/*
+ *	Receive packets from a proxy socket.
+ */
+static UNUSED int proxy_tcp_recv(rad_listen_t *listener)
+{
+	ssize_t		data_len;
+	RADIUS_PACKET	*packet;
+	listen_socket_t	*sock = listener->data;
+	char		buffer[256];
+
+	/*
+	 *	Lock the mutex before checking listener->status.
+	 *	Otherwise another thread can close the socket after the
+	 *	check, but before the read.
+	 */
+	PTHREAD_MUTEX_LOCK(sock->mutex);
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) {
+		PTHREAD_MUTEX_UNLOCK(sock->mutex);
+		return 0;
+	}
+
+	data_len = proxy_tcp_read(listener);
+	if (data_len < 0) {
+	fail:
+		DEBUG("Home server %s port %d has closed connection",
+		      ip_ntoh(&sock->other_ipaddr, buffer, sizeof(buffer)), sock->other_port);
+		proxy_tcp_close_locked(listener);
+		return 0;
+	}
+
+	if (data_len == 0) {
+		PTHREAD_MUTEX_UNLOCK(sock->mutex);
+		return 0;	/* not done yet */
+	}
+
+	packet = rad_alloc(sock, false);
+	if (!packet) goto fail;
+
+	/*
+	 *	sock->read_buf holds only one packet.  Copy the packet out,
+	 *	so that the next read can reuse sock->read_buf.
+	 */
+	packet->data = talloc_array(packet, uint8_t, data_len);
+	if (!packet->data) {
+		rad_free(&packet);
+		goto fail;
+	}
+
+	memcpy(packet->data, sock->read_buf, data_len);
+	packet->data_len = data_len;
+	PTHREAD_MUTEX_UNLOCK(sock->mutex);
+
+	packet->sockfd = listener->fd;
+	packet->src_ipaddr = sock->other_ipaddr;
+	packet->src_port = sock->other_port;
+	packet->dst_ipaddr = sock->my_ipaddr;
+	packet->dst_port = sock->my_port;
+	packet->proto = sock->proto;
+
+	/*
+	 *	Check that the packet is well formed.  This also sets the
+	 *	packet code, ID, and vector.
+	 */
+	if (!rad_packet_ok(packet, RAD_RECV_FLAG_NONE, NULL)) {
+		ERROR("Invalid packet from %s port %d, closing socket: %s",
+		      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		      packet->src_port, fr_strerror());
+		rad_free(&packet);
+		proxy_tcp_close(listener);
+		return 0;
+	}
+
+	/*
+	 *	FIXME: Client MIB updates?
+	 */
+	switch (packet->code) {
+	case PW_CODE_ACCESS_ACCEPT:
+	case PW_CODE_ACCESS_CHALLENGE:
+	case PW_CODE_ACCESS_REJECT:
+	case PW_CODE_PROTOCOL_ERROR:
+		break;
+
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_RESPONSE:
+		break;
+#endif
+
+	default:
+		/*
+		 *	FIXME: Update MIB for packet types?
+		 */
+		ERROR("Invalid packet code %d sent to a proxy port "
+		       "from home server %s port %d - ID %d : IGNORED",
+		       packet->code,
+		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		       packet->src_port, packet->id);
+		rad_free(&packet);
+		return 0;
+	}
+
+	/*
+	 *	FIXME: Have it return an indication of packets that
+	 *	are OK to ignore (dups, too late), versus ones that
+	 *	aren't OK to ignore (unknown response, spoofed, etc.)
+	 *
+	 *	Close the socket on bad packets...
+	 */
+	if (!request_proxy_reply(listener, packet)) {
+		rad_free(&packet);
+		return 0;
+	}
+
+	sock->opened = sock->last_packet = time(NULL);
+
+	return 1;
+}
+
+/*
+ *	Send a packet to a home server.
+ *
+ *	Every packet goes into sock->write_buf first, so that a short
+ *	write, and a connect() which has not finished, never leave a
+ *	partial packet on the stream.  Returns 1 when the packet is
+ *	buffered or written, 0 when the packet is dropped or not
+ *	sent, and -1 when the socket is closed.
+ */
+static UNUSED int proxy_tcp_send(rad_listen_t *listener, REQUEST *request)
+{
+	int rcode;
+	listen_socket_t *sock = listener->data;
+
+	VERIFY_REQUEST(request);
+
+	rad_assert(request->proxy_listener == listener);
+	rad_assert(listener->proxy_send == proxy_tcp_send);
+
+	if ((listener->status != RAD_LISTEN_STATUS_INIT) &&
+	    (listener->status != RAD_LISTEN_STATUS_KNOWN)) return 0;
+
+	/*
+	 *	Normal proxying calls us with the data already
+	 *	encoded.  The "ping home server" code does not.  So,
+	 *	if there's no packet, encode it here.
+	 */
+	if (!request->proxy->data) {
+		request->proxy_listener->proxy_encode(request->proxy_listener, request);
+	}
+
+	rad_assert(sock->write_buf != NULL);
+
+	PTHREAD_MUTEX_LOCK(sock->mutex);
+
+	/*
+	 *	The connect() has not finished.  Try to finish it, unless
+	 *	the socket is already waiting for tcp_write_available().
+	 */
+	if (!sock->connected && !listener->blocked) {
+		rcode = tcp_try_connect(listener);
+		if (rcode <= 0) {
+			proxy_tcp_close_locked(listener);
+			return -1;
+		}
+
+		/*
+		 *	Wait for the socket to become writable.  The
+		 *	write handler finishes the connect() and then
+		 *	writes the data that we buffer below.
+		 */
+		if (rcode == 2) tcp_socket_freeze(listener, tcp_write_available);
+	}
+
+	if (!tcp_write_append(sock, request->proxy->data, request->proxy->data_len)) {
+		RATE_LIMIT(ERROR("Too much data buffered for home server %s: dropping packet",
+				 request->home_server->log_name));
+		PTHREAD_MUTEX_UNLOCK(sock->mutex);
+		return 0;
+	}
+
+	/*
+	 *	Does nothing when the socket is blocked.
+	 */
+	if (tcp_socket_write(listener) < 0) {
+		proxy_tcp_close_locked(listener);
+		return -1;
+	}
+
+	PTHREAD_MUTEX_UNLOCK(sock->mutex);
+
+	return 1;
+}
 #endif	/* WITH_TCP */
 
 
