@@ -1328,6 +1328,9 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		if (rcode == 0) return CONNECTION_STATE_CONNECTING;
 
 		fr_assert(rcode == 1);
+
+		DEBUG("%s - Connection open - %s", h->ctx.module_name, h->ctx.fd_info->name);
+
 		return CONNECTION_STATE_CONNECTED;
 
 		/*

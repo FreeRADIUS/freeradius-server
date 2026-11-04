@@ -62,16 +62,26 @@ static inline CC_HINT(always_inline) bool fr_bio_fd_errno_retry(fr_bio_fd_t *my,
 		 *	The operation would block, return that.
 		 */
 		if (!*blocked) {
+			int error = 0;
+
 			*blocked = true;
 
-			if (blocked_cb) {
-				int error;
+			/*
+			 *	The application sets write blocked / resume callbacks on the head of the BIO
+			 *	chain, not on the FD BIO.  So we have to start the "we're blocked"
+			 *	notifications at the head.  fr_bio_write_blocked() walks up the chain to do
+			 *	that.
+			 */
+			if (is_write) {
+				error = fr_bio_write_blocked((fr_bio_t *) my);
 
+			} else if (blocked_cb) {
 				error = blocked_cb((fr_bio_t *) my);
-				if (error < 0) {
-					*rcode_p = error;
-					return false;
-				}
+			}
+
+			if (error < 0) {
+				*rcode_p = error;
+				return false;
 			}
 		}
 

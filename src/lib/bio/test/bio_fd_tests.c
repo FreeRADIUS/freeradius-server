@@ -25,6 +25,7 @@
 
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/fd.h>
+#include <freeradius-devel/bio/mem.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <poll.h>
@@ -410,10 +411,209 @@ done:
 	talloc_free(ctx);
 }
 
+static int	blocked_count;
+
+static int	cb_write_blocked(fr_bio_t *bio)	{ (void) bio; blocked_count++; return 1; }
+
+/** Open a non-blocking TCP bio to a listening socket which never calls accept()
+ *
+ *  The listening socket has a small receive buffer, and the bio has a small send buffer, so a few
+ *  kilobytes of writes fill both buffers.  The kernel then has no room for another byte.
+ *
+ * @param[in] ctx	to allocate the bio in.
+ * @param[out] listen_out	the listening socket.  The caller closes the socket.
+ * @param[out] bio_out		the connected FD bio.
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
+ */
+static int blocked_connect(TALLOC_CTX *ctx, int *listen_out, fr_bio_t **bio_out)
+{
+	struct sockaddr_in	sin = {
+					.sin_family = AF_INET,
+					.sin_addr.s_addr = htonl(INADDR_LOOPBACK),
+				};
+	socklen_t		len = sizeof(sin);
+	int			rcvbuf = 4096;
+	static fr_bio_fd_config_t cfg;	//!< the FD bio keeps a pointer to this, and outlives this function
+	fr_bio_t		*bio;
+	fr_event_list_t		*el;
+	fr_time_delta_t		timeout = fr_time_delta_from_sec(5);
+	int			fd;
+
+	connected_count = 0;
+	error_count = 0;
+	timeout_count = 0;
+
+	fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (fd < 0) return -1;
+
+	(void) setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
+
+	if ((bind(fd, (struct sockaddr *) &sin, sizeof(sin)) < 0) ||
+	    (listen(fd, 5) < 0) ||
+	    (getsockname(fd, (struct sockaddr *) &sin, &len) < 0)) {
+		close(fd);
+		return -1;
+	}
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	if (!el) {
+		close(fd);
+		return -1;
+	}
+
+	cfg = (fr_bio_fd_config_t) {
+		.type = FR_BIO_FD_CONNECTED,
+		.socket_type = SOCK_STREAM,
+		.transport_type = FR_BIO_FD_TRANSPORT_TCP,
+		.async = true,
+		.src_ipaddr = {
+			.af = AF_INET,
+			.addr.v4.s_addr = htonl(INADDR_LOOPBACK),
+			.prefix = 32,
+		},
+		.dst_port = ntohs(sin.sin_port),
+		.send_buff = 4096,
+		.send_buff_is_set = true,
+	};
+	cfg.dst_ipaddr = cfg.src_ipaddr;
+
+	bio = fr_bio_fd_alloc(ctx, &cfg, 0);
+	if (!bio) {
+		close(fd);
+		return -1;
+	}
+
+	if (fr_bio_fd_connect_full(bio, el, cb_connected, cb_error, &timeout, cb_timeout) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	while (!connected_count && !error_count && !timeout_count && (fr_bio_fd_info(bio)->state != FR_BIO_FD_STATE_OPEN)) {
+		if (fr_event_corral(el, fr_time(), true) < 0) break;
+		fr_event_service(el);
+	}
+
+	if (fr_bio_fd_info(bio)->state != FR_BIO_FD_STATE_OPEN) {
+		close(fd);
+		return -1;
+	}
+
+	*listen_out = fd;
+	*bio_out = bio;
+	return 0;
+}
+
+/** Write one byte at a time until the socket has no room
+ *
+ *  A one byte write cannot be partial.  The kernel either takes the byte, or fails the write with
+ *  EAGAIN.  The test therefore exercises the "no bytes accepted" path of the FD bio, which is
+ *  different from the "some bytes accepted" path.
+ *
+ * @return
+ *	- the number of bytes written before the bio blocked.
+ *	- <0 if the bio never blocked, or returned an error other than "would block".
+ */
+static ssize_t write_until_blocked(fr_bio_t *bio)
+{
+	ssize_t	total = 0;
+	int	i;
+
+	for (i = 0; i < (16 * 1024 * 1024); i++) {
+		ssize_t slen;
+
+		slen = fr_bio_write(bio, NULL, "x", 1);
+		if (slen == fr_bio_error(IO_WOULD_BLOCK)) return total;
+		if (slen < 0) return slen;
+
+		total += slen;
+	}
+
+	return -1;
+}
+
+/** A write which blocks with no bytes accepted has to run the write_blocked callback of the head bio
+ *
+ *  The application sets write_blocked on the head of the chain, not on the FD bio.  The FD bio runs
+ *  fr_bio_write_blocked() when a write is partial.  When the socket has no room at all, the write fails
+ *  with EAGAIN, and the FD bio has to run fr_bio_write_blocked() for that case, too.
+ */
+static void test_eagain_calls_head_write_blocked_cb(void)
+{
+	TALLOC_CTX	*ctx = talloc_init_const("test");
+	fr_bio_t	*fd_bio = NULL, *mem;
+	int		listen_fd = -1;
+	ssize_t		written;
+
+	if (blocked_connect(ctx, &listen_fd, &fd_bio) < 0) {
+		TEST_CHECK(0);
+		TEST_MSG("failed opening the connection: %s", fr_strerror());
+		goto done;
+	}
+
+	mem = fr_bio_mem_alloc(ctx, 4096, 4096, fd_bio);
+	TEST_CHECK(mem != NULL);
+	if (!mem) goto done;
+
+	blocked_count = 0;
+	fr_bio_cb_set(mem, &(fr_bio_cb_funcs_t) { .write_blocked = cb_write_blocked });
+
+	written = write_until_blocked(mem);
+	TEST_CHECK(written > 0);
+	TEST_MSG("wrote %zd bytes before the bio blocked", written);
+
+	TEST_CASE("the FD bio is blocked");
+	TEST_CHECK(fr_bio_fd_info(fd_bio)->write_blocked);
+
+	TEST_CASE("the write_blocked callback of the head bio ran once");
+	TEST_CHECK(blocked_count == 1);
+	TEST_MSG("blocked_count = %d", blocked_count);
+
+done:
+	if (listen_fd >= 0) close(listen_fd);
+	talloc_free(ctx);
+}
+
+/** The write_blocked callback of an FD bio with no other bios still runs on EAGAIN
+ *
+ *  The FD bio is the head of the chain, so the head callback is the callback of the FD bio.
+ */
+static void test_eagain_calls_fd_write_blocked_cb(void)
+{
+	TALLOC_CTX	*ctx = talloc_init_const("test");
+	fr_bio_t	*fd_bio = NULL;
+	int		listen_fd = -1;
+	ssize_t		written;
+
+	if (blocked_connect(ctx, &listen_fd, &fd_bio) < 0) {
+		TEST_CHECK(0);
+		TEST_MSG("failed opening the connection: %s", fr_strerror());
+		goto done;
+	}
+
+	blocked_count = 0;
+	fr_bio_cb_set(fd_bio, &(fr_bio_cb_funcs_t) { .write_blocked = cb_write_blocked });
+
+	written = write_until_blocked(fd_bio);
+	TEST_CHECK(written > 0);
+	TEST_MSG("wrote %zd bytes before the bio blocked", written);
+
+	TEST_CASE("the write_blocked callback ran once");
+	TEST_CHECK(blocked_count == 1);
+	TEST_MSG("blocked_count = %d", blocked_count);
+
+done:
+	if (listen_fd >= 0) close(listen_fd);
+	talloc_free(ctx);
+}
+
 TEST_LIST = {
 	{ "deferred_connect_success_calls_connected_cb",	test_deferred_connect_success_calls_connected_cb },
 	{ "recvfromto4",					test_recvfromto4 },
 	{ "recvfromto6",					test_recvfromto6 },
 	{ "listen_accept",					test_listen_accept },
+	{ "eagain_calls_head_write_blocked_cb",			test_eagain_calls_head_write_blocked_cb },
+	{ "eagain_calls_fd_write_blocked_cb",			test_eagain_calls_fd_write_blocked_cb },
 	TEST_TERMINATOR
 };

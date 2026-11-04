@@ -13,10 +13,17 @@
 #  The test then checks, in order:
 #
 #    1. radiusd logs "Writing is blocked", which is the `write_blocked`
-#       callback pausing the trunk connection.
+#       callback pausing the trunk connection.  Linux reports a socket as
+#       writable only when the send buffer has room for a large write, so
+#       the radius module never attempts a write which blocks, and radiusd
+#       never logs the line.  Instead, the radius module stops sending while
+#       the trunk assigns more requests to the connection.  The test accepts
+#       that stall (STALL_BACKLOG requests assigned, and not sent) in place of
+#       the log line.
 #    2. The test sends SIGUSR1 to the home server, which reads everything.
 #       radiusd logs "Writing is resumed", which is the `write_resume`
-#       callback resuming the trunk connection.
+#       callback resuming the trunk connection.  After a stall, the test
+#       instead waits until radiusd sends more requests.
 #    3. radiusd does not log an assertion or a signal, and exits with status
 #       zero after SIGTERM.
 #    4. The home server read the data, and the connection stayed valid, as
@@ -49,6 +56,7 @@ import struct
 import subprocess
 import sys
 import threading
+import time
 
 radiusd = shlex.split(os.environ["RADIUSD"])
 output = os.environ["OUTPUT"]
@@ -65,6 +73,18 @@ if transport not in ("tls", "tcp"):
 name = "rlm_radius_blocked" + ("_tcp" if transport == "tcp" else "")
 
 NUM_PACKETS = 1500
+
+#
+#  Requests assigned to the connection, minus the requests sent, which the
+#  test accepts as a stalled connection.
+#
+STALL_BACKLOG = 5
+
+#
+#  Further requests which radiusd must send after SIGUSR1, to show that a
+#  stalled connection resumed.
+#
+RESUME_SENDS = 20
 
 #
 #  A packet of 20 bytes of header, one User-Name of 8 bytes, and 14
@@ -85,7 +105,18 @@ marks = {
     "resumed": "Writing is resumed",
 }
 events = {name: threading.Event() for name in marks}
+events["stalled"] = threading.Event()
+events["progress"] = threading.Event()
 failed = []
+
+#
+#  Counts of the requests which the trunk assigned, and the requests which the
+#  radius module sent.  The reader thread updates the counts.  The "progress"
+#  event is set when the count of sent requests reaches progress_at.
+#
+assigned = 0
+sent = 0
+progress_at = None
 
 
 def check(ok, message):
@@ -129,11 +160,24 @@ rad = subprocess.Popen(radiusd + ["-d", confdir, "-D", dict_path, "-n", name,
 
 
 def reader():
+    global assigned, sent
+
     for line in rad.stdout:
         lines.append(line)
         for name, text in marks.items():
             if text in line:
                 events[name].set()
+
+        if "Trunk connection assigned request" in line:
+            assigned += 1
+        elif "Sending Access-Request" in line:
+            sent += 1
+
+        if assigned - sent >= STALL_BACKLOG:
+            events["stalled"].set()
+
+        if progress_at is not None and sent >= progress_at:
+            events["progress"].set()
 
     for event in events.values():
         event.set()
@@ -153,12 +197,28 @@ if check(wait("open", 30), f"radius module opened the {transport.upper()} connec
         packet = struct.pack("!BBH", 1, i & 0xff, 20 + len(attrs)) + os.urandom(16) + attrs
         sock.sendto(packet, ("127.0.0.1", int(lport)))
 
-    if check(wait("blocked", 30), "radius module paused the connection when the write blocked"):
+    #
+    #  Wait for either the log line, or the stall.  Both events are set when radiusd closes the output.
+    #
+    deadline = time.monotonic() + 30
+    while not (events["blocked"].is_set() or events["stalled"].is_set()) and time.monotonic() < deadline:
+        events["blocked"].wait(0.1)
+
+    if check(found("blocked") or (assigned - sent >= STALL_BACKLOG),
+             "radius module paused the connection when the write blocked"
+             if found("blocked") else
+             f"radius module stopped sending while the trunk assigned requests ({assigned} assigned, {sent} sent)"):
         #
         #  The home server reads, which lets the radius module write the rest of the data.
         #
-        server.send_signal(signal.SIGUSR1)
-        check(wait("resumed", 30), "radius module resumed the connection after the write unblocked")
+        if found("blocked"):
+            server.send_signal(signal.SIGUSR1)
+            check(wait("resumed", 30), "radius module resumed the connection after the write unblocked")
+        else:
+            progress_at = sent + RESUME_SENDS
+            server.send_signal(signal.SIGUSR1)
+            events["progress"].wait(30)
+            check(sent >= progress_at, f"radius module sent more requests after the home server read ({sent} sent)")
 
 rad.send_signal(signal.SIGTERM)
 try:
