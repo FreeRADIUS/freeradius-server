@@ -4205,6 +4205,18 @@ static void proxy_tcp_close_locked(rad_listen_t *listener)
 }
 
 /*
+ *	Close a proxy socket from a caller which does not hold
+ *	sock->mutex.
+ */
+static UNUSED void proxy_tcp_close(rad_listen_t *listener)
+{
+	listen_socket_t *sock = listener->data;
+
+	PTHREAD_MUTEX_LOCK(sock->mutex);
+	proxy_tcp_close_locked(listener);
+}
+
+/*
  *	Append a packet to sock->write_buf.  Returns false if the packet
  *	does not fit.  The caller drops the packet, and keeps the
  *	connection open.
@@ -4328,6 +4340,94 @@ static void tcp_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 	PTHREAD_MUTEX_UNLOCK(sock->mutex);
 
 	if (thaw) tcp_socket_thaw(listener);
+}
+
+/*
+ *	Size of sock->read_buf.  sock->read_buf holds one packet, and a
+ *	RADIUS packet is never larger than MAX_PACKET_LEN.
+ */
+#define TCP_READ_BUF_SIZE (MAX_PACKET_LEN)
+
+/*
+ *	Read one packet from a proxy socket into sock->read_buf.
+ *
+ *	Returns the packet length when sock->read_buf holds a whole
+ *	packet, 0 when more data is needed, and -1 when the caller
+ *	closes the socket.  The read is in two stages.  The first
+ *	stage reads the 4 byte header, which gives the packet length.
+ *	The second stage reads the rest of the packet.  Because of the
+ *	two stages, sock->read_buf never holds more than one packet.
+ *
+ *	Called with sock->mutex held.
+ */
+static UNUSED ssize_t proxy_tcp_read(rad_listen_t *listener)
+{
+	int rcode;
+	ssize_t len;
+	size_t length;
+	listen_socket_t *sock = listener->data;
+	uint8_t *data = sock->read_buf;
+
+	if (!sock->connected) {
+		rcode = tcp_try_connect(listener);
+		if (rcode <= 0) return rcode;
+
+		if (rcode == 2) return 0; /* more waiting needed */
+	}
+
+	if (sock->read_used < 4) {
+		len = recv(listener->fd, data + sock->read_used, 4 - sock->read_used, 0);
+		if (len < 0) goto recv_error;
+
+		/*
+		 *	The home server closed the connection.
+		 */
+		if (len == 0) return -1;
+
+		sock->read_used += len;
+		if (sock->read_used < 4) return 0; /* read more data */
+	}
+
+	length = (data[2] << 8) | data[3];
+
+	/*
+	 *	The same limits as fr_tcp_read_packet().  A length outside
+	 *	of the limits means that the stream is out of step with the
+	 *	packet boundaries, so we close the socket.
+	 */
+	if ((length < 20 /* RADIUS_HDR_LEN */) || (length > TCP_READ_BUF_SIZE)) {
+		ERROR("Discarding packet from home server %s: Invalid length %zu",
+		      sock->home->log_name, length);
+		return -1;
+	}
+
+	if (sock->read_used < length) {
+		len = recv(listener->fd, data + sock->read_used, length - sock->read_used, 0);
+		if (len < 0) goto recv_error;
+		if (len == 0) return -1;
+
+		sock->read_used += len;
+		if (sock->read_used < length) return 0;
+	}
+
+	sock->read_used = 0;	/* we've now read the packet */
+	return length;
+
+recv_error:
+	/*
+	 *	The socket is non-blocking, so there is no data yet.
+	 */
+	if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) return 0;
+
+	/*
+	 *	The home server reset the connection.  This is not an
+	 *	error that we log.
+	 */
+	if ((errno != ECONNRESET) && (errno != ENOTCONN) && (errno != ETIMEDOUT)) {
+		ERROR("Error reading from home server %s: %s", sock->home->log_name, fr_syserror(errno));
+	}
+
+	return -1;
 }
 #endif	/* WITH_TCP */
 
