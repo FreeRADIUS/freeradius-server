@@ -1256,6 +1256,11 @@ static void ldap_trunk_bind_auth_fail(request_t *request, void *preq, UNUSED voi
 	fr_ldap_bind_auth_ctx_t	*bind = talloc_get_type_abort(preq, fr_ldap_bind_auth_ctx_t);
 
 	/*
+	 *	Remove the connection from the bind tree before freeing it.
+	 */
+	if (fr_rb_node_inline_in_tree(&bind->node)) fr_rb_remove(NULL, bind->thread->binds, bind);
+
+	/*
 	 *	Failed trunk requests get freed - so remove association in bind structure,
 	 *	and change talloc parentage so resume function still has something to work with.
 	 */
