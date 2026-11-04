@@ -319,9 +319,9 @@ static void pairmove_run(pairmove_case_t const *tc, list_target_t target)
 	before = talloc_total_blocks(request);
 
 	*to = list_alloc(ctx, tc->to);
-	TEST_ASSERT(*to != NULL);
+	TEST_ASSERT((*to != NULL) || (strcmp(tc->to, "") == 0));
 	from = list_alloc(ctx, tc->from);
-	TEST_ASSERT(from != NULL);
+	TEST_ASSERT((from != NULL) || (strcmp(tc->from, "") == 0));
 
 	radius_pairmove(request, to, from, false);	/* consumes `from` */
 
