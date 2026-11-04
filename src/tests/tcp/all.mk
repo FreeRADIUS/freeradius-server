@@ -8,7 +8,8 @@
 TCP_SCENARIOS := reply refuse close stall slow-accept
 
 #
-#  $(DIR) changes by the time that make runs a recipe, so keep a copy.
+#  Because $(DIR) changes before make runs a recipe, save a copy of $(DIR) in
+#  TCP_DIR.
 #
 TCP_DIR := $(DIR)
 
@@ -25,9 +26,11 @@ $(BUILD_DIR)/tests/tcp:
 	${Q}mkdir -p $@
 
 #
-#  Run each scenario.  A scenario which passes touches its stamp file, so
-#  re-running "make tests.tcp" only re-runs what changed.  The output of
-#  radiusd for the scenario is in $(BUILD_DIR)/tests/tcp/<scenario>.d/radiusd.log.
+#  Run each scenario.  A passing scenario touches the stamp file of the
+#  scenario.  Because make runs a scenario only when an input is newer than the
+#  stamp file, `make tests.tcp` runs only the scenarios with changed inputs.
+#  radiusd writes the output of each scenario to
+#  $(BUILD_DIR)/tests/tcp/<scenario>.d/radiusd.log.
 #
 $(BUILD_DIR)/tests/tcp/%: $(TCP_DIR)/run_test.py $(TCP_DIR)/radius.py $(TCP_DIR)/home_server.py $(TCP_DIR)/client.py $(TCP_DIR)/radiusd.conf $(BUILD_DIR)/bin/radiusd | $(BUILD_DIR)/tests/tcp
 	${Q}echo "TCP-TEST $(notdir $@)"

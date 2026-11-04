@@ -1,4 +1,7 @@
-"""A UDP RADIUS client that sends requests to the proxy."""
+"""A UDP client for the Remote Authentication Dial-In User Service (RADIUS).
+
+The client sends requests to the proxy.
+"""
 import socket
 
 import radius
@@ -27,10 +30,12 @@ class RadiusClient:
         self.sock.sendto(packet, ('127.0.0.1', self.port))
 
     def receive(self, timeout: float) -> radius.Packet:
-        """Wait for one reply. Returns None if the timeout expires.
+        """Wait for one reply. Return None when `timeout` seconds pass without
+        a reply.
 
-        Raises ValueError if the reply is not an Access-Accept with a valid
-        Response Authenticator.
+        Raise ValueError when the reply is malformed, is not an Access-Accept,
+        has an identifier that send() did not use, or has an invalid Response
+        Authenticator.
         """
         self.sock.settimeout(timeout)
 
@@ -54,13 +59,19 @@ class RadiusClient:
         return packet
 
     def exchange(self, identifier: int, timeout: float) -> radius.Packet:
-        """Send one request and wait for the reply. None means no reply."""
+        """Send one request and wait for the reply. Return None when no reply
+        arrives.
+        """
         self.send(identifier)
 
         return self.receive(timeout)
 
     def collect(self, identifiers: set[int], timeout: float) -> set[int]:
-        """Wait for replies. Returns the IDs that did not get a reply."""
+        """Wait for a reply to each of `identifiers`.
+
+        Stop when no reply arrives within `timeout` seconds. Return the
+        identifiers that have no reply.
+        """
         missing = set(identifiers)
 
         while missing:

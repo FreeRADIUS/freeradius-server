@@ -1,4 +1,9 @@
-"""Build and parse the few RADIUS packets that the TCP proxy tests need."""
+"""Build and parse the packets that the TCP proxy tests need.
+
+The packets are Remote Authentication Dial-In User Service (RADIUS)
+Access-Request and Access-Accept packets. The module also splits a TCP stream
+into packets.
+"""
 import dataclasses
 import hashlib
 import os
@@ -60,10 +65,11 @@ def parse(data: bytes) -> Packet:
 
 
 def access_request(identifier: int, padding: int = 0) -> tuple[bytes, bytes]:
-    """Build an Access-Request. Returns the packet and its authenticator.
+    """Build an Access-Request. Return the packet and the Request Authenticator
+    of the packet.
 
-    Each unit of padding adds a 253 byte Callback-Id attribute, so that a test
-    can make the request large.
+    Each unit of padding adds one 253-byte Callback-Id attribute, so that a
+    test can build a request of a chosen size.
     """
     authenticator = os.urandom(16)
     attributes = [(USER_NAME, b'bob')]
@@ -76,16 +82,16 @@ def access_request(identifier: int, padding: int = 0) -> tuple[bytes, bytes]:
 def access_accept(request: Packet, secret: bytes) -> bytes:
     """Build the Access-Accept for a request.
 
-    The reply carries the Proxy-State attributes of the request, because the
-    proxy uses Proxy-State to match the reply.
+    The reply contains a copy of each Proxy-State attribute of the request.
     """
     attributes = [(attrtype, value) for attrtype, value in request.attributes
                   if attrtype == PROXY_STATE]
     packet = encode(ACCESS_ACCEPT, request.identifier,
                     request.authenticator, attributes)
 
-    # The Response Authenticator hashes the packet, which holds the request
-    # authenticator in the authenticator field, followed by the secret.
+    # The Response Authenticator is the Message Digest 5 (MD5) hash of the
+    # packet followed by the secret. For this hash, the authenticator field of
+    # the packet holds the request authenticator.
     digest = hashlib.md5(packet + secret).digest()
 
     return packet[:4] + digest + packet[HEADER_LEN:]
@@ -101,9 +107,10 @@ def response_valid(response: bytes, request_authenticator: bytes,
 
 
 def split(buffer: bytearray) -> list[bytes]:
-    """Remove the whole packets from the front of a TCP stream buffer.
+    """Remove every complete packet from the front of `buffer`.
 
-    Raises ValueError if a length field is outside of the RADIUS limits.
+    Return the packets. A partial packet stays in `buffer`. Raise ValueError
+    when a length field is outside the range HEADER_LEN to MAX_PACKET_LEN.
     """
     packets = []
 

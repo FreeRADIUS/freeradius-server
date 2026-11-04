@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Run one scenario of the plain TCP proxy tests.
 
-The script starts a home server that listens on TCP and a radiusd which
-proxies UDP requests to the home server. The script then runs the scenario
-and stops both. The exit status is non-zero when the scenario fails, and zero
+The script starts a home server that listens on TCP and a RADIUS server
+(radiusd) which proxies UDP requests to the home server. The script then runs
+the scenario and stops the home server and radiusd. The exit status is non-zero when the scenario fails, and zero
 when the scenario passes or cannot be set up on this platform.
 
 The script does not call time.sleep(). The script waits for a line in the
@@ -25,10 +25,11 @@ from home_server import HomeServer
 SECRET = b'testing123'
 READY = "Ready to process requests"
 
-# The number and the size of the requests in the stall scenario. The requests
-# add up to more than a socket send buffer of 128K, which is the default on
-# macOS. The requests add up to less than 128K plus the write buffer of
-# 64K, so that the proxy does not drop any request.
+# STALL_REQUESTS is the number of requests in the stall scenario, and
+# STALL_PADDING is the number of Callback-Id attributes in each request.
+# The requests total more than 128K, the default socket send buffer on macOS.
+# The requests total less than 128K plus the 64K write buffer of the proxy.
+# The second limit prevents the proxy from dropping any request.
 STALL_REQUESTS = 40
 STALL_PADDING = 15
 
@@ -75,7 +76,11 @@ class Radiusd:
         return self._proc.poll() is None
 
     def wait_for(self, pattern: str, timeout: float, count: int = 1) -> bool:
-        """Wait until count lines match the regular expression."""
+        """Wait until `count` lines match the regular expression `pattern`.
+
+        Return False when the timeout expires or radiusd exits before `count`
+        lines match.
+        """
         regex = re.compile(pattern)
 
         def enough() -> bool:
@@ -117,7 +122,7 @@ class Radiusd:
 
 
 def free_udp_port() -> int:
-    """Find a UDP port that nothing uses."""
+    """Return a UDP port number that no process uses on 127.0.0.1."""
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.bind(('127.0.0.1', 0))
         return sock.getsockname()[1]
@@ -129,7 +134,7 @@ def require(condition: bool, message: str) -> None:
 
 
 def scenario_reply(home: HomeServer, radiusd: Radiusd, port: int) -> None:
-    """The proxy gets a reply from the home server over TCP."""
+    """The proxy receives a reply from the home server over TCP."""
     with RadiusClient(port, SECRET) as client:
         for identifier in range(3):
             reply = client.exchange(identifier, 5)
@@ -164,7 +169,10 @@ def scenario_close(home: HomeServer, radiusd: Radiusd, port: int) -> None:
 
 
 def scenario_stall(home: HomeServer, radiusd: Radiusd, port: int) -> None:
-    """The home server does not read, then reads, and no request is lost."""
+    """The home server does not read until the test releases the home server.
+
+    The proxy does not lose a request.
+    """
     identifiers = set(range(STALL_REQUESTS))
 
     with RadiusClient(port, SECRET) as client:
@@ -186,7 +194,7 @@ def scenario_stall(home: HomeServer, radiusd: Radiusd, port: int) -> None:
 
 def scenario_slow_accept(home: HomeServer, radiusd: Radiusd,
                          port: int) -> None:
-    """The connect() stays pending until the home server accepts."""
+    """The connect() of the proxy stays pending until the home server accepts."""
     if not home.backlog_full:
         raise TestSkipped("Cannot fill the listen backlog on this platform")
 

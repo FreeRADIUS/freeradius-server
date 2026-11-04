@@ -1,4 +1,7 @@
-"""A RADIUS home server that listens on TCP, with one mode per scenario."""
+"""A Remote Authentication Dial-In User Service (RADIUS) home server.
+
+The home server listens on TCP, with one mode per scenario.
+"""
 import select
 import socket
 import threading
@@ -7,14 +10,16 @@ import radius
 
 MODES = ('reply', 'refuse', 'close', 'stall', 'slow-accept')
 
-# The home server shrinks the receive buffer in the stall mode, so that the
-# proxy fills the buffers of the proxy socket with less data.
+# In the stall mode, the home server shrinks the receive buffer to STALL_RCVBUF
+# bytes. The proxy then needs less data to fill the send buffer of the proxy
+# socket and the receive buffer of the home server.
 STALL_RCVBUF = 4096
 
-# The most connections that slow-accept opens to fill the listen backlog.
-# macOS accepts kern.ipc.somaxconn (128) connections even when the program
-# calls listen(0), so the limit has to be larger. The limit stays below the
-# default limit of 256 open files on macOS.
+# MAX_FILLERS is the most connections that slow-accept opens to fill the listen
+# backlog. macOS accepts kern.ipc.somaxconn (128) connections even when the
+# program calls listen(0). Because of that, MAX_FILLERS must exceed 128.
+# MAX_FILLERS must also stay below the default limit of 256 open files on
+# macOS.
 MAX_FILLERS = 200
 
 
@@ -24,11 +29,12 @@ class HomeServer:
     The mode decides what the server does with a connection:
 
     reply        answers each request with an Access-Accept.
-    refuse       does not listen, so the proxy gets a connection refusal.
+    refuse       does not listen. The proxy receives a connection refusal.
     close        accepts a connection and closes the connection.
     stall        accepts a connection but does not read until release().
-    slow-accept  fills the listen backlog, so that a connect() from the proxy
-                 stays pending, and does not accept until release().
+    slow-accept  fills the listen backlog and does not accept a connection until
+                 release(). Because the backlog is full, a connect() from the
+                 proxy stays pending.
     """
 
     def __init__(self, mode: str, secret: bytes):
@@ -51,7 +57,10 @@ class HomeServer:
         self._lock = threading.Lock()
 
     def start(self) -> None:
-        """Open the listening socket, then start accepting if the mode allows."""
+        """Bind a TCP socket on 127.0.0.1 and set `port`.
+
+        Start the accept loop in every mode except refuse and slow-accept.
+        """
         self._listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -64,7 +73,7 @@ class HomeServer:
 
         match self.mode:
             case 'refuse':
-                # Nothing listens on the port, so connect() is refused.
+                # Because nothing listens on the port, connect() is refused.
                 self._listener.close()
                 self._listener = None
 
@@ -77,7 +86,9 @@ class HomeServer:
                 self._spawn(self._accept_loop)
 
     def release(self) -> None:
-        """Let the home server read (stall) or accept (slow-accept)."""
+        """Make the home server start to read (stall mode) or to accept connections
+        (slow-accept mode).
+        """
         self._released.set()
 
         if self.mode == 'slow-accept':
@@ -103,8 +114,8 @@ class HomeServer:
     def _fill_backlog(self) -> None:
         """Open connections until a connect() cannot finish.
 
-        A connect() that cannot finish within the timeout means that the
-        backlog is full. The pending connect() stays open, so that the backlog
+        A connect() that does not finish within the select() timeout means
+        that the backlog is full. The pending connect() stays open, so that the backlog
         stays full until the accept loop starts.
         """
         for _ in range(MAX_FILLERS):
