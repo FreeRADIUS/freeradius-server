@@ -995,6 +995,14 @@ static int _bio_handle_free(bio_handle_t *h)
 	if (h->conn_request) {
 		fr_assert(h->bio.tls);
 
+		/*
+		 *	Before closing, forcibly write a TLS close_notify.  But first delete the FD events, so
+		 *	if there are any errors writing to the socket (IO error, or IO_WOULD_BLOCK), those are
+		 *	ignored, and the close_notify is discarded.
+		 */
+		(void) fr_event_fd_delete(h->conn->el, h->fd, FR_EVENT_FILTER_IO);
+		fr_bio_tls_close_send(h->bio.tls);
+
 		unlang_interpret_signal(h->conn_request, FR_SIGNAL_CANCEL);
 		unlang_interpret_mark_runnable(h->conn_request);
 		h->bio.tls = NULL;
@@ -1566,6 +1574,7 @@ static void conn_writable_flush(fr_event_list_t *el, int fd, int flags, void *uc
 	trunk_connection_callback_writable(el, fd, flags, uctx);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 			       fr_event_list_t *el,
 			       trunk_connection_event_t notify_on, UNUSED void *uctx)

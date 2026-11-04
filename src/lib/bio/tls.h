@@ -40,5 +40,7 @@ fr_tls_connection_t	*fr_bio_tls_conn(fr_bio_tls_t *my) CC_HINT(nonnull);
 
 int			fr_bio_tls_connect(fr_bio_tls_t *my) CC_HINT(nonnull);
 
+void			fr_bio_tls_close_send(fr_bio_tls_t *my) CC_HINT(nonnull);
+
 
 #endif

@@ -127,6 +127,13 @@ if grep -q "TLS connection failed" "$RADIUSD_LOG"; then
 	fail "the radius module reported a failed TLS connection"
 fi
 
+#
+#  The module sends a close_notify before it closes the socket, which
+#  requires the TLS bio to write before the FD bio closes.
+#
+grep -q "Sending close_notify" "$RADIUSD_LOG" || \
+	fail "the radius module did not send a close_notify when radiusd stopped"
+
 ######################################################################
 #
 #  What the home server did.

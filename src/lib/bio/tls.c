@@ -948,9 +948,13 @@ static void fr_bio_tls_fd_error(fr_bio_t *fd_bio)
  *  The alert is not sent when the TLS connection is not connected, when the TLS connection failed, when
  *  the bio chain already shut down, or when the fd is at EOF or is not open.
  *
+ *  An application which frees the fd bio before the TLS bio MUST call this function first.  Freeing the
+ *  fd bio shuts down the whole chain, which stops writes in the TLS bio, so the TLS bio destructor can no
+ *  longer send the alert.
+ *
  * @param[in] my	the TLS bio.
  */
-static void fr_bio_tls_close_send(fr_bio_tls_t *my)
+void fr_bio_tls_close_send(fr_bio_tls_t *my)
 {
 	fr_bio_t		*next = fr_bio_next(&my->bio);
 	fr_bio_fd_info_t const	*info;
