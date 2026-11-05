@@ -176,13 +176,18 @@ def scenario_stall(home: HomeServer, radiusd: Radiusd, port: int) -> None:
     identifiers = set(range(STALL_REQUESTS))
 
     with RadiusClient(port, SECRET) as client:
-        for identifier in identifiers:
+        # Send one request at a time, and wait until radiusd proxies the
+        # request. The requests total about 150K. A burst of that size
+        # overflows the UDP receive buffer of radiusd on Linux, where the
+        # default is about 200K, and the kernel drops the datagrams that do
+        # not fit.
+        for identifier in sorted(identifiers):
             client.send(identifier, STALL_PADDING)
+            require(radiusd.wait_for("Sent Access-Request Id", 10,
+                                     identifier + 1),
+                    f"radiusd did not send request {identifier}")
 
         require(home.accepted.wait(10), "Home server did not accept")
-        require(radiusd.wait_for("Sent Access-Request Id", 10,
-                                 STALL_REQUESTS),
-                "radiusd did not send all of the requests")
 
         home.release()
 
