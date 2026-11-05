@@ -182,9 +182,9 @@ static conf_parser_t const module_config[] = {
 
 	{ FR_CONF_OFFSET("zombie_period", rlm_radius_t, zombie_period), .dflt = STRINGIFY(40) },
 
-	{ FR_CONF_OFFSET("revive_interval", rlm_radius_t, revive_interval) },
+	{ FR_CONF_OFFSET("revive_interval", rlm_radius_t, revive_interval), .dflt = STRINGIFY(600) },
 
-	{ FR_CONF_OFFSET("home_server_lifetime", rlm_radius_t, home_server_lifetime) },
+	{ FR_CONF_OFFSET("home_server_lifetime", rlm_radius_t, home_server_lifetime), .dflt = STRINGIFY(600) },
 
 	CONF_PARSER_TERMINATOR
 };
