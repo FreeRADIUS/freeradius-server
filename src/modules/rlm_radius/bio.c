@@ -2500,11 +2500,8 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 		/*
 		 *	Make sure to copy the packet over!
 		 */
-		attr = h->buffer;
+		MEM(h->buffer = talloc_realloc_size(h, h->buffer, response_length));
 		h->buflen = response_length;
-		MEM(h->buffer = talloc_array(h, uint8_t, h->buflen));
-
-		memcpy(h->buffer, attr, end - attr);
 	}
 
 	/*
