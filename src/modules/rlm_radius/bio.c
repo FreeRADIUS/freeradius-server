@@ -525,7 +525,10 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 
 	if (decode(h, &reply, &code,
 		   h, h->status_request, h->status_u, u->packet + RADIUS_AUTH_VECTOR_OFFSET,
-		   h->buffer, slen) != FR_RADIUS_FAIL_NONE) return;
+		   h->buffer, slen) != FR_RADIUS_FAIL_NONE) {
+		fr_pair_list_free(&reply);
+		return;
+	}
 
 	fr_pair_list_free(&reply);	/* FIXME - Do something with these... */
 
