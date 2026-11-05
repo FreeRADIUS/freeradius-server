@@ -4682,7 +4682,11 @@ post_ca:
 	 */
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
-	if (set_ecdh_curve(ctx, conf->ecdh_curve, conf->disable_single_dh_use) < 0) {
+	/*
+	 *	group_list and ecdh_curve set the same OpenSSL list, and
+	 *	ecdh_curve has a default.  Let an explicit group_list win.
+	 */
+	if (set_ecdh_curve(ctx, conf->group_list ? NULL : conf->ecdh_curve, conf->disable_single_dh_use) < 0) {
 		return NULL;
 	}
 #endif
