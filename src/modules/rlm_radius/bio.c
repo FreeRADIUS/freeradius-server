@@ -1006,6 +1006,13 @@ static int _bio_handle_free(bio_handle_t *h)
 		(void) fr_event_fd_delete(h->conn->el, h->fd, FR_EVENT_FILTER_IO);
 		fr_bio_tls_close_send(h->bio.tls);
 
+		/*
+		 *	We're about to free the handle, so but the BIO sticks around until the interpreter
+		 *	unwinds the cancelled request.  Remove the callbacks so that they don't try to access
+		 *	the freed handle.
+		 */
+		fr_bio_cb_set((fr_bio_t *) h->bio.tls, NULL);
+
 		unlang_interpret_signal(h->conn_request, FR_SIGNAL_CANCEL);
 		h->bio.tls = NULL;
 		h->conn_request = NULL;

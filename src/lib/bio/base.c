@@ -263,6 +263,7 @@ void fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb)
 
 	if (!cb) {
 		memset(&my->cb, 0, sizeof(my->cb));
+		bio->uctx = NULL;
 	} else {
 		my->cb = *cb;
 	}
