@@ -641,6 +641,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	bio_thread_t		*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
 	fr_client_t		*client;
 	int			rcode;
+	unlang_action_t		action;
 	bio_request_t		*u = NULL;
 	fr_retry_config_t const	*retry_config = NULL;
 
@@ -683,7 +684,18 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	if (rcode == 0) RETURN_UNLANG_NOOP;
 	if (rcode < 0) RETURN_UNLANG_FAIL;
 
-	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, FR_SIGNAL_NONE, u, retry_config);
+	action = unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, FR_SIGNAL_NONE, u, retry_config);
+
+	/*
+	 *	The request is not yielding, so mod_signal() will never be called.  Remove the request from the
+	 *	trunk, as the trunk would otherwise send a request which nothing waits for.
+	 */
+	if ((action == UNLANG_ACTION_FAIL) && u->treq) {
+		trunk_request_signal_cancel(u->treq);
+		u->treq = NULL;
+	}
+
+	return action;
 }
 
 
