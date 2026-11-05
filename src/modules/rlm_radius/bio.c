@@ -150,7 +150,6 @@ static inline CC_HINT(always_inline) bool bio_at_eof(bio_handle_t const *h)
 struct bio_request_s {
 	trunk_request_t		*treq;
 	rlm_rcode_t		rcode;			//!< from the transport
-	bool			is_retry;
 
 	uint32_t		priority;		//!< copied from request->async->priority
 	fr_time_t		recv_time;		//!< copied from request->async->recv_time
@@ -2054,6 +2053,15 @@ static void mod_dup(request_t *request, bio_request_t *u)
 		return;
 	}
 
+	/*
+	 *	Only a request which was written to the connection can be retransmitted.  A request in the
+	 *	backlog has no connection, and request_mux() writes the other requests.
+	 */
+	if (u->treq->state != TRUNK_REQUEST_STATE_SENT) {
+		RDEBUG("Request has not been sent - suppressing retransmission");
+		return;
+	}
+
 	h = talloc_get_type_abort(u->treq->tconn->conn->h, bio_handle_t);
 
 	if (h->ctx.fd_config.socket_type != SOCK_DGRAM) {
@@ -2068,7 +2076,6 @@ static void mod_dup(request_t *request, bio_request_t *u)
 		RDEBUG("IO is blocked - suppressing retransmission");
 		return;
 	}
-	u->is_retry = true;
 
 	/*
 	 *	We are doing synchronous proxying, retransmit
@@ -2363,24 +2370,27 @@ do_write:
 	}
 
 	/*
-	 *	On first packet, signal it as sent, and update stats.
+	 *	A request which is not already in the SENT state is a new packet from request_mux(), and we
+	 *	signal the trunk that it was written.
 	 *
-	 *	Later packets are just retransmissions to the BIO, and don't need to involve
-	 *	the trunk code.
+	 *	A request which is in the SENT state is a retransmission, and we don't signal the trunk.
 	 */
-	if (u->retry.count == 1) {
-		h->last_sent = u->retry.start;
-		if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
+	if (treq->state == TRUNK_REQUEST_STATE_SENT) {
+		action = "Retransmitted";
+
+	} else {
+		if (u->retry.count == 1) {
+			h->last_sent = u->retry.start;
+			if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
+		}
 
 		trunk_request_signal_sent(treq);
 
-		action = u->proxied ? "Proxied" : "Originated";
-
-	} else {
-		/*
-		 *	We don't signal the trunk that it's been sent, it was already senty
-		 */
-		action = "Retransmitted";
+		if (u->retry.count > 1) {
+			action = "Retransmitted";
+		} else {
+			action = u->proxied ? "Proxied" : "Originated";
+		}
 	}
 
 	fr_assert(!u->status_check || h->status_checking);
