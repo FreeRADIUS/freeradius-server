@@ -657,14 +657,11 @@ RESUME(protocol_error)
 	/*
 	 *	https://tools.ietf.org/html/rfc7930#section-4
 	 */
-	vp = fr_pair_find_by_da_nested(&request->reply_pairs, attr_original_packet_code);
-	if (!vp) {
-		vp = fr_pair_afrom_da(request->reply_ctx, attr_original_packet_code);
-		if (vp) {
-			vp->vp_uint32 = request->packet->code;
-			fr_pair_append(&request->reply_pairs, vp);
-		}
-	}
+	/*
+	 *	Original-Packet-Code is a child of Extended-Attribute-1, so it has to be created below its
+	 *	parent, and not appended to the top-level list.
+	 */
+	if (pair_update_reply(&vp, attr_original_packet_code) == 0) vp->vp_uint32 = request->packet->code;
 
 	/*
 	 *	If there's no Error-Cause, then include a generic 404.
