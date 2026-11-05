@@ -1339,17 +1339,18 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		DEBUG("%s - Connection open - %s", h->ctx.module_name, h->ctx.fd_info->name);
 
 		return CONNECTION_STATE_CONNECTED;
+	}
 
-		/*
-		 *	If we're doing status checks, then we want at least
-		 *	one positive response before signalling that the
-		 *	connection is open.
-		 *
-		 *	To do this we install special I/O handlers that
-		 *	only signal the connection as open once we get a
-		 *	status-check response.
-		 */
-	} if (h->ctx.inst->status_check) {
+	/*
+	 *	If we're doing status checks, then we want at least
+	 *	one positive response before signalling that the
+	 *	connection is open.
+	 *
+	 *	To do this we install special I/O handlers that
+	 *	only signal the connection as open once we get a
+	 *	status-check response.
+	 */
+	if (h->ctx.inst->status_check) {
 		/*
 		 *	Start status checking.
 		 *
@@ -1365,6 +1366,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		 *	as open as soon as it becomes writable.
 		 */
 	} else {
+		DEBUG("%s - Connection open - %s", h->ctx.module_name, h->ctx.fd_info->name);
 		connection_signal_on_fd(conn, fd);
 	}
 
