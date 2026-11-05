@@ -2426,8 +2426,7 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 		if ((attr[0] == attr_error_cause->attr) && (attr[1] == 6)) {
 			uint32_t error;
 
-			memcpy(&error, attr + 2, 4);
-			error = ntohl(error);
+			error = fr_nbo_to_uint32(attr + 2);
 			if (error == 601) error_601 = true;
 			continue;
 		}
@@ -2435,8 +2434,10 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 		/*
 		 *	The other end wants us to increase our Response-Length
 		 */
-		if ((attr[0] == attr_response_length->attr) && (attr[1] == 6)) {
-			memcpy(&response_length, attr + 2, 4);
+		if ((attr[0] == attr_extended_attribute_1->attr) &&
+		    (attr[1] == 7) &&
+		    (attr[2] == attr_response_length->attr)) {
+			response_length = fr_nbo_to_uint32(attr + 3);
 			continue;
 		}
 
