@@ -2773,7 +2773,12 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		}
 
 		treq->request->reply->code = code;
-		u->rcode = radius_code_to_rcode[code];
+
+		/*
+		 *	protocol_error_reply() has already set u->rcode, which is FAIL when the
+		 *	Original-Packet-Code is wrong.
+		 */
+		if (code != FR_RADIUS_CODE_PROTOCOL_ERROR) u->rcode = radius_code_to_rcode[code];
 		fr_pair_list_append(&request->reply_pairs, &reply);
 		trunk_request_signal_complete(treq);
 	}
