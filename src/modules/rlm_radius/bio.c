@@ -2040,6 +2040,11 @@ static void mod_dup(request_t *request, bio_request_t *u)
 {
 	bio_handle_t *h;
 
+	if (!u->treq) {
+		RDEBUG("Request is queued and waiting for a connection - suppressing retransmission");
+		return;
+	}
+
 	h = talloc_get_type_abort(u->treq->tconn->conn->h, bio_handle_t);
 
 	if (h->ctx.fd_config.socket_type != SOCK_DGRAM) {
@@ -3043,32 +3048,24 @@ static void do_signal(rlm_radius_t const *inst, bio_request_t *u, request_t *req
 	 */
 	if ((action == FR_SIGNAL_DUP) && (inst->mode != RLM_RADIUS_MODE_PROXY)) return;
 
-	/*
-	 *	If we don't have a treq associated with the
-	 *	rctx it's likely because the request was
-	 *	scheduled, but hasn't yet been resumed, and
-	 *	has received a signal, OR has been resumed
-	 *	and immediately cancelled as the event loop
-	 *	is exiting, in which case
-	 *	unlang_request_is_scheduled will return false
-	 *	(don't use it).
-	 */
-	if (!u->treq) return;
-
 	switch (action) {
 	/*
 	 *	The request is being cancelled, tell the
 	 *	trunk so it can clean up the treq.
 	 */
 	case FR_SIGNAL_CANCEL:
-		trunk_request_signal_cancel(u->treq);
-		u->treq = NULL;
+		if (u->treq) {
+			trunk_request_signal_cancel(u->treq);
+			u->treq = NULL;
+		}
 		return;
 
 	/*
 	 *	Requeue the request on the same connection
 	 *      causing a "retransmission" if the request
 	 *	has already been sent out.
+	 *
+	 *	mod_dup() checks u->treq and complains if necessary.
 	 */
 	case FR_SIGNAL_DUP:
 		mod_dup(request, u);
