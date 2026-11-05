@@ -2014,7 +2014,7 @@ static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_t
 		 *	Queue up the status check packet.  It will be sent
 		 *	when the connection is writable.
 		 */
-		h->status_u->retry.start = fr_time_wrap(0);
+		fr_retry_init(&h->status_u->retry, fr_time(), &h->ctx.inst->retry[h->status_u->code]);
 		h->status_u->treq = NULL;
 
 		if (trunk_request_enqueue_on_conn(&h->status_u->treq, tconn, h->status_request,
@@ -2533,6 +2533,11 @@ static void status_check_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, 
 	 */
 	if (h->ctx.fd_info->state != FR_BIO_FD_STATE_OPEN) return;
 
+	/*
+	 *	Re-initialize the retry for every status check packet.
+	 */
+	fr_retry_init(&h->status_u->retry, fr_time(), &h->ctx.inst->retry[h->status_u->code]);
+
 	if (trunk_request_enqueue_on_conn(&h->status_u->treq, tconn, h->status_request,
 					     h->status_u, h->status_u, true) != TRUNK_ENQUEUE_OK) {
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
@@ -2543,16 +2548,12 @@ static void status_check_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, 
 /** Deal with replies replies to status checks and possible negotiation
  *
  */
-static void status_check_reply(trunk_request_t *treq, fr_time_t now)
+static void status_check_reply(trunk_connection_t *tconn, bio_request_t *u, fr_time_t now)
 {
-	bio_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, bio_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 	rlm_radius_t const 	*inst = h->ctx.inst;
-	bio_request_t		*u = talloc_get_type_abort(treq->rctx, bio_request_t);
 
-	fr_assert(treq->preq == h->status_u);
-	fr_assert(treq->rctx == h->status_u);
-
-	u->treq = NULL;
+	fr_assert(u == h->status_u);
 
 	/*
 	 *	@todo - do other negotiation and signaling.
@@ -2565,10 +2566,10 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 		DEBUG("Next status check packet will be in %pVs", fr_box_time_delta(fr_time_sub(u->retry.next, now)));
 
 		/*
-		 *	Set the timer for the next retransmit.
+		 *	Set the timer for the next status check.
 		 */
-		if (fr_timer_at(h, h->ctx.el->tl, &u->ev, u->retry.next, false, status_check_next, treq->tconn) < 0) {
-			trunk_connection_signal_reconnect(treq->tconn, CONNECTION_FAILED);
+		if (fr_timer_at(h, h->ctx.el->tl, &u->ev, u->retry.next, false, status_check_next, tconn) < 0) {
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
 		return;
 	}
@@ -2587,7 +2588,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 	 *	also frees u->ev.
 	 */
 	status_check_reset(h, u);
-	trunk_connection_signal_active(treq->tconn);
+	trunk_connection_signal_active(tconn);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
@@ -2688,8 +2689,8 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 */
 		if (u == h->status_u) {
 			fr_pair_list_free(&reply);	/* Probably want to pass this to status_check_reply? */
-			status_check_reply(treq, now);
 			trunk_request_signal_complete(treq);
+			status_check_reply(tconn, u, now);
 			continue;
 		}
 
@@ -2896,8 +2897,8 @@ static void request_replicate_demux(UNUSED fr_event_list_t *el, trunk_connection
 		 */
 		if (u == h->status_u) {
 			fr_pair_list_free(&reply);	/* Probably want to pass this to status_check_reply? */
-			status_check_reply(treq, now);
 			trunk_request_signal_complete(treq);
+			status_check_reply(tconn, u, now);
 			continue;
 		}
 
@@ -2959,7 +2960,10 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 
 	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) return;
 
-	u->num_replies = 0;
+	/*
+	 *	Status checks have their own counts and release in status_check_reset()
+	 */
+	if (!u->status_check) u->num_replies = 0;
 
 	/*
 	 *	If there are no outstanding tracking entries
