@@ -1041,8 +1041,8 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	}
 
 	if (unlikely(el->exit)) {
-		fr_strerror_const("Event loop exiting");
-		return -1;
+		if (ef_out && *ef_out) TALLOC_FREE(*ef_out);
+		return 0;
 	}
 
 	if (!ef_out || !*ef_out) {
