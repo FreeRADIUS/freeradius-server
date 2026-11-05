@@ -575,10 +575,15 @@ static int radius_fixups(rlm_radius_t const *inst, request_t *request)
 		return 0;
 	}
 
-	if (!inst->allowed[request->packet->code]) {
-		REDEBUG("Packet code %s is disallowed by the configuration",
-		       fr_radius_packet_name[request->packet->code]);
+	if (!FR_RADIUS_PACKET_CODE_VALID(request->packet->code)) {
+		REDEBUG("Cannot proxy packet code %u, it is not a RADIUS packet code", request->packet->code);
 		return -1;
+	}
+
+	if (!inst->allowed[request->packet->code]) {
+		REDEBUG("Cannot proxy packet code %s - is disallowed by the configuration",
+		       fr_radius_packet_name[request->packet->code]);
+		return 0;
 	}
 
 	/*

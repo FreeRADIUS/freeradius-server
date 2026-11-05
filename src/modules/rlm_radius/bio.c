@@ -3127,7 +3127,7 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 	 *	- check Proxy-State
 	 *	- do CHAP-Challenge fixups
 	 */
-	if (radius_fixups(inst, request) < 0) return 0;
+	if (radius_fixups(inst, request) < 0) return -1;
 
 	treq = trunk_request_alloc(trunk, request);
 	if (!treq) {
@@ -3434,7 +3434,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	}
 
 	/*
-	 *	The encoder indexes tables by the packet code.
+	 *	This shouldn't happen, but what the heck.
 	 */
 	if (!FR_RADIUS_PACKET_CODE_VALID(request->packet->code)) {
 		REDEBUG("Cannot replicate packet code %u, it is not a RADIUS packet code", request->packet->code);
@@ -3582,6 +3582,14 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	int			rcode;
 
 	XLAT_ARGS(args, &ipaddr, &port, &secret);
+
+	/*
+	 *	The packet code indexes tables which have FR_RADIUS_CODE_MAX entries.
+	 */
+	if (!FR_RADIUS_PACKET_CODE_VALID(request->packet->code)) {
+		REDEBUG("Cannot proxy packet code %u, it is not a RADIUS packet code", request->packet->code);
+		return XLAT_ACTION_FAIL;
+	}
 
 	/*
 	 *	Can't change IP address families.
