@@ -1147,69 +1147,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	MEM(h->tt = radius_track_alloc(h));
 
-	/*
-	 *	We are proxying to multiple home servers, but using a limited port range.  We must track the
-	 *	source port for each home server, so that we only can select the right unused source port for
-	 *	this home server.
-	 */
-	switch (ctx->limit_source_ports) {
-	case LIMIT_PORTS_NONE:
-		break;
-
-	/*
-	 *	Dynamic home servers store source port usage in the home_server_t
-	 */
-	case LIMIT_PORTS_DYNAMIC:
-	{
-		int i;
-		home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
-
-		for (i = 0; i < home->num_ports; i++) {
-			if (!home->connections[i]) {
-				to_save = &home->connections[i];
-
-				/*
-				 *	Set the source port, but also leave the src_port_start and
-				 *	src_port_end alone.
-				 */
-				h->ctx.fd_config.src_port = h->ctx.fd_config.src_port_start + i;
-				break;
-			}
-		}
-
-		if (!to_save) {
-			ERROR("%s - Failed opening socket to home server %pV:%u - source port range is full",
-			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port);
-			goto fail;
-		}
-	}
-		break;
-
-	/*
-	 *	Static home servers store source port usage in bio_thread_t
-	 */
-	case LIMIT_PORTS_STATIC:
-	{
-		int i;
-		bio_thread_t *thread = talloc_get_type_abort(ctx, bio_thread_t);
-
-		for (i = 0; i < thread->num_ports; i++) {
-			if (!thread->connections[i]) {
-				to_save = &thread->connections[i];
-				h->ctx.fd_config.src_port = h->ctx.fd_config.src_port_start + i;
-				break;
-			}
-		}
-
-		if (!to_save) {
-			ERROR("%s - Failed opening socket to home server %pV:%u - source port range is full",
-			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port);
-			goto fail;
-		}
-	}
-		break;
-	}
-
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
 		PERROR("%s - failed opening socket", h->ctx.module_name);
@@ -1223,6 +1160,67 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	fd = h->ctx.fd_info->socket.fd;
 	fr_assert(fd >= 0);
+
+	/*
+	 *	We are proxying to multiple home servers, but using a limited port range.  We must track the
+	 *	source port for each home server, so that conn_close() can mark the source port as unused.
+	 *	fr_bio_fd_alloc() has picked the source port from the range, and has saved the port in the
+	 *	fd_info.
+	 */
+	switch (ctx->limit_source_ports) {
+	case LIMIT_PORTS_NONE:
+		break;
+
+	/*
+	 *	Dynamic home servers store source port usage in the home_server_t
+	 */
+	case LIMIT_PORTS_DYNAMIC:
+	{
+		home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
+		int slot;
+
+		fr_assert(h->ctx.fd_info->socket.inet.src_port >= h->ctx.fd_config.src_port_start);
+		fr_assert(h->ctx.fd_info->socket.inet.src_port <= h->ctx.fd_config.src_port_end);
+
+		slot = h->ctx.fd_info->socket.inet.src_port - h->ctx.fd_config.src_port_start;
+		fr_assert(slot < home->num_ports);
+
+		if (home->connections[slot]) {
+			ERROR("%s - Failed opening socket to home server %pV:%u - source port %u is already in use",
+			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port,
+			      h->ctx.fd_info->socket.inet.src_port);
+			goto fail;
+		}
+
+		to_save = &home->connections[slot];
+	}
+		break;
+
+	/*
+	 *	Static home servers store source port usage in bio_thread_t
+	 */
+	case LIMIT_PORTS_STATIC:
+	{
+		bio_thread_t *thread = talloc_get_type_abort(ctx, bio_thread_t);
+		int slot;
+
+		fr_assert(h->ctx.fd_info->socket.inet.src_port >= h->ctx.fd_config.src_port_start);
+		fr_assert(h->ctx.fd_info->socket.inet.src_port <= h->ctx.fd_config.src_port_end);
+
+		slot = h->ctx.fd_info->socket.inet.src_port - h->ctx.fd_config.src_port_start;
+		fr_assert(slot < thread->num_ports);
+
+		if (thread->connections[slot]) {
+			ERROR("%s - Failed opening socket to home server %pV:%u - source port %u is already in use",
+			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port,
+			      h->ctx.fd_info->socket.inet.src_port);
+			goto fail;
+		}
+
+		to_save = &thread->connections[slot];
+	}
+		break;
+	}
 
 	/*
 	 *	Set the destructor now, so that every failure below frees the TLS bio and the connection
@@ -1409,10 +1407,10 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, void *uctx)
 		int offset;
 		home_server_t *home = talloc_get_type_abort(uctx, home_server_t);
 
-		fr_assert(h->ctx.fd_config.src_port >= h->ctx.fd_config.src_port_start);
-		fr_assert(h->ctx.fd_config.src_port <= h->ctx.fd_config.src_port_end);
+		fr_assert(h->ctx.fd_info->socket.inet.src_port >= h->ctx.fd_config.src_port_start);
+		fr_assert(h->ctx.fd_info->socket.inet.src_port <= h->ctx.fd_config.src_port_end);
 
-		offset = h->ctx.fd_config.src_port - h->ctx.fd_config.src_port_start;
+		offset = h->ctx.fd_info->socket.inet.src_port - h->ctx.fd_config.src_port_start;
 		fr_assert(offset < home->num_ports);
 
 		fr_assert(home->connections[offset] == h->conn);
@@ -1426,10 +1424,10 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, void *uctx)
 		int offset;
 		bio_thread_t *thread = talloc_get_type_abort(uctx, bio_thread_t);
 
-		fr_assert(h->ctx.fd_config.src_port >= h->ctx.fd_config.src_port_start);
-		fr_assert(h->ctx.fd_config.src_port <= h->ctx.fd_config.src_port_end);
+		fr_assert(h->ctx.fd_info->socket.inet.src_port >= h->ctx.fd_config.src_port_start);
+		fr_assert(h->ctx.fd_info->socket.inet.src_port <= h->ctx.fd_config.src_port_end);
 
-		offset = h->ctx.fd_config.src_port - h->ctx.fd_config.src_port_start;
+		offset = h->ctx.fd_info->socket.inet.src_port - h->ctx.fd_config.src_port_start;
 		fr_assert(offset < thread->num_ports);
 
 		fr_assert(thread->connections[offset] == h->conn);
