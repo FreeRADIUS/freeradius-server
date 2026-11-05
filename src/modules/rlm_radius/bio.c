@@ -1312,6 +1312,11 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 #endif
 
 	/*
+	 *	Allocate the status check packet now, because a stream socket can be in the CONNECTING state.
+	 */
+	if (h->ctx.inst->status_check) status_check_alloc(h);
+
+	/*
 	 *	If the socket isn't connected, then do that first.
 	 */
 	if (h->ctx.fd_info->state != FR_BIO_FD_STATE_OPEN) {
@@ -1345,8 +1350,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		 *	status-check response.
 		 */
 	} if (h->ctx.inst->status_check) {
-		status_check_alloc(h);
-
 		/*
 		 *	Start status checking.
 		 *
@@ -1963,6 +1966,13 @@ static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_t
 	fr_assert(h->ctx.inst->mode != RLM_RADIUS_MODE_REPLICATE);
 
 	/*
+	 *	Only an open connection can become zombie.  A connection which is connecting or closing
+	 *	cannot send or receive the status checks, and the zombie timer would run on a connection
+	 *	which is about to be freed.
+	 */
+	if (h->ctx.fd_info->state != FR_BIO_FD_STATE_OPEN) return false;
+
+	/*
 	 *	If we're status checking OR already zombie, don't go to zombie
 	 */
 	if (h->status_checking || fr_timer_armed(h->zombie_ev)) return true;
@@ -2365,8 +2375,8 @@ do_write:
 
 	} else {
 		/*
-		 *	If the packet doesn't get a response,
-		 *	then bio_request_free() will notice, and run conn_zombie()
+		 *	If the packet doesn't get a response, then bio_request_free() will notice, and look
+		 *	for zombie connections.
 		 */
 		RDEBUG("%s request.  Relying on NAS to perform more retransmissions", action);
 	}
@@ -2509,6 +2519,11 @@ static void status_check_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, 
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
+
+	/*
+	 *	Status checks are sent only on an open connection.
+	 */
+	if (h->ctx.fd_info->state != FR_BIO_FD_STATE_OPEN) return;
 
 	if (trunk_request_enqueue_on_conn(&h->status_u->treq, tconn, h->status_request,
 					     h->status_u, h->status_u, true) != TRUNK_ENQUEUE_OK) {
@@ -2953,7 +2968,14 @@ static void request_fail(request_t *request, NDEBUG_UNUSED void *preq, void *rct
 
 	fr_assert(state != TRUNK_REQUEST_STATE_INIT);
 
-	if (u->status_check) return;
+	/*
+	 *	The trunk frees the status check treq after this callback.  Clear the pointer so that
+	 *	_bio_request_free() does not look at a freed treq.
+	 */
+	if (u->status_check) {
+		u->treq = NULL;
+		return;
+	}
 
 	u->rcode = RLM_MODULE_FAIL;
 	u->treq = NULL;
@@ -2972,7 +2994,14 @@ static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void 
 
 	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
 
-	if (u->status_check) return;
+	/*
+	 *	The trunk frees the status check treq after this callback.  Clear the pointer so that
+	 *	_bio_request_free() does not look at a freed treq.
+	 */
+	if (u->status_check) {
+		u->treq = NULL;
+		return;
+	}
 
 	u->treq = NULL;
 
