@@ -1410,7 +1410,7 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, void *uctx)
 		home_server_t *home = talloc_get_type_abort(uctx, home_server_t);
 
 		fr_assert(h->ctx.fd_config.src_port >= h->ctx.fd_config.src_port_start);
-		fr_assert(h->ctx.fd_config.src_port < h->ctx.fd_config.src_port_end);
+		fr_assert(h->ctx.fd_config.src_port <= h->ctx.fd_config.src_port_end);
 
 		offset = h->ctx.fd_config.src_port - h->ctx.fd_config.src_port_start;
 		fr_assert(offset < home->num_ports);
@@ -1427,7 +1427,7 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, void *uctx)
 		bio_thread_t *thread = talloc_get_type_abort(uctx, bio_thread_t);
 
 		fr_assert(h->ctx.fd_config.src_port >= h->ctx.fd_config.src_port_start);
-		fr_assert(h->ctx.fd_config.src_port < h->ctx.fd_config.src_port_end);
+		fr_assert(h->ctx.fd_config.src_port <= h->ctx.fd_config.src_port_end);
 
 		offset = h->ctx.fd_config.src_port - h->ctx.fd_config.src_port_start;
 		fr_assert(offset < thread->num_ports);
