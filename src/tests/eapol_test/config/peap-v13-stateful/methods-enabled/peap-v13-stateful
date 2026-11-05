@@ -16,4 +16,5 @@ peap {
 	}
 	default_eap_type = mschapv2
 	virtual_server = "inner-tunnel"
+	resume_virtual_server = "resume-inner-tunnel"
 }

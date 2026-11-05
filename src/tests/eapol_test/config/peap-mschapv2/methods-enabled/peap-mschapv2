@@ -3,7 +3,12 @@ type = mschapv2
 peap {
 	tls {
 		$template tls-common
+		virtual_server = tls-session
+		session {
+			mode = auto
+		}
 	}
 	default_eap_type = mschapv2
 	virtual_server = "inner-tunnel"
+	resume_virtual_server = "resume-inner-tunnel"
 }

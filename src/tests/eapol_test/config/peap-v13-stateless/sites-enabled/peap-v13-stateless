@@ -37,11 +37,23 @@ authenticate eap {
 }
 
 send Access-Accept {
+	parent.session-state += request.User-Name
 	ok
 }
 
 send Access-Reject {
 	ok
+}
+}
+
+server resume-inner-tunnel {
+	namespace = radius
+
+recv Access-Request {
+	if (User-Name) {
+		accept
+	}
+	reject
 }
 }
 
@@ -55,6 +67,7 @@ server peap-v13-stateless-tls {
 
 	encode session {
 		parent.session-state.Tmp-String-0 := "ticket-data"
+		parent.session-state += parent.parent.radius.User-Name
 		ok
 	}
 
