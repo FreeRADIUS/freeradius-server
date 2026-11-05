@@ -1817,6 +1817,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 				      &request->request_pairs, &encode_ctx);
 	if (packet_len < 0) {
 		RPERROR("Failed encoding packet");
+		u->packet = NULL;
 		return -1;
 	}
 
@@ -1852,6 +1853,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) h->ctx.radius_ctx.secret,
 			   h->ctx.radius_ctx.secret_length) < 0) {
 		RPERROR("Failed signing packet");
+		u->packet = NULL;
 		return -1;
 	}
 
