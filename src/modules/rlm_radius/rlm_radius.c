@@ -777,6 +777,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->fd_config.flags = O_RDWR;
 	}
 
+	/*
+	 *	Forbid the use of src_port* for TCP and TLS.  The kernel picks the source port.
+	 */
+	if ((inst->fd_config.socket_type == SOCK_STREAM) &&
+	    (inst->fd_config.src_port || inst->fd_config.src_port_start || inst->fd_config.src_port_end)) {
+		cf_log_err(conf, "Cannot set 'src_port', 'src_port_start', or 'src_port_end' for TCP or TLS sockets");
+		return -1;
+	}
+
 	if (fr_bio_fd_check_config(&inst->fd_config) < 0) {
 		cf_log_perr(conf, "Invalid configuration");
 		return -1;
