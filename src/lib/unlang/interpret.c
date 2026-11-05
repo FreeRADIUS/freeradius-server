@@ -1636,7 +1636,12 @@ void unlang_interpret_request_done(request_t *request)
 
 	intp = stack->intp;
 
-	request->master_state = REQUEST_DONE;
+	/*
+	 *	If the request is cancelled, then leave it in the cancelled state.  That way the
+	 *	"done" function can skip sending a reply on cancel.
+	 */
+	if (request->master_state == REQUEST_ACTIVE) request->master_state = REQUEST_DONE;
+
 	switch (request->type) {
 	case REQUEST_TYPE_EXTERNAL:
 		intp->funcs.done_external(request, frame_current(request)->section_result.rcode, intp->uctx);
