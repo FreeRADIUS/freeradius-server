@@ -1898,10 +1898,14 @@ static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->ctx.module_name, h->ctx.fd_info->name);
 
 	/*
-	 *	Don't use this connection, and re-queue all of its
-	 *	requests onto other connections.
+	 *	Don't use this connection, and re-queue its requests onto other connections.
+	 *
+	 *	RFC 6613 Section 2.6.1 forbids retransmitting a request over a different TCP connection while the
+	 *	first connection is open.  So for stream sockets, we only requeue pending packets.
 	 */
-	(void) trunk_connection_requests_requeue(tconn, TRUNK_REQUEST_STATE_ALL, 0, false);
+	(void) trunk_connection_requests_requeue(tconn,
+						 (h->ctx.fd_config.socket_type == SOCK_STREAM) ?
+						 TRUNK_REQUEST_STATE_PENDING : TRUNK_REQUEST_STATE_ALL, 0, false);
 
 	/*
 	 *	We do have status checks.  Try to reconnect the
