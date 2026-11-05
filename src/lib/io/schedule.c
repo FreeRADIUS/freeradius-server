@@ -655,7 +655,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		 *	Run the event loop so the worker gets the signal from
 		 *	the network and shuts down gracefully.
 		 */
-		fr_event_loop(sc->el);
+		fr_event_loop_finalize(sc->el);
 
 		/*
 		 *	Detach worker from coordinators.  This needs to be done
@@ -671,7 +671,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 			if (unlikely(fr_coord_close_event_insert(sc->el) < 0)) {
 				ERROR("Failed setting up coordinator close events");
 			}
-			fr_event_loop(sc->el);
+			fr_event_loop_finalize(sc->el);
 		}
 
 		fr_schedule_worker_exit(&sc->single_worker, sc->worker_thread_detach);

@@ -2217,7 +2217,8 @@ void event_callback(fr_event_list_t *el, fr_event_fd_t *ef, int *filter, int fla
  * @param[in] el containing events to service.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of fr_event_list_t trips -fsanitize=function */
-void fr_event_service(fr_event_list_t *el)
+static inline CC_HINT(always_inline)
+void event_service(fr_event_list_t *el, bool fd_events)
 {
 	fr_timer_list_t	*etl = el->pub.tl;
 	int			i;
@@ -2252,6 +2253,10 @@ void fr_event_service(fr_event_list_t *el)
 		 *	Process various types of file descriptor events
 		 */
 		default:
+			/*
+			 *	fd_events is a constant in each caller, so the check is removed from fr_event_service().
+			 */
+			if (!fd_events) continue;
 		{
 			fr_event_fd_t		*ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
 			int			fd_errno = 0;
@@ -2388,6 +2393,26 @@ void fr_event_service(fr_event_list_t *el)
 	}
 }
 
+/** Service any outstanding timer or file descriptor events
+ *
+ * @param[in] el containing events to service.
+ */
+CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of fr_event_list_t trips -fsanitize=function */
+void fr_event_service(fr_event_list_t *el)
+{
+	event_service(el, true);
+}
+
+/** Service any outstanding user, PID, and timer events, but not file descriptor events
+ *
+ * @param[in] el containing events to service.
+ */
+CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of fr_event_list_t trips -fsanitize=function */
+static void event_service_finalize(fr_event_list_t *el)
+{
+	event_service(el, false);
+}
+
 /** Signal an event loop exit with the specified code
  *
  * The event loop will complete its current iteration, and then exit with the specified code.
@@ -2433,6 +2458,38 @@ CC_HINT(flatten) int fr_event_loop(fr_event_list_t *el)
 	 *	have issued when the server exited
 	 *	have a chance to complete.
 	 */
+	fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
+	el->dispatch = false;
+
+	return el->exit;
+}
+
+/** Run an event loop during shutdown
+ *
+ * Don't run the FD events, as we're shutting down.  Instead, run only user events, PID events, timers, pre /
+ * post callbacks, which let the network and the workers clean up themselves.
+ *
+ * This function is otherwise the same as #fr_event_loop.  We don't want to read or write connections which
+ * are being closed.
+ *
+ * A file descriptor which is always ready makes kevent() return at once, so the loop does not sleep while
+ * such a file descriptor is open.  The loop ends when #fr_event_loop_exit is called, which the close events
+ * do.
+ *
+ * @note Will not return until #fr_event_loop_exit is called.
+ *
+ * @param[in] el to start processing.
+ */
+CC_HINT(flatten) int fr_event_loop_finalize(fr_event_list_t *el)
+{
+	el->will_exit = el->exit = 0;
+
+	el->dispatch = true;
+	while (!el->exit) {
+		if (unlikely(fr_event_corral(el, el->pub.tl->time(), true)) < 0) break;
+		event_service_finalize(el);
+	}
+
 	fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
 	el->dispatch = false;
 
