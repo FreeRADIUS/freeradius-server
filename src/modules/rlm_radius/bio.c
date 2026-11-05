@@ -2703,18 +2703,24 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		case FR_RADIUS_CODE_PROTOCOL_ERROR:
 			protocol_error_reply(u, h);
 
-			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_original_packet_code);
+			/*
+			 *	The attributes which the home server sent are in the "reply" list.  They are
+			 *	added to request->reply_pairs at the end of this function.  Original-Packet-Code
+			 *	is a child of Extended-Attribute-1, so we need the nested versions of the pair
+			 *	functions.
+			 */
+			vp = fr_pair_find_by_da_nested(&reply, attr_original_packet_code);
 			if (!vp) {
 				RWDEBUG("Protocol-Error response is missing Original-Packet-Code");
 			} else {
-				fr_pair_delete_by_da(&request->reply_pairs, attr_original_packet_code);
+				fr_pair_delete_by_da_nested(&reply, attr_original_packet_code);
 			}
 
-			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_error_cause);
+			vp = fr_pair_find_by_da(&reply, NULL, attr_error_cause);
 			if (!vp) {
 				MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_error_cause));
 				vp->vp_uint32 = FR_ERROR_CAUSE_VALUE_PROXY_PROCESSING_ERROR;
-				fr_pair_append(&request->reply_pairs, vp);
+				fr_pair_append(&reply, vp);
 			}
 			break;
 
@@ -2746,7 +2752,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 			 */
 			if (h->ctx.inst->track_load_balance &&
 			    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_state) &&
-			    fr_pair_find_by_da(&request->reply_pairs, NULL, attr_state)) {
+			    fr_pair_find_by_da(&reply, NULL, attr_state)) {
 				(void) unlang_load_balance_persist(request);
 			}
 		}
