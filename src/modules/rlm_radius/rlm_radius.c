@@ -1127,11 +1127,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	switch (inst->mode) {
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
 		xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "sendto.ipaddr", xlat_radius_replicate, FR_TYPE_VOID);
+		if (!xlat) return -1;
 		xlat_func_args_set(xlat, xlat_radius_send_args);
 		break;
 
 	case RLM_RADIUS_MODE_XLAT_PROXY:
 		xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "sendto.ipaddr", xlat_radius_client, FR_TYPE_UINT32);
+		if (!xlat) return -1;
 		xlat_func_args_set(xlat, xlat_radius_send_args);
 		break;
 
