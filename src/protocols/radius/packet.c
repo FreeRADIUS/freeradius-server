@@ -107,6 +107,8 @@ ssize_t fr_radius_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
  * Packet is not 'const * const' because we may update data_len, if there's more data
  * in the UDP packet than in the RADIUS packet.
  *
+ * This function can only be called for UDP packets.
+ *
  * @param[in] packet		to check.
  * @param[in] max_attributes	to decode.
  * @param[in] require_message_authenticator	to require Message-Authenticator.
@@ -117,9 +119,13 @@ ssize_t fr_radius_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
  */
 bool fr_radius_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
 {
-	if (!fr_radius_ok(packet->data, &packet->data_len, max_attributes, require_message_authenticator, reason)) {
+	size_t len = packet->data_len;
+
+	if (!fr_radius_ok(packet->data, &len, max_attributes, require_message_authenticator, reason)) {
 		return false;
 	}
+	fr_assert(packet->data_len >= len);
+	packet->data_len = len;	/* UDP packet may be larger than RADIUS header len */
 
 	/*
 	 *	Fill RADIUS header fields

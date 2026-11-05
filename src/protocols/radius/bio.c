@@ -37,26 +37,42 @@ fr_bio_verify_action_t fr_radius_bio_verify(UNUSED fr_bio_t *bio, void *verify_c
 	uint8_t const	*hdr = data;
 	size_t		want;
 
-	if (in_buffer < 4) {
+	if (in_buffer < 20) {
 		*size = RADIUS_HEADER_LENGTH;
 		return FR_BIO_VERIFY_WANT_MORE;
 	}
-
-	want = fr_nbo_to_uint16(hdr + 2);
-	if (uctx->max_packet_size && (want > uctx->max_packet_size)) {
-		return FR_BIO_VERIFY_ERROR_CLOSE;
-	}
+	want = *size;
 
 	/*
 	 *	See if we need to discard the packet.
 	 */
-	if (!fr_radius_ok(data, size, uctx->max_attributes, uctx->require_message_authenticator, &failure)) {
-		if (failure == FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
+	if (!fr_radius_ok(data, &want, uctx->max_attributes, uctx->require_message_authenticator, &failure)) {
+		if (want) {
+			*size = want;
+
+			if (uctx->max_packet_size && (want > uctx->max_packet_size)) {
+				return FR_BIO_VERIFY_ERROR_CLOSE;
+			}
+
+			if (failure == FR_RADIUS_FAIL_MIN_LENGTH_MISMATCH) {
+				return FR_BIO_VERIFY_WANT_MORE;
+			}
+
+			return FR_BIO_VERIFY_DISCARD;
+		}
 
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
+	*size = want;
 
 	if (!uctx->allowed[hdr[0]]) return FR_BIO_VERIFY_DISCARD;
+
+	/*
+	 *	The packet is too large, we can't process it.  Close the socket.
+	 */
+	if (uctx->max_packet_size && (want > uctx->max_packet_size)) {
+		return FR_BIO_VERIFY_ERROR_CLOSE;
+	}
 
 	/*
 	 *	On input, *size is how much data we have.  On output, *size is how much data we want.

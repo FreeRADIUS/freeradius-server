@@ -537,7 +537,7 @@ char const *fr_radius_decode_fail_reason[FR_RADIUS_FAIL_MAX + 1] = {
 /** See if the data pointed to by PTR is a valid RADIUS packet.
  *
  * @param[in] packet		to check.
- * @param[in,out] packet_len_p	The size of the packet data.
+ * @param[in,out] packet_len_p	The size of the packet data, or 0 for "fatal error"
  * @param[in] max_attributes	to allow in the packet.
  * @param[in] require_message_authenticator	whether we require Message-Authenticator.
  * @param[in] reason		if not NULL, will have the failure reason written to where it points.
@@ -555,6 +555,8 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	fr_radius_decode_fail_t failure = FR_RADIUS_FAIL_NONE;
 	size_t			packet_len = *packet_len_p;
 
+	*packet_len_p = 0;	/* also signals a fatal error */
+
 	/*
 	 *	Check for packets smaller than the packet header.
 	 *
@@ -567,13 +569,65 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		goto finish;
 	}
 
-
 	/*
 	 *	Check for packets with mismatched size.
 	 *	i.e. We've received 128 bytes, and the packet header
 	 *	says it's 256 bytes long.
 	 */
 	totallen = fr_nbo_to_uint16(packet + 2);
+
+	/*
+	 *	Repeat the length checks.  This time, instead of
+	 *	looking at the data we received, look at the value
+	 *	of the 'length' field inside of the packet.
+	 *
+	 *	Check for packets smaller than the packet header.
+	 *
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	"The minimum length is 20 ..."
+	 */
+	if (totallen < RADIUS_HEADER_LENGTH) {
+		failure = FR_RADIUS_FAIL_MIN_LENGTH_FIELD;
+		goto finish;
+	}
+
+	/*
+	 *	And again, for the value of the 'length' field.
+	 *
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	" ... and maximum length is 4096."
+	 *
+	 *	HOWEVER.  This requirement is for the network layer.
+	 *	If the code gets here, we assume that a well-formed
+	 *	packet is an OK packet.
+	 *
+	 *	We allow both the UDP data length, and the RADIUS
+	 *	"length" field to contain up to 64K of data.
+	 */
+
+	/*
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	"If the packet is shorter than the Length field
+	 *	indicates, it MUST be silently discarded."
+	 *
+	 *	i.e. No response to the NAS.
+	 */
+	if (totallen > packet_len) {
+		failure = FR_RADIUS_FAIL_MIN_LENGTH_MISMATCH;
+		*packet_len_p = totallen;
+		goto finish;
+	}
+
+	/*
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	"Octets outside the range of the Length field MUST be
+	 *	treated as padding and ignored on reception."
+	 */
+	*packet_len_p = packet_len = totallen;
 
 	/*
 	 *	Code of 0 is not understood.
@@ -630,60 +684,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	}
 
 	/*
-	 *	Repeat the length checks.  This time, instead of
-	 *	looking at the data we received, look at the value
-	 *	of the 'length' field inside of the packet.
-	 *
-	 *	Check for packets smaller than the packet header.
-	 *
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	"The minimum length is 20 ..."
-	 */
-	if (totallen < RADIUS_HEADER_LENGTH) {
-		failure = FR_RADIUS_FAIL_MIN_LENGTH_FIELD;
-		goto finish;
-	}
-
-	/*
-	 *	And again, for the value of the 'length' field.
-	 *
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	" ... and maximum length is 4096."
-	 *
-	 *	HOWEVER.  This requirement is for the network layer.
-	 *	If the code gets here, we assume that a well-formed
-	 *	packet is an OK packet.
-	 *
-	 *	We allow both the UDP data length, and the RADIUS
-	 *	"length" field to contain up to 64K of data.
-	 */
-
-	/*
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	"If the packet is shorter than the Length field
-	 *	indicates, it MUST be silently discarded."
-	 *
-	 *	i.e. No response to the NAS.
-	 */
-	if (totallen > packet_len) {
-		failure = FR_RADIUS_FAIL_MIN_LENGTH_MISMATCH;
-		goto finish;
-	}
-
-	/*
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	"Octets outside the range of the Length field MUST be
-	 *	treated as padding and ignored on reception."
-	 */
-	if (totallen < packet_len) {
-		*packet_len_p = packet_len = totallen;
-	}
-
-	/*
 	 *	Walk through the packet's attributes, ensuring that
 	 *	they add up EXACTLY to the size of the packet.
 	 *
@@ -706,7 +706,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 */
 		if ((end - attr) < 2) {
 			failure = FR_RADIUS_FAIL_HEADER_OVERFLOW;
-			goto finish;
+			goto fatal;
 		}
 
 		/*
@@ -714,7 +714,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 */
 		if (attr[0] == 0) {
 			failure = FR_RADIUS_FAIL_INVALID_ATTRIBUTE;
-			goto finish;
+			goto fatal;
 		}
 
 		/*
@@ -723,7 +723,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 */
 		if (attr[1] < 2) {
 			failure = FR_RADIUS_FAIL_ATTRIBUTE_TOO_SHORT;
-			goto finish;
+			goto fatal;
 		}
 
 		/*
@@ -732,7 +732,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 */
 		if ((attr + attr[1]) > end) {
 			failure = FR_RADIUS_FAIL_ATTRIBUTE_OVERFLOW;
-			goto finish;
+			goto fatal;
 		}
 
 		/*
@@ -753,6 +753,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		case FR_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + RADIUS_AUTH_VECTOR_LENGTH) {
 				failure = FR_RADIUS_FAIL_MA_INVALID_LENGTH;
+				*packet_len_p = 0;
 				goto finish;
 			}
 
@@ -761,6 +762,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 			 */
 			if (seen_ma) {
 				failure = FR_RADIUS_FAIL_MA_TOO_MANY;
+				*packet_len_p = 0;
 				goto finish;
 			}
 
@@ -778,6 +780,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 */
 		if (num_attributes > max_attributes) {
 			failure = FR_RADIUS_FAIL_TOO_MANY_ATTRIBUTES;
+			/* don't set *packet_len_p=0, we just discard _this_ packet */
 			goto finish;
 		}
 	}
@@ -795,6 +798,8 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 */
 	if (require_message_authenticator && !seen_ma) {
 		failure = FR_RADIUS_FAIL_MA_MISSING;
+fatal:
+		*packet_len_p = 0;
 		goto finish;
 	}
 
