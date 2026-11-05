@@ -2004,7 +2004,8 @@ static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_t
 		 */
 		if (h->ctx.inst->fd_config.socket_type == SOCK_DGRAM) {
 			(void) trunk_connection_requests_requeue(tconn, TRUNK_REQUEST_STATE_ALL, 0, false);
-			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED); /* frees 'h' */
+			return true;
 		}
 
 		h->status_checking = true;
