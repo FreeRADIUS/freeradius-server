@@ -206,6 +206,31 @@ static conf_parser_t const client_udp_unconnected_config[] = {
 };
 
 
+/*
+ *	Allow unconnected TCP sockets, for destinations which are determined at run-time.
+ */
+static const conf_parser_t client_tcp_unconnected_sub_config[] = {
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
+
+	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
+
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff), .func = send_recv_buf_parse },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff), .func = send_recv_buf_parse },
+
+	{ FR_CONF_OFFSET("delay_tcp_writes", fr_bio_fd_config_t, tcp_delay) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static conf_parser_t const client_tcp_unconnected_config[] = {
+	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) client_tcp_unconnected_sub_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+
 static const conf_parser_t client_tcp_sub_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr), },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
@@ -280,24 +305,37 @@ static int client_transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 	fr_bio_fd_config_t *fd_config = parent;
 
 	/*
-	 *	Unconnected UDP sockets can only take src_ipaddr, but not port, and not dst_ipaddr.
+	 *	Unconnected sockets can only take src_ipaddr, but not port, and not dst_ipaddr.
+	 *
+	 *	For UDP, these are "wildcard" sockets which can send to any destination, and have to manually
+	 *	multiplex the replies.  For TCP, these are sockets where the destination is specified at run
+	 *	time.
 	 */
 	if (fd_config->type == FR_BIO_FD_UNCONNECTED) {
 		char const *name = cf_pair_value(cf_item_to_pair(ci));
 		CONF_SECTION *cs = cf_item_to_section(cf_parent(ci));
 
-		if (strcmp(name, "udp") != 0) {
-			cf_log_err(ci, "Invalid transport for unconnected UDP socket");
+		if (strcmp(name, "udp") == 0) {
+			if (cf_section_rules_push(cs, client_udp_unconnected_config) < 0) {
+			fail:
+				cf_log_perr(ci, "Failed updating parse rules");
+				return -1;
+			}
+
+			fd_config->socket_type = SOCK_DGRAM;
+			fd_config->transport_type = FR_BIO_FD_TRANSPORT_UDP;
+
+		} else if (strcmp(name, "tcp") == 0) {
+			if (cf_section_rules_push(cs, client_tcp_unconnected_config) < 0) goto fail;
+
+			fd_config->socket_type = SOCK_STREAM;
+			fd_config->transport_type = FR_BIO_FD_TRANSPORT_TCP;
+
+		} else {
+			cf_log_err(ci, "Invalid transport for unconnected socket");
 			return -1;
 		}
 
-		if (cf_section_rules_push(cs, client_udp_unconnected_config) < 0) {
-			cf_log_perr(ci, "Failed updating parse rules");
-			return -1;
-		}
-
-		fd_config->socket_type = SOCK_DGRAM;
-		fd_config->transport_type = FR_BIO_FD_TRANSPORT_UDP;
 		*(char const **) out = name;
 
 		return 0;

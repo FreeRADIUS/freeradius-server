@@ -26,6 +26,8 @@
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/fd.h>
 #include <freeradius-devel/bio/mem.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <poll.h>
@@ -608,6 +610,173 @@ done:
 	talloc_free(ctx);
 }
 
+/** One key / value pair in the transport subsection of a test configuration
+ */
+typedef struct {
+	char const	*name;
+	char const	*value;
+} cfg_pair_t;
+
+/** Parse "transport" and the transport subsection with fr_bio_fd_client_config
+ *
+ *  The caller sets the socket type before the parse.  rlm_radius sets the type of the socket in the
+ *  same way, as the "mode" decides if the sockets are connected.
+ *
+ * @param[in] ctx	to allocate the configuration in.
+ * @param[out] cfg	where to write the parsed configuration.
+ * @param[in] type	of the socket, set before the parse.
+ * @param[in] transport	name of the transport, which is also the name of the subsection.
+ * @param[in] pairs	for the subsection, terminated by an entry with a NULL name.  May be NULL.
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
+ */
+static int parse_client_config(TALLOC_CTX *ctx, fr_bio_fd_config_t *cfg, fr_bio_fd_type_t type,
+			       char const *transport, cfg_pair_t const *pairs)
+{
+	CONF_SECTION	*cs, *subcs;
+	int		rcode;
+
+	*cfg = (fr_bio_fd_config_t) { .type = type };
+
+	cs = cf_section_alloc(ctx, NULL, "test", NULL);
+	if (!cs) return -1;
+
+	if (!cf_pair_alloc(cs, "transport", transport, T_OP_EQ, T_BARE_WORD, T_BARE_WORD)) return -1;
+
+	subcs = cf_section_alloc(cs, cs, transport, NULL);
+	if (!subcs) return -1;
+
+	for (; pairs && pairs->name; pairs++) {
+		if (!cf_pair_alloc(subcs, pairs->name, pairs->value, T_OP_EQ, T_BARE_WORD, T_BARE_WORD)) return -1;
+	}
+
+	if (cf_section_rules_push(cs, fr_bio_fd_client_config) < 0) return -1;
+
+	rcode = cf_section_parse(ctx, cfg, cs);
+	talloc_free(cs);
+	return rcode;
+}
+
+/** A client configuration for an unconnected socket accepts "udp"
+ */
+static void test_client_config_unconnected_udp(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_fd_config_t	cfg;
+	cfg_pair_t const	pairs[] = {
+					{ "src_ipaddr", "127.0.0.1" },
+					{ NULL, NULL }
+				};
+
+	TEST_CHECK(parse_client_config(ctx, &cfg, FR_BIO_FD_UNCONNECTED, "udp", pairs) == 0);
+	TEST_MSG("failed parsing: %s", fr_strerror());
+
+	TEST_CHECK(cfg.socket_type == SOCK_DGRAM);
+	TEST_CHECK(cfg.transport_type == FR_BIO_FD_TRANSPORT_UDP);
+	TEST_CHECK(cfg.src_ipaddr.af == AF_INET);
+
+	talloc_free(ctx);
+}
+
+/** A client configuration for an unconnected socket accepts "tcp"
+ *
+ *  The destination of the socket is not in the configuration, as the caller sets the destination later.
+ */
+static void test_client_config_unconnected_tcp(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_fd_config_t	cfg;
+	cfg_pair_t const	pairs[] = {
+					{ "src_ipaddr", "127.0.0.1" },
+					{ NULL, NULL }
+				};
+
+	TEST_CHECK(parse_client_config(ctx, &cfg, FR_BIO_FD_UNCONNECTED, "tcp", pairs) == 0);
+	TEST_MSG("failed parsing: %s", fr_strerror());
+
+	TEST_CASE("the socket is a stream socket");
+	TEST_CHECK(cfg.socket_type == SOCK_STREAM);
+	TEST_CHECK(cfg.transport_type == FR_BIO_FD_TRANSPORT_TCP);
+
+	TEST_CASE("the source address is parsed");
+	TEST_CHECK(cfg.src_ipaddr.af == AF_INET);
+
+	TEST_CASE("the socket stays unconnected, with no destination");
+	TEST_CHECK(cfg.type == FR_BIO_FD_UNCONNECTED);
+	TEST_CHECK(cfg.dst_ipaddr.af == AF_UNSPEC);
+
+	talloc_free(ctx);
+}
+
+/** The "tcp" subsection of an unconnected socket takes the stream socket options
+ */
+static void test_client_config_unconnected_tcp_options(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_fd_config_t	cfg;
+	cfg_pair_t const	pairs[] = {
+					{ "src_ipaddr", "127.0.0.1" },
+					{ "delay_tcp_writes", "yes" },
+					{ "send_buff", "8192" },
+					{ NULL, NULL }
+				};
+
+	TEST_CHECK(parse_client_config(ctx, &cfg, FR_BIO_FD_UNCONNECTED, "tcp", pairs) == 0);
+	TEST_MSG("failed parsing: %s", fr_strerror());
+
+	TEST_CHECK(cfg.tcp_delay == true);
+	TEST_CHECK(cfg.send_buff_is_set == true);
+	TEST_CHECK(cfg.send_buff == 8192);
+
+	talloc_free(ctx);
+}
+
+/** A client configuration for an unconnected socket rejects every transport except "udp" and "tcp"
+ */
+static void test_client_config_unconnected_rejects_other_transports(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_fd_config_t	cfg;
+	cfg_pair_t const	pairs[] = {
+					{ "filename", "/tmp/unconnected.sock" },
+					{ NULL, NULL }
+				};
+
+	TEST_CHECK(parse_client_config(ctx, &cfg, FR_BIO_FD_UNCONNECTED, "unix", pairs) < 0);
+
+	TEST_CASE("the same holds for a file");
+	TEST_CHECK(parse_client_config(ctx, &cfg, FR_BIO_FD_UNCONNECTED, "file", pairs) < 0);
+
+	talloc_free(ctx);
+}
+
+/** A client configuration for a connected socket still takes the destination of the "tcp" subsection
+ *
+ *  The unconnected sockets have their own "tcp" subsection with no destination, and the change must
+ *  leave the connected sockets alone.
+ */
+static void test_client_config_connected_tcp(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	fr_bio_fd_config_t	cfg;
+	cfg_pair_t const	pairs[] = {
+					{ "ipaddr", "127.0.0.1" },
+					{ "port", "2083" },
+					{ NULL, NULL }
+				};
+
+	TEST_CHECK(parse_client_config(ctx, &cfg, FR_BIO_FD_CONNECTED, "tcp", pairs) == 0);
+	TEST_MSG("failed parsing: %s", fr_strerror());
+
+	TEST_CHECK(cfg.socket_type == SOCK_STREAM);
+	TEST_CHECK(cfg.transport_type == FR_BIO_FD_TRANSPORT_TCP);
+	TEST_CHECK(cfg.dst_ipaddr.af == AF_INET);
+	TEST_CHECK(cfg.dst_port == 2083);
+
+	talloc_free(ctx);
+}
+
 TEST_LIST = {
 	{ "deferred_connect_success_calls_connected_cb",	test_deferred_connect_success_calls_connected_cb },
 	{ "recvfromto4",					test_recvfromto4 },
@@ -615,5 +784,10 @@ TEST_LIST = {
 	{ "listen_accept",					test_listen_accept },
 	{ "eagain_calls_head_write_blocked_cb",			test_eagain_calls_head_write_blocked_cb },
 	{ "eagain_calls_fd_write_blocked_cb",			test_eagain_calls_fd_write_blocked_cb },
+	{ "client_config_unconnected_udp",			test_client_config_unconnected_udp },
+	{ "client_config_unconnected_tcp",			test_client_config_unconnected_tcp },
+	{ "client_config_unconnected_tcp_options",		test_client_config_unconnected_tcp_options },
+	{ "client_config_unconnected_rejects_other_transports",	test_client_config_unconnected_rejects_other_transports },
+	{ "client_config_connected_tcp",			test_client_config_connected_tcp },
 	TEST_TERMINATOR
 };
