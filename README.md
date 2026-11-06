@@ -59,13 +59,11 @@ We understand that the server may be difficult to configure,
 install, or administer.  It is, after all, a complex system with many
 different configuration possibilities.
 
-The most common problem is that people change large amounts of the
-configuration without understanding what they're doing, and without
-testing their changes.  The preferred method of operation is the
-following:
+Changing many settings at once can make an error difficult to isolate.
+A repeatable configuration workflow is:
 
-1. Start off with the default configuration files.
-2. Save a copy of the default configuration: It WORKS.  Don't change it!
+1. Start off with the default configuration files.1. Start off with the default configuration files.
+2. Save a copy of the default configuration before editing it.
 3. Verify that the server starts - in debugging mode (`radiusd -X`).
 4. Send it test packets using "radclient", or a NAS or AP.
 5. Verify that the server does what you expect
@@ -77,19 +75,15 @@ following:
 7. Make a SMALL change to the configuration.
 8. Repeat from step (3).
 
-This method will ensure that you have a working configuration that
-is customized to your site as quickly as possible.  While it may seem
-frustrating to proceed via a series of small steps, the alternative
-will always take more time.  The "fast and loose" way will be MORE
-frustrating than quickly making forward progress!
+Incremental testing helps isolate regressions and provides a record of
+working configurations and the changes made between them.
 
 ## Debugging the Server
 
-Run the server in debugging mode, (`radiusd -X`) and READ the output.
-We cannot emphasize this point strongly enough.  The vast majority of
-problems can be solved by carefully reading the debugging output,
-which includes WARNINGs about common issues, and suggestions for how
-they may be fixed.
+For troubleshooting outside a production service, run the server in
+debugging mode (`radiusd -X`) and inspect the output for errors, request
+processing details, and suggestions for resolving common issues. For
+debugging a running production server, use `raddebug` where configured.
 
 The debug output is explained in detail in the
 [radiusd-X](https://www.freeradius.org/documentation/freeradius-server/4.0.0/debugging/radiusd_X.html)
@@ -110,22 +104,18 @@ When posting to the mailing list, we recommend posting the output of
 `radiusd -X`.  That information shows what the server is doing when it
 receives packets, and how it processes those packets.
 
-Do NOT post the configuration files to the mailing list.  They're not
-useful.  Instead, post the output of `radiusd -X`.  We really cannot
-emphasize that enough.
-
-DO post a clear description of what the problem is.  Empty questions
-will not make you friends.  e.g. "I changed things and now it doesn't
-work.  What do I do to fix it?"
+When requesting assistance, provide relevant debugging output and a
+description of the expected and observed behavior. Review logs and
+configuration excerpts for credentials or other sensitive data before
+sharing them. Focused configuration excerpts may also be useful when
+they help reproduce a problem.
 
 ## Feedback, Defects, and Community Support
 
-If you have any comments, or are having difficulty getting FreeRADIUS
-to do what you want, please post to the 'freeradius-users' list (see
-the URL above). The FreeRADIUS mailing list is operated, and
-contributed to, by the FreeRADIUS community. Users of the list will be
-more than happy to answer your questions, with the caveat that you
-have read the documentation relevant to your issue first.
+For configuration and operational questions, use the 'freeradius-users'
+mailing list. Include your FreeRADIUS version, relevant documentation
+consulted, and available diagnostic information so others can understand
+and reproduce the issue.
 
 If you suspect a defect in the server, would like to request a feature,
 or submit a code patch, please use the GitHub issue tracker for the
@@ -139,24 +129,14 @@ Instructions for gathering data for defect reports can be found in
 [here](doc/antora/modules/developers/pages/bugs.adoc) and online at
 <https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/bugs.html>
 
-Under no circumstances should the issue tracker be used for support
-requests, those questions belong on the user's mailing list.  If you
-post questions related to the server in the issue tracker, the issue
-will be closed and locked.  If you persist in posting questions to
-the issue tracker you will be banned from all FreeRADIUS project
-repositories on GitHub.
+Use GitHub issues for reproducible software and documentation defects
+and feature requests. Configuration and operational support questions
+belong on the users mailing list; issues filed through the wrong channel
+may be redirected or closed. See the contribution guidelines for details.
 
-Please do _not_ complain that the developers aren't answering your
-questions quickly enough, or aren't fixing the problems quickly
-enough.  Please do _not_ complain if you're told to go read
-documentation.  We recognize that the documentation isn't perfect, but
-it *does* exist, and reading it can solve most common questions.
-
-FreeRADIUS is the cumulative effort of many years of work by many
-people, and you have gotten it for free.  No one is getting paid to
-answer your questions.  This is free software, and the only way it
-gets better is if you make a contribution back to the project ($$,
-code, or documentation).
+Community support is provided by volunteers, so response times can vary.
+FreeRADIUS is maintained through contributions of code, documentation,
+testing, and funding.
 
 ## Commercial support
 
