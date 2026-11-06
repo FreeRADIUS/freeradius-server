@@ -1,93 +1,109 @@
 # Code of Conduct
-## 1. Overview
 
-The goal of the FreeRADIUS project is to produce reliable, feature-full software which benefits the
-open source community.
+## Purpose
 
-The GitHub issue tracker and mailing lists have a strict code of conduct.
+The FreeRADIUS project develops and maintains open-source software through
+technical collaboration. Its community should support rigorous review,
+constructive disagreement, and participation without harassment or intimidation.
 
-> Only technical discussion related to FreeRADIUS, the protocols it implements, and its dependencies
-> are permitted in GitHub communications and on the mailing list.
->
-> Please note that any off-topic discussion will result in a warning. Continued off topic discussion
-> will result in the individual being unsubscribed from the mailing lists and/or permanent
-> banishment from the GitHub repositories.
+This Code of Conduct sets expectations for how participants treat one another.
+Technical contribution requirements and issue-reporting procedures are covered
+separately in [the contribution guidelines](.github/contributing.md).
 
-This code of conduct is simple to abide by, and is simple to enforce. The code of conduct only requires that
-the list is free of non-technical subjects, as those subjects are explicitly off topic. The result is that the
-FreeRADIUS community is inclusive by virtue of not being exclusionary.
+## Scope
 
-If you believe that the implicit biases of community members may affect how your contributions are evaluated,
-you are invited to anonymise your contributions.  You will not be penalised for use of pseudonyms or
-anonymised identities when creating/signing patches, or posting on the mailing list(s).
+This code applies to FreeRADIUS project spaces, including its GitHub repositories,
+mailing lists, and project-organized discussions or events. It applies to users,
+contributors, reviewers, maintainers, and people acting on behalf of the project,
+regardless of their role or financial involvement.
 
-## 2. Expected Behaviour
+Off-platform behavior is considered within scope when it directly targets
+participants through their project involvement or involves someone representing
+the project in an official capacity.
 
-The following behaviours are expected and requested of all community members:
+## Expected conduct
 
-- Ensure that the rules of the community resource you're using have been reviewed in full, [mailing
-  list guidelines](https://freeradius.org/support/) for the mailing lists, [the guidelines for
-  contributing](https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/contributing.html)
-  for GitHub.  A [local version](.github/contributing.md) of this content is also available.
-- Use a neutral tone with a focus on technical arguments and technical discussion.
-- Evaluate contributions, ideas and feedback on technical merit only.  The personal attributes of
-  community members are entirely irrelevant and comments of this nature will not be tolerated.
-- Research topics using appropriate standards, design documents, and technical manuals before raising
-  GitHub issues, or sending pull requests.
+Participants are expected to:
 
-## 3. Unacceptable Behaviour
+- Address the substance of technical proposals, evidence, and observed behavior
+  rather than making assumptions about other participants.
+- Give clear, actionable feedback when requesting changes or explaining why a
+  contribution cannot be accepted.
+- Be respectful across differences in experience, background, identity,
+  communication style, and technical approach.
+- Distinguish factual findings from preferences, estimates, and speculation.
+- Represent their own work and verification accurately, including tests performed
+  and limitations identified.
+- Respect privacy, confidential reports, and security-sensitive information.
+- Allow good-faith questions, corrections, and disagreement, including criticism
+  of documentation, contribution procedures, and community decisions.
 
-The main source of unacceptable behavior is participants who get frustrated and lash out when they receive
-answers that they are unprepared to accept.  The software and protocols involved are extremely complex, and
-there is no "one magic button" which solves a problem.  In many cases, the only possible way for people to get
-help is if they [ask good questions](https://wiki.freeradius.org/guide/Users-Mailing-List).
+Participation does not require a particular level of expertise, use of a
+particular editor or development tool, or agreement with maintainers' opinions.
+Pseudonymous participation is welcome where permitted by the hosting platform.
 
-Another source of problematic behavior is participants who believe that as the experts, we can answer any and
-all questions about all possible technologies which interact with FreeRADIUS.  That expectation is
-unfortunatley impossible.  When that expectation turns to entitlement and anger, it becomes unacceptable
-behaviour.
+## Unacceptable conduct
 
-The following behaviours are also unacceptable within our community:
+Examples include:
 
-- Non-technical discussion.
-- Ad hominem attacks and other personal attacks.
-- Willful ignorance.
-- Demands that questions be answered.
-- Refusal to read documentation when pointed to it.
-- Refusal to follow instructions for solving a problem.
+- Harassment, threats, intimidation, personal insults, or discriminatory abuse.
+- Targeted hostility based on personal characteristics, including disability,
+  race, ethnicity, nationality, religion, gender, sexual orientation, or age.
+- Publishing another person's private information without permission.
+- Knowingly misrepresenting testing, review, authorship, or evidence in order to
+  mislead other participants.
+- Deliberately flooding project channels with spam or repeated disruptive
+  submissions after a clear explanation of the problem.
+- Retaliation against someone for making a good-faith report, participating in
+  its review, or requesting reconsideration of a moderation decision.
 
-## 4. Consequences of Unacceptable Behaviour
+Unfamiliarity with the project, a mistaken technical interpretation, a
+documentation defect report, or respectful disagreement is not by itself a
+conduct violation. Using AI-assisted or automated development tools is not
+by itself misconduct. The same standards for honesty, verification, and
+respectful participation apply regardless of how work was produced.
 
-Where unacceptable behaviour is noted and the community participant informed of behaviour and next
-steps, the community participant is expected to comply immediately.  Arguing with the warnings is
-deemed "off topic" for the community (see section 1), and is seen as a continuance of the
-unacceptable behavior.
+## Support channels and moderation
 
-The community organizers will take any action they deem appropriate, which may include permanent
-expulsion from the community using appropriate mechanisms.
+The project may direct configuration questions to the users' mailing list and
+keep GitHub issues focused on defects and feature requests. Redirecting or
+closing an incorrectly filed question is a workflow decision, not inherently a
+disciplinary finding.
 
-## 5. Our Limitations
+Moderation should address specific conduct and its effects, not presume
+motives from a participant's level of experience or preferred tools. Depending
+on severity and recurrence, responses may include an explanation or redirection,
+a warning, temporary limits on participation, removal of specific content, or
+restriction of project access. Serious threats or repeated harmful conduct may
+justify immediate restrictions.
 
-We understand that when participants ask questions, their goal is to obtain help from the community.
-Please be aware that the FreeRADIUS community is not large.  The project has three core members,
-none of whom are dedicated 100% to FreeRADIUS.  The project has about seventy modules, each of which
-has complex behavior.  All of that code, test cases, and documentation have to be updated with
-limited resources.
+Where practicable, participants should be told which behavior prompted action
+and what they can do to resolve it. A respectful request for clarification or
+reconsideration must not automatically be treated as an additional violation.
 
-We rely on well researched and technically sound contributions in order to make the project a
-success.
+## Reporting and review
 
-## 6. Reporting Guidelines
+Reports and concerns may be sent to **social@freeradius.org**. Include relevant
+links, dates, and an explanation of the conduct when available; do not publish
+private details or credentials in a public issue.
 
-If you are subject to or witness unacceptable behaviour or have any other concerns, please notify a
-community organizer as soon as possible. social@freeradius.org.
+Reports should be assessed using the available evidence and the circumstances
+of the incident, with attention to proportionality and the safety of those
+involved. Where practicable, a person directly involved in the reported conduct
+should not be the sole reviewer of that report.
 
-## 7. Scope
+Information from reports should be shared only as needed to assess and address
+them. Complete confidentiality cannot be guaranteed when investigation or
+response requires disclosure.
 
-We expect all community members, including those who contribute to the project financially or are in
-positions of power within the community, to abide by this Code of Conduct in all venues and over all
-communication mediums.
+Anyone affected by a moderation decision may request reconsideration through
+the same contact address, with reasons or additional evidence. An uninvolved
+reviewer should assess the request where practicable, subject to the project's
+available resources.
 
-## 8. Contact info
+## Community capacity
 
-social@freeradius.org
+FreeRADIUS is maintained with finite contributor time. Participation does not
+guarantee an individual response, a particular turnaround time, technical
+support, or acceptance of a contribution. These limitations do not exempt
+any participant, including maintainers, from the conduct expectations above.

@@ -107,33 +107,32 @@ binary to look for `foo.conf`.
 The default configuration is set to work in the widest possible
 circumstances. It requires minimal changes for your system.
 
-However, your needs may be complex, and may require significant
-changes to the server configuration. Making random changes is a
-guaranteed method of failure. Instead, we STRONGLY RECOMMEND
-proceeding via the following steps:
+Complex deployments may require significant configuration changes.
+Test each change before making the next one, so that an unexpected result
+can be traced to the change that introduced it. Use the following steps:
 
-1) Always run the server in debugging mode ( `radiusd -X` ) after
-making a configuration change. We cannot emphasize this enough. If you
-are not running the server in debugging mode, you _will not_ be able
-to see what is doing, and you _will not_ be able to correct any
-problems.
+1) On an instance that can safely be restarted, start the server with
+the configuration under test using `radiusd -X`. Inspect startup errors
+and send a reproducible test request. Compare the actual reply or failure
+with the response expected for that request. Do not stop a running
+production service solely to collect this output; use `raddebug` when
+a control socket is configured.
 
-If you ask questions on the mailing list, the first response will be
-to tell you "run the server in debugging mode". Please, follow these
-instructions.
+When requesting assistance, include the relevant debug trace, the
+configuration change, the test request, and its actual response or error.
 
 2) Change as little as possible in the default configuration files.
 The server contains a decade of experience with protocols, databases,
 and different systems. Its default configuration is designed to work
 almost everywhere, and to do almost everything you need.
 
-3) When you make a small change, testing it before changing anything
+3) When you make a small change, test it before changing anything
 else. If the change works, save a copy of the configuration, and make
 another change. If the change doesn't work, debug it, and try to
 understand why it doesn't work.
 
-If you begin by making large changes to the server configuration, it
-will never work, and you will never be able to debug the problem.
+Large batches of untested changes make it harder to identify
+which change introduced a problem.
 
 4) If you need to add a connection to a database FOO (e.g. LDAP or
 SQL), then:
@@ -164,11 +163,10 @@ testing.
 
 5) Ask questions on the mailing list
  +
-(freeradius-users@lists.freeradius.org). When asking questions,
-include the output from debugging mode ( `radiusd -X` ). This
-information will allow people to help you. If you do not include it,
-the first response to your message will be "post the output of debug
-mode".
+(freeradius-users@lists.freeradius.org). When asking questions, include
+the `radiusd -X` trace for a reproducible test request, the configuration
+change, and the actual reply or error. If the server fails before it
+can process a request, include its startup error and relevant service log.
 
 Ask questions earlier, rather than later. If you cannot solve a
 problem in a day, ask a question on the mailing list. Most questions

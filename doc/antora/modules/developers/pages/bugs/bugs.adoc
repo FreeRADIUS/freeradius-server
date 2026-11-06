@@ -1,27 +1,23 @@
 = Bugs
 
-If you think you've found a bug, first check to confirm that it's
-really a problem.  Review the documentation, try to reproduce the bug,
-or see if it's a misconfiguration.  Once you've confirmed the issue,
-you can then report the bug to the development team.  Good bug reports
-help developers fix problems faster.
+For a server defect, identify the FreeRADIUS version, the configuration
+change or test request that triggers the problem, the actual reply or
+error, and the response you expected. Reproduce the problem with
+`radiusd -X` on an instance that can safely be restarted.
 
-This document is primarily for non-developers of the FreeRADIUS
-server. If you are able to patch the code to work correctly, then we
-invite you to join the development list to discuss it. If you're the
-type who know little about how to code, then this is the place for
-you!
+For a documentation defect, identify the affected page or repository
+path, the incorrect instruction or broken link, and the expected
+correction. Documentation reports do not require running the server.
 
 The https://freeradius.org/[FreeRADIUS] web site also hosts most of
 the information referenced in this document.
 
 [NOTE]
 ====
-Do *not* post configuration questions on GitHub, they belong on the
-https://freeradius.org/support/[mailing lists] instead. Raising
-support requests or questions as a *Defect Report* will result in them
-being closed and locked. Repeatedly doing so will lead to you being
-banned from the FreeRADIUS project's GitHub repositories.
+Use https://freeradius.org/support/[the mailing lists] for
+configuration and operational support. Use GitHub Issues to report
+reproducible software or documentation defects. Support requests filed
+as defect reports may be redirected or closed.
 ====
 
 == You found a bug
@@ -57,15 +53,17 @@ if you don't see messages about it, ask!
 For more information about the users list, the
 https://lists.freeradius.org/pipermail/freeradius-users/[lists'
 archives] and the faq, please visit the
-https://freeradius.org/support/[support] page. Make sure to READ and
-RESPECT the house-rules. You will get much better response and much
-faster if you do!
+https://freeradius.org/support/[support] page. Review the mailing list guidelines before participating.
 
 == Reproduce the bug on current code
 
+For documentation defects, verify the affected path or page in the
+current branch. A server build is not required unless the problem
+concerns runtime behavior or an executable example.
+
 Before reporting a bug, make sure that you're not running an old
-version.  In many cases, a bug is fixed in a newer release.  You can
-get the bug fiux by upgrading, rather than submitting a duplicate bug
+version.  In many cases, a bug is fixed in a newer release.  You may
+get the bug fix by upgrading, rather than submitting a duplicate bug
 report.
 
 Check that the issue still exists in the current released version, and
@@ -93,10 +91,18 @@ see if your issue has been previously reported.
 
 == Filing a defect report
 
-To start, gather information by running the server in
-xref:ROOT:debugging/radiusd_X.adoc[debug mode] with radiusd -X to
-capture logs. These logs, traces, etc. are needed for diagnosing
-issues. Please attach *all* relevant output logs to your report.
+For a runtime defect, run a test instance with `radiusd -X` using the
+affected configuration and reproduce a failing request. Include the
+FreeRADIUS version, the configuration change, the request sent, the
+reply or error received, and the debugging output for that request.
+If the server fails before accepting requests, include the startup
+error and service log instead. For a live production instance that
+cannot be stopped, see xref:bugs/debugserver.adoc[Debug a Live Server].
+Check output for credentials before posting it publicly.
+
+For a documentation defect, supply the URL or path, the precise
+broken reference or incorrect instruction, and what should appear
+instead. No daemon logs are needed for a documentation-only defect.
 
 === Create Issue
 
@@ -121,6 +127,7 @@ codebase stable, secure, and working as expected.
 | Non-compliance                 | Occurs when a system or application does not meet the required standards or regulations. For example, if a new attribute is incorrectly designed, it may not comply with RFC standards. The last category is unexpected behaviour. This applies when the issue is apparent or has been validated by a project member.
 | incorrect 3rd party API usage  | The application programming interface is not used as intended. It can lead to errors or unexpected behaviour.
 | Unexpected behaviour           | If the issue is obvious or has been validated by a project member.
+| Documentation defect           | Broken references, inaccurate instructions, missing information, or misleading examples.
 |===
 
 *Steps to reproduce*
@@ -132,10 +139,12 @@ made. Describe what you expected to happen and what actually happened.
 
 *Log outputs*
 
-When filing a bug report, you need to include logs. Please attach the
-relevant debug logs or stack traces, along with any output from
-debugging you did. The following techniques are available to help you
-debug FreeRADIUS:
+For a runtime defect, include `radiusd -X` output showing the failing
+request, or the startup error if the server cannot start. Attach a
+backtrace for a crash if one was captured. For a documentation-only
+defect, identify the affected link or text; daemon logs are not needed.
+
+The following resources can help investigate runtime issues:
 
 * xref:bugs/coredumps.adoc[Core Dumps]
 * xref:bugs/debugserver.adoc[Debug a Live Server]

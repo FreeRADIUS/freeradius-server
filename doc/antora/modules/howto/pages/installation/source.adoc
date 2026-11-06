@@ -9,13 +9,11 @@ be installed before FreeRADIUS can be built. These dependencies are
 `libtalloc` and `libkqueue`, which FreeRADIUS uses for memory
 management, and platform-independent event handling.
 
-Per-module dependencies that enable support for external services such
-as LDAP, SQL, etc, are optional. They must be installed for any
-modules that are to be used. The FreeRADIUS `./configure` step
-automatically detects if each module has its dependencies met and
-automatically enable support for them. If the required features you
-require are not enabled, inspect the configure script output to figure
-out which additional development libraries need to be installed.
+Per-module dependencies that enable support for external services,
+such as LDAP or SQL, are optional unless those modules are needed.
+The FreeRADIUS `./configure` step detects available dependencies and
+enables compatible modules. If a required feature is not enabled,
+inspect the configure output for missing development libraries.
 
 == From GitHub
 
@@ -106,9 +104,10 @@ will tell you why that module was not installed. The most likely
 reason is that required libraries (including their development header
 files) are not available.
 
-Please do _not_ post questions to the FreeRADIUS users list without
-first carefully reading the output of this process as it often
-contains the information needed to resolve a problem.
+When requesting help, include the relevant error or warning from
+`./configure`, `make`, or `make install`, together with the
+FreeRADIUS version, platform, and build options. This makes the
+problem easier to reproduce and diagnose.
 
 == Upgrade to a new minor release
 
@@ -137,27 +136,21 @@ If the server builds and installs, but doesn't run correctly, then you
 should first use xref:ROOT:debugging/radiusd_X.adoc[debugging mode] to
 figure out the problem.
 
-This is your best hope for understanding the problem. Read _all_ of
-the messages which are printed to the screen, the answer to your
-problem will often be in a warning or error message.
+Start by examining the output for startup errors, warnings, and
+messages that identify the configuration files being loaded. Compare
+the observed behavior with what you intended.
 
-Configure a RADIUS server for complex local authentication isn't a
-trivial task. Your _best_ and _only_ method for debugging it is to
-read the debug messages, where the server will tell you exactly what
-it's doing, and why. You should then compare its behaviour to what you
-intended, and edit the configuration files as appropriate.
+For a server in an appropriate test environment,
+xref:ROOT:debugging/radiusd_X.adoc[debugging mode] provides detailed
+request-processing information. For a running production server,
+`raddebug` may be suitable when its control socket is configured;
+see the relevant debugging documentation.
 
-If you don't use xref:ROOT:debugging/radiusd_X.adoc[debugging mode],
-and ask questions on the mailing list, then the responses will all
-tell you to use debugging mode. The server prints out a lot of
-information in this mode, including suggestions for fixes to common
-problems. Look especially for `WARNING` and `ERROR` messages in the
-output, and read the related messages.
-
-Since the main developers of FreeRADIUS use debugging mode to track
-down their configuration problems with the server, it's a good idea
-for you to use it, too. If you don't, there is little hope for you to
-solve any configuration problem related to the server.
+If asking for help, include relevant diagnostic output, the changes
+you made, and the expected and observed behavior. When debug output
+is unavailable, explain the limitation and provide other reproducible
+evidence. No single diagnostic command replaces understanding the
+specific failure.
 
 To start the server in debugging mode, do:
 
@@ -205,10 +198,10 @@ changes without impacting your active production environment. You
 should make the appropriate investment in order to properly support a
 critical resource such as your authentication servers.
 
-Configure and running the server MAY be complicated. Many modules have
-`man` pages. See `man rlm_pap`, or `man rlm_*` for information. Please
-read the documentation in the doc/ directory. The comments in the
-configuration files also contain a lot of documentation.
+Configuring and running the server can involve several components.
+Many modules have `man` pages; for example, see `man rlm_pap`.
+Additional information is available in the `doc/` directory and
+the comments in the configuration files.
 
 If you have any additional issues, refer to the
 xref:ROOT:faq.adoc[FAQ] for more help.

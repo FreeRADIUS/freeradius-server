@@ -1,79 +1,65 @@
-= Diffs via Email
+= Submitting a Patch by Email
 
-We _strongly_ prefer to see patches via xref:github.adoc[GitHub].
-Email should only be used when it is impossible to use GitHub.
+The preferred route for proposing changes is a
+xref:gitpr.adoc[GitHub pull request], which provides a stable diff,
+review discussion, and a record of verification.
 
-== Create the file with diff -u
+For contributors who cannot use GitHub, a small plain-text patch can
+be discussed on the developer mailing list. Email delivery does not
+guarantee review or acceptance, and contributors may be asked to
+submit a pull request for larger changes.
 
-Use `diff -u` or `diff -urN` to create patches.
+== Create a Unified Diff
 
-All changes to the source occur in the form of patches, as generated
-by diff(1). When creating your patch, make sure to create it in
-unified diff format, as supplied by the `-u` argument to diff(1).
-Patches should be based in the root source directory, not in any lower
-subdirectory.
+A unified diff shows which lines changed, with surrounding context.
+Use `diff -u` for one file or `diff -urN` for a directory comparison.
+Create the patch relative to the source-tree root so reviewers can
+identify the affected paths.
 
-To create a patch for a single file, it is often sufficient to do::
+For a single file:
 
+[source,shell]
 ----
-SRCTREE=/home/user/src/freeradiusd/
+SRCTREE=/home/user/src/freeradius-server
 MYFILE=src/modules/rlm_foo/foo.c
 
-cd $SRCTREE
-cp $MYFILE $MYFILE.orig
-vi $MYFILE # make your change
-diff -u $MYFILE.orig $MYFILE > /tmp/patch
+cd "$SRCTREE"
+cp "$MYFILE" "$MYFILE.orig"
+# Edit the working file.
+diff -u "$MYFILE.orig" "$MYFILE" > /tmp/change.patch
 ----
 
-To create a patch for multiple files, you should unpack a `vanilla`,
-or unmodified source tree, and generate a diff against your own source
-tree. For example:
+When working with Git, `git diff` or `git format-patch` can also
+produce reviewable patches. Review the resulting file before sending it.
 
-----
-MYSRC=/home/user/src/freeradiusd-feature/
+== Describe the Change
 
-gunzip freeradiusd-version.tar.gz
-tar xvf freeradiusd-version.tar
-diff -urN freeradiusd-version $MYSRC > ~/feature-version.patch
-----
+Include:
 
-== Select e-mail destination
+* The affected FreeRADIUS version or branch.
+* The problem being corrected and the intended behavior.
+* Relevant reproduction steps, tests, and observed results.
+* Any checks not performed and any known limitations.
 
-If you are on the developers mailing list, send the patch there.
-mailto:freeradius-devel@lists.freeradius.org[freeradius-devel@lists.freeradius.org]
+Ensure the patch does not contain credentials, personal information,
+or unrelated changes.
 
-Otherwise, send the patch to
-mailto:freeradius-users@freeradius.org[freeradius-users@freeradius.org]
+== Send the Patch
 
-== No MIME, no links, no compression, no attachments. Just plain text
+Use the
+mailto:freeradius-devel@lists.freeradius.org[FreeRADIUS development mailing list]
+for technical patch discussion. Check the current
+https://freeradius.org/support/[project support page] for mailing-list
+instructions and alternatives.
 
-The developers need to be able to read and comment on the changes you
-are submitting. It is important for a developer to be able to `quote`
-your changes, using standard e-mail tools, so that they may comment on
-specific portions of your code.
+Small patches sent inline as plain text are easy to quote and comment
+on in email replies. For changes that would be difficult to review
+inline, propose a GitHub pull request or ask how reviewers would
+prefer to receive the patch.
 
-For this reason, all patches should be submitting e-mail `inline`.
-
-Do not attach the patch as a MIME attachment, compressed or not. Many
-popular e-mail applications will not always transmit a MIME attachment
-as plain text, making it impossible to comment on your code. A MIME
-attachment also takes a bit more time to process, decreasing the
-likelihood of your MIME-attached change being accepted.
-
-Compressed patches are generally rejected outright. If the developer
-has to do additional work to read your patch, the odds are that it
-will be ignored completely.
-
-== E-mail size
-
-Large changes are not appropriate for mailing lists, and some
-maintainers. If your patch, exceeds 5Kb in size, you must submit the
-patch via GitHub instead.
-
-== Name the version of the server
-
-It is important to note, either in the subject line or in the patch
-description, the server version to which this patch applies.
+Do not rely on arbitrary file-size thresholds as a measure of
+whether a change is worth reviewing. Scope, clarity, reproducibility,
+and the available review process are more useful criteria.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
