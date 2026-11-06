@@ -226,12 +226,11 @@ typedef struct {
  * @see json_pair_alloc_leaf
  */
 typedef struct {
-	int do_xlat;		//!< If true value will be expanded with xlat.
-	int is_json;		//!< If true value will be inserted as raw JSON
-				// (multiple values not supported).
-	fr_token_t op;		//!< The operator that determines how the new VP
-				// is processed. @see fr_tokens_table
-} json_flags_t;
+	int		do_xlat;	//!< If true value will be expanded with xlat.
+	int		is_json;	//!< If true value will be inserted as raw JSON
+					///< (multiple values not supported).
+	json_object	*value;		//!< Object to extract value from
+} json_value_ctx_t;
 #endif
 
 /** Frees a libcurl handle, and any additional memory used by context data.
@@ -838,71 +837,61 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, rlm_rest_section_
 }
 
 #ifdef HAVE_JSON
-/** Converts JSON "value" key into fr_pair_t.
+/** Converts JSON "value" key into fr_pair_t when processing a map_t
  *
  * If leaf is not in fact a leaf node, but contains JSON data, the data will
  * written to the attribute in JSON string format.
  *
- * @param[in] instance	configuration data.
- * @param[in] section	configuration data.
  * @param[in] ctx	to allocate new fr_pair_ts in.
+ * @param[in] out	List to append new pair to.
  * @param[in] request	Current request.
- * @param[in] da	Attribute to create.
- * @param[in] flags	containing the operator other flags controlling value
- *			expansion.
- * @param[in] leaf	object containing the fr_pair_t value.
+ * @param[in] map	being processed.
+ * @param[in] uctx	passed to map_tp_request.
  * @return
- *	- #fr_pair_t just created.
- *	- NULL on error.
+ *	- 0 on success/
+ *	- -1 on error.
  */
-static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
-				        TALLOC_CTX *ctx, request_t *request,
-				        fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
+static int json_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map, void *uctx)
 {
+	fr_dict_attr_t const	*da = tmpl_attr_tail_da(map->lhs);
+	json_value_ctx_t	*value_ctx = (json_value_ctx_t *) uctx;
 	char const		*value;
 	char			*expanded = NULL;
 	int 			ret = 0;
-
 	fr_pair_t		*vp;
-
 	fr_value_box_t		src = FR_VALUE_BOX_INITIALISER_NULL(src);
 
-	if (json_object_is_type(leaf, json_type_null)) {
+	if (json_object_is_type(value_ctx->value, json_type_null)) {
 		RDEBUG3("Got null value for attribute \"%s\" (skipping)", da->name);
-		return NULL;
+		return -1;
 	}
 
 	MEM(vp = fr_pair_afrom_da(ctx, da));
-	if (!vp) {
-		RWDEBUG("Failed creating valuepair for attribute \"%s\" (skipping)", da->name);
-		return NULL;
-	}
-
 	fr_value_box_init_null(&src);
 
-	switch (json_object_get_type(leaf)) {
+	switch (json_object_get_type(value_ctx->value)) {
 	case json_type_int:
-		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'int', attribute \"%s\"", da->name);
-		fr_value_box(&src, (int32_t)json_object_get_int(leaf), true);
+		if (value_ctx->do_xlat) RWDEBUG("Ignoring do_xlat on 'int', attribute \"%s\"", da->name);
+		fr_value_box(&src, (int32_t)json_object_get_int(value_ctx->value), true);
 		break;
 
 	case json_type_double:
-		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'double', attribute \"%s\"", da->name);
-		fr_value_box(&src, (double)json_object_get_double(leaf), true);
+		if (value_ctx->do_xlat) RWDEBUG("Ignoring do_xlat on 'double', attribute \"%s\"", da->name);
+		fr_value_box(&src, (double)json_object_get_double(value_ctx->value), true);
 		break;
 
 	case json_type_string:
-		value = json_object_get_string(leaf);
-		if (flags->do_xlat && memchr(value, '%', json_object_get_string_len(leaf))) {
+		value = json_object_get_string(value_ctx->value);
+		if (value_ctx->do_xlat && memchr(value, '%', json_object_get_string_len(value_ctx->value))) {
 			if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) {
 				talloc_free(vp);
-				return NULL;
+				return -1;
 			}
 			fr_value_box_bstrndup_shallow(&src, NULL, expanded,
 						      talloc_strlen(expanded), true);
 		} else {
 			if (fr_value_box_from_str(vp, &vp->data, da->type, da, value,
-						  json_object_get_string_len(leaf), NULL) < 0) ret = -1;
+						  json_object_get_string_len(value_ctx->value), NULL) < 0) ret = -1;
 			goto finish;
 		}
 		break;
@@ -910,18 +899,18 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	default:
 	{
 		char const *str;
-		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'object', attribute \"%s\"", da->name);
+		if (value_ctx->do_xlat) RWDEBUG("Ignoring do_xlat on 'object', attribute \"%s\"", da->name);
 
 		/*
 		 *	Should encode any nested JSON structures into JSON strings.
 		 *
 		 *	"I knew you liked JSON so I put JSON in your JSON!"
 		 */
-		str = json_object_get_string(leaf);
+		str = json_object_get_string(value_ctx->value);
 		if (!str) {
 			RWDEBUG("Failed getting string value for attribute \"%s\" (skipping)", da->name);
 			talloc_free(vp);
-			return NULL;
+			return -1;
 		}
 		fr_value_box_strdup_shallow(&src, NULL, str, true);
 	}
@@ -933,12 +922,12 @@ finish:
 	if (ret < 0) {
 		RWDEBUG("Failed parsing value for attribute \"%s\" (skipping)", da->name);
 		talloc_free(vp);
-		return NULL;
+		return -1;
 	}
 
-	vp->op = flags->op;
+	fr_pair_append(out, vp);
 
-	return vp;
+	return 0;
 }
 
 /** Processes JSON response and converts it into multiple fr_pair_ts
@@ -997,11 +986,11 @@ finish:
  *	- Number of attributes created.
  *	- < 0 on error.
  */
-static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const *section,
+static int json_pair_alloc(UNUSED rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			   request_t *request, json_object *object, UNUSED int level, int max)
 {
 	int max_attrs = max;
-	tmpl_t *dst = NULL;
+	map_t	*map = NULL;
 
 	if (!json_object_is_type(object, json_type_object)) {
 #ifdef HAVE_JSON_TYPE_TO_NAME
@@ -1022,26 +1011,26 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		json_object_object_foreach(object, name, value) {
 			size_t		i = 0, elements;
 			struct		json_object *element, *tmp;
-			TALLOC_CTX	*ctx;
 
-			json_flags_t flags = {
-				.op = T_OP_SET,
+			json_value_ctx_t value_ctx = {
 				.do_xlat = section->response.json.do_xlat,
 				.is_json = section->response.json.is_json
 			};
 
 			request_t		*current = request;
-			fr_pair_list_t		*vps;
-			fr_pair_t		*vp = NULL;
 
-			TALLOC_FREE(dst);
+			TALLOC_FREE(map);
 
 			/*
 			 *  Resolve attribute name to a dictionary entry and pairlist.
 			 */
 			RDEBUG2("Parsing attribute \"%s\"", name);
 
-			if (tmpl_afrom_attr_str(request, NULL, &dst, name,
+			map = talloc_zero(NULL, map_t);
+			map_list_init(&map->child);
+			map->op = T_OP_SET;
+
+			if (tmpl_afrom_attr_str(request, NULL, &map->lhs, name,
 						&(tmpl_rules_t){
 							.attr = {
 								.dict_def = request->local_dict,
@@ -1052,17 +1041,15 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 				continue;
 			}
 
-			if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
+			if (tmpl_request_ptr(&current, tmpl_request(map->lhs)) < 0) {
 				RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
 				continue;
 			}
 
-			vps = tmpl_list_head(current, tmpl_list(dst));
-			if (!vps) {
+			if (!tmpl_list_head(current, tmpl_list(map->lhs))) {
 				RWDEBUG("List not valid in this context (skipping)");
 				continue;
 			}
-			ctx = tmpl_list_ctx(current, tmpl_list(dst));
 
 			/*
 			 *  Alternative JSON structure which allows operator,
@@ -1085,8 +1072,8 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 				 *  Process operator if present.
 				 */
 				if (json_object_object_get_ex(value, "op", &tmp)) {
-					flags.op = fr_table_value_by_str(fr_tokens_table, json_object_get_string(tmp), 0);
-					if (!flags.op) {
+					map->op = fr_table_value_by_str(fr_tokens_table, json_object_get_string(tmp), 0);
+					if (!map->op) {
 						RWDEBUG("Invalid operator value \"%s\" (skipping)",
 							json_object_get_string(tmp));
 						continue;
@@ -1097,14 +1084,14 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 				 *  Process optional do_xlat bool.
 				 */
 				if (json_object_object_get_ex(value, "do_xlat", &tmp)) {
-					flags.do_xlat = json_object_get_boolean(tmp);
+					value_ctx.do_xlat = json_object_get_boolean(tmp);
 				}
 
 				/*
 				 *  Process optional is_json bool.
 				 */
 				if (json_object_object_get_ex(value, "is_json", &tmp)) {
-					flags.is_json = json_object_get_boolean(tmp);
+					value_ctx.is_json = json_object_get_boolean(tmp);
 				}
 
 				/*
@@ -1124,7 +1111,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			/*
 			 *  Setup fr_pair_afrom_da / recursion loop.
 			 */
-			if (!flags.is_json && json_object_is_type(value, json_type_array)) {
+			if (!value_ctx.is_json && json_object_is_type(value, json_type_array)) {
 				elements = json_object_array_length(value);
 				if (!elements) {
 					RWDEBUG("Zero length value array (skipping)");
@@ -1141,22 +1128,20 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			 *  over each of them, creating a new fr_pair_t.
 			 */
 			do {
-				fr_pair_list_t tmp_list;
-
 				if (max_attrs-- <= 0) {
 					RWDEBUG("At maximum attribute limit");
-					talloc_free(dst);
+					talloc_free(map);
 					return max;
 				}
 
 				/*
 				 *  Automagically switch the op for multivalued attributes.
 				 */
-				if (((flags.op == T_OP_SET) || (flags.op == T_OP_EQ)) && (i >= 1)) {
-					flags.op = T_OP_ADD_EQ;
+				if (((map->op == T_OP_SET) || (map->op == T_OP_EQ)) && (i >= 1)) {
+					map->op = T_OP_ADD_EQ;
 				}
 
-				if (json_object_is_type(element, json_type_object) && !flags.is_json) {
+				if (json_object_is_type(element, json_type_object) && !value_ctx.is_json) {
 					/* TODO: Insert nested VP into VP structure...*/
 					RWDEBUG("Found nested VP, these are not yet supported (skipping)");
 
@@ -1167,17 +1152,17 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 							request, value,
 							level + 1, max_attrs);*/
 				} else {
-					vp = json_pair_alloc_leaf(instance, section, ctx, request,
-								  tmpl_attr_tail_da(dst), &flags, element);
-					if (!vp) continue;
+					if (tmpl_afrom_substr(map, &map->rhs,
+							      &FR_SBUFF_IN(json_object_get_string(element),
+									   (size_t) json_object_get_string_len(element)),
+							      T_SINGLE_QUOTED_STRING, NULL, NULL) < 0) {
+						REDEBUG("Failed parsing value into map");
+						continue;
+					}
+					value_ctx.value = element;
+					map_to_request(request, map, json_map_getvalue, &value_ctx);
+					TALLOC_FREE(map->rhs);
 				}
-				RINDENT();
-				RDEBUG2("%s:%pP", tmpl_list_name(tmpl_list(dst), ""), vp);
-				REXDENT();
-
-				fr_pair_list_init(&tmp_list);
-				fr_pair_append(&tmp_list, vp);
-				radius_pairmove(current, vps, &tmp_list);
 			/*
 			 *  If we call json_object_array_get_idx on something that's not an array
 			 *  the behaviour appears to be to occasionally segfault.
@@ -1186,7 +1171,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		}
 	}
 
-	talloc_free(dst);
+	talloc_free(map);
 
 	return max - max_attrs;
 }
