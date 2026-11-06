@@ -31,6 +31,10 @@ if (!(control.Login-LAT-Node[0] == "Bob") || !(control.Login-LAT-Node[1] == "foo
 	test_fail
 }
 
+if (!((Vendor-Specific.Cisco.AVPair == 'cisco=madness') && (Vendor-Specific.Cisco.AVPair[1] == 'is=crazy'))) {
+	test_fail
+}
+
 # Reset control attributes
 control -= Filter-Id[*]
 control -= Callback-Id[*]
