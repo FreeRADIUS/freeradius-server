@@ -489,7 +489,7 @@ radius {
 		#  The `tls` subsection is only available when:
 		#
 		#  * the server was built with OpenSSL,
-		#  * and the `mode` is `proxy` or `client`.
+		#  * and the `mode` is `proxy`, `client`, or `dynamic-proxy`.
 		#
 		#  The `tls` subsection takes the usual TLS client configuration
 		#  items. The items that RadSec usually needs are:

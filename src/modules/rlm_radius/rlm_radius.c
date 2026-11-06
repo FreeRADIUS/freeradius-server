@@ -156,6 +156,16 @@ static conf_parser_t const udp_dynamic_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+
+/*
+ *	The same applies to the "tcp" section, which holds the RADIUS/TLS configuration.
+ */
+static conf_parser_t const tcp_dynamic_config[] = {
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, fr_tls_client_config),
+	  .subcs_type = "fr_tls_conf_t" },
+
+	CONF_PARSER_TERMINATOR
+};
 #endif
 
 /*
@@ -168,6 +178,8 @@ static conf_parser_t const xlat_proxy_config[] = {
 
 #ifdef WITH_TLS
 	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) udp_dynamic_config },
+
+	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) tcp_dynamic_config },
 #endif
 
 	CONF_PARSER_TERMINATOR

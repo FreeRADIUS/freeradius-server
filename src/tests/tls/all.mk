@@ -73,7 +73,7 @@ TLS_TESTS := $(patsubst $(DIR)/%.sh,%,$(wildcard $(DIR)/*.sh))
 #  otherwise.  The Python tests run once, as the tests do not use
 #  unit_test_tls or unit_test_bio.
 #
-TLS_PYTHON_TESTS := rlm_radius_blocked rlm_radius_blocked_tcp rlm_radius_dtls_dynamic
+TLS_PYTHON_TESTS := rlm_radius_blocked rlm_radius_blocked_tcp rlm_radius_dtls_dynamic rlm_radius_tls_dynamic
 
 #
 #  The Python tests share the Python programs, so every Python test depends on
