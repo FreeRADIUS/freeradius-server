@@ -62,7 +62,7 @@ different configuration possibilities.
 Changing many settings at once can make an error difficult to isolate.
 A repeatable configuration workflow is:
 
-1. Start off with the default configuration files.1. Start off with the default configuration files.
+1. Start off with the default configuration files.
 2. Save a copy of the default configuration before editing it.
 3. Verify that the server starts - in debugging mode (`radiusd -X`).
 4. Send it test packets using "radclient", or a NAS or AP.
