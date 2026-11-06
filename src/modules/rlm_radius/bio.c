@@ -1944,6 +1944,81 @@ static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 }
 
 
+static void status_check_enqueue(trunk_connection_t *tconn, bio_handle_t *h, bool init);
+
+/** We timed out, without getting a status check reply.
+ *
+ */
+static void status_check_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
+{
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
+	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
+	bio_request_t		*u = h->status_u;
+
+	if (h->ctx.fd_info->state != FR_BIO_FD_STATE_OPEN) return;
+
+	/*
+	 *	Remove the status check which got no reply.  Freeing the old request also releases the ID.
+	 */
+	if (u->treq) {
+		trunk_request_signal_cancel(u->treq);
+		u->treq = NULL;
+	}
+
+	/*
+	 *	We are only interested in contiguous, good, replies.
+	 */
+	u->num_replies = 0;
+
+	switch (fr_retry_next(&u->retry, now)) {
+	case FR_RETRY_MRD:
+		DEBUG("%s - Reached maximum_retransmit_duration (%pVs > %pVs), failing status checks",
+		      h->ctx.module_name, fr_box_time_delta(fr_time_sub(now, u->retry.start)),
+		      fr_box_time_delta(u->retry.config->mrd));
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+		return;
+
+	case FR_RETRY_MRC:
+		DEBUG("%s - Reached maximum_retransmit_count (%u > %u), failing status checks",
+		      h->ctx.module_name, u->retry.count, u->retry.config->mrc);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+		return;
+
+	case FR_RETRY_CONTINUE:
+		status_check_enqueue(tconn, h, false);
+		return;
+	}
+
+	fr_assert(0);
+}
+
+
+/** Queue a status check packet on an open connection, and wait for the reply
+ *
+ * The caller has already set up the retry state of the status check.  The timer runs when the
+ * status check gets no reply before u->retry.next.
+ */
+static void status_check_enqueue(trunk_connection_t *tconn, bio_handle_t *h, bool init)
+{
+	bio_request_t	*u = h->status_u;
+
+	u->treq = NULL;
+
+	if (init) fr_retry_init(&u->retry, fr_time(), &h->ctx.inst->retry[u->code]);
+
+	/*
+	 *	Queue up the status check packet.  It will be sent when the connection is writable.
+	 */
+	if (trunk_request_enqueue_on_conn(&u->treq, tconn, h->status_request, u, u, true) != TRUNK_ENQUEUE_OK) {
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+		return;
+	}
+
+	if (fr_timer_at(h, h->ctx.el->tl, &u->ev, u->retry.next, false, status_check_timeout, tconn) < 0) {
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+	}
+}
+
 /** See if the connection is zombied.
  *
  *	We check for zombie when major events happen:
@@ -2025,13 +2100,7 @@ static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_t
 		 *	Queue up the status check packet.  It will be sent
 		 *	when the connection is writable.
 		 */
-		fr_retry_init(&h->status_u->retry, fr_time(), &h->ctx.inst->retry[h->status_u->code]);
-		h->status_u->treq = NULL;
-
-		if (trunk_request_enqueue_on_conn(&h->status_u->treq, tconn, h->status_request,
-						     h->status_u, h->status_u, true) != TRUNK_ENQUEUE_OK) {
-			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
-		}
+		status_check_enqueue(tconn, h, true);
 	} else {
 		/*
 		 * Capture the instruction which started the zombie period.
@@ -2540,7 +2609,7 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 }
 
 
-/** Handle retries for a status check
+/** Send the next status check, after the previous status check got a reply
  *
  */
 static void status_check_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
@@ -2554,16 +2623,10 @@ static void status_check_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, 
 	if (h->ctx.fd_info->state != FR_BIO_FD_STATE_OPEN) return;
 
 	/*
-	 *	Re-initialize the retry for every status check packet.
+	 *	The previous status check was answered, so start the retries again.
 	 */
-	fr_retry_init(&h->status_u->retry, fr_time(), &h->ctx.inst->retry[h->status_u->code]);
-
-	if (trunk_request_enqueue_on_conn(&h->status_u->treq, tconn, h->status_request,
-					     h->status_u, h->status_u, true) != TRUNK_ENQUEUE_OK) {
-		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
-	}
+	status_check_enqueue(tconn, h, true);
 }
-
 
 /** Deal with replies replies to status checks and possible negotiation
  *
@@ -3009,7 +3072,7 @@ static void request_fail(request_t *request, NDEBUG_UNUSED void *preq, void *rct
 
 	fr_assert(u == preq);
 
-	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !fr_timer_armed(u->ev));	/* Dealt with by request_conn_release */
 
 	fr_assert(state != TRUNK_REQUEST_STATE_INIT);
 
@@ -3037,7 +3100,7 @@ static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void 
 
 	fr_assert(u == preq);
 
-	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !fr_timer_armed(u->ev));	/* Dealt with by request_conn_release */
 
 	/*
 	 *	The trunk frees the status check treq after this callback.  Clear the pointer so that

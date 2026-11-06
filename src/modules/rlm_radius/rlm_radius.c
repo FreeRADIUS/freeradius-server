@@ -939,6 +939,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (!inst->status_check) {
 		FR_TIME_DELTA_BOUND_CHECK("revive_interval", inst->revive_interval, >=, fr_time_delta_from_sec(10));
 		FR_TIME_DELTA_BOUND_CHECK("revive_interval", inst->revive_interval, <=, fr_time_delta_from_sec(3600));
+	} else {
+		FR_INTEGER_BOUND_CHECK("num_answers_to_alive", inst->num_answers_to_alive, >, 0);
+		FR_INTEGER_BOUND_CHECK("num_answers_to_alive", inst->num_answers_to_alive, <=, 10);
 	}
 
 	num_types = talloc_array_length(inst->types);
