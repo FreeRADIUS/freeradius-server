@@ -26,7 +26,6 @@
 RCSIDH(rest_h, "$Id$")
 
 #include <freeradius-devel/curl/base.h>
-#include <freeradius-devel/curl/config.h>
 #include <freeradius-devel/util/slab.h>
 
 /*
