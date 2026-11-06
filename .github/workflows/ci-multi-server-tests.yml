@@ -267,9 +267,28 @@ jobs:
       #  given URL (see the script header). The step does not run when the
       #  artifact step found no files (empty `artifact-id`).
       #
+      #  An exit code of 75 received from the publish script indicates
+      #  transient outcomes (curl command failure, 408, 429, 5xx) when trying
+      #  to obtain an OIDC token or upload the tarball.
+      #
+      #  The step turns exit code 75 into a warning and exits 0.
+      #
+      #  `timeout-minutes` stops a stalled publish after 10 minutes. It must
+      #  stay above the publish script's worst case.
+      #
       - name: Publish profiling results to the prof-results store
         if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
-        run: scripts/ci/publish-profiling-results.sh "https://cinfra-ca.inkbridge.io/profiling/data"
+        timeout-minutes: 10
+        run: |
+          exit_code=0
+          scripts/ci/publish-profiling-results.sh "https://cinfra-ca.inkbridge.io/profiling/data" || exit_code=$?
+          if [ "$exit_code" -eq 75 ]; then
+            echo "::warning::profiling results were not published (exit code 75):" \
+              "transient failure (curl command failure, 408, 429, 5xx) obtaining" \
+              "the OIDC token or uploading the tarball."
+            exit 0
+          fi
+          exit "$exit_code"
 
       #
       #  If the CI has failed and the branch is `ci-debug` then the workflow starts
