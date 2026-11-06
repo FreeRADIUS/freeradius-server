@@ -1,30 +1,28 @@
 = Coding Methods
 
-The following is a short set of guidelines to follow while
-programming. It does not address coding styles, function naming
-methods, or debugging methods. Rather, it describes the processes
-which should go on in the programmer's mind while they are
-programming.
+These guidelines describe practical approaches to writing code that
+can be reviewed, tested, and maintained. They complement the project's
+coding style and naming conventions.
 
 Coding standards apply to function names, the look of the code, and
 coding consistency. Coding methods apply to the daily practices used
 by the programmer to write code.
 
-== Comment your code
+== 1. Comment your code
 
-If you don't, you'll be forced to debug it six months later, when you
-have no clue as to what it's doing.
-
-If someone _really_ hates you, you'll be forced to debug un-commented
-code that someone else wrote. You don't want to do that.
+Document non-obvious decisions, invariants, ownership, and assumptions.
+Useful comments explain why an implementation exists, not merely what
+a straightforward statement does.
 
 For FreeRADIUS, use doxygen `@`-style comments so you get the benefits
 of the developer documentation site, https://doc.freeradius.org/.
 
-== Give things reasonable names
+[#_give_things_reasonable_names]
+== 2. Give things reasonable names
 
-Variables and functions should have names. Calling them `x`, `xx`, and
-`xxx` makes your life hell. Even `foo` and `i` are problematic.
+Choose names that describe their purpose in context. Short names can
+be appropriate for limited scopes, but ambiguous names make larger
+sections harder to review and maintain.
 
 Avoid smurfs. Don't reuse struct names in field names, i. e.
 
@@ -32,38 +30,39 @@ Avoid smurfs. Don't reuse struct names in field names, i. e.
 ----
 struct smurf {
   char *smurf_pappa_smurf;
-}
+};
 ----
 
-If your code reads as full English sentences, you're doing it right.
+Prefer names that make behavior understandable without requiring
+readers to reconstruct it from unrelated code.
 
-== Check input parameters in the functions you write
+[#_check_input_parameters_in_the_functions_you_write]
+== 3. Check input parameters in the functions you write
 
-Your function _cannot_ do anything right if the user passed in garbage
-and you were too lazy to check for garbage input.
+Validate inputs at appropriate boundaries and handle invalid input
+with a useful error where recovery is expected.
 
-`assert()` (`fr_assert()`) is ugly. Use it.
+Use `assert()` or `fr_assert()` for programmer invariants and states
+that should not occur in correct code; assertions are not substitutes
+for checking untrusted or recoverable input.
 
 [NOTE]
 ====
-GIGO, "Garbage In, Garbage Out," is wrong. If your function gets
-garbage input, it should complain loudly and with great
-descriptiveness.
+Invalid input should produce an actionable error when feasible,
+rather than silently propagating an invalid state.
 ====
 
-== Write useful error messages
+[#_write_useful_error_messages]
+== 4. Write useful error messages
 
-"Function failed" is useless as an error message. It makes debugging
-the code impossible without source-level instrumentation.
+Include the failed operation and relevant context in error messages,
+while avoiding disclosure of secrets. When diagnostic instrumentation
+proves generally useful, retain it for future debugging.
 
-If you're going to instrument the code at source level for error
-messages, leave the error messages there, so the next sucker won't
-have to do the same work all over again.
+== 5. Check error conditions from the functions you call
 
-== Check error conditions from the functions you call
-
-Your function _cannot_ do anything right if you called another
-function, and they gave you garbage output.
+Check return values from called functions and handle errors before
+using outputs that may be invalid.
 
 One of the most common mistakes is:
 
@@ -73,22 +72,21 @@ fp = fopen(...);
 fgetc(fp);       /* core dumps! */
 ----
 
-If the programmer had bothered to check for a `NULL` fp (error
-condition), then they could have produced a descriptive error message
-instead of having the program core dump.
+Check `fp` for `NULL` before use and return or record a useful
+error when opening a file fails.
 
-== Core dumps are for weenies
+== 6. Handle unexpected failures deliberately
 
-If your program core dumps accidentally, you're a bad programmer. You
-don't know what your program is doing, or what it's supposed to be
-doing when anything goes wrong.
+Check recoverable error conditions and report them through the
+appropriate error-handling path. A crash is evidence to investigate,
+not a measure of the contributor's competence.
 
-If it hits an `assert()` and calls `abort()`, you're a genius. You've
-thought ahead to what _might_ go wrong, and put in an assertion to
-ensure that it fails in a _known manner_ when something _does_ go
-wrong. (As it usually does,)
+Assertions can make violations of internal invariants visible during
+testing. Use them when termination is appropriate for an impossible
+state, not as a replacement for routine validation or recovery.
 
-== Initialize your variables
+[#_initialize_your_variables]
+== 7. Initialize your variables
 
 `memset()` (`talloc_zero()`) is your friend. `ptr = NULL` is nice,
 too.
@@ -101,14 +99,14 @@ xref:#_check_input_parameters_in_the_functions_you_write[#3].
 It's also nearly impossible for you to debug any problems, as you
 can't tell the variables with garbage values from the real ones.
 
-== Don't allow buffer over-runs
+== 8. Don't allow buffer over-runs
 
 They're usually accidental, but they cause core dumps. `strcpy()` and
 `strcat()` are ugly. Use them under duress.
 
 `sizeof()` is your friend.
 
-== `const` is your friend
+== 9. `const` is your friend
 
 If you don't mean to modify an input structure to your function,
 declare it `const`. Declare string constants `const`. It can't hurt,
@@ -118,7 +116,7 @@ Use `const` everywhere. Once you throw a few into your code, and have
 it save you from nonsensical bugs, you'll blindly throw in `const`
 everywhere. It's a life-saver.
 
-== Use C compiler warnings
+== 10. Use C compiler warnings
 
 Turn on all of the C compiler warnings possible. You might have to
 turn some off due to broken system header files, though. But the more
@@ -131,28 +129,26 @@ Notice that the C compiler error messages are helpful? You should
 write error messages like this, too. See
 xref:#_write_useful_error_messages[#4].
 
-== Avoid UNIXisms and ASCIIisms and visualisms
+== 11. Avoid UNIXisms and ASCIIisms and visualisms
 
 You don't know under what system someone will try to run your code.
 Don't demand that others use the same OS or character set as you use.
 
-Never assign numbers to pointers. If foo is a `char*`, and you want it
-to be be `NULL`, assign `NULL`, not `0`. The zeroth location is
-perfectly as addressable as any other on plenty of OSes. Not all the
-world runs on Unix (though it should :) ).
+For clarity, use `NULL` when representing a null pointer in C.
+The integer constant `0` is also a valid null pointer constant in C,
+so this is a readability convention rather than a claim about a
+platform's address zero.
 
-Another common mistake is to assume that the zeroth character in the
-character set is the string terminator. Instead of terminating a
-string with `0`, use `'\0'`, which is always right. Similarly,
-`memset()` with the appropriate value: `NULL`, `'\0'`, or `0` for
-pointers, chars, and numbers.
+Use `'\0'` to make a terminating null character explicit in code.
+For `memset()`, the fill argument is an integer byte value; use `0`
+when zeroing memory, and prefer typed initialization when appropriate.
 
 Don't put tabs in string constants, either. Always use `'\t'` to
 represent a tab, instead of ASCII 9. Literal tabs are presented to
 readers of your code as arbitrary whitespace, and it's easy to mess
 up.
 
-== Make conditionals explicit
+== 12. Make conditionals explicit
 
 Though it's legal to test `if (foo) {}` if you test against the
 appropriate value (like `NULL` or `'\0'`), your code is prettier and
@@ -161,7 +157,7 @@ continuously to figure out what you're doing (especially if your
 variables aren't well-named). See
 xref:#_give_things_reasonable_names[#2].
 
-== Test your code
+== 13. Test your code
 
 Even Donald Knuth writes buggy code. You'll never find all of the bugs
 in your code. But writing a test program definitely helps.
@@ -170,23 +166,24 @@ This means that you'll have to write your code so that it will be
 easily testable. As a result, it will look better and be easier to
 debug.
 
-== Hints, Tips, and Tricks
+== 14. Hints, Tips, and Tricks
 
 This section lists many of the common `rules` associated with code
 submitted to the project. There are always exceptions, but you must
 have a really good reason for doing so.
 
-== Read the Documentation and follow the CodingStyle
+=== Read the Documentation and follow the CodingStyle
 
 The FreeRADIUS server has a common coding style. Use real tabs to
 indent. There is whitespace in variable assignments (`i = 1`, not
 `i=1`).
 
-When in doubt, format your code to look the same as code already in
-the server. If your code deviates too much from the current style, it
-is likely to be rejected without further review, and without comment.
+When in doubt, follow the conventions of nearby code and the
+xref:coding_standards.adoc[coding standards]. If a change needs an
+intentional exception, explain it in the pull request so reviewers
+can evaluate the reason.
 
-== #ifdefs are ugly
+=== #ifdefs are ugly
 
 Code cluttered with `#ifdef` s is difficult to read and maintain.
 Don't do it. Instead, put your `#ifdef` s in a header, and
@@ -220,7 +217,7 @@ Cleaned-up example:
 init_my_stuff(dev);
 ----
 
-== `static inline` is better than a macro
+=== `static inline` is better than a macro
 
 Static inline functions are greatly preferred over macros. They
 provide type safety, have no length limitations, no formatting
@@ -234,14 +231,23 @@ string-izing).
 `static inline` is preferred over `$$static __inline__$$`, `extern
 inline`, and `$$extern __inline__$$`.
 
-== Don't over-design
+=== Keep the Design Proportional to the Problem
 
-Don't try to anticipate nebulous future cases which may or may not be
-useful: _Make it as simple as you can, and no simpler._
+Implement the behavior that is needed and supported by the current
+requirements. Avoid speculative abstractions that make the code
+harder to understand without a demonstrated benefit.
 
-Split up functionality as much as possible. If your code needs to do
-two unrelated things, write two functions. Mashing two kinds of work
-into one function makes the server difficult to debug and maintain.
+Separate responsibilities when doing so improves cohesion, testing,
+and maintenance. Excessive decomposition can also obscure the flow
+of a program.
+
+[TIP]
+====
+Apply the same principle to documentation: put information where
+readers need it, avoid unnecessary duplication, and link to a
+canonical explanation when appropriate.
+====
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
+// Modified by Means+Measures, 2026.

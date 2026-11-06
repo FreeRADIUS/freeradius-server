@@ -1,34 +1,54 @@
-= Patches via GitHub
+= Proposing changes through GitHub
 
-To create a patch, you will open a pull request for the FreeRADIUS
-project on GitHub.
+A pull request (PR) proposes changes from a branch in a repository
+you can edit into a branch in another repository or the same repository.
+Opening a PR starts review; it does not automatically merge or approve
+the changes.
 
-Ensure you've followed the previous xref:github.adoc[Using Git] steps
-by forking the official repository, clone your fork locally, create a
-branch to make your changes on, and then open a pull request from your
-branch to the main project.
+You can make small documentation changes in GitHub's web editor or
+work locally with Git. A local clone is not required to open a PR.
 
-== Open a Pull Request (PR)
+== Prepare your change
 
-If your code merges cleanly, then it's a couple of clicks to get it
-merged into the project repository. This is **significantly** easier
-for core developers, compared with applying mangled patches sent on
-the mailing lists.
+. Fork the https://github.com/FreeRADIUS/freeradius-server[FreeRADIUS repository]
+  if you do not have permission to create a branch in the upstream repository.
+. Create a separate branch for the logical change, starting from the
+  relevant upstream branch.
+. Edit the files, inspect the resulting changes, and commit them.
+. Check the affected documentation, tests, or other behavior as appropriate.
+  Record which checks you performed and their results.
 
-Follow these steps to complete a PR:
+For instructions on local Git workflows, see
+xref:github.adoc[Using GitHub]. The GitHub website also supports
+creating a branch and editing text files directly.
 
-* Navigate to your fork on GitHub `https://github.com/
-  <your-github-username>/freeradius-server`
-* Click the "Compare & pull request" button or navigate to the *Pull
-  Request* tab and click the "New Pull Request" button.
+== Open the pull request
 
-[WARNING]
-====
-Ensure the base branch is the FreeRADIUS project's main branch
-(usually master or main) and the compare branch is the
-name-of-your-feature-branch from your fork.
-====
+. Navigate to your branch in GitHub and choose *Contribute* / *Open pull request*,
+  or use the *Pull requests* tab and select *New pull request*.
+. Set the *base repository* to `FreeRADIUS/freeradius-server` and the
+  *base branch* to the upstream branch receiving the proposed changes.
+. Set the *head repository* to your fork and the *compare branch* to the
+  branch containing your changes.
+. Review the files shown in the comparison to confirm the PR contains
+  only the intended changes.
+. Add a descriptive title and explain the problem, changes, and verification.
+. Choose *Create pull request*, or *Create draft pull request* if the
+  work is not ready for review.
 
-* Add a title and description for your pull request, explaining the
-  changes you made. *Click "Create pull request" (or "Create draft
-  pull request") to submit your contribution.
+A clean automatic merge result means that GitHub found no textual
+conflicts. It does not mean that maintainers have reviewed, approved,
+or agreed to merge the change.
+
+== After submission
+
+Reviewers may request clarification, tests, or revisions. You can
+update the same source branch to include follow-up changes; the PR
+will reflect them automatically.
+
+If the upstream branch changes while review is underway, the PR may
+need to be updated or conflicts resolved. A requested technical
+revision is part of review, not a judgment about the contributor.
+
+See xref:contributing.adoc[Contributing] for guidance on
+presenting a focused, reviewable change.

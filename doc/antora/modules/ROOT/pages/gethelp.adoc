@@ -2,10 +2,13 @@
 
 ## Official Documentation
 
-A lot of information can be found online for FreeRADIUS, but most of
-this information is out-of-date or incorrect. Avoid third party
-documentation refer to the documentation created by FreeRADIUS and
-InkBridge Networks as follows:
+Configuration examples differ between FreeRADIUS releases. Run
+`radiusd -v` to identify the installed version, then consult the
+corresponding release documentation. Before copying an external
+example, compare its module names, attributes, and options with the
+reference documentation and default `raddb/` configuration for that
+version. Test each change with `radiusd -X` on a test instance before
+applying it to a running service. Project-maintained resources include:
 
 * *https://www.freeradius.org[FreeRADIUS]*
 * *https://www.inkbridgenetworks.com[InkBridge Networks]*

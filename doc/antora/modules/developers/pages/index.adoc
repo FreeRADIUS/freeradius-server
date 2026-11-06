@@ -11,20 +11,16 @@ website].
 
 Key resources for developers include:
 
-* GitHub Repository: The source code and all documentation files are
-  on [GitHub](https://github.com/FreeRADIUS/freeradius-server/),
-  giving developers access to the latest information and a way to
-  contribute.
+* GitHub repository: The source and documentation can be found in the
+  https://github.com/FreeRADIUS/freeradius-server[FreeRADIUS repository].
+  Contributions can be proposed using issues and pull requests.
 
-* Development mailing list: We encourage everyone who might contribute
-  code to join the
-  http://www.freeradius.org/list/devel.html[FreeRADIUS development
-  list]. This list is technical and isn't for most users of the
-  server. *Only* subscribe to the development list if you are
-  interested in writing software for the new server.  For normal
-  discussion of the server and how to use it, subscribe to the
-  https://lists.freeradius.org/mailman/listinfo/freeradius-users[FreeRADIUS
-  user-list].
+* Development mailing list: The
+  https://freeradius.org/support/[FreeRADIUS mailing lists] support
+  discussion of technical development and of using the server.
+  Contributors at any experience level can use the development list
+  for relevant engineering questions and proposals. Configuration
+  and deployment support generally belongs on the users list.
 
 The server can be built from source by following the
 xref:howto:installation/source.adoc[install from source]
@@ -34,9 +30,9 @@ The rest of this document has various resources for developers.
 
 == xref:bugs/bugs.adoc[Bugs]
 
-If the server crashes due to memory errors, report it to the issue
-tracker with debugging info. For other issues, discuss them on the
-users mailing list.
+Use the issue tracker for reproducible software and documentation
+defects, with relevant evidence. For configuration or operational
+questions, use the users mailing list.
 
 == xref:coding-methods.adoc[Coding Methods]
 
@@ -60,9 +56,9 @@ Language (SmPL) patches.
 
 == xref:contributing.adoc[Contributing]
 
-Development of FreeRADIUS is done using Github. Please submit issues,
-bugs, patches, etc. there. Additional instructions are online or
-within this section.
+Use GitHub issues for defect reports and proposals, and pull requests
+for concrete changes. Refer to the contribution guidance for details.
+Small changes can also be made using GitHub's web editor.
 
 == xref:module_interface.adoc[Module Interface]
 
@@ -82,12 +78,11 @@ their coding and processes.
 
 == More Information
 
-The two most important RADIUS RFC's and drafts are
-http://www.freeradius.org/rfc/rfc2865.html[RFC2865] and
-http://www.freeradius.org/rfc/rfc2866.html[RFC2866]. These are the new
-RFCs, which replace the old ones,
-http://www.freeradius.org/rfc/rfc2138.txt[RFC2138] and
-http://www.freeradius.org/rfc/rfc2139.txt[RFC2139].
+Foundational RADIUS references include
+https://www.rfc-editor.org/rfc/rfc2865[RFC 2865] and
+https://www.rfc-editor.org/rfc/rfc2866[RFC 2866]. Additional updates
+and extensions may apply to the feature being implemented; check
+the current RFC status and relevant protocol documentation.
 
 Also see the  xref:howto:installation/dependencies.adoc[build
 dependencies] page.

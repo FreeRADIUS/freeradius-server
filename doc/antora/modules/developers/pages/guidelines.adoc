@@ -140,10 +140,11 @@ The CSS files control every colour on the page, see <<layout>>.
 
 === Grammar
 
-Replace words of six or more syllables with shorter terms that
-translate easily. Substitute or remove formal words not recommended
-for software documentation. Check the <<terms>> section for more
-information on recommended words and terms.
+Prefer familiar, precise terms over unnecessarily complex wording.
+Do not replace defined protocol terms or established technical
+vocabulary solely to shorten words. Explain specialized terms when
+their meaning may not be clear from context. Check the <<terms>>
+section for recommended terminology.
 
 Shorten sentences or break them into two sentences to ensure
 conciseness.
@@ -180,9 +181,10 @@ request.
 
 === Localisation
 
-Remove as many gerunds (words ending in ing) as possible. English
-doesn't easily translate these words. This can confuse non-native
-speakers.
+Prefer clear, direct sentence structure for readers and translators.
+Rephrase ambiguous constructions when needed; words ending in
+`-ing` are not inherently difficult to translate and should not
+be removed mechanically.
 
 Check convoluted text or run-on sentences with
 link:https://hemingwayapp.com/[Hemingway] or
@@ -207,7 +209,11 @@ starting at 10+ are written out in numerals.
 This is *not* applicable for `code` or `code blocks`. These numbers
 need to stay in their native formats.
 
-Decimal numbers need to only be two significant digits.
+Use the precision required by the subject. Do not round protocol
+values, IP addresses, masks, ports, version numbers, thresholds,
+configuration settings, example output, or other technically exact
+values for editorial consistency. For approximate quantities, choose
+a level of precision that communicates the underlying uncertainty.
 
 See
 link:https://procomm.ieee.org/using-numbers-in-technical-documents-2/[IEEE
