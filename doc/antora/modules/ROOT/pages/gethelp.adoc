@@ -2,10 +2,10 @@
 
 ## Official Documentation
 
-A lot of information can be found online for FreeRADIUS, but most of
-this information is out-of-date or incorrect. Avoid third party
-documentation refer to the documentation created by FreeRADIUS and
-InkBridge Networks as follows:
+Configuration examples may differ between FreeRADIUS versions.
+Start with documentation matching your installed release and verify
+third-party examples against the corresponding configuration and
+reference documentation. Project-maintained resources include:
 
 * *https://www.freeradius.org[FreeRADIUS]*
 * *https://www.inkbridgenetworks.com[InkBridge Networks]*
