@@ -139,6 +139,10 @@ Api.endpoint('GET', '/user/<username>/mac/<client>',
             op = ":=",
             value = keyData.username
         }
+        returnData["request.Vendor-Specific.Cisco.AVPair"] = {
+            "cisco=madness",
+            "is=crazy"
+        }
         return ngx.say(cjson.encode(returnData))
     end
 )
