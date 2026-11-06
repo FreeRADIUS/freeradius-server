@@ -3719,6 +3719,9 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 				.inst = inst,
 				.limit_source_ports = (thread->num_ports > 0) ? LIMIT_PORTS_DYNAMIC : LIMIT_PORTS_NONE,
 				.dynamic = true,
+#ifdef WITH_TLS
+				.ssl_ctx = thread->ctx.ssl_ctx,	/* DTLS to dynamic destinations uses the thread context */
+#endif
 			},
 			.num_ports = thread->num_ports,
 		};

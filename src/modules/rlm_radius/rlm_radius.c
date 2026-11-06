@@ -145,13 +145,30 @@ static conf_parser_t const connected_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#ifdef WITH_TLS
 /*
- *	We only parse the pool options if we're connected.
+ *	The dynamic proxy takes the secret from the xlat arguments, and the "udp" section is otherwise parsed
+ *	by fr_bio_fd_client_config.  Every connection to every destination uses the same DTLS configuration.
  */
-static conf_parser_t const pool_config[] = {
+static conf_parser_t const udp_dynamic_config[] = {
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, fr_tls_client_config),
+	  .subcs_type = "fr_tls_conf_t" },
+
+	CONF_PARSER_TERMINATOR
+};
+#endif
+
+/*
+ *	We only parse these options if we need a connection.
+ */
+static conf_parser_t const xlat_proxy_config[] = {
 	{ FR_CONF_POINTER("status_check", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
 
 	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_radius_t, trunk_conf, trunk_config ) },
+
+#ifdef WITH_TLS
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) udp_dynamic_config },
+#endif
 
 	CONF_PARSER_TERMINATOR
 };
@@ -306,7 +323,7 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	case RLM_RADIUS_MODE_XLAT_PROXY:
 		inst->fd_config.type = FR_BIO_FD_UNCONNECTED; /* reset later when the home server is allocated */
 
-		if (cf_section_rules_push(cs, pool_config) < 0) return -1;
+		if (cf_section_rules_push(cs, xlat_proxy_config) < 0) return -1;
 		break;
 
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
@@ -711,14 +728,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 #ifdef WITH_TLS
 	/*
-	 *	TLS and DTLS need a connected socket, and a trunk to manage the connections.
+	 *	TLS and DTLS need a connected socket, and a trunk to manage the connections.  The dynamic proxy
+	 *	allocates a trunk of connected sockets for each destination, so it can also use TLS and DTLS.
 	 */
 	if (inst->tls_conf) {
 		char const	*fixed_secret;
 		CONF_SECTION	*wrong_cs;
 
-		if ((inst->mode != RLM_RADIUS_MODE_PROXY) && (inst->mode != RLM_RADIUS_MODE_CLIENT)) {
-			cf_log_err(conf, "The 'tls' section can only be used with 'mode = proxy' or 'mode = client'");
+		if ((inst->mode != RLM_RADIUS_MODE_PROXY) && (inst->mode != RLM_RADIUS_MODE_CLIENT) &&
+		    (inst->mode != RLM_RADIUS_MODE_XLAT_PROXY)) {
+			cf_log_err(conf, "The 'tls' section can only be used with 'mode = proxy', 'mode = client', or 'mode = dynamic-proxy'");
 			return -1;
 		}
 
