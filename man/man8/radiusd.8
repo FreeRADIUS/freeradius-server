@@ -148,19 +148,17 @@ of every request to the default logging destination.  Using multiple
 The default configuration is set to work in the widest possible
 circumstances. It requires minimal changes for your system.
 .sp
-However, your needs may be complex, and may require significant changes
-to the server configuration. Making random changes is a guaranteed
-method of failure. Instead, we STRONGLY RECOMMEND proceeding via the
-following steps:
+Complex deployments may require significant configuration changes.
+Making and testing one change at a time helps isolate errors.
+Use the following steps:
 .sp
-1) Always run the server in debugging mode ( \f(CRradiusd \-X\fP ) after
-making a configuration change. We cannot emphasize this enough. If you
-are not running the server in debugging mode, you \fIwill not\fP be able to
-see what is doing, and you \fIwill not\fP be able to correct any problems.
+1) After making a configuration change, run the server in debugging
+mode ( \f(CRradiusd \-X\fP ) in a suitable test environment.
+Examine the output for errors and compare the observed behavior
+with the intended result.
 .sp
-If you ask questions on the mailing list, the first response will be to
-tell you "run the server in debugging mode". Please, follow these
-instructions.
+When requesting assistance, include relevant debugging output along
+with the change made and the behavior observed.
 .sp
 2) Change as little as possible in the default configuration
 files. The server contains a decade of experience with protocols,
@@ -172,8 +170,8 @@ anything else. If the change works, save a copy of the configuration,
 and make another change. If the change doesn\(cqt work, debug it, and try
 to understand why it doesn\(cqt work.
 .sp
-If you begin by making large changes to the server configuration, it
-will never work, and you will never be able to debug the problem.
+Large batches of untested changes make it harder to identify
+which change introduced a problem.
 .sp
 4) If you need to add a connection to a database FOO (e.g. LDAP
 or SQL), then:
@@ -213,10 +211,10 @@ testing.
 .br
 (\c
 .MTO "freeradius\-users\(atlists.freeradius.org" "" ")."
-When asking questions, include
-the output from debugging mode ( \f(CRradiusd \-X\fP ). This information will
-allow people to help you. If you do not include it, the first response
-to your message will be "post the output of debug mode".
+When asking questions, include relevant debugging output
+( \f(CRradiusd \-X\fP ), the change made, and the observed result.
+If debug output is unavailable, provide other reproducible
+diagnostic information.
 .sp
 Ask questions earlier, rather than later. If you cannot solve a problem
 in a day, ask a question on the mailing list. Most questions have been
