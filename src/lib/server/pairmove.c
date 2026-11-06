@@ -25,16 +25,12 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/util/pair_legacy.h>
-
-#include <freeradius-devel/protocol/radius/rfc2865.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 static int radius_legacy_map_to_vp(request_t *request, fr_pair_t *parent, map_t const *map)
 {
