@@ -51,7 +51,7 @@ As such, AI can sometimes be helpful.
 ## Installation
 
 To install the server, please see the [installation
-instructions](doc/antora/modules/installation/pages/index.adoc) document.
+instructions](doc/antora/modules/howto/pages/installation/index.adoc) document.
 
 ## Configuring the server
 
@@ -136,7 +136,7 @@ mailing lists first to determine whether it really is a defect or
 missing feature.
 
 Instructions for gathering data for defect reports can be found in
-[here](doc/antora/modules/developers/pages/bugs.adoc) and online at
+[here](doc/antora/modules/developers/pages/bugs/bugs.adoc) and online at
 <https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/bugs.html>
 
 Under no circumstances should the issue tracker be used for support
