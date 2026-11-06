@@ -42,6 +42,8 @@ static conf_parser_t const status_check_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("type", FR_TYPE_VOID, 0, rlm_radius_t, status_check),
 	  .func = status_check_type_parse },
 
+	{ FR_CONF_OFFSET("num_answers_to_alive", rlm_radius_t, num_answers_to_alive), .dflt = STRINGIFY(3) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -59,7 +61,6 @@ static conf_parser_t const status_check_update_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("update", FR_TYPE_VOID, CONF_FLAG_SUBSECTION, rlm_radius_t, status_check_map),
 	  .name2 = CF_IDENT_ANY,
 	  .func = status_check_update_parse },
-	{ FR_CONF_OFFSET("num_answers_to_alive", rlm_radius_t, num_answers_to_alive), .dflt = STRINGIFY(3) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -939,9 +940,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (!inst->status_check) {
 		FR_TIME_DELTA_BOUND_CHECK("revive_interval", inst->revive_interval, >=, fr_time_delta_from_sec(10));
 		FR_TIME_DELTA_BOUND_CHECK("revive_interval", inst->revive_interval, <=, fr_time_delta_from_sec(3600));
-	} else {
-		FR_INTEGER_BOUND_CHECK("num_answers_to_alive", inst->num_answers_to_alive, >, 0);
-		FR_INTEGER_BOUND_CHECK("num_answers_to_alive", inst->num_answers_to_alive, <=, 10);
 	}
 
 	num_types = talloc_array_length(inst->types);
@@ -979,8 +977,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_assert(inst->status_check < FR_RADIUS_CODE_MAX);
 
 	/*
-	 *	If we're replicating, we don't care if the other end
-	 *	is alive.
+	 *	If we're replicating, we don't care if the other end is alive.
 	 */
 	if (inst->status_check) {
 		if (inst->mode == RLM_RADIUS_MODE_REPLICATE) {
@@ -994,33 +991,26 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				    fr_radius_packet_name[inst->status_check]);
 			inst->status_check = false;
 		}
-	}
 
-	/*
-	 *	If we have status checks, then do some sanity checks.
-	 *	Status-Server is always allowed.  Otherwise, the
-	 *	status checks have to match one of the allowed
-	 *	packets.
-	 */
-	if (inst->status_check) {
-		if (inst->status_check == FR_RADIUS_CODE_STATUS_SERVER) {
-			inst->allowed[inst->status_check] = true;
-
-		} else if (!inst->allowed[inst->status_check]) {
-			cf_log_err(conf, "Using 'status_check = %s' requires also 'type = %s'",
-				   fr_radius_packet_name[inst->status_check], fr_radius_packet_name[inst->status_check]);
-			return -1;
+		if (inst->status_check && inst->fd_config.filename) {
+			cf_log_info(conf, "Disabling status checks for output file %s", inst->fd_config.filename);
+			inst->status_check = false;
 		}
 
 		/*
-		 *	@todo - check the contents of the "update"
-		 *	section, to be sure that (e.g.) Access-Request
-		 *	contains User-Name, etc.
+		 *	If we still have status checks, then do some sanity checks.  Status-Server is always allowed
+		 *	if it's the packet type we use.  Otherwise, the status check packet type has to match one of
+		 *	the allowed packet types.
 		 */
+		if (inst->status_check) {
+			if (inst->status_check == FR_RADIUS_CODE_STATUS_SERVER) {
+				inst->allowed[inst->status_check] = true;
 
-		if (inst->fd_config.filename) {
-			cf_log_info(conf, "Disabling status checks for output file %s", inst->fd_config.filename);
-			inst->status_check = 0;
+			} else if (!inst->allowed[inst->status_check]) {
+				cf_log_err(conf, "Using 'status_check = %s' requires also 'type = %s'",
+					   fr_radius_packet_name[inst->status_check], fr_radius_packet_name[inst->status_check]);
+				return -1;
+			}
 		}
 	}
 
@@ -1055,6 +1045,55 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		MEM(inst->trigger_args = fr_pair_list_alloc(inst));
 		if (module_trigger_args_build(inst->trigger_args, inst->trigger_args,
 					      cf_section_find(conf, "pool", NULL), &args) < 0) return -1;
+	}
+
+	/*
+	 *	Validate timers for status checks.
+	 */
+	if (inst->status_check) {
+		connection_conf_t *conn_conf;
+		fr_time_delta_t   min_timeout;
+		int64_t           delta;
+
+		FR_INTEGER_BOUND_CHECK("num_answers_to_alive", inst->num_answers_to_alive, >=, 1);
+		FR_INTEGER_BOUND_CHECK("num_answers_to_alive", inst->num_answers_to_alive, <=, 10);
+
+		/*
+		 *	@todo  -  check  the  contents  of  the "update"  section,  to  be  sure  that  (e.g.)
+		 *	Access-Request contains User-Name, etc.
+		 */
+
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrt, >=, fr_time_delta_from_sec(5));
+		FR_INTEGER_BOUND_CHECK("Status-Server.max_rtx_count", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrc, >=, 1);
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_duration", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrd, >=, fr_time_delta_from_sec(5));
+
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].irt, <=, fr_time_delta_from_sec(5));
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrt, <=, fr_time_delta_from_sec(30));
+		FR_INTEGER_BOUND_CHECK("Status-Server.max_rtx_count", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrc, <=, 10);
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_duration", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrd, <=, fr_time_delta_from_sec(30));
+
+		/*
+		 *	Ensure that we don't give up before we received the number of expected replies.
+		 */
+		FR_INTEGER_BOUND_CHECK("Status-Server.max_rtx_count", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrc, >=, inst->num_answers_to_alive);
+
+		/*
+		 *	The status checks run while the connection is opening.  The connection has to stay in
+		 *	the "connecting" state long enough to send all of the status checks, otherwise the
+		 *	connection timeout will fire before the status checks finish.
+		 */
+		conn_conf = UNCONST(connection_conf_t *, inst->trunk_conf.conn_conf);
+		delta = fr_time_delta_unwrap(inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrd);
+		delta += delta >> 2;
+
+		min_timeout = fr_time_delta_wrap(delta);
+
+		if (fr_time_delta_lt(conn_conf->connection_timeout, min_timeout)) {
+			cf_log_warn(conf, "Increasing pool.connection.connect_timeout from %pVs to %pVs, to allow for status_check.max_rtx_duration",
+				    fr_box_time_delta(conn_conf->connection_timeout), fr_box_time_delta(min_timeout));
+			conn_conf->connection_timeout = min_timeout;
+		}
 	}
 
 	/*
@@ -1098,21 +1137,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrc, <=, 10);
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
-	}
-
-	/*
-	 *	Status-Server
-	 */
-	if (inst->allowed[FR_RADIUS_CODE_STATUS_SERVER]) {
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].irt, >=, fr_time_delta_from_sec(1));
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrt, >=, fr_time_delta_from_sec(5));
-		FR_INTEGER_BOUND_CHECK("Status-Server.max_rtx_count", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrc, >=, 1);
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_duration", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrd, >=, fr_time_delta_from_sec(5));
-
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].irt, <=, fr_time_delta_from_sec(5));
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrt, <=, fr_time_delta_from_sec(30));
-		FR_INTEGER_BOUND_CHECK("Status-Server.max_rtx_count", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrc, <=, 10);
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_duration", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 	/*

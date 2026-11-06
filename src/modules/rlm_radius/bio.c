@@ -434,7 +434,7 @@ static void conn_init_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, void *u
 		return;
 
 	case FR_RETRY_CONTINUE:
-		if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_init_writable, NULL,
+		if (fr_event_fd_insert(h, NULL, conn->el, h->fd, NULL, conn_init_writable,
 				       conn_init_error, conn) < 0) {
 			PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 			connection_signal_reconnect(conn, CONNECTION_FAILED);
@@ -452,8 +452,15 @@ static void conn_init_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, voi
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
+	bio_request_t		*u = h->status_u;
 
-	if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_init_writable, NULL, conn_init_error, conn) < 0) {
+	/*
+	 *	The previous status check was answered, so start the retries again.  Unlike conn_init_timeout(),
+	 *	we do not reset u->num_replies, as we want contiguous good replies.
+	 */
+	fr_retry_init(&u->retry, fr_time(), &h->ctx.inst->retry[FR_RADIUS_CODE_STATUS_SERVER]);
+
+	if (fr_event_fd_insert(h, NULL, conn->el, h->fd, NULL, conn_init_writable, conn_init_error, conn) < 0) {
 		PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 		connection_signal_reconnect(conn, CONNECTION_FAILED);
 	}
@@ -586,7 +593,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	if (fr_time_eq(u->retry.start, fr_time_wrap(0))) {
 		u->id = fr_rand() & 0xff;	/* We don't care what the value is here */
 		h->status_checking = true;	/* Ensure this is valid */
-		fr_retry_init(&u->retry, fr_time(), &h->ctx.inst->retry[u->code]);
+		fr_retry_init(&u->retry, fr_time(), &h->ctx.inst->retry[FR_RADIUS_CODE_STATUS_SERVER]);
 
 	/*
 	 *	Status checks can never be retransmitted
@@ -2004,7 +2011,7 @@ static void status_check_enqueue(trunk_connection_t *tconn, bio_handle_t *h, boo
 
 	u->treq = NULL;
 
-	if (init) fr_retry_init(&u->retry, fr_time(), &h->ctx.inst->retry[u->code]);
+	if (init) fr_retry_init(&u->retry, fr_time(), &h->ctx.inst->retry[FR_RADIUS_CODE_STATUS_SERVER]);
 
 	/*
 	 *	Queue up the status check packet.  It will be sent when the connection is writable.
