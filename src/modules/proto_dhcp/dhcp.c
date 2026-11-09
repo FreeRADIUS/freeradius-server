@@ -1245,13 +1245,13 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	 *	If the attr is a TLV, first compare on the parent
 	 */
 	base_a = my_a->da->flags.is_tlv ? DHCP_BASE_ATTR(my_a->da->attr) : my_a->da->attr;
-	base_b = my_b->da->flags.is_tlv ? DHCP_BASE_ATTR(my_b->da->attr) : my_a->da->attr;
+	base_b = my_b->da->flags.is_tlv ? DHCP_BASE_ATTR(my_b->da->attr) : my_b->da->attr;
 
 	/*
 	 *	Relay-Agent is last
 	 */
 	if ((base_a == PW_DHCP_OPTION_82) && (base_b != PW_DHCP_OPTION_82)) return +1;
-	if ((base_a != PW_DHCP_OPTION_82) && (my_b->da->attr == base_b)) return -1;
+	if ((base_a != PW_DHCP_OPTION_82) && (base_b == PW_DHCP_OPTION_82)) return -1;
 
 	if (base_a < base_b) return -1;
 	if (base_a > base_b) return 1;
