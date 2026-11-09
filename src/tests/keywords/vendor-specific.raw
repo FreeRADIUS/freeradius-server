@@ -8,6 +8,15 @@ if (!raw.26) {
 elsif (!(raw.26 == 0x01020304)) {
 	test_fail
 }
-else {
-	success
+
+#
+#  Regression test for conflict between raw.26 and Vendor-Specific.foo.bar
+#
+
+Vendor-Specific.Cisco += { AVPair = 'cisco=madness' }
+
+if (!Vendor-Specific.Cisco.AVPair) {
+	test_fail
 }
+
+success
