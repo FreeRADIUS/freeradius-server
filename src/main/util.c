@@ -563,30 +563,51 @@ void NEVER_RETURNS rad_assert_fail(char const *file, unsigned int line, char con
  */
 static int _request_free(REQUEST *request)
 {
-	rad_assert(!request->in_request_hash);
-#ifdef WITH_PROXY
-	rad_assert(!request->in_proxy_hash);
-#endif
-	rad_assert(!request->ev);
+	if (request->ev) {
+		fr_event_list_t *el = radius_event_list_corral(EVENT_CORRAL_MAIN);		
 
-#ifdef WITH_COA
-	rad_assert(request->coa == NULL);
-#endif
+		/*
+		 *	We're in a child thread.  The timer will clean us up.
+		 */
+		if (!el) {
+			request->master_state = REQUEST_STOP_PROCESSING;
+			return -1;
+		}
 
-#ifndef NDEBUG
-	request->magic = 0x01020304;	/* set the request to be nonsense */
-#endif
-	request->client = NULL;
-#ifdef WITH_PROXY
-	request->home_server = NULL;
-#endif
+		fr_event_delete(el, &request->ev);
+	}
+
+	TALLOC_FREE(request->coa);
 
 	/*
 	 *	This is parented separately.
 	 */
-	if (request->state_ctx) {
-		talloc_free(request->state_ctx);
+	TALLOC_FREE(request->state_ctx);
+	request->state = NULL;
+
+#ifdef WITH_PROXY
+	if (request->in_proxy_hash) {
+		RERROR("Refusing to free request: it is still in the proxy hash");
+		return -1;
 	}
+
+	request->home_server = NULL;
+	TALLOC_FREE(request->proxy);
+	TALLOC_FREE(request->proxy_reply);
+#endif
+
+	/*
+	 *	If the request is still in a list, it's better to leak
+	 *	memory than to crash.
+	 */
+	if (request->in_request_hash) {
+		RERROR("Refusing to free request: it is still in the request hash");
+		return -1;
+	}
+
+#ifndef NDEBUG
+	request->magic = 0x01020304;	/* set the request to be nonsense */
+#endif
 
 	return 0;
 }

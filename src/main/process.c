@@ -68,10 +68,6 @@ static fr_event_list_t *el = NULL;
 void request_free(REQUEST *request) CC_HINT(nonnull);
 void request_done(REQUEST *request, int original) CC_HINT(nonnull);
 
-fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
-	/* Currently we do not run a second event loop for modules. */
-	return el;
-}
 
 /*
  *	For src/main/listen.c
@@ -315,6 +311,14 @@ static bool we_are_master(void)
  */
 #  define we_are_master(_x) (1)
 #endif	/* HAVE_PTHREAD_H */
+
+fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint)
+{
+	if (!we_are_master()) return NULL;
+
+	/* Currently we do not run a second event loop for modules. */
+	return el;
+}
 
 #ifndef ASSERT_MASTER
 #  define ASSERT_MASTER
