@@ -338,7 +338,16 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 	}
 
 	to_free = vp->da;
-	vp->da = da;
+
+	/*
+	 *	If the new da is unknown the destination needs its own copy
+	 *	to ensure lifetime consistency.
+	 */
+	if (unlikely(da->flags.is_unknown)) {
+		vp->da = fr_dict_attr_unknown_copy(vp, da);
+	} else {
+		vp->da = da;
+	}
 
 	/*
 	 *	Only frees unknown fr_dict_attr_t's
