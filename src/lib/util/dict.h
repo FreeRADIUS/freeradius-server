@@ -688,6 +688,11 @@ static inline CC_HINT(nonnull) fr_cmp_ret_t fr_dict_attr_cmp(fr_dict_attr_t cons
 		ret = CMP(a->attr, b->attr);
 		if (ret != 0) return ret;
 
+		if (fr_type_is_structural(a->type) || fr_type_is_structural(b->type)) {
+			ret = CMP(a->type, b->type);
+			if (ret != 0) return ret;
+		}
+
 		ret = CMP(a->parent == NULL, b->parent == NULL);
 		if ((ret != 0) || !a->parent) return ret;
 
