@@ -937,9 +937,7 @@ void request_done(REQUEST *request, int original)
 	 *	Remove it from the request hash.
 	 */
 	if (request->in_request_hash) {
-		if (!rbtree_deletebydata(pl, &request->packet)) {
-			rad_assert(0 == 1);
-		}
+		(void) rbtree_deletebydata(pl, &request->packet);
 		request->in_request_hash = false;
 	}
 
@@ -2120,6 +2118,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 
 	packet_p = rbtree_finddata(pl, &packet);
 	if (packet_p) {
+		unsigned int old_number;
 		rad_child_state_t child_state;
 		char const *old_module;
 
@@ -2176,6 +2175,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		 *	the request just as we're logging the
 		 *	complaint.
 		 */
+		old_number = request->number;
 		request_done(request, FR_ACTION_CONFLICT);
 		request = NULL;
 
@@ -2189,10 +2189,10 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 			 */
 			ERROR("Received conflicting packet from "
 			      "client %s port %d - ID: %u due to "
-			      "unfinished request in module %s.  Giving up on old request.",
+			      "unfinished request %u in module %s.  Giving up on old request",
 			      client->shortname,
 			      packet->src_port, packet->id,
-			      old_module);
+			      old_number, old_module);
 
 #ifdef WITH_STATS
 			switch (packet->code) {
