@@ -100,7 +100,7 @@ void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 	/*
 	 *	Iterates over attributes of a specific type
 	 */
-	if (ar_is_normal(ar)) {
+	if (ar_is_normal(ar) || ar_is_raw(ar)) {
 		fr_pair_dcursor_iter_init(&ns->cursor, list, _tmpl_cursor_child_next, ns);
 	/*
 	 *	Iterates over all attributes at this level
