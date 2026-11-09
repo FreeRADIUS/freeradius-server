@@ -564,17 +564,8 @@ void NEVER_RETURNS rad_assert_fail(char const *file, unsigned int line, char con
 static int _request_free(REQUEST *request)
 {
 	if (request->ev) {
-		fr_event_list_t *el = radius_event_list_corral(EVENT_CORRAL_MAIN);		
-
-		/*
-		 *	We're in a child thread.  The timer will clean us up.
-		 */
-		if (!el) {
-			request->master_state = REQUEST_STOP_PROCESSING;
-			return -1;
-		}
-
-		fr_event_delete(el, &request->ev);
+		request->master_state = REQUEST_STOP_PROCESSING;
+		return -1;
 	}
 
 	TALLOC_FREE(request->coa);
