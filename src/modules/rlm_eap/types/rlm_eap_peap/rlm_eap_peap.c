@@ -469,7 +469,7 @@ static unlang_action_t process_resume_reply(unlang_result_t *p_result, request_t
 	request_t		*parent = request->parent;
 #endif
 
-	fr_assert(eap_session->request = parent->parent);
+	fr_assert(eap_session->request == parent->parent);
 
 	p_result->priority = MOD_PRIORITY_MAX;
 
