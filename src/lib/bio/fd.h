@@ -57,9 +57,9 @@ typedef enum : uint8_t {
 
 typedef enum : uint8_t {
 	FR_BIO_FD_INVALID,		//!< not set
-	FR_BIO_FD_UNCONNECTED,		//!< unconnected UDP / datagram only
-					// updates #fr_bio_fd_packet_ctx_t for reads,
-					// uses #fr_bio_fd_packet_ctx_t for writes
+	FR_BIO_FD_UNCONNECTED,		//!< unconnected UDP / datagram, but also allowed
+					// for client TCP connections, when the destination
+					// is specified later.
 	FR_BIO_FD_CONNECTED,		//!< connected client sockets (UDP or TCP)
 	FR_BIO_FD_LISTEN,		//!< call fr_bio_fd_accept() for each new connection
 					// fr_bio_read() and fr_bio_write() return an error.
