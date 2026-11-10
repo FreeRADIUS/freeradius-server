@@ -113,6 +113,8 @@ typedef struct {
 	fr_time_t		last_sent;		//!< last time we sent a packet.
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
+	fr_timer_list_t		*tl;			//!< Timers for this connection
+
 	fr_timer_t		*zombie_ev;		//!< Zombie timeout.
 	unlang_t const		*instruction;		//!< Instruction which triggered the start of the zombie period.
 
@@ -469,7 +471,7 @@ static void conn_init_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, voi
 /** Read the connection during the init and negotiation stage.
  *
  */
-static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void conn_init_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
@@ -564,7 +566,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 		/*
 		 *	Set the timer for the next retransmit.
 		 */
-		if (fr_timer_at(h, el->tl, &u->ev, u->retry.next, false, conn_init_next, conn) < 0) {
+		if (fr_timer_at(h, h->tl, &u->ev, u->retry.next, false, conn_init_next, conn) < 0) {
 			connection_signal_reconnect(conn, CONNECTION_FAILED);
 		}
 		return;
@@ -583,7 +585,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 /** Send initial negotiation.
  *
  */
-static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void conn_init_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
@@ -651,7 +653,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	      h->ctx.module_name, (u->retry.count == 1) ? "Originated" : "Retransmitted",
 	      fr_box_time_delta(u->retry.rt));
 
-	if (fr_timer_at(h, el->tl, &u->ev, u->retry.next, false, conn_init_timeout, conn) < 0) {
+	if (fr_timer_at(h, h->tl, &u->ev, u->retry.next, false, conn_init_timeout, conn) < 0) {
 		PERROR("%s - Failed inserting timer event", h->ctx.module_name);
 		goto fail;
 	}
@@ -767,7 +769,7 @@ static unlang_action_t conn_request_hold(UNUSED request_t *request, void *uctx)
 
 	h->tls_started = true;
 
-	if (fr_timer_in(h, h->conn->el->tl, &h->tls_ev, fr_time_delta_wrap(0), false, conn_tls_start, h) < 0) {
+	if (fr_timer_in(h, h->tl, &h->tls_ev, fr_time_delta_wrap(0), false, conn_tls_start, h) < 0) {
 		PERROR("%s - Failed adding a timer to start the TLS connection", h->ctx.module_name);
 		connection_signal_reconnect(h->conn, CONNECTION_FAILED);
 	}
@@ -926,7 +928,7 @@ static void bio_tls_failed(fr_bio_t *bio)
 
 	if (fr_timer_armed(h->tls_failed_ev)) return;
 
-	if (fr_timer_in(h, h->conn->el->tl, &h->tls_failed_ev, fr_time_delta_wrap(0), false, conn_tls_failed, h) < 0) {
+	if (fr_timer_in(h, h->tl, &h->tls_failed_ev, fr_time_delta_wrap(0), false, conn_tls_failed, h) < 0) {
 		PERROR("%s - Failed adding a timer to signal the failed TLS connection", h->ctx.module_name);
 
 		/*
@@ -1157,6 +1159,8 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->conn = conn;
 	h->max_packet_size = h->ctx.inst->max_packet_size;
 	h->last_idle = fr_time();
+
+	MEM(h->tl = fr_timer_list_lst_alloc(h, h->ctx.el->tl));
 
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
 	h->buflen = h->max_packet_size;
@@ -1897,7 +1901,7 @@ static void revive_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, voi
 /** Mark a connection dead after "zombie_interval"
  *
  */
-static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
+static void zombie_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
@@ -1927,8 +1931,11 @@ static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	if (!h->ctx.dynamic) {
 		/*
 		 *	Force the instruction to immediately fail until the revive interval has expired.
+		 *
+		 *	We use the main interpreter event loop here, so that the timer outlives the connection.
 		 */
-		unlang_interpret_force_result(h->instruction, &(unlang_result_t){.rcode = RLM_MODULE_FAIL}, tl,
+		unlang_interpret_force_result(h->instruction, &(unlang_result_t){.rcode = RLM_MODULE_FAIL},
+					      h->ctx.el->tl,
 					      h->ctx.inst->revive_interval);
 
 		/*
@@ -1942,7 +1949,7 @@ static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	/*
 	 *	Revive the connection after a time.
 	 */
-	if (fr_timer_at(h, tl, &h->zombie_ev,
+	if (fr_timer_at(h, h->tl, &h->zombie_ev,
 			fr_time_add(now, h->ctx.inst->revive_interval), false,
 			revive_timeout, tconn) < 0) {
 		ERROR("Failed inserting revive timeout for connection");
@@ -2021,7 +2028,7 @@ static void status_check_enqueue(trunk_connection_t *tconn, bio_handle_t *h, boo
 		return;
 	}
 
-	if (fr_timer_at(h, h->ctx.el->tl, &u->ev, u->retry.next, false, status_check_timeout, tconn) < 0) {
+	if (fr_timer_at(h, h->tl, &u->ev, u->retry.next, false, status_check_timeout, tconn) < 0) {
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
@@ -2052,8 +2059,6 @@ static void status_check_enqueue(trunk_connection_t *tconn, bio_handle_t *h, boo
 static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
 {
 	bio_handle_t	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
-	fr_event_list_t	*el = unlang_interpret_event_list(request);
-
 	/*
 	 *	We're replicating, and don't care about the health of
 	 *	the home server, and this function should not be called.
@@ -2114,7 +2119,7 @@ static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_t
 		 */
 		h->instruction = unlang_interpret_instruction(request);
 
-		if (fr_timer_at(h, el->tl, &h->zombie_ev, fr_time_add(now, h->ctx.inst->zombie_period),
+		if (fr_timer_at(h, h->tl, &h->zombie_ev, fr_time_add(now, h->ctx.inst->zombie_period),
 				false, zombie_timeout, tconn) < 0) {
 			ERROR("Failed inserting zombie timeout for connection");
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
@@ -2658,7 +2663,7 @@ static void status_check_reply(trunk_connection_t *tconn, bio_request_t *u, fr_t
 		/*
 		 *	Set the timer for the next status check.
 		 */
-		if (fr_timer_at(h, h->ctx.el->tl, &u->ev, u->retry.next, false, status_check_next, tconn) < 0) {
+		if (fr_timer_at(h, h->tl, &u->ev, u->retry.next, false, status_check_next, tconn) < 0) {
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
 		return;
