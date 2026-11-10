@@ -2,8 +2,10 @@
 #
 #  Tar up the prof-results/ directory (if any) and POST the tarball, with a
 #  GitHub OIDC bearer token, to the URL given as the only argument. A missing
-#  or empty prof-results/ is a quiet exit 0; any other failure exits non-zero
-#  so the CI leg fails with it.
+#  or empty prof-results/ is a quiet exit 0. Transient outcomes (curl command
+#  failure, 408, 429, 5xx) when trying to obtain an OIDC token or upload the
+#  tarball exit 75 (EX_TEMPFAIL), which the CI step tolerates; any other
+#  failure exits non-zero so the CI leg fails with it.
 #
 #  The runner sets ACTIONS_ID_TOKEN_REQUEST_TOKEN / ACTIONS_ID_TOKEN_REQUEST_URL
 #  automatically when the job has "id-token: write"; the script uses them to
@@ -32,6 +34,15 @@ are not comparable with previous runs.
 Needs ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL, which
 the runner sets when the job has "id-token: write".
 
+Exit status:
+  0   published, or nothing to publish
+  1   refused an unclean capture, a missing commit subject, GITHUB_REF_NAME
+      or OIDC request variable, the server refused the token request or upload,
+      or returned no token
+  2   usage error
+  75  transient outcomes (curl command failure, 408, 429, 5xx) when trying to
+      obtain an OIDC token or upload the tarball
+
 Example:
   ${0##*/} https://cinfra-ca.inkbridge.io/profiling/data
 EOF
@@ -45,6 +56,10 @@ case ${1:-} in
 esac
 
 [ $# -eq 1 ] || { usage >&2; exit 2; }
+
+#  Exit status for a failed token request or upload. Use standard exit code
+#  representing a temporary failure with EX_TEMPFAIL=75.
+EX_TEMPFAIL=75
 url=$1
 
 #  The OIDC audience is the URL's origin (scheme://host).
@@ -118,14 +133,46 @@ if ! [ -s "$file_list" ]; then
 fi
 tar -czf "$tarball" -C prof-results -T "$file_list"
 
-#  The || true keeps set -e out of the way so the check below can print a
-#  clear message on a failed mint.
-token=$(curl -sS \
-	-H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-	"$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${audience}" \
-	| jq -r '.value') || true
-if [ -z "$token" ] || [ "$token" = null ]; then
-	echo "ERROR: could not obtain OIDC token" >&2
+#  Mint the OIDC token. curl retries timeouts, refused connections and HTTP
+#  408/429/5xx once, two seconds apart. Each attempt gets 10
+#  seconds to connect and 30 seconds in total.
+#
+#  --no-progress-meter keeps errors and retry warnings in the logs.
+#  -w logs the HTTP code and how long the last attempt took.
+if [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+	echo "ERROR: ACTIONS_ID_TOKEN_REQUEST_* not set; the job needs \"id-token: write\"" >&2
+	exit 1
+fi
+
+token_resp="$tmpdir/token-response"
+token_code=$(curl --no-progress-meter --connect-timeout 10 --max-time 30 \
+	--retry 1 --retry-delay 2 --retry-connrefused \
+	-o "$token_resp" -w '%{http_code}%{stderr}token request: %{time_total}s\n' \
+	--oauth2-bearer "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+	"$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${audience}") || token_code=000
+
+case "$token_code" in
+	2??)
+		# If jq fails, set token to empty and continue. Important
+		# to do since we are using set -e and we do not want to exit
+		# when jq fails.
+		token=$(jq -r '.value // empty' "$token_resp") || token=
+		;;
+	000|408|429|5??)
+		echo "ERROR: could not obtain OIDC token (HTTP $token_code)" >&2
+		[ -s "$token_resp" ] && { cat "$token_resp" >&2; echo >&2; }
+		exit $EX_TEMPFAIL
+		;;
+	*)
+		echo "ERROR: could not obtain OIDC token (HTTP $token_code)" >&2
+		[ -s "$token_resp" ] && { cat "$token_resp" >&2; echo >&2; }
+		exit 1
+		;;
+esac
+
+#  Check that token has a value
+if [ -z "$token" ]; then
+	echo "ERROR: OIDC token is empty" >&2
 	exit 1
 fi
 
@@ -150,17 +197,30 @@ branch_b64=$(printf '%s' "$GITHUB_REF_NAME" | head -c 200 | base64 | tr -d '\n')
 
 echo "publishing $(du -h "$tarball" | cut -f1 | tr -d ' ') prof-results tarball"
 resp="$tmpdir/response"
-code=$(curl -sS --connect-timeout 10 -o "$resp" -w '%{http_code}' \
-	-X POST -H "Authorization: Bearer $token" \
+#  The upload gets 10 seconds to connect and 120 seconds in total.
+code=$(curl -sS --connect-timeout 10 --max-time 120 -o "$resp" -w '%{http_code}' \
+	-X POST --oauth2-bearer "$token" \
 	-H "X-Prof-Commit-Subject-B64: $subject_b64" \
 	-H "X-Prof-Branch-Ref-B64: $branch_b64" \
 	--data-binary @"$tarball" \
 	"$url") || code=000
 
 case "$code" in
-	2??) exit 0 ;;
-	*)
+	2??)
+		exit 0
+		;;
+	000|408|429|5??)
 		echo "ERROR: publish failed (HTTP $code)" >&2
+		[ -s "$resp" ] && { cat "$resp" >&2; echo >&2; }
+		exit $EX_TEMPFAIL
+		;;
+	4??)
+		echo "ERROR: publish failed (HTTP $code)" >&2
+		[ -s "$resp" ] && { cat "$resp" >&2; echo >&2; }
+		exit 1
+		;;
+	*)
+		echo "ERROR: unexpected publish failure (HTTP $code)" >&2
 		[ -s "$resp" ] && { cat "$resp" >&2; echo >&2; }
 		exit 1
 		;;
