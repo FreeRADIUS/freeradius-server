@@ -43,6 +43,22 @@ typedef enum : uint8_t {
 	TIMER_LIST_TYPE_SHARED = 3			//!< all events share one event callback
 } timer_list_type_t;
 
+/** Set by fr_timer_list_run(), for the lifetime of the call
+ *
+ * fr_timer_list_run() sets this locally, and then also in tl->run.  If a callback frees the list out from
+ * under fr_timer_list_run(), the this structure tracks that.  We can't access a list after it's been freed.
+ * The destructor for the list sets run->freed (in the parents stack frame).  fr_timer_list_run() can then
+ * check its' local on-stack variable to see whether the list has been freed, and whether it should stop
+ * running the list
+ */
+typedef struct timer_run_s timer_run_t;
+
+struct timer_run_s {
+	timer_run_t		*prev;			//!< The frame of the enclosing call, when a callback runs
+							///< the same list again.
+	bool			freed;			//!< A callback freed the list.
+};
+
 /** An event timer list
  *
  */
@@ -62,6 +78,7 @@ struct fr_timer_list_s {
 	};
 	timer_list_type_t		type;
 	bool				in_handler;	//!< Whether we're currently in a callback.
+	timer_run_t			*run;		//!< Track whether we freed the list in local variables.
 	bool				disarmed;	//!< the entire timer list is disarmed
 
 	timer_head_t	   	deferred;		//!< A list of timer events to be inserted, after
@@ -137,6 +154,18 @@ FR_DLIST_FUNCS(timer, fr_timer_t, entry)
 		return fired; \
 	} while (0)
 
+/*
+ *	After running a callback, stop if the callback freed the list.  The list is gone, so the code must
+ *	not read the list.
+ */
+#define TIMER_RETURN_IF_FREED \
+	do { \
+		if (unlikely(run->freed)) { \
+			*when = fr_time_wrap(0); \
+			return fired; \
+		} \
+	} while (0)
+
 /** Specialisation function to insert a timer
  *
  * @param[in] tl	Timer list to insert into.
@@ -160,11 +189,13 @@ typedef int (*timer_disarm_t)(fr_timer_t *ev);
  *
  * @param[in] tl	Timer list to execute.
  * @param[in,out] when	Our current time, updated to the next event time (i.e. the next time we'll need to run something)
+ * @param[in] run	The call to fr_timer_list_run().  A callback may free the list.  After each callback,
+ *			the function reads `run->freed`, and returns without reading `tl` if the value is true.
  * @return
  *	- 0 no timer events fired.
  *	- 1 a timer event fired.
  */
-typedef int (*timer_list_run_t)(fr_timer_list_t *tl, fr_time_t *when);
+typedef int (*timer_list_run_t)(fr_timer_list_t *tl, fr_time_t *when, timer_run_t *run);
 
 /** Return the soonest timer event
  *
@@ -212,9 +243,9 @@ static int timer_ordered_insert_at(fr_timer_list_t *tl, fr_timer_t *ev);
 static int timer_lst_disarm(fr_timer_t *ev);
 static int timer_ordered_disarm(fr_timer_t *ev);
 
-static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when);
-static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
-;static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when);
+static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when, timer_run_t *run);
+static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when, timer_run_t *run);
+static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when, timer_run_t *run);
 
 static fr_timer_t *timer_list_lst_head(fr_timer_list_t *tl);
 static fr_timer_t *timer_list_ordered_head(fr_timer_list_t *tl);
@@ -776,7 +807,7 @@ bool _fr_timer_armed(fr_timer_t *ev)
  *	- 1 a timer event fired.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_timer_list_t trips --fsanitize=function*/
-static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
+static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when, timer_run_t *run)
 {
 	fr_timer_cb_t	callback;
 	void		*uctx;
@@ -811,6 +842,8 @@ static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
 		callback(tl, *when, uctx);
 
 		fired++;
+
+		TIMER_RETURN_IF_FREED;
 	}
 
 	TIMER_RETURN_DONE;
@@ -828,7 +861,7 @@ static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
  *	- >0 number of timer event fired.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_timer_list_t trips --fsanitize=function*/
-static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
+static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when, timer_run_t *run)
 {
 	fr_timer_cb_t	callback;
 	void		*uctx;
@@ -861,6 +894,8 @@ static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 		callback(tl, *when, uctx);
 
 		fired++;
+
+		TIMER_RETURN_IF_FREED;
 	}
 
 	TIMER_RETURN_DONE;
@@ -878,7 +913,7 @@ static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
  *	- >0 number of timer event fired.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_timer_list_t trips --fsanitize=function*/
-static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when)
+static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when, timer_run_t *run)
 {
 	void		*uctx;
 	unsigned int	fired = 0;
@@ -895,6 +930,8 @@ static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when)
 		tl->shared.callback(tl, *when, uctx);
 
 		fired++;
+
+		TIMER_RETURN_IF_FREED;
 	}
 
 	TIMER_RETURN_DONE;
@@ -922,6 +959,9 @@ int fr_timer_list_force_run(fr_timer_list_t *tl)
 
 /** Execute any pending events in the event loop
  *
+ * A callback may free the list which is running the callback, or maybe free the talloc parent of the list.
+ * We can't check the list to see if it's freed, so we put the status into #timer_run_t.
+ *
  * @param[in] tl	to execute events in.
  * @param[in] when	Process events scheduled to run before or at this time.
  *			- Set to 0 if no more events.
@@ -933,11 +973,21 @@ int fr_timer_list_force_run(fr_timer_list_t *tl)
  */
 int fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when)
 {
-	int ret;
-	bool in_handler = tl->in_handler;	/* allow nested timer execution */
+	int		ret;
+	bool		in_handler = tl->in_handler;	/* allow nested timer execution */
+	timer_run_t	run = { .prev = tl->run, .freed = false };
 
 	tl->in_handler = true;
-	ret = timer_funcs[tl->type].run(tl, when);
+	tl->run = &run;
+	ret = timer_funcs[tl->type].run(tl, when, &run);
+
+	/*
+	 *	Has a callback freed the list?  If so, stop processing it.  The destructors have already
+	 *	removed all events from the list(s).
+	 */
+	if (unlikely(run.freed)) return ret;
+
+	tl->run = run.prev;
 	tl->in_handler = in_handler;
 
 	/*
@@ -957,7 +1007,7 @@ int fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when)
 	 *	events to insert, so we need to forcefully
 	 *	update the parent timer.
 	 */
-	} else if(ret > 0) {
+	} else if (ret > 0) {
 		if (unlikely(timer_list_parent_update(tl) < 0)) return -1;
 	}
 
@@ -1287,6 +1337,8 @@ void fr_timer_list_set_time_func(fr_timer_list_t *tl, fr_event_time_source_t fun
 
 /** Cleanup all timers currently in the list
  *
+ * If we're inside fr_timer_list_run(), then tell its on-stack variable that the list has been freed.
+ *
  * @param[in] tl	to cleanup.
  * @return
  *	- 0 on success.
@@ -1294,20 +1346,35 @@ void fr_timer_list_set_time_func(fr_timer_list_t *tl, fr_event_time_source_t fun
  */
 static int _timer_list_free(fr_timer_list_t *tl)
 {
-	fr_timer_t *ev;
-
-	if (unlikely(tl->in_handler)) {
-		fr_strerror_const("Cannot free event timer list while in handler");
-		return -1;
-	}
+	fr_timer_t	*ev;
+	timer_run_t	*run;
 
 	if (tl->parent_ev) if (unlikely(fr_timer_delete(&tl->parent_ev) < 0)) return -1;
 
-	if (tl->type == TIMER_LIST_TYPE_SHARED) return 0;
+	/*
+	 *	Freeing an event updates the event in the parent list.  The event in the parent list was
+	 *	freed above, and the list has no more use for the parent.
+	 */
+	tl->parent = NULL;
 
-	while ((ev = timer_funcs[tl->type].head(tl))) {
-		if (talloc_free(ev) < 0) return -1;
+	if (tl->type != TIMER_LIST_TYPE_SHARED) {
+		/*
+		 *	Events which a callback inserted into the list are in the deferred list, and are not
+		 *	in the main list.
+		 */
+		while ((ev = timer_funcs[tl->type].head(tl))) {
+			if (talloc_free(ev) < 0) return -1;
+		}
+
+		while ((ev = timer_head(&tl->deferred))) {
+			if (talloc_free(ev) < 0) return -1;
+		}
 	}
+
+	/*
+	 *	Tell the parent caller(s) fr_timer_list_run() that a callback has freed the list.
+	 */
+	for (run = tl->run; run != NULL; run = run->prev) run->freed = true;
 
 	return 0;
 }

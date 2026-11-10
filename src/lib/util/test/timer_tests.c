@@ -467,6 +467,131 @@ static void ordered_disarm_in_callback(void)
 	talloc_free(tl_outer);
 }
 
+/** A callback which frees the list which the callback runs in, or the talloc parent of the list
+ *
+ * Freeing the talloc parent is the shape of a module which allocates a child list with a connection handle as
+ * the talloc parent, and then closes the connection, and so frees the handle, from a timer callback.
+ */
+typedef struct {
+	fr_timer_list_t	*tl;		//!< list which runs the callback.
+	void		*to_free;	//!< what the callback frees.
+	int		ret;		//!< Result of talloc_free().
+	bool		fired;
+	fr_timer_t	*pending;	//!< event in the list, due after the callback.
+	fr_timer_t	*deferred;	//!< event which the callback inserts.
+} free_ctx_t;
+
+static bool free_probe_destroyed;
+
+static int free_ctx_probe_destructor(UNUSED void *probe)
+{
+	free_probe_destroyed = true;
+	return 0;
+}
+
+static void timer_cb_free(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
+	free_ctx_t *ctx = uctx;
+
+	ctx->fired = true;
+
+	/*
+	 *	The list is running a callback, so the new event goes into the deferred list.
+	 */
+	TEST_CHECK(fr_timer_in(NULL, ctx->tl, &ctx->deferred, fr_time_delta_from_sec(10), false, timer_cb, NULL) == 0);
+
+	ctx->ret = talloc_free(ctx->to_free);
+}
+
+/** A callback may free the list which the callback runs in, or the talloc parent of the list
+ *
+ * The code which runs the callbacks must not read the list after the callback returns.  The test checks that
+ * the list is freed, that the list frees the events which are pending and deferred, and that the run returns.
+ * An address sanitiser reports a read of the list after the callback.
+ */
+static void free_in_callback_test(bool ordered, bool free_parent)
+{
+	fr_timer_list_t	*tl_outer, *tl_inner;
+	fr_timer_t	*event1 = NULL;
+	free_ctx_t	ctx = {};
+	void		*parent, *probe;
+	fr_time_t	now;
+	int		ret;
+
+	tl_outer = ordered ? fr_timer_list_ordered_alloc(NULL, NULL) : fr_timer_list_lst_alloc(NULL, NULL);
+	TEST_ASSERT(tl_outer != NULL);
+
+	parent = talloc_new(NULL);
+	TEST_ASSERT(parent != NULL);
+
+	tl_inner = ordered ? fr_timer_list_ordered_alloc(parent, tl_outer) :
+			     fr_timer_list_lst_alloc(parent, tl_outer);
+	TEST_ASSERT(tl_inner != NULL);
+
+	fr_timer_list_set_time_func(tl_outer, basic_time);
+	fr_timer_list_set_time_func(tl_inner, basic_time);
+
+	/*
+	 *	A child of the list.  Its destructor runs only if talloc frees the list.
+	 */
+	free_probe_destroyed = false;
+	probe = talloc_new(tl_inner);
+	TEST_ASSERT(probe != NULL);
+	talloc_set_destructor(probe, free_ctx_probe_destructor);
+
+	ctx.tl = tl_inner;
+	ctx.to_free = free_parent ? parent : (void *) tl_inner;
+
+	ret = fr_timer_in(NULL, tl_inner, &event1, fr_time_delta_from_sec(1), true, timer_cb_free, &ctx);
+	TEST_CHECK(ret == 0);
+	ret = fr_timer_in(NULL, tl_inner, &ctx.pending, fr_time_delta_from_sec(5), false, timer_cb, NULL);
+	TEST_CHECK(ret == 0);
+
+	now = fr_time_from_sec(1);
+	(void) fr_timer_list_run(tl_outer, &now);
+	TEST_CHECK(ctx.fired == true);
+
+	TEST_CASE("the callback frees the list, or the parent of the list");
+	TEST_CHECK(ctx.ret == 0);
+	TEST_MSG("talloc_free() returned %d", ctx.ret);
+	TEST_CHECK(free_probe_destroyed == true);
+	TEST_MSG("the list was not freed");
+
+	TEST_CASE("the list frees the pending event and the deferred event");
+	TEST_CHECK(ctx.pending == NULL);
+	TEST_CHECK(ctx.deferred == NULL);
+
+	TEST_CASE("the event of the list in the parent list is gone");
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 0);
+
+	/*
+	 *	Freeing the list directly leaves the talloc parent.
+	 */
+	if (!free_parent) talloc_free(parent);
+
+	talloc_free(tl_outer);
+}
+
+static void lst_free_list_in_callback(void)
+{
+	free_in_callback_test(false, false);
+}
+
+static void ordered_free_list_in_callback(void)
+{
+	free_in_callback_test(true, false);
+}
+
+static void lst_free_parent_in_callback(void)
+{
+	free_in_callback_test(false, true);
+}
+
+static void ordered_free_parent_in_callback(void)
+{
+	free_in_callback_test(true, true);
+}
+
 TEST_LIST = {
 	{ "lst_basic",		lst_basic_test },
 	{ "ordered_basic",		ordered_basic_test },
@@ -477,5 +602,9 @@ TEST_LIST = {
 	{ "ordered_nested",		ordered_nested },
 	{ "lst_disarm_in_callback",	lst_disarm_in_callback },
 	{ "ordered_disarm_in_callback",	ordered_disarm_in_callback },
+	{ "lst_free_list_in_callback",	lst_free_list_in_callback },
+	{ "ordered_free_list_in_callback",	ordered_free_list_in_callback },
+	{ "lst_free_parent_in_callback",	lst_free_parent_in_callback },
+	{ "ordered_free_parent_in_callback",	ordered_free_parent_in_callback },
 	TEST_TERMINATOR
 };
