@@ -2052,11 +2052,17 @@ static void status_check_enqueue(trunk_connection_t *tconn, bio_handle_t *h, boo
  *  request finally being written to the socket.  So we need to check
  *  for zombie at BOTH the timeout and the mux / write function.
  *
+ * @param[in] request	which timed out, or which is being sent.
+ * @param[in] tconn	the trunk connection to check.
+ * @param[in] now	the current time, or zero to read the clock.
+ * @param[in] last_sent	when the packet was first sent.
+ * @param[in] timeout	the final timeout of the packet.  A reply within this time keeps the connection alive.
  * @return
  *	- true if the connection is zombie.
  *	- false if the connection is not zombie.
  */
-static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
+static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent,
+			     fr_time_delta_t timeout)
 {
 	bio_handle_t	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 	/*
@@ -2088,7 +2094,7 @@ static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_t
 	 *	If we've seen ANY response in the allowed window, then the connection is still alive.
 	 */
 	if ((h->ctx.inst->mode == RLM_RADIUS_MODE_PROXY) &&
-	    fr_time_gt(h->last_reply, fr_time_sub(now, h->ctx.inst->response_window))) return false;
+	    fr_time_gt(h->last_reply, fr_time_sub(now, timeout))) return false;
 
 	/*
 	 *	Stop using it for new requests.
@@ -2265,7 +2271,7 @@ static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *requ
 	 */
 	if (!tconn || (inst->mode == RLM_RADIUS_MODE_REPLICATE)) return;
 
-	check_for_zombie(request, tconn, now, retry->start);
+	check_for_zombie(request, tconn, now, retry->start, retry->config->mrd);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
@@ -3310,30 +3316,20 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 			u->proxied = (request->parent->packet->code == request->packet->code);
 		}
 
-		/*
-		 *	Proxied packets get a final timeout, as we retry only on DUP packets.
-		 */
-		if (u->proxied) goto timeout_retry;
-
 		FALL_THROUGH;
 
 		/*
-		 *	Client packets (i.e. packets we originate) get retries for UDP.  And no retries for TCP.
+		 *	All proxied and client packets have at a timer, generally at least max_rtx_duration.
 		 */
 	case RLM_RADIUS_MODE_CLIENT:
-		if (inst->fd_config.socket_type == SOCK_DGRAM) {
-			retry_config = &inst->retry[u->code];
-			break;
-		}
-		FALL_THROUGH;
+		retry_config = &inst->retry[u->code];
+		break;
 
 		/*
-		 *	Replicated packets are never retried, but they have a timeout if the socket isn't
-		 *	ready for writing.
+		 *	Replicated packets do not wait for a response, so they have no timer.
 		 */
 	case RLM_RADIUS_MODE_REPLICATE:
-	timeout_retry:
-		retry_config = &inst->timeout_retry;
+		retry_config = NULL;
 		break;
 
 	default:

@@ -208,7 +208,7 @@ static conf_parser_t const module_config[] = {
 
 	{ FR_CONF_OFFSET("track_load_balance", rlm_radius_t, track_load_balance), },
 
-	{ FR_CONF_OFFSET("response_window", rlm_radius_t, response_window), .dflt = STRINGIFY(20) },
+	{ FR_CONF_OFFSET("response_window", rlm_radius_t, response_window) },	/* deprecated, see mod_instantiate() */
 
 	{ FR_CONF_OFFSET("zombie_period", rlm_radius_t, zombie_period), .dflt = STRINGIFY(40) },
 
@@ -714,7 +714,16 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	if (rcode == 0) RETURN_UNLANG_NOOP;
 	if (rcode < 0) RETURN_UNLANG_FAIL;
 
-	action = unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, FR_SIGNAL_NONE, u, retry_config);
+	/*
+	 *	A replicated packet does not wait for a response, so it has no retry configuration, and no
+	 *	timer.
+	 */
+	if (!retry_config) {
+		action = unlang_module_yield(request, mod_resume, mod_signal, FR_SIGNAL_NONE, u);
+	} else {
+		action = unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, FR_SIGNAL_NONE, u,
+						      retry_config);
+	}
 
 	/*
 	 *	The request is not yielding, so mod_signal() will never be called.  Remove the request from the
@@ -962,8 +971,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	path, and the conflicts won't affect anything else.  Only the src_port range is special.
 	 */
 
-	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->response_window, >=, fr_time_delta_from_sec(1));
-	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->response_window, <=, fr_time_delta_from_sec(120));
+	/*
+	 *	The timeout of a packet which waits for a response is now the "max_rtx_duration" of the packet
+	 *	type.  We can't make this DEPRECATED, because doing so would break existing systems. :(
+	 */
+	if (fr_time_delta_ispos(inst->response_window)) {
+		cf_log_warn(conf, "Ignoring 'response_window'.  Use 'max_rtx_duration' in the subsection for each "
+			    "packet type instead");
+
+#define RESPONSE_WINDOW_FIX(_x) do { \
+			if (fr_time_delta_ispos(inst->response_window) && fr_time_delta_eq(inst->retry[_x].mrd, fr_time_delta_wrap(0))) { \
+				inst->retry[_x].mrd = inst->response_window; \
+			} \
+		} while (0)
+	}
 
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(120));
@@ -975,11 +996,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	num_types = talloc_array_length(inst->types);
 	fr_assert(num_types > 0);
-
-	inst->timeout_retry = (fr_retry_config_t) {
-		.mrc = 1,
-		.mrd = inst->response_window,
-	};
 
 	inst->common_ctx = (fr_radius_ctx_t) {
 		.secret = inst->secret,
@@ -1093,6 +1109,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	@todo  -  check  the  contents  of  the "update"  section,  to  be  sure  that  (e.g.)
 		 *	Access-Request contains User-Name, etc.
 		 */
+		RESPONSE_WINDOW_FIX(FR_RADIUS_CODE_STATUS_SERVER);
 
 		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].irt, >=, fr_time_delta_from_sec(1));
 		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrt, >=, fr_time_delta_from_sec(5));
@@ -1128,9 +1145,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	Only check the async timers when we're acting as a client.
+	 *	Replicated packets do not wait for a response, and do not use the retry timers.
 	 */
-	if (inst->mode != RLM_RADIUS_MODE_CLIENT) {
+	if ((inst->mode == RLM_RADIUS_MODE_REPLICATE) || (inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE)) {
 		return 0;
 	}
 
@@ -1138,6 +1155,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Set limits on retransmission timers
 	 */
 	if (inst->allowed[FR_RADIUS_CODE_ACCESS_REQUEST]) {
+		RESPONSE_WINDOW_FIX(FR_RADIUS_CODE_ACCESS_REQUEST);
+
 		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].irt, >=, fr_time_delta_from_sec(1));
 		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
 		FR_INTEGER_BOUND_CHECK("Access-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrc, >=, 1);
@@ -1150,19 +1169,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	Note that RFC 5080 allows for Accounting-Request to
-	 *	have mrt=mrc=mrd = 0, which means "retransmit
-	 *	forever".  We allow that, with the restriction that
-	 *	the server core will automatically free the request at
-	 *	request.timeout.
+	 *	Note that RFC 5080 allows for Accounting-Request to have mrt=mrc=mrd = 0, which means
+	 *	"retransmit forever".  We allow that when we originate packets over UDP or DTLS, with the
+	 *	restriction that the server core will automatically free the request at request.timeout.
 	 */
 	if (inst->allowed[FR_RADIUS_CODE_ACCOUNTING_REQUEST]) {
+		RESPONSE_WINDOW_FIX(FR_RADIUS_CODE_ACCOUNTING_REQUEST);
+
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].irt, >=, fr_time_delta_from_sec(1));
-#if 0
-		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrc, >=, 0);
-		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrd, >=, fr_time_delta_from_sec(0));
-#endif
 
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].irt, <=, fr_time_delta_from_sec(5));
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
@@ -1174,6 +1188,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	CoA
 	 */
 	if (inst->allowed[FR_RADIUS_CODE_COA_REQUEST]) {
+		RESPONSE_WINDOW_FIX(FR_RADIUS_CODE_COA_REQUEST);
+
 		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_COA_REQUEST].irt, >=, fr_time_delta_from_sec(1));
 		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_COA_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
 		FR_INTEGER_BOUND_CHECK("CoA-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_COA_REQUEST].mrc, >=, 1);
@@ -1189,6 +1205,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Disconnect
 	 */
 	if (inst->allowed[FR_RADIUS_CODE_DISCONNECT_REQUEST]) {
+		RESPONSE_WINDOW_FIX(FR_RADIUS_CODE_DISCONNECT_REQUEST);
+
 		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].irt, >=, fr_time_delta_from_sec(1));
 		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrc, >=, 1);
@@ -1198,6 +1216,39 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
 		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
+	}
+
+	/*
+	 *	When we proxy, we don't retransmit. We do send dups if the NAS retransmits.	 
+	 *	When we use a stream socket, we don't retransmit either.
+	 *	In both cases we fail at `max_rtx_duration`.
+	 *
+	 *	This behavior is enforced at run-time by simply setting mrc=1 when the module starts up.
+	 */
+	if ((inst->mode == RLM_RADIUS_MODE_PROXY) || (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY) ||
+	    (inst->fd_config.socket_type == SOCK_STREAM)) {
+		for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
+			if (i == FR_RADIUS_CODE_STATUS_SERVER) continue;
+
+			inst->retry[i].mrc = 1;
+		}
+
+		/*
+		 *	Every proxied Accounting-Request has a timer.
+		 */
+		if (inst->allowed[FR_RADIUS_CODE_ACCOUNTING_REQUEST] &&
+		    !fr_time_delta_ispos(inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrd)) {
+			cf_log_warn(conf, "Rewriting \"Accounting-Request.max_rtx_duration = 0\" to \"30\"");
+			inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrd = fr_time_delta_from_sec(30);
+		}
+
+	/*
+	 *	A zero "max_rtx_duration" means that we retransmit forever.  fr_retry_init() ends the
+	 *	retransmissions after one day.
+	 */
+	} else if (inst->allowed[FR_RADIUS_CODE_ACCOUNTING_REQUEST] &&
+		   !fr_time_delta_ispos(inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrd)) {
+		inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrc = 0;
 	}
 
 	return 0;

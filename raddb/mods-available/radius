@@ -241,14 +241,9 @@ radius {
 	require_message_authenticator = auto
 
 	#
-	#  response_window:: If we do not receive any replies within this
-	#  time period, then start `zombie_period`
-	#
-	response_window = 15
-
-	#
-	#  zombie_period:: If the home server does not reply to packets
-	#  within `response_window`, then `zombie_period` starts.
+	#  zombie_period:: If the home server does not reply to a packet
+	#  within `max_rtx_duration` for the packet type, then `zombie_period`
+	#  starts.
 	#
 	#  When `zombie_period` starts, a connection is marked `zombie`, and
 	#  then is not used to send new packets. If there are no responses on
@@ -952,7 +947,6 @@ radius proxy {
 	#  respond, it will often just hit the home server lifetime, and be
 	#  deleted.
 	#
-	response_window = 15
 	zombie_period = 10
 	revive_interval = 3600
 

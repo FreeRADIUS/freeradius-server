@@ -61,7 +61,7 @@ struct rlm_radius_s {
 
 	char const		*name;
 
-	fr_time_delta_t		response_window;
+	fr_time_delta_t		response_window;	//!< Deprecated.  Only used to warn that the item is ignored.
 	fr_time_delta_t		zombie_period;
 	fr_time_delta_t		revive_interval;
 
@@ -94,7 +94,6 @@ struct rlm_radius_s {
 
 	bool			allowed[FR_RADIUS_CODE_MAX];
 
-	fr_retry_config_t	timeout_retry;
 	fr_retry_config_t      	retry[FR_RADIUS_CODE_MAX];
 
 	trunk_conf_t		trunk_conf;		//!< trunk configuration
