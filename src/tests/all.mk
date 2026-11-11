@@ -87,6 +87,7 @@ TEST_SUITES := \
 		test.radmin	\
 		test.eap	\
 		test.tls	\
+		test.radius	\
 		test.tacacs	\
 		test.vmps	\
 		test.ldap_sync
