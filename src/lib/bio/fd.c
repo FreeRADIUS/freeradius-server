@@ -1511,7 +1511,10 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 		 */
 		if (my->info.cfg->transport_type != FR_BIO_FD_TRANSPORT_TCP) break;
 
-		if (shutdown(my->info.socket.fd, SHUT_RD) < 0) {
+		/*
+		 *	Allow multiple shutdown().
+		 */
+		if ((shutdown(my->info.socket.fd, SHUT_RD) < 0) && (errno != ENOTCONN)) {
 			fr_strerror_printf("Failed shutting down connected socket - %s", fr_syserror(errno));
 			return -1;
 		}
