@@ -283,8 +283,14 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 			    (struct sockaddr *)&src, &sizeof_src);
 #endif
 
-	if (data_len <= 0) {
+	if (data_len < 0) {
 		fr_strerror_printf("Failed reading DHCP socket: %s", fr_syserror(errno));
+		rad_free(&packet);
+		return NULL;
+	}
+
+	if (data_len == 0) {
+		fr_strerror_printf("Received zero-length packet");
 		rad_free(&packet);
 		return NULL;
 	}
