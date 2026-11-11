@@ -1036,9 +1036,38 @@ static int _bio_handle_free(bio_handle_t *h)
 	return 0;
 }
 
+/** Replication is write-only, so the socket never reads.
+ *
+ *  A stream socket has to be connected before this function runs, as shutdown() on a socket which is not
+ *  connected fails with ENOTCONN.
+ *
+ * @return
+ *	- 0 on success, or when the module is not replicating.
+ *	- -1 on failure.
+ */
+static int conn_write_only(bio_handle_t *h)
+{
+	if ((h->ctx.inst->mode != RLM_RADIUS_MODE_REPLICATE) &&
+	    (h->ctx.inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE)) return 0;
+
+	fr_assert(h->ctx.fd_info->state == FR_BIO_FD_STATE_OPEN);
+
+	if (fr_bio_fd_write_only(h->bio.fd) < 0) {
+		PERROR("%s - Failed setting socket to write-only", h->ctx.module_name);
+		return -1;
+	}
+
+	return 0;
+}
+
 static void bio_connected(fr_bio_t *bio)
 {
 	bio_handle_t		*h = bio->uctx;
+
+	if (conn_write_only(h) < 0) {
+		connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+		return;
+	}
 
 	DEBUG("%s - Connection open - %s", h->ctx.module_name, h->ctx.fd_info->name);
 
@@ -1348,16 +1377,29 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		rcode = fr_bio_fd_connect_full(h->bio.fd, conn->el, bio_connected, bio_error, NULL, NULL);
 		if (rcode < 0) goto fail;
 
-		*h_out = h;
-
-		if (rcode == 0) return CONNECTION_STATE_CONNECTING;
+		if (rcode == 0) {
+			*h_out = h;
+			return CONNECTION_STATE_CONNECTING;
+		}
 
 		fr_assert(rcode == 1);
+
+		/*
+		 *	Don't return 'h' to the caller when we free it.
+		 */
+		if (conn_write_only(h) < 0) goto fail;
+
+		*h_out = h;
 
 		DEBUG("%s - Connection open - %s", h->ctx.module_name, h->ctx.fd_info->name);
 
 		return CONNECTION_STATE_CONNECTED;
 	}
+
+	/*
+	 *	The socket is connected.
+	 */
+	if (conn_write_only(h) < 0) goto fail;
 
 	/*
 	 *	If we're doing status checks, then we want at least
@@ -1651,12 +1693,6 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 	 */
 	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) {
 		if (read_fn) read_fn = conn_discard;
-
-		if (fr_bio_fd_write_only(h->bio.fd) < 0) {
-			PERROR("%s - Failed setting socket to write-only", h->ctx.module_name);
-			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
-			return;
-		}
 	}
 
 	if (fr_event_fd_insert(h, NULL, el, h->fd,
