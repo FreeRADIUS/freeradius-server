@@ -1202,15 +1202,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->tls_min_version_str) {
 #ifdef LDAP_OPT_X_TLS_PROTOCOL_MIN
-		if (strcmp(inst->tls_min_version_str, "1.2") == 0) {
-			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_2;
-
+		if (strcmp(inst->tls_min_version_str, "1.0") == 0) {
+			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_0;
 		} else if (strcmp(inst->tls_min_version_str, "1.1") == 0) {
 			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_1;
-
-		} else if (strcmp(inst->tls_min_version_str, "1.0") == 0) {
-			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_0;
-
+		} else if (strcmp(inst->tls_min_version_str, "1.2") == 0) {
+			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_2;
+#ifdef LDAP_OPT_X_TLS_PROTOCOL_TLS1_3
+		} else if (strcmp(inst->tls_min_version_str, "1.3") == 0) {
+			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_3;
+#endif
 		} else {
 			cf_log_err_cs(conf, "Invalid 'tls.tls_min_version' value \"%s\"", inst->tls_min_version_str);
 			goto error;
