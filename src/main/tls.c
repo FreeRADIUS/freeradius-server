@@ -1613,8 +1613,8 @@ static CONF_PARSER tls_server_config[] = {
 	{ "CA_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, ca_path), NULL },
 	{ "ca_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_path), NULL },
 	{ "pem_file_type", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, file_type), "yes" },
-	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, private_key_file), NULL },
-	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, certificate_file), NULL },
+	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_MULTI, fr_tls_server_conf_t, private_key_file), NULL },
+	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_MULTI, fr_tls_server_conf_t, certificate_file), NULL },
 	{ "CA_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, ca_file), NULL },
 	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_file), NULL },
 	{ "private_key_password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, fr_tls_server_conf_t, private_key_password), NULL },
@@ -1705,8 +1705,8 @@ static CONF_PARSER tls_client_config[] = {
 	{ "verify_depth", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, verify_depth), "0" },
 	{ "ca_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_path), NULL },
 	{ "pem_file_type", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, file_type), "yes" },
-	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, private_key_file), NULL },
-	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, certificate_file), NULL },
+	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_MULTI, fr_tls_server_conf_t, private_key_file), NULL },
+	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_MULTI, fr_tls_server_conf_t, certificate_file), NULL },
 	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_file), NULL },
 	{ "private_key_password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, fr_tls_server_conf_t, private_key_password), NULL },
 #ifdef PSK_MAX_IDENTITY_LEN
@@ -4178,20 +4178,25 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_
 	 *	the cert chain needs to be given in PEM from
 	 *	openSSL.org
 	 */
-	if (!chain_file) chain_file = conf->certificate_file;
-	if (!chain_file) goto load_ca;
-
-	if (type == SSL_FILETYPE_PEM) {
-		if (!(SSL_CTX_use_certificate_chain_file(ctx, chain_file))) {
-			tls_error_log(NULL, "Failed reading certificate file \"%s\"",
-				      chain_file);
-			return NULL;
+	if (!chain_file) {
+		//chain_file = conf->certificate_file;
+		//if (!chain_file) goto load_ca;
+		for (CONF_PAIR *cp = cf_pair_find(conf->cs, "certificate_file");
+				cp;
+				cp = cf_pair_find_next(conf->cs, cp, "certificate_file")) {
+			chain_file = cf_pair_value(cp);
+			if (type == SSL_FILETYPE_PEM) {
+				if (!(SSL_CTX_use_certificate_chain_file(ctx, chain_file))) {
+					tls_error_log(NULL, "Failed reading certificate file \"%s\"",
+						      chain_file);
+					return NULL;
+				}
+			} else if (!(SSL_CTX_use_certificate_file(ctx, chain_file, type))) {
+				tls_error_log(NULL, "Failed reading certificate file \"%s\"",
+					      chain_file);
+				return NULL;
+			}
 		}
-
-	} else if (!(SSL_CTX_use_certificate_file(ctx, chain_file, type))) {
-		tls_error_log(NULL, "Failed reading certificate file \"%s\"",
-			      chain_file);
-		return NULL;
 	}
 
 load_ca:
@@ -4223,12 +4228,17 @@ load_ca:
 	}
 
 	/* Load private key */
-	if (!private_key_file) private_key_file = conf->private_key_file;
-	if (private_key_file) {
-		if (!(SSL_CTX_use_PrivateKey_file(ctx, private_key_file, type))) {
-			tls_error_log(NULL, "Failed reading private key file \"%s\"",
-				      private_key_file);
-			return NULL;
+	if (!private_key_file) {
+		//private_key_file = conf->private_key_file;
+		for (CONF_PAIR *cp = cf_pair_find(conf->cs, "private_key_file");
+				cp;
+				cp = cf_pair_find_next(conf->cs, cp, "private_key_file")) {
+			private_key_file = cf_pair_value(cp);
+			if (!(SSL_CTX_use_PrivateKey_file(ctx, private_key_file, type))) {
+				tls_error_log(NULL, "Failed reading private key file \"%s\"",
+					      private_key_file);
+				return NULL;
+			}
 		}
 
 		/*
@@ -5042,6 +5052,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	}
 
 	conf = tls_server_conf_alloc(cs);
+	conf->cs = cs;
 
 	if (cf_section_parse(cs, conf, tls_server_config) < 0) {
 	error:
