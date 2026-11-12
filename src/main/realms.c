@@ -464,9 +464,9 @@ static CONF_PARSER limit_config[] = {
 	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.lifetime), "0" },
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.idle_timeout), "0" },
 #ifdef WITH_TLS
-	{ "connect_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.connect_timeout), "30" },
-	{ "connect_fail_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.connect_fail_interval), "300" },
-	{ "certificate_fail_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.certificate_fail_interval), "3600" },
+	{ "connect_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.connect_timeout), "3" },
+	{ "connect_fail_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.connect_fail_interval), "30" },
+	{ "certificate_fail_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.certificate_fail_interval), "360" },
 #endif
 #ifdef SO_RCVTIMEO
 	{ "read_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.read_timeout), NULL },
@@ -518,7 +518,7 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "src_ipaddr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, src_ipaddr_str), NULL },
 
-	{ "response_window", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, home_server_t, response_window), "30" },
+	{ "response_window", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, home_server_t, response_window), "20" },
 	{ "response_timeouts", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_response_timeouts), "3" },
 	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_outstanding), "65536" },
 
@@ -534,7 +534,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "status_check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), NULL },
 
 	{ "num_answers_to_alive", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, num_pings_to_alive), "3" },
-	{ "revive_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, revive_interval), "300" },
+	{ "revive_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, revive_interval), "120" },
 
 	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name), NULL },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password), NULL },

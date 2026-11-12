@@ -520,7 +520,7 @@ static CONF_PARSER limit_config[] = {
 
 	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, RADCLIENT, limit.lifetime),   "0" },
 
-	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, RADCLIENT, limit.idle_timeout), "30" },
+	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, RADCLIENT, limit.idle_timeout), "900" },
 
 	CONF_PARSER_TERMINATOR
 };
