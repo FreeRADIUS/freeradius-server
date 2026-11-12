@@ -1,0 +1,5 @@
+#  This is like the 'users' file, but it is processed only for
+#  accounting packets.
+#
+#  See the `accounting` file in the files mod for examples
+
