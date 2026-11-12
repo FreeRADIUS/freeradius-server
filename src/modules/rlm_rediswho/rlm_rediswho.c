@@ -70,7 +70,7 @@ static CONF_PARSER module_config[] = {
 	{ "redis_module_instance", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rediswho_t, redis_instance_name), "redis" },
 
 	{ "trim-count", FR_CONF_OFFSET(PW_TYPE_SIGNED | PW_TYPE_DEPRECATED, rlm_rediswho_t, trim_count), NULL },
-	{ "trim_count", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), "-1" },
+	{ "trim_count", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), "15" },
 
 	/*
 	 *	These all smash the same variables, because we don't care about them right now.

@@ -146,8 +146,8 @@ struct rlm_dpsk_s {
 static const CONF_PARSER module_config[] = {
 	{ "ruckus", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_dpsk_t, ruckus), "no" },
 
-	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_size), "0" },
-	{ "cache_lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_lifetime), "0" },
+	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_size), "1024" },
+	{ "cache_lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_lifetime), "86400" },
 
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_STRING,  rlm_dpsk_t, filename), NULL },
 

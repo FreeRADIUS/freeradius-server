@@ -39,7 +39,7 @@ RCSID("$Id$")
  * Client Configuration
  */
 static const CONF_PARSER client_config[] = {
-	{ "view", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, client_view), "_design/client/_view/by_name" },
+	{ "view", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, client_view), "_design/client/_view/by_id" },
 	CONF_PARSER_TERMINATOR
 };
 

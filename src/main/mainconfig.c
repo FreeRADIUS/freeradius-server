@@ -214,10 +214,10 @@ static const CONF_PARSER log_config[] = {
  *  Security configuration for the server.
  */
 static const CONF_PARSER security_config[] = {
-	{ "max_attributes",  FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_max_attributes), STRINGIFY(0) },
-	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_TIMEVAL, &main_config.reject_delay), STRINGIFY(0) },
+	{ "max_attributes",  FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_max_attributes), "200" },
+	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_TIMEVAL, &main_config.reject_delay), "1" },
 	{ "delay_proxy_rejects",  FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.delay_proxy_rejects), "no" },
-	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "no"},
+	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "yes"},
 	{ "unauth_proxy_responses", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.unauth_proxy_responses), "no"},
 	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_STRING, &require_message_authenticator), "auto"},
 	{ "limit_proxy_state", FR_CONF_POINTER(PW_TYPE_STRING, &limit_proxy_state), "auto"},

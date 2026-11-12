@@ -344,7 +344,7 @@ struct rad_request {
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30
 #define CLEANUP_DELAY		5
-#define MAX_REQUESTS		256
+#define MAX_REQUESTS		16384
 #define RETRY_DELAY		5
 #define RETRY_COUNT		3
 #define DEAD_TIME		120

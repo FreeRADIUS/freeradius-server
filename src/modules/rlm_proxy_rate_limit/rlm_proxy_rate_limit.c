@@ -116,11 +116,11 @@ struct rlm_proxy_rate_limit_s {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, max_entries), "65536" },
-	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, idle_timeout), "2" },
+	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, max_entries), "2048" },
+	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, idle_timeout), "10" },
 	{ "num_subtables", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, num_subtables), "256" },
 	{ "window", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, window), "1"},
-	{ "count", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, count), "2"},
+	{ "count", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, count), "1"},
 	CONF_PARSER_TERMINATOR
 };
 

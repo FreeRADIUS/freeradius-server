@@ -56,7 +56,7 @@ typedef struct rlm_exec_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "wait", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_exec_t, wait), "yes" },
+	{ "wait", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_exec_t, wait), "no" },
 	{ "program", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_exec_t, program), NULL },
 	{ "input_pairs", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, input), NULL },
 	{ "output_pairs", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, output), NULL },

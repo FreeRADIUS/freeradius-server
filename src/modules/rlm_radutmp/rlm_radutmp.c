@@ -63,9 +63,9 @@ static const CONF_PARSER module_config[] = {
 	{ "case_sensitive", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, case_sensitive), "yes" },
 	{ "check_with_nas", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, check_nas), "yes" },
 	{ "perm", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_radutmp_t, permission), NULL },
-	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_radutmp_t, permission), "0644" },
+	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_radutmp_t, permission), "0600" },
 	{ "callerid", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_radutmp_t, caller_id_ok), NULL },
-	{ "caller_id", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, caller_id_ok), "no" },
+	{ "caller_id", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, caller_id_ok), "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
