@@ -2245,6 +2245,7 @@ static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *requ
 	trunk_request_t		*treq;
 	trunk_connection_t	*tconn;
 	fr_time_t		now;
+	bool			was_sent;
 
 	if (!u->treq) {
 		RDEBUG("Packet was cancelled by the connection handler - ignoring retry");
@@ -2312,12 +2313,24 @@ static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *requ
 	}
 
 	u->rcode = RLM_MODULE_FAIL;
+
+	/*
+	 *	The state has to be read before trunk_request_signal_fail() changes it.
+	 */
+	was_sent = (treq->state == TRUNK_REQUEST_STATE_SENT);
+
 	trunk_request_signal_fail(treq);
 
 	/*
 	 *	We don't do zombie stuff!
 	 */
 	if (!tconn || (inst->mode == RLM_RADIUS_MODE_REPLICATE)) return;
+
+	/*
+	 *	If we didn't do a full write, then the home server
+	 *	isn't down, and we don't do the zombie checks.
+	 */
+	if (!was_sent) return;
 
 	check_for_zombie(request, tconn, now, retry->start, retry->config->mrd);
 }
