@@ -103,6 +103,7 @@ PACKET_BODY = 14
 #
 lines = []
 marks = {
+    "ready": "Ready to process requests",
     "open": "TLS connection open" if transport == "tls" else "Connection open",
     "blocked": "Writing is blocked",
     "resumed": "Writing is resumed",
@@ -189,7 +190,13 @@ def reader():
 reader_thread = threading.Thread(target=reader, daemon=True)
 reader_thread.start()
 
-if check(wait("open", 30), f"radius module opened the {transport.upper()} connection"):
+#
+#  The UDP listener of radiusd has to be bound before the test sends packets.  On FreeBSD, a TCP connect to
+#  localhost completes at once, so radiusd logs "Connection open" before radiusd logs "Ready to process
+#  requests".  Packets which the test sent before the listener was bound are lost.
+#
+if check(wait("ready", 30), "radiusd is ready") and \
+   check(wait("open", 30), f"radius module opened the {transport.upper()} connection"):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     for i in range(NUM_PACKETS):
