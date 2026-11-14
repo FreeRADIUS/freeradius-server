@@ -61,6 +61,13 @@ MRD = 5
 MSG_MRD = "Reached maximum_retransmit_duration"
 MSG_MRC = "Reached maximum_retransmit_count"
 MSG_ZOMBIE = "Entering Zombie state"
+MSG_DEAD = "marking connection"
+MSG_OPEN = "Connection open"
+
+#
+#  The packet code of a status check.
+#
+STATUS_SERVER = 12
 MSG_DUP_IGNORED = "Ignoring retransmit from client"
 
 failed = []
@@ -92,13 +99,19 @@ class Home:
 
     The home server drops the first "drop" packets, and replies to every later
     packet when "reply" is true.
+
+    A Status-Server packet is a status check from the module.  The home server
+    does not count the packet in "times".  The home server replies to a status
+    check only while "status_reply" is true.
     """
 
     def __init__(self, transport, drop=0, reply=False):
         self.transport = transport
         self.drop = drop
         self.reply = reply
+        self.status_reply = False
         self.times = []
+        self.status_times = []
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM if transport == "udp" else socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(("127.0.0.1", port))
@@ -109,6 +122,12 @@ class Home:
         self.thread.start()
 
     def seen(self, packet, send):
+        if packet[0] == STATUS_SERVER:
+            self.status_times.append(time.monotonic())
+            if self.status_reply:
+                send(reply_to(packet))
+            return
+
         self.times.append(time.monotonic())
         if self.reply and len(self.times) > self.drop:
             send(reply_to(packet))
@@ -382,6 +401,83 @@ def udp_zombie_run():
     zombie = [i for i, line in enumerate(radiusd.lines) if MSG_ZOMBIE in line]
     check(len(failures) >= 3 and zombie and zombie[0] > failures[2],
           "connection became zombie at the third failure, not at the first or the second")
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def udp_zombie_dead():
+    """
+    mode = proxy over UDP with no status_check, zombie_period = 8 and
+    max_rtx_duration = 5.  The home server never replies.  The test sends a
+    request at 0, 2 and 4 seconds.  The connection becomes zombie at about 9
+    seconds, and the test then sends no more packets.  Nothing shows that the
+    home server is alive, so the zombie_period timer marks the connection dead 8
+    seconds later.
+    """
+    home = Home("udp")
+    radiusd = start()
+    for i in range(3):
+        send(i + 1)
+        if i < 2:
+            time.sleep(2)
+
+    check(radiusd.wait_for(MSG_ZOMBIE, MRD + 15), "connection became zombie")
+    check(radiusd.wait_for(MSG_DEAD, 8 + 10), "zombie_period timer marked the connection dead")
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def udp_zombie_status():
+    """
+    mode = proxy over UDP with status_check, num_answers_to_alive = 2,
+    zombie_period = 8 and max_rtx_duration = 5.  The home server never replies to
+    ordinary packets.  The home server replies to the status checks of the first
+    connection, so that the connection opens, and then stops replying.  The test
+    sends a request at 0, 2 and 4 seconds, and the connection becomes zombie.  With status checks, no zombie_period timer runs,
+    so the module does not mark the connection dead.  The module closes the UDP
+    connection, and the new connection sends status checks.  The home server
+    ignores the status checks for a while, and the connection does not open.
+    The home server then replies, and the connection opens after two replies.
+    """
+    home = Home("udp")
+    home.status_reply = True
+    radiusd = start()
+    check(radiusd.wait_for(MSG_OPEN, 30), "first connection opened after the status checks had replies")
+    initial_opens = sum(1 for line in radiusd.lines if MSG_OPEN in line)
+    home.status_reply = False
+    home.status_times.clear()
+
+    for i in range(3):
+        send(i + 1)
+        if i < 2:
+            time.sleep(2)
+
+    check(radiusd.wait_for(MSG_ZOMBIE, MRD + 15), "connection became zombie")
+
+    #
+    #  The new connection sends status checks, which the home server ignores.
+    #
+    deadline = time.monotonic() + 15
+    while not home.status_times and time.monotonic() < deadline:
+        time.sleep(0.1)
+    check(len(home.status_times) > 0, "module sent status checks after the connection became zombie")
+
+    time.sleep(3)
+    opens = sum(1 for line in radiusd.lines if MSG_OPEN in line)
+    check(opens == initial_opens, "connection did not open while the status checks had no replies")
+    check(not radiusd.found(MSG_DEAD), "no zombie_period timer marked the connection dead")
+
+    home.status_reply = True
+    deadline = time.monotonic() + 15
+    while sum(1 for line in radiusd.lines if MSG_OPEN in line) == initial_opens and time.monotonic() < deadline:
+        time.sleep(0.1)
+
+    opens = sum(1 for line in radiusd.lines if MSG_OPEN in line)
+    check(opens == initial_opens + 1, "connection opened after the status checks had replies")
 
     radiusd.stop()
     home.close()

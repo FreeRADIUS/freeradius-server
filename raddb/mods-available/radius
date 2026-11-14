@@ -254,10 +254,17 @@ radius {
 	#  `max_rtx_duration` of any packet type.
 	#
 	#  When a connection is marked `zombie`, the module stops
-	#  sending new packets on that connection.  If the
-	#  `zombie_period` finishes without any replies being
-	#  received, then the module either closes the connection, or
-	#  starts pinging the home server via status_checks.
+	#  sending new packets on that connection.
+	#
+	#  If `status_check` is set, then the connection is marked
+	#  alive or dead based on the confituration of the
+	#  `status_check` section.
+	#
+	#  Otherwise (no `status_check` section), the module depends
+	#  on replies to outstanding requests.  If it receives
+	#  replies, then the connection is marked as `alive`.  If no
+	#  replies are received, then the connection is marked as
+	#  `dead.
 	#
 	zombie_period = 45
 

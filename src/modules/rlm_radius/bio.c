@@ -117,7 +117,7 @@ typedef struct {
 
 	fr_timer_list_t		*tl;			//!< Timers for this connection
 
-	fr_timer_t		*zombie_ev;		//!< Zombie timeout.
+	fr_timer_t		*zombie_ev;		//!< Zombie timeout.  Only used when `status_check = no`.
 	unlang_t const		*instruction;		//!< Instruction which triggered the start of the zombie period.
 
 	bool			status_checking;       	//!< whether we're doing status checks
@@ -1956,6 +1956,11 @@ static void zombie_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
+	/*
+	 *	check_for_zombie() sets the timer only when there are no status checks.
+	 */
+	fr_assert(!h->ctx.inst->status_check);
+
 	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->ctx.module_name, h->ctx.fd_info->name);
 
 	/*
@@ -1967,16 +1972,6 @@ static void zombie_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx
 	(void) trunk_connection_requests_requeue(tconn,
 						 (h->ctx.fd_config.socket_type == SOCK_STREAM) ?
 						 TRUNK_REQUEST_STATE_PENDING : TRUNK_REQUEST_STATE_ALL, 0, false);
-
-	/*
-	 *	We do have status checks.  Try to reconnect the
-	 *	connection immediately.  If the status checks pass,
-	 *	then the connection will be marked "alive"
-	 */
-	if (h->ctx.inst->status_check) {
-		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
-		return;
-	}
 
 	if (!h->ctx.dynamic) {
 		/*
