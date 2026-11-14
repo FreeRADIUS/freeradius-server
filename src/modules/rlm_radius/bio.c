@@ -2079,29 +2079,46 @@ static void status_check_enqueue(trunk_connection_t *tconn, bio_handle_t *h, boo
 	}
 }
 
-/** See if the connection is zombied.
+/** Decide whether a request timeout marks the connection as zombie
  *
- *	We check for zombie when major events happen:
+ *  This function is called by do_retry() when a request reaches `max_rtx_duration` or `max_rtx_count`.  That
+ *  call is skipped when:
  *
- *	1) request hits its final timeout
- *	2) request timer hits, and it needs to be retransmitted
- *	3) a DUP packet comes in, and the request needs to be retransmitted
- *	4) we're sending a packet.
+ *  1. The request has no connection.
+ *  2. The module is in replicate mode.
+ *  3. The request is not in the `TRUNK_REQUEST_STATE_SENT` state.
  *
- *  There MIGHT not be retries configured, so we MUST check for zombie
- *  when any new packet comes in.  Similarly, there MIGHT not be new
- *  packets, but retries are configured, so we have to check there,
- *  too.
+ *  In the third case, the home server had no chance to reply, because the module did not write the
+ *  whole packet.
  *
- *  Also, the socket might not be writable for a while.  There MIGHT
- *  be a long time between getting the timer / DUP signal, and the
- *  request finally being written to the socket.  So we need to check
- *  for zombie at BOTH the timeout and the mux / write function.
+ *  The connection becomes zombie only when all of the following conditions are true:
  *
- * @param[in] request	which timed out, or which is being sent.
+ *  1. The connection is open.  A connection that is connecting or closing cannot send or receive
+ *     status checks.
+ *  2. The connection has not received a valid reply since the request was first sent.
+ *  3. A run of unanswered requests exists, *and* the run started at least `zombie_period` ago.
+ *  4. At least `response_timeouts` requests in a row have timed out, without receiving a reply between the
+ *     timeouts.
+ *
+ *  An open connection that is already zombie, or that is running status checks, stays zombie.
+ *
+ *  When the connection becomes zombie, teh connectin is marked as inactive.
+ *
+ *  The value of `status_check` decides how the zombie state ends:
+ *
+ *  - With `status_check = no`, a timer is started with `zombie_period`.  When the timer fires,
+ *    `zombie_timeout()` marks the connection as dead.  As noted above, receiving a reply during this period
+ *    marks the connection as `alive` again.
+ *  - With `status_check = yes`, the function queues a status check on the connection.  The connection leaves
+ *    the zombie state after `num_answers_to_alive` replies.  If a status check reaches `max_rtx_duration` or
+ *    `max_rtx_count`, the connection is dead, and is reconnected.
+ *
+ * @param[in] request	the request that timed out.  The function reads the unlang instruction from the
+ *			request when `status_check = no`.
  * @param[in] tconn	the trunk connection to check.
- * @param[in] now	the current time, or zero to read the clock.
- * @param[in] last_sent	when the packet was first sent.
+ * @param[in] now	the current time, or zero if the function must read the clock.
+ * @param[in] last_sent	when the request was first sent (`retry->start`).  This is not the time of the
+ *			last write in `h->last_sent`.
  * @return
  *	- true if the connection is zombie.
  *	- false if the connection is not zombie.
@@ -2162,15 +2179,6 @@ static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_t
 	trunk_connection_signal_inactive(tconn);
 
 	if (h->ctx.inst->status_check) {
-		/*
-		 *	If it's UDP, reconnect.  This will start the sending of status checks.
-		 */
-		if (h->ctx.inst->fd_config.socket_type == SOCK_DGRAM) {
-			(void) trunk_connection_requests_requeue(tconn, TRUNK_REQUEST_STATE_ALL, 0, false);
-			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED); /* frees 'h' */
-			return true;
-		}
-
 		h->status_checking = true;
 
 		/*
