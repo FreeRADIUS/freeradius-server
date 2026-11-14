@@ -63,6 +63,7 @@ struct rlm_radius_s {
 
 	fr_time_delta_t		response_window;	//!< Deprecated.  Only used to warn that the item is ignored.
 	fr_time_delta_t		zombie_period;
+	uint32_t		response_timeouts;	//!< Requests in a row which have to time out before the connection is zombie.
 	fr_time_delta_t		revive_interval;
 
 	fr_time_delta_t		home_server_lifetime;	//!< for XLAT_PROXY

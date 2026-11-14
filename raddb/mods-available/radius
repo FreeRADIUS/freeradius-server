@@ -241,6 +241,23 @@ radius {
 	require_message_authenticator = auto
 
 	#
+	#  response_timeouts:: How many packets in a row have to time out
+	#  before a connection is marked as `zombie`.
+	#
+	#  A packet which times out is counted only if the home server
+	#  has not replied to any packet since the original request
+	#  was sent.  Any valid reply resets the count to zero.
+	#
+	#  The connection is marked `zombie` only when the count
+	#  reaches `response_timeouts` _and_ the `zombie_period`
+	#  condition below is also true.  Set `response_timeouts = 1`
+	#  to mark a connection as `zombie` after the first timeout
+	#  which meets the `zombie_period` condition.
+	#
+	#  Useful range of values: 1 to 10
+	#
+	response_timeouts = 3
+
 	#  zombie_period:: How long a home server has to fail responses
 	#  before a connection is marked as `zombie`.
 	#

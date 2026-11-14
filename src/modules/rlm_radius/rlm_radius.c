@@ -212,6 +212,8 @@ static conf_parser_t const module_config[] = {
 
 	{ FR_CONF_OFFSET("zombie_period", rlm_radius_t, zombie_period), .dflt = STRINGIFY(45) },
 
+	{ FR_CONF_OFFSET("response_timeouts", rlm_radius_t, response_timeouts), .dflt = STRINGIFY(3) },
+
 	{ FR_CONF_OFFSET("revive_interval", rlm_radius_t, revive_interval), .dflt = STRINGIFY(600) },
 
 	{ FR_CONF_OFFSET("home_server_lifetime", rlm_radius_t, home_server_lifetime), .dflt = STRINGIFY(600) },
@@ -989,6 +991,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(135));
+
+	FR_INTEGER_BOUND_CHECK("response_timeouts", inst->response_timeouts, >=, 1);
+	FR_INTEGER_BOUND_CHECK("response_timeouts", inst->response_timeouts, <=, 10);
 
 	if (!inst->status_check) {
 		FR_TIME_DELTA_BOUND_CHECK("revive_interval", inst->revive_interval, >=, fr_time_delta_from_sec(10));

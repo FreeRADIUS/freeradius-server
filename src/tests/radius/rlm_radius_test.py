@@ -86,6 +86,16 @@ def access_request(ident):
     return struct.pack("!BBH", 1, ident & 0xff, 20 + len(attrs)) + os.urandom(16) + attrs
 
 
+def user_of(packet):
+    """The User-Name of a packet, or None."""
+    pos = 20
+    while pos + 2 <= len(packet):
+        if packet[pos] == 1:
+            return packet[pos + 2:pos + packet[pos + 1]].decode()
+        pos += packet[pos + 1]
+    return None
+
+
 def reply_to(packet):
     """An Access-Accept for the Access-Request, with a valid Response-Authenticator."""
     code, ident, length = struct.unpack("!BBH", packet[:4])
@@ -110,6 +120,7 @@ class Home:
         self.drop = drop
         self.reply = reply
         self.status_reply = False
+        self.reply_users = set()
         self.times = []
         self.status_times = []
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM if transport == "udp" else socket.SOCK_STREAM)
@@ -129,7 +140,7 @@ class Home:
             return
 
         self.times.append(time.monotonic())
-        if self.reply and len(self.times) > self.drop:
+        if (self.reply and len(self.times) > self.drop) or user_of(packet) in self.reply_users:
             send(reply_to(packet))
 
     def run_udp(self):
@@ -401,6 +412,74 @@ def udp_zombie_run():
     zombie = [i for i, line in enumerate(radiusd.lines) if MSG_ZOMBIE in line]
     check(len(failures) >= 3 and zombie and zombie[0] > failures[2],
           "connection became zombie at the third failure, not at the first or the second")
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def zombie_failures(radiusd):
+    """The indexes of the output lines where a request reached max_rtx_duration."""
+    return [i for i, line in enumerate(radiusd.lines) if MSG_MRD in line]
+
+
+def udp_zombie_timeouts():
+    """
+    mode = proxy over UDP with response_timeouts = 3, zombie_period = 8 and
+    max_rtx_duration = 5.  The home server never replies.  The test sends a
+    request at 0, 4 and 8 seconds.  The requests fail at 5, 9 and 13 seconds.
+    At the second failure the run of unanswered requests is 9 seconds old, which
+    is longer than zombie_period, but only two requests timed out.  The
+    connection becomes zombie at the third failure.
+    """
+    home = Home("udp")
+    radiusd = start()
+    for i in range(3):
+        send(i + 1)
+        if i < 2:
+            time.sleep(4)
+
+    check(radiusd.wait_for(MSG_ZOMBIE, MRD + 15), "connection became zombie")
+
+    failures = zombie_failures(radiusd)
+    zombie = [i for i, line in enumerate(radiusd.lines) if MSG_ZOMBIE in line]
+    check(len(failures) >= 3 and zombie and zombie[0] > failures[2],
+          "connection became zombie at the third timeout, and not after one or two timeouts")
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def udp_zombie_reset():
+    """
+    mode = proxy over UDP with response_timeouts = 3, zombie_period = 8 and
+    max_rtx_duration = 5.  The test sends two unanswered requests, which fail at
+    5 and 9 seconds.  The home server then replies to one request at 10
+    seconds, which resets the count of timeouts.  The test then sends two more
+    unanswered requests, which fail at 16 and 20 seconds.  The run of unanswered
+    requests is 9 seconds old at the last failure, and the count is 2 and not 4.
+    The connection does not become zombie.
+    """
+    home = Home("udp")
+    home.reply_users.add("user0003")
+    radiusd = start()
+    send(1)
+    time.sleep(4)
+    send(2)
+    time.sleep(6)
+    send(3)
+    time.sleep(1)
+    send(4)
+    time.sleep(4)
+    send(5)
+
+    deadline = time.monotonic() + MRD + 10
+    while len(zombie_failures(radiusd)) < 4 and time.monotonic() < deadline:
+        time.sleep(0.1)
+
+    check(len(zombie_failures(radiusd)) == 4, "four requests failed at max_rtx_duration")
+    check(not radiusd.found(MSG_ZOMBIE), "a reply reset the count of timeouts, so the connection did not become zombie")
 
     radiusd.stop()
     home.close()

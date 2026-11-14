@@ -112,6 +112,8 @@ typedef struct {
 	fr_time_t		last_sent;		//!< last time we wrote a request.
 	fr_time_t		first_unanswered;	//!< When the current run of unanswered requests started.  Zero
 							///< when no request is waiting for a reply since last_reply.
+	uint32_t		timeouts;		//!< Requests which timed out without a reply since the last reply.
+							///< Compared with `response_timeouts`.
 
 	fr_timer_list_t		*tl;			//!< Timers for this connection
 
@@ -2136,9 +2138,22 @@ static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_t
 	 */
 	if (fr_time_gteq(h->last_reply, last_sent)) return false;
 
+	/*
+	 *	Count every timeout which has no reply since the request was sent.  The counter is not reset
+	 *	when the connection goes idle, because the last request to time out makes the connection idle.
+	 */
+	h->timeouts++;
+
 	if (fr_time_eq(h->first_unanswered, fr_time_wrap(0))) return false;
 
 	if (fr_time_gt(fr_time_add(h->first_unanswered, h->ctx.inst->zombie_period), now)) return false;
+
+	/*
+	 *	The home server has to miss "response_timeouts" requests in a row.
+	 */
+	if (h->timeouts < h->ctx.inst->response_timeouts) return false;
+
+	h->timeouts = 0;
 
 	/*
 	 *	Stop using it for new requests.
@@ -2560,6 +2575,11 @@ do_write:
 		if (fr_time_eq(h->first_unanswered, fr_time_wrap(0)) ||
 		    fr_time_delta_gt(fr_time_sub(write_time, h->last_sent), timeout)) {
 			h->first_unanswered = write_time;
+
+			/*
+			 *	Timeouts from the earlier run do not count towards "response_timeouts".
+			 */
+			h->timeouts = 0;
 		}
 
 		h->last_sent = write_time;
@@ -2844,6 +2864,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 */
 		h->last_reply = now = fr_time();
 		h->first_unanswered = fr_time_wrap(0);
+		h->timeouts = 0;
 
 		/*
 		 *	If we got a reply during the zombie period mark the
