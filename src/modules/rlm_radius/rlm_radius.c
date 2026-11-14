@@ -210,7 +210,7 @@ static conf_parser_t const module_config[] = {
 
 	{ FR_CONF_OFFSET("response_window", rlm_radius_t, response_window) },	/* deprecated, see mod_instantiate() */
 
-	{ FR_CONF_OFFSET("zombie_period", rlm_radius_t, zombie_period), .dflt = STRINGIFY(40) },
+	{ FR_CONF_OFFSET("zombie_period", rlm_radius_t, zombie_period), .dflt = STRINGIFY(45) },
 
 	{ FR_CONF_OFFSET("revive_interval", rlm_radius_t, revive_interval), .dflt = STRINGIFY(600) },
 
@@ -742,6 +742,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	size_t i, num_types;
 	rlm_radius_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
+	fr_time_delta_t longest;
 	CONF_SECTION *conf = mctx->mi->conf;
 
 	inst->name = mctx->mi->name;
@@ -987,7 +988,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
-	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(120));
+	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(135));
 
 	if (!inst->status_check) {
 		FR_TIME_DELTA_BOUND_CHECK("revive_interval", inst->revive_interval, >=, fr_time_delta_from_sec(10));
@@ -1217,6 +1218,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
 		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
+
+	/*
+	 *	Enforce a zombie_period of 1.5x mrd.  Otherwise, a long run of unanswered requests followed by
+	 *	a single lost request will mark the connection as zombie.
+	 */
+	longest = fr_time_delta_wrap(0);
+
+	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
+		if (!inst->allowed[i] || (i == FR_RADIUS_CODE_STATUS_SERVER)) continue;
+
+		if (fr_time_delta_gt(inst->retry[i].mrd, longest)) longest = inst->retry[i].mrd;
+	}
+	longest = fr_time_delta_add(longest, fr_time_delta_wrap(fr_time_delta_unwrap(longest) >> 1));
+	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, >=, longest);
 
 	/*
 	 *	When we proxy, we don't retransmit. We do send dups if the NAS retransmits.	 

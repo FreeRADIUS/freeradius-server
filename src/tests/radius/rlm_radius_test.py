@@ -60,6 +60,7 @@ MRD = 5
 #
 MSG_MRD = "Reached maximum_retransmit_duration"
 MSG_MRC = "Reached maximum_retransmit_count"
+MSG_ZOMBIE = "Entering Zombie state"
 MSG_DUP_IGNORED = "Ignoring retransmit from client"
 
 failed = []
@@ -300,6 +301,7 @@ def proxy_once(transport):
     elapsed = time.monotonic() - sent
     check(MRD - 1 <= elapsed <= MRD + 3, f"request failed after {elapsed:.1f} seconds, max_rtx_duration is {MRD}")
     check(not radiusd.found(MSG_MRC), "request did not reach max_rtx_count")
+    check(not radiusd.found(MSG_ZOMBIE), "one lost request did not mark the connection zombie")
 
     #
     #  Wait past the point where a retry timer would have fired again.
@@ -355,6 +357,64 @@ def udp_proxy_dup():
     finish(radiusd.lines)
 
 
+def udp_zombie_run():
+    """
+    mode = proxy over UDP with zombie_period = 8 and max_rtx_duration = 5.  The
+    home server never replies.  The test sends a request at 0, 2 and 4 seconds.
+    The requests fail at 5, 7 and 9 seconds.  The run of unanswered requests is
+    5 and 7 seconds old at the first two failures, which is less than
+    zombie_period.  At the third failure the run is 9 seconds old, so the
+    connection becomes zombie.
+    """
+    home = Home("udp")
+    radiusd = start()
+    for i in range(3):
+        send(i + 1)
+        if i < 2:
+            time.sleep(2)
+
+    check(radiusd.wait_for(MSG_ZOMBIE, MRD + 15), "connection became zombie after a run of unanswered requests")
+
+    #
+    #  The zombie message is the third failure, and not the first or the second.
+    #
+    failures = [i for i, line in enumerate(radiusd.lines) if MSG_MRD in line]
+    zombie = [i for i, line in enumerate(radiusd.lines) if MSG_ZOMBIE in line]
+    check(len(failures) >= 3 and zombie and zombie[0] > failures[2],
+          "connection became zombie at the third failure, not at the first or the second")
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def udp_zombie_stale():
+    """
+    mode = proxy over UDP with zombie_period = 8 and max_rtx_duration = 5.  The
+    home server never replies.  The test sends one request at 0 seconds and one
+    request at 6 seconds.  The gap is longer than max_rtx_duration, so the first
+    request has already failed when the second request is written, and the
+    second request starts a new run.  The second request fails at 11 seconds,
+    when the new run is 5 seconds old.  The connection does not become zombie.
+    """
+    home = Home("udp")
+    radiusd = start()
+    send(1)
+    time.sleep(MRD + 1)
+    send(2)
+
+    deadline = time.monotonic() + MRD + 10
+    while sum(1 for line in radiusd.lines if MSG_MRD in line) < 2 and time.monotonic() < deadline:
+        time.sleep(0.1)
+
+    check(sum(1 for line in radiusd.lines if MSG_MRD in line) == 2, "both requests failed at max_rtx_duration")
+    check(not radiusd.found(MSG_ZOMBIE), "a run which ended does not mark the connection zombie")
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
 def replicate_udp():
     """
     mode = replicate over UDP.  The module sends the packet once.  A replicated
@@ -401,6 +461,10 @@ def config_proxy_bounds():
 
 def config_replicate_bounds():
     config_test(forbid=["Access-Request.initial_rtx_time"])
+
+
+def config_zombie_period():
+    config_test(expect=['Ignoring "zombie_period = 5", forcing to "zombie_period = 7.5"'])
 
 
 def config_response_window():

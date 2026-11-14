@@ -110,7 +110,9 @@ typedef struct {
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
 	fr_time_t		first_sent;		//!< first time we sent a packet since going idle
-	fr_time_t		last_sent;		//!< last time we sent a packet.
+	fr_time_t		last_sent;		//!< last time we wrote a request.
+	fr_time_t		first_unanswered;	//!< When the current run of unanswered requests started.  Zero
+							///< when no request is waiting for a reply since last_reply.
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
 	fr_timer_list_t		*tl;			//!< Timers for this connection
@@ -1987,9 +1989,11 @@ static void zombie_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx
 					      h->ctx.inst->revive_interval);
 
 		/*
-		 *	Mark the connection as active, so when the module forced result times out
-		 *	requests will be sent again.
+		 *	Mark the connection as active, so when the module forced result times out, the
+		 *	requests will be sent again.  Also reset `first_unanswered`, otherwise one lost
+		 *	request after `revive_interval` would mark the connection as zombie again.
 		 */
+		h->first_unanswered = fr_time_wrap(0);
 		trunk_connection_signal_active(tconn);
 		return;
 	}
@@ -2104,13 +2108,11 @@ static void status_check_enqueue(trunk_connection_t *tconn, bio_handle_t *h, boo
  * @param[in] tconn	the trunk connection to check.
  * @param[in] now	the current time, or zero to read the clock.
  * @param[in] last_sent	when the packet was first sent.
- * @param[in] timeout	the final timeout of the packet.  A reply within this time keeps the connection alive.
  * @return
  *	- true if the connection is zombie.
  *	- false if the connection is not zombie.
  */
-static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent,
-			     fr_time_delta_t timeout)
+static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
 {
 	bio_handle_t	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 	/*
@@ -2135,14 +2137,16 @@ static bool check_for_zombie(request_t *request, trunk_connection_t *tconn, fr_t
 
 	/*
 	 *	We received a reply since this packet was sent, the connection isn't zombie.
+	 *
+	 *	Or, there was no unanswered request, the connection isn't zombie.
+	 *
+	 *	Or, the run of unanswered requests didn't reach zombie_period, the connection isn't zombie.
 	 */
 	if (fr_time_gteq(h->last_reply, last_sent)) return false;
 
-	/*
-	 *	If we've seen ANY response in the allowed window, then the connection is still alive.
-	 */
-	if ((h->ctx.inst->mode == RLM_RADIUS_MODE_PROXY) &&
-	    fr_time_gt(h->last_reply, fr_time_sub(now, timeout))) return false;
+	if (fr_time_eq(h->first_unanswered, fr_time_wrap(0))) return false;
+
+	if (fr_time_gt(fr_time_add(h->first_unanswered, h->ctx.inst->zombie_period), now)) return false;
 
 	/*
 	 *	Stop using it for new requests.
@@ -2332,7 +2336,7 @@ static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *requ
 	 */
 	if (!was_sent) return;
 
-	check_for_zombie(request, tconn, now, retry->start, retry->config->mrd);
+	check_for_zombie(request, tconn, now, retry->start);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
@@ -2533,8 +2537,7 @@ do_write:
 
 	} else {
 		if (u->retry.count == 1) {
-			h->last_sent = u->retry.start;
-			if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
+			if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = u->retry.start;
 		}
 
 		trunk_request_signal_sent(treq);
@@ -2547,6 +2550,32 @@ do_write:
 	}
 
 	fr_assert(!u->status_check || h->status_checking);
+
+	/*
+	 *	A status check is sent only while the connection is already zombie, so a status check does not
+	 *	start a run of unanswered requests.  The write of a retransmission counts, because the home server
+	 *	has still not answered.
+	 */
+	if (!u->status_check) {
+		fr_time_t		write_time = fr_time();
+		fr_time_delta_t		timeout = inst->retry[u->code].mrd;
+
+		/*
+		 *	"no timeout" means "use zombie_period".
+		 */
+		if (!fr_time_delta_ispos(timeout)) timeout = inst->zombie_period;
+
+		/*
+		 *	If we haven't already set first_unanswered, or we're just starting a run of writes
+		 *	after a long delay of no packets.  Set the first_unanswered to now.
+		 */
+		if (fr_time_eq(h->first_unanswered, fr_time_wrap(0)) ||
+		    fr_time_delta_gt(fr_time_sub(write_time, h->last_sent), timeout)) {
+			h->first_unanswered = write_time;
+		}
+
+		h->last_sent = write_time;
+	}
 
 	if (!u->proxied) {
 		RDEBUG("%s request.  Expecting response within %pVs", action,
@@ -2833,6 +2862,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 *	servers.
 		 */
 		h->last_reply = now = fr_time();
+		h->first_unanswered = fr_time_wrap(0);
 
 		/*
 		 *	If we got a reply during the zombie period mark the

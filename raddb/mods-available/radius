@@ -241,17 +241,25 @@ radius {
 	require_message_authenticator = auto
 
 	#
-	#  zombie_period:: If the home server does not reply to a packet
-	#  within `max_rtx_duration` for the packet type, then `zombie_period`
-	#  starts.
+	#  zombie_period:: How long a home server has to fail responses
+	#  before a connection is marked as `zombie`.
 	#
-	#  When `zombie_period` starts, a connection is marked `zombie`, and
-	#  then is not used to send new packets. If there are no responses on
-	#  this connection within `zombie_period`, the module either closes
-	#  the connection (no `status_check` subsection), or starts pinging
-	#  the home server (`status_check.type = Status-Server`).
+	#  When a packet reaches `max_rtx_duration` without a reply,
+	#  the home server might be dead.  If the home server has
+	#  replied recently, then it's alive, but flaky.  If the home
+	#  server hasn't replied to any packets for `zombie_period`,
+	#  then the connection is marked as `zombie`.
 	#
-	zombie_period = 10
+	#  `zombie_period` is set to least 1.5 times the longest
+	#  `max_rtx_duration` of any packet type.
+	#
+	#  When a connection is marked `zombie`, the module stops
+	#  sending new packets on that connection.  If the
+	#  `zombie_period` finishes without any replies being
+	#  received, then the module either closes the connection, or
+	#  starts pinging the home server via status_checks.
+	#
+	zombie_period = 45
 
 	#
 	#  revive_interval:: If there are no status checks, mark the home
@@ -947,7 +955,7 @@ radius proxy {
 	#  respond, it will often just hit the home server lifetime, and be
 	#  deleted.
 	#
-	zombie_period = 10
+	zombie_period = 45
 	revive_interval = 3600
 
 
