@@ -60,6 +60,7 @@ MRD = 5
 #
 MSG_MRD = "Reached maximum_retransmit_duration"
 MSG_MRC = "Reached maximum_retransmit_count"
+MSG_DUP_IGNORED = "Ignoring retransmit from client"
 
 failed = []
 
@@ -234,9 +235,14 @@ def finish(lines):
     sys.exit(0)
 
 
-def send(ident, packet=None):
-    """Send an Access-Request to radiusd, like a NAS does."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def send(ident, packet=None, sock=None):
+    """
+    Send an Access-Request to radiusd, like a NAS does.
+
+    A duplicate has to come from the same source port as the original packet, so
+    the caller passes the socket which sent the original packet.
+    """
+    sock = sock or socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     packet = packet or access_request(ident)
     sock.sendto(packet, ("127.0.0.1", lport))
     return sock, packet
@@ -320,26 +326,29 @@ def tcp_client_once():
 
 def udp_proxy_dup():
     """
-    mode = proxy over UDP.  The NAS sends the same packet three times.  The
-    module retransmits the packet for each duplicate, and the retransmissions
-    do not move the final timeout.
+    mode = proxy over UDP.  The NAS sends the same packet three times from the
+    same source port.  The UDP listener tracks duplicates, and ignores a
+    retransmit while the request is still being processed (src/lib/io/master.c).
+    The module therefore does not see the duplicates, sends the packet once, and
+    the final timeout does not move.
     """
     home = Home("udp")
     radiusd = start()
     sent = time.monotonic()
-    _, packet = send(1)
+    nas, packet = send(1)
     time.sleep(1.5)
-    send(1, packet)
+    send(1, packet, sock=nas)
     time.sleep(1.5)
-    send(1, packet)
+    send(1, packet, sock=nas)
 
     check(radiusd.wait_for(MSG_MRD, MRD + 10), "request failed at max_rtx_duration")
     elapsed = time.monotonic() - sent
     check(MRD - 1 <= elapsed <= MRD + 3,
           f"request failed {elapsed:.1f} seconds after the first packet, max_rtx_duration is {MRD}")
 
-    check(home.count >= 2, f"home server received a retransmission for a duplicate ({home.count} packets)")
-    check(home.count <= 3, f"module did not send more packets than the NAS ({home.count} packets)")
+    ignored = sum(1 for line in radiusd.lines if MSG_DUP_IGNORED in line)
+    check(ignored == 2, f"listener ignored both duplicates ({ignored})")
+    check(home.count == 1, f"home server received one packet ({home.count})")
 
     radiusd.stop()
     home.close()

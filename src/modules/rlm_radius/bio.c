@@ -169,6 +169,9 @@ struct bio_request_s {
 	size_t			packet_len;		//!< Length of the packet.
 	size_t			partial;		//!< partially sent data
 
+	fr_time_t		last_written;		//!< when the last whole packet was last written.
+							///< Suppresses fast / duplicate NAS retransmissions
+
 	radius_track_entry_t	*rr;			//!< ID tracking, resend count, etc.
 	fr_timer_t		*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
@@ -182,6 +185,15 @@ typedef struct {
 	int			num_ports;
 	connection_t		*connections[];	//!< for tracking outbound connections
 } home_server_t;
+
+/*
+ *	Due to RFC 3539 requirements that a proxy doesn't do retransmits itself, the proxy is just a "wire",
+ *	and retransmits when the NAS retransmits.  However, many NASes ignore the RFC 5080 Section 2.2.1
+ *	requirements on retransmissions, and send packets very quickly.
+ *
+ *	We therefore limit retransmissions on the proxy to no more than once per second.
+ */
+#define DUP_INTERVAL fr_time_delta_from_sec(1)
 
 
 /** Turn a reply code into a module rcode;
@@ -2486,6 +2498,7 @@ do_write:
 	 *	For retransmissions.
 	 */
 	u->partial = 0;
+	u->last_written = fr_time();
 
 	/*
 	 *	Don't print anything extra for replication.
@@ -3223,6 +3236,16 @@ static void do_signal(rlm_radius_t const *inst, bio_request_t *u, request_t *req
 	 *	mod_dup() checks u->treq and complains if necessary.
 	 */
 	case FR_SIGNAL_DUP:
+		/*
+		 *	The check is here and not in mod_dup(), because the retry timer also calls mod_dup().
+		 */
+		if (fr_time_gt(u->last_written, fr_time_wrap(0)) &&
+		    fr_time_delta_lt(fr_time_sub(fr_time(), u->last_written), DUP_INTERVAL)) {
+			RDEBUG("Duplicate packet received %pVs after the last write - suppressing retransmission",
+			       fr_box_time_delta(fr_time_sub(fr_time(), u->last_written)));
+			return;
+		}
+
 		mod_dup(request, u);
 		return;
 
