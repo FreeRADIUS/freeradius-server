@@ -109,11 +109,9 @@ typedef struct {
 
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
-	fr_time_t		first_sent;		//!< first time we sent a packet since going idle
 	fr_time_t		last_sent;		//!< last time we wrote a request.
 	fr_time_t		first_unanswered;	//!< When the current run of unanswered requests started.  Zero
 							///< when no request is waiting for a reply since last_reply.
-	fr_time_t		last_idle;		//!< last time we had nothing to do
 
 	fr_timer_list_t		*tl;			//!< Timers for this connection
 
@@ -1201,7 +1199,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->ctx = *ctx;
 	h->conn = conn;
 	h->max_packet_size = h->ctx.inst->max_packet_size;
-	h->last_idle = fr_time();
 
 	MEM(h->tl = fr_timer_list_lst_alloc(h, h->ctx.el->tl));
 
@@ -2531,10 +2528,6 @@ do_write:
 		action = "Retransmitted";
 
 	} else {
-		if (u->retry.count == 1) {
-			if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = u->retry.start;
-		}
-
 		trunk_request_signal_sent(treq);
 
 		if (u->retry.count > 1) {
@@ -2762,13 +2755,6 @@ static void status_check_reply(trunk_connection_t *tconn, bio_request_t *u, fr_t
 	}
 
 	DEBUG("Received enough replies to status check, marking connection as active - %s", h->ctx.fd_info->name);
-
-	/*
-	 *	Set the "last idle" time to now, so that we don't
-	 *	restart zombie_period until sufficient time has
-	 *	passed.
-	 */
-	h->last_idle = fr_time();
 
 	/*
 	 *	Reset retry interval and retransmission counters
@@ -3159,12 +3145,6 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 	 *	Status checks have their own counts and release in status_check_reset()
 	 */
 	if (!u->status_check) u->num_replies = 0;
-
-	/*
-	 *	If there are no outstanding tracking entries
-	 *	allocated then the connection is "idle".
-	 */
-	if (!h->tt || (h->tt->num_requests == 0)) h->last_idle = fr_time();
 }
 
 /** Write out a canned failure
