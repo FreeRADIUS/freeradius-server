@@ -298,11 +298,20 @@ static int mod_open(fr_listen_instance_t *li)
 #endif
 
 #ifdef IP_TTL
-	{
-		int opt;
+	if (inst->ipaddr.af == AF_INET) {
+		int opt = inst->ttl;
 
-		opt = inst->ttl;
 		if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, &opt, sizeof(opt)) < 0) {
+			cf_log_warn(li->listen->cs, "Failed setting 'ttl' - %s", fr_syserror(errno));
+		}
+	}
+#endif
+
+#ifdef IPV6_UNICAST_HOPS
+	if (inst->ipaddr.af == AF_INET6) {
+		int opt = inst->ttl;
+
+		if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &opt, sizeof(opt)) < 0) {
 			cf_log_warn(li->listen->cs, "Failed setting 'ttl' - %s", fr_syserror(errno));
 		}
 	}
