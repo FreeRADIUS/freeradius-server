@@ -122,6 +122,43 @@ class BaseDigestTests(BaseAuthTests):
         self.send(pkt)
         self.assertIsNone(self.peer.receive(lambda p: p.final, 0.3))
 
+    def test_window_follows_detect_mult_of_packet_small(self) -> None:
+        # Sections 6.7.3 and 6.7.4: the window is 3 times the Detect Mult
+        # of the received packet.  A Detect Mult of 1 gives a window of 3.
+        # The number 4 past the last one is outside it, but inside the
+        # window of 9 that the Detect Mult of the server (3) would give.
+        self.assertAnswered(self.packet(state=State.DOWN, sequence=5000,
+                                        detect_mult=1))
+
+        pkt = self.packet(state=State.DOWN, sequence=5004, detect_mult=1)
+        self.assertIsNone(self.probe(pkt), "sequence outside the window")
+
+    def test_window_follows_detect_mult_of_packet_large(self) -> None:
+        # A Detect Mult of 5 gives a window of 15.  The number 12 past the
+        # last one is inside it, but outside the window of 9 that the
+        # Detect Mult of the server (3) would give.
+        self.assertAnswered(self.packet(state=State.DOWN, sequence=5000,
+                                        detect_mult=5))
+
+        self.assertAnswered(self.packet(state=State.DOWN, sequence=5012,
+                                        detect_mult=5))
+
+    def test_window_edge_is_accepted(self) -> None:
+        # The range is inclusive: 3 times the Detect Mult past the last
+        # number is the last one in the window.
+        self.assertAnswered(self.packet(state=State.DOWN, sequence=5000,
+                                        detect_mult=2))
+
+        self.assertAnswered(self.packet(state=State.DOWN, sequence=5006,
+                                        detect_mult=2))
+
+    def test_window_edge_plus_one_is_discarded(self) -> None:
+        self.assertAnswered(self.packet(state=State.DOWN, sequence=5000,
+                                        detect_mult=2))
+
+        pkt = self.packet(state=State.DOWN, sequence=5007, detect_mult=2)
+        self.assertIsNone(self.probe(pkt), "sequence outside the window")
+
     def test_repeated_sequence(self) -> None:
         # Keyed: the same number again is in the window.  Meticulous: the
         # number must be greater than the last one.

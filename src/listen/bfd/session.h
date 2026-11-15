@@ -77,6 +77,7 @@ typedef struct {
 	bfd_diag_t	local_diag;				//!< diagnostics for errors
 
 	uint32_t	detect_multi;
+	uint32_t	remote_detect_multi;			//!< their detect_multi, used for the detection time in Asynchronous mode
 
 	fr_time_delta_t	desired_min_tx_interval;		//!< intervals between transmits
 	fr_time_delta_t	configured_min_tx_interval;		//!< the configured value, restored when the session is Up

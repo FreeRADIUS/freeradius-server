@@ -47,14 +47,15 @@ checks that the server does answer a good packet.
 
 ## Known failures
 
-Some tests are marked `expectedFailure`. Each mark records a difference between
-the code and RFC 5880. While the difference exists, the test reports an
-expected failure. After the code is fixed, the test reports an unexpected
-success. When that happens, remove the `expectedFailure` mark from the test.
+A test marked `expectedFailure` records a difference between the code and
+RFC 5880. While the difference exists, the test reports an expected failure.
+After a code change removes the difference, the test reports an unexpected
+success. When the test reports an unexpected success, remove the
+`expectedFailure` mark from the test.
 
-The RFC text was not available when these tests were written. Where this list
-quotes RFC 5880, the quote comes from a comment in `src/listen/bfd/session.c`.
-Check each item against the RFC before acting on it.
+The author checked item 1 below against `doc/rfc/rfc5880.txt`. Section 6.8.3
+says that the transmit interval must be at least one second while the session
+is not 'Up'.
 
 1. **A session that is not 'Up' sends faster than once a second.**
    A comment in `bfd_session_process()` quotes RFC 5880 Section 6.8.3: when
@@ -63,15 +64,6 @@ Check each item against the RFC before acting on it.
    new session sends at the configured interval until the session receives a
    packet from its peer. A test measured a gap of 95 milliseconds with a
    configured interval of 100 milliseconds.
-
-2. **The server uses its own Detect Mult to calculate the detection time.**
-   `bfd_set_timeout()` multiplies the detection time by the Detect Mult of the
-   session configuration (`max_timeouts`). A comment in `bfd_session_process()`
-   refers to RFC 5880 Section 6.8.4 for the detection time, and the author of
-   these tests recalls that the RFC uses the Detect Mult of the peer. Check
-   that against the RFC. A test with a server value of 2 and a peer value of 5
-   showed the session dropping after 350 milliseconds. The same test with a
-   server value of 5 kept the session up.
 
 ## Not covered
 

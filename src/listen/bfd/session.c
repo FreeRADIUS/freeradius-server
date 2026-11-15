@@ -255,8 +255,11 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 */
 
 	/*
-	 *	Update detection times as in 6.8.4
+	 *	Update detection times as in 6.8.4.  The detection time uses the Detect Mult of the
+	 *	remote system, which is it's promise for sent packet timers.
 	 */
+	session->remote_detect_multi = bfd->detect_multi;
+
 	if (!session->demand_mode) {
 		if (fr_time_delta_gteq(session->required_min_rx_interval, fr_time_delta_from_usec(remote_desired_min_tx))) {
 			session->detection_time = session->required_min_rx_interval;
@@ -548,16 +551,21 @@ static void bfd_auth_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 	bfd_calc_sha1(session, bfd);
 }
 
+/*
+ *	Sections 6.7.3 and 6.7.4.  The window is 3 times the Detect Mult field of the received packet.  A
+ *	meticulous type starts at the next number, and non-meticulous type allows the same number to repeat.
+ */
 static int bfd_verify_sequence(bfd_session_t *session, uint32_t sequence_no,
-			       int keyed)
+			       int meticulous, uint8_t detect_mult)
 {
 	uint32_t start, stop;
 
 	start = session->recv_auth_seq;
-	if (keyed) {
+	stop = start + 3 * detect_mult;
+
+	if (meticulous) {
 		start++;
 	}
-	stop = start + 3 * session->detect_multi;
 
 	if (start < stop) {
 		if ((sequence_no < start) ||
@@ -618,7 +626,7 @@ static int bfd_verify_md5(bfd_session_t *session, bfd_packet_t *bfd)
 		session->auth_seq_known = 1;
 
 	} else if (!bfd_verify_sequence(session, fr_nbo_to_uint32((uint8_t const *) &md5->sequence_no),
-					(md5->auth_type == BFD_AUTH_MET_KEYED_MD5))) {
+					(md5->auth_type == BFD_AUTH_MET_KEYED_MD5), bfd->detect_multi)) {
 		DEBUG("MD5 sequence out of window");
 		return 0;
 	}
@@ -660,7 +668,7 @@ static int bfd_verify_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 		session->auth_seq_known = 1;
 
 	} else if (!bfd_verify_sequence(session, fr_nbo_to_uint32((uint8_t const *) &sha1->sequence_no),
-					(sha1->auth_type == BFD_AUTH_MET_KEYED_SHA1))) {
+					(sha1->auth_type == BFD_AUTH_MET_KEYED_SHA1), bfd->detect_multi)) {
 		DEBUG("SHA1 sequence out of window");
 		return 0;
 	}
@@ -1033,7 +1041,13 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 	uint64_t delay;
 
 	delay = fr_time_delta_unwrap(session->detection_time);
-	delay *= session->detect_multi;
+
+	/*
+	 *	Section 6.8.4.  In Demand mode, the detection time uses bfd.DetectMult.  In other modes, the
+	 *	remote system promises to send the packets, so the detection time uses the Detect Multi field
+	 *	sent by the remote system.
+	 */
+	delay *= session->demand_mode ? session->detect_multi : session->remote_detect_multi;
 
 	delay += fr_time_delta_unwrap(session->detection_time) / 2;
 
@@ -1110,6 +1124,7 @@ int bfd_session_init(bfd_session_t *session)
 	session->local_diag = BFD_DIAG_NONE;
 	session->configured_min_tx_interval = session->desired_min_tx_interval;
 	session->remote_min_rx_interval = fr_time_delta_wrap(1);
+	session->remote_detect_multi = session->detect_multi;	/* until we see a packet */
 	session->remote_demand_mode = false;
 	session->recv_auth_seq = 0;
 	session->xmit_auth_seq = fr_rand();

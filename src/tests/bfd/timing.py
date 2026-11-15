@@ -135,8 +135,6 @@ class DetectionTimeTest(AbstractBfdTest):
     FIELDS = {"desired_min_tx": 100000, "required_min_rx": 100000,
               "detect_mult": 5}
 
-    # Known failure 2 in README.md: the server uses its own Detect Mult.
-    @unittest.expectedFailure
     def test_session_stays_up_until_detection_time(self) -> None:
         up = self.bring_up(**self.FIELDS)
 
