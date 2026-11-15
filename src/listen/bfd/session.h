@@ -79,6 +79,7 @@ typedef struct {
 	uint32_t	detect_multi;
 
 	fr_time_delta_t	desired_min_tx_interval;		//!< intervals between transmits
+	fr_time_delta_t	configured_min_tx_interval;		//!< the configured value, restored when the session is Up
 	fr_time_delta_t	required_min_rx_interval;		//!< intervals between receives
 
 	fr_time_delta_t	remote_min_rx_interval;			//!< their min_rx_interval

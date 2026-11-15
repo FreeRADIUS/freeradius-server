@@ -104,13 +104,15 @@ class WireFormatTest(AbstractBfdTest):
         self.assertGreaterEqual(reply.desired_min_tx, 1000000)
         self.assertLessEqual(reply.desired_min_tx, 1200000)
 
-    # Known failure 2 in README.md.
-    @unittest.expectedFailure
     def test_configured_interval_is_used_once_up(self) -> None:
         # While the session is not Up the interval is at least one second.
-        # Nothing makes the server go back to the configured value after
-        # it is Up.
+        # The server goes back to the configured value once the session is
+        # Up.  The change starts a Poll Sequence, and the server holds an
+        # increase until the Poll Sequence ends (see bfd_stop_poll()), so the
+        # peer ends it with a Final.
         up = self.bring_up()
+        self.send(self.packet(state=State.UP, your_disc=up.my_disc,
+                              final=True))
 
         reply = self.assertAnswered(self.packet(
             state=State.UP, your_disc=up.my_disc))
@@ -133,7 +135,7 @@ class DetectionTimeTest(AbstractBfdTest):
     FIELDS = {"desired_min_tx": 100000, "required_min_rx": 100000,
               "detect_mult": 5}
 
-    # Known failure 3 in README.md: the server uses its own Detect Mult.
+    # Known failure 2 in README.md: the server uses its own Detect Mult.
     @unittest.expectedFailure
     def test_session_stays_up_until_detection_time(self) -> None:
         up = self.bring_up(**self.FIELDS)

@@ -64,12 +64,7 @@ Check each item against the RFC before acting on it.
    packet from its peer. A test measured a gap of 95 milliseconds with a
    configured interval of 100 milliseconds.
 
-2. **The configured transmit interval is not used once the session is 'Up'.**
-   On a state change to any state other than 'Up', the server sets the
-   transmit interval to one second. After the session becomes 'Up', nothing
-   restores the configured value.
-
-3. **The server uses its own Detect Mult to calculate the detection time.**
+2. **The server uses its own Detect Mult to calculate the detection time.**
    `bfd_set_timeout()` multiplies the detection time by the Detect Mult of the
    session configuration (`max_timeouts`). A comment in `bfd_session_process()`
    refers to RFC 5880 Section 6.8.4 for the detection time, and the author of

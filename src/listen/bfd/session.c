@@ -365,6 +365,13 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 */
 	if (state_change && (session->session_state != BFD_STATE_UP)) {
 		bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
+
+	/*
+	 *	The one second limit applies only while the session is not Up.  Once the session is Up,
+	 *	go back to the configured value.
+	 */
+	} else if (state_change == BFD_STATE_CHANGE_UP) {
+		bfd_set_desired_min_tx_interval(session, session->configured_min_tx_interval);
 	}
 
 	/*
@@ -1101,6 +1108,7 @@ int bfd_session_init(bfd_session_t *session)
 	session->local_disc = fr_rand();
 	session->remote_disc = 0;
 	session->local_diag = BFD_DIAG_NONE;
+	session->configured_min_tx_interval = session->desired_min_tx_interval;
 	session->remote_min_rx_interval = fr_time_delta_wrap(1);
 	session->remote_demand_mode = false;
 	session->recv_auth_seq = 0;
