@@ -24,7 +24,7 @@ MEMBER		length					uint8
 MEMBER		my-discriminator			uint32
 MEMBER		your-discriminator			uint32
 MEMBER		desired-min-tx-interval			time_delta subtype=uint32,precision=microseconds
-MEMBER		required-min-tx-interval		time_delta subtype=uint32,precision=microseconds
+MEMBER		required-min-rx-interval		time_delta subtype=uint32,precision=microseconds
 MEMBER		required-min-echo-interval		time_delta subtype=uint32,precision=microseconds
 MEMBER		auth-type				uint8	key
 
