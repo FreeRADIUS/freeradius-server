@@ -255,6 +255,8 @@ static void dedup_free(void *data)
 		PTHREAD_MUTEX_UNLOCK(inst);
 	}
 
+	rad_const_free(dedup->key);
+	rad_const_free(dedup->passwd);
 	free(dedup);
 }
 
@@ -414,6 +416,7 @@ static bool totp_reused(void *instance, time_t now, uint8_t const *key, size_t k
 {
 	rlm_totp_t *inst = instance;
 	totp_dedup_t *dedup, my_dedup;
+	uint8_t *copy;
 
 	my_dedup.key = key;
 	my_dedup.keylen = keylen;
@@ -444,15 +447,20 @@ static bool totp_reused(void *instance, time_t now, uint8_t const *key, size_t k
 		return true;
 	}
 
-	dedup = calloc(1, sizeof(*dedup));
-	if (!dedup) {
-		PTHREAD_MUTEX_UNLOCK(inst);
-		return false;
-	}
+	MEM(dedup = calloc(1, sizeof(*dedup)));
 
-	dedup->key = key;
+	/*
+	 *	The "key" points to either a buffer on the callers
+	 *	stack, or a VALUE_PAIR.  Neither of these are
+	 *	persistent.  Similar issues apply to passwd.  Since we
+	 *	want the dedup structure to be long-lived, we copy the
+	 *	fields.
+	 */
+	MEM(dedup->key = copy = malloc(keylen ? keylen : 1));
+	memcpy(copy, key, keylen);
+
+	MEM(dedup->passwd = strdup(passwd));
 	dedup->keylen = keylen;
-	dedup->passwd = passwd;
 	dedup->when = now;
 	dedup->instance = inst;
 
