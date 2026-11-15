@@ -150,6 +150,7 @@ static void bfd_poll_response(bfd_session_t *session)
 bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_state_change_t state_change = BFD_STATE_CHANGE_NONE;
+	uint32_t remote_required_min_rx, remote_desired_min_tx;
 
 	/*
 	 *
@@ -159,7 +160,9 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 */
 	if ((bfd->your_disc != 0) && (bfd->your_disc != session->local_disc)) {
 		DEBUG("BFD %s peer %s packet has unexpected Your-Discriminator (got %08x, expected %08x",
-		      session->server_name, session->client.shortname, bfd->your_disc, session->local_disc);
+		      session->server_name, session->client.shortname,
+		      fr_nbo_to_uint32((void *) &bfd->your_disc),
+		      fr_nbo_to_uint32((void *) &session->local_disc));
 		return BFD_STATE_CHANGE_INVALID;
 	}
 
@@ -208,13 +211,19 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	session->remote_demand_mode = bfd->demand;
 
 	/*
+	 *	The intervals are in network order on the wire.  The session keeps them in host order.
+	 */
+	remote_required_min_rx = fr_nbo_to_uint32((uint8_t const *) &bfd->required_min_rx_interval);
+	remote_desired_min_tx = fr_nbo_to_uint32((uint8_t const *) &bfd->desired_min_tx_interval);
+
+	/*
 	 *	Set bfd.RemoteMinRxInterval to the value of Required Min RX
 	 *	Interval.
 	 *
 	 *	Addendum: clamp it to be between 32ms and 1s.
 	 */
-	if ((bfd->required_min_rx_interval > 32) && (bfd->required_min_rx_interval < USEC)) {
-		session->remote_min_rx_interval = fr_time_delta_from_usec(bfd->required_min_rx_interval);
+	if ((remote_required_min_rx > 32) && (remote_required_min_rx < USEC)) {
+		session->remote_min_rx_interval = fr_time_delta_from_usec(remote_required_min_rx);
 	}
 
 	/*
@@ -249,10 +258,10 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 *	Update detection times as in 6.8.4
 	 */
 	if (!session->demand_mode) {
-		if (fr_time_delta_gteq(session->required_min_rx_interval, fr_time_delta_from_usec(bfd->desired_min_tx_interval))) {
+		if (fr_time_delta_gteq(session->required_min_rx_interval, fr_time_delta_from_usec(remote_desired_min_tx))) {
 			session->detection_time = session->required_min_rx_interval;
 		} else {
-			session->detection_time = fr_time_delta_from_usec(bfd->desired_min_tx_interval);
+			session->detection_time = fr_time_delta_from_usec(remote_desired_min_tx);
 		}
 	} else {
 		if (fr_time_delta_gteq(session->desired_min_tx_interval, session->remote_min_rx_interval)) {
@@ -405,7 +414,7 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 *	The other end is reducing the RX interval.  Do that
 	 *	now.
 	 */
-	if (fr_time_delta_lt(fr_time_delta_from_usec(bfd->required_min_rx_interval), session->remote_min_rx_interval) &&
+	if (fr_time_delta_lt(fr_time_delta_from_usec(remote_required_min_rx), session->remote_min_rx_interval) &&
 	    !session->demand_mode) {
 		bfd_stop_control(session);
 		bfd_start_control(session);
@@ -482,6 +491,7 @@ static void bfd_calc_md5(bfd_session_t *session, bfd_packet_t *bfd)
 	fr_md5_calc(md5->digest, (const uint8_t *) bfd, FR_BFD_HEADER_LENGTH + sizeof(*md5));
 }
 
+
 static void bfd_auth_md5(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_md5_t *md5 = &bfd->auth.md5;
@@ -491,7 +501,7 @@ static void bfd_auth_md5(bfd_session_t *session, bfd_packet_t *bfd)
 	bfd->length = FR_BFD_HEADER_LENGTH + md5->auth_len;
 
 	md5->key_id = 0;
-	md5->sequence_no = session->xmit_auth_seq++;
+	fr_nbo_from_uint32((uint8_t *) &md5->sequence_no, session->xmit_auth_seq++);
 
 	bfd_calc_md5(session, bfd);
 }
@@ -526,7 +536,7 @@ static void bfd_auth_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 	bfd->length = FR_BFD_HEADER_LENGTH + sha1->auth_len;
 
 	sha1->key_id = 0;
-	sha1->sequence_no = session->xmit_auth_seq++;
+	fr_nbo_from_uint32((uint8_t *) &sha1->sequence_no, session->xmit_auth_seq++);
 
 	bfd_calc_sha1(session, bfd);
 }
@@ -600,13 +610,13 @@ static int bfd_verify_md5(bfd_session_t *session, bfd_packet_t *bfd)
 	if (!session->auth_seq_known) {
 		session->auth_seq_known = 1;
 
-	} else if (!bfd_verify_sequence(session, md5->sequence_no,
+	} else if (!bfd_verify_sequence(session, fr_nbo_to_uint32((uint8_t const *) &md5->sequence_no),
 					(md5->auth_type == BFD_AUTH_MET_KEYED_MD5))) {
 		DEBUG("MD5 sequence out of window");
 		return 0;
 	}
 
-	session->recv_auth_seq = md5->sequence_no;
+	session->recv_auth_seq = fr_nbo_to_uint32((uint8_t const *) &md5->sequence_no);
 
 	return 1;
 }
@@ -642,13 +652,13 @@ static int bfd_verify_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 	if (!session->auth_seq_known) {
 		session->auth_seq_known = 1;
 
-	} else if (!bfd_verify_sequence(session, sha1->sequence_no,
+	} else if (!bfd_verify_sequence(session, fr_nbo_to_uint32((uint8_t const *) &sha1->sequence_no),
 					(sha1->auth_type == BFD_AUTH_MET_KEYED_SHA1))) {
 		DEBUG("SHA1 sequence out of window");
 		return 0;
 	}
 
-	session->recv_auth_seq = sha1->sequence_no;
+	session->recv_auth_seq = fr_nbo_to_uint32((uint8_t const *) &sha1->sequence_no);
 
 	return 1;
 }
@@ -742,10 +752,10 @@ static void bfd_control_packet_init(bfd_session_t *session, bfd_packet_t *bfd)
 	/*
 	 *	proto_bfd limits the intervals to 2s, which fits in the 32-bit wire fields.
 	 */
-	bfd->desired_min_tx_interval = (uint32_t) fr_time_delta_to_usec(session->desired_min_tx_interval);
-	bfd->required_min_rx_interval = (uint32_t) fr_time_delta_to_usec(session->required_min_rx_interval);
+	fr_nbo_from_uint32((uint8_t *) &bfd->desired_min_tx_interval, (uint32_t) fr_time_delta_to_usec(session->desired_min_tx_interval));
+	fr_nbo_from_uint32((uint8_t *) &bfd->required_min_rx_interval, (uint32_t) fr_time_delta_to_usec(session->required_min_rx_interval));
 
-	bfd->min_echo_rx_interval = (uint32_t) fr_time_delta_to_usec(session->my_min_echo_rx_interval);	/* not configurable, always 0 */
+	fr_nbo_from_uint32((uint8_t *) &bfd->min_echo_rx_interval, (uint32_t) fr_time_delta_to_usec(session->my_min_echo_rx_interval));	/* not configurable, always 0 */
 }
 
 static void bfd_send_init(bfd_session_t *session, bfd_packet_t *bfd)
