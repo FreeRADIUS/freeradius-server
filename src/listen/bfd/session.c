@@ -46,6 +46,7 @@ static void bfd_start_packets(bfd_session_t *session);
 static void bfd_start_control(bfd_session_t *session);
 static int bfd_stop_control(bfd_session_t *session);
 static void bfd_set_timeout(bfd_session_t *session, fr_time_t when);
+static void bfd_arm_detection(bfd_session_t *session);
 
 /*
  *	Section 6.6.  Demand mode is active on the local system when bfd.DemandMode is 1, and both
@@ -249,14 +250,11 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	remote_desired_min_tx = fr_nbo_to_uint32((uint8_t const *) &bfd->desired_min_tx_interval);
 
 	/*
-	 *	Set bfd.RemoteMinRxInterval to the value of Required Min RX
-	 *	Interval.
-	 *
-	 *	Addendum: clamp it to be between 32ms and 1s.
+	 *	Set bfd.RemoteMinRxInterval to the value of Required Min RX Interval.  The RFC does not limit
+	 *	that value.  Zero means that we don't send packets.  A large value is how the peer slows us
+	 *	down.
 	 */
-	if ((remote_required_min_rx > 32) && (remote_required_min_rx < USEC)) {
-		session->remote_min_rx_interval = fr_time_delta_from_usec(remote_required_min_rx);
-	}
+	session->remote_min_rx_interval = fr_time_delta_from_usec(remote_required_min_rx);
 
 	/*
 	 *	If the Required Min Echo RX Interval field is zero, the
@@ -897,15 +895,15 @@ static void bfd_start_packets(bfd_session_t *session)
 	 */
 	FR_TIMER_DISARM(session->packet_ev);
 
+	/*
+	 *	The other end doesn't want to receive control packets.  So we stop sending them.
+	 */
+	if (fr_time_delta_unwrap(session->remote_min_rx_interval) == 0) return;
+
 	if (fr_time_delta_cmp(session->desired_min_tx_interval, session->remote_min_rx_interval) >= 0) {
 		interval = fr_time_delta_unwrap(session->desired_min_tx_interval);
 	} else {
 		interval = fr_time_delta_unwrap(session->remote_min_rx_interval);
-
-		/*
-		 *	The other end doesn't want to receive control packets.  So we stop sending them.
-		 */
-		if (!interval) return;
 	}
 
 	/*
@@ -1078,6 +1076,24 @@ static void bfd_detection_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, voi
 }
 
 /*
+ *	Section 6.8.4.  The detection time starts when the last packet was received, unless Demand mode is
+ *	active on the local system.  Then the remote system doesn't send periodic packets.  A Poll Sequence
+ *	also has its own detection time.
+ */
+static inline void bfd_arm_detection(bfd_session_t *session)
+{
+	if (!bfd_local_demand_active(session)) {
+		bfd_set_timeout(session, session->last_recv);
+
+	} else if (session->doing_poll) {
+		bfd_set_timeout(session, session->poll_start);
+
+	} else {
+		FR_TIMER_DISARM(session->timeout_ev);
+	}
+}
+
+/*
  *	Set the timeout for when we've lost enough packets to be
  *	worried.
  */
@@ -1128,9 +1144,13 @@ static void bfd_start_control(bfd_session_t *session)
 	 */
 
 	/*
-	 *	We don't expect to see remote packets, so don't do anything.
+	 *	The peer asked us to stop sending periodic packets.  We still receive its packets, so the
+	 *	detection time still applies.
 	 */
-	if (fr_time_delta_unwrap(session->remote_min_rx_interval) == 0) return;
+	if (fr_time_delta_unwrap(session->remote_min_rx_interval) == 0) {
+		bfd_arm_detection(session);
+		return;
+	}
 
 	/*
 	 *	@todo - support passive.  From 6.1:
@@ -1158,20 +1178,7 @@ static void bfd_start_control(bfd_session_t *session)
 		return;
 	}
 
-	/*
-	 *	Section 6.8.4.  The detection time starts when the last packet was received, unless
-	 *	Demand mode is active on the local system.  Then the remote system sends no periodic
-	 *	packets, and a Poll Sequence has its own detection time.
-	 */
-	if (!bfd_local_demand_active(session)) {
-		bfd_set_timeout(session, session->last_recv);
-
-	} else if (session->doing_poll) {
-		bfd_set_timeout(session, session->poll_start);
-
-	} else {
-		FR_TIMER_DISARM(session->timeout_ev);
-	}
+	bfd_arm_detection(session);
 
 	/*
 	 *	Start sending packets.

@@ -9,7 +9,8 @@ real time to pass, each test uses the shortest wait that the rule allows.
 
 import unittest
 
-from bfdlib import AbstractBfdTest, Diag, ServerConfig, State, swap32
+from bfdlib import (AbstractBfdTest, BfdPacket, Diag, ServerConfig, State,
+                    swap32)
 
 ONE_SECOND_US = 1000000
 
@@ -156,6 +157,54 @@ class DetectionTimeTest(AbstractBfdTest):
             state=State.UP, your_disc=up.my_disc, **self.FIELDS))
         self.assertEqual(reply.state, State.DOWN)
         self.assertEqual(reply.diag, Diag.CONTROL_EXPIRED)
+
+
+class RemoteMinRxIntervalTest(AbstractBfdTest):
+    """
+    Section 6.8.6: bfd.RemoteMinRxInterval is the value that the peer sent,
+    with no limit.  Section 6.8.7: no periodic packets when the value is
+    zero, and no packets faster than the value.
+
+    The peer sends an interval of 100ms and a Detect Mult of 3.  The
+    detection time is 300ms, and about 350ms with the half detection time
+    that the server adds.
+    """
+    CONFIG = ServerConfig(tx="100ms", rx="100ms")
+
+    def up_without_poll(self, **fields) -> BfdPacket:
+        fields.setdefault("desired_min_tx", 100000)
+        up = self.bring_up(**fields)
+
+        # The Final ends the Poll Sequence from the change to Up.
+        self.send(self.packet(state=State.UP, your_disc=up.my_disc,
+                              final=True, **fields))
+        self.peer.drain()
+
+        return up
+
+    def test_zero_stops_periodic_packets(self) -> None:
+        self.up_without_poll(required_min_rx=0)
+
+        pkt = self.peer.receive(lambda p: not p.final, 0.25)
+        self.assertIsNone(pkt, "server kept sending to a peer that said 0")
+
+    def test_session_with_zero_still_expires(self) -> None:
+        fields = {"desired_min_tx": 100000, "required_min_rx": 0}
+        up = self.up_without_poll(**fields)
+
+        self.peer.receive(lambda p: False, 0.7)
+
+        reply = self.assertAnswered(self.packet(
+            state=State.UP, your_disc=up.my_disc, **fields))
+        self.assertEqual(reply.state, State.DOWN)
+        self.assertEqual(reply.diag, Diag.CONTROL_EXPIRED)
+
+    def test_large_value_slows_the_server(self) -> None:
+        # 3s is more than the 1s that the server used to accept.
+        self.up_without_poll(required_min_rx=3000000)
+
+        pkt = self.peer.receive(lambda p: not p.final, 2.0)
+        self.assertIsNone(pkt, "server sent faster than the peer allows")
 
 
 class DemandModeTest(AbstractBfdTest):
