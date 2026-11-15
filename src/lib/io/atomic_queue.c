@@ -175,10 +175,21 @@ struct fr_atomic_queue_s {
 									///< #fr_atomic_queue_malloc.  We need to play
 									///< tricks to get aligned memory with talloc.
 
-	alignas(CACHE_LINE_SIZE) uint8_t		lines[];	//!< The lines, each exactly one cache line,
+	alignas(CACHE_LINE_SIZE) uint64_t		lines[];	//!< The lines, each exactly one cache line,
 									///< aligned with cache lines to ensure
 									///< producers and consumers don't conflict.
 };
+
+/*
+ *	Everything should reference lines[0].  This allows the underlying type to change, without needing
+ *	updates to multiple places that use it.
+ */
+#define LINES_ZERO (((struct fr_atomic_queue_s *) NULL)->lines[0])
+
+static_assert(alignof(fr_atomic_queue_slot_t) <= alignof(typeof(LINES_ZERO)),
+	      "slots must not need more alignment than the lines array has");
+static_assert((CACHE_LINE_SIZE % sizeof(LINES_ZERO)) == 0,
+	      "a cache line must be a whole number of elements of lines");
 
 /** How many slots a line holds for an element size
  *
@@ -238,8 +249,12 @@ static inline CC_HINT(always_inline) fr_atomic_queue_slot_t *atomic_queue_slot(f
 {
 	size_t	idx = (size_t)pos & (aq->num - 1);
 
-	return (fr_atomic_queue_slot_t *)(aq->lines + ((idx & aq->line_mask) * CACHE_LINE_SIZE) +
-					  ((idx >> aq->line_shift) * aq->slot_len));
+	/*
+	 *	The offset is in bytes, but "lines" is not an array of bytes.  We want to get the offset to
+	 *	the cache line, so we have to account for the size of each element in the "lines" array.
+	 */
+	return (fr_atomic_queue_slot_t *)(aq->lines + (((idx & aq->line_mask) * CACHE_LINE_SIZE) +
+						       ((idx >> aq->line_shift) * aq->slot_len)) / sizeof(aq->lines[0]));
 }
 
 /** Initialise the sequence numbers and head/tail on a fresh queue buffer
