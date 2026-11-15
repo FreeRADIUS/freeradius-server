@@ -641,6 +641,32 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 }
 
 /*
+ *	RFC 5080 Section 2.1.1 says:
+ *
+ *	An Access-Request sent as a result of a new or restarted
+ *	authentication run MUST NOT include the State attribute, even if a
+ *	State attribute has previously been received in an Access-Challenge
+ *	for the same user and port.
+ *
+ *	We therefore look for this situation, and reject those
+ *	authentications.  If we don't reject it, we would instead
+ *	restore the old session-state, and bad things can happen.
+ *
+ *	The rejected session should cause the AP to remove the old
+ *	State.  The user can then retry, and the AP will then send a
+ *	new Access-Request without a State.
+ */
+static bool eap_start_has_state(REQUEST *request, char const *what)
+{
+	if (!fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) return false;
+
+	REDEBUG("Ignoring %s which contains a State attribute.", what);
+
+	return true;
+}
+
+
+/*
  * Radius criteria, EAP-Message is invalid without Message-Authenticator
  * For EAP_START, send Access-Challenge with EAP Identity request.
  */
@@ -712,6 +738,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 				"Realm %s. Not doing EAP.", proxy->vp_strvalue);
 			return EAP_NOOP;
 		}
+
+		if (eap_start_has_state(request, "EAP-Start")) return EAP_FAIL;
 
 		RDEBUG2("Got EAP_START message");
 		vp = fr_pair_afrom_num(request->reply, PW_EAP_MESSAGE, 0);
@@ -859,6 +887,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 * ...in the inner-tunnel, to avoid expensive and unnecessary SQL/LDAP lookups
 	 */
 	if (eap_msg->vp_octets[4] == PW_EAP_IDENTITY) {
+		if (eap_start_has_state(request, "EAP-Identity")) return EAP_FAIL;
+
 		RDEBUG2("EAP-Identity reply, returning 'ok' so we can short-circuit the rest of authorize");
 		return EAP_OK;
 	}
