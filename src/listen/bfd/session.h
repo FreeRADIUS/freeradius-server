@@ -94,6 +94,7 @@ typedef struct {
 	bool		remote_demand_mode;			//!< their demand mode
 
 	bool		doing_poll;
+	fr_time_t	poll_start;				//!< when the Poll Sequence started, for the detection time in Demand mode
 
 	/*
 	 *	Authentication configuration and states.

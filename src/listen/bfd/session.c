@@ -48,6 +48,29 @@ static int bfd_stop_control(bfd_session_t *session);
 static void bfd_set_timeout(bfd_session_t *session, fr_time_t when);
 
 /*
+ *	Section 6.6.  Demand mode is active on the local system when bfd.DemandMode is 1, and both
+ *	systems say that the session is Up.  The remote system then stops sending periodic packets, so
+ *	the detection time does not run all the time.  A Poll Sequence then checks the connectivity.
+ */
+static inline bool bfd_local_demand_active(bfd_session_t const *session)
+{
+	return session->demand_mode &&
+	       (session->session_state == BFD_STATE_UP) &&
+	       (session->remote_session_state == BFD_STATE_UP);
+}
+
+/*
+ *	Section 6.6.  Demand mode is active on the remote system when bfd.RemoteDemandMode is 1, and both
+ *	systems say that the session is Up.  The local system then stops sending periodic packets.
+ */
+static inline bool bfd_remote_demand_active(bfd_session_t const *session)
+{
+	return session->remote_demand_mode &&
+	       (session->session_state == BFD_STATE_UP) &&
+	       (session->remote_session_state == BFD_STATE_UP);
+}
+
+/*
  *	Wrapper to run a trigger.
  *
  *	@todo - push the trigger name, and various other VPs to the worker side?
@@ -75,6 +98,7 @@ static void bfd_trigger(UNUSED bfd_session_t *session, UNUSED bfd_state_change_t
 void bfd_session_admin_down(bfd_session_t *session)
 {
 	bfd_stop_control(session);
+	FR_TIMER_DISARM(session->timeout_ev);
 
 	session->session_state = BFD_STATE_ADMIN_DOWN;
 	bfd_trigger(session,  BFD_STATE_CHANGE_ADMIN_DOWN);
@@ -112,6 +136,14 @@ static int bfd_stop_poll(bfd_session_t *session)
 		bfd_start_control(session);
 		return 1;
 	}
+
+	/*
+	 *	Don't send packets on a timer when Demand mode is active on the remote system.
+	 *
+	 *	If Demand mode is also active on the local system, the detection time runs only while we are
+	 *	polling.
+	 */
+	if (bfd_local_demand_active(session)) FR_TIMER_DISARM(session->timeout_ev);
 
 	return bfd_stop_control(session);
 }
@@ -260,7 +292,7 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 */
 	session->remote_detect_multi = bfd->detect_multi;
 
-	if (!session->demand_mode) {
+	if (!bfd_local_demand_active(session)) {
 		if (fr_time_delta_gteq(session->required_min_rx_interval, fr_time_delta_from_usec(remote_desired_min_tx))) {
 			session->detection_time = session->required_min_rx_interval;
 		} else {
@@ -384,10 +416,10 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 *	bfd.RemoteSessionState is Up, Demand mode is active on the remote
 	 *	system and the local system MUST cease the periodic transmission
 	 *	of BFD Control packets (see section 6.8.7).
+	 *
+	 *	A Poll Sequence is not periodic transmission.  It continues until the Final arrives.
 	 */
-	if (session->remote_demand_mode &&
-	    (session->session_state == BFD_STATE_UP) &&
-	    (session->remote_session_state == BFD_STATE_UP)) {
+	if (bfd_remote_demand_active(session) && !session->doing_poll) {
 		DEBUG("BFD %s peer %s demand mode UP / UP, stopping packets",
 		      session->server_name, session->client.shortname);
 		bfd_stop_control(session);
@@ -753,20 +785,10 @@ static void bfd_control_packet_init(bfd_session_t *session, bfd_packet_t *bfd)
 	bfd->auth_present = (session->auth_type != BFD_AUTH_RESERVED);
 
 	/*
-	 *	If we're UP / UP, signal that we've entered demand
-	 *	mode, and stop sending packets.
+	 *	If we're UP / UP, signal that we've entered demand mode.  The D bit tells the remote
+	 *	system to stop sending periodic packets.  It does not stop ours.
 	 */
-	if (session->demand_mode &&
-	    (session->session_state == BFD_STATE_UP) &&
-	    (session->remote_session_state == BFD_STATE_UP)) {
-		bfd->demand = true;
-
-		DEBUG("BFD %s peer %s demand mode UP / UP, sending ACK and done.",
-		      session->server_name, session->client.shortname);
-		bfd_stop_control(session);
-	} else {
-		bfd->demand = false;
-	}
+	bfd->demand = bfd_local_demand_active(session);
 
 	bfd->multipoint = 0;
 	bfd->detect_multi = session->detect_multi;
@@ -790,7 +812,12 @@ static void bfd_send_init(bfd_session_t *session, bfd_packet_t *bfd)
 
 	bfd->poll = session->doing_poll;
 
-	if (!bfd->demand) {
+	/*
+	 *	Section 6.8.7.  There are no more periodic packets when Demand mode is active on the
+	 *	remote system, except for the packets of a Poll Sequence.  The Poll Sequence repeats
+	 *	until a Final arrives, or the detection time expires.
+	 */
+	if (!bfd_remote_demand_active(session) || session->doing_poll) {
 		bfd_start_packets(session);
 	}
 
@@ -935,6 +962,13 @@ static void bfd_start_poll(bfd_session_t *session)
 	}
 
 	session->doing_poll = true;
+	session->poll_start = fr_time();
+
+	/*
+	 *	Section 6.8.4.  When Demand mode is active on the local system, the detection time
+	 *	starts when the Poll Sequence starts.
+	 */
+	if (bfd_local_demand_active(session)) bfd_set_timeout(session, session->poll_start);
 
 	/*
 	 *	Send POLL packets, even if we're not sending CONTROL
@@ -999,18 +1033,26 @@ static void bfd_detection_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, voi
 	      session->server_name, session->client.shortname,
 	      fr_bfd_packet_names[session->session_state]);
 
-	if (!session->demand_mode) {
+	/*
+	 *	Section 6.8.4.  If Demand mode is not active, and no packet arrived for the detection
+	 *	time, an Init or Up session is Down.
+	 */
+	if (!bfd_local_demand_active(session)) {
 		switch (session->session_state) {
 		case BFD_STATE_INIT:
 		case BFD_STATE_UP:
-			goto start_poll;
+			goto expired;
 
 		default:
 			break;
 		}
 
-	} else if (!session->doing_poll) {
-	start_poll:
+	/*
+	 *	If Demand mode is active, the detection time runs from the start of a Poll Sequence.  If
+	 *	that Poll Sequence is still running when the timer fires, the Poll got no Final.
+	 */
+	} else if (session->doing_poll) {
+	expired:
 		DEBUG("BFD %s peer %s State <timeout> -> DOWN (control expired)",
 		      session->server_name, session->client.shortname);
 		session->session_state = BFD_STATE_DOWN;
@@ -1028,7 +1070,11 @@ static void bfd_detection_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, voi
 
 	session->detection_timeouts++;
 
-	bfd_set_timeout(session, now);
+	/*
+	 *	Demand mode is still active when the timer fired with no Poll Sequence, and then there is
+	 *	nothing to time.
+	 */
+	if (!bfd_local_demand_active(session)) bfd_set_timeout(session, now);
 }
 
 /*
@@ -1047,7 +1093,7 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 	 *	remote system promises to send the packets, so the detection time uses the Detect Multi field
 	 *	sent by the remote system.
 	 */
-	delay *= session->demand_mode ? session->detect_multi : session->remote_detect_multi;
+	delay *= bfd_local_demand_active(session) ? session->detect_multi : session->remote_detect_multi;
 
 	delay += fr_time_delta_unwrap(session->detection_time) / 2;
 
@@ -1063,9 +1109,14 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 /*
  *	Start / stop control packets.
  */
+
+/*
+ *	Section 6.8.6 and 6.8.7.  Cease the periodic transmission of BFD Control packets.  This does not
+ *	touch the detection timer.  The remote system may still be sending to us, and the detection timer
+ *	follows the rules of section 6.8.4.
+ */
 static int bfd_stop_control(bfd_session_t *session)
 {
-	FR_TIMER_DISARM(session->timeout_ev);
 	FR_TIMER_DISARM(session->packet_ev);
 	return 1;
 }
@@ -1107,7 +1158,20 @@ static void bfd_start_control(bfd_session_t *session)
 		return;
 	}
 
-	bfd_set_timeout(session, session->last_recv);
+	/*
+	 *	Section 6.8.4.  The detection time starts when the last packet was received, unless
+	 *	Demand mode is active on the local system.  Then the remote system sends no periodic
+	 *	packets, and a Poll Sequence has its own detection time.
+	 */
+	if (!bfd_local_demand_active(session)) {
+		bfd_set_timeout(session, session->last_recv);
+
+	} else if (session->doing_poll) {
+		bfd_set_timeout(session, session->poll_start);
+
+	} else {
+		FR_TIMER_DISARM(session->timeout_ev);
+	}
 
 	/*
 	 *	Start sending packets.

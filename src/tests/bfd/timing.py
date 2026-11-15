@@ -159,7 +159,10 @@ class DetectionTimeTest(AbstractBfdTest):
 
 
 class DemandModeTest(AbstractBfdTest):
-    """Section 6.6: Demand mode."""
+    """
+    Section 6.6: Demand mode on the local system.  The D bit asks the peer
+    to stop its periodic packets.  The server keeps sending its own.
+    """
     CONFIG = ServerConfig(demand=True)
 
     def test_demand_bit_is_set_when_both_up(self) -> None:
@@ -173,16 +176,110 @@ class DemandModeTest(AbstractBfdTest):
         reply = self.assertAnswered(self.packet(state=State.DOWN))
         self.assertFalse(reply.demand)
 
-    def test_periodic_packets_stop_when_both_up(self) -> None:
+    def test_periodic_packets_continue_when_both_up(self) -> None:
+        # Section 6.6: "The system receiving the Demand bit ceases the
+        # periodic transmission".  The server sent the bit, so the peer
+        # stops, and the server does not.
         up = self.bring_up()
         self.assertAnswered(self.packet(
             state=State.UP, your_disc=up.my_disc))
 
         self.peer.drain()
 
-        # The interval is one second, so 1.4s is enough to see a packet.
-        pkt = self.peer.receive(lambda p: not p.final, 1.4)
-        self.assertIsNone(pkt, "server kept sending in Demand mode")
+        pkt = self.peer.receive(lambda p: not p.final, 2.0)
+        self.assertIsNotNone(pkt, "server stopped sending in Demand mode")
+        self.assertTrue(pkt.demand, "the D bit is not set")
+
+
+class DemandDetectionTest(AbstractBfdTest):
+    """
+    Section 6.8.4: with Demand mode active on the local system, the session
+    expires when a Poll Sequence gets no Final within the detection time,
+    and not when the peer is silent.
+
+    The detection time is the Detect Mult of the server (1) times the
+    greater of the intervals (100ms), which is about 150ms with the half
+    detection time that the server adds.
+    """
+    CONFIG = ServerConfig(demand=True, tx="100ms", rx="100ms",
+                          max_timeouts=1)
+
+    FIELDS = {"desired_min_tx": 100000, "required_min_rx": 100000,
+              "detect_mult": 5}
+
+    def test_unanswered_poll_takes_the_session_down(self) -> None:
+        # The change to Up starts a Poll Sequence, and the peer never
+        # sends a Final.
+        up = self.bring_up(**self.FIELDS)
+        self.send(self.packet(state=State.UP, your_disc=up.my_disc,
+                              **self.FIELDS))
+
+        self.peer.receive(lambda p: False, 0.5)
+
+        reply = self.assertAnswered(self.packet(
+            state=State.UP, your_disc=up.my_disc, **self.FIELDS))
+        self.assertEqual(reply.state, State.DOWN,
+                         "a Poll Sequence with no Final did not expire")
+        self.assertEqual(reply.diag, Diag.CONTROL_EXPIRED)
+
+    def test_poll_is_repeated_until_the_final(self) -> None:
+        up = self.bring_up(**self.FIELDS)
+        self.send(self.packet(state=State.UP, your_disc=up.my_disc,
+                              **self.FIELDS))
+        self.peer.drain()
+
+        polls = []
+        while len(polls) < 2:
+            pkt = self.peer.receive(lambda p: p.poll, 0.14)
+            if pkt is None:
+                break
+            polls.append(pkt)
+
+        self.assertEqual(len(polls), 2,
+                         "the Poll was not repeated while it had no Final")
+
+    def test_silent_peer_does_not_expire_without_a_poll(self) -> None:
+        up = self.bring_up(**self.FIELDS)
+
+        # The Final ends the Poll Sequence.  Nothing is polling now, and
+        # the peer sends no periodic packets in Demand mode.
+        self.send(self.packet(state=State.UP, your_disc=up.my_disc,
+                              final=True, **self.FIELDS))
+
+        self.peer.receive(lambda p: False, 0.6)
+
+        reply = self.assertAnswered(self.packet(
+            state=State.UP, your_disc=up.my_disc, **self.FIELDS))
+        self.assertEqual(reply.state, State.UP,
+                         "session expired with no Poll Sequence")
+
+
+class DemandNotActiveTest(AbstractBfdTest):
+    """
+    Section 6.8.4: Demand mode is active only when the session is Up in both
+    directions.  Before then, the rule of Asynchronous mode applies, even
+    when the Demand mode is configured.
+
+    The peer sends a Detect Mult of 5 and an interval of 100ms.  The
+    detection time is 5 times 250ms (the Required Min RX Interval of the
+    server), which is about 1.4s with the half detection time.
+    """
+    CONFIG = ServerConfig(demand=True)
+
+    def test_init_session_expires_when_the_peer_is_silent(self) -> None:
+        init = self.assertAnswered(self.packet(
+            state=State.DOWN, desired_min_tx=100000, detect_mult=5))
+        self.assertEqual(init.state, State.INIT)
+
+        self.peer.receive(lambda p: False, 1.8)
+
+        # From 'Init' the session would go Up.  From 'Down' it stays.
+        reply = self.assertAnswered(self.packet(
+            state=State.UP, your_disc=init.my_disc, desired_min_tx=100000,
+            detect_mult=5))
+        self.assertEqual(reply.state, State.DOWN,
+                         "an Init session did not expire")
+        self.assertEqual(reply.diag, Diag.CONTROL_EXPIRED)
 
 
 class RemoteDemandModeTest(AbstractBfdTest):
@@ -199,14 +296,41 @@ class RemoteDemandModeTest(AbstractBfdTest):
         self.assertIsNotNone(pkt, "server stopped sending")
 
     def test_periodic_packets_stop_when_peer_demands(self) -> None:
+        # The Final ends the Poll Sequence from the change to Up.  A Poll
+        # Sequence is not periodic transmission, and continues.
         up = self.bring_up()
         self.assertAnswered(self.packet(
-            state=State.UP, your_disc=up.my_disc, demand=True))
+            state=State.UP, your_disc=up.my_disc, demand=True, final=True))
 
         self.peer.drain()
 
         pkt = self.peer.receive(lambda p: not p.final, 1.4)
         self.assertIsNone(pkt, "server kept sending to a peer in Demand mode")
+
+    def test_poll_continues_when_peer_demands(self) -> None:
+        up = self.bring_up()
+        self.send(self.packet(state=State.UP, your_disc=up.my_disc,
+                              demand=True))
+
+        self.peer.drain()
+
+        pkt = self.peer.receive(lambda p: p.poll, 1.4)
+        self.assertIsNotNone(pkt, "the Poll Sequence stopped")
+
+    def test_silent_peer_still_expires(self) -> None:
+        # The peer is in Demand mode, and the server is not.  The peer still
+        # sends periodic packets, so the server times it out when they stop.
+        fields = {"desired_min_tx": 100000, "required_min_rx": 100000}
+        up = self.bring_up(**fields)
+        self.assertAnswered(self.packet(
+            state=State.UP, your_disc=up.my_disc, demand=True, final=True,
+            **fields))
+
+        self.peer.receive(lambda p: False, 1.6)
+
+        reply = self.assertAnswered(self.packet(
+            state=State.UP, your_disc=up.my_disc, demand=True, **fields))
+        self.assertEqual(reply.state, State.DOWN)
 
 
 if __name__ == "__main__":
