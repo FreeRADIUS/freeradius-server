@@ -154,9 +154,6 @@ class BaseDigestTests(BaseAuthTests):
 def add_mismatch_tests(cls):
     """
     Add one test per authentication type other than the one configured.
-
-    Known failure 1 in README.md: the server accepts every one of them, so
-    every generated test is expected to fail.
     """
     for other in AuthType:
         if other == cls.CONFIG.auth_type:
@@ -165,8 +162,7 @@ def add_mismatch_tests(cls):
         def check(self, other=other) -> None:
             self.assertTypeMismatchDiscarded(other)
 
-        setattr(cls, f"test_{other.name.lower()}_is_discarded",
-                unittest.expectedFailure(check))
+        setattr(cls, f"test_{other.name.lower()}_is_discarded", check)
 
     return cls
 

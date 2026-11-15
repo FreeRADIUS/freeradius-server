@@ -665,6 +665,17 @@ static int bfd_verify_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 
 static int bfd_authenticate(bfd_session_t *session, bfd_packet_t *bfd)
 {
+	/*
+	 *	Check the received auth_type against the configured auth_type.  If they're different, then
+	 *	complain and discard the packet.
+	 */
+	if (bfd->auth.basic.auth_type != session->auth_type) {
+		DEBUG("BFD %s peer %s packet has authentication type %u, expected %u",
+		      session->server_name, session->client.shortname,
+		      bfd->auth.basic.auth_type, session->auth_type);
+		return 0;
+	}
+
 	switch (bfd->auth.basic.auth_type) {
 	case BFD_AUTH_RESERVED:
 		return 0;

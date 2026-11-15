@@ -56,15 +56,7 @@ The RFC text was not available when these tests were written. Where this list
 quotes RFC 5880, the quote comes from a comment in `src/listen/bfd/session.c`.
 Check each item against the RFC before acting on it.
 
-1. **The server does not compare the configured authentication type with the
-   type in the packet.**
-   The server picks the check from the type in the packet, not from the type of
-   the session (see `bfd_authenticate()`). A session set to `keyed-sha1`
-   accepts a `simple` password packet that carries the same secret. A comment
-   in `bfd_session_process()` quotes RFC 5880 Section 6.8.6: the packet is
-   authenticated "based on the authentication type in use".
-
-2. **A session that is not 'Up' sends faster than once a second.**
+1. **A session that is not 'Up' sends faster than once a second.**
    A comment in `bfd_session_process()` quotes RFC 5880 Section 6.8.3: when
    the session is not 'Up', the transmit interval must be at least one second.
    The server applies the limit only when the state changes. Because of that, a
@@ -72,12 +64,12 @@ Check each item against the RFC before acting on it.
    packet from its peer. A test measured a gap of 95 milliseconds with a
    configured interval of 100 milliseconds.
 
-3. **The configured transmit interval is not used once the session is 'Up'.**
+2. **The configured transmit interval is not used once the session is 'Up'.**
    On a state change to any state other than 'Up', the server sets the
    transmit interval to one second. After the session becomes 'Up', nothing
    restores the configured value.
 
-4. **The server uses its own Detect Mult to calculate the detection time.**
+3. **The server uses its own Detect Mult to calculate the detection time.**
    `bfd_set_timeout()` multiplies the detection time by the Detect Mult of the
    session configuration (`max_timeouts`). A comment in `bfd_session_process()`
    refers to RFC 5880 Section 6.8.4 for the detection time, and the author of

@@ -30,7 +30,7 @@ class StartupTransmitTest(AbstractBfdTest):
     """
     CONFIG = ServerConfig(tx="100ms")
 
-    # Known failure 2 in README.md.
+    # Known failure 1 in README.md.
     @unittest.expectedFailure
     def test_down_session_sends_no_faster_than_once_a_second(self) -> None:
         # Section 6.8.3: when the session is not Up, the transmit interval
@@ -104,7 +104,7 @@ class WireFormatTest(AbstractBfdTest):
         self.assertGreaterEqual(reply.desired_min_tx, 1000000)
         self.assertLessEqual(reply.desired_min_tx, 1200000)
 
-    # Known failure 3 in README.md.
+    # Known failure 2 in README.md.
     @unittest.expectedFailure
     def test_configured_interval_is_used_once_up(self) -> None:
         # While the session is not Up the interval is at least one second.
@@ -133,7 +133,7 @@ class DetectionTimeTest(AbstractBfdTest):
     FIELDS = {"desired_min_tx": 100000, "required_min_rx": 100000,
               "detect_mult": 5}
 
-    # Known failure 4 in README.md: the server uses its own Detect Mult.
+    # Known failure 3 in README.md: the server uses its own Detect Mult.
     @unittest.expectedFailure
     def test_session_stays_up_until_detection_time(self) -> None:
         up = self.bring_up(**self.FIELDS)
