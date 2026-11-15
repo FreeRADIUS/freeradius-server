@@ -396,7 +396,7 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 *	bandwidth consumed by BFD sessions that are not Up is negligible,
 	 *	particularly in the case where a neighbor may not be running BFD.
 	 */
-	if (state_change && (session->session_state != BFD_STATE_UP)) {
+	if ((state_change != BFD_STATE_CHANGE_NONE) && (session->session_state != BFD_STATE_UP)) {
 		bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
 
 	/*

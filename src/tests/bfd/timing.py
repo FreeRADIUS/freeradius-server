@@ -159,6 +159,26 @@ class DetectionTimeTest(AbstractBfdTest):
         self.assertEqual(reply.diag, Diag.CONTROL_EXPIRED)
 
 
+class PollSequenceTest(AbstractBfdTest):
+    """
+    Section 6.8.3: a Poll Sequence starts when bfd.DesiredMinTxInterval
+    changes.  A packet that changes nothing does not start one.
+    """
+
+    def test_packet_without_change_starts_no_poll(self) -> None:
+        # The change to Init starts a Poll Sequence.  The Final ends the
+        # Poll Sequence, and the session stays Init, so nothing changes.
+        init = self.assertAnswered(self.packet(state=State.DOWN))
+        self.assertEqual(init.state, State.INIT)
+
+        self.send(self.packet(state=State.DOWN, final=True))
+        self.peer.drain()
+
+        pkt = self.peer.receive(lambda p: not p.final, 2.0)
+        self.assertIsNotNone(pkt, "server sent no periodic packet")
+        self.assertFalse(pkt.poll, "a Poll Sequence started with no change")
+
+
 class RemoteMinRxIntervalTest(AbstractBfdTest):
     """
     Section 6.8.6: bfd.RemoteMinRxInterval is the value that the peer sent,
