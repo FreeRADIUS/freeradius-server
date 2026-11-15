@@ -902,7 +902,8 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	notibly not for PEAP even on resumption.
 	 */
 	if ((SSL_version(tls_session->ssl) == TLS1_3_VERSION) &&
-	    (tls_session->client_cert_ok || tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
+	    (tls_session->client_cert_ok || tls_session->client_cert_ocsp_skipped ||
+	     tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
 		if ((handler->type == PW_EAP_TLS) || SSL_session_reused(tls_session->ssl)) {
 			tls_session->authentication_success = true;
 

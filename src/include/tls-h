@@ -140,6 +140,7 @@ typedef struct _tls_session_t {
 	bool		connecting;			//!< whether we have a timer waiting for it to be connected
 	bool		is_init_finished;		//!< whether or not init is finished
 	bool		client_cert_ok;			//!< whether or not we validated the client certificate
+	bool		client_cert_ocsp_skipped;	//!< the client certificate was accepted, but the OCSP check was skipped (softfail)
 	bool		authentication_success;		//!< whether or not the user was authenticated (cert or PW)
 	bool		quick_session_tickets;		//!< for EAP-TLS.
 

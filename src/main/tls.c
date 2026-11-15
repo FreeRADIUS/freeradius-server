@@ -3054,6 +3054,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	int		err, depth, lookup, loc;
 	fr_tls_server_conf_t *conf;
 	int		my_ok = ok;
+	bool		ocsp_skipped = false;
 
 	ASN1_INTEGER	*sn = NULL;
 	ASN1_TIME	*asn_time = NULL;
@@ -3575,6 +3576,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				 *	"skip verify on OK", then we don't do verify.
 				 */
 				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, untrusted, conf);
+				ocsp_skipped = (my_ok == OCSP_STATUS_SKIPPED);
 				if (my_ok != OCSP_STATUS_FAILED) {
 					do_verify = !conf->verify_skip_if_ocsp_ok;
 				}
@@ -3639,9 +3641,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		}
 
 		/*
-		 *	Track that we've verified the client certificate.
+		 *	Track if we've verified the client certificate.
+		 *
+		 *	A certificate which skips the OCSP checks due
+		 *	to softfail is not verified.  Track it
+		 *	separately, so that the caller can decide if
 		 */
 		ssn->client_cert_ok = (my_ok == 1);
+		ssn->client_cert_ocsp_skipped = ocsp_skipped && (my_ok != 0);
 	} /* depth == 0 */
 
 	/*
