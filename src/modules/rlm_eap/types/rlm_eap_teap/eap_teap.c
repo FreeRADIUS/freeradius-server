@@ -1995,7 +1995,7 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 {
 	PW_CODE			code;
 	int			verify;
-	VALUE_PAIR		*teap_vps, *vp;
+	VALUE_PAIR		*teap_vps = NULL, *vp;
 	uint8_t			const *data;
 	size_t			data_len;
 	teap_tunnel_t		*t;
