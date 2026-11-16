@@ -273,7 +273,7 @@ static eap_type_t eap_type_nest_fallback(rlm_eap_t const *inst, request_t const 
  *
  */
 static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
-				  eap_type_t last_type,
+				  eap_type_t last_type, uint64_t nak_mask,
 				  eap_type_data_t *nak)
 {
 	rlm_eap_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_t);
@@ -342,10 +342,16 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 		}
 
 		/*
+		 *	This type was already proposed, don't allow the peer to request it again
+		 */
+		if ((nak_mask & (((uint64_t) 1) << nak->data[i])) != 0) {
+			RDEBUG2("Peer sent NAK asking for %s (%d), which we had previously suggested, skipping...",
+				eap_type2name((eap_type_t)nak->data[i]), nak->data[i]);
+			continue;
+		}
+
+		/*
 		 *	Prevent a firestorm if the client is confused.
-		 *
-		 *	FIXME: Really we should keep a list of
-		 *	methods we've already sent back.
 		 */
 		if (last_type == nak->data[i]) {
 			char const *type_str = eap_type2name((eap_type_t)nak->data[i]);
@@ -796,6 +802,17 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 			next = fallback;
 		}
 
+		/*
+		 *	This type was already proposed, don't allow the peer to request it again
+		 *
+		 *	If the method is allowed, then update the nak_mask with the method which was chosen.
+		 */
+		if ((eap_session->nak_mask & (((uint64_t) 1) << next)) != 0) {
+			REDEBUG2("Refusing to propose EAP %s (%u) a second time", eap_type2name(next), next);
+			goto is_invalid;
+		}
+		if (next > FR_EAP_METHOD_NAK) eap_session->nak_mask |= ((uint64_t) 1) << next;
+
 		eap_session->process = inst->methods[next].submodule->session_init;
 		eap_session->type = next;
 		break;
@@ -808,7 +825,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 		 */
 		TALLOC_FREE(eap_session->opaque);
 		fr_state_discard_child(eap_session->request, eap_session, 0);
-		next = eap_process_nak(mctx, eap_session->request, eap_session->type, type);
+		next = eap_process_nak(mctx, eap_session->request, eap_session->type, eap_session->nak_mask, type);
 		if (!next) RETURN_UNLANG_REJECT;
 
 		/*

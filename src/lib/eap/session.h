@@ -71,7 +71,11 @@ struct eap_session_s {
 	bool		tls;				//!< Whether EAP method uses TLS.
 	bool		tunnel;				//!< copied from #fr_rlm_eap_submodule_t
 	bool		finished;			//!< Whether we consider this session complete.
+
+	uint64_t	nak_mask;			//!< Bitmask of EAP methods already proposed to the peer.
 };
+
+static_assert(FR_EAP_METHOD_MAX <= 64, "eap_session_t nak_mask is too small");
 
 void		eap_session_discard(request_t *request);
 
