@@ -43,6 +43,9 @@ typedef struct fr_event_list_s fr_event_list_t;
 
 #include <sys/stat.h>
 #include <sys/wait.h>
+#ifdef __linux__
+#include <sys/inotify.h>
+#endif
 
 #ifdef NDEBUG
 /*
@@ -371,6 +374,22 @@ struct fr_event_user_s {
 	int			line;			//!< Line this event was last updated on.
 #endif
 };
+
+#ifdef __linux__
+struct fr_event_file_watch {
+	fr_event_list_t		*el;			//!< Event list this event belongs to.
+
+	int			fd;			//!< fd for the file / directory being watched.
+	char const		*name;			//!< Name of file / directory being watched.
+
+	int			in_fd;			//!< fd that inotify will report events on.
+	fr_event_fd_t		*fd_ev;			//!< Kqueue event for reads from inotify fd.
+	int			wd;			//!< watch descriptor from inotify_add_watch.
+
+	fr_event_vnode_func_t	funcs;			//!< Callback functions
+	void			*uctx;			//!< Context for the callback functions
+};
+#endif
 
 /** Callbacks to perform when the event handler is about to check the events
  *
@@ -2686,6 +2705,183 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 
 	return el;
 }
+
+#ifdef __linux__
+/*
+ *	The kqueue API takes an FD, but inotify requires a filename.
+ *	libkqueue uses /proc/PID/fd/# to look up the FD -> filename mapping.
+ *
+ *	However, if you start the server as "root", and then swap to "radiusd",
+ *	/proc/PID will be owned by "root" for security reasons.  The only way
+ *	to make /proc/PID owned by "radiusd" is to set the DUMPABLE flag.
+ *
+ *	To avoid this requirement, this API allows inotify events to be
+ *	registered rather than using libkqueue with filter EVFILT_VNODE
+ */
+
+ /** Read a single inotify event
+  */
+static int inotify_event_read(struct inotify_event *ev, size_t len, int fd)
+{
+	ssize_t size;
+	size_t want = sizeof(struct inotify_event);
+
+	for (;;) {
+		if (len < want) {
+			fr_strerror_printf("Needed %zu bytes have %zu bytes", want, len);
+			return (-1);
+		}
+
+		/*
+		 *	The size of each inotify event is variable, due to the
+		 *	last structure member being a variable length array.
+		 *
+		 *	To ensure that we only read one event, we start with the
+		 *	read length being the base structure size and increment
+		 *	it by that length each time errno is EINVAL - which
+		 *	occurs when read is called with a buffer size less than
+		 *	required.
+		 */
+		size = read(fd, ev, want);
+		if (size < 0) {
+			switch (errno) {
+			case EINVAL:
+				want += sizeof(struct inotify_event);
+                		continue;
+
+			case EINTR:
+				continue;
+
+			case EAGAIN:
+				return 0;
+
+			default:
+				fr_strerror_printf("Inotify read returned %s", fr_syserror(errno));
+				return -1;
+        		}
+		}
+		break;
+	}
+
+	return 1;
+}
+
+/** Callback run when the inotify fd receives notification of an event.
+ */
+static void _file_watch_event_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	fr_event_file_watch_t	*ev = talloc_get_type_abort(uctx, fr_event_file_watch_t);
+	uint8_t 		buff[sizeof(struct inotify_event) + NAME_MAX + 1] __attribute__ ((aligned(__alignof__(struct inotify_event))));
+	struct inotify_event	*event = (struct inotify_event*) buff;
+	uint32_t 		merged_mask = 0;
+	bool 			delete = false;
+
+	/*
+	 *	Read all the events reported by inotify and
+	 *	merge the reported mask values.
+	 */
+	for (;;) {
+		int ret = inotify_event_read(event, sizeof(buff), fd);
+		if (ret < 0) return;
+		if (ret == 0) break;
+
+		if (event->mask & IN_IGNORED) continue;
+
+		merged_mask |= event->mask;
+	}
+
+	/*
+	 *	Delete events which just remove a link return IN_ATTRIB rather than IN_DELETE_SELF
+	 *	Use stat to see if the file has been deleted.
+	 */
+	if (merged_mask & IN_ATTRIB) {
+		struct stat sb;
+		if ((stat(ev->name, &sb) < 0) && (errno == ENOENT)) delete = true;
+	}
+
+	if (((merged_mask & IN_DELETE_SELF) || delete) && ev->funcs.delete) {
+		ev->funcs.delete(el, ev->fd, NOTE_DELETE, ev->uctx);
+	}
+	if ((merged_mask & IN_MODIFY) && ev->funcs.write) {
+		ev->funcs.write(el, ev->fd, NOTE_WRITE, ev->uctx);
+	}
+	if ((merged_mask & IN_CREATE) && ev->funcs.extend) {
+		ev->funcs.extend(el, ev->fd, NOTE_EXTEND, ev->uctx);
+	}
+	if ((merged_mask & IN_ATTRIB) && ev->funcs.link) {
+		ev->funcs.link(el, ev->fd, NOTE_LINK, ev->uctx);
+	}
+	if ((merged_mask & IN_MOVE_SELF) && ev->funcs.rename) {
+		ev->funcs.rename(el, ev->fd, NOTE_LINK, ev->uctx);
+	}
+}
+
+/** Tidy up a file watch event
+ */
+static int _file_watch_free(fr_event_file_watch_t *ev) {
+	(void) fr_event_fd_delete(ev->el, ev->in_fd, FR_EVENT_FILTER_IO);
+	if (ev->wd) inotify_rm_watch(ev->in_fd, ev->wd);
+	close(ev->in_fd);
+	return 0;
+}
+
+/** Register a new file watch event
+ */
+int fr_event_file_watch_insert(TALLOC_CTX *ctx, fr_event_file_watch_t **ev_out, fr_event_list_t *el,
+				    int fd, char const *filename, fr_event_vnode_func_t *funcs, void *uctx)
+{
+	uint32_t			mask = 0;
+	fr_event_func_map_entry_t	*map;
+	fr_event_fd_cb_t const		*func;
+	fr_event_file_watch_t		*ev;
+
+	ev = talloc(ctx, fr_event_file_watch_t);
+	if (!ev) return -1;
+
+	*ev = (fr_event_file_watch_t) {
+		.funcs = *funcs,
+		.el = el,
+		.fd = fd,
+		.name = filename,
+		.uctx = uctx
+	};
+
+	ev->in_fd = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
+	if (ev->in_fd < 0){
+	error:
+		talloc_free(ev);
+		return -1;
+	}
+
+	talloc_set_destructor(ev, _file_watch_free);
+
+	/*
+	 *	Determine the inotify mask from the callback functions defined
+	 */
+	for (map = filter_maps[FR_EVENT_FILTER_VNODE].func_to_ev; map->name; map++) {
+		func = (fr_event_fd_cb_t const *)((uint8_t const *)funcs + map->offset);
+		if (!(*func)) continue;
+
+		mask |= map->inotify_mask;
+	}
+
+	ev->wd = inotify_add_watch(ev->in_fd, filename, mask);
+	if (ev->wd < 0) goto error;
+
+	if (fr_event_fd_insert(ev, &ev->fd_ev, el, ev->in_fd, _file_watch_event_read, NULL, NULL, ev) < 0) goto error;
+	if (ev_out) *ev_out = ev;
+
+	return 0;
+}
+
+/** Delete a file watch event
+ */
+int fr_event_file_watch_delete(fr_event_file_watch_t *ev)
+{
+	if (talloc_free(ev) < 0) return -1;
+	return 0;
+}
+#endif
 
 #ifndef NDEBUG
 #define EVENT_EMPTY_MAX_PRINT (10)

@@ -77,6 +77,10 @@ typedef struct fr_event_pid fr_event_pid_t;
  */
 typedef struct fr_event_user_s fr_event_user_t;
 
+/** An opaque file watch handle
+ */
+typedef struct fr_event_file_watch fr_event_file_watch_t;
+
 /** The type of filter to install for an FD
  */
 typedef enum : uint8_t {
@@ -284,6 +288,15 @@ int 		_fr_event_user_insert(NDEBUG_LOCATION_ARGS
 int		fr_event_user_trigger(fr_event_user_t *ev);
 
 int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_cb_t user, void *uctx) CC_HINT(nonnull(1,2));
+
+#ifdef __linux__
+int		fr_event_file_watch_insert(TALLOC_CTX *ctx, fr_event_file_watch_t **ev_out, fr_event_list_t *el,
+					   int fd, char const *filename, fr_event_vnode_func_t *func,
+					   void *uctx) CC_HINT(nonnull(1,3,5,6));
+
+int		fr_event_file_watch_delete(fr_event_file_watch_t *ev) CC_HINT(nonnull);
+
+#endif
 
 int		fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 int		fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
