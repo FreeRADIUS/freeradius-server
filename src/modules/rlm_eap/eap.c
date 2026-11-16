@@ -212,7 +212,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
  *
  */
 static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
-				    eap_type_t type,
+				    eap_type_t type, uint64_t nak_mask,
 				    eap_type_data_t *nak)
 {
 	unsigned int i;
@@ -271,6 +271,15 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 				eap_type2name(nak->data[i]),
 				nak->data[i]);
 
+			continue;
+		}
+
+		/*
+		 *	This type was already NAKed, don't allow the peer to request it again
+		 */
+		if ((nak_mask & (((uint64_t) 1) << nak->data[i])) != 0) {
+			RDEBUG2("Peer sent NAK asking for %s (%d), which we had previously suggested, skipping...",
+				eap_type2name(nak->data[i]), nak->data[i]);
 			continue;
 		}
 
@@ -410,6 +419,21 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		rad_assert(next < PW_EAP_MAX_TYPES);
 		rad_assert(inst->methods[next]);
 
+		/*
+		 *	A method may be proposed only once in a
+		 *	conversation.  eap_process_nak() already
+		 *	skips types in the mask, so this catches
+		 *	only the other ways of getting here.
+		 */
+		_Static_assert(PW_EAP_MAX_TYPES <= 64, "nak_mask is too small");
+		if ((handler->nak_mask & (((uint64_t) 1) << next)) != 0) {
+			REDEBUG2("Refusing to propose EAP %s (%d) a second time",
+				 eap_type2name(next), next);
+
+			return EAP_INVALID;
+		}
+		handler->nak_mask |= ((uint64_t) 1) << next;
+
 		handler->stage = INITIATE;
 		handler->type = next;
 
@@ -439,7 +463,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		if (handler->started) return EAP_INVALID;
 
 		next = eap_process_nak(inst, handler->request,
-				       handler->type, type);
+				       handler->type, handler->nak_mask, type);
 
 		/*
 		 *	We probably want to return 'fail' here...

@@ -121,7 +121,10 @@ typedef struct _eap_handler {
 
 	bool		tls;
 	bool		started;
+
 	bool		finished;
+
+	uint64_t	nak_mask;			//!< track previously NAKd methods
 	VALUE_PAIR	*certs;
 } eap_handler_t;
 
