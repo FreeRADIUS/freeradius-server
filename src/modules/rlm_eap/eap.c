@@ -432,7 +432,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 
 			return EAP_INVALID;
 		}
-		handler->nak_mask |= ((uint64_t) 1) << next;
+		if (next > PW_EAP_NAK) handler->nak_mask |= ((uint64_t) 1) << next;
 
 		handler->stage = INITIATE;
 		handler->type = next;
