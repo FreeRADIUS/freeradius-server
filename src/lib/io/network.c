@@ -1201,7 +1201,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 				return;
 			}
 
-			PERROR("Failed writing to socket %s", s->inst->name);
+			if (rcode != SSIZE_MIN) PERROR("Failed writing to socket %s", s->inst->name);
 
 			switch (errno) {
 			/*

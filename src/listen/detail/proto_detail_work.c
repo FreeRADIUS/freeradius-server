@@ -669,7 +669,7 @@ free_track:
 	if (thread->closing && !thread->outstanding) {
 		MPRINT("WRITE ASKED TO CLOSE");
 		errno = ECONNRESET;
-		return -1;
+		return SSIZE_MIN;
 	}
 
 	MPRINT("WRITE RETURN B %zu", buffer_len);
