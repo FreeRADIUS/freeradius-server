@@ -147,6 +147,7 @@ typedef struct teap_tunnel_t {
 	bool			auto_chain;		//!< do we automatically chain identities
 	bool			sent_basic_password;
 
+	bool			sent_crypto_binding;	//!< a Crypto-Binding request is outstanding
 	uint8_t			crypto_binding_nonce[32]; //!< nonce sent in last Crypto-Binding request
 
 #ifdef WITH_PROXY

@@ -311,6 +311,7 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	 *	Save the nonce so we can validate the response.
 	 */
 	memcpy(t->crypto_binding_nonce, cbb->binding.nonce, sizeof(t->crypto_binding_nonce));
+	t->sent_crypto_binding = true;
 
 	outer_tlvs = &cbb->outer_tlvs[0];
 
@@ -1707,6 +1708,15 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 		return PW_CODE_ACCESS_REJECT;
 	}
 	flags = binding->subtype >> 4;
+
+	/*
+	 *	The peer sends Crypto-Binding only after we send one.
+	 */
+	if (!t->sent_crypto_binding) {
+		REDEBUG2("Phase 2: Peer sent unexpected Crypto-Binding - rejecting session");
+		return PW_CODE_ACCESS_REJECT;
+	}
+	t->sent_crypto_binding = false;
 
 	/*
 	 *	RFC 7170, Section 4.2.13: The nonce in a response MUST
