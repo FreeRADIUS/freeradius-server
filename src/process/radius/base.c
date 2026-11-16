@@ -57,6 +57,7 @@ static fr_dict_attr_t const *attr_proxy_state;
 static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_original_packet_code;
 static fr_dict_attr_t const *attr_error_cause;
 
@@ -73,6 +74,7 @@ fr_dict_attr_autoload_t process_radius_dict_attr[] = {
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	{ .out = &attr_original_packet_code, .name = "Extended-Attribute-1.Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
@@ -256,6 +258,27 @@ RESUME(generic_radius_response)
 RECV(access_request)
 {
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
+	fr_pair_t *state, *eap_message;
+
+	/*
+	 *	Enforce the requirements of RFC 5080 Section 2.1.1, which says:
+	 *
+	 *	"An Access-Request sent as a result of a new or restarted
+	 *	authentication run MUST NOT include the State attribute, even if a
+	 *	State attribute has previously been received in an Access-Challenge
+	 *	for the same user and port."
+	 *
+	 *	We therefore look for this situation, and delete the offending State.
+	 */
+	state = fr_pair_find_by_da(&request->request_pairs, NULL, attr_state);
+	if (state &&
+	    ((eap_message = fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) != NULL)) {
+		if ((eap_message->vp_length == 0) || (eap_message->vp_length == 2) ||
+		    ((eap_message->vp_length >= 5) && (eap_message->vp_octets[4] == 0x01))) {
+			RWDEBUG("Received EAP-Request/Identity with unexpected State - deleting State");
+			fr_pair_delete_by_da(&request->request_pairs, attr_state);
+		}
+	}
 
 	if (fr_state_restore(inst->auth.state_tree, request) < 0) {
 		return CALL_SEND_TYPE(FR_RADIUS_CODE_ACCESS_REJECT);
