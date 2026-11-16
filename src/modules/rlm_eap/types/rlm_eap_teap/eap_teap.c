@@ -165,6 +165,16 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 		memcpy(&t->imck_emsk, &imck_emsk, sizeof(imck_emsk));
 	}
 
+	/*
+	 *	RFC 9930 section 6.2.2 is silent on the situation when there's no MSK and no EMSK.
+	 *	wpa_supplicant uses the new CMK[j] for the Compound MAC, but keeps S-IMCK[j-1] as the key for
+	 *	the session keys.  We do the same for compatability.
+	 */
+	if (!msklen && !emsklen) {
+		memcpy(imck_msk.simck, t->imck_msk.simck, sizeof(imck_msk.simck));
+		memcpy(imck_emsk.simck, t->imck_emsk.simck, sizeof(imck_emsk.simck));
+	}
+
 	memcpy(&t->imck_msk, &imck_msk, sizeof(imck_msk));
 }
 
@@ -1079,12 +1089,11 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		}
 
 		/*
-		 * RFC7170 section 5.2 and 5.4, only on a successful inner EAP method do we increment
-		 *
-		 * NOTE: hostapd for now incorrectly derives IMCK when an EAP method is skipped so this
-		 *       allows interop with Windows but not with wpa_supplicant
+		 *	RFC 9930 section 6.2.1: a round with Basic-Password-Auth, or with
+		 *	no MSK or EMSK, uses IMSK[j] = all zeroes.  The round still
+		 *	counts as round j, so derive IMCK[j] for every successful round.
 		 */
-		if ((msk1 && msk2) || emsklen) {
+		if ((msk1 && msk2) || emsklen || t->sent_basic_password) {
 			eap_teap_derive_imck(request, tls_session, msk, msklen, emsk, emsklen);
 		}
 
