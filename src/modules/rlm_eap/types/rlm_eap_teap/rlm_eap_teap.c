@@ -360,45 +360,61 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 *	Be nice about identity types.
 	 */
 	vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
-	if (vp) {
-		RDEBUG("Found &session-state:FreeRADIUS-EAP-TEAP-Identity-Type, not setting from configuration");
-
-	} else if (!inst->identity_type[0]) {
+	if (!vp && !inst->identity_type[0]) {
 		RWDEBUG("No &session-state:FreeRADIUS-EAP-TEAP-Identity-Type was found.");
 		RWDEBUG("No 'identity_types' was set in the configuration.  TEAP will likely not work.");
 
 	} else {
-		teap_tunnel_t *t;
+		teap_tunnel_t	*t;
+		vp_cursor_t	cursor;
+		int		i;
 
 		fr_assert(ssn->opaque == NULL);
 
 		ssn->opaque = teap_alloc(ssn, inst);
 		t = (teap_tunnel_t *) ssn->opaque;
 
-		/*
-		 *	We automatically add &session-state:FreeRADIUS-EAP-TEAP-Identity-Type
-		 *	to control the flow.
-		 */
-		t->auto_chain = true;
-
-		vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_SET);
 		if (vp) {
-			RDEBUG("Setting %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
-			       inst->identity_type_required[0] ? "" : "(optional) ", (inst->identity_type[0] == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
-			vp->vp_short = inst->identity_type[0];
-			t->identity_types[inst->identity_type[0]].required = inst->identity_type_required[0];
-		}
-		t->identities_remaining++;
+			RDEBUG("Found &session-state:FreeRADIUS-EAP-TEAP-Identity-Type, not setting from configuration");
+			for (i = 0; i < 2; i++) {
+				if (!inst->identity_type[i]) break;
 
-		if (inst->identity_type[1]) {
-			vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_ADD);
+				t->identity_types[inst->identity_type[i]].required = inst->identity_type_required[i];
+			}
+
+			for (vp = fr_cursor_init(&cursor, &request->state);
+			     vp;
+			     vp = fr_cursor_next_by_num(&cursor, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY)) {
+				if ((vp->da->attr != PW_EAP_TEAP_TLV_IDENTITY_TYPE) || (vp->da->vendor != VENDORPEC_FREERADIUS)) continue;
+
+				t->identities_remaining++;
+			}
+		} else {
+			/*
+			 *	We automatically add &session-state:FreeRADIUS-EAP-TEAP-Identity-Type
+			 *	to control the flow.
+			 */
+			t->auto_chain = true;
+
+			vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_SET);
 			if (vp) {
-				RDEBUG("Followed by %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
-				       inst->identity_type_required[1] ? "" : "(optional) ", (inst->identity_type[1] == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
-				vp->vp_short = inst->identity_type[1];
-				t->identity_types[inst->identity_type[1]].required = inst->identity_type_required[1];
+				RDEBUG("Setting %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
+				       inst->identity_type_required[0] ? "" : "(optional) ", (inst->identity_type[0] == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+				vp->vp_short = inst->identity_type[0];
+				t->identity_types[inst->identity_type[0]].required = inst->identity_type_required[0];
 			}
 			t->identities_remaining++;
+
+			if (inst->identity_type[1]) {
+				vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_ADD);
+				if (vp) {
+					RDEBUG("Followed by %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
+					       inst->identity_type_required[1] ? "" : "(optional) ", (inst->identity_type[1] == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+					vp->vp_short = inst->identity_type[1];
+					t->identity_types[inst->identity_type[1]].required = inst->identity_type_required[1];
+				}
+				t->identities_remaining++;
+			}
 		}
 	}
 
