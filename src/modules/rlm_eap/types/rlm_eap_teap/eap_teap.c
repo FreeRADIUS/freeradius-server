@@ -1153,6 +1153,14 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			goto challenge;
 		}
 
+		/*
+		 *	If no inner method succeeded, then authentication as a whole has failed.
+		 */
+		if (!t->authenticated) {
+			REDEBUG("Phase 2: No inner authentication succeeded - rejecting the session");
+			goto fail;
+		}
+
 		RDEBUG("Phase 2: All inner authentications have succeeded");
 
 		t->sent_basic_password = false;
@@ -1432,15 +1440,18 @@ fail:
 
 					goto no_quirk;
 quirk_wpa_supplicant:
+quirk_win11:
 					/*
-					 *	If we didn't have at least one authentication success, we fail.
+					 *	Skipping an optional method is only allowed after a previous round
+					 *	has succeeded.  We don't want peers to send Result=Success immediately
+					 *	after the TLS tunnel has been established.  This check also catches
+					 *	the Windows 11 empty EAP-Identity quirk.
 					 */
 					if (!t->authenticated) {
 						RWDEBUG("Phase 2: Did not find authentication material, and previous round was not authenticated");
 						goto fail;
 					}
 
-quirk_win11:
 					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not send any authentication material - skipping optional method", identity_type_str);
 
 					vp = fr_pair_afrom_num(fake, PW_AUTH_TYPE, 0);
@@ -2090,6 +2101,12 @@ noappdata:
 				RDEBUG("Phase 2: No %sEAP method configured - sending Basic-Password-Auth-Req = \"\"",
 				       vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER ? "User " : (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE ? "Machine " : "UNKNOWN "));
 				eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, true, 0, "");
+
+				/*
+				 *	A password round counts as "started authentication" once the inner
+				 *	server accepts it.
+				 */
+				t->sent_basic_password = true;
 			}
 		} else if (t->default_method) {
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
