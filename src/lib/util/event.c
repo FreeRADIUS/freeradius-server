@@ -122,6 +122,9 @@ typedef struct {
 	int16_t			filter;			//!< Filter to apply.
 	uint16_t		flags;			//!< Flags to use for inserting event.
 	uint32_t		fflags;			//!< fflags to pass to filter.
+#ifdef __linux__
+	uint32_t		inotify_mask;		//!< inotify mask for this event.
+#endif
 	int			type;			//!< Type this filter applies to.
 	bool			coalesce;		//!< Coalesce this map with the next.
 } fr_event_func_map_entry_t;
@@ -169,6 +172,9 @@ static fr_event_func_map_t filter_maps[] = {
 				.filter		= EVFILT_VNODE,
 				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
 				.fflags		= NOTE_DELETE,
+#ifdef __linux__
+				.inotify_mask	= IN_ATTRIB | IN_DELETE_SELF,
+#endif
 				.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
 				.coalesce	= true
 			},
@@ -178,6 +184,9 @@ static fr_event_func_map_t filter_maps[] = {
 				.filter		= EVFILT_VNODE,
 				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
 				.fflags		= NOTE_WRITE,
+#ifdef __linux__
+				.inotify_mask	= IN_MODIFY,
+#endif
 				.type		= FR_EVENT_FD_FILE,
 				.coalesce	= true
 			},
@@ -187,6 +196,9 @@ static fr_event_func_map_t filter_maps[] = {
 				.filter		= EVFILT_VNODE,
 				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
 				.fflags		= NOTE_EXTEND,
+#ifdef __linux__
+				.inotify_mask	= IN_CREATE,
+#endif
 				.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
 				.coalesce	= true
 			},
@@ -196,6 +208,9 @@ static fr_event_func_map_t filter_maps[] = {
 				.filter		= EVFILT_VNODE,
 				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
 				.fflags		= NOTE_ATTRIB,
+#ifdef __linux__
+				.inotify_mask	= IN_ATTRIB,
+#endif
 				.type		= FR_EVENT_FD_FILE,
 				.coalesce	= true
 			},
@@ -205,6 +220,9 @@ static fr_event_func_map_t filter_maps[] = {
 				.filter		= EVFILT_VNODE,
 				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
 				.fflags		= NOTE_LINK,
+#ifdef __linux__
+				.inotify_mask	= IN_ATTRIB,
+#endif
 				.type		= FR_EVENT_FD_FILE,
 				.coalesce	= true
 			},
@@ -214,6 +232,9 @@ static fr_event_func_map_t filter_maps[] = {
 				.filter		= EVFILT_VNODE,
 				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
 				.fflags		= NOTE_RENAME,
+#ifdef __linux__
+				.inotify_mask	= IN_MOVE_SELF,
+#endif
 				.type		= FR_EVENT_FD_FILE,
 				.coalesce	= true
 			},
