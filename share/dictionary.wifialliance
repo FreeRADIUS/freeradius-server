@@ -83,12 +83,83 @@ ATTRIBUTE	HS20-Deauthentication-Request		4	octets
 #
 ATTRIBUTE	HS20-Session-Information-URL		5	octets
 
+#  0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  | Roaming-Consortium-OI
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  Roaming-Consortium-OI = The 3 or 5 octet Roaming Consortium OI to which 
+#  the credentials in the authentication attempt belong to.
+#
+#  This attribute shall be included in an Access-Request message sent to an 
+#  AAA server, when an AP receives a (Re)Association Request frame containing 
+#  a Roaming Consortium Selection element (see section 3.1.4) including the
+#  Roaming Consortium OI.
+#  
 #  Values are:
 #
-#  5A-03-BA-00-00 OpenRoaming for All Identities, settlement-free, no personal data requested, baseline QoS
-#  5A-03-BA-08-00 "OpenRoaming for Educational or Research Identities, settlement-free, no personal data requested, baseline QoS"
-ATTRIBUTE      HS20-Roaming-Consortium                 6       octets
+#  5A-03-BA-00-00 OpenRoaming for All Identities, settlement-free, no personal 
+#                 data requested, baseline QoS
+#  5A-03-BA-08-00 "OpenRoaming for Educational or Research Identities, settlement-free, 
+#                 no personal data requested, baseline QoS"
+#
+ATTRIBUTE HS20-Roaming-Consortium               6 octets
 
+#  0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  | Terms and Conditions filename
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  Terms and Conditions filename: The filename of the Terms and Conditions as assigned 
+#  by the network administrator. The Timestamp associated with this version of the file 
+#  is also assigned (see HS20-Timestamp)
+#
+ATTRIBUTE HS20-Terms-and-Conditions-Filename    7 octets
 
+#  0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  | Timestamp
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  Timestamp: The time used to identify the current verson of the T&C file by the 
+#  adminstrator. The format is defined as the AVP Data Format “Time”
+#
+ATTRIBUTE HS20-Timestamp        8 octets
+
+#  0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  | Flags        |          Reserved                              |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  Flags field: The following bits are assigned:
+#        Bit 0: Enable (E). When the value of Enable is set to 1, the NAS client (AP) 
+#               is requested to enable T&C Filtering; i.e., the NAS client shall filter 
+#               (drop) all frames exchanged with hosts other than those required to access 
+#               the locally configured T&C Server (see section 9.1). When the value of 
+#               Enable is set to 0, the NAS client shall disable this filtering function.
+#        Bits 1 – 7: reserved.
+#  Reserved field: 3 octets reserved field.
+#
+ATTRIBUTE HS20-Terms-and-Conditions-Filtering   9 octets
+
+#  0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  | T&C Server URL
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  T&C Server URL: This is a HTTPS, UTF-8 encoded field formatted in accordance with RFC3709.
+#
+#  This attribute may be included in an Access-Accept message to indicate that the mobile 
+#  device needs to request the user to accept the Terms and Conditions. The Passpoint AP then 
+#  sends a WNM Notification Request frame containing a T&C Acceptance subelement to the mobile 
+#  device after a successfully completed authentication. The value of the T&C Server URL field 
+#  is used as the server URL in that notification.
+#
+ATTRIBUTE HS20-Terms-and-Conditions-URL         10 octets
 
 END-VENDOR    WiFi-Alliance
