@@ -73,8 +73,6 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 static const conf_parser_t file_listen_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, proto_detail_file_t, filename ) },
 
-	{ FR_CONF_OFFSET("filename_work", proto_detail_file_t, filename_work ) },
-
 	{ FR_CONF_OFFSET("poll_interval", proto_detail_file_t, poll_interval), .dflt = "5" },
 
 	{ FR_CONF_OFFSET("immediate", proto_detail_file_t, immediate) },
@@ -647,7 +645,8 @@ static fr_cmp_ret_t _detail_file_cmp(void const *one, void const *two)
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_detail_file_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_detail_file_t);
-	CONF_SECTION		*conf = mctx->mi->conf;
+	CONF_SECTION		*conf = mctx->mi->conf, *work_cs;
+	CONF_PAIR		*work_cp;
 
 	module_instance_t const	*mi;
 	char			*p;
@@ -702,9 +701,24 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	*p = '\0';
 
-	if (!inst->filename_work) {
-		inst->filename_work = talloc_typed_asprintf(inst, "%s/detail.work", inst->directory);
+	/*
+	 *	Fetch work filename from "work" conf section
+	 *	These need to align for the proto_detail_file and proto_detail_work
+	 *	to behave correctly with each other.
+	 */
+	work_cs = cf_section_find(cf_item_to_section(cf_parent(conf)), "work", NULL);
+	if (!work_cs) {
+		cf_log_err(cf_parent(conf), "Missing \"work\" section");
+		return -1;
 	}
+
+	work_cp = cf_pair_find(work_cs, "filename");
+	if (!work_cp) {
+		cf_log_err(work_cs, "Missing \"filename\"");
+		return -1;
+	}
+
+	inst->filename_work = cf_pair_value(work_cp);
 
 	/*
 	 *	We need this for the lock.
