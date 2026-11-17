@@ -132,9 +132,7 @@ server detail {
 		#
 		work {
 			#
-			#  The name of the current working file. If omitted, it is the
-			#  directory from the `file` subsection, `filename` argument given
-			#  above, with "/detail.work" appended to it.
+			#  The name of the current working file.
 			#
 			#  As of v4, you can have multiple detail file readers in the same
 			#  directory. The only caveat is that the wildcards CANNOT overlap.
