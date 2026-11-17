@@ -1,0 +1,7 @@
+apiVersion: 1
+
+providers:
+  - name: capture-rate
+    type: file
+    options:
+      path: /etc/grafana/dashboards

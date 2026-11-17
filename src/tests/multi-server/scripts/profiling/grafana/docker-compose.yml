@@ -1,0 +1,35 @@
+#
+#  Grafana draws the resource use that
+#  `measure_gperftools_capture_rate.sh` records.
+#
+#  Because the Infinity plugin reads CSV files from a URL, the `results`
+#  service serves `$RESULTS` over HTTP.
+#
+#  Start Grafana after the tests, from the top of the source tree:
+#
+#    export RESULTS=$PWD/prof-results/capture-rate/$(git rev-parse --short HEAD)
+#    docker compose -f src/tests/multi-server/scripts/profiling/grafana/docker-compose.yml up -d
+#
+#  Then open http://localhost:3000.
+#
+name: capture-rate
+
+services:
+  results:
+    image: nginx:alpine
+    volumes:
+      - ${RESULTS:?set RESULTS to a results directory}:/usr/share/nginx/html:ro
+
+  grafana:
+    image: grafana/grafana:12.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_PLUGINS_PREINSTALL: yesoreyeram-infinity-datasource
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/capture-rate.json
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/etc/grafana/dashboards:ro
