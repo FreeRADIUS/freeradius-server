@@ -428,6 +428,12 @@ do { \
 #  define NDEBUG_UNUSED		UNUSED
 #endif
 
+#ifdef __linux__
+#  define LINUX_UNUSED		UNUSED
+#else
+#  define LINUX_UNUSED
+#endif
+
 #define BLANK_FORMAT		" "	/* GCC_LINT whines about empty formats */
 
 /*

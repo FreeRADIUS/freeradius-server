@@ -352,8 +352,13 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	@todo - ensure that proto_detail_work is done the file...
 	 *	maybe by creating a new instance?
 	 */
+#ifdef __linux__
+	if (fr_event_file_watch_insert(thread, &thread->ew, thread->el, fd, inst->filename_work,
+				       &funcs, thread) < 0) {
+#else
 	if (fr_event_filter_insert(thread, NULL, thread->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, thread) < 0) {
+#endif
 		PERROR("Failed adding work socket to event loop");
 		close(li->fd);
 		close(fd);
@@ -394,11 +399,16 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 
 	if (!fr_schedule_listen_add(inst->parent->sc, li)) {
 	error:
+#ifdef __linux__
+		if (fr_event_file_watch_delete(thread->ew) < 0) {
+#else
 		if (fr_event_fd_delete(thread->el, thread->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
+#endif
 			PERROR("Failed removing DELETE callback when opening work file");
 		}
 		close(thread->vnode_fd);
 		thread->vnode_fd = -1;
+		thread->ew = NULL;
 
 		if (opened) {
 			(void) li->listen->app_io->close(li);
@@ -424,8 +434,8 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	return 0;
 }
 
-
-static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx)
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_event_list_t trips --fsanitize=function*/
+static void mod_vnode_delete(LINUX_UNUSED fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx)
 {
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(ctx, proto_detail_file_thread_t);
 	proto_detail_file_t const *inst = thread->inst;
@@ -445,11 +455,16 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 		return;
 	}
 
+#ifdef __linux__
+	if (fr_event_file_watch_delete(thread->ew) < 0) {
+#else
 	if (fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE) < 0) {
+#endif
 		PERROR("Failed removing DELETE callback after deletion");
 	}
 	close(fd);
 	thread->vnode_fd = -1;
+	thread->ew = NULL;
 
 	/*
 	 *	Re-initialize the state machine.
@@ -657,28 +672,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	module_instance_t const	*mi;
 	char			*p;
 
-#ifdef __linux__
-	/*
-	 *	The kqueue API takes an FD, but inotify requires a filename.
-	 *	libkqueue uses /proc/PID/fd/# to look up the FD -> filename mapping.
-	 *
-	 *	However, if you start the server as "root", and then swap to "radiusd",
-	 *	/proc/PID will be owned by "root" for security reasons.  The only way
-	 *	to make /proc/PID owned by "radiusd" is to set the DUMPABLE flag.
-	 *
-	 *	Instead of making the poor sysadmin figure this out,
-	 *	we check for this situation, and give them a
-	 *	descriptive message telling them what to do.
-	 */
-	if (!main_config->allow_core_dumps &&
-	    main_config->uid_is_set &&
-	    main_config->server_uid != 0) {
-		cf_log_err(conf, "Cannot start detail file reader due to Linux limitations.");
-		cf_log_err(conf, "Please set 'allow_core_dumps = true' in the main configuration file.");
-		return -1;
-	}
-#endif
-
 	/*
 	 *	Find the module_instance_t holding our instance data
 	 *	so we can find out what the parent of our instance
@@ -788,7 +781,11 @@ static int mod_close(fr_listen_instance_t *li)
 				PERROR("Failed removing listener from network on detach");
 			}
 		} else {
+#ifdef __linux__
+			if (fr_event_file_watch_delete(thread->ew) < 0) {
+#else
 			if (fr_event_fd_delete(thread->el, thread->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
+#endif
 				PERROR("Failed removing DELETE callback on detach");
 			}
 		}

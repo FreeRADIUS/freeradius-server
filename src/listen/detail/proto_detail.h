@@ -109,6 +109,7 @@ struct proto_detail_work_thread_s {
 
 	int				fd;			//!< file descriptor
 	int				vnode_fd;      		//!< file descriptor for vnode_delete
+	fr_event_file_watch_t		*ew;			//!< event for file deletes
 
 	fr_event_list_t			*el;			//!< for various timers
 	fr_network_t			*nr;			//!< for Linux-specific callbacks
