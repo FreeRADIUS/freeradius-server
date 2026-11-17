@@ -1811,6 +1811,8 @@ static const bool code2ma[FR_MAX_PACKET_CODE] = {
 
 /** Encode a packet
  *
+ * If packet->data is already set, and is large enough for the new
+ * packet, then just overwrite it.  Otherwise, allocate data.
  */
 int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	       char const *secret)
@@ -2016,15 +2018,21 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	Fill in the rest of the fields, and copy the data over
 	 *	from the local stack to the newly allocated memory.
 	 *
-	 *	Yes, all this 'memcpy' is slow, but it means
-	 *	that we only allocate the minimum amount of
-	 *	memory for a request.
+	 *	Allocate enough memory for the packet, or re-use
+	 *	memory from the previous round.  i.e. if we encode a
+	 *	proxied packet, and then proxy it to a new location,
+	 *	there isn't a lot of point in freeing the packet
+	 *	buffer, and then immediately allocating a new one of
+	 *	the same size.
 	 */
 	packet->data_len = total_length;
-	packet->data = talloc_array(packet, uint8_t, packet->data_len);
+	if (packet->data && (talloc_array_length(packet->data) < total_length)) TALLOC_FREE(packet->data);
 	if (!packet->data) {
-		fr_strerror_printf("Out of memory");
-		return -1;
+		packet->data = talloc_array(packet, uint8_t, packet->data_len);
+		if (!packet->data) {
+			fr_strerror_printf("Out of memory");
+			return -1;
+		}
 	}
 
 	memcpy(packet->data, hdr, packet->data_len);
