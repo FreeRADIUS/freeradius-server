@@ -2584,6 +2584,8 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 
 	fr_value_box_init_null(&tls_session->session_id);
 
+	tls_session->alpn_id = FR_TLS_ALPN_ID_NONE;
+
 	/*
 	 *	Add the message callback to identify what type of
 	 *	message/handshake is passed

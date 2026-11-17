@@ -258,6 +258,11 @@ struct fr_tls_conf_s {
 	size_t			sizeof_alpn;		//!< Length of `alpn`, which carries no terminator.
 	bool			alpn_required;		//!< Fail if no ALPN was negotiated.
 
+	struct fr_tls_alpn_s const *alpn_table;		//!< Structure holding config -> ALPN mappings.
+	int			*alpn_ids;		//!< Ids of the entries of `alpn_table` which are on the list,
+							///< in the order of preference.
+	size_t			alpn_num;		//!< Number of ids in `alpn_ids`.
+
 	/** Underlying transport.
 	 *
 	 *  The TLS library does NOT manage any IO itself.  However, it

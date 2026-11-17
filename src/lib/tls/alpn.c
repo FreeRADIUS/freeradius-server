@@ -43,31 +43,6 @@
 #include "base.h"
 #include "log.h"
 
-/*
- *	@todo - for automatically configured ALPN.
- *
- *	1) The application should define an enumerated data type which contains the list of ALPNs which it
- *	knows about.
- *
- *	2) alpn.h should define a data structure of 3 elements: enum value (int), ALPN string (without leading
- *	length), and configuration item name (or a CONF_PAIR)
- *
- *	3) We likely have to pass that data structure to fr_tls_conf_parse_server() and
- *	fr_tls_conf_parse_client()
- *
- *	4) the TLS conf parser should allow an `alpn { ... }` section to be defined.  But its contents should
- *	be parsed by a callback. e.g. `radius_v1_1 = true`
- *
- *	5) the callback walks through the entries of the structure, and compares them to the CONF_PAIRs.  Any
- *	mismatch is an error.  Duplicates are an error.  If there's a match, we update tls_session->alpn with
- *	one octet of the length of the ALPN string, plus the string.  This allows the administrator to list
- *	the ALPN strings in preferred order.
- *
-*	6) when ALPN is negotiated, the TLS code should use the cached stucture (above) to determine which
-*	enum value to place into a field in tls_session.  That way the application doesn't have to do any
-*	string comparisons itself.
- */
-
 /** Validate the ALPN list.
  *
  * The client has not necessarily been authenticated, so we don't trust the data that they sent.
@@ -98,6 +73,233 @@ static bool tls_alpn_valid(unsigned char const *alpn, size_t len)
 	}
 
 	return i == len;
+}
+
+/** Find an ALPN table entry by name
+ *
+ * @param[in] conf	holding the ids.
+ * @param[in] name	to find, with no length octet.
+ * @param[in] len	length of `name`.
+ * @return
+ *	- the entry on the list with that name.
+ *	- NULL if the list has no such entry, or the application set `alpn` itself.
+ */
+static fr_tls_alpn_t const *tls_alpn_entry_by_name(fr_tls_conf_t const *conf, unsigned char const *name, size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < conf->alpn_num; i++) {
+		bool found = true;
+		size_t j;
+		fr_tls_alpn_t const *entry = &conf->alpn_table[conf->alpn_ids[i] - 1];
+
+		for (j = 0; entry->name[j] != '\0'; j++) {
+			if ((j >= len) ||
+			    (entry->name[j] != name[j])) {
+				found = false;
+				break;
+			}
+		}
+
+		if (found && (j == len)) return entry;
+	}
+
+	return NULL;
+}
+
+/** Convert internal ALPN structures to the format needed by TLS.
+ *
+ * The order of `ids` is the order of preference, highest first.  The function writes the fields `alpn`,
+ * and `sizeof_alpn`, and saves `table` and `ids`.
+ *
+ * The entries of `table` must have the ids 1, 2, 3 and so on, in that order, so that the entry with a given
+ * `id` is `table[id - 1]`.
+ *
+ * @param[in] ctx	for list allocation.  Must live as long as `conf`.
+ * @param[in] conf	to update.
+ * @param[in] table	the application's table.  Must outlive `conf`.
+ * @param[in] ids	ids of the entries of `table` to offer, in the order of preference.
+ * @param[in] num	number of ids.
+ * @return
+ *	- 0 on success.
+ *	- -1 if the list is empty, or an id is not in the table, or an entry has an invalid name or id.
+ */
+int fr_tls_alpn_set(TALLOC_CTX *ctx, fr_tls_conf_t *conf, fr_tls_alpn_t const *table,
+		    int const *ids, size_t num)
+{
+	size_t			i, table_len = 0, total = 0;
+	unsigned char		*alpn, *p;
+	int			*alpn_ids;
+	bool			implied = false;
+	fr_tls_alpn_t const	*entry;
+
+	if (num == 0) {
+		ERROR("ALPN list cannot be empty");
+		return -1;
+	}
+
+	/*
+	 *	Find the length of the table, and sanity check the IDs.
+	 */
+	for (entry = table; entry->name; entry++) {
+		if (entry->id != (int) (table_len + 1)) {
+			ERROR("ALPN name \"%s\" has id %d, but the id of table entry %zu must be %zu",
+			      entry->name, entry->id, table_len, table_len + 1);
+			return -1;
+		}
+		table_len++;
+	}
+
+	/*
+	 *	Walk over the list of IDs which have been taken from the configuration file.  Double-check
+	 *	them, and figure out how much memory we need for the wire format of the ALPN string.
+	 */
+	for (i = 0; i < num; i++) {
+		size_t len;
+
+		if ((ids[i] < 1) || ((size_t) ids[i] > table_len)) {
+			ERROR("ALPN id %d is not in the table", ids[i]);
+			return -1;
+		}
+
+		entry = &table[ids[i] - 1];
+
+		len = strlen(entry->name);
+		if ((len == 0) || (len > UINT8_MAX)) {
+			ERROR("ALPN name \"%s\" length must be between 1 and 255 octets", entry->name);
+			return -1;
+		}
+
+		total += len + 1;
+		if (entry->flags & FR_TLS_ALPN_IMPLIED) implied = true;
+	}
+
+	MEM(alpn = talloc_array(ctx, unsigned char, total));
+	MEM(alpn_ids = talloc_array(ctx, int, num));
+
+	/*
+	 *	Build the wire-format string from the list of the IDs, in the order that the IDs are given in.
+	 */
+	for (i = 0, p = alpn; i < num; i++) {
+		size_t len;
+
+		entry = &table[ids[i] - 1];
+
+		len = strlen(entry->name);
+		*p++ = (unsigned char) len;
+		memcpy(p, entry->name, len);
+		p += len;
+
+		alpn_ids[i] = ids[i];
+	}
+
+	conf->alpn = alpn;
+	conf->sizeof_alpn = total;
+	conf->alpn_table = table;
+	conf->alpn_ids = alpn_ids;
+	conf->alpn_num = num;
+	conf->alpn_required = !implied;
+
+	return 0;
+}
+
+/** Parse an `alpn` section into the ALPN list of a configuration
+ *
+ * The application puts this function on the `func` of an `alpn` subsection rule, and puts its table in the
+ * `uctx` of the rule.  Each item in the section is the `conf_name` of a table entry, with the value `yes` or
+ * `no`.  The order of the items is the order of preference, highest first.
+ *
+ * The rule sets CONF_FLAG_OK_MISSING, so a missing section never reaches the function, and ALPN stays unset as
+ * RFC 9765 Section 3.3 Table 1 describes.  A section which is present but empty is an error, as is a section
+ * which disables every entry.
+ *
+ * @param[in] ctx	unused.
+ * @param[in] out	unused.
+ * @param[in] parent	the #fr_tls_conf_t being parsed.
+ * @param[in] ci	the `alpn` section.
+ * @param[in] rule	holding the table in `uctx`.
+ * @return
+ *	- 0 on success.
+ *	- -1 on an empty section, an unknown item, a duplicate item, a value which is not `yes` or `no`, or when no
+ *	  entry is enabled.
+ */
+int fr_tls_alpn_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, void *parent, CONF_ITEM *ci,
+		      conf_parser_t const *rule)
+{
+	fr_tls_conf_t		*conf = talloc_get_type_abort(parent, fr_tls_conf_t);
+	fr_tls_alpn_t const	*table = rule->uctx, *entry;
+	CONF_SECTION		*cs = cf_item_to_section(ci);
+	int			*list = NULL;
+	bool			*seen = NULL;
+	size_t			num = 0, table_len = 0;
+	int			ret = -1;
+
+	fr_assert(table != NULL);
+
+	for (entry = table; entry->name; entry++) table_len++;
+
+	MEM(list = talloc_zero_array(conf, int, table_len));
+	MEM(seen = talloc_zero_array(conf, bool, table_len));
+
+	cf_item_foreach(cs, item) {
+		CONF_PAIR	*cp;
+		char const	*value;
+		size_t		i;
+
+		if (!cf_item_is_pair(item)) {
+			cf_log_err(item, "Unexpected subsection in 'alpn'");
+			goto done;
+		}
+
+		cp = cf_item_to_pair(item);
+		value = cf_pair_value(cp);
+
+		for (i = 0; i < table_len; i++) {
+			if (strcmp(table[i].conf_name, cf_pair_attr(cp)) == 0) break;
+		}
+
+		if (i == table_len) {
+			cf_log_err(cp, "Unknown ALPN item '%s'", cf_pair_attr(cp));
+			goto done;
+		}
+
+		if (seen[i]) {
+			cf_log_err(cp, "Duplicate ALPN item '%s'", cf_pair_attr(cp));
+			goto done;
+		}
+		seen[i] = true;
+
+		if (value && ((strcasecmp(value, "no") == 0) || (strcasecmp(value, "false") == 0))) continue;
+
+		if (!value || ((strcasecmp(value, "yes") != 0) && (strcasecmp(value, "true") != 0))) {
+			cf_log_err(cp, "Invalid value for ALPN item '%s', expected 'yes' or 'no'", cf_pair_attr(cp));
+			goto done;
+		}
+
+		list[num++] = table[i].id;
+	}
+
+	if (!cf_item_next(cs, NULL)) {
+		cf_log_err(ci, "The 'alpn' section is empty");
+		goto done;
+	}
+
+	if (num == 0) {
+		cf_log_err(ci, "The 'alpn' section does not enable any protocol");
+		goto done;
+	}
+
+	if (fr_tls_alpn_set(conf, conf, table, list, num) < 0) {
+		cf_log_err(ci, "Failed setting the ALPN list");
+		goto done;
+	}
+
+	ret = 0;
+
+done:
+	talloc_free(list);
+	talloc_free(seen);
+	return ret;
 }
 
 /** Select a matching ALPN string.

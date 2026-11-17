@@ -149,6 +149,52 @@ static const conf_parser_t unit_test_tls_socket_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/** Protocols which the test program can negotiate
+ *
+ * The names are the ones that RFC 9765 defines for RADIUS, plus one name that no entry of the RFC matches, which
+ * the tests use as a peer that shares nothing with the other end.
+ */
+typedef enum {
+	UTT_ALPN_RADIUS_1_1 = 1,
+	UTT_ALPN_RADIUS_1_0,
+	UTT_ALPN_HTTP_1_1,
+} unit_test_tls_alpn_id_t;
+
+static fr_tls_alpn_t const unit_test_tls_alpn_table[] = {
+	{ .id = UTT_ALPN_RADIUS_1_1, .name = "radius/1.1", .conf_name = "radius_v1_1", .flags = FR_TLS_ALPN_STICKY },
+	{ .id = UTT_ALPN_RADIUS_1_0, .name = "radius/1.0", .conf_name = "radius_v1_0", .flags = FR_TLS_ALPN_IMPLIED },
+	{ .id = UTT_ALPN_HTTP_1_1, .name = "http/1.1", .conf_name = "http_1_1" },
+	FR_TLS_ALPN_TABLE_TERMINATOR
+};
+
+/** The `alpn` subsection has no rules of its own
+ *
+ * fr_tls_alpn_parse() reads the items of the section itself, so the section needs no rules to parse them.
+ */
+static const conf_parser_t unit_test_tls_alpn_config[] = {
+	CONF_PARSER_TERMINATOR
+};
+
+/** The rules for the `server` and `client` subsections
+ *
+ * Each includes the rules of the TLS library, and adds the `alpn` subsection, which only the application can
+ * add because only the application has the table.  `virtual_server` is at offset 0 of #fr_tls_conf_t, so the
+ * rules of the library keep the offsets that they were written with.
+ */
+static const conf_parser_t unit_test_tls_server_config[] = {
+	{ FR_CONF_OFFSET_REF(fr_tls_conf_t, virtual_server, fr_tls_server_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("alpn", CONF_FLAG_OK_MISSING, fr_tls_conf_t, alpn, unit_test_tls_alpn_config),
+	  .func = fr_tls_alpn_parse, .uctx = unit_test_tls_alpn_table },
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t unit_test_tls_client_config[] = {
+	{ FR_CONF_OFFSET_REF(fr_tls_conf_t, virtual_server, fr_tls_client_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("alpn", CONF_FLAG_OK_MISSING, fr_tls_conf_t, alpn, unit_test_tls_alpn_config),
+	  .func = fr_tls_alpn_parse, .uctx = unit_test_tls_alpn_table },
+	CONF_PARSER_TERMINATOR
+};
+
 static const conf_parser_t unit_test_tls_config[] = {
 	/*
 	 *	`transport` names a subsection, the way a listener's
@@ -177,9 +223,9 @@ static const conf_parser_t unit_test_tls_config[] = {
 	 *	A test file may hold only the role that the test runs, so
 	 *	either subsection may be missing.
 	 */
-	{ FR_CONF_SUBSECTION_ALLOC("server", CONF_FLAG_OK_MISSING, unit_test_tls_conf_t, server, fr_tls_server_config),
+	{ FR_CONF_SUBSECTION_ALLOC("server", CONF_FLAG_OK_MISSING, unit_test_tls_conf_t, server, unit_test_tls_server_config),
 	  .subcs_type = "fr_tls_conf_t" },
-	{ FR_CONF_SUBSECTION_ALLOC("client", CONF_FLAG_OK_MISSING, unit_test_tls_conf_t, client, fr_tls_client_config),
+	{ FR_CONF_SUBSECTION_ALLOC("client", CONF_FLAG_OK_MISSING, unit_test_tls_conf_t, client, unit_test_tls_client_config),
 	  .subcs_type = "fr_tls_conf_t" },
 
 	CONF_PARSER_TERMINATOR
@@ -1665,6 +1711,48 @@ static unsigned char *tls_alpn_build(TALLOC_CTX *ctx, char const *names)
 	return alpn;
 }
 
+/** Turn a comma separated list of names into ids of the test table
+ *
+ * @param[in] ctx	to allocate the array in.
+ * @param[in] names	comma separated, in the order of preference.
+ * @param[out] num	number of ids returned.
+ * @return
+ *	- the ids.
+ *	- NULL if a name is not in the table.
+ */
+static int *tls_alpn_ids(TALLOC_CTX *ctx, char const *names, size_t *num)
+{
+	int			*ids;
+	char const		*q;
+	size_t			len, n = 0;
+
+	MEM(ids = talloc_zero_array(ctx, int, strlen(names) + 1));
+
+	for (q = names; *q != '\0'; q += len) {
+		fr_tls_alpn_t const *entry;
+
+		len = strcspn(q, ",");
+
+		for (entry = unit_test_tls_alpn_table; entry->name; entry++) {
+			if ((strlen(entry->name) == len) && (strncmp(entry->name, q, len) == 0)) break;
+		}
+
+		if (!entry->name) {
+			ERROR("ALPN name \"%.*s\" is not in the table of the test program", (int) len, q);
+			talloc_free(ids);
+			return NULL;
+		}
+
+		ids[n++] = entry->id;
+
+		if (q[len] == ',') len++;		/* step over the separator */
+	}
+
+	*num = n;
+
+	return ids;
+}
+
 int main(int argc, char *argv[])
 {
 	int			ret = EXIT_SUCCESS;
@@ -1685,6 +1773,7 @@ int main(int argc, char *argv[])
 	bool			client = false;
 	char const		*alpn_names = NULL;
 	bool			alpn_required = false;
+	bool			alpn_raw = false;
 	unsigned int		i;
 
 	TALLOC_CTX		*autofree;
@@ -1749,7 +1838,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "ABc:Cd:D:e:hHIlL:Mn:NPQr:Rs:TxX")) != -1) {
+	while ((c = getopt(argc, argv, "aABc:Cd:D:e:hHIlL:Mn:NPQr:Rs:TxX")) != -1) {
 		switch (c) {
 			case 'A':
 				alert = true;
@@ -1797,6 +1886,10 @@ int main(int argc, char *argv[])
 
 			case 'I':
 				invalid = true;
+				break;
+
+			case 'a':
+				alpn_raw = true;
 				break;
 
 			case 'l':
@@ -2057,12 +2150,24 @@ int main(int argc, char *argv[])
 	conf->delayed_tickets = delay_tickets;
 
 	/*
-	 *	ALPN is not parsed from the configuration file.  The library
-	 *	leaves the protocol list to the application, so set it here,
-	 *	after the TLS configuration is parsed and before the context
-	 *	is built from it.  See src/lib/tls/alpn.c.
+	 *	-L sets the ALPN list from names in the table of the test program, which is how an application
+	 *	that uses the library's table sets it.  The `alpn` section of the configuration file does the same
+	 *	for the names it lists.  -a sets the raw fields instead, which is how an application sets them
+	 *	when it does not use a table.  See src/lib/tls/alpn.c.
+	 *
+	 *	-l sets `alpn_required`.
 	 */
-	if (alpn_names) {
+	if (alpn_names && !alpn_raw) {
+		int		*ids;
+		size_t		num = 0;
+
+		ids = tls_alpn_ids(utt, alpn_names, &num);
+		if (!ids) EXIT_WITH_FAILURE;
+
+		if (fr_tls_alpn_set(conf, conf, unit_test_tls_alpn_table, ids, num) < 0) EXIT_WITH_FAILURE;
+
+		talloc_free(ids);
+	} else if (alpn_names) {
 		utt->alpn = tls_alpn_build(utt, alpn_names);
 		if (!utt->alpn) EXIT_WITH_FAILURE;
 
