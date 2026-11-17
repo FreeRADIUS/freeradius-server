@@ -66,6 +66,7 @@ struct fr_listen_instance_s {
 
 	int			fd;			//!< file descriptor for this socket - set by open
 	char const		*name;			//!< printable name for this socket - set by open
+	char const		*filename;		//!< filename for this socket - set by open for file listeners.
 	void			*thread_instance;	//!< thread / socket context
 
 	fr_socket_t		*app_io_addr;		//!< for tracking duplicate sockets

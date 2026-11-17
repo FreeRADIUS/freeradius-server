@@ -622,6 +622,12 @@ static char const *mod_name(fr_listen_instance_t *li)
 	return thread->name;
 }
 
+static char const *mod_filename(fr_listen_instance_t *li)
+{
+	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
+
+	return thread->inst->directory;
+}
 
 static fr_rb_tree_t *detail_file_tree = NULL;
 static pthread_mutex_t detail_file_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -819,4 +825,5 @@ fr_app_io_t proto_detail_file = {
 //	.write			= mod_write,
 	.event_list_set		= mod_event_list_set,
 	.get_name		= mod_name,
+	.get_filename		= mod_filename,
 };

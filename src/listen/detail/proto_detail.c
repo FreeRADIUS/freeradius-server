@@ -464,6 +464,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 
 	fr_assert(li->listen->app_io->get_name);
 	li->name = li->listen->app_io->get_name(li);
+	fr_assert(li->listen->app_io->get_filename);
+	li->filename = li->listen->app_io->get_filename(li);
 
 	/*
 	 *	Testing: allow it to read a "detail.work" file
