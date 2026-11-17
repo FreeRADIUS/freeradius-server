@@ -61,3 +61,58 @@ any host without the build:
 pprof -text profile.pb.gz
 pprof -http=:8080 profile.pb.gz
 ```
+
+## gperftools capture rate tests
+
+`run_gperftools_capture_rate_tests.sh` measures the share of the freeradius
+CPU time that the gperftools profile records.  The script runs the `short_ci`
+test of the `accept` and `mysql` suites.  Each test runs with the Docker VM
+idle, and again beside a container that runs busy loops.
+
+Run every command from the top of the source tree:
+
+```
+# Remove every locally built image (optional).
+make docker.clean
+
+# Remove the image stamps, or make may skip the image build.
+make docker.reset
+
+# Build the profiling image for the checked out commit.
+make docker.radenv-profiling.ubuntu24
+
+# Run both suites.  Takes about 45 minutes.
+src/tests/multi-server/scripts/profiling/run_gperftools_capture_rate_tests.sh
+
+# Print the results.
+cat prof-results/capture-rate/$(git rev-parse --short HEAD)/*-capture-rate.csv
+```
+
+The script prints a table for each suite, and writes each complete row to
+`<suite>-capture-rate.csv`.
+
+The script copies the container logs to `<run>/<suite>/logs/`.  When
+freeradius crashes, `<run>/<suite>/short_ci/gperftools/` also holds the
+`core` file and `backtrace.txt` (the stack of every thread).
+
+### Resource use dashboard
+
+`run_gperftools_capture_rate_tests.sh` records the CPU and memory use of the
+Docker VM and of every container, once per second, in
+`<suite>-resource-usage.csv`.  Compare the runs on the Grafana dashboard,
+which draws one line per run.
+
+Start Grafana after the tests, so that Grafana does not add load to a run:
+
+```
+# Start Grafana, then open http://localhost:3000.
+export RESULTS=$PWD/prof-results/capture-rate/$(git rev-parse --short HEAD)
+docker compose -f src/tests/multi-server/scripts/profiling/grafana/docker-compose.yml up -d
+
+# Stop Grafana.
+docker compose -p capture-rate down
+```
+
+Select the suite and the container at the top of the dashboard.  The idle
+runs are blue and the stress runs are orange.  A table lists `window_s`,
+`samples`, and `capture_pct` for each run of the suite.
