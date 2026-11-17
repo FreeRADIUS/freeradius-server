@@ -3693,12 +3693,9 @@ static int request_proxy_anew(REQUEST *request)
 	}
 
 	/*
-	 *	Free the old packet, to force re-encoding
+	 *	request_proxy() encodes the packet again.  rad_encode()
+	 *	reuses the old buffer if the new packet fits.
 	 */
-	talloc_free(request->proxy->data);
-	request->proxy->data = NULL;
-	request->proxy->data_len = 0;
-
 	if (request_proxy(request) != 1) goto post_proxy_fail;
 
 	return 1;
