@@ -75,6 +75,7 @@ typedef struct {
 	fr_event_filter_t	filter;			//!< what type of filter it is
 	fr_event_fd_t		*ef;			//!< the I/O event, if it was inserted.  Parented off
 							///< this socket, so it cannot outlive it.
+	fr_event_file_watch_t	*ew;			//!< the file watch event, for directory "sockets"
 
 	bool			dead;			//!< is it dead?
 	bool			blocked;		//!< is it blocked?
@@ -1072,6 +1073,7 @@ int fr_network_sendto_worker(fr_network_t *nr, fr_listen_instance_t *li, void *p
  * @param[in] fflags	from kevent.
  * @param[in] ctx	the network socket context.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_event_list_t trips --fsanitize=function*/
 static void fr_network_vnode_extend(UNUSED fr_event_list_t *el, int sockfd, int fflags, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
@@ -1303,6 +1305,13 @@ static int network_socket_close(fr_network_socket_t *s)
 		ret = fr_event_fd_delete_handle(s->ef);
 		s->ef = NULL;
 	}
+
+#ifdef __linux__
+	if (s->ew) {
+		fr_event_file_watch_delete(s->ew);
+		s->ew = NULL;
+	}
+#endif
 
 	if (s->inst->listen->app_io->close) {
 		s->inst->listen->app_io->close(s->inst);
@@ -1542,10 +1551,15 @@ static void fr_network_directory_callback(void const *data, size_t data_size, UN
 
 	s->filter = FR_EVENT_FILTER_VNODE;
 
+#ifdef __linux__
+	fr_assert(s->inst->filename);
+	if (fr_event_file_watch_insert(s, &s->ew, nr->el, s->inst->fd, s->inst->filename, &funcs, s) < 0) {
+#else
 	if (fr_event_filter_insert(s, &s->ef, nr->el, s->inst->fd, s->filter,
 				   &funcs,
 				   app_io->error ? fr_network_error : NULL,
 				   s) < 0) {
+#endif
 		PERROR("Failed adding directory monitor event loop");
 		if (network_socket_close(s) < 0) PWARN("Failed removing event for socket %d", s->number);
 		talloc_free(s);
