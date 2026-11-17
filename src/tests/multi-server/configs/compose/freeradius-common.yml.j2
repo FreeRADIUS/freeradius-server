@@ -18,6 +18,8 @@ services:
     environment:
       RADIUSD_COMMAND: ${RADIUSD_COMMAND:-}
       PROFILING_RESULT_DIR: {{ profiling_result_dir }}
+      # proto_load CSV statistics location
+      TEST_LOADGEN_STATS_DIR: {{ loadgen_stats_dir }}
       # proto_load ends the test when the max_pps step finishes.  A suite
       # that needs an exact packet count sets TEST_LOADGEN_MAX_REQUESTS.
       TEST_LOADGEN_MAX_REQUESTS: ${TEST_LOADGEN_MAX_REQUESTS:-0}
@@ -40,4 +42,4 @@ services:
     # proto_load packet configuration and statistics output
     - ${DATA_PATH}/freeradius/common/proto-load/proto_load_config.env:/etc/freeradius/proto_load_config.env
     - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
-    - ${DATA_PATH}/freeradius/common/proto-load/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
+    - ${DATA_PATH}/freeradius/common/proto-load/stats/:/etc/freeradius/stats/

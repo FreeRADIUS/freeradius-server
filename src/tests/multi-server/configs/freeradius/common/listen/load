@@ -8,8 +8,8 @@ listen load {
 			# Default packet config to use by proto_load module
 			filename = {{ packet_conf_path | default('${confdir}/load-generator-packets/packet.conf') }}
 
-			# Saving proto_load statistics disabled by default, can be enabled for debugging purposes.
-			csv = ${confdir}/stats/load-generator-stats.csv
+			# proto_load statistics saved based on environment variable.
+			csv = $ENV{TEST_LOADGEN_STATS_DIR}/load-stats.csv
 
 			max_attributes = 64
 
