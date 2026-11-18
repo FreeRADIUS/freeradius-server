@@ -351,11 +351,14 @@ typedef struct vp_cursor {
 
 /** A VALUE_PAIR in string format.
  *
- * Used to represent pairs in the legacy 'users' file format.
+ * Used to represent pairs in the legacy 'users' file format and in rlm_cache
+ *
+ * NOTE: we need a large r_opand as EAP-TLS resumptions sessions store the
+ *       entire client chain in TLS-Session-Data; 15kB holds nearly eight certs
  */
 typedef struct value_pair_raw {
 	char l_opand[256];					//!< Left hand side of the pair.
-	char r_opand[1024];					//!< Right hand side of the pair.
+	char r_opand[15360];					//!< Right hand side of the pair.
 
 	FR_TOKEN quote;						//!< Type of quoting around the r_opand.
 
