@@ -7,6 +7,7 @@ on:
       - coverity_scan
       - run-fuzzer**
       - debug-fuzzer-**
+      - dev-marc-casavant/gperftools-capture-rate-harness**
   pull_request:
   schedule:
     - cron: '0 20 * * *'
