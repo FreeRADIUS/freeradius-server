@@ -1572,6 +1572,12 @@ void tls_session_information(tls_session_t *tls_session)
 				break;
 #endif
 
+#ifdef SSL3_MT_COMPRESSED_CERTIFICATE
+			case SSL3_MT_COMPRESSED_CERTIFICATE:
+				str_content_type = "CompressedCertificate";
+				break;
+#endif
+
 			default:
 				snprintf(alert_buf, sizeof(alert_buf), ", type=%d", tls_session->info.handshake_type);
 				str_details1 = alert_buf;
