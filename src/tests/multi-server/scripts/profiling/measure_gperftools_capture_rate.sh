@@ -1,8 +1,7 @@
 #!/bin/bash
 #
 #  Measure how much of freeradius's CPU time the gperftools profile
-#  captures, by running a suite's short_ci test under gperftools several
-#  times.
+#  captures, by running a test of a suite under gperftools several times.
 #
 #  The capture rate of a run is the CPU time the profile recorded
 #  (samples / frequency) divided by the CPU time freeradius used while the
@@ -33,12 +32,13 @@
 #      start_gperftools_profiling.sh     CPUPROFILE_FREQUENCY and
 #                                        CPUPROFILE_PER_THREAD_TIMERS
 #
-#  Run from the top of the source tree.  Each run takes about two minutes,
-#  because the test harness waits out its 120 s state timeout.
+#  Run from the top of the source tree.  Each short_ci run takes about two
+#  minutes, because the test harness waits out the 120 s state timeout.
 #
 #  Usage: measure_gperftools_capture_rate.sh [options]
 #
-#    -s <suite>    suite whose short_ci test runs (default: accept)
+#    -s <suite>    suite to test (default: accept)
+#    -t <test>     test of the suite to run (default: short_ci)
 #    -c <sha>      image to test, freeradius4-radenv-profiling/ubuntu24:<sha>
 #                  (default: short SHA of HEAD)
 #    -n <runs>     runs per arm
@@ -54,14 +54,16 @@ usage() { sed -n '/^#  Usage/,/^$/p' "$0"; }
 
 COMMIT=$(git rev-parse --short HEAD 2>/dev/null)
 SUITE=accept
+TEST=short_ci
 RUNS=5
 ARMS="idle stress"
 LABEL=capture-rate
 
 [ "${1:-}" = --help ] && { usage; exit 0; }
-while getopts "s:c:n:a:l:h" opt; do
+while getopts "s:t:c:n:a:l:h" opt; do
 	case $opt in
 	s) SUITE=$OPTARG ;;
+	t) TEST=$OPTARG ;;
 	c) COMMIT=$OPTARG ;;
 	n) RUNS=$OPTARG ;;
 	a) ARMS=$OPTARG ;;
@@ -80,7 +82,7 @@ SAMPLE=src/tests/multi-server/scripts/profiling/sample_resource_usage.sh
 COMPOSE=src/tests/multi-server/tests/$SUITE/environment.yml.j2
 CAPTURE=src/tests/multi-server/scripts/profiling/start_gperftools_profiling.sh
 RESULTS=prof-results/$LABEL/$COMMIT
-LOGS=build/tests/multi-server/profiling/gperftools/$SUITE/short_ci/logs
+LOGS=build/tests/multi-server/profiling/gperftools/$SUITE/$TEST/logs
 MAKE_ARGS="MODE=profiling PROFILING_TOOL=gperftools GIT_COMMIT=$COMMIT GIT_BRANCH=$LABEL"
 
 grep -q "TRIGGER_SERVER_STOP_APPEND:.*/proc/self/stat" "$COMPOSE" || {
@@ -120,6 +122,12 @@ CLK_TCK=$(docker run --rm --entrypoint getconf "$IMAGE" CLK_TCK)
 HOGS=$(( $(docker info --format '{{.NCPU}}') * 2 ))
 
 trap 'docker rm -f "$HOG" "$SAMPLER" >/dev/null 2>&1' EXIT
+
+#
+#  Because the test harness exits normally on Ctrl-C, bash starts the next
+#  run unless a trap exits the script.
+#
+trap 'exit 130' INT
 
 #
 #  Two busy loops per Docker CPU.  The hog runs in the profiling image,
@@ -170,7 +178,7 @@ write_resource_usage() {
 	rm -f "$1/resource-usage.names" "$1/resource-usage.raw"
 }
 
-echo "suite $SUITE, image $IMAGE, frequency $HZ Hz, per-thread timers $PER_THREAD, $RUNS run(s) per arm ($ARMS)"
+echo "suite $SUITE, test $TEST, image $IMAGE, frequency $HZ Hz, per-thread timers $PER_THREAD, $RUNS run(s) per arm ($ARMS)"
 echo "results in $RESULTS"
 
 for i in $(seq 1 "$RUNS"); do
@@ -180,7 +188,7 @@ for i in $(seq 1 "$RUNS"); do
 		start_sampler "$RESULTS/$run/$SUITE"
 		[ "$arm" = stress ] && start_hog
 		echo "=== $run $(date +%T)"
-		make -f src/tests/multi-server/all.mk test.multi-server.$SUITE.short_ci $MAKE_ARGS \
+		make -f src/tests/multi-server/all.mk test.multi-server.$SUITE.$TEST $MAKE_ARGS \
 			PROFILING_RUN_INDEX="$run" 2>&1 | grep -E 'FAILED|WARNING|interrupts'
 		[ "$arm" = stress ] && docker rm -f "$HOG" >/dev/null
 		docker rm -f "$SAMPLER" >/dev/null
@@ -201,7 +209,7 @@ echo "run,frequency,window_s,samples,capture_pct,exit" > "$CSV"
 echo "run,arm,elapsed_s,name,cpu_pct,mem_mib" > "$USAGE"
 printf '\n%-22s %9s %8s %9s %8s\n' run window_s samples capture exit
 for d in "$RESULTS"/f*-*-*; do
-	g=$d/$SUITE/short_ci/gperftools
+	g=$d/$SUITE/$TEST/gperftools
 	run=${d##*/}
 	hz=${run#f}; hz=${hz%%-*}
 	arm=${run#*-}; arm=${arm%-*}
