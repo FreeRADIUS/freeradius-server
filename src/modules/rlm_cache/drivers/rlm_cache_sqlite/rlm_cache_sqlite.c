@@ -257,7 +257,11 @@ static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *r
 	return 0;
 }
 
-static void cache_release(rlm_cache_t *inst, UNUSED REQUEST *request, rlm_cache_handle_t **handle)
+static void cache_release(
+#ifndef HAVE_PTHREAD_H
+UNUSED
+#endif
+rlm_cache_t *inst, UNUSED REQUEST *request, rlm_cache_handle_t **handle)
 {
 #ifdef HAVE_PTHREAD_H
 	rlm_cache_sqlite_t const *driver = inst->driver;
