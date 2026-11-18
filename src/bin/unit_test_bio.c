@@ -174,7 +174,7 @@ typedef enum {
 
 static fr_tls_alpn_t const unit_test_bio_alpn_table[] = {
 	{ .id = UTB_ALPN_RADIUS_1_1, .name = "radius/1.1", .conf_name = "radius_v1_1", .flags = FR_TLS_ALPN_STICKY },
-	{ .id = UTB_ALPN_RADIUS_1_0, .name = "radius/1.0", .conf_name = "radius_v1_0", .flags = FR_TLS_ALPN_IMPLIED },
+	{ .id = UTB_ALPN_RADIUS_1_0, .name = "radius/1.0", .conf_name = "radius_v1_0", .flags = FR_TLS_ALPN_DEFAULT },
 	{ .id = UTB_ALPN_HTTP_1_1, .name = "http/1.1", .conf_name = "http_1_1" },
 	FR_TLS_ALPN_TABLE_TERMINATOR
 };
@@ -1883,7 +1883,8 @@ int main(int argc, char *argv[])
 	 *	for the names it lists.  -a sets the raw fields instead, which is how an application sets them
 	 *	when it does not use a table.  See src/lib/tls/alpn.c.
 	 *
-	 *	-l sets `alpn_required`.
+	 *	-l sets `alpn_required` for the raw fields.  With a table, the library derives `alpn_required`
+	 *	from the entries.
 	 */
 	if (alpn_names && !alpn_raw) {
 		int		*ids;
@@ -1902,7 +1903,7 @@ int main(int argc, char *argv[])
 		conf->alpn = utt->alpn;
 		conf->sizeof_alpn = talloc_array_length(utt->alpn);
 	}
-	conf->alpn_required = alpn_required;
+	if (!conf->alpn_table) conf->alpn_required = alpn_required;
 
 	/*
 	 *	The transport is set by the application for the same reason

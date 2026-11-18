@@ -110,10 +110,31 @@ static fr_tls_alpn_t const *tls_alpn_entry_by_name(fr_tls_conf_t const *conf, un
 	return NULL;
 }
 
+/** Find the default ALPN ID when the TLS session doesn't use ALPN.
+ *
+ * @param[in] conf	holding the ids.
+ * @return
+ *	- the entry which has #FR_TLS_ALPN_DEFAULT set.
+ *	- NULL if no entry on the list has the flag.
+ */
+static fr_tls_alpn_t const *tls_alpn_default(fr_tls_conf_t const *conf)
+{
+	size_t i;
+
+	for (i = 0; i < conf->alpn_num; i++) {
+		fr_tls_alpn_t const *entry = &conf->alpn_table[conf->alpn_ids[i] - 1];
+
+		if ((entry->flags & FR_TLS_ALPN_DEFAULT) != 0) return entry;
+	}
+
+	return NULL;
+}
+
 /** Convert internal ALPN structures to the format needed by TLS.
  *
  * The order of `ids` is the order of preference, highest first.  The function writes the fields `alpn`,
- * and `sizeof_alpn`, and saves `table` and `ids`.
+ * `sizeof_alpn` and `alpn_required`, and saves `table` and `ids`.  `alpn_required` is true when no entry has
+ * #FR_TLS_ALPN_DEFAULT set, because then a peer which uses no ALPN has nothing to be assumed to speak.
  *
  * The entries of `table` must have the ids 1, 2, 3 and so on, in that order, so that the entry with a given
  * `id` is `table[id - 1]`.
@@ -133,7 +154,7 @@ int fr_tls_alpn_set(TALLOC_CTX *ctx, fr_tls_conf_t *conf, fr_tls_alpn_t const *t
 	size_t			i, table_len = 0, total = 0;
 	unsigned char		*alpn, *p;
 	int			*alpn_ids;
-	bool			implied = false;
+	bool			default_found = false;
 	fr_tls_alpn_t const	*entry;
 
 	if (num == 0) {
@@ -174,7 +195,7 @@ int fr_tls_alpn_set(TALLOC_CTX *ctx, fr_tls_conf_t *conf, fr_tls_alpn_t const *t
 		}
 
 		total += len + 1;
-		if (entry->flags & FR_TLS_ALPN_IMPLIED) implied = true;
+		if (entry->flags & FR_TLS_ALPN_DEFAULT) default_found = true;
 	}
 
 	MEM(alpn = talloc_array(ctx, unsigned char, total));
@@ -201,7 +222,7 @@ int fr_tls_alpn_set(TALLOC_CTX *ctx, fr_tls_conf_t *conf, fr_tls_alpn_t const *t
 	conf->alpn_table = table;
 	conf->alpn_ids = alpn_ids;
 	conf->alpn_num = num;
-	conf->alpn_required = !implied;
+	conf->alpn_required = !default_found;
 
 	return 0;
 }
@@ -440,6 +461,28 @@ static bool tls_session_alpn(fr_tls_session_t *tls_session)
 	return true;
 }
 
+/** Does the wire list hold a name
+ *
+ * @param[in] conf	holding the list.
+ * @param[in] name	to find, with no length octet.
+ * @param[in] len	length of `name`.
+ * @return
+ *	- true if the list holds the name.
+ *	- false otherwise.
+ */
+static bool tls_alpn_listed(fr_tls_conf_t const *conf, unsigned char const *name, size_t len)
+{
+	size_t i = 0;
+
+	while (i < conf->sizeof_alpn) {
+		if ((conf->alpn[i] == len) && (memcmp(&conf->alpn[i + 1], name, len) == 0)) return true;
+
+		i += conf->alpn[i] + 1;
+	}
+
+	return false;
+}
+
 /** Check that we agreed on an ALPN string (or not).
  *
  * Runs once the handshake is done, for both roles.
@@ -448,6 +491,8 @@ static bool tls_session_alpn(fr_tls_session_t *tls_session)
  * two lists have nothing in common.  What that callback cannot catch is a client which offered no list,
  * because it's not called.  A client has no callback at all, and learns what the server chose only from the
  * handshake.
+ *
+ * With a table, a peer which agrees on no name is treated as the entry flagged `default`.
  *
  * @param[in] request		to log through.
  * @param[in] tls_session	to check.
@@ -458,6 +503,10 @@ static bool tls_session_alpn(fr_tls_session_t *tls_session)
 int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_conf_t const	*conf = tls_session->conf;
+	fr_tls_alpn_t const	*entry = NULL;
+	fr_pair_t		*vp;
+	bool			negotiated;
+	int			alert = SSL_AD_NO_APPLICATION_PROTOCOL;
 
 	/*
 	 *	The only caller is tls_session_async_handshake_done_round(),
@@ -472,9 +521,36 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 	 *	no leading length octet, so the whole of what it gave us is
 	 *	the name.
 	 */
-	if (tls_session_alpn(tls_session)) {
-		fr_pair_t *vp;
+	negotiated = tls_session_alpn(tls_session);
 
+	if (negotiated) {
+		/*
+		 *	RFC 9765 Section 3.3 B says a client MUST check that the server chose one of the names
+		 *	which the client sent.  OpenSSL may check, and the check here does not depend on that.
+		 */
+		if (!tls_alpn_listed(conf, tls_session->alpn, tls_session->sizeof_alpn)) {
+			REDEBUG("(TLS) ALPN - peer chose \"%.*s\", which is not on our list",
+				(int) tls_session->sizeof_alpn, tls_session->alpn);
+			alert = SSL_AD_ILLEGAL_PARAMETER;
+			goto fail;
+		}
+
+		if (conf->alpn_table) {
+			entry = tls_alpn_entry_by_name(conf, tls_session->alpn, tls_session->sizeof_alpn);
+			fr_assert(entry != NULL);
+		}
+	} else if (conf->alpn_table) {
+		entry = tls_alpn_default(conf);
+	}
+
+	if (conf->alpn_table) {
+		if (entry) {
+			tls_session->alpn_id = entry->id;
+			RDEBUG2("(TLS) ALPN - table id %d", entry->id);
+		}
+	}
+
+	if (negotiated) {
 		RDEBUG2("(TLS) ALPN - agreed on \"%.*s\"",
 			(int) tls_session->sizeof_alpn, tls_session->alpn);
 
@@ -483,19 +559,11 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 
 		RDEBUG2("(TLS) session-state.%pP", vp);
 
-		/*
-		 *	Match the name we get from OpenSSL against the list of allowed ALPNs.
-		 */
-		if (conf->alpn_table) {
-			fr_tls_alpn_t const *entry = tls_alpn_entry_by_name(conf, tls_session->alpn,
-									    tls_session->sizeof_alpn);
+		return 0;
+	}
 
-			if (entry) {
-				tls_session->alpn_id = entry->id;
-				RDEBUG3("(TLS) ALPN - table id %d", entry->id);
-			}
-		}
-
+	if (entry) {
+		RDEBUG2("(TLS) ALPN - peer used no ALPN, assuming \"%s\"", entry->name);
 		return 0;
 	}
 
@@ -505,9 +573,11 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 	}
 
 	REDEBUG("(TLS) ALPN - Failure, no protocols in common");
-	fr_tls_session_error_alert(request, tls_session,
-				   FR_ERROR_VALUE_ALPN_FAILED, SSL_AD_NO_APPLICATION_PROTOCOL);
+
+fail:
+	fr_tls_session_error_alert(request, tls_session, FR_ERROR_VALUE_ALPN_FAILED, alert);
 
 	return -1;
 }
+
 #endif /* WITH_TLS */

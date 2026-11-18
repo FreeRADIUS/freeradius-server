@@ -44,7 +44,7 @@ RCSIDH(alpn_h, "$Id$")
 extern "C" {
 #endif
 
-/** Value of `alpn_id` when no ALPN name was negotiated, and no entry has #FR_TLS_ALPN_IMPLIED set.
+/** Value of `alpn_id` when no ALPN name was negotiated, and no entry has #FR_TLS_ALPN_DEFAULT set.
  */
 #define FR_TLS_ALPN_ID_NONE	(0)
 
@@ -52,7 +52,7 @@ extern "C" {
  *
  * @{
  */
-#define FR_TLS_ALPN_IMPLIED	(1 << 0)	//!< The protocol which both ends use when no ALPN is used.
+#define FR_TLS_ALPN_DEFAULT	(1 << 0)	//!< The protocol which both ends use when no ALPN is used.
 #define FR_TLS_ALPN_STICKY	(1 << 1)	//!< A session which negotiated ALPN can only be resumed with
 						///< the same ALPN string.
 /** @} */
@@ -69,7 +69,7 @@ typedef struct fr_tls_alpn_s {
 						///< 2 for the second entry, etc.
 	char const	*name;			//!< ALPN string, without the length octet.
 	char const	*conf_name;		//!< Name of the item in the `alpn` section.
-	unsigned int	flags;			//!< #FR_TLS_ALPN_IMPLIED and #FR_TLS_ALPN_STICKY.
+	unsigned int	flags;			//!< #FR_TLS_ALPN_DEFAULT and #FR_TLS_ALPN_STICKY.
 } fr_tls_alpn_t;
 
 #define FR_TLS_ALPN_TABLE_TERMINATOR { .id = FR_TLS_ALPN_ID_NONE }

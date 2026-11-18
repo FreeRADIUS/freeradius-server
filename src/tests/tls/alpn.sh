@@ -113,6 +113,18 @@ expect_server_refused() {
 	fi
 }
 
+#
+#  The log has no "agreed on" line for the name, which is how a connection
+#  which used historic RADIUS/TLS looks.
+#
+expect_no_agreement() {
+	for agreed_log in "$SERVER_LOG" "$CLIENT_LOG"; do
+		if grep -q 'ALPN - agreed on "radius/1.1"' "$agreed_log"; then
+			fail "radius/1.1 was negotiated in $agreed_log, but historic RADIUS/TLS was expected"
+		fi
+	done
+}
+
 ######################################################################
 #
 #  1.  Both ends offer the same two names, in opposite orders.
@@ -174,6 +186,118 @@ grep -q "Sending client fatal TLS alert (120)" "$SERVER_LOG" || \
 	fail "the server did not send alert 120, no_application_protocol"
 
 expect_server_refused
+
+######################################################################
+#
+#  3.  RFC 9765 Table 2, one case for each of the sixteen cells.
+#
+#  The rows are what the client offers, and the columns are what the server
+#  offers.  "none" means that the end uses no ALPN.  "both" means radius/1.1
+#  and radius/1.0, in that order.
+#
+#                 server:   none     1.0      both     1.1
+#      client: none         TLS      TLS      TLS      Close-S
+#              1.0          TLS      TLS      TLS      Alert
+#              both         TLS      TLS      1.1      1.1
+#              1.1          Close-C  Alert    1.1      1.1
+#
+#  The outcomes are:
+#
+#    TLS      historic RADIUS/TLS, so the handshake completes and nothing
+#             negotiates radius/1.1.
+#    1.1      RADIUS/1.1, so the handshake completes and both ends agree on
+#             radius/1.1.
+#    Alert    the server's select callback finds nothing in common, and sends
+#             alert 120.
+#    Close-S  the server requires ALPN, and the client sent none.  The server
+#             refuses while it parses the ClientHello, because radius/1.1 has
+#             no implied entry to fall back to.
+#    Close-C  the client requires ALPN, and the server sent none.  The client
+#             refuses after the handshake.
+#
+######################################################################
+SERVER_none=""
+SERVER_10="-L radius/1.0"
+SERVER_both="-L radius/1.1,radius/1.0"
+SERVER_11="-L radius/1.1"
+
+CLIENT_none=""
+CLIENT_10="-L radius/1.0"
+CLIENT_both="-L radius/1.1,radius/1.0"
+CLIENT_11="-L radius/1.1"
+
+#
+#  cell <client offer> <server offer> <outcome>
+#
+cell() {
+	cell_client="$1"
+	cell_server="$2"
+	cell_outcome="$3"
+
+	eval "cell_client_args=\$CLIENT_${cell_client}"
+	eval "cell_server_args=\$SERVER_${cell_server}"
+
+	tls_pair "cell_${cell_client}_${cell_server}" unit_test_tls "$cell_server_args" "$cell_client_args"
+
+	case "$cell_outcome" in
+	TLS)
+		expect_completed
+		expect_no_agreement
+		;;
+
+	1.1)
+		expect_completed
+		for cell_log in "$SERVER_LOG" "$CLIENT_LOG"; do
+			grep -q 'ALPN - agreed on "radius/1.1"' "$cell_log" || \
+				fail "client $cell_client and server $cell_server did not agree on radius/1.1 in $cell_log"
+		done
+		;;
+
+	Alert)
+		grep -q "ALPN - no protocol in common with the peer" "$SERVER_LOG" || \
+			fail "client $cell_client and server $cell_server did not reach the select callback failure"
+		grep -q "Sending client fatal TLS alert (120)" "$SERVER_LOG" || \
+			fail "client $cell_client and server $cell_server did not send alert 120"
+		expect_server_refused
+		;;
+
+	Close-S)
+		grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
+			fail "client $cell_client and server $cell_server did not refuse after the handshake"
+		grep -q "request.Error = ::ALPN-Failed" "$SERVER_LOG" || \
+			fail "client $cell_client and server $cell_server did not record ALPN-Failed"
+		expect_server_refused
+		;;
+
+	Close-C)
+		grep -q "ALPN - Failure, no protocols in common" "$CLIENT_LOG" || \
+			fail "client $cell_client and server $cell_server did not refuse after the handshake"
+		if grep -q "TLS handshake completed" "$CLIENT_LOG"; then
+			fail "the client completed the handshake, although the server sent no ALPN"
+		fi
+		;;
+	esac
+}
+
+cell none none TLS
+cell none 10 TLS
+cell none both TLS
+cell none 11 Close-S
+
+cell 10 none TLS
+cell 10 10 TLS
+cell 10 both TLS
+cell 10 11 Alert
+
+cell both none TLS
+cell both 10 TLS
+cell both both 1.1
+cell both 11 1.1
+
+cell 11 none Close-C
+cell 11 10 Alert
+cell 11 both 1.1
+cell 11 11 1.1
 
 ######################################################################
 #
@@ -284,6 +408,11 @@ for cfg_log in "$SERVER_LOG" "$CLIENT_LOG"; do
 	grep -q 'ALPN - agreed on "radius/1.1"' "$cfg_log" || \
 		fail "the alpn section did not agree on radius/1.1 in $cfg_log"
 done
+
+cfg_pair only11 ''
+
+grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
+	fail "the alpn section did not refuse a client which offered no ALPN"
 
 #
 #  Both names are enabled, and radius/1.0 is first, so the order of the items
