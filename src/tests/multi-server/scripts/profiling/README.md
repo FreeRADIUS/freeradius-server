@@ -93,6 +93,11 @@ The script prints a table for each suite, and writes each complete row to
 
 The script copies the container logs to `<run>/<suite>/logs/`.
 
+When the kernel writes a `core` file for a freeradius crash, the script
+writes the stack of every thread to `backtrace.txt`.  Both files are in
+`<run>/<suite>/<test>/gperftools/`.  The kernel does not write a `core`
+file for a crash that the freeradius fault handler catches.
+
 ### Resource use dashboard
 
 `run_gperftools_capture_rate_tests.sh` records the CPU and memory use of the

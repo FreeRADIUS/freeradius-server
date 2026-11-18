@@ -42,6 +42,13 @@ env | grep '^TEST_LOADGEN_' | sort
 echo ""
 
 #
+#  Because the kernel writes a core file to the working directory of a
+#  crashed process, run freeradius from PROFILING_RESULT_DIR.
+#
+cd "$PROFILING_RESULT_DIR"
+ulimit -c unlimited
+
+#
 #  freeradius stdout and stderr go to freeradius_gperftools.log.
 #
 #  CPUPROFILE_FREQUENCY  samples per CPU-second.  A short load costs well
@@ -90,6 +97,17 @@ if [ "${STATUS}" -ne 0 ]; then
     echo "ERROR: freeradius exited ${STATUS}; the profile may be truncated" >&2
   fi
   echo "ERROR: see freeradius_gperftools.log for the reason; these results will not be published" >&2
+fi
+
+#
+#  Read any core in the container, where the build that the core belongs to
+#  still exists.
+#
+if [ -f core ]; then
+  echo "INFO: writing the stack of every thread to backtrace.txt"
+  gdb -batch -ex 'p $_siginfo' -ex 'info registers' -ex 'x/4i $pc' -ex 'info sharedlibrary' \
+    -ex 'thread apply all bt full' "$(readlink -f "$(command -v freeradius)")" core \
+    > "$PROFILING_RESULT_DIR/backtrace.txt" 2>&1
 fi
 
 echo "INFO: profiling complete at $(date)"
