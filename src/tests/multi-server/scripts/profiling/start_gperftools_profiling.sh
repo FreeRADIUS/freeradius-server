@@ -51,9 +51,11 @@ ulimit -c unlimited
 #
 #  freeradius stdout and stderr go to freeradius_gperftools.log.
 #
-#  CPUPROFILE_FREQUENCY  samples per CPU-second.  A short load costs well
-#                        under a second of CPU, so the 100 Hz default would
-#                        leave only tens of samples for the whole profile.
+#  CPUPROFILE_FREQUENCY sets the samples per CPU-second.
+#
+#  CPUPROFILE_PER_THREAD_TIMERS enables per-thread profiling.  Only threads
+#  that call ProfilerRegisterThread() get a timer; see FreeRADIUS
+#  src/lib/io/thread.c for details.
 #
 #  %gperftools.start writes the profile to the file named here.  The
 #  server.stop trigger stops the profiler, which flushes the file, before
@@ -61,7 +63,8 @@ ulimit -c unlimited
 #
 echo "INFO: starting freeradius under gperftools at $(date)"
 STATUS=0
-CPUPROFILE_FREQUENCY=1000 \
+CPUPROFILE_FREQUENCY=100 \
+CPUPROFILE_PER_THREAD_TIMERS=1 \
 freeradius -f -l stdout \
   -S resources.talloc_skip_cleanup=yes \
   -S "trigger.server.start=%gperftools.start('$PROFILE') && ${TRIGGER_SERVER_START_APPEND:-true}" \
