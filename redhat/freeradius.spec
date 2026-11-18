@@ -961,6 +961,7 @@ fi
 %files sqlite
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_sqlite.so
+%{_libdir}/freeradius/rlm_cache_sqlite.so
 
 %if %{!?_without_ldap:1}%{?_without_ldap:0}
 %files ldap
