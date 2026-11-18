@@ -173,7 +173,6 @@ typedef struct _tls_session_t {
 	char const	*label;
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
 	bool		session_not_resumed;		//!< Whether our session was not resumed.
-	bool		cache_refreshed;		//!< Whether the "cache refresh" section has run for this session.
 
 	fr_tls_server_conf_t const *conf;		//! for better complaints
 } tls_session_t;
