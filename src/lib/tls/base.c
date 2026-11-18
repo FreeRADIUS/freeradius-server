@@ -205,7 +205,7 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_alert, .name = "Alert", .type = FR_TYPE_STRUCT, .dict = &dict_tls },
 	{ .out = &attr_tls_alert_level, .name = "Alert.Level", .type = FR_TYPE_UINT8, .dict = &dict_tls },
 	{ .out = &attr_tls_alert_description, .name = "Alert.Description", .type = FR_TYPE_UINT8, .dict = &dict_tls },
-	{ .out = &attr_tls_alpn, .name = "ALPN", .type = FR_TYPE_STRING, .dict = &dict_tls },
+	{ .out = &attr_tls_alpn, .name = "TLS-ALPN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_tls_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tls },
 	{ .out = &attr_tls_session_data, .name = "Session-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tls },

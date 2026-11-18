@@ -326,6 +326,60 @@ done:
 	return ret;
 }
 
+/** Record the negotiated name in `session-state`
+ *
+ * The TLS library writes `session-state` into a ticket when it issues the ticket.  A server issues the ticket
+ * during handshake negotiation, which is before fr_tls_session_alpn_check() runs.  The select callback
+ * therefore records the name as soon as the name is chosen.  A resumed session may already hold the name from
+ * the ticket, so this function replaces that value rather than adding a second pair.
+ *
+ * @param[in] request	holding `session-state`.
+ * @param[in] name	to record, with no length octet.
+ * @param[in] len	length of `name`.
+ */
+static void tls_alpn_session_state_set(request_t *request, unsigned char const *name, size_t len)
+{
+	fr_pair_t *vp;
+
+	vp = fr_pair_find_by_da(&request->session_state_pairs, NULL, attr_tls_alpn);
+	if (!vp) MEM(pair_append_session_state(&vp, attr_tls_alpn) >= 0);
+
+	MEM(fr_pair_value_bstrndup(vp, (char const *) name, len, false) == 0);
+}
+
+/** Find the previous ALPN negotiation string, if it's set as part of the TLS session ticket.
+ *
+ * RFC 9765 Section 3.5 says a session which negotiated ALPN can be resumed only with the same ALPN.  The
+ * previous ALPN string is stored in `session-state`, so we check that.
+ *
+ * @param[in] conf	holding the table.
+ * @param[in] request	holding `session-state`.
+ * @param[in] ssl	being negotiated.
+ * @param[in] entry	the entry that this handshake chose, or NULL if the handshake chose none.
+ * @return
+ *	- the sticky entry, if the session was resumed and the handshake chose a different entry.
+ *	- NULL if the handshake follows the rule.
+ */
+static fr_tls_alpn_t const *tls_alpn_sticky_conflict(fr_tls_conf_t const *conf, request_t *request, SSL *ssl,
+						     fr_tls_alpn_t const *entry)
+{
+	fr_pair_t		*vp;
+	fr_tls_alpn_t const	*old;
+
+	if (!conf->alpn_table || !SSL_session_reused(ssl)) return NULL;
+
+	vp = fr_pair_find_by_da(&request->session_state_pairs, NULL, attr_tls_alpn);
+	if (!vp) return NULL;
+
+	RDEBUG2("(TLS) ALPN - session-state.%pP from the resumed session", vp);
+
+	old = tls_alpn_entry_by_name(conf, (unsigned char const *) vp->vp_strvalue, vp->vp_length);
+
+	if (old && (old->flags & FR_TLS_ALPN_STICKY) && (old != entry)) return old;
+
+	return NULL;
+}
+
 /** Select a matching ALPN string.
  *
  * OpenSSL calls this only when the client offered a list, so a client which does not use ALPN never reaches
@@ -383,6 +437,22 @@ static int tls_session_alpn_select_cb(SSL *ssl, unsigned char const **out, unsig
 	}
 
 	RDEBUG2("(TLS) ALPN - chose \"%.*s\"", (int) *outlen, *out);
+
+	/*
+	 *	A resumed session which negotiated a sticky entry cannot choose another entry.
+	 */
+	if (conf->alpn_table) {
+		fr_tls_alpn_t const *old = tls_alpn_sticky_conflict(conf, request, ssl,
+								    tls_alpn_entry_by_name(conf, *out, *outlen));
+
+		if (old) {
+			REDEBUG("(TLS) ALPN - session was negotiated as \"%s\" and cannot resume as \"%.*s\"",
+				old->name, (int) *outlen, *out);
+			return SSL_TLSEXT_ERR_ALERT_FATAL;
+		}
+	}
+
+	tls_alpn_session_state_set(request, *out, *outlen);
 
 	return SSL_TLSEXT_ERR_OK;
 }
@@ -514,6 +584,12 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 	 */
 	fr_assert(request != NULL);
 
+	/*
+	 *	@todo - figure out why we get called twice.  For now, just suppress duplicate calls.
+	 */
+	if (tls_session->alpn_checked) return 0;
+	tls_session->alpn_checked = true;
+
 	if (!conf->alpn) return 0;
 
 	/*
@@ -544,6 +620,20 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 	}
 
 	if (conf->alpn_table) {
+		/*
+		 *	The select callback enforces the rule when the handshake chose a name.  A handshake which
+		 *	chose no name never reached the select callback, so the check enforces the rule here.
+		 */
+		if (!negotiated) {
+			fr_tls_alpn_t const *old = tls_alpn_sticky_conflict(conf, request, tls_session->ssl, entry);
+
+			if (old) {
+				REDEBUG("(TLS) ALPN - session was negotiated as \"%s\" and cannot resume as \"%s\"",
+					old->name, entry ? entry->name : "no ALPN");
+				goto fail;
+			}
+		}
+
 		if (entry) {
 			tls_session->alpn_id = entry->id;
 			RDEBUG2("(TLS) ALPN - table id %d", entry->id);
@@ -554,9 +644,13 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 		RDEBUG2("(TLS) ALPN - agreed on \"%.*s\"",
 			(int) tls_session->sizeof_alpn, tls_session->alpn);
 
-		MEM(pair_append_session_state(&vp, attr_tls_alpn) >= 0);
-		MEM(fr_pair_value_bstrndup(vp, (char *) tls_session->alpn, tls_session->sizeof_alpn, false) == 0);
+		/*
+		 *	A client has no select callback, and a list which the application set itself may have
+		 *	reached no callback either, so record the name here too.
+		 */
+		tls_alpn_session_state_set(request, tls_session->alpn, tls_session->sizeof_alpn);
 
+		vp = fr_pair_find_by_da(&request->session_state_pairs, NULL, attr_tls_alpn);
 		RDEBUG2("(TLS) session-state.%pP", vp);
 
 		return 0;
@@ -580,4 +674,47 @@ fail:
 	return -1;
 }
 
+/** Offer only a sticky protocol when a client resumes a session which negotiated it
+ *
+ * RFC 9765 Section 3.5 says a client that resumes a session which negotiated `radius/1.1` MUST advertise only
+ * `radius/1.1`.  The negotiated name is stored on the `SSL_SESSION`, which OpenSSL exposes from release 3.3.  An
+ * earlier release leaves the list unchanged, and the server enforces the rule.
+ *
+ * @param[in] request	to log through.
+ * @param[in] ssl	about to resume `sess`.
+ * @param[in] sess	the session being resumed.
+ * @param[in] conf	holding the table.
+ */
+void fr_tls_alpn_client_resume(request_t *request, SSL *ssl, SSL_SESSION const *sess, fr_tls_conf_t const *conf)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x30300000L
+	unsigned char const	*name;
+	size_t			len;
+	fr_tls_alpn_t const	*entry;
+	unsigned char		list[UINT8_MAX + 1];
+
+	if (!conf->alpn_table) return;
+
+	SSL_SESSION_get0_alpn_selected(sess, &name, &len);
+	if (!name || (len == 0) || (len > UINT8_MAX)) return;
+
+	entry = tls_alpn_entry_by_name(conf, name, len);
+	if (!entry || !(entry->flags & FR_TLS_ALPN_STICKY)) return;
+
+	list[0] = (unsigned char) len;
+	memcpy(&list[1], name, len);
+
+	if (SSL_set_alpn_protos(ssl, list, (unsigned int) (len + 1)) != 0) {
+		RPERROR("(TLS) ALPN - Failed offering only \"%s\" for the resumed session", entry->name);
+		return;
+	}
+
+	RDEBUG2("(TLS) ALPN - resuming a session which negotiated \"%s\", offering only that name", entry->name);
+#else
+	(void) request;
+	(void) ssl;
+	(void) sess;
+	(void) conf;
+#endif
+}
 #endif /* WITH_TLS */

@@ -586,6 +586,8 @@ static unlang_action_t tls_ticket_stateful_load_client_resume(request_t *request
 
 	RDEBUG2("(TLS) Offering the cached session for resumption");
 
+	fr_tls_alpn_client_resume(request, tls_session->ssl, tls_cache->load.sess, tls_session->conf);
+
 	/*
 	 *	SSL_set_session() takes its own reference, and nothing else
 	 *	consumes this one, unlike the server path where the session is

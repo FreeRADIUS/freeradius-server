@@ -276,6 +276,9 @@ struct fr_tls_session_s {
 								///< SSL_get0_alpn_selected() gives it: the name
 								///< alone, with no leading length octet.
 	size_t			sizeof_alpn;			//!< Length of `alpn`.
+	bool			alpn_checked;			//!< fr_tls_session_alpn_check() has run.  The caller runs
+								///< the check each time the handshake is finished, and the
+								///< check must run once for each session.
 	int			alpn_id;			//!< Application ID which was negotiated,
 								///< or which was flagged as `implied`,
 								///< or #FR_TLS_ALPN_ID_NONE

@@ -152,7 +152,7 @@ for order_log in "$SERVER_LOG" "$CLIENT_LOG"; do
 	#  though it had one drops the first character and yields "adius/1.1".
 	#  The exact string below is what catches that.
 	#
-	grep -q 'session-state.ALPN = "radius/1.1"' "$order_log" || \
+	grep -q 'session-state.TLS-ALPN = "radius/1.1"' "$order_log" || \
 		fail "ALPN did not reach the session-state list whole in $order_log"
 
 	#
