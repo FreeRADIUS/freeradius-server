@@ -1,2 +1,3 @@
 rlm_cache_memcached
 rlm_cache_redis
+rlm_cache_sqlite
