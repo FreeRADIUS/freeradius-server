@@ -1,0 +1,564 @@
+{
+  "uid": "capture-rate-resources",
+  "title": "gperftools capture rate",
+  "schemaVersion": 41,
+  "editable": true,
+  "timezone": "utc",
+  "refresh": "",
+  "time": {
+    "from": "1970-01-01T00:00:00.000Z",
+    "to": "1970-01-01T00:02:10.000Z"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "links": [
+    {
+      "title": "short_ci (2 min)",
+      "type": "link",
+      "url": "/d/capture-rate-resources/gperftools-capture-rate?from=0&to=130000",
+      "includeVars": true,
+      "keepTime": false,
+      "targetBlank": false
+    },
+    {
+      "title": "5min (6 min)",
+      "type": "link",
+      "url": "/d/capture-rate-resources/gperftools-capture-rate?from=0&to=360000",
+      "includeVars": true,
+      "keepTime": false,
+      "targetBlank": false
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "suite",
+        "label": "Suite",
+        "type": "custom",
+        "query": "accept,mysql",
+        "current": {
+          "text": "accept",
+          "value": "accept"
+        },
+        "options": [
+          {
+            "text": "accept",
+            "value": "accept",
+            "selected": true
+          },
+          {
+            "text": "mysql",
+            "value": "mysql",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "container",
+        "label": "Container",
+        "type": "custom",
+        "query": "freeradius,vm,capture-rate-hog,mariadb,capture-rate-sampler",
+        "current": {
+          "text": "freeradius",
+          "value": "freeradius"
+        },
+        "options": [
+          {
+            "text": "freeradius",
+            "value": "freeradius",
+            "selected": true
+          },
+          {
+            "text": "vm",
+            "value": "vm",
+            "selected": false
+          },
+          {
+            "text": "capture-rate-hog",
+            "value": "capture-rate-hog",
+            "selected": false
+          },
+          {
+            "text": "mariadb",
+            "value": "mariadb",
+            "selected": false
+          },
+          {
+            "text": "capture-rate-sampler",
+            "value": "capture-rate-sampler",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Capture rate of each run",
+      "description": "window_s is the CPU time that freeradius used while the profiler ran. samples is the number of samples in the profile. capture_pct is the share of window_s that the samples account for.",
+      "gridPos": {
+        "h": 22,
+        "w": 9,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "capture-rate-results"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "capture-rate-results"
+          },
+          "type": "csv",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://results/${suite}-capture-rate.csv",
+          "url_options": {
+            "method": "GET",
+            "data": ""
+          },
+          "root_selector": "",
+          "filterExpression": "",
+          "columns": [
+            {
+              "selector": "run",
+              "text": "run",
+              "type": "string"
+            },
+            {
+              "selector": "window_s",
+              "text": "window_s",
+              "type": "number"
+            },
+            {
+              "selector": "samples",
+              "text": "samples",
+              "type": "number"
+            },
+            {
+              "selector": "capture_pct",
+              "text": "capture_pct",
+              "type": "number"
+            },
+            {
+              "selector": "exit",
+              "text": "exit",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "window_s"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "capture_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 50
+                    },
+                    {
+                      "color": "green",
+                      "value": 90
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 125
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "samples"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "exit"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 50
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "run": 0,
+              "window_s": 1,
+              "samples": 2,
+              "capture_pct": 3,
+              "exit": 4
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "CPU use of ${container} (100% is one CPU)",
+      "description": "One line per run. The horizontal axis is the time since the sampler started, as minutes:seconds.",
+      "gridPos": {
+        "h": 11,
+        "w": 15,
+        "x": 9,
+        "y": 0
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "capture-rate-results"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "capture-rate-results"
+          },
+          "type": "csv",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://results/${suite}-resource-usage.csv",
+          "url_options": {
+            "method": "GET",
+            "data": ""
+          },
+          "root_selector": "",
+          "filterExpression": "name == \"${container}\"",
+          "columns": [
+            {
+              "selector": "elapsed_s",
+              "text": "time",
+              "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "run",
+              "text": "run",
+              "type": "string"
+            },
+            {
+              "selector": "name",
+              "text": "name",
+              "type": "string"
+            },
+            {
+              "selector": "cpu_pct",
+              "text": "cpu_pct",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "name": true
+            }
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "run"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "displayName": "${__field.labels.run}",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*-idle-.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*-stress-.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Memory of ${container}",
+      "description": "One line per run. The horizontal axis is the time since the sampler started, as minutes:seconds.",
+      "gridPos": {
+        "h": 11,
+        "w": 15,
+        "x": 9,
+        "y": 11
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "capture-rate-results"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "capture-rate-results"
+          },
+          "type": "csv",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://results/${suite}-resource-usage.csv",
+          "url_options": {
+            "method": "GET",
+            "data": ""
+          },
+          "root_selector": "",
+          "filterExpression": "name == \"${container}\"",
+          "columns": [
+            {
+              "selector": "elapsed_s",
+              "text": "time",
+              "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "run",
+              "text": "run",
+              "type": "string"
+            },
+            {
+              "selector": "name",
+              "text": "name",
+              "type": "string"
+            },
+            {
+              "selector": "mem_mib",
+              "text": "mem_mib",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "name": true
+            }
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "run"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "mbytes",
+          "min": 0,
+          "displayName": "${__field.labels.run}",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*-idle-.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*-stress-.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}

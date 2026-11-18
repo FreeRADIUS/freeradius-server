@@ -114,3 +114,8 @@ docker compose -p capture-rate down
 Select the suite and the container at the top of the dashboard.  The idle
 runs are blue and the stress runs are orange.  A table lists `window_s`,
 `samples`, and `capture_pct` for each run of the suite.
+
+The graphs show the first 2 minutes 10 seconds of each run.  To show 6
+minutes for the `5min` test, click the '5min (6 min)' link at the top right
+of the dashboard.  To show 2 minutes 10 seconds again, click the
+'short_ci (2 min)' link.
