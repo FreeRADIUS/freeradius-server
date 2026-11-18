@@ -1,24 +1,21 @@
 #!/bin/bash
 #
-#  Measure the gperftools capture rate of the accept suite, then of the
-#  mysql suite.
+#  Measure the gperftools capture rate of each suite in SUITES.
 #
-#  For each suite, measure_gperftools_capture_rate.sh runs the short_ci
-#  test under gperftools several times with the Docker VM idle and several
-#  times beside a CPU hog, then prints the share of freeradius's CPU time
-#  that each profile captured.  That script describes the method and the
-#  result files.
+#  For each suite, measure_gperftools_capture_rate.sh runs a test under
+#  gperftools several times with the Docker VM idle and several times
+#  beside a CPU hog, then prints the share of freeradius's CPU time that
+#  each profile captured.  That script describes the method and the result
+#  files.
 #
 #  Each test is the same one that this command runs:
 #
-#    make test.multi-server.<suite>.short_ci MODE=profiling PROFILING_TOOL=gperftools
+#    make test.multi-server.<suite>.<test> MODE=profiling PROFILING_TOOL=gperftools
 #
 #  Run from the top of the source tree, after building the profiling image
 #  for the checked out commit:
 #
 #    make docker.radenv-profiling.ubuntu24
-#
-#  The two suites take about 45 minutes.
 #
 #  Usage: run_gperftools_capture_rate_tests.sh [options]
 #
@@ -31,10 +28,15 @@
 
 MEASURE=$(dirname "$0")/measure_gperftools_capture_rate.sh
 
+#
+#  Edit SUITES to change the suites that the script measures.
+#
+SUITES="accept mysql"
+
 case "${1:-}" in
 -h|--help) sed -n '/^#  Usage/,/^$/p' "$0"; "$MEASURE" --help; exit 0 ;;
 esac
 
-for suite in accept mysql; do
+for suite in $SUITES; do
 	"$MEASURE" "$@" -s "$suite" || exit
 done
