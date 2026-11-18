@@ -16,7 +16,7 @@ states:
               export TEST_LOADGEN_{{ key | upper }}="{{ value }}"
               {%- endfor %}
 
-              exec ${RADIUSD_COMMAND:-freeradius -f -l stdout}
+              exec ${RADIUSD_COMMAND:-freeradius -f -l /var/log/freeradius/radius.log}
 
             detach: true
     verify:
