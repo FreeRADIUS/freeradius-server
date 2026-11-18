@@ -143,6 +143,13 @@ for order_log in "$SERVER_LOG" "$CLIENT_LOG"; do
 	grep -q 'session-state.ALPN = "radius/1.1"' "$order_log" || \
 		fail "ALPN did not reach the session-state list whole in $order_log"
 
+	#
+	#  The application reads the table id of the entry which was
+	#  negotiated, and not the name.  radius/1.1 is the first entry of the
+	#  table of unit_test_tls, so the id is 0.
+	#
+	grep -q 'ALPN - table id 1' "$order_log" || \
+		fail "the table id of radius/1.1 did not reach the log in $order_log"
 done
 
 expect_completed

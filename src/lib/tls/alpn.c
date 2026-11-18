@@ -93,9 +93,12 @@ static fr_tls_alpn_t const *tls_alpn_entry_by_name(fr_tls_conf_t const *conf, un
 		size_t j;
 		fr_tls_alpn_t const *entry = &conf->alpn_table[conf->alpn_ids[i] - 1];
 
+		/*
+		 *	Check the name we got from OpenSSL against the configured list of names.
+		 */
 		for (j = 0; entry->name[j] != '\0'; j++) {
 			if ((j >= len) ||
-			    (entry->name[j] != name[j])) {
+			    ((uint8_t) entry->name[j] != (uint8_t) name[j])) {
 				found = false;
 				break;
 			}
@@ -479,6 +482,19 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 		MEM(fr_pair_value_bstrndup(vp, (char *) tls_session->alpn, tls_session->sizeof_alpn, false) == 0);
 
 		RDEBUG2("(TLS) session-state.%pP", vp);
+
+		/*
+		 *	Match the name we get from OpenSSL against the list of allowed ALPNs.
+		 */
+		if (conf->alpn_table) {
+			fr_tls_alpn_t const *entry = tls_alpn_entry_by_name(conf, tls_session->alpn,
+									    tls_session->sizeof_alpn);
+
+			if (entry) {
+				tls_session->alpn_id = entry->id;
+				RDEBUG3("(TLS) ALPN - table id %d", entry->id);
+			}
+		}
 
 		return 0;
 	}

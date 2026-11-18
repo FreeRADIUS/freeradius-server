@@ -276,6 +276,9 @@ struct fr_tls_session_s {
 								///< SSL_get0_alpn_selected() gives it: the name
 								///< alone, with no leading length octet.
 	size_t			sizeof_alpn;			//!< Length of `alpn`.
+	int			alpn_id;			//!< Application ID which was negotiated,
+								///< or which was flagged as `implied`,
+								///< or #FR_TLS_ALPN_ID_NONE
 
 	fr_tls_ticket_stateful_t	*cache;			//!< Current session resumption state.
 
