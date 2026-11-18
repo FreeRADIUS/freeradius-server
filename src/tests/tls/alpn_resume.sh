@@ -146,10 +146,14 @@ run() {
 	#
 	#  The client offers only radius/1.1 when the client resumes the session.
 	#  The client has to read the name from the session which OpenSSL
-	#  recorded.
+	#  recorded.  OpenSSL before 3.3 does not let the client read the name, so
+	#  the client logs that all ALPNs are allowed, and the server
+	#  enforces the rule instead.
 	#
-	grep -q 'resuming a session which negotiated "radius/1.1", offering only that name' "$run_client_log" || \
-		fail "$run_name: the client did not restrict its list to radius/1.1 when resuming"
+	if ! grep -q 'OpenSSL before 3.3 does not provide the ALPN string for resumed sessions' "$run_client_log"; then
+		grep -q 'resuming a session which negotiated "radius/1.1", offering only that name' "$run_client_log" || \
+			fail "$run_name: the client did not restrict its list to radius/1.1 when resuming"
+	fi
 }
 
 run stateless alpn_stateless ''

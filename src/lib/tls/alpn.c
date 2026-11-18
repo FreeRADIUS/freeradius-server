@@ -75,6 +75,24 @@ static bool tls_alpn_valid(unsigned char const *alpn, size_t len)
 	return i == len;
 }
 
+/** Return the identity of the TLS connection.
+ *
+ * Both the connection code and EAP store the identity in #FR_TLS_EX_INDEX_IDENTITY.
+ *
+ * @param[in] ssl	to get the name of.
+ * @return
+ *	- the name which the application gave the connection.
+ *	- "(unknown)" if no name was stored, or the name is not set.
+ */
+static char const *tls_alpn_identity(SSL const *ssl)
+{
+	char const * const *identity = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
+
+	if (!identity || !*identity) return "(unknown)";
+
+	return *identity;
+}
+
 /** Find an ALPN table entry by name
  *
  * @param[in] conf	holding the ids.
@@ -456,7 +474,7 @@ static int tls_session_alpn_select_cb(SSL *ssl, unsigned char const **out, unsig
 	if (SSL_select_next_proto(UNCONST(unsigned char **, out), outlen,
 				  conf->alpn, (unsigned int) conf->sizeof_alpn,
 				  in, inlen) != OPENSSL_NPN_NEGOTIATED) {
-		REDEBUG("(TLS) ALPN - no protocol in common with the peer");
+		REDEBUG("(TLS) ALPN - no protocol in common with the peer (%s)", tls_alpn_identity(ssl));
 		return SSL_TLSEXT_ERR_ALERT_FATAL;
 	}
 
@@ -470,8 +488,8 @@ static int tls_session_alpn_select_cb(SSL *ssl, unsigned char const **out, unsig
 								    tls_alpn_entry_by_name(conf, *out, *outlen));
 
 		if (old) {
-			REDEBUG("(TLS) ALPN - session was negotiated as \"%s\" and cannot resume as \"%.*s\"",
-				old->name, (int) *outlen, *out);
+			REDEBUG("(TLS) ALPN - session was negotiated as \"%s\" and cannot resume as \"%.*s\" (%s)",
+				old->name, (int) *outlen, *out, tls_alpn_identity(ssl));
 			return SSL_TLSEXT_ERR_ALERT_FATAL;
 		}
 	}
@@ -630,16 +648,17 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 		 *	which the client sent.  OpenSSL may check, and the check here does not depend on that.
 		 */
 		if (!tls_alpn_listed(conf, tls_session->alpn, tls_session->sizeof_alpn)) {
-			REDEBUG("(TLS) ALPN - peer chose \"%.*s\", which is not on our list",
-				(int) tls_session->sizeof_alpn, tls_session->alpn);
+			REDEBUG("(TLS) ALPN - peer chose \"%.*s\", which is not on our list (%s)",
+				(int) tls_session->sizeof_alpn, tls_session->alpn, tls_alpn_identity(tls_session->ssl));
 			alert = SSL_AD_ILLEGAL_PARAMETER;
 			goto fail;
 		}
 
 		if (conf->alpn_table) {
 			if (!tls_alpn_version_ok(tls_session->ssl)) {
-				REDEBUG("(TLS) ALPN - peer chose \"%.*s\" with TLS 1.2 or earlier",
-					(int) tls_session->sizeof_alpn, tls_session->alpn);
+				REDEBUG("(TLS) ALPN - peer chose \"%.*s\" with TLS 1.2 or earlier (%s)",
+					(int) tls_session->sizeof_alpn, tls_session->alpn,
+					tls_alpn_identity(tls_session->ssl));
 				alert = SSL_AD_ILLEGAL_PARAMETER;
 				goto fail;
 			}
@@ -660,8 +679,8 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 			fr_tls_alpn_t const *old = tls_alpn_sticky_conflict(conf, request, tls_session->ssl, entry);
 
 			if (old) {
-				REDEBUG("(TLS) ALPN - session was negotiated as \"%s\" and cannot resume as \"%s\"",
-					old->name, entry ? entry->name : "no ALPN");
+				REDEBUG("(TLS) ALPN - session was negotiated as \"%s\" and cannot resume as \"%s\" (%s)",
+					old->name, entry ? entry->name : "no ALPN", tls_alpn_identity(tls_session->ssl));
 				goto fail;
 			}
 		}
@@ -698,7 +717,7 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 		return 0;
 	}
 
-	REDEBUG("(TLS) ALPN - Failure, no protocols in common");
+	REDEBUG("(TLS) ALPN - Failure, no protocols in common (%s)", tls_alpn_identity(tls_session->ssl));
 
 fail:
 	fr_tls_session_error_alert(request, tls_session, FR_ERROR_VALUE_ALPN_FAILED, alert);
@@ -741,8 +760,9 @@ int fr_tls_session_alpn_client_hello(SSL *ssl, request_t *request, int *alert, b
 
 	if (!conf->alpn_required) return SSL_CLIENT_HELLO_SUCCESS;
 
-	REDEBUG("(TLS) ALPN - Failure, %s and no default ALPN string was configured",
-		usable ? "client offered no ALPN" : "TLS 1.2 or earlier will be negotiated");
+	REDEBUG("(TLS) ALPN - Failure, %s and no default ALPN string was configured (%s)",
+		usable ? "client offered no ALPN" : "TLS 1.2 or earlier will be negotiated",
+		tls_alpn_identity(ssl));
 
 	*alert = SSL_AD_NO_APPLICATION_PROTOCOL;
 
@@ -786,10 +806,13 @@ void fr_tls_alpn_client_resume(request_t *request, SSL *ssl, SSL_SESSION const *
 
 	RDEBUG2("(TLS) ALPN - resuming a session which negotiated \"%s\", offering only that name", entry->name);
 #else
-	(void) request;
 	(void) ssl;
 	(void) sess;
-	(void) conf;
+
+	if (!conf->alpn_table) return;
+
+	RWDEBUG2("(TLS) ALPN - OpenSSL before 3.3 does not provide the ALPN string for resumed sessions, "
+		"allowing all ALPNs");
 #endif
 }
 #endif /* WITH_TLS */

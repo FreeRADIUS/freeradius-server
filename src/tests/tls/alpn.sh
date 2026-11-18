@@ -39,7 +39,7 @@
 RECEIPT="$OUTPUT/alpn.receipt"
 
 mkdir -p "$OUTPUT"
-rm -f "$OUTPUT"/alpn_*.log "$OUTPUT"/alpn_cfg_*.conf "$RECEIPT"
+rm -f "$OUTPUT"/alpn_[!r]*.log "$OUTPUT"/alpn_raw_*.log "$OUTPUT"/alpn_cfg_*.conf "$RECEIPT"
 
 fail() {
 	fail_message="$1"
@@ -264,8 +264,8 @@ cell() {
 		;;
 
 	Close-S)
-		grep -q "ALPN - Failure, client offered no ALPN and no default ALPN string was configured" "$SERVER_LOG" || \
-			fail "client $cell_client and server $cell_server did not refuse in the ClientHello"
+		grep -qE "ALPN - Failure, client offered no ALPN and no default ALPN string was configured \(D?TLS from 127\.0\.0\.1" "$SERVER_LOG" || \
+			fail "client $cell_client and server $cell_server did not refuse in the ClientHello, naming the connection"
 		grep -q "Sending client fatal TLS alert (120)" "$SERVER_LOG" || \
 			fail "client $cell_client and server $cell_server did not send alert 120"
 		expect_server_refused

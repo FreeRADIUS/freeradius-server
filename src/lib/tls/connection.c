@@ -915,6 +915,13 @@ int fr_tls_connection_push(fr_tls_connection_t *conn)
 	if (!conn->name) MEM(conn->name = talloc_strdup(conn, "(TLS)"));
 
 	/*
+	 *	Code which only has the SSL, such as the ALPN callbacks, names the connection in its log messages
+	 *	by reading FR_TLS_EX_INDEX_IDENTITY.  The address of `name` is stored, not the string, because an
+	 *	application is allowed to replace `name` after this point.
+	 */
+	SSL_set_ex_data(conn->tls_session->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(conn->name));
+
+	/*
 	 *	The connection's own state machine starts at `new session`.
 	 *	The interpreter is told only about the frame which runs that
 	 *	machine.
