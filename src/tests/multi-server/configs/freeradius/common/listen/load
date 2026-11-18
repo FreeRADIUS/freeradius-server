@@ -1,6 +1,6 @@
 listen load {
 		handler = load
-		type = Access-Request
+		type = {{ load_packet_type | default('Access-Request') }}
 		transport = step
 
 		step {
