@@ -734,6 +734,14 @@ fr_dict_filename_t *dict_filename_intern(fr_dict_t *dict, char const *filename)
 	if (file) return file;
 
 	/*
+	 *	If the dictionaries are read-only, then don't modify them.
+	 *
+	 *	"unknown" attributes which are defined at run-time
+	 *	must use a filename which we've already seen.
+	 */
+	if (dict->read_only) return NULL;
+
+	/*
 	 *	Id 0 is reserved for "no location recorded", and the id
 	 *	must fit the uint16_t in fr_dict_attr_t.
 	 */

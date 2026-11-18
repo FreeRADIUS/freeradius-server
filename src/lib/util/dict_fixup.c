@@ -891,4 +891,5 @@ void dict_hash_tables_finalise(fr_dict_t *dict)
 	 */
 	fr_hash_table_fill(dict->vendors_by_name);
 	fr_hash_table_fill(dict->vendors_by_num);
+	fr_hash_table_fill(dict->filenames);
 }
