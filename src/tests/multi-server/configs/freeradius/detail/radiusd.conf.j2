@@ -1,0 +1,89 @@
+name       = freeradius
+
+raddbdir   = /etc/freeradius
+confdir    = ${raddbdir}
+modconfdir = ${confdir}/mods-config
+logdir     = /var/log/freeradius
+radacctdir = ${logdir}/radacct
+
+security {
+	allow_core_dumps = yes
+}
+
+trigger {
+	server {
+		start = "%linelog_test_framework('server-start {}')"
+		stop = "%linelog_test_framework('server-stop {}')"
+	}
+}
+
+modules {
+
+	# Common always module configuration, required for the control policy
+	{% include "freeradius/common/mods-available/always" %}
+
+	{% include "freeradius/common/mods-available/detail" %}
+	{% include "freeradius/common/mods-available/detail_buffer" %}
+
+{%- if listener_type == "unix" %}
+	{%   include "freeradius/common/mods-available/linelog_socket" %}
+{%- elif listener_type == "file" %}
+	{%   include "freeradius/common/mods-available/linelog_file" %}
+{%- endif %}
+}
+
+policy {
+	# Common control policy configuration, needed for accept action
+	{% include "freeradius/common/policy.d/control" %}
+}
+
+server freeradius {
+
+	namespace = radius
+
+	# proto_load listen config
+	{% include "freeradius/common/listen/load" %}
+
+	listen accounting {
+		type = Accounting-Request
+		transport = udp
+
+		udp {
+			ipaddr = *
+			port = 1813
+		}
+	}
+
+	client localhost {
+		shortname = client-localhost
+		ipaddr = *
+		secret = testing123
+	}
+
+	recv Accounting-Request {
+		detail_buffer
+	}
+
+	accounting Stop {
+		ok
+	}
+
+	send Accounting-Response {
+		ok
+	}
+}
+
+server detail {
+
+	namespace = radius
+
+	{% include "freeradius/common/listen/detail" %}
+
+	recv Accounting-Request {
+		detail
+	}
+
+	send Accounting-Response {
+		ok
+	}
+}

@@ -1,0 +1,25 @@
+timeout: {{ test_timeout }}
+state_order: sequence
+states:
+  state_1:
+    description: >
+      Baseline profiling test
+    host:
+      freeradius:
+        actions:
+        - execute_command:
+            command: |
+              #
+              # proto_load configuration via TEST_LOADGEN_* environment variables
+              #
+              {%- for key, value in loadgen.items() %}
+              export TEST_LOADGEN_{{ key | upper }}="{{ value }}"
+              {%- endfor %}
+
+              exec ${RADIUSD_COMMAND:-freeradius -f -l /var/log/freeradius/radius.log}
+
+            detach: true
+    verify:
+      timeout: {{ test_verify_timeout }}
+      timeout_mode: window
+      trigger_mode: unordered

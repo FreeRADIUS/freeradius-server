@@ -1,0 +1,8 @@
+
+detail detail_buffer {
+	# Per second files - so lots are created
+        filename = "${radacctdir}/buffer/detail-%Y-%m-%d:%H:%G:%e"
+        escape_filenames = no
+        permissions = 0600
+        header = "%t"
+}

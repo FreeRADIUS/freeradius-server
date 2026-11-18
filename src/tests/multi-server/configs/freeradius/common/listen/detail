@@ -1,0 +1,15 @@
+listen detail {
+	type = Accounting-Request
+	transport = file
+	proto = detail
+
+	file {
+		filename = ${radacctdir}/buffer/detail-*
+		poll_interval = 0
+        }
+
+	work {
+		filename = ${radacctdir}/buffer/detail.work
+		track = yes
+	}
+}
