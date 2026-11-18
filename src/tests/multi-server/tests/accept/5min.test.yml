@@ -4,10 +4,10 @@
 
 # Load generator configuration
 loadgen:
-  start_pps: 500
-  max_pps: 500
+  start_pps: 100
+  max_pps: 100
   duration: 300
-  step: 500
+  step: 100
   parallel: 1
   max_backlog: 1000
   repeat: "no"
