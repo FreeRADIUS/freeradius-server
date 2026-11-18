@@ -91,9 +91,7 @@ cat prof-results/capture-rate/$(git rev-parse --short HEAD)/*-capture-rate.csv
 The script prints a table for each suite, and writes each complete row to
 `<suite>-capture-rate.csv`.
 
-The script copies the container logs to `<run>/<suite>/logs/`.  When
-freeradius crashes, `<run>/<suite>/short_ci/gperftools/` also holds the
-`core` file and `backtrace.txt` (the stack of every thread).
+The script copies the container logs to `<run>/<suite>/logs/`.
 
 ### Resource use dashboard
 
