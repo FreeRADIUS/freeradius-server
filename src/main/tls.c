@@ -5498,8 +5498,14 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			utime(filename, NULL);
 		}
 
-		if (conf->session_cache_server) {
+		/*
+		 *	With TLS 1.3, tls_success() runs twice for a
+		 *	resumed session.  Only run the "cache refresh"
+		 *	section the first time.
+		 */
+		if (conf->session_cache_server && !ssn->cache_refreshed) {
 			cbtls_cache_refresh(ssn->ssl, ssn->ssl_session);
+			ssn->cache_refreshed = true;
 		}
 
 		/*
