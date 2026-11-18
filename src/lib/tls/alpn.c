@@ -326,6 +326,24 @@ done:
 	return ret;
 }
 
+/** Check if we can use ALPN on this session.
+ *
+ * RFC 9765 Section 3.4 requires TLS 1.3.  OpenSSL has no DTLS 1.3, so DTLS 1.2 is allowed as well.
+ *
+ * @param[in] ssl	whose handshake has finished.
+ * @return
+ *	- true for TLS 1.3 and DTLS 1.2.
+ *	- false for any earlier version.
+ */
+static bool tls_alpn_version_ok(SSL const *ssl)
+{
+	int version = SSL_version(ssl);
+
+	if (version == TLS1_3_VERSION) return true;
+
+	return SSL_is_dtls(ssl) && (version == DTLS1_2_VERSION);
+}
+
 /** Record the negotiated name in `session-state`
  *
  * The TLS library writes `session-state` into a ticket when it issues the ticket.  A server issues the ticket
@@ -403,6 +421,7 @@ static int tls_session_alpn_select_cb(SSL *ssl, unsigned char const **out, unsig
 {
 	request_t		*request = fr_tls_session_request(ssl);
 	fr_tls_conf_t const	*conf = fr_tls_session_conf(ssl);
+	fr_tls_session_t	*tls_session = fr_tls_session(ssl);
 	unsigned int		i;
 
 	/*
@@ -417,9 +436,14 @@ static int tls_session_alpn_select_cb(SSL *ssl, unsigned char const **out, unsig
 	 */
 	fr_assert(tls_alpn_valid(conf->alpn, conf->sizeof_alpn));
 
+	if (tls_session->alpn_ignore) {
+		RDEBUG2("(TLS) ALPN - not used with TLS 1.2 or earlier, choosing no name");
+		return SSL_TLSEXT_ERR_NOACK;
+	}
+
 	if (RDEBUG_ENABLED2) {
 		for (i = 0; i < inlen; i += in[i] + 1) {
-			RDEBUG2("(TLS) ALPN - peer offers \"%.*s\"", in[i], &in[i + 1]);
+			RDEBUG2("(TLS) ALPN - peer suggests \"%.*s\"", in[i], &in[i + 1]);
 		}
 	}
 
@@ -612,6 +636,13 @@ int fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session)
 		}
 
 		if (conf->alpn_table) {
+			if (!tls_alpn_version_ok(tls_session->ssl)) {
+				REDEBUG("(TLS) ALPN - peer chose \"%.*s\" with TLS 1.2 or earlier",
+					(int) tls_session->sizeof_alpn, tls_session->alpn);
+				alert = SSL_AD_ILLEGAL_PARAMETER;
+				goto fail;
+			}
+
 			entry = tls_alpn_entry_by_name(conf, tls_session->alpn, tls_session->sizeof_alpn);
 			fr_assert(entry != NULL);
 		}
@@ -672,6 +703,26 @@ fail:
 	fr_tls_session_error_alert(request, tls_session, FR_ERROR_VALUE_ALPN_FAILED, alert);
 
 	return -1;
+}
+
+/** Function to call in ClientHello to check if can use ALPN.
+ *
+ * @param[in] ssl	inside the ClientHello callback.
+ * @param[in] request	unused.
+ * @param[out] alert	unused.
+ * @param[in] tls13	true if TLS 1.3 will be negotiated.  DTLS needs no test, because the function allows DTLS.
+ * @return SSL_CLIENT_HELLO_SUCCESS.
+ */
+int fr_tls_session_alpn_client_hello(SSL *ssl, UNUSED request_t *request, UNUSED int *alert, bool tls13)
+{
+	fr_tls_conf_t const	*conf = fr_tls_session_conf(ssl);
+	fr_tls_session_t	*tls_session = fr_tls_session(ssl);
+
+	if (!conf->alpn_table) return SSL_CLIENT_HELLO_SUCCESS;
+
+	tls_session->alpn_ignore = !(tls13 || SSL_is_dtls(ssl));
+
+	return SSL_CLIENT_HELLO_SUCCESS;
 }
 
 /** Offer only a sticky protocol when a client resumes a session which negotiated it

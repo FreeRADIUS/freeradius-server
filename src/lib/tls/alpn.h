@@ -84,6 +84,8 @@ int		fr_tls_ctx_alpn_set(SSL_CTX *ctx, fr_tls_conf_t const *conf, bool client);
 
 int		fr_tls_session_alpn_check(request_t *request, fr_tls_session_t *tls_session);
 
+int		fr_tls_session_alpn_client_hello(SSL *ssl, request_t *request, int *alert, bool tls13);
+
 void		fr_tls_alpn_client_resume(request_t *request, SSL *ssl, SSL_SESSION const *sess,
 					  fr_tls_conf_t const *conf);
 #endif

@@ -2438,10 +2438,19 @@ static bool tls_client_hello_is_tls13(SSL *ssl)
  *
  * The SSL_client_hello* functions can only be called inside a callback like this.
  */
-static int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
+static int fr_tls_session_client_hello_cb(SSL *ssl, int *al, UNUSED void *arg)
 {
 	fr_tls_conf_t		*conf = fr_tls_session_conf(ssl);
 	request_t		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+
+	/*
+	 *	If there's an ALPN table set, fail now if we can't agree on an ALPN string.
+	 */
+	if (conf->alpn_table) {
+		int ret = fr_tls_session_alpn_client_hello(ssl, request, al, tls_client_hello_is_tls13(ssl));
+
+		if (ret != SSL_CLIENT_HELLO_SUCCESS) return ret;
+	}
 
 	/*
 	 *	Is there a session_ticket extension in the CLientHello?

@@ -279,6 +279,7 @@ struct fr_tls_session_s {
 	bool			alpn_checked;			//!< fr_tls_session_alpn_check() has run.  The caller runs
 								///< the check each time the handshake is finished, and the
 								///< check must run once for each session.
+	bool			alpn_ignore;			//!< Do we ignore ALPN for this session
 	int			alpn_id;			//!< Application ID which was negotiated,
 								///< or which was flagged as `implied`,
 								///< or #FR_TLS_ALPN_ID_NONE

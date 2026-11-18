@@ -12,7 +12,9 @@
 #  preference.  "-a" sets the raw fields of the configuration instead, the way
 #  an application does when it does not use a table.  See src/lib/tls/alpn.c.
 #
-#  unit_test_tls.conf has TLS 1.2 on both ends.
+#  A table based list is used only with TLS 1.3 and DTLS 1.2.  alpn.conf has
+#  TLS 1.3 on both ends, unit_test_tls.conf has TLS 1.2 on both ends, and
+#  dtls.conf has DTLS 1.2 on both ends.
 #
 #  This script runs many cases, where every other script in this directory
 #  runs one.  Each case needs its own pair of command lines, so one case per
@@ -24,7 +26,7 @@
 #  Environment:
 #    UNIT_TEST_TLS  command that runs unit_test_tls, possibly several words
 #    OUTPUT         directory for the log files and the receipt file
-#    CONFDIR        directory holding unit_test_tls.conf
+#    CONFDIR        directory holding alpn.conf and unit_test_tls.conf
 #    DICT_PATH      dictionary directory
 #    PORT           port unit_test_tls listens on
 #
@@ -137,7 +139,7 @@ expect_no_agreement() {
 #  the answer would be radius/1.0 and this check would say so.
 #
 ######################################################################
-tls_pair order unit_test_tls '-L radius/1.1,radius/1.0' '-L radius/1.0,radius/1.1'
+tls_pair order alpn '-L radius/1.1,radius/1.0' '-L radius/1.0,radius/1.1'
 
 grep -q 'ALPN - chose "radius/1.1"' "$SERVER_LOG" || \
 	fail "the server did not choose radius/1.1, so its own order did not decide"
@@ -177,7 +179,7 @@ expect_completed
 #  message names the address of the client.
 #
 ######################################################################
-tls_pair mismatch unit_test_tls '-L radius/1.1' '-L http/1.1'
+tls_pair mismatch alpn '-L radius/1.1' '-L http/1.1'
 
 grep -q "ALPN - no protocol in common with the peer" "$SERVER_LOG" || \
 	fail "the server did not report that the two lists have nothing in common, with the peer address"
@@ -237,7 +239,7 @@ cell() {
 	eval "cell_client_args=\$CLIENT_${cell_client}"
 	eval "cell_server_args=\$SERVER_${cell_server}"
 
-	tls_pair "cell_${cell_client}_${cell_server}" unit_test_tls "$cell_server_args" "$cell_client_args"
+	tls_pair "cell_${cell_client}_${cell_server}" alpn "$cell_server_args" "$cell_client_args"
 
 	case "$cell_outcome" in
 	TLS)
@@ -301,6 +303,84 @@ cell 11 11 1.1
 
 ######################################################################
 #
+#  4.  A table based list is not used with TLS 1.2 or earlier.
+#
+#  RFC 9765 Section 3.4 says implementations MUST require TLS 1.3, and OpenSSL
+#  has no DTLS 1.3, so the library also allows DTLS 1.2.  unit_test_tls.conf
+#  limits both ends to TLS 1.2.  OpenSSL has not chosen the TLS version when the
+#  select callback runs, so the ClientHello callback works out whether TLS 1.3
+#  will be negotiated, and the select callback then chooses no name.
+#
+#  With radius/1.0 in the list, the two ends fall back to it, which is
+#  historic RADIUS/TLS.  Without radius/1.0, nothing is implied, so the server
+#  refuses while it parses the ClientHello.
+#
+######################################################################
+tls_pair tls12_implied unit_test_tls '-L radius/1.1,radius/1.0' '-L radius/1.1,radius/1.0'
+
+grep -q "ALPN - not used with TLS 1.2 or earlier, choosing no name" "$SERVER_LOG" || \
+	fail "the server did not skip ALPN below TLS 1.3"
+
+for tls12_log in "$SERVER_LOG" "$CLIENT_LOG"; do
+	grep -q 'ALPN - peer used no ALPN, assuming "radius/1.0"' "$tls12_log" || \
+		fail "the peer was not assumed to speak radius/1.0 in $tls12_log"
+done
+
+expect_completed
+expect_no_agreement
+
+tls_pair tls12_required unit_test_tls '-L radius/1.1' '-L radius/1.1,radius/1.0'
+
+grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
+	fail "the server did not refuse radius/1.1 below TLS 1.3"
+
+expect_server_refused
+
+#
+#  OpenSSL has no DTLS 1.3, so a table based list is used with DTLS 1.2 as
+#  well as with TLS 1.3.  dtls.conf has the DTLS 1.2 transport on both ends.
+#  The cases below are the cells of RFC 9765 Table 2 which show the outcomes
+#  that differ in kind: RADIUS/1.1, historic RADIUS/TLS, an alert, Close-S, and
+#  Close-C.
+#
+tls_pair dtls_both dtls '-L radius/1.1,radius/1.0' '-L radius/1.1,radius/1.0'
+
+for dtls_log in "$SERVER_LOG" "$CLIENT_LOG"; do
+	grep -q 'ALPN - agreed on "radius/1.1"' "$dtls_log" || \
+		fail "no agreement on radius/1.1 over DTLS in $dtls_log"
+done
+
+expect_completed
+
+tls_pair dtls_implied dtls '-L radius/1.1,radius/1.0' ''
+
+grep -q 'ALPN - peer used no ALPN, assuming "radius/1.0"' "$SERVER_LOG" || \
+	fail "the peer was not assumed to speak radius/1.0 over DTLS"
+
+expect_completed
+expect_no_agreement
+
+tls_pair dtls_alert dtls '-L radius/1.1' '-L radius/1.0'
+
+grep -q "ALPN - no protocol in common with the peer" "$SERVER_LOG" || \
+	fail "the server did not find that the two lists have nothing in common over DTLS"
+
+expect_server_refused
+
+tls_pair dtls_close_s dtls '-L radius/1.1' ''
+
+grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
+	fail "the server did not refuse a DTLS client which offered no ALPN"
+
+expect_server_refused
+
+tls_pair dtls_close_c dtls '' '-L radius/1.1'
+
+grep -q "ALPN - Failure, no protocols in common" "$CLIENT_LOG" || \
+	fail "the DTLS client did not refuse a server which sent no ALPN"
+
+######################################################################
+#
 #  5.  The server requires an agreement, and the client offers no list.
 #
 #  OpenSSL calls the select callback only when the client sent a list, so
@@ -312,7 +392,7 @@ cell 11 11 1.1
 #  of alert_recv.sh would look like if ALPN were optional here.
 #
 ######################################################################
-tls_pair required unit_test_tls '-L radius/1.1 -l' ''
+tls_pair required alpn '-L radius/1.1 -l' ''
 
 grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
 	fail "the server did not refuse a session which agreed on no protocol"
@@ -335,7 +415,7 @@ expect_server_refused
 SERVER_LOG="$OUTPUT/alpn_unusable_server.log"
 CLIENT_LOG="$SERVER_LOG"
 
-$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n unit_test_tls -xx -l \
+$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n alpn -xx -l \
 	> "$SERVER_LOG" 2>&1
 
 grep -q "ALPN is required, but no protocols were set" "$SERVER_LOG" || \
@@ -354,7 +434,7 @@ fi
 #  preference.  A missing section means no ALPN, which RFC 9765 Section 3.3
 #  calls "unset".
 #
-#  Each variant of unit_test_tls.conf below is unit_test_tls.conf with an `alpn` section added
+#  Each variant of alpn.conf below is alpn.conf with an `alpn` section added
 #  to the server.  The variants are written into $OUTPUT, so the $INCLUDE line
 #  names the path of common.conf.
 #
@@ -375,7 +455,7 @@ cfg_write() {
 \\1alpn {\\
 \\1$cfg_items\\
 \\1}|" \
-	    "$CONFDIR/unit_test_tls.conf" > "$OUTPUT/alpn_cfg_${cfg_variant}.conf"
+	    "$CONFDIR/alpn.conf" > "$OUTPUT/alpn_cfg_${cfg_variant}.conf"
 }
 
 #
