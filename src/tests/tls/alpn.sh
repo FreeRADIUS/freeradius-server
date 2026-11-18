@@ -264,10 +264,10 @@ cell() {
 		;;
 
 	Close-S)
-		grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
-			fail "client $cell_client and server $cell_server did not refuse after the handshake"
-		grep -q "request.Error = ::ALPN-Failed" "$SERVER_LOG" || \
-			fail "client $cell_client and server $cell_server did not record ALPN-Failed"
+		grep -q "ALPN - Failure, client offered no ALPN and no default ALPN string was configured" "$SERVER_LOG" || \
+			fail "client $cell_client and server $cell_server did not refuse in the ClientHello"
+		grep -q "Sending client fatal TLS alert (120)" "$SERVER_LOG" || \
+			fail "client $cell_client and server $cell_server did not send alert 120"
 		expect_server_refused
 		;;
 
@@ -331,7 +331,7 @@ expect_no_agreement
 
 tls_pair tls12_required unit_test_tls '-L radius/1.1' '-L radius/1.1,radius/1.0'
 
-grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
+grep -q "ALPN - Failure, TLS 1.2 or earlier will be negotiated and no default ALPN string was configured" "$SERVER_LOG" || \
 	fail "the server did not refuse radius/1.1 below TLS 1.3"
 
 expect_server_refused
@@ -369,7 +369,7 @@ expect_server_refused
 
 tls_pair dtls_close_s dtls '-L radius/1.1' ''
 
-grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
+grep -q "ALPN - Failure, client offered no ALPN and no default ALPN string was configured" "$SERVER_LOG" || \
 	fail "the server did not refuse a DTLS client which offered no ALPN"
 
 expect_server_refused
@@ -381,18 +381,19 @@ grep -q "ALPN - Failure, no protocols in common" "$CLIENT_LOG" || \
 
 ######################################################################
 #
-#  5.  The server requires an agreement, and the client offers no list.
+#  5.  The server requires an agreement, and the client offers no list,
+#      with the raw fields.
 #
-#  OpenSSL calls the select callback only when the client sent a list, so
-#  that callback never runs here and cannot be what notices.  What notices is
-#  fr_tls_session_alpn_check(), after the handshake.
+#  A list that the application sets itself is checked only after the
+#  handshake, by fr_tls_session_alpn_check().  The ClientHello callback and
+#  the select callback skip a list which has no table.
 #
 #  This is also the case which says `alpn_required` is not merely advisory:
 #  without it the same pair of command lines completes, which is what case 4
 #  of alert_recv.sh would look like if ALPN were optional here.
 #
 ######################################################################
-tls_pair required alpn '-L radius/1.1 -l' ''
+tls_pair raw_required alpn '-a -L radius/1.1 -l' ''
 
 grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
 	fail "the server did not refuse a session which agreed on no protocol"
@@ -401,6 +402,15 @@ grep -q "request.Error = ::ALPN-Failed" "$SERVER_LOG" || \
 	fail "the refusal did not record ALPN-Failed"
 
 expect_server_refused
+
+tls_pair raw_both alpn '-a -L radius/1.1,radius/1.0' '-a -L radius/1.0,radius/1.1'
+
+for raw_log in "$SERVER_LOG" "$CLIENT_LOG"; do
+	grep -q 'ALPN - agreed on "radius/1.1"' "$raw_log" || \
+		fail "the raw fields did not agree on radius/1.1 in $raw_log"
+done
+
+expect_completed
 
 ######################################################################
 #
@@ -491,7 +501,7 @@ done
 
 cfg_pair only11 ''
 
-grep -q "ALPN - Failure, no protocols in common" "$SERVER_LOG" || \
+grep -q "ALPN - Failure, client offered no ALPN and no default ALPN string was configured" "$SERVER_LOG" || \
 	fail "the alpn section did not refuse a client which offered no ALPN"
 
 #

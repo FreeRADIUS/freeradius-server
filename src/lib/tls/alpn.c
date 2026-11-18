@@ -581,10 +581,11 @@ static bool tls_alpn_listed(fr_tls_conf_t const *conf, unsigned char const *name
  *
  * Runs once the handshake is done, for both roles.
  *
- * A server catches most failures earlier, in tls_session_alpn_select_cb(), which sends a fatal alert when the
- * two lists have nothing in common.  What that callback cannot catch is a client which offered no list,
- * because it's not called.  A client has no callback at all, and learns what the server chose only from the
- * handshake.
+ * The client sends a list of proposed ALPN strings.  The server receives it, and checks that against its
+ * local list.  If there's no overlap, the server sends a fatal alert.  The fatal alert is also sent when the
+ * client sends no ALPN, and the server isn't configured with a `default` entry.
+ *
+ * Once the server has found a match, it sends back the chosen ALPN string to inform the client.
  *
  * With a table, a peer which agrees on no name is treated as the entry flagged `default`.
  *
@@ -705,24 +706,47 @@ fail:
 	return -1;
 }
 
-/** Function to call in ClientHello to check if can use ALPN.
+/** Check ALPN while the server parses the ClientHello
+ *
+ * A server can send the alert while it processes the ClientHello, in order to close the connection early on
+ * failure.  This function checks the ALPN strings from the configuration.  If the application manually sets a
+ * list, that's checked after the handshake in fr_tls_session_alpn_check().
+ *
+ * We need to correlate ALPN with TLS version, but TLS hasn't finished negotiating the TLS version when
+ * tls_session_alpn_select_cb() runs.
  *
  * @param[in] ssl	inside the ClientHello callback.
- * @param[in] request	unused.
- * @param[out] alert	unused.
+ * @param[in] request	to log through.
+ * @param[out] alert	set when the function returns SSL_CLIENT_HELLO_ERROR.
  * @param[in] tls13	true if TLS 1.3 will be negotiated.  DTLS needs no test, because the function allows DTLS.
- * @return SSL_CLIENT_HELLO_SUCCESS.
+ * @return
+ *	- SSL_CLIENT_HELLO_SUCCESS to continue the handshake.
+ *	- SSL_CLIENT_HELLO_ERROR to send `alert`, because no ALPN will be negotiated and the list has no default entry.
  */
-int fr_tls_session_alpn_client_hello(SSL *ssl, UNUSED request_t *request, UNUSED int *alert, bool tls13)
+int fr_tls_session_alpn_client_hello(SSL *ssl, request_t *request, int *alert, bool tls13)
 {
 	fr_tls_conf_t const	*conf = fr_tls_session_conf(ssl);
 	fr_tls_session_t	*tls_session = fr_tls_session(ssl);
+	bool			usable;
 
 	if (!conf->alpn_table) return SSL_CLIENT_HELLO_SUCCESS;
 
-	tls_session->alpn_ignore = !(tls13 || SSL_is_dtls(ssl));
+	usable = tls13 || SSL_is_dtls(ssl);
+	tls_session->alpn_ignore = !usable;
 
-	return SSL_CLIENT_HELLO_SUCCESS;
+	if (usable && (SSL_client_hello_get0_ext(ssl, TLSEXT_TYPE_application_layer_protocol_negotiation,
+						NULL, NULL) == 1)) {
+		return SSL_CLIENT_HELLO_SUCCESS;
+	}
+
+	if (!conf->alpn_required) return SSL_CLIENT_HELLO_SUCCESS;
+
+	REDEBUG("(TLS) ALPN - Failure, %s and no default ALPN string was configured",
+		usable ? "client offered no ALPN" : "TLS 1.2 or earlier will be negotiated");
+
+	*alert = SSL_AD_NO_APPLICATION_PROTOCOL;
+
+	return SSL_CLIENT_HELLO_ERROR;
 }
 
 /** Offer only a sticky protocol when a client resumes a session which negotiated it

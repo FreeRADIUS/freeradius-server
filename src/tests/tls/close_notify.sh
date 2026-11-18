@@ -11,9 +11,10 @@
 #
 #  The server requires that both ends agree on a protocol through Application
 #  Layer Protocol Negotiation (ALPN), and the client does not offer a
-#  protocol.  fr_tls_session_alpn_check() therefore refuses the session after
-#  the handshake.  Case 3 of alpn.sh drives the same refusal and checks what
-#  the server recorded.  This script checks what the client received.  The
+#  protocol.  The server sets the raw ALPN fields with -a, so
+#  fr_tls_session_alpn_check() refuses the session after the handshake.  The
+#  'raw_required' case of alpn.sh drives the same refusal and checks what the
+#  server recorded.  This script checks what the client received.  The
 #  server's own log cannot show what the client received.
 #
 #  openssl s_client is the client here, rather than unit_test_tls, because
@@ -65,7 +66,7 @@ fi
 export CLIENT_LOG
 
 $UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -n unit_test_tls -xx \
-	-L 'radius/1.1' -l \
+	-a -L 'radius/1.1' -l \
 	-e 'openssl s_client -connect "127.0.0.1:$PORT" \
 		-cert "$CERTDIR/client.pem" \
 		-key "$CERTDIR/client.key" -pass pass:whatever \
