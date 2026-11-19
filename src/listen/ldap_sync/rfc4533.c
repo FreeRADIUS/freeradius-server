@@ -493,7 +493,10 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 	 */
 	case LDAP_TAG_SYNC_NEW_COOKIE:
 		ret = sync_new_cookie(&new_cookie, sync, ber);
-		if (ret == -2) break; /* it's an identical cookie, not an error */
+		if (ret == -2) {
+			ret = 0;  /* it's an identical cookie, not an error */
+			break;
+		}
 		if (ret < 0) {
 		error:
 			if (sync_uuids) ber_bvarray_free(sync_uuids);
