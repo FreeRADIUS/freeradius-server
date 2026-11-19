@@ -824,6 +824,8 @@ after_chain:
 	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_SSN, (void *)state);
 	state->length_flag = conf->include_length;
 
+	SSL_CTX_set_client_hello_cb(state->ctx, cbtls_client_hello, NULL);
+
 	/*
 	 *	We use default fragment size, unless the Framed-MTU
 	 *	tells us it's too big.  Note that we do NOT account

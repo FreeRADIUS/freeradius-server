@@ -28,6 +28,49 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <ctype.h>
 
 #ifdef WITH_TLS
+int cbtls_client_hello(SSL *ssl, UNUSED int *al, UNUSED void *arg)
+{
+	const uint16_t *supported_version;
+	const unsigned char *tlsext;
+	size_t tlsext_len;
+	REQUEST *request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	VALUE_PAIR *vp;
+
+#ifdef TLS1_3_VERSION
+	if (SSL_client_hello_get0_ext(ssl, TLSEXT_TYPE_supported_versions, &tlsext, &tlsext_len) == 1) {
+		/* length[1] + 2*data */
+		if (!((tlsext_len > 3) && (tlsext_len == 1 + tlsext[0]))) {
+			return SSL_CLIENT_HELLO_ERROR;
+		}
+		do {
+			tlsext_len -= 2;
+			supported_version = (const uint16_t *)&tlsext[tlsext_len];
+			vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_SESSION_VERSION_CLIENT_SUPPORTED, 0);
+			if (vp) {
+				vp->vp_integer = ntohs(*supported_version);
+				fr_pair_add(&request->state, vp);
+				RINDENT();
+				rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+				REXDENT();
+			}
+		} while (tlsext_len >= 3);
+	} else {
+#endif
+		vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_SESSION_VERSION_CLIENT_SUPPORTED, 0);
+		if (vp) {
+			vp->vp_integer = SSL_client_hello_get0_legacy_version(ssl);
+			fr_pair_add(&request->state, vp);
+			RINDENT();
+			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+			REXDENT();
+		}
+#ifdef TLS1_3_VERSION
+	}
+#endif
+
+	return SSL_CLIENT_HELLO_SUCCESS;
+}
+
 void cbtls_info(SSL const *s, int where, int ret)
 {
 	char const *role, *state;
