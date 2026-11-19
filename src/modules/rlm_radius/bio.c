@@ -1207,7 +1207,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
 	h->buflen = h->max_packet_size;
 
-	MEM(h->tt = radius_track_alloc(h));
+	MEM(h->tt = radius_track_alloc(h, false));
 
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {

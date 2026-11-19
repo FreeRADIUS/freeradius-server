@@ -1,9 +1,9 @@
 TARGETNAME	:= rlm_radius
 TARGET		:= $(TARGETNAME)$(L)
 
-SOURCES		:= rlm_radius.c
+SOURCES		:= rlm_radius.c track.c
 
-TGT_PREREQS	:= libfreeradius-radius$(L)
+TGT_PREREQS	:= libfreeradius-radius$(L) libfreeradius-bio$(L) libfreeradius-bio-config$(L)
 LOG_ID_LIB	= 39
 
 #

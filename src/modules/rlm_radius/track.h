@@ -26,6 +26,7 @@
 
 #include "rlm_radius.h"
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/rb.h>
 
 typedef struct radius_track_entry_s radius_track_entry_t;
 typedef struct radius_track_s radius_track_t;
@@ -42,7 +43,7 @@ struct radius_track_entry_s {
 						///< when its parent is freed.  We also zero
 						///< out the tracking entry field in the parent.
 
-	request_t		*request;	//!< as always...
+	request_t	*request;		//!< as always...
 
 	void		*uctx;			//!< Result/resumption context.
 
@@ -50,6 +51,10 @@ struct radius_track_entry_s {
 	uint8_t		id;			//!< our ID
 
 	union {
+		struct {
+			uint32_t	epoch;			//!< only for RADIUS/1.1
+			uint32_t	token;			//!< Token, only for RADIUS/1.1
+		};
 		fr_dlist_t	entry;					//!< For free list.
 		uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];	//!< copy of the request authenticator.
 	};
@@ -66,14 +71,23 @@ struct radius_track_s {
 
 	fr_dlist_head_t	free_list;     		//!< so we allocate by least recently used
 
-	radius_track_entry_t	id[UINT8_MAX + 1];	//!< which ID was used
+	bool		radius_1_1;		//!< are we using RADIUS/1.1
+
+	union {
+		struct {
+			uint32_t	epoch;		//!< to avoid having a linked list
+			uint32_t	current;	//!< the current Token we will issue.
+			fr_rb_tree_t	tree;		//!< Outstanding entries, by Token.
+		};
+		radius_track_entry_t	id[UINT8_MAX + 1];	//!< which ID was used
+	};
 
 #ifndef NDEBUG
 	uint64_t	operation;		//!< Incremented each alloc and de-alloc
 #endif
 };
 
-radius_track_t		*radius_track_alloc(TALLOC_CTX *ctx);
+radius_track_t		*radius_track_alloc(TALLOC_CTX *ctx, bool radius_1_1);
 
 /*
  *	Debug functions which track allocations and frees

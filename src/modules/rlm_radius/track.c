@@ -28,6 +28,20 @@ RCSID("$Id$")
 
 #include "track.h"
 
+/*
+ *	Order by epoch first, then by token.
+ */
+static fr_cmp_ret_t _token_cmp(void const *one, void const *two)
+{
+	fr_cmp_ret_t ret;
+	radius_track_entry_t const *a = one, *b = two;
+
+	ret = CMP(a->epoch, b->epoch);
+	if (ret != 0) return ret;
+
+	return CMP(a->token, b->token);
+}
+
 /** Create an radius_track_t
  *
  * @param ctx the talloc ctx
@@ -35,7 +49,7 @@ RCSID("$Id$")
  *	- NULL on error
  *	- radius_track_t on success
  */
-radius_track_t *radius_track_alloc(TALLOC_CTX *ctx)
+radius_track_t *radius_track_alloc(TALLOC_CTX *ctx, bool radius_1_1)
 {
 	int i;
 	radius_track_t *tt;
@@ -44,18 +58,24 @@ radius_track_t *radius_track_alloc(TALLOC_CTX *ctx)
 
 	fr_dlist_init(&tt->free_list, radius_track_entry_t, entry);
 
-	for (i = 0; i < 256; i++) {
-		tt->id[i].id = i;
+	if (radius_1_1) {
+		(void) fr_rb_inline_init(&tt->tree, radius_track_entry_t, node, _token_cmp, NULL);
+		tt->radius_1_1 = true;
+		tt->current = fr_rand();
+
+	} else {
+		for (i = 0; i < 256; i++) {
+			tt->id[i].id = i;
 #ifndef NDEBUG
-		tt->id[i].file = __FILE__;
-		tt->id[i].line = __LINE__;
+			tt->id[i].file = __FILE__;
+			tt->id[i].line = __LINE__;
 #endif
-		fr_dlist_insert_tail(&tt->free_list, &tt->id[i]);
+			fr_dlist_insert_tail(&tt->free_list, &tt->id[i]);
+		}
 	}
 
 	return tt;
 }
-
 
 /** Ensures the entry is released when the ctx passed to radius_track_entry_reserve is freed
  *
@@ -107,7 +127,21 @@ int radius_track_entry_reserve(
 
 retry:
 	te = fr_dlist_head(&tt->free_list);
-	if (te) {
+	if (!te) {
+		if (!tt->radius_1_1) {
+			fr_strerror_const("No free entries");
+			return -1;
+		}
+
+		/*
+		 *	Just allocate a new one.
+		 */
+		MEM(te = talloc_zero(tt, radius_track_entry_t));
+#ifndef NDEBUG
+		te->file = __FILE__;
+		te->line = __LINE__;
+#endif
+	} else {
 		fr_assert(te->request == NULL);
 
 		/*
@@ -120,22 +154,31 @@ retry:
 		 *	don't use it".  Ensure that we only return IDs
 		 *	which are in the static array.
 		 */
-		if (te != &tt->id[te->id]) {
+		if (!tt->radius_1_1 && (te != &tt->id[te->id])) {
 			talloc_free(te);
 			goto retry;
 		}
-
-		goto done;
 	}
 
 	/*
-	 *	There are no free entries, and we can't use the
-	 *	Request Authenticator.  Oh well...
+	 *	RADIUS/1.1 doesn't store the entries in the id[] array.
 	 */
-	fr_strerror_const("No free entries");
-	return -1;
+	if (tt->radius_1_1) {
+		te->token = tt->current++;
+		te->epoch = tt->epoch;
 
-done:
+		if (!tt->current) tt->epoch++;
+
+		/*
+		 *	Insert it into the tracking tree.
+		 */
+		if (!fr_cond_assert(fr_rb_insert(&tt->tree, te) == 0)) {
+			te->request = NULL;
+			fr_dlist_insert_tail(&tt->free_list, te);
+			return -1;
+		}
+	}
+
 	te->tt = tt;
 	te->request = request;
 	te->uctx = uctx;
@@ -151,9 +194,6 @@ done:
 		*(te->binding) = te_out;
 	}
 
-	/*
-	 *	te->id is already allocated
-	 */
 	tt->num_requests++;
 
 	*te_out = te;
@@ -186,7 +226,7 @@ int radius_track_entry_release(
 
 	if (te->binding) {
 		talloc_set_destructor(te->binding, NULL);	/* Disarm the destructor */
-		talloc_free(te->binding);
+		TALLOC_FREE(te->binding);
 	}
 
 #ifndef NDEBUG
@@ -196,18 +236,26 @@ int radius_track_entry_release(
 #endif
 
 	te->request = NULL;
+	*te_to_free = NULL;
 
 	fr_assert(tt->num_requests > 0);
 	tt->num_requests--;
 
 	/*
-	 *	We're freeing a static ID, just go do that...
+	 *	For RADIUS/1.1, remove Token nodes from the tree.
 	 */
-	fr_assert(te == &tt->id[te->id]);
+	if (tt->radius_1_1) {
+		(void) fr_rb_remove_by_inline_node(&tt->tree, &te->node);
+
+		if (fr_dlist_num_elements(&tt->free_list) > 1000) {
+			talloc_free(te);
+			return 0;
+		}
+	} else {
+		fr_assert(te == &tt->id[te->id]);
+	}
 
 	fr_dlist_insert_tail(&tt->free_list, te);
-
-	*te_to_free = NULL;
 
 	return 0;
 }
@@ -222,11 +270,11 @@ int radius_track_entry_release(
  */
 int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
 {
-#ifndef NDEBUG
 	radius_track_t *tt = te->tt;
-#endif
 
 	fr_assert(tt);
+
+	if (tt->radius_1_1) return 0; /* don't over-write the vector! */
 
 	memcpy(te->vector, vector, sizeof(te->vector));
 
@@ -238,6 +286,50 @@ int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
 	 */
 	fr_assert(te == &tt->id[te->id]);
 	return 0;
+}
+
+/** Find a tracking entry from a Token
+ *
+ *  The tree decides whether a Token matches an entry.  Before the lookup, a check of the Token against
+ *  the range from the oldest to the newest outstanding entry discards most Tokens which do not match.
+ *  The subtraction wraps when the counter wraps, so the check stays correct.
+ *
+ * @param tt		The radius_track_t tracking table, in Token mode.
+ * @param token		The Token from the RADIUS/1.1 header.
+ * @return
+ *	- NULL on "not found"
+ *	- radius_track_entry_t on success
+ */
+static radius_track_entry_t *radius_track_entry_find_token(radius_track_t *tt, uint32_t token)
+{
+	radius_track_entry_t	*te;
+
+	(void) talloc_get_type_abort(tt, radius_track_t);
+
+	fr_assert(tt->radius_1_1);
+
+	/*
+	 *	Nearly all of the time, the packet is in the current epoch.
+	 */
+	if (fr_rb_find((void **) &te, &tt->tree,
+		       &(radius_track_entry_t)  { .epoch = tt->epoch, .token = token }) < 0) {
+	fail:
+		fr_strerror_printf("Token %u", token);
+		return NULL;
+	}
+	if (te) return te;
+
+	if (!tt->epoch) return NULL; /* still in the initial epoch, we can't do much */
+
+	/*
+	 *	Find the entry from the previous epoch, in the rare
+	 *	case that the epoch rolls over.
+	 */
+	if (fr_rb_find((void **) &te, &tt->tree,
+		       &(radius_track_entry_t)  { .epoch = tt->epoch - 1, .token = token }) < 0) goto fail;
+	if (!te) goto fail;
+
+	return te;
 }
 
 /** Find a tracking entry from a request authenticator
@@ -255,6 +347,8 @@ radius_track_entry_t *radius_track_entry_find(radius_track_t *tt, uint8_t packet
 
 	(void) talloc_get_type_abort(tt, radius_track_t);
 
+	if (tt->radius_1_1) return radius_track_entry_find_token(tt, fr_nbo_to_uint32(vector));
+
 	/*
 	 *	Just use the static array.
 	 */
@@ -263,27 +357,16 @@ radius_track_entry_t *radius_track_entry_find(radius_track_t *tt, uint8_t packet
 	/*
 	 *	Not in use, die.
 	 */
-	if (!te->request) return NULL;
-
-	if (!vector) return te;
-
-	/*
-	 *	Protocol-Error and Original-Packet-Vector <sigh>
-	 *
-	 *	This should arguably have been Original-Packet-Code, but we are stupid.
-	 *
-	 *	@todo - Allow for multiple ID arrays, one for each packet code.  Or, just switch to using
-	 *	src/protocols/radius/id.[ch].
-	 */
-	if (memcmp(te->vector, vector, sizeof(te->vector)) != 0) return NULL;
+	if (!te->request) {
+		fr_strerror_printf("ID %u", packet_id);
+		return NULL;
+	}
 
 	/*
-	 *	Ignore the Request Authenticator, as the
-	 *	caller doesn't have it.
+	 *	Don't match on the Response vector, it's only used for RADIUS/1.1
 	 */
 	return te;
 }
-
 
 #ifndef NDEBUG
 /** Print out the state of every tracking entry

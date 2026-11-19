@@ -1,15 +1,1 @@
-TARGETNAME	:= rlm_radius
-TARGET		:= $(TARGETNAME)$(L)
-
-SOURCES		:= rlm_radius.c track.c
-
-TGT_PREREQS	:= libfreeradius-radius$(L) libfreeradius-bio-config$(L) libfreeradius-bio$(L)
-LOG_ID_LIB	= 39
-
-#
-#  RADIUS/TLS needs the TLS bio and the TLS library, which are only built when OpenSSL is available.
-#
-ifneq "$(OPENSSL_LIBS)" ""
-TGT_PREREQS	+= libfreeradius-bio-tls$(L) libfreeradius-tls$(L)
-TGT_LDLIBS	+= $(OPENSSL_LIBS)
-endif
+SUBMAKEFILES := rlm_radius.mk track_tests.mk
