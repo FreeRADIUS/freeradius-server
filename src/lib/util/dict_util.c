@@ -4957,7 +4957,10 @@ char const *fr_dict_global_ctx_dir(void)
 	return dict_gctx->dict_dir_default;
 }
 
-/** Mark all dictionaries and the global dictionary ctx as read only
+/** Mark all dictionaries and the global dictionary ctx as read only.
+ *
+ * And fill / finalize all hash tables.  Otherwise lookups might
+ * re-balance them, which would cause failures at run time.
  *
  * Any attempts to add new attributes will now fail.
  */
@@ -4968,6 +4971,8 @@ void fr_dict_global_ctx_read_only(void)
 
 	if (!dict_gctx) return;
 
+	fr_hash_table_fill(dict_gctx->protocol_by_name);
+
 	/*
 	 *	Set everything to read only
 	 */
@@ -4975,11 +4980,13 @@ void fr_dict_global_ctx_read_only(void)
 	     dict;
 	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
 	     	dict_hash_tables_finalise(dict);
+		fr_hash_table_fill(dict->autoref);
 		dict->read_only = true;
 	}
 
 	dict = dict_gctx->internal;
 	dict_hash_tables_finalise(dict);
+	fr_hash_table_fill(dict->autoref);
 	dict->read_only = true;
 	dict_gctx->read_only = true;
 }
