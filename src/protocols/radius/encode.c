@@ -1796,11 +1796,21 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	}
 
 	/*
-	 *	@todo - Look for attr_packet_token, and if so, set packet_ctx->radius_1_1 && the token.  Otherwise clear
-	 *	them.
-	 *
-	 *	Also set packet_ctx->request_authenticator to a 16-byte buffer with the token and all zeroes
+	 *	If we find a Packet-Token, then it must be RADIUS/1.1.
 	 */
+	vp = fr_pair_find_by_da(vps, NULL, attr_packet_token);
+	if (vp) {
+		uint8_t *p;
+
+		packet_ctx->radius_1_1 = true;
+
+		MEM(packet_ctx->request_authenticator = p = talloc_zero_array(packet_ctx, uint8_t, 16));
+		fr_nbo_from_uint32(p, vp->vp_uint32);
+		packet_ctx->token = vp->vp_uint32;
+
+	} else {
+		packet_ctx->radius_1_1 = false;
+	}
 
 	/*
 	 *	Force specific values for testing.

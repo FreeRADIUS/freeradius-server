@@ -1057,7 +1057,7 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	work_dbuff = FR_DBUFF_MAX(dbuff, 65535);
 
 	/*
-	 *	RADIUS/1.1 has no ID, the octet is reserved.  The Token identifies the packet.
+	 *	RADIUS/1.1 uses a hard-code ID of 0x00
 	 */
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, packet_ctx->code, packet_ctx->radius_1_1 ? 0x00 : packet_ctx->id);
 	length_dbuff = FR_DBUFF(&work_dbuff);
@@ -1318,6 +1318,14 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	he doesn't, all hell breaks loose.
 	 */
 	while (attr < end) {
+		/*
+		 *	Silently omit Message-Authenticator for RADIUS/1.1
+		 */
+		if (unlikely(decode_ctx->radius_1_1 && (attr[0] == FR_MESSAGE_AUTHENTICATOR))) {
+			attr += attr[1];
+			continue;
+		}
+
 		slen = fr_radius_decode_pair(ctx, out, attr, (end - attr), decode_ctx);
 		if (slen < 0) {
 			decode_ctx->reason = FR_RADIUS_FAIL_ATTRIBUTE_DECODE;

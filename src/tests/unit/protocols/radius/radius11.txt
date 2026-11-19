@@ -1,0 +1,193 @@
+#
+#  radius/1.1 tests
+#
+proto radius
+proto-dictionary radius
+fuzzer-out radius
+
+#
+#  The encode must start with a Packet-Token.  Each encode is followed by a decode of the same packet.
+#
+
+#
+#  User-Password is NOT obfuscated!
+#
+encode-proto Packet-Token = 6809, User-Name = "bob", User-Password = "hello"
+match 01 00 00 20 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 02 07 68 65 6c 6c 6f
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", User-Password = "hello"
+
+#
+#  Message-Authenticator is silently omitted on encode
+#
+encode-proto Packet-Token = 6809, User-Name = "bob", User-Password = "hello", Message-Authenticator = 0x00
+match 01 00 00 20 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 02 07 68 65 6c 6c 6f
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", User-Password = "hello"
+
+#
+#  Message-Authenticator is silently omitted on decode, too.
+#
+decode-proto 01 00 00 32 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 02 07 68 65 6c 6c 6f 50 12 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", User-Password = "hello"
+
+#
+#  Plain RFC attributes of the base types.
+#
+encode-proto Packet-Token = 6809, NAS-IP-Address = 192.0.2.1, NAS-Port = 1812, Service-Type = Framed-User
+match 01 00 00 26 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 04 06 c0 00 02 01 05 06 00 00 07 14 06 06 00 00 00 02
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, NAS-IP-Address = 192.0.2.1, NAS-Port = 1812, Service-Type = ::Framed-User
+
+encode-proto Packet-Token = 6809, NAS-IPv6-Address = 2001:db8::1, Framed-IPv6-Prefix = 2001:db8:1::/48
+match 01 00 00 30 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 5f 12 20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 01 61 0a 00 30 20 01 0d b8 00 01
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, NAS-IPv6-Address = 2001:db8::1, Framed-IPv6-Prefix = 2001:db8:1::/48
+
+encode-proto Packet-Token = 6809, Framed-IP-Address = 192.0.2.2, Framed-IP-Netmask = 255.255.255.0, Framed-MTU = 1500
+match 01 00 00 26 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 08 06 c0 00 02 02 09 06 ff ff ff 00 0c 06 00 00 05 dc
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Framed-IP-Address = 192.0.2.2, Framed-IP-Netmask = 255.255.255.0, Framed-MTU = 1500
+
+encode-proto Packet-Token = 6809, Filter-Id = "std.ppp", Reply-Message = "welcome", Session-Timeout = 3600
+match 01 00 00 2c 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 0b 09 73 74 64 2e 70 70 70 12 09 77 65 6c 63 6f 6d 65 1b 06 00 00 0e 10
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Filter-Id = "std.ppp", Reply-Message = "welcome", Session-Timeout = 3600
+
+encode-proto Packet-Token = 6809, Calling-Station-Id = "00-11-22-33-44-55", Called-Station-Id = "aa-bb-cc-dd-ee-ff:example"
+match 01 00 00 42 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 1f 13 30 30 2d 31 31 2d 32 32 2d 33 33 2d 34 34 2d 35 35 1e 1b 61 61 2d 62 62 2d 63 63 2d 64 64 2d 65 65 2d 66 66 3a 65 78 61 6d 70 6c 65
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Calling-Station-Id = "00-11-22-33-44-55", Called-Station-Id = "aa-bb-cc-dd-ee-ff:example"
+
+encode-proto Packet-Token = 6809, State = 0x0102030405060708, Class = 0xdeadbeef
+match 01 00 00 24 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 18 0a 01 02 03 04 05 06 07 08 19 06 de ad be ef
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, State = 0x0102030405060708, Class = 0xdeadbeef
+
+encode-proto Packet-Token = 6809, Event-Timestamp = "Jan  1 2025 00:00:00 UTC", Acct-Status-Type = Start, Acct-Session-Id = "abcd1234"
+match 01 00 00 2a 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 37 06 67 74 85 80 28 06 00 00 00 01 2c 0a 61 62 63 64 31 32 33 34
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Event-Timestamp = "2025-01-01T00:00:00Z", Acct-Status-Type = ::Start, Acct-Session-Id = "abcd1234"
+
+encode-proto Packet-Token = 6809, Acct-Input-Octets = 1000, Acct-Output-Octets = 2000, Acct-Session-Time = 60
+match 01 00 00 26 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 2a 06 00 00 03 e8 2b 06 00 00 07 d0 2e 06 00 00 00 3c
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Acct-Input-Octets = 1000, Acct-Output-Octets = 2000, Acct-Session-Time = 60
+
+encode-proto Packet-Token = 6809, User-Name = "bob", CHAP-Password = 0x01000102030405060708090a0b0c0d0e0f, CHAP-Challenge = 0x0f0e0d0c0b0a09080706050403020100
+match 01 00 00 3e 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 03 13 01 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 3c 12 0f 0e 0d 0c 0b 0a 09 08 07 06 05 04 03 02 01 00
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", CHAP-Password = 0x01000102030405060708090a0b0c0d0e0f, CHAP-Challenge = 0x0f0e0d0c0b0a09080706050403020100
+
+encode-proto Packet-Token = 6809, User-Name = "bob", EAP-Message = 0x0201000b01626f62
+match 01 00 00 23 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 4f 0a 02 01 00 0b 01 62 6f 62
+
+#
+#  @todo - RADIUS/1.1 packets must not require Message-Authenticator, even with EAP-Message
+#
+decode-proto -
+match ERROR: Packet failed verification - Message-Authenticator is required for this packet, but it is missing
+
+encode-proto Packet-Token = 6809, Vendor-Specific.Cisco.AVPair = "foo=bar"
+match 01 00 00 23 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 1a 0f 00 00 00 09 01 09 66 6f 6f 3d 62 61 72
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Vendor-Specific = { Cisco = { AVPair = "foo=bar" } }
+
+#
+#  Obfuscated attributes are plain data of the base type.
+#
+#  Tunnel-Password is tagged, and has no salt and no data length.
+#
+encode-proto Packet-Token = 6809, Tag-1 = { Tunnel-Password = "hello" }
+match 01 00 00 1c 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 45 08 01 68 65 6c 6c 6f
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Tag-1 = { Tunnel-Password = "hello" }
+
+encode-proto Packet-Token = 6809, Tag-2 = { Tunnel-Password = "hello" }
+match 01 00 00 1c 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 45 08 02 68 65 6c 6c 6f
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Tag-2 = { Tunnel-Password = "hello" }
+
+encode-proto Packet-Token = 6809, Tunnel-Password = "hello"
+match 01 00 00 1b 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 45 07 68 65 6c 6c 6f
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Tunnel-Password = "hello"
+
+encode-proto Packet-Token = 6809, Tag-1 = { Tunnel-Type = VLAN, Tunnel-Medium-Type = IEEE-802, Tunnel-Private-Group-Id = "vlan10" }
+match 01 00 00 29 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 40 06 01 00 00 0d 41 06 01 00 00 06 51 09 01 76 6c 61 6e 31 30
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Tag-1 = { Tunnel-Type = ::VLAN, Tunnel-Medium-Type = ::IEEE-802, Tunnel-Private-Group-Id = "vlan10" }
+
+#
+#  The Ascend secrets use their own obfuscation in RADIUS/1.0, and are plain strings here.
+#
+encode-proto Packet-Token = 6809, Vendor-Specific.Ascend.Send-Secret = "hello", Vendor-Specific.Ascend.Receive-Secret = "world"
+match 01 00 00 2e 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 1a 0d 00 00 02 11 d6 07 68 65 6c 6c 6f 1a 0d 00 00 02 11 d7 07 77 6f 72 6c 64
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Vendor-Specific = { Ascend = { Send-Secret = "hello", Receive-Secret = "world" } }
+
+#
+#  The Microsoft MPPE keys are plain strings.  MS-CHAP-MPPE-Keys uses the User-Password
+#  obfuscation in RADIUS/1.0, and is plain octets here.
+#
+encode-proto Packet-Token = 6809, Vendor-Specific.Microsoft.MPPE-Send-Key = 0x0102030405060708, Vendor-Specific.Microsoft.MPPE-Recv-Key = 0x0807060504030201
+match 01 00 00 34 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 1a 10 00 00 01 37 10 0a 01 02 03 04 05 06 07 08 1a 10 00 00 01 37 11 0a 08 07 06 05 04 03 02 01
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Vendor-Specific = { Microsoft = { MPPE-Send-Key = 0x0102030405060708, MPPE-Recv-Key = 0x0807060504030201 } }
+
+encode-proto Packet-Token = 6809, Vendor-Specific.Microsoft.MPPE-Encryption-Policy = Encryption-Allowed, Vendor-Specific.Microsoft.MPPE-Encryption-Types = RC4-40or128-bit-Allowed
+match 01 00 00 2c 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 1a 0c 00 00 01 37 07 06 00 00 00 01 1a 0c 00 00 01 37 08 06 00 00 00 06
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Vendor-Specific = { Microsoft = { MPPE-Encryption-Policy = ::Encryption-Allowed, MPPE-Encryption-Type = ::RC4-40or128-bit-Allowed } }
+
+encode-proto Packet-Token = 6809, Vendor-Specific.Microsoft.CHAP-MPPE-Keys = 0x0102030405060708
+match 01 00 00 34 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 1a 20 00 00 01 37 0c 1a 01 02 03 04 05 06 07 08 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Vendor-Specific = { Microsoft = { CHAP-MPPE-Keys = 0x010203040506070800000000000000000000000000000000 } }
+
+#
+#  Vendor attributes which use the Tunnel-Password obfuscation.
+#
+encode-proto Packet-Token = 6809, Vendor-Specific.Unisphere.LI-Action = 1, Vendor-Specific.Unisphere.Med-Ip-Address = 192.0.2.3, Vendor-Specific.Unisphere.Med-Port-Number = 4000
+match 01 00 00 38 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 1a 0c 00 00 13 0a 3a 06 00 00 00 01 1a 0c 00 00 13 0a 3c 06 c0 00 02 03 1a 0c 00 00 13 0a 3d 06 00 00 0f a0
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Vendor-Specific = { Unisphere = { LI-Action = ::on, Med-Ip-Address = 192.0.2.3, Med-Port-Number = 4000 } }
+
+encode-proto Packet-Token = 6809, Vendor-Specific.3GPP2.MN-HA-Shared-Key = "sharedkey"
+match 01 00 00 25 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 1a 11 00 00 15 9f 3a 0b 73 68 61 72 65 64 6b 65 79
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Vendor-Specific = { 3GPP2 = { MN-HA-Shared-Key = "sharedkey" } }
+
+#
+#  Message-Authenticator is silently omitted, even when other attributes surround it
+#
+encode-proto Packet-Token = 6809, User-Name = "bob", Message-Authenticator = 0x00, NAS-Port = 7
+match 01 00 00 1f 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 05 06 00 00 00 07
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", NAS-Port = 7
+
+count
+match 101

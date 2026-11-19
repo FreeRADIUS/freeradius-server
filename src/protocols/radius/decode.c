@@ -2174,6 +2174,8 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t	*vp;
 	size_t		packet_len = data_len;
 
+	static const uint8_t zeros[12] = {};
+
 	if (!fr_radius_ok(data, &packet_len, 200, false, test_ctx->radius_1_1, &reason)) {
 		fr_strerror_printf("Packet failed verification - %s", fr_radius_decode_fail_reason[reason]);
 		return -1;
@@ -2192,15 +2194,42 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	vp->vp_uint32 = data[0];
 	fr_pair_append(out, vp);
 
-	vp = fr_pair_afrom_da(ctx, attr_packet_authentication_vector);
-	if (!vp) {
-		fr_strerror_const("Failed creating Packet-Authentication-Vector");
-		return -1;
-	}
-	PAIR_ALLOCED(vp);
+	/*
+	 *	Hack: if the Reserved field is all zeros, then we just mangle the ctx to RADIUS/1.1.
+	 */
+	test_ctx->radius_1_1 = (memcmp(data + 4 + 4, zeros, sizeof(zeros)) == 0);
 
-	(void) fr_pair_value_memdup(vp, data + 4, 16, true);
-	fr_pair_append(out, vp);
+	if (!test_ctx->radius_1_1) {
+		vp = fr_pair_afrom_da(ctx, attr_packet_authentication_vector);
+		if (!vp) {
+			fr_strerror_const("Failed creating Packet-Authentication-Vector");
+			return -1;
+		}
+		PAIR_ALLOCED(vp);
+
+		(void) fr_pair_value_memdup(vp, data + 4, 16, true);
+		fr_pair_append(out, vp);
+	} else {
+		vp = fr_pair_afrom_da(ctx, attr_packet_token);
+		if (!vp) {
+			fr_strerror_const("Failed creating Packet-Token");
+			return -1;
+		}
+		PAIR_ALLOCED(vp);
+
+		vp->vp_uint32 = fr_nbo_to_uint32(data + 4);
+		fr_pair_append(out, vp);
+
+		vp = fr_pair_afrom_da(ctx, attr_packet_reserved);
+		if (!vp) {
+			fr_strerror_const("Failed creating Packet-Reserved");
+			return -1;
+		}
+		PAIR_ALLOCED(vp);
+
+		(void) fr_pair_value_memdup(vp, data + 8, 12, true);
+		fr_pair_append(out, vp);
+	}
 
 	test_ctx->end = data + packet_len;
 
