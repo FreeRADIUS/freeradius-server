@@ -483,6 +483,8 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 		struct berval 		**values;
 		int			count, i;
 
+		if (!entry_dn) goto error;
+
 		fr_pair_list_append_by_da_parent_len(sync_packet_ctx, vp, pairs, attr_ldap_sync_entry_dn,
 						     entry_dn, strlen(entry_dn), true);
 		if (!vp) goto error;
