@@ -471,7 +471,10 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 	 *	will be freed after the extract.
 	 */
 	ret = ldap_parse_intermediate(sync->conn->handle, msg, &oid, &data, NULL, 1);
-	if (!fr_cond_assert(ret == LDAP_SUCCESS)) return -1;
+	if (!fr_cond_assert(ret == LDAP_SUCCESS)) {
+		fr_strerror_printf("ldap_parse_intermediate returned %s", ldap_err2string(ret));
+		return -1;
+	}
 
 	if (!oid || (strcmp(oid, LDAP_SYNC_INFO) != 0)) {
 		WARN("Ignoring intermediateResult with unexpected OID \"%s\"", oid ? oid : "<unknown>");
