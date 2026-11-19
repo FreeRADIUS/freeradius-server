@@ -98,6 +98,91 @@ writes the stack of every thread to `backtrace.txt`.  Both files are in
 `<run>/<suite>/<test>/gperftools/`.  The kernel does not write a `core`
 file for a crash that the freeradius fault handler catches.
 
+### Overnight runs
+
+`run_gperftools_capture_rate_matrix.sh` runs a list of batches, one after the
+other.  A batch is one profiler configuration and one test.  For each suite of
+a batch, the script runs the test 5 times for each arm of the batch.  The arms
+are idle (the Docker VM is idle) and stress (a container runs busy loops).  A
+batch with a name that starts with `callgrind` runs the test of each suite
+one time under valgrind, without arms.
+
+The script needs two profiling images.  Build the unpatched image from the
+'master' branch, and build the patched image from this branch.  The `make`
+target tags each image with the short commit of the checked out tree.
+
+Run every command from the top of the source tree, in the same terminal:
+
+```
+# Build the unpatched image.
+git checkout master
+make docker.reset
+make docker.radenv-profiling.ubuntu24
+export UNPATCHED=$(git rev-parse --short HEAD)
+
+# Build the patched image.
+git checkout -
+make docker.reset
+make docker.radenv-profiling.ubuntu24
+export PATCHED=$(git rev-parse --short HEAD)
+
+# Print the number, the name, and the expected length of every batch.  The
+# last line is the total length.  The -n option does not run a batch.
+src/tests/multi-server/scripts/profiling/run_gperftools_capture_rate_matrix.sh -n
+
+# Run a range of batches.  The example runs batches 17 to 45.
+src/tests/multi-server/scripts/profiling/run_gperftools_capture_rate_matrix.sh -b 17 -e 45
+
+# Alternatively, run every batch.
+src/tests/multi-server/scripts/profiling/run_gperftools_capture_rate_matrix.sh
+```
+
+The whole list takes more than one night.  To choose a range for one night,
+use the lengths that the `-n` option prints.
+
+The script reads the image tags from `UNPATCHED` and `PATCHED` in the
+environment.  When a variable is not set, the script uses the default tag on
+the `UNPATCHED=` or `PATCHED=` line of the script.
+
+During a run:
+
+1. Keep the terminal open.  On macOS, the script runs under `caffeinate -i`,
+   and the machine does not go into idle sleep.
+2. Do not switch branch, and do not edit the scripts or the test files.  Each
+   batch reads the scripts and the test files from the source tree.
+3. Do not run other containers.  The load of another container changes the
+   results of the idle arm.
+4. Do not edit or commit `start_gperftools_profiling.sh`.  The script writes
+   the profiler settings of each batch into the file, and restores the file
+   when the script exits.
+
+To stop the run, press Ctrl-C.
+
+Each run of the script has a name.  The default name is
+`matrix-<date>-<time>`, for example `matrix-20261119-1600`.  Because the
+default name holds the start time, a new run does not overwrite the results
+of an earlier run.  The script writes:
+
+- `prof-results/<name>.log`, the output of every batch.
+- `prof-results/<name>-results.csv`, one row for each complete test run.
+- `prof-results/<name>-<batch>/<image>/`, the results of one batch.
+
+`<batch>` is the name of the batch, and `<image>` is the tag of the image.
+
+When a suite of a batch ends with an error, the script writes a `WARNING`
+line to the log and continues with the next suite or the next batch.  The
+script does not write a `WARNING` line for a failed test run.  The log marks
+a test run without a complete result as `incomplete`, and
+`<name>-results.csv` does not have a row for the incomplete test run.
+
+To continue an interrupted run, pass the name of the run with `-r`.  Pass the
+number of the first batch to repeat with `-b`.  Each `##### batch` line of
+the log gives the number of a batch:
+
+```
+src/tests/multi-server/scripts/profiling/run_gperftools_capture_rate_matrix.sh -r matrix-20261119-1600 -b 25 -e 45
+```
+
 ### Resource use dashboard
 
 `run_gperftools_capture_rate_tests.sh` records the CPU and memory use of the
