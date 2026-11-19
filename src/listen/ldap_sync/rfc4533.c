@@ -403,7 +403,10 @@ int rfc4533_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 		break;
 
 	default:
-		fr_assert(0);
+		if (!fr_cond_assert_msg(false, "Invalid LDAP message type %d", ldap_msgtype(msg))) {
+			ldap_msgfree(msg);
+		}
+		break;
 	}
 
 	/*
