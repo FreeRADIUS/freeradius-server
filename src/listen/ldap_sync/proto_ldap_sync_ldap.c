@@ -761,7 +761,8 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_instance_t *li, UNUSED void *
 
 	if (callback) {
 		ret = callback(sync, msg, ctrls);
-		if (ret < 0) PERROR("Sync callback error");
+		if (ret < 0) PERROR("Sync callback for %s returned error",
+		    fr_table_str_by_value(sync_ldap_msg_table, type, "<invalid>"));
 	} else {
 	/*
 	 *	Callbacks are responsible for freeing the msg
