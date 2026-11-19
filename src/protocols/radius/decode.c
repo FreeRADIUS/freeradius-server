@@ -1616,7 +1616,11 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 #endif
 	}
 
-	encrypt = fr_radius_flag_encrypted(parent);
+	/*
+	 *	Obfuscate attributes which are marked that way, unless
+	 *	we're doing RADIUS/1.1.
+	 */
+	encrypt = packet_ctx->radius_1_1 ? RADIUS_FLAG_ENCRYPT_NONE : fr_radius_flag_encrypted(parent);
 
 	/*
 	 *	Decrypt the attribute.

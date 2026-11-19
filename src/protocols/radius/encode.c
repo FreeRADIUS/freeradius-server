@@ -429,13 +429,15 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	tag, then we always encode a tag byte, even one that
 	 *	is zero.
 	 *
-	 *	And for Tunnel-Password, we always encode a tag byte.
+	 *	Tunnel-Password has a salt, which can be confused with the tag.  So we always encode a tag
+	 *	byte.  Except in RADIUS/1.1, where there's no salt.
 	 */
 	if ((vp->vp_type == FR_TYPE_STRING) && fr_radius_flag_has_tag(vp->da)) {
 		if (packet_ctx->tag) {
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)packet_ctx->tag);
 		} else if (TAG_VALID(vp->vp_strvalue[0]) ||
-			   (fr_radius_flag_encrypted(da) == RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
+			   (!packet_ctx->radius_1_1 &&
+			    (fr_radius_flag_encrypted(da) == RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)0x00);
 		}
 	}
@@ -546,12 +548,11 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	if (packet_ctx->foreign && (fr_radius_flag_encrypted(da) != RADIUS_FLAG_ENCRYPT_NONE)) goto return_0;
 
 	/*
-	 *	Encrypt the various password styles
+	 *	Do horrible 1993 style obfuscation, unless we're doing RADIUS/1.1
 	 *
-	 *	Attributes with encrypted values MUST be less than
-	 *	128 bytes long.
+	 *	Attributes with obfuscated values MUST be less than 128 bytes long.
 	 */
-	switch (fr_radius_flag_encrypted(da)) {
+	if (!packet_ctx->radius_1_1) switch (fr_radius_flag_encrypted(da)) {
 	case RADIUS_FLAG_ENCRYPT_USER_PASSWORD:
 		/*
 		 *	Encode the password in place
@@ -1501,10 +1502,12 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 	}
 
 	/*
-	 *	Message-Authenticator is hard-coded.
+	 *	Message-Authenticator is calculated automatically.
+	 *
+	 *	We skip if we've already seen it, _or_ it's RADIUS/1.1, where it's not used.
 	 */
 	if (vp->da == attr_message_authenticator) {
-		if (!packet_ctx->seen_message_authenticator) {
+		if (!packet_ctx->radius_1_1 && !packet_ctx->seen_message_authenticator) {
 			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 18);
 			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH);
 
