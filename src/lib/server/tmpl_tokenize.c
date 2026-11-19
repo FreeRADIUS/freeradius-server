@@ -4767,6 +4767,7 @@ void tmpl_unresolve(tmpl_t *vpt)
 int tmpl_attr_unknown_add(tmpl_t *vpt)
 {
 	tmpl_attr_t		*ar = NULL, *next = NULL;
+	fr_dict_t		*dict;
 
 	if (!vpt) return 1;
 
@@ -4798,7 +4799,15 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		}
 
 		unknown = ar->ar_unknown;
-		known = fr_dict_attr_unknown_add(fr_dict_unconst(fr_dict_by_da(unknown)), unknown);
+
+		/*
+		 *	fr_dict_unconst() returns NULL when the dictionary is read only.  Return the error
+		 *	which it set.
+		 */
+		dict = fr_dict_unconst(fr_dict_by_da(unknown));
+		if (!dict) return -1;
+
+		known = fr_dict_attr_unknown_add(dict, unknown);
 		if (!known) return -1;
 
 		/*
@@ -4808,8 +4817,11 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		next = tmpl_attr_list_next(tmpl_attr(vpt), ar);
 		if (next && (next->type == TMPL_ATTR_TYPE_UNKNOWN) &&
 		    (next->ar_da->parent == unknown)) {
-			if (fr_dict_attr_unknown_parent_to_known(fr_dict_attr_unconst(next->ar_da),
-								 known) < 0) return -1;
+			fr_dict_attr_t *next_da = fr_dict_attr_unconst(next->ar_da);
+
+			if (!next_da) return -1;
+
+			if (fr_dict_attr_unknown_parent_to_known(next_da, known) < 0) return -1;
 			next->ar_parent = known;
 		}
 
