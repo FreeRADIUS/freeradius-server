@@ -57,12 +57,16 @@ ulimit -c unlimited
 #  that call ProfilerRegisterThread() get a timer; see FreeRADIUS
 #  src/lib/io/thread.c for details.
 #
+#  TCMALLOC_STACKTRACE_METHOD selects the stack walker of gperftools.
+#  generic_fp walks the frame pointers.
+#
 #  %gperftools.start writes the profile to the file named here.  The
 #  server.stop trigger stops the profiler, which flushes the file, before
 #  the process exits.
 #
 echo "INFO: starting freeradius under gperftools at $(date)"
 STATUS=0
+TCMALLOC_STACKTRACE_METHOD=generic_fp \
 CPUPROFILE_FREQUENCY=100 \
 CPUPROFILE_PER_THREAD_TIMERS=1 \
 freeradius -f -l stdout \
