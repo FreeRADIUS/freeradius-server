@@ -76,6 +76,12 @@ ATTRIBUTE	Id					.1	uint8
 ATTRIBUTE	Authenticator				.2	octets
 
 #
+#  For RADIUS/1.1
+#
+ATTRIBUTE	Packet-Token				1004	uint32
+ATTRIBUTE	Packet-Reserved				1005	octets[12]
+
+#
 #  v4 has tags as groups.
 #
 ATTRIBUTE	Tag-Base				1100	group

@@ -53,6 +53,8 @@ fr_dict_autoload_t libfreeradius_radius_dict[] = {
 
 fr_dict_attr_t const *attr_packet_type;
 fr_dict_attr_t const *attr_packet_authentication_vector;
+fr_dict_attr_t const *attr_packet_token;
+fr_dict_attr_t const *attr_packet_reserved;
 fr_dict_attr_t const *attr_chap_challenge;
 fr_dict_attr_t const *attr_chargeable_user_identity;
 fr_dict_attr_t const *attr_eap_message;
@@ -65,6 +67,8 @@ extern fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_packet_authentication_vector, .name = "Packet-Authentication-Vector", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_packet_token, .name = "Packet-Token", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_packet_reserved, .name = "Packet-Reserved", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chargeable_user_identity, .name = "Chargeable-User-Identity", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 

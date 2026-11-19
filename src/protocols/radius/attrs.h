@@ -33,6 +33,8 @@ extern HIDDEN fr_dict_t const *dict_radius;
 
 extern HIDDEN fr_dict_attr_t const *attr_packet_type;
 extern HIDDEN fr_dict_attr_t const *attr_packet_authentication_vector;
+extern HIDDEN fr_dict_attr_t const *attr_packet_token;
+extern HIDDEN fr_dict_attr_t const *attr_packet_reserved;
 extern HIDDEN fr_dict_attr_t const *attr_chap_challenge;
 extern HIDDEN fr_dict_attr_t const *attr_chargeable_user_identity;
 extern HIDDEN fr_dict_attr_t const *attr_eap_message;
