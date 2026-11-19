@@ -1793,6 +1793,13 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	}
 
 	/*
+	 *	@todo - Look for attr_packet_token, and if so, set packet_ctx->radius_1_1 && the token.  Otherwise clear
+	 *	them.
+	 *
+	 *	Also set packet_ctx->request_authenticator to a 16-byte buffer with the token and all zeroes
+	 */
+
+	/*
 	 *	Force specific values for testing.
 	 */
 	if ((packet_type == FR_RADIUS_CODE_ACCESS_REQUEST) || (packet_type == FR_RADIUS_CODE_STATUS_SERVER)) {
@@ -1814,8 +1821,12 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	slen = fr_radius_encode(&FR_DBUFF_TMP(data, data_len), vps, packet_ctx);
 	if (slen <= 0) return slen;
 
-	if (fr_radius_sign(data, request_authenticator,
-			   (uint8_t const *) packet_ctx->common->secret, talloc_strlen(packet_ctx->common->secret)) < 0) {
+	/*
+	 *	RADIUS/1.1 packets are not signed.
+	 */
+	if (!packet_ctx->radius_1_1 &&
+	    (fr_radius_sign(data, request_authenticator,
+			    (uint8_t const *) packet_ctx->common->secret, talloc_strlen(packet_ctx->common->secret)) < 0)) {
 		return -1;
 	}
 

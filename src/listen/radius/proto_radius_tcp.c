@@ -230,7 +230,7 @@ have_packet:
 	/*
 	 *      If it's not a RADIUS packet, ignore it.
 	 */
-	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, &reason)) {
+	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, false, &reason)) {
 		proto_radius_log(li, reason, NULL, "Received invalid packet");
 		thread->stats.total_malformed_requests++;
 		return -1;

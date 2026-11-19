@@ -1151,7 +1151,7 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	 *	@todo - rate limit these messages, and find a way to associate them with a request, or even
 	 *	the logging destination of the module.
 	 */
-	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), &failure)) {
+	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), false, &failure)) {
 		if (*size) return FR_BIO_VERIFY_DISCARD;
 
 		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->ctx.fd_info->name);

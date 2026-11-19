@@ -46,7 +46,7 @@ fr_bio_verify_action_t fr_radius_bio_verify(UNUSED fr_bio_t *bio, void *verify_c
 	/*
 	 *	See if we need to discard the packet.
 	 */
-	if (!fr_radius_ok(data, &want, uctx->max_attributes, uctx->require_message_authenticator, &failure)) {
+	if (!fr_radius_ok(data, &want, uctx->max_attributes, uctx->require_message_authenticator, false, &failure)) {
 		if (want) {
 			*size = want;
 
@@ -103,7 +103,7 @@ fr_bio_verify_action_t fr_radius_bio_verify_datagram(UNUSED fr_bio_t *bio, void 
 	 *
 	 *	@todo - move the "allowed" list to this function
 	 */
-	if (!fr_radius_ok(data, size, uctx->max_attributes, uctx->require_message_authenticator, &failure)) {
+	if (!fr_radius_ok(data, size, uctx->max_attributes, uctx->require_message_authenticator, false, &failure)) {
 		return FR_BIO_VERIFY_DISCARD;
 	}
 

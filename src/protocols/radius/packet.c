@@ -121,7 +121,7 @@ bool fr_radius_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool requ
 {
 	size_t len = packet->data_len;
 
-	if (!fr_radius_ok(packet->data, &len, max_attributes, require_message_authenticator, reason)) {
+	if (!fr_radius_ok(packet->data, &len, max_attributes, require_message_authenticator, false, reason)) {
 		return false;
 	}
 	fr_assert(packet->data_len >= len);

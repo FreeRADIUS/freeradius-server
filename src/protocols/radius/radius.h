@@ -146,6 +146,9 @@ typedef struct {
 	uint8_t			code;
 	uint8_t			id;
 
+	uint32_t		token;			//!< Token to write into a RADIUS/1.1 header.
+	bool			radius_1_1;		//!< RADIUS/1.1 header, with a Token and no authenticator.
+
 	bool			add_proxy_state;       	//!< do we add a Proxy-State?
 	bool			seen_message_authenticator;
 	bool			foreign;		//!< are we in a foreign protocol?
@@ -166,6 +169,9 @@ typedef struct {
 	fr_radius_decode_fail_t	reason;			//!< reason for decode failure
 
 	uint8_t			request_code;		//!< original code for the request.
+
+	bool			radius_1_1;		//!< RADIUS/1.1 header, with a Token and no authenticator.
+	uint32_t		token;			//!< Token read from a RADIUS/1.1 header.
 
 	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
 	bool			verify;			//!< can skip verify for dynamic clients
@@ -278,7 +284,9 @@ int		fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 				 bool require_message_authenticator, bool limit_proxy_state) CC_HINT(nonnull (1,3));
 
 bool		fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
-			     uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason) CC_HINT(nonnull (1,2));
+			     uint32_t max_attributes, bool require_message_authenticator,
+			     bool radius_1_1,
+			     fr_radius_decode_fail_t *reason) CC_HINT(nonnull (1,2));
 
 ssize_t		fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
 					char const *secret, size_t secret_len, uint8_t const *vector);

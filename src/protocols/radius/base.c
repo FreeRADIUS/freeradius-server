@@ -540,13 +540,15 @@ char const *fr_radius_decode_fail_reason[FR_RADIUS_FAIL_MAX + 1] = {
  * @param[in,out] packet_len_p	The size of the packet data, or 0 for "fatal error"
  * @param[in] max_attributes	to allow in the packet.
  * @param[in] require_message_authenticator	whether we require Message-Authenticator.
+ * @param[in] radius_1_1	true if for `radius/1.1` transport.
  * @param[in] reason		if not NULL, will have the failure reason written to where it points.
  * @return
  *	- True on success.
  *	- False on failure.
  */
 bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
-		  uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
+		  uint32_t max_attributes, bool require_message_authenticator, bool radius_1_1,
+		  fr_radius_decode_fail_t *reason)
 {
 	uint8_t	const		*attr, *end;
 	size_t			totallen;
@@ -556,6 +558,8 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	size_t			packet_len = *packet_len_p;
 
 	*packet_len_p = 0;	/* also signals a fatal error */
+
+	if (radius_1_1) require_message_authenticator = false;
 
 	/*
 	 *	Check for packets smaller than the packet header.
@@ -645,7 +649,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	packets, otherwise they can be trivially forged.
 		 */
 	case FR_RADIUS_CODE_STATUS_SERVER:
-		require_message_authenticator = true;
+		require_message_authenticator = !radius_1_1;
 		break;
 
 		/*
@@ -747,10 +751,17 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 			 *	a Message-Authenticator.
 			 */
 		case FR_EAP_MESSAGE:
-			require_message_authenticator = true;
+			require_message_authenticator = !radius_1_1;
 			break;
 
 		case FR_MESSAGE_AUTHENTICATOR:
+			/*
+			 *	Message-Authenticator is just a normal attribute in RADIUS/1.1
+			 *
+			 *	@todo - Add an `unlang` policy which checks for this case and complains.
+			 */
+			if (radius_1_1) break;
+
 			if (attr[1] != 2 + RADIUS_AUTH_VECTOR_LENGTH) {
 				failure = FR_RADIUS_FAIL_MA_INVALID_LENGTH;
 				*packet_len_p = 0;
@@ -809,7 +820,6 @@ finish:
 
 	return (failure == FR_RADIUS_FAIL_NONE);
 }
-
 
 /** Verify the signature of a request / response packet
  *
@@ -1042,7 +1052,10 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	 */
 	work_dbuff = FR_DBUFF_MAX(dbuff, 65535);
 
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, packet_ctx->code, packet_ctx->id);
+	/*
+	 *	RADIUS/1.1 has no ID, the octet is reserved.  The Token identifies the packet.
+	 */
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, packet_ctx->code, packet_ctx->radius_1_1 ? 0x00 : packet_ctx->id);
 	length_dbuff = FR_DBUFF(&work_dbuff);
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) RADIUS_HEADER_LENGTH);
 
@@ -1050,6 +1063,15 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_STATUS_SERVER:
 		packet_ctx->request_authenticator = fr_dbuff_current(&work_dbuff);
+
+		/*
+		 *	Add in the token, and clear out the rest of the buffer.
+		 */
+		if (packet_ctx->radius_1_1) {
+			FR_DBUFF_IN_RETURN(&work_dbuff, packet_ctx->token);
+			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_AUTH_VECTOR_LENGTH - sizeof(packet_ctx->token));
+			break;
+		}
 
 		/*
 		 *	Allow over-rides of the authentication vector for testing.
@@ -1079,6 +1101,20 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 			fr_strerror_const("Cannot encode response without request");
 			return -1;
 		}
+
+	copy_request_authenticator:
+		/*
+		 *	For RADIUS/1.1, we just copy over the entire header from the request, which _should_
+		 *	include the token.
+		 */
+#ifndef NDEBUG
+		if (packet_ctx->radius_1_1) {
+			if (fr_nbo_to_uint32(packet_ctx->request_authenticator) != packet_ctx->token) {
+				fr_assert("RADIUS/1.1 response is not copying the Request Token" == NULL);
+			}
+		}
+#endif
+
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, packet_ctx->request_authenticator, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
@@ -1094,6 +1130,8 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 		 *	to say "don't do that!"
 		 */
 	case FR_RADIUS_CODE_COA_REQUEST:
+		if (packet_ctx->radius_1_1) goto copy_request_authenticator;
+
 		packet_ctx->request_authenticator = fr_dbuff_current(&work_dbuff);
 
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_AUTH_VECTOR_LENGTH);
@@ -1105,8 +1143,13 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	}
 
 	/*
+	 *	RADIUS/1.1 can only be done over a secure transport.
+	 */
+	fr_assert(!packet_ctx->radius_1_1 || packet_ctx->common->secure_transport);
+
+	/*
 	 *	Always add Message-Authenticator after the packet
-	 *	header for insecure transport protocols.
+	 *	header for insecure transport protocols.  RADIUS/1.1 packets are never signed.
 	 */
 	if (!packet_ctx->common->secure_transport) switch (packet_ctx->code) {
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
@@ -1138,11 +1181,10 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	}
 
 	/*
-	 *	If we're sending Protocol-Error, add in
-	 *	Original-Packet-Code manually.  If the user adds it
+	 *	If we're sending Protocol-Error, add in Original-Packet-Code manually.  If the user adds it
 	 *	later themselves, well, too bad.
 	 */
-	if (packet_ctx->code == FR_RADIUS_CODE_PROTOCOL_ERROR) {
+	if (!packet_ctx->radius_1_1 && (packet_ctx->code == FR_RADIUS_CODE_PROTOCOL_ERROR)) {
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_EXTENDED_ATTRIBUTE_1, 0x07, 0x04 /* Original-Packet-Code */,
 					 0x00, 0x00, 0x00, packet_ctx->request_code);
 	}
@@ -1192,15 +1234,18 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	if (!decode_ctx->request_authenticator) {
 		switch (packet[0]) {
-		case FR_RADIUS_CODE_ACCESS_REQUEST:
-		case FR_RADIUS_CODE_STATUS_SERVER:
-			decode_ctx->request_authenticator = packet + 4;
-			break;
-
 		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
 		case FR_RADIUS_CODE_COA_REQUEST:
 		case FR_RADIUS_CODE_DISCONNECT_REQUEST:
-			decode_ctx->request_authenticator = zeros;
+			if (!decode_ctx->radius_1_1) {
+				decode_ctx->request_authenticator = zeros;
+				break;
+			}
+			FALL_THROUGH;
+
+		case FR_RADIUS_CODE_ACCESS_REQUEST:
+		case FR_RADIUS_CODE_STATUS_SERVER:
+			decode_ctx->request_authenticator = packet + 4;
 			break;
 
 		default:
@@ -1209,6 +1254,11 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			return -1;
 		}
 	}
+
+	/*
+	 *	Copy the token over for RADIUS/1.1
+	 */
+	if (decode_ctx->radius_1_1) decode_ctx->token = fr_nbo_to_uint32(packet + 4);
 
 	if (decode_ctx->request_code) {
 		unsigned int code = packet[0];
@@ -1243,10 +1293,9 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	/*
-	 *	We can skip verification for dynamic client checks, and where packets are unsigned as with
-	 *	RADIUS/1.1.
+	 *	We can skip verification for dynamic client checks, and for RADIUS/1.1 where packets are unsigned.
 	 */
-	if (decode_ctx->verify) {
+	if (decode_ctx->verify && !decode_ctx->radius_1_1) {
 		if (!decode_ctx->request_authenticator) decode_ctx->request_authenticator = zeros;
 
 		if (fr_radius_verify(packet, decode_ctx->request_authenticator,

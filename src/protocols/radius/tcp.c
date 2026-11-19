@@ -66,7 +66,7 @@ ssize_t fr_tcp_read_packet(int sockfd, uint8_t *buffer, size_t size, size_t *tot
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_radius_ok(buffer, &hdr_len, max_attributes, require_message_authenticator, NULL)) {
+	if (!fr_radius_ok(buffer, &hdr_len, max_attributes, require_message_authenticator, false, NULL)) {
 		return -1;
 	}
 

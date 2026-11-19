@@ -178,7 +178,7 @@ static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *
 	/*
 	 *      If it's not well-formed, discard it.
 	 */
-	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, &reason)) {
+	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, false, &reason)) {
 		proto_radius_log(li, reason, &address->socket,
 				 "Received invalid packet");
 		thread->stats.total_malformed_requests++;

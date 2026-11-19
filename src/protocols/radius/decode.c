@@ -2166,11 +2166,11 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				      uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_radius_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_decode_ctx_t);
-	fr_radius_decode_fail_t	reason;
+	fr_radius_decode_fail_t reason;
 	fr_pair_t	*vp;
 	size_t		packet_len = data_len;
 
-	if (!fr_radius_ok(data, &packet_len, 200, false, &reason)) {
+	if (!fr_radius_ok(data, &packet_len, 200, false, test_ctx->radius_1_1, &reason)) {
 		fr_strerror_printf("Packet failed verification - %s", fr_radius_decode_fail_reason[reason]);
 		return -1;
 	}
