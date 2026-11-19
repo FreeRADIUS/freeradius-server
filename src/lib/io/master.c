@@ -637,6 +637,24 @@ static int connection_free(fr_io_connection_t *connection)
 	return 0;
 }
 
+/** Connection destructor
+ *
+ * Worker threads can hold packets associated with a connection, even after the FD has closed.  We don't want
+ * to clear out the packet_ctx from under the worker, so we delay the free() until the listener is freed.
+ *
+ * Once all of the workers have replied, and s->outstanding==0, the network side can finally free the
+ * connection data structure.
+ *
+ */
+static int _connection_inst_free(fr_listen_instance_t *li)
+{
+	fr_io_connection_t *connection = li->thread_instance;
+
+	talloc_free(connection->mi);
+
+	return 0;
+}
+
 /** Create a new connection.
  *
  *  Called ONLY from the master socket.
@@ -866,6 +884,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 		li->connected = true;
 		li->thread_instance = connection;
+		talloc_set_destructor(li, _connection_inst_free);
 
 		/*
 		 *	Instantiate the child, and open the socket.
@@ -3115,7 +3134,11 @@ static int mod_close(fr_listen_instance_t *li)
 	}
 	pthread_mutex_unlock(&connection->parent->mutex);
 
-	talloc_free(connection->mi);
+	/*
+	 *	Don't free connection->mi here.  Workers may still hold messages whose packet_ctx points into
+	 *	connection->client.  The destructor _connection_inst_free() frees connection->mi when the
+	 *	network thread frees the listener, the last worker has finished with the socket.
+	 */
 
 	return 0;
 }
