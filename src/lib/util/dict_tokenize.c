@@ -3900,6 +3900,15 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	}
 
 	/*
+	 *	We can't load a new protocol at run time.
+	 */
+	if (unlikely(dict_gctx->read_only)) {
+		fr_strerror_printf("Cannot load dictionary \"%s\", the dictionaries have been marked as read only",
+				   proto_name);
+		return -1;
+	}
+
+	/*
 	 *	Increment the reference count if the dictionary
 	 *	has already been loaded and return that.
 	 */
