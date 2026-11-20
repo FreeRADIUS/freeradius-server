@@ -99,6 +99,9 @@ four() {
 #
 #  Batches 1 to 16 test one configuration each.  From batch 17, each group
 #  of four batches tests the four configurations with the same test.
+#  Batches 54 to 57 test the per-thread timers at 200, 250, and 500 Hz.
+#  Batches 58 to 69 test the per-thread timers at 100 and 200 Hz on six
+#  suites.
 #
 batches() {
 	cat <<EOF
@@ -129,6 +132,22 @@ EOF
 	four short_470pps mysql stress 12 short-470pps-mysql-stress
 	four short_499pps accept stress 12 short-499pps-accept-stress
 	four short_470pps accept stress 12 short-470pps-accept-stress
+	echo "gperftools|patched-250hz-short-470pps-idle|$PATCHED|250|1|short_470pps|accept mysql|idle|22"
+	echo "gperftools|patched-500hz-short-470pps-idle|$PATCHED|500|1|short_470pps|accept mysql|idle|22"
+	echo "gperftools|patched-200hz-short-470pps-idle|$PATCHED|200|1|short_470pps|accept mysql|idle|22"
+	echo "gperftools|patched-250hz-5min-470pps-idle|$PATCHED|250|1|5min_470pps|accept mysql|idle|58"
+	echo "gperftools|patched-100hz-10min-470pps-idle|$PATCHED|100|1|10min_470pps|accept mysql|idle|112"
+	echo "gperftools|patched-200hz-10min-470pps-idle|$PATCHED|200|1|10min_470pps|accept mysql|idle|112"
+	echo "gperftools|patched-100hz-short-470pps-more-suites|$PATCHED|100|1|short_470pps|ldap pap-auth proxy-accept proxy-multihop-accept|idle|44"
+	echo "gperftools|patched-200hz-short-470pps-more-suites|$PATCHED|200|1|short_470pps|ldap pap-auth proxy-accept proxy-multihop-accept|idle|44"
+	echo "gperftools|patched-100hz-5min-470pps-more-suites|$PATCHED|100|1|5min_470pps|ldap pap-auth proxy-accept proxy-multihop-accept|idle|116"
+	echo "gperftools|patched-200hz-5min-470pps-more-suites|$PATCHED|200|1|5min_470pps|ldap pap-auth proxy-accept proxy-multihop-accept|idle|116"
+	echo "gperftools|patched-100hz-10min-470pps-more-suites|$PATCHED|100|1|10min_470pps|ldap pap-auth proxy-accept proxy-multihop-accept|idle|224"
+	echo "gperftools|patched-200hz-10min-470pps-more-suites|$PATCHED|200|1|10min_470pps|ldap pap-auth proxy-accept proxy-multihop-accept|idle|224"
+	echo "gperftools|patched-100hz-5min-470pps-idle-rerun|$PATCHED|100|1|5min_470pps|accept mysql|idle|58"
+	echo "gperftools|patched-200hz-5min-470pps-idle-rerun|$PATCHED|200|1|5min_470pps|accept mysql|idle|58"
+	echo "gperftools|patched-100hz-short-470pps-idle-rerun|$PATCHED|100|1|short_470pps|accept mysql|idle|22"
+	echo "gperftools|patched-200hz-short-470pps-idle-rerun|$PATCHED|200|1|short_470pps|accept mysql|idle|22"
 }
 
 DRY=0
