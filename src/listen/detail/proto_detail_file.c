@@ -769,6 +769,11 @@ static int mod_close(fr_listen_instance_t *li)
 	}
 
 	/*
+	 *	Remove any timer event
+	 */
+	if (thread->ev) fr_timer_delete(&thread->ev);
+
+	/*
 	 *	@todo - have our OWN event loop for timers, and a
 	 *	"copy timer from -> to, which means we only have to
 	 *	delete our child event loop from the parent on close.
