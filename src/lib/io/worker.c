@@ -1448,6 +1448,7 @@ static inline void worker_channel_close_ack(fr_worker_t *worker)
 			fr_channel_responder_ack_close(worker->channel[i].ch);
 			worker->channel[i].ch = NULL;
 			worker->num_closing--;
+			if (worker->num_closing == 0) return;
 		}
 	}
 }
