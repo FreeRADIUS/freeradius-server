@@ -941,7 +941,10 @@ void request_done(REQUEST *request, int original)
 	 *	Remove it from the request hash.
 	 */
 	if (request->in_request_hash) {
-		(void) rbtree_deletebydata(pl, &request->packet);
+		if (!rbtree_deletebydata(pl, &request->packet)) {
+			RERROR("Request %u marked in request hash but packet-tree deletion failed",
+			       request->number);
+		}
 		request->in_request_hash = false;
 	}
 
