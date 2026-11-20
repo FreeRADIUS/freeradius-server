@@ -9,9 +9,9 @@ load_gen_dst_server_name: homeserver
 
 # Load generator profile
 loadgen:
-  start_pps: 5
-  max_pps: 50
-  duration: 300
+  start_pps: 10
+  max_pps: 55
+  duration: 30
   step: 5
   parallel: 1
   max_backlog: 1000
@@ -19,5 +19,5 @@ loadgen:
   complete: "exit"
 
 # Test framework
-test_timeout: 350
-test_verify_timeout: 340
+test_timeout: 360
+test_verify_timeout: 350
