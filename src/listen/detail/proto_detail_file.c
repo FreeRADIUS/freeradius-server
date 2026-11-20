@@ -506,7 +506,18 @@ static void work_init(proto_detail_file_thread_t *thread, bool triggered_by_dele
 	if (has_worker) {
 		DEBUG3("proto_detail (%s): worker %s is still alive, waiting for it to finish.",
 		       thread->name, inst->filename_work);
+		if (!inst->poll_interval) return;
 		goto delay;
+	}
+
+	/*
+	 *	It is possible for the "extend" event to fire before the "delete"
+	 *	in which case thread->vnode_fd is still populated, even though
+	 *	the worker has completed.
+	 */
+	if (!inst->poll_interval && (thread->vnode_fd >= 0)) {
+		DEBUG3("proto_detail (%s): delete event for %s has not yet run", thread->name, inst->filename_work);
+		return;
 	}
 
 	fr_assert(thread->vnode_fd < 0);
