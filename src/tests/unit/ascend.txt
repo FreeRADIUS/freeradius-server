@@ -7,7 +7,27 @@ data 1a 28 00 00 02 11 f2 22 01 00 01 00 00 00 00 00 00 00 00 00 00 00 06 00 00 
 #  IPv6 source and destination ports
 #
 decode 1a 38 00 00 02 11 f2 32 03 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 06 00 03 ff 00 35 03 04 00 00
-data Ascend-Data-Filter = "?? in drop tcp srcport > 1023 dstport != 53"
+data Ascend-Data-Filter = "ipv6 in drop tcp srcport > 1023 dstport != 53"
+
+#
+#  IPv6 filters can be parsed from a string, and are printed with the
+#  name of the filter type.
+#
+encode Ascend-Data-Filter = "ipv6 out forward srcip 2001:db8::1/64 dstip fe80::1/10 udp srcport < 99 dstport = 100 est"
+decode -
+data Ascend-Data-Filter = "ipv6 out forward srcip 2001:db8::/64 dstip fe80::/10 udp srcport < 99 dstport = 100 est"
+
+encode Ascend-Data-Filter = "ipv6 in drop"
+decode -
+data Ascend-Data-Filter = "ipv6 in drop 0"
+
+#
+#  Generic filters have a six octet mask and value.  The whole mask
+#  and value are printed.
+#
+encode Ascend-Data-Filter = "generic in forward 12 aabbccddeeff 112233445566 != more"
+decode -
+data Ascend-Data-Filter = "generic in forward 12 aabbccddeeff 112233445566 != more"
 
 #
 #  Valid IPv4 addresses, including abbreviated forms with explicit masks.

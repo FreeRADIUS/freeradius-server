@@ -256,6 +256,7 @@ static const FR_NAME_NUMBER filterType[] = {
 	{ "generic",	RAD_FILTER_GENERIC},
 	{ "ip", 	RAD_FILTER_IP},
 	{ "ipx", 	RAD_FILTER_IPX},
+	{ "ipv6", 	RAD_FILTER_IPV6},
 	{ NULL, 	0},
 };
 
@@ -921,11 +922,16 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 	int flags;
 
 	/*
+	 *	The binary filter is the 4 octet header, followed by the
+	 *	IPv6 filter.  print_abinary() prints a type 3 filter which
+	 *	is shorter than that as octets.
+	 */
+	*len = offsetof(ascend_filter_t, u) + sizeof(*filter);
+
+	/*
 	 *	We may have nothing, in which case we simply return.
 	 */
 	if (argc == 0) return 0;
-
-	*len = sizeof(*filter);
 
 	/*
 	 *	There may, or may not, be src & dst IP's in the string.
@@ -1487,7 +1493,7 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 		size_t count, masklen;
 
 		masklen = ntohs(filter->u.generic.len);
-		if (masklen >= sizeof(filter->u.generic.mask)) goto done;
+		if (masklen > sizeof(filter->u.generic.mask)) goto done;
 
 		if (abinary_printf(&p, &outlen, " %u ", (unsigned int) ntohs(filter->u.generic.offset)) < 0) goto done;
 
