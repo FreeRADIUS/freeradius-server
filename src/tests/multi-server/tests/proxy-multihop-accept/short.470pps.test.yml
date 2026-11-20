@@ -1,0 +1,27 @@
+# Topology
+compose_num_of_home_servers: 2
+compose_num_of_proxy_servers: 1
+listener_type: file
+
+# Routing
+load_gen_num_of_dst_servers: 1
+load_gen_dst_server_name: proxy
+
+# Proxy routing
+proxy_num_of_dst_servers: 2
+proxy_dst_server_name: homeserver
+
+# Load generator profile
+loadgen:
+  start_pps: 470
+  max_pps: 470
+  duration: 60
+  step: 470
+  parallel: 1
+  max_backlog: 1000
+  repeat: "no"
+  complete: "exit"
+
+# Test framework
+test_timeout: 125
+test_verify_timeout: 120
