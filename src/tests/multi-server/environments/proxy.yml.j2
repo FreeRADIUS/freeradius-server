@@ -19,6 +19,11 @@ x-common-config: &id001
   environment:
     TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
     TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
+    # utime + stime from /proc/self/stat at each end of profiling
+    # window which are used by measure_gperftools_capture_rate.sh
+    # to compare with the samples the profile recorded.
+    TRIGGER_SERVER_START_APPEND: "%log.info(%file.head('/proc/self/stat'))"
+    TRIGGER_SERVER_STOP_APPEND: "%log.info(%file.head('/proc/self/stat'))"
 services:
 {% for i in range(1, (compose_num_of_home_servers + 1)) %}
   homeserver{{ i }}:
