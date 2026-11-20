@@ -83,6 +83,8 @@ typedef struct {
 
 	bool			eof;			//!< The BIO chain is at EOF, see bio_eof().
 
+	bool			radius_1_1;		//!< RADIUS/1.1 has been negotiated for this connection
+
 	bool			write_blocked;		//!< A stream write blocked, and has not yet resumed.  See
 							///< bio_write_blocked() and bio_write_resume().
 
@@ -167,6 +169,7 @@ struct bio_request_s {
 
 	uint8_t			code;			//!< Packet code.
 	uint8_t			id;			//!< Last ID assigned to this packet.
+	uint32_t		token;			//!< Last Token assigned to this packet.  Only for RADIUS/1.1.
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 	size_t			partial;		//!< partially sent data
@@ -539,7 +542,17 @@ static void conn_init_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 		return;
 	}
 
-	if (u->id != h->buffer[1]) {
+	/*
+	 *	Just manually do the Token checks for RADIUS/1.1.
+	 */
+	if (h->radius_1_1) {
+		if (u->token != fr_nbo_to_uint32(h->buffer + 4)) {
+			ERROR("%s - Received response with incorrect or expired Token.  Expected %u, got %u",
+			      h->ctx.module_name, u->token, fr_nbo_to_uint32(h->buffer + 4));
+			return;
+		}
+
+	} else if (u->id != h->buffer[1]) {
 		ERROR("%s - Received response with incorrect or expired ID.  Expected %u, got %u",
 		      h->ctx.module_name, u->id, h->buffer[1]);
 		return;
@@ -607,7 +620,8 @@ static void conn_init_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	ssize_t			slen;
 
 	if (fr_time_eq(u->retry.start, fr_time_wrap(0))) {
-		u->id = fr_rand() & 0xff;	/* We don't care what the value is here */
+		u->token = fr_rand();
+		u->id = u->token & 0xff;	/* We don't care what the value is here */
 		h->status_checking = true;	/* Ensure this is valid */
 		fr_retry_init(&u->retry, fr_time(), &h->ctx.inst->retry[FR_RADIUS_CODE_STATUS_SERVER]);
 
@@ -617,7 +631,8 @@ static void conn_init_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	 */
 	} else {
 		bio_request_reset(u);
-		u->id++;
+		u->token++;
+		u->id = u->token & 0xff;
 	}
 
 	DEBUG("%s - Sending %s ID %d over connection %s",
@@ -1151,7 +1166,7 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	 *	@todo - rate limit these messages, and find a way to associate them with a request, or even
 	 *	the logging destination of the module.
 	 */
-	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), false, &failure)) {
+	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), h->radius_1_1, &failure)) {
 		if (*size) return FR_BIO_VERIFY_DISCARD;
 
 		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->ctx.fd_info->name);
@@ -1207,7 +1222,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
 	h->buflen = h->max_packet_size;
 
-	MEM(h->tt = radius_track_alloc(h, false));
+	MEM(h->tt = radius_track_alloc(h, h->radius_1_1));
 
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
@@ -1789,6 +1804,7 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 		.end = data + data_len,
 		.verify = true,
 		.require_message_authenticator = REQUIRE_MA(h),
+		.radius_1_1 = h->radius_1_1,
 	};
 
 	if (fr_radius_decode(ctx, reply, data, data_len, &decode_ctx) < 0) {
@@ -1865,8 +1881,15 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 		},
 		.code = u->code,
 		.id = id,
+		.token = u->token,
+		.radius_1_1 = h->radius_1_1,
 		.add_proxy_state = u->proxied,
 	};
+
+	/*
+	 *	RADIUS/1.1 needs a secure transport.
+	 */
+	fr_assert(!h->radius_1_1 || h->ctx.radius_ctx.secure_transport);
 
 	/*
 	 *	If we're sending a status check packet, update any
@@ -1920,10 +1943,11 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	u->packet_len = packet_len;
 
 	/*
-	 *	Now that we're done mangling the packet, sign it.
+	 *	Now that we're done mangling the packet, sign it.  RADIUS/1.1 packets are not signed.
 	 */
-	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) h->ctx.radius_ctx.secret,
-			   h->ctx.radius_ctx.secret_length) < 0) {
+	if (!h->radius_1_1 &&
+	    (fr_radius_sign(u->packet, NULL, (uint8_t const *) h->ctx.radius_ctx.secret,
+			    h->ctx.radius_ctx.secret_length) < 0)) {
 		RPERROR("Failed signing packet");
 		u->packet = NULL;
 		return -1;
@@ -2425,6 +2449,7 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 		}
 		fr_assert(u->rr);
 		u->id = u->rr->id;
+		if (h->radius_1_1) u->token = u->rr->token;
 
 		RDEBUG("Sending %s ID %d length %zu over connection %s",
 		       fr_radius_packet_name[u->code], u->id, u->packet_len, h->ctx.fd_info->name);
@@ -2844,10 +2869,10 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 *	Note that we don't care about packet codes.  All
 		 *	packet codes share the same ID space.
 		 */
-		rr = radius_track_entry_find(h->tt, h->buffer[1], NULL);
-		if (!rr) {
-			WARN("%s - Ignoring reply with ID %i that arrived too late",
-			     h->ctx.module_name, h->buffer[1]);
+		rr = radius_track_entry_find(h->tt, h->buffer[1], h->buffer + 4);
+                if (!rr) {
+			WARN("%s - Ignoring reply with %s that arrived too late",
+			     h->ctx.module_name, fr_strerror());
 			continue;
 		}
 
@@ -2916,7 +2941,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 			 */
 			vp = fr_pair_find_by_da_nested(&reply, attr_original_packet_code);
 			if (!vp) {
-				RWDEBUG("Protocol-Error response is missing Original-Packet-Code");
+				if (!h->radius_1_1) RWDEBUG("Protocol-Error response is missing Original-Packet-Code");
 			} else {
 				fr_pair_delete_by_da_nested(&reply, attr_original_packet_code);
 			}
@@ -3070,10 +3095,10 @@ static void request_replicate_demux(UNUSED fr_event_list_t *el, trunk_connection
 		 *	Note that we don't care about packet codes.  All
 		 *	packet codes share the same ID space.
 		 */
-		rr = radius_track_entry_find(h->tt, h->buffer[1], NULL);
+		rr = radius_track_entry_find(h->tt, h->buffer[1], h->buffer + 4);
 		if (!rr) {
-			WARN("%s - Ignoring reply with ID %i that arrived too late",
-			     h->ctx.module_name, h->buffer[1]);
+			WARN("%s - Ignoring reply with %s that arrived too late",
+			     h->ctx.module_name, fr_strerror());
 			continue;
 		}
 
