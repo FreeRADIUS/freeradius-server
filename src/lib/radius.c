@@ -3503,7 +3503,7 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		/*
 		 *	Check the continuation flag.
 		 */
-		more = ((attr[2] & 0x80) != 0);
+		more = ((attr[3] & 0x80) != 0);
 
 		/*
 		 *	Or, there's no more data, in which case we
