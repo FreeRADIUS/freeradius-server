@@ -1459,6 +1459,216 @@ static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR 
 	return 0;
 }
 
+/** Fixup xlat expansions and attributes for one rule
+ *
+ * @param[out] base	start of structure to write #tmpl_t s to.
+ * @param[in] cs	CONF_SECTION to fixup.
+ * @param[in] rule	to fixup.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (parse errors etc...).
+ */
+static int cf_section_parse_pass2_rule(void *base, CONF_SECTION *cs, conf_parser_t const *rule)
+{
+	bool			attribute, multi, is_tmpl, is_xlat;
+	CONF_PAIR		*cp;
+	void			*data;
+	fr_type_t		type = rule->type;
+	conf_parser_flags_t 	flags = rule->flags;
+	fr_dict_t const		*dict = NULL;
+
+	is_tmpl = (flags & CONF_FLAG_TMPL);
+	is_xlat = (flags & CONF_FLAG_XLAT);
+	attribute = (flags & CONF_FLAG_ATTRIBUTE);
+	multi = (flags & CONF_FLAG_MULTI);
+
+	/*
+	 *	This rule refers to another conf_parser_t which is included in-line in this section.  The
+	 *	first pass expanded the reference, so the second pass has to expand the reference too.
+	 *	Otherwise the tmpls of the included rules are never resolved.
+	 */
+	if (flags & CONF_FLAG_REF) {
+		conf_parser_t const	*rule_p;
+		uint8_t			*sub_base = base;
+
+		fr_assert(rule->subcs != NULL);
+
+		if (sub_base) sub_base += rule->offset;
+
+		for (rule_p = rule->subcs; rule_p->name1; rule_p++) {
+			int ret;
+
+			if (fr_rule_v3_deprecated(rule_p)) continue;	/* Skip v3 deprecated */
+
+			ret = cf_section_parse_pass2_rule(sub_base, cs, rule_p);
+			if (ret < 0) return ret;
+		}
+
+		return 0;
+	}
+
+	/*
+	 *	It's a section, recurse!
+	 */
+	if (flags & CONF_FLAG_SUBSECTION) {
+		uint8_t		*subcs_base;
+		CONF_SECTION	*subcs = cf_section_find(cs, rule->name1, rule->name2);
+
+		/*
+		 *	Select base by whether this is a nested struct,
+		 *	an array of pointers to structs, or a pointer to
+		 *	one struct.
+		 */
+		if (!base || (flags & CONF_FLAG_NO_OUTPUT)) {
+			subcs_base = NULL;
+		} else if (multi) {
+			size_t		j, len;
+			uint8_t		**array;
+
+			array = *(uint8_t ***)(((uint8_t *)base) + rule->offset);
+			len = talloc_array_length(array);
+
+			for (j = 0; j < len; j++) if (cf_section_parse_pass2(array[j], subcs) < 0) return -1;
+			return 0;
+		} else if (rule->subcs_size) {
+			subcs_base = *(uint8_t **)(((uint8_t *)base) + rule->offset);
+			if (!subcs_base) return 0;	/* The subsection was absent, or a rule func stored nothing */
+		} else {
+			subcs_base = (uint8_t *)base + rule->offset;
+		}
+
+		if (cf_section_parse_pass2(subcs_base, subcs) < 0) return -1;
+
+		return 0;
+	}
+
+	/*
+	 *	Find the CONF_PAIR, may still not exist if there was
+	 *	no default set for the conf_parser_t.
+	 */
+	cp = cf_pair_find(cs, rule->name1);
+	if (!cp) return 0;
+
+	/*
+	 *	Figure out which data we need to fix.
+	 */
+	data = rule->data; /* prefer this. */
+	if (!data && base && !(rule->flags & CONF_FLAG_NO_OUTPUT)) data = ((char *)base) + rule->offset;
+	if (!data) return 0;
+
+	/*
+	 *	Non-xlat expansions shouldn't have xlat!
+	 *
+	 *	Except other libraries like libkafka may be the ones
+	 *	doing the actual expansion, so we don't _know_
+	 *	if the xlatlike value is destined for use in FreeRADIUS
+	 *	or not, so we can't definitely determine if this is an
+	 *	error.
+	 *
+	 *	Code left in place to warn other people off re-adding
+	 *	this check in future.
+	 */
+#if 0
+	if (!is_xlat && !is_tmpl) {
+		/*
+		 *	Ignore %{... in shared secrets.
+		 *	They're never dynamically expanded.
+		 */
+		if ((rule->flags & CONF_FLAG_SECRET) != 0) return 0;
+
+		if (strstr(cp->value, "%{") != NULL) {
+			cf_log_err(cp, "Found dynamic expansion in string which "
+				   "will not be dynamically expanded");
+			return -1;
+		}
+		return 0;
+	}
+#endif
+
+	/*
+	 *	Search for dictionary data somewhere in the virtual
+	 *      server.
+	 */
+	dict = virtual_server_dict_by_child_ci(cf_section_to_item(cs));
+
+	/*
+	 *	Parse (and throw away) the xlat string (for validation).
+	 *
+	 *	FIXME: All of these should be converted from CONF_FLAG_XLAT
+	 *	to CONF_FLAG_TMPL.
+	 */
+	if (is_xlat) {
+		fr_slen_t	slen;
+		xlat_exp_head_t	*xlat;
+
+	redo:
+		xlat = NULL;
+
+		/*
+		 *	xlat expansions should be parseable.
+		 */
+		slen = xlat_tokenize(cs, &xlat,
+				     &FR_SBUFF_IN(cp->value, talloc_strlen(cp->value)), NULL,
+				     &(tmpl_rules_t) {
+					     .attr = {
+						     .dict_def = dict,
+						     .list_def = request_attr_request,
+						     .allow_unknown = false,
+						     .allow_unresolved = false,
+						     .allow_foreign = (dict == NULL)
+					     },
+				     });
+		if (slen < 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(cs, &spaces, &text, slen, cp->value);
+
+			cf_log_err(cp, "Failed parsing expansion string:");
+			cf_log_err(cp, "%s", text);
+			cf_log_perr(cp, "%s^", spaces);
+
+			talloc_free(spaces);
+			talloc_free(text);
+			talloc_free(xlat);
+			return -1;
+		}
+
+		talloc_free(xlat);
+
+		/*
+		 *	If the "multi" flag is set, check all of them.
+		 */
+		if (multi) {
+			cp = cf_pair_find_next(cs, cp, cp->attr);
+			if (cp) goto redo;
+		}
+		return 0;
+
+	/*
+	 *	Parse the pair into a template
+	 */
+	} else if (is_tmpl && !multi) {
+		if (cf_parse_tmpl_pass2(cs, (tmpl_t **)data, cp, type, attribute, dict) < 0) {
+			return -1;
+		}
+
+	} else if (is_tmpl) {
+		size_t i;
+		char const *name = cp->attr;
+		tmpl_t **array = *(tmpl_t ***) data;
+
+		for (i = 0; i < talloc_array_length(array); i++, cp = cf_pair_find_next(cs, cp, name)) {
+			if (!cp) break;
+
+			if (cf_parse_tmpl_pass2(cs, &array[i], cp, type, attribute, dict) < 0) {
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
 /** Fixup xlat expansions and attributes
  *
  * @param[out] base start of structure to write #tmpl_t s to.
@@ -1472,177 +1682,9 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 	CONF_DATA const *rule_cd = NULL;
 
 	while ((rule_cd = cf_data_find_next(cs, rule_cd, conf_parser_t, CF_IDENT_ANY))) {
-		bool			attribute, multi, is_tmpl, is_xlat;
-		CONF_PAIR		*cp;
-		conf_parser_t		*rule = cf_data_value(rule_cd);
-		void			*data;
-		fr_type_t		type = rule->type;
-		conf_parser_flags_t 	flags = rule->flags;
-		fr_dict_t const		*dict = NULL;
+		int ret = cf_section_parse_pass2_rule(base, cs, cf_data_value(rule_cd));
 
-		is_tmpl = (flags & CONF_FLAG_TMPL);
-		is_xlat = (flags & CONF_FLAG_XLAT);
-		attribute = (flags & CONF_FLAG_ATTRIBUTE);
-		multi = (flags & CONF_FLAG_MULTI);
-
-		/*
-		 *	It's a section, recurse!
-		 */
-		if (flags & CONF_FLAG_SUBSECTION) {
-			uint8_t		*subcs_base;
-			CONF_SECTION	*subcs = cf_section_find(cs, rule->name1, rule->name2);
-
-			/*
-			 *	Select base by whether this is a nested struct,
-			 *	an array of pointers to structs, or a pointer to
-			 *	one struct.
-			 */
-			if (!base || (flags & CONF_FLAG_NO_OUTPUT)) {
-				subcs_base = NULL;
-			} else if (multi) {
-				size_t		j, len;
-				uint8_t		**array;
-
-				array = *(uint8_t ***)(((uint8_t *)base) + rule->offset);
-				len = talloc_array_length(array);
-
-				for (j = 0; j < len; j++) if (cf_section_parse_pass2(array[j], subcs) < 0) return -1;
-				continue;
-			} else if (rule->subcs_size) {
-				subcs_base = *(uint8_t **)(((uint8_t *)base) + rule->offset);
-				if (!subcs_base) continue;	/* The subsection was absent, or a rule func stored nothing */
-			} else {
-				subcs_base = (uint8_t *)base + rule->offset;
-			}
-
-			if (cf_section_parse_pass2(subcs_base, subcs) < 0) return -1;
-
-			continue;
-		}
-
-		/*
-		 *	Find the CONF_PAIR, may still not exist if there was
-		 *	no default set for the conf_parser_t.
-		 */
-		cp = cf_pair_find(cs, rule->name1);
-		if (!cp) continue;
-
-		/*
-		 *	Figure out which data we need to fix.
-		 */
-		data = rule->data; /* prefer this. */
-		if (!data && base && !(rule->flags & CONF_FLAG_NO_OUTPUT)) data = ((char *)base) + rule->offset;
-		if (!data) continue;
-
-		/*
-		 *	Non-xlat expansions shouldn't have xlat!
-		 *
-		 *	Except other libraries like libkafka may be the ones
-		 *	doing the actual expansion, so we don't _know_
-		 *	if the xlatlike value is destined for use in FreeRADIUS
-		 *	or not, so we can't definitely determine if this is an
-		 *	error.
-		 *
-		 *	Code left in place to warn other people off re-adding
-		 *	this check in future.
-		 */
-#if 0
-		if (!is_xlat && !is_tmpl) {
-			/*
-			 *	Ignore %{... in shared secrets.
-			 *	They're never dynamically expanded.
-			 */
-			if ((rule->flags & CONF_FLAG_SECRET) != 0) continue;
-
-			if (strstr(cp->value, "%{") != NULL) {
-				cf_log_err(cp, "Found dynamic expansion in string which "
-					   "will not be dynamically expanded");
-				return -1;
-			}
-			continue;
-		}
-#endif
-
-		/*
-		 *	Search for dictionary data somewhere in the virtual
-		 *      server.
-		 */
-		dict = virtual_server_dict_by_child_ci(cf_section_to_item(cs));
-
-		/*
-		 *	Parse (and throw away) the xlat string (for validation).
-		 *
-		 *	FIXME: All of these should be converted from CONF_FLAG_XLAT
-		 *	to CONF_FLAG_TMPL.
-		 */
-		if (is_xlat) {
-			fr_slen_t	slen;
-			xlat_exp_head_t	*xlat;
-
-		redo:
-			xlat = NULL;
-
-			/*
-			 *	xlat expansions should be parseable.
-			 */
-			slen = xlat_tokenize(cs, &xlat,
-					     &FR_SBUFF_IN(cp->value, talloc_strlen(cp->value)), NULL,
-					     &(tmpl_rules_t) {
-						     .attr = {
-							     .dict_def = dict,
-							     .list_def = request_attr_request,
-							     .allow_unknown = false,
-							     .allow_unresolved = false,
-							     .allow_foreign = (dict == NULL)
-						     },
-					     });
-			if (slen < 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(cs, &spaces, &text, slen, cp->value);
-
-				cf_log_err(cp, "Failed parsing expansion string:");
-				cf_log_err(cp, "%s", text);
-				cf_log_perr(cp, "%s^", spaces);
-
-				talloc_free(spaces);
-				talloc_free(text);
-				talloc_free(xlat);
-				return -1;
-			}
-
-			talloc_free(xlat);
-
-			/*
-			 *	If the "multi" flag is set, check all of them.
-			 */
-			if (multi) {
-				cp = cf_pair_find_next(cs, cp, cp->attr);
-				if (cp) goto redo;
-			}
-			continue;
-
-		/*
-		 *	Parse the pair into a template
-		 */
-		} else if (is_tmpl && !multi) {
-			if (cf_parse_tmpl_pass2(cs, (tmpl_t **)data, cp, type, attribute, dict) < 0) {
-				return -1;
-			}
-
-		} else if (is_tmpl) {
-			size_t i;
-			char const *name = cp->attr;
-			tmpl_t **array = *(tmpl_t ***) data;
-
-			for (i = 0; i < talloc_array_length(array); i++, cp = cf_pair_find_next(cs, cp, name)) {
-				if (!cp) break;
-
-				if (cf_parse_tmpl_pass2(cs, &array[i], cp, type, attribute, dict) < 0) {
-					return -1;
-				}
-			}
-		}
+		if (ret < 0) return ret;
 	}
 
 	return 0;
