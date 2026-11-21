@@ -63,10 +63,22 @@ RADIUS_PROG   := $(DIR)/rlm_radius_test.py
 RADIUS_ALL_TESTS := $(patsubst $(DIR)/%.conf,%,$(wildcard $(DIR)/*.conf))
 
 #
-#  The zombie tests wait for the timers of a connection to run out, and each test takes tens of seconds.
-#  "make test.radius" does not run the tests.  "make test.radius.slow" runs only the tests.
+#  The slow tests wait for a timer to run out.  Each test takes 5 seconds or more, because the
+#  tests wait for max_rtx_duration, which is 5 seconds.  The zombie tests take 9 to 20 seconds.
+#  The tests which send a packet and get a reply, and the configuration checks, take less than 5
+#  seconds.
 #
-RADIUS_SLOW_TESTS := $(filter udp_zombie_%,$(RADIUS_ALL_TESTS))
+#  "make test.radius" does not run the slow tests.  "make test.radius.slow" runs only the slow
+#  tests.  A new udp_zombie_* test is slow without an entry here.
+#
+RADIUS_SLOW_NAMES := \
+	replicate_udp \
+	tcp_client_once \
+	tcp_proxy_once \
+	udp_proxy_dup \
+	udp_proxy_once
+
+RADIUS_SLOW_TESTS := $(filter $(RADIUS_SLOW_NAMES) udp_zombie_%,$(RADIUS_ALL_TESTS))
 RADIUS_TESTS := $(filter-out $(RADIUS_SLOW_TESTS),$(RADIUS_ALL_TESTS))
 
 #
@@ -149,6 +161,6 @@ $(TEST).slow: $(RADIUS_SLOW_RECEIPTS)
 
 $(TEST).help:
 	@echo make $(RADIUS_TEST)
-	@echo make $(RADIUS_TEST).slow - the slow zombie tests, which $(RADIUS_TEST) does not run
+	@echo make $(RADIUS_TEST).slow - the tests which wait for a timer, which $(RADIUS_TEST) does not run
 
 endif
