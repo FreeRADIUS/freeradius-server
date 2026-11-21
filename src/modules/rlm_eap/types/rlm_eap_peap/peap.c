@@ -204,7 +204,7 @@ static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 		 *	Hand-build an EAP packet from the crap in PEAP version 0.
 		 */
 		vp->vp_length = EAP_HEADER_LEN + data_len;
-		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
+		MEM(vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length));
 
 		p[0] = PW_EAP_RESPONSE;
 		p[1] = eap_ds->response->id;
@@ -215,7 +215,7 @@ static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 
 	} else {		/* peapv1 */
 		vp->vp_length = data_len;
-		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
+		MEM(vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length));
 		memcpy(p, data, data_len);
 	}
 
@@ -784,9 +784,9 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 
 		t->status = PEAP_STATUS_PHASE2;
 
-		vp = fr_pair_afrom_num(fake->packet, PW_EAP_MESSAGE, 0);
+		MEM(vp = fr_pair_afrom_num(fake->packet, PW_EAP_MESSAGE, 0));
 		vp->vp_length = len;
-		vp->vp_octets = q = talloc_array(vp, uint8_t, vp->vp_length);
+		MEM(vp->vp_octets = q = talloc_array(vp, uint8_t, vp->vp_length));
 
 		q[0] = PW_EAP_RESPONSE;
 		q[1] = eap_ds->response->id;
@@ -801,7 +801,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 
 		if (t->default_method != 0) {
 			RDEBUG2("Setting default EAP type for tunneled EAP session");
-			vp = fr_pair_make(fake, &fake->config, "EAP-Type", "0", T_OP_EQ);
+			MEM(vp = fr_pair_make(fake, &fake->config, "EAP-Type", "0", T_OP_EQ));
 			vp->vp_integer = t->default_method;
 		}
 		break; }
@@ -847,7 +847,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 			 */
 			if (t->default_method != 0) {
 				RDEBUG2("Setting default EAP type for tunneled EAP session");
-				vp = fr_pair_make(fake, &fake->config, "EAP-Type", "0", T_OP_EQ);
+				MEM(vp = fr_pair_make(fake, &fake->config, "EAP-Type", "0", T_OP_EQ));
 				vp->vp_integer = t->default_method;
 			}
 		}
