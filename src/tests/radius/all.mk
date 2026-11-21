@@ -60,7 +60,14 @@ RADIUS_PROG   := $(DIR)/rlm_radius_test.py
 #  writes a receipt named after the test when the test passes, so
 #  udp_proxy_once.conf writes udp_proxy_once.receipt.
 #
-RADIUS_TESTS := $(patsubst $(DIR)/%.conf,%,$(wildcard $(DIR)/*.conf))
+RADIUS_ALL_TESTS := $(patsubst $(DIR)/%.conf,%,$(wildcard $(DIR)/*.conf))
+
+#
+#  The zombie tests wait for the timers of a connection to run out, and each test takes tens of seconds.
+#  "make test.radius" does not run the tests.  "make test.radius.slow" runs only the tests.
+#
+RADIUS_SLOW_TESTS := $(filter udp_zombie_%,$(RADIUS_ALL_TESTS))
+RADIUS_TESTS := $(filter-out $(RADIUS_SLOW_TESTS),$(RADIUS_ALL_TESTS))
 
 #
 #  The suite takes one block of ports from the allocator in
@@ -107,8 +114,16 @@ $(RADIUS_OUTPUT)/${1}.receipt: $(RADIUS_DIR)/${1}.conf $(RADIUS_PROG) $(TEST_BIN
 RADIUS_RECEIPTS += $(RADIUS_OUTPUT)/${1}.receipt
 endef
 
+#
+#  Every test, including the slow tests, takes a pair of ports from the block, so the tests never share
+#  ports.  The ordinary tests and the slow tests have separate lists of receipts, which the two targets
+#  below depend on.
+#
 RADIUS_RECEIPTS :=
-$(foreach x,$(RADIUS_TESTS),$(eval $(call RADIUS_TEST_RULE,$x)))
+$(foreach x,$(RADIUS_TESTS) $(RADIUS_SLOW_TESTS),$(eval $(call RADIUS_TEST_RULE,$x)))
+
+RADIUS_SLOW_RECEIPTS := $(addprefix $(RADIUS_OUTPUT)/,$(addsuffix .receipt,$(RADIUS_SLOW_TESTS)))
+RADIUS_FAST_RECEIPTS := $(filter-out $(RADIUS_SLOW_RECEIPTS),$(RADIUS_RECEIPTS))
 
 #
 #  A test beyond half of the block would take a port from the second half.
@@ -124,9 +139,16 @@ endif
 #
 $(eval $(call TEST_CONFIG_LIBS,$(wildcard $(RADIUS_DIR)/*.conf),$(RADIUS_RECEIPTS)))
 
-$(BUILD_DIR)/tests/$(TEST): $(RADIUS_RECEIPTS)
+$(BUILD_DIR)/tests/$(TEST): $(RADIUS_FAST_RECEIPTS)
+
+#
+#  The slow tests run only when the user asks for the tests.
+#
+.PHONY: $(TEST).slow
+$(TEST).slow: $(RADIUS_SLOW_RECEIPTS)
 
 $(TEST).help:
 	@echo make $(RADIUS_TEST)
+	@echo make $(RADIUS_TEST).slow - the slow zombie tests, which $(RADIUS_TEST) does not run
 
 endif
