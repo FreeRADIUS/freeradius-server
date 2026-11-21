@@ -253,7 +253,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			buffer[1] = size + 2;
 			memcpy(buffer + 2, data, size);
 
-			vp = NULL;
 			decoded = rad_attr2vp(packet, NULL, NULL, NULL,
 					      buffer, size + 2, &vp);
 			if (decoded < 0) {
@@ -437,6 +436,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		fr_cursor_insert(&out, vp);
 
 	next_attr:
+		vp = NULL;
 		if (data_left <= attr_len) break;
 
 		data_left -= attr_len;
