@@ -269,7 +269,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			}
 
 			fr_cursor_merge(&out, vp);
-
 			goto next_attr;
 		}
 
@@ -282,6 +281,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		vp = fr_pair_afrom_da(packet, da);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
+		fail:
 			fr_pair_list_free(&first);
 			return NULL;
 		}
@@ -303,9 +303,10 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		raw:
 				if (vp) fr_pair_list_free(&vp);
 				da = dict_unknown_afrom_fields(packet, attr, vendor);
-				if (!da) return NULL;
+				if (!da) goto fail;
+
 				vp = fr_pair_afrom_da(packet, da);
-				if (!vp) return NULL;
+				if (!vp) goto fail;
 				fr_pair_value_memcpy(vp, data, size);
 				break;
 			}
@@ -331,9 +332,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			if (size != vp->vp_length) {
 				RDEBUG2("Invalid length attribute %d",
 				       attr);
-				fr_pair_list_free(&first);
 				fr_pair_list_free(&vp);
-				return NULL;
+				goto fail;
 			}
 			memcpy(&vp->vp_ipaddr, data, vp->vp_length);
 
@@ -416,9 +416,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			if ((vp->vp_length < 8) ||
 			    (vp->vp_length > 16)) {
 				RDEBUG("Tunneled challenge has invalid length");
-				fr_pair_list_free(&first);
 				fr_pair_list_free(&vp);
-				return NULL;
+				goto fail;
 			}
 
 			/*
@@ -430,9 +429,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			if (memcmp(challenge, vp->vp_octets,
 				   vp->vp_length) != 0) {
 				RDEBUG("Tunneled challenge is incorrect");
-				fr_pair_list_free(&first);
 				fr_pair_list_free(&vp);
-				return NULL;
+				goto fail;
 			}
 		}
 
