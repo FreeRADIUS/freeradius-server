@@ -826,6 +826,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 
 	default:
 		REDEBUG("Invalid state change in PEAP");
+		talloc_free(fake);
 		return RLM_MODULE_REJECT;
 	}
 
