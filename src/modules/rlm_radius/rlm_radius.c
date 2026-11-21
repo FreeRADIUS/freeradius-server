@@ -108,11 +108,35 @@ static conf_parser_t disconnect_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#ifdef WITH_TLS
+/*
+ *
+ * The `alpn` subsection has no rules of its own, as fr_tls_alpn_parse() does that work.  But we still need a
+ * place-holder.
+ */
+static conf_parser_t const radius_alpn_config[] = {
+	CONF_PARSER_TERMINATOR
+};
+
+/** The rules for the `tls` subsection
+ *
+ * The rules include the rules of the TLS library, and add the `alpn` subsection, which only rlm_radius can
+ * add because only rlm_radius has the table.  `virtual_server` is at offset 0 of #fr_tls_conf_t, so the
+ * rules of the library keep the offsets that they were written with.
+ */
+static conf_parser_t const radius_tls_config[] = {
+	{ FR_CONF_OFFSET_REF(fr_tls_conf_t, virtual_server, fr_tls_client_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("alpn", CONF_FLAG_OK_MISSING, fr_tls_conf_t, alpn, radius_alpn_config),
+	  .func = fr_tls_alpn_parse, .uctx = fr_radius_alpn_table },
+	CONF_PARSER_TERMINATOR
+};
+#endif
+
 static conf_parser_t const udp_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_SECRET, rlm_radius_t, secret) },
 
 #ifdef WITH_TLS
-	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, fr_tls_client_config),
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, radius_tls_config),
 	  .subcs_type = "fr_tls_conf_t" },
 #endif
 
@@ -123,7 +147,7 @@ static conf_parser_t const tcp_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_SECRET, rlm_radius_t, secret) },
 
 #ifdef WITH_TLS
-	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, fr_tls_client_config),
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, radius_tls_config),
 	  .subcs_type = "fr_tls_conf_t" },
 #endif
 
@@ -151,7 +175,7 @@ static conf_parser_t const connected_config[] = {
  *	by fr_bio_fd_client_config.  Every connection to every destination uses the same DTLS configuration.
  */
 static conf_parser_t const udp_dynamic_config[] = {
-	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, fr_tls_client_config),
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, radius_tls_config),
 	  .subcs_type = "fr_tls_conf_t" },
 
 	CONF_PARSER_TERMINATOR
@@ -161,7 +185,7 @@ static conf_parser_t const udp_dynamic_config[] = {
  *	The same applies to the "tcp" section, which holds the RADIUS/TLS configuration.
  */
 static conf_parser_t const tcp_dynamic_config[] = {
-	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, fr_tls_client_config),
+	{ FR_CONF_SUBSECTION_ALLOC("tls", CONF_FLAG_OK_MISSING, rlm_radius_t, tls_conf, radius_tls_config),
 	  .subcs_type = "fr_tls_conf_t" },
 
 	CONF_PARSER_TERMINATOR

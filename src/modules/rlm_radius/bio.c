@@ -886,6 +886,17 @@ static int conn_request_alloc(bio_handle_t *h)
 static void bio_tls_connected(fr_bio_t *bio)
 {
 	bio_handle_t		*h = bio->uctx;
+	fr_tls_connection_t	*tls_conn = fr_bio_tls_conn(h->bio.tls);
+
+	/*
+	 *	Now that TLS negotiation is finished, set the local RADIUS/1.1, and allocate the tracking
+	 *	structure which uses the RADIUS/1.1 Tokens.
+	 */
+	if (tls_conn->tls_session->alpn_id == FR_RADIUS_ALPN_RADIUS_1_1) {
+		h->radius_1_1 = true;
+		h->ctx.radius_ctx.secure_transport = true;
+	}
+	MEM(h->tt = radius_track_alloc(h, h->radius_1_1));
 
 	/*
 	 *	If we're doing status checks, then we want at least one positive response before signalling
@@ -1222,8 +1233,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
 	h->buflen = h->max_packet_size;
 
-	MEM(h->tt = radius_track_alloc(h, h->radius_1_1));
-
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
 		PERROR("%s - failed opening socket", h->ctx.module_name);
@@ -1328,8 +1337,12 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		}
 
 		next = (fr_bio_t *) h->bio.tls;
-	}
+	} else
 #endif
+	       /*
+		*	Always allocate the tracking table for bare TCP and UDP.
+		*/
+		MEM(h->tt = radius_track_alloc(h, false));
 
 	/*
 	 *	A plain stream socket can accept only part of a packet, so the memory BIO needs a write buffer to
