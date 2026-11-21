@@ -131,25 +131,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-#ifdef TLS1_3_VERSION
-	if (inst->tls_conf->min_version == TLS1_3_VERSION) {
-		ERROR("There are no standards for using TLS 1.3 with EAP-FAST.");
-		ERROR("You MUST enable TLS 1.2 for EAP-FAST to work.");
-		return -1;
-	}
-
-	if ((inst->tls_conf->max_version == TLS1_3_VERSION) ||
-	    (inst->tls_conf->min_version == TLS1_3_VERSION)) {
-		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		WARN("!! There is no standard for using EAP-FAST with TLS 1.3");
-		WARN("!! Please set tls_max_version = \"1.2\"");
-		WARN("!! FreeRADIUS only supports TLS 1.3 for special builds of wpa_supplicant and Windows");
-		WARN("!! This limitation is likely to change in late 2021.");
-		WARN("!! If you are using this version of FreeRADIUS after 2021, you will probably need to upgrade");
-		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-	}
-#endif
-
 	rad_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
 	FR_MD5_CTX ctx;
 	fr_md5_init(&ctx);
