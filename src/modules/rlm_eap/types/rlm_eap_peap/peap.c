@@ -957,6 +957,19 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 				}
 
 				/*
+				 *	The authenticate section can change
+				 *	&control:, and so can free the
+				 *	Proxy-To-Realm pair which "vp" points
+				 *	to.  Find it again.
+				 */
+				vp = fr_pair_find_by_num(fake->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
+				if (!vp) {
+					RDEBUG2("Proxy-To-Realm was removed by the authenticate section: not proxying");
+					rcode = RLM_MODULE_REJECT;
+					goto done;
+				}
+
+				/*
 				 *	The module decided it wasn't
 				 *	done.  Handle it like normal.
 				 */
