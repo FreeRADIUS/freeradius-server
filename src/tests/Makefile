@@ -231,6 +231,14 @@ EAP_FILES        = eap-md5.conf
 EAP_FILES       += eap-mschapv2.conf
 
 #
+#  TEAP needs an eapol_test which was built with TEAP support.  Set
+#  EAPOL_TEST_TEAP=yes to run the test.
+#
+ifneq "$(EAPOL_TEST_TEAP)" ""
+EAP_FILES       += eap-teap-password.conf
+endif
+
+#
 #  These need OpenSSL for AES, etc, but don't need TLS.
 #
 ifneq "$(OPENSSL_LIBS)" ""
