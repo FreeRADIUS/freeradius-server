@@ -842,6 +842,15 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 		fake->packet->src_ipaddr = request->packet->src_ipaddr;
 		request->proxy = NULL;
 
+		/*
+		 *	These point into the VPs of the packet, as the
+		 *	fake request had them when the tunneled request
+		 *	was proxied.  The pre-proxy sections may have
+		 *	replaced those VPs, so look them up again.
+		 */
+		fake->username = fr_pair_find_by_num(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+		fake->password = fr_pair_find_by_num(fake->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+
 		rad_assert(!fake->reply);
 		fake->reply = talloc_steal(fake, request->proxy_reply);
 		request->proxy_reply = NULL;
