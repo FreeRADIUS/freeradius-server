@@ -523,6 +523,8 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 		       request_refs_t dst_request_def, pair_lists_t dst_list_def,
 		       request_refs_t src_request_def, pair_lists_t src_list_def)
 {
+	size_t len;
+	char *str = NULL;
 	char const *p = vp_str;
 	FR_TOKEN quote;
 
@@ -534,34 +536,43 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 	case T_BARE_WORD:
 		break;
 
-	case T_INVALID:
-	error:
-		return -1;
-
 	default:
 		fr_strerror_printf("Left operand must be an attribute");
+		/* FALL_THROUGH */
+
+	case T_INVALID:
+	error:
+		if (str != raw.r_opand) talloc_free(str);
 		return -1;
 	}
 
 	raw.op = getop(&p);
 	if (raw.op == T_INVALID) goto error;
 
-	raw.quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
+	len = strlen(p);
+	if (len < sizeof(raw.r_opand)) {
+		raw.quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
+		str = raw.r_opand;
+	} else {
+		MEM(str = talloc_array(NULL, char, len + 1));
+		raw.quote = gettoken(&p, str, len + 1, false);
+	}
 	if (raw.quote == T_INVALID) goto error;
 	if (!fr_str_tok[raw.quote]) {
 		fr_strerror_printf("Right operand must be an attribute or string");
-		return -1;
+		goto error;
 	}
 
-	if (map_afrom_fields(ctx, &map, raw.l_opand, T_BARE_WORD, raw.op, raw.r_opand, raw.quote,
+	if (map_afrom_fields(ctx, &map, raw.l_opand, T_BARE_WORD, raw.op, str, raw.quote,
 			     dst_request_def, dst_list_def, src_request_def, src_list_def) < 0) {
-		return -1;
+		goto error;
 	}
 
 	rad_assert(map != NULL);
 	*out = map;
 
 	VERIFY_MAP(map);
+	if (str != raw.r_opand) talloc_free(str);
 
 	return 0;
 }
