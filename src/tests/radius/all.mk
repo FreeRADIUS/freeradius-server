@@ -19,7 +19,7 @@ RADIUS_TEST := test.radius
 #  The home server and the checks are a Python program.  Without a Python 3
 #  interpreter there is nothing to run, and the test says why.
 #
-RADIUS_PYTHON := $(shell python3 -c 'import hashlib, signal, socket, struct, threading' 2>/dev/null && command -v python3)
+RADIUS_PYTHON := $(shell python3 -c 'import hashlib, signal, socket, ssl, struct, threading' 2>/dev/null && command -v python3)
 
 ifeq "$(RADIUS_PYTHON)" ""
 
@@ -88,6 +88,7 @@ RADIUS_CMD.${1} := \
 	OUTPUT=$(call SHELL_QUOTE,$(RADIUS_OUTPUT)) \
 	CONFDIR=$(call SHELL_QUOTE,$(top_srcdir)/$(RADIUS_DIR)) \
 	DICT_PATH=$(call SHELL_QUOTE,$(DICT_PATH)) \
+	CERTDIR=$(call SHELL_QUOTE,$(top_srcdir)/raddb/certs/rsa) \
 	PORT=$$(RADIUS_PORT.${1}) \
 	LPORT=$$(RADIUS_LPORT.${1}) \
 	RADIUSD=$(call SHELL_QUOTE,$(TEST_BIN)/radiusd) \

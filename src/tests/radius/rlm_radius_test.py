@@ -21,6 +21,7 @@
 #    DICT_PATH dictionary directory
 #    PORT      port of the home server
 #    LPORT     UDP port where radiusd listens
+#    CERTDIR   directory holding the test certificates, which the TLS home server needs
 #
 #  Exit status is zero when every check passes.  The program then writes the
 #  receipt file.
@@ -32,6 +33,7 @@ import os
 import shlex
 import signal
 import socket
+import ssl
 import struct
 import subprocess
 import sys
@@ -45,8 +47,21 @@ confdir = os.environ["CONFDIR"]
 dict_path = os.environ["DICT_PATH"]
 port = int(os.environ["PORT"])
 lport = int(os.environ["LPORT"])
+certdir = os.environ.get("CERTDIR", "")
 
 SECRET = b"testing123"
+
+#
+#  The secret when the configuration file has none, and the transport is TLS (RFC 6614 Section 2.3).
+#
+SECRET_TLS = b"radsec"
+
+ALPN_RADIUS_1_0 = "radius/1.0"
+ALPN_RADIUS_1_1 = "radius/1.1"
+
+MESSAGE_AUTHENTICATOR = 80
+CHAP_PASSWORD = 3
+CHAP_CHALLENGE = 60
 
 #
 #  Value of "max_rtx_duration" in the configuration files of the tests which
@@ -97,11 +112,29 @@ def user_of(packet):
     return None
 
 
-def reply_to(packet):
+def attrs_of(packet):
+    """The attributes of a packet, as a list of (type, value)."""
+    attrs = []
+    pos = 20
+    while pos + 2 <= len(packet):
+        attrs.append((packet[pos], packet[pos + 2:pos + packet[pos + 1]]))
+        pos += packet[pos + 1]
+    return attrs
+
+
+def reply_to(packet, secret=SECRET):
     """An Access-Accept for the Access-Request, with a valid Response-Authenticator."""
     code, ident, length = struct.unpack("!BBH", packet[:4])
     head = struct.pack("!BBH", 2, ident, 20)
-    return head + hashlib.md5(head + packet[4:20] + SECRET).digest()
+    return head + hashlib.md5(head + packet[4:20] + secret).digest()
+
+
+def reply_to_1_1(packet):
+    """
+    An Access-Accept for a RADIUS/1.1 Access-Request.  The reply is not signed, and
+    copies the Token and the reserved octets from the request (RFC 9765 Section 4).
+    """
+    return struct.pack("!BBH", 2, 0, 20) + packet[4:20]
 
 
 class Home:
@@ -111,13 +144,23 @@ class Home:
     The home server drops the first "drop" packets, and replies to every later
     packet when "reply" is true.
 
+    The "tls" transport is RADIUS/TLS over TLS 1.3.  "alpn" is the list of ALPN
+    names that the home server offers, or None when the home server does not use
+    ALPN.  "selected" is the name which the last connection negotiated.  A reply
+    to a packet from a connection which negotiated "radius/1.1" is a RADIUS/1.1
+    packet.  "packets" holds every packet that is not a status check.
+
     A Status-Server packet is a status check from the module.  The home server
     does not count the packet in "times".  The home server replies to a status
     check only while "status_reply" is true.
     """
 
-    def __init__(self, transport, drop=0, reply=False):
+    def __init__(self, transport, drop=0, reply=False, alpn=None):
         self.transport = transport
+        self.alpn = alpn
+        self.selected = None
+        self.handshake_errors = []
+        self.packets = []
         self.drop = drop
         self.reply = reply
         self.status_reply = False
@@ -127,10 +170,11 @@ class Home:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM if transport == "udp" else socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(("127.0.0.1", port))
-        if transport == "tcp":
+        if transport != "udp":
             self.sock.listen(1)
         self.stop = False
-        self.thread = threading.Thread(target=self.run_udp if transport == "udp" else self.run_tcp, daemon=True)
+        run = {"udp": self.run_udp, "tcp": self.run_tcp, "tls": self.run_tls}[transport]
+        self.thread = threading.Thread(target=run, daemon=True)
         self.thread.start()
 
     def seen(self, packet, send):
@@ -141,8 +185,12 @@ class Home:
             return
 
         self.times.append(time.monotonic())
+        self.packets.append(packet)
         if (self.reply and len(self.times) > self.drop) or user_of(packet) in self.reply_users:
-            send(reply_to(packet))
+            if self.selected == ALPN_RADIUS_1_1:
+                send(reply_to_1_1(packet))
+            else:
+                send(reply_to(packet, SECRET_TLS if self.transport == "tls" else SECRET))
 
     def run_udp(self):
         self.sock.settimeout(0.2)
@@ -165,6 +213,10 @@ class Home:
         if conn is None:
             return
 
+        self.serve(conn)
+
+    def serve(self, conn):
+        """Read RADIUS packets from a stream connection until the peer closes the connection."""
         conn.settimeout(0.2)
         data = b""
         while not self.stop:
@@ -172,6 +224,8 @@ class Home:
                 more = conn.recv(4096)
             except socket.timeout:
                 continue
+            except (ssl.SSLError, OSError):
+                break
             if not more:
                 break
             data += more
@@ -183,6 +237,36 @@ class Home:
                 data = data[length:]
 
         conn.close()
+
+    def run_tls(self):
+        """
+        Accept TLS connections one after the other, because the module opens
+        another connection after a connection fails.  The home server does not
+        ask for a client certificate.
+        """
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_3
+        ctx.load_cert_chain(f"{certdir}/server.pem", f"{certdir}/server.key", password="whatever")
+        if self.alpn:
+            ctx.set_alpn_protocols(self.alpn)
+
+        self.sock.settimeout(0.2)
+        while not self.stop:
+            try:
+                conn, _ = self.sock.accept()
+            except socket.timeout:
+                continue
+
+            conn.settimeout(5)
+            try:
+                tconn = ctx.wrap_socket(conn, server_side=True)
+            except (ssl.SSLError, OSError) as e:
+                self.handshake_errors.append(str(e))
+                conn.close()
+                continue
+
+            self.selected = tconn.selected_alpn_protocol()
+            self.serve(tconn)
 
     @property
     def count(self):
@@ -611,6 +695,161 @@ def replicate_udp():
     time.sleep(MRD + 3)
     check(home.count == 1, f"home server received one packet ({home.count})")
     check(not radiusd.found(MSG_MRD) and not radiusd.found(MSG_MRC), "replicated packet has no timeout")
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def chap_request(ident):
+    """An Access-Request with User-Name and CHAP-Password, and no CHAP-Challenge."""
+    attrs = b"\x01" + bytes([2 + 8]) + b"user%04d" % ident
+    attrs += bytes([CHAP_PASSWORD, 2 + 17, ident & 0xff]) + os.urandom(16)
+    return struct.pack("!BBH", 1, ident & 0xff, 20 + len(attrs)) + os.urandom(16) + attrs
+
+
+def tls_start(alpn):
+    """Start the TLS home server, which replies to every packet, and radiusd."""
+    if not os.path.exists(f"{certdir}/server.pem"):
+        sys.exit(f"rlm_radius_test.py: no server certificate in {certdir}, run 'make certs'")
+
+    home = Home("tls", reply=True, alpn=alpn)
+    return home, start()
+
+
+def tls_reply(sock):
+    """The reply which the NAS receives, or b"" when there is no reply."""
+    sock.settimeout(20)
+    try:
+        return sock.recv(4096)
+    except socket.timeout:
+        return b""
+
+
+def check_radius_1_1(home, reply):
+    """The checks for a connection which negotiated radius/1.1, see RFC 9765 Sections 4 and 5."""
+    check(home.selected == ALPN_RADIUS_1_1, f"home server negotiated {ALPN_RADIUS_1_1} ({home.selected})")
+    check(home.count == 1, f"home server received one packet ({home.count})")
+    if not home.packets:
+        return
+
+    packet = home.packets[0]
+    check(packet[1] == 0, f"the ID in the header is zero ({packet[1]})")
+    check(packet[8:20] == bytes(12), "the reserved octets in the header are zero")
+    check(all(attr != MESSAGE_AUTHENTICATOR for attr, _ in attrs_of(packet)),
+          "the packet has no Message-Authenticator")
+    check(len(reply) >= 20 and reply[0] == 2, f"NAS received an Access-Accept ({len(reply)} octets)")
+
+
+def check_radius_1_0(home, reply):
+    """The checks for a connection which did not negotiate radius/1.1."""
+    check(home.selected in (None, ALPN_RADIUS_1_0), f"home server did not negotiate {ALPN_RADIUS_1_1} ({home.selected})")
+    check(home.count == 1, f"home server received one packet ({home.count})")
+    if not home.packets:
+        return
+
+    #
+    #  A RADIUS/1.0 Access-Request has a random Request Authenticator, where RADIUS/1.1 has zeroes after the Token.
+    #
+    check(home.packets[0][8:20] != bytes(12), "the Request Authenticator is not a Token and zeroes")
+
+    #
+    #  The module verifies the Response Authenticator, so a reply which the NAS received was signed correctly.
+    #
+    check(len(reply) >= 20 and reply[0] == 2, f"NAS received an Access-Accept ({len(reply)} octets)")
+
+
+def tls_alpn_1_1():
+    """
+    mode = client over RADIUS/TLS with both ALPN names enabled.  The home server
+    offers both names, and picks radius/1.1 because radius/1.1 is first in the
+    list of the home server.  The module sends RADIUS/1.1 packets.
+    """
+    home, radiusd = tls_start([ALPN_RADIUS_1_1, ALPN_RADIUS_1_0])
+    sock, _ = send(1)
+    reply = tls_reply(sock)
+
+    check_radius_1_1(home, reply)
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def tls_alpn_server_1_0():
+    """
+    mode = client over RADIUS/TLS with both ALPN names enabled.  The home server
+    offers only radius/1.0, so the connection uses RADIUS/1.0.
+    """
+    home, radiusd = tls_start([ALPN_RADIUS_1_0])
+    sock, _ = send(1)
+    reply = tls_reply(sock)
+
+    check(home.selected == ALPN_RADIUS_1_0, f"home server negotiated {ALPN_RADIUS_1_0} ({home.selected})")
+    check_radius_1_0(home, reply)
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def tls_alpn_none():
+    """
+    mode = client over RADIUS/TLS with both ALPN names enabled.  The home server
+    does not use ALPN.  radius/1.0 has the default flag, so the connection uses
+    RADIUS/1.0 (RFC 9765 Section 3.3, Table 2).
+    """
+    home, radiusd = tls_start(None)
+    sock, _ = send(1)
+    reply = tls_reply(sock)
+
+    check(home.selected is None, f"home server did not negotiate ALPN ({home.selected})")
+    check_radius_1_0(home, reply)
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def tls_alpn_required():
+    """
+    mode = client over RADIUS/TLS with only radius/1.1 enabled.  The home server
+    offers only radius/1.0, so no name is negotiated.  The client requires ALPN
+    because radius/1.0 is not enabled, so the TLS connection fails and the module
+    sends no packet.
+    """
+    home, radiusd = tls_start([ALPN_RADIUS_1_0])
+    send(1)
+
+    check(radiusd.wait_for("TLS connection failed", 20), "the TLS connection failed")
+    time.sleep(1)
+    check(home.count == 0, f"home server received no packet ({home.count})")
+
+    radiusd.stop()
+    home.close()
+    finish(radiusd.lines)
+
+
+def tls_chap():
+    """
+    mode = client over RADIUS/TLS with both ALPN names enabled.  The NAS sends an
+    Access-Request with CHAP-Password and no CHAP-Challenge.  RADIUS/1.1 has no
+    Request Authenticator for the home server to use as the challenge (RFC 9765
+    Section 5.1.2), so the module adds a CHAP-Challenge which is the Request
+    Authenticator of the packet from the NAS.
+    """
+    home, radiusd = tls_start([ALPN_RADIUS_1_1, ALPN_RADIUS_1_0])
+    packet = chap_request(1)
+    sock, _ = send(1, packet)
+    reply = tls_reply(sock)
+
+    check_radius_1_1(home, reply)
+
+    if home.packets:
+        attrs = attrs_of(home.packets[0])
+        challenge = [value for attr, value in attrs if attr == CHAP_CHALLENGE]
+        check(challenge == [packet[4:20]], "the module added a CHAP-Challenge which is the Request Authenticator of the NAS")
+        check(any(attr == CHAP_PASSWORD for attr, _ in attrs), "the packet has the CHAP-Password")
 
     radiusd.stop()
     home.close()
