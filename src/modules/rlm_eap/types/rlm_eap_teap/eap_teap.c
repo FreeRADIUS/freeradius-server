@@ -1881,14 +1881,15 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 		case PW_FREERADIUS_EAP_TEAP_TLV:
 			switch (vp->da->attr >> 8) {
 			case EAP_TEAP_TLV_IDENTITY_TYPE:
-				fr_pair_add(&fake->packet->vps, fr_pair_copy(fake->packet, vp));
+				MEM(copy = fr_pair_copy(fake->packet, vp));
+				fr_pair_add(&fake->packet->vps, copy);
 				break;
 
 				/*
 				 *	Copy EAP-Payload to EAP-Message
 				 */
 			case EAP_TEAP_TLV_EAP_PAYLOAD:
-				copy = fr_pair_afrom_num(fake->packet, PW_EAP_MESSAGE, 0);
+				MEM(copy = fr_pair_afrom_num(fake->packet, PW_EAP_MESSAGE, 0));
 				fr_pair_value_memcpy(copy, vp->vp_octets, vp->vp_length);
 				fr_pair_add(&fake->packet->vps, copy);
 				break;
@@ -1899,18 +1900,19 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				 *	is a signal that we have a password response, and not an EAP-Message.
 				 */
 			case EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP:
-				fr_pair_add(&fake->packet->vps, fr_pair_copy(fake->packet, vp));
+				MEM(copy = fr_pair_copy(fake->packet, vp));
+				fr_pair_add(&fake->packet->vps, copy);
 
 				p = vp->vp_octets;
 
-				copy = fr_pair_afrom_num(fake->packet, PW_USER_NAME, 0);
+				MEM(copy = fr_pair_afrom_num(fake->packet, PW_USER_NAME, 0));
 				fr_pair_value_bstrncpy(copy, p + 1, p[0]);
 				fr_pair_add(&fake->packet->vps, copy);
 				fake->username = copy;
 
 				p += p[0] + 1;
 
-				copy = fr_pair_afrom_num(fake->packet, PW_USER_PASSWORD, 0);
+				MEM(copy = fr_pair_afrom_num(fake->packet, PW_USER_PASSWORD, 0));
 				fr_pair_value_bstrncpy(copy, p + 1, p[0]);
 				fr_pair_add(&fake->packet->vps, copy);
 				fake->password = copy;
