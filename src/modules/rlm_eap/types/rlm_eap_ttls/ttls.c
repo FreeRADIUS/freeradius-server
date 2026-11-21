@@ -1202,6 +1202,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		talloc_free(req);
 
 		if (chbind_code != PW_CODE_ACCESS_ACCEPT) {
+			talloc_free(fake);
 			return chbind_code;
 		}
 	}
