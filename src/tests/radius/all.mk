@@ -63,6 +63,16 @@ RADIUS_PROG   := $(DIR)/rlm_radius_test.py
 RADIUS_ALL_TESTS := $(patsubst $(DIR)/%.conf,%,$(wildcard $(DIR)/*.conf))
 
 #
+#  The tls_* tests configure a "tls" subsection, which the radius module has only when the server is
+#  built with OpenSSL.  Without OpenSSL, radiusd rejects the configuration files.  unit_test_tls is built
+#  only when the server has OpenSSL, see src/bin/unit_test_tls.mk, and src/tests/tls/all.mk uses the same
+#  check.  The tls_* tests are not run when the server has no OpenSSL.
+#
+ifeq "$(filter unit_test_tls,$(ALL_TGTS))" ""
+RADIUS_ALL_TESTS := $(filter-out tls_%,$(RADIUS_ALL_TESTS))
+endif
+
+#
 #  The slow tests wait for a timer to run out.  Each test takes 5 seconds or more, because the
 #  tests wait for max_rtx_duration, which is 5 seconds.  The zombie tests take 9 to 20 seconds.
 #  The tests which send a packet and get a reply, and the configuration checks, take less than 5
