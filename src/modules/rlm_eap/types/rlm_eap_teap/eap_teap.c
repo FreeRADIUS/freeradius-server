@@ -965,6 +965,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 	size_t				msklen = 0, emsklen = 0;
 	bool				doing_eap, msk1, msk2;
 	bool				sent_identity_type = false;
+	bool				got_mschap2_success = false;
 
 	teap_tunnel_t	*t = tls_session->opaque;
 
@@ -1051,33 +1052,41 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 
 			case PW_MSCHAP2_SUCCESS:
 				RDEBUG("Phase 2: Got %s, tunneling it to the client in a challenge", vp->da->name);
-				if (t->use_tunneled_reply) {
-					/*
-					 *	Clean up the tunneled reply.
-					 */
-					fr_pair_delete_by_num(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
-					fr_pair_delete_by_num(&reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-					fr_pair_delete_by_num(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
-
-					/*
-					 *	Delete MPPE keys & encryption policy.  We don't
-					 *	want these here.
-					 */
-					fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-					fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-					fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-					fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
-
-					fr_pair_list_free(&t->accept_vps); /* for proxying MS-CHAP2 */
-					fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
-					rad_assert(!reply->vps);
-				}
+				got_mschap2_success = true;
 				break;
 
 			default:
 				break;
 			}
 		}
+
+		/*
+		 *	The cursor above caches the next pair in the list.  Deleting or moving pairs while the
+		 *	loop runs frees the pair which the cursor is pointing to.  Once the loop has read the
+		 *	MPPE keys, is safe to delete them.
+		 */
+		if (got_mschap2_success && t->use_tunneled_reply) {
+			/*
+			 *	Clean up the tunneled reply.
+			 */
+			fr_pair_delete_by_num(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+
+			/*
+			 *	Delete MPPE keys & encryption policy.  We don't
+			 *	want these here.
+			 */
+			fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+
+			fr_pair_list_free(&t->accept_vps); /* for proxying MS-CHAP2 */
+			fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
+			rad_assert(!reply->vps);
+		}
+
 		if ((msk1 && msk2) || emsklen || t->sent_basic_password) t->authenticated = true;
 
 		if (t->use_tunneled_reply) {
