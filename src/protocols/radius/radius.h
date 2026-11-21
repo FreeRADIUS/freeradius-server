@@ -170,8 +170,8 @@ typedef struct {
 
 	uint8_t			request_code;		//!< original code for the request.
 
-	bool			radius_1_1;		//!< RADIUS/1.1 header, with a Token and no authenticator.
 	uint32_t		token;			//!< Token read from a RADIUS/1.1 header.
+	bool			radius_1_1;		//!< RADIUS/1.1 header, with a Token and no authenticator.
 
 	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
 	bool			verify;			//!< can skip verify for dynamic clients

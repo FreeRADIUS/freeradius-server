@@ -12,6 +12,7 @@ SOURCES		:= base.c \
 		   list.c \
 		   packet.c \
 		   tcp.c \
+		   tls.c \
 		   abinary.c
 
 TGT_PREREQS	:= $(LIBFREERADIUS_UTIL)
