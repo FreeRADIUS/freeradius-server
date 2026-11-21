@@ -2733,6 +2733,11 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 
 	/* Setup BIO socket to OCSP responder */
 	cbio = BIO_new_connect(host);
+	if (!cbio) {
+		tls_error_log(request, "ocsp: Couldn't create connection to OCSP responder");
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto ocsp_end;
+	}
 
 	if (rad_debug_lvl) {
 		if (default_log.dst == L_DST_STDOUT) {
