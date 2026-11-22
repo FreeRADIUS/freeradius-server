@@ -111,6 +111,7 @@ eap_handler_t 	*eap_handler_alloc(rlm_eap_t *inst, REQUEST *request);
 void	    	eap_ds_free(EAP_DS **eap_ds);
 int 	    	eaplist_add(rlm_eap_t *inst, eap_handler_t *handler) CC_HINT(nonnull);
 eap_handler_t 	*eaplist_find(rlm_eap_t *inst, REQUEST *request, eap_packet_raw_t *eap_packet);
+void		eaplist_cancel(rlm_eap_t *inst, REQUEST *request);
 void		eaplist_free(rlm_eap_t *inst);
 
 /* State */
