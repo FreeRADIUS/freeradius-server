@@ -218,8 +218,8 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		}
 
 		session->in_len = in[0] * 256 | in[1];
-		if (!session->in_len) {
-			DEBUG("EAP-PWD malformed packet (input length)");
+		if (!session->in_len || (session->in_len > 4096)) {
+			REDEBUG("Invalid total_length %zu", session->in_len);
 			RETURN_UNLANG_FAIL;
 		}
 
@@ -268,8 +268,8 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		/*
 		 *	The last fragment...
 		 */
-		if ((session->in_pos + in_len) > session->in_len) {
-			REDEBUG("PWD will overflow a fragment buffer");
+		if ((session->in_pos + in_len) != session->in_len) {
+			REDEBUG("Invalid fragmentation in EAP-PWD");
 			RETURN_UNLANG_INVALID;
 		}
 		memcpy(session->in + session->in_pos, in, in_len);
