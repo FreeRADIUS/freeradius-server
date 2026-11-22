@@ -409,6 +409,37 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 }
 
 /*
+ *	Remove the session which matches the State attribute in the
+ *	request, and free it.
+ *
+ *	This is used when the peer starts a new authentication run while
+ *	it still holds the State of an old one.  The old session is
+ *	deleted the same way as an expired session, so that the State
+ *	cannot be used again.
+ *
+ *	The handler is keyed by the EAP Identifier and the State.  We
+ *	set the Identifier in the State, so that we can get it back
+ *	here.  See eaplist_add().
+ */
+void eaplist_cancel(rlm_eap_t *inst, REQUEST *request)
+{
+	VALUE_PAIR	*state;
+	eap_handler_t	my_handler;
+
+	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	if (!state || (state->vp_length != EAP_STATE_LEN)) return;
+
+	memset(&my_handler, 0, sizeof(my_handler));
+	memcpy(my_handler.state, state->vp_octets, sizeof(my_handler.state));
+	my_handler.eap_id = my_handler.state[5] ^ my_handler.state[1];
+	my_handler.src_ipaddr = request->packet->src_ipaddr;
+
+	PTHREAD_MUTEX_LOCK(&(inst->session_mutex));
+	(void) eaplist_delete(inst, request, &my_handler, "Cancelling", true);
+	PTHREAD_MUTEX_UNLOCK(&(inst->session_mutex));
+}
+
+/*
  *	Find a a previous EAP-Request sent by us, which matches
  *	the current EAP-Response.
  *

@@ -673,11 +673,16 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
  *	State.  The user can then retry, and the AP will then send a
  *	new Access-Request without a State.
  */
-static bool eap_start_has_state(REQUEST *request, char const *what)
+static bool eap_start_has_state(rlm_eap_t *inst, REQUEST *request, char const *what)
 {
 	if (!fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) return false;
 
 	REDEBUG("Ignoring %s which contains a State attribute.", what);
+
+	/*
+	 *	Delete the old session, so that its State cannot be used again.
+	 */
+	eaplist_cancel(inst, request);
 
 	return true;
 }
@@ -756,7 +761,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 			return EAP_NOOP;
 		}
 
-		if (eap_start_has_state(request, "EAP-Start")) return EAP_FAIL;
+		if (eap_start_has_state(inst, request, "EAP-Start")) return EAP_FAIL;
 
 		RDEBUG2("Got EAP_START message");
 		vp = fr_pair_afrom_num(request->reply, PW_EAP_MESSAGE, 0);
@@ -902,7 +907,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 * ...in the inner-tunnel, to avoid expensive and unnecessary SQL/LDAP lookups
 	 */
 	if (eap_msg->vp_octets[4] == PW_EAP_IDENTITY) {
-		if (eap_start_has_state(request, "EAP-Identity")) return EAP_FAIL;
+		if (eap_start_has_state(inst, request, "EAP-Identity")) return EAP_FAIL;
 
 		RDEBUG2("EAP-Identity reply, returning 'ok' so we can short-circuit the rest of authorize");
 		return EAP_OK;
