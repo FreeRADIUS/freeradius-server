@@ -124,6 +124,36 @@ decode 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 1a 0c 00 00 60 b5 01 06 00 02 0
 data WiMAX-Release = "1.0", WiMAX-Accounting-Capabilities = No-Accounting
 
 #
+#  Continued attributes with more than two fragments.  Each of the
+#  first two fragments has the "more" bit set in the WiMAX header,
+#  and the last one does not.  Each fragment carries one TLV.
+#
+#  1a 0e	Vendor-Specific, length 14
+#  00 00 60 b5	WiMAX
+#  01 08 80	WiMAX-Capability, length 8, "more" data
+#  01 05 ...	WiMAX-Release = "1.0"
+#
+#  1a 0c	Vendor-Specific, length 12
+#  00 00 60 b5	WiMAX
+#  01 06 80	WiMAX-Capability, length 6, "more" data
+#  02 03 00	WiMAX-Accounting-Capabilities = No-Accounting
+#
+#  1a 0c	Vendor-Specific, length 12
+#  00 00 60 b5	WiMAX
+#  01 06 00	WiMAX-Capability, length 6, no more data
+#  03 03 01	WiMAX-Hotlining-Capabilities = Hotline-Profile-Id
+#
+decode 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 1a 0c 00 00 60 b5 01 06 80 02 03 00 1a 0c 00 00 60 b5 01 06 00 03 03 01
+data WiMAX-Release = "1.0", WiMAX-Accounting-Capabilities = No-Accounting, WiMAX-Hotlining-Capabilities = Hotline-Profile-Id
+
+#
+#  The last fragment has the "more" bit set, but there is no more
+#  data.  The attributes are decoded separately as "raw".
+#
+decode 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 1a 0c 00 00 60 b5 01 06 80 02 03 00
+data Attr-26 = 0x000060b50108800105312e30, Attr-26 = 0x000060b5010680020300
+
+#
 #  See if encoding multiple attributes works
 #
 encode WiMAX-Packet-Data-Flow-Id := 32, WiMAX-Service-Data-Flow-ID := 32, WiMAX-Service-Profile-ID := 32
