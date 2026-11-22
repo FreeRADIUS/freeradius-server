@@ -538,7 +538,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 
 	default:
 		fr_strerror_printf("Left operand must be an attribute");
-		/* FALL_THROUGH */
+		/* FALL-THROUGH */
 
 	case T_INVALID:
 	error:
