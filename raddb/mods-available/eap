@@ -1257,6 +1257,21 @@ eap {
 	#     completely the new UI page and let the 'Sign in' toast
 	#     popup open the UI.
 	#
+	#     For 26H2 (and probably 25H2 too) any required user interaction for
+	#     credentials is in general unreliable; at least for wired authentication.
+	#     We have informed Microsoft of our findings but no fixes have been
+	#     provided. Meanwhile the workarounds we discovered during our _testing_
+	#     (once configured after a reboot it settles down) has been to either:
+	#
+	#       - Restart the DOT3SVC service between authentications, which is done
+	#         from the Command Prompt and running `sc stop dot3svc`, waiting a
+	#         moment and the run `sc start dot3svc`.
+	#
+	#       - Save your user credentials by selecting a non-machine only
+	#         authentication for 'Specify authentication mode' under the
+	#         'Advanced Settings' section, and then use the 'Replace credentials'
+	#         option. You may need to first 'Save credentials' or delete them.
+	#
 	#     Failing the above, make sure you have checked 'Fall-back
 	#     to unauthorized network access', otherwise you may never
 	#     see the 'Sign in' button or toast popup window to enter
