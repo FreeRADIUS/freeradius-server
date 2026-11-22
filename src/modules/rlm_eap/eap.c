@@ -1239,7 +1239,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			       eap_type2name(handler->type),
 			       eap_type2name(eap_packet->data[0]));
 			RERROR("Your Supplicant or NAS is probably broken");
-			goto error;
+			goto error2;
 		}
 
 	       vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
@@ -1254,7 +1254,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
 		       vp = fr_pair_make(request->packet, &request->packet->vps, "User-Name", handler->identity, T_OP_EQ);
 		       if (!vp) {
-			       goto error;
+			       goto error2;
 		       }
 	       } else {
 		       /*
@@ -1269,7 +1269,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		       if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
 			       RDEBUG("Identity does not match User-Name.  Authentication failed");
-			       goto error;
+			       goto error2;
 		       }
 	       }
 	} else {		/* packet was EAP identity */
