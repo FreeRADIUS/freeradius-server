@@ -726,12 +726,16 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		}
 
 		session->in_len = in[0] * 256 | in[1];
+		if (!session->in_len || (session->in_len > 4096)) {
+			REDEBUG("Invalid total_length %zu", session->in_len);
+			return 0;
+		}
+
 		if ((session->in = talloc_zero_array(session, uint8_t, session->in_len)) == NULL) {
 			RDEBUG2("pwd cannot allocate %zd buffer to hold fragments",
 				session->in_len);
 			return 0;
 		}
-		memset(session->in, 0, session->in_len);
 		session->in_pos = 0;
 		in += sizeof(uint16_t);
 		in_len -= sizeof(uint16_t);
@@ -775,8 +779,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * the last fragment...
 		 */
-		if ((session->in_pos + in_len) > session->in_len) {
-			RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent");
+		if ((session->in_pos + in_len) != session->in_len) {
+			REDEBUG("Invalid fragmentation in EAP-PWD");
 			return 0;
 		}
 		memcpy(session->in + session->in_pos, in, in_len);
@@ -883,10 +887,9 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		if (session->salt_present)
 			session->out_len += 1 + session->salt_len;
 
-		if ((session->out = talloc_array(session, uint8_t, session->out_len)) == NULL) {
+		if ((session->out = talloc_zero_array(session, uint8_t, session->out_len)) == NULL) {
 			return 0;
 		}
-		memset(session->out, 0, session->out_len);
 
 		ptr = session->out;
 		if (session->salt_present) {
@@ -944,8 +947,6 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		if ((session->out = talloc_array(session, uint8_t, session->out_len)) == NULL) {
 			return 0;
 		}
-
-		memset(session->out, 0, session->out_len);
 		memcpy(session->out, session->my_confirm, SHA256_DIGEST_LENGTH);
 
 		session->state = PWD_STATE_CONFIRM;
