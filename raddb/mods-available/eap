@@ -1257,6 +1257,21 @@ eap {
 	#     completely the new UI page and let the 'Sign in' toast
 	#     popup open the UI.
 	#
+	#     For 26H2 (and probably 25H2 too) any required user interaction for
+	#     credentials is in general unreliable; at least for wired authentication.
+	#     We have informed Microsoft of our findings but no fixes have been
+	#     provided. Meanwhile the workarounds we discovered during our _testing_
+	#     (once configured after a reboot it settles down) has been to either:
+	#
+	#       - Restart the DOT3SVC service between authentications, which is done
+	#         from the Command Prompt and running `sc stop dot3svc`, waiting a
+	#         moment and the run `sc start dot3svc`.
+	#
+	#       - Save your user credentials by selecting a non-machine only
+	#         authentication for 'Specify authentication mode' under the
+	#         'Advanced Settings' section, and then use the 'Replace credentials'
+	#         option. You may need to first 'Save credentials' or delete them.
+	#
 	#     Failing the above, make sure you have checked 'Fall-back
 	#     to unauthorized network access', otherwise you may never
 	#     see the 'Sign in' button or toast popup window to enter
@@ -1276,10 +1291,10 @@ eap {
 	#        server receives a non-standard empty EAP identity and therefore
 	#        can only respond with an Access-Reject.
 	#
-	#	That is, when Windows has no crentials it doesn't send
-	#	a TEAP error, it just starts EAP with no identity.
-	#	This behavior violates the base EAP specifications,
-	#	and also the TEAP specfication.
+	#        That is, when Windows has no crentials it doesn't send
+	#        a TEAP error, it just starts EAP with no identity.
+	#        This behavior violates the base EAP specifications,
+	#        and also the TEAP specfication.
 	#
 	#      - After selecting the Smartcard identity to use,
 	#        Windows may immediately claim authentication failed.
@@ -1318,14 +1333,14 @@ eap {
 	#      - Windows "User or computer authentication":
 	#
 	#         * Supports FreeRADIUS 'identity_types = machine,user'
-	#	    and 'identity_types = user,machine'
+	#           and 'identity_types = user,machine'
 	#
 	#      - Windows "Computer authentication"
 	#
 	#         * Supports FreeRADIUS 'identity_types = machine'
 	#
 	#         * Supports FreeRADIUS 'identity_types = machine,?user',
-	#	    if you have a dummy EAP-MSCHAPv2
+	#           if you have a dummy EAP-MSCHAPv2
 	#           secondary method configured on Windows
 	#
 	#         * Does not support FreeRADIUS 'identity_types = ?user,machine'
@@ -1335,7 +1350,7 @@ eap {
 	#         * Supports FreeRADIUS 'identity_types = user'
 	#
 	#         * Supports FreeRADIUS 'identity_types = user,?machine',
-	#	    if you have a dummy EAP-TLS secondary method
+	#           if you have a dummy EAP-TLS secondary method
 	#           configured on Windows
 	#
 	#         * Does not support FreeRADIUS 'identity_types = ?machine,user'
@@ -1359,7 +1374,7 @@ eap {
 	#     constraint:
 	#
 	#      - 'machine' can be EAP-TLS with a Windows configuration of
-	#	  'Use a certificate on this computer'
+	#        'Use a certificate on this computer'
 	#
 	#      - 'user' may be EAP-MSCHAPV2 or EAP-TLS with a Windows
 	#        configuration of 'Use my smart card'
@@ -1382,10 +1397,10 @@ eap {
 		#  Define which inner authentications are allowed, and
 		#  in what order.
 		#
-		#  allowed values:  	"machine,user"
-		#  	   		"user,machine"
-		#			"user"
-		#			"machine"
+		#  allowed values: "machine,user"
+		#                  "user,machine"
+		#                  "user"
+		#                  "machine"
 		#
 		#  If only one method is listed, then that is the only
 		#  method which is allowed.  The server will reject
