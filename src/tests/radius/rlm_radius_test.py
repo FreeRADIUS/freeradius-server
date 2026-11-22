@@ -330,7 +330,20 @@ class Radiusd:
 
         check(not any(("ASSERT FAILED" in line) or ("CAUGHT SIGNAL" in line) for line in self.lines),
               "radiusd logged no assertion or signal")
-        check(self.proc.returncode == 0, f"radiusd exited with status {self.proc.returncode}")
+        if not check(self.proc.returncode == 0, f"radiusd exited with status {self.proc.returncode}"):
+            self.show_failure()
+
+    def show_failure(self):
+        """
+        Print the output of radiusd which explains a bad exit status.  A sanitizer writes its report
+        to the same stream as radiusd, and the report starts at the first line that names the sanitizer.
+        Without a report, the end of the output is the best clue.
+        """
+        start = next((i for i, line in enumerate(self.lines)
+                      if ("Sanitizer" in line) or ("runtime error" in line)), max(0, len(self.lines) - 60))
+        print("--- output of radiusd, from line %d ---" % (start + 1), flush=True)
+        print("".join(self.lines[start:start + 300]), end="", flush=True)
+        print("--- end of the output of radiusd ---", flush=True)
 
 
 def start():
