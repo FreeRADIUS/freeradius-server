@@ -76,7 +76,7 @@ typedef struct bio_request_s bio_request_t;
 /** Track the handle, which is tightly correlated with the FD
  *
  */
-typedef struct {
+typedef struct bio_handle_s {
 	bio_handle_ctx_t	ctx;		//!< common struct for home servers and BIO handles
 
 	int			fd;			//!< File descriptor.
@@ -129,6 +129,8 @@ typedef struct {
 #ifdef WITH_TLS
 	request_t		*conn_request;		//!< owns the TLS bio, and runs the handshake.  This is
 							///< separate from status_request.
+	struct bio_handle_s    	**p_self;		//!< Tells the handle when the worker frees conn_request.
+							///< parented from conn_request.
 	bool			tls_starting;		//!< Are we inside of fr_bio_tls_connect() ?
 	bool			tls_started;		//!< The connection request has run, and the TLS start is scheduled.
 	fr_timer_t		*tls_ev;		//!< Starts the TLS connection.
@@ -780,6 +782,43 @@ static void conn_tls_start(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, voi
 	}
 }
 
+/** Tell the handle that the worker freed the connection request
+ *
+ * The request outlives the handle, so the worker frees the tracker after the handle.
+ *
+ * The request associated witht the connection is detached, which means that the worker owns the request.  The
+ * handle frees the request by cancelling it.  However, when the server shuts down, the worker frees the
+ * request while the handle still exists.  We therefore have to disassociate the pointers, otherwise the
+ * handle keeps a reference to the freed request, TLS BIO, and the timer.
+ */
+static inline void bio_handle_detach(bio_handle_t *h)
+{
+	if (h->p_self) *h->p_self = NULL;
+	h->p_self = NULL;
+}
+
+/** The worker freed the connection request, which also freed the TLS bio.
+ *
+ */
+static int _bio_handle_self_free(bio_handle_t **p_h)
+{
+	bio_handle_t	*h = *p_h;
+
+	if (!h) return 0;
+
+	/*
+	 *	The timers use the TLS bio, which is gone.
+	 */
+	FR_TIMER_DELETE(&h->tls_ev);
+	FR_TIMER_DELETE(&h->tls_failed_ev);
+
+	h->bio.tls = NULL;
+	h->conn_request = NULL;
+	h->p_self = NULL;
+
+	return 0;
+}
+
 /** The bottom frame of the connection request
  *
  * The worker runs a request which has no frames, and the interpreter asserts that the stack is not empty.  This
@@ -877,12 +916,16 @@ static int conn_request_alloc(bio_handle_t *h)
 
 	h->conn_request = request;
 
+	MEM(h->p_self = talloc_zero(request, bio_handle_t *));
+	*h->p_self = h;
+	talloc_set_destructor(h->p_self, _bio_handle_self_free);
+
 	return 0;
 }
 
 /** Callback to signal that the TLS connection is open.
  *
- */
+ */ 
 static void bio_tls_connected(fr_bio_t *bio)
 {
 	bio_handle_t		*h = bio->uctx;
@@ -999,6 +1042,7 @@ static int conn_tls_alloc(bio_handle_t *h)
 		 *	nothing owns the request, so cancel the request here.  The worker unwinds and frees
 		 *	the request.
 		 */
+		bio_handle_detach(h);
 		unlang_interpret_signal(h->conn_request, FR_SIGNAL_CANCEL);
 		h->conn_request = NULL;
 		return -1;
@@ -1060,6 +1104,8 @@ static int _bio_handle_free(bio_handle_t *h)
 		 *	the freed handle.
 		 */
 		fr_bio_cb_set((fr_bio_t *) h->bio.tls, NULL);
+
+		bio_handle_detach(h);
 
 		unlang_interpret_signal(h->conn_request, FR_SIGNAL_CANCEL);
 		h->bio.tls = NULL;
