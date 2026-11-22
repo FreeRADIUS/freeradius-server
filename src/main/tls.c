@@ -2190,6 +2190,14 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			}
 		}
 
+		if (conf->session_lifetime && 
+		    ((vp = fr_pair_find_by_num(pairlist->reply, PW_TLS_SESSION_EXPIRY, 0, TAG_ANY)) != NULL)) {
+			if (vp->vp_date <= time(NULL)) {
+				RWDEBUG("(TLS) cached data has expired (TLS-Session-Expiry) for session %s", buffer);
+				goto error;
+			}
+		}
+
 		/* move the cached VPs into the session */
 		fr_pair_list_mcopy_by_num(talloc_ctx, &vps, &pairlist->reply, 0, 0, TAG_ANY);
 
@@ -2365,6 +2373,12 @@ static int cbtls_cache_save_vps(SSL *ssl, SSL_SESSION *sess, VALUE_PAIR *vps)
 
 	if (vps) fr_pair_add(&fake->reply->vps, fr_pair_list_copy(fake->reply, vps));
 
+	if (conf->session_lifetime) {
+		vp = fr_pair_afrom_num(fake->state_ctx, PW_TLS_SESSION_EXPIRY, 0);
+		vp->vp_date = time(NULL) + conf->session_lifetime;
+		fr_pair_add(&fake->state, vp);
+	}
+
 	/*
 	 *	Use &request:TLS-Session-Id to save the
 	 *	&session-state:TLS-Session-Data values.
@@ -2503,6 +2517,14 @@ static SSL_SESSION *cbtls_cache_load(SSL *ssl, const unsigned char *data, int le
 				RWDEBUG2("(TLS) Updating Session-Timeout to %u, due to impending certificate expiration",
 					 vp->vp_integer);
 			}
+		}
+	}
+
+	if (conf->session_lifetime && 
+	    ((vp = fr_pair_find_by_num(fake->state, PW_TLS_SESSION_EXPIRY, 0, TAG_ANY)) != NULL)) {
+		if (vp->vp_date <= time(NULL)) {
+			RWDEBUG("(TLS) cached data has expired (TLS-Session-Expiry) for session %s", buffer);
+			goto error;
 		}
 	}
 
@@ -4562,7 +4584,7 @@ post_ca:
 		/*
 		 *	Our lifetime is in hours, this is in seconds.
 		 */
-		SSL_CTX_set_timeout(ctx, conf->session_lifetime * 3600);
+		SSL_CTX_set_timeout(ctx, conf->session_lifetime);
 
 		/*
 		 *	Set the maximum number of entries in the
@@ -4784,6 +4806,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 *	sessions.
 	 */
 	if (conf->session_lifetime > (7 * 24)) conf->session_lifetime = 7 * 24;
+	conf->session_lifetime *= 3600;
 
 	/*
 	 *	Only check for certificate things if we don't have a
@@ -5117,7 +5140,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				/* write the VPs to the cache file */
 				char filename[3 * MAX_SESSION_SIZE + 1], buf[1024];
 				FILE *vp_file;
-
+				
 				RDEBUG2("Saving session %s in the disk cache", buffer);
 
 				snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path,
@@ -5147,6 +5170,14 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 						vp_prints(buf, sizeof(buf), vp);
 						fputs(buf, vp_file);
 						prev = vp;
+					}
+
+					if (conf->session_lifetime &&
+					    ((vp = fr_pair_find_by_num(vps,  PW_TLS_SESSION_EXPIRY, 0, TAG_ANY)) != NULL)) {
+						uint32_t when = time(NULL) + conf->session_lifetime;
+
+						if (prev) fprintf(vp_file, ",\n\t");
+						fprintf(vp_file, "TLS-Session-Expiry = %u", when);
 					}
 
 					/*
