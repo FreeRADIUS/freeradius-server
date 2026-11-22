@@ -1533,7 +1533,7 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		dst->integer = htonl(src->ipaddr.s_addr);
 
 	} else {		/* they're of the same byte order */
-		memcpy(&dst, &src, src_len);
+		memcpy(dst, src, src_len);
 	}
 
 	return src_len;
