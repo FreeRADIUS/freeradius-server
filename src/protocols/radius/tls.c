@@ -21,7 +21,7 @@
  * @file protocols/radius/tls.c
  * @brief Constants for the RADIUS/TLS protocol.
  *
- * @copyright 2026 Network RADIUS SAS <legal@networkradius.com>
+ * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSID("$Id$")
 
