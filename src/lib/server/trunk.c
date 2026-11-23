@@ -341,11 +341,23 @@ static conf_parser_t const trunk_config_connection[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/** Initial smoothed round trip time, and variation, of a new connection
+ *
+ */
+#define TRUNK_RTT_INITIAL	fr_time_delta_from_msec(10)
+
+/** Multiplier for the round trip time variation, when calculating the retransmission timeout
+ *
+ */
+#define TRUNK_RTT_K		(4)
+
 #ifndef TRUNK_TESTS
 static fr_table_num_sorted_t const trunk_sort_table[] = {
-	{ L("queue"),	TRUNK_SORT_QUEUE	},
-	{ L("mru"),	TRUNK_SORT_MRU		},
 	{ L("lru"),	TRUNK_SORT_LRU		},
+	{ L("mrs"),	TRUNK_SORT_MRS		},
+	{ L("mru"),	TRUNK_SORT_MRU		},
+	{ L("queue"),	TRUNK_SORT_QUEUE	},
+	{ L("rto"),	TRUNK_SORT_RTO		}
 };
 static size_t trunk_sort_table_len = NUM_ELEMENTS(trunk_sort_table);
 
@@ -3910,6 +3922,13 @@ static int trunk_connection_spawn(trunk_t *trunk, fr_time_t now)
 	 */
 	MEM(tconn = talloc_zero(trunk, trunk_connection_t));
 	tconn->pub.trunk = trunk;
+
+	/*
+	 *	A new connection has no round trip time samples.  The initial values stop the connection from
+	 *	looking free when connections are ordered by `TRUNK_SORT_RTO`.
+	 */
+	tconn->pub.rtt.rtt = TRUNK_RTT_INITIAL;
+	tconn->pub.rtt.rttvar = TRUNK_RTT_INITIAL;
 	tconn->pub.state = TRUNK_CONN_HALTED;	/* All connections start in the halted state */
 
 	/*
@@ -5146,6 +5165,79 @@ static fr_cmp_ret_t _trunk_connection_order_by_last_reply(void const *one, void 
 	return _trunk_connection_order_by_shortest_queue(a, b);
 }
 
+/** Order connections by the most recent sent time which had a reply (MRS), and then by queue depth
+ *
+ * The application sets `pub.mrs_time`.  The connection with the larger `mrs_time` sorts first.
+ *
+ * Times which are not more than `time_window` apart are treated as equal, and then sorted by queue depth.
+ *
+ * @param[in] one	first connection.
+ * @param[in] two	second connection.
+ * @return
+ *	- <0 if `one` sorts before `two`.
+ *	- 0 if `one` and `two` sort equally.
+ *	- >0 if `one` sorts after `two`.
+ */
+static fr_cmp_ret_t _trunk_connection_order_by_mrs(void const *one, void const *two)
+{
+	trunk_connection_t const	*a = talloc_get_type_abort_const(one, trunk_connection_t);
+	trunk_connection_t const	*b = talloc_get_type_abort_const(two, trunk_connection_t);
+	fr_time_delta_t			time_window = a->pub.trunk->conf.time_window;
+	fr_cmp_ret_t			ret;
+
+	/*
+	 *	Pass `b` before `a`, to prefer the larger time.
+	 */
+	ret = fr_time_cmp(b->pub.mrs_time, a->pub.mrs_time);
+	if (ret != 0) {
+		fr_time_delta_t	delta;
+
+		delta = (ret > 0) ? fr_time_sub(b->pub.mrs_time, a->pub.mrs_time) :
+				    fr_time_sub(a->pub.mrs_time, b->pub.mrs_time);
+
+		/*
+		 *	Times which are more than `time_window` apart are sorted by `mrs_time`.
+		 */
+		if (fr_time_delta_cmp(delta, time_window) > 0) return ret;
+	}
+
+	return _trunk_connection_order_by_shortest_queue(a, b);
+}
+
+/** Order connections by the estimated time for a new request to complete
+ *
+ * The application sets `pub.rtt`.  The estimate for a connection is
+ *
+ *	(queue depth + 1) * (rtt + (TRUNK_RTT_K * rttvar))
+ *
+ * where queue depth is the number of requests in every state.  The connection with the smaller estimate
+ * sorts first.  Each request assigned to a connection increases the queue depth of the connection, so the
+ * estimate rises before the next reply changes the round trip time.  A connection which is twice as fast
+ * ends up with about twice as many requests.
+ *
+ * `time_window` does not apply.
+ *
+ * @param[in] one	first connection.
+ * @param[in] two	second connection.
+ * @return
+ *	- <0 if `one` sorts before `two`.
+ *	- 0 if `one` and `two` have the same estimate.
+ *	- >0 if `one` sorts after `two`.
+ */
+static fr_cmp_ret_t _trunk_connection_order_by_rto(void const *one, void const *two)
+{
+	trunk_connection_t const	*a = talloc_get_type_abort_const(one, trunk_connection_t);
+	trunk_connection_t const	*b = talloc_get_type_abort_const(two, trunk_connection_t);
+	fr_time_delta_t			a_cost, b_cost;
+
+	a_cost = fr_time_delta_mul(FR_RTT_RTO(&a->pub.rtt, TRUNK_RTT_K),
+				   (int64_t) trunk_request_count_by_connection(a, TRUNK_REQUEST_STATE_ALL) + 1);
+	b_cost = fr_time_delta_mul(FR_RTT_RTO(&b->pub.rtt, TRUNK_RTT_K),
+				   (int64_t) trunk_request_count_by_connection(b, TRUNK_REQUEST_STATE_ALL) + 1);
+
+	return fr_time_delta_cmp(a_cost, b_cost);
+}
+
 /** Order connections by the number of requests waiting to be written, and then by the time of the last write
  *
  * The comparisons, in this order:
@@ -5326,6 +5418,14 @@ trunk_t *trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 		case TRUNK_SORT_LRU:
 			trunk->funcs.connection_prioritise = _trunk_connection_order_by_last_write;
+			break;
+
+		case TRUNK_SORT_MRS:
+			trunk->funcs.connection_prioritise = _trunk_connection_order_by_mrs;
+			break;
+
+		case TRUNK_SORT_RTO:
+			trunk->funcs.connection_prioritise = _trunk_connection_order_by_rto;
 			break;
 		}
 	}

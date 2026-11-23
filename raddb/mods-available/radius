@@ -647,34 +647,77 @@ radius {
 		#  available.  We therefore need to choose the "best" connection according to some
 		#  criteria.
 		#
+		#  If `sort` is not set, the default is `queue` (which v3 calls `outstanding` packets).  This
+		#  is a reasonable choice for many common situations, and is easy to calculate.  The other
+		#  sorting methods have different pros and cons, depending on your local network.
+		#
+		#  There are some strong caveats, though.  If this server sends packets to a "next hop"
+		#  server, which then sends packets to multiple _different_ destinations, then none of these
+		#  sorting methods will result in the "best" behavior.  It is simply impossible to choose a
+		#  connection based on the behavior of (effectively) the entire Internet.
+		#
+		#  Some rough guidlines:
+		#
+		#  * If the next hop stores accounting data and nothing else, and does not proxy, then the
+		#    `sort = rto` metho is likely to work well.
+		#
+		#  * If the next hop does authentication, and nothing else, and does not proxy, then the `sort
+		#    = mrs` is likely to work well.
+		#
+		#  * If the next hop does both authentication and account, and does not proxy, then the `sort
+		#    = mrs` method is likey to work well.
+		#
+		#  * If the next hop is a proxy over a congested link, then `sort = lru` is likely to work
+		#    well.
+		#
+		#  * For the v3 behavior, choose `sort = queue`.
+		#
+		#  The `lru` method prefers connections which we haven't written to in a while.  This method
+		#  works a lot better than others on links with high congestion or high latency.  That is, so
+		#  long as a connection can be written to, we might as well keep using it.  Writing to a
+		#  connection we haven't used in a while can more evenly spread the traffic across links which
+		#  have different characteristics.
+		#
+		#  The `mru` method prefers connections which just replied, _even if_ the connection has high
+		#  latency.  It is most useful when the "next hop" is on the same network as the RADIUS proxy.
+		#  That is, if one connection is seeing lots of replies, then it can be efficient to keep
+		#  using it.  The downside of `mru` is that it chooses a connection which has just replied,
+		#  even if that connection is slow and overloaded.
+		#
+		#  The `mrs` method prefers connections which have the smallest time delta between request and
+		#  response.  It is most useful when the "next hop" is on the same network as this server.
+		#
+		#  The `rto` method tries to spread the work across all connections.  This means that it is a
+		#  better choice for accounting packets, when the "next hop" is on the same network as this
+		#  server.
+		#
 		#  The `queue` method is what was used in v3 for load-balancing among connections and home
 		#  servers.  It works reasonably well in practice.  A fast connection will generally have a
 		#  smaller queue than a slow connection, for example.  So there are good reasons to choose the
 		#  fast connection.
 		#
-		#  The `mru` method prefers connections which just replied, _even if_ the connection has high
-		#  latency.  It is likly best used when the "next hop" is on the same network as the RADIUS
-		#  proxy.  That is, if one connection is seeing lots of replies, then it can be efficient to
-		#  keep using it.  The downside of `mru` is that it chooses a connection which has just
-		#  replied, even if that connection is slow and overloaded.
-		#
-		#  The `lru` method prefers connections which we haven't written to in a while.  This method
-		#  works a lot better than `queue` or `mru` on links with high congestion or high latency.
-		#  That is, so long as a connection can be written to, we might as well keep using it.
-		#  Writing to a connection we haven't used in a while can more evenly spread the traffic
-		#  across links which have different characteristics.
-		#
 		#  [Options="header,autowidth"]
+		#  [cols="20%,80%"]
 		#  |===
 		#  | Value | Description
-		#  | queue | Choose the connection with the smallest queue depth.  i.e. in v3 terms,
-		#            by the number of "outstanding" packets.  This is the default.
-		#  | mru   | Most Recently Used (MRU).  Choose the connection which has most recently
-		#            replied, then choose the connection with the smallest queue depth.
-		#            See `time_window` below for additional configuration.
 		#  | lru   | Least Recently Used (LRU).  Choose the connection with the smallest queue depth,
 		#            then choose the connection which wrote a request the longest time in the past.
 		#            See `time_window` below for additional configuration.
+		#  | mrs   | Most Recently Sent with reply (MRS).  Choose the connection which has most recently
+		#            sent a request which received a reply, then choose the connection with the
+		#            smallest queue depth.  See `time_window` below for additional configuration.
+		#            You should set `time_window` to the expected time between requests and responses.
+		#            That will ensure that responsive connections are more clearly separated from
+		#            connections which are significantly slower.
+		#  | mru   | Most Recently Used (MRU).  Choose the connection which has most recently
+		#            replied, then choose the connection with the smallest queue depth.
+		#            See `time_window` below for additional configuration.
+		#  | queue | Choose the connection with the smallest queue depth.  i.e. in v3 terms,
+		#            by the number of "outstanding" packets.  *If `sort` is not set, this is the
+		#            default*.
+		#  | rto   | Expected completion time.  Sort by `(queue depth + 1 * RTO)`, where RTO is the
+		#            typical `RTO = RTT + 4 * RTTVAR)`.  This metric tries to estimate the total
+		#            CPU time needed to service all requests on a connection.
 		#  |===
 		#
 		sort = queue

@@ -218,17 +218,42 @@ Allowed values: yes, no, auto
 
 The default is `auto`.
 
-response_window:: If we do not receive any replies within this time
-period, then start `zombie_period`
+response_timeouts:: How many packets in a row have to time out before
+a connection is marked as `zombie`.
 
-zombie_period:: If the home server does not reply to packets within
-`response_window`, then `zombie_period` starts.
+A packet which times out is counted only if the home server has not
+replied to any packet since the original request was sent.  Any valid
+reply resets the count to zero.
 
-When `zombie_period` starts, a connection is marked `zombie`, and then
-is not used to send new packets. If there are no responses on this
-connection within `zombie_period`, the module either closes the
-connection (no `status_check` subsection), or starts pinging the home
-server (`status_check.type = Status-Server`).
+The connection is marked `zombie` only when the count reaches
+`response_timeouts` _and_ the `zombie_period` condition below is also
+true.  Set `response_timeouts = 1` to mark a connection as `zombie`
+after the first timeout which meets the `zombie_period` condition.
+
+Useful range of values: 1 to 10
+
+zombie_period:: How long a home server has to fail responses before a
+connection is marked as `zombie`.
+
+When a packet reaches `max_rtx_duration` without a reply, the home
+server might be dead.  If the home server has replied recently, then
+it's alive, but flaky.  If the home server hasn't replied to any
+packets for `zombie_period`, then the connection is marked as
+`zombie`.
+
+`zombie_period` is set to least 1.5 times the longest
+`max_rtx_duration` of any packet type.
+
+When a connection is marked `zombie`, the module stops sending new
+packets on that connection.
+
+If `status_check` is set, then the connection is marked alive or dead
+based on the confituration of the `status_check` section.
+
+Otherwise (no `status_check` section), the module depends on replies
+to outstanding requests.  If it receives replies, then the connection
+is marked as `alive`.  If no replies are received, then the connection
+is marked as `dead.
 
 revive_interval:: If there are no status checks, mark the home server
 alive after `revive_interval` timeout.
@@ -466,6 +491,119 @@ close_delay:: How long (in seconds) a connection must be below
 
 manage_interval:: How often (in seconds) the connections are checked
 for limits, in order to open / close connections.
+
+sort:: Which sorting method to use when choosing a connection.
+
+When we want to send a request over a connection, there may be
+multiple connections available.  We therefore need to choose the
+"best" connection according to some criteria.
+
+If `sort` is not set, the default is `queue` (which v3 calls
+`outstanding` packets).  This is a reasonable choice for many common
+situations, and is easy to calculate.  The other sorting methods have
+different pros and cons, depending on your local network.
+
+There are some strong caveats, though.  If this server sends packets
+to a "next hop" server, which then sends packets to multiple
+_different_ destinations, then none of these sorting methods will
+result in the "best" behavior.  It is simply impossible to choose a
+connection based on the behavior of (effectively) the entire Internet.
+
+Some rough guidlines:
+
+  * If the next hop stores accounting data and nothing else, and does not proxy, then the
+  `sort = rto` metho is likely to work well.
+
+  * If the next hop does authentication, and nothing else, and does not proxy, then the `sort
+  = mrs` is likely to work well.
+
+  * If the next hop does both authentication and account, and does not proxy, then the `sort
+  = mrs` method is likey to work well.
+
+  * If the next hop is a proxy over a congested link, then `sort = lru` is likely to work
+  well.
+
+  * For the v3 behavior, choose `sort = queue`.
+
+The `lru` method prefers connections which we haven't written to in a
+while.  This method works a lot better than others on links with high
+congestion or high latency.  That is, so long as a connection can be
+written to, we might as well keep using it.  Writing to a connection
+we haven't used in a while can more evenly spread the traffic across
+links which have different characteristics.
+
+The `mru` method prefers connections which just replied, _even if_ the
+connection has high latency.  It is most useful when the "next hop" is
+on the same network as the RADIUS proxy. That is, if one connection is
+seeing lots of replies, then it can be efficient to keep using it.
+The downside of `mru` is that it chooses a connection which has just
+replied, even if that connection is slow and overloaded.
+
+The `mrs` method prefers connections which have the smallest time
+delta between request and response.  It is most useful when the "next
+hop" is on the same network as this server.
+
+The `rto` method tries to spread the work across all connections.
+This means that it is a better choice for accounting packets, when the
+"next hop" is on the same network as this server.
+
+The `queue` method is what was used in v3 for load-balancing among
+connections and home servers.  It works reasonably well in practice.
+A fast connection will generally have a smaller queue than a slow
+connection, for example.  So there are good reasons to choose the fast
+connection.
+
+[Options="header,autowidth"]
+[cols="20%,80%"]
+|===
+| Value | Description
+| lru   | Least Recently Used (LRU).  Choose the connection with the smallest queue depth,
+          then choose the connection which wrote a request the longest time in the past.
+          See `time_window` below for additional configuration.
+| mrs   | Most Recently Sent with reply (MRS).  Choose the connection which has most recently
+          sent a request which received a reply, then choose the connection with the
+          smallest queue depth.  See `time_window` below for additional configuration.
+          You should set `time_window` to the expected time between requests and responses.
+          That will ensure that responsive connections are more clearly separated from
+          connections which are significantly slower.
+| mru   | Most Recently Used (MRU).  Choose the connection which has most recently
+          replied, then choose the connection with the smallest queue depth.
+          See `time_window` below for additional configuration.
+| queue | Choose the connection with the smallest queue depth.  i.e. in v3 terms,
+          by the number of "outstanding" packets.  *If `sort` is not set, this is the
+          default*.
+| rto   | Expected completion time.  Sort by `(queue depth + 1 * RTO)`, where RTO is the
+          typical `RTO = RTT + 4 * RTTVAR)`.  This metric tries to estimate the total
+          CPU time needed to service all requests on a connection.
+|===
+
+time_window:: Treat connections as equal within this time window.
+
+When `time_window` is set, the requests are load-balanced across all
+connections which are similar within the given `time_window`.  This
+allows the server to prefer active connections, and then load-balance
+among them active connections.
+
+If most connections are responsive, then a small `time_window` allows
+active connections to be chosen based on queue depth.  However, as
+soon as one connection goes bad (i.e. it is much slower than the
+others), it will *not* be chosen.  This allows the server to quickly
+adapt to connections which become unresponsive.
+
+For `sort = mru`, the `time_window` is calculated by comparing the
+last replies.
+
+If `time_window = 0` for `mru`, then the sorting chooses the
+connection which has replied most recently, even if it has more
+requests outstanding than other connections.  This configuration will
+then choose a slow connection much of the time, resulting in poor load
+balancing.
+
+For `sort = lru`, the `time_window` is calculated by comparing the
+last time that the connection wrote a request.
+
+The `lru` sorting sorts first by smallest queue depth, and only if the
+queue depths are similar does it sort by least recently sent request.
 
 connection { ... }:: Per-connection configuration.
 
@@ -793,8 +931,8 @@ radius {
 	type = Access-Request
 	type = Accounting-Request
 	require_message_authenticator = auto
-	response_window = 15
-	zombie_period = 10
+	response_timeouts = 3
+	zombie_period = 45
 	revive_interval = 3600
 	status_check {
 		type = Status-Server
@@ -854,6 +992,8 @@ radius {
 		open_delay = 0.2
 		close_delay = 1.0
 		manage_interval = 0.2
+		sort = queue
+		time_window = 0.1
 		connection {
 			connect_timeout = 3.0
 			reconnect_delay = 5
@@ -916,8 +1056,7 @@ radius proxy {
 		src_port_end = 11000
 	}
 	home_server_lifetime = 3600
-	response_window = 15
-	zombie_period = 10
+	zombie_period = 45
 	revive_interval = 3600
 	Access-Request {
 		initial_rtx_time = 2
@@ -935,6 +1074,8 @@ radius proxy {
 		open_delay = 0.2
 		close_delay = 1.0
 		manage_interval = 0.2
+		sort = mru
+		time_window = 0.1
 		connection {
 			connect_timeout = 3.0
 			reconnect_delay = 5

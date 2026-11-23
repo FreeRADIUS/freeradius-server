@@ -164,9 +164,12 @@ typedef enum : uint8_t {
 	TRUNK_SORT_QUEUE = 0,					//!< Order by queue depth only.
 	TRUNK_SORT_MRU,						//!< Most Recently Used (MRU): order by the time of the last
 								///< successful reply, then by queue depth.
-	TRUNK_SORT_LRU						//!< Least Recently Used (LRU): order by fewer requests in the `pending`
+	TRUNK_SORT_LRU,						//!< Least Recently Used (LRU): order by fewer requests in the `pending`
 								///< and `partial` states, then by the older `last_write_success`, then
 								///< by queue depth.
+	TRUNK_SORT_MRS,						//!< Most Recent Sent (MRS): order by the larger `mrs_time`, then by
+								///< queue depth.
+	TRUNK_SORT_RTO						//!< Order by the smaller estimated time for a new request to complete.
 } trunk_sort_t;
 
 typedef enum : int8_t {

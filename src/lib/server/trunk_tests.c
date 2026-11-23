@@ -1802,6 +1802,219 @@ static void test_connection_order_lru(void)
 	for (i = 0; i < NUM_ELEMENTS(preq); i++) talloc_free(preq[i]);
 }
 
+static void test_connection_order_mrs(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 2,
+					.min = 2,
+					.max = 2,
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
+					.sort = TRUNK_SORT_MRS,
+					.time_window = fr_time_delta_from_sec(1)
+				};
+	test_proto_request_t	*preq[2];
+	trunk_request_t		*treq[2] = { NULL, NULL };
+	trunk_connection_t	*a, *b, *older, *newer;
+	size_t			i;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+	for (i = 0; i < NUM_ELEMENTS(preq); i++) preq[i] = talloc_zero(NULL, test_proto_request_t);
+
+	/*
+	 *	Allow the connections to open
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_ASSERT(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 2);
+	test_two_active(trunk, &a, &b);
+	TEST_ASSERT(a && b);
+
+	TEST_CASE("sort = mrs selects the most recent sent ordering");
+	TEST_CHECK(trunk->funcs.connection_prioritise == _trunk_connection_order_by_mrs);
+
+	TEST_CASE("The connection with the larger mrs_time sorts first");
+	a->pub.mrs_time = fr_time_wrap((int64_t) 20 * NSEC);
+	b->pub.mrs_time = fr_time_wrap((int64_t) 10 * NSEC);
+	TEST_CHECK(_trunk_connection_order_by_mrs(a, b) < 0);
+	TEST_CHECK(_trunk_connection_order_by_mrs(b, a) > 0);
+
+	TEST_CASE("Times which are not more than time_window apart are equal");
+	b->pub.mrs_time = fr_time_sub_time_delta(a->pub.mrs_time, fr_time_delta_from_nsec(NSEC / 5));
+	TEST_CHECK(_trunk_connection_order_by_mrs(a, b) == 0);
+	TEST_CHECK(_trunk_connection_order_by_mrs(b, a) == 0);
+
+	TEST_CASE("Times which are more than time_window apart sort by mrs_time");
+	b->pub.mrs_time = fr_time_sub_time_delta(a->pub.mrs_time, fr_time_delta_from_sec(2));
+	TEST_CHECK(_trunk_connection_order_by_mrs(a, b) < 0);
+	TEST_CHECK(_trunk_connection_order_by_mrs(b, a) > 0);
+
+	TEST_CASE("time_window is zero, and times which differ by one nanosecond are not equal");
+	trunk->conf.time_window = fr_time_delta_wrap(0);
+	b->pub.mrs_time = fr_time_sub_time_delta(a->pub.mrs_time, fr_time_delta_from_nsec(1));
+	TEST_CHECK(_trunk_connection_order_by_mrs(a, b) < 0);
+	trunk->conf.time_window = fr_time_delta_from_sec(1);
+
+	TEST_CASE("Equal times order by queue depth");
+	b->pub.mrs_time = a->pub.mrs_time;
+	TEST_CHECK(_trunk_connection_order_by_mrs(a, b) == 0);
+
+	/*
+	 *	Set the times, and reorder the heap.  The test does not run the event loop, so the requests
+	 *	wait to be written.
+	 */
+	a->pub.mrs_time = fr_time_wrap((int64_t) 1000 * NSEC);
+	b->pub.mrs_time = fr_time_wrap((int64_t) 10 * NSEC);
+	CONN_REORDER(a);
+	CONN_REORDER(b);
+	newer = a;
+	older = b;
+	TEST_ASSERT(fr_minmax_heap_min_peek(trunk->active) == newer);
+
+	TEST_CASE("The first two requests go to the connection with the larger mrs_time");
+	trunk_request_enqueue(&treq[0], trunk, NULL, preq[0], NULL);
+	preq[0]->treq = treq[0];
+	trunk_request_enqueue(&treq[1], trunk, NULL, preq[1], NULL);
+	preq[1]->treq = treq[1];
+	TEST_CHECK(trunk_request_count_by_connection(newer, TRUNK_REQUEST_STATE_ALL) == 2);
+	TEST_CHECK(trunk_request_count_by_connection(older, TRUNK_REQUEST_STATE_ALL) == 0);
+
+	TEST_CASE("When the times become equal, the connection with fewer requests sorts first");
+	older->pub.mrs_time = newer->pub.mrs_time;
+	CONN_REORDER(older);
+	TEST_CHECK(_trunk_connection_order_by_mrs(older, newer) < 0);
+	TEST_CHECK(fr_minmax_heap_min_peek(trunk->active) == older);
+
+	talloc_free(ctx);
+	for (i = 0; i < NUM_ELEMENTS(preq); i++) talloc_free(preq[i]);
+}
+
+static void test_connection_order_rto(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 2,
+					.min = 2,
+					.max = 2,
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
+					.sort = TRUNK_SORT_RTO
+				};
+	test_proto_request_t	*preq[5];
+	trunk_request_t		*treq[5] = { NULL, NULL, NULL, NULL, NULL };
+	trunk_connection_t	*a, *b;
+	size_t			i;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+	for (i = 0; i < NUM_ELEMENTS(preq); i++) preq[i] = talloc_zero(NULL, test_proto_request_t);
+
+	/*
+	 *	Allow the connections to open
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_ASSERT(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 2);
+	test_two_active(trunk, &a, &b);
+	TEST_ASSERT(a && b);
+
+	TEST_CASE("sort = rto selects the RTO ordering");
+	TEST_CHECK(trunk->funcs.connection_prioritise == _trunk_connection_order_by_rto);
+
+	TEST_CASE("A new connection has an RTT and an RTTVAR of 10ms");
+	TEST_CHECK(fr_time_delta_eq(a->pub.rtt.rtt, fr_time_delta_from_msec(10)));
+	TEST_CHECK(fr_time_delta_eq(a->pub.rtt.rttvar, fr_time_delta_from_msec(10)));
+	TEST_CHECK(fr_time_delta_eq(b->pub.rtt.rtt, fr_time_delta_from_msec(10)));
+	TEST_CHECK(fr_time_delta_eq(b->pub.rtt.rttvar, fr_time_delta_from_msec(10)));
+
+	TEST_CASE("Connections with the same RTT, RTTVAR and queue depth are equal");
+	TEST_CHECK(_trunk_connection_order_by_rto(a, b) == 0);
+
+	TEST_CASE("With equal queue depth, the connection with the smaller RTT sorts first");
+	a->pub.rtt.rtt = fr_time_delta_from_msec(10);
+	b->pub.rtt.rtt = fr_time_delta_from_msec(20);
+	TEST_CHECK(_trunk_connection_order_by_rto(a, b) < 0);
+	TEST_CHECK(_trunk_connection_order_by_rto(b, a) > 0);
+
+	TEST_CASE("With equal RTT, the connection with the smaller RTTVAR sorts first");
+	a->pub.rtt.rtt = fr_time_delta_from_msec(10);
+	b->pub.rtt.rtt = fr_time_delta_from_msec(10);
+	a->pub.rtt.rttvar = fr_time_delta_from_msec(1);
+	b->pub.rtt.rttvar = fr_time_delta_from_msec(5);
+	TEST_CHECK(_trunk_connection_order_by_rto(a, b) < 0);
+	TEST_CHECK(_trunk_connection_order_by_rto(b, a) > 0);
+
+	TEST_CASE("The RTO is the RTT plus four times the RTTVAR");
+	a->pub.rtt.rtt = fr_time_delta_from_msec(10);
+	a->pub.rtt.rttvar = fr_time_delta_from_msec(10);	/* RTO is 50ms */
+	b->pub.rtt.rtt = fr_time_delta_from_msec(49);
+	b->pub.rtt.rttvar = fr_time_delta_wrap(0);		/* RTO is 49ms */
+	TEST_CHECK(_trunk_connection_order_by_rto(b, a) < 0);
+	b->pub.rtt.rtt = fr_time_delta_from_msec(51);		/* RTO is 51ms */
+	TEST_CHECK(_trunk_connection_order_by_rto(a, b) < 0);
+
+	TEST_CASE("time_window does not apply");
+	trunk->conf.time_window = fr_time_delta_from_sec(1);
+	TEST_CHECK(_trunk_connection_order_by_rto(a, b) < 0);
+	trunk->conf.time_window = fr_time_delta_wrap(0);
+
+	/*
+	 *	Set the round trip times, and reorder the heap.  The test does not run the event loop, so the
+	 *	requests wait to be written.  The estimates for the next request are:
+	 *
+	 *	- connection a: 10ms, 20ms, 30ms, 40ms, 50ms...
+	 *	- connection b: 25ms, 50ms...
+	 */
+	a->pub.rtt.rtt = fr_time_delta_from_msec(10);
+	a->pub.rtt.rttvar = fr_time_delta_wrap(0);
+	b->pub.rtt.rtt = fr_time_delta_from_msec(25);
+	b->pub.rtt.rttvar = fr_time_delta_wrap(0);
+	CONN_REORDER(a);
+	CONN_REORDER(b);
+	TEST_ASSERT(fr_minmax_heap_min_peek(trunk->active) == a);
+
+	TEST_CASE("The first request goes to the faster connection");
+	trunk_request_enqueue(&treq[0], trunk, NULL, preq[0], NULL);
+	preq[0]->treq = treq[0];
+	TEST_CHECK(trunk_request_count_by_connection(a, TRUNK_REQUEST_STATE_ALL) == 1);
+	TEST_CHECK(trunk_request_count_by_connection(b, TRUNK_REQUEST_STATE_ALL) == 0);
+
+	TEST_CASE("The second request still goes to the faster connection, 20ms is less than 25ms");
+	trunk_request_enqueue(&treq[1], trunk, NULL, preq[1], NULL);
+	preq[1]->treq = treq[1];
+	TEST_CHECK(trunk_request_count_by_connection(a, TRUNK_REQUEST_STATE_ALL) == 2);
+
+	TEST_CASE("The third request goes to the slower connection, 30ms is more than 25ms");
+	trunk_request_enqueue(&treq[2], trunk, NULL, preq[2], NULL);
+	preq[2]->treq = treq[2];
+	TEST_CHECK(trunk_request_count_by_connection(b, TRUNK_REQUEST_STATE_ALL) == 1);
+
+	TEST_CASE("The next two requests go to the faster connection, 30ms and 40ms are less than 50ms");
+	trunk_request_enqueue(&treq[3], trunk, NULL, preq[3], NULL);
+	preq[3]->treq = treq[3];
+	trunk_request_enqueue(&treq[4], trunk, NULL, preq[4], NULL);
+	preq[4]->treq = treq[4];
+	TEST_CHECK(trunk_request_count_by_connection(a, TRUNK_REQUEST_STATE_ALL) == 4);
+	TEST_CHECK(trunk_request_count_by_connection(b, TRUNK_REQUEST_STATE_ALL) == 1);
+
+	talloc_free(ctx);
+	for (i = 0; i < NUM_ELEMENTS(preq); i++) talloc_free(preq[i]);
+}
+
 static void test_connection_order_lru_after_write(void)
 {
 	TALLOC_CTX		*ctx = talloc_init_const("test");
@@ -2562,6 +2775,8 @@ TEST_LIST = {
 	{ "Order - sort",				test_connection_order_sort },
 	{ "Order - sort = lru",				test_connection_order_lru },
 	{ "Order - sort = lru, reorder after write",	test_connection_order_lru_after_write },
+	{ "Order - sort = mrs",				test_connection_order_mrs },
+	{ "Order - sort = rto",				test_connection_order_rto },
 	{ "Order - Reordered after demux",		test_connection_order_after_demux },
 
 	/*
