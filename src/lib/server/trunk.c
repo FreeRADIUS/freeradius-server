@@ -356,6 +356,8 @@ conf_parser_t const trunk_config[] = {
 
 	{ FR_CONF_OFFSET("manage_interval", trunk_conf_t, manage_interval), .dflt = "0.2" },
 
+	{ FR_CONF_OFFSET("time_window", trunk_conf_t, time_window), .dflt = "0.1" },
+
 	{ FR_CONF_OFFSET("max_backlog", trunk_conf_t, max_backlog), .dflt = "1000" },
 
 	{ FR_CONF_OFFSET("backlog_on_failed_conn", trunk_conf_t, backlog_on_failed_conn), },
@@ -3035,9 +3037,23 @@ static inline void trunk_connection_auto_unfull(trunk_connection_t *tconn)
  */
 static inline void trunk_connection_readable(trunk_connection_t *tconn)
 {
-	trunk_t *trunk = tconn->pub.trunk;
+	trunk_t		*trunk = tconn->pub.trunk;
+	fr_time_t	last_reply = tconn->pub.last_read_success;
 
 	DO_REQUEST_DEMUX(tconn);
+
+	/*
+	 *	The default connection ordering reads `last_read_success`.  `trunk_request_signal_complete()`
+	 *	sets `last_read_success` when the application completes a request from the demux function.
+	 *	Because the heap does not reorder a connection by itself, the trunk reorders the connection
+	 *	here, after the demux function returns.
+	 *
+	 *	Because the trunk defers freeing a connection while the trunk runs a handler, `tconn` is
+	 *	still valid after the demux function returns.
+	 */
+	if (!fr_time_eq(last_reply, tconn->pub.last_read_success) && (tconn->pub.state == TRUNK_CONN_ACTIVE)) {
+		CONN_REORDER(tconn);
+	}
 }
 
 /** A connection is writable.  Call the request_mux function to write pending requests
@@ -5018,6 +5034,12 @@ int trunk_connection_manage_schedule(trunk_t *trunk)
 
 /** Order connections by queue depth
  *
+ * @param[in] one	first connection.
+ * @param[in] two	second connection.
+ * @return
+ *	- <0 if `one` has at least two fewer requests than `two`.
+ *	- 0 if the request counts of `one` and `two` differ by one or less.
+ *	- >0 if `one` has at least two more requests than `two`.
  */
 static fr_cmp_ret_t _trunk_connection_order_by_shortest_queue(void const *one, void const *two)
 {
@@ -5031,6 +5053,52 @@ static fr_cmp_ret_t _trunk_connection_order_by_shortest_queue(void const *one, v
 	 *	Add a fudge factor of 1 to reduce spurious rebalancing
 	 */
 	return (fr_cmp_ret_t)(((a_count > b_count) && ((a_count - b_count) > 1)) - ((b_count > a_count) && ((b_count - a_count) > 1)));
+}
+
+/** Order connections by the time of the last successful reply (MRU), and then by queue depth
+ *
+ * A connection which is replying will be preferred to a connection which has replies farther in the past.
+ *
+ * Replies which are less than `time_window` apart are treated as equal.  An exact comparison would send every
+ * new request to the connection which had the most recent reply.  Treating replies which are less than
+ * `time_window` apart as equal balances the load between the connections which reply.
+ *
+ * If the two connections have replied recently, then sort by queue depth.
+ *
+ * @param[in] one	first connection.
+ * @param[in] two	second connection.
+ * @return
+ *	- <0 if `one` sorts before `two`.
+ *	- 0 if `one` and `two` sort equally.
+ *	- >0 if `one` sorts after `two`.
+ */
+static fr_cmp_ret_t _trunk_connection_order_by_last_reply(void const *one, void const *two)
+{
+	trunk_connection_t const	*a = talloc_get_type_abort_const(one, trunk_connection_t);
+	trunk_connection_t const	*b = talloc_get_type_abort_const(two, trunk_connection_t);
+	fr_time_delta_t			time_window = a->pub.trunk->conf.time_window;
+	fr_cmp_ret_t			ret;
+
+	/*
+	 *	Pass `b` before `a`, to prefer the larger time (the more recent reply).
+	 */
+	ret = fr_time_cmp(b->pub.last_read_success, a->pub.last_read_success);
+	if (ret != 0) {
+		fr_time_delta_t	delta;
+
+		delta = (ret > 0) ? fr_time_sub(b->pub.last_read_success, a->pub.last_read_success) :
+				    fr_time_sub(a->pub.last_read_success, b->pub.last_read_success);
+
+		/*
+		 *	Replies which are more than `time_window` apart are sorted by last_read_success.
+		 */
+		if (fr_time_delta_cmp(delta, time_window) > 0) return ret;
+	}
+
+	/*
+	 *	Otherwise sort the connections by queue depth.
+	 */
+	return trunk_connection_order_by_depth(a, b);
 }
 
 /** Free a trunk, gracefully closing all connections.
@@ -5140,7 +5208,11 @@ trunk_t *trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	memcpy(&trunk->funcs, funcs, sizeof(trunk->funcs));
 	if (!trunk->funcs.connection_prioritise) {
-		trunk->funcs.connection_prioritise = _trunk_connection_order_by_shortest_queue;
+		if (fr_time_delta_ispos(conf->time_window)) {
+			trunk->funcs.connection_prioritise = trunk_connection_order_by_last_reply;
+		} else {
+			trunk->funcs.connection_prioritise = _trunk_connection_order_by_shortest_queue;
+		}
 	}
 	if (!trunk->funcs.request_prioritise) trunk->funcs.request_prioritise = fr_pointer_cmp;
 

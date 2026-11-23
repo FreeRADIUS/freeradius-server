@@ -273,6 +273,13 @@ typedef struct {
 	fr_time_delta_t		manage_interval;	//!< How often we run the management algorithm to
 							///< open/close connections.
 
+	fr_time_delta_t		time_window;		//!< The default connection ordering treats the last successful
+							///< replies of two connections as equal when the replies are less
+							///< than `time_window` apart.  Connections with equal replies then
+							///< sort by queue depth.  If `time_window` is zero, the ordering
+							///< compares the exact reply times.  Queue depth breaks only an exact
+							///< tie.
+
 	unsigned		req_pool_headers;	//!< How many chunk headers the talloc pool allocated
 							///< with the treq should contain.
 

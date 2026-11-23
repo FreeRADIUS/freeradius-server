@@ -1521,6 +1521,197 @@ static void test_connection_rebalance_requests(void)
 	talloc_free(preq);
 }
 
+/** Get the two active connections of a trunk which has two connections
+ *
+ */
+static void test_two_active(trunk_t *trunk, trunk_connection_t **a, trunk_connection_t **b)
+{
+	fr_minmax_heap_iter_t	iter;
+
+	*a = fr_minmax_heap_iter_init(trunk->active, &iter);
+	*b = fr_minmax_heap_iter_next(trunk->active, &iter);
+}
+
+static void test_connection_order_zero_window(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 2,
+					.min = 2,
+					.max = 2,
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
+				};
+	trunk_connection_t	*a, *b;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+
+	/*
+	 *	Allow the connections to open
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_ASSERT(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 2);
+	test_two_active(trunk, &a, &b);
+	TEST_ASSERT(a && b);
+
+	TEST_CASE("time_window is zero, and the connection with the most recent reply sorts first");
+	a->pub.last_read_success = fr_time_wrap(10);
+	b->pub.last_read_success = fr_time_wrap(20);
+	CONN_REORDER(a);
+	CONN_REORDER(b);
+	TEST_CHECK(_trunk_connection_order_by_last_reply(b, a) < 0);
+	TEST_CHECK(_trunk_connection_order_by_last_reply(a, b) > 0);
+	TEST_CHECK(fr_minmax_heap_min_peek(trunk->active) == b);
+
+	TEST_CASE("time_window is zero, and a connection which never replied sorts last");
+	a->pub.last_read_success = fr_time_wrap(0);
+	CONN_REORDER(a);
+	TEST_CHECK(fr_minmax_heap_min_peek(trunk->active) == b);
+
+	TEST_CASE("time_window is zero, and replies which differ by one nanosecond are not equal");
+	a->pub.last_read_success = fr_time_wrap(19);
+	TEST_CHECK(_trunk_connection_order_by_last_reply(b, a) < 0);
+
+	TEST_CASE("time_window is zero, and equal reply times order by queue depth");
+	a->pub.last_read_success = fr_time_wrap(20);
+	TEST_CHECK(_trunk_connection_order_by_last_reply(a, b) == 0);
+
+	talloc_free(ctx);
+}
+
+static void test_connection_order_window(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 2,
+					.min = 2,
+					.max = 2,
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
+					.time_window = fr_time_delta_from_sec(1)
+				};
+	trunk_connection_t	*a, *b;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+
+	/*
+	 *	Allow the connections to open
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_ASSERT(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 2);
+	test_two_active(trunk, &a, &b);
+	TEST_ASSERT(a && b);
+
+	TEST_CASE("Replies which are less than time_window apart are equal");
+	a->pub.last_read_success = fr_time_wrap(10 * NSEC);
+	b->pub.last_read_success = fr_time_add_time_delta(a->pub.last_read_success, fr_time_delta_from_nsec(NSEC / 2));
+	TEST_CHECK(_trunk_connection_order_by_last_reply(a, b) == 0);
+	TEST_CHECK(_trunk_connection_order_by_last_reply(b, a) == 0);
+
+	TEST_CASE("Replies which are time_window or more apart sort by the time of the reply");
+	b->pub.last_read_success = fr_time_add_time_delta(a->pub.last_read_success, fr_time_delta_from_sec(1));
+	TEST_CHECK(_trunk_connection_order_by_last_reply(b, a) < 0);
+	TEST_CHECK(_trunk_connection_order_by_last_reply(a, b) > 0);
+
+	TEST_CASE("A connection which never replied sorts after a connection which replied");
+	a->pub.last_read_success = fr_time_wrap(0);
+	TEST_CHECK(_trunk_connection_order_by_last_reply(b, a) < 0);
+
+	TEST_CASE("Two connections which never replied sort by queue depth");
+	b->pub.last_read_success = fr_time_wrap(0);
+	TEST_CHECK(_trunk_connection_order_by_last_reply(a, b) == 0);
+
+	talloc_free(ctx);
+}
+
+static void test_connection_order_after_demux(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 2,
+					.min = 2,
+					.max = 2,
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
+				};
+	test_proto_request_t	*preq;
+	trunk_connection_t	*first, *second;
+	trunk_request_t		*treq = NULL;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+	preq = talloc_zero(NULL, test_proto_request_t);
+
+	/*
+	 *	Allow the connections to open
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_ASSERT(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 2);
+
+	/*
+	 *	Send the request on the connection which is not at the top of the heap, and take the
+	 *	connection at the top out of service.
+	 */
+	first = fr_minmax_heap_min_peek(trunk->active);
+	TEST_ASSERT(first != NULL);
+	trunk_connection_signal_inactive(first);
+	second = fr_minmax_heap_min_peek(trunk->active);
+	TEST_ASSERT(second && (first != second));
+
+	trunk_request_enqueue(&treq, trunk, NULL, preq, NULL);
+	preq->treq = treq;
+
+	/*
+	 *	Write the request, loop the request back, and then read the reply.
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CHECK(preq->completed == true);
+	TEST_CHECK(fr_time_gt(second->pub.last_read_success, fr_time_wrap(0)));
+	TEST_CHECK(!fr_time_gt(first->pub.last_read_success, fr_time_wrap(0)));
+
+	/*
+	 *	Both connections hold no requests.  The connection which replied sorts first, because
+	 *	the heap was reordered after the demux function returned.
+	 */
+	TEST_CASE("The connection which replied sorts first after the reply");
+	trunk_connection_signal_active(first);
+	TEST_CHECK(trunk_request_count_by_connection(first, TRUNK_REQUEST_STATE_ALL) == 0);
+	TEST_CHECK(trunk_request_count_by_connection(second, TRUNK_REQUEST_STATE_ALL) == 0);
+	TEST_CHECK(fr_minmax_heap_min_peek(trunk->active) == second);
+
+	talloc_free(ctx);
+	talloc_free(preq);
+}
+
 #define ALLOC_REQ(_id) \
 do { \
 	treq_##_id = trunk_request_alloc(trunk, NULL); \
@@ -2130,6 +2321,13 @@ TEST_LIST = {
 	 *	Rebalance
 	 */
 	{ "Rebalance - Connection rebalance",		test_connection_rebalance_requests },
+
+	/*
+	 *	Connection ordering
+	 */
+	{ "Order - time_window is zero",		test_connection_order_zero_window },
+	{ "Order - time_window",			test_connection_order_window },
+	{ "Order - Reordered after demux",		test_connection_order_after_demux },
 
 	/*
 	 *	Connection spawning tests

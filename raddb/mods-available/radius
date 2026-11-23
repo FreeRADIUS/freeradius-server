@@ -641,6 +641,26 @@ radius {
 		manage_interval = 0.2
 
 		#
+		#  time_window:: How close in time (in seconds) the last successful replies of two
+		#  connections must be before the trunk treats the replies as equal.  The trunk compares the
+		#  replies when the trunk chooses a connection for a new request.
+		#
+		#  The trunk prefers the connection which replied most recently.  When the last replies of
+		#  two connections are less than `time_window` apart, the trunk prefers the connection which
+		#  holds at least two fewer requests.  When a connection stops replying, the last reply of
+		#  the connection becomes `time_window` or more older than the last replies of the other
+		#  connections.  The trunk then prefers the other connections.  The trunk still balances the
+		#  requests between the connections which reply.
+		#
+		#  If `time_window` is `0`, the trunk compares the exact times of the last successful
+		#  replies, and prefers the connection which replied most recently.  The trunk compares the
+		#  number of requests only when two connections replied at exactly the same time.  In that
+		#  case, the connection which replied most recently receives every new request until another
+		#  connection replies.
+		#
+		time_window = 0.5
+
+		#
 		#  connection { ... }:: Per-connection configuration.
 		#
 		connection {
@@ -1078,6 +1098,26 @@ radius proxy {
 		#  checked for limits, in order to open / close connections.
 		#
 		manage_interval = 0.2
+
+		#
+		#  time_window:: How close in time (in seconds) the last successful replies of two
+		#  connections must be before the trunk treats the replies as equal.  The trunk compares the
+		#  replies when the trunk chooses a connection for a new request.
+		#
+		#  The trunk prefers the connection which replied most recently.  When the last replies of
+		#  two connections are less than `time_window` apart, the trunk prefers the connection which
+		#  holds at least two fewer requests.  When a connection stops replying, the last reply of
+		#  the connection becomes `time_window` or more older than the last replies of the other
+		#  connections.  The trunk then prefers the other connections.  The trunk still balances the
+		#  requests between the connections which reply.
+		#
+		#  If `time_window` is `0`, the trunk compares the exact times of the last successful
+		#  replies, and prefers the connection which replied most recently.  The trunk compares the
+		#  number of requests only when two connections replied at exactly the same time.  In that
+		#  case, the connection which replied most recently receives every new request until another
+		#  connection replies.
+		#
+		time_window = 0.5
 
 		#
 		#  connection { ... }:: Per-connection configuration.
