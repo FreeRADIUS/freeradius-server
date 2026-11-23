@@ -1621,7 +1621,7 @@ static void test_connection_order_window(void)
 	TEST_ASSERT(a && b);
 
 	TEST_CASE("Replies which are less than time_window apart are equal");
-	a->pub.last_read_success = fr_time_wrap(10 * NSEC);
+	a->pub.last_read_success = fr_time_wrap((int64_t) 10 * NSEC);
 	b->pub.last_read_success = fr_time_add_time_delta(a->pub.last_read_success, fr_time_delta_from_nsec(NSEC / 2));
 	TEST_CHECK(_trunk_connection_order_by_last_reply(a, b) == 0);
 	TEST_CHECK(_trunk_connection_order_by_last_reply(b, a) == 0);
@@ -1677,8 +1677,8 @@ static void test_connection_order_sort(void)
 	TEST_CHECK(trunk->funcs.connection_prioritise == _trunk_connection_order_by_shortest_queue);
 
 	TEST_CASE("sort = queue ignores the time of the last reply");
-	a->pub.last_read_success = fr_time_wrap(10 * NSEC);
-	b->pub.last_read_success = fr_time_wrap(100 * NSEC);
+	a->pub.last_read_success = fr_time_wrap((int64_t) 10 * NSEC);
+	b->pub.last_read_success = fr_time_wrap((int64_t) 100 * NSEC);
 	TEST_CHECK(trunk->funcs.connection_prioritise(a, b) == 0);
 	TEST_CHECK(trunk->funcs.connection_prioritise(b, a) == 0);
 
