@@ -59,4 +59,20 @@ preprocess {
 	# If you're not running a Cisco or Quintum NAS, you don't
 	# need this hack.
 	with_cisco_vsa_hack = no
+
+	# Cisco Catalyst 9800 EasyPSK sends the SSID, BSSID, ANonce,
+	# and EAPoL-Key message as binary Cisco-AVPair values.  Decode
+	# those values into Tmp-String-0 and Tmp-Octets-0..2 so policy
+	# can map them to the generic rlm_dpsk input attributes.
+	#
+	# This conversion is implemented entirely in rlm_preprocess and
+	# does not require rlm_perl.
+	#
+	# Only non-FT PSK handshakes are currently supported.  With Cisco
+	# Adaptive FT, non-FT stations may continue to use PSK, but
+	# FT-capable stations select FT-PSK.  The fragmented EAPoL-Key data
+	# and IEEE 802.11r key derivation used by FT-PSK are not supported.
+	# Configure Fast Transition as Disabled for this integration.
+	# See https://github.com/FreeRADIUS/freeradius-server/issues/5912
+	with_cisco_easy_psk_hack = no
 }
