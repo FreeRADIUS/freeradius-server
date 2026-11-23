@@ -32,7 +32,6 @@
 #include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/rb_expire.h>
-#include <freeradius-devel/util/rtt.h>
 
 
 //#include "rlm_radius.h"
@@ -110,16 +109,12 @@ typedef struct bio_handle_s {
 
 	radius_track_t		*tt;			//!< RADIUS ID tracking structure.
 
-	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
 	fr_time_t		last_sent;		//!< last time we wrote a request.
 	fr_time_t		first_unanswered;	//!< When the current run of unanswered requests started.  Zero
 							///< when no request is waiting for a reply since last_reply.
 	uint32_t		timeouts;		//!< Requests which timed out without a reply since the last reply.
 							///< Compared with `response_timeouts`.
-
-	fr_rtt_t		rtt;			//!< Smoothed round trip time, and variation.  Sampled from `retry.start` to
-							///< the reply or the timeout.  Not sampled for status checks or replicated packets.
 
 	fr_timer_list_t		*tl;			//!< Timers for this connection
 
@@ -1913,13 +1908,13 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	/*
 	 *	Fixup retry times
 	 */
-	if (fr_time_gt(u->retry.start, h->mrs_time)) h->mrs_time = u->retry.start;
+	if (fr_time_gt(u->retry.start, h->tconn->mrs_time)) h->tconn->mrs_time = u->retry.start;
 
 	/*
 	 *	Sample the round trip time from the start of the retransmission timer to the reply.
 	 */
 	if (!u->status_check && (inst->mode != RLM_RADIUS_MODE_REPLICATE)) {
-		fr_rtt_update(&h->rtt, fr_time_sub(fr_time(), u->retry.start));
+		fr_rtt_update(&h->tconn->rtt, fr_time_sub(fr_time(), u->retry.start));
 	}
 
 	return FR_RADIUS_FAIL_NONE;
@@ -2357,7 +2352,6 @@ static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *requ
 {
 	trunk_request_t		*treq;
 	trunk_connection_t	*tconn;
-	bio_handle_t		*h;
 	fr_time_t		now;
 	bool			was_sent;
 
@@ -2450,8 +2444,7 @@ static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *requ
 	 *	Sample the round trip time from the start of the retransmission timer to the timeout.
 	 *	The request is not a status check, because status checks do not use do_retry().
 	 */
-	h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
-	fr_rtt_update(&h->rtt, fr_time_sub(now, retry->start));
+	fr_rtt_update(&tconn->rtt, fr_time_sub(now, retry->start));
 
 	check_for_zombie(request, tconn, now, retry->start);
 }

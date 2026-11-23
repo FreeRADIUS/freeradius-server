@@ -29,6 +29,7 @@ RCSIDH(server_trunk_h, "$Id$")
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/util/rtt.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -404,6 +405,14 @@ struct trunk_connection_pub_s {
 	fr_time_t _CONST	last_write_success;	//!< Last time we wrote to the connection
 
 	fr_time_t _CONST	last_read_success;	//!< Last time we read from the connection
+
+	/*
+	 *	The next two fields are set by the application using the trunk, as only it can calculate these
+	 *	values.
+	 */
+	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply
+
+	fr_rtt_t		rtt;			//!< Smoothed round trip time, and variation.
 
 	trunk_t			* _CONST trunk;		//!< Trunk this connection belongs to.
 };
