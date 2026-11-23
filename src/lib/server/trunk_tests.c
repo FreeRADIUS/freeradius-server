@@ -1541,7 +1541,8 @@ static void test_connection_order_zero_window(void)
 					.start = 2,
 					.min = 2,
 					.max = 2,
-					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
+					.sort = TRUNK_SORT_MRU
 				};
 	trunk_connection_t	*a, *b;
 
@@ -1597,6 +1598,7 @@ static void test_connection_order_window(void)
 					.min = 2,
 					.max = 2,
 					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
+					.sort = TRUNK_SORT_MRU,
 					.time_window = fr_time_delta_from_sec(1)
 				};
 	trunk_connection_t	*a, *b;
@@ -1697,6 +1699,178 @@ static void test_connection_order_sort(void)
 	talloc_free(ctx);
 }
 
+static void test_connection_order_lru(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 2,
+					.min = 2,
+					.max = 2,
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
+					.sort = TRUNK_SORT_LRU,
+					.time_window = fr_time_delta_from_sec(1)
+				};
+	test_proto_request_t	*preq[4];
+	trunk_request_t		*treq[4] = { NULL, NULL, NULL, NULL };
+	trunk_connection_t	*a, *b, *older, *newer;
+	size_t			i;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+	for (i = 0; i < NUM_ELEMENTS(preq); i++) preq[i] = talloc_zero(NULL, test_proto_request_t);
+
+	/*
+	 *	Allow the connections to open
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_ASSERT(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 2);
+	test_two_active(trunk, &a, &b);
+	TEST_ASSERT(a && b);
+
+	TEST_CASE("sort = lru selects the last write ordering");
+	TEST_CHECK(trunk->funcs.connection_prioritise == _trunk_connection_order_by_last_write);
+
+	TEST_CASE("The connection with the older last_write_success sorts first");
+	a->pub.last_write_success = fr_time_wrap((int64_t) 10 * NSEC);
+	b->pub.last_write_success = fr_time_wrap((int64_t) 20 * NSEC);
+	TEST_CHECK(_trunk_connection_order_by_last_write(a, b) < 0);
+	TEST_CHECK(_trunk_connection_order_by_last_write(b, a) > 0);
+
+	TEST_CASE("Writes which are not more than time_window apart are equal");
+	b->pub.last_write_success = fr_time_add_time_delta(a->pub.last_write_success, fr_time_delta_from_nsec(NSEC / 5));
+	TEST_CHECK(_trunk_connection_order_by_last_write(a, b) == 0);
+	TEST_CHECK(_trunk_connection_order_by_last_write(b, a) == 0);
+
+	TEST_CASE("Writes which are more than time_window apart sort by the time of the write");
+	b->pub.last_write_success = fr_time_add_time_delta(a->pub.last_write_success, fr_time_delta_from_sec(2));
+	TEST_CHECK(_trunk_connection_order_by_last_write(a, b) < 0);
+	TEST_CHECK(_trunk_connection_order_by_last_write(b, a) > 0);
+
+	TEST_CASE("time_window is zero, and writes which differ by one nanosecond are not equal");
+	trunk->conf.time_window = fr_time_delta_wrap(0);
+	b->pub.last_write_success = fr_time_add_time_delta(a->pub.last_write_success, fr_time_delta_from_nsec(1));
+	TEST_CHECK(_trunk_connection_order_by_last_write(a, b) < 0);
+	trunk->conf.time_window = fr_time_delta_from_sec(1);
+
+	TEST_CASE("Equal write times order by queue depth");
+	b->pub.last_write_success = a->pub.last_write_success;
+	TEST_CHECK(_trunk_connection_order_by_last_write(a, b) == 0);
+
+	/*
+	 *	Set the write times, and reorder the heap.  The test does not run the event loop, so the
+	 *	requests wait to be written.
+	 */
+	a->pub.last_write_success = fr_time_wrap((int64_t) 10 * NSEC);
+	b->pub.last_write_success = fr_time_wrap((int64_t) 1000 * NSEC);
+	CONN_REORDER(a);
+	CONN_REORDER(b);
+	older = a;
+	newer = b;
+	TEST_ASSERT(fr_minmax_heap_min_peek(trunk->active) == older);
+
+	TEST_CASE("The first request goes to the connection with the older write");
+	trunk_request_enqueue(&treq[0], trunk, NULL, preq[0], NULL);
+	preq[0]->treq = treq[0];
+	TEST_CHECK(trunk_request_count_by_connection(older, TRUNK_REQUEST_STATE_PENDING) == 1);
+
+	TEST_CASE("A connection with a request waiting to be written sorts after a connection with none");
+	TEST_CHECK(_trunk_connection_order_by_last_write(newer, older) < 0);
+	TEST_CHECK(fr_minmax_heap_min_peek(trunk->active) == newer);
+
+	TEST_CASE("The second request goes to the connection which has no request waiting to be written");
+	trunk_request_enqueue(&treq[1], trunk, NULL, preq[1], NULL);
+	preq[1]->treq = treq[1];
+	TEST_CHECK(trunk_request_count_by_connection(newer, TRUNK_REQUEST_STATE_PENDING) == 1);
+
+	TEST_CASE("A burst of four requests, with no write between the requests, goes to both connections equally");
+	trunk_request_enqueue(&treq[2], trunk, NULL, preq[2], NULL);
+	preq[2]->treq = treq[2];
+	trunk_request_enqueue(&treq[3], trunk, NULL, preq[3], NULL);
+	preq[3]->treq = treq[3];
+	TEST_CHECK(trunk_request_count_by_connection(older, TRUNK_REQUEST_STATE_PENDING) == 2);
+	TEST_CHECK(trunk_request_count_by_connection(newer, TRUNK_REQUEST_STATE_PENDING) == 2);
+
+	talloc_free(ctx);
+	for (i = 0; i < NUM_ELEMENTS(preq); i++) talloc_free(preq[i]);
+}
+
+static void test_connection_order_lru_after_write(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 2,
+					.min = 2,
+					.max = 2,
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
+					.sort = TRUNK_SORT_LRU
+				};
+	test_proto_request_t	*preq;
+	trunk_request_t		*treq = NULL;
+	trunk_connection_t	*x, *y;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+	preq = talloc_zero(NULL, test_proto_request_t);
+
+	/*
+	 *	Allow the connections to open
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_ASSERT(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 2);
+	test_two_active(trunk, &x, &y);
+	TEST_ASSERT(x && y);
+
+	/*
+	 *	Connection "y" wrote long after the time at which the test writes the request.  Connection
+	 *	"x" has the older write, so the request goes to connection "x".
+	 */
+	x->pub.last_write_success = fr_time_wrap(0);
+	y->pub.last_write_success = fr_time_wrap((int64_t) 1000 * NSEC);
+	CONN_REORDER(x);
+	CONN_REORDER(y);
+	TEST_ASSERT(fr_minmax_heap_min_peek(trunk->active) == x);
+
+	trunk_request_enqueue(&treq, trunk, NULL, preq, NULL);
+	preq->treq = treq;
+	TEST_ASSERT(trunk_request_count_by_connection(x, TRUNK_REQUEST_STATE_PENDING) == 1);
+
+	TEST_CASE("Before the write, the connection with no waiting request sorts first");
+	TEST_CHECK(fr_minmax_heap_min_peek(trunk->active) == y);
+
+	/*
+	 *	Write the request.  The request moves from pending to sent, so connection "x" has no
+	 *	request waiting to be written, and has a write older than the write on connection "y".
+	 */
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(2));
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+	TEST_ASSERT(trunk_request_count_by_connection(x, TRUNK_REQUEST_STATE_SENT) == 1);
+
+	TEST_CASE("After the write, the heap is reordered, and the connection with the older write sorts first");
+	TEST_CHECK(fr_time_gt(x->pub.last_write_success, fr_time_wrap(1)));
+	TEST_CHECK(fr_time_lt(x->pub.last_write_success, y->pub.last_write_success));
+	TEST_CHECK(fr_minmax_heap_min_peek(trunk->active) == x);
+
+	talloc_free(ctx);
+	talloc_free(preq);
+}
+
 static void test_connection_order_after_demux(void)
 {
 	TALLOC_CTX		*ctx = talloc_init_const("test");
@@ -1706,7 +1880,8 @@ static void test_connection_order_after_demux(void)
 					.start = 2,
 					.min = 2,
 					.max = 2,
-					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
+					.sort = TRUNK_SORT_MRU
 				};
 	test_proto_request_t	*preq;
 	trunk_connection_t	*first, *second;
@@ -2385,6 +2560,8 @@ TEST_LIST = {
 	{ "Order - time_window is zero",		test_connection_order_zero_window },
 	{ "Order - time_window",			test_connection_order_window },
 	{ "Order - sort",				test_connection_order_sort },
+	{ "Order - sort = lru",				test_connection_order_lru },
+	{ "Order - sort = lru, reorder after write",	test_connection_order_lru_after_write },
 	{ "Order - Reordered after demux",		test_connection_order_after_demux },
 
 	/*

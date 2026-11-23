@@ -163,6 +163,9 @@ typedef enum : uint8_t {
 	TRUNK_SORT_QUEUE = 0,					//!< Order by queue depth only.
 	TRUNK_SORT_MRU,						//!< Most Recently Used (MRU): order by the time of the last
 								///< successful reply, then by queue depth.
+	TRUNK_SORT_LRU						//!< Least Recently Used (LRU): order by fewer requests in the `pending`
+								///< and `partial` states, then by the older `last_write_success`, then
+								///< by queue depth.
 } trunk_sort_t;
 
 typedef enum : int8_t {
@@ -284,16 +287,10 @@ typedef struct {
 							///< open/close connections.
 
 	trunk_sort_t		sort;			//!< How the trunk orders connections when the application does not
-							///< set `connection_prioritise`.  `TRUNK_SORT_QUEUE` orders by queue
-							///< depth only.  `TRUNK_SORT_MRU` orders by the time of the last
-							///< successful reply, and then by queue depth.
+							///< set `connection_prioritise`.
 
-	fr_time_delta_t		time_window;		//!< For `TRUNK_SORT_MRU`, the last successful replies of two
-							///< connections count as equal when the replies are less than
-							///< `time_window` apart.  Connections whose last replies count as equal
-							///< are then ordered by queue depth.  If `time_window` is zero, the
-							///< ordering compares the exact reply times.  Queue depth breaks only an
-							///< exact tie.
+	fr_time_delta_t		time_window;		//!< Connections within `time_window` responses (MRU) or `time_window`
+							///< requests (LRU) are considered to be equal.
 
 	unsigned		req_pool_headers;	//!< How many chunk headers the talloc pool allocated
 							///< with the treq should contain.

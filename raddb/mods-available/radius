@@ -647,29 +647,62 @@ radius {
 		#  available.  We therefore need to choose the "best" connection according to some
 		#  criteria.
 		#
+		#  The `queue` method is what was used in v3 for load-balancing among connections and home
+		#  servers.  It works reasonably well in practice.  A fast connection will generally have a
+		#  smaller queue than a slow connection, for example.  So there are good reasons to choose the
+		#  fast connection.
+		#
+		#  The `mru` method prefers connections which just replied, _even if_ the connection has high
+		#  latency.  It is likly best used when the "next hop" is on the same network as the RADIUS
+		#  proxy.  That is, if one connection is seeing lots of replies, then it can be efficient to
+		#  keep using it.  The downside of `mru` is that it chooses a connection which has just
+		#  replied, even if that connection is slow and overloaded.
+		#
+		#  The `lru` method prefers connections which we haven't written to in a while.  This method
+		#  works a lot better than `queue` or `mru` on links with high congestion or high latency.
+		#  That is, so long as a connection can be written to, we might as well keep using it.
+		#  Writing to a connection we haven't used in a while can more evenly spread the traffic
+		#  across links which have different characteristics.
+		#
 		#  [Options="header,autowidth"]
 		#  |===
 		#  | Value | Description
 		#  | queue | Choose the connection with the smallest queue depth.  i.e. in v3 terms,
 		#            by the number of "outstanding" packets.  This is the default.
 		#  | mru   | Most Recently Used (MRU).  Choose the connection which has most recently
-		#            replied.  See `time_window` below for additional configuration.
+		#            replied, then choose the connection with the smallest queue depth.
+		#            See `time_window` below for additional configuration.
+		#  | lru   | Least Recently Used (LRU).  Choose the connection with the smallest queue depth,
+		#            then choose the connection which wrote a request the longest time in the past.
+		#            See `time_window` below for additional configuration.
 		#  |===
 		#
 		sort = queue
 
 		#
-		#  time_window:: If two connections both have responses within `time_window`, then
-		#  they are treated as equal.
+		#  time_window:: Treat connections as equal within this time window.
 		#
-		#  If `time_window = 0`, then the sorting chooses the connection which has replied most
-		#  recently, even if it has more requests outstanding.  This configuration will then choose a
-		#  slow connection much of the time.
+		#  When `time_window` is set, the requests are load-balanced across all connections which are
+		#  similar within the given `time_window`.  This allows the server to prefer active
+		#  connections, and then load-balance among them active connections.
 		#
-		#  If most connections are responsive, then a small `time_window` means that the connections
-		#  will be chosen based on queue depth.  However, as soon as a connection is much slower than
-		#  the others, it will *not* be chosen.  This allows the server to quickly adapt to
-		#  connections which become unresponsive.
+		#  If most connections are responsive, then a small `time_window` allows active connections to
+		#  be chosen based on queue depth.  However, as soon as one connection goes bad (i.e. it is
+		#  much slower than the others), it will *not* be chosen.  This allows the server to quickly
+		#  adapt to connections which become unresponsive.
+		#
+		#  For `sort = mru`, the `time_window` is calculated by comparing the last replies.
+		#
+		#  If `time_window = 0` for `mru`, then the sorting chooses the connection which has replied
+		#  most recently, even if it has more requests outstanding than other connections.  This
+		#  configuration will then choose a slow connection much of the time, resulting in poor load
+		#  balancing.
+		#
+		#  For `sort = lru`, the `time_window` is calculated by comparing the last time that the
+		#  connection wrote a request.
+		#
+		#  The `lru` sorting sorts first by smallest queue depth, and only if the queue depths are
+		#  similar does it sort by least recently sent request.
 		#
 		time_window = 0.1
 

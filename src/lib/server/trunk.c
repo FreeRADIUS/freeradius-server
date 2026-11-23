@@ -343,8 +343,9 @@ static conf_parser_t const trunk_config_connection[] = {
 
 #ifndef TRUNK_TESTS
 static fr_table_num_sorted_t const trunk_sort_table[] = {
+	{ L("queue"),	TRUNK_SORT_QUEUE	},
 	{ L("mru"),	TRUNK_SORT_MRU		},
-	{ L("queue"),	TRUNK_SORT_QUEUE	}
+	{ L("lru"),	TRUNK_SORT_LRU		},
 };
 static size_t trunk_sort_table_len = NUM_ELEMENTS(trunk_sort_table);
 
@@ -820,6 +821,29 @@ do { \
 	if (!fr_cond_assert_msg(_ret == 0, "Failed extracting conn from active heap: %s", fr_strerror())) break; \
 	fr_minmax_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
+
+/** Reorder an active connection after a request moves to the `sent` or `reapable` state
+ *
+ * The `lru` ordering reads the number of requests in the `pending` and `partial` states, and
+ * `last_write_success`.  This number changes when a request moves to the `sent` or `reapable` state, or when
+ * `last_write_success` changes.  We therefore need to re-order the connection on writes.
+ *
+ * The function does nothing the connection is inactive, or for ordering which is not `TRUNK_SORT_LRU`.
+ *
+ * @param[in] tconn	connection which wrote the request.
+ */
+static inline void trunk_connection_reorder_after_write(trunk_connection_t *tconn)
+{
+	if (tconn->pub.trunk->conf.sort != TRUNK_SORT_LRU) return;
+
+	/*
+	 *	Only connections in the active state are in the active heap.  A write can change the
+	 *	connection state, for example when the connection reaches `max_uses`.
+	 */
+	if (tconn->pub.state != TRUNK_CONN_ACTIVE) return;
+
+	CONN_REORDER(tconn);
+}
 
 DIAG_OFF(unused-function)
 
@@ -1374,6 +1398,8 @@ static void trunk_request_enter_sent(trunk_request_t *treq)
 		}
 	}
 
+	trunk_connection_reorder_after_write(tconn);
+
 	/*
 	 *	We just sent a request, we probably need
 	 *	to tell the event loop we want to be
@@ -1423,6 +1449,8 @@ static void trunk_request_enter_reapable(trunk_request_t *treq)
 			trunk_connection_enter_draining_to_free(tconn);
 		}
 	}
+
+	trunk_connection_reorder_after_write(tconn);
 
 	trunk_connection_event_update(tconn);
 }
@@ -5118,6 +5146,67 @@ static fr_cmp_ret_t _trunk_connection_order_by_last_reply(void const *one, void 
 	return _trunk_connection_order_by_shortest_queue(a, b);
 }
 
+/** Order connections by the number of requests waiting to be written, and then by the time of the last write
+ *
+ * The comparisons, in this order:
+ *
+ * 1. Choose a connection with fewer requests in the `pending` and `partial` states.  The trunk assigns a
+ *    request to a connection before the application writes the request.  The trunk sets `last_write_success`
+ *    only when the application writes the request.  Without comparison 1, every request in a burst would
+ *    select the connection with the oldest `last_write_success`.  A connection which is not writable would
+ *    also keep the oldest time, and would be sent every new request.
+ *
+ * 2. Choose a connection with the older `last_write_success`.  A new connection has `last_write_success` set
+ *    to when the connection became writable.  Connections which are less than `time_window` apart go to 3.
+ *
+ * 3. Choose the connection by shortest queue.
+ *
+ * @param[in] one	first connection.
+ * @param[in] two	second connection.
+ * @return
+ *	- <0 if `one` sorts before `two`.
+ *	- 0 if `one` and `two` sort equally.
+ *	- >0 if `one` sorts after `two`.
+ */
+static fr_cmp_ret_t _trunk_connection_order_by_last_write(void const *one, void const *two)
+{
+	trunk_connection_t const	*a = talloc_get_type_abort_const(one, trunk_connection_t);
+	trunk_connection_t const	*b = talloc_get_type_abort_const(two, trunk_connection_t);
+	fr_time_delta_t			time_window = a->pub.trunk->conf.time_window;
+	uint32_t			a_waiting, b_waiting;
+	fr_cmp_ret_t			ret;
+
+	a_waiting = trunk_request_count_by_connection(a, TRUNK_REQUEST_STATE_PENDING | TRUNK_REQUEST_STATE_PARTIAL);
+	b_waiting = trunk_request_count_by_connection(b, TRUNK_REQUEST_STATE_PENDING | TRUNK_REQUEST_STATE_PARTIAL);
+
+	/*
+	 *	A connection with fewer requests in the `pending` and `partial` states sorts first.
+	 */
+	ret = CMP(a_waiting, b_waiting);
+	if (ret != 0) return ret;
+
+	/*
+	 *	Choose the connection with the older `last_write_success`.
+	 */
+	ret = fr_time_cmp(a->pub.last_write_success, b->pub.last_write_success);
+	if (ret != 0) {
+		fr_time_delta_t	delta;
+
+		delta = (ret > 0) ? fr_time_sub(a->pub.last_write_success, b->pub.last_write_success) :
+				    fr_time_sub(b->pub.last_write_success, a->pub.last_write_success);
+
+		/*
+		 *	Requests which are more than `time_window` apart are sorted by last_write_success.
+		 */
+		if (fr_time_delta_cmp(delta, time_window) > 0) return ret;
+	}
+
+	/*
+	 *	Otherwise sort the connections by queue depth.
+	 */
+	return _trunk_connection_order_by_shortest_queue(a, b);
+}
+
 /** Free a trunk, gracefully closing all connections.
  *
  */
@@ -5233,6 +5322,10 @@ trunk_t *trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 		case TRUNK_SORT_MRU:
 			trunk->funcs.connection_prioritise = _trunk_connection_order_by_last_reply;
+			break;
+
+		case TRUNK_SORT_LRU:
+			trunk->funcs.connection_prioritise = _trunk_connection_order_by_last_write;
 			break;
 		}
 	}
