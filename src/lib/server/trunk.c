@@ -342,6 +342,12 @@ static conf_parser_t const trunk_config_connection[] = {
 };
 
 #ifndef TRUNK_TESTS
+static fr_table_num_sorted_t const trunk_sort_table[] = {
+	{ L("mru"),	TRUNK_SORT_MRU		},
+	{ L("queue"),	TRUNK_SORT_QUEUE	}
+};
+static size_t trunk_sort_table_len = NUM_ELEMENTS(trunk_sort_table);
+
 conf_parser_t const trunk_config[] = {
 	{ FR_CONF_OFFSET("start", trunk_conf_t, start), .dflt = "1" },
 	{ FR_CONF_OFFSET("min", trunk_conf_t, min), .dflt = "1" },
@@ -355,6 +361,14 @@ conf_parser_t const trunk_config[] = {
 	{ FR_CONF_OFFSET("close_delay", trunk_conf_t, close_delay), .dflt = "10.0" },
 
 	{ FR_CONF_OFFSET("manage_interval", trunk_conf_t, manage_interval), .dflt = "0.2" },
+
+	{ FR_CONF_OFFSET_TYPE_FLAGS("sort", FR_TYPE_VOID, 0, trunk_conf_t, sort),
+	  .func = cf_table_parse_uint8,
+	  .uctx = &(cf_table_parse_ctx_t){
+		.table = trunk_sort_table,
+		.len = &trunk_sort_table_len
+	  },
+	  .dflt = "mru" },
 
 	{ FR_CONF_OFFSET("time_window", trunk_conf_t, time_window), .dflt = "0.1" },
 
@@ -3043,7 +3057,7 @@ static inline void trunk_connection_readable(trunk_connection_t *tconn)
 	DO_REQUEST_DEMUX(tconn);
 
 	/*
-	 *	The default connection ordering reads `last_read_success`.  `trunk_request_signal_complete()`
+	 *	The `mru` connection ordering reads `last_read_success`.  `trunk_request_signal_complete()`
 	 *	sets `last_read_success` when the application completes a request from the demux function.
 	 *	Because the heap does not reorder a connection by itself, the trunk reorders the connection
 	 *	here, after the demux function returns.
@@ -5034,6 +5048,9 @@ int trunk_connection_manage_schedule(trunk_t *trunk)
 
 /** Order connections by queue depth
  *
+ * `trunk_alloc()` uses this function when `conf->sort` is `TRUNK_SORT_QUEUE` and the application
+ * does not set `connection_prioritise`.  The function is also the tie-break of the MRU ordering.
+ *
  * @param[in] one	first connection.
  * @param[in] two	second connection.
  * @return
@@ -5098,7 +5115,7 @@ static fr_cmp_ret_t _trunk_connection_order_by_last_reply(void const *one, void 
 	/*
 	 *	Otherwise sort the connections by queue depth.
 	 */
-	return trunk_connection_order_by_depth(a, b);
+	return _trunk_connection_order_by_shortest_queue(a, b);
 }
 
 /** Free a trunk, gracefully closing all connections.
@@ -5208,10 +5225,15 @@ trunk_t *trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	memcpy(&trunk->funcs, funcs, sizeof(trunk->funcs));
 	if (!trunk->funcs.connection_prioritise) {
-		if (fr_time_delta_ispos(conf->time_window)) {
-			trunk->funcs.connection_prioritise = trunk_connection_order_by_last_reply;
-		} else {
+		switch (conf->sort) {
+		case TRUNK_SORT_QUEUE:
+		default:
 			trunk->funcs.connection_prioritise = _trunk_connection_order_by_shortest_queue;
+			break;
+
+		case TRUNK_SORT_MRU:
+			trunk->funcs.connection_prioritise = _trunk_connection_order_by_last_reply;
+			break;
 		}
 	}
 	if (!trunk->funcs.request_prioritise) trunk->funcs.request_prioritise = fr_pointer_cmp;

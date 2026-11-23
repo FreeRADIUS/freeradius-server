@@ -1624,8 +1624,8 @@ static void test_connection_order_window(void)
 	TEST_CHECK(_trunk_connection_order_by_last_reply(a, b) == 0);
 	TEST_CHECK(_trunk_connection_order_by_last_reply(b, a) == 0);
 
-	TEST_CASE("Replies which are time_window or more apart sort by the time of the reply");
-	b->pub.last_read_success = fr_time_add_time_delta(a->pub.last_read_success, fr_time_delta_from_sec(1));
+	TEST_CASE("Replies which are more than time_window apart sort by the time of the reply");
+	b->pub.last_read_success = fr_time_add_time_delta(a->pub.last_read_success, fr_time_delta_from_sec(2));
 	TEST_CHECK(_trunk_connection_order_by_last_reply(b, a) < 0);
 	TEST_CHECK(_trunk_connection_order_by_last_reply(a, b) > 0);
 
@@ -1636,6 +1636,63 @@ static void test_connection_order_window(void)
 	TEST_CASE("Two connections which never replied sort by queue depth");
 	b->pub.last_read_success = fr_time_wrap(0);
 	TEST_CHECK(_trunk_connection_order_by_last_reply(a, b) == 0);
+
+	talloc_free(ctx);
+}
+
+static void test_connection_order_sort(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 2,
+					.min = 2,
+					.max = 2,
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2),
+					.sort = TRUNK_SORT_QUEUE
+				};
+	trunk_connection_t	*a, *b;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+
+	/*
+	 *	Allow the connections to open
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_ASSERT(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 2);
+	test_two_active(trunk, &a, &b);
+	TEST_ASSERT(a && b);
+
+	TEST_CASE("sort = queue selects the queue ordering");
+	TEST_CHECK(trunk->funcs.connection_prioritise == _trunk_connection_order_by_shortest_queue);
+
+	TEST_CASE("sort = queue ignores the time of the last reply");
+	a->pub.last_read_success = fr_time_wrap(10 * NSEC);
+	b->pub.last_read_success = fr_time_wrap(100 * NSEC);
+	TEST_CHECK(trunk->funcs.connection_prioritise(a, b) == 0);
+	TEST_CHECK(trunk->funcs.connection_prioritise(b, a) == 0);
+
+	talloc_free(ctx);
+
+	/*
+	 *	sort = mru is the default, because the value of TRUNK_SORT_MRU is zero.
+	 */
+	conf.sort = TRUNK_SORT_MRU;
+	ctx = talloc_init_const("test");
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+
+	TEST_CASE("sort = mru selects the ordering by the last reply");
+	TEST_CHECK(trunk->funcs.connection_prioritise == _trunk_connection_order_by_last_reply);
 
 	talloc_free(ctx);
 }
@@ -2327,6 +2384,7 @@ TEST_LIST = {
 	 */
 	{ "Order - time_window is zero",		test_connection_order_zero_window },
 	{ "Order - time_window",			test_connection_order_window },
+	{ "Order - sort",				test_connection_order_sort },
 	{ "Order - Reordered after demux",		test_connection_order_after_demux },
 
 	/*

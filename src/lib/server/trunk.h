@@ -155,6 +155,16 @@ typedef enum : uint16_t {
 	TRUNK_CONN_DRAINING_TO_FREE \
 )
 
+/** How the trunk orders connections when the application does not set `connection_prioritise`
+ *
+ * Queue depth is the number of requests on a connection, in every request state.
+ */
+typedef enum : uint8_t {
+	TRUNK_SORT_QUEUE = 0,					//!< Order by queue depth only.
+	TRUNK_SORT_MRU,						//!< Most Recently Used (MRU): order by the time of the last
+								///< successful reply, then by queue depth.
+} trunk_sort_t;
+
 typedef enum : int8_t {
 	TRUNK_ENQUEUE_IN_BACKLOG = 1,				//!< Request should be enqueued in backlog
 	TRUNK_ENQUEUE_OK = 0,					//!< Operation was successful.
@@ -273,12 +283,17 @@ typedef struct {
 	fr_time_delta_t		manage_interval;	//!< How often we run the management algorithm to
 							///< open/close connections.
 
-	fr_time_delta_t		time_window;		//!< The default connection ordering treats the last successful
-							///< replies of two connections as equal when the replies are less
-							///< than `time_window` apart.  Connections with equal replies then
-							///< sort by queue depth.  If `time_window` is zero, the ordering
-							///< compares the exact reply times.  Queue depth breaks only an exact
-							///< tie.
+	trunk_sort_t		sort;			//!< How the trunk orders connections when the application does not
+							///< set `connection_prioritise`.  `TRUNK_SORT_QUEUE` orders by queue
+							///< depth only.  `TRUNK_SORT_MRU` orders by the time of the last
+							///< successful reply, and then by queue depth.
+
+	fr_time_delta_t		time_window;		//!< For `TRUNK_SORT_MRU`, the last successful replies of two
+							///< connections count as equal when the replies are less than
+							///< `time_window` apart.  Connections whose last replies count as equal
+							///< are then ordered by queue depth.  If `time_window` is zero, the
+							///< ordering compares the exact reply times.  Queue depth breaks only an
+							///< exact tie.
 
 	unsigned		req_pool_headers;	//!< How many chunk headers the talloc pool allocated
 							///< with the treq should contain.

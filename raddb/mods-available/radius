@@ -641,24 +641,37 @@ radius {
 		manage_interval = 0.2
 
 		#
-		#  time_window:: How close in time (in seconds) the last successful replies of two
-		#  connections must be before the trunk treats the replies as equal.  The trunk compares the
-		#  replies when the trunk chooses a connection for a new request.
+		#  sort:: Which sorting method to use when choosing a connection.
 		#
-		#  The trunk prefers the connection which replied most recently.  When the last replies of
-		#  two connections are less than `time_window` apart, the trunk prefers the connection which
-		#  holds at least two fewer requests.  When a connection stops replying, the last reply of
-		#  the connection becomes `time_window` or more older than the last replies of the other
-		#  connections.  The trunk then prefers the other connections.  The trunk still balances the
-		#  requests between the connections which reply.
+		#  When we want to send a request over a connection, there may be multiple connections
+		#  available.  We therefore need to choose the "best" connection according to some
+		#  criteria.
 		#
-		#  If `time_window` is `0`, the trunk compares the exact times of the last successful
-		#  replies, and prefers the connection which replied most recently.  The trunk compares the
-		#  number of requests only when two connections replied at exactly the same time.  In that
-		#  case, the connection which replied most recently receives every new request until another
-		#  connection replies.
+		#  [Options="header,autowidth"]
+		#  |===
+		#  | Value | Description
+		#  | queue | Choose the connection with the smallest queue depth.  i.e. in v3 terms,
+		#            by the number of "outstanding" packets.  This is the default.
+		#  | mru   | Most Recently Used (MRU).  Choose the connection which has most recently
+		#            replied.  See `time_window` below for additional configuration.
+		#  |===
 		#
-		time_window = 0.5
+		sort = queue
+
+		#
+		#  time_window:: If two connections both have responses within `time_window`, then
+		#  they are treated as equal.
+		#
+		#  If `time_window = 0`, then the sorting chooses the connection which has replied most
+		#  recently, even if it has more requests outstanding.  This configuration will then choose a
+		#  slow connection much of the time.
+		#
+		#  If most connections are responsive, then a small `time_window` means that the connections
+		#  will be chosen based on queue depth.  However, as soon as a connection is much slower than
+		#  the others, it will *not* be chosen.  This allows the server to quickly adapt to
+		#  connections which become unresponsive.
+		#
+		time_window = 0.1
 
 		#
 		#  connection { ... }:: Per-connection configuration.
@@ -1099,25 +1112,8 @@ radius proxy {
 		#
 		manage_interval = 0.2
 
-		#
-		#  time_window:: How close in time (in seconds) the last successful replies of two
-		#  connections must be before the trunk treats the replies as equal.  The trunk compares the
-		#  replies when the trunk chooses a connection for a new request.
-		#
-		#  The trunk prefers the connection which replied most recently.  When the last replies of
-		#  two connections are less than `time_window` apart, the trunk prefers the connection which
-		#  holds at least two fewer requests.  When a connection stops replying, the last reply of
-		#  the connection becomes `time_window` or more older than the last replies of the other
-		#  connections.  The trunk then prefers the other connections.  The trunk still balances the
-		#  requests between the connections which reply.
-		#
-		#  If `time_window` is `0`, the trunk compares the exact times of the last successful
-		#  replies, and prefers the connection which replied most recently.  The trunk compares the
-		#  number of requests only when two connections replied at exactly the same time.  In that
-		#  case, the connection which replied most recently receives every new request until another
-		#  connection replies.
-		#
-		time_window = 0.5
+		sort = mru
+		time_window = 0.1
 
 		#
 		#  connection { ... }:: Per-connection configuration.
