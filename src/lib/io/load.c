@@ -26,35 +26,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/load.h>
 
-/*
- *	We use *inverse* numbers to avoid numerical calculation issues.
- *
- *	i.e. The bad way is to take two small numbers divide them by
- *	alpha / beta and then add them.  That process can drop the
- *	lower digits.  Instead, we take two small numbers, add them,
- *	and then divide the result by alpha / beta.
- */
-#define IBETA (4)
-#define IALPHA (8)
-
-#define DIFF(_rtt, _t) \
-	(\
-		fr_time_delta_lt(_rtt, _t) ? \
-			fr_time_delta_sub(_t, _rtt) : \
-			fr_time_delta_sub(_rtt, _t)\
-	)
-
-#define RTTVAR(_rtt, _rttvar, _t) \
-	fr_time_delta_div(\
-		fr_time_delta_add(\
-			fr_time_delta_mul(_rttvar, IBETA - 1), \
-			DIFF(_rtt, _t)\
-		), \
-		fr_time_delta_wrap(IBETA)\
-	)
-
-#define RTT(_old, _new) fr_time_delta_wrap((fr_time_delta_unwrap(_new) + (fr_time_delta_unwrap(_old) * (IALPHA - 1))) / IALPHA)
-
 typedef enum : uint8_t {
 	FR_LOAD_STATE_INIT = 0,
 	FR_LOAD_STATE_SENDING,
@@ -334,8 +305,7 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	now = fr_time();
 	t = fr_time_sub(now, request_time);
 
-	l->stats.rttvar = RTTVAR(l->stats.rtt, l->stats.rttvar, t);
-	l->stats.rtt = RTT(l->stats.rtt, t);
+	fr_rtt_update(&l->stats.rtt, t);
 
 	l->stats.received++;
 
@@ -440,7 +410,7 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 			"%d,%d,%d,%d,%d,%d,%d,%d,"
 			"%d\n",
 			now_f, last_send_f,
-			fr_time_delta_unwrap(l->stats.rtt), fr_time_delta_unwrap(l->stats.rttvar),
+			fr_time_delta_unwrap(l->stats.rtt.rtt), fr_time_delta_unwrap(l->stats.rtt.rttvar),
 			l->stats.pps, l->stats.pps_accepted,
 			l->stats.sent, l->stats.received,
 			l->stats.backlog, l->stats.max_backlog,

@@ -26,6 +26,7 @@
 RCSIDH(load_h, "$Id$")
 
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/rtt.h>
 #include <freeradius-devel/util/talloc.h>
 
 /** Load generation configuration.
@@ -97,8 +98,7 @@ typedef struct {
 	fr_time_t	start;		//! when the test started
 	fr_time_t	end;		//!< when the test ended, due to last reply received
 	fr_time_t	last_send;	//!< last packet we sent
-	fr_time_delta_t rtt;		//!< smoothed round trip time
-	fr_time_delta_t	rttvar;		//!< RTT variation
+	fr_rtt_t	rtt;		//!< smoothed round trip time, and variation
 	int		pps;		//!< current offered packets/s
 	int       	pps_accepted;	//!< Accepted PPS for the last second
 	int		sent;		//!< total packets sent
