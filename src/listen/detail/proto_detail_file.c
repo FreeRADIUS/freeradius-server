@@ -466,6 +466,8 @@ static void mod_vnode_delete(LINUX_UNUSED fr_event_list_t *el, int fd, UNUSED in
 	thread->vnode_fd = -1;
 	thread->ew = NULL;
 
+	if (unlikely(fr_network_exiting(thread->nr))) return;
+
 	/*
 	 *	Re-initialize the state machine.
 	 *
@@ -614,13 +616,14 @@ delay:
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(fr_listen_instance_t *li, fr_event_list_t *el, UNUSED void *nr)
+static void mod_event_list_set(fr_listen_instance_t *li, fr_event_list_t *el, void *nr)
 {
 	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
 								       proto_detail_file_t);
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
 	thread->el = el;
+	thread->nr = nr;
 
 	if (inst->immediate) {
 		work_init(thread, false);
