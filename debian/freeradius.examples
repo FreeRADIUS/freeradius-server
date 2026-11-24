@@ -1,4 +1,3 @@
-scripts/upgrade/clients.pl
 scripts/util/create-users.pl
 scripts/util/cryptpasswd
 scripts/exec-program-wait
