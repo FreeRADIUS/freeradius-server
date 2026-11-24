@@ -5145,6 +5145,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool eap)
 	 *	Save people from their own stupidity.
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
+	if (conf->fragment_size > 65536) conf->fragment_size = 65536;
 
 	/*
 	 *	Enforce relevant packet sizes.  EAP is at least 1020
@@ -5153,6 +5154,8 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool eap)
 	 */
 	if (eap) {
 		if (!conf->buffer_size) conf->buffer_size = 4096;
+
+		if (conf->buffer_size < conf->fragment_size) conf->buffer_size = conf->fragment_size;
 
 		if ((conf->buffer_size < 2048) || (conf->buffer_size > 65536)) {
 			cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 2048..65536");
