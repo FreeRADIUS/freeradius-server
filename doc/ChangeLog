@@ -67,7 +67,7 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  Simultaneous-Use is now enforced with SQLite: checkrad is run for
 	  the open sessions, and with "delete_stale_sessions = yes", stale
 	  sessions are closed.  Existing installations need the updated
-	  mods-config/sql/main/sqlite/queries.conf.
+	  mods-config/sql/main/sqlite/queries.conf. Patch from Terry Burton. PR #6000
 	* Update "consistent-keyed-balance" to be more even.  There are still some
 	  differences between home servers, but the differences are not substantial.
 	* Fix OCSP checks for certificates containing Authority Info Access.
