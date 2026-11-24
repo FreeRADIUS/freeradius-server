@@ -1791,7 +1791,9 @@ static CONF_PARSER security_config[] = {
 
 static CONF_PARSER limit_config[] = {
 	{ "max_pps", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, max_rate), NULL },
+#ifdef WITH_TLS
 	{ "max_packet_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.max_packet_size), STRINGIFY(MAX_PACKET_LEN) },
+#endif
 
 #ifdef WITH_TCP
 	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.max_connections), "16" },
