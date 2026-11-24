@@ -718,6 +718,10 @@ static int bio_write_blocked(fr_bio_t *bio)
 
 	DEBUG("%s - Writing is blocked on connection %s", h->ctx.module_name, h->ctx.fd_info->name);
 
+	/*
+	 *	Don't requeue the pending requests at this point.  Partial writes will be signaled once
+	 *	mod_write() checks the status of the connection.
+	 */
 	trunk_connection_signal_inactive(h->tconn);
 	thread_conn_notify(h->tconn, h->conn, h->conn->el, h->notify_on, NULL);
 
@@ -2449,6 +2453,37 @@ static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *requ
 	check_for_zombie(request, tconn, now, retry->start);
 }
 
+/** Requeue packets if the connection is blocked on write.
+ *
+ * bio_write_blocked() makes the connection inactive, and this function moves pending (but unwritten) requests
+ * out of the queue, to other connections.
+ *
+ * Requests in the partial state stay on this connection.
+ *
+ * Requests in the sent state stay on this connection, because they're waiting for a response.
+ *
+ * @param[in] tconn	the trunk connection which was just written to.
+ */
+static void mux_requeue_if_blocked(trunk_connection_t *tconn)
+{
+	bio_handle_t	*h;
+	uint64_t	moved;
+
+	/*
+	 *	If the handle is being reconnected, it's inactive, and we don't need to do anything.
+	 */
+	if (!trunk_connection_in_state(tconn, TRUNK_CONN_INACTIVE)) return;
+
+	h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
+	if (!h->write_blocked) return;
+
+	moved = trunk_connection_requests_requeue(tconn, TRUNK_REQUEST_STATE_PENDING, 0, false);
+	if (!moved) return;
+
+	DEBUG("%s - Moved %" PRIu64 " pending request(s) off of blocked connection %s",
+	      h->ctx.module_name, moved, h->ctx.fd_info->name);
+}
+
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void request_mux(UNUSED fr_event_list_t *el,
 			trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
@@ -2467,6 +2502,8 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	request = treq->request;
 
 	mod_write(request, treq, h);
+
+	mux_requeue_if_blocked(tconn);
 }
 
 static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h)
@@ -3104,6 +3141,8 @@ static void request_replicate_mux(UNUSED fr_event_list_t *el,
 	 *	Write the request, and change to the next state.
 	 */
 	mod_write(treq->request, treq, h);
+
+	mux_requeue_if_blocked(tconn);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
