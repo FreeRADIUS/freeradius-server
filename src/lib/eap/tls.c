@@ -706,10 +706,13 @@ static eap_tls_status_t eap_tls_verify(request_t *request, eap_session_t *eap_se
 			return EAP_TLS_INVALID;
 		}
 
-		if (total_len > SSL3_RT_MAX_PLAIN_LENGTH) {
+		/*
+		 *	The reassembled message goes into the into_ssl buffer, which has a fixed size.
+		 */
+		if (total_len > eap_tls_session->tls_session->dirty_size) {
 			REDEBUG("Reassembled TLS record will be %zu bytes, "
-				"greater than our maximum record size (" STRINGIFY(SSL3_RT_MAX_PLAIN_LENGTH) " bytes)",
-				total_len);
+				"greater than our maximum record size (%zu bytes)",
+				total_len, eap_tls_session->tls_session->dirty_size);
 			return EAP_TLS_INVALID;
 		}
 

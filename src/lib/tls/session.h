@@ -89,12 +89,10 @@ extern "C" {
 #define FR_TLS_MAX_ROUNDS 50U
 
 /*
- * FIXME: Dynamic allocation of buffer to overcome SSL3_RT_MAX_PLAIN_LENGTH overflows.
- * 	or configure TLS not to exceed SSL3_RT_MAX_PLAIN_LENGTH.
- *
- * clean_in and clean_out are dbuffs over a fixed
- * SSL3_RT_MAX_PLAIN_LENGTH allocation.  The buffers should not be
- * extensible, as doing so could allow the peer to send unlimited data.
+ * clean_in and clean_out are dbuffs over a fixed allocation of
+ * clean_size bytes, which is set from conf->buffer_size.  The buffers
+ * should not be extensible, as doing so could allow the peer to send
+ * unlimited data.
  *
  * dirty_in and dirty_out allow for extensions.  We therefore can't
  * call the fill/drain helpers below on those buffers.  Calling
@@ -112,11 +110,16 @@ extern "C" {
  * Resetting returns the buffer to the filling state, and discards whatever
  * the buffer held.
  *
+ * The record buffers are talloc arrays of clean_size bytes, so the size of
+ * the allocation is the size of the buffer.
+ *
  * @param[in] record	to reset.
  */
 static inline void fr_tls_record_init(fr_dbuff_t *record)
 {
-	fr_dbuff_init(record, fr_dbuff_start(record), (size_t) SSL3_RT_MAX_PLAIN_LENGTH);
+	uint8_t *start = fr_dbuff_start(record);
+
+	fr_dbuff_init(record, start, talloc_array_length(start));
 }
 
 /** Stop filling a record buffer, and start draining it
@@ -252,6 +255,10 @@ struct fr_tls_session_s {
 								///< cursor of into_ssl, which the caller fills.
 	fr_dbuff_t		*dirty_out;			//!< Encrypted data, ready to send.  The consumer
 								///< cursor of from_ssl, which the caller drains.
+	size_t			clean_size;			//!< Size of clean_in and clean_out.
+	size_t			dirty_size;			//!< Size of the into_ssl buffer, and the initial
+								///< size of the from_ssl buffer.
+
 	int			last_ret;			//!< Last result returned by SSL_read().
 
 	uint32_t		rounds;				//!< Handshake round trips.

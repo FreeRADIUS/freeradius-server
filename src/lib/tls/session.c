@@ -2558,6 +2558,32 @@ static int _fr_tls_session_free(fr_tls_session_t *session)
 	return 0;
 }
 
+/** Set the sizes of the record buffers from `conf->buffer_size`
+ *
+ * The clean buffers hold `conf->buffer_size` bytes of application data.  The dirty buffers can be larger due
+ * to TLS headers, MAC, and padding.  The dirty buffers are therefore larger than the clean ones.
+ *
+ * The into_ssl buffer has to hold at least one complete record, because OpenSSL decrypts only complete
+ * records, and the peer decides how large its records are.
+ *
+ * Both sizes are rounded up to a 1K boundary, just because.
+ *
+ * @param[in] tls_session	to set the sizes for.
+ */
+static void tls_session_set_buffer_sizes(fr_tls_session_t *tls_session)
+{
+	size_t	records;
+
+	tls_session->clean_size = ROUND_UP_POW2((size_t) tls_session->conf->buffer_size, 1024);
+
+	records = ROUND_UP_DIV(tls_session->clean_size, SSL3_RT_MAX_PLAIN_LENGTH);
+
+	tls_session->dirty_size = tls_session->clean_size + (records * (FR_TLS_MAX_PACKET_SIZE - SSL3_RT_MAX_PLAIN_LENGTH));
+	if (tls_session->dirty_size < FR_TLS_MAX_PACKET_SIZE) tls_session->dirty_size = FR_TLS_MAX_PACKET_SIZE;
+
+	tls_session->dirty_size = ROUND_UP_POW2(tls_session->dirty_size, 1024);
+}
+
 /** Allocate a new #fr_tls_session_t and initialize it
  *
  */
@@ -2578,6 +2604,7 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 	 *	connection.
 	 */
 	tls_session->conf = fr_tls_ctx_conf(ssl_ctx);
+	tls_session_set_buffer_sizes(tls_session);
 
 	tls_session->ctx = ssl_ctx;
 
@@ -2623,8 +2650,8 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 		for (i = 0; i < NUM_ELEMENTS(record); i++) {
 			uint8_t *buff;
 
-			MEM(buff = talloc_array(tls_session, uint8_t, SSL3_RT_MAX_PLAIN_LENGTH));
-			fr_dbuff_init(record[i], buff, (size_t) SSL3_RT_MAX_PLAIN_LENGTH);
+			MEM(buff = talloc_array(tls_session, uint8_t, tls_session->clean_size));
+			fr_dbuff_init(record[i], buff, tls_session->clean_size);
 		}
 	}
 
@@ -2650,11 +2677,11 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 	 *	a maximum limit, and only after all TLS negotiation
 	 *	has completed, and the session is fully authenticated.
 	 *
-	 *	The size is FR_TLS_MAX_PACKET_SIZE and not
-	 *	SSL3_RT_MAX_PLAIN_LENGTH.  Data OpenSSL has not used
-	 *	stay in the buffer, as they are generally partial TLS
-	 *	records.  But the buffer has to be large enough to
-	 *	hold an entire TLS record.
+	 *	The size is dirty_size and not clean_size.  Data
+	 *	OpenSSL has not used stay in the buffer, as they are
+	 *	generally partial TLS records.  But the buffer has to
+	 *	be large enough to hold an entire TLS record.  See
+	 *	tls_session_set_buffer_sizes().
 	 *
 	 *	init and max are the same, so the buffer is allocated
 	 *	once and never moves.
@@ -2675,9 +2702,9 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 		 *	free it twice.
 		 */
 		MEM(rbio = fr_tls_bio_dbuff_alloc(&tls_session->into_ssl, tls_session, tls_session,
-						  FR_TLS_MAX_PACKET_SIZE, FR_TLS_MAX_PACKET_SIZE, false));
+						  tls_session->dirty_size, tls_session->dirty_size, false));
 		MEM(wbio = fr_tls_bio_dbuff_alloc(&tls_session->from_ssl, tls_session, tls_session,
-						  SSL3_RT_MAX_PLAIN_LENGTH, 0, false));
+						  tls_session->dirty_size, 0, false));
 
 		tls_session->dirty_in = fr_tls_bio_dbuff_in(tls_session->into_ssl);
 		tls_session->dirty_out = fr_tls_bio_dbuff_out(tls_session->from_ssl);
