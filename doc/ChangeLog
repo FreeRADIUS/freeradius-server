@@ -13,7 +13,9 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  see mods-available/rest for details.
 
 	Feature improvements
-	* Security fixes in a number of EAP methods.  See the commit log for details.
+	* Many security fixes.
+	  * All previous versions of 3.2 are deprecated, and should
+	    not be used.
 	* Implement "track_home_server" in home_server_pool configuration
 	  See proxy.conf.  The previous (and not working) "affinity_id"
 	  configuration has been removed.
