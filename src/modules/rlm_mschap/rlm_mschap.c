@@ -1490,6 +1490,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 {
 	rlm_mschap_t *inst = instance;
 	VALUE_PAIR *challenge = NULL;
+	VALUE_PAIR *vp;
 
 	challenge = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
 	if (!challenge) {
@@ -1503,12 +1504,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY)) {
-		RWDEBUG2("Auth-Type already set.  Not setting to MS-CHAP");
+	vp = fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
+	if (vp) {
+		if (strcasecmp(dict_valnamebyattr(PW_AUTH_TYPE, 0, vp->vp_integer), inst->auth_type) != 0) {
+			RWDEBUG2("Auth-Type already set.  Not setting to %s", inst->auth_type);
+		}
 		return RLM_MODULE_NOOP;
 	}
 
-	RDEBUG2("Found MS-CHAP attributes.  Setting 'Auth-Type  = %s'", inst->xlat_name);
+	RDEBUG2("Found MS-CHAP attributes.  Setting 'Auth-Type = %s'", inst->auth_type);
 
 	/*
 	 *	Set Auth-Type to MS-CHAP.  The authentication code

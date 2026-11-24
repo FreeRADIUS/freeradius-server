@@ -1,3 +1,13 @@
+FreeRADIUS 3.2.12 Thu 26 Nov 2026 12:00:00 UTC urgency=low
+	Configuration changes
+
+	Feature improvements
+
+	Bug fixes
+	* rlm_mschap's debug output now names the Auth-Type it sets.  When
+	  there is no Auth-Type of the module's name, it sets "MS-CHAP",
+	  but said that it set "mschap".
+
 FreeRADIUS 3.2.11 Thu 26 Nov 2026 12:00:00 UTC urgency=high
 	Configuration changes
 	* Add notes on the security of CHAP-Password and MS-CHAP-*
