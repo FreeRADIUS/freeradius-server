@@ -1,0 +1,41 @@
+#
+#  A write which fails with an error that makes rlm_sql reconnect.
+#  The old connection must be closed, and the write retried on the new
+#  one.  sql_reconnect has a single connection, which is only replaced
+#  by a reconnect.
+#
+update {
+	&Tmp-String-0 := "%{sql_reconnect:DELETE FROM radpostauth WHERE username = 'user_reconnect'}"
+}
+
+#
+#  Writes on this connection now fail with "attempt to write a
+#  readonly database".
+#
+update {
+	&Tmp-String-0 := "%{sql_reconnect:PRAGMA query_only = 1}"
+}
+update {
+	&Tmp-Integer-0 := "%{sql_reconnect:PRAGMA query_only}"
+}
+if (&Tmp-Integer-0 != 1) {
+	test_fail
+}
+
+update {
+	&Tmp-String-0 := "%{sql_reconnect:INSERT INTO radpostauth (username, pass, reply, authdate) VALUES ('user_reconnect', '', 'reconnect', '2000-01-01 00:00:00')}"
+}
+
+#
+#  The write landed, on a new connection.
+#
+update {
+	&Tmp-Integer-0 := "%{sql_reconnect:SELECT count(*) FROM radpostauth WHERE username = 'user_reconnect'}"
+	&Tmp-Integer-1 := "%{sql_reconnect:PRAGMA query_only}"
+}
+if ((&Tmp-Integer-0 != 1) || (&Tmp-Integer-1 != 0)) {
+	test_fail
+}
+else {
+	test_pass
+}
