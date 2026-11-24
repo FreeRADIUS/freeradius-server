@@ -1880,7 +1880,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	/*
 	 *	A 4K packet, aligned on 64-bits.
 	 */
-	static uint64_t __thread data[MAX_PACKET_LEN / sizeof(uint64_t)];
+	static __thread uint64_t data[MAX_PACKET_LEN / sizeof(uint64_t)];
 
 	/*
 	 *	Double-check some things based on packet code.
