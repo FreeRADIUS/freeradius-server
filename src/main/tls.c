@@ -1078,7 +1078,7 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 static void record_alloc(tls_session_t *ssn, record_t *rec)
 {
 	rec->used = 0;
-	rec->size = ssn->conf->max_packet_size;
+	rec->size = ssn->conf->buffer_size;
 	MEM(rec->data = talloc_zero_array(ssn, uint8_t, rec->size));
 }
 
@@ -1622,7 +1622,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ "dh_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, dh_file), NULL },
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_FILE_EXISTS, fr_tls_server_conf_t, random_file), NULL },
 	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), "1024" },
-	{ "max_packet_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, max_packet_size), "65535" },
+	{ "buffer_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, buffer_size), "65535" },
 	{ "include_length", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), "yes" },
 	{ "auto_chain", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, auto_chain), "yes" },
 	{ "disable_single_dh_use", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_single_dh_use), NULL },
@@ -1713,7 +1713,7 @@ static CONF_PARSER tls_client_config[] = {
 	{ "dh_file", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, dh_file), NULL },
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, random_file), NULL },
 	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), "1024" },
-	{ "max_packet_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, max_packet_size), "65535" },
+	{ "buffer_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, buffer_size), "65535" },
 	{ "include_length", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), "yes" },
 	{ "check_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_crl), "no" },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
@@ -5037,7 +5037,7 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 }
 
 
-fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
+fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool eap)
 {
 	fr_tls_server_conf_t *conf;
 
@@ -5058,6 +5058,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		talloc_free(conf);
 		return NULL;
 	}
+	conf->eap = eap;
 
 	/*
 	 *	Save people from their own stupidity.
@@ -5065,11 +5066,20 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
 
 	/*
-	 *	Enforce RADIUS packet sizes for now.
+	 *	Enforce relevant packet sizes.  EAP is at least 1020
+	 *	bytes, so we bump it up to 2K just to be safe.
+	 *	RADIUS is 4K to 64K.
 	 */
-	if ((conf->max_packet_size < 4096) || (conf->max_packet_size > 65535)) {
-		cf_log_err_cs(cs, "Invalid value for \"max_packet_size\".  It must be 4096..65535");
-		goto error;
+	if (eap) {
+		if ((conf->buffer_size < 2048) || (conf->buffer_size > 65535)) {
+			cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 2048..65535");
+			goto error;
+		}
+	} else {
+		if ((conf->buffer_size < 4096) || (conf->buffer_size > 65535)) {
+			cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 4096..65535");
+			goto error;
+		}
 	}
 
 	/*
@@ -5254,6 +5264,8 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		return NULL;
 	}
 
+	conf->eap = false;
+
 	/*
 	 *	Save people from their own stupidity.
 	 */
@@ -5262,8 +5274,8 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Enforce RADIUS sizes for now.
 	 */
-	if ((conf->max_packet_size < 4096) || (conf->max_packet_size > 65535)) {
-		cf_log_err_cs(cs, "Invalid value for \"max_packet_size\".  It must be 4096..65535");
+	if ((conf->buffer_size < 4096) || (conf->buffer_size > 65535)) {
+		cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 4096..65535");
 		goto error;
 	}
 

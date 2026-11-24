@@ -328,7 +328,7 @@ int		tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char co
 void		tls_global_cleanup(void);
 tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert, bool allow_tls13);
 tls_session_t	*tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd, VALUE_PAIR **certs);
-fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
+fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool eap);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx);
 SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_file, char const *private_key_file);
@@ -384,6 +384,7 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
 	bool		disallow_untrusted;		//!< allow untrusted CAs to issue client certificates
+	bool		eap;				//!< for TLS-based EAP methods
 
 	int		min_version;
 	int		max_version;
@@ -395,7 +396,7 @@ struct fr_tls_server_conf_t {
 	 *	Always < 4096 (due to radius limit), 0 by default = 1024
 	 */
 	uint32_t	fragment_size;
-	uint32_t	max_packet_size;	//!< largest RADIUS packet (RADIUS/TLS) in the TLS buffers
+	uint32_t	buffer_size;
 	bool		check_crl;
 	bool		check_all_crl;
 	bool		allow_expired_crl;

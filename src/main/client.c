@@ -1277,7 +1277,7 @@ done_coa:
 		 *	_server_ configuration.  See listen.c, where
 		 *	client->tls is used as listener->tls.
 		 */
-		c->tls = tls_server_conf_parse(tls);
+		c->tls = tls_server_conf_parse(tls, false);
 		if (!c->tls) goto error;
 		c->tls->name = c->shortname;
 	}
