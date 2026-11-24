@@ -93,6 +93,7 @@ struct proto_detail_work_s {
 	bool				track_progress;		//!< do we track progress by writing?
 	bool				retransmit;		//!< are we retransmitting on error?
 	bool				immediate;		//!< start reading the detail files immediately
+	bool				create_dir;		//!< create tracked directory if it's missing.
 
 	int				mode;			//!< O_RDWR or O_RDONLY
 

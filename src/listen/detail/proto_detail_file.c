@@ -31,6 +31,7 @@
 
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/file.h>
 
 #include "proto_detail.h"
 
@@ -76,6 +77,8 @@ static const conf_parser_t file_listen_config[] = {
 	{ FR_CONF_OFFSET("poll_interval", proto_detail_file_t, poll_interval), .dflt = "5" },
 
 	{ FR_CONF_OFFSET("immediate", proto_detail_file_t, immediate) },
+
+	{ FR_CONF_OFFSET("create_dir", proto_detail_file_t, create_dir), .dflt = "yes" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -144,6 +147,15 @@ static int mod_open(fr_listen_instance_t *li)
 #endif
 		li->fd = thread->fd = open(inst->directory, oflag);
 		if (thread->fd < 0) {
+			if ((errno == ENOENT) && inst->create_dir) {
+				if (fr_mkdir(&thread->fd, inst->directory, -1, 0700, NULL, NULL) < 0) {
+					cf_log_err(inst->cs, "Failed creating %s: %s", inst->directory, fr_syserror(errno));
+					return -1;
+				} else {
+					li->fd = thread->fd;
+					goto opened;
+				}
+			}
 			cf_log_err(inst->cs, "Failed opening %s: %s", inst->directory, fr_syserror(errno));
 			return -1;
 		}
@@ -152,6 +164,7 @@ static int mod_open(fr_listen_instance_t *li)
 		li->listen->non_socket_listener = true;
 		li->listen->needs_full_setup = true;
 	}
+opened:
 	thread->inst = inst;
 	thread->name = talloc_typed_asprintf(thread, "detail_file which will read files matching %s", inst->filename);
 	thread->vnode_fd = -1;
