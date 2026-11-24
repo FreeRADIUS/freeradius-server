@@ -1942,7 +1942,7 @@ int main(int argc, char **argv)
 
 	rbtree_free(filename_tree);
 	fr_packet_list_free(pl);
-	while (request_head) TALLOC_FREE(request_head);
+	while (request_head) talloc_free(request_head);
 	dict_free();
 
 	if (do_summary) {
