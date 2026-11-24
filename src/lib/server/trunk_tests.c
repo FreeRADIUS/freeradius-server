@@ -14,6 +14,8 @@ typedef struct {
 	bool			freed;			//!< Seen by the free callback.
 	bool			signal_partial;		//!< Muxer should signal that this request is partially written.
 	bool			signal_cancel_partial;	//!< Muxer should signal that this request is partially cancelled.
+	bool			complete_on_write;	//!< Muxer signals complete after the write, instead of sent.
+							///< The request needs no reply, as with replicated packets.
 	int			priority;		//!< Priority of request
 } test_proto_request_t;
 
@@ -92,6 +94,15 @@ static void test_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn, conn
 
 		ret = test_conn_write(tc, preq);
 		if (ret <= 0) return;
+
+		/*
+		 *	The request needs no reply.  The demuxer skips the byte which was written, because
+		 *	the request has been freed.
+		 */
+		if (preq && preq->complete_on_write) {
+			trunk_request_signal_complete(treq);
+			continue;
+		}
 
 		trunk_request_signal_sent(treq);
 	}
@@ -1104,6 +1115,111 @@ static void test_partial_to_complete_states(void)
 	TEST_CHECK(preq->cancelled == true);
 	TEST_CHECK(preq->freed == true);
 	talloc_free(preq);
+
+	talloc_free(ctx);
+}
+
+/*
+ *	Test PENDING -> COMPLETE and PARTIAL -> COMPLETE when the muxer completes the request
+ */
+static void test_complete_from_mux(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 1,
+					.min = 1,
+					.max = 1,		/* All requests go to the connection which the test checks */
+					.manage_interval = fr_time_delta_from_nsec(NSEC / 2)
+				};
+	test_proto_request_t	*preq, *preq_partial;
+	trunk_request_t		*treq = NULL;
+	trunk_connection_t	*tconn;
+	fr_time_t		written;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+
+	fr_event_corral(el, test_time_base, false);	/* Connect the connection */
+	fr_event_service(el);
+
+	TEST_ASSERT(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 1);
+	tconn = fr_minmax_heap_min_peek(trunk->active);
+	TEST_ASSERT(tconn != NULL);
+
+	TEST_CASE("TRUNK_REQUEST_STATE_PENDING -> TRUNK_REQUEST_STATE_COMPLETE");
+
+	preq = talloc_zero(NULL, test_proto_request_t);
+	preq->complete_on_write = true;
+
+	trunk_request_enqueue(&treq, trunk, NULL, preq, NULL);
+	preq->treq = treq;
+	TEST_CHECK(trunk_request_count_by_state(trunk, TRUNK_CONN_ALL, TRUNK_REQUEST_STATE_PENDING) == 1);
+
+	written = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
+	test_time_base = written;
+
+	fr_event_corral(el, test_time_base, false);	/* Write and complete the request */
+	fr_event_service(el);
+
+	TEST_CHECK(trunk_request_count_by_state(trunk, TRUNK_CONN_ALL, TRUNK_REQUEST_STATE_ALL) == 0);
+	TEST_CHECK(preq->completed == true);
+	TEST_CHECK(preq->failed == false);
+	TEST_CHECK(preq->freed == true);
+
+	TEST_MSG("last_write_success is set when the muxer completes the request");
+	TEST_CHECK(fr_time_eq(tconn->pub.last_write_success, written));
+	TEST_CHECK(fr_time_eq(trunk->pub.last_write_success, written));
+
+	TEST_CASE("TRUNK_REQUEST_STATE_PARTIAL -> TRUNK_REQUEST_STATE_COMPLETE");
+
+	/*
+	 *	Don't free the first request yet.  The byte which the muxer wrote for it comes back on
+	 *	the next service, and the demuxer reads the request to see that it was freed.
+	 */
+	preq_partial = talloc_zero(NULL, test_proto_request_t);
+	preq_partial->signal_partial = true;
+	preq_partial->complete_on_write = true;
+
+	treq = NULL;
+	trunk_request_enqueue(&treq, trunk, NULL, preq_partial, NULL);
+	preq_partial->treq = treq;
+
+	written = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
+	test_time_base = written;
+
+	fr_event_corral(el, test_time_base, false);	/* Write part of the request */
+	fr_event_service(el);
+
+	TEST_CHECK(trunk_request_count_by_state(trunk, TRUNK_CONN_ALL, TRUNK_REQUEST_STATE_PARTIAL) == 1);
+	TEST_CHECK(preq_partial->completed == false);
+
+	written = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
+	test_time_base = written;
+
+	fr_event_corral(el, test_time_base, false);	/* Write the rest of the request, and complete it */
+	fr_event_service(el);
+
+	TEST_CHECK(trunk_request_count_by_state(trunk, TRUNK_CONN_ALL, TRUNK_REQUEST_STATE_ALL) == 0);
+	TEST_CHECK(preq_partial->completed == true);
+	TEST_CHECK(preq_partial->failed == false);
+	TEST_CHECK(preq_partial->freed == true);
+
+	TEST_MSG("last_write_success is set when the muxer completes a partial request");
+	TEST_CHECK(fr_time_eq(tconn->pub.last_write_success, written));
+	TEST_CHECK(fr_time_eq(trunk->pub.last_write_success, written));
+
+	fr_event_corral(el, test_time_base, false);	/* Read back the bytes, which the demuxer skips */
+	fr_event_service(el);
+
+	talloc_free(trunk);
+	talloc_free(preq);
+	talloc_free(preq_partial);
 
 	talloc_free(ctx);
 }
@@ -2760,6 +2876,7 @@ TEST_LIST = {
 	{ "Enqueue - Basic",				test_enqueue_basic },
 	{ "Enqueue - Cancellation points",		test_enqueue_cancellation_points },
 	{ "Enqueue - Partial state transitions",	test_partial_to_complete_states },
+	{ "Enqueue - Complete from the muxer",		test_complete_from_mux },
 	{ "Requeue - On reconnect",			test_requeue_on_reconnect },
 
 	/*

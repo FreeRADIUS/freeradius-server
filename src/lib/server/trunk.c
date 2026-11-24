@@ -1666,6 +1666,7 @@ static void trunk_request_enter_complete(trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case TRUNK_REQUEST_STATE_SENT:
 	case TRUNK_REQUEST_STATE_PENDING:
+	case TRUNK_REQUEST_STATE_PARTIAL:
 	case TRUNK_REQUEST_STATE_REAPABLE:
 		trunk_request_remove_from_conn(treq);
 		break;
@@ -2231,11 +2232,27 @@ void trunk_request_signal_complete(trunk_request_t *treq)
 
 		trunk->pub.last_read_success = fr_time();
 		tconn->pub.last_read_success = trunk->pub.last_read_success;
+
+	/*
+	 *	We MUXed the request (which was pending or partial), and the application marked it as
+	 *	complete.  That's a write success.  e.g. replicated packets in rlm_radius.
+	 *
+	 *	The request never enters the `sent` or `reapable` state, so we just update
+	 *	`last_write_success` here.
+	 */
+	} else if (IN_REQUEST_MUX(trunk) &&
+		   ((treq->pub.state == TRUNK_REQUEST_STATE_PENDING) ||
+		    (treq->pub.state == TRUNK_REQUEST_STATE_PARTIAL))) {
+		trunk_connection_t *tconn = treq->pub.tconn;
+
+		trunk->pub.last_write_success = fr_time();
+		tconn->pub.last_write_success = trunk->pub.last_write_success;
 	}
 
 	switch (treq->pub.state) {
 	case TRUNK_REQUEST_STATE_SENT:
 	case TRUNK_REQUEST_STATE_PENDING:	/* Got immediate response, i.e. cached */
+	case TRUNK_REQUEST_STATE_PARTIAL:	/* Rest of the request was written, and no response is expected */
 	case TRUNK_REQUEST_STATE_REAPABLE:
 		trunk_request_enter_complete(treq);
 		break;

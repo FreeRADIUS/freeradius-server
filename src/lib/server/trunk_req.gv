@@ -94,7 +94,7 @@
 	{partial, sent} -> cancel [label = "trunk_request_signal_cancel()", style = dashed, color = blue]
 	cancel -> unassigned [label = "no_cancel_mux", style = dashed, color = blue]
 
-	{sent, pending} -> complete [ label = "trunk_request_signal_complete()" ]
+	{sent, pending, partial} -> complete [ label = "trunk_request_signal_complete()" ]
 
 	pending -> partial [ label = "trunk_request_signal_partial()" ]
 
