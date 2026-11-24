@@ -1,0 +1,36 @@
+#
+#  A connection which has been idle for longer than "idle_timeout" is
+#  re-used when it is next taken from the pool, unless
+#  "strict_idle_timeout" is set, when it is closed and replaced.
+#  sql_idle sets it, and sql_idle_reuse doesn't.  Each has a single
+#  connection, and "query_only" is a setting of that connection, so a
+#  new connection reads it as 0.
+#
+update {
+	&Tmp-String-0 := "%{sql_idle:PRAGMA query_only = 1}"
+	&Tmp-String-1 := "%{sql_idle_reuse:PRAGMA query_only = 1}"
+}
+update {
+	&Tmp-Integer-0 := "%{sql_idle:PRAGMA query_only}"
+	&Tmp-Integer-1 := "%{sql_idle_reuse:PRAGMA query_only}"
+}
+if ((&Tmp-Integer-0 != 1) || (&Tmp-Integer-1 != 1)) {
+	test_fail
+}
+
+#
+#  Nothing uses the connections while we wait, so only taking them
+#  from the pool can notice that they have been idle for too long.
+#
+idle_wait
+
+update {
+	&Tmp-Integer-0 := "%{sql_idle:PRAGMA query_only}"
+	&Tmp-Integer-1 := "%{sql_idle_reuse:PRAGMA query_only}"
+}
+if ((&Tmp-Integer-0 != 0) || (&Tmp-Integer-1 != 1)) {
+	test_fail
+}
+else {
+	test_pass
+}

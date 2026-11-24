@@ -81,10 +81,22 @@ redis {
 		cleanup_interval = 300
 
 		#  The idle timeout (in seconds).  A connection which is
-		#  unused for this length of time will be closed.
+		#  unused for this length of time will be closed when
+		#  the pool is next checked, as connections are released.
+		#  A connection which is needed again before then is
+		#  re-used, unless "strict_idle_timeout" is set.
 		#
 		#  NOTE: A setting of 0 means infinite (no timeout).
 		idle_timeout = 600
+
+		#  Close a connection which has been idle for longer
+		#  than "idle_timeout" when it is next needed, instead
+		#  of re-using it.  This helps with firewalls and NAT
+		#  which silently discard the state of idle connections,
+		#  so that the next query on a re-used connection hangs
+		#  or fails.
+		#
+#		strict_idle_timeout = no
 
 		#  NOTE: All configuration settings are enforced.  If a
 		#  connection is closed because of "idle_timeout",

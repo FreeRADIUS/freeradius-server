@@ -1,0 +1,10 @@
+#
+#  Input packet
+#
+User-Name = "user_idle_timeout"
+User-Password = "password"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
