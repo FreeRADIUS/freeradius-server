@@ -160,6 +160,7 @@ typedef struct listen_socket_t {
 	uint32_t	rate_pps_old;
 	uint32_t	rate_pps_now;
 	uint32_t	max_rate;
+	uint32_t	max_packet_size;	//!< largest RADIUS packet which this listener accepts
 
 	/* for outgoing sockets */
 	home_server_t	*home;

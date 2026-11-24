@@ -1307,8 +1307,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	/*
 	 *	Get the maximum size of data to receive.
 	 */
-	if (!sock->data) sock->data = talloc_array(sock, uint8_t,
-						   sock->ssn->mtu);
+	if (!sock->data) sock->data = talloc_array(sock, uint8_t, sock->max_packet_size);
 
 	data = sock->data;
 
@@ -1364,7 +1363,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 		 *	FIXME: allocate a RADIUS_PACKET, and set
 		 *	"data" to be as large as necessary.
 		 */
-		if (length > sock->ssn->mtu) {
+		if (length > sock->max_packet_size) {
 			INFO("Received packet will be too large! Set \"fragment_size = %u\"",
 			     (data[2] << 8) | data[3]);
 			goto do_close;
