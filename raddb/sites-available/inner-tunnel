@@ -69,7 +69,7 @@ authorize {
 	#
 	#  If the users are logging in with an MS-CHAP-Challenge
 	#  attribute for authentication, the mschap module will find
-	#  the MS-CHAP-Challenge attribute, and add 'Auth-Type := MS-CHAP'
+	#  the MS-CHAP-Challenge attribute, and add 'Auth-Type := mschap'
 	#  to the request, which will cause the server to then use
 	#  the mschap module for authentication.
 	mschap
@@ -240,13 +240,18 @@ authenticate {
 	}
 
 	#
-	#  MSCHAP authentication.
+	#  For old names, too.  e.g. "Auth-Type := MS-CHAP" set
+	#  in the "users" file.  The mschap module also sets
+	#  "Auth-Type := MS-CHAP" if no virtual server lists a
+	#  bare "mschap" below.
+	#
 	Auth-Type MS-CHAP {
 		mschap
 	}
 
 	#
-	#  For old names, too.
+	#  MSCHAP authentication.  The mschap module sets
+	#  "Auth-Type := mschap", which uses this entry.
 	#
 	mschap
 
