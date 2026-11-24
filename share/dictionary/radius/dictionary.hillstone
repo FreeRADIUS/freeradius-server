@@ -23,6 +23,8 @@ ATTRIBUTE	User-Mobile-Operator			6	uint32
 ATTRIBUTE	User-Policy-dst-ip-begin		7	ipaddr
 ATTRIBUTE	User-Policy-dst-ip-end			8	ipaddr
 ATTRIBUTE	User-Role-Bame				9	string
+ATTRIBUTE Hillos-Role-iSource    10 string
+ATTRIBUTE Hillos-Role-HSM       11 string
 ATTRIBUTE	VPN-DHCP-Gateway			100	string
 ATTRIBUTE	VPN-DHCP-Mask				101	string
 ATTRIBUTE	VPN-DHCP-Pool				102	string
