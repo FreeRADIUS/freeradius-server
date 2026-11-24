@@ -291,7 +291,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	 */
 	rcode = read(request->packet->sockfd,
 		     sock->ssn->dirty_in.data + sock->ssn->dirty_in.used,
-		     sizeof(sock->ssn->dirty_in.data) - sock->ssn->dirty_in.used);
+		     sock->ssn->dirty_in.size - sock->ssn->dirty_in.used);
 	if (rcode < 0) {
 		if (errno == EINTR) return 0;
 		RDEBUG("(TLS) Closing PROXY socket from client port %u due to read error - %s", sock->other_port, fr_syserror(errno));
@@ -609,7 +609,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	if (!already_read) {
 		rcode = read(request->packet->sockfd,
 			     sock->ssn->dirty_in.data,
-			     sizeof(sock->ssn->dirty_in.data));
+			     sock->ssn->dirty_in.size);
 		if ((rcode < 0) && (errno == ECONNRESET)) {
 		do_close:
 			PTHREAD_MUTEX_UNLOCK(sock->mutex);
@@ -1623,7 +1623,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 		 *	connection.
 		 */
 		if (rcode == 2) {
-			if ((sock->ssn->clean_out.used + request->proxy->data_len) > MAX_RECORD_SIZE) {
+			if ((sock->ssn->clean_out.used + request->proxy->data_len) > sock->ssn->clean_out.size) {
 				RERROR("(TLS) Too much data buffered during SSL_connect()");
 				goto do_close;
 			}
@@ -1656,7 +1656,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	 *	We may have previously cached data on SSL_connect(), which now needs to be written to the home server.
 	 */
 	if (sock->ssn->clean_out.used > 0) {
-		if ((sock->ssn->clean_out.used + request->proxy->data_len) > MAX_RECORD_SIZE) {
+		if ((sock->ssn->clean_out.used + request->proxy->data_len) > sock->ssn->clean_out.size) {
 			RERROR("(TLS) Too much data buffered after SSL_connect()");
 			goto do_close;
 		}

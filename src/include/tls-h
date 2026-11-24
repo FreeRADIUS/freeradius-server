@@ -84,13 +84,10 @@ extern FR_NAME_NUMBER const fr_tls_status_table[];
  *	being fragmented; this simplifies buffer allocation.
  */
 
-/*
- * FIXME: Dynamic allocation of buffer to overcome MAX_RECORD_SIZE overflows.
- * 	or configure TLS not to exceed MAX_RECORD_SIZE.
- */
 typedef struct _record_t {
 	size_t  used;
-	uint8_t data[MAX_RECORD_SIZE];
+	size_t  size;
+	uint8_t *data;
 } record_t;
 
 typedef struct _tls_info_t {

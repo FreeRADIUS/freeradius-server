@@ -474,6 +474,7 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	ssn = talloc_zero(ctx, tls_session_t);
 	if (!ssn) return NULL;
 
+	session_init(ssn);
 	talloc_set_destructor(ssn, _tls_session_free);
 
 	ssn->ctx = conf->ctx;
@@ -909,7 +910,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	}
 
 	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
-		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
+		       ssn->clean_out.size - ssn->clean_out.used);
 	if (err > 0) {
 		ssn->clean_out.used += err;
 		return 1;
@@ -1007,7 +1008,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	err = BIO_ctrl_pending(ssn->from_ssl);
 	if (err > 0) {
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
-			       sizeof(ssn->dirty_out.data));
+			       ssn->dirty_out.size);
 		if (err > 0) {
 			RDEBUG3("(TLS) %s- got %d bytes of data", ssn->conf->name, err);
 			ssn->dirty_out.used = err;
@@ -1060,7 +1061,7 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 
 		/* Get the dirty data from Bio to send it */
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data + ssn->dirty_out.used,
-			       sizeof(ssn->dirty_out.data) - ssn->dirty_out.used);
+			       ssn->dirty_out.size - ssn->dirty_out.used);
 		if (err > 0) {
 			ssn->dirty_out.used += err;
 		} else {
@@ -1073,14 +1074,21 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 	return 1;
 }
 
+static void record_alloc(tls_session_t *ssn, record_t *rec)
+{
+	rec->used = 0;
+	rec->size = MAX_RECORD_SIZE;
+	MEM(rec->data = talloc_zero_array(ssn, uint8_t, rec->size));
+}
+
 static void session_init(tls_session_t *ssn)
 {
 	ssn->ssl = NULL;
 	ssn->into_ssl = ssn->from_ssl = NULL;
-	record_init(&ssn->clean_in);
-	record_init(&ssn->clean_out);
-	record_init(&ssn->dirty_in);
-	record_init(&ssn->dirty_out);
+	record_alloc(ssn, &ssn->clean_in);
+	record_alloc(ssn, &ssn->clean_out);
+	record_alloc(ssn, &ssn->dirty_in);
+	record_alloc(ssn, &ssn->dirty_out);
 
 	memset(&ssn->info, 0, sizeof(ssn->info));
 
@@ -1116,7 +1124,7 @@ static void record_init(record_t *rec)
 static unsigned int record_plus(record_t *rec, void const *ptr,
 				unsigned int size)
 {
-	unsigned int added = MAX_RECORD_SIZE - rec->used;
+	unsigned int added = rec->size - rec->used;
 
 	if(added > size)
 		added = size;
@@ -5557,7 +5565,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 *      data buffer.
 	 */
 	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
-		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
+		       ssn->clean_out.size - ssn->clean_out.used);
 	if (err <= 0) {
 		int code;
 
