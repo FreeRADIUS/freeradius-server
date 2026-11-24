@@ -1,4 +1,4 @@
-SUBMAKEFILES := rbmonkey.mk api/all.mk pairmove/all.mk unit/all.mk map/all.mk xlat/all.mk keywords/all.mk auth/all.mk modules/all.mk sql_nas_table/all.mk tcp/all.mk listen_cli/all.mk tls_cert/all.mk
+SUBMAKEFILES := rbmonkey.mk api/all.mk pairmove/all.mk unit/all.mk map/all.mk xlat/all.mk keywords/all.mk auth/all.mk modules/all.mk sql_nas_table/all.mk tcp/all.mk listen_cli/all.mk session_state/all.mk tls_cert/all.mk
 PORT := 12340
 SECRET := testing123
 DICT_PATH := $(top_srcdir)/share

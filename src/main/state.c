@@ -196,10 +196,21 @@ fr_state_t *fr_state_init(TALLOC_CTX *ctx)
 void fr_state_delete(fr_state_t *state)
 {
 	rbtree_t *my_tree;
+	state_entry_t *entry;
 
 	if (!state) return;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
+
+	/*
+	 *	The entries are freed with the tree, but the
+	 *	session-state is parented separately.  We need to
+	 *	manually free it here.
+	 */
+	for (entry = state->head; entry != NULL; entry = entry->next) {
+		TALLOC_FREE(entry->ctx);
+	}
+	state->head = state->tail = NULL;
 
 	/*
 	 *	Tell the talloc callback to NOT delete the entry from
