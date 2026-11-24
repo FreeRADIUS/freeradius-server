@@ -474,12 +474,12 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	ssn = talloc_zero(ctx, tls_session_t);
 	if (!ssn) return NULL;
 
+	ssn->conf = conf;
 	session_init(ssn);
 	talloc_set_destructor(ssn, _tls_session_free);
 
 	ssn->ctx = conf->ctx;
 	ssn->mtu = conf->fragment_size;
-	ssn->conf = conf;
 
 	SSL_CTX_set_mode(ssn->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
 
@@ -674,12 +674,13 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 		RERROR("(TLS) %s - Error allocating memory for SSL state", conf->name);
 		return NULL;
 	}
+
+	state->conf = conf;
 	session_init(state);
 	talloc_set_destructor(state, _tls_session_free);
 
 	state->ctx = conf->ctx;
 	state->ssl = new_tls;
-	state->conf = conf;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
 	/*
@@ -1077,7 +1078,7 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 static void record_alloc(tls_session_t *ssn, record_t *rec)
 {
 	rec->used = 0;
-	rec->size = MAX_RECORD_SIZE;
+	rec->size = ssn->conf->max_packet_size;
 	MEM(rec->data = talloc_zero_array(ssn, uint8_t, rec->size));
 }
 
@@ -1621,6 +1622,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ "dh_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, dh_file), NULL },
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_FILE_EXISTS, fr_tls_server_conf_t, random_file), NULL },
 	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), "1024" },
+	{ "max_packet_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, max_packet_size), "65535" },
 	{ "include_length", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), "yes" },
 	{ "auto_chain", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, auto_chain), "yes" },
 	{ "disable_single_dh_use", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_single_dh_use), NULL },
@@ -1711,6 +1713,7 @@ static CONF_PARSER tls_client_config[] = {
 	{ "dh_file", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, dh_file), NULL },
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, random_file), NULL },
 	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), "1024" },
+	{ "max_packet_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, max_packet_size), "65535" },
 	{ "include_length", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), "yes" },
 	{ "check_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_crl), "no" },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
@@ -5062,6 +5065,14 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
 
 	/*
+	 *	Enforce RADIUS packet sizes for now.
+	 */
+	if ((conf->max_packet_size < 4096) || (conf->max_packet_size > 65535)) {
+		cf_log_err_cs(cs, "Invalid value for \"max_packet_size\".  It must be 4096..65535");
+		goto error;
+	}
+
+	/*
 	 *	Disallow sessions of more than 7 days, as per RFC
 	 *	8446.
 	 *
@@ -5247,6 +5258,14 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	 *	Save people from their own stupidity.
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
+
+	/*
+	 *	Enforce RADIUS sizes for now.
+	 */
+	if ((conf->max_packet_size < 4096) || (conf->max_packet_size > 65535)) {
+		cf_log_err_cs(cs, "Invalid value for \"max_packet_size\".  It must be 4096..65535");
+		goto error;
+	}
 
 	/*
 	 *	Initialize TLS

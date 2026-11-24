@@ -395,6 +395,7 @@ struct fr_tls_server_conf_t {
 	 *	Always < 4096 (due to radius limit), 0 by default = 1024
 	 */
 	uint32_t	fragment_size;
+	uint32_t	max_packet_size;	//!< largest RADIUS packet (RADIUS/TLS) in the TLS buffers
 	bool		check_crl;
 	bool		check_all_crl;
 	bool		allow_expired_crl;
