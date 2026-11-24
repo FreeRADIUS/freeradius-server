@@ -3970,6 +3970,50 @@ static const FR_NAME_NUMBER version2int[] = {
  * - Load the Private key & the certificate
  * - Set the Context options & Verify options
  */
+#if !defined(LIBRESSL_VERSION_NUMBER) || (LIBRESSL_VERSION_NUMBER >= 0x2070000fL)
+/** Warn if a certificate has expired, or is not yet valid
+ *
+ * @param cert to check.
+ * @param file the certificate was read from.
+ */
+static void tls_cert_validity_warn(X509 *cert, char const *file)
+{
+	ASN1_TIME	*when;
+	char const	*problem;
+	char		subject[1024];
+	char		date[64];
+	BIO		*bio;
+	int		len = 0;
+
+	if (X509_cmp_current_time(X509_get_notAfter(cert)) < 0) {
+		when = X509_get_notAfter(cert);
+		problem = "expired on";
+
+	} else if (X509_cmp_current_time(X509_get_notBefore(cert)) > 0) {
+		when = X509_get_notBefore(cert);
+		problem = "is not valid until";
+
+	} else {
+		return;
+	}
+
+	subject[0] = '\0';
+	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
+	subject[sizeof(subject) - 1] = '\0';
+
+	bio = BIO_new(BIO_s_mem());
+	if (bio) {
+		ASN1_TIME_print(bio, when);
+		len = BIO_read(bio, date, sizeof(date) - 1);
+		BIO_free(bio);
+	}
+	if (len < 0) len = 0;
+	date[len] = '\0';
+
+	WARN(LOG_PREFIX ": Certificate \"%s\" in file \"%s\" %s %s", subject, file, problem, date);
+}
+#endif
+
 SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_file, char const *private_key_file)
 {
 	SSL_CTX		*ctx;
@@ -4205,6 +4249,27 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_
 			      chain_file);
 		return NULL;
 	}
+
+#if !defined(LIBRESSL_VERSION_NUMBER) || (LIBRESSL_VERSION_NUMBER >= 0x2070000fL)
+	/*
+	 *	The peer may reject a certificate which is outside of
+	 *	its validity period, so warn about it now.
+	 */
+	{
+		X509		*cert;
+		STACK_OF(X509)	*chain = NULL;
+		int		i;
+
+		cert = SSL_CTX_get0_certificate(ctx);
+		if (cert) tls_cert_validity_warn(cert, chain_file);
+
+		if (SSL_CTX_get0_chain_certs(ctx, &chain) && chain) {
+			for (i = 0; i < sk_X509_num(chain); i++) {
+				tls_cert_validity_warn(sk_X509_value(chain, i), chain_file);
+			}
+		}
+	}
+#endif
 
 load_ca:
 	/*
