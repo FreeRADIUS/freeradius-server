@@ -1,0 +1,31 @@
+#
+#  simul_verify_query should find the open session of the user, and
+#  not the open session of another user.
+#
+update {
+	&Tmp-String-0 := "%{sql:DELETE FROM radacct WHERE username IN ('user_simul', 'user_simul_other')}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+
+update {
+	&Tmp-String-0 := "%{sql:INSERT INTO radacct (acctsessionid, acctuniqueid, username, nasipaddress, acctstarttime) VALUES ('simul0', 'simul0', 'user_simul', '192.0.2.10', strftime('%%s', 'now'))}"
+	&Tmp-String-0 := "%{sql:INSERT INTO radacct (acctsessionid, acctuniqueid, username, nasipaddress, acctstarttime) VALUES ('simul1', 'simul1', 'user_simul_other', '192.0.2.10', strftime('%%s', 'now'))}"
+}
+
+update request {
+	&SQL-User-Name := "%{User-Name}"
+}
+
+update {
+	&Tmp-Integer-0 := "%{sql:SELECT count(*) FROM (${modules.sql.simul_verify_query})}"
+	&Tmp-String-1 := "%{sql:${modules.sql.simul_verify_query}}"
+	&Tmp-String-2 := "%{sql:SELECT radacctid FROM radacct WHERE acctsessionid = 'simul0'}"
+}
+if ((&Tmp-Integer-0 != 1) || (&Tmp-String-1 != &Tmp-String-2)) {
+	test_fail
+}
+else {
+	test_pass
+}
