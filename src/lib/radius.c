@@ -497,6 +497,11 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	}
 
 	/*
+	 *	Ignore length unless we saw at least the header.
+	 */
+	if (data_len < RADIUS_HDR_LEN) return 0;
+
+	/*
 	 *      See how long the packet says it is.
 	 */
 	len = (buffer[2] * 256) + buffer[3];
