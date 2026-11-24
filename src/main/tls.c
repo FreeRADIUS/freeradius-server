@@ -1729,7 +1729,7 @@ static CONF_PARSER tls_client_config[] = {
 	{ "dh_file", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, dh_file), NULL },
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, random_file), NULL },
 	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), "1024" },
-	{ "buffer_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, buffer_size), "65535" },
+	{ "buffer_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, buffer_size), },
 	{ "include_length", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), "yes" },
 	{ "check_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_crl), "no" },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
@@ -5152,13 +5152,17 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool eap)
 	 *	RADIUS is 4K to 64K.
 	 */
 	if (eap) {
-		if ((conf->buffer_size < 2048) || (conf->buffer_size > 65535)) {
-			cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 2048..65535");
+		if (!conf->buffer_size) conf->buffer_size = 4096;
+
+		if ((conf->buffer_size < 2048) || (conf->buffer_size > 65536)) {
+			cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 2048..65536");
 			goto error;
 		}
 	} else {
-		if ((conf->buffer_size < 4096) || (conf->buffer_size > 65535)) {
-			cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 4096..65535");
+		if (!conf->buffer_size) conf->buffer_size = 65536;
+
+		if ((conf->buffer_size < 4096) || (conf->buffer_size > 65536)) {
+			cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 4096..65536");
 			goto error;
 		}
 	}
@@ -5355,8 +5359,8 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Enforce RADIUS sizes for now.
 	 */
-	if ((conf->buffer_size < 4096) || (conf->buffer_size > 65535)) {
-		cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 4096..65535");
+	if ((conf->buffer_size < 4096) || (conf->buffer_size > 65536)) {
+		cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 4096..65536");
 		goto error;
 	}
 
