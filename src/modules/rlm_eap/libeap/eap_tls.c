@@ -99,6 +99,7 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
 #endif
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
+	SSL_CTX_set_ex_data(ssn->ctx, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TALLOC, handler);
 
 	/*
@@ -1121,7 +1122,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 		 *	Restore the cached VPs before processing the
 		 *	application data.
 		 */
-		tls_session_id(tls_session->ssl_session, buffer, MAX_SESSION_SIZE);
+		tls_session_id(tls_session, buffer, MAX_SESSION_SIZE);
 
 		vps = SSL_SESSION_get_ex_data(tls_session->ssl_session, fr_tls_ex_index_vps);
 		if (!vps) {
