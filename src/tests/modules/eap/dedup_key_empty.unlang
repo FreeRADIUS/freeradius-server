@@ -1,0 +1,37 @@
+#
+#  A dedup key which expands to nothing is not used, so sessions
+#  without one don't replace each other.  With max_sessions = 1, the
+#  second session can't be stored.
+#
+eap.authenticate {
+	fail = 1
+	handled = 1
+}
+if (!&reply:State) {
+	test_fail
+}
+
+update reply {
+	&EAP-Message !* ANY
+	&Message-Authenticator !* ANY
+	&State !* ANY
+}
+
+eap.authenticate {
+	fail = 1
+	handled = 1
+}
+if (&reply:State) {
+	test_fail
+}
+else {
+	update reply {
+		&Filter-Id := "not stored"
+	}
+	test_pass
+}
+
+update reply {
+	&EAP-Message !* ANY
+	&Message-Authenticator !* ANY
+}

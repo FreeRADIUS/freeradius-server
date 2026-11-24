@@ -116,7 +116,7 @@ static int _eap_handler_free(eap_handler_t *handler)
  */
 eap_handler_t *eap_handler_alloc(rlm_eap_t *inst, REQUEST *request)
 {
-	eap_handler_t	*handler, *old;
+	eap_handler_t	*handler;
 	char buffer[256];
 
 	handler = talloc_zero(NULL, eap_handler_t);
@@ -129,19 +129,15 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst, REQUEST *request)
 	/* Doesn't need to be inside the critical region */
 	talloc_set_destructor(handler, _eap_handler_free);
 
-	if (!inst->dedup_tree) return handler;
+	/*
+	 *	Sessions inside of a tunnel are tracked by the outer
+	 *	session, and don't need to be dedup'd.
+	 */
+	if (!inst->dedup_tree || request->parent) return handler;
 
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->dedup_key, NULL, NULL) < 0) return handler;
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->dedup_key, NULL, NULL) <= 0) return handler;
 
 	handler->dedup = talloc_strdup(handler, buffer);
-
-	/*
-	 *	Delete any old handler
-	 */
-	PTHREAD_MUTEX_LOCK(&(inst->session_mutex));
-	old = rbtree_finddata(inst->dedup_tree, handler);
-	if (old) (void) eaplist_delete(inst, request, old, "Cancelling", true);
-	PTHREAD_MUTEX_UNLOCK(&(inst->session_mutex));
 
 	return handler;
 }
@@ -181,12 +177,24 @@ static eap_handler_t *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
 {
 	rbnode_t *node;
 
-	if (delete && inst->dedup_tree) (void) rbtree_deletebydata(inst->dedup_tree, handler);
-
 	node = rbtree_find(inst->session_tree, handler);
 	if (!node) return NULL;
 
 	handler = rbtree_node2data(inst->session_tree, node);
+
+	/*
+	 *	The dedup tree holds active sessions (i.e. ones in the
+	 *	session tree).  If this handler has the same key as an
+	 *	existing one, delete the previous one.
+	 */
+	if (inst->dedup_tree && handler->dedup) {
+		rbnode_t *dedup_node;
+
+		dedup_node = rbtree_find(inst->dedup_tree, handler);
+		if (dedup_node && (rbtree_node2data(inst->dedup_tree, dedup_node) == handler)) {
+			rbtree_delete(inst->dedup_tree, dedup_node);
+		}
+	}
 
 	RDEBUG("%s EAP session with state "
 	       "0x%02x%02x%02x%02x%02x%02x%02x%02x", msg,
@@ -277,6 +285,7 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 {
 	int		status = 0;
+	bool		replaced = false;
 	VALUE_PAIR	*state;
 	REQUEST		*request = handler->request;
 
@@ -302,6 +311,17 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	means that we need a lock, to avoid conflict.
 	 */
 	PTHREAD_MUTEX_LOCK(&(inst->session_mutex));
+
+	/*
+	 *	New sessions replace a previous session which has the
+	 *	same dedup key.
+	 */
+	if ((handler->trips == 0) && inst->dedup_tree && handler->dedup) {
+		eap_handler_t *old;
+
+		old = rbtree_finddata(inst->dedup_tree, handler);
+		if (old) (void) eaplist_delete(inst, request, old, "Cancelling", true);
+	}
 
 	/*
 	 *	If we have a DoS attack, discard new sessions.
@@ -347,6 +367,18 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	 */
 	status = rbtree_insert(inst->session_tree, handler);
 
+	/*
+	 *	If this session isn't in the dedup tree, then a new
+	 *	session has replace it.  Cancel the current EAP
+	 *	session.
+	 */
+	if (status && inst->dedup_tree && handler->dedup &&
+	    !rbtree_insert(inst->dedup_tree, handler)) {
+		(void) rbtree_deletebydata(inst->session_tree, handler);
+		replaced = true;
+		status = 0;
+	}
+
 	if (status) {
 		eap_handler_t *prev;
 
@@ -386,6 +418,8 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 				ERROR("rlm_eap (%s): Too many open sessions. Try increasing \"max_sessions\" "
 				      "in the EAP module configuration", inst->xlat_name);
 			}
+		} else if (replaced) {
+			RWDEBUG("Not continuing this EAP session due to dedup_key - a newer session with the same key has replaced it");
 		} else {
 			ERROR("rlm_eap (%s): Failed to store handler", inst->xlat_name);
 		}

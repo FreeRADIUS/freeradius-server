@@ -50,10 +50,19 @@ eap {
 	#  same device uses multiple EAP sessions at the same time.
 	#  But that device behavior should be rare to non-existent.
 	#
+	#  When a device sends a new session without finishing the
+	#  earlier one, the earlier session is deleted.
+	#
+	#  The key must be an attribute reference, or else contain an
+	#  expansion.  Invalid keys are ignored.
+	#
+	#  Requests inside of a tunnel (e.g. PEAP or TTLS) do not use
+	#  the dedup key.
+	#
 	#  The configuration item is commented out so that upgrades
 	#  do not change existing behavior.
 	#
-#	dedup_key = "%{Calling-Station-Id}"
+#	dedup_key = "%{Calling-Station-Id}%{Called-Station-Id}"
 
 	#  There are many EAP types, but the server has support
 	#  for only a limited subset.  If the server receives

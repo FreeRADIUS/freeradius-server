@@ -176,11 +176,13 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 #  * always enable TLS 1.3 for the tests, via the super-secret magic flag.
 #  * tell OpenSSL to enable insecure ciphers TLS 1.0 and TLS 1.1
 #  * include extra config for EAP methods disabled in the default raddb
+#  * enable dedup_key
 #
 config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel config/eap-include.conf
 	${Q}sed -e 's|^eap {|eap eap-test {\n${EAP_CONF_INCLUDE}|' \
 	     -e 's/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/' \
 	     -e 's/enable = no/enable = yes/' \
+	     -e 's/^#\(\tdedup_key = \)/\1/' \
 	     -e 's/^\(.*\)persist_dir =/  persist_dir =/' \
 	     -e 's/#.*softfail =.*/softfail = yes/' \
 	     -e 's/tls_min_version = "1.2"/tls_min_version = "1.0"/' \
@@ -283,8 +285,13 @@ clean.tests.eap:
 #
 #  MD5 doesn't use MPPE keys
 #
+#  Each test uses its own MAC address (Calling-Station-Id), made from
+#  its name, so that tests run in parallel don't replace each other's
+#  sessions through dedup_key.
+#
 $(BUILD_PATH)/tests/eap/%.ok: NO_MPPE = $(filter eap-md5,$(basename $(notdir $@)))
-$(BUILD_PATH)/tests/eap/%.ok: CMD =  $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n)
+$(BUILD_PATH)/tests/eap/%.ok: MAC = $(shell printf '%s' $(basename $(notdir $@)) | cksum | awk '{ printf "02:00:%02x:%02x:%02x:%02x", int($$1 / 16777216) % 256, int($$1 / 65536) % 256, int($$1 / 256) % 256, $$1 % 256 }')
+$(BUILD_PATH)/tests/eap/%.ok: CMD =  $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) -M $(MAC) $(if $(NO_MPPE),-n)
 $(BUILD_PATH)/tests/eap/%.ok: LOG =  $(patsubst %.ok,%,$@).log
 
 $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(BUILD_PATH)/tests/eap radiusd.pid radiusd.kill
