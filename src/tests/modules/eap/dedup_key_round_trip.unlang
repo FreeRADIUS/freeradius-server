@@ -1,0 +1,67 @@
+#
+#  A session which has made a round trip goes back into the dedup
+#  tree, so a newer session with the same key still replaces it.
+#
+eap.authenticate {
+	fail = 1
+	handled = 1
+}
+if (!&reply:State) {
+	test_fail
+}
+
+#
+#  NAK the MD5 challenge (EAP Identifier 2), asking for GTC.  The
+#  session continues, and is stored again.
+#
+update request {
+	&EAP-Message := 0x020200060306
+	&State := &reply:State
+}
+update reply {
+	&EAP-Message !* ANY
+	&Message-Authenticator !* ANY
+	&State !* ANY
+}
+
+eap.authenticate {
+	fail = 1
+	handled = 1
+}
+if (!&reply:State) {
+	test_fail
+}
+
+#
+#  The client starts again.  With max_sessions = 1, the new session
+#  is stored only if it replaced the old one.
+#
+update request {
+	&EAP-Message := 0x0201000801626f62
+	&State !* ANY
+}
+update reply {
+	&EAP-Message !* ANY
+	&Message-Authenticator !* ANY
+	&State !* ANY
+}
+
+eap.authenticate {
+	fail = 1
+	handled = 1
+}
+if (!&reply:State) {
+	test_fail
+}
+else {
+	update reply {
+		&Filter-Id := "stored"
+	}
+	test_pass
+}
+
+update reply {
+	&EAP-Message !* ANY
+	&Message-Authenticator !* ANY
+	&State !* ANY
+}

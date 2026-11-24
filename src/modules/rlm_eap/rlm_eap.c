@@ -30,6 +30,7 @@ RCSID("$Id$")
 
 #include "rlm_eap.h"
 
+#include <ctype.h>
 #include <sys/stat.h>
 
 static const CONF_PARSER module_config[] = {
@@ -59,6 +60,8 @@ static int mod_detach(void *instance)
 
 	rbtree_free(inst->session_tree);
 	inst->session_tree = NULL;
+	rbtree_free(inst->dedup_tree);
+	inst->dedup_tree = NULL;
 	eaplist_free(inst);
 
 	return 0;
@@ -98,6 +101,26 @@ static int eap_handler_cmp(void const *a, void const *b)
 	}
 
 	return 0;
+}
+
+/*
+ *	Whether a dedup key contains an expansion, rather than being a
+ *	fixed string.  "%%" is a literal "%".
+ */
+static bool dedup_key_is_expansion(char const *p)
+{
+	while ((p = strchr(p, '%')) != NULL) {
+		if (p[1] == '%') {
+			p += 2;
+			continue;
+		}
+
+		if ((p[1] == '{') || isalpha((uint8_t) p[1])) return true;
+
+		p++;
+	}
+
+	return false;
 }
 
 /*
@@ -278,11 +301,34 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		return 0;
 	}
 
+	/*
+	 *	A fixed string would give every session the same key,
+	 *	and each new session would cancel all of the others.
+	 *	An attribute reference is turned into an expansion.
+	 */
+	if (!dedup_key_is_expansion(inst->dedup_key)) {
+		vp_tmpl_t	*vpt = NULL;
+		CONF_PAIR	*cp = cf_pair_find(cs, "dedup_key");
+
+		if (tmpl_afrom_attr_str(inst, &vpt, inst->dedup_key, REQUEST_CURRENT, PAIR_LIST_REQUEST,
+					false, false) <= 0) {
+			WARN("%s[%d]: Ignoring \"dedup_key\", as it is not an attribute reference, and has no expansion such as \"%%{Calling-Station-Id}\"",
+			     cp ? cf_pair_filename(cp) : cf_section_filename(cs),
+			     cp ? cf_pair_lineno(cp) : cf_section_lineno(cs));
+			return 0;
+		}
+		talloc_free(vpt);
+
+		inst->dedup_key = talloc_typed_asprintf(inst, "%%{%s}",
+							inst->dedup_key + (inst->dedup_key[0] == '&'));
+	}
+
 	inst->dedup_tree = rbtree_create(NULL, dedup_cmp, NULL,  0);
 	if (!inst->dedup_tree) {
 		ERROR("rlm_eap (%s): Cannot initialize dedup tree", inst->xlat_name);
 		return -1;
 	}
+	fr_link_talloc_ctx_free(inst, inst->dedup_tree);
 
 	return 0;
 }

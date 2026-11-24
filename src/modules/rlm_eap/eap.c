@@ -1103,19 +1103,21 @@ static EAP_DS *eap_buildds(eap_handler_t *handler,
 		return NULL;
 	}
 
-	eap_ds->response->packet = (uint8_t *) eap_packet;
-	(void) talloc_steal(eap_ds, eap_packet);
+	memcpy(&len, eap_packet->length, sizeof(uint16_t));
+	len = ntohs(len);
+
+	/*
+	 *	The packet is in the request's memory, but the handler
+	 *	may be freed by another thread.  So the handler gets a
+	 *	copy, and the original is freed here.
+	 */
+	MEM(eap_ds->response->packet = talloc_memdup(eap_ds, eap_packet, len));
 	eap_ds->response->code = eap_packet->code;
 	eap_ds->response->id = eap_packet->id;
 	eap_ds->response->type.num = eap_packet->data[0];
-
-	memcpy(&len, eap_packet->length, sizeof(uint16_t));
-	len = ntohs(len);
 	eap_ds->response->length = len;
 
-	/*
-	 *	We've eaten the eap packet into the eap_ds.
-	 */
+	talloc_free(eap_packet);
 	*eap_packet_p = NULL;
 
 	/*

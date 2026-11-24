@@ -1,0 +1,41 @@
+#
+#  A new session replaces the one with the same dedup_key, so a
+#  client which restarts EAP does not fill max_sessions.
+#
+eap.authenticate {
+	fail = 1
+	handled = 1
+}
+if (!&reply:State) {
+	test_fail
+}
+
+update reply {
+	&EAP-Message !* ANY
+	&Message-Authenticator !* ANY
+	&State !* ANY
+}
+
+#
+#  With max_sessions = 1, this session is stored only if the first
+#  one has been removed.  Storing it adds a State.
+#
+eap.authenticate {
+	fail = 1
+	handled = 1
+}
+if (!&reply:State) {
+	test_fail
+}
+else {
+	update reply {
+		&Filter-Id := "stored"
+	}
+	test_pass
+}
+
+update reply {
+	&EAP-Message !* ANY
+	&Message-Authenticator !* ANY
+	&State !* ANY
+}

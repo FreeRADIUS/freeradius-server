@@ -1,0 +1,17 @@
+#
+#  Input packet
+#
+User-Name = "bob"
+EAP-Message = 0x0201000801626f62
+Message-Authenticator = 0x00
+Calling-Station-Id = "02-00-00-00-00-01"
+
+#
+#  Expected answer
+#
+#  The first session set the packet type, and the server adds its own
+#  State to an Access-Challenge.
+#
+Response-Packet-Type == Access-Challenge
+Filter-Id == "not stored"
+State =* ANY

@@ -50,6 +50,27 @@ eap {
 	#  same device uses multiple EAP sessions at the same time.
 	#  But that device behavior should be rare to non-existent.
 	#
+	#  The newest session always wins: a request which starts a
+	#  session replaces the session in progress with the same key.
+	#  A NAS which sends the first Access-Request of a session again
+	#  with a new RADIUS ID has sent a new request, which starts a
+	#  new session.  So does a retransmission of it that arrives
+	#  after 'cleanup_delay', once the server no longer holds the
+	#  original request to recognise it as a duplicate.  Keep
+	#  'cleanup_delay' in radiusd.conf longer than the NAS's
+	#  retransmission interval; that does not help a NAS which sends
+	#  the request again with a new ID.
+	#
+	#  The key must be an attribute reference, or contain an
+	#  expansion.  Otherwise, it is ignored, with a warning.
+	#  A client can set its own Calling-Station-Id, and so cancel
+	#  the sessions of another client.  If that matters, use a key
+	#  which also contains the Called-Station-Id, such as
+	#  "%{Called-Station-Id}-%{Calling-Station-Id}".
+	#
+	#  Requests inside of a tunnel (e.g. PEAP or TTLS) do not use
+	#  the dedup key.
+	#
 	#  The configuration item is commented out so that upgrades
 	#  do not change existing behavior.
 	#

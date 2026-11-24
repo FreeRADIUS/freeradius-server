@@ -1,3 +1,16 @@
+FreeRADIUS 3.2.12 Thu 26 Nov 2026 12:00:00 UTC urgency=low
+	Configuration changes
+
+	Feature improvements
+
+	Bug fixes
+	* The "dedup_key" configuration of the EAP module now works.  It has
+	  had no effect since it was added in 3.2.4.  If it is set, then new
+	  sessions now replace older ones with the same key after upgrading.
+	  A key which is not an attribute reference, and has no expansion such
+	  as "%{Calling-Station-Id}", is ignored, with a warning.  Requests
+	  inside of a tunnel do not use the key.
+
 FreeRADIUS 3.2.11 Thu 26 Nov 2026 12:00:00 UTC urgency=high
 	Configuration changes
 	* Add notes on the security of CHAP-Password and MS-CHAP-*
