@@ -474,7 +474,9 @@ static CONF_PARSER limit_config[] = {
 #ifdef SO_SNDTIMEO
 	{ "write_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.write_timeout), NULL },
 #endif
+#ifdef WITH_TLS
 	{ "max_packet_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_packet_size), STRINGIFY(MAX_PACKET_LEN) },
+#endif
 	CONF_PARSER_TERMINATOR
 };
 
