@@ -131,7 +131,6 @@ typedef struct _tls_session_t {
 	record_t 	dirty_out;			//!< Data EAP server sends.
 
 	void 		(*record_init)(record_t *buf);
-	void 		(*record_close)(record_t *buf);
 	unsigned int 	(*record_plus)(record_t *buf, void const *ptr, unsigned int size);
 	unsigned int 	(*record_minus)(record_t *buf, void *ptr, unsigned int size);
 

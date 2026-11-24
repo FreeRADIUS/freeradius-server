@@ -170,7 +170,6 @@ static void 		session_init(tls_session_t *ssn);
 
 /* record */
 static void 		record_init(record_t *buf);
-static void 		record_close(record_t *buf);
 static unsigned int 	record_plus(record_t *buf, void const *ptr,
 				    unsigned int size);
 static unsigned int 	record_minus(record_t *buf, void *ptr,
@@ -692,7 +691,6 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	Initialize callbacks
 	 */
 	state->record_init = record_init;
-	state->record_close = record_close;
 	state->record_plus = record_plus;
 	state->record_minus = record_minus;
 
@@ -1103,20 +1101,9 @@ static void session_close(tls_session_t *ssn)
 		SSL_free(ssn->ssl);
 		ssn->ssl = NULL;
 	}
-
-	record_close(&ssn->clean_in);
-	record_close(&ssn->clean_out);
-	record_close(&ssn->dirty_in);
-	record_close(&ssn->dirty_out);
-	session_init(ssn);
 }
 
 static void record_init(record_t *rec)
-{
-	rec->used = 0;
-}
-
-static void record_close(record_t *rec)
 {
 	rec->used = 0;
 }
