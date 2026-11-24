@@ -226,6 +226,24 @@ static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
 
 	if (hstatus != SQLITE_OK) ERROR("rlm_sql_sqlite: %s: Code 0x%04x (%i): %s",
 					p, hstatus, hstatus, sqlite3_errmsg(db));
+
+	talloc_free(p);
+}
+
+/** Determine if a query failed, and log the error if the connection needs to be reopened
+ *
+ * rlm_sql reconnects on RLM_SQL_RECONNECT without asking the driver for
+ * the error, so we log it here.
+ */
+static sql_rcode_t sql_check_query_error(sqlite3 *db, int status, rlm_sql_config_t *config)
+{
+	rlm_sql_sqlite_config_t	*driver = config->driver;
+	sql_rcode_t		rcode;
+
+	rcode = sql_check_error(db, status);
+	if (rcode == RLM_SQL_RECONNECT) sql_print_error(db, status, "Query failed on \"%s\"", driver->filename);
+
+	return rcode;
 }
 
 #ifdef HAVE_SQLITE3_OPEN_V2
@@ -499,8 +517,19 @@ static int _sql_socket_destructor(rlm_sql_sqlite_conn_t *conn)
 	DEBUG2("rlm_sql_sqlite: Socket destructor called, closing socket");
 
 	if (conn->db) {
+		/*
+		 *	A statement which is still open makes sqlite3_close()
+		 *	fail, and leaves the database open.  rlm_sql doesn't
+		 *	finish a query which needs a reconnect.
+		 */
+		if (conn->statement) {
+			(void) sqlite3_finalize(conn->statement);
+			conn->statement = NULL;
+		}
+
 		status = sqlite3_close(conn->db);
-		if (status != SQLITE_OK) WARN("rlm_sql_sqlite: Got SQLite error code (%u) when closing socket", status);
+		if (status != SQLITE_OK) WARN("rlm_sql_sqlite: Got SQLite error code (%d) when closing socket: %s",
+					      status, sqlite3_errmsg(conn->db));
 	}
 
 	return 0;
@@ -574,7 +603,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_sqlite_conn_t	*conn = handle->conn;
 	char const		*z_tail;
@@ -588,11 +617,11 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 
 	conn->col_count = 0;
 
-	return sql_check_error(conn->db, status);
+	return sql_check_query_error(conn->db, status, config);
 }
 
 
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 
 	sql_rcode_t		rcode;
@@ -605,11 +634,11 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 #else
 	status = sqlite3_prepare(conn->db, query, strlen(query), &conn->statement, &z_tail);
 #endif
-	rcode = sql_check_error(conn->db, status);
+	rcode = sql_check_query_error(conn->db, status, config);
 	if (rcode != RLM_SQL_OK) return rcode;
 
 	status = sqlite3_step(conn->statement);
-	return sql_check_error(conn->db, status);
+	return sql_check_query_error(conn->db, status, config);
 }
 
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)

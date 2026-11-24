@@ -61,6 +61,10 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  long-standing issue where it would open a socket, send packets,
 	  and then (rarely) ignore the replies.
 	* Fix secret suppression in rlm_python3
+	* rlm_sql_sqlite no longer leaks the database handle and its file
+	  descriptor when a query fails with an error which causes a
+	  reconnect, such as a read-only database.  The error from the
+	  database is now logged, with its file name.
 	* Set "secret" flag for dynamic clients, too
 	* For dynamic home servers, make realm_dir filenames and SNI checks case
 	  insensitive.
