@@ -455,7 +455,8 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	ssize_t			data_len;
 	size_t			len;
 	uint16_t		port;
-	uint8_t			buffer[MAX_PACKET_LEN];
+
+	static __thread uint8_t	buffer[MAX_PACKET_LEN];
 
 	memset(&src, 0, sizeof_src);
 	memset(&dst, 0, sizeof_dst);
@@ -1879,7 +1880,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	/*
 	 *	A 4K packet, aligned on 64-bits.
 	 */
-	uint64_t	data[MAX_PACKET_LEN / sizeof(uint64_t)];
+	static uint64_t __thread data[MAX_PACKET_LEN / sizeof(uint64_t)];
 
 	/*
 	 *	Double-check some things based on packet code.
