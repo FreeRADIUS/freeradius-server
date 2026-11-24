@@ -39,4 +39,8 @@ typedef enum {
 } fr_radius_alpn_id_t;
 
 extern fr_tls_alpn_t const fr_radius_alpn_table[];
+
+#define FR_RADIUS_TLS_BUFFER_SIZE_MIN	(4096)
+#define FR_RADIUS_TLS_BUFFER_SIZE_MAX	(1 << 18)
+
 #endif

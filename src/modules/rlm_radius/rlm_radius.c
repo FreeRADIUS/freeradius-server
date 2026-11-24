@@ -877,6 +877,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 4096);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
+#ifdef WITH_TLS
+	if (inst->tls_conf) {
+		FR_INTEGER_BOUND_CHECK("tls.buffer_size", inst->tls_conf->buffer_size, >=, FR_RADIUS_TLS_BUFFER_SIZE_MIN);
+		FR_INTEGER_BOUND_CHECK("tls.buffer_size", inst->tls_conf->buffer_size, <=, FR_RADIUS_TLS_BUFFER_SIZE_MAX);
+	}
+#endif
+
 	/*
 	 *	Check invalid configurations.
 	 */

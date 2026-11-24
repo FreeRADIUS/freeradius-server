@@ -198,6 +198,7 @@ struct fr_tls_conf_s {
 	float		tls_min_version;		//!< Minimum TLS version allowed.
 
 	uint32_t	fragment_size;			//!< Maximum record fragment, or record size.
+	uint32_t	buffer_size;			//!< Size of the "clean" dbuffs for each session.
 	uint32_t	padding_block_size;		//!< for TLS 1.3, pad blocks to multiple of this size.
 							///< Zero means no padding.
 
