@@ -7,6 +7,8 @@ ALIAS	Hillstone-User-Mobile-Operator          	26.28557.6
 ALIAS	Hillstone-User-Policy-dst-ip-begin      	26.28557.7
 ALIAS	Hillstone-User-Policy-dst-ip-end        	26.28557.8
 ALIAS	Hillstone-User-Role-Bame                	26.28557.9
+ALIAS	Hillos-Role-iSource                      	26.28557.10
+ALIAS	Hillos-Role-HSM                          	26.28557.11
 ALIAS	Hillstone-VPN-DHCP-Gateway              	26.28557.100
 ALIAS	Hillstone-VPN-DHCP-Mask                 	26.28557.101
 ALIAS	Hillstone-VPN-DHCP-Pool                 	26.28557.102
