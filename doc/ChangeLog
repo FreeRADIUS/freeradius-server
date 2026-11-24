@@ -1,3 +1,13 @@
+FreeRADIUS 3.2.12 Thu 26 Nov 2026 12:00:00 UTC urgency=low
+	Configuration changes
+
+	Feature improvements
+
+	Bug fixes
+	* Fix memory corruption and crashes in the detail module with
+	  "locking = no" (the default), when it fails to open or create its
+	  file under concurrent load.
+
 FreeRADIUS 3.2.11 Thu 26 Nov 2026 12:00:00 UTC urgency=high
 	Configuration changes
 	* Add notes on the security of CHAP-Password and MS-CHAP-*
