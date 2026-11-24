@@ -2,7 +2,6 @@ FreeRADIUS 3.2.12 Thu 26 Nov 2026 12:00:00 UTC urgency=low
 	Configuration changes
 
 	Feature improvements
-
 	Bug fixes
 	* Fix "dedup_key" configuration of the EAP module now works.
 	* Fix rlm_python now sets the values of attributes, even in non-debug mode.
@@ -10,6 +9,14 @@ FreeRADIUS 3.2.12 Thu 26 Nov 2026 12:00:00 UTC urgency=low
 	  "locking = no" (the default), when it fails to open or create its
 	  file under concurrent load.
 	* rlm_mschap now uses the correct name when printing Auth-Type
+	* Add "strict_idle_timeout" to connection pools.  When set, a
+	  connection which has been idle for longer than "idle_timeout" is
+	  closed when it is next needed, instead of being re-used.  This
+	  helps with firewalls and NAT which silently discard the state of
+	  idle connections, where the next query on a re-used connection
+	  hangs or fails.  See the "pool" section of mods-available/sql.
+
+	Bug fixes
 
 FreeRADIUS 3.2.11 Thu 26 Nov 2026 12:00:00 UTC urgency=high
 	Configuration changes

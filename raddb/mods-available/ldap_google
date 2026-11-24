@@ -258,5 +258,14 @@ ldap ldap_google {
 		retry_delay = 30
 		lifetime = 0
 		idle_timeout = 60
+
+		#  Close a connection which has been idle for longer
+		#  than "idle_timeout" when it is next needed, instead
+		#  of re-using it.  This helps with firewalls and NAT
+		#  which silently discard the state of idle connections,
+		#  so that the next query on a re-used connection hangs
+		#  or fails.
+		#
+#		strict_idle_timeout = no
 	}
 }

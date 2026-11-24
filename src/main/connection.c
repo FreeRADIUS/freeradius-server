@@ -112,6 +112,9 @@ struct fr_connection_pool_t {
 						//!< closed (irrespective of whether it's idle or not).
 	uint32_t       	idle_timeout;		//!< How long a connection can be idle before
 						//!< being closed.
+	bool		strict_idle_timeout;	//!< Close a connection which has been idle for
+						//!< longer than idle_timeout when it is taken
+						//!< from the pool, instead of re-using it.
 
 	uint32_t	max_pending;		//!< Max number of connections to open.
 
@@ -159,6 +162,7 @@ static const CONF_PARSER connection_config[] = {
 	{ "cleanup_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), NULL},
 	{ "cleanup_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), "30" },
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), "60" },
+	{ "strict_idle_timeout", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, strict_idle_timeout), "no" },
 	{ "retry_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), "1" },
 	{ "max_retries", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, max_retries), "5" },
 	{ "spread", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), "no" },
@@ -594,6 +598,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 		if (pool->stats.num <= pool->min) {
 			DEBUG("%s: You probably need to lower \"min\"", pool->log_prefix);
 		}
+	do_close:
 		fr_connection_close_internal(pool, this, reason, msg);
 		return 0;
 	}
@@ -607,13 +612,21 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 	/*
 	 *	The connection WAS idle, but the caller is interested
 	 *	in getting a new one.  Instead of closing the old one
-	 *	and opening a new one, we just return the old one.
+	 *	and opening a new one, we just return the old one,
+	 *	unless "strict_idle_timeout" says to close it.
 	 */
-	if (get) return 1;
+	if (get && !pool->strict_idle_timeout) return 1;
 
 	if ((pool->idle_timeout > 0) &&
 	    ((this->last_released.tv_sec + pool->idle_timeout) < now)) {
 		msg = "Hit idle_timeout limit";
+
+		/*
+		 *	We only get here on get if
+		 *	"strict_idle_timeout" is set.  The caller has
+		 *	already found or opened another connection.
+		 */
+		if (get) goto do_close;
 		goto do_delete;
 	}
 
