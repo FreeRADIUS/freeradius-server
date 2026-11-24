@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+User-Name = "user_ippool"
+User-Password = "password"
+NAS-IP-Address = 192.0.2.10
+NAS-Port = 1
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept

@@ -1,0 +1,76 @@
+#
+#  Allocate addresses from a pool with two expired leases and one
+#  current lease.  The oldest expired lease goes first, and the current
+#  lease is never allocated.
+#
+update {
+	Tmp-String-0 := "%{sql_ippool:DELETE FROM radippool WHERE pool_name = 'test_alloc'}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+
+update {
+	Tmp-String-0 := "%{sql_ippool:INSERT INTO radippool (pool_name, framedipaddress, expiry_time) VALUES ('test_alloc', '192.0.2.1', datetime('now', '-1 hour'))}"
+	Tmp-String-0 := "%{sql_ippool:INSERT INTO radippool (pool_name, framedipaddress, expiry_time) VALUES ('test_alloc', '192.0.2.2', datetime('now', '-2 hours'))}"
+	Tmp-String-0 := "%{sql_ippool:INSERT INTO radippool (pool_name, framedipaddress, nasipaddress, pool_key, expiry_time) VALUES ('test_alloc', '192.0.2.3', '192.0.2.10', '99', datetime('now', '+1 hour'))}"
+}
+
+update control {
+	&Pool-Name := 'test_alloc'
+}
+
+#
+#  The oldest expired lease
+#
+sqlippool.post-auth
+if (!ok || (&reply:Framed-IP-Address != 192.0.2.2)) {
+	test_fail
+}
+
+update {
+	Tmp-Integer-0 := "%{sql_ippool:SELECT count(*) FROM radippool WHERE framedipaddress = '192.0.2.2' AND nasipaddress = '192.0.2.10' AND pool_key = '1' AND expiry_time > datetime('now')}"
+}
+if (&Tmp-Integer-0 != 1) {
+	test_fail
+}
+
+#
+#  The other expired lease, for another NAS port
+#
+update request {
+	&NAS-Port := 2
+}
+update reply {
+	&Framed-IP-Address !* ANY
+}
+
+sqlippool.post-auth
+if (!ok || (&reply:Framed-IP-Address != 192.0.2.1)) {
+	test_fail
+}
+
+#
+#  Only the current lease is left, and it must not be allocated
+#
+update request {
+	&NAS-Port := 3
+}
+update reply {
+	&Framed-IP-Address !* ANY
+}
+
+sqlippool.post-auth
+if (&reply:Framed-IP-Address) {
+	test_fail
+}
+
+update {
+	Tmp-Integer-0 := "%{sql_ippool:SELECT count(*) FROM radippool WHERE framedipaddress = '192.0.2.3' AND pool_key = '99'}"
+}
+if (&Tmp-Integer-0 != 1) {
+	test_fail
+}
+else {
+	test_pass
+}
