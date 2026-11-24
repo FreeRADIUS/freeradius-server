@@ -148,7 +148,7 @@ static void exfile_cleanup_entry(exfile_entry_t *entry)
  *	Try to open the file. If it doesn't exist, try to
  *	create it's parent directories.
  */
-static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions)
+static int exfile_open_mkdir(char const *filename, mode_t permissions)
 {
 	int fd;
 
@@ -202,7 +202,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		 *	Maybe the directory doesn't exist.  Try to
 		 *	create it.
 		 */
-		dir = talloc_strdup(ef, filename);
+		dir = talloc_strdup(NULL, filename);
 		if (!dir) return -1;
 		p = strrchr(dir, FR_DIR_SEP);
 		if (!p) {
@@ -265,7 +265,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *o
 	 *	No locking: just return a new FD.
 	 */
 	if (!ef->locking) {
-		found = exfile_open_mkdir(ef, filename, permissions);
+		found = exfile_open_mkdir(filename, permissions);
 		if (found < 0) return -1;
 
 		real_offset = lseek(found, 0, SEEK_END);
@@ -364,7 +364,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *o
 		 *	and cache the FD.
 		 */
 	reopen:
-		ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
+		ef->entries[i].fd = exfile_open_mkdir(filename, permissions);
 		if (ef->entries[i].fd < 0) {
 		error:
 			exfile_cleanup_entry(&ef->entries[i]);
