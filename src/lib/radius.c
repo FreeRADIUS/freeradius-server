@@ -2039,6 +2039,9 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			 *	attributes with a debug build.
 			 */
 			if (reply->da->attr == PW_RAW_ATTRIBUTE) {
+				room = ((uint8_t *) data) + sizeof(data) - ptr;
+				if (reply->vp_length > room) break;
+
 				memcpy(ptr, reply->vp_octets, reply->vp_length);
 				len = reply->vp_length;
 				reply = reply->next;
