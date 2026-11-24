@@ -351,6 +351,20 @@ eap {
 		#
 	#	random_file = /dev/urandom
 
+		#
+		#  The size of the buffers used to read / write TLS data.
+		#
+		#  Previous versions used a hard-coded buffer size of 64K, this
+		#  is now configurable.  The buffer size should be large enough
+		#  to fully one EAP frame.
+		#
+		#  The default RADIUS packet size is 4K, so that puts an upper
+		#  bound on the size of the EAP buffers.
+		#
+		#  The minimum size is 4K.  The maximum is 64K.
+		#
+#		buffer_size = 4096
+
 		#  This can never exceed the size of a RADIUS
 		#  packet (4096 bytes), and is preferably half
 		#  that, to accommodate other attributes in

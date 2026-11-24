@@ -162,6 +162,18 @@ listen {
 	      #  We STRONGLY RECOMMEND that you set an idle timeout.
 	      #
 	      idle_timeout = 30
+
+	      #
+	      #  For RadSec (TLS) only
+	      #
+	      #  The maximum size of RADIUS packets.  RFC 2865 says that
+	      #  RADIUS clients and servers have to support 4K packets.
+	      #  RFC 7930 allows for negotiation of up to 64K packets.
+	      #
+	      #  Instead of implementing negotiation, we just make this
+	      #  limit configurable per connection.
+	      #
+#	      max_packet_size = 4096
 	}
 
 	#  This is *exactly* the same configuration as used by the EAP-TLS
@@ -744,11 +756,18 @@ home_server tls {
 #		random_file = /dev/urandom
 
 		#
-		#  The default fragment size is 1K.
-		#  However, TLS can send 64K of data at once.
-		#  It can be useful to set it higher.
+		#  The size of the buffers used to read / write RadSec data.
 		#
-		fragment_size = 8192
+		#  Previous versions used a hard-coded buffer size of 64K, this
+		#  is now configurable.  The buffer size should be large enough
+		#  to fully capture bursts of packets on one RadSec connection.
+		#
+		#  The only downsize to making the buffers too large is that the
+		#  server will use more memory.
+		#
+		#  The minimum size is 4K.  The maximum is 256K.
+		#
+#		buffer_size = 65536
 
 		#  include_length is a flag which is
 		#  by default set to yes If set to
