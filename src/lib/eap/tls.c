@@ -410,6 +410,17 @@ int eap_tls_request(request_t *request, eap_session_t *eap_session)
 	 */
 	if (eap_tls_session->record_out_started  == false) {
 		eap_tls_session->record_out_total_len = fr_dbuff_remaining(tls_session->dirty_out);
+
+		/*
+		 *	With TLS 1.3, the L bit MUST NOT be set in an
+		 *	unfragmented message (RFC 9190 Section 2.1.9,
+		 *	and RFC 9427 Section 2 for the other TLS-based
+		 *	methods).  A TLS record which fits into one
+		 *	EAP packet without the length field can omit
+		 *	the length.
+		 */
+		if ((SSL_version(tls_session->ssl) == TLS1_3_VERSION) &&
+		    (fr_dbuff_remaining(tls_session->dirty_out) <= tls_session->mtu)) length_included = false;
 	}
 
 	/*
