@@ -25,6 +25,19 @@
 
 RCSID("$Id$")
 
+/*
+ *	Scratch buffers for receiving and encoding packets.  Where the
+ *	compiler supports thread-local storage (TLS_STORAGE_CLASS, see
+ *	src/include/threads.h), the buffers are static and per-thread.
+ *	Otherwise the buffers go on the stack, because a static buffer
+ *	would be shared between threads.
+ */
+#ifdef __THREAD
+#  define FR_RADIUS_BUFFER static __THREAD
+#else
+#  define FR_RADIUS_BUFFER
+#endif
+
 #include	<freeradius-devel/libradius.h>
 
 #include	<freeradius-devel/md5.h>
@@ -456,7 +469,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	size_t			len;
 	uint16_t		port;
 
-	static __thread uint8_t	buffer[MAX_PACKET_LEN];
+	FR_RADIUS_BUFFER uint8_t buffer[MAX_PACKET_LEN];
 
 	memset(&src, 0, sizeof_src);
 	memset(&dst, 0, sizeof_dst);
@@ -1878,9 +1891,10 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	bool			seen_ma = false;
 
 	/*
-	 *	A 4K packet, aligned on 64-bits.
+	 *	A 4K packet, aligned on 64-bits.  The buffer is per-thread,
+	 *	and rad_encode() is not reentrant.
 	 */
-	static __thread uint64_t data[MAX_PACKET_LEN / sizeof(uint64_t)];
+	FR_RADIUS_BUFFER uint64_t data[MAX_PACKET_LEN / sizeof(uint64_t)];
 
 	/*
 	 *	Double-check some things based on packet code.
@@ -1910,7 +1924,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	}
 
 	/*
-	 *	Use memory on the stack, until we know how
+	 *	Encode into the thread-local buffer, until we know how
 	 *	large the packet will be.
 	 */
 	hdr = (radius_packet_t *) data;
@@ -2116,7 +2130,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 	/*
 	 *	Fill in the rest of the fields, and copy the data over
-	 *	from the local stack to the newly allocated memory.
+	 *	from the thread-local buffer to the packet.
 	 *
 	 *	Allocate enough memory for the packet, or re-use
 	 *	memory from the previous round.  i.e. if we encode a
