@@ -2652,9 +2652,13 @@ do_write:
 		return;
 	}
 
-	packet_len += slen;
-	if (packet_len < u->packet_len) {
-		u->partial = packet_len;
+	/*
+	 *	Stream BIOs can write partial packets.  The request stays in the partial state until all of
+	 *	the packet has been written.
+	 */
+	fr_assert((size_t) slen <= packet_len);
+	u->partial += slen;
+	if (u->partial < u->packet_len) {
 		trunk_request_signal_partial(treq);
 		return;
 	}
