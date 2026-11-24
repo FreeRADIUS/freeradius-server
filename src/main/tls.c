@@ -1075,10 +1075,26 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 	return 1;
 }
 
-static void record_alloc(tls_session_t *ssn, record_t *rec)
+static void record_alloc(tls_session_t *ssn, record_t *rec, bool tls)
 {
 	rec->used = 0;
 	rec->size = ssn->conf->buffer_size;
+
+	/*
+	 *	Account for TLS record overhead.
+	 */
+	if (tls) {
+		int num = (rec->size + (SSL3_RT_MAX_PLAIN_LENGTH - 1)) / SSL3_RT_MAX_PLAIN_LENGTH;
+
+		rec->size += num * (((SSL3_RT_MAX_PACKET_SIZE + 255) & ~255) - SSL3_RT_MAX_PLAIN_LENGTH);
+	}
+
+	/*
+	 *	Round up to the nearest 1K boundary, because that
+	 *	makes memory allocation a bit easier.
+	 */
+	rec->size = (rec->size + 1023) & (uint32_t) ~1023;
+
 	MEM(rec->data = talloc_zero_array(ssn, uint8_t, rec->size));
 }
 
@@ -1086,10 +1102,10 @@ static void session_init(tls_session_t *ssn)
 {
 	ssn->ssl = NULL;
 	ssn->into_ssl = ssn->from_ssl = NULL;
-	record_alloc(ssn, &ssn->clean_in);
-	record_alloc(ssn, &ssn->clean_out);
-	record_alloc(ssn, &ssn->dirty_in);
-	record_alloc(ssn, &ssn->dirty_out);
+	record_alloc(ssn, &ssn->clean_in, false);
+	record_alloc(ssn, &ssn->clean_out, false);
+	record_alloc(ssn, &ssn->dirty_in, true);
+	record_alloc(ssn, &ssn->dirty_out, true);
 
 	memset(&ssn->info, 0, sizeof(ssn->info));
 
