@@ -474,6 +474,7 @@ static CONF_PARSER limit_config[] = {
 #ifdef SO_SNDTIMEO
 	{ "write_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.write_timeout), NULL },
 #endif
+	{ "max_packet_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_packet_size), STRINGIFY(MAX_PACKET_LEN) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -688,6 +689,10 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 		home->limit.certificate_fail_interval = 86400;
 	}
 
+	if (home->limit.max_packet_size) {
+		if (home->limit.max_packet_size < 4096) home->limit.max_packet_size = 4096;
+		if (home->limit.max_packet_size > 65536) home->limit.max_packet_size = 65536;
+	}
 #endif
 
 	/*

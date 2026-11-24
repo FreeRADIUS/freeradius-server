@@ -1791,7 +1791,7 @@ static CONF_PARSER security_config[] = {
 
 static CONF_PARSER limit_config[] = {
 	{ "max_pps", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, max_rate), NULL },
-	{ "max_packet_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, max_packet_size), STRINGIFY(MAX_PACKET_LEN) },
+	{ "max_packet_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.max_packet_size), STRINGIFY(MAX_PACKET_LEN) },
 
 #ifdef WITH_TCP
 	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.max_connections), "16" },
@@ -2022,11 +2022,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		if (rcode < 0) return -1;
 	}
 
-	/*
-	 *	The default, when there is no "limit" subsection.
-	 */
-	sock->max_packet_size = MAX_PACKET_LEN;
-
 	subcs = cf_section_sub_find(cs, "limit");
 	if (subcs) {
 		rcode = cf_section_parse(subcs, sock,
@@ -2034,15 +2029,13 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		if (rcode < 0) return -1;
 
 #ifdef WITH_TLS
-		if ((sock->max_packet_size < MAX_PACKET_LEN) || (sock->max_packet_size > 65535)) {
-			cf_log_err_cs(cs, "Invalid value for \"max_packet_size\".  It must be %d..65535",
-				      MAX_PACKET_LEN);
-			return -1;
-		}
+		/*
+		 *	The default, when there is no "limit" subsection.
+		 */
+		sock->limit.max_packet_size = MAX_PACKET_LEN;
 
-		if (!this->tls && (sock->max_packet_size != MAX_PACKET_LEN)) {
-			cf_log_info(cs, "Ignoring 'max_packet_size' for non-TLS socket");
-		}
+		if (sock->limit.max_packet_size < 4096) sock->limit.max_packet_size = 4096;
+		if (sock->limit.max_packet_size < 65536) sock->limit.max_packet_size = 65536;
 #endif
 
 		if (sock->max_rate && ((sock->max_rate < 10) || (sock->max_rate > 1000000))) {
@@ -4756,6 +4749,12 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home)
 	if (!home->tls) goto find_port;
 
 	DEBUG("(TLS) Trying new outgoing proxy connection to %s", buffer);
+
+	/*
+	 *	Set maximum packet size for outgoing connections, too.
+	 */
+	if (!sock->limit.max_packet_size) sock->limit.max_packet_size = home->limit.max_packet_size;
+	if (!sock->limit.certificate_fail_interval) sock->limit.certificate_fail_interval = home->limit.certificate_fail_interval;
 
 #ifdef WITH_RADIUSV11
 	this->radiusv11 = home->tls->radiusv11;

@@ -66,7 +66,10 @@ typedef struct fr_socket_limit_t {
 	uint32_t	write_timeout;
 	uint32_t	connect_timeout;
 	uint32_t	connect_fail_interval;
+#ifdef WITH_TLS
 	uint32_t	certificate_fail_interval;
+	uint32_t	max_packet_size;	//!< largest RADIUS packet which this listener accepts
+#endif
 } fr_socket_limit_t;
 
 typedef struct home_server {

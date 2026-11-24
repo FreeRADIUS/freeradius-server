@@ -1102,9 +1102,9 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
-	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
-		      request->reply->data_len, MAX_PACKET_LEN);
+	if (request->reply->data_len > (sock->limit.max_packet_size - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %u",
+		      request->reply->data_len, sock->limit.max_packet_size);
 	}
 
 	/*
@@ -1163,9 +1163,9 @@ int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
 
 	rad_assert(request->proxy->data);
 
-	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
-		      request->proxy->data_len, MAX_PACKET_LEN);
+	if (request->proxy->data_len > (sock->limit.max_packet_size - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %u",
+		      request->proxy->data_len, sock->limit.max_packet_size);
 	}
 
 	PTHREAD_MUTEX_LOCK(sock->mutex);
@@ -1307,7 +1307,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	/*
 	 *	Get the maximum size of data to receive.
 	 */
-	if (!sock->data) sock->data = talloc_array(sock, uint8_t, sock->max_packet_size);
+	if (!sock->data) sock->data = talloc_array(sock, uint8_t, sock->limit.max_packet_size);
 
 	data = sock->data;
 
@@ -1363,7 +1363,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 		 *	FIXME: allocate a RADIUS_PACKET, and set
 		 *	"data" to be as large as necessary.
 		 */
-		if (length > sock->max_packet_size) {
+		if (length > sock->limit.max_packet_size) {
 			INFO("Received packet will be too large! Set \"fragment_size = %u\"",
 			     (data[2] << 8) | data[3]);
 			goto do_close;
@@ -1738,9 +1738,9 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
-	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
-		      request->reply->data_len, MAX_PACKET_LEN);
+	if (request->reply->data_len > (sock->limit.max_packet_size - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %u",
+		      request->reply->data_len, sock->limit.max_packet_size);
 	}
 
 	/*
