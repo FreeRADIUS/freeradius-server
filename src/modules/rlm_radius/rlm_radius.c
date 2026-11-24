@@ -874,7 +874,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Clamp max_packet_size first before checking recv_buff and send_buff
 	 */
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 4096);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
 	/*
