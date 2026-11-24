@@ -5172,7 +5172,6 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 #endif
 		bool spawn_flag)
 {
-	bool		override = false;
 	CONF_SECTION	*cs = NULL;
 	rad_listen_t	**last;
 	rad_listen_t	*this;
@@ -5214,10 +5213,20 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	 */
 	if (main_config.myip.af != AF_UNSPEC) {
 		listen_socket_t *sock;
+		char const *server = NULL;
 
 		memcpy(&server_ipaddr, &main_config.myip,
 		       sizeof(server_ipaddr));
-		override = true;
+
+		/*
+		 *	The listeners use the virtual server named by
+		 *	"-n", or else "default".
+		 */
+		cs = cf_section_sub_find_name2(config, "server",
+					       main_config.name);
+		if (!cs) cs = cf_section_sub_find_name2(config, "server",
+							"default");
+		if (cs) server = cf_section_name2(cs);
 
 #ifdef WITH_VMPS
 		if (strcmp(main_config.name, "vmpsd") == 0) {
@@ -5247,13 +5256,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 			return -1;
 		}
 		auth_port = sock->my_port;	/* may have been updated in listen_bind */
-		if (override) {
-			cs = cf_section_sub_find_name2(config, "server",
-						       main_config.name);
-			if (!cs) cs = cf_section_sub_find_name2(config, "server",
-						       "default");
-			if (cs) this->server = cf_section_name2(cs);
-		}
+		this->server = server;
 
 		*last = this;
 		last = &(this->next);
@@ -5298,11 +5301,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 			return -1;
 		}
 
-		if (override) {
-			cs = cf_section_sub_find_name2(config, "server",
-						       main_config.name);
-			if (cs) this->server = main_config.name;
-		}
+		this->server = server;
 
 		*last = this;
 		last = &(this->next);
