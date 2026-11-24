@@ -2147,15 +2147,16 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	buffer, and then immediately allocating a new one of
 	 *	the same size.
 	 */
-	packet->data_len = total_length;
 	if (packet->data && (talloc_array_length(packet->data) < total_length)) TALLOC_FREE(packet->data);
 	if (!packet->data) {
-		packet->data = talloc_array(packet, uint8_t, packet->data_len);
+		packet->data = talloc_array(packet, uint8_t, total_length);
 		if (!packet->data) {
+			packet->data_len = 0;
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
 	}
+	packet->data_len = total_length;
 
 	memcpy(packet->data, hdr, packet->data_len);
 	hdr = (radius_packet_t *) packet->data;
