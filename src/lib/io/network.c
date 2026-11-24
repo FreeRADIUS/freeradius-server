@@ -2194,6 +2194,11 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	return nr;
 }
 
+bool fr_network_exiting(fr_network_t const *nr)
+{
+	return nr->exiting;
+}
+
 int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats)
 {
 	if (num < 0) return -1;

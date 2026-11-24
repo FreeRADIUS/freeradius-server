@@ -99,6 +99,8 @@ void		fr_network_close_event_delete(fr_network_t *nr);
 
 void		fr_network(fr_network_t *nr) CC_HINT(nonnull);
 
+bool		fr_network_exiting(fr_network_t const *nr);
+
 int		fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
 void		fr_network_stats_log(fr_network_t const *nr, fr_log_t const *log) CC_HINT(nonnull);
