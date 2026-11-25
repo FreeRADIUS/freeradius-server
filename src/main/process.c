@@ -2969,7 +2969,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 					 *	No one else needs to know about Original-Packet-Code, and we
 					 *	don't send it back to the client.
 					 */
-					fr_pair_delete(&reply->vps, vp);
+					fr_pair_delete_by_num(&reply->vps, 4, ((unsigned int) PW_EXTENDED_ATTRIBUTE_1 << 24), TAG_ANY);
 				}
 			}
 
