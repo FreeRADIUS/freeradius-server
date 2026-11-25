@@ -16,9 +16,11 @@ TCP_DIR := $(DIR)
 .PHONY: tests.tcp
 
 #
-#  The tests need TCP support and Python.
+#  The tests need TCP support and Python 3.9 or later.
 #
-ifneq "$(and $(AC_WITH_TCP),$(shell command -v python3))" ""
+TCP_PYTHON_OK := $(shell python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))' 2>/dev/null && echo yes)
+
+ifneq "$(and $(AC_WITH_TCP),$(TCP_PYTHON_OK))" ""
 
 tests.tcp: $(addprefix $(BUILD_DIR)/tests/tcp/,$(TCP_SCENARIOS))
 
@@ -40,7 +42,7 @@ $(BUILD_DIR)/tests/tcp/%: $(TCP_DIR)/run_test.py $(TCP_DIR)/radius.py $(TCP_DIR)
 else
 
 tests.tcp:
-	@echo "TCP-TEST skipped, as TCP or python3 is not available"
+	@echo "TCP-TEST skipped, as TCP or python3 >= 3.9 is not available"
 
 endif
 
