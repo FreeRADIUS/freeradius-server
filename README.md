@@ -39,7 +39,7 @@ configurations.  Experience has shown that these configurations are
 largely wrong.
 
 We _do_ recommend using AI tools to analyze your configuration, and
-suggest optimizations or improvements.  However, these suuggestions
+suggest optimizations or improvements.  However, these suggestions
 should be viewed with great suspicion.
 
 The benefit of AI is not in creating new content.  The benefit of AI
