@@ -458,6 +458,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 */
 	if (inst->app_io->open(li) < 0) {
 		cf_log_err(conf, "Failed opening %s file", inst->app_io->common.name);
+	error:
+		talloc_free(listen);
 		talloc_free(li);
 		return -1;
 	}
@@ -472,10 +474,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	directly.
 	 */
 	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") == 0) {
-		if (!fr_schedule_listen_add(sc, li)) {
-			talloc_free(li);
-			return -1;
-		}
+		if (!fr_schedule_listen_add(sc, li)) goto error;
 
 		inst->listen = li;
 		return 0;
@@ -485,18 +484,12 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		/*
 		 *	Add listener.  Will insert polling timer.
 		 */
-		if (!fr_schedule_listen_add(sc, li)) {
-			talloc_free(li);
-			return -1;
-		}
+		if (!fr_schedule_listen_add(sc, li)) goto error;
 	} else {
 		/*
 		 *	Watch the directory for changes.
 		 */
-		if (!fr_schedule_directory_add(sc, li)) {
-			talloc_free(li);
-			return -1;
-		}
+		if (!fr_schedule_directory_add(sc, li)) goto error;
 	}
 
 	DEBUG("Listening on %s bound to virtual server %s",
