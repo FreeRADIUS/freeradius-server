@@ -9,7 +9,13 @@ TLS_CERT_RUN	:= TLS_CERT_OUT=$(TLS_CERT_OUT) $(TESTBIN)/radiusd -XC -d $(TLS_CER
 
 .PHONY: tests.tls_cert
 
-ifneq "$(and $(findstring rlm_eap_tls,$(ALL_TGTS)),$(shell command -v openssl))" ""
+#
+#  Check OpenSSL is present and version > 1.0. Prior to that, all the certs get
+#  the same name and the below check fails, so skip in that case.
+#
+TLS_CERT_OPENSSL := $(shell openssl version 2>/dev/null | grep -Ev '^OpenSSL (0\.|1\.0\.)')
+
+ifneq "$(and $(findstring rlm_eap_tls,$(ALL_TGTS)),$(TLS_CERT_OPENSSL))" ""
 tests.tls_cert: $(TLS_CERT_OUT)/validity
 
 $(TLS_CERT_OUT)/chain.pem: $(TLS_CERT_DIR)/certs.sh $(TLS_CERT_DIR)/config/ca.cnf
@@ -40,7 +46,7 @@ $(TLS_CERT_OUT)/validity: $(TLS_CERT_DIR)/config/radiusd.conf $(TLS_CERT_OUT)/ch
 	${Q}touch $@
 else
 tests.tls_cert:
-	@echo "TLS-CERT-TEST skipped, as rlm_eap_tls or openssl is not available"
+	@echo "TLS-CERT-TEST skipped, as rlm_eap_tls or openssl >= 1.1 is not available"
 endif
 
 .PHONY: clean.tests.tls_cert
