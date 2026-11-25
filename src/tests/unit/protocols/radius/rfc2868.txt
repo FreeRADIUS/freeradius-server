@@ -145,5 +145,30 @@ match raw.Tunnel-Type = 0x010000, Tag-1 = { Tunnel-Type = ::PPTP }
 decode-pair 40 07 01 00 00 01 00
 match raw.Tunnel-Type = 0x0100000100
 
+#
+#  The encrypted data for "foo" above is 16 octets.  The first one is the length field, so the
+#  password can be at most 15 octets.  These tests change the first encrypted octet, so that it
+#  decrypts to a different length.  0x09 decrypts to 15, 0x16 to 16, and 0x17 to 17.
+#
+#  A length of 15 is allowed.  The value is "foo", followed by the padding which the encoder added.
+#
+decode-pair 45 15 00 99 73 09 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e
+match Tunnel-Password = "foo\000D\276\223\251\304Аf\004\2741"
+
+#
+#  A length of 16 is too long.  It would include one octet which was never decrypted.
+#
+decode-pair 45 15 00 99 73 16 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e
+match raw.Tunnel-Password = 0x009973161de6c557307dacd5daa599f4e26e7e
+
+decode-pair 45 15 00 99 73 17 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e
+match raw.Tunnel-Password = 0x009973171de6c557307dacd5daa599f4e26e7e
+
+#
+#  The same checks apply to a tagged Tunnel-Password.
+#
+decode-pair 45 15 01 99 73 16 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e 40 06 01 00 00 01
+match Tag-1 = { Tunnel-Type = ::PPTP }, raw.Tunnel-Password = 0x019973161de6c557307dacd5daa599f4e26e7e
+
 count
-match 59
+match 67

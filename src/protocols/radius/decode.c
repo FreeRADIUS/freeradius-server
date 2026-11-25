@@ -137,9 +137,12 @@ static ssize_t fr_radius_decode_tunnel_password(uint8_t passwd[static 256], size
 			 *	A quick check: decrypt the first octet
 			 *	of the password, which is the
 			 *	'data_len' field.  Ensure it's sane.
+			 *
+			 *	The 'data_len' field one of the encrypted octets, so there are only
+			 *	(encrypted_len - 1) octets of password.
 			 */
 			embedded_len = passwd[2] ^ digest[0];
-			if (embedded_len > encrypted_len) {
+			if (embedded_len > (encrypted_len - 1)) {
 				fr_strerror_printf("Tunnel Password is too long for the attribute "
 						   "(shared secret is probably incorrect!)");
 				fr_md5_ctx_free_from_list(&md5_ctx);
