@@ -799,7 +799,7 @@ static int mod_close(fr_listen_instance_t *li)
 	/*
 	 *	Remove any timer event
 	 */
-	if (thread->ev) fr_timer_delete(&thread->ev);
+	if (thread->ev) (void) fr_timer_delete(&thread->ev);
 
 	/*
 	 *	@todo - have our OWN event loop for timers, and a
