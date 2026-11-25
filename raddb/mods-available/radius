@@ -656,19 +656,20 @@ radius {
 		#  sorting methods will result in the "best" behavior.  It is simply impossible to choose a
 		#  connection based on the behavior of (effectively) the entire Internet.
 		#
-		#  Some rough guidlines:
+		#  Some rough guidelines for which method to pick are below.  These guidelines are only
+		#  recommendations.  If another method works better for you, then you should use the
+		#  method which works better in your environment.
 		#
-		#  * If the next hop stores accounting data and nothing else, and does not proxy, then the
-		#    `sort = rto` metho is likely to work well.
+		#  * If the next hop stores accounting data and nothing else, and does not proxy, then start
+		#    with `sort = rto`
 		#
-		#  * If the next hop does authentication, and nothing else, and does not proxy, then the `sort
-		#    = mrs` is likely to work well.
+		#  * If the next hop does authentication, and nothing else, and does not proxy, then start
+		#    with `sort = mrs`
 		#
-		#  * If the next hop does both authentication and account, and does not proxy, then the `sort
-		#    = mrs` method is likey to work well.
+		#  * If the next hop does both authentication and accounting, and does not proxy, then start
+		#    with `sort = mrs`
 		#
-		#  * If the next hop is a proxy over a congested link, then `sort = lru` is likely to work
-		#    well.
+		#  * If the next hop is a proxy over a congested link, then start with `sort = lru`.
 		#
 		#  * For the v3 behavior, choose `sort = queue`.
 		#
