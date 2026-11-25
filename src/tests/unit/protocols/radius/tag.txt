@@ -39,5 +39,12 @@ match Tag-1 = { Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED"
 pair Tmp-Group-0.Vendor-Specific.Unisphere.Service-Activate = "UNPOLICED"
 match Tmp-Group-0 = { Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED" } } }
 
+#
+#  One Vendor-Specific with a tagged and an untagged attribute.  The tagged one goes into the
+#  Tag-1 group, and the untagged one goes into the top-level Vendor-Specific group.
+#
+decode-pair 1a 16 00 00 13 0a 41 06 01 61 62 63 01 0a 41 41 41 41 41 41 41 41
+match Tag-1 = { Vendor-Specific = { Unisphere = { Service-Activate = "abc" } } }, Vendor-Specific = { Unisphere = { Virtual-Router-Name = "AAAAAAAA" } }
+
 count
-match 25
+match 27

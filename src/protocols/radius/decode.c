@@ -1408,8 +1408,7 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 	}
 
 	/*
-	 *	We found an attribute representing the vendor
-	 *	so it *MUST* exist in the vendor tree.
+	 *	We found an attribute representing the vendor so it *MUST* exist in the vendor tree.
 	 */
 	dv = fr_dict_vendor_by_num(dict_radius, vendor_pen);
 	if (!fr_cond_assert(dv)) return -1;
@@ -1436,14 +1435,14 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 	 *	Vendor-Specific.  If so, loop over them all.
 	 */
 create_attrs:
-	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, parent) < 0) return PAIR_DECODE_OOM;
-
-	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, vendor_da) < 0) return PAIR_DECODE_OOM;
-
 	data += 4;
 	attr_len -= 4;
 	total = 4;
 
+	/*
+	 *	Decode the vendor attributes into a temporary list.  The Vendor-Specific and vendor groups
+	 *	are only created after the vendor attributes have been decoded.
+	 */
 	fr_pair_list_init(&tlv_tmp);
 	while (attr_len > 0) {
 		ssize_t vsa_len;
@@ -1451,7 +1450,7 @@ create_attrs:
 		/*
 		 *	Vendor attributes can have subattributes (if you hadn't guessed)
 		 */
-		vsa_len = decode_vsa_internal(vendor, &tlv_tmp,
+		vsa_len = decode_vsa_internal(ctx, &tlv_tmp,
 					      vendor_da, data, attr_len, packet_ctx, dv);
 		if (vsa_len < 0) {
 			FR_PROTO_TRACE("TLV decode failed: %s", fr_strerror());
@@ -1464,29 +1463,23 @@ create_attrs:
 		attr_len -= vsa_len;
 		total += vsa_len;
 	}
-	fr_pair_list_append(&vendor->vp_group, &tlv_tmp);
 
 	/*
-	 *	Hacks for tags.  The tagged VSAs don't go into the
-	 *	root, they go into the Tag-# attribute.  But we only
-	 *	know that after we've created the parents.  So clean up if necessary.
-	 *
-	 *	@todo - maybe cache these somewhere to avoid bouncing.
+	 *	Tagged VSAs don't go into the temporary list, they go into the Tag-N group.  If all of the
+	 *	vendor attributes were tagged, then there's nothing to add here.
 	 */
-	if (fr_pair_list_num_elements(&vendor->vp_group) == 0) {
-		if (fr_pair_list_num_elements(&vsa->vp_group) == 1) { /* only the vendor */
-			fr_pair_delete(out, vsa);
-		} else {
-			fr_pair_delete(&vsa->vp_group, vendor);
-		}
+	if (fr_pair_list_empty(&tlv_tmp)) return total;
+
+	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, parent) < 0) {
+	oom:
+		fr_pair_list_free(&tlv_tmp);
+		return PAIR_DECODE_OOM;
 	}
 
-	/*
-	 *	When the unknown attributes were created by
-	 *	decode_vsa_internal, the hierarchy between that unknown
-	 *	attribute and first known attribute was cloned
-	 *	meaning we can now free the unknown vendor.
-	 */
+	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, vendor_da) < 0) goto oom;
+
+	fr_pair_list_steal(vendor, &tlv_tmp);
+	fr_pair_list_append(&vendor->vp_group, &tlv_tmp);
 
 	return total;
 }
