@@ -347,5 +347,40 @@ match raw.Vendor-Specific = 0x000060b50108800105312e30, raw.Vendor-Specific = 0x
 decode-pair 1a 0e 00 00 60 b5 01 08 00 01 05 31 2e 30 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30
 match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0" } } }, raw.Vendor-Specific = 0x000060b50108800105312e30
 
+#
+#  Empty children inside a TLV are ignored.  26.24757.1.200 is unknown, and has length 2.
+#  The other children of 26.24757.1 are still decoded.
+#
+#  The empty child is last.
+#
+decode-pair 1a 10 00 00 60 b5 01 0a 00 01 05 31 2e 30 c8 02
+match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0" } } }
+
+#
+#  The empty child is first.
+#
+decode-pair 1a 10 00 00 60 b5 01 0a 00 c8 02 01 05 31 2e 30
+match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0" } } }
+
+#
+#  The empty child is between two good children.
+#
+decode-pair 1a 13 00 00 60 b5 01 0d 00 01 05 31 2e 30 c8 02 02 03 00
+match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = ::No-Accounting } } }
+
+#
+#  A known child with length 2 is also ignored.  26.24757.1.2 is Accounting-Capabilities.
+#
+decode-pair 1a 10 00 00 60 b5 01 0a 00 01 05 31 2e 30 02 02
+match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0" } } }
+
+#
+#  An empty unknown child in a nested TLV.  26.24757.84.9.200 is ignored, and its
+#  siblings 26.24757.84.9.4 and 26.24757.84.9.5 are kept.  26.24757.84.9.5 is raw because
+#  its own contents are malformed.
+#
+decode-pair 1a 14 00 00 60 b5 54 0e 00 09 0b 04 03 01 c8 02 05 04 1a 99
+match Vendor-Specific = { WiMAX = { Packet-Flow-Descriptor-v2 = { Classifier = { Direction = 1, raw.Src-Spec = 0x1a99 } } } }
+
 count
-match 159
+match 169

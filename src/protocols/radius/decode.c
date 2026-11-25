@@ -721,6 +721,18 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	while (p < end) {
 		ssize_t tlv_len;
 
+		/*
+		 *	Empty attributes are ignored.
+		 *
+		 *	We check this before looking up the child, because an empty unknown child would
+		 *	otherwise pass fr_radius_decode_tlv_ok() as a TLV.  It would then fail to decode, and
+		 *	turn the whole parent into a raw attribute.
+		 */
+		if (p[1] == 2) {
+			p += 2;
+			continue;
+		}
+
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
 			FR_PROTO_TRACE("Failed to find child %u of TLV %s", p[0], parent->name);
