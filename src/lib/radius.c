@@ -499,7 +499,10 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	/*
 	 *	Ignore length unless we saw at least the header.
 	 */
-	if (data_len < RADIUS_HDR_LEN) return 0;
+	if (data_len < RADIUS_HDR_LEN) {
+		FR_DEBUG_STRERROR_PRINTF("Packet is too short to be RADIUS: got %zd bytes", data_len);
+		return 0;
+	}
 
 	/*
 	 *      See how long the packet says it is.
@@ -511,7 +514,10 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	 *	the RADIUS header says that the RADIUS packet islarger
 	 *	than our buffer.  Discard it.
 	 */
-	if ((len < RADIUS_HDR_LEN) || (len > (size_t) data_len)) return 0;
+	if ((len < RADIUS_HDR_LEN) || (len > (size_t) data_len)) {
+		FR_DEBUG_STRERROR_PRINTF("Packet length field says %zu bytes, but got %zd bytes", len, data_len);
+		return 0;
+	}
 
 	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, &port)) {
 		return -1;	/* Unknown address family, Die Die Die! */
