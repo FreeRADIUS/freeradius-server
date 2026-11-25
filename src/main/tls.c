@@ -1638,7 +1638,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ "dh_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, dh_file), NULL },
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_FILE_EXISTS, fr_tls_server_conf_t, random_file), NULL },
 	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), "1024" },
-	{ "buffer_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, buffer_size), "65535" },
+	{ "buffer_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, buffer_size), "65536" },
 	{ "include_length", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), "yes" },
 	{ "auto_chain", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, auto_chain), "yes" },
 	{ "disable_single_dh_use", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_single_dh_use), NULL },
