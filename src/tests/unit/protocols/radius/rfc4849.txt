@@ -89,5 +89,15 @@ match NAS-Filter-Rule = "abc"
 decode-pair 5c 02 5c 02 01 05 62 6f 62
 match User-Name = "bob"
 
+#
+#  The empty one is last in the run, and is followed by a different attribute.  All of the data
+#  has already been copied when the empty one is reached.
+#
+decode-pair 5c 05 61 62 63 5c 02 05 06 00 00 00 07
+match NAS-Filter-Rule = "abc", NAS-Port = 7
+
+decode-pair 5c 05 61 62 63 5c 04 64 65 5c 02 5c 02 01 05 62 6f 62
+match NAS-Filter-Rule = "abcde", User-Name = "bob"
+
 count
-match 43
+match 47

@@ -551,9 +551,15 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	already done above.
 		 */
 		while (ptr < end) {
-			fr_assert(p < (buffer + total));
-			memcpy(p, ptr + 2, ptr[1] - 2);
-			p += ptr[1] - 2;
+			/*
+			 *	Empty attributes have nothing to copy.  If the last attribute is empty,
+			 *	then "p" is already at the end of the buffer.
+			 */
+			if (ptr[1] > 2) {
+				fr_assert((p + ptr[1] - 2) <= (buffer + total));
+				memcpy(p, ptr + 2, ptr[1] - 2);
+				p += ptr[1] - 2;
+			}
 			ptr += ptr[1];
 		}
 
@@ -658,9 +664,7 @@ redo:
 	}
 
 	/*
-	 *	Empty attributes are silently ignored, the same as for top-level attributes.  We can't call
-	 *	fr_pair_tlvs_from_network() here, as it returns 0 for no data.  And returning 0 to our caller
-	 *	means that it never advances past this attribute.
+	 *	Empty attributes are ignored
 	 */
 	if (p[1] == 2) goto next;
 
