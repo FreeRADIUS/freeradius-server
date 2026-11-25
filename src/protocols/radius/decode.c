@@ -479,6 +479,12 @@ static ssize_t decode_rfc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_value(ctx, out, da, data + 2, len - 2, decode_ctx);
 	}
 
+	if (slen > 0) return len; /* it's OK, so return that */
+
+	/*
+	 *	Malformed, return either that or an error.
+	 */
+	slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len - 2);
 	if (slen < 0) return slen;
 
 	return len;
@@ -628,30 +634,49 @@ static ssize_t decode_digest_attributes(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!vp) return PAIR_DECODE_OOM;
 	PAIR_ALLOCED(vp);
 
-redo:
 	FR_PROTO_HEX_DUMP(p, end - p, "decode_digest_attributes");
 
-	if (((size_t) (end - p) < 2) || (p[1] < 2) || (p[1] > (size_t) (end - p))) {
-		slen = fr_pair_raw_from_network(vp, &vp->vp_group, parent, p, end - p);
-		if (slen < 0) goto error;
+redo:
+	if (p[0] != FR_DIGEST_ATTRIBUTES) goto done;
 
-		goto done;
+	/*
+	 *	A defensive check against malformed attributes.  The raw attribute goes into "out", after the
+	 *	parent.  It can't go into the parent, as it has the same DA as the parent.
+	 */
+	if (((size_t) (end - p) < 2) || (p[1] < 2) || (p[1] > (size_t) (end - p))) {
+	raw:
+		if (fr_pair_list_empty(&vp->vp_group)) {
+			talloc_free(vp);
+		} else {
+			fr_pair_append(out, vp);
+		}
+
+		slen = fr_pair_raw_from_network(ctx, out, parent, p, end - p);
+		if (slen < 0) return slen;
+
+		return end - data;
 	}
 
+	/*
+	 *	Empty attributes are silently ignored, the same as for top-level attributes.  We can't call
+	 *	fr_pair_tlvs_from_network() here, as it returns 0 for no data.  And returning 0 to our caller
+	 *	means that it never advances past this attribute.
+	 */
+	if (p[1] == 2) goto next;
+
 	slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, parent, p + 2, p[1] - 2, packet_ctx, decode_rfc, NULL, false);
-	if (slen <= 0) {
-	error:
-		talloc_free(vp);
-		return slen;
+	if (slen < 0) {
+		end = p + p[1];
+		p += 2;
+		goto raw;
 	}
 
 	/*
 	 *	Decode consecutive ones into the same parent.
 	 */
+next:
 	p += p[1];
-	if (((p + 2) < end) && ((p[0] == FR_DIGEST_ATTRIBUTES) && (p[1] > 2))) {
-		goto redo;
-	}
+	if (p < end) goto redo;
 
 done:
 	fr_pair_append(out, vp);

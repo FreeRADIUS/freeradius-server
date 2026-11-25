@@ -32,6 +32,95 @@ match Digest-Attributes = { Realm = "biloxi.com", User-Name = "bob" }
 encode-pair -
 match cf 13 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d 0a 05 62 6f 62
 
+#
+#  Three consecutive attributes are decoded into one Digest-Attributes.
+#
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 07 0a 05 62 6f 62 cf 08 05 06 61 75 74 68
+match Digest-Attributes = { Realm = "biloxi.com", User-Name = "bob", QOP = "auth" }
+
+#
+#  A different attribute ends the run.
+#
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 07 0a 05 62 6f 62 01 05 62 6f 62
+match Digest-Attributes = { Realm = "biloxi.com", User-Name = "bob" }, User-Name = "bob"
+
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d 01 05 62 6f 62 cf 07 0a 05 62 6f 62
+match Digest-Attributes = { Realm = "biloxi.com" }, User-Name = "bob", Digest-Attributes = { User-Name = "bob" }
+
+#
+#  A Digest-Attributes which overflows the data ends the run.  The rest of the data,
+#  including the header, becomes a raw attribute.  fr_radius_ok() rejects packets
+#  like this, so they are never decoded.
+#
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 09 0a 05 62 6f 62
+match Digest-Attributes = { Realm = "biloxi.com" }, raw.Digest-Attributes = 0xcf090a05626f62
+
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 07 0a 05 62 6f 62 cf 09 0a 05 62 6f 62
+match Digest-Attributes = { Realm = "biloxi.com", User-Name = "bob" }, raw.Digest-Attributes = 0xcf090a05626f62
+
+#
+#  An empty Digest-Attributes in a run is ignored, the same as an empty top-level attribute.
+#  The attributes decoded before it are kept, and the run continues after it.
+#
+#  The empty one is in the middle of the run.
+#
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 02 cf 07 0a 05 62 6f 62
+match Digest-Attributes = { Realm = "biloxi.com", User-Name = "bob" }
+
+#
+#  The empty one ends the run, and is followed by a different attribute.
+#
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 02 05 06 00 00 00 07
+match Digest-Attributes = { Realm = "biloxi.com" }, NAS-Port = 7
+
+#
+#  The empty one is at the end of the data.
+#
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 02
+match Digest-Attributes = { Realm = "biloxi.com" }
+
+#
+#  This packet used to make the decoder loop forever, found by the fuzzer.
+#
+decode-proto 04 10 00 2c 00 ff 9f 02 12 0e fa 1f 20 03 03 03 03 04 04 2a cf 14 0c 02 02 02 02 02 02 02 02 02 02 02 03 03 03 03 03 0d cf 02 02 02
+match Packet-Type = ::Accounting-Request, Packet-Authentication-Vector = 0x00ff9f02120efa1f200303030304042a, Digest-Attributes = { Method = "\003", Method = "\r" }
+
+#
+#  When the contents of a Digest-Attributes are malformed, it becomes a raw attribute.  The
+#  attributes after it are still decoded.
+#
+#  Here the second sub-attribute (01 05) says it is 5 octets long, but only 2 octets are left.
+#
+decode-pair cf 09 0a 05 62 6f 62 01 05
+match raw.Digest-Attributes = 0x0a05626f620105
+
+decode-pair cf 09 0a 05 62 6f 62 01 05 01 05 62 6f 62
+match raw.Digest-Attributes = 0x0a05626f620105, User-Name = "bob"
+
+#
+#  A sub-attribute with only one octet.
+#
+decode-pair cf 03 01
+match raw.Digest-Attributes = 0x01
+
+#
+#  A malformed Digest-Attributes in a run ends the run.  The attributes before it are kept.
+#
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 09 0a 05 62 6f 62 01 05 01 05 62 6f 62
+match Digest-Attributes = { Realm = "biloxi.com" }, raw.Digest-Attributes = 0x0a05626f620105, User-Name = "bob"
+
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 09 0a 05 62 6f 62 01 05 cf 07 0a 05 62 6f 62
+match Digest-Attributes = { Realm = "biloxi.com" }, raw.Digest-Attributes = 0x0a05626f620105, Digest-Attributes = { User-Name = "bob" }
+
+decode-pair cf 07 0a 05 62 6f 62 cf 03 01
+match Digest-Attributes = { User-Name = "bob" }, raw.Digest-Attributes = 0x01
+
+#
+#  The same in a full packet.  fr_radius_ok() does not look inside attributes, so the packet
+#  is accepted.
+#
+decode-proto 01 01 00 28 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 01 05 62 6f 62 cf 09 0a 05 62 6f 62 01 05 05 06 00 00 00 07
+match Packet-Type = ::Access-Request, Packet-Authentication-Vector = 0x000102030405060708090a0b0c0d0e0f, User-Name = "bob", raw.Digest-Attributes = 0x0a05626f620105, NAS-Port = 7
 
 count
-match 15
+match 47
