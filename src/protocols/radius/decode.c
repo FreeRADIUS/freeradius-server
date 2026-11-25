@@ -1084,11 +1084,11 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    uint8_t const *data, size_t attr_len,
 			    fr_radius_decode_ctx_t *packet_ctx)
 {
-	ssize_t			ret;
+	ssize_t			slen;
 	size_t			wimax_len;
 	bool			more;
-	uint8_t			*head, *tail;
-	uint8_t	const		*attr, *end;
+	uint8_t			*head = NULL, *tail;
+	uint8_t	const		*attr, *end, *tmp;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vsa, *vendor;
 
@@ -1123,10 +1123,6 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return -1;
 	}
 
-	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, attr_vendor_specific) < 0) return PAIR_DECODE_OOM;
-
-	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, parent) < 0) return PAIR_DECODE_OOM;
-
 	da = fr_dict_attr_child_by_num(parent, data[4]);
 	if (!da) da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, data[4]);
 	if (!da) return -1;
@@ -1137,11 +1133,11 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 */
 	if ((data[6] & 0x80) == 0) {
 		FR_PROTO_TRACE("WiMAX no continuation");
-		ret = fr_radius_decode_pair_value(vendor, &vendor->vp_group,
-						  da, data + 7, data[5] - 3, packet_ctx);
-		if (ret < 0) return ret;
-
-		return attr_len;
+		tmp = packet_ctx->end;
+		attr = data + 7;
+		wimax_len = data[5] - 3;
+		end = data + attr_len;
+		goto decode_it;
 	}
 
 	/*
@@ -1301,20 +1297,34 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Reset the "end" pointer, because we're not passing in
 	 *	the real data.
 	 */
-	{
-		uint8_t const *tmp = packet_ctx->end;
-		packet_ctx->end = head + wimax_len;
+	tmp = packet_ctx->end;
+	packet_ctx->end = head + wimax_len;
+	attr = head;
 
-		FR_PROTO_TRACE("WiMAX decode concatenated");
-		FR_PROTO_HEX_DUMP(head, wimax_len, "%s", __FUNCTION__ );
-		ret = fr_radius_decode_pair_value(vendor, &vendor->vp_group,
-						  da, head, wimax_len, packet_ctx);
+	FR_PROTO_TRACE("WiMAX decode concatenated");
 
-		packet_ctx->end = tmp;
+decode_it:
+	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, attr_vendor_specific) < 0) {
+	oom:
+		talloc_free(head);
+		return PAIR_DECODE_OOM;
 	}
 
-	talloc_free(head);
-	if (ret < 0) return ret;
+	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, parent) < 0) goto oom;
+
+	FR_PROTO_HEX_DUMP(attr, wimax_len, "%s", __FUNCTION__ );
+	slen = fr_radius_decode_pair_value(vendor, &vendor->vp_group,
+					   da, attr, wimax_len, packet_ctx);
+
+	packet_ctx->end = tmp;
+
+	if (slen < 0) {
+		slen = fr_pair_raw_from_network(vendor, &vendor->vp_group, da, attr, wimax_len);
+		talloc_free(head);
+		if (slen < 0) return slen;
+	} else {
+		talloc_free(head);
+	}
 
 	return end - data;
 }

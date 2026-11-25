@@ -302,6 +302,50 @@ match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 03 00
 decode-pair -
 match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = ::No-Accounting } } }
 
+#
+#  Malformed continuations.  The WiMAX attribute becomes a raw Vendor-Specific.  No empty
+#  Vendor-Specific or WiMAX group is left behind.
+#
+#  The continuation flag is set, but there is no more data.
+#
+decode-pair 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30
+match raw.Vendor-Specific = 0x000060b50108800105312e30
+
+#
+#  The continuation flag is set, but the next attribute is not a Vendor-Specific.
+#
+decode-pair 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 01 09 62 6f 62 62 6f 62 62
+match raw.Vendor-Specific = 0x000060b50108800105312e30, User-Name = "bobbobb"
+
+#
+#  The next Vendor-Specific is for a different vendor.
+#
+decode-pair 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 1a 0c 00 00 00 09 01 06 00 02 03 00
+match raw.Vendor-Specific = 0x000060b50108800105312e30, Vendor-Specific = { Cisco = { AVPair = "\000\002\003\000" } }
+
+#
+#  The next Vendor-Specific is for a different WiMAX attribute.
+#
+decode-pair 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 1a 0c 00 00 60 b5 02 06 00 02 03 00
+match raw.Vendor-Specific = 0x000060b50108800105312e30, Vendor-Specific = { WiMAX = { raw.Device-Authentication-Indicator = 0x020300 } }
+
+#
+#  The WiMAX length in the next Vendor-Specific does not fill that Vendor-Specific.
+#
+decode-pair 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 1a 0c 00 00 60 b5 01 07 00 02 03 00
+match raw.Vendor-Specific = 0x000060b50108800105312e30, raw.Vendor-Specific = 0x000060b5010700020300
+
+#
+#  The next fragment has no data.
+#
+decode-pair 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 1a 09 00 00 60 b5 01 03 00
+match raw.Vendor-Specific = 0x000060b50108800105312e30, raw.Vendor-Specific = 0x000060b5010300
+
+#
+#  A good WiMAX attribute, then a malformed one.  The good one is kept.
+#
+decode-pair 1a 0e 00 00 60 b5 01 08 00 01 05 31 2e 30 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30
+match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0" } } }, raw.Vendor-Specific = 0x000060b50108800105312e30
 
 count
-match 145
+match 159
