@@ -359,7 +359,12 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_pair_list_t *list,
 	while (ptr < end) {
 		if ((ptr + 2) == end) break;
 		if ((ptr + 2) > end) return -1;
-		if (ptr[1] <= 2) return -1;
+
+		/*
+		 *	RFC 2865 Section 5 says that the Value field is "zero or more octets".  So an empty
+		 *	attribute is allowed.  If we see one, we just ignore it.
+		 */
+		if (ptr[1] < 2) return -1;
 		if ((ptr + ptr[1]) > end) return -1;
 
 		total += ptr[1] - 2;
@@ -504,7 +509,11 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if ((ptr + 2) == end) break;
 		if ((ptr + 2) > end) return -1;
 		if ((ptr[0] != FR_NAS_FILTER_RULE)) break;
-		if (ptr[1] <= 2) return -1;
+
+		/*
+		 *	Empty attributes are OK, and we just skip them.
+		 */
+		if (ptr[1] < 2) return -1;
 		if ((ptr + ptr[1]) > end) return -1;
 
 		total += ptr[1] - 2;
@@ -519,7 +528,7 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	More than one attribute, create a temporary buffer,
 	 *	and copy all of the data over to it.
 	 */
-	if (attrs > 1) {
+	if ((attrs > 1) && total) {
 		uint8_t *p;
 
 		buffer = talloc_array(packet_ctx->tmp_ctx, uint8_t, total);
@@ -542,6 +551,9 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		decode = buffer;
 		decode_end = buffer + total;
 	} else {
+		/*
+		 *	One or all of the attributes are empty.
+		 */
 		decode = data + 2;
 		decode_end = data + data[1];
 	}

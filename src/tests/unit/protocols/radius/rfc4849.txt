@@ -73,5 +73,21 @@ match 5c f4 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61
 decode-pair 5c 53 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 00 5c 53 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 62 00 5c 53 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 63 00 
 match NAS-Filter-Rule = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NAS-Filter-Rule = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", NAS-Filter-Rule = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
 
+#
+#  An empty NAS-Filter-Rule adds no data, and is skipped.  It does not end the run of
+#  NAS-Filter-Rule attributes.
+#
+decode-pair 5c 05 61 62 63 5c 02 5c 04 64 65 01 05 62 6f 62
+match NAS-Filter-Rule = "abcde", User-Name = "bob"
+
+decode-pair 5c 02 5c 05 61 00 62 01 05 62 6f 62
+match NAS-Filter-Rule = "a", NAS-Filter-Rule = "b", User-Name = "bob"
+
+decode-pair 5c 05 61 62 63 5c 02
+match NAS-Filter-Rule = "abc"
+
+decode-pair 5c 02 5c 02 01 05 62 6f 62
+match User-Name = "bob"
+
 count
-match 35
+match 43
