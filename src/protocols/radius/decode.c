@@ -1840,7 +1840,19 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	default:
 	raw:
-		if (vp) talloc_free(vp);
+		/*
+		 *	A Tag attribute has already been placed into the parent list, so remove it from the list before freeing it.
+		 */
+		if (vp) {
+			fr_pair_list_t *list;
+
+			list = fr_pair_parent_list(vp);
+			if (list) {
+				fr_pair_delete(list, vp);
+			} else {
+				talloc_free(vp);
+			}
+		}
 
 		return fr_pair_raw_from_network(ctx, out, parent, data, attr_len);
 	}

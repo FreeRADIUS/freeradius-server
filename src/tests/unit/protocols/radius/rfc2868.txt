@@ -118,5 +118,32 @@ match 42 06 00 01 02 03
 decode-pair -
 match Tunnel-Client-Endpoint = "\001\002\003"
 
+#
+#  A tagged attribute which can't be decoded becomes a raw attribute at the top level.  It is
+#  not left in its Tag-N group.  The other attributes in that group are still decoded.
+#
+#  This Tunnel-Password has a bad first byte of encrypted data, so the decrypted length is wrong.
+#
+decode-pair 45 15 01 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e 40 06 01 00 00 01
+match Tag-1 = { Tunnel-Type = ::PPTP }, raw.Tunnel-Password = 0x019973851de6c557307dacd5daa599f4e26e7e
+
+decode-pair 40 06 01 00 00 01 45 15 01 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e 41 06 01 00 00 01
+match Tag-1 = { Tunnel-Type = ::PPTP, Tunnel-Medium-Type = ::IPv4 }, raw.Tunnel-Password = 0x019973851de6c557307dacd5daa599f4e26e7e
+
+#
+#  @todo - The Tag-N group is created before the value is decoded, so it is left empty.
+#
+decode-pair 45 15 02 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e
+match Tag-2 = { }, raw.Tunnel-Password = 0x029973851de6c557307dacd5daa599f4e26e7e
+
+#
+#  Tagged integers must be 4 bytes long, otherwise they are raw, and no Tag-N group is created.
+#
+decode-pair 40 05 01 00 00 40 06 01 00 00 01
+match raw.Tunnel-Type = 0x010000, Tag-1 = { Tunnel-Type = ::PPTP }
+
+decode-pair 40 07 01 00 00 01 00
+match raw.Tunnel-Type = 0x0100000100
+
 count
-match 49
+match 59
