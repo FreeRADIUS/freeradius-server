@@ -18,6 +18,10 @@ redis {
 	#  The default port.
 	port = 6379
 
+	#  Redis 6+ ACL username (optional). When set, AUTH uses
+	#  "AUTH <username> <password>". Requires 'password' below.
+#	username = myuser
+
 	#  The password used to authenticate to the server.
 	#  We recommend using a strong password.
 #	password = thisisreallysecretandhardtoguess
