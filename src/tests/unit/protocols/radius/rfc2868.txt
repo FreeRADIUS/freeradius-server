@@ -125,16 +125,33 @@ match Tunnel-Client-Endpoint = "\001\002\003"
 #  This Tunnel-Password has a bad first byte of encrypted data, so the decrypted length is wrong.
 #
 decode-pair 45 15 01 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e 40 06 01 00 00 01
-match Tag-1 = { Tunnel-Type = ::PPTP }, raw.Tunnel-Password = 0x019973851de6c557307dacd5daa599f4e26e7e
+match raw.Tunnel-Password = 0x019973851de6c557307dacd5daa599f4e26e7e, Tag-1 = { Tunnel-Type = ::PPTP }
 
 decode-pair 40 06 01 00 00 01 45 15 01 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e 41 06 01 00 00 01
 match Tag-1 = { Tunnel-Type = ::PPTP, Tunnel-Medium-Type = ::IPv4 }, raw.Tunnel-Password = 0x019973851de6c557307dacd5daa599f4e26e7e
 
 #
-#  @todo - The Tag-N group is created before the value is decoded, so it is left empty.
+#  When no attribute with a tag can be decoded, there is no Tag-N group.
 #
 decode-pair 45 15 02 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e
-match Tag-2 = { }, raw.Tunnel-Password = 0x029973851de6c557307dacd5daa599f4e26e7e
+match raw.Tunnel-Password = 0x029973851de6c557307dacd5daa599f4e26e7e
+
+decode-pair 45 15 02 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e 45 15 02 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e
+match raw.Tunnel-Password = 0x029973851de6c557307dacd5daa599f4e26e7e, raw.Tunnel-Password = 0x029973851de6c557307dacd5daa599f4e26e7e
+
+#
+#  The Tag-N group goes where the first good attribute with that tag is, and later attributes
+#  with that tag are added to it.
+#
+decode-pair 45 15 02 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e 40 06 01 00 00 01 40 06 02 00 00 03 41 06 02 00 00 01
+match raw.Tunnel-Password = 0x029973851de6c557307dacd5daa599f4e26e7e, Tag-1 = { Tunnel-Type = ::PPTP }, Tag-2 = { Tunnel-Type = ::L2TP, Tunnel-Medium-Type = ::IPv4 }
+
+#
+#  The same in a full packet.  The Tag-2 group goes before User-Name, and the later
+#  Tunnel-Medium-Type is added to it.
+#
+decode-proto 02 01 00 3a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 45 15 02 99 73 85 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e 40 06 02 00 00 03 01 05 62 6f 62 41 06 02 00 00 01
+match Packet-Type = ::Access-Accept, Packet-Authentication-Vector = 0x00000000000000000000000000000001, raw.Tunnel-Password = 0x029973851de6c557307dacd5daa599f4e26e7e, Tag-2 = { Tunnel-Type = ::L2TP, Tunnel-Medium-Type = ::IPv4 }, User-Name = "bob"
 
 #
 #  Tagged integers must be 4 bytes long, otherwise they are raw, and no Tag-N group is created.
@@ -168,7 +185,7 @@ match raw.Tunnel-Password = 0x009973171de6c557307dacd5daa599f4e26e7e
 #  The same checks apply to a tagged Tunnel-Password.
 #
 decode-pair 45 15 01 99 73 16 1d e6 c5 57 30 7d ac d5 da a5 99 f4 e2 6e 7e 40 06 01 00 00 01
-match Tag-1 = { Tunnel-Type = ::PPTP }, raw.Tunnel-Password = 0x019973161de6c557307dacd5daa599f4e26e7e
+match raw.Tunnel-Password = 0x019973161de6c557307dacd5daa599f4e26e7e, Tag-1 = { Tunnel-Type = ::PPTP }
 
 count
-match 67
+match 73

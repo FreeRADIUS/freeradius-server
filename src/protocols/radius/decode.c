@@ -1482,6 +1482,25 @@ static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
+/** Free an empty Tag-N group
+ *
+ *  The Tag-N group is created before the tagged value is decoded, but it is only added to
+ *  packet_ctx->tag_root after the value has been successfully decoded.  If the tag group isn't in a list, then
+ *  we need to free it.
+ */
+static void tag_group_cleanup(fr_radius_decode_ctx_t *packet_ctx, int8_t tag)
+{
+	fr_pair_t *group;
+
+	if (!tag || !packet_ctx->tags || !packet_ctx->tags[tag]) return;
+
+	group = packet_ctx->tags[tag]->parent;
+	if (fr_pair_parent_list(group)) return;
+
+	talloc_free(group);
+	TALLOC_FREE(packet_ctx->tags[tag]);
+}
+
 /** Create any kind of VP from the attribute contents
  *
  *  "length" is AT LEAST the length of this attribute, as we
@@ -1619,7 +1638,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 			FR_PROTO_TRACE("Allocated tag attribute %p (%u)", group, tag);
 
-			fr_pair_append(packet_ctx->tag_root, group);
+			/*
+			 *	The group is added to packet_ctx->tag_root after the entire value is decoded.
+			 */
 #ifdef TALLOC_GET_TYPE_ABORT_NOOP
 		}
 #else
@@ -1869,6 +1890,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			}
 		}
 
+		tag_group_cleanup(packet_ctx, tag);
+
 		return fr_pair_raw_from_network(ctx, out, parent, data, attr_len);
 	}
 
@@ -1883,7 +1906,10 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_assert(packet_ctx->tags[tag] != NULL);
 		vp = fr_pair_afrom_da_nested(packet_ctx->tags[tag]->parent, &packet_ctx->tags[tag]->parent->vp_group, parent);
 	}
-	if (!vp) return -1;
+	if (!vp) {
+		tag_group_cleanup(packet_ctx, tag);
+		return -1;
+	}
 	PAIR_ALLOCED(vp);
 
 	switch (parent->type) {
@@ -1976,7 +2002,21 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	vp->vp_tainted = true;
 
-	if (!tag) fr_pair_append(out, vp);
+	/*
+	 *	Append the attribute to the output buffer.
+	 *
+	 *	If it's the first tagged attribute which was decoded, then append the Tag group to the parent.
+	 *	The attribute has already been added to the tag group.
+	 */
+	if (!tag) {
+		fr_pair_append(out, vp);
+
+	} else {
+		fr_pair_t *group = packet_ctx->tags[tag]->parent;
+
+		fr_assert(group != NULL);
+		if (!fr_pair_parent_list(group)) fr_pair_append(packet_ctx->tag_root, group);
+	}
 
 	return attr_len;
 }
