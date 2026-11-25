@@ -39,10 +39,10 @@ acct_unique {
 	# 64 length match is to maintain backwards compatible with original policy (prior to 3.2.8) that double hex encoded
 	if (&Class && &Class[*] =~ /^0x%{hex:&Tmp-String-9}([0-9a-f]{32}|[0-9a-f]{64})$/) {
 		update request {
-			&Tmp-Octets-9 = "0x%{1}"
+			&Tmp-Octets-9 = "0x%{1}2c%{hex:&Acct-Session-Id}"
 		}
 		update request {
-			&Acct-Unique-Session-Id := "%{md5:%{string:&Tmp-Octets-9},%{Acct-Session-ID}}"
+			&Acct-Unique-Session-Id := "%{md5:&Tmp-Octets-9}"
 		}
 		update request {
 			&Tmp-Octets-9 !* ANY

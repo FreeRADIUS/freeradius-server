@@ -1,0 +1,146 @@
+#
+#  A string argument to %{md5:...} ends at the first NUL (zero)
+#  octet, loses leading whitespace, and becomes an attribute
+#  reference when the string starts with '&'.  The tests check
+#  that the acct_unique policy in raddb/policy.d/accounting
+#  hashes every octet of a Class in the format that
+#  insert_acct_class writes.
+#
+#  Each test expects Acct-Unique-Session-Id to be the md5 of the
+#  Class octets after the 'ai:' prefix, a comma, and
+#  Acct-Session-Id.
+#
+update reply {
+	&Filter-Id := "filter"
+}
+
+#
+#  Leading 0x00
+#
+update request {
+	&Class := 0x61693a00112233445566778899aabbccddeeff
+	&Acct-Session-Id := "s-1"
+}
+acct_unique
+if (&Acct-Unique-Session-Id != "e0fb1dc3b789b1bc47d51bd19c792c83") {
+	update reply {
+		&Filter-Id += "fail 1 - got '%{Acct-Unique-Session-Id}'"
+	}
+}
+
+#
+#  Leading 0x00, different octets and Acct-Session-Id
+#
+update request {
+	&Class !* ANY
+	&Acct-Unique-Session-Id !* ANY
+}
+update request {
+	&Class := 0x61693a00ffeeddccbbaa998877665544332211
+	&Acct-Session-Id := "s-2"
+}
+acct_unique
+if (&Acct-Unique-Session-Id != "9ef67afcaddd05c854746543494a4bcc") {
+	update reply {
+		&Filter-Id += "fail 2 - got '%{Acct-Unique-Session-Id}'"
+	}
+}
+
+#
+#  Leading 0x26 ('&')
+#
+update request {
+	&Class !* ANY
+	&Acct-Unique-Session-Id !* ANY
+}
+update request {
+	&Class := 0x61693a26112233445566778899aabbccddeeff
+	&Acct-Session-Id := "s-3"
+}
+acct_unique
+if (&Acct-Unique-Session-Id != "9eb1e7772a3853f8a67708b7fb12416c") {
+	update reply {
+		&Filter-Id += "fail 3 - got '%{Acct-Unique-Session-Id}'"
+	}
+}
+
+#
+#  Embedded 0x00
+#
+update request {
+	&Class !* ANY
+	&Acct-Unique-Session-Id !* ANY
+}
+update request {
+	&Class := 0x61693a11223344005566778899aabbccddeeff
+	&Acct-Session-Id := "s-4"
+}
+acct_unique
+if (&Acct-Unique-Session-Id != "7f50f4d8fe10da8370329998bab5fe02") {
+	update reply {
+		&Filter-Id += "fail 4 - got '%{Acct-Unique-Session-Id}'"
+	}
+}
+
+#
+#  Leading whitespace (0x20)
+#
+update request {
+	&Class !* ANY
+	&Acct-Unique-Session-Id !* ANY
+}
+update request {
+	&Class := 0x61693a20112233445566778899aabbccddeeff
+	&Acct-Session-Id := "s-5"
+}
+acct_unique
+if (&Acct-Unique-Session-Id != "86cee7327ed4fb2513c22317b3b9f0c6") {
+	update reply {
+		&Filter-Id += "fail 5 - got '%{Acct-Unique-Session-Id}'"
+	}
+}
+
+#
+#  No problematic octets
+#
+update request {
+	&Class !* ANY
+	&Acct-Unique-Session-Id !* ANY
+}
+update request {
+	&Class := 0x61693a0123456789abcdeffedcba9876543210
+	&Acct-Session-Id := "s-6"
+}
+acct_unique
+if (&Acct-Unique-Session-Id != "c3fa1e30107602a6f4e70af5643056ff") {
+	update reply {
+		&Filter-Id += "fail 6 - got '%{Acct-Unique-Session-Id}'"
+	}
+}
+
+#
+#  Class in the pre-3.2.8 form (prefix + 32 hex characters as text)
+#
+update request {
+	&Class !* ANY
+	&Acct-Unique-Session-Id !* ANY
+}
+update request {
+	&Class := 0x61693a3031323334353637383961626364656666656463626139383736353433323130
+	&Acct-Session-Id := "s-7"
+}
+acct_unique
+if (&Acct-Unique-Session-Id != "8dd59739454cc56e7791fa5faebfa12b") {
+	update reply {
+		&Filter-Id += "fail 7 - got '%{Acct-Unique-Session-Id}'"
+	}
+}
+
+#
+#  The policy must clean up after itself
+#
+if (&Tmp-Octets-9 || &Tmp-String-9) {
+	update reply {
+		&Filter-Id += "fail 8 - temporary attributes left behind"
+	}
+}
