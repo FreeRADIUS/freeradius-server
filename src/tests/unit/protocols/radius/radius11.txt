@@ -94,10 +94,13 @@ encode-proto Packet-Token = 6809, User-Name = "bob", EAP-Message = 0x0201000b016
 match 01 00 00 23 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 4f 0a 02 01 00 0b 01 62 6f 62
 
 #
-#  @todo - RADIUS/1.1 packets must not require Message-Authenticator, even with EAP-Message
+#  RADIUS/1.1 packets do not require Message-Authenticator, even with EAP-Message
 #
 decode-proto -
-match ERROR: Packet failed verification - Message-Authenticator is required for this packet, but it is missing
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", EAP-Message = 0x0201000b01626f62
+
+decode-proto 02 00 00 1a 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 4f 06 03 01 00 04
+match Packet-Type = ::Access-Accept, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, EAP-Message = 0x03010004
 
 encode-proto Packet-Token = 6809, Vendor-Specific.Cisco.AVPair = "foo=bar"
 match 01 00 00 23 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 1a 0f 00 00 00 09 01 09 66 6f 6f 3d 62 61 72
@@ -189,5 +192,40 @@ match 01 00 00 1f 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62
 decode-proto -
 match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", NAS-Port = 7
 
+#
+#  Status-Server does not require Message-Authenticator.
+#
+decode-proto 0c 00 00 14 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00
+match Packet-Type = ::Status-Server, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000
+
+decode-proto 0c 00 00 1f 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 05 06 00 00 00 07
+match Packet-Type = ::Status-Server, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", NAS-Port = 7
+
+#
+#  The same packet with a non-zero Reserved field is RADIUS/1.0, which does require
+#  Message-Authenticator.
+#
+decode-proto 0c 00 00 1f 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 01 01 05 62 6f 62 05 06 00 00 00 07
+match ERROR: Packet failed verification - Message-Authenticator is required for this packet, but it is missing
+
+#
+#  Message-Authenticator is a normal attribute in RADIUS/1.1.  It can have any length, and
+#  there can be more than one.  The decoder omits all of them.
+#
+decode-proto 01 00 00 22 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 50 03 00 05 06 00 00 00 07
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", NAS-Port = 7
+
+decode-proto 01 00 00 22 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 01 01 05 62 6f 62 50 03 00 05 06 00 00 00 07
+match ERROR: Packet failed verification - Message-Authenticator has invalid length
+
+decode-proto 01 00 00 34 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 01 05 62 6f 62 50 12 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 50 03 00 05 06 00 00 00 07
+match Packet-Type = ::Access-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, User-Name = "bob", NAS-Port = 7
+
+#
+#  Accounting packets.
+#
+decode-proto 04 00 00 24 00 00 1a 99 00 00 00 00 00 00 00 00 00 00 00 00 28 06 00 00 00 01 2c 0a 61 62 63 64 31 32 33 34
+match Packet-Type = ::Accounting-Request, Packet-Token = 6809, Packet-Reserved = 0x000000000000000000000000, Acct-Status-Type = ::Start, Acct-Session-Id = "abcd1234"
+
 count
-match 101
+match 117

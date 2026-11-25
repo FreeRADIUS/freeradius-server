@@ -2176,6 +2176,11 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	static const uint8_t zeros[12] = {};
 
+	/*
+	 *	Hack: if the Reserved field is all zeros, then we just mangle the ctx to RADIUS/1.1.
+	 */
+	test_ctx->radius_1_1 = ((data_len >= RADIUS_HEADER_LENGTH) && (memcmp(data + 4 + 4, zeros, sizeof(zeros)) == 0));
+
 	if (!fr_radius_ok(data, &packet_len, 200, false, test_ctx->radius_1_1, &reason)) {
 		fr_strerror_printf("Packet failed verification - %s", fr_radius_decode_fail_reason[reason]);
 		return -1;
@@ -2193,11 +2198,6 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	vp->vp_uint32 = data[0];
 	fr_pair_append(out, vp);
-
-	/*
-	 *	Hack: if the Reserved field is all zeros, then we just mangle the ctx to RADIUS/1.1.
-	 */
-	test_ctx->radius_1_1 = (memcmp(data + 4 + 4, zeros, sizeof(zeros)) == 0);
 
 	if (!test_ctx->radius_1_1) {
 		vp = fr_pair_afrom_da(ctx, attr_packet_authentication_vector);
