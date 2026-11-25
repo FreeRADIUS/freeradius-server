@@ -71,19 +71,18 @@ class HomeServer:
         self._listener.bind(('127.0.0.1', 0))
         self.port = self._listener.getsockname()[1]
 
-        match self.mode:
-            case 'refuse':
-                # Because nothing listens on the port, connect() is refused.
-                self._listener.close()
-                self._listener = None
+        if self.mode == 'refuse':
+            # Because nothing listens on the port, connect() is refused.
+            self._listener.close()
+            self._listener = None
 
-            case 'slow-accept':
-                self._listener.listen(0)
-                self._fill_backlog()
+        elif self.mode == 'slow-accept':
+            self._listener.listen(0)
+            self._fill_backlog()
 
-            case _:
-                self._listener.listen(8)
-                self._spawn(self._accept_loop)
+        else:
+            self._listener.listen(8)
+            self._spawn(self._accept_loop)
 
     def release(self) -> None:
         """Make the home server start to read (stall mode) or to accept connections
