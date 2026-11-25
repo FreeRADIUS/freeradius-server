@@ -81,7 +81,7 @@ typedef struct home_server {
 	bool			dual;			//!< One of a pair of homeservers on consecutive ports.
 	bool			dynamic;		//!< is this a dynamically added home server?
 	bool			dns_soft_fail;		//!< ignore the home server if DNS has issues
-	fr_bool_auto_t	       	require_ma;		//!< for all replies to Access-Request and Status-Server
+	fr_bool_auto_t	       	require_ma;		//!< for all replies to Access-Request
 
 #ifdef WITH_COA_TUNNEL
 	bool			recv_coa;		//!< receive CoA packets, too

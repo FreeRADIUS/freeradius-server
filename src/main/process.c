@@ -3336,15 +3336,13 @@ int request_proxy_reply(rad_listen_t *listener, RADIUS_PACKET *packet)
 
 		/*
 		 *	If the home server configuration requires a Message-Authenticator, then set the flag,
-		 *	but only if the proxied packet is Access-Request.  The library code already enforces
-		 *	Message-Authenticator when sending Status-Server packets.  But it doesn't hurt to
-		 *	enforce it here.
+		 *	but only if the proxied packet is Access-Request.  Replies to Status-Server do not
+		 *	need to contain a Message-Authenticator, because forging them does not lead to an attack.
 		 *
 		 *	The realms.c file already clears require_ma for TLS connections.
 		 */
 		require_ma = ((request->home_server->require_ma == FR_BOOL_TRUE) &&
-			      ((request->proxy->code == PW_CODE_ACCESS_REQUEST) ||
-			       (request->proxy->code == PW_CODE_STATUS_SERVER)));
+			      (request->proxy->code == PW_CODE_ACCESS_REQUEST));
 		if (require_ma && !packet->message_authenticator) {
 			FR_PROXY_STATS_INC(listener, request->home_server, total_bad_authenticators, 0);
 			RATE_LIMIT(ERROR("Ignoring %s packet due to 'require_message_authenticator = true' - response packet is missing Message-Authenticator",
