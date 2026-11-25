@@ -25,19 +25,6 @@
 
 RCSID("$Id$")
 
-/*
- *	Scratch buffers for receiving and encoding packets.  Where the
- *	compiler supports thread-local storage (TLS_STORAGE_CLASS, see
- *	src/include/threads.h), the buffers are static and per-thread.
- *	Otherwise the buffers go on the stack, because a static buffer
- *	would be shared between threads.
- */
-#ifdef __THREAD
-#  define FR_RADIUS_BUFFER static __THREAD
-#else
-#  define FR_RADIUS_BUFFER
-#endif
-
 #include	<freeradius-devel/libradius.h>
 
 #include	<freeradius-devel/md5.h>
@@ -54,6 +41,19 @@ RCSID("$Id$")
  *	Some messages get printed out only in debugging mode.
  */
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
+
+/*
+ *	Scratch buffers for receiving and encoding packets.  Where the
+ *	compiler supports thread-local storage (TLS_STORAGE_CLASS, see
+ *	src/include/threads.h), the buffers are static and per-thread.
+ *	Otherwise the buffers go on the stack, because a static buffer
+ *	would be shared between threads.
+ */
+#ifdef __THREAD
+#  define FR_RADIUS_BUFFER static __THREAD
+#else
+#  define FR_RADIUS_BUFFER
+#endif
 
 #if 0
 #define VP_TRACE printf
