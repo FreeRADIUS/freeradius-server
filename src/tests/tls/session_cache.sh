@@ -1,13 +1,15 @@
 #!/bin/sh
 #
 #  Run one unit_test_tls as a server and a second unit_test_tls as a client,
-#  run two connections between the pair, and check that the second handshake
-#  resumed the session that the first handshake stored.
+#  run four connections between the pair, and check that every handshake
+#  after the first resumed a session which an earlier handshake stored.
 #
 #  Both ends have to agree that resumption happened, so the script checks the
 #  server log and the client log.  Two connections are the smallest number
 #  that can show resumption.  The first connection fills the cache, and the
-#  second connection reads the cache.
+#  second connection reads the cache.  The third and fourth connections show
+#  that a session can be resumed more than once, which is what EAP does when
+#  a supplicant reauthenticates several times.
 #
 #  Each end stores sessions in an rlm_cache instance with the rbtree driver,
 #  which keeps them in the memory of the process.  A second server process
@@ -39,14 +41,20 @@ SERVER_RECEIPT="$OUTPUT/session_cache_server.receipt"
 CLIENT_RECEIPT="$OUTPUT/session_cache_client.receipt"
 RECEIPT="$OUTPUT/session_cache.receipt"
 
+#
+#  One new session, followed by RESUMED connections which resume it.
+#
+RESUMED=3
+CONNECTIONS=$((RESUMED + 1))
+
 mkdir -p "$OUTPUT"
 rm -f "$SERVER_LOG" "$CLIENT_LOG" "$SERVER_RECEIPT" "$CLIENT_RECEIPT" "$RECEIPT"
 
-export CLIENT_LOG CLIENT_RECEIPT
+export CLIENT_LOG CLIENT_RECEIPT CONNECTIONS
 
-$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx -c 2 \
+$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx -c $CONNECTIONS \
 	-r "$SERVER_RECEIPT" \
-	-e '$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx -c 2 -s "127.0.0.1:$PORT" \
+	-e '$UNIT_TEST_TLS -d "$CONFDIR" -D "$DICT_PATH" -xx -c $CONNECTIONS -s "127.0.0.1:$PORT" \
 		-r "$CLIENT_RECEIPT" > "$CLIENT_LOG" 2>&1' \
 	> "$SERVER_LOG" 2>&1
 
@@ -63,12 +71,12 @@ fail() {
 [ -e "$CLIENT_RECEIPT" ] || fail "client did not create $CLIENT_RECEIPT"
 
 #
-#  Exactly one of the two connections must report a resumed session, and both
-#  ends must report the resumption.
+#  Every connection after the first must report a resumed session, and both
+#  ends must report each resumption.
 #
 for log in "$SERVER_LOG" "$CLIENT_LOG"; do
 	count=$(grep -c "resumed    : yes" "$log")
-	[ "$count" = "1" ] || fail "expected one resumed session in $log, found $count"
+	[ "$count" = "$RESUMED" ] || fail "expected $RESUMED resumed sessions in $log, found $count"
 done
 
 #
