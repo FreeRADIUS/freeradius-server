@@ -308,6 +308,13 @@ static void coord_worker_detach(void const *data, NDEBUG_UNUSED size_t data_size
 	fr_assert((msg->worker >= MIN_WORKER_ID) && (msg->worker < (int32_t)coord->max_workers));
 	thread_id = msg->worker - MIN_WORKER_ID;
 
+	/*
+	 *	If the server shuts down during startup (e.g. a module fails to instantiate)
+	 *	then detach messages can be received when worker <-> coordinator communication
+	 *	is not fully established.
+	 */
+	if (!coord->coord_send_control[thread_id]) return;
+
 	DEBUG2("Worker %d detached from %s", msg->worker, coord->coord_reg->name);
 	coord->num_workers--;
 	if (msg->exiting) coord->exiting = true;
