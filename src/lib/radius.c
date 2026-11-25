@@ -2027,6 +2027,11 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		VERIFY_VP(reply);
 
 		/*
+		 *	How much room do we have left?
+		 */
+		room = ((uint8_t *) data) + sizeof(data) - ptr;
+
+		/*
 		 *	Ignore non-wire attributes, but allow extended
 		 *	attributes.
 		 */
@@ -2039,7 +2044,6 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			 *	attributes with a debug build.
 			 */
 			if (reply->da->attr == PW_RAW_ATTRIBUTE) {
-				room = ((uint8_t *) data) + sizeof(data) - ptr;
 				if (reply->vp_length > room) break;
 
 				memcpy(ptr, reply->vp_octets, reply->vp_length);
@@ -2075,11 +2079,6 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 				continue;
 			}
 		}
-
-		/*
-		 *	How much room do we have left?
-		 */
-		room = ((uint8_t *) data) + sizeof(data) - ptr;
 
 		/*
 		 *	Set the Message-Authenticator to the correct
