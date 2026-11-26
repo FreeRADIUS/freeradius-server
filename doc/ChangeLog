@@ -1,9 +1,28 @@
-FreeRADIUS 3.0.29 Tue 02 Jun 2026 12:00:00 UTC urgency=low
+FreeRADIUS 3.0.29 Thu 26 Nov 2026 12:00:00 UTC urgency=high
 	Configuration changes
+	* Remove PEAP/SoH, which has been removed and deprecated from Windows
+	  for 10 years.
 
 	Feature improvements
 
 	Bug fixes
+	* Fix occasional failure in EAP-PWD.
+	* Release lock in cache module.
+	* Better bounds checking in EAP-FAST.
+	* Make EAP-SIM independent of identity length.
+	* Fix potential crash in attr_shift.
+	* Ensure abinary output is truncated.
+	* Free decoded VPs on alloc failure in EAP-TTLS, and other EAP-TTLS fixes.
+	* Clean up memory on OCSP failure.
+	* Fix possible stack overflow in EAP-FAST.
+	* Fix incorrect use of randomness in EAP-FAST which affects PAC.
+	* Enforce session_lifetime on cached sessions via the
+	  TLS-Session-Expiry attribute.
+	* Additional length checks in EAP-MSCHAPv2.
+	* Reject invalid total_length in EAP-pwd.
+	* New State checks from checks from RFC 5080 Section 2.1.1.
+	* Don't propose EAP types which were previously NAKd.
+	* Several other bug fixes, see git changelog for more info.
 
 FreeRADIUS 3.0.28 Tue 02 Jun 2026 12:00:00 UTC urgency=low
 	Configuration changes
