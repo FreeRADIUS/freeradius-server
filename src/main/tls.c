@@ -5362,10 +5362,8 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Enforce RADIUS sizes for now.
 	 */
-	if ((conf->buffer_size < 4096) || (conf->buffer_size > (1 << 18))) {
-		cf_log_err_cs(cs, "Invalid value for \"buffer_size\".  It must be 4096..256K");
-		goto error;
-	}
+	if (conf->buffer_size < 4096) conf->buffer_size = 4096;
+	if (conf->buffer_size > (1 << 18)) conf->buffer_size = (1 << 18);
 
 	/*
 	 *	Initialize TLS
