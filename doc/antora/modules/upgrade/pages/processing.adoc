@@ -42,7 +42,7 @@ examples and more information.
 == Update Sections
 
 A major difference between v3 and v4 is that `update` sections are no
-longer necessary.  See the xref:howto:upgrade/unlang.adoc[Unlang
+longer necessary.  See the xref:upgrade:unlang.adoc[Unlang
 Syntax] pages for more guidance and details.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

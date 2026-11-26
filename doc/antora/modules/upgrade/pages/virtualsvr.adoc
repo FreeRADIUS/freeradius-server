@@ -61,7 +61,7 @@ For `udp`, the configuration entries are largely the same as for v3.
 e.g. `ipaddr`, `port`, etc.
 
 The `listen` section then compiles each
-xref:index.adoc#_processing_sections[Processing Section] based on the
+xref:processing.adoc[Processing Section] based on the
 named packet types. It has a `recv` section for receiving packets, and
 a `send` section for sending packets, as seen in the following
 example:
@@ -82,7 +82,7 @@ that it is much easier to understand. Instead of using confusing names
 such as `Post-Auth-Type Reject`, the server now just uses `send
 Access-Reject`.
 
-See also xref:index.adoc#_processing_sections[Processing Section] for
+See also xref:processing.adoc[Processing Section] for
 how the `unlang` statements are parsed.
 
 [#clients]
