@@ -879,6 +879,25 @@ after_chain:
 }
 
 /*
+ *	Check if the "dirty_out" buffer is full, because the certificate
+ *	chain is larger than the configured "buffer_size".
+ *
+ *	@todo - add more code to fix this.
+ */
+static bool tls_dirty_out_full(REQUEST *request, tls_session_t *ssn)
+{
+	int pending = BIO_ctrl_pending(ssn->from_ssl);
+
+	if (pending <= 0) return false;
+
+	RERROR("(TLS) %s - %d more bytes of TLS data were not written into the output "
+	       "buffer.  Increase \"buffer_size\" (currently %u) in the TLS configuration "
+               "to %zu or more.  This issues is usually caused by a large certificate "
+               "chain." , ssn->conf->name, pending, ssn->conf->buffer_size + pending);
+	return true;
+}
+
+/*
  * We are the server, we always get the dirty data
  * (Handshake data is also considered as dirty data)
  * During handshake, since SSL API handles itself,
@@ -1014,6 +1033,11 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			RDEBUG3("(TLS) %s- got %d bytes of data", ssn->conf->name, err);
 			ssn->dirty_out.used = err;
 
+			if (tls_dirty_out_full(request, ssn)) {
+				record_init(&ssn->dirty_in);
+				return 0;
+			}
+
 		} else if (BIO_should_retry(ssn->from_ssl)) {
 			record_init(&ssn->dirty_in);
 			RDEBUG2("(TLS) %s - Asking for more data in tunnel.", ssn->conf->name);
@@ -1065,6 +1089,8 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 			       ssn->dirty_out.size - ssn->dirty_out.used);
 		if (err > 0) {
 			ssn->dirty_out.used += err;
+
+			if (tls_dirty_out_full(request, ssn)) return 0;
 		} else {
 			if (!tls_error_io_log(request, ssn, err, "Failed writing to OpenSSL")) {
 				return 0;
