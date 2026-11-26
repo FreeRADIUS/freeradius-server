@@ -235,12 +235,38 @@ size_t _fr_dbuff_extend_fd(fr_dbuff_t *dbuff, size_t extension)
 size_t _fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension)
 {
 	fr_dbuff_uctx_talloc_t	*tctx = dbuff->uctx;
-	size_t			clen, nlen, elen = extension;
+	size_t			clen, nlen, elen = extension, reclaimed = 0;
 	uint8_t			*new_buff;
 
 	CHECK_DBUFF_INIT(dbuff);
 
 	clen = dbuff->buff ? talloc_array_length(dbuff->buff) : 0;
+
+	/*
+	 *	fr_dbuff_shift() moves `end` back, but does not reallocate the buffer.  That shift leaves the space
+	 *	between `end` and the end of the buffer as available.  Use that space before growing the buffer.
+	 *	Without this step, a buffer which is already at `max` never sees the space which was shifted out.
+	 *
+	 *	When extending the dbuff, we need to update `end` in this dbuff and in each ancestor which shares the
+	 *	same `end`.  The loop stops after a dbuff that is bounded with FR_DBUFF_ADV_PARENT_END.  The parent of
+	 *	that dbuff uses `end` to mark where the in-buffer data stops, and the data has not changed.
+	 */
+	if (dbuff->buff && ((dbuff->buff + clen) > dbuff->end)) {
+		uint8_t		*old_end = dbuff->end;
+		fr_dbuff_t	*dbuff_i;
+
+		reclaimed = (dbuff->buff + clen) - old_end;
+
+		for (dbuff_i = dbuff; dbuff_i && (dbuff_i->end == old_end); dbuff_i = dbuff_i->parent) {
+			dbuff_i->end = dbuff_i->buff + clen;
+			if (dbuff_i->adv_parent & FR_DBUFF_ADV_PARENT_END) break;
+		}
+
+		if (reclaimed >= extension) return reclaimed;
+
+		elen = extension - reclaimed;
+	}
+
 	/*
 	 *	If the current buffer size + the extension
 	 *	is less than init, extend the buffer to init.
@@ -265,6 +291,8 @@ size_t _fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension)
 	if (tctx->max && ((clen + elen) > tctx->max)) {
 		elen = tctx->max - clen;
 		if (elen == 0) {
+			if (reclaimed) return reclaimed;
+
 			fr_strerror_printf("Failed extending buffer by %zu bytes to "
 					   "%zu bytes, max is %zu bytes",
 					   extension, clen + extension, tctx->max);
@@ -275,13 +303,15 @@ size_t _fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension)
 
 	new_buff = talloc_realloc(tctx->ctx, dbuff->buff, uint8_t, nlen);
 	if (unlikely(!new_buff)) {
+		if (reclaimed) return reclaimed;
+
 		fr_strerror_printf("Failed extending buffer by %zu bytes to %zu bytes", elen, nlen);
 		return 0;
 	}
 
 	(void)fr_dbuff_update(dbuff, new_buff, nlen);	/* Shouldn't fail as we're extending */
 
-	return elen;
+	return reclaimed + elen;
 }
 
 /** Trim a talloced dbuff to the minimum length required to represent the contained string

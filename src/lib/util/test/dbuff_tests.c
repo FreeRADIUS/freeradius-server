@@ -1233,6 +1233,48 @@ static void test_dbuff_producer_consumer_rounds(void)
 	fr_dbuff_free_talloc(&consumer);
 }
 
+/** A fixed-size consumer which is filled, partly drained, shifted, and filled again
+ *
+ * fr_tls_bio_dbuff_t holds the data read from the peer in a buffer whose
+ * `init` and `max` are the same.  Because of that, the buffer never grows.
+ * The space which fr_dbuff_shift() frees has to come back to the producer,
+ * or the buffer can take only `max` octets in total.
+ */
+static void test_dbuff_producer_consumer_fixed(void)
+{
+	fr_dbuff_t		consumer, producer;
+	fr_dbuff_uctx_talloc_t	tctx;
+	uint8_t			out[8] = {};
+
+	MEM(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 8, 8));
+	producer = FR_DBUFF_BIND_END_ABS(&consumer);
+	consumer.is_const = 1;
+
+	TEST_CASE("fill the buffer, and read part of it");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08) == 8);
+	TEST_CHECK(fr_dbuff_extend_lowat(NULL, &producer, 8) == 0);	/* full */
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &consumer, 6) == 6);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 2);
+
+	TEST_CASE("shift out what was read");
+	TEST_CHECK(fr_dbuff_shift(&producer, fr_dbuff_used(&consumer)) == 6);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 2);
+
+	TEST_CASE("the shifted space comes back to the producer");
+	TEST_CHECK(fr_dbuff_extend_lowat(NULL, &producer, 8) == 6);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 2);		/* the consumer sees no new data */
+	TEST_CHECK(talloc_array_length(fr_dbuff_buff(&consumer)) == 8);	/* and the buffer did not grow */
+
+	TEST_CASE("fill the buffer again, and read all of it");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e) == 6);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 8);
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &consumer, 8) == 8);
+	TEST_CHECK(out[0] == 0x07 && out[1] == 0x08 && out[2] == 0x09 && out[7] == 0x0e);
+
+	consumer.is_const = 0;					/* so the free below is honest */
+	fr_dbuff_free_talloc(&consumer);
+}
+
 TEST_LIST = {
 	/*
 	 *	Basic tests
@@ -1270,6 +1312,7 @@ TEST_LIST = {
 	{ "fr_dbuff_drain",				test_dbuff_drain },
 	{ "fr_dbuff_bind_end_abs_extend",		test_dbuff_bind_end_abs_extend },
 	{ "fr_dbuff_producer_consumer_rounds",		test_dbuff_producer_consumer_rounds },
+	{ "fr_dbuff_producer_consumer_fixed",		test_dbuff_producer_consumer_fixed },
 	{ "fr_dbuff_init_zero_length",			test_dbuff_init_zero_length },
 
 	TEST_TERMINATOR
