@@ -1,4 +1,4 @@
-FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
+FreeRADIUS 3.2.11 Thu 26 Nov 2026 12:00:00 UTC urgency=high
 	Configuration changes
 	* Add notes on the security of CHAP-Password and MS-CHAP-*
 	  If you send these attributes over RADIUS/UDP, then any observer
@@ -11,16 +11,20 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  over TLS.  See sites-available/tls, and look for "socat".
 	* Add per-section "do_xlat" and "is_json" config items to rlm_rest.
 	  see mods-available/rest for details.
+	* Don't needlessly hex encode Chargeable-User-Identity. This may change
+	  the CUI values in existing configurations if the policy is updated.
+	* Default value for EAP TLS buffer_size reduced from 64k to 4k, which
+	  should save memory with a large number of EAP conversations.
 
 	Feature improvements
 	* Many security fixes.
 	  * All previous versions of 3.2 are deprecated, and should
 	    not be used.
-	* Implement "track_home_server" in home_server_pool configuration
-	  See proxy.conf.  The previous (and not working) "affinity_id"
+	* Implement "track_home_server" in home_server_pool configuration,
+	  see proxy.conf.  The previous (and not working) "affinity_id"
 	  configuration has been removed.
 	* Implement EAP-PSK.  See mods-available/eap for configuration.
-	  The PSK must be in "PSK-Password", and must be 16 octets in length
+	  The PSK must be in "PSK-Password", and must be 16 octets in length.
 	* Add $VALUE{filename} which reads a value from one line of a
 	  file.
 	* Add $FILE{filename} which reads a value from the entire contents
@@ -39,6 +43,8 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Docker fixups for 32-bit ARM systems.
 	* rlm_python3 is now marked as thread-safe, which should help to
 	  improve performance.
+	* Update dictionary.wifialliance. Patch from Stefan Paetow.
+	* Warn at startup if certificates are not in date. Patch from Terry Burton.
 
 	Bug fixes
 	* Skip TLS PSK checks when OpenSSL does not support PSK.
@@ -60,20 +66,17 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Handle race condition in "new proxy socket", which fixes a
 	  long-standing issue where it would open a socket, send packets,
 	  and then (rarely) ignore the replies.
-	* Fix secret suppression in rlm_python3
+	* Fix secret suppression in rlm_python3.
 	* rlm_sql_sqlite no longer leaks the database handle and its file
 	  descriptor when a query fails with an error which causes a
 	  reconnect, such as a read-only database.  The error from the
 	  database is now logged, with its file name.
-	* Set "secret" flag for dynamic clients, too
+	* Set "secret" flag for dynamic clients, too.
 	* For dynamic home servers, make realm_dir filenames and SNI checks case
 	  insensitive.
-	* Avoid filesort when processing radacct on MySQL / MariaDB
-	* Fix simul_verify_query for SQLite, which looked up the wrong user.
-	  Simultaneous-Use is now enforced with SQLite: checkrad is run for
-	  the open sessions, and with "delete_stale_sessions = yes", stale
-	  sessions are closed.  Existing installations need the updated
-	  mods-config/sql/main/sqlite/queries.conf. Patch from Terry Burton. PR #6000
+	* Avoid filesort when processing radacct on MySQL / MariaDB.
+	* Fix simul_verify_query for SQLite, which looked up the wrong user. Patch
+	  from Terry Burton. PR #6000
 	* Update "consistent-keyed-balance" to be more even.  There are still some
 	  differences between home servers, but the differences are not substantial.
 	* Fix OCSP checks for certificates containing Authority Info Access.
@@ -81,6 +84,8 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Don't use require_ma for CoA / Disconnect packets, as it's not necessary.
 	* Many fixes and tweaks for reverse CoA, which is now running in production.
 	  Patches from CyB0rgg.
+	* Don't require Message-Authenticator in Status-Server replies. Fixes #6006
+	* Fix generation of Acct-Unique-Session-Id in some cases. Fixes #5981
 
 FreeRADIUS 3.2.10 Wed 03 Jun 2026 12:00:00 UTC urgency=high
 	Configuration changes
