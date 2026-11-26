@@ -293,6 +293,22 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 
 	if (ssn->fragment == 0) {
 		ssn->tls_msg_len = ssn->dirty_out.used;
+
+#ifdef TLS1_3_VERSION
+		/*
+		 *	With TLS 1.3, the L bit MUST NOT be set in an
+		 *	unfragmented message (RFC 9190 Section 2.1.9, and
+		 *	RFC 9427 Section 2 for the other TLS-based
+		 *	methods).  So a record which fits in one packet
+		 *	without the length is sent without it.
+		 *
+		 *	This is checked only when we start a record
+		 *	(ssn->fragment == 0).  The last fragment of a
+		 *	fragmented record keeps the length.
+		 */
+		if (lbit && ssn->ssl && (SSL_version(ssn->ssl) == TLS1_3_VERSION) &&
+		    ((ssn->dirty_out.used + obit + olen) <= ssn->mtu)) lbit = 0;
+#endif
 	}
 
 	reply.code = start ? FR_TLS_START : FR_TLS_REQUEST;
