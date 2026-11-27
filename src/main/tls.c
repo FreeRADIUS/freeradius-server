@@ -824,6 +824,8 @@ after_chain:
 	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_SSN, (void *)state);
 	state->length_flag = conf->include_length;
 
+	SSL_CTX_set_client_hello_cb(state->ctx, cbtls_client_hello, NULL);
+
 	/*
 	 *	We use default fragment size, unless the Framed-MTU
 	 *	tells us it's too big.  Note that we do NOT account
@@ -1569,6 +1571,12 @@ void tls_session_information(tls_session_t *tls_session)
 #ifdef SSL3_MT_KEY_UPDATE
 			case SSL3_MT_KEY_UPDATE:
 				str_content_type = "KeyUpdate";
+				break;
+#endif
+
+#ifdef SSL3_MT_COMPRESSED_CERTIFICATE
+			case SSL3_MT_COMPRESSED_CERTIFICATE:
+				str_content_type = "CompressedCertificate";
 				break;
 #endif
 
