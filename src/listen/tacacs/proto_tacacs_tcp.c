@@ -123,13 +123,14 @@ static const char *packet_name[] = {
  *				writing into the buffer.
  *				*leftover must be subtracted from buffer_len when
  *				calculating free space in the buffer.
+ * @param[in,out] msg_used	UNUSED.
  * @return
  *	- >0 when a packet was read successfully.
  *	- 0 when we read a partial packet.
  * 	- <0 on error (socket should be closed).
  */
 static ssize_t mod_read(fr_listen_instance_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
-			size_t buffer_len, size_t *leftover)
+			size_t buffer_len, size_t *leftover, UNUSED bool *msg_used)
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 	ssize_t				data_size, packet_len;

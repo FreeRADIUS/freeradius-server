@@ -97,7 +97,7 @@ static const conf_parser_t tcp_listen_config[] = {
 
 
 static ssize_t mod_read(fr_listen_instance_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
-			size_t buffer_len, size_t *leftover)
+			size_t buffer_len, size_t *leftover, UNUSED bool *msg_used)
 {
 	proto_radius_tcp_t const        *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
 									    proto_radius_tcp_t);

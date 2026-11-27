@@ -129,7 +129,7 @@ fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[] = {
 };
 
 static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
-			size_t buffer_len, size_t *leftover)
+			size_t buffer_len, size_t *leftover, UNUSED bool *msg_used)
 {
 	proto_dhcpv6_udp_t const        *inst = talloc_get_type_abort_const(li->listen->app_io_instance,
 									    proto_dhcpv6_udp_t);

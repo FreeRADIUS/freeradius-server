@@ -1478,7 +1478,7 @@ static fr_cmp_ret_t alive_client_cmp(void const *one, void const *two)
  *  The app_io->read does the transport-specific data read.
  */
 static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
-			size_t buffer_len, size_t *leftover)
+			size_t buffer_len, size_t *leftover, bool *msg_used)
 {
 	fr_io_instance_t const	*inst;
 	fr_io_thread_t		*thread;
@@ -1683,7 +1683,7 @@ do_read:
 		 *	functions which do all of the TLS work.
 		 */
 		packet_len = inst->app_io->read(child, (void **) &local_address, &recv_time,
-					  buffer, buffer_len, leftover);
+					  buffer, buffer_len, leftover, msg_used);
 		if (packet_len <= 0) {
 			return packet_len;
 		}

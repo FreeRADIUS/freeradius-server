@@ -844,6 +844,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_network_t		*nr = s->nr;
 	ssize_t			data_size;
 	fr_channel_data_t	*cd, *next;
+	bool			msg_used = false;
 
 	if (!fr_cond_assert_msg(s->inst->fd == sockfd, "Expected listen->fd (%d) to be equal event fd (%d)",
 				s->inst->fd, sockfd)) return;
@@ -887,7 +888,7 @@ next_message:
 	 *	connection.
 	 */
 	data_size = s->inst->listen->app_io->read(s->inst, &cd->packet_ctx, &cd->request.recv_time,
-					    cd->m.data, cd->m.rb_size, &s->leftover);
+					    cd->m.data, cd->m.rb_size, &s->leftover, &msg_used);
 	if (data_size == 0) {
 		/*
 		 *	Cache the message only when there are leftover
@@ -901,8 +902,8 @@ next_message:
 		 *	fr_ring_buffer_reserve() (which does not advance write_offset),
 		 *	the new alloc returns the same ring slot as our reservation.
 		 *	The memset inside message_reserve zeroes our struct, then the
-		 *	new message commits into that slot.  We can detect this
-		 *	because cd->m.data_size is non-zero after the alloc commits.
+		 *	new message commits into that slot.  This is indicated by
+		 *	msg_used being set.
 		 *
 		 *	In the aliased case, cd now refers to the already-committed
 		 *	message that was dispatched to a worker.  We must not reset
@@ -914,7 +915,7 @@ next_message:
 		 */
 		if (s->leftover) {
 			s->cd = cd;
-		} else if (cd->m.data_size != 0) {
+		} else if (msg_used) {
 			s->cd = NULL;
 		} else {
 			fr_message_and_data_reset(s->ms, &cd->m);

@@ -622,7 +622,8 @@ static int proto_ldap_child_mod_close(fr_listen_instance_t *li)
  */
 static ssize_t proto_ldap_child_mod_read(fr_listen_instance_t *li, UNUSED void **packet_ctx,
 					 UNUSED fr_time_t *recv_time_p,
-					 UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover)
+					 UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover,
+					 bool *msg_used)
 {
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_ldap_sync_ldap_thread_t);
 	fr_ldap_connection_t		*conn = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
@@ -763,8 +764,12 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_instance_t *li, UNUSED void *
 
 	if (callback) {
 		ret = callback(sync, msg, ctrls);
-		if (ret < 0) PERROR("Sync callback for %s returned error",
-		    fr_table_str_by_value(sync_ldap_msg_table, type, "<invalid>"));
+		if (ret < 0) {
+			PERROR("Sync callback for %s returned error",
+			    fr_table_str_by_value(sync_ldap_msg_table, type, "<invalid>"));
+		} else {
+			*msg_used = true;
+		}
 	} else {
 	/*
 	 *	Callbacks are responsible for freeing the msg

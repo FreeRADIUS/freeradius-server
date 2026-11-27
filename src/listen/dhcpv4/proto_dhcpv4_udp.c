@@ -204,7 +204,7 @@ static void dhcpv4_pcap_free(proto_dhcpv4_udp_thread_t *thread, proto_dhcpv4_pca
 #endif
 
 static ssize_t mod_read(fr_listen_instance_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer,
-			size_t buffer_len, size_t *leftover)
+			size_t buffer_len, size_t *leftover, UNUSED bool *msg_used)
 {
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
