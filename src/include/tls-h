@@ -108,6 +108,8 @@ typedef struct _tls_info_t {
 #define ssl_session session
 #endif
 
+#define MAX_SESSION_SIZE (256)
+
 /** Contains EAP-REQUEST specific data (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
  *
  * The tls_session_t Structure gets stored as opaque in eap_handler_t
@@ -171,6 +173,9 @@ typedef struct _tls_session_t {
 	bool		session_not_resumed;		//!< Whether our session was not resumed.
 
 	fr_tls_server_conf_t const *conf;		//! for better complaints
+
+	uint8_t		session_id[MAX_SESSION_SIZE];
+	unsigned int	session_id_size;
 } tls_session_t;
 
 /*
@@ -334,7 +339,7 @@ SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain
 int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
 int 		tls_handshake_send(REQUEST *, tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *ssn);
-void		tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize);
+void		tls_session_id(tls_session_t *ssn, char *buffer, size_t bufsize);
 X509_STORE	*fr_init_x509_store(fr_tls_server_conf_t *conf);
 
 /*

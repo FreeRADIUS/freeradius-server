@@ -379,24 +379,31 @@ static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 
 #endif
 
-#define MAX_SESSION_SIZE (256)
 
-
-void tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize)
+void tls_session_id(tls_session_t *ssn, char *buffer, size_t bufsize)
 {
+	SSL_SESSION *sess = ssn->ssl_session;
 #if OPENSSL_VERSION_NUMBER < 0x10001000L
 	size_t size;
 
-	size = ssn->session_id_length;
+	size = sess->session_id_size;
 	if (size > bufsize) size = bufsize;
 
-	fr_bin2hex(buffer, ssn->session_id, size);
+	fr_bin2hex(buffer, sess->session_id, size);
 #else
 	unsigned int size;
 	uint8_t const *p;
 
-	p = SSL_SESSION_get_id(ssn, &size);
+	p = SSL_SESSION_get_id(sess, &size);
 	if (size > bufsize) size = bufsize;
+
+	if (size > 0) {
+		memcpy(ssn->session_id, p, size);
+		ssn->session_id_size = size;
+	} else if (ssn->session_id_size > 0) {
+		p = ssn->session_id;
+		size = ssn->session_id_size;
+	}
 
 	fr_bin2hex(buffer, p, size);
 
@@ -539,6 +546,7 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
+	SSL_CTX_set_ex_data(ssn->ctx, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TALLOC, (void *)ssn);
 	if (certs) SSL_set_ex_data(ssn->ssl, fr_tls_ex_index_certs, (void *)certs);
 
@@ -822,6 +830,7 @@ after_chain:
 
 	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_SSN, (void *)state);
+	SSL_CTX_set_ex_data(state->ctx, FR_TLS_EX_INDEX_SSN, (void *)state);
 	state->length_flag = conf->include_length;
 
 	/*
@@ -1572,6 +1581,12 @@ void tls_session_information(tls_session_t *tls_session)
 				break;
 #endif
 
+#ifdef SSL3_MT_COMPRESSED_CERTIFICATE
+			case SSL3_MT_COMPRESSED_CERTIFICATE:
+				str_content_type = "CompressedCertificate";
+				break;
+#endif
+
 			default:
 				snprintf(alert_buf, sizeof(alert_buf), ", type=%d", tls_session->info.handshake_type);
 				str_details1 = alert_buf;
@@ -1882,18 +1897,25 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 /*
  *	Print debugging messages, and free data.
  */
-static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
+static void cbtls_remove_session(SSL_CTX *ctx, UNUSED SSL_SESSION *sess)
 {
 	char			buffer[2 * MAX_SESSION_SIZE + 1];
 	fr_tls_server_conf_t	*conf;
+	tls_session_t	*ssn;
 
-	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
-
-	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
+	conf = (fr_tls_server_conf_t *)SSL_CTX_get_ex_data(ctx, FR_TLS_EX_INDEX_CONF);
 	if (!conf) {
 		DEBUG(LOG_PREFIX ": Failed to find TLS configuration in session");
 		return;
 	}
+
+	ssn = (tls_session_t *)SSL_CTX_get_ex_data(ctx, FR_TLS_EX_INDEX_SSN);
+	if (!ssn) {
+		DEBUG(LOG_PREFIX ": Failed to find TLS session in session");
+		return;
+	}
+
+	tls_session_id(ssn, buffer, MAX_SESSION_SIZE);
 
 	{
 		int rv;
@@ -1922,6 +1944,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 {
 	char			buffer[2 * MAX_SESSION_SIZE + 1];
 	fr_tls_server_conf_t	*conf;
+	tls_session_t	*ssn;
 	unsigned char		*sess_blob = NULL;
 
 	REQUEST			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
@@ -1932,7 +1955,13 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		return 0;
 	}
 
-	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
+	ssn = (tls_session_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
+	if (!ssn) {
+		RWDEBUG("(TLS) Failed to find TLS session in session");
+		return 0;
+	}
+
+	tls_session_id(ssn, buffer, MAX_SESSION_SIZE);
 
 	{
 		int fd, rv, todo, blob_len;
@@ -2080,6 +2109,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 	size_t			size;
 	char			buffer[2 * MAX_SESSION_SIZE + 1];
 	fr_tls_server_conf_t	*conf;
+	tls_session_t		*ssn;
 	TALLOC_CTX		*talloc_ctx;
 
 	SSL_SESSION		*sess = NULL;
@@ -2090,8 +2120,14 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 
 	rad_assert(request != NULL);
 
+	ssn = (tls_session_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
+	if (!ssn) return NULL;
+
 	size = len;
 	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
+
+	memcpy(ssn->session_id, data, size);
+	ssn->session_id_size = size;
 
 	fr_bin2hex(buffer, data, size);
 
@@ -2262,26 +2298,34 @@ error:
 	return sess;
 }
 
-static size_t tls_session_id_binary(SSL_SESSION *ssn, uint8_t *buffer, size_t bufsize)
+static size_t tls_session_id_binary(tls_session_t *ssn, uint8_t *buffer, size_t bufsize)
 {
+	SSL_SESSION *sess = ssn->ssl_session;
 #if OPENSSL_VERSION_NUMBER < 0x10001000L
 	size_t size;
 
-	size = ssn->session_id_length;
+	size = sess->session_id_size;
 	if (size > bufsize) size = bufsize;
 
-	memcpy(buffer, ssn->session_id, size);
-	return size;
+	memcpy(buffer, sess->session_id, size);
 #else
 	unsigned int size;
 	uint8_t const *p;
 
-	p = SSL_SESSION_get_id(ssn, &size);
+	p = SSL_SESSION_get_id(sess, &size);
 	if (size > bufsize) size = bufsize;
 
+	if (size > 0) {
+		memcpy(ssn->session_id, p, size);
+		ssn->session_id_size = size;
+	} else if (ssn->session_id_size > 0) {
+		p = ssn->session_id;
+		size = ssn->session_id_size;
+	}
+
 	memcpy(buffer, p, size);
-	return size;
 #endif
+	return size;
 }
 
 /*
@@ -2295,7 +2339,8 @@ static size_t tls_session_id_binary(SSL_SESSION *ssn, uint8_t *buffer, size_t bu
 #define CACHE_CLEAR (3)
 #define CACHE_REFRESH (4)
 
-static REQUEST *cache_init_fake_request(fr_tls_server_conf_t const *conf, SSL_SESSION *sess, SSL *ssl,
+static REQUEST *cache_init_fake_request(fr_tls_server_conf_t const *conf, tls_session_t *ssn,
+					SSL_SESSION *sess, SSL *ssl,
 					uint8_t const *data, size_t size)
 {
 	VALUE_PAIR		*vp;
@@ -2303,7 +2348,7 @@ static REQUEST *cache_init_fake_request(fr_tls_server_conf_t const *conf, SSL_SE
 	uint8_t			buffer[MAX_SESSION_SIZE];
 
 	if (sess) {
-		size = tls_session_id_binary(sess, buffer, sizeof(buffer));
+		size = tls_session_id_binary(ssn, buffer, sizeof(buffer));
 		data = buffer;
 	}
 
@@ -2342,11 +2387,18 @@ static REQUEST *cache_init_fake_request(fr_tls_server_conf_t const *conf, SSL_SE
 static void cbtls_cache_clear(SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	fr_tls_server_conf_t	*conf;
+	tls_session_t		*ssn;
 	REQUEST			*fake;
 
-	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
+	conf = (fr_tls_server_conf_t *)SSL_CTX_get_ex_data(ctx, FR_TLS_EX_INDEX_CONF);
 	if (!conf) {
 		DEBUG(LOG_PREFIX ": Failed to find TLS configuration in session");
+		return;
+	}
+
+	ssn = (tls_session_t *)SSL_CTX_get_ex_data(ctx, FR_TLS_EX_INDEX_SSN);
+	if (!ssn) {
+		DEBUG(LOG_PREFIX ": Failed to find TLS session in session");
 		return;
 	}
 
@@ -2356,7 +2408,7 @@ static void cbtls_cache_clear(SSL_CTX *ctx, SSL_SESSION *sess)
 	 *	Don't bother with any parent request.  We're in a
 	 *	timer callback, and there is no request available.
 	 */
-	fake = cache_init_fake_request(conf, sess, NULL, NULL, 0);
+	fake = cache_init_fake_request(conf, ssn, sess, NULL, NULL, 0);
 	if (!fake) return;
 
 	/*
@@ -2381,6 +2433,7 @@ static int cbtls_cache_save(UNUSED SSL *ssl, UNUSED SSL_SESSION *sess)
 static int cbtls_cache_save_vps(SSL *ssl, SSL_SESSION *sess, VALUE_PAIR *vps)
 {
 	fr_tls_server_conf_t	*conf;
+	tls_session_t		*ssn;
 	VALUE_PAIR		*vp;
 	REQUEST			*fake = NULL;
 	size_t			size, rv;
@@ -2389,12 +2442,15 @@ static int cbtls_cache_save_vps(SSL *ssl, SSL_SESSION *sess, VALUE_PAIR *vps)
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) return 0;
 
+	ssn = (tls_session_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
+	if (!ssn) return 0;
+
 	/*
 	 *	Find the SSL ID from the session, and save it.
 	 *
 	 *	Save anything from the parent request.
 	 */
-	fake = cache_init_fake_request(conf, sess, ssl, NULL, 0);
+	fake = cache_init_fake_request(conf, ssn, sess, ssl, NULL, 0);
 	if (!fake) return 0;
 
 	/* find out what length data we need */
@@ -2446,17 +2502,21 @@ error:
 static int cbtls_cache_refresh(SSL *ssl, SSL_SESSION *sess)
 {
 	fr_tls_server_conf_t	*conf;
+	tls_session_t	*ssn;
 	REQUEST			*fake = NULL;
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) return 0;
+
+	ssn = (tls_session_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
+	if (!ssn) return 0;
 
 	/*
 	 *	Find the SSL ID from the session, and save it.
 	 *
 	 *	Save anything from the parent request.
 	 */
-	fake = cache_init_fake_request(conf, sess, ssl, NULL, 0);
+	fake = cache_init_fake_request(conf, ssn, sess, ssl, NULL, 0);
 	if (!fake) return 0;
 	/*
 	 *	Use &request:TLS-Session-Id to update the cache
@@ -2476,6 +2536,7 @@ static SSL_SESSION *cbtls_cache_load(SSL *ssl, const unsigned char *data, int le
 #endif
 {
 	fr_tls_server_conf_t	*conf;
+	tls_session_t *ssn;
 	size_t			size;
 	uint8_t const  		*p;
 	VALUE_PAIR		*vp, *vps;
@@ -2488,10 +2549,16 @@ static SSL_SESSION *cbtls_cache_load(SSL *ssl, const unsigned char *data, int le
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) return NULL;
 
+	ssn = (tls_session_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
+	if (!ssn) return NULL;
+
 	rad_assert(request);
 
 	size = len;
 	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
+
+	memcpy(ssn->session_id, data, size);
+	ssn->session_id_size = size;
 
 	if (fr_debug_lvl > 1) {
 		fr_bin2hex(buffer, data, size);
@@ -2515,7 +2582,7 @@ static SSL_SESSION *cbtls_cache_load(SSL *ssl, const unsigned char *data, int le
 	 *	update the reply, until such time as we know that the
 	 *	user has been authenticated.
 	 */
-	fake = cache_init_fake_request(conf, NULL, NULL, data, size);
+	fake = cache_init_fake_request(conf, ssn, NULL, NULL, data, size);
 	if (!fake) return 0;
 
 	/*
@@ -4086,7 +4153,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_
 	 * Save the config on the context so that callbacks which
 	 * only get SSL_CTX* e.g. session persistence, can get it
 	 */
-	SSL_CTX_set_app_data(ctx, conf);
+	SSL_CTX_set_ex_data(ctx, FR_TLS_EX_INDEX_CONF, conf);
 
 	/*
 	 * Identify the type of certificates that needs to be loaded
@@ -5458,7 +5525,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		VALUE_PAIR **certs;
 		char buffer[2 * MAX_SESSION_SIZE + 1];
 
-		tls_session_id(ssn->ssl_session, buffer, MAX_SESSION_SIZE);
+		tls_session_id(ssn, buffer, MAX_SESSION_SIZE);
 
 		RDEBUG("(TLS) cache - Setting up attributes for session resumption");
 
@@ -5628,7 +5695,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 #endif
 #endif
 
-			tls_session_id(ssn->ssl_session, buffer, MAX_SESSION_SIZE);
+			tls_session_id(ssn, buffer, MAX_SESSION_SIZE);
 
 			/* "touch" the cached session/vp file */
 			char filename[3 * MAX_SESSION_SIZE + 1];
