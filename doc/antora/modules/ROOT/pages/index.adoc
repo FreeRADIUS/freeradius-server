@@ -75,7 +75,7 @@ even numbered releases should be packaged, e.g. 4.0 or 4.2.
   xref:howto:datastores/index.adoc[datastores],
   xref:howto:protocols/index.adoc[protocols],
   xref:howto:os/index.adoc[certificates], and
-  xref:howto:optimization/index.adoc[optimisation].
+  xref:troubleshooting:optimization/index.adoc[optimisation].
 
 * xref:tutorials:new_user.adoc[Tutorials] show real-world
   configurations through setups, debugging, and exercises.

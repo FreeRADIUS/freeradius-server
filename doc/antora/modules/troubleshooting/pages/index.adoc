@@ -105,6 +105,12 @@ areas:
 * xref:connect_nas.adoc[Connectivity-NAS]
 * xref:datastore.adoc[Datastores]
 
+Review the Optimisation pages to determine if your issue may be resolved by one of these solutions.
+* xref:optimization/monitoring/index.adoc[Monitoring]
+**** xref:optimization/monitoring/statistics.adoc[Server Statistics]
+*** xref:tuning/performance-testing.adoc[Performance Testing]
+*** xref:tuning/tuning_guide.adoc[Tuning Guide]
+
 == Further Readings
 
 * https://www.inkbridgenetworks.com/blog/blog-10/what-does-unresponsive-child-error-message-mean-116[What
