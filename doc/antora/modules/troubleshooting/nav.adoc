@@ -39,3 +39,13 @@
 ** xref:connect_nas.adoc[Connectivity]
 ** xref:datastore.adoc[Datastores]
 ** xref:conditional_debug.adoc[Conditional Debugging]
+
+** xref:vendors/index.adoc[Vendors]
+*** xref:vendors/alcatel-lucent.adoc[Alcatel-Lucent]
+*** xref:vendors/alvarion.adoc[Alvarion]
+*** xref:vendors/ascend.adoc[Ascend]
+*** xref:vendors/bay.adoc[Bay]
+*** xref:vendors/cisco.adoc[Cisco]
+*** xref:vendors/hp.adoc[HP]
+*** xref:vendors/huawei.adoc[Huawei]
+*** xref:vendors/proxim.adoc[ProxIM]

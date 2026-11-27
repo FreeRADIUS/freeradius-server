@@ -1,0 +1,69 @@
+= Ascend
+
+== Description
+
+FreeRADIUS uses Vendor-Specific attributes to send the Ascend
+attributes. By default, Ascend NASes transmit the Ascend-specific
+attributes as Non-VSA attributes. However, these Non-VSA attributes
+conflict with the current RADIUS attributes defined by the IETF. This
+design error by Ascend persists and continues to cause many issues.
+
+FreeRADIUS developed workarounds to address this problem. If you see a
+lot of messages about invalid `Message-Authenticator` attribute, you
+most likely are affected by this problem.
+
+You have two options:
+
+=== Option 1: Enable VSA's on the Ascend/Lucent MAX
+
+This option is the preferred method as it resolves many other
+problems.
+
+==== Max6000/4000 Series TAOS with Menued Interfaces
+
+Configure the Auth client interface:
+
+. Go to `Ethernet->Mod Config->Auth`.
+. At the bottom of the menu, change Auth-Compat from `OLD` to `VSA`.
+. Save your changes, no reboot is needed.
+
+Next, configure the Acct client interface:
+
+. Go to `Ethernet->Mod Config->Acct`.
+. At the bottom of the menu, change Acct-Compat from `OLD` to `VSA`.
+. Save your changes, no reboot is needed.
+
+==== Max TNT/Apex 8000 Series TAOS with CLI:
+
+====
+----
+nas> read external-auth
+nas> set rad-auth-client auth-radius-compat = vendor-specific
+nas> set rad-acct-client acct-radius-compat = vendor-specific
+nas> write
+----
+====
+
+=== Option 2: Enable OLD attributes in FreeRADIUS
+
+Cisco provides an Ascend compatibility mode that accepts only the OLD
+style Ascend attributes, which may be problematic.
+
+You can make FreeRADIUS send the OLD style attributes by prefixing the
+Ascend attributes with `X-` in the `mods-config/files/authorize` file,
+`sql` table, `ldap` directory, `attr_filter` module, etc,
+
+The original VSA Ascend attribute:
+
+----
+ Ascend-Data-Filter
+----
+
+becomes the OLD Ascend attribute using the `X-` prefix:
+
+----
+ X-Ascend-Data-Filter
+----
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
