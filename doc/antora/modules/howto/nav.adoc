@@ -1,6 +1,6 @@
 * xref:index.adoc[Howto Guides]
 
-** xref:howto:installation/index.adoc[Install]
+** xref:howto:installation/index.adoc[Installation]
 *** xref:howto:installation/dependencies.adoc[Dependencies]
 *** xref:howto:installation/packages.adoc[Install from Packages]
 *** xref:howto:installation/source.adoc[Build from Source]
@@ -48,7 +48,7 @@
 **** xref:howto:upgrade/attribute_names.adoc[Attribute Name Changes]
 **** xref:howto:upgrade/attributes_deleted.adoc[Deleted Functionality]
 *** xref:howto:upgrade/proxy.adoc[Proxying]
-*** *** xref:howto:upgrade/recommendations.adoc[Recommendations]
+*** xref:howto:upgrade/recommendations.adoc[Recommendations]
 
 ** xref:modules/configuring_modules.adoc[Configure Modules]
 *** xref:modules/chap/index.adoc[CHAP]
