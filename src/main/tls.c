@@ -892,8 +892,8 @@ static bool tls_dirty_out_full(REQUEST *request, tls_session_t *ssn)
 
 	RERROR("(TLS) %s - %d more bytes of TLS data were not written into the output "
 	       "buffer.  Increase \"buffer_size\" (currently %u) in the TLS configuration "
-               "to %zu or more.  This issues is usually caused by a large certificate "
-               "chain." , ssn->conf->name, pending, ssn->conf->buffer_size + pending);
+               "to %u or more.  This issues is usually caused by a large certificate "
+               "chain.", ssn->conf->name, pending, ssn->conf->buffer_size + pending);
 	return true;
 }
 
